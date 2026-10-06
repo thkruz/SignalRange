@@ -16,7 +16,7 @@ import { EventBus } from '@app/events/event-bus';
 import { Events, HpaNoiseAmplificationData } from '@app/events/events';
 import { SignalPathManager } from '@app/simulation/signal-path-manager';
 import { SimClock } from '@app/simulation/sim-clock';
-import { dBm, Hertz, IfFrequency, RfFrequency } from '@app/types';
+import { Hertz, IfFrequency, RfFrequency } from '@app/types';
 
 /**
  * Complete RF Front-End state
@@ -35,6 +35,24 @@ export interface RFFrontEndState {
   lnb: LNBState;
   coupler: CouplerState;
   gpsdo: GPSDOState;
+  /** Cable/waveguide losses per segment, dB (Phase 19.6; every segment defaults to 0) */
+  cables?: RfCableLosses;
+}
+
+/**
+ * Interconnect losses between the front end's boxes, dB. Each is charged to
+ * the carriers crossing that segment (receive noise is referred to the LNA
+ * input, so a loss after the LNA does not change C/N).
+ */
+export interface RfCableLosses {
+  /** TX modem → BUC (IF cable) */
+  txIf?: number;
+  /** BUC → HPA (RF cable) */
+  bucToHpa?: number;
+  /** HPA → OMT / feed (waveguide) */
+  hpaToFeed?: number;
+  /** LNB → IF filter (IF cable) */
+  rxIf?: number;
 }
 
 /**
@@ -68,6 +86,8 @@ export abstract class RFFrontEndCore extends BaseEquipment {
   // References to connected equipment
   antenna: AntennaCore | null = null;
   transmitters: Transmitter[] = [];
+  /** Ground station this front end belongs to (set by GroundStation; GNSS threat scoping) */
+  groundStationId: string | null = null;
 
   constructor(state?: Partial<RFFrontEndState>, teamId: number = 1, serverId: number = 1) {
     // Note: parentId is required for BaseEquipment but may not be used in core
@@ -106,6 +126,11 @@ export abstract class RFFrontEndCore extends BaseEquipment {
     EventBus.getInstance().on(Events.SYNC, this.syncDomWithState.bind(this));
   }
 
+  /** Loss of one interconnect segment, dB (0 when not configured) */
+  cableLossDb(segment: keyof RfCableLosses): number {
+    return Math.max(0, this.state_.cables?.[segment] ?? 0);
+  }
+
   get state(): RFFrontEndState {
     return {
       uuid: this.uuid,
@@ -122,6 +147,7 @@ export abstract class RFFrontEndCore extends BaseEquipment {
       lnb: this.lnbModule?.state ?? this.state_.lnb,
       coupler: this.couplerModule?.state ?? this.state_.coupler,
       gpsdo: this.gpsdoModule?.state ?? this.state_.gpsdo,
+      cables: this.state_.cables,
     };
   }
 
@@ -284,36 +310,15 @@ export abstract class RFFrontEndCore extends BaseEquipment {
       this.state.hpa.isPowered = false;
     }
 
-    // HPA temperature calculation based on output power
-    if (this.state.hpa.isPowered) {
-      const powerWatts = 10 ** (this.state.hpa.outputPower / 10);
-      const efficiency = 0.5; // 50% typical for SSPA
-      const dissipatedPower = powerWatts * (1 - efficiency);
-      this.state.hpa.temperature = 25 + dissipatedPower * 10; // Rough thermal model
-    } else {
-      this.state.hpa.temperature = 25; // Ambient
-    }
+    // HPA output, gain, IMD and temperature are owned by HPAModuleCore
+    // (Phase 19.6: a dBm/10 "output" and a mW thermal model used to be
+    // computed here and overwritten every frame)
 
     // LNB noise temperature is calculated in LNBModuleCore.updateNoiseTemperature_()
     // with proper Friis formula, gain dependency, and smoothing - don't override here
 
     // BUC output power is owned by BUCModuleCore.update(), which derives it
     // from the actual RF output signals - don't override here
-
-    // HPA output power and IMD calculation
-    if (this.state.hpa.isPowered) {
-      const p1db = 50 as dBm; // dBm (100W) typical P1dB
-      this.state.hpa.outputPower = ((p1db - this.state.hpa.backOff) / 10) as dBm;
-
-      // IMD increases as back-off decreases
-      this.state.hpa.imdLevel = -30 - this.state.hpa.backOff * 2; // dBc
-    } else {
-      this.state.hpa.outputPower = -90 as dBm; // dBm (effectively off)
-      this.state.hpa.imdLevel = -60; // dBc (very clean when off)
-    }
-
-    // Update HPA overdrive status
-    this.state.hpa.isOverdriven = this.state.hpa.backOff < 3;
   }
 
   /**
@@ -322,9 +327,6 @@ export abstract class RFFrontEndCore extends BaseEquipment {
    */
   public getStatusAlarms(rfcase: number): AlarmStatus[] {
     const alarms: AlarmStatus[] = [];
-
-    // HPA overdrive check (back-off < 3 dB is typically considered overdrive)
-    this.state.hpa.isOverdriven = this.state.hpa.backOff < 3;
 
     // Collect alarm messages from all modules
     let moduleAlarms = [];

@@ -152,7 +152,7 @@ test.describe('nats-eu Scenario 16 Full Completion', () => {
     await missionControl.selectTab('tx-chain');
     await answerSystemQuiz(page, 'Twice wrong');
     await dismissDialogIfPresent(page);
-    // Thermal time constant ~5.5 min: from ~74 degC toward a 55 degC muted target.
+    // 10 min thermal time constant: from ~72 degC toward a 55 degC muted target, under 70 in ~80 s.
     await waitForObjectiveComplete(missionControl, 'Confirm the Shetland BUC Cooling', 200000);
   });
 

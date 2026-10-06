@@ -35,7 +35,7 @@ import { ses10Satellite, tidemark1Satellite, tidemark2Satellite } from './satell
  *
  * Premise: A winter storm is icing VT-01's feed (the inherited failure: the
  * heater was left off ahead of the front) while ME-02 simultaneously throws an
- * HPA overdrive with an over-temperature alarm (back-off drifted to 1 dB).
+ * HPA overdrive with the amplifier running hot (back-off drifted to 1 dB).
  * Dana is 40 minutes out. The operator triages: start VT's slow recovery (one
  * switch - heater on), work ME's dangerous-but-deterministic fault end to end,
  * then verify both recoveries and document why simultaneity was coincidence.
@@ -48,9 +48,12 @@ import { ses10Satellite, tidemark1Satellite, tidemark2Satellite } from './satell
  *   - VT-01: 'snow'/severe weather event from T=0; heater OFF (vermont
  *     default) so ice accumulates (~10 dB max, tau 720 s). Heater ON melts
  *     at 1 dB/min. Ice recovery checked via custom evaluator.
- *   - ME-02: HPA backOff 1 -> isOverdriven; temperature recomputed from
- *     output power each tick, so restoring back-off clears the thermal alarm
- *     deterministically. BUC stays unmuted throughout (RF-safety rule).
+ *   - ME-02: HPA backOff 1 -> 59 dBm (794 W), isOverdriven, IM3 ~-25 dBc,
+ *     case temperature ~62 degC (about 44 degC at 10 dB). The HPA
+ *     over-temperature alarm is > 85 degC, which a healthy amplifier never
+ *     reaches, so the thermal symptom is the temperature readout, not an
+ *     alarm. Restoring back-off drops it with a 2 min time constant
+ *     (62 -> ~50 degC in 2 min). BUC stays unmuted throughout (RF-safety rule).
  */
 
 /** Current ice accumulation (dB) on VT-01's feed, 99 if unavailable. */
@@ -80,7 +83,7 @@ export const scenario20Data: ScenarioData = {
   duration: '35-45 min',
   difficulty: 'advanced',
   missionType: 'Incident Response',
-  description: `Two boards lit at once. Vermont is in the front edge of a winter storm and the feed is icing - the heater that should have been running since last night is off, and the RX margin is bleeding toward the demod floor. Maine just threw an HPA overdrive with an over-temperature alarm stacked on top: the back-off walked all the way down to 1 dB.<br><br>Unrelated problems. Same shift. One operator. Dana is forty minutes out on bad roads, and James Okafor is already asking whether two stations failing at once is something worse than bad luck.<br><br>Triage them: the slow recovery you can start costs nothing to start first; the dangerous fault gets your full attention immediately after; and the question James asked deserves an answer built from evidence.`,
+  description: `Two boards lit at once. Vermont is in the front edge of a winter storm and the feed is icing - the heater that should have been running since last night is off, and the RX margin is bleeding toward the demod floor. Maine just threw an HPA overdrive, and the amplifier is running hot on top of it: the back-off walked all the way down to 1 dB.<br><br>Unrelated problems. Same shift. One operator. Dana is forty minutes out on bad roads, and James Okafor is already asking whether two stations failing at once is something worse than bad luck.<br><br>Triage them: the slow recovery you can start costs nothing to start first; the dangerous fault gets your full attention immediately after; and the question James asked deserves an answer built from evidence.`,
   equipment: ['9-meter C-band Antennas (both sites)', 'RF Front Ends (both sites)', 'Spectrum Analyzers', 'RX/TX Modems', 'Weather radar feed'],
   timeLimitSeconds: 45 * 60,
   settings: {
@@ -94,7 +97,7 @@ export const scenario20Data: ScenarioData = {
         ...vermontGroundStation,
       },
       // ME-02: carrying TIDEMARK-2; HPA back-off drifted to 1 dB - overdriven
-      // and over-temperature. BUC unmuted (traffic flowing).
+      // and running hot (~62 degC). BUC unmuted (traffic flowing).
       {
         id: 'ME-02',
         name: 'Maine Ground Station',
@@ -125,9 +128,9 @@ export const scenario20Data: ScenarioData = {
         ],
         rfFrontEnds: [
           createRfFrontEnd(vermontGroundStation.rfFrontEnds[0], {
-            // The fault: back-off drifted to 1 dB. Overdriven, IMD elevated,
-            // and the amplifier is cooking (temperature recomputes from
-            // output power). Traffic still flowing - BUC unmuted.
+            // The fault: back-off drifted to 1 dB. Overdriven (59 dBm, 794 W),
+            // IM3 ~-25 dBc, and the amplifier runs hot (~62 degC vs ~44 at
+            // 10 dB back-off). Traffic still flowing - BUC unmuted.
             hpa: {
               backOff: 1,
               isHpaEnabled: true,
@@ -385,7 +388,7 @@ export const scenario20Data: ScenarioData = {
           description: 'Maine Diagnosis',
           params: {
             character: Character.SYSTEM,
-            question: 'ME-02 shows HPA overdrive and HPA over-temperature together. What is the relationship?',
+            question: 'ME-02 shows an HPA overdrive alarm, and the HPA panel reads about 62°C where it normally sits near 44°C. What is the relationship?',
             options: [
               'One fault, two symptoms: 1 dB back-off drives the HPA near saturation - IMD rises (overdrive) and dissipation climbs (thermal)',
               'Two faults, two symptoms: a drive-level fault pushes the HPA into IMD (overdrive) and a cooling fault lets it run hot (thermal)',
@@ -394,7 +397,7 @@ export const scenario20Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'The thermal-anomaly lesson in an HPA jacket: trace symptoms to the single input that explains them all. Back-off is the input; heat and IMD are the outputs. Fix the back-off and both clear.',
+              'The thermal-anomaly lesson in an HPA jacket: trace symptoms to the single input that explains them all. Back-off is the input; heat and IMD are the outputs. At 1 dB the HPA puts out 59 dBm (794 W) against 50 dBm (100 W) at 10 dB, and the IM3 (2-tone) readout sits near -25 dBc instead of -43. Fix the back-off and both clear.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -455,7 +458,7 @@ export const scenario20Data: ScenarioData = {
             options: [
               "VT's fix is one switch that runs unattended; ME's fault is dangerous (spectrum pollution + HPA stress) and needs full attention",
               "VT is the primary station and always comes first; ME's fault is a config value (back-off drift) and can wait for the second pass",
-              "VT comes first alphabetically by station identifier; ME's fault is the same size (one alarm pair) and the order was arbitrary",
+              "VT comes first alphabetically by station identifier; ME's fault is the same size (one alarm each) and the order was arbitrary",
               "VT's ice is the customer-visible fault; ME's HPA was still passing traffic (carrier locked) and could have waited for Dana",
             ],
             correctIndex: 0,
@@ -563,7 +566,7 @@ export const scenario20Data: ScenarioData = {
       id: 'me-verify-quiz',
       nice: ['T0531', 'K0740'],
       title: 'Confirm Both Symptoms Cleared',
-      description: 'Verify the single-input diagnosis held: back-off restored, both alarms gone.',
+      description: 'Verify the single-input diagnosis held: back-off restored, overdrive alarm gone, HPA temperature falling.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['me-reenable-hpa'],
       timeLimitSeconds: 2 * 60,
@@ -574,16 +577,16 @@ export const scenario20Data: ScenarioData = {
           description: 'Maine Verification',
           params: {
             character: Character.SYSTEM,
-            question: 'Back-off is at 10 dB and the output is re-enabled. What does the thermal alarm do, and why?',
+            question: 'Back-off is at 10 dB and the output is re-enabled. What does the HPA temperature do, and why?',
             options: [
-              'It clears on its own - output power dropped ~9 dB, so the output stage dissipates a fraction of the heat and cools',
-              'It stays latched - the over-temperature flag is a hardware latch, so maintenance has to reset it physically on site',
-              'It clears only after a power cycle - the BUC and HPA share the alarm bus, so the fault holds until both restart',
-              'It stays on for 24 hours - the thermal alarm runs a cooldown timer, so the output stage is protected until it expires',
+              'It falls on its own - output power dropped ~9 dB, so the output stage dissipates a fraction of the heat and cools',
+              'It stays latched - the temperature reading is held by a hardware latch, so maintenance has to reset it physically on site',
+              'It falls only after a power cycle - the BUC and HPA share the sensor bus, so the reading holds until both restart',
+              'It stays high for 24 hours - the thermal protection runs a cooldown timer, so the output stage is protected until it expires',
             ],
             correctIndex: 0,
             explanation:
-              'Confirmation that the diagnosis was right: one input (back-off), two symptoms, both gone. The temperature falls with the dissipation that caused it. If the thermal alarm had stayed up, the single-fault story would be wrong - and you would start looking for the second fault.',
+              'Confirmation that the diagnosis was right: one input (back-off), two symptoms, both gone. The temperature falls with the dissipation that caused it, toward about 44°C over a few minutes (2-minute time constant). If the temperature had stayed up, the single-fault story would be wrong - and you would start looking for the second fault.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -901,7 +904,7 @@ export const scenario20Data: ScenarioData = {
         <em>[Call from Dana at 07:09 - road noise]</em>
       </p>
       <p>
-        "Two boards lit at once. Vermont's icing - the heater's been off since last night, don't ask - and Maine just threw an HPA overdrive with a temperature alarm on top. I'm forty minutes out on bad roads. Triage them: SLA exposure first, recovery time second. Don't give me hero sequencing - give me the order that costs the customers least."
+        "Two boards lit at once. Vermont's icing - the heater's been off since last night, don't ask - and Maine just threw an HPA overdrive with the amp running hot. I'm forty minutes out on bad roads. Triage them: SLA exposure first, recovery time second. Don't give me hero sequencing - give me the order that costs the customers least."
       </p>
       `,
       character: Character.DANA_TORRES,

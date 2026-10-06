@@ -248,8 +248,12 @@ describe('GPSDOModuleCore', () => {
 
       gpsdoModule.update();
 
-      expect(gpsdoModule.state.frequencyAccuracy).toBe(999);
-      expect(gpsdoModule.state.allanDeviation).toBe(99);
+      // 19.6: a free-running (never disciplined) OCXO - its 4.6e-10 offset
+      // (1.67 us/h of time error), its own 1e-11 short-term stability
+      expect(gpsdoModule.referenceCondition()).toBe('free-run');
+      expect(gpsdoModule.state.frequencyAccuracy).toBeCloseTo(46.4, 1);
+      expect(gpsdoModule.state.allanDeviation).toBeCloseTo(1, 6);
+      expect(Math.abs(gpsdoModule.fractionalFrequencyError())).toBeCloseTo(4.64e-10, 12);
     });
 
     it('should maintain quality during holdover with degradation', () => {
@@ -659,10 +663,13 @@ describe('GPSDOModuleCore', () => {
     });
 
     it('should degrade frequency accuracy with aging rate', () => {
+      gpsdoModule.state.agingRate = 10; // ppm/year
+      gpsdoModule.update();
       const initialAccuracy = gpsdoModule.state.frequencyAccuracy;
       gpsdoModule.testStartHoldoverMonitor();
 
       advanceSimTime(1000);
+      gpsdoModule.update();
 
       expect(gpsdoModule.state.frequencyAccuracy).toBeGreaterThan(initialAccuracy);
     });

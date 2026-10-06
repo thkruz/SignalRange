@@ -1,11 +1,18 @@
+import { type AmplifierModel, amplifierFromDatasheet, compressionDb, outputPowerDbm } from '@app/equipment/rf-front-end/amplifier-models';
+import { FreeRunDrift, LO_PHASE_NOISE_DBC_HZ } from '@app/equipment/rf-front-end/lo-reference';
 import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { RFFrontEndModule, RFFrontEndModuleState } from '@app/equipment/rf-front-end/rf-front-end-module';
 import { SignalOrigin } from '@app/signal-origin';
 import { Rng } from '@app/simulation/rng';
+import { SimClock } from '@app/simulation/sim-clock';
 import { dB, dBm, Hertz, IfFrequency, IfSignal, MHz, RfFrequency, RfSignal } from '@app/types';
 
-/** Seeded draws for this module (see simulation/rng.ts). */
-const random = (): number => Rng.stream('buc').next();
+/** BUC thermal time constant (an outdoor unit's finned heatsink), s */
+const BUC_THERMAL_TAU_S = 600;
+/** Current-draw settling time constant (bias and fan control), s */
+const BUC_CURRENT_TAU_S = 2;
+/** Gain applied to carriers while muted, dB */
+const MUTED_GAIN_DB = -170;
 
 /**
  * Spurious output from mixer products
@@ -73,6 +80,22 @@ export interface BUCState extends RFFrontEndModuleState {
   spuriousOutputs: SpuriousOutput[];
   /** Noise floor in dBm */
   noiseFloor: number;
+
+  // ═══ Thermal / power supply (Phase 19.6) ═══
+  /** Supply voltage, V (default 24) */
+  supplyVoltageV?: number;
+  /** Current with no RF out: synthesiser, mixers, IF stages, fan, A (default 2.6) */
+  idleCurrentA?: number;
+  /** Extra output-stage current at saturated output, A (default 2.4) */
+  amplifierCurrentAtSatA?: number;
+  /** Heatsink thermal resistance, °C per W dissipated (default 0.30) */
+  thermalResistanceCPerW?: number;
+  /** Ambient (cooling air) temperature, °C (default 25) */
+  ambientTemperatureC?: number;
+  /** Composite IF drive, dBm (−120 with none) */
+  inputPower?: dBm;
+  /** Gain compression at the present drive, dB */
+  compression?: number;
 }
 
 /**
@@ -82,15 +105,28 @@ export interface BUCState extends RFFrontEndModuleState {
 export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
   /** Staged cooling fault, degC above the normal thermal target (0 = healthy) */
   private thermalOffsetC_ = 0;
+  /** Staged cooling fault: thermal resistance multiplier (1 = healthy fan and heatsink) */
+  private coolingFactor_ = 1;
+  /** Staged fault: extra supply current from a failing stage, A */
+  private excessCurrentA_ = 0;
+  private lastThermalRunMs_: number | null = null;
+  /**
+   * False until the first update: a station is built already running, so the
+   * case starts at its equilibrium for the configured operating point rather
+   * than at the config's placeholder temperature (a scenario that stages a
+   * temperature calls setTemperature first)
+   */
+  private thermalPrimed_ = false;
+  /** Internal reference when the BUC is not locked to the station 10 MHz */
+  private readonly drift_ = new FreeRunDrift(() => Rng.stream('buc'), 2, 10, 30);
+  private model_: AmplifierModel | null = null;
+  private modelKey_ = '';
 
   // Signals
   outputSignals: RfSignal[] = [];
 
   /** Reported output power when the BUC emits nothing (dBm). */
   static readonly OUTPUT_POWER_FLOOR_DBM = -120 as dBm;
-
-  /** Fixed-drive output estimate used by the thermal/current model (see updateNominalOutputPower_). */
-  private nominalOutputPower_: dBm = -10 as dBm;
 
   /**
    * Get default state for BUC module
@@ -140,51 +176,78 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
    * Update component state and check for faults
    */
   update(): void {
-    // Update lock status based on power and reference availability
-    this.updateLockStatus_();
+    const dtS = this.advanceRunClock_();
 
-    // Nominal (fixed-drive) output power; feeds the thermal/current model only
-    this.updateNominalOutputPower_();
+    // Update lock status based on power and reference availability
+    this.updateLockStatus_(dtS);
 
     // Update signal quality parameters
     this.updateSignalQuality_();
 
-    // Update thermal parameters
-    this.updateThermalState_();
-
     // If the module is unpowered, the RF output chain is inactive.
-    // We still update derived state above (lock, drift, thermal, etc.),
+    // We still update derived state (lock, drift, thermal, etc.),
     // but no output signals should be emitted.
     if (!this.state.isPowered) {
       this.outputSignals = [];
+      this.state.inputPower = BUCModuleCore.OUTPUT_POWER_FLOOR_DBM;
+      this.state.compression = 0;
       this.updateOutputPowerFromSignals_();
+      this.updateThermalState_(dtS);
       return;
     }
 
-    // Check for alarms is currently handled by RFFrontEndCore
+    // Calculate post-BUC signals: upconversion, gain and soft compression
+    // (Rapp, s = 2: P1dB = saturationPower, Psat 2.16 dB above). The
+    // bandpass filter rejects out-of-band signals entirely. Every carrier gets
+    // the composite gain at the composite drive.
+    const inBand = this.inputSignals.map((sig) => ({ sig, rfFreq: this.calculateRfFrequency(sig.frequency) })).filter(({ rfFreq }) => this.isInPassband_(rfFreq));
+    const compositeInMw = inBand.reduce((sum, { sig }) => sum + 10 ** (sig.power / 10), 0);
+    const compositeIn = compositeInMw > 0 ? 10 * Math.log10(compositeInMw) : Number.NEGATIVE_INFINITY;
+    this.state.inputPower = (Number.isFinite(compositeIn) ? compositeIn : BUCModuleCore.OUTPUT_POWER_FLOOR_DBM) as dBm;
 
-    // Calculate post-BUC signals (apply upconversion and gain if powered)
-    // Bandpass filter rejects out-of-band signals entirely
-    const maxOutputPower = this.state.saturationPower + 2; // Hard saturation limit
-    this.outputSignals = this.inputSignals
-      .map((sig) => {
-        const rfFreq = this.calculateRfFrequency(sig.frequency);
-        const inBand = this.isInPassband_(rfFreq);
-        if (!inBand) return null; // Reject out-of-band signals
+    let gain: number = this.state.isMuted ? MUTED_GAIN_DB : this.state.gain;
+    this.state.compression = 0;
+    if (!this.state.isMuted && Number.isFinite(compositeIn)) {
+      const compressed = outputPowerDbm(this.model, compositeIn) - compositeIn;
+      this.state.compression = this.state.gain - compressed;
+      gain = compressed;
+    }
+    const phaseNoise = this.state.isExtRefLocked && this.isExtRefWarmedUp() ? LO_PHASE_NOISE_DBC_HZ.locked : LO_PHASE_NOISE_DBC_HZ.bucUnlocked;
 
-        const gain = !this.state.isMuted ? this.state.gain : -170;
-        const linearPower = sig.power + gain;
-        return {
+    this.outputSignals = inBand.map(
+      ({ sig, rfFreq }) =>
+        ({
           ...sig,
           frequency: rfFreq,
-          power: Math.min(linearPower, maxOutputPower) as dBm,
+          power: (sig.power + gain) as dBm,
           bandwidth: sig.bandwidth,
+          phaseNoiseDbcHz: phaseNoise,
           origin: SignalOrigin.BUC,
-        } as RfSignal;
-      })
-      .filter((sig): sig is RfSignal => sig !== null);
+        }) as RfSignal
+    );
 
     this.updateOutputPowerFromSignals_();
+    this.updateThermalState_(dtS);
+  }
+
+  /** Seconds of run time since the last update (0 on the first, or after a clock reset) */
+  private advanceRunClock_(): number {
+    const now = SimClock.runMs();
+    const last = this.lastThermalRunMs_;
+    this.lastThermalRunMs_ = now;
+
+    return last !== null && now >= last ? (now - last) / 1000 : 0;
+  }
+
+  /** The output stage's AM/AM model: Rapp s = 2 with P1dB at `saturationPower` */
+  get model(): AmplifierModel {
+    const key = `${this.state.gain}|${this.state.saturationPower}`;
+    if (key !== this.modelKey_ || !this.model_) {
+      this.modelKey_ = key;
+      this.model_ = amplifierFromDatasheet('rapp', this.state.gain, this.state.saturationPower);
+    }
+
+    return this.model_;
   }
 
   /**
@@ -220,7 +283,7 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
     }
 
     // Cooling fault staged by a scenario (HardwareFaultManager buc-overtemp)
-    if (this.thermalOffsetC_ > 0) {
+    if (this.thermalOffsetC_ > 0 || this.coolingFactor_ > 1) {
       alarms.push('BUC cooling fault - fan/heatsink degraded');
     }
 
@@ -246,9 +309,15 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
   // ═══════════════════════════════════════════════════════════════
 
   get inputSignals(): IfSignal[] {
-    return this.rfFrontEnd_.transmitters.flatMap((tx) =>
+    const cableLoss = this.rfFrontEnd_.cableLossDb('txIf');
+    const signals = this.rfFrontEnd_.transmitters.flatMap((tx) =>
       tx.state.modems.filter((modem) => modem.isTransmitting && !modem.isFaulted && !modem.isLoopback && !tx.isModemInIntermittentDropout(modem)).map((modem) => modem.ifSignal)
     );
+    if (cableLoss === 0) {
+      return signals;
+    }
+
+    return signals.map((sig) => ({ ...sig, power: (sig.power - cableLoss) as dBm }));
   }
 
   /**
@@ -343,26 +412,6 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
   // ═══════════════════════════════════════════════════════════════
 
   /**
-   * Nominal BUC output power for a fixed -10 dBm IF drive, with saturation.
-   * Drives the thermal/current model only (Phase 19.6 replaces this); the
-   * reported `state.outputPower` comes from the real output signals.
-   */
-  private updateNominalOutputPower_(): void {
-    if (!this.state.isPowered || this.state.isMuted) {
-      this.nominalOutputPower_ = -170 as dBm; // Effectively off
-      return;
-    }
-
-    const inputPower = -10 as dBm; // dBm typical IF input
-    const linearOutputPower = inputPower + this.state.gain;
-
-    // Model amplifier saturation (P1dB)
-    // Real amplifiers hard-limit at saturation - output cannot exceed saturation by much
-    const maxOutputPower = this.state.saturationPower + 2; // Max 2 dB above P1dB (hard saturation)
-    this.nominalOutputPower_ = Math.min(linearOutputPower, maxOutputPower) as dBm;
-  }
-
-  /**
    * Report `state.outputPower` as the total power of the actual RF output
    * signals, so alarms, the Dashboard and the BUC panel all read the same
    * figure. No output (unpowered, nothing in band) or a muted output reads
@@ -381,10 +430,10 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
   }
 
   /**
-   * Update lock status based on power and external reference
-   * Simulates frequency drift when unlocked
+   * Update lock status based on power and external reference, and the LO
+   * error that follows from it (Phase 19.6 reference chain)
    */
-  private updateLockStatus_(): void {
+  private updateLockStatus_(dtS: number): void {
     const extRefPresent = this.isExtRefPresent();
     const canLock = this.state.isPowered && extRefPresent;
 
@@ -394,34 +443,31 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
       if (!this.state.isExtRefLocked) {
         this.simulateLockAcquisition();
       }
-      // When locked, frequency error is minimal
-      if (this.isExtRefWarmedUp()) {
-        this.state.frequencyError = 0;
-      } else {
-        this.updateFrequencyDrift_();
-      }
     } else {
       this.state.isExtRefLocked = false;
-      this.updateFrequencyDrift_();
     }
+    this.updateFrequencyDrift_(dtS);
   }
 
   /**
-   * Update frequency drift when LO is not locked to external reference
-   * Drift is ±1-100 ppm of LO frequency
+   * LO error. Locked to a warmed-up station reference, the synthesiser carries
+   * the GPSDO's fractional error (parts in 10^12 locked, growing in holdover,
+   * the spoofer's ramp when GNSS is spoofed). Otherwise it runs on its own
+   * TCXO: a seeded random walk (±10 ppm start, 2 ppm/√h, ±30 ppm bound) on
+   * run time, not a fresh draw each frame.
    */
-  private updateFrequencyDrift_(): void {
+  private updateFrequencyDrift_(dtS: number): void {
+    const loFrequencyHz = this.state.loFrequency * 1e6;
+
     if (this.state.isExtRefLocked && this.isExtRefWarmedUp()) {
-      this.state.frequencyError = 0;
+      this.drift_.stop();
+      this.state.frequencyError = this.rfFrontEnd_.gpsdoModule.fractionalFrequencyError() * loFrequencyHz;
       return;
     }
 
-    const loFrequencyHz = this.state.loFrequency * 1e6;
-    // Simulate drift: ±1-100 ppm (parts per million)
-    // Use random walk model for realistic drift behavior
-    const driftPpm = 10 + random() * 90; // 10-100 ppm
-    const driftDirection = random() > 0.5 ? 1 : -1;
-    this.state.frequencyError = driftDirection * ((loFrequencyHz * driftPpm) / 1e6);
+    this.drift_.start();
+    this.drift_.step(dtS);
+    this.state.frequencyError = (this.drift_.ppm * loFrequencyHz) / 1e6;
   }
 
   /**
@@ -435,18 +481,16 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
       return;
     }
 
-    // Phase noise contribution increases when unlocked
-    // Typical locked: -100 dBc/Hz @ 10kHz offset
-    // Unlocked: -70 to -80 dBc/Hz (degraded)
-    this.state.phaseNoise = this.state.isExtRefLocked
-      ? -100 - random() * 5 // -100 to -105 dBc/Hz
-      : -70 - random() * 10; // -70 to -80 dBc/Hz
+    // Phase-noise plateau of the LO (dBc/Hz to the 10 kHz corner): the
+    // synthesiser's on the station reference, its TCXO's when unlocked. The
+    // same value rides on the output carriers (lo-reference.ts).
+    this.state.phaseNoise = this.state.isExtRefLocked && this.isExtRefWarmedUp() ? LO_PHASE_NOISE_DBC_HZ.locked : LO_PHASE_NOISE_DBC_HZ.bucUnlocked;
 
     // Group delay variation (phase distortion across bandwidth)
-    // Typical: 2-10 ns, increases with temperature and at band edges
+    // Typical: 2-10 ns, increases with temperature
     const baseDelay = 3; // ns
     const tempVariation = (this.state.temperature - 25) * 0.1; // 0.1 ns/°C
-    this.state.groupDelay = baseDelay + tempVariation + random() * 2;
+    this.state.groupDelay = baseDelay + tempVariation;
 
     // Calculate spurious mixer products (N×LO ± M×IF)
     this.state.spuriousOutputs = this.calculateSpuriousProducts_();
@@ -472,21 +516,21 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
         // 2×LO - IF (2nd harmonic mixing)
         {
           frequency: (2 * loFreqHz - ifFreqHz) as Hertz,
-          level: -30 - random() * 10, // -30 to -40 dBc
+          level: -35, // dBc
           loHarmonic: 2,
           ifHarmonic: -1,
         },
         // 2×LO + IF (2nd harmonic mixing)
         {
           frequency: (2 * loFreqHz + ifFreqHz) as Hertz,
-          level: -35 - random() * 10, // -35 to -45 dBc
+          level: -40, // dBc
           loHarmonic: 2,
           ifHarmonic: 1,
         },
         // 3×LO - IF (3rd harmonic)
         {
           frequency: (3 * loFreqHz - ifFreqHz) as Hertz,
-          level: -40 - random() * 15, // -40 to -55 dBc
+          level: -47, // dBc
           loHarmonic: 3,
           ifHarmonic: -1,
         }
@@ -499,9 +543,8 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
   /**
    * Extra degC the BUC settles above its normal thermal target - a degraded fan
    * or heatsink staged by a scenario (HardwareFaultManager `buc-overtemp`).
-   * With the default 40 degC a driven BUC climbs past the 70 degC alarm and a
-   * muted one settles at 65 degC, so muting is the right first move and
-   * powering off (slower cooling, `buc-temperature-normal` needs power) is not.
+   * Additive: the same offset whatever the drive. See setCoolingFactor for a
+   * fault that scales with the heat the unit makes.
    */
   setThermalOffset(deltaC: number): void {
     this.thermalOffsetC_ = Math.max(0, deltaC);
@@ -511,37 +554,102 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
     return this.thermalOffsetC_;
   }
 
+  /** Set the case temperature now (a scenario staging a hot unit); it then follows its equilibrium */
+  setTemperature(celsius: number): void {
+    this.thermalPrimed_ = true;
+    this.state.temperature = celsius;
+  }
+
   /**
-   * Update thermal and operational state
+   * Degraded cooling as a thermal-resistance multiplier (a fan running slow,
+   * a clogged heatsink): every watt dissipated now lifts the case by
+   * factor × R_th, so less drive is the fix (HardwareFaultManager `buc-overtemp`
+   * `coolingFactor`). 1 = healthy.
    */
-  private updateThermalState_(): void {
+  setCoolingFactor(factor: number): void {
+    this.coolingFactor_ = Math.max(1, factor);
+  }
+
+  get coolingFactor(): number {
+    return this.coolingFactor_;
+  }
+
+  /**
+   * Extra supply current from a failing output stage (bias runaway), A. It is
+   * drawn from the supply, so it heats the unit too; muting removes the
+   * stage's bias, so a muted BUC idles (HardwareFaultManager `buc-overtemp`
+   * `excessCurrentA`).
+   */
+  setExcessCurrent(amps: number): void {
+    this.excessCurrentA_ = Math.max(0, amps);
+  }
+
+  get excessCurrentA(): number {
+    return this.excessCurrentA_;
+  }
+
+  /** True while a staged cooling or current fault is in effect */
+  get hasStagedThermalFault(): boolean {
+    return this.thermalOffsetC_ > 0 || this.coolingFactor_ > 1 || this.excessCurrentA_ > 0;
+  }
+
+  /**
+   * Supply current for the present operating point, A: idle (synthesiser,
+   * mixers, IF stages, fan) plus the output stage, whose DC current follows
+   * the output amplitude (class AB: √(Pout / Psat) of its saturated draw),
+   * plus any staged excess. 0 when unpowered.
+   */
+  equilibriumCurrentA(): number {
     if (!this.state.isPowered) {
-      // Cooling down gradually toward ambient (25°C)
-      const ambientTemp = 25;
-      const coolRate = 0.00001; // Slow cooling per update
-      this.state.temperature += (ambientTemp - this.state.temperature) * coolRate;
-      this.state.currentDraw = 0;
+      return 0;
+    }
+    const idle = this.state.idleCurrentA ?? 2.6;
+    const ampAtSat = this.state.amplifierCurrentAtSatA ?? 2.4;
+    const psatMw = 10 ** (this.model.psatDbm / 10);
+    const outMw = this.hasRfOutput() ? 10 ** (this.state.outputPower / 10) : 0;
+
+    return idle + ampAtSat * Math.sqrt(Math.min(1, outMw / psatMw)) + (this.state.isMuted ? 0 : this.excessCurrentA_);
+  }
+
+  /**
+   * Where the case temperature is heading, °C: ambient + R_th × cooling factor ×
+   * (DC in − RF out) + any additive offset; ambient when unpowered.
+   */
+  equilibriumTemperatureC(): number {
+    const ambient = this.state.ambientTemperatureC ?? 25;
+    if (!this.state.isPowered) {
+      return ambient;
+    }
+    const dcW = (this.state.supplyVoltageV ?? 24) * this.equilibriumCurrentA();
+    const rfOutW = this.hasRfOutput() ? 10 ** ((this.state.outputPower - 30) / 10) : 0;
+    const resistance = (this.state.thermalResistanceCPerW ?? 0.3) * this.coolingFactor_;
+
+    return ambient + resistance * Math.max(0, dcW - rfOutW) + this.thermalOffsetC_;
+  }
+
+  /**
+   * Thermal state: the case follows its equilibrium with a 10 min time
+   * constant (heating and cooling alike), the supply current with a 2 s one,
+   * both on SimClock run time. Everything is in watts (19.6 fixed a mW/W mix).
+   */
+  private updateThermalState_(dtS: number): void {
+    if (!this.thermalPrimed_) {
+      this.thermalPrimed_ = true;
+      this.state.temperature = this.equilibriumTemperatureC();
+      this.state.currentDraw = this.equilibriumCurrentA();
       return;
     }
+    if (!(dtS > 0)) {
+      return;
+    }
+    const temperatureTarget = this.equilibriumTemperatureC();
+    this.state.temperature += (temperatureTarget - this.state.temperature) * (1 - Math.exp(-dtS / BUC_THERMAL_TAU_S));
 
-    // Calculate target temperature based on output power (plus any staged
-    // cooling fault, which lifts the whole curve so the fix is less drive)
-    const ambientTemp = 25; // °C
-    const powerDissipation = Math.max(0, this.nominalOutputPower_ - -10);
-    const thermalRise = powerDissipation * 0.8; // °C per dBm above reference
-    const targetTemp = ambientTemp + thermalRise + this.thermalOffsetC_;
-
-    // Simulate gradual heating (thermal inertia)
-    const heatRate = 0.00005; // Slow heating per update
-    this.state.temperature += (targetTemp - this.state.temperature) * heatRate;
-
-    // Current draw trends gradually toward target value
-    const idleCurrent = 0.5;
-    const powerCurrent = (this.state.gain / 70) * 2.5; // 0-2.5A based on gain
-    const outputCurrent = Math.max(0, (this.nominalOutputPower_ + 10) / 20) * 1.5;
-    const targetCurrent = idleCurrent + powerCurrent + outputCurrent;
-    const currentRate = 0.1; // Slow current change per update
-    this.state.currentDraw += (targetCurrent - this.state.currentDraw) * currentRate;
+    const currentTarget = this.equilibriumCurrentA();
+    this.state.currentDraw += (currentTarget - this.state.currentDraw) * (1 - Math.exp(-dtS / BUC_CURRENT_TAU_S));
+    if (!this.state.isPowered) {
+      this.state.currentDraw = 0;
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -569,32 +677,19 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
       return -120; // Effectively off
     }
 
-    const linearOutputPower = inputPowerDbm + this.state.gain;
-
-    // Hard-limit at saturation (max 2 dB above P1dB)
-    const maxOutputPower = this.state.saturationPower + 2;
-    return Math.min(linearOutputPower, maxOutputPower);
+    // Soft compression (Rapp): P1dB at saturationPower, Psat 2.16 dB above
+    return outputPowerDbm(this.model, inputPowerDbm);
   }
 
   /**
-   * Get current compression amount in dB
-   * @returns Compression in dB (0 if in linear region)
+   * Gain compression at the present drive, dB (0 in the linear region)
    */
   getCompressionDb(): number {
-    if (!this.state.isPowered || this.state.isMuted) {
+    if (!this.state.isPowered || this.state.isMuted || !Number.isFinite(this.state.inputPower ?? Number.NaN)) {
       return 0;
     }
 
-    const inputPower = -10; // Typical IF input
-    const linearOutputPower = inputPower + this.state.gain;
-    const maxOutputPower = this.state.saturationPower + 2;
-
-    if (linearOutputPower > maxOutputPower) {
-      // Compression = how much we're clipping
-      return linearOutputPower - maxOutputPower;
-    }
-
-    return 0;
+    return Math.max(0, compressionDb(this.model, this.state.inputPower as number));
   }
 
   /**
@@ -644,13 +739,13 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
     currentDraw: number;
     powerDissipation: number;
   } {
-    const powerOut = 10 ** (this.state.outputPower / 10);
-    const powerDissipation = this.state.currentDraw * 28 - powerOut; // Assuming 28V supply
+    const powerOutW = this.hasRfOutput() ? 10 ** ((this.state.outputPower - 30) / 10) : 0;
+    const powerDissipation = this.state.currentDraw * (this.state.supplyVoltageV ?? 24) - powerOutW;
 
     return {
       temperature: this.state.temperature,
       currentDraw: this.state.currentDraw,
-      powerDissipation: powerDissipation, // mW
+      powerDissipation, // W
     };
   }
 }

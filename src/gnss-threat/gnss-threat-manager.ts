@@ -14,6 +14,7 @@
  * setSpoofActive()/advance() for determinism.
  */
 
+import { ReferenceDisturbances } from '@app/equipment/rf-front-end/gpsdo-module/reference-disturbance';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { ObjectiveAnchors } from '@app/objectives/objective-anchor';
@@ -72,6 +73,28 @@ export class GnssThreatManager {
     this.anchors_ = new ObjectiveAnchors([this.config_.startAfterObjectiveId, this.config_.endAfterObjectiveId]);
     this.boundUpdateHandler_ = this.update_.bind(this);
     EventBus.getInstance().on(Events.UPDATE, this.boundUpdateHandler_);
+    // Phase 19.6: the spoofed time walk drags each targeted GPSDO with it
+    ReferenceDisturbances.register((groundStationId) => this.disturbanceFor_(groundStationId));
+  }
+
+  /**
+   * What the spoof does to a station's disciplined reference while the
+   * operator still trusts GNSS: time error = the offset so far, frequency
+   * error = its rate (µs/s → parts in 10^6). After the operator forces holdover
+   * the offset stays where it was (the oscillator coasts) and the rate is the
+   * oscillator's own.
+   */
+  private disturbanceFor_(groundStationId: string | null): { timeOffsetUs: number; fractionalFrequencyError: number } | null {
+    if (groundStationId !== null && !this.affectsStation(groundStationId)) {
+      return null;
+    }
+    const timeOffsetUs = this.state_.timeOffsetUs;
+    const rate = this.isExposedToSpoof ? (this.config_.offsetDriftUsPerS ?? 5) * 1e-6 : 0;
+    if (timeOffsetUs === 0 && rate === 0) {
+      return null;
+    }
+
+    return { timeOffsetUs, fractionalFrequencyError: rate };
   }
 
   static getInstance(): GnssThreatManager {
@@ -87,6 +110,7 @@ export class GnssThreatManager {
   static destroy(): void {
     if (this.instance_) {
       EventBus.getInstance().off(Events.UPDATE, this.instance_.boundUpdateHandler_);
+      ReferenceDisturbances.clear();
       this.instance_ = null;
     }
   }

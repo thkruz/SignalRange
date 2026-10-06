@@ -116,7 +116,30 @@
           "carriers": [],
           "adjacentCarriers": 1
         }
-      ]
+      ],
+      "txChain": {
+        "transmittingModems": 0,
+        "bucGainDb": 0,
+        "bucP1dbDbm": 0,
+        "bucInDbm": -120,
+        "bucOutDbm": null,
+        "bucCompressionDb": 0,
+        "bucCurrentEqA": 0,
+        "bucTempEqC": 25,
+        "hpaEnabled": false,
+        "hpaAlc": true,
+        "hpaBackOffDb": 10,
+        "hpaP1dbDbm": 59,
+        "hpaPsatDbm": 63.12,
+        "hpaInDbm": -90,
+        "hpaGainDb": null,
+        "hpaOutDbm": null,
+        "hpaOutW": null,
+        "hpaOutputBackoffDb": null,
+        "hpaIm3Dbc": null,
+        "hpaAlcAtLimit": null,
+        "hpaTempEqC": 25
+      }
     },
     {
       "stationId": "BKYD-YAGI",
@@ -195,7 +218,30 @@
           "carriers": [],
           "adjacentCarriers": 1
         }
-      ]
+      ],
+      "txChain": {
+        "transmittingModems": 0,
+        "bucGainDb": 0,
+        "bucP1dbDbm": 0,
+        "bucInDbm": -120,
+        "bucOutDbm": null,
+        "bucCompressionDb": 0,
+        "bucCurrentEqA": 0,
+        "bucTempEqC": 25,
+        "hpaEnabled": false,
+        "hpaAlc": true,
+        "hpaBackOffDb": 10,
+        "hpaP1dbDbm": 59,
+        "hpaPsatDbm": 63.12,
+        "hpaInDbm": -90,
+        "hpaGainDb": null,
+        "hpaOutDbm": null,
+        "hpaOutW": null,
+        "hpaOutputBackoffDb": null,
+        "hpaIm3Dbc": null,
+        "hpaAlcAtLimit": null,
+        "hpaTempEqC": 25
+      }
     },
     {
       "stationId": "BKYD-GPS",
@@ -274,7 +320,30 @@
           ],
           "adjacentCarriers": 0
         }
-      ]
+      ],
+      "txChain": {
+        "transmittingModems": 0,
+        "bucGainDb": 0,
+        "bucP1dbDbm": 0,
+        "bucInDbm": -120,
+        "bucOutDbm": null,
+        "bucCompressionDb": 0,
+        "bucCurrentEqA": 0,
+        "bucTempEqC": 25,
+        "hpaEnabled": false,
+        "hpaAlc": true,
+        "hpaBackOffDb": 10,
+        "hpaP1dbDbm": 59,
+        "hpaPsatDbm": 63.12,
+        "hpaInDbm": -90,
+        "hpaGainDb": null,
+        "hpaOutDbm": null,
+        "hpaOutW": null,
+        "hpaOutputBackoffDb": null,
+        "hpaIm3Dbc": null,
+        "hpaAlcAtLimit": null,
+        "hpaTempEqC": 25
+      }
     }
   ]
 }

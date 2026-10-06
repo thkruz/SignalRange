@@ -110,7 +110,9 @@ export const natsEuSandboxData: ScenarioData = {
     weatherEvents: [{ id: 'gw-rain', groundStationId: 'GW-01', type: 'rain', severity: 'moderate', startTime: 1500, duration: 1200, linkMarginDegradation: 3 }],
 
     // Phase 16 E3 - timed equipment faults. SH-02's BUC loses cooling at T+15
-    // for 10 min (mute it and it settles under the 70 degC alarm); GW-01's GNSS
+    // for 10 min, the S16 fault (Phase 19.6 physics): reads 72 degC, heads for
+    // 75 degC with a carrier in it (4.3 A), ~70 degC unmuted with none; muted it
+    // drops to 2.6 A and heads for 55 degC, under the alarm in ~75 s; GW-01's GNSS
     // signal drops at T+40 for 5 min (holdover with the switch still up).
     hardwareFaultEvents: [
       {
@@ -119,7 +121,7 @@ export const natsEuSandboxData: ScenarioData = {
         target: 'buc-overtemp',
         startTime: 900,
         duration: 600,
-        params: { startTemperatureC: 66 },
+        params: { startTemperatureC: 72, coolingFactor: 1.6, excessCurrentA: 1.3 },
         label: 'SH-02 BUC cooling fault',
       },
       { id: 'gw-gnss-outage', groundStationId: 'GW-01', target: 'gpsdo-gnss-loss', startTime: 2400, duration: 300 },

@@ -1,3 +1,5 @@
+import { PHASE_NOISE_CORNER_HZ } from '@app/equipment/rf-front-end/lo-reference';
+import { NotchFilterModuleCore } from '@app/equipment/rf-front-end/notch-filter-module/notch-filter-module-core';
 import { Rng, RngStream } from '@app/simulation/rng';
 import { Hertz } from '@app/types';
 import { RealTimeSpectrumAnalyzer } from './real-time-spectrum-analyzer';
@@ -72,6 +74,9 @@ export class SpectrumDataProcessor {
   /** Cap on video averages per pixel (cost; beyond ~16 the trace is already smooth) */
   private static readonly MAX_VIDEO_AVERAGES = 16;
 
+  /** Phase-noise skirts are drawn only for LOs at least this noisy, dBc/Hz (a locked LO's are far under any floor) */
+  private static readonly SKIRT_MIN_DBC_HZ = -85;
+
   /**
    * Expected power in the RBW at each pixel (Phase 19.2):
    *
@@ -102,9 +107,12 @@ export class SpectrumDataProcessor {
     }
     const hzPerPixel = span / width;
     const sigmaRbw = this.specA.effectiveRbwHz / (2 * Math.sqrt(2 * Math.LN2));
+    // A notch's slice is drawn by applyNotch_, so a notched carrier is drawn
+    // at its power before the notch and dipped there (Phase 19.6)
+    const notchInView = this.specA.isNotchInView;
 
     for (const signal of this.specA.inputSignals) {
-      const powerMw = 10 ** (signal.power / 10);
+      const powerMw = 10 ** ((signal.power + (notchInView ? (signal.notchLossDb ?? 0) : 0)) / 10);
       if (!(powerMw > 0)) {
         continue;
       }
@@ -120,9 +128,36 @@ export class SpectrumDataProcessor {
         const f = this.minFreq + (x + 0.5) * hzPerPixel;
         this.signalMw_[x] += SpectrumDataProcessor.rbwResponse(powerMw, signal.frequency, symbolRate, sigmaRbw, sigma, f);
       }
+
+      this.addPhaseNoiseSkirts_(signal.phaseNoiseDbcHz, powerMw, signal.frequency, occupied / 2, hzPerPixel);
     }
 
-    this.applyNotch_(hzPerPixel);
+    if (notchInView) {
+      this.applyNotch_(hzPerPixel);
+    }
+  }
+
+  /**
+   * LO phase noise spreads a carrier into skirts (Phase 19.6): L(Δf) below
+   * the carrier, flat to the 10 kHz corner then falling 20 dB/decade, Δf from
+   * the occupied band's edge, read in the RBW's noise bandwidth. Drawn only
+   * for a noisy (unlocked) LO; a locked one's skirts sit far under the floor.
+   */
+  private addPhaseNoiseSkirts_(plateauDbcHz: number | undefined, powerMw: number, centreHz: number, halfBandwidthHz: number, hzPerPixel: number): void {
+    if (plateauDbcHz === undefined || plateauDbcHz < SpectrumDataProcessor.SKIRT_MIN_DBC_HZ) {
+      return;
+    }
+    const l0 = 10 ** (plateauDbcHz / 10);
+    const enbw = this.specA.noiseBandwidthHz;
+    for (let x = 0; x < this.width; x++) {
+      const f = this.minFreq + (x + 0.5) * hzPerPixel;
+      const offset = Math.abs(f - centreHz) - halfBandwidthHz;
+      if (offset <= 0) {
+        continue;
+      }
+      const l = offset <= PHASE_NOISE_CORNER_HZ ? l0 : l0 * (PHASE_NOISE_CORNER_HZ / offset) ** 2;
+      this.signalMw_[x] += powerMw * l * enbw;
+    }
   }
 
   /**
@@ -151,24 +186,21 @@ export class SpectrumDataProcessor {
     return z >= 0 ? 0.5 * (1 + erf) : 0.5 * (1 - erf);
   }
 
-  /** An enabled notch dips the line (carriers and line noise) across its band */
+  /**
+   * Enabled notches dip the line (carriers and line noise) with the same
+   * stop-band response the notch module integrates over each carrier.
+   */
   private applyNotch_(hzPerPixel: number): void {
     const notchFilterState = this.specA.rfFrontEnd_.notchFilterModule?.state;
     if (!notchFilterState?.isPowered) return;
+    const active = notchFilterState.notches.filter((notch) => notch.enabled);
+    if (active.length === 0) return;
 
-    for (const notch of notchFilterState.notches) {
-      if (!notch.enabled) continue;
-
-      const lowHz = (notch.centerFrequency - notch.bandwidth / 2) * 1e6;
-      const highHz = (notch.centerFrequency + notch.bandwidth / 2) * 1e6;
-      const factor = 10 ** (-notch.depth / 10);
-      for (let x = 0; x < this.width; x++) {
-        const f = this.minFreq + (x + 0.5) * hzPerPixel;
-        if (f >= lowHz && f <= highHz) {
-          this.signalMw_[x] *= factor;
-          this.lineNoiseMw_[x] *= factor;
-        }
-      }
+    for (let x = 0; x < this.width; x++) {
+      const f = this.minFreq + (x + 0.5) * hzPerPixel;
+      const factor = NotchFilterModuleCore.responseAt(f, active);
+      this.signalMw_[x] *= factor;
+      this.lineNoiseMw_[x] *= factor;
     }
   }
 

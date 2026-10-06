@@ -66,13 +66,13 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 5,
-              "peakCnDb": 13.45,
-              "medianCnDb": 13.45,
-              "peakEsN0Db": 14.24,
+              "peakCnDb": 13.44,
+              "medianCnDb": 13.44,
+              "peakEsN0Db": 14.22,
               "requiredEsN0Db": 5.03,
-              "peakLockMarginDb": 9.21,
-              "peakRxIfDbm": -29.9,
-              "noiseIfDbm": -43.35,
+              "peakLockMarginDb": 9.19,
+              "peakRxIfDbm": -29.89,
+              "noiseIfDbm": -43.34,
               "lockedSamples": 5
             },
             {
@@ -85,11 +85,11 @@
               "samples": 5,
               "peakCnDb": 32.59,
               "medianCnDb": 32.59,
-              "peakEsN0Db": 32.98,
+              "peakEsN0Db": 32.97,
               "requiredEsN0Db": null,
               "peakLockMarginDb": null,
-              "peakRxIfDbm": -56.33,
-              "noiseIfDbm": -88.92,
+              "peakRxIfDbm": -56.31,
+              "noiseIfDbm": -88.9,
               "lockedSamples": 0
             }
           ],
@@ -116,13 +116,13 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 5,
-              "peakCnDb": 13.94,
-              "medianCnDb": 13.94,
-              "peakEsN0Db": 14.72,
+              "peakCnDb": 13.92,
+              "medianCnDb": 13.92,
+              "peakEsN0Db": 14.7,
               "requiredEsN0Db": 5.03,
-              "peakLockMarginDb": 9.69,
-              "peakRxIfDbm": -30.1,
-              "noiseIfDbm": -44.04,
+              "peakLockMarginDb": 9.67,
+              "peakRxIfDbm": -30.09,
+              "noiseIfDbm": -44.03,
               "lockedSamples": 5
             },
             {
@@ -138,8 +138,8 @@
               "peakEsN0Db": 33.97,
               "requiredEsN0Db": null,
               "peakLockMarginDb": null,
-              "peakRxIfDbm": -55.91,
-              "noiseIfDbm": -89.6,
+              "peakRxIfDbm": -55.89,
+              "noiseIfDbm": -89.59,
               "lockedSamples": 0
             }
           ],
@@ -166,13 +166,13 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 5,
-              "peakCnDb": 13.56,
-              "medianCnDb": 13.56,
-              "peakEsN0Db": 14.34,
+              "peakCnDb": 13.54,
+              "medianCnDb": 13.54,
+              "peakEsN0Db": 14.32,
               "requiredEsN0Db": 5.03,
-              "peakLockMarginDb": 9.31,
-              "peakRxIfDbm": -30.4,
-              "noiseIfDbm": -44.14,
+              "peakLockMarginDb": 9.29,
+              "peakRxIfDbm": -30.39,
+              "noiseIfDbm": -44.12,
               "lockedSamples": 5
             },
             {
@@ -188,8 +188,8 @@
               "peakEsN0Db": 33.17,
               "requiredEsN0Db": null,
               "peakLockMarginDb": null,
-              "peakRxIfDbm": -56.72,
-              "noiseIfDbm": -89.7,
+              "peakRxIfDbm": -56.7,
+              "noiseIfDbm": -89.68,
               "lockedSamples": 0
             }
           ],
@@ -216,13 +216,13 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 5,
-              "peakCnDb": 16.29,
-              "medianCnDb": 16.29,
-              "peakEsN0Db": 17.07,
+              "peakCnDb": 16.27,
+              "medianCnDb": 16.27,
+              "peakEsN0Db": 17.05,
               "requiredEsN0Db": 5.03,
-              "peakLockMarginDb": 12.04,
-              "peakRxIfDbm": -29.65,
-              "noiseIfDbm": -45.94,
+              "peakLockMarginDb": 12.02,
+              "peakRxIfDbm": -29.64,
+              "noiseIfDbm": -45.93,
               "lockedSamples": 5
             },
             {
@@ -238,14 +238,37 @@
               "peakEsN0Db": 33.56,
               "requiredEsN0Db": null,
               "peakLockMarginDb": null,
-              "peakRxIfDbm": -58.27,
-              "noiseIfDbm": -91.51,
+              "peakRxIfDbm": -58.25,
+              "noiseIfDbm": -91.49,
               "lockedSamples": 0
             }
           ],
           "adjacentCarriers": 0
         }
-      ]
+      ],
+      "txChain": {
+        "transmittingModems": 1,
+        "bucGainDb": 23,
+        "bucP1dbDbm": 28,
+        "bucInDbm": -7,
+        "bucOutDbm": 16,
+        "bucCompressionDb": 0,
+        "bucCurrentEqA": 3.07,
+        "bucTempEqC": 47.09,
+        "hpaEnabled": true,
+        "hpaAlc": true,
+        "hpaBackOffDb": 10,
+        "hpaP1dbDbm": 60,
+        "hpaPsatDbm": 64.12,
+        "hpaInDbm": 16,
+        "hpaGainDb": 34,
+        "hpaOutDbm": 50,
+        "hpaOutW": 100,
+        "hpaOutputBackoffDb": 10,
+        "hpaIm3Dbc": -43.06,
+        "hpaAlcAtLimit": false,
+        "hpaTempEqC": 43.61
+      }
     },
     {
       "stationId": "ME-02",
@@ -282,13 +305,13 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 5,
-              "peakCnDb": 13.45,
-              "medianCnDb": 13.45,
-              "peakEsN0Db": 14.24,
+              "peakCnDb": 13.43,
+              "medianCnDb": 13.43,
+              "peakEsN0Db": 14.22,
               "requiredEsN0Db": 5.03,
-              "peakLockMarginDb": 9.21,
-              "peakRxIfDbm": -27.78,
-              "noiseIfDbm": -41.23,
+              "peakLockMarginDb": 9.19,
+              "peakRxIfDbm": -27.77,
+              "noiseIfDbm": -41.22,
               "lockedSamples": 5
             },
             {
@@ -304,8 +327,8 @@
               "peakEsN0Db": 32.97,
               "requiredEsN0Db": null,
               "peakLockMarginDb": null,
-              "peakRxIfDbm": -54.21,
-              "noiseIfDbm": -86.79,
+              "peakRxIfDbm": -54.19,
+              "noiseIfDbm": -86.78,
               "lockedSamples": 0
             }
           ],
@@ -332,13 +355,13 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 5,
-              "peakCnDb": 13.91,
-              "medianCnDb": 13.91,
-              "peakEsN0Db": 14.69,
+              "peakCnDb": 13.89,
+              "medianCnDb": 13.89,
+              "peakEsN0Db": 14.67,
               "requiredEsN0Db": 5.03,
-              "peakLockMarginDb": 9.66,
-              "peakRxIfDbm": -30.11,
-              "noiseIfDbm": -44.01,
+              "peakLockMarginDb": 9.64,
+              "peakRxIfDbm": -30.09,
+              "noiseIfDbm": -44,
               "lockedSamples": 5
             },
             {
@@ -354,8 +377,8 @@
               "peakEsN0Db": 33.94,
               "requiredEsN0Db": null,
               "peakLockMarginDb": null,
-              "peakRxIfDbm": -55.91,
-              "noiseIfDbm": -89.58,
+              "peakRxIfDbm": -55.9,
+              "noiseIfDbm": -89.56,
               "lockedSamples": 0
             }
           ],
@@ -382,13 +405,13 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 5,
-              "peakCnDb": 13.56,
-              "medianCnDb": 13.56,
-              "peakEsN0Db": 14.35,
+              "peakCnDb": 13.55,
+              "medianCnDb": 13.55,
+              "peakEsN0Db": 14.33,
               "requiredEsN0Db": 5.03,
-              "peakLockMarginDb": 9.32,
-              "peakRxIfDbm": -30.4,
-              "noiseIfDbm": -44.13,
+              "peakLockMarginDb": 9.3,
+              "peakRxIfDbm": -30.38,
+              "noiseIfDbm": -44.11,
               "lockedSamples": 5
             },
             {
@@ -404,8 +427,8 @@
               "peakEsN0Db": 33.18,
               "requiredEsN0Db": null,
               "peakLockMarginDb": null,
-              "peakRxIfDbm": -56.71,
-              "noiseIfDbm": -89.69,
+              "peakRxIfDbm": -56.69,
+              "noiseIfDbm": -89.68,
               "lockedSamples": 0
             }
           ],
@@ -432,13 +455,13 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 5,
-              "peakCnDb": 16.29,
-              "medianCnDb": 16.29,
-              "peakEsN0Db": 17.07,
+              "peakCnDb": 16.28,
+              "medianCnDb": 16.28,
+              "peakEsN0Db": 17.05,
               "requiredEsN0Db": 5.03,
-              "peakLockMarginDb": 12.04,
-              "peakRxIfDbm": -29.65,
-              "noiseIfDbm": -45.95,
+              "peakLockMarginDb": 12.02,
+              "peakRxIfDbm": -29.64,
+              "noiseIfDbm": -45.93,
               "lockedSamples": 5
             },
             {
@@ -451,17 +474,40 @@
               "samples": 5,
               "peakCnDb": 33.24,
               "medianCnDb": 33.24,
-              "peakEsN0Db": 33.57,
+              "peakEsN0Db": 33.56,
               "requiredEsN0Db": null,
               "peakLockMarginDb": null,
-              "peakRxIfDbm": -58.27,
-              "noiseIfDbm": -91.51,
+              "peakRxIfDbm": -58.25,
+              "noiseIfDbm": -91.49,
               "lockedSamples": 0
             }
           ],
           "adjacentCarriers": 0
         }
-      ]
+      ],
+      "txChain": {
+        "transmittingModems": 0,
+        "bucGainDb": 23,
+        "bucP1dbDbm": 28,
+        "bucInDbm": -120,
+        "bucOutDbm": null,
+        "bucCompressionDb": 0,
+        "bucCurrentEqA": 2.6,
+        "bucTempEqC": 43.72,
+        "hpaEnabled": false,
+        "hpaAlc": true,
+        "hpaBackOffDb": 10,
+        "hpaP1dbDbm": 60,
+        "hpaPsatDbm": 64.12,
+        "hpaInDbm": -90,
+        "hpaGainDb": null,
+        "hpaOutDbm": null,
+        "hpaOutW": null,
+        "hpaOutputBackoffDb": null,
+        "hpaIm3Dbc": null,
+        "hpaAlcAtLimit": null,
+        "hpaTempEqC": 29.09
+      }
     }
   ]
 }

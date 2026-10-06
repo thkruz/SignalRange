@@ -24,6 +24,13 @@
  * peak of the flown pass; "LOCK DEGRADED" = it locks with under 1 dB of
  * margin (listed with --margins).
  *
+ * Transmit chain (phase 19.6): each station's `txChain` (BUC drive,
+ * compression, current and equilibrium temperature; HPA input, gain, output,
+ * back-off from P1dB, IM3) is diffed like the carriers. With --margins it is
+ * printed per station with flags (HPA OVERDRIVEN, ALC AT LIMIT, BUC HIGH
+ * CURRENT, BUC OVER-TEMP), and every authored `hpa-output-power-set`
+ * minimum (watts) is checked against the authored chain's output.
+ *
  * Not covered (reported as n/a, never as a failure): a station that receives
  * no carrier in its authored start state (a fault the player is meant to find,
  * a carrier the player must uplink) and scripted interference events, which
@@ -39,6 +46,24 @@ const DIR = join(ROOT, 'test/calibration');
 const THRESHOLD = 0.1;
 const FIELDS = ['peakCnDb', 'medianCnDb', 'peakRxIfDbm', 'noiseIfDbm', 'peakEsN0Db', 'peakLockMarginDb', 'lockedSamples'];
 const PEAK_FIELDS = ['gainDbi', 'gOverTDbPerK', 'tsysK'];
+const TX_FIELDS = ['bucInDbm', 'bucOutDbm', 'bucCompressionDb', 'bucCurrentEqA', 'bucTempEqC', 'hpaInDbm', 'hpaGainDb', 'hpaOutDbm', 'hpaOutputBackoffDb', 'hpaIm3Dbc', 'hpaTempEqC'];
+
+/** One line describing a station's authored transmit chain, with flags */
+function txLine(station) {
+  const t = station.txChain;
+  if (!t) return null;
+  const flags = [];
+  if (t.hpaOutputBackoffDb !== null && t.hpaOutputBackoffDb < 3) flags.push('HPA OVERDRIVEN');
+  if (t.hpaAlcAtLimit) flags.push('ALC AT LIMIT');
+  if (t.bucCurrentEqA > 4.5) flags.push('BUC HIGH CURRENT');
+  if (t.bucTempEqC > 70) flags.push('BUC OVER-TEMP');
+  const hpa =
+    t.hpaOutDbm === null
+      ? `HPA ${t.hpaEnabled ? 'enabled, no drive' : 'off/disabled'} (back-off ${fmt(t.hpaBackOffDb)} dB)`
+      : `HPA in ${fmt(t.hpaInDbm)} + ${fmt(t.hpaGainDb)} = ${fmt(t.hpaOutDbm)} dBm (${fmt(t.hpaOutW)} W), back-off ${fmt(t.hpaOutputBackoffDb)} dB from P1dB ${fmt(t.hpaP1dbDbm)} (${t.hpaAlc ? 'ALC' : 'fixed gain'} ${fmt(t.hpaBackOffDb)}), IM3 ${fmt(t.hpaIm3Dbc)} dBc, ${fmt(t.hpaTempEqC)} degC`;
+  const buc = `BUC ${t.bucOutDbm === null ? 'no RF' : `${fmt(t.bucInDbm)} + ${fmt(t.bucGainDb)} -> ${fmt(t.bucOutDbm)} dBm (compression ${fmt(t.bucCompressionDb)} dB)`}, ${fmt(t.bucCurrentEqA)} A, ${fmt(t.bucTempEqC)} degC`;
+  return `  TX ${station.stationId}#${station.antennaIndex}: ${buc}; ${hpa}${flags.length ? ` ${flags.join(', ')}` : ''}`;
+}
 
 const args = process.argv.slice(2);
 const marginsOnly = args.includes('--margins');
@@ -80,6 +105,19 @@ function margins(entry) {
       const heard = carriers.filter((c) => c.peakRxIfDbm !== null);
       const best = Math.max(...heard.map((c) => c.peakRxIfDbm), -Infinity);
       rows.push({ objectiveId: t.objectiveId, what: `IF power >= ${t.params.minPower} dBm`, margin: best - t.params.minPower, covered: heard.length > 0 });
+    }
+    if (t.condition === 'hpa-output-power-set' && t.params.minOutputPower !== undefined) {
+      // Authored chain output (the objective is usually met after the player
+      // changes the back-off, so this is informational: covered = radiating)
+      const outs = stations.map((s) => s.txChain?.hpaOutW).filter((w) => typeof w === 'number');
+      const best = Math.max(...outs, 0);
+      rows.push({
+        objectiveId: t.objectiveId,
+        what: `HPA output >= ${t.params.minOutputPower} W (authored chain ${fmt(best)} W)`,
+        margin: best > 0 ? 10 * Math.log10(best / t.params.minOutputPower) : -Infinity,
+        covered: outs.length > 0,
+        informational: true,
+      });
     }
   }
   return rows;
@@ -171,6 +209,21 @@ for (const file of readdirSync(DIR).filter((f) => f.endsWith('.json')).sort()) {
       for (const key of a.keys()) if (!b.has(key)) lines.push(`  - ${key}`);
       for (const station of now.stations ?? []) {
         const prev = (before.stations ?? []).find((s) => s.stationId === station.stationId && s.antennaIndex === station.antennaIndex);
+        if (!station.txChain) continue;
+        if (!prev?.txChain) {
+          lines.push(`  + ${station.stationId}#${station.antennaIndex} txChain`);
+          continue;
+        }
+        for (const field of TX_FIELDS) {
+          const p = prev.txChain[field];
+          const n = station.txChain[field];
+          if (p === null && n === null) continue;
+          const d = (n ?? Number.NaN) - (p ?? Number.NaN);
+          if (!(Math.abs(d) < THRESHOLD)) lines.push(`  ${station.stationId}#${station.antennaIndex} tx ${field}: ${fmt(p)} -> ${fmt(n)}`);
+        }
+      }
+      for (const station of now.stations ?? []) {
+        const prev = (before.stations ?? []).find((s) => s.stationId === station.stationId && s.antennaIndex === station.antennaIndex);
         const was = prev?.agcOnNoiseAlone?.railedAtMax;
         const is = station.agcOnNoiseAlone?.railedAtMax;
         if (was !== undefined && is !== undefined && was !== is) lines.push(`  ${station.stationId}#${station.antennaIndex} AGC on noise alone: ${was ? 'railed' : 'levels'} -> ${is ? 'railed' : 'levels'}`);
@@ -188,7 +241,18 @@ for (const file of readdirSync(DIR).filter((f) => f.endsWith('.json')).sort()) {
     if (budget.off || marginsOnly) lines.push(`  ${budget.line}`);
   }
 
+  if (marginsOnly) {
+    for (const station of now.stations ?? []) {
+      const line = txLine(station);
+      if (line && station.txChain.transmittingModems > 0) lines.push(line);
+    }
+  }
+
   for (const m of margins(now)) {
+    if (m.informational) {
+      if (marginsOnly) lines.push(`  ${m.objectiveId}: ${m.what}`);
+      continue;
+    }
     if (!m.covered) {
       uncovered++;
       if (marginsOnly) lines.push(`  ${m.objectiveId}: ${m.what}, n/a (no carrier at the station in its authored start state)`);

@@ -141,6 +141,14 @@ export class RxAnalysisTab extends BaseElement {
                       <span class="metric-label">Lock:</span>
                       <span id="lnb-lock-status" class="status-badge status-badge-locked">Locked</span>
                     </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Thermal:</span>
+                      <span id="lnb-thermal-status" class="metric-value">--</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">LO Error:</span>
+                      <span id="lnb-lo-error-display" class="metric-value">--</span>
+                    </div>
                   </div>
                 </div>
               </div>

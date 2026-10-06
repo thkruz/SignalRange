@@ -41,13 +41,13 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 5,
-              "peakCnDb": 12.96,
-              "medianCnDb": 12.96,
-              "peakEsN0Db": 13.75,
+              "peakCnDb": 12.95,
+              "medianCnDb": 12.95,
+              "peakEsN0Db": 13.73,
               "requiredEsN0Db": 5.03,
-              "peakLockMarginDb": 8.72,
-              "peakRxIfDbm": -30.02,
-              "noiseIfDbm": -42.99,
+              "peakLockMarginDb": 8.7,
+              "peakRxIfDbm": -30.01,
+              "noiseIfDbm": -42.97,
               "lockedSamples": 5
             },
             {
@@ -60,11 +60,11 @@
               "samples": 5,
               "peakCnDb": 32.59,
               "medianCnDb": 32.59,
-              "peakEsN0Db": 32.98,
+              "peakEsN0Db": 32.97,
               "requiredEsN0Db": null,
               "peakLockMarginDb": null,
-              "peakRxIfDbm": -55.96,
-              "noiseIfDbm": -88.55,
+              "peakRxIfDbm": -55.95,
+              "noiseIfDbm": -88.53,
               "lockedSamples": 0
             }
           ],
@@ -91,13 +91,13 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 5,
-              "peakCnDb": 13.84,
-              "medianCnDb": 13.84,
-              "peakEsN0Db": 14.62,
+              "peakCnDb": 13.82,
+              "medianCnDb": 13.82,
+              "peakEsN0Db": 14.61,
               "requiredEsN0Db": 5.03,
-              "peakLockMarginDb": 9.59,
-              "peakRxIfDbm": -30.04,
-              "noiseIfDbm": -43.88,
+              "peakLockMarginDb": 9.58,
+              "peakRxIfDbm": -30.02,
+              "noiseIfDbm": -43.86,
               "lockedSamples": 5
             },
             {
@@ -113,8 +113,8 @@
               "peakEsN0Db": 33.97,
               "requiredEsN0Db": null,
               "peakLockMarginDb": null,
-              "peakRxIfDbm": -55.75,
-              "noiseIfDbm": -89.44,
+              "peakRxIfDbm": -55.73,
+              "noiseIfDbm": -89.43,
               "lockedSamples": 0
             }
           ],
@@ -146,8 +146,8 @@
               "peakEsN0Db": 12.08,
               "requiredEsN0Db": 5.03,
               "peakLockMarginDb": 7.05,
-              "peakRxIfDbm": -32.26,
-              "noiseIfDbm": -45.21,
+              "peakRxIfDbm": -32.25,
+              "noiseIfDbm": -45.2,
               "lockedSamples": 5
             },
             {
@@ -163,14 +163,37 @@
               "peakEsN0Db": 7.94,
               "requiredEsN0Db": null,
               "peakLockMarginDb": null,
-              "peakRxIfDbm": -80.21,
-              "noiseIfDbm": -89.01,
+              "peakRxIfDbm": -80.2,
+              "noiseIfDbm": -89,
               "lockedSamples": 0
             }
           ],
           "adjacentCarriers": 0
         }
-      ]
+      ],
+      "txChain": {
+        "transmittingModems": 1,
+        "bucGainDb": 23,
+        "bucP1dbDbm": 28,
+        "bucInDbm": -7,
+        "bucOutDbm": 16,
+        "bucCompressionDb": 0,
+        "bucCurrentEqA": 3.07,
+        "bucTempEqC": 47.09,
+        "hpaEnabled": true,
+        "hpaAlc": true,
+        "hpaBackOffDb": 10,
+        "hpaP1dbDbm": 60,
+        "hpaPsatDbm": 64.12,
+        "hpaInDbm": 16,
+        "hpaGainDb": 34,
+        "hpaOutDbm": 50,
+        "hpaOutW": 100,
+        "hpaOutputBackoffDb": 10,
+        "hpaIm3Dbc": -43.06,
+        "hpaAlcAtLimit": false,
+        "hpaTempEqC": 43.61
+      }
     },
     {
       "stationId": "ME-02",
@@ -202,7 +225,7 @@
             {
               "signalId": "TIDEMARK-1-TDMA-Composite",
               "rfMHz": 3718,
-              "ifMHz": 2361.91,
+              "ifMHz": 2361.93,
               "bandwidthMHz": 36,
               "modulation": "QPSK",
               "fec": "3/4",
@@ -219,7 +242,7 @@
             {
               "signalId": "TIDEMARK-1-Beacon",
               "rfMHz": 4175.5,
-              "ifMHz": 1904.41,
+              "ifMHz": 1904.43,
               "bandwidthMHz": 0,
               "modulation": "CW",
               "fec": "null",
@@ -252,7 +275,7 @@
             {
               "signalId": "TIDEMARK-2-TDMA-Composite",
               "rfMHz": 3792,
-              "ifMHz": 2287.91,
+              "ifMHz": 2287.93,
               "bandwidthMHz": 36,
               "modulation": "QPSK",
               "fec": "3/4",
@@ -269,7 +292,7 @@
             {
               "signalId": "TIDEMARK-2-Beacon",
               "rfMHz": 4180,
-              "ifMHz": 1899.91,
+              "ifMHz": 1899.93,
               "bandwidthMHz": 0,
               "modulation": "CW",
               "fec": "null",
@@ -302,7 +325,7 @@
             {
               "signalId": "AURORA-7-TDMA-Composite",
               "rfMHz": 3828,
-              "ifMHz": 2251.91,
+              "ifMHz": 2251.93,
               "bandwidthMHz": 24,
               "modulation": "QPSK",
               "fec": "3/4",
@@ -319,7 +342,7 @@
             {
               "signalId": "AURORA-7-Beacon",
               "rfMHz": 4165,
-              "ifMHz": 1914.91,
+              "ifMHz": 1914.93,
               "bandwidthMHz": 0,
               "modulation": "CW",
               "fec": "null",
@@ -336,7 +359,30 @@
           ],
           "adjacentCarriers": 0
         }
-      ]
+      ],
+      "txChain": {
+        "transmittingModems": 0,
+        "bucGainDb": 0,
+        "bucP1dbDbm": 28,
+        "bucInDbm": -120,
+        "bucOutDbm": null,
+        "bucCompressionDb": 0,
+        "bucCurrentEqA": 2.6,
+        "bucTempEqC": 43.72,
+        "hpaEnabled": false,
+        "hpaAlc": true,
+        "hpaBackOffDb": 6,
+        "hpaP1dbDbm": 60,
+        "hpaPsatDbm": 64.12,
+        "hpaInDbm": -90,
+        "hpaGainDb": null,
+        "hpaOutDbm": null,
+        "hpaOutW": null,
+        "hpaOutputBackoffDb": null,
+        "hpaIm3Dbc": null,
+        "hpaAlcAtLimit": null,
+        "hpaTempEqC": 29.09
+      }
     }
   ]
 }

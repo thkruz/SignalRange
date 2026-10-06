@@ -125,7 +125,7 @@ const SCENARIO_20_OBJECTIVES: Scenario20Objective[] = [
     id: 'me-verify-quiz',
     title: 'Confirm Both Symptoms Cleared',
     type: 'quiz',
-    correctAnswer: 'It clears on its own - output power dropped ~9 dB, so the output stage dissipates a fraction of the heat and cools',
+    correctAnswer: 'It falls on its own - output power dropped ~9 dB, so the output stage dissipates a fraction of the heat and cools',
   },
   {
     id: 'me-spectrum-tab',

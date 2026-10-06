@@ -145,7 +145,8 @@ describe('IfFilterBankModuleCore', () => {
       filterModule.update();
 
       expect(filterModule.outputSignals.length).toBe(1);
-      expect(filterModule.outputSignals[0].power).toBe(-62); // -60 - 2
+      // -60 - 2 dB insertion loss; the passband skirts take a negligible 0.00002 dB (19.6)
+      expect(filterModule.outputSignals[0].power).toBeCloseTo(-62, 3);
     });
 
     it('should set correct signal origin', () => {
@@ -191,8 +192,8 @@ describe('IfFilterBankModuleCore', () => {
       filterModule.update();
 
       expect(filterModule.outputSignals.length).toBe(2);
-      expect(filterModule.outputSignals[0].power).toBe(-62);
-      expect(filterModule.outputSignals[1].power).toBe(-72);
+      expect(filterModule.outputSignals[0].power).toBeCloseTo(-62, 3);
+      expect(filterModule.outputSignals[1].power).toBeCloseTo(-72, 3);
     });
   });
 

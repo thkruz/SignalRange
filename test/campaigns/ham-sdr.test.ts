@@ -412,7 +412,8 @@ describe('Campaign 3: LNB direct sampling', () => {
     }
 
     const mockFrontEnd = {
-      gpsdoModule: { get10MhzOutput: () => ({ isWarmedUp: true }) },
+      gpsdoModule: { get10MhzOutput: () => ({ isWarmedUp: true }), fractionalFrequencyError: () => 0 },
+      cableLossDb: () => 0,
       omtModule: { rxSignalsOut: [] },
       bucModule: { state: { isLoopback: false }, outputSignals: [] },
     } as any;

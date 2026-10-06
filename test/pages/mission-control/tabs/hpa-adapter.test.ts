@@ -48,6 +48,10 @@ describe('HPAAdapter', () => {
     mockHpaModule = {
       state: { ...mockState },
       inputSignals: [],
+      outputSignals: [{ power: 44 }],
+      isAlcEnabled: true,
+      psatDbm: 63,
+      handleAlcToggle: vi.fn(),
       p1db: 59, // P1dB compression point in dBm
       handleBackOffChange: vi.fn(),
       handlePowerToggle: vi.fn((checked, callback) => {

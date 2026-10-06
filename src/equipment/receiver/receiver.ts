@@ -4,6 +4,7 @@ import { qs } from '@app/engine/utils/query-selector';
 import { AntennaCore } from '@app/equipment/antenna';
 import { AlarmStatus, BaseEquipment } from '@app/equipment/base-equipment';
 import { TapPoint } from '@app/equipment/rf-front-end/coupler-module/tap-points';
+import { phaseNoiseSnrLimitDb } from '@app/equipment/rf-front-end/lo-reference';
 import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
@@ -94,6 +95,8 @@ export interface IQSignalInfo {
   esN0_dB?: number;
   /** Es/N0 after the ADC's quantization and clipping noise, dB; this is what locks */
   effectiveEsN0_dB?: number;
+  /** Es/N0 lost to untracked LO phase noise, dB (Phase 19.6) */
+  phaseNoisePenalty_dB?: number;
   /** Carrier to thermal noise density, dB-Hz */
   cn0_dBHz?: number;
   /** The modem's MODCOD (its configured labels); null for labels no demodulator locks to */
@@ -724,8 +727,12 @@ export class Receiver extends BaseEquipment {
       esN0_dB: esN0,
       symbolRate_Hz: symbolRate,
     });
-    const effectiveEsN0 = esN0 - adcDegradation.totalPenalty_dB;
-    const effectiveCnRatio = cnRatio - adcDegradation.totalPenalty_dB;
+    // LO phase noise the carrier recovery cannot track (Phase 19.6): an SNR
+    // ceiling 1/σ² that adds to the noise like any other impairment. Tiny for
+    // locked converters; real when an LO has lost its reference.
+    const phaseNoisePenaltyDb = Receiver.phaseNoisePenaltyDb_(esN0 - adcDegradation.totalPenalty_dB, targetSignal.phaseNoiseDbcHz, symbolRate);
+    const effectiveEsN0 = esN0 - adcDegradation.totalPenalty_dB - phaseNoisePenaltyDb;
+    const effectiveCnRatio = cnRatio - adcDegradation.totalPenalty_dB - phaseNoisePenaltyDb;
 
     // The IF filter may have clipped the carrier below what the FEC tolerates
     const expectedBandwidth_Hz = modem.bandwidth * 1e6;
@@ -769,6 +776,7 @@ export class Receiver extends BaseEquipment {
       symbolRate_Hz: symbolRate,
       esN0_dB: esN0,
       effectiveEsN0_dB: effectiveEsN0,
+      phaseNoisePenalty_dB: phaseNoisePenaltyDb,
       cn0_dBHz: cn0,
       modcod,
       requiredEsN0_dB: requiredEsN0,
@@ -776,6 +784,24 @@ export class Receiver extends BaseEquipment {
       lockState: lock.locked ? 'locked' : lock.heldMs > 0 ? 'acquiring' : 'unlocked',
       isLowMargin: lock.locked && lock.lowMargin,
     };
+  }
+
+  /**
+   * How much an SNR ceiling from LO phase noise lowers an Es/N0, dB:
+   * 1/(1/snr + σ²) against snr.
+   */
+  private static phaseNoisePenaltyDb_(esN0Db: number, phaseNoiseDbcHz: number | undefined, symbolRateHz: number): number {
+    if (phaseNoiseDbcHz === undefined || !Number.isFinite(esN0Db)) {
+      return 0;
+    }
+    const limitDb = phaseNoiseSnrLimitDb(phaseNoiseDbcHz, symbolRateHz);
+    if (!Number.isFinite(limitDb)) {
+      return 0;
+    }
+    const snr = 10 ** (esN0Db / 10);
+    const combined = 1 / (1 / snr + 10 ** (-limitDb / 10));
+
+    return esN0Db - 10 * Math.log10(combined);
   }
 
   /** A carrier below this C/N in its own bandwidth is not a carrier to the modem (dB; the antenna's carriage floor too, 19.4) */

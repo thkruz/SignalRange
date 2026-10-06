@@ -388,7 +388,7 @@ export const scenario12Data: ScenarioData = {
       nice: ['T1567', 'S0421'],
       title: 'Power Up LNB',
       description:
-        'Power on the LNB and hold while it settles: the noise temperature comes down under 100 K, LOCK shows locked, and the readings have to stay that way for 30 s. LO is preserved at 5,250 MHz.',
+        'Power on the LNB and hold while it warms up: the LNB panel reads "Thermal: Warming m:ss" for about 90 s, then Stable once the noise temperature is under 100 K with LOCK locked. Stable has to hold for 30 s. LO is preserved at 5,250 MHz.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['repoint-antenna-tm1'],
       timeLimitSeconds: 4 * 60,
@@ -563,7 +563,7 @@ export const scenario12Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'The bench-test gain (50 dB) was never dialed back to 23 dB. With the BUC muted and the HPA off this is harmless, but bringing the rest of the chain up at this gain would over-drive the HPA the moment transmit was engaged. Catch it before you energize the HPA.',
+              'The bench-test gain (50 dB) was never dialed back to 23 dB. With the BUC muted and the HPA off this is harmless, but the moment the modem keyed, its -7 dBm plus 50 dB would drive the BUC about 10 dB into compression (near 30 dBm against a 28 dBm P1dB, about 5 A and a high-current alarm) and hand the HPA a distorted carrier. Catch it before you energize the HPA.',
             pointPenalty: 10,
           },
           mustMaintain: false,

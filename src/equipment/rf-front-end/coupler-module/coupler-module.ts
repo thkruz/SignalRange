@@ -2,14 +2,10 @@ import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
 import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { RFFrontEndModule } from '@app/equipment/rf-front-end/rf-front-end-module';
-import { Rng } from '@app/simulation/rng';
 import { SignalPathManager } from '@app/simulation/signal-path-manager';
-import { IfFrequency, RfFrequency } from '@app/types';
+import { IfFrequency, IfSignal, RfFrequency, RfSignal } from '@app/types';
 import './coupler-module.css';
 import { TapPoint } from './tap-points';
-
-/** Seeded draws for this module (see simulation/rng.ts). */
-const random = (): number => Rng.stream('coupler').next();
 
 /**
  * Spectrum Analyzer coupler module state
@@ -359,14 +355,48 @@ export class CouplerModule extends RFFrontEndModule<CouplerState> {
     return this.getCouplerOutput_(this.state.tapPointB, this.state.couplingFactorB);
   }
 
+  /** Carriers on the line at a tap point (the analyzer sees these through the coupler) */
+  signalsAtTap(tapPoint: TapPoint): (IfSignal | RfSignal)[] {
+    const fe = this.rfFrontEnd_;
+    switch (tapPoint) {
+      case TapPoint.TX_IF:
+        return fe.bucModule.inputSignals;
+      case TapPoint.TX_RF_POST_BUC:
+        return fe.bucModule.outputSignals;
+      case TapPoint.TX_RF_POST_HPA:
+        return fe.hpaModule.outputSignals;
+      case TapPoint.TX_RF_POST_OMT:
+        return fe.omtModule.txSignalsOut;
+      case TapPoint.RX_RF_PRE_OMT:
+        return fe.antenna?.state.rxSignalsIn ?? [];
+      case TapPoint.RX_RF_POST_OMT:
+        return fe.omtModule.rxSignalsOut;
+      case TapPoint.RX_RF_POST_LNA:
+        return fe.lnbModule.postLNASignals;
+      case TapPoint.RX_IF:
+        return fe.agcModule.outputSignals;
+      default:
+        return [];
+    }
+  }
+
   /**
-   * Get coupler output for a specific tap point
+   * The coupled output of a tap point (Phase 19.6; it used to return a random
+   * frequency): the strongest carrier's frequency and the composite power on
+   * the line at the tap, plus the coupling factor (a negative dB figure).
+   * Nothing on the line: frequency 0 and -Infinity dBm.
    */
-  private getCouplerOutput_(_tapPoint: TapPoint, couplingFactor: number): { frequency: RfFrequency | IfFrequency; power: number } {
-    // Return a random number for now
+  private getCouplerOutput_(tapPoint: TapPoint, couplingFactor: number): { frequency: RfFrequency | IfFrequency; power: number } {
+    const signals = this.signalsAtTap(tapPoint);
+    if (signals.length === 0) {
+      return { frequency: 0 as RfFrequency, power: Number.NEGATIVE_INFINITY };
+    }
+    const strongest = signals.reduce((a, b) => (b.power > a.power ? b : a));
+    const totalMw = signals.reduce((sum, sig) => sum + 10 ** (sig.power / 10), 0);
+
     return {
-      frequency: (random() * 1000) as RfFrequency | IfFrequency,
-      power: -Math.abs(couplingFactor), // Coupled power is negative of coupling factor
+      frequency: strongest.frequency,
+      power: 10 * Math.log10(totalMw) - Math.abs(couplingFactor),
     };
   }
 }

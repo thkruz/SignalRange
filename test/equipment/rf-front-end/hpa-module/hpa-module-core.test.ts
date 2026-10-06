@@ -1,10 +1,12 @@
 import { vi } from 'vitest';
+import { amplifierFromDatasheet, outputPowerDbm } from '../../../../src/equipment/rf-front-end/amplifier-models';
 import { BUCModuleCore } from '../../../../src/equipment/rf-front-end/buc-module/buc-module-core';
 import { HPAModuleCore, HPAState } from '../../../../src/equipment/rf-front-end/hpa-module/hpa-module-core';
 import { RFFrontEndCore } from '../../../../src/equipment/rf-front-end/rf-front-end-core';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
 import { SignalOrigin } from '../../../../src/signal-origin';
+import { FIXED_STEP_MS, SimClock } from '../../../../src/simulation/sim-clock';
 import type { dB, dBm, RfSignal } from '../../../../src/types';
 
 // Mock HTMLMediaElement.prototype.play for jsdom compatibility
@@ -40,744 +42,312 @@ class TestHPAModule extends HPAModuleCore {
   }
 }
 
-// Create a mock RF signal for HPA input
-function createMockRfSignal(power: dBm = 0 as dBm): RfSignal {
+function carrier(power: number, frequency = 6e9, id = 'c1'): RfSignal {
   return {
-    signalId: 'test-signal',
+    signalId: id,
     serverId: 1,
     noradId: 12345,
-    frequency: 6e9 as any, // 6 GHz
+    frequency: frequency as any,
     polarization: 'H',
-    power,
+    power: power as dBm,
     bandwidth: 36e6 as any,
     modulation: 'QPSK' as any,
     fec: '3/4' as any,
     feed: '',
     isDegraded: false,
-    origin: SignalOrigin.TRANSMITTER,
-    noiseFloor: null,
-    gainInPath: 0 as dB,
+    origin: SignalOrigin.BUC,
+    noiseFloor: null as any,
+    gainInPath: 0 as any,
   };
 }
 
-// Mock BUC module
-function createMockBucModule(overrides: Partial<BUCModuleCore> = {}, includeSignal = true): BUCModuleCore {
-  return {
-    state: {
-      isPowered: true,
-      isLoopback: false,
-      outputPower: 10 as dBm,
-      gain: 30 as dB,
-      isMuted: false,
-    },
-    outputSignals: includeSignal ? [createMockRfSignal(0 as dBm)] : [],
-    ...overrides,
+function createMockRfFrontEnd(signals: RfSignal[] = [carrier(16)]): RFFrontEndCore {
+  const bucModule = {
+    state: { isPowered: true, isLoopback: false, outputPower: 16 as dBm, gain: 23 as dB, isMuted: false },
+    outputSignals: signals,
   } as unknown as BUCModuleCore;
-}
 
-// Mock RFFrontEndCore
-function createMockRfFrontEnd(bucOverrides: Partial<BUCModuleCore> = {}): RFFrontEndCore {
-  const bucModule = createMockBucModule(bucOverrides);
   return {
-    gpsdoModule: {
-      get10MhzOutput: () => ({ isPresent: true, isWarmedUp: true }),
-    },
+    gpsdoModule: { get10MhzOutput: () => ({ isPresent: true, isWarmedUp: true }) },
     bucModule,
-    state: {
-      teamId: 1,
-      serverId: 1,
-      buc: bucModule.state,
-    },
+    cableLossDb: () => 0,
+    state: { teamId: 1, serverId: 1, buc: bucModule.state },
   } as unknown as RFFrontEndCore;
 }
 
-describe('HPAModuleCore', () => {
-  let hpaModule: TestHPAModule;
-  let mockRfFrontEnd: RFFrontEndCore;
+/** A 1 kW C-band TWTA in ALC (the Campaign 1 station HPA) */
+function c1Hpa(fe: RFFrontEndCore, overrides: Partial<HPAState> = {}): TestHPAModule {
+  return new TestHPAModule(
+    { ...HPAModuleCore.getDefaultState(), amplifierType: 'twta', p1db: 60 as dBm, backOff: 10, isHpaEnabled: true, isHpaSwitchEnabled: true, ...overrides },
+    fe,
+    1
+  );
+}
+
+function runFor(module: TestHPAModule, seconds: number): void {
+  const steps = Math.round((seconds * 1000) / FIXED_STEP_MS);
+  for (let i = 0; i < steps; i++) {
+    SimClock.step();
+    module.update();
+  }
+}
+
+describe('HPAModuleCore (phase 19.6 amplifier model)', () => {
+  let fe: RFFrontEndCore;
 
   beforeEach(() => {
     vi.clearAllMocks();
-
     document.body.innerHTML = '<div id="test-root"></div>';
-
-    // Clear event bus listeners
     EventBus.getInstance().clear(Events.UPDATE);
     EventBus.getInstance().clear(Events.DRAW);
     EventBus.getInstance().clear(Events.SYNC);
-
-    mockRfFrontEnd = createMockRfFrontEnd();
+    SimClock.reset();
+    fe = createMockRfFrontEnd();
   });
 
   afterEach(() => {
     document.body.innerHTML = '';
   });
 
-  describe('getDefaultState()', () => {
-    it('should return correct default values', () => {
-      const defaults = HPAModuleCore.getDefaultState();
+  describe('defaults', () => {
+    it('starts with no RF: output -90 dBm, ALC on, 10 dB back-off', () => {
+      const d = HPAModuleCore.getDefaultState();
+      expect(d.outputPower).toBe(-90);
+      expect(d.backOff).toBe(10);
+      expect(d.isAlcEnabled).toBe(true);
+      expect(d.isHpaEnabled).toBe(false);
+    });
 
-      expect(defaults.isPowered).toBe(true);
-      expect(defaults.backOff).toBe(10);
-      expect(defaults.outputPower).toBe(40);
-      expect(defaults.isOverdriven).toBe(false);
-      expect(defaults.imdLevel).toBe(-50);
-      expect(defaults.temperature).toBe(75);
-      expect(defaults.isHpaEnabled).toBe(false);
-      expect(defaults.isHpaSwitchEnabled).toBe(false);
-      expect(defaults.noiseFloor).toBe(-140);
-      expect(defaults.gain).toBe(44);
+    it('defaults P1dB to 59 dBm and a TWTA (Saleh) curve 4.12 dB under Psat', () => {
+      const hpa = new TestHPAModule(HPAModuleCore.getDefaultState(), fe, 1);
+      expect(hpa.p1db).toBe(59);
+      expect(hpa.psatDbm).toBeCloseTo(63.12, 2);
     });
   });
 
-  describe('constructor', () => {
-    it('should create instance with default state', () => {
-      hpaModule = new TestHPAModule(HPAModuleCore.getDefaultState(), mockRfFrontEnd, 1);
-
-      expect(hpaModule).toBeInstanceOf(HPAModuleCore);
-      expect(hpaModule.state.isPowered).toBe(true);
-      expect(hpaModule.state.backOff).toBe(10);
+  describe('ALC: output = P1dB - back-off, input + gain = output', () => {
+    it.each([10, 8, 6, 5, 3, 1, 0])('back-off %i dB', (backOff) => {
+      const hpa = c1Hpa(fe, { backOff });
+      hpa.update();
+      expect(hpa.state.outputPower).toBeCloseTo(60 - backOff, 2);
+      expect(hpa.state.inputPower! + hpa.state.gain).toBeCloseTo(hpa.state.outputPower, 6);
+      expect(hpa.state.outputBackoffDb).toBeCloseTo(backOff, 2);
+      expect(hpa.outputSignals[0].power).toBeCloseTo(hpa.state.outputPower, 6);
     });
 
-    it('should merge provided state with defaults', () => {
-      const customState: HPAState = {
-        ...HPAModuleCore.getDefaultState(),
-        isPowered: false,
-        backOff: 15,
-        temperature: 50,
-      };
-
-      hpaModule = new TestHPAModule(customState, mockRfFrontEnd, 1);
-
-      expect(hpaModule.state.isPowered).toBe(false);
-      expect(hpaModule.state.backOff).toBe(15);
-      expect(hpaModule.state.temperature).toBe(50);
-      expect(hpaModule.state.gain).toBe(44); // from defaults
+    it('a 5 -> 10 dB back-off change drops the output 5 dB; 1 -> 10 drops 9 dB', () => {
+      const a = c1Hpa(fe, { backOff: 5 });
+      a.update();
+      const b = c1Hpa(fe, { backOff: 10 });
+      b.update();
+      const c = c1Hpa(fe, { backOff: 1 });
+      c.update();
+      expect(a.state.outputPower - b.state.outputPower).toBeCloseTo(5, 2);
+      expect(c.state.outputPower - b.state.outputPower).toBeCloseTo(9, 2);
     });
 
-    it('should generate correct uniqueId', () => {
-      hpaModule = new TestHPAModule(HPAModuleCore.getDefaultState(), mockRfFrontEnd, 2);
-
-      expect((hpaModule as any).uniqueId).toBe('rf-fe-hpa-2');
-    });
-  });
-
-  describe('update()', () => {
-    beforeEach(() => {
-      hpaModule = new TestHPAModule(HPAModuleCore.getDefaultState(), mockRfFrontEnd, 1);
+    it('holds the output when the drive drops 10 dB: the gain rises 10 dB', () => {
+      const hot = c1Hpa(createMockRfFrontEnd([carrier(26)]), { backOff: 8 });
+      hot.update();
+      const derated = c1Hpa(createMockRfFrontEnd([carrier(16)]), { backOff: 8 });
+      derated.update();
+      expect(hot.state.outputPower).toBeCloseTo(derated.state.outputPower, 2);
+      expect(derated.state.gain - hot.state.gain).toBeCloseTo(10, 2);
     });
 
-    describe('output power calculation', () => {
-      it('should calculate output power when powered and enabled', () => {
-        hpaModule.state.isPowered = true;
-        hpaModule.state.isHpaEnabled = true;
-        hpaModule.state.backOff = 10;
-
-        hpaModule.update();
-
-        // With 0 dBm input: output = input + gain - backOff
-        // gain = (maxPower - backOff) - input = (63 - 10) - 0 = 53 dB
-        // output = 0 + 53 - 10 = 43 dBm
-        expect(hpaModule.state.outputPower).toBe(43);
-      });
-
-      it('should set output power to -90 when powered but not enabled', () => {
-        hpaModule.state.isPowered = true;
-        hpaModule.state.isHpaEnabled = false;
-
-        hpaModule.update();
-
-        expect(hpaModule.state.outputPower).toBe(-90);
-      });
-
-      it('should set output power to -90 when not powered', () => {
-        hpaModule.state.isPowered = false;
-        hpaModule.state.isHpaEnabled = true;
-
-        hpaModule.update();
-
-        expect(hpaModule.state.outputPower).toBe(-90);
-      });
-
-      it('should adjust output power with different back-off values', () => {
-        hpaModule.state.isPowered = true;
-        hpaModule.state.isHpaEnabled = true;
-
-        hpaModule.state.backOff = 0;
-        hpaModule.update();
-        // With 0 dBm input and backOff 0: output = 0 + 63 - 0 = 63 dBm
-        expect(hpaModule.state.outputPower).toBe(63);
-
-        hpaModule.state.backOff = 20;
-        hpaModule.update();
-        // With 0 dBm input and backOff 20: output = 0 + (63-20-0) - 20 = 23 dBm
-        expect(hpaModule.state.outputPower).toBe(23);
-      });
-    });
-
-    describe('temperature calculation', () => {
-      it('should calculate temperature based on output power when powered', () => {
-        hpaModule.state.isPowered = true;
-        hpaModule.state.isHpaEnabled = true;
-        hpaModule.state.backOff = 10;
-
-        hpaModule.update();
-
-        // At 43 dBm: ~20W, dissipated = 20 * 0.15 = 3W (85% efficiency)
-        // temp = 25 + (3 * 0.5) ≈ 26.5
-        expect(hpaModule.state.temperature).toBeCloseTo(26.5, 0);
-      });
-
-      it('should set temperature to ambient when not powered', () => {
-        hpaModule.state.isPowered = false;
-
-        hpaModule.update();
-
-        expect(hpaModule.state.temperature).toBe(25);
-      });
-
-      it('should calculate higher temperature at higher power', () => {
-        hpaModule.state.isPowered = true;
-        hpaModule.state.isHpaEnabled = true;
-        hpaModule.state.backOff = 0; // Max power
-
-        hpaModule.update();
-
-        // At 50 dBm: 100W, dissipated = 50W, temp = 25 + 500 = 525
-        expect(hpaModule.state.temperature).toBeGreaterThan(75);
-      });
-    });
-
-    describe('IMD calculation', () => {
-      it('should calculate IMD based on back-off when powered', () => {
-        hpaModule.state.isPowered = true;
-        hpaModule.state.backOff = 10;
-
-        hpaModule.update();
-
-        // IMD = -30 - (backOff * 2) = -30 - 20 = -50 dBc
-        expect(hpaModule.state.imdLevel).toBe(-50);
-      });
-
-      it('should improve IMD with higher back-off', () => {
-        hpaModule.state.isPowered = true;
-        hpaModule.state.backOff = 20;
-
-        hpaModule.update();
-
-        // IMD = -30 - (20 * 2) = -70 dBc (better)
-        expect(hpaModule.state.imdLevel).toBe(-70);
-      });
-
-      it('should set IMD to -60 when not powered', () => {
-        hpaModule.state.isPowered = false;
-
-        hpaModule.update();
-
-        expect(hpaModule.state.imdLevel).toBe(-60);
-      });
-
-      it('should set overdrive status when back-off < 3', () => {
-        hpaModule.state.isPowered = true;
-        hpaModule.state.backOff = 2;
-
-        hpaModule.update();
-
-        expect(hpaModule.state.isOverdriven).toBe(true);
-      });
-
-      it('should not set overdrive when back-off >= 3', () => {
-        hpaModule.state.isPowered = true;
-        hpaModule.state.backOff = 3;
-
-        hpaModule.update();
-
-        expect(hpaModule.state.isOverdriven).toBe(false);
-      });
-
-      it('should not set overdrive when not powered', () => {
-        hpaModule.state.isPowered = false;
-        hpaModule.state.backOff = 0;
-
-        hpaModule.update();
-
-        expect(hpaModule.state.isOverdriven).toBe(false);
-      });
-    });
-
-    describe('alarm checking', () => {
-      it('should disable HPA if BUC is not powered', () => {
-        mockRfFrontEnd = createMockRfFrontEnd({ state: { isPowered: false } as any });
-        hpaModule = new TestHPAModule({ ...HPAModuleCore.getDefaultState(), isPowered: true }, mockRfFrontEnd, 1);
-
-        hpaModule.update();
-
-        expect(hpaModule.state.isPowered).toBe(false);
-      });
-    });
-
-    describe('signal processing', () => {
-      it('should output empty signals when not powered', () => {
-        hpaModule.state.isPowered = false;
-
-        hpaModule.update();
-
-        expect(hpaModule.outputSignals).toEqual([]);
-      });
-
-      it('should output empty signals when not enabled', () => {
-        hpaModule.state.isPowered = true;
-        hpaModule.state.isHpaEnabled = false;
-
-        hpaModule.update();
-
-        expect(hpaModule.outputSignals).toEqual([]);
-      });
-
-      it('should process input signals when powered and enabled', () => {
-        const inputSignal: RfSignal = {
-          frequency: 14000e6,
-          power: 0 as dBm,
-          bandwidth: 36e6,
-          origin: SignalOrigin.BUC,
-        };
-
-        (mockRfFrontEnd.bucModule as any).outputSignals = [inputSignal];
-        hpaModule = new TestHPAModule({ ...HPAModuleCore.getDefaultState(), isPowered: true, isHpaEnabled: true }, mockRfFrontEnd, 1);
-
-        hpaModule.update();
-
-        expect(hpaModule.outputSignals.length).toBe(1);
-        expect(hpaModule.outputSignals[0].origin).toBe(SignalOrigin.HIGH_POWER_AMPLIFIER);
-      });
-
-      it('should apply gain and back-off to signals', () => {
-        const inputSignal: RfSignal = {
-          frequency: 14000e6,
-          power: 0 as dBm,
-          bandwidth: 36e6,
-          origin: SignalOrigin.BUC,
-        };
-
-        (mockRfFrontEnd.bucModule as any).outputSignals = [inputSignal];
-        hpaModule = new TestHPAModule({ ...HPAModuleCore.getDefaultState(), isPowered: true, isHpaEnabled: true, backOff: 10 }, mockRfFrontEnd, 1);
-
-        hpaModule.update();
-
-        // Output power should include gain calculation minus back-off
-        expect(hpaModule.outputSignals[0].power).toBeDefined();
-      });
-
-      it('should return empty signals when BUC is in loopback mode', () => {
-        (mockRfFrontEnd.bucModule as any).state.isLoopback = true;
-        hpaModule = new TestHPAModule({ ...HPAModuleCore.getDefaultState(), isPowered: true, isHpaEnabled: true }, mockRfFrontEnd, 1);
-
-        expect(hpaModule.inputSignals).toEqual([]);
-      });
+    it('flags the ALC end stop when the drive is too weak for the setpoint', () => {
+      const hpa = c1Hpa(createMockRfFrontEnd([carrier(-40)]), { backOff: 0 });
+      hpa.update();
+      expect(hpa.state.isAlcAtLimit).toBe(true);
+      expect(hpa.state.outputPower).toBeLessThan(60);
+      expect(hpa.getAlarms().some((a) => a.includes('ALC at maximum gain'))).toBe(true);
     });
   });
 
-  describe('handlePowerToggle()', () => {
-    beforeEach(() => {
-      hpaModule = new TestHPAModule(HPAModuleCore.getDefaultState(), mockRfFrontEnd, 1);
+  describe('fixed gain (ALC off): the back-off is an attenuator calibrated on the rated drive', () => {
+    it('gives P1dB - back-off at the rated drive and follows the drive dB for dB', () => {
+      const signals = [carrier(16)];
+      const hpa = c1Hpa(createMockRfFrontEnd(signals), { isAlcEnabled: false, ratedInputDbm: 16 as dBm, backOff: 10 });
+      hpa.update();
+      // Small-signal calibration: 50 dBm less the 0.08 dB the curve takes 10 dB under P1dB
+      expect(Math.abs(hpa.state.outputPower - 49.92)).toBeLessThan(0.02);
+
+      // The drive drops 5 dB (a BUC left at 18 dB instead of 23): so does the output
+      signals[0] = carrier(11);
+      hpa.update();
+      expect(Math.abs(hpa.state.outputPower - 44.97)).toBeLessThan(0.03);
+      expect(hpa.state.gain).toBeCloseTo(hpa.state.outputPower - 11, 6);
     });
 
-    it('should enable power when BUC is powered', () => {
-      hpaModule.state.isPowered = false;
-      const callback = vi.fn();
-
-      hpaModule.handlePowerToggle(true, callback);
-
-      expect(hpaModule.state.isPowered).toBe(true);
-      expect(callback).toHaveBeenCalledWith(hpaModule.state);
-    });
-
-    it('should disable power', () => {
-      hpaModule.state.isPowered = true;
-      const callback = vi.fn();
-
-      hpaModule.handlePowerToggle(false, callback);
-
-      expect(hpaModule.state.isPowered).toBe(false);
-      expect(callback).toHaveBeenCalledWith(hpaModule.state);
-    });
-
-    it('should not enable power when BUC is not powered', () => {
-      mockRfFrontEnd = createMockRfFrontEnd({ state: { isPowered: false } as any });
-      hpaModule = new TestHPAModule({ ...HPAModuleCore.getDefaultState(), isPowered: false }, mockRfFrontEnd, 1);
-      const callback = vi.fn();
-
-      hpaModule.handlePowerToggle(true, callback);
-
-      expect(hpaModule.state.isPowered).toBe(false);
-      expect(callback).toHaveBeenCalledWith(hpaModule.state);
+    it('switching ALC off keeps the back-off meaning: the gain is the rated-drive calibration', () => {
+      const hpa = c1Hpa(fe, { backOff: 6, ratedInputDbm: 16 as dBm });
+      hpa.update();
+      expect(hpa.state.outputPower).toBeCloseTo(54, 2);
+      hpa.handleAlcToggle(false);
+      expect(hpa.isAlcEnabled).toBe(false);
+      // Rated drive: P1dB - 6 less the curve's 0.3 dB of compression there
+      expect(hpa.state.outputPower).toBeGreaterThan(53.5);
+      expect(hpa.state.outputPower).toBeLessThan(54);
     });
   });
 
-  describe('handleBackOffChange()', () => {
-    beforeEach(() => {
-      hpaModule = new TestHPAModule({ ...HPAModuleCore.getDefaultState(), isPowered: true, isHpaEnabled: true }, mockRfFrontEnd, 1);
+  describe('compression and intermodulation', () => {
+    it('reads the AM/AM curve: small-signal gain minus compression', () => {
+      // ALC off, rated drive 0 dBm, back-off 0: attenuation = 0 + 60 - 60 = 0 dB
+      const hpa = c1Hpa(fe, { isAlcEnabled: false, ratedInputDbm: 0 as dBm, backOff: 0 });
+      hpa.update();
+      expect(hpa.state.attenuationDb).toBeCloseTo(0, 6);
+      const model = amplifierFromDatasheet('saleh', 60, 60);
+      expect(hpa.state.outputPower).toBeCloseTo(outputPowerDbm(model, 16), 2);
     });
 
-    it('should update back-off value', () => {
-      hpaModule.handleBackOffChange(15);
-
-      expect(hpaModule.state.backOff).toBe(15);
+    it('IM3 rises as the back-off drops (the back-off lesson)', () => {
+      const levels = [10, 6, 3, 1].map((backOff) => {
+        const hpa = c1Hpa(fe, { backOff });
+        hpa.update();
+        return hpa.state.imdLevel;
+      });
+      for (let i = 1; i < levels.length; i++) {
+        expect(levels[i]).toBeGreaterThan(levels[i - 1]);
+      }
+      // About 2 dB worse per dB of back-off given up in the linear region
+      expect((levels[1] - levels[0]) / 4).toBeGreaterThan(1.7);
+      expect((levels[1] - levels[0]) / 4).toBeLessThan(2.3);
     });
 
-    it('should recalculate output power immediately', () => {
-      hpaModule.handleBackOffChange(5);
-
-      // With 0 dBm input and backOff 5: gain = 63 - 5 = 58 dB
-      // output = 0 + 58 - 5 = 53 dBm
-      expect(hpaModule.state.outputPower).toBe(53);
+    it('overdrive below 3 dB of output back-off', () => {
+      const ok = c1Hpa(fe, { backOff: 3 });
+      ok.update();
+      const hot = c1Hpa(fe, { backOff: 2 });
+      hot.update();
+      expect(ok.state.isOverdriven).toBe(false);
+      expect(hot.state.isOverdriven).toBe(true);
+      expect(hot.getAlarms()).toContain('HPA overdrive - IMD degradation');
     });
 
-    it('should recalculate IMD immediately', () => {
-      hpaModule.handleBackOffChange(15);
+    it('draws regrowth shoulders for one carrier and 2f1 - f2 products for two', () => {
+      const one = c1Hpa(fe);
+      one.update();
+      expect(one.distortionSignals).toHaveLength(2);
+      expect(one.distortionSignals.every((s) => s.isDistortion)).toBe(true);
+      expect(one.distortionSignals[0].power).toBeCloseTo(one.outputSignals[0].power + one.state.imdLevel, 6);
 
-      // IMD = -30 - (15 * 2) = -60 dBc
-      expect(hpaModule.state.imdLevel).toBe(-60);
-    });
-
-    it('should update overdrive status immediately', () => {
-      hpaModule.handleBackOffChange(2);
-
-      expect(hpaModule.state.isOverdriven).toBe(true);
-    });
-
-    it('should recalculate temperature immediately', () => {
-      const initialTemp = hpaModule.state.temperature;
-      hpaModule.handleBackOffChange(0); // Max power
-
-      expect(hpaModule.state.temperature).toBeGreaterThan(initialTemp);
-    });
-  });
-
-  describe('handleHpaToggle()', () => {
-    beforeEach(() => {
-      hpaModule = new TestHPAModule({ ...HPAModuleCore.getDefaultState(), isPowered: true }, mockRfFrontEnd, 1);
-    });
-
-    it('should toggle HPA switch state', () => {
-      hpaModule.state.isHpaSwitchEnabled = false;
-
-      hpaModule.handleHpaToggle();
-
-      expect(hpaModule.state.isHpaSwitchEnabled).toBe(true);
-    });
-
-    it('should enable HPA when switch is toggled on and powered', () => {
-      hpaModule.state.isHpaSwitchEnabled = false;
-      hpaModule.state.isHpaEnabled = false;
-      hpaModule.state.isPowered = true;
-
-      hpaModule.handleHpaToggle();
-
-      expect(hpaModule.state.isHpaEnabled).toBe(true);
-    });
-
-    it('should disable HPA when switch is toggled off', () => {
-      hpaModule.state.isHpaSwitchEnabled = true;
-      hpaModule.state.isHpaEnabled = true;
-
-      hpaModule.handleHpaToggle();
-
-      expect(hpaModule.state.isHpaSwitchEnabled).toBe(false);
-      expect(hpaModule.state.isHpaEnabled).toBe(false);
-    });
-
-    it('should not toggle when not powered', () => {
-      hpaModule.state.isPowered = false;
-      hpaModule.state.isHpaSwitchEnabled = false;
-
-      hpaModule.handleHpaToggle();
-
-      expect(hpaModule.state.isHpaSwitchEnabled).toBe(false);
-    });
-
-    it('should recalculate output power immediately', () => {
-      hpaModule.state.isHpaSwitchEnabled = false;
-      hpaModule.state.isHpaEnabled = false;
-
-      hpaModule.handleHpaToggle();
-
-      // Should now have real output power instead of -90
-      expect(hpaModule.state.outputPower).toBeGreaterThan(-90);
+      const two = c1Hpa(createMockRfFrontEnd([carrier(13, 5.93e9, 'a'), carrier(13, 5.97e9, 'b')]));
+      two.update();
+      const freqs = two.distortionSignals.map((s) => s.frequency).sort();
+      expect(freqs).toEqual([5.89e9, 6.01e9]);
+      // Equal carriers: each product sits at the two-tone C/IM3 below a carrier
+      expect(two.distortionSignals[0].power).toBeCloseTo(two.outputSignals[0].power + two.state.imdLevel, 1);
     });
   });
 
-  describe('getAlarms()', () => {
-    beforeEach(() => {
-      hpaModule = new TestHPAModule(HPAModuleCore.getDefaultState(), mockRfFrontEnd, 1);
+  describe('no RF', () => {
+    it('reads -90 dBm and no distortion when disabled or unpowered', () => {
+      const off = c1Hpa(fe, { isHpaEnabled: false });
+      off.update();
+      expect(off.state.outputPower).toBe(-90);
+      expect(off.outputSignals).toEqual([]);
+      expect(off.distortionSignals).toEqual([]);
+      expect(off.state.isOverdriven).toBe(false);
+
+      const unpowered = c1Hpa(fe, { isPowered: false });
+      unpowered.update();
+      expect(unpowered.outputSignals).toEqual([]);
     });
 
-    it('should return empty array when no alarms', () => {
-      hpaModule.state.isPowered = true;
-      hpaModule.state.isOverdriven = false;
-      hpaModule.state.temperature = 70;
-
-      const alarms = hpaModule.getAlarms();
-
-      expect(alarms).toEqual([]);
+    it('passes nothing while the BUC is in loopback', () => {
+      (fe.bucModule.state as { isLoopback: boolean }).isLoopback = true;
+      const hpa = c1Hpa(fe);
+      expect(hpa.inputSignals).toEqual([]);
     });
 
-    it('should return overdrive alarm when overdriven and powered', () => {
-      hpaModule.state.isPowered = true;
-      hpaModule.state.isOverdriven = true;
-
-      const alarms = hpaModule.getAlarms();
-
-      expect(alarms).toContain('HPA overdrive - IMD degradation');
-    });
-
-    it('should not return overdrive alarm when not powered', () => {
-      hpaModule.state.isPowered = false;
-      hpaModule.state.isOverdriven = true;
-
-      const alarms = hpaModule.getAlarms();
-
-      expect(alarms).not.toContain('HPA overdrive - IMD degradation');
-    });
-
-    it('should return temperature alarm when over 85C', () => {
-      hpaModule.state.isPowered = true;
-      hpaModule.state.temperature = 90;
-
-      const alarms = hpaModule.getAlarms();
-
-      expect(alarms.some((a) => a.includes('over-temperature'))).toBe(true);
-      expect(alarms.some((a) => a.includes('90'))).toBe(true);
-    });
-
-    it('should return power sequencing alarm when HPA on without BUC', () => {
-      mockRfFrontEnd = createMockRfFrontEnd({ state: { isPowered: false } as any });
-      hpaModule = new TestHPAModule({ ...HPAModuleCore.getDefaultState(), isPowered: true }, mockRfFrontEnd, 1);
-
-      const alarms = hpaModule.getAlarms();
-
-      expect(alarms).toContain('HPA enabled without BUC power');
-    });
-
-    it('should return multiple alarms when multiple conditions met', () => {
-      hpaModule.state.isPowered = true;
-      hpaModule.state.isOverdriven = true;
-      hpaModule.state.temperature = 90;
-
-      const alarms = hpaModule.getAlarms();
-
-      expect(alarms.length).toBe(2);
+    it('disables itself when the BUC is not powered', () => {
+      (fe.bucModule.state as { isPowered: boolean }).isPowered = false;
+      const hpa = c1Hpa(fe);
+      hpa.update();
+      expect(hpa.state.isPowered).toBe(false);
     });
   });
 
-  describe('getTotalGain()', () => {
-    beforeEach(() => {
-      hpaModule = new TestHPAModule(HPAModuleCore.getDefaultState(), mockRfFrontEnd, 1);
+  describe('thermal (first-order lag on run time)', () => {
+    it('starts at its equilibrium and heats toward a hotter one when the output rises', () => {
+      const hpa = c1Hpa(fe, { backOff: 10 });
+      hpa.update();
+      const cool = hpa.state.temperature;
+      expect(cool).toBeCloseTo(hpa.equilibriumTemperatureC(), 6);
+
+      hpa.handleBackOffChange(1);
+      const hotTarget = hpa.equilibriumTemperatureC();
+      expect(hotTarget).toBeGreaterThan(cool + 10);
+
+      runFor(hpa, 10);
+      // Ten seconds into a 2 min time constant: barely moved
+      expect(hpa.state.temperature).toBeLessThan(cool + 0.1 * (hotTarget - cool));
+      runFor(hpa, 600);
+      expect(hpa.state.temperature).toBeCloseTo(hotTarget, 0);
     });
 
-    it('should return -120 when not powered', () => {
-      hpaModule.state.isPowered = false;
-
-      const gain = hpaModule.getTotalGain();
-
-      expect(gain).toBe(-120);
-    });
-
-    it('should return calculated gain when powered', () => {
-      hpaModule.state.isPowered = true;
-      hpaModule.state.backOff = 10;
-
-      const gain = hpaModule.getTotalGain();
-
-      expect(gain).toBeGreaterThan(0);
-    });
-  });
-
-  describe('getOutputPower()', () => {
-    beforeEach(() => {
-      hpaModule = new TestHPAModule({ ...HPAModuleCore.getDefaultState(), isPowered: true }, mockRfFrontEnd, 1);
-    });
-
-    it('should return -120 when not powered', () => {
-      hpaModule.state.isPowered = false;
-
-      const power = hpaModule.getOutputPower(-10);
-
-      expect(power).toBe(-120);
-    });
-
-    it('should return calculated output power when powered', () => {
-      hpaModule.state.isPowered = true;
-
-      const power = hpaModule.getOutputPower(0);
-
-      expect(power).toBeGreaterThan(0);
+    it('cools gradually when switched off (no instant drop to ambient)', () => {
+      const hpa = c1Hpa(fe, { backOff: 2 });
+      hpa.update();
+      const hot = hpa.state.temperature;
+      hpa.state.isPowered = false;
+      runFor(hpa, 5);
+      expect(hpa.state.temperature).toBeGreaterThan(hot - 2);
+      expect(hpa.state.temperature).toBeGreaterThan(30);
     });
   });
 
-  describe('isOverdriven()', () => {
-    beforeEach(() => {
-      hpaModule = new TestHPAModule(HPAModuleCore.getDefaultState(), mockRfFrontEnd, 1);
+  describe('handlers', () => {
+    it('handleHpaToggle enables and disables the output when powered', () => {
+      const hpa = c1Hpa(fe, { isHpaEnabled: false, isHpaSwitchEnabled: false });
+      hpa.handleHpaToggle();
+      expect(hpa.state.isHpaEnabled).toBe(true);
+      hpa.handleHpaToggle();
+      expect(hpa.state.isHpaEnabled).toBe(false);
     });
 
-    it('should return true when state.isOverdriven is true', () => {
-      hpaModule.state.isOverdriven = true;
-
-      expect(hpaModule.isOverdriven()).toBe(true);
+    it('handleHpaToggle does nothing when unpowered', () => {
+      const hpa = c1Hpa(fe, { isPowered: false, isHpaEnabled: false, isHpaSwitchEnabled: false });
+      hpa.handleHpaToggle();
+      expect(hpa.state.isHpaSwitchEnabled).toBe(false);
     });
 
-    it('should return false when state.isOverdriven is false', () => {
-      hpaModule.state.isOverdriven = false;
-
-      expect(hpaModule.isOverdriven()).toBe(false);
-    });
-  });
-
-  describe('getTemperature()', () => {
-    beforeEach(() => {
-      hpaModule = new TestHPAModule(HPAModuleCore.getDefaultState(), mockRfFrontEnd, 1);
+    it('handleBackOffChange clamps to 0-30 dB and recomputes at once', () => {
+      const hpa = c1Hpa(fe);
+      hpa.handleBackOffChange(40);
+      expect(hpa.state.backOff).toBe(30);
+      hpa.handleBackOffChange(4);
+      expect(hpa.state.outputPower).toBeCloseTo(56, 2);
     });
 
-    it('should return current temperature', () => {
-      hpaModule.state.temperature = 65;
-
-      expect(hpaModule.getTemperature()).toBe(65);
-    });
-  });
-
-  describe('getIMDLevel()', () => {
-    beforeEach(() => {
-      hpaModule = new TestHPAModule(HPAModuleCore.getDefaultState(), mockRfFrontEnd, 1);
-    });
-
-    it('should return current IMD level', () => {
-      hpaModule.state.imdLevel = -45;
-
-      expect(hpaModule.getIMDLevel()).toBe(-45);
+    it('handlePowerToggle refuses power without the BUC', () => {
+      (fe.bucModule.state as { isPowered: boolean }).isPowered = false;
+      const hpa = c1Hpa(fe, { isPowered: false });
+      const cb = vi.fn();
+      hpa.handlePowerToggle(true, cb);
+      expect(hpa.state.isPowered).toBe(false);
+      expect(cb).toHaveBeenCalled();
     });
   });
 
-  describe('inputSignals getter', () => {
-    it('should return empty array when BUC is in loopback', () => {
-      (mockRfFrontEnd.bucModule as any).state.isLoopback = true;
-      hpaModule = new TestHPAModule(HPAModuleCore.getDefaultState(), mockRfFrontEnd, 1);
-
-      expect(hpaModule.inputSignals).toEqual([]);
-    });
-
-    it('should return BUC output signals when not in loopback', () => {
-      const testSignals: RfSignal[] = [{ frequency: 14000e6, power: 10 as dBm, bandwidth: 36e6, origin: SignalOrigin.BUC }];
-      (mockRfFrontEnd.bucModule as any).state.isLoopback = false;
-      (mockRfFrontEnd.bucModule as any).outputSignals = testSignals;
-
-      hpaModule = new TestHPAModule(HPAModuleCore.getDefaultState(), mockRfFrontEnd, 1);
-
-      expect(hpaModule.inputSignals).toEqual(testSignals);
-    });
-  });
-
-  describe('sync()', () => {
-    beforeEach(() => {
-      hpaModule = new TestHPAModule(HPAModuleCore.getDefaultState(), mockRfFrontEnd, 1);
-    });
-
-    it('should merge partial state', () => {
-      const newState: Partial<HPAState> = {
-        temperature: 80,
-        backOff: 15,
-      };
-
-      hpaModule.sync(newState);
-
-      expect(hpaModule.state.temperature).toBe(80);
-      expect(hpaModule.state.backOff).toBe(15);
-      expect(hpaModule.state.isPowered).toBe(true); // unchanged
+  describe('alarms', () => {
+    it('raises over-temperature above 85 C and power sequencing without the BUC', () => {
+      const hpa = c1Hpa(fe);
+      hpa.state.temperature = 90;
+      expect(hpa.getAlarms().some((a) => a.includes('over-temperature'))).toBe(true);
+      (fe.bucModule.state as { isPowered: boolean }).isPowered = false;
+      expect(hpa.getAlarms()).toContain('HPA enabled without BUC power');
     });
   });
 
   describe('renderPowerMeter_()', () => {
-    beforeEach(() => {
-      hpaModule = new TestHPAModule(HPAModuleCore.getDefaultState(), mockRfFrontEnd, 1);
-    });
-
-    it('should render 5 LED segments', () => {
-      const html = hpaModule.testRenderPowerMeter(10);
-
-      const segmentCount = (html.match(/led-segment/g) || []).length;
-      expect(segmentCount).toBe(5);
-    });
-
-    it('should render all off segments at low power', () => {
-      const html = hpaModule.testRenderPowerMeter(-50);
-
-      expect(html).not.toContain('led-green');
-      expect(html).not.toContain('led-yellow');
-      expect(html).not.toContain('led-red');
-    });
-
-    it('should render green segments at moderate power', () => {
-      const html = hpaModule.testRenderPowerMeter(10);
-
-      expect(html).toContain('led-green');
-    });
-
-    it('should render yellow segments at higher power', () => {
-      // Yellow is at 60-80% of max. Max = (63dBm - 30) = 33 dBW
-      // Need >= 60% → 0.6 * 33 = 19.8, so use 27 dBW for ~82%
-      const html = hpaModule.testRenderPowerMeter(27);
-
-      expect(html).toContain('led-yellow');
-    });
-
-    it('should render red segments at high power', () => {
-      // Red is at 80-100% of max (33 dBW). Need >= 80% → 0.8 * 33 = 26.4
-      const html = hpaModule.testRenderPowerMeter(34);
-
+    it('renders 5 LED segments, red near saturation', () => {
+      const hpa = c1Hpa(fe);
+      const html = hpa.testRenderPowerMeter(hpa.psatDbm - 30);
+      expect((html.match(/led-segment/gu) ?? []).length).toBe(5);
       expect(html).toContain('led-red');
-    });
-  });
-
-  describe('gain calculation', () => {
-    beforeEach(() => {
-      hpaModule = new TestHPAModule({ ...HPAModuleCore.getDefaultState(), isPowered: true, isHpaEnabled: true, backOff: 10 }, mockRfFrontEnd, 1);
-    });
-
-    it('should apply max gain limit of 63 dB', () => {
-      // Very low input power would require very high gain
-      const power = hpaModule.getOutputPower(-100);
-
-      // Output should be limited by max gain of 63 dB
-      expect(power).toBeLessThanOrEqual(-100 + 63);
-    });
-
-    it('should apply compression when input is near saturation', () => {
-      // High input power near P1dB should cause compression
-      const power = hpaModule.getOutputPower(45);
-
-      // Gain should be reduced due to compression
-      expect(power).toBeLessThan(45 + 63);
-    });
-
-    it('should update state.gain based on processed signals', () => {
-      const inputSignal: RfSignal = {
-        frequency: 14000e6,
-        power: 0 as dBm,
-        bandwidth: 36e6,
-        origin: SignalOrigin.BUC,
-      };
-
-      (mockRfFrontEnd.bucModule as any).outputSignals = [inputSignal];
-
-      hpaModule.update();
-
-      expect(hpaModule.state.gain).toBeGreaterThan(0);
-    });
-
-    it('should set state.gain to 0 when no input signals', () => {
-      (mockRfFrontEnd.bucModule as any).outputSignals = [];
-
-      hpaModule.update();
-
-      expect(hpaModule.state.gain).toBe(0);
+      expect(hpa.testRenderPowerMeter(0)).not.toContain('led-green');
     });
   });
 });

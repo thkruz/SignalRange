@@ -202,7 +202,7 @@ export class TxChainTab extends BaseElement {
             <div class="card-body">
               <!-- Back-off Control -->
               <div class="equip-adjust-control">
-                <label class="equip-adjust-label">Back-off from Max Output Power</label>
+                <label id="hpa-backoff-label" class="equip-adjust-label" for="hpa-backoff">Output Back-off from P1dB (ALC setpoint)</label>
                 <div class="equip-adjust-row">
                   <div class="equip-adjust-buttons equip-adjust-decrease">
                     <button id="hpa-backoff-dec-coarse" class="btn-equip" title="-5 dB">-5</button>
@@ -235,9 +235,13 @@ export class TxChainTab extends BaseElement {
                       <input type="checkbox" id="hpa-power" class="form-check-input" role="switch" checked />
                       <label for="hpa-power" class="form-check-label small">Power</label>
                     </div>
-                    <div class="form-check form-switch">
+                    <div class="form-check form-switch mb-2">
                       <input type="checkbox" id="hpa-enable" class="form-check-input" role="switch" />
                       <label for="hpa-enable" class="form-check-label small">HPA Enable</label>
+                    </div>
+                    <div class="form-check form-switch">
+                      <input type="checkbox" id="hpa-alc" class="form-check-input" role="switch" checked />
+                      <label for="hpa-alc" class="form-check-label small">ALC</label>
                     </div>
                   </div>
                 </div>
@@ -251,7 +255,7 @@ export class TxChainTab extends BaseElement {
                     </div>
                     <div class="metric-row">
                       <span class="metric-label">Output:</span>
-                      <span id="hpa-output-power-display" class="metric-value">50.0 dBm</span>
+                      <span id="hpa-output-power-display" class="metric-value">-- dBm</span>
                     </div>
                     <div class="metric-row">
                       <span class="metric-label">Power:</span>
@@ -273,7 +277,11 @@ export class TxChainTab extends BaseElement {
                     </div>
                     <div class="metric-row">
                       <span class="metric-label">P1dB:</span>
-                      <span id="hpa-p1db-display" class="metric-value">50.0 dBm</span>
+                      <span id="hpa-p1db-display" class="metric-value">-- dBm</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Back-off:</span>
+                      <span id="hpa-obo-display" class="metric-value">-- dB</span>
                     </div>
                   </div>
                 </div>
@@ -287,7 +295,7 @@ export class TxChainTab extends BaseElement {
                     <div class="metric-group-title">Amplifier Status</div>
                     <div class="metric-row">
                       <span class="metric-label">Gain:</span>
-                      <span id="hpa-gain-display" class="metric-value">44.0 dB</span>
+                      <span id="hpa-gain-display" class="metric-value">-- dB</span>
                     </div>
                     <div class="metric-row">
                       <span class="metric-label">Temp:</span>
@@ -300,8 +308,8 @@ export class TxChainTab extends BaseElement {
                   <div class="metric-group h-100">
                     <div class="metric-group-title">Signal Quality</div>
                     <div class="metric-row">
-                      <span class="metric-label">IMD Level:</span>
-                      <span id="hpa-imd-display" class="metric-value">-30.0 dBc</span>
+                      <span class="metric-label">IM3 (2-tone):</span>
+                      <span id="hpa-imd-display" class="metric-value">-- dBc</span>
                     </div>
                     <div class="metric-row">
                       <span class="metric-label">Overdrive:</span>

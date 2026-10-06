@@ -257,6 +257,7 @@ describe('E2: config-driven HPA max output power', () => {
   const makeFrontEnd = () =>
     ({
       bucModule: { state: { isLoopback: false, isPowered: true, isMuted: false }, outputSignals: [drive] },
+      cableLossDb: () => 0,
       state: { buc: { isPowered: true } },
     }) as any;
 
@@ -269,22 +270,26 @@ describe('E2: config-driven HPA max output power', () => {
     ...over,
   });
 
-  it('a 37 dBm brick ALCs the drive to ~31 dBm out', () => {
-    const brick = new TestableHPA(baseState({ maxOutputPower: 37 as dBm, p1db: 34 as dBm }), makeFrontEnd(), 1);
+  it('a 37 dBm brick (SSPA) ALCs the drive to P1dB - 3 = 31 dBm out', () => {
+    const brick = new TestableHPA(baseState({ amplifierType: 'sspa', maxOutputPower: 37 as dBm, p1db: 34 as dBm }), makeFrontEnd(), 1);
     brick.update();
 
-    // gain = (37 - 3) - (-20) = 54 -> out = -20 + 54 - 3 = 31 dBm (~1.3 W)
+    // ALC (19.6): output = P1dB - back-off = 34 - 3 = 31 dBm (~1.3 W); gain = 31 - (-20) = 51 dB
     expect(brick.outputSignals).toHaveLength(1);
-    expect(brick.outputSignals[0].power).toBeCloseTo(31, 5);
+    expect(brick.outputSignals[0].power).toBeCloseTo(31, 2);
+    expect(brick.state.gain).toBeCloseTo(51, 2);
     expect(brick.p1db).toBe(34);
+    expect(brick.psatDbm).toBeCloseTo(37, 2);
   });
 
-  it('without the override the legacy 63 dBm / 59 dBm values apply unchanged', () => {
+  it('without the override the default 59 dBm P1dB, 60 dB gain TWTA cannot reach its setpoint from -20 dBm', () => {
     const legacy = new TestableHPA(baseState({}), makeFrontEnd(), 1);
     legacy.update();
 
-    // gain = (63 - 3) - (-20) = 80, capped at 63 -> out = -20 + 63 - 3 = 40 dBm
-    expect(legacy.outputSignals[0].power).toBeCloseTo(40, 5);
+    // 19.6: output follows the drive. The ALC wants 59 - 3 = 56 dBm but the
+    // amplifier's 60 dB of gain makes 40 dBm of -20 dBm: the ALC is at its end stop
+    expect(legacy.outputSignals[0].power).toBeCloseTo(40, 1);
+    expect(legacy.state.isAlcAtLimit).toBe(true);
     expect(legacy.p1db).toBe(59);
   });
 });

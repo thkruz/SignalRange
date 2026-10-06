@@ -75,7 +75,8 @@ export const galwayGroundStation = {
         phaseLockRange: 10000,
         gain: 23 as dB,
         outputPower: -10 as dBm,
-        saturationPower: 15 as dBm,
+        // P1dB of the BUC's output stage (Rapp, 19.6): 16 dBm runs 12 dB backed off
+        saturationPower: 28 as dBm,
         gainFlatness: 0.5 as dB,
         groupDelay: 3,
         phaseNoise: -100,
@@ -84,6 +85,16 @@ export const galwayGroundStation = {
       },
       hpa: {
         isPowered: true,
+        // 2.5 W Ku SSPA (P1dB 34 dBm, Psat 36 dBm, Rapp) in fixed-gain mode
+        // (19.6): the back-off is calibrated on the 16 dBm rated drive (BUC at
+        // 23 dB), so 4 dB -> 30 dBm (1 W), 10 dB -> 24 dBm, and a weak drive
+        // comes out weak (S10's BUC-at-18 lesson)
+        amplifierType: 'sspa',
+        p1db: 34 as dBm,
+        maxOutputPower: 36 as dBm,
+        smallSignalGain: 30 as dB,
+        isAlcEnabled: false,
+        ratedInputDbm: 16 as dBm,
         backOff: 10,
         outputPower: 50 as dBm,
         isOverdriven: false,

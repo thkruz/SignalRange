@@ -537,7 +537,7 @@ export const natsEuScenario23Data: ScenarioData = {
               },
             ],
             explanation:
-              'Rank by what loses the pass. A stale element set loses it outright, so the update goes first. A walking reference loses nothing tonight but the timestamps, so holdover goes second and takes ten seconds. A jammer that is not on the air yet costs nothing until it is - and the answer to it is one click away when it does.',
+              'Rank by what loses the pass. A stale element set loses it outright, so the update goes first. A walking reference costs the timestamps and pulls every LO a couple of parts per million, tens of kHz inside the Doppler the chain already tracks, so holdover goes second and takes ten seconds. A jammer that is not on the air yet costs nothing until it is - and the answer to it is one click away when it does.',
             pointPenalty: 10,
           },
           mustMaintain: false,

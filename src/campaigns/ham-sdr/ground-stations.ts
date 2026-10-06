@@ -318,6 +318,7 @@ const makeTxFrontEnd = (): Partial<RFFrontEndState> => {
       isHpaEnabled: true,
       isHpaSwitchEnabled: true,
       backOff: 3,
+      amplifierType: 'sspa', // solid-state brick (Rapp, 19.6): ALC holds P1dB - 3 = 31 dBm
       maxOutputPower: 37 as dBm, // ~5 W brick
       p1db: 34 as dBm,
     },

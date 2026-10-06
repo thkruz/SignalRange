@@ -104,7 +104,8 @@ export const sandstormGroundStation = {
         phaseLockRange: 10000,
         gain: 30 as dB,
         outputPower: -10 as dBm,
-        saturationPower: 20 as dBm,
+        // 2 W BUC (19.6 soft compression): the 30 dBm drive runs 3 dB under P1dB
+        saturationPower: 33 as dBm,
         gainFlatness: 0.5 as dB,
         groupDelay: 3,
         phaseNoise: -100,
@@ -113,6 +114,10 @@ export const sandstormGroundStation = {
       },
       hpa: {
         isPowered: true,
+        // 300 W X-band TWTA in ALC (19.6): 8 dB back-off -> 47 dBm, as before
+        amplifierType: 'twta',
+        p1db: 55 as dBm,
+        smallSignalGain: 50 as dB,
         backOff: 8,
         outputPower: 50 as dBm,
         isOverdriven: false,
@@ -223,7 +228,8 @@ export const sandstormGroundStation = {
         phaseLockRange: 10000,
         gain: 30 as dB,
         outputPower: -10 as dBm,
-        saturationPower: 20 as dBm,
+        // 2 W BUC (19.6 soft compression): the 30 dBm drive runs 3 dB under P1dB
+        saturationPower: 33 as dBm,
         gainFlatness: 0.5 as dB,
         groupDelay: 3,
         phaseNoise: -100,
@@ -232,6 +238,9 @@ export const sandstormGroundStation = {
       },
       hpa: {
         isPowered: false,
+        amplifierType: 'twta', // same 300 W X-band TWTA (19.6)
+        p1db: 55 as dBm,
+        smallSignalGain: 50 as dB,
         backOff: 10,
         outputPower: 0 as dBm,
         isOverdriven: false,

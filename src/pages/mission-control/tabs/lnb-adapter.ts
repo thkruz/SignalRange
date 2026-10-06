@@ -110,6 +110,8 @@ export class LNBAdapter {
       noiseTempDisplay.textContent = isPowered ? `${state.noiseTemperature.toFixed(0)} K` : '-- K';
     }
 
+    this.syncThermalAndLoError_();
+
     // Update lock status
     const lockStatus = this.domCache_.get('lockStatus');
     if (lockStatus) {
@@ -150,6 +152,11 @@ export class LNBAdapter {
     this.domCache_.set('powerSwitch', qs('#lnb-power', this.containerEl));
     this.domCache_.set('noiseTempDisplay', qs('#lnb-noise-temp-display', this.containerEl));
     this.domCache_.set('lockStatus', qs('#lnb-lock-status', this.containerEl));
+    // Phase 19.6 readouts (optional: older layouts may not have them)
+    const thermalStatus = this.containerEl.querySelector<HTMLElement>('#lnb-thermal-status');
+    if (thermalStatus) this.domCache_.set('thermalStatus', thermalStatus);
+    const loError = this.containerEl.querySelector<HTMLElement>('#lnb-lo-error-display');
+    if (loError) this.domCache_.set('loErrorDisplay', loError);
   }
 
   private setupInputListeners_(): void {
@@ -394,6 +401,38 @@ export class LNBAdapter {
   /**
    * Get current alarms from LNB module as AlarmStatus array
    */
+  /**
+   * Thermal stabilization and LO error readouts (Phase 19.6): "Warming 1:20"
+   * until the LNB has been on for its stabilization time, then "Stable"; the
+   * LO's frequency error (the reference's when locked, the free-running
+   * oscillator's when not).
+   */
+  private syncThermalAndLoError_(): void {
+    const lnb = this.lnbModule;
+    const state = lnb.state;
+    const thermal = this.domCache_.get('thermalStatus');
+    if (thermal) {
+      if (!state.isPowered) {
+        thermal.textContent = '--';
+      } else if (lnb.isThermallyStable()) {
+        thermal.textContent = `Stable (${state.temperature.toFixed(0)} °C)`;
+      } else {
+        const settleS = Math.max(state.thermalStabilizationTime, state.noiseTemperatureStabilizationTime);
+        const leftS = Math.max(0, Math.ceil(settleS - lnb.secondsSincePowerOn));
+        thermal.textContent = `Warming ${Math.floor(leftS / 60)}:${String(leftS % 60).padStart(2, '0')} (${state.temperature.toFixed(0)} °C)`;
+      }
+    }
+    const loError = this.domCache_.get('loErrorDisplay');
+    if (loError) {
+      if (!state.isPowered || state.isDirectSampling) {
+        loError.textContent = '--';
+      } else {
+        const hz = state.frequencyError;
+        loError.textContent = Math.abs(hz) >= 1000 ? `${(hz / 1000).toFixed(1)} kHz` : `${hz.toFixed(Math.abs(hz) < 10 ? 2 : 0)} Hz`;
+      }
+    }
+  }
+
   private getAlarmsFromModule_(): AlarmStatus[] {
     const alarmStrings = this.lnbModule.getAlarms();
     return alarmStrings.map((message) => ({

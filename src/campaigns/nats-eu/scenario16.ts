@@ -38,8 +38,9 @@ import { createMeridianSar1, createMeridianSar2, type MeridianTle } from './sate
  *                         Galway by four minutes. Dropped.
  *
  * Command window is the Galway SAR-1 pass with 20 s guards (1100-1640 s).
- * Faults: SH-02 BUC cooling fault at 90 s (reading jumps to 73 degC, +30 degC
- * offset, clears at 1590 s when the fan is restored); GW-01 GNSS loss at
+ * Faults: SH-02 BUC cooling fault at 90 s (reading jumps to 72 degC; thermal
+ * resistance x1.6 with the fan gone and a hot output stage drawing 1.3 A extra
+ * while driven, clears at 1590 s when the fan is restored); GW-01 GNSS loss at
  * 1120 s for 500 s (12:18:40 to 12:27:00). All thresholds flown in
  * test/campaigns/nats-eu-phase-c-validation.test.ts, the Shetland one from
  * Shetland.
@@ -94,7 +95,10 @@ galwayMidday.transmitters![0].modems[0] = {
 /**
  * SH-02 after the morning's uplink check: TX modem 1 still on air into an
  * unmuted BUC (HPA off, so nothing leaves the rack). With the fan gone the
- * driven BUC settles above the 70 degC alarm; muted, it settles well under.
+ * driven BUC draws 4.3 A and climbs ~0.3 degC/min toward 75 degC; muted it
+ * drops to the 2.6 A idle draw at once and heads for 55 degC, under the 70 degC
+ * alarm ~80 s after a prompt mute (72.2 degC), ~2.5 min after ten minutes
+ * driven (74.1 degC), 3 min from fully settled (measured, Phase 19.6).
  */
 const shetlandHotBuc: GroundStationConfig = structuredClone(shetlandGroundStation);
 shetlandHotBuc.transmitters![0].modems[0] = {
@@ -212,7 +216,11 @@ export const natsEuScenario16Data: ScenarioData = {
         target: 'buc-overtemp',
         startTime: 90,
         duration: 1500,
-        params: { startTemperatureC: 73, deltaC: 30 },
+        // Phase 19.6 physical fault: the dead fan multiplies the heatsink's
+        // thermal resistance by 1.6 and the hot output stage draws 1.3 A extra
+        // while driven (gated off by the mute). Driven: 4.3 A, heading for 75 degC.
+        // Muted: 2.6 A, heading for 55 degC; under 70 inside 3 min.
+        params: { startTemperatureC: 72, coolingFactor: 1.6, excessCurrentA: 1.3 },
         label: 'SH-02 BUC cooling fan alarm',
       },
       // Phase 19.0a: the signal returns 45 s after 'confirm-galway-reference-recovered'
@@ -542,7 +550,8 @@ export const natsEuScenario16Data: ScenarioData = {
       id: 'confirm-shetland-buc-cooling',
       nice: ['S0677', 'T0531', 'K0740'],
       title: 'Confirm the Shetland BUC Cooling',
-      description: 'Watch it on the SH-02 TX chain: with the drive gone the BUC comes down under 70 degrees inside a couple of minutes. Do not power it off.',
+      description:
+        'Watch it on the SH-02 TX chain: with the drive gone the current drops to its 2.6 A idle draw at once and the BUC comes down under 70 degrees within two or three minutes. Do not power it off.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['remove-the-drive'],
       timeLimitSeconds: 4 * 60,
@@ -568,14 +577,14 @@ export const natsEuScenario16Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Why not power the BUC off and let it cool properly?',
             options: [
-              'Twice wrong: an unpowered BUC cools slower because its own regulation stops, and the alarm clears on a powered reading',
+              'Twice wrong: power-off hides the reading instead of removing the heat, and the alarm only closes on a powered reading',
               'You should: off is always cooler than on, and an unpowered BUC has no output to dissipate, so the alarm clears sooner',
               'Reference re-lock: a powered-down BUC drops the external reference, and re-locking on power-up takes about an hour',
               'The HPA: it trips without a BUC ahead of it, and an HPA fault on top of a fan alarm takes the site off the board for the day',
             ],
             correctIndex: 0,
             explanation:
-              'An unpowered BUC cools five times slower than a muted one, and an off BUC never reads normal, it reads off. Mute removes the heat source; power-off removes the thermometer. Every equipment fault on this network has a right action and a louder wrong one. The louder one is usually the power switch.',
+              'An off BUC does cool, but it never reads normal, it reads off, and the fan is still dead the moment it comes back up with a carrier in it. Mute removes the heat source; power-off removes the thermometer. Every equipment fault on this network has a right action and a louder wrong one. The louder one is usually the power switch.',
             pointPenalty: 5,
           },
           mustMaintain: false,

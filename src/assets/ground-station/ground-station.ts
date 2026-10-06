@@ -104,6 +104,7 @@ export class GroundStation {
     // Create RF front-ends
     config.rfFrontEnds.forEach((rfConfig, index) => {
       const rfFrontEnd = createRFFrontEnd(`gs-${this.uuid}-rf-front-end${index + 1}-container`, rfConfig, 'standard');
+      rfFrontEnd.groundStationId = config.id;
       this.rfFrontEnds.push(rfFrontEnd);
     });
 

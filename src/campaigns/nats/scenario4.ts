@@ -1318,7 +1318,7 @@ export const scenario4Data: ScenarioData = {
           Right. Signal chain from input to output: BUC first, then HPA. You want the amplifier to see a proper signal when it's enabled, not noise or oscillation.
         </p>
         <p>
-          An HPA enabled with no input is an amplifier looking for something to amplify. It'll find noise, and it'll amplify that. At several hundred watts, that's not something you want. Drive the chain from the input side.
+          An HPA enabled with no input is an amplifier looking for something to amplify. It'll find noise, and it'll amplify that. It's a kilowatt-class amplifier - that's not something you want. Drive the chain from the input side.
         </p>
         <p>
           Unmute the BUC first, then enable the HPA output.

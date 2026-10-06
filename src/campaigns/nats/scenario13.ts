@@ -14,16 +14,18 @@ import { tidemark1Satellite, tidemark2Satellite } from './satellites';
  *
  * Premise: Mid-shift. VT-01 is up on TIDEMARK-1 carrying normal customer
  * traffic. The BUC temperature has been creeping upward for the last
- * ~15 minutes: 57°C -> 62°C with a steady ~+0.3°C/min slope. No alarm
- * (the over-temperature trip is at 70°C). BUC current draw is also
- * elevated (4.1A vs nominal ~3.0A). Everything else on the station is
- * nominal: GPSDO locked, RX beacon clean, antenna locked, HPA backoff
- * 8 dB and not overdriven.
+ * ~10 minutes: 57°C -> 62°C, the slope easing to ~+0.3°C/min. No
+ * over-temperature alarm (the trip is at 70°C), but the Dashboard carries
+ * the "BUC cooling fault - fan/heatsink degraded" warning. BUC current draw
+ * is elevated (4.0 A vs 3.1 A at the 23 dB operating gain). Everything else
+ * on the station is nominal: GPSDO locked, RX beacon clean, antenna locked,
+ * HPA backoff 8 dB and not overdriven.
  *
- * The trend signature points at one root cause: BUC gain is sitting at
- * 33 dB - 10 dB above the 23 dB operating value (same class of leftover
- * the S12 maintenance crew taught us to look for). The BUC is dissipating
- * the excess as heat into its own chassis. The right call is to de-rate
+ * Two causes stack: BUC gain is sitting at 33 dB - 10 dB above the 23 dB
+ * operating value (same class of leftover the S12 maintenance crew taught
+ * us to look for) - and the slow fan cannot shed the extra dissipation.
+ * The gain is the cause the operator can remove live; the fan is why the
+ * swap ticket still matters. The right call is to de-rate
  * (reduce BUC gain back to 23 dB) which preserves carrier within SLA
  * margin, lets the BUC cool, and buys time for a planned swap.
  *
@@ -47,7 +49,7 @@ export const scenario13Data: ScenarioData = {
   duration: '25-30 min',
   difficulty: 'intermediate',
   missionType: 'Trend Assessment',
-  description: `Mid-shift on VT-01. TIDEMARK-1 carrying normal customer traffic. The trend display flagged something fifteen minutes ago: BUC temperature has been climbing roughly a third of a degree per minute - 57°C up to 62°C, no alarm yet, but the slope is unambiguous.<br><br>Nothing else has moved. GPSDO locked, RX beacon clean, HPA in backoff. The question is whether to act now, schedule a swap and keep going, switch to backup, or hold and monitor.<br><br>The right answer is judgment, not a checklist. Read the trend, pick a course of action, and execute it without putting the customer in the dark.`,
+  description: `Mid-shift on VT-01. TIDEMARK-1 carrying normal customer traffic. The trend display flagged something ten minutes ago: BUC temperature has climbed from 57°C to 62°C and is still rising, now about a third of a degree per minute. No over-temperature alarm yet, just a cooling-fault warning on the BUC fan.<br><br>Nothing else has moved. GPSDO locked, RX beacon clean, HPA in backoff. The question is whether to act now, schedule a swap and keep going, switch to backup, or hold and monitor.<br><br>The right answer is judgment, not a checklist. Read the trend, pick a course of action, and execute it without putting the customer in the dark.`,
   equipment: ['9-meter C-band Antenna', 'RF Front End', 'Spectrum Analyzer', 'RX/TX Modems', 'ME-02: Operational'],
   timeLimitSeconds: 30 * 60,
   settings: {
@@ -72,7 +74,7 @@ export const scenario13Data: ScenarioData = {
               // Temperature comes from the 'vt-buc-thermal' fault below: the
               // thermal model overwrites a seeded start value every update
               // (nats-s13-F1). Current needs no seed: at 33 dB gain the model
-              // settles at ~4.15 A, at 23 dB ~3.05 A.
+              // settles at ~4.0 A, at 23 dB ~3.1 A.
             },
             hpa: {
               isHpaEnabled: true,
@@ -95,18 +97,20 @@ export const scenario13Data: ScenarioData = {
     // Brief: Wednesday, 1003 Local
     scenarioStartDate: '2026-02-04',
     scenarioStartWallTime: '10:03:00',
-    // Degraded BUC cooling, sized to the brief: the model's target at 33 dB
-    // gain is 25 + 0.8 x (23 + 10) = 51.4 degC, so +12.5 gives ~64 degC and a
-    // climb of ~0.3 degC/min from 62 (time constant ~5.5 min at 60 Hz). At the
-    // 23 dB operating gain the target drops to ~56 degC, so the de-rate turns
-    // the curve over without ever reaching the 70 degC trip.
+    // Degraded BUC cooling (phase 19.6 physics): a slow fan multiplies the
+    // heatsink's 0.30 degC/W by 1.38. At 33 dB the BUC puts out 25.7 dBm and
+    // draws 4.04 A (97 W from 24 V), so it heads for 25 + 1.38 x 0.30 x 96.6 =
+    // 65 degC: from 62 that is a ~0.3 degC/min climb (10 min time constant).
+    // At the 23 dB operating gain (3.07 A, 74 W) the target is 55.5 degC, so
+    // the de-rate turns the curve at once and it passes 61 degC in 2-3 min,
+    // never reaching the 70 degC trip.
     hardwareFaultEvents: [
       {
         id: 'vt-buc-thermal',
         groundStationId: 'VT-01',
         target: 'buc-overtemp',
         startTime: 0,
-        params: { startTemperatureC: 62, deltaC: 12.5 },
+        params: { startTemperatureC: 62, coolingFactor: 1.38 },
       },
     ],
   },
@@ -200,7 +204,8 @@ export const scenario13Data: ScenarioData = {
               'Threshold raised - the maintenance crew moved the trip point, so ignore the reading',
             ],
             correctIndex: 0,
-            explanation: 'Pre-alarm trends are the ideal time to act. Acting at alarm means you are already late.',
+            explanation:
+              'Pre-alarm trends are the ideal time to act. Acting at alarm means you are already late. The BUC cooling-fault warning on the board (fan/heatsink degraded) is a maintenance flag, not the trip.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -234,7 +239,7 @@ export const scenario13Data: ScenarioData = {
       id: 'read-buc-temp-trend',
       nice: ['T0153', 'K0064'],
       title: 'Read the Temperature Trend',
-      description: 'Read the BUC temperature against the 15-minute history shown in the brief and call the trend.',
+      description: 'Read the BUC temperature against the 10-minute history shown in the brief and call the trend.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['open-tx-chain'],
       timeLimitSeconds: 2 * 60,
@@ -245,7 +250,7 @@ export const scenario13Data: ScenarioData = {
           description: 'Trend Projection',
           params: {
             character: Character.SYSTEM,
-            question: 'BUC temperature is 62°C, rising about +0.3°C/min for the last 15 minutes. If the slope holds, when does it cross the 70°C trip?',
+            question: 'BUC temperature is 62°C (57°C ten minutes ago) and still rising at about +0.3°C/min. If that slope holds, when does it cross the 70°C trip?',
             options: [
               'Roughly 25-30 minutes from now if nothing changes',
               'Already past it - the dashboard alarm is suppressed',
@@ -253,7 +258,8 @@ export const scenario13Data: ScenarioData = {
               'In a few seconds - the slope accelerates exponentially',
             ],
             correctIndex: 0,
-            explanation: 'Linear extrapolation: 8°C of headroom at +0.3°C/min is roughly 25 minutes. Enough time for a deliberate response.',
+            explanation:
+              'Linear extrapolation: 8°C of headroom at +0.3°C/min is roughly 25 minutes. The slope has been easing, so that is the worst case, not a forecast - the unit may level off short of the trip, or may not. Either way there is time for a deliberate response.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -277,12 +283,12 @@ export const scenario13Data: ScenarioData = {
           description: 'Current Draw Interpretation',
           params: {
             character: Character.SYSTEM,
-            question: 'BUC current draw is 4.1A (nominal ~3.0A). What does the elevated current tell you?',
+            question: 'BUC current draw is 4.0 A (about 3.1 A at the 23 dB operating gain). What does the elevated current tell you?',
             options: [
               'BUC is dissipating more power as heat - consistent with the thermal rise, not a separate fault',
               'Power supply is failing - it is pushing extra current into the module as a separate fault',
               'Current is unrelated to thermal state - the heat source is elsewhere, so check LNB telemetry instead',
-              'BUC is in over-current shutdown - 4.1A is past the protection limit and the output is off',
+              'BUC is in over-current shutdown - 4.0 A is past the protection limit and the output is off',
             ],
             correctIndex: 0,
             explanation: 'Heat in an amplifier comes from electrical power that does not leave as RF. Higher current + higher temperature is one story, not two.',
@@ -379,15 +385,17 @@ export const scenario13Data: ScenarioData = {
           description: 'Root Cause Hypothesis',
           params: {
             character: Character.SYSTEM,
-            question: 'BUC gain is 33 dB. The operating value for this chain is 23 dB. What is the most likely root cause of the thermal trend?',
+            question:
+              'BUC gain is 33 dB; the operating value for this chain is 23 dB. The Dashboard also carries a BUC cooling-fault warning (fan/heatsink degraded). What explains the thermal trend?',
             options: [
-              'BUC gain is 10 dB above the operating value - the module is dissipating the excess as heat, not RF',
+              'Excess gain on a weak fan - 10 dB over the operating value adds dissipation the degraded fan cannot shed',
               'BUC is failing internally - the gain reading is a symptom, and only a swap makes the chain safe',
               'HPA is overdriven at 8 dB backoff - it is bleeding heat backward into the BUC through the drive path',
               'Ambient temperature in the equipment room is rising - the gain setting is a coincidence, not the cause',
             ],
             correctIndex: 0,
-            explanation: 'When the gain stage is set above what the drive chain needs, the excess turns into heat. Classic over-gain dissipation.',
+            explanation:
+              'Two causes stack. At 33 dB the BUC draws 4.0 A against 3.1 A at 23 dB; with a healthy fan that alone would settle in the mid-50s. The degraded fan pushes the same dissipation toward the mid-60s. The gain is the cause you can remove live; the fan is why the swap ticket still matters.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -421,7 +429,7 @@ export const scenario13Data: ScenarioData = {
             correctIndex: 0,
             preserveOptionOrder: true,
             explanation:
-              'De-rating cuts the dissipation at its source without taking the customer down. Swap-now is over-spend; mute-and-switch is over-reaction; hold-and-monitor ignores a trend that has not flattened in 15 minutes.',
+              'De-rating cuts the dissipation at its source without taking the customer down. Swap-now is over-spend; mute-and-switch is over-reaction; hold-and-monitor bets the customer on a curve that has eased but not stopped, on a unit with a degraded fan.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -454,7 +462,8 @@ export const scenario13Data: ScenarioData = {
             ],
             correctIndex: 0,
             preserveOptionOrder: true,
-            explanation: 'Live adjustment is safe when the HPA has backoff headroom. Muting would interrupt the customer; ramping from 0 is unnecessary theater.',
+            explanation:
+              'Live adjustment is safe: the HPA ALC holds its output, and the customer EIRP, by raising its own gain by the 10 dB you take out of the BUC. Muting would interrupt the customer; ramping from 0 is unnecessary theater.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -498,7 +507,8 @@ export const scenario13Data: ScenarioData = {
       id: 'verify-hpa-headroom',
       nice: ['T0431', 'K0740'],
       title: 'Verify HPA Still Linear',
-      description: 'Stay on TX Chain and read the HPA and BUC panels after the change: HPA not overdriven, BUC output below saturation.',
+      description:
+        'Stay on TX Chain and read the HPA and BUC panels after the change: HPA output and back-off unchanged (the ALC raised its gain by 10 dB), HPA not overdriven, BUC output below saturation.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['reduce-buc-gain'],
       timeLimitSeconds: 2 * 60,
@@ -554,14 +564,15 @@ export const scenario13Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'How do you know the de-rate worked before you log the shift?',
             options: [
-              'Watch 5-10 minutes: temperature slope flattens then trends down, current drops toward 3.0A, carrier still locked',
-              'Watch the first reading: temperature drops the moment the gain changes, current follows, carrier still locked',
-              'Check the setpoint: gain reads 23 dB, HPA backoff has opened up, no thermal verification is needed beyond that',
+              'Watch a few minutes: current drops to about 3.1 A at once, temperature turns down and passes 61°C in about 2 minutes, carrier still locked',
+              'Trust the first reading: current drops the moment the gain changes, so the temperature needs no watching',
+              'Check the setpoint: gain reads 23 dB, HPA output unchanged, no thermal verification is needed beyond that',
               'Mute and re-measure: carrier off for a minute, cold-start temperature recorded, then unmute and compare readings',
             ],
             correctIndex: 0,
             preserveOptionOrder: true,
-            explanation: 'Thermal mass is slow. The slope changes before the absolute value does. Watch the curve, not a single reading.',
+            explanation:
+              'Current answers in seconds; temperature lags behind the thermal mass (about a 10-minute time constant). It turns down at once and needs about 2 minutes to pass 61°C, then keeps easing toward the mid-50s. Watch the curve, not a single reading.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -591,10 +602,10 @@ export const scenario13Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What belongs in the BUC swap ticket for the next planned maintenance window?',
             options: [
-              'Trend record (15-min curve), de-rate action taken, current gain/backoff settings, swap recommended for next planned window',
+              'Trend record (10-min curve), cooling-fault warning, de-rate action taken, gain/backoff settings, swap recommended for next planned window',
               'Symptom only (BUC running hot), current temperature reading, no settings - the crew will pull their own telemetry',
               'Full RF front end replacement (BUC, HPA, LNB), current temperature reading, request for the earliest available window',
-              'Trend record (15-min curve), note that de-rate resolved it, no swap needed - close the ticket once the temperature settles',
+              'Trend record (10-min curve), note that de-rate resolved it, no swap needed - close the ticket once the temperature settles',
             ],
             correctIndex: 0,
             preserveOptionOrder: true,
@@ -631,14 +642,14 @@ export const scenario13Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Final state of VT-01 after the action?',
             options: [
-              'No active alarms, BUC running de-rated, carrier nominal, swap ticket open against next planned window',
+              'Only the BUC cooling-fault warning, BUC running de-rated, carrier nominal, swap ticket open against next planned window',
               'BUC over-temperature alarm active, carrier muted, customer down, swap ticket open against next planned window',
               'No active alarms, BUC swapped on-shift, customer briefly down during the swap, maintenance ticket closed',
               'No active alarms, BUC gain unchanged at 33 dB, carrier nominal, hold and monitor still in effect for next shift',
             ],
             correctIndex: 0,
             preserveOptionOrder: true,
-            explanation: 'Clean summary. Customer never noticed; trend addressed at the source; next crew has a clear handoff.',
+            explanation: 'Clean summary. The fan warning stays until the swap; the trend is addressed at the source; the customer never noticed; next crew has a clear handoff.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -664,10 +675,10 @@ export const scenario13Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which entry correctly records this action in the operations log?',
             options: [
-              '1003 - VT-01 BUC thermal trend (57->62°C over 15 min) addressed by 10 dB gain de-rate. Trend reversing, swap ticket open, carrier nominal.',
+              '1003 - VT-01 BUC thermal trend (57->62°C over 10 min, fan degraded) addressed by 10 dB gain de-rate. Trend reversing, swap ticket open, carrier nominal.',
               '1003 - VT-01 BUC failure (over-temperature alarm at 70°C) forced BUC mute. Customer outage logged, swap ticket open, carrier restored.',
-              '1003 - VT-01 BUC thermal trend (57->62°C over 15 min) noted. Hold and monitor, no action taken, next shift to reassess, carrier nominal.',
-              '1003 - VT-01 BUC thermal trend (57->62°C over 15 min) addressed by on-shift BUC swap. Customer briefly down, ticket closed, carrier restored.',
+              '1003 - VT-01 BUC thermal trend (57->62°C over 10 min) noted. Hold and monitor, no action taken, next shift to reassess, carrier nominal.',
+              '1003 - VT-01 BUC thermal trend (57->62°C over 10 min) addressed by on-shift BUC swap. Customer briefly down, ticket closed, carrier restored.',
             ],
             correctIndex: 0,
             preserveOptionOrder: true,
@@ -688,7 +699,7 @@ export const scenario13Data: ScenarioData = {
         <em>[Text message from Dana at 10:03]</em>
       </p>
       <p>
-        "Trend display flagged BUC temp on VT-01. Up from 57 to 62 over the last fifteen, no alarm yet. Carrier is fine. Take a look at it and decide what you want to do - I trust your read."
+        "Trend display flagged BUC temp on VT-01. Up from 57 to 62 over the last ten, no alarm yet. Carrier is fine. Take a look at it and decide what you want to do - I trust your read."
       </p>
       `,
       character: Character.DANA_TORRES,

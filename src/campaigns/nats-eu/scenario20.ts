@@ -43,7 +43,9 @@ import { createMeridianSar1, createMeridianSar2, type MeridianTle } from './sate
  *
  * The spoofer: settings.gnssThreat, GW-01 only, from T+480 s (05:08:00Z) to
  * T+2160 s (05:36:00Z), 2 us/s. Not an RF event on the Ku analyzer - L1 is
- * not in the LNB's band - so the tell is on the GPS Timing tab and in
+ * not in the LNB's band, and the 2 ppm it pulls every disciplined LO while
+ * GNSS is trusted (Phase 19.6: ~26 kHz on the LNB LO) is lost in the +/-250 kHz
+ * Doppler - so the tell is on the GPS Timing tab and in
  * Rotterdam's timestamps, and the cross-check is the other station.
  *
  * Staged state (scenario-local clone of GW-01): RX modem 1 on 1370 MHz

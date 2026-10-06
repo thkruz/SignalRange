@@ -194,7 +194,9 @@ export const scenario21Data: ScenarioData = {
         // from ~15 to ~6.6 dB: about 1.5 dB of margin while each burst is on, so
         // the modem flickers into "Degraded margin" as the carrier and the
         // jammer fade - the training point is mitigation, not a hard outage.
-        // The notch (1470/8/30) takes it 30 dB down.
+        // The notch (1470/8/30) takes the jammer ~24 dB down and costs the
+        // carrier only the energy in that 8 MHz slice (~0.6 dB): lock margin
+        // ~1.5 dB with the jammer on -> ~8 dB with the notch (phase 19.6).
         power: 12.7,
         polarization: 'H',
         startTime: 20,

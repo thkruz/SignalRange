@@ -860,7 +860,8 @@ export const scenario3Data: ScenarioData = {
       // primary site for consistent downconversion
       nice: ['S0421', 'K0792'],
       title: 'Power Up LNB',
-      description: 'Power on the LNB and configure it to match Vermont: LO frequency 5,250 MHz, Gain 60 dB. Wait for thermal stabilization.',
+      description:
+        'Power on the LNB and configure it to match Vermont: LO frequency 5,250 MHz, Gain 60 dB. Wait for thermal stabilization: about 90 s after power-on (the LNB panel reads "Thermal: Warming m:ss" until it shows Stable).',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['navigate-rx-maine-lnb'],
       timeLimitSeconds: 3 * 60,

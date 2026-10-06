@@ -68,6 +68,21 @@ to show how far the engine is from each reference.
 | IQ scatter | `IQConstellationAdapter.noiseSpreadForEsN0` | σ = 1/√(2 Es/N0) per axis, unit symbol energy | complex AWGN | `modem`: 10 dB and 0 dB | |
 | ADC | `adc-degradation.ts` (drive from `Receiver.getSignalsInBandwidth`: the modem's channel after a 0-30 dB tuner IF AGC) | SNR_q = 6.02 N + 1.76 dB below a full-scale sine over fs/2 (processing gain to Rs); Bussgang clipping of a Gaussian composite; penalties as added noise | ADI MT-001 | `modem`: SQNR, numerical Bussgang integral, sweet spot | DEV-MODEM-07 |
 
+## RF modules and the reference chain
+
+| Quantity | Engine | Implements | Standard | Reference case | Deviation |
+|---|---|---|---|---|---|
+| HPA AM/AM, AM/PM | `amplifier-models.ts` (`HPAModuleCore.model`) | Saleh A(r) = αr/(1 + βr²), Φ = αφ r²/(1 + βφ r²) (TWTA); Rapp G·Pin/(1 + (G·Pin/Psat)^s)^(1/s) (SSPA); fitted to P1dB (Psat) | Saleh 1981; Rapp 1991 | `rf-modules`: P1dB gaps (Saleh 4.12 dB, Rapp s = 2 2.16 dB), 1 dB compression at the datasheet P1dB, Saleh fold-back, Rapp monotonic | DEV-RF-07 |
+| HPA gain control | `HPAModuleCore.processSignals_` | ALC: attenuator servoed so output = P1dB − back-off; fixed gain: attenuator calibrated on the rated drive; composite gain on every carrier | | `hpa-module-core` unit tests (input + gain = output, 5 → 10 dB drops 5 dB) | DEV-RF-07 |
+| Intermodulation | `twoToneResponse`, `carrierToIm3Db`; `HPAModuleCore.buildDistortionSignals_` | two equal tones through the curve, Fourier components at ½ and 3/2 of the spacing (SSPA: no better than OIP3 = P1dB + 10 dB); multi-carrier 2fᵢ − fⱼ scaled third-order; one carrier: regrowth shoulders | cubic small-signal limit: C/IM3 = 2(OIP3 − Pout), OIP3 = Psat + 6.02 dB (Saleh, less 3.21 dB of AM/PM), Psat + 3.01 dB (Rapp s = 1) | `rf-modules`: both closed forms, 3:1 slope, monotonic to saturation, SSPA intercept line | DEV-RF-07 |
+| HPA, BUC thermal and current | `equilibriumTemperatureC`, `equilibriumCurrentA` | DC in (class AB: idle + saturated draw × √(Pout/Psat)) − RF out, through a thermal resistance, first-order lag on run time; faults scale R_th or add current | | `buc-module-core`, `hpa-module-core` unit tests | DEV-RF-07, DEV-RF-08 |
+| BUC compression | `BUCModuleCore.model` | Rapp s = 2, P1dB = `saturationPower` | Rapp 1991 | `buc-module-core` unit tests | DEV-RF-08 |
+| LO frequency error | `GPSDOModuleCore.fractionalFrequencyError`; BUC/LNB `updateFrequencyDrift_`; `FreeRunDrift` | locked: Δf = y·f_LO from the GPSDO (locked, holdover, spoofed); unlocked: seeded random walk in ppm/√h on run time | | `rf-modules`: locked/holdover/spoof coherence across LNB and BUC, holdover 1.67 µs/h, random-walk σ√T | DEV-RF-08, DEV-RF-10 |
+| LO phase noise → Es/N0 | `lo-reference.ts` `phaseNoiseSnrLimitDb`; `Receiver.phaseNoisePenaltyDb_` | σ² = 2∫L(f)df from the carrier-recovery loop (Rs × 10⁻⁴) to Rs/2; SNR ceiling 1/σ² added like noise | | `rf-modules`: −60 dBc/Hz at 30 Msym/s = 14.7 dB, locked > 45 dB; `nats-rf-modules-validation` (C1 S16) | DEV-RF-08 |
+| LNB passband, injection | `LNBModuleCore.update`, `passbandPower` | flat 950-2150 MHz, 3rd-order skirts, overlap integral; IF = LO − RF (high side) or RF − LO (low side, `loInjection`) | | `lnb-module-core` unit tests | DEV-RF-09 |
+| IF filter, notch | `filter-response.ts`; `IfFilterBankModuleCore.update`; `NotchFilterModuleCore.carrierLossDb` | Butterworth |H|² (order from config, default 6; notches order 4) integrated over a raised-cosine carrier | | `rf-modules`: 8 MHz notch in 36 MHz costs the slice, centred notch takes the depth, −3 dB edges, skirt rejection; `nats-rf-modules-validation` (C1 S21) | DEV-RF-09 |
+| OMT, cables, coupler | `omt-module.ts`; `RFFrontEndCore.cableLossDb`; `CouplerModule.getCouplerOutput_` | TX insertion loss + per-segment cable losses; RX excess loss over nominal with its noise; coupler = composite on the line + coupling, strongest carrier's frequency | | `coupler-module` unit tests | DEV-RF-05 |
+
 ## Orbit and geometry
 
 | Quantity | Engine | Implements | Standard | Reference case | Deviation |

@@ -8,10 +8,13 @@
  *   stops radiating, so a jam drops and the operator fails over to a backup
  *   string. Faulting a modem is enough to remove it from the RF chain - the BUC
  *   only pulls modems that are transmitting AND not faulted.
- * - `buc-overtemp` (phase 16, E3): the BUC's cooling degrades by `params.deltaC`
- *   (default 40 degC) so it climbs past the 70 degC alarm while driven; muting
- *   brings it back under. `params.startTemperatureC` jumps the reading at once
- *   for a mid-window trip; `duration` ends the excursion.
+ * - `buc-overtemp` (phase 16, E3; physical since 19.6): the BUC's cooling
+ *   degrades. `params.coolingFactor` multiplies its thermal resistance (a slow
+ *   fan: every watt it dissipates lifts it further, so less drive is the fix);
+ *   `params.excessCurrentA` adds supply current from a failing stage (more
+ *   amps and more heat); `params.deltaC` is a flat extra offset. With none of
+ *   the three, the legacy 40 degC offset. `params.startTemperatureC` jumps the
+ *   reading at once for a mid-window trip; `duration` ends the excursion.
  * - `gpsdo-gnss-loss` (E3): the GNSS signal drops with the switch still up - the
  *   receiver enters holdover on its oscillator. `duration` is when the signal
  *   returns and the reference re-locks.
@@ -59,8 +62,12 @@ export interface HardwareFaultEventConfig {
   /** Seconds the fault lasts before it clears itself; absent = until the operator acts */
   duration?: number;
   params?: {
-    /** buc-overtemp: extra degC the BUC settles above its normal target. Default 40 */
+    /** buc-overtemp: extra degC the BUC settles above its normal target (default 40 when no other param is set) */
     deltaC?: number;
+    /** buc-overtemp: thermal resistance multiplier (degraded fan/heatsink), >= 1 */
+    coolingFactor?: number;
+    /** buc-overtemp: extra supply current from a failing stage, A */
+    excessCurrentA?: number;
     /** buc-overtemp: set the temperature reading to this at trip time */
     startTemperatureC?: number;
   };
@@ -175,9 +182,13 @@ export class HardwareFaultManager {
         if (!buc) {
           return false;
         }
-        buc.setThermalOffset(event.params?.deltaC ?? DEFAULT_OVERTEMP_DELTA_C);
+        const { deltaC, coolingFactor, excessCurrentA } = event.params ?? {};
+        const physical = coolingFactor !== undefined || excessCurrentA !== undefined;
+        buc.setThermalOffset(deltaC ?? (physical ? 0 : DEFAULT_OVERTEMP_DELTA_C));
+        buc.setCoolingFactor(coolingFactor ?? 1);
+        buc.setExcessCurrent(excessCurrentA ?? 0);
         if (event.params?.startTemperatureC !== undefined) {
-          buc.state.temperature = event.params.startTemperatureC;
+          buc.setTemperature(event.params.startTemperatureC);
         }
         return true;
       }
@@ -209,6 +220,8 @@ export class HardwareFaultManager {
     switch (event.target ?? 'tx-modem') {
       case 'buc-overtemp':
         rfFrontEnd?.bucModule.setThermalOffset(0);
+        rfFrontEnd?.bucModule.setCoolingFactor(1);
+        rfFrontEnd?.bucModule.setExcessCurrent(0);
         break;
       case 'gpsdo-gnss-loss':
         rfFrontEnd?.gpsdoModule.setGnssSignalPresent(true);

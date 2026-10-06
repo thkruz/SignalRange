@@ -118,7 +118,8 @@ describe('LNBModuleCore', () => {
 
       expect(lnbModule.ifSignals.length).toBe(1);
       // High-side injection: IF = LO - RF = 6080e6 - 4880e6 = 1200e6 (in the 950-2150 MHz passband)
-      expect(lnbModule.ifSignals[0].frequency).toBe(1200e6);
+      // Locked LO: the reference's few parts in 10^12 (19.6) - millihertz
+      expect(lnbModule.ifSignals[0].frequency).toBeCloseTo(1200e6, 0);
       expect(lnbModule.ifSignals[0].origin).toBe(SignalOrigin.LOW_NOISE_BLOCK);
     });
 
@@ -161,30 +162,33 @@ describe('LNBModuleCore', () => {
       lnbModule.update();
 
       expect(lnbModule.ifSignals).toHaveLength(1);
-      expect(lnbModule.ifSignals[0].frequency).toBe(1080e6);
+      expect(lnbModule.ifSignals[0].frequency).toBeCloseTo(1080e6, 0);
     });
 
-    it('should attenuate a band-edge carrier by the clamped fraction outside the passband', () => {
-      // IF centre 950 MHz with 10 MHz bandwidth: half (5 MHz) lies below 950 MHz -> 20 dB roll-off
-      const edge: RfSignal = {
-        frequency: 5130e6 as RfFrequency,
-        bandwidth: 10e6 as Hertz,
-        power: -60 as dBm,
-        polarization: 'V',
-        origin: SignalOrigin.OMT_RX,
-        gainInPath: 30 as dBi,
+    it('rolls a carrier off on the passband skirts by overlap integral (19.6)', () => {
+      const at = (rfHz: number): number | null => {
+        const sig: RfSignal = {
+          frequency: rfHz as RfFrequency,
+          bandwidth: 10e6 as Hertz,
+          power: -60 as dBm,
+          polarization: 'V',
+          origin: SignalOrigin.OMT_RX,
+          gainInPath: 30 as dBi,
+        };
+        vi.spyOn(lnbModule, 'rxSignalsIn', 'get').mockReturnValue([sig]);
+        lnbModule.state.loFrequency = 6080 as MHz;
+        lnbModule.state.gain = 0 as dB;
+        lnbModule.update();
+        return lnbModule.ifSignals[0]?.power ?? null;
       };
 
-      vi.spyOn(lnbModule, 'rxSignalsIn', 'get').mockReturnValue([edge]);
-
-      lnbModule.state.loFrequency = 6080 as MHz;
-      lnbModule.state.gain = 0 as dB;
-      lnbModule.update();
-
-      expect(lnbModule.ifSignals).toHaveLength(1);
-      expect(lnbModule.ifSignals[0].power).toBeCloseTo(-80, 6);
-      // Never more than the full 40 dB roll-off, never a runaway figure
-      expect(lnbModule.ifSignals[0].power).toBeGreaterThanOrEqual(-100);
+      // Straddling the 950 MHz edge: the flat passband reaches it, the skirt
+      // is -3 dB only 25 MHz beyond, so half a carrier outside costs ~nothing
+      expect(at(5130e6)).toBeGreaterThan(-60.05);
+      // 50 MHz beyond the edge (IF 900 MHz): 1 / (1 + 2^6) = -18.1 dB
+      expect(at(5180e6)).toBeCloseTo(-78.1, 0);
+      // 300 MHz beyond: 65 dB down, under the skirts entirely, not carried
+      expect(at(5430e6)).toBeNull();
     });
   });
 
@@ -398,7 +402,8 @@ describe('LNBModuleCore', () => {
 
       lnbModule.update();
 
-      expect(lnbModule.state.frequencyError).toBe(0);
+      // The reference's error on the LO: |y| <= 2e-12 x 5.25 GHz = 0.01 Hz
+      expect(Math.abs(lnbModule.state.frequencyError)).toBeLessThan(0.02);
     });
 
     it('should have drift when not locked', () => {

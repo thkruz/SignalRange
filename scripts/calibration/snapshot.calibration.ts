@@ -20,6 +20,13 @@
  * power, link-budget ground truth) are copied beside the observables, so
  * diff.mjs can report the best-case margin of each against the station.
  *
+ * Since phase 19.6 each station also records its transmit chain as authored
+ * (`txChain`): the scenario's transmitting modems into the BUC and HPA, with
+ * the BUC's compression, current and equilibrium temperature and the HPA's
+ * input, gain, output, back-off from P1dB and two-tone IM3, so every HPA/BUC
+ * number a brief quotes can be checked against the engine. Staged hardware
+ * faults are not applied (the equilibrium is the healthy unit's).
+ *
  * Output: test/calibration/<scenario-id>.json (committed). Numbers are
  * rounded to 0.01 so a model change, not float noise, is what diffs.
  */
@@ -177,6 +184,58 @@ function agcOnNoise(chain: Chain) {
 }
 
 type Chain = ReturnType<typeof buildChain>;
+
+interface ModemConfig {
+  isTransmitting?: boolean;
+  isFaulted?: boolean;
+  isLoopback?: boolean;
+  ifSignal?: RfSignal;
+}
+
+/**
+ * The station's transmit chain as authored (phase 19.6): its transmitting
+ * modems drive the BUC and HPA; the ALC/attenuator and thermal equilibrium
+ * are read after a settle.
+ */
+function txChainOf(chain: Chain, station: GroundStationConfig, index: number) {
+  const { frontEnd } = chain;
+  const txConfigs = (station as unknown as { transmitters?: Array<{ modems?: ModemConfig[] }> }).transmitters ?? [];
+  const modems = (txConfigs[index] ?? txConfigs[0])?.modems ?? [];
+  frontEnd.transmitters = [];
+  frontEnd.connectTransmitter({
+    state: { modems: modems.map((m) => ({ ...m, isFaulted: m.isFaulted ?? false, isLoopback: m.isLoopback ?? false })) },
+    isModemInIntermittentDropout: () => false,
+  } as never);
+  for (let i = 0; i < 3; i++) frontEnd.update();
+
+  const buc = frontEnd.bucModule;
+  const hpa = frontEnd.hpaModule;
+  const radiating = hpa.outputSignals.length > 0;
+
+  return {
+    transmittingModems: modems.filter((m) => m.isTransmitting && !m.isFaulted && !m.isLoopback).length,
+    bucGainDb: r2(buc.state.gain),
+    bucP1dbDbm: r2(buc.state.saturationPower),
+    bucInDbm: r2(buc.state.inputPower ?? Number.NEGATIVE_INFINITY),
+    bucOutDbm: buc.hasRfOutput() ? r2(buc.state.outputPower) : null,
+    bucCompressionDb: r2(buc.state.compression ?? 0),
+    bucCurrentEqA: r2(buc.equilibriumCurrentA()),
+    bucTempEqC: r2(buc.equilibriumTemperatureC()),
+    hpaEnabled: hpa.state.isPowered && hpa.state.isHpaEnabled,
+    hpaAlc: hpa.isAlcEnabled,
+    hpaBackOffDb: r2(hpa.state.backOff),
+    hpaP1dbDbm: r2(hpa.p1db),
+    hpaPsatDbm: r2(hpa.psatDbm),
+    hpaInDbm: r2(hpa.state.inputPower ?? Number.NEGATIVE_INFINITY),
+    hpaGainDb: radiating ? r2(hpa.state.gain) : null,
+    hpaOutDbm: radiating ? r2(hpa.state.outputPower) : null,
+    hpaOutW: radiating ? r2(10 ** ((hpa.state.outputPower - 30) / 10)) : null,
+    hpaOutputBackoffDb: radiating ? r2(hpa.state.outputBackoffDb ?? Number.NaN) : null,
+    hpaIm3Dbc: radiating ? r2(hpa.state.imdLevel) : null,
+    hpaAlcAtLimit: radiating ? Boolean(hpa.state.isAlcAtLimit) : null,
+    hpaTempEqC: r2(hpa.equilibriumTemperatureC()),
+  };
+}
 
 function sample(chain: Chain, tracks: Map<string, CarrierTrack>, noradId: number, adjacent: AdjacentTrack): void {
   const { antenna, frontEnd, receiver } = chain;
@@ -337,6 +396,7 @@ function snapshot(scenario: ScenarioData) {
       const chain = buildChain(station, index);
       const agcOnNoiseAlone = agcOnNoise(chain);
       const links = simSatellites.map((sat) => flyLink(chain, station, sat, startMs));
+      const txChain = txChainOf(chain, station, index);
       EventBus.destroy();
       return {
         stationId: station.id,
@@ -346,6 +406,7 @@ function snapshot(scenario: ScenarioData) {
         lnbNoiseTempK: r2(chain.lnb.state.noiseTemperature),
         agcOnNoiseAlone,
         links,
+        txChain,
       };
     })
   );

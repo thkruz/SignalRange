@@ -58,6 +58,15 @@ export interface BaseSignal {
   feed: string;
   /** whether the signal is degraded */
   isDegraded: boolean;
+  /**
+   * Phase-noise plateau the carrier has picked up from the LOs it went
+   * through, dBc/Hz (power sum; Phase 19.6). Undefined: clean.
+   */
+  phaseNoiseDbcHz?: number;
+  /** An amplifier intermodulation product or regrowth shoulder, not a carrier (Phase 19.6) */
+  isDistortion?: boolean;
+  /** Power a notch took off this carrier, dB (the analyzer draws the slice, not a lower carrier) */
+  notchLossDb?: number;
   /** whether the signal is an image instead of a video */
   isImage?: boolean;
   /** whether the signal is from an external source */

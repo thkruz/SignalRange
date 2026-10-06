@@ -63,7 +63,9 @@ export const vermontGroundStation = {
         phaseLockRange: 10000,
         gain: 23 as dB,
         outputPower: -10 as dBm,
-        saturationPower: 15 as dBm,
+        // P1dB of the BUC's output stage (Rapp, Psat 2.16 dB above, 19.6): the
+        // 16 dBm operating point runs 12 dB backed off (3.1 A, ~47 degC)
+        saturationPower: 28 as dBm,
         gainFlatness: 0.5 as dB,
         groupDelay: 3,
         phaseNoise: -100,
@@ -72,6 +74,11 @@ export const vermontGroundStation = {
       },
       hpa: {
         isPowered: true,
+        // 1 kW (P1dB 60 dBm) C-band TWTA in ALC (19.6): output = P1dB - backOff,
+        // 10 dB -> 50 dBm (100 W); Saleh curve, Psat 64.1 dBm (2.6 kW)
+        amplifierType: 'twta',
+        p1db: 60 as dBm,
+        isAlcEnabled: true,
         backOff: 10,
         outputPower: 50 as dBm,
         isOverdriven: false,
@@ -267,7 +274,7 @@ export const maineGroundStation = {
         phaseLockRange: 10000,
         gain: 0 as dB,
         outputPower: -10 as dBm,
-        saturationPower: 15 as dBm,
+        saturationPower: 28 as dBm, // same BUC model as VT-01 (19.6)
         gainFlatness: 0.5 as dB,
         groupDelay: 3,
         phaseNoise: -100,
@@ -276,6 +283,9 @@ export const maineGroundStation = {
       },
       hpa: {
         isPowered: true,
+        amplifierType: 'twta', // same 1 kW TWTA as VT-01 (19.6)
+        p1db: 60 as dBm,
+        isAlcEnabled: true,
         backOff: 6,
         outputPower: 50 as dBm,
         isOverdriven: false,
@@ -300,12 +310,12 @@ export const maineGroundStation = {
         lnaNoiseFigure: 0.6, // dB
         mixerNoiseFigure: 16.0, // dB
         noiseTemperature: 290, // K
-        noiseTemperatureStabilizationTime: 180, // seconds
+        noiseTemperatureStabilizationTime: 90, // seconds (19.6: lnb-thermally-stable waits it out)
         isExtRefLocked: false,
         noiseFloor: -140, // dBm/Hz
         frequencyError: 0, // Hz
         temperature: 25, // °C
-        thermalStabilizationTime: 180, // seconds
+        thermalStabilizationTime: 90, // seconds
       },
       agc: {
         isPowered: true,

@@ -1,3 +1,4 @@
+import { carrierTransmission, notchPower, transmissionLossDb } from '@app/equipment/rf-front-end/filter-response';
 import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { RFFrontEndModule, RFFrontEndModuleState } from '@app/equipment/rf-front-end/rf-front-end-module';
 import { SignalOrigin } from '@app/signal-origin';
@@ -25,6 +26,9 @@ export interface NotchFilterState extends RFFrontEndModuleState {
   /** Fixed 3 notch slots */
   notches: [NotchConfig, NotchConfig, NotchConfig];
 }
+
+/** Butterworth order of each notch's stop band (steep, as a tunable notch is) */
+export const NOTCH_ORDER = 4;
 
 /**
  * Default notch configuration
@@ -83,54 +87,45 @@ export abstract class NotchFilterModuleCore extends RFFrontEndModule<NotchFilter
       return;
     }
 
+    const active = this.state.notches.filter((notch) => notch.enabled);
     this.outputSignals = this.inputSignals.map((sig) => {
-      let power = sig.power;
-
-      // Check each enabled notch
-      for (const notch of this.state.notches) {
-        if (!notch.enabled) continue;
-
-        const attenuation = this.calculateNotchAttenuation_(sig.frequency, sig.bandwidth, notch);
-
-        power = (power - attenuation) as dBm;
+      if (active.length === 0) {
+        return { ...sig, origin: SignalOrigin.NOTCH_FILTER };
       }
+      const lossDb = NotchFilterModuleCore.carrierLossDb(sig.frequency, sig.bandwidth, active);
 
       return {
         ...sig,
-        power,
+        power: (sig.power - lossDb) as dBm,
+        notchLossDb: (sig.notchLossDb ?? 0) + lossDb,
         origin: SignalOrigin.NOTCH_FILTER,
       };
     });
   }
 
+  /** Power response of a set of notches at f (product of each notch's) */
+  static responseAt(f: number, notches: NotchConfig[]): number {
+    let h = 1;
+    for (const notch of notches) {
+      h *= notchPower(f, notch.centerFrequency * 1e6, notch.bandwidth * 1e6, notch.depth, NOTCH_ORDER);
+    }
+
+    return h;
+  }
+
   /**
-   * Calculate attenuation for a signal passing through a notch
-   * Uses overlap-based proportional attenuation
-   *
-   * @param signalFreqHz - Signal center frequency in Hz
-   * @param signalBwHz - Signal bandwidth in Hz
-   * @param notch - Notch configuration
-   * @returns Attenuation in dB
+   * Power a set of notches takes off a carrier, dB (Phase 19.6): the overlap
+   * integral of the stop bands with the carrier's spectrum. An 8 MHz, 30 dB
+   * notch inside a 36 MHz carrier costs the energy in that slice (about
+   * 1 dB); one centred on a 1 MHz interferer takes the full depth off it.
+   * (It used to be depth × overlap fraction: about 7 dB for the same notch.)
    */
-  private calculateNotchAttenuation_(signalFreqHz: number, signalBwHz: number, notch: NotchConfig): number {
-    const notchCenterHz = notch.centerFrequency * 1e6;
-    const notchBwHz = notch.bandwidth * 1e6;
+  static carrierLossDb(frequencyHz: number, bandwidthHz: number, notches: NotchConfig[]): number {
+    if (notches.length === 0) {
+      return 0;
+    }
 
-    const signalLow = signalFreqHz - signalBwHz / 2;
-    const signalHigh = signalFreqHz + signalBwHz / 2;
-    const notchLow = notchCenterHz - notchBwHz / 2;
-    const notchHigh = notchCenterHz + notchBwHz / 2;
-
-    // Calculate overlap
-    const overlapLow = Math.max(signalLow, notchLow);
-    const overlapHigh = Math.min(signalHigh, notchHigh);
-    const overlapWidth = Math.max(0, overlapHigh - overlapLow);
-
-    if (overlapWidth === 0) return 0;
-
-    // Proportional attenuation based on overlap fraction
-    const overlapFraction = overlapWidth / signalBwHz;
-    return notch.depth * overlapFraction;
+    return Math.min(200, transmissionLossDb(carrierTransmission(frequencyHz, bandwidthHz, (f) => NotchFilterModuleCore.responseAt(f, notches))));
   }
 
   /**

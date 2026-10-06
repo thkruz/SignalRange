@@ -31,10 +31,11 @@ import { tidemark1Satellite, tidemark2Satellite } from './satellites';
  *
  * Premise: Two minutes into what should have been a routine shift, three
  * unrelated faults converge on VT-01 simultaneously:
- *   1. BUC over-temperature (>70°C, high current draw - needs a mute to
- *      cool down)
- *   2. LNB reference unlock (sticky fault, clears on power cycle)
- *   3. HPA backoff drift (back-off dropped to 2 dB, HPA is overdriven)
+ *   1. BUC over-temperature (>70°C, 5.4 A high current draw from a failing
+ *      output stage - needs a mute to cool down)
+ *   2. LNB reference unlock (sticky fault, clears on power cycle; the
+ *      free-running LO costs the customer carrier ~3 dB of Es/N0)
+ *   3. HPA backoff drift (back-off dropped to 2 dB: 58 dBm / 631 W, overdriven)
  *
  * SeaLink's James Okafor calls about service degradation. Dana is in the
  * admin office and tells the player to take the lead. The player must
@@ -95,9 +96,9 @@ export const scenario16Data: ScenarioData = {
               isHpaEnabled: true,
               isHpaSwitchEnabled: true,
               backOff: 2, // Below 3 dB threshold -> isOverdriven true
-              outputPower: 53 as dBm,
+              outputPower: 58 as dBm, // ALC: P1dB 60 - 2 dB = 58 dBm (631 W)
               isOverdriven: true,
-              imdLevel: -26, // Poor IMD due to overdrive
+              imdLevel: -27, // IM3 (2-tone) at 2 dB back-off
               temperature: 60,
             },
             // LNB: sticky reference unlock fault, clears on power cycle
@@ -125,12 +126,13 @@ export const scenario16Data: ScenarioData = {
     // Brief: Friday, 0934 Local
     scenarioStartDate: '2026-02-20',
     scenarioStartWallTime: '09:34:00',
-    // Degraded BUC cooling. At 23 dB gain the driven target is 43.4 + 30 =
-    // 73.4 degC, so the unit sits above the 70 degC alarm until muted; muted
-    // it settles toward 55 degC and passes 70 about a minute after the mute.
-    // The fault clears once the cooling step is done, so the unmute later in
-    // the shift does not re-trip it. Current draw has no fault hook: the
-    // panel reads a normal ~3 A throughout.
+    // BUC fault (phase 19.6 physics): the output stage's bias has run away
+    // (+2.3 A, so 5.4 A from 24 V: the high-current alarm) and its fan is slow
+    // (R_th x 1.3). Driven at 23 dB it heads for ~75 degC, so it sits over the
+    // 70 degC alarm and creeps up until muted. Muting drops the stage bias:
+    // 2.6 A idle, target ~49 degC, so it passes 70 about a minute after the
+    // mute (10 min time constant). The fault clears once the cooling step is done, so the
+    // unmute later in the shift does not re-trip it.
     hardwareFaultEvents: [
       {
         id: 'vt-buc-overtemp',
@@ -138,7 +140,7 @@ export const scenario16Data: ScenarioData = {
         target: 'buc-overtemp',
         startTime: 0,
         endAfterObjectiveId: 'navigate-rx-analysis',
-        params: { startTemperatureC: 72, deltaC: 30 },
+        params: { startTemperatureC: 72, coolingFactor: 1.3, excessCurrentA: 2.3 },
       },
     ],
   },
@@ -238,7 +240,7 @@ export const scenario16Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Three concurrent, unrelated alarms. The BUC and HPA conditions threaten the equipment and the uplink spectrum; the LNB condition is degrading the customer receive.',
+              'Three concurrent, unrelated alarms. The BUC and HPA conditions threaten the equipment and the uplink spectrum; the LNB condition is degrading the customer receive (its free-running LO costs the TIDEMARK-1 carrier about 3 dB of Es/N0).',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -406,7 +408,7 @@ export const scenario16Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Below 3 dB back-off, the HPA is overdriven. IMD products spill into adjacent transponders and the amplifier wears prematurely. Restore back-off to the standard 10 dB margin.',
+              'Below 3 dB back-off, the HPA is overdriven. At 2 dB it puts out 58 dBm (631 W) with the IM3 (2-tone) readout near -27 dBc, against 50 dBm (100 W) and about -43 dBc at 10 dB: IMD products spill into adjacent transponders and the amplifier wears prematurely. Restore back-off to the standard 10 dB margin.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -540,7 +542,8 @@ export const scenario16Data: ScenarioData = {
               'Switch the LNB to internal reference to bypass the fault',
             ],
             correctIndex: 0,
-            explanation: 'A sticky reference lock fault clears on power cycle. The 10 MHz reference is available upstream (GPSDO locked); the LNB just needs to re-acquire.',
+            explanation:
+              'A sticky reference lock fault clears on power cycle. The 10 MHz reference is available upstream (GPSDO locked); the LNB just needs to re-acquire. Until it does, its LO free-runs (tens of kHz of LO error, poor phase noise) and the customer carrier runs about 3 dB down in Es/N0.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -718,7 +721,8 @@ export const scenario16Data: ScenarioData = {
               'Reduced power - IMD is down but the customer link cannot meet SLA power at 10 dB back-off',
             ],
             correctIndex: 0,
-            explanation: 'Standard 10 dB back-off keeps IMD products well below the coordination floor while still meeting SLA power.',
+            explanation:
+              'Standard 10 dB back-off (50 dBm, 100 W) puts the IM3 (2-tone) readout near -43 dBc, about 16 dB cleaner than the -27 dBc at 2 dB, well below the coordination floor while still meeting SLA power.',
             pointPenalty: 5,
           },
           mustMaintain: false,

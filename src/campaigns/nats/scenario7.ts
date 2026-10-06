@@ -41,7 +41,7 @@ import { ses10Satellite, tidemark1Satellite } from './satellites';
  * 1. Independent verification of RX chain status
  * 2. TX modem IF frequency calculation (RF - BUC LO = IF)
  * 3. BUC loopback mode for pre-transmission validation
- * 4. Troubleshooting a minor fault (BUC left unmuted in loopback at full gain, near saturation)
+ * 4. Troubleshooting a minor fault (BUC left unmuted in loopback at a 50 dB test gain)
  * 5. Full uplink enable sequence with encryption awareness
  *
  * Technical Reference (TIDEMARK-1):
@@ -81,16 +81,17 @@ export const scenario7Data: ScenarioData = {
         rfFrontEnds: [
           createRfFrontEnd(vermontGroundStation.rfFrontEnds[0], {
             // Post-maintenance state: TX chain disabled, RX operational
-            // BUC left unmuted in loopback at full gain by maintenance crew: the Dashboard
-            // shows "approaching saturation" + "in loopback" (the thermal/current model
-            // recomputes currentDraw every tick, so no high-current alarm; nats-s07-F1)
+            // BUC left unmuted in loopback at a 50 dB test gain by the maintenance crew.
+            // The TX modem is not keyed, so the BUC has no drive: the Dashboard shows only
+            // "BUC in loopback mode" (2.6 A idle). Keyed at -10 dBm, 50 dB would saturate it
+            // at 30.1 dBm and draw 5.0 A (high-current + saturation alarms); nats-s07-F1)
             buc: {
               isMuted: false, // Left unmuted by maintenance
               isLoopback: true, // Left in loopback mode by maintenance
               loFrequency: 7000 as MHz,
               isExtRefLocked: true,
-              gain: 50 as dB, // Normal operating gain
-              temperature: 52, // Elevated due to active loopback
+              gain: 50 as dB, // Maintenance test gain (station standard is 23 dB)
+              temperature: 52, // The thermal model settles it from here
             },
             hpa: {
               isHpaEnabled: false,
@@ -232,10 +233,10 @@ export const scenario7Data: ScenarioData = {
           description: 'Identify Active Alarms',
           params: {
             question: 'What alarm condition is currently displayed on the Dashboard?',
-            options: ['BUC approaching saturation, in loopback mode', 'LNB Reference Unlocked', 'HPA Output Fault', 'No active alarms'],
+            options: ['BUC in loopback mode', 'LNB Reference Unlocked', 'HPA Output Fault', 'No active alarms'],
             correctIndex: 0,
             explanation:
-              "The BUC is running near saturation and is still in loopback. The maintenance crew left it unmuted in loopback at full gain, so it's driving its output hard. We need to mute it and disable loopback before proceeding.",
+              'The BUC is still in loopback. The maintenance crew left it unmuted in loopback, so anything the modem sends goes straight back into our receive chain. We need to mute it and disable loopback before proceeding.',
             pointPenalty: 10,
             character: Character.DANA_TORRES,
           },
@@ -250,8 +251,8 @@ export const scenario7Data: ScenarioData = {
       // T0081: Diagnose network connectivity problems - fault diagnosis
       // S0582: Skill in troubleshooting system performance
       nice: ['T0081', 'S0582'],
-      title: 'Diagnose BUC Saturation',
-      description: 'Navigate to the TX Chain and identify why the BUC is running near saturation.',
+      title: 'Diagnose BUC Test Configuration',
+      description: 'Navigate to the TX Chain and identify what else maintenance left in the BUC test setup.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['check-dashboard-status'],
       timeLimitSeconds: 3 * 60,
@@ -267,11 +268,11 @@ export const scenario7Data: ScenarioData = {
           type: 'status-check',
           description: 'Identify Cause',
           params: {
-            question: 'Looking at the BUC panel, what is the likely cause of the saturation alarm?',
+            question: 'Looking at the BUC panel, what would drive the BUC into saturation the moment the modem keys up?',
             options: ['BUC has been on for a few hours and is overheating', 'BUC gain is set too high', 'External reference is unlocked', 'BUC temperature is too low'],
             correctIndex: 1,
             explanation:
-              "The BUC gain is set to 50 dB, and since it's unmuted in loopback mode it's driving its output past its 1 dB compression point (negative P1dB margin). The maintenance crew likely forgot to mute it after testing.",
+              "The BUC gain is set to 50 dB; the station standard is 23 dB. The modem's -10 dBm plus 50 dB asks for 40 dBm from a BUC whose 1 dB compression point is 28 dBm: it would sit at about 30 dBm, 10 dB into compression, draw about 5 A and trip the high-current alarm. The maintenance crew likely forgot to mute it after testing.",
             pointPenalty: 10,
             character: Character.DANA_TORRES,
           },
@@ -287,7 +288,7 @@ export const scenario7Data: ScenarioData = {
       // K0740: Knowledge of network performance management
       nice: ['S0582', 'K0740'],
       title: 'Secure BUC State',
-      description: 'Mute the BUC and disable loopback to take it out of saturation.',
+      description: 'Mute the BUC and disable loopback so nothing can drive it until you are ready.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['diagnose-buc-high-current'],
       timeLimitSeconds: 2 * 60,
@@ -319,7 +320,7 @@ export const scenario7Data: ScenarioData = {
       // T0153: Monitor network capacity and performance - confirming resolution
       nice: ['K0741', 'T0153'],
       title: 'Verify Fault Cleared',
-      description: 'Confirm the Dashboard no longer shows the BUC saturation and loopback alarms.',
+      description: 'Confirm the Dashboard no longer shows the BUC loopback alarm.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['resolve-buc-high-current'],
       timeLimitSeconds: 2 * 60,
@@ -343,8 +344,7 @@ export const scenario7Data: ScenarioData = {
               'Unknown - BUC not reporting, no current or alarm data',
             ],
             correctIndex: 0,
-            explanation:
-              'The BUC has been muted and loopback disabled. The saturation and loopback alarms have cleared. Always verify alarm resolution on the Dashboard before proceeding.',
+            explanation: 'The BUC has been muted and loopback disabled. The loopback alarm has cleared. Always verify alarm resolution on the Dashboard before proceeding.',
             pointPenalty: 5,
             character: Character.DANA_TORRES,
           },
@@ -1052,7 +1052,8 @@ export const scenario7Data: ScenarioData = {
       // K0740: Knowledge of network performance management
       nice: ['T0153', 'K0740'],
       title: 'Increase HPA Output Power',
-      description: 'Lower the HPA backoff until output is above 400 W, the minimum for the TIDEMARK-1 link budget.',
+      description:
+        'Lower the HPA back-off until output is above 400 W, the minimum for the TIDEMARK-1 link budget. The HPA is 60 dBm (1 kW) at P1dB: 3 dB of back-off gives 57 dBm (501 W), 4 dB gives only 398 W. Below 3 dB it trips the overdrive alarm.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['enable-hpa-output'],
       timeLimitSeconds: 2 * 60,
@@ -1152,7 +1153,7 @@ export const scenario7Data: ScenarioData = {
       'diagnose-buc-high-current': {
         text: `
         <p>
-          Bingo. We'll worry about the gain later. For now just mute it and disable loopback so we can clear those alarms and pull it out of saturation.
+          Bingo. We'll worry about the gain later. For now just mute it and disable loopback so we can clear that alarm before anything keys up into it.
         </p>
         `,
         character: Character.DANA_TORRES,
@@ -1162,7 +1163,7 @@ export const scenario7Data: ScenarioData = {
       'resolve-buc-high-current': {
         text: `
         <p>
-          Good catch. The BUC is out of saturation now.
+          Good catch. The BUC is safe now.
         </p>
         `,
         character: Character.DANA_TORRES,
@@ -1208,7 +1209,7 @@ export const scenario7Data: ScenarioData = {
       'reduce-buc-gain': {
         text: `
         <p>
-          Before you loop back, drop the BUC gain to 20 dB or you'll overload the receive chain. Same saturation we saw this morning.
+          Before you loop back, drop the BUC gain to 20 dB or you'll overload the receive chain. At the 50 dB maintenance left, the modem would drive it straight into saturation.
         </p>
         `,
         character: Character.DANA_TORRES,

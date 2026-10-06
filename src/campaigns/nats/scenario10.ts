@@ -499,7 +499,8 @@ export const scenario10Data: ScenarioData = {
               'Irrelevant - only the HPA output power number matters and backoff is a bench setting for the crew',
             ],
             correctIndex: 0,
-            explanation: '10 dB is a quiet-night default. For a paying customer expecting sustained margin, 6-7 dB buys real EIRP - so long as the amp stays linear.',
+            explanation:
+              '10 dB is a quiet-night default: 50 dBm, 100 W. For a paying customer expecting sustained margin, 6 dB gives 54 dBm (251 W), 4 dB more EIRP - so long as the amp stays linear.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -579,7 +580,7 @@ export const scenario10Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Closer to saturation means more IMD. The decision is to spend a small amount of linearity for meaningful EIRP - then watch for overdrive across the window.',
+              'Closer to saturation means more IMD: third-order products get about 2 dB worse for every dB of back-off given up, so 10 -> 6 dB takes the IM3 (2-tone) readout from about -43 to -35 dBc. The decision is to spend a small amount of linearity for meaningful EIRP - then watch for overdrive (below 3 dB of back-off) across the window.',
             pointPenalty: 5,
           },
           mustMaintain: false,

@@ -272,6 +272,10 @@ export interface SimulationSettings {
       deltaC?: number;
       /** buc-overtemp: temperature reading at trip time */
       startTemperatureC?: number;
+      /** buc-overtemp: thermal resistance multiplier (degraded fan/heatsink), >= 1 (19.6) */
+      coolingFactor?: number;
+      /** buc-overtemp: extra supply current from a failing output stage, A; muting removes it (19.6) */
+      excessCurrentA?: number;
     };
     /** Written to the ops log when the fault trips (omit to keep it silent) */
     label?: string;

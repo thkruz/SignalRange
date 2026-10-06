@@ -86,15 +86,29 @@ export class SignalPathManager {
   systemNoiseK(): number {
     const antenna = this.rfFrontEnd_.antenna;
     if (antenna) {
-      return antenna.systemNoise().systemK;
+      const noise = antenna.systemNoise();
+
+      return noise.systemK - noise.antennaAtLnaK + this.antennaNoiseAtLnaK();
     }
 
     return this.rfFrontEnd_.lnbModule.state.noiseTemperature;
   }
 
-  /** Antenna noise alone (no LNB) referred to the LNA input, K */
+  /**
+   * Antenna noise alone (no LNB) referred to the LNA input, K. A faulted OMT
+   * whose loss has risen above its nominal is one more passive ahead of the
+   * LNA (Phase 19.6): it attenuates the antenna's noise like the carriers and
+   * adds its own at 290 K.
+   */
   antennaNoiseAtLnaK(): number {
-    return this.rfFrontEnd_.antenna?.systemNoise().antennaAtLnaK ?? 0;
+    const antennaK = this.rfFrontEnd_.antenna?.systemNoise().antennaAtLnaK ?? 0;
+    const excessDb = this.rfFrontEnd_.omtModule?.excessRxInsertionLossDb ?? 0;
+    if (!(excessDb > 0)) {
+      return antennaK;
+    }
+    const a = 10 ** (-excessDb / 10);
+
+    return antennaK * a + 290 * (1 - a);
   }
 
   /** Signals at the point they exit the OMT */
@@ -239,8 +253,9 @@ export class SignalPathManager {
         if (!this.rfFrontEnd_.antenna.state.isPowered || !this.rfFrontEnd_.omtModule.state.isPowered) {
           return Number.NEGATIVE_INFINITY as dB; // No signal if antenna or OMT is unpowered
         }
-        // The OMT's insertion loss is not applied to carriers (DEV-RF-05), so
-        // the noise does not pay it either: one reference plane
+        // The OMT's nominal loss is inside the antenna's feed loss (the plane
+        // carriers are referred to); a fault's excess is already on the
+        // carriers and in the noise temperature
         return 0 as dB;
       }
 
@@ -248,7 +263,7 @@ export class SignalPathManager {
         if (!this.rfFrontEnd_.antenna.state.isPowered || !this.rfFrontEnd_.omtModule.state.isPowered || !this.rfFrontEnd_.lnbModule.state.isPowered) {
           return Number.NEGATIVE_INFINITY as dB; // No signal if any component is unpowered
         }
-        // LNA gain (OMT insertion loss not applied, see RX_RF_POST_OMT)
+        // LNA gain (OMT loss referred as at RX_RF_POST_OMT)
         return this.lnaGain;
       }
 
@@ -270,9 +285,13 @@ export class SignalPathManager {
       case TapPoint.TX_RF_POST_BUC:
         return this.rfFrontEnd_.bucModule.state.gain;
       case TapPoint.TX_RF_POST_HPA:
-        return (this.rfFrontEnd_.bucModule.state.gain + this.rfFrontEnd_.hpaModule.state.gain) as dB;
+        return (this.rfFrontEnd_.bucModule.state.gain + this.rfFrontEnd_.hpaModule.state.gain - this.rfFrontEnd_.cableLossDb('bucToHpa')) as dB;
       case TapPoint.TX_RF_POST_OMT:
-        return (this.rfFrontEnd_.bucModule.state.gain + this.rfFrontEnd_.hpaModule.state.gain - this.rfFrontEnd_.omtModule.state.insertionLoss) as dB;
+        return (this.rfFrontEnd_.bucModule.state.gain +
+          this.rfFrontEnd_.hpaModule.state.gain -
+          this.rfFrontEnd_.cableLossDb('bucToHpa') -
+          this.rfFrontEnd_.cableLossDb('hpaToFeed') -
+          this.rfFrontEnd_.omtModule.state.insertionLoss) as dB;
       case TapPoint.TX_IF:
       default: {
         // For TX path or unknown, return 0 dB

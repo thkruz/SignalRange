@@ -110,50 +110,7 @@ export class HPAAdapter {
     // staged input and pending indicator honest
     this.syncStagedFromState_(state.backOff);
 
-    // Update Input Power display - shows BUC output, or "--" when BUC in loopback
-    const inputPowerDisplay = this.domCache_.get('inputPowerDisplay');
-    if (inputPowerDisplay) {
-      const inputSignals = this.hpaModule.inputSignals;
-      if (isPowered && inputSignals.length > 0) {
-        inputPowerDisplay.textContent = `${inputSignals[0].power.toFixed(1)} dBm`;
-      } else {
-        inputPowerDisplay.textContent = '-- dBm';
-      }
-    }
-
-    // Update Power Output displays
-    const outputPowerDisplay = this.domCache_.get('outputPowerDisplay');
-    if (outputPowerDisplay) {
-      outputPowerDisplay.textContent = isPowered ? `${state.outputPower.toFixed(1)} dBm` : '-- dBm';
-    }
-
-    // Update power meter visualization
-    if (isPowered) {
-      this.updatePowerMeter_(state.outputPower);
-    } else {
-      this.clearPowerMeter_();
-    }
-
-    // Update power in watts
-    const powerWatts = this.domCache_.get('powerWatts');
-    if (powerWatts) {
-      if (isPowered) {
-        const watts = 10 ** ((state.outputPower - 30) / 10);
-        if (watts >= 1) {
-          powerWatts.textContent = `${watts.toFixed(0)} W`;
-        } else {
-          powerWatts.textContent = `${(watts * 1000).toFixed(0)} mW`;
-        }
-      } else {
-        powerWatts.textContent = '-- W';
-      }
-    }
-
-    // Update P1dB display
-    const p1dbDisplay = this.domCache_.get('p1dbDisplay');
-    if (p1dbDisplay) {
-      p1dbDisplay.textContent = isPowered ? `${this.hpaModule.p1db.toFixed(1)} dBm` : '-- dBm';
-    }
+    this.syncAmplifierReadouts_();
 
     // Update temperature display
     const temperatureDisplay = this.domCache_.get('temperatureDisplay');
@@ -173,21 +130,54 @@ export class HPAAdapter {
       }
     }
 
-    // Update IMD display
-    const imdDisplay = this.domCache_.get('imdDisplay');
-    if (imdDisplay) {
-      imdDisplay.textContent = isPowered ? `${state.imdLevel.toFixed(1)} dBc` : '-- dBc';
-    }
-
-    // Update gain display
-    const gainDisplay = this.domCache_.get('gainDisplay');
-    if (gainDisplay) {
-      gainDisplay.textContent = isPowered && state.isHpaEnabled ? `${state.gain.toFixed(1)} dB` : '-- dB';
-    }
-
     // Update alarm badge
     const alarms = this.getAlarmsFromModule_();
     this.alarmBadge_.update(alarms);
+  }
+
+  /** True while the HPA is putting RF out (powered, enabled, driven) */
+  private isRadiating_(state: HPAState): boolean {
+    return state.isPowered && state.isHpaEnabled && this.hpaModule.outputSignals.length > 0;
+  }
+
+  /**
+   * The amplifier's power readouts from one state (Phase 19.6): input +
+   * gain = output, back-off = P1dB - output, IM3 at this drive. "--" for any
+   * figure that has no meaning (off, disabled, no drive).
+   */
+  private syncAmplifierReadouts_(update: Partial<HPAState> = {}): void {
+    const state: HPAState = { ...this.hpaModule.state, ...update };
+    const isPowered = state.isPowered;
+    const radiating = this.isRadiating_(state);
+    const set = (key: string, text: string): void => {
+      const el = this.domCache_.get(key);
+      if (el) el.textContent = text;
+    };
+
+    const hasDrive = isPowered && state.inputPower !== undefined && state.inputPower > -89;
+    set('inputPowerDisplay', hasDrive ? `${(state.inputPower as number).toFixed(1)} dBm` : '-- dBm');
+    set('outputPowerDisplay', radiating ? `${state.outputPower.toFixed(1)} dBm` : '-- dBm');
+    set('p1dbDisplay', isPowered ? `${this.hpaModule.p1db.toFixed(1)} dBm` : '-- dBm');
+    set('oboDisplay', radiating && state.outputBackoffDb !== null && state.outputBackoffDb !== undefined ? `${state.outputBackoffDb.toFixed(1)} dB` : '-- dB');
+    set('gainDisplay', isPowered && state.isHpaEnabled ? `${state.gain.toFixed(1)} dB` : '-- dB');
+    set('imdDisplay', radiating ? `${state.imdLevel.toFixed(1)} dBc` : '-- dBc');
+
+    if (radiating) {
+      const watts = 10 ** ((state.outputPower - 30) / 10);
+      set('powerWatts', watts >= 1 ? `${watts.toFixed(0)} W` : `${(watts * 1000).toFixed(0)} mW`);
+      this.updatePowerMeter_(state.outputPower);
+    } else {
+      set('powerWatts', isPowered ? '0 W' : '-- W');
+      this.clearPowerMeter_();
+    }
+
+    // ALC switch and the meaning of the back-off control follow the mode
+    const alcSwitch = this.domCache_.get('alcSwitch') as HTMLInputElement | undefined;
+    if (alcSwitch && document.activeElement !== alcSwitch && alcSwitch.checked !== this.hpaModule.isAlcEnabled) {
+      alcSwitch.checked = this.hpaModule.isAlcEnabled;
+    }
+    if (alcSwitch) alcSwitch.disabled = !isPowered;
+    set('backOffLabel', this.hpaModule.isAlcEnabled ? 'Output Back-off from P1dB (ALC setpoint)' : 'Output Back-off from P1dB (fixed gain, at rated drive)');
   }
 
   private clearPowerMeter_(): void {
@@ -220,6 +210,15 @@ export class HPAAdapter {
     this.domCache_.set('powerMeter', qs('#hpa-power-meter', this.containerEl));
     this.domCache_.set('powerWatts', qs('#hpa-power-watts', this.containerEl));
     this.domCache_.set('p1dbDisplay', qs('#hpa-p1db-display', this.containerEl));
+    // Phase 19.6 controls/readouts (optional in older layouts)
+    for (const [key, id] of [
+      ['oboDisplay', '#hpa-obo-display'],
+      ['alcSwitch', '#hpa-alc'],
+      ['backOffLabel', '#hpa-backoff-label'],
+    ] as const) {
+      const el = this.containerEl.querySelector<HTMLElement>(id);
+      if (el) this.domCache_.set(key, el);
+    }
 
     // Amplifier Status displays
     this.domCache_.set('gainDisplay', qs('#hpa-gain-display', this.containerEl));
@@ -263,6 +262,20 @@ export class HPAAdapter {
     const hpaEnableSwitch = this.domCache_.get('hpaEnableSwitch') as HTMLInputElement;
     hpaEnableSwitch?.addEventListener('change', this.hpaEnableHandler_.bind(this));
     this.boundHandlers.set('hpaEnable', this.hpaEnableHandler_.bind(this));
+
+    // ALC switch - immediate effect (the back-off control's meaning follows it)
+    const alcSwitch = this.domCache_.get('alcSwitch') as HTMLInputElement | undefined;
+    const alcHandler = this.alcHandler_.bind(this);
+    alcSwitch?.addEventListener('change', alcHandler);
+    this.boundHandlers.set('alc', alcHandler);
+  }
+
+  private alcHandler_(e: Event): void {
+    const isChecked = (e.target as HTMLInputElement).checked;
+    if (this.hpaModule.isAlcEnabled !== isChecked) {
+      this.hpaModule.handleAlcToggle(isChecked);
+    }
+    this.syncAmplifierReadouts_();
   }
 
   private backOffInputHandler_(e: Event) {
@@ -391,54 +404,7 @@ export class HPAAdapter {
       if (hpaEnableSwitch) hpaEnableSwitch.checked = state.isHpaEnabled;
     }
 
-    // Update Input Power display - shows BUC output, or "--" when BUC in loopback
-    const inputPowerDisplay = this.domCache_.get('inputPowerDisplay');
-    if (inputPowerDisplay) {
-      const inputSignals = this.hpaModule.inputSignals;
-      if (isPowered && inputSignals.length > 0) {
-        inputPowerDisplay.textContent = `${inputSignals[0].power.toFixed(1)} dBm`;
-      } else {
-        inputPowerDisplay.textContent = '-- dBm';
-      }
-    }
-
-    // Update Power Output displays - show "--" when powered off
-    const outputPowerDisplay = this.domCache_.get('outputPowerDisplay');
-    if (outputPowerDisplay) {
-      if (isPowered && state.outputPower !== undefined) {
-        outputPowerDisplay.textContent = `${state.outputPower.toFixed(1)} dBm`;
-      } else if (!isPowered) {
-        outputPowerDisplay.textContent = '-- dBm';
-      }
-    }
-
-    // Update power meter visualization
-    if (isPowered && state.outputPower !== undefined) {
-      this.updatePowerMeter_(state.outputPower);
-    } else if (!isPowered) {
-      this.clearPowerMeter_();
-    }
-
-    // Update power in watts
-    const wattsDisplay = this.domCache_.get('powerWatts');
-    if (wattsDisplay) {
-      if (isPowered && state.outputPower !== undefined) {
-        const watts = 10 ** ((state.outputPower - 30) / 10);
-        if (watts >= 1) {
-          wattsDisplay.textContent = `${watts.toFixed(0)} W`;
-        } else {
-          wattsDisplay.textContent = `${(watts * 1000).toFixed(0)} mW`;
-        }
-      } else if (!isPowered) {
-        wattsDisplay.textContent = '-- W';
-      }
-    }
-
-    // Update P1dB display
-    const p1dbDisplay = this.domCache_.get('p1dbDisplay');
-    if (p1dbDisplay) {
-      p1dbDisplay.textContent = isPowered ? '50.0 dBm' : '-- dBm';
-    }
+    this.syncAmplifierReadouts_(state);
 
     // Update temperature display
     const temperatureDisplay = this.domCache_.get('temperatureDisplay');
@@ -462,28 +428,6 @@ export class HPAAdapter {
       }
     }
 
-    // Update IMD display
-    const imdDisplay = this.domCache_.get('imdDisplay');
-    if (imdDisplay) {
-      if (isPowered && state.imdLevel !== undefined) {
-        imdDisplay.textContent = `${state.imdLevel.toFixed(1)} dBc`;
-      } else if (!isPowered) {
-        imdDisplay.textContent = '-- dBc';
-      }
-    }
-
-    // Update gain display
-    // Gain is only meaningful while the HPA is enabled and amplifying
-    const gainDisplay = this.domCache_.get('gainDisplay');
-    if (gainDisplay) {
-      const isEnabled = state.isHpaEnabled ?? this.hpaModule.state.isHpaEnabled;
-      if (isPowered && isEnabled && state.gain !== undefined) {
-        gainDisplay.textContent = `${state.gain.toFixed(1)} dB`;
-      } else if (!isPowered || !isEnabled) {
-        gainDisplay.textContent = '-- dB';
-      }
-    }
-
     // Update alarm badge - immediate feedback
     const alarms = this.getAlarmsFromModule_();
     this.alarmBadge_.update(alarms);
@@ -497,9 +441,9 @@ export class HPAAdapter {
     const powerMeter = this.domCache_.get('powerMeter');
     if (!powerMeter) return;
 
-    // P1dB is 50 dBm, so scale from ~30 dBm (low) to 50 dBm (max)
-    const minPower = 30;
-    const maxPower = 63;
+    // Scale from 30 dB under Psat to Psat
+    const maxPower = this.hpaModule.psatDbm;
+    const minPower = maxPower - 30;
     const normalized = Math.max(0, Math.min(1, (outputPowerDbm - minPower) / (maxPower - minPower)));
     const activeSegments = Math.round(normalized * 10);
 
@@ -562,6 +506,9 @@ export class HPAAdapter {
     const backOffHandler = this.boundHandlers.get('backOffInput');
     const powerHandler = this.boundHandlers.get('power');
     const hpaEnableHandler = this.boundHandlers.get('hpaEnable');
+    const alcSwitch = this.domCache_.get('alcSwitch') as HTMLInputElement | undefined;
+    const alcHandler = this.boundHandlers.get('alc');
+    if (alcSwitch && alcHandler) alcSwitch.removeEventListener('change', alcHandler);
 
     if (backOffInput && backOffHandler) backOffInput.removeEventListener('change', backOffHandler);
     if (powerSwitch && powerHandler) powerSwitch.removeEventListener('change', powerHandler);

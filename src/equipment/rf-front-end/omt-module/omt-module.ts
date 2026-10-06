@@ -34,6 +34,17 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
   // Signals
   rxSignalsOut: RfSignal[] = [];
   txSignalsOut: RfSignal[] = [];
+  /** The HPA's IM3 products / regrowth after the OMT (TX analyzer only) */
+  txDistortionOut: RfSignal[] = [];
+
+  /**
+   * The unit's own insertion loss as built (the configured value), dB. On
+   * receive it is part of the antenna's feed loss: the anchor datasheets quote
+   * gain at the feed flange, after the OMT, so only a fault that raises
+   * `insertionLoss` above this costs the carriers (and adds its noise). On
+   * transmit the whole loss is charged (Phase 19.6, DEV-RF-05).
+   */
+  readonly nominalInsertionLossDb: number;
 
   /**
    * Get default state for OMT module
@@ -63,6 +74,7 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
     super(state, rfFrontEnd, 'rf-fe-omt-pol', unit);
     this.unitIsolationDb_ = (state.crossPolIsolation ?? 28.5) + random() * 5;
     this.state.crossPolIsolation = this.unitIsolationDb_;
+    this.nominalInsertionLossDb = state.insertionLoss ?? 0.5;
 
     // Create UI components
     this.helpBtn_ = HelpButton.create(
@@ -145,10 +157,11 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
     // feed (circularHandedness), so applying isolation here would double-count.
     const isCircularMode = this.state.rxPolarization === 'LHCP' || this.state.rxPolarization === 'RHCP';
 
+    const excessRxLoss = this.excessRxInsertionLossDb;
     this.rxSignalsOut = this.rxSignalsIn.map((sig) => {
       if (!isCircularMode && sig.polarization !== this.state.effectiveRxPol) {
         // Apply cross-pol isolation loss
-        const isolatedPower = sig.power - this.state.crossPolIsolation;
+        const isolatedPower = sig.power - this.state.crossPolIsolation - excessRxLoss;
         return {
           ...sig,
           power: isolatedPower as dBm,
@@ -157,17 +170,27 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
         };
       }
 
-      return sig;
+      return excessRxLoss > 0 ? { ...sig, power: (sig.power - excessRxLoss) as dBm } : sig;
     });
 
-    // Set TX signal polarization based on OMT setting
-    // Any changes to the TX signals' polarization by the antenna module
-    // will happen inside the antenna module itself
-    this.txSignalsOut = this.txSignalsIn.map((sig: RfSignal) => ({
+    // Set TX signal polarization based on OMT setting, and charge the
+    // insertion loss (and the HPA-to-feed waveguide) on the way out. Any
+    // changes to the TX signals' polarization by the antenna module will
+    // happen inside the antenna module itself
+    const txLoss = this.state.insertionLoss + this.rfFrontEnd_.cableLossDb('hpaToFeed');
+    const toFeed = (sig: RfSignal): RfSignal => ({
       ...sig,
+      power: (sig.power - txLoss) as dBm,
       polarization: this.state.txPolarization,
       origin: SignalOrigin.OMT_TX,
-    }));
+    });
+    this.txSignalsOut = this.txSignalsIn.map(toFeed);
+    this.txDistortionOut = this.rfFrontEnd_.hpaModule.distortionSignals.map(toFeed);
+  }
+
+  /** Receive loss above the unit's nominal (a fault), dB; 0 when healthy */
+  get excessRxInsertionLossDb(): number {
+    return Math.max(0, this.state.insertionLoss - this.nominalInsertionLossDb);
   }
 
   get txSignalsIn(): RfSignal[] {

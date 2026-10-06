@@ -405,7 +405,7 @@ export const scenario9Data: ScenarioData = {
               'Output stage saturation - the amplifier is clipping at its peak',
             ],
             correctIndex: 0,
-            explanation: 'Headroom is the goal. No drama on TIDEMARK-1.',
+            explanation: 'Headroom is the goal: 10 dB under P1dB is 50 dBm (100 W) from a 1 kW amplifier, with the IM3 (2-tone) readout around -43 dBc. No drama on TIDEMARK-1.',
             pointPenalty: 5,
           },
           mustMaintain: false,

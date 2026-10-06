@@ -136,8 +136,9 @@ const SCENARIO_12_OBJECTIVES: Scenario12Objective[] = [
       loFrequency: 5250,
       gain: 65,
     },
-    // lnb-thermally-stable holds for 30 s (maintainDuration)
-    waitAfterMs: 34000,
+    // ME-02-class warm-up: lnb-thermally-stable passes 90 s after power-on
+    // (panel shows "Thermal: Warming m:ss"), then holds for 30 s (maintainDuration)
+    waitAfterMs: 130000,
   },
   {
     id: 'acquire-tm1-beacon',
@@ -618,6 +619,10 @@ test.describe('Scenario 12 Full Completion', () => {
       // Handover transfer + service-continuity evaluation can be slow
       if (objective.type === 'execute-handover') {
         test.setTimeout(90000);
+      }
+      // Long settle waits (LNB warm-up) outlast the default 60 s
+      if (objective.waitAfterMs && objective.waitAfterMs > 45000) {
+        test.setTimeout(objective.waitAfterMs + 60000);
       }
       await executeObjective(page, missionControlPage, objective);
     });

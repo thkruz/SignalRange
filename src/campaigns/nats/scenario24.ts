@@ -118,8 +118,8 @@ export const scenario24Data: ScenarioData = {
               isExtRefLocked: true,
               gain: 33 as dB,
               saturationPower: 28 as dBm,
-              temperature: 63,
-              currentDraw: 4.1,
+              temperature: 63, // set by the 'me02-buc-heat' fault below
+              currentDraw: 4.0, // the model settles at 4.0 A at 33 dB, 3.1 A at 23 dB
             },
             hpa: {
               isHpaEnabled: true,
@@ -200,16 +200,18 @@ export const scenario24Data: ScenarioData = {
     ],
     // The BUC heat is a staged cooling fault, not a seeded start value: the
     // thermal model relaxes a plain `temperature: 63` toward the drive-derived
-    // target (~51 C at 33 dB) within moments (nats-s24-F5). deltaC 15 holds a
-    // 33 dB BUC climbing slowly toward ~66 C (pre-alarm) and lets the 23 dB
-    // de-rate bend it down toward ~58 C. Rates are recalibrated in Phase 19.6.
+    // target within moments (nats-s24-F5). The slow fan holds a 33 dB BUC
+    // climbing ~0.2 C/min from 63 toward ~65 C (pre-alarm); the 23 dB de-rate
+    // drops the current to 3.1 A at once and turns the temperature down.
     hardwareFaultEvents: [
       {
         id: 'me02-buc-heat',
         groundStationId: 'ME-02',
         target: 'buc-overtemp',
         startTime: 0,
-        params: { startTemperatureC: 63, deltaC: 15 },
+        // Same unit, same fan (phase 19.6): R_th x 1.38 heads for 65 degC at
+        // 33 dB (4.04 A), 55.5 degC at 23 dB (3.07 A)
+        params: { startTemperatureC: 63, coolingFactor: 1.38 },
       },
     ],
     workingDocument: {
@@ -408,7 +410,7 @@ export const scenario24Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Pattern recognition is the payoff of experience: you diagnosed this exact signature once, and the swap never cleared procurement. The de-rate cuts the dissipation at the source without taking the customer down - and you log that the swap is still pending.',
+              'Pattern recognition is the payoff of experience: you diagnosed this exact signature once (4.0 A at 33 dB against 3.1 A at 23 dB, on a unit with a degraded fan), and the swap never cleared procurement. The de-rate cuts the dissipation at the source without taking the customer down - and you log that the swap is still pending.',
             pointPenalty: 5,
             documentSection: 'ME-02 / TM-2',
             documentLine: 'BUC over-gain thermal trend (recurrence - swap still pending procurement). Action: de-rate to 23 dB operating.',

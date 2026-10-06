@@ -1,3 +1,4 @@
+import { butterworthBandpassPower, carrierTransmission, transmissionLossDb } from '@app/equipment/rf-front-end/filter-response';
 import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { RFFrontEndModule } from '@app/equipment/rf-front-end/rf-front-end-module';
 import { SignalOrigin } from '@app/signal-origin';
@@ -45,7 +46,18 @@ export interface IfFilterBankState {
   bandwidth: MHz; // MHz
   insertionLoss: number; // dB
   noiseFloor: number; // dBm
+  /**
+   * Passband centre, MHz (Phase 19.6). Absent: the filter is the channel
+   * filter of whatever carrier is being examined (centred on each carrier),
+   * the bank's legacy behaviour; set, carriers off-centre fall on its skirts.
+   */
+  centerFrequency?: MHz;
+  /** Butterworth order of the passband response (default 6) */
+  order?: number;
 }
+
+/** Default Butterworth order of the IF filter */
+export const DEFAULT_IF_FILTER_ORDER = 6;
 
 /**
  * IF Filter Bank Module Core - Business Logic Layer
@@ -79,25 +91,32 @@ export abstract class IfFilterBankModuleCore extends RFFrontEndModule<IfFilterBa
   /**
    * Update component state and check for faults
    *
-   * Filter clips signals to its passband bandwidth but does NOT reduce power.
-   * Power field represents total power (dBm), not power spectral density.
-   * A wideband signal passing through a narrow filter retains its power
-   * in the passband portion (only insertion loss is applied).
+   * Phase 19.6: each carrier pays the insertion loss plus the overlap
+   * integral of the Butterworth passband with its raised-cosine spectrum (a
+   * 36 MHz carrier in the 40 MHz filter loses a tenth of a dB on the skirts; a
+   * carrier off a configured centre loses what falls outside). The carrier's
+   * `bandwidth` is clipped to the part inside the -3 dB passband, which is
+   * what the demodulator checks against its FEC's tolerance.
    */
   update(): void {
     const filterBandwidthHz = this.state.bandwidth * 1e6;
+    const order = this.state.order ?? DEFAULT_IF_FILTER_ORDER;
+    const fixedCentreHz = this.state.centerFrequency !== undefined ? this.state.centerFrequency * 1e6 : null;
 
     this.outputSignals = this.inputSignals.map((sig: IfSignal) => {
-      // Clip bandwidth to filter bandwidth (power stays the same - total power model)
-      const clippedBandwidth = Math.min(sig.bandwidth, filterBandwidthHz) as Hertz;
+      const centreHz = fixedCentreHz ?? sig.frequency;
+      const transmission = carrierTransmission(sig.frequency, sig.bandwidth, (f) => butterworthBandpassPower(f, centreHz, filterBandwidthHz, order));
+      const skirtLossDb = Math.min(200, transmissionLossDb(transmission));
 
-      // Only apply insertion loss, no bandwidth-based power reduction
-      const outputPower = (sig.power - this.state.insertionLoss) as dBm;
+      // The part of the carrier inside the -3 dB passband
+      const low = Math.max(sig.frequency - sig.bandwidth / 2, centreHz - filterBandwidthHz / 2);
+      const high = Math.min(sig.frequency + sig.bandwidth / 2, centreHz + filterBandwidthHz / 2);
+      const clippedBandwidth = Math.max(0, Math.min(sig.bandwidth, high - low)) as Hertz;
 
       return {
         ...sig,
         bandwidth: clippedBandwidth,
-        power: outputPower,
+        power: (sig.power - this.state.insertionLoss - skirtLossDb) as dBm,
         origin: SignalOrigin.IF_FILTER_BANK,
       };
     });

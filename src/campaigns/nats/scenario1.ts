@@ -616,7 +616,7 @@ export const scenario1Data: ScenarioData = {
             options: ['Transmitting with 10 dB backoff', 'Powered on but not enabled (safe standby)', 'Transmitting at full power', 'Powered off completely'],
             correctIndex: 0,
             explanation:
-              'The HPA is powered on and transmitting with 10 dB backoff, which is a safe condition for routine operations. This reduces stress on the amplifier while still allowing signal transmission.',
+              'The HPA is powered on and transmitting with 10 dB backoff: 50 dBm (100 W), 10 dB under its 60 dBm (1 kW) compression point. That is a safe condition for routine operations. It reduces stress on the amplifier and keeps intermodulation low while still allowing signal transmission.',
             pointPenalty: 10,
           },
           mustMaintain: false,

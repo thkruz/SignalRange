@@ -282,11 +282,25 @@ describe('CouplerModule', () => {
       expect(typeof output.power).toBe('number');
     });
 
-    it('should apply coupling factor to power', () => {
+    it('reads nothing when the tapped line carries nothing (19.6: no random frequency)', () => {
       const output = couplerModule.getCouplerOutputA();
 
-      // Power is negative of absolute coupling factor (coupling factor is already negative)
-      expect(output.power).toBe(-30); // - Math.abs(-30) = -30
+      expect(output.frequency).toBe(0);
+      expect(output.power).toBe(Number.NEGATIVE_INFINITY);
+    });
+
+    it('applies the coupling factor to the composite on the line and reports the strongest carrier', () => {
+      const carriers = [
+        { frequency: 1057e6, power: -10, bandwidth: 36e6 },
+        { frequency: 1100e6, power: -13, bandwidth: 1e6 },
+      ];
+      vi.spyOn(couplerModule, 'signalsAtTap').mockReturnValue(carriers as never);
+
+      const output = couplerModule.getCouplerOutputA();
+
+      expect(output.frequency).toBe(1057e6);
+      // -10 dBm + -13 dBm = -8.24 dBm composite, then the -30 dB coupling
+      expect(output.power).toBeCloseTo(10 * Math.log10(0.1 + 10 ** -1.3) - 30, 6);
     });
   });
 
@@ -299,10 +313,10 @@ describe('CouplerModule', () => {
     });
 
     it('should apply coupling factor to power', () => {
+      vi.spyOn(couplerModule, 'signalsAtTap').mockReturnValue([{ frequency: 1074.5e6, power: 0, bandwidth: 0 }] as never);
       const output = couplerModule.getCouplerOutputB();
 
-      // Power is negative of absolute coupling factor (coupling factor is already negative)
-      expect(output.power).toBe(-20); // - Math.abs(-20) = -20
+      expect(output.power).toBeCloseTo(-20, 6); // 0 dBm on the line, -20 dB coupling
     });
   });
 

@@ -80,13 +80,28 @@ gate (−10 dB C/N in the carrier's own bandwidth) serves every receive path, in
 
 ## RF modules and the reference chain (19.6)
 
+Phase 19.6 closed DEV-RF-01, -02, -03 and -06: the HPA is a memoryless amplifier (Saleh AM/AM
+and AM/PM for a TWTA, Rapp for an SSPA) behind an attenuator, with an explicit ALC mode (output
+held at P1dB − back-off) or fixed gain (back-off calibrated on the rated drive), so input + gain =
+output and the back-off is measured from P1dB; its two-tone C/IM3 comes from the curve and rises
+as the back-off drops; IM3 products (several carriers) and spectral-regrowth shoulders (one) are
+drawn on the TX analyzer. The BUC compresses softly (Rapp, P1dB at `saturationPower`), its
+current and temperature follow the real drive in watts with first-order lags on SimClock, and a
+staged fault scales its thermal resistance or adds supply current. Every LO error comes from the
+reference chain: locked converters carry the GPSDO's fractional error (locked, holdover with its
+time error, or a GNSS spoofer's ramp), unlocked ones a seeded random walk; LO phase noise rides
+on the carriers and costs Es/N0 above the carrier-recovery loop. The LNB passband has skirts,
+low- or high-side injection per config and `lnb-thermally-stable` waits out the stabilization
+time. The IF filter (centre, bandwidth, Butterworth order) and the notch act by overlap integral.
+Cable losses per segment are config (`RFFrontEndState.cables`). What remains:
+
 | ID | Status | Deviation | Reality | Where |
 |---|---|---|---|---|
-| DEV-RF-01 | open | HPA output = Pmax − 2·backoff regardless of drive; `p1db` unused; IMD is a displayed number; the RF front end divides a dBm value by 10. | Output follows drive through the AM/AM curve; IM3 rises 3 dB per dB of drive. | `hpa-module-core.ts`; `rf-front-end-core.ts` |
-| DEV-RF-02 | open | BUC hard-clips at P1dB + 2 dB; unlocked LO drift is fresh uniform ppm each frame; phase noise and spurs are computed but never applied. | Soft compression; drift is a slow random walk; phase noise spreads the carrier. | `buc-module-core.ts` |
-| DEV-RF-03 | open | LNB passband is a 40 dB brick wall with high-side LO; unlocked drift is per-frame white; the IF filter has no centre or skirts. | Real filter responses; drift correlated in time. | `lnb-module-core.ts`; `filter-module-core.ts` |
-| DEV-RF-05 | open | OMT insertion loss (0.5 dB) is never applied and the coupler returns a random frequency. (Since 19.4 the OMT's cross-pol isolation is a per-unit constant: the authored spec plus a 0-5 dB build scatter drawn once, not re-drawn every frame.) | Fixed hardware values. | `omt-module.ts`; coupler |
-| DEV-RF-06 | open | GPSDO holdover never affects LO accuracy; Allan deviation and phase noise are display values. | Holdover drift propagates to every LO. | `gpsdo-module-core.ts` |
+| DEV-RF-05 | kept | On receive the OMT's nominal insertion loss is counted inside the antenna's feed loss (the anchor datasheets quote gain at the feed flange, after the OMT); only a fault that raises `insertionLoss` above the unit's nominal costs the carriers and adds its 290 K noise. On transmit the whole loss is charged. Cross-pol isolation is the authored spec plus a 0-5 dB per-unit scatter drawn once (19.4). | The OMT is one more passive between feed and LNA. | `omt-module.ts`; `SignalPathManager.antennaNoiseAtLnaK` |
+| DEV-RF-07 | kept | Amplifiers are memoryless class curves fitted to the datasheet P1dB (Saleh with the normalised αφ = π/3, βφ = 1; Rapp smoothness from the P1dB-to-Psat gap): no memory effects or frequency response, and every carrier in a composite takes the composite gain (no small-signal suppression). An SSPA's two-tone IM3 is never better than its third-order intercept line, OIP3 = P1dB + 10 dB (a datasheet rule of thumb: the Rapp curve has no third-order term and alone reads unrealistically clean IM3 below compression). IM3 products of several carriers are scaled from the equal two-tone result at the same composite power (2 dB per dB of fᵢ, 1 dB per dB of fⱼ, width 2Bᵢ + Bⱼ); a single carrier's regrowth is two shoulders at the two-tone C/IM3. Products are drawn on the TX analyzer only and are not radiated (the transponder's C/IM is 19.3). HPA thermal: class-AB DC model (η at saturation 50 % TWTA, 30 % SSPA, 5 % idle), first-order lag τ = 2 min. | Measured AM/AM-AM/PM and memory; IM from the real composite; the amplifier's real thermal network. | `amplifier-models.ts`; `hpa-module-core.ts` |
+| DEV-RF-08 | kept | LO phase noise is one plateau to a 10 kHz corner, 20 dB/decade beyond, with class values (synthesiser on the station reference −95 dBc/Hz; BUC on its TCXO −75; LNB whose PLL lost its reference −60); the demodulator tracks everything below Rs × 10⁻⁴ (at least 100 Hz). Free-running LO drift is a seeded random walk (BUC ±10 ppm start, 2 ppm/√h, ±30 ppm; LNB ±20 ppm, 5 ppm/√h, ±200 ppm) plus the LNB's 0.5 ppm/°C during warm-up. BUC power and heat are class values (24 V; 2.6 A idle; 2.4 A more at saturation, following the output amplitude; 0.30 °C/W; τ 10 min; a staged excess current belongs to the output stage, so muting removes it). Mixer spurs are fixed levels and not applied. | Measured phase-noise masks and loop bandwidths; oscillator temperature curves; the unit's datasheet supply current and thermal network. | `lo-reference.ts`; `buc-module-core.ts`; `lnb-module-core.ts` |
+| DEV-RF-09 | kept | An IF filter with no configured centre is a channel filter centred on each carrier (the bank's legacy behaviour). Filters and notches act on carrier power by overlap integral with a raised-cosine (α 0.2) spectrum; the noise the demodulator sees is not filtered by them (the matched-filter view: a notched slice's signal energy is lost). The analyzer floor is not shaped by the IF filter or the LNB passband (it is shaped by notches). The LNB passband is flat across 950-2150 MHz with 3rd-order skirts (−3 dB 25 MHz beyond each edge). Gain and noise figure do not vary with temperature. | Real filter responses on signal and noise; temperature coefficients. | `filter-module-core.ts`; `notch-filter-module-core.ts`; `lnb-module-core.ts`; `spectrum-data-processor.ts` |
+| DEV-RF-10 | kept | The GPSDO is a class OCXO: disciplined to ±2×10⁻¹² (a fixed per-unit offset), holdover a constant 4.64×10⁻¹⁰ offset (1.67 µs/h of time error) plus the configured ageing, Allan deviation a constant 10⁻¹¹ at 1 s (no τ dependence). A GNSS spoofer's time ramp passes straight to the disciplined frequency (rate µs/s → parts in 10⁶) with no loop filter or EFC limit. | The disciplining loop's time constant and pull range; σy(τ) curves. | `gpsdo-module-core.ts`; `gnss-threat-manager.ts` |
 
 ## Propagation and geometry (19.7)
 
@@ -108,13 +123,13 @@ gate (−10 dB C/N in the carrier's own bandwidth) serves every receive path, in
 | DEV-MEAS-02 | open | TDOA/FDOA σ are authored (1.5 µs / 3 Hz) with no ephemeris-error term. | σ from SNR, bandwidth and integration time plus ephemeris error. | geolocation console |
 | DEV-MEAS-03 | open | Telemetry frames flow on pointing alone, not frame sync. | Frames need a locked, decoding carrier. | `telemetry-manager.ts` |
 | DEV-MEAS-04 | open | EA J/S = HPA output + authored path gain − authored victim power. | J/S from both link budgets. | `electronic-attack-manager.ts` |
-| DEV-MEAS-05 | open | GNSS spoofing is a display-only time-offset walk. | A spoofer captures the receiver's tracking loops. | `gnss-threat-manager.ts` |
+| DEV-MEAS-05 | open | GNSS spoofing is an authored time-offset walk (since 19.6 it drives the GPSDO's time and frequency error, and through it every disciplined LO, DEV-RF-10); the receiver's tracking loops are not modelled. | A spoofer captures the receiver's tracking loops. | `gnss-threat-manager.ts` |
 
 ## Units (19.3 with each track)
 
 | ID | Status | Deviation | Where |
 |---|---|---|---|
-| DEV-UNIT-01 | open | Branded unit types are cast freely (transponder gain typed dBi); `power` means EIRP, received power or "at transponder input" depending on the path; MHz/Hz mix-ups in receiver, filter, notch and LO; transmitter power percentage is a ratio of logarithms; BUC thermal mixes mW and W. | across `src/equipment` |
+| DEV-UNIT-01 | open | Branded unit types are cast freely (transponder gain typed dBi); `power` means EIRP, received power or "at transponder input" depending on the path. (19.6 fixed the RF front end's dBm/10 HPA output, the transmitter power percentage taken as a ratio of logarithms, and the BUC thermal mW/W mix; filter, notch and LO units are Hz internally.) | across `src/equipment` |
 
 ## Gameplay conventions that lean on a deviation
 
@@ -138,5 +153,10 @@ its deviation closes:
 - Program-track LOCKED means "the pedestal is on its commanded track", as on a real ACU, not "on
   the satellite": a stale ephemeris reads LOCKED while the beacon is down (C2 S7, C1 S18). Under an
   ACU automation fault the lock reads UNKNOWN (C1 S23).
+- HPA back-off (since 19.6): with ALC on (Campaign 1 stations), output = P1dB − back-off whatever
+  the drive, so a BUC de-rate is absorbed by the HPA's gain (the ALC's own alarm says when it
+  runs out of range); with fixed gain (Campaign 2's GW-01 SSPA) the back-off is calibrated on the
+  rated drive and a weak drive comes out weak. Either way input + gain = output, the back-off is
+  measured from P1dB, and the two-tone IM3 rises about 2 dB per dB of back-off given up.
 - "Tsys is the LNB noise temperature" was retired in 19.2: Tsys = antenna (sky, spillover, feed)
   + LNB, so an LNB fault costs 10 log((T_ant + T_new) / (T_ant + T_old)), not 10 log(T_new / T_old).

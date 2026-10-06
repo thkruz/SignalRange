@@ -63,8 +63,8 @@
               "peakEsN0Db": 12.69,
               "requiredEsN0Db": 5.03,
               "peakLockMarginDb": 7.66,
-              "peakRxIfDbm": -31,
-              "noiseIfDbm": -43.43,
+              "peakRxIfDbm": -30.99,
+              "noiseIfDbm": -43.41,
               "lockedSamples": 5
             },
             {
@@ -81,7 +81,7 @@
               "requiredEsN0Db": null,
               "peakLockMarginDb": null,
               "peakRxIfDbm": -79.55,
-              "noiseIfDbm": -87.23,
+              "noiseIfDbm": -87.22,
               "lockedSamples": 0
             }
           ],
@@ -108,13 +108,13 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 5,
-              "peakCnDb": 13.98,
-              "medianCnDb": 13.98,
-              "peakEsN0Db": 14.76,
+              "peakCnDb": 13.96,
+              "medianCnDb": 13.96,
+              "peakEsN0Db": 14.74,
               "requiredEsN0Db": 5.03,
-              "peakLockMarginDb": 9.73,
-              "peakRxIfDbm": -29.63,
-              "noiseIfDbm": -43.6,
+              "peakLockMarginDb": 9.71,
+              "peakRxIfDbm": -29.62,
+              "noiseIfDbm": -43.59,
               "lockedSamples": 5
             },
             {
@@ -127,17 +127,40 @@
               "samples": 5,
               "peakCnDb": 32.59,
               "medianCnDb": 32.59,
-              "peakEsN0Db": 32.98,
+              "peakEsN0Db": 32.97,
               "requiredEsN0Db": null,
               "peakLockMarginDb": null,
-              "peakRxIfDbm": -56.58,
-              "noiseIfDbm": -89.17,
+              "peakRxIfDbm": -56.57,
+              "noiseIfDbm": -89.15,
               "lockedSamples": 0
             }
           ],
           "adjacentCarriers": 0
         }
-      ]
+      ],
+      "txChain": {
+        "transmittingModems": 1,
+        "bucGainDb": 23,
+        "bucP1dbDbm": 28,
+        "bucInDbm": -7,
+        "bucOutDbm": 16,
+        "bucCompressionDb": 0,
+        "bucCurrentEqA": 3.07,
+        "bucTempEqC": 47.09,
+        "hpaEnabled": true,
+        "hpaAlc": true,
+        "hpaBackOffDb": 10,
+        "hpaP1dbDbm": 60,
+        "hpaPsatDbm": 64.12,
+        "hpaInDbm": 16,
+        "hpaGainDb": 34,
+        "hpaOutDbm": 50,
+        "hpaOutW": 100,
+        "hpaOutputBackoffDb": 10,
+        "hpaIm3Dbc": -43.06,
+        "hpaAlcAtLimit": false,
+        "hpaTempEqC": 43.61
+      }
     }
   ]
 }

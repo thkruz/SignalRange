@@ -54,7 +54,7 @@ export class Transmitter extends BaseEquipment {
   private lastRenderState: TransmitterState | null = null;
 
   // Power management
-  private readonly powerBudget = 10 as dBm; // dBm (10W) total power budget
+  private readonly powerBudget = 10 as dBm; // dBm (10 mW) total power budget
 
   // Intermittent fault timing constants (milliseconds)
   private static readonly FAULT_ON_MS = 4000; // ~4s signal active
@@ -698,11 +698,20 @@ export class Transmitter extends BaseEquipment {
     if (!activeModem.isPowered) return 0;
 
     const modemPower = this.calculatePowerBudgetLoad_(activeModem.ifSignal.bandwidth, activeModem.ifSignal.power);
-    return Math.round((100 * modemPower) / this.powerBudget);
+    return Math.round(this.budgetPercent_(modemPower));
+  }
+
+  /**
+   * Share of the budget a load uses, %: a ratio of powers, 100·10^((load −
+   * budget)/10) (Phase 19.6; it was a ratio of the two dB numbers, which went
+   * negative for a load under 0 dBm). 100 % is still load = budget.
+   */
+  private budgetPercent_(loadDbm: number): number {
+    return 100 * 10 ** ((loadDbm - this.powerBudget) / 10);
   }
 
   private validatePowerConsumption(modemPower: number, maxPercent = 100): boolean {
-    return Math.round((100 * modemPower) / this.powerBudget) <= maxPercent;
+    return Math.round(this.budgetPercent_(modemPower)) <= maxPercent;
   }
 
   /**

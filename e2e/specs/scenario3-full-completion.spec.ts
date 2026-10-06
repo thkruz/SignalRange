@@ -1058,8 +1058,12 @@ test.describe('Scenario 3 Full Completion', () => {
   });
 
   test('Objective: Power Up LNB', async () => {
+    // ME-02's LNB needs 90 s after power-on before lnb-thermally-stable passes
+    // (panel reads "Thermal: Warming m:ss" until then)
+    test.setTimeout(180000);
     const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'configure-maine-lnb')!;
     await executeObjective(page, missionControlPage, objective);
+    await page.waitForTimeout(95000);
   });
 
   test('Objective: Verify LNB Configuration', async () => {

@@ -145,9 +145,13 @@ const createMockGroundStation = () => ({
   ],
   rfFrontEnds: [
     {
-      gpsdoModule: { state: mockGpsdoState },
+      gpsdoModule: { state: mockGpsdoState, get10MhzOutput: () => ({ isPresent: true, isWarmedUp: true }) },
       bucModule: { state: mockBucState },
-      lnbModule: { state: mockLnbState },
+      lnbModule: {
+        state: mockLnbState,
+        isThermallyStable: () => mockLnbState.isPowered && mockLnbState.temperature >= 30,
+        secondsSincePowerOn: 600,
+      },
       hpaModule: { state: mockHpaState },
       filterModule: { state: mockFilterState },
       notchFilterModule: { state: mockNotchFilterState },
@@ -2800,10 +2804,11 @@ describe('ObjectivesManager', () => {
     });
 
     it('should evaluate lnb-thermally-stable condition', () => {
+      // 19.6: powered past its stabilization time and locked to the reference
       mockLnbState.isPowered = true;
+      mockLnbState.isExtRefLocked = true;
       mockLnbState.noiseTemperature = 80;
       mockLnbState.temperature = 35;
-      mockLnbState.frequencyError = 0;
 
       const objectives = [
         createTestObjective({

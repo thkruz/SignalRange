@@ -153,7 +153,7 @@ export const scenario2Data: ScenarioData = {
             options: ["I have received and understood the RF safety briefing for today's maintenance work."],
             correctIndex: 0,
             explanation:
-              'Acknowledging the RF safety briefing ensures all personnel understand the hazards and procedures before maintenance work begins. An HPA can output several hundred watts - enough to cause serious RF burns.',
+              'Acknowledging the RF safety briefing ensures all personnel understand the hazards and procedures before maintenance work begins. Our HPA is a 1 kW amplifier and runs about 100 W at the standard 10 dB back-off - enough to cause serious RF burns.',
             pointPenalty: 0,
           },
           mustMaintain: false,
@@ -376,7 +376,7 @@ export const scenario2Data: ScenarioData = {
       // understanding complete power-down for maintenance safety
       nice: ['T1567', 'S0421', 'K0770'],
       title: 'Power Off BUC',
-      description: 'Power off the Block Upconverter completely. Even without the HPA, the BUC still outputs a few milliwatts - we want it completely cold.',
+      description: 'Power off the Block Upconverter completely. Even without the HPA, the BUC still outputs tens of milliwatts - we want it completely cold.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['power-off-hpa'],
       timeLimitSeconds: 2 * 60,
@@ -1209,7 +1209,7 @@ export const scenario2Data: ScenarioData = {
           Good. Now we start the shutdown sequence.
         </p>
         <p>
-          The HPA is pushing several hundred watts through that feed horn. We disable it first - that's the big one. Click on Vermont Ground Station in the asset tree, then go to the TX Chain tab.
+          The HPA is pushing a hundred watts through that feed horn. We disable it first - that's the big one. Click on Vermont Ground Station in the asset tree, then go to the TX Chain tab.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1247,7 +1247,7 @@ export const scenario2Data: ScenarioData = {
       'verify-hpa-initial-state': {
         text: `
         <p>
-          Right. HPA is enabled and transmitting. That's several hundred watts of RF power going through the feed assembly where the maintenance crew needs to work.
+          Right. HPA is enabled and transmitting. That's a hundred watts of RF power going through the feed assembly where the maintenance crew needs to work.
         </p>
         <p>
           First step: disable the HPA output. Find the HPA panel and toggle the enable switch to OFF. Don't power it off completely yet - just disable the output.
@@ -1289,7 +1289,7 @@ export const scenario2Data: ScenarioData = {
           HPA's down. Now the BUC.
         </p>
         <p>
-          Even without the HPA, the BUC still outputs a few milliwatts. Not enough to hurt anyone, but enough to cause interference if we're moving the antenna around. Power it off completely. Same tab, find the BUC panel.
+          Even without the HPA, the BUC still outputs tens of milliwatts. Not enough to hurt anyone, but enough to cause interference if we're moving the antenna around. Power it off completely. Same tab, find the BUC panel.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

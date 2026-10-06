@@ -5,6 +5,24 @@ import { SimClock } from '@app/simulation/sim-clock';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { clamp } from 'ootk';
 import { defaultGpsdoState, GPSDOState } from './gpsdo-state';
+import { ReferenceDisturbances } from './reference-disturbance';
+
+/**
+ * Reference-chain constants (Phase 19.6; class values for a GPS-disciplined
+ * double-oven OCXO such as the SRS FS752's, DEV-RF-06).
+ */
+const OCXO = {
+  /** Fractional frequency error while disciplined (24 h average spec, ±) */
+  lockedAccuracy: 2e-12,
+  /** Allan deviation at τ = 1 s (the oscillator's own short-term stability) */
+  allanDeviation1s: 1e-11,
+  /** Free-running offset once discipline is lost: 1.67 µs/hour of time error */
+  holdoverOffset: 1.67e-6 / 3600,
+  /** Phase noise at 10 Hz, dBc/Hz (the OCXO's own, locked or not) */
+  phaseNoise10Hz: -127,
+  /** UTC (1PPS) accuracy while GNSS-disciplined, ns */
+  lockedUtcAccuracyNs: 30,
+} as const;
 
 /** Seeded draws for this module (see simulation/rng.ts). */
 const random = (): number => Rng.stream('gpsdo').next();
@@ -81,43 +99,84 @@ export abstract class GPSDOModuleCore extends RFFrontEndModule<GPSDOState> {
   }
 
   /**
-   * Update signal quality parameters
+   * The reference's condition (Phase 19.6): disciplined to GNSS, coasting in
+   * holdover, free-running (warm-up, or never locked), or off.
+   */
+  referenceCondition(): 'locked' | 'holdover' | 'free-run' | 'off' {
+    if (!this.state.isPowered) return 'off';
+    if (this.state.warmupTimeRemaining > 0) return 'free-run';
+    if (this.state.isInHoldover) return 'holdover';
+    if (this.state.isLocked) return 'locked';
+
+    return 'free-run';
+  }
+
+  /**
+   * Fractional frequency error of the 10 MHz output (dimensionless). Every
+   * converter locked to this reference carries it on its LO (Δf = y·f_LO):
+   * a few parts in 10^12 disciplined; the OCXO's free-running offset (plus
+   * ageing) in holdover; the warm-up error while the oven settles; and, while
+   * a spoofer walks the GNSS time and the GPSDO still trusts it, the rate of
+   * that walk.
+   */
+  fractionalFrequencyError(): number {
+    switch (this.referenceCondition()) {
+      case 'off':
+        return 0;
+      case 'locked': {
+        const spoof = ReferenceDisturbances.forStation(this.rfFrontEnd_.groundStationId);
+
+        return this.unitLockedOffset_ + (spoof?.fractionalFrequencyError ?? 0);
+      }
+      case 'holdover': {
+        const agingPerS = (this.state.agingRate * 1e-6) / (365 * 86400);
+
+        return this.unitHoldoverSign_ * OCXO.holdoverOffset + agingPerS * this.state.holdoverDuration;
+      }
+      case 'free-run':
+      default:
+        // During warm-up the displayed accuracy (×10^-11) tracks the oven
+        return this.unitHoldoverSign_ * Math.max(OCXO.holdoverOffset, this.state.frequencyAccuracy * 1e-11);
+    }
+  }
+
+  /** Time (1PPS) error of the reference, µs: the holdover walk plus any spoofed offset */
+  timeErrorUs(): number {
+    if (!this.state.isPowered) return 0;
+    const spoof = ReferenceDisturbances.forStation(this.rfFrontEnd_.groundStationId);
+
+    return (this.state.isInHoldover ? this.state.holdoverError : 0) + (spoof?.timeOffsetUs ?? 0);
+  }
+
+  /** This unit's disciplined offset: a fixed draw within ±2×10^-12 */
+  private readonly unitLockedOffset_ = (Rng.hashUniform('gpsdo-locked-offset') * 2 - 1) * OCXO.lockedAccuracy;
+  /** Sign of this unit's free-running offset */
+  private readonly unitHoldoverSign_ = Rng.hashUniform('gpsdo-holdover-sign') < 0.5 ? -1 : 1;
+
+  /**
+   * Signal-quality readouts from the reference's condition (Phase 19.6; they
+   * used to be fresh random draws every frame). Frequency accuracy and Allan
+   * deviation are in parts in 10^11.
    */
   private updateSignalQuality_(): void {
-    if (!this.state.isPowered || (!this.state.isLocked && !this.state.isInHoldover)) {
+    const condition = this.referenceCondition();
+    if (condition === 'off') {
       this.state.phaseNoise = 0;
-      this.state.frequencyAccuracy = 999; // Poor when unlocked
+      this.state.frequencyAccuracy = 999;
       this.state.allanDeviation = 99;
+      this.state.utcAccuracy = 0;
+      return;
+    }
+    if (this.state.warmupTimeRemaining > 0) {
+      // improveSpecsDuringWarmup_ owns the readouts while the oven settles
       return;
     }
 
-    if (this.state.isInHoldover) {
-      // In holdover: maintain specs with OCXO, but degrade slowly
-      this.state.phaseNoise = -120 + random() * 5; // -120 to -125 dBc/Hz
-      this.state.frequencyAccuracy = 0.5 + random() * 4.5 + this.state.holdoverError * 0.05; // degrade with error
-      this.state.allanDeviation = 0.5 + random() * 4.5 + this.state.holdoverError * 0.05;
-      this.state.utcAccuracy = 0; // No GPS timing
-      return;
-    }
-
-    // Phase noise: < -125 dBc/Hz at 10 Hz when locked
-    this.state.phaseNoise =
-      this.state.gnssSignalPresent && !this.state.isInHoldover
-        ? -125 - random() * 5 // -125 to -130 dBc/Hz when GPS locked
-        : -100 - random() * 10; // -100 to -110 dBc/Hz in holdover
-
-    // Frequency accuracy: < 5×10⁻¹¹ at 1s when GPS locked
-    if (this.state.gnssSignalPresent && !this.state.isInHoldover) {
-      this.state.frequencyAccuracy = 0.5 + random() * 4.5; // 0.5-5 ×10⁻¹¹
-      this.state.allanDeviation = 0.5 + random() * 4.5;
-    }
-
-    // UTC accuracy: < 100 ns when GPS locked
-    if (this.state.gnssSignalPresent) {
-      this.state.utcAccuracy = 20 + random() * 80; // 20-100 ns
-    } else {
-      this.state.utcAccuracy = 0; // No GPS timing
-    }
+    this.state.frequencyAccuracy = Math.abs(this.fractionalFrequencyError()) * 1e11;
+    // σy(1 s) is the OCXO's own short-term stability, disciplined or not
+    this.state.allanDeviation = OCXO.allanDeviation1s * 1e11;
+    this.state.phaseNoise = OCXO.phaseNoise10Hz;
+    this.state.utcAccuracy = condition === 'locked' && this.state.gnssSignalPresent ? OCXO.lockedUtcAccuracyNs + Math.abs(this.timeErrorUs()) * 1000 : 0;
   }
 
   /**
@@ -166,9 +225,9 @@ export abstract class GPSDOModuleCore extends RFFrontEndModule<GPSDOState> {
   private achieveLock_(): void {
     this.state.isLocked = true;
     this.state.lockDuration = 0;
-    this.state.frequencyAccuracy = 2; // ~2×10⁻¹¹
-    this.state.allanDeviation = 2;
-    this.state.phaseNoise = -127; // Excellent phase noise
+    this.state.frequencyAccuracy = Math.abs(this.unitLockedOffset_) * 1e11;
+    this.state.allanDeviation = OCXO.allanDeviation1s * 1e11;
+    this.state.phaseNoise = OCXO.phaseNoise10Hz;
   }
 
   /**
@@ -224,10 +283,10 @@ export abstract class GPSDOModuleCore extends RFFrontEndModule<GPSDOState> {
   private improveSpecsDuringWarmup_(): void {
     const warmupProgress = 1 - this.state.warmupTimeRemaining / (SimulationManager.getInstance().isDeveloperMode ? 20 : 600);
 
-    // Accuracy improves exponentially
-    this.state.frequencyAccuracy = 1000 * (2 / 1000) ** warmupProgress;
-    this.state.allanDeviation = 100 * (2 / 100) ** warmupProgress;
-    this.state.phaseNoise = -80 + (-127 + 80) * warmupProgress;
+    // Accuracy improves exponentially as the oven settles
+    this.state.frequencyAccuracy = 1000 * ((OCXO.holdoverOffset * 1e11) / 1000) ** warmupProgress;
+    this.state.allanDeviation = 100 * ((OCXO.allanDeviation1s * 1e11) / 100) ** warmupProgress;
+    this.state.phaseNoise = -80 + (OCXO.phaseNoise10Hz + 80) * warmupProgress;
   }
 
   /**
@@ -246,9 +305,6 @@ export abstract class GPSDOModuleCore extends RFFrontEndModule<GPSDOState> {
 
       // Increment operating hours
       this.state.operatingHours += 5 / 3600; // 5 seconds to hours
-
-      // Add small random variations to metrics
-      this.addMetricVariations_();
 
       // Satellite count drifts slowly around the nominal count (at most once a minute)
       if (this.state.gnssSignalPresent && this.state.satelliteCount < 4) {
@@ -307,18 +363,6 @@ export abstract class GPSDOModuleCore extends RFFrontEndModule<GPSDOState> {
   }
 
   /**
-   * Add small random variations to locked metrics
-   */
-  private addMetricVariations_(): void {
-    if (!this.state.gnssSignalPresent || this.state.isInHoldover) return;
-
-    // Very small variations around target values
-    this.state.frequencyAccuracy = 2 + (random() - 0.5) * 0.5;
-    this.state.allanDeviation = 2 + (random() - 0.5) * 0.5;
-    this.state.phaseNoise = -127 + (random() - 0.5) * 2;
-  }
-
-  /**
    * Start holdover monitoring
    */
   protected startHoldoverMonitor_(): void {
@@ -333,14 +377,10 @@ export abstract class GPSDOModuleCore extends RFFrontEndModule<GPSDOState> {
 
       this.state.holdoverDuration += 1;
 
-      // Holdover spec: < 40 μs over 24 hours
-      // Degrade at ~1.67 μs per hour, plus aging
-      const hourlyDrift = 1.67; // μs/hour
-      const elapsedHours = this.state.holdoverDuration / 3600;
-      this.state.holdoverError = hourlyDrift * elapsedHours;
-
-      // Frequency accuracy degrades in holdover at aging rate
-      this.state.frequencyAccuracy += (this.state.agingRate * 0.05) / (365 * 86400); // ppm/year → per second
+      // Holdover: the OCXO coasts on its free-running offset (1.67 µs of
+      // time error per hour, < 40 µs over 24 h) plus ageing; the time error
+      // is the integral of the frequency error
+      this.state.holdoverError += Math.abs(this.fractionalFrequencyError()) * 1e6;
 
       // If holdover error exceeds spec
       if (this.state.holdoverError > 40) {

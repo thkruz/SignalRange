@@ -75,7 +75,9 @@ function createMockRfFrontEnd(gpsdoOverrides: { isPresent?: boolean; isWarmedUp?
         isPresent: gpsdoOverrides.isPresent ?? true,
         isWarmedUp: gpsdoOverrides.isWarmedUp ?? true,
       }),
+      fractionalFrequencyError: () => 0,
     },
+    cableLossDb: () => 0,
     transmitters: txList,
     state: {
       teamId: 1,
@@ -205,8 +207,9 @@ describe('BUCModuleCore', () => {
 
         bucModule.update();
 
-        // Input power is -10 dBm, gain is 20 dB, so output should be around 10 dBm
-        expect(bucModule.outputSignals[0].power).toBe(10);
+        // Input -10 dBm + 20 dB = 10 dBm, 5 dB under the 15 dBm P1dB: the soft
+        // (Rapp) curve has already taken 0.08 dB
+        expect(bucModule.outputSignals[0].power).toBeCloseTo(9.92, 2);
       });
 
       it('should attenuate signals when muted', () => {
@@ -423,7 +426,8 @@ describe('BUCModuleCore', () => {
         bucModule.update();
 
         expect(bucModule.outputSignals).toHaveLength(2);
-        expect(bucModule.state.outputPower).toBeCloseTo(10 * Math.log10(2), 5);
+        // Composite 3 dB over one carrier, 15 dB under P1dB: linear to 0.01 dB
+        expect(bucModule.state.outputPower).toBeCloseTo(10 * Math.log10(2), 2);
       });
 
       it('should report the floor and no saturation alarm when every carrier is out of band', () => {
@@ -445,8 +449,8 @@ describe('BUCModuleCore', () => {
 
         bucModule.update();
 
-        // Input -10 dBm + 10 dB gain = 0 dBm (below saturation at 15 dBm)
-        expect(bucModule.state.outputPower).toBe(0);
+        // Input -10 dBm + 10 dB gain = 0 dBm, 15 dB under P1dB: linear
+        expect(bucModule.state.outputPower).toBeCloseTo(0, 2);
       });
 
       it('should apply compression when at saturation', () => {
@@ -479,8 +483,8 @@ describe('BUCModuleCore', () => {
 
         bucModule.update();
 
-        expect(bucModule.state.phaseNoise).toBeLessThanOrEqual(-100);
-        expect(bucModule.state.phaseNoise).toBeGreaterThanOrEqual(-105);
+        // The synthesiser on the station reference (lo-reference.ts)
+        expect(bucModule.state.phaseNoise).toBe(-95);
       });
 
       it('should have degraded phase noise when unlocked', () => {
@@ -901,8 +905,8 @@ describe('BUCModuleCore', () => {
         bucModule.state.gain = 10 as dB;
         bucModule.state.saturationPower = 20 as dBm;
 
-        // Input -10 dBm + 10 dB gain = 0 dBm (below saturation)
-        expect(bucModule.getOutputPower(-10)).toBe(0);
+        // Input -10 dBm + 10 dB gain = 0 dBm, 20 dB under P1dB: linear
+        expect(bucModule.getOutputPower(-10)).toBeCloseTo(0, 2);
       });
 
       it('should apply compression at saturation', () => {
@@ -934,22 +938,34 @@ describe('BUCModuleCore', () => {
         expect(bucModule.getCompressionDb()).toBe(0);
       });
 
-      it('should return compression amount in saturation', () => {
+      it('should return the compression at the P1dB drive: 1 dB', () => {
         bucModule.state.gain = 30 as dB;
         bucModule.state.saturationPower = 15 as dBm;
-        // Linear output = -10 + 30 = 20 dBm
-        // maxOutput = saturation (15) + 2 = 17 dBm
-        // Compression = 20 - 17 = 3 dB
-        expect(bucModule.getCompressionDb()).toBeCloseTo(3, 1);
+        // Find the drive that compresses by 1 dB, then read it back
+        let lo = -60;
+        let hi = 10;
+        for (let i = 0; i < 60; i++) {
+          const mid = (lo + hi) / 2;
+          if (30 - (bucModule.getOutputPower(mid) - mid) < 1) lo = mid;
+          else hi = mid;
+        }
+        expect(bucModule.getOutputPower(lo)).toBeCloseTo(15, 2);
+        bucModule.update();
+        // At -10 dBm in (20 dBm linear, 5 dB over P1dB) the curve is near Psat (17.16 dBm)
+        expect(bucModule.state.outputPower).toBeLessThan(17.17);
+        expect(bucModule.getCompressionDb()).toBeGreaterThan(2.8);
       });
 
       it('should return higher compression when further into saturation', () => {
-        bucModule.state.gain = 50 as dB;
         bucModule.state.saturationPower = 15 as dBm;
-        // Linear output = -10 + 50 = 40 dBm
-        // maxOutput = 15 + 2 = 17 dBm
-        // Compression = 40 - 17 = 23 dB
-        expect(bucModule.getCompressionDb()).toBeCloseTo(23, 1);
+        bucModule.state.gain = 30 as dB;
+        bucModule.update();
+        const less = bucModule.getCompressionDb();
+        bucModule.state.gain = 50 as dB;
+        bucModule.update();
+        // Output pinned near Psat: 40 dBm linear -> 17.16, so ~22.8 dB of compression
+        expect(bucModule.getCompressionDb()).toBeGreaterThan(less);
+        expect(bucModule.getCompressionDb()).toBeCloseTo(40 - 17.16, 1);
       });
     });
 
@@ -1087,41 +1103,108 @@ describe('BUCModuleCore', () => {
   });
 });
 
-describe('BUCModuleCore staged cooling fault (phase 16 E3)', () => {
+describe('BUCModuleCore thermal and current (phase 19.6)', () => {
   let bucModule: TestBUCModule;
+  /** A 28 dBm P1dB BUC at 23 dB of gain on a -7 dBm IF drive (the Campaign 1 operating point) */
+  const c1Buc = (): TestBUCModule => {
+    const tx = createMockTransmitter([
+      {
+        isTransmitting: true,
+        isFaulted: false,
+        isLoopback: false,
+        ifSignal: { frequency: 500e6, bandwidth: 36e6, power: -7 as dBm, origin: SignalOrigin.TRANSMITTER } as IfSignal,
+      },
+    ]);
+    return new TestBUCModule({ ...BUCModuleCore.getDefaultState(), gain: 23 as dB, saturationPower: 28 as dBm, temperature: 25 }, createMockRfFrontEnd({}, [tx]), 1);
+  };
 
   beforeEach(() => {
-    bucModule = new TestBUCModule({ ...BUCModuleCore.getDefaultState(), isPowered: true, temperature: 60 }, createMockRfFrontEnd(), 1);
+    vi.useRealTimers();
+    bucModule = c1Buc();
   });
 
-  it('is healthy by default: no offset, no cooling alarm, and a warm BUC cools toward its normal target', () => {
-    expect(bucModule.thermalOffsetC).toBe(0);
-    expect(bucModule.getAlarms().some((a) => a.includes('cooling fault'))).toBe(false);
-
+  it('starts at its equilibrium for the operating point (a running station), in watts', () => {
     bucModule.update();
-    expect(bucModule.state.temperature).toBeLessThan(60);
+    // 16 dBm out of a 30.16 dBm Psat stage: 2.6 + 2.4 sqrt(40 mW / 1038 mW) = 3.07 A
+    expect(bucModule.state.currentDraw).toBeCloseTo(3.07, 2);
+    // 24 V x 3.07 A - 0.04 W through 0.30 degC/W over 25 degC
+    expect(bucModule.state.temperature).toBeCloseTo(25 + 0.3 * (24 * 3.071 - 0.04), 0);
+    const { powerDissipation } = bucModule.getThermalState();
+    expect(powerDissipation).toBeCloseTo(24 * bucModule.state.currentDraw - 0.0398, 2);
   });
 
-  it('lifts the thermal target by the offset so the same BUC heats instead of cooling, and raises the cooling alarm', () => {
-    bucModule.setThermalOffset(60);
-
-    expect(bucModule.thermalOffsetC).toBe(60);
+  it('more drive draws more current and runs hotter; the case lags with a 10 min time constant', () => {
     bucModule.update();
-    expect(bucModule.state.temperature).toBeGreaterThan(60);
+    const before = bucModule.state.temperature;
+    bucModule.state.gain = 33 as dB;
+    bucModule.update();
+    const target = bucModule.equilibriumTemperatureC();
+    expect(target).toBeGreaterThan(before + 5);
+    advanceSimTime(600_000, { emitUpdate: true });
+    // One time constant: 63 % of the way
+    const fraction = (bucModule.state.temperature - before) / (target - before);
+    expect(fraction).toBeGreaterThan(0.58);
+    expect(fraction).toBeLessThan(0.68);
+    expect(bucModule.state.currentDraw).toBeCloseTo(4.04, 1);
+  });
+
+  it('driven into saturation it draws over the 4.5 A alarm', () => {
+    bucModule.state.gain = 50 as dB;
+    bucModule.update();
+    advanceSimTime(20_000, { emitUpdate: true });
+    expect(bucModule.state.currentDraw).toBeGreaterThan(4.5);
+    expect(bucModule.getAlarms().some((a) => a.includes('high current draw'))).toBe(true);
+  });
+
+  it('a cooling-factor fault scales the rise, so less drive is the fix', () => {
+    bucModule.update();
+    const healthy23 = bucModule.equilibriumTemperatureC();
+    bucModule.setCoolingFactor(1.35);
+    const faulted23 = bucModule.equilibriumTemperatureC();
+    bucModule.state.gain = 33 as dB;
+    bucModule.update();
+    const faulted33 = bucModule.equilibriumTemperatureC();
+    expect(faulted23 - 25).toBeCloseTo(1.35 * (healthy23 - 25), 6);
+    expect(faulted33 - faulted23).toBeGreaterThan(8);
     expect(bucModule.getAlarms().some((a) => a.includes('BUC cooling fault'))).toBe(true);
   });
 
-  it('with the default 40 degC fault and no drive, settles below the 70 degC alarm (muting is the fix)', () => {
-    bucModule.setThermalOffset(40);
-    for (let i = 0; i < 20_000; i++) {
-      bucModule.update();
-    }
-    expect(bucModule.state.temperature).toBeGreaterThan(60);
-    expect(bucModule.state.temperature).toBeLessThan(70);
+  it('an excess-current fault adds amps and their heat; muting removes the stage bias', () => {
+    bucModule.update();
+    const base = bucModule.equilibriumCurrentA();
+    const baseT = bucModule.equilibriumTemperatureC();
+    bucModule.setExcessCurrent(1.6);
+    expect(bucModule.equilibriumCurrentA()).toBeCloseTo(base + 1.6, 6);
+    expect(bucModule.equilibriumTemperatureC()).toBeCloseTo(baseT + 0.3 * 24 * 1.6, 6);
+    bucModule.state.isMuted = true;
+    bucModule.update();
+    expect(bucModule.equilibriumCurrentA()).toBeCloseTo(2.6, 6);
   });
 
-  it('clears when the offset returns to zero and never goes negative', () => {
+  it('a staged temperature is kept and then relaxes toward equilibrium', () => {
+    bucModule.setTemperature(72);
+    bucModule.update();
+    expect(bucModule.state.temperature).toBeCloseTo(72, 6);
+    advanceSimTime(60_000, { emitUpdate: true });
+    expect(bucModule.state.temperature).toBeLessThan(72);
+    expect(bucModule.state.temperature).toBeGreaterThan(60);
+  });
+
+  it('muted, the output stage idles: current falls to idle and the case cools', () => {
+    bucModule.state.gain = 33 as dB;
+    bucModule.update();
+    bucModule.setTemperature(65);
+    bucModule.state.isMuted = true;
+    advanceSimTime(30_000, { emitUpdate: true });
+    expect(bucModule.state.currentDraw).toBeCloseTo(2.6, 1);
+    expect(bucModule.state.temperature).toBeLessThan(65);
+  });
+
+  it('the legacy additive offset still lifts the target and clears to zero, never negative', () => {
+    bucModule.update();
+    const base = bucModule.equilibriumTemperatureC();
     bucModule.setThermalOffset(40);
+    expect(bucModule.equilibriumTemperatureC()).toBeCloseTo(base + 40, 6);
     bucModule.setThermalOffset(-5);
     expect(bucModule.thermalOffsetC).toBe(0);
     expect(bucModule.getAlarms().some((a) => a.includes('cooling fault'))).toBe(false);

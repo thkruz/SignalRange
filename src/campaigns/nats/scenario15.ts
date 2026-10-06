@@ -718,7 +718,8 @@ export const scenario15Data: ScenarioData = {
               'Beacon gone from the span - the HPA backoff change affects the beacon before it affects the carrier',
             ],
             correctIndex: 0,
-            explanation: 'Backing off the HPA reduces output power a few dB and dramatically suppresses IMD. Customer link remains operational with cleaner spectral skirts.',
+            explanation:
+              'Backing off the HPA from 5 to 10 dB drops its output 5 dB (55 to 50 dBm, 316 to 100 W) and pulls the IM3 (2-tone) readout down about 10 dB, from about -33 to -43 dBc. Customer link remains operational with cleaner spectral skirts.',
             pointPenalty: 5,
             preserveOptionOrder: true,
           },

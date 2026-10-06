@@ -58,7 +58,15 @@ function station(id: string) {
     { modem_number: 1, isPowered: true, isFaulted: false, isTransmitting: true, isTransmittingSwitchUp: true },
     { modem_number: 2, isPowered: true, isFaulted: false, isTransmitting: false, isTransmittingSwitchUp: false },
   ];
-  const buc = { state: { temperature: 41 }, setThermalOffset: vi.fn() };
+  const buc = {
+    state: { temperature: 41 },
+    setThermalOffset: vi.fn(),
+    setCoolingFactor: vi.fn(),
+    setExcessCurrent: vi.fn(),
+    setTemperature: vi.fn(function (this: { state: { temperature: number } }, c: number) {
+      this.state.temperature = c;
+    }),
+  };
   const gpsdo = { setGnssSignalPresent: vi.fn() };
   return {
     state: { id },

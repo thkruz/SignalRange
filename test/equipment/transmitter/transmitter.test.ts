@@ -451,18 +451,15 @@ describe('Transmitter class', () => {
       expect(percentage).toBe(0);
     });
 
-    it('should calculate power percentage based on power budget', () => {
+    it('should calculate power percentage as a ratio of powers (19.6)', () => {
       // Default: power=-20dBm, bandwidth=10MHz
-      // Power budget load = power + 10*log10(bandwidth_MHz)
-      // = -20 + 10*log10(10) = -20 + 10 = -10 dBm
-      // Percentage = 100 * (-10) / 10 = -100%
+      // Power budget load = power + 10*log10(bandwidth_MHz) = -10 dBm
+      // Percentage = 100 x 10^((-10 - 10) / 10) = 1 % (it was a ratio of dB numbers: -100 %)
       transmitter.activeModem.isPowered = true;
 
       const percentage = transmitter.getPowerPercentage();
 
-      // With default settings: -20 dBm + 10*log10(10) = -10 dBm
-      // Percentage = round(100 * -10 / 10) = -100
-      expect(percentage).toBe(-100);
+      expect(percentage).toBe(1);
     });
 
     it('should increase with higher power', () => {
@@ -484,9 +481,8 @@ describe('Transmitter class', () => {
 
       const percentage = transmitter.getPowerPercentage();
 
-      // 0 dBm + 10*log10(100) = 20 dBm
-      // Percentage = round(100 * 20 / 10) = 200
-      expect(percentage).toBe(200);
+      // 0 dBm + 10*log10(100) = 20 dBm: 10 dB over the 10 dBm budget = 1000 %
+      expect(percentage).toBe(1000);
     });
   });
 

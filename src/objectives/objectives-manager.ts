@@ -1699,7 +1699,9 @@ export class ObjectivesManager {
       case 'buc-reference-locked': {
         return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
           const bucState = rfFrontEnd.bucModule.state;
-          return bucState.isPowered && bucState.isExtRefLocked && bucState.frequencyError === 0;
+          // 19.6: a locked LO carries the reference's own few parts in 10^12,
+          // never exactly 0 Hz; locked to a warmed-up reference is the test
+          return bucState.isPowered && bucState.isExtRefLocked && rfFrontEnd.gpsdoModule.get10MhzOutput().isWarmedUp;
         });
       }
 
@@ -1753,7 +1755,8 @@ export class ObjectivesManager {
       case 'lnb-reference-locked': {
         return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
           const lnbState = rfFrontEnd.lnbModule.state;
-          return lnbState.isPowered && lnbState.isExtRefLocked && lnbState.frequencyError === 0;
+          // 19.6: the locked LO's error is the reference's (millihertz), not 0
+          return lnbState.isPowered && lnbState.isExtRefLocked && rfFrontEnd.gpsdoModule.get10MhzOutput().isWarmedUp;
         });
       }
 
@@ -1781,8 +1784,11 @@ export class ObjectivesManager {
 
       case 'lnb-thermally-stable': {
         return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
-          const lnbState = rfFrontEnd.lnbModule.state;
-          return lnbState.isPowered && lnbState.noiseTemperature < 100 && lnbState.temperature >= 25 && lnbState.temperature <= 50 && lnbState.frequencyError === 0;
+          // Phase 19.6: powered for its stabilization time and locked to the
+          // reference (the old window passed at power-on: 25 degC was inside it)
+          const lnb = rfFrontEnd.lnbModule;
+          this.observe_({ secondsSincePowerOn: lnb.secondsSincePowerOn, isExtRefLocked: lnb.state.isExtRefLocked });
+          return lnb.isThermallyStable() && lnb.state.isExtRefLocked && lnb.state.noiseTemperature < 100;
         });
       }
 

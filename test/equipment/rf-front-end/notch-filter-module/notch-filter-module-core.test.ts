@@ -137,8 +137,30 @@ describe('NotchFilterModuleCore', () => {
       notchFilterModule.update();
 
       expect(notchFilterModule.outputSignals.length).toBe(1);
-      // Full attenuation since signal is fully within notch
-      expect(notchFilterModule.outputSignals[0].power).toBe(-80); // -60 - 20 = -80
+      // Inside the stop band: the full depth (the 4th-order skirts give back a few hundredths)
+      expect(notchFilterModule.outputSignals[0].power).toBeCloseTo(-80, 0); // -60 - 20 = -80
+      expect(notchFilterModule.outputSignals[0].notchLossDb).toBeCloseTo(20, 0);
+    });
+
+    it('costs a wide carrier only the energy in the notched slice (19.6 overlap integral)', () => {
+      // The C1 S21 case: an 8 MHz, 30 dB notch at 1470 MHz inside a 36 MHz carrier at 1459 MHz
+      const carrier: IfSignal = {
+        frequency: 1459e6,
+        bandwidth: 36e6,
+        power: -30 as dBm,
+        polarization: 'V',
+        origin: SignalOrigin.IF_FILTER_BANK,
+        gainInPath: 0,
+      } as IfSignal;
+      vi.spyOn(notchFilterModule, 'inputSignals', 'get').mockReturnValue([carrier]);
+      notchFilterModule.state.notches[0] = { centerFrequency: 1470 as MHz, bandwidth: 8 as MHz, depth: 30 as never, enabled: true };
+
+      notchFilterModule.update();
+
+      const loss = -30 - notchFilterModule.outputSignals[0].power;
+      // About 10 log(36 / 28) = 1.1 dB, not 30 x 8/36 = 6.7 dB
+      expect(loss).toBeGreaterThan(0.8);
+      expect(loss).toBeLessThan(1.5);
     });
 
     it('should apply partial attenuation when signal partially overlaps notch', () => {

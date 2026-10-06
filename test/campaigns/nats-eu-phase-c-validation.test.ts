@@ -131,7 +131,7 @@ interface PhaseCSettings {
     target?: string;
     startTime: number;
     duration?: number;
-    params?: { startTemperatureC?: number; deltaC?: number };
+    params?: { startTemperatureC?: number; deltaC?: number; coolingFactor?: number; excessCurrentA?: number };
   }>;
 }
 
@@ -973,11 +973,15 @@ describe('nats-eu Phase E: staged physics behind S13-S16', () => {
     const shetland = settings.groundStations.find((gs) => gs.id === 'SH-02')!;
     const modem = shetland.transmitters![0].modems[0];
     const buc = shetland.rfFrontEnds[0].buc;
-    const deltaC = fault.params!.deltaC!;
+    const { deltaC = 0, coolingFactor = 1, excessCurrentA = 0 } = fault.params!;
     const drivenOutputDbm = modem.ifSignal.power + buc.gain;
-    // buc-module-core: target = 25 + 0.8 * (outputPower + 10) + offset
-    const drivenTarget = 25 + 0.8 * Math.max(0, drivenOutputDbm + 10) + deltaC;
-    const mutedTarget = 25 + deltaC;
+    // buc-module-core (19.6): current = 2.6 A idle + 2.4 A x sqrt(Pout / Psat)
+    // (+ the excess while unmuted); target = 25 + 0.30 x coolingFactor x
+    // (24 V x current - RF out) + deltaC. Psat = P1dB + 2.16 dB (Rapp).
+    const psatDbm = buc.saturationPower + 2.16;
+    const drivenCurrentA = 2.6 + 2.4 * Math.sqrt(10 ** ((drivenOutputDbm - psatDbm) / 10)) + excessCurrentA;
+    const drivenTarget = 25 + 0.3 * coolingFactor * (24 * drivenCurrentA - 10 ** ((drivenOutputDbm - 30) / 10)) + deltaC;
+    const mutedTarget = 25 + 0.3 * coolingFactor * 24 * 2.6 + deltaC;
 
     expect(fault.target).toBe('buc-overtemp');
     expect(modem.isTransmitting, 'the carrier is staged on air').toBe(true);
@@ -985,6 +989,11 @@ describe('nats-eu Phase E: staged physics behind S13-S16', () => {
     expect(fault.params!.startTemperatureC!).toBeGreaterThan(70);
     expect(drivenTarget, `driven settle ${drivenTarget.toFixed(1)} degC`).toBeGreaterThan(70);
     expect(mutedTarget, `muted settle ${mutedTarget.toFixed(1)} degC`).toBeLessThan(70);
+    expect(drivenTarget, 'still climbing from the trip reading while driven').toBeGreaterThan(fault.params!.startTemperatureC!);
+    expect(drivenCurrentA, 'no high-current alarm: the story is the fan').toBeLessThan(4.5);
+    // 10 min time constant: from the settled driven reading, under 70 degC inside the 4 min objective timer
+    const coolS = 600 * Math.log((drivenTarget - mutedTarget) / (70 - mutedTarget));
+    expect(coolS, `cool from settled in ${coolS.toFixed(0)} s`).toBeLessThan(4 * 60);
     // The fan is back before the report, and well after the operator is asked to cool it.
     expect(fault.startTime).toBeLessThan(120);
     expect(fault.startTime + fault.duration!).toBeGreaterThan(settings.commanding!.windowStartS);

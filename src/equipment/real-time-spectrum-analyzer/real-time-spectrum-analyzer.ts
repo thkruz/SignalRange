@@ -452,6 +452,13 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
   /** Line noise alone at the enabled taps (dBm in the noise bandwidth), for the notch dip */
   lineNoiseDbm: number = Number.NEGATIVE_INFINITY;
 
+  /** True when an enabled tap is downstream of the notch filter (RX IF), so its dip is on screen */
+  get isNotchInView(): boolean {
+    const coupler = this.rfFrontEnd_.couplerModule.state;
+
+    return (this.state.isUseTapA && coupler.tapPointA === TapPoint.RX_IF) || (this.state.isUseTapB && coupler.tapPointB === TapPoint.RX_IF);
+  }
+
   /**
    * Get signals at a specific tap point in the signal chain
    * @param tapPoint - The tap point location
@@ -464,9 +471,10 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
       case TapPoint.TX_RF_POST_BUC:
         return this.rfFrontEnd_.bucModule.outputSignals;
       case TapPoint.TX_RF_POST_HPA:
-        return this.rfFrontEnd_.hpaModule.outputSignals;
+        // Carriers plus the amplifier's IM3 products / regrowth (Phase 19.6)
+        return [...this.rfFrontEnd_.hpaModule.outputSignals, ...this.rfFrontEnd_.hpaModule.distortionSignals];
       case TapPoint.TX_RF_POST_OMT:
-        return this.rfFrontEnd_.omtModule.txSignalsOut;
+        return [...this.rfFrontEnd_.omtModule.txSignalsOut, ...this.rfFrontEnd_.omtModule.txDistortionOut];
       case TapPoint.RX_RF_PRE_OMT:
         return this.rfFrontEnd_.antenna.state.rxSignalsIn;
       case TapPoint.RX_RF_POST_OMT:

@@ -42,13 +42,16 @@ import { createMeridianSar1, createMeridianSar2 } from './satellites';
  *   -> commit at 7.2 dB, only near max elevation
  *
  * Uplink: HPA back-off 10 -> 4 dB is +6 dB EIRP. Below 3 dB the amplifier is
- * overdriven (`isOverdriven`, IMD alarm). The HPA output is drive + gain -
- * back-off, so the BUC has to be delivering its rated drive first: the
+ * overdriven (`isOverdriven`, output back-off under 3 dB, IMD alarm). GW-01's
+ * 2.5 W SSPA runs fixed gain (ALC off): output = input + gain, and the back-off
+ * is an attenuator that sets the gain from the rated 16 dBm drive (Phase 19.6),
+ * so the BUC has to be delivering its rated drive first: the
  * evening shift left the BUC gain wound down to 18 dB after a maintenance
  * run (staged state), and the EIRP plan starts by restoring 23 dB. At 4 dB
- * back-off the HPA delivers about 30 dBm (1 W) into the feed on this chain
+ * back-off the HPA delivers 29.9 dBm (0.97 W) into the feed on this chain
  * (`hpa-output-power-set` 0.5 W is the proof once the amplifier is up); at
- * 10 dB it is a quarter of that.
+ * 10 dB it is 24 dBm, a quarter of that. Left at 18 dB the BUC gives 11 dBm and
+ * back-off 4 gives 25 dBm (0.32 W): 5 dB short, no alarm anywhere.
  *
  * Commanding window is the SAR-1 pass with 20 s guard bands:
  * AOS 1019 s + 20 -> windowStartS 1039; LOS 1563 s - 20 -> windowEndS 1543.
@@ -367,7 +370,8 @@ export const natsEuScenario10Data: ScenarioData = {
           description: 'Chain Arithmetic Read',
           params: {
             character: Character.SYSTEM,
-            question: 'The HPA output is its input plus gain minus back-off. What would 4 dB of back-off have delivered with the BUC still at 18 dB?',
+            question:
+              'GW-01 runs its HPA at fixed gain, ALC off: output is input plus gain, and the back-off sets that gain from the rated drive. What would 4 dB of back-off have delivered with the BUC still at 18 dB?',
             options: [
               'The EIRP of a 9 dB back-off on a correct chain: 5 dB short of the plan, with every indicator green',
               'The same EIRP as the plan: the HPA compensates for the drive level, with every indicator green',
@@ -376,7 +380,7 @@ export const natsEuScenario10Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'EIRP is a sum, and the back-off is only one term. The card\'s "4 dB" assumes the BUC delivers its rated drive. Read the chain from the modem outward before you set the number at the end of it.',
+              'EIRP is a sum, and the back-off is only one term. The card\'s "4 dB" assumes the BUC delivers its rated 16 dBm; at 18 dB it gives 11, and a fixed-gain HPA passes the shortfall straight through: a third of a watt instead of one. Read the chain from the modem outward before you set the number at the end of it.',
             pointPenalty: 5,
           },
           mustMaintain: false,

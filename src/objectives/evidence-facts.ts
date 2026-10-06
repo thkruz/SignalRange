@@ -20,7 +20,6 @@ import { GnssThreatManager } from '@app/gnss-threat/gnss-threat-manager';
 import { InterferenceManager } from '@app/interference/interference-manager';
 import { SecurityConsoleCore } from '@app/security-console/security-console-core';
 import { TelemetryManager } from '@app/telemetry/telemetry-manager';
-import { WeatherManager } from '@app/weather/weather-manager';
 import { DecisionFactRule, EVIDENCE_FACT_IDS, EvidenceFactId, OBSERVATION_DWELL_GRACE_SECONDS } from './objective-types';
 
 export interface EvidenceContext {
@@ -72,12 +71,13 @@ export const EVIDENCE_FACTS: Record<EvidenceFactId, EvidenceFactResolver> = {
 
   'reference-in-holdover': (ctx) => anyGpsdo(ctx, (s) => s.isPowered && s.isInHoldover),
 
+  // The station's antennas are losing at least WEATHER_DOMINANT_DB of C/N to
+  // rain and ice right now (attenuation plus noise rise, from the noise model;
+  // Phase 19.2 - it used to read the authored linkMarginDegradation)
   'weather-attenuation-dominant': (ctx) => {
-    if (!ctx.gs || !WeatherManager.hasInstance()) return false;
+    if (!ctx.gs) return false;
     if (interferenceActive() || faultActive(ctx)) return false;
-    return WeatherManager.getInstance()
-      .getActiveWeatherEvents(ctx.gs.state.id)
-      .some((e) => e.linkMarginDegradation >= WEATHER_DOMINANT_DB);
+    return (ctx.gs.antennas ?? []).some((antenna) => (antenna.weatherCnLossDb?.() ?? 0) >= WEATHER_DOMINANT_DB);
   },
 
   'audit-anomaly-present': () => SecurityConsoleCore.isInitialized() && SecurityConsoleCore.getInstance().hasUnacknowledgedAnomaly(),

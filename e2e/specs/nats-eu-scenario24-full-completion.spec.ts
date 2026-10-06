@@ -154,10 +154,10 @@ test.describe('nats-eu Scenario 24 Full Completion', () => {
     await waitForObjectiveComplete(missionControl, 'Plan the Network');
   });
 
-  test('[galway-dashboard-sweep] reads the board in the rain: AGC rail, no faults', async () => {
+  test('[galway-dashboard-sweep] reads the board in the rain: AGC no-carrier warning, no faults', async () => {
     await missionControl.selectTab('dashboard');
-    await expectDashboardAlarm(page, 'AGC at max gain');
-    await answerSystemQuiz(page, 'RX AGC at max gain');
+    await expectDashboardAlarm(page, 'AGC on noise only');
+    await answerSystemQuiz(page, 'RX AGC on noise only');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'GW-01 Storm Sweep');
   });

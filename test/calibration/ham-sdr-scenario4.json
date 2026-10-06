@@ -29,6 +29,13 @@
       "antennaConfig": "UHF_CROSSED_YAGI_70CM",
       "lnbLoMHz": 0,
       "lnbNoiseTempK": 75.09,
+      "agcOnNoiseAlone": {
+        "noiseInDbm": -46.37,
+        "filterMHz": 0.2,
+        "settledGainDb": 10,
+        "maxGainDb": 10,
+        "railedAtMax": true
+      },
       "links": [
         {
           "satellite": "CUBEHOP-1",
@@ -43,8 +50,8 @@
             "elevationDeg": 83.11,
             "frequencyMHz": 435.26,
             "gainDbi": 12,
-            "gOverTDbPerK": -12.06,
-            "tsysK": 254.67
+            "gOverTDbPerK": -12,
+            "tsysK": 209.1
           },
           "carriers": [
             {
@@ -55,10 +62,10 @@
               "modulation": "QPSK",
               "fec": "1/2",
               "samples": 619,
-              "peakCnDb": 35.94,
-              "medianCnDb": 29.38,
-              "peakRxIfDbm": -26.64,
-              "noiseIfDbm": -62.08,
+              "peakCnDb": 31.49,
+              "medianCnDb": 24.91,
+              "peakRxIfDbm": -26.14,
+              "noiseIfDbm": -57.62,
               "lockedSamples": 619
             }
           ]

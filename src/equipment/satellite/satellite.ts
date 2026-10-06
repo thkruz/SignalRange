@@ -76,7 +76,11 @@ export interface Transponder {
  * Configuration for signal degradation effects.
  */
 export interface SignalDegradationConfig {
-  /** Enable atmospheric effects (rain fade, scintillation) */
+  /**
+   * Atmospheric effects on relayed carriers. No effect since Phase 19.2: rain
+   * is modelled once, at the receiving antenna (attenuation and noise rise),
+   * and scintillation is a 19.7 item (a seeded P.618 §2.4 process).
+   */
   atmosphericEffects: boolean;
   /** Enable random signal dropout simulation */
   randomDropout: boolean;
@@ -168,8 +172,6 @@ export class Satellite {
 
   /** Uplink to downlink frequency offset (Hz) */
   private readonly frequencyOffset: number;
-
-  private readonly randomCache_: Map<string, number> = new Map();
 
   /** This satellite's random stream for the current run seed */
   private get rng_(): RngStream {
@@ -405,9 +407,6 @@ export class Satellite {
    * Update satellite state and process signals.
    */
   update(): void {
-    this.randomCache_.clear();
-    this.createRandomValues_();
-
     // Update position for geosynchronous satellites
     this.updatePosition_();
 
@@ -417,19 +416,6 @@ export class Satellite {
 
     // Update satellite health based on conditions
     this.updateHealth();
-  }
-
-  private createRandomValues_(): void {
-    // We need to create random values for each signal to use in degradation effects
-    const allRxSignals = [...this.rxSignal, ...this.externalSignal];
-
-    const rng = this.rng_;
-    for (const signal of allRxSignals) {
-      // Rain Variation
-      this.randomCache_.set(`${signal.signalId}-rain`, rng.next());
-      // Scintillation (pre-cached so degradation makes no draws of its own)
-      this.randomCache_.set(`${signal.signalId}-scintillation`, rng.next());
-    }
   }
 
   /**
@@ -578,10 +564,6 @@ export class Satellite {
       power = this.applyPowerVariation_inPlace(degradedSignal.signalId, power);
     }
 
-    if (this.degradationConfig.atmosphericEffects) {
-      power = this.applyAtmosphericEffects_inPlace(degradedSignal.signalId, degradedSignal.frequency, power);
-    }
-
     if (this.degradationConfig.interference) {
       power = this.applyInterference_inPlace(power);
       degradedSignal.isDegraded = true;
@@ -618,37 +600,15 @@ export class Satellite {
     const phaseS = Rng.hashUniform(noiseSeed) * 1000;
     const time = SimClock.runMs() / 1000 + phaseS;
 
-    // KNOWN DEVIATION (fixed in Phase 19.2): Perlin output is zero-mean, so
-    // `* 2 - 1` biases every relayed downlink by -powerVariationRange. Kept
-    // until the 19.1 calibration ledger can record the shift.
-    const noiseValue = noiseGen.get(time) * 2 - 1;
+    // Perlin output is zero-mean within about +/-0.5 on one axis: scale it to
+    // +/-1 (Phase 19.2 removed the old `* 2 - 1`, a -1 dB bias on every
+    // relayed downlink, DEV-NOISE-05)
+    const noiseValue = noiseGen.get(time) * 2;
 
     // Apply variation
     const variation = noiseValue * this.degradationConfig.powerVariationRange;
 
     return (currentPower + variation) as dBm;
-  }
-
-  /**
-   * Apply atmospheric effects like rain fade and scintillation (in-place optimization).
-   * @param signalId - The signal identifier
-   * @param frequency - Signal frequency in Hz
-   * @param currentPower - Current power level in dBm
-   * @returns Updated power level in dBm
-   */
-  private applyAtmosphericEffects_inPlace(signalId: string, frequency: RfFrequency, currentPower: dBm): dBm {
-    // Rain fade is frequency dependent (worse at higher frequencies)
-    const frequencyGHz = frequency / 1e9;
-    const randomRainFactor = this.randomCache_.get(`${signalId}-rain`) ?? 1;
-
-    // Simple rain fade model (in dB)
-    const rainFadeDb = (frequencyGHz / 10) * randomRainFactor * 0.3; // Simplified model
-
-    // Scintillation (rapid amplitude fluctuations) - use pre-cached random value
-    const randomScintillationFactor = this.randomCache_.get(`${signalId}-scintillation`) ?? 0.5;
-    const scintillationDb = (randomScintillationFactor - 0.5) * 0.3;
-
-    return (currentPower - rainFadeDb + scintillationDb) as dBm;
   }
 
   /**

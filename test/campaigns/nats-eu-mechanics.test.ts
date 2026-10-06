@@ -36,6 +36,24 @@ afterEach(() => {
 });
 
 describe('nats-eu M1 - Link-budget / EIRP console', () => {
+  it('without an authored expectedCNRDb the worksheet is graded against the engine prediction (phase 19.2)', () => {
+    const { expectedCNRDb: _authored, ...rest } = natsEuSandboxData.settings.linkBudget!;
+    ScenarioManager.getInstance().settings = { ...natsEuSandboxData.settings, linkBudget: rest };
+    const mgr = LinkBudgetManager.getInstance();
+    mgr.computeCNR({ eirpDbm: 50, fsplDb: 180.7, rxGainDbi: 44.5, systemNoiseTempK: 120, bandwidthHz: 36e6, miscLossDb: 2 });
+
+    // No engine prediction registered yet: nothing to grade against
+    expect(mgr.expectedCNRDb()).toBeNull();
+    expect(mgr.isBudgetComputedCorrectly()).toBe(false);
+
+    // The link-budget tab registers the live chain's clear-sky C/N
+    mgr.setEnginePrediction(() => 14.2);
+    expect(mgr.expectedCNRDb()).toBe(14.2);
+    expect(mgr.isBudgetComputedCorrectly()).toBe(true);
+    mgr.setEnginePrediction(() => 9);
+    expect(mgr.isBudgetComputedCorrectly()).toBe(false);
+  });
+
   it('link-budget-computed latches when the worksheet matches truth; link-margin-met after commit', () => {
     const mgr = LinkBudgetManager.getInstance();
 

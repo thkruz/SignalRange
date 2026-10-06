@@ -32,7 +32,7 @@ export const vermontGroundStation = {
       targetPolarization: 14 as Degrees,
       slewing: false,
       beaconCN: 10.5 as dB,
-      beaconFrequencyHz: 3902.5e6 as Hertz,
+      beaconFrequencyHz: 4175.5e6 as Hertz, // TIDEMARK-1 beacon (RF; the beacon receiver tunes RF)
       isLocked: true,
     } as Partial<AntennaState>,
   ],
@@ -121,8 +121,8 @@ export const vermontGroundStation = {
         tapPointB: TapPoint.RX_IF,
         availableTapPointsA: [TapPoint.TX_IF, TapPoint.RX_IF],
         availableTapPointsB: [TapPoint.TX_IF, TapPoint.RX_IF],
-        couplingFactorA: -40, // dB
-        couplingFactorB: -39, // dB
+        couplingFactorA: -20, // dB (monitor coupler; the analyzer reads line power through it, Phase 19.2)
+        couplingFactorB: -20, // dB
         isEnabledA: false,
         isEnabledB: true,
         isActiveA: false,
@@ -325,8 +325,8 @@ export const maineGroundStation = {
         tapPointB: TapPoint.RX_IF,
         availableTapPointsA: [TapPoint.TX_IF, TapPoint.RX_IF],
         availableTapPointsB: [TapPoint.TX_IF, TapPoint.RX_IF],
-        couplingFactorA: -40, // dB
-        couplingFactorB: -39, // dB
+        couplingFactorA: -20, // dB (monitor coupler; the analyzer reads line power through it, Phase 19.2)
+        couplingFactorB: -20, // dB
         isEnabledA: false,
         isEnabledB: true,
         isActiveA: false,

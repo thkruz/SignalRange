@@ -24,6 +24,13 @@ export interface AGCState extends RFFrontEndModuleState {
  * Automatic Gain Control - measures total power in IF passband and applies
  * uniform gain adjustment to keep output at target level.
  *
+ * The detector measures carriers AND the receive noise in the IF filter's
+ * bandwidth (Phase 19.2): with no carrier it levels the noise (at max gain
+ * only if the noise alone is too weak to reach the target). A passband with
+ * no carrier above the noise raises "AGC on noise only - no carrier", the
+ * pre-AOS warning on a LEO board (it replaced the old max-gain rail, which
+ * only existed because the detector ignored noise).
+ *
  * Key behavior:
  * - Indiscriminate: cannot distinguish wanted signals from interference
  * - When interference is present, reduces gain for ALL signals
@@ -40,6 +47,20 @@ export abstract class AGCModuleCore extends RFFrontEndModule<AGCState> {
   static readonly DETECTOR_FLOOR_DBM = -120 as dBm;
 
   outputSignals: IfSignal[] = [];
+
+  /**
+   * Carriers must lift the passband power at least this much over the noise
+   * alone for the AGC to be levelling a carrier (dB)
+   */
+  static readonly NOISE_ONLY_MARGIN_DB = 0.5;
+
+  /** The passband holds receive noise and no carrier above it (updated each frame) */
+  private isNoiseOnly_ = false;
+
+  /** True when the AGC is levelling noise alone: no carrier above the noise in its passband */
+  get isNoiseOnly(): boolean {
+    return this.isNoiseOnly_;
+  }
 
   /**
    * Get default state for AGC module
@@ -80,9 +101,14 @@ export abstract class AGCModuleCore extends RFFrontEndModule<AGCState> {
   update(): void {
     const inputs = this.inputSignals;
 
-    // Calculate total input power (sum of all signals in linear domain)
-    const totalPowerLinear = inputs.reduce((sum, sig) => sum + 10 ** (sig.power / 10), 0);
+    // Total input power: carriers plus the receive noise in the passband
+    // (linear power sum)
+    const noiseLinear = this.noiseInputMw_();
+    const carriersLinear = inputs.reduce((sum, sig) => sum + 10 ** (sig.power / 10), 0);
+    const totalPowerLinear = carriersLinear + noiseLinear;
     this.state.inputPower = AGCModuleCore.toDetectorReading_(totalPowerLinear);
+    // Carriers lift the passband less than NOISE_ONLY_MARGIN_DB over the noise
+    this.isNoiseOnly_ = noiseLinear > 0 && carriersLinear < noiseLinear * (10 ** (AGCModuleCore.NOISE_ONLY_MARGIN_DB / 10) - 1);
 
     // Handle bypass mode - pass signals through unchanged
     if (this.state.isBypassed) {
@@ -119,9 +145,28 @@ export abstract class AGCModuleCore extends RFFrontEndModule<AGCState> {
       origin: SignalOrigin.AGC,
     }));
 
-    // Calculate actual output power
-    const outputPowerLinear = this.outputSignals.reduce((sum, sig) => sum + 10 ** (sig.power / 10), 0);
+    // Calculate actual output power (carriers plus the levelled noise)
+    const outputPowerLinear = this.outputSignals.reduce((sum, sig) => sum + 10 ** (sig.power / 10), 0) + noiseLinear * 10 ** (this.state.currentGain / 10);
     this.state.outputPower = AGCModuleCore.toDetectorReading_(outputPowerLinear);
+  }
+
+  /**
+   * Receive noise arriving at the AGC (mW): k·Tsys over the IF filter's
+   * bandwidth with the gain ahead of the AGC (LNB gain less filter loss). An
+   * unpowered LNB or filter delivers no noise.
+   */
+  private noiseInputMw_(): number {
+    const fe = this.rfFrontEnd_;
+    if (!fe?.lnbModule || !fe.filterModule || !fe.couplerModule) {
+      return 0;
+    }
+    if (!fe.lnbModule.state.isPowered || fe.filterModule.state.isPowered === false) {
+      return 0;
+    }
+    const spm = fe.couplerModule.signalPathManager;
+    const noiseDbm = spm.getExternalNoise() - spm.agcGain;
+
+    return Number.isFinite(noiseDbm) ? 10 ** (noiseDbm / 10) : 0;
   }
 
   /** Converts a summed linear power (mW) to dBm, floored at the detector floor. */
@@ -149,8 +194,11 @@ export abstract class AGCModuleCore extends RFFrontEndModule<AGCState> {
       return alarms;
     }
 
-    // Warn when at gain limits
-    if (this.state.currentGain >= this.state.maxGain - 0.5) {
+    // Nothing to level but noise: the empty-sky (pre-AOS) indication
+    if (this.isNoiseOnly_) {
+      alarms.push('AGC on noise only - no carrier in passband');
+    } else if (this.state.currentGain >= this.state.maxGain - 0.5) {
+      // Warn when at gain limits
       alarms.push(`AGC at max gain (${this.state.currentGain.toFixed(1)} dB) - weak signal`);
     }
 

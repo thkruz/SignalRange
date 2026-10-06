@@ -201,7 +201,7 @@ export class DashboardTab extends BaseElement {
                   </span>
                 </div>
                 <div class="d-flex justify-content-between align-items-center">
-                  <span class="text-muted small">Beacon C/N:</span>
+                  <span class="text-muted small" title="Measured in the beacon receiver's 1 kHz tracking bandwidth (the RX modem C/N is in the carrier bandwidth)">Beacon C/N (1 kHz):</span>
                   <span id="antenna-cn" class="fw-bold font-monospace small">-- dB</span>
                 </div>
               </div>

@@ -253,7 +253,7 @@ export class ACUControlTab extends BaseElement {
               <!-- Beacon C/N Display - visible in manual and program-track modes -->
               <div id="${p}beacon-display-section" class="mt-3" style="display: none;">
                 <div class="beacon-strength-container">
-                  <label class="form-label">Beacon C/N</label>
+                  <label class="form-label" title="Beacon C/N in the beacon receiver's narrow tracking bandwidth: higher than the carrier C/N on the RX modem, which is measured in the carrier's full bandwidth">Beacon C/N (1 kHz)</label>
                   <div class="beacon-strength-bar">
                     <div class="beacon-strength-fill" id="${p}beacon-strength-fill"></div>
                     <span class="beacon-strength-value" id="${p}beacon-cn-value">-- dB</span>

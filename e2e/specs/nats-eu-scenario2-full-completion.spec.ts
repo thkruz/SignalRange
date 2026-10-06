@@ -97,7 +97,7 @@ test.describe('nats-eu Scenario 2 Full Completion', () => {
   });
 
   test('[compute-link-budget] predicts the downlink C/N', async () => {
-    await computeLinkBudget(page, missionControl, { eirpDbm: 28, fsplDb: 171.4, rxGainDbi: 51.8, noiseTempK: 88, bandwidthMHz: 36, miscLossDb: 1 });
+    await computeLinkBudget(page, missionControl, { eirpDbm: 31.3, fsplDb: 171.4, rxGainDbi: 50.4, noiseTempK: 125, bandwidthMHz: 36, miscLossDb: 1 });
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Predict the Downlink C/N');
   });

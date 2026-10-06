@@ -85,11 +85,11 @@ test.describe('nats-eu Scenario 10 Full Completion', () => {
     await waitForObjectiveComplete(missionControl, 'Read the Tasking');
   });
 
-  test('[dashboard-sweep] reads the board: AGC rail, no faults', async () => {
+  test('[dashboard-sweep] reads the board: AGC no-carrier warning, no faults', async () => {
     await missionControl.selectGroundStation('GW-01');
     await missionControl.selectTab('dashboard');
-    await expectDashboardAlarm(page, 'AGC at max gain');
-    await answerSystemQuiz(page, 'RX AGC at max gain');
+    await expectDashboardAlarm(page, 'AGC on noise only');
+    await answerSystemQuiz(page, 'RX AGC on noise only');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'GW-01 Dashboard Sweep');
   });
@@ -105,10 +105,10 @@ test.describe('nats-eu Scenario 10 Full Completion', () => {
 
   test('[budget-the-low-pass] computes the worksheet and reads the atmospheric loss', async () => {
     await computeLinkBudget(page, missionControl, {
-      eirpDbm: 28,
+      eirpDbm: 31.3,
       fsplDb: 174.1,
-      rxGainDbi: 51.8,
-      noiseTempK: 88,
+      rxGainDbi: 50.4,
+      noiseTempK: 131,
       bandwidthMHz: 36,
       miscLossDb: 1.2,
     });

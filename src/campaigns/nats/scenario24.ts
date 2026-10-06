@@ -103,7 +103,7 @@ export const scenario24Data: ScenarioData = {
             targetPolarization: -25 as Degrees,
             slewing: false,
             beaconCN: 10.2 as dB,
-            beaconFrequencyHz: 1070e6 as Hertz,
+            beaconFrequencyHz: 4180e6 as Hertz, // TIDEMARK-2 beacon (RF)
             isLocked: true,
           } as Partial<AntennaState>,
         ],

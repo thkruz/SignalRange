@@ -282,14 +282,14 @@ export const natsEuScenario19Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What is the active alarm state on GW-01 at 13:00?',
             options: [
-              'RX AGC at max gain - weak signal on an empty sky, no hardware alarm',
+              'RX AGC on noise only - no carrier on an empty sky, no hardware alarm',
               'No active alarms - all systems nominal, board clear for the pass',
               'TRANSEC alarm - hop-set key loaded but waveform fixed, flagged as a mismatch',
               'BUC muted alarm - the uplink is inhibited and the board wants it cleared',
             ],
             correctIndex: 0,
             explanation:
-              'Empty sky, not a fault. A muted BUC is the correct state for a station with nothing to send, and a loaded-but-inactive hop key is exactly what the brief says it should be. The AGC rail clears at AOS.',
+              'Empty sky, not a fault. A muted BUC is the correct state for a station with nothing to send, and a loaded-but-inactive hop key is exactly what the brief says it should be. The AGC no-carrier warning clears at AOS.',
             pointPenalty: 5,
           },
           mustMaintain: false,

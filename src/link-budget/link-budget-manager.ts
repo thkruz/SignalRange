@@ -21,8 +21,14 @@ const BOLTZMANN_J_PER_K = 1.380649e-23;
 export interface LinkBudgetConfig {
   /** Human label for the planned link (e.g. "MERIDIAN-SAR-1 downlink, max-el pass") */
   label?: string;
-  /** Ground-truth C/N (dB) the correctly-filled worksheet must yield */
-  expectedCNRDb: number;
+  /**
+   * Ground-truth C/N (dB) the correctly-filled worksheet must yield. Optional
+   * since Phase 19.2: when absent the worksheet is graded against the
+   * engine's own clear-sky C/N for the link (`setEnginePrediction`). The
+   * calibration ledger checks every remaining authored value against the
+   * engine (scripts/calibration/diff.mjs).
+   */
+  expectedCNRDb?: number;
   /** Tolerance (dB) for accepting the operator's computed C/N as correct (default 1.0) */
   toleranceDb?: number;
   /** Demod C/N threshold (dB) the margin is measured against */
@@ -59,6 +65,8 @@ export class LinkBudgetManager {
 
   private readonly config_: LinkBudgetConfig | null;
   private readonly state_: LinkBudgetState = { computedCNRDb: null, appliedMarginDb: null };
+  /** The engine's clear-sky C/N for the link, used when no expectedCNRDb is authored */
+  private enginePrediction_: (() => number | null) | null = null;
 
   private constructor() {
     this.config_ = (ScenarioManager.getInstance().settings.linkBudget as LinkBudgetConfig | undefined) ?? null;
@@ -120,14 +128,33 @@ export class LinkBudgetManager {
     this.state_.appliedMarginDb = achievedCNRDb - this.config_.thresholdCNRDb;
   }
 
+  /**
+   * Register the engine's clear-sky C/N for the planned link (the link-budget
+   * tab supplies it from the live receive chain). Graded against when the
+   * scenario authors no expectedCNRDb.
+   */
+  setEnginePrediction(predict: (() => number | null) | null): void {
+    this.enginePrediction_ = predict;
+  }
+
+  /** The C/N the worksheet is graded against: authored, else the engine's clear-sky prediction */
+  expectedCNRDb(): number | null {
+    if (!this.config_) {
+      return null;
+    }
+
+    return this.config_.expectedCNRDb ?? this.enginePrediction_?.() ?? null;
+  }
+
   /** Whether the operator's computed C/N matches the acceptance truth within tolerance. */
   isBudgetComputedCorrectly(): boolean {
-    if (!this.config_ || this.state_.computedCNRDb === null) {
+    const expected = this.expectedCNRDb();
+    if (!this.config_ || this.state_.computedCNRDb === null || expected === null) {
       return false;
     }
     const tol = this.config_.toleranceDb ?? 1.0;
 
-    return Math.abs(this.state_.computedCNRDb - this.config_.expectedCNRDb) <= tol;
+    return Math.abs(this.state_.computedCNRDb - expected) <= tol;
   }
 
   /** Whether the committed margin meets the required threshold (or an override minMarginDb). */

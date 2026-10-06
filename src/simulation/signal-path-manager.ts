@@ -1,6 +1,7 @@
 import { TapPoint } from '@app/equipment/rf-front-end/coupler-module/tap-points';
 import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { dB, dBm, Hertz, RfSignal } from '@app/types';
+import { thermalNoiseDbm } from './noise-model';
 
 /**
  * Manages signal path calculations including cumulative noise floor and gain.
@@ -72,7 +73,28 @@ export class SignalPathManager {
   }
 
   getAntennaNoise(frequency: Hertz, bandwidth: Hertz): number {
-    return this.rfFrontEnd_.antenna.antennaNoiseFloor(frequency, bandwidth);
+    return this.rfFrontEnd_.antenna?.antennaNoiseFloor(frequency, bandwidth) ?? Number.NEGATIVE_INFINITY;
+  }
+
+  /**
+   * System noise temperature at the LNA input, K (Phase 19.2): sky, rain,
+   * spillover and sun through the feed, plus the LNB. Every receive-side noise
+   * figure in the engine (modem and beacon C/N, analyzer floor, AGC detector)
+   * is k·T·B of this one number. Without an antenna (bench tests) it is the
+   * LNB's own temperature.
+   */
+  systemNoiseK(): number {
+    const antenna = this.rfFrontEnd_.antenna;
+    if (antenna) {
+      return antenna.systemNoise().systemK;
+    }
+
+    return this.rfFrontEnd_.lnbModule.state.noiseTemperature;
+  }
+
+  /** Antenna noise alone (no LNB) referred to the LNA input, K */
+  antennaNoiseAtLnaK(): number {
+    return this.rfFrontEnd_.antenna?.systemNoise().antennaAtLnaK ?? 0;
   }
 
   /** Signals at the point they exit the OMT */
@@ -129,40 +151,38 @@ export class SignalPathManager {
   }
 
   /**
-   * Get external noise floor at the spectrum analyzer input (RX_IF tap point).
-   * This combines the filter noise floor with the total RX gain.
+   * Receive noise in the IF filter's bandwidth at the IF (dBm, gain applied):
+   * the carrier-presence gate (a carrier below the noise in the passband is
+   * not there to demodulate) and the AGC detector's noise term.
    */
   getExternalNoise(): dBm {
-    return (this.rfFrontEnd_.filterModule.state.noiseFloor + this.getTotalRxGain()) as dBm;
+    const filterBwHz = this.rfFrontEnd_.filterModule.state.bandwidth * 1e6;
+
+    return (thermalNoiseDbm(this.systemNoiseK(), filterBwHz) + this.getTotalRxGain()) as dBm;
   }
 
   /**
-   * Get noise floor for RX IF tap point, comparing external vs internal noise.
-   * This logic determines which noise source dominates at the spectrum analyzer.
+   * Noise floor for the RX IF over the IF filter bandwidth, referred to the
+   * LNA input (no gain). Kept for callers of the old external/internal split;
+   * the analyzer's own noise is handled by the analyzer (instrument NF).
    */
   getNoiseFloorIfRx(): { isInternalNoiseGreater: boolean; noiseFloor: dBm } {
-    const NF = 0.5; // Spectrum analyzer noise figure
-    const externalNoiseFloor = this.rfFrontEnd_.filterModule.state.noiseFloor + this.getTotalRxGain();
-    const internalNoiseFloor = -174 + 10 * Math.log10(this.rfFrontEnd_.filterModule.state.bandwidth * 1e6) + NF;
-    const isInternalNoiseGreater = internalNoiseFloor > externalNoiseFloor;
+    const filterBwHz = this.rfFrontEnd_.filterModule.state.bandwidth * 1e6;
 
-    return {
-      isInternalNoiseGreater: isInternalNoiseGreater,
-      noiseFloor: (isInternalNoiseGreater ? internalNoiseFloor : externalNoiseFloor - this.getTotalRxGain()) as dBm,
-    };
+    return { isInternalNoiseGreater: false, noiseFloor: thermalNoiseDbm(this.systemNoiseK(), filterBwHz) as dBm };
   }
 
   /**
-   * Get the noise floor at a specific tap point WITHOUT gain corrections applied.
-   * This uses the Friis cascade formula to calculate cumulative noise through the RX chain.
+   * The line noise at a tap point over `bandwidth`, WITHOUT the gain up to
+   * that tap (add `getTotalGainTo(tapPoint)` to place it at the tap). This is
+   * the noise physically on the line; the spectrum analyzer adds its own
+   * instrument noise (noise figure, coupling factor) on top.
    *
-   * The caller is responsible for deciding whether to apply gain based on the returned flag.
+   * RX taps are k·T·B with T from the noise model, referred to the LNA input
+   * (the plane carrier powers are referred to): before the LNA only the
+   * antenna's share, from the LNA on the full system temperature.
    *
-   * @param tapPoint - The tap point location in the signal chain
-   * @param bandwidth - The noise bandwidth in Hz
-   * @returns Object containing:
-   *   - noiseFloorNoGain: Noise floor in dBm WITHOUT gain applied
-   *   - shouldApplyGain: Whether gain should be added during visualization
+   * @returns noiseFloorNoGain in dBm and whether gain must be added to place it at the tap
    */
   getNoiseFloorAt(
     tapPoint: TapPoint,
@@ -172,74 +192,29 @@ export class SignalPathManager {
     shouldApplyGain: boolean;
   } {
     switch (tapPoint) {
-      case TapPoint.RX_RF_PRE_OMT: {
-        // Noise floor = Antenna thermal noise only
-        // No components in chain yet, so this is just antenna noise temperature
-        const antennaFreq = 4e9 as Hertz; // Use center of C-band as representative frequency
-        const noiseFloor = this.getAntennaNoise(antennaFreq, bandwidth);
-        return {
-          noiseFloorNoGain: noiseFloor as dBm,
-          shouldApplyGain: true, // External noise - will need gain applied during visualization
-        };
-      }
-
+      case TapPoint.RX_RF_PRE_OMT:
       case TapPoint.RX_RF_POST_OMT:
-      case TapPoint.RX_RF_POST_LNA: {
-        // Noise floor = LNB system noise (includes LNA + mixer noise figures)
-        // This is the "external" noise that will be (or has been) amplified by the LNA
-        // We return the noise WITHOUT gain - caller applies gain during visualization
-        const noiseFloor = this.rfFrontEnd_.lnbModule.getNoiseFloor(bandwidth);
-        return {
-          noiseFloorNoGain: noiseFloor as dBm,
-          shouldApplyGain: true, // External noise - gain applied during visualization
-        };
-      }
+        return { noiseFloorNoGain: thermalNoiseDbm(this.antennaNoiseAtLnaK(), bandwidth) as dBm, shouldApplyGain: true };
+
+      case TapPoint.RX_RF_POST_LNA:
+        return { noiseFloorNoGain: thermalNoiseDbm(this.systemNoiseK(), bandwidth) as dBm, shouldApplyGain: true };
 
       case TapPoint.RX_IF: {
-        // Compare external noise (with gain) vs internal spectrum analyzer noise
-        const NF = 0.5; // Spectrum analyzer noise figure
-
-        // Use RBW directly for noise calculation (simulates digital RBW filtering)
-        let externalNoiseFloor = this.rfFrontEnd_.lnbModule.getNoiseFloor(bandwidth) + this.getTotalGainTo(tapPoint);
-
         if (this.rfFrontEnd_.filterModule.state.isPowered === false) {
-          externalNoiseFloor = Number.NEGATIVE_INFINITY as dBm; // No signal if filter is unpowered
+          return { noiseFloorNoGain: Number.NEGATIVE_INFINITY as dBm, shouldApplyGain: true };
         }
 
-        const internalNoiseFloor = -174 + 10 * Math.log10(bandwidth) + NF;
-
-        const isInternalNoiseGreater = internalNoiseFloor > externalNoiseFloor;
-
-        if (isInternalNoiseGreater) {
-          // Internal noise dominates - DON'T apply gain (already at spectrum analyzer)
-          return {
-            noiseFloorNoGain: internalNoiseFloor as dBm,
-            shouldApplyGain: false,
-          };
-        } else {
-          // External noise dominates - return without gain, will be applied during visualization
-          return {
-            noiseFloorNoGain: (externalNoiseFloor - this.getTotalGainTo(tapPoint)) as dBm,
-            shouldApplyGain: true,
-          };
-        }
+        return { noiseFloorNoGain: thermalNoiseDbm(this.systemNoiseK(), bandwidth) as dBm, shouldApplyGain: true };
       }
 
-      // TX path tap points - simplified for now
+      // TX path: the transmit chain's noise is not modelled yet (19.6); a
+      // 290 K floor amplified by the chain stands in for it
       case TapPoint.TX_IF:
       case TapPoint.TX_RF_POST_BUC:
       case TapPoint.TX_RF_POST_HPA:
       case TapPoint.TX_RF_POST_OMT:
-      default: {
-        const NF = 0.5; // Spectrum analyzer noise figure
-
-        // For TX path or unknown, return a default noise floor
-        const defaultNoiseFloor = -174 + 10 * Math.log10(bandwidth) + NF;
-        return {
-          noiseFloorNoGain: defaultNoiseFloor as dBm,
-          shouldApplyGain: true,
-        };
-      }
+      default:
+        return { noiseFloorNoGain: thermalNoiseDbm(290, bandwidth) as dBm, shouldApplyGain: true };
     }
   }
 
@@ -264,16 +239,17 @@ export class SignalPathManager {
         if (!this.rfFrontEnd_.antenna.state.isPowered || !this.rfFrontEnd_.omtModule.state.isPowered) {
           return Number.NEGATIVE_INFINITY as dB; // No signal if antenna or OMT is unpowered
         }
-        // Only OMT loss applied
-        return -this.omtInsertionLoss_dB as dB;
+        // The OMT's insertion loss is not applied to carriers (DEV-RF-05), so
+        // the noise does not pay it either: one reference plane
+        return 0 as dB;
       }
 
       case TapPoint.RX_RF_POST_LNA: {
         if (!this.rfFrontEnd_.antenna.state.isPowered || !this.rfFrontEnd_.omtModule.state.isPowered || !this.rfFrontEnd_.lnbModule.state.isPowered) {
           return Number.NEGATIVE_INFINITY as dB; // No signal if any component is unpowered
         }
-        // OMT loss + LNA gain
-        return (this.lnaGain - this.omtInsertionLoss_dB) as dB;
+        // LNA gain (OMT insertion loss not applied, see RX_RF_POST_OMT)
+        return this.lnaGain;
       }
 
       case TapPoint.RX_IF: {
@@ -285,9 +261,9 @@ export class SignalPathManager {
         ) {
           return Number.NEGATIVE_INFINITY as dB; // No signal if any component is unpowered
         }
-        // Full RX chain: OMT loss + LNA gain + LNB loss - IF filter insertion loss
-        // Note: getTotalRxGain() already calculates (LNA gain - IF filter insertion loss)
-        return (this.getTotalRxGain() - this.omtInsertionLoss_dB) as dB;
+        // Full RX chain: LNA gain + AGC - IF filter insertion loss, the same
+        // gain the carriers at the AGC output carry
+        return this.getTotalRxGain();
       }
 
       // TX path tap points

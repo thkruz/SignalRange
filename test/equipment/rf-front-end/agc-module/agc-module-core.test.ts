@@ -88,6 +88,8 @@ describe('AGCModuleCore', () => {
       };
 
       vi.spyOn(agcModule, 'inputSignals', 'get').mockReturnValue([mockSignal]);
+      // LNB off: no receive noise in the passband, only the injected carrier
+      rfFrontEnd.lnbModule.state.isPowered = false;
 
       agcModule.state.isBypassed = true;
       agcModule.update();
@@ -127,8 +129,9 @@ describe('AGCModuleCore', () => {
       expect(agcModule.state.inputPower).toBeCloseTo(-57, 0);
     });
 
-    it('should set input power to -120 when no signals', () => {
+    it('should set input power to -120 when no signals and no noise (LNB off)', () => {
       vi.spyOn(agcModule, 'inputSignals', 'get').mockReturnValue([]);
+      rfFrontEnd.lnbModule.state.isPowered = false;
 
       agcModule.update();
 
@@ -143,11 +146,37 @@ describe('AGCModuleCore', () => {
         origin: SignalOrigin.NOTCH_FILTER,
       } as unknown as IfSignal;
       vi.spyOn(agcModule, 'inputSignals', 'get').mockReturnValue([buried]);
+      rfFrontEnd.lnbModule.state.isPowered = false;
 
       agcModule.update();
 
       expect(agcModule.state.inputPower).toBe(AGCModuleCore.DETECTOR_FLOOR_DBM);
       expect(agcModule.state.outputPower).toBeGreaterThanOrEqual(AGCModuleCore.DETECTOR_FLOOR_DBM);
+    });
+
+    it('measures the receive noise in the IF passband with the LNB on (phase 19.2)', () => {
+      vi.spyOn(agcModule, 'inputSignals', 'get').mockReturnValue([]);
+      const spm = rfFrontEnd.couplerModule.signalPathManager;
+
+      agcModule.update();
+
+      // k·T·B over the IF filter with the gain ahead of the AGC
+      expect(agcModule.state.inputPower).toBeCloseTo(spm.getExternalNoise() - spm.agcGain, 1);
+      expect(agcModule.state.inputPower).toBeGreaterThan(AGCModuleCore.DETECTOR_FLOOR_DBM);
+      expect(agcModule.isNoiseOnly).toBe(true);
+      expect(agcModule.getAlarms()).toContain('AGC on noise only - no carrier in passband');
+    });
+
+    it('a carrier above the noise clears the no-carrier warning', () => {
+      const spm = rfFrontEnd.couplerModule.signalPathManager;
+      const noiseIn = spm.getExternalNoise() - spm.agcGain;
+      const carrier = { frequency: 1500e6, bandwidth: 1e6, power: (noiseIn + 3) as dBm, origin: SignalOrigin.NOTCH_FILTER } as unknown as IfSignal;
+      vi.spyOn(agcModule, 'inputSignals', 'get').mockReturnValue([carrier]);
+
+      agcModule.update();
+
+      expect(agcModule.isNoiseOnly).toBe(false);
+      expect(agcModule.getAlarms().some((a) => a.includes('no carrier'))).toBe(false);
     });
 
     it('should apply gain to all output signals', () => {

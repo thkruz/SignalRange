@@ -108,15 +108,17 @@ function sar1Options() {
         frequencyOffset: 2.4e9 as Hertz,
         polarization: 'H',
         // Direct-transmit SAR imagery downlink (modeled as a transponder beacon).
-        // 28 dBm EIRP closes the link at C/N >= 8 dB from ~20 deg elevation
+        // 31.3 dBm EIRP closes the link at C/N >= 8 dB from ~20 deg elevation
         // (peak ~14 dB at max el) on the GW-01 4m Ku tracker; the original
         // 22 dBm peaked at 8.1 dB with zero margin (Phase A RF validation).
+        // Phase 19.2 raised it from 28 dBm when the receive noise became the
+        // real system temperature instead of the LNB's alone.
         beacon: {
           frequency: 11686e6 as RfFrequency,
           signalId: 'MERIDIAN-SAR-1-VIDEO',
           serverId: 1,
           noradId: 61701,
-          power: 28 as dBm,
+          power: 31.3 as dBm, // 28 until Phase 19.2: +3.3 dB restores the link at the real Tsys (sky + feed + LNB, ~125 K at 28 deg)
           bandwidth: 36e6 as Hertz,
           modulation: 'QPSK' as ModulationType,
           fec: '3/4' as FECType,
@@ -174,7 +176,7 @@ function sar2Options() {
           signalId: 'MERIDIAN-SAR-2-VIDEO',
           serverId: 1,
           noradId: 61702,
-          power: 28 as dBm,
+          power: 31.3 as dBm, // 28 until Phase 19.2: +3.3 dB restores the link at the real Tsys (sky + feed + LNB, ~125 K at 28 deg)
           bandwidth: 36e6 as Hertz,
           modulation: 'QPSK' as ModulationType,
           fec: '3/4' as FECType,
@@ -230,7 +232,7 @@ function sar3Options() {
           signalId: 'MERIDIAN-SAR-3-VIDEO',
           serverId: 1,
           noradId: 61703,
-          power: 28 as dBm,
+          power: 31.3 as dBm, // 28 until Phase 19.2: +3.3 dB restores the link at the real Tsys (sky + feed + LNB, ~125 K at 28 deg)
           bandwidth: 36e6 as Hertz,
           modulation: 'QPSK' as ModulationType,
           fec: '3/4' as FECType,

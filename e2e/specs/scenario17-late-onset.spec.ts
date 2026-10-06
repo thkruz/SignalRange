@@ -179,7 +179,9 @@ test.describe('Scenario 17 Late Onset Regression', () => {
     await missionControlPage.selectTab('acu-control');
     const skyTemp = page.locator('[id$="rf-metric-sky-temp"]:visible').first();
 
-    // Clear sky is ~10 K; >2 dB of sun noise at 290 K is >170 K
-    await expect.poll(async () => parseFloat(((await skyTemp.textContent()) ?? '').replace(/[^\d.]/g, '')), { timeout: 15_000 }).toBeGreaterThan(150);
+    // Clear-sky antenna temperature is ~14 K. Since phase 19.2 the transit is a
+    // rise in system noise: >2 dB on VT-01's ~83 K system adds >50 K of solar
+    // noise at the aperture, so the readout climbs past ~65 K
+    await expect.poll(async () => parseFloat(((await skyTemp.textContent()) ?? '').replace(/[^\d.]/g, '')), { timeout: 15_000 }).toBeGreaterThan(50);
   });
 });

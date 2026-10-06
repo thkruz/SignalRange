@@ -86,7 +86,7 @@ export const scenario8Data: ScenarioData = {
             targetPolarization: 0 as Degrees,
             slewing: false,
             beaconCN: 5.2 as dB, // Marginal due to tracking error
-            beaconFrequencyHz: 1085e6 as Hertz, // AURORA-7 beacon IF
+            beaconFrequencyHz: 4165e6 as Hertz, // AURORA-7 beacon (RF)
             isLocked: true,
           } as Partial<AntennaState>,
         ],

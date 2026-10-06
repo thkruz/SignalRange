@@ -365,7 +365,7 @@ describe('nats-eu Phase B: link budgets are correct and achievable', () => {
       start: DAY_START_MS,
       flyFromMin: 1,
       flyToMin: 12,
-      inputs: { eirpDbm: 28, fsplDb: 171.4, rxGainDbi: 51.8, systemNoiseTempK: 88, bandwidthHz: 36e6, miscLossDb: 1 },
+      inputs: { eirpDbm: 31.3, fsplDb: 171.4, rxGainDbi: 50.4, systemNoiseTempK: 125, bandwidthHz: 36e6, miscLossDb: 1 },
     },
     {
       scenario: natsEuScenario8Data,
@@ -373,7 +373,7 @@ describe('nats-eu Phase B: link budgets are correct and achievable', () => {
       // SAR-1 AOS 00:30 (0 deg), LOS 00:40: T+15 .. T+25 from the 00:15 start
       flyFromMin: 14,
       flyToMin: 26,
-      inputs: { eirpDbm: 28, fsplDb: 169.1, rxGainDbi: 51.8, systemNoiseTempK: 88, bandwidthHz: 36e6, miscLossDb: 1 },
+      inputs: { eirpDbm: 31.3, fsplDb: 169.1, rxGainDbi: 50.4, systemNoiseTempK: 121, bandwidthHz: 36e6, miscLossDb: 1 },
     },
   ];
 
@@ -408,7 +408,7 @@ describe('nats-eu Phase B: link budgets are correct and achievable', () => {
     // ...for long enough that a human can press Commit Link.
     expect(window.length, `${scenario.id}: only ${window.length}s above ${needed} dB`).toBeGreaterThanOrEqual(60);
     // ...and the measurement must agree with what the operator predicted.
-    expect(Math.abs(peak.cn - config.expectedCNRDb), `${scenario.id}: prediction vs measurement`).toBeLessThan(1.5);
+    expect(Math.abs(peak.cn - config.expectedCNRDb), `${scenario.id}: prediction vs measurement`).toBeLessThan(1.0);
   });
 
   it('S8 night pass is the stronger geometry it claims to be', () => {

@@ -148,7 +148,7 @@ export const natsEuScenario8Data: ScenarioData = {
     // M1 - acceptance budget for the night pass geometry (581 km at max el).
     linkBudget: {
       label: 'Night pass: MERIDIAN-SAR-1 downlink at max elevation',
-      expectedCNRDb: 13.3,
+      expectedCNRDb: 13.8,
       toleranceDb: 1.0,
       thresholdCNRDb: 6,
       requiredMarginDb: 3,
@@ -309,7 +309,7 @@ export const natsEuScenario8Data: ScenarioData = {
       nice: ['T0081', 'K0740'],
       title: 'Predict the Night Link',
       description:
-        'Compute the expected C/N for this pass. The geometry is better than the afternoon passes: 581 km at maximum elevation, free-space path loss 169.1 dB at 11686 MHz. EIRP 28 dBm, receive gain 51.8 dBi, system noise temperature 88 K, bandwidth 36 MHz, miscellaneous losses 1 dB.',
+        'Compute the expected C/N for this pass. The geometry is better than the afternoon passes: 581 km at maximum elevation, free-space path loss 169.1 dB at 11686 MHz. EIRP 31.3 dBm, receive gain 50.4 dBi, system noise temperature 121 K, bandwidth 36 MHz, miscellaneous losses 1 dB.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['review-mission-brief'],
       timeLimitSeconds: 4 * 60,
@@ -334,7 +334,7 @@ export const natsEuScenario8Data: ScenarioData = {
               'Less atmosphere at night: gaseous absorption at Ku falls after dark, and 2.3 dB is what the daytime path costs',
             ],
             correctIndex: 0,
-            explanation: 'Every dB of the difference is geometry. Predicted 13.3 dB; the card is wrong if the measurement is more than a decibel away.',
+            explanation: 'Every dB of the difference is geometry. Predicted 13.8 dB; the card is wrong if the measurement is more than a decibel away.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -549,7 +549,7 @@ export const natsEuScenario8Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Contacts',
             documentLine:
-              '00:31Z MERIDIAN-SAR-1 GW-01: command key rotated before the window; link committed, predicted 13.3 dB, margin >= 3 dB over 6 dB threshold; REC-PLAYBACK ACK; chain secured HPA-BUC-modem.',
+              '00:31Z MERIDIAN-SAR-1 GW-01: command key rotated before the window; link committed, predicted 13.8 dB, margin >= 3 dB over 6 dB threshold; REC-PLAYBACK ACK; chain secured HPA-BUC-modem.',
           },
           mustMaintain: false,
         },

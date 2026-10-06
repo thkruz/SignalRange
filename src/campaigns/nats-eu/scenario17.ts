@@ -308,14 +308,14 @@ export const natsEuScenario17Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What is the active alarm state on GW-01 at 02:00?',
             options: [
-              'RX AGC at max gain - weak signal on an empty sky, no hardware alarm',
+              'RX AGC on noise only - no carrier on an empty sky, no hardware alarm',
               'No active alarms - all systems nominal, board clear for the night',
               'Security console alert - three failed logins have raised a station alarm',
               'LNB reference unlocked - hardware alarm left by the evening shift',
             ],
             correctIndex: 0,
             explanation:
-              'The AGC rail is empty sky, not a fault. The failed logins are in the audit log, not on the alarm board; the board watches hardware, the log watches people. Both get read tonight.',
+              'The AGC no-carrier warning is empty sky, not a fault. The failed logins are in the audit log, not on the alarm board; the board watches hardware, the log watches people. Both get read tonight.',
             pointPenalty: 5,
           },
           mustMaintain: false,

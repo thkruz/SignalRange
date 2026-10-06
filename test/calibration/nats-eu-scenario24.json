@@ -53,6 +53,13 @@
       "antennaConfig": "KU_BAND_4M_LEO_TRACKER",
       "lnbLoMHz": 13100,
       "lnbNoiseTempK": 58.66,
+      "agcOnNoiseAlone": {
+        "noiseInDbm": -38.26,
+        "filterMHz": 40,
+        "settledGainDb": 8.26,
+        "maxGainDb": 10,
+        "railedAtMax": false
+      },
       "links": [
         {
           "satellite": "MERIDIAN-SAR-1",
@@ -67,8 +74,8 @@
             "elevationDeg": 30.21,
             "frequencyMHz": 11711.27,
             "gainDbi": 51.1,
-            "gOverTDbPerK": 27.59,
-            "tsysK": 224.45
+            "gOverTDbPerK": 29.5,
+            "tsysK": 122.71
           },
           "carriers": [
             {
@@ -79,10 +86,10 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 430,
-              "peakCnDb": 29.09,
-              "medianCnDb": 25.36,
-              "peakRxIfDbm": -58.26,
-              "noiseIfDbm": -78.8,
+              "peakCnDb": 25.88,
+              "medianCnDb": 21.92,
+              "peakRxIfDbm": -61.63,
+              "noiseIfDbm": -79.77,
               "lockedSamples": 430
             },
             {
@@ -93,10 +100,10 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 430,
-              "peakCnDb": 11.53,
-              "medianCnDb": 7.8,
-              "peakRxIfDbm": -30.25,
-              "noiseIfDbm": -33.24,
+              "peakCnDb": 11.63,
+              "medianCnDb": 7.67,
+              "peakRxIfDbm": -30.32,
+              "noiseIfDbm": -34.2,
               "lockedSamples": 430
             }
           ]
@@ -114,8 +121,8 @@
             "elevationDeg": 10.89,
             "frequencyMHz": 11703.19,
             "gainDbi": 51.1,
-            "gOverTDbPerK": 26.92,
-            "tsysK": 261.74
+            "gOverTDbPerK": 29.27,
+            "tsysK": 129.38
           },
           "carriers": [
             {
@@ -126,10 +133,10 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 315,
-              "peakCnDb": 22.97,
-              "medianCnDb": 22.27,
-              "peakRxIfDbm": -58.49,
-              "noiseIfDbm": -79.24,
+              "peakCnDb": 19.53,
+              "medianCnDb": 18.83,
+              "peakRxIfDbm": -62.54,
+              "noiseIfDbm": -80.84,
               "lockedSamples": 315
             },
             {
@@ -140,10 +147,10 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 315,
-              "peakCnDb": 5.39,
-              "medianCnDb": 4.7,
-              "peakRxIfDbm": -30.5,
-              "noiseIfDbm": -33.67,
+              "peakCnDb": 5.26,
+              "medianCnDb": 4.56,
+              "peakRxIfDbm": -31.24,
+              "noiseIfDbm": -35.27,
               "lockedSamples": 315
             }
           ]
@@ -161,8 +168,8 @@
             "elevationDeg": 28.4,
             "frequencyMHz": 11785.26,
             "gainDbi": 51.16,
-            "gOverTDbPerK": 27.58,
-            "tsysK": 227.65
+            "gOverTDbPerK": 29.52,
+            "tsysK": 123.73
           },
           "carriers": [
             {
@@ -173,10 +180,10 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 433,
-              "peakCnDb": 28.63,
-              "medianCnDb": 25.18,
-              "peakRxIfDbm": -58.48,
-              "noiseIfDbm": -78.99,
+              "peakCnDb": 25.39,
+              "medianCnDb": 21.74,
+              "peakRxIfDbm": -61.66,
+              "noiseIfDbm": -80.67,
               "lockedSamples": 433
             },
             {
@@ -187,10 +194,10 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 433,
-              "peakCnDb": 11.07,
-              "medianCnDb": 7.62,
-              "peakRxIfDbm": -30.47,
-              "noiseIfDbm": -33.42,
+              "peakCnDb": 11.14,
+              "medianCnDb": 7.48,
+              "peakRxIfDbm": -30.36,
+              "noiseIfDbm": -35.11,
               "lockedSamples": 433
             }
           ]
@@ -203,6 +210,13 @@
       "antennaConfig": "KU_BAND_4M_LEO_TRACKER",
       "lnbLoMHz": 13100,
       "lnbNoiseTempK": 58.66,
+      "agcOnNoiseAlone": {
+        "noiseInDbm": -38.26,
+        "filterMHz": 40,
+        "settledGainDb": 8.26,
+        "maxGainDb": 10,
+        "railedAtMax": false
+      },
       "links": [
         {
           "satellite": "MERIDIAN-SAR-1",
@@ -217,8 +231,8 @@
             "elevationDeg": 25.06,
             "frequencyMHz": 11711.26,
             "gainDbi": 51.1,
-            "gOverTDbPerK": 27.43,
-            "tsysK": 233.02
+            "gOverTDbPerK": 29.42,
+            "tsysK": 125.21
           },
           "carriers": [
             {
@@ -229,10 +243,10 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 417,
-              "peakCnDb": 27.83,
-              "medianCnDb": 24.9,
-              "peakRxIfDbm": -58.08,
-              "noiseIfDbm": -78.79,
+              "peakCnDb": 24.54,
+              "medianCnDb": 21.46,
+              "peakRxIfDbm": -61.74,
+              "noiseIfDbm": -79.75,
               "lockedSamples": 417
             },
             {
@@ -244,9 +258,9 @@
               "fec": "3/4",
               "samples": 417,
               "peakCnDb": 10.28,
-              "medianCnDb": 7.34,
-              "peakRxIfDbm": -30.07,
-              "noiseIfDbm": -33.22,
+              "medianCnDb": 7.2,
+              "peakRxIfDbm": -30.43,
+              "noiseIfDbm": -34.19,
               "lockedSamples": 417
             }
           ]
@@ -264,8 +278,8 @@
             "elevationDeg": 35.06,
             "frequencyMHz": 11703.27,
             "gainDbi": 51.1,
-            "gOverTDbPerK": 27.7,
-            "tsysK": 218.85
+            "gOverTDbPerK": 29.56,
+            "tsysK": 121.02
           },
           "carriers": [
             {
@@ -276,10 +290,10 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 443,
-              "peakCnDb": 29.51,
-              "medianCnDb": 25.4,
-              "peakRxIfDbm": -57.86,
-              "noiseIfDbm": -79.2,
+              "peakCnDb": 26.36,
+              "medianCnDb": 21.96,
+              "peakRxIfDbm": -61.42,
+              "noiseIfDbm": -80.81,
               "lockedSamples": 443
             },
             {
@@ -290,10 +304,10 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 443,
-              "peakCnDb": 11.94,
-              "medianCnDb": 7.83,
-              "peakRxIfDbm": -29.87,
-              "noiseIfDbm": -33.63,
+              "peakCnDb": 12.09,
+              "medianCnDb": 7.69,
+              "peakRxIfDbm": -30.13,
+              "noiseIfDbm": -35.25,
               "lockedSamples": 443
             }
           ]
@@ -311,8 +325,8 @@
             "elevationDeg": 51.26,
             "frequencyMHz": 11785.28,
             "gainDbi": 51.16,
-            "gOverTDbPerK": 27.95,
-            "tsysK": 209.28
+            "gOverTDbPerK": 29.72,
+            "tsysK": 118.11
           },
           "carriers": [
             {
@@ -323,10 +337,10 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 458,
-              "peakCnDb": 32.42,
-              "medianCnDb": 26.15,
-              "peakRxIfDbm": -58.49,
-              "noiseIfDbm": -78.98,
+              "peakCnDb": 29.38,
+              "medianCnDb": 22.71,
+              "peakRxIfDbm": -61.45,
+              "noiseIfDbm": -80.67,
               "lockedSamples": 458
             },
             {
@@ -337,10 +351,10 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 458,
-              "peakCnDb": 14.86,
-              "medianCnDb": 8.6,
-              "peakRxIfDbm": -30.48,
-              "noiseIfDbm": -33.42,
+              "peakCnDb": 15.13,
+              "medianCnDb": 8.46,
+              "peakRxIfDbm": -30.15,
+              "noiseIfDbm": -35.1,
               "lockedSamples": 458
             }
           ]

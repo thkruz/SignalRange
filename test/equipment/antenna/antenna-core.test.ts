@@ -2,6 +2,7 @@ import { Degrees } from 'ootk';
 import { vi } from 'vitest';
 import { ANTENNA_CONFIG_KEYS } from '../../../src/equipment/antenna/antenna-config-keys';
 import { AntennaCore, AntennaState } from '../../../src/equipment/antenna/antenna-core';
+import { lossNoiseAtOutputK } from '../../../src/simulation/noise-model';
 import { Hertz } from '../../../src/types';
 import { advanceSimTime } from '../../helpers/sim-time';
 
@@ -111,12 +112,14 @@ class TestableAntennaCore extends AntennaCore {
     return (this as any).patternGain_dBi_(theta_deg, f_Hz);
   }
 
+  /** Clear-sky brightness at C-band from the phase 19.2 noise model */
   public testSkyTempK(elev_deg: number): number {
-    return (this as any).skyTempK_(elev_deg);
+    return this.systemNoise(4e9, elev_deg, false).skyK;
   }
 
+  /** Noise a lossy element adds at its output (noise model) */
   public testNoiseFromLossK(L_dB: number, physK?: number): number {
-    return (this as any).noiseFromLossK_(L_dB, physK);
+    return lossNoiseAtOutputK(L_dB, physK);
   }
 
   public testSystemTempK(frequency: Hertz, elevation: Degrees): number {
@@ -1597,7 +1600,7 @@ describe('AntennaCore', () => {
     });
   });
 
-  describe('skyTempK_', () => {
+  describe('sky temperature (noise model)', () => {
     it('should return low temperature at zenith', () => {
       const temp = antenna.testSkyTempK(90);
       expect(temp).toBeLessThan(15);
@@ -1612,7 +1615,7 @@ describe('AntennaCore', () => {
     });
   });
 
-  describe('noiseFromLossK_', () => {
+  describe('feed loss noise (noise model)', () => {
     it('should return zero for zero loss', () => {
       const temp = antenna.testNoiseFromLossK(0, 290);
       expect(temp).toBeCloseTo(0, 1);

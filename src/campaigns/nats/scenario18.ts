@@ -62,7 +62,7 @@ const tidemark2DriftingSatellite = new Satellite(
       noradId: 61526,
       frequency: 6017e6 as RfFrequency,
       polarization: 'H',
-      power: 20 as dBm,
+      power: 22 as dBm, // +2 dB in Phase 19.2 (real Tsys), as in satellites.ts
       bandwidth: 36e6 as Hertz,
       modulation: 'QPSK' as ModulationType,
       fec: '3/4' as FECType,
@@ -173,7 +173,7 @@ export const scenario18Data: ScenarioData = {
             targetPolarization: -25 as Degrees,
             slewing: false,
             beaconCN: 7.6 as dB, // Degraded from the usual 10+ - the drift at work
-            beaconFrequencyHz: 1070e6 as Hertz,
+            beaconFrequencyHz: 4180e6 as Hertz, // TIDEMARK-2 beacon (RF)
             isLocked: true,
           } as Partial<AntennaState>,
         ],

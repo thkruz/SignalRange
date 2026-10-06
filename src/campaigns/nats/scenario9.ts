@@ -97,7 +97,7 @@ export const scenario9Data: ScenarioData = {
             targetPolarization: -25 as Degrees,
             slewing: false,
             beaconCN: 10.2 as dB,
-            beaconFrequencyHz: 1070e6 as Hertz, // 5250 LNB LO - 4180 beacon RF
+            beaconFrequencyHz: 4180e6 as Hertz, // TIDEMARK-2 beacon (RF)
             isLocked: true,
           } as Partial<AntennaState>,
         ],

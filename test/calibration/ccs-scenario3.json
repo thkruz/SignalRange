@@ -12,6 +12,13 @@
       "antennaConfig": "X_BAND_5M",
       "lnbLoMHz": 8925,
       "lnbNoiseTempK": 92.31,
+      "agcOnNoiseAlone": {
+        "noiseInDbm": -42.91,
+        "filterMHz": 40,
+        "settledGainDb": 10,
+        "maxGainDb": 10,
+        "railedAtMax": true
+      },
       "links": [
         {
           "satellite": "TALON-2",
@@ -35,6 +42,13 @@
       "antennaConfig": "X_BAND_3M_ANTESTAR_RS",
       "lnbLoMHz": 8925,
       "lnbNoiseTempK": 75.1,
+      "agcOnNoiseAlone": {
+        "noiseInDbm": -41.34,
+        "filterMHz": 40,
+        "settledGainDb": 10,
+        "maxGainDb": 10,
+        "railedAtMax": true
+      },
       "links": [
         {
           "satellite": "TALON-2",

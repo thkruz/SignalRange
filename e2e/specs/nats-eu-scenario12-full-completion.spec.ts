@@ -92,11 +92,11 @@ test.describe('nats-eu Scenario 12 Full Completion', () => {
     await waitForObjectiveComplete(missionControl, 'Read the Test Plan');
   });
 
-  test('[dashboard-sweep] reads the board: AGC rail, no faults', async () => {
+  test('[dashboard-sweep] reads the board: AGC no-carrier warning, no faults', async () => {
     await missionControl.selectGroundStation('GW-01');
     await missionControl.selectTab('dashboard');
-    await expectDashboardAlarm(page, 'AGC at max gain');
-    await answerSystemQuiz(page, 'RX AGC at max gain');
+    await expectDashboardAlarm(page, 'AGC on noise only');
+    await answerSystemQuiz(page, 'RX AGC on noise only');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'GW-01 Dashboard Sweep');
   });
@@ -112,10 +112,10 @@ test.describe('nats-eu Scenario 12 Full Completion', () => {
 
   test('[predict-acceptance] computes the acceptance C/N from the survey numbers', async () => {
     await computeLinkBudget(page, missionControl, {
-      eirpDbm: 28,
+      eirpDbm: 31.3,
       fsplDb: 171.5,
-      rxGainDbi: 51.8,
-      noiseTempK: 88,
+      rxGainDbi: 50.4,
+      noiseTempK: 125,
       bandwidthMHz: 36,
       miscLossDb: 1,
     });

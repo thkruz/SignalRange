@@ -8,7 +8,7 @@ import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForS
  * Qualified-operator weather scenario. A moderate rain front passes over
  * VT-01. The customer (James Okafor, SeaLink) has asked the operator to
  * hold the link rather than execute a handover. The right call for a
- * 3 dB fade with AGC headroom is to hold; the test exercises that path.
+ * sub-dB C-band fade with AGC headroom is to hold; the test exercises that path.
  *
  * Objective types:
  * - 'quiz': Status-check quiz (SYSTEM or named character)
@@ -196,7 +196,8 @@ const SCENARIO_14_OBJECTIVES: Scenario14Objective[] = [
     id: 'document-handover-avoided',
     title: 'Log the Hold',
     type: 'quiz',
-    correctAnswer: 'Moderate rain over VT-01, ~3 dB fade. Held TM-1 per customer SLA preference; AGC max 3 dB, modem lock maintained, no handover.',
+    correctAnswer:
+      'Heavy rain cell over VT-01, under 1 dB of C/N lost (mostly sky noise). Held TM-1 per customer SLA preference; AGC moved under 1 dB, modem lock maintained, no handover.',
   },
 ];
 

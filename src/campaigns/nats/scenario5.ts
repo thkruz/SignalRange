@@ -77,7 +77,7 @@ export const scenario5Data: ScenarioData = {
             noradId: 61525,
             frequency: 5943e6 as RfFrequency,
             polarization: 'H',
-            power: 20 as dBm,
+            power: 22 as dBm, // +2 dB in Phase 19.2 (real Tsys), as in satellites.ts
             bandwidth: 36e6 as Hertz,
             modulation: 'QPSK' as ModulationType,
             fec: '3/4' as FECType,

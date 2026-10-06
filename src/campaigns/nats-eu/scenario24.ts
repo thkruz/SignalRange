@@ -462,7 +462,7 @@ export const natsEuScenario24Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What is the active alarm state on GW-01 at 03:02?',
             options: [
-              'RX AGC at max gain - weak signal on an empty sky, no hardware alarm; the rain is a weather event on the ACU, not a fault on the chain',
+              'RX AGC on noise only - no carrier on an empty sky, no hardware alarm; the rain is a weather event on the ACU, not a fault on the chain',
               'No active alarms - all systems nominal, board clear for the pass',
               'Rain fade alarm - the receive chain has lost margin and the SAR-1 collect should move to Shetland',
               'Feed heater alarm - the heater is off in precipitation and the board wants it on',

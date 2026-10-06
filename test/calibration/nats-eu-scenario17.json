@@ -53,6 +53,13 @@
       "antennaConfig": "KU_BAND_4M_LEO_TRACKER",
       "lnbLoMHz": 13100,
       "lnbNoiseTempK": 58.66,
+      "agcOnNoiseAlone": {
+        "noiseInDbm": -38.26,
+        "filterMHz": 40,
+        "settledGainDb": 8.26,
+        "maxGainDb": 10,
+        "railedAtMax": false
+      },
       "links": [
         {
           "satellite": "MERIDIAN-SAR-1",
@@ -67,8 +74,8 @@
             "elevationDeg": 29.99,
             "frequencyMHz": 11711.27,
             "gainDbi": 51.1,
-            "gOverTDbPerK": 27.59,
-            "tsysK": 224.74
+            "gOverTDbPerK": 29.5,
+            "tsysK": 122.8
           },
           "carriers": [
             {
@@ -79,10 +86,10 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 434,
-              "peakCnDb": 29.05,
-              "medianCnDb": 25.34,
-              "peakRxIfDbm": -58.25,
-              "noiseIfDbm": -78.86,
+              "peakCnDb": 25.84,
+              "medianCnDb": 21.9,
+              "peakRxIfDbm": -61.63,
+              "noiseIfDbm": -79.8,
               "lockedSamples": 434
             },
             {
@@ -93,10 +100,10 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 434,
-              "peakCnDb": 11.5,
-              "medianCnDb": 7.78,
-              "peakRxIfDbm": -30.24,
-              "noiseIfDbm": -33.3,
+              "peakCnDb": 11.59,
+              "medianCnDb": 7.65,
+              "peakRxIfDbm": -30.32,
+              "noiseIfDbm": -34.24,
               "lockedSamples": 434
             }
           ]
@@ -114,8 +121,8 @@
             "elevationDeg": 26.27,
             "frequencyMHz": 11703.26,
             "gainDbi": 51.1,
-            "gOverTDbPerK": 27.47,
-            "tsysK": 230.6
+            "gOverTDbPerK": 29.44,
+            "tsysK": 124.51
           },
           "carriers": [
             {
@@ -126,10 +133,10 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 426,
-              "peakCnDb": 28.03,
-              "medianCnDb": 24.95,
-              "peakRxIfDbm": -58.25,
-              "noiseIfDbm": -79.21,
+              "peakCnDb": 24.76,
+              "medianCnDb": 21.51,
+              "peakRxIfDbm": -61.71,
+              "noiseIfDbm": -80.82,
               "lockedSamples": 426
             },
             {
@@ -140,10 +147,10 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 426,
-              "peakCnDb": 10.46,
-              "medianCnDb": 7.38,
-              "peakRxIfDbm": -30.26,
-              "noiseIfDbm": -33.65,
+              "peakCnDb": 10.49,
+              "medianCnDb": 7.24,
+              "peakRxIfDbm": -30.41,
+              "noiseIfDbm": -35.25,
               "lockedSamples": 426
             }
           ]
@@ -156,6 +163,13 @@
       "antennaConfig": "KU_BAND_4M_LEO_TRACKER",
       "lnbLoMHz": 13100,
       "lnbNoiseTempK": 58.66,
+      "agcOnNoiseAlone": {
+        "noiseInDbm": -38.26,
+        "filterMHz": 40,
+        "settledGainDb": 8.26,
+        "maxGainDb": 10,
+        "railedAtMax": false
+      },
       "links": [
         {
           "satellite": "MERIDIAN-SAR-1",
@@ -170,8 +184,8 @@
             "elevationDeg": 13.7,
             "frequencyMHz": 11711.21,
             "gainDbi": 51.1,
-            "gOverTDbPerK": 27.03,
-            "tsysK": 255.48
+            "gOverTDbPerK": 29.27,
+            "tsysK": 129.41
           },
           "carriers": [
             {
@@ -182,10 +196,10 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 351,
-              "peakCnDb": 24.4,
-              "medianCnDb": 23.29,
-              "peakRxIfDbm": -58.25,
-              "noiseIfDbm": -78.84,
+              "peakCnDb": 20.96,
+              "medianCnDb": 19.85,
+              "peakRxIfDbm": -62.14,
+              "noiseIfDbm": -79.79,
               "lockedSamples": 351
             },
             {
@@ -196,10 +210,10 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 351,
-              "peakCnDb": 6.84,
-              "medianCnDb": 5.73,
-              "peakRxIfDbm": -30.24,
-              "noiseIfDbm": -33.28,
+              "peakCnDb": 6.7,
+              "medianCnDb": 5.59,
+              "peakRxIfDbm": -30.83,
+              "noiseIfDbm": -34.23,
               "lockedSamples": 351
             }
           ]
@@ -217,8 +231,8 @@
             "elevationDeg": 83.54,
             "frequencyMHz": 11703.28,
             "gainDbi": 51.1,
-            "gOverTDbPerK": 28.02,
-            "tsysK": 202.96
+            "gOverTDbPerK": 29.74,
+            "tsysK": 116
           },
           "carriers": [
             {
@@ -229,10 +243,10 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 468,
-              "peakCnDb": 34.31,
-              "medianCnDb": 26.41,
-              "peakRxIfDbm": -58.48,
-              "noiseIfDbm": -79.18,
+              "peakCnDb": 31.34,
+              "medianCnDb": 23,
+              "peakRxIfDbm": -61.39,
+              "noiseIfDbm": -80.8,
               "lockedSamples": 468
             },
             {
@@ -243,10 +257,10 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 468,
-              "peakCnDb": 16.74,
-              "medianCnDb": 8.84,
-              "peakRxIfDbm": -30.49,
-              "noiseIfDbm": -33.62,
+              "peakCnDb": 17.07,
+              "medianCnDb": 8.73,
+              "peakRxIfDbm": -30.09,
+              "noiseIfDbm": -35.24,
               "lockedSamples": 468
             }
           ]

@@ -805,7 +805,7 @@ describe('nats-eu Phase C: link budgets are correct and achievable', () => {
       // Long enough to press Commit Link.
       expect(window.length, `only ${window.length} s above ${needed} dB`).toBeGreaterThanOrEqual(30);
       // And the operator's correct prediction must agree with the measurement.
-      expect(Math.abs(peak.cn - config.expectedCNRDb), `prediction ${config.expectedCNRDb} vs measured ${peak.cn.toFixed(2)}`).toBeLessThan(1.5);
+      expect(Math.abs(peak.cn - config.expectedCNRDb), `prediction ${config.expectedCNRDb} vs measured ${peak.cn.toFixed(2)}`).toBeLessThan(1.0);
     }
   );
 });
@@ -866,7 +866,7 @@ describe('nats-eu Phase E: staged physics behind S13-S16', () => {
     const config = settingsOf(natsEuScenario13Data).linkBudget!;
 
     // The healthy control matches the survey prediction (the S2 station).
-    expect(Math.abs(healthy.cn - config.expectedCNRDb), `healthy ${healthy.cn.toFixed(2)} vs survey ${config.expectedCNRDb}`).toBeLessThan(1.5);
+    expect(Math.abs(healthy.cn - config.expectedCNRDb), `healthy ${healthy.cn.toFixed(2)} vs survey ${config.expectedCNRDb}`).toBeLessThan(1.0);
     // The degraded station is unmistakably short but still locks (the brief says ~7 dB).
     expect(healthy.cn - degraded.cn, `shortfall ${(healthy.cn - degraded.cn).toFixed(2)} dB`).toBeGreaterThanOrEqual(3);
     expect(healthy.cn - degraded.cn, `shortfall ${(healthy.cn - degraded.cn).toFixed(2)} dB`).toBeLessThanOrEqual(5);

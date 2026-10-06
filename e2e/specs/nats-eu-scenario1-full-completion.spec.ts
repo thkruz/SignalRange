@@ -77,12 +77,12 @@ test.describe('nats-eu Scenario 1 Full Completion', () => {
     await waitForObjectiveComplete(missionControl, 'Review the Shift Brief');
   });
 
-  test('[dashboard-sweep] reads the board: AGC rail, no faults', async () => {
+  test('[dashboard-sweep] reads the board: AGC no-carrier warning, no faults', async () => {
     // Station tabs render only after GW-01 is selected in the asset tree
     await missionControl.selectGroundStation('GW-01');
     await missionControl.selectTab('dashboard');
-    await expectDashboardAlarm(page, 'AGC at max gain');
-    await answerSystemQuiz(page, 'RX AGC at max gain');
+    await expectDashboardAlarm(page, 'AGC on noise only');
+    await answerSystemQuiz(page, 'RX AGC on noise only');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'GW-01 Dashboard Sweep');
   });

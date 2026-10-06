@@ -29,6 +29,13 @@
       "antennaConfig": "UHF_CROSSED_YAGI_70CM",
       "lnbLoMHz": 0,
       "lnbNoiseTempK": 75.09,
+      "agcOnNoiseAlone": {
+        "noiseInDbm": -46.37,
+        "filterMHz": 0.2,
+        "settledGainDb": 10,
+        "maxGainDb": 10,
+        "railedAtMax": true
+      },
       "links": [
         {
           "satellite": "CUBEHOP-1",
@@ -43,8 +50,8 @@
             "elevationDeg": 28.9,
             "frequencyMHz": 435.26,
             "gainDbi": 12,
-            "gOverTDbPerK": -12.19,
-            "tsysK": 262.5
+            "gOverTDbPerK": -12.01,
+            "tsysK": 209.58
           },
           "carriers": [
             {
@@ -55,10 +62,10 @@
               "modulation": "QPSK",
               "fec": "1/2",
               "samples": 563,
-              "peakCnDb": 30.71,
-              "medianCnDb": 27.96,
-              "peakRxIfDbm": -31.88,
-              "noiseIfDbm": -62.08,
+              "peakCnDb": 26.25,
+              "medianCnDb": 23.5,
+              "peakRxIfDbm": -31.38,
+              "noiseIfDbm": -57.62,
               "lockedSamples": 563
             }
           ]
@@ -76,8 +83,8 @@
             "elevationDeg": 87.84,
             "frequencyMHz": 137.1,
             "gainDbi": 12,
-            "gOverTDbPerK": -12.06,
-            "tsysK": 254.62
+            "gOverTDbPerK": -16.86,
+            "tsysK": 640.22
           },
           "carriers": [
             {
@@ -88,10 +95,10 @@
               "modulation": "BPSK",
               "fec": "1/2",
               "samples": 776,
-              "peakCnDb": 47.62,
-              "medianCnDb": 41.92,
-              "peakRxIfDbm": -11.41,
-              "noiseIfDbm": -58.53,
+              "peakCnDb": 43.17,
+              "medianCnDb": 37.46,
+              "peakRxIfDbm": -10.91,
+              "noiseIfDbm": -54.06,
               "lockedSamples": 776
             }
           ]
@@ -104,6 +111,13 @@
       "antennaConfig": "VHF_QFH_137",
       "lnbLoMHz": 0,
       "lnbNoiseTempK": 75.09,
+      "agcOnNoiseAlone": {
+        "noiseInDbm": -41.5,
+        "filterMHz": 0.2,
+        "settledGainDb": 10,
+        "maxGainDb": 10,
+        "railedAtMax": true
+      },
       "links": [
         {
           "satellite": "CUBEHOP-1",
@@ -118,8 +132,8 @@
             "elevationDeg": 28.9,
             "frequencyMHz": 435.26,
             "gainDbi": 3,
-            "gOverTDbPerK": -21.13,
-            "tsysK": 259.03
+            "gOverTDbPerK": -20.48,
+            "tsysK": 198.45
           },
           "carriers": [
             {
@@ -130,10 +144,10 @@
               "modulation": "QPSK",
               "fec": "1/2",
               "samples": 563,
-              "peakCnDb": 22.01,
-              "medianCnDb": 18.95,
-              "peakRxIfDbm": -40.58,
-              "noiseIfDbm": -62.08,
+              "peakCnDb": 12.67,
+              "medianCnDb": 9.62,
+              "peakRxIfDbm": -40.08,
+              "noiseIfDbm": -52.75,
               "lockedSamples": 563
             }
           ]
@@ -151,8 +165,8 @@
             "elevationDeg": 87.84,
             "frequencyMHz": 137.1,
             "gainDbi": 3,
-            "gOverTDbPerK": -21.01,
-            "tsysK": 251.73
+            "gOverTDbPerK": -25.69,
+            "tsysK": 659.9
           },
           "carriers": [
             {
@@ -163,10 +177,10 @@
               "modulation": "BPSK",
               "fec": "1/2",
               "samples": 776,
-              "peakCnDb": 38.91,
-              "medianCnDb": 30.64,
-              "peakRxIfDbm": -20.12,
-              "noiseIfDbm": -58.53,
+              "peakCnDb": 29.58,
+              "medianCnDb": 21.31,
+              "peakRxIfDbm": -19.62,
+              "noiseIfDbm": -49.2,
               "lockedSamples": 776
             }
           ]

@@ -21,6 +21,13 @@
       "antennaConfig": "C_BAND_9M_VORTEK",
       "lnbLoMHz": 5250,
       "lnbNoiseTempK": 42.97,
+      "agcOnNoiseAlone": {
+        "noiseInDbm": -40.27,
+        "filterMHz": 40,
+        "settledGainDb": 10,
+        "maxGainDb": 10,
+        "railedAtMax": true
+      },
       "links": [
         {
           "satellite": "TIDEMARK-1",
@@ -31,8 +38,8 @@
             "elevationDeg": 34.2,
             "frequencyMHz": 3718,
             "gainDbi": 48.59,
-            "gOverTDbPerK": 27.15,
-            "tsysK": 139.42
+            "gOverTDbPerK": 29.08,
+            "tsysK": 80.92
           },
           "carriers": [
             {
@@ -43,10 +50,10 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 5,
-              "peakCnDb": 13.72,
-              "medianCnDb": 13.55,
-              "peakRxIfDbm": -28.63,
-              "noiseIfDbm": -41.59,
+              "peakCnDb": 13.89,
+              "medianCnDb": 13.89,
+              "peakRxIfDbm": -29.75,
+              "noiseIfDbm": -43.64,
               "lockedSamples": 5
             },
             {
@@ -57,10 +64,10 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 5,
-              "peakCnDb": 33.29,
-              "medianCnDb": 33.29,
-              "peakRxIfDbm": -54.36,
-              "noiseIfDbm": -87.15,
+              "peakCnDb": 30.52,
+              "medianCnDb": 30.52,
+              "peakRxIfDbm": -58.68,
+              "noiseIfDbm": -89.2,
               "lockedSamples": 5
             }
           ]

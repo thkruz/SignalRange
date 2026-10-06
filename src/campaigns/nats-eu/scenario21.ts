@@ -285,7 +285,7 @@ export const natsEuScenario21Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What is the active alarm state on GW-01 at 09:00?',
             options: [
-              'RX AGC at max gain - weak signal on an empty sky, no hardware alarm',
+              'RX AGC on noise only - no carrier on an empty sky, no hardware alarm',
               'No active alarms - all systems nominal, board clear for the pass',
               'COMSEC alarm - a spare key staged in the store is flagged until it is either loaded or destroyed',
               'BUC muted alarm - the uplink is inhibited and the board wants it cleared',

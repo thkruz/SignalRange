@@ -21,6 +21,13 @@
       "antennaConfig": "C_BAND_9M_VORTEK",
       "lnbLoMHz": 5250,
       "lnbNoiseTempK": 42.97,
+      "agcOnNoiseAlone": {
+        "noiseInDbm": -40.27,
+        "filterMHz": 40,
+        "settledGainDb": 10,
+        "maxGainDb": 10,
+        "railedAtMax": true
+      },
       "links": [
         {
           "satellite": "TIDEMARK-1",
@@ -31,8 +38,8 @@
             "elevationDeg": 34.2,
             "frequencyMHz": 3718,
             "gainDbi": 48.59,
-            "gOverTDbPerK": 27.15,
-            "tsysK": 139.42
+            "gOverTDbPerK": 29.08,
+            "tsysK": 80.92
           },
           "carriers": [
             {
@@ -43,10 +50,10 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 5,
-              "peakCnDb": 13.43,
-              "medianCnDb": 13.39,
-              "peakRxIfDbm": -28.64,
-              "noiseIfDbm": -41.56,
+              "peakCnDb": 13.62,
+              "medianCnDb": 13.62,
+              "peakRxIfDbm": -29.83,
+              "noiseIfDbm": -43.45,
               "lockedSamples": 5
             },
             {
@@ -57,10 +64,10 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 5,
-              "peakCnDb": 33.29,
-              "medianCnDb": 33.29,
-              "peakRxIfDbm": -54.33,
-              "noiseIfDbm": -87.12,
+              "peakCnDb": 30.52,
+              "medianCnDb": 30.52,
+              "peakRxIfDbm": -58.5,
+              "noiseIfDbm": -89.02,
               "lockedSamples": 5
             }
           ]
@@ -74,36 +81,36 @@
             "elevationDeg": 26.3,
             "frequencyMHz": 3792,
             "gainDbi": 48.76,
-            "gOverTDbPerK": 27.19,
-            "tsysK": 143.7
+            "gOverTDbPerK": 29.19,
+            "tsysK": 82.01
           },
           "carriers": [
             {
               "signalId": "TIDEMARK-2-TDMA-Composite",
               "rfMHz": 3792,
-              "ifMHz": 1458.01,
+              "ifMHz": 1458.02,
               "bandwidthMHz": 36,
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 5,
-              "peakCnDb": 14.7,
-              "medianCnDb": 14.64,
-              "peakRxIfDbm": -30.3,
-              "noiseIfDbm": -44.3,
+              "peakCnDb": 14.82,
+              "medianCnDb": 14.82,
+              "peakRxIfDbm": -29.93,
+              "noiseIfDbm": -44.76,
               "lockedSamples": 5
             },
             {
               "signalId": "TIDEMARK-2-Beacon",
               "rfMHz": 4180,
-              "ifMHz": 1070.01,
+              "ifMHz": 1070.02,
               "bandwidthMHz": 0,
               "modulation": "CW",
               "fec": "null",
               "samples": 5,
-              "peakCnDb": 32.64,
-              "medianCnDb": 32.64,
-              "peakRxIfDbm": -57.73,
-              "noiseIfDbm": -89.87,
+              "peakCnDb": 29.81,
+              "medianCnDb": 29.81,
+              "peakRxIfDbm": -60.51,
+              "noiseIfDbm": -90.32,
               "lockedSamples": 5
             }
           ]
@@ -116,6 +123,13 @@
       "antennaConfig": "C_BAND_9M_VORTEK",
       "lnbLoMHz": 6080,
       "lnbNoiseTempK": 290,
+      "agcOnNoiseAlone": {
+        "noiseInDbm": -107.98,
+        "filterMHz": 20,
+        "settledGainDb": 0,
+        "maxGainDb": 0,
+        "railedAtMax": true
+      },
       "links": [
         {
           "satellite": "TIDEMARK-1",

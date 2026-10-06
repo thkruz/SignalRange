@@ -137,7 +137,7 @@ test.describe('nats-eu Scenario 8 Full Completion', () => {
   });
 
   test('[night-budget] predicts the night link and answers both pre-pass quizzes', async () => {
-    await computeLinkBudget(page, missionControl, { eirpDbm: 28, fsplDb: 169.1, rxGainDbi: 51.8, noiseTempK: 88, bandwidthMHz: 36, miscLossDb: 1 });
+    await computeLinkBudget(page, missionControl, { eirpDbm: 31.3, fsplDb: 169.1, rxGainDbi: 50.4, noiseTempK: 121, bandwidthMHz: 36, miscLossDb: 1 });
     // Plan, rotation and budget activate together after the brief, and the
     // quiz manager surfaces the last-registered quiz first, so answer the two
     // pending quizzes by their question text rather than in objective order.

@@ -29,6 +29,13 @@
       "antennaConfig": "C_BAND_9M_VORTEK",
       "lnbLoMHz": 5250,
       "lnbNoiseTempK": 42.97,
+      "agcOnNoiseAlone": {
+        "noiseInDbm": -40.27,
+        "filterMHz": 40,
+        "settledGainDb": 10,
+        "maxGainDb": 10,
+        "railedAtMax": true
+      },
       "links": [
         {
           "satellite": "TIDEMARK-1",
@@ -39,8 +46,8 @@
             "elevationDeg": 34.2,
             "frequencyMHz": 3718,
             "gainDbi": 48.59,
-            "gOverTDbPerK": 27.15,
-            "tsysK": 139.42
+            "gOverTDbPerK": 29.08,
+            "tsysK": 80.92
           },
           "carriers": [
             {
@@ -51,10 +58,10 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 5,
-              "peakCnDb": 14.57,
-              "medianCnDb": 14.45,
-              "peakRxIfDbm": -28.46,
-              "noiseIfDbm": -42.31,
+              "peakCnDb": 14.69,
+              "medianCnDb": 14.69,
+              "peakRxIfDbm": -29.73,
+              "noiseIfDbm": -44.41,
               "lockedSamples": 5
             },
             {
@@ -65,10 +72,10 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 5,
-              "peakCnDb": 34.89,
-              "medianCnDb": 34.89,
-              "peakRxIfDbm": -53.48,
-              "noiseIfDbm": -87.87,
+              "peakCnDb": 32.12,
+              "medianCnDb": 32.12,
+              "peakRxIfDbm": -57.86,
+              "noiseIfDbm": -89.98,
               "lockedSamples": 5
             }
           ]
@@ -82,8 +89,8 @@
             "elevationDeg": 34.2,
             "frequencyMHz": 3718,
             "gainDbi": 48.59,
-            "gOverTDbPerK": 27.15,
-            "tsysK": 139.42
+            "gOverTDbPerK": 29.08,
+            "tsysK": 80.92
           },
           "carriers": [
             {
@@ -94,10 +101,10 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 5,
-              "peakCnDb": 14.49,
-              "medianCnDb": 14.45,
-              "peakRxIfDbm": -30.51,
-              "noiseIfDbm": -44.5,
+              "peakCnDb": 14.69,
+              "medianCnDb": 14.69,
+              "peakRxIfDbm": -30.17,
+              "noiseIfDbm": -44.85,
               "lockedSamples": 5
             },
             {
@@ -108,10 +115,10 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 5,
-              "peakCnDb": 34.89,
-              "medianCnDb": 34.89,
-              "peakRxIfDbm": -55.67,
-              "noiseIfDbm": -90.06,
+              "peakCnDb": 32.12,
+              "medianCnDb": 32.12,
+              "peakRxIfDbm": -58.3,
+              "noiseIfDbm": -90.42,
               "lockedSamples": 5
             }
           ]

@@ -91,7 +91,7 @@ export const scenario10Data: ScenarioData = {
             targetPolarization: 0 as Degrees,
             slewing: false,
             beaconCN: 6.5 as dB, // Marginal under program-track drift
-            beaconFrequencyHz: 1085e6 as Hertz, // AURORA-7 beacon IF (5250 - 4165)
+            beaconFrequencyHz: 4165e6 as Hertz, // AURORA-7 beacon (RF)
             isLocked: true,
           } as Partial<AntennaState>,
         ],

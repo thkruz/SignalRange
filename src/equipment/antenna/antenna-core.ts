@@ -8,11 +8,12 @@ import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { InterferenceManager } from '@app/interference/interference-manager';
 import { SignalOrigin } from '@app/signal-origin';
+import { noiseFigureToK, noiseRiseDb, noiseRiseToK, type SystemNoise, systemNoiseTemperature, thermalNoiseDbm } from '@app/simulation/noise-model';
 import { Rng } from '@app/simulation/rng';
 import { SimClock } from '@app/simulation/sim-clock';
 import { getSimulatedNowMs } from '@app/simulation/sim-time';
 import { SimulationManager } from '@app/simulation/simulation-manager';
-import { dB, dBm, Hertz, RfSignal } from '@app/types';
+import { dB, dBm, Hertz, RfFrequency, RfSignal } from '@app/types';
 import { Degrees } from 'ootk';
 import { ANTENNA_CONFIG_KEYS } from './antenna-config-keys';
 import { AntennaConfig } from './antenna-configs';
@@ -89,6 +90,8 @@ export interface AntennaState {
     gain_dBi: number;
     beamwidth_deg: number;
     gOverT_dBK: number;
+    /** System noise temperature at the LNA input, K (sky, feed, LNB; weather and sun included) */
+    tsys_K?: number;
     polLoss_dB: number;
     atmosLoss_dB: number;
     skyTemp_K: number;
@@ -134,7 +137,7 @@ export interface AntennaState {
   precipitationDetected: boolean;
   /** Ice accumulation on feed horn in dB (0 = no ice) */
   iceAccumulation_dB: number;
-  /** Elevated sky-noise degradation in dB on the receive path (e.g., sun transit). 0 = nominal sky. */
+  /** Sky-noise rise in dB on the receive path (sun transit): raises the system noise, not a carrier loss. 0 = nominal sky. */
   skyNoiseDegradation_dB: number;
   /**
    * Rain rate over the site in mm/h (WeatherManager rain/storm events). The
@@ -259,9 +262,6 @@ export abstract class AntennaCore extends BaseEquipment {
   /** Smoothed C/N for beacon display (EMA) */
   private smoothedBeaconCN_: number | null = null;
 
-  /** Whether we've received at least one real beacon measurement (vs initial state value) */
-  private hasReceivedRealBeaconMeasurement_: boolean = false;
-
   /** Smoothing factor for beacon C/N display */
   private readonly beaconCNSmoothingAlpha_: number = 0.3;
 
@@ -296,7 +296,7 @@ export abstract class AntennaCore extends BaseEquipment {
       // Beacon Tracking
       beaconFrequencyHz: 3_948_000_000, // Default 3.948 GHz C-band beacon
       beaconSearchBwHz: 500_000, // Default 500 kHz search bandwidth
-      beaconTrackingBwHz: 1_000, // Default 25 kHz tracking bandwidth (typical CW beacon)
+      beaconTrackingBwHz: 1_000, // 1 kHz tracking bandwidth (typical CW beacon receiver; the UI labels beacon C/N with it)
       beaconPower: null,
       beaconCN: null,
       isBeaconLocked: false,
@@ -343,12 +343,6 @@ export abstract class AntennaCore extends BaseEquipment {
     }
 
     this.lastRenderState = structuredClone(this.state);
-
-    // Seed beacon smoother from initial state if provided
-    // This preserves scenario-defined beaconCN until real measurements take over
-    if (this.state.beaconCN !== null) {
-      this.smoothedBeaconCN_ = this.state.beaconCN;
-    }
 
     // Initialize step track controller
     this.stepTrackController_ = new StepTrackController(this);
@@ -906,17 +900,19 @@ export abstract class AntennaCore extends BaseEquipment {
       return;
     }
 
+    // No beacon receiver without a front end (bench antennas): leave the state alone
+    if (!this.rfFrontEnd_) {
+      return;
+    }
+
     // Measure beacon metrics
-    const { power, cn } = this.measureBeaconMetrics_();
+    const { power, cn } = this.measureBeaconMetrics();
 
     // Update raw power state
     this.state.beaconPower = power;
 
     // Apply EMA smoothing to C/N for stable display
     if (cn !== null) {
-      // Mark that we've received a real measurement (vs scenario-seeded initial value)
-      this.hasReceivedRealBeaconMeasurement_ = true;
-
       if (this.smoothedBeaconCN_ === null) {
         this.smoothedBeaconCN_ = cn;
       } else {
@@ -934,16 +930,16 @@ export abstract class AntennaCore extends BaseEquipment {
           this.state.isBeaconLocked = false;
         }
       }
-    } else if (this.hasReceivedRealBeaconMeasurement_) {
-      // Only clear if we've previously received real measurements
-      // This preserves scenario-seeded initial values until real signals arrive
+    } else {
+      // No beacon in the search window: the readout says so. (Phase 19.2
+      // removed the scenario-seeded beaconCN that used to stand in until a
+      // measurement arrived: it showed a second C/N scale beside the live one.)
       this.smoothedBeaconCN_ = null;
       this.state.beaconCN = null;
       if (!this.state.isStepTrackEnabled) {
         this.state.isBeaconLocked = false;
       }
     }
-    // If no measurement and no prior real measurements, preserve initial state values
   }
 
   /**
@@ -951,13 +947,19 @@ export abstract class AntennaCore extends BaseEquipment {
    * Filters received signals to find beacon within configured frequency range
    * @returns Object with power (dBm) and cn (dB), both null if no signal
    */
-  private measureBeaconMetrics_(): { power: number | null; cn: number | null } {
+  measureBeaconMetrics(): { power: number | null; cn: number | null } {
     // Need RF front-end attached to measure beacon
     if (!this.rfFrontEnd_) {
       return { power: null, cn: null };
     }
 
-    const beaconFreq = this.rfFrontEnd_.lnbModule.state.loFrequency * 1e6 - this.state.beaconFrequencyHz;
+    // The beacon receiver is tuned in RF; find it at the IF the LNB puts it
+    // (its own LO, drift and direct-sampling mode included)
+    const lnb = this.rfFrontEnd_.lnbModule;
+    const beaconFreq =
+      typeof lnb.calculateIfFrequency === 'function'
+        ? (lnb.calculateIfFrequency(this.state.beaconFrequencyHz as RfFrequency) as number)
+        : lnb.state.loFrequency * 1e6 - this.state.beaconFrequencyHz;
     const searchBw = this.state.beaconSearchBwHz;
 
     // Find signals within beacon search bandwidth (use AGC output for consistency with spectrum analyzer)
@@ -1026,7 +1028,9 @@ export abstract class AntennaCore extends BaseEquipment {
   /**
    * Update elevated sky-noise degradation on the receive path (called by
    * WeatherManager for sun-transit events). RX-only: the uplink is unaffected.
-   * @param degradation_dB - Current sky-noise degradation in dB (0 = nominal)
+   * A noise rise, not a loss: `systemNoise` turns it into the solar antenna
+   * temperature that raises the system noise by this many dB (Phase 19.2).
+   * @param degradation_dB - Current sky-noise rise in dB (0 = nominal)
    */
   updateSkyNoiseDegradation(degradation_dB: number): void {
     this.state.skyNoiseDegradation_dB = degradation_dB;
@@ -2004,7 +2008,9 @@ export abstract class AntennaCore extends BaseEquipment {
     const frequency =
       this.state.rxSignalsIn.length > 0 ? (this.state.rxSignalsIn[0].frequency as Hertz) : (((this.config.minRxFrequency + this.config.maxRxFrequency) / 2) as Hertz);
 
-    const elevation = 45 as Degrees; // Standard elevation for GEO
+    // Quoted at the elevation the dish is actually pointing at (datasheets use 20 deg)
+    const elevation = this.state.elevation;
+    const noise = this.systemNoise(frequency, elevation);
 
     // Calculate EIRP if transmitting
     let eirp_dBW: number | undefined;
@@ -2019,15 +2025,16 @@ export abstract class AntennaCore extends BaseEquipment {
       gain_dBi: this.antennaGain_dBi(frequency),
       beamwidth_deg: this.beamwidth3dB_deg_(frequency),
       gOverT_dBK: this.gOverT_dB_perK_(frequency, elevation),
+      tsys_K: noise.systemK,
       polLoss_dB: this.polMismatchLoss_dB_(
         'H', // Assume H-pol for display
         this.config.polType ?? 'linear',
         this.state.polarization
       ),
-      atmosLoss_dB: this.calculateAtmosphericLoss_(frequency, elevation),
-      // A sun transit shows here as the operator would read it: the noise the
-      // RX path already carries for it (systemTempK_ models it as feed loss)
-      skyTemp_K: this.skyTempK_(elevation) + this.noiseFromLossK_(this.state.skyNoiseDegradation_dB, this.config.rxPhysTemp_K ?? 290),
+      atmosLoss_dB: this.calculateAtmosphericLoss_(frequency, Math.max(1, elevation)),
+      // Antenna temperature at the aperture: sky (with any rain), spillover
+      // and the sun during a transit, as the operator would read it
+      skyTemp_K: noise.antennaK,
       frequency_GHz: frequency / 1e9,
       eirp_dBW,
     };
@@ -2171,93 +2178,110 @@ export abstract class AntennaCore extends BaseEquipment {
     return Math.min(xpd, ideal) as dB;
   }
 
+  // ========================================================================
+  // RECEIVE NOISE (Phase 19.2: src/simulation/noise-model.ts)
+  // ========================================================================
+
+  /** Default ground pickup at the aperture, K (see AntennaConfig.spilloverK) */
+  private static readonly DEFAULT_SPILLOVER_K = { parabolic: 5, fixed: 60 };
+
   /**
-   * Sky temperature (K) vs elevation - simple C-band model
-   * ~8-12 K at zenith, increases at low elevation due to atmospheric path
+   * Frequency the receive noise is evaluated at: the middle of the RX band.
+   * Sky and galactic noise change little across one band, and a fixed point
+   * keeps the floor from jumping when a carrier enters the beam.
    */
-  private skyTempK_(elev_deg: number): number {
-    // sec(z) factor for atmospheric path length
-    const secz = 1 / Math.max(0.1, Math.sin((elev_deg * Math.PI) / 180));
-    return 8 + 4 * (secz - 1); // Tune as needed
+  get noiseReferenceHz(): number {
+    return (this.config.minRxFrequency + this.config.maxRxFrequency) / 2;
+  }
+
+  /** Receiver noise temperature: the attached LNB's (Friis over LNA and mixer) when powered, else the config LNA */
+  private receiverNoiseK_(): number {
+    const lnb = this.rfFrontEnd_?.lnbModule;
+    if (lnb?.state.isPowered) {
+      return lnb.state.noiseTemperature;
+    }
+
+    return noiseFigureToK(this.config.lnaNF_dB ?? 1.0);
   }
 
   /**
-   * Convert loss (dB) at physical temp to equivalent noise temp (K) at LNA input
-   * T_equiv = T_phys * (L - 1) where L is linear loss factor
+   * System noise temperature at the LNA input (the plane carrier powers are
+   * referred to: gain minus feed loss). Sky (gas, background, galactic) at
+   * the pointing elevation, rain noise rise, spillover, sun-transit noise,
+   * then the feed (with any ice) at its physical temperature, then the LNB.
+   *
+   * @param weather include rain and ice (false: clear-sky reference)
+   * @param sun include sun-transit noise (defaults to `weather`)
    */
-  private noiseFromLossK_(L_dB: number, physK: number = 290): number {
-    const L = 10 ** (L_dB / 10);
-    return physK * (L - 1);
+  systemNoise(frequency: number = this.noiseReferenceHz, elevation: number = this.state.elevation, weather = true, sun = weather): SystemNoise {
+    const el = Math.max(1, elevation);
+    const feedLossDb = this.feedLossAt_(frequency) + (weather ? this.state.iceAccumulation_dB : 0);
+    const spilloverK = this.config.spilloverK ?? AntennaCore.DEFAULT_SPILLOVER_K[this.config.gainModel === 'fixed' ? 'fixed' : 'parabolic'];
+    const inputs = {
+      frequencyHz: frequency,
+      gasAttenuationDb: this.calculateAtmosphericLoss_(frequency, el),
+      rainAttenuationDb: weather ? this.rainAttenuation_dB(frequency, el) : 0,
+      spilloverK,
+      feedLossDb,
+      feedPhysicalK: this.config.rxPhysTemp_K ?? 290,
+      receiverK: this.receiverNoiseK_(),
+    };
+    const base = systemNoiseTemperature(inputs);
+    const sunRiseDb = sun ? this.state.skyNoiseDegradation_dB : 0;
+    if (!(sunRiseDb > 0)) {
+      return base;
+    }
+
+    // Sun transit (DEV-PROP-04): the authored rise in dB becomes the solar
+    // antenna temperature that causes it, injected at the aperture so it
+    // passes through the feed like any other sky noise.
+    const sunK = noiseRiseToK(base.systemK, sunRiseDb) * 10 ** (feedLossDb / 10);
+
+    return systemNoiseTemperature({ ...inputs, sunK });
+  }
+
+  /** Clear-sky system noise temperature at the current elevation (no rain, ice or sun), K */
+  clearSkySystemNoiseK(frequency: number = this.noiseReferenceHz): number {
+    return this.systemNoise(frequency, this.state.elevation, false).systemK;
   }
 
   /**
-   * Thermal noise floor at the antenna output (referred to LNA input) for a
-   * given frequency and noise bandwidth.
-   *
-   * Uses system noise temperature (sky + atmosphere + feed + LNA) and kTB.
-   *
-   * NOTE:
-   * - Returns total noise power in dBm **over noiseBandwidth_Hz**.
-   * - If you want noise density, call it with noiseBandwidth_Hz = 1.
+   * C/N the weather is costing this antenna right now, dB: rain and ice
+   * attenuation of the carrier plus the noise they add, at the band reference
+   * frequency and the current elevation. Sun transit is not weather and is not
+   * included. Feeds the `weather-attenuation-dominant` evidence fact.
+   */
+  weatherCnLossDb(frequency: number = this.noiseReferenceHz): number {
+    const el = this.state.elevation;
+    const clear = this.systemNoise(frequency, el, false).systemK;
+    const wet = this.systemNoise(frequency, el, true, false).systemK;
+    const attenuation = this.rainAttenuation_dB(frequency, el) + this.state.iceAccumulation_dB;
+
+    return attenuation + noiseRiseDb(clear, wet);
+  }
+
+  /**
+   * Antenna noise (no receiver) at the LNA input over `noiseBandwidth`, dBm:
+   * what an ideal noiseless instrument would see at the antenna port.
    */
   antennaNoiseFloor(frequency: Hertz, noiseBandwidth: Hertz): dBm {
-    // Use the actual current pointing elevation
-    const elevation = this.state.elevation;
-    const Tsys_K = this.systemTempK_(frequency, elevation);
+    return thermalNoiseDbm(this.systemNoise(frequency).antennaAtLnaK, noiseBandwidth) as dBm;
+  }
 
-    // Guard against degenerate values
-    const T = Math.max(Tsys_K, 1); // K (avoid log of 0)
-    const B = Math.max(noiseBandwidth, 1); // Hz (at least 1 Hz)
-
-    // Thermal noise density at 290 K ~ -174 dBm/Hz
-    const kTB_290_dBmPerHz = -174;
-
-    // Temperature correction: 10*log10(T/290)
-    const tempCorrection_dB = 10 * Math.log10(T / 290);
-
-    // Bandwidth gain: 10*log10(B)
-    const bandwidthGain_dB = 10 * Math.log10(B);
-
-    const noise_dBm = kTB_290_dBmPerHz + tempCorrection_dB + bandwidthGain_dB;
-    return noise_dBm as dBm;
+  /** System noise temperature at the LNA input (K), weather included */
+  private systemTempK_(frequency: Hertz | number, elevation: Degrees | number): number {
+    return this.systemNoise(frequency, elevation).systemK;
   }
 
   /**
-   * System noise temperature at LNA input (K)
-   * Accounts for sky, atmosphere, feed, ice accumulation, and LNA contributions
+   * G/T (dB/K) at a frequency and elevation, current conditions: gain at the
+   * LNA input (aperture gain less feed loss) over the system temperature at
+   * the same plane. Equal to G_aperture - 10 log(T_sys referred to the flange).
    */
-  private systemTempK_(frequency: Hertz, elevation: Degrees): number {
-    const Tsky = this.skyTempK_(elevation);
-    const Latm = this.calculateAtmosphericLoss_(frequency, elevation);
-    const Lfeed = this.feedLossAt_(frequency) + (this.config.rxChainLoss_dB ?? 0);
+  private gOverT_dB_perK_(frequency: Hertz | number, elevation: Degrees | number): number {
+    const gainAtLna = this.antennaGain_dBi(frequency as Hertz) - this.feedLossAt_(frequency) - this.state.iceAccumulation_dB;
 
-    // Ice accumulation adds to feed loss (ice on feed horn acts as lossy medium).
-    // Elevated sky noise (sun transit) and rain on the path are modeled as
-    // equivalent RX-path loss (a lossy medium both attenuates and radiates).
-    const Lice = this.state.iceAccumulation_dB + this.state.skyNoiseDegradation_dB + this.rainAttenuation_dB(frequency, elevation);
-    const LfeedTotal = Lfeed + Lice;
-
-    const Tant = Tsky + this.noiseFromLossK_(Latm, 260); // Atm ~260 K slab
-    const Tfeed = this.noiseFromLossK_(LfeedTotal, this.config.rxPhysTemp_K ?? 290);
-
-    // LNA noise
-    const NF = this.config.lnaNF_dB ?? 1.0;
-    const Tlna = 290 * (10 ** (NF / 10) - 1);
-
-    // Friis cascade for noise temps with preceding losses
-    const L_atm_linear = 10 ** (Latm / 10);
-    const L_feed_linear = 10 ** (LfeedTotal / 10);
-    const L_total = L_atm_linear * L_feed_linear;
-
-    return Tant * L_total + Tfeed * L_atm_linear + Tlna;
-  }
-
-  /**
-   * G/T (dB/K) at given frequency & elevation
-   * Key figure of merit for receive systems
-   */
-  private gOverT_dB_perK_(frequency: Hertz, elevation: Degrees): number {
-    return this.antennaGain_dBi(frequency) - 10 * Math.log10(this.systemTempK_(frequency, elevation));
+    return gainAtLna - 10 * Math.log10(this.systemTempK_(frequency, elevation));
   }
 
   /**
@@ -2304,9 +2328,10 @@ export abstract class AntennaCore extends BaseEquipment {
     // Use pattern gain (accounts for off-axis angle) instead of just peak gain
     const Grx_dBi = this.patternGain_dBi_(offAxis_deg, f_Hz);
 
-    // Feed loss (frequency-dependent) + ice accumulation on feed horn +
-    // elevated sky noise (sun transit) as equivalent RX loss + rain on the path
-    const feedLoss = this.feedLossAt_(f_Hz) + this.state.iceAccumulation_dB + this.state.skyNoiseDegradation_dB + this.rainAttenuation_dB(f_Hz, elev_deg);
+    // Feed loss (frequency-dependent) + ice accumulation on feed horn + rain
+    // on the path. Sun transit is not a loss: it raises the system noise
+    // temperature (systemNoise), which is what costs the C/N.
+    const feedLoss = this.feedLossAt_(f_Hz) + this.state.iceAccumulation_dB + this.rainAttenuation_dB(f_Hz, elev_deg);
 
     // Pointing loss (if any off-axis error from wind/jitter)
     const pointingLoss = this.pointingLoss_dB_(offAxis_deg, f_Hz);

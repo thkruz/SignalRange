@@ -21,6 +21,13 @@
       "antennaConfig": "VHF_QFH_137",
       "lnbLoMHz": 0,
       "lnbNoiseTempK": 75.09,
+      "agcOnNoiseAlone": {
+        "noiseInDbm": -41.5,
+        "filterMHz": 0.2,
+        "settledGainDb": 10,
+        "maxGainDb": 10,
+        "railedAtMax": true
+      },
       "links": [
         {
           "satellite": "WXSAT-19",
@@ -35,8 +42,8 @@
             "elevationDeg": 55.05,
             "frequencyMHz": 137.1,
             "gainDbi": 3,
-            "gOverTDbPerK": -21.04,
-            "tsysK": 253.22
+            "gOverTDbPerK": -25.69,
+            "tsysK": 659.77
           },
           "carriers": [
             {
@@ -47,10 +54,10 @@
               "modulation": "BPSK",
               "fec": "1/2",
               "samples": 758,
-              "peakCnDb": 37.42,
-              "medianCnDb": 32.88,
-              "peakRxIfDbm": -21.61,
-              "noiseIfDbm": -58.53,
+              "peakCnDb": 28.08,
+              "medianCnDb": 23.55,
+              "peakRxIfDbm": -21.11,
+              "noiseIfDbm": -49.19,
               "lockedSamples": 758
             }
           ]
@@ -68,8 +75,8 @@
             "elevationDeg": 48.19,
             "frequencyMHz": 435.26,
             "gainDbi": 3,
-            "gOverTDbPerK": -21.05,
-            "tsysK": 254.05
+            "gOverTDbPerK": -20.47,
+            "tsysK": 198.11
           },
           "carriers": [
             {
@@ -80,10 +87,10 @@
               "modulation": "QPSK",
               "fec": "1/2",
               "samples": 603,
-              "peakCnDb": 24.95,
-              "medianCnDb": 20.22,
-              "peakRxIfDbm": -37.63,
-              "noiseIfDbm": -62.08,
+              "peakCnDb": 15.62,
+              "medianCnDb": 10.89,
+              "peakRxIfDbm": -37.13,
+              "noiseIfDbm": -52.75,
               "lockedSamples": 603
             }
           ]

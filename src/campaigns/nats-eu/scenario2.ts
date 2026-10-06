@@ -36,8 +36,8 @@ import { meridianSar1Satellite, meridianSar2Satellite } from './satellites';
  * - slant range at max elevation 761 km -> FSPL 171.4 dB at 11686 MHz
  *   (2270 km at the 5 deg mask -> 180.9 dB, which is why the window is the
  *   middle of the pass)
- * - EIRP 28 dBm, GW-01 4m Ku gain 51.8 dBi, Tsys 88 K, BW 36 MHz, misc 1 dB
- * - correct worksheet -> C/N 10.96 dB (expectedCNRDb 11.0, tolerance 1.0)
+ * - EIRP 31.3 dBm, GW-01 4m Ku gain 50.4 dBi (at the LNA flange), Tsys 125 K, BW 36 MHz, misc 1 dB
+ * - correct worksheet -> C/N 11.37 dB (expectedCNRDb 11.4, tolerance 1.0)
  * - measured peak through the real chain: 10.93 dB at culmination
  * - threshold 6 dB (QPSK 3/4 demod) + 2 dB required margin -> commit anywhere in
  *   the window 14:05:10 .. 14:08:20.
@@ -110,7 +110,7 @@ export const natsEuScenario2Data: ScenarioData = {
     // requiredMarginDb is measured against the live receiver at Commit Link.
     linkBudget: {
       label: 'GW-01 acceptance: MERIDIAN-SAR-1 downlink at max elevation',
-      expectedCNRDb: 11.0,
+      expectedCNRDb: 11.4,
       toleranceDb: 1.0,
       thresholdCNRDb: 6,
       requiredMarginDb: 2,
@@ -296,7 +296,7 @@ export const natsEuScenario2Data: ScenarioData = {
       nice: ['T0080', 'S0015', 'K0740'],
       title: 'Predict the Downlink C/N',
       description:
-        'Fill the worksheet for MERIDIAN-SAR-1 at maximum elevation and press Compute. Survey numbers: satellite EIRP 28 dBm; slant range at max elevation 761 km (free-space path loss 171.4 dB at 11686 MHz); GW-01 receive gain 51.8 dBi; system noise temperature 88 K; occupied bandwidth 36 MHz; miscellaneous losses 1 dB.',
+        'Fill the worksheet for MERIDIAN-SAR-1 at maximum elevation and press Compute. Survey numbers: satellite EIRP 31.3 dBm; slant range at max elevation 761 km (free-space path loss 171.4 dB at 11686 MHz); GW-01 receive gain 50.4 dBi; system noise temperature 125 K; occupied bandwidth 36 MHz; miscellaneous losses 1 dB.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['open-link-analysis'],
       timeLimitSeconds: 5 * 60,
@@ -544,7 +544,7 @@ export const natsEuScenario2Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Measurement',
             documentLine:
-              'MERIDIAN-SAR-1 14:03Z pass: predicted C/N 11.0 dB at culmination; measured 10.9 dB at 28 deg / 761 km; margin over 6 dB demod threshold 4.9 dB; rising leg 15 deg ~7 dB, setting leg 15 deg ~7 dB.',
+              'MERIDIAN-SAR-1 14:03Z pass: predicted C/N 11.4 dB at culmination; measured 10.9 dB at 28 deg / 761 km; margin over 6 dB demod threshold 4.9 dB; rising leg 15 deg ~7 dB, setting leg 15 deg ~7 dB.',
           },
           mustMaintain: false,
         },

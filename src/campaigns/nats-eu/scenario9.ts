@@ -251,14 +251,14 @@ export const natsEuScenario9Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What is the active alarm state on GW-01 at turnover?',
             options: [
-              'RX AGC at max gain - weak signal on an empty sky, no hardware alarm',
+              'RX AGC on noise only - no carrier on an empty sky, no hardware alarm',
               'No active alarms - all systems nominal, board clear at turnover',
               'GPSDO in holdover - reference alarm, timing at risk for the pass',
               'Antenna drive fault - hardware alarm, pedestal down for the pass',
             ],
             correctIndex: 0,
             explanation:
-              'The AGC rail is empty sky, not a fault. The evening shift left the hardware healthy and the receiver on the wrong bird; the next three checks find which is which.',
+              'The AGC no-carrier warning is empty sky, not a fault. The evening shift left the hardware healthy and the receiver on the wrong bird; the next three checks find which is which.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -485,16 +485,16 @@ export const natsEuScenario9Data: ScenarioData = {
           description: 'Remote Board Read',
           params: {
             character: Character.SYSTEM,
-            question: 'SH-02 shows one warning, the receive AGC at its rail, and nothing else. What does that board on a remote site tell you, and what does it not?',
+            question: 'SH-02 shows one warning, the receive AGC on noise with no carrier, and nothing else. What does that board on a remote site tell you, and what does it not?',
             options: [
-              'Nothing in the alarm set is tripped and the AGC rail is empty sky; it says nothing about configuration',
+              'Nothing in the alarm set is tripped and the AGC no-carrier warning is empty sky; it says nothing about configuration',
               'The site is ready to fly and the receiver is on the carrier; it says nothing about whether the pedestal is armed',
               'Fiona has already checked it and left it configured; it says nothing that the rest of the sweep would add',
               'The equipment is powered and the reference is locked; it says nothing about whether the receive chain has a fault',
             ],
             correctIndex: 0,
             explanation:
-              'Configuration is what the next three checks are for. An alarm is a threshold crossed, and an AGC at its rail with nothing in the beam is the threshold behaving. A modem on the wrong carrier, an analyzer on the wrong span, an antenna stowed the wrong way - none of those is an alarm, and any of them loses a pass.',
+              'Configuration is what the next three checks are for. An alarm is a threshold crossed, and an AGC levelling noise with nothing in the beam is the threshold behaving. A modem on the wrong carrier, an analyzer on the wrong span, an antenna stowed the wrong way - none of those is an alarm, and any of them loses a pass.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -871,7 +871,7 @@ export const natsEuScenario9Data: ScenarioData = {
             options: [
               'The pedestal still program-track locked on SAR-2 and the modem locked with C/N over threshold, read while the bird is still up',
               'The contact plan showing M-SAR2-GW as assigned to Galway and the window closed, read after the bird has set',
-              'The absence of an alarm on the Galway dashboard and the AGC off its rail, read while the bird is still up',
+              'The absence of an alarm on the Galway dashboard and the AGC no-carrier warning cleared, read while the bird is still up',
               'The processing confirmation from Rotterdam and the frame count it reports, read after the bird has set',
             ],
             correctIndex: 0,

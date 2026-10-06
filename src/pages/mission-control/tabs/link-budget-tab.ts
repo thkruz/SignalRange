@@ -30,9 +30,9 @@ export class LinkBudgetTab extends BaseElement {
   private lastSyncTime_ = 0;
   /**
    * The measured C/N the operator can currently see. Accept Link commits this
-   * value rather than a fresh sample: the 1 s LEO position throttle drops one
-   * low frame into every second of a pass, and a click that sampled it would
-   * fail the commit on a reading nobody saw.
+   * value rather than a fresh sample, so the grade is the reading on screen
+   * (the C/N now comes from the one noise model, so this is the same number
+   * the RX modem shows at that instant).
    */
   private displayedLiveCnrDb_: number | null = null;
 
@@ -44,6 +44,10 @@ export class LinkBudgetTab extends BaseElement {
 
     this.boundUpdateHandler_ = this.throttledSync_.bind(this);
     EventBus.getInstance().on(Events.UPDATE, this.boundUpdateHandler_);
+
+    // Without an authored expectedCNRDb the worksheet is graded against the
+    // engine's own clear-sky C/N for this link (Phase 19.2)
+    LinkBudgetManager.getInstance().setEnginePrediction(() => this.getClearSkyCNR_());
 
     this.syncDomWithState_();
     this.renderPlanningResult_();
@@ -229,6 +233,20 @@ export class LinkBudgetTab extends BaseElement {
     return receiver.getSnrForModem(modem);
   }
 
+  /**
+   * The engine's clear-sky C/N for the link: the live measured C/N with the
+   * weather's cost (rain and ice attenuation and noise rise) added back.
+   */
+  private getClearSkyCNR_(): number | null {
+    const live = this.getLiveCNR_();
+    if (live === null) {
+      return null;
+    }
+    const weatherDb = Math.max(0, ...this.groundStation_.antennas.map((antenna) => antenna.weatherCnLossDb()));
+
+    return live + weatherDb;
+  }
+
   private throttledSync_(): void {
     const now = Date.now();
     if (now - this.lastSyncTime_ < LinkBudgetTab.UPDATE_INTERVAL_MS) {
@@ -332,6 +350,7 @@ export class LinkBudgetTab extends BaseElement {
 
   public dispose(): void {
     EventBus.getInstance().off(Events.UPDATE, this.boundUpdateHandler_);
+    LinkBudgetManager.getInstance().setEnginePrediction(null);
     this.domCache_.clear();
     this.dom_?.remove();
   }

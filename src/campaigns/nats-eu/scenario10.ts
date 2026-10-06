@@ -35,9 +35,9 @@ import { createMeridianSar1, createMeridianSar2 } from './satellites';
  * Link-budget worksheet (published in the budget objective):
  * - slant range at max elevation 1040 km -> FSPL 174.1 dB at 11686 MHz
  *   (S2 worked 761 km / 171.4 dB: 3.7 dB more path loss here)
- * - EIRP 28 dBm, GW-01 4m Ku gain 51.8 dBi, Tsys 88 K, BW 36 MHz, misc 1.2 dB
+ * - EIRP 31.3 dBm, GW-01 4m Ku gain 50.4 dBi (at the LNA flange), Tsys 131 K, BW 36 MHz, misc 1.2 dB
  *   (the extra 0.2 dB over S2/S8 is the longer atmospheric path at 18 deg)
- * - correct worksheet -> C/N 8.09 dB (expectedCNRDb 8.1, tolerance 1.0)
+ * - correct worksheet -> C/N 8.26 dB (expectedCNRDb 8.3, tolerance 1.0)
  * - threshold 6 dB (QPSK 3/4 demod) + 1 dB required margin
  *
  * Uplink: HPA back-off 10 -> 4 dB is +6 dB EIRP. Below 3 dB the amplifier is
@@ -151,7 +151,7 @@ export const natsEuScenario10Data: ScenarioData = {
     // 8.11 dB at max elevation, ~150 s at or above 7 dB, ~40 s at or above 8 dB.
     linkBudget: {
       label: 'Low-elevation collect: SAR-1 downlink at 18 deg',
-      expectedCNRDb: 8.1,
+      expectedCNRDb: 8.3,
       toleranceDb: 1.0,
       thresholdCNRDb: 6,
       requiredMarginDb: 1,
@@ -243,14 +243,14 @@ export const natsEuScenario10Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What is the active alarm state on GW-01 when the tasking comes in?',
             options: [
-              'RX AGC at max gain - weak signal on an empty sky, no hardware alarm',
+              'RX AGC on noise only - no carrier on an empty sky, no hardware alarm',
               'No active alarms - all systems nominal, board clear for the tasking',
               'HPA over-temperature - hardware alarm, transmit chain at risk',
               'GPSDO in holdover - reference alarm, timing at risk for the pass',
             ],
             correctIndex: 0,
             explanation:
-              'The AGC rail is empty sky, not a fault, and nothing else is tripped; that does not mean the chain is set the way the tasking needs it. The maintenance run this morning left its fingerprints on the BUC and the modem.',
+              'The AGC no-carrier warning is empty sky, not a fault, and nothing else is tripped; that does not mean the chain is set the way the tasking needs it. The maintenance run this morning left its fingerprints on the BUC and the modem.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -296,7 +296,7 @@ export const natsEuScenario10Data: ScenarioData = {
       nice: ['T0080', 'S0015', 'K0740'],
       title: 'Budget the Low Pass',
       description:
-        'Fill the Link Analysis worksheet for MERIDIAN-SAR-1 at maximum elevation and press Compute. Worksheet numbers: satellite EIRP 28 dBm; slant range at max elevation 1040 km (free-space path loss 174.1 dB at 11686 MHz); GW-01 receive gain 51.8 dBi; system noise temperature 88 K; occupied bandwidth 36 MHz; miscellaneous losses 1.2 dB.',
+        'Fill the Link Analysis worksheet for MERIDIAN-SAR-1 at maximum elevation and press Compute. Worksheet numbers: satellite EIRP 31.3 dBm; slant range at max elevation 1040 km (free-space path loss 174.1 dB at 11686 MHz); GW-01 receive gain 50.4 dBi; system noise temperature 131 K; occupied bandwidth 36 MHz; miscellaneous losses 1.2 dB.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['reference-check'],
       timeLimitSeconds: 4 * 60,
@@ -699,7 +699,7 @@ export const natsEuScenario10Data: ScenarioData = {
               'The command and its ACK time, the EIRP exception (4 dB back-off, restored after), the measured C/N against the 8.1 dB prediction',
               "The customer's name and the target box, the tasking reference (as received, as accepted), the frame count against the request",
               'Just the ACK and its time, the frames received (count and quality), the note that the frames prove the rest of the chain',
-              'The worksheet inputs from the card, the predicted C/N (8.1 dB, from the card), the note that the measured figure matched it',
+              'The worksheet inputs from the card, the predicted C/N (8.3 dB, from the card), the note that the measured figure matched it',
             ],
             correctIndex: 0,
             explanation:

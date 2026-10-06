@@ -29,6 +29,13 @@
       "antennaConfig": "L_BAND_GPS_PATCH",
       "lnbLoMHz": 0,
       "lnbNoiseTempK": 75.09,
+      "agcOnNoiseAlone": {
+        "noiseInDbm": -32.94,
+        "filterMHz": 5,
+        "settledGainDb": 2.94,
+        "maxGainDb": 10,
+        "railedAtMax": false
+      },
       "links": [
         {
           "satellite": "NAVSTAR-77",
@@ -43,8 +50,8 @@
             "elevationDeg": 84.47,
             "frequencyMHz": 1575.42,
             "gainDbi": 5,
-            "gOverTDbPerK": -16.87,
-            "tsysK": 153.84
+            "gOverTDbPerK": -17.47,
+            "tsysK": 160.97
           },
           "carriers": [
             {
@@ -57,8 +64,8 @@
               "samples": 12074,
               "peakCnDb": null,
               "medianCnDb": null,
-              "peakRxIfDbm": -32.32,
-              "noiseIfDbm": -40.14,
+              "peakRxIfDbm": -31.82,
+              "noiseIfDbm": -36.82,
               "lockedSamples": 0
             }
           ]

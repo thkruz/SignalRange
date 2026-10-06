@@ -2,17 +2,20 @@
  * nats-eu board sweeps: a LEO pre-AOS board is never clean.
  *
  * Every Campaign 2 scenario opens before AOS with the tracker parked on empty
- * sky, so the receive AGC sits at its 10 dB rail and the Dashboard lists
- * "AGC at max gain (10.0 dB) - weak signal" under Active Alarms. Phase 16
+ * sky, so the receive AGC is levelling receive noise with no carrier in its
+ * passband and the Dashboard lists "AGC on noise only - no carrier in
+ * passband" under Active Alarms (phase 19.2: the AGC detector measures noise;
+ * before that it ignored noise and sat at its 10 dB max-gain rail). Phase 16
  * shipped nine sweep quizzes that graded "No active alarms" as correct; the
  * Playwright specs answered them by the quiz's own text and never read the
  * board, so manual QA (2026-09-17) was the first thing to catch it.
  *
  * Two locks:
  *  1. Engine fact: the REAL Galway and Shetland chains, ticked with nothing in
- *     the beam, raise the AGC warning (and only as a warning, not an error).
+ *     the beam, raise the AGC no-carrier warning (and only as a warning, not an
+ *     error).
  *  2. Content invariant: no nats-eu dashboard-sweep quiz may grade a "no active
- *     alarms" answer as correct, and every one must name the AGC rail.
+ *     alarms" answer as correct, and every one must name the AGC warning.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -49,9 +52,9 @@ import { AntennaUIHeadless } from '@app/equipment/antenna/antenna-ui-headless';
 import { createRFFrontEnd } from '@app/equipment/rf-front-end/rf-front-end-factory';
 import { EventBus } from '@app/events/event-bus';
 
-const AGC_RAIL = /AGC at max gain/;
+const AGC_NO_CARRIER = /AGC on noise only - no carrier/u;
 
-describe('nats-eu board sweep: the pre-AOS board carries the RX AGC rail', () => {
+describe('nats-eu board sweep: the pre-AOS board carries the RX AGC no-carrier warning', () => {
   beforeEach(() => {
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
     document.body.innerHTML = '<div id="board-sweep-fe"></div>';
@@ -66,7 +69,7 @@ describe('nats-eu board sweep: the pre-AOS board carries the RX AGC rail', () =>
   it.each([
     ['GW-01', galwayGroundStation],
     ['SH-02', shetlandGroundStation],
-  ])('%s with nothing in the beam raises the AGC max-gain warning on the RX chain', (_id, station) => {
+  ])('%s with nothing in the beam raises the AGC no-carrier warning on the RX chain', (_id, station) => {
     const antenna = new AntennaUIHeadless('board-sweep-antenna', ANTENNA_CONFIG_KEYS.KU_BAND_4M_LEO_TRACKER, station.antennasState![0], 1);
     const frontEnd = createRFFrontEnd('board-sweep-fe', station.rfFrontEnds[0], 'standard');
     frontEnd.connectAntenna(antenna);
@@ -79,7 +82,7 @@ describe('nats-eu board sweep: the pre-AOS board carries the RX AGC rail', () =>
     }
 
     const rx = frontEnd.getStatusAlarms(2);
-    const agc = rx.filter((a) => AGC_RAIL.test(a.message));
+    const agc = rx.filter((a) => AGC_NO_CARRIER.test(a.message));
     expect(agc, `RX alarms: ${JSON.stringify(rx)}`).toHaveLength(1);
     expect(agc[0].severity).toBe('warning');
     expect(frontEnd.getStatusAlarms(1).map((a) => a.message)).toEqual([]);
@@ -105,9 +108,10 @@ describe('nats-eu board sweep quizzes grade the board the simulation shows', () 
     expect(sweepQuizzes.map((q) => q.label)).toHaveLength(17);
   });
 
-  it.each(sweepQuizzes.map((q) => [q.label, q]))('%s: the correct answer names the AGC rail, never "no active alarms"', (_label, quiz) => {
+  it.each(sweepQuizzes.map((q) => [q.label, q]))('%s: the correct answer names the AGC no-carrier warning, never "no active alarms"', (_label, quiz) => {
     const correct = quiz.options[quiz.correctIndex];
     expect(correct).toMatch(/AGC/);
+    expect(correct).toMatch(/no[ -]carrier/iu);
     expect(correct).not.toMatch(/^no active alarms/i);
   });
 });

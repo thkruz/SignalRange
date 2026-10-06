@@ -41,10 +41,12 @@ import { ses10Satellite, tidemark1Satellite, tidemark2Satellite } from './satell
  *
  * Sim notes:
  *   - weatherEvents 'sun-transit': starts 20 s after 'observe-onset' activates
- *     (startAfterObjectiveId), 300s duration, 12 dB peak. Profile sin^2 ->
- *     >2 dB from ~A+60s, >6 dB ~A+95..245s, clear (<1 dB) by ~A+292s.
- *   - 12 dB peak takes beacon and carrier C/N below threshold: demod genuinely
- *     unlocks near peak and self-recovers. Uplink is unaffected by design.
+ *     (startAfterObjectiveId), 300s duration, 16 dB peak. Profile sin^2 ->
+ *     >2 dB from ~A+55s, >6 dB ~A+83..257s, clear (<1 dB) by ~A+296s.
+ *   - Since Phase 19.2 the transit raises the system noise temperature (the
+ *     carrier keeps its power). The 16 dB peak takes the carrier C/N under
+ *     the IF noise for ~90 s and under the demod threshold for ~2 min near
+ *     the peak; it self-recovers. Uplink is unaffected by design.
  *   - Custom-evaluator conditions read skyNoiseDegradation_dB via the
  *     window.signalRange handle (no imports - avoids manager import cycles).
  */
@@ -102,7 +104,12 @@ export const scenario17Data: ScenarioData = {
         startAfterObjectiveId: 'observe-onset',
         startTime: 20, // Window opens 20 s after the onset objective comes up
         duration: 300, // ~5-minute transit
-        linkMarginDegradation: 12, // Peak dB - enough to break demod lock near center
+        // Peak noise rise, dB (Phase 19.2: a rise in system noise, not a carrier
+        // loss). 16 dB on VT-01's ~13 dB link puts the carrier under the IF
+        // noise for ~1.5 min and under the demod threshold for ~2 min around
+        // the peak (the brief's 1-3 min). A quiet Sun behind a 9 m C-band dish
+        // is worth ~20 dB; the authored peak stays a little under that.
+        linkMarginDegradation: 16,
       },
     ],
     missionBriefUrl: 'https://docs.signalrange.space/campaign-1/scenario-17?content-only=true&dark=true',
@@ -672,9 +679,9 @@ export const scenario17Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which entry correctly records this event?',
             options: [
-              'TM-1 transit per SOP-SX-001, customer notified pre-window. Peak ~12 dB, brief demod loss, self-recovered, no residual alarms. Next window tomorrow, ~4 min earlier.',
-              'TM-1 outage this morning, cause solar. Customer notified after recovery. Peak ~12 dB, demod loss ~2 min, self-recovered, no residual alarms. Resolved, series closed.',
-              'TM-1 transit per SOP-SX-001, event SLA-excused. No customer notification required. Peak ~12 dB, brief demod loss, self-recovered. No further entries this series.',
+              'TM-1 transit per SOP-SX-001, customer notified pre-window. Peak ~16 dB, brief demod loss, self-recovered, no residual alarms. Next window tomorrow, ~4 min earlier.',
+              'TM-1 outage this morning, cause solar. Customer notified after recovery. Peak ~16 dB, demod loss ~2 min, self-recovered, no residual alarms. Resolved, series closed.',
+              'TM-1 transit per SOP-SX-001, event SLA-excused. No customer notification required. Peak ~16 dB, brief demod loss, self-recovered. No further entries this series.',
               'TM-1 solar interference, emergency response per SOP-SX-001. Customer notified pre-window. Uplink muted at peak, demod re-acquired by hand, no residual alarms.',
             ],
             correctIndex: 0,

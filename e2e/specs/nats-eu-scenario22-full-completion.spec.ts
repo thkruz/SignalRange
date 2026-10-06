@@ -74,11 +74,11 @@ test.describe('nats-eu Scenario 22 Full Completion', () => {
     await waitForObjectiveComplete(missionControl, 'Read the Brief');
   });
 
-  test('[dashboard-sweep] reads the board: AGC rail, no faults', async () => {
+  test('[dashboard-sweep] reads the board: AGC no-carrier warning, no faults', async () => {
     await missionControl.selectGroundStation('GW-01');
     await missionControl.selectTab('dashboard');
-    await expectDashboardAlarm(page, 'AGC at max gain');
-    await answerSystemQuiz(page, 'RX AGC at max gain');
+    await expectDashboardAlarm(page, 'AGC on noise only');
+    await answerSystemQuiz(page, 'RX AGC on noise only');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'GW-01 Dashboard Sweep');
   });

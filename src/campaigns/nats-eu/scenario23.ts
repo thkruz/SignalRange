@@ -321,7 +321,7 @@ export const natsEuScenario23Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What is the active alarm state on GW-01 at 21:00?',
             options: [
-              'RX AGC at max gain - weak signal on an empty sky, no hardware alarm',
+              'RX AGC on noise only - no carrier on an empty sky, no hardware alarm',
               'No active alarms - all systems nominal, board clear for the pass',
               'Payload thermal alarm - SAR-2 is over limit and the board carries the spacecraft warning',
               "Ephemeris alarm - SAR-2's element set is stale and the pass cannot be predicted",

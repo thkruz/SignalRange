@@ -103,7 +103,7 @@ export const scenario14Data: ScenarioData = {
             targetPolarization: -25 as Degrees,
             slewing: false,
             beaconCN: 10.2 as dB,
-            beaconFrequencyHz: 1070e6 as Hertz,
+            beaconFrequencyHz: 4180e6 as Hertz, // TIDEMARK-2 beacon (RF)
             isLocked: true,
           } as Partial<AntennaState>,
         ],
@@ -146,16 +146,22 @@ export const scenario14Data: ScenarioData = {
         id: 'vermont-rain-front',
         groundStationId: 'VT-01',
         type: 'rain',
-        severity: 'moderate',
+        severity: 'severe',
+        // A heavy convective cell (Phase 19.2): at C-band even 50 mm/h costs
+        // VT-01 only ~0.7 dB of C/N, and most of that is sky noise (the wet
+        // path radiates into the beam), not attenuation. A 12 mm/h
+        // 'moderate' front cost ~0.15 dB, which no display could show.
+        rainRateMmPerHour: 50,
         // The front arrives as the operator starts monitoring, not at a fixed
         // 300 s that a fast player finished before and a slow one missed the
         // start of (nats-s14-F5)
         startAfterObjectiveId: 'monitor-during-fade',
         startTime: 5,
         duration: 1200, // 20 minutes of rain
-        // 3 dB of degradation - within AGC compensation range; link should
-        // hold with margin. Compare to S3's 8 dB severe blizzard.
-        linkMarginDegradation: 3,
+        // Informational only for rain (the loss is computed from the rate):
+        // the ~0.7 dB the noise model gives at C-band. Compare S3's blizzard,
+        // where ice on the feed does the damage.
+        linkMarginDegradation: 0.7,
       },
     ],
     trafficOwnership: [
@@ -520,7 +526,7 @@ export const scenario14Data: ScenarioData = {
           description: 'AGC Compensation',
           params: {
             character: Character.SYSTEM,
-            question: 'Input level dropped a few dB as the rain hit, but the post-AGC output level is steady. What does that tell you?',
+            question: 'The rain cell is over the dish: C/N dipped by well under a dB and the post-AGC output level is steady. What does that tell you?',
             options: [
               'AGC is compensating - the demodulator still sees a usable signal, and the gain stage still has headroom',
               'The fade is over - the rain has already passed and the input level will climb back within a minute',
@@ -529,7 +535,7 @@ export const scenario14Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'AGC absorbs the first several dB of fade transparently. The thing to watch is not the output level (that is what AGC stabilizes) but how much gain the AGC is using. When it approaches its max, you are out of cushion.',
+              'At C-band even a heavy cell costs well under a dB, and most of it is noise: the wet path radiates into the beam and lifts the floor while the carrier is barely attenuated (the same cell would take several dB off a Ku link). AGC absorbs what is left transparently. The thing to watch is not the output level (that is what AGC stabilizes) but how much gain the AGC is using. When it approaches its max, you are out of cushion.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -553,7 +559,7 @@ export const scenario14Data: ScenarioData = {
           description: 'AGC Headroom Interpretation',
           params: {
             character: Character.SYSTEM,
-            question: 'AGC is currently using ~3 dB of its compensation range. What does that say about the decision to hold?',
+            question: 'The AGC gain has moved well under a dB through the cell. What does that say about the decision to hold?',
             options: [
               'Plenty of headroom remaining - link is comfortable, hold is justified',
               'Headroom is already spent - any non-zero AGC value means hand over now',
@@ -826,9 +832,9 @@ export const scenario14Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which entry correctly logs this event for the next shift?',
             options: [
-              'Moderate rain over VT-01, ~3 dB fade. Held TM-1 per customer SLA preference; AGC max 3 dB, modem lock maintained, no handover.',
-              'Moderate rain over VT-01, ~3 dB fade. Handed TM-1 to ME-02 at fade onset; AGC max 3 dB, customer notified, service restored.',
-              'Moderate rain over VT-01, ~3 dB fade. Lost lock on TM-1 near peak; AGC at max, modem re-locked after the front cleared.',
+              'Heavy rain cell over VT-01, under 1 dB of C/N lost (mostly sky noise). Held TM-1 per customer SLA preference; AGC moved under 1 dB, modem lock maintained, no handover.',
+              'Heavy rain cell over VT-01, under 1 dB of C/N lost. Handed TM-1 to ME-02 at fade onset; AGC moved under 1 dB, customer notified, service restored.',
+              'Heavy rain cell over VT-01, under 1 dB of C/N lost. Lost lock on TM-1 near peak; AGC at max, modem re-locked after the cell cleared.',
               'Light rain over VT-01, no measurable fade. Held TM-1 as routine; AGC at floor, modem lock maintained, no customer contact.',
             ],
             correctIndex: 0,

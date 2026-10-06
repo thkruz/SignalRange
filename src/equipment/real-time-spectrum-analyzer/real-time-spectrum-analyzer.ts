@@ -8,6 +8,7 @@ import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { Logger } from '@app/logging/logger';
+import { T0_K, thermalNoiseDbm } from '@app/simulation/noise-model';
 import { Rng } from '@app/simulation/rng';
 import { dB, Hertz, IfSignal, RfSignal } from '@app/types';
 import { AnalyzerControlBox } from './analyzer-control-box';
@@ -21,6 +22,29 @@ import { SpectrumDataProcessor } from './spectrum-data-processor';
 const random = (): number => Rng.stream('display:analyzer').next();
 
 type MarkerPoint = { x: number; y: number; signal: number };
+
+export type SpectrumDetector = 'sample' | 'peak' | 'average';
+
+/** Noise bandwidth of a Gaussian RBW filter relative to its -3 dB width */
+export const GAUSSIAN_RBW_ENBW_FACTOR = Math.sqrt(Math.PI / (4 * Math.LN2));
+
+/** Default instrument noise figure (no preamp), dB */
+export const DEFAULT_ANALYZER_NF_DB = 22;
+
+/** Auto VBW as a fraction of the RBW */
+export const AUTO_VBW_RATIO = 0.1;
+
+/**
+ * Auto-coupled RBW for a span: about span / 300, rounded down to the 1-3-10
+ * sequence, between 1 Hz and 10 MHz.
+ */
+export function autoRbwHz(spanHz: number): number {
+  const target = Math.max(1, spanHz / 300);
+  const decade = 10 ** Math.floor(Math.log10(target));
+  const step = target / decade >= 3 ? 3 : 1;
+
+  return Math.min(10e6, Math.max(1, step * decade));
+}
 
 export interface RealTimeSpectrumAnalyzerState {
   /** Scale in dB per division */
@@ -38,10 +62,24 @@ export interface RealTimeSpectrumAnalyzerState {
   team_id: number;
   rfFeUuid: string;
   isPaused: boolean;
-  /** Noise floor in dBm/Hz without gain */
+  /**
+   * Displayed mean noise level (dBm in the RBW's noise bandwidth): the line
+   * noise at the tap plus the instrument's own noise referred to the line,
+   * power-summed (Phase 19.2). Gain is already included.
+   */
   noiseFloorNoGain: number;
-  /** if true, use internal noise floor */
+  /** Legacy flag: true when noiseFloorNoGain already carries the gain (always, since 19.2) */
   isSkipLnaGainDuringDraw: boolean;
+  /**
+   * Instrument noise figure, dB (no preamp: 20-25 dB typical). Its noise
+   * kT0·B·F is referred to the line through the tap's coupling factor, as the
+   * analyzer's amplitude offset makes the display read line power.
+   */
+  noiseFigureDb?: number;
+  /** Video bandwidth, Hz; null = auto (RBW / 10) */
+  vbw?: Hertz | null;
+  /** Detector: sample (one bin per pixel), peak (max of the bins in a pixel), average (power mean) */
+  detector?: SpectrumDetector;
   isMaxHold: boolean;
   isMinHold: boolean;
   isMarkerOn: boolean;
@@ -344,54 +382,75 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
     this.syncDomWithState();
   }
 
+  /** The RBW in use: the set value, or the auto-coupled one for the span */
+  get effectiveRbwHz(): number {
+    return this.state.rbw ?? autoRbwHz(this.state.span);
+  }
+
+  /** The VBW in use: the set value, or RBW x AUTO_VBW_RATIO */
+  get effectiveVbwHz(): number {
+    return this.state.vbw ?? this.effectiveRbwHz * AUTO_VBW_RATIO;
+  }
+
+  /** Noise bandwidth of the (Gaussian) RBW filter, Hz */
+  get noiseBandwidthHz(): number {
+    return this.effectiveRbwHz * GAUSSIAN_RBW_ENBW_FACTOR;
+  }
+
   getInputSignals(): (IfSignal | RfSignal)[] {
-    const tapPointA = this.rfFrontEnd_.couplerModule.state.tapPointA;
-    const tapPointB = this.rfFrontEnd_.couplerModule.state.tapPointB;
-    // If rbw is null we are in auto mode so use span as bandwidth
-    const bandwidth = this.state.rbw ?? this.state.span;
+    const coupler = this.rfFrontEnd_.couplerModule;
+    const spm = coupler.signalPathManager;
+    const enbw = this.noiseBandwidthHz as Hertz;
 
     const signals: (IfSignal | RfSignal)[] = [];
-
-    const tapPoints = [];
+    const taps: Array<{ tapPoint: TapPoint; couplingDb: number }> = [];
     if (this.state.isUseTapA) {
-      tapPoints.push(tapPointA);
+      taps.push({ tapPoint: coupler.state.tapPointA, couplingDb: coupler.state.couplingFactorA });
     }
     if (this.state.isUseTapB) {
-      tapPoints.push(tapPointB);
+      taps.push({ tapPoint: coupler.state.tapPointB, couplingDb: coupler.state.couplingFactorB });
     }
 
-    // Track the maximum noise floor across all tap points
-    let maxNoiseFloorNoGain = this.rfFrontEnd_.couplerModule.signalPathManager.getNoiseFloorAt(TapPoint.RX_IF, bandwidth).noiseFloorNoGain;
-    let maxShouldApplyGain = false;
-
-    // Process both tap points
-    for (const tapPoint of tapPoints) {
-      // Get signals at this tap point
+    // Displayed noise (Phase 19.2): the line noise at each tap (k·T·B in the
+    // RBW's noise bandwidth, with the gain up to the tap) plus the
+    // instrument's own kT0·B·F referred to the line through the coupling
+    // factor, all power-summed. With no tap enabled the instrument sees only
+    // itself.
+    const nf = this.state.noiseFigureDb ?? DEFAULT_ANALYZER_NF_DB;
+    const instrumentDbm = thermalNoiseDbm(T0_K, enbw) + nf;
+    let totalMw = 0;
+    let lineMw = 0;
+    if (taps.length === 0) {
+      totalMw = 10 ** (instrumentDbm / 10);
+    }
+    for (const { tapPoint, couplingDb } of taps) {
       signals.push(...this.getSignalsAtTapPoint(tapPoint));
 
-      // Get noise floor using SignalPathManager
-      const { noiseFloorNoGain, shouldApplyGain } = this.rfFrontEnd_.couplerModule.signalPathManager.getNoiseFloorAt(tapPoint, bandwidth);
-      const noiseFloorWithGain = noiseFloorNoGain + this.rfFrontEnd_.couplerModule.signalPathManager.getTotalGainTo(tapPoint);
-
-      // Keep the highest noise floor from both tap points
-      if (noiseFloorWithGain > maxNoiseFloorNoGain) {
-        maxNoiseFloorNoGain = noiseFloorNoGain;
-        maxShouldApplyGain = shouldApplyGain;
+      const { noiseFloorNoGain } = spm.getNoiseFloorAt(tapPoint, enbw);
+      const line = noiseFloorNoGain + spm.getTotalGainTo(tapPoint);
+      if (Number.isFinite(line)) {
+        lineMw += 10 ** (line / 10);
       }
+      // Coupling is a negative dB figure: the instrument floor referred back
+      // to the line sits |coupling| higher
+      totalMw += 10 ** ((instrumentDbm - Math.min(0, couplingDb)) / 10);
     }
+    totalMw += lineMw;
 
     // NOTE: signals are deliberately NOT clamped to the RBW. RBW sets the
     // display resolution and noise floor, not a signal's occupied bandwidth —
     // a 2 MHz signal viewed with a 30 kHz RBW still spans 2 MHz on screen.
-    // (The renderer applies the matching PSD correction so wideband signals
-    // show per-bin power, not total power.)
+    // (The data processor convolves each signal with the RBW filter.)
 
-    // Update state with the maximum noise floor found
-    this.state.noiseFloorNoGain = maxNoiseFloorNoGain;
-    this.state.isSkipLnaGainDuringDraw = !maxShouldApplyGain;
+    this.state.noiseFloorNoGain = 10 * Math.log10(totalMw);
+    this.lineNoiseDbm = lineMw > 0 ? 10 * Math.log10(lineMw) : Number.NEGATIVE_INFINITY;
+    this.state.isSkipLnaGainDuringDraw = true;
 
     return signals;
   }
+
+  /** Line noise alone at the enabled taps (dBm in the noise bandwidth), for the notch dip */
+  lineNoiseDbm: number = Number.NEGATIVE_INFINITY;
 
   /**
    * Get signals at a specific tap point in the signal chain

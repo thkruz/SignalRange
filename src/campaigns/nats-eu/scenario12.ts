@@ -46,8 +46,8 @@ import { createMeridianSar1, createMeridianSar2, createMeridianSar3, MERIDIAN_SA
  * Link-budget numbers (worksheet per S2, at SAR-3's frequency and this pass's
  * geometry):
  * - slant range at max elevation 764 km -> FSPL 171.5 dB at 11760 MHz
- * - EIRP 28 dBm, GW-01 4m Ku gain 51.8 dBi, Tsys 88 K, BW 36 MHz, misc 1 dB
- * - correct worksheet -> C/N 10.89 dB (expectedCNRDb 10.9, tolerance 1.0)
+ * - EIRP 31.3 dBm, GW-01 4m Ku gain 50.4 dBi (at the LNA flange), Tsys 125 K, BW 36 MHz, misc 1 dB
+ * - correct worksheet -> C/N 11.27 dB (expectedCNRDb 11.3, tolerance 1.0)
  * - threshold 6 dB (QPSK 3/4 demod) + 2 dB required margin -> commit near
  *   max elevation, roughly 10:09 .. 10:12:30
  * Decode with the uplink SECURED. With the HPA up, SAR-3's TP-CMD returns
@@ -171,7 +171,7 @@ export const natsEuScenario12Data: ScenarioData = {
     // 10.94 dB at culmination, 240 s at or above 7 dB, 146 s at or above 9 dB.
     linkBudget: {
       label: 'SAR-3 acceptance: video downlink at max elevation',
-      expectedCNRDb: 10.9,
+      expectedCNRDb: 11.3,
       toleranceDb: 1.0,
       thresholdCNRDb: 6,
       requiredMarginDb: 2,
@@ -273,14 +273,14 @@ export const natsEuScenario12Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What is the active alarm state on GW-01 as the test card opens?',
             options: [
-              'RX AGC at max gain - weak signal on an empty sky, no hardware alarm',
+              'RX AGC on noise only - no carrier on an empty sky, no hardware alarm',
               'No active alarms - all systems nominal, board clear for the card',
               'HPA over-temperature - hardware alarm left by the morning passes',
               'Command key expired - crypto alarm, nothing goes up until reloaded',
             ],
             correctIndex: 0,
             explanation:
-              'The AGC rail is empty sky, not a fault, and it clears when the test carrier arrives. An acceptance number measured on a station with an open alarm is not an acceptance number; the card would carry the alarm as a qualifier.',
+              'The AGC no-carrier warning is empty sky, not a fault, and it clears when the test carrier arrives. An acceptance number measured on a station with an open alarm is not an acceptance number; the card would carry the alarm as a qualifier.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -326,7 +326,7 @@ export const natsEuScenario12Data: ScenarioData = {
       nice: ['T0080', 'S0015'],
       title: 'Predict the Acceptance C/N',
       description:
-        'Fill the Link Analysis worksheet for MERIDIAN-SAR-3 at maximum elevation and press Compute. Survey numbers: satellite EIRP 28 dBm; slant range at max elevation 764 km (free-space path loss 171.5 dB at 11760 MHz); GW-01 receive gain 51.8 dBi; system noise temperature 88 K; occupied bandwidth 36 MHz; miscellaneous losses 1 dB. The card will quote this number back at you.',
+        'Fill the Link Analysis worksheet for MERIDIAN-SAR-3 at maximum elevation and press Compute. Survey numbers: satellite EIRP 31.3 dBm; slant range at max elevation 764 km (free-space path loss 171.5 dB at 11760 MHz); GW-01 receive gain 50.4 dBi; system noise temperature 125 K; occupied bandwidth 36 MHz; miscellaneous losses 1 dB. The card will quote this number back at you.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['reference-check'],
       timeLimitSeconds: 4 * 60,
@@ -865,7 +865,7 @@ export const natsEuScenario12Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Payload',
             documentLine:
-              'Payload: test pattern locked on IF 1340 MHz (11760 MHz RF) with the uplink secured. Predicted C/N 10.9 dB at max el (764 km, FSPL 171.5 dB at 11760 MHz); measured within 1 dB of prediction; committed with >= 2 dB margin over the 6 dB QPSK 3/4 threshold.',
+              'Payload: test pattern locked on IF 1340 MHz (11760 MHz RF) with the uplink secured. Predicted C/N 11.3 dB at max el (764 km, FSPL 171.5 dB at 11760 MHz); measured within 1 dB of prediction; committed with >= 2 dB margin over the 6 dB QPSK 3/4 threshold.',
           },
           mustMaintain: false,
         },

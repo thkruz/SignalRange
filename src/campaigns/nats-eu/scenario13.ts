@@ -15,7 +15,7 @@ import { createMeridianSar1, createMeridianSar2, createMeridianSar3, type Meridi
  * the descending leg (the azimuth keyhole - physics, not a fault). Act 2 is
  * the real fault: MERIDIAN-SAR-1 at the exact survey geometry decodes four
  * decibels under the survey budget, and the operator rules out ephemeris and
- * pointing before reading the LNB (150 K against a 60 K survey value). Act 3
+ * pointing before reading the LNB (250 K against a 60 K survey value). Act 3
  * proves Shetland is clean, moves the customer's priority collect there and
  * flies it FROM SH-02 so the comparison is measured, not asserted.
  *
@@ -50,7 +50,7 @@ import { createMeridianSar1, createMeridianSar2, createMeridianSar3, type Meridi
  * keyhole is a carrier loss, which `cnHoldSeconds` cannot read either.)
  *
  * Staged state (scenario-local clone): GW-01's LNB has a degraded LNA (noise
- * figure 1.8 dB, noise temperature ~150 K settled) - the station is wrong, the
+ * figure 2.7 dB, noise temperature ~250 K settled) - the station is wrong, the
  * survey budget is right. Everything else on both sites is the shared default
  * (RX modems on 1414 MHz). All thresholds flown in
  * test/campaigns/nats-eu-phase-c-validation.test.ts, the SAR-3 collect from
@@ -98,18 +98,19 @@ const meridianSar3S13 = createMeridianSar3(SAR3_S13_TLE);
 
 /**
  * GW-01 with a degraded LNB front end. The LNA noise figure has drifted from
- * 0.8 to 1.8 dB, so the Friis noise temperature settles near 150 K instead
- * of 60 K. The LNA is the first stage, so its noise temperature is very
- * nearly the whole system temperature: 10 log(150 / 60) = 4.0 dB of C/N at
- * every elevation (measured 10.9 -> 7.0 dB at the survey geometry in the
- * harness). `noiseTemperature` is staged at the settled value so the display
- * does not start on a warm-up ramp. Deep clone, never spread.
+ * 0.8 to 2.7 dB, so the Friis noise temperature settles near 250 K instead
+ * of 60 K. The LNA's noise adds to the antenna's (sky, spillover and feed,
+ * about 65 K at 28 deg), so the system temperature goes from 125 K to 315 K:
+ * 10 log(315 / 125) = 4.0 dB of C/N at the survey geometry (phase 19.2; it
+ * was 150 K and 10 log(150 / 60) while the engine's Tsys was the LNB alone).
+ * `noiseTemperature` is staged at the settled value so the display does not
+ * start on a warm-up ramp. Deep clone, never spread.
  */
 const galwayDegraded: GroundStationConfig = structuredClone(galwayGroundStation);
 galwayDegraded.rfFrontEnds[0].lnb = {
   ...galwayDegraded.rfFrontEnds[0].lnb,
-  lnaNoiseFigure: 1.8,
-  noiseTemperature: 149,
+  lnaNoiseFigure: 2.7,
+  noiseTemperature: 250,
 };
 
 export const natsEuScenario13Data: ScenarioData = {
@@ -168,7 +169,7 @@ export const natsEuScenario13Data: ScenarioData = {
     // scenario is that the live station will NOT deliver requiredMarginDb.
     linkBudget: {
       label: 'GW-01 SAR-1 downlink at max elevation (survey values)',
-      expectedCNRDb: 11.0,
+      expectedCNRDb: 11.4,
       toleranceDb: 1.0,
       thresholdCNRDb: 6,
       requiredMarginDb: 3,
@@ -258,7 +259,7 @@ export const natsEuScenario13Data: ScenarioData = {
       nice: ['T0431', 'K0740'],
       title: 'GW-01 Pre-Pass Sweep',
       description:
-        'Board, reference and downconversion before the 13:12 pass: nothing on the board but the RX AGC rail, GPSDO locked, LNB on the 13100 MHz LO. Note what the LNB panel says while you are there.',
+        'Board, reference and downconversion before the 13:12 pass: nothing on the board but the RX AGC no-carrier warning, GPSDO locked, LNB on the 13100 MHz LO. Note what the LNB panel says while you are there.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['review-mission-brief'],
       timeLimitSeconds: 2 * 60,
@@ -510,7 +511,7 @@ export const natsEuScenario13Data: ScenarioData = {
       nice: ['T0349', 'S0646', 'K0740'],
       title: 'Compute the Survey Budget',
       description:
-        'The 13:30 pass is the acceptance geometry to the kilometre: 762 km at 28 degrees. Enter the survey worksheet in Link Analysis: EIRP 28 dBm, free-space path loss 171.4 dB at 11686 MHz, receive gain 51.8 dBi, system noise temperature 88 K, occupied bandwidth 36 MHz, miscellaneous losses 1 dB.',
+        'The 13:30 pass is the acceptance geometry to the kilometre: 762 km at 28 degrees. Enter the survey worksheet in Link Analysis: EIRP 31.3 dBm, free-space path loss 171.4 dB at 11686 MHz, receive gain 50.4 dBi, system noise temperature 125 K, occupied bandwidth 36 MHz, miscellaneous losses 1 dB.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['retune-for-the-survey-pass'],
       timeLimitSeconds: 4 * 60,
@@ -536,7 +537,7 @@ export const natsEuScenario13Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'The measurement is what this station does today; neither number may be bent toward the other. A budget that is tuned to the symptom hides the symptom. 11.0 dB predicted; measure it in four minutes.',
+              'The measurement is what this station does today; neither number may be bent toward the other. A budget that is tuned to the symptom hides the symptom. 11.4 dB predicted; measure it in four minutes.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -679,20 +680,21 @@ export const natsEuScenario13Data: ScenarioData = {
           description: 'Anomaly 2 Recorded',
           params: {
             character: Character.SYSTEM,
-            question: 'GW-01 LNB noise temperature reads about 150 K against a 60 K survey value. What does that do to the link?',
+            question:
+              'GW-01 LNB noise temperature reads about 250 K against a 60 K survey value. The antenna (sky, spillover, feed) contributes about 65 K at 28 degrees. What does that do to the link?',
             options: [
-              'The LNA is the first stage, so its noise temperature is nearly the whole system temperature: 10 log(150 / 60) is 4.0 dB',
-              'Nothing measurable, since noise temperature is a receiver spec and not a link term: the 88 K on the worksheet covers it',
-              'About 0.4 dB, since 90 K is small next to the 290 K of the sky: 10 log(380 / 290) is nowhere near the shortfall',
-              'It raises the C/N, since the LNB is running hotter and therefore has more gain: 10 log(150 / 60) is 4.0 dB up',
+              'The LNA is the first stage, so its noise adds straight onto the antenna temperature: 10 log((65 + 250) / (65 + 60)) is 4.0 dB',
+              'Nothing measurable, since noise temperature is a receiver spec and not a link term: the 125 K on the worksheet covers it',
+              'About 6 dB, since the LNB alone sets the system temperature: 10 log(250 / 60) overstates the shortfall',
+              'It raises the C/N, since the LNB is running hotter and therefore has more gain: about 4 dB up',
             ],
             correctIndex: 0,
             explanation:
-              'C/N is carrier over k T B, and Friis puts the first stage in charge of T. Four decibels is the whole shortfall: the feed or the LNA has degraded. Power-cycling the LNB starts the noise temperature at twice nominal and settles it back to 150 K: worse, then the same. This is a maintenance ticket.',
+              'C/N is carrier over k T B, and T is the antenna noise plus the receiver noise, with Friis putting the first stage in charge of the receiver part. Four decibels is the whole shortfall: the feed or the LNA has degraded. Power-cycling the LNB starts the noise temperature at twice nominal and settles it back to 250 K: worse, then the same. This is a maintenance ticket.',
             pointPenalty: 5,
             documentSection: 'Anomaly 2',
             documentLine:
-              '13:30Z MERIDIAN-SAR-1 GW-01, 28 deg / 762 km: predicted 11.0 dB (survey), measured ~7 dB. Shortfall 4.0 dB = LNB noise temperature 150 K vs 60 K survey (10 log(150/60)). Feed/LNA degradation. Ephemeris and pointing ruled out.',
+              '13:30Z MERIDIAN-SAR-1 GW-01, 28 deg / 762 km: predicted 11.4 dB (survey), measured ~7 dB. Shortfall 4.0 dB = LNB noise temperature 250 K vs 60 K survey on a 65 K antenna (10 log(315/125)). Feed/LNA degradation. Ephemeris and pointing ruled out.',
           },
           mustMaintain: false,
         },
@@ -914,16 +916,16 @@ export const natsEuScenario13Data: ScenarioData = {
             options: [
               'Rotterdam: the keyhole is an operations note and GW-01 is derated 4 dB until repaired. Maintenance: LNB ticket for GW-01',
               'Rotterdam: two faults at Galway, site unavailable until both are cleared. Maintenance: pedestal drive and LNB tickets',
-              'Rotterdam: nothing until maintenance confirms the LNB reading. Maintenance: the LNB ticket, with the 150 K measurement',
+              'Rotterdam: nothing until maintenance confirms the LNB reading. Maintenance: the LNB ticket, with the 250 K measurement',
               'Rotterdam: the survey budget is wrong and needs re-issuing at 7 dB. Maintenance: nothing, the station is within its number',
             ],
             correctIndex: 0,
             explanation:
-              'Two anomalies, two audiences, two kinds of action: plan passes above 80 degrees with a culmination outage, priority collects on SH-02 until the LNB is replaced, and the 150 K measurement attached to the ticket. The report is what turns a bad pass next week into a comparison instead of an argument.',
+              'Two anomalies, two audiences, two kinds of action: plan passes above 80 degrees with a culmination outage, priority collects on SH-02 until the LNB is replaced, and the 250 K measurement attached to the ticket. The report is what turns a bad pass next week into a comparison instead of an argument.',
             pointPenalty: 5,
             documentSection: 'Recommendation',
             documentLine:
-              'Recommendation: (1) Ops note - passes above ~80 deg carry a culmination outage, not a fault. (2) GW-01 derated 4 dB until LNB replaced; priority collects to SH-02 (13:52Z SAR-3 collect flown from SH-02, peak C/N ~11.5 dB at 32 deg). (3) Maintenance ticket: GW-01 LNB, noise temperature 150 K vs 60 K survey.',
+              'Recommendation: (1) Ops note - passes above ~80 deg carry a culmination outage, not a fault. (2) GW-01 derated 4 dB until LNB replaced; priority collects to SH-02 (13:52Z SAR-3 collect flown from SH-02, peak C/N ~11.5 dB at 32 deg). (3) Maintenance ticket: GW-01 LNB, noise temperature 250 K vs 60 K survey.',
           },
           mustMaintain: false,
         },

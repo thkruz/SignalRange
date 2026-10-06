@@ -142,7 +142,7 @@ test.describe('nats-eu Scenario 13 Full Completion', () => {
   });
 
   test('[compute-the-survey-budget] enters the survey worksheet', async () => {
-    await computeLinkBudget(page, missionControl, { eirpDbm: 28, fsplDb: 171.4, rxGainDbi: 51.8, noiseTempK: 88, bandwidthMHz: 36, miscLossDb: 1 });
+    await computeLinkBudget(page, missionControl, { eirpDbm: 31.3, fsplDb: 171.4, rxGainDbi: 50.4, noiseTempK: 125, bandwidthMHz: 36, miscLossDb: 1 });
     await answerSystemQuiz(page, 'The survey number');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Compute the Survey Budget');

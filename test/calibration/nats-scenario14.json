@@ -45,6 +45,13 @@
       "antennaConfig": "C_BAND_9M_VORTEK",
       "lnbLoMHz": 5250,
       "lnbNoiseTempK": 42.97,
+      "agcOnNoiseAlone": {
+        "noiseInDbm": -40.27,
+        "filterMHz": 40,
+        "settledGainDb": 10,
+        "maxGainDb": 10,
+        "railedAtMax": true
+      },
       "links": [
         {
           "satellite": "TIDEMARK-1",
@@ -55,8 +62,8 @@
             "elevationDeg": 34.2,
             "frequencyMHz": 3718,
             "gainDbi": 48.59,
-            "gOverTDbPerK": 27.15,
-            "tsysK": 139.42
+            "gOverTDbPerK": 29.08,
+            "tsysK": 80.92
           },
           "carriers": [
             {
@@ -67,10 +74,10 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 5,
-              "peakCnDb": 13.19,
-              "medianCnDb": 13.12,
-              "peakRxIfDbm": -28.7,
-              "noiseIfDbm": -41.31,
+              "peakCnDb": 13.39,
+              "medianCnDb": 13.39,
+              "peakRxIfDbm": -30,
+              "noiseIfDbm": -43.38,
               "lockedSamples": 5
             },
             {
@@ -81,10 +88,10 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 5,
-              "peakCnDb": 33.29,
-              "medianCnDb": 33.29,
-              "peakRxIfDbm": -54.08,
-              "noiseIfDbm": -86.87,
+              "peakCnDb": 30.52,
+              "medianCnDb": 30.52,
+              "peakRxIfDbm": -58.43,
+              "noiseIfDbm": -88.95,
               "lockedSamples": 5
             }
           ]
@@ -98,8 +105,8 @@
             "elevationDeg": 26.3,
             "frequencyMHz": 3792,
             "gainDbi": 48.76,
-            "gOverTDbPerK": 27.19,
-            "tsysK": 143.7
+            "gOverTDbPerK": 29.19,
+            "tsysK": 82.01
           },
           "carriers": [
             {
@@ -110,10 +117,10 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 5,
-              "peakCnDb": 13.42,
-              "medianCnDb": 13.25,
-              "peakRxIfDbm": -30.47,
-              "noiseIfDbm": -43.23,
+              "peakCnDb": 13.65,
+              "medianCnDb": 13.65,
+              "peakRxIfDbm": -30.15,
+              "noiseIfDbm": -43.8,
               "lockedSamples": 5
             },
             {
@@ -124,9 +131,154 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 5,
-              "peakCnDb": 32.64,
-              "medianCnDb": 32.64,
-              "peakRxIfDbm": -56.66,
+              "peakCnDb": 29.81,
+              "medianCnDb": 29.81,
+              "peakRxIfDbm": -59.55,
+              "noiseIfDbm": -89.36,
+              "lockedSamples": 5
+            }
+          ]
+        },
+        {
+          "satellite": "SES-10",
+          "noradId": 42432,
+          "kind": "fixed",
+          "pass": null,
+          "atPeak": {
+            "elevationDeg": 34.2,
+            "frequencyMHz": 3644,
+            "gainDbi": 48.42,
+            "gOverTDbPerK": 28.92,
+            "tsysK": 80.75
+          },
+          "carriers": [
+            {
+              "signalId": "SES-10-TDMA-Composite",
+              "rfMHz": 3644,
+              "ifMHz": 1606,
+              "bandwidthMHz": 36,
+              "modulation": "QPSK",
+              "fec": "3/4",
+              "samples": 5,
+              "peakCnDb": 16.12,
+              "medianCnDb": 16.12,
+              "peakRxIfDbm": -29.68,
+              "noiseIfDbm": -45.8,
+              "lockedSamples": 5
+            },
+            {
+              "signalId": "SES-10-Beacon",
+              "rfMHz": 4178,
+              "ifMHz": 1072,
+              "bandwidthMHz": 0,
+              "modulation": "CW",
+              "fec": "null",
+              "samples": 5,
+              "peakCnDb": 30.08,
+              "medianCnDb": 30.08,
+              "peakRxIfDbm": -61.29,
+              "noiseIfDbm": -91.36,
+              "lockedSamples": 5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "stationId": "ME-02",
+      "antennaIndex": 0,
+      "antennaConfig": "C_BAND_9M_VORTEK",
+      "lnbLoMHz": 5250,
+      "lnbNoiseTempK": 42.97,
+      "agcOnNoiseAlone": {
+        "noiseInDbm": -40.22,
+        "filterMHz": 40,
+        "settledGainDb": 10,
+        "maxGainDb": 10,
+        "railedAtMax": true
+      },
+      "links": [
+        {
+          "satellite": "TIDEMARK-1",
+          "noradId": 61525,
+          "kind": "fixed",
+          "pass": null,
+          "atPeak": {
+            "elevationDeg": 34.2,
+            "frequencyMHz": 3718,
+            "gainDbi": 48.59,
+            "gOverTDbPerK": 29.08,
+            "tsysK": 80.92
+          },
+          "carriers": [
+            {
+              "signalId": "TIDEMARK-1-TDMA-Composite",
+              "rfMHz": 3718,
+              "ifMHz": 1532,
+              "bandwidthMHz": 36,
+              "modulation": "QPSK",
+              "fec": "3/4",
+              "samples": 5,
+              "peakCnDb": 12.79,
+              "medianCnDb": 12.79,
+              "peakRxIfDbm": -29.98,
+              "noiseIfDbm": -42.78,
+              "lockedSamples": 5
+            },
+            {
+              "signalId": "TIDEMARK-1-Beacon",
+              "rfMHz": 4175.5,
+              "ifMHz": 1074.5,
+              "bandwidthMHz": 0,
+              "modulation": "CW",
+              "fec": "null",
+              "samples": 5,
+              "peakCnDb": 28.33,
+              "medianCnDb": 28.33,
+              "peakRxIfDbm": -60.01,
+              "noiseIfDbm": -88.34,
+              "lockedSamples": 5
+            }
+          ]
+        },
+        {
+          "satellite": "TIDEMARK-2",
+          "noradId": 61526,
+          "kind": "fixed",
+          "pass": null,
+          "atPeak": {
+            "elevationDeg": 26.3,
+            "frequencyMHz": 3792,
+            "gainDbi": 48.76,
+            "gOverTDbPerK": 29.19,
+            "tsysK": 82.01
+          },
+          "carriers": [
+            {
+              "signalId": "TIDEMARK-2-TDMA-Composite",
+              "rfMHz": 3792,
+              "ifMHz": 1458,
+              "bandwidthMHz": 36,
+              "modulation": "QPSK",
+              "fec": "3/4",
+              "samples": 5,
+              "peakCnDb": 13.06,
+              "medianCnDb": 13.06,
+              "peakRxIfDbm": -30.18,
+              "noiseIfDbm": -43.24,
+              "lockedSamples": 5
+            },
+            {
+              "signalId": "TIDEMARK-2-Beacon",
+              "rfMHz": 4180,
+              "ifMHz": 1070,
+              "bandwidthMHz": 0,
+              "modulation": "CW",
+              "fec": "null",
+              "samples": 5,
+              "peakCnDb": 32,
+              "medianCnDb": 32,
+              "peakRxIfDbm": -56.8,
               "noiseIfDbm": -88.8,
               "lockedSamples": 5
             }
@@ -141,8 +293,8 @@
             "elevationDeg": 34.2,
             "frequencyMHz": 3644,
             "gainDbi": 48.42,
-            "gOverTDbPerK": 26.98,
-            "tsysK": 139.12
+            "gOverTDbPerK": 28.92,
+            "tsysK": 80.75
           },
           "carriers": [
             {
@@ -153,10 +305,10 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 5,
-              "peakCnDb": 15.92,
-              "medianCnDb": 15.81,
-              "peakRxIfDbm": -30.06,
-              "noiseIfDbm": -45.28,
+              "peakCnDb": 15.53,
+              "medianCnDb": 15.53,
+              "peakRxIfDbm": -29.7,
+              "noiseIfDbm": -45.23,
               "lockedSamples": 5
             },
             {
@@ -167,148 +319,10 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 5,
-              "peakCnDb": 32.85,
-              "medianCnDb": 32.85,
-              "peakRxIfDbm": -58.49,
-              "noiseIfDbm": -90.84,
-              "lockedSamples": 5
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "stationId": "ME-02",
-      "antennaIndex": 0,
-      "antennaConfig": "C_BAND_9M_VORTEK",
-      "lnbLoMHz": 5250,
-      "lnbNoiseTempK": 42.97,
-      "links": [
-        {
-          "satellite": "TIDEMARK-1",
-          "noradId": 61525,
-          "kind": "fixed",
-          "pass": null,
-          "atPeak": {
-            "elevationDeg": 34.2,
-            "frequencyMHz": 3718,
-            "gainDbi": 48.59,
-            "gOverTDbPerK": 27.15,
-            "tsysK": 139.42
-          },
-          "carriers": [
-            {
-              "signalId": "TIDEMARK-1-TDMA-Composite",
-              "rfMHz": 3718,
-              "ifMHz": 1532,
-              "bandwidthMHz": 36,
-              "modulation": "QPSK",
-              "fec": "3/4",
-              "samples": 5,
-              "peakCnDb": 12.69,
-              "medianCnDb": 12.59,
-              "peakRxIfDbm": -28.79,
-              "noiseIfDbm": -40.88,
-              "lockedSamples": 5
-            },
-            {
-              "signalId": "TIDEMARK-1-Beacon",
-              "rfMHz": 4175.5,
-              "ifMHz": 1074.5,
-              "bandwidthMHz": 0,
-              "modulation": "CW",
-              "fec": "null",
-              "samples": 5,
-              "peakCnDb": 31.1,
-              "medianCnDb": 31.1,
-              "peakRxIfDbm": -55.84,
-              "noiseIfDbm": -86.44,
-              "lockedSamples": 5
-            }
-          ]
-        },
-        {
-          "satellite": "TIDEMARK-2",
-          "noradId": 61526,
-          "kind": "fixed",
-          "pass": null,
-          "atPeak": {
-            "elevationDeg": 26.3,
-            "frequencyMHz": 3792,
-            "gainDbi": 48.76,
-            "gOverTDbPerK": 27.19,
-            "tsysK": 143.7
-          },
-          "carriers": [
-            {
-              "signalId": "TIDEMARK-2-TDMA-Composite",
-              "rfMHz": 3792,
-              "ifMHz": 1458,
-              "bandwidthMHz": 36,
-              "modulation": "QPSK",
-              "fec": "3/4",
-              "samples": 5,
-              "peakCnDb": 12.94,
-              "medianCnDb": 12.86,
-              "peakRxIfDbm": -30.49,
-              "noiseIfDbm": -42.78,
-              "lockedSamples": 5
-            },
-            {
-              "signalId": "TIDEMARK-2-Beacon",
-              "rfMHz": 4180,
-              "ifMHz": 1070,
-              "bandwidthMHz": 0,
-              "modulation": "CW",
-              "fec": "null",
-              "samples": 5,
-              "peakCnDb": 34.83,
-              "medianCnDb": 34.83,
-              "peakRxIfDbm": -54.02,
-              "noiseIfDbm": -88.35,
-              "lockedSamples": 5
-            }
-          ]
-        },
-        {
-          "satellite": "SES-10",
-          "noradId": 42432,
-          "kind": "fixed",
-          "pass": null,
-          "atPeak": {
-            "elevationDeg": 34.2,
-            "frequencyMHz": 3644,
-            "gainDbi": 48.42,
-            "gOverTDbPerK": 26.98,
-            "tsysK": 139.12
-          },
-          "carriers": [
-            {
-              "signalId": "SES-10-TDMA-Composite",
-              "rfMHz": 3644,
-              "ifMHz": 1606,
-              "bandwidthMHz": 36,
-              "modulation": "QPSK",
-              "fec": "3/4",
-              "samples": 5,
-              "peakCnDb": 15.29,
-              "medianCnDb": 15.22,
-              "peakRxIfDbm": -30.07,
-              "noiseIfDbm": -44.78,
-              "lockedSamples": 5
-            },
-            {
-              "signalId": "SES-10-Beacon",
-              "rfMHz": 4178,
-              "ifMHz": 1072,
-              "bandwidthMHz": 0,
-              "modulation": "CW",
-              "fec": "null",
-              "samples": 5,
-              "peakCnDb": 27.63,
-              "medianCnDb": 27.63,
-              "peakRxIfDbm": -63.22,
-              "noiseIfDbm": -90.35,
+              "peakCnDb": 24.85,
+              "medianCnDb": 24.85,
+              "peakRxIfDbm": -65.94,
+              "noiseIfDbm": -90.79,
               "lockedSamples": 5
             }
           ]

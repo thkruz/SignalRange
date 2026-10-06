@@ -320,8 +320,8 @@ export interface SimulationSettings {
   /** M1: link-budget / EIRP planning console. Starts LinkBudgetManager. */
   linkBudget?: {
     label?: string;
-    /** Ground-truth C/N (dB) the correct worksheet must yield */
-    expectedCNRDb: number;
+    /** Ground-truth C/N (dB) the correct worksheet must yield; absent = the engine's clear-sky C/N (Phase 19.2) */
+    expectedCNRDb?: number;
     /** Tolerance (dB) for accepting the operator's computed C/N (default 1.0) */
     toleranceDb?: number;
     /** Demod C/N threshold (dB) the margin is measured against */

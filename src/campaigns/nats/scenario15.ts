@@ -88,7 +88,7 @@ export const scenario15Data: ScenarioData = {
             targetAzimuth: 140.5 as Degrees,
             targetElevation: 37.8 as Degrees,
             targetPolarization: 8 as Degrees,
-            beaconFrequencyHz: 1078e6 as Hertz, // TM-3 beacon IF (5250 - 4172)
+            beaconFrequencyHz: 4172e6 as Hertz, // TIDEMARK-3 beacon (RF)
           } as Partial<AntennaState>,
         ],
         rfFrontEnds: [

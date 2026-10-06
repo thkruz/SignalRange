@@ -57,6 +57,9 @@ class MockAntennaCore extends AntennaCore {
 
   setMockRfFrontEnd(mock: any): void {
     this.mockRfFrontEnd_ = mock;
+    // Step-track reads the antenna's own beacon receiver (phase 19.2), which
+    // uses the attached front end
+    this.rfFrontEnd_ = mock;
   }
 }
 

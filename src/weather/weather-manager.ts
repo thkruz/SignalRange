@@ -213,9 +213,14 @@ export class WeatherManager {
    *
    * The Sun crossing the antenna boresight raises the noise floor following a
    * smooth rise-peak-fall profile: sin^2(pi * progress) scaled by the event's
-   * linkMarginDegradation (peak dB). Degradation is RX-only and clears
-   * automatically when the event ends - there is no operator mitigation, by
-   * design: the training point is to anticipate, ride through, and document.
+   * linkMarginDegradation (peak dB). Since Phase 19.2 the antenna turns that
+   * rise into solar antenna temperature (AntennaCore.systemNoise): the carrier
+   * keeps its power and the noise climbs, so C/N, the analyzer floor and the
+   * AGC all see it. Timing and peak stay authored (DEV-PROP-04): legacy GEO
+   * satellites have authored look angles, so the solar ephemeris cannot place
+   * the transit. Degradation is RX-only and clears automatically when the
+   * event ends - there is no operator mitigation, by design: the training
+   * point is to anticipate, ride through, and document.
    */
   private updateSunTransit_(elapsedSeconds: number): void {
     const sim = SimulationManager.getInstance();

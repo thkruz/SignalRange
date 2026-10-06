@@ -6,7 +6,7 @@ import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForS
  * Scenario 17 - "Solar Event": Sun Transit Outage.
  *
  * Phase 3 opener. A predicted sun transit (weather event type 'sun-transit')
- * raises VT-01's sky noise for 300 s with a 12 dB sin^2 peak, starting 20 s
+ * raises VT-01's sky noise for 300 s with a 16 dB sin^2 peak, starting 20 s
  * after 'observe-onset' activates (startAfterObjectiveId). The slow-player
  * case lives in scenario17-late-onset.spec.ts.
  * The operator baselines the link, notifies the customer BEFORE the window,
@@ -173,7 +173,7 @@ const SCENARIO_17_OBJECTIVES: Scenario17Objective[] = [
     title: 'Log the Event',
     type: 'quiz',
     correctAnswer:
-      'TM-1 transit per SOP-SX-001, customer notified pre-window. Peak ~12 dB, brief demod loss, self-recovered, no residual alarms. Next window tomorrow, ~4 min earlier.',
+      'TM-1 transit per SOP-SX-001, customer notified pre-window. Peak ~16 dB, brief demod loss, self-recovered, no residual alarms. Next window tomorrow, ~4 min earlier.',
   },
 ];
 

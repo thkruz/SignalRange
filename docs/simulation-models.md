@@ -18,7 +18,7 @@ to show how far the engine is from each reference.
 | Slant-path rain attenuation | `AntennaCore.rainAttenuation_dB` | γ · (2.5 km / sin el) · old reduction factor | ITU-R P.618-13 §2.2.1.1 | `propagation`: 16 validation sites at p = 0.01 % | DEV-PROP-01 |
 | Rain rate over time | `WeatherManager.rainRateAt` | trapezoid, severity defaults 4/12/30/50 mm/h | (authored weather) | | |
 | Gaseous attenuation | `AntennaCore.calculateAtmosphericLoss_` | piecewise-linear zenith loss × min(csc el, 3) | ITU-R P.676-13 | `propagation`: 11 validation slant paths | DEV-PROP-03 |
-| Cloud, scintillation | none (random terms in `Satellite.applyAtmosphericEffects_inPlace`) | U(0,1) rain and ±0.15 dB per frame | ITU-R P.840, P.618 §2.4 | | DEV-PROP-02, DEV-PROP-03 |
+| Cloud, scintillation | none (19.2 deleted the random per-frame terms) | | ITU-R P.840, P.618 §2.4 | | DEV-PROP-02, DEV-PROP-03 |
 
 ## Antenna
 
@@ -29,7 +29,8 @@ to show how far the engine is from each reference.
 | Off-axis pattern | `AntennaCore.patternGain_dBi_` | Gmax − 12(θ/θ3)², then Gmax − min(32, 25 log(θD/λ)) | ITU-R S.580-6 (29 − 25 log θ) | `antenna`: 2/10/30/60° envelope | DEV-ANT-01 |
 | Pointing loss | `AntennaCore.pointingLoss_dB_` + pattern in `applyPropagationEffects_` | 12(θ/θ3)², charged twice | one pattern term | `antenna`: θ3/2 costs 3 dB | DEV-ANT-02 |
 | Off-axis angle | `AntennaCore.applyPropagationEffects_` | planar hypot(Δaz, Δel) | great-circle separation | `antenna`: Δaz at 60° el | DEV-ANT-03 |
-| G/T | `AntennaCore.gOverT_dB_perK_` | G − 10 log Tsys(engine model) | datasheet G − 10 log(T_ant + T_LNA) | `antenna`: 9 m 3.0 dB low, 2.4 m 4.0 dB low | DEV-NOISE-02 |
+| G/T | `AntennaCore.gOverT_dB_perK_` | (G - feed loss - ice) - 10 log Tsys at the LNA plane, at the pointing elevation | datasheet G - 10 log(T_ant + T_LNA) | `antenna`: 9 m 1.3 dB low, 2.4 m 1.3 dB low (both from gain) | DEV-ANT-07 |
+| Antenna temperature | `AntennaCore.systemNoise().antennaAtLnaK` | sky + spillover through the feed | datasheet T_ant at 20 deg | `antenna`: both dishes within 15 % | |
 | Servo rate | `antenna-configs.ts` `maxRate` | constant rate | pedestal limits (`LEO_TRACKER_SERVO`) | | DEV-ANT-06 |
 
 ## Noise and link
@@ -37,8 +38,14 @@ to show how far the engine is from each reference.
 | Quantity | Engine | Implements | Standard | Reference case | Deviation |
 |---|---|---|---|---|---|
 | Worksheet C/N | `LinkBudgetManager.computeCNRDb` | EIRP − FSPL + G − L − 10 log(kTB) | C/N0 = EIRP − L + G/T − k | `link`: textbook Ku downlink within 0.3 dB | |
-| Modem noise floor | `LNBModuleCore.getNoiseFloor` | −198.6 + 10 log T_LNB + 10 log B | k(T_ant + T_LNB)B at one reference plane | `link`: 2.6 dB low at 20° clear sky | DEV-NOISE-01 |
-| Sky temperature | `AntennaCore.skyTempK_` | 8 + 4(sec z − 1) K | ITU-R P.372 | | DEV-NOISE-02 |
+| System noise temperature | `noise-model.ts` `systemNoiseTemperature` via `AntennaCore.systemNoise`, `SignalPathManager.systemNoiseK` | sky + rain + spillover + sun through the feed, + T_LNB (Friis), at the LNA input | ITU-R P.372, P.618 §3 | `link`: modem floor = k(T_ant,datasheet + T_LNB)B within 0.5 dB; rain rise = T_mr(1 − 10^(−A/10)) | DEV-NOISE-04, DEV-NOISE-06 |
+| Modem, beacon, AGC noise | `SignalPathManager.getNoiseFloorAt` / `getExternalNoise` | k·Tsys·B (modem BW, beacon tracking BW, IF filter BW) | | (as above) | |
+| Sky temperature | `noise-model.ts` `clearSkyNoiseK`, `skyWithRainK` | T_mr(1 − a) + (T_cmb + T_gal) a, rain layer at 275 K | ITU-R P.372, P.618 §3 | `antenna`: antenna temperature within 15 % | DEV-NOISE-06 |
+| Galactic noise | `noise-model.ts` `galacticNoiseK` | Fa = 52 − 23 log f(MHz) | ITU-R P.372-16 Fig. 2 (median) | | DEV-NOISE-04 |
+| Sun transit | `AntennaCore.systemNoise` (+ `WeatherManager`) | authored sin² rise in dB → solar K at the aperture | solar flux, ephemeris | | DEV-PROP-04 |
+| Weather C/N cost | `AntennaCore.weatherCnLossDb` | rain + ice attenuation + noise rise | | (evidence fact `weather-attenuation-dominant`) | |
+| Analyzer floor | `RealTimeSpectrumAnalyzer.getInputSignals` | line k·T·ENBW + instrument kT0·ENBW·F referred through the coupling factor, power sum; Auto RBW = span/300 (1-3 steps), ENBW = 1.065 RBW | Keysight AN 150 | `analyzer`: instrument floor, Auto RBW, coupling | |
+| Analyzer traces | `SpectrumDataProcessor` | Gaussian RBW convolution (raised-cosine carriers, α 0.2), log-detected Rayleigh noise (−2.51 dB, σ 5.57 dB), VBW averaging (auto VBW = RBW/10), sample/peak/average detectors, power-sum combine | Keysight AN 150 | `analyzer`: statistics, power sum, CW shape | DEV-NOISE-07 |
 | Transponder | `Satellite.processSignals` | per-carrier saturation, noise added to carrier, +36.5 dB | composite C/N, flux-density saturation | | DEV-XPDR-01..05 |
 
 ## Modem

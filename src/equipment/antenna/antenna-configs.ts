@@ -69,8 +69,19 @@ export interface AntennaConfig {
   // --- System Noise Parameters (for G/T) ---
   /** LNA noise figure in dB */
   lnaNF_dB?: number;
-  /** Receive chain loss between feed and LNA in dB (adds noise) */
+  /**
+   * Receive chain loss between feed and LNA in dB. Not part of the receive
+   * chain since Phase 19.2: the carrier never paid it, so the noise model does
+   * not either (one reference plane; the LNA sits at the feed).
+   */
   rxChainLoss_dB?: number;
+  /**
+   * Ground pickup through spillover and sidelobes, K at the aperture (Phase
+   * 19.2 noise model). Defaults: 5 K for a dish, 60 K for a wire antenna whose
+   * wide pattern sees the ground. Calibrated against the datasheet antenna
+   * temperatures in test/reference/anchors.ts.
+   */
+  spilloverK?: number;
   /** Physical temperature for noise calculations in Kelvin */
   rxPhysTemp_K?: number;
   /** Sky temperature model type */
@@ -345,7 +356,11 @@ export const ANTENNA_CONFIGS: Record<ANTENNA_CONFIG_KEYS, AntennaConfig> = {
     blockageFraction: 0.06,
     xpd_dB: 35,
     polType: 'linear',
-    feedLossModel: { a: 0.25, b: 0.1, c: 0.01 },
+    // 0.29 dB at 11.7 GHz: fitted (Phase 19.2) so the antenna temperature at
+    // the flange matches the Prodelin 1244 datasheet, 48 K at 20 deg
+    // (test/reference/anchors.ts). The old a 0.25 / b 0.1 / c 0.01 gave 0.71 dB
+    // and 70 K.
+    feedLossModel: { a: 0.1, b: 0.05, c: 0.002 },
 
     kBeamConst: 70,
     patternModel: 'ITU465',

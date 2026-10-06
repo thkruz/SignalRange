@@ -253,14 +253,14 @@ export const natsEuScenario11Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What is the active alarm state on GW-01 as the LEOP card opens?',
             options: [
-              'RX AGC at max gain - weak signal on an empty sky, no hardware alarm',
+              'RX AGC on noise only - no carrier on an empty sky, no hardware alarm',
               'No active alarms - all systems nominal, board clear for LEOP',
               'GPSDO in holdover - reference alarm, timing at risk for the pass',
               'Antenna drive fault - hardware alarm, pedestal down for the pass',
             ],
             correctIndex: 0,
             explanation:
-              'The AGC rail is empty sky, not a fault. On a new spacecraft every anomaly will be blamed on the bird first; the board is how you prove it was not the station.',
+              'The AGC no-carrier warning is empty sky, not a fault. On a new spacecraft every anomaly will be blamed on the bird first; the board is how you prove it was not the station.',
             pointPenalty: 5,
           },
           mustMaintain: false,

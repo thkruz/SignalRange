@@ -144,6 +144,28 @@ function buildChain(station: GroundStationConfig, index: number) {
   return { key, antenna, frontEnd, receiver, lnb };
 }
 
+/**
+ * Where the AGC settles on receive noise alone (no carrier in the beam):
+ * target minus the noise in the IF passband, clamped to its range. At the
+ * max-gain rail this is the pre-AOS "AGC at max gain" board alarm (19.2).
+ */
+function agcOnNoise(chain: Chain) {
+  const { frontEnd } = chain;
+  frontEnd.update();
+  const spm = frontEnd.couplerModule.signalPathManager;
+  const agc = frontEnd.agcModule.state;
+  const noiseInDbm = spm.getExternalNoise() - spm.agcGain;
+  const gain = Math.max(agc.minGain, Math.min(agc.maxGain, agc.targetLevel - noiseInDbm));
+
+  return {
+    noiseInDbm: r2(noiseInDbm),
+    filterMHz: r2(frontEnd.filterModule.state.bandwidth),
+    settledGainDb: r2(gain),
+    maxGainDb: r2(agc.maxGain),
+    railedAtMax: gain >= agc.maxGain - 0.5,
+  };
+}
+
 type Chain = ReturnType<typeof buildChain>;
 
 function sample(chain: Chain, tracks: Map<string, CarrierTrack>): void {
@@ -278,6 +300,7 @@ function snapshot(scenario: ScenarioData) {
   const stations = (settings.groundStations ?? []).flatMap((station) =>
     station.antennas.map((_, index) => {
       const chain = buildChain(station, index);
+      const agcOnNoiseAlone = agcOnNoise(chain);
       const links = simSatellites.map((sat) => flyLink(chain, station, sat, startMs));
       EventBus.destroy();
       return {
@@ -286,6 +309,7 @@ function snapshot(scenario: ScenarioData) {
         antennaConfig: chain.key,
         lnbLoMHz: chain.lnb.state.loFrequency,
         lnbNoiseTempK: r2(chain.lnb.state.noiseTemperature),
+        agcOnNoiseAlone,
         links,
       };
     })

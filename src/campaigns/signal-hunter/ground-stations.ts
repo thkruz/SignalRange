@@ -130,8 +130,8 @@ export const petersonGroundStation = {
         tapPointB: TapPoint.RX_IF,
         availableTapPointsA: [TapPoint.TX_IF, TapPoint.RX_IF],
         availableTapPointsB: [TapPoint.TX_IF, TapPoint.RX_IF],
-        couplingFactorA: -40,
-        couplingFactorB: -39,
+        couplingFactorA: -20, // dB (monitor coupler; the analyzer reads line power through it, Phase 19.2)
+        couplingFactorB: -20, // dB
         isEnabledA: false,
         isEnabledB: true,
         isActiveA: false,

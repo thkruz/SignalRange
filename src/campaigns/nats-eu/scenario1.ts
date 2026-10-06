@@ -186,14 +186,14 @@ export const natsEuScenario1Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What is the active alarm state on GW-01 at turnover?',
             options: [
-              'RX AGC at max gain - weak signal on an empty sky, no hardware alarm',
+              'RX AGC on noise only - no carrier on an empty sky, no hardware alarm',
               'No active alarms - all systems nominal, board clear',
               'GPSDO in holdover - reference alarm, timing at risk',
               'LNB reference unlocked - hardware alarm, RX chain down',
             ],
             correctIndex: 0,
             explanation:
-              'One line on the board and it is not a fault: the receive AGC sits at its 10 dB rail because the tracker is stowed and there is nothing in the beam. It clears when the beacon arrives. The acceptance crew left the hardware healthy; what they did not leave is a station configured for this pass.',
+              'One line on the board and it is not a fault: the receive AGC is levelling noise with no carrier in its passband because the tracker is stowed and there is nothing in the beam. It clears when the beacon arrives. The acceptance crew left the hardware healthy; what they did not leave is a station configured for this pass.',
             pointPenalty: 5,
           },
           mustMaintain: false,

@@ -34,6 +34,7 @@ type Internals = {
   beamwidth3dB_deg_: (f: number) => number;
   patternGain_dBi_: (theta: number, f: number) => number;
   gOverT_dB_perK_: (f: number, el: number) => number;
+  systemNoise: (f: number, el: number) => { antennaAtLnaK: number; systemK: number };
   applyPropagationEffects_: (sat: unknown, signal: RfSignal, view: { az: number; el: number; rangeKm: number | null }) => RfSignal;
 };
 
@@ -66,10 +67,15 @@ const dish = (key: ANTENNA_CONFIG_KEYS, az = 180, el = 30) => new ReferenceAnten
 /** Receive-side LNA noise temperature the engine config assumes, K */
 const lnaK = (antenna: ReferenceAntenna) => 290 * (10 ** ((antenna.config as { lnaNF_dB?: number }).lnaNF_dB! / 10) - 1);
 
-/** Known gaps per dish: gain calibration, G/T (engine Tsys model) */
+/**
+ * Known gaps per dish. Since phase 19.2 the noise half of G/T meets the
+ * datasheets (antenna temperature at the flange); what still fails G/T is the
+ * gain at the flange (aperture gain less feed loss), an antenna calibration
+ * item (DEV-ANT-07, 19.4).
+ */
 const DISHES: Array<{ key: ANTENNA_CONFIG_KEYS; anchor: DishAnchor; gainDeviation?: string; gOverTDeviation?: string }> = [
-  { key: ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, anchor: CPI_9M_C_LINEAR, gOverTDeviation: 'DEV-NOISE-02' },
-  { key: ANTENNA_CONFIG_KEYS.KU_BAND_2M4_ANTESTAR, anchor: PRODELIN_1244_KU, gainDeviation: 'DEV-ANT-07', gOverTDeviation: 'DEV-NOISE-02' },
+  { key: ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, anchor: CPI_9M_C_LINEAR, gOverTDeviation: 'DEV-ANT-07' },
+  { key: ANTENNA_CONFIG_KEYS.KU_BAND_2M4_ANTESTAR, anchor: PRODELIN_1244_KU, gainDeviation: 'DEV-ANT-07', gOverTDeviation: 'DEV-ANT-07' },
 ];
 
 describe('dish configs against datasheet anchors', () => {
@@ -82,6 +88,16 @@ describe('dish configs against datasheet anchors', () => {
 
     referenceCase(`${key} -3 dB beamwidth within 15 % of the datasheet (${anchor.hpbwDeg} deg)`, undefined, () => {
       expectWithinRel(antenna.internals.beamwidth3dB_deg_(anchor.rxFrequencyHz), anchor.hpbwDeg, 0.15);
+    });
+
+    // Antenna noise temperature at the LNA flange, 20 deg clear sky: sky,
+    // spillover and the feed's own noise (phase 19.2 noise model)
+    referenceCase(`${key} antenna temperature at the flange at 20 deg within 15 % of the datasheet (${anchor.antennaNoiseK[20]} K)`, undefined, () => {
+      expectWithinRel(antenna.internals.systemNoise(anchor.rxFrequencyHz, 20).antennaAtLnaK, anchor.antennaNoiseK[20], 0.15);
+    });
+
+    referenceCase(`${key} system temperature at 20 deg is the antenna temperature plus the LNA's (within 15 %)`, undefined, () => {
+      expectWithinRel(antenna.internals.systemNoise(anchor.rxFrequencyHz, 20).systemK, anchor.antennaNoiseK[20] + lnaK(antenna), 0.15);
     });
 
     // G/T at 20 deg clear sky, from the datasheet's antenna temperature with the

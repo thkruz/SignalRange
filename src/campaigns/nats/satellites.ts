@@ -14,7 +14,7 @@ export const tidemark1Satellite = new Satellite(
       noradId: 61525,
       frequency: 5943e6 as RfFrequency,
       polarization: 'H',
-      power: 20 as dBm,
+      power: 22 as dBm, // +2 dB in Phase 19.2: the real Tsys (sky + feed + LNB, ~81 K) replaced the LNB-only 43 K
       bandwidth: 36e6 as Hertz,
       modulation: 'QPSK' as ModulationType,
       fec: '3/4' as FECType,
@@ -81,7 +81,7 @@ export const tidemark2Satellite = new Satellite(
       noradId: 61526,
       frequency: 6017e6 as RfFrequency,
       polarization: 'H',
-      power: 20 as dBm,
+      power: 22 as dBm, // +2 dB in Phase 19.2: the real Tsys (sky + feed + LNB, ~81 K) replaced the LNB-only 43 K
       bandwidth: 36e6 as Hertz,
       modulation: 'QPSK' as ModulationType,
       fec: '3/4' as FECType,
@@ -166,7 +166,7 @@ export const tidemark3Satellite = new Satellite(
       noradId: 61527,
       frequency: 5985e6 as RfFrequency,
       polarization: 'H',
-      power: 20 as dBm,
+      power: 22 as dBm, // +2 dB in Phase 19.2: the real Tsys (sky + feed + LNB, ~81 K) replaced the LNB-only 43 K
       bandwidth: 36e6 as Hertz,
       modulation: 'QPSK' as ModulationType,
       fec: '3/4' as FECType,
@@ -225,7 +225,7 @@ export const ses10Satellite = new Satellite(
       noradId: 42432,
       frequency: 5869e6 as RfFrequency,
       polarization: 'H',
-      power: 23 as dBm,
+      power: 25 as dBm, // +2 dB in Phase 19.2: the real Tsys (sky + feed + LNB, ~81 K) replaced the LNB-only 43 K
       bandwidth: 36e6 as Hertz,
       modulation: 'QPSK' as ModulationType,
       fec: '3/4' as FECType,
@@ -313,7 +313,7 @@ export const aurora7Satellite = new Satellite(
       noradId: 28899,
       frequency: 6053e6 as RfFrequency,
       polarization: 'H',
-      power: 18 as dBm, // Slightly lower power for legacy bird
+      power: 20 as dBm, // Slightly lower power for legacy bird; +2 dB in Phase 19.2 (real Tsys)
       bandwidth: 24e6 as Hertz, // Narrower bandwidth
       modulation: 'QPSK' as ModulationType,
       fec: '3/4' as FECType,

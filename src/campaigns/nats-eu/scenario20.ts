@@ -254,14 +254,14 @@ export const natsEuScenario20Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What is the active alarm state on GW-01 at 05:00?',
             options: [
-              'RX AGC at max gain - weak signal on an empty sky, no hardware alarm',
+              'RX AGC on noise only - no carrier on an empty sky, no hardware alarm',
               'No active alarms - all systems nominal, board clear for the pass',
               'GPSDO holdover alarm - the reference dropped GNSS overnight and is free-running',
               'LNB reference unlock - the downconverter lost its 10 MHz during the night',
             ],
             correctIndex: 0,
             explanation:
-              'Empty sky, not a fault. The reference is locked and disciplined, the LNB is on it, and the AGC rail clears at AOS. The board will look exactly like this in eight minutes too - that is the problem.',
+              'Empty sky, not a fault. The reference is locked and disciplined, the LNB is on it, and the AGC no-carrier warning clears at AOS. The board will look exactly like this in eight minutes too - that is the problem.',
             pointPenalty: 5,
           },
           mustMaintain: false,

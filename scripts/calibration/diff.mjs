@@ -14,6 +14,11 @@
  * the authored minimum. A negative margin means no clear-sky pass in the
  * ledger can satisfy that condition; it is the list a track's PR must answer.
  *
+ * Link budgets (phase 19.2): every authored `linkBudget.expectedCNRDb` is
+ * checked against the engine's clear-sky C/N for the scenario's payload
+ * carrier and listed when the best flown pass falls more than 1 dB short
+ * ("LINK BUDGET OFF").
+ *
  * Not covered (reported as n/a, never as a failure): a station that receives
  * no carrier in its authored start state (a fault the player is meant to find,
  * a carrier the player must uplink) and scripted interference events, which
@@ -77,6 +82,39 @@ function margins(entry) {
 
 const fmt = (x) => (Number.isFinite(x) ? x.toFixed(2) : String(x));
 
+/** Authored link-budget truth must sit within this of the engine's clear-sky C/N (phase 19.2) */
+const LINK_BUDGET_TOLERANCE_DB = 1;
+
+/**
+ * An authored `linkBudget.expectedCNRDb` against the engine: the best peak C/N
+ * of the widest carrier on any flown link (the payload, not its beacon). The
+ * ledger flies the first pass of the day, so a scenario whose planned pass is
+ * a different one can differ for geometry; the line says which pass it used.
+ */
+function linkBudgetCheck(entry) {
+  const expected = entry?.authored?.linkBudget?.expectedCNRDb;
+  if (typeof expected !== 'number') return null;
+  let best = null;
+  for (const station of entry.stations ?? []) {
+    for (const link of station.links) {
+      const widest = [...link.carriers].filter((c) => c.peakCnDb !== null).sort((a, b) => b.bandwidthMHz - a.bandwidthMHz)[0];
+      if (widest && (best === null || widest.peakCnDb > best.cn)) {
+        best = { cn: widest.peakCnDb, where: `${station.stationId}/${link.satellite}/${widest.signalId}`, maxEl: link.pass?.maxEl ?? null };
+      }
+    }
+  }
+  if (best === null) return { expected, off: false, line: `expectedCNRDb ${expected} dB: no carrier in the ledger to check against` };
+  const delta = best.cn - expected;
+  // Only a shortfall is a finding: the flown pass may be higher than the
+  // planned one, never lower than the best of the day. The exact-geometry
+  // check (planned pass, within 1 dB) is in the nats-eu phase B/C validation
+  // tests.
+  const off = delta < -LINK_BUDGET_TOLERANCE_DB;
+  const pass = best.maxEl !== null ? `, pass max el ${fmt(best.maxEl)}` : '';
+
+  return { expected, off, line: `expectedCNRDb ${expected} dB vs engine ${fmt(best.cn)} dB (${best.where}${pass}): ${delta > 0 ? '+' : ''}${fmt(delta)} dB${off ? ' LINK BUDGET OFF' : ''}` };
+}
+
 if (!existsSync(DIR)) {
   console.error('No ledger at test/calibration/. Run: npx vitest run --config vitest.calibration.config.mts');
   process.exit(1);
@@ -85,6 +123,7 @@ if (!existsSync(DIR)) {
 let changed = 0;
 let failing = 0;
 let uncovered = 0;
+let budgetsOff = 0;
 for (const file of readdirSync(DIR).filter((f) => f.endsWith('.json')).sort()) {
   const now = JSON.parse(readFileSync(join(DIR, file), 'utf8'));
   const lines = [];
@@ -110,11 +149,23 @@ for (const file of readdirSync(DIR).filter((f) => f.endsWith('.json')).sort()) {
         }
       }
       for (const key of a.keys()) if (!b.has(key)) lines.push(`  - ${key}`);
+      for (const station of now.stations ?? []) {
+        const prev = (before.stations ?? []).find((s) => s.stationId === station.stationId && s.antennaIndex === station.antennaIndex);
+        const was = prev?.agcOnNoiseAlone?.railedAtMax;
+        const is = station.agcOnNoiseAlone?.railedAtMax;
+        if (was !== undefined && is !== undefined && was !== is) lines.push(`  ${station.stationId}#${station.antennaIndex} AGC on noise alone: ${was ? 'railed' : 'levels'} -> ${is ? 'railed' : 'levels'}`);
+      }
       const wasFailing = new Set(margins(before).filter((m) => m.covered && m.margin < 0).map((m) => `${m.objectiveId} ${m.what}`));
       for (const m of margins(now).filter((m) => m.covered && m.margin < 0 && !wasFailing.has(`${m.objectiveId} ${m.what}`))) {
         lines.push(`  NOW FAILS ${m.objectiveId}: ${m.what} (best ${fmt(m.margin)} dB short)`);
       }
     }
+  }
+
+  const budget = linkBudgetCheck(now);
+  if (budget) {
+    if (budget.off) budgetsOff++;
+    if (budget.off || marginsOnly) lines.push(`  ${budget.line}`);
   }
 
   for (const m of margins(now)) {
@@ -134,4 +185,6 @@ for (const file of readdirSync(DIR).filter((f) => f.endsWith('.json')).sort()) {
   }
 }
 
-console.log(`\n${changed} scenario(s) listed; ${failing} authored threshold(s) with a negative best-case margin; ${uncovered} not covered by the ledger.`);
+console.log(
+  `\n${changed} scenario(s) listed; ${failing} authored threshold(s) with a negative best-case margin; ${uncovered} not covered by the ledger; ${budgetsOff} authored link budget(s) more than ${LINK_BUDGET_TOLERANCE_DB} dB above the engine.`
+);

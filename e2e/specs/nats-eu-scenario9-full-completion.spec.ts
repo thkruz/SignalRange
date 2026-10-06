@@ -71,11 +71,11 @@ test.describe('nats-eu Scenario 9 Full Completion', () => {
     await waitForObjectiveComplete(missionControl, 'Take the Shift');
   });
 
-  test('[galway-dashboard-sweep] reads the board: AGC rail, no faults', async () => {
+  test('[galway-dashboard-sweep] reads the board: AGC no-carrier warning, no faults', async () => {
     await missionControl.selectGroundStation('GW-01');
     await missionControl.selectTab('dashboard');
-    await expectDashboardAlarm(page, 'AGC at max gain');
-    await answerSystemQuiz(page, 'RX AGC at max gain');
+    await expectDashboardAlarm(page, 'AGC on noise only');
+    await answerSystemQuiz(page, 'RX AGC on noise only');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'GW-01 Dashboard Sweep');
   });
@@ -127,7 +127,7 @@ test.describe('nats-eu Scenario 9 Full Completion', () => {
   test('[shetland-dashboard-sweep] reads the remote board', async () => {
     await missionControl.selectGroundStation('SH-02');
     await missionControl.selectTab('dashboard');
-    await expectDashboardAlarm(page, 'AGC at max gain');
+    await expectDashboardAlarm(page, 'AGC on noise only');
     await answerSystemQuiz(page, 'Nothing in the alarm set is tripped');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'SH-02 Dashboard Sweep');

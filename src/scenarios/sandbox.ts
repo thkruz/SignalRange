@@ -46,7 +46,7 @@ export const sandboxData: ScenarioData = {
             targetPolarization: 0 as Degrees,
             slewing: false,
             beaconCN: 0 as dB,
-            beaconFrequencyHz: 1085e6 as Hertz,
+            beaconFrequencyHz: 4165e6 as Hertz, // AURORA-7 beacon (RF)
             isLocked: false,
           } as Partial<AntennaState>,
         ],

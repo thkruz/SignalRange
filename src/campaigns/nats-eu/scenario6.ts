@@ -267,14 +267,14 @@ export const natsEuScenario6Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What is the active alarm state on GW-01 at turnover?',
             options: [
-              'RX AGC at max gain (weak signal) - empty sky, not a fault; no hardware alarms',
+              'RX AGC on noise only (no carrier) - empty sky, not a fault; no hardware alarms',
               'No active alarms (all nominal) - board clear, sweep complete; nothing to carry over',
               'Security console (unacknowledged anomaly) - flagged to the board, not yet read; one alarm',
               'GPSDO in holdover (reference alarm) - timing at risk, not a fault; one hardware alarm',
             ],
             correctIndex: 0,
             explanation:
-              'The only entry is the receive AGC at its rail: empty sky, not a fault. The security console does not raise dashboard alarms; that is exactly why somebody has to read it.',
+              'The only entry is the receive AGC on noise with no carrier: empty sky, not a fault. The security console does not raise dashboard alarms; that is exactly why somebody has to read it.',
             pointPenalty: 5,
           },
           mustMaintain: false,

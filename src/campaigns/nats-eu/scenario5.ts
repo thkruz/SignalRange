@@ -209,14 +209,14 @@ export const natsEuScenario5Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What is the active alarm state on GW-01 at turnover?',
             options: [
-              'RX AGC at max gain (weak signal) - empty sky, not a fault; no hardware alarms',
+              'RX AGC on noise only (no carrier) - empty sky, not a fault; no hardware alarms',
               'No active alarms (all nominal) - board clear, sweep complete; nothing to carry over',
               'GPSDO in holdover (reference alarm) - timing at risk, not a fault; one hardware alarm',
               'Antenna drive fault (pedestal stowed) - tracker cannot slew; one hardware alarm',
             ],
             correctIndex: 0,
             explanation:
-              'The AGC rail is the board telling you the antenna is looking at empty sky, not that something broke; it clears on acquisition. Shetland is the one nobody has swept from this console yet.',
+              'The AGC no-carrier warning is the board telling you the antenna is looking at empty sky, not that something broke; it clears on acquisition. Shetland is the one nobody has swept from this console yet.',
             pointPenalty: 5,
           },
           mustMaintain: false,

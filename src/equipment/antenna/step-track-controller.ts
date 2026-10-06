@@ -1,10 +1,7 @@
-import { TapPoint } from '@app/equipment/rf-front-end/coupler-module/tap-points';
 import { SimClock } from '@app/simulation/sim-clock';
 import { SimulationManager } from '@app/simulation/simulation-manager';
-import { Hertz } from '@app/types';
 import { Degrees } from 'ootk';
 import { AntennaCore } from './antenna-core';
-import { usableBeaconCn } from './beacon-cn';
 
 /**
  * Step Track Controller - Timer-Based Convergence
@@ -156,42 +153,12 @@ export class StepTrackController {
   }
 
   /**
-   * Measure current beacon power and C/N ratio
+   * Measure current beacon power and C/N ratio: the antenna's own beacon
+   * receiver, so the ACU, the Dashboard and step-track read one C/N (Phase
+   * 19.2; the step-track copy used to leave the receive gain out of the noise)
    */
   private measureBeaconMetrics_(): { power: number | null; cn: number | null } {
-    const state = this.antenna_.state;
-    const beaconFreq = this.antenna_.rfFrontEnd.lnbModule.state.loFrequency * 1e6 - state.beaconFrequencyHz;
-    const searchBw = state.beaconSearchBwHz;
-
-    const beaconSignals = this.antenna_.rfFrontEnd.agcModule.outputSignals.filter((sig) => {
-      const freqDiff = Math.abs((sig.frequency as number) - beaconFreq);
-      return freqDiff <= searchBw / 2;
-    });
-
-    if (beaconSignals.length === 0) {
-      return { power: null, cn: null };
-    }
-
-    const strongestPower = beaconSignals.reduce((max, sig) => Math.max(max, sig.power as number), -Infinity);
-
-    if (strongestPower === -Infinity) {
-      return { power: null, cn: null };
-    }
-
-    const rfFrontEnd = this.antenna_.rfFrontEnd;
-    if (!rfFrontEnd) {
-      return { power: strongestPower, cn: null };
-    }
-
-    const trackingBw = state.beaconTrackingBwHz;
-    const { noiseFloorNoGain } = rfFrontEnd.couplerModule.signalPathManager.getNoiseFloorAt(TapPoint.RX_IF, trackingBw as Hertz);
-
-    const cn = usableBeaconCn(strongestPower - noiseFloorNoGain, rfFrontEnd.lnbModule.state.isPowered);
-    if (cn === null) {
-      return { power: null, cn: null };
-    }
-
-    return { power: strongestPower, cn };
+    return this.antenna_.measureBeaconMetrics();
   }
 
   /**

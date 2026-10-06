@@ -12,8 +12,8 @@ import { waitForSimulationReady } from '../utils/simulation-helpers';
  * carrier on 1575.42, no Doppler) paired with the gnssThreat clock walk; the
  * defense is the E4 REF control (GPS -> HOLDOVER -> back to GPS).
  *
- * Spoof window is mission-elapsed 420-900 s, so the spec crosses it with
- * advanceClock (the sky and the mission schedule move together). The
+ * The spoof keys up 10 s after 'spot-the-spoofer' opens and runs 480 s
+ * (anchored, phase 19.0a), so the spec crosses it with advanceClock (the sky and the mission schedule move together). The
  * go-holdover maintain window (60 s) ticks on REAL time and is waited out.
  */
 test.describe('ham-sdr Scenario 5 Full Completion', () => {
@@ -68,8 +68,8 @@ test.describe('ham-sdr Scenario 5 Full Completion', () => {
   });
 
   test('[spot-the-spoofer] the terrestrial L1 carrier appears after the spoof window opens', async () => {
-    // Cross the spoofStartS=420 threshold on the mission clock
-    await advanceClock(page, 8);
+    // The spoof keys up 10 s after this objective opens: cross that
+    await advanceClock(page, 0.5);
 
     await missionControl.selectTab('sdr-console');
     await missionControl.dismissDialogIfPresent();
@@ -113,7 +113,7 @@ test.describe('ham-sdr Scenario 5 Full Completion', () => {
   });
 
   test('[all-clear] rides out the spoof, verifies the environment, returns to GPS', async () => {
-    // Cross spoofEndS=900: the spoofer leaves the air and the walk stops
+    // Cross the spoof's end (480 s after it keyed up): the spoofer leaves the air and the walk stops
     await advanceClock(page, 8);
     await missionControl.dismissDialogIfPresent();
 

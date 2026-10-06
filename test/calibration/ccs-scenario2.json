@@ -1,0 +1,42 @@
+{
+  "scenarioId": "ccs-scenario2",
+  "title": "Failover",
+  "authored": {
+    "linkBudget": null,
+    "thresholds": []
+  },
+  "stations": [
+    {
+      "stationId": "SS-01",
+      "antennaIndex": 0,
+      "antennaConfig": "X_BAND_5M",
+      "lnbLoMHz": 8925,
+      "lnbNoiseTempK": 92.31,
+      "links": [
+        {
+          "satellite": "COBALT-4",
+          "noradId": 90042,
+          "kind": "leo",
+          "pass": null,
+          "carriers": []
+        }
+      ]
+    },
+    {
+      "stationId": "SS-01",
+      "antennaIndex": 1,
+      "antennaConfig": "X_BAND_3M_ANTESTAR_RS",
+      "lnbLoMHz": 8925,
+      "lnbNoiseTempK": 75.1,
+      "links": [
+        {
+          "satellite": "COBALT-4",
+          "noradId": 90042,
+          "kind": "leo",
+          "pass": null,
+          "carriers": []
+        }
+      ]
+    }
+  ]
+}

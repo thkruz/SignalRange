@@ -1,0 +1,69 @@
+{
+  "scenarioId": "ham-sdr-scenario3",
+  "title": "Wrong-Handed",
+  "authored": {
+    "linkBudget": null,
+    "thresholds": [
+      {
+        "objectiveId": "track-cubehop",
+        "condition": "signal-detected",
+        "groundStation": "BKYD-YAGI",
+        "params": {
+          "minPower": -130
+        }
+      },
+      {
+        "objectiveId": "prove-the-link",
+        "condition": "receiver-snr-threshold",
+        "groundStation": "BKYD-YAGI",
+        "params": {
+          "minCNRatio": 10
+        }
+      }
+    ]
+  },
+  "stations": [
+    {
+      "stationId": "BKYD-YAGI",
+      "antennaIndex": 0,
+      "antennaConfig": "UHF_CROSSED_YAGI_70CM",
+      "lnbLoMHz": 0,
+      "lnbNoiseTempK": 75.09,
+      "links": [
+        {
+          "satellite": "CUBEHOP-1",
+          "noradId": 63002,
+          "kind": "leo",
+          "pass": {
+            "aosS": 331.64,
+            "losS": 944.77,
+            "maxEl": 63.45
+          },
+          "atPeak": {
+            "elevationDeg": 63.45,
+            "frequencyMHz": 435.26,
+            "gainDbi": 12,
+            "gOverTDbPerK": -12.07,
+            "tsysK": 255.48
+          },
+          "carriers": [
+            {
+              "signalId": "CUBEHOP-1-FM",
+              "rfMHz": 435.26,
+              "ifMHz": 435.26,
+              "bandwidthMHz": 0.02,
+              "modulation": "QPSK",
+              "fec": "1/2",
+              "samples": 614,
+              "peakCnDb": 17.61,
+              "medianCnDb": 11.74,
+              "peakRxIfDbm": -44.97,
+              "noiseIfDbm": -62.08,
+              "lockedSamples": 614
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

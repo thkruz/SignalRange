@@ -1,7 +1,17 @@
 import { expect, Page, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
 import { advanceMissionClockToUtc, waitForObjectiveComplete } from '../utils/ham-sdr-helpers';
-import { answerSystemQuiz, assignContact, closeWorkingDocumentIfOpen, fillAndChange, parkAntenna, programTrack, setRxModemFrequency, setSwitch } from '../utils/nats-eu-helpers';
+import {
+  answerPendingQuizFrom,
+  answerSystemQuiz,
+  assignContact,
+  closeWorkingDocumentIfOpen,
+  fillAndChange,
+  parkAntenna,
+  programTrack,
+  setRxModemFrequency,
+  setSwitch,
+} from '../utils/nats-eu-helpers';
 import { dismissDialogIfPresent, waitForSimulationReady } from '../utils/simulation-helpers';
 
 /**
@@ -146,21 +156,39 @@ test.describe('nats-eu Scenario 14 Full Completion', () => {
     await waitForObjectiveComplete(missionControl, 'Acquire SAR-2 from Shetland', 60000);
   });
 
-  test('[decode-the-collect-from-shetland] decodes the collect in dry sky', async () => {
-    await missionControl.selectTab('rx-analysis');
-    await advanceMissionClockToUtc(page, '2027-04-02T11:14:00Z');
-    await answerSystemQuiz(page, 'That the collect is captured');
-    await dismissDialogIfPresent(page);
-    await waitForObjectiveComplete(missionControl, 'Decode the Collect from Shetland', 60000);
-  });
+  // Since phase 19.0a the Galway fade opens beside the Shetland decode (both
+  // after acquisition), so their two quizzes are pending together and the
+  // quiz manager picks which comes first. A passed quiz holds the next one
+  // until its objective completes, so finish whichever objective it was first.
+  const DECODE_QUIZ = { questionHint: 'closes the loop with Erik', answerText: 'That the collect is captured' };
+  const FADE_QUIZ = { questionHint: 'Galway, 19 degrees', answerText: 'Rain: about 7 dB of attenuation' };
 
-  test('[observe-the-galway-fade] reads the rain-faded C/N on the armed Galway pass', async () => {
-    await advanceMissionClockToUtc(page, '2027-04-02T11:17:00Z');
+  const finishFade = async () => {
     await missionControl.selectGroundStation('GW-01');
     await missionControl.selectTab('rx-analysis');
-    await answerSystemQuiz(page, 'Rain: about 7 dB of attenuation');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Observe the Galway Fade', 60000);
+  };
+
+  test('[decode-the-collect-from-shetland + observe-the-galway-fade] decodes at Shetland and reads the Galway fade', async () => {
+    await missionControl.selectTab('rx-analysis');
+    await advanceMissionClockToUtc(page, '2027-04-02T11:14:00Z');
+    const first = await answerPendingQuizFrom(page, [DECODE_QUIZ, FADE_QUIZ]);
+    await dismissDialogIfPresent(page);
+
+    if (first === FADE_QUIZ.questionHint) {
+      await finishFade();
+      await missionControl.selectGroundStation('SH-02');
+      await missionControl.selectTab('rx-analysis');
+      await answerPendingQuizFrom(page, [DECODE_QUIZ]);
+      await dismissDialogIfPresent(page);
+      await waitForObjectiveComplete(missionControl, 'Decode the Collect from Shetland', 60000);
+    } else {
+      await waitForObjectiveComplete(missionControl, 'Decode the Collect from Shetland', 60000);
+      await advanceMissionClockToUtc(page, '2027-04-02T11:17:00Z');
+      await answerPendingQuizFrom(page, [FADE_QUIZ]);
+      await finishFade();
+    }
   });
 
   test('[log-the-collect] logs the collect and the measurement', async () => {
@@ -171,7 +199,9 @@ test.describe('nats-eu Scenario 14 Full Completion', () => {
   });
 
   test('[protect-the-feed] turns the Galway feed heater on before the sleet', async () => {
-    await advanceMissionClockToUtc(page, '2027-04-02T11:23:00Z');
+    // No jump: the countdown is running, and a jump now costs what waiting would (phase 19.0a)
+    // The pass step may leave SH-02 selected (its quiz order varies)
+    await missionControl.selectGroundStation('GW-01');
     await enableFeedHeater();
     await answerSystemQuiz(page, 'On before the sleet');
     await dismissDialogIfPresent(page);

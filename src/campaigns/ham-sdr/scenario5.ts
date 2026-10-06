@@ -21,8 +21,9 @@ import { navstar77Satellite } from './satellites';
  *
  * Timeline (scenario clock starts 2027-06-22 16:00:00 UTC):
  * - NAVSTAR-77 (MEO) is high overhead all scenario - no pass to catch
- * - T+7:00  spoofer on the air (gnssThreat spoofStartS + terrestrial event)
- * - T+15:00 spoofer off the air; offset freezes wherever it walked to
+ * - spoofer on the air 10 s after 'spot-the-spoofer' opens (gnssThreat +
+ *   terrestrial event, both anchored; about T+7:00 on time)
+ * - 8 minutes later, off the air; offset freezes wherever it walked to
  *
  * NICE Framework Alignment:
  * Primary Codes:
@@ -54,10 +55,14 @@ export const hamSdrScenario5Data: ScenarioData = {
     scenarioStartDate: '2027-06-22',
     scenarioStartWallTime: '16:00:00',
     missionBriefUrl: 'https://docs.signalrange.space/campaign-3/scenario-5?content-only=true&dark=true',
+    // Phase 19.0a: spoof and carrier both key up 10 s after 'spot-the-spoofer'
+    // opens and run their authored 480 s (were fixed 420..900 s: a player who
+    // reached the objective after 900 s had nothing left to find)
     gnssThreat: {
       groundStationIds: ['BKYD-GPS'],
-      spoofStartS: 420,
-      spoofEndS: 900,
+      startAfterObjectiveId: 'spot-the-spoofer',
+      spoofStartS: 10,
+      spoofEndS: 490,
       offsetDriftUsPerS: 5,
     },
     interferenceEvents: [
@@ -70,7 +75,8 @@ export const hamSdrScenario5Data: ScenarioData = {
         bandwidth: 500e3,
         power: 30, // EIRP dBm - lights up ~25 dB above the real GPS hump
         polarization: 'RHCP',
-        startTime: 420,
+        startAfterObjectiveId: 'spot-the-spoofer',
+        startTime: 10,
         duration: 480,
         periodSeconds: 480,
         onSeconds: 480,

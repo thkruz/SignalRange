@@ -1,0 +1,61 @@
+{
+  "scenarioId": "ham-sdr-scenario7",
+  "title": "Margin Call",
+  "authored": {
+    "linkBudget": null,
+    "thresholds": [
+      {
+        "objectiveId": "hear-the-hash",
+        "condition": "signal-detected",
+        "groundStation": "BKYD-YAGI",
+        "params": {
+          "minPower": -110
+        }
+      }
+    ]
+  },
+  "stations": [
+    {
+      "stationId": "BKYD-YAGI",
+      "antennaIndex": 0,
+      "antennaConfig": "UHF_CROSSED_YAGI_70CM",
+      "lnbLoMHz": 0,
+      "lnbNoiseTempK": 75.09,
+      "links": [
+        {
+          "satellite": "CUBEHOP-1",
+          "noradId": 63002,
+          "kind": "leo",
+          "pass": {
+            "aosS": 1313.67,
+            "losS": 1811.95,
+            "maxEl": 18.39
+          },
+          "atPeak": {
+            "elevationDeg": 18.39,
+            "frequencyMHz": 435.26,
+            "gainDbi": 12,
+            "gOverTDbPerK": -12.32,
+            "tsysK": 270.43
+          },
+          "carriers": [
+            {
+              "signalId": "CUBEHOP-1-FM",
+              "rfMHz": 435.26,
+              "ifMHz": 435.26,
+              "bandwidthMHz": 0.02,
+              "modulation": "QPSK",
+              "fec": "1/2",
+              "samples": 499,
+              "peakCnDb": 28.24,
+              "medianCnDb": 26.81,
+              "peakRxIfDbm": -34.34,
+              "noiseIfDbm": -62.08,
+              "lockedSamples": 499
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

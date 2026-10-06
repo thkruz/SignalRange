@@ -1,0 +1,69 @@
+{
+  "scenarioId": "ham-sdr-scenario5",
+  "title": "The Noise Bump",
+  "authored": {
+    "linkBudget": null,
+    "thresholds": [
+      {
+        "objectiveId": "find-the-hump",
+        "condition": "signal-detected",
+        "groundStation": "BKYD-GPS",
+        "params": {
+          "minPower": -130
+        }
+      },
+      {
+        "objectiveId": "spot-the-spoofer",
+        "condition": "signal-detected",
+        "groundStation": "BKYD-GPS",
+        "params": {
+          "minPower": -110
+        }
+      }
+    ]
+  },
+  "stations": [
+    {
+      "stationId": "BKYD-GPS",
+      "antennaIndex": 0,
+      "antennaConfig": "L_BAND_GPS_PATCH",
+      "lnbLoMHz": 0,
+      "lnbNoiseTempK": 75.09,
+      "links": [
+        {
+          "satellite": "NAVSTAR-77",
+          "noradId": 63003,
+          "kind": "leo",
+          "pass": {
+            "aosS": 0,
+            "losS": 12073.83,
+            "maxEl": 84.47
+          },
+          "atPeak": {
+            "elevationDeg": 84.47,
+            "frequencyMHz": 1575.42,
+            "gainDbi": 5,
+            "gOverTDbPerK": -16.87,
+            "tsysK": 153.84
+          },
+          "carriers": [
+            {
+              "signalId": "NAVSTAR-77-L1",
+              "rfMHz": 1575.42,
+              "ifMHz": 1575.42,
+              "bandwidthMHz": 2.05,
+              "modulation": "null",
+              "fec": "null",
+              "samples": 12074,
+              "peakCnDb": null,
+              "medianCnDb": null,
+              "peakRxIfDbm": -32.32,
+              "noiseIfDbm": -40.14,
+              "lockedSamples": 0
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

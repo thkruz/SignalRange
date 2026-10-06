@@ -1,0 +1,61 @@
+{
+  "scenarioId": "ham-sdr-scenario2",
+  "title": "The Slippery Bird",
+  "authored": {
+    "linkBudget": null,
+    "thresholds": [
+      {
+        "objectiveId": "track-cubehop",
+        "condition": "signal-detected",
+        "groundStation": "BKYD-YAGI",
+        "params": {
+          "minPower": -130
+        }
+      }
+    ]
+  },
+  "stations": [
+    {
+      "stationId": "BKYD-YAGI",
+      "antennaIndex": 0,
+      "antennaConfig": "UHF_CROSSED_YAGI_70CM",
+      "lnbLoMHz": 0,
+      "lnbNoiseTempK": 75.09,
+      "links": [
+        {
+          "satellite": "CUBEHOP-1",
+          "noradId": 63002,
+          "kind": "leo",
+          "pass": {
+            "aosS": 311.95,
+            "losS": 914.3,
+            "maxEl": 48.19
+          },
+          "atPeak": {
+            "elevationDeg": 48.19,
+            "frequencyMHz": 435.26,
+            "gainDbi": 12,
+            "gOverTDbPerK": -12.1,
+            "tsysK": 257.13
+          },
+          "carriers": [
+            {
+              "signalId": "CUBEHOP-1-FM",
+              "rfMHz": 435.26,
+              "ifMHz": 435.26,
+              "bandwidthMHz": 0.02,
+              "modulation": "QPSK",
+              "fec": "1/2",
+              "samples": 603,
+              "peakCnDb": 33.71,
+              "medianCnDb": 28.92,
+              "peakRxIfDbm": -28.87,
+              "noiseIfDbm": -62.08,
+              "lockedSamples": 603
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

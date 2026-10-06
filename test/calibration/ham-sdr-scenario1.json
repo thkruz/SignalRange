@@ -1,0 +1,94 @@
+{
+  "scenarioId": "ham-sdr-scenario1",
+  "title": "First Light",
+  "authored": {
+    "linkBudget": null,
+    "thresholds": [
+      {
+        "objectiveId": "detect-apt",
+        "condition": "signal-detected",
+        "groundStation": "BKYD-QFH",
+        "params": {
+          "minPower": -130
+        }
+      }
+    ]
+  },
+  "stations": [
+    {
+      "stationId": "BKYD-QFH",
+      "antennaIndex": 0,
+      "antennaConfig": "VHF_QFH_137",
+      "lnbLoMHz": 0,
+      "lnbNoiseTempK": 75.09,
+      "links": [
+        {
+          "satellite": "WXSAT-19",
+          "noradId": 63001,
+          "kind": "leo",
+          "pass": {
+            "aosS": 255.23,
+            "losS": 1012.73,
+            "maxEl": 55.05
+          },
+          "atPeak": {
+            "elevationDeg": 55.05,
+            "frequencyMHz": 137.1,
+            "gainDbi": 3,
+            "gOverTDbPerK": -21.04,
+            "tsysK": 253.22
+          },
+          "carriers": [
+            {
+              "signalId": "WXSAT-19-APT",
+              "rfMHz": 137.1,
+              "ifMHz": 137.1,
+              "bandwidthMHz": 0.03,
+              "modulation": "BPSK",
+              "fec": "1/2",
+              "samples": 758,
+              "peakCnDb": 37.42,
+              "medianCnDb": 32.88,
+              "peakRxIfDbm": -21.61,
+              "noiseIfDbm": -58.53,
+              "lockedSamples": 758
+            }
+          ]
+        },
+        {
+          "satellite": "CUBEHOP-1",
+          "noradId": 63002,
+          "kind": "leo",
+          "pass": {
+            "aosS": 1151.95,
+            "losS": 1754.3,
+            "maxEl": 48.19
+          },
+          "atPeak": {
+            "elevationDeg": 48.19,
+            "frequencyMHz": 435.26,
+            "gainDbi": 3,
+            "gOverTDbPerK": -21.05,
+            "tsysK": 254.05
+          },
+          "carriers": [
+            {
+              "signalId": "CUBEHOP-1-FM",
+              "rfMHz": 435.26,
+              "ifMHz": 435.26,
+              "bandwidthMHz": 0.02,
+              "modulation": "QPSK",
+              "fec": "1/2",
+              "samples": 603,
+              "peakCnDb": 24.95,
+              "medianCnDb": 20.22,
+              "peakRxIfDbm": -37.63,
+              "noiseIfDbm": -62.08,
+              "lockedSamples": 603
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

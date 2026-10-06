@@ -26,6 +26,7 @@
 import { CryptoModule } from '@app/equipment/crypto';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { ObjectiveAnchors } from '@app/objectives/objective-anchor';
 import { OpsLogManager } from '@app/ops-log/ops-log-manager';
 import { ScenarioManager } from '@app/scenario-manager';
 import { missionNowMs } from '@app/simulation/mission-clock';
@@ -44,8 +45,17 @@ export interface HardwareFaultEventConfig {
   modemNumber?: number;
   /** RF front-end index (default 0), buc-overtemp / gpsdo-gnss-loss */
   rfFrontEndIndex?: number;
-  /** Seconds since mission start when the fault trips */
+  /** Seconds since mission start (or since startAfterObjectiveId is live) when the fault trips */
   startTime: number;
+  /** Anchor the trip to an objective (see objective-anchor.ts) */
+  startAfterObjectiveId?: string;
+  /**
+   * Clear a timed fault endOffsetS after this objective is live, instead of
+   * after `duration` (see objective-anchor.ts). Until then it holds.
+   */
+  endAfterObjectiveId?: string;
+  /** Seconds after endAfterObjectiveId is live that the fault clears (default 0) */
+  endOffsetS?: number;
   /** Seconds the fault lasts before it clears itself; absent = until the operator acts */
   duration?: number;
   params?: {
@@ -65,6 +75,7 @@ export class HardwareFaultManager {
 
   private readonly events_: HardwareFaultEventConfig[];
   private readonly missionStartTime_: number;
+  private readonly anchors_: ObjectiveAnchors;
   /** Event ids whose fault has already been tripped (fire once) */
   private readonly trippedIds_ = new Set<string>();
   /** Event ids whose timed fault has already cleared */
@@ -75,6 +86,7 @@ export class HardwareFaultManager {
     this.missionStartTime_ = missionNowMs();
     this.boundUpdateHandler_ = this.update_.bind(this);
     this.events_ = (ScenarioManager.getInstance().settings.hardwareFaultEvents as HardwareFaultEventConfig[] | undefined) ?? [];
+    this.anchors_ = new ObjectiveAnchors(this.events_.flatMap((e) => [e.startAfterObjectiveId, e.endAfterObjectiveId]));
     EventBus.getInstance().on(Events.UPDATE, this.boundUpdateHandler_);
   }
 
@@ -110,10 +122,12 @@ export class HardwareFaultManager {
       return;
     }
     const elapsed = (missionNowMs() - this.missionStartTime_) / 1000;
+    this.anchors_.poll(elapsed);
 
     for (const event of this.events_) {
+      const start = this.anchors_.atS(event.startTime, event.startAfterObjectiveId);
       if (!this.trippedIds_.has(event.id)) {
-        if (elapsed >= event.startTime && this.trip_(event)) {
+        if (elapsed >= start && this.trip_(event)) {
           this.trippedIds_.add(event.id);
           if (event.label && OpsLogManager.isInitialized()) {
             OpsLogManager.getInstance().log(event.label, 'alert', event.groundStationId);
@@ -122,11 +136,19 @@ export class HardwareFaultManager {
         continue;
       }
 
-      if (event.duration !== undefined && !this.clearedIds_.has(event.id) && elapsed >= event.startTime + event.duration) {
+      if (!this.clearedIds_.has(event.id) && elapsed >= this.endS_(event, start)) {
         this.clear_(event);
         this.clearedIds_.add(event.id);
       }
     }
+  }
+
+  /** Mission-elapsed second a timed fault clears (Infinity = holds until the operator acts, or while an anchor waits) */
+  private endS_(event: HardwareFaultEventConfig, startS: number): number {
+    if (event.endAfterObjectiveId !== undefined) {
+      return this.anchors_.atS(event.endOffsetS ?? 0, event.endAfterObjectiveId);
+    }
+    return event.duration === undefined ? Number.POSITIVE_INFINITY : startS + event.duration;
   }
 
   /** Apply the fault. Returns false when the target equipment does not exist yet. */

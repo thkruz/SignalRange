@@ -85,12 +85,17 @@ export function measure(scenario: ScenarioData): Metrics {
   const conditions = objectives.flatMap((o) => o.conditions);
   const clipCount = (scenario.dialogClips?.intro ? 1 : 0) + Object.keys(scenario.dialogClips?.objectives ?? {}).length;
   const timed = objectives.filter((o) => typeof o.timeLimitSeconds === 'number' && o.timeLimitSeconds > 0).length;
+  // Two kinds of objective cannot carry a timer, so they are left out of the
+  // timer fraction rather than counted as untimed: one that sends the operator
+  // skipping ahead (a running timer blocks the skip - phase 19.0a, nats-eu S8)
+  // and a brief that freezes the scenario clock (a countdown on a stopped clock).
+  const timeable = objectives.filter((o) => !o.freezesScenarioTimer && !/^skip ahead/iu.test(o.description)).length;
 
   return {
     objectives: objectives.length,
     quizzes: conditions.filter((c) => c.type === 'status-check').length,
     clips: clipCount,
-    timerFraction: objectives.length === 0 ? 0 : timed / objectives.length,
+    timerFraction: timeable === 0 ? 0 : timed / timeable,
     conditionTypes: new Set(conditions.map((c) => c.type)).size,
     points: objectives.reduce((sum, o) => sum + (o.points ?? 0), 0),
   };

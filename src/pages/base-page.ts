@@ -211,7 +211,10 @@ export abstract class BasePage extends BaseElement {
     eventBus.on(Events.OBJECTIVE_FAILED, (data: ObjectiveFailedData) => {
       ObjectiveFailedModal.getInstance().showFailure({
         title: 'Objective Failed',
-        message: `Time expired for: ${data.objective.title}`,
+        message:
+          data.reason === 'window-closed'
+            ? `The command window closed before you finished: ${data.objective.title}. The pass is over and will not come back this shift.`
+            : `Time expired for: ${data.objective.title}`,
         objectiveId: data.objectiveId,
         isScenarioTimeout: false,
       });

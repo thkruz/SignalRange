@@ -253,30 +253,32 @@ export class QuizManager {
     state.attempts = data.totalAttempts;
     state.totalPointsDeducted = data.totalPointsDeducted;
 
-    // Check if there are other incomplete quizzes in the same objective
-    // and emit QUIZ_PENDING for the first one found
+    // Point the pending indicator at the next incomplete quiz, if any
     this.emitPendingForNextIncompleteQuiz_(data.objectiveId);
   }
 
   /**
-   * Find and emit QUIZ_PENDING for the next incomplete quiz in the given objective.
-   * This ensures that when one quiz is completed, any remaining quizzes get their
-   * pending indicator shown.
+   * Find and emit QUIZ_PENDING for the next incomplete quiz: the given
+   * objective's first, then any other objective's. This ensures that when one
+   * quiz is completed, any remaining quizzes get their pending indicator shown.
+   * Only one quiz is pending at a time, so when two objectives run side by
+   * side (nats-eu S14 since phase 19.0a) the one registered first would
+   * otherwise be left with no way to open it.
    */
   private emitPendingForNextIncompleteQuiz_(objectiveId: string): void {
-    for (const [key, state] of this.quizStates_) {
-      if (state.objectiveId === objectiveId && !state.isComplete) {
-        // Found an incomplete quiz in this objective - set it as pending
-        this.pendingQuizKey_ = key;
-
-        const pendingData: QuizPendingData = {
-          objectiveId: state.objectiveId,
-          conditionIndex: state.conditionIndex,
-        };
-        EventBus.getInstance().emit(Events.QUIZ_PENDING, pendingData);
-        return;
-      }
+    const incomplete = [...this.quizStates_].filter(([, state]) => !state.isComplete);
+    const next = incomplete.find(([, state]) => state.objectiveId === objectiveId) ?? incomplete[0];
+    if (!next) {
+      return;
     }
+    const [key, state] = next;
+    this.pendingQuizKey_ = key;
+
+    const pendingData: QuizPendingData = {
+      objectiveId: state.objectiveId,
+      conditionIndex: state.conditionIndex,
+    };
+    EventBus.getInstance().emit(Events.QUIZ_PENDING, pendingData);
   }
 
   /**

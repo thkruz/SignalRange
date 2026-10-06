@@ -174,7 +174,11 @@ export const natsEuScenario19Data: ScenarioData = {
         bandwidth: 2e6,
         power: 5,
         polarization: 'H',
-        startTime: 1350,
+        // Phase 19.0a: keyed 10 s after 'call-the-nak' opens, not at a fixed 1350 s.
+        // A player whose first command was still unsent when a fixed jam came up
+        // was refused on the fixed carrier before hopping was taught: a deadlock.
+        startAfterObjectiveId: 'call-the-nak',
+        startTime: 10,
         duration: 400,
         periodSeconds: 400,
         onSeconds: 400,
@@ -700,7 +704,7 @@ export const natsEuScenario19Data: ScenarioData = {
       id: 'safe-the-uplink',
       nice: ['S0421', 'K0645'],
       title: 'Safe the Uplink',
-      description: 'LOS 13:29:29. Chain down in the mirror order: HPA output off, BUC muted, carrier off.',
+      description: 'Chain down now, in the mirror order: HPA output off, BUC muted, carrier off. No need to wait for LOS (13:29:29).',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['ride-through'],
       timeLimitSeconds: 2 * 60,

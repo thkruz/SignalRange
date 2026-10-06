@@ -144,7 +144,10 @@ export const natsEuScenario18Data: ScenarioData = {
         bandwidth: 1e6,
         power: 60,
         polarization: 'V',
-        startTime: 1410,
+        // Phase 19.0a: 20 s after 'read-the-cycle' opens (was a fixed 1410 s;
+        // a player past LOS skipped straight over it and was stuck)
+        startAfterObjectiveId: 'read-the-cycle',
+        startTime: 20,
         duration: 480,
         periodSeconds: 90,
         onSeconds: 60,

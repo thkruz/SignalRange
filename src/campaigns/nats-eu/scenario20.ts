@@ -143,11 +143,16 @@ export const natsEuScenario20Data: ScenarioData = {
     },
 
     // M8 - the spoofer. GW-01 only: SH-02 sees the same constellation and no
-    // walk, which is the operator's cross-check. Up from 05:08 to 05:36.
+    // walk, which is the operator's cross-check. Up from 05:08 to about 05:36.
+    // Phase 19.0a: it goes off 150 s after 'all-clear' opens, not at a fixed
+    // 2160 s. The all-clear needs the offset steady for 30 s after the spoof
+    // ends, so a player who reached it before about 1690 s timed out.
     gnssThreat: {
       groundStationIds: ['GW-01'],
       spoofStartS: 480,
       spoofEndS: 2160,
+      endAfterObjectiveId: 'all-clear',
+      endOffsetS: 150,
       offsetDriftUsPerS: 2,
     },
 

@@ -1,4 +1,5 @@
 import { errorManagerInstance } from '@app/engine/utils/errorManager';
+import { ReplaySession } from './replay-session';
 import {
   Achievement,
   AppId,
@@ -666,6 +667,11 @@ export class UserDataService {
    * Internal method to make HTTP requests with retry logic and error handling
    */
   private async request<T>(endpoint: string, method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'HEAD', body?: unknown, retryCount: number = 0): Promise<T> {
+    // A replayed player save is read-only end to end: no write reaches the backend
+    if (ReplaySession.isActive() && method !== 'GET' && method !== 'HEAD') {
+      throw new Error(`Backend write blocked during replay: ${method} ${endpoint}`);
+    }
+
     const url = `${this.config.apiBaseUrl}${endpoint}`;
     const accessToken = this.config.getAccessToken();
 

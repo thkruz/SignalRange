@@ -1,0 +1,35 @@
+---
+# Pull requests from the scenario authoring editor carry clip recordings under
+# incoming-audio/ until a maintainer runs `pnpm run author:intake <PR#>`, which
+# moves them to R2 and removes the folder from the branch. This check keeps a
+# PR red until then, so no recording is merged into git.
+name: Author Audio Guard
+
+on:
+  pull_request:
+    branches:
+      - dev
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  no-staged-audio:
+    name: No staged audio
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+        with:
+          submodules: false
+          sparse-checkout: incoming-audio
+
+      - name: Check for incoming-audio
+        run: |
+          if [ -e incoming-audio ]; then
+            echo "::error::This PR carries clip audio in incoming-audio/. A maintainer runs 'pnpm run author:intake ${{ github.event.pull_request.number }}' before merging."
+            ls -R incoming-audio
+            exit 1
+          fi
+          echo "No staged audio."

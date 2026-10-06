@@ -15,8 +15,9 @@ import { FECSimulator } from '@app/equipment/receiver/fec-simulator';
 import { TapPoint } from '@app/equipment/rf-front-end/coupler-module/tap-points';
 import { OrbitalSatellite, observerFromLocation } from '@app/equipment/satellite/orbital-satellite';
 import { EventBus } from '@app/events/event-bus';
-import { DecisionGradedData, DecisionResolvedData, Events, QuizCompletedData, QuizPassedData } from '@app/events/events';
+import { DecisionGradedData, DecisionResolvedData, Events, ObjectiveFailedData, QuizCompletedData, QuizPassedData } from '@app/events/events';
 import { FaultInjector } from '@app/faults';
+import { HardwareFaultManager } from '@app/faults/hardware-fault-manager';
 import { GnssThreatManager } from '@app/gnss-threat/gnss-threat-manager';
 import { InterferenceManager } from '@app/interference/interference-manager';
 import { LinkBudgetManager } from '@app/link-budget/link-budget-manager';
@@ -38,6 +39,9 @@ import { Milliseconds } from 'ootk';
 import { EvidenceFactRegistry } from './evidence-facts';
 import { Condition, ConditionParams, DEFAULT_OBSERVATION_DWELL_SECONDS, OBSERVATION_DWELL_GRACE_SECONDS, Objective, ObjectiveState } from './objective-types';
 import './objectives-manager.css';
+
+/** Conditions only a live command link can satisfy (failOnClosedCommandWindow_) */
+const COMMAND_LINK_CONDITIONS: ReadonlySet<string> = new Set(['command-acknowledged', 'ranging-measurements']);
 
 /**
  * Manages objective tracking for scenario-based learning
@@ -156,6 +160,19 @@ export class ObjectivesManager {
       };
     };
 
+    // Developer/E2E hook window.advanceClock, replacing OpsLogManager's plain
+    // clock skip: a jump must cost what waiting costs a player, so running
+    // countdowns burn with it (and may fail). Without this a spec could jump
+    // past a timed objective's deadline to an event no player could reach.
+    (window as unknown as { advanceClock: (deltaMs: number) => void }).advanceClock = (deltaMs: number) => {
+      if (OpsLogManager.isInitialized()) {
+        OpsLogManager.getInstance().advanceClock(deltaMs);
+      } else {
+        SimClock.skip(deltaMs);
+      }
+      this.applyTimeSkip(deltaMs);
+    };
+
     // Subscribe to quiz events for timer control
     this.eventBus_.on(Events.QUIZ_PASSED, this.boundQuizPassedHandler_);
     this.eventBus_.on(Events.QUIZ_COMPLETED, this.boundQuizCompletedHandler_);
@@ -234,6 +251,13 @@ export class ObjectivesManager {
       ObjectivesManager.instance_.eventBus_.off(Events.ASSET_SELECTED, ObjectivesManager.instance_.boundAssetSelectedHandler_);
 
       delete (window as unknown as { debugObjective?: unknown }).debugObjective;
+      const hooks = window as unknown as { advanceClock?: (deltaMs: number) => void };
+      if (OpsLogManager.isInitialized()) {
+        const opsLog = OpsLogManager.getInstance();
+        hooks.advanceClock = opsLog.advanceClock.bind(opsLog);
+      } else {
+        delete hooks.advanceClock;
+      }
 
       ObjectivesManager.instance_ = null;
     }
@@ -600,7 +624,7 @@ export class ObjectivesManager {
   /**
    * Mark an objective as failed
    */
-  private failObjective_(state: ObjectiveState, reason: 'timeout'): void {
+  private failObjective_(state: ObjectiveState, reason: ObjectiveFailedData['reason']): void {
     state.isFailed = true;
     state.failedAt = SimClock.nowMs();
 
@@ -618,6 +642,30 @@ export class ObjectivesManager {
       failedAt: state.failedAt,
       reason,
     });
+  }
+
+  /**
+   * Fail every live objective that still needs the command link once its
+   * window has closed. A LEO command window is the pass, and it never reopens:
+   * without this the objective sits unfinishable with nothing on screen to
+   * say so. Only unmet command conditions count - an ACK already in hand
+   * survives the window.
+   */
+  private failOnClosedCommandWindow_(): void {
+    if (!CommandingManager.isInitialized() || !CommandingManager.getInstance().hasWindowClosed()) {
+      return;
+    }
+
+    for (const state of this.objectiveStates_) {
+      if (!state.isActive || state.isCompleted || state.isFailed) {
+        continue;
+      }
+      const needsLink = state.objective.conditions.some((condition) => COMMAND_LINK_CONDITIONS.has(condition.type) && !this.evaluateCondition_(condition, state));
+      if (needsLink) {
+        this.failObjective_(state, 'window-closed');
+        return;
+      }
+    }
   }
 
   /**
@@ -990,6 +1038,7 @@ export class ObjectivesManager {
     const dtSeconds = dt / 1000;
 
     this.advanceCountdowns_();
+    this.failOnClosedCommandWindow_();
 
     for (const objectiveState of this.objectiveStates_) {
       // Skip already completed objectives
@@ -2648,6 +2697,12 @@ export class ObjectivesManager {
         const maxErrorKm = condition.params?.maxErrorKm ?? 25;
         const state = GeolocationConsoleCore.getInstance().state;
         return state.fix !== null && state.fixErrorKm !== null && state.fixErrorKm <= maxErrorKm;
+      }
+
+      case 'hardware-fault-tripped': {
+        // The named scheduled hardware fault has tripped
+        const eventId = condition.params?.eventId;
+        return eventId !== undefined && HardwareFaultManager.isInitialized() && HardwareFaultManager.getInstance().isTripped(eventId);
       }
 
       case 'interference-event-ended': {

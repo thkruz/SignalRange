@@ -207,7 +207,12 @@ export const natsEuScenario23Data: ScenarioData = {
         bandwidth: 2e6,
         power: 5,
         polarization: 'H',
-        startTime: 1470,
+        // Phase 19.0a: keyed 10 s after 'call-the-denial' opens, not at a fixed 1470 s.
+        // A player whose first command was still unsent when a fixed jam came up
+        // was refused on the fixed carrier before hopping was taught: a deadlock.
+        // Before it, the denial call graded "holdover drifted" correct.
+        startAfterObjectiveId: 'call-the-denial',
+        startTime: 10,
         duration: 420,
         periodSeconds: 420,
         onSeconds: 420,
@@ -909,7 +914,8 @@ export const natsEuScenario23Data: ScenarioData = {
       id: 'safe-and-debrief',
       nice: ['S0421', 'T1580', 'K0645'],
       title: 'Safe the Uplink and Debrief',
-      description: 'LOS 21:31:35. HPA off, BUC muted, carrier off - and the line that goes in the log about a night when everything they had arrived at once.',
+      description:
+        'Chain down now, no need to wait for LOS (21:31:35): HPA off, BUC muted, carrier off - and the line that goes in the log about a night when everything they had arrived at once.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['ride-through'],
       timeLimitSeconds: 3 * 60,

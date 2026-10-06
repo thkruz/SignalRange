@@ -1,5 +1,6 @@
 import { expect, Page, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
+import { advanceMissionClockBy } from '../utils/ccs-helpers';
 import { advanceMissionClockToUtc, domClick, waitForObjectiveComplete } from '../utils/ham-sdr-helpers';
 import { answerSystemQuiz, closeWorkingDocumentIfOpen, expectDashboardAlarm, fillAndChange, parkAntenna, programTrack, setRxModemFrequency } from '../utils/nats-eu-helpers';
 import { answerDecision, dismissDialogIfPresent, waitForSimulationReady } from '../utils/simulation-helpers';
@@ -169,7 +170,8 @@ test.describe('nats-eu Scenario 17 Full Completion', () => {
   });
 
   test('[flag-the-config-export] flags the live export after it lands at 02:33', async () => {
-    await advanceMissionClockToUtc(page, '2027-04-12T02:33:30Z');
+    // The export is logged 25 s after this objective opens (anchored, phase 19.0a)
+    await advanceMissionClockBy(page, 30);
     await missionControl.selectTab('security-console');
     await domClick(page, 'button[data-event-id="evt-config-export"]');
     await answerSystemQuiz(page, 'Enough to plan against the station');

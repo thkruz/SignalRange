@@ -22,7 +22,7 @@ import { cubehop1Satellite, wxsat19Satellite } from './satellites';
  *    your authentication.
  *
  * Timeline (scenario clock starts 2027-06-26 15:30:00 UTC):
- * - T+20:00 pirate carrier on the CUBEHOP uplink (off again ~16:50)
+ * - T+20:00 pirate carrier on the CUBEHOP uplink (off 30 s after it is heard)
  * - CUBEHOP-1: AOS 15:55:47, max el 28.9 deg, LOS 16:07:43 (pirate act)
  * - CUBEHOP-1: AOS 17:31:29, max el 25.7 deg, LOS 17:43:24 (first TX)
  * - T+136:40 (~17:46:40) fake WXSAT-19 beacon on the air; the real bird's
@@ -63,9 +63,11 @@ export const hamSdrScenario8Data: ScenarioData = {
       {
         // The pirate: an unlicensed carrier keyed up through CUBEHOP's V/U
         // transponder (transponder path: power is received-at-satellite).
-        // Louder than the bird's own beacon on purpose. Long envelope so the
-        // afternoon pass is covered regardless of how long the exam takes,
-        // but OFF well before the 17:31 first-TX pass.
+        // Louder than the bird's own beacon on purpose. Up from T+20:00 until
+        // 30 s after the player has heard it (end-anchored, phase 19.0a): a
+        // player who misses the afternoon pass hears it on the 17:31 one, and
+        // it is off the air before their own first transmission. The fixed
+        // 16:50 end stranded anyone who missed the afternoon pass.
         id: 'cq-pirate',
         satelliteNoradId: 63002,
         frequency: 435.905e6, // inside the 435.885-915 passband -> downlink 435.295
@@ -74,6 +76,8 @@ export const hamSdrScenario8Data: ScenarioData = {
         polarization: 'RHCP',
         startTime: 1200,
         duration: 3600,
+        endAfterObjectiveId: 'pirate-ethics',
+        endOffsetS: 30,
         periodSeconds: 3600,
         onSeconds: 3600,
       },

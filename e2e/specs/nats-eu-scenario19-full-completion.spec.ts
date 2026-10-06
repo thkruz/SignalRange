@@ -1,5 +1,6 @@
 import { expect, Page, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
+import { advanceMissionClockBy } from '../utils/ccs-helpers';
 import { advanceMissionClockToUtc, domClick, waitForObjectiveComplete } from '../utils/ham-sdr-helpers';
 import {
   answerSystemQuiz,
@@ -154,7 +155,8 @@ test.describe('nats-eu Scenario 19 Full Completion', () => {
 
   test('[call-the-nak] sends PLD-STATUS into the jammer, reads the key and the console, and calls uplink denial', async () => {
     // The jammer opens at 13:22:30; the NAK reason is the console's own word for it.
-    await advanceMissionClockToUtc(page, '2027-04-16T13:22:45Z');
+    // The jammer keys 10 s after this objective opens (anchored, phase 19.0a)
+    await advanceMissionClockBy(page, 15);
     await sendCommandAndExpectNak(page, missionControl, 'PLD-STATUS', 'Uplink denied - carrier jammed');
 
     // Evidence: the command key on TX Chain, the TT&C console itself.
@@ -187,8 +189,8 @@ test.describe('nats-eu Scenario 19 Full Completion', () => {
     await waitForObjectiveComplete(missionControl, 'Ride It Through');
   });
 
-  test('[safe-the-uplink] chains down in mirror order after LOS', async () => {
-    await advanceMissionClockToUtc(page, '2027-04-16T13:29:40Z');
+  test('[safe-the-uplink] chains down in mirror order', async () => {
+    // No jump: the countdown is running, and a jump now costs what waiting would (phase 19.0a)
     await disableHpa(page, missionControl);
     await setSwitch(page, '#buc-mute', true);
     await setSwitch(page, '#tx-transmit-switch', false);

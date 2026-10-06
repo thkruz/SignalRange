@@ -193,8 +193,8 @@ test.describe('nats-eu Scenario 8 Full Completion', () => {
     await waitForObjectiveComplete(missionControl, 'Command the Bird');
   });
 
-  test('[secure-the-chain] brings the chain down in order after LOS', async () => {
-    await advanceMissionClockToUtc(page, '2027-03-16T00:39:30Z');
+  test('[secure-the-chain] brings the chain down in order', async () => {
+    // No jump: the countdown is running, and a jump now costs what waiting would (phase 19.0a)
     await disableHpa(page, missionControl);
     await setSwitch(page, '#buc-mute', true);
     await setSwitch(page, '#tx-transmit-switch', false);
@@ -249,8 +249,9 @@ test.describe('nats-eu Scenario 8 Full Completion', () => {
   });
 
   test('[confirm-reference-recovered] sees the GNSS return and logs contact 2', async () => {
-    // The outage clears at 02:59 on the mission clock
-    await advanceMissionClockToUtc(page, '2027-03-16T03:00:10Z');
+    // The outage clears 45 s after this objective opens (end-anchored, phase
+    // 19.0a). advanceClock burns the 4 min countdown, so jump only past that.
+    await advanceMissionClockToUtc(page, '2027-03-16T02:58:00Z');
     await missionControl.selectTab('gps-timing');
     await expect(page.locator('#gpsdo-holdover-badge').filter({ hasText: /^ACTIVE$/u })).toHaveCount(0, { timeout: 15000 });
     await closeWorkingDocumentIfOpen(page);
@@ -275,7 +276,8 @@ test.describe('nats-eu Scenario 8 Full Completion', () => {
     await missionControl.selectTab('tx-chain');
     await domClick(page, '#tx-payload-rekey-btn');
     await expect(page.locator('#tx-payload-enc-key-status').first()).toHaveText(/Valid/i, { timeout: 5000 });
-    await page.waitForTimeout(1500);
+    // Past the 2 s observation dwell before leaving the tab
+    await page.waitForTimeout(3000);
     await missionControl.selectTab('rx-analysis');
     await page.waitForTimeout(2500);
     await dismissDialogIfPresent(page);

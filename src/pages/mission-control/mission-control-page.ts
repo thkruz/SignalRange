@@ -34,6 +34,7 @@ import { AppState, syncManager } from '@app/sync/storage';
 import { TelemetryManager } from '@app/telemetry/telemetry-manager';
 import { TransecManager } from '@app/transec/transec-manager';
 import { Auth } from '@app/user-account/auth';
+import { ReplaySession } from '@app/user-account/replay-session';
 import { WeatherManager } from '@app/weather/weather-manager';
 import { AssetTreeSidebar } from './asset-tree-sidebar';
 import { GlobalCommandBar } from './global-command-bar';
@@ -200,8 +201,9 @@ export class MissionControlPage extends BasePage {
     // Wait for auth to be ready before checking login status
     await App.authReady;
 
-    // Check if user is logged in before trying to load from backend
-    const isLoggedIn = await Auth.isLoggedIn();
+    // Check if user is logged in before trying to load from backend. A replay
+    // supplies its checkpoint from memory, so it needs no sign-in.
+    const isLoggedIn = ReplaySession.checkpointFor(ScenarioManager.getInstance().data.id) !== null || (await Auth.isLoggedIn());
     if (!isLoggedIn) {
       Logger.info('loadCheckpointIfExists_: User not logged in, skipping checkpoint load');
       return;

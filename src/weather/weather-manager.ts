@@ -6,6 +6,7 @@
 
 import { EventBus } from '@app/events/event-bus';
 import { Events, WeatherEventData } from '@app/events/events';
+import { ObjectiveAnchors } from '@app/objectives/objective-anchor';
 import { ScenarioManager } from '@app/scenario-manager';
 import { missionNowMs } from '@app/simulation/mission-clock';
 import { SimulationManager } from '@app/simulation/simulation-manager';
@@ -43,6 +44,7 @@ export class WeatherManager {
   private static instance_: WeatherManager | null = null;
   private weatherEvents_: WeatherEventRuntime[] = [];
   private missionStartTime_: number = 0;
+  private anchors_ = new ObjectiveAnchors([]);
 
   /** Ice accumulation time in seconds per antenna (keyed by antenna uniqueId) */
   private iceAccumulationTime_: Map<string, number> = new Map();
@@ -109,25 +111,24 @@ export class WeatherManager {
       isActive: false,
       isAwaitingAnchor: e.startAfterObjectiveId !== undefined,
     }));
+    this.anchors_ = new ObjectiveAnchors(events.map((e) => e.startAfterObjectiveId));
   }
 
   /**
-   * Start the clock on events anchored to an objective once it is active.
-   * Polled rather than driven by OBJECTIVE_ACTIVATED: checkpoint restore sets
-   * objective state without emitting it, and the first objective activates
-   * before this manager exists. A restored-complete anchor also counts, so a
-   * refresh past the anchor still gets its event.
+   * Start the clock on events anchored to an objective once it is live (see
+   * objective-anchor.ts). The start is written back into startTime so the
+   * profiles and WEATHER_EVENT_STARTED carry the real mission-elapsed start.
    */
   private anchorEvents_(elapsedSeconds: number): void {
-    const objectivesManager = SimulationManager.getInstance().objectivesManager;
+    this.anchors_.poll(elapsedSeconds);
 
     for (const event of this.weatherEvents_) {
-      if (!event.isAwaitingAnchor || !event.startAfterObjectiveId) {
+      if (!event.isAwaitingAnchor) {
         continue;
       }
-      const anchor = objectivesManager?.getObjectiveState(event.startAfterObjectiveId);
-      if (anchor?.isActive || anchor?.isCompleted) {
-        event.startTime = elapsedSeconds + event.startTime;
+      const startS = this.anchors_.atS(event.startTime, event.startAfterObjectiveId);
+      if (Number.isFinite(startS)) {
+        event.startTime = startS;
         event.isAwaitingAnchor = false;
       }
     }

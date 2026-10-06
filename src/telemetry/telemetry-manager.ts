@@ -16,6 +16,7 @@ import { CommandingManager } from '@app/commanding/commanding-manager';
 import { OrbitalSatellite, observerFromLocation } from '@app/equipment/satellite/orbital-satellite';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { ObjectiveAnchors } from '@app/objectives/objective-anchor';
 import { ScenarioManager } from '@app/scenario-manager';
 import { missionNowMs } from '@app/simulation/mission-clock';
 import { SimulationManager } from '@app/simulation/simulation-manager';
@@ -47,8 +48,10 @@ export interface TelemetryChannelConfig {
 export interface TelemetryExcursionConfig {
   id: string;
   channelId: string;
-  /** Elapsed second the excursion starts */
+  /** Elapsed second the excursion starts (after startAfterObjectiveId is live, when set) */
   startTime: number;
+  /** Anchor the excursion to an objective (see objective-anchor.ts) */
+  startAfterObjectiveId?: string;
   /** Seconds it lasts (omit = to the end of the scenario) */
   duration?: number;
   /** Value the channel ramps to */
@@ -98,6 +101,7 @@ export class TelemetryManager {
   private readonly config_: TelemetryConfig;
   private readonly missionStartTime_ = missionNowMs();
   private readonly boundUpdateHandler_: (dt: Milliseconds) => void;
+  private readonly anchors_: ObjectiveAnchors;
   private lastElapsedS_ = 0;
   private frameAccumulatorS_ = 0;
   private frameCount_ = 0;
@@ -114,6 +118,7 @@ export class TelemetryManager {
       channels: [],
     };
     for (const ch of this.config_.channels) this.values_.set(ch.id, ch.nominal);
+    this.anchors_ = new ObjectiveAnchors((this.config_.excursions ?? []).map((ex) => ex.startAfterObjectiveId));
     this.boundUpdateHandler_ = this.update_.bind(this);
     EventBus.getInstance().on(Events.UPDATE, this.boundUpdateHandler_);
   }
@@ -259,16 +264,17 @@ export class TelemetryManager {
     let value = ch.nominal;
     for (const ex of this.config_.excursions ?? []) {
       if (ex.channelId !== ch.id) continue;
-      if (elapsedS < ex.startTime) continue;
+      const start = this.anchors_.atS(ex.startTime, ex.startAfterObjectiveId);
+      if (elapsedS < start) continue;
       const ramp = ex.rampSeconds ?? 0;
       const excursionValueAt = (t: number): number => {
-        const progress = ramp > 0 ? Math.min(1, (t - ex.startTime) / ramp) : 1;
+        const progress = ramp > 0 ? Math.min(1, (t - start) / ramp) : 1;
         return ch.nominal + (ex.rampToValue - ch.nominal) * progress;
       };
       // The excursion ends at its scheduled end, or when its command ACKs.
-      let end = ex.duration === undefined ? Number.POSITIVE_INFINITY : ex.startTime + ex.duration;
+      let end = ex.duration === undefined ? Number.POSITIVE_INFINITY : start + ex.duration;
       const ackAt = ex.endsOnCommandId && CommandingManager.isInitialized() ? CommandingManager.getInstance().acknowledgedAt(ex.endsOnCommandId) : undefined;
-      if (ackAt !== undefined && ackAt >= ex.startTime && ackAt < end) end = ackAt;
+      if (ackAt !== undefined && ackAt >= start && ackAt < end) end = ackAt;
       if (elapsedS < end) {
         value = excursionValueAt(elapsedS);
         continue;
@@ -297,6 +303,7 @@ export class TelemetryManager {
 
   private update_(): void {
     const elapsed = (missionNowMs() - this.missionStartTime_) / 1000;
+    this.anchors_.poll(elapsed);
     const deltaS = Math.max(0, elapsed - this.lastElapsedS_);
     this.lastElapsedS_ = elapsed - deltaS; // advance() re-adds it
     this.advance(deltaS);

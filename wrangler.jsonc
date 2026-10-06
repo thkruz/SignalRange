@@ -30,22 +30,13 @@
 		}
 	},
 	// Environment-specific configurations
-	// Deploy with: npx wrangler deploy --env production (or --env uat)
+	// Deploy with: pnpm exec wrangler deploy --env production
 	"env": {
 		"production": {
 			"name": "signal-range",
 			"routes": [
 				{
 					"pattern": "app.signalrange.space/*",
-					"zone_name": "signalrange.space"
-				}
-			]
-		},
-		"uat": {
-			"name": "signal-range-uat",
-			"routes": [
-				{
-					"pattern": "uat.signalrange.space/*",
 					"zone_name": "signalrange.space"
 				}
 			]

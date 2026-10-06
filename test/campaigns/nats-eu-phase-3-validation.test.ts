@@ -45,8 +45,23 @@ interface Phase3Settings {
   satellites: OrbitalSatellite[];
   scenarioStartDate: string;
   scenarioStartWallTime: string;
-  interferenceEvents?: Array<{ id: string; startTime: number; duration: number; path?: string; emitter?: { latitude: number; longitude: number } }>;
-  security?: { events: Array<{ id: string; timeS?: number; isAnomaly?: boolean }>; accounts: Array<{ id: string; status: string }> };
+  interferenceEvents?: Array<{ id: string; startTime: number; duration: number; startAfterObjectiveId?: string; path?: string; emitter?: { latitude: number; longitude: number } }>;
+  security?: { events: Array<{ id: string; timeS?: number; startAfterObjectiveId?: string; isAnomaly?: boolean }>; accounts: Array<{ id: string; status: string }> };
+}
+
+/**
+ * Mission-elapsed second an objective-anchored event lands for a player on the
+ * author's pace (phase 19.0a): the anchor objective opens at `anchorOpensS`.
+ * Also pins which objective the event waits for.
+ */
+function onPaceS(offsetS: number, anchorId: string | undefined, expectedAnchor: string, anchorOpensS: number): number {
+  expect(anchorId, 'anchored to').toBe(expectedAnchor);
+  return anchorOpensS + offsetS;
+}
+
+/** The anchor objective cannot open before the command objective has ACKed: the event always lands after a clean first command. */
+function expectOpensAfter(scenario: ScenarioData, anchorId: string, prerequisiteId: string): void {
+  expect(scenario.objectives.find((o) => o.id === anchorId)?.prerequisiteObjectiveIds).toContain(prerequisiteId);
 }
 
 const settingsOf = (scenario: ScenarioData): Phase3Settings => scenario.settings as unknown as Phase3Settings;
@@ -119,8 +134,8 @@ describe('S17 Unusual Activity', () => {
 
     expect(carrier.path).toBe('terrestrial');
     expect(carrier.emitter).toBeDefined();
-    const onS = carrier.startTime;
-    const offS = carrier.startTime + carrier.duration;
+    const onS = onPaceS(carrier.startTime, carrier.startAfterObjectiveId, 'characterise-the-carrier', 1510);
+    const offS = onS + carrier.duration;
     expect(onS * 1000 + start, 'opens after culmination').toBeGreaterThan(sar1.maxElMs);
     expect(onS * 1000 + start, 'opens before LOS').toBeLessThan(sar1.losMs);
     expect(offS * 1000 + start, 'still on after LOS - the ground tell').toBeGreaterThan(sar1.losMs + 60_000);
@@ -135,8 +150,9 @@ describe('S17 Unusual Activity', () => {
     const exportEvent = security.events.find((e) => e.id === 'evt-config-export')!;
 
     expect(exportEvent.isAnomaly).toBe(true);
-    expect(exportEvent.timeS! * 1000 + start).toBeGreaterThan(sar1.losMs);
-    expect(exportEvent.timeS! * 1000 + start).toBeLessThan(sar2.aosMs);
+    const exportS = onPaceS(exportEvent.timeS!, exportEvent.startAfterObjectiveId, 'flag-the-config-export', 1955);
+    expect(exportS * 1000 + start).toBeGreaterThan(sar1.losMs);
+    expect(exportS * 1000 + start).toBeLessThan(sar2.aosMs);
     // The sprayed, decommissioned account starts active - disabling it is the operator's work.
     expect(security.accounts.find((a) => a.id === 'svc-legacy')?.status).toBe('active');
   });
@@ -183,6 +199,7 @@ describe('S18 Dirty Spectrum', () => {
     const events = settingsOf(scenario).interferenceEvents! as Array<{
       id: string;
       startTime: number;
+      startAfterObjectiveId?: string;
       duration: number;
       periodSeconds: number;
       onSeconds: number;
@@ -200,10 +217,11 @@ describe('S18 Dirty Spectrum', () => {
     expect(Math.abs(onSar2.frequency - 11730e6)).toBeLessThan(18e6);
     expect(Math.abs(onSar1.frequency - 11686e6)).toBeLessThan(18e6);
 
-    expect(onSar2.startTime * 1000 + start).toBeGreaterThan(sar2.maxElMs);
-    expect(onSar2.startTime * 1000 + start).toBeLessThan(sar2.losMs);
-    expect((onSar2.startTime + onSar2.duration) * 1000 + start, 'outlives SAR-2 LOS').toBeGreaterThan(sar2.losMs + 60_000);
-    expect((onSar2.startTime + onSar2.duration) * 1000 + start).toBeLessThan(sar1.aosMs);
+    const onSar2S = onPaceS(onSar2.startTime, onSar2.startAfterObjectiveId, 'read-the-cycle', 1390);
+    expect(onSar2S * 1000 + start).toBeGreaterThan(sar2.maxElMs);
+    expect(onSar2S * 1000 + start).toBeLessThan(sar2.losMs);
+    expect((onSar2S + onSar2.duration) * 1000 + start, 'outlives SAR-2 LOS').toBeGreaterThan(sar2.losMs + 60_000);
+    expect((onSar2S + onSar2.duration) * 1000 + start).toBeLessThan(sar1.aosMs);
 
     expect(onSar1.startTime * 1000 + start).toBeGreaterThan(sar1.aosMs);
     expect((onSar1.startTime + onSar1.duration) * 1000 + start).toBeLessThan(sar1.losMs);
@@ -266,6 +284,7 @@ describe('S19 Frequency Agility', () => {
     const [jam] = s19.interferenceEvents! as Array<{
       id: string;
       startTime: number;
+      startAfterObjectiveId?: string;
       duration: number;
       frequency: number;
       bandwidth: number;
@@ -275,11 +294,13 @@ describe('S19 Frequency Agility', () => {
     expect(jam.path).toBeUndefined();
     expect(jam.satelliteNoradId).toBe(s19.commanding.targetNoradId);
     expect(Math.abs(jam.frequency - s19.commanding.uplinkFrequencyHz)).toBeLessThanOrEqual(jam.bandwidth / 2);
-    // Opens after the first command has had time to ACK, closes with the window.
-    expect(jam.startTime).toBeGreaterThan(s19.commanding.windowStartS + 60);
-    expect(jam.startTime + jam.duration).toBeGreaterThanOrEqual(s19.commanding.windowEndS);
-    // Six minutes left in the window when it opens: enough to call, key, sync, resend.
-    expect(s19.commanding.windowEndS - jam.startTime).toBeGreaterThan(5 * 60);
+    // Opens once the first command has ACKed, closes with the window.
+    expectOpensAfter(scenario, 'call-the-nak', 'first-command');
+    const jamS = onPaceS(jam.startTime, jam.startAfterObjectiveId, 'call-the-nak', 1340);
+    expect(jamS).toBeGreaterThan(s19.commanding.windowStartS + 60);
+    expect(jamS + jam.duration).toBeGreaterThanOrEqual(s19.commanding.windowEndS);
+    // Six minutes left in the window when it opens on pace: enough to call, key, sync, resend.
+    expect(s19.commanding.windowEndS - jamS).toBeGreaterThan(5 * 60);
     // The hop set spans the jammed carrier.
     expect(s19.transec.hopChannelsHz).toContain(s19.commanding.uplinkFrequencyHz);
     expect(s19.transec.hopChannelsHz.length).toBeGreaterThanOrEqual(3);
@@ -447,9 +468,12 @@ describe('S21 Knocking on the Door', () => {
     const unitLog = events.find((e) => e.id === 'evt-kg-replay-log')!;
     expect(counter.isAnomaly).toBe(true);
     expect(unitLog.isAnomaly).toBe(true);
-    expect(counter.timeS).toBeGreaterThan(s21.commanding.windowStartS + 60);
-    expect(unitLog.timeS).toBeGreaterThanOrEqual(counter.timeS!);
-    expect(s21.commanding.windowEndS - unitLog.timeS!).toBeGreaterThan(5 * 60);
+    expectOpensAfter(scenario, 'spot-the-knock', 'first-command');
+    const counterS = onPaceS(counter.timeS!, counter.startAfterObjectiveId, 'spot-the-knock', 1595);
+    const unitLogS = onPaceS(unitLog.timeS!, unitLog.startAfterObjectiveId, 'spot-the-knock', 1595);
+    expect(counterS).toBeGreaterThan(s21.commanding.windowStartS + 60);
+    expect(unitLogS).toBeGreaterThanOrEqual(counterS);
+    expect(s21.commanding.windowEndS - unitLogS).toBeGreaterThan(5 * 60);
     expect(s21.commanding.commands.map((c) => c.id)).toEqual(expect.arrayContaining(['HK-DUMP', 'PLD-STATUS']));
   });
 
@@ -587,8 +611,10 @@ describe('S23 Dark Passes', () => {
     expect(s23.commanding.windowStartS - burn.maneuverAtS).toBeGreaterThanOrEqual(8 * 60);
 
     const [jam] = s23.interferenceEvents!;
-    expect(jam.startTime).toBeGreaterThan(s23.commanding.windowStartS + 60);
-    expect(s23.commanding.windowEndS - jam.startTime).toBeGreaterThan(5 * 60);
+    expectOpensAfter(scenario, 'call-the-denial', 'first-command');
+    const jamS = onPaceS(jam.startTime, jam.startAfterObjectiveId, 'call-the-denial', 1460);
+    expect(jamS).toBeGreaterThan(s23.commanding.windowStartS + 60);
+    expect(s23.commanding.windowEndS - jamS).toBeGreaterThan(5 * 60);
     expect(s23.transec.hopChannelsHz).toContain(s23.commanding.uplinkFrequencyHz);
   });
 
@@ -674,8 +700,10 @@ describe('S24 North Atlantic Storm', () => {
     expect(carrier.path).toBe('terrestrial');
     expect(carrier.startTime * 1000 + start).toBeGreaterThan(sar1.aosMs);
     expect(carrier.startTime * 1000 + start).toBeLessThan(sar1.losMs);
-    expect(jam.startTime).toBeGreaterThan(s24.commanding.windowStartS + 60);
-    expect(s24.commanding.windowEndS - jam.startTime).toBeGreaterThan(5 * 60);
+    expectOpensAfter(scenario, 'call-the-denial', 'chain-up-and-command');
+    const jamS = onPaceS(jam.startTime, jam.startAfterObjectiveId, 'call-the-denial', 3290);
+    expect(jamS).toBeGreaterThan(s24.commanding.windowStartS + 60);
+    expect(s24.commanding.windowEndS - jamS).toBeGreaterThan(5 * 60);
     expect(s24.transec.hopChannelsHz).toContain(s24.commanding.uplinkFrequencyHz);
   });
 

@@ -15,12 +15,15 @@ import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForS
  * (startAfterObjectiveId: 'observe-onset', 20 s after it activates), and the
  * Sky Temp readout includes the transit's noise.
  *
- * This spec plays a slow operator: it parks on 'Pre-Event Notification' and
- * jumps the scenario clock through the entire old window (window.advanceClock
- * moves every mission-elapsed schedule but not objective countdowns).
- *  - BEFORE the onset objective: the old peak time and the old window's end
- *    both pass with zero sky noise and no active weather event. (Old engine:
- *    ~12 dB at T+450 s - this test fails.)
+ * This spec plays a slow operator, the way the reported players were slow:
+ * it spends most of each objective's countdown before acting, which walks the
+ * scenario clock through the entire old window. Since phase 19.0a
+ * window.advanceClock burns countdowns the way waiting does, so every dwell
+ * stays inside its objective's timer - a jump a real player cannot make
+ * fails the objective.
+ *  - BEFORE the onset objective: the old window's end passes with zero sky
+ *    noise and no active weather event. (Old engine: the transit came and
+ *    went during the dwells - this test fails.)
  *  - AFTER the onset objective activates: the transit arrives on cue, the
  *    checklist condition ticks, the objective completes, and Sky Temp climbs
  *    far above the clear-sky 10 K. (Old engine: sky noise stays 0 - fails.)
@@ -70,6 +73,12 @@ async function advanceMissionTo(page: Page, targetSeconds: number): Promise<numb
   return Math.round(elapsedMs) / 1000;
 }
 
+/** Spend `seconds` of an objective's countdown, as a slow player would (keep it under the timer). */
+async function dwell(page: Page, seconds: number): Promise<void> {
+  await page.evaluate((ms) => (window as unknown as SimWindow).advanceClock!(ms), seconds * 1000);
+  await page.waitForTimeout(1500);
+}
+
 async function answerQuiz(page: Page, answer: string): Promise<void> {
   await waitForQuizToAppear(page);
   await answerQuizByText(page, answer);
@@ -109,17 +118,23 @@ test.describe('Scenario 17 Late Onset Regression', () => {
     test.setTimeout(90_000);
   });
 
-  test('play the pre-window objectives up to Pre-Event Notification', async () => {
+  test('play the pre-window objectives slowly, most of each timer, up to Pre-Event Notification', async () => {
     await answerQuiz(page, 'Acknowledged - prediction sheet reviewed, pre-event checklist starting now.');
+    await dwell(page, 20); // select-vermont-station: 60 s, with a maintain hold after the click
     await missionControlPage.selectGroundStation('VT-01');
 
+    await dwell(page, 20); // baseline-dashboard: 60 s
     await missionControlPage.selectTab('dashboard');
     await answerQuiz(page, 'Anything abnormal after window-open gets blamed on the Sun - a hidden fault only shows if the board was provably clean before');
+    await dwell(page, 100); // transit-geometry-quiz: 120 s
     await answerQuiz(page, 'The Sun (~20,000 K at C-band) passes through the main beam behind the satellite - noise soars, C/N collapses, signal unchanged');
+    await dwell(page, 100); // transit-predictability-quiz: 120 s
     await answerQuiz(page, 'Twice a year near the equinoxes - a few minutes a day for several days, at a time computable years ahead from the geometry');
 
+    await dwell(page, 80); // baseline-rx-check: 120 s, with a maintain hold
     await missionControlPage.selectTab('rx-analysis');
     await waitForObjectiveComplete(missionControlPage, 'Baseline RX Snapshot');
+    await dwell(page, 100); // why-not-handover-quiz: 120 s
     await answerQuiz(page, 'Brief, predicted, SLA-excluded with notice - a handover costs two transfer events, and ME-02 gets its own transit anyway');
 
     // Parked on the notice quiz: onset objective not yet up
@@ -129,15 +144,14 @@ test.describe('Scenario 17 Late Onset Regression', () => {
   });
 
   test('BEFORE onset objective: no transit through the old T+300..600 s window', async () => {
-    // The old schedule's peak (T+450 s: ~12 dB on the unfixed engine)
-    const atOldPeak = await advanceMissionTo(page, 450);
-    expect(atOldPeak).toBeGreaterThanOrEqual(450);
+    await dwell(page, 100); // notify-customer-quiz: 120 s
+    // Deep in the old T+300..600 s window (about 9 dB at T+500 on the unfixed
+    // engine), with the onset objective still not up. advanceMissionTo(0)
+    // jumps nothing; it reads the clock.
+    const lateArrival = await advanceMissionTo(page, 0);
+    expect(lateArrival).toBeGreaterThanOrEqual(500);
     expect(await readSkyNoiseDb(page)).toBe(0);
-
-    // Past the old window entirely - where the reported players were stuck
-    const pastOldWindow = await advanceMissionTo(page, 720);
-    expect(pastOldWindow).toBeGreaterThanOrEqual(720);
-    expect(await readSkyNoiseDb(page)).toBe(0);
+    expect(await readObjective(page, 'notify-customer-quiz')).toEqual({ isActive: true, isCompleted: false });
     expect(await readObjective(page, 'observe-onset')).toEqual({ isActive: false, isCompleted: false });
   });
 

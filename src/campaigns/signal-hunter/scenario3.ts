@@ -18,9 +18,10 @@ import { sentry7Satellite, sentry9Satellite } from './satellites';
  *
  * Two emitter-bearing events, both on SENTRY-7 TP-1, 36 s on / 84 s off:
  * - 'clayton-a': 6018 MHz uplink -> 3793 MHz downlink -> 1357 MHz IF, from
- *   T+20 to T+1520, a ranch road south of Clayton, Union County NM
- *   (36.45N 103.18W).
- * - 'clayton-b': 6001 MHz -> 3776 -> 1374 MHz IF, from T+1800 on, a caprock
+ *   T+20 until 60 s after 'the-trail-goes-cold' opens, a ranch road south of
+ *   Clayton, Union County NM (36.45N 103.18W).
+ * - 'clayton-b': 6001 MHz -> 3776 -> 1374 MHz IF, from 280 s after that on
+ *   (both anchored, phase 19.0a), a caprock
  *   overlook in Harding County NM (36.02N 103.90W) - about 80 km south-west
  *   of the first site.
  *
@@ -83,7 +84,12 @@ export const signalHunterScenario3Data: ScenarioData = {
         power: 4,
         polarization: 'H',
         startTime: 20,
-        duration: 1500, // Stops at T+25:20 - while the team is on the road
+        duration: 1500,
+        // Stops 60 s after 'the-trail-goes-cold' opens - while the team is on
+        // the road (phase 19.0a; was a fixed T+25:20, which went silent under
+        // anyone still capturing it)
+        endAfterObjectiveId: 'the-trail-goes-cold',
+        endOffsetS: 60,
         periodSeconds: 120, // 36 s on / 84 s off
         onSeconds: 36,
         // Hidden ground truth: a ranch road south of Clayton, Union County, New Mexico
@@ -100,7 +106,9 @@ export const signalHunterScenario3Data: ScenarioData = {
         bandwidth: 2.5e6,
         power: 4,
         polarization: 'H',
-        startTime: 1800, // Back on the air 280 s after the first carrier stopped - two silent cycles and change
+        // Back on the air 280 s after the first carrier stopped - two silent cycles and change
+        startAfterObjectiveId: 'the-trail-goes-cold',
+        startTime: 340,
         duration: 7200,
         periodSeconds: 120,
         onSeconds: 36,

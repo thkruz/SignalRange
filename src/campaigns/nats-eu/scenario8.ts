@@ -172,11 +172,23 @@ export const natsEuScenario8Data: ScenarioData = {
 
     // E3 - two faults on the mission clock, unlabelled: noticing them is the
     // evaluation. The Shetland GNSS antenna drops out at 02:44 and comes back at
-    // 02:59, so the 02:54 contact is flown on the oscillator; the fleet traffic
-    // key rolls at 04:15 and the station's payload crypto reads Mismatch until
-    // the operator re-keys before the 04:27 pass.
+    // about 02:59, so the 02:54 contact is flown on the oscillator; the fleet
+    // traffic key rolls at 04:15 and the station's payload crypto reads Mismatch
+    // until the operator re-keys before the 04:27 pass.
+    // Phase 19.0a: both waits are operator skips, so the objectives that send
+    // the operator skipping carry no timer (a running timer blocks the skip).
+    // The outage returns 45 s after 'confirm-reference-recovered' opens rather
+    // than at a fixed 02:59, so a contact flown late still sees it come back.
     hardwareFaultEvents: [
-      { id: 'sh-gnss-outage', groundStationId: 'SH-02', target: 'gpsdo-gnss-loss', startTime: 8940, duration: 900 },
+      {
+        id: 'sh-gnss-outage',
+        groundStationId: 'SH-02',
+        target: 'gpsdo-gnss-loss',
+        startTime: 8940,
+        duration: 900,
+        endAfterObjectiveId: 'confirm-reference-recovered',
+        endOffsetS: 45,
+      },
       { id: 'traffic-key-roll', groundStationId: 'GW-01', target: 'crypto-key-mismatch', startTime: 14400 },
     ],
   },
@@ -482,7 +494,7 @@ export const natsEuScenario8Data: ScenarioData = {
       id: 'secure-the-chain',
       nice: ['S0421', 'K0645'],
       title: 'Secure the Chain',
-      description: 'LOS 00:38:49. Chain down in the mirror order: HPA off, BUC muted, carrier off.',
+      description: 'Chain down now, in the mirror order: HPA off, BUC muted, carrier off. No need to wait for LOS (00:38:49).',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['command-the-bird'],
       timeLimitSeconds: 2 * 60,
@@ -557,8 +569,6 @@ export const natsEuScenario8Data: ScenarioData = {
         'Skip ahead to the 02:54 Shetland window. Select SH-02: BUC temperature normal, LNB thermally stable, and retune modem 1 from the 1414 MHz SAR-1 carrier Fiona left it on to 1370 MHz for SAR-2.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['log-contact-1'],
-      timeLimitSeconds: 3 * 60,
-      timerStartTrigger: 'on-activate',
       conditions: [
         {
           type: 'ground-station-selected',
@@ -566,6 +576,15 @@ export const natsEuScenario8Data: ScenarioData = {
           description: 'SH-02 Selected',
           params: { groundStationId: 'SH-02' },
           mustMaintain: true,
+        },
+        {
+          // The sweep belongs to the 02:54 window: done before the skip, it
+          // would open the reference read two hours before the outage
+          type: 'hardware-fault-tripped',
+          hidden: true,
+          description: 'Shetland Window Reached',
+          params: { eventId: 'sh-gnss-outage' },
+          mustMaintain: false,
         },
         {
           type: 'buc-temperature-normal',
@@ -712,7 +731,7 @@ export const natsEuScenario8Data: ScenarioData = {
       id: 'confirm-reference-recovered',
       nice: ['T0431', 'K0740', 'T1580'],
       title: 'Confirm the Shetland Reference Recovered',
-      description: 'The GNSS signal returns at 02:59. Confirm on the SH-02 GPS Timing panel that the receiver has re-locked and left holdover, then log contact 2.',
+      description: 'The GNSS signal returns at about 02:59. Confirm on the SH-02 GPS Timing panel that the receiver has re-locked and left holdover, then log contact 2.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['telemetry-contact'],
       timeLimitSeconds: 4 * 60,
@@ -767,8 +786,6 @@ export const natsEuScenario8Data: ScenarioData = {
       description: 'Skip ahead to the 04:27 Galway window and select GW-01. Before the pass, read the payload crypto on RX analysis. It is not what you left it either.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['confirm-reference-recovered'],
-      timeLimitSeconds: 2 * 60,
-      timerStartTrigger: 'on-activate',
       conditions: [
         {
           type: 'ground-station-selected',

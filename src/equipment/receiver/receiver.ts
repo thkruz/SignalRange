@@ -133,6 +133,25 @@ export class Receiver extends BaseEquipment {
     EventBus.getInstance().once(Events.SYNC, this.initialSync.bind(this));
   }
 
+  /**
+   * C/N (dB) below which a carrier reads degraded. One value per modulation,
+   * whatever the code rate (DEV-MODEM-02 in docs/known-deviations.md; the
+   * DVB-S2 table replaces it in phase 19.5).
+   */
+  static requiredCnDb(modulation: string): number {
+    switch (modulation) {
+      case 'BPSK':
+        return 7;
+      case '8QAM':
+        return 13;
+      case '16QAM':
+        return 16;
+      default:
+        // QPSK and anything unrecognised
+        return 10;
+    }
+  }
+
   static getDefaultState(): ReceiverState {
     const modems: ReceiverModemState[] = Array.from({ length: 4 }, (_, idx) => {
       const modemNumber = idx + 1;
@@ -932,31 +951,7 @@ export class Receiver extends BaseEquipment {
 
       const cn = signalLevel - noiseFloor;
 
-      // Typical C/N requirements:
-      // BPSK: 6-8 dB
-      // QPSK: 9-11 dB
-      // 8QAM: 12-15 dB
-      // 16QAM: 15-18 dB
-
-      let requiredCN: number;
-
-      switch (s.modulation) {
-        case 'BPSK':
-          requiredCN = 7;
-          break;
-        case 'QPSK':
-          requiredCN = 10;
-          break;
-        case '8QAM':
-          requiredCN = 13;
-          break;
-        case '16QAM':
-          requiredCN = 16;
-          break;
-        default:
-          requiredCN = 10;
-          break;
-      }
+      const requiredCN = Receiver.requiredCnDb(s.modulation);
 
       if (cn < requiredCN) {
         s.isDegraded = true;

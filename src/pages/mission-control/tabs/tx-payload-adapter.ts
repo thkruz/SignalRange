@@ -12,7 +12,8 @@ import { FaultInjector } from '@app/faults';
 export interface TxPayloadState {
   // Source Status
   dataRate: string;
-  payloadType: 'Command' | 'Telemetry' | 'Bulk Data';
+  /** Scenarios set this through FaultInjector tx-payload overrides; 'Data' is the neutral default (s01-F20) */
+  payloadType: 'Data' | 'Command' | 'Telemetry' | 'Bulk Data';
   channel: 'Primary' | 'Backup';
   sourceFeedStatus: 'Active' | 'Idle' | 'Error' | 'No Signal';
 
@@ -55,7 +56,7 @@ export class TxPayloadAdapter {
   private state_: TxPayloadState = {
     // Source Status
     dataRate: '2.048 Mbps',
-    payloadType: 'Command',
+    payloadType: 'Data',
     channel: 'Primary',
     sourceFeedStatus: 'Active',
 

@@ -140,6 +140,9 @@ export const scenario18Data: ScenarioData = {
   timeLimitSeconds: 35 * 60,
   settings: {
     isSync: true,
+    // Brief: Monday 0915 local
+    scenarioStartDate: '2026-03-02',
+    scenarioStartWallTime: '09:15:00',
     groundStations: [
       // VT-01: standby on TIDEMARK-1, untouched this shift
       {
@@ -210,7 +213,7 @@ export const scenario18Data: ScenarioData = {
                   ...vermontGroundStation.transmitters[0].modems[0].ifSignal,
                   signalId: 'TIDEMARK-2-Teleport',
                   noradId: 61526,
-                  frequency: 1020e6 as IfFrequency, // TM-2 TP-2: 7000 - 5980
+                  frequency: 983e6 as IfFrequency, // TM-2 TP-1: 7000 - 6017
                 },
               },
             ],
@@ -339,7 +342,8 @@ export const scenario18Data: ScenarioData = {
               'Weather over Maine - rain fade degrades the link while every indicator stays green, so check the precipitation sensor',
             ],
             correctIndex: 0,
-            explanation: 'Healthy equipment + sick link = look up, not down. The S16 cascade taught fault isolation on the ground; this is the same discipline pointed at the sky.',
+            explanation:
+              'Healthy equipment + sick link = look up, not down. Fault isolation on the ground is the same discipline you use on a cascade - this time pointed at the sky.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -437,7 +441,7 @@ export const scenario18Data: ScenarioData = {
           description: 'The Clock',
           params: {
             character: Character.SYSTEM,
-            question: 'The figure-8 is ±1.3° and growing; the dish beamwidth is ~0.5°. What does that mean for program-track as a strategy?',
+            question: 'The figure-8 is ±1.3° and growing; the dish beamwidth is ~0.6° (ACU HPBW). What does that mean for program-track as a strategy?',
             options: [
               'Already lost - the excursion is several beamwidths and growing; any fix that follows the ephemeris fails until Halifax publishes a corrected one',
               'Fine for another month - the excursion is under a beamwidth at the extremes; the margin holds until Halifax publishes a corrected set',
@@ -489,8 +493,10 @@ export const scenario18Data: ScenarioData = {
     {
       id: 'acquire-stable-beacon',
       nice: ['T0153', 'K1032'],
-      title: 'Beacon Recovery',
-      description: 'Hold beacon lock under step-track - watch the C/N climb back as the loop finds the real satellite.',
+      // Beacon is locked from the start, so this is a hold, not a recovery,
+      // until the Phase 19 C/N work makes the ephemeris loss visible (nats-s18-F3)
+      title: 'Beacon Lock Holds Under Step-Track',
+      description: 'Keep beacon lock for 15 s while step-track takes over from the ephemeris - no input needed, just watch the ACU beacon C/N.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['enable-step-track'],
       timeLimitSeconds: 3 * 60,
@@ -510,7 +516,7 @@ export const scenario18Data: ScenarioData = {
       id: 'verify-carrier-recovery',
       nice: ['T0153', 'T1314'],
       title: 'Carrier Recovery',
-      description: 'Confirm the customer carrier recovered with the pointing.',
+      description: 'Open RX Analysis and confirm the customer carrier is locked with C/N at least 9 dB, held for 15 s.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['acquire-stable-beacon'],
       timeLimitSeconds: 3 * 60,
@@ -564,7 +570,7 @@ export const scenario18Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Step-track corrects continuously against the measured beacon; a human nudging every few minutes accumulates pointing error between corrections, and fatigue guarantees a missed one. The day automation actually dies you will fly manual because you must (that day comes in this campaign) - but choosing manual while the loop works is choosing worse performance at higher risk.',
+              'Step-track corrects continuously against the measured beacon; a human nudging every few minutes accumulates pointing error between corrections, and fatigue guarantees a missed one. If the automation ever actually dies you will fly manual because you must - but choosing manual while the loop works is choosing worse performance at higher risk.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -666,7 +672,7 @@ export const scenario18Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Honest posture: green today, amber risk, named tripwires. The S22 board work later in this phase grades exactly this skill - say what you know, label what you are watching.',
+              'Honest posture: green today, amber risk, named tripwires. Every board-level report you will ever write grades exactly this skill - say what you know, label what you are watching.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -725,9 +731,9 @@ export const scenario18Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which entry hands this off correctly?',
             options: [
-              'TM-2 vehicle anomaly (Halifax ref): N-S burns suspended, ephemeris stale. ME-02 step-track from 0935, carrier recovered, no impact. Pointing history to Halifax. Anomaly OPEN.',
-              'TM-2 tracking anomaly (ME-02 ref): program-track lost margin, ephemeris stale. Step-track from 0935, carrier recovered, no impact. Fix confirmed, no further action. Anomaly CLOSED.',
-              'TM-2 vehicle anomaly (Halifax ref): N-S burns suspended, ephemeris stale. ME-02 step-track 0935 to 1010, carrier recovered, no impact. Returned to program-track. Anomaly CLOSED.',
+              'TM-2 vehicle anomaly (Halifax ref): N-S burns suspended, ephemeris stale. ME-02 step-track from ~0920, carrier recovered, no impact. Pointing history to Halifax. Anomaly OPEN.',
+              'TM-2 tracking anomaly (ME-02 ref): program-track lost margin, ephemeris stale. Step-track from ~0920, carrier recovered, no impact. Fix confirmed, no further action. Anomaly CLOSED.',
+              'TM-2 vehicle anomaly (Halifax ref): N-S burns suspended, ephemeris stale. ME-02 step-track 0920 to 0930, carrier recovered, no impact. Returned to program-track. Anomaly CLOSED.',
               'TM-2 vehicle anomaly (Halifax ref): thruster degradation under investigation. ME-02 carrier nominal, no impact. Halifax holds all detail and next steps. Anomaly OPEN, no ground actions.',
             ],
             correctIndex: 0,

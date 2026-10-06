@@ -1,11 +1,10 @@
 import { createRfFrontEnd } from '@app/campaigns/rf-front-end-factory';
 import type { AntennaState } from '@app/equipment/antenna';
 import { ANTENNA_CONFIG_KEYS } from '@app/equipment/antenna/antenna-config-keys';
-import { Receiver } from '@app/equipment/receiver/receiver';
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { Objective } from '@app/objectives/objective-types';
 import type { ScenarioData } from '@app/ScenarioData';
-import type { dB, dBm, Hertz } from '@app/types';
+import type { dB, dBm, Hertz, MHz } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
 import { vermontGroundStation } from './ground-stations';
@@ -66,6 +65,8 @@ export const scenario9Data: ScenarioData = {
   timeLimitSeconds: 25 * 60, // 25 minutes
   settings: {
     isSync: true,
+    scenarioStartDate: '2026-02-16',
+    scenarioStartWallTime: '06:42:00',
     groundStations: [
       // VT-01: healthy, tracking TIDEMARK-1, default morning-shift state
       {
@@ -111,7 +112,10 @@ export const scenario9Data: ScenarioData = {
         spectrumAnalyzers: [
           {
             referenceLevel: -91 as dBm,
-            centerFrequency: 1070e6 as Hertz, // Tuned to TM-2 beacon IF
+            // Left on the TM-1 beacon IF from a cross-check, so the player has
+            // to retune to TM-2's 1070 MHz (nats-s09-F4: a pre-set analyzer
+            // made the beacon check complete on opening the tab)
+            centerFrequency: 1074.5e6 as Hertz,
             span: 2e3 as Hertz,
             rbw: 1e3 as Hertz,
             minAmplitude: -95 as dBm,
@@ -129,7 +133,24 @@ export const scenario9Data: ScenarioData = {
           },
         ],
         transmitters: [],
-        receivers: [Receiver.getDefaultState()],
+        // RX modem on the TM-2 carrier so the payload spot-check reads a healthy
+        // link (nats-s09-F6: the factory default sat at 1400 MHz, NO LOCK)
+        receivers: [
+          {
+            activeModem: 1,
+            modems: [
+              {
+                modemNumber: 1,
+                isPowered: true,
+                frequency: 1458 as MHz, // TM-2 downlink IF (5250 - 3792)
+                bandwidth: 36 as MHz,
+                modulation: 'QPSK',
+                fec: '3/4',
+                antenna_id: 1,
+              },
+            ],
+          },
+        ],
       },
     ],
     satellites: [tidemark1Satellite, tidemark2Satellite, tidemark3Satellite, ses10Satellite],
@@ -305,13 +326,14 @@ export const scenario9Data: ScenarioData = {
             minPower: -100 as dBm,
             requiresObservation: true,
             observationTab: 'rx-analysis',
+            observationDwellSeconds: 5,
           },
           mustMaintain: true,
         },
         {
           type: 'receiver-signal-locked',
           description: 'Receiver Locked',
-          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis', observationDwellSeconds: 5 },
           mustMaintain: true,
         },
       ],
@@ -322,7 +344,7 @@ export const scenario9Data: ScenarioData = {
       id: 'vt-tx-hpa-check',
       nice: ['T0431', 'K0740'],
       title: 'VT-01 TX Chain Spot Check',
-      description: 'Verify the HPA is enabled and operating with proper backoff.',
+      description: 'Open TX Chain and verify the HPA is enabled and not overdriven.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['vt-rx-beacon-check'],
       timeLimitSeconds: 2 * 60,
@@ -347,6 +369,29 @@ export const scenario9Data: ScenarioData = {
           params: { requiresObservation: true, observationTab: 'tx-chain' },
           mustMaintain: true,
         },
+      ],
+      conditionLogic: 'AND',
+      points: 5,
+    },
+    // The backoff quiz used to sit in the spot check above, where it could be
+    // answered before the TX tab was ever opened (nats-s09-F4)
+    {
+      id: 'vt-tx-backoff-check',
+      nice: ['K0740'],
+      title: 'VT-01 HPA Backoff Reading',
+      description: 'Read the HPA backoff on the TX Chain tab and say what it means.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['vt-tx-hpa-check'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          hidden: true,
+          description: 'TX Chain Open',
+          params: { tab: 'tx-chain' },
+          mustMaintain: true,
+        },
         {
           type: 'status-check',
           description: 'HPA Backoff Understanding',
@@ -367,7 +412,7 @@ export const scenario9Data: ScenarioData = {
         },
       ],
       conditionLogic: 'AND',
-      points: 10,
+      points: 5,
     },
 
     // ============================================================
@@ -379,7 +424,7 @@ export const scenario9Data: ScenarioData = {
       title: 'Open ME-02',
       description: 'Switch to the Maine Ground Station.',
       groundStation: 'ME-02',
-      prerequisiteObjectiveIds: ['vt-tx-hpa-check'],
+      prerequisiteObjectiveIds: ['vt-tx-backoff-check'],
       timeLimitSeconds: 1 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -436,7 +481,8 @@ export const scenario9Data: ScenarioData = {
       id: 'me-rx-beacon-check',
       nice: ['T0153', 'K1032', 'K0773'],
       title: 'ME-02 TIDEMARK-2 Beacon Check',
-      description: 'Verify the TIDEMARK-2 beacon is present on the spectrum analyzer and the LNB is thermally stable.',
+      description:
+        'The ME-02 analyzer is still parked on the TM-1 beacon IF. Retune it to the TIDEMARK-2 beacon IF (1070 MHz) and confirm the beacon is present and the LNB noise temperature is normal.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['me-dashboard-check'],
       timeLimitSeconds: 3 * 60,
@@ -457,8 +503,17 @@ export const scenario9Data: ScenarioData = {
         },
         {
           type: 'lnb-thermally-stable',
-          description: 'LNB Thermally Stable',
+          description: 'LNB Noise Temperature Normal',
           params: { requiresObservation: true, observationTab: 'rx-analysis' },
+          mustMaintain: true,
+        },
+        {
+          type: 'speca-center-frequency',
+          description: 'Spectrum Analyzer at 1070 MHz IF',
+          params: {
+            centerFrequency: 1070e6 as Hertz,
+            centerFrequencyTolerance: 0.5e6,
+          },
           mustMaintain: true,
         },
         {
@@ -759,12 +814,19 @@ export const scenario9Data: ScenarioData = {
       id: 'log-shift-summary',
       nice: ['K0645', 'T0153'],
       title: 'Log Shift Summary',
-      description: 'Select the correct entry for the shift log.',
+      description:
+        'Type a one-line summary of the round in the Operations Log (log icon in the station sidebar): mention the morning rounds and the TM-3 beacon check. Then pick the line that matches it.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['final-alarm-sweep'],
       timeLimitSeconds: 1 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
+        {
+          type: 'ops-log-entry',
+          description: 'Round Summary Typed in Ops Log',
+          params: { logKeywords: ['round', 'tm-3|tm3|tidemark-3|tidemark 3'], logMinLength: 20 },
+          mustMaintain: false,
+        },
         {
           type: 'status-check',
           description: 'Shift Log Entry',
@@ -775,7 +837,7 @@ export const scenario9Data: ScenarioData = {
               '0700 - Morning rounds complete. VT-01/TM-1, ME-02/TM-2, TM-3 beacon verified via VT-01 spot-check. No anomalies.',
               '0700 - Morning rounds incomplete. VT-01/TM-1, ME-02/TM-2 checked, TM-3 spot-check deferred to next shift. No anomalies.',
               '0700 - Morning rounds complete. VT-01/TM-1, ME-02/TM-2 checked, multiple alarms cleared on VT-01. See trouble ticket.',
-              '0700 - Morning rounds complete. VT-01 repointed to TM-3 for spot-check, TM-1 traffic swapped to ME-02. No anomalies.',
+              '0700 - Morning rounds complete. VT-01 repointed to TM-3 for spot-check, TM-1 traffic dropped during the check. No anomalies.',
             ],
             correctIndex: 0,
             explanation: 'Routine work logged routinely. Next operator picks up with full context.',

@@ -285,10 +285,11 @@ export class MissionControlPage extends BasePage {
   }
 
   hide(): void {
-    MissionControlPage.destroy();
+    // Hide first: if teardown throws, the player must still leave the page
     if (this.dom_) {
       this.dom_.style.display = 'none';
     }
+    MissionControlPage.destroy();
   }
 
   static destroy(): void {

@@ -75,7 +75,8 @@ export async function closeWorkingDocumentIfOpen(page: Page): Promise<void> {
   if (await box.isVisible({ timeout: 1000 }).catch(() => false)) {
     const closeBtn = box.locator('.draggable-box__close-btn, [id$="-close"]').first();
     if (await closeBtn.isVisible({ timeout: 500 }).catch(() => false)) {
-      await closeBtn.click();
+      // The end-of-mission modal may close the box first (it closes every popup)
+      await closeBtn.click({ timeout: 2000 }).catch(() => {});
     }
   }
 }

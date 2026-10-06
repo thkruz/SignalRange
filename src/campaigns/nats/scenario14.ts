@@ -67,7 +67,7 @@ export const scenario14Data: ScenarioData = {
   duration: '25-35 min',
   difficulty: 'intermediate',
   missionType: 'Weather Contingency',
-  description: `Rain front moving over Vermont. Light to moderate, maybe twenty minutes through. The link will fade but it shouldn't black out.<br><br>The customer - James Okafor at SeaLink - has called ahead. Their SLA terms penalize handover events more than they penalize a few dB of margin loss, so he's asked us to hold VT-01 through the weather if we can. ME-02 is busy on TIDEMARK-2 and would have to drop its own customers to take TIDEMARK-1.<br><br>Your job: enable the feed heater, watch AGC headroom, track the beacon C/N, and make the call. Hold or hand off - the right answer is the one the link supports.`,
+  description: `Rain front moving over Vermont. Light to moderate, maybe twenty minutes through. The link will fade but it shouldn't black out.<br><br>The customer - James Okafor, fleet captain for the Atlantic Shipping Alliance, SeaLink's anchor customer - has called ahead. Their SLA terms penalize handover events more than they penalize a few dB of margin loss, so he's asked us to hold VT-01 through the weather if we can. ME-02 is busy on TIDEMARK-2 and would have to drop its own customers to take TIDEMARK-1.<br><br>Your job: enable the feed heater, watch AGC headroom, track the beacon C/N, and make the call. Hold or hand off - the right answer is the one the link supports.`,
   equipment: ['9-meter C-band Antenna', 'RF Front End (Feed Heater, AGC)', 'Spectrum Analyzer', 'RX/TX Modems', 'ME-02: Operational (TIDEMARK-2)'],
   timeLimitSeconds: 35 * 60, // 35 minutes
   settings: {
@@ -147,7 +147,11 @@ export const scenario14Data: ScenarioData = {
         groundStationId: 'VT-01',
         type: 'rain',
         severity: 'moderate',
-        startTime: 300, // 5 minutes into the scenario
+        // The front arrives as the operator starts monitoring, not at a fixed
+        // 300 s that a fast player finished before and a slow one missed the
+        // start of (nats-s14-F5)
+        startAfterObjectiveId: 'monitor-during-fade',
+        startTime: 5,
         duration: 1200, // 20 minutes of rain
         // 3 dB of degradation - within AGC compensation range; link should
         // hold with margin. Compare to S3's 8 dB severe blizzard.
@@ -162,6 +166,9 @@ export const scenario14Data: ScenarioData = {
     ],
     missionBriefUrl: 'https://docs.signalrange.space/campaign-1/scenario-14?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
+    // Brief: Wednesday, 1318 Local
+    scenarioStartDate: '2026-02-11',
+    scenarioStartWallTime: '13:18:00',
   },
   objectives: [
     // ============================================================
@@ -190,7 +197,7 @@ export const scenario14Data: ScenarioData = {
             question: 'Have you reviewed the shift brief and SeaLink customer note?',
             options: ['Yes, brief reviewed. Standing by for the front.'],
             correctIndex: 0,
-            explanation: 'Front arrives in about five minutes. Get protective measures in place before it does.',
+            explanation: 'The front is minutes out. Get protective measures in place before it arrives.',
             pointPenalty: 0,
           },
           mustMaintain: false,
@@ -207,7 +214,7 @@ export const scenario14Data: ScenarioData = {
       id: 'acknowledge-customer-constraint',
       nice: ['K0721', 'S0593'],
       title: 'Customer Constraint',
-      description: 'James from SeaLink has called ahead about the weather. Acknowledge what he is asking for.',
+      description: 'James Okafor (Atlantic Shipping Alliance) has called ahead about the weather. Acknowledge what he is asking for.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['review-mission-brief'],
       timeLimitSeconds: 2 * 60,
@@ -218,7 +225,7 @@ export const scenario14Data: ScenarioData = {
           description: 'Customer SLA Posture',
           params: {
             character: Character.SYSTEM,
-            question: 'James from SeaLink is asking us to hold VT-01 through the rain rather than hand off. What is the operational reason?',
+            question: 'James is asking us to hold VT-01 through the rain rather than hand off. What is the operational reason?',
             options: [
               'Their SLA penalizes handover events more heavily than a few dB of margin loss',
               'Their SLA does not allow ME-02 to carry SeaLink traffic without prior certification',
@@ -303,7 +310,8 @@ export const scenario14Data: ScenarioData = {
       id: 'enable-feed-heater',
       nice: ['S0421', 'K0689'],
       title: 'Enable Feed Heater',
-      description: 'Open the ACU Control panel and enable the feed heater before the front arrives.',
+      description:
+        'Open the ACU Control panel and enable the feed heater before the front arrives. The card says "Prevents ice buildup"; in rain the same heater keeps the feed dry. The Rain Blower is optional on a moderate front and is not part of this procedure.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['pre-storm-dashboard'],
       timeLimitSeconds: 3 * 60,
@@ -349,7 +357,7 @@ export const scenario14Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Standing water on the feed is itself an attenuator. The heater keeps surfaces above dew point so droplets evaporate instead of beading and pooling. Same hardware as the anti-icing case in S3, different mechanism - rain at 12°C is not going to freeze.',
+              'Standing water on the feed is itself an attenuator. The heater keeps surfaces above dew point so droplets evaporate instead of beading and pooling. Same hardware as the anti-icing case in a winter storm, different mechanism - rain at 12°C is not going to freeze.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -841,18 +849,21 @@ export const scenario14Data: ScenarioData = {
         <em>[Text message from Dana at 13:18]</em>
       </p>
       <p>
-        "Rain front in about five minutes. Light to moderate, twenty minutes through. James from SeaLink called - their SLA likes margin loss better than handover events, so he wants us to hold if we can. ME-02 is busy on TM-2. Brief's on your terminal."
+        "Rain front in about five minutes. Light to moderate, twenty minutes through. James Okafor called - their SLA likes margin loss better than handover events, so he wants us to hold if we can. ME-02 is busy on TM-2. Brief's on your terminal."
       </p>
       `,
       character: Character.DANA_TORRES,
       emotion: Emotion.NEUTRAL,
       audioUrl: getAssetUrl('/assets/campaigns/nats/14/intro.mp3'),
     },
-    objectives: {
+    // Each line introduces its step: James calls as the constraint step opens
+    // (on completion it read as a reply to the quiz), Dana's check-in opens
+    // the threshold question, and "log it" opens the log step, not after it
+    objectivesOnStart: {
       'acknowledge-customer-constraint': {
         text: `
         <p>
-          Hey - it's James over at SeaLink. Saw your weather notice on the portal. Look, every handover event lights up the contract dashboard for our board, and we'd rather take a little ride through a few dB than have that show up.
+          Hey - it's James Okafor, Atlantic Shipping. Saw your weather notice on the SeaLink portal. Look, every handover event lights up the contract dashboard for our board, and we'd rather take a little ride through a few dB than have that show up.
         </p>
         <p>
           Hold us on Vermont if you can. If you can't, you can't - we'll wear it. But your call, not a marketing call.

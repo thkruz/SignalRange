@@ -8,9 +8,21 @@ import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForS
  * Five concurrent tracks: VT-01 storm (proactive heater), ME-02 BUC thermal
  * trend (de-rate), AURORA-7 customer pass (acquire + step-track), customer +
  * board comms. The Working Document is the incident-command log. No new
- * mechanics - this validates the orchestration of everything prior.
+ * mechanics - this validates the orchestration of everything prior. The BUC
+ * heat is a staged buc-overtemp fault; the closing step needs a typed Ops Log
+ * entry.
  */
-type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'toggle-switch' | 'configure-buc-gain' | 'repoint-program-track' | 'set-step-track' | 'verify-working-doc' | 'auto';
+type ObjectiveType =
+  | 'quiz'
+  | 'select-station'
+  | 'click-tab'
+  | 'toggle-switch'
+  | 'configure-buc-gain'
+  | 'repoint-program-track'
+  | 'set-step-track'
+  | 'verify-working-doc'
+  | 'ops-log'
+  | 'auto';
 
 interface Scenario24Objective {
   id: string;
@@ -24,6 +36,7 @@ interface Scenario24Objective {
   bucGain?: number;
   satelliteNoradId?: string;
   autoWaitSeconds?: number;
+  logText?: string;
 }
 
 const SCENARIO_24_OBJECTIVES: Scenario24Objective[] = [
@@ -90,7 +103,8 @@ const SCENARIO_24_OBJECTIVES: Scenario24Objective[] = [
     id: 'verify-buc-trending-down',
     title: 'Confirm the Trend Bends',
     type: 'auto',
-    autoWaitSeconds: 5,
+    // BUC current / temperature read latch after a 5 s dwell on TX Chain
+    autoWaitSeconds: 9,
   },
 
   // TRACK 3: AURORA-7 PASS
@@ -141,7 +155,7 @@ const SCENARIO_24_OBJECTIVES: Scenario24Objective[] = [
     id: 'board-note-quiz',
     title: 'The Board Note',
     type: 'quiz',
-    correctAnswer: 'Posture and exposure: both stations stable, no outage; AURORA pass flown on a sunsetting beacon; residual risk = ME-02 BUC swap',
+    correctAnswer: 'Posture and exposure: both stations stable, no outage; AURORA pass GO for 0800 on a sunsetting beacon; residual risk = ME-02 BUC swap',
   },
 
   // Verify command log BEFORE the final quizzes (modal overlays sidebar after)
@@ -162,7 +176,13 @@ const SCENARIO_24_OBJECTIVES: Scenario24Objective[] = [
     id: 'log-crisis-closed',
     title: 'Close the Incident',
     type: 'quiz',
-    correctAnswer: 'IC closed: VT-01 storm protected, ME-02 BUC de-rated, AURORA pass delivered; zero outage, five tracks; residual = ME-02 BUC swap',
+    correctAnswer: 'IC closed: VT-01 storm protected, ME-02 BUC de-rated, AURORA pass GO for 0800 (caveat briefed); zero outage; residual = ME-02 BUC swap',
+  },
+  {
+    id: 'log-crisis-closed-typed',
+    title: 'Close the Incident: typed Ops Log entry',
+    type: 'ops-log',
+    logText: 'IC closed: VT-01 storm protected, ME-02 BUC de-rated, AURORA GO for 0800; residual = ME-02 BUC swap',
   },
 ];
 
@@ -270,6 +290,24 @@ async function verifyWorkingDocument(page: import('@playwright/test').Page): Pro
   }
 }
 
+/**
+ * Type an entry into the Operations Log (sidebar log icon) and close it.
+ */
+async function typeOpsLogEntry(page: import('@playwright/test').Page, text: string): Promise<void> {
+  await page.locator('.ops-log-icon').first().click();
+  const input = page.locator('#ops-log-manual-input');
+  await expect(input).toBeVisible({ timeout: 5000 });
+  await input.fill(text);
+  await input.press('Enter');
+  await expect(page.locator('#ops-log-entries')).toContainText(text.slice(0, 20), { timeout: 5000 });
+  // Mission Complete closes the log itself when this entry finishes the scenario
+  await page
+    .locator('#ops-log-modal-close')
+    .click({ timeout: 3000 })
+    .catch(() => {});
+  await page.waitForTimeout(300);
+}
+
 async function executeObjective(page: import('@playwright/test').Page, missionControlPage: MissionControlPage, objective: Scenario24Objective): Promise<void> {
   switch (objective.type) {
     case 'quiz':
@@ -307,6 +345,10 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
 
     case 'verify-working-doc':
       await verifyWorkingDocument(page);
+      break;
+
+    case 'ops-log':
+      await typeOpsLogEntry(page, objective.logText!);
       break;
 
     case 'auto':

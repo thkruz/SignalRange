@@ -1,7 +1,7 @@
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { Objective } from '@app/objectives/objective-types';
 import type { ScenarioData } from '@app/ScenarioData';
-import type { dBm, MHz } from '@app/types';
+import type { dBm } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
 import { vermontGroundStation } from './ground-stations';
 import { aurora7Satellite, tidemark1Satellite } from './satellites';
@@ -58,25 +58,15 @@ export const scenario19Data: ScenarioData = {
   timeLimitSeconds: 35 * 60,
   settings: {
     isSync: true,
+    // Brief: Wednesday 1300 local
+    scenarioStartDate: '2026-03-04',
+    scenarioStartWallTime: '13:00:00',
     groundStations: [
       {
+        // RX modem 1 starts on the TIDEMARK-1 default (1532 / 36 MHz): the
+        // player retunes it to AURORA-7 in 'Prove the Link' instead of finding
+        // it pre-tuned and locked (nats-s19-F4)
         ...vermontGroundStation,
-        receivers: [
-          {
-            activeModem: 1,
-            modems: [
-              {
-                modemNumber: 1,
-                isPowered: true,
-                frequency: 1422 as MHz, // AURORA-7 downlink IF (5250 - 3828)
-                bandwidth: 24 as MHz,
-                modulation: 'QPSK',
-                fec: '3/4',
-                antenna_id: 1,
-              },
-            ],
-          },
-        ],
       },
     ],
     satellites: [aurora7Satellite, tidemark1Satellite],
@@ -254,7 +244,7 @@ export const scenario19Data: ScenarioData = {
       id: 'tune-beacon',
       nice: ['S0421', 'K0773'],
       title: 'Fly It: Find the Beacon',
-      description: 'Tune the spectrum analyzer to the AURORA-7 beacon IF and confirm it.',
+      description: 'RX Analysis: centre the spectrum analyzer on the AURORA-7 beacon IF with a narrow span (~2 kHz) and confirm the beacon.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['acquire-callout-quiz'],
       timeLimitSeconds: 3 * 60,
@@ -274,6 +264,13 @@ export const scenario19Data: ScenarioData = {
             centerFrequency: 1085e6,
             centerFrequencyTolerance: 1e6,
           },
+          mustMaintain: true,
+        },
+        {
+          // The card's own advice: a weak CW line needs a narrow span
+          type: 'speca-span-set',
+          description: 'Narrow Span (≤ 10 kHz)',
+          params: { span: 2e3, spanTolerance: 8e3 },
           mustMaintain: true,
         },
         {
@@ -429,7 +426,7 @@ export const scenario19Data: ScenarioData = {
       id: 'hold-beacon',
       nice: ['T0153', 'K1032'],
       title: 'Fly It: Hold the Figure-8',
-      description: 'Hold beacon lock while the bird wanders - watch what "healthy" looks like so you can describe it.',
+      description: 'Hold beacon lock for 20 s while the bird wanders - no input needed. Watch what "healthy" looks like on ACU Control so you can describe it.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['step-track-rule-quiz'],
       timeLimitSeconds: 3 * 60,
@@ -523,7 +520,8 @@ export const scenario19Data: ScenarioData = {
       id: 'verify-receiver',
       nice: ['T0153', 'S0421'],
       title: 'Fly It: Prove the Link',
-      description: 'Verify the receiver end-to-end - the proof chain the card must teach.',
+      description:
+        'RX Analysis: tune receiver modem 1 to the AURORA-7 carrier (1422 MHz IF, 24 MHz bandwidth) and Apply, then prove lock with C/N at least 8 dB - the proof chain the card must teach.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['mistake-chase-quiz'],
       timeLimitSeconds: 3 * 60,
@@ -534,6 +532,18 @@ export const scenario19Data: ScenarioData = {
           hidden: true,
           description: 'RX Analysis Open',
           params: { tab: 'rx-analysis' },
+          mustMaintain: true,
+        },
+        {
+          type: 'rx-modem-frequency-set',
+          description: 'RX Modem at 1422 MHz IF',
+          params: { modemNumber: 1, frequency: 1422e6, frequencyTolerance: 0.5e6 },
+          mustMaintain: true,
+        },
+        {
+          type: 'rx-modem-bandwidth-set',
+          description: 'RX Modem Bandwidth 24 MHz',
+          params: { modemNumber: 1, bandwidth: 24e6, bandwidthTolerance: 1e6 },
           mustMaintain: true,
         },
         {
@@ -576,7 +586,7 @@ export const scenario19Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Ordered, numeric, and explains what each check proves - the S9 lesson (beacon proves RF, lock proves data, margin proves durability) compressed to one card line. Each link proves something the others do not, and the order matters: no margin without lock, no lock without pointing. 1447 is the TX IF, not the receive carrier; a green dashboard proves nothing by itself.',
+              'Ordered, numeric, and explains what each check proves - the morning-rounds rule (beacon proves RF, lock proves data, margin proves durability) compressed to one card line. Each link proves something the others do not, and the order matters: no margin without lock, no lock without pointing. 1447 is the TX IF, not the receive carrier; a green dashboard proves nothing by itself.',
             pointPenalty: 5,
             documentSection: 'Verify',
             documentLine: 'Proof chain: beacon 1085 (pointing+LO) → RX locked 1422 / 24 MHz (carrier) → C/N ≥ 8 (margin)',

@@ -189,7 +189,7 @@ const SCENARIO_15_OBJECTIVES: Scenario15Objective[] = [
     id: 'log-coordination-event',
     title: 'Log Coordination Event',
     type: 'quiz',
-    correctAnswer: '0937 - RedSky notice confirmed. TP-1 HPA backoff raised 5 to 10 dB to suppress adjacent IMD. RedSky cleared for 5961 MHz V-pol, SeaLink nominal.',
+    correctAnswer: 'RedSky 0937 slot - notice confirmed. TP-1 HPA backoff raised 5 to 10 dB to suppress adjacent IMD. RedSky cleared for 5961 MHz V-pol, SeaLink nominal.',
   },
 ];
 
@@ -293,11 +293,17 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
       break;
 
     case 'auto':
-      // verify-hpa-still-online and verify-receiver-locked are both pure
-      // state checks - HPA stayed enabled while we changed back-off, modem
-      // never stopped transmitting, receiver was locked at scenario start.
-      // Give the engine a beat to tick the conditions.
-      await page.waitForTimeout(2000);
+      // verify-hpa-still-online and verify-receiver-locked are reads of
+      // state that is already true, gated on a 5 s observation dwell on the
+      // tab we are already on. Wait for the objective itself.
+      await page.waitForFunction(
+        (id) => {
+          const hook = (window as unknown as { debugObjective?: (id: string) => { isCompleted?: boolean } }).debugObjective;
+          return typeof hook === 'function' && hook(id)?.isCompleted === true;
+        },
+        objective.id,
+        { timeout: 20000, polling: 500 }
+      );
       break;
   }
 

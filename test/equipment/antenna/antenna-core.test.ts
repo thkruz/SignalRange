@@ -937,9 +937,20 @@ describe('AntennaCore', () => {
     it('should return info for manual tracking', () => {
       antenna.state.isPowered = true;
       antenna.state.isOperational = true;
+      antenna.state.trackingMode = 'manual';
       const alarms = antenna.getStatusAlarms();
 
       expect(alarms.some((a) => a.severity === 'info' && a.message.includes('Manual'))).toBe(true);
+    });
+
+    it.each(['program-track', 'stow', 'maintenance'] as const)('does not report Manual Tracking in %s mode (s01-F3)', (mode) => {
+      antenna.state.isPowered = true;
+      antenna.state.isOperational = true;
+      antenna.state.trackingMode = mode;
+      antenna.state.isAutoTrackEnabled = false;
+      const alarms = antenna.getStatusAlarms();
+
+      expect(alarms.some((a) => a.message.includes('Manual Tracking'))).toBe(false);
     });
   });
 
@@ -1774,6 +1785,42 @@ describe('AntennaCore', () => {
       antenna.testUpdateBeaconMetrics();
 
       expect(antenna.state.beaconPower).toBeNull();
+    });
+
+    it('reports beacon C/N as null, not -267 dB, when the LNB is unpowered (s02-F7)', () => {
+      antenna.state.isPowered = true;
+      antenna.state.isOperational = true;
+      antenna.state.beaconFrequencyHz = 3_948_000_000;
+      antenna.state.beaconSearchBwHz = 500_000;
+      (antenna as any).rfFrontEnd_ = {
+        lnbModule: { state: { loFrequency: 5150, isPowered: false } },
+        agcModule: { outputSignals: [{ frequency: 5150e6 - 3_948_000_000, power: -387, bandwidth: 25_000 }] },
+        couplerModule: { signalPathManager: { getNoiseFloorAt: () => ({ noiseFloorNoGain: -120, shouldApplyGain: false }), getTotalRxGain: () => 0 } },
+      };
+      (antenna as any).hasReceivedRealBeaconMeasurement_ = true;
+      antenna.state.beaconCN = 10;
+
+      antenna.testUpdateBeaconMetrics();
+
+      expect(antenna.state.beaconCN).toBeNull();
+      expect(antenna.state.beaconPower).toBeNull();
+      expect(antenna.state.isBeaconLocked).toBe(false);
+    });
+
+    it('reports a real beacon C/N when the LNB is powered', () => {
+      antenna.state.isPowered = true;
+      antenna.state.isOperational = true;
+      antenna.state.beaconFrequencyHz = 3_948_000_000;
+      antenna.state.beaconSearchBwHz = 500_000;
+      (antenna as any).rfFrontEnd_ = {
+        lnbModule: { state: { loFrequency: 5150, isPowered: true } },
+        agcModule: { outputSignals: [{ frequency: 5150e6 - 3_948_000_000, power: -108, bandwidth: 25_000 }] },
+        couplerModule: { signalPathManager: { getNoiseFloorAt: () => ({ noiseFloorNoGain: -120, shouldApplyGain: false }), getTotalRxGain: () => 0 } },
+      };
+
+      antenna.testUpdateBeaconMetrics();
+
+      expect(antenna.state.beaconCN).toBeCloseTo(12, 5);
     });
 
     it('should not change metrics when no RF front-end attached', () => {

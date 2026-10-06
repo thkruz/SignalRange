@@ -202,7 +202,7 @@ export const vermontGroundStation = {
             origin: SignalOrigin.TRANSMITTER,
             noiseFloor: null,
             gainInPath: 0 as dBi,
-            frequency: 1094e6 as IfFrequency,
+            frequency: 1057e6 as IfFrequency, // TM-1 TP-1: 7000 - 5943 (LO above RF, LSB)
             power: -7 as dBm,
             bandwidth: 36e6 as Hertz, // Match payload bandwidth
             modulation: 'QPSK' as ModulationType,

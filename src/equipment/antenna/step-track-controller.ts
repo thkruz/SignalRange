@@ -4,6 +4,7 @@ import { SimulationManager } from '@app/simulation/simulation-manager';
 import { Hertz } from '@app/types';
 import { Degrees } from 'ootk';
 import { AntennaCore } from './antenna-core';
+import { usableBeaconCn } from './beacon-cn';
 
 /**
  * Step Track Controller - Timer-Based Convergence
@@ -185,7 +186,10 @@ export class StepTrackController {
     const trackingBw = state.beaconTrackingBwHz;
     const { noiseFloorNoGain } = rfFrontEnd.couplerModule.signalPathManager.getNoiseFloorAt(TapPoint.RX_IF, trackingBw as Hertz);
 
-    const cn = strongestPower - noiseFloorNoGain;
+    const cn = usableBeaconCn(strongestPower - noiseFloorNoGain, rfFrontEnd.lnbModule.state.isPowered);
+    if (cn === null) {
+      return { power: null, cn: null };
+    }
 
     return { power: strongestPower, cn };
   }

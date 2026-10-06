@@ -85,7 +85,8 @@ export const CharacterTitles: Record<Character, string> = {
 };
 
 export const CharacterCompany: Record<Character, string> = {
-  [Character.CHARLIE_BROOKS]: 'North Atlantic Teleport Services (Vermont)',
+  // Charlie works shifts at both sites, so no site in his byline (s03-F10)
+  [Character.CHARLIE_BROOKS]: 'North Atlantic Teleport Services',
   [Character.DANA_TORRES]: 'North Atlantic Teleport Services (Vermont)',
   [Character.CATHERINE_VEGA]: 'North Atlantic Teleport Services (Maine)',
   [Character.JAMES_OKAFOR]: 'Atlantic Shipping Alliance',

@@ -45,7 +45,7 @@ export class SpectralDensityPlot extends RTSAScreen {
   };
 
   // Frequency label caching
-  private readonly frequencyLabelCache: Map<number, string[]> = new Map();
+  private readonly frequencyLabelCache: Map<string, string[]> = new Map();
 
   // Grid + labels ImageData caching
   private cachedGridImageData: ImageData | null = null;
@@ -399,18 +399,20 @@ export class SpectralDensityPlot extends RTSAScreen {
     const padding = 6; // minimum spacing between labels
     let lastX = -Infinity;
 
+    // Enough decimals that neighbouring ticks differ: a fixed toFixed(3) GHz
+    // printed "1.075 GHz" on every tick of a 2 kHz span (nats-s01-F9)
+    const stepHz = (this.maxFreq - this.minFreq) / numLabels;
+    const decimalsFor = (unitHz: number): number => (stepHz > 0 ? Math.min(9, Math.max(0, Math.ceil(-Math.log10(stepHz / unitHz)))) : 3);
     const formatCandidates = (freq: number): string[] => {
       if (freq >= 1e9) {
-        const g = freq / 1e9;
-        return [`${g.toFixed(3)} GHz`, `${g.toFixed(3)}GHz`, `${Math.round(g)} GHz`, `${Math.round(g)}GHz`, `${Math.round(g)}G`];
+        const g = (freq / 1e9).toFixed(decimalsFor(1e9));
+        return [`${g} GHz`, `${g}GHz`, `${(freq / 1e6).toFixed(decimalsFor(1e6))}M`];
       } else if (freq >= 1e6) {
-        const m = freq / 1e6;
-        return [`${Math.round(m)} MHz`, `${Math.round(m)}MHz`, `${m >= 1000 ? `${(m / 1000).toFixed(1)} GHz` : `${Math.round(m / 10) / 100}M`}`, `${Math.round(m / 1000)}G`].filter(
-          Boolean
-        );
+        const m = (freq / 1e6).toFixed(decimalsFor(1e6));
+        return [`${m} MHz`, `${m}MHz`, `${m}M`];
       } else if (freq >= 1e3) {
-        const k = freq / 1e3;
-        return [`${k.toFixed(3)} kHz`, `${Math.round(k)} kHz`, `${Math.round(k)}kHz`, `${Math.round(freq)} Hz`];
+        const k = (freq / 1e3).toFixed(decimalsFor(1e3));
+        return [`${k} kHz`, `${k}kHz`, `${Math.round(freq)} Hz`];
       } else {
         return [`${Math.round(freq)} Hz`];
       }
@@ -421,10 +423,12 @@ export class SpectralDensityPlot extends RTSAScreen {
       const freq = this.minFreq + ((this.maxFreq - this.minFreq) * i) / numLabels;
 
       // Check cache for formatted candidates
-      let candidates = this.frequencyLabelCache.get(freq);
+      // Keyed by tick and step: the same frequency needs more decimals on a narrower span
+      const cacheKey = `${freq}|${stepHz}`;
+      let candidates = this.frequencyLabelCache.get(cacheKey);
       if (!candidates) {
         candidates = formatCandidates(freq);
-        this.frequencyLabelCache.set(freq, candidates);
+        this.frequencyLabelCache.set(cacheKey, candidates);
       }
       let drawn = false;
 
@@ -466,15 +470,18 @@ export class SpectralDensityPlot extends RTSAScreen {
     ctx.textBaseline = 'middle';
     this.ctx.font = '14px Arial';
 
+    // Absolute dBm, the same scale as the Min/Max Amp fields and the trace.
+    // Subtracting the reference level (hidden outside engineering mode, and
+    // not applied to the trace) gave unitless 0-16 labels (nats-s01-F9).
     const numLabels = isDualScreenMode ? 5 : 10;
+    const { maxAmplitude, minAmplitude } = this.specA.state;
     for (let i = 0; i <= numLabels - 1; i++) {
       const y = (i / numLabels) * this.height;
-      const maxAmplitude = this.specA.state.maxAmplitude - this.specA.state.referenceLevel;
-      const minAmplitude = this.specA.state.minAmplitude - this.specA.state.referenceLevel;
-
       const power = maxAmplitude + ((minAmplitude - maxAmplitude) * i) / numLabels;
       ctx.fillText(`${power.toFixed(0)}`, 35, y);
     }
+    ctx.textAlign = 'left';
+    ctx.fillText('dBm', 4, this.height - 10);
     ctx.restore();
   }
 

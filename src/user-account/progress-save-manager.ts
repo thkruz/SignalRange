@@ -190,6 +190,10 @@ export class ProgressSaveManager {
    * Uses direct delete API
    */
   async clearCheckpoint(scenarioId: string): Promise<void> {
+    // Checkpoints only exist server-side; signed out there is nothing to clear
+    if (!(await Auth.getSession())) {
+      return;
+    }
     try {
       await this.userDataService.deleteCheckpoint(scenarioId);
       Logger.info(`Checkpoint cleared for scenario: ${scenarioId}`);
@@ -204,6 +208,9 @@ export class ProgressSaveManager {
    * Uses lightweight HEAD request
    */
   async hasCheckpoint(scenarioId: string): Promise<boolean> {
+    if (!(await Auth.getSession())) {
+      return false;
+    }
     try {
       return await this.userDataService.checkpointExists(scenarioId);
     } catch (error) {

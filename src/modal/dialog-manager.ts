@@ -2,6 +2,7 @@ import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { CountdownHold } from '@app/objectives/countdown-hold';
 import SoundManager from '@app/sound/sound-manager';
 import { Character, CharacterCompany, CharacterNames, CharacterTitles, Emotion, getCharacterAvatarUrl } from './character-enum';
 import { DialogHistoryManager } from './dialog-history-manager';
@@ -31,6 +32,14 @@ declare global {
 }
 
 export class DialogManager {
+  /**
+   * How long a new dialog ignores click/Space/Enter, ms. Dialogs open at
+   * objective boundaries while the operator is mid-click on a panel; without
+   * the guard that click would dismiss a line nobody read. Covers the 300 ms
+   * fade-in plus a beat.
+   */
+  static readonly REVEAL_DELAY_MS = 600;
+
   private static instance: DialogManager;
   private dialogElement: HTMLDivElement | null = null;
   private holdStartTime: number | null = null;
@@ -39,6 +48,12 @@ export class DialogManager {
   private isHolding: boolean = false;
   private dialogQueue_: QueuedDialog[] = [];
   private isTtsActive_ = false;
+  /** True once the dialog has been on screen for REVEAL_DELAY_MS; click/keys close it from then on */
+  private isRevealed_ = false;
+  /** A press began on the overlay, so its release may count as a click */
+  private isPressed_ = false;
+  private revealTimeoutId_: number | null = null;
+  private readonly boundKeydown_ = this.handleKeydown_.bind(this);
 
   private constructor() {}
 
@@ -59,6 +74,9 @@ export class DialogManager {
       this.dialogQueue_.push({ text, character, audioUrl, title, emotion });
       return;
     }
+
+    // Objective countdowns stop while a dialog is on screen (released when the queue drains)
+    CountdownHold.set('dialog', true);
 
     // Track this dialog in history
     DialogHistoryManager.getInstance().addEntry(text, character, audioUrl, title, emotion);
@@ -92,6 +110,7 @@ export class DialogManager {
           </div>
           <div class="dialog-text-container col-8">
             <div class="dialog-text">${text}</div>
+            <div class="dialog-continue-hint">Click or press Space to continue</div>
           </div>
           <div class="dialog-skip-indicator">
             <div class="dialog-skip-text">Hold to Skip</div>
@@ -128,8 +147,28 @@ export class DialogManager {
     // Add event listeners for hold-to-skip
     this.attachHoldToSkipListeners();
 
+    // Click, Space or Enter close the dialog once it has been on screen briefly
+    this.isRevealed_ = false;
+    this.isPressed_ = false;
+    this.revealTimeoutId_ = window.setTimeout(() => {
+      this.revealTimeoutId_ = null;
+      this.isRevealed_ = true;
+      overlay.classList.add('dialog-revealed');
+    }, DialogManager.REVEAL_DELAY_MS);
+    // Capture phase so a focused panel input can't swallow the key first
+    document.addEventListener('keydown', this.boundKeydown_, true);
+
     // Focus for accessibility
+    overlay.tabIndex = -1;
     overlay.focus();
+  }
+
+  private handleKeydown_(e: KeyboardEvent): void {
+    if (!this.dialogElement || !this.isRevealed_) return;
+    if (e.key !== ' ' && e.key !== 'Enter') return;
+    e.preventDefault();
+    e.stopPropagation();
+    this.hide();
   }
 
   private attachHoldToSkipListeners(): void {
@@ -140,16 +179,24 @@ export class DialogManager {
 
     const handleMouseDown = (e: MouseEvent) => {
       e.preventDefault();
+      this.isPressed_ = true;
       this.startHoldTimer();
       skipIndicator.classList.add('dialog-skip-visible');
     };
 
     const handleMouseUp = () => {
+      const wasPressed = this.isPressed_;
+      this.isPressed_ = false;
       this.cancelHoldTimer();
       skipIndicator.classList.remove('dialog-skip-visible');
+      // A release that didn't finish the hold is a click: close once revealed
+      if (wasPressed && this.isRevealed_) {
+        this.hide();
+      }
     };
 
     const handleMouseLeave = () => {
+      this.isPressed_ = false;
       this.cancelHoldTimer();
       skipIndicator.classList.remove('dialog-skip-visible');
     };
@@ -239,6 +286,15 @@ export class DialogManager {
     // Cancel any ongoing hold timer
     this.cancelHoldTimer();
 
+    // Stop listening for click-to-continue
+    document.removeEventListener('keydown', this.boundKeydown_, true);
+    if (this.revealTimeoutId_ !== null) {
+      clearTimeout(this.revealTimeoutId_);
+      this.revealTimeoutId_ = null;
+    }
+    this.isRevealed_ = false;
+    this.isPressed_ = false;
+
     // Remove event listeners
     const overlay = this.dialogElement;
     const listeners = (overlay as any)._holdListeners;
@@ -263,6 +319,11 @@ export class DialogManager {
       // Emit dismissed event
       EventBus.getInstance().emit(Events.DIALOG_DISMISSED);
 
+      // Keep holding through the gap before a queued dialog
+      if (this.dialogQueue_.length === 0) {
+        CountdownHold.set('dialog', false);
+      }
+
       // Process next queued dialog
       this.processQueue_();
     }, 300); // Match CSS transition duration
@@ -280,5 +341,8 @@ export class DialogManager {
 
   clearQueue(): void {
     this.dialogQueue_ = [];
+    if (!this.dialogElement) {
+      CountdownHold.set('dialog', false);
+    }
   }
 }

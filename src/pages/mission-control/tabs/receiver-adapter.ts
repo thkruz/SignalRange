@@ -4,6 +4,7 @@ import { AlarmStatus } from '@app/equipment/base-equipment';
 import { ValidationError, validateModemBandwidth, validateModemFrequency } from '@app/equipment/modem/modem-constraints';
 import { ADCStatus } from '@app/equipment/receiver/adc-degradation';
 import { IQSignalInfo, Receiver, ReceiverModemState } from '@app/equipment/receiver/receiver';
+import { classifyRxSignal, describePayloadProblem, RxPayloadStatus } from '@app/equipment/receiver/rx-signal-quality';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { parseLocalizedNumber } from '@app/utils/parse-number';
@@ -45,6 +46,10 @@ export class ReceiverAdapter {
   // Validation errors for user feedback
   private validationErrors_: ValidationError[] = [];
 
+  // Payload decoder status (frame sync / RS), so the modem status never claims
+  // "Good margin" while Payload Data Integrity reports sync loss or overload
+  private payloadStatusProvider_: (() => RxPayloadStatus | null) | null = null;
+
   constructor(receiver: Receiver, containerEl: HTMLElement) {
     this.receiver = receiver;
     this.containerEl = containerEl;
@@ -71,6 +76,18 @@ export class ReceiverAdapter {
 
     // Initial sync
     this.syncDomWithState_();
+  }
+
+  /**
+   * Supply the payload decoder status (from the RX payload adapter) so the
+   * modem status bar and alarm badge agree with Payload Data Integrity.
+   */
+  public setPayloadStatusProvider(provider: (() => RxPayloadStatus | null) | null): void {
+    this.payloadStatusProvider_ = provider;
+  }
+
+  private getPayloadProblem_(): string | null {
+    return describePayloadProblem(this.payloadStatusProvider_?.() ?? null);
   }
 
   /**
@@ -507,7 +524,7 @@ export class ReceiverAdapter {
 
     // Check power state
     if (!activeModem.isPowered) {
-      monitor.classList.remove('no-signal', 'signal-found', 'signal-degraded', 'signal-no-video');
+      monitor.classList.remove('no-signal', 'signal-found', 'signal-degraded', 'signal-no-video', 'signal-no-lock');
       monitor.classList.add('no-power');
       return;
     }
@@ -520,15 +537,19 @@ export class ReceiverAdapter {
 
     if (!hasDecodedSignal) {
       // No signal at all
-      monitor.classList.remove('no-power', 'signal-found', 'signal-degraded', 'signal-no-video');
+      monitor.classList.remove('no-power', 'signal-found', 'signal-degraded', 'signal-no-video', 'signal-no-lock');
       monitor.classList.add('no-signal');
     } else if (!hasVideoFeed) {
-      // Signal decoded but no video feed available
+      // Signal visible but no video feed available. Only claim "SIGNAL LOCKED"
+      // when the modem actually holds demodulation lock; otherwise the
+      // overlay reads "CARRIER PRESENT / NO LOCK" (signal-no-lock modifier).
+      const hasLock = this.receiver.getSignalsInBandwidth(activeModem)?.hasLock ?? false;
       monitor.classList.remove('no-power', 'no-signal', 'signal-found', 'signal-degraded');
       monitor.classList.add('signal-no-video');
+      monitor.classList.toggle('signal-no-lock', !hasLock);
     } else {
       // Signal with video feed
-      monitor.classList.remove('no-power', 'no-signal', 'signal-no-video');
+      monitor.classList.remove('no-power', 'no-signal', 'signal-no-video', 'signal-no-lock');
       monitor.classList.add('signal-found');
 
       if (isDegraded) {
@@ -839,14 +860,20 @@ export class ReceiverAdapter {
 
     const effectiveCn = signalInfo.effectiveCnRatio_dB ?? signalInfo.cnRatio_dB;
 
-    // QPSK-ish modem-quality thresholds (MVP, no Eb/N0)
-    if (signalInfo.hasLock && effectiveCn >= 8) {
+    // QPSK-ish modem-quality thresholds (MVP, no Eb/N0), shared with the alarm badge
+    const quality = classifyRxSignal(signalInfo.hasLock, effectiveCn);
+    const payloadProblem = quality === 'good' ? this.getPayloadProblem_() : null;
+
+    if (quality === 'good' && payloadProblem) {
+      statusBar.className = 'alert alert-warning mt-3';
+      statusBar.textContent = `Signal locked - ${payloadProblem} (C/N: ${effectiveCn.toFixed(1)} dB)`;
+    } else if (quality === 'good') {
       statusBar.className = 'alert alert-success mt-3';
       statusBar.textContent = `Signal locked - Good margin (C/N: ${effectiveCn.toFixed(1)} dB)`;
-    } else if (signalInfo.hasLock && effectiveCn >= 5) {
+    } else if (quality === 'degraded') {
       statusBar.className = 'alert alert-warning mt-3';
       statusBar.textContent = `Signal locked - Degraded margin (C/N: ${effectiveCn.toFixed(1)} dB)`;
-    } else if (effectiveCn >= 3) {
+    } else if (quality === 'near-threshold') {
       // may flicker lock depending on your sim; treat as near-threshold
       const lockStatus = signalInfo.hasLock ? 'locked' : 'unlocking';
       statusBar.className = 'alert alert-danger mt-3';
@@ -880,13 +907,27 @@ export class ReceiverAdapter {
 
     const effectiveCn = signalInfo.effectiveCnRatio_dB ?? signalInfo.cnRatio_dB;
 
-    // Match signal quality thresholds
-    if (effectiveCn <= 0) {
-      alarms.push({ severity: 'error', message: `Critical C/N: ${effectiveCn.toFixed(1)} dB` });
-    } else if (effectiveCn <= 8) {
-      alarms.push({ severity: 'error', message: `Poor C/N: ${effectiveCn.toFixed(1)} dB` });
-    } else if (effectiveCn <= 15 || !signalInfo.hasLock) {
-      alarms.push({ severity: 'warning', message: signalInfo.hasLock ? 'Signal degraded' : 'Signal unlocked' });
+    // Same quality bands as the status bar (shared threshold table)
+    switch (classifyRxSignal(signalInfo.hasLock, effectiveCn)) {
+      case 'good': {
+        const payloadProblem = this.getPayloadProblem_();
+        if (payloadProblem) {
+          alarms.push({ severity: 'warning', message: payloadProblem });
+        }
+        break;
+      }
+      case 'degraded':
+        alarms.push({ severity: 'warning', message: `Degraded margin (C/N: ${effectiveCn.toFixed(1)} dB)` });
+        break;
+      case 'near-threshold':
+        alarms.push({
+          severity: 'error',
+          message: signalInfo.hasLock ? `Poor C/N: ${effectiveCn.toFixed(1)} dB` : `Signal unlocked (C/N: ${effectiveCn.toFixed(1)} dB)`,
+        });
+        break;
+      default:
+        alarms.push({ severity: 'error', message: `Critical C/N: ${effectiveCn.toFixed(1)} dB` });
+        break;
     }
 
     // Add interference warning if present

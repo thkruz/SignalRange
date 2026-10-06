@@ -91,7 +91,7 @@ const SCENARIO_18_OBJECTIVES: Scenario18Objective[] = [
   },
   {
     id: 'acquire-stable-beacon',
-    title: 'Beacon Recovery',
+    title: 'Beacon Lock Holds Under Step-Track',
     type: 'auto',
     autoWaitSeconds: 25,
   },
@@ -145,7 +145,7 @@ const SCENARIO_18_OBJECTIVES: Scenario18Objective[] = [
     title: 'Log the Anomaly Response',
     type: 'quiz',
     correctAnswer:
-      'TM-2 vehicle anomaly (Halifax ref): N-S burns suspended, ephemeris stale. ME-02 step-track from 0935, carrier recovered, no impact. Pointing history to Halifax. Anomaly OPEN.',
+      'TM-2 vehicle anomaly (Halifax ref): N-S burns suspended, ephemeris stale. ME-02 step-track from ~0920, carrier recovered, no impact. Pointing history to Halifax. Anomaly OPEN.',
   },
 ];
 

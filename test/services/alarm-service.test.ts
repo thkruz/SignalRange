@@ -189,4 +189,40 @@ describe('AlarmService', () => {
     const next = AlarmService.getInstance();
     expect(next).toBeDefined();
   });
+
+  describe('getAlarms (per-station, unfiltered)', () => {
+    const station = () =>
+      gs({
+        state: { id: 'alpha', isOperational: true },
+        antennas: [{ getStatusAlarms: vi.fn().mockReturnValue([alarm('info', 'ANT INFO'), alarm('success', 'LOCKED')]) }],
+        rfFrontEnds: [{ getStatusAlarms: vi.fn().mockImplementation((rfCase: number) => (rfCase === 1 ? [alarm('warning', 'RF WARN')] : [])) }],
+        transmitters: [{ getStatusAlarms: vi.fn().mockReturnValue([alarm('warning', 'TX WARN')]) }],
+        receivers: [{ getStatusAlarms: vi.fn().mockReturnValue([alarm('error', 'RX FAIL')]) }],
+      });
+
+    it('returns every displayable alarm from every module, most severe first', () => {
+      const alarms = AlarmService.getAlarms(station() as any);
+      expect(alarms.map((a) => a.message)).toEqual(['RX FAIL', 'RF WARN', 'TX WARN', 'ANT INFO']);
+      expect(alarms.map((a) => a.equipmentType)).toEqual(['RX', 'RF', 'TX', 'ANT']);
+    });
+
+    it('looks a station up by id and ignores other stations', () => {
+      const other = gs({ state: { id: 'beta', isOperational: true }, antennas: [{ getStatusAlarms: vi.fn().mockReturnValue([alarm('error', 'BETA FAIL')]) }] });
+      mockSimulationManager.groundStations = [station(), other];
+      expect(AlarmService.getAlarms('alpha').map((a) => a.message)).not.toContain('BETA FAIL');
+      expect(AlarmService.getAlarms('beta').map((a) => a.message)).toEqual(['BETA FAIL']);
+      expect(AlarmService.getAlarms('missing')).toEqual([]);
+    });
+
+    it('returns nothing for a non-operational station, as the ticker does', () => {
+      const offline = station();
+      offline.state.isOperational = false;
+      expect(AlarmService.getAlarms(offline as any)).toEqual([]);
+    });
+
+    it('needs no service instance', () => {
+      AlarmService.getAlarms(station() as any);
+      expect(mockEventBus.on).not.toHaveBeenCalled();
+    });
+  });
 });

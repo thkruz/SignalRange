@@ -105,11 +105,11 @@
           "kind": "fixed",
           "pass": null,
           "atPeak": {
-            "elevationDeg": 29.01,
+            "elevationDeg": 34.99,
             "frequencyMHz": 3828,
             "gainDbi": 48.84,
-            "gOverTDbPerK": 27.31,
-            "tsysK": 142.22
+            "gOverTDbPerK": 27.4,
+            "tsysK": 139.56
           },
           "carriers": [
             {
@@ -120,9 +120,9 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 5,
-              "peakCnDb": 10.39,
-              "medianCnDb": 10.29,
-              "peakRxIfDbm": -32.39,
+              "peakCnDb": 10.4,
+              "medianCnDb": 10.3,
+              "peakRxIfDbm": -32.38,
               "noiseIfDbm": -44.06,
               "lockedSamples": 5
             },
@@ -134,8 +134,8 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 5,
-              "peakCnDb": 5.84,
-              "medianCnDb": 5.84,
+              "peakCnDb": 5.85,
+              "medianCnDb": 5.85,
               "peakRxIfDbm": -80.69,
               "noiseIfDbm": -87.86,
               "lockedSamples": 5
@@ -165,7 +165,7 @@
               "samples": 5,
               "peakCnDb": 16.43,
               "medianCnDb": 16.34,
-              "peakRxIfDbm": -29.4,
+              "peakRxIfDbm": -29.41,
               "noiseIfDbm": -45.2,
               "lockedSamples": 5
             },
@@ -286,11 +286,11 @@
           "kind": "fixed",
           "pass": null,
           "atPeak": {
-            "elevationDeg": 29.01,
+            "elevationDeg": 34.99,
             "frequencyMHz": 3828,
             "gainDbi": 48.84,
-            "gOverTDbPerK": 27.31,
-            "tsysK": 142.22
+            "gOverTDbPerK": 27.4,
+            "tsysK": 139.56
           },
           "carriers": [
             {
@@ -301,8 +301,8 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 5,
-              "peakCnDb": 9.86,
-              "medianCnDb": 9.83,
+              "peakCnDb": 9.87,
+              "medianCnDb": 9.84,
               "peakRxIfDbm": -32.4,
               "noiseIfDbm": -43.51,
               "lockedSamples": 5
@@ -315,9 +315,9 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 5,
-              "peakCnDb": 5.25,
-              "medianCnDb": 5.25,
-              "peakRxIfDbm": -80.76,
+              "peakCnDb": 5.26,
+              "medianCnDb": 5.26,
+              "peakRxIfDbm": -80.75,
               "noiseIfDbm": -87.32,
               "lockedSamples": 5
             }
@@ -346,7 +346,7 @@
               "samples": 5,
               "peakCnDb": 15.82,
               "medianCnDb": 15.7,
-              "peakRxIfDbm": -29.41,
+              "peakRxIfDbm": -29.42,
               "noiseIfDbm": -44.62,
               "lockedSamples": 5
             },

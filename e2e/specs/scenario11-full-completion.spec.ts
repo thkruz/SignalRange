@@ -23,7 +23,17 @@ import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForS
  * - 'execute-handover': Traffic handover dropdown + execute button
  * - 'auto': Pre-staged state already satisfies the condition
  */
-type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'toggle-switch' | 'enable-tx-commit' | 'set-tracking-mode' | 'select-satellite' | 'execute-handover' | 'auto';
+type ObjectiveType =
+  | 'quiz'
+  | 'select-station'
+  | 'click-tab'
+  | 'toggle-switch'
+  | 'enable-tx-commit'
+  | 'set-tracking-mode'
+  | 'select-satellite'
+  | 'execute-handover'
+  | 'auto'
+  | 'ops-log';
 
 interface Scenario11Objective {
   id: string;
@@ -40,6 +50,7 @@ interface Scenario11Objective {
   handoverConfig?: {
     targetStation: string;
   };
+  logText?: string;
 }
 
 const SCENARIO_11_OBJECTIVES: Scenario11Objective[] = [
@@ -50,7 +61,7 @@ const SCENARIO_11_OBJECTIVES: Scenario11Objective[] = [
     id: 'review-mission-brief',
     title: 'Review Shift Brief',
     type: 'quiz',
-    correctAnswer: 'TIDEMARK-1 traffic moves to ME-02 for a 2-hour VT-01 maintenance window, then comes back next shift',
+    correctAnswer: 'TIDEMARK-1 traffic moves to ME-02 for the VT-01 maintenance, then comes back once the crew signs the work off',
   },
 
   // ============================================================
@@ -206,10 +217,16 @@ const SCENARIO_11_OBJECTIVES: Scenario11Objective[] = [
   // SHIFT WRAP
   // ============================================================
   {
+    id: 'log-handover-entry-typed',
+    title: 'Type the Handover into the Ops Log',
+    type: 'ops-log',
+    logText: 'Planned TM-1 handover to ME-02 complete. VT-01 safed, antenna at maintenance position for the crew.',
+  },
+  {
     id: 'log-handover-entry',
     title: 'Log the Handover',
     type: 'quiz',
-    correctAnswer: '1000 - Planned TM-1 handover to ME-02 complete. VT-01 safed, antenna at maintenance position, crew on-site. Return to service next shift.',
+    correctAnswer: '1000 - Planned TM-1 handover to ME-02 complete. VT-01 safed, antenna at maintenance position, crew on-site. Return to service after crew sign-off.',
   },
 ];
 
@@ -346,6 +363,24 @@ async function executeTrafficHandover(page: import('@playwright/test').Page, tar
 }
 
 /**
+ * Type an entry into the Operations Log (sidebar log icon) and close it.
+ */
+async function typeOpsLogEntry(page: import('@playwright/test').Page, text: string): Promise<void> {
+  await page.locator('.ops-log-icon').first().click();
+  const input = page.locator('#ops-log-manual-input');
+  await expect(input).toBeVisible({ timeout: 5000 });
+  await input.fill(text);
+  await input.press('Enter');
+  await expect(page.locator('#ops-log-entries')).toContainText(text.slice(0, 20), { timeout: 5000 });
+  // Mission Complete closes the log itself when this entry finishes the scenario
+  await page
+    .locator('#ops-log-modal-close')
+    .click({ timeout: 3000 })
+    .catch(() => {});
+  await page.waitForTimeout(300);
+}
+
+/**
  * Execute an objective based on its type.
  */
 async function executeObjective(page: import('@playwright/test').Page, missionControlPage: MissionControlPage, objective: Scenario11Objective): Promise<void> {
@@ -392,6 +427,10 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
 
     case 'auto':
       await page.waitForTimeout(2000);
+      break;
+
+    case 'ops-log':
+      await typeOpsLogEntry(page, objective.logText!);
       break;
   }
 

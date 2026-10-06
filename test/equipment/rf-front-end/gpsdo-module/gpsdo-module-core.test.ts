@@ -572,6 +572,40 @@ describe('GPSDOModuleCore', () => {
       expect(gpsdoModule.state.satelliteCount).toBeLessThanOrEqual(12);
     });
 
+    it('drifts at most once a minute and stays within one of the nominal count (s01-F7)', () => {
+      gpsdoModule.testStartStabilityMonitor();
+      expect(gpsdoModule.nominalSatelliteCount).toBe(8);
+
+      // 55 s: eleven 5 s ticks, no change allowed yet
+      for (let i = 0; i < 11; i++) {
+        advanceSimTime(5000);
+        expect(gpsdoModule.state.satelliteCount).toBe(8);
+      }
+
+      const seen = new Set<number>();
+      for (let i = 0; i < 12 * 30; i++) {
+        advanceSimTime(5000);
+        seen.add(gpsdoModule.state.satelliteCount);
+        expect(Math.abs(gpsdoModule.state.satelliteCount - 8)).toBeLessThanOrEqual(1);
+      }
+      expect([...seen].every((n) => n >= 7 && n <= 9)).toBe(true);
+    });
+
+    it('reacquires at the nominal count rather than a fresh random draw', () => {
+      gpsdoModule.state.isGnssSwitchUp = true;
+      gpsdoModule.setGnssSignalPresent(false);
+      expect(gpsdoModule.state.satelliteCount).toBe(0);
+      gpsdoModule.setGnssSignalPresent(true);
+      expect(gpsdoModule.state.satelliteCount).toBe(8);
+    });
+
+    it('uses an explicit nominalSatelliteCount from config', () => {
+      const configured = new TestGPSDOModule({ ...defaultGpsdoState, satelliteCount: 0, nominalSatelliteCount: 11 }, mockRfFrontEnd, 2);
+      expect(configured.nominalSatelliteCount).toBe(11);
+      const fallback = new TestGPSDOModule({ ...defaultGpsdoState, satelliteCount: 0 }, mockRfFrontEnd, 3);
+      expect(fallback.nominalSatelliteCount).toBe(9);
+    });
+
     it('should not update when not locked', () => {
       gpsdoModule.state.isLocked = false;
       gpsdoModule.testStartStabilityMonitor();

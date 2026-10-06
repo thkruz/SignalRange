@@ -16,8 +16,9 @@ import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForS
  * - 'auto': Auto-satisfied by simulation state (no user action)
  * - 'set-tracking-mode': Antenna tracking mode + satellite selection
  * - 'configure-speca': Spectrum analyzer center frequency tuning
+ * - 'ops-log': Type an entry into the Operations Log
  */
-type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'auto' | 'set-tracking-mode' | 'configure-speca';
+type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'auto' | 'set-tracking-mode' | 'configure-speca' | 'ops-log';
 
 interface Scenario9Objective {
   id: string;
@@ -25,6 +26,9 @@ interface Scenario9Objective {
   type: ObjectiveType;
   correctAnswer?: string;
   tabId?: string;
+  /** Extra wait after a tab click for observation dwells longer than the default */
+  dwellMs?: number;
+  logText?: string;
   stationId?: string;
   trackingMode?: string;
   satelliteNoradId?: string; // For set-tracking-mode in program-track
@@ -84,6 +88,7 @@ const SCENARIO_9_OBJECTIVES: Scenario9Objective[] = [
     title: 'VT-01 RX Chain Spot Check',
     type: 'click-tab',
     tabId: 'rx-analysis',
+    dwellMs: 6500, // observationDwellSeconds: 5
   },
   {
     id: 'vt-tx-hpa-check-tab',
@@ -92,8 +97,8 @@ const SCENARIO_9_OBJECTIVES: Scenario9Objective[] = [
     tabId: 'tx-chain',
   },
   {
-    id: 'vt-tx-hpa-check',
-    title: 'VT-01 TX Chain Spot Check',
+    id: 'vt-tx-backoff-check',
+    title: 'VT-01 HPA Backoff Reading',
     type: 'quiz',
     correctAnswer: 'Standard operating margin - reduces stress on the amplifier',
   },
@@ -120,10 +125,20 @@ const SCENARIO_9_OBJECTIVES: Scenario9Objective[] = [
     correctAnswer: 'No active alarms - station nominal',
   },
   {
-    id: 'me-rx-beacon-check',
-    title: 'ME-02 TIDEMARK-2 Beacon Check',
+    id: 'me-rx-beacon-tab',
+    title: 'Open RX Analysis',
     type: 'click-tab',
     tabId: 'rx-analysis',
+  },
+  {
+    // The ME-02 analyzer starts on the TM-1 beacon IF; retune to TM-2's
+    id: 'me-rx-beacon-check',
+    title: 'ME-02 TIDEMARK-2 Beacon Check',
+    type: 'configure-speca',
+    specaConfig: {
+      centerFrequency: 1070, // MHz
+    },
+    dwellMs: 3500, // beacon must read on the tab for the observation dwell
   },
   {
     id: 'me-verify-tracking-tab',
@@ -230,6 +245,12 @@ const SCENARIO_9_OBJECTIVES: Scenario9Objective[] = [
     title: 'Final Alarm Sweep',
     type: 'quiz',
     correctAnswer: 'TIDEMARK-1 healthy, TIDEMARK-2 healthy, TIDEMARK-3 beacon verified - all three nominal',
+  },
+  {
+    id: 'log-shift-summary-typed',
+    title: 'Type the Round Summary in the Ops Log',
+    type: 'ops-log',
+    logText: 'Morning rounds complete. TM-1 and TM-2 nominal, TM-3 beacon verified from VT-01.',
   },
   {
     id: 'log-shift-summary',
@@ -339,6 +360,24 @@ async function configureSpectrumAnalyzer(page: import('@playwright/test').Page, 
 }
 
 /**
+ * Type an entry into the Operations Log (sidebar log icon) and close it.
+ */
+async function typeOpsLogEntry(page: import('@playwright/test').Page, text: string): Promise<void> {
+  await page.locator('.ops-log-icon').first().click();
+  const input = page.locator('#ops-log-manual-input');
+  await expect(input).toBeVisible({ timeout: 5000 });
+  await input.fill(text);
+  await input.press('Enter');
+  await expect(page.locator('#ops-log-entries')).toContainText(text.slice(0, 20), { timeout: 5000 });
+  // Mission Complete closes the log itself when this entry finishes the scenario
+  await page
+    .locator('#ops-log-modal-close')
+    .click({ timeout: 3000 })
+    .catch(() => {});
+  await page.waitForTimeout(300);
+}
+
+/**
  * Execute an objective based on its type.
  */
 async function executeObjective(page: import('@playwright/test').Page, missionControlPage: MissionControlPage, objective: Scenario9Objective): Promise<void> {
@@ -357,7 +396,11 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
       // Observation-gated conditions latch only after the default dwell on
       // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
       // reset the read and strand the objective.
-      await page.waitForTimeout(3000);
+      await page.waitForTimeout(objective.dwellMs ?? 3000);
+      break;
+
+    case 'ops-log':
+      await typeOpsLogEntry(page, objective.logText!);
       break;
 
     case 'set-tracking-mode':
@@ -372,6 +415,9 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
 
     case 'configure-speca':
       await configureSpectrumAnalyzer(page, objective.specaConfig!);
+      if (objective.dwellMs) {
+        await page.waitForTimeout(objective.dwellMs);
+      }
       break;
 
     case 'auto':

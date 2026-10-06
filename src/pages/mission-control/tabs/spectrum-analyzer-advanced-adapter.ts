@@ -143,6 +143,10 @@ export class SpectrumAnalyzerAdvancedAdapter {
     if (el) {
       el.addEventListener('input', handler);
       this.boundHandlers.set(`${id}-input`, handler as EventListener);
+      // Enter and blur commit too (change), so a value typed in one go still
+      // lands even if an intermediate keystroke was out of range (nats-s05-F4)
+      el.addEventListener('change', handler);
+      this.boundHandlers.set(`${id}-change`, handler as EventListener);
     }
   }
 
@@ -412,7 +416,8 @@ export class SpectrumAnalyzerAdvancedAdapter {
 
   private setInputValue_(id: string, value: string): void {
     const el = this.domCache_.get(id) as HTMLInputElement;
-    if (el) {
+    // Never rewrite the field the operator is typing in
+    if (el && document.activeElement !== el) {
       el.value = value;
     }
   }
@@ -531,7 +536,10 @@ export class SpectrumAnalyzerAdvancedAdapter {
 
     // Remove all event listeners
     this.boundHandlers.forEach((handler, key) => {
-      const [id, eventType] = key.split('-');
+      // Ids contain dashes ("sa-center-freq"); the event type is after the last one
+      const cut = key.lastIndexOf('-');
+      const id = key.slice(0, cut);
+      const eventType = key.slice(cut + 1);
       const el = this.domCache_.get(id);
       if (el && eventType) {
         el.removeEventListener(eventType, handler);

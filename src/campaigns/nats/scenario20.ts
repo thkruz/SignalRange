@@ -85,6 +85,9 @@ export const scenario20Data: ScenarioData = {
   timeLimitSeconds: 45 * 60,
   settings: {
     isSync: true,
+    // Brief: Friday 0712 local; the log quiz's 0712 / ~0715 / ~0720 follow this clock
+    scenarioStartDate: '2026-03-06',
+    scenarioStartWallTime: '07:12:00',
     groundStations: [
       // VT-01: storm overhead, heater OFF (the inherited failure), ice building
       {
@@ -162,7 +165,7 @@ export const scenario20Data: ScenarioData = {
                   ...vermontGroundStation.transmitters[0].modems[0].ifSignal,
                   signalId: 'TIDEMARK-2-Teleport',
                   noradId: 61526,
-                  frequency: 1020e6 as IfFrequency, // TM-2 TP-2: 7000 - 5980
+                  frequency: 983e6 as IfFrequency, // TM-2 TP-1: 7000 - 6017
                 },
               },
             ],
@@ -233,7 +236,7 @@ export const scenario20Data: ScenarioData = {
               'Hand all traffic to the healthier site first - customers see one clean trunk, and the diagnosis can wait',
             ],
             correctIndex: 0,
-            explanation: 'The S16 rule scaled up: triage before action. Thirty seconds of reading both boards buys the order that costs the customers least.',
+            explanation: 'The cascade rule scaled up to two sites: triage before action. Thirty seconds of reading both boards buys the order that costs the customers least.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -270,7 +273,9 @@ export const scenario20Data: ScenarioData = {
       id: 'vt-read-board',
       nice: ['T0153', 'K0741'],
       title: 'Read the Vermont Board',
-      description: 'Dashboard: identify what the storm is doing and what should have prevented it.',
+      // The weather readouts (precipitation, ice, feed heater) live on ACU
+      // Control, not the Dashboard (nats-s20-F3)
+      description: 'ACU Control: read precipitation and ice accumulation, and find what should have prevented it.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['select-vermont-station'],
       timeLimitSeconds: 2 * 60,
@@ -279,8 +284,8 @@ export const scenario20Data: ScenarioData = {
         {
           type: 'tab-active',
           hidden: true,
-          description: 'Dashboard Open',
-          params: { tab: 'dashboard' },
+          description: 'ACU Control Open',
+          params: { tab: 'acu-control' },
           mustMaintain: true,
         },
         {
@@ -288,7 +293,7 @@ export const scenario20Data: ScenarioData = {
           description: 'Vermont Diagnosis',
           params: {
             character: Character.SYSTEM,
-            question: 'Ice is accumulating on the VT-01 feed during an active storm. What is the actual failure here?',
+            question: 'Precipitation is ACTIVE and ice is starting to build on the VT-01 feed. What is the actual failure here?',
             options: [
               'The feed heater is OFF - it should have been running before the front; ice is the consequence, the cold heater is the fault',
               'The storm itself - no heater outruns an active front; ice is the fault, and no operator action changes it',
@@ -297,7 +302,7 @@ export const scenario20Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Weather is not a fault; being unprepared for forecast weather is. The S3/S14 discipline - heater before the front - was missed on the previous shift, and now the recovery costs minutes instead of nothing.',
+              'Weather is not a fault; being unprepared for forecast weather is. The standing station discipline - heater before the front - was missed on the previous shift, and now the recovery costs minutes instead of nothing.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -310,11 +315,13 @@ export const scenario20Data: ScenarioData = {
       id: 'vt-enable-heater',
       nice: ['S0671', 'S0421'],
       title: 'Start the Slow Recovery',
-      description: 'Enable the feed heater NOW - one switch starts a recovery that runs while you work Maine.',
+      description: 'Enable the feed heater NOW on ACU Control - one switch starts a recovery that runs while you work Maine. Timed: running out fails the shift.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['vt-read-board'],
       timeLimitSeconds: 3 * 60,
       timerStartTrigger: 'on-activate',
+      // The priority call: the zero-cost slow fix starts first, or not at all
+      timeoutFails: true,
       conditions: [
         {
           type: 'tab-active',
@@ -387,7 +394,7 @@ export const scenario20Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              "S13's lesson in an HPA jacket: trace symptoms to the single input that explains them all. Back-off is the input; heat and IMD are the outputs. Fix the back-off and both clear.",
+              'The thermal-anomaly lesson in an HPA jacket: trace symptoms to the single input that explains them all. Back-off is the input; heat and IMD are the outputs. Fix the back-off and both clear.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -420,7 +427,7 @@ export const scenario20Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Simultaneity is what coordinated interference would look like - and what a Friday in January looks like. The discipline is neither paranoia nor dismissal: keep the question open exactly as long as the evidence takes. Answer it with evidence after the fixes, not with a shrug before them.',
+              'Simultaneity is what coordinated interference would look like - and what a Friday in March looks like. The discipline is neither paranoia nor dismissal: keep the question open exactly as long as the evidence takes. Answer it with evidence after the fixes, not with a shrug before them.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -466,11 +473,14 @@ export const scenario20Data: ScenarioData = {
       id: 'me-disable-hpa',
       nice: ['S0593', 'S0677'],
       title: 'Take the Dirty Uplink Down',
-      description: 'Disable the HPA output - the overdriven signal comes off the air first.',
+      description: 'TX Chain: disable the HPA output - the overdriven signal comes off the air first. Timed: running out fails the shift.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['triage-order-quiz'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
+      // IMD into adjacent transponders and a cooking amplifier: the
+      // dangerous fault cannot wait
+      timeoutFails: true,
       conditions: [
         {
           type: 'tab-active',
@@ -583,6 +593,42 @@ export const scenario20Data: ScenarioData = {
       points: 10,
     },
 
+    {
+      // Rule-out evidence the brief promises: no unexplained RF (nats-s20-F8)
+      id: 'me-spectrum-check',
+      nice: ['K0751', 'T0153'],
+      title: 'Sweep the Maine Spectrum',
+      description:
+        "RX Analysis: centre ME-02's analyzer on the TM-2 carrier (1458 MHz IF) with a span of about 50 MHz and look for any signal that is not ours - rule-out evidence for James.",
+      groundStation: 'ME-02',
+      prerequisiteObjectiveIds: ['me-verify-quiz'],
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          hidden: true,
+          description: 'RX Analysis Open',
+          params: { tab: 'rx-analysis' },
+          mustMaintain: true,
+        },
+        {
+          type: 'speca-center-frequency',
+          description: 'Analyzer at 1458 MHz IF',
+          params: { centerFrequency: 1458e6, centerFrequencyTolerance: 2e6 },
+          mustMaintain: true,
+        },
+        {
+          type: 'speca-span-set',
+          description: 'Span About 50 MHz',
+          params: { span: 50e6, spanTolerance: 15e6, requiresObservation: true, observationTab: 'rx-analysis', observationDwellSeconds: 5 },
+          mustMaintain: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+
     // ============================================================
     // PHASE 3: VERIFY VERMONT'S RECOVERY
     // ============================================================
@@ -590,9 +636,9 @@ export const scenario20Data: ScenarioData = {
       id: 'return-to-vermont',
       nice: ['S0421'],
       title: 'Back to Vermont',
-      description: 'Maine is clean. Check on the recovery you started fifteen minutes ago.',
+      description: 'Maine is clean. Check on the recovery you started at the top of the shift.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['me-verify-quiz'],
+      prerequisiteObjectiveIds: ['me-spectrum-check'],
       timeLimitSeconds: 1 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -646,12 +692,78 @@ export const scenario20Data: ScenarioData = {
       points: 15,
     },
     {
+      id: 'vt-spectrum-check',
+      nice: ['K0751', 'T0153'],
+      title: 'Sweep the Vermont Spectrum',
+      description: "RX Analysis: centre VT-01's analyzer on the TM-1 carrier (1532 MHz IF) with a span of about 50 MHz and look for any signal that is not ours.",
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['vt-verify-recovery'],
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          hidden: true,
+          description: 'RX Analysis Open',
+          params: { tab: 'rx-analysis' },
+          mustMaintain: true,
+        },
+        {
+          type: 'speca-center-frequency',
+          description: 'Analyzer at 1532 MHz IF',
+          params: { centerFrequency: 1532e6, centerFrequencyTolerance: 2e6 },
+          mustMaintain: true,
+        },
+        {
+          type: 'speca-span-set',
+          description: 'Span About 50 MHz',
+          params: { span: 50e6, spanTolerance: 15e6, requiresObservation: true, observationTab: 'rx-analysis', observationDwellSeconds: 5 },
+          mustMaintain: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
+      id: 'spectra-read-quiz',
+      nice: ['K0751', 'S0807'],
+      title: 'What the Spectra Showed',
+      description: 'Record what the two sweeps showed - this is the RF half of the rule-out.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['vt-spectrum-check'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'status-check',
+          description: 'Spectrum Evidence',
+          params: {
+            character: Character.SYSTEM,
+            question: 'You swept both carriers at about 50 MHz span. What did the two analyzers show?',
+            options: [
+              'One carrier at each site, where the frequency plan puts it (1458 at ME-02, 1532 at VT-01) - nothing else in either passband',
+              'A narrow unexplained carrier beside each of our carriers - the same offset at both sites, which points at a common source',
+              'Our carriers missing at both sites - only the noise floor across the passband, so the satellites have stopped relaying',
+              'Our carrier at ME-02 only - the VT-01 passband is empty under the ice, so the rule-out can only cover Maine for now',
+            ],
+            correctIndex: 0,
+            explanation:
+              'Two clean passbands, each holding exactly the carrier the plan says should be there. A jammer or a rogue uplink shows up as energy the plan cannot explain; there was none. That line goes into the rule-out next to the storm radar and the back-off history.',
+            pointPenalty: 5,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
       id: 'storm-steady-state-quiz',
       nice: ['S0671', 'K0689'],
       title: 'Steady State in the Storm',
       description: 'The storm has not stopped. Define the posture for the rest of it.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['vt-verify-recovery'],
+      prerequisiteObjectiveIds: ['spectra-read-quiz'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -669,7 +781,7 @@ export const scenario20Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'The S14 lesson holds: with the right protections running, weather is something you monitor, not something you fight. The failure this morning was a cold heater, not a strong storm.',
+              'The rain-fade lesson holds: with the right protections running, weather is something you monitor, not something you fight. The failure this morning was a cold heater, not a strong storm.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -686,7 +798,7 @@ export const scenario20Data: ScenarioData = {
       id: 'james-comms-quiz',
       nice: ['T1538', 'S0478'],
       title: 'Call James Back',
-      description: 'He asked two questions an hour ago: what happened, and should he be worried.',
+      description: 'He asked two questions at the top of the shift: what happened, and should he be worried.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['storm-steady-state-quiz'],
       timeLimitSeconds: 2 * 60,
@@ -765,14 +877,14 @@ export const scenario20Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which entry records this incident correctly?',
             options: [
-              'Dual degradation 0712: VT-01 icing (heater on 0716, melted) | ME-02 HPA back-off 1 dB (10 dB restored 0734); causes independent',
-              'Dual degradation 0712: VT-01 weather event (storm, no action) | ME-02 HPA fault (see separate ticket); both resolved by 0734',
-              'Dual degradation 0712: VT-01 icing (heater on 0716, melted) | ME-02 HPA back-off 1 dB (10 dB restored 0734); details on request',
-              'Dual degradation 0712: VT-01 icing (storm, heater on) | ME-02 HPA fault (fixed); both stations had problems, both fixed by 0734',
+              'Dual degradation 0712: VT-01 icing (heater on ~0715, melted) | ME-02 HPA back-off 1 dB (10 dB restored ~0720); causes independent',
+              'Dual degradation 0712: VT-01 weather event (storm, no action) | ME-02 HPA fault (see separate ticket); both resolved by ~0720',
+              'Dual degradation 0712: VT-01 icing (heater on ~0715, melted) | ME-02 HPA back-off 1 dB (10 dB restored ~0720); details on request',
+              'Dual degradation 0712: VT-01 icing (storm, heater on) | ME-02 HPA fault (fixed); both stations had problems, both fixed by ~0720',
             ],
             correctIndex: 0,
             explanation:
-              'Timeline, both causes, both fixes, the rule-out, and the process fix (heater on the shift-change checklist) so the inherited failure stops being inheritable. In full: heater off ahead of the front, corrected 0716 and melt verified; output disabled, 10 dB restored, re-enabled clean by 0734; customers notified; heater discipline flagged for the shift-change checklist.',
+              'Timeline, both causes, both fixes, the rule-out, and the process fix (heater on the shift-change checklist) so the inherited failure stops being inheritable. In full: heater off ahead of the front, corrected ~0715 and melt verified; output disabled, 10 dB restored, re-enabled clean by ~0720; both spectra swept clean; customers notified; heater discipline flagged for the shift-change checklist.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -830,7 +942,7 @@ export const scenario20Data: ScenarioData = {
       'log-dual-outage': {
         text: `
         <p>
-          Walking in now - and the incident's already closed with the process fix in the log. Two sites, one operator, zero customer drama. That's the qualification I actually care about.
+          Still on the road - and the incident's already closed with the process fix in the log. Two sites, one operator, zero customer drama. That's the qualification I actually care about.
         </p>
         `,
         character: Character.DANA_TORRES,

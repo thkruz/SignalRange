@@ -37,6 +37,8 @@ export interface ExtraRoute {
  * Simple Router for 3 pages: login, student, instructor
  */
 export class Router {
+  /** Give up waiting for plugins after this long and route without them, ms */
+  static readonly PLUGIN_READY_TIMEOUT_MS = 10_000;
   private static instance: Router;
   private currentPath: string = '/';
   private navigationOptions_: NavigationOptions = {};
@@ -90,7 +92,12 @@ export class Router {
     const plugins = PluginManager.getInstance();
 
     if (!plugins.isReady) {
-      plugins.ready
+      // A plugin chunk that never settles (a stalled import during a dev
+      // recompile) must not leave the page blank forever (nats-s01-F15)
+      const timeout = new Promise<void>((_, reject) => {
+        window.setTimeout(() => reject(new Error(`plugins not ready after ${Router.PLUGIN_READY_TIMEOUT_MS} ms`)), Router.PLUGIN_READY_TIMEOUT_MS);
+      });
+      Promise.race([plugins.ready, timeout])
         .catch((err: unknown) => console.warn('[router] plugins unavailable', err))
         .finally(() => {
           this.pluginsReady_ = true;
@@ -233,12 +240,22 @@ export class Router {
   }
 
   private hideAll(): void {
-    CampaignSelectionPage.getInstance().hide();
-    ScenarioSelectionPage.getInstance().hide();
-    SandboxPage.getInstance()?.hide();
-    MissionControlPage.getInstance()?.hide();
-    for (const route of this.extraRoutes_) {
-      route.hide?.();
+    // One page failing to tear down must not abort navigation: the URL has
+    // already changed, and a throw here left players on a dead scenario
+    // after Mission Complete (nats-s24-F6)
+    const hides: Array<() => void> = [
+      () => CampaignSelectionPage.getInstance().hide(),
+      () => ScenarioSelectionPage.getInstance().hide(),
+      () => SandboxPage.getInstance()?.hide(),
+      () => MissionControlPage.getInstance()?.hide(),
+      ...this.extraRoutes_.map((route) => () => route.hide?.()),
+    ];
+    for (const hide of hides) {
+      try {
+        hide();
+      } catch (error) {
+        console.error('Page teardown failed:', error);
+      }
     }
   }
 

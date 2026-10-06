@@ -1,7 +1,10 @@
 import stopwatchPng from '@app/assets/icons/stopwatch.png';
 import { DraggableModal } from '@app/engine/ui/draggable-modal';
 import { html } from '@app/engine/utils/development/formatter';
+import { OpsLogModal } from '@app/ops-log/ops-log-modal';
 import { ScenarioManager } from '@app/scenario-manager';
+import { WorkingDocumentManager } from '@app/scenarios/working-document-manager';
+import { SimulationManager } from '@app/simulation/simulation-manager';
 import { clearPersistedStore } from '@app/sync/storage';
 import { ProgressSaveManager } from '@app/user-account/progress-save-manager';
 import { DialogManager } from './dialog-manager';
@@ -100,8 +103,13 @@ export class ObjectiveFailedModal extends DraggableModal {
       return;
     }
 
-    // Clear checkpoint before refreshing
-    await this.progressSaveManager_.clearCheckpoint(scenario.data.id);
+    // Clear checkpoint before refreshing. A failed delete must not trap the
+    // player on the failure screen (signed out it used to throw, nats-s08-F12)
+    try {
+      await this.progressSaveManager_.clearCheckpoint(scenario.data.id);
+    } catch (error) {
+      console.error('Could not clear checkpoint; restarting anyway:', error);
+    }
 
     // Clear local equipment and objective state so scenario starts fresh
     await clearPersistedStore();
@@ -160,6 +168,16 @@ export class ObjectiveFailedModal extends DraggableModal {
 
     // Close dialog if showing
     DialogManager.getInstance().hide();
+
+    // Draggable boxes draw above modals; close them so nothing covers the buttons
+    if (SimulationManager.hasInstance()) {
+      const sim = SimulationManager.getInstance();
+      sim.checklistBox?.close();
+      sim.missionBriefBox?.close();
+    }
+    WorkingDocumentManager.getInstance().close();
+    // The last step is often a typed log entry; the log must not sit over the result
+    OpsLogModal.closeIfOpen();
   }
 
   override close(): void {

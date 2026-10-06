@@ -43,14 +43,14 @@ import { aurora7Satellite, ses10Satellite, tidemark1Satellite } from './satellit
  * 6. Configure TX modem and enable transmit path
  *
  * Technical Reference (AURORA-7):
- *   - Uplink RF: 5830 MHz
- *   - Downlink RF: 3605 MHz
+ *   - Uplink RF: 6053 MHz
+ *   - Downlink RF: 3828 MHz
  *   - Beacon RF: 4165 MHz
  *   - LNB LO: 5250 MHz
  *   - Beacon IF: 1085 MHz (5250 - 4165) - PRE-CONFIGURED by Charlie
  *   - Downlink IF: 1422 MHz (5250 - 3828)
  *   - BUC LO: 7500 MHz
- *   - TX IF: 1447 MHz (5830 - 7500) - STUDENT CALCULATES THIS
+ *   - TX IF: 1447 MHz (7500 - 6053, BUC LO above RF, LSB) - STUDENT CALCULATES THIS
  *   - Bandwidth: 24 MHz
  *
  * Key Differences from Scenario 4:
@@ -164,6 +164,8 @@ export const scenario6Data: ScenarioData = {
     missionBriefUrl: 'https://docs.signalrange.space/campaign-1/scenario-6?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
     satellites: [aurora7Satellite, tidemark1Satellite, ses10Satellite],
+    scenarioStartDate: '2026-02-05',
+    scenarioStartWallTime: '14:00:00',
   },
   objectives: [
     // ============================================================
@@ -257,7 +259,8 @@ export const scenario6Data: ScenarioData = {
               'Cannot determine from current display',
             ],
             correctIndex: 0,
-            explanation: 'The ACU shows TIDEMARK-1 selected. AURORA-7 is our target for this mission - we need to change the program-track target.',
+            explanation:
+              "The ACU shows TIDEMARK-1 as the program-track target, and the dish sits at TIDEMARK-1's look angles (about 161.9 / 34.3). AURORA-7 is our target for this mission - we need to change the program-track target.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -336,7 +339,7 @@ export const scenario6Data: ScenarioData = {
       // K0773: Knowledge of telecommunications principles and practices
       nice: ['K0773'],
       title: 'Verify Beacon Configuration',
-      description: 'Charlie pre-configured the beacon frequency for step-track. Check the ACU to verify the beacon IF is set to 1085 MHz.',
+      description: 'Charlie pre-configured the step-track beacon at 1085 MHz IF (AURORA-7 beacon, 4165 MHz RF). Confirm how that IF was derived.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['quiz-program-track-limitation'],
       timeLimitSeconds: 2 * 60,
@@ -623,7 +626,7 @@ export const scenario6Data: ScenarioData = {
             options: ['1447 MHz (7500 - 6053 = 1447)', '13553 MHz (6053 + 7500 = 13553)', '2303 MHz (6053 - 7500 / 2 = 2303)', '755 MHz (7500 - 4170 = 755)'],
             correctIndex: 0,
             explanation:
-              'For uplink, the BUC upconverts the IF to RF: RF = IF + LO, so IF = LO - RF = 7500 - 6053 = 1447 MHz. This is similar to the downlink calculation because the BUC is also using low-side injection.',
+              'The BUC LO (7500 MHz) sits above the uplink (6053 MHz), so the BUC outputs the lower sideband: RF = LO - IF, so IF = LO - RF = 7500 - 6053 = 1447 MHz. Same subtraction as the downlink, because both LOs sit above their RF.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -712,8 +715,8 @@ export const scenario6Data: ScenarioData = {
             options: [
               'Step-track maintaining lock on beacon, RX at 1422 MHz IF, TX at 1447 MHz IF, AES-256 encrypted',
               'Program-track following TLE, RX at 1085 MHz IF, TX at 1043 MHz IF, unencrypted',
-              'Manual pointing, RX at 1532 MHz IF, TX at 1094 MHz IF, AES-128 encrypted',
-              'Step-track on beacon, RX at 3605 MHz RF, TX at 5830 MHz RF, no encryption',
+              'Manual pointing, RX at 1532 MHz IF, TX at 1057 MHz IF, AES-128 encrypted',
+              'Step-track on beacon, RX at 3828 MHz RF, TX at 6053 MHz RF, no encryption',
             ],
             correctIndex: 0,
             explanation:
@@ -836,7 +839,7 @@ export const scenario6Data: ScenarioData = {
           Beacon lock acquired. The antenna is now actively tracking AURORA-7. You'll see small corrections happening continuously as the satellite drifts.
         </p>
         <p>
-          Time to configure the receive chain. Widen the spectrum analyzer view to see the main downlink signal at 1,645 megahertz IF.
+          Time to configure the receive chain. Widen the spectrum analyzer view to see the main downlink signal at 1,422 megahertz IF - 50 megahertz span is plenty.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -846,7 +849,7 @@ export const scenario6Data: ScenarioData = {
       'configure-speca-downlink': {
         text: `
         <p>
-          Good, you can see the downlink signal on the spectrum analyzer. Now configure the receiver modem to match - 1,645 megahertz center frequency, 24 megahertz bandwidth, QPSK modulation, 3/4 FEC.
+          Good, you can see the downlink signal on the spectrum analyzer. Now configure the receiver modem to match - 1,422 megahertz center frequency, 24 megahertz bandwidth, QPSK modulation, 3/4 FEC.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -882,7 +885,7 @@ export const scenario6Data: ScenarioData = {
           Correct. AES-256-GCM is the standard for our links. Never transmit without verifying encryption status.
         </p>
         <p>
-          Now here's your main calculation for this mission. The TX modem is set to the wrong frequency. AURORA-7's uplink is at 5,830 megahertz RF, and your BUC local oscillator is at 4,925 megahertz. Calculate the correct TX IF frequency.
+          Now here's your main calculation for this mission. The TX modem is set to the wrong frequency. AURORA-7's uplink is at 6,053 megahertz RF, and your BUC local oscillator is at 7,500 megahertz. Calculate the correct TX IF frequency.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -892,7 +895,7 @@ export const scenario6Data: ScenarioData = {
       'calculate-tx-if': {
         text: `
         <p>
-          1447 megahertz. Good work. The BUC upconverts from IF to RF, so it's a different calculation than the downlink. Set the TX modem to 1447 megahertz.
+          1447 megahertz. Good work. The BUC LO sits above the uplink, just like the LNB LO sits above the downlink, so it's the same subtraction: LO minus RF. Set the TX modem to 1447 megahertz.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

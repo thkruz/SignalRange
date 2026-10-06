@@ -8,10 +8,10 @@ import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForS
  * VT-01 ices under a severe winter storm (heater inherited OFF) while ME-02's
  * HPA sits overdriven at 1 dB back-off with a thermal alarm. The spec flies
  * the taught triage order: read VT -> heater ON -> read ME -> disable HPA ->
- * restore back-off -> re-enable -> verify VT melt -> customer comms +
- * adversarial rule-out + log.
+ * restore back-off -> re-enable -> sweep the ME spectrum -> verify VT melt ->
+ * sweep the VT spectrum -> customer comms + adversarial rule-out + log.
  */
-type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'toggle-switch' | 'configure-hpa-backoff' | 'wait-ice-melt' | 'auto';
+type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'toggle-switch' | 'configure-hpa-backoff' | 'configure-speca' | 'wait-ice-melt' | 'auto';
 
 interface Scenario20Objective {
   id: string;
@@ -23,6 +23,8 @@ interface Scenario20Objective {
   switchId?: string;
   switchState?: boolean;
   hpaBackoff?: number;
+  centerFrequencyMhz?: number;
+  spanMhz?: number;
   autoWaitSeconds?: number;
 }
 
@@ -42,22 +44,17 @@ const SCENARIO_20_OBJECTIVES: Scenario20Objective[] = [
     stationId: 'VT-01',
   },
   {
+    // Precipitation and ice read on ACU Control (nats-s20-F3)
     id: 'vt-read-board-tab',
-    title: 'Open Dashboard',
+    title: 'Open ACU Control',
     type: 'click-tab',
-    tabId: 'dashboard',
+    tabId: 'acu-control',
   },
   {
     id: 'vt-read-board',
     title: 'Read the Vermont Board',
     type: 'quiz',
     correctAnswer: 'The feed heater is OFF - it should have been running before the front; ice is the consequence, the cold heater is the fault',
-  },
-  {
-    id: 'vt-enable-heater-tab',
-    title: 'Open ACU Control',
-    type: 'click-tab',
-    tabId: 'acu-control',
   },
   {
     id: 'vt-enable-heater',
@@ -130,6 +127,19 @@ const SCENARIO_20_OBJECTIVES: Scenario20Objective[] = [
     type: 'quiz',
     correctAnswer: 'It clears on its own - output power dropped ~9 dB, so the output stage dissipates a fraction of the heat and cools',
   },
+  {
+    id: 'me-spectrum-tab',
+    title: 'Open RX Analysis',
+    type: 'click-tab',
+    tabId: 'rx-analysis',
+  },
+  {
+    id: 'me-spectrum-check',
+    title: 'Sweep the Maine Spectrum',
+    type: 'configure-speca',
+    centerFrequencyMhz: 1458,
+    spanMhz: 50,
+  },
 
   // PHASE 3: VERIFY VERMONT
   {
@@ -142,6 +152,25 @@ const SCENARIO_20_OBJECTIVES: Scenario20Objective[] = [
     id: 'vt-verify-recovery',
     title: 'Verify the Melt',
     type: 'wait-ice-melt',
+  },
+  {
+    id: 'vt-spectrum-tab',
+    title: 'Open RX Analysis',
+    type: 'click-tab',
+    tabId: 'rx-analysis',
+  },
+  {
+    id: 'vt-spectrum-check',
+    title: 'Sweep the Vermont Spectrum',
+    type: 'configure-speca',
+    centerFrequencyMhz: 1532,
+    spanMhz: 50,
+  },
+  {
+    id: 'spectra-read-quiz',
+    title: 'What the Spectra Showed',
+    type: 'quiz',
+    correctAnswer: 'One carrier at each site, where the frequency plan puts it (1458 at ME-02, 1532 at VT-01) - nothing else in either passband',
   },
   {
     id: 'storm-steady-state-quiz',
@@ -167,7 +196,7 @@ const SCENARIO_20_OBJECTIVES: Scenario20Objective[] = [
     id: 'log-dual-outage',
     title: 'Log the Dual Recovery',
     type: 'quiz',
-    correctAnswer: 'Dual degradation 0712: VT-01 icing (heater on 0716, melted) | ME-02 HPA back-off 1 dB (10 dB restored 0734); causes independent',
+    correctAnswer: 'Dual degradation 0712: VT-01 icing (heater on ~0715, melted) | ME-02 HPA back-off 1 dB (10 dB restored ~0720); causes independent',
   },
 ];
 
@@ -206,6 +235,19 @@ async function configureHpaBackoff(page: import('@playwright/test').Page, backof
   await expect(applyBtn).toBeVisible({ timeout: 5000 });
   await applyBtn.click();
   await page.waitForTimeout(400);
+}
+
+/** Centre the analyzer and set its span, then hold for the 5 s observation dwell. */
+async function configureSpeca(page: import('@playwright/test').Page, centerFrequencyMhz: number, spanMhz: number): Promise<void> {
+  const centerFreqInput = page.locator('#sa-center-freq');
+  await expect(centerFreqInput).toBeVisible({ timeout: 5000 });
+  await centerFreqInput.fill(centerFrequencyMhz.toString());
+  await centerFreqInput.press('Tab');
+  await page.waitForTimeout(300);
+  const spanInput = page.locator('#sa-span');
+  await spanInput.fill(spanMhz.toString());
+  await spanInput.press('Tab');
+  await page.waitForTimeout(7000);
 }
 
 /** Wait for VT-01's feed ice to melt below the objective threshold. */
@@ -258,6 +300,10 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
 
     case 'configure-hpa-backoff':
       await configureHpaBackoff(page, objective.hpaBackoff!);
+      break;
+
+    case 'configure-speca':
+      await configureSpeca(page, objective.centerFrequencyMhz!, objective.spanMhz!);
       break;
 
     case 'wait-ice-melt':

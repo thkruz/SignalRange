@@ -3,6 +3,8 @@ import { BaseElement } from '@app/components/base-element';
 import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
 import { CryptoModule } from '@app/equipment/crypto';
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
 import { BUCAdapter } from './buc-adapter';
 import { HPAAdapter } from './hpa-adapter';
 import { TransmitterAdapter } from './transmitter-adapter';
@@ -28,6 +30,8 @@ export class TxChainTab extends BaseElement {
   private hpaAdapter: HPAAdapter | null = null;
   private transmitterAdapter: TransmitterAdapter | null = null;
   private payloadAdapter_: TxPayloadAdapter | null = null;
+  private readonly boundFaultResetSync_: () => void;
+  private faultResetEnabled_: boolean | null = null;
 
   constructor(groundStation: GroundStation, containerId: string) {
     super();
@@ -40,6 +44,7 @@ export class TxChainTab extends BaseElement {
 
     // Must set html_ here (after groundStation is set) for dynamic antenna options
     this.html_ = this.buildHtml_();
+    this.boundFaultResetSync_ = this.syncFaultResetBtn_.bind(this);
 
     this.init_(containerId, 'replace');
     this.dom_ = qs('.tx-chain-tab');
@@ -422,15 +427,15 @@ export class TxChainTab extends BaseElement {
                       <div class="mb-2">
                         <div class="form-check form-switch mb-1">
                           <input id="tx-transmit-switch" type="checkbox" class="form-check-input" role="switch" />
-                          <label class="form-check-label small">Transmit</label>
+                          <label for="tx-transmit-switch" class="form-check-label small">Transmit</label>
                         </div>
                         <div class="form-check form-switch mb-1">
                           <input id="tx-loopback-switch" type="checkbox" class="form-check-input" role="switch" />
-                          <label class="form-check-label small">Loopback</label>
+                          <label for="tx-loopback-switch" class="form-check-label small">Loopback</label>
                         </div>
                         <div class="form-check form-switch mb-1">
                           <input id="tx-power-switch" type="checkbox" class="form-check-input" role="switch" />
-                          <label class="form-check-label small">Power</label>
+                          <label for="tx-power-switch" class="form-check-label small">Power</label>
                         </div>
                       </div>
 
@@ -456,8 +461,8 @@ export class TxChainTab extends BaseElement {
                         </div>
                       </div>
 
-                      <!-- Fault Reset Button -->
-                      <button id="tx-fault-reset-btn" class="btn btn-warning btn-sm w-100">Reset Fault</button>
+                      <!-- Fault Reset Button: neutral and disabled until the active modem faults (synced by syncFaultResetBtn_) -->
+                      <button id="tx-fault-reset-btn" class="btn btn-outline-secondary btn-sm w-100" disabled>Reset Fault</button>
                     </div>
                   </div>
                 </div>
@@ -491,7 +496,7 @@ export class TxChainTab extends BaseElement {
                     </div>
                     <div class="metric-row">
                       <span class="metric-label">Payload Type:</span>
-                      <span id="tx-payload-type" class="metric-value">Command</span>
+                      <span id="tx-payload-type" class="metric-value">Data</span>
                     </div>
                     <div class="metric-row">
                       <span class="metric-label">Channel:</span>
@@ -640,6 +645,30 @@ export class TxChainTab extends BaseElement {
         crypto.handleKeyRotation(next);
       });
     }
+
+    // Reset Fault reads as an action only when there is a fault to reset (s01-F20)
+    EventBus.getInstance().on(Events.UPDATE, this.boundFaultResetSync_);
+    this.syncFaultResetBtn_();
+  }
+
+  /**
+   * Enable Reset Fault (amber) only while the active modem is faulted or
+   * flagged intermittent; otherwise neutral and disabled. Writes the DOM only
+   * when the state flips, so running every tick is cheap.
+   */
+  private syncFaultResetBtn_(): void {
+    const btn = this.dom_?.querySelector<HTMLButtonElement>('#tx-fault-reset-btn');
+    const transmitter = this.groundStation.transmitters[0];
+    if (!btn || !transmitter) return;
+
+    const modem = transmitter.state.modems.find((m) => m.modem_number === transmitter.state.activeModem);
+    const enabled = Boolean(modem && (modem.isFaulted || modem.intermittentFault));
+    if (enabled === this.faultResetEnabled_) return;
+    this.faultResetEnabled_ = enabled;
+
+    btn.disabled = !enabled;
+    btn.classList.toggle('btn-warning', enabled);
+    btn.classList.toggle('btn-outline-secondary', !enabled);
   }
 
   /**
@@ -664,6 +693,7 @@ export class TxChainTab extends BaseElement {
    * Cleanup
    */
   public dispose(): void {
+    EventBus.getInstance().off(Events.UPDATE, this.boundFaultResetSync_);
     this.bucAdapter?.dispose();
     this.hpaAdapter?.dispose();
     this.transmitterAdapter?.dispose();

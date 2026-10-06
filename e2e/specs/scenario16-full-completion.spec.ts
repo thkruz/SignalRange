@@ -6,7 +6,7 @@ import { answerQuizByText, dismissDialogIfPresent, waitForSimulationReady } from
  * Scenario 16 - "Cascade Failure": Multi-System Recovery Under Customer Pressure.
  *
  * Phase 2 capstone. Three concurrent unrelated faults on VT-01:
- *  - BUC over-temperature (>70°C) with high current draw
+ *  - BUC over-temperature (>70°C, a staged buc-overtemp cooling fault)
  *  - LNB sticky reference-lock fault (clears on power cycle)
  *  - HPA back-off drifted to 2 dB (overdriven)
  *
@@ -74,7 +74,7 @@ const SCENARIO_16_OBJECTIVES: Scenario16Objective[] = [
     id: 'triage-dashboard-alarms',
     title: 'Triage the Alarm Board',
     type: 'quiz',
-    correctAnswer: 'BUC over-temperature and high current, LNB reference unlocked, HPA overdriven',
+    correctAnswer: 'BUC over-temperature, LNB reference unlocked, HPA overdriven',
   },
   {
     id: 'prioritize-recovery-order',
@@ -132,8 +132,10 @@ const SCENARIO_16_OBJECTIVES: Scenario16Objective[] = [
     id: 'wait-for-buc-cooling',
     title: 'Allow BUC to Cool',
     type: 'auto',
-    // Muted BUC cools toward ambient at ~0.14°C/s; 72°C -> <70°C in ~20 s.
-    waitForSeconds: 45,
+    // The buc-overtemp fault holds a muted BUC's target at ~55°C (time
+    // constant ~5.5 min), so ~72-73°C -> <70°C takes about a minute of real
+    // time (advanceClock does not run physics).
+    waitForSeconds: 150,
   },
 
   // ============================================================
@@ -366,8 +368,16 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
       break;
 
     case 'auto':
-      // Wait for simulation-driven condition (e.g. BUC thermal recovery)
-      await page.waitForTimeout((objective.waitForSeconds ?? 90) * 1000);
+      // Wait for the simulation-driven condition (e.g. BUC thermal recovery)
+      // to complete the objective itself
+      await page.waitForFunction(
+        (id) => {
+          const hook = (window as unknown as { debugObjective?: (id: string) => { isCompleted?: boolean } }).debugObjective;
+          return typeof hook === 'function' && hook(id)?.isCompleted === true;
+        },
+        objective.id,
+        { timeout: (objective.waitForSeconds ?? 90) * 1000, polling: 500 }
+      );
       break;
   }
 

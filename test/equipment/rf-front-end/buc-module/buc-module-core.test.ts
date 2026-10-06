@@ -4,7 +4,7 @@ import { RFFrontEndCore } from '../../../../src/equipment/rf-front-end/rf-front-
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
 import { SignalOrigin } from '../../../../src/signal-origin';
-import type { dB, dBm, Hertz, IfSignal, MHz } from '../../../../src/types';
+import type { dB, dBm, Hertz, IfSignal, MHz, RfSignal } from '../../../../src/types';
 import { advanceSimTime } from '../../../helpers/sim-time';
 
 // Mock HTMLMediaElement.prototype.play for jsdom compatibility
@@ -389,21 +389,53 @@ describe('BUCModuleCore', () => {
     });
 
     describe('output power calculation', () => {
-      it('should set output power to -170 when not powered', () => {
+      it('should report the output floor when not powered', () => {
         bucModule.state.isPowered = false;
 
         bucModule.update();
 
-        expect(bucModule.state.outputPower).toBe(-170);
+        expect(bucModule.state.outputPower).toBe(BUCModuleCore.OUTPUT_POWER_FLOOR_DBM);
+        expect(bucModule.hasRfOutput()).toBe(false);
       });
 
-      it('should set output power to -170 when muted', () => {
+      it('should report the output floor when muted', () => {
         bucModule.state.isPowered = true;
         bucModule.state.isMuted = true;
 
         bucModule.update();
 
-        expect(bucModule.state.outputPower).toBe(-170);
+        expect(bucModule.state.outputPower).toBe(BUCModuleCore.OUTPUT_POWER_FLOOR_DBM);
+        expect(bucModule.hasRfOutput()).toBe(false);
+      });
+
+      it('should derive output power from the actual output signals, not a fixed drive', () => {
+        // Two in-band -10 dBm carriers: total output is +3 dB over one
+        const carrier = (frequency: number) => ({
+          isTransmitting: true,
+          isFaulted: false,
+          isLoopback: false,
+          ifSignal: { frequency, bandwidth: 1e6, power: -10 as dBm, origin: SignalOrigin.TRANSMITTER } as IfSignal,
+        });
+        mockRfFrontEnd = createMockRfFrontEnd({}, [createMockTransmitter([carrier(490e6), carrier(500e6)])]);
+        bucModule = new TestBUCModule(BUCModuleCore.getDefaultState(), mockRfFrontEnd, 1);
+        bucModule.state.gain = 10 as dB;
+
+        bucModule.update();
+
+        expect(bucModule.outputSignals).toHaveLength(2);
+        expect(bucModule.state.outputPower).toBeCloseTo(10 * Math.log10(2), 5);
+      });
+
+      it('should report the floor and no saturation alarm when every carrier is out of band', () => {
+        // LO pushes both sidebands outside the 5.925-6.425 GHz output filter
+        bucModule.state.loFrequency = 7500 as MHz;
+        bucModule.state.gain = 60 as dB;
+
+        bucModule.update();
+
+        expect(bucModule.outputSignals).toEqual([]);
+        expect(bucModule.state.outputPower).toBe(BUCModuleCore.OUTPUT_POWER_FLOOR_DBM);
+        expect(bucModule.getAlarms().some((a) => a.includes('saturation'))).toBe(false);
       });
 
       it('should calculate linear output power below saturation', () => {
@@ -588,10 +620,22 @@ describe('BUCModuleCore', () => {
       bucModule.state.isPowered = true;
       bucModule.state.saturationPower = 15 as dBm;
       bucModule.state.outputPower = 14 as dBm; // Within 2 dB of saturation
+      bucModule.outputSignals = [{ frequency: 6e9, bandwidth: 1e6, power: 14, origin: SignalOrigin.BUC } as unknown as RfSignal];
 
       const alarms = bucModule.getAlarms();
 
       expect(alarms.some((a) => a.includes('saturation'))).toBe(true);
+    });
+
+    it('should not warn of saturation when the BUC has no RF output', () => {
+      bucModule.state.isPowered = true;
+      bucModule.state.saturationPower = 15 as dBm;
+      bucModule.state.outputPower = 14 as dBm;
+      bucModule.outputSignals = [];
+
+      const alarms = bucModule.getAlarms();
+
+      expect(alarms.some((a) => a.includes('saturation'))).toBe(false);
     });
 
     it('should return over-temperature alarm when > 70°C', () => {

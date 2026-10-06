@@ -89,6 +89,9 @@ export class GPSDOAdapter {
     // Optional: older fixtures and the SDR console host a GPSDO without this readout.
     const timeOffset = this.containerEl.querySelector<HTMLElement>('#gpsdo-time-offset');
     if (timeOffset) this.domCache_.set('timeOffset', timeOffset);
+    // Optional: only the GPS & Timing tab lists the distribution outputs.
+    const outputList = this.containerEl.querySelector<HTMLElement>('#gpsdo-10mhz-output-list');
+    if (outputList) this.domCache_.set('10mhzOutputList', outputList);
     this.domCache_.set('freqAccuracy', qs('#gpsdo-freq-accuracy', this.containerEl));
     this.domCache_.set('allanDeviation', qs('#gpsdo-allan-deviation', this.containerEl));
     this.domCache_.set('phaseNoise', qs('#gpsdo-phase-noise', this.containerEl));
@@ -334,6 +337,23 @@ export class GPSDOAdapter {
     // Update 10 MHz outputs
     const outputs = this.domCache_.get('10mhzOutputs');
     if (outputs) outputs.textContent = isPowered ? `${state.active10MHzOutputs}/${state.max10MHzOutputs}` : '--/--';
+
+    // List one destination per active output, so "3/5" lists three (s01-F13)
+    const outputList = this.domCache_.get('10mhzOutputList');
+    if (outputList) {
+      const names = isPowered ? GPSDOAdapter.outputDestinations(state.active10MHzOutputs) : [];
+      const listHtml = names.map((name) => `<p>${name}</p>`).join('');
+      if (outputList.innerHTML !== listHtml) outputList.innerHTML = listHtml;
+    }
+  }
+
+  /** Where each 10 MHz distribution output goes, in port order. */
+  private static readonly OUTPUT_DESTINATIONS_ = ['BUC Module', 'LNB Module', 'RX Modems', 'TX Modems', 'Spectrum Analyzer'];
+
+  /** Destination names for the first `count` active outputs (ports beyond the known five read "Output N"). */
+  static outputDestinations(count: number): string[] {
+    const n = Math.max(0, Math.floor(count));
+    return Array.from({ length: n }, (_, i) => GPSDOAdapter.OUTPUT_DESTINATIONS_[i] ?? `Output ${i + 1}`);
   }
 
   dispose(): void {

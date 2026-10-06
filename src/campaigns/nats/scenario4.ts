@@ -105,6 +105,9 @@ export const scenario4Data: ScenarioData = {
     missionBriefUrl: 'https://docs.signalrange.space/campaign-1/scenario-4?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
     satellites: [tidemark1Satellite, ses10Satellite, tidemark2Satellite],
+    // Brief: Wednesday, 1030 Local
+    scenarioStartDate: '2026-02-04',
+    scenarioStartWallTime: '10:30:00',
   },
   objectives: [
     // ============================================================
@@ -286,7 +289,7 @@ export const scenario4Data: ScenarioData = {
       // positions and the relationship between azimuth/elevation and satellite location
       nice: ['S0421', 'K1032'],
       title: 'Command Antenna to Track TIDEMARK-2',
-      description: 'Slew the antenna to TIDEMARK-2 position (Az: 219.7°, El: 26.3°). The antenna will calculate the optimal slew path.',
+      description: 'Slew the antenna to TIDEMARK-2 (Az: 219.7°, El: 26.3°): with PROGRAM selected, pick TIDEMARK-2 as the target satellite and press Move to Target.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-antenna-initial-state'],
       timeLimitSeconds: 3 * 60,
@@ -431,7 +434,8 @@ export const scenario4Data: ScenarioData = {
       // T1567: Equipment configuration happens throughout
       nice: ['K0773', 'S0421', 'T1567'],
       title: 'Configure Spectrum Analyzer for TIDEMARK-2 Beacon',
-      description: 'Set spectrum analyzer to view TIDEMARK-2 beacon at IF frequency 1070 MHz.',
+      description:
+        'Set the spectrum analyzer for the TIDEMARK-2 beacon: Center 1070 MHz, Span 0.01 MHz (10 kHz), RBW 1 kHz. The reference level stays at the -91 dBm beacon preset.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['understand-frequency-calculation'],
       timeLimitSeconds: 3 * 60,
@@ -466,7 +470,7 @@ export const scenario4Data: ScenarioData = {
         },
         {
           type: 'speca-reference-level-set',
-          description: 'Reference Level: -90 dBm',
+          description: 'Reference Level Near -90 dBm (preset)',
           params: {
             referenceLevel: -90,
             referenceLevelTolerance: 5,
@@ -718,7 +722,7 @@ export const scenario4Data: ScenarioData = {
           params: {
             question: 'The modem shows "Locked" with C/N above 10 dB. Why do we check the C/N value and not just the lock indicator?',
             options: [
-              'Lock can occur at C/N as low as 3-4 dB, but error rates would be high - we need margin',
+              'Lock can occur at C/N as low as 4-5 dB, but error rates would be high - we need margin',
               'The lock indicator is unreliable, often showing false positives - we need a second check',
               '10 dB is the hardware minimum, below it the modem will not run - we need it to function',
               'The C/N value sets the data rate, higher is faster - we need to know the throughput',
@@ -817,7 +821,7 @@ export const scenario4Data: ScenarioData = {
       // T1567: Equipment configuration happens throughout
       nice: ['K0773', 'S0421', 'T1567'],
       title: 'Configure TX Modem',
-      description: 'Set transmitter modem parameters for TIDEMARK-2 uplink.',
+      description: 'Set transmitter modem parameters for the TIDEMARK-2 uplink (TP-1, 6,017 MHz RF): 983 MHz IF, 36 MHz bandwidth, -7 dBm, QPSK, FEC 3/4, transmitting.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-tx-initial-state'],
       timeLimitSeconds: 3 * 60,
@@ -825,9 +829,9 @@ export const scenario4Data: ScenarioData = {
       conditions: [
         {
           type: 'tx-modem-frequency-set',
-          description: 'TX Frequency: 1020 MHz',
+          description: 'TX Frequency: 983 MHz',
           params: {
-            frequency: 1020e6,
+            frequency: 983e6, // TM-2 TP-1: 7000 - 983 = 6017 MHz (LSB)
             frequencyTolerance: 1e6,
           },
           maintainUntilObjectiveComplete: true,
@@ -1076,7 +1080,7 @@ export const scenario4Data: ScenarioData = {
           When you command a new target, the ACU will calculate the slew path to TIDEMARK-2's position. The antenna will move smoothly from one set of coordinates to another. Ready to command the slew?
         </p>
         <p>
-          Set tracking mode to program-track and select TIDEMARK-2 as the target. The ACU will handle the rest.
+          Keep program-track, select TIDEMARK-2 as the target and press Move to Target. The ACU will handle the rest.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1089,7 +1093,7 @@ export const scenario4Data: ScenarioData = {
           Antenna's slewing. Nice and smooth. You can see the position indicators updating as it moves across the sky.
         </p>
         <p>
-          That was a big move - about 58 degrees in azimuth and 8 degrees in elevation. Takes a minute or two for a dish this size to cover that distance safely. The ACU limits slew rate to prevent mechanical stress.
+          That was a big move - about 58 degrees in azimuth and 8 degrees in elevation. Takes a little while for a dish this size to cover that distance safely. The ACU limits slew rate to prevent mechanical stress.
         </p>
         <p>
           While it's settling, think about why the position change was so significant.
@@ -1144,7 +1148,7 @@ export const scenario4Data: ScenarioData = {
       'configure-speca-beacon': {
         text: `
         <p>
-          Spectrum analyzer's configured correctly. 1,070 MHz center, narrow span for the CW beacon, tight RBW to see it clearly above the noise, and reference level set appropriately.
+          Spectrum analyzer's configured correctly. 1,070 MHz center, narrow span for the CW beacon, tight RBW to see it clearly above the noise, and the reference level still sits right for a weak beacon.
         </p>
         <p>
           The antenna should be on target by now. Watch the display - if everything's aligned, the beacon should appear right at center frequency. A clean spike above the noise floor.
@@ -1286,7 +1290,7 @@ export const scenario4Data: ScenarioData = {
       'configure-tx-modem': {
         text: `
         <p>
-          Transmitter modem's configured. 1,020 MHz IF, 36 MHz bandwidth, QPSK 3/4 - those parameters will put your signal right in TIDEMARK-2's transponder passband after the BUC upconverts.
+          Transmitter modem's configured. 983 MHz IF, 36 MHz bandwidth, QPSK 3/4. The BUC LO sits at 7,000, so 7,000 minus 983 puts your signal at 6,017 megahertz, right in the middle of TIDEMARK-2's TP-1 passband.
         </p>
         <p>
           Before we enable the RF path, let's make sure you understand the correct sequence. There's a right order for bringing up the transmit chain.
@@ -1318,10 +1322,7 @@ export const scenario4Data: ScenarioData = {
           Marcus again from Halifax. We're seeing your uplink appear on the payload side - clean signal, right in the passband, no anomalies. Beauty, eh?
         </p>
         <p>
-          Full duplex established with TIDEMARK-2. VT-01 is now operational on the new bird. The switchover is complete from the spacecraft perspective.
-        </p>
-        <p>
-          Charlie, your trainee did good work today. Nice and methodical, no shortcuts. That's how you avoid problems.
+          Charlie, your trainee did good work today. Nice and methodical, no shortcuts. I'll make the call once you've confirmed everything's up on your side.
         </p>
         `,
         character: Character.MARCUS_CHEN,
@@ -1334,7 +1335,7 @@ export const scenario4Data: ScenarioData = {
           That's right. Full duplex confirmed by: receiver locked with margin - downlink working. HPA enabled with proper backoff - uplink active. No alarms anywhere - everything in spec.
         </p>
         <p>
-          TIDEMARK-2 is a bent-pipe transponder - it just relays what it receives. It doesn't send acknowledgments or confirmations. We verify the uplink by seeing our own signal appear on the receive side after it loops through the satellite.
+          TIDEMARK-2 is a bent-pipe transponder - it just relays what it receives. It doesn't send acknowledgments or confirmations. Marcus seeing our carrier on the payload side is the uplink proof; we can't see it ourselves without a loopback. He's just called it from Halifax: full duplex established, switchover complete.
         </p>
         <p>
           Well done. VT-01 is now fully operational on TIDEMARK-2. Grab yourself a coffee - you've earned it.

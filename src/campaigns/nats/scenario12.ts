@@ -53,7 +53,7 @@ import { ses10Satellite, tidemark1Satellite, tidemark2Satellite } from './satell
  * Technical Reference (TIDEMARK-1 from VT-01):
  *   - Az 161.8°, El 34.2°, Pol 14°
  *   - LNB LO: 5250 MHz; Beacon RF: 4175.5 MHz; Beacon IF: 1074.5 MHz
- *   - BUC LO: 7000 MHz; Teleport carrier RF: 5906 MHz (TP-2); TX IF: 1094 MHz
+ *   - BUC LO: 7000 MHz (LSB); Teleport carrier RF: 5943 MHz (TP-1); TX IF: 1057 MHz
  *   - Operating BUC gain: 23 dB (post-maintenance leftover: 50 dB - same as S7 testing value)
  */
 
@@ -68,11 +68,13 @@ export const scenario12Data: ScenarioData = {
   duration: '25-35 min',
   difficulty: 'intermediate',
   missionType: 'Maintenance Recovery',
-  description: `Waveguide gasket inspection is done. Maintenance crew is clear of the antenna and signed out. VT-01 is stowed, RF chain cold, and Catherine is holding TM-1 traffic on ME-02.<br><br>Bring Vermont back the clean way: antenna on target, RX chain validated against the beacon, transmit side swept for any leftovers the maintenance crew left behind, then a coordinated handover return from Maine. Marcus will want to hear from us once SeaLink's link is back where it started.<br><br>No clock pressure. Just do it right.`,
+  description: `Waveguide gasket replacement is done. Maintenance crew is clear of the antenna and signed out. VT-01 is stowed, RF chain cold, and Catherine is holding TM-1 traffic on ME-02.<br><br>Bring Vermont back the clean way: antenna on target, RX chain validated against the beacon, transmit side swept for any leftovers the maintenance crew left behind, then a coordinated handover return from Maine. Marcus will want to hear from us once SeaLink's link is back where it started.<br><br>No clock pressure. Just do it right.`,
   equipment: ['9-meter C-band Antenna', 'RF Front End', 'Spectrum Analyzer', 'RX/TX Modems', 'ME-02: Holding TM-1 traffic'],
   timeLimitSeconds: 35 * 60, // 35 minutes
   settings: {
     isSync: true,
+    scenarioStartDate: '2026-02-24',
+    scenarioStartWallTime: '09:14:00',
     groundStations: [
       // VT-01: stowed for maintenance window, RF chain cold, BUC has a
       // gain leftover from maintenance crew's bench testing (50 dB instead
@@ -95,12 +97,15 @@ export const scenario12Data: ScenarioData = {
         ],
         rfFrontEnds: [
           createRfFrontEnd(vermontGroundStation.rfFrontEnds[0], {
-            // RF chain safed for maintenance window. LNB was operational before
-            // the window so it restabilizes quickly on power-up; we don't override
-            // the thermalStabilizationTime fields (inherit instant-stable from
-            // vermontGroundStation defaults).
+            // RF chain safed for maintenance window. The LNB has been off for
+            // the window, so its noise temperature settles over ~90 s after
+            // power-up instead of the instant-stable station default; the
+            // power-up step holds 30 s on it (nats-s12-F3: LNB, beacon and RX
+            // lock all completed the instant the LNB powered).
             lnb: {
               isPowered: false,
+              noiseTemperatureStabilizationTime: 90,
+              thermalStabilizationTime: 90,
             },
             buc: {
               isPowered: false,
@@ -124,6 +129,14 @@ export const scenario12Data: ScenarioData = {
               backOff: 10,
             },
           }),
+        ],
+        // Analyzer parked off the beacon (the crew used it during the window),
+        // so the beacon step is a real retune
+        spectrumAnalyzers: [
+          {
+            ...vermontGroundStation.spectrumAnalyzers[0],
+            centerFrequency: 600e6 as Hertz,
+          },
         ],
         transmitters: [
           {
@@ -372,7 +385,8 @@ export const scenario12Data: ScenarioData = {
       id: 'power-up-lnb',
       nice: ['T1567', 'S0421'],
       title: 'Power Up LNB',
-      description: 'Power on the LNB and wait for thermal stabilization. LO is preserved at 5,250 MHz.',
+      description:
+        'Power on the LNB and hold while it settles: the noise temperature comes down under 100 K, LOCK shows locked, and the readings have to stay that way for 30 s. LO is preserved at 5,250 MHz.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['repoint-antenna-tm1'],
       timeLimitSeconds: 4 * 60,
@@ -393,8 +407,9 @@ export const scenario12Data: ScenarioData = {
         },
         {
           type: 'lnb-thermally-stable',
-          description: 'LNB Thermally Stable',
-          maintainUntilObjectiveComplete: true,
+          description: 'LNB Stable for 30 s',
+          mustMaintain: true,
+          maintainDuration: 30,
         },
         {
           type: 'lnb-reference-locked',
@@ -409,7 +424,7 @@ export const scenario12Data: ScenarioData = {
       id: 'acquire-tm1-beacon',
       nice: ['T0153', 'K0773'],
       title: 'Acquire TIDEMARK-1 Beacon',
-      description: 'Tune the spectrum analyzer to the TM-1 beacon IF (1,074.5 MHz) and verify the beacon.',
+      description: 'The analyzer is parked where the crew left it. Tune it to the TM-1 beacon IF (1,074.5 MHz) and verify the beacon.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['power-up-lnb'],
       timeLimitSeconds: 3 * 60,
@@ -457,13 +472,13 @@ export const scenario12Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'Receiver Locked',
-          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis', observationDwellSeconds: 5 },
           maintainUntilObjectiveComplete: true,
         },
         {
           type: 'receiver-snr-threshold',
           description: 'C/N ≥ 10 dB',
-          params: { minCNRatio: 10, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { minCNRatio: 10, requiresObservation: true, observationTab: 'rx-analysis', observationDwellSeconds: 5 },
           maintainUntilObjectiveComplete: true,
         },
       ],
@@ -471,49 +486,6 @@ export const scenario12Data: ScenarioData = {
       points: 10,
     },
 
-    // ============================================================
-    // PHASE 4: POST-MAINTENANCE LEFTOVER SWEEP
-    // ============================================================
-    {
-      id: 'tx-chain-inspection',
-      nice: ['T0431', 'S0593'],
-      title: 'TX Chain Pre-Power Inspection',
-      description: 'Inspect the TX chain panel before energizing. Look for anything the maintenance crew left out of operating spec.',
-      groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['verify-rx-modem-lock'],
-      timeLimitSeconds: 3 * 60,
-      timerStartTrigger: 'on-activate',
-      conditions: [
-        {
-          type: 'tab-active',
-          hidden: true,
-          description: 'TX Chain Open',
-          params: { tab: 'tx-chain' },
-          mustMaintain: true,
-        },
-        {
-          type: 'status-check',
-          description: 'Identify the Leftover',
-          params: {
-            character: Character.SYSTEM,
-            question: 'BUC, HPA, and TX modem are all powered off as expected. What is out of operating spec?',
-            options: [
-              'BUC gain is at 50 dB - testing value left over from maintenance, operating value is 23 dB',
-              'BUC LO is at 7,000 MHz - testing value left over from maintenance, operating value is 6,500 MHz',
-              'HPA backoff is at 10 dB - resting value left over from the crew, operating value is 0 dB',
-              'Nothing is out of spec - gain, LO and backoff all match the operating baseline for this chain',
-            ],
-            correctIndex: 0,
-            explanation:
-              'The bench-test gain (50 dB) was never dialed back to 23 dB. With BUC powered off this is harmless, but bringing the chain up at this gain would over-drive the HPA the moment loopback or transmit was engaged. Catch it before you energize.',
-            pointPenalty: 10,
-          },
-          mustMaintain: false,
-        },
-      ],
-      conditionLogic: 'AND',
-      points: 10,
-    },
     // ============================================================
     // PHASE 5: TX CHAIN RESTORATION
     // ============================================================
@@ -523,7 +495,7 @@ export const scenario12Data: ScenarioData = {
       title: 'Power Up BUC (Muted)',
       description: 'Power on the BUC - it stays muted from the safed state, so no RF flows. Reference lock should come up against the locked GPSDO.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['tx-chain-inspection'],
+      prerequisiteObjectiveIds: ['verify-rx-modem-lock'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -554,13 +526,57 @@ export const scenario12Data: ScenarioData = {
       conditionLogic: 'AND',
       points: 10,
     },
+    // ============================================================
+    // POST-MAINTENANCE LEFTOVER SWEEP (after BUC power-up: the BUC card
+    // shows '--' for gain and LO while it is off, nats-s12-F1)
+    // ============================================================
+    {
+      id: 'tx-chain-inspection',
+      nice: ['T0431', 'S0593'],
+      title: 'TX Chain Leftover Inspection',
+      description: 'With the BUC powered and muted, inspect the TX chain panel before anything else comes up. Look for anything the maintenance crew left out of operating spec.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['power-up-buc'],
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          hidden: true,
+          description: 'TX Chain Open',
+          params: { tab: 'tx-chain' },
+          mustMaintain: true,
+        },
+        {
+          type: 'status-check',
+          description: 'Identify the Leftover',
+          params: {
+            character: Character.SYSTEM,
+            question: 'The BUC is powered and muted; the HPA and TX modem are still off. What on the TX chain is out of operating spec?',
+            options: [
+              'BUC gain is at 50 dB - testing value left over from maintenance, operating value is 23 dB',
+              'BUC LO is at 6,500 MHz - testing value left over from maintenance, operating value is 7,000 MHz',
+              'HPA backoff is at 10 dB - resting value left over from the crew, operating value is 0 dB',
+              'Nothing is out of spec - gain, LO and backoff all match the operating baseline for this chain',
+            ],
+            correctIndex: 0,
+            explanation:
+              'The bench-test gain (50 dB) was never dialed back to 23 dB. With the BUC muted and the HPA off this is harmless, but bringing the rest of the chain up at this gain would over-drive the HPA the moment transmit was engaged. Catch it before you energize the HPA.',
+            pointPenalty: 10,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
     {
       id: 'correct-buc-gain',
       nice: ['T1567', 'S0421'],
       title: 'Restore BUC Operating Gain',
       description: 'With the BUC powered but still muted, dial the gain back to its 23 dB operating value before the rest of the chain comes up.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['power-up-buc'],
+      prerequisiteObjectiveIds: ['tx-chain-inspection'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -615,7 +631,7 @@ export const scenario12Data: ScenarioData = {
       id: 'start-modem-transmitting',
       nice: ['T1567', 'S0421'],
       title: 'Enable TX Modem',
-      description: 'Enable the transmit modem. Operational config (1,094 MHz IF, QPSK 3/4, 36 MHz) is preserved.',
+      description: 'Enable the transmit modem. Operational config (1,057 MHz IF, QPSK 3/4, 36 MHz) is preserved.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['power-up-hpa'],
       timeLimitSeconds: 2 * 60,
@@ -684,7 +700,7 @@ export const scenario12Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Same rule that protected the S11 hand-off: the satellite must never see two carriers fighting on one transponder. Stage the chain, then let the transfer stand Maine down and bring Vermont up atomically.',
+              "Same rule that protected last week's hand-off: the satellite must never see two carriers fighting on one transponder. Stage the chain, then let the transfer stand Maine down and bring Vermont up atomically.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -741,7 +757,7 @@ export const scenario12Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Symmetric to S11: the receiving station proves its receive side and stages its transmit side cold. The transfer stands Maine down and brings Vermont up in one swap - radiating early would put two carriers on the transponder.',
+              'Symmetric to the hand-off to Maine: the receiving station proves its receive side and stages its transmit side cold. The transfer stands Maine down and brings Vermont up in one swap - radiating early would put two carriers on the transponder.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -914,23 +930,30 @@ export const scenario12Data: ScenarioData = {
       id: 'log-maintenance-complete',
       nice: ['K0645', 'T1314'],
       title: 'Log Maintenance Cycle Complete',
-      description: 'Select the correct entry to close out the maintenance cycle in the ops log.',
+      description:
+        'Type the close-out into the Operations Log (log icon in the station sidebar): VT-01 back in service and the BUC gain leftover you corrected. Then pick the matching entry.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['final-dashboard-sweep'],
       timeLimitSeconds: 1 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
         {
+          type: 'ops-log-entry',
+          description: 'Close-Out Typed in Ops Log',
+          params: { logKeywords: ['gain', 'service|return|restor'], logMinLength: 20 },
+          mustMaintain: false,
+        },
+        {
           type: 'status-check',
           description: 'Shift Log Entry',
           params: {
             character: Character.SYSTEM,
-            question: 'Which entry correctly closes out the S11-S12 maintenance cycle?',
+            question: 'Which entry correctly closes out the gasket maintenance cycle?',
             options: [
-              'VT-01 back in service after gasket inspection. TM-1 returned from ME-02. BUC gain leftover (50 dB) corrected before energizing. No customer impact.',
-              'VT-01 back in service after gasket inspection. TM-1 returned from ME-02. Customer reported a brief outage during the return. Ticket opened.',
+              'VT-01 back in service after gasket replacement. TM-1 returned from ME-02. BUC gain leftover (50 dB) corrected before energizing. No customer impact.',
+              'VT-01 back in service after gasket replacement. TM-1 returned from ME-02. Customer reported a brief outage during the return. Ticket opened.',
               'VT-01 maintenance window incomplete. TM-1 still on ME-02. HPA waveguide gasket work deferred to the next window. No customer impact.',
-              'VT-01 back in service after gasket inspection. TM-1 returned from ME-02. Chain energized at the values the crew left, no leftovers found. No customer impact.',
+              'VT-01 back in service after gasket replacement. TM-1 returned from ME-02. Chain energized at the values the crew left, no leftovers found. No customer impact.',
             ],
             correctIndex: 0,
             explanation: 'Logging the leftover is the part that matters. Next shift sees what the maintenance crew did and what we caught - that is how the pattern gets fixed.',
@@ -961,7 +984,7 @@ export const scenario12Data: ScenarioData = {
       'verify-rx-modem-lock': {
         text: `
         <p>
-          RX side's back. Before you energize anything on transmit - actually look at the TX panel. Maintenance crews leave bench-test values behind. Same crew left the BUC unmuted in loopback a few months back. Catch it on the panel, not after the HPA's been on for ten seconds.
+          RX side's back. When the BUC comes up, stop and actually look at the TX panel before anything else goes on. Maintenance crews leave bench-test values behind. Same crew left the BUC unmuted in loopback a few months back. Catch it on the panel, not after the HPA's been on for ten seconds.
         </p>
         `,
         character: Character.DANA_TORRES,
@@ -971,7 +994,7 @@ export const scenario12Data: ScenarioData = {
       'select-maine-station': {
         text: `
         <p>
-          Catherine here. I've been watching your beacon come up on the network status - looks like you're ready to take TM-1 back. C/N's been steady our side, no events. Whenever you're set, give me the call.
+          Catherine here. I've been watching VT-01 come back on the network status - RX looks healthy from here, so you're ready to take TM-1 back. C/N's been steady our side, no events. Whenever you're set, give me the call.
         </p>
         `,
         character: Character.CATHERINE_VEGA,

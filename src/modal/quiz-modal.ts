@@ -329,6 +329,9 @@ export class QuizModal extends DraggableBox {
       const continueBtn = getEl('quiz-continue-btn');
       if (continueBtn) {
         continueBtn.addEventListener('click', () => this.handleContinueClick_());
+        // The box scrolls; a long explanation pushed Continue below the fold (nats-s22-F9)
+        continueBtn.scrollIntoView?.({ block: 'nearest' });
+        continueBtn.focus();
       }
 
       // Adjust position if modal extends past viewport

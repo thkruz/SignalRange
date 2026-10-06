@@ -154,7 +154,7 @@ export const scenario3Data: ScenarioData = {
                   origin: SignalOrigin.TRANSMITTER,
                   noiseFloor: null,
                   gainInPath: 0 as dBi,
-                  frequency: 1094e6 as IfFrequency,
+                  frequency: 1057e6 as IfFrequency, // TM-1 TP-1: 7000 - 1057 = 5943 MHz (LSB)
                   power: -7 as dBm,
                   bandwidth: 36e6 as Hertz,
                   modulation: 'QPSK' as ModulationType,
@@ -187,6 +187,9 @@ export const scenario3Data: ScenarioData = {
     ],
     missionBriefUrl: 'https://docs.signalrange.space/campaign-1/scenario-3?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
+    // Brief: Tuesday, 1045 Local (same day as the scheduled maintenance)
+    scenarioStartDate: '2026-02-03',
+    scenarioStartWallTime: '10:45:00',
   },
   objectives: [
     // ============================================================
@@ -469,7 +472,7 @@ export const scenario3Data: ScenarioData = {
           type: 'status-check',
           description: 'Understand Urgency',
           params: {
-            question: 'I mentioned you have about six minutes before the link fails. What makes weather handovers so time-critical?',
+            question: 'I mentioned you have maybe fifteen minutes before the link fails. What makes weather handovers so time-critical?',
             options: [
               'Degradation is progressive - once the AGC runs out of range the link fails fast',
               'Antenna motors slow in the cold - Maine takes longer to slew onto the satellite',
@@ -739,7 +742,7 @@ export const scenario3Data: ScenarioData = {
       // understanding program-track mode for GEO satellites
       nice: ['S0421', 'K1032'],
       title: 'Point Antenna at TIDEMARK-1',
-      description: "Set tracking mode to PROGRAM TRACK to acquire TIDEMARK-1. The system will calculate the correct look angles for Maine's location.",
+      description: "Click PROGRAM, select TIDEMARK-1 as the target satellite and press Move to Target. The system calculates the look angles for Maine's location.",
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['navigate-acu-maine'],
       timeLimitSeconds: 3 * 60,
@@ -947,7 +950,8 @@ export const scenario3Data: ScenarioData = {
       // setting correct IF frequency for beacon observation
       nice: ['S0421', 'K0773'],
       title: 'Configure Spectrum Analyzer',
-      description: 'Set the spectrum analyzer to observe the TIDEMARK-1 beacon: Center frequency 1,074.5 MHz, Span 2 kHz, Minimum Amplitude -65 dBm, Maximum Amplitude -50 dBm.',
+      description:
+        'Set the spectrum analyzer to observe the TIDEMARK-1 beacon: Center frequency 1,074.5 MHz, Span 0.002 MHz (2 kHz; the field is in MHz), Min Amp -65 dBm, Max Amp -50 dBm.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['verify-lnb-config-quiz'],
       timeLimitSeconds: 3 * 60,
@@ -1282,7 +1286,7 @@ export const scenario3Data: ScenarioData = {
       // S0421: Skill in operating network equipment - executing TX modem configuration
       nice: ['K0792', 'S0421'],
       title: 'Configure Transmitter Modem',
-      description: 'Configure the transmitter modem to match Vermont: Frequency 1,094 MHz, Power -7 dBm, Bandwidth 36 MHz, QPSK modulation, FEC 3/4. Enable transmission.',
+      description: 'Configure the transmitter modem to match Vermont: Frequency 1,057 MHz, Power -7 dBm, Bandwidth 36 MHz, QPSK modulation, FEC 3/4. Enable transmission.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['navigate-tx-maine'],
       timeLimitSeconds: 4 * 60,
@@ -1307,9 +1311,9 @@ export const scenario3Data: ScenarioData = {
         },
         {
           type: 'tx-modem-frequency-set',
-          description: 'TX Frequency Set to 1,094 MHz',
+          description: 'TX Frequency Set to 1,057 MHz',
           params: {
-            frequency: 1094e6 as IfFrequency,
+            frequency: 1057e6 as IfFrequency,
             frequencyTolerance: 1e6 as Hertz,
           },
           maintainUntilObjectiveComplete: true,
@@ -1551,7 +1555,8 @@ export const scenario3Data: ScenarioData = {
       // to ensure future availability
       nice: ['S0421', 'K0741'],
       title: 'Stow Vermont Antenna',
-      description: 'Set tracking mode to STOW to protect the antenna during the blizzard. Stow position is straight up (El: 90°) to minimize wind loading and ice accumulation.',
+      description:
+        'Click STOW, then press APPLY on the Antenna Positioning card to start the move. Stow position is straight up (El: 90°) to minimize wind loading and ice accumulation.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['navigate-acu-vt01-stow'],
       timeLimitSeconds: 3 * 60,
@@ -1623,12 +1628,19 @@ export const scenario3Data: ScenarioData = {
       // logging requirements for operational events
       nice: ['T1606'],
       title: 'Document Handover Event',
-      description: 'Understand the documentation requirements for weather-related handover events.',
+      description:
+        'Type a handover entry in the Ops Log (station sidebar): onset and handover times, TIDEMARK-1, VT-01 to ME-02, and the snow. Then answer the documentation questions.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['verify-stow-quiz'],
-      timeLimitSeconds: 2 * 60,
+      timeLimitSeconds: 4 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
+        {
+          type: 'ops-log-entry',
+          description: 'Handover Typed in Ops Log',
+          params: { logKeywords: ['handover|handoff|hand over|hand off', 'me-02|maine', 'snow|blizzard|weather'], logMinLength: 30 },
+          mustMaintain: false,
+        },
         {
           type: 'status-check',
           description: 'Documentation Requirements',
@@ -1783,7 +1795,7 @@ export const scenario3Data: ScenarioData = {
       'verify-agc-status': {
         text: `
         <p>
-          Right. Without AGC, we'd have lost lock minutes ago. It's buying us time - but based on the forecast, we've got maybe six minutes before the AGC runs out of room to compensate.
+          Right. Without AGC, we'd have lost lock minutes ago. It's buying us time - but based on the forecast, we've got well under fifteen minutes before the AGC runs out of room to compensate.
         </p>
         <p>
           Do you understand why weather handovers are so time-critical?
@@ -1890,7 +1902,7 @@ export const scenario3Data: ScenarioData = {
       'navigate-acu-maine': {
         text: `
         <p>
-          Set tracking mode to Program Track. The system will calculate the correct pointing angles for Maine's location and slew the antenna to TIDEMARK-1.
+          Click PROGRAM, select TIDEMARK-1 as the target and press Move to Target. The system calculates the pointing angles for Maine's location and slews the antenna.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1937,7 +1949,7 @@ export const scenario3Data: ScenarioData = {
       'configure-maine-lnb': {
         text: `
         <p>
-          LNB's powered and warming up. Watch the thermal indicator - we need it stable before we can trust the receive path.
+          LNB's powered and settled. Noise temperature's down under 100 K and LOCK is green - now we can trust the receive path.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1950,7 +1962,7 @@ export const scenario3Data: ScenarioData = {
           Exactly. Same LO means same IF. Makes everything downstream identical between sites. Less to think about, fewer mistakes.
         </p>
         <p>
-          Now let's verify we're actually seeing the satellite. Configure the spectrum analyzer - center frequency 1,074.5 MHz, reference level around -91 dBm.
+          Now let's verify we're actually seeing the satellite. Configure the spectrum analyzer - center frequency 1,074.5 MHz, span 0.002 MHz, Min Amp -65 and Max Amp -50 dBm.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -2055,7 +2067,7 @@ export const scenario3Data: ScenarioData = {
       'navigate-tx-maine': {
         text: `
         <p>
-          Configure the transmitter modem to match Vermont: 1,094 MHz, -7 dBm, 36 MHz bandwidth, QPSK, FEC 3/4. Then enable transmission.
+          Configure the transmitter modem to match Vermont: 1,057 MHz, -7 dBm, 36 MHz bandwidth, QPSK, FEC 3/4. Then enable transmission.
         </p>
         <p>
           The handover process will handle the BUC and HPA automatically - you just need to get the modem configured and enabled.
@@ -2145,7 +2157,7 @@ export const scenario3Data: ScenarioData = {
       'navigate-acu-vt01-stow': {
         text: `
         <p>
-          Set tracking mode to Stow. Points the antenna straight up - 90 degrees elevation. Minimizes wind loading and keeps snow from accumulating in the dish.
+          Click STOW, then APPLY. Points the antenna straight up - 90 degrees elevation. Minimizes wind loading and keeps snow from accumulating in the dish.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -2168,7 +2180,7 @@ export const scenario3Data: ScenarioData = {
           Maine is fully operational. TIDEMARK-1 traffic is now being served from ME-02. Vermont is in standby until the weather clears.
         </p>
         <p>
-          One more thing before we're done - documentation. Every handover event gets logged, even routine weather ones.
+          One more thing before we're done - documentation. Every handover event gets logged, even routine weather ones. Open the Ops Log in the station sidebar and type it up: when the snow started hurting the link, when the handover finished, TIDEMARK-1, Vermont to Maine.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

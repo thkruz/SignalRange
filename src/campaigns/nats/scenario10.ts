@@ -70,6 +70,8 @@ export const scenario10Data: ScenarioData = {
   timeLimitSeconds: 30 * 60,
   settings: {
     isSync: true,
+    scenarioStartDate: '2026-02-17',
+    scenarioStartWallTime: '09:45:00',
     groundStations: [
       {
         ...vermontGroundStation,
@@ -319,7 +321,7 @@ export const scenario10Data: ScenarioData = {
       id: 'enable-step-track',
       nice: ['S0421', 'K1032'],
       title: 'Switch to Step-Track',
-      description: 'Command the antenna into step-track mode.',
+      description: 'On ACU Control, turn on the Step-Track Optimization switch in the Program Track card.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['why-step-track'],
       timeLimitSeconds: 2 * 60,
@@ -594,7 +596,7 @@ export const scenario10Data: ScenarioData = {
       id: 'sustain-rx-margin',
       nice: ['T1580', 'T0153'],
       title: 'Sustain Customer Downlink Margin',
-      description: 'Hold receive C/N above the customer threshold for the pass window.',
+      description: 'Hold receive C/N above the 9 dB customer threshold while the window runs (a 30 s hold stands in for the pass; Marcus calls the close).',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['imd-tradeoff-check'],
       timeLimitSeconds: 3 * 60,
@@ -702,12 +704,19 @@ export const scenario10Data: ScenarioData = {
       id: 'log-customer-pass',
       nice: ['K0645', 'S0478'],
       title: 'Log the Customer Pass',
-      description: 'Select the correct shift-log entry for the SeaLink window.',
+      description:
+        'Type the pass into the Operations Log (log icon in the station sidebar): the window and what you did with the HPA backoff. Then pick the matching shift-log line.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['final-pass-snapshot'],
       timeLimitSeconds: 1 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
+        {
+          type: 'ops-log-entry',
+          description: 'Pass Typed in Ops Log',
+          params: { logKeywords: ['pass|window|sealink', 'backoff'], logMinLength: 20 },
+          mustMaintain: false,
+        },
         {
           type: 'status-check',
           description: 'Shift Log Entry',
@@ -735,7 +744,7 @@ export const scenario10Data: ScenarioData = {
     intro: {
       text: `
       <p>
-        <em>[Text message from Dana at 09:48]</em>
+        <em>[Text message from Dana at 09:45]</em>
       </p>
       <p>
         "SeaLink booked a 30-minute high-priority window on AURORA-7 starting at 10:00. Marcus from Halifax is on the line - he'll be watching payload telemetry live. Link's up on program-track from the overnight shift, but you'll want step-track for the pass and a tighter HPA backoff. Standard work. Don't break it with a customer watching."
@@ -752,7 +761,7 @@ export const scenario10Data: ScenarioData = {
           Marcus here from Halifax. We're spun up on our end - payload's nominal, watching the spacecraft side telemetry now. Customer's expecting clean throughput from 10:00 to 10:30 sharp.
         </p>
         <p>
-          Whenever you've got the ground side in pass configuration, give me a wave and I'll start watching the inbound.
+          Get the ground side into pass configuration and I'll be watching the inbound from here.
         </p>
         `,
         character: Character.MARCUS_CHEN,
@@ -765,7 +774,7 @@ export const scenario10Data: ScenarioData = {
           Beauty. Payload telemetry's locked on our end - frame sync solid, no FEC uncorrectables, link's coming through clean. The C/N's holding right where we want it.
         </p>
         <p>
-          Keep doing what you're doing. I'll let you know when the customer's twenty-eight minutes are up.
+          Keep it right there. I'll call the close when the customer's window is done.
         </p>
         `,
         character: Character.MARCUS_CHEN,
@@ -775,7 +784,7 @@ export const scenario10Data: ScenarioData = {
       'sustain-beacon-track': {
         text: `
         <p>
-          That's the window. Pass closed at 10:30 on our side - customer's confirmed the data, telemetry shows a clean delivery, no dropouts. Nicely done.
+          That's the window. Pass is closed on our side - customer's confirmed the data, telemetry shows a clean delivery, no dropouts. Nicely done.
         </p>
         <p>
           Bring the amp back to resting and I'll send the disposition through to SeaLink ops. Thanks, eh.

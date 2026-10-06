@@ -5,6 +5,7 @@ import { PolarPlot } from '@app/components/polar-plot/polar-plot';
 import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
 import { TrackingMode } from '@app/equipment/antenna/antenna-core';
+import { trackingModeLabel } from '@app/equipment/antenna/tracking-mode-label';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { SimulationManager } from '@app/simulation/simulation-manager';
@@ -49,8 +50,8 @@ export class ACUControlTab extends BaseElement {
   private static readonly BEACON_UPDATE_INTERVAL_MS = 1000;
   private lastBeaconSyncTime_: number = 0;
 
-  // Active target satellite (only updates when "Move to Target" is clicked)
-  private activeTargetSatelliteId_: number | null = null;
+  // Satellite list the target dropdown was last built from (rebuilt when it changes)
+  private satelliteOptionsKey_: string = '';
 
   // Event handler cleanup tracking
   private readonly boundHandlers_: Map<string, { element: Element; event: string; handler: EventListener }> = new Map();
@@ -183,7 +184,7 @@ export class ACUControlTab extends BaseElement {
                 <div class="border-top pt-3 mt-3">
                   <div class="d-flex justify-content-between align-items-center mb-2">
                     <div>
-                      <span class="fw-bold">Step-Track Optimization</span>
+                      <label for="${p}step-track-toggle" class="fw-bold mb-0" style="cursor: pointer;">Step-Track Optimization</label>
                       <div class="text-muted small">Fine beacon correction</div>
                     </div>
                     <div class="form-check form-switch mb-0">
@@ -239,7 +240,7 @@ export class ACUControlTab extends BaseElement {
                     <span id="${p}tracking-mode-display" class="fw-bold font-monospace">MANUAL</span>
                   </div>
                   <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted">Lock Status:</span>
+                    <span class="text-muted">Pointing:</span>
                     <span id="${p}lock-status-display" class="fw-bold">UNLOCKED</span>
                   </div>
                   <div class="d-flex justify-content-between">
@@ -258,7 +259,7 @@ export class ACUControlTab extends BaseElement {
                     <span class="beacon-strength-value" id="${p}beacon-cn-value">-- dB</span>
                   </div>
                   <div class="d-flex justify-content-between mt-1">
-                    <span class="text-muted small">Lock Status:</span>
+                    <span class="text-muted small">Beacon Lock:</span>
                     <span id="${p}beacon-lock-status" class="fw-bold">--</span>
                   </div>
                 </div>
@@ -315,7 +316,7 @@ export class ACUControlTab extends BaseElement {
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
-                  <span class="fw-bold">Feed Heater</span>
+                  <label for="${p}heater-switch" class="fw-bold mb-0" style="cursor: pointer;">Feed Heater</label>
                   <div class="text-muted small">Prevents ice buildup</div>
                 </div>
                 <div class="d-flex align-items-center gap-2">
@@ -327,7 +328,7 @@ export class ACUControlTab extends BaseElement {
               </div>
               <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
-                  <span class="fw-bold">Rain Blower</span>
+                  <label for="${p}blower-switch" class="fw-bold mb-0" style="cursor: pointer;">Rain Blower</label>
                   <div class="text-muted small">Clears radome</div>
                 </div>
                 <div class="d-flex align-items-center gap-2">
@@ -577,12 +578,7 @@ export class ACUControlTab extends BaseElement {
     buttons.forEach((btn, index) => {
       const handler = () => {
         const mode = (btn as HTMLElement).dataset.mode as TrackingMode;
-
-        // Clear active target when leaving program-track mode
-        if (antenna.state.trackingMode === 'program-track' && mode !== 'program-track') {
-          this.activeTargetSatelliteId_ = null;
-        }
-
+        // handleTrackingModeChange clears state.targetSatelliteId on any mode change
         antenna.handleTrackingModeChange(mode);
       };
       this.addHandler_(`tracking-mode-${index}`, btn, 'click', handler);
@@ -595,17 +591,13 @@ export class ACUControlTab extends BaseElement {
 
     if (!select || !moveBtn) return;
 
-    // Initialize active target from current state
-    this.activeTargetSatelliteId_ = antenna.state.targetSatelliteId;
-
     // If a target satellite is pre-configured, set the beacon frequency from it
     if (antenna.state.targetSatelliteId !== null) {
       antenna.handleTargetSatelliteChange(antenna.state.targetSatelliteId);
     }
 
-    // Populate satellite dropdown
-    const satellites = SimulationManager.getInstance().satellites;
-    select.innerHTML = '<option value="">-- Select Satellite --</option>' + satellites.map((sat) => `<option value="${sat.noradId}">${sat.name}</option>`).join('');
+    // Populate satellite dropdown (rebuilt by syncUiWithState_ if the list changes)
+    this.syncSatelliteOptions_(select);
 
     // Handle selection change
     const selectHandler = () => {
@@ -617,7 +609,6 @@ export class ACUControlTab extends BaseElement {
 
     // Handle move button
     const moveHandler = () => {
-      this.activeTargetSatelliteId_ = antenna.state.targetSatelliteId;
       antenna.moveToTargetSatellite();
     };
     this.addHandler_('move-to-target', moveBtn, 'click', moveHandler);
@@ -741,7 +732,7 @@ export class ACUControlTab extends BaseElement {
 
     // Update tracking mode display
     const modeDisplay = this.qs_('tracking-mode-display');
-    if (modeDisplay) modeDisplay.textContent = state.trackingMode.toUpperCase().replace('-', ' ');
+    if (modeDisplay) modeDisplay.textContent = trackingModeLabel(state);
 
     // Update lock status
     const lockDisplay = this.qs_('lock-status-display');
@@ -881,14 +872,17 @@ export class ACUControlTab extends BaseElement {
     // Sync satellite dropdown selection (skip if user is interacting)
     const satelliteSelect = this.qs_<HTMLSelectElement>('satellite-select');
     if (satelliteSelect && document.activeElement !== satelliteSelect) {
+      this.syncSatelliteOptions_(satelliteSelect);
       satelliteSelect.value = state.targetSatelliteId?.toString() ?? '';
     }
 
-    // Sync current target display (only shows active target, not dropdown selection)
+    // Sync current target display from the antenna's own target. Program-track
+    // follows state.targetSatelliteId every tick, so that is what the pedestal
+    // is tracking; an adapter-local copy went blank whenever the target was
+    // set anywhere but this tab's Move button (s06-F4, s10-F4, s11-F4).
     const currentTargetDisplay = this.qs_<HTMLInputElement>('current-target-display');
     if (currentTargetDisplay) {
-      const satellite = this.activeTargetSatelliteId_ === null ? null : SimulationManager.getInstance().satellites.find((sat) => sat.noradId === this.activeTargetSatelliteId_);
-      currentTargetDisplay.value = satellite?.name ?? 'No Target';
+      currentTargetDisplay.value = this.targetSatelliteName_(state.targetSatelliteId);
     }
 
     // Sync beacon frequency input (skip if user is typing)
@@ -907,6 +901,22 @@ export class ACUControlTab extends BaseElement {
 
     // Sync RF metrics display
     this.syncRfMetrics_(antenna);
+  }
+
+  /** Display name for the antenna's target, 'No Target' when there is none. */
+  private targetSatelliteName_(noradId: number | null): string {
+    if (noradId === null) return 'No Target';
+    const satellite = SimulationManager.getInstance().satellites.find((sat) => sat.noradId === noradId);
+    return satellite?.name ?? `NORAD ${noradId}`;
+  }
+
+  /** Rebuild the target dropdown when the simulation's satellite list changes. */
+  private syncSatelliteOptions_(select: HTMLSelectElement): void {
+    const satellites = SimulationManager.getInstance().satellites;
+    const key = satellites.map((sat) => `${sat.noradId}:${sat.name}`).join('|');
+    if (key === this.satelliteOptionsKey_) return;
+    this.satelliteOptionsKey_ = key;
+    select.innerHTML = '<option value="">-- Select Satellite --</option>' + satellites.map((sat) => `<option value="${sat.noradId}">${sat.name}</option>`).join('');
   }
 
   private syncRfMetrics_(antenna: (typeof this.groundStation.antennas)[0]): void {

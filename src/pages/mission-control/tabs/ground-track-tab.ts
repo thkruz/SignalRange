@@ -109,7 +109,7 @@ export class GroundTrackTab extends BaseElement {
               <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <h3 class="card-title">World View</h3>
                 <div class="d-flex align-items-center gap-3">
-                  <label class="form-check form-switch mb-0">
+                  <label for="gt-toggle-footprints" class="form-check form-switch mb-0">
                     <input class="form-check-input" type="checkbox" id="gt-toggle-footprints" checked />
                     <span class="form-check-label small">Sat coverage</span>
                   </label>
@@ -117,13 +117,13 @@ export class GroundTrackTab extends BaseElement {
                     this.focusNoradId_ === null
                       ? ''
                       : html`
-                    <label class="form-check form-switch mb-0">
+                    <label for="gt-toggle-access" class="form-check form-switch mb-0">
                       <input class="form-check-input" type="checkbox" id="gt-toggle-access" />
                       <span class="form-check-label small">Station access</span>
                     </label>
                   `
                   }
-                  <label class="form-check form-switch mb-0">
+                  <label for="gt-toggle-terminator" class="form-check form-switch mb-0">
                     <input class="form-check-input" type="checkbox" id="gt-toggle-terminator" checked />
                     <span class="form-check-label small">Day/night</span>
                   </label>

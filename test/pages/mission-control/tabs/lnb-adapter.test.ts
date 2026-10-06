@@ -212,6 +212,31 @@ describe('LNBAdapter', () => {
     });
   });
 
+  describe('staged edits survive power toggles and state events', () => {
+    const loInput = () => containerEl.querySelector('#lnb-lo-frequency') as HTMLInputElement;
+    const applyBtn = () => containerEl.querySelector('#lnb-apply-btn') as HTMLButtonElement;
+    const stateHandler = () => mockEventBus.on.mock.calls.find((c: unknown[]) => c[0] === Events.RF_FE_LNB_CHANGED)?.[1];
+
+    it('keeps a pending LO through a power toggle and an LNB state event', () => {
+      (containerEl.querySelector('#lnb-lo-inc-coarse') as HTMLButtonElement).click(); // 6080 -> 6180 staged
+
+      const powerSwitch = containerEl.querySelector('#lnb-power') as HTMLInputElement;
+      powerSwitch.checked = true;
+      powerSwitch.dispatchEvent(new Event('change'));
+      stateHandler()({ ...mockLnbModule.state, noiseTemperature: 70 });
+
+      expect(loInput().value).toBe('6180');
+      expect(loInput().classList.contains('is-pending')).toBe(true);
+      expect(applyBtn().classList.contains('is-pending')).toBe(true);
+    });
+
+    it('follows external LO changes when there is no pending edit', () => {
+      stateHandler()({ ...mockLnbModule.state, loFrequency: 5150 });
+
+      expect(loInput().value).toBe('5150');
+    });
+  });
+
   describe('dispose', () => {
     it('should unregister from EventBus events', () => {
       adapter.dispose();

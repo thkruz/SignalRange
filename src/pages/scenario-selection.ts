@@ -9,9 +9,12 @@ import { Router } from '@app/router';
 import { ScenarioData } from '@app/ScenarioData';
 import { getNextPrerequisiteScenario, getPrerequisiteScenarioNames, isScenarioLocked, SCENARIOS } from '@app/scenario-manager';
 import { clearPersistedStore } from '@app/sync/storage';
+import { Auth } from '@app/user-account/auth';
 import { getUserDataService } from '@app/user-account/user-data-service';
 import { getAssetUrl } from '@app/utils/asset-url';
 import { BasePage } from './base-page';
+// .login-warning styles are shared with the campaign page
+import './campaign-selection.css';
 import './scenario-selection.css';
 
 declare global {
@@ -32,6 +35,8 @@ export class ScenarioSelectionPage extends BasePage {
   /** Scenarios with score > 0 - used for UI display (currently showing as completed) */
   private currentlyCompletedScenarioIds_: string[] = [];
   private checkpointsLoaded_ = false;
+  /** Set once auth is ready; shows the not-saved warning in the header */
+  private isSignedOut_ = false;
   private currentCampaignId_: string | null = null;
   private currentCampaign_: CampaignData | null = null;
 
@@ -99,6 +104,11 @@ export class ScenarioSelectionPage extends BasePage {
       // Wait for auth to be initialized before trying to load user data
       const { App } = await import('@app/app');
       await App.authReady;
+
+      // Signed-out players must learn before they play, not at Mission Complete,
+      // that nothing is saved (nats-s01-F4)
+      this.isSignedOut_ = !(await Auth.isLoggedIn());
+      this.updateHeader_();
 
       const userDataService = getUserDataService();
 
@@ -189,6 +199,19 @@ export class ScenarioSelectionPage extends BasePage {
             ← Back to Campaigns
           </a>
         </div>
+        ${
+          this.isSignedOut_
+            ? html`
+          <div class="login-warning">
+            <span class="login-warning-icon">&#9888;</span>
+            <span class="login-warning-text">
+              You're not signed in, so <strong>your progress won't be saved</strong> and later scenarios stay locked.
+              <strong>Create a free account</strong> (top right) to keep your progress.
+            </span>
+          </div>
+        `
+            : ''
+        }
       `;
     } else {
       headerEl.innerHTML = html`

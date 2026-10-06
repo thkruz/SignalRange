@@ -31,6 +31,13 @@ export class BUCAdapter {
   // Staged values - not applied until Apply button is clicked
   private stagedLoFrequency_: number = 6425;
   private stagedGain_: number = 58;
+  /**
+   * Pending (staged but not applied) edits. Toggles and external state events
+   * must not overwrite a pending staged value; it clears on Apply or when the
+   * staged value is brought back to the applied one.
+   */
+  private hasPendingLoEdit_ = false;
+  private hasPendingGainEdit_ = false;
 
   constructor(bucModule: BUCModuleCore, containerEl: HTMLElement) {
     this.bucModule = bucModule;
@@ -87,6 +94,15 @@ export class BUCAdapter {
     const state = this.bucModule.state;
     const isPowered = state.isPowered;
 
+    // Sync switches from external changes (scenario events, faults, other consoles)
+    this.syncSwitch_('powerSwitch', state.isPowered);
+    this.syncSwitch_('muteSwitch', state.isMuted);
+    this.syncSwitch_('loopbackSwitch', state.isLoopback);
+
+    // Applied values can change without an event; keep staged inputs and the
+    // pending indicator honest (pending edits are preserved)
+    this.syncStagedFromState_(state.loFrequency, state.gain);
+
     // Update RF Status displays - show actual output signal power for consistency with HPA input
     const outputPowerDisplay = this.domCache_.get('outputPowerDisplay');
     if (outputPowerDisplay) {
@@ -112,12 +128,7 @@ export class BUCAdapter {
     // Calculate and display P1dB margin
     const p1dbMarginDisplay = this.domCache_.get('p1dbMarginDisplay');
     if (p1dbMarginDisplay) {
-      if (isPowered) {
-        const p1dbMargin = state.saturationPower - state.outputPower;
-        p1dbMarginDisplay.textContent = `${p1dbMargin.toFixed(1)} dB`;
-      } else {
-        p1dbMarginDisplay.textContent = '-- dB';
-      }
+      p1dbMarginDisplay.textContent = this.formatP1dbMargin_(state);
     }
 
     // Update lock status
@@ -289,45 +300,122 @@ export class BUCAdapter {
   private loFreqInputHandler_(e: Event): void {
     const value = parseLocalizedNumber((e.target as HTMLInputElement).value);
     if (!isNaN(value)) {
-      this.stagedLoFrequency_ = Math.max(6000, Math.min(7500, value));
-      this.updateStagedDisplay_();
+      this.setStagedLoFrequency_(value);
     }
   }
 
   private adjustStagedLoFrequency_(delta: number): void {
-    this.stagedLoFrequency_ = Math.max(6000, Math.min(7500, this.stagedLoFrequency_ + delta));
-    this.updateStagedDisplay_();
+    this.setStagedLoFrequency_(this.stagedLoFrequency_ + delta);
+  }
+
+  /** Player edit: stage a new LO and mark it pending until applied. */
+  private setStagedLoFrequency_(value: number): void {
+    this.stagedLoFrequency_ = Math.max(6000, Math.min(7500, value));
+    this.hasPendingLoEdit_ = this.stagedLoFrequency_ !== this.bucModule.state.loFrequency;
+    this.updateStagedDisplay_(true);
   }
 
   private gainInputHandler_(e: Event): void {
     const value = parseLocalizedNumber((e.target as HTMLInputElement).value);
     if (!isNaN(value)) {
-      this.stagedGain_ = Math.max(0, Math.min(70, value));
-      this.updateStagedDisplay_();
+      this.setStagedGain_(value);
     }
   }
 
   private adjustStagedGain_(delta: number): void {
-    this.stagedGain_ = Math.max(0, Math.min(70, this.stagedGain_ + delta));
+    this.setStagedGain_(this.stagedGain_ + delta);
+  }
+
+  /** Player edit: stage a new gain and mark it pending until applied. */
+  private setStagedGain_(value: number): void {
+    this.stagedGain_ = Math.max(0, Math.min(70, value));
+    this.hasPendingGainEdit_ = this.stagedGain_ !== this.bucModule.state.gain;
+    this.updateStagedDisplay_(true);
+  }
+
+  /**
+   * Follow the applied values only where the player has no pending edit, so a
+   * toggle or external state event never silently discards a staged value.
+   */
+  private syncStagedFromState_(appliedLo: number | undefined, appliedGain: number | undefined): void {
+    if (appliedLo !== undefined) {
+      if (!this.hasPendingLoEdit_) {
+        this.stagedLoFrequency_ = appliedLo;
+      } else if (this.stagedLoFrequency_ === appliedLo) {
+        this.hasPendingLoEdit_ = false;
+      }
+    }
+    if (appliedGain !== undefined) {
+      if (!this.hasPendingGainEdit_) {
+        this.stagedGain_ = appliedGain;
+      } else if (this.stagedGain_ === appliedGain) {
+        this.hasPendingGainEdit_ = false;
+      }
+    }
     this.updateStagedDisplay_();
   }
 
-  private updateStagedDisplay_(): void {
+  /**
+   * @param isUserEdit true when called from the player's own edit; otherwise a
+   *   focused input is left alone (CLAUDE.md "Protecting Input Fields").
+   */
+  private updateStagedDisplay_(isUserEdit = false): void {
     const isPowered = this.bucModule.state.isPowered;
     const loFreqInput = this.domCache_.get('loFreqInput') as HTMLInputElement;
     const gainInput = this.domCache_.get('gainInput') as HTMLInputElement;
 
     if (loFreqInput) {
-      loFreqInput.value = isPowered ? this.stagedLoFrequency_.toString() : '--';
+      if (isUserEdit || document.activeElement !== loFreqInput) {
+        loFreqInput.value = isPowered ? this.stagedLoFrequency_.toString() : '--';
+      }
       loFreqInput.disabled = !isPowered;
     }
     if (gainInput) {
-      gainInput.value = isPowered ? this.stagedGain_.toString() : '--';
+      if (isUserEdit || document.activeElement !== gainInput) {
+        gainInput.value = isPowered ? this.stagedGain_.toString() : '--';
+      }
       gainInput.disabled = !isPowered;
     }
 
     // Disable adjust buttons when powered off
     this.setControlButtonsEnabled_(isPowered);
+    this.updatePendingIndicator_();
+  }
+
+  /** Staged vs applied: pending style on the inputs and Apply, applied value in the tooltip. */
+  private updatePendingIndicator_(): void {
+    const state = this.bucModule.state;
+    const isLoPending = state.isPowered && this.stagedLoFrequency_ !== state.loFrequency;
+    const isGainPending = state.isPowered && this.stagedGain_ !== state.gain;
+    const loFreqInput = this.domCache_.get('loFreqInput') as HTMLInputElement;
+    const gainInput = this.domCache_.get('gainInput') as HTMLInputElement;
+    const applyBtn = this.domCache_.get('applyBtn') as HTMLButtonElement;
+
+    if (loFreqInput) {
+      loFreqInput.classList.toggle('is-pending', isLoPending);
+      loFreqInput.title = `Applied: ${state.loFrequency} MHz${isLoPending ? ' (staged change not applied)' : ''}`;
+    }
+    if (gainInput) {
+      gainInput.classList.toggle('is-pending', isGainPending);
+      gainInput.title = `Applied: ${state.gain} dB${isGainPending ? ' (staged change not applied)' : ''}`;
+    }
+    applyBtn?.classList.toggle('is-pending', isLoPending || isGainPending);
+  }
+
+  /** Sync a switch from state; never fight a switch the player is interacting with. */
+  private syncSwitch_(cacheKey: string, isChecked: boolean): void {
+    const el = this.domCache_.get(cacheKey) as HTMLInputElement | undefined;
+    if (el && document.activeElement !== el && el.checked !== isChecked) {
+      el.checked = isChecked;
+    }
+  }
+
+  /** P1dB margin, or "--" when the BUC has no real RF output (off, muted, nothing in band). */
+  private formatP1dbMargin_(state: BUCState): string {
+    if (!this.bucModule.hasRfOutput()) {
+      return '-- dB';
+    }
+    return `${(state.saturationPower - state.outputPower).toFixed(1)} dB`;
   }
 
   private setControlButtonsEnabled_(enabled: boolean): void {
@@ -342,7 +430,10 @@ export class BUCAdapter {
     // Apply staged values to the core module
     this.bucModule.handleLoFrequencyChange(this.stagedLoFrequency_);
     this.bucModule.handleGainChange(this.stagedGain_);
+    this.hasPendingLoEdit_ = false;
+    this.hasPendingGainEdit_ = false;
     this.syncDomWithState_(this.bucModule.state);
+    this.updateStagedDisplay_();
   }
 
   private powerHandler_(e: Event): void {
@@ -375,14 +466,8 @@ export class BUCAdapter {
 
     const isPowered = state.isPowered ?? this.bucModule.state.isPowered;
 
-    // Update staged values from state and refresh displays
-    if (state.loFrequency !== undefined) {
-      this.stagedLoFrequency_ = state.loFrequency;
-    }
-    if (state.gain !== undefined) {
-      this.stagedGain_ = state.gain;
-    }
-    this.updateStagedDisplay_();
+    // Follow applied values unless the player has a pending staged edit
+    this.syncStagedFromState_(state.loFrequency, state.gain);
 
     // Update Power switch
     if (state.isPowered !== undefined) {
@@ -427,12 +512,7 @@ export class BUCAdapter {
     // Calculate and display P1dB margin
     const p1dbMarginDisplay = this.domCache_.get('p1dbMarginDisplay');
     if (p1dbMarginDisplay) {
-      if (isPowered && state.outputPower !== undefined && state.saturationPower !== undefined) {
-        const p1dbMargin = state.saturationPower - state.outputPower;
-        p1dbMarginDisplay.textContent = `${p1dbMargin.toFixed(1)} dB`;
-      } else if (!isPowered) {
-        p1dbMarginDisplay.textContent = '-- dB';
-      }
+      p1dbMarginDisplay.textContent = this.formatP1dbMargin_({ ...this.bucModule.state, ...state });
     }
 
     // Update lock status

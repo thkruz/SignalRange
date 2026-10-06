@@ -6,8 +6,10 @@ import modemPng from '@app/assets/icons/radio.png';
 import { BaseElement } from '@app/components/base-element';
 import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
+import { trackingModeLabel } from '@app/equipment/antenna/tracking-mode-label';
 import { EventBus } from '@app/events/event-bus';
-import { Events } from '@app/events/events';
+import { AggregatedAlarm, Events } from '@app/events/events';
+import { AlarmService } from '@app/services/alarm-service';
 import './dashboard-tab.css';
 
 interface AlarmEntry {
@@ -16,6 +18,13 @@ interface AlarmEntry {
   message: string;
   timestamp: Date;
 }
+
+const ALARM_LEVEL: Record<AggregatedAlarm['severity'], AlarmEntry['level']> = {
+  error: 'critical',
+  warning: 'warning',
+  info: 'info',
+  success: 'info',
+};
 
 /**
  * DashboardTab - Ground station overview and status display
@@ -140,13 +149,13 @@ export class DashboardTab extends BaseElement {
                   <div class="col-6">
                     <div class="quick-stat">
                       <span id="active-receivers" class="quick-stat-value good">${this.getActiveReceivers_()}</span>
-                      <span class="quick-stat-label">Active RX</span>
+                      <span class="quick-stat-label">RX Modems On</span>
                     </div>
                   </div>
                   <div class="col-6">
                     <div class="quick-stat">
                       <span id="active-transmitters" class="quick-stat-value good">${this.getActiveTransmitters_()}</span>
-                      <span class="quick-stat-label">Active TX</span>
+                      <span class="quick-stat-label">TX Modems On</span>
                     </div>
                   </div>
                   <div class="col-6">
@@ -157,7 +166,7 @@ export class DashboardTab extends BaseElement {
                   </div>
                   <div class="col-6">
                     <div class="quick-stat">
-                      <span id="alarm-count" class="quick-stat-value ${this.alarms_.length > 0 ? 'warn' : ''}">${this.alarms_.length}</span>
+                      <span id="alarm-count" class="quick-stat-value ${this.activeAlarmCount_() > 0 ? 'warn' : ''}">${this.activeAlarmCount_()}</span>
                       <span class="quick-stat-label">Alarms</span>
                     </div>
                   </div>
@@ -373,6 +382,9 @@ export class DashboardTab extends BaseElement {
     `;
   }
 
+  // Quick Stats counts powered modems (each receiver/transmitter chassis has
+  // four), so the labels say "Modems On". Mission Overview counts chassis;
+  // "Active RX 4" beside an Overview "1 RX" read as a contradiction (s01-F19).
   private getActiveReceivers_(): number {
     // Count powered modems across all receivers
     return this.groundStation.receivers.reduce((count, rx) => count + rx.state.modems.filter((m) => m.isPowered).length, 0);
@@ -388,19 +400,27 @@ export class DashboardTab extends BaseElement {
     return this.groundStation.receivers.reduce((count, rx) => count + (rx.state.availableSignals?.length ?? 0), 0);
   }
 
+  /** Errors and warnings: what the Quick Stats "Alarms" figure counts. Info entries are advisories. */
+  private activeAlarmCount_(): number {
+    return this.alarms_.filter((alarm) => alarm.level !== 'info').length;
+  }
+
   private renderAlarmList_(): string {
-    if (this.alarms_.length === 0) {
-      return html`
+    const noAlarms =
+      this.activeAlarmCount_() === 0
+        ? html`
         <div class="no-alarms">
           <div class="no-alarms-icon">&#x2713;</div>
           <div>No active alarms</div>
         </div>
-      `;
-    }
+      `
+        : '';
 
-    return this.alarms_
-      .map(
-        (alarm) => html`
+    return (
+      noAlarms +
+      this.alarms_
+        .map(
+          (alarm) => html`
       <div class="alarm-item">
         <span class="alarm-icon ${alarm.level}">
           ${alarm.level === 'critical' ? '&#x26A0;' : alarm.level === 'warning' ? '&#x26A0;' : '&#x2139;'}
@@ -409,8 +429,9 @@ export class DashboardTab extends BaseElement {
         <span class="alarm-time">${this.formatTime_(alarm.timestamp)}</span>
       </div>
     `
-      )
-      .join('');
+        )
+        .join('')
+    );
   }
 
   private formatTime_(date: Date): string {
@@ -519,8 +540,9 @@ export class DashboardTab extends BaseElement {
 
     const alarmCountEl = this.domCache_.get('alarm-count');
     if (alarmCountEl) {
-      alarmCountEl.textContent = String(this.alarms_.length);
-      alarmCountEl.className = `quick-stat-value ${this.alarms_.length > 0 ? 'warn' : ''}`;
+      const activeAlarms = this.activeAlarmCount_();
+      alarmCountEl.textContent = String(activeAlarms);
+      alarmCountEl.className = `quick-stat-value ${activeAlarms > 0 ? 'warn' : ''}`;
     }
 
     // Sync new summary cards
@@ -541,8 +563,7 @@ export class DashboardTab extends BaseElement {
     // Mode badge
     const modeEl = this.domCache_.get('antenna-mode');
     if (modeEl) {
-      const modeText = state.trackingMode.toUpperCase().replace('-', ' ');
-      modeEl.textContent = modeText;
+      modeEl.textContent = trackingModeLabel(state);
       // Color by mode type
       modeEl.className = 'status-badge';
       if (state.trackingMode === 'stow') {
@@ -579,7 +600,14 @@ export class DashboardTab extends BaseElement {
     // Fault LED
     const faultEl = this.domCache_.get('antenna-fault-led');
     if (faultEl) {
-      faultEl.className = `card-alarm-led ${state.hasFault ? 'error' : 'off'}`;
+      // Green when healthy, red on fault, grey only when the pedestal is off (s01-F14)
+      let ledState = 'off';
+      if (state.hasFault) {
+        ledState = 'error';
+      } else if (state.isPowered) {
+        ledState = 'success';
+      }
+      faultEl.className = `card-alarm-led ${ledState}`;
     }
   }
 
@@ -799,53 +827,20 @@ export class DashboardTab extends BaseElement {
   }
 
   /**
-   * Collect alarms from all equipment modules
-   * Updates the alarms_ array and the alarm list display
+   * Collect this station's alarms from AlarmService, the same source the
+   * ticker polls, so the list, the Quick Stats count and the ticker agree
+   * (s08-F2, s16-F2, s17-F2, s23-F2). Already ordered most severe first.
    */
   private collectAlarms_(): void {
-    // Clear existing alarms
+    const now = new Date();
+    const alarms = AlarmService.getAlarms(this.groundStation);
     this.alarms_.length = 0;
-
-    const gs = this.groundStation;
-
-    // Collect from RF Front-Ends (TX chain: rfcase=1, RX chain: rfcase=2)
-    gs.rfFrontEnds.forEach((rfFe) => {
-      const txAlarms = rfFe.getStatusAlarms(1);
-      const rxAlarms = rfFe.getStatusAlarms(2);
-
-      [...txAlarms, ...rxAlarms].forEach((alarm) => {
-        this.alarms_.push({
-          id: `rfFe-${alarm.message}`,
-          level: alarm.severity === 'error' ? 'critical' : 'warning',
-          message: alarm.message,
-          timestamp: new Date(),
-        });
-      });
-    });
-
-    // Collect from Antennas
-    gs.antennas.forEach((antenna, antIdx) => {
-      if (antenna.state.hasFault) {
-        this.alarms_.push({
-          id: `antenna-fault-${antIdx}`,
-          level: 'critical',
-          message: `Antenna ${antIdx + 1} has fault`,
-          timestamp: new Date(),
-        });
-      }
-    });
-
-    // Collect from Transmitters
-    gs.transmitters.forEach((tx, txIdx) => {
-      tx.state.modems.forEach((modem, modemIdx) => {
-        if (modem.isFaulted) {
-          this.alarms_.push({
-            id: `tx-modem-fault-${txIdx}-${modemIdx}`,
-            level: 'warning',
-            message: `Transmitter modem ${modemIdx + 1} faulted`,
-            timestamp: new Date(),
-          });
-        }
+    alarms.forEach((alarm, index) => {
+      this.alarms_.push({
+        id: `${alarm.equipmentType}-${alarm.equipmentIndex}-${index}`,
+        level: ALARM_LEVEL[alarm.severity],
+        message: alarm.message,
+        timestamp: now,
       });
     });
 

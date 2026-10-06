@@ -63,6 +63,9 @@ export const scenario1Data: ScenarioData = {
     missionBriefUrl: 'https://docs.signalrange.space/campaign-1/scenario-1?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
     satellites: [tidemark1Satellite],
+    // Brief: Monday, 0800 Local
+    scenarioStartDate: '2026-02-02',
+    scenarioStartWallTime: '08:00:00',
   },
   timeLimitSeconds: 35 * 60, // 35 minutes
   objectives: [
@@ -450,13 +453,13 @@ export const scenario1Data: ScenarioData = {
             question: 'What does the receiver modem C/N indicate for a QPSK link?',
             options: [
               '≥ 8 dB - Strong link with good operating margin',
-              '5-7 dB - Usable link; FEC working normally',
+              '5-7 dB - Warning; margin is thin',
               '3-4 dB - Near lock threshold; errors likely',
               '< 3 dB - Below demodulation threshold; no reliable lock',
             ],
             correctIndex: 0,
             explanation:
-              'A C/N ratio above 10 dB indicates a healthy link with adequate margin for reliable data reception. This confirms the entire receive chain from antenna to modem is functioning properly.',
+              'C/N at or above 8 dB is a healthy QPSK 3/4 link with adequate margin for reliable data reception (Normal in the brief table; 5-7 dB is Warning). A healthy reading confirms the entire receive chain from antenna to modem is functioning properly.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -923,7 +926,8 @@ export const scenario1Data: ScenarioData = {
         This is the GPS Timing panel. The GPSDO locks to GPS satellites and generates a 10 MHz reference signal. Everything in the rack - LNB, BUC, modems - uses this reference to stay on frequency.
       </p>
       <p>
-        You might notice that its labeled GNSS instead of GPS. Modern timing units can use multiple Global Navigation Satellite Systems - GPS, GLONASS, Galileo, BeiDou - to improve accuracy and reliability.
+        The Constellation field reads GPS here, but modern timing units can use multiple Global Navigation Satellite Systems - GPS, GLONASS, Galileo, BeiDou - to improve accuracy and reliability.
+      </p>
       <p>
         Look at the lock indicator. Tell me what it shows - locked, holdover, unlocked, or off.
       </p>
@@ -968,7 +972,7 @@ export const scenario1Data: ScenarioData = {
         LNB is powered and temperature is stable. That's what you want to see. Cold LNBs drift. Hot LNBs fail. Stable is the goal.
       </p>
       <p>
-        43K noise temperature - that's solid. The cooler the LNB runs, the less noise it adds to your signal. Under 100K is acceptable for C-band. You start seeing that number climb, it's an early warning. Equipment doesn't fail all at once - it degrades. Your job is to catch it before the customer does.
+        43K noise temperature - that's solid. The lower that number, the less noise the LNB adds to your signal. Under 100K is acceptable for C-band. You start seeing that number climb, it's an early warning. Equipment doesn't fail all at once - it degrades. Your job is to catch it before the customer does.
       </p>
       <p>
         Now before we check the spectrum analyzer, take a look at the Tap Points card. That controls where the analyzer takes its signal from.
@@ -1000,7 +1004,7 @@ export const scenario1Data: ScenarioData = {
         There it is. Clean beacon. That carrier is your canary - if you can see it, the receive path is working. If it disappears or goes ragged, something changed. Could be weather, could be equipment, could be the satellite.
       </p>
       <p>
-        Now check the analyzer settings. Center frequency and reference level determine what you're actually looking at.
+        Now check the analyzer settings. Center frequency and span determine what you're actually looking at.
       </p>
       `,
         character: Character.CHARLIE_BROOKS,

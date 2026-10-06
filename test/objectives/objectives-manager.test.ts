@@ -4,8 +4,10 @@ import { CommandingManager } from '../../src/commanding/commanding-manager';
 import { EventBus } from '../../src/events/event-bus';
 import { Events, QuizCompletedData, QuizPassedData } from '../../src/events/events';
 import { DecisionManager } from '../../src/modal/decision-manager';
+import { CountdownHold } from '../../src/objectives/countdown-hold';
 import { Objective, ObjectiveState } from '../../src/objectives/objective-types';
 import { ObjectivesManager } from '../../src/objectives/objectives-manager';
+import { OpsLogManager } from '../../src/ops-log/ops-log-manager';
 import { TabbedCanvas } from '../../src/pages/mission-control/tabbed-canvas';
 import { resetMissionClock } from '../../src/simulation/mission-clock';
 import { SimClock } from '../../src/simulation/sim-clock';
@@ -392,6 +394,7 @@ describe('ObjectivesManager', () => {
           id: 'timed-obj',
           timeLimitSeconds: 5,
           timerStartTrigger: 'on-scenario-load',
+          timeoutFails: true,
         }),
       ];
 
@@ -488,6 +491,7 @@ describe('ObjectivesManager', () => {
           id: 'timed-obj',
           timeLimitSeconds: 30,
           timerStartTrigger: 'on-scenario-load',
+          timeoutFails: true,
         }),
       ];
       const failedCallback = vi.fn();
@@ -516,6 +520,7 @@ describe('ObjectivesManager', () => {
           id: 'timed-obj',
           timeLimitSeconds: 120,
           timerStartTrigger: 'on-scenario-load',
+          timeoutFails: true,
         }),
       ];
       const failedCallback = vi.fn();
@@ -1506,6 +1511,7 @@ describe('ObjectivesManager', () => {
           title: 'Failed Objective',
           timeLimitSeconds: 2,
           timerStartTrigger: 'on-scenario-load',
+          timeoutFails: true,
         }),
       ];
 
@@ -1837,6 +1843,116 @@ describe('ObjectivesManager', () => {
     });
   });
 
+  describe('Non-fatal timeouts (Phase 26 D2)', () => {
+    it('stops the timer, deducts half the points once and keeps the objective open', () => {
+      const objectives = [createTestObjective({ id: 'slow-obj', points: 15, timeLimitSeconds: 2, timerStartTrigger: 'on-scenario-load' })];
+      const failedCallback = vi.fn();
+      const penaltyCallback = vi.fn();
+      eventBus.on(Events.OBJECTIVE_FAILED, failedCallback);
+      eventBus.on(Events.TIME_PENALTY_APPLIED, penaltyCallback);
+      const manager = ObjectivesManager.initialize(objectives);
+
+      advanceSimTime(5000, { emitUpdate: true });
+
+      const state = manager.getObjectiveState('slow-obj');
+      expect(failedCallback).not.toHaveBeenCalled();
+      expect(state?.isFailed).toBe(false);
+      expect(state?.timedOut).toBe(true);
+      expect(state?.isTimerRunning).toBe(false);
+      expect(state?.timePenaltyPoints).toBe(8);
+      expect(penaltyCallback).toHaveBeenCalledTimes(1);
+      expect(penaltyCallback).toHaveBeenCalledWith(expect.objectContaining({ objectiveId: 'slow-obj', pointsDeducted: 8 }));
+
+      // Still completable in overtime
+      ObjectivesManager.registerOpenedBox('mission-brief-1');
+      eventBus.emit(Events.UPDATE, 16);
+      expect(manager.getObjectiveState('slow-obj')?.isCompleted).toBe(true);
+    });
+
+    it('uses timeoutPenaltyPoints when the author sets it', () => {
+      const objectives = [createTestObjective({ id: 'slow-obj', points: 15, timeLimitSeconds: 2, timeoutPenaltyPoints: 3, timerStartTrigger: 'on-scenario-load' })];
+      const manager = ObjectivesManager.initialize(objectives);
+
+      manager.applyTimeSkip(10_000);
+
+      expect(manager.getObjectiveState('slow-obj')?.timePenaltyPoints).toBe(3);
+    });
+  });
+
+  describe('ops-log-entry (Phase 26)', () => {
+    afterEach(() => OpsLogManager.destroy());
+
+    it('needs an operator-typed entry with every keyword group, ignoring system entries', () => {
+      const opsLog = OpsLogManager.initialize();
+      const objectives = [
+        createTestObjective({
+          id: 'log-obj',
+          conditions: [{ type: 'ops-log-entry', description: 'Log the bypass', mustMaintain: false, params: { logKeywords: ['manual|bypass', 'acu'] } }],
+        }),
+      ];
+      const manager = ObjectivesManager.initialize(objectives);
+
+      opsLog.log('ACU switched to manual bypass', 'system');
+      eventBus.emit(Events.UPDATE, 16);
+      expect(manager.getObjectiveState('log-obj')?.isCompleted).toBe(false);
+
+      opsLog.log('Took ACU to MANUAL after automation fault', 'action', 'operator');
+      eventBus.emit(Events.UPDATE, 16);
+      expect(manager.getObjectiveState('log-obj')?.isCompleted).toBe(true);
+    });
+
+    it('rejects entries shorter than logMinLength', () => {
+      const opsLog = OpsLogManager.initialize();
+      const objectives = [createTestObjective({ id: 'log-obj', conditions: [{ type: 'ops-log-entry', description: 'Log it', mustMaintain: false, params: {} }] })];
+      const manager = ObjectivesManager.initialize(objectives);
+
+      opsLog.log('ok', 'action', 'operator');
+      eventBus.emit(Events.UPDATE, 16);
+      expect(manager.getObjectiveState('log-obj')?.isCompleted).toBe(false);
+    });
+  });
+
+  describe('Countdown hold (Phase 26 D2)', () => {
+    afterEach(() => CountdownHold.reset());
+
+    it('freezes objective and scenario countdowns while held, and resumes after', () => {
+      const objectives = [createTestObjective({ id: 'timed-obj', timeLimitSeconds: 60, timerStartTrigger: 'on-scenario-load' })];
+      const manager = ObjectivesManager.initialize(objectives, 300);
+
+      CountdownHold.set('dialog', true);
+      advanceSimTime(5000, { emitUpdate: true });
+      expect(manager.getObjectiveState('timed-obj')?.timeRemainingSeconds).toBe(60);
+      expect(manager.getScenarioTimeRemaining()).toBe(300);
+
+      CountdownHold.set('dialog', false);
+      advanceSimTime(5000, { emitUpdate: true });
+      expect(manager.getObjectiveState('timed-obj')?.timeRemainingSeconds).toBe(55);
+    });
+
+    it('holds while a quiz is open and releases when it is completed', () => {
+      const objectives = [createTestObjective({ id: 'timed-obj', timeLimitSeconds: 60, timerStartTrigger: 'on-scenario-load' })];
+      const manager = ObjectivesManager.initialize(objectives);
+
+      eventBus.emit(Events.QUIZ_SHOW, { objectiveId: 'timed-obj', conditionIndex: 0 } as never);
+      expect(CountdownHold.isHeld()).toBe(true);
+      advanceSimTime(3000, { emitUpdate: true });
+      expect(manager.getObjectiveState('timed-obj')?.timeRemainingSeconds).toBe(60);
+
+      eventBus.emit(Events.QUIZ_COMPLETED, { objectiveId: 'timed-obj', conditionIndex: 0, totalAttempts: 1, totalPointsDeducted: 0 });
+      expect(CountdownHold.isHeld()).toBe(false);
+    });
+
+    it('keeps the objective timer running through a passed quiz so a half-done objective stays timed', () => {
+      const objectives = [createTestObjective({ id: 'timed-obj', timeLimitSeconds: 60, timerStartTrigger: 'on-scenario-load' })];
+      const manager = ObjectivesManager.initialize(objectives);
+
+      eventBus.emit(Events.QUIZ_PASSED, { objectiveId: 'timed-obj', conditionIndex: 0, attempts: 1, pointsDeducted: 0 });
+      eventBus.emit(Events.QUIZ_COMPLETED, { objectiveId: 'timed-obj', conditionIndex: 0, totalAttempts: 1, totalPointsDeducted: 0 });
+
+      expect(manager.getObjectiveState('timed-obj')?.isTimerRunning).toBe(true);
+    });
+  });
+
   describe('Failed Objectives', () => {
     it('should not complete failed objectives', () => {
       const objectives = [
@@ -1844,6 +1960,7 @@ describe('ObjectivesManager', () => {
           id: 'failed-obj',
           timeLimitSeconds: 2,
           timerStartTrigger: 'on-scenario-load',
+          timeoutFails: true,
         }),
       ];
 
@@ -1868,6 +1985,7 @@ describe('ObjectivesManager', () => {
           id: 'failed-obj',
           timeLimitSeconds: 2,
           timerStartTrigger: 'on-scenario-load',
+          timeoutFails: true,
         }),
       ];
 
@@ -3355,6 +3473,27 @@ describe('ObjectivesManager', () => {
       ObjectivesManager.initialize(objectives);
       eventBus.emit(Events.UPDATE, 16);
 
+      expect(completedCallback).toHaveBeenCalled();
+    });
+
+    it('honours spanTolerance on speca-span-set (it used to fall back to ±1 MHz)', () => {
+      mockSpectrumAnalyzerState.span = 0.5e6;
+
+      const objectives = [
+        createTestObjective({
+          id: 'span-tol-obj',
+          conditions: [{ type: 'speca-span-set', description: 'Span 2 kHz', mustMaintain: false, params: { span: 2e3, spanTolerance: 100 } }],
+        }),
+      ];
+      const completedCallback = vi.fn();
+      eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
+
+      ObjectivesManager.initialize(objectives);
+      eventBus.emit(Events.UPDATE, 16);
+      expect(completedCallback).not.toHaveBeenCalled();
+
+      mockSpectrumAnalyzerState.span = 2.05e3;
+      eventBus.emit(Events.UPDATE, 16);
       expect(completedCallback).toHaveBeenCalled();
     });
 

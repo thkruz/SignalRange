@@ -36,11 +36,11 @@
           "kind": "fixed",
           "pass": null,
           "atPeak": {
-            "elevationDeg": 29.01,
+            "elevationDeg": 29.16,
             "frequencyMHz": 3828,
             "gainDbi": 48.84,
-            "gOverTDbPerK": 27.31,
-            "tsysK": 142.22
+            "gOverTDbPerK": 27.32,
+            "tsysK": 142.14
           },
           "carriers": [
             {
@@ -51,10 +51,10 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 5,
-              "peakCnDb": 11.49,
+              "peakCnDb": 11.5,
               "medianCnDb": 11.33,
               "peakRxIfDbm": -29.37,
-              "noiseIfDbm": -40.13,
+              "noiseIfDbm": -40.14,
               "lockedSamples": 5
             },
             {
@@ -65,8 +65,8 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 5,
-              "peakCnDb": 6.1,
-              "medianCnDb": 6.1,
+              "peakCnDb": 6.11,
+              "medianCnDb": 6.11,
               "peakRxIfDbm": -78.33,
               "noiseIfDbm": -83.94,
               "lockedSamples": 5
@@ -97,7 +97,7 @@
               "peakCnDb": 13.53,
               "medianCnDb": 13.4,
               "peakRxIfDbm": -29.77,
-              "noiseIfDbm": -42.78,
+              "noiseIfDbm": -42.79,
               "lockedSamples": 5
             },
             {

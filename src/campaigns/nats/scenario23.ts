@@ -2,7 +2,7 @@ import type { AntennaState } from '@app/equipment/antenna';
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { Objective } from '@app/objectives/objective-types';
 import type { ScenarioData } from '@app/ScenarioData';
-import type { dB, Hertz } from '@app/types';
+import type { dB, dBm, Hertz } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
 import { vermontGroundStation } from './ground-stations';
@@ -64,7 +64,7 @@ export const scenario23Data: ScenarioData = {
   duration: '25-30 min',
   difficulty: 'advanced',
   missionType: 'Contingency Operations',
-  description: `The ACU automation processor faulted at 1358. Program-track, move-to-target, and step-track are all offline - the dish is sitting exactly where automation left it, which for now is on TIDEMARK-1. The servos still work; it's the brains that died, not the muscles.<br><br>IT owns the controller and has no ETA. You own the link. TIDEMARK-1 is GEO and well-behaved, so the pointing solution doesn't change - but with the automation's lock logic dead, the ACU panel can no longer tell you whether you're on the satellite. The beacon on the spectrum is your only proof.<br><br>Get into manual cleanly, prove you're on the bird, hold it there, and do not experiment with the broken automation while IT is mid-diagnosis.`,
+  description: `The ACU automation processor faulted at 1358. Program-track, move-to-target, and step-track are all offline - the dish is sitting exactly where automation left it, which for now is on TIDEMARK-1. The servos still work; it's the brains that died, not the muscles.<br><br>IT owns the controller and has no ETA. You own the link. TIDEMARK-1 is GEO and well-behaved, so the pointing solution doesn't change - but the ACU lock light still reads LOCKED only because it froze at the moment of the crash. Don't trust it. The beacon on the spectrum is your only proof.<br><br>Get into manual cleanly, prove you're on the bird, hold it there, and do not experiment with the broken automation while IT is mid-diagnosis.`,
   equipment: ['9-meter C-band Antenna (manual servo control)', 'RF Front End', 'Spectrum Analyzer', 'RX/TX Modems', 'TIDEMARK-1 prediction sheet'],
   timeLimitSeconds: 30 * 60,
   settings: {
@@ -95,9 +95,25 @@ export const scenario23Data: ScenarioData = {
             isAcuAutomationFaulted: true,
           } as Partial<AntennaState>,
         ],
+        // The analyzer was left on the carrier view, so proving the beacon
+        // means retuning to 1074.5 MHz (nats-s23-F4: the station default sat
+        // on the beacon already and the step latched with no input)
+        spectrumAnalyzers: [
+          {
+            ...vermontGroundStation.spectrumAnalyzers[0],
+            referenceLevel: -85 as dBm,
+            centerFrequency: 1532e6 as Hertz, // TM-1 carrier IF
+            span: 50e6 as Hertz,
+            rbw: 100e3 as Hertz,
+            minAmplitude: -100 as dBm,
+            maxAmplitude: -40 as dBm,
+          },
+        ],
       },
     ],
     satellites: [tidemark1Satellite, ses10Satellite],
+    scenarioStartDate: '2026-03-19', // Thursday, per the brief
+    scenarioStartWallTime: '14:02:00',
     missionBriefUrl: 'https://docs.signalrange.space/campaign-1/scenario-23?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
   },
@@ -171,7 +187,7 @@ export const scenario23Data: ScenarioData = {
       id: 'confirm-fault-dashboard',
       nice: ['T1588', 'T0531'],
       title: 'Confirm the Automation Fault',
-      description: 'Dashboard: confirm the ACU automation alarm and that the RF chain is healthy.',
+      description: 'Dashboard: confirm the RF chain is healthy. The ACU automation fault itself shows on the alarm ticker.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['select-vermont-station'],
       timeLimitSeconds: 2 * 60,
@@ -189,7 +205,7 @@ export const scenario23Data: ScenarioData = {
           description: 'Fault Scope',
           params: {
             character: Character.SYSTEM,
-            question: 'The ACU automation fault alarm is up. Before touching anything, what do you record?',
+            question: 'The ACU automation fault is on the ticker and the RF chain is healthy. Before touching anything, what do you record?',
             options: [
               'Current position (Az 161.8 / El 34.2 on TM-1) and that beacon + carrier are still locked - the dish is ON the bird',
               'Nothing yet (the alarm is time-stamped by IT) and switch to manual at once - every second in faulted program-track risks the bird',
@@ -264,7 +280,7 @@ export const scenario23Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Same discipline as the S8/S16 LNB lesson scaled up: you cycle equipment you own; you coordinate cycles on equipment someone else is debugging - IT cycles it on their schedule. The calibration risk is the technical reason; preserving crash state for root cause is the investigative one.',
+              'Same discipline as the LNB rule, scaled up: you cycle equipment you own; you coordinate cycles on equipment someone else is debugging - IT cycles it on their schedule. The calibration risk is the technical reason; preserving crash state for root cause is the investigative one.',
             pointPenalty: 5,
             preserveOptionOrder: true,
           },
@@ -282,11 +298,15 @@ export const scenario23Data: ScenarioData = {
       id: 'switch-to-manual',
       nice: ['S0424', 'S0671'],
       title: 'Switch to Manual Control',
-      description: 'Open ACU Control and deliberately select MANUAL - a faulted controller in a half-automatic state is worse than honest manual.',
+      description:
+        'Open ACU Control and deliberately select MANUAL - a faulted controller in a half-automatic state is worse than honest manual. Timed: running out fails the shift.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['no-reboot-quiz'],
       timeLimitSeconds: 3 * 60,
       timerStartTrigger: 'on-activate',
+      // The dish is coasting under a dead loop: getting into honest manual is
+      // the emergency action of the bypass
+      timeoutFails: true,
       conditions: [
         {
           type: 'tab-active',
@@ -346,11 +366,14 @@ export const scenario23Data: ScenarioData = {
       id: 'prove-beacon',
       nice: ['S0424', 'K0773'],
       title: 'Prove Pointing on the Beacon',
-      description: 'Tune the spectrum analyzer to the TM-1 beacon IF (1074.5 MHz) and confirm it - your only pointing truth source.',
+      description:
+        'On RX Analysis the spectrum analyzer is on the carrier view (1532 MHz). Retune its center to the TM-1 beacon IF (1074.5 MHz) and confirm the beacon - your only pointing truth source. Timed: running out fails the shift.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['manual-deliberate-quiz'],
       timeLimitSeconds: 3 * 60,
       timerStartTrigger: 'on-activate',
+      // Until the beacon is proven the link is only assumed to be up
+      timeoutFails: true,
       conditions: [
         {
           type: 'tab-active',
@@ -385,7 +408,7 @@ export const scenario23Data: ScenarioData = {
       id: 'prove-carrier',
       nice: ['S0424', 'T0153'],
       title: 'Prove the Carrier',
-      description: 'Confirm the receiver is locked on the TM-1 carrier with healthy margin - the link is alive under manual control.',
+      description: 'On RX Analysis, read receiver modem 1: locked on the TM-1 carrier (1532 MHz) with C/N of at least 9 dB - the link is alive under manual control.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['prove-beacon'],
       timeLimitSeconds: 3 * 60,
@@ -394,13 +417,13 @@ export const scenario23Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'Receiver Locked',
-          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis', observationDwellSeconds: 5 },
           mustMaintain: true,
         },
         {
           type: 'receiver-snr-threshold',
           description: 'C/N ≥ 9 dB',
-          params: { minCNRatio: 9, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { minCNRatio: 9, requiresObservation: true, observationTab: 'rx-analysis', observationDwellSeconds: 5 },
           mustMaintain: true,
         },
       ],
@@ -541,7 +564,7 @@ export const scenario23Data: ScenarioData = {
       id: 'log-bypass',
       nice: ['K0645', 'S0671'],
       title: 'Log the Bypass',
-      description: 'Record the manual-operations timeline for the shift and for IT.',
+      description: 'Pick the entry that records the bypass, then type it in the Ops Log (sidebar): the switch to manual and that the ACU was not rebooted.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['it-coordination-quiz'],
       timeLimitSeconds: 2 * 60,
@@ -554,16 +577,22 @@ export const scenario23Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which entry records the bypass correctly?',
             options: [
-              'ACU fault 1358 (NOC-2026-2231); manual 1404, TM-1 held on sheet pointing, beacon + carrier verified on RF; not rebooted',
-              'ACU fault 1358 (NOC-2026-2231); rebooted 1404, program-track restored, lock indicator green; link fine, ticket closed',
-              'ACU fault 1358 (NOC-2026-2231); manual 1404, link fine, no further action; IT issue, nothing for operations to record',
-              'ACU fault 1358 (NOC-2026-2231); manual 1404, TM-1 held on ACU lock indicator, polar plot on target; rebooted for IT',
+              'ACU fault 1358 (NOC-2026-2231); to manual (time-stamped), TM-1 held on sheet pointing, beacon + carrier verified on RF; not rebooted',
+              'ACU fault 1358 (NOC-2026-2231); rebooted (time-stamped), program-track restored, lock indicator green; link fine, ticket closed',
+              'ACU fault 1358 (NOC-2026-2231); to manual (time-stamped), link fine, no further action; IT issue, nothing for operations to record',
+              'ACU fault 1358 (NOC-2026-2231); to manual (time-stamped), TM-1 held on ACU lock indicator, polar plot on target; rebooted for IT',
             ],
             correctIndex: 0,
             explanation:
               'The details the next shift and IT need: the pointing source (prediction sheet), that the lock light was distrusted (driven by the failed processor), that the link is nominal under manual, that the controller was deliberately NOT rebooted (crash state preserved), and that recovery needs RF re-verification post-restart.',
             pointPenalty: 5,
           },
+          mustMaintain: false,
+        },
+        {
+          type: 'ops-log-entry',
+          description: 'Bypass Entry Typed in the Ops Log',
+          params: { logKeywords: ['manual', 'reboot'], logMinLength: 20 },
           mustMaintain: false,
         },
       ],
@@ -575,7 +604,7 @@ export const scenario23Data: ScenarioData = {
     intro: {
       text: `
       <p>
-        <em>[Dana, at your console, 14:04]</em>
+        <em>[Dana, at your console, 14:02]</em>
       </p>
       <p>
         "ACU automation processor faulted at 1358 - program-track, move-to-target, step-track all offline. Dish is parked on TM-1 where it died. Servos and manual still work; it's the brains, not the muscles. IT owns the controller and has no ETA. You own the link. Get into manual cleanly, prove you're on the bird with the spectrum, and hold it. Do NOT play with the broken automation while IT's mid-diagnosis."
@@ -602,7 +631,7 @@ export const scenario23Data: ScenarioData = {
       'prove-carrier': {
         text: `
         <p>
-          Beacon's where the sheet says, receiver's locked, and you got there without trusting a single readout from the dead controller. That's the whole skill - the automation was never magic, just bookkeeping you can do by hand when you have to.
+          Beacon's where the sheet says, receiver's locked - you proved it on the RF instead of taking the dead controller's lock light at its word. That's the whole skill - the automation was never magic, just bookkeeping you can do by hand when you have to.
         </p>
         `,
         character: Character.DANA_TORRES,

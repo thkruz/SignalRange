@@ -17,6 +17,7 @@ import { Degrees } from 'ootk';
 import { ANTENNA_CONFIG_KEYS } from './antenna-config-keys';
 import { AntennaConfig } from './antenna-configs';
 import { type AntennaConfigId, AntennaRegistry } from './antenna-registry';
+import { usableBeaconCn } from './beacon-cn';
 import { StepTrackController } from './step-track-controller';
 
 /** Seeded draws for this module (see simulation/rng.ts). */
@@ -983,8 +984,12 @@ export abstract class AntennaCore extends BaseEquipment {
     // Apply gain to noise floor to match signal reference frame
     const noiseFloor = shouldApplyGain ? noiseFloorNoGain + this.rfFrontEnd_.couplerModule.signalPathManager.getTotalRxGain() : noiseFloorNoGain;
 
-    // C/N = Signal Power - Noise Floor (both with full RX chain gain applied)
-    const cn = strongestPower - noiseFloor;
+    // C/N = Signal Power - Noise Floor (both with full RX chain gain applied).
+    // An unpowered LNB or a carrier far under the floor is no beacon at all.
+    const cn = usableBeaconCn(strongestPower - noiseFloor, this.rfFrontEnd_.lnbModule.state.isPowered);
+    if (cn === null) {
+      return { power: null, cn: null };
+    }
 
     return { power: strongestPower, cn };
   }
@@ -1646,7 +1651,9 @@ export abstract class AntennaCore extends BaseEquipment {
     //   alarms.push({ severity: 'info', message: `${this.rxSignals.flatMap(sat => sat.signal).length} SIGNAL(S) RECEIVED` });
     // }
 
-    if (this.state.isPowered && this.state.isOperational && !this.state.isLoopback && !this.state.isAutoTrackEnabled) {
+    // isAutoTrackEnabled is only true under step-track, so testing it here
+    // raised "Manual Tracking" during plain program-track (s01-F3).
+    if (this.state.isPowered && this.state.isOperational && !this.state.isLoopback && this.state.trackingMode === 'manual') {
       alarms.push({ severity: 'info', message: `Manual Tracking Enabled` });
     }
 

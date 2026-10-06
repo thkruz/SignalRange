@@ -4,6 +4,7 @@ import { AlarmStatus } from '@app/equipment/base-equipment';
 import { CryptoModule } from '@app/equipment/crypto';
 import { FECSimulator, FECSimulatorInput } from '@app/equipment/receiver/fec-simulator';
 import { Receiver } from '@app/equipment/receiver/receiver';
+import { RxPayloadStatus } from '@app/equipment/receiver/rx-signal-quality';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { FaultInjector } from '@app/faults';
@@ -68,6 +69,7 @@ export class RxPayloadAdapter {
   private readonly groundStationId_: string;
   private readonly fecSimulator_: FECSimulator;
   private lastSyncTime_: number = 0;
+  private hasFecSample_: boolean = false;
   private readonly domCache_: Map<string, HTMLElement> = new Map();
   private readonly boundUpdateHandler_: () => void;
   private readonly alarmBadge_: CardAlarmBadge;
@@ -134,6 +136,23 @@ export class RxPayloadAdapter {
     this.initialize_();
   }
 
+  /**
+   * Payload decoder summary for the Receiver Modems status bar, so the modem
+   * never reports "Good margin" while this panel shows sync loss or overload.
+   * Null until the first FEC sample from a receiver.
+   */
+  public getPayloadStatus(): RxPayloadStatus | null {
+    if (!this.hasFecSample_) {
+      return null;
+    }
+
+    return {
+      frameSyncLocked: this.state_.frameSyncLocked,
+      rsUncorrectableBlocks: this.state_.rsUncorrectableBlocks,
+      channelStatus: this.state_.channelStatus,
+    };
+  }
+
   private initialize_(): void {
     this.setupDomCache_();
     EventBus.getInstance().on(Events.UPDATE, this.boundUpdateHandler_);
@@ -182,6 +201,7 @@ export class RxPayloadAdapter {
 
     // Calculate FEC metrics
     const fecMetrics = this.fecSimulator_.calculate(input);
+    this.hasFecSample_ = true;
 
     // Update state with calculated metrics
     this.state_.frameSyncLocked = fecMetrics.frameSyncLocked;
@@ -195,7 +215,7 @@ export class RxPayloadAdapter {
 
     // Derive CRC status from RS uncorrectable (RS failures pass through to CRC)
     this.state_.crcValid = fecMetrics.rsUncorrectableBlocks === 0;
-    this.state_.crcErrorCount = fecMetrics.rsUncorrectableBlocks;
+    this.state_.crcErrorCount = Math.round(fecMetrics.rsUncorrectableBlocks);
 
     // Update Viterbi code rate from modem FEC setting
     this.state_.viterbiCodeRate = modem.fec ?? '1/2';
@@ -290,7 +310,7 @@ export class RxPayloadAdapter {
       crcStatusEl.className = state.crcValid ? 'status-badge status-badge-green' : 'status-badge status-badge-red';
     }
 
-    this.updateTextContent_('crcErrors', state.crcErrorCount.toLocaleString());
+    this.updateTextContent_('crcErrors', this.formatCount_(state.crcErrorCount));
 
     // Reed-Solomon section
     const rsStatusEl = this.domCache_.get('rsStatus');
@@ -301,20 +321,21 @@ export class RxPayloadAdapter {
     }
 
     this.updateTextContent_('rsCodeRate', state.rsCodeRate);
-    this.updateTextContent_('rsCorrected', state.rsCorrectedErrors.toLocaleString());
-    this.updateTextContent_('rsTotal', state.rsCorrectedTotal.toLocaleString());
+    this.updateTextContent_('rsCorrected', this.formatCount_(state.rsCorrectedErrors));
+    this.updateTextContent_('rsTotal', this.formatCount_(state.rsCorrectedTotal));
 
     const rsUncorrectableEl = this.domCache_.get('rsUncorrectable');
     if (rsUncorrectableEl) {
-      rsUncorrectableEl.textContent = state.rsUncorrectableBlocks.toLocaleString();
+      rsUncorrectableEl.textContent = this.formatCount_(state.rsUncorrectableBlocks);
       rsUncorrectableEl.className = state.rsUncorrectableBlocks > 0 ? 'metric-value text-danger fw-bold' : 'metric-value';
     }
 
     // Viterbi section
     const viterbiStatusEl = this.domCache_.get('viterbiStatus');
     if (viterbiStatusEl) {
-      viterbiStatusEl.textContent = state.viterbiEnabled ? 'Enabled' : 'Disabled';
-      viterbiStatusEl.className = state.viterbiEnabled ? 'status-badge status-badge-green' : 'status-badge status-badge-yellow';
+      const viterbiStatus = this.getViterbiStatus_(state);
+      viterbiStatusEl.textContent = viterbiStatus.text;
+      viterbiStatusEl.className = `status-badge ${viterbiStatus.class}`;
     }
 
     this.updateTextContent_('viterbiCodeRate', state.viterbiCodeRate);
@@ -371,6 +392,22 @@ export class RxPayloadAdapter {
     if (el) {
       el.textContent = value;
     }
+  }
+
+  /** Block/error counts are whole numbers; fault overrides may hand in floats. */
+  private formatCount_(count: number): string {
+    return Math.round(count).toLocaleString();
+  }
+
+  /** Viterbi decoder is only decoding while frame sync is held. */
+  private getViterbiStatus_(state: RxPayloadState): { text: string; class: string } {
+    if (!state.viterbiEnabled) {
+      return { text: 'Disabled', class: 'status-badge-yellow' };
+    }
+    if (!state.frameSyncLocked) {
+      return { text: 'No Sync', class: 'status-badge-off' };
+    }
+    return { text: 'Enabled', class: 'status-badge-green' };
   }
 
   private formatBer_(ber: number): string {

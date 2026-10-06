@@ -178,7 +178,7 @@ const SCENARIO_4_OBJECTIVES: Scenario4Objective[] = [
     id: 'verify-rx-margin-quiz',
     title: 'Understand Link Margin',
     type: 'quiz',
-    correctAnswer: 'Lock can occur at C/N as low as 3-4 dB, but error rates would be high - we need margin',
+    correctAnswer: 'Lock can occur at C/N as low as 4-5 dB, but error rates would be high - we need margin',
   },
 
   // ============================================================
@@ -201,7 +201,7 @@ const SCENARIO_4_OBJECTIVES: Scenario4Objective[] = [
     title: 'Configure TX Modem',
     type: 'configure-tx-modem',
     txModemConfig: {
-      frequency: 1020, // MHz
+      frequency: 983, // MHz (TM-2 TP-1: 7000 - 983 = 6017 MHz)
       bandwidth: 36, // MHz
       power: -7, // dBm
       modulation: 'QPSK',

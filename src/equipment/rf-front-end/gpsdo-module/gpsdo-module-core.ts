@@ -22,8 +22,23 @@ export abstract class GPSDOModuleCore extends RFFrontEndModule<GPSDOState> {
   /** Scenario-staged GNSS outage (signal absent regardless of the switch) */
   private gnssOutage_ = false;
 
+  /** Stability ticks (5 s each) between satellite-count changes: one change a minute at most */
+  private static readonly SV_DRIFT_TICKS = 12;
+  /** Fallback tracked-satellite count when the config gives none */
+  private static readonly DEFAULT_NOMINAL_SV_COUNT = 9;
+  /**
+   * Satellites this station's sky view normally tracks. The live count drifts
+   * at most one either side of it, so the Dashboard, the GPS tab and a brief
+   * read the same number within a minute (s01-F7); a random walk across 4-12
+   * and a fresh 4-12 draw on every reacquire made them disagree.
+   */
+  private readonly nominalSvCount_: number;
+  private svDriftTicks_ = 0;
+
   constructor(state: GPSDOState, rfFrontEnd: RFFrontEndCore, unit: number) {
     super({ ...defaultGpsdoState, ...state }, rfFrontEnd, 'rf-fe-gpsdo', unit);
+
+    this.nominalSvCount_ = GPSDOModuleCore.resolveNominalSvCount_(this.state);
 
     // Initialize intervals if needed
     if (this.state.isPowered && this.state.warmupTimeRemaining === 0 && !this.state.isLocked) {
@@ -235,14 +250,43 @@ export abstract class GPSDOModuleCore extends RFFrontEndModule<GPSDOState> {
       // Add small random variations to metrics
       this.addMetricVariations_();
 
-      // Satellite count should increase/decrease slightly, staying between 4-12
-      if (this.state.gnssSignalPresent && random() < 0.2) {
-        const satChange = Math.floor(random() * 3) - 1; // -1, 0, or +1
-        this.state.satelliteCount = clamp(this.state.satelliteCount + satChange, 4, 12);
+      // Satellite count drifts slowly around the nominal count (at most once a minute)
+      if (this.state.gnssSignalPresent && this.state.satelliteCount < 4) {
+        // Signal present but nothing counted yet (e.g. after a power cycle)
+        this.reacquireSvCount_();
+      } else if (this.state.gnssSignalPresent) {
+        this.svDriftTicks_++;
+        if (this.svDriftTicks_ >= GPSDOModuleCore.SV_DRIFT_TICKS) {
+          this.svDriftTicks_ = 0;
+          this.state.satelliteCount = this.driftedSvCount_();
+        }
       }
 
       this.onStabilityTick();
     }, 5000); // Update every 5 seconds
+  }
+
+  /** Nominal count from config: explicit nominalSatelliteCount, else a usable starting count, else 9. */
+  private static resolveNominalSvCount_(state: GPSDOState): number {
+    const configured = state.nominalSatelliteCount ?? (state.satelliteCount >= 4 ? state.satelliteCount : GPSDOModuleCore.DEFAULT_NOMINAL_SV_COUNT);
+    return clamp(Math.round(configured), 4, 12);
+  }
+
+  /** The nominal satellite count this module drifts around. */
+  get nominalSatelliteCount(): number {
+    return this.nominalSvCount_;
+  }
+
+  /** One seeded step: nominal -1, nominal or nominal +1 (kept within 4-12). */
+  private driftedSvCount_(): number {
+    const offset = Math.floor(random() * 3) - 1;
+    return clamp(this.nominalSvCount_ + offset, 4, 12);
+  }
+
+  /** GNSS reacquired: the receiver comes back on the same sky, so the nominal count. */
+  private reacquireSvCount_(): void {
+    this.state.satelliteCount = this.nominalSvCount_;
+    this.svDriftTicks_ = 0;
   }
 
   /**
@@ -462,7 +506,7 @@ export abstract class GPSDOModuleCore extends RFFrontEndModule<GPSDOState> {
 
     if (this.state.isGnssSwitchUp && this.state.isPowered) {
       this.state.gnssSignalPresent = true;
-      this.state.satelliteCount = 4 + Math.floor(random() * 8); // 4-12 sats
+      this.reacquireSvCount_();
       this.state.isInHoldover = false;
       this.state.holdoverError = 0;
       this.updateLockStatus_();
@@ -492,7 +536,7 @@ export abstract class GPSDOModuleCore extends RFFrontEndModule<GPSDOState> {
         }
         // GNSS acquired - exit holdover
         this.state.gnssSignalPresent = true;
-        this.state.satelliteCount = 4 + Math.floor(random() * 8); // 4-12 sats
+        this.reacquireSvCount_();
         this.state.isInHoldover = false;
         this.state.holdoverError = 0;
         this.updateLockStatus_();

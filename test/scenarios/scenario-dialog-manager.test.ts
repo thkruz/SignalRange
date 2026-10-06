@@ -220,6 +220,38 @@ describe('ScenarioDialogManager', () => {
     });
   });
 
+  describe('objectivesOnStart (Phase 26)', () => {
+    it('shows the start clip when its objective becomes active, after the 500 ms beat', () => {
+      mockScenarioManager.data = createMockScenarioData({
+        objectives: [{ id: 'obj-2', title: 'Slew to the bird' } as any],
+        dialogClips: {
+          objectivesOnStart: {
+            'obj-2': { text: 'Now slew.', character: 'alex' as Character, audioUrl: 'audio/slew.mp3' },
+          },
+        },
+      });
+      ScenarioDialogManager.getInstance().initialize();
+
+      EventBus.getInstance().emit(Events.OBJECTIVE_ACTIVATED, { objectiveId: 'obj-2', objective: {} as any, activatedAt: 0 });
+      expect(mockDialogManager.show).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(500);
+      expect(mockDialogManager.show).toHaveBeenCalledWith('Now slew.', 'alex', 'audio/slew.mp3', 'Slew to the bird', undefined);
+    });
+
+    it('does not play a completion clip on activation', () => {
+      mockScenarioManager.data = createMockScenarioData({
+        objectives: [{ id: 'obj-1', title: 'A' } as any],
+        dialogClips: { objectives: { 'obj-1': { text: 'Done.', character: 'alex' as Character, audioUrl: 'a.mp3' } } },
+      });
+      ScenarioDialogManager.getInstance().initialize();
+
+      EventBus.getInstance().emit(Events.OBJECTIVE_ACTIVATED, { objectiveId: 'obj-1', objective: {} as any, activatedAt: 0 });
+      vi.advanceTimersByTime(500);
+      expect(mockDialogManager.show).not.toHaveBeenCalled();
+    });
+  });
+
   describe('destroy', () => {
     it('should unregister OBJECTIVE_COMPLETED event listener', () => {
       const eventBus = EventBus.getInstance();

@@ -86,6 +86,12 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
   // Signals
   outputSignals: RfSignal[] = [];
 
+  /** Reported output power when the BUC emits nothing (dBm). */
+  static readonly OUTPUT_POWER_FLOOR_DBM = -120 as dBm;
+
+  /** Fixed-drive output estimate used by the thermal/current model (see updateNominalOutputPower_). */
+  private nominalOutputPower_: dBm = -10 as dBm;
+
   /**
    * Get default state for BUC module
    */
@@ -137,8 +143,8 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
     // Update lock status based on power and reference availability
     this.updateLockStatus_();
 
-    // Calculate output power
-    this.updateOutputPower_();
+    // Nominal (fixed-drive) output power; feeds the thermal/current model only
+    this.updateNominalOutputPower_();
 
     // Update signal quality parameters
     this.updateSignalQuality_();
@@ -151,6 +157,7 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
     // but no output signals should be emitted.
     if (!this.state.isPowered) {
       this.outputSignals = [];
+      this.updateOutputPowerFromSignals_();
       return;
     }
 
@@ -176,6 +183,8 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
         } as RfSignal;
       })
       .filter((sig): sig is RfSignal => sig !== null);
+
+    this.updateOutputPowerFromSignals_();
   }
 
   /**
@@ -200,8 +209,8 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
       alarms.push(`BUC frequency error: ${(this.state.frequencyError / 1000).toFixed(1)} kHz`);
     }
 
-    // High output power warning (approaching saturation)
-    if (this.state.outputPower > this.state.saturationPower - 2) {
+    // High output power warning (approaching saturation); only with real RF output
+    if (this.outputSignals.length > 0 && this.state.outputPower > this.state.saturationPower - 2) {
       alarms.push(`BUC approaching saturation (${this.state.outputPower.toFixed(1)} dBm)`);
     }
 
@@ -334,12 +343,13 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
   // ═══════════════════════════════════════════════════════════════
 
   /**
-   * Calculate BUC output power with saturation/compression modeling
-   * Models P1dB compression point where output hard-limits at saturation
+   * Nominal BUC output power for a fixed -10 dBm IF drive, with saturation.
+   * Drives the thermal/current model only (Phase 19.6 replaces this); the
+   * reported `state.outputPower` comes from the real output signals.
    */
-  private updateOutputPower_(): void {
+  private updateNominalOutputPower_(): void {
     if (!this.state.isPowered || this.state.isMuted) {
-      this.state.outputPower = -170 as dBm; // Effectively off
+      this.nominalOutputPower_ = -170 as dBm; // Effectively off
       return;
     }
 
@@ -349,7 +359,25 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
     // Model amplifier saturation (P1dB)
     // Real amplifiers hard-limit at saturation - output cannot exceed saturation by much
     const maxOutputPower = this.state.saturationPower + 2; // Max 2 dB above P1dB (hard saturation)
-    this.state.outputPower = Math.min(linearOutputPower, maxOutputPower) as dBm;
+    this.nominalOutputPower_ = Math.min(linearOutputPower, maxOutputPower) as dBm;
+  }
+
+  /**
+   * Report `state.outputPower` as the total power of the actual RF output
+   * signals, so alarms, the Dashboard and the BUC panel all read the same
+   * figure. No output (unpowered, nothing in band) or a muted output reads
+   * the floor.
+   */
+  private updateOutputPowerFromSignals_(): void {
+    const totalLinear = this.outputSignals.reduce((sum, sig) => sum + 10 ** (sig.power / 10), 0);
+    const totalDbm = totalLinear > 0 ? 10 * Math.log10(totalLinear) : -Infinity;
+
+    this.state.outputPower = Math.max(BUCModuleCore.OUTPUT_POWER_FLOOR_DBM, totalDbm) as dBm;
+  }
+
+  /** True when the BUC is putting real RF on its output (powered, unmuted, carriers in band). */
+  hasRfOutput(): boolean {
+    return this.state.isPowered && !this.state.isMuted && this.outputSignals.length > 0;
   }
 
   /**
@@ -499,7 +527,7 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
     // Calculate target temperature based on output power (plus any staged
     // cooling fault, which lifts the whole curve so the fix is less drive)
     const ambientTemp = 25; // °C
-    const powerDissipation = Math.max(0, this.state.outputPower - -10);
+    const powerDissipation = Math.max(0, this.nominalOutputPower_ - -10);
     const thermalRise = powerDissipation * 0.8; // °C per dBm above reference
     const targetTemp = ambientTemp + thermalRise + this.thermalOffsetC_;
 
@@ -510,7 +538,7 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
     // Current draw trends gradually toward target value
     const idleCurrent = 0.5;
     const powerCurrent = (this.state.gain / 70) * 2.5; // 0-2.5A based on gain
-    const outputCurrent = Math.max(0, (this.state.outputPower + 10) / 20) * 1.5;
+    const outputCurrent = Math.max(0, (this.nominalOutputPower_ + 10) / 20) * 1.5;
     const targetCurrent = idleCurrent + powerCurrent + outputCurrent;
     const currentRate = 0.1; // Slow current change per update
     this.state.currentDraw += (targetCurrent - this.state.currentDraw) * currentRate;

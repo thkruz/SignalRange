@@ -11,7 +11,7 @@ import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForS
  * beacon tune, step-track, verify) interleaved with the card quizzes, then
  * verifies the Working Document panel actually contains the card lines.
  */
-type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'repoint-program-track' | 'configure-speca' | 'set-step-track' | 'verify-working-doc' | 'auto';
+type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'repoint-program-track' | 'configure-speca' | 'set-step-track' | 'tune-rx-modem' | 'verify-working-doc' | 'auto';
 
 interface Scenario19Objective {
   id: string;
@@ -134,10 +134,10 @@ const SCENARIO_19_OBJECTIVES: Scenario19Objective[] = [
     tabId: 'rx-analysis',
   },
   {
+    // RX modem 1 starts on the TIDEMARK-1 default (1532 / 36): retune it
     id: 'verify-receiver',
     title: 'Fly It: Prove the Link',
-    type: 'auto',
-    autoWaitSeconds: 10,
+    type: 'tune-rx-modem',
   },
   {
     id: 'verify-chain-quiz',
@@ -232,6 +232,22 @@ async function configureSpeca(page: import('@playwright/test').Page, centerFrequ
   await page.waitForTimeout(500);
 }
 
+/** Retune RX modem 1 to the AURORA-7 carrier (1422 MHz / 24 MHz) and wait for lock + observation. */
+async function tuneRxModemToAurora(page: import('@playwright/test').Page): Promise<void> {
+  const freqInput = page.locator('#frequency-input');
+  await expect(freqInput).toBeVisible({ timeout: 10000 });
+  await freqInput.fill('1422');
+  await freqInput.press('Tab');
+  const bwInput = page.locator('#bandwidth-input');
+  await bwInput.fill('24');
+  await bwInput.press('Tab');
+  await page.waitForTimeout(200);
+  await page.locator('#apply-btn').click();
+  await expect(page.locator('#frequency-current')).toContainText('1422', { timeout: 5000 });
+  // Lock, then the observation dwell on RX Analysis
+  await page.waitForTimeout(10000);
+}
+
 async function setStepTrack(page: import('@playwright/test').Page): Promise<void> {
   const stepTrackToggle = page.locator('input[id$="step-track-toggle"]');
   await expect(stepTrackToggle).toBeVisible({ timeout: 5000 });
@@ -294,6 +310,10 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
 
     case 'set-step-track':
       await setStepTrack(page);
+      break;
+
+    case 'tune-rx-modem':
+      await tuneRxModemToAurora(page);
       break;
 
     case 'verify-working-doc':

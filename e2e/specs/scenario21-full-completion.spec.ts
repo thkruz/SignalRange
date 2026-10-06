@@ -11,6 +11,10 @@ import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForS
  * (RF denial, not intrusion), applies a notch filter, confirms the carrier
  * survives, and builds the regulator package.
  *
+ * The analyzer starts parked on the TM-2 beacon (1070 MHz / 2 MHz), so the
+ * spectrum step retunes it to the carrier (1458 / 40 MHz). ME-02's own uplink
+ * is off for this shift.
+ *
  * The intermittent jammer provides the authentic signature for the player;
  * objective completion hinges on the discrimination quizzes, the data-layer
  * crypto checks (ACTIVE/Valid by default), the notch filter, and a
@@ -87,7 +91,8 @@ const SCENARIO_21_OBJECTIVES: Scenario21Objective[] = [
     id: 'verify-data-layer',
     title: 'Verify the Data Layer',
     type: 'auto',
-    autoWaitSeconds: 4,
+    // Crypto/key reads latch after a 5 s observation dwell on RX Analysis
+    autoWaitSeconds: 7,
   },
   {
     id: 'data-layer-meaning-quiz',

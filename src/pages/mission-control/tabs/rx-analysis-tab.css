@@ -225,6 +225,15 @@
   opacity: 0.7;
 }
 
+/* Carrier visible but the modem has no demodulation lock */
+.video-monitor.signal-no-video.signal-no-lock .video-overlay::after {
+  content: 'CARRIER PRESENT';
+}
+
+.video-monitor.signal-no-video.signal-no-lock .video-overlay::before {
+  content: 'NO LOCK';
+}
+
 .video-monitor.signal-found .video-overlay {
   display: none;
 }
@@ -478,6 +487,27 @@
   color: #4a4a4a;
   text-shadow: none;
   cursor: not-allowed;
+}
+
+/*
+ * Staged-but-not-applied value (Adapter Staged Values Pattern). Shared by the
+ * RX and TX chain adapters: the input shows the staged value in amber and the
+ * Apply button pulses an amber ring until the change is applied.
+ */
+.equip-adjust-input.is-pending,
+input.form-control.is-pending {
+  color: var(--mc-warning, #ffb300);
+  text-shadow: 0 0 8px rgba(255, 179, 0, 0.4);
+  font-style: italic;
+}
+
+.btn.is-pending {
+  box-shadow: 0 0 0 2px var(--mc-warning, #ffb300);
+}
+
+.btn.is-pending::after {
+  content: ' \2022';
+  color: var(--mc-warning, #ffb300);
 }
 
 .equip-adjust-unit {

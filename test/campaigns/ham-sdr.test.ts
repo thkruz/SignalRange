@@ -433,8 +433,9 @@ describe('Campaign 3: LNB direct sampling', () => {
     // RF frequency preserved (no mixing), no bandpass attenuation at 137 MHz
     expect(lnb.ifSignals[0].frequency).toBe(137.1e6);
     expect(lnb.ifSignals[0].power).toBe(-95);
-    // Legacy path unchanged: same input without the flag mixes with the LO
-    // and lands outside the 950-2150 MHz IF filter
+    // Legacy path: same input without the flag mixes with the LO and lands
+    // wholly outside the 950-2150 MHz IF filter, so the LNB drops it (Phase 26
+    // s07-F4: out-of-band carriers no longer leak through at -40 dB)
     const legacy = new TestableLNB(
       {
         ...LNBModuleCore.getDefaultState(),
@@ -445,8 +446,7 @@ describe('Campaign 3: LNB direct sampling', () => {
       1
     );
     legacy.update();
-    expect(legacy.ifSignals[0].frequency).toBe(6080e6 - 137.1e6);
-    expect(legacy.ifSignals[0].power).toBeLessThan(-95); // filtered (outside IF passband)
+    expect(legacy.ifSignals).toHaveLength(0);
   });
 });
 

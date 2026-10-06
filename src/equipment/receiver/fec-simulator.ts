@@ -80,6 +80,17 @@ export class FECSimulator {
   // Smoothing for display stability
   private smoothedBer_: number = 1e-12;
   private smoothedViterbi_: number = 0.95;
+  /** True until the first sample seeds the smoothed values. */
+  private isFirstSample_: boolean = true;
+  /** Modem lock state on the previous sample, to detect lock acquisition. */
+  private lastHasLock_: boolean = false;
+
+  /**
+   * Time constant (ms) of the BER / Viterbi display smoothing. Time-based so
+   * the readout settles in a few seconds whatever the update rate (the old
+   * per-call alpha of 0.1 at a 1 Hz call rate took 1-2 minutes to clear).
+   */
+  static readonly SMOOTHING_TAU_MS = 2500;
 
   // Timing for rate calculations
   private lastUpdateTime_: number = SimClock.runMs();
@@ -127,11 +138,24 @@ export class FECSimulator {
 
     const effectiveCn = input.effectiveCnRatio_dB ?? input.cnRatio_dB;
 
+    // On the first sample, or when the modem (re)acquires lock, seed the
+    // smoothed metrics from the current signal instead of easing out of a
+    // stale history: a fresh lock should not inherit the outage's BER.
+    const isLockAcquired = input.hasLock && !this.lastHasLock_;
+    this.lastHasLock_ = input.hasLock;
+
+    if (this.isFirstSample_ || isLockAcquired) {
+      this.isFirstSample_ = false;
+      this.smoothedBer_ = this.calculateRawBer_(effectiveCn, input.modulation);
+      this.smoothedViterbi_ = this.calculateRawViterbiMetric_(effectiveCn, input.fec);
+      this.rsUncorrectableRecent_ = 0;
+    }
+
     // Calculate base metrics
     const frameSyncLocked = this.calculateFrameSync_(input, effectiveCn);
     // Update smoothed values for display stability
-    this.calculateBer_(effectiveCn, input.modulation);
-    this.calculateViterbiMetric_(effectiveCn, input.fec);
+    this.calculateBer_(effectiveCn, input.modulation, deltaTime);
+    this.calculateViterbiMetric_(effectiveCn, input.fec, deltaTime);
 
     // Update RS counters (use smoothed BER for realistic accumulation)
     this.updateReedSolomon_(this.smoothedBer_, deltaTime);
@@ -139,7 +163,8 @@ export class FECSimulator {
     // Determine channel status using SMOOTHED metrics for stability
     // Combined with hysteresis in determineChannelStatus_, this prevents
     // status flickering when signal quality hovers near thresholds
-    const channelStatus = this.determineChannelStatus_(frameSyncLocked, this.smoothedBer_, this.smoothedViterbi_, this.rsUncorrectableRecent_);
+    const rsUncorrectableBlocks = Math.round(this.rsUncorrectableRecent_);
+    const channelStatus = this.determineChannelStatus_(frameSyncLocked, this.smoothedBer_, this.smoothedViterbi_, rsUncorrectableBlocks);
 
     // Calculate data rate based on modulation and FEC
     const dataRate = this.calculateDataRate_(input.modulation, input.fec);
@@ -151,7 +176,7 @@ export class FECSimulator {
       viterbiPathMetric: this.overrides_.viterbiPathMetric ?? this.smoothedViterbi_,
       rsCorrectedErrors: this.overrides_.rsCorrectedErrors ?? Math.round(this.smoothedBer_ * 255 * 8),
       rsCorrectedTotal: this.rsCorrectedTotal_,
-      rsUncorrectableBlocks: this.overrides_.rsUncorrectableBlocks ?? this.rsUncorrectableRecent_,
+      rsUncorrectableBlocks: this.overrides_.rsUncorrectableBlocks ?? rsUncorrectableBlocks,
       rsUncorrectableTotal: this.rsUncorrectableTotal_,
       channelStatus: this.overrides_.channelStatus ?? channelStatus,
       dataRate,
@@ -188,6 +213,8 @@ export class FECSimulator {
     this.rsUncorrectableRecent_ = 0;
     this.smoothedBer_ = 1e-12;
     this.smoothedViterbi_ = 0.95;
+    this.isFirstSample_ = true;
+    this.lastHasLock_ = false;
     this.overrides_ = {};
     this.lastChannelStatus_ = 'Good';
   }
@@ -223,14 +250,26 @@ export class FECSimulator {
    *
    * Returns smoothed value for display stability
    */
-  private calculateBer_(cnRatio_dB: number, modulation: ModulationType): number {
+  private calculateBer_(cnRatio_dB: number, modulation: ModulationType, deltaTime_ms: number): number {
     const rawBer = this.calculateRawBer_(cnRatio_dB, modulation);
 
-    // Exponential moving average for smooth display
-    const alpha = 0.1; // Smoothing factor
-    this.smoothedBer_ = alpha * rawBer + (1 - alpha) * this.smoothedBer_;
+    // Time-based exponential moving average for smooth display.
+    // Rising BER: linear EMA, so errors show within a sample or two.
+    // Falling BER: EMA in the log domain, so recovery clears in a few tau; a
+    // linear EMA would hold a 4e-2 history above 1e-5 for ~20 s.
+    const alpha = FECSimulator.smoothingAlpha_(deltaTime_ms);
+    if (rawBer >= this.smoothedBer_) {
+      this.smoothedBer_ = alpha * rawBer + (1 - alpha) * this.smoothedBer_;
+    } else {
+      this.smoothedBer_ = 10 ** (alpha * Math.log10(rawBer) + (1 - alpha) * Math.log10(this.smoothedBer_));
+    }
 
     return this.smoothedBer_;
+  }
+
+  /** EMA weight for a sample taken deltaTime_ms after the previous one. */
+  private static smoothingAlpha_(deltaTime_ms: number): number {
+    return 1 - Math.exp(-Math.max(0, deltaTime_ms) / FECSimulator.SMOOTHING_TAU_MS);
   }
 
   /**
@@ -304,11 +343,11 @@ export class FECSimulator {
    *
    * Returns smoothed value for display stability
    */
-  private calculateViterbiMetric_(cnRatio_dB: number, fec: FECType): number {
+  private calculateViterbiMetric_(cnRatio_dB: number, fec: FECType, deltaTime_ms: number): number {
     const clampedMetric = this.calculateRawViterbiMetric_(cnRatio_dB, fec);
 
-    // Exponential moving average
-    const alpha = 0.15;
+    // Time-based exponential moving average
+    const alpha = FECSimulator.smoothingAlpha_(deltaTime_ms);
     this.smoothedViterbi_ = alpha * clampedMetric + (1 - alpha) * this.smoothedViterbi_;
 
     return this.smoothedViterbi_;
@@ -339,22 +378,17 @@ export class FECSimulator {
       const correctionsThisInterval = Math.round(errorsPerCodeword * frames);
       this.rsCorrectedTotal_ += correctionsThisInterval;
 
-      // Decay recent uncorrectable counter when signal is good
-      // Clear after ~3 seconds of good signal
-      const decayRate = deltaTime_ms / 3000;
-      this.rsUncorrectableRecent_ = Math.max(0, this.rsUncorrectableRecent_ - decayRate * this.rsUncorrectableRecent_);
-
-      // Clear completely when very small
-      if (this.rsUncorrectableRecent_ < 0.1) {
-        this.rsUncorrectableRecent_ = 0;
-      }
+      // "Recent" is a sliding ~1 s window: every good frame pushes an old
+      // block out, so a second of clean signal clears it (the old
+      // proportional decay left thousands of blocks lingering for ~30 s)
+      this.rsUncorrectableRecent_ = Math.max(0, this.rsUncorrectableRecent_ - frames);
     } else {
       // Exceeds capacity: uncorrectable blocks occur
       const excessRate = Math.min(1, (errorsPerCodeword - rsCapacity) / rsCapacity);
       const uncorrectableThisInterval = Math.round(excessRate * frames);
 
-      // Add to both recent and total counters
-      this.rsUncorrectableRecent_ += uncorrectableThisInterval;
+      // Add to both recent (capped at one window of frames) and total counters
+      this.rsUncorrectableRecent_ = Math.min(this.framesPerSecond_, this.rsUncorrectableRecent_ + uncorrectableThisInterval);
       this.rsUncorrectableTotal_ += uncorrectableThisInterval;
 
       // Still accumulate some corrections (up to capacity)
@@ -404,6 +438,12 @@ export class FECSimulator {
 
     // Worsening always applies immediately
     if (this.isWorse_(rawStatus, lastStatus)) {
+      this.lastChannelStatus_ = rawStatus;
+      return rawStatus;
+    }
+
+    // Frame sync just came back: there is no prior locked status to hold on to
+    if (lastStatus === 'No Lock') {
       this.lastChannelStatus_ = rawStatus;
       return rawStatus;
     }

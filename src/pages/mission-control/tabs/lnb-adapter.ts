@@ -31,6 +31,13 @@ export class LNBAdapter {
   // Staged values for Apply pattern
   private stagedLoFrequency_: number = 6080;
   private stagedGain_: number = 0;
+  /**
+   * Pending (staged but not applied) edits. Power toggles and external state
+   * events must not overwrite a pending staged value; it clears on Apply or
+   * when the staged value is brought back to the applied one.
+   */
+  private hasPendingLoEdit_ = false;
+  private hasPendingGainEdit_ = false;
 
   constructor(lnbModule: LNBModuleCore, containerEl: HTMLElement) {
     this.lnbModule = lnbModule;
@@ -86,6 +93,16 @@ export class LNBAdapter {
   private syncReadOnlyDisplays_(): void {
     const state = this.lnbModule.state;
     const isPowered = state.isPowered;
+
+    // Sync power switch from external changes (scenario events, faults)
+    const powerSwitch = this.domCache_.get('powerSwitch') as HTMLInputElement | undefined;
+    if (powerSwitch && document.activeElement !== powerSwitch && powerSwitch.checked !== isPowered) {
+      powerSwitch.checked = isPowered;
+    }
+
+    // Applied values can change without an event; keep staged inputs and the
+    // pending indicator honest (pending edits are preserved)
+    this.syncStagedFromState_(state.loFrequency, state.gain);
 
     // Update noise temperature display
     const noiseTempDisplay = this.domCache_.get('noiseTempDisplay');
@@ -195,43 +212,108 @@ export class LNBAdapter {
 
   private loFreqInputHandler_(e: Event): void {
     const value = parseLocalizedNumber((e.target as HTMLInputElement).value);
-    this.stagedLoFrequency_ = Math.max(5000, Math.min(7000, value));
-    this.updateStagedDisplays_();
+    if (!Number.isNaN(value)) {
+      this.setStagedLoFrequency_(value);
+    }
   }
 
   private adjustStagedLoFreq_(delta: number): void {
-    this.stagedLoFrequency_ = Math.max(5000, Math.min(7000, this.stagedLoFrequency_ + delta));
-    this.updateStagedDisplays_();
+    this.setStagedLoFrequency_(this.stagedLoFrequency_ + delta);
+  }
+
+  /** Player edit: stage a new LO and mark it pending until applied. */
+  private setStagedLoFrequency_(value: number): void {
+    this.stagedLoFrequency_ = Math.max(5000, Math.min(7000, value));
+    this.hasPendingLoEdit_ = this.stagedLoFrequency_ !== this.lnbModule.state.loFrequency;
+    this.updateStagedDisplays_(true);
   }
 
   private gainInputHandler_(e: Event): void {
     const value = parseLocalizedNumber((e.target as HTMLInputElement).value);
-    this.stagedGain_ = Math.max(0, Math.min(65, value));
-    this.updateStagedDisplays_();
+    if (!Number.isNaN(value)) {
+      this.setStagedGain_(Math.max(0, Math.min(65, value)));
+    }
   }
 
   private adjustStagedGain_(delta: number): void {
     const newGain = this.stagedGain_ + delta;
-    this.stagedGain_ = Math.round(Math.max(0, Math.min(65, newGain)) * 10) / 10;
+    this.setStagedGain_(Math.round(Math.max(0, Math.min(65, newGain)) * 10) / 10);
+  }
+
+  /** Player edit: stage a new gain and mark it pending until applied. */
+  private setStagedGain_(value: number): void {
+    this.stagedGain_ = value;
+    this.hasPendingGainEdit_ = this.stagedGain_ !== this.lnbModule.state.gain;
+    this.updateStagedDisplays_(true);
+  }
+
+  /**
+   * Follow the applied values only where the player has no pending edit, so a
+   * power toggle or external state event never silently discards a staged value.
+   */
+  private syncStagedFromState_(appliedLo: number | undefined, appliedGain: number | undefined): void {
+    if (appliedLo !== undefined) {
+      if (!this.hasPendingLoEdit_) {
+        this.stagedLoFrequency_ = appliedLo;
+      } else if (this.stagedLoFrequency_ === appliedLo) {
+        this.hasPendingLoEdit_ = false;
+      }
+    }
+    if (appliedGain !== undefined) {
+      if (!this.hasPendingGainEdit_) {
+        this.stagedGain_ = appliedGain;
+      } else if (this.stagedGain_ === appliedGain) {
+        this.hasPendingGainEdit_ = false;
+      }
+    }
     this.updateStagedDisplays_();
   }
 
-  private updateStagedDisplays_(): void {
+  /**
+   * @param isUserEdit true when called from the player's own edit; otherwise a
+   *   focused input is left alone (CLAUDE.md "Protecting Input Fields").
+   */
+  private updateStagedDisplays_(isUserEdit = false): void {
     const isPowered = this.lnbModule.state.isPowered;
     const loInput = this.domCache_.get('loFreqInput') as HTMLInputElement;
     const gainInput = this.domCache_.get('gainInput') as HTMLInputElement;
 
     if (loInput) {
-      loInput.value = isPowered ? this.stagedLoFrequency_.toString() : '--';
+      if (isUserEdit || document.activeElement !== loInput) {
+        loInput.value = isPowered ? this.stagedLoFrequency_.toString() : '--';
+      }
       loInput.disabled = !isPowered;
     }
     if (gainInput) {
-      gainInput.value = isPowered ? this.stagedGain_.toFixed(1) : '--';
+      if (isUserEdit || document.activeElement !== gainInput) {
+        gainInput.value = isPowered ? this.stagedGain_.toFixed(1) : '--';
+      }
       gainInput.disabled = !isPowered;
     }
 
     // Disable adjust buttons when powered off
     this.setControlButtonsEnabled_(isPowered);
+    this.updatePendingIndicator_();
+  }
+
+  /** Staged vs applied: pending style on the inputs and Apply, applied value in the tooltip. */
+  private updatePendingIndicator_(): void {
+    const state = this.lnbModule.state;
+    const isLoPending = state.isPowered && this.stagedLoFrequency_ !== state.loFrequency;
+    const isGainPending = state.isPowered && this.stagedGain_ !== state.gain;
+    const loInput = this.domCache_.get('loFreqInput') as HTMLInputElement;
+    const gainInput = this.domCache_.get('gainInput') as HTMLInputElement;
+    const applyBtn = this.domCache_.get('applyBtn') as HTMLButtonElement;
+
+    if (loInput) {
+      loInput.classList.toggle('is-pending', isLoPending);
+      loInput.title = `Applied: ${state.loFrequency} MHz${isLoPending ? ' (staged change not applied)' : ''}`;
+    }
+    if (gainInput) {
+      gainInput.classList.toggle('is-pending', isGainPending);
+      gainInput.title = `Applied: ${Number(state.gain).toFixed(1)} dB${isGainPending ? ' (staged change not applied)' : ''}`;
+    }
+    applyBtn?.classList.toggle('is-pending', isLoPending || isGainPending);
   }
 
   private setControlButtonsEnabled_(enabled: boolean): void {
@@ -245,7 +327,10 @@ export class LNBAdapter {
   private applyHandler_(): void {
     this.lnbModule.handleLoFrequencyChange(this.stagedLoFrequency_);
     this.lnbModule.handleGainChange(this.stagedGain_);
+    this.hasPendingLoEdit_ = false;
+    this.hasPendingGainEdit_ = false;
     this.syncDomWithState_(this.lnbModule.state);
+    this.updateStagedDisplays_();
   }
 
   private powerHandler_(e: Event): void {
@@ -266,14 +351,8 @@ export class LNBAdapter {
 
     const isPowered = state.isPowered ?? this.lnbModule.state.isPowered;
 
-    // Update staged values from state and refresh displays
-    if (state.loFrequency !== undefined) {
-      this.stagedLoFrequency_ = state.loFrequency;
-    }
-    if (state.gain !== undefined) {
-      this.stagedGain_ = state.gain;
-    }
-    this.updateStagedDisplays_();
+    // Follow applied values unless the player has a pending staged edit
+    this.syncStagedFromState_(state.loFrequency, state.gain);
 
     // Update Power switch
     if (state.isPowered !== undefined) {

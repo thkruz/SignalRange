@@ -11,6 +11,14 @@
         "params": {
           "minPower": -110
         }
+      },
+      {
+        "objectiveId": "measure-beacon",
+        "condition": "receiver-snr-threshold",
+        "groundStation": "VT-01",
+        "params": {
+          "minCNRatio": 8
+        }
       }
     ]
   },
@@ -28,11 +36,11 @@
           "kind": "fixed",
           "pass": null,
           "atPeak": {
-            "elevationDeg": 29.01,
+            "elevationDeg": 29.41,
             "frequencyMHz": 3828,
             "gainDbi": 48.84,
-            "gOverTDbPerK": 27.31,
-            "tsysK": 142.22
+            "gOverTDbPerK": 27.32,
+            "tsysK": 142.01
           },
           "carriers": [
             {

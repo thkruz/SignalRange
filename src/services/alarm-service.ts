@@ -50,7 +50,7 @@ export class AlarmService {
     const sim = SimulationManager.getInstance();
 
     for (const gs of sim.groundStations) {
-      alarms.push(...this.collectGroundStationAlarms_(gs));
+      alarms.push(...AlarmService.collectGroundStationAlarms_(gs));
     }
 
     // Future: for (const sat of sim.satellites) { ... }
@@ -58,7 +58,31 @@ export class AlarmService {
     this.emitIfChanged_(alarms);
   }
 
-  private collectGroundStationAlarms_(gs: GroundStation): AggregatedAlarm[] {
+  /**
+   * Every displayable alarm (error, warning, info) for one station, most
+   * severe first, unfiltered by the ticker's highest-tier rule. Built from the
+   * same module getStatusAlarms() the ticker polls, so the Dashboard alarm
+   * list and its Quick Stats count agree with the ticker for that station
+   * (s08-F2, s16-F2, s17-F2, s23-F2). A non-operational station has none,
+   * as on the ticker.
+   * @param station the ground station, or its state.id
+   */
+  static getAlarms(station: GroundStation | string): AggregatedAlarm[] {
+    const gs = typeof station === 'string' ? SimulationManager.getInstance().groundStations.find((g) => g.state.id === station) : station;
+    if (!gs) return [];
+    return AlarmService.sortBySeverity_(AlarmService.collectGroundStationAlarms_(gs));
+  }
+
+  /** Stable sort: error, warning, info (success last; never collected). */
+  private static sortBySeverity_(alarms: AggregatedAlarm[]): AggregatedAlarm[] {
+    const rank: Record<AggregatedAlarm['severity'], number> = { error: 0, warning: 1, info: 2, success: 3 };
+    return alarms
+      .map((alarm, index) => ({ alarm, index }))
+      .sort((a, b) => rank[a.alarm.severity] - rank[b.alarm.severity] || a.index - b.index)
+      .map(({ alarm }) => alarm);
+  }
+
+  private static collectGroundStationAlarms_(gs: GroundStation): AggregatedAlarm[] {
     // Skip non-operational locations
     if (!gs.state.isOperational) return [];
 
@@ -68,7 +92,7 @@ export class AlarmService {
     // Antennas
     gs.antennas.forEach((antenna, idx) => {
       for (const alarm of antenna.getStatusAlarms()) {
-        if (this.isDisplayableAlarm_(alarm)) {
+        if (AlarmService.isDisplayableAlarm_(alarm)) {
           alarms.push({
             severity: alarm.severity as AggregatedAlarm['severity'],
             message: alarm.message,
@@ -84,7 +108,7 @@ export class AlarmService {
     gs.rfFrontEnds.forEach((rfFe, idx) => {
       for (const rfCase of [1, 2]) {
         for (const alarm of rfFe.getStatusAlarms(rfCase)) {
-          if (this.isDisplayableAlarm_(alarm)) {
+          if (AlarmService.isDisplayableAlarm_(alarm)) {
             alarms.push({
               severity: alarm.severity as AggregatedAlarm['severity'],
               message: alarm.message,
@@ -100,7 +124,7 @@ export class AlarmService {
     // Transmitters
     gs.transmitters.forEach((tx, idx) => {
       for (const alarm of tx.getStatusAlarms()) {
-        if (this.isDisplayableAlarm_(alarm)) {
+        if (AlarmService.isDisplayableAlarm_(alarm)) {
           alarms.push({
             severity: alarm.severity as AggregatedAlarm['severity'],
             message: alarm.message,
@@ -115,7 +139,7 @@ export class AlarmService {
     // Receivers
     gs.receivers.forEach((rx, idx) => {
       for (const alarm of rx.getStatusAlarms()) {
-        if (this.isDisplayableAlarm_(alarm)) {
+        if (AlarmService.isDisplayableAlarm_(alarm)) {
           alarms.push({
             severity: alarm.severity as AggregatedAlarm['severity'],
             message: alarm.message,
@@ -130,7 +154,7 @@ export class AlarmService {
     return alarms;
   }
 
-  private isDisplayableAlarm_(alarm: AlarmStatus): boolean {
+  private static isDisplayableAlarm_(alarm: AlarmStatus): boolean {
     return alarm.severity === 'error' || alarm.severity === 'warning' || alarm.severity === 'info';
   }
 

@@ -85,6 +85,11 @@ export class WorkingDocumentManager {
     this.box_?.open();
   }
 
+  /** Close the document panel if it is open (end-of-scenario modals) */
+  close(): void {
+    this.box_?.close();
+  }
+
   /** Number of lines accumulated so far (used by completeness checks). */
   getEntryCount(): number {
     return this.entries_.length;

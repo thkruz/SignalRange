@@ -36,11 +36,11 @@
           "kind": "fixed",
           "pass": null,
           "atPeak": {
-            "elevationDeg": 29.01,
+            "elevationDeg": 29.03,
             "frequencyMHz": 3828,
             "gainDbi": 48.84,
             "gOverTDbPerK": 27.31,
-            "tsysK": 142.22
+            "tsysK": 142.21
           },
           "carriers": [
             {
@@ -51,7 +51,7 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 5,
-              "peakCnDb": 10.49,
+              "peakCnDb": 10.5,
               "medianCnDb": 10.26,
               "peakRxIfDbm": -29.56,
               "noiseIfDbm": -39.31,

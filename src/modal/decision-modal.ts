@@ -91,8 +91,10 @@ export class DecisionModal extends DraggableBox {
     }
     this.hideOverlay_();
     // Drop the rendered options so no hidden .quiz-option-btn lingers for the
-    // shared e2e locators once the box is closed.
-    const optionsEl = getEl('decision-options');
+    // shared e2e locators once the box is closed. The DOM only exists once a
+    // decision has been shown; getEl would throw on teardown of every scenario
+    // that never showed one (nats-s02-F9, s24-F6).
+    const optionsEl = document.getElementById('decision-options');
     if (optionsEl) optionsEl.innerHTML = '';
     super.close();
   }
@@ -265,7 +267,11 @@ export class DecisionModal extends DraggableBox {
         <button id="decision-continue-btn" class="quiz-continue-btn">Continue</button>
       `;
       feedbackEl.style.display = 'block';
-      getEl('decision-continue-btn')?.addEventListener('click', () => this.handleContinueClick_());
+      const continueBtn = getEl('decision-continue-btn');
+      continueBtn?.addEventListener('click', () => this.handleContinueClick_());
+      // The box scrolls; keep Continue in view (nats-s22-F9)
+      continueBtn?.scrollIntoView?.({ block: 'nearest' });
+      continueBtn?.focus();
     }
     this.renderPenalty_(data.pointsDeducted);
     this.disableOptions_();

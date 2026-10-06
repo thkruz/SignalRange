@@ -76,30 +76,30 @@ const SCENARIO_7_OBJECTIVES: Scenario7Objective[] = [
     id: 'check-dashboard-status-quiz',
     title: 'Identify Active Alarms',
     type: 'quiz',
-    correctAnswer: 'BUC High Current Draw',
+    correctAnswer: 'BUC approaching saturation, in loopback mode',
   },
   {
     id: 'diagnose-buc-high-current',
-    title: 'Diagnose BUC High Current - Navigate to TX Chain',
+    title: 'Diagnose BUC Saturation - Navigate to TX Chain',
     type: 'click-tab',
     tabId: 'tx-chain',
   },
   {
     id: 'diagnose-buc-high-current-quiz',
-    title: 'Diagnose BUC High Current - Identify Cause',
+    title: 'Diagnose BUC Saturation - Identify Cause',
     type: 'quiz',
     correctAnswer: 'BUC gain is set too high',
   },
   {
     id: 'resolve-buc-high-current-mute',
-    title: 'Resolve BUC High Current - Mute BUC',
+    title: 'Resolve BUC Saturation - Mute BUC',
     type: 'toggle-switch',
     switchId: 'buc-mute',
     switchState: true,
   },
   {
     id: 'resolve-buc-high-current-loopback',
-    title: 'Resolve BUC High Current - Disable Loopback',
+    title: 'Resolve BUC Saturation - Disable Loopback',
     type: 'toggle-switch',
     switchId: 'buc-loopback',
     switchState: false,
@@ -114,7 +114,7 @@ const SCENARIO_7_OBJECTIVES: Scenario7Objective[] = [
     id: 'verify-fault-cleared-quiz',
     title: 'Verify Fault Cleared - Confirm Alarm Cleared',
     type: 'quiz',
-    correctAnswer: 'Normal - current draw within limits, no active alarms',
+    correctAnswer: 'Normal - output within limits, no active alarms',
   },
   {
     id: 'verify-antenna-status',
@@ -291,6 +291,24 @@ const SCENARIO_7_OBJECTIVES: Scenario7Objective[] = [
     type: 'toggle-switch',
     switchId: 'buc-loopback',
     switchState: false,
+  },
+  {
+    id: 'restore-lnb-frequency-tab',
+    title: 'Restore LNB LO Frequency - Navigate to RX Analysis',
+    type: 'click-tab',
+    tabId: 'rx-analysis',
+  },
+  {
+    id: 'restore-lnb-frequency',
+    title: 'Restore LNB LO Frequency',
+    type: 'configure-lnb-lo',
+    lnbLoFrequency: 5250, // Back from the loopback LO
+  },
+  {
+    id: 'enable-hpa-output-tab',
+    title: 'Enable HPA Output - Navigate to TX Chain',
+    type: 'click-tab',
+    tabId: 'tx-chain',
   },
   {
     id: 'enable-hpa-output',
@@ -732,22 +750,22 @@ test.describe('Scenario 7 Full Completion', () => {
     await executeObjective(page, missionControlPage, objective);
   });
 
-  test('Objective: Diagnose BUC High Current - Navigate to TX Chain', async () => {
+  test('Objective: Diagnose BUC Saturation - Navigate to TX Chain', async () => {
     const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'diagnose-buc-high-current')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
-  test('Objective: Diagnose BUC High Current - Identify Cause', async () => {
+  test('Objective: Diagnose BUC Saturation - Identify Cause', async () => {
     const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'diagnose-buc-high-current-quiz')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
-  test('Objective: Resolve BUC High Current - Mute BUC', async () => {
+  test('Objective: Resolve BUC Saturation - Mute BUC', async () => {
     const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'resolve-buc-high-current-mute')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
-  test('Objective: Resolve BUC High Current - Disable Loopback', async () => {
+  test('Objective: Resolve BUC Saturation - Disable Loopback', async () => {
     const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'resolve-buc-high-current-loopback')!;
     await executeObjective(page, missionControlPage, objective);
   });
@@ -890,6 +908,21 @@ test.describe('Scenario 7 Full Completion', () => {
 
   test('Objective: Disable Loopback Mode', async () => {
     const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'disable-loopback')!;
+    await executeObjective(page, missionControlPage, objective);
+  });
+
+  test('Objective: Restore LNB LO Frequency - Navigate to RX Analysis', async () => {
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'restore-lnb-frequency-tab')!;
+    await executeObjective(page, missionControlPage, objective);
+  });
+
+  test('Objective: Restore LNB LO Frequency', async () => {
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'restore-lnb-frequency')!;
+    await executeObjective(page, missionControlPage, objective);
+  });
+
+  test('Objective: Enable HPA Output - Navigate to TX Chain', async () => {
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'enable-hpa-output-tab')!;
     await executeObjective(page, missionControlPage, objective);
   });
 

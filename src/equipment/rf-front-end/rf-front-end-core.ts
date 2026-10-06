@@ -297,13 +297,8 @@ export abstract class RFFrontEndCore extends BaseEquipment {
     // LNB noise temperature is calculated in LNBModuleCore.updateNoiseTemperature_()
     // with proper Friis formula, gain dependency, and smoothing - don't override here
 
-    // BUC output power calculation
-    if (this.state.buc.isPowered && !this.state.buc.isMuted) {
-      const inputPower = -10 as dBm; // dBm typical IF input
-      this.state.buc.outputPower = (inputPower + this.state.buc.gain) as dBm;
-    } else {
-      this.state.buc.outputPower = -120 as dBm; // Effectively off
-    }
+    // BUC output power is owned by BUCModuleCore.update(), which derives it
+    // from the actual RF output signals - don't override here
 
     // HPA output power and IMD calculation
     if (this.state.hpa.isPowered) {

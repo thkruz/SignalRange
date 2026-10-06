@@ -46,7 +46,7 @@
               "peakCnDb": 12.02,
               "medianCnDb": 11.93,
               "peakRxIfDbm": -28.91,
-              "noiseIfDbm": -40.36,
+              "noiseIfDbm": -40.35,
               "lockedSamples": 5
             },
             {
@@ -166,11 +166,11 @@
           "kind": "fixed",
           "pass": null,
           "atPeak": {
-            "elevationDeg": 26.41,
+            "elevationDeg": 26.22,
             "frequencyMHz": 3792,
             "gainDbi": 48.76,
             "gOverTDbPerK": 27.19,
-            "tsysK": 143.63
+            "tsysK": 143.76
           },
           "carriers": [
             {

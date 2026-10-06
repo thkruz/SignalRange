@@ -221,10 +221,10 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
 
     case 'click-tab':
       await missionControlPage.selectTab(objective.tabId!);
-      // Observation-gated conditions latch only after the default dwell on
-      // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
-      // reset the read and strand the objective.
-      await page.waitForTimeout(3000);
+      // Observation-gated conditions latch only after their dwell on the tab
+      // (Baseline RX Snapshot asks for 5 s); leaving at once would reset the
+      // read and strand the objective.
+      await page.waitForTimeout(6000);
       break;
 
     case 'wait-sky-noise':

@@ -1,7 +1,10 @@
+import { CampaignManager } from '@app/campaigns/campaign-manager';
 import { DraggableModal } from '@app/engine/ui/draggable-modal';
 import { html } from '@app/engine/utils/development/formatter';
 import { Logger } from '@app/logging/logger';
+import { OpsLogModal } from '@app/ops-log/ops-log-modal';
 import { Router } from '@app/router';
+import { WorkingDocumentManager } from '@app/scenarios/working-document-manager';
 import { type ScoreBreakdown, ScoreCalculator } from '@app/scoring/score-calculator';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { clearPersistedStore } from '@app/sync/storage';
@@ -79,6 +82,7 @@ export class LevelCompleteModal extends DraggableModal {
       <div class="complete-modal">
         <div class="complete-modal__icon">&#127942;</div>
         <div class="complete-modal__title">Mission Complete!</div>
+        ${this.isCampaignFinale_() ? `<div class="complete-modal__finale">${this.renderFinaleText_()}</div>` : ''}
 
         <div class="complete-modal__score-section">
           <div class="complete-modal__total">
@@ -99,7 +103,7 @@ export class LevelCompleteModal extends DraggableModal {
               <span class="breakdown-label">Time Bonus</span>
               <span class="breakdown-value positive">+${score.timeBonus}</span>
             </div>
-            <div class="breakdown-detail">${score.timeRemainingSeconds} seconds remaining / ${ScoreCalculator.TIME_BONUS_DIVISOR}</div>
+            <div class="breakdown-detail">${this.formatTime_(score.timeRemainingSeconds)} to spare (1 point per ${ScoreCalculator.TIME_BONUS_DIVISOR} s)</div>
             `
                 : ''
             }
@@ -178,13 +182,30 @@ export class LevelCompleteModal extends DraggableModal {
     return html`
       <div id="complete-signup-section" class="complete-modal__signup">
         <div class="complete-modal__signup-text">
-          You're not signed in, so this completion won't be saved and the
-          next scenario stays locked. Create a free account to keep your
-          progress.
+          ${
+            this.isCampaignFinale_()
+              ? "You're not signed in, so this completion won't be saved. Create a free account to keep your progress."
+              : "You're not signed in, so this completion won't be saved and the next scenario stays locked. Create a free account to keep your progress."
+          }
         </div>
         <button id="signup-save-btn" class="btn btn-primary">Sign Up / Log In</button>
       </div>
     `;
+  }
+
+  /** The last non-sandbox scenario of its campaign: the modal says so instead of pointing at a next scenario */
+  private isCampaignFinale_(): boolean {
+    const { campaignId, scenarioId } = this.options_;
+    if (!campaignId || !scenarioId) return false;
+    const scenarios = CampaignManager.getInstance()
+      .getScenariosForCampaign(campaignId)
+      .filter((s) => s.missionType !== 'Sandbox');
+    return scenarios.length > 0 && scenarios[scenarios.length - 1].id === scenarioId;
+  }
+
+  private renderFinaleText_(): string {
+    const campaign = CampaignManager.getInstance().getCampaign(this.options_.campaignId);
+    return `<strong>Campaign complete.</strong> You've finished every scenario in ${campaign?.title ?? 'this campaign'}.`;
   }
 
   /** Swap the sign-up prompt for a confirmation once the player signs in */
@@ -380,6 +401,10 @@ export class LevelCompleteModal extends DraggableModal {
     const sim = SimulationManager.getInstance();
     sim.checklistBox?.close();
     sim.missionBriefBox?.close();
+    // The working document box draws above modals (nats-s24-F9)
+    WorkingDocumentManager.getInstance().close();
+    // The last step is often a typed log entry; the log must not sit over the result
+    OpsLogModal.closeIfOpen();
   }
 
   override close(): void {

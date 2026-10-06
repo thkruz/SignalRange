@@ -22,6 +22,7 @@ import { HintModal } from '@app/modal/hint-modal';
 import { PendingQuizIndicator } from '@app/modal/pending-quiz-indicator';
 import { QuizManager } from '@app/modal/quiz-manager';
 import { ObjectivesManager } from '@app/objectives';
+import { CountdownHold } from '@app/objectives/countdown-hold';
 import { OpsLogModal } from '@app/ops-log/ops-log-modal';
 import { ScenarioManager } from '@app/scenario-manager';
 import { CampaignRecordPanel } from '@app/scenarios/campaign-record-panel';
@@ -214,8 +215,14 @@ export class AssetTreeSidebar extends BaseElement {
   private addMissionBriefListener_(): void {
     const btn = qs('.mission-brief-icon', this.dom_);
     btn?.addEventListener('click', () => {
-      SimulationManager.getInstance().missionBriefBox ??= new DraggableHtmlBox('Mission Brief', 'mission-brief', this.missionBriefUrl_, 'app-shell-page');
-      SimulationManager.getInstance().missionBriefBox.open();
+      const sim = SimulationManager.getInstance();
+      if (!sim.missionBriefBox) {
+        sim.missionBriefBox = new DraggableHtmlBox('Mission Brief', 'mission-brief', this.missionBriefUrl_, 'app-shell-page');
+        // Objective countdowns stop while the brief is open (Phase 26 D2)
+        sim.missionBriefBox.onClose = () => CountdownHold.set('brief', false);
+      }
+      sim.missionBriefBox.open();
+      CountdownHold.set('brief', true);
     });
   }
 

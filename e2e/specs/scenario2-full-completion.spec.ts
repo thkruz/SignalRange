@@ -14,7 +14,7 @@ import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForS
  * - 'set-tracking-mode': Requires clicking a tracking mode button
  * - 'configure-lnb': Requires configuring LNB settings
  */
-type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'auto' | 'toggle-switch' | 'set-tracking-mode' | 'configure-lnb';
+type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'auto' | 'toggle-switch' | 'set-tracking-mode' | 'configure-lnb' | 'configure-speca';
 
 interface Scenario2Objective {
   id: string;
@@ -31,6 +31,11 @@ interface Scenario2Objective {
     gain: number;
   };
   waitForAntennaPosition?: boolean; // Wait for antenna to reach position
+  specaConfig?: {
+    // For configure-speca type (MHz)
+    centerFrequency: number;
+    span: number;
+  };
 }
 
 const SCENARIO_2_OBJECTIVES: Scenario2Objective[] = [
@@ -208,7 +213,7 @@ const SCENARIO_2_OBJECTIVES: Scenario2Objective[] = [
     id: 'verify-lnb-restored-quiz',
     title: 'Verify LNB Restoration',
     type: 'quiz',
-    correctAnswer: 'All of the above should be confirmed',
+    correctAnswer: 'LOCK shows LOCKED to the GPSDO reference and noise temperature is back near 43 K',
   },
 
   // ============================================================
@@ -217,7 +222,9 @@ const SCENARIO_2_OBJECTIVES: Scenario2Objective[] = [
   {
     id: 'verify-beacon',
     title: 'Verify Beacon Reception',
-    type: 'auto', // signal-detected condition is auto-satisfied
+    // The analyzer starts parked on the carrier, so the player retunes it
+    type: 'configure-speca',
+    specaConfig: { centerFrequency: 1074.5, span: 0.002 },
   },
   {
     id: 'verify-beacon-quiz',
@@ -497,6 +504,19 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
       // Power on LNB and configure settings
       await configureLnb(page, objective.lnbConfig!);
       break;
+
+    case 'configure-speca': {
+      const center = page.locator('#sa-center-freq');
+      await expect(center).toBeVisible({ timeout: 5000 });
+      await center.fill(objective.specaConfig!.centerFrequency.toString());
+      await center.press('Tab');
+      const span = page.locator('#sa-span');
+      await span.fill(objective.specaConfig!.span.toString());
+      await span.press('Tab');
+      // signal-detected is observation-gated: stay on the tab past the dwell
+      await page.waitForTimeout(3000);
+      break;
+    }
 
     case 'auto':
       // Auto-satisfied objectives complete when conditions are met

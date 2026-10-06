@@ -63,7 +63,7 @@ export const scenario8Data: ScenarioData = {
   subtitle: 'Solo Operations Evaluation',
   duration: '30-40 min',
   missionType: 'Final Evaluation',
-  description: `It's 2 AM on a Saturday night - your first solo night shift at the Vermont station. Charlie is visiting family out of state. Dana is on-call but sleeping; she's made it clear she only wants to be woken for genuine emergencies.<br><br>A customer reports intermittent connectivity issues on AURORA-7, an aging C-band satellite with an inclined orbit. You'll need to investigate independently, diagnose any equipment issues, verify the link, and handle whatever complications arise.<br><br>This is your graduation exam. Everything you've learned in Scenarios 1-7 comes together here. No one is going to walk you through each step. Make good decisions, work methodically, and prove you're ready for solo operations.`,
+  description: `It's 2 AM on a Saturday night - your first solo night shift at the Vermont station. Charlie is visiting family out of state. Dana is on-call but sleeping; she's made it clear she only wants to be woken for genuine emergencies.<br><br>A customer reports intermittent connectivity issues on AURORA-7, an aging C-band satellite with an inclined orbit. You'll need to investigate independently, diagnose any equipment issues, verify the link, and handle whatever complications arise.<br><br>This is your graduation exam. Everything you've learned in training comes together here. No one is going to walk you through each step. Make good decisions, work methodically, and prove you're ready for solo operations.`,
   equipment: ['9-meter C-band Antenna', 'RF Front End', 'Spectrum Analyzer', 'RX/TX Modems'],
   timeLimitSeconds: 40 * 60, // 40 minutes
   settings: {
@@ -106,7 +106,7 @@ export const scenario8Data: ScenarioData = {
               isPowered: true,
               isMuted: false, // Link was operational - BUC was transmitting
               isLoopback: false,
-              loFrequency: 7100 as MHz, // AURORA-7 BUC LO (RF 6000 - IF 1047 = 4925)
+              loFrequency: 7100 as MHz, // AURORA-7 BUC LO (LO 7100 - IF 1047 = RF 6053, LSB)
               isExtRefLocked: true,
               gain: 23 as dB,
             },
@@ -178,6 +178,8 @@ export const scenario8Data: ScenarioData = {
       },
     ],
     satellites: [aurora7Satellite, tidemark1Satellite],
+    scenarioStartDate: '2026-02-14',
+    scenarioStartWallTime: '02:15:00',
     missionBriefUrl: 'https://docs.signalrange.space/campaign-1/scenario-8?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
   },
@@ -471,7 +473,7 @@ export const scenario8Data: ScenarioData = {
       id: 'configure-speca-beacon',
       nice: ['S0421', 'K0773'],
       title: 'Configure Spectrum Analyzer for Beacon',
-      description: 'Set up the spectrum analyzer to observe the AURORA-7 beacon at 1085 MHz IF.',
+      description: 'Set up the spectrum analyzer to observe the AURORA-7 beacon: Center 1085 MHz, Span 10 kHz (0.01 MHz), Min Amplitude -130 dBm, Max Amplitude -95 dBm, RBW Auto.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['calculate-aurora7-beacon-if'],
       timeLimitSeconds: 3 * 60,
@@ -496,17 +498,17 @@ export const scenario8Data: ScenarioData = {
         {
           type: 'speca-span-set',
           description: 'Span Configured',
-          hint: 'Set a narrow span to clearly see the beacon signal.',
+          hint: 'Set the span to 10 kHz (0.01 MHz) to clearly see the beacon signal.',
           params: {
             span: 0.01e6 as Hertz,
-            spanTolerance: 0.01e6,
+            spanTolerance: 0.01e6, // 0-20 kHz
           },
           maintainUntilObjectiveComplete: true,
         },
         {
           type: 'speca-max-amplitude',
           description: 'Max Amplitude Set',
-          hint: 'Set the maximum amplitude to -108 dBm to properly view the beacon signal.',
+          hint: 'Set the maximum amplitude to -95 dBm to properly view the beacon signal.',
           params: {
             maxAmplitude: -95 as dBm,
             maxAmplitudeTolerance: 15 as dBm,
@@ -516,7 +518,7 @@ export const scenario8Data: ScenarioData = {
         {
           type: 'speca-min-amplitude',
           description: 'Min Amplitude Set',
-          hint: 'Set the minimum amplitude to -120 dBm to properly view the beacon signal.',
+          hint: 'Set the minimum amplitude to -130 dBm to properly view the beacon signal.',
           params: {
             minAmplitude: -130 as dBm,
             minAmplitudeTolerance: 15 as dBm,
@@ -608,7 +610,7 @@ export const scenario8Data: ScenarioData = {
       id: 'verify-beacon-lock',
       nice: ['T0153', 'K0740'],
       title: 'Verify Beacon Acquisition',
-      description: 'Confirm the antenna has acquired beacon lock and the signal is now visible on the spectrum analyzer.',
+      description: 'Watch the beacon on the RX Analysis spectrum analyzer: confirm step-track holds beacon lock for 10 seconds and the beacon is visible.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['enable-step-track'],
       timeLimitSeconds: 3 * 60,
@@ -622,8 +624,9 @@ export const scenario8Data: ScenarioData = {
         },
         {
           type: 'antenna-beacon-locked',
-          description: 'Beacon Lock Acquired',
+          description: 'Beacon Lock Held for 10 s',
           mustMaintain: true,
+          maintainDuration: 10, // watch it settle rather than tick on arrival (s08 obj 12)
         },
         {
           type: 'signal-detected',
@@ -631,6 +634,9 @@ export const scenario8Data: ScenarioData = {
           params: {
             signalId: 'AURORA-7-Beacon',
             minPower: -95 as dBm,
+            requiresObservation: true,
+            observationTab: 'rx-analysis',
+            observationDwellSeconds: 5,
           },
           mustMaintain: true,
         },
@@ -646,7 +652,7 @@ export const scenario8Data: ScenarioData = {
       id: 'weather-alert-decision',
       nice: ['K0741', 'K0740'],
       title: 'Weather Alert Assessment',
-      description: 'A weather alert notification appears. Assess the situation and decide on appropriate action.',
+      description: 'A weather alert has come in from the forecast service. Assess the situation and decide on appropriate action.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-beacon-lock'],
       timeLimitSeconds: 2 * 60,
@@ -872,7 +878,7 @@ export const scenario8Data: ScenarioData = {
       id: 'calculate-aurora7-uplink-if',
       nice: ['K0773', 'K1032'],
       title: 'Calculate AURORA-7 Uplink IF',
-      description: 'Calculate the correct TX modem IF frequency to configure Modem 2 for AURORA-7 uplink.',
+      description: 'Calculate the correct TX modem IF frequency for the AURORA-7 uplink on Modem 2.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['switch-to-modem-2'],
       timeLimitSeconds: 3 * 60,
@@ -883,10 +889,10 @@ export const scenario8Data: ScenarioData = {
           description: 'Uplink IF Calculation',
           params: {
             character: Character.SYSTEM,
-            question: 'AURORA-7 uplink RF is 7100 MHz. The BUC LO is 6053 MHz. What TX IF frequency is required?',
+            question: 'AURORA-7 uplink RF is 6053 MHz. The BUC LO is 7100 MHz. What TX IF frequency is required?',
             options: ['1047 MHz', '13153 MHz', '1043 MHz', '6000 MHz'],
             correctIndex: 0,
-            explanation: 'TX IF = RF - BUC LO = 7100 - 6053 = 1047 MHz. The BUC upconverts by adding the LO frequency to the IF.',
+            explanation: 'TX IF = BUC LO - RF = 7100 - 6053 = 1047 MHz. The LO sits above the uplink, so the BUC outputs the lower sideband: RF = LO - IF.',
             pointPenalty: 15,
           },
           mustMaintain: false,
@@ -899,7 +905,7 @@ export const scenario8Data: ScenarioData = {
       id: 'configure-tx-modem',
       nice: ['S0421', 'T1567'],
       title: 'Configure Modem 2 for AURORA-7',
-      description: 'Configure Modem 2 with the correct settings for AURORA-7 uplink.',
+      description: "Configure Modem 2 to match Modem 1's AURORA-7 settings: 1047 MHz, 24 MHz bandwidth, QPSK, FEC 3/4, -7 dBm.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['calculate-aurora7-uplink-if'],
       timeLimitSeconds: 3 * 60,
@@ -1100,7 +1106,7 @@ export const scenario8Data: ScenarioData = {
       id: 'verify-loopback-signal',
       nice: ['T0153', 'K0740'],
       title: 'Verify Loopback Signal',
-      description: 'Check the spectrum analyzer at 947 MHz to confirm the BUC loopback signal is present.',
+      description: 'Set the spectrum analyzer to center 947 MHz with a 40 MHz span to confirm the BUC loopback signal is present.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['configure-lnb-for-loopback'],
       timeLimitSeconds: 2 * 60,
@@ -1118,6 +1124,16 @@ export const scenario8Data: ScenarioData = {
           params: {
             centerFrequency: 947e6 as Hertz,
             centerFrequencyTolerance: 5e6,
+          },
+          mustMaintain: true,
+        },
+        {
+          // The 24 MHz carrier is invisible at the beacon span (nats-s08-F10)
+          type: 'speca-span-set',
+          description: 'Span 40 MHz',
+          params: {
+            span: 40e6 as Hertz,
+            spanTolerance: 15e6,
           },
           mustMaintain: true,
         },
@@ -1181,7 +1197,7 @@ export const scenario8Data: ScenarioData = {
       id: 'disable-loopback-prepare-uplink',
       nice: ['S0421', 'T1567'],
       title: 'Prepare for Live Uplink',
-      description: 'Disable loopback mode and mute BUC in preparation for HPA enable.',
+      description: 'Disable loopback mode. Leave the BUC unmuted for the HPA enable.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['restore-lnb-frequency'],
       timeLimitSeconds: 2 * 60,
@@ -1196,6 +1212,11 @@ export const scenario8Data: ScenarioData = {
         {
           type: 'buc-loopback-disabled',
           description: 'Loopback Disabled',
+          mustMaintain: true,
+        },
+        {
+          type: 'buc-unmuted',
+          description: 'BUC Unmuted',
           mustMaintain: true,
         },
       ],
@@ -1310,7 +1331,7 @@ export const scenario8Data: ScenarioData = {
     intro: {
       text: `
       <p>
-        <em>[Text message from Dana at 2:17 AM]</em>
+        <em>[Text message from Dana at 2:03 AM]</em>
       </p>
       <p>
         "Hey - just got a trouble ticket. Customer reports intermittent connectivity on AURORA-7, signal dropouts every few minutes. I'm on-call but heading back to sleep. You've got this."
@@ -1323,11 +1344,27 @@ export const scenario8Data: ScenarioData = {
       emotion: Emotion.NEUTRAL,
       audioUrl: getAssetUrl('/assets/campaigns/nats/8/intro.mp3'),
     },
+    objectivesOnStart: {
+      // nats-s08-F13: the objective promised an alert that never appeared
+      'weather-alert-decision': {
+        text: `
+        <p>
+          <em>[Text message from Dana, forwarding the NWS winter weather alert]</em>
+        </p>
+        <p>
+          "Weather alert just pinged my phone: freezing rain at the site in about 2 hours, 0.1-0.3 inches accumulation, temps falling to 22. Your call. Going back to sleep."
+        </p>
+        `,
+        character: Character.DANA_TORRES,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: '', // VO not recorded yet: text-to-speech fallback
+      },
+    },
     objectives: {
       'final-summary': {
         text: `
         <p>
-          <em>[Text message from Dana at 4:45 AM]</em>
+          <em>[Text message from Dana]</em>
         </p>
         <p>
           "Saw the ticket resolution come through. LNB reference issue, tracking mode, and good call switching to Modem 2. You handled it right. No need to wake me for that."

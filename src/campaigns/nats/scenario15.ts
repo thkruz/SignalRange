@@ -159,6 +159,9 @@ export const scenario15Data: ScenarioData = {
     satellites: [tidemark3Satellite, tidemark1Satellite, tidemark2Satellite, ses10Satellite],
     missionBriefUrl: 'https://docs.signalrange.space/campaign-1/scenario-15?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
+    // Brief: Tuesday, 0912 Local (notice received 0908, RedSky live 0937)
+    scenarioStartDate: '2026-02-17',
+    scenarioStartWallTime: '09:12:00',
   },
   objectives: [
     // ============================================================
@@ -566,7 +569,7 @@ export const scenario15Data: ScenarioData = {
       id: 'verify-hpa-still-online',
       nice: ['T0431', 'K0740'],
       title: 'Verify HPA Still Online',
-      description: 'Confirm the HPA is enabled, transmitting, and not overdriven after the backoff change.',
+      description: 'Read the HPA panel on TX Chain for a few seconds after the change: HPA enabled, not overdriven, and the TX modem still transmitting.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['increase-hpa-backoff'],
       timeLimitSeconds: 2 * 60,
@@ -579,21 +582,24 @@ export const scenario15Data: ScenarioData = {
           params: { tab: 'tx-chain' },
           mustMaintain: true,
         },
+        // All already true after the back-off step, so the 5 s reads on the
+        // panel are the action (nats-s15-F5)
         {
           type: 'hpa-enabled',
           description: 'HPA Enabled',
-          params: { requiresObservation: true, observationTab: 'tx-chain' },
+          params: { requiresObservation: true, observationTab: 'tx-chain', observationDwellSeconds: 5 },
           mustMaintain: true,
         },
         {
           type: 'hpa-not-overdriven',
           description: 'HPA Operating Linearly',
+          params: { requiresObservation: true, observationTab: 'tx-chain', observationDwellSeconds: 5 },
           mustMaintain: true,
         },
         {
           type: 'tx-modem-transmitting',
           description: 'Customer Traffic Still Flowing',
-          params: { isTransmitting: true },
+          params: { isTransmitting: true, requiresObservation: true, observationTab: 'tx-chain', observationDwellSeconds: 5 },
           mustMaintain: true,
         },
       ],
@@ -630,7 +636,7 @@ export const scenario15Data: ScenarioData = {
       nice: ['K0737', 'S0421'],
       title: 'Tune Spectrum to TIDEMARK-3 Downlink',
       description:
-        "Reconfigure the spectrum analyzer to view the TIDEMARK-3 downlink IF region (1490 MHz with VT-01 LNB LO at 5250 and downlink RF 3760). Use a wide span so RedSky's adjacent slot is visible too.",
+        "Reconfigure the spectrum analyzer to view the TIDEMARK-3 downlink IF region: center 1490 MHz (LNB LO 5250 minus downlink RF 3760), span about 75 MHz so RedSky's adjacent slot is visible too, RBW Auto, amplitude scale -100 to -30 dBm.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['open-rx-analysis'],
       timeLimitSeconds: 3 * 60,
@@ -657,7 +663,7 @@ export const scenario15Data: ScenarioData = {
           description: 'Span Wide Enough for Adjacent Slot',
           params: {
             span: 75e6,
-            frequencyTolerance: 25e6,
+            spanTolerance: 25e6,
           },
           maintainUntilObjectiveComplete: true,
         },
@@ -726,7 +732,7 @@ export const scenario15Data: ScenarioData = {
       id: 'verify-receiver-locked',
       nice: ['T0153', 'K0741'],
       title: 'Verify Receiver Locked',
-      description: 'Confirm the customer-traffic receiver is still demodulating cleanly.',
+      description: 'Watch RX modem 1 on RX Analysis for a few seconds: the customer-traffic receiver must still be locked.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['confirm-carrier-still-nominal'],
       timeLimitSeconds: 2 * 60,
@@ -735,7 +741,8 @@ export const scenario15Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'Receiver Locked',
-          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
+          // Locked from load, so a 5 s read is the action (nats-s15-F5)
+          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis', observationDwellSeconds: 5 },
           mustMaintain: true,
         },
       ],
@@ -801,10 +808,10 @@ export const scenario15Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which entry correctly records this event for the next shift?',
             options: [
-              '0937 - RedSky notice confirmed. TP-1 HPA backoff raised 5 to 10 dB to suppress adjacent IMD. RedSky cleared for 5961 MHz V-pol, SeaLink nominal.',
-              '0937 - RedSky notice denied. TP-1 HPA backoff held at 5 dB, guard band judged too tight. RedSky advised to relocate slot, SeaLink nominal.',
-              '0937 - RedSky notice confirmed. TP-1 HPA backoff held at 5 dB, cross-pol isolation judged sufficient. RedSky cleared for 5961 MHz V-pol, SeaLink nominal.',
-              '0937 - RedSky notice confirmed. TP-1 carrier muted for the RedSky window to clear adjacent IMD. RedSky cleared for 5961 MHz V-pol, SeaLink down.',
+              'RedSky 0937 slot - notice confirmed. TP-1 HPA backoff raised 5 to 10 dB to suppress adjacent IMD. RedSky cleared for 5961 MHz V-pol, SeaLink nominal.',
+              'RedSky 0937 slot - notice denied. TP-1 HPA backoff held at 5 dB, guard band judged too tight. RedSky advised to relocate slot, SeaLink nominal.',
+              'RedSky 0937 slot - notice confirmed. TP-1 HPA backoff held at 5 dB, cross-pol isolation judged sufficient. RedSky cleared for 5961 MHz V-pol, SeaLink nominal.',
+              'RedSky 0937 slot - notice confirmed. TP-1 carrier muted for the RedSky window to clear adjacent IMD. RedSky cleared for 5961 MHz V-pol, SeaLink down.',
             ],
             correctIndex: 0,
             explanation: "The log captures what we did, why, and what we cleared. Next shift picks up with full context if RedSky's uplink behaves unexpectedly.",
@@ -833,7 +840,9 @@ export const scenario15Data: ScenarioData = {
       audioUrl: getAssetUrl('/assets/campaigns/nats/15/intro.mp3'),
     },
     objectives: {
-      'compute-guard-band': {
+      // Keyed to the adequacy question's completion: played before it, "check
+      // the TX chain" gave its answer away
+      'assess-guard-adequacy': {
         text: `
         <p>
           2 MHz edge-to-edge plus cross-pol. Tight but workable - if our skirts are clean. Check the TX chain.

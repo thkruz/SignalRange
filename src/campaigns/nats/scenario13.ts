@@ -69,8 +69,10 @@ export const scenario13Data: ScenarioData = {
               // pre-alarm (no saturation warning) so the *trend* is the only
               // signal - that's the point of the scenario.
               saturationPower: 28 as dBm,
-              temperature: 62, // °C - climbing ~0.3°C/min for the last 15 min
-              currentDraw: 4.1, // A - elevated from nominal ~3.0A
+              // Temperature comes from the 'vt-buc-thermal' fault below: the
+              // thermal model overwrites a seeded start value every update
+              // (nats-s13-F1). Current needs no seed: at 33 dB gain the model
+              // settles at ~4.15 A, at 23 dB ~3.05 A.
             },
             hpa: {
               isHpaEnabled: true,
@@ -90,6 +92,23 @@ export const scenario13Data: ScenarioData = {
     satellites: [tidemark1Satellite, tidemark2Satellite],
     missionBriefUrl: 'https://docs.signalrange.space/campaign-1/scenario-13?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
+    // Brief: Wednesday, 1003 Local
+    scenarioStartDate: '2026-02-04',
+    scenarioStartWallTime: '10:03:00',
+    // Degraded BUC cooling, sized to the brief: the model's target at 33 dB
+    // gain is 25 + 0.8 x (23 + 10) = 51.4 degC, so +12.5 gives ~64 degC and a
+    // climb of ~0.3 degC/min from 62 (time constant ~5.5 min at 60 Hz). At the
+    // 23 dB operating gain the target drops to ~56 degC, so the de-rate turns
+    // the curve over without ever reaching the 70 degC trip.
+    hardwareFaultEvents: [
+      {
+        id: 'vt-buc-thermal',
+        groundStationId: 'VT-01',
+        target: 'buc-overtemp',
+        startTime: 0,
+        params: { startTemperatureC: 62, deltaC: 12.5 },
+      },
+    ],
   },
   objectives: [
     // ============================================================
@@ -279,7 +298,7 @@ export const scenario13Data: ScenarioData = {
       id: 'cross-check-spectrum',
       nice: ['T0153', 'K0773'],
       title: 'Rule Out an RX-Side Fault',
-      description: 'Verify the TIDEMARK-1 beacon is still clean on the RX side. If the RX is healthy, the trend is isolated to the TX chain.',
+      description: 'Open RX Analysis and watch the TIDEMARK-1 beacon for a few seconds. If the RX side is clean, the trend is isolated to the TX chain.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['check-current-draw'],
       timeLimitSeconds: 2 * 60,
@@ -300,6 +319,8 @@ export const scenario13Data: ScenarioData = {
             minPower: -100 as dBm,
             requiresObservation: true,
             observationTab: 'rx-analysis',
+            // A look, not a glance: the beacon must read clean for 5 s (nats-s13-F3)
+            observationDwellSeconds: 5,
           },
           mustMaintain: true,
         },
@@ -477,7 +498,7 @@ export const scenario13Data: ScenarioData = {
       id: 'verify-hpa-headroom',
       nice: ['T0431', 'K0740'],
       title: 'Verify HPA Still Linear',
-      description: 'Confirm the HPA is not overdriven after the change. With less drive from the BUC, the HPA should be sitting in a comfortable backoff.',
+      description: 'Stay on TX Chain and read the HPA and BUC panels after the change: HPA not overdriven, BUC output below saturation.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['reduce-buc-gain'],
       timeLimitSeconds: 2 * 60,
@@ -486,11 +507,14 @@ export const scenario13Data: ScenarioData = {
         {
           type: 'hpa-not-overdriven',
           description: 'HPA Within Linear Region',
+          // Read on the panel, not inferred: both were already true (nats-s13-F3)
+          params: { requiresObservation: true, observationTab: 'tx-chain', observationDwellSeconds: 5 },
           mustMaintain: true,
         },
         {
           type: 'buc-not-saturated',
           description: 'BUC Output Not Saturated',
+          params: { requiresObservation: true, observationTab: 'tx-chain', observationDwellSeconds: 5 },
           mustMaintain: true,
         },
       ],
@@ -501,12 +525,28 @@ export const scenario13Data: ScenarioData = {
       id: 'verify-trend-stabilizing',
       nice: ['T0153', 'T0431'],
       title: 'Confirm the Trend Is Bending',
-      description: 'Decide what evidence will confirm the de-rate actually took effect on the thermal trend.',
+      description:
+        'Watch the BUC on TX Chain until the curve turns over: temperature below 61°C and current draw under 3.2 A. Then decide what evidence confirms the de-rate took.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-hpa-headroom'],
-      timeLimitSeconds: 2 * 60,
+      timeLimitSeconds: 6 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
+        // The curve has to actually bend on the panel (nats-s13-F3): the
+        // de-rate drops the thermal target to ~56 degC, so from ~62-64 degC
+        // the reading passes 61 within about 1.5-3 minutes
+        {
+          type: 'buc-temperature-normal',
+          description: 'BUC Temperature Below 61°C',
+          params: { maxTemperature: 61, requiresObservation: true, observationTab: 'tx-chain' },
+          mustMaintain: true,
+        },
+        {
+          type: 'buc-current-normal',
+          description: 'BUC Current Under 3.2 A',
+          params: { maxCurrentDraw: 3.2, requiresObservation: true, observationTab: 'tx-chain' },
+          mustMaintain: true,
+        },
         {
           type: 'status-check',
           description: 'Evidence of Success',

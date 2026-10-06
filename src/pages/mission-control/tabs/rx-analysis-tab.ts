@@ -900,7 +900,10 @@ export class RxAnalysisTab extends BaseElement {
       <div class="col-lg-4">
         <div class="card">
           <div class="card-header d-flex justify-content-between align-items-center py-2">
-            <span class="small fw-bold">Notch ${index + 1}</span>
+            <span class="small fw-bold">
+              Notch ${index + 1}
+              <span id="${prefix}-applied-status" class="status-badge status-badge-off ms-1" title="Applied state of this notch">OFF</span>
+            </span>
             <div class="form-check form-switch">
               <input type="checkbox" id="${prefix}-enabled" class="form-check-input" role="switch" />
               <label for="${prefix}-enabled" class="form-check-label small">Enable</label>
@@ -999,6 +1002,9 @@ export class RxAnalysisTab extends BaseElement {
     if (this.dom_) {
       this.rxPayloadAdapter_ = new RxPayloadAdapter(this.dom_, receiver, this.groundStation.uuid);
     }
+
+    // Modem status bar must agree with Payload Data Integrity (frame sync / RS)
+    this.receiverAdapter?.setPayloadStatusProvider(() => this.rxPayloadAdapter_?.getPayloadStatus() ?? null);
   }
 
   /**

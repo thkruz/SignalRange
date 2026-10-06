@@ -135,6 +135,25 @@
   }
 }
 
+/* Click-to-continue hint, shown once the dialog accepts a click (DialogManager.REVEAL_DELAY_MS) */
+.dialog-continue-hint {
+  margin-top: 0.75rem;
+  color: #9a9a9a;
+  font-size: 0.85rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  opacity: 0;
+  transition: opacity 300ms ease-in-out;
+}
+
+.dialog-overlay.dialog-revealed .dialog-continue-hint {
+  opacity: 1;
+}
+
+.dialog-overlay {
+  cursor: pointer;
+}
+
 /* Hold to Skip Indicator */
 .dialog-skip-indicator {
   display: flex;

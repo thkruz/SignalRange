@@ -82,6 +82,7 @@ export type ConditionType =
   | 'satellite-selected' // Satellite selected in UI asset tree
   // UI interaction conditions
   | 'mission-brief-opened' // Mission brief document has been opened
+  | 'ops-log-entry' // Operator typed an Ops Log entry (optionally containing keywords)
   | 'tab-active' // Specific tab is currently active in TabbedCanvas
   // FEC/Payload conditions
   | 'rx-frame-sync-locked' // RX frame synchronization locked/unlocked
@@ -247,6 +248,17 @@ export interface ConditionParams {
   frequency?: number;
   /** For frequency-set: tolerance in Hz */
   frequencyTolerance?: number;
+  /**
+   * For ops-log-entry: words the operator's entry must contain (case-insensitive,
+   * all required; each item may list alternatives separated by "|", e.g. "manual|bypass")
+   */
+  logKeywords?: string[];
+  /** For ops-log-entry: minimum entry length in characters (default 10) */
+  logMinLength?: number;
+  /** For speca-span-set: span tolerance in Hz (default: frequencyTolerance, then 1 MHz) */
+  spanTolerance?: number;
+  /** For speca-min-amplitude / speca-max-amplitude: shared tolerance in dB when the per-field ones are omitted (default 5) */
+  amplitudeTolerance?: number;
   /** For lnb-lo-set: target local oscillator frequency in Hz */
   loFrequency?: MHz;
   /** For lnb-lo-set: local oscillator frequency tolerance in Hz */
@@ -598,6 +610,14 @@ export interface Objective {
   timeLimitSeconds?: number;
   /** When the timer starts: 'on-activate' (default) or 'on-scenario-load' */
   timerStartTrigger?: 'on-activate' | 'on-scenario-load';
+  /**
+   * Whether running out of time fails the scenario. Default false: expiry
+   * stops the timer and deducts `timeoutPenaltyPoints`, and the objective can
+   * still be completed. Set true only where time pressure is the lesson.
+   */
+  timeoutFails?: boolean;
+  /** Points deducted when the timer runs out (non-fatal). Default: half the objective's points, rounded up */
+  timeoutPenaltyPoints?: number;
   /** Optional time penalty: deducts points if completed after elapsed time threshold */
   timePenalty?: TimePenalty;
   /** If true, scenario timer will not start until this objective is completed */
@@ -628,6 +648,8 @@ export interface ObjectiveState {
   timeRemainingSeconds?: number;
   /** Whether timer is currently running */
   isTimerRunning: boolean;
+  /** The timer ran out on a non-fatal objective; it is still open, now in overtime */
+  timedOut?: boolean;
   /** Whether a time penalty was applied on completion */
   timePenaltyApplied?: boolean;
   /** Points deducted due to time penalty */

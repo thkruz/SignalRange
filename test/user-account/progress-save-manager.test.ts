@@ -226,6 +226,17 @@ describe('ProgressSaveManager', () => {
     await expect(manager.hasCheckpoint('scenario-123')).resolves.toBe(false);
   });
 
+  it('does not touch the server for checkpoints when signed out (nats-s08-F12)', async () => {
+    (Auth.getSession as Mock).mockResolvedValue(null);
+    mockUserDataService.deleteCheckpoint.mockRejectedValue(new Error('User not authenticated'));
+    mockUserDataService.checkpointExists.mockRejectedValue(new Error('User not authenticated'));
+
+    await expect(manager.clearCheckpoint('scenario-123')).resolves.toBeUndefined();
+    await expect(manager.hasCheckpoint('scenario-123')).resolves.toBe(false);
+    expect(mockUserDataService.deleteCheckpoint).not.toHaveBeenCalled();
+    expect(mockUserDataService.checkpointExists).not.toHaveBeenCalled();
+  });
+
   it('disposes listeners when initialized', () => {
     manager.initialize();
     manager.dispose();

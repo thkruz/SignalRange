@@ -131,26 +131,25 @@ describe('RFFrontEndCore class', () => {
       expect(rfFrontEnd.state.hpa.temperature).toBe(25);
     });
 
-    it('should calculate BUC output power when powered and not muted', () => {
+    it('should report the BUC output floor when powered with no carriers to upconvert', () => {
       rfFrontEnd.state.buc.isPowered = true;
       rfFrontEnd.state.buc.isMuted = false;
       rfFrontEnd.state.buc.gain = 60;
 
       rfFrontEnd.update();
 
-      // Output = min(inputPower + gain, saturationPower + 2)
-      // = min(-10 + 60, 15 + 2) = min(50, 17) = 17 dBm (saturated)
-      expect(rfFrontEnd.state.buc.outputPower).toBe(17);
+      // outputPower comes from the actual RF output signals; none -> floor
+      expect(rfFrontEnd.bucModule.outputSignals).toEqual([]);
+      expect(rfFrontEnd.state.buc.outputPower).toBe(-120);
     });
 
-    it('should set BUC output power to minimum when muted', () => {
+    it('should set BUC output power to the floor when muted', () => {
       rfFrontEnd.state.buc.isPowered = true;
       rfFrontEnd.state.buc.isMuted = true;
 
       rfFrontEnd.update();
 
-      // When muted, BUC outputs -170 dBm (effectively off)
-      expect(rfFrontEnd.state.buc.outputPower).toBe(-170);
+      expect(rfFrontEnd.state.buc.outputPower).toBe(-120);
     });
 
     it('should detect HPA overdrive when backoff < 3 dB', () => {

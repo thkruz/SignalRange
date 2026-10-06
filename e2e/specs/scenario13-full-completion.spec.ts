@@ -15,8 +15,8 @@ import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForS
  * - 'select-station': Asset tree station selection (VT-01)
  * - 'click-tab': Tab navigation
  * - 'configure-buc-gain': Lower BUC gain via the TX Chain adjust input
- * - 'auto': Auto-satisfied by simulation state (HPA backs off naturally
- *           once BUC drive drops; no user action required)
+ * - 'auto': Satisfied by simulation state once read on the tab for the
+ *           5 s observation dwell
  */
 type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'configure-buc-gain' | 'auto';
 
@@ -28,6 +28,8 @@ interface Scenario13Objective {
   tabId?: string;
   stationId?: string;
   bucGain?: number;
+  /** Wait (ms) for the objective to complete after its action - for steps gated on a live reading */
+  waitDoneMs?: number;
 }
 
 const SCENARIO_13_OBJECTIVES: Scenario13Objective[] = [
@@ -145,6 +147,9 @@ const SCENARIO_13_OBJECTIVES: Scenario13Objective[] = [
     title: 'Confirm the Trend Is Bending',
     type: 'quiz',
     correctAnswer: 'Watch 5-10 minutes: temperature slope flattens then trends down, current drops toward 3.0A, carrier still locked',
+    // The BUC must read below 61 degC on TX Chain: real cooling after the
+    // de-rate (~1.5-3 min of sim time; advanceClock does not run physics)
+    waitDoneMs: 240000,
   },
 
   // ============================================================
@@ -179,6 +184,18 @@ const SCENARIO_13_OBJECTIVES: Scenario13Objective[] = [
 // ============================================================
 // Helper Functions
 // ============================================================
+
+/** Wait until the objective reports complete, via the debugObjective dev hook. */
+async function waitForObjectiveDone(page: import('@playwright/test').Page, objectiveId: string, timeout: number): Promise<void> {
+  await page.waitForFunction(
+    (id) => {
+      const hook = (window as unknown as { debugObjective?: (id: string) => { isCompleted?: boolean } }).debugObjective;
+      return typeof hook === 'function' && hook(id)?.isCompleted === true;
+    },
+    objectiveId,
+    { timeout, polling: 500 }
+  );
+}
 
 /**
  * Configure BUC gain via the TX Chain adjust control.
@@ -227,10 +244,13 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
       break;
 
     case 'auto':
-      // Auto-satisfied by simulation state - allow a beat for the
-      // condition evaluator to register the change.
-      await page.waitForTimeout(2000);
+      // Satisfied by simulation state once read on the tab (5 s dwell)
+      await waitForObjectiveDone(page, objective.id, 20000);
       break;
+  }
+
+  if (objective.waitDoneMs) {
+    await waitForObjectiveDone(page, objective.id, objective.waitDoneMs);
   }
 
   await dismissDialogIfPresent(page);
@@ -277,8 +297,14 @@ test.describe('Scenario 13 Full Completion', () => {
     test.setTimeout(60000);
   });
 
+  // verify-trend-stabilizing waits out real BUC cooling
+  const longestWaitMs = Math.max(...SCENARIO_13_OBJECTIVES.map((o) => o.waitDoneMs ?? 0));
+
   for (const objective of SCENARIO_13_OBJECTIVES) {
     test(`[${objective.id}] ${objective.title}`, async () => {
+      if (objective.waitDoneMs) {
+        test.setTimeout(60000 + longestWaitMs);
+      }
       await executeObjective(page, missionControlPage, objective);
     });
   }

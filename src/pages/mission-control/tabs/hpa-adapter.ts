@@ -30,6 +30,12 @@ export class HPAAdapter {
 
   // Staged values - not applied until Apply button is clicked
   private stagedBackOff_: number = 6;
+  /**
+   * True while the player has a staged back-off that differs from the applied
+   * one. Toggles and external state events must not overwrite it; it clears on
+   * Apply or when the staged value is brought back to the applied value.
+   */
+  private hasPendingEdit_ = false;
 
   constructor(hpaModule: HPAModuleCore, containerEl: HTMLElement) {
     this.hpaModule = hpaModule;
@@ -93,6 +99,16 @@ export class HPAAdapter {
       // Also update staged display since power state changed
       this.updateStagedDisplay_();
     }
+
+    // Sync HPA enable switch in case it was changed externally (scenario/fault)
+    const hpaEnableSwitch = this.domCache_.get('hpaEnableSwitch') as HTMLInputElement;
+    if (hpaEnableSwitch && hpaEnableSwitch.checked !== state.isHpaEnabled) {
+      hpaEnableSwitch.checked = state.isHpaEnabled;
+    }
+
+    // Applied value can change without an event (scenario/fault); keep the
+    // staged input and pending indicator honest
+    this.syncStagedFromState_(state.backOff);
 
     // Update Input Power display - shows BUC output, or "--" when BUC in loopback
     const inputPowerDisplay = this.domCache_.get('inputPowerDisplay');
@@ -166,7 +182,7 @@ export class HPAAdapter {
     // Update gain display
     const gainDisplay = this.domCache_.get('gainDisplay');
     if (gainDisplay) {
-      gainDisplay.textContent = isPowered ? `${state.gain.toFixed(1)} dB` : '-- dB';
+      gainDisplay.textContent = isPowered && state.isHpaEnabled ? `${state.gain.toFixed(1)} dB` : '-- dB';
     }
 
     // Update alarm badge
@@ -252,27 +268,71 @@ export class HPAAdapter {
   private backOffInputHandler_(e: Event) {
     const value = parseLocalizedNumber((e.target as HTMLInputElement).value);
     if (!isNaN(value)) {
-      this.stagedBackOff_ = Math.max(0, Math.min(30, value));
-      this.updateStagedDisplay_();
+      this.setStagedBackOff_(value);
     }
   }
 
   private adjustStagedBackOff_(delta: number): void {
-    this.stagedBackOff_ = Math.max(0, Math.min(30, this.stagedBackOff_ + delta));
+    this.setStagedBackOff_(this.stagedBackOff_ + delta);
+  }
+
+  /** Player edit: stage a new back-off and mark it pending until applied. */
+  private setStagedBackOff_(value: number): void {
+    this.stagedBackOff_ = Math.max(0, Math.min(30, value));
+    this.hasPendingEdit_ = this.stagedBackOff_ !== this.hpaModule.state.backOff;
+    this.updateStagedDisplay_(true);
+  }
+
+  /**
+   * Follow the applied back-off only when the player has no pending edit, so a
+   * toggle or external state event never silently discards a staged value.
+   */
+  private syncStagedFromState_(appliedBackOff: number | undefined): void {
+    if (appliedBackOff === undefined) {
+      return;
+    }
+
+    if (!this.hasPendingEdit_) {
+      this.stagedBackOff_ = appliedBackOff;
+    } else if (this.stagedBackOff_ === appliedBackOff) {
+      this.hasPendingEdit_ = false;
+    }
+
     this.updateStagedDisplay_();
   }
 
-  private updateStagedDisplay_(): void {
+  /**
+   * @param isUserEdit true when called from the player's own edit; otherwise a
+   *   focused input is left alone (CLAUDE.md "Protecting Input Fields").
+   */
+  private updateStagedDisplay_(isUserEdit = false): void {
     const isPowered = this.hpaModule.state.isPowered;
     const backOffInput = this.domCache_.get('backOffInput') as HTMLInputElement;
 
-    if (backOffInput) {
+    if (backOffInput && (isUserEdit || document.activeElement !== backOffInput)) {
       backOffInput.value = isPowered ? this.stagedBackOff_.toString() : '--';
+    }
+    if (backOffInput) {
       backOffInput.disabled = !isPowered;
     }
 
     // Disable adjust buttons when powered off
     this.setControlButtonsEnabled_(isPowered);
+    this.updatePendingIndicator_();
+  }
+
+  /** Staged vs applied: pending style on the input and Apply, applied value in the tooltip. */
+  private updatePendingIndicator_(): void {
+    const appliedBackOff = this.hpaModule.state.backOff;
+    const isPending = this.hpaModule.state.isPowered && this.stagedBackOff_ !== appliedBackOff;
+    const backOffInput = this.domCache_.get('backOffInput') as HTMLInputElement;
+    const applyBtn = this.domCache_.get('applyBtn') as HTMLButtonElement;
+
+    if (backOffInput) {
+      backOffInput.classList.toggle('is-pending', isPending);
+      backOffInput.title = `Applied: ${appliedBackOff} dB${isPending ? ' (staged change not applied)' : ''}`;
+    }
+    applyBtn?.classList.toggle('is-pending', isPending);
   }
 
   private setControlButtonsEnabled_(enabled: boolean): void {
@@ -286,7 +346,9 @@ export class HPAAdapter {
   private applyHandler_(): void {
     // Apply staged value to the core module
     this.hpaModule.handleBackOffChange(this.stagedBackOff_);
+    this.hasPendingEdit_ = false;
     this.syncDomWithState_(this.hpaModule.state);
+    this.updateStagedDisplay_();
   }
 
   private powerHandler_(e: Event) {
@@ -305,10 +367,6 @@ export class HPAAdapter {
     this.syncDomWithState_(this.hpaModule.state);
   }
 
-  update(): void {
-    this.syncDomWithState_(this.hpaModule.state);
-  }
-
   private syncDomWithState_(state: Partial<HPAState>): void {
     // Prevent circular updates
     const stateStr = JSON.stringify(state);
@@ -317,10 +375,8 @@ export class HPAAdapter {
 
     const isPowered = state.isPowered ?? this.hpaModule.state.isPowered;
 
-    // Update staged value from state and refresh display
-    if (state.backOff !== undefined) {
-      this.stagedBackOff_ = state.backOff;
-    }
+    // Follow the applied back-off unless the player has a pending staged edit
+    this.syncStagedFromState_(state.backOff);
     this.updateStagedDisplay_();
 
     // Update Power switch
@@ -417,11 +473,13 @@ export class HPAAdapter {
     }
 
     // Update gain display
+    // Gain is only meaningful while the HPA is enabled and amplifying
     const gainDisplay = this.domCache_.get('gainDisplay');
     if (gainDisplay) {
-      if (isPowered && state.gain !== undefined) {
+      const isEnabled = state.isHpaEnabled ?? this.hpaModule.state.isHpaEnabled;
+      if (isPowered && isEnabled && state.gain !== undefined) {
         gainDisplay.textContent = `${state.gain.toFixed(1)} dB`;
-      } else if (!isPowered) {
+      } else if (!isPowered || !isEnabled) {
         gainDisplay.textContent = '-- dB';
       }
     }

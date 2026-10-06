@@ -119,8 +119,11 @@ export const scenario21Data: ScenarioData = {
         spectrumAnalyzers: [
           {
             referenceLevel: -85 as dBm,
-            centerFrequency: 1458e6 as Hertz, // TM-2 carrier IF
-            span: 40e6 as Hertz, // Wide enough to see the carrier and the adjacent jammer
+            // Parked on the TM-2 beacon from the morning rounds: the player
+            // retunes to the carrier (1458 / 40 MHz) to look at the
+            // interferer (nats-s21-F2; a pre-set view latched with no input)
+            centerFrequency: 1070e6 as Hertz,
+            span: 2e6 as Hertz,
             rbw: 100e3 as Hertz,
             minAmplitude: -100 as dBm,
             maxAmplitude: -40 as dBm,
@@ -142,11 +145,17 @@ export const scenario21Data: ScenarioData = {
             modems: [
               {
                 ...vermontGroundStation.transmitters[0].modems[0],
+                // Receive-only shift: ME-02's uplink is off for the incident.
+                // On TP-1 it would land co-channel with the TM-2 composite the
+                // receiver demodulates (and on TP-2 it showed as a decoy
+                // plateau at IF 1477-1513, nats-s21-F6).
+                isTransmitting: false,
+                isTransmittingSwitchUp: false,
                 ifSignal: {
                   ...vermontGroundStation.transmitters[0].modems[0].ifSignal,
                   signalId: 'TIDEMARK-2-Teleport',
                   noradId: 61526,
-                  frequency: 1020e6 as IfFrequency, // TM-2 TP-2: 7000 - 5980
+                  frequency: 983e6 as IfFrequency, // TM-2 TP-1: 7000 - 6017
                 },
               },
             ],
@@ -188,6 +197,8 @@ export const scenario21Data: ScenarioData = {
         onSeconds: 90,
       },
     ],
+    scenarioStartDate: '2026-03-10', // Tuesday, per the brief
+    scenarioStartWallTime: '10:30:00',
     missionBriefUrl: 'https://docs.signalrange.space/campaign-1/scenario-21?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
   },
@@ -261,7 +272,8 @@ export const scenario21Data: ScenarioData = {
       id: 'open-spectrum',
       nice: ['S0648', 'T0153'],
       title: 'Observe the Interference',
-      description: 'Open RX Analysis. The spectrum is set to a wide span around the TM-2 carrier so the adjacent interferer is visible when it keys up.',
+      description:
+        'Open RX Analysis. The analyzer is parked on the TM-2 beacon (1070 MHz). Retune it to the carrier: center 1458 MHz, span 40 MHz, wide enough to watch the top edge of the carrier near 1470 MHz while the interferer keys up.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['select-maine-station'],
       timeLimitSeconds: 3 * 60,
@@ -285,10 +297,10 @@ export const scenario21Data: ScenarioData = {
         },
         {
           type: 'speca-span-set',
-          description: 'Wide Span (≥ 30 MHz) to See the Adjacent Interferer',
+          description: 'Span 40 MHz (25-55 MHz accepted)',
           params: {
             span: 40e6,
-            frequencyTolerance: 15e6,
+            spanTolerance: 15e6,
           },
           mustMaintain: true,
         },
@@ -437,7 +449,7 @@ export const scenario21Data: ScenarioData = {
       id: 'verify-data-layer',
       nice: ['S0615', 'T0081'],
       title: 'Verify the Data Layer',
-      description: 'Confirm the crypto and key state are intact - this is RF denial, not a breach.',
+      description: 'On RX Analysis, read the crypto and key state and confirm they are intact (ACTIVE, Valid) - this is RF denial, not a breach.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['denial-vs-intrusion-quiz'],
       timeLimitSeconds: 3 * 60,
@@ -446,13 +458,13 @@ export const scenario21Data: ScenarioData = {
         {
           type: 'rx-crypto-status',
           description: 'RX Crypto ACTIVE',
-          params: { cryptoMode: 'ACTIVE' },
+          params: { cryptoMode: 'ACTIVE', requiresObservation: true, observationTab: 'rx-analysis', observationDwellSeconds: 5 },
           mustMaintain: true,
         },
         {
           type: 'rx-key-status',
           description: 'RX Key Valid',
-          params: { keyStatus: 'Valid' },
+          params: { keyStatus: 'Valid', requiresObservation: true, observationTab: 'rx-analysis', observationDwellSeconds: 5 },
           mustMaintain: true,
         },
       ],
@@ -534,7 +546,7 @@ export const scenario21Data: ScenarioData = {
       id: 'configure-notch',
       nice: ['S0593', 'K0737'],
       title: 'Apply the Notch Filter',
-      description: 'Configure a notch on the interferer band at 1470 MHz IF (~12 MHz above the 1458 carrier center).',
+      description: 'On the Notch Filter card, set Notch 1 to 1470 MHz IF (~12 MHz above the 1458 carrier center), 8 MHz wide, 30 dB deep, enable it, then press Apply Changes.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['mitigation-choice-quiz'],
       timeLimitSeconds: 4 * 60,
@@ -549,7 +561,7 @@ export const scenario21Data: ScenarioData = {
         },
         {
           type: 'notch-filter-configured',
-          description: 'Notch at 1470 MHz IF on the Interferer',
+          description: 'Notch 1: 1470 MHz, 8 MHz wide, 30 dB deep, applied',
           params: {
             notchCenterFrequency: 1470,
             notchCenterFrequencyTolerance: 2,
@@ -737,7 +749,9 @@ export const scenario21Data: ScenarioData = {
       audioUrl: getAssetUrl('/assets/campaigns/nats/21/intro.mp3'),
     },
     objectives: {
-      'transponder-vs-local-quiz': {
+      // Marcus's sighting is the evidence the locality quiz asks about, so it
+      // plays before that quiz (on the duty-cycle read), not after it
+      'duty-cycle-quiz': {
         text: `
         <p>
           Marcus in Halifax - confirming from our side: we see the same interferer on TM-2 TP-1 that you do, and the spacecraft telemetry's clean, transponder's nominal. If we're both seeing it through the bird, it's coming up on the uplink, not local to either of us. That's not weather and it's not our hardware.
@@ -760,7 +774,9 @@ export const scenario21Data: ScenarioData = {
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/21/obj-verify-data-layer.mp3'),
       },
-      'configure-notch': {
+      // Introduces the notch step; keyed to the end of the data-layer read
+      // instead of the notch itself, where it arrived mid-step (nats-s21-F1)
+      'data-layer-meaning-quiz': {
         text: `
         <p>
           Good - data layer's clean, so we're working a denial event, not a breach. That keeps it on our desk and the regulator's, not the security officer's. Get the notch in and prove the customer's still up, then send the package. Nice methodical work.

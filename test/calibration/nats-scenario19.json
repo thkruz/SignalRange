@@ -36,11 +36,11 @@
           "kind": "fixed",
           "pass": null,
           "atPeak": {
-            "elevationDeg": 29.01,
+            "elevationDeg": 33.54,
             "frequencyMHz": 3828,
             "gainDbi": 48.84,
-            "gOverTDbPerK": 27.31,
-            "tsysK": 142.22
+            "gOverTDbPerK": 27.38,
+            "tsysK": 140.11
           },
           "carriers": [
             {

@@ -76,7 +76,11 @@ export const scenario2Data: ScenarioData = {
         spectrumAnalyzers: [
           {
             ...vermontGroundStation.spectrumAnalyzers[0],
-            centerFrequency: 1074.50125e6 as Hertz,
+            // Parked on the TP-1 carrier, not the beacon, so the beacon check
+            // after the LNB restore needs a real retune (nats-s02-F11)
+            centerFrequency: 1532e6 as Hertz,
+            span: 50e6 as Hertz,
+            rbw: null,
           },
         ],
       },
@@ -85,6 +89,9 @@ export const scenario2Data: ScenarioData = {
     missionBriefUrl: 'https://docs.signalrange.space/campaign-1/scenario-2?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
     satellites: [tidemark1Satellite, ses10Satellite],
+    // Brief: Tuesday, 0930 Local
+    scenarioStartDate: '2026-02-03',
+    scenarioStartWallTime: '09:30:00',
   },
   objectives: [
     // ============================================================
@@ -596,7 +603,7 @@ export const scenario2Data: ScenarioData = {
       // understanding antenna positioning for maintenance access
       nice: ['T1567', 'S0421', 'K1032'],
       title: 'Move Antenna to Maintenance Position',
-      description: 'Set tracking mode to MAINTENANCE to command antenna to elevation 5°.',
+      description: 'Click MAINT to stage the maintenance position (elevation 5°), then press APPLY on the Antenna Positioning card to start the move.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['navigate-acu-control-maintenance'],
       timeLimitSeconds: 2 * 60,
@@ -725,7 +732,7 @@ export const scenario2Data: ScenarioData = {
       // understanding program-track mode for GEO satellites
       nice: ['T1567', 'S0421', 'K1032'],
       title: 'Repoint Antenna at TIDEMARK-1',
-      description: 'Set tracking mode to PROGRAM TRACK and command antenna to Az 161.9°, El 34.2°.',
+      description: 'Click PROGRAM, select TIDEMARK-1 as the target satellite and press Move to Target. The antenna settles near Az 161.9°, El 34.2°.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['maintenance-complete'],
       timeLimitSeconds: 2 * 60,
@@ -797,7 +804,7 @@ export const scenario2Data: ScenarioData = {
       // K0792: Knowledge of network configurations - setting correct LO frequency and gain
       nice: ['T1567', 'S0421', 'K0792'],
       title: 'Restore LNB',
-      description: 'Power on LNB and configure: LO 5,250 MHz, Gain 60 dB. Wait for thermal stabilization.',
+      description: 'Power on the LNB and configure: LO 5,250 MHz, Gain 60 dB, then Apply Changes. The panel reads 65 dB after the power cycle, so step the gain down to 60.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['navigate-rx-analysis-restore'],
       timeLimitSeconds: 2 * 60,
@@ -868,14 +875,14 @@ export const scenario2Data: ScenarioData = {
           params: {
             question: "The LNB is now powered and configured. What key indicator confirms it's ready for operation?",
             options: [
-              'Thermal stability indicator shows green - temperature stabilized',
-              'LO frequency shows exactly 5250.000 MHz - no drift',
-              'Reference lock indicator shows locked to GPSDO',
-              'All of the above should be confirmed',
+              'Gain reads 65 dB - the factory default after power-up',
+              'Noise temperature reads 0 K - no noise at all',
+              'LOCK shows LOCKED to the GPSDO reference and noise temperature is back near 43 K',
+              'The spectrum analyzer shows the beacon, so the LNB panel does not matter',
             ],
-            correctIndex: 3,
+            correctIndex: 2,
             explanation:
-              'All three indicators should be confirmed: thermal stability ensures consistent gain and noise performance, LO frequency accuracy ensures correct downconversion, and reference lock ensures frequency stability from the GPSDO.',
+              'LOCK confirms the LNB local oscillator is disciplined by the GPSDO 10 MHz reference, so the downconversion lands on frequency. Noise temperature back near its normal 43 K shows the LNB is amplifying cleanly. Both readouts are on the LNB card.',
             pointPenalty: 10,
             preserveOptionOrder: true,
           },
@@ -897,7 +904,7 @@ export const scenario2Data: ScenarioData = {
       // understanding IF frequency after downconversion
       nice: ['T0153', 'K0773'],
       title: 'Verify Beacon Reception',
-      description: 'Confirm TIDEMARK-1 beacon is visible at 1,074.5 MHz IF on the spectrum analyzer.',
+      description: 'Retune the spectrum analyzer to the beacon (Center 1,074.5 MHz, Span 0.002 MHz) and confirm the TIDEMARK-1 beacon is visible.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-lnb-restored-quiz'],
       timeLimitSeconds: 2 * 60,
@@ -1376,7 +1383,7 @@ export const scenario2Data: ScenarioData = {
       'navigate-acu-control-maintenance': {
         text: `
         <p>
-          Set tracking mode to MAINTENANCE. That'll command it to elevation of five degrees. Low enough for the crew to access the feed, high enough to clear any obstructions.
+          Click MAINT, then APPLY - MAINT only stages the move until you apply it. That'll command it to elevation of five degrees. Low enough for the crew to access the feed, high enough to clear any obstructions.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1422,7 +1429,7 @@ export const scenario2Data: ScenarioData = {
           Maintenance is complete. Crew's clear of the antenna. Time to bring the link back up.
         </p>
         <p>
-          We restore in reverse order: antenna first, then receive chain, then transmit chain. Set tracking mode back to PROGRAM TRACK and command the antenna to azimuth 161.9, elevation 34.2. That's where TIDEMARK-1 sits.
+          We restore in reverse order: antenna first, then receive chain, then transmit chain. Set tracking mode back to PROGRAM, select TIDEMARK-1 as the target and press Move to Target. It'll settle near azimuth 161.9, elevation 34.2. That's where TIDEMARK-1 sits.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1439,7 +1446,7 @@ export const scenario2Data: ScenarioData = {
           Antenna's back on target. Now we restore the receive path first.
         </p>
         <p>
-          Click the RX Analysis tab. Power up the LNB - set the local oscillator to 5,250 megahertz, gain to 60 dB. Wait for thermal stabilization.
+          Click the RX Analysis tab. Power up the LNB - set the local oscillator to 5,250 megahertz, gain to 60 dB. It comes back at 65 after a power cycle, so you'll need to bring the gain down.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1463,7 +1470,7 @@ export const scenario2Data: ScenarioData = {
       'power-up-lnb': {
         text: `
         <p>
-          LNB's powering up. Watch for the thermal stability indicator - it needs to settle before we can trust the readings.
+          LNB's powering up. Watch the LOCK badge and the noise temperature - they need to settle before we can trust the readings.
         </p>
         <p>
           What should you be looking for to confirm it's ready?
@@ -1479,7 +1486,7 @@ export const scenario2Data: ScenarioData = {
           LNB's stable. Now verify we're actually seeing the satellite.
         </p>
         <p>
-          Check the spectrum analyzer. TIDEMARK-1's beacon should be visible at 1,074.5 MHz on the IF side. That's 4,175.5 MHz RF minus our 5,250 MHz LO. If you see a clean carrier there, we're pointed correctly.
+          Check the spectrum analyzer. It's still parked on the carrier from before the work - retune it to the beacon: center 1,074.5 MHz, span 0.002 MHz. TIDEMARK-1's beacon should be visible at 1,074.5 MHz on the IF side. That's 4,175.5 MHz RF minus our 5,250 MHz LO. If you see a clean carrier there, we're pointed correctly.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

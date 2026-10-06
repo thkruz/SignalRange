@@ -201,6 +201,65 @@ describe('NotchFilterAdapter', () => {
     });
   });
 
+  describe('staged vs applied indicators', () => {
+    const applyBtn = () => containerEl.querySelector('#notch-apply-btn') as HTMLButtonElement;
+    const freq = (i: number) => containerEl.querySelector(`#notch-${i}-freq`) as HTMLInputElement;
+    const stateHandler = () => mockEventBus.on.mock.calls.find((c: unknown[]) => c[0] === Events.RF_FE_NOTCH_FILTER_CHANGED)?.[1];
+
+    it('highlights Apply only when a notch differs from what is applied', () => {
+      expect(applyBtn().classList.contains('is-pending')).toBe(false);
+
+      (containerEl.querySelector('#notch-1-freq-inc-fine') as HTMLButtonElement).click();
+
+      expect(applyBtn().classList.contains('is-pending')).toBe(true);
+      expect(freq(1).classList.contains('is-pending')).toBe(true);
+      expect(freq(0).classList.contains('is-pending')).toBe(false);
+    });
+
+    it('keeps a pending notch edit through a power toggle and a state event', () => {
+      (containerEl.querySelector('#notch-1-freq-inc-fine') as HTMLButtonElement).click(); // 1400 -> 1410
+
+      const powerSwitch = containerEl.querySelector('#notch-power') as HTMLInputElement;
+      powerSwitch.checked = true;
+      powerSwitch.dispatchEvent(new Event('change'));
+      stateHandler()(JSON.parse(JSON.stringify({ ...mockNotchModule.state, isPowered: true })));
+
+      expect(freq(1).value).toBe('1410');
+    });
+
+    it('applies every staged notch and clears the highlight', () => {
+      mockNotchModule.handleNotchChange.mockImplementation((i: number, cfg: Partial<NotchConfig>) => {
+        mockNotchModule.state.notches[i] = { ...mockNotchModule.state.notches[i], ...cfg };
+      });
+      (containerEl.querySelector('#notch-0-freq-inc-fine') as HTMLButtonElement).click();
+      (containerEl.querySelector('#notch-2-depth-inc') as HTMLButtonElement).click();
+
+      applyBtn().click();
+
+      expect(mockNotchModule.state.notches[0].centerFrequency).toBe(1210);
+      expect(mockNotchModule.state.notches[2].depth).toBe(35);
+      expect(applyBtn().classList.contains('is-pending')).toBe(false);
+    });
+
+    it('shows a per-notch applied badge (ON / OFF / PENDING)', () => {
+      adapter.dispose();
+      const badges = [0, 1, 2].map((i) => `<span id="notch-${i}-applied-status"></span>`).join('');
+      containerEl.insertAdjacentHTML('beforeend', badges);
+      mockNotchModule.state.notches[0].enabled = true;
+      adapter = new NotchFilterAdapter(mockNotchModule, containerEl);
+
+      const badge = (i: number) => containerEl.querySelector(`#notch-${i}-applied-status`) as HTMLElement;
+      expect(badge(0).textContent).toBe('ON');
+      expect(badge(1).textContent).toBe('OFF');
+
+      (containerEl.querySelector('#notch-1-enabled') as HTMLInputElement).checked = true;
+      containerEl.querySelector('#notch-1-enabled')?.dispatchEvent(new Event('change'));
+
+      expect(badge(1).textContent).toBe('PENDING');
+      expect(badge(1).title).toContain('Applied: OFF');
+    });
+  });
+
   describe('dispose', () => {
     it('should unregister from EventBus events', () => {
       adapter.dispose();

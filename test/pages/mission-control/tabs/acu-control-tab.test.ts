@@ -799,5 +799,73 @@ describe('ACUControlTab', () => {
       expect(currentTargetDisplay?.value).toBe('Test Satellite 1');
       tab2.dispose();
     });
+
+    describe('reads the antenna target, not a tab-local copy (s06-F4, s10-F4, s11-F4)', () => {
+      const runUpdates = () => {
+        vi.spyOn(Date, 'now').mockReturnValue(5000);
+        for (const call of mockEventBus.on.mock.calls.filter((c: unknown[]) => c[0] === Events.UPDATE)) {
+          (call[1] as () => void)();
+        }
+      };
+
+      afterEach(() => {
+        mockGroundStation.antennas[0].state.targetSatelliteId = null;
+      });
+
+      it('shows a target set elsewhere (scenario, another tab) without Move to Target', () => {
+        SimulationManager.getInstance.mockReturnValue({
+          satellites: [{ noradId: 12345, name: 'TIDEMARK-1' }],
+          getSatByNoradId: vi.fn(() => null),
+        });
+        const display = document.querySelector(`#${PREFIX}current-target-display`) as HTMLInputElement;
+
+        mockGroundStation.antennas[0].state.targetSatelliteId = 12345;
+        runUpdates();
+        expect(display.value).toBe('TIDEMARK-1');
+
+        mockGroundStation.antennas[0].state.targetSatelliteId = null;
+        runUpdates();
+        expect(display.value).toBe('No Target');
+      });
+
+      it('rebuilds the target dropdown when the satellite list changes', () => {
+        const select = document.querySelector(`#${PREFIX}satellite-select`) as HTMLSelectElement;
+        SimulationManager.getInstance.mockReturnValue({
+          satellites: [
+            { noradId: 111, name: 'SAT-A' },
+            { noradId: 222, name: 'SAT-B' },
+          ],
+          getSatByNoradId: vi.fn(() => null),
+        });
+        mockGroundStation.antennas[0].state.targetSatelliteId = 222;
+
+        runUpdates();
+
+        expect([...select.options].map((o) => o.textContent)).toEqual(['-- Select Satellite --', 'SAT-A', 'SAT-B']);
+        expect(select.value).toBe('222');
+      });
+
+      it('names an unknown target by NORAD id rather than going blank', () => {
+        SimulationManager.getInstance.mockReturnValue({ satellites: [], getSatByNoradId: vi.fn(() => null) });
+        mockGroundStation.antennas[0].state.targetSatelliteId = 99999;
+        runUpdates();
+        expect((document.querySelector(`#${PREFIX}current-target-display`) as HTMLInputElement).value).toBe('NORAD 99999');
+      });
+    });
+  });
+
+  describe('status labels', () => {
+    it('distinguishes pointing lock from beacon lock (s24-F4)', () => {
+      const pointingRow = document.querySelector(`#${PREFIX}lock-status-display`)?.parentElement;
+      const beaconRow = document.querySelector(`#${PREFIX}beacon-lock-status`)?.parentElement;
+      expect(pointingRow?.textContent).toContain('Pointing:');
+      expect(beaconRow?.textContent).toContain('Beacon Lock:');
+    });
+
+    it('lets the Step-Track, Feed Heater and Rain Blower labels toggle their switches (s19-F3, s02-F8)', () => {
+      for (const id of ['step-track-toggle', 'heater-switch', 'blower-switch']) {
+        expect(document.querySelector(`label[for="${PREFIX}${id}"]`)).not.toBeNull();
+      }
+    });
   });
 });

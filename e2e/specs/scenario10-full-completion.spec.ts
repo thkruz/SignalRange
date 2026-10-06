@@ -19,8 +19,9 @@ import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForS
  *   maintain-duration objectives and pre-configured-state checks
  * - 'set-tracking-mode': Antenna tracking mode change (step-track, no satellite reselect)
  * - 'configure-hpa-backoff': HPA backoff field + Apply button
+ * - 'ops-log': Type an entry into the Operations Log
  */
-type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'auto' | 'set-tracking-mode' | 'configure-hpa-backoff';
+type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'auto' | 'set-tracking-mode' | 'configure-hpa-backoff' | 'ops-log';
 
 interface Scenario10Objective {
   id: string;
@@ -31,6 +32,7 @@ interface Scenario10Objective {
   stationId?: string;
   trackingMode?: string;
   hpaBackoff?: number;
+  logText?: string;
   /** Seconds to wait for an 'auto' objective with maintainDuration */
   autoWaitSeconds?: number;
 }
@@ -186,6 +188,12 @@ const SCENARIO_10_OBJECTIVES: Scenario10Objective[] = [
     correctAnswer: 'AURORA-7 pass complete - step-track held throughout, C/N margin sustained, no overdrive events, HPA returned to 10 dB',
   },
   {
+    id: 'log-customer-pass-typed',
+    title: 'Type the Pass into the Ops Log',
+    type: 'ops-log',
+    logText: 'SeaLink pass on AURORA-7 complete. Step-track held, HPA backoff 6 dB for the window, restored to 10 dB.',
+  },
+  {
     id: 'log-customer-pass',
     title: 'Log the Customer Pass',
     type: 'quiz',
@@ -252,6 +260,24 @@ async function configureHpaBackoff(page: import('@playwright/test').Page, backof
 }
 
 /**
+ * Type an entry into the Operations Log (sidebar log icon) and close it.
+ */
+async function typeOpsLogEntry(page: import('@playwright/test').Page, text: string): Promise<void> {
+  await page.locator('.ops-log-icon').first().click();
+  const input = page.locator('#ops-log-manual-input');
+  await expect(input).toBeVisible({ timeout: 5000 });
+  await input.fill(text);
+  await input.press('Enter');
+  await expect(page.locator('#ops-log-entries')).toContainText(text.slice(0, 20), { timeout: 5000 });
+  // Mission Complete closes the log itself when this entry finishes the scenario
+  await page
+    .locator('#ops-log-modal-close')
+    .click({ timeout: 3000 })
+    .catch(() => {});
+  await page.waitForTimeout(300);
+}
+
+/**
  * Execute an objective based on its type.
  */
 async function executeObjective(page: import('@playwright/test').Page, missionControlPage: MissionControlPage, objective: Scenario10Objective): Promise<void> {
@@ -283,6 +309,10 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
 
     case 'auto':
       await page.waitForTimeout((objective.autoWaitSeconds ?? 2) * 1000);
+      break;
+
+    case 'ops-log':
+      await typeOpsLogEntry(page, objective.logText!);
       break;
   }
 

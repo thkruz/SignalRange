@@ -41,7 +41,7 @@ import { ses10Satellite, tidemark1Satellite } from './satellites';
  * 1. Independent verification of RX chain status
  * 2. TX modem IF frequency calculation (RF - BUC LO = IF)
  * 3. BUC loopback mode for pre-transmission validation
- * 4. Troubleshooting a minor fault (BUC left unmuted in loopback causing high current)
+ * 4. Troubleshooting a minor fault (BUC left unmuted in loopback at full gain, near saturation)
  * 5. Full uplink enable sequence with encryption awareness
  *
  * Technical Reference (TIDEMARK-1):
@@ -81,7 +81,9 @@ export const scenario7Data: ScenarioData = {
         rfFrontEnds: [
           createRfFrontEnd(vermontGroundStation.rfFrontEnds[0], {
             // Post-maintenance state: TX chain disabled, RX operational
-            // BUC left unmuted in loopback mode by maintenance crew - causing high current draw
+            // BUC left unmuted in loopback at full gain by maintenance crew: the Dashboard
+            // shows "approaching saturation" + "in loopback" (the thermal/current model
+            // recomputes currentDraw every tick, so no high-current alarm; nats-s07-F1)
             buc: {
               isMuted: false, // Left unmuted by maintenance
               isLoopback: true, // Left in loopback mode by maintenance
@@ -89,7 +91,6 @@ export const scenario7Data: ScenarioData = {
               isExtRefLocked: true,
               gain: 50 as dB, // Normal operating gain
               temperature: 52, // Elevated due to active loopback
-              currentDraw: 5.2, // High current draw alarm triggered
             },
             hpa: {
               isHpaEnabled: false,
@@ -140,6 +141,8 @@ export const scenario7Data: ScenarioData = {
       },
       { ...maineGroundStation, isOperational: false },
     ],
+    scenarioStartDate: '2026-02-12',
+    scenarioStartWallTime: '08:45:00',
     missionBriefUrl: 'https://docs.signalrange.space/campaign-1/scenario-7?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
     satellites: [tidemark1Satellite, ses10Satellite],
@@ -229,10 +232,10 @@ export const scenario7Data: ScenarioData = {
           description: 'Identify Active Alarms',
           params: {
             question: 'What alarm condition is currently displayed on the Dashboard?',
-            options: ['BUC High Current Draw', 'LNB Reference Unlocked', 'HPA Output Fault', 'No active alarms'],
+            options: ['BUC approaching saturation, in loopback mode', 'LNB Reference Unlocked', 'HPA Output Fault', 'No active alarms'],
             correctIndex: 0,
             explanation:
-              "The BUC is drawing too much current. The maintenance crew left it unmuted while in loopback mode, which means it's actively processing signal. We need to mute it and disable loopback before proceeding.",
+              "The BUC is running near saturation and is still in loopback. The maintenance crew left it unmuted in loopback at full gain, so it's driving its output hard. We need to mute it and disable loopback before proceeding.",
             pointPenalty: 10,
             character: Character.DANA_TORRES,
           },
@@ -247,8 +250,8 @@ export const scenario7Data: ScenarioData = {
       // T0081: Diagnose network connectivity problems - fault diagnosis
       // S0582: Skill in troubleshooting system performance
       nice: ['T0081', 'S0582'],
-      title: 'Diagnose BUC High Current',
-      description: 'Navigate to the TX Chain and identify the cause of the high current draw.',
+      title: 'Diagnose BUC Saturation',
+      description: 'Navigate to the TX Chain and identify why the BUC is running near saturation.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['check-dashboard-status'],
       timeLimitSeconds: 3 * 60,
@@ -264,11 +267,11 @@ export const scenario7Data: ScenarioData = {
           type: 'status-check',
           description: 'Identify Cause',
           params: {
-            question: 'Looking at the BUC panel, what is the likely cause of the high current draw?',
+            question: 'Looking at the BUC panel, what is the likely cause of the saturation alarm?',
             options: ['BUC has been on for a few hours and is overheating', 'BUC gain is set too high', 'External reference is unlocked', 'BUC temperature is too low'],
             correctIndex: 1,
             explanation:
-              "The BUC gain is set to 50 dB and since it's in loopback mode and unmuted, it's actively processing signal, leading to high current draw. The maintenance crew likely forgot to mute it after testing.",
+              "The BUC gain is set to 50 dB, and since it's unmuted in loopback mode it's driving its output past its 1 dB compression point (negative P1dB margin). The maintenance crew likely forgot to mute it after testing.",
             pointPenalty: 10,
             character: Character.DANA_TORRES,
           },
@@ -284,7 +287,7 @@ export const scenario7Data: ScenarioData = {
       // K0740: Knowledge of network performance management
       nice: ['S0582', 'K0740'],
       title: 'Secure BUC State',
-      description: 'Mute the BUC and disable loopback to stop the unnecessary current draw.',
+      description: 'Mute the BUC and disable loopback to take it out of saturation.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['diagnose-buc-high-current'],
       timeLimitSeconds: 2 * 60,
@@ -316,7 +319,7 @@ export const scenario7Data: ScenarioData = {
       // T0153: Monitor network capacity and performance - confirming resolution
       nice: ['K0741', 'T0153'],
       title: 'Verify Fault Cleared',
-      description: 'Confirm the Dashboard no longer shows the BUC high current alarm.',
+      description: 'Confirm the Dashboard no longer shows the BUC saturation and loopback alarms.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['resolve-buc-high-current'],
       timeLimitSeconds: 2 * 60,
@@ -334,13 +337,14 @@ export const scenario7Data: ScenarioData = {
           params: {
             question: 'What is the current BUC status on the Dashboard?',
             options: [
-              'Normal - current draw within limits, no active alarms',
-              'Warning - current draw still above limit, alarm latched',
+              'Normal - output within limits, no active alarms',
+              'Warning - output still near saturation, alarm latched',
               'Fault - BUC offline, current draw at zero, alarm active',
               'Unknown - BUC not reporting, no current or alarm data',
             ],
             correctIndex: 0,
-            explanation: 'The BUC has been muted and loopback disabled. The high current alarm has cleared. Always verify alarm resolution on the Dashboard before proceeding.',
+            explanation:
+              'The BUC has been muted and loopback disabled. The saturation and loopback alarms have cleared. Always verify alarm resolution on the Dashboard before proceeding.',
             pointPenalty: 5,
             character: Character.DANA_TORRES,
           },
@@ -978,6 +982,35 @@ export const scenario7Data: ScenarioData = {
       points: 5,
     },
     {
+      // nats-s07-F4: without this the scenario ended with the LNB still on the
+      // loopback LO (7000 MHz) and the receive chain broken
+      id: 'restore-lnb-frequency',
+      nice: ['T0153', 'K0740'],
+      title: 'Restore LNB LO Frequency',
+      description: 'On RX Analysis, return the LNB LO from the loopback setting (7000 MHz) to 5250 MHz for normal satellite reception.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['disable-loopback'],
+      conditions: [
+        {
+          type: 'tab-active',
+          description: 'RX Analysis Tab Open',
+          params: { tab: 'rx-analysis' },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'lnb-lo-set',
+          description: 'LNB LO Restored to 5250 MHz',
+          params: {
+            loFrequency: 5250 as MHz,
+            loFrequencyTolerance: 10 as MHz,
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 5,
+    },
+    {
       id: 'enable-hpa-output',
       // S0421: Skill in operating network equipment
       // T1567: Equipment configuration happens throughout
@@ -985,7 +1018,7 @@ export const scenario7Data: ScenarioData = {
       title: 'Enable HPA Output',
       description: 'Enable the HPA output stage.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['disable-loopback'],
+      prerequisiteObjectiveIds: ['restore-lnb-frequency'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -1019,7 +1052,7 @@ export const scenario7Data: ScenarioData = {
       // K0740: Knowledge of network performance management
       nice: ['T0153', 'K0740'],
       title: 'Increase HPA Output Power',
-      description: 'Lower the HPA backoff to reach the minimum output power required for reliable uplink.',
+      description: 'Lower the HPA backoff until output is above 400 W, the minimum for the TIDEMARK-1 link budget.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['enable-hpa-output'],
       timeLimitSeconds: 2 * 60,
@@ -1119,7 +1152,7 @@ export const scenario7Data: ScenarioData = {
       'diagnose-buc-high-current': {
         text: `
         <p>
-          Bingo. We will worry about the gain later, for now just mute it and disable loopback so we can clear that alarm. That will stop the high current draw.
+          Bingo. We'll worry about the gain later. For now just mute it and disable loopback so we can clear those alarms and pull it out of saturation.
         </p>
         `,
         character: Character.DANA_TORRES,
@@ -1129,7 +1162,7 @@ export const scenario7Data: ScenarioData = {
       'resolve-buc-high-current': {
         text: `
         <p>
-          Good catch. Current draw should normalize now.
+          Good catch. The BUC is out of saturation now.
         </p>
         `,
         character: Character.DANA_TORRES,
@@ -1149,7 +1182,7 @@ export const scenario7Data: ScenarioData = {
       'enable-loopback': {
         text: `
         <p>
-          Same high current issue. You'll need to work around that for the loopback test.
+          Loopback's up. Check it on the analyzer.
         </p>
         `,
         character: Character.DANA_TORRES,
@@ -1168,6 +1201,19 @@ export const scenario7Data: ScenarioData = {
         character: Character.DANA_TORRES,
         emotion: Emotion.CONFIDENT,
         audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-final-verification.mp3'),
+      },
+    },
+    objectivesOnStart: {
+      // nats-s07-F7: the warning belongs before the gain step, not after loopback is up
+      'reduce-buc-gain': {
+        text: `
+        <p>
+          Before you loop back, drop the BUC gain to 20 dB or you'll overload the receive chain. Same saturation we saw this morning.
+        </p>
+        `,
+        character: Character.DANA_TORRES,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: '', // VO not recorded yet: text-to-speech fallback
       },
     },
   },

@@ -81,6 +81,9 @@ export const scenario17Data: ScenarioData = {
   timeLimitSeconds: 30 * 60,
   settings: {
     isSync: true,
+    // Brief: Thursday 1144 local, spring transit series (window ~1149-1154)
+    scenarioStartDate: '2026-02-26',
+    scenarioStartWallTime: '11:44:00',
     groundStations: [
       {
         ...vermontGroundStation,
@@ -275,7 +278,8 @@ export const scenario17Data: ScenarioData = {
       id: 'baseline-rx-check',
       nice: ['T0153', 'K0773'],
       title: 'Baseline RX Snapshot',
-      description: 'Document the healthy link before the window: beacon present, receiver locked, C/N at baseline.',
+      description:
+        'RX Analysis: document the healthy link before the window - beacon present, receiver locked, C/N at baseline (at least 10 dB). Read the C/N off the panel; you will want it for the impact record.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['transit-predictability-quiz'],
       timeLimitSeconds: 2 * 60,
@@ -308,7 +312,8 @@ export const scenario17Data: ScenarioData = {
         {
           type: 'receiver-snr-threshold',
           description: 'Baseline C/N ≥ 10 dB',
-          params: { minCNRatio: 10, requiresObservation: true, observationTab: 'rx-analysis' },
+          // 5 s on the panel: long enough to actually read the baseline (nats-s17-F3)
+          params: { minCNRatio: 10, requiresObservation: true, observationTab: 'rx-analysis', observationDwellSeconds: 5 },
           mustMaintain: true,
         },
       ],
@@ -339,7 +344,7 @@ export const scenario17Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Same lesson as the S14 rain fade, sharpened: escape has a price, and here the thing escaped costs less than the escape. Every station on the arc takes its transits; the constellation-level answer is notification discipline, not musical chairs.',
+              'Same lesson as a rain fade, sharpened: escape has a price, and here the thing escaped costs less than the escape. Every station on the arc takes its transits; the constellation-level answer is notification discipline, not musical chairs.',
             pointPenalty: 5,
             preserveOptionOrder: true,
           },
@@ -353,11 +358,14 @@ export const scenario17Data: ScenarioData = {
       id: 'notify-customer-quiz',
       nice: ['T1020', 'S0593'],
       title: 'Pre-Event Notification',
-      description: 'Send the customer notice BEFORE the window opens - the notification is the SLA action.',
+      description:
+        'Send the customer notice BEFORE the window opens - the notification is the SLA action. Timed: running out fails the shift (a notice after window-open voids the SLA exclusion).',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['why-not-handover-quiz'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
+      // The one deadline the transit has: notice must precede window-open
+      timeoutFails: true,
       conditions: [
         {
           type: 'status-check',
@@ -431,7 +439,8 @@ export const scenario17Data: ScenarioData = {
       id: 'ride-through-peak',
       nice: ['S0593', 'T1020', 'K0689'],
       title: 'Hold Through the Peak',
-      description: 'Sky noise is approaching peak and the demod will drop. Hold the configuration: uplink stays exactly as it is, no RX changes, no panic.',
+      description:
+        'Sky noise is approaching peak and the demod will drop. Hold the configuration: uplink stays exactly as it is, no RX changes, no panic. No action needed - wait it out.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['observe-onset'],
       timeLimitSeconds: 5 * 60,
@@ -511,7 +520,7 @@ export const scenario17Data: ScenarioData = {
       id: 'verify-recovery',
       nice: ['T0153', 'T0431'],
       title: 'Verify Self-Recovery',
-      description: 'The Sun is moving off boresight. Confirm the link recovers to baseline with zero operator action.',
+      description: 'The Sun is moving off boresight. Confirm the link recovers to baseline with zero operator action - wait for sky noise to clear and the receiver to relock.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['peak-behavior-quiz'],
       timeLimitSeconds: 6 * 60,
@@ -687,7 +696,7 @@ export const scenario17Data: ScenarioData = {
         <em>[Text message from Dana at 11:38]</em>
       </p>
       <p>
-        "Sun transit window on TM-1 this morning - prediction sheet's attached. Window opens at 1149, peak around 1151:30, clear by 1154. You know the drill from the read-ahead: this one you don't fight. Notify, ride it through, document. The only way to fail a sun transit is to panic during one."
+        "Sun transit window on TM-1 this morning - prediction sheet's attached. Window opens about 1149, peak around 1151:30, clear by 1154. You know the drill from the read-ahead: this one you don't fight. Notify, ride it through, document. The only way to fail a sun transit is to panic during one."
       </p>
       `,
       character: Character.DANA_TORRES,
@@ -705,7 +714,10 @@ export const scenario17Data: ScenarioData = {
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/17/obj-notify-customer-quiz.mp3'),
       },
-      'verify-recovery': {
+      // Keyed to the Halifax quiz's completion: on verify-recovery it answered
+      // "What should Halifax have seen?" before it was asked (nats-s17-F6).
+      // The VO file keeps its recorded name
+      'marcus-confirm': {
         text: `
         <p>
           Marcus in Halifax. Vehicle telemetry was nominal straight through your window - your uplink never wavered on our side, not even at peak. Whatever the Sun did to your noise floor, the spacecraft never knew about it. Clean transit, eh.
@@ -718,7 +730,7 @@ export const scenario17Data: ScenarioData = {
       'log-shift-summary': {
         text: `
         <p>
-          Textbook. You notified before the customer could ask, held still while the link looked terrible, and verified instead of assuming. Phase three starts with the hardest skill there is - knowing when the right move is no move.
+          Textbook. You notified before the customer could ask, held still while the link looked terrible, and verified instead of assuming. Crisis work starts with the hardest skill there is - knowing when the right move is no move.
         </p>
         <p>
           Same window tomorrow, four minutes earlier. Log's already got it.

@@ -81,7 +81,7 @@ describe('LNBModuleCore', () => {
       expect(lnbModule.postLNASignals[0].origin).toBe(SignalOrigin.LOW_NOISE_AMPLIFIER);
     });
 
-    it('should apply -300 dB gain when powered off', () => {
+    it('should output no signals when powered off', () => {
       const mockSignal: RfSignal = {
         frequency: 7000e6 as RfFrequency,
         bandwidth: 1e6 as Hertz,
@@ -96,13 +96,13 @@ describe('LNBModuleCore', () => {
       lnbModule.state.isPowered = false;
       lnbModule.update();
 
-      expect(lnbModule.postLNASignals.length).toBe(1);
-      expect(lnbModule.postLNASignals[0].power).toBe(-380); // -80 + (-300)
+      expect(lnbModule.postLNASignals).toEqual([]);
+      expect(lnbModule.ifSignals).toEqual([]);
     });
 
     it('should downconvert RF to IF frequency', () => {
       const mockSignal: RfSignal = {
-        frequency: 7000e6 as RfFrequency, // 7000 MHz
+        frequency: 4880e6 as RfFrequency, // 4880 MHz
         bandwidth: 1e6 as Hertz,
         power: -80 as dBm,
         polarization: 'V',
@@ -117,15 +117,14 @@ describe('LNBModuleCore', () => {
       lnbModule.update();
 
       expect(lnbModule.ifSignals.length).toBe(1);
-      // IF = LO - RF = 6080e6 - 7000e6 = -920e6 (but absolute would be 920e6)
-      // Actually: IF = effectiveLO - RF = 6080e6 - 7000e6 = -920000000
-      expect(lnbModule.ifSignals[0].frequency).toBe(-920e6);
+      // High-side injection: IF = LO - RF = 6080e6 - 4880e6 = 1200e6 (in the 950-2150 MHz passband)
+      expect(lnbModule.ifSignals[0].frequency).toBe(1200e6);
       expect(lnbModule.ifSignals[0].origin).toBe(SignalOrigin.LOW_NOISE_BLOCK);
     });
 
-    it('should apply 40 dB attenuation for out-of-band signals', () => {
+    it('should not attenuate a carrier fully inside the IF passband', () => {
       const mockSignal: RfSignal = {
-        frequency: 5000e6 as RfFrequency, // Results in IF outside 950-2150 MHz
+        frequency: 5000e6 as RfFrequency, // IF = 1080 MHz, inside 950-2150 MHz
         bandwidth: 1e6 as Hertz,
         power: -60 as dBm,
         polarization: 'V',
@@ -139,8 +138,53 @@ describe('LNBModuleCore', () => {
       lnbModule.state.gain = 0 as dB;
       lnbModule.update();
 
-      // IF = 6080e6 - 5000e6 = 1080e6 (1080 MHz - within band, no attenuation)
-      // Let's use a frequency that's out of band
+      expect(lnbModule.ifSignals).toHaveLength(1);
+      expect(lnbModule.ifSignals[0].power).toBe(-60);
+    });
+
+    it('should drop a carrier whose whole bandwidth is outside the IF passband', () => {
+      // Beacon-style narrow carrier far below the passband: IF = 6080 - 5900 = 180 MHz
+      const outOfBand: RfSignal = {
+        frequency: 5900e6 as RfFrequency,
+        bandwidth: 10e3 as Hertz,
+        power: -60 as dBm,
+        polarization: 'V',
+        origin: SignalOrigin.OMT_RX,
+        gainInPath: 30 as dBi,
+      };
+      const inBand: RfSignal = { ...outOfBand, frequency: 5000e6 as RfFrequency };
+
+      vi.spyOn(lnbModule, 'rxSignalsIn', 'get').mockReturnValue([outOfBand, inBand]);
+
+      lnbModule.state.loFrequency = 6080 as MHz;
+      lnbModule.state.gain = 0 as dB;
+      lnbModule.update();
+
+      expect(lnbModule.ifSignals).toHaveLength(1);
+      expect(lnbModule.ifSignals[0].frequency).toBe(1080e6);
+    });
+
+    it('should attenuate a band-edge carrier by the clamped fraction outside the passband', () => {
+      // IF centre 950 MHz with 10 MHz bandwidth: half (5 MHz) lies below 950 MHz -> 20 dB roll-off
+      const edge: RfSignal = {
+        frequency: 5130e6 as RfFrequency,
+        bandwidth: 10e6 as Hertz,
+        power: -60 as dBm,
+        polarization: 'V',
+        origin: SignalOrigin.OMT_RX,
+        gainInPath: 30 as dBi,
+      };
+
+      vi.spyOn(lnbModule, 'rxSignalsIn', 'get').mockReturnValue([edge]);
+
+      lnbModule.state.loFrequency = 6080 as MHz;
+      lnbModule.state.gain = 0 as dB;
+      lnbModule.update();
+
+      expect(lnbModule.ifSignals).toHaveLength(1);
+      expect(lnbModule.ifSignals[0].power).toBeCloseTo(-80, 6);
+      // Never more than the full 40 dB roll-off, never a runaway figure
+      expect(lnbModule.ifSignals[0].power).toBeGreaterThanOrEqual(-100);
     });
   });
 

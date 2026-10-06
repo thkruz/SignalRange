@@ -68,7 +68,7 @@ export const scenario24Data: ScenarioData = {
   duration: '40-50 min',
   difficulty: 'advanced',
   missionType: 'Incident Command',
-  description: `Everything at once. A storm front tracks onto Vermont inside the hour. Maine's BUC is running hot - the same unit, the same signature as the thermal trend you caught months ago, and the swap never cleared procurement. AURORA-7 has a SeaLink sync pass booked at 0800 on a beacon four dB weaker than the day you qualified. James is already calling. Francis wants a board note by end of morning.<br><br>Five tracks. Three are clocks you don't control - the storm, the pass window, the board deadline. Two are trends you can bend - the BUC heat, the customer's confidence.<br><br>You've done every piece of this before. Today you do all of it, in the right order, while everyone watches. Incident command is yours. Dana is your resource, not your safety net. This is the exam - fly it like a Tuesday.`,
+  description: `Everything at once. A storm front is minutes from Vermont. Maine's BUC is running hot - the same unit, the same signature as the thermal trend you caught months ago, and the swap never cleared procurement. AURORA-7 has a SeaLink sync pass booked at 0800 on a beacon four dB weaker than the day you qualified. James is already calling. Francis wants a board note by end of morning.<br><br>Five tracks. Three are clocks you don't control - the storm, the pass window, the board deadline. Two are trends you can bend - the BUC heat, the customer's confidence.<br><br>You've done every piece of this before. Today you do all of it, in the right order, while everyone watches. Incident command is yours. Dana is your resource, not your safety net. This is the exam - fly it like any other shift.`,
   equipment: ['9-meter C-band Antennas (VT-01 + ME-02)', 'RF Front Ends (both)', 'Spectrum Analyzers', 'RX/TX Modems', 'Incident-command log (Working Document)'],
   timeLimitSeconds: 50 * 60,
   settings: {
@@ -158,7 +158,7 @@ export const scenario24Data: ScenarioData = {
                   ...vermontGroundStation.transmitters[0].modems[0].ifSignal,
                   signalId: 'TIDEMARK-2-Teleport',
                   noradId: 61526,
-                  frequency: 1020e6 as IfFrequency,
+                  frequency: 983e6 as IfFrequency, // TM-2 TP-1: 7000 - 6017
                 },
               },
             ],
@@ -189,15 +189,35 @@ export const scenario24Data: ScenarioData = {
         groundStationId: 'VT-01',
         type: 'snow',
         severity: 'moderate',
-        startTime: 240, // Front arrives ~4 min in - heater must be on before
+        // Front arrives ~4 min after the sequencing quiz opens (the brief is
+        // done) - heater must be on before. Anchored so the quiz's "~4
+        // minutes" holds however long the brief takes to read.
+        startAfterObjectiveId: 'sequencing-quiz',
+        startTime: 240,
         duration: 2400,
         linkMarginDegradation: 6,
+      },
+    ],
+    // The BUC heat is a staged cooling fault, not a seeded start value: the
+    // thermal model relaxes a plain `temperature: 63` toward the drive-derived
+    // target (~51 C at 33 dB) within moments (nats-s24-F5). deltaC 15 holds a
+    // 33 dB BUC climbing slowly toward ~66 C (pre-alarm) and lets the 23 dB
+    // de-rate bend it down toward ~58 C. Rates are recalibrated in Phase 19.6.
+    hardwareFaultEvents: [
+      {
+        id: 'me02-buc-heat',
+        groundStationId: 'ME-02',
+        target: 'buc-overtemp',
+        startTime: 0,
+        params: { startTemperatureC: 63, deltaC: 15 },
       },
     ],
     workingDocument: {
       title: 'Incident Command Log - Constellation Crisis',
       description: 'Live incident command record. Triage calls, decisions, customer commitments, and the board note build here as you work.',
     },
+    scenarioStartDate: '2026-03-27', // Friday, per the brief
+    scenarioStartWallTime: '06:58:00',
     missionBriefUrl: 'https://docs.signalrange.space/campaign-1/scenario-24?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
   },
@@ -234,7 +254,7 @@ export const scenario24Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Command is sequencing, not speed. The S16/S20 triage discipline scaled to five tracks: know which clocks are fixed and which trends you own before you spend a single action, then sequence your attention accordingly.',
+              'Command is sequencing, not speed. The same triage discipline as any multi-fault morning, scaled to five tracks: know which clocks are fixed and which trends you own before you spend a single action, then sequence your attention accordingly.',
             pointPenalty: 10,
             documentSection: 'Command',
             documentLine: 'IC assumed. Board ordered: fixed clocks = storm ETA / AURORA pass / board note; bendable trends = ME-02 BUC heat / customer confidence.',
@@ -249,7 +269,7 @@ export const scenario24Data: ScenarioData = {
       id: 'sequencing-quiz',
       nice: ['S0807', 'S0593'],
       title: 'Set the Sequence',
-      description: 'Decide the order before acting - the heart of the capstone.',
+      description: 'Decide the order before acting - the heart of incident command.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['review-mission-brief'],
       timeLimitSeconds: 3 * 60,
@@ -308,11 +328,14 @@ export const scenario24Data: ScenarioData = {
       id: 'enable-heater-proactive',
       nice: ['S0671', 'K0689'],
       title: 'Heater Before the Front',
-      description: 'Enable the feed heater now, before the storm arrives - proactive, the S14 discipline.',
+      description: 'In ACU Control, enable the feed heater now, before the storm arrives - protection goes on before the threat, not after. Timed: running out fails the shift.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['select-vermont'],
       timeLimitSeconds: 3 * 60,
       timerStartTrigger: 'on-activate',
+      // The storm clock is the one fixed deadline the operator can beat with a
+      // single switch; missing it is the failure this scenario tests
+      timeoutFails: true,
       conditions: [
         {
           type: 'tab-active',
@@ -385,7 +408,7 @@ export const scenario24Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Pattern recognition is the payoff of the campaign: you diagnosed this exact signature once, and the swap never cleared procurement. The de-rate cuts the dissipation at the source without taking the customer down - and you log that the swap is still pending.',
+              'Pattern recognition is the payoff of experience: you diagnosed this exact signature once, and the swap never cleared procurement. The de-rate cuts the dissipation at the source without taking the customer down - and you log that the swap is still pending.',
             pointPenalty: 5,
             documentSection: 'ME-02 / TM-2',
             documentLine: 'BUC over-gain thermal trend (recurrence - swap still pending procurement). Action: de-rate to 23 dB operating.',
@@ -432,7 +455,8 @@ export const scenario24Data: ScenarioData = {
       id: 'verify-buc-trending-down',
       nice: ['T0153', 'T0531'],
       title: 'Confirm the Trend Bends',
-      description: 'Verify the de-rate took: carrier still up, BUC no longer climbing.',
+      description:
+        'On TX Chain, confirm the de-rate took: BUC current draw at or under 3.5 A and temperature at or under 65 °C, out of saturation, and the TM-2 carrier still locked.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['derate-buc'],
       timeLimitSeconds: 2 * 60,
@@ -447,6 +471,20 @@ export const scenario24Data: ScenarioData = {
         {
           type: 'buc-not-saturated',
           description: 'BUC Out of Saturation Risk',
+          mustMaintain: true,
+        },
+        // The trend itself, read off the TX Chain panel (nats-s24-F5): both
+        // were true the instant gain hit 23 dB with nothing to read
+        {
+          type: 'buc-current-normal',
+          description: 'BUC Current ≤ 3.5 A',
+          params: { maxCurrentDraw: 3.5, requiresObservation: true, observationTab: 'tx-chain', observationDwellSeconds: 5 },
+          mustMaintain: true,
+        },
+        {
+          type: 'buc-temperature-normal',
+          description: 'BUC Temperature ≤ 65 °C',
+          params: { maxTemperature: 65, requiresObservation: true, observationTab: 'tx-chain', observationDwellSeconds: 5 },
           mustMaintain: true,
         },
       ],
@@ -481,7 +519,7 @@ export const scenario24Data: ScenarioData = {
       id: 'acquire-aurora',
       nice: ['S0421', 'K1032'],
       title: 'Acquire AURORA-7',
-      description: 'Program-track to AURORA-7 (NORAD 28899) for the SeaLink pass.',
+      description: 'In ACU Control, select AURORA-7 (NORAD 28899) as the target and Move to Target on program-track for the SeaLink pass.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['return-vermont-for-pass'],
       timeLimitSeconds: 4 * 60,
@@ -560,7 +598,7 @@ export const scenario24Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Honest go: the link supports the pass now, the operator says so, and flags the EOL reality (tying back to the S22 recommendation). Communication timing matters - the caveat before the window, not an excuse during it, and never mid-pass.',
+              'Honest go: the link supports the pass now, the operator says so, and flags the EOL reality (tying back to the sunset recommendation already with the board). Communication timing matters - the caveat before the window, not an excuse during it, and never mid-pass.',
             pointPenalty: 5,
             documentSection: 'VT-01 / AURORA-7',
             documentLine: 'Pass GO (caveat: thin margin, EOL beacon per sunset rec). Step-track holding. Marcus briefed pre-window.',
@@ -634,10 +672,10 @@ export const scenario24Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'The whole point of beating the fixed clock: protection in place before the threat means the threat never becomes an incident - the proactive heater turned a potential outage into a non-event you only have to monitor. This is the S14/S20 lesson paying its dividend under maximum load.',
+              'The whole point of beating the fixed clock: protection in place before the threat means the threat never becomes an incident - the proactive heater turned a potential outage into a non-event you only have to monitor. This is the heater-before-the-front habit paying its dividend under maximum load.',
             pointPenalty: 5,
             documentSection: 'VT-01 / TM-1',
-            documentLine: 'Storm over VT-01: no ice accumulation (heater pre-enabled). TM-1 holding, monitor-only.',
+            documentLine: 'Front over VT-01, heater on: no ice building, TM-1 holding, monitor-only.',
           },
           mustMaintain: false,
         },
@@ -649,7 +687,7 @@ export const scenario24Data: ScenarioData = {
       id: 'board-note-quiz',
       nice: ['T1606', 'T1429'],
       title: 'The Board Note',
-      description: 'Francis wants one paragraph. Write the board-level summary into the command log.',
+      description: 'Francis wants one paragraph. Choose the board-level summary for the command log.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['storm-hold-check'],
       timeLimitSeconds: 3 * 60,
@@ -662,18 +700,18 @@ export const scenario24Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What goes in the one-paragraph board note for Francis?',
             options: [
-              'Posture and exposure: both stations stable, no outage; AURORA pass flown on a sunsetting beacon; residual risk = ME-02 BUC swap',
+              'Posture and exposure: both stations stable, no outage; AURORA pass GO for 0800 on a sunsetting beacon; residual risk = ME-02 BUC swap',
               'Timeline and procedure: every action time-stamped, heater then de-rate then pass; each switch and setting listed; jargon as logged',
               'Status only: all systems nominal; no detail on the storm, the BUC, or the pass; nothing for the board to worry about or act on',
               'Staffing and cost: five tracks exceeded one operator; a second console seat requested; the BUC swap deferred to next budget',
             ],
             correctIndex: 0,
             explanation:
-              'Board-level means posture and exposure, not procedure: one paragraph, no jargon. The note also does institutional work: the AURORA pass on a dying beacon reinforces the S22 sunset case, and the pending BUC swap is named as the residual risk the board controls (procurement).',
+              'Board-level means posture and exposure, not procedure: one paragraph, no jargon. The note also does institutional work: the AURORA pass on a dying beacon reinforces the sunset case already before the board, and the pending BUC swap is named as the residual risk the board controls (procurement).',
             pointPenalty: 10,
             documentSection: 'Board Note (Martin)',
             documentLine:
-              'Both stations stable through concurrent storm + BUC thermal event, zero customer outage. AURORA pass delivered on EOL beacon (reinforces sunset rec). Residual risk: pending ME-02 BUC swap (procurement).',
+              'Both stations stable through concurrent storm + BUC thermal event, zero customer outage. AURORA pass GO for 0800 on EOL beacon (reinforces sunset rec). Residual risk: pending ME-02 BUC swap (procurement).',
           },
           mustMaintain: false,
         },
@@ -689,7 +727,7 @@ export const scenario24Data: ScenarioData = {
       id: 'review-command-log',
       nice: ['T1606', 'S0807'],
       title: 'Review the Command Log',
-      description: 'Open the incident-command log and confirm it stands as the after-action record.',
+      description: 'Review the incident-command log (Working Document): what makes it the after-action record?',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['board-note-quiz'],
       timeLimitSeconds: 3 * 60,
@@ -709,7 +747,7 @@ export const scenario24Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              "The campaign's final discipline, scaled to its largest case: the log IS the work made legible. Ordered board, reasoned sequence, per-track outcomes, customer and board comms, open risk - someone could pick up your shift cold and know exactly what happened and what is still open. The same form as a good shift log, just holding five tracks at once.",
+              'The final discipline, scaled to its largest case: the log IS the work made legible. Ordered board, reasoned sequence, per-track outcomes, customer and board comms, open risk - someone could pick up your shift cold and know exactly what happened and what is still open. The same form as a good shift log, just holding five tracks at once.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -722,7 +760,7 @@ export const scenario24Data: ScenarioData = {
       id: 'log-crisis-closed',
       nice: ['K0645', 'T1606'],
       title: 'Close the Incident',
-      description: 'Log the capstone closed.',
+      description: 'Pick the entry that closes the incident, then type it in the Ops Log (sidebar): incident closed and the residual ME-02 BUC swap.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['review-command-log'],
       timeLimitSeconds: 2 * 60,
@@ -735,16 +773,22 @@ export const scenario24Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which entry closes the incident?',
             options: [
-              'IC closed: VT-01 storm protected, ME-02 BUC de-rated, AURORA pass delivered; zero outage, five tracks; residual = ME-02 BUC swap',
+              'IC closed: VT-01 storm protected, ME-02 BUC de-rated, AURORA pass GO for 0800 (caveat briefed); zero outage; residual = ME-02 BUC swap',
               'IC closed: VT-01 storm handled, ME-02 BUC handled, AURORA pass handled; busy morning, all fine; residual = none, see individual tickets',
               'IC closed: VT-01 storm outage averted, ME-02 BUC swapped, AURORA pass scrubbed; one outage, five tracks; residual = none',
               'IC closed: VT-01 heater on, ME-02 gain 23 dB, AURORA step-track on; crisis averted, five tracks; residual = details on request',
             ],
             correctIndex: 0,
             explanation:
-              'The finale entry: five tracks, one operator, zero customer outage, one open risk named - proactive heater and no ice at VT-01, thermal trend de-rated with no outage at ME-02, the SeaLink pass on an EOL beacon, customers briefed per-trunk, board note filed. That sentence is the whole campaign - every skill, held together at once, made legible for whoever comes next.',
+              'The finale entry: five tracks, one operator, zero customer outage, one open risk named - proactive heater and no ice at VT-01, thermal trend de-rated with no outage at ME-02, the SeaLink pass called GO on an EOL beacon with the caveat briefed, customers briefed per-trunk, board note filed. That sentence is the whole job - every skill, held together at once, made legible for whoever comes next.',
             pointPenalty: 5,
           },
+          mustMaintain: false,
+        },
+        {
+          type: 'ops-log-entry',
+          description: 'Closing Entry Typed in the Ops Log',
+          params: { logKeywords: ['close', 'buc'], logMinLength: 20 },
           mustMaintain: false,
         },
       ],
@@ -759,7 +803,7 @@ export const scenario24Data: ScenarioData = {
         <em>[Dana, at the door, 07:00]</em>
       </p>
       <p>
-        "Everything at once this morning. Storm front onto Vermont inside the hour. Maine's BUC is running hot - same unit, same signature you caught before, swap never cleared procurement. AURORA's got a SeaLink pass at 0800 on a beacon four dB down. James is calling, Francis wants a board note. You've done every piece of this. Today you do all of it, in the right order, while everyone watches. Incident command is yours - I'm your resource, not your safety net."
+        "Everything at once this morning. Storm front on top of Vermont in minutes. Maine's BUC is running hot - same unit, same signature you caught before, swap never cleared procurement. AURORA's got a SeaLink pass at 0800 on a beacon four dB down. James is calling, Francis wants a board note. You've done every piece of this. Today you do all of it, in the right order, while everyone watches. Incident command is yours - I'm your resource, not your safety net."
       </p>
       `,
       character: Character.DANA_TORRES,
@@ -770,7 +814,7 @@ export const scenario24Data: ScenarioData = {
       'enable-heater-proactive': {
         text: `
         <p>
-          James Okafor, SeaLink. I've got alerts on both my trunks and a storm on your radar - talk to me. Are we about to lose Vermont?
+          James Okafor, Atlantic Shipping. I've got alerts on both my trunks and a storm on your radar - talk to me. Are we about to lose Vermont?
         </p>
         `,
         character: Character.JAMES_OKAFOR,
@@ -833,7 +877,7 @@ export const scenario24Data: ScenarioData = {
           Five tracks, one operator, not a second of customer outage. I sat on my hands the whole morning and you never needed me - which was the exam.
         </p>
         <p>
-          Twenty-four scenarios ago you couldn't read an alarm board. Today you ran a constellation through a crisis and wrote it up so clean the board will never know how close it was. That's the job. Welcome to the top of it.
+          Your first week here you couldn't read an alarm board. Today you ran a constellation through a crisis and kept a log so clean the board will never know how close it was. That's the job. Welcome to the top of it.
         </p>
         `,
         character: Character.DANA_TORRES,

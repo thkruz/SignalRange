@@ -55,7 +55,10 @@ describe('DashboardTab', () => {
             isBeaconLocked: false,
             beaconCN: null,
             hasFault: false,
+            isPowered: true,
+            isStepTrackEnabled: false,
           },
+          getStatusAlarms: vi.fn().mockReturnValue([]),
         },
       ],
       rfFrontEnds: [
@@ -106,6 +109,7 @@ describe('DashboardTab', () => {
             ],
           },
           getPowerPercentage: vi.fn().mockReturnValue(50),
+          getStatusAlarms: vi.fn().mockReturnValue([]),
         },
       ],
       receivers: [
@@ -115,6 +119,7 @@ describe('DashboardTab', () => {
             availableSignals: [],
           },
           getSnrForModem: vi.fn().mockReturnValue(15),
+          getStatusAlarms: vi.fn().mockReturnValue([]),
         },
       ],
       initializeEquipment: vi.fn(),
@@ -230,6 +235,66 @@ describe('DashboardTab', () => {
     it('should update active transmitters count', () => {
       const txEl = document.querySelector('#active-transmitters');
       expect(txEl?.textContent).toBe('1');
+    });
+
+    it('labels Quick Stats as powered modems, which is what it counts (s01-F19)', () => {
+      const labels = [...document.querySelectorAll('.quick-stat-label')].map((el) => el.textContent);
+      expect(labels).toContain('RX Modems On');
+      expect(labels).toContain('TX Modems On');
+    });
+
+    it('lights the antenna fault LED green when healthy, red on fault (s01-F14)', () => {
+      expect(document.querySelector('#antenna-fault-led')?.className).toContain('success');
+      (mockGroundStation.antennas[0].state as { hasFault: boolean }).hasFault = true;
+      vi.spyOn(Date, 'now').mockReturnValue(10_000_000);
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
+      updateHandler();
+      expect(document.querySelector('#antenna-fault-led')?.className).toContain('error');
+    });
+
+    it('shows step-track on the antenna mode badge (s01-F3)', () => {
+      const state = mockGroundStation.antennas[0].state as { trackingMode: string; isStepTrackEnabled: boolean };
+      state.trackingMode = 'program-track';
+      state.isStepTrackEnabled = true;
+      vi.spyOn(Date, 'now').mockReturnValue(20_000_000);
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
+      updateHandler();
+      expect(document.querySelector('#antenna-mode')?.textContent).toBe('PROGRAM TRACK + STEP');
+    });
+  });
+
+  describe('alarms (same source as the ticker)', () => {
+    const sync = (now: number) => {
+      vi.spyOn(Date, 'now').mockReturnValue(now);
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
+      updateHandler();
+    };
+
+    it('lists every module alarm for the station, most severe first, and counts errors and warnings', () => {
+      (mockGroundStation.receivers[0].getStatusAlarms as Mock).mockReturnValue([{ severity: 'warning', message: 'RX lost lock' }]);
+      (mockGroundStation.antennas[0].getStatusAlarms as Mock).mockReturnValue([
+        { severity: 'info', message: 'LOOPBACK ENABLED' },
+        { severity: 'success', message: 'LOCKED ON SATELLITE' },
+      ]);
+      (mockGroundStation.transmitters[0].getStatusAlarms as Mock).mockReturnValue([{ severity: 'error', message: 'Modem 1 Faulted' }]);
+      (mockGroundStation.rfFrontEnds[0].getStatusAlarms as Mock).mockImplementation((rfCase: number) => (rfCase === 2 ? [{ severity: 'warning', message: 'LNB not locked' }] : []));
+
+      sync(30_000_000);
+
+      const messages = [...document.querySelectorAll('#alarm-list .alarm-message')].map((el) => el.textContent);
+      expect(messages).toEqual(['Modem 1 Faulted', 'LNB not locked', 'RX lost lock', 'LOOPBACK ENABLED']);
+      expect(document.querySelector('#alarm-count')?.textContent).toBe('3');
+      expect(document.querySelector('#alarm-list .no-alarms')).toBeNull();
+    });
+
+    it('says "No active alarms" when only advisories remain, and lists them', () => {
+      (mockGroundStation.antennas[0].getStatusAlarms as Mock).mockReturnValue([{ severity: 'info', message: 'LOOPBACK ENABLED' }]);
+
+      sync(40_000_000);
+
+      expect(document.querySelector('#alarm-list .no-alarms')?.textContent).toContain('No active alarms');
+      expect(document.querySelector('#alarm-list .alarm-message')?.textContent).toBe('LOOPBACK ENABLED');
+      expect(document.querySelector('#alarm-count')?.textContent).toBe('0');
     });
   });
 });

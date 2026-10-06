@@ -9,11 +9,13 @@ import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForS
  * step-track, and move-to-target are disabled in the UI. The dish is parked on
  * TIDEMARK-1. The operator commits to MANUAL, proves pointing on the beacon
  * (the only trustworthy source), holds the link, and coordinates the repair.
+ * The analyzer starts on the carrier view (1532 MHz / 50 MHz), so the beacon
+ * step is a real retune. The log step needs a typed Ops Log entry.
  *
  * Spec also asserts the ACU-fault UI gating: program-track button disabled,
  * MANUAL button still usable.
  */
-type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'set-manual-mode' | 'configure-speca' | 'verify-acu-gating' | 'auto';
+type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'set-manual-mode' | 'configure-speca' | 'verify-acu-gating' | 'ops-log' | 'auto';
 
 interface Scenario23Objective {
   id: string;
@@ -24,6 +26,7 @@ interface Scenario23Objective {
   stationId?: string;
   centerFrequencyMhz?: number;
   autoWaitSeconds?: number;
+  logText?: string;
 }
 
 const SCENARIO_23_OBJECTIVES: Scenario23Objective[] = [
@@ -107,7 +110,8 @@ const SCENARIO_23_OBJECTIVES: Scenario23Objective[] = [
     id: 'prove-carrier',
     title: 'Prove the Carrier',
     type: 'auto',
-    autoWaitSeconds: 5,
+    // Receiver reads latch after a 5 s observation dwell on RX Analysis
+    autoWaitSeconds: 7,
   },
   {
     id: 'instruments-not-feel-quiz',
@@ -139,7 +143,13 @@ const SCENARIO_23_OBJECTIVES: Scenario23Objective[] = [
     id: 'log-bypass',
     title: 'Log the Bypass',
     type: 'quiz',
-    correctAnswer: 'ACU fault 1358 (NOC-2026-2231); manual 1404, TM-1 held on sheet pointing, beacon + carrier verified on RF; not rebooted',
+    correctAnswer: 'ACU fault 1358 (NOC-2026-2231); to manual (time-stamped), TM-1 held on sheet pointing, beacon + carrier verified on RF; not rebooted',
+  },
+  {
+    id: 'log-bypass-typed',
+    title: 'Log the Bypass: typed Ops Log entry',
+    type: 'ops-log',
+    logText: 'ACU fault 1358: to manual, TM-1 on sheet pointing, beacon + carrier verified on RF; ACU not rebooted',
   },
 ];
 
@@ -175,6 +185,24 @@ async function configureSpeca(page: import('@playwright/test').Page, centerFrequ
   await page.waitForTimeout(500);
 }
 
+/**
+ * Type an entry into the Operations Log (sidebar log icon) and close it.
+ */
+async function typeOpsLogEntry(page: import('@playwright/test').Page, text: string): Promise<void> {
+  await page.locator('.ops-log-icon').first().click();
+  const input = page.locator('#ops-log-manual-input');
+  await expect(input).toBeVisible({ timeout: 5000 });
+  await input.fill(text);
+  await input.press('Enter');
+  await expect(page.locator('#ops-log-entries')).toContainText(text.slice(0, 20), { timeout: 5000 });
+  // Mission Complete closes the log itself when this entry finishes the scenario
+  await page
+    .locator('#ops-log-modal-close')
+    .click({ timeout: 3000 })
+    .catch(() => {});
+  await page.waitForTimeout(300);
+}
+
 async function executeObjective(page: import('@playwright/test').Page, missionControlPage: MissionControlPage, objective: Scenario23Objective): Promise<void> {
   switch (objective.type) {
     case 'quiz':
@@ -204,6 +232,10 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
 
     case 'configure-speca':
       await configureSpeca(page, objective.centerFrequencyMhz!);
+      break;
+
+    case 'ops-log':
+      await typeOpsLogEntry(page, objective.logText!);
       break;
 
     case 'auto':

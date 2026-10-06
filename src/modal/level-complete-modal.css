@@ -1,3 +1,13 @@
+/* Above every DraggableBox (z >= 10001), like the failure modal (nats-s24-F9) */
+#level-complete-modal-container {
+  z-index: 100000;
+}
+
+.complete-modal__finale {
+  margin: 0.25rem 0 0.75rem;
+  color: #ddd;
+}
+
 .complete-modal {
   text-align: center;
   padding: 1rem;

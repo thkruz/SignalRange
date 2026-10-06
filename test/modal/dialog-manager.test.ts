@@ -299,6 +299,65 @@ describe('DialogManager', () => {
     });
   });
 
+  describe('Click to Continue', () => {
+    const show = () => {
+      dialogManager.show('Test', Character.CHARLIE_BROOKS, '/audio/test.mp3');
+      return document.querySelector('.dialog-overlay') as HTMLElement;
+    };
+    const click = (overlay: HTMLElement) => {
+      overlay.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      overlay.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    };
+
+    it('ignores a click before the reveal delay so an in-flight click cannot dismiss it unread', () => {
+      const overlay = show();
+      click(overlay);
+      expect(dialogManager.currentAudioUrl).toBe('/audio/test.mp3');
+      expect(overlay.classList.contains('dialog-revealed')).toBe(false);
+    });
+
+    it('closes on a click after the reveal delay and shows the hint first', () => {
+      const overlay = show();
+      vi.advanceTimersByTime(DialogManager.REVEAL_DELAY_MS);
+      expect(overlay.classList.contains('dialog-revealed')).toBe(true);
+      click(overlay);
+      expect(dialogManager.currentAudioUrl).toBeNull();
+    });
+
+    it('closes on Space and Enter after the reveal delay, and ignores other keys', () => {
+      show();
+      vi.advanceTimersByTime(DialogManager.REVEAL_DELAY_MS);
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+      expect(dialogManager.currentAudioUrl).toBe('/audio/test.mp3');
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+      expect(dialogManager.currentAudioUrl).toBeNull();
+
+      vi.advanceTimersByTime(400);
+      show();
+      vi.advanceTimersByTime(DialogManager.REVEAL_DELAY_MS);
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      expect(dialogManager.currentAudioUrl).toBeNull();
+    });
+
+    it('does not close on a release whose press began outside the dialog', () => {
+      const overlay = show();
+      vi.advanceTimersByTime(DialogManager.REVEAL_DELAY_MS);
+      overlay.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+      expect(dialogManager.currentAudioUrl).toBe('/audio/test.mp3');
+    });
+
+    it('stops listening for keys once hidden', () => {
+      show();
+      vi.advanceTimersByTime(DialogManager.REVEAL_DELAY_MS);
+      dialogManager.hide();
+      vi.advanceTimersByTime(400);
+      const spy = vi.fn();
+      eventBus.on(Events.DIALOG_DISMISSED, spy);
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+      expect(spy).not.toHaveBeenCalled();
+    });
+  });
+
   describe('Auto Close Dialogs Mode', () => {
     it('should immediately hide dialog when AUTO_CLOSE_DIALOGS is true', () => {
       window.AUTO_CLOSE_DIALOGS = true;

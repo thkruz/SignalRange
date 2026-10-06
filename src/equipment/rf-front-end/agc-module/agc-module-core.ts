@@ -32,6 +32,13 @@ export interface AGCState extends RFFrontEndModuleState {
  * Position in signal chain: LNB → IF Filter → Notch Filter → AGC
  */
 export abstract class AGCModuleCore extends RFFrontEndModule<AGCState> {
+  /**
+   * Lowest input/output power the AGC detector reports (dBm). With no signals,
+   * or with signals far below the noise, the detector reads the noise floor
+   * rather than an impossible value such as -395 dBm.
+   */
+  static readonly DETECTOR_FLOOR_DBM = -120 as dBm;
+
   outputSignals: IfSignal[] = [];
 
   /**
@@ -75,7 +82,7 @@ export abstract class AGCModuleCore extends RFFrontEndModule<AGCState> {
 
     // Calculate total input power (sum of all signals in linear domain)
     const totalPowerLinear = inputs.reduce((sum, sig) => sum + 10 ** (sig.power / 10), 0);
-    this.state.inputPower = (totalPowerLinear > 0 ? 10 * Math.log10(totalPowerLinear) : -120) as dBm;
+    this.state.inputPower = AGCModuleCore.toDetectorReading_(totalPowerLinear);
 
     // Handle bypass mode - pass signals through unchanged
     if (this.state.isBypassed) {
@@ -114,7 +121,16 @@ export abstract class AGCModuleCore extends RFFrontEndModule<AGCState> {
 
     // Calculate actual output power
     const outputPowerLinear = this.outputSignals.reduce((sum, sig) => sum + 10 ** (sig.power / 10), 0);
-    this.state.outputPower = (outputPowerLinear > 0 ? 10 * Math.log10(outputPowerLinear) : -120) as dBm;
+    this.state.outputPower = AGCModuleCore.toDetectorReading_(outputPowerLinear);
+  }
+
+  /** Converts a summed linear power (mW) to dBm, floored at the detector floor. */
+  private static toDetectorReading_(powerLinear: number): dBm {
+    if (!(powerLinear > 0)) {
+      return AGCModuleCore.DETECTOR_FLOOR_DBM;
+    }
+
+    return Math.max(AGCModuleCore.DETECTOR_FLOOR_DBM, 10 * Math.log10(powerLinear)) as dBm;
   }
 
   /**
@@ -125,6 +141,11 @@ export abstract class AGCModuleCore extends RFFrontEndModule<AGCState> {
 
     if (this.state.isBypassed) {
       // No alarms when bypassed
+      return alarms;
+    }
+
+    // With the LNB unpowered there is no IF signal to level; max gain is expected, not a fault.
+    if (this.rfFrontEnd_?.lnbModule?.state.isPowered === false) {
       return alarms;
     }
 

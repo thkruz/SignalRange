@@ -68,7 +68,7 @@ export const scenario16Data: ScenarioData = {
   duration: '35-45 min',
   difficulty: 'advanced',
   missionType: 'Incident Response',
-  description: `Two minutes into your shift and the alarm board is lit up. BUC over-temperature, LNB reference unlocked, HPA overdriven - all on VT-01, all at once. The TIDEMARK-1 customer link is degraded and James Okafor from SeaLink is on the line.<br><br>None of these faults are related. You have to triage them in the right order: protect the equipment and the spectrum first, restore customer impact next, then methodically clear each fault.<br><br>Dana is in the admin office. She trusts you with this one.`,
+  description: `Two minutes into your shift and the alarm board is lit up. BUC over-temperature, LNB reference unlocked, HPA overdriven - all on VT-01, all at once. The TIDEMARK-1 customer link is degraded and James Okafor (Atlantic Shipping Alliance, SeaLink's anchor customer) is on the line.<br><br>None of these faults are related. You have to triage them in the right order: protect the equipment and the spectrum first, restore customer impact next, then methodically clear each fault.<br><br>Dana is in the admin office. She trusts you with this one.`,
   equipment: ['9-meter C-band Antenna', 'RF Front End', 'Spectrum Analyzer', 'RX/TX Modems', 'ME-02: Operational (TIDEMARK-2)'],
   timeLimitSeconds: 45 * 60, // 45 minutes
   settings: {
@@ -78,7 +78,9 @@ export const scenario16Data: ScenarioData = {
         ...vermontGroundStation,
         rfFrontEnds: [
           createRfFrontEnd(vermontGroundStation.rfFrontEnds[0], {
-            // BUC: over-temperature, drawing high current, not yet muted
+            // BUC: over-temperature, not yet muted. The heat comes from the
+            // 'vt-buc-overtemp' fault below; a seeded temperature is
+            // overwritten by the thermal model at once (nats-s16-F2/F7).
             buc: {
               isPowered: true,
               isMuted: false,
@@ -86,8 +88,6 @@ export const scenario16Data: ScenarioData = {
               loFrequency: 7000 as MHz,
               isExtRefLocked: true,
               gain: 23 as dB,
-              temperature: 72, // Over the 70°C alarm threshold
-              currentDraw: 4.8, // Above 4.5 A alarm threshold
             },
             // HPA: backoff has drifted down, output is overdriven
             hpa: {
@@ -122,6 +122,25 @@ export const scenario16Data: ScenarioData = {
     satellites: [tidemark1Satellite, tidemark2Satellite],
     missionBriefUrl: 'https://docs.signalrange.space/campaign-1/scenario-16?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
+    // Brief: Friday, 0934 Local
+    scenarioStartDate: '2026-02-20',
+    scenarioStartWallTime: '09:34:00',
+    // Degraded BUC cooling. At 23 dB gain the driven target is 43.4 + 30 =
+    // 73.4 degC, so the unit sits above the 70 degC alarm until muted; muted
+    // it settles toward 55 degC and passes 70 about a minute after the mute.
+    // The fault clears once the cooling step is done, so the unmute later in
+    // the shift does not re-trip it. Current draw has no fault hook: the
+    // panel reads a normal ~3 A throughout.
+    hardwareFaultEvents: [
+      {
+        id: 'vt-buc-overtemp',
+        groundStationId: 'VT-01',
+        target: 'buc-overtemp',
+        startTime: 0,
+        endAfterObjectiveId: 'navigate-rx-analysis',
+        params: { startTemperatureC: 72, deltaC: 30 },
+      },
+    ],
   },
   objectives: [
     // ============================================================
@@ -212,7 +231,7 @@ export const scenario16Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which alarms are active on VT-01 right now?',
             options: [
-              'BUC over-temperature and high current, LNB reference unlocked, HPA overdriven',
+              'BUC over-temperature, LNB reference unlocked, HPA overdriven',
               'BUC reference unlocked and high current, LNB over-temperature, HPA output disabled',
               'HPA over-temperature and high current, antenna tracking lost, BUC reference unlocked',
               'GPSDO in holdover and LNB reference unlocked, TX Modem 1 fault, HPA overdriven',
@@ -291,11 +310,14 @@ export const scenario16Data: ScenarioData = {
       nice: ['S0593', 'S0677'],
       title: 'Disable the HPA Output',
       description:
-        'Disable the HPA output to take the overdriven signal off the antenna. Amplifier comes down before its drive does - same sequencing rule as a planned power-down.',
+        'Disable the HPA output to take the overdriven signal off the antenna. Amplifier comes down before its drive does - same sequencing rule as a planned power-down. Timed: running out fails the shift.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['navigate-tx-chain'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
+      // An overdriven HPA is polluting the neighbours' spectrum: stopping it is
+      // the time-critical safety step of the shift
+      timeoutFails: true,
       conditions: [
         {
           type: 'tab-active',
@@ -335,12 +357,14 @@ export const scenario16Data: ScenarioData = {
     {
       id: 'mute-buc-for-cooldown',
       nice: ['S0677', 'T1314'],
-      title: 'Mute the BUC',
-      description: 'With the HPA output disabled, mute the BUC so the over-temperature module can begin cooling.',
+      title: 'Mute the BUC for Cooldown',
+      description: 'With the HPA output disabled, mute the BUC so the over-temperature module can begin cooling. Timed: running out fails the shift.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['disable-hpa-for-safety'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
+      // A driven BUC over 70 degC keeps climbing: the second safety step
+      timeoutFails: true,
       conditions: [
         {
           type: 'tab-active',
@@ -434,7 +458,7 @@ export const scenario16Data: ScenarioData = {
       id: 'wait-for-buc-cooling',
       nice: ['T1314', 'K0740'],
       title: 'Allow BUC to Cool',
-      description: 'With the BUC muted, the temperature will trend down. Wait for it to return below the 70°C threshold.',
+      description: 'With the BUC muted, watch the BUC temperature on TX Chain trend down. Wait for it to return below the 70°C threshold - about a minute.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['correct-hpa-backoff'],
       timeLimitSeconds: 5 * 60,
@@ -455,13 +479,13 @@ export const scenario16Data: ScenarioData = {
         {
           type: 'buc-temperature-normal',
           description: 'BUC Temperature Below 70°C',
-          params: { maxTemperature: 70 },
+          params: { maxTemperature: 70, requiresObservation: true, observationTab: 'tx-chain' },
           maintainUntilObjectiveComplete: true,
         },
         {
           type: 'buc-current-normal',
           description: 'BUC Current Draw Normal',
-          params: { maxCurrentDraw: 4.5 },
+          params: { maxCurrentDraw: 4.5, requiresObservation: true, observationTab: 'tx-chain' },
           maintainUntilObjectiveComplete: true,
         },
       ],
@@ -683,7 +707,7 @@ export const scenario16Data: ScenarioData = {
         },
         {
           type: 'status-check',
-          description: 'Spectrum Posture Confirmed',
+          description: 'Uplink Posture Read',
           params: {
             character: Character.SYSTEM,
             question: 'With back-off at 10 dB and the BUC cool, what does the uplink look like to neighboring transponders now?',
@@ -872,7 +896,8 @@ export const scenario16Data: ScenarioData = {
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/16/obj-mute-buc.mp3'),
       },
-      'verify-tx-output-clean': {
+      // James thanks you once he has been told, not before the board is swept
+      'customer-notification': {
         text: `
         <p>
           Service is back. Thank you. Let me know if it goes sideways again.
@@ -885,7 +910,7 @@ export const scenario16Data: ScenarioData = {
       'log-cascade-event': {
         text: `
         <p>
-          Three unrelated faults in two minutes, prioritized correctly, customer kept informed. That's the job at this level.
+          Three unrelated faults at once, prioritized correctly, customer kept informed. That's the job at this level.
         </p>
         <p>
           File the impact report before end of shift. Nice work.

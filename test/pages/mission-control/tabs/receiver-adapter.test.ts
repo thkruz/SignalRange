@@ -659,6 +659,67 @@ describe('ReceiverAdapter', () => {
       const statusBar = containerEl.querySelector('#status-bar') as HTMLElement;
       expect(statusBar.textContent).toContain('Degraded margin');
     });
+
+    it('should not claim Good margin while the payload reports frame sync loss', () => {
+      mockReceiver.getSignalsInBandwidth.mockReturnValue({
+        hasCarrier: true,
+        hasLock: true,
+        cnRatio_dB: 15,
+        effectiveCnRatio_dB: 15,
+      });
+      adapter.setPayloadStatusProvider(() => ({ frameSyncLocked: false, rsUncorrectableBlocks: 0, channelStatus: 'No Lock' }));
+      (adapter as any).lastStateString = '';
+      (adapter as any).syncDomWithState_();
+
+      const statusBar = containerEl.querySelector('#status-bar') as HTMLElement;
+      expect(statusBar.textContent).not.toContain('Good margin');
+      expect(statusBar.textContent).toContain('Frame sync lost');
+      expect(statusBar.className).toContain('alert-warning');
+    });
+
+    it('should not claim Good margin while the payload reports RS overload', () => {
+      mockReceiver.getSignalsInBandwidth.mockReturnValue({
+        hasCarrier: true,
+        hasLock: true,
+        cnRatio_dB: 15,
+        effectiveCnRatio_dB: 15,
+      });
+      adapter.setPayloadStatusProvider(() => ({ frameSyncLocked: true, rsUncorrectableBlocks: 12, channelStatus: 'Critical' }));
+      (adapter as any).lastStateString = '';
+      (adapter as any).syncDomWithState_();
+
+      const statusBar = containerEl.querySelector('#status-bar') as HTMLElement;
+      expect(statusBar.textContent).toContain('RS overload');
+    });
+
+    it('should agree with the alarm badge: no alarm at Good margin, even below 15 dB', () => {
+      mockReceiver.getSignalsInBandwidth.mockReturnValue({
+        hasCarrier: true,
+        hasLock: true,
+        cnRatio_dB: 10,
+        effectiveCnRatio_dB: 10,
+      });
+      adapter.setPayloadStatusProvider(() => ({ frameSyncLocked: true, rsUncorrectableBlocks: 0, channelStatus: 'Good' }));
+      (adapter as any).lastStateString = '';
+      (adapter as any).syncDomWithState_();
+
+      const statusBar = containerEl.querySelector('#status-bar') as HTMLElement;
+      expect(statusBar.textContent).toContain('Good margin');
+      expect((adapter as any).getAlarmsFromReceiver_()).toEqual([]);
+    });
+
+    it('should raise a warning (not an error) in the degraded-margin band', () => {
+      mockReceiver.getSignalsInBandwidth.mockReturnValue({
+        hasCarrier: true,
+        hasLock: true,
+        cnRatio_dB: 6,
+        effectiveCnRatio_dB: 6,
+      });
+
+      const alarms = (adapter as any).getAlarmsFromReceiver_();
+      expect(alarms).toHaveLength(1);
+      expect(alarms[0].severity).toBe('warning');
+    });
   });
 
   describe('video monitor', () => {
@@ -687,6 +748,28 @@ describe('ReceiverAdapter', () => {
 
       const monitor = containerEl.querySelector('#video-monitor') as HTMLElement;
       expect(monitor.classList.contains('signal-no-video')).toBe(true);
+    });
+
+    it('should mark a visible carrier without modem lock as no-lock (CARRIER PRESENT, not SIGNAL LOCKED)', () => {
+      mockReceiver.getVisibleSignals.mockReturnValue([{ signalId: '1', power: -50, frequency: 1200, feed: '' }]);
+      mockReceiver.getSignalsInBandwidth.mockReturnValue({ hasCarrier: true, hasLock: false, cnRatio_dB: 2, effectiveCnRatio_dB: 2 });
+      (adapter as any).lastStateString = '';
+      (adapter as any).syncDomWithState_();
+
+      const monitor = containerEl.querySelector('#video-monitor') as HTMLElement;
+      expect(monitor.classList.contains('signal-no-video')).toBe(true);
+      expect(monitor.classList.contains('signal-no-lock')).toBe(true);
+    });
+
+    it('should drop the no-lock modifier once the modem locks', () => {
+      mockReceiver.getVisibleSignals.mockReturnValue([{ signalId: '1', power: -50, frequency: 1200, feed: '' }]);
+      mockReceiver.getSignalsInBandwidth.mockReturnValue({ hasCarrier: true, hasLock: true, cnRatio_dB: 12, effectiveCnRatio_dB: 12 });
+      (adapter as any).lastStateString = '';
+      (adapter as any).syncDomWithState_();
+
+      const monitor = containerEl.querySelector('#video-monitor') as HTMLElement;
+      expect(monitor.classList.contains('signal-no-video')).toBe(true);
+      expect(monitor.classList.contains('signal-no-lock')).toBe(false);
     });
 
     it('should show signal-found when video feed present', () => {

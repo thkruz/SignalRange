@@ -167,6 +167,7 @@ describe('StepTrackController', () => {
           lnbModule: {
             state: {
               loFrequency: 5150, // 5150 MHz LO
+              isPowered: true,
             },
           },
           agcModule: {
@@ -241,6 +242,32 @@ describe('StepTrackController', () => {
         }
 
         expect(antenna.state.isBeaconLocked).toBe(true);
+      });
+
+      it('reports no beacon (null, not a huge negative C/N) with the LNB unpowered (s02-F7)', () => {
+        mockRfFrontEnd.lnbModule.state.isPowered = false;
+        // An unpowered LNB passes carriers at -300 dB gain
+        mockRfFrontEnd.agcModule.outputSignals = [{ frequency: 5150e6 - 3_948_000_000, power: -387, bandwidth: 25000 }];
+
+        controller.start();
+        for (let i = 0; i < 65; i++) {
+          controller.update();
+        }
+
+        expect(antenna.state.beaconCN).toBeNull();
+        expect(antenna.state.beaconPower).toBeNull();
+        expect(antenna.state.isBeaconLocked).toBe(false);
+      });
+
+      it('reports no beacon when the carrier sits far below the C/N floor', () => {
+        mockRfFrontEnd.agcModule.outputSignals = [{ frequency: 5150e6 - 3_948_000_000, power: -387, bandwidth: 25000 }];
+
+        controller.start();
+        for (let i = 0; i < 65; i++) {
+          controller.update();
+        }
+
+        expect(antenna.state.beaconCN).toBeNull();
       });
 
       it('should auto-disable when C/N is too low', () => {

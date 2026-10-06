@@ -38,9 +38,11 @@ import { aurora7Satellite, tidemark1Satellite } from './satellites';
  * Francis (board-level, rare). All quizzes SYSTEM. 5 clips.
  *
  * Sim notes:
- *   - AURORA-7 starts on program-track; player engages step-track for the
- *     final ops run (the beacon is weak - end-of-life). The data-collection
- *     phase is real; the rest is analysis quizzes that build the report.
+ *   - VT-01 starts on its default target (TIDEMARK-1); the player selects
+ *     AURORA-7 and moves to it on program-track, then engages step-track for
+ *     the final ops run (the beacon is weak - end-of-life). The data-collection
+ *     phase is real (beacon present at 1085 MHz IF, modem 1 locked on the
+ *     1422 MHz carrier); the rest is analysis quizzes that build the report.
  */
 
 export const scenario22Data: ScenarioData = {
@@ -85,6 +87,8 @@ export const scenario22Data: ScenarioData = {
       title: 'AURORA-7 End-of-Life Assessment',
       description: "Operations recommendation for the SeaLink board - built from today's data run and trend analysis.",
     },
+    scenarioStartDate: '2026-03-16', // Monday, per the brief
+    scenarioStartWallTime: '09:30:00',
     missionBriefUrl: 'https://docs.signalrange.space/campaign-1/scenario-22?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
   },
@@ -158,7 +162,7 @@ export const scenario22Data: ScenarioData = {
       id: 'acquire-aurora',
       nice: ['S0421', 'K1032'],
       title: 'Acquire AURORA-7',
-      description: 'Program-track to AURORA-7 (NORAD 28899) for the final data run.',
+      description: 'In ACU Control, select AURORA-7 (NORAD 28899) as the target and Move to Target on program-track for the final data run.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['select-vermont-station'],
       timeLimitSeconds: 4 * 60,
@@ -217,7 +221,8 @@ export const scenario22Data: ScenarioData = {
       id: 'measure-beacon',
       nice: ['T1429', 'K0773'],
       title: "Measure Today's Beacon",
-      description: "Tune the spectrum analyzer to the beacon IF and capture today's level - the newest point on the trend.",
+      description:
+        'On RX Analysis, center the spectrum analyzer on the AURORA-7 beacon at 1085 MHz IF and confirm it is there, then confirm receiver modem 1 is locked on the carrier (1422 MHz IF) with C/N of at least 8 dB. The -4.0 dB trend point is the monthly median from the beacon log.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['engage-step-track'],
       timeLimitSeconds: 3 * 60,
@@ -246,6 +251,20 @@ export const scenario22Data: ScenarioData = {
             signalId: 'AURORA-7-Beacon',
             minPower: -110 as dBm,
           },
+          mustMaintain: true,
+        },
+        // Backs the report's "carrier C/N above demod threshold" line, which
+        // had no step behind it (nats-s22-F5)
+        {
+          type: 'receiver-signal-locked',
+          description: 'Carrier Locked (modem 1, 1422 MHz)',
+          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis', observationDwellSeconds: 5 },
+          mustMaintain: true,
+        },
+        {
+          type: 'receiver-snr-threshold',
+          description: 'Carrier C/N ≥ 8 dB',
+          params: { minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis', observationDwellSeconds: 5 },
           mustMaintain: true,
         },
       ],
@@ -311,7 +330,7 @@ export const scenario22Data: ScenarioData = {
               'Accelerating - the last 6 months lost ~1.6 dB against ~1.3 dB in the 6 before; a steepening curve, not a straight line',
               'Linear - roughly 0.3 dB per month from the 12-month point to today; a straight line, so extrapolation is safe a year out',
               'Flattening - the first 12 months lost 1.1 dB and the last 6 only 1.6 dB more; the decline is slowing as the array settles',
-              'Random - three points a year apart are noise, not a trend; the -4.0 dB today could be rain fade on a single measurement',
+              'Random - three points six months apart are noise, not a trend; the -4.0 dB today could be rain fade on a single measurement',
             ],
             correctIndex: 0,
             explanation:
@@ -350,7 +369,7 @@ export const scenario22Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'The S18/S23 lesson pays off: an inclined bird is only usable while step-track can hold its beacon, and service quality collapses once it cannot. The cliff is tracking, not transponder death. The recommendation hinges on when the declining beacon crosses the trackability floor, not on the transponder.',
+              'The inclined-orbit lesson pays off: an inclined bird is only usable while step-track can hold its beacon, and service quality collapses once it cannot. The cliff is tracking, not transponder death. The recommendation hinges on when the declining beacon crosses the trackability floor, not on the transponder.',
             pointPenalty: 5,
             documentSection: 'Risk',
             documentLine:
@@ -499,6 +518,8 @@ export const scenario22Data: ScenarioData = {
             explanation:
               'Measured and projected carry different weight; conflating them is how a report loses credibility in a quarter. Label each so the board knows which is which: it can act on a clearly-labeled projection - it cannot trust a number it later learns was a guess dressed as a fact.',
             pointPenalty: 5,
+            documentSection: 'Confidence',
+            documentLine: 'Measured: today -4.0 dB and the history table. Projected: sunset window, under stated assumptions.',
           },
           mustMaintain: false,
         },
@@ -514,7 +535,7 @@ export const scenario22Data: ScenarioData = {
       id: 'review-report',
       nice: ['T1606', 'T1429'],
       title: 'Review the Assessment',
-      description: 'Open the Working Document and confirm the report is board-ready.',
+      description: 'Review the Working Document: what makes it board-ready?',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['false-precision-quiz'],
       timeLimitSeconds: 3 * 60,
@@ -547,7 +568,7 @@ export const scenario22Data: ScenarioData = {
       id: 'log-delivery',
       nice: ['K0645', 'T1606'],
       title: 'Deliver and Log',
-      description: 'Log the deliverable to the board.',
+      description: 'Choose the entry that closes the tasking, then type it in the Ops Log (sidebar): name AURORA-7 and the recommendation (migrate / sunset).',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['review-report'],
       timeLimitSeconds: 2 * 60,
@@ -570,6 +591,12 @@ export const scenario22Data: ScenarioData = {
               "The log mirrors the report's spine: data (beacon -4.0 dB, step-track held), trend, binding constraint (beacon trackability), recommendation, assumptions stated, measured vs projected labeled - delivered via Martin. Anyone reading it later knows exactly what was delivered and on what basis.",
             pointPenalty: 5,
           },
+          mustMaintain: false,
+        },
+        {
+          type: 'ops-log-entry',
+          description: 'Delivery Entry Typed in the Ops Log',
+          params: { logKeywords: ['aurora', 'migrat|sunset|retire'], logMinLength: 20 },
           mustMaintain: false,
         },
       ],

@@ -11,7 +11,7 @@ import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForS
  * verifies the report content in the Working Document before the final quizzes
  * (the Mission Complete modal overlays the sidebar afterward).
  */
-type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'repoint-program-track' | 'set-step-track' | 'configure-speca' | 'verify-working-doc' | 'auto';
+type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'repoint-program-track' | 'set-step-track' | 'configure-speca' | 'verify-working-doc' | 'ops-log' | 'auto';
 
 interface Scenario22Objective {
   id: string;
@@ -23,6 +23,7 @@ interface Scenario22Objective {
   satelliteNoradId?: string;
   centerFrequencyMhz?: number;
   autoWaitSeconds?: number;
+  logText?: string;
 }
 
 const SCENARIO_22_OBJECTIVES: Scenario22Objective[] = [
@@ -136,6 +137,12 @@ const SCENARIO_22_OBJECTIVES: Scenario22Objective[] = [
     type: 'quiz',
     correctAnswer: 'AURORA-7 EOL assessment to board: beacon -4.0 dB, trend accelerating; migrate now, sunset ~1-2 quarters, trigger at tracking floor',
   },
+  {
+    id: 'log-delivery-typed',
+    title: 'Deliver and Log: typed Ops Log entry',
+    type: 'ops-log',
+    logText: 'AURORA-7 EOL assessment to board: migrate now, sunset 1-2 quarters, trigger at step-track floor',
+  },
 ];
 
 // ============================================================
@@ -194,7 +201,26 @@ async function configureSpeca(page: import('@playwright/test').Page, centerFrequ
   await expect(centerFreqInput).toBeVisible({ timeout: 5000 });
   await centerFreqInput.fill(centerFrequencyMhz.toString());
   await centerFreqInput.press('Tab');
-  await page.waitForTimeout(500);
+  // The carrier lock / C/N reads latch after a 5 s observation dwell
+  await page.waitForTimeout(6000);
+}
+
+/**
+ * Type an entry into the Operations Log (sidebar log icon) and close it.
+ */
+async function typeOpsLogEntry(page: import('@playwright/test').Page, text: string): Promise<void> {
+  await page.locator('.ops-log-icon').first().click();
+  const input = page.locator('#ops-log-manual-input');
+  await expect(input).toBeVisible({ timeout: 5000 });
+  await input.fill(text);
+  await input.press('Enter');
+  await expect(page.locator('#ops-log-entries')).toContainText(text.slice(0, 20), { timeout: 5000 });
+  // Mission Complete closes the log itself when this entry finishes the scenario
+  await page
+    .locator('#ops-log-modal-close')
+    .click({ timeout: 3000 })
+    .catch(() => {});
+  await page.waitForTimeout(300);
 }
 
 async function verifyWorkingDocument(page: import('@playwright/test').Page): Promise<void> {
@@ -205,8 +231,8 @@ async function verifyWorkingDocument(page: import('@playwright/test').Page): Pro
   const docBox = page.locator('#draggable-html-box-working-document');
   await expect(docBox).toBeVisible({ timeout: 5000 });
 
-  // 7 documentLine quizzes passed by this point
-  await expect(docBox).toContainText('6 entries');
+  // 7 documentLine quizzes passed by this point (false-precision adds the Confidence line)
+  await expect(docBox).toContainText('7 entries');
   await expect(docBox).toContainText('Recommendation');
   await expect(docBox).toContainText('Binding constraint = beacon trackability');
   await expect(docBox).toContainText('Assumptions');
@@ -251,6 +277,10 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
 
     case 'verify-working-doc':
       await verifyWorkingDocument(page);
+      break;
+
+    case 'ops-log':
+      await typeOpsLogEntry(page, objective.logText!);
       break;
 
     case 'auto':

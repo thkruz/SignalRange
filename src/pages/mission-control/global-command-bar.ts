@@ -626,7 +626,7 @@ export class GlobalCommandBar {
       let activeObjectiveTimer: { time: number; title: string } | null = null;
       let failedObjective: { title: string } | null = null;
       let passedObjective: { title: string } | null = null;
-
+      let overtimeObjective: { title: string } | null = null;
       if (objectivesManager) {
         // Check for quiz passed state first
         if (objectivesManager.isQuizPassed()) {
@@ -637,6 +637,11 @@ export class GlobalCommandBar {
           }
         } else {
           const states = objectivesManager.getObjectiveStates();
+          // A non-fatal objective whose time ran out stays open in overtime
+          const overtimeState = states.find((s) => s.timedOut && s.isActive && !s.isCompleted && !s.isFailed);
+          if (overtimeState) {
+            overtimeObjective = { title: overtimeState.objective.title };
+          }
           for (const state of states) {
             // Check for failed objectives first
             if (state.isFailed && state.objective.timeLimitSeconds !== undefined) {
@@ -697,6 +702,14 @@ export class GlobalCommandBar {
         } else {
           this.objectiveTimerEl_.classList.remove('timer-warning', 'timer-urgent', 'timer-unlimited', 'timer-failed', 'timer-passed');
         }
+      } else if (overtimeObjective) {
+        // Time ran out on a non-fatal objective: it still has to be done
+        if (valueEl) {
+          valueEl.textContent = 'OVERTIME';
+        }
+        this.objectiveTimerEl_.title = `Time ran out on ${overtimeObjective.title}. Points were deducted; finish it to carry on.`;
+        this.objectiveTimerEl_.classList.add('timer-urgent');
+        this.objectiveTimerEl_.classList.remove('timer-warning', 'timer-unlimited', 'timer-failed', 'timer-passed');
       } else {
         // No active timed objective - show unlimited indicator
         if (valueEl) {

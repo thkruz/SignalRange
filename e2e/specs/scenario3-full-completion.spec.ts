@@ -315,7 +315,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     title: 'Configure Transmitter Modem',
     type: 'configure-tx-modem',
     txModemConfig: {
-      frequency: 1094, // MHz
+      frequency: 1057, // MHz (TM-1 TP-1: 7000 - 1057 = 5943 MHz)
       bandwidth: 36, // MHz
       power: -7, // dBm
       modulation: 'QPSK',
@@ -1179,6 +1179,21 @@ test.describe('Scenario 3 Full Completion', () => {
   });
 
   test('Objective: Document Handover Event', async () => {
+    // The objective also needs a typed Ops Log entry (ops-log-entry condition)
+    await page.locator('.ops-log-icon').first().click();
+    const logInput = page.locator('#ops-log-manual-input');
+    await expect(logInput).toBeVisible({ timeout: 5000 });
+    const logText = 'Snow degraded VT-01 link; handover of TIDEMARK-1 to ME-02 complete, Vermont stowed.';
+    await logInput.fill(logText);
+    await logInput.press('Enter');
+    await expect(page.locator('#ops-log-entries')).toContainText(logText.slice(0, 20), { timeout: 5000 });
+    // Mission Complete closes the log itself when this entry finishes the scenario
+    await page
+      .locator('#ops-log-modal-close')
+      .click({ timeout: 3000 })
+      .catch(() => {});
+    await page.waitForTimeout(300);
+
     // This objective has TWO quiz conditions but they may appear in different order.
     // The second quiz (Purpose) appears first in the UI with letter prefixes.
     const purposeQuiz = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'document-handover-event-quiz1')!;

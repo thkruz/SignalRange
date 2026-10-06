@@ -58,6 +58,7 @@ describe('BUCAdapter', () => {
       handleLoopbackToggle: vi.fn(),
       getActiveInjectionMode: vi.fn().mockReturnValue('low'),
       getAlarms: vi.fn().mockReturnValue([]),
+      hasRfOutput: vi.fn(() => mockBucModule.state.isPowered && !mockBucModule.state.isMuted && mockBucModule.outputSignals.length > 0),
     } as unknown as Mocked<BUCModuleCore>;
 
     // Setup container with required DOM elements
@@ -278,6 +279,70 @@ describe('BUCAdapter', () => {
     it('should have sideband status element', () => {
       const status = containerEl.querySelector('#buc-sideband-status') as HTMLElement;
       expect(status).not.toBeNull();
+    });
+  });
+
+  describe('staged edits, switch sync and P1dB margin', () => {
+    const gainInput = () => containerEl.querySelector('#buc-gain') as HTMLInputElement;
+    const applyBtn = () => containerEl.querySelector('#buc-apply-btn') as HTMLButtonElement;
+    const stateHandler = () => mockEventBus.on.mock.calls.find((c: unknown[]) => c[0] === Events.RF_FE_BUC_CHANGED)?.[1];
+    const updateHandler = () => mockEventBus.on.mock.calls.find((c: unknown[]) => c[0] === Events.UPDATE)?.[1];
+
+    it('keeps a pending gain through a mute toggle and a state event', () => {
+      (containerEl.querySelector('#buc-gain-inc-coarse') as HTMLButtonElement).click(); // 58 -> 59 staged
+
+      const muteSwitch = containerEl.querySelector('#buc-mute') as HTMLInputElement;
+      muteSwitch.checked = true;
+      muteSwitch.dispatchEvent(new Event('change'));
+      stateHandler()({ ...mockBucModule.state, temperature: 50 });
+
+      expect(gainInput().value).toBe('59');
+      expect(gainInput().classList.contains('is-pending')).toBe(true);
+      expect(applyBtn().classList.contains('is-pending')).toBe(true);
+    });
+
+    it('clears the pending style on Apply', () => {
+      (containerEl.querySelector('#buc-gain-inc-coarse') as HTMLButtonElement).click();
+      mockBucModule.handleGainChange.mockImplementation((v: number) => {
+        mockBucModule.state.gain = v;
+      });
+
+      applyBtn().click();
+
+      expect(gainInput().value).toBe('59');
+      expect(gainInput().classList.contains('is-pending')).toBe(false);
+      expect(applyBtn().classList.contains('is-pending')).toBe(false);
+    });
+
+    it('syncs mute, power and loopback switches from external state on the throttled update', () => {
+      mockBucModule.state.isMuted = true;
+      mockBucModule.state.isLoopback = true;
+
+      vi.spyOn(Date, 'now').mockReturnValue(5000);
+      updateHandler()();
+
+      expect((containerEl.querySelector('#buc-mute') as HTMLInputElement).checked).toBe(true);
+      expect((containerEl.querySelector('#buc-loopback') as HTMLInputElement).checked).toBe(true);
+      expect((containerEl.querySelector('#buc-power') as HTMLInputElement).checked).toBe(true);
+    });
+
+    it('shows "--" P1dB margin when muted', () => {
+      mockBucModule.state.isMuted = true;
+      mockBucModule.state.outputPower = -120;
+
+      vi.spyOn(Date, 'now').mockReturnValue(6000);
+      updateHandler()();
+
+      expect((containerEl.querySelector('#buc-p1db-margin-display') as HTMLElement).textContent).toBe('-- dB');
+    });
+
+    it('shows "--" P1dB margin when there is no RF output', () => {
+      mockBucModule.outputSignals = [];
+
+      vi.spyOn(Date, 'now').mockReturnValue(7000);
+      updateHandler()();
+
+      expect((containerEl.querySelector('#buc-p1db-margin-display') as HTMLElement).textContent).toBe('-- dB');
     });
   });
 

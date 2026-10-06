@@ -135,6 +135,21 @@ describe('AGCModuleCore', () => {
       expect(agcModule.state.inputPower).toBe(-120);
     });
 
+    it('should floor the input reading at -120 dBm for vanishingly weak signals', () => {
+      const buried: IfSignal = {
+        frequency: 1200e6,
+        bandwidth: 1e6,
+        power: -395 as dBm,
+        origin: SignalOrigin.NOTCH_FILTER,
+      } as unknown as IfSignal;
+      vi.spyOn(agcModule, 'inputSignals', 'get').mockReturnValue([buried]);
+
+      agcModule.update();
+
+      expect(agcModule.state.inputPower).toBe(AGCModuleCore.DETECTOR_FLOOR_DBM);
+      expect(agcModule.state.outputPower).toBeGreaterThanOrEqual(AGCModuleCore.DETECTOR_FLOOR_DBM);
+    });
+
     it('should apply gain to all output signals', () => {
       const mockSignal: IfSignal = {
         frequency: 1500e6,
@@ -283,6 +298,15 @@ describe('AGCModuleCore', () => {
       expect(alarms).toHaveLength(1);
       expect(alarms[0]).toContain('min gain');
       expect(alarms[0]).toContain('interference');
+    });
+
+    it('should not raise the max-gain alarm while the LNB is unpowered', () => {
+      agcModule.state.isBypassed = false;
+      agcModule.state.currentGain = 30 as dB;
+      agcModule.state.maxGain = 30 as dB;
+      rfFrontEnd.lnbModule.state.isPowered = false;
+
+      expect(agcModule.getAlarms()).toEqual([]);
     });
 
     it('should return empty array when gain is within normal range', () => {

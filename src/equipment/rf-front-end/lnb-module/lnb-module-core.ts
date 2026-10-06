@@ -104,15 +104,22 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
     // Check for alarms
     this.checkAlarms_();
 
-    // Calculate post-LNA signals (apply gain if powered)
-    this.postLNASignals = this.rxSignalsIn.map((sig) => {
-      const gain = this.state.isPowered ? this.state.gain : -300;
-      return {
-        ...sig,
-        power: sig.power + gain,
-        origin: SignalOrigin.LOW_NOISE_AMPLIFIER,
-      } as RfSignal;
-    });
+    // An unpowered LNB passes nothing: no LNA gain, no mixer, no IF output.
+    if (!this.state.isPowered) {
+      this.postLNASignals = [];
+      this.ifSignals = [];
+      return;
+    }
+
+    // Calculate post-LNA signals (apply LNA gain)
+    this.postLNASignals = this.rxSignalsIn.map(
+      (sig) =>
+        ({
+          ...sig,
+          power: sig.power + this.state.gain,
+          origin: SignalOrigin.LOW_NOISE_AMPLIFIER,
+        }) as RfSignal
+    );
 
     // Calculate IF signals after LNB based on LO frequency.
     // Direct sampling (SDR): RF passes through unmixed with a wide tuner
@@ -120,31 +127,42 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
     const passbandLow = this.state.isDirectSampling ? DIRECT_SAMPLING_PASSBAND_LOW_HZ : 950e6;
     const passbandHigh = this.state.isDirectSampling ? DIRECT_SAMPLING_PASSBAND_HIGH_HZ : 2150e6;
 
-    this.ifSignals = this.postLNASignals.map((sig) => {
+    const ifSignals: IfSignal[] = [];
+
+    for (const sig of this.postLNASignals) {
       const ifFreq = this.calculateIfFrequency(sig.frequency);
-
-      // If frequency is outside the passband, drop signal 40 dB to simulate the bandpass filters
-      let filteredPower = ifFreq < passbandLow || ifFreq > passbandHigh ? sig.power - 40 : sig.power;
-
-      // If it is on the edge and the bandwidth causes it to partially roll off, apply partial attenuation
       const halfBw = sig.bandwidth / 2;
-      if (ifFreq - halfBw < passbandLow) {
-        const overlapHz = passbandLow - (ifFreq - halfBw);
-        const overlapFraction = overlapHz / sig.bandwidth;
-        filteredPower -= 40 * overlapFraction;
-      } else if (ifFreq + halfBw > passbandHigh) {
-        const overlapHz = ifFreq + halfBw - passbandHigh;
-        const overlapFraction = overlapHz / sig.bandwidth;
-        filteredPower -= 40 * overlapFraction;
+      const lowEdge = ifFreq - halfBw;
+      const highEdge = ifFreq + halfBw;
+
+      // A carrier whose whole occupied bandwidth falls outside the IF passband
+      // does not reach the IF output at all.
+      if (highEdge <= passbandLow || lowEdge >= passbandHigh) {
+        continue;
       }
 
-      return {
+      // Partial band-edge roll-off: attenuate by the fraction of the carrier's
+      // bandwidth that lies outside the passband (clamped to [0, 1]).
+      let outsideHz = 0;
+
+      if (lowEdge < passbandLow) {
+        outsideHz += passbandLow - lowEdge;
+      }
+      if (highEdge > passbandHigh) {
+        outsideHz += highEdge - passbandHigh;
+      }
+
+      const outsideFraction = sig.bandwidth > 0 ? Math.min(1, Math.max(0, outsideHz / sig.bandwidth)) : 0;
+
+      ifSignals.push({
         ...sig,
         frequency: ifFreq,
-        power: filteredPower,
+        power: sig.power - 40 * outsideFraction,
         origin: SignalOrigin.LOW_NOISE_BLOCK,
-      } as IfSignal;
-    });
+      } as IfSignal);
+    }
+
+    this.ifSignals = ifSignals;
   }
 
   get rxSignalsIn(): RfSignal[] {

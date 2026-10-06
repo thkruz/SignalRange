@@ -66,11 +66,13 @@ export const scenario11Data: ScenarioData = {
   duration: '25-30 min',
   difficulty: 'intermediate',
   missionType: 'Planned Operations',
-  description: `Scheduled maintenance window opens at 10:00 for HPA waveguide gasket inspection on VT-01. Two hours of downtime, pre-coordinated with Maine.<br><br>Catherine has ME-02 standing by - already tracking TIDEMARK-1 in parallel, RX hot, waiting on your commit. Your job: verify her receive side, stage ME-02's transmit chain (cold - the transfer swaps RF authority), execute the handover, then safe VT-01 for the maintenance crew.<br><br>No fire, no weather, no surprise. This is procedural work and the grade is cleanliness. Maintenance crew arrives in thirty minutes.`,
+  description: `Scheduled maintenance window opens at 10:00 for HPA waveguide gasket inspection on VT-01, with the gasket replacement booked for next Tuesday's window. Maine holds TIDEMARK-1 until VT-01 is back in service.<br><br>Catherine has ME-02 standing by - already tracking TIDEMARK-1 in parallel, RX hot, waiting on your commit. Your job: verify her receive side, stage ME-02's transmit chain (cold - the transfer swaps RF authority), execute the handover, then safe VT-01 for the maintenance crew.<br><br>No fire, no weather, no surprise. This is procedural work and the grade is cleanliness. Maintenance crew arrives in thirty minutes.`,
   equipment: ['9-meter C-band Antenna', 'RF Front End', 'Spectrum Analyzer', 'RX/TX Modems', 'ME-02: Operational - RX Standing By'],
   timeLimitSeconds: 30 * 60, // 30 minutes
   settings: {
     isSync: true,
+    scenarioStartDate: '2026-02-18',
+    scenarioStartWallTime: '09:30:00',
     groundStations: [
       // VT-01: healthy, owns TIDEMARK-1 traffic, about to hand off
       {
@@ -156,7 +158,8 @@ export const scenario11Data: ScenarioData = {
                   origin: SignalOrigin.TRANSMITTER,
                   noiseFloor: null,
                   gainInPath: 0 as dBi,
-                  frequency: 1094e6 as IfFrequency,
+                  // D5 frequency plan: BUC LO 7000 (LSB) - 1057 = 5943 MHz, TM-1 TP-1
+                  frequency: 1057e6 as IfFrequency,
                   power: -7 as dBm,
                   bandwidth: 36e6 as Hertz,
                   modulation: 'QPSK' as ModulationType,
@@ -220,13 +223,14 @@ export const scenario11Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What is the planned outcome of this shift?',
             options: [
-              'TIDEMARK-1 traffic moves to ME-02 for a 2-hour VT-01 maintenance window, then comes back next shift',
-              'TIDEMARK-1 traffic moves to ME-02 permanently after the VT-01 maintenance window, then VT-01 is decommissioned',
-              'TIDEMARK-1 traffic is taken off the air for the 2-hour VT-01 maintenance window, then comes back next shift',
-              'All VT-01 satellites move to ME-02 for the 2-hour VT-01 maintenance window, then come back next shift',
+              'TIDEMARK-1 traffic moves to ME-02 for the VT-01 maintenance, then comes back once the crew signs the work off',
+              'TIDEMARK-1 traffic moves to ME-02 permanently after the VT-01 maintenance, then VT-01 is decommissioned',
+              'TIDEMARK-1 traffic is taken off the air for the VT-01 maintenance, then comes back once the crew signs the work off',
+              'All VT-01 satellites move to ME-02 for the VT-01 maintenance, then come back once the crew signs the work off',
             ],
             correctIndex: 0,
-            explanation: 'Planned handover for a maintenance window. ME-02 holds TM-1 while the crew works VT-01. Return to service is the next shift.',
+            explanation:
+              'Planned handover for maintenance. ME-02 holds TM-1 while the crew works VT-01: inspection today, gasket replacement next Tuesday. Return to service follows the crew sign-off.',
             pointPenalty: 0,
           },
           mustMaintain: false,
@@ -749,12 +753,18 @@ export const scenario11Data: ScenarioData = {
       id: 'log-handover-entry',
       nice: ['K0645', 'T0129'],
       title: 'Log the Handover',
-      description: 'Select the correct entry for the operations log.',
+      description: 'Type the handover into the Operations Log (log icon in the station sidebar): who has TM-1 now and the state VT-01 is left in. Then pick the matching log line.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['vt-final-rf-safety-check'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
+        {
+          type: 'ops-log-entry',
+          description: 'Handover Typed in Ops Log',
+          params: { logKeywords: ['me-02|maine', 'safe|maintenance'], logMinLength: 20 },
+          mustMaintain: false,
+        },
         {
           type: 'status-check',
           description: 'Handover Log Entry',
@@ -762,9 +772,9 @@ export const scenario11Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which line correctly records this handover in the operations log?',
             options: [
-              '1000 - Planned TM-1 handover to ME-02 complete. VT-01 safed, antenna at maintenance position, crew on-site. Return to service next shift.',
+              '1000 - Planned TM-1 handover to ME-02 complete. VT-01 safed, antenna at maintenance position, crew on-site. Return to service after crew sign-off.',
               '1000 - Emergency TM-1 handover to ME-02 complete. VT-01 fault cause unknown, antenna still on TM-1, crew on-site. Investigation pending.',
-              '1000 - Crew on-site for VT-01 HPA waveguide gasket. TM-1 handover to ME-02 deferred, VT-01 still carrying traffic. Return to service next shift.',
+              '1000 - Crew on-site for VT-01 HPA waveguide gasket. TM-1 handover to ME-02 deferred, VT-01 still carrying traffic. Return to service after crew sign-off.',
               '1000 - Planned TM-1 handover to ME-02 complete. VT-01 maintenance finished, antenna back on TM-1, crew released. Traffic resumed on VT-01.',
             ],
             correctIndex: 0,
@@ -782,7 +792,7 @@ export const scenario11Data: ScenarioData = {
     intro: {
       text: `
       <p>
-        <em>[Text message from Dana at 09:42]</em>
+        <em>[Text message from Dana at 09:30]</em>
       </p>
       <p>
         "Maintenance window opens at 10:00 - HPA waveguide gasket on VT-01. Catherine's pre-staged ME-02 on TM-1, RX hot, waiting on your commit. Verify her side, stage ME-02 transmit, do the transfer, safe VT-01 for the crew. They're at the gate in thirty."
@@ -803,16 +813,6 @@ export const scenario11Data: ScenarioData = {
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/11/obj-switch-to-maine.mp3'),
       },
-      'catherine-confirm-hot': {
-        text: `
-        <p>
-          Maine has TM-1. Carrier's clean over here, no packet loss across the transfer. I've got it for the window - go take care of your station.
-        </p>
-        `,
-        character: Character.CATHERINE_VEGA,
-        emotion: Emotion.HAPPY,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/11/obj-catherine-confirm-hot.mp3'),
-      },
       'switch-to-vermont-safing': {
         text: `
         <p>
@@ -829,12 +829,27 @@ export const scenario11Data: ScenarioData = {
           Clean handover. Log it and meet me in the conference room - I want to walk through the gasket replacement procedure with you before they start.
         </p>
         <p>
-          Next shift you bring it back.
+          When the crew signs the gasket work off, you bring it back.
         </p>
         `,
         character: Character.DANA_TORRES,
         emotion: Emotion.CONFIDENT,
         audioUrl: getAssetUrl('/assets/campaigns/nats/11/obj-log-handover-entry.mp3'),
+      },
+    },
+    // Catherine's report plays as the confirmation step opens, so the quiz
+    // that cites it comes after it (it used to play on completion, after the
+    // quiz had already been answered)
+    objectivesOnStart: {
+      'catherine-confirm-hot': {
+        text: `
+        <p>
+          Maine has TM-1. Carrier's clean over here, no packet loss across the transfer. I've got it while your station's down - go take care of it.
+        </p>
+        `,
+        character: Character.CATHERINE_VEGA,
+        emotion: Emotion.HAPPY,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/11/obj-catherine-confirm-hot.mp3'),
       },
     },
   },

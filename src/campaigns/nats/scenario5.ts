@@ -18,12 +18,12 @@ import { ses10Satellite, tidemark2Satellite } from './satellites';
  * Focus: Spectrum analysis, interference identification, notch filter mitigation
  *
  * Premise: Customer reports degraded service on TIDEMARK-1. C/N ratio has dropped
- * because of a 3 MHz interference spike WITHIN our 36 MHz signal bandwidth. This is
+ * because of a 1 MHz interference spike WITHIN our 36 MHz signal bandwidth. This is
  * caused by a third-party operator's polarization mismatch - their cross-pol leakage
  * is falling in our transponder. The AGC is reducing gain based on the spike, which
  * degrades overall C/N.
  *
- * Solution: Apply a 3 MHz notch filter at the interference frequency to block the
+ * Solution: Apply a 1 MHz notch filter at the interference frequency to block the
  * spike while passing the rest of our 36 MHz signal.
  *
  * Flow:
@@ -55,16 +55,14 @@ export const scenario5Data: ScenarioData = {
   difficulty: 'beginner',
   missionType: 'Troubleshooting',
   description: `Customer reports degraded service on TIDEMARK-1. The C/N ratio has dropped significantly, causing packet errors.<br><br>The spectrum analyzer is currently configured for beacon tracking - you'll need to reconfigure it to investigate the main signal. Something's causing interference, and you'll need to find it, understand what's happening, and apply the right mitigation.<br><br>Charlie will guide you through the troubleshooting process and provide hints along the way.`,
-  equipment: ['9-meter C-band Antenna', 'RF Front End', 'Spectrum Analyzer', 'IF Filter Bank', 'ME-02: Available'],
+  equipment: ['9-meter C-band Antenna', 'RF Front End', 'Spectrum Analyzer', 'Notch Filter'],
   settings: {
     isSync: true,
-    groundStations: [
-      vermontGroundStation,
-      {
-        ...maineGroundStation,
-        isOperational: true,
-      },
-    ],
+    // Vermont-only troubleshooting: ME-02 stays non-operational so its idle
+    // GPSDO/AGC alarms don't reach the ticker (nats-s05-F2)
+    groundStations: [vermontGroundStation, maineGroundStation],
+    scenarioStartDate: '2026-02-04',
+    scenarioStartWallTime: '14:30:00',
     missionBriefUrl: 'https://docs.signalrange.space/campaign-1/scenario-5?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
     satellites: [
@@ -90,7 +88,7 @@ export const scenario5Data: ScenarioData = {
             gainInPath: 0 as dBi,
           },
           {
-            // Cross-pol interference: 3 MHz spike within TP-1's 36 MHz passband
+            // Cross-pol interference: 1 MHz spike within TP-1's 36 MHz passband
             // 5960 MHz uplink = 17 MHz above TP-1 center (5943 MHz)
             // Falls within TP-1's passband (5925-5961 MHz)
             // Simulates polarization mismatch from another operator
@@ -327,7 +325,7 @@ export const scenario5Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              "When tracking beacons, we use a narrow span (typically 10-20 MHz) focused on the beacon frequency. But our customer traffic is on a 36 MHz wideband carrier at a different frequency. We need to widen the span and recenter to see what's happening to the actual customer signal.",
+              "When tracking beacons, we use a narrow span (a few kHz - 2 kHz on this station) focused on the beacon frequency. But our customer traffic is on a 36 MHz wideband carrier at a different frequency. We need to widen the span and recenter to see what's happening to the actual customer signal.",
             pointPenalty: 5,
             preserveOptionOrder: true,
           },
@@ -611,7 +609,7 @@ export const scenario5Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              "A notch filter is the surgical solution. It removes only the narrow interference spike while passing our full 36 MHz signal. A narrower bandpass would sacrifice our own bandwidth. Increasing power wouldn't help the C/N ratio and would violate coordination agreements. Contacting the operator is the long-term solution, but we need an immediate fix for the customer.",
+              "A notch filter is the surgical solution. It removes the narrow interference spike, plus a sliver of our own carrier's lower edge where the spike sits, while the rest of our 36 MHz signal passes untouched. A narrower bandpass would sacrifice our own bandwidth. Increasing power wouldn't help the C/N ratio and would violate coordination agreements. Contacting the operator is the long-term solution, but we need an immediate fix for the customer.",
             pointPenalty: 5,
             preserveOptionOrder: true,
           },
@@ -694,7 +692,7 @@ export const scenario5Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              "The notch filter is working. It's attenuating the interference spike by 40 dB, effectively removing it from the receiver's passband. Our wideband signal passes through unaffected because the notch is narrow enough to only target the interferer.",
+              "The notch filter is working. It's attenuating the interference spike by 40 dB, effectively removing it from the receiver's passband. The rest of our wideband signal passes through: the 1 MHz notch takes only the spike and a sliver of our carrier's lower edge.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -957,13 +955,13 @@ export const scenario5Data: ScenarioData = {
       'understand-mitigation-options': {
         text: `
         <p>
-          Right - a notch filter is the surgical solution. We configure it at exactly 1,515 megahertz with just enough bandwidth to cover the spike - probably 1 megahertz or so. The filter attenuates that narrow slice while passing the rest of our 36 megahertz signal untouched.
+          Right - a notch filter is the surgical solution. We configure it at exactly 1,515 megahertz with just enough bandwidth to cover the spike - probably 1 megahertz or so. The spike sits right at the lower edge of our carrier, so the notch takes the spike and a sliver of our own edge, and the rest of our 36 megahertz passes untouched.
         </p>
         <p>
           With the spike removed, the AGC will see only our wanted signal power and set the gain appropriately. C/N should recover.
         </p>
         <p>
-          Head to the IF Filter Bank to configure the notch. Set the center frequency to 1,515 megahertz, bandwidth to 1 megahertz, and depth to at least 40 dB. That should be enough to suppress the interference below the noise floor.
+          Head to the Notch Filter card on RX Analysis to configure it. Set the center frequency to 1,515 megahertz, bandwidth to 1 megahertz, and depth to at least 40 dB. That should be enough to suppress the interference below the noise floor.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

@@ -57,6 +57,8 @@ describe('BUCAdapter', () => {
       handleMuteToggle: vi.fn(),
       handleLoopbackToggle: vi.fn(),
       getActiveInjectionMode: vi.fn().mockReturnValue('low'),
+      temperatureTrendCPerMin: vi.fn().mockReturnValue(null),
+      temperatureLog: { samples: [], windowS: 1800, readingMinutesAgo: vi.fn().mockReturnValue(null) },
       getAlarms: vi.fn().mockReturnValue([]),
       hasRfOutput: vi.fn(() => mockBucModule.state.isPowered && !mockBucModule.state.isMuted && mockBucModule.outputSignals.length > 0),
     } as unknown as Mocked<BUCModuleCore>;
@@ -86,6 +88,9 @@ describe('BUCAdapter', () => {
       <span id="buc-lock-status"></span>
       <span id="buc-temperature-display"></span>
       <span id="buc-current-display"></span>
+      <span id="buc-temp-trend-display"></span>
+      <span id="buc-temp-10min-display"></span>
+      <svg><line id="buc-temp-trip-line"></line><polyline id="buc-temp-sparkline-path"></polyline></svg>
       <span id="buc-phase-noise-display"></span>
       <span id="buc-freq-error-display"></span>
     `;
@@ -444,6 +449,29 @@ describe('BUCAdapter', () => {
 
       const currentDisplay = containerEl.querySelector('#buc-current-display') as HTMLElement;
       expect(currentDisplay.textContent).toBe('3.25 A');
+    });
+
+    it('shows the temperature trend, the reading ten minutes back and the 30-minute curve (nats-s13-F1)', () => {
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
+      mockBucModule.temperatureTrendCPerMin.mockReturnValue(0.31);
+      mockBucModule.temperatureLog = {
+        samples: [
+          { tMs: 0, celsius: 56.8 },
+          { tMs: 900_000, celsius: 60.5 },
+          { tMs: 1_800_000, celsius: 62 },
+        ],
+        windowS: 1800,
+        readingMinutesAgo: vi.fn().mockReturnValue(56.8),
+      };
+
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
+      updateHandler();
+
+      expect((containerEl.querySelector('#buc-temp-trend-display') as HTMLElement).textContent).toBe('+0.31 °C/min ▲');
+      expect((containerEl.querySelector('#buc-temp-10min-display') as HTMLElement).textContent).toBe('56.8 °C');
+      expect(containerEl.querySelector('#buc-temp-sparkline-path')?.getAttribute('points')?.split(' ')).toHaveLength(3);
+      // 62 degC is within 15 of the 70 degC trip: the trip line is drawn at the top
+      expect(Number(containerEl.querySelector('#buc-temp-trip-line')?.getAttribute('y1'))).toBeCloseTo(2, 1);
     });
 
     it('should update phase noise during throttled sync', () => {

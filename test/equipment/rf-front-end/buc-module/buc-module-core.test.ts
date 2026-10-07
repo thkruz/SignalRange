@@ -1210,3 +1210,60 @@ describe('BUCModuleCore thermal and current (phase 19.6)', () => {
     expect(bucModule.getAlarms().some((a) => a.includes('cooling fault'))).toBe(false);
   });
 });
+
+describe('BUCModuleCore temperature trend (nats-s13-F1)', () => {
+  const c1Buc = (): TestBUCModule => {
+    const tx = createMockTransmitter([
+      {
+        isTransmitting: true,
+        isFaulted: false,
+        isLoopback: false,
+        ifSignal: { frequency: 500e6, bandwidth: 36e6, power: -7 as dBm, origin: SignalOrigin.TRANSMITTER } as IfSignal,
+      },
+    ]);
+    return new TestBUCModule({ ...BUCModuleCore.getDefaultState(), gain: 33 as dB, saturationPower: 28 as dBm, temperature: 25 }, createMockRfFrontEnd({}, [tx]), 1);
+  };
+
+  beforeEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('a unit staged hot shows the curve that got it there: S13 at 62 degC heading for 65 reads ~57 ten minutes back, rising ~0.3 degC/min', () => {
+    const buc = c1Buc();
+    buc.setCoolingFactor(1.38);
+    buc.update();
+    buc.setTemperature(62);
+    advanceSimTime(1_000, { emitUpdate: true });
+
+    const target = buc.equilibriumTemperatureC();
+    expect(target).toBeGreaterThan(64);
+    expect(target).toBeLessThan(66);
+    const tenMinAgo = buc.temperatureLog.readingMinutesAgo(10) as number;
+    expect(tenMinAgo).toBeCloseTo(target + (62 - target) * Math.E, 0);
+    expect(tenMinAgo).toBeGreaterThan(55);
+    expect(tenMinAgo).toBeLessThan(59);
+    const trend = buc.temperatureTrendCPerMin() as number;
+    expect(trend).toBeGreaterThan(0.2);
+    expect(trend).toBeLessThan(0.5);
+  });
+
+  it('a de-rate turns the trend negative within a few minutes of logged samples', () => {
+    const buc = c1Buc();
+    buc.setCoolingFactor(1.38);
+    buc.update();
+    buc.setTemperature(62);
+    advanceSimTime(1_000, { emitUpdate: true });
+    buc.state.gain = 23 as dB;
+    advanceSimTime(5 * 60_000, { emitUpdate: true });
+
+    expect(buc.temperatureTrendCPerMin() as number).toBeLessThan(-0.3);
+    expect(buc.temperatureLog.samples.length).toBeGreaterThan(150);
+  });
+
+  it('a unit at equilibrium logs a flat line', () => {
+    const buc = c1Buc();
+    buc.update();
+    advanceSimTime(60_000, { emitUpdate: true });
+    expect(Math.abs(buc.temperatureTrendCPerMin() as number)).toBeLessThan(0.01);
+  });
+});

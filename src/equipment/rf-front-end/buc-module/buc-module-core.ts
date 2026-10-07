@@ -6,6 +6,7 @@ import { SignalOrigin } from '@app/signal-origin';
 import { Rng } from '@app/simulation/rng';
 import { SimClock } from '@app/simulation/sim-clock';
 import { dB, dBm, Hertz, IfFrequency, IfSignal, MHz, RfFrequency, RfSignal } from '@app/types';
+import { ThermalTrendLog } from '../thermal-trend';
 
 /** BUC thermal time constant (an outdoor unit's finned heatsink), s */
 const BUC_THERMAL_TAU_S = 600;
@@ -117,6 +118,10 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
    * temperature calls setTemperature first)
    */
   private thermalPrimed_ = false;
+  /** Case temperature log for the TX Chain trend readout (nats-s13-F1) */
+  readonly temperatureLog = new ThermalTrendLog();
+  /** The log needs its past written: first sample, or a scenario just staged the temperature */
+  private isLogBackfillDue_ = true;
   /** Internal reference when the BUC is not locked to the station 10 MHz */
   private readonly drift_ = new FreeRunDrift(() => Rng.stream('buc'), 2, 10, 30);
   private model_: AmplifierModel | null = null;
@@ -558,6 +563,12 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
   setTemperature(celsius: number): void {
     this.thermalPrimed_ = true;
     this.state.temperature = celsius;
+    this.isLogBackfillDue_ = true;
+  }
+
+  /** Case temperature trend over the last five minutes of the log, °C/min (null until it has three samples) */
+  temperatureTrendCPerMin(): number | null {
+    return this.temperatureLog.trendCPerMin();
   }
 
   /**
@@ -650,6 +661,23 @@ export abstract class BUCModuleCore extends RFFrontEndModule<BUCState> {
     if (!this.state.isPowered) {
       this.state.currentDraw = 0;
     }
+    this.recordTemperature_();
+  }
+
+  /**
+   * Log the case temperature. The first time (and after a scenario stages a
+   * temperature) the log's past is written along the unit's own heating or
+   * cooling curve toward today's equilibrium, so a unit staged at 62 °C and
+   * heading for 65 °C shows the ~57 °C it read ten minutes earlier.
+   */
+  private recordTemperature_(): void {
+    const now = SimClock.runMs();
+    if (this.isLogBackfillDue_) {
+      this.isLogBackfillDue_ = false;
+      this.temperatureLog.backfill(now, this.state.temperature, this.equilibriumTemperatureC(), BUC_THERMAL_TAU_S);
+      return;
+    }
+    this.temperatureLog.record(now, this.state.temperature);
   }
 
   // ═══════════════════════════════════════════════════════════════

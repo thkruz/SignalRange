@@ -49,7 +49,7 @@ export const scenario13Data: ScenarioData = {
   duration: '25-30 min',
   difficulty: 'intermediate',
   missionType: 'Trend Assessment',
-  description: `Mid-shift on VT-01. TIDEMARK-1 carrying normal customer traffic. The station's BUC temperature log flagged something ten minutes ago (the readings are in the brief's trend table): BUC temperature has climbed from 57°C to 62°C and is still rising, now about a third of a degree per minute. No over-temperature alarm yet, just a cooling-fault warning on the BUC fan.<br><br>Nothing else has moved. GPSDO locked, RX beacon clean, HPA in backoff. The question is whether to act now, schedule a swap and keep going, switch to backup, or hold and monitor.<br><br>The right answer is judgment, not a checklist. Read the trend, pick a course of action, and execute it without putting the customer in the dark.`,
+  description: `Mid-shift on VT-01. TIDEMARK-1 carrying normal customer traffic. The BUC temperature trend flagged something ten minutes ago (TX Chain shows it: Trend, 10 min ago, and the 30-minute curve): BUC temperature has climbed from 57°C to 62°C and is still rising, now about a third of a degree per minute. No over-temperature alarm yet, just a cooling-fault warning on the BUC fan.<br><br>Nothing else has moved. GPSDO locked, RX beacon clean, HPA in backoff. The question is whether to act now, schedule a swap and keep going, switch to backup, or hold and monitor.<br><br>The right answer is judgment, not a checklist. Read the trend, pick a course of action, and execute it without putting the customer in the dark.`,
   equipment: ['9-meter C-band Antenna', 'RF Front End', 'Spectrum Analyzer', 'RX/TX Modems', 'ME-02: Operational'],
   timeLimitSeconds: 30 * 60,
   settings: {
@@ -239,7 +239,7 @@ export const scenario13Data: ScenarioData = {
       id: 'read-buc-temp-trend',
       nice: ['T0153', 'K0064'],
       title: 'Read the Temperature Trend',
-      description: 'Read the BUC temperature against the 10-minute history shown in the brief and call the trend.',
+      description: 'Read the BUC temperature and its trend on TX Chain (the Trend and 10 min ago readouts and the 30-minute curve) and call the trend.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['open-tx-chain'],
       timeLimitSeconds: 2 * 60,
@@ -699,7 +699,7 @@ export const scenario13Data: ScenarioData = {
         <em>[Text message from Dana at 10:03]</em>
       </p>
       <p>
-        "Temperature log flagged BUC temp on VT-01. Up from 57 to 62 over the last ten, no alarm yet - readings are in the brief. Carrier is fine. Take a look at it and decide what you want to do - I trust your read."
+        "Temperature trend flagged BUC temp on VT-01. Up from 57 to 62 over the last ten, no alarm yet - the curve is on TX Chain. Carrier is fine. Take a look at it and decide what you want to do - I trust your read."
       </p>
       `,
       character: Character.DANA_TORRES,

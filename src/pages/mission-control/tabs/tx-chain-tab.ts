@@ -171,6 +171,19 @@ export class TxChainTab extends BaseElement {
                       <span class="metric-label">Current:</span>
                       <span id="buc-current-display" class="metric-value">0.00 A</span>
                     </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Trend:</span>
+                      <span id="buc-temp-trend-display" class="metric-value" title="Least-squares slope of the case temperature over the last 5 minutes">-- °C/min</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">10 min ago:</span>
+                      <span id="buc-temp-10min-display" class="metric-value">-- °C</span>
+                    </div>
+                    <svg id="buc-temp-sparkline" class="buc-temp-sparkline w-100 mt-1" viewBox="0 0 120 30" preserveAspectRatio="none" role="img" aria-label="BUC case temperature, last 30 minutes" style="height: 30px;">
+                      <title>BUC case temperature, last 30 minutes</title>
+                      <line id="buc-temp-trip-line" x1="0" x2="120" y1="-10" y2="-10" stroke="currentColor" stroke-opacity="0.45" stroke-dasharray="3 2" stroke-width="0.6" />
+                      <polyline id="buc-temp-sparkline-path" fill="none" stroke="currentColor" stroke-width="1.2" points="" />
+                    </svg>
                   </div>
                 </div>
                 <!-- Signal Quality Column -->

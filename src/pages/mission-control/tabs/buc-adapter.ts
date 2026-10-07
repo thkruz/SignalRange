@@ -90,6 +90,59 @@ export class BUCAdapter {
    * Sync only read-only status displays (not user inputs)
    * Used by throttled UPDATE handler to avoid overwriting staged values
    */
+  /** The case temperature trend: slope, the reading ten minutes back, and a 30-minute sparkline with the trip line (nats-s13-F1) */
+  private syncTemperatureTrend_(): void {
+    const isPowered = this.bucModule.state.isPowered;
+    const log = this.bucModule.temperatureLog;
+    const trend = isPowered ? this.bucModule.temperatureTrendCPerMin() : null;
+
+    const trendDisplay = this.domCache_.get('trendDisplay');
+    if (trendDisplay) {
+      if (trend === null) {
+        trendDisplay.textContent = '-- °C/min';
+      } else {
+        const arrow = trend > 0.05 ? '▲' : trend < -0.05 ? '▼' : '→';
+        trendDisplay.textContent = `${trend >= 0 ? '+' : ''}${trend.toFixed(2)} °C/min ${arrow}`;
+      }
+    }
+
+    const tenMinDisplay = this.domCache_.get('tenMinDisplay');
+    if (tenMinDisplay) {
+      const past = isPowered ? log.readingMinutesAgo(10) : null;
+      tenMinDisplay.textContent = past === null ? '-- °C' : `${past.toFixed(1)} °C`;
+    }
+
+    const path = this.domCache_.get('sparklinePath');
+    const tripLine = this.domCache_.get('sparklineTrip');
+    const samples = log.samples;
+    if (!path || samples.length < 2 || !isPowered) {
+      path?.setAttribute('points', '');
+      tripLine?.setAttribute('y1', '-10');
+      tripLine?.setAttribute('y2', '-10');
+      return;
+    }
+    const tEnd = samples[samples.length - 1].tMs;
+    const tStart = tEnd - log.windowS * 1000;
+    let lo = Math.min(...samples.map((x) => x.celsius));
+    let hi = Math.max(...samples.map((x) => x.celsius));
+    // Show the trip point when it is within reach of the curve
+    if (BUCAdapter.TRIP_C - hi < 15) hi = Math.max(hi, BUCAdapter.TRIP_C);
+    if (hi - lo < 4) {
+      const mid = (hi + lo) / 2;
+      lo = mid - 2;
+      hi = mid + 2;
+    }
+    const x = (tMs: number) => ((tMs - tStart) / (tEnd - tStart)) * 120;
+    const y = (c: number) => 28 - ((c - lo) / (hi - lo)) * 26;
+    path.setAttribute('points', samples.map((s) => `${x(s.tMs).toFixed(1)},${y(s.celsius).toFixed(1)}`).join(' '));
+    const tripY = BUCAdapter.TRIP_C <= hi ? y(BUCAdapter.TRIP_C).toFixed(1) : '-10';
+    tripLine?.setAttribute('y1', tripY);
+    tripLine?.setAttribute('y2', tripY);
+  }
+
+  /** The over-temperature alarm point, °C (BUCModuleCore alarms above 70) */
+  private static readonly TRIP_C = 70;
+
   private syncReadOnlyDisplays_(): void {
     const state = this.bucModule.state;
     const isPowered = state.isPowered;
@@ -175,6 +228,8 @@ export class BUCAdapter {
       currentDisplay.textContent = isPowered ? `${state.currentDraw.toFixed(2)} A` : '-- A';
     }
 
+    this.syncTemperatureTrend_();
+
     // Update Signal Quality displays
     const phaseNoiseDisplay = this.domCache_.get('phaseNoiseDisplay');
     if (phaseNoiseDisplay) {
@@ -235,6 +290,16 @@ export class BUCAdapter {
     // Thermal displays
     this.domCache_.set('temperatureDisplay', qs('#buc-temperature-display', this.containerEl));
     this.domCache_.set('currentDisplay', qs('#buc-current-display', this.containerEl));
+    // Trend readout (nats-s13-F1): optional, a host layout may not carry it
+    for (const [key, selector] of [
+      ['trendDisplay', '#buc-temp-trend-display'],
+      ['tenMinDisplay', '#buc-temp-10min-display'],
+      ['sparklinePath', '#buc-temp-sparkline-path'],
+      ['sparklineTrip', '#buc-temp-trip-line'],
+    ] as const) {
+      const el = this.containerEl.querySelector<HTMLElement>(selector);
+      if (el) this.domCache_.set(key, el);
+    }
 
     // Signal Quality displays
     this.domCache_.set('phaseNoiseDisplay', qs('#buc-phase-noise-display', this.containerEl));

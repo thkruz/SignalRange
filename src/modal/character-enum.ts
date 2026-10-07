@@ -24,6 +24,8 @@ export enum Character {
   PRIYA_SHARMA = 'priya_sharma',
   /** System/Self-check - no avatar, used for solo scenarios where no NPC is present */
   SYSTEM = 'system',
+  /** A written notice (ticket, coordination desk, regulator message): no avatar, no voice, titled "Notice" */
+  NOTICE = 'notice',
 }
 
 export enum Emotion {
@@ -52,6 +54,7 @@ export const CharacterAvatars: Record<Character, string> = {
   [Character.ERIK_HALVORSEN]: getAssetUrl('/assets/characters/erik-halvorsen.png'),
   [Character.PRIYA_SHARMA]: getAssetUrl('/assets/characters/priya-sharma.png'),
   [Character.SYSTEM]: '',
+  [Character.NOTICE]: '',
 };
 
 export const CharacterNames: Record<Character, string> = {
@@ -67,6 +70,7 @@ export const CharacterNames: Record<Character, string> = {
   [Character.ERIK_HALVORSEN]: 'Erik Halvorsen',
   [Character.PRIYA_SHARMA]: 'Priya Sharma',
   [Character.SYSTEM]: 'Knowledge Check',
+  [Character.NOTICE]: 'Notice',
 };
 
 export const CharacterTitles: Record<Character, string> = {
@@ -82,6 +86,7 @@ export const CharacterTitles: Record<Character, string> = {
   [Character.ERIK_HALVORSEN]: 'Senior Maritime Analyst',
   [Character.PRIYA_SHARMA]: 'CSIRT Lead',
   [Character.SYSTEM]: '',
+  [Character.NOTICE]: '',
 };
 
 export const CharacterCompany: Record<Character, string> = {
@@ -98,6 +103,7 @@ export const CharacterCompany: Record<Character, string> = {
   [Character.ERIK_HALVORSEN]: 'Nordic Maritime Watch',
   [Character.PRIYA_SHARMA]: 'NATS Group Security',
   [Character.SYSTEM]: '',
+  [Character.NOTICE]: '',
 };
 
 export function getCharacterAvatarUrl(character: Character, emotion?: Emotion): string {

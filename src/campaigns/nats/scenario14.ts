@@ -30,14 +30,14 @@ import { ses10Satellite, tidemark1Satellite, tidemark2Satellite } from './satell
  *   - K0773: Knowledge of telecommunications principles and practices
  *   - S0593: Skill in handling incidents
  *
- * Premise: Light to moderate rain is moving over VT-01. The customer
+ * Premise: A heavy rain cell (50 mm/h) is moving over VT-01. The customer
  * (James Okafor, SeaLink fleet captain) has called ahead - their SLA
  * terms allow degradation but penalize handover events. He wants the
  * operator to hold VT-01 through the weather if at all possible.
  *
  * The operator's job: enable feed heater, watch AGC headroom, monitor
  * link margin, and make the call - hold or hand off. The right answer
- * for a moderate rain front is to hold; the wrong answer is to escape
+ * for a C-band rain cell (~0.7 dB of C/N) is to hold; the wrong answer is to escape
  * the moment the link wavers.
  *
  * S3 taught "weather hits → hand over." S14 teaches that escape is not
@@ -67,7 +67,7 @@ export const scenario14Data: ScenarioData = {
   duration: '25-35 min',
   difficulty: 'intermediate',
   missionType: 'Weather Contingency',
-  description: `Rain front moving over Vermont. Light to moderate, maybe twenty minutes through. The link will fade but it shouldn't black out.<br><br>The customer - James Okafor, fleet captain for the Atlantic Shipping Alliance, SeaLink's anchor customer - has called ahead. Their SLA terms penalize handover events more than they penalize a few dB of margin loss, so he's asked us to hold VT-01 through the weather if we can. ME-02 is busy on TIDEMARK-2 and would have to drop its own customers to take TIDEMARK-1.<br><br>Your job: enable the feed heater, watch AGC headroom, track the beacon C/N, and make the call. Hold or hand off - the right answer is the one the link supports.`,
+  description: `Heavy rain cell moving over Vermont, maybe twenty minutes through. At C-band the link will fade but it shouldn't black out.<br><br>The customer - James Okafor, fleet captain for the Atlantic Shipping Alliance, SeaLink's anchor customer - has called ahead. Their SLA terms penalize handover events more than they penalize a few dB of margin loss, so he's asked us to hold VT-01 through the weather if we can. ME-02 is busy on TIDEMARK-2 and would have to drop its own customers to take TIDEMARK-1.<br><br>Your job: enable the feed heater, watch AGC headroom, track the beacon C/N, and make the call. Hold or hand off - the right answer is the one the link supports.`,
   equipment: ['9-meter C-band Antenna', 'RF Front End (Feed Heater, AGC)', 'Spectrum Analyzer', 'RX/TX Modems', 'ME-02: Operational (TIDEMARK-2)'],
   timeLimitSeconds: 35 * 60, // 35 minutes
   settings: {
@@ -240,7 +240,7 @@ export const scenario14Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'SeaLink runs vessel telemetry that survives short C/N dips but logs a hard event on every uplink change. A handover event costs them more contractually than 3 dB of fade does. The customer is telling us what they value - listen.',
+              'SeaLink runs vessel telemetry that survives short C/N dips but logs a hard event on every uplink change. A handover event costs them more contractually than a C/N dip does. The customer is telling us what they value - listen.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -317,7 +317,7 @@ export const scenario14Data: ScenarioData = {
       nice: ['S0421', 'K0689'],
       title: 'Enable Feed Heater',
       description:
-        'Open the ACU Control panel and enable the feed heater before the front arrives. The card says "Prevents ice buildup"; in rain the same heater keeps the feed dry. The Rain Blower is optional on a moderate front and is not part of this procedure.',
+        'Open the ACU Control panel and enable the feed heater before the front arrives. The card says "Prevents ice, keeps the feed dry": in rain it is the same heater doing the second job. The Rain Blower is optional at C-band, even in a heavy cell, and is not part of this procedure.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['pre-storm-dashboard'],
       timeLimitSeconds: 3 * 60,
@@ -458,7 +458,7 @@ export const scenario14Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Margin = baseline C/N minus demod threshold. With 10+ dB of headroom and 3 dB of expected fade, we are comfortable. Without baseline data, every dip looks scary.',
+              'Margin = baseline C/N minus demod threshold. With about 9 dB of headroom (C/N near 13 dB against the 4.2 dB lock threshold) and under 1 dB of expected fade (a heavy cell at C-band costs about 0.7 dB of C/N, mostly sky-noise rise), we are comfortable. Without baseline data, every dip looks scary.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -855,7 +855,7 @@ export const scenario14Data: ScenarioData = {
         <em>[Text message from Dana at 13:18]</em>
       </p>
       <p>
-        "Rain front in about five minutes. Light to moderate, twenty minutes through. James Okafor called - their SLA likes margin loss better than handover events, so he wants us to hold if we can. ME-02 is busy on TM-2. Brief's on your terminal."
+        "Rain cell in about five minutes. Heavy, twenty minutes through - at C-band that is still under a dB. James Okafor called - their SLA likes margin loss better than handover events, so he wants us to hold if we can. ME-02 is busy on TM-2. Brief's on your terminal."
       </p>
       `,
       character: Character.DANA_TORRES,

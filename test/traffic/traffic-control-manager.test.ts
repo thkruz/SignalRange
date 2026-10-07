@@ -295,6 +295,16 @@ describe('TrafficControlManager', () => {
       expect(result).toBe(false);
     });
 
+    it("stops the previous owner's modems for that satellite (nats-s11-F6)", () => {
+      const stopTransmittingFor = vi.fn(() => 1);
+      mockGroundStations[0].transmitters = [{ stopTransmittingFor }];
+      manager.initiateHandover(12345, 'gs-2');
+      manager.setStationReady(12345, 'gs-2', true);
+      manager.executeHandover(12345);
+
+      expect(stopTransmittingFor).toHaveBeenCalledWith(12345);
+    });
+
     it('should reset handover state after execution', () => {
       manager.initiateHandover(12345, 'gs-2');
       manager.setStationReady(12345, 'gs-2', true);

@@ -138,19 +138,19 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'verify-agc-status',
     title: 'Understand AGC Function',
     type: 'quiz',
-    correctAnswer: 'The output level would fall with the attenuated input until the receiver lost lock',
+    correctAnswer: 'The level into the modem would sag with the fade, but C/N would fall just the same',
   },
   {
     id: 'estimate-time-remaining',
     title: 'Understand Time Pressure',
     type: 'quiz',
-    correctAnswer: 'Degradation is progressive - once the AGC runs out of range the link fails fast',
+    correctAnswer: 'Degradation is progressive - C/N keeps falling until it crosses the lock threshold',
   },
   {
     id: 'verify-agc-limits-quiz',
     title: 'Understand AGC Limitations',
     type: 'quiz',
-    correctAnswer: 'AGC has a maximum gain limit - once reached, further signal loss cannot be compensated',
+    correctAnswer: 'AGC restores level, not C/N - it amplifies the noise along with the weakened carrier',
   },
 
   // ============================================================

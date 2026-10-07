@@ -137,7 +137,7 @@ export class SatelliteDashboardTab extends BaseElement {
                     <span class="text-muted">Target Status:</span>
                     <span id="sat-target-status" class="ms-2">
                       <span class="led led-off me-1"></span>
-                      <span class="status-text">Not Ready</span>
+                      <span class="status-text">No handover in progress</span>
                     </span>
                   </div>
                   <div class="col-auto">
@@ -366,8 +366,10 @@ export class SatelliteDashboardTab extends BaseElement {
       if (targetStatusEl) {
         const led = targetStatusEl.querySelector('.led');
         const statusText = targetStatusEl.querySelector('.status-text');
+        // No target to be ready: after a handover the new owner holds the
+        // traffic, so "Not Ready" read as a fault (nats-s11-F6)
         if (led) led.className = 'led led-off me-1';
-        if (statusText) statusText.textContent = 'Not Ready';
+        if (statusText) statusText.textContent = 'No handover in progress';
       }
       if (targetCnEl) {
         targetCnEl.textContent = '-- dB';

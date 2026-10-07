@@ -410,6 +410,23 @@ describe('WeatherManager', () => {
       expect(mockAntennas[0].updateIceAccumulation).toHaveBeenCalledWith(expect.closeTo(expectedIce, 4));
     });
 
+    it('resumes the buildup from ice already on the feed (a seeded start state, nats-s20-F7)', () => {
+      mockScenarioSettings.weatherEvents = [{ id: 'event-1', groundStationId: 'gs-1', type: 'snow', severity: 'severe', startTime: 0, duration: 3600, linkMarginDegradation: 2 }];
+      mockAntennas = [createMockAntenna('antenna-1', false, 6)];
+      mockGroundStations.push({ state: { id: 'gs-1' }, antennas: mockAntennas });
+
+      WeatherManager.getInstance();
+      setScenarioElapsed(5000);
+      updateHandler(5000);
+
+      // 6 dB of a 10 dB, 720 s buildup is t = -720 ln(0.4) = 660 s in; 5 s later
+      const config = WeatherManager.SEVERITY_CONFIG['severe'];
+      const t0 = -config.timeConstant_s * Math.log(1 - 6 / config.maxDegradation_dB);
+      const expected = config.maxDegradation_dB * (1 - Math.exp(-(t0 + 5) / config.timeConstant_s));
+      expect(mockAntennas[0].updateIceAccumulation).toHaveBeenCalledWith(expect.closeTo(expected, 4));
+      expect(expected).toBeGreaterThan(6);
+    });
+
     it('should NOT accumulate ice when heater is ON', () => {
       vi.useFakeTimers();
       const startTime = Date.now();

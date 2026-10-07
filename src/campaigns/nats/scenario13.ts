@@ -49,7 +49,7 @@ export const scenario13Data: ScenarioData = {
   duration: '25-30 min',
   difficulty: 'intermediate',
   missionType: 'Trend Assessment',
-  description: `Mid-shift on VT-01. TIDEMARK-1 carrying normal customer traffic. The trend display flagged something ten minutes ago: BUC temperature has climbed from 57°C to 62°C and is still rising, now about a third of a degree per minute. No over-temperature alarm yet, just a cooling-fault warning on the BUC fan.<br><br>Nothing else has moved. GPSDO locked, RX beacon clean, HPA in backoff. The question is whether to act now, schedule a swap and keep going, switch to backup, or hold and monitor.<br><br>The right answer is judgment, not a checklist. Read the trend, pick a course of action, and execute it without putting the customer in the dark.`,
+  description: `Mid-shift on VT-01. TIDEMARK-1 carrying normal customer traffic. The station's BUC temperature log flagged something ten minutes ago (the readings are in the brief's trend table): BUC temperature has climbed from 57°C to 62°C and is still rising, now about a third of a degree per minute. No over-temperature alarm yet, just a cooling-fault warning on the BUC fan.<br><br>Nothing else has moved. GPSDO locked, RX beacon clean, HPA in backoff. The question is whether to act now, schedule a swap and keep going, switch to backup, or hold and monitor.<br><br>The right answer is judgment, not a checklist. Read the trend, pick a course of action, and execute it without putting the customer in the dark.`,
   equipment: ['9-meter C-band Antenna', 'RF Front End', 'Spectrum Analyzer', 'RX/TX Modems', 'ME-02: Operational'],
   timeLimitSeconds: 30 * 60,
   settings: {
@@ -699,7 +699,7 @@ export const scenario13Data: ScenarioData = {
         <em>[Text message from Dana at 10:03]</em>
       </p>
       <p>
-        "Trend display flagged BUC temp on VT-01. Up from 57 to 62 over the last ten, no alarm yet. Carrier is fine. Take a look at it and decide what you want to do - I trust your read."
+        "Temperature log flagged BUC temp on VT-01. Up from 57 to 62 over the last ten, no alarm yet - readings are in the brief. Carrier is fine. Take a look at it and decide what you want to do - I trust your read."
       </p>
       `,
       character: Character.DANA_TORRES,

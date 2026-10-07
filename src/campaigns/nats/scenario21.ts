@@ -780,7 +780,7 @@ export const scenario21Data: ScenarioData = {
           "Interference report channel open for TM-2 TP-1. Submit measured parameters, spectrum captures, and cross-station confirmation. Do not attempt source attribution; geolocation tasking will be handled here. Acknowledge receipt of mitigation guidance: receive-side only, no power escalation."
         </p>
         `,
-        character: Character.SYSTEM,
+        character: Character.NOTICE,
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/21/obj-verify-data-layer.mp3'),
       },

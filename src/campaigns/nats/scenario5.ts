@@ -63,6 +63,8 @@ export const scenario5Data: ScenarioData = {
     groundStations: [
       {
         ...vermontGroundStation,
+        // Find the spike by hand: AUTO-TUNE would jump straight to it (nats-s05-F3)
+        spectrumAnalyzers: vermontGroundStation.spectrumAnalyzers.map((sa) => ({ ...sa, isAutoTuneAvailable: false })),
         transmitters: [
           {
             ...vermontGroundStation.transmitters[0],

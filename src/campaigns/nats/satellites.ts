@@ -85,10 +85,10 @@ export const tidemark1Satellite = new Satellite(
       } as TransponderConfig,
       {
         id: 'TP-2',
-        uplinkCenterFrequency: 5906e6 as RfFrequency, // Passband: 5963-5999 MHz
+        uplinkCenterFrequency: 5906e6 as RfFrequency, // Passband: 5888-5924 MHz
         physics: c1TransponderPhysics(27),
         bandwidth: 36e6 as Hertz,
-        frequencyOffset: 2.225e9 as Hertz, // Downlink center: 3756 MHz
+        frequencyOffset: 2.225e9 as Hertz, // Downlink center: 3681 MHz
         polarization: 'H',
         // No beacon for TP-2
       } as TransponderConfig,
@@ -132,10 +132,10 @@ export const tidemark2Satellite = new Satellite(
     transponderConfigs: [
       {
         id: 'TP-1',
-        uplinkCenterFrequency: 6017e6 as RfFrequency,
+        uplinkCenterFrequency: 6017e6 as RfFrequency, // Passband: 5999-6035 MHz
         physics: c1TransponderPhysics(27),
         bandwidth: 36e6 as Hertz,
-        frequencyOffset: 2.225e9 as Hertz,
+        frequencyOffset: 2.225e9 as Hertz, // Downlink center: 3792 MHz
         polarization: 'H',
         beacon: {
           frequency: 4180e6 as RfFrequency,
@@ -156,10 +156,10 @@ export const tidemark2Satellite = new Satellite(
       } as TransponderConfig,
       {
         id: 'TP-2',
-        uplinkCenterFrequency: 5980e6 as RfFrequency,
+        uplinkCenterFrequency: 5980e6 as RfFrequency, // Passband: 5962-5998 MHz
         physics: c1TransponderPhysics(27),
         bandwidth: 36e6 as Hertz,
-        frequencyOffset: 2.225e9 as Hertz,
+        frequencyOffset: 2.225e9 as Hertz, // Downlink center: 3755 MHz
         polarization: 'H',
         // No beacon for TP-2
       } as TransponderConfig,
@@ -282,10 +282,10 @@ export const ses10Satellite = new Satellite(
     transponderConfigs: [
       {
         id: 'TP-1',
-        uplinkCenterFrequency: 5869e6 as RfFrequency,
+        uplinkCenterFrequency: 5869e6 as RfFrequency, // Passband: 5851-5887 MHz
         physics: c1TransponderPhysics(30),
         bandwidth: 36e6 as Hertz,
-        frequencyOffset: 2.225e9 as Hertz,
+        frequencyOffset: 2.225e9 as Hertz, // Downlink center: 3644 MHz
         polarization: 'H',
         beacon: {
           frequency: 4178e6 as RfFrequency,
@@ -306,10 +306,10 @@ export const ses10Satellite = new Satellite(
       } as TransponderConfig,
       {
         id: 'TP-2',
-        uplinkCenterFrequency: 5832e6 as RfFrequency,
+        uplinkCenterFrequency: 5832e6 as RfFrequency, // Passband: 5814-5850 MHz
         physics: c1TransponderPhysics(30),
         bandwidth: 36e6 as Hertz,
-        frequencyOffset: 2.225e9 as Hertz,
+        frequencyOffset: 2.225e9 as Hertz, // Downlink center: 3607 MHz
         polarization: 'H',
         // No beacon for TP-2
       } as TransponderConfig,

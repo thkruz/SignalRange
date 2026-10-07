@@ -202,8 +202,9 @@ export class TrafficControlManager {
     const previousOwner = ownership.owningGroundStationId;
     const newOwner = ownership.handoverTargetStationId;
 
-    // Disable transmission on source station FIRST (HPA off, BUC mute)
-    this.disableTransmission_(previousOwner);
+    // Disable transmission on source station FIRST (HPA off, BUC mute, its
+    // modems for this satellite stopped)
+    this.disableTransmission_(previousOwner, satelliteId);
 
     // Update ownership state
     ownership.owningGroundStationId = newOwner;
@@ -365,10 +366,12 @@ export class TrafficControlManager {
   }
 
   /**
-   * Disable transmission on a ground station (turn off HPA, mute BUC)
-   * Order: HPA off first, then BUC mute
+   * Disable transmission on a ground station (turn off HPA, mute BUC, stop
+   * the modems carrying the satellite's traffic). Order: HPA off first, then
+   * BUC mute, then the modems: a safed station no longer reads
+   * "Transmitting" on its TX modem (nats-s11-F6)
    */
-  private disableTransmission_(groundStationId: string): void {
+  private disableTransmission_(groundStationId: string, satelliteId?: number): void {
     const sim = SimulationManager.getInstance();
     const gs = sim.groundStations.find((g) => g.state.id === groundStationId);
     if (!gs) return;
@@ -384,6 +387,12 @@ export class TrafficControlManager {
     // Then mute BUC
     if (!rfFrontEnd.bucModule.state.isMuted) {
       rfFrontEnd.bucModule.handleMuteToggle(true);
+    }
+
+    if (satelliteId !== undefined) {
+      for (const transmitter of gs.transmitters ?? []) {
+        transmitter.stopTransmittingFor?.(satelliteId);
+      }
     }
   }
 

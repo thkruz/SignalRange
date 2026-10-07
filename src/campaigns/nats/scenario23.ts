@@ -624,7 +624,7 @@ export const scenario23Data: ScenarioData = {
           "Do NOT power-cycle the ACU - we need the crash dump and the axis calibration is suspect on restart. Hold on manual, we'll coordinate a recovery window once we've pulled the logs. - IT/NOC"
         </p>
         `,
-        character: Character.SYSTEM,
+        character: Character.NOTICE,
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/23/obj-no-reboot-quiz.mp3'),
       },

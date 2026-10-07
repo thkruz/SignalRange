@@ -201,7 +201,7 @@ function writeScripts(scenarios, dir) {
   const byCharacter = new Map();
   for (const s of scenarios) {
     for (const clip of s.clips) {
-      if (!clip.character || clip.character === 'SYSTEM') continue;
+      if (!clip.character || clip.character === 'SYSTEM' || clip.character === 'NOTICE') continue;
       if (!byCharacter.has(clip.character)) byCharacter.set(clip.character, []);
       byCharacter.get(clip.character).push({ scenario: s, clip });
     }

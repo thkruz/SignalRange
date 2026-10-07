@@ -317,7 +317,7 @@ export class ACUControlTab extends BaseElement {
               <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
                   <label for="${p}heater-switch" class="fw-bold mb-0" style="cursor: pointer;">Feed Heater</label>
-                  <div class="text-muted small">Prevents ice buildup</div>
+                  <div class="text-muted small">Prevents ice, keeps the feed dry</div>
                 </div>
                 <div class="d-flex align-items-center gap-2">
                   <span id="${p}heater-led" class="card-alarm-led off"></span>

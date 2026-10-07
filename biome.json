@@ -191,20 +191,11 @@
       "attributePosition": "auto",
       "bracketSpacing": true
     },
-    "globals": [
-      "global",
-      "process",
-      "__dirname"
-    ]
+    "globals": ["global", "process", "__dirname"]
   },
   "overrides": [
     {
-      "includes": [
-        "**/__tests__/**",
-        "**/*.test.{js,ts,tsx}",
-        "**/*.spec.{js,ts,tsx}",
-        "**/test/**"
-      ],
+      "includes": ["**/__tests__/**", "**/*.test.{js,ts,tsx}", "**/*.spec.{js,ts,tsx}", "**/test/**"],
       "linter": {
         "rules": {
           "suspicious": {
@@ -221,9 +212,7 @@
       }
     },
     {
-      "includes": [
-        "**/*.d.ts"
-      ],
+      "includes": ["**/*.d.ts"],
       "linter": {
         "rules": {
           "suspicious": {
@@ -241,7 +230,5 @@
       }
     }
   },
-  "plugins": [
-    "./biome-plugins/require-unicode-regexp.grit"
-  ]
+  "plugins": ["./biome-plugins/require-unicode-regexp.grit"]
 }

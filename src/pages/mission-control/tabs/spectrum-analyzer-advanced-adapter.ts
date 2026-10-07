@@ -123,6 +123,10 @@ export class SpectrumAnalyzerAdvancedAdapter {
 
     // Action buttons
     this.addClickHandler_('sa-auto-tune', this.handleAutoTune_.bind(this));
+    // A scenario whose lesson is finding the signal by hand hides AUTO-TUNE (nats-s05-F3)
+    if (this.spectrumAnalyzer.state.isAutoTuneAvailable === false) {
+      this.domCache_.get('sa-auto-tune')?.classList.add('d-none');
+    }
     this.addClickHandler_('sa-pause', this.handlePauseToggle_.bind(this));
 
     // Trace controls

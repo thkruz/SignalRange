@@ -440,14 +440,14 @@ export const scenario3Data: ScenarioData = {
           params: {
             question: 'What would happen if the AGC was disabled during this weather event?',
             options: [
-              'The output level would fall with the attenuated input until the receiver lost lock',
+              'The level into the modem would sag with the fade, but C/N would fall just the same',
               'The receiver would overheat while trying to process the weakened input signal',
               'The LNB would raise its own gain automatically to make up for the attenuation',
-              'Nothing would change because AGC only matters in clear weather conditions',
+              'The receiver would hold lock longer, because the AGC adds noise of its own',
             ],
             correctIndex: 0,
             explanation:
-              'Without AGC, the output level would drop proportionally as the snow attenuates the input signal. Once the signal falls below the demodulation threshold, the receiver loses lock and data is lost. AGC compensates by automatically increasing gain to maintain a stable output level - but it has limits.',
+              'The AGC holds the level into the modem steady: it measures carrier plus noise and sets its gain to keep the output at -30 dBm. Without it, that level would sag a dB or two with the fade. What it cannot do is change C/N - it turns the noise up and down with the carrier - so the link fails at the same point either way. At VT-01 the gain moves from about -2.5 dB in clear sky to under +1 dB when the carrier loses lock, nowhere near its +10 dB maximum. Watch C/N, not the AGC.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -475,14 +475,14 @@ export const scenario3Data: ScenarioData = {
           params: {
             question: 'I mentioned you have maybe fifteen minutes before the link fails. What makes weather handovers so time-critical?',
             options: [
-              'Degradation is progressive - once the AGC runs out of range the link fails fast',
+              'Degradation is progressive - C/N keeps falling until it crosses the lock threshold',
               'Antenna motors slow in the cold - Maine takes longer to slew onto the satellite',
               'Customer data must be backed up - the transfer has to finish before the switch',
               'Maine operators are remote - they need time to physically reach the station',
             ],
             correctIndex: 0,
             explanation:
-              "Weather degradation is continuous and progressive. The AGC compensates up to a point, but once it maxes out, any further signal loss causes rapid link failure. There's no graceful degradation - you either have enough margin or you don't. This is why we start the handover process well before the predicted failure point.",
+              "Weather degradation is continuous and progressive. As snow and ice load the feed, C/N keeps falling and nothing at the station gives it back: the AGC holds the output level, but it turns the noise up with the carrier. Once C/N crosses the modem's 4.2 dB threshold the carrier drops. There's no graceful degradation - you either have enough margin or you don't. This is why we start the handover process well before the predicted failure point.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -509,16 +509,16 @@ export const scenario3Data: ScenarioData = {
           type: 'status-check',
           description: 'Understand AGC Limits',
           params: {
-            question: 'The AGC is compensating for the weather degradation. Why do we still need to hand over to Maine?',
+            question: 'The AGC is holding its output steady through the weather. Why do we still need to hand over to Maine?',
             options: [
-              'AGC has a maximum gain limit - once reached, further signal loss cannot be compensated',
+              'AGC restores level, not C/N - it amplifies the noise along with the weakened carrier',
               'AGC uses too much power - during heavy compensation, the receiver may overheat',
               'AGC introduces phase errors - as gain rises, the demodulator output gets corrupted',
               'Maine has a bigger antenna - with more gain, its link has margin Vermont lacks',
             ],
             correctIndex: 0,
             explanation:
-              'AGC can only compensate within its gain range. The forecast predicts 8+ dB of degradation - once the AGC hits its maximum gain, any further signal loss will cause C/N to drop below the demodulation threshold and we lose lock. Maine is 150 miles away with clear weather, so their link is unaffected.',
+              'The AGC levels total power - carrier plus noise - so it cannot improve C/N. As the feed loads with snow and ice, the carrier weakens and the wet feed adds noise of its own; C/N falls while the AGC output stays at -30 dBm and its gain barely moves (about -2.5 dB in clear sky, under +1 dB at loss of lock, against a +10 dB maximum). Once C/N drops below the 4.2 dB demodulation threshold we lose lock. Maine is 150 miles away with clear weather, so its link is unaffected.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -1786,7 +1786,7 @@ export const scenario3Data: ScenarioData = {
       'navigate-rx-vt01-agc': {
         text: `
         <p>
-          Look at the AGC indicator - top of the panel, next to the LNB card. AGC stands for Automatic Gain Control. See how it's compensating as the snow attenuates our signal?
+          Look at the AGC card, next to the LNB card. AGC stands for Automatic Gain Control. It shows its Gain in dB, the Input level it sees in dBm, and the Output it holds at -30 dBm. As the snow weakens our signal, the input sags and the gain comes up to match.
         </p>
         <p>
           Think about what would happen if we didn't have AGC right now.
@@ -1799,7 +1799,7 @@ export const scenario3Data: ScenarioData = {
       'verify-agc-status': {
         text: `
         <p>
-          Right. Without AGC, we'd have lost lock minutes ago. It's buying us time - but based on the forecast, we've got well under fifteen minutes before the AGC runs out of room to compensate.
+          Right. The AGC keeps the level right for the modem, but it can't give us back C/N - it turns the noise up with the carrier. Based on the forecast, we've got well under fifteen minutes before C/N drops below the lock threshold.
         </p>
         <p>
           Do you understand why weather handovers are so time-critical?
@@ -1812,7 +1812,7 @@ export const scenario3Data: ScenarioData = {
       'estimate-time-remaining': {
         text: `
         <p>
-          Exactly. Weather degradation doesn't plateau - it keeps getting worse until you lose the link entirely. Six minutes isn't much time to bring up a backup site.
+          Exactly. Weather degradation doesn't plateau - it keeps getting worse until you lose the link entirely. Fifteen minutes isn't much time to bring up a backup site.
         </p>
         <p>
           This is why we practice handovers when there's no pressure. When the clock is ticking, you need to execute from muscle memory.
@@ -1825,7 +1825,7 @@ export const scenario3Data: ScenarioData = {
       'verify-agc-limits-quiz': {
         text: `
         <p>
-          Right. AGC has limits. Once we hit maximum gain, any further signal loss means we lose lock. That's why we're handing over to Maine.
+          Right. The AGC keeps the level steady, but it can't fix C/N. Once C/N drops under the threshold, we lose lock no matter what the AGC reads. That's why we're handing over to Maine.
         </p>
         <p>
           Let's get Maine online. Click Maine Backup Station in the asset tree on the left.

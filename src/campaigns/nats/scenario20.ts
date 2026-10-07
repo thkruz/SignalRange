@@ -47,7 +47,8 @@ import { ses10Satellite, tidemark1Satellite, tidemark2Satellite } from './satell
  * Sim notes:
  *   - VT-01: 'snow'/severe weather event from T=0; heater OFF (vermont
  *     default) so ice accumulates (~10 dB max, tau 720 s). Heater ON melts
- *     at 1 dB/min. Ice recovery checked via custom evaluator.
+ *     at 1 dB/min. Starts with ~6 dB already on the feed (the front came
+ *     overnight). Ice recovery checked via custom evaluator.
  *   - ME-02: HPA backOff 1 -> 59 dBm (794 W), isOverdriven, IM3 ~-25 dBc,
  *     case temperature ~62 degC (about 44 degC at 10 dB). The HPA
  *     over-temperature alarm is > 85 degC, which a healthy amplifier never
@@ -92,9 +93,13 @@ export const scenario20Data: ScenarioData = {
     scenarioStartDate: '2026-03-06',
     scenarioStartWallTime: '07:12:00',
     groundStations: [
-      // VT-01: storm overhead, heater OFF (the inherited failure), ice building
+      // VT-01: storm overhead, heater OFF (the inherited failure), ice building.
+      // The front arrived overnight: ~6 dB of ice is already on the feed (the
+      // composite ~7 dB C/N, still locked), so the heater's 1 dB/min melt
+      // takes minutes and "Verify the Melt" is a real wait (nats-s20-F7)
       {
         ...vermontGroundStation,
+        antennasState: [{ ...vermontGroundStation.antennasState[0], iceAccumulation_dB: 6 }],
       },
       // ME-02: carrying TIDEMARK-2; HPA back-off drifted to 1 dB - overdriven
       // and running hot (~62 degC). BUC unmuted (traffic flowing).

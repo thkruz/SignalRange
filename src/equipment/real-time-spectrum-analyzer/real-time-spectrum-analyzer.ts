@@ -47,6 +47,8 @@ export function autoRbwHz(spanHz: number): number {
 }
 
 export interface RealTimeSpectrumAnalyzerState {
+  /** AUTO-TUNE offered (default true); a scenario that teaches finding a signal by hand turns it off */
+  isAutoTuneAvailable?: boolean;
   /** Scale in dB per division */
   scaleDbPerDiv: dB;
   isUseTapB: boolean;
@@ -574,6 +576,9 @@ export class RealTimeSpectrumAnalyzer extends BaseEquipment {
   }
 
   freqAutoTune() {
+    if (this.state.isAutoTuneAvailable === false) {
+      return;
+    }
     // Find the signal with the highest amplitude within the current frequency span
     let strongestSignal: IfSignal | RfSignal | null = null;
 

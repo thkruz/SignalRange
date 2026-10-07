@@ -757,6 +757,33 @@ export class Transmitter extends BaseEquipment {
   }
 
   /**
+   * Stop every modem carrying traffic for a satellite (handover safing,
+   * nats-s11-F6): the carrier leaves the IF, not just the muted BUC.
+   * @returns how many modems were stopped
+   */
+  public stopTransmittingFor(noradId: number): number {
+    let stopped = 0;
+    for (const modem of this.state.modems) {
+      if (modem.isTransmitting && modem.ifSignal?.noradId === noradId) {
+        modem.isTransmitting = false;
+        modem.isTransmittingSwitchUp = false;
+        stopped++;
+      }
+    }
+    if (stopped > 0) {
+      this.updateTransmissionState();
+      this.emit(Events.TX_CONFIG_CHANGED, {
+        uuid: this.uuid,
+        modem: this.state.activeModem,
+        config: this.state.modems[this.activeModem.id],
+      });
+      this.syncDomWithState();
+    }
+
+    return stopped;
+  }
+
+  /**
    * Public API for adapters - Control switches
    */
   public handleTransmitToggle(isEnabled: boolean): void {

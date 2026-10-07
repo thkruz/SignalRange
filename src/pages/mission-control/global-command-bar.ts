@@ -36,6 +36,10 @@ export class GlobalCommandBar {
   private objectiveTimerEl_: HTMLElement | null = null;
   private scenarioTimerEl_: HTMLElement | null = null;
   private readonly boundOnAlarmStateChanged_: (data: AlarmStateChangedData) => void;
+  private readonly boundOnAssetSelected_: (data: { type: 'ground-station' | 'satellite'; id: string }) => void;
+  /** Ground station selected in the asset tree, if any: the ticker says how much of its list is elsewhere */
+  private selectedStationId_: string | null = null;
+  private lastAlarms_: AlarmStateChangedData | null = null;
   private readonly boundOnSimulatedTimeTick_: (data: SimulatedTimeTickData) => void;
   private timerUpdateInterval_: number | null = null;
   private clockEl_: HTMLElement | null = null;
@@ -101,6 +105,7 @@ export class GlobalCommandBar {
 
   constructor(private readonly parentContainerId_: string) {
     this.boundOnAlarmStateChanged_ = this.onAlarmStateChanged_.bind(this);
+    this.boundOnAssetSelected_ = this.onAssetSelected_.bind(this);
     this.boundOnSimulatedTimeTick_ = this.onSimulatedTimeTick_.bind(this);
     this.boundOnTimeSkipEnded_ = this.onTimeSkipEnded_.bind(this);
     this.init_();
@@ -360,6 +365,14 @@ export class GlobalCommandBar {
 
   private subscribeToAlarms_(): void {
     EventBus.getInstance().on(Events.ALARM_STATE_CHANGED, this.boundOnAlarmStateChanged_);
+    EventBus.getInstance().on(Events.ASSET_SELECTED, this.boundOnAssetSelected_);
+  }
+
+  private onAssetSelected_(data: { type: 'ground-station' | 'satellite'; id: string }): void {
+    this.selectedStationId_ = data.type === 'ground-station' ? data.id : null;
+    if (this.lastAlarms_) {
+      this.renderStaticAlarms_(this.lastAlarms_.alarms, this.lastAlarms_.highestSeverity);
+    }
   }
 
   private subscribeToSimulatedTime_(): void {
@@ -404,6 +417,7 @@ export class GlobalCommandBar {
 
   private onAlarmStateChanged_(data: AlarmStateChangedData): void {
     // Apply immediately - no queuing needed for static display
+    this.lastAlarms_ = data;
     this.renderStaticAlarms_(data.alarms, data.highestSeverity);
   }
 
@@ -514,6 +528,14 @@ export class GlobalCommandBar {
 
     if (overflowCount > 0) {
       items.push(`<span class="alarm-overflow">+${overflowCount} more</span>`);
+    }
+
+    // The ticker lists every operational station; the Dashboard and Quick
+    // Stats list the selected one. Say how many of these are elsewhere so the
+    // two counts are not read as a contradiction (s08-F2, s16-F2)
+    const elsewhere = this.selectedStationId_ ? (this.lastAlarms_?.alarms ?? []).filter((a) => a.assetId !== this.selectedStationId_).length : 0;
+    if (elsewhere > 0) {
+      items.push(`<span class="alarm-overflow alarm-other-stations">(${elsewhere} on other stations)</span>`);
     }
 
     this.messagesEl_.innerHTML = items.join('');
@@ -724,6 +746,7 @@ export class GlobalCommandBar {
 
   dispose(): void {
     EventBus.getInstance().off(Events.ALARM_STATE_CHANGED, this.boundOnAlarmStateChanged_);
+    EventBus.getInstance().off(Events.ASSET_SELECTED, this.boundOnAssetSelected_);
     EventBus.getInstance().off(Events.SIMULATED_TIME_TICK, this.boundOnSimulatedTimeTick_);
     EventBus.getInstance().off(Events.TIME_SKIP_ENDED, this.boundOnTimeSkipEnded_);
     this.timeSkipOverlay_?.dispose();

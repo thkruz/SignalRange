@@ -327,12 +327,15 @@ export class WeatherManager {
 
         if (activeIceEvent && !antenna.state.isHeaterEnabled) {
           // Ice is accumulating - heater OFF during ice/snow weather
-          const currentTime = this.iceAccumulationTime_.get(antennaId) ?? 0;
+          const config = WeatherManager.SEVERITY_CONFIG[activeIceEvent.severity];
+          // Ice already on the feed (a scenario's starting state, or what is
+          // left after the heater went off again) is where the buildup resumes
+          // from, not a clean feed (nats-s20-F7)
+          const currentTime = this.iceAccumulationTime_.get(antennaId) || WeatherManager.accumulationTimeForIce_(antenna.state.iceAccumulation_dB, config);
           const newTime = currentTime + dtSeconds;
           this.iceAccumulationTime_.set(antennaId, newTime);
 
           // Calculate exponential ice buildup
-          const config = WeatherManager.SEVERITY_CONFIG[activeIceEvent.severity];
           const iceDegradation = config.maxDegradation_dB * (1 - Math.exp(-newTime / config.timeConstant_s));
 
           antenna.updateIceAccumulation(iceDegradation);
@@ -363,6 +366,16 @@ export class WeatherManager {
         }
       }
     }
+  }
+
+  /** Time into an exponential buildup that has reached `iceDb`: ice = max (1 - e^(-t/tau)) => t = -tau ln(1 - ice/max) */
+  private static accumulationTimeForIce_(iceDb: number, config: IceAccumulationConfig): number {
+    if (!(iceDb > 0)) {
+      return 0;
+    }
+    const ratio = Math.min(0.999, iceDb / config.maxDegradation_dB);
+
+    return -config.timeConstant_s * Math.log(1 - ratio);
   }
 
   /** Get active ice-producing weather event for a ground station */

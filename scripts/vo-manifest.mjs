@@ -174,6 +174,8 @@ function readScenario(file) {
       html: html.trim(),
       target,
       exists: existsSync(join(publicDir, target)),
+      // NOTICE clips are on-screen notices and stay text-only (Phase 35 decision 6): never counted as missing audio.
+      textOnly: characterKey === 'NOTICE',
       audioUrl: audioUrlLiteral(audioProp?.initializer),
       _audioProp: audioProp,
     });
@@ -181,10 +183,14 @@ function readScenario(file) {
 
   if (dialogClips) {
     pushClip('intro', findProp(dialogClips, 'intro')?.initializer);
-    const objectives = findProp(dialogClips, 'objectives')?.initializer;
-    if (objectives && ts.isObjectLiteralExpression(objectives)) {
-      for (const p of objectives.properties) {
-        if (ts.isPropertyAssignment(p)) pushClip(propName(p), p.initializer);
+    // Activation dialog is spoken too; omitting it hid missing recordings from
+    // both the generator and the review page.
+    for (const group of ['objectives', 'objectivesOnStart']) {
+      const objectives = findProp(dialogClips, group)?.initializer;
+      if (objectives && ts.isObjectLiteralExpression(objectives)) {
+        for (const p of objectives.properties) {
+          if (ts.isPropertyAssignment(p)) pushClip(propName(p), p.initializer);
+        }
       }
     }
   }

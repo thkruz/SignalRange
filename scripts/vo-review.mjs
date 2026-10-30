@@ -102,6 +102,8 @@ const archiveRoot = join(repoRoot, 'src', 'private', 'vo-takes');
 const reviewPath = join(notesDir, 'vo-review.json');
 const takesPath = join(notesDir, 'vo-takes.json');
 const loudnessCachePath = join(repoRoot, 'node_modules', '.cache', 'vo-review-loudness.json');
+const portraitDir = join(publicDir, 'assets', 'characters');
+const thumbDir = join(repoRoot, 'node_modules', '.cache', 'vo-review-portraits');
 const pagePath = join(scriptsDir, 'vo-review.html');
 
 const args = process.argv.slice(2);
@@ -175,6 +177,7 @@ function loadClips() {
           characterName: c.characterName,
           emotion: c.emotion,
           text: c.text,
+          textOnly: c.textOnly === true,
           path,
           exists: hash !== null,
           sha1: hash,
@@ -467,12 +470,14 @@ if (args.includes('--outdated')) {
 }
 
 if (args.includes('--summary')) {
-  const all = views();
+  const everything = views();
+  const textOnly = everything.filter((c) => c.textOnly);
+  const all = everything.filter((c) => !c.textOnly);
   const recorded = all.filter((c) => c.takes.length);
   const count = (xs, s) => xs.filter((c) => c.status === s).length;
   const takeCount = recorded.reduce((n, c) => n + c.takes.length, 0);
   console.log(
-    `${all.length} clips, ${recorded.length} with takes (${takeCount} takes): ${count(recorded, 'unreviewed')} unreviewed, ${count(recorded, 'approved')} approved, ${count(recorded, 'rejected')} rejected`,
+    `${all.length} clips (+${textOnly.length} text-only), ${recorded.length} with takes (${takeCount} takes): ${count(recorded, 'unreviewed')} unreviewed, ${count(recorded, 'approved')} approved, ${count(recorded, 'rejected')} rejected`,
   );
   console.log(`${recorded.filter((c) => c.needsRedo).length} clips need a redo (only outdated or rejected takes)`);
   const by = (key) => {
@@ -536,6 +541,26 @@ function sendAudio(req, res, file) {
 /** Bumped with the page whenever the API shape changes; the page refuses to render against another version. */
 const API_VERSION = 4;
 
+/**
+ * The speaker's portrait as a small thumbnail, the way the game picks it (character-enum.ts
+ * getCharacterAvatarUrl): <slug>-<emotion>.png, falling back to <slug>.png. The source PNGs are ~850 KB each, so
+ * thumbnails are made once with ffmpeg and cached in node_modules/.cache. Returns null when there is no portrait.
+ */
+function portrait(name, emotion) {
+  const slug = String(name).toLowerCase().trim().replace(/\s+/gu, '-');
+  if (!/^[a-z-]+$/u.test(slug)) return null;
+  const mood = String(emotion ?? '').toLowerCase();
+  const candidates = [...(mood && mood !== 'neutral' && /^[a-z]+$/u.test(mood) ? [`${slug}-${mood}.png`] : []), `${slug}.png`];
+  const source = candidates.map((f) => join(portraitDir, f)).find((f) => existsSync(f));
+  if (!source) return null;
+  const thumb = join(thumbDir, source.slice(portraitDir.length + 1).replace(/\.png$/u, '-192.jpg'));
+  if (!existsSync(thumb) || statSync(thumb).mtimeMs < statSync(source).mtimeMs) {
+    mkdirSync(thumbDir, { recursive: true });
+    execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', source, '-vf', 'scale=192:-2', '-q:v', '4', thumb]);
+  }
+  return thumb;
+}
+
 function meta() {
   return { apiVersion: API_VERSION, outdatedBefore, tags: TAGS, targetLufs, loudnessPending: loudnessQueue.length + loudnessRunning, ffmpegMissing };
 }
@@ -559,6 +584,21 @@ const server = createServer(async (req, res) => {
     }
     if (req.method === 'GET' && url.pathname === '/api/loudness') {
       sendJson(res, 200, { ...meta(), loudness: Object.fromEntries(loudness) });
+      return;
+    }
+    if (req.method === 'GET' && url.pathname === '/portrait') {
+      let file = null;
+      try {
+        file = portrait(url.searchParams.get('name') ?? '', url.searchParams.get('emotion'));
+      } catch {
+        file = null; // ffmpeg missing or failed: the page shows initials
+      }
+      if (!file) {
+        sendJson(res, 404, { error: 'no portrait' });
+        return;
+      }
+      res.writeHead(200, { 'content-type': 'image/jpeg', 'cache-control': 'max-age=3600' });
+      createReadStream(file).pipe(res);
       return;
     }
     if (req.method === 'GET' && url.pathname === '/audio') {

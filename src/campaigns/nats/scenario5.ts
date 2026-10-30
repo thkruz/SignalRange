@@ -807,7 +807,7 @@ export const scenario5Data: ScenarioData = {
       `,
       character: Character.CHARLIE_BROOKS,
       emotion: Emotion.CONCERNED,
-      audioUrl: getAssetUrl('/assets/campaigns/nats/6/intro.mp3'),
+      audioUrl: getAssetUrl('/assets/campaigns/nats/5/intro.mp3'),
     },
     objectives: {
       'review-mission-brief': {
@@ -1018,7 +1018,7 @@ export const scenario5Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.HAPPY,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/6/complete.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/5/obj-phase-9-verify-restoration.mp3'),
       },
       'document-interference-quiz': {
         text: `

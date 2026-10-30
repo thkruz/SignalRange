@@ -32,6 +32,12 @@
   .clip.approved { border-left-color: var(--ok); }
   .clip.rejected { border-left-color: var(--bad); }
   .clip.missing { opacity: .55; }
+  .clip { display: flex; gap: 14px; align-items: flex-start; }
+  .clip .body { flex: 1 1 auto; min-width: 0; }
+  .face { flex: 0 0 88px; text-align: center; font-size: 11px; color: var(--muted); }
+  .face img, .face .initials { width: 88px; height: 88px; border-radius: 10px; object-fit: cover; object-position: top; background: var(--panel-2); border: 1px solid var(--line); display: block; }
+  .face .initials { display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 600; color: var(--muted); }
+  .face .mood { margin-top: 4px; }
   .meta { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; color: var(--muted); font-size: 12px; }
   .meta .who { color: var(--text); font-weight: 600; font-size: 13px; }
   .meta code { color: var(--muted); }
@@ -67,6 +73,9 @@
     .takes button, .verdict button { padding: 6px 12px; }
     .tags button { padding: 4px 10px; font-size: 12px; }
     audio { flex-basis: 100%; }
+    .face { flex-basis: 60px; }
+    .face img, .face .initials { width: 60px; height: 60px; font-size: 20px; }
+    .clip { gap: 10px; }
   }
 </style>
 </head>
@@ -294,6 +303,8 @@ function card(c, i) {
     c.takes.length ? '' : '<span class="tag">not recorded</span>',
   ].join('');
   return `<section class="clip ${c.status}${c.takes.length ? '' : ' missing'}" data-i="${i}">
+    ${face(c)}
+    <div class="body">
     <div class="meta">
       <span class="who">${esc(c.characterName)}</span>
       <span>${esc(c.campaign)} S${c.number}</span>
@@ -318,7 +329,18 @@ function card(c, i) {
     <textarea placeholder="Notes on take ${t.n} (delivery, pacing, pronunciation...)">${esc(t.notes)}</textarea>
     <div class="saved"></div>
     ${takeLine(t)}` : ''}
+    </div>
   </section>`;
+}
+
+/** The speaker's portrait for this line's emotion, as the game shows it; initials when there is no image. */
+function face(c) {
+  const initials = esc(String(c.characterName).split(/\s+/u).map((w) => w[0]).join('').slice(0, 2));
+  const src = `/portrait?name=${encodeURIComponent(c.characterName)}&emotion=${encodeURIComponent(c.emotion.toLowerCase())}`;
+  return `<div class="face" title="${esc(c.characterName)}, ${esc(c.emotion.toLowerCase())}">
+    <img src="${src}" alt="${esc(c.characterName)}" loading="lazy" onerror="this.outerHTML='<div class=&quot;initials&quot;>${initials}</div>'">
+    <div class="mood">${esc(c.emotion.toLowerCase())}</div>
+  </div>`;
 }
 
 function cardEl(i) { return $(`.clip[data-i="${i}"]`); }

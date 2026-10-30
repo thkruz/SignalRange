@@ -23,6 +23,8 @@ const two = (n) => (n < 10 ? ONES[n] : n < 20 ? TEENS[n - 10] : TENS[Math.floor(
 /** Operator style: 153 -> "one fifty-three", 1074 -> "ten seventy-four", 5250 -> "fifty-two fifty", 105 -> "one oh five". */
 export function intWords(n) {
   if (n < 100) return two(n);
+  // Ted: 7,000 is seven thousand, not seventy hundred.
+  if (n >= 1000 && n < 10000 && n % 1000 === 0) return `${ONES[n / 1000]} thousand`;
   const pair = (rest) => (rest === 0 ? 'hundred' : rest < 10 ? `oh ${ONES[rest]}` : two(rest));
   if (n < 1000) return `${ONES[Math.floor(n / 100)]} ${pair(n % 100)}`;
   if (n < 10000) return `${two(Math.floor(n / 100))} ${pair(n % 100)}`;
@@ -43,16 +45,30 @@ const FRACTIONS = { '1/2': 'one half', '2/3': 'two thirds', '3/4': 'three quarte
 /** Labels written in capitals for the UI; spoken as ordinary words. */
 const CAPS_WORDS = ['AND', 'APPLY', 'ENCRYPTION', 'LOCK', 'PROGRAM', 'STOW'];
 
-/** Equipment and site names: letters dotted, digits as "oh N". */
+/** Site names follow Ted's review: VT-01 = Vermont one, ME-02 = Maine two. */
 const NAMES = [
-  [/\bVT-0(\d)\b/gu, (_m, d) => `V.T oh ${ONES[Number(d)]}`],
-  [/\bME-0(\d)\b/gu, (_m, d) => `M.E oh ${ONES[Number(d)]}`],
+  [/\bVT-0(\d)\b/gu, (_m, d) => `Vermont ${ONES[Number(d)]}`],
+  [/\bME-0(\d)\b/gu, (_m, d) => `Maine ${ONES[Number(d)]}`],
   [/\bTP-(\d)\b/gu, (_m, d) => `T.P ${ONES[Number(d)]}`],
 ];
 
+/**
+ * Stage directions are for the screen, not the voice: "[Text message from Dana at 2:03 AM] "Hey - ..."" is spoken as
+ * just the message (Ted 2026-10-16). A text-message line voices only its quoted messages, one paragraph each, so
+ * narration after them ("Congratulations. You've demonstrated ...") stays on screen. Other lines drop [bracketed]
+ * notes. Double quotes are never spoken, so all of them go.
+ */
+function stripStageDirections(text) {
+  if (/\[\s*text message/iu.test(text)) {
+    const messages = [...text.matchAll(/["“]([^"”]+)["”]/gu)].map((m) => m[1].trim());
+    if (messages.length) return messages.join('\n\n');
+  }
+  return text.replace(/\[[^\]]*\]/gu, ' ').replace(/["“”]/gu, '').trim();
+}
+
 /** The prompt to send for a scenario line. */
 export function promptFor(text) {
-  let t = text
+  let t = stripStageDirections(text)
     // Pronunciation (Ted's review notes)
     .replace(/GPSDO/gu, 'GPS D-O')
     .replace(/GPS-Disciplined/gu, 'GPS Disciplined')
@@ -63,6 +79,11 @@ export function promptFor(text) {
     .replace(/\bSLA\b/gu, 'S.L.A')
     .replace(/\bGEO\b/gu, 'Gee-oh')
     .replace(/\bcoax\b/gu, 'co-ax')
+    // Ted: "dB should be pronounced 'decibels' or 'dee-bee'"; dee-bee also covers dBm/dBW, which decibels cannot
+    .replace(/\bdBs\b/gu, 'dee-bees')
+    .replace(/\bdBm\b/gu, 'dee-bee-em')
+    .replace(/\bdBW\b/gu, 'dee-bee-double-you')
+    .replace(/\bdB\b/gu, 'dee-bee')
     .replace(/\bC\/N\b/gu, 'C over N')
     .replace(/\bG\/T\b/gu, 'G over T')
     .replace(/\bAES-256-GCM\b/gu, 'AES two fifty-six GCM')
@@ -72,6 +93,12 @@ export function promptFor(text) {
   t = t
     .replace(/\b(\d)\/(\d)\b/gu, (m) => FRACTIONS[m] ?? m)
     .replace(/(^|[\s(])-(\d)/gu, '$1minus $2')
+    // Compact UTC times occur in later NATS scripts (1032:30, 1035, 0850).
+    .replace(/\b(at|around|by|about|the)\s+([01]\d|2[0-3])([0-5]\d)(?::([0-5]\d))?\b/gu, (_m, prefix, hh, mm, ss) => {
+      const minute = Number(mm);
+      const clock = `${two(Number(hh))} ${minute === 0 ? 'hundred' : minute < 10 ? `oh ${ONES[minute]}` : two(minute)}`;
+      return `${prefix} ${ss === undefined ? clock : `${clock} and ${two(Number(ss))} seconds`}`;
+    })
     .replace(/\b0?(\d{1,2}):(\d{2})\b/gu, (_m, h, mm) => {
       const min = Number(mm);
       return `${two(Number(h))} ${min === 0 ? "o'clock" : min < 10 ? `oh ${ONES[min]}` : two(min)}`;

@@ -1,12 +1,20 @@
 {
   "$comment": "Scenario card style spec for scripts/art/cards.mjs. Prompt = subject + lighting + campaign $palette + $style. Subjects marked TODO block paid runs (dry runs still work). Draft: the orchestrator may refine after the C2 pilot.",
-  "$style": "Painterly realism illustration, cinematic matte-painting key art, fully finished rendering with resolved detail on the subject, no loose sketch or speed-paint brushwork, atmospheric depth, clear value structure with one light direction; not comic, not photographic. 3:2 landscape composition. Horizon line in the lower third of the frame; sky fills at least the upper 60%. One anchor subject placed off-centre on a third of the frame; the subject's base sits near the lower-third line, fully in frame with clear margin on every edge. Calm negative space. No text, no logos, no readable screens, no faces. No people unless the subject names them; when named, at most two distant figures under 5% of frame height, mid-ground, never in the foreground. No fire, smoke, sparks or explosions; any warm accent is one small electric lamp or lit window. Soft film grain, consistent brushwork, cohesive set of scenario cards. Every satellite dish has a solid, opaque reflector with its feed at the focus on struts, and the whole dish stays in frame. No signature, watermark, artist mark or lettering anywhere, including corners. No steam, vapour plumes or smoke; heat is at most a nearly transparent shimmer.",
+  "$style": "Painterly realism illustration, cinematic matte-painting key art, fully finished rendering with resolved detail on the subject, no loose sketch or speed-paint brushwork, atmospheric depth, clear value structure with one light direction; not comic, not photographic. 3:2 landscape composition. Horizon line in the lower third of the frame; sky fills at least the upper 60%. One anchor subject placed off-centre on a third of the frame; the subject's base sits near the lower-third line, fully in frame with clear margin on every edge. Calm negative space. No text, no logos, no readable screens, no faces. No people unless the subject names them; when named, at most two distant figures under 5% of frame height, mid-ground, never in the foreground. No fire, smoke, sparks or explosions; any warm accent is one small electric lamp or lit window. Soft film grain, oil-painted texture, soft edges, no cel shading or flat fills, consistent brushwork, cohesive set of scenario cards. Every satellite dish has a solid, opaque reflector with its feed at the focus on struts, and the whole dish stays in frame. No signature, watermark, artist mark or lettering anywhere, including corners. No steam, vapour, smoke, haze or plumes anywhere; the air is still and clear.",
   "$palette": {
     "nats": "New England cool blues and granite greys with a single small warm tungsten lamp accent.",
     "nats-eu": "North Atlantic slate, sea-green and amber."
   },
-  "$lighting": ["dawn", "overcast noon", "dusk", "night ops"],
-  "models": ["gemini-3-pro-image", "gemini-2.5-flash-image"],
+  "$lighting": [
+    "dawn",
+    "overcast noon",
+    "dusk",
+    "night ops"
+  ],
+  "models": [
+    "gemini-3-pro-image",
+    "gemini-2.5-flash-image"
+  ],
   "aspect": "3:2",
   "scenarios": {
     "nats": {
@@ -32,7 +40,7 @@
       },
       "5": {
         "title": "Interference Hunt",
-        "subject": "A C-band feed horn on its struts at the focus of the Vermont reflector, mouth facing back into the dish, sits on the left third; its paired polarization ports and adjustment collar are sharply defined. A narrow inspection beam from below isolates the assembly against the night sky, with open ground and no structures in the foreground.",
+        "subject": "A C-band feed horn on its struts at the focus of the Vermont reflector, mouth facing back into the dish, sits on the left third; its paired polarization ports and adjustment collar are sharply defined. Soft ambient light isolates the assembly against the night sky; no light beams or glow from the dish, with open ground and no structures in the foreground.",
         "lighting": "night ops"
       },
       "6": {
@@ -42,7 +50,7 @@
       },
       "7": {
         "title": "Uplink Validation",
-        "subject": "A newly serviced feed assembly stands on the left third at the focus of Vermont's C-band reflector, clean waveguide joints contrasting with older painted supports. Closed access covers and neatly secured cables suggest overnight work completed just before uplink validation. The site is empty, with no figures anywhere.",
+        "subject": "A Vermont C-band dish seen from the front three-quarter on the left third, concave face toward the camera, the newly serviced feed on struts at the centre of the face, clean waveguide joints contrasting with older painted supports. Closed access covers and neatly secured cables suggest overnight work completed just before uplink validation. The site is empty, with no figures anywhere.",
         "lighting": "dawn"
       },
       "8": {
@@ -57,7 +65,7 @@
       },
       "10": {
         "title": "Customer Pass",
-        "subject": "A Vermont C-band dish stands on the right third, its feed aimed steadily into a narrow opening between fast-moving clouds. A nearly transparent heat shimmer above the rear amplifier housing, no visible vapour, steam or plumes suggests a sustained, demanding transmission window.",
+        "subject": "A Vermont C-band dish stands on the right third, its feed aimed steadily into a narrow opening between fast-moving clouds. Still, clear air around the rear amplifier housing suggests a sustained, demanding transmission window.",
         "lighting": "overcast noon"
       },
       "11": {
@@ -67,27 +75,27 @@
       },
       "12": {
         "title": "Planned Maintenance: Return to Service",
-        "subject": "The Vermont C-band dish stands whole on the right third, its feed horn at the reflector focus showing a replacement waveguide gasket seated between bright, freshly tightened flanges. An empty access cradle hangs below the feed, the antenna poised to return to service; the full reflector and pedestal stay in frame.",
+        "subject": "The Vermont C-band dish stands whole on the right third, its feed horn on four struts at the centre of the concave face, the camera sees the face, showing a replacement waveguide gasket seated between bright, freshly tightened flanges. An empty access cradle hangs below the feed, the antenna poised to return to service; the full reflector and pedestal stay in frame.",
         "lighting": "dusk"
       },
       "13": {
         "title": "Thermal Anomaly",
-        "subject": "A Vermont dish feed assembly occupies the left third, its rear converter housing surrounded by a nearly transparent heat shimmer with no visible vapour or plume. The cooling grille is packed with dry debris while the surrounding hillside remains still and cool.",
+        "subject": "A Vermont dish on the left third with a grey converter box behind it, its grille clogged with dry leaves. The surrounding hillside remains still and cool.",
         "lighting": "overcast noon"
       },
       "14": {
         "title": "Rain Fade",
-        "subject": "A C-band earth-station dish on a Vermont hillside, a dark rain front sweeping in from the right, a faint, nearly transparent heat shimmer just above the feed housing, no visible vapour or smoke rising into the sky. The dish sits off-centre on the left third of the frame.",
+        "subject": "A C-band earth-station dish on a Vermont hillside, a dark rain front sweeping in from the right, the air above the feed housing clear and still. The dish sits off-centre on the left third of the frame.",
         "lighting": "overcast noon"
       },
       "15": {
         "title": "Frequency Coordination",
-        "subject": "A Vermont C-band feed horn sits on the right third, its waveguide filter section and carefully aligned joints visible beneath the reflector. Thin parallel cloud bands beyond the assembly suggest the narrow separation required between neighbouring transmissions.",
+        "subject": "The whole Vermont C-band dish on the right third, the waveguide filter section visible on the feed at the focus, carefully aligned joints beneath. Thin parallel cloud bands beyond the dish suggest the narrow separation required between neighbouring transmissions.",
         "lighting": "dawn"
       },
       "16": {
         "title": "Cascade Failure",
-        "subject": "The Vermont equipment site occupies the left third, with uneven amber service light spilling from several open equipment bays. A motionless cooling fan and a nearly transparent heat shimmer beneath the dish suggest several independent faults demanding attention at once.",
+        "subject": "The Vermont equipment site occupies the left third, with uneven amber service light spilling from several open equipment bays. A motionless cooling fan behind an open bay door; still air, no vapour, beneath the dish suggests several independent faults demanding attention at once.",
         "lighting": "night ops"
       },
       "17": {
@@ -97,17 +105,17 @@
       },
       "18": {
         "title": "Satellite Anomaly",
-        "subject": "A Maine coastal antenna pedestal fills the left third, its elevation drive freshly exposed beneath a weathered C-band reflector. A loosened protective boot and active gearing suggest an unexpected return to continuous tracking above the cold sea.",
+        "subject": "A medium shot of a Maine coastal C-band dish, the whole dish above the pedestal on the left third, its elevation drive exposed, the loosened protective boot hanging loose on the drive. Active gearing suggests an unexpected return to continuous tracking above the cold sea.",
         "lighting": "overcast noon"
       },
       "19": {
         "title": "Train the New Hire",
-        "subject": "A Vermont C-band dish occupies the right third above a training platform, with two distant mid-ground back-turned figures, each under 5% of frame height, observing its feed alignment. One gestures toward the tracking mechanism while the other watches, turning a familiar procedure into instruction.",
+        "subject": "A Vermont C-band dish occupies the right third above a training platform, the dish dominant in front of two tiny figures far behind the platform rail, each under 5% of frame height, observing its feed alignment. The reflector, struts and feed at the focus are clearly visible.",
         "lighting": "dusk"
       },
       "20": {
         "title": "Dual Outage",
-        "subject": "A Vermont C-band feed horn dominates the left third, its heater jacket dark beneath a thick shell of rime ice. Wind-driven sleet streaks past the frozen aperture as the winter front consumes the hillside behind it.",
+        "subject": "A Vermont C-band dish shown whole on the left third, the whole reflector visible in frame behind the iced feed, its heater jacket dark beneath a thick shell of rime ice. Wind-driven sleet streaks across the frozen reflector as the winter front consumes the hillside behind it.",
         "lighting": "dusk"
       },
       "21": {
@@ -134,37 +142,37 @@
     "nats-eu": {
       "1": {
         "title": "First Light Over Galway",
-        "subject": "A Ku-band LEO tracking dish on a green Galway headland, tilted toward a low pale sky, a small radome building beside it and a drystone wall in the foreground, the Atlantic beyond. The dish sits on the left third of the frame.",
+        "subject": "A Ku-band LEO tracking dish on a green Galway headland, tilted toward a low pale sky, a small radome building beside it and a drystone wall in the foreground, the Atlantic beyond. The dish sits on the left third of the frame. The site is empty, with no figures.",
         "lighting": "dawn"
       },
       "2": {
         "title": "Proving the Link",
-        "subject": "A Galway Ku-band tracking dish occupies the right third, its precisely aligned reflector framed against a clear gap in layered Atlantic cloud. A temporary calibration fixture on the feed support suggests a station still being measured against its promised performance.",
+        "subject": "A Galway Ku-band tracking dish occupies the right third, its precisely aligned reflector framed against a clear gap in layered Atlantic cloud. A temporary calibration fixture on the feed support suggests a station still being measured against its promised performance. The site is empty, with no figures.",
         "lighting": "overcast noon"
       },
       "3": {
         "title": "Two-Way Street",
-        "subject": "A Galway Ku-band feed assembly occupies the left third, its newly connected transmit waveguide catching warm light beneath the reflector. Fresh weatherproofing around the uplink housing suggests a receive station preparing to send its first authenticated command.",
+        "subject": "A whole Galway Ku-band dish on the left third, face toward the camera, its feed at the focus on struts, the transmit waveguide runs up the pedestal to the feed; no lamps on it. Fresh weatherproofing around the uplink housing suggests a receive station preparing to send its first authenticated command. The site is empty, with no figures.",
         "lighting": "dusk"
       },
       "4": {
         "title": "Keys to the Bird",
-        "subject": "The Galway equipment site sits on the right third, its secured service entrance illuminated beside a closed, windowless communications enclosure. Fresh tamper seals and protected cable conduits suggest controlled access to the machinery behind a trusted command link.",
+        "subject": "The Galway equipment site sits on the right third, its secured service entrance illuminated beside a closed, windowless communications enclosure. Fresh tamper seals and protected cable conduits suggest controlled access to the machinery behind a trusted command link. The site is empty, with no figures.",
         "lighting": "night ops"
       },
       "5": {
         "title": "Shetland Comes Online",
-        "subject": "A newly commissioned Ku-band dish stands on the left third of a Shetland headland, its pale reflector above wind-flattened grass. Fresh foundation gravel contrasts with dark peat and sea spray, suggesting a remote station finally joining the network.",
+        "subject": "A newly commissioned Ku-band dish stands on the left third of a Shetland headland, its pale reflector above wind-flattened grass. Fresh foundation gravel contrasts with dark peat, wet rocks and white surf below the headland, suggesting a remote station finally joining the network. The site is empty, with no figures.",
         "lighting": "dawn"
       },
       "6": {
         "title": "Watch the Watchers",
-        "subject": "The Galway equipment site occupies the left third behind a wet perimeter fence, its access gate closed beneath a sharply defined security light. An empty service path and long fence shadows give an ordinary inspection an unusually watchful atmosphere.",
+        "subject": "The Galway equipment site occupies the left third behind a wet perimeter fence, its access gate closed beneath a sharply defined security light. An empty service path and long fence shadows give an ordinary inspection an unusually watchful atmosphere. The site is empty, with no figures.",
         "lighting": "night ops"
       },
       "7": {
         "title": "Moving Target",
-        "subject": "A Galway tracking pedestal occupies the right third, its curved cable carrier stretched into a newly changed azimuth position. An older arc of scuffed gravel beneath the drive contrasts with the fresh direction of the reflector overhead.",
+        "subject": "A Galway tracking dish seen from behind on the right third, the feed hidden, a curved cable carrier looping around the azimuth base into a newly changed azimuth position. An older arc of scuffed gravel beneath the drive contrasts with the fresh direction of the reflector overhead. The site is empty, with no figures.",
         "lighting": "dusk"
       },
       "8": {
@@ -174,102 +182,102 @@
       },
       "9": {
         "title": "Morning Constellation",
-        "subject": "The Galway equipment site sits on the right third above a misty Atlantic inlet, with its tracking dish already raised from stow. Pale light catches dew on the perimeter fence as a busy day of constellation contacts begins.",
+        "subject": "The Galway equipment site sits on the right third above a misty Atlantic inlet, with its tracking dish already raised from stow. Pale light catches dew on the perimeter fence as a busy day of constellation contacts begins. The site is empty, with no figures.",
         "lighting": "dawn"
       },
       "10": {
         "title": "Priority Tasking",
-        "subject": "A Galway Ku-band dish occupies the left third, tipped low toward a thin strip of sea beneath heavy cloud, the headland rising close on either side so the narrow pass window feels tight.",
+        "subject": "A Galway Ku-band dish occupies the left third, tipped low toward a thin strip of sea beneath heavy cloud, the headland rising close on either side so the narrow pass window feels tight. The site is empty, with no figures.",
         "lighting": "overcast noon"
       },
       "11": {
         "title": "LEOP: Launch Day",
-        "subject": "A Galway Ku-band dish stands on the right third, its reflector searching just above an empty Atlantic horizon. A wide expanse of pale sky surrounds the small antenna, suggesting the uncertainty of acquiring a spacecraft on its first orbit.",
+        "subject": "A Galway Ku-band dish stands on the right third, its reflector searching just above an empty Atlantic horizon. A wide expanse of pale sky surrounds the small antenna, suggesting the uncertainty of acquiring a spacecraft on its first orbit. The site is empty, with no figures.",
         "lighting": "dawn"
       },
       "12": {
         "title": "LEOP: Commissioning",
-        "subject": "A Galway Ku-band feed horn occupies the left third, its newly fitted calibration coupler and immaculate connectors visible beneath the reflector. A temporary protective cover lies folded against the support, suggesting final acceptance work before operational imagery delivery.",
+        "subject": "A whole Galway Ku-band dish on the left third, seen from behind with the feed hidden; a calibration coupler box on the pedestal, folded cover against the support. A temporary protective cover lies folded against the support, suggesting final acceptance work before operational imagery delivery. The site is empty, with no figures.",
         "lighting": "dusk"
       },
       "13": {
         "title": "The Numbers Don't Lie",
-        "subject": "A Galway Ku-band dish occupies the right third, tilted almost vertically with its elevation mechanism close to the zenith limit. Weather staining around the feed housing adds a second visible concern to the difficult overhead tracking geometry.",
+        "subject": "A Galway Ku-band dish occupies the right third, tilted almost vertically with its elevation mechanism close to the zenith limit. Weather staining around the feed housing adds a second visible concern to the difficult overhead tracking geometry. The site is empty, with no figures.",
         "lighting": "overcast noon"
       },
       "14": {
         "title": "Atlantic Low",
-        "subject": "A Galway Ku-band dish stands on the left third as dense rain turns to sleet across the headland. Meltwater runs from the heated feed cover while a dark Atlantic cloud shelf closes over the reflector's low pointing direction.",
+        "subject": "A Galway Ku-band dish stands on the left third as dense rain turns to sleet across the headland. Icicles and meltwater drip from the feed cover while a dark Atlantic cloud shelf closes over the reflector's low pointing direction. The site is empty, with no figures.",
         "lighting": "dusk"
       },
       "15": {
         "title": "Rotation Day",
-        "subject": "The Galway equipment site occupies the right third, its antenna lowered between contacts beside a securely closed communications shelter. A narrow break in racing clouds briefly illuminates the service entrance, suggesting a short interval for a coordinated security change.",
+        "subject": "The Galway equipment site occupies the right third, its antenna lowered between contacts beside a securely closed communications shelter. A narrow break in racing clouds briefly illuminates the service entrance, suggesting a short interval for a coordinated security change. The site is empty, with no figures.",
         "lighting": "dawn"
       },
       "16": {
         "title": "Cascade",
-        "subject": "A Shetland antenna pedestal occupies the left third, its cooling compartment open beneath a steeply raised Ku-band reflector. A single distant mid-ground back-turned technician, under 5% of frame height, leans toward the stalled fan while wind strains the loose access cover.",
+        "subject": "A Shetland antenna pedestal occupies the left third, its cooling compartment open beneath a steeply raised Ku-band reflector, the whole dish in frame. One tiny back-turned technician far off near the lamp post, under 5% of frame height, walks toward the stalled fan while wind strains the loose access cover.",
         "lighting": "overcast noon"
       },
       "17": {
         "title": "Unusual Activity",
-        "subject": "The Galway equipment site sits on the left third, its quiet radome and closed entrance reflected in rain-dark paving. A security lamp leaves the outer fence in shadow, suggesting subtle activity beyond an otherwise routine overnight watch.",
+        "subject": "The Galway equipment site sits on the left third, its quiet radome and closed entrance reflected in rain-dark paving. A security lamp leaves the outer fence in shadow, suggesting subtle activity beyond an otherwise routine overnight watch. The site is empty, with no figures.",
         "lighting": "night ops"
       },
       "18": {
         "title": "Dirty Spectrum",
-        "subject": "A Galway Ku-band feed horn occupies the right third, exposed beneath a dry reflector while a distant rain band remains offshore. An attached diagnostic coupler suggests repeated interference checks under weather that cannot explain the persistent degradation.",
+        "subject": "The whole Galway Ku dish on the right third, its small feed horn on struts at the reflector focus, beneath a dry reflector while an offshore rain band remains in the distance behind. An attached diagnostic coupler suggests repeated interference checks under weather that cannot explain the persistent degradation. The site is empty, with no figures.",
         "lighting": "dusk"
       },
       "19": {
         "title": "Frequency Agility",
-        "subject": "A Galway Ku-band feed assembly occupies the left third, with its compact tuning housing and protected RF connections clearly visible. Fast-moving cloud shadows cross the reflector, suggesting the need to keep a command path usable as conditions change.",
+        "subject": "A large Ku tracking dish on the left third, matte grey opaque reflector, evenly lit, feed at focus on struts with compact tuning housing and protected RF connections visible. Suggesting the need to keep a command path usable as conditions change. The site is empty, with no figures.",
         "lighting": "overcast noon"
       },
       "20": {
         "title": "False Time",
-        "subject": "The sky above Galway fills the frame, with a fading star field confined to the right third over a low coastal silhouette. Faint doubled star trails suggest a trusted timing reference slipping away from the true sky.",
+        "subject": "The sky above Galway fills the frame, with a few fading stars low in the right part of the dawn sky, blending smoothly with the sky; no panels, seams or hard edges, over a low coastal silhouette. Faint doubled star trails suggest a trusted timing reference slipping away from the true sky. The site is empty, with no figures.",
         "lighting": "dawn"
       },
       "21": {
         "title": "Knocking on the Door",
-        "subject": "The Galway equipment site occupies the right third, its communications shelter sealed behind a secondary locked solid steel barrier. A narrow shaft of light reaches the protected cable entry, concentrating attention on the boundary guarding the command path.",
+        "subject": "The Galway equipment site occupies the right third, its communications shelter sealed behind a secondary locked solid steel barrier. A narrow shaft of light reaches the protected cable entry, concentrating attention on the boundary guarding the command path. The site is empty, with no figures.",
         "lighting": "dusk"
       },
       "22": {
         "title": "Connecting the Dots",
-        "subject": "The Galway equipment site sits on the left third, viewed from outside where antenna foundations, protected conduits and perimeter fencing converge. Receding cloud reveals the whole installation clearly, suggesting separate incidents finally understood as one connected pattern.",
+        "subject": "One Galway headland site seen from fence level: one tracking dish, with conduits and fence converging at its foundation. Receding cloud reveals the whole installation clearly, suggesting separate incidents finally understood as one connected pattern. The site is empty, with no figures.",
         "lighting": "overcast noon"
       },
       "23": {
         "title": "Dark Passes",
-        "subject": "A Galway tracking pedestal occupies the right third beneath a barely visible reflector, its normal service lights extinguished. A single portable lamp illuminates the manual-control compartment, suggesting one essential command must survive a night of simultaneous failures.",
+        "subject": "A Galway tracking pedestal occupies the right third beneath the whole dark reflector in frame, faint against the night sky, its normal service lights extinguished. A single portable lamp illuminates the manual-control compartment, suggesting one essential command must survive a night of simultaneous failures. The site is empty, with no figures.",
         "lighting": "night ops"
       },
       "24": {
         "title": "North Atlantic Storm",
-        "subject": "A tracking dish and a small equipment hut on a storm-lashed Atlantic headland, sleet slanting across the frame, waves breaking on dark rocks, one warm lit window in the hut. The dish sits on the right third of the frame.",
+        "subject": "A tracking dish and a small equipment hut on a storm-lashed Atlantic headland, sleet slanting across the frame, waves breaking on dark rocks, one warm lit window in the hut. The dish sits on the right third of the frame. The site is empty, with no figures.",
         "lighting": "night ops"
       },
       "25": {
         "title": "Site Orientation",
-        "subject": "The Galway equipment site occupies the left third beyond an open pedestrian gate, with a clear inspection path following the fence toward the radome. The empty route suggests the start of a deliberate review of the station's defences.",
+        "subject": "The Galway equipment site occupies the left third beyond an open pedestrian gate, with a clear inspection path following the fence toward the radome. The empty route suggests the start of a deliberate review of the station's defences. The site is empty, with no figures.",
         "lighting": "dawn"
       },
       "26": {
         "title": "Baseline Check",
-        "subject": "A Galway antenna pedestal occupies the right third, its inspection cover open to reveal one conspicuously fresh cable among older, neatly secured runs. Cool condensation on the housing suggests a pre-pass check catching an unexplained configuration change.",
+        "subject": "A whole Galway dish on the right third with its pedestal cover open, grey weathered paint, the whole dish in frame; inside the cover one conspicuously fresh cable among older, neatly secured runs. Cool condensation on the housing suggests a pre-pass check catching an unexplained configuration change. The site is empty, with no figures.",
         "lighting": "dawn"
       },
       "27": {
         "title": "Removable Media",
-        "subject": "A Galway antenna pedestal occupies the left third, its controller service compartment open with a small removable drive still inserted in the maintenance port. An unattended tool roll rests below, suggesting an unverified firmware transfer interrupted before installation.",
+        "subject": "A Galway antenna pedestal occupies the left third, its controller service compartment open with a small removable drive still inserted in the maintenance port. An unattended tool roll rests below, suggesting an unverified firmware transfer interrupted before installation. The site is empty, with no figures.",
         "lighting": "overcast noon"
       },
       "28": {
         "title": "Vendor Session",
-        "subject": "The Galway equipment site sits on the right third, its maintenance-room window unexpectedly lit while the tracking dish remains stowed. The locked gate and empty access road suggest remote activity occurring without an authorised visit.",
+        "subject": "The Galway equipment site sits on the right third, its maintenance-room window unexpectedly lit while the tracking dish remains stowed. The locked gate and empty access road suggest remote activity occurring without an authorised visit. The site is empty, with no figures.",
         "lighting": "night ops"
       }
     }

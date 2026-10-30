@@ -59,6 +59,7 @@
   "license": "AGPL-3.0",
   "devDependencies": {
     "@biomejs/biome": "2.5.4",
+    "@google/genai": "^2.32.0",
     "@playwright/test": "^1.48.0",
     "@rspack/cli": "2.0.5",
     "@rspack/core": "2.0.5",

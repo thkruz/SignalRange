@@ -8,7 +8,7 @@
  *   node scripts/vo-review.mjs --summary       -> counts by status, character and tag, then exits
  *   node scripts/vo-review.mjs --outdated      -> clips with no usable current-tempo take (JSON), then exits
  *   node scripts/vo-review.mjs --archive       -> copies every live mp3 into the take archive, then exits
- *   node scripts/vo-review.mjs --add-take <asset path> <new mp3> '<json>'
+ *   node scripts/vo-review.mjs --add-take <asset path> <new mp3> '<json>' [--archive-only]
  *                                              -> adds a newly generated take, then exits
  *   node scripts/vo-review.mjs --record-take <asset path> '<json>'
  *                                              -> records how the live file at that path was made, then exits
@@ -91,6 +91,7 @@ const TAGS = [
   'cut off',
   'wrong voice',
   'text wrong',
+  'needs-ted',
 ];
 
 const scriptsDir = dirname(fileURLToPath(import.meta.url));
@@ -366,7 +367,7 @@ function promote(clip, hash) {
   clip.exists = true;
 }
 
-function applyReview(clip, hash, { status, notes, tags }) {
+function applyReview(clip, hash, { status, notes, tags, approvedBy }) {
   const review = readReview();
   const entry = review.clips[clip.path] ?? { takes: {} };
   Object.assign(entry, {
@@ -385,6 +386,7 @@ function applyReview(clip, hash, { status, notes, tags }) {
     notes: notes ?? prev.notes ?? '',
     text: clip.text,
     reviewedAt: new Date().toISOString(),
+    ...(approvedBy && status === 'approved' ? { approvedBy } : {}),
   };
   if (next.status === 'unreviewed' && !next.notes && next.tags.length === 0) delete entry.takes[hash];
   else entry.takes[hash] = next;
@@ -428,7 +430,10 @@ if (args.includes('--add-take')) {
   mkdirSync(dirname(dest), { recursive: true });
   if (!existsSync(dest)) copyFileSync(src, dest);
   recordTake(path, hash, fields);
-  if (before === null) {
+  if (before === null && args.includes('--archive-only')) {
+    console.log(`added take ${hash} for ${path} (archive only: nothing written under public/; promote it later through vo-review)`);
+  } else if (before === null) {
+    mkdirSync(dirname(liveFile(path)), { recursive: true });
     copyFileSync(dest, liveFile(path));
     console.log(`added take ${hash} for ${path} (no live file before, so it is live now)`);
   } else {
@@ -639,7 +644,7 @@ const server = createServer(async (req, res) => {
         return;
       }
       const tags = body.tags && TAGS.filter((t) => body.tags.includes(t));
-      sendJson(res, 200, applyReview(clip, body.take, { status: body.status, notes: body.notes, tags }));
+      sendJson(res, 200, applyReview(clip, body.take, { status: body.status, notes: body.notes, tags, approvedBy: body.approvedBy === 'pipeline' ? 'pipeline' : undefined }));
       return;
     }
     sendJson(res, 404, { error: 'not found' });

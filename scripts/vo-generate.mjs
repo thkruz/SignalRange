@@ -8,7 +8,7 @@
  *   node scripts/vo-generate.mjs --path assets/campaigns/nats/1/v2/obj-x.mp3 --from-scenario --character CHARLIE_BROOKS
  *   node scripts/vo-generate.mjs --path assets/campaigns/nats/1/v2/obj-x.mp3 --text-file line.txt
  *       [--character CHARLIE_BROOKS | --voice <id>] [--model eleven_multilingual_v2] [--speed 1.12]
- *       [--stability 0.5] [--similarity 0.75] [--style 0] [--count 3] [--seed 42] [--note "why"] [--dry-run]
+ *       [--stability 0.5] [--similarity 0.75] [--style 0] [--count 3] [--seed 42] [--note "why"] [--dry-run] [--archive-only]
  *
  * --from-scenario reads the line the scenario plays at that path and applies the
  * pronunciation and pacing rules in scripts/vo-prompt-rules.mjs; --text-file sends
@@ -102,6 +102,7 @@ if (!path?.startsWith('assets/') || !path.endsWith('.mp3') || (!fromScenario && 
   console.error('usage: --path <assets/...mp3> (--from-scenario | --text-file <file>) [options]; see the header of scripts/vo-generate.mjs');
   process.exit(1);
 }
+const campaignOf = (assetPath) => /^assets\/campaigns\/([^/]+)\//u.exec(assetPath)?.[1];
 const tmp = mkdtempSync(join(tmpdir(), 'vo-generate-'));
 
 /** The dialog clip that plays this path today (text, character, emotion), from the scenario files. */
@@ -124,7 +125,7 @@ if (opt('--character') && clip.character !== opt('--character')) {
   process.exit(1);
 }
 const script = clip.text;
-const text = fromScenario ? promptFor(script) : readFileSync(textFile, 'utf8').trim();
+const text = fromScenario ? promptFor(script, campaignOf(path)) : readFileSync(textFile, 'utf8').trim();
 const model = opt('--model', cast.model ?? 'eleven_multilingual_v2');
 const count = Math.max(1, Math.min(4, Number(opt('--count', '1'))));
 const baseSeed = num('--seed');
@@ -170,7 +171,7 @@ for (let i = 0; i < count; i++) {
     ...(note ? { note } : {}),
   };
   // Straight to node, not through a shell, so the JSON reaches --add-take intact
-  const out = execFileSync(process.execPath, [join(scriptsDir, 'vo-review.mjs'), '--add-take', path, file, JSON.stringify(record)], {
+  const out = execFileSync(process.execPath, [join(scriptsDir, 'vo-review.mjs'), '--add-take', path, file, JSON.stringify(record), ...(args.includes('--archive-only') ? ['--archive-only'] : [])], {
     encoding: 'utf8',
   });
   console.log(`take ${i + 1}: seed ${seed}, ${record.credits} credits -> ${out.trim()}`);

@@ -3,13 +3,14 @@
  *
  *   node scripts/art/avatars.mjs --character james-okafor --emotion sad,angry --takes 2 --budget 1 [--model M] [--dry]
  *   node scripts/art/avatars.mjs --character francis-martin --base --desc "<casting description>" --ref a.png,b.png --takes 3 --budget 1
+ *   (--expression-line "<text>" replaces the bare emotion word in the prompt, for retakes)
  *   node scripts/art/avatars.mjs --promote <sha> --character james-okafor --emotion sad [--dry]
  *   node scripts/art/avatars.mjs --promote <sha> --character francis-martin --base [--dry]
  *
  * Expression reference: public/assets/characters/<slug>.png. Takes: src/private/art/avatars/<slug>/<emotion|base>/<sha1>.png.
  * Promote of an emotion writes public/assets/characters/<slug>-<emotion>.png (neutral writes <slug>-neutral.png).
  * Emotion promotes recolour the take's near-white background to the base portrait's corner-median colour
- * (flood fill + 1-px feather; --no-bg-match disables; stats go to <sha>.bg.json beside the untouched take).
+ * (flood fill from the source's own corner colour within --bg-tol, default 12, or pure white for near-white sources; 1-px feather; --no-bg-match disables; stats go to <sha>.bg.json beside the untouched take).
  * Promote with --base writes <slug>.png and the identical <slug>-neutral.png copy. Replaced files move to
  * src/private/art/superseded/avatars/<slug>/ (never deleted).
  */
@@ -26,6 +27,7 @@ export const EMOTIONS = ['angry', 'concerned', 'confident', 'excited', 'frustrat
 const SIZE = 1024;
 const WHITE_MIN = 245; // channel floor for "pure white" background pixels
 const PATCH = 16;
+const BG_TOL = 12; // max per-channel delta from the source's own corner colour counted as background
 
 /** Median background colour of the four 16x16 corner patches of a raw RGBA buffer. */
 function cornerMedian(data, w, h) {
@@ -48,14 +50,18 @@ function cornerMedian(data, w, h) {
  * Flood fill from the four corners through pixels with every channel >= WHITE_MIN, then blend the 1-px ring
  * of neighbours toward the fill colour in proportion to how white they are (removes the white halo).
  */
-async function matchBackground(takeFile, size) {
+async function matchBackground(takeFile, size, tol = BG_TOL) {
   const baseFile = join(CHARACTERS, `${slug}.png`);
   const b = await sharp(baseFile).resize(size, size, { fit: 'cover' }).ensureAlpha().raw().toBuffer();
   const fill = cornerMedian(b, size, size);
   const { data, info } = await sharp(takeFile).resize(size, size, { fit: 'cover', position: 'centre' }).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   const w = info.width;
   const h = info.height;
-  const isWhite = (i) => data[i] >= WHITE_MIN && data[i + 1] >= WHITE_MIN && data[i + 2] >= WHITE_MIN;
+  const seed = cornerMedian(data, w, h);
+  const seedWhite = seed.every((v) => v >= WHITE_MIN);
+  const dist = (i) => Math.max(Math.abs(data[i] - seed[0]), Math.abs(data[i + 1] - seed[1]), Math.abs(data[i + 2] - seed[2]));
+  // Near-white sources keep the original pure-white rule; tinted or warm sources flood within tol of their own corner colour.
+  const isWhite = (i) => (seedWhite ? data[i] >= WHITE_MIN && data[i + 1] >= WHITE_MIN && data[i + 2] >= WHITE_MIN : dist(i) <= tol);
   const mask = new Uint8Array(w * h);
   const stack = [];
   for (const [x, y] of [
@@ -101,13 +107,13 @@ async function matchBackground(takeFile, size) {
   for (let p = 0; p < w * h; p++) if (mask[p]) for (let c = 0; c < 3; c++) data[p * 4 + c] = fill[c];
   for (const p of ring) {
     const m = Math.min(data[p * 4], data[p * 4 + 1], data[p * 4 + 2]);
-    const t = Math.max(0, Math.min(1, (m - 200) / (WHITE_MIN - 200)));
+    const t = seedWhite ? Math.max(0, Math.min(1, (m - 200) / (WHITE_MIN - 200))) : Math.max(0, Math.min(1, (2 * tol - dist(p * 4)) / tol));
     for (let c = 0; c < 3; c++) data[p * 4 + c] = Math.round(data[p * 4 + c] * (1 - t) + fill[c] * t);
   }
   const out = await sharp(data, { raw: { width: w, height: h, channels: 4 } })
     .png()
     .toBuffer();
-  return { out, fill, filledPct: Number(((100 * filled) / (w * h)).toFixed(2)), ringPx: ring.length };
+  return { out, fill, seed, seedWhite, filledPct: Number(((100 * filled) / (w * h)).toFixed(2)), ringPx: ring.length };
 }
 
 const A = makeArgs();
@@ -131,9 +137,10 @@ if (promote) {
   }
   let buf;
   if (!base && !A.has('--no-bg-match')) {
-    const r = await matchBackground(src, SIZE);
+    const r = await matchBackground(src, SIZE, Number(A.opt('--bg-tol') ?? BG_TOL));
+    console.log(`avatars: bg match seed ${r.seed.join(',')} -> fill ${r.fill.join(',')}, ${r.filledPct}% filled`);
     buf = r.out;
-    const stats = { source: basename(src), fill: r.fill, filledPct: r.filledPct, feathered1pxRing: r.ringPx, whiteMinChannel: WHITE_MIN };
+    const stats = { source: basename(src), fill: r.fill, filledPct: r.filledPct, feathered1pxRing: r.ringPx, whiteMinChannel: WHITE_MIN, seed: r.seed, seedWhite: r.seedWhite };
     writeFileSync(
       src.replace(/\.png$/u, '.bg.json'),
       `${JSON.stringify(stats, null, 2)}
@@ -197,8 +204,9 @@ if (base) {
   } catch {
     die(TOOL, `reference portrait missing: ${refFile}`);
   }
+  const exprLine = A.opt('--expression-line');
   for (const emotion of emotions) {
-    const prompt = `same person, same framing, same lighting, flat warm off-white background exactly like the reference base portrait, not pure white, untextured, only the expression changes: ${emotion}`;
+    const prompt = `same person, same framing, same lighting, flat warm off-white background exactly like the reference base portrait, not pure white, untextured, only the expression changes: ${exprLine ?? emotion}`;
     for (const model of models) {
       for (let t = 1; t <= takes; t++) {
         jobs.push({

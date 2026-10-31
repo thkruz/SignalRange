@@ -203,7 +203,7 @@ export const natsEuScenario21Data: ScenarioData = {
           // 1620 s), so the replay always follows the operator's own HK-DUMP
           startAfterObjectiveId: 'spot-the-knock',
           timeS: 25,
-          timestampLabel: '09:27 UTC',
+          timestampLabel: '{{at:obj:spot-the-knock:start+25s|09:27}} UTC',
           actor: 'svc-monitor',
           action: 'SAR-2 telemetry: 3 inbound TT&C frames rejected at the spacecraft - authentication counter stale (the three frames arrived in the 15 s before this entry)',
           category: 'command',
@@ -212,9 +212,10 @@ export const natsEuScenario21Data: ScenarioData = {
         },
         {
           id: 'evt-kg-replay-log',
+          // Pre-audit 15: same instant as the monitoring entry, so the clip's 'look at your unit log' never points at nothing
           startAfterObjectiveId: 'spot-the-knock',
-          timeS: 37,
-          timestampLabel: '09:27 UTC',
+          timeS: 25,
+          timestampLabel: '{{at:obj:spot-the-knock:start+25s|09:27}} UTC',
           actor: 'kg-01',
           action: 'KG-01 unit log: 3 frames observed on the return matching your HK-DUMP, counter 0x2F13 stale, source not this station',
           category: 'command',
@@ -295,7 +296,7 @@ export const natsEuScenario21Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Empty sky, not a fault. A staged spare is what a store is for, and a muted BUC is correct for a station with nothing to send yet. The board will read exactly like this at 09:27 too.',
+              'Empty sky, not a fault. A staged spare is what a store is for, and a muted BUC is correct for a station with nothing to send yet. The board will read exactly like this at any quiet moment too.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -567,7 +568,7 @@ export const natsEuScenario21Data: ScenarioData = {
       id: 'spot-the-knock',
       nice: ['S0648', 'K0946'],
       title: 'Spot the Knock',
-      description: "Two new lines in the log: Rotterdam's monitoring service and KG-01, moments after your ACK. Flag the monitoring entry first and read what the bird did.",
+      description: "Within the next minute, watch the log for two new lines: Rotterdam's monitoring service and KG-01. Flag the monitoring entry first and read what the bird did.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['first-command'],
       conditions: [
@@ -631,7 +632,7 @@ export const natsEuScenario21Data: ScenarioData = {
           params: {
             character: Character.ANNEKE_VISSER,
             prompt:
-              'Three of your frames came back at my bird from somewhere else and it refused them. Your key reads Valid at my end. Window is open for six more minutes and you owe me a PLD-STATUS. What is this, and what do you want to do with the key?',
+              'Three of your frames came back at my bird from somewhere else and it refused them. Your key reads Valid at my end. Window is open until 09:33 and you owe me a PLD-STATUS. What is this, and what do you want to do with the key?',
             evidence: ['key-seen', 'unit-log-flagged'],
             decisionOptions: [
               {
@@ -904,7 +905,7 @@ export const natsEuScenario21Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Debrief',
             documentLine:
-              'Closed 09:52Z. Open: source of replayed frames (referred to Group CSIRT; KG-01 log and Q2 sealed). Debrief: command key rotated after any contested window; spare key staged before every commanding pass; KG-01 unit log export requested to the incident record on any counter reject.',
+              'Closed {{stationTime}}Z. Open: source of replayed frames (referred to Group CSIRT; KG-01 log and Q2 sealed). Debrief: command key rotated after any contested window; spare key staged before every commanding pass; KG-01 unit log export requested to the incident record on any counter reject.',
           },
           mustMaintain: false,
         },
@@ -961,7 +962,7 @@ export const natsEuScenario21Data: ScenarioData = {
       'second-command': {
         text: `
         <p>
-          PLD-STATUS acknowledged under Q2b. Whatever they recorded this morning is a recording of a key that no longer exists on my bird. Chain down at LOS; Priya wants a word about the old one.
+          PLD-STATUS acknowledged under Q2b. Whatever they recorded this morning is a recording of a key that no longer exists on my bird. Chain down now; Priya wants a word about the old one.
         </p>
         `,
         character: Character.ANNEKE_VISSER,

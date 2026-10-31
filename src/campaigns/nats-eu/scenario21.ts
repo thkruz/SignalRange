@@ -2,6 +2,7 @@ import type { GroundStationConfig } from '@app/assets/ground-station/ground-stat
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { ScenarioData } from '@app/ScenarioData';
 import type { dBm, MHz } from '@app/types';
+import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees, TleLine1, TleLine2 } from 'ootk';
 import { galwayGroundStation, shetlandGroundStation } from './ground-stations';
 import { createMeridianSar1, createMeridianSar2, type MeridianTle } from './satellites';
@@ -926,7 +927,7 @@ export const natsEuScenario21Data: ScenarioData = {
       `,
       character: Character.ANNEKE_VISSER,
       emotion: Emotion.NEUTRAL,
-      audioUrl: '',
+      audioUrl: getAssetUrl('/assets/campaigns/nats-eu/21/intro.mp3'),
     },
     objectives: {
       'first-command': {
@@ -937,7 +938,7 @@ export const natsEuScenario21Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/21/obj-first-command.mp3'),
       },
       'spot-the-knock': {
         text: `
@@ -947,7 +948,7 @@ export const natsEuScenario21Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.CONCERNED,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/21/obj-spot-the-knock.mp3'),
       },
       'call-the-knock': {
         text: `
@@ -957,7 +958,7 @@ export const natsEuScenario21Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/21/obj-call-the-knock.mp3'),
       },
       'second-command': {
         text: `
@@ -967,7 +968,7 @@ export const natsEuScenario21Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.HAPPY,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/21/obj-second-command.mp3'),
       },
       'retain-the-evidence': {
         text: `
@@ -977,7 +978,7 @@ export const natsEuScenario21Data: ScenarioData = {
         `,
         character: Character.PRIYA_SHARMA,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/21/obj-retain-the-evidence.mp3'),
       },
       'close-and-debrief': {
         text: `
@@ -987,7 +988,7 @@ export const natsEuScenario21Data: ScenarioData = {
         `,
         character: Character.PRIYA_SHARMA,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/21/obj-close-and-debrief.mp3'),
       },
     },
   },

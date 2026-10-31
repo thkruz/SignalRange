@@ -2,6 +2,7 @@ import type { GroundStationConfig } from '@app/assets/ground-station/ground-stat
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { ScenarioData } from '@app/ScenarioData';
 import type { dBm } from '@app/types';
+import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
 import { galwayGroundStation } from './ground-stations';
 import { meridianSar1Satellite, meridianSar2Satellite } from './satellites';
@@ -729,7 +730,7 @@ export const natsEuScenario4Data: ScenarioData = {
       `,
       character: Character.CHARLIE_BROOKS,
       emotion: Emotion.NEUTRAL,
-      audioUrl: '',
+      audioUrl: getAssetUrl('/assets/campaigns/nats-eu/4/intro.mp3'),
     },
     objectives: {
       'crypto-status-check': {
@@ -740,7 +741,7 @@ export const natsEuScenario4Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/4/obj-crypto-status-check.mp3'),
       },
       'complete-key-rotation': {
         text: `
@@ -753,7 +754,7 @@ export const natsEuScenario4Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.CONCERNED,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/4/obj-complete-key-rotation.mp3'),
       },
       'carrier-into-muted-buc': {
         text: `
@@ -763,7 +764,7 @@ export const natsEuScenario4Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/4/obj-carrier-into-muted-buc.mp3'),
       },
       'secure-the-chain': {
         text: `
@@ -773,7 +774,7 @@ export const natsEuScenario4Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/4/obj-secure-the-chain.mp3'),
       },
       'traffic-key-mismatch': {
         text: `
@@ -786,7 +787,7 @@ export const natsEuScenario4Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/4/obj-traffic-key-mismatch.mp3'),
       },
       're-key-traffic': {
         text: `
@@ -796,7 +797,7 @@ export const natsEuScenario4Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/4/obj-re-key-traffic.mp3'),
       },
       'prove-the-traffic-key': {
         text: `
@@ -806,7 +807,7 @@ export const natsEuScenario4Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.HAPPY,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/4/obj-prove-the-traffic-key.mp3'),
       },
       'log-the-rotation': {
         text: `
@@ -816,7 +817,7 @@ export const natsEuScenario4Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/4/obj-log-the-rotation.mp3'),
       },
     },
     objectivesOnStart: {
@@ -828,7 +829,7 @@ export const natsEuScenario4Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/4/obj-send-authenticated-command.mp3'),
       },
     },
   },

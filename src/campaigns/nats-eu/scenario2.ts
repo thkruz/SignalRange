@@ -2,6 +2,7 @@ import type { GroundStationConfig } from '@app/assets/ground-station/ground-stat
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { ScenarioData } from '@app/ScenarioData';
 import type { dB, dBm } from '@app/types';
+import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
 import { galwayGroundStation } from './ground-stations';
 import { meridianSar1Satellite, meridianSar2Satellite } from './satellites';
@@ -678,7 +679,7 @@ export const natsEuScenario2Data: ScenarioData = {
       `,
       character: Character.CHARLIE_BROOKS,
       emotion: Emotion.NEUTRAL,
-      audioUrl: '',
+      audioUrl: getAssetUrl('/assets/campaigns/nats-eu/2/intro.mp3'),
     },
     objectives: {
       'tx-cold-check': {
@@ -689,7 +690,7 @@ export const natsEuScenario2Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/2/obj-tx-cold-check.mp3'),
       },
       'read-the-rack': {
         text: `
@@ -699,7 +700,7 @@ export const natsEuScenario2Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/2/obj-read-the-rack.mp3'),
       },
       'compute-link-budget': {
         text: `
@@ -709,7 +710,7 @@ export const natsEuScenario2Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/2/obj-compute-link-budget.mp3'),
       },
       'path-loss-check': {
         text: `
@@ -719,7 +720,7 @@ export const natsEuScenario2Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/2/obj-path-loss-check.mp3'),
       },
       'track-for-acceptance': {
         text: `
@@ -729,7 +730,7 @@ export const natsEuScenario2Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/2/obj-track-for-acceptance.mp3'),
       },
       'rising-leg': {
         text: `
@@ -739,7 +740,7 @@ export const natsEuScenario2Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/2/obj-rising-leg.mp3'),
       },
       'commit-the-link': {
         text: `
@@ -749,7 +750,7 @@ export const natsEuScenario2Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/2/obj-commit-the-link.mp3'),
       },
       'record-measurements': {
         text: `
@@ -762,7 +763,7 @@ export const natsEuScenario2Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.HAPPY,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/2/obj-record-measurements.mp3'),
       },
       'set-up-regression': {
         text: `
@@ -772,7 +773,7 @@ export const natsEuScenario2Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/2/obj-set-up-regression.mp3'),
       },
       'sign-the-test-card': {
         text: `
@@ -782,7 +783,7 @@ export const natsEuScenario2Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.HAPPY,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/2/obj-sign-the-test-card.mp3'),
       },
     },
   },

@@ -2,6 +2,7 @@ import type { GroundStationConfig } from '@app/assets/ground-station/ground-stat
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { ScenarioData } from '@app/ScenarioData';
 import type { dBm, MHz } from '@app/types';
+import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
 import { galwayGroundStation } from './ground-stations';
 import { meridianSar1Satellite, meridianSar2Satellite } from './satellites';
@@ -673,7 +674,7 @@ export const natsEuScenario1Data: ScenarioData = {
       `,
       character: Character.CHARLIE_BROOKS,
       emotion: Emotion.NEUTRAL,
-      audioUrl: '',
+      audioUrl: getAssetUrl('/assets/campaigns/nats-eu/1/intro.mp3'),
     },
     objectives: {
       'reference-check': {
@@ -684,7 +685,7 @@ export const natsEuScenario1Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/1/obj-reference-check.mp3'),
       },
       'downconversion-plan': {
         text: `
@@ -694,7 +695,7 @@ export const natsEuScenario1Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/1/obj-downconversion-plan.mp3'),
       },
       'tune-receiver': {
         text: `
@@ -704,7 +705,7 @@ export const natsEuScenario1Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/1/obj-tune-receiver.mp3'),
       },
       'analyzer-on-beacon': {
         text: `
@@ -714,7 +715,7 @@ export const natsEuScenario1Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/1/obj-analyzer-on-beacon.mp3'),
       },
       'review-pass-schedule': {
         text: `
@@ -724,7 +725,7 @@ export const natsEuScenario1Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/1/obj-review-pass-schedule.mp3'),
       },
       'preposition-for-aos': {
         text: `
@@ -734,7 +735,7 @@ export const natsEuScenario1Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/1/obj-preposition-for-aos.mp3'),
       },
       'acquire-sar1': {
         text: `
@@ -744,7 +745,7 @@ export const natsEuScenario1Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/1/obj-acquire-sar1.mp3'),
       },
       'lock-the-downlink': {
         text: `
@@ -754,7 +755,7 @@ export const natsEuScenario1Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.HAPPY,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/1/obj-lock-the-downlink.mp3'),
       },
       'read-the-culmination': {
         text: `
@@ -764,7 +765,7 @@ export const natsEuScenario1Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/1/obj-read-the-culmination.mp3'),
       },
       'retune-for-sar2': {
         text: `
@@ -774,7 +775,7 @@ export const natsEuScenario1Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/1/obj-retune-for-sar2.mp3'),
       },
       'acquire-sar2': {
         text: `
@@ -784,7 +785,7 @@ export const natsEuScenario1Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/1/obj-acquire-sar2.mp3'),
       },
       'decode-sar2': {
         text: `
@@ -794,7 +795,7 @@ export const natsEuScenario1Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.HAPPY,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/1/obj-decode-sar2.mp3'),
       },
       'log-first-light': {
         text: `
@@ -804,7 +805,7 @@ export const natsEuScenario1Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/1/obj-log-first-light.mp3'),
       },
     },
   },

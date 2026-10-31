@@ -2,6 +2,7 @@ import type { GroundStationConfig } from '@app/assets/ground-station/ground-stat
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { ScenarioData } from '@app/ScenarioData';
 import type { dBm, MHz } from '@app/types';
+import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees, TleLine1, TleLine2 } from 'ootk';
 import { galwayGroundStation, shetlandGroundStation } from './ground-stations';
 import { createMeridianSar1, createMeridianSar2, type MeridianTle } from './satellites';
@@ -980,7 +981,7 @@ export const natsEuScenario23Data: ScenarioData = {
       `,
       character: Character.PRIYA_SHARMA,
       emotion: Emotion.CONCERNED,
-      audioUrl: '',
+      audioUrl: getAssetUrl('/assets/campaigns/nats-eu/23/intro.mp3'),
     },
     objectives: {
       'read-the-surge': {
@@ -991,7 +992,7 @@ export const natsEuScenario23Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.CONCERNED,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/23/obj-read-the-surge.mp3'),
       },
       triage: {
         text: `
@@ -1001,7 +1002,7 @@ export const natsEuScenario23Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/23/obj-triage.mp3'),
       },
       'first-command': {
         text: `
@@ -1011,7 +1012,7 @@ export const natsEuScenario23Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/23/obj-first-command.mp3'),
       },
       'call-the-denial': {
         text: `
@@ -1021,7 +1022,7 @@ export const natsEuScenario23Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.CONCERNED,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/23/obj-call-the-denial.mp3'),
       },
       'ride-through': {
         text: `
@@ -1031,7 +1032,7 @@ export const natsEuScenario23Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.HAPPY,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/23/obj-ride-through.mp3'),
       },
       'safe-and-debrief': {
         text: `
@@ -1041,7 +1042,7 @@ export const natsEuScenario23Data: ScenarioData = {
         `,
         character: Character.PRIYA_SHARMA,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/23/obj-safe-and-debrief.mp3'),
       },
     },
   },

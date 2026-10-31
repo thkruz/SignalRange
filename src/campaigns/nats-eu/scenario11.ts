@@ -2,6 +2,7 @@ import type { GroundStationConfig } from '@app/assets/ground-station/ground-stat
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { ScenarioData } from '@app/ScenarioData';
 import type { dBm } from '@app/types';
+import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees, TleLine1, TleLine2 } from 'ootk';
 import { galwayGroundStation } from './ground-stations';
 import { createMeridianSar1, createMeridianSar2, createMeridianSar3, MERIDIAN_SAR3_BEACON_RF_HZ, type MeridianTle } from './satellites';
@@ -843,7 +844,7 @@ export const natsEuScenario11Data: ScenarioData = {
       `,
       character: Character.ANNEKE_VISSER,
       emotion: Emotion.NEUTRAL,
-      audioUrl: '',
+      audioUrl: getAssetUrl('/assets/campaigns/nats-eu/11/intro.mp3'),
     },
     objectives: {
       'test-readiness': {
@@ -854,7 +855,7 @@ export const natsEuScenario11Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/11/obj-test-readiness.mp3'),
       },
       'uplink-cold-check': {
         text: `
@@ -867,7 +868,7 @@ export const natsEuScenario11Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/11/obj-uplink-cold-check.mp3'),
       },
       'first-acquisition': {
         text: `
@@ -877,7 +878,7 @@ export const natsEuScenario11Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.HAPPY,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/11/obj-first-acquisition.mp3'),
       },
       'acu-beacon-lock': {
         text: `
@@ -887,7 +888,7 @@ export const natsEuScenario11Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/11/obj-acu-beacon-lock.mp3'),
       },
       'leop-handover': {
         text: `
@@ -897,7 +898,7 @@ export const natsEuScenario11Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/11/obj-leop-handover.mp3'),
       },
     },
   },

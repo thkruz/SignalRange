@@ -2,6 +2,7 @@ import type { GroundStationConfig } from '@app/assets/ground-station/ground-stat
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { ScenarioData } from '@app/ScenarioData';
 import type { dBm, MHz } from '@app/types';
+import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees, TleLine1, TleLine2 } from 'ootk';
 import { galwayGroundStation, shetlandGroundStation } from './ground-stations';
 import { createMeridianSar1, createMeridianSar2, createMeridianSar3, type MeridianTle } from './satellites';
@@ -977,7 +978,7 @@ export const natsEuScenario13Data: ScenarioData = {
       `,
       character: Character.ANNEKE_VISSER,
       emotion: Emotion.CONCERNED,
-      audioUrl: '',
+      audioUrl: getAssetUrl('/assets/campaigns/nats-eu/13/intro.mp3'),
     },
     objectives: {
       'record-anomaly-1': {
@@ -988,7 +989,7 @@ export const natsEuScenario13Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/13/obj-record-anomaly-1.mp3'),
       },
       'read-the-galway-lnb': {
         text: `
@@ -1001,7 +1002,7 @@ export const natsEuScenario13Data: ScenarioData = {
         `,
         character: Character.FIONA_MACLEOD,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/13/obj-read-the-galway-lnb.mp3'),
       },
       'reallocate-the-collect': {
         text: `
@@ -1014,7 +1015,7 @@ export const natsEuScenario13Data: ScenarioData = {
         `,
         character: Character.FIONA_MACLEOD,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/13/obj-reallocate-the-collect.mp3'),
       },
       'fly-the-collect-from-shetland': {
         text: `
@@ -1027,7 +1028,7 @@ export const natsEuScenario13Data: ScenarioData = {
         `,
         character: Character.FIONA_MACLEOD,
         emotion: Emotion.HAPPY,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/13/obj-fly-the-collect-from-shetland.mp3'),
       },
       'file-the-trend-report': {
         text: `
@@ -1037,7 +1038,7 @@ export const natsEuScenario13Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/13/obj-file-the-trend-report.mp3'),
       },
     },
   },

@@ -2,6 +2,7 @@ import type { GroundStationConfig } from '@app/assets/ground-station/ground-stat
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { ScenarioData } from '@app/ScenarioData';
 import type { dBm, MHz } from '@app/types';
+import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
 import { galwayGroundStation, shetlandGroundStation } from './ground-stations';
 import { meridianSar1Satellite, meridianSar2Satellite } from './satellites';
@@ -771,7 +772,7 @@ export const natsEuScenario6Data: ScenarioData = {
       `,
       character: Character.CHARLIE_BROOKS,
       emotion: Emotion.NEUTRAL,
-      audioUrl: '',
+      audioUrl: getAssetUrl('/assets/campaigns/nats-eu/6/intro.mp3'),
     },
     objectives: {
       'read-the-audit-log': {
@@ -785,7 +786,7 @@ export const natsEuScenario6Data: ScenarioData = {
         `,
         character: Character.PRIYA_SHARMA,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/6/obj-read-the-audit-log.mp3'),
       },
       'disposition-new-address': {
         text: `
@@ -795,7 +796,7 @@ export const natsEuScenario6Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/6/obj-disposition-new-address.mp3'),
       },
       'disposition-poll-change': {
         text: `
@@ -805,7 +806,7 @@ export const natsEuScenario6Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/6/obj-disposition-poll-change.mp3'),
       },
       'acquire-sar1': {
         text: `
@@ -815,7 +816,7 @@ export const natsEuScenario6Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/6/obj-acquire-sar1.mp3'),
       },
       'decode-sar1': {
         text: `
@@ -825,7 +826,7 @@ export const natsEuScenario6Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/6/obj-decode-sar1.mp3'),
       },
       'flag-the-off-hours-failures': {
         text: `
@@ -838,7 +839,7 @@ export const natsEuScenario6Data: ScenarioData = {
         `,
         character: Character.PRIYA_SHARMA,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/6/obj-flag-the-off-hours-failures.mp3'),
       },
       'close-the-contractor-account': {
         text: `
@@ -848,7 +849,7 @@ export const natsEuScenario6Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/6/obj-close-the-contractor-account.mp3'),
       },
       'expire-the-relief-account': {
         text: `
@@ -858,7 +859,7 @@ export const natsEuScenario6Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/6/obj-expire-the-relief-account.mp3'),
       },
       'decode-sar2': {
         text: `
@@ -868,7 +869,7 @@ export const natsEuScenario6Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.HAPPY,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/6/obj-decode-sar2.mp3'),
       },
       'close-the-baseline': {
         text: `
@@ -878,7 +879,7 @@ export const natsEuScenario6Data: ScenarioData = {
         `,
         character: Character.PRIYA_SHARMA,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/6/obj-close-the-baseline.mp3'),
       },
     },
   },

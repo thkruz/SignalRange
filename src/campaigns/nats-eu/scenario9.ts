@@ -2,6 +2,7 @@ import type { GroundStationConfig } from '@app/assets/ground-station/ground-stat
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { ScenarioData } from '@app/ScenarioData';
 import type { dBm, MHz } from '@app/types';
+import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees, TleLine1, TleLine2 } from 'ootk';
 import { galwayGroundStation, shetlandGroundStation } from './ground-stations';
 import { createMeridianSar1, createMeridianSar2, type MeridianTle } from './satellites';
@@ -975,7 +976,7 @@ export const natsEuScenario9Data: ScenarioData = {
       `,
       character: Character.ERIK_HALVORSEN,
       emotion: Emotion.NEUTRAL,
-      audioUrl: '',
+      audioUrl: getAssetUrl('/assets/campaigns/nats-eu/9/intro.mp3'),
     },
     objectives: {
       'shetland-dashboard-sweep': {
@@ -989,7 +990,7 @@ export const natsEuScenario9Data: ScenarioData = {
         `,
         character: Character.FIONA_MACLEOD,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/9/obj-shetland-dashboard-sweep.mp3'),
       },
       'decode-the-standing-collect': {
         text: `
@@ -999,7 +1000,7 @@ export const natsEuScenario9Data: ScenarioData = {
         `,
         character: Character.ERIK_HALVORSEN,
         emotion: Emotion.HAPPY,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/9/obj-decode-the-standing-collect.mp3'),
       },
       'take-the-shetland-console': {
         text: `
@@ -1012,7 +1013,7 @@ export const natsEuScenario9Data: ScenarioData = {
         `,
         character: Character.FIONA_MACLEOD,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/9/obj-take-the-shetland-console.mp3'),
       },
       'check-the-unattended-pass': {
         text: `
@@ -1025,7 +1026,7 @@ export const natsEuScenario9Data: ScenarioData = {
         `,
         character: Character.FIONA_MACLEOD,
         emotion: Emotion.HAPPY,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/9/obj-check-the-unattended-pass.mp3'),
       },
       'customer-status': {
         text: `
@@ -1035,7 +1036,7 @@ export const natsEuScenario9Data: ScenarioData = {
         `,
         character: Character.ERIK_HALVORSEN,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/9/obj-customer-status.mp3'),
       },
     },
   },

@@ -2,6 +2,7 @@ import type { GroundStationConfig } from '@app/assets/ground-station/ground-stat
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { ScenarioData } from '@app/ScenarioData';
 import type { dB, dBm, IfFrequency } from '@app/types';
+import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees, TleLine1, TleLine2 } from 'ootk';
 import { galwayGroundStation } from './ground-stations';
 import { createMeridianSar1, createMeridianSar2 } from './satellites';
@@ -767,7 +768,7 @@ export const natsEuScenario10Data: ScenarioData = {
       `,
       character: Character.ERIK_HALVORSEN,
       emotion: Emotion.CONCERNED,
-      audioUrl: '',
+      audioUrl: getAssetUrl('/assets/campaigns/nats-eu/10/intro.mp3'),
     },
     objectives: {
       'budget-the-low-pass': {
@@ -778,7 +779,7 @@ export const natsEuScenario10Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/10/obj-budget-the-low-pass.mp3'),
       },
       'task-the-collect': {
         text: `
@@ -788,7 +789,7 @@ export const natsEuScenario10Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/10/obj-task-the-collect.mp3'),
       },
       'pull-the-imagery': {
         text: `
@@ -798,7 +799,7 @@ export const natsEuScenario10Data: ScenarioData = {
         `,
         character: Character.ERIK_HALVORSEN,
         emotion: Emotion.HAPPY,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/10/obj-pull-the-imagery.mp3'),
       },
       'safe-the-uplink': {
         text: `
@@ -808,7 +809,7 @@ export const natsEuScenario10Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/10/obj-safe-the-uplink.mp3'),
       },
       'report-to-customer': {
         text: `
@@ -818,7 +819,7 @@ export const natsEuScenario10Data: ScenarioData = {
         `,
         character: Character.ERIK_HALVORSEN,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/10/obj-report-to-customer.mp3'),
       },
     },
   },

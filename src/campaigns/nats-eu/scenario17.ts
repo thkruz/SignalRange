@@ -2,6 +2,7 @@ import type { GroundStationConfig } from '@app/assets/ground-station/ground-stat
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { ScenarioData } from '@app/ScenarioData';
 import type { dBm, Hertz, MHz } from '@app/types';
+import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees, TleLine1, TleLine2 } from 'ootk';
 import { galwayGroundStation, shetlandGroundStation } from './ground-stations';
 import { createMeridianSar1, createMeridianSar2, type MeridianTle } from './satellites';
@@ -936,7 +937,7 @@ export const natsEuScenario17Data: ScenarioData = {
       `,
       character: Character.PRIYA_SHARMA,
       emotion: Emotion.NEUTRAL,
-      audioUrl: '',
+      audioUrl: getAssetUrl('/assets/campaigns/nats-eu/17/intro.mp3'),
     },
     objectives: {
       'flag-the-spray': {
@@ -947,7 +948,7 @@ export const natsEuScenario17Data: ScenarioData = {
         `,
         character: Character.PRIYA_SHARMA,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/17/obj-flag-the-spray.mp3'),
       },
       'call-the-carrier': {
         text: `
@@ -957,7 +958,7 @@ export const natsEuScenario17Data: ScenarioData = {
         `,
         character: Character.FIONA_MACLEOD,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/17/obj-call-the-carrier.mp3'),
       },
       'open-the-incident': {
         text: `
@@ -967,7 +968,7 @@ export const natsEuScenario17Data: ScenarioData = {
         `,
         character: Character.PRIYA_SHARMA,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/17/obj-open-the-incident.mp3'),
       },
       'harden-the-service-account': {
         text: `
@@ -977,7 +978,7 @@ export const natsEuScenario17Data: ScenarioData = {
         `,
         character: Character.PRIYA_SHARMA,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/17/obj-harden-the-service-account.mp3'),
       },
       'close-the-shift': {
         text: `
@@ -987,7 +988,7 @@ export const natsEuScenario17Data: ScenarioData = {
         `,
         character: Character.PRIYA_SHARMA,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/17/obj-close-the-shift.mp3'),
       },
     },
   },

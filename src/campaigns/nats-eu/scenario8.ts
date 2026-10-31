@@ -2,6 +2,7 @@ import type { GroundStationConfig } from '@app/assets/ground-station/ground-stat
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { ScenarioData } from '@app/ScenarioData';
 import type { dBm } from '@app/types';
+import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
 import { galwayGroundStation, shetlandGroundStation } from './ground-stations';
 import { meridianSar1Satellite, meridianSar2Satellite } from './satellites';
@@ -1008,7 +1009,7 @@ export const natsEuScenario8Data: ScenarioData = {
       `,
       character: Character.CHARLIE_BROOKS,
       emotion: Emotion.NEUTRAL,
-      audioUrl: '',
+      audioUrl: getAssetUrl('/assets/campaigns/nats-eu/8/intro.mp3'),
     },
     objectives: {
       'build-the-night-plan': {
@@ -1022,7 +1023,7 @@ export const natsEuScenario8Data: ScenarioData = {
         `,
         character: Character.FIONA_MACLEOD,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/8/obj-build-the-night-plan.mp3'),
       },
       'command-the-bird': {
         text: `
@@ -1032,7 +1033,7 @@ export const natsEuScenario8Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/8/obj-command-the-bird.mp3'),
       },
       'log-contact-1': {
         text: `
@@ -1045,7 +1046,7 @@ export const natsEuScenario8Data: ScenarioData = {
         `,
         character: Character.DANA_TORRES,
         emotion: Emotion.HAPPY,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/8/obj-log-contact-1.mp3'),
       },
       'shetland-remote-sweep': {
         text: `
@@ -1058,7 +1059,7 @@ export const natsEuScenario8Data: ScenarioData = {
         `,
         character: Character.FIONA_MACLEOD,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/8/obj-shetland-remote-sweep.mp3'),
       },
       'traffic-key-alarm': {
         text: `
@@ -1071,7 +1072,7 @@ export const natsEuScenario8Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/8/obj-traffic-key-alarm.mp3'),
       },
       'decode-the-steep-pass': {
         text: `
@@ -1084,7 +1085,7 @@ export const natsEuScenario8Data: ScenarioData = {
         `,
         character: Character.FIONA_MACLEOD,
         emotion: Emotion.HAPPY,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/8/obj-decode-the-steep-pass.mp3'),
       },
       'hand-over-the-shift': {
         text: `
@@ -1094,7 +1095,7 @@ export const natsEuScenario8Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/8/obj-hand-over-the-shift.mp3'),
       },
     },
   },

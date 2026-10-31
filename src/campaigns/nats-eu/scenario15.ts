@@ -2,6 +2,7 @@ import type { GroundStationConfig } from '@app/assets/ground-station/ground-stat
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { ScenarioData } from '@app/ScenarioData';
 import type { dBm, MHz } from '@app/types';
+import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees, TleLine1, TleLine2 } from 'ootk';
 import { galwayGroundStation, shetlandGroundStation } from './ground-stations';
 import { createMeridianSar1, createMeridianSar2, type MeridianTle } from './satellites';
@@ -964,7 +965,7 @@ export const natsEuScenario15Data: ScenarioData = {
       `,
       character: Character.ANNEKE_VISSER,
       emotion: Emotion.NEUTRAL,
-      audioUrl: '',
+      audioUrl: getAssetUrl('/assets/campaigns/nats-eu/15/intro.mp3'),
     },
     objectives: {
       'build-the-day-plan': {
@@ -978,7 +979,7 @@ export const natsEuScenario15Data: ScenarioData = {
         `,
         character: Character.FIONA_MACLEOD,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/15/obj-build-the-day-plan.mp3'),
       },
       'rotate-the-command-key': {
         text: `
@@ -988,7 +989,7 @@ export const natsEuScenario15Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/15/obj-rotate-the-command-key.mp3'),
       },
       'read-the-traffic-key': {
         text: `
@@ -1001,7 +1002,7 @@ export const natsEuScenario15Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/15/obj-read-the-traffic-key.mp3'),
       },
       'prove-the-new-key-on-orbit': {
         text: `
@@ -1011,7 +1012,7 @@ export const natsEuScenario15Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/15/obj-prove-the-new-key-on-orbit.mp3'),
       },
       'close-the-comsec-record': {
         text: `
@@ -1021,7 +1022,7 @@ export const natsEuScenario15Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.HAPPY,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/15/obj-close-the-comsec-record.mp3'),
       },
     },
   },

@@ -2,6 +2,7 @@ import type { GroundStationConfig } from '@app/assets/ground-station/ground-stat
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { ScenarioData } from '@app/ScenarioData';
 import type { dBm } from '@app/types';
+import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees, TleLine1, TleLine2 } from 'ootk';
 import { galwayGroundStation, shetlandGroundStation } from './ground-stations';
 import { createMeridianSar1, createMeridianSar2, type MeridianTle } from './satellites';
@@ -884,7 +885,7 @@ export const natsEuScenario14Data: ScenarioData = {
       `,
       character: Character.FIONA_MACLEOD,
       emotion: Emotion.NEUTRAL,
-      audioUrl: '',
+      audioUrl: getAssetUrl('/assets/campaigns/nats-eu/14/intro.mp3'),
     },
     objectives: {
       'reallocate-the-collect': {
@@ -895,7 +896,7 @@ export const natsEuScenario14Data: ScenarioData = {
         `,
         character: Character.ERIK_HALVORSEN,
         emotion: Emotion.CONCERNED,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/14/obj-reallocate-the-collect.mp3'),
       },
       'decode-the-collect-from-shetland': {
         text: `
@@ -905,7 +906,7 @@ export const natsEuScenario14Data: ScenarioData = {
         `,
         character: Character.ERIK_HALVORSEN,
         emotion: Emotion.HAPPY,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/14/obj-decode-the-collect-from-shetland.mp3'),
       },
       'protect-the-feed': {
         text: `
@@ -918,7 +919,7 @@ export const natsEuScenario14Data: ScenarioData = {
         `,
         character: Character.FIONA_MACLEOD,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/14/obj-protect-the-feed.mp3'),
       },
       'ride-it-out': {
         text: `
@@ -931,7 +932,7 @@ export const natsEuScenario14Data: ScenarioData = {
         `,
         character: Character.FIONA_MACLEOD,
         emotion: Emotion.HAPPY,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/14/obj-ride-it-out.mp3'),
       },
       'close-the-weather-log': {
         text: `
@@ -941,7 +942,7 @@ export const natsEuScenario14Data: ScenarioData = {
         `,
         character: Character.ERIK_HALVORSEN,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/14/obj-close-the-weather-log.mp3'),
       },
     },
   },

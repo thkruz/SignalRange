@@ -2,6 +2,7 @@ import type { GroundStationConfig } from '@app/assets/ground-station/ground-stat
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { ScenarioData } from '@app/ScenarioData';
 import type { dBm, IfFrequency } from '@app/types';
+import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
 import { galwayGroundStation } from './ground-stations';
 import { meridianSar1Satellite, meridianSar2Satellite } from './satellites';
@@ -655,7 +656,7 @@ export const natsEuScenario3Data: ScenarioData = {
       `,
       character: Character.CHARLIE_BROOKS,
       emotion: Emotion.NEUTRAL,
-      audioUrl: '',
+      audioUrl: getAssetUrl('/assets/campaigns/nats-eu/3/intro.mp3'),
     },
     objectives: {
       'tune-tx-modem': {
@@ -666,7 +667,7 @@ export const natsEuScenario3Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/3/obj-tune-tx-modem.mp3'),
       },
       'enable-doppler-comp': {
         text: `
@@ -676,7 +677,7 @@ export const natsEuScenario3Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/3/obj-enable-doppler-comp.mp3'),
       },
       'carrier-into-muted-buc': {
         text: `
@@ -686,7 +687,7 @@ export const natsEuScenario3Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/3/obj-carrier-into-muted-buc.mp3'),
       },
       'unmute-buc': {
         text: `
@@ -696,7 +697,7 @@ export const natsEuScenario3Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/3/obj-unmute-buc.mp3'),
       },
       'enable-hpa': {
         text: `
@@ -706,7 +707,7 @@ export const natsEuScenario3Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/3/obj-enable-hpa.mp3'),
       },
       'confirm-window-open': {
         text: `
@@ -719,7 +720,7 @@ export const natsEuScenario3Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/3/obj-confirm-window-open.mp3'),
       },
       'send-the-command': {
         text: `
@@ -729,7 +730,7 @@ export const natsEuScenario3Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/3/obj-send-the-command.mp3'),
       },
       'confirm-execution': {
         text: `
@@ -739,7 +740,7 @@ export const natsEuScenario3Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.HAPPY,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/3/obj-confirm-execution.mp3'),
       },
       'disable-hpa': {
         text: `
@@ -749,7 +750,7 @@ export const natsEuScenario3Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/3/obj-disable-hpa.mp3'),
       },
       'carrier-down': {
         text: `
@@ -759,7 +760,7 @@ export const natsEuScenario3Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.HAPPY,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/3/obj-carrier-down.mp3'),
       },
       'log-the-window': {
         text: `
@@ -769,7 +770,7 @@ export const natsEuScenario3Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/3/obj-log-the-window.mp3'),
       },
     },
   },

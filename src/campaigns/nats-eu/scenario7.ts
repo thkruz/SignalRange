@@ -2,6 +2,7 @@ import type { GroundStationConfig } from '@app/assets/ground-station/ground-stat
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { ScenarioData } from '@app/ScenarioData';
 import type { dBm, MHz } from '@app/types';
+import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
 import { galwayGroundStation, shetlandGroundStation } from './ground-stations';
 import { meridianSar1Satellite, meridianSar2Satellite } from './satellites';
@@ -718,7 +719,7 @@ export const natsEuScenario7Data: ScenarioData = {
       `,
       character: Character.CHARLIE_BROOKS,
       emotion: Emotion.NEUTRAL,
-      audioUrl: '',
+      audioUrl: getAssetUrl('/assets/campaigns/nats-eu/7/intro.mp3'),
     },
     objectives: {
       'ephemeris-epoch-check': {
@@ -732,7 +733,7 @@ export const natsEuScenario7Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/7/obj-ephemeris-epoch-check.mp3'),
       },
       'preposition-for-aos': {
         text: `
@@ -742,7 +743,7 @@ export const natsEuScenario7Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/7/obj-preposition-for-aos.mp3'),
       },
       'acquire-sar1': {
         text: `
@@ -752,7 +753,7 @@ export const natsEuScenario7Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/7/obj-acquire-sar1.mp3'),
       },
       'baseline-decode': {
         text: `
@@ -762,7 +763,7 @@ export const natsEuScenario7Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/7/obj-baseline-decode.mp3'),
       },
       'retune-for-sar2': {
         text: `
@@ -775,7 +776,7 @@ export const natsEuScenario7Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.CONCERNED,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/7/obj-retune-for-sar2.mp3'),
       },
       'stale-acquisition-attempt': {
         text: `
@@ -785,7 +786,7 @@ export const natsEuScenario7Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.SKEPTICAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/7/obj-stale-acquisition-attempt.mp3'),
       },
       'load-the-ephemeris': {
         text: `
@@ -795,7 +796,7 @@ export const natsEuScenario7Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/7/obj-load-the-ephemeris.mp3'),
       },
       'reacquire-sar2': {
         text: `
@@ -805,7 +806,7 @@ export const natsEuScenario7Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/7/obj-reacquire-sar2.mp3'),
       },
       'verify-the-reacquisition': {
         text: `
@@ -815,7 +816,7 @@ export const natsEuScenario7Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.HAPPY,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/7/obj-verify-the-reacquisition.mp3'),
       },
       'report-to-rotterdam': {
         text: `
@@ -825,7 +826,7 @@ export const natsEuScenario7Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/7/obj-report-to-rotterdam.mp3'),
       },
     },
   },

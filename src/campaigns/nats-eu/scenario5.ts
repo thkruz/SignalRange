@@ -2,6 +2,7 @@ import type { GroundStationConfig } from '@app/assets/ground-station/ground-stat
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { ScenarioData } from '@app/ScenarioData';
 import type { dBm, MHz } from '@app/types';
+import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
 import { galwayGroundStation, shetlandGroundStation } from './ground-stations';
 import { meridianSar1Satellite, meridianSar2Satellite } from './satellites';
@@ -798,7 +799,7 @@ export const natsEuScenario5Data: ScenarioData = {
       `,
       character: Character.CHARLIE_BROOKS,
       emotion: Emotion.NEUTRAL,
-      audioUrl: '',
+      audioUrl: getAssetUrl('/assets/campaigns/nats-eu/5/intro.mp3'),
     },
     objectives: {
       'allocate-galway': {
@@ -809,7 +810,7 @@ export const natsEuScenario5Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/5/obj-allocate-galway.mp3'),
       },
       'hand-shetland-the-overlaps': {
         text: `
@@ -822,7 +823,7 @@ export const natsEuScenario5Data: ScenarioData = {
         `,
         character: Character.FIONA_MACLEOD,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/5/obj-hand-shetland-the-overlaps.mp3'),
       },
       'validate-the-plan': {
         text: `
@@ -832,7 +833,7 @@ export const natsEuScenario5Data: ScenarioData = {
         `,
         character: Character.FIONA_MACLEOD,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/5/obj-validate-the-plan.mp3'),
       },
       'shetland-sweep': {
         text: `
@@ -842,7 +843,7 @@ export const natsEuScenario5Data: ScenarioData = {
         `,
         character: Character.FIONA_MACLEOD,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/5/obj-shetland-sweep.mp3'),
       },
       'shetland-geometry': {
         text: `
@@ -852,7 +853,7 @@ export const natsEuScenario5Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/5/obj-shetland-geometry.mp3'),
       },
       'shetland-preposition': {
         text: `
@@ -862,7 +863,7 @@ export const natsEuScenario5Data: ScenarioData = {
         `,
         character: Character.FIONA_MACLEOD,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/5/obj-shetland-preposition.mp3'),
       },
       'acquire-from-shetland': {
         text: `
@@ -872,7 +873,7 @@ export const natsEuScenario5Data: ScenarioData = {
         `,
         character: Character.FIONA_MACLEOD,
         emotion: Emotion.HAPPY,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/5/obj-acquire-from-shetland.mp3'),
       },
       'decode-from-shetland': {
         text: `
@@ -882,7 +883,7 @@ export const natsEuScenario5Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/5/obj-decode-from-shetland.mp3'),
       },
       'read-shetland-peak': {
         text: `
@@ -892,7 +893,7 @@ export const natsEuScenario5Data: ScenarioData = {
         `,
         character: Character.FIONA_MACLEOD,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/5/obj-read-shetland-peak.mp3'),
       },
       'hand-back-to-galway': {
         text: `
@@ -902,7 +903,7 @@ export const natsEuScenario5Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/5/obj-hand-back-to-galway.mp3'),
       },
       'acquire-sar2-galway': {
         text: `
@@ -912,7 +913,7 @@ export const natsEuScenario5Data: ScenarioData = {
         `,
         character: Character.FIONA_MACLEOD,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/5/obj-acquire-sar2-galway.mp3'),
       },
       'log-the-network': {
         text: `
@@ -922,7 +923,7 @@ export const natsEuScenario5Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.HAPPY,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/5/obj-log-the-network.mp3'),
       },
     },
   },

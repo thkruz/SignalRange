@@ -2,6 +2,7 @@ import type { GroundStationConfig } from '@app/assets/ground-station/ground-stat
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { ScenarioData } from '@app/ScenarioData';
 import type { dBm, MHz } from '@app/types';
+import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees, TleLine1, TleLine2 } from 'ootk';
 import { galwayGroundStation, shetlandGroundStation } from './ground-stations';
 import { createMeridianSar1, createMeridianSar2, createMeridianSar3, type MeridianTle } from './satellites';
@@ -1220,7 +1221,7 @@ export const natsEuScenario24Data: ScenarioData = {
       `,
       character: Character.CHARLIE_BROOKS,
       emotion: Emotion.NEUTRAL,
-      audioUrl: '',
+      audioUrl: getAssetUrl('/assets/campaigns/nats-eu/24/intro.mp3'),
     },
     objectives: {
       'plan-the-network': {
@@ -1231,7 +1232,7 @@ export const natsEuScenario24Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/24/obj-plan-the-network.mp3'),
       },
       'notch-the-carrier': {
         text: `
@@ -1241,7 +1242,7 @@ export const natsEuScenario24Data: ScenarioData = {
         `,
         character: Character.FIONA_MACLEOD,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/24/obj-notch-the-carrier.mp3'),
       },
       'load-the-ephemeris': {
         text: `
@@ -1251,7 +1252,7 @@ export const natsEuScenario24Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/24/obj-load-the-ephemeris.mp3'),
       },
       'shetland-spot-the-walk': {
         text: `
@@ -1261,7 +1262,7 @@ export const natsEuScenario24Data: ScenarioData = {
         `,
         character: Character.FIONA_MACLEOD,
         emotion: Emotion.CONCERNED,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/24/obj-shetland-spot-the-walk.mp3'),
       },
       'decode-the-collect': {
         text: `
@@ -1271,7 +1272,7 @@ export const natsEuScenario24Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.HAPPY,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/24/obj-decode-the-collect.mp3'),
       },
       'protect-the-feed': {
         text: `
@@ -1281,7 +1282,7 @@ export const natsEuScenario24Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.HAPPY,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/24/obj-protect-the-feed.mp3'),
       },
       'call-the-denial': {
         text: `
@@ -1291,7 +1292,7 @@ export const natsEuScenario24Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/24/obj-call-the-denial.mp3'),
       },
       'hop-and-deliver': {
         text: `
@@ -1301,7 +1302,7 @@ export const natsEuScenario24Data: ScenarioData = {
         `,
         character: Character.PRIYA_SHARMA,
         emotion: Emotion.HAPPY,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/24/obj-hop-and-deliver.mp3'),
       },
       'incident-log-and-handover': {
         text: `
@@ -1311,7 +1312,7 @@ export const natsEuScenario24Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/24/obj-incident-log-and-handover.mp3'),
       },
     },
   },

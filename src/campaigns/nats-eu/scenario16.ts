@@ -2,6 +2,7 @@ import type { GroundStationConfig } from '@app/assets/ground-station/ground-stat
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { ScenarioData } from '@app/ScenarioData';
 import type { dBm, IfFrequency } from '@app/types';
+import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees, TleLine1, TleLine2 } from 'ootk';
 import { galwayGroundStation, shetlandGroundStation } from './ground-stations';
 import { createMeridianSar1, createMeridianSar2, type MeridianTle } from './satellites';
@@ -1050,7 +1051,7 @@ export const natsEuScenario16Data: ScenarioData = {
       `,
       character: Character.FIONA_MACLEOD,
       emotion: Emotion.NEUTRAL,
-      audioUrl: '',
+      audioUrl: getAssetUrl('/assets/campaigns/nats-eu/16/intro.mp3'),
     },
     objectives: {
       'resolve-the-slipped-pass': {
@@ -1064,7 +1065,7 @@ export const natsEuScenario16Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.CONCERNED,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/16/obj-resolve-the-slipped-pass.mp3'),
       },
       'remove-the-drive': {
         text: `
@@ -1077,7 +1078,7 @@ export const natsEuScenario16Data: ScenarioData = {
         `,
         character: Character.FIONA_MACLEOD,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/16/obj-remove-the-drive.mp3'),
       },
       'command-the-playback': {
         text: `
@@ -1087,7 +1088,7 @@ export const natsEuScenario16Data: ScenarioData = {
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/16/obj-command-the-playback.mp3'),
       },
       'check-the-shetland-pass': {
         text: `
@@ -1100,7 +1101,7 @@ export const natsEuScenario16Data: ScenarioData = {
         `,
         character: Character.FIONA_MACLEOD,
         emotion: Emotion.HAPPY,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/16/obj-check-the-shetland-pass.mp3'),
       },
       'customer-impact': {
         text: `
@@ -1110,7 +1111,7 @@ export const natsEuScenario16Data: ScenarioData = {
         `,
         character: Character.ERIK_HALVORSEN,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/16/obj-customer-impact.mp3'),
       },
       'actions-and-open-items': {
         text: `
@@ -1123,7 +1124,7 @@ export const natsEuScenario16Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/16/obj-actions-and-open-items.mp3'),
       },
     },
   },

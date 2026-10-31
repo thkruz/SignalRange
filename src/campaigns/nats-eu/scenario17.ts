@@ -30,7 +30,8 @@ import { createMeridianSar1, createMeridianSar2, type MeridianTle } from './sate
  *
  *   MERIDIAN-SAR-1: AOS T+20.01 (02:20:00Z, az 187), max el 30.0 deg at T+24.77
  *                   (02:24:46Z, 717 km), LOS T+29.57 (02:29:34Z, az 339), 9.6 min,
- *                   northbound. C/N >= 8 dB roughly 02:22:30 .. 02:27:00.
+ *                   northbound. C/N >= 8 dB roughly 02:22:30 .. 02:27:00 clean; the carrier
+ *                   (below) dents it from about 02:25.
  *   MERIDIAN-SAR-2: AOS T+40.02 (02:40:01Z, az 137), max el 26.3 deg at T+44.76
  *                   (02:44:46Z, 809 km), LOS T+49.50 (02:49:30Z, az 354), 9.5 min,
  *                   northbound. C/N >= 8 dB roughly 02:42:30 .. 02:47:00.
@@ -38,8 +39,8 @@ import { createMeridianSar1, createMeridianSar2, type MeridianTle } from './sate
  * The carrier: settings.interferenceEvents 'gw-ku-carrier', terrestrial path,
  * emitter 22 km south-west of Galway, 11690 MHz (IF 1410, 4 MHz below the
  * SAR-1 video at 1414 and inside its 36 MHz occupied band), 1 MHz wide, on
- * for 510 s from 20 s after 'characterise-the-carrier' opens - on time, about
- * 02:25:30Z, so it runs through LOS (phase 19.0a anchor). Terrestrial
+ * for 510 s from 120 s after 'characterise-the-carrier' opens (about 02:25Z
+ * for a player who decodes by 02:23, after the 02:24:46 culmination), so it runs through LOS (phase 19.0a anchor). Terrestrial
  * emissions reach the antenna directly, so it stays on the analyzer after the
  * bird has set, and it never drifts: two diagnostic tells the characterise
  * objective quizzes. Shetland never hears it.
@@ -144,7 +145,7 @@ export const natsEuScenario17Data: ScenarioData = {
     // inside the SAR-1 video band, on from just after culmination through LOS.
     // Terrestrial path: received directly, no Doppler, still there after the
     // bird sets, never heard at Shetland.
-    // Phase 19.0a: it keys up 20 s after 'characterise-the-carrier' opens
+    // Phase 19.0a: it keys up 120 s after 'characterise-the-carrier' opens
     // instead of at a fixed 1530 s. At 1530 it dented C/N under the 8 dB
     // decode-sar1 needs, and anyone who reached the carrier objective after
     // it went off the air (2040 s) was stuck.
@@ -155,10 +156,10 @@ export const natsEuScenario17Data: ScenarioData = {
         bandwidth: 1e6,
         // EIRP dBm. ~140 dB of path loss over 24 km at 11.69 GHz through a far
         // sidelobe puts it near the video's level at the feed: a plain dent.
-        power: 60,
+        power: 52,
         polarization: 'V',
         startAfterObjectiveId: 'characterise-the-carrier',
-        startTime: 20,
+        startTime: 120,
         duration: 510,
         periodSeconds: 510,
         onSeconds: 510,
@@ -238,7 +239,7 @@ export const natsEuScenario17Data: ScenarioData = {
           // 1980 s, which timed out anyone who opened the objective before 1800)
           startAfterObjectiveId: 'flag-the-config-export',
           timeS: 25,
-          timestampLabel: '02:33 UTC',
+          timestampLabel: '{{at:obj:flag-the-config-export:start+25s|02:26}} UTC',
           actor: 'svc-legacy',
           action: 'Configuration read: full station configuration exported (antenna, LNB LO, modem plan, contact schedule) - no change ticket',
           category: 'config',
@@ -538,7 +539,7 @@ export const natsEuScenario17Data: ScenarioData = {
       id: 'decode-sar1',
       nice: ['T0153', 'K0740'],
       title: 'Decode the Routine Downlink',
-      description: 'Lock the 1414 MHz imagery carrier and hold C/N above 8 dB through the high-elevation segment, roughly 02:22:30 to 02:27.',
+      description: 'Lock the 1414 MHz imagery carrier and hold C/N above 8 dB through the high-elevation segment, roughly 02:22:30 to 02:25.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['acquire-sar1'],
       conditions: [
@@ -706,7 +707,7 @@ export const natsEuScenario17Data: ScenarioData = {
       nice: ['K0946', 'K0935', 'T1580'],
       title: 'Open the Incident',
       description:
-        'LOS 02:29:34 and the carrier is still there. Open the incident record: the spray and the carrier, times, what each one looks like on the console, and what has not been done to either yet.',
+        'The carrier is still on the air, and SAR-1 will be gone in minutes. Open the incident record: the spray and the carrier, times, what each one looks like on the console, and what has not been done to either yet.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['call-the-carrier'],
       timeLimitSeconds: 3 * 60,
@@ -730,7 +731,7 @@ export const natsEuScenario17Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Incident',
             documentLine:
-              'INC-2027-0412-GW01 opened {{at:cond:open-the-incident.0|02:31}}. (1) Password spray 01:12-01:58, one remote source, op-charlie / op-fiona / svc-legacy, 3 attempts each, stopped under lockout; svc-legacy decommissioned 14 Jan, still active. (2) Carrier 11690 MHz RF (1410 IF), ~1 MHz, from {{at:event:gw-ku-carrier:start:s|02:25:30}} through SAR-1 LOS 02:29:34 and after; no Doppler; not received at SH-02. C/N on SAR-1 video down about 8 dB while present. No cause claimed. Geolocation referred to specialist assets.',
+              'INC-2027-0412-GW01 opened {{at:obj:open-the-incident:start|02:25}}. (1) Password spray 01:12-01:58, one remote source, op-charlie / op-fiona / svc-legacy, 3 attempts each, stopped under lockout; svc-legacy decommissioned 14 Jan, still active. (2) Carrier 11690 MHz RF (1410 IF), ~1 MHz, from {{at:event:gw-ku-carrier:start:s|02:25:10}} through SAR-1 LOS 02:29:34 and after; no Doppler; not received at SH-02. C/N on SAR-1 video down about 8 dB while present. No cause claimed. Geolocation referred to specialist assets.',
           },
           mustMaintain: false,
         },
@@ -743,7 +744,7 @@ export const natsEuScenario17Data: ScenarioData = {
       nice: ['S0844', 'K0682', 'K0683'],
       title: 'Flag the Configuration Export',
       description:
-        'While you were writing, the log moved. 02:33: a full station-configuration export by svc-legacy - antenna, LNB LO, modem plan, contact schedule. No change ticket. Flag it and note the time.',
+        'While you were writing, the log moved: a full station-configuration export by svc-legacy - antenna, LNB LO, modem plan, contact schedule. No change ticket. Flag it and note the time.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['open-the-incident'],
       timeLimitSeconds: 3 * 60,
@@ -769,11 +770,11 @@ export const natsEuScenario17Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'A schedule is a list of where an antenna will point, when, and on what frequency. A frequency plan says what to transmit on to be in band. The carrier at {{at:event:gw-ku-carrier:start|02:25}} was already in band; whoever exported the configuration at 02:33 can be in band on every pass from now on. The station is a target, and the export is the map.',
+              'A schedule is a list of where an antenna will point, when, and on what frequency. A frequency plan says what to transmit on to be in band. The carrier at {{at:event:gw-ku-carrier:start|02:25}} was already in band; whoever exported the configuration at {{at:obj:flag-the-config-export:start+25s|02:26}} can be in band on every pass from now on. The station is a target, and the export is the map.',
             pointPenalty: 5,
             documentSection: 'Indicators',
             documentLine:
-              '02:33 svc-legacy: full station configuration exported, no change ticket, 35 min after the failed logins on the same account. Flagged {{at:security:evt-config-export:flagged|02:34}}. Contents: antenna, LNB LO, modem plan, contact schedule.',
+              '{{at:obj:flag-the-config-export:start+25s|02:26}} svc-legacy: full station configuration exported, no change ticket, about half an hour after the failed logins on the same account. Flagged {{at:security:evt-config-export:flagged|02:34}}. Contents: antenna, LNB LO, modem plan, contact schedule.',
           },
           mustMaintain: false,
         },

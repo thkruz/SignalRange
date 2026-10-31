@@ -15,7 +15,7 @@ import { answerDecision, dismissDialogIfPresent, waitForSimulationReady } from '
  * configuration export, disable the legacy account, fly SAR-2, close the
  * record. Clock starts 2027-04-12 02:00:00Z:
  *   MERIDIAN-SAR-1  AOS 02:20:00Z  max el 30.0 deg at 02:24:46Z  LOS 02:29:34Z
- *   carrier         on 02:25:30Z .. 02:34:00Z (terrestrial, Galway only)
+ *   carrier         on about 02:25Z (120 s after characterise opens) .. 02:33:30Z (terrestrial, Galway only)
  *   export          02:33:00Z in the audit log
  *   MERIDIAN-SAR-2  AOS 02:40:01Z  max el 26.3 deg at 02:44:46Z  LOS 02:49:30Z
  *
@@ -169,7 +169,7 @@ test.describe('nats-eu Scenario 17 Full Completion', () => {
     await waitForObjectiveComplete(missionControl, 'Open the Incident');
   });
 
-  test('[flag-the-config-export] flags the live export after it lands at 02:33', async () => {
+  test('[flag-the-config-export] flags the live export after it lands', async () => {
     // The export is logged 25 s after this objective opens (anchored, phase 19.0a)
     await advanceMissionClockBy(page, 30);
     await missionControl.selectTab('security-console');

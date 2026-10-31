@@ -9,7 +9,7 @@ import { answerDecision, dismissDialogIfPresent, waitForSimulationReady } from '
  *
  * The attribution report. Open the Campaign Record (S17-S21's Working
  * Documents, as filed in a fresh browser), read the carried-forward audit
- * chain, flag the 13 April export as the origin, build the timeline, fly a
+ * chain, flag the 12 April export as the origin, build the timeline, fly a
  * routine SAR-1 pass in the middle of it, make the attribution call (graded on
  * evidence-chain-intact: with no S21 record in this browser nothing was
  * destroyed, so the KG-01 line is present and "one actor" is right), write
@@ -108,9 +108,9 @@ test.describe('nats-eu Scenario 22 Full Completion', () => {
     await waitForObjectiveComplete(missionControl, 'Read the Chain');
   });
 
-  test('[flag-the-origin] flags the 13 April export', async () => {
+  test('[flag-the-origin] flags the 12 April export', async () => {
     await domClick(page, 'button[data-event-id="evt-s17-export"]');
-    await answerSystemQuiz(page, '13 Apr 01:58 password spray on svc-legacy');
+    await answerSystemQuiz(page, '12 Apr 01:58 password spray on svc-legacy');
     await dismissDialogIfPresent(page);
     await closeWorkingDocumentIfOpen(page);
     await waitForObjectiveComplete(missionControl, 'Flag the Origin');
@@ -161,7 +161,7 @@ test.describe('nats-eu Scenario 22 Full Completion', () => {
     await missionControl.selectTab('security-console');
     await expect(page.locator('#sec-audit-body')).toContainText('KG-01 unit log (sealed 21 Apr)');
     await page.waitForTimeout(3000);
-    await answerDecision(page, 'One actor, one method', ['Campaign record open', 'Audit chain read on the Security console']);
+    await answerDecision(page, 'One actor, one method', ['Campaign record open', 'Audit Log Signed Off']);
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Attribute the Pattern');
   });
@@ -195,7 +195,7 @@ test.describe('nats-eu Scenario 22 Full Completion', () => {
   });
 
   test('[close-the-record] writes the header', async () => {
-    await answerSystemQuiz(page, 'IAR-2027-0422-GW01: five events 13-21 Apr');
+    await answerSystemQuiz(page, 'IAR-2027-0422-GW01: five events 12-21 Apr');
     await dismissDialogIfPresent(page);
     await closeWorkingDocumentIfOpen(page);
     await waitForObjectiveComplete(missionControl, 'Close the Record');

@@ -193,7 +193,7 @@ test.describe('nats-eu Scenario 24 Full Completion', () => {
   test('[notch-the-carrier] notches 1410 MHz and holds C/N above 7 dB', async () => {
     await advanceMissionClockToUtc(page, '2027-04-27T03:21:45Z');
     await missionControl.selectTab('rx-analysis');
-    await configureNotchFilter({ centerFrequency: 1410, bandwidth: 2, depth: 30, notchIndex: 1 });
+    await configureNotchFilter({ centerFrequency: 1410, bandwidth: 2, depth: 30, notchIndex: 0 });
     await advanceMissionClockToUtc(page, '2027-04-27T03:23:30Z');
     await page.waitForTimeout(4000);
     await answerSystemQuiz(page, 'Nothing in the handling - notch it, keep the collect');

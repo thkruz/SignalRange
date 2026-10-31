@@ -164,7 +164,9 @@ export const natsEuScenario27Data: ScenarioData = {
                 label:
                   'No. Hold the staged image, take the workstation off the M&C segment, keep the stick as it is, and suspend the technician’s account. The image installs only after its hash matches the vendor’s signed release, obtained through the enclave transfer path, under a ticket that names it. Group Security gets the log',
                 correctWhen: { fact: 'config-drifted', is: true },
-                consequence: { log: 'ACU firmware stage held; GW-MC-01 isolated; media retained; vend-tech suspended pending verification' },
+                consequence: {
+                  log: 'ACU firmware stage hold ordered; GW-MC-01 isolation and media retention requested from Charlie; vend-tech suspension ordered pending verification',
+                },
               },
               {
                 label: 'Nothing is pending against the configuration - the log is clean. Let the service continue',
@@ -231,7 +233,8 @@ export const natsEuScenario27Data: ScenarioData = {
             explanation:
               'Logged. Trusting what was installed means being able to say where it came from and prove it is what it claims to be. A signed release, a controlled path, a hash match and a ticket are that proof; a badge and a scan are not.',
             pointPenalty: 5,
-            documentLine: 'Verification: vendor-signed release, obtained via enclave transfer path, hash matched on isolated host, installed under a ticket with rollback.',
+            documentLine:
+              'Verification path required before any install: vendor-signed release, obtained via the enclave transfer path, hash matched against the published one on the isolated host, change ticket naming version, window and rollback. Not installed until every link holds.',
           },
           mustMaintain: false,
         },
@@ -339,7 +342,7 @@ export const natsEuScenario27Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which entry closes the event?',
             options: [
-              '07:41 USB mounted on GW-MC-01 by vend-tech (no media ticket); 07:44 unsigned acu-4.2.1-vendor.bin staged on ACU (not in MNT-0430). 08:05 stage held, GW-MC-01 isolated, media retained, vend-tech suspended. Install pending hash match against signed release via transfer path. Group Security notified',
+              '07:41 USB mounted on GW-MC-01 by vend-tech (no media ticket); 07:44 unsigned acu-4.2.1-vendor.bin staged on ACU (not in MNT-0430). {{at:obj:flag-the-firmware|08:05}} stage held; GW-MC-01 isolation and media retention requested from Charlie; vend-tech suspended. Install pending hash match against signed release via transfer path. Group Security notification requested',
               'Vendor tried to install firmware; told him no',
               'Firmware installed after the technician confirmed it was the service release',
               'Event closed; workstation reimaged; media destroyed',
@@ -347,7 +350,8 @@ export const natsEuScenario27Data: ScenarioData = {
             correctIndex: 0,
             explanation: 'Logged. Times, entries, hold, what is waiting on what. The service resumes when the image has a signature and a ticket, and not before.',
             pointPenalty: 5,
-            documentLine: 'Closed 08:10: stage held, GW-MC-01 isolated, media retained, vend-tech suspended; install pending verified release; Group Security notified.',
+            documentLine:
+              'Closed {{stationTime}}: stage held, GW-MC-01 isolation and media retention requested from Charlie, vend-tech suspended; install pending verified release; Group Security notification requested.',
           },
           mustMaintain: false,
         },

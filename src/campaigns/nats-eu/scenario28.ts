@@ -202,7 +202,7 @@ export const natsEuScenario28Data: ScenarioData = {
                 label:
                   'Cutting it. Disable the vendor account now, which drops the session; flag the flow and the read burst; preserve the log and the firewall record; notify Group Security tonight. If the vendor has a real alert they can raise a ticket and come in through the jump host in a window, with someone watching',
                 correctWhen: { fact: 'audit-anomaly-present', is: true },
-                consequence: { log: 'Unticketed vendor remote session cut; svc-vendor disabled; flows flagged; Group Security notified' },
+                consequence: { log: 'Unticketed vendor remote session cut; svc-vendor disable ordered; flows flagged; Group Security notification requested' },
               },
               {
                 label: 'Nothing is unflagged in the log - there is no open anomaly. Let it run',
@@ -349,7 +349,7 @@ export const natsEuScenario28Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which entry closes the event?',
             options: [
-              '21:12 vendor remote session (svc-vendor, 185.199.74.20, no ticket, outside window); 21:14 outbound flow to same host not in baseline; 21:15 ACU read burst. 21:38 svc-vendor disabled, session dropped; entries flagged; audit and firewall logs preserved. Group Security notified 21:40; every unit on the M&C path to be checked against baseline before the 23:50 pass',
+              '21:12 vendor remote session (svc-vendor, 185.199.74.20, no ticket, outside window); 21:14 outbound flow to same host not in baseline; 21:15 ACU read burst. {{at:account:svc-vendor:disabled|21:38}} svc-vendor disabled, session dropped; entries flagged; audit and firewall logs preserved. Group Security notification requested; every unit on the M&C path to be checked against baseline before the 23:50 pass',
               'Vendor session cut; vendor to be asked about it Monday',
               'Vendor support session completed; no action',
               'Internet uplink pulled; site offline until Monday',
@@ -357,7 +357,8 @@ export const natsEuScenario28Data: ScenarioData = {
             correctIndex: 0,
             explanation: 'Logged. Seen, cut, preserved, notified, and the next action named with a time. The drill ends where the second one began: the baseline check.',
             pointPenalty: 5,
-            documentLine: 'Closed 21:45: svc-vendor disabled, session dropped, entries flagged, logs preserved, Group Security notified; M&C baseline check before 23:50.',
+            documentLine:
+              'Closed {{stationTime}}: svc-vendor disabled, session dropped, entries flagged, logs preserved, Group Security notification requested; M&C baseline check before 23:50.',
           },
           mustMaintain: false,
         },

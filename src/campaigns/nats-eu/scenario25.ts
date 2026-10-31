@@ -52,7 +52,7 @@ export const natsEuScenario25Data: ScenarioData = {
     missionBriefUrl: DRILL_BRIEF(25),
     workingDocument: {
       title: 'Orientation Sheet GW-01 / 28 April',
-      description: 'Ten stops, one line each. Signed off by the operator walking it.',
+      description: 'Ten stops, eleven lines (stop 8 has two). Signed off by the operator walking it.',
     },
     // The Security console is a stop on the walk: a quiet morning's log, nothing to flag.
     security: {

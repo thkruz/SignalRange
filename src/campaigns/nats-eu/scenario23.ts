@@ -761,7 +761,7 @@ export const natsEuScenario23Data: ScenarioData = {
       nice: ['S0648', 'K0926', 'K0751'],
       title: 'Call the Denial',
       description:
-        'From 21:24:30 PLD-SAFE comes back NAK: uplink denied. The reference is in holdover, the key is Valid, Doppler is engaged. Read the console and the reference, then call it - and do not blame the holdover.',
+        'About ten seconds after this opens, PLD-SAFE comes back NAK: uplink denied. The reference is in holdover, the key is Valid, Doppler is engaged. Read the console and the reference, then call it - and do not blame the holdover.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['first-command'],
       timeLimitSeconds: 2 * 60,
@@ -804,7 +804,7 @@ export const natsEuScenario23Data: ScenarioData = {
                 correctWhen: { fact: 'uplink-jammed', is: false },
                 consequence: { log: 'NAK attributed to the holdover reference; GNSS re-selected under an active spoof' },
                 feedback:
-                  'HK-DUMP ACKed on the same reference four minutes ago, and an OCXO drifts nanoseconds an hour. Putting GNSS back hands the reference to the spoofer again and does nothing for a carrier that is being sat on.',
+                  'HK-DUMP ACKed on the same reference earlier in the window, and an OCXO drifts nanoseconds an hour. Putting GNSS back hands the reference to the spoofer again and does nothing for a carrier that is being sat on.',
               },
               {
                 label: 'Key problem - Q2b has been on the air since Wednesday. Begin a rotation and resend under the next set',
@@ -904,7 +904,7 @@ export const natsEuScenario23Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Window',
             documentLine:
-              'Window 21:22:21-21:31:15Z: HK-DUMP ACK 21:23 fixed carrier, reference in holdover. PLD-SAFE NAK 21:25 uplink denied (14035 MHz jammed at the spacecraft), key Valid, Doppler on. Called denial; HOP-SAR2-05 keyed both ends, hopping, SYNC LOCKED. PLD-SAFE ACK 21:27 under TRANSEC. Payload safed.',
+              'Window 21:22:21-21:31:15Z: HK-DUMP ACK {{at:cmd:HK-DUMP:ack|21:23}} fixed carrier, reference in holdover. PLD-SAFE NAK {{at:cmd:PLD-SAFE:nak|21:25}} uplink denied (14035 MHz jammed at the spacecraft), key Valid, Doppler on. Called denial; HOP-SAR2-05 keyed both ends, hopping, SYNC LOCKED. PLD-SAFE ACK {{at:cmd:PLD-SAFE:ack|21:27}} under TRANSEC. Payload safed.',
           },
           mustMaintain: false,
         },
@@ -959,7 +959,7 @@ export const natsEuScenario23Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Debrief',
             documentLine:
-              'Closed 21:45Z. Open: spoofer active at close (reference in holdover, probe scheduled 22:30); uplink jammer on 14035 MHz (IR extension); HOP-SAR2-05 spent, HOP-SAR2-06 to be staged before the next window. Debrief: simultaneous faults ranked by what loses the pass - ephemeris, then reference, then a hop on a called denial. PLD-SAFE up 21:27Z; payload safed.',
+              'Closed 21:45Z. Open: spoofer active at close (reference in holdover, probe scheduled 22:30); uplink jammer on 14035 MHz (IR extension); HOP-SAR2-05 spent, HOP-SAR2-06 to be staged before the next window. Debrief: simultaneous faults ranked by what loses the pass - ephemeris, then reference, then a hop on a called denial. PLD-SAFE up {{at:cmd:PLD-SAFE:ack|21:27}}Z; payload safed.',
           },
           mustMaintain: false,
         },
@@ -1006,7 +1006,7 @@ export const natsEuScenario23Data: ScenarioData = {
       'first-command': {
         text: `
         <p>
-          HK-DUMP acknowledged 21:23 on a reference you are not trusting and a set you loaded six minutes ago. Send PLD-SAFE.
+          HK-DUMP is acknowledged, on a reference you are not trusting and the post-burn set. Send PLD-SAFE.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -1026,7 +1026,7 @@ export const natsEuScenario23Data: ScenarioData = {
       'ride-through': {
         text: `
         <p>
-          PLD-SAFE acknowledged 21:27 under TRANSEC. Payload safing - temperature already turning over. Whatever else they did tonight, they did not get that one. Chain down at LOS.
+          PLD-SAFE acknowledged under TRANSEC. Payload safing - temperature already turning over. Whatever else they did tonight, they did not get that one. Chain down at LOS.
         </p>
         `,
         character: Character.ANNEKE_VISSER,

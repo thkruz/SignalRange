@@ -616,7 +616,6 @@ export const natsEuScenario24Data: ScenarioData = {
             notchBandwidthTolerance: 1,
             notchDepth: 30,
             notchDepthTolerance: 10,
-            notchIndex: 1,
           },
           mustMaintain: true,
         },

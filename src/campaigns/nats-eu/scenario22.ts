@@ -14,7 +14,7 @@ import { createMeridianSar1, type MeridianTle } from './satellites';
  * the campaign record and the station audit log and asks for the one document
  * nobody has written yet: the report that reads them together. The operator
  * opens the record, reads the chain of carried-forward entries, flags the
- * origin (the 13 April configuration export - every later event used a
+ * origin (the 12 April configuration export - every later event used a
  * parameter in it), builds the timeline, flies a routine SAR-1 pass in the
  * middle of it because the station is still a station, and then makes the
  * attribution call. Then the parts of a report that leave the building: the
@@ -138,15 +138,35 @@ export const natsEuScenario22Data: ScenarioData = {
         { id: 'op-fiona', name: 'F. MacLeod', role: 'Operator (SH-02)', status: 'active' },
         { id: 'svc-monitor', name: 'Monitoring Service', role: 'Service Account', status: 'active' },
         { id: 'kg-01', name: 'KG-01 command crypto unit', role: 'Equipment', status: 'active' },
-        { id: 'svc-legacy', name: 'Telemetry bridge (legacy, decommissioned 14 Jan, disabled 13 Apr)', role: 'Service Account', status: 'disabled' },
+        { id: 'svc-legacy', name: 'Telemetry bridge (legacy, decommissioned 14 Jan, disabled 12 Apr)', role: 'Service Account', status: 'disabled' },
       ],
       events: [
         {
+          id: 'evt-s17-spray-1',
+          timeS: 0,
+          timestampLabel: '12 Apr 01:12 UTC',
+          actor: 'svc-legacy',
+          action: 'Failed login (3 attempts, remote source) against a decommissioned account still active',
+          category: 'auth',
+          severity: 'warning',
+          isAnomaly: true,
+        },
+        {
+          id: 'evt-s17-spray-2',
+          timeS: 0,
+          timestampLabel: '12 Apr 01:40 UTC',
+          actor: 'svc-legacy',
+          action: 'Failed login (3 attempts, remote source) against a decommissioned account still active',
+          category: 'auth',
+          severity: 'warning',
+          isAnomaly: true,
+        },
+        {
           id: 'evt-s17-spray',
           timeS: 0,
-          timestampLabel: '13 Apr 01:58 UTC',
+          timestampLabel: '12 Apr 01:58 UTC',
           actor: 'svc-legacy',
-          action: 'Failed login (3 attempts, remote source) against a decommissioned account still active; account disabled 02:40',
+          action: 'Failed login (3 attempts, remote source) against a decommissioned account still active; account disabled that night',
           category: 'auth',
           severity: 'warning',
           isAnomaly: true,
@@ -154,7 +174,7 @@ export const natsEuScenario22Data: ScenarioData = {
         {
           id: 'evt-s17-export',
           timeS: 0,
-          timestampLabel: '13 Apr 02:33 UTC',
+          timestampLabel: '12 Apr 02:33 UTC',
           actor: 'svc-legacy',
           action: 'Configuration read: full station configuration exported (antenna, LNB LO, modem plan, contact schedule) - no change ticket',
           category: 'config',
@@ -289,7 +309,7 @@ export const natsEuScenario22Data: ScenarioData = {
       id: 'open-the-record',
       nice: ['K0721', 'K0946'],
       title: 'Open the Campaign Record',
-      description: 'Sidebar: Campaign Record. Every Working Document from the 13th to yesterday, as filed. Read them in order before you read anything else.',
+      description: 'Sidebar: Campaign Record. Every Working Document from the 12th to yesterday, as filed. Read them in order before you read anything else.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['dashboard-sweep'],
       timeLimitSeconds: 3 * 60,
@@ -308,14 +328,14 @@ export const natsEuScenario22Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'How many incidents does the record hold since the 12th, and on which inputs?',
             options: [
-              'Five: a downlink carrier and a login spray (13th), persistent downlink interference (14th), an uplink denial (16th), a spoofed timing reference (19th), a replayed command (21st) - downlink, downlink, uplink, time, key',
+              'Five: a downlink carrier and a login spray (12th), persistent downlink interference (14th), an uplink denial (16th), a spoofed timing reference (19th), a replayed command (21st) - downlink, downlink, uplink, time, key',
               'Four: the two interference events are one incident, and the spray was a routine credential scan closed without action',
               "Three: interference, spoofing and the replay; the spray and the export were an IT matter outside the station's record",
               'Six: the hop-set retirement on the 16th is its own incident because it cost a key',
             ],
             correctIndex: 0,
             explanation:
-              'Five records, five inputs, in order: what the station receives, what it transmits, what it keeps time by, what it commands with. Each one needed more access than the last, and each one was possible with what was exported on the 13th.',
+              'Five records, five inputs, in order: what the station receives, what it transmits, what it keeps time by, what it commands with. Each one needed more access than the last, and each one was possible with what was exported on the 12th.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -329,7 +349,7 @@ export const natsEuScenario22Data: ScenarioData = {
       nice: ['K0946', 'S0648'],
       title: 'Read the Chain',
       description:
-        "Security console: the arc's entries are carried forward in the log, in date order. Sign it off as read, and say what every entry after the 13th has in common with the export.",
+        "Security console: the arc's entries are carried forward in the log, in date order. Sign it off as read, and say what every entry after the 12th has in common with the export.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['open-the-record'],
       timeLimitSeconds: 3 * 60,
@@ -344,7 +364,7 @@ export const natsEuScenario22Data: ScenarioData = {
         },
         {
           type: 'audit-log-reviewed',
-          description: 'Carried-Forward Log Reviewed',
+          description: 'Audit Log Signed Off',
           params: {},
           mustMaintain: false,
         },
@@ -353,7 +373,7 @@ export const natsEuScenario22Data: ScenarioData = {
           description: 'Common Thread',
           params: {
             character: Character.SYSTEM,
-            question: 'What does every entry after 13 April have in common with the configuration export at 02:33 that morning?',
+            question: 'What does every entry after 12 April have in common with the configuration export at 02:33 that morning?',
             options: [
               'Each used something in it: the receive frequencies (14th), the reissued command carrier (16th), the timing dependency (19th), the command plan and window (21st). The export was the shopping list',
               'Nothing - the export was a read, not a change, and reads do not cause incidents',
@@ -375,7 +395,7 @@ export const natsEuScenario22Data: ScenarioData = {
       id: 'flag-the-origin',
       nice: ['S0648', 'T1405'],
       title: 'Flag the Origin',
-      description: 'Flag the 13 April export entry. It goes at the top of the timeline: everything after it was done with what it contained.',
+      description: 'Flag the 12 April export entry. It goes at the top of the timeline: everything after it was done with what it contained.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['read-the-chain'],
       timeLimitSeconds: 2 * 60,
@@ -394,8 +414,8 @@ export const natsEuScenario22Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What is the first line of the timeline?',
             options: [
-              '13 Apr 01:58 password spray on svc-legacy (decommissioned, still active); 02:33 full station configuration exported, no change ticket - every later event used a parameter in that export',
-              '13 Apr 02:25 terrestrial carrier on the SAR-1 downlink - the first attack, and the reason the station started keeping a record',
+              '12 Apr 01:58 password spray on svc-legacy (decommissioned, still active); 02:33 full station configuration exported, no change ticket - every later event used a parameter in that export',
+              '12 Apr 02:25 terrestrial carrier on the SAR-1 downlink - the first attack, and the reason the station started keeping a record',
               '12 Apr: incident INC-2027-0412-GW01 opened by Group CSIRT on a general warning',
               '14 Jan: svc-legacy decommissioned but left active - the root cause, and where the report begins',
             ],
@@ -405,7 +425,7 @@ export const natsEuScenario22Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Timeline',
             documentLine:
-              '13 Apr 01:58Z password spray on svc-legacy (decommissioned 14 Jan, still active; disabled 02:40Z). 02:33Z full station configuration exported by svc-legacy, no change ticket. Every subsequent event used a parameter contained in that export.',
+              '12 Apr 01:58Z password spray on svc-legacy (decommissioned 14 Jan, still active; disabled the same night). 02:33Z full station configuration exported by svc-legacy, no change ticket. Every subsequent event used a parameter contained in that export.',
           },
           mustMaintain: false,
         },
@@ -614,8 +634,8 @@ export const natsEuScenario22Data: ScenarioData = {
         {
           id: 'chain-read',
           type: 'audit-log-reviewed',
-          description: 'Audit chain read on the Security console',
-          params: { requiresObservation: true, observationTab: 'security-console' },
+          description: 'Audit Log Signed Off',
+          params: {},
           mustMaintain: false,
         },
         {
@@ -629,9 +649,9 @@ export const natsEuScenario22Data: ScenarioData = {
             decisionOptions: [
               {
                 label:
-                  'One actor, one method: five inputs probed in order of the access each needs, every one inside the parameters exported on the 13th - and the KG-01 log ties the command-link probe to the same off-station source',
+                  'One actor, one method: five inputs probed in order of the access each needs, every one inside the parameters exported on the 12th - and the KG-01 log ties the command-link probe to the same off-station source',
                 correctWhen: { fact: 'evidence-chain-intact', is: true },
-                consequence: { log: 'Attribution: single actor, single method, origin the 13 April configuration export; command-link probe tied by the KG-01 unit log' },
+                consequence: { log: 'Attribution: single actor, single method, origin the 12 April configuration export; command-link probe tied by the KG-01 unit log' },
               },
               {
                 label:
@@ -754,10 +774,10 @@ export const natsEuScenario22Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What does the board paragraph say?',
             options: [
-              'Five deliberate events over ten days against every input the station has, enabled by one configuration export; no pass lost, one hop set and one key rotation spent, customer collects delivered; source unlocated and referred; four procedural changes already in force',
+              'Five deliberate events over ten days against every input the station has, enabled by one configuration export; no pass lost, one hop set and one key rotation spent; source unlocated and referred; four procedural changes already in force',
               'The station has been under sustained attack by a hostile state and requires immediate investment in hardened equipment and additional staff',
               'Several technical anomalies occurred during April; all were resolved by the operator on duty and no further action is required',
-              'A security breach on 13 April exposed the station configuration; the full extent of the compromise is still unknown',
+              'A security breach on 12 April exposed the station configuration; the full extent of the compromise is still unknown',
             ],
             correctIndex: 0,
             explanation:
@@ -765,7 +785,7 @@ export const natsEuScenario22Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Board',
             documentLine:
-              "Board summary: five deliberate events 13-21 Apr against GW-01's downlink, uplink, timing reference and command link, enabled by an unauthorised configuration export on 13 Apr. No pass lost; all NMW collects delivered. Cost: one TRANSEC hop set, one out-of-cycle key rotation, two operator-hours per event. Source unlocated, referred to specialist assets. Four procedural changes in force from 22 Apr; no capital ask.",
+              "Board summary: five deliberate events 12-21 Apr against GW-01's downlink, uplink, timing reference and command link, enabled by an unauthorised configuration export on 12 Apr. No pass lost. Cost: one TRANSEC hop set, one out-of-cycle key rotation. Source unlocated, referred to specialist assets. Four procedural changes in force from 22 Apr; no capital ask.",
           },
           mustMaintain: false,
         },
@@ -790,7 +810,7 @@ export const natsEuScenario22Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Who is notified, and of what?',
             options: [
-              'ComReg: IR-2027-0414 extended with the 16 Apr denial. NMW (customer): impact statement, no collects lost. Rotterdam: the full report. Group CSIRT: the report plus the sealed KG-01 log and Q2. Law enforcement: by CSIRT, not by the station',
+              'ComReg: IR-2027-0414 extended with the 16 Apr denial. Nordic Maritime Watch (NMW), the customer: impact statement, no pass lost. Rotterdam: the full report. Group CSIRT: the report plus the sealed KG-01 log and Q2. Law enforcement: by CSIRT, not by the station',
               'Everyone gets the full report: the regulator, the customer, Rotterdam, CSIRT and the police, at the same time, from the station',
               'Only Group CSIRT: the report is an internal security document and nothing leaves the company until CSIRT decides',
               'The customer and the regulator are not told: no collect was lost and no rule was broken, so there is nothing to report',
@@ -801,7 +821,7 @@ export const natsEuScenario22Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Notifications',
             documentLine:
-              'Notifications 22 Apr: ComReg - IR-2027-0414-GW01 extended (16 Apr uplink denial, 14035 MHz). Nordic Maritime Watch - customer impact statement (no collects lost, one re-tasked to SH-02). Rotterdam constellation ops - full report. Group CSIRT - full report, sealed KG-01 log and KEY-2027-Q2, geolocation referral. Law-enforcement referral: Group CSIRT.',
+              'Notifications 22 Apr: ComReg - IR-2027-0414-GW01 extended (16 Apr uplink denial, 14035 MHz). Nordic Maritime Watch (NMW) - customer impact statement (no pass lost). Rotterdam constellation ops - full report. Group CSIRT - full report, sealed KG-01 log and KEY-2027-Q2, geolocation referral. Law-enforcement referral: Group CSIRT.',
           },
           mustMaintain: false,
         },
@@ -826,10 +846,10 @@ export const natsEuScenario22Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which line heads the report?',
             options: [
-              'IAR-2027-0422-GW01: five events 13-21 Apr against GW-01 Galway (downlink x2, uplink, timing, command link), assessed as one actor and one method enabled by the 13 Apr configuration export; attribution to a named party not made; source referred for geolocation',
+              'IAR-2027-0422-GW01: five events 12-21 Apr against GW-01 Galway (downlink x2, uplink, timing, command link), assessed as one actor and one method enabled by the 12 Apr configuration export; attribution to a named party not made; source referred for geolocation',
               'IAR-2027-0422-GW01: sustained hostile campaign by a state-level adversary against NATS Europe, April 2027',
               'IAR-2027-0422-GW01: summary of April anomalies at GW-01 Galway, all resolved',
-              'IAR-2027-0422-GW01: security incident - station configuration compromised 13 Apr; consequences ongoing',
+              'IAR-2027-0422-GW01: security incident - station configuration compromised 12 Apr; consequences ongoing',
             ],
             correctIndex: 0,
             explanation:
@@ -837,7 +857,7 @@ export const natsEuScenario22Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Report',
             documentLine:
-              'IAR-2027-0422-GW01. Period 13-21 Apr 2027. Scope: GW-01 Galway, SH-02 Shetland, MERIDIAN-SAR-1/2 links. Finding: five deliberate events against every input of the station, assessed as a single actor using a single method - parameters obtained by the unauthorised configuration export of 13 Apr 02:33Z. Attribution to a named party not made. Terrestrial source referred for geolocation.',
+              'IAR-2027-0422-GW01. Period 12-21 Apr 2027. Scope: GW-01 Galway, SH-02 Shetland, MERIDIAN-SAR-1/2 links. Finding: five deliberate events against every input of the station, assessed as a single actor using a single method - parameters obtained by the unauthorised configuration export of 12 Apr 02:33Z. Attribution to a named party not made. Terrestrial source referred for geolocation.',
           },
           mustMaintain: false,
         },
@@ -864,7 +884,7 @@ export const natsEuScenario22Data: ScenarioData = {
             options: [
               'Five records closed on their own days were one incident that nobody read until the sixth day: the campaign record is reviewed at every shift change from now on, and any two anomalies inside a week are correlated before either is closed',
               'The station handled every event correctly and the report proves it; the procedures need no change',
-              'The report should have been written on the 13th: a configuration export is an incident on its own and everything after it was avoidable',
+              'The report should have been written on the 12th: a configuration export is an incident on its own and everything after it was avoidable',
               'The records should be kept by CSIRT, not the station: operators close incidents too early because they want to fly the next pass',
             ],
             correctIndex: 0,
@@ -900,7 +920,7 @@ export const natsEuScenario22Data: ScenarioData = {
       'open-the-record': {
         text: `
         <p>
-          Five records. Read them as one document and tell me the first thing you notice is not the carrier on the 13th. It is what was taken at 02:33 that morning.
+          Five records. Read them as one document and tell me the first thing you notice is not the carrier on the 12th. It is what was taken at 02:33 that morning.
         </p>
         `,
         character: Character.PRIYA_SHARMA,
@@ -910,7 +930,7 @@ export const natsEuScenario22Data: ScenarioData = {
       'decode-sar1': {
         text: `
         <p>
-          SAR-1 frames clean, timestamps true, C/N where it should be. That is the eleventh consecutive pass since the 13th with nothing lost. Put it in the report; I would.
+          SAR-1 frames clean, timestamps true, C/N where it should be. That is the eleventh consecutive pass since the 12th with nothing lost. Put it in the report; I would.
         </p>
         `,
         character: Character.ANNEKE_VISSER,

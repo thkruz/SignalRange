@@ -145,17 +145,17 @@ export const natsEuScenario26Data: ScenarioData = {
       id: 'check-against-baseline',
       nice: ['T0431', 'S0838'],
       title: 'Check the Receiver',
-      description: 'Read RX modem 1 on RX Analysis against the baseline on the sheet, then open the audit log and find out who last touched it.',
+      description: 'Read RX modem 1 on RX Analysis against the baseline on the sheet, then open the audit log, find out who last touched it, and sign the review off.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['the-baseline'],
       conditions: [
         {
           type: 'rx-modem-frequency-set',
-          description: 'RX modem 1 read: 1410 MHz (baseline 1414)',
+          description: 'RX modem 1 frequency read',
           params: { frequency: 1410e6, frequencyTolerance: 0.5e6, modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: false,
         },
-        { type: 'audit-log-reviewed', description: 'Audit Log Reviewed', params: {}, mustMaintain: false },
+        { type: 'audit-log-reviewed', description: 'Audit Log Signed Off', params: {}, mustMaintain: false },
         {
           type: 'status-check',
           description: 'Drift Identified',
@@ -327,7 +327,7 @@ export const natsEuScenario26Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which entry closes the sweep?',
             options: [
-              '05:30 sweep: RX modem 1 found at 1410 vs baseline 1414 (changed 03:12 by svc-vendor, no ticket). Restored 1414 05:41, entries flagged, svc-vendor disabled pending explanation. Access SAR-2027-0429-011 confirmed. Referred to Group Security',
+              '05:30 sweep: RX modem 1 found at 1410 vs baseline 1414 (changed 03:12 by svc-vendor, no ticket). Restored 1414 {{at:obj:restore-the-baseline|05:41}}, entries flagged, svc-vendor disabled pending explanation. Access SAR-2027-0429-011 confirmed. Referred to Group Security',
               '05:30 sweep complete, no issues',
               'Modem retuned to 1414. Vendor to be asked about it',
               'Sweep done; baseline updated to reflect current settings',
@@ -335,7 +335,7 @@ export const natsEuScenario26Data: ScenarioData = {
             correctIndex: 0,
             explanation: 'Logged. Found, restored, flagged, held, confirmed, referred - with times. The next shift can read that and know exactly where the station stands.',
             pointPenalty: 5,
-            documentLine: 'Sweep closed 05:45: drift restored, entries flagged, svc-vendor held, access confirmed, referred to Group Security.',
+            documentLine: 'Sweep closed {{stationTime}}: drift restored, entries flagged, svc-vendor held, access confirmed, referred to Group Security.',
           },
           mustMaintain: false,
         },

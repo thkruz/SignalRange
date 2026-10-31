@@ -222,7 +222,7 @@ test.describe('nats-eu Scenario 21 Full Completion', () => {
   test('[close-and-debrief] files the incident, writes the debrief line and completes', async () => {
     // Two status-checks in one objective: the quiz manager picks the order.
     const answers = [
-      { questionHint: 'COMSEC incident report', answerText: '09:25 HK-DUMP ACK under Q2' },
+      { questionHint: 'COMSEC incident report', answerText: 'HK-DUMP ACK under Q2' },
       { questionHint: 'debrief line', answerText: 'Every command frame on the air is a frame they can keep' },
     ];
     await answerPendingQuizFrom(page, answers);

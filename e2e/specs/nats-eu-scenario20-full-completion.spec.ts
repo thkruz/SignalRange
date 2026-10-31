@@ -192,7 +192,8 @@ test.describe('nats-eu Scenario 20 Full Completion', () => {
   });
 
   test('[probe-the-sky] GNSS back up: the offset resumes walking, switch back down', async () => {
-    // No jump: the countdown is running, and a jump now costs what waiting would (phase 19.0a)
+    // Probe the Sky opens once SAR-1 has set (LOS 05:30:18); jump just past it
+    await advanceMissionClockToUtc(page, '2027-04-19T05:30:40Z');
     await missionControl.selectTab('gps-timing');
     const frozen = await readOffsetUs();
     await setSwitch(page, '#gpsdo-gnss-switch', true);

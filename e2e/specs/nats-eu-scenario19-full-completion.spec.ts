@@ -199,7 +199,7 @@ test.describe('nats-eu Scenario 19 Full Completion', () => {
   });
 
   test('[log-the-denial] records the window', async () => {
-    await answerSystemQuiz(page, '13:21 HK-DUMP ACK fixed');
+    await answerSystemQuiz(page, 'HK-DUMP ACK fixed');
     await dismissDialogIfPresent(page);
     await closeWorkingDocumentIfOpen(page);
     await waitForObjectiveComplete(missionControl, 'Log the Denial');

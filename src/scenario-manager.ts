@@ -350,6 +350,9 @@ export interface SimulationSettings {
     windowEndS?: number;
     /** Require a Valid key for a command to ACK (default true) */
     requireValidKey?: boolean;
+    /** COMSEC key ids shown on the TT&C card; confirming a rotation swaps keyId for rotatedKeyId (Phase 35 E5) */
+    keyId?: string;
+    rotatedKeyId?: string;
     /** Require uplink Doppler compensation for a command to ACK (default true) */
     requireDopplerComp?: boolean;
     /** Canned TT&C commands the console offers as one-click sends */

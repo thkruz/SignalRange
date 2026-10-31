@@ -554,7 +554,7 @@ export const natsEuScenario19Data: ScenarioData = {
       nice: ['S0648', 'K0926', 'K0751'],
       title: 'Call the NAK',
       description:
-        'From 13:22:30 PLD-STATUS comes back NAK: uplink denied. Key reads Valid, Doppler engaged, window open, and there is a new carrier on the analyzer where the transponder returns the uplink. Read the key and the console, then call it.',
+        'From {{at:event:sar2-uplink-jam:start:s|13:22:30}} PLD-STATUS comes back NAK: uplink denied. Key reads Valid, Doppler engaged, window open. The jam returns through the command transponder at 1320 MHz IF; look there on the analyzer (center 1320 MHz, span 10 MHz), not in the 1370 MHz video window. Read the key and the console, then call it.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['first-command'],
       timeLimitSeconds: 2 * 60,
@@ -752,10 +752,10 @@ export const natsEuScenario19Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which line goes in the record for the SAR-2 window?',
             options: [
-              '13:21 HK-DUMP ACK fixed; 13:23 PLD-STATUS NAK uplink denied, key Valid, Doppler on, window open; called denial 13:24; hop set keyed both ends, sync 13:25; PLD-STATUS ACK hopping 13:26',
+              '{{at:cmd:HK-DUMP:ack|13:21}} HK-DUMP ACK fixed; {{at:cmd:PLD-STATUS:nak|13:23}} PLD-STATUS NAK uplink denied, key Valid, Doppler on, window open; called denial {{at:obj:call-the-nak|13:24}}; hop set keyed both ends, sync {{at:obj:go-to-hopping|13:25}}; PLD-STATUS ACK hopping {{at:cmd:PLD-STATUS:ack|13:26}}',
               'SAR-2 window worked: two commands acknowledged, one on the second attempt after a transient uplink problem cleared',
               'Jamming attack on the SAR-2 command link defeated by TRANSEC; the adversary has moved from the downlink to the uplink and is escalating',
-              'PLD-STATUS delayed three minutes by interference; the hop set was activated as a precaution and both commands completed',
+              'PLD-STATUS delayed by interference; the hop set was activated as a precaution and both commands completed',
             ],
             correctIndex: 0,
             explanation:
@@ -763,7 +763,7 @@ export const natsEuScenario19Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Window',
             documentLine:
-              'SAR-2 window 13:20:21-13:29:09Z: HK-DUMP ACK 13:21 (fixed carrier 14035 MHz). PLD-STATUS NAK 13:23 "uplink denied - carrier jammed"; key Valid both ends, Doppler comp on, window open; transponded return shows a 2 MHz carrier on the uplink. Called uplink denial 13:24. Hop set HOP-SAR2-04 keyed at Rotterdam and GW-01, mode hopping, SYNC LOCKED 13:25. PLD-STATUS resent, ACK 13:26 under TRANSEC. Jammer present through LOS.',
+              'SAR-2 window 13:20:21-13:29:09Z: HK-DUMP ACK {{at:cmd:HK-DUMP:ack|13:21}} (fixed carrier 14035 MHz). PLD-STATUS NAK {{at:cmd:PLD-STATUS:nak|13:23}} "uplink denied - carrier jammed"; key Valid both ends, Doppler comp on, window open; the jam returns through the command transponder at 1320 MHz IF as a 2 MHz carrier. Called uplink denial {{at:obj:call-the-nak|13:24}}. Hop set HOP-SAR2-04 keyed at Rotterdam and GW-01, mode hopping, SYNC LOCKED {{at:obj:go-to-hopping|13:25}}. PLD-STATUS resent, ACK {{at:cmd:PLD-STATUS:ack|13:26}} under TRANSEC. Jammer present through LOS.',
           },
           mustMaintain: false,
         },
@@ -795,13 +795,13 @@ export const natsEuScenario19Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'RX Modem Locked on SAR-1',
-          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-1-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
           type: 'receiver-snr-threshold',
           description: 'C/N Above 8 dB',
-          params: { modemNumber: 1, minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-1-VIDEO', minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
@@ -847,11 +847,11 @@ export const natsEuScenario19Data: ScenarioData = {
               'A hop set used on the air is a hop set observed: HOP-SAR2-04 is retired, the next set is staged before every commanding pass, and the mode switch is rehearsed in the pre-pass sweep',
               'Both commands completed and TRANSEC worked as designed; no change to the procedure beyond noting the jammer for the regulator',
               'Commanding passes should be flown from Shetland until the jammer is found: the uplink denial reaches Galway, not SH-02',
-              'The first command of every pass should go out hopping: agility from AOS removes the NAK and the three minutes it cost',
+              'The first command of every pass should go out hopping: agility from AOS removes the NAK and the delay it cost',
             ],
             correctIndex: 0,
             explanation:
-              'The set that saved the window is now spent, and the switch cost three minutes of a nine-minute window because it was done for the first time under pressure. Stage the next set, rehearse the switch, hop on a call. Hopping from AOS burns a set every pass for a denial that may not come, and the denial was aimed at the satellite - Shetland would have been denied too.',
+              'The set that saved the window is now spent, and the switch cost {{dur:cmd:PLD-STATUS:nak..cmd:PLD-STATUS:ack|about two minutes}} of a nine-minute window because it was done for the first time under pressure. Stage the next set, rehearse the switch, hop on a call. Hopping from AOS burns a set every pass for a denial that may not come, and the denial was aimed at the satellite - Shetland would have been denied too.',
             pointPenalty: 5,
             documentSection: 'Debrief',
             documentLine:
@@ -882,7 +882,7 @@ export const natsEuScenario19Data: ScenarioData = {
       'first-command': {
         text: `
         <p>
-          HK-DUMP on my screen, acknowledged 13:21. Send the payload status when you are ready.
+          HK-DUMP on my screen, acknowledged. Send the payload status when you are ready.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -912,7 +912,7 @@ export const natsEuScenario19Data: ScenarioData = {
       'ride-through': {
         text: `
         <p>
-          PLD-STATUS acknowledged, 13:26, under TRANSEC. Chain down at LOS. I will retire this set tonight and stage the next one; you did not spend it for nothing.
+          PLD-STATUS acknowledged under TRANSEC. Chain down at LOS. I will retire this set tonight and stage the next one; you did not spend it for nothing.
         </p>
         `,
         character: Character.ANNEKE_VISSER,

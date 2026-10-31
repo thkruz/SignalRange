@@ -488,7 +488,7 @@ export const natsEuScenario20Data: ScenarioData = {
           params: {
             character: Character.ANNEKE_VISSER,
             prompt:
-              'Your frames from the 05:10 poll are timestamped a quarter of a millisecond ahead of ours and it is growing. Your GPSDO reports locked and nine satellites; Fiona at Shetland reads zero. SAR-1 is up in ten minutes. What is it, and what do you want to do?',
+              'Your frames from the 05:10 poll are timestamped ahead of ours and the gap is growing. Your GPSDO reports locked and nine satellites; Fiona at Shetland reads zero. SAR-1 is about to rise. What is it, and what do you want to do?',
             evidence: ['offset-seen', 'constellation-seen'],
             decisionOptions: [
               {
@@ -624,13 +624,13 @@ export const natsEuScenario20Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'RX Modem Locked on SAR-1',
-          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-1-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
           type: 'receiver-snr-threshold',
           description: 'C/N Above 8 dB',
-          params: { modemNumber: 1, minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-1-VIDEO', minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
@@ -691,7 +691,7 @@ export const natsEuScenario20Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Report',
             documentLine:
-              'Reported to Group CSIRT and Rotterdam 05:30: GNSS spoof local to GW-01 from 05:08, +2 us/s, constellation healthy throughout, SH-02 clean. GW-01 reference in holdover; frozen offset logged for timestamp correction. SAR-1 flown on the oscillator, decode clean. Spoofer status: ongoing.',
+              'Reported to Group CSIRT and Rotterdam {{at:cond:report-the-attack.1|05:30}}: GNSS spoof local to GW-01 from 05:08, +2 us/s, constellation healthy throughout, SH-02 clean. GW-01 reference in holdover; frozen offset logged for timestamp correction. SAR-1 flown on the oscillator, decode clean. Spoofer status: ongoing.',
           },
           mustMaintain: false,
         },
@@ -704,12 +704,18 @@ export const natsEuScenario20Data: ScenarioData = {
       nice: ['S0648', 'K0926'],
       title: 'Probe the Sky',
       description:
-        'SAR-1 is down. The only way to know whether the spoofer is still up is to listen: put the GNSS switch up, watch the delta-T for a few seconds on the GPS Timing tab, and call what it does.',
+        'Once SAR-1 has set (LOS 05:30), the only way to know whether the spoofer is still up is to listen: put the GNSS switch up, watch the delta-T for a few seconds on the GPS Timing tab, and call what it does.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['report-the-attack'],
       timeLimitSeconds: 3 * 60,
-      timerStartTrigger: 'on-activate',
+      timerStartTrigger: 'on-pass-phase',
       conditions: [
+        {
+          type: 'satellite-pass-phase',
+          description: 'SAR-1 Pass Over (LOS)',
+          params: { noradId: 61701, phase: 'set' },
+          mustMaintain: false,
+        },
         {
           id: 'probe-gnss',
           type: 'gpsdo-reference-mode-set',
@@ -864,13 +870,13 @@ export const natsEuScenario20Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'RX Modem Locked on SAR-2',
-          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-2-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
           type: 'receiver-snr-threshold',
           description: 'C/N Above 8 dB',
-          params: { modemNumber: 1, minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-2-VIDEO', minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
@@ -951,7 +957,7 @@ export const natsEuScenario20Data: ScenarioData = {
       'spot-the-walk': {
         text: `
         <p>
-          It is me. The 05:10 poll has your frames a quarter of a millisecond ahead of ours, and the 05:00 poll did not. Your GPSDO is telling us it is locked. Before I wake anyone else - look at Shetland.
+          It is me. The 05:10 poll has your frames ahead of ours, and the 05:00 poll did not. Your GPSDO is telling us it is locked. Before I wake anyone else - look at Shetland.
         </p>
         `,
         character: Character.ANNEKE_VISSER,

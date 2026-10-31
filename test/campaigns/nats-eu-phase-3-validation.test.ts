@@ -385,8 +385,10 @@ describe('S20 False Time', () => {
 
   it("Rotterdam's timestamp-skew audit entry is dated inside the spoof and is the flagged evidence", () => {
     const skew = s20.security!.events.find((e) => e.id === 'evt-ts-skew')!;
-    expect(skew.timeS).toBeGreaterThan(s20.gnssThreat.spoofStartS);
-    expect(skew.timeS).toBeLessThan(s20.gnssThreat.spoofEndS!);
+    // Anchored to spot-the-walk (pre-audit 9): the entry exists only once the offset has passed 20 us, 10 s into the 2 us/s walk.
+    const skewS = onPaceS(skew.timeS, skew.startAfterObjectiveId, 'spot-the-walk', s20.gnssThreat.spoofStartS + 10);
+    expect(skewS).toBeGreaterThan(s20.gnssThreat.spoofStartS);
+    expect(skewS).toBeLessThan(s20.gnssThreat.spoofEndS!);
     const report = scenario.objectives.find((o) => o.id === 'report-the-attack')!;
     expect(report.conditions.find((c) => c.type === 'security-event-acknowledged')!.params!.eventId).toBe('evt-ts-skew');
   });

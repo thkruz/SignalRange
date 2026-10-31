@@ -185,8 +185,10 @@ export const natsEuScenario20Data: ScenarioData = {
         { id: 'evt-svc-poll-0500', timeS: 0, timestampLabel: '05:00 UTC', actor: 'svc-monitor', action: 'Telemetry poll', category: 'config', severity: 'info' },
         {
           id: 'evt-ts-skew',
-          timeS: 600,
-          timestampLabel: '05:10 UTC',
+          // Pre-audit 9: appears when spot-the-walk completes, so the clip and the call never name a poll that does not exist yet
+          startAfterObjectiveId: 'spot-the-walk',
+          timeS: 5,
+          timestampLabel: '{{at:obj:spot-the-walk|05:10}} UTC',
           actor: 'svc-monitor',
           action: 'Telemetry poll: GW-01 frame timestamps +240 us ahead of Rotterdam reference and increasing',
           category: 'config',
@@ -488,7 +490,7 @@ export const natsEuScenario20Data: ScenarioData = {
           params: {
             character: Character.ANNEKE_VISSER,
             prompt:
-              'Your frames from the 05:10 poll are timestamped ahead of ours and the gap is growing. Your GPSDO reports locked and nine satellites; Fiona at Shetland reads zero. SAR-1 is about to rise. What is it, and what do you want to do?',
+              'Your frames from the latest poll are timestamped ahead of ours and the gap is growing. Your GPSDO reports locked and nine satellites; Fiona at Shetland reads zero. SAR-1 is about to rise. What is it, and what do you want to do?',
             evidence: ['offset-seen', 'constellation-seen'],
             decisionOptions: [
               {
@@ -568,7 +570,7 @@ export const natsEuScenario20Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Reference',
             documentLine:
-              '05:08 GNSS vs REF delta-T on GW-01 began walking +2 us/s; constellation LOCKED with a full satellite count throughout. SH-02 delta-T +0.0 (same sky). Rotterdam timestamps skew confirmed 05:10. Called GNSS spoof. GNSS switch down, GPSDO holdover, offset frozen at the value shown on the panel at that moment.',
+              '05:08 GNSS vs REF delta-T on GW-01 began walking +2 us/s; constellation LOCKED with a full satellite count throughout. SH-02 delta-T +0.0 (same sky). Rotterdam timestamps skew confirmed {{at:obj:spot-the-walk|05:10}}. Called GNSS spoof. GNSS switch down, GPSDO holdover, offset frozen at the value shown on the panel at that moment.',
           },
           mustMaintain: false,
         },
@@ -661,7 +663,7 @@ export const natsEuScenario20Data: ScenarioData = {
       nice: ['S0593', 'T1580'],
       title: 'Report It',
       description:
-        'Security console: flag the 05:10 monitoring entry - the timestamp skew is the first external evidence. Then decide what goes to Priya and Rotterdam now, while it is still happening.',
+        'Security console: flag the new monitoring entry - the timestamp skew is the first external evidence. Then decide what goes to Priya and Rotterdam now, while it is still happening.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['decode-on-holdover'],
       timeLimitSeconds: 3 * 60,
@@ -680,7 +682,7 @@ export const natsEuScenario20Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What goes to Priya and Rotterdam now?',
             options: [
-              'Time of onset, the delta-T reading and its rate, the constellation state, the SH-02 cross-check, when GNSS was taken down and the offset it froze at, and that SAR-1 was flown on the oscillator',
+              'Time of onset, the delta-T reading and its rate, the constellation state, the SH-02 cross-check, when GNSS was taken down and the offset it froze at, and that SAR-1 is being flown on the oscillator',
               'That GPS is down over Ireland and every NATS station should go to holdover until further notice',
               'Nothing until the spoofer stops - a report on an event still in progress is incomplete and will have to be reissued',
               'The GPSDO serial number and a request for a replacement unit on the next maintenance visit',
@@ -691,7 +693,7 @@ export const natsEuScenario20Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Report',
             documentLine:
-              'Reported to Group CSIRT and Rotterdam {{at:cond:report-the-attack.1|05:30}}: GNSS spoof local to GW-01 from 05:08, +2 us/s, constellation healthy throughout, SH-02 clean. GW-01 reference in holdover; frozen offset logged for timestamp correction. SAR-1 flown on the oscillator, decode clean. Spoofer status: ongoing.',
+              'Reported to Group CSIRT and Rotterdam {{at:cond:report-the-attack.1|05:30}}: GNSS spoof local to GW-01 from 05:08, +2 us/s, constellation healthy throughout, SH-02 clean. GW-01 reference in holdover; frozen offset logged for timestamp correction. SAR-1 is being flown on the oscillator, decode clean. Spoofer status: ongoing.',
           },
           mustMaintain: false,
         },
@@ -704,7 +706,7 @@ export const natsEuScenario20Data: ScenarioData = {
       nice: ['S0648', 'K0926'],
       title: 'Probe the Sky',
       description:
-        'Once SAR-1 has set (LOS 05:30), the only way to know whether the spoofer is still up is to listen: put the GNSS switch up, watch the delta-T for a few seconds on the GPS Timing tab, and call what it does.',
+        'Once SAR-1 has set (LOS 05:31:28), the only way to know whether the spoofer is still up is to listen: put the GNSS switch up, watch the delta-T for a few seconds on the GPS Timing tab, and call what it does.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['report-the-attack'],
       timeLimitSeconds: 3 * 60,
@@ -906,7 +908,7 @@ export const natsEuScenario20Data: ScenarioData = {
       id: 'close-and-debrief',
       nice: ['T1580', 'K0645', 'K0752'],
       title: 'Close the Record and Debrief',
-      description: 'Both passes decoded, the reference back on an honest sky. Close the record with the line that changes the sweep from tomorrow.',
+      description: 'SAR-2 decoding, the reference back on an honest sky. Close the record with the line that changes the sweep from tomorrow.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['decode-sar2'],
       timeLimitSeconds: 3 * 60,
@@ -930,7 +932,7 @@ export const natsEuScenario20Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Debrief',
             documentLine:
-              'Closed 05:58Z. Open: GNSS spoofer local to GW-01 05:08-05:36 (source unlocated, referred to Group CSIRT); frozen offset issued to Rotterdam for SAR-1 timestamp correction. Debrief: GNSS vs REF delta-T added to the dashboard sweep; healthy constellation with walking delta-T is called a spoof, not an outage; SH-02 delta-T is the cross-check before any reference action.',
+              'Closed {{stationTime}}Z. Open: GNSS spoofer local to GW-01 from 05:08 to about 05:35 (source unlocated, referred to Group CSIRT); frozen offset issued to Rotterdam for SAR-1 timestamp correction. Debrief: GNSS vs REF delta-T added to the dashboard sweep; healthy constellation with walking delta-T is called a spoof, not an outage; SH-02 delta-T is the cross-check before any reference action.',
           },
           mustMaintain: false,
         },
@@ -957,7 +959,7 @@ export const natsEuScenario20Data: ScenarioData = {
       'spot-the-walk': {
         text: `
         <p>
-          It is me. The 05:10 poll has your frames ahead of ours, and the 05:00 poll did not. Your GPSDO is telling us it is locked. Before I wake anyone else - look at Shetland.
+          It is me. The latest poll has your frames ahead of ours, and the 05:00 poll did not. Your GPSDO is telling us it is locked. Before I wake anyone else - look at Shetland.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -997,7 +999,7 @@ export const natsEuScenario20Data: ScenarioData = {
       'all-clear': {
         text: `
         <p>
-          Your timestamps just came back into line with ours without you touching anything. Whoever it was has gone. SAR-2 in eight minutes - fly it on the honest sky and close the record.
+          Your timestamps just came back into line with ours without you touching anything. Whoever it was has gone. SAR-2 at 05:44 - fly it on the honest sky and close the record.
         </p>
         `,
         character: Character.ANNEKE_VISSER,

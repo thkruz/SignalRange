@@ -1166,7 +1166,7 @@ export const natsEuScenario24Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which line goes in the incident log for the second half hour?',
             options: [
-              '{{at:cond:protect-the-feed.1|03:36}} GW-01 feed heater on; sleet from 03:40. 03:52 SAR-3 acquired GW-01, HK-DUMP ACK fixed carrier {{at:cmd:HK-DUMP:ack|03:53}}. {{at:cmd:PLD-SAFE:nak|03:55}} PLD-SAFE NAK uplink denied (14065 MHz jammed), key Valid; called denial; HOP-SAR3-01 keyed both ends, SYNC LOCKED; PLD-SAFE ACK under TRANSEC {{at:cmd:PLD-SAFE:ack|03:57}}. Chain safed {{at:obj:safe-the-network|04:00}}. Three contacts delivered',
+              '{{at:cond:protect-the-feed.1|03:36}} GW-01 feed heater on; sleet from 03:40. 03:52 SAR-3 acquired GW-01, HK-DUMP ACK fixed carrier {{at:cmd:HK-DUMP:ack|03:53}}. Uplink denied (14065 MHz jammed), key Valid; called denial; HOP-SAR3-01 keyed both ends, SYNC LOCKED; PLD-SAFE ACK under TRANSEC {{at:cmd:PLD-SAFE:ack|03:57}}. Chain safed {{at:obj:safe-the-network|04:00}}. Three contacts delivered',
               "SAR-3 commanded through jamming and sleet; the adversary's most aggressive night yet defeated by the incident commander",
               'SAR-3 pass completed with one anomaly; hop set used; no customer impact',
               '03:52-04:01 SAR-3 command contact; PLD-SAFE delayed by interference and sent on the second attempt',
@@ -1177,7 +1177,7 @@ export const natsEuScenario24Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Incident Log',
             documentLine:
-              '{{at:cond:protect-the-feed.1|03:36}}Z GW-01 feed heater on; sleet 03:40-04:10Z. 03:52Z SAR-3 acquired GW-01 through sleet; HK-DUMP ACK {{at:cmd:HK-DUMP:ack|03:53}}Z fixed carrier. {{at:cmd:PLD-SAFE:nak|03:55}}Z PLD-SAFE NAK "uplink denied - carrier jammed" (14065 MHz at the spacecraft), key Valid, Doppler on; called denial; HOP-SAR3-01 keyed both ends, hopping, SYNC LOCKED; PLD-SAFE ACK {{at:cmd:PLD-SAFE:ack|03:57}}Z under TRANSEC. Chain safed {{at:obj:safe-the-network|04:00}}Z. Three P1 contacts delivered.',
+              '{{at:cond:protect-the-feed.1|03:36}}Z GW-01 feed heater on; sleet 03:40-04:10Z. 03:52Z SAR-3 acquired GW-01 through sleet; HK-DUMP ACK {{at:cmd:HK-DUMP:ack|03:53}}Z fixed carrier. Uplink denied - carrier jammed (14065 MHz at the spacecraft), key Valid, Doppler on; called denial; HOP-SAR3-01 keyed both ends, hopping, SYNC LOCKED; PLD-SAFE ACK {{at:cmd:PLD-SAFE:ack|03:57}}Z under TRANSEC. Chain safed {{at:obj:safe-the-network|04:00}}Z. Three P1 contacts delivered.',
           },
           mustMaintain: false,
         },
@@ -1266,7 +1266,7 @@ export const natsEuScenario24Data: ScenarioData = {
       'decode-the-collect': {
         text: `
         <p>
-          SAR-2 collect in from Shetland, frames clean, timestamps carrying Fiona's frozen offset exactly as logged. Two of three. SAR-3 at 03:52, and the sleet is on your coast.
+          SAR-2 collecting from Shetland, frames clean, timestamps carrying Fiona's frozen offset exactly as logged. Two of three, with SAR-2 still under way. SAR-3 at 03:52, and the sleet is on your coast.
         </p>
         `,
         character: Character.ANNEKE_VISSER,

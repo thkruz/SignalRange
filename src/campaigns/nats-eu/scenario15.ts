@@ -584,12 +584,19 @@ export const natsEuScenario15Data: ScenarioData = {
       id: 'rotate-the-command-key',
       nice: ['K0876', 'K0874', 'S0077'],
       title: 'Rotate the Command Key',
-      description: 'TT&C console: begin the rotation, then complete it. KEY-2027-Q2 must read Valid before the SAR-2 window opens at 07:34:18.',
+      description:
+        'TT&C console: begin the rotation, then complete it. KEY-2027-Q2 must read Valid before the SAR-2 window opens at 07:34:18. Rotate in the gap: the three minutes start when SAR-1 sets at Galway (07:25:31).',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['log-the-receive-pass'],
       timeLimitSeconds: 3 * 60,
-      timerStartTrigger: 'on-activate',
+      timerStartTrigger: 'on-pass-phase',
       conditions: [
+        {
+          type: 'satellite-pass-phase',
+          description: 'SAR-1 Pass Over (LOS)',
+          params: { noradId: 61701, phase: 'set' },
+          mustMaintain: false,
+        },
         {
           type: 'tab-active',
           hidden: true,

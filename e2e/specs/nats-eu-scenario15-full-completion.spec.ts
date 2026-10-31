@@ -151,6 +151,8 @@ test.describe('nats-eu Scenario 15 Full Completion', () => {
   });
 
   test('[rotate-the-command-key] begins and completes the command key rotation', async () => {
+    // The three minutes start when SAR-1 sets at Galway (07:25:31)
+    await advanceMissionClockToUtc(page, '2027-04-06T07:25:45Z');
     await missionControl.selectTab('commanding');
     await expect(page.locator('#cmd-begin-rotation')).toBeVisible({ timeout: 10000 });
     await domClick(page, '#cmd-begin-rotation');

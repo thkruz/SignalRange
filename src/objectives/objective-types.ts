@@ -56,7 +56,7 @@ export type ConditionType =
   | 'hpa-not-overdriven' // HPA not in overdrive (IMD check)
   | 'hpa-output-power-set' // HPA output power above threshold
   | 'receiver-signal-locked' // Receiver modem has demodulation lock
-  | 'satellite-pass-phase' // The satellite has passed culmination / set at the objective's station (latched; Phase 35 D9)
+  | 'satellite-pass-phase' // The satellite has passed culmination / set at the objective's station (latched, Phase 35 D9)
   | 'receiver-relocked' // Receiver modem lost lock during the watch and has locked again (Phase 29 D10)
   | 'receiver-snr-threshold' // Receiver modem C/N ratio meets threshold
   | 'rx-modem-frequency-set' // Receiver modem center frequency set

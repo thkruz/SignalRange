@@ -29,6 +29,7 @@ import { ScenarioManager } from '@app/scenario-manager';
 import { CampaignRecordPanel } from '@app/scenarios/campaign-record-panel';
 import { WorkingDocumentManager } from '@app/scenarios/working-document-manager';
 import { SimulationManager } from '@app/simulation/simulation-manager';
+import { assetSelectionState } from './asset-selection-state';
 import './asset-tree-sidebar.css';
 
 /**
@@ -54,8 +55,21 @@ export class AssetTreeSidebar extends BaseElement {
    * timeline deck) can read the station the operator already picked instead of
    * learning it only from the next ASSET_SELECTED (D7).
    */
-  static selectedAssetId: string | null = null;
-  static selectedGroundStationId: string | null = null;
+  static get selectedAssetId(): string | null {
+    return assetSelectionState.assetId;
+  }
+
+  static set selectedAssetId(id: string | null) {
+    assetSelectionState.assetId = id;
+  }
+
+  static get selectedGroundStationId(): string | null {
+    return assetSelectionState.groundStationId;
+  }
+
+  static set selectedGroundStationId(id: string | null) {
+    assetSelectionState.groundStationId = id;
+  }
 
   private selectedAssetId_: string | null = null;
   private groundStations_: GroundStation[] = [];

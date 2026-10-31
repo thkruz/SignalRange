@@ -815,13 +815,13 @@ export const natsEuScenario16Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'SH-02 RX Modem Locked on SAR-2',
-          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-2-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: false,
         },
         {
           type: 'receiver-snr-threshold',
           description: 'SH-02 C/N Above 8 dB',
-          params: { modemNumber: 1, minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, minCNRatio: 8, signalId: 'MERIDIAN-SAR-2-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: false,
         },
       ],

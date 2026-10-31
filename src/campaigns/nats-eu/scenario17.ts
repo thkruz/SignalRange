@@ -168,7 +168,7 @@ export const natsEuScenario17Data: ScenarioData = {
     ],
 
     // M6 - the overnight log. Routine traffic, three failed-login bursts an
-    // hour apart against three different accounts (the spray; the third one
+    // half hour apart against three different accounts (the spray; the third one
     // is against a service account decommissioned in January and is the entry
     // to flag), and one live entry that arrives during the shift: a full
     // configuration export by that same account.
@@ -393,7 +393,7 @@ export const natsEuScenario17Data: ScenarioData = {
       nice: ['S0844', 'K0682'],
       title: 'Read the Overnight Log',
       description:
-        'Open the Security console and read the trail from the evening handover to now, then sign off the review. Three warning entries an hour apart. Read them as a set before you read them one at a time.',
+        'Open the Security console and read the trail from the evening handover to now, then sign off the review. Three warning entries half an hour apart. Read them as a set before you read them one at a time.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['rx-chain-ready'],
       timeLimitSeconds: 3 * 60,
@@ -467,11 +467,11 @@ export const natsEuScenario17Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Nobody is being left a door open on purpose. The order is about the record: seen at 02:09, flagged at 02:09, disabled at 02:35 with a reason. A disabled account with no flag behind it is a change nobody can explain at 09:00.',
+              'Nobody is being left a door open on purpose. The order is about the record: seen and flagged first, with the time on the record, and only then disabled with a reason. A disabled account with no flag behind it is a change nobody can explain at 09:00.',
             pointPenalty: 5,
             documentSection: 'Indicators',
             documentLine:
-              'Overnight log: password spray from one remote source, 01:12 / 01:40 / 01:58, three accounts x three attempts, stopping under lockout. svc-legacy (decommissioned 14 Jan) still active and targeted. Flagged 02:09.',
+              'Overnight log: password spray from one remote source, 01:12 / 01:40 / 01:58, three accounts x three attempts, stopping under lockout. svc-legacy (decommissioned 14 Jan) still active and targeted. Flagged {{at:security:evt-spray-legacy:flagged|02:09}}.',
           },
           mustMaintain: false,
         },
@@ -545,13 +545,13 @@ export const natsEuScenario17Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'RX Modem Locked on Downlink',
-          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-1-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
           type: 'receiver-snr-threshold',
           description: 'C/N Above 8 dB',
-          params: { modemNumber: 1, minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, minCNRatio: 8, signalId: 'MERIDIAN-SAR-1-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
       ],
@@ -563,7 +563,7 @@ export const natsEuScenario17Data: ScenarioData = {
       nice: ['S0648', 'K0926', 'K0773'],
       title: 'Characterise the Carrier',
       description:
-        'From about 02:25:30 there is a second carrier at 1410 MHz, 4 MHz below the video and inside its band, and the C/N has gone with it. Frame it on the analyzer: 1410 MHz, 2 MHz span. Watch it for a minute against the video.',
+        'Past the high point of the pass a second carrier keys up at 1410 MHz, 4 MHz below the video and inside its band, and the C/N goes with it. Frame it on the analyzer: 1410 MHz, 2 MHz span. Watch it for a minute against the video.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['decode-sar1'],
       conditions: [
@@ -596,7 +596,7 @@ export const natsEuScenario17Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question:
-              'Over a minute the SAR-1 video walked 200 kHz down the span with the Doppler. The carrier at 1410 did not move. What does that tell you about where it comes from?',
+              'Over a minute the carrier at 1410 sat still on the analyzer, where a carrier from the bird would have walked with the Doppler. What does that tell you about where it comes from?',
             options: [
               'It is not on the bird: a signal with no Doppler on a pass that has plenty is coming from something that is not moving relative to you - the ground',
               'It is on the bird: the transponder locks the carrier to the beacon reference, so only the video shows the Doppler',
@@ -605,7 +605,7 @@ export const natsEuScenario17Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Doppler is the signature of a moving source. Everything from SAR-1 walks together; a carrier that sits still while the video moves is not coming from SAR-1, and if it is still there after LOS it is not coming from any satellite. The spectrum told you the geometry before anyone told you the frequency.',
+              'Doppler is the signature of a moving source. Everything from SAR-1 walks together; a carrier that sits still on a pass with plenty of Doppler is not coming from SAR-1, and if it is still there after LOS it is not coming from any satellite. The spectrum told you the geometry before anyone told you the frequency.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -618,7 +618,7 @@ export const natsEuScenario17Data: ScenarioData = {
       id: 'call-the-carrier',
       nice: ['S0648', 'K0682', 'K0926'],
       title: 'Call the Carrier',
-      description: 'Fiona has SAR-1 clean from Shetland. Your C/N is down 6 dB with a still carrier in the band. Look at the key status, look at the carrier, then call it.',
+      description: 'Fiona has SAR-1 clean from Shetland. Your C/N is down about 8 dB with a still carrier in the band. Look at the key status, look at the carrier, then call it.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['characterise-the-carrier'],
       timeLimitSeconds: 3 * 60,
@@ -722,7 +722,7 @@ export const natsEuScenario17Data: ScenarioData = {
               'Both, as seen: the spray with its times and accounts, the carrier with its frequency, timing and the no-Doppler tell; no cause claimed for either',
               'The carrier only: the spray stopped under lockout and is closed; an interference report and an incident are different documents',
               'The spray only: the carrier is an RF matter for the regulator, and putting it in a security record confuses the two',
-              'Both, with the link made: a spray at 01:58 and a carrier at 02:25 from the same actor probing the station two ways',
+              'Both, with the link made: a spray at 01:58 and a carrier at {{at:event:gw-ku-carrier:start|02:25}} from the same actor probing the station two ways',
             ],
             correctIndex: 0,
             explanation:
@@ -730,7 +730,7 @@ export const natsEuScenario17Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Incident',
             documentLine:
-              'INC-2027-0412-GW01 opened 02:31. (1) Password spray 01:12-01:58, one remote source, op-charlie / op-fiona / svc-legacy, 3 attempts each, stopped under lockout; svc-legacy decommissioned 14 Jan, still active. (2) Carrier 11690 MHz RF (1410 IF), ~1 MHz, from 02:25:30 through SAR-1 LOS 02:29:34 and after; no Doppler; not received at SH-02. C/N on SAR-1 video -6 dB while present. No cause claimed. Geolocation referred to specialist assets.',
+              'INC-2027-0412-GW01 opened {{at:cond:open-the-incident.0|02:31}}. (1) Password spray 01:12-01:58, one remote source, op-charlie / op-fiona / svc-legacy, 3 attempts each, stopped under lockout; svc-legacy decommissioned 14 Jan, still active. (2) Carrier 11690 MHz RF (1410 IF), ~1 MHz, from {{at:event:gw-ku-carrier:start:s|02:25:30}} through SAR-1 LOS 02:29:34 and after; no Doppler; not received at SH-02. C/N on SAR-1 video down about 8 dB while present. No cause claimed. Geolocation referred to specialist assets.',
           },
           mustMaintain: false,
         },
@@ -769,11 +769,11 @@ export const natsEuScenario17Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'A schedule is a list of where an antenna will point, when, and on what frequency. A frequency plan says what to transmit on to be in band. The carrier at 02:25 was already in band; whoever exported the configuration at 02:33 can be in band on every pass from now on. The station is a target, and the export is the map.',
+              'A schedule is a list of where an antenna will point, when, and on what frequency. A frequency plan says what to transmit on to be in band. The carrier at {{at:event:gw-ku-carrier:start|02:25}} was already in band; whoever exported the configuration at 02:33 can be in band on every pass from now on. The station is a target, and the export is the map.',
             pointPenalty: 5,
             documentSection: 'Indicators',
             documentLine:
-              '02:33 svc-legacy: full station configuration exported, no change ticket, 35 min after the failed logins on the same account. Flagged 02:34. Contents: antenna, LNB LO, modem plan, contact schedule.',
+              '02:33 svc-legacy: full station configuration exported, no change ticket, 35 min after the failed logins on the same account. Flagged {{at:security:evt-config-export:flagged|02:34}}. Contents: antenna, LNB LO, modem plan, contact schedule.',
           },
           mustMaintain: false,
         },
@@ -852,7 +852,7 @@ export const natsEuScenario17Data: ScenarioData = {
       nice: ['T0153', 'K0740', 'S0421'],
       title: 'Decode the Second Downlink',
       description:
-        'Retarget program-track to SAR-2, lock the 1370 MHz carrier and hold C/N above 8 dB through the high-elevation segment, roughly 02:42:30 to 02:47. The carrier has gone; note whether it comes back.',
+        'Retarget program-track to SAR-2, lock the 1370 MHz carrier and hold C/N above 8 dB through the high-elevation segment, roughly 02:42:30 to 02:47. The 1410 MHz carrier should be off the air by now; note whether it comes back.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['retune-for-sar2'],
       conditions: [
@@ -865,14 +865,20 @@ export const natsEuScenario17Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'RX Modem Locked on SAR-2',
-          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-2-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
           type: 'receiver-snr-threshold',
           description: 'C/N Above 8 dB',
-          params: { modemNumber: 1, minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, minCNRatio: 8, signalId: 'MERIDIAN-SAR-2-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
+        },
+        {
+          type: 'interference-event-ended',
+          description: '1410 MHz Carrier Off the Air',
+          params: { interferenceEventId: 'gw-ku-carrier' },
+          mustMaintain: false,
         },
       ],
       conditionLogic: 'AND',
@@ -907,7 +913,7 @@ export const natsEuScenario17Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Debrief',
             documentLine:
-              'Closed for the night 02:52. SAR-1 decoded to 02:25:30 then degraded by the carrier; SAR-2 decoded clean, carrier not observed. Open: interference source (referred), spray source, config export (Group Security 09:00). Action: svc-legacy disabled 02:36. Debrief: decommissioned accounts get disabled on the day; add to the monthly baseline.',
+              'Closed for the night {{at:cond:close-the-shift.0|02:52}}. SAR-1 decoded to {{at:event:gw-ku-carrier:start|02:25}} then degraded by the carrier; SAR-2 decoded clean, carrier not observed. Open: interference source (referred), spray source, config export (Group Security 09:00). Action: svc-legacy disabled {{at:account:svc-legacy:disabled|02:36}}. Debrief: decommissioned accounts get disabled on the day; add to the monthly baseline.',
           },
           mustMaintain: false,
         },
@@ -964,7 +970,7 @@ export const natsEuScenario17Data: ScenarioData = {
       'harden-the-service-account': {
         text: `
         <p>
-          Disabled at 02:36 with the flag behind it. Now that account tells a story someone else can read. Take your second pass; I have what I need until morning.
+          Disabled, with the flag behind it. Now that account tells a story someone else can read. Take your second pass; I have what I need until morning.
         </p>
         `,
         character: Character.PRIYA_SHARMA,

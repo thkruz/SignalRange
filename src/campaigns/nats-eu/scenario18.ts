@@ -401,13 +401,13 @@ export const natsEuScenario18Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'RX Modem Locked on SAR-2',
-          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-2-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
           type: 'receiver-snr-threshold',
           description: 'C/N Above 8 dB',
-          params: { modemNumber: 1, minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, minCNRatio: 8, signalId: 'MERIDIAN-SAR-2-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
       ],
@@ -419,7 +419,7 @@ export const natsEuScenario18Data: ScenarioData = {
       nice: ['S0648', 'K0926'],
       title: 'Read the Cycle',
       description:
-        'From about 10:23:30 the carrier is back: 1374 MHz IF, 4 MHz above the video and inside its band. Frame it on a 2 MHz span and watch it for two minutes. It is not steady this time.',
+        'Once SAR-2 is past its high point the carrier is back: 1374 MHz IF, 4 MHz above the video and inside its band. Frame it on a 2 MHz span and watch it for at least one full cycle, ninety seconds. It is not steady this time.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['decode-sar2'],
       conditions: [
@@ -434,6 +434,13 @@ export const natsEuScenario18Data: ScenarioData = {
           description: 'Analyzer Span 2 MHz',
           params: { span: 2e6, frequencyTolerance: 1e6 },
           mustMaintain: true,
+        },
+        {
+          type: 'speca-center-frequency',
+          description: 'Watched One Full Cycle (90 s)',
+          params: { centerFrequency: 1374e6, centerFrequencyTolerance: 100e3 },
+          mustMaintain: true,
+          maintainDuration: 90,
         },
         {
           type: 'signal-detected',
@@ -474,7 +481,7 @@ export const natsEuScenario18Data: ScenarioData = {
       nice: ['S0648', 'K0926', 'K0682'],
       title: 'Call It',
       description:
-        'Fiona has SAR-2 clean from Shetland. Your C/N drops 6 dB every time the carrier is on. Read the key status and the carrier, then decide what the station does about it - the pass is not over.',
+        'Fiona has SAR-2 clean from Shetland. Your C/N falls by more than ten dB and the lock goes with it every time the carrier is on. Read the key status and the carrier, then decide what the station does about it - the pass is not over.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['read-the-cycle'],
       timeLimitSeconds: 3 * 60,
@@ -559,7 +566,8 @@ export const natsEuScenario18Data: ScenarioData = {
       id: 'notch-the-carrier',
       nice: ['S0593', 'K0737'],
       title: 'Notch the Carrier',
-      description: 'Receive-side mitigation: a notch on the carrier at 1374 MHz IF, 2 MHz wide, 30 dB deep, notch 0. The video loses a sliver of its band and keeps its lock.',
+      description:
+        'Receive-side mitigation: a notch on the carrier at 1374 MHz IF, 2 MHz wide, 30 dB deep, Notch 1 on the RX Analysis tab. The video loses a sliver of its band and keeps its lock.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['call-the-cycle'],
       timeLimitSeconds: 4 * 60,
@@ -627,10 +635,10 @@ export const natsEuScenario18Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'The event outlived the pass again. Which line goes in the report?',
             options: [
-              '10:23:30 carrier 11726 MHz RF / 1374 IF, ~1 MHz, 60 s on 30 s off, no Doppler, present after LOS; C/N -6 dB when on; notched 10:26; SH-02 clean',
+              '{{at:event:gw-carrier-sar2:start:s|10:23:30}} carrier 11726 MHz RF / 1374 IF, ~1 MHz, 60 s on 30 s off, no Doppler, present after LOS; C/N down to about 1 dB with the lock lost when on; Notch 1 applied; SH-02 clean',
               'Interference confirmed on SAR-2, same as Monday; the emitter is the one reported on 12 April and is still operating',
               'Carrier at 1374 MHz seen during the SAR-2 pass; the notch handled it and the decode completed; no further action at this station',
-              'Deliberate jamming of SAR-2 from a ground site south-west of Galway, 10:23 to 10:31; recommend the regulator locate the source',
+              'Deliberate jamming of SAR-2 from a ground site south-west of Galway, {{at:event:gw-carrier-sar2:start|10:23}} to {{at:event:gw-carrier-sar2:end|10:31}}; recommend the regulator locate the source',
             ],
             correctIndex: 0,
             explanation:
@@ -638,7 +646,7 @@ export const natsEuScenario18Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Events',
             documentLine:
-              'Event 1: 10:23:30Z carrier 11726 MHz RF (1374 MHz IF), ~1 MHz, cycle 60 s on / 30 s off, no Doppler, persists after SAR-2 LOS 10:27:34Z to ~10:31:30Z. Victim MERIDIAN-SAR-2 video 11730 MHz, C/N 11 dB -> 5 dB while on. Notch 1374/2 MHz/30 dB applied 10:26Z, lock held. SH-02 (F. MacLeod) clean on the same pass.',
+              'Event 1: {{at:event:gw-carrier-sar2:start:s|10:23:30}}Z carrier 11726 MHz RF (1374 MHz IF), ~1 MHz, cycle 60 s on / 30 s off, no Doppler, persists after SAR-2 LOS 10:27:34Z to {{at:event:gw-carrier-sar2:end:s|10:31:30}}Z. Victim MERIDIAN-SAR-2 video 11730 MHz, C/N {{val:decode-sar2.1:0|12}} dB clean, down to about 1 dB with the lock lost while on. Notch 1 (1374 MHz, 2 MHz, 30 dB) applied {{at:cond:notch-the-carrier.1|10:26}}Z, lock held. SH-02 (F. MacLeod) clean on the same pass.',
           },
           mustMaintain: false,
         },
@@ -650,7 +658,7 @@ export const natsEuScenario18Data: ScenarioData = {
       id: 'rx-chain-ready-sar1',
       nice: ['S0421', 'K0773'],
       title: 'Set Up the Receiver for SAR-1',
-      description: 'SAR-1 rises at 10:40:00 from azimuth 136. Retune modem 1 to 1414 MHz and the analyzer to 1414 with the 60 MHz span. Leave notch 0 where it is.',
+      description: 'SAR-1 rises at 10:40:00 from azimuth 136. Retune modem 1 to 1414 MHz and the analyzer to 1414 with the 60 MHz span. Leave Notch 1 where it is.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['log-the-first-event'],
       timeLimitSeconds: 3 * 60,
@@ -706,7 +714,7 @@ export const natsEuScenario18Data: ScenarioData = {
       nice: ['S0593', 'K0737', 'T0153'],
       title: 'Decode SAR-1 Under It',
       description:
-        'From 10:41:30 the carrier is back at 1410 MHz - inside SAR-1’s band this time, the S17 frequency, same cadence. Notch 1 on 1410, 2 MHz, 30 dB, and hold C/N above 7 dB through the high-elevation segment.',
+        'From 10:41:30 the carrier is back at 1410 MHz - inside SAR-1’s band this time, the S17 frequency, same cadence. Notch 2 on 1410, 2 MHz, 30 dB, and hold C/N above 7 dB through the high-elevation segment.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['acquire-sar1'],
       conditions: [
@@ -727,13 +735,13 @@ export const natsEuScenario18Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'RX Modem Locked on SAR-1',
-          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-1-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
           type: 'receiver-snr-threshold',
           description: 'C/N Above 7 dB',
-          params: { modemNumber: 1, minCNRatio: 7, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, minCNRatio: 7, signalId: 'MERIDIAN-SAR-1-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
       ],
@@ -768,7 +776,7 @@ export const natsEuScenario18Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Events',
             documentLine:
-              'Event 2: 10:41:30Z carrier 11690 MHz RF (1410 MHz IF), ~1 MHz, same cadence, inside the MERIDIAN-SAR-1 video band during the SAR-1 pass; notch 1 applied, C/N held > 7 dB. Assessment: the interferer is following the station frequency plan across passes (cf. INC-2027-0412-GW01, configuration export 12 Apr 02:33). No attribution.',
+              'Event 2: 10:41:30Z carrier 11690 MHz RF (1410 MHz IF), ~1 MHz, same cadence, inside the MERIDIAN-SAR-1 video band during the SAR-1 pass; Notch 2 applied, C/N held > 7 dB. Assessment: the interferer is following the station frequency plan across passes (cf. INC-2027-0412-GW01, configuration export 12 Apr 02:33). No attribution.',
           },
           mustMaintain: false,
         },
@@ -804,7 +812,7 @@ export const natsEuScenario18Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Regulator',
             documentLine:
-              'IR-2027-0414-GW01 to ComReg, cc Rotterdam: victim MERIDIAN-SAR-2 (11730 MHz V) and MERIDIAN-SAR-1 (11686 MHz V), GW-01 Galway 53.27N 9.05W. Interferer: 11726 MHz then 11690 MHz, ~1 MHz, 60 s on / 30 s off, no Doppler, terrestrial. First seen 12 Apr 02:25:30Z; today 10:23:30-10:31:30Z and 10:41:30-10:48:30Z. Captures at 2 MHz span attached. SH-02 Shetland clean on both passes. Impact: C/N -6 dB when on; mitigated by IF notch, decodes completed. Geolocation referred.',
+              'IR-2027-0414-GW01 to ComReg, cc Rotterdam: victim MERIDIAN-SAR-2 (11730 MHz V) and MERIDIAN-SAR-1 (11686 MHz V), GW-01 Galway 53.27N 9.05W. Interferer: 11726 MHz then 11690 MHz, ~1 MHz, 60 s on / 30 s off, no Doppler, terrestrial. First seen 12 Apr (INC-2027-0412-GW01); today {{at:event:gw-carrier-sar2:start:s|10:23:30}}-{{at:event:gw-carrier-sar2:end:s|10:31:30}}Z and 10:41:30-10:48:30Z. Captures at 2 MHz span attached. SH-02 Shetland clean on both passes. Impact: C/N down to about 1 dB with the lock lost when on; mitigated by IF notch, decodes completed. Geolocation referred.',
           },
           mustMaintain: false,
         },
@@ -836,11 +844,11 @@ export const natsEuScenario18Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Notch 0 was set for 1374 and the carrier arrived at 1410. You knew the plan; so did they. Tomorrow the notches are staged before the pass, and the plan is assumed compromised until it is reissued. That is the line that changes something; Shetland is not a fix for Galway.',
+              'Notch 1 was set for 1374 and the carrier arrived at 1410. You knew the plan; so did they. Tomorrow the notches are staged before the pass, and the plan is assumed compromised until it is reissued. That is the line that changes something; Shetland is not a fix for Galway.',
             pointPenalty: 5,
             documentSection: 'Debrief',
             documentLine:
-              'Closed 10:56Z. Debrief: interferer follows the station frequency plan; pre-stage IF notches for every planned downlink in the pre-pass sweep; request Rotterdam reissue the IF plan (INC-2027-0412-GW01 export assumed live). Open: regulator package filed, attribution referred.',
+              'Closed {{at:cond:close-and-debrief.0|10:56}}Z. Debrief: interferer follows the station frequency plan; pre-stage IF notches for every planned downlink in the pre-pass sweep; request Rotterdam reissue the IF plan (INC-2027-0412-GW01 export assumed live). Open: regulator package filed, attribution referred.',
           },
           mustMaintain: false,
         },

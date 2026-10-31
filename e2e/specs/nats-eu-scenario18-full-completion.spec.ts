@@ -159,6 +159,10 @@ test.describe('nats-eu Scenario 18 Full Completion', () => {
     await fillAndChange(page, '#sa-center-freq', '1374');
     await fillAndChange(page, '#sa-span', '2');
     await page.waitForTimeout(3000); // RX Analysis stays on screen so the carrier read latches
+    // The 90 s hold on the framed analyzer runs from here; step through it so each tick counts toward the hold.
+    for (const t of ['10:24:00', '10:24:20', '10:24:40', '10:25:00', '10:25:10']) {
+      await advanceMissionClockToUtc(page, `2027-04-14T${t}Z`);
+    }
     await answerSystemQuiz(page, 'Intent: accidents are continuous or erratic');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Read the Cycle', 60000);
@@ -185,7 +189,7 @@ test.describe('nats-eu Scenario 18 Full Completion', () => {
 
   test('[log-the-first-event] records event 1', async () => {
     // No jump: the countdown is running, and a jump now costs what waiting would (phase 19.0a)
-    await answerSystemQuiz(page, '10:23:30 carrier 11726 MHz RF');
+    await answerSystemQuiz(page, 'carrier 11726 MHz RF / 1374 IF, ~1 MHz');
     await dismissDialogIfPresent(page);
     await closeWorkingDocumentIfOpen(page);
     await waitForObjectiveComplete(missionControl, 'Log Event 1');

@@ -81,6 +81,9 @@ galwayRotationDay.receivers![0].modems![0] = {
   ...galwayRotationDay.receivers![0].modems![0],
   frequency: 1370 as MHz,
 };
+// Night shift left the BUC muted: the proof objective's "carrier into the muted
+// BUC, then unmute" must be true when it opens (nats-eu-r1 s15-F2).
+galwayRotationDay.rfFrontEnds[0].buc = { ...galwayRotationDay.rfFrontEnds[0].buc, isMuted: true };
 
 export const natsEuScenario15Data: ScenarioData = {
   id: 'nats-eu-scenario15',
@@ -500,13 +503,13 @@ export const natsEuScenario15Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'GW-01 RX Modem Locked on SAR-1',
-          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-1-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
           type: 'receiver-snr-threshold',
           description: 'GW-01 C/N Above 8 dB',
-          params: { modemNumber: 1, minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, minCNRatio: 8, signalId: 'MERIDIAN-SAR-1-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
@@ -772,13 +775,13 @@ export const natsEuScenario15Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'GW-01 RX Modem Locked on SAR-2',
-          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-2-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: false,
         },
         {
           type: 'receiver-snr-threshold',
           description: 'GW-01 C/N Above 8 dB',
-          params: { modemNumber: 1, minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, minCNRatio: 8, signalId: 'MERIDIAN-SAR-2-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: false,
         },
         {
@@ -859,6 +862,9 @@ export const natsEuScenario15Data: ScenarioData = {
             explanation:
               'The command key is live on orbit. The traffic key was proved separately by the decode, and Rotterdam verifies the other spacecraft one by one. An ACK is proof of one thing on one bird. Rotation day is a list of them.',
             pointPenalty: 5,
+            documentSection: 'Activate',
+            documentLine:
+              'KEY-VERIFY acknowledged {{at:cmd:KEY-VERIFY:ack|07:36}}Z under KEY-2027-Q2 on MERIDIAN-SAR-2, inside the window: the command key is live on orbit. This proves one command on one spacecraft; the traffic key was proved separately by the decode.',
           },
           mustMaintain: false,
         },

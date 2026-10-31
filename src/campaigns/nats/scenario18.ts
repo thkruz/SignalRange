@@ -817,7 +817,7 @@ export const scenario18Data: ScenarioData = {
         <em>[Text message from Dana at 09:07]</em>
       </p>
       <p>
-        "Marcus called the ops line at 0850 - TM-2's north-south burn this morning ran long, stuck thruster valve, and left the bird with over a degree of inclination. Burns are suspended, vehicle team's on it. The ephemeris predates the burn and Maine's link is paying for it. You're covering ME-02 today: keep the link, feed Halifax what you see, and know where your job ends. The vehicle is theirs. The lock is yours."
+        "Marcus called the ops line at 0850 - TM-2's north-south burn this morning ran long, stuck thruster valve, and left the bird with over a degree of inclination. Burns are suspended, vehicle team's on it. The ephemeris predates the burn and Maine's link is paying for it. You're covering ME-02 today. Keep the link, feed Halifax what you see, and know where your job ends. The vehicle is theirs. The lock is yours."
       </p>
       `,
       character: Character.DANA_TORRES,
@@ -828,7 +828,7 @@ export const scenario18Data: ScenarioData = {
       'beamwidth-risk-quiz': {
         text: `
         <p>
-          Marcus here. Confirming what you're seeing: the burn left us about 1.3 degrees of inclination, and the published ephemeris predates it, so the gap only opens from here until early afternoon. Don't wait on a corrected set from us - it'll be a while. You've got a beacon; I'd trust it over my numbers right now.
+          Marcus here. Confirming what you're seeing. The burn left us about 1.3 degrees of inclination, and the published ephemeris predates it, so the gap only opens from here until early afternoon. Don't wait on a corrected set from us - it'll be a while. You've got a beacon; I'd trust it over my numbers right now.
         </p>
         `,
         character: Character.MARCUS_CHEN,

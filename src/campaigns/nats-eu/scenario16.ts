@@ -1060,7 +1060,7 @@ export const natsEuScenario16Data: ScenarioData = {
           <em>[Text message from Anneke Visser at 12:02]</em>
         </p>
         <p>
-          "SAR-2 slipped ninety seconds overnight - ours, we are looking at it. Your SAR-1 command contact stands: REC-PLAYBACK and an OBC watchdog reset inside the 12:18 window, please. Erik still wants both collects. Sort the board first."
+          "SAR-2 slipped ninety seconds overnight - ours, we are looking at it. Your SAR-1 command contact stands - REC-PLAYBACK and an OBC watchdog reset inside the 12:18 window, please. Erik still wants both collects. Sort the board first."
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -1083,7 +1083,7 @@ export const natsEuScenario16Data: ScenarioData = {
       'command-the-playback': {
         text: `
         <p>
-          Playback acknowledged. One more: the watchdog reset, before the window closes. Whatever your reference is doing, the bird does not know about it.
+          Playback acknowledged. One more - the watchdog reset, before the window closes. Whatever your reference is doing, the bird does not know about it.
         </p>
         `,
         character: Character.ANNEKE_VISSER,

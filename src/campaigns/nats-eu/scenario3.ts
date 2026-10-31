@@ -651,7 +651,7 @@ export const natsEuScenario3Data: ScenarioData = {
         <em>[Text message from Charlie Brooks at 13:44]</em>
       </p>
       <p>
-        "Accepted for receive as of yesterday's card. Today the station earns the other half of its licence. Rotterdam has a command for SAR-1 on the 14:03 pass and their flight rules say it comes from a station with a demonstrated clean uplink. That is us, or it is nobody until the next window. One thing: the HPA never goes live without drive behind it. I have watched a site cook an amplifier that way and I would rather not watch it twice. I am in the RF room."
+        "Accepted for receive as of yesterday's card. Today the station earns the other half of its licence. Rotterdam has a command for SAR-1 on the 14:03 pass and their flight rules say it comes from a station with a demonstrated clean uplink. That is us, or it is nobody until the next window. One thing. The HPA never goes live without drive behind it. I have watched a site cook an amplifier that way and I would rather not watch it twice. I am in the RF room."
       </p>
       `,
       character: Character.CHARLIE_BROOKS,
@@ -662,7 +662,7 @@ export const natsEuScenario3Data: ScenarioData = {
       'tune-tx-modem': {
         text: `
         <p>
-          Crew left the transmit modem where they left the receive one - on their test carrier. The BUC is low-side, so no inversion on this path: IF plus LO. Get it to 1405 or the bird hears nothing at all.
+          Crew left the transmit modem where they left the receive one - on their test carrier. The BUC is low-side, so no inversion on this path - IF plus LO. Get it to 1405 or the bird hears nothing at all.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -765,7 +765,7 @@ export const natsEuScenario3Data: ScenarioData = {
       'log-the-window': {
         text: `
         <p>
-          Log it. Whoever has the chain next reads that line before they touch a switch, so write what they need: what went up, what came back, and that the amplifier is off.
+          Log it. Whoever has the chain next reads that line before they touch a switch, so write what they need - what went up, what came back, and that the amplifier is off.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

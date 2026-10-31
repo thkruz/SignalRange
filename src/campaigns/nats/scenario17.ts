@@ -783,7 +783,7 @@ export const scenario17Data: ScenarioData = {
         <em>[Text message from Dana at 10:16]</em>
       </p>
       <p>
-        "Sun transit window on TM-1 this morning - prediction sheet's attached. Window opens about 1032:30, peak around 1035, clear by 1037:30. You know the drill from the read-ahead: this one you don't fight. Notify, ride it through, document. The only way to fail a sun transit is to panic during one."
+        "Sun transit window on TM-1 this morning - prediction sheet's attached. Window opens about 1032:30, peak around 1035, clear by 1037:30. You know the drill from the read-ahead. This one you don't fight. Notify, ride it through, document. The only way to fail a sun transit is to panic during one."
       </p>
       `,
       character: Character.DANA_TORRES,

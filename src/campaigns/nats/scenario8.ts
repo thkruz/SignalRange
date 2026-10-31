@@ -1348,7 +1348,7 @@ export const scenario8Data: ScenarioData = {
           <em>[Text message from Dana, forwarding the NWS winter weather alert]</em>
         </p>
         <p>
-          "Weather alert just pinged my phone: freezing rain at the site in about 2 hours, 0.1-0.3 inches accumulation, temps falling to 22. Your call. Going back to sleep."
+          "Weather alert just pinged my phone. Freezing rain at the site in about 2 hours, 0.1-0.3 inches accumulation, temps falling to 22. Your call. Going back to sleep."
         </p>
         `,
         character: Character.DANA_TORRES,

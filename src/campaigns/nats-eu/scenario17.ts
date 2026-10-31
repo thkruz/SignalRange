@@ -932,7 +932,7 @@ export const natsEuScenario17Data: ScenarioData = {
         <em>[Text message from Priya Sharma at 01:52]</em>
       </p>
       <p>
-        "Group Security here. Your station raised three auth warnings overnight; the monitoring feed shows me the count and not the content. Read the log before your first pass. If anything on it or on the pass does not belong: flag it, note the time you saw it, then act. In that order. I will be on this number."
+        "Group Security here. Your station raised three auth warnings overnight; the monitoring feed shows me the count and not the content. Read the log before your first pass. If anything on it or on the pass does not belong - flag it, note the time you saw it, then act. In that order. I will be on this number."
       </p>
       `,
       character: Character.PRIYA_SHARMA,

@@ -680,7 +680,7 @@ export const natsEuScenario1Data: ScenarioData = {
       'reference-check': {
         text: `
         <p>
-          Reference first, same as Vermont. The only thing that changes up here is what hangs off it: at Ku a part-per-billion on the 10 MHz is a hundred-odd hertz on the LO, and you will be chasing a carrier that is already moving.
+          Reference first, same as Vermont. The only thing that changes up here is what hangs off it. At Ku a part-per-billion on the 10 MHz is a hundred-odd hertz on the LO, and you will be chasing a carrier that is already moving.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -770,7 +770,7 @@ export const natsEuScenario1Data: ScenarioData = {
       'retune-for-sar2': {
         text: `
         <p>
-          Gone at 14:10. That is a pass: nine minutes above the mask and nobody asked your permission. Second bird in seven. Different carrier, same LO - you know what to do with that.
+          Gone at 14:10. That is a pass. Nine minutes above the mask and nobody asked your permission. Second bird in seven. Different carrier, same LO - you know what to do with that.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

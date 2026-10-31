@@ -1723,7 +1723,7 @@ export const scenario3Data: ScenarioData = {
           Look outside - it's already coming down hard. Weather service upgraded the forecast to a full blizzard warning. We've got maybe fifteen minutes before the link margin drops below threshold and we lose TIDEMARK-1.
         </p>
         <p>
-          First priority: enable the feed heater on Vermont. Ice on the waveguide is bad news - degrades the signal and can physically damage the feed assembly. Won't save the link, but it'll protect the equipment.
+          First priority. Enable the feed heater on Vermont. Ice on the waveguide is bad news - degrades the signal and can physically damage the feed assembly. Won't save the link, but it'll protect the equipment.
         </p>
         <p>
           Select Vermont Ground Station in the asset tree on the left.
@@ -2007,7 +2007,7 @@ export const scenario3Data: ScenarioData = {
           Exactly. The beacon doesn't just prove pointing - it proves the whole chain. I've seen operators trust program-track blindly and waste an hour because a cable was loose. Trust but verify.
         </p>
         <p>
-          Now configure the receiver modem. Same parameters as Vermont: 1,532 MHz, 36 MHz bandwidth, QPSK, FEC 3/4.
+          Now configure the receiver modem. Same parameters as Vermont - 1,532 MHz, 36 MHz bandwidth, QPSK, FEC 3/4.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -2075,7 +2075,7 @@ export const scenario3Data: ScenarioData = {
       'navigate-tx-maine': {
         text: `
         <p>
-          Configure the transmitter modem to match Vermont: 1,057 MHz, -7 dBm, 36 MHz bandwidth, QPSK, FEC 3/4. Then enable transmission.
+          Configure the transmitter modem to match Vermont - 1,057 MHz, -7 dBm, 36 MHz bandwidth, QPSK, FEC 3/4. Then enable transmission.
         </p>
         <p>
           The handover process will handle the BUC and HPA automatically - you just need to get the modem configured and enabled.
@@ -2141,7 +2141,7 @@ export const scenario3Data: ScenarioData = {
           Perfect. Maine's active, Vermont's TX is disabled, customers never noticed. Textbook weather handover.
         </p>
         <p>
-          One more thing: stow Vermont's antenna to protect it during the storm. Switch back to Vermont Ground Station in the asset tree.
+          One more thing. Stow Vermont's antenna to protect it during the storm. Switch back to Vermont Ground Station in the asset tree.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -2188,7 +2188,7 @@ export const scenario3Data: ScenarioData = {
           Maine is fully operational. TIDEMARK-1 traffic is now being served from ME-02. Vermont is in standby until the weather clears.
         </p>
         <p>
-          One more thing before we're done - documentation. Every handover event gets logged, even routine weather ones. Open the Ops Log in the station sidebar and type it up: when the snow started hurting the link, when the handover finished, TIDEMARK-1, Vermont to Maine.
+          One more thing before we're done - documentation. Every handover event gets logged, even routine weather ones. Open the Ops Log in the station sidebar and type it up - when the snow started hurting the link, when the handover finished, TIDEMARK-1, Vermont to Maine.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

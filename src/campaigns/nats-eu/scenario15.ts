@@ -997,7 +997,7 @@ export const natsEuScenario15Data: ScenarioData = {
           <em>[Automated notice from MERIDIAN Ops at 07:27]</em>
         </p>
         <p>
-          "Fleet traffic key rotation executed 07:27:00Z per order. Sites: load new material before your next payload contact."
+          "Fleet traffic key rotation executed 07:27:00Z per order. Sites - load new material before your next payload contact."
         </p>
         `,
         character: Character.ANNEKE_VISSER,

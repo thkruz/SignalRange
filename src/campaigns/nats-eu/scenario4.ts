@@ -725,7 +725,7 @@ export const natsEuScenario4Data: ScenarioData = {
         <em>[Text message from Charlie Brooks at 13:44]</em>
       </p>
       <p>
-        "Clean uplink yesterday, so Rotterdam has given us a real one today: safe-mode the payload before the next imaging block. There is a complication, which is that the scheduled key rotation was booked weeks ago and has, naturally, arrived in the middle of your only pass. The bird authenticates every command. A key that is mid-rotation is not a key. Finish the rotation before the pass, then send. And leave the zeroize switch exactly where it is."
+        "Clean uplink yesterday, so Rotterdam has given us a real one today. Safe-mode the payload before the next imaging block. There is a complication, which is that the scheduled key rotation was booked weeks ago and has, naturally, arrived in the middle of your only pass. The bird authenticates every command. A key that is mid-rotation is not a key. Finish the rotation before the pass, then send. And leave the zeroize switch exactly where it is."
       </p>
       `,
       character: Character.CHARLIE_BROOKS,
@@ -792,7 +792,7 @@ export const natsEuScenario4Data: ScenarioData = {
       're-key-traffic': {
         text: `
         <p>
-          There it is: one end of the handshake moved and the other did not. Load the new key on the payload panel. Watch both directions clear at once - it is one key.
+          There it is. One end of the handshake moved and the other did not. Load the new key on the payload panel. Watch both directions clear at once - it is one key.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

@@ -998,7 +998,7 @@ export const scenario4Data: ScenarioData = {
         The mission brief has all the details - frequencies, look angles, everything you need. ME-02's got primary on TIDEMARK-1, so there's no customer impact while you work. Take your time, be methodical, and give me a shout when you've got lock. I'll be watching the payload telemetry from our end.
       </p>
       <p>
-        One thing to remember: TIDEMARK-2 is at a different orbital slot than TIDEMARK-1, so your look angles and frequencies will all be different. Don't just copy what worked for the other bird. Think through each step.
+        One thing to remember. TIDEMARK-2 is at a different orbital slot than TIDEMARK-1, so your look angles and frequencies will all be different. Don't just copy what worked for the other bird. Think through each step.
       </p>
       `,
       character: Character.MARCUS_CHEN,
@@ -1176,7 +1176,7 @@ export const scenario4Data: ScenarioData = {
           Exactly right. The beacon confirms both your antenna pointing AND your LNB configuration. If either were wrong, you wouldn't see the beacon at the expected IF frequency.
         </p>
         <p>
-          Think about it: wrong pointing means no signal at all. Wrong LO frequency means the beacon appears at a different IF. Seeing it where you calculated proves both are correct.
+          Think about it. Wrong pointing means no signal at all. Wrong LO frequency means the beacon appears at a different IF. Seeing it where you calculated proves both are correct.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1189,7 +1189,7 @@ export const scenario4Data: ScenarioData = {
           That's the right way to think about troubleshooting. The beacon on the spectrum analyzer validates everything upstream of that point - antenna, feed, LNB, cables, routing.
         </p>
         <p>
-          If the modem fails to lock after this, you know exactly where the problem is: modem configuration. No need to second-guess the RF path.
+          If the modem fails to lock after this, you know exactly where the problem is - modem configuration. No need to second-guess the RF path.
         </p>
         <p>
           Now configure the receiver modem. The transponder output is at 3,792 MHz RF. With your LO, that's an IF of 1,458 MHz.
@@ -1299,7 +1299,7 @@ export const scenario4Data: ScenarioData = {
       'understand-buc-hpa-sequence': {
         text: `
         <p>
-          Right. Signal chain from input to output: BUC first, then HPA. You want the amplifier to see a proper signal when it's enabled, not noise or oscillation.
+          Right. Signal chain from input to output - BUC first, then HPA. You want the amplifier to see a proper signal when it's enabled, not noise or oscillation.
         </p>
         <p>
           An HPA enabled with no input is an amplifier looking for something to amplify. It'll find noise, and it'll amplify that. It's a kilowatt-class amplifier - that's not something you want. Drive the chain from the input side.
@@ -1328,10 +1328,10 @@ export const scenario4Data: ScenarioData = {
       'verify-full-duplex-quiz': {
         text: `
         <p>
-          That's right. Full duplex confirmed by: receiver locked with margin - downlink working. HPA enabled with proper backoff - uplink active. No warnings anywhere - everything in spec.
+          That's right. Full duplex confirmed by - receiver locked with margin - downlink working. HPA enabled with proper backoff - uplink active. No warnings anywhere - everything in spec.
         </p>
         <p>
-          TIDEMARK-2 is a bent-pipe transponder - it just relays what it receives. It doesn't send acknowledgments or confirmations. Marcus sees our carrier on the payload side, and our receiver is locked on that same carrier coming back down - that's the round trip. He's just called it from Halifax: full duplex established, switchover complete.
+          TIDEMARK-2 is a bent-pipe transponder - it just relays what it receives. It doesn't send acknowledgments or confirmations. Marcus sees our carrier on the payload side, and our receiver is locked on that same carrier coming back down - that's the round trip. He's just called it from Halifax - full duplex established, switchover complete.
         </p>
         <p>
           Well done. VT-01 is now fully operational on TIDEMARK-2. Grab yourself a coffee - you've earned it.

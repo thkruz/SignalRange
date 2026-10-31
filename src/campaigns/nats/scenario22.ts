@@ -804,7 +804,7 @@ export const scenario22Data: ScenarioData = {
       'measure-beacon': {
         text: `
         <p>
-          Marcus from Halifax - I hear you're writing AURORA's obituary. For your trend: our vehicle telemetry shows the array down to about seventy percent of beginning-of-life output, and the bus is auto-shedding RF load to protect the housekeeping buses. Your beacon decline and our power numbers are the same story. She's earned her retirement, eh.
+          Marcus from Halifax - I hear you're writing AURORA's obituary. For your trend. Our vehicle telemetry shows the array down to about seventy percent of beginning-of-life output, and the bus is auto-shedding RF load to protect the housekeeping buses. Your beacon decline and our power numbers are the same story. She's earned her retirement, eh.
         </p>
         `,
         character: Character.MARCUS_CHEN,
@@ -814,7 +814,7 @@ export const scenario22Data: ScenarioData = {
       'sunset-window-quiz': {
         text: `
         <p>
-          Francis Martin. Appreciate you taking this on directly. What the board needs is exactly what you're building - not a date we'll have to walk back, but a window with triggers we can plan a migration around. Cost-of-being-wrong runs both directions here: retire too early and we waste an asset, too late and we strand customers. Give me the honest middle.
+          Francis Martin. Appreciate you taking this on directly. What the board needs is exactly what you're building - not a date we'll have to walk back, but a window with triggers we can plan a migration around. Cost-of-being-wrong runs both directions here. Retire too early and we waste an asset, too late and we strand customers. Give me the honest middle.
         </p>
         `,
         character: Character.FRANCIS_MARTIN,

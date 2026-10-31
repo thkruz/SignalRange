@@ -798,7 +798,7 @@ export const scenario21Data: ScenarioData = {
         <em>[Call from Dana at 10:22]</em>
       </p>
       <p>
-        "Catherine flagged something before she left - intermittent broadband noise on the TM-2 downlink, on-off-on, gone before she could pin it. It's back. Doesn't look like our cross-pol neighbors, doesn't look like weather. Treat it as an interference incident from minute one: characterize, discriminate, mitigate, document. And check the data layer - if this is deliberate it's denial, not a breach, but I want that confirmed, not assumed."
+        "Catherine flagged something before she left - intermittent broadband noise on the TM-2 downlink, on-off-on, gone before she could pin it. It's back. Doesn't look like our cross-pol neighbors, doesn't look like weather. Treat it as an interference incident from minute one - characterize, discriminate, mitigate, document. And check the data layer - if this is deliberate it's denial, not a breach, but I want that confirmed, not assumed."
       </p>
       `,
       character: Character.DANA_TORRES,
@@ -811,7 +811,7 @@ export const scenario21Data: ScenarioData = {
       'duty-cycle-quiz': {
         text: `
         <p>
-          Marcus in Halifax - confirming from our side: we see the same interferer on TM-2 TP-1 that you do, and the spacecraft telemetry's clean, transponder's nominal. If we're both seeing it through the bird, it's coming up on the uplink, not local to either of us. That's not weather and it's not our hardware.
+          Marcus in Halifax - confirming from our side. We see the same interferer on TM-2 TP-1 that you do, and the spacecraft telemetry's clean, transponder's nominal. If we're both seeing it through the bird, it's coming up on the uplink, not local to either of us. That's not weather and it's not our hardware.
         </p>
         `,
         character: Character.MARCUS_CHEN,
@@ -824,7 +824,7 @@ export const scenario21Data: ScenarioData = {
           <em>[Regulator coordination desk - SYSTEM notification, {{stationTime}}]</em>
         </p>
         <p>
-          "Interference report channel open for TM-2 TP-1. Submit measured parameters, spectrum captures, and cross-station confirmation. Do not attempt source attribution; geolocation tasking will be handled here. Acknowledge receipt of mitigation guidance: receive-side only, no power escalation."
+          "Interference report channel open for TM-2 TP-1. Submit measured parameters, spectrum captures, and cross-station confirmation. Do not attempt source attribution; geolocation tasking will be handled here. Acknowledge receipt of mitigation guidance. Receive-side only, no power escalation."
         </p>
         `,
         character: Character.NOTICE,
@@ -846,7 +846,7 @@ export const scenario21Data: ScenarioData = {
       'log-incident': {
         text: `
         <p>
-          That's how you work a hostile-RF event: you measured everything, concluded nothing you couldn't back, kept the customer up, and handed the regulator a package they can actually act on. "Consistent with deliberate" - not a name, not a flag, just the evidence.
+          That's how you work a hostile-RF event - you measured everything, concluded nothing you couldn't back, kept the customer up, and handed the regulator a package they can actually act on. "Consistent with deliberate" - not a name, not a flag, just the evidence.
         </p>
         <p>
           If it changes character - especially anything on the data side - it escalates instantly. Until then, you've got it.

@@ -924,7 +924,7 @@ export const scenario6Data: ScenarioData = {
       'calculate-tx-if': {
         text: `
         <p>
-          1447 megahertz. Good work. The BUC LO sits above the uplink, just like the LNB LO sits above the downlink, so it's the same subtraction: LO minus RF. Set the TX modem to 1447 megahertz.
+          1447 megahertz. Good work. The BUC LO sits above the uplink, just like the LNB LO sits above the downlink, so it's the same subtraction - LO minus RF. Set the TX modem to 1447 megahertz.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

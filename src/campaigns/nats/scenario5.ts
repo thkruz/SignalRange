@@ -955,7 +955,7 @@ export const scenario5Data: ScenarioData = {
           But gain turns our carrier and the noise up and down together, so the gain change isn't what hurt us. The spike's own power sits inside our 36 megahertz, and the demodulator counts it as noise. And it's taking a share of the transponder's output, so our carrier comes down a little weaker. The AGC is just telling you there's more power in the passband than there should be.
         </p>
         <p>
-          Now we know the problem. The question is: what's the best way to fix it? We have several options available.
+          Now we know the problem. The question is - what's the best way to fix it? We have several options available.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1007,7 +1007,7 @@ export const scenario5Data: ScenarioData = {
       'phase-9-verify-restoration': {
         text: `
         <p>
-          C/N is back above the 8 dB service minimum on our receiver - about 9 or 10 dB, good margin on the modem. Not the full 14: the spike's still in the transponder eating its share of power. And the notch only cleans up our receive chain. The ships get the same downlink, spike included, so they keep seeing it until the source is found and that operator's cross-pol isolation improves.
+          C/N is back above the 8 dB service minimum on our receiver - about 9 or 10 dB, good margin on the modem. Not the full 14. The spike's still in the transponder eating its share of power. And the notch only cleans up our receive chain. The ships get the same downlink, spike included, so they keep seeing it until the source is found and that operator's cross-pol isolation improves.
         </p>
         <p>
           Nice work. You diagnosed a non-obvious interference problem, understood the mechanism behind it, and applied the right mitigation. That's the kind of systematic troubleshooting that separates good operators from great ones.
@@ -1043,7 +1043,7 @@ export const scenario5Data: ScenarioData = {
       'phase-6-understand-cause': {
         text: `
         <p>
-          1,515 megahertz IF is our notch target. Now let's figure out what's putting it there. Work it from the evidence: is it a carrier or a raised noise floor? Is it only in our downlink, or are the ships seeing it too?
+          1,515 megahertz IF is our notch target. Now let's figure out what's putting it there. Work it from the evidence. Is it a carrier or a raised noise floor? Is it only in our downlink, or are the ships seeing it too?
         </p>
         <p>
           And think about polarization. TP-1 takes our uplink on horizontal and sends it back down on vertical - that's why the OMT card reads TX H, RX V. Satellites often reuse the same frequencies on the orthogonal polarization - another operator might be uplinking into that vertical slot.

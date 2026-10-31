@@ -1119,7 +1119,7 @@ export const scenario1Data: ScenarioData = {
         ACU Control - antenna control unit. The dish needs to stay pointed at TIDEMARK-1.
       </p>
       <p>
-        There are different tracking modes: program-track follows ephemeris predictions, manual is operator-controlled, stow parks it safe. What mode are we in?
+        There are different tracking modes - program-track follows ephemeris predictions, manual is operator-controlled, stow parks it safe. What mode are we in?
       </p>
       `,
         character: Character.CHARLIE_BROOKS,

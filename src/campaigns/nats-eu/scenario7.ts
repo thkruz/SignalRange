@@ -714,7 +714,7 @@ export const natsEuScenario7Data: ScenarioData = {
         <em>[Text message from Charlie Brooks at 13:44]</em>
       </p>
       <p>
-        "Anneke rang at 05:40, which tells you how her night went. Space Surveillance has a conjunction on SAR-2 with a spent upper stage. Rotterdam decides at 14:00; if it is go, the burn is at 14:11, which is between your passes. Small burn. New orbit, slightly. Here is the problem with slightly: every prediction this station makes comes from an element set that will describe an orbit the bird is not in. Work SAR-1 first. It did not burn, and I want you to know what right looks like before you meet wrong."
+        "Anneke rang at 05:40, which tells you how her night went. Space Surveillance has a conjunction on SAR-2 with a spent upper stage. Rotterdam decides at 14:00; if it is go, the burn is at 14:11, which is between your passes. Small burn. New orbit, slightly. Here is the problem with slightly. Every prediction this station makes comes from an element set that will describe an orbit the bird is not in. Work SAR-1 first. It did not burn, and I want you to know what right looks like before you meet wrong."
       </p>
       `,
       character: Character.CHARLIE_BROOKS,

@@ -804,7 +804,7 @@ export const natsEuScenario10Data: ScenarioData = {
       'safe-the-uplink': {
         text: `
         <p>
-          Chain down on my side too, thank you. For the record: the IMD readout never moved off the green. That is the number I will quote when somebody asks whether Galway can be trusted with a low pass.
+          Chain down on my side too, thank you. For the record. The IMD readout never moved off the green. That is the number I will quote when somebody asks whether Galway can be trusted with a low pass.
         </p>
         `,
         character: Character.ANNEKE_VISSER,

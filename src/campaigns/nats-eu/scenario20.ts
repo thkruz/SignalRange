@@ -990,7 +990,7 @@ export const natsEuScenario20Data: ScenarioData = {
       'probe-the-sky': {
         text: `
         <p>
-          A probe is cheap: a few seconds of listening and a few microseconds of offset. Back to holdover if it moves. When it holds still with the receiver up, and only then, leave it up.
+          A probe is cheap. A few seconds of listening and a few microseconds of offset. Back to holdover if it moves. When it holds still with the receiver up, and only then, leave it up.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

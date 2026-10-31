@@ -871,7 +871,7 @@ export const natsEuScenario18Data: ScenarioData = {
         <em>[Text message from Anneke Visser at 09:41]</em>
       </p>
       <p>
-        "Your Monday report is with ComReg and with me. They can act on measurements, not on a story: if that carrier comes back today I want frequency, bandwidth, cadence, first seen, and a second station saying it did not hear it. Fiona is flying both passes from Shetland in parallel. Keep your decodes; the report is what you do between them."
+        "Your Monday report is with ComReg and with me. They can act on measurements, not on a story. If that carrier comes back today I want frequency, bandwidth, cadence, first seen, and a second station saying it did not hear it. Fiona is flying both passes from Shetland in parallel. Keep your decodes; the report is what you do between them."
       </p>
       `,
       character: Character.ANNEKE_VISSER,

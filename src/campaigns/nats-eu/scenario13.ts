@@ -984,7 +984,7 @@ export const natsEuScenario13Data: ScenarioData = {
       'record-anomaly-1': {
         text: `
         <p>
-          So the best pass is the worst pass. Noted for the planners: anything over eighty is a culmination outage, not a ticket. Now the one that worries me - the SAR-1 number.
+          So the best pass is the worst pass. Noted for the planners. Anything over eighty is a culmination outage, not a ticket. Now the one that worries me - the SAR-1 number.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -1010,7 +1010,7 @@ export const natsEuScenario13Data: ScenarioData = {
           <em>[Text message from Fiona MacLeod at {{stationTime}}]</em>
         </p>
         <p>
-          "Seen it on the board. SAR-3 is on its own numbers, mind: 1340 for the video, 1315 for the beacon. Thirty-two degrees from the south-east. It's a good one."
+          "Seen it on the board. SAR-3 is on its own numbers, mind - 1340 for the video, 1315 for the beacon. Thirty-two degrees from the south-east. It's a good one."
         </p>
         `,
         character: Character.FIONA_MACLEOD,

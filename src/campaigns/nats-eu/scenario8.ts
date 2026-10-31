@@ -1041,7 +1041,7 @@ export const natsEuScenario8Data: ScenarioData = {
           <em>[Text message from Dana Torres]</em>
         </p>
         <p>
-          "Charlie says tonight's the one. Same as Vermont: nobody's coming, and that's the point. Text me when it's done."
+          "Charlie says tonight's the one. Same as Vermont. Nobody's coming, and that's the point. Text me when it's done."
         </p>
         `,
         character: Character.DANA_TORRES,
@@ -1054,7 +1054,7 @@ export const natsEuScenario8Data: ScenarioData = {
           <em>[Text message from Fiona MacLeod]</em>
         </p>
         <p>
-          "Off. SAR-1 was seventeen degrees and decoded, for the record. Modem's still on 1414. Station's yours. Night."
+          "Off. SAR-1 was seventeen degrees and decoded, for the record. Modem's still on 1414. Station's yours. Goodnight."
         </p>
         `,
         character: Character.FIONA_MACLEOD,
@@ -1067,7 +1067,7 @@ export const natsEuScenario8Data: ScenarioData = {
           <em>[Automated notice from MERIDIAN Ops at 04:15]</em>
         </p>
         <p>
-          "Fleet traffic key rotation executed 04:15:00Z per schedule. Sites: load new material before your next payload contact."
+          "Fleet traffic key rotation executed 04:15:00Z per schedule. Sites - load new material before your next payload contact."
         </p>
         `,
         character: Character.ANNEKE_VISSER,

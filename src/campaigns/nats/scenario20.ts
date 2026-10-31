@@ -926,7 +926,7 @@ export const scenario20Data: ScenarioData = {
         <em>[Call from Dana at 07:09 - road noise]</em>
       </p>
       <p>
-        "Two boards lit at once. Vermont's icing - the heater's been off since last night, don't ask - and Maine just threw an HPA overdrive with the amp running hot. I'm forty minutes out on bad roads. Triage them: SLA exposure first, recovery time second. Don't give me hero sequencing - give me the order that costs the customers least."
+        "Two boards lit at once. Vermont's icing - the heater's been off since last night, don't ask - and Maine just threw an HPA overdrive with the amp running hot. I'm forty minutes out on bad roads. Triage them. SLA exposure first, recovery time second. Don't give me hero sequencing - give me the order that costs the customers least."
       </p>
       `,
       character: Character.DANA_TORRES,

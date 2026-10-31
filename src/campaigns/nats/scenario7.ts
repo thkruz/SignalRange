@@ -1192,7 +1192,7 @@ export const scenario7Data: ScenarioData = {
       'reduce-buc-gain': {
         text: `
         <p>
-          Before you loop back, drop the BUC gain to 20 dB. The test loop takes the BUC output about 66 dB down into the LNB: at our normal 23 dB that's right at the LNB's compression point, and a compressed loop carrier tells you nothing clean. Twenty keeps the LNB linear. And at the 50 dB maintenance left, the modem would drive the BUC itself straight into saturation.
+          Before you loop back, drop the BUC gain to 20 dB. The test loop takes the BUC output about 66 dB down into the LNB. At our normal 23 dB that's right at the LNB's compression point, and a compressed loop carrier tells you nothing clean. Twenty keeps the LNB linear. And at the 50 dB maintenance left, the modem would drive the BUC itself straight into saturation.
         </p>
         `,
         character: Character.DANA_TORRES,

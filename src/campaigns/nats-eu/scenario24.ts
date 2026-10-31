@@ -1307,7 +1307,7 @@ export const natsEuScenario24Data: ScenarioData = {
       'incident-log-and-handover': {
         text: `
         <p>
-          Handover received. Get some sleep. One more thing: my friend called back about the emitter - the two-receiver people. They read Priya's report and they have a question for you, and it is not about the emitter. It is whether you would come and do this from their side for a while. I said you would call them.
+          Handover received. Get some sleep. One more thing. My friend called back about the emitter - the two-receiver people. They read Priya's report and they have a question for you, and it is not about the emitter. It is whether you would come and do this from their side for a while. I said you would call them.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

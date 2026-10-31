@@ -872,7 +872,7 @@ export const natsEuScenario19Data: ScenarioData = {
         <em>[Text message from Anneke Visser at 12:44]</em>
       </p>
       <p>
-        "New IF plan is on your station as of last night. I loaded hop set HOP-SAR2-04 on SAR-2 at 08:20; your copy is in the store, inactive. SAR-2 at 13:20 is commanding: HK-DUMP, then PLD-STATUS. If your carrier is denied you call it and I key my end on the call - not before, the set is not free. SAR-1 after is receive only."
+        "New IF plan is on your station as of last night. I loaded hop set HOP-SAR2-04 on SAR-2 at 08:20; your copy is in the store, inactive. SAR-2 at 13:20 is commanding - HK-DUMP, then PLD-STATUS. If your carrier is denied you call it and I key my end on the call - not before, the set is not free. SAR-1 after is receive only."
       </p>
       `,
       character: Character.ANNEKE_VISSER,

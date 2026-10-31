@@ -995,7 +995,7 @@ export const natsEuScenario12Data: ScenarioData = {
         <em>[Text message from Anneke Visser at 09:40]</em>
       </p>
       <p>
-        "Test plan attached. Bus has been clean for two days, so today is the payload: readiness on the card, chain up in order, power it, command the test pattern, secure the uplink, decode it, record it. One pass, AOS 10:06, do it in the order on the card. Erik is copied and he will ask the moment it is signed."
+        "Test plan attached. Bus has been clean for two days, so today is the payload - readiness on the card, chain up in order, power it, command the test pattern, secure the uplink, decode it, record it. One pass, AOS 10:06, do it in the order on the card. Erik is copied and he will ask the moment it is signed."
       </p>
       `,
       character: Character.ANNEKE_VISSER,

@@ -1208,7 +1208,7 @@ export const scenario2Data: ScenarioData = {
         Maintenance crew is on site, waiting on us for the antenna feed assembly. Their window runs to 09:50, so we're taking TIDEMARK-1 offline now.
       </p>
       <p>
-        We will shut down in sequence: HPA first, then BUC, then stop the modem, then LNB, then park the antenna at maintenance. Never skip steps, never reverse order. Read the Mission Brief. Go.
+        We will shut down in sequence - HPA first, then BUC, then stop the modem, then LNB, then park the antenna at maintenance. Never skip steps, never reverse order. Read the Mission Brief. Go.
       </p>
       `,
       character: Character.CHARLIE_BROOKS,
@@ -1276,7 +1276,7 @@ export const scenario2Data: ScenarioData = {
           Right. HPA is enabled and transmitting. That's a hundred watts of RF power going through the feed assembly where the maintenance crew needs to work.
         </p>
         <p>
-          First step: disable the HPA output. Find the HPA panel and toggle the enable switch to OFF. Don't power it off completely yet - just disable the output.
+          First step. Disable the HPA output. Find the HPA panel and toggle the enable switch to OFF. Don't power it off completely yet - just disable the output.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1455,7 +1455,7 @@ export const scenario2Data: ScenarioData = {
           Maintenance is complete. Crew's clear of the antenna. Time to bring the link back up.
         </p>
         <p>
-          We restore in reverse order: antenna first, then receive chain, then transmit chain. Set tracking mode back to PROGRAM, select TIDEMARK-1 as the target and press Move to Target. It'll settle near azimuth 153.2, elevation 35.2. That's where TIDEMARK-1 sits.
+          We restore in reverse order - antenna first, then receive chain, then transmit chain. Set tracking mode back to PROGRAM, select TIDEMARK-1 as the target and press Move to Target. It'll settle near azimuth 153.2, elevation 35.2. That's where TIDEMARK-1 sits.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1512,7 +1512,7 @@ export const scenario2Data: ScenarioData = {
           LNB's stable. Now verify we're actually seeing the satellite.
         </p>
         <p>
-          Check the spectrum analyzer. It's still parked on the carrier from before the work - retune it to the beacon: center 1,074.5 MHz, span 0.002 MHz. TIDEMARK-1's beacon should be visible at 1,074.5 MHz on the IF side. That's our 5,250 MHz LO minus the 4,175.5 MHz RF. If you see a clean carrier there, we're pointed correctly.
+          Check the spectrum analyzer. It's still parked on the carrier from before the work - retune it to the beacon - center 1,074.5 MHz, span 0.002 MHz. TIDEMARK-1's beacon should be visible at 1,074.5 MHz on the IF side. That's our 5,250 MHz LO minus the 4,175.5 MHz RF. If you see a clean carrier there, we're pointed correctly.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

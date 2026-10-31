@@ -781,7 +781,7 @@ export const natsEuScenario6Data: ScenarioData = {
           <em>[Memo from Priya Sharma, NATS Group Security, ref GS-BASELINE-GW01-03]</em>
         </p>
         <p>
-          "Monthly return for GW-01 is due by close of business Friday. Standard scope: full audit-trail review since the last return, every warning-severity event dispositioned, and an account roster reconciled against current authorisation. Anything flagged, tell us what it was and what you did about it. Anything not flagged, we assume you looked. A note for new sites: the install phase leaves things behind."
+          "Monthly return for GW-01 is due by close of business Friday. Standard scope - full audit-trail review since the last return, every warning-severity event dispositioned, and an account roster reconciled against current authorisation. Anything flagged, tell us what it was and what you did about it. Anything not flagged, we assume you looked. A note for new sites. The install phase leaves things behind."
         </p>
         `,
         character: Character.PRIYA_SHARMA,
@@ -854,7 +854,7 @@ export const natsEuScenario6Data: ScenarioData = {
       'expire-the-relief-account': {
         text: `
         <p>
-          Nakamura covered for me in February and went home on the twenty-eighth. Nobody closed the account because nobody's job was to close the account. That is what the roster reconciliation is for. Expired, not disabled: the story is different and the return should say so.
+          Nakamura covered for me in February and went home on the twenty-eighth. Nobody closed the account because nobody's job was to close the account. That is what the roster reconciliation is for. Expired, not disabled. The story is different and the return should say so.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

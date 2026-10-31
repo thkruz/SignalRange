@@ -922,7 +922,7 @@ export const natsEuScenario21Data: ScenarioData = {
         <em>[Text message from Anneke Visser at 08:40]</em>
       </p>
       <p>
-        "SAR-2 at 09:24 is commanding: HK-DUMP, then PLD-STATUS, both under KEY-2027-Q2. Q2b is in your store and on my shelf - staged, not loaded, since Friday. I watch the bird's command counter on every pass now. If it rejects anything I did not see you send, you will hear from me inside a minute."
+        "SAR-2 at 09:24 is commanding - HK-DUMP, then PLD-STATUS, both under KEY-2027-Q2. Q2b is in your store and on my shelf - staged, not loaded, since Friday. I watch the bird's command counter on every pass now. If it rejects anything I did not see you send, you will hear from me inside a minute."
       </p>
       `,
       character: Character.ANNEKE_VISSER,

@@ -848,7 +848,7 @@ export const natsEuScenario5Data: ScenarioData = {
       'shetland-geometry': {
         text: `
         <p>
-          Look at the schedule with Shetland selected. Same bird, and it is a different pass: earlier, lower, and it will not be the last time the two sites disagree about the sky. That is the whole reason there are two of them.
+          Look at the schedule with Shetland selected. Same bird, and it is a different pass - earlier, lower, and it will not be the last time the two sites disagree about the sky. That is the whole reason there are two of them.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -918,7 +918,7 @@ export const natsEuScenario5Data: ScenarioData = {
       'log-the-network': {
         text: `
         <p>
-          Four for four on the network's first day, one of them from a console the operator was not sitting at. Log it properly: site, who flew it, the number. Then ring Fiona and tell her eleven point two.
+          Four for four on the network's first day, one of them from a console the operator was not sitting at. Log it properly - site, who flew it, the number. Then ring Fiona and tell her eleven point two.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

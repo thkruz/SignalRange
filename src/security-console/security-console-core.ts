@@ -18,6 +18,7 @@
 
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { fillDialogTokens } from '@app/modal/dialog-tokens';
 import { ObjectiveAnchors } from '@app/objectives/objective-anchor';
 import { ScenarioManager } from '@app/scenario-manager';
 import { CampaignDocumentStore, campaignIdOf } from '@app/scenarios/campaign-document-store';
@@ -66,7 +67,7 @@ export interface AuditEventConfig {
  */
 export function sortAuditByTimestamp(events: AuditEventConfig[]): AuditEventConfig[] {
   const minutes = events.map((e) => {
-    const m = /(\d{1,2}):(\d{2})/u.exec(e.timestampLabel ?? '');
+    const m = /(\d{1,2}):(\d{2})/u.exec(fillDialogTokens(e.timestampLabel ?? ''));
 
     return m ? Number(m[1]) * 60 + Number(m[2]) : null;
   });

@@ -124,6 +124,21 @@ export class HardwareFaultManager {
     return this.clearedIds_.has(eventId);
   }
 
+  /**
+   * Mission-elapsed start and end seconds of a fault, for the event-time ledger
+   * (`event:<id>:start` / `:end`). Null for an unknown id, or while its anchor
+   * objective has not gone live; `endS` is null while the fault holds until the operator acts.
+   */
+  getEventScheduleS(eventId: string): { startS: number; endS: number | null } | null {
+    const event = this.events_.find((e) => e.id === eventId);
+    if (!event) return null;
+    const startS = this.anchors_.atS(event.startTime, event.startAfterObjectiveId);
+    if (!Number.isFinite(startS)) return null;
+    const endS = this.endS_(event, startS);
+
+    return { startS, endS: Number.isFinite(endS) ? endS : null };
+  }
+
   private update_(): void {
     if (this.events_.length === 0) {
       return;

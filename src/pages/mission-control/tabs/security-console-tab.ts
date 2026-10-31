@@ -3,6 +3,7 @@ import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { fillDialogTokens } from '@app/modal/dialog-tokens';
 import { ScenarioManager } from '@app/scenario-manager';
 import { type AccountStatus, type AuditSeverity, SecurityConsoleCore } from '@app/security-console/security-console-core';
 import { TransecManager, type TransecMode } from '@app/transec/transec-manager';
@@ -272,7 +273,7 @@ export class SecurityConsoleTab extends BaseElement {
 
         return html`
         <tr>
-          <td class="font-monospace small">${entry.timestampLabel ?? '—'}</td>
+          <td class="font-monospace small">${entry.timestampLabel === undefined ? '—' : fillDialogTokens(entry.timestampLabel)}</td>
           <td class="font-monospace small">${entry.actor}</td>
           <td>${entry.action}</td>
           <td class="small">${entry.category}</td>

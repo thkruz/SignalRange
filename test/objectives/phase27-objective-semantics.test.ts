@@ -12,6 +12,7 @@ import type { Condition, Objective } from '../../src/objectives/objective-types'
 import { TAB_HINT_DELAY_SECONDS } from '../../src/objectives/objective-types';
 import { ObjectivesManager } from '../../src/objectives/objectives-manager';
 import { TabbedCanvas } from '../../src/pages/mission-control/tabbed-canvas';
+import { EventTimeLedger } from '../../src/scenarios/event-time-ledger';
 import { resetMissionClock } from '../../src/simulation/mission-clock';
 import { SimClock } from '../../src/simulation/sim-clock';
 import { advanceSimTime } from '../helpers/sim-time';
@@ -100,6 +101,7 @@ vi.mock('../../src/weather/weather-manager', () => ({
       hasEventEnded: (id: string) => weather.ended.has(id),
       getSecondsUntilEventEnds: (id: string) => weather.untilEndS.get(id) ?? null,
       getSecondsUntilEventPeaks: (id: string, past = 0) => (weather.untilPeakS.has(id) ? Math.max(0, weather.untilPeakS.get(id)! + past) : null),
+      getAllWeatherEvents: () => [{ id: 'sun', linkMarginDegradation: 6.4 }],
       hasEventPeaked: (id: string, past = 0) => weather.untilPeakS.has(id) && weather.untilPeakS.get(id)! + past <= 0,
     }),
   },
@@ -436,6 +438,16 @@ describe('Phase 27 objective semantics', () => {
       weather.untilPeakS.set('sun', 0);
       tick();
       expect(stateOf('peak').isCompleted).toBe(true);
+    });
+
+    it('weather-event-peaked observes the event peak fade so {{val}} can quote it', () => {
+      weather.untilPeakS.set('sun', 0);
+      ObjectivesManager.initialize([
+        objective('peak2', [{ type: 'weather-event-peaked', description: 'Transit Peak Passed', mustMaintain: false, params: { weatherEventId: 'sun' } }]),
+      ]);
+      tick();
+      // Telemetry is off in play; the ledger is fed straight from the evaluator
+      expect(EventTimeLedger.getValue('peak2.0')).toBe(6.4);
     });
 
     it('receiver-relocked needs the lock to drop first, even when the drop came during an earlier step', () => {

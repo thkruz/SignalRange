@@ -118,6 +118,18 @@ describe('HardwareFaultManager', () => {
     expect(gw.modems[0].isFaulted).toBe(false);
   });
 
+  it('exposes the start and end schedule for the event-time ledger', () => {
+    const { manager } = boot([
+      { id: 'timed', groundStationId: 'GW-01', startTime: 100, duration: 50 },
+      { id: 'held', groundStationId: 'GW-01', startTime: 10 },
+      { id: 'anchored', groundStationId: 'GW-01', startTime: 5, startAfterObjectiveId: 'not-live' },
+    ]);
+    expect(manager.getEventScheduleS('timed')).toEqual({ startS: 100, endS: 150 });
+    expect(manager.getEventScheduleS('held')).toEqual({ startS: 10, endS: null });
+    expect(manager.getEventScheduleS('anchored')).toBeNull();
+    expect(manager.getEventScheduleS('missing')).toBeNull();
+  });
+
   it('stages a BUC cooling fault on the named station only, jumps the reading, and clears it after the duration', () => {
     const { manager, gw, sh } = boot([
       { id: 'sh-buc', groundStationId: 'SH-02', target: 'buc-overtemp', startTime: 60, duration: 300, params: { deltaC: 35, startTemperatureC: 68 } },

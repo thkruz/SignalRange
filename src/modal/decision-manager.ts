@@ -12,6 +12,7 @@ import { ConsequenceDispatcher } from '@app/objectives/consequence-dispatcher';
 import { evaluateFactRule } from '@app/objectives/evidence-facts';
 import type { DecisionOption, EvidenceFactId } from '@app/objectives/objective-types';
 import type { Character } from './character-enum';
+import { fillDialogTokens } from './dialog-tokens';
 
 export const DEFAULT_DECISION_PENALTY = 10;
 export const DEFAULT_PARTIAL_CREDIT_UNEVIDENCED = 0.5;
@@ -149,9 +150,9 @@ export class DecisionManager {
     const data: DecisionShowData = {
       objectiveId,
       conditionIndex,
-      prompt: state.prompt,
-      options: state.options.map((o) => o.label),
-      explanation: state.explanation,
+      prompt: fillDialogTokens(state.prompt),
+      options: state.options.map((o) => fillDialogTokens(o.label)),
+      explanation: state.explanation === undefined ? undefined : fillDialogTokens(state.explanation),
       pointPenalty: state.pointPenalty ?? DEFAULT_DECISION_PENALTY,
       character: state.character,
       preserveOptionOrder: state.preserveOptionOrder,
@@ -232,7 +233,7 @@ export class DecisionManager {
     state.totalPointsDeducted = Math.max(0, state.totalPointsDeducted);
 
     if (correct) {
-      state.resolution = { optionIndex: data.optionIndex, label: option.label, correct, evidenced, missingEvidence };
+      state.resolution = { optionIndex: data.optionIndex, label: fillDialogTokens(option.label), correct, evidenced, missingEvidence };
     }
 
     const graded: DecisionGradedData = {

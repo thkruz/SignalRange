@@ -11,7 +11,7 @@
  * - `cond:<objId>.<n>` condition first satisfied (n = conditionIndex)
  * - `val:<objId>.<n>` value the condition observed when first satisfied (number)
  * - `cmd:<ID>:sent` / `:ack` / `:nak` first TT&C command record with that id
- * - `event:<id>:start` / `:end` interference and weather events (resolved from the
+ * - `event:<id>:start` / `:end` interference, weather and hardware-fault events (resolved from the
  *   managers' schedules, so anchored times resolve once the anchor is live) and
  *   injected faults (`FAULT_CHANGED`)
  * - `account:<id>:<status>` first time the security console account read that status
@@ -26,6 +26,7 @@
 import type { CommandingManager } from '@app/commanding/commanding-manager';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import type { HardwareFaultManager } from '@app/faults/hardware-fault-manager';
 import type { InterferenceManager } from '@app/interference/interference-manager';
 import type { SecurityConsoleCore } from '@app/security-console/security-console-core';
 import { SimClock } from '@app/simulation/sim-clock';
@@ -41,6 +42,7 @@ export interface LedgerSources {
   commanding?: () => CommandingManager | undefined;
   interference?: () => InterferenceManager | undefined;
   weather?: () => WeatherManager | undefined;
+  hardwareFault?: () => HardwareFaultManager | undefined;
   security?: () => SecurityConsoleCore | undefined;
   objectiveState?: (objectiveId: string) => { activatedAt?: number; completedAt?: number } | undefined;
 }
@@ -192,6 +194,14 @@ export class EventTimeLedger {
       if (weatherEvent.isAwaitingAnchor) return undefined;
 
       return EventTimeLedger.elapsedToMs_(weatherEvent.startTime + (isEnd ? weatherEvent.duration : 0));
+    }
+
+    const hardware = EventTimeLedger.sources_.hardwareFault?.();
+    const schedule = hardware?.getEventScheduleS(id);
+    if (schedule) {
+      const at = isEnd ? schedule.endS : schedule.startS;
+
+      return at === null ? undefined : EventTimeLedger.elapsedToMs_(at);
     }
 
     return undefined;

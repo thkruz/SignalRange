@@ -17,6 +17,7 @@
 import { CommandingManager } from '@app/commanding/commanding-manager';
 import { EventBus } from '@app/events/event-bus';
 import { Events, QuizPassedData } from '@app/events/events';
+import { HardwareFaultManager } from '@app/faults/hardware-fault-manager';
 import { InterferenceManager } from '@app/interference/interference-manager';
 import { fillDialogTokens } from '@app/modal/dialog-tokens';
 import { DraggableHtmlBox } from '@app/modal/draggable-html-box';
@@ -72,6 +73,7 @@ export class WorkingDocumentManager {
       commanding: () => (CommandingManager.isInitialized() ? CommandingManager.getInstance() : undefined),
       interference: () => (InterferenceManager.isInitialized() ? InterferenceManager.getInstance() : undefined),
       weather: () => (WeatherManager.hasInstance() ? WeatherManager.getInstance() : undefined),
+      hardwareFault: () => (HardwareFaultManager.isInitialized() ? HardwareFaultManager.getInstance() : undefined),
       security: () => (SecurityConsoleCore.isInitialized() ? SecurityConsoleCore.getInstance() : undefined),
       objectiveState: (id) => SimulationManager.getInstance().objectivesManager?.getObjectiveState(id),
     });

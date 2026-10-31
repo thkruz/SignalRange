@@ -38,6 +38,18 @@ describe('EventTimeLedger', () => {
     expect(EventTimeLedger.getValue('val:o1.0')).toBe(12.04);
   });
 
+  it('resolves hardware-fault event keys from the fault manager schedule', () => {
+    EventTimeLedger.setSources({
+      hardwareFault: () => ({ getEventScheduleS: (id: string) => (id === 'hw1' ? { startS: 120, endS: null } : id === 'hw2' ? { startS: 60, endS: 90 } : null) }) as never,
+    });
+    const origin = EPOCH - SimClock.scenarioElapsedMs();
+    expect(EventTimeLedger.getTime('event:hw1:start')).toBe(origin + 120_000);
+    expect(EventTimeLedger.getTime('event:hw1:end')).toBeUndefined();
+    expect(EventTimeLedger.getTime('event:hw2:end')).toBe(origin + 90_000);
+    expect(EventTimeLedger.getTime('event:nope:start')).toBeUndefined();
+    EventTimeLedger.setSources({});
+  });
+
   it('records faults and manual keys, first time only', () => {
     EventBus.getInstance().emit(Events.FAULT_CHANGED, { id: 'f1', action: 'injected' });
     SimClock.skip(1000);

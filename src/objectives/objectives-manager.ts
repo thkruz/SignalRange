@@ -28,6 +28,7 @@ import { QuizManager } from '@app/modal/quiz-manager';
 import { OpsLogManager } from '@app/ops-log/ops-log-manager';
 import { TabbedCanvas } from '@app/pages/mission-control/tabbed-canvas';
 import { CampaignDocumentStore } from '@app/scenarios/campaign-document-store';
+import { EventTimeLedger } from '@app/scenarios/event-time-ledger';
 import { SecurityConsoleCore } from '@app/security-console/security-console-core';
 import { missionNowMs } from '@app/simulation/mission-clock';
 import { SimClock, STEPS_PER_SECOND } from '@app/simulation/sim-clock';
@@ -1749,6 +1750,12 @@ export class ObjectivesManager {
       // Update satisfied state
       conditionState.isSatisfied = isNowSatisfied;
 
+      // Feed the text-token ledger (`{{val:OBJ.N}}`) directly: the telemetry event below is
+      // off in play, so the ledger's listener alone never saw a value outside the harness
+      if (isNowSatisfied && typeof this.lastObserved_ === 'number' && Number.isFinite(this.lastObserved_)) {
+        EventTimeLedger.recordValue(`${objectiveState.objective.id}.${condIndex}`, this.lastObserved_);
+      }
+
       if (this.isConditionTelemetryEnabled_) {
         this.eventBus_.emit(Events.OBJECTIVE_CONDITION_EVALUATED, {
           objectiveId: objectiveState.objective.id,
@@ -2752,7 +2759,7 @@ export class ObjectivesManager {
         return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
           const hpaState = rfFrontEnd.hpaModule.state;
           // Phase 35 s04-F5: a disabled HPA is not within limits, it is off
-          return hpaState.isPowered && hpaState.isHpaEnabled && !hpaState.isOverdriven;
+          return hpaState.isPowered && (hpaState.isHpaEnabled || condition.params?.allowHpaDisabled === true) && !hpaState.isOverdriven;
         });
       }
 
@@ -3420,7 +3427,13 @@ export class ObjectivesManager {
         // way up (nats-r4-s17-F1)
         if (!WeatherManager.hasInstance()) return false;
         const eventId = condition.params?.weatherEventId;
-        return eventId !== undefined && WeatherManager.getInstance().hasEventPeaked(eventId, condition.params?.pastPeakSeconds ?? 0);
+        if (eventId === undefined) return false;
+        const weather = WeatherManager.getInstance();
+        // Feed `{{val:OBJ.N}}` the event's peak fade (dB) so text can quote the number it peaked at
+        const peakDb = weather.getAllWeatherEvents().find((e) => e.id === eventId)?.linkMarginDegradation;
+        if (typeof peakDb === 'number') this.observe_(peakDb);
+
+        return weather.hasEventPeaked(eventId, condition.params?.pastPeakSeconds ?? 0);
       }
 
       case 'scenario-time-reached': {

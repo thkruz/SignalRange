@@ -18,6 +18,7 @@ import { Events } from '@app/events/events';
 import { ScenarioManager } from '@app/scenario-manager';
 import { missionNowMs } from '@app/simulation/mission-clock';
 import { SimulationManager } from '@app/simulation/simulation-manager';
+import type { SpaceEventsSnapshot } from '@app/sync/manager-state-types';
 import type { Milliseconds, TleLine1, TleLine2 } from 'ootk';
 
 /** settings.spaceEvents[] */
@@ -135,6 +136,41 @@ export class SpaceEventManager {
       }
     }
     this.phase_.set(eventId, 'updated');
+  }
+
+  /** Phase snapshot for a checkpoint (Phase 35 rt-s24-F4). */
+  getState(): SpaceEventsSnapshot {
+    return { phases: [...this.phase_.entries()] };
+  }
+
+  /**
+   * Put the saved phases back after a checkpoint restore. The constructor already
+   * ran at elapsed 0 (so initialTle was applied); this overrides that: 'stale' moves
+   * the bird onto newTle (maneuverTo), 'updated' reloads both (reloadTle). Unknown
+   * ids and invalid phases are ignored. Nominal is a no-op so the tick may still fire it.
+   */
+  restoreState(snapshot: SpaceEventsSnapshot | undefined): void {
+    if (!snapshot || !Array.isArray(snapshot.phases)) {
+      return;
+    }
+    for (const [id, phase] of snapshot.phases) {
+      const event = this.events_.find((e) => e.id === id);
+      if (!event || (phase !== 'stale' && phase !== 'updated')) {
+        continue;
+      }
+      this.phase_.set(id, phase);
+      if (!SimulationManager.hasInstance()) {
+        continue;
+      }
+      const sat = SimulationManager.getInstance().satellites.find((s) => s.noradId === event.satelliteNoradId);
+      if (sat instanceof OrbitalSatellite) {
+        if (phase === 'stale') {
+          sat.maneuverTo(event.newTle.tle1 as TleLine1, event.newTle.tle2 as TleLine2);
+        } else {
+          sat.reloadTle(event.newTle.tle1 as TleLine1, event.newTle.tle2 as TleLine2);
+        }
+      }
+    }
   }
 
   /** Whether an event's ephemeris has been updated (or, with no id, all stale ones cleared). */

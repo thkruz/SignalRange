@@ -106,6 +106,29 @@ export class CryptoModule {
     };
   }
 
+  /** Raw state for a checkpoint (Phase 35 rt-s24-F4); keyLoadedAt is scenario-elapsed mission time. */
+  getCheckpointState(): Record<string, unknown> {
+    return { ...this.state_ };
+  }
+
+  /** Restore a checkpoint snapshot over the current state; unknown keys and wrong-typed values are ignored. */
+  restoreCheckpointState(snapshot: Record<string, unknown> | undefined): void {
+    if (!snapshot || typeof snapshot !== 'object') {
+      return;
+    }
+    const defaults = CryptoModule.getDefaultState() as unknown as Record<string, unknown>;
+    const next: Record<string, unknown> = { ...this.state_ };
+    for (const key of Object.keys(defaults)) {
+      if (!(key in snapshot)) {
+        continue;
+      }
+      if (typeof snapshot[key] === typeof defaults[key] || snapshot[key] === null || defaults[key] === null) {
+        next[key] = snapshot[key];
+      }
+    }
+    this.state_ = next as unknown as CryptoState;
+  }
+
   /**
    * Get full crypto state (read-only copy)
    */

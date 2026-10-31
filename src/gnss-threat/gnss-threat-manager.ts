@@ -20,6 +20,7 @@ import { Events } from '@app/events/events';
 import { ObjectiveAnchors } from '@app/objectives/objective-anchor';
 import { ScenarioManager } from '@app/scenario-manager';
 import { missionNowMs } from '@app/simulation/mission-clock';
+import type { GnssThreatSnapshot } from '@app/sync/manager-state-types';
 import type { Milliseconds } from 'ootk';
 
 export type GpsdoReferenceMode = 'gnss' | 'holdover' | 'manual';
@@ -112,6 +113,40 @@ export class GnssThreatManager {
       EventBus.getInstance().off(Events.UPDATE, this.instance_.boundUpdateHandler_);
       ReferenceDisturbances.clear();
       this.instance_ = null;
+    }
+  }
+
+  /** Snapshot for a checkpoint (Phase 35 rt-s24-F4). */
+  getCheckpointState(): GnssThreatSnapshot {
+    return {
+      spoofActive: this.state_.spoofActive,
+      timeOffsetUs: this.state_.timeOffsetUs,
+      referenceMode: this.state_.referenceMode,
+      lastElapsedS: this.lastElapsedS_,
+      lastOffsetChangeElapsedS: this.lastOffsetChangeElapsedS_,
+    };
+  }
+
+  /**
+   * Restore a snapshot. lastElapsedS_ is restored with the offset so the first
+   * update after the clock jump advances by the real delta, not by the whole jump.
+   */
+  restoreCheckpointState(snapshot: GnssThreatSnapshot | undefined): void {
+    if (!snapshot) {
+      return;
+    }
+    if (Number.isFinite(snapshot.timeOffsetUs)) {
+      this.state_.timeOffsetUs = snapshot.timeOffsetUs;
+    }
+    this.state_.spoofActive = snapshot.spoofActive === true;
+    if (snapshot.referenceMode === 'gnss' || snapshot.referenceMode === 'holdover' || snapshot.referenceMode === 'manual') {
+      this.state_.referenceMode = snapshot.referenceMode;
+    }
+    if (Number.isFinite(snapshot.lastElapsedS)) {
+      this.lastElapsedS_ = snapshot.lastElapsedS;
+    }
+    if (Number.isFinite(snapshot.lastOffsetChangeElapsedS)) {
+      this.lastOffsetChangeElapsedS_ = snapshot.lastOffsetChangeElapsedS;
     }
   }
 

@@ -30,6 +30,7 @@ import type { HardwareFaultManager } from '@app/faults/hardware-fault-manager';
 import type { InterferenceManager } from '@app/interference/interference-manager';
 import type { SecurityConsoleCore } from '@app/security-console/security-console-core';
 import { SimClock } from '@app/simulation/sim-clock';
+import type { EventLedgerSnapshot } from '@app/sync/manager-state-types';
 import type { WeatherManager } from '@app/weather/weather-manager';
 
 /** `cmd:<ID>:<phase>` */
@@ -100,6 +101,37 @@ export class EventTimeLedger {
     bus.on(Events.OBJECTIVE_CONDITION_EVALUATED, EventTimeLedger.onConditionEvaluated_);
     bus.on(Events.FAULT_CHANGED, EventTimeLedger.onFaultChanged_);
     bus.on(Events.UPDATE, EventTimeLedger.onUpdate_);
+  }
+
+  /** Snapshot for a checkpoint (Phase 35 rt-s24-F4). */
+  static getState(): EventLedgerSnapshot {
+    return { times: [...EventTimeLedger.times_], values: [...EventTimeLedger.values_], seenAccounts: [...EventTimeLedger.seenAccounts_] };
+  }
+
+  /**
+   * Restore a snapshot after begin() and after the objectives restore. Saved
+   * entries win over anything the restore itself stamped (e.g. an
+   * OBJECTIVE_ACTIVATED re-emitted during restoreState at the new clock).
+   */
+  static restoreState(snapshot: EventLedgerSnapshot | undefined): void {
+    if (!snapshot) {
+      return;
+    }
+    for (const [k, v] of snapshot.times ?? []) {
+      if (typeof k === 'string' && Number.isFinite(v)) {
+        EventTimeLedger.times_.set(k, v);
+      }
+    }
+    for (const [k, v] of snapshot.values ?? []) {
+      if (typeof k === 'string' && Number.isFinite(v)) {
+        EventTimeLedger.values_.set(k, v);
+      }
+    }
+    for (const a of snapshot.seenAccounts ?? []) {
+      if (typeof a === 'string') {
+        EventTimeLedger.seenAccounts_.add(a);
+      }
+    }
   }
 
   /** Stop listening (entries stay readable until the next begin). */

@@ -24,6 +24,7 @@ import { ScenarioManager } from '@app/scenario-manager';
 import { CampaignDocumentStore, campaignIdOf } from '@app/scenarios/campaign-document-store';
 import { missionNowMs } from '@app/simulation/mission-clock';
 import { getSimulatedNowMs } from '@app/simulation/sim-time';
+import type { SecuritySnapshot } from '@app/sync/manager-state-types';
 
 export type AccountStatus = 'active' | 'disabled' | 'expired';
 export type AuditCategory = 'auth' | 'config' | 'command' | 'access';
@@ -144,6 +145,30 @@ export class SecurityConsoleCore {
 
   static isInitialized(): boolean {
     return this.instance_ !== null;
+  }
+
+  /** Snapshot for a checkpoint (Phase 35 rt-s24-F4); droppedEvidence_ is derived at load. */
+  getState(): SecuritySnapshot {
+    return { acknowledged: [...this.acknowledged_], accountStatus: [...this.accountStatus_], reviewed: this.reviewed_ };
+  }
+
+  /** Restore a snapshot; account ids this scenario does not define are ignored. */
+  restoreState(snapshot: SecuritySnapshot | undefined): void {
+    if (!snapshot) {
+      return;
+    }
+    this.acknowledged_.clear();
+    for (const id of snapshot.acknowledged ?? []) {
+      if (typeof id === 'string') {
+        this.acknowledged_.add(id);
+      }
+    }
+    for (const [id, status] of snapshot.accountStatus ?? []) {
+      if (this.accountStatus_.has(id)) {
+        this.accountStatus_.set(id, status as AccountStatus);
+      }
+    }
+    this.reviewed_ = snapshot.reviewed === true;
   }
 
   static destroy(): void {

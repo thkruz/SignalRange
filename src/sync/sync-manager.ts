@@ -11,6 +11,7 @@ import { OpsLogManager } from '@app/ops-log/ops-log-manager';
 import { OpsLogState } from '@app/ops-log/ops-log-types';
 import type { Equipment } from '@app/pages/sandbox/equipment';
 import { SimulationManager } from '@app/simulation/simulation-manager';
+import { collectManagerStatesViaHook, type ManagerStates } from './manager-state-types';
 import type { StorageProvider } from './storage-provider';
 
 /**
@@ -198,6 +199,7 @@ export class SyncManager {
       objectiveStates,
       scenarioTimeRemaining,
       opsLogState,
+      managerStates: collectManagerStatesViaHook(),
       groundStationStates: this.groundStations.map((gs) => gs.state),
       equipment: {
         spectrumAnalyzersState: this.equipment.spectrumAnalyzers?.map((sa) => sa.state),
@@ -307,6 +309,8 @@ export interface AppState {
   objectiveStates?: ObjectiveState[];
   scenarioTimeRemaining?: number;
   opsLogState?: OpsLogState;
+  /** Operator-facing manager state (Phase 35 rt-s24-F4); absent in older checkpoints */
+  managerStates?: ManagerStates;
   groundStationStates?: GroundStationState[];
   equipment?: {
     spectrumAnalyzersState?: RealTimeSpectrumAnalyzerState[];

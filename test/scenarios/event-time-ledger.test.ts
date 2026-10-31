@@ -104,4 +104,26 @@ describe('ledger tokens', () => {
     expect(formatDuration(180_000)).toBe('3 min');
     expect(formatDuration(3_900_000)).toBe('1 h 05 min');
   });
+  it('restoreState: a saved stamp beats the OBJECTIVE_ACTIVATED re-emitted during a checkpoint restore', () => {
+    const bus = EventBus.getInstance();
+    bus.emit(Events.OBJECTIVE_ACTIVATED, { objectiveId: 'o1', objective: {} as never, activatedAt: 0 });
+    EventTimeLedger.recordValue('o9.0', 12.5);
+    const saved = JSON.parse(JSON.stringify(EventTimeLedger.getState()));
+
+    // Reload: a fresh run, the clock has jumped, the objectives restore re-stamps start
+    EventTimeLedger.begin();
+    SimClock.skip(900_000);
+    bus.emit(Events.OBJECTIVE_ACTIVATED, { objectiveId: 'o1', objective: {} as never, activatedAt: 0 });
+    expect(EventTimeLedger.getTime('obj:o1:start')).toBe(EPOCH + 900_000);
+
+    EventTimeLedger.restoreState(saved);
+    expect(EventTimeLedger.getTime('obj:o1:start')).toBe(EPOCH);
+    expect(EventTimeLedger.getValue('o9.0')).toBe(12.5);
+  });
+
+  it('restoreState with no snapshot changes nothing', () => {
+    EventTimeLedger.record('k', 5);
+    EventTimeLedger.restoreState(undefined);
+    expect(EventTimeLedger.getTime('k')).toBe(5);
+  });
 });

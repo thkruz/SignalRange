@@ -19,6 +19,7 @@ import { OpsLogManager } from '@app/ops-log/ops-log-manager';
 import { ScenarioManager } from '@app/scenario-manager';
 import { missionNowMs } from '@app/simulation/mission-clock';
 import { SimulationManager } from '@app/simulation/simulation-manager';
+import type { CommandingSnapshot } from '@app/sync/manager-state-types';
 import { TransecManager } from '@app/transec/transec-manager';
 
 export type CommandKeyStatus = 'Valid' | 'Pending Rotation' | 'Zeroized';
@@ -149,6 +150,44 @@ export class CommandingManager {
 
   getConfig(): CommandingConfig {
     return this.config_;
+  }
+
+  /** Plain-JSON snapshot for a checkpoint (Phase 35 rt-s24-F4). */
+  getState(): CommandingSnapshot {
+    const s = this.state_;
+
+    return {
+      dopplerCompEnabled: s.dopplerCompEnabled,
+      keyStatus: s.keyStatus,
+      keyRotationCompleted: s.keyRotationCompleted,
+      zeroized: s.zeroized,
+      commands: s.commands.map((c) => ({ ...c })),
+      rangingMeasurements: s.rangingMeasurements.map((m) => ({ ...m })),
+    };
+  }
+
+  /**
+   * Restore a checkpoint snapshot. keyId is NOT taken from the snapshot: it is
+   * derived from config (rotatedKeyId once a rotation completed), so an authored
+   * rename cannot desync. seedCryptoModule_ is not rerun; CryptoModule restores
+   * its own state. Commands resolve synchronously in sendCommand, so a saved
+   * record is never mid-flight; any 'pending' record is kept as-is and stays
+   * pending (nothing resolves it later).
+   */
+  restoreState(snapshot: CommandingSnapshot | undefined): void {
+    if (!snapshot) {
+      return;
+    }
+    const s = this.state_;
+    s.dopplerCompEnabled = snapshot.dopplerCompEnabled === true;
+    if (snapshot.keyStatus === 'Valid' || snapshot.keyStatus === 'Pending Rotation' || snapshot.keyStatus === 'Zeroized') {
+      s.keyStatus = snapshot.keyStatus;
+    }
+    s.keyRotationCompleted = snapshot.keyRotationCompleted === true;
+    s.zeroized = snapshot.zeroized === true;
+    s.keyId = s.keyRotationCompleted && this.config_.rotatedKeyId ? this.config_.rotatedKeyId : this.config_.keyId;
+    s.commands = Array.isArray(snapshot.commands) ? (snapshot.commands.map((c) => ({ ...c })) as CommandRecord[]) : [];
+    s.rangingMeasurements = Array.isArray(snapshot.rangingMeasurements) ? snapshot.rangingMeasurements.map((m) => ({ ...m })) : [];
   }
 
   /**

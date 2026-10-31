@@ -25,6 +25,7 @@ import { EventAutoLogger } from '@app/ops-log/event-auto-logger';
 import { OpsLogManager } from '@app/ops-log/ops-log-manager';
 import { NavigationOptions, Router } from '@app/router';
 import { ScenarioManager } from '@app/scenario-manager';
+import { collectManagerStates, restoreLedgerAndDocument, restoreManagerStates } from '@app/scenarios/checkpoint-manager-states';
 import { ScenarioDialogManager } from '@app/scenarios/scenario-dialog-manager';
 import { WorkingDocumentManager } from '@app/scenarios/working-document-manager';
 import { ScenarioCompletionHandler } from '@app/scoring/scenario-completion-handler';
@@ -33,6 +34,7 @@ import { SecurityConsoleCore } from '@app/security-console/security-console-core
 import { AlarmService } from '@app/services/alarm-service';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { SpaceEventManager } from '@app/space-events/space-event-manager';
+import { setManagerStateCollector } from '@app/sync/manager-state-types';
 import { AppState } from '@app/sync/storage';
 import { TelemetryManager } from '@app/telemetry/telemetry-manager';
 import { TrafficControlManager } from '@app/traffic/traffic-control-manager';
@@ -48,12 +50,16 @@ export abstract class BasePage extends BaseElement {
   protected navigationOptions_: NavigationOptions = {};
 
   show(): void {
-    if (!this.dom_) return;
+    if (!this.dom_) {
+      return;
+    }
     this.dom_.style.display = 'flex';
   }
 
   hide(): void {
-    if (!this.dom_) return;
+    if (!this.dom_) {
+      return;
+    }
     this.dom_.style.display = 'none';
   }
 
@@ -171,6 +177,9 @@ export abstract class BasePage extends BaseElement {
         TelemetryManager.getInstance();
       }
 
+      // Let SyncManager snapshot the managers into checkpoints (collector hook: no import cycle)
+      setManagerStateCollector(collectManagerStates);
+
       // Initialize quiz modal for status-check objective conditions
       QuizModal.getInstance();
       // and the decision modal for decision conditions
@@ -279,21 +288,47 @@ export abstract class BasePage extends BaseElement {
         state: AppState;
       };
 
-      // Restore OpsLogManager state if available
-      if (checkpoint?.state?.opsLogState) {
-        if (OpsLogManager.isInitialized()) {
+      // Everything below is synchronous: no await between the ops-log clock jump
+      // and the manager restores, so no tick sees the new clock with old managers.
+      const managerStates = checkpoint?.state?.managerStates;
+
+      // (1) Manager state (older checkpoints have none: unchanged behaviour)
+      try {
+        restoreManagerStates(managerStates);
+      } catch (error) {
+        Logger.error('Failed to restore manager states from checkpoint:', error);
+      }
+
+      // (2) OpsLogManager state (jumps the scenario clock)
+      try {
+        if (checkpoint?.state?.opsLogState && OpsLogManager.isInitialized()) {
           OpsLogManager.getInstance().restoreState(checkpoint.state.opsLogState);
           Logger.info('OpsLogManager state restored from checkpoint');
         }
+      } catch (error) {
+        Logger.error('Failed to restore ops log from checkpoint:', error);
       }
 
-      if (checkpoint?.state?.objectiveStates) {
-        const objectivesManager = ObjectivesManager.getInstance();
-        objectivesManager.restoreState(checkpoint.state.objectiveStates, checkpoint.state.scenarioTimeRemaining);
-        Logger.info('Objective states restored from checkpoint');
+      // (3) Objectives
+      try {
+        if (checkpoint?.state?.objectiveStates) {
+          const objectivesManager = ObjectivesManager.getInstance();
+          objectivesManager.restoreState(checkpoint.state.objectiveStates, checkpoint.state.scenarioTimeRemaining);
+          Logger.info('Objective states restored from checkpoint');
 
-        // Reconstruct dialog history from completed objectives
-        DialogHistoryManager.getInstance().reconstructFromCompletedObjectives(scenario.data.dialogClips, checkpoint.state.objectiveStates, scenario.data.objectives ?? []);
+          // Reconstruct dialog history from completed objectives
+          DialogHistoryManager.getInstance().reconstructFromCompletedObjectives(scenario.data.dialogClips, checkpoint.state.objectiveStates, scenario.data.objectives ?? []);
+        }
+      } catch (error) {
+        Logger.error('Failed to restore objective states from checkpoint:', error);
+        // Continue without restoring objectives - they'll start fresh
+      }
+
+      // (4) Event-time ledger (saved stamps win over the restore's re-stamps) and working document
+      try {
+        restoreLedgerAndDocument(managerStates);
+      } catch (error) {
+        Logger.error('Failed to restore ledger and working document from checkpoint:', error);
       }
     } catch (error) {
       Logger.error('Failed to restore objective states from checkpoint:', error);
@@ -325,6 +360,7 @@ export abstract class BasePage extends BaseElement {
     HintModal.destroy();
     TrafficControlManager.destroy();
     FaultInjector.resetInstance();
+    setManagerStateCollector(null);
     // Key material (and an injected key mismatch) must not carry into the next scenario
     CryptoModule.resetInstance();
   }
@@ -337,7 +373,9 @@ export abstract class BasePage extends BaseElement {
   private async checkScenarioAlreadyComplete_(): Promise<ScenarioProgressEntry | null> {
     const scenario = ScenarioManager.getInstance();
     const scenarioId = scenario.data?.id;
-    if (!scenarioId) return null;
+    if (!scenarioId) {
+      return null;
+    }
 
     try {
       // Cap how long the remote progress check can block scenario start. The
@@ -359,7 +397,9 @@ export abstract class BasePage extends BaseElement {
       ]);
 
       // Return null if no progress or not completed
-      if (!progress?.completedAt) return null;
+      if (!progress?.completedAt) {
+        return null;
+      }
 
       // Convert to legacy ScenarioProgressEntry format for compatibility
       return {

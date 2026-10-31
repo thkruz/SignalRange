@@ -13,6 +13,7 @@
  */
 
 import { ScenarioManager } from '@app/scenario-manager';
+import type { TransecSnapshot } from '@app/sync/manager-state-types';
 
 export type TransecMode = 'fixed' | 'hopping';
 
@@ -62,6 +63,23 @@ export class TransecManager {
 
   getConfig(): TransecConfig {
     return this.config_;
+  }
+
+  /** Snapshot for a checkpoint (Phase 35 rt-s24-F4); syncLocked is derived. */
+  getState(): TransecSnapshot {
+    return { mode: this.state_.mode, keyed: this.state_.keyed };
+  }
+
+  /** Restore a snapshot, then recompute sync lock. */
+  restoreState(snapshot: TransecSnapshot | undefined): void {
+    if (!snapshot) {
+      return;
+    }
+    if (snapshot.mode === 'fixed' || snapshot.mode === 'hopping') {
+      this.state_.mode = snapshot.mode;
+    }
+    this.state_.keyed = snapshot.keyed === true;
+    this.recomputeSync_();
   }
 
   /** Load the hop-set key (both-ends keying, coordinated with the spacecraft). */

@@ -98,4 +98,64 @@ describe('SpaceEventManager initialTle', () => {
 
     expect(afterAz).toBe(beforeAz);
   });
+  describe('checkpoint restore (rt-s24-F4)', () => {
+    const makeSat = (): OrbitalSatellite =>
+      new OrbitalSatellite('SAR-2', 61702, [], [], {
+        tle1: TRUTH_TLE1.replace('63002', '61702') as TleLine1,
+        tle2: TRUTH_TLE2.replace('63002', '61702') as TleLine2,
+        observer: OBSERVER,
+      });
+    const configure = (): void => {
+      scenarioSettings.spaceEvents = [{ id: 'SAR2-CAM2', satelliteNoradId: 61702, maneuverAtS: 900, newTle: { tle1: TRUTH_TLE1, tle2: TRUTH_TLE2 } }];
+    };
+
+    it('restoring stale puts the bird on newTle with a stale prediction', () => {
+      const sat = makeSat();
+      simSatellites.push(sat);
+      configure();
+      const manager = SpaceEventManager.getInstance();
+      manager.restoreState({ phases: [['SAR2-CAM2', 'stale']] });
+      expect(manager.getPhase('SAR2-CAM2')).toBe('stale');
+      expect(sat.isPredictionStale).toBe(true);
+    });
+
+    it('restoring updated clears the stale prediction', () => {
+      const sat = makeSat();
+      simSatellites.push(sat);
+      configure();
+      const manager = SpaceEventManager.getInstance();
+      manager.restoreState({ phases: [['SAR2-CAM2', 'updated']] });
+      expect(manager.isEphemerisUpdated('SAR2-CAM2')).toBe(true);
+      expect(sat.isPredictionStale).toBe(false);
+    });
+
+    it('getState round trips and a tick past maneuverAtS leaves a restored phase alone', () => {
+      const sat = makeSat();
+      simSatellites.push(sat);
+      configure();
+      const manager = SpaceEventManager.getInstance();
+      manager.restoreState({ phases: [['SAR2-CAM2', 'updated']] });
+      expect(manager.getState()).toEqual({ phases: [['SAR2-CAM2', 'updated']] });
+      // Phase is not nominal, so the tick cannot refire the maneuver
+      (manager as unknown as { update_: () => void }).update_();
+      expect(manager.getPhase('SAR2-CAM2')).toBe('updated');
+      expect(sat.isPredictionStale).toBe(false);
+    });
+
+    it('ignores unknown ids, invalid phases and a missing snapshot', () => {
+      const sat = makeSat();
+      simSatellites.push(sat);
+      configure();
+      const manager = SpaceEventManager.getInstance();
+      manager.restoreState(undefined);
+      manager.restoreState({
+        phases: [
+          ['NOPE', 'stale'],
+          ['SAR2-CAM2', 'bogus'],
+        ],
+      });
+      expect(manager.getPhase('SAR2-CAM2')).toBe('nominal');
+      expect(sat.isPredictionStale).toBe(false);
+    });
+  });
 });

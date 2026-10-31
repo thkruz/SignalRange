@@ -24,6 +24,7 @@ import { DraggableHtmlBox } from '@app/modal/draggable-html-box';
 import { ScenarioManager } from '@app/scenario-manager';
 import { SecurityConsoleCore } from '@app/security-console/security-console-core';
 import { SimulationManager } from '@app/simulation/simulation-manager';
+import type { WorkingDocumentSnapshot } from '@app/sync/manager-state-types';
 import { WeatherManager } from '@app/weather/weather-manager';
 import { CampaignDocumentStore, campaignIdOf } from './campaign-document-store';
 import { EventTimeLedger } from './event-time-ledger';
@@ -103,6 +104,30 @@ export class WorkingDocumentManager {
       entries: this.entries_.map((e) => ({ ...e })),
       destroyedEvidence: [...CampaignDocumentStore.destroyedThisRun],
     });
+  }
+
+  /** Snapshot for a checkpoint (Phase 35 rt-s24-F4). */
+  getState(): WorkingDocumentSnapshot {
+    return { entries: this.entries_.map((e) => ({ ...e })), authoredKeys: [...this.authoredKeys_] };
+  }
+
+  /**
+   * Restore a checkpoint snapshot. Call after initialize(). The sidebar
+   * new-entry flag stays off (these lines were seen before the reload) and an
+   * open panel is re-rendered. authoredKeys stop a re-fired quiz from writing
+   * its line twice.
+   */
+  restoreState(snapshot: WorkingDocumentSnapshot | undefined): void {
+    if (!snapshot || !Array.isArray(snapshot.entries)) {
+      return;
+    }
+    this.entries_ = snapshot.entries.filter((e) => typeof e?.section === 'string' && typeof e?.line === 'string').map((e) => ({ section: e.section, line: e.line }));
+    this.authoredKeys_.clear();
+    for (const key of snapshot.authoredKeys ?? []) {
+      this.authoredKeys_.add(key);
+    }
+    WorkingDocumentManager.setNewEntryFlag_(false);
+    this.render_();
   }
 
   /** Open (or create) the document panel. */

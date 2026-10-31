@@ -1,0 +1,128 @@
+/**
+ * @file Checkpoint manager states (Phase 35 rt-s24-F4)
+ * @description Gathers and restores the operator-facing state of the scenario
+ * managers that a "Restart from Checkpoint" would otherwise rebuild from
+ * scratch: ephemeris phase, commanding/COMSEC, working document, audit acks,
+ * TRANSEC, contact plan, GNSS threat. Collection is registered into
+ * sync-manager through setManagerStateCollector (base-page), so sync-manager
+ * never imports these managers. Restore is called only from the checkpoint
+ * path, never from SyncManager.syncFromStorage.
+ *
+ * Every restore section has its own try/catch: one bad section must not stop the
+ * rest (or the objectives and ops-log restore that follow in base-page).
+ */
+
+import { CommandingManager } from '@app/commanding/commanding-manager';
+import { ContactScheduleManager } from '@app/contact-schedule/contact-schedule-manager';
+import { CryptoModule } from '@app/equipment/crypto/crypto-module-core';
+import { GnssThreatManager } from '@app/gnss-threat/gnss-threat-manager';
+import { Logger } from '@app/logging/logger';
+import { ScenarioManager } from '@app/scenario-manager';
+import { SecurityConsoleCore } from '@app/security-console/security-console-core';
+import { SpaceEventManager } from '@app/space-events/space-event-manager';
+import type { ManagerStates } from '@app/sync/manager-state-types';
+import { TransecManager } from '@app/transec/transec-manager';
+import { CampaignDocumentStore } from './campaign-document-store';
+import { EventTimeLedger } from './event-time-ledger';
+import { WorkingDocumentManager } from './working-document-manager';
+
+/** Run one collect step; a failing section is simply left out. */
+function section_<T>(name: string, fn: () => T | undefined): T | undefined {
+  try {
+    return fn();
+  } catch (error) {
+    Logger.warn(`Checkpoint: could not collect ${name} state:`, error);
+
+    return undefined;
+  }
+}
+
+/** Snapshot every live, initialized manager (never constructs one). */
+export function collectManagerStates(): ManagerStates {
+  const states: ManagerStates = { v: 1 };
+  states.spaceEvents = section_('spaceEvents', () => (SpaceEventManager.isInitialized() ? SpaceEventManager.getInstance().getState() : undefined));
+  states.commanding = section_('commanding', () => (CommandingManager.isInitialized() ? CommandingManager.getInstance().getState() : undefined));
+  states.crypto = section_('crypto', () => (CryptoModule.hasInstance() ? CryptoModule.getInstance().getCheckpointState() : undefined));
+  states.workingDocument = section_('workingDocument', () => (WorkingDocumentManager.isEnabled() ? WorkingDocumentManager.getInstance().getState() : undefined));
+  states.campaignRun = section_('campaignRun', () => CampaignDocumentStore.getRunState());
+  states.eventLedger = section_('eventLedger', () => EventTimeLedger.getState());
+  states.security = section_('security', () => (SecurityConsoleCore.isInitialized() ? SecurityConsoleCore.getInstance().getState() : undefined));
+  states.transec = section_('transec', () => (TransecManager.isInitialized() ? TransecManager.getInstance().getState() : undefined));
+  states.contactSchedule = section_('contactSchedule', () => (ContactScheduleManager.isInitialized() ? ContactScheduleManager.getInstance().getState() : undefined));
+  states.gnssThreat = section_('gnssThreat', () => (GnssThreatManager.isInitialized() ? GnssThreatManager.getInstance().getCheckpointState() : undefined));
+
+  return states;
+}
+
+function restore_(name: string, fn: () => void): void {
+  try {
+    fn();
+  } catch (error) {
+    Logger.error(`Checkpoint: failed to restore ${name} state:`, error);
+  }
+}
+
+/**
+ * Restore every manager except the event-time ledger and the working document
+ * (those need the objectives restored first: see restoreLedgerAndDocument).
+ * `states` undefined (an older checkpoint) is a no-op, exactly as before.
+ * Synchronous on purpose: no await between the clock jump and these restores.
+ */
+export function restoreManagerStates(states: ManagerStates | undefined): void {
+  if (!states || typeof states !== 'object') {
+    return;
+  }
+  restore_('spaceEvents', () => {
+    if (states.spaceEvents && SpaceEventManager.isInitialized()) {
+      SpaceEventManager.getInstance().restoreState(states.spaceEvents);
+    }
+  });
+  restore_('commanding', () => {
+    if (states.commanding && CommandingManager.isInitialized()) {
+      CommandingManager.getInstance().restoreState(states.commanding);
+    }
+  });
+  // After commanding: its constructor seeded the crypto unit, the saved state overrides that
+  restore_('crypto', () => {
+    if (states.crypto && CryptoModule.hasInstance()) {
+      CryptoModule.getInstance().restoreCheckpointState(states.crypto);
+    }
+  });
+  restore_('campaignRun', () => CampaignDocumentStore.restoreRunState(states.campaignRun));
+  restore_('security', () => {
+    if (states.security && SecurityConsoleCore.isInitialized()) {
+      SecurityConsoleCore.getInstance().restoreState(states.security);
+    }
+  });
+  restore_('transec', () => {
+    if (states.transec && TransecManager.isInitialized()) {
+      TransecManager.getInstance().restoreState(states.transec);
+    }
+  });
+  restore_('contactSchedule', () => {
+    if (states.contactSchedule && ContactScheduleManager.isInitialized()) {
+      ContactScheduleManager.getInstance().restoreState(states.contactSchedule);
+    }
+  });
+  restore_('gnssThreat', () => {
+    if (states.gnssThreat && GnssThreatManager.isInitialized()) {
+      GnssThreatManager.getInstance().restoreCheckpointState(states.gnssThreat);
+    }
+  });
+}
+
+/**
+ * Restore the event-time ledger (saved stamps beat anything the objectives
+ * restore re-stamped) and the working document, after the objectives restore.
+ */
+export function restoreLedgerAndDocument(states: ManagerStates | undefined): void {
+  if (!states || typeof states !== 'object') {
+    return;
+  }
+  restore_('eventLedger', () => EventTimeLedger.restoreState(states.eventLedger));
+  restore_('workingDocument', () => {
+    if (states.workingDocument && ScenarioManager.getInstance().settings.workingDocument) {
+      WorkingDocumentManager.getInstance().restoreState(states.workingDocument);
+    }
+  });
+}

@@ -154,13 +154,25 @@ vi.mock('../../src/ops-log/ops-log-manager', () => ({
   OpsLogManager: {
     initialize: vi.fn(),
     isInitialized: vi.fn(() => false),
+    getInstance: vi.fn(),
   },
+}));
+
+const { restoreManagerStatesMock, restoreLedgerAndDocumentMock } = vi.hoisted(() => ({
+  restoreManagerStatesMock: vi.fn(),
+  restoreLedgerAndDocumentMock: vi.fn(),
+}));
+vi.mock('../../src/scenarios/checkpoint-manager-states', () => ({
+  collectManagerStates: vi.fn(() => ({ v: 1 })),
+  restoreManagerStates: restoreManagerStatesMock,
+  restoreLedgerAndDocument: restoreLedgerAndDocumentMock,
 }));
 
 import { DialogManager } from '../../src/modal/dialog-manager';
 import { LevelCompleteModal } from '../../src/modal/level-complete-modal';
 import { ObjectiveFailedModal } from '../../src/modal/objective-failed-modal';
 import { ObjectivesManager } from '../../src/objectives/objectives-manager';
+import { OpsLogManager } from '../../src/ops-log/ops-log-manager';
 // Import after mocks
 import { BasePage } from '../../src/pages/base-page';
 import { ScenarioManager } from '../../src/scenario-manager';
@@ -593,6 +605,70 @@ describe('BasePage', () => {
       await page.testRestoreObjectiveStatesFromCheckpoint();
 
       expect(mockRestoreState).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('restoreObjectiveStatesFromCheckpoint_ manager states (rt-s24-F4)', () => {
+    const managerStates = { v: 1, spaceEvents: { phases: [['SAR2-CAM2', 'updated']] } };
+    const setup = (state: Record<string, unknown>, order: string[]) => {
+      const objectivesRestore = vi.fn(() => order.push('objectives'));
+      (ObjectivesManager.getInstance as Mock).mockReturnValue({
+        restoreState: objectivesRestore,
+        areAllObjectivesCompleted: vi.fn(() => false),
+        getObjectiveStates: vi.fn(() => []),
+        getElapsedTime: vi.fn(() => 0),
+        stopAllTimers: vi.fn(),
+      });
+      const opsRestore = vi.fn(() => order.push('opsLog'));
+      (OpsLogManager.isInitialized as Mock).mockReturnValue(true);
+      (OpsLogManager.getInstance as Mock).mockReturnValue({ restoreState: opsRestore });
+      restoreManagerStatesMock.mockImplementation(() => order.push('managers'));
+      restoreLedgerAndDocumentMock.mockImplementation(() => order.push('ledger'));
+      (ProgressSaveManager as Mock).mockImplementation(function (this: any) {
+        this.initialize = vi.fn();
+        this.dispose = vi.fn();
+        this.loadCheckpoint = vi.fn(() => Promise.resolve({ state }));
+        return this;
+      });
+      page.testInitProgressSaveManager();
+
+      return { objectivesRestore, opsRestore };
+    };
+
+    afterEach(() => {
+      (OpsLogManager.isInitialized as Mock).mockReturnValue(false);
+    });
+
+    it('restores managers, then the ops log clock jump, then objectives, then the ledger', async () => {
+      const order: string[] = [];
+      setup({ managerStates, opsLogState: { currentTimestampMs: 1 }, objectiveStates: [{ id: 'o' }] }, order);
+      await page.testRestoreObjectiveStatesFromCheckpoint();
+      expect(order).toEqual(['managers', 'opsLog', 'objectives', 'ledger']);
+      expect(restoreManagerStatesMock).toHaveBeenCalledWith(managerStates);
+      expect(restoreLedgerAndDocumentMock).toHaveBeenCalledWith(managerStates);
+    });
+
+    it('a throwing manager section still restores the ops log and objectives', async () => {
+      const order: string[] = [];
+      const { objectivesRestore, opsRestore } = setup({ managerStates, opsLogState: { currentTimestampMs: 1 }, objectiveStates: [{ id: 'o' }] }, order);
+      restoreManagerStatesMock.mockImplementation(() => {
+        throw new Error('boom');
+      });
+      restoreLedgerAndDocumentMock.mockImplementation(() => {
+        throw new Error('boom2');
+      });
+      await page.testRestoreObjectiveStatesFromCheckpoint();
+      expect(opsRestore).toHaveBeenCalled();
+      expect(objectivesRestore).toHaveBeenCalled();
+    });
+
+    it('an old checkpoint without managerStates restores as before', async () => {
+      const order: string[] = [];
+      const { objectivesRestore, opsRestore } = setup({ opsLogState: { currentTimestampMs: 1 }, objectiveStates: [{ id: 'o' }] }, order);
+      await page.testRestoreObjectiveStatesFromCheckpoint();
+      expect(restoreManagerStatesMock).toHaveBeenCalledWith(undefined);
+      expect(opsRestore).toHaveBeenCalled();
+      expect(objectivesRestore).toHaveBeenCalled();
     });
   });
 

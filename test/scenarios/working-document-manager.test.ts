@@ -58,4 +58,25 @@ describe('WorkingDocumentManager new entries', () => {
     expect(document.getElementById('draggable-html-box-working-document')?.textContent).toContain('Fade peaked at 2.1 dB');
     expect(document.querySelector('.working-doc-icon')!.classList.contains('has-new-entry')).toBe(false);
   });
+  it('restoreState brings the lines back and a re-fired quiz writes no duplicate', () => {
+    const bus = EventBus.getInstance();
+    bus.emit(Events.QUIZ_PASSED, { objectiveId: 'quiz-obj', conditionIndex: 0, attempts: 1, pointsDeducted: 0 });
+    const saved = JSON.parse(JSON.stringify(WorkingDocumentManager.getInstance().getState()));
+    expect(saved.entries).toHaveLength(1);
+
+    // Reload: fresh manager, then restore, then the objective's quiz re-fires
+    WorkingDocumentManager.getInstance().initialize();
+    expect(WorkingDocumentManager.getInstance().getEntryCount()).toBe(0);
+    WorkingDocumentManager.getInstance().restoreState(saved);
+    expect(WorkingDocumentManager.getInstance().getEntryCount()).toBe(1);
+    expect(document.querySelector('.working-doc-icon')!.classList.contains('has-new-entry')).toBe(false);
+
+    bus.emit(Events.QUIZ_PASSED, { objectiveId: 'quiz-obj', conditionIndex: 0, attempts: 1, pointsDeducted: 0 });
+    expect(WorkingDocumentManager.getInstance().getEntryCount()).toBe(1);
+  });
+
+  it('restoreState with no snapshot leaves the document empty', () => {
+    WorkingDocumentManager.getInstance().restoreState(undefined);
+    expect(WorkingDocumentManager.getInstance().getEntryCount()).toBe(0);
+  });
 });

@@ -18,6 +18,7 @@
 import { Logger } from '@app/logging/logger';
 import { stripDialogTokens } from '@app/modal/dialog-tokens';
 import type { ScenarioData } from '@app/ScenarioData';
+import type { CampaignRunSnapshot } from '@app/sync/manager-state-types';
 import { EventTimeLedger } from './event-time-ledger';
 
 export interface CampaignDocumentEntry {
@@ -130,6 +131,19 @@ export class CampaignDocumentStore {
   /** A decision consequence destroyed this evidence (recorded at completion). */
   static noteDestroyedEvidence(auditEventId: string): void {
     this.runDestroyed_.add(auditEventId);
+  }
+  /** Per-run state for a checkpoint (Phase 35 rt-s24-F4). */
+  static getRunState(): CampaignRunSnapshot {
+    return { destroyed: [...this.runDestroyed_], reviewed: this.reviewedThisRun_ };
+  }
+
+  /** Restore per-run state after beginRun(). */
+  static restoreRunState(snapshot: CampaignRunSnapshot | undefined): void {
+    if (!snapshot) {
+      return;
+    }
+    this.runDestroyed_ = new Set((snapshot.destroyed ?? []).filter((id) => typeof id === 'string'));
+    this.reviewedThisRun_ = snapshot.reviewed === true;
   }
 
   static get destroyedThisRun(): readonly string[] {

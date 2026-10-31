@@ -351,7 +351,7 @@ export const natsEuScenario6Data: ScenarioData = {
       nice: ['S0844', 'K0685'],
       title: 'Read the Station Audit Log',
       description:
-        'Open the Security console and read the audit log end to end, then sign off the review. Routine traffic is most of it; that is what makes the exceptions findable.',
+        'Open the Security console and read the audit log end to end, then sign off the review once you have read it. Routine traffic is most of it; that is what makes the exceptions findable.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['rx-chain-ready'],
       timeLimitSeconds: 3 * 60,
@@ -366,7 +366,7 @@ export const natsEuScenario6Data: ScenarioData = {
         },
         {
           type: 'audit-log-reviewed',
-          description: 'Audit Log Reviewed',
+          description: 'Audit Log Signed Off',
           params: {},
           mustMaintain: false,
         },
@@ -380,7 +380,7 @@ export const natsEuScenario6Data: ScenarioData = {
               'You do not know yet - severity is a hint from the logger, and each entry still has to be dispositioned',
               'All three - warning is the logger flagging a finding, and each one goes straight into the return',
               'None - nothing was breached, and a finding needs a loss or an intrusion, not just an odd entry',
-              'One - only the failed authentications count, and the two successful entries are routine by definition',
+              'One - only the six failed authentications count, and the new-address login and the config change are routine by definition',
             ],
             correctIndex: 0,
             explanation:
@@ -521,13 +521,13 @@ export const natsEuScenario6Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'RX Modem Locked on Downlink',
-          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-1-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
           type: 'receiver-snr-threshold',
           description: 'C/N Above 8 dB',
-          params: { modemNumber: 1, minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-1-VIDEO', minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
       ],
@@ -705,13 +705,13 @@ export const natsEuScenario6Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'RX Modem Locked on SAR-2',
-          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-2-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
           type: 'receiver-snr-threshold',
           description: 'C/N Above 8 dB',
-          params: { modemNumber: 1, minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-2-VIDEO', minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
       ],

@@ -227,7 +227,8 @@ export const natsEuScenario3Data: ScenarioData = {
       id: 'review-pass-schedule',
       nice: ['K1032', 'T1567'],
       title: 'Confirm the Command Window',
-      description: 'Read the pass off the Pass Schedule tab and confirm when the command window is open.',
+      description:
+        'Read AOS and LOS off the Pass Schedule tab, then confirm when the command window is open. The window itself is on the TT&C console, shown as T+18:40 to T+25:00 (mission elapsed time).',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['tune-tx-modem'],
       timeLimitSeconds: 2 * 60,
@@ -253,7 +254,7 @@ export const natsEuScenario3Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'The window opens thirty seconds after AOS and closes at 14:10:00. Outside it the spacecraft receiver is off the beam or below the mask and the console reports NAK - out of window.',
+              'The window opens thirty seconds after AOS and closes at 14:10:00 (T+18:40 to T+25:00 on the TT&C console). Outside it the spacecraft receiver is off the beam or below the mask and the console reports NAK - out of window.',
             pointPenalty: 5,
           },
           mustMaintain: false,

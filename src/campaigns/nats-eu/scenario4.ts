@@ -146,7 +146,8 @@ export const natsEuScenario4Data: ScenarioData = {
           description: 'Rotation Risk Understood',
           params: {
             character: Character.SYSTEM,
-            question: 'The command key is marked Pending Rotation when the pass starts. What happens if you send PLD-SAFE before completing the rotation?',
+            question:
+              'The command key reads Valid until you initiate the scheduled rotation, then Pending Rotation until you confirm it. What happens if you send PLD-SAFE while it is still Pending Rotation?',
             options: [
               'The spacecraft cannot authenticate it and rejects it - no second window before the imaging block.',
               'It is accepted - the rotation only affects future commands, and the imaging block goes ahead as tasked.',
@@ -206,7 +207,7 @@ export const natsEuScenario4Data: ScenarioData = {
           description: 'Which Key Rotates',
           params: {
             character: Character.SYSTEM,
-            question: "Traffic key Valid with 62 days left; command key Pending Rotation. Which one is today's rotation, and what does it gate?",
+            question: "Traffic key Valid on both payload panels; command key on file and due for its scheduled rotation. Which one is today's rotation, and what does it gate?",
             options: [
               'The command key on the TT&C console - it gates whether the spacecraft accepts PLD-SAFE',
               'The traffic key on the payload panels - it gates whether the modem can transmit at all',
@@ -274,7 +275,7 @@ export const natsEuScenario4Data: ScenarioData = {
       id: 'reference-check',
       nice: ['T0431', 'K0740'],
       title: 'Reference and BUC Lock',
-      description: 'GPSDO locked, BUC on the external reference. Same as last pass; it does not stop mattering.',
+      description: 'GPSDO locked, BUC on the external reference: the Lock badge on the BUC panel of the TX Chain tab reads Locked. Same as last pass; it does not stop mattering.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['complete-key-rotation'],
       timeLimitSeconds: 2 * 60,
@@ -651,7 +652,7 @@ export const natsEuScenario4Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'RX Modem Locked on SAR-2',
-          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-2-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: false,
         },
         {
@@ -748,16 +749,6 @@ export const natsEuScenario4Data: ScenarioData = {
         emotion: Emotion.NEUTRAL,
         audioUrl: '',
       },
-      'send-authenticated-command': {
-        text: `
-        <p>
-          "Key reads Valid on our side too. Window open - PLD-SAFE when ready."
-        </p>
-        `,
-        character: Character.ANNEKE_VISSER,
-        emotion: Emotion.NEUTRAL,
-        audioUrl: '',
-      },
       'secure-the-chain': {
         text: `
         <p>
@@ -808,6 +799,18 @@ export const natsEuScenario4Data: ScenarioData = {
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: '',
+      },
+    },
+    objectivesOnStart: {
+      'send-authenticated-command': {
+        text: `
+        <p>
+          "Key reads Valid on our side too. Window open - PLD-SAFE when ready."
+        </p>
+        `,
+        character: Character.ANNEKE_VISSER,
         emotion: Emotion.NEUTRAL,
         audioUrl: '',
       },

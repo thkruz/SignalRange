@@ -83,7 +83,8 @@ interface Metrics {
 export function measure(scenario: ScenarioData): Metrics {
   const objectives = scenario.objectives ?? [];
   const conditions = objectives.flatMap((o) => o.conditions);
-  const clipCount = (scenario.dialogClips?.intro ? 1 : 0) + Object.keys(scenario.dialogClips?.objectives ?? {}).length;
+  const clipCount =
+    (scenario.dialogClips?.intro ? 1 : 0) + Object.keys(scenario.dialogClips?.objectives ?? {}).length + Object.keys(scenario.dialogClips?.objectivesOnStart ?? {}).length;
   const timed = objectives.filter((o) => typeof o.timeLimitSeconds === 'number' && o.timeLimitSeconds > 0).length;
   // Two kinds of objective cannot carry a timer, so they are left out of the
   // timer fraction rather than counted as untimed: one that sends the operator
@@ -153,7 +154,7 @@ describe('nats-eu content density gate', () => {
   it('every dialog clip key names an objective in the same scenario', () => {
     for (const scenario of numbered) {
       const ids = new Set((scenario.objectives ?? []).map((o) => o.id));
-      for (const key of Object.keys(scenario.dialogClips?.objectives ?? {})) {
+      for (const key of [...Object.keys(scenario.dialogClips?.objectives ?? {}), ...Object.keys(scenario.dialogClips?.objectivesOnStart ?? {})]) {
         expect(ids.has(key), `S${scenario.number}: clip "${key}" has no objective`).toBe(true);
       }
     }

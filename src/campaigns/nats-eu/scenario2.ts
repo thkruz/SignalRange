@@ -254,7 +254,7 @@ export const natsEuScenario2Data: ScenarioData = {
           description: 'System Noise Accounted For',
           params: {
             character: Character.SYSTEM,
-            question: 'The card puts Tsys at 88 K with the LNB at 60 K. Where do the other 28 K come from?',
+            question: 'The card puts Tsys at 125 K with the LNB at 60 K. Where do the other 65 K come from?',
             options: [
               'Sky and atmosphere at 28 degrees elevation plus the feed loss ahead of the LNA',
               'The GPSDO reference plus the phase noise it adds to the LNB local oscillator',
@@ -438,13 +438,13 @@ export const natsEuScenario2Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'RX Modem Locked on Downlink',
-          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-1-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: false,
         },
         {
           type: 'receiver-snr-threshold',
           description: 'C/N >= 5 dB on the Rising Leg',
-          params: { modemNumber: 1, minCNRatio: 5, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-1-VIDEO', minCNRatio: 5, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: false,
         },
       ],
@@ -463,7 +463,7 @@ export const natsEuScenario2Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'RX Modem Locked on Downlink',
-          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-1-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: false,
         },
         {
@@ -485,9 +485,15 @@ export const natsEuScenario2Data: ScenarioData = {
       prerequisiteObjectiveIds: ['commit-the-link'],
       conditions: [
         {
+          type: 'satellite-pass-phase',
+          description: 'SAR-1 Below 15 Degrees on the Setting Leg',
+          params: { noradId: 61701, phase: 'setting-below', elevation: 15 },
+          mustMaintain: false,
+        },
+        {
           type: 'receiver-snr-threshold',
           description: 'C/N >= 5 dB on the Setting Leg',
-          params: { modemNumber: 1, minCNRatio: 5, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-1-VIDEO', minCNRatio: 5, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: false,
         },
         {
@@ -534,10 +540,10 @@ export const natsEuScenario2Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What goes in the measurement section of GW-01-ATP-002?',
             options: [
-              'Predicted 11.0 dB; measured 10.9 dB at 28 deg; margin 6.7 dB over 4.2 dB; ~7 dB at 15 deg both legs',
-              'Predicted 11.0 dB; measured 10.9 dB at 28 deg; margin 0.1 dB under prediction; no shoulder readings',
-              'Predicted 11.0 dB; measured 10.9 dB at 28 deg; margin 2.9 dB over 8 dB; ~7 dB at 15 deg both legs',
-              'Predicted 11.0 dB; measurement not required; margin 6.8 dB over 4.2 dB; shoulders predicted ~7 dB',
+              'Predicted 11.4 dB; measured about 11 dB at 28 deg; margin about 7 dB over 4.2 dB; ~7 dB at 15 deg both legs',
+              'Predicted 11.4 dB; measured about 11 dB at 28 deg; margin 0.4 dB under prediction; no shoulder readings',
+              'Predicted 11.4 dB; measured about 11 dB at 28 deg; margin 3 dB over 8 dB; ~7 dB at 15 deg both legs',
+              'Predicted 11.4 dB; measurement not required; margin 7.2 dB over 4.2 dB; shoulders predicted ~7 dB',
             ],
             correctIndex: 0,
             explanation:
@@ -545,7 +551,7 @@ export const natsEuScenario2Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Measurement',
             documentLine:
-              'MERIDIAN-SAR-1 14:03Z pass: predicted C/N 11.4 dB at culmination; measured 10.9 dB at 28 deg / 761 km; margin over 4.2 dB demod threshold 6.7 dB; rising leg 15 deg ~7 dB, setting leg 15 deg ~7 dB.',
+              'MERIDIAN-SAR-1 14:03Z pass: predicted C/N 11.4 dB at culmination; measured about 11 dB at 28 deg / 761 km; margin over 4.2 dB demod threshold about 7 dB; rising leg 15 deg ~7 dB, setting leg 15 deg ~7 dB.',
           },
           mustMaintain: false,
         },
@@ -613,7 +619,7 @@ export const natsEuScenario2Data: ScenarioData = {
         {
           type: 'receiver-snr-threshold',
           description: 'C/N >= 8 dB on SAR-2',
-          params: { modemNumber: 1, minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-2-VIDEO', minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: false,
         },
       ],
@@ -651,7 +657,7 @@ export const natsEuScenario2Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Verdict',
             documentLine:
-              'ACCEPTED. Measured within 1 dB of prediction with 6.7 dB margin over threshold. GW-01 cleared for MERIDIAN receive tasking. Signed GW-01 operator; countersigned C. Brooks.',
+              'ACCEPTED. Measured within 1 dB of prediction with about 7 dB margin over threshold. GW-01 cleared for MERIDIAN receive tasking. Signed GW-01 operator; countersigned C. Brooks.',
           },
           mustMaintain: false,
         },
@@ -688,7 +694,7 @@ export const natsEuScenario2Data: ScenarioData = {
       'read-the-rack': {
         text: `
         <p>
-          Sixty-five dB on the LNB is on the survey and it is on the rack; check they agree. Tsys you cannot read off anything - that is the sky plus everything in front of the LNA. Know what is in the eighty-eight.
+          Sixty-five dB on the LNB is on the survey and it is on the rack; check they agree. Tsys you cannot read off anything - that is the sky plus everything in front of the LNA. Know what is in the hundred and twenty-five.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -748,7 +754,7 @@ export const natsEuScenario2Data: ScenarioData = {
       'record-measurements': {
         text: `
         <p>
-          <em>[Text message from Anneke Visser, MERIDIAN Ops, at 14:11]</em>
+          <em>[Text message from Anneke Visser, MERIDIAN Ops, at {{stationTime}}]</em>
         </p>
         <p>
           "Galway - SAR-1 telemetry shows your receive window 14:04:50 to 14:08:30, clean. Send the card when it is signed and I will schedule you. Welcome to the network."

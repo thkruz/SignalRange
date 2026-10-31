@@ -450,13 +450,13 @@ export const natsEuScenario1Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'RX Modem Locked on Downlink',
-          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-1-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
           type: 'receiver-snr-threshold',
           description: 'C/N Above 8 dB',
-          params: { modemNumber: 1, minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-1-VIDEO', minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
       ],
@@ -474,7 +474,7 @@ export const natsEuScenario1Data: ScenarioData = {
         {
           type: 'receiver-snr-threshold',
           description: 'C/N >= 9 dB at Culmination',
-          params: { modemNumber: 1, minCNRatio: 9, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-1-VIDEO', minCNRatio: 9, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: false,
         },
         {
@@ -509,12 +509,18 @@ export const natsEuScenario1Data: ScenarioData = {
       nice: ['S0421', 'K0773'],
       title: 'Retune for SAR-2',
       description:
-        'SAR-1 sets at 14:10. MERIDIAN-SAR-2 rises at 14:18 from azimuth 130: retune modem 1 to its 1370 MHz imagery carrier and put the analyzer on its 1397 MHz beacon.',
+        'SAR-1 sets at 14:10; retuning while it is still in view drops its lock, so wait for LOS. MERIDIAN-SAR-2 rises at 14:18 from azimuth 130: retune modem 1 to its 1370 MHz imagery carrier and put the analyzer on its 1397 MHz beacon.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['read-the-culmination'],
-      timeLimitSeconds: 4 * 60,
-      timerStartTrigger: 'on-activate',
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-pass-phase',
       conditions: [
+        {
+          type: 'satellite-pass-phase',
+          description: 'SAR-1 Pass Over (LOS)',
+          params: { noradId: 61701, phase: 'set' },
+          mustMaintain: false,
+        },
         {
           type: 'rx-modem-frequency-set',
           description: 'RX 1370 MHz',
@@ -596,13 +602,13 @@ export const natsEuScenario1Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'RX Modem Locked on SAR-2',
-          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-2-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
           type: 'receiver-snr-threshold',
           description: 'C/N Above 8 dB',
-          params: { modemNumber: 1, minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-2-VIDEO', minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
       ],
@@ -617,12 +623,18 @@ export const natsEuScenario1Data: ScenarioData = {
       id: 'log-first-light',
       nice: ['T1580', 'K0645'],
       title: 'Log First Light',
-      description: 'Two contacts down. Write the acceptance result into the shift log the way Rotterdam wants it: a number the next shift can compare against.',
+      description: 'Two contacts down once SAR-2 sets. Write the acceptance result into the shift log the way Rotterdam wants it: a number the next shift can compare against.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['decode-sar2'],
       timeLimitSeconds: 2 * 60,
-      timerStartTrigger: 'on-activate',
+      timerStartTrigger: 'on-pass-phase',
       conditions: [
+        {
+          type: 'satellite-pass-phase',
+          description: 'SAR-2 Pass Over (LOS)',
+          params: { noradId: 61702, phase: 'set' },
+          mustMaintain: false,
+        },
         {
           type: 'status-check',
           description: 'Shift Log Entry',
@@ -717,7 +729,7 @@ export const natsEuScenario1Data: ScenarioData = {
       'preposition-for-aos': {
         text: `
         <p>
-          Park it on the rise azimuth. Twenty degrees a second sounds like a lot until you are a hundred and eighty degrees off when the bird comes up. Manual is fine for this; program-track once it is there.
+          Park it on the rise azimuth. Ten degrees a second sounds like a lot until you are a hundred and eighty degrees off when the bird comes up. Manual is fine for this; program-track once it is there.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

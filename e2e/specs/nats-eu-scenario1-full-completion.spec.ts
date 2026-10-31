@@ -188,6 +188,8 @@ test.describe('nats-eu Scenario 1 Full Completion', () => {
   });
 
   test('[log-first-light] writes the shift log and completes', async () => {
+    // log-first-light waits for SAR-2 LOS (14:25:40)
+    await advanceMissionClockToUtc(page, '2027-03-15T14:25:50Z');
     await closeWorkingDocumentIfOpen(page);
     await answerSystemQuiz(page, 'peak ~11 dB at 28 degrees');
     // Last objective: its completion pops the Mission Complete modal, which

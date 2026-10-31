@@ -564,13 +564,13 @@ export const natsEuScenario5Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'SH-02 RX Modem Locked on Downlink',
-          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-1-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
           type: 'receiver-snr-threshold',
           description: 'SH-02 C/N Above 8 dB',
-          params: { modemNumber: 1, minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-1-VIDEO', minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
       ],
@@ -589,7 +589,7 @@ export const natsEuScenario5Data: ScenarioData = {
         {
           type: 'receiver-snr-threshold',
           description: 'SH-02 C/N >= 9 dB at Culmination',
-          params: { modemNumber: 1, minCNRatio: 9, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-1-VIDEO', minCNRatio: 9, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: false,
         },
         {
@@ -668,7 +668,7 @@ export const natsEuScenario5Data: ScenarioData = {
       nice: ['S0421', 'K1032', 'T0153'],
       title: 'Acquire MERIDIAN-SAR-2',
       description:
-        'Program-track SAR-2 on the GW-01 pedestal and confirm its imagery carrier on RX analysis once it clears the mask. Fiona is taking the same bird overhead at Shetland.',
+        'Program-track SAR-2 on the GW-01 pedestal and confirm its 1397 MHz beacon on RX analysis once it clears the mask. Fiona is taking the same bird overhead at Shetland.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['hand-back-to-galway'],
       conditions: [
@@ -686,9 +686,11 @@ export const natsEuScenario5Data: ScenarioData = {
         },
         {
           type: 'signal-detected',
-          description: 'MERIDIAN-SAR-2 Downlink Detected',
+          // The analyzer is framed on the 1397 MHz beacon by the hand-back step,
+          // so acquisition watches the beacon, as S1 and S7 do (phase 35 D1)
+          description: 'MERIDIAN-SAR-2 Beacon Detected',
           params: {
-            signalId: 'MERIDIAN-SAR-2-VIDEO',
+            signalId: 'MERIDIAN-SAR-2-Beacon',
             minPower: -130 as dBm,
             requiresObservation: true,
             observationTab: 'rx-analysis',
@@ -710,13 +712,13 @@ export const natsEuScenario5Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'GW-01 RX Modem Locked on SAR-2',
-          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-2-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
           type: 'receiver-snr-threshold',
           description: 'GW-01 C/N Above 8 dB',
-          params: { modemNumber: 1, minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-2-VIDEO', minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {

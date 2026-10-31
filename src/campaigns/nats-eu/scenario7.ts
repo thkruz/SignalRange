@@ -383,19 +383,19 @@ export const natsEuScenario7Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'RX Modem Locked on Downlink',
-          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-1-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
           type: 'receiver-snr-threshold',
           description: 'C/N Above 8 dB',
-          params: { modemNumber: 1, minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-1-VIDEO', minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
           type: 'receiver-snr-threshold',
           description: 'C/N >= 9 dB at Culmination',
-          params: { modemNumber: 1, minCNRatio: 9, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-1-VIDEO', minCNRatio: 9, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: false,
         },
         {
@@ -464,7 +464,7 @@ export const natsEuScenario7Data: ScenarioData = {
       nice: ['S0421', 'K0773'],
       title: 'Retune for SAR-2',
       description:
-        'The burn executed at 14:11. SAR-2 rises at 14:18 from azimuth 130: retune modem 1 to its 1370 MHz carrier and the analyzer to its 1397 MHz beacon. Leave the elements alone for now.',
+        'The burn is due at 14:11, between your passes. SAR-2 rises at 14:18 from azimuth 130: retune modem 1 to its 1370 MHz carrier and the analyzer to its 1397 MHz beacon. Leave the elements alone for now.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['log-the-baseline'],
       timeLimitSeconds: 3 * 60,
@@ -532,9 +532,15 @@ export const natsEuScenario7Data: ScenarioData = {
           mustMaintain: false,
         },
         {
+          type: 'satellite-pass-phase',
+          description: 'SAR-2 Past Culmination',
+          params: { noradId: 61702, phase: 'past-culmination' },
+          mustMaintain: false,
+        },
+        {
           type: 'receiver-snr-threshold',
           description: 'C/N Stuck Below 5 dB',
-          params: { modemNumber: 1, maxCNRatio: 5, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-2-VIDEO', maxCNRatio: 5, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: false,
         },
         {
@@ -551,7 +557,7 @@ export const natsEuScenario7Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Program-track lock means the pedestal is where it was told to go. It was told wrong. Seven and a half kilometres along track is 0.2 deg at 2000 km and half a degree at 828 km: the closer the bird, the worse the miss.',
+              'Program-track lock means the pedestal is where it was told to go. It was told wrong. Three and a half kilometres along track is 0.1 deg at 2000 km and a quarter of a degree at 828 km: the closer the bird, the worse the miss.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -646,13 +652,13 @@ export const natsEuScenario7Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'RX Modem Locked on SAR-2',
-          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-2-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
           type: 'receiver-snr-threshold',
           description: 'C/N Above 8 dB',
-          params: { modemNumber: 1, minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-2-VIDEO', minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
       ],
@@ -761,10 +767,10 @@ export const natsEuScenario7Data: ScenarioData = {
       'retune-for-sar2': {
         text: `
         <p>
-          <em>[Text message from Anneke Visser at 14:12]</em>
+          <em>[Text message from Anneke Visser at {{stationTime}}]</em>
         </p>
         <p>
-          "Burn executed 14:11:00, nominal. Your SAR-2 set is stale as of now. Post-burn elements are on your ephemeris inbox within two minutes; the panel will flag them. Load before 14:18 if you can - and if you cannot, I would still like to hear what you saw."
+          "The burn is go for 14:11:00. Your SAR-2 set is stale from that moment. Post-burn elements are on your ephemeris inbox within two minutes; the panel will flag them. Load before 14:18 if you can - and if you cannot, I would still like to hear what you saw."
         </p>
         `,
         character: Character.ANNEKE_VISSER,

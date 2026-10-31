@@ -6,6 +6,7 @@
 import { EventBus } from '@app/events/event-bus';
 import { Events, QuizAnsweredData, QuizCompletedData, QuizDismissedData, QuizPassedData, QuizPendingData, QuizShowData } from '@app/events/events';
 import type { Character } from './character-enum';
+import { fillDialogTokens } from './dialog-tokens';
 
 interface QuizState {
   objectiveId: string;
@@ -164,10 +165,10 @@ export class QuizManager {
     const showData: QuizShowData = {
       objectiveId: state.objectiveId,
       conditionIndex: state.conditionIndex,
-      question: state.question,
-      options: state.options,
+      question: fillDialogTokens(state.question),
+      options: state.options.map((o) => fillDialogTokens(o)),
       correctIndex: state.correctIndex,
-      explanation: state.explanation,
+      explanation: state.explanation === undefined ? undefined : fillDialogTokens(state.explanation),
       pointPenalty: state.pointPenalty,
       character: state.character,
       preserveOptionOrder: state.preserveOptionOrder,

@@ -16,7 +16,9 @@
  */
 
 import { Logger } from '@app/logging/logger';
+import { stripDialogTokens } from '@app/modal/dialog-tokens';
 import type { ScenarioData } from '@app/ScenarioData';
+import { EventTimeLedger } from './event-time-ledger';
 
 export interface CampaignDocumentEntry {
   section: string;
@@ -53,7 +55,7 @@ export function canonicalEntriesOf(scenario: ScenarioData): CampaignDocumentEntr
   for (const objective of scenario.objectives ?? []) {
     for (const condition of objective.conditions ?? []) {
       const line = condition.params?.documentLine;
-      if (line) entries.push({ section: condition.params?.documentSection ?? 'Notes', line });
+      if (line) entries.push({ section: condition.params?.documentSection ?? 'Notes', line: stripDialogTokens(line) });
     }
   }
   return entries;
@@ -120,6 +122,7 @@ export class CampaignDocumentStore {
 
   /** Call once per scenario load. */
   static beginRun(): void {
+    EventTimeLedger.begin();
     this.runDestroyed_ = new Set<string>();
     this.reviewedThisRun_ = false;
   }

@@ -11,6 +11,7 @@
 
 import { FAULT_TEMPLATES, FaultInjector, FaultTemplateKey } from '@app/faults';
 import { InterferenceManager } from '@app/interference/interference-manager';
+import { fillDialogTokens } from '@app/modal/dialog-tokens';
 import { OpsLogManager } from '@app/ops-log/ops-log-manager';
 import { CampaignDocumentStore } from '@app/scenarios/campaign-document-store';
 import { SecurityConsoleCore } from '@app/security-console/security-console-core';
@@ -58,7 +59,7 @@ export class ConsequenceDispatcher {
     if (consequence.activateObjective) this.setObjectiveActive_(consequence.activateObjective, true, result);
     if (consequence.deactivateObjective) this.setObjectiveActive_(consequence.deactivateObjective, false, result);
     if (consequence.log && OpsLogManager.isInitialized()) {
-      OpsLogManager.getInstance().log(consequence.log, 'system', 'decision');
+      OpsLogManager.getInstance().log(fillDialogTokens(consequence.log), 'system', 'decision');
       result.applied.push('log');
     }
 

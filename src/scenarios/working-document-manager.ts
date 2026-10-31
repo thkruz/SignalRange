@@ -14,11 +14,18 @@
  * player opens the document.
  */
 
+import { CommandingManager } from '@app/commanding/commanding-manager';
 import { EventBus } from '@app/events/event-bus';
 import { Events, QuizPassedData } from '@app/events/events';
+import { InterferenceManager } from '@app/interference/interference-manager';
+import { fillDialogTokens } from '@app/modal/dialog-tokens';
 import { DraggableHtmlBox } from '@app/modal/draggable-html-box';
 import { ScenarioManager } from '@app/scenario-manager';
+import { SecurityConsoleCore } from '@app/security-console/security-console-core';
+import { SimulationManager } from '@app/simulation/simulation-manager';
+import { WeatherManager } from '@app/weather/weather-manager';
 import { CampaignDocumentStore, campaignIdOf } from './campaign-document-store';
+import { EventTimeLedger } from './event-time-ledger';
 import './working-document.css';
 
 interface DocumentEntry {
@@ -34,6 +41,8 @@ export class WorkingDocumentManager {
   private static instance_: WorkingDocumentManager | null = null;
 
   private entries_: DocumentEntry[] = [];
+  /** section||authored line of every line written, so a re-fired quiz never duplicates its filled line */
+  private readonly authoredKeys_ = new Set<string>();
   private box_: DraggableHtmlBox | null = null;
   private readonly boundQuizPassedHandler_: (data: QuizPassedData) => void;
   private readonly boundCompletedHandler_: () => void;
@@ -56,8 +65,16 @@ export class WorkingDocumentManager {
   /** Call once per scenario load (after ScenarioManager is ready). */
   initialize(): void {
     this.entries_ = [];
+    this.authoredKeys_.clear();
     this.box_ = null;
     WorkingDocumentManager.setNewEntryFlag_(false);
+    EventTimeLedger.setSources({
+      commanding: () => (CommandingManager.isInitialized() ? CommandingManager.getInstance() : undefined),
+      interference: () => (InterferenceManager.isInitialized() ? InterferenceManager.getInstance() : undefined),
+      weather: () => (WeatherManager.hasInstance() ? WeatherManager.getInstance() : undefined),
+      security: () => (SecurityConsoleCore.isInitialized() ? SecurityConsoleCore.getInstance() : undefined),
+      objectiveState: (id) => SimulationManager.getInstance().objectivesManager?.getObjectiveState(id),
+    });
     CampaignDocumentStore.beginRun();
     const bus = EventBus.getInstance();
     bus.off(Events.QUIZ_PASSED, this.boundQuizPassedHandler_);
@@ -127,9 +144,12 @@ export class WorkingDocumentManager {
     const section = condition?.params?.documentSection ?? DEFAULT_SECTION;
 
     // Idempotence: a re-fired event for the same line must not duplicate it
-    if (this.entries_.some((e) => e.line === line && e.section === section)) return;
+    const dedupeKey = `${section}||${line}`;
+    if (this.authoredKeys_.has(dedupeKey)) return;
+    this.authoredKeys_.add(dedupeKey);
 
-    this.entries_.push({ section, line });
+    // The filled line is stored: it carries the times this run actually had
+    this.entries_.push({ section, line: fillDialogTokens(line) });
 
     // Update an open document in place; otherwise flag the sidebar icon
     // rather than opening the panel over the console. The box is not built

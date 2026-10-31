@@ -419,7 +419,7 @@ export const natsEuScenario18Data: ScenarioData = {
       nice: ['S0648', 'K0926'],
       title: 'Read the Cycle',
       description:
-        'Once SAR-2 is past its high point the carrier is back: 1374 MHz IF, 4 MHz above the video and inside its band. Frame it on a 2 MHz span and watch it for at least one full cycle, ninety seconds. It is not steady this time.',
+        'Watch for the carrier during SAR-2’s pass: 1374 MHz IF, 4 MHz above the video and inside its band. Frame it on a 2 MHz span and watch it for at least one full cycle, ninety seconds. It is not steady this time.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['decode-sar2'],
       conditions: [
@@ -523,7 +523,7 @@ export const natsEuScenario18Data: ScenarioData = {
                     { fact: 'crypto-intact', is: true },
                   ],
                 },
-                consequence: { log: 'Interference event 2: 1374 MHz IF, 60 s on / 30 s off, notch applied, regulator package in progress' },
+                consequence: { log: 'Interference event 1: 1374 MHz IF, deliberate interference called, notch and report to follow' },
               },
               {
                 label: 'Intrusion on the link - hold the receiver and escalate to CSIRT now',
@@ -622,18 +622,24 @@ export const natsEuScenario18Data: ScenarioData = {
       nice: ['K0946', 'T1580'],
       title: 'Log Event 1',
       description:
-        'LOS 10:27:34; the carrier is still cycling on an empty sky. Put the first event in the report as evidence: frequency, cadence, first seen, effect, mitigation, and Shetland’s confirmation.',
+        'The SAR-2 pass ends at LOS, 10:27:34. Once it has set, check whether the carrier is still cycling on an empty sky, then put the first event in the report as evidence: frequency, cadence, first seen, effect, mitigation, and Shetland’s confirmation.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['notch-the-carrier'],
       timeLimitSeconds: 2 * 60,
-      timerStartTrigger: 'on-activate',
+      timerStartTrigger: 'on-pass-phase',
       conditions: [
+        {
+          type: 'satellite-pass-phase',
+          description: 'SAR-2 Pass Over (LOS)',
+          params: { noradId: 61702, phase: 'set' },
+          mustMaintain: false,
+        },
         {
           type: 'status-check',
           description: 'Event 1 Recorded',
           params: {
             character: Character.SYSTEM,
-            question: 'The event outlived the pass again. Which line goes in the report?',
+            question: 'The SAR-2 pass is over and the carrier outlived it. Which line goes in the report?',
             options: [
               '{{at:event:gw-carrier-sar2:start:s|10:23:30}} carrier 11726 MHz RF / 1374 IF, ~1 MHz, 60 s on 30 s off, no Doppler, present after LOS; C/N down to about 1 dB with the lock lost when on; Notch 1 applied; SH-02 clean',
               'Interference confirmed on SAR-2, same as Monday; the emitter is the one reported on 12 April and is still operating',
@@ -646,7 +652,7 @@ export const natsEuScenario18Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Events',
             documentLine:
-              'Event 1: {{at:event:gw-carrier-sar2:start:s|10:23:30}}Z carrier 11726 MHz RF (1374 MHz IF), ~1 MHz, cycle 60 s on / 30 s off, no Doppler, persists after SAR-2 LOS 10:27:34Z to {{at:event:gw-carrier-sar2:end:s|10:31:30}}Z. Victim MERIDIAN-SAR-2 video 11730 MHz, C/N {{val:decode-sar2.1:0|12}} dB clean, down to about 1 dB with the lock lost while on. Notch 1 (1374 MHz, 2 MHz, 30 dB) applied {{at:cond:notch-the-carrier.1|10:26}}Z, lock held. SH-02 (F. MacLeod) clean on the same pass.',
+              'Event 1: {{at:event:gw-carrier-sar2:start:s|10:23:30}}Z carrier 11726 MHz RF (1374 MHz IF), ~1 MHz, cycle 60 s on / 30 s off, no Doppler, still present after SAR-2 LOS 10:27:34Z until {{at:event:gw-carrier-sar2:end:s|10:31:30}}Z. Victim MERIDIAN-SAR-2 video 11730 MHz, C/N {{val:decode-sar2.1:0|12}} dB clean, down to about 1 dB with the lock lost while on. Notch 1 (1374 MHz, 2 MHz, 30 dB) applied {{at:cond:notch-the-carrier.1|10:26}}Z. SH-02 (F. MacLeod) clean on the same pass.',
           },
           mustMaintain: false,
         },

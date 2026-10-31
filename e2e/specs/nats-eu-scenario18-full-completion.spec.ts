@@ -188,7 +188,8 @@ test.describe('nats-eu Scenario 18 Full Completion', () => {
   });
 
   test('[log-the-first-event] records event 1', async () => {
-    // No jump: the countdown is running, and a jump now costs what waiting would (phase 19.0a)
+    // The three minutes start at SAR-2 LOS (10:27:34)
+    await advanceMissionClockToUtc(page, '2027-04-14T10:27:45Z');
     await answerSystemQuiz(page, 'carrier 11726 MHz RF / 1374 IF, ~1 MHz');
     await dismissDialogIfPresent(page);
     await closeWorkingDocumentIfOpen(page);

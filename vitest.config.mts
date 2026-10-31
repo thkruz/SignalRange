@@ -77,6 +77,16 @@ export default defineConfig({
       },
     },
     setupFiles: ['./vitest.setup.ts'],
+    // The suite's chatter (EventBus emit logs, per-tick OMT and objective-station
+    // warnings) wrote a 215 MB log. Logger [LOG]/[INFO] lines are diagnostics only and
+    // these two warnings repeat per tick; tests that assert on console.warn/Logger use
+    // spies and are unaffected, because this filters only what is printed.
+    onConsoleLog(log: string) {
+      if (log.includes('[LOG] ') || log.includes('[INFO] ')) return false;
+      if (log.includes('[WARN] OMTModule Cannot update cross-pol')) return false;
+      if (/Ground station '.*' not found for objective/.test(log)) return false;
+      return undefined;
+    },
     // `deps.inline` for uuid and ootk was a pre-vitest-1 workaround. Verified
     // unnecessary on vitest 4 (full suite green without it), so it is gone
     // rather than moved to its modern `server.deps.inline` spelling.

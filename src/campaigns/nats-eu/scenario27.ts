@@ -182,7 +182,7 @@ export const natsEuScenario27Data: ScenarioData = {
                   pointDelta: -10,
                   auditEvent: {
                     id: 'evt-acu-reboot',
-                    timestampLabel: '08:07 UTC',
+                    // Pre-audit 24: no label, so the entry is stamped with the moment of injection (a fixed 08:07 read as the future when answered at ~08:01)
                     actor: 'vend-tech',
                     action: 'ACU controller rebooted on unverified image acu-4.2.1-vendor.bin',
                     category: 'config',
@@ -234,7 +234,7 @@ export const natsEuScenario27Data: ScenarioData = {
               'Logged. Trusting what was installed means being able to say where it came from and prove it is what it claims to be. A signed release, a controlled path, a hash match and a ticket are that proof; a badge and a scan are not.',
             pointPenalty: 5,
             documentLine:
-              'Verification path required before any install: vendor-signed release, obtained via the enclave transfer path, hash matched against the published one on the isolated host, change ticket naming version, window and rollback. Not installed until every link holds.',
+              'Verification path required before any install: vendor-signed release, obtained via the enclave transfer path, hash matched against the published one on the isolated host, change ticket naming version, window and rollback. Every link must hold before it installs.',
           },
           mustMaintain: false,
         },
@@ -342,7 +342,7 @@ export const natsEuScenario27Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which entry closes the event?',
             options: [
-              '07:41 USB mounted on GW-MC-01 by vend-tech (no media ticket); 07:44 unsigned acu-4.2.1-vendor.bin staged on ACU (not in MNT-0430). {{at:obj:flag-the-firmware|08:05}} stage held; GW-MC-01 isolation and media retention requested from Charlie; vend-tech suspended. Install pending hash match against signed release via transfer path. Group Security notification requested',
+              '07:41 USB mounted on GW-MC-01 by vend-tech (no media ticket); 07:44 unsigned acu-4.2.1-vendor.bin staged on ACU (not in MNT-0430). {{at:obj:flag-the-firmware|08:05}} stage hold ordered; GW-MC-01 isolation and media retention requested from Charlie; vend-tech suspension ordered. Install only after a hash match against signed release via transfer path. Group Security notification requested',
               'Vendor tried to install firmware; told him no',
               'Firmware installed after the technician confirmed it was the service release',
               'Event closed; workstation reimaged; media destroyed',
@@ -351,7 +351,7 @@ export const natsEuScenario27Data: ScenarioData = {
             explanation: 'Logged. Times, entries, hold, what is waiting on what. The service resumes when the image has a signature and a ticket, and not before.',
             pointPenalty: 5,
             documentLine:
-              'Closed {{stationTime}}: stage held, GW-MC-01 isolation and media retention requested from Charlie, vend-tech suspended; install pending verified release; Group Security notification requested.',
+              'Closed {{stationTime}}: stage hold ordered, GW-MC-01 isolation and media retention requested from Charlie, vend-tech suspension ordered; install only after a verified release; Group Security notification requested.',
           },
           mustMaintain: false,
         },

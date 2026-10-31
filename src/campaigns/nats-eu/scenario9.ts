@@ -704,7 +704,7 @@ export const natsEuScenario9Data: ScenarioData = {
             options: [
               'Decoded with about 8 dB over the QPSK 3/4 threshold: at this margin the frames are clean, with no partly decoded ones',
               'Good but degraded: anything under 14 dB loses detail, so at 12 dB the frames are usable but not at full quality',
-              'Unknown until Rotterdam processes them: a C/N figure says the link held, not that the payload data inside is intact',
+              'Unknown until Rotterdam reports back: the station only sees C/N, so it cannot tell whether any frames decoded',
               'Marginal: 12 dB is close to the 8 dB delivery standard, so the frames are in but a fade would have cost them',
             ],
             correctIndex: 0,
@@ -773,12 +773,18 @@ export const natsEuScenario9Data: ScenarioData = {
       nice: ['S0421', 'K0773', 'T0129'],
       title: 'Take the Shetland Console',
       description:
-        'Fiona sets at 06:29 and goes outside. Select SH-02: retune modem 1 from her 1414 MHz SAR-1 carrier to 1370 MHz for SAR-2 and put the analyzer on the SAR-2 beacon, 1397 MHz. AOS 06:30 from azimuth 011.',
+        'Fiona sets at 06:29 and goes outside. Select SH-02: retune modem 1 from her 1414 MHz SAR-1 carrier to 1370 MHz for SAR-2 and put the analyzer on the SAR-2 beacon, 1397 MHz. AOS 06:30 from azimuth 011. The three minutes start when SAR-1 sets at Shetland, not before.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['arm-galway-for-sar2'],
       timeLimitSeconds: 3 * 60,
-      timerStartTrigger: 'on-activate',
+      timerStartTrigger: 'on-pass-phase',
       conditions: [
+        {
+          type: 'satellite-pass-phase',
+          description: 'SAR-1 Pass Over at Shetland (LOS)',
+          params: { noradId: 61701, phase: 'set' },
+          mustMaintain: false,
+        },
         {
           type: 'ground-station-selected',
           hidden: true,

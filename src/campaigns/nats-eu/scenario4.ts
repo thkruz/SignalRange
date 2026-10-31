@@ -29,7 +29,7 @@ import { meridianSar1Satellite, meridianSar2Satellite } from './satellites';
  * key reads Mismatch. The operator re-keys and proves the traffic key on the
  * optional SAR-2 pass.
  *
- * Clock: sim starts 2027-03-15 13:45:00 UTC. MERIDIAN-SAR-1: AOS 14:03:10,
+ * Clock: sim starts 2027-03-15 13:45:00 UTC. MERIDIAN-SAR-1: 5 deg mask 14:03:10 (Pass Schedule AOS at the receivable horizon 14:01:59, LOS 14:11:28),
  * max el 28.0 at 14:06:45, LOS 14:10:18; command window 14:03:40 .. 14:10:00 =
  * windowStartS 1120 .. windowEndS 1500. MERIDIAN-SAR-2: AOS 14:18:42, max el
  * 25.0 at 14:22:10, LOS 14:25:40 (C/N >= 8 dB 14:20:45 .. 14:23:45).
@@ -274,6 +274,9 @@ export const natsEuScenario4Data: ScenarioData = {
             explanation:
               'Rotation is a handshake, not a swap. Both ends move together or one of them stops understanding the other: a one-step swap can leave the two ends on different keys, which is a mismatch. Keep that in mind after the pass.',
             pointPenalty: 5,
+            documentSection: 'Keys',
+            documentLine:
+              '{{at:cond:complete-key-rotation.1|13:45}}Z: command key rotated KEY-2027-Q1 to KEY-2027-Q1b on the TT&C console (Initiate, then Confirm) before the pass; key reads Valid, 62 days.',
           },
           mustMaintain: false,
         },
@@ -630,6 +633,9 @@ export const natsEuScenario4Data: ScenarioData = {
             explanation:
               'AES-256-GCM is symmetric. One key, both directions, so the station is either on the current key or it is not, and the auth tag verifies again as soon as both ends share it.',
             pointPenalty: 5,
+            documentSection: 'Keys',
+            documentLine:
+              '{{at:cond:re-key-traffic.2|14:12}}Z: traffic key Mismatch after the far-end fleet rotation; new key loaded on the payload panel, TX and RX Valid, auth tag verified.',
           },
           mustMaintain: false,
         },
@@ -702,7 +708,7 @@ export const natsEuScenario4Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Keys',
             documentLine:
-              '14:03Z: command-link key rotation completed on the TT&C console before the window; PLD-SAFE authenticated under the new key, ACK received. 14:11Z: traffic key Mismatch after far-end rotation; payload crypto re-keyed, TX and RX Valid, auth tag verified. Chain cold.',
+              '{{at:obj:send-authenticated-command|14:03}}Z: PLD-SAFE authenticated under the new command key, ACK received. Chain cold. Rotation and re-key are both on this log with their times.',
           },
           mustMaintain: false,
         },

@@ -5,6 +5,7 @@ import { qs } from '@app/engine/utils/query-selector';
 import { CryptoModule } from '@app/equipment/crypto';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { OpsLogManager } from '@app/ops-log/ops-log-manager';
 import { BUCAdapter } from './buc-adapter';
 import { HPAAdapter } from './hpa-adapter';
 import { TransmitterAdapter } from './transmitter-adapter';
@@ -666,6 +667,9 @@ export class TxChainTab extends BaseElement {
         const match = /^(.*?)(\d+)$/.exec(current);
         const next = match ? `${match[1]}${String(Number(match[2]) + 1).padStart(match[2].length, '0')}` : `${current}-1`;
         crypto.handleKeyRotation(next);
+        if (OpsLogManager.isInitialized()) {
+          OpsLogManager.getInstance().log(`Traffic key re-keyed: ${current} replaced by ${next}`, 'action', 'TX Chain');
+        }
       });
     }
 

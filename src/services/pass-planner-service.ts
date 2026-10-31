@@ -39,6 +39,18 @@ export interface PassPlannerOptions {
   stepS?: number;
   /** Elevation defining AOS/LOS. Default: 0 deg */
   minElevation?: Degrees;
+  /**
+   * Elevation at which AOS/LOS are computed. `'receivable'` uses the
+   * satellite's own receivable elevation (`OrbitalSatellite.minElevation`), so
+   * the schedule agrees with the first signal and the in-view test. Default:
+   * `minElevation`.
+   */
+  aosElevation?: Degrees | 'receivable';
+  /**
+   * Passes whose peak stays below this are dropped (the scenario mask).
+   * Default: the AOS elevation, i.e. no extra filtering.
+   */
+  minPeakElevation?: Degrees;
   /** Maximum number of passes to return per satellite. Default: 10 */
   maxPasses?: number;
   /**
@@ -93,7 +105,9 @@ export class PassPlannerService {
   getPasses(satellite: OrbitalSatellite, startMs: number, options: PassPlannerOptions = {}): SatellitePass[] {
     const horizonHours = options.horizonHours ?? 12;
     const stepS = options.stepS ?? 30;
-    const minEl = options.minElevation ?? (0 as Degrees);
+    const aosOption = options.aosElevation;
+    const minEl = aosOption === 'receivable' ? satellite.minElevation : (aosOption ?? options.minElevation ?? (0 as Degrees));
+    const minPeak = options.minPeakElevation ?? minEl;
     const maxPasses = options.maxPasses ?? 10;
 
     // The station predicts from the element set it has on file, which lags
@@ -120,7 +134,7 @@ export class PassPlannerService {
       } else if (!up && prevUp && aosMs !== null) {
         const losMs = this.refineCrossing_(elAt, prevMs, t, minEl, false);
         const pass = this.buildPass_(satellite, observer, aosMs, losMs, stepS);
-        if (pass) {
+        if (pass && pass.maxEl >= minPeak) {
           passes.push(pass);
         }
         aosMs = null;

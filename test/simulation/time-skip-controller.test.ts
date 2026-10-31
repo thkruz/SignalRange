@@ -4,6 +4,7 @@ import { Events, TimeSkipEndedData, TimeSkipStartedData } from '../../src/events
 import type { TimeSkipOffer } from '../../src/objectives/objective-types';
 import { ObjectivesManager } from '../../src/objectives/objectives-manager';
 import { OpsLogManager } from '../../src/ops-log/ops-log-manager';
+import { PassPlannerService } from '../../src/services/pass-planner-service';
 import { getSkippedMs, missionNowMs, resetMissionClock } from '../../src/simulation/mission-clock';
 import { SimClock } from '../../src/simulation/sim-clock';
 import { getSimulatedNowMs } from '../../src/simulation/sim-time';
@@ -34,8 +35,8 @@ vi.mock('../../src/scenario-manager', () => ({
 
 import { meridianSar1Satellite, meridianSar2Satellite } from '../../src/campaigns/nats-eu/satellites';
 
-/** Scenario 7's clock start: 2027-03-15 14:00:00 UTC. */
-const SCENARIO_START_TIME = '14:00:00';
+/** Scenario 7's clock start, moved 10 min earlier so the lead-in clears the receivable-horizon AOS: 2027-03-15 13:50:00 UTC. */
+const SCENARIO_START_TIME = '13:50:00';
 const SCENARIO_START_DATE = '2027-03-15';
 
 describe('TimeSkipController', () => {
@@ -126,6 +127,78 @@ describe('TimeSkipController', () => {
       // The contact is minutes away. Offering the pass after it would let the
       // operator skip straight over the one they came here to work.
       expect(controller.findTarget()).toBeNull();
+    });
+  });
+
+  describe('stale targets (D6)', () => {
+    it('should land at targetMs even when start() runs long after findTarget()', () => {
+      const controller = TimeSkipController.getInstance();
+      const target = controller.findTarget()!;
+
+      // The bar cached the target and the modal sat open for 40 s
+      OpsLogManager.getInstance().advanceClock(40_000);
+
+      expect(controller.start(target)).toBe(true);
+      controller.step(controller.animationMs);
+
+      expect(Math.abs(getSimulatedNowMs() - target.targetMs)).toBeLessThanOrEqual(1000);
+    });
+
+    it('should refuse a target whose wait has fallen below the minimum', () => {
+      const controller = TimeSkipController.getInstance();
+      const target = controller.findTarget()!;
+
+      OpsLogManager.getInstance().advanceClock(target.deltaMs - 30_000);
+
+      expect(controller.start(target)).toBe(false);
+    });
+
+    it('should report a contact that is too close to skip instead of none', () => {
+      const controller = TimeSkipController.getInstance();
+      const target = controller.findTarget()!;
+
+      OpsLogManager.getInstance().advanceClock(target.deltaMs - 30_000);
+
+      expect(controller.findTarget()).toBeNull();
+      const tooClose = controller.findTooCloseContact();
+      expect(tooClose?.satelliteName).toBe('MERIDIAN-SAR-1');
+      expect(tooClose!.untilAosMs).toBeGreaterThan(0);
+    });
+  });
+
+  describe('missed-pass recovery (D4)', () => {
+    function stubObjective(noradId: number, activatedAt: number): void {
+      const state = {
+        isActive: true,
+        isCompleted: false,
+        isFailed: false,
+        activatedAt,
+        objective: { id: 'OBJ-LOCK', conditions: [{ type: 'antenna-locked', description: 'lock', params: { noradId } }] },
+      };
+      vi.spyOn(ObjectivesManager, 'hasInstance').mockReturnValue(true);
+      vi.spyOn(ObjectivesManager, 'getInstance').mockReturnValue({
+        getObjectiveStates: () => [state],
+        hasRunningObjectiveTimer: () => false,
+      } as unknown as ObjectivesManager);
+    }
+
+    it('should offer the next pass once the objective satellite has set unworked', () => {
+      const controller = TimeSkipController.getInstance();
+      const startMs = getSimulatedNowMs();
+      stubObjective(meridianSar1Satellite.noradId, startMs);
+
+      // Before the pass: nothing is missed yet
+      expect(controller.findRecoveryTarget()).toBeNull();
+
+      // Past SAR-1's first pass
+      const firstPass = new PassPlannerService().getPasses(meridianSar1Satellite, startMs, { horizonHours: 2, aosElevation: 'receivable' })[0];
+      OpsLogManager.getInstance().advanceClock(firstPass.losMs - startMs + 60_000);
+
+      const recovery = controller.findRecoveryTarget();
+      expect(recovery).not.toBeNull();
+      expect(recovery!.noradId).toBe(meridianSar1Satellite.noradId);
+      expect(recovery!.aosMs).toBeGreaterThan(getSimulatedNowMs());
+      expect(recovery!.recovery?.objectiveId).toBe('OBJ-LOCK');
     });
   });
 

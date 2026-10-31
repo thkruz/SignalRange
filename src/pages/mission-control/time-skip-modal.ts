@@ -9,6 +9,7 @@
 import { DraggableModal } from '@app/engine/ui/draggable-modal';
 import { html } from '@app/engine/utils/development/formatter';
 import { getEl } from '@app/engine/utils/get-el';
+import { getSimulatedNowMs } from '@app/simulation/sim-time';
 import { SkipTarget, TimeSkipController } from '@app/simulation/time-skip-controller';
 import { formatDuration, formatUtcClock } from './time-skip-format';
 import './time-skip.css';
@@ -18,6 +19,7 @@ export class TimeSkipModal extends DraggableModal {
   private static instance_: TimeSkipModal | null = null;
 
   private target_: SkipTarget | null = null;
+  private tickTimer_: ReturnType<typeof setInterval> | null = null;
 
   private constructor() {
     super(TimeSkipModal.MODAL_ID, {
@@ -36,6 +38,7 @@ export class TimeSkipModal extends DraggableModal {
     // The modal renders itself into document.body under a fixed id. Dropping
     // only the instance would leave that node behind, and the next scenario's
     // modal would insert a duplicate id next to it.
+    TimeSkipModal.instance_?.stopTick_();
     document.getElementById(`${TimeSkipModal.MODAL_ID}-container`)?.remove();
     TimeSkipModal.instance_ = null;
   }
@@ -47,7 +50,32 @@ export class TimeSkipModal extends DraggableModal {
     this.open(() => {
       this.render_();
       this.attachEventListeners_();
+      this.startTick_();
     });
+  }
+
+  /** The scenario clock runs under the dialog, so the printed wait must follow it (D6). */
+  private startTick_(): void {
+    this.stopTick_();
+    this.tickTimer_ = setInterval(() => this.refreshDelta_(), 1000);
+  }
+
+  private stopTick_(): void {
+    if (this.tickTimer_ !== null) {
+      clearInterval(this.tickTimer_);
+      this.tickTimer_ = null;
+    }
+  }
+
+  private refreshDelta_(): void {
+    const deltaEl = document.getElementById('time-skip-delta');
+    if (!this.target_ || !deltaEl) {
+      this.stopTick_();
+
+      return;
+    }
+
+    deltaEl.textContent = formatDuration(Math.max(0, this.target_.targetMs - getSimulatedNowMs()));
   }
 
   protected getModalContentHtml(): string {
@@ -102,7 +130,7 @@ export class TimeSkipModal extends DraggableModal {
       targetEl.textContent = `${formatUtcClock(target.targetMs)} (AOS -${formatDuration(target.aosMs - target.targetMs)})`;
     }
     if (deltaEl) {
-      deltaEl.textContent = formatDuration(target.deltaMs);
+      deltaEl.textContent = formatDuration(Math.max(0, target.targetMs - getSimulatedNowMs()));
     }
 
     if (warningEl) {
@@ -139,6 +167,7 @@ export class TimeSkipModal extends DraggableModal {
   }
 
   private handleCancel_(): void {
+    this.stopTick_();
     this.close();
     this.target_ = null;
   }
@@ -148,17 +177,14 @@ export class TimeSkipModal extends DraggableModal {
       return;
     }
 
-    // Re-resolve rather than trusting the target captured when the dialog
-    // opened: the scenario clock has been running underneath it, so the wait is
-    // shorter now and may have vanished entirely.
-    const controller = TimeSkipController.getInstance();
-    const target = controller.findTarget();
+    // start() re-derives the wait from the clock and the target's stop time,
+    // so the skip ends where the dialog said it would however long it sat open.
+    const target = this.target_;
 
+    this.stopTick_();
     this.close();
     this.target_ = null;
 
-    if (target) {
-      controller.start(target);
-    }
+    TimeSkipController.getInstance().start(target);
   }
 }

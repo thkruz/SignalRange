@@ -48,6 +48,15 @@ export class AssetTreeSidebar extends BaseElement {
    */
   static readonly LOCKED_TEXT = 'Locked until you acknowledge the Mission Brief';
 
+  /**
+   * The asset last selected anywhere, and the ground station last selected.
+   * Static so a surface built after the selection (a lazily created tab, the
+   * timeline deck) can read the station the operator already picked instead of
+   * learning it only from the next ASSET_SELECTED (D7).
+   */
+  static selectedAssetId: string | null = null;
+  static selectedGroundStationId: string | null = null;
+
   private selectedAssetId_: string | null = null;
   private groundStations_: GroundStation[] = [];
   private satellites_: Satellite[] = [];
@@ -176,6 +185,10 @@ export class AssetTreeSidebar extends BaseElement {
 
     // Listen for asset selection from other components (e.g., Mission Overview cards)
     EventBus.getInstance().on(Events.ASSET_SELECTED, (data) => {
+      AssetTreeSidebar.selectedAssetId = data.id;
+      if (data.type === 'ground-station') {
+        AssetTreeSidebar.selectedGroundStationId = data.id;
+      }
       this.updateSelectionUI_(data.id);
     });
 
@@ -596,6 +609,8 @@ export class AssetTreeSidebar extends BaseElement {
    * Cleanup
    */
   public destroy(): void {
+    AssetTreeSidebar.selectedAssetId = null;
+    AssetTreeSidebar.selectedGroundStationId = null;
     this.stopChecklistRefreshTimer_();
   }
 }

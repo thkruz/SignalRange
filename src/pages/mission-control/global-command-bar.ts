@@ -15,7 +15,7 @@ import { AlarmService } from '@app/services/alarm-service';
 import { getSimulatedNowMs } from '@app/simulation/sim-time';
 import { SkipTarget, TimeSkipController } from '@app/simulation/time-skip-controller';
 import { glyph, severityGlyph } from './glyphs';
-import { formatAstroClock, formatDtg, formatDurationCompact } from './time-skip-format';
+import { formatAstroClock, formatDtg, formatDuration, formatDurationCompact } from './time-skip-format';
 import { TimeSkipModal } from './time-skip-modal';
 import { TimeSkipOverlay } from './time-skip-overlay';
 
@@ -112,6 +112,7 @@ export class GlobalCommandBar {
   private objectiveSkipBtn_: HTMLButtonElement | null = null;
   private timeSkipOverlay_: TimeSkipOverlay | null = null;
   private skipTarget_: SkipTarget | null = null;
+  private skipTooClose_: { satelliteName: string; untilAosMs: number } | null = null;
   private lastSkipTargetComputeMs_ = 0;
   private readonly boundOnTimeSkipEnded_: (data: TimeSkipEndedData) => void;
   private readonly boundOnObjectiveChanged_ = (): void => this.onObjectiveChanged_();
@@ -386,11 +387,35 @@ export class GlobalCommandBar {
   }
 
   private handleTimeSkipClick_(): void {
-    const target = this.skipTarget_ ?? TimeSkipController.getInstance().findTarget();
+    // Never reuse the cached target: it is up to SKIP_TARGET_RECOMPUTE_MS old,
+    // and the modal prints its wait (D6).
+    const target = GlobalCommandBar.resolveSkipTarget_(TimeSkipController.getInstance());
+    this.skipTarget_ = target;
+    this.lastSkipTargetComputeMs_ = getSimulatedNowMs();
 
     if (target) {
       TimeSkipModal.getInstance().showConfirmation(target);
     }
+  }
+
+  /** The next-pass skip, else the way back after a missed pass (D4). */
+  private static resolveSkipTarget_(controller: TimeSkipController): SkipTarget | null {
+    return controller.findTarget() ?? controller.findRecoveryTarget();
+  }
+
+  /** Tooltip for the pass-skip button (D4, D6). */
+  static skipButtonTitle(target: SkipTarget | null, tooClose: { satelliteName: string; untilAosMs: number } | null): string {
+    if (target?.recovery) {
+      return `Pass missed: skip to next ${target.satelliteName} pass`;
+    }
+    if (target) {
+      return `Advance to ${target.satelliteName} AOS`;
+    }
+    if (tooClose) {
+      return `Next contact ${tooClose.satelliteName} in ${formatDuration(tooClose.untilAosMs)}, too close to skip`;
+    }
+
+    return 'No upcoming contact to skip to';
   }
 
   private onTimeSkipEnded_(_data: TimeSkipEndedData): void {
@@ -435,11 +460,12 @@ export class GlobalCommandBar {
 
     if (force || Math.abs(nowMs - this.lastSkipTargetComputeMs_) >= GlobalCommandBar.SKIP_TARGET_RECOMPUTE_MS) {
       this.lastSkipTargetComputeMs_ = nowMs;
-      this.skipTarget_ = controller.findTarget();
+      this.skipTarget_ = GlobalCommandBar.resolveSkipTarget_(controller);
+      this.skipTooClose_ = this.skipTarget_ ? null : controller.findTooCloseContact();
     }
 
     this.timeSkipBtn_.disabled = this.skipTarget_ === null;
-    this.timeSkipBtn_.title = this.skipTarget_ ? `Advance to ${this.skipTarget_.satelliteName} AOS` : 'No upcoming contact to skip to';
+    this.timeSkipBtn_.title = GlobalCommandBar.skipButtonTitle(this.skipTarget_, this.skipTooClose_);
 
     if (labelEl) {
       // Count down from the live clock, not from the value cached at predict

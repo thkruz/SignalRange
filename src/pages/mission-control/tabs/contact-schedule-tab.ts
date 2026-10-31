@@ -2,6 +2,9 @@ import { BaseElement } from '@app/components/base-element';
 import { ContactScheduleManager } from '@app/contact-schedule/contact-schedule-manager';
 import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
+import { ScenarioManager } from '@app/scenario-manager';
+import { scenarioMinElevation } from '@app/services/pass-planner-service';
+import { SimClock } from '@app/simulation/sim-clock';
 import './contact-schedule-tab.css';
 
 /**
@@ -49,7 +52,7 @@ export class ContactScheduleTab extends BaseElement {
         <td class="font-monospace">${contact.satelliteNoradId}</td>
         <td><span class="cs-priority">P${contact.priority}</span></td>
         <td class="font-monospace small">
-          ${ContactScheduleTab.formatElapsed_(contact.windowStartS)} – ${ContactScheduleTab.formatElapsed_(contact.windowEndS)}
+          ${ContactScheduleTab.formatUtc_(contact.windowStartS)} – ${ContactScheduleTab.formatUtc_(contact.windowEndS)}
         </td>
         <td>
           <select class="form-select form-select-sm cs-station-select" data-contact-id="${contact.id}">
@@ -60,6 +63,9 @@ export class ContactScheduleTab extends BaseElement {
     `
       )
       .join('');
+
+    const maskDeg = scenarioMinElevation(ScenarioManager.getInstance().settings);
+    const guardNote = `Plan windows are the part of each pass above the ${maskDeg}° planning mask, so they start later and end earlier than the first and last signal. Pass Schedule shows the signal horizon.`;
 
     const requiredNote =
       config.requiredPriorityAtOrAbove !== undefined
@@ -82,7 +88,7 @@ export class ContactScheduleTab extends BaseElement {
               <div class="card-body p-0">
                 <table class="table table-sm cs-contacts mb-0">
                   <thead>
-                    <tr><th>Contact</th><th>NORAD</th><th>PRI</th><th>AOS – LOS</th><th>Site</th></tr>
+                    <tr><th>Contact</th><th>NORAD</th><th>PRI</th><th>PLAN WINDOW (UTC)</th><th>Site</th></tr>
                   </thead>
                   <tbody id="cs-contacts-body">${rows}</tbody>
                 </table>
@@ -98,6 +104,7 @@ export class ContactScheduleTab extends BaseElement {
                   <div id="cs-plan-badge" class="cs-badge cs-badge-warn">UNALLOCATED</div>
                 </div>
                 <div class="text-muted small mb-3">${requiredNote}</div>
+                <div class="text-muted small mb-3">${guardNote}</div>
                 <div class="d-flex justify-content-between align-items-center mb-2">
                   <span class="text-muted small">Unallocated (required):</span>
                   <span id="cs-unassigned-count" class="fw-bold font-monospace">—</span>
@@ -171,11 +178,11 @@ export class ContactScheduleTab extends BaseElement {
     }
   }
 
-  private static formatElapsed_(seconds: number): string {
-    const m = Math.floor(seconds / 60);
-    const s = Math.floor(seconds % 60);
+  /** Mission-elapsed seconds as the UTC clock time the pass surfaces use. */
+  private static formatUtc_(seconds: number): string {
+    const missionStartMs = SimClock.nowMs() - SimClock.scenarioElapsedMs();
 
-    return `T+${m}:${s.toString().padStart(2, '0')}`;
+    return `${new Date(missionStartMs + seconds * 1000).toISOString().slice(11, 19)}Z`;
   }
 
   private setText_(id: string, value: string): void {

@@ -27,6 +27,8 @@ const REPREDICT_INTERVAL_MS = 60_000;
 const UPDATE_INTERVAL_MS = 1000;
 /** Lighting sampling step (s). */
 const LIGHTING_STEP_S = 60;
+/** Look back this far so a pass already in progress keeps its true AOS */
+const IN_PROGRESS_LOOKBACK_MS = 20 * 60 * 1000;
 
 /** One satellite's row: its contact blocks plus the lighting behind them. */
 interface DeckRow {
@@ -182,12 +184,17 @@ export class TimelineDeck {
     this.rows_ = this.orbitalSatellites_().map((sat) => ({
       noradId: sat.noradId,
       name: sat.name ?? `NORAD ${sat.noradId}`,
-      passes: this.planner_.getPasses(sat, nowMs, {
-        horizonHours: this.horizonHours_,
-        minElevation: this.config_.minElevation,
-        maxPasses: 40,
-        observer,
-      }),
+      // From now - 20 min so a pass in progress keeps its true AOS (D7), at the
+      // receivable horizon so the deck agrees with the first signal (D5).
+      passes: this.planner_
+        .getPasses(sat, nowMs - IN_PROGRESS_LOOKBACK_MS, {
+          horizonHours: this.horizonHours_ + IN_PROGRESS_LOOKBACK_MS / 3_600_000,
+          aosElevation: 'receivable',
+          minPeakElevation: this.config_.minElevation,
+          maxPasses: 40,
+          observer,
+        })
+        .filter((pass) => pass.losMs > nowMs),
       lighting: this.config_.showLighting ? lightingSpans(sat, nowMs, endMs, LIGHTING_STEP_S) : [],
     }));
 

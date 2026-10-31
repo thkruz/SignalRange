@@ -46,7 +46,7 @@ import type { TimeSkipOffer } from '@app/objectives/objective-types';
 import { ObjectivesManager } from '@app/objectives/objectives-manager';
 import { OpsLogManager } from '@app/ops-log/ops-log-manager';
 import { ScenarioManager } from '@app/scenario-manager';
-import { PassPlannerService, scenarioMinElevation } from '@app/services/pass-planner-service';
+import { PassPlannerService, type SatellitePass, scenarioMinElevation } from '@app/services/pass-planner-service';
 import { SimClock } from '@app/simulation/sim-clock';
 import { getSimulatedNowMs } from '@app/simulation/sim-time';
 import { SimulationManager } from '@app/simulation/simulation-manager';
@@ -87,12 +87,16 @@ export interface SkipTarget {
   maxEl: Degrees;
   /** True when the loaded COMSEC key would age out during the skip */
   willExpireCryptoKey: boolean;
+  /** Set on a missed-pass recovery skip (D4): the objective whose pass was missed and where */
+  recovery?: { objectiveId: string; stationId: string | null };
 }
 
 const DEFAULT_LEAD_TIME_S = 120;
 const DEFAULT_ANIMATION_MS = 2500;
 const DEFAULT_MIN_SKIP_S = 300;
 const DEFAULT_HORIZON_HOURS = 12;
+/** A missed-pass recovery always searches a full day ahead */
+const RECOVERY_HORIZON_HOURS = 24;
 
 export class TimeSkipController {
   private static instance_: TimeSkipController | null = null;
@@ -106,6 +110,7 @@ export class TimeSkipController {
   private startedAtRealMs_ = 0;
   private animationFrameId_: number | null = null;
   private objectiveSkip_: TimeSkipOffer | null = null;
+  private passSkip_: SkipTarget | null = null;
 
   private constructor() {
     this.config_ = (ScenarioManager.getInstance().settings.timeSkip as TimeSkipConfig | undefined) ?? {};
@@ -248,39 +253,19 @@ export class TimeSkipController {
    * The next pass worth skipping to, or null when there is nothing to skip to
    * (no orbital satellites, nothing inside the search horizon, or the wait is
    * short enough to just work through).
+   *
+   * AOS is the satellite's receivable horizon (the first signal), not the
+   * scenario's planning mask, so the stop point agrees with the Pass Schedule.
    */
   findTarget(): SkipTarget | null {
-    const satellites = this.orbitalSatellites_();
-
-    if (satellites.length === 0) {
-      return null;
-    }
-
     const nowMs = getSimulatedNowMs();
-    const leadMs = this.leadTimeS * 1000;
-    const options = {
-      horizonHours: this.config_.horizonHours ?? DEFAULT_HORIZON_HOURS,
-      minElevation: scenarioMinElevation(ScenarioManager.getInstance().settings),
-    };
-    // A pass at ANY site is a contact the operator may need to work, so the
-    // next pass is the earliest AOS across every station in the scenario.
-    const observers = this.stationObservers_();
-    const passes =
-      observers.length === 0
-        ? this.passPlanner_.getContactSchedule(satellites, nowMs, options)
-        : observers.flatMap((observer) => this.passPlanner_.getContactSchedule(satellites, nowMs, { ...options, observer })).sort((a, b) => a.aosMs - b.aosMs);
-
-    // Only ever the NEXT pass, never one beyond it. Searching forward for the
-    // first pass with enough lead time would let an operator sitting two
-    // minutes from AOS skip straight over the contact they are about to work,
-    // which is the one thing this control must not do.
-    const next = passes[0];
+    const next = this.nextPass_(nowMs, this.config_.horizonHours ?? DEFAULT_HORIZON_HOURS);
 
     if (!next) {
       return null;
     }
 
-    const targetMs = next.aosMs - leadMs;
+    const targetMs = next.aosMs - this.leadTimeS * 1000;
     const deltaMs = targetMs - nowMs;
 
     // Negative when a pass is in progress or its lead-in has begun; below the
@@ -289,41 +274,168 @@ export class TimeSkipController {
       return null;
     }
 
-    return {
-      satelliteName: next.satelliteName,
-      noradId: next.noradId,
-      aosMs: next.aosMs,
-      targetMs,
-      deltaMs,
-      maxEl: next.maxEl,
-      willExpireCryptoKey: TimeSkipController.wouldExpireCryptoKey_(deltaMs),
-    };
+    return this.toTarget_(next, targetMs, deltaMs);
+  }
+
+  /**
+   * The next contact when it is coming but too close to skip to (inside the
+   * lead time plus the minimum skip), else null. Lets the bar say "Next
+   * contact X in 5m49s, too close to skip" instead of "No upcoming contact".
+   */
+  findTooCloseContact(): { satelliteName: string; untilAosMs: number } | null {
+    const nowMs = getSimulatedNowMs();
+    const next = this.nextPass_(nowMs, this.config_.horizonHours ?? DEFAULT_HORIZON_HOURS);
+
+    if (!next || next.aosMs <= nowMs) {
+      return null;
+    }
+
+    const deltaMs = next.aosMs - this.leadTimeS * 1000 - nowMs;
+
+    return deltaMs < this.minSkipS * 1000 ? { satelliteName: next.satelliteName, untilAosMs: next.aosMs - nowMs } : null;
+  }
+
+  /**
+   * A way back after a missed pass (D4). When an active, incomplete objective
+   * is pass-bound (an antenna-locked row naming a satellite) and that
+   * satellite has set at the objective's station since the objective
+   * activated, offers a skip to its next pass, searching 24 h whatever
+   * `horizonHours` is. Null when nothing is missed or the next pass is too
+   * close to skip to.
+   */
+  findRecoveryTarget(): SkipTarget | null {
+    if (!ObjectivesManager.hasInstance()) {
+      return null;
+    }
+
+    const nowMs = getSimulatedNowMs();
+    const satellites = this.orbitalSatellites_();
+
+    for (const state of ObjectivesManager.getInstance().getObjectiveStates()) {
+      if (!state.isActive || state.isCompleted || state.isFailed || state.activatedAt === undefined) {
+        continue;
+      }
+
+      const stationId = state.objective.groundStation;
+      const observers = stationId ? this.stationObservers_().filter((o) => o.name === stationId) : this.stationObservers_();
+
+      for (const condition of state.objective.conditions) {
+        const noradId = condition.type === 'antenna-locked' ? (condition.params?.noradId ?? condition.params?.satelliteId) : undefined;
+        const sat = noradId === undefined ? undefined : satellites.find((s) => s.noradId === noradId);
+
+        if (!sat) {
+          continue;
+        }
+
+        for (const observer of observers.length > 0 ? observers : [undefined]) {
+          if (!this.hasSetSince_(sat, observer, state.activatedAt, nowMs)) {
+            continue;
+          }
+
+          const next = this.passOptions_(sat, nowMs, RECOVERY_HORIZON_HOURS, observer)[0];
+          if (!next || next.aosMs <= nowMs) {
+            continue;
+          }
+
+          const targetMs = next.aosMs - this.leadTimeS * 1000;
+          const deltaMs = targetMs - nowMs;
+          if (deltaMs < this.minSkipS * 1000) {
+            continue;
+          }
+
+          return { ...this.toTarget_(next, targetMs, deltaMs), recovery: { objectiveId: state.objective.id, stationId: observer?.name ?? stationId ?? null } };
+        }
+      }
+    }
+
+    return null;
   }
 
   /**
    * Run the fast-forward. Returns false when the skip could not start.
    *
+   * The skip runs what the target promised: it ends at `target.targetMs`, not
+   * `deltaMs` after the click. A target cached by the bar, or held open in the
+   * modal, is older than the clock, so the distance is re-derived from now and
+   * the skip refused when that has fallen below the minimum (D6).
+   *
    * @param target Resolved target from findTarget()
    */
   start(target: SkipTarget): boolean {
-    if (this.isSkipping_ || this.getBlockedReason() !== null || target.deltaMs <= 0) {
+    const deltaMs = target.targetMs - getSimulatedNowMs();
+
+    if (this.isSkipping_ || this.getBlockedReason() !== null || deltaMs < this.minSkipS * 1000) {
       return false;
     }
 
     this.isSkipping_ = true;
-    this.totalMs_ = target.deltaMs;
+    this.totalMs_ = deltaMs;
     this.skippedMs_ = 0;
     this.startedAtRealMs_ = Date.now();
+    this.passSkip_ = target;
 
     EventBus.getInstance().emit(Events.TIME_SKIP_STARTED, {
       satelliteName: target.satelliteName,
       targetMs: target.targetMs,
-      totalMs: target.deltaMs,
+      totalMs: deltaMs,
     });
 
     this.animationFrameId_ = requestAnimationFrame(this.frame_.bind(this));
 
     return true;
+  }
+
+  /** Passes for one satellite at the receivable horizon, masked by the scenario. */
+  private passOptions_(sat: OrbitalSatellite, nowMs: number, horizonHours: number, observer?: OrbitalObserver): SatellitePass[] {
+    return this.passPlanner_.getPasses(sat, nowMs, {
+      horizonHours,
+      aosElevation: 'receivable',
+      minPeakElevation: scenarioMinElevation(ScenarioManager.getInstance().settings),
+      observer,
+      maxPasses: observer ? 1 : 10,
+    });
+  }
+
+  /** Earliest pass across every satellite and station inside the horizon. */
+  private nextPass_(nowMs: number, horizonHours: number): SatellitePass | undefined {
+    const satellites = this.orbitalSatellites_();
+    // A pass at ANY site is a contact the operator may need to work, so the
+    // next pass is the earliest AOS across every station in the scenario.
+    // Only ever the NEXT pass, never one beyond it: searching forward for the
+    // first pass with enough lead time would let an operator two minutes from
+    // AOS skip straight over the contact they are about to work.
+    const observers = this.stationObservers_();
+    const passes = satellites.flatMap((sat) =>
+      observers.length === 0 ? this.passOptions_(sat, nowMs, horizonHours) : observers.flatMap((observer) => this.passOptions_(sat, nowMs, horizonHours, observer))
+    );
+
+    return passes.sort((a, b) => a.aosMs - b.aosMs)[0];
+  }
+
+  /** Whether `sat` completed a pass at `observer` between `sinceMs` and `nowMs`. */
+  private hasSetSince_(sat: OrbitalSatellite, observer: OrbitalObserver | undefined, sinceMs: number, nowMs: number): boolean {
+    const horizonHours = Math.max(0, (nowMs - sinceMs) / 3_600_000);
+    const passes = this.passPlanner_.getPasses(sat, sinceMs, {
+      horizonHours,
+      aosElevation: 'receivable',
+      minPeakElevation: scenarioMinElevation(ScenarioManager.getInstance().settings),
+      observer,
+      maxPasses: 20,
+    });
+
+    return passes.some((pass) => pass.losMs <= nowMs);
+  }
+
+  private toTarget_(pass: SatellitePass, targetMs: number, deltaMs: number): SkipTarget {
+    return {
+      satelliteName: pass.satelliteName,
+      noradId: pass.noradId,
+      aosMs: pass.aosMs,
+      targetMs,
+      deltaMs,
+      maxEl: pass.maxEl,
+      willExpireCryptoKey: TimeSkipController.wouldExpireCryptoKey_(deltaMs),
+    };
   }
 
   /**
@@ -430,6 +542,11 @@ export class TimeSkipController {
 
     const objectiveSkip = this.objectiveSkip_;
     this.objectiveSkip_ = null;
+    const passSkip = this.passSkip_;
+    this.passSkip_ = null;
+    if (passSkip && OpsLogManager.isInitialized()) {
+      this.logPassSkip_(passSkip, isCompleted);
+    }
     if (objectiveSkip && OpsLogManager.isInitialized()) {
       const minutes = Math.round(this.skippedMs_ / 60_000);
       const tail = isCompleted ? '' : ' (stopped early)';
@@ -440,6 +557,17 @@ export class TimeSkipController {
       isCompleted,
       skippedMs: this.skippedMs_,
     });
+  }
+
+  private logPassSkip_(target: SkipTarget, isCompleted: boolean): void {
+    const tail = isCompleted ? '' : ' (stopped early)';
+    const minutes = Math.round(this.skippedMs_ / 60_000);
+    let line = `Waited out the wait for ${target.satelliteName}: clock advanced ${minutes} min${tail}`;
+    if (target.recovery) {
+      const station = SimulationManager.getInstance().groundStations?.find((gs) => gs.state.id === target.recovery?.stationId);
+      line = `Pass missed; waited for the next ${target.satelliteName} pass${station ? ` at ${station.state.name}` : ''}${tail}`;
+    }
+    OpsLogManager.getInstance().log(line, 'system', 'Time skip');
   }
 
   /** Whether the objective an objective skip covers is still open */

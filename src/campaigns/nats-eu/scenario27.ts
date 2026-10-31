@@ -165,7 +165,7 @@ export const natsEuScenario27Data: ScenarioData = {
                   'No. Hold the staged image, take the workstation off the M&C segment, keep the stick as it is, and suspend the technician’s account. The image installs only after its hash matches the vendor’s signed release, obtained through the enclave transfer path, under a ticket that names it. Group Security gets the log',
                 correctWhen: { fact: 'config-drifted', is: true },
                 consequence: {
-                  log: 'ACU firmware stage hold ordered; GW-MC-01 isolation and media retention requested from Charlie; vend-tech suspension ordered pending verification',
+                  log: 'ACU firmware stage hold ordered; GW-MC-01 isolation and media retention requested from Charlie; vend-tech suspension ordered pending verification; anything already installed from the media to be rolled back to the last verified image',
                 },
               },
               {
@@ -246,7 +246,7 @@ export const natsEuScenario27Data: ScenarioData = {
       id: 'flag-the-firmware',
       nice: ['S0838', 'S0842'],
       title: 'Flag the Firmware Stage',
-      description: 'Now flag the firmware entry so the record carries the hold.',
+      description: 'Now flag the firmware entry so the record carries the hold, and the rollback to the last verified image if anything was installed from the stick.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['verify-the-image'],
       conditions: [{ type: 'security-event-acknowledged', description: 'Firmware Stage Flagged', params: { eventId: 'evt-fw-stage' }, mustMaintain: true }],
@@ -342,7 +342,7 @@ export const natsEuScenario27Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which entry closes the event?',
             options: [
-              '07:41 USB mounted on GW-MC-01 by vend-tech (no media ticket); 07:44 unsigned acu-4.2.1-vendor.bin staged on ACU (not in MNT-0430). {{at:obj:flag-the-firmware|08:05}} stage hold ordered; GW-MC-01 isolation and media retention requested from Charlie; vend-tech suspension ordered. Install only after a hash match against signed release via transfer path. Group Security notification requested',
+              '07:41 USB mounted on GW-MC-01 by vend-tech (no media ticket); 07:44 unsigned acu-4.2.1-vendor.bin staged on ACU (not in MNT-0430). {{at:obj:flag-the-firmware|08:05}} stage hold ordered; GW-MC-01 isolation and media retention requested from Charlie; vend-tech suspension ordered; if anything was installed from the media, ACU rolled back to the last verified image. Install only after a hash match against signed release via transfer path. Group Security notification requested',
               'Vendor tried to install firmware; told him no',
               'Firmware installed after the technician confirmed it was the service release',
               'Event closed; workstation reimaged; media destroyed',
@@ -351,7 +351,7 @@ export const natsEuScenario27Data: ScenarioData = {
             explanation: 'Logged. Times, entries, hold, what is waiting on what. The service resumes when the image has a signature and a ticket, and not before.',
             pointPenalty: 5,
             documentLine:
-              'Closed {{stationTime}}: stage hold ordered, GW-MC-01 isolation and media retention requested from Charlie, vend-tech suspension ordered; install only after a verified release; Group Security notification requested.',
+              'Closed {{stationTime}}: stage hold ordered, GW-MC-01 isolation and media retention requested from Charlie, vend-tech suspension ordered; anything installed from the media rolled back to the last verified image; install only after a verified release; Group Security notification requested.',
           },
           mustMaintain: false,
         },

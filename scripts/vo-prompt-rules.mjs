@@ -86,7 +86,7 @@ const IDS = [
   [/\bPLD-SAFE\b/gu, 'P.L.D safe'],
   [/\bPLD-ON\b/gu, 'P.L.D on'],
   [/\bPLD-STATUS\b/gu, 'P.L.D status'],
-  [/\bHK-DUMP\b/gu, 'H.K dump'],
+  [/\bHK-DUMP\b/gu, 'housekeeping dump'],
   [/\bREC-PLAYBACK\b/gu, 'record playback'],
   [/\bKEY-VERIFY\b/gu, 'key verify'],
   [/\bKEY-2027-(Q\d)\b/gu, 'key twenty twenty-seven $1'],
@@ -136,7 +136,7 @@ export function promptFor(text, campaign) {
     .replace(/\bAOS\b/gu, 'A.O.S')
     .replace(/\bLOS\b/gu, 'L.O.S')
     .replace(/\bLEOP\b/gu, 'Lee-op')
-    .replace(/\bNAK\b/gu, 'nack')
+    .replace(/\bNAK\b/gu, 'N.A.K')
     .replace(/\bACK\b/gu, 'ack')
     .replace(/\bComReg\b/gu, 'Com-Reg')
     .replace(/\bFaroes\b/gu, 'Fair-ohz')
@@ -197,8 +197,10 @@ export function promptFor(text, campaign) {
  * Voice settings for one line: the character's approved settings, then its
  * per-emotion overrides, then a slower speed for long explanatory lines.
  */
-export function settingsFor(cast, emotion, prompt) {
+export function settingsFor(cast, emotion, prompt, campaign) {
   const s = { ...(cast.voiceSettings ?? {}), ...(cast.emotionSettings?.[emotion] ?? {}) };
   if (cast.longLine && prompt.length > cast.longLine.minChars) s.speed = cast.longLine.speed;
+  // Per-campaign override (a voice shared between campaigns keeps its settings in the other one)
+  if (campaign && cast.campaignSettings?.[campaign]) Object.assign(s, cast.campaignSettings[campaign]);
   return s;
 }

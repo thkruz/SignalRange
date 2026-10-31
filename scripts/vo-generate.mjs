@@ -132,7 +132,7 @@ const baseSeed = num('--seed');
 const note = opt('--note', '');
 
 const info = await voiceInfo(voiceId);
-const base = { ...info.defaults, ...settingsFor(cast, clip.emotion, text) };
+const base = { ...info.defaults, ...settingsFor(cast, clip.emotion, text, campaignOf(path)) };
 const settings = {
   stability: num('--stability') ?? base.stability,
   similarity_boost: num('--similarity') ?? base.similarity_boost,

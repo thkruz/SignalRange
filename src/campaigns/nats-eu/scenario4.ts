@@ -110,6 +110,12 @@ export const natsEuScenario4Data: ScenarioData = {
       windowEndS: 1500,
       requireDopplerComp: true,
       requireValidKey: true,
+      // Phase 35 F-D: the key starts due for rotation (4 days left on the panel), so the
+      // ACK is gated on the rotation. Confirming it moves the unit to KEY-2027-Q1b.
+      keyId: 'KEY-2027-Q1',
+      rotatedKeyId: 'KEY-2027-Q1b',
+      initialKeyStatus: 'Pending Rotation',
+      keyExpiresInDays: 4,
       commands: [
         { id: 'PLD-SAFE', label: 'Payload to safe mode' },
         { id: 'REC-PLAYBACK', label: 'Start recorder playback' },
@@ -147,7 +153,7 @@ export const natsEuScenario4Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question:
-              'The command key reads Valid until you initiate the scheduled rotation, then Pending Rotation until you confirm it. What happens if you send PLD-SAFE while it is still Pending Rotation?',
+              'The command key (KEY-2027-Q1, 4 days left) already reads Pending Rotation: the new material is loaded but not active until you complete the rotation. What happens if you send PLD-SAFE while it is still Pending Rotation?',
             options: [
               'The spacecraft cannot authenticate it and rejects it - no second window before the imaging block.',
               'It is accepted - the rotation only affects future commands, and the imaging block goes ahead as tasked.',
@@ -172,9 +178,9 @@ export const natsEuScenario4Data: ScenarioData = {
       nice: ['K0728', 'K0874'],
       title: 'Read Both Keys',
       description:
-        'Two keys on this station. On the TX chain and RX analysis payload panels confirm the traffic crypto is ACTIVE both ways with the traffic key Valid; then read the command key on the TT&C console.',
+        'Two keys on this station. On the TX chain and RX analysis payload panels confirm the traffic crypto is ACTIVE both ways with the traffic key Valid, now on KEY-2027-Q1b after the rotation; then read the command key on the TT&C console.',
       groundStation: 'GW-01',
-      prerequisiteObjectiveIds: ['review-mission-brief'],
+      prerequisiteObjectiveIds: ['complete-key-rotation'],
       timeLimitSeconds: 3 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -207,7 +213,7 @@ export const natsEuScenario4Data: ScenarioData = {
           description: 'Which Key Rotates',
           params: {
             character: Character.SYSTEM,
-            question: "Traffic key Valid on both payload panels; command key on file and due for its scheduled rotation. Which one is today's rotation, and what does it gate?",
+            question: "Traffic key Valid on both payload panels; the command key you just rotated now reads KEY-2027-Q1b. Which one was today's rotation, and what did it gate?",
             options: [
               'The command key on the TT&C console - it gates whether the spacecraft accepts PLD-SAFE',
               'The traffic key on the payload panels - it gates whether the modem can transmit at all',
@@ -216,7 +222,7 @@ export const natsEuScenario4Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'The command key signs each command so the bird can prove who sent it. The traffic key encrypts the payload data both ways. Different custody, different schedules, and today only one of them is in rotation.',
+              'The command key signs each command so the bird can prove who sent it. The traffic key encrypts the payload data both ways. Different custody, different schedules, and today only one of them was in rotation.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -229,9 +235,10 @@ export const natsEuScenario4Data: ScenarioData = {
       id: 'complete-key-rotation',
       nice: ['K0874', 'K0728', 'S0077'],
       title: 'Complete the Scheduled Key Rotation',
-      description: 'On the TT&C console: Initiate Key Rotation, then Confirm Key Rotation. Do it before the pass, not during it. Leave the zeroize control alone.',
+      description:
+        'On the TT&C console: Initiate Key Rotation, then Confirm Key Rotation. The key reads Pending Rotation (4 days left) and PLD-SAFE will be NAKed until it reads Valid. Do it before the pass, not during it. Leave the zeroize control alone.',
       groundStation: 'GW-01',
-      prerequisiteObjectiveIds: ['crypto-status-check'],
+      prerequisiteObjectiveIds: ['review-mission-brief'],
       timeLimitSeconds: 3 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -277,7 +284,7 @@ export const natsEuScenario4Data: ScenarioData = {
       title: 'Reference and BUC Lock',
       description: 'GPSDO locked, BUC on the external reference: the Lock badge on the BUC panel of the TX Chain tab reads Locked. Same as last pass; it does not stop mattering.',
       groundStation: 'GW-01',
-      prerequisiteObjectiveIds: ['complete-key-rotation'],
+      prerequisiteObjectiveIds: ['crypto-status-check'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -719,7 +726,7 @@ export const natsEuScenario4Data: ScenarioData = {
       'crypto-status-check': {
         text: `
         <p>
-          Two keys on this rack and people confuse them constantly. Command key on the TT&amp;C console signs what you send. Traffic key on the payload panels encrypts what goes up and decrypts what comes down. Read both before you touch either.
+          Two keys on this rack and people confuse them constantly. Command key on the TT&amp;C console signs what you send. Traffic key on the payload panels encrypts what goes up and decrypts what comes down. Rotation is done, so read both now and tell me which one was today's.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

@@ -396,7 +396,7 @@ export const natsEuScenario12Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Readiness',
             documentLine:
-              'Readiness: GPSDO locked, BUC on reference. TX encryption ACTIVE / command key Valid; RX decryption ACTIVE / traffic key Valid. Predicted C/N 10.9 dB at 27.9 deg.',
+              'Readiness: GPSDO locked, BUC on reference. TX encryption ACTIVE / command key Valid; RX decryption ACTIVE / traffic key Valid. Predicted C/N 11.3 dB at 27.9 deg.',
           },
           mustMaintain: false,
         },
@@ -799,7 +799,7 @@ export const natsEuScenario12Data: ScenarioData = {
             question: 'With the HPA up, the 1340 MHz test pattern reads about 3 dB of C/N instead of the 11 the worksheet predicts. What is happening?',
             options: [
               "SAR-3's command transponder returns your own 14065 MHz carrier at 11810 MHz in band; the AGC pulls the chain down",
-              'The HPA heats the LNB through the feed and raises the noise temperature; Tsys climbs past the 88 K on the worksheet',
+              'The HPA heats the LNB through the feed and raises the noise temperature; Tsys climbs past the 125 K on the worksheet',
               'Uplink Doppler compensation is dragging the receiver off frequency; the modem is locked on the skirt of the pattern',
               'The payload cannot transmit the pattern while it is receiving commands; the ACK traffic on 14065 MHz starves the video',
             ],
@@ -853,9 +853,9 @@ export const natsEuScenario12Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question:
-              'Payload entry. You predicted 10.9 dB at maximum elevation, the modem locked the pattern on 1340 MHz, and the link committed with at least 4 dB of margin. What goes on the card?',
+              'Payload entry. You predicted 11.3 dB at maximum elevation, the modem locked the pattern on 1340 MHz, and the link committed with at least 4 dB of margin. What goes on the card?',
             options: [
-              'The measured C/N beside the 10.9 dB prediction and the difference; agreement within a decibel is the acceptance evidence.',
+              'The measured C/N beside the 11.3 dB prediction and the difference; agreement within a decibel is the acceptance evidence.',
               'PASS beside the 4.2 dB threshold and the margin; clearing the threshold is the acceptance evidence, the number is not.',
               'The peak C/N only, without the prediction; the worksheet was a planning aid and has no place on a test record.',
               'The committed margin beside the 4.2 dB threshold; that is what the modem used, so it is the acceptance evidence.',

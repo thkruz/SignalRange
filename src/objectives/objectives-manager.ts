@@ -3095,6 +3095,13 @@ export class ObjectivesManager {
         const decisions = DecisionManager.getInstance();
         const conditionIndex = objectiveState.conditionStates.findIndex((cs) => cs.condition === condition);
         if (!decisions.has(objectiveState.objective.id, conditionIndex)) {
+          // A decision written after a pass-phase gate waits for it, like a quiz
+          // waits for the doing before it (rt-s20-F3a: the probe decision opened
+          // while SAR-1 was still overhead, five minutes before the step)
+          const passGatePending = objectiveState.conditionStates.some(
+            (cs, index) => index < conditionIndex && cs.condition.type === 'satellite-pass-phase' && !ObjectivesManager.isConditionMet_(cs, objectiveState.objective)
+          );
+          if (passGatePending) return false;
           const factReader = registry;
           const evidenceIds = params.evidence ?? [];
           decisions.register(objectiveState.objective.id, conditionIndex, {

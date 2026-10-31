@@ -188,9 +188,9 @@ export const natsEuScenario20Data: ScenarioData = {
           // Pre-audit 9: appears when spot-the-walk completes, so the clip and the call never name a poll that does not exist yet
           startAfterObjectiveId: 'spot-the-walk',
           timeS: 5,
-          timestampLabel: '{{at:obj:spot-the-walk|05:10}} UTC',
+          timestampLabel: '{{at:obj:spot-the-walk+5s|05:10}} UTC',
           actor: 'svc-monitor',
-          action: 'Telemetry poll: GW-01 frame timestamps +240 us ahead of Rotterdam reference and increasing',
+          action: 'Telemetry poll: GW-01 frame timestamps ahead of Rotterdam reference and increasing',
           category: 'config',
           severity: 'warning',
         },

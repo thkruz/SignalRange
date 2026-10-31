@@ -454,6 +454,8 @@ export const scenario16Data: ScenarioData = {
         {
           type: 'hpa-not-overdriven',
           description: 'HPA No Longer Overdriven',
+          // The HPA output is still disabled from the safety step; the row reads the back-off, not the output toggle
+          params: { allowHpaDisabled: true },
           maintainUntilObjectiveComplete: true,
         },
       ],

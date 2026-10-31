@@ -942,6 +942,18 @@ export const natsEuScenario24Data: ScenarioData = {
           mustMaintain: false,
         },
         {
+          type: 'speca-center-frequency',
+          description: 'GW-01 Analyzer Centre 1315 MHz',
+          params: { centerFrequency: 1315e6, centerFrequencyTolerance: 100e3 },
+          mustMaintain: true,
+        },
+        {
+          type: 'speca-span-set',
+          description: 'GW-01 Analyzer Span 2 MHz',
+          params: { span: 2e6, frequencyTolerance: 1e6 },
+          mustMaintain: true,
+        },
+        {
           type: 'signal-detected',
           description: 'MERIDIAN-SAR-3 Beacon Detected',
           params: {

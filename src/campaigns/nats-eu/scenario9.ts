@@ -1001,7 +1001,7 @@ export const natsEuScenario9Data: ScenarioData = {
           <em>[Text message from Fiona MacLeod]</em>
         </p>
         <p>
-          "Off. Seventy-three degrees and it never wobbled - sixteen and a bit at the top, for the record. Modem's still on 1414. Console's yours; SAR-2 is up in a minute from the north. Don't be gentle with it."
+          "Off. Seventy-three degrees and it never wobbled - seventeen dB at the top, for the record. Modem's still on 1414. Console's yours; SAR-2 is up in a minute from the north. Don't be gentle with it."
         </p>
         `,
         character: Character.FIONA_MACLEOD,

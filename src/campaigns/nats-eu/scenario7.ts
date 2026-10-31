@@ -116,7 +116,7 @@ export const natsEuScenario7Data: ScenarioData = {
 
     // M4 - the avoidance burn on SAR-2, on the mission clock at 14:12:00. The
     // spacecraft moves onto the new set; the station keeps predicting from the
-    // old one until the operator loads the update. Mean anomaly +0.03 deg.
+    // old one until the operator loads the update. Mean anomaly +0.06 deg.
     spaceEvents: [
       {
         id: 'SAR2-CAM',
@@ -557,7 +557,7 @@ export const natsEuScenario7Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Program-track lock means the pedestal is where it was told to go. It was told wrong. Three and a half kilometres along track is 0.1 deg at 2000 km and a quarter of a degree at 828 km: the closer the bird, the worse the miss.',
+              'Program-track lock means the pedestal is where it was told to go. It was told wrong. Seven and a half kilometres along track is 0.2 deg at 2000 km and half a degree at 828 km: the closer the bird, the worse the miss.',
             pointPenalty: 5,
           },
           mustMaintain: false,

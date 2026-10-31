@@ -34,7 +34,7 @@ import { answerDecision, dismissDialogIfPresent, waitForSimulationReady } from '
  * 2027-03-24 09:48:00Z:
  *   MERIDIAN-SAR-3  AOS 10:06:00Z  max el 27.9 deg at 10:10:45Z  LOS 10:15:29Z
  *   command window  mission T+1102 s .. T+1628 s
- *   worksheet truth 10.9 dB; threshold 4.2 dB + 4 dB required margin
+ *   worksheet truth 11.3 dB; threshold 4.2 dB + 4 dB required margin
  *
  * Objective flow (20):
  *  1. review-mission-brief    2. dashboard-sweep         3. reference-check
@@ -244,7 +244,7 @@ test.describe('nats-eu Scenario 12 Full Completion', () => {
     // Commit with the live C/N at least 8.5 dB (4.2 dB threshold + 4 dB margin,
     // plus a little headroom)
     await commitLinkWithMargin(page, missionControl, 8.5);
-    await answerSystemQuiz(page, 'The measured C/N beside the 10.9 dB prediction');
+    await answerSystemQuiz(page, 'The measured C/N beside the 11.3 dB prediction');
     await dismissDialogIfPresent(page);
     await closeWorkingDocumentIfOpen(page);
     await waitForObjectiveComplete(missionControl, 'First Imagery Decode', 60000);

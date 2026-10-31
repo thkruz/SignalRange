@@ -7,6 +7,7 @@ import { SimClock } from '@app/simulation/sim-clock';
 import { getSimulatedNowMs, isScenarioClockRunning } from '@app/simulation/sim-time';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { Milliseconds } from 'ootk';
+import { collectStationServiceAlarms } from './station-service-alarms';
 
 /**
  * An alarm with a fixed label and a live value beside it: `message` names
@@ -416,6 +417,8 @@ export class AlarmService {
         alarms.push({ ...rxAlarm, assetId, equipmentType: 'RX', equipmentIndex: idx });
       }
     });
+
+    alarms.push(...collectStationServiceAlarms(assetId));
 
     return alarms.map(AlarmService.fixLabel_);
   }

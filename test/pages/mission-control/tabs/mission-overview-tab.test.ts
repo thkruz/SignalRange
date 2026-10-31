@@ -10,6 +10,7 @@ const { mockAntennaState } = vi.hoisted(() => ({ mockAntennaState: { trackingMod
 vi.mock('../../../../src/events/event-bus');
 vi.mock('../../../../src/simulation/simulation-manager', () => ({
   SimulationManager: {
+    hasInstance: () => false,
     getInstance: vi.fn(() => ({
       groundStations: [
         {
@@ -301,6 +302,7 @@ describe('MissionOverviewTab', () => {
       // Reset SimulationManager mock
       vi.doMock('../../../../src/simulation/simulation-manager', () => ({
         SimulationManager: {
+          hasInstance: () => false,
           getInstance: vi.fn(() => ({
             groundStations: [],
             satellites: [],

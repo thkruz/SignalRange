@@ -12,6 +12,7 @@ import { AggregatedAlarm, Events } from '@app/events/events';
 import { AlarmService, AlarmWithDetail } from '@app/services/alarm-service';
 import { getSimulatedNowMs } from '@app/simulation/sim-time';
 import { AlarmLedOptions, AlarmLedState, alarmLed, applyAlarmLed } from '../alarm-led';
+import { wrapAzimuthDeg } from '../az-display';
 import { severityGlyph } from '../glyphs';
 import { STATION_STATUS_BADGE, stationStatusLabel } from '../station-status-label';
 import { formatBucOutputPower } from './buc-adapter';
@@ -631,7 +632,7 @@ export class DashboardTab extends BaseElement {
     // Position
     const posEl = this.domCache_.get('antenna-position');
     if (posEl) {
-      posEl.textContent = `Az: ${state.azimuth.toFixed(1)}° El: ${state.elevation.toFixed(1)}°`;
+      posEl.textContent = `Az: ${wrapAzimuthDeg(state.azimuth).toFixed(1)}° El: ${state.elevation.toFixed(1)}°`;
     }
 
     // Lock status

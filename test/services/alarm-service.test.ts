@@ -56,6 +56,7 @@ vi.mock('@app/simulation/sim-time', async (importOriginal) => {
 vi.mock('@app/simulation/simulation-manager', () => ({
   SimulationManager: {
     getInstance: () => mockSimulationGetInstance(),
+    hasInstance: () => false,
   },
 }));
 

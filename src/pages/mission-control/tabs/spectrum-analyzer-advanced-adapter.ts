@@ -403,12 +403,14 @@ export class SpectrumAnalyzerAdvancedAdapter {
     }
     this.redrawIfPaused_();
     this.syncLiveReadouts_();
+    // The readout and the Ops Log line quote one value: the marker as the readout reads it, not a second sample (nats-eu-r1 s01-F4)
+    const shown = peak && state.peakMarkerBin !== undefined ? { frequencyHz: peak.frequencyHz, levelDbm: this.activeMarker_()?.levelDbm ?? peak.levelDbm } : peak;
     const peakReadout = this.domCache_.get('sa-peak-readout');
     if (peakReadout) {
-      peakReadout.textContent = SpectrumAnalyzerAdvancedAdapter.formatPeakReadout(peak);
+      peakReadout.textContent = SpectrumAnalyzerAdvancedAdapter.formatPeakReadout(shown);
     }
     this.emitStateChange_();
-    this.logPeakSearch_(peak);
+    this.logPeakSearch_(shown);
   }
 
   /** A paused screen repaints its frozen trace with the markers (phase 33 D10, r8-s01-F1) */

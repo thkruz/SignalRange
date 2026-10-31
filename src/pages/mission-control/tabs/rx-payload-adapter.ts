@@ -72,6 +72,7 @@ export class RxPayloadAdapter {
 
   /** Shown for a figure that has no measurement (no frame sync) */
   private static readonly NO_READING = '--';
+  private static readonly NO_CARRIER_IDLE_ = 'No carrier';
 
   private readonly containerEl_: HTMLElement;
   private readonly receiver_: Receiver | null;
@@ -79,6 +80,10 @@ export class RxPayloadAdapter {
   private readonly fecSimulator_: FECSimulator;
   private lastSyncTime_: number = 0;
   private hasFecSample_: boolean = false;
+  /** The active modem is powered with no carrier in its band: the decoder has nothing to decode (nats-eu-r1 s01-F7) */
+  private hasNoCarrier_: boolean = false;
+  /** A fault injection is overriding the decoder figures */
+  private hasFaultOverrides_: boolean = false;
   /** Run time of the last FEC sample, so the modem card can read it live */
   private lastFecRunMs_: number = Number.NaN;
   private readonly domCache_: Map<string, HTMLElement> = new Map();
@@ -211,6 +216,7 @@ export class RxPayloadAdapter {
     // Get signal info from receiver
     const signalInfo = this.receiver_.getSignalsInBandwidth();
     if (!signalInfo) return;
+    this.hasNoCarrier_ = !signalInfo.hasCarrier;
 
     // Build FEC simulator input
     const input: FECSimulatorInput = fecInputFromSignal(signalInfo, { modulation: modem.modulation ?? 'QPSK', fec: modem.fec ?? '1/2' });
@@ -257,7 +263,8 @@ export class RxPayloadAdapter {
    */
   private applyFaultOverrides_(): void {
     const overrides = FaultInjector.getInstance().getRxPayloadOverrides(this.groundStationId_);
-    if (Object.keys(overrides).length > 0) {
+    this.hasFaultOverrides_ = Object.keys(overrides).length > 0;
+    if (this.hasFaultOverrides_) {
       this.state_ = { ...this.state_, ...overrides };
     }
   }
@@ -422,7 +429,13 @@ export class RxPayloadAdapter {
 
     // Update alarm badge
     const alarms = this.getAlarms_();
-    this.alarmBadge_.update(alarms);
+    // Idle grey "No carrier" like the Dashboard Receivers dot, not red decoder reasons for a station that is receiving nothing
+    this.alarmBadge_.update(alarms, true, this.isDecoderIdle_() ? RxPayloadAdapter.NO_CARRIER_IDLE_ : undefined);
+  }
+
+  /** No carrier and no injected fault: the decoder figures are not a fault */
+  private isDecoderIdle_(): boolean {
+    return this.hasNoCarrier_ && !this.hasFaultOverrides_;
   }
 
   private updateTextContent_(key: string, value: string): void {
@@ -515,6 +528,11 @@ export class RxPayloadAdapter {
     const alarms: AlarmStatus[] = [];
     const state = this.state_;
 
+    // Idle decoder: only the decryption chain can still raise alarms
+    if (this.isDecoderIdle_()) {
+      return this.getDecryptionAlarms_(alarms, state);
+    }
+
     // Frame sync lost
     if (!state.frameSyncLocked) {
       alarms.push({ severity: 'error', message: 'Frame sync lost' });
@@ -558,6 +576,10 @@ export class RxPayloadAdapter {
       alarms.push({ severity: 'error', message: 'No channel lock' });
     }
 
+    return this.getDecryptionAlarms_(alarms, state);
+  }
+
+  private getDecryptionAlarms_(alarms: AlarmStatus[], state: RxPayloadState): AlarmStatus[] {
     // RX Decryption alarms
     if (state.decryptionMode === 'DISABLED') {
       alarms.push({ severity: 'error', message: 'RX decryption disabled' });

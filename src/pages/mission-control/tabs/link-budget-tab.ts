@@ -2,6 +2,7 @@ import { GroundStation } from '@app/assets/ground-station/ground-station';
 import { BaseElement } from '@app/components/base-element';
 import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
+import { Receiver } from '@app/equipment/receiver/receiver';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { type LinkBudgetInputs, LinkBudgetManager, type UplinkBudgetInputs } from '@app/link-budget/link-budget-manager';
@@ -321,7 +322,14 @@ export class LinkBudgetTab extends BaseElement {
       return null;
     }
 
-    return receiver.getSnrForModem(modem);
+    // No reading without a carrier the modem could demodulate: a format mismatch or a C/N under the carrier-detect floor
+    // is another signal's noise, not a measurement of this link (nats-eu-r1 s13-F4)
+    const cn = receiver.getSnrForModem(modem);
+    if (cn === null || !(cn >= Receiver.CARRIER_DETECT_CN_DB) || receiver.getSignalsInBandwidth?.(modem)?.formatMismatch) {
+      return null;
+    }
+
+    return cn;
   }
 
   /**

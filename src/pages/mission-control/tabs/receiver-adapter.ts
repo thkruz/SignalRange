@@ -3,6 +3,7 @@ import { qs } from '@app/engine/utils/query-selector';
 import { AlarmStatus } from '@app/equipment/base-equipment';
 import { ValidationError, validateModemBandwidth, validateModemFrequency } from '@app/equipment/modem/modem-constraints';
 import { ADCStatus } from '@app/equipment/receiver/adc-degradation';
+import { LOCK_HYSTERESIS_DB } from '@app/equipment/receiver/modcod';
 import { IQSignalInfo, Receiver, ReceiverModemState } from '@app/equipment/receiver/receiver';
 import {
   classifyRxSignal,
@@ -705,7 +706,8 @@ export class ReceiverAdapter {
     const cnRawDisplay = this.domCache_.get('cn-raw-display');
     if (cnRawDisplay) {
       const cn = signalInfo.cnRatio_dB;
-      cnRawDisplay.textContent = hasCarrier && cn > -50 ? `${cn.toFixed(1)} dB` : '-- dB';
+      // A format mismatch leaves the raw figure measuring the wrong carrier next to a good Es/N0 (nats-eu-r1 s14-F4)
+      cnRawDisplay.textContent = hasCarrier && !signalInfo.formatMismatch && cn > -50 ? `${cn.toFixed(1)} dB` : '-- dB';
     }
 
     // Effective C/N display - only show when we have a carrier
@@ -722,7 +724,9 @@ export class ReceiverAdapter {
     const requiredEl = this.domCache_.get('required-esn0-display');
     if (requiredEl) {
       const need = signalInfo.requiredEsN0_dB;
-      requiredEl.textContent = need !== undefined && Number.isFinite(need) ? `${need.toFixed(1)} dB (${signalInfo.modcod?.name ?? '--'})` : '-- dB';
+      // Both numbers the status texts quote: the MODCOD line and the acquisition line (nats-eu-r1 s02-F6, s17-F6)
+      requiredEl.textContent =
+        need !== undefined && Number.isFinite(need) ? `${need.toFixed(1)} dB (${signalInfo.modcod?.name ?? '--'}), locks at ${(need + LOCK_HYSTERESIS_DB).toFixed(1)} dB` : '-- dB';
     }
 
     // Power level display - only show when we have a carrier

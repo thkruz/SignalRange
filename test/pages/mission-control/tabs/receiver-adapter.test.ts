@@ -748,7 +748,7 @@ describe('ReceiverAdapter', () => {
 
       expect(containerEl.querySelector('#esn0-display')?.textContent).toBe('15.0 dB');
       expect(containerEl.querySelector('#cn0-display')?.textContent).toBe('89.8 dB-Hz');
-      expect(containerEl.querySelector('#required-esn0-display')?.textContent).toBe('5.0 dB (QPSK 3/4)');
+      expect(containerEl.querySelector('#required-esn0-display')?.textContent).toBe('5.0 dB (QPSK 3/4), locks at 5.5 dB');
       expect((containerEl.querySelector('#status-bar') as HTMLElement).textContent).toBe('Signal locked - Good margin (Es/N0 15.0 dB, need 5.0 dB)');
     });
 

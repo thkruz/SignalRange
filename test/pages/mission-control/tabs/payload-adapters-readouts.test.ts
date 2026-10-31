@@ -76,6 +76,26 @@ describe('payload readouts (phase 29 D4)', () => {
     adapter.dispose();
   });
 
+  it('RX: no carrier -> the LED is idle grey "No carrier", not red decoder reasons (nats-eu-r1 s01-F7)', () => {
+    const root = container(RX_IDS);
+    const adapter = new RxPayloadAdapter(root, receiverWith({ hasCarrier: false, hasLock: false, cnRatio_dB: Number.NEGATIVE_INFINITY }));
+    const led = root.querySelector<HTMLElement>('.card-alarm-led');
+
+    expect(led?.className).not.toContain('error');
+    expect(led?.title).toBe('No carrier');
+    adapter.dispose();
+  });
+
+  it('RX: a carrier without modem lock keeps the red decoder reasons', () => {
+    const root = container(RX_IDS);
+    const adapter = new RxPayloadAdapter(root, receiverWith({ hasCarrier: true, hasLock: false, cnRatio_dB: 14, effectiveEsN0_dB: 14.8, symbolRate_Hz: SYMBOL_RATE_HZ }));
+    const led = root.querySelector<HTMLElement>('.card-alarm-led');
+
+    expect(led?.className).toContain('error');
+    expect(led?.title).toContain('Frame sync lost');
+    adapter.dispose();
+  });
+
   it('RX: a carrier without modem lock is still no sync (a dropout)', () => {
     const root = container(RX_IDS);
     const adapter = new RxPayloadAdapter(root, receiverWith({ hasCarrier: true, hasLock: false, cnRatio_dB: 14, effectiveEsN0_dB: 14.8, symbolRate_Hz: SYMBOL_RATE_HZ }));

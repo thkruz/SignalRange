@@ -127,6 +127,35 @@ export class AlarmService {
     this.pollAndAggregate_();
   }
 
+  /** The antenna's no-signal warning, which waits one poll to be believed (see `settleNoSignals_`) */
+  private static readonly NO_SIGNALS_MESSAGE_ = 'NO SIGNALS RECEIVED';
+
+  /** Keys of NO SIGNALS warnings seen once and not yet raised */
+  private pendingNoSignals_ = new Set<string>();
+
+  /**
+   * A NO SIGNALS warning is raised on its second consecutive sighting. The
+   * antenna locks the moment the pass starts and its received-signal list
+   * fills on the same tick or the next, so a first sighting at carrier arrival
+   * raised and cleared within a second (nats-eu-r1 s22-F5). A warning that is
+   * already raised stays; one that goes clears at once.
+   */
+  private settleNoSignals_(alarms: AlarmWithDetail[]): AlarmWithDetail[] {
+    const pending = new Set<string>();
+    const settled = alarms.filter((alarm) => {
+      if (alarm.message !== AlarmService.NO_SIGNALS_MESSAGE_) return true;
+      const key = AlarmService.raiseKey_(alarm);
+      if (this.previousAlarms_.has(key) || this.pendingNoSignals_.has(key)) return true;
+      pending.add(key);
+
+      return false;
+    });
+    // Pending keys carry over only while the condition keeps being seen
+    this.pendingNoSignals_ = pending;
+
+    return settled;
+  }
+
   private pollAndAggregate_(): void {
     const alarms: AlarmWithDetail[] = [];
     const sim = SimulationManager.getInstance();
@@ -134,7 +163,7 @@ export class AlarmService {
     const byStation = new Map<string, AlarmWithDetail[]>();
 
     for (const gs of sim.groundStations) {
-      const stationAlarms = AlarmService.collectGroundStationAlarms_(gs);
+      const stationAlarms = this.settleNoSignals_(AlarmService.collectGroundStationAlarms_(gs));
       byStation.set(gs.state.id, stationAlarms);
       for (const alarm of stationAlarms) {
         alarms.push(alarm);

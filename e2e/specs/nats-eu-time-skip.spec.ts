@@ -186,9 +186,12 @@ test.describe('nats-eu time skip', () => {
     expect(Math.abs(scenarioClockDeltaMs - missionClockDeltaMs)).toBeLessThan(15_000);
   });
 
-  test('goes back to disabled once the skip has been taken', async () => {
-    // The clock now sits inside the lead-in to the pass it skipped to, so
-    // there is nothing left to skip.
-    await expect(page.locator(SKIP_BUTTON)).toBeDisabled({ timeout: 15000 });
+  test('has no ordinary skip left once the skip has been taken, only the missed-pass recovery', async () => {
+    // The clock now sits inside the lead-in to the pass it skipped to, so the
+    // ordinary "next contact" skip is gone. The active acquisition objective is
+    // pass-bound to SAR-1, which set at GW-01 while the clock was advanced, so the
+    // bar offers the missed-pass recovery (a055185d) to SAR-1's next pass, not a skip
+    // to the pass the operator is about to work.
+    await expect(page.locator(SKIP_BUTTON)).toHaveAttribute('title', /Pass missed: skip to next MERIDIAN-SAR-1 pass/u, { timeout: 15000 });
   });
 });

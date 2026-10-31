@@ -201,7 +201,9 @@ test.describe('nats-eu Scenario 8 Full Completion', () => {
   });
 
   test('[secure-the-chain] brings the chain down in order', async () => {
-    // No jump: the countdown is running, and a jump now costs what waiting would (phase 19.0a)
+    // The two minutes start at LOS (on-pass-phase), so fly the pass out first; the countdown is not running yet
+    await advanceMissionClockToUtc(page, '2027-03-16T00:41:00Z');
+    await page.waitForTimeout(2500);
     await disableHpa(page, missionControl);
     await setSwitch(page, '#buc-mute', true);
     await setSwitch(page, '#tx-transmit-switch', false);

@@ -329,7 +329,7 @@ export const natsEuScenario8Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'The afternoon card used 171.4 dB of path loss at 761 km; tonight is 169.1 dB at 581 km. Where do the 2.3 dB come from?',
             options: [
-              '20 log(761 / 581): a 40 degree pass puts the bird a third closer, and path loss goes with the square of range',
+              '20 log(761 / 581): a 40 degree pass puts the bird about a quarter closer, and path loss goes with the square of range',
               'A cooler night sky: the noise temperature drops after dark, and the receiver gains 2.3 dB of G/T from a colder LNB',
               'A hotter transmitter: the bird runs warmer on the night side, and the EIRP rises with the amplifier temperature',
               'Less atmosphere at night: gaseous absorption at Ku falls after dark, and 2.3 dB is what the daytime path costs',
@@ -460,7 +460,7 @@ export const natsEuScenario8Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'RX Modem Locked on Downlink',
-          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-1-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: false,
         },
         {
@@ -495,12 +495,19 @@ export const natsEuScenario8Data: ScenarioData = {
       id: 'secure-the-chain',
       nice: ['S0421', 'K0645'],
       title: 'Secure the Chain',
-      description: 'Chain down now, in the mirror order: HPA off, BUC muted, carrier off. No need to wait for LOS (00:38:49).',
+      description:
+        'The ACK is in. When the bird sets and the pass is over, take the chain down in the mirror order: HPA off, BUC muted, carrier off. The two minutes start at LOS, not before.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['command-the-bird'],
       timeLimitSeconds: 2 * 60,
-      timerStartTrigger: 'on-activate',
+      timerStartTrigger: 'on-pass-phase',
       conditions: [
+        {
+          type: 'satellite-pass-phase',
+          description: 'SAR-1 Pass Over (LOS)',
+          params: { noradId: 61701, phase: 'set' },
+          mustMaintain: false,
+        },
         {
           type: 'hpa-disabled',
           description: 'HPA Output Disabled',
@@ -633,14 +640,14 @@ export const natsEuScenario8Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'SH-02 GPSDO: locked, HOLDOVER active, GNSS input switch up, zero satellites. What is happening, and what do you do about the 02:54 pass?',
             options: [
-              'A GNSS outage - the switch is up and nothing is received; the oscillator holds for tens of minutes, so fly the pass on holdover',
+              'A GNSS outage - the switch is up and nothing is received; the oscillator holds for the minutes a pass takes, so fly the pass on holdover',
               'A switch left down - somebody isolated the GNSS input; cycle the switch and wait for lock before AOS, then fly the pass',
               'A lost reference - the oscillator has nothing to discipline it; the 02:54 pass cannot be flown from Shetland tonight',
               'A failed oscillator - holdover with zero satellites means it has stopped; power-cycle the GPSDO and re-lock before AOS',
             ],
             correctIndex: 0,
             explanation:
-              'Holdover is what the disciplined oscillator is for: GNSS disciplines it, and when GNSS goes away it coasts on the last correction, within microseconds for tens of minutes. Switch up with zero satellites is an outage, not an operator error; cycling the switch cannot conjure a signal. Leave the switch alone and confirm re-lock when the signal returns. A few minutes of holdover is a few microseconds and a few hertz at Ku.',
+              'Holdover is what the disciplined oscillator is for: GNSS disciplines it, and when GNSS goes away it coasts on the last correction, within microseconds for the minutes a pass takes. Switch up with zero satellites is an outage, not an operator error; cycling the switch cannot conjure a signal. Leave the switch alone and confirm re-lock when the signal returns. A few minutes of holdover is a few microseconds and a few hertz at Ku.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -696,13 +703,13 @@ export const natsEuScenario8Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'SH-02 RX Modem Locked on SAR-2',
-          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-2-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
           type: 'receiver-snr-threshold',
           description: 'SH-02 C/N Above 5 dB',
-          params: { modemNumber: 1, minCNRatio: 5, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-2-VIDEO', minCNRatio: 5, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
@@ -710,10 +717,10 @@ export const natsEuScenario8Data: ScenarioData = {
           description: 'Geometry Read',
           params: {
             character: Character.SYSTEM,
-            question: 'Contact 1 peaked at 13.4 dB at 40 degrees and 581 km. This one peaks near 6.6 dB at 13 degrees and 1233 km. Is the Shetland station underperforming?',
+            question: 'Contact 1 peaked near 14 dB at 40 degrees and 581 km. This one peaks near 7 dB at 13 degrees and 1233 km. Is the Shetland station underperforming?',
             options: [
               'No: 20 log(1233 / 581) is 6.5 dB of extra path loss, and 13 degrees of elevation adds atmosphere on top of that',
-              'Yes: the same hardware at both sites should give the same C/N, and 6.6 dB against 13.4 dB is a receive chain fault',
+              'Yes: the same hardware at both sites should give the same C/N, and 7 dB against 14 dB is a receive chain fault',
               'Yes: holdover has degraded the reference, and a drifting LO costs the demodulator several dB of implementation loss',
               'Unknown: the outage has to clear and the reference re-lock before a C/N reading from Shetland can be trusted',
             ],
@@ -732,7 +739,8 @@ export const natsEuScenario8Data: ScenarioData = {
       id: 'confirm-reference-recovered',
       nice: ['T0431', 'K0740', 'T1580'],
       title: 'Confirm the Shetland Reference Recovered',
-      description: 'The GNSS signal returns at about 02:59. Confirm on the SH-02 GPS Timing panel that the receiver has re-locked and left holdover, then log contact 2.',
+      description:
+        'The GNSS signal returns about a minute after this opens. Confirm on the SH-02 GPS Timing panel that the receiver has re-locked and left holdover, then log contact 2.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['telemetry-contact'],
       timeLimitSeconds: 4 * 60,
@@ -757,18 +765,18 @@ export const natsEuScenario8Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What does the handover need about the Shetland reference?',
             options: [
-              'GNSS outage 02:44 to 02:59, reference held on the oscillator through the contact, re-locked on return, no action at the switch',
-              'GPSDO fault 02:44 to 02:59, reference lost through the contact, replacement unit requested, switch cycled to recover',
+              'GNSS outage 02:44 to {{at:cond:confirm-reference-recovered.0|02:59}}, reference held on the oscillator through the contact, re-locked on return, no action at the switch',
+              'GPSDO fault 02:44 to {{at:cond:confirm-reference-recovered.0|02:59}}, reference lost through the contact, replacement unit requested, switch cycled to recover',
               'Nothing beyond the pass result, reference recovered on its own, no fault to record, no action for the day shift',
-              'GNSS outage 02:44 to 02:59, contact flown without a reference, frames unusable, switch cycled at 02:59 to force re-lock',
+              'GNSS outage 02:44 to {{at:cond:confirm-reference-recovered.0|02:59}}, contact flown without a reference, frames unusable, switch cycled at {{at:cond:confirm-reference-recovered.0|02:59}} to force re-lock',
             ],
             correctIndex: 0,
             explanation:
-              'The day shift needs to know the outage was real and the site recovered itself. A fault that cleared is still a fault. The day shift decides whether a fifteen-minute GNSS outage in a Shetland gale is weather or a failing antenna; they cannot decide it without the record.',
+              'The day shift needs to know the outage was real and the site recovered itself. A fault that cleared is still a fault. The day shift decides whether a GNSS outage in a Shetland gale is weather or a failing antenna; they cannot decide it without the record.',
             pointPenalty: 5,
             documentSection: 'Contacts',
             documentLine:
-              '02:54Z MERIDIAN-SAR-2 SH-02 (remote): 13 deg telemetry contact, locked, C/N >= 5 dB, peak ~6.6 dB. SH-02 GNSS outage 02:44-02:59Z, reference in holdover through the contact (switch up, zero satellites), re-locked on return. No action at the switch.',
+              '02:54Z MERIDIAN-SAR-2 SH-02 (remote): 13 deg telemetry contact, locked, C/N >= 5 dB, peak ~7 dB. SH-02 GNSS outage 02:44-{{at:cond:confirm-reference-recovered.0|02:59}}Z, reference in holdover through the contact (switch up, zero satellites), re-locked on return. No action at the switch.',
           },
           mustMaintain: false,
         },
@@ -807,10 +815,10 @@ export const natsEuScenario8Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question:
-              'Traffic key Mismatch on the payload crypto, command key still Valid, nobody has touched the station since 00:40. What happened, and what does it do to the 04:27 pass?',
+              'Traffic key Mismatch on the payload crypto, command key still Valid, nobody has touched the station since {{at:obj:secure-the-chain|00:40}}. What happened, and what does it do to the 04:27 pass?',
             options: [
               'Rotterdam rolled the fleet traffic key and the station did not follow; the imagery will not decrypt until the payload crypto is re-keyed',
-              'Your rotation at 00:20 corrupted the traffic key; the imagery will not decrypt until the command key is rolled back and re-issued',
+              'Your rotation at {{at:obj:night-key-rotation|00:20}} corrupted the traffic key; the imagery will not decrypt until the command key is rolled back and re-issued',
               'The spacecraft zeroized its traffic key on a tamper event; nothing decrypts until Rotterdam uploads a new key over the command link',
               'The holdover reference at Shetland desynchronised the crypto; the imagery will not decrypt until both sites are back on GNSS',
             ],
@@ -902,15 +910,21 @@ export const natsEuScenario8Data: ScenarioData = {
       prerequisiteObjectiveIds: ['acquire-sar2-galway'],
       conditions: [
         {
+          type: 'satellite-pass-phase',
+          description: 'SAR-2 Past Culmination',
+          params: { noradId: 61702, phase: 'past-culmination' },
+          mustMaintain: false,
+        },
+        {
           type: 'receiver-signal-locked',
           description: 'GW-01 RX Modem Locked on SAR-2',
-          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-2-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
           type: 'receiver-snr-threshold',
           description: 'GW-01 C/N Above 8 dB',
-          params: { modemNumber: 1, minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-2-VIDEO', minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
@@ -924,7 +938,7 @@ export const natsEuScenario8Data: ScenarioData = {
           description: 'Steep Pass Read',
           params: {
             character: Character.SYSTEM,
-            question: 'C/N peaks near 16.5 dB at 73 degrees, the best number of the night, and the pedestal held it through the top. Why did this one not keyhole?',
+            question: 'C/N peaks near 17 dB at 73 degrees, the best number of the night, and the pedestal held it through the top. Why did this one not keyhole?',
             options: [
               'The azimuth rate at the top of a 73 degree pass is a few degrees a second, inside the 10 deg/s the pedestal can do',
               'Program-track disables the azimuth axis above 60 degrees, so the pedestal rides through the top on elevation alone',
@@ -973,7 +987,7 @@ export const natsEuScenario8Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Handover',
             documentLine:
-              '04:27Z MERIDIAN-SAR-2 GW-01: fleet traffic key rolled 04:15Z, payload crypto re-keyed before AOS (TX/RX Valid), 73 deg pass decoded, peak C/N ~16.5 dB. Dropped: N-SAR2-SH-2 (P3, one operator). Both sites cold, references locked, plan DECONFLICTED. Shift handed over.',
+              '04:27Z MERIDIAN-SAR-2 GW-01: fleet traffic key rolled 04:15Z, payload crypto re-keyed before AOS (TX/RX Valid), 73 deg pass decoded, peak C/N ~17 dB. Dropped: N-SAR2-SH-2 (P3, one operator). Both sites cold, references locked, plan DECONFLICTED. Shift handed over.',
           },
           mustMaintain: false,
         },
@@ -1000,7 +1014,7 @@ export const natsEuScenario8Data: ScenarioData = {
       'build-the-night-plan': {
         text: `
         <p>
-          <em>[Text message from Fiona MacLeod at 00:17]</em>
+          <em>[Text message from Fiona MacLeod]</em>
         </p>
         <p>
           "On console till one. I'll take whatever the plan gives me before then and after that SH-02 is yours, remote. The GNSS antenna up here has been flaky in the wind all week; if it drops out you know what holdover looks like. Don't ring unless the building's on fire."
@@ -1023,7 +1037,7 @@ export const natsEuScenario8Data: ScenarioData = {
       'log-contact-1': {
         text: `
         <p>
-          <em>[Text message from Dana Torres at 00:41]</em>
+          <em>[Text message from Dana Torres]</em>
         </p>
         <p>
           "Charlie says tonight's the one. Same as Vermont: nobody's coming, and that's the point. Text me when it's done."
@@ -1036,7 +1050,7 @@ export const natsEuScenario8Data: ScenarioData = {
       'shetland-remote-sweep': {
         text: `
         <p>
-          <em>[Text message from Fiona MacLeod at 00:58]</em>
+          <em>[Text message from Fiona MacLeod]</em>
         </p>
         <p>
           "Off. SAR-1 was seventeen degrees and decoded, for the record. Modem's still on 1414. Station's yours. Night."
@@ -1062,7 +1076,7 @@ export const natsEuScenario8Data: ScenarioData = {
       'decode-the-steep-pass': {
         text: `
         <p>
-          <em>[Text message from Fiona MacLeod at 04:33]</em>
+          <em>[Text message from Fiona MacLeod]</em>
         </p>
         <p>
           "Couldn't sleep, watched yours from the flat. Seventy-three degrees and it never wobbled. Mine would've gone over the top and lost it. Right call dropping it."

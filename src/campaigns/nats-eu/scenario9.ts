@@ -572,10 +572,10 @@ export const natsEuScenario9Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question:
-              "Same LNB, same 60 K. Fiona's SAR-1 pass peaks at 73 degrees and 409 km; Galway's peaks at 30 degrees and 716 km with about 11 dB of C/N. What should Shetland see at the top, before the pedestal has its say?",
+              "Same LNB, same 60 K. Fiona's SAR-1 pass peaks at 73 degrees and 409 km; Galway's peaks at 30 degrees and 716 km with about 12 dB of C/N. What should Shetland see at the top, before the pedestal has its say?",
             options: [
-              'About 16 dB: 20 log(716 / 409) is 4.9 dB less path loss, and almost no atmosphere that steep',
-              'About 11 dB: same bird, same LNB and same 60 K, so the same number at whatever elevation',
+              'About 17 dB: 20 log(716 / 409) is 4.9 dB less path loss, and almost no atmosphere that steep',
+              'About 12 dB: same bird, same LNB and same 60 K, so the same number at whatever elevation',
               'About 8 dB: a steep pass is shorter, so the receiver has less time to integrate the carrier',
               'Nothing usable: 73 degrees is inside the keyhole, so the pedestal loses the bird at the top of the pass',
             ],
@@ -686,13 +686,13 @@ export const natsEuScenario9Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'GW-01 RX Modem Locked on SAR-1',
-          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-1-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
           type: 'receiver-snr-threshold',
           description: 'GW-01 C/N Above 8 dB',
-          params: { modemNumber: 1, minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-1-VIDEO', minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
@@ -700,16 +700,16 @@ export const natsEuScenario9Data: ScenarioData = {
           description: 'Delivery Standard Read',
           params: {
             character: Character.SYSTEM,
-            question: 'C/N peaks near 11 dB at 06:22:47, 30 degrees, 716 km. Erik will ask whether the frames are "good". What is the technically honest answer?',
+            question: 'C/N peaks near 12 dB at 06:22:47, 30 degrees, 716 km. Erik will ask whether the frames are "good". What is the technically honest answer?',
             options: [
-              'Decoded with about 7 dB over the QPSK 3/4 threshold: at this margin the frames are clean, with no partly decoded ones',
-              'Good but degraded: anything under 12 dB loses detail, so at 11 dB the frames are usable but not at full quality',
+              'Decoded with about 8 dB over the QPSK 3/4 threshold: at this margin the frames are clean, with no partly decoded ones',
+              'Good but degraded: anything under 14 dB loses detail, so at 12 dB the frames are usable but not at full quality',
               'Unknown until Rotterdam processes them: a C/N figure says the link held, not that the payload data inside is intact',
-              'Marginal: 11 dB is close to the 8 dB delivery standard, so the frames are in but a fade would have cost them',
+              'Marginal: 12 dB is close to the 8 dB delivery standard, so the frames are in but a fade would have cost them',
             ],
             correctIndex: 0,
             explanation:
-              'Digital links are a cliff, not a slope. Above threshold the frames are the frames; below it there are none. 8 dB is the delivery standard because it leaves nearly 4 dB over the 4.2 dB threshold for weather and pointing, not because 8 dB frames look different from 11 dB ones.',
+              'Digital links are a cliff, not a slope. Above threshold the frames are the frames; below it there are none. 8 dB is the delivery standard because it leaves nearly 4 dB over the 4.2 dB threshold for weather and pointing, not because 8 dB frames look different from 12 dB ones.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -810,7 +810,7 @@ export const natsEuScenario9Data: ScenarioData = {
       id: 'acquire-sar2-from-shetland',
       nice: ['S0421', 'K1032'],
       title: 'Acquire SAR-2 from Shetland',
-      description: 'Program-track MERIDIAN-SAR-2 on the SH-02 pedestal and confirm its imagery carrier on Shetland’s RX analysis once it clears the mask.',
+      description: 'Program-track MERIDIAN-SAR-2 on the SH-02 pedestal and confirm its 1397 MHz beacon on the analyzer you centred on it, once the bird clears the mask.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['take-the-shetland-console'],
       conditions: [
@@ -828,9 +828,9 @@ export const natsEuScenario9Data: ScenarioData = {
         },
         {
           type: 'signal-detected',
-          description: 'MERIDIAN-SAR-2 Downlink on the Shetland Analyzer',
+          description: 'MERIDIAN-SAR-2 Beacon on the Shetland Analyzer',
           params: {
-            signalId: 'MERIDIAN-SAR-2-VIDEO',
+            signalId: 'MERIDIAN-SAR-2-Beacon',
             minPower: -130 as dBm,
             requiresObservation: true,
             observationTab: 'rx-analysis',
@@ -846,20 +846,20 @@ export const natsEuScenario9Data: ScenarioData = {
       nice: ['T0153', 'K0740', 'K1032'],
       title: 'Decode SAR-2 from Shetland',
       description:
-        'Lock the 1370 MHz carrier on the SH-02 modem and hold C/N above 7 dB through culmination, 23 degrees at 06:34:38 and 879 km; the peak is about 9.7 dB, a decibel under what Galway gets from the same bird. Galway is flying it two minutes behind you.',
+        'Lock the 1370 MHz carrier on the SH-02 modem and hold C/N above 7 dB through culmination, 23 degrees at 06:34:38 and 879 km; the peak is about 10 dB, a couple of decibels under the SAR-1 pass at Galway because this one is lower and further away. Galway is flying the same bird two minutes behind you.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['acquire-sar2-from-shetland'],
       conditions: [
         {
           type: 'receiver-signal-locked',
           description: 'SH-02 RX Modem Locked on SAR-2',
-          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-2-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
           type: 'receiver-snr-threshold',
           description: 'SH-02 C/N Above 7 dB',
-          params: { modemNumber: 1, minCNRatio: 7, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-2-VIDEO', minCNRatio: 7, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
@@ -913,7 +913,7 @@ export const natsEuScenario9Data: ScenarioData = {
         {
           type: 'receiver-snr-threshold',
           description: 'GW-01 C/N Above 6 dB',
-          params: { modemNumber: 1, minCNRatio: 6, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-2-VIDEO', minCNRatio: 6, requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: false,
         },
       ],
@@ -940,7 +940,7 @@ export const natsEuScenario9Data: ScenarioData = {
               'The collect decoded with margin; both SAR-2 windows were worked, one from each site; the second-orbit contacts are best-effort.',
               'The collect decoded; every contact on the board is committed from Galway alone; the second-orbit contacts are guaranteed.',
               'The collect was captured; the SAR-2 windows were dropped, both sites being busy; the second orbit will cover them.',
-              'The collect decoded at 11 dB C/N; the margin over the QPSK 3/4 threshold was about 7 dB; the SAR-2 windows decoded as well.',
+              'The collect decoded at 12 dB C/N; the margin over the QPSK 3/4 threshold was about 8 dB; the SAR-2 windows decoded as well.',
             ],
             correctIndex: 0,
             explanation:
@@ -948,7 +948,7 @@ export const natsEuScenario9Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Contacts',
             documentLine:
-              '06:18Z MERIDIAN-SAR-1 GW-01: decoded for NMW, peak C/N ~11 dB at 30 deg. 06:19Z MERIDIAN-SAR-1 SH-02 (F. MacLeod): 73 deg, worked. 06:30Z MERIDIAN-SAR-2 SH-02 (remote from GW-01): decoded, peak C/N ~9.7 dB at 23 deg. 06:32Z MERIDIAN-SAR-2 GW-01 (unattended, checked 06:38): tracking, locked. Second-orbit contacts best-effort. Customer status sent 06:42.',
+              '06:18Z MERIDIAN-SAR-1 GW-01: decoded for NMW, peak C/N about 12 dB at 30 deg. 06:19Z MERIDIAN-SAR-1 SH-02 (F. MacLeod): 73 deg, worked. 06:30Z MERIDIAN-SAR-2 SH-02 (remote from GW-01): decoded, peak C/N about 10 dB at 23 deg. 06:32Z MERIDIAN-SAR-2 GW-01 (unattended, checked {{at:obj:check-the-unattended-pass|06:38}}): tracking, locked. Second-orbit contacts best-effort. Customer status sent.',
           },
           mustMaintain: false,
         },
@@ -975,7 +975,7 @@ export const natsEuScenario9Data: ScenarioData = {
       'shetland-dashboard-sweep': {
         text: `
         <p>
-          <em>[Text message from Fiona MacLeod at 06:07]</em>
+          <em>[Text message from Fiona MacLeod]</em>
         </p>
         <p>
           "On console since half five and I've not touched the equipment, so what your console shows for my site is what I've got. I'll take the seventy-three at 06:19 myself - I want eyes on the pedestal through the top - and then I'm outside on the heater cable till seven. The half-past SAR-2 is yours from there. Modem's on 1414 for mine; don't move it till I'm off."
@@ -998,7 +998,7 @@ export const natsEuScenario9Data: ScenarioData = {
       'take-the-shetland-console': {
         text: `
         <p>
-          <em>[Text message from Fiona MacLeod at 06:29]</em>
+          <em>[Text message from Fiona MacLeod]</em>
         </p>
         <p>
           "Off. Seventy-three degrees and it never wobbled - sixteen and a bit at the top, for the record. Modem's still on 1414. Console's yours; SAR-2 is up in a minute from the north. Don't be gentle with it."
@@ -1011,7 +1011,7 @@ export const natsEuScenario9Data: ScenarioData = {
       'check-the-unattended-pass': {
         text: `
         <p>
-          <em>[Text message from Fiona MacLeod at 06:38]</em>
+          <em>[Text message from Fiona MacLeod]</em>
         </p>
         <p>
           "Mine decoded from three hundred miles away and yours flew itself. Watched Galway's dish move on the site camera from the car park. Two sites, one of you. That's the network."

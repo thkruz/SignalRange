@@ -56,6 +56,7 @@ export type ConditionType =
   | 'hpa-not-overdriven' // HPA not in overdrive (IMD check)
   | 'hpa-output-power-set' // HPA output power above threshold
   | 'receiver-signal-locked' // Receiver modem has demodulation lock
+  | 'satellite-pass-phase' // The satellite has passed culmination / set at the objective's station (latched; Phase 35 D9)
   | 'receiver-relocked' // Receiver modem lost lock during the watch and has locked again (Phase 29 D10)
   | 'receiver-snr-threshold' // Receiver modem C/N ratio meets threshold
   | 'rx-modem-frequency-set' // Receiver modem center frequency set
@@ -352,7 +353,7 @@ export interface ConditionParams {
   trackingMode?: 'stow' | 'maintenance' | 'manual' | 'step-track' | 'program-track';
   /** For antenna-position: target azimuth in degrees */
   azimuth?: number;
-  /** For antenna-position: target elevation in degrees */
+  /** For antenna-position: target elevation in degrees. For satellite-pass-phase 'setting-below': the elevation the satellite must have dropped below */
   elevation?: number;
   /** For antenna-position: position tolerance in degrees (default: 1.0) */
   tolerance?: number;
@@ -364,6 +365,8 @@ export interface ConditionParams {
   maxImdLevel?: number;
   /** For hpa-output-power-set: minimum output power in watts */
   minOutputPower?: number;
+  /** For satellite-pass-phase: which phase of the pass to wait for */
+  phase?: 'past-culmination' | 'setting-below' | 'set';
   /** For receiver-signal-locked/receiver-snr-threshold: which modem (1-4), defaults to active modem */
   modemNumber?: number;
   /** For receiver-afc-enabled: required AFC state (default true; false asserts manual tuning) */
@@ -421,7 +424,11 @@ export interface ConditionParams {
   documentLine?: string;
   /** For status-check: Working Document section the documentLine belongs to (default: "Notes") */
   documentSection?: string;
-  /** For signal-detected/signal-level-correct: signal identifier to match */
+  /**
+   * For signal-detected/signal-level-correct: signal identifier to match. For
+   * receiver-signal-locked/receiver-snr-threshold (Phase 35 D10): the signal the
+   * modem must be measuring (its targetSignalId); without it any lock counts.
+   */
   signalId?: string;
   /**
    * For signal-detected: count a signal wherever it is, not only inside the
@@ -682,8 +689,12 @@ export interface Objective {
   prerequisiteObjectiveIds?: string[];
   /** Optional time limit in seconds for this objective */
   timeLimitSeconds?: number;
-  /** When the timer starts: 'on-activate' (default) or 'on-scenario-load' */
-  timerStartTrigger?: 'on-activate' | 'on-scenario-load';
+  /**
+   * When the timer starts: 'on-activate' (default), 'on-scenario-load', or
+   * 'on-pass-phase' (Phase 35 D9: when the objective's satellite-pass-phase
+   * row latches, e.g. a 2:00 secure-after-LOS countdown)
+   */
+  timerStartTrigger?: 'on-activate' | 'on-scenario-load' | 'on-pass-phase';
   /**
    * Whether running out of time fails the scenario. Default false: expiry
    * stops the timer and deducts `timeoutPenaltyPoints`, and the objective can
@@ -848,7 +859,26 @@ export interface ConditionState {
    * since the watch started. Latches; the row then ticks on the next lock.
    */
   lockLostSeen?: boolean;
+  /**
+   * Phase 35 D3: seconds an observation-gated row has read true live while its
+   * tab (or station) is not the active one. At OFF_TAB_NUDGE_SECONDS the row
+   * says so and OBJECTIVE_OBSERVATION_PENDING fires once.
+   */
+  liveOffTabSeconds?: number;
+  /** Phase 35 D3: the off-tab nudge has fired for this row (reset when the row is observed) */
+  offTabNudged?: boolean;
+  /** Phase 35 D9, satellite-pass-phase: elevation at the previous evaluation */
+  passPrevElevation?: number;
+  /** Phase 35 D9: the satellite has been seen above the receivable elevation */
+  passSeenAbove?: boolean;
+  /** Phase 35 D9: the satellite has been seen past culmination above the mask */
+  passPastCulmination?: boolean;
+  /** Phase 35 D9: the requested phase has been reached (latched) */
+  passPhaseLatched?: boolean;
 }
+
+/** Phase 35 D3: live-true seconds off the row's tab before the checklist says where to read it */
+export const OFF_TAB_NUDGE_SECONDS = 5;
 
 /**
  * Phase 27 B5: how long a hidden tab-active row may be the only blocker before

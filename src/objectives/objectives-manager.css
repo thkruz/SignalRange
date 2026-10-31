@@ -126,6 +126,13 @@
   }
 
   /* Which tab an observation-gated check needs open */
+  .condition-observe-alert {
+    margin-left: 0.4rem;
+    color: #f59e0b;
+    font-size: 0.85em;
+    font-weight: 600;
+  }
+
   .condition-observe-hint {
     margin-left: 0.4rem;
     color: #9e9e9e;

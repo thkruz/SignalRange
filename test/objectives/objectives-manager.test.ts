@@ -2973,6 +2973,7 @@ describe('ObjectivesManager', () => {
 
     it('should evaluate hpa-not-overdriven condition', () => {
       mockHpaState.isPowered = true;
+      mockHpaState.isHpaEnabled = true; // Phase 35 s04-F5: a disabled HPA is not within limits
       mockHpaState.isOverdriven = false;
 
       const objectives = [

@@ -155,6 +155,11 @@ export class GnssThreatManager {
 
   /** Select the GPSDO reference/discipline mode (the defensive action). */
   setReferenceMode(mode: GpsdoReferenceMode): void {
+    // A new mode restarts the stillness count: the offset has not been "stable"
+    // since the player's change, whatever it did before (nats-eu r1 s20-F2)
+    if (this.state_.referenceMode !== mode) {
+      this.lastOffsetChangeElapsedS_ = this.lastElapsedS_;
+    }
     this.state_.referenceMode = mode;
   }
 

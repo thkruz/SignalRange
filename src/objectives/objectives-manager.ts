@@ -22,6 +22,7 @@ import { GnssThreatManager } from '@app/gnss-threat/gnss-threat-manager';
 import { InterferenceManager } from '@app/interference/interference-manager';
 import { LinkBudgetManager } from '@app/link-budget/link-budget-manager';
 import { DecisionManager } from '@app/modal/decision-manager';
+import { fillDialogTokens } from '@app/modal/dialog-tokens';
 import { HintManager } from '@app/modal/hint-manager';
 import { QuizManager } from '@app/modal/quiz-manager';
 import { OpsLogManager } from '@app/ops-log/ops-log-manager';
@@ -49,6 +50,7 @@ import {
   OBSERVATION_DWELL_GRACE_SECONDS,
   Objective,
   ObjectiveState,
+  OFF_TAB_NUDGE_SECONDS,
   TAB_HINT_DELAY_SECONDS,
   TimeSkipOffer,
 } from './objective-types';
@@ -133,7 +135,7 @@ export class ObjectivesManager {
 
       // Determine if timer should start now (on-scenario-load) or later (on-activate)
       const startsOnLoad = objective.timeLimitSeconds !== undefined && objective.timerStartTrigger === 'on-scenario-load';
-      const startsOnActivate = objective.timeLimitSeconds !== undefined && objective.timerStartTrigger !== 'on-scenario-load';
+      const startsOnActivate = objective.timeLimitSeconds !== undefined && objective.timerStartTrigger !== 'on-scenario-load' && objective.timerStartTrigger !== 'on-pass-phase';
 
       return {
         objective,
@@ -178,7 +180,7 @@ export class ObjectivesManager {
           observed: cs.observed ?? null,
           maintenanceComplete: cs.isMaintenanceComplete,
           evaluatesNow: this.evaluateCondition_(cs.condition, state),
-          observationActive: this.isObservationContextActive_(cs.condition),
+          observationActive: this.isObservationContextActive_(cs.condition, state.objective),
           requiresChange: this.requiresChange_.get(cs.condition) ?? false,
           changeArmed: cs.changeArmed ?? null,
         })),
@@ -524,6 +526,7 @@ export class ObjectivesManager {
       condState.maintainedDuration = 0;
       condState.isMaintenanceComplete = false;
       condState.observed = false; // re-doing the objective requires re-observing
+      ObjectivesManager.resetLiveReadState_(condState);
       condState.changeArmed = undefined; // and a fresh change
       condState.changeBaseline = undefined;
     }
@@ -1323,7 +1326,7 @@ export class ObjectivesManager {
       html += `<li class="objective-item ${stateClass} ${collapsedClass}">`;
       html += `<div class="objective-header" onclick="this.parentElement.classList.toggle('collapsed');">`;
       html += `<span class="accordion-icon"></span>`;
-      html += `<strong>${objective.title}</strong> - ${stateLabel}`;
+      html += `<strong>${fillDialogTokens(objective.title)}</strong> - ${stateLabel}`;
 
       // Optional objectives do not gate Mission Complete (see
       // areAllObjectivesCompleted); say so on the row, or the player cannot
@@ -1342,7 +1345,7 @@ export class ObjectivesManager {
 
       html += `</div>`;
       html += `<div class="objective-content">`;
-      html += `<p>${objective.description}</p>`;
+      html += `<p>${fillDialogTokens(objective.description)}</p>`;
       html += '<ul class="conditions-list">';
 
       const quizManager = QuizManager.getInstance();
@@ -1374,13 +1377,19 @@ export class ObjectivesManager {
         const isHintRequested = hasHint && hintManager.isHintRequested(objective.id, i);
 
         html += `<li class="condition-item ${conditionCompleted ? 'completed' : 'incomplete'}">`;
-        const rowLabel = isGate && condition.hidden && condition.params?.tab ? tabGateLabel(condition.params.tab) : conditionLabel(condition);
+        const rowLabel = isGate && condition.hidden && condition.params?.tab ? tabGateLabel(condition.params.tab) : fillDialogTokens(conditionLabel(condition));
         html += `<span class="condition-text">${rowLabel}</span>`;
 
         // An observation-gated check only progresses while its tab is open;
         // say which, or it looks stuck (nats-s18-F5)
         if (!conditionCompleted && condition.params?.requiresObservation && condition.params?.observationTab && !conditionState.observed) {
-          html += `<span class="condition-observe-hint">(check it on the ${ObjectivesManager.tabLabel_(condition.params.observationTab)} tab)</span>`;
+          const tabName = ObjectivesManager.tabLabel_(condition.params.observationTab);
+          if (conditionState.offTabNudged) {
+            // Phase 35 D3: it reads true right now and nobody is looking
+            html += `<span class="condition-observe-alert" role="alert">Reads true now. Open ${tabName} to log it.</span>`;
+          } else {
+            html += `<span class="condition-observe-hint">(check it on the ${tabName} tab)</span>`;
+          }
         }
 
         // Add quiz button for pending quizzes
@@ -1587,7 +1596,7 @@ export class ObjectivesManager {
 
     // Start timer for objectives with 'on-activate' trigger (default behavior)
     const objective = objectiveState.objective;
-    if (objective.timeLimitSeconds !== undefined && objective.timerStartTrigger !== 'on-scenario-load') {
+    if (objective.timeLimitSeconds !== undefined && objective.timerStartTrigger !== 'on-scenario-load' && objective.timerStartTrigger !== 'on-pass-phase') {
       objectiveState.timeRemainingSeconds = objective.timeLimitSeconds;
       objectiveState.isTimerRunning = true;
     }
@@ -1641,6 +1650,7 @@ export class ObjectivesManager {
       condState.maintainedDuration = 0;
       condState.isMaintenanceComplete = false;
       condState.observed = false; // re-observe after a prerequisite reset
+      ObjectivesManager.resetLiveReadState_(condState);
       condState.changeArmed = undefined;
       condState.changeBaseline = undefined;
       condState.tabHintSeconds = 0;
@@ -1704,12 +1714,18 @@ export class ObjectivesManager {
       const condParams = conditionState.condition.params;
       if (condParams?.requiresObservation && condParams?.observationTab) {
         if (conditionState.observed) {
-          isNowSatisfied = true; // already observed - latched
-        } else if (!this.isObservationContextActive_(conditionState.condition)) {
+          // Latched as read, but a row that must still hold when the objective
+          // completes ("hold C/N above 8 dB through culmination") keeps its live value
+          isNowSatisfied = holds ? isNowSatisfied : true;
+          conditionState.liveOffTabSeconds = 0;
+        } else if (!this.isObservationContextActive_(conditionState.condition, objectiveState.objective)) {
           conditionState.observedSeconds = 0; // off-tab: the read starts over
           conditionState.observedGapSeconds = 0;
+          this.trackOffTabRead_(objectiveState, condIndex, conditionState, isNowSatisfied, dtSeconds);
           isNowSatisfied = false; // value not yet observed on the right tab
         } else if (isNowSatisfied) {
+          conditionState.liveOffTabSeconds = 0;
+          conditionState.offTabNudged = false;
           const dwellSeconds = observationDwellSeconds(conditionState.condition, DEFAULT_OBSERVATION_DWELL_SECONDS);
           conditionState.observedSeconds = (conditionState.observedSeconds ?? 0) + dtSeconds;
           conditionState.observedGapSeconds = 0;
@@ -1806,6 +1822,16 @@ export class ObjectivesManager {
     this.trackTabHints_(objectiveState, dtSeconds);
   }
 
+  /** Clear the off-tab nudge and pass-phase latch so a re-done objective starts clean */
+  private static resetLiveReadState_(cs: ConditionState): void {
+    cs.liveOffTabSeconds = 0;
+    cs.offTabNudged = false;
+    cs.passPrevElevation = undefined;
+    cs.passSeenAbove = undefined;
+    cs.passPastCulmination = undefined;
+    cs.passPhaseLatched = undefined;
+  }
+
   /**
    * B1: gate a raw evaluation on a change since activation. The first
    * evaluation after activation takes the baseline: a row false then is free
@@ -1888,8 +1914,65 @@ export class ObjectivesManager {
       const modem = receiver.state.modems.find((m) => m.modemNumber === modemNum);
       if (!modem?.isPowered) return false;
 
-      return receiver.getSignalsInBandwidth(modem).hasLock;
+      const signals = receiver.getSignalsInBandwidth(modem);
+      // Phase 35 D10: a lock on some other carrier in the band is not this lock
+      if (params?.signalId !== undefined && signals.targetSignalId !== params.signalId) return false;
+
+      return signals.hasLock;
     });
+  }
+
+  /**
+   * Phase 35 D9: pass-phase rows judge true geometry at the objective's
+   * station and latch once reached while the objective is active.
+   * past-culmination: elevation is falling above the receivable elevation.
+   * setting-below: past culmination and elevation under params.elevation.
+   * set: below the receivable elevation after having been above it.
+   * 'update' is false for a read-only probe, which must not move the latch.
+   */
+  private evaluatePassPhase_(condition: Condition, objectiveState: ObjectiveState, gs: GroundStation, update: boolean): boolean {
+    const cs = objectiveState.conditionStates.find((c) => c.condition === condition);
+    if (!cs) return false;
+    if (cs.passPhaseLatched) return true;
+    const noradId = condition.params?.noradId;
+    const phase = condition.params?.phase;
+    if (noradId === undefined || !phase) return false;
+    const sat = SimulationManager.getInstance().getSatByNoradId(noradId);
+    if (!(sat instanceof OrbitalSatellite)) return false;
+
+    const el = sat.geometryFor(observerFromLocation(gs.state.location)).el as number;
+    const receivable = sat.minElevation as number;
+    const prev = cs.passPrevElevation;
+    let culminated = cs.passPastCulmination === true;
+    let seenAbove = cs.passSeenAbove === true;
+    if (el > receivable) seenAbove = true;
+    if (!culminated && prev !== undefined && el < prev - 1e-6 && el > receivable) culminated = true;
+
+    let reached = false;
+    if (phase === 'past-culmination') reached = culminated;
+    else if (phase === 'setting-below') reached = culminated && el < (condition.params?.elevation ?? receivable);
+    else reached = seenAbove && el <= receivable;
+
+    if (update) {
+      cs.passPrevElevation = el;
+      cs.passSeenAbove = seenAbove;
+      cs.passPastCulmination = culminated;
+      if (reached) {
+        cs.passPhaseLatched = true;
+        this.startPassPhaseTimer_(objectiveState);
+      }
+    }
+
+    return reached;
+  }
+
+  /** timerStartTrigger 'on-pass-phase': the countdown starts when the pass-phase row latches */
+  private startPassPhaseTimer_(objectiveState: ObjectiveState): void {
+    const objective = objectiveState.objective;
+    if (objective.timerStartTrigger !== 'on-pass-phase' || objective.timeLimitSeconds === undefined) return;
+    if (objectiveState.isTimerRunning || objectiveState.isCompleted || objectiveState.isFailed) return;
+    objectiveState.timeRemainingSeconds = objective.timeLimitSeconds;
+    objectiveState.isTimerRunning = true;
   }
 
   /**
@@ -2049,12 +2132,34 @@ export class ObjectivesManager {
    * required to "observe" a requiresObservation condition. Mirrors the
    * tab-active matching (exact id or prefix).
    */
-  private isObservationContextActive_(condition: Condition): boolean {
+  private isObservationContextActive_(condition: Condition, objective?: Pick<Objective, 'groundStation'>): boolean {
     const targetTab = condition.params?.observationTab;
     if (!targetTab) return false;
     const activeTab = TabbedCanvas.getActiveTab();
     if (!activeTab) return false;
+    // Phase 35 D11: the tab must be the objective's station's, not another station's
+    const selected = TabbedCanvas.getSelectedAssetId();
+    if (objective?.groundStation && selected !== null && selected !== objective.groundStation) return false;
     return activeTab === targetTab || activeTab.startsWith(`${targetTab}-`);
+  }
+
+  /**
+   * Phase 35 D3: count the seconds an observation row reads true while its tab
+   * is closed. At OFF_TAB_NUDGE_SECONDS the checklist row turns into an alert
+   * and OBJECTIVE_OBSERVATION_PENDING fires once, so TabbedCanvas can pulse the tab.
+   */
+  private trackOffTabRead_(objectiveState: ObjectiveState, condIndex: number, cs: ConditionState, liveTrue: boolean, dtSeconds: number): void {
+    if (!liveTrue) {
+      cs.liveOffTabSeconds = 0;
+      cs.offTabNudged = false;
+      return;
+    }
+    cs.liveOffTabSeconds = (cs.liveOffTabSeconds ?? 0) + dtSeconds;
+    const tab = cs.condition.params?.observationTab;
+    if (cs.liveOffTabSeconds >= OFF_TAB_NUDGE_SECONDS && !cs.offTabNudged && tab) {
+      cs.offTabNudged = true;
+      this.eventBus_.emit(Events.OBJECTIVE_OBSERVATION_PENDING, { objectiveId: objectiveState.objective.id, conditionIndex: condIndex, tab });
+    }
   }
 
   /**
@@ -2646,7 +2751,8 @@ export class ObjectivesManager {
       case 'hpa-not-overdriven': {
         return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
           const hpaState = rfFrontEnd.hpaModule.state;
-          return hpaState.isPowered && !hpaState.isOverdriven;
+          // Phase 35 s04-F5: a disabled HPA is not within limits, it is off
+          return hpaState.isPowered && hpaState.isHpaEnabled && !hpaState.isOverdriven;
         });
       }
 
@@ -2677,6 +2783,10 @@ export class ObjectivesManager {
         return false;
       }
 
+      case 'satellite-pass-phase': {
+        return this.evaluatePassPhase_(condition, objectiveState, gs, dtSeconds !== undefined);
+      }
+
       case 'receiver-signal-locked': {
         return this.isReceiverLocked_(gs, condition.params);
       }
@@ -2700,6 +2810,9 @@ export class ObjectivesManager {
           const modemNum = condition.params?.modemNumber ?? receiver.state.activeModem;
           const modem = receiver.state.modems.find((m) => m.modemNumber === modemNum);
           if (!modem?.isPowered) return false;
+
+          // Phase 35 D10: the C/N of some other carrier in the band is not this one's
+          if (condition.params?.signalId !== undefined && receiver.getSignalsInBandwidth(modem).targetSignalId !== condition.params.signalId) return false;
 
           const snr = receiver.getSnrForModem(modem);
           this.observe_(snr);

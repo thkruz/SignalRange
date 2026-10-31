@@ -13,7 +13,7 @@ import { BaseElement } from '@app/components/base-element';
 import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
 import { EventBus } from '@app/events/event-bus';
-import { Events } from '@app/events/events';
+import { Events, type ObjectiveObservationPendingData } from '@app/events/events';
 import { ScenarioManager } from '@app/scenario-manager';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import './tabbed-canvas.css';
@@ -62,6 +62,8 @@ export class TabbedCanvas extends BaseElement {
   private static readonly OVERVIEW_KEY = '__overview__';
 
   private activeTab_: string = 'mission-overview';
+  /** Observation tabs (id or prefix) whose button pulses until the tab is opened (Phase 35 D3) */
+  private readonly pulseTabs_ = new Set<string>();
   private selectedAssetId_: string | null = null;
   /**
    * Last tab the operator had open on each asset, keyed by asset id.
@@ -97,6 +99,11 @@ export class TabbedCanvas extends BaseElement {
    */
   private readonly boundAssetSelected_ = (data: { type: 'ground-station' | 'satellite'; id: string }): void => {
     this.handleAssetSelected_(data.type, data.id);
+  };
+
+  private readonly boundObservationPending_ = (data: ObjectiveObservationPendingData): void => {
+    this.pulseTabs_.add(data.tab);
+    this.applyTabPulse_();
   };
 
   private readonly boundSwitchTab_ = (data: { tabId: string }): void => {
@@ -135,8 +142,20 @@ export class TabbedCanvas extends BaseElement {
     return TabbedCanvas.instance_?.activeTab_ ?? null;
   }
 
+  /**
+   * The asset (ground station or satellite id) whose tabs are open, or null on
+   * the Mission Overview. ObjectivesManager reads it so an observation row for
+   * one station is not read while another is selected (Phase 35 D11).
+   */
+  static getSelectedAssetId(): string | null {
+    return TabbedCanvas.instance_?.selectedAssetId_ ?? null;
+  }
+
   protected addEventListeners_(): void {
     const eventBus = EventBus.getInstance();
+
+    // An observation row reads true but its tab is closed: pulse the tab button (Phase 35 D3)
+    eventBus.on(Events.OBJECTIVE_OBSERVATION_PENDING, this.boundObservationPending_);
 
     // Listen for asset selection changes
     eventBus.on(Events.ASSET_SELECTED, this.boundAssetSelected_);
@@ -432,6 +451,8 @@ export class TabbedCanvas extends BaseElement {
       )
       .join('');
 
+    this.applyTabPulse_();
+
     // Add click listeners to nav-links
     tabBar.querySelectorAll('.nav-link').forEach((tabElement: HTMLElement) => {
       tabElement.addEventListener('click', (e) => {
@@ -441,6 +462,27 @@ export class TabbedCanvas extends BaseElement {
           this.switchTab_(tabId);
         }
       });
+    });
+  }
+
+  /** Whether a tab id is the observation tab or one of its per-asset variants */
+  private static matchesTab_(tabId: string, observationTab: string): boolean {
+    return tabId === observationTab || tabId.startsWith(`${observationTab}-`);
+  }
+
+  /** Pulse the buttons of pending observation tabs; opening the tab ends its pulse */
+  private applyTabPulse_(): void {
+    const tabBar = this.dom_?.querySelector('#tab-bar');
+    if (!tabBar) return;
+    for (const pending of [...this.pulseTabs_]) {
+      if (TabbedCanvas.matchesTab_(this.activeTab_, pending)) {
+        this.pulseTabs_.delete(pending);
+      }
+    }
+    tabBar.querySelectorAll('.nav-link').forEach((navLink: HTMLElement) => {
+      const tabId = navLink.dataset.tabId ?? '';
+      const pulsing = [...this.pulseTabs_].some((pending) => TabbedCanvas.matchesTab_(tabId, pending));
+      navLink.classList.toggle('tab-pulse', pulsing);
     });
   }
 
@@ -463,6 +505,8 @@ export class TabbedCanvas extends BaseElement {
         navLink.classList.remove('active');
       }
     });
+
+    this.applyTabPulse_();
 
     // Render tab content
     this.renderTabContent_(tabId);
@@ -997,6 +1041,7 @@ export class TabbedCanvas extends BaseElement {
     const eventBus = EventBus.getInstance();
 
     eventBus.off(Events.ASSET_SELECTED, this.boundAssetSelected_);
+    eventBus.off(Events.OBJECTIVE_OBSERVATION_PENDING, this.boundObservationPending_);
     eventBus.off(Events.SWITCH_TAB, this.boundSwitchTab_);
     eventBus.off(Events.MISSION_OVERVIEW_SELECTED, this.boundMissionOverviewSelected_);
 

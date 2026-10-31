@@ -160,6 +160,13 @@ export interface ObjectiveConditionEvaluatedData {
   observed: unknown;
 }
 
+export interface ObjectiveObservationPendingData {
+  objectiveId: string;
+  conditionIndex: number;
+  /** The observation tab id the row is read on */
+  tab: string;
+}
+
 export interface ObjectivesAllCompletedData {
   completedObjectives: ObjectiveState[];
   totalTime: number;
@@ -519,6 +526,8 @@ export enum Events {
   OBJECTIVE_CONDITION_CHANGED = 'objective:condition:changed',
   /** Dev/authoring telemetry: one event per condition evaluation while enabled (see ObjectivesManager.enableConditionTelemetry). */
   OBJECTIVE_CONDITION_EVALUATED = 'objective:condition:evaluated',
+  /** Phase 35 D3: an observation row reads true but its tab is not open; TabbedCanvas pulses that tab's button */
+  OBJECTIVE_OBSERVATION_PENDING = 'objective:observation:pending',
   OBJECTIVES_ALL_COMPLETED = 'objectives:all:completed',
   OBJECTIVE_FAILED = 'objective:failed',
   SCENARIO_TIME_EXPIRED = 'scenario:time:expired',
@@ -653,6 +662,7 @@ export interface EventMap {
   [Events.OBJECTIVE_COMPLETED]: [ObjectiveCompletedData];
   [Events.OBJECTIVE_CONDITION_CHANGED]: [ObjectiveConditionChangedData];
   [Events.OBJECTIVE_CONDITION_EVALUATED]: [ObjectiveConditionEvaluatedData];
+  [Events.OBJECTIVE_OBSERVATION_PENDING]: [ObjectiveObservationPendingData];
   [Events.OBJECTIVES_ALL_COMPLETED]: [ObjectivesAllCompletedData];
   [Events.OBJECTIVE_FAILED]: [ObjectiveFailedData];
   [Events.SCENARIO_TIME_EXPIRED]: [ScenarioTimeExpiredData];

@@ -496,27 +496,21 @@ export const natsEuScenario14Data: ScenarioData = {
       nice: ['T0153', 'K0740', 'S0478'],
       title: 'Decode the Collect from Shetland',
       description:
-        'Lock the 1370 MHz carrier on the SH-02 modem and hold C/N above 8 dB through culmination (11:15:35, 34 degrees, 659 km). This is the collect Erik is waiting on.',
+        'Lock the 1370 MHz carrier on the SH-02 modem and log C/N above 8 dB on SH-02 RX analysis; it peaks near 12.5 dB at culmination (11:15:35, 34 degrees, 659 km). Once both rows are logged the decode is yours, so you can go to Galway for its fade. This is the collect Erik is waiting on.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['acquire-sar2-from-shetland'],
       conditions: [
         {
-          type: 'satellite-pass-phase',
-          description: 'SAR-2 Past Culmination at SH-02',
-          params: { noradId: 61702, phase: 'past-culmination' },
-          mustMaintain: false,
-        },
-        {
           type: 'receiver-signal-locked',
           description: 'SH-02 RX Modem Locked on SAR-2',
           params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
-          mustMaintain: true,
+          mustMaintain: false,
         },
         {
           type: 'receiver-snr-threshold',
           description: 'SH-02 C/N Above 8 dB',
           params: { modemNumber: 1, minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
-          mustMaintain: true,
+          mustMaintain: false,
         },
         {
           type: 'status-check',
@@ -583,7 +577,7 @@ export const natsEuScenario14Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question:
-              'Galway, 19 degrees, 30 mm/h: the same bird Shetland is decoding at 11 dB reads about -1 dB here at the peak of the fade, no lock, with the pedestal tracking cleanly. Where did the rest go?',
+              'Galway, 19 degrees, 30 mm/h: the same bird Shetland is decoding at about 12.5 dB reads about -1 dB here at the peak of the fade, no lock, with the pedestal tracking cleanly. Where did the rest go?',
             options: [
               'Rain: about 10 dB of attenuation along the slant path through the cell, plus a warmer sky raising the noise temperature',
               'Pointing: rain on the reflector defocuses the beam, and at 19 degrees the pedestal is chasing a low, fast target',

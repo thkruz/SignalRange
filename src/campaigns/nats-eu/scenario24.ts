@@ -274,12 +274,13 @@ export const natsEuScenario24Data: ScenarioData = {
         bandwidth: 2e6,
         power: 76, // jammer EIRP, dBm: drives the telecommand transponder ~3 dB past saturation from a 740 km slant (phase 19.3; was 5 dBm at the input)
         polarization: 'H',
-        // Phase 19.0a: keyed 10 s after 'call-the-denial' opens, not at a fixed 3300 s.
+        // Phase 19.0a: keyed when 'call-the-denial' opens, not at a fixed 3300 s.
         // A player whose first command was still unsent when a fixed jam came up
         // was refused on the fixed carrier before hopping was taught: a deadlock.
         // Before it, the sleet made "rain fade" the graded answer.
+        // Pre-audit 4: up from the moment the objective opens (was +10 s), so a decision answered at once is still graded against a jammed uplink
         startAfterObjectiveId: 'call-the-denial',
-        startTime: 10,
+        startTime: 0,
         duration: 400,
         periodSeconds: 400,
         onSeconds: 400,
@@ -632,6 +633,14 @@ export const natsEuScenario24Data: ScenarioData = {
           mustMaintain: true,
         },
         {
+          // Pre-audit 21: the carrier is up from 03:21:30 and has shown one full on/off cycle by 03:23, so the quiz never asks about a cadence the player has not seen
+          type: 'scenario-time-reached',
+          hidden: true,
+          description: 'Carrier Cycle Observed',
+          params: { scenarioTime: '03:23:00' },
+          mustMaintain: false,
+        },
+        {
           type: 'status-check',
           description: 'Carrier Read',
           params: {
@@ -645,7 +654,7 @@ export const natsEuScenario24Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              "A known event gets its known answer and no more of the commander's attention than that. The collect is delivered, the IR gets a line, and the console is free for the things that do not have an answer yet.",
+              "A known event gets its known answer and no more of the commander's attention than that. The collect is being delivered, the IR gets a line, and the console is free for the things that do not have an answer yet.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -678,7 +687,7 @@ export const natsEuScenario24Data: ScenarioData = {
       id: 'shetland-spot-the-walk',
       nice: ['S0648', 'T0431'],
       title: 'Shetland: Spot the Walk',
-      description: "Rotterdam sees Shetland's timestamps drifting. Select SH-02 and read its GNSS vs REF delta-T on GPS Timing. Galway is the cross-check tonight.",
+      description: "From 03:25 Rotterdam sees Shetland's timestamps drifting. Select SH-02 and read its GNSS vs REF delta-T on GPS Timing. Galway is the cross-check tonight.",
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['load-the-ephemeris'],
       conditions: [
@@ -792,7 +801,7 @@ export const natsEuScenario24Data: ScenarioData = {
       id: 'decode-the-collect',
       nice: ['T0153', 'K0740'],
       title: 'Decode the Collect',
-      description: 'SH-02 RX modem locked on SAR-2, C/N above 8 dB through the high segment, reference in holdover. The NMW collect, delivered.',
+      description: 'SH-02 RX modem locked on SAR-2, C/N above 8 dB through the high segment, reference in holdover. Hold the NMW collect to LOS.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['acquire-sar2-from-shetland'],
       conditions: [
@@ -822,7 +831,7 @@ export const natsEuScenario24Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which line goes in the incident log for the first half hour?',
             options: [
-              '03:01-03:16 rain band GW-01. 03:15 SAR-2 burn, post-burn set loaded 03:29. 03:20-03:29 SAR-1 collected GW-01 under the 1410 MHz carrier (notched, C/N > 7). 03:25 spoof on SH-02 reference, GW-01 clean; SH-02 holdover. 03:31 SAR-2 collected SH-02 on the oscillator. Two collects delivered',
+              '03:01-03:16 rain band GW-01. 03:15 SAR-2 burn, post-burn set loaded {{at:obj:load-the-ephemeris|03:25}}. 03:20-03:29 SAR-1 collected GW-01 under the 1410 MHz carrier (notched, C/N > 7). 03:25 spoof on SH-02 reference, GW-01 clean; SH-02 holdover. 03:31 SAR-2 collecting at SH-02 on the oscillator. SAR-1 delivered, SAR-2 in progress',
               'Half an hour of attacks on both sites; both collects at risk; incident escalated to Rotterdam',
               'Rain, a burn, a jammer and a spoof, all handled; nothing to report to the customer',
               'SAR-1 and SAR-2 collected as planned; weather and interference noted',
@@ -833,7 +842,7 @@ export const natsEuScenario24Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Incident Log',
             documentLine:
-              '03:01-03:16Z rain band GW-01 (30 mm/h). 03:15Z SAR-2 conjunction-avoidance burn; post-burn set loaded 03:29Z. 03:20-03:29Z SAR-1 NMW collect GW-01 under terrestrial carrier 11690 MHz (1410 IF), notch 1410/2/30, C/N > 7 dB - delivered. 03:25Z GNSS spoof on SH-02 reference (+2 us/s), GW-01 clean; SH-02 to holdover 03:30Z. 03:31-03:41Z SAR-2 NMW collect SH-02 on the oscillator - delivered.',
+              '03:01-03:16Z rain band GW-01 (30 mm/h). 03:15Z SAR-2 conjunction-avoidance burn; post-burn set loaded {{at:obj:load-the-ephemeris|03:25}}Z. 03:20-03:29Z SAR-1 NMW collect GW-01 under terrestrial carrier 11690 MHz (1410 IF), notch 1410/2/30, C/N > 7 dB - delivered. 03:25Z GNSS spoof on SH-02 reference (+2 us/s), GW-01 clean; SH-02 to holdover {{at:obj:shetland-holdover|03:27}}Z. 03:31Z SAR-2 NMW collect SH-02 on the oscillator, collecting to LOS 03:41Z.',
           },
           mustMaintain: false,
         },
@@ -878,7 +887,7 @@ export const natsEuScenario24Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Right thing, right time. On at 03:36 for sleet at 03:40 is the whole skill; on at 03:00 is harmless but tells the log nothing about whether you knew when the sleet was coming.',
+              'Right thing, right time. On at {{at:obj:protect-the-feed|03:36}} for sleet at 03:40 is the whole skill; on at 03:00 is harmless but tells the log nothing about whether you knew when the sleet was coming.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -1009,7 +1018,7 @@ export const natsEuScenario24Data: ScenarioData = {
       nice: ['S0648', 'K0926', 'K0751'],
       title: 'Call the Denial',
       description:
-        'From 03:55 PLD-SAFE comes back NAK: uplink denied. Read the console and the key, then call it. You have done this twice; do it in the sleet with two other things on the board.',
+        'Send PLD-SAFE. Shortly after the HK-DUMP ACK the uplink is denied and it comes back NAK. Read the console and the key, then call it. You have done this twice; do it in the sleet with two other things on the board.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['chain-up-and-command'],
       timeLimitSeconds: 2 * 60,
@@ -1034,8 +1043,7 @@ export const natsEuScenario24Data: ScenarioData = {
           description: 'Why the NAK',
           params: {
             character: Character.ANNEKE_VISSER,
-            prompt:
-              'PLD-SAFE did not reach SAR-3. Key Valid at my end, window open six more minutes, and I have Shetland on holdover and Galway in sleet on my screen. What is it?',
+            prompt: 'SAR-3 is not taking your uplink. Key Valid at my end, window open until 04:01, and I have Shetland on holdover and Galway in sleet on my screen. What is it?',
             evidence: ['console-seen', 'key-seen'],
             decisionOptions: [
               {
@@ -1053,13 +1061,13 @@ export const natsEuScenario24Data: ScenarioData = {
                 correctWhen: { fact: 'weather-attenuation-dominant', is: true },
                 consequence: { log: 'NAK attributed to weather on the uplink' },
                 feedback:
-                  'HK-DUMP ACKed in the same sleet two minutes ago on the same power. Ku uplink fade at 28 degrees in sleet is a decibel or two; the NAK reason on the console is not "weak", it is "jammed".',
+                  'HK-DUMP ACKed in the same sleet on the same power. Ku uplink fade at 28 degrees in sleet is a decibel or two; the NAK reason on the console is not "weak", it is "jammed".',
               },
               {
                 label: 'Key problem - the SAR-3 key has never been used under TRANSEC. Begin a rotation and resend',
                 correctWhen: { fact: 'crypto-intact', is: false },
                 consequence: { log: 'Command-key rotation begun on a Valid key during a denial' },
-                feedback: 'Both ends read Valid and a key rejection is its own reason on the console. Two of six minutes gone.',
+                feedback: 'Both ends read Valid and a key rejection is its own reason on the console. Minutes gone, and the window closes at 04:01.',
               },
               {
                 label: 'Stand down - the network has delivered two collects and the third bird can be commanded tomorrow',
@@ -1158,7 +1166,7 @@ export const natsEuScenario24Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which line goes in the incident log for the second half hour?',
             options: [
-              '03:36 GW-01 feed heater on; sleet from 03:40. 03:52 SAR-3 acquired GW-01, HK-DUMP ACK fixed carrier 03:53. 03:55 PLD-SAFE NAK uplink denied (14065 MHz jammed), key Valid; called denial; HOP-SAR3-01 keyed both ends, SYNC LOCKED; PLD-SAFE ACK under TRANSEC 03:57. Safed at LOS 04:01. Three contacts delivered',
+              '{{at:obj:protect-the-feed|03:36}} GW-01 feed heater on; sleet from 03:40. 03:52 SAR-3 acquired GW-01, HK-DUMP ACK fixed carrier {{at:cmd:HK-DUMP:ack|03:53}}. {{at:cmd:PLD-SAFE:nak|03:55}} PLD-SAFE NAK uplink denied (14065 MHz jammed), key Valid; called denial; HOP-SAR3-01 keyed both ends, SYNC LOCKED; PLD-SAFE ACK under TRANSEC {{at:cmd:PLD-SAFE:ack|03:57}}. Chain safed {{at:obj:safe-the-network|04:00}}. Three contacts delivered',
               "SAR-3 commanded through jamming and sleet; the adversary's most aggressive night yet defeated by the incident commander",
               'SAR-3 pass completed with one anomaly; hop set used; no customer impact',
               '03:52-04:01 SAR-3 command contact; PLD-SAFE delayed by interference and sent on the second attempt',
@@ -1169,7 +1177,7 @@ export const natsEuScenario24Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Incident Log',
             documentLine:
-              '03:36Z GW-01 feed heater on; sleet 03:40-04:10Z. 03:52Z SAR-3 acquired GW-01 through sleet; HK-DUMP ACK 03:53Z fixed carrier. 03:55Z PLD-SAFE NAK "uplink denied - carrier jammed" (14065 MHz at the spacecraft), key Valid, Doppler on; called denial; HOP-SAR3-01 keyed both ends, hopping, SYNC LOCKED; PLD-SAFE ACK 03:57Z under TRANSEC. Chain safed at LOS 04:01Z. Three P1 contacts delivered.',
+              '{{at:obj:protect-the-feed|03:36}}Z GW-01 feed heater on; sleet 03:40-04:10Z. 03:52Z SAR-3 acquired GW-01 through sleet; HK-DUMP ACK {{at:cmd:HK-DUMP:ack|03:53}}Z fixed carrier. {{at:cmd:PLD-SAFE:nak|03:55}}Z PLD-SAFE NAK "uplink denied - carrier jammed" (14065 MHz at the spacecraft), key Valid, Doppler on; called denial; HOP-SAR3-01 keyed both ends, hopping, SYNC LOCKED; PLD-SAFE ACK {{at:cmd:PLD-SAFE:ack|03:57}}Z under TRANSEC. Chain safed {{at:obj:safe-the-network|04:00}}Z. Three P1 contacts delivered.',
           },
           mustMaintain: false,
         },
@@ -1191,7 +1199,7 @@ export const natsEuScenario24Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Handover',
             documentLine:
-              'Handover 04:15Z. Open: SH-02 reference in holdover (spoofer active at close; probe scheduled 04:30Z); uplink jammer on 14065 MHz and terrestrial carrier 11690 MHz (IR-2027-0414-GW01 extended, third appearance); HOP-SAR3-01 spent, HOP-SAR3-02 to be staged before the next SAR-3 window. Delivered: SAR-1 (GW-01), SAR-2 (SH-02), SAR-3 command contact incl. PLD-SAFE (GW-01). No procedure change: every event had one, and they held together.',
+              'Handover {{stationTime}}Z. Open: SH-02 reference in holdover (spoofer active at close; probe scheduled 04:30Z); uplink jammer on 14065 MHz and terrestrial carrier 11690 MHz (IR-2027-0414-GW01 extended, third appearance); HOP-SAR3-01 spent, HOP-SAR3-02 to be staged before the next SAR-3 window. Delivered: SAR-1 (GW-01), SAR-2 (SH-02), SAR-3 command contact incl. PLD-SAFE (GW-01). No procedure change: every event had one, and they held together.',
           },
           mustMaintain: false,
         },
@@ -1228,7 +1236,7 @@ export const natsEuScenario24Data: ScenarioData = {
       'notch-the-carrier': {
         text: `
         <p>
-          Fiona here. Your carrier is on my analyzer too, faintly - same bearing as the 14th, so it is Galway-side. My band is clean and my reference reads zero. For now.
+          Fiona here. Your carrier is on my analyzer too, faintly - same bearing as the 14th, so it is Galway-side. My band is clean. For now.
         </p>
         `,
         character: Character.FIONA_MACLEOD,
@@ -1238,7 +1246,7 @@ export const natsEuScenario24Data: ScenarioData = {
       'load-the-ephemeris': {
         text: `
         <p>
-          Post-burn set loaded on both stations, thank you. SAR-2 will rise at Shetland where the new set says, not where the old one did. Fiona has the pass in two minutes.
+          Post-burn set loaded on both stations, thank you. SAR-2 will rise at Shetland where the new set says, not where the old one did. Fiona has the pass at 03:31.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -1258,7 +1266,7 @@ export const natsEuScenario24Data: ScenarioData = {
       'decode-the-collect': {
         text: `
         <p>
-          SAR-2 collect in from Shetland, frames clean, timestamps carrying Fiona's frozen offset exactly as logged. Two of three. SAR-3 in seventeen minutes, and the sleet is on your coast.
+          SAR-2 collect in from Shetland, frames clean, timestamps carrying Fiona's frozen offset exactly as logged. Two of three. SAR-3 at 03:52, and the sleet is on your coast.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -1268,7 +1276,7 @@ export const natsEuScenario24Data: ScenarioData = {
       'protect-the-feed': {
         text: `
         <p>
-          Heater on at 03:36 for sleet at 03:40. I did not have to say it. That is the difference between the 2nd of April and tonight.
+          Heater on before the sleet at 03:40. I did not have to say it. That is the difference between the 2nd of April and tonight.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

@@ -286,7 +286,7 @@ test.describe('nats-eu Scenario 24 Full Completion', () => {
   });
 
   test('[call-the-denial] PLD-SAFE NAKs into the jammer; reads console and key; calls the denial', async () => {
-    // The jammer keys 10 s after this objective opens (anchored, phase 19.0a)
+    // The jammer keys the moment this objective opens (anchored, phase 19.0a; pre-audit 4)
     await advanceMissionClockBy(page, 15);
     await sendCommandAndExpectNak(page, missionControl, 'PLD-SAFE', 'Uplink denied - carrier jammed');
     await page.waitForTimeout(3000);

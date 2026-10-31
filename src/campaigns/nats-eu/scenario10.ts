@@ -409,7 +409,7 @@ export const natsEuScenario10Data: ScenarioData = {
         {
           type: 'hpa-not-overdriven',
           description: 'HPA Linear (No IMD Alarm)',
-          params: { requiresObservation: true, observationTab: 'tx-chain' },
+          params: { allowHpaDisabled: true, requiresObservation: true, observationTab: 'tx-chain' },
           mustMaintain: true,
         },
         {

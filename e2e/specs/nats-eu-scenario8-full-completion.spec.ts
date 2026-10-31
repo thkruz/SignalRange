@@ -22,16 +22,16 @@ import { dismissDialogIfPresent, waitForSimulationReady } from '../utils/simulat
 /**
  * nats-eu Scenario 8 "Night Passes" - full completion (phase 16).
  *
- * The solo qualification night: plan, rotation and budget before the 00:31
+ * The solo qualification night: plan, rotation and budget before the 00:30
  * SAR-1 pass (link proven cold, chain up inside the window, REC-PLAYBACK
  * acknowledged, chain down),
  * then the Shetland console remotely for a 13 deg SAR-2 telemetry contact on
  * a reference in holdover (GNSS outage 02:44-02:59, E3), then Galway again
  * for the 73 deg SAR-2 pass after the fleet traffic key rolls at 04:15 (E3).
  * Sim clock starts 2027-03-16 00:15:00Z:
- *   GW-01 MERIDIAN-SAR-1  AOS 00:31:19Z  max el 40.4 at 00:35:03Z  LOS 00:38:49Z
- *   SH-02 MERIDIAN-SAR-2  AOS 02:54:39Z  max el 13.4 at 02:57:34Z  LOS 03:00:27Z
- *   GW-01 MERIDIAN-SAR-2  AOS 04:27:31Z  max el 73.1 at 04:31:23Z  LOS 04:35:12Z
+ *   GW-01 MERIDIAN-SAR-1  AOS 00:30:10Z  max el 40.4 at 00:35:03Z  LOS 00:39:58Z
+ *   SH-02 MERIDIAN-SAR-2  AOS 02:53:14Z  max el 13.4 at 02:57:34Z  LOS 03:01:51Z
+ *   GW-01 MERIDIAN-SAR-2  AOS 04:26:23Z  max el 73.1 at 04:31:23Z  LOS 04:36:19Z
  *
  * The clock jumps (advanceMissionClockToUtc) stand in for the operator's time
  * skips; both faults fire on the mission clock, so the jump to each contact

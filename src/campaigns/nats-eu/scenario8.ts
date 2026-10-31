@@ -217,10 +217,10 @@ export const natsEuScenario8Data: ScenarioData = {
           description: 'Order of Work',
           params: {
             character: Character.SYSTEM,
-            question: 'Plan, rotation, budget. AOS is at 00:31. Which of these depend on the spacecraft being in view?',
+            question: 'Plan, rotation, budget. AOS is at 00:30. Which of these depend on the spacecraft being in view?',
             options: [
               'None of them - the plan, the key and the worksheet are all ground-side, so all three can be finished before AOS',
-              'The rotation - the far end must be in view to acknowledge the new key, so it waits for the 00:31 window',
+              'The rotation - the far end must be in view to acknowledge the new key, so it waits for the 00:30 window',
               'The budget - it needs a live C/N from the modem to compute, so the worksheet cannot be signed until AOS',
               'The plan - a contact can only be allocated while its bird is above the mask, so it is built pass by pass',
             ],
@@ -267,7 +267,7 @@ export const natsEuScenario8Data: ScenarioData = {
           description: 'Dropped Contact Justified',
           params: {
             character: Character.SYSTEM,
-            question: 'The 04:25 Shetland overhead and the 04:27 Galway pass are the same orbit. One operator, two sites. What happens to the overhead?',
+            question: 'The 04:24 Shetland overhead and the 04:26 Galway pass are the same orbit. One operator, two sites. What happens to the overhead?',
             options: [
               'It is priority 3 and may be dropped: the plan is valid without it, and one operator cannot fly both sites at once',
               'It must be allocated to SH-02: the plan is invalid without it, and a site with a pass in view cannot sit idle',
@@ -417,7 +417,7 @@ export const natsEuScenario8Data: ScenarioData = {
       id: 'acquire-sar1',
       nice: ['S0421', 'K1032'],
       title: 'Acquire MERIDIAN-SAR-1',
-      description: 'AOS 00:31. Program-track MERIDIAN-SAR-1 and confirm the beacon on RX analysis. Chain cold until the link is proven.',
+      description: 'AOS 00:30:10. Program-track MERIDIAN-SAR-1 and confirm the beacon on RX analysis. Chain cold until the link is proven.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['gw-reference-and-chain'],
       conditions: [
@@ -545,7 +545,7 @@ export const natsEuScenario8Data: ScenarioData = {
           description: 'Contact 1 Logged',
           params: {
             character: Character.SYSTEM,
-            question: 'What does the handover need for the 00:31 contact?',
+            question: 'What does the handover need for the 00:30 contact?',
             options: [
               'Rotation completed before the window, link committed with the margin measured, REC-PLAYBACK acknowledged, chain cold',
               'Pass worked as planned, link margin within a decibel of the card, command sent at the top, chain left up for the next contact',
@@ -557,7 +557,7 @@ export const natsEuScenario8Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Contacts',
             documentLine:
-              '00:31Z MERIDIAN-SAR-1 GW-01: command key rotated before the window; link committed, predicted 13.8 dB, margin >= 5 dB over 4.2 dB threshold; REC-PLAYBACK ACK; chain secured HPA-BUC-modem.',
+              '00:30Z MERIDIAN-SAR-1 GW-01: command key rotated before the window; link committed, predicted 13.8 dB, margin >= 5 dB over 4.2 dB threshold; REC-PLAYBACK ACK; chain secured HPA-BUC-modem.',
           },
           mustMaintain: false,
         },
@@ -574,7 +574,7 @@ export const natsEuScenario8Data: ScenarioData = {
       nice: ['T0431', 'S0421', 'K0741'],
       title: 'Shetland Remote Sweep',
       description:
-        'Skip ahead to the 02:54 Shetland window. Select SH-02: BUC temperature normal, LNB thermally stable, and retune modem 1 from the 1414 MHz SAR-1 carrier Fiona left it on to 1370 MHz for SAR-2.',
+        'Skip ahead to the 02:53 Shetland window. Select SH-02: BUC temperature normal, LNB thermally stable, and retune modem 1 from the 1414 MHz SAR-1 carrier Fiona left it on to 1370 MHz for SAR-2.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['log-contact-1'],
       conditions: [
@@ -638,11 +638,11 @@ export const natsEuScenario8Data: ScenarioData = {
           description: 'Holdover Diagnosed',
           params: {
             character: Character.SYSTEM,
-            question: 'SH-02 GPSDO: locked, HOLDOVER active, GNSS input switch up, zero satellites. What is happening, and what do you do about the 02:54 pass?',
+            question: 'SH-02 GPSDO: locked, HOLDOVER active, GNSS input switch up, zero satellites. What is happening, and what do you do about the 02:53 pass?',
             options: [
               'A GNSS outage - the switch is up and nothing is received; the oscillator holds for the minutes a pass takes, so fly the pass on holdover',
               'A switch left down - somebody isolated the GNSS input; cycle the switch and wait for lock before AOS, then fly the pass',
-              'A lost reference - the oscillator has nothing to discipline it; the 02:54 pass cannot be flown from Shetland tonight',
+              'A lost reference - the oscillator has nothing to discipline it; the 02:53 pass cannot be flown from Shetland tonight',
               'A failed oscillator - holdover with zero satellites means it has stopped; power-cycle the GPSDO and re-lock before AOS',
             ],
             correctIndex: 0,
@@ -660,7 +660,7 @@ export const natsEuScenario8Data: ScenarioData = {
       id: 'acquire-sar2-from-shetland',
       nice: ['S0421', 'K1032'],
       title: 'Acquire SAR-2 from Shetland',
-      description: 'AOS 02:54:39 from azimuth 042. Program-track MERIDIAN-SAR-2 on the SH-02 pedestal, on holdover, and confirm the carrier on Shetland’s RX analysis.',
+      description: 'AOS 02:53:14 from azimuth 042. Program-track MERIDIAN-SAR-2 on the SH-02 pedestal, on holdover, and confirm the carrier on Shetland’s RX analysis.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['holdover-diagnosis'],
       conditions: [
@@ -776,7 +776,7 @@ export const natsEuScenario8Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Contacts',
             documentLine:
-              '02:54Z MERIDIAN-SAR-2 SH-02 (remote): 13 deg telemetry contact, locked, C/N >= 5 dB, peak ~7 dB. SH-02 GNSS outage 02:44-{{at:cond:confirm-reference-recovered.0|02:59}}Z, reference in holdover through the contact (switch up, zero satellites), re-locked on return. No action at the switch.',
+              '02:53Z MERIDIAN-SAR-2 SH-02 (remote): 13 deg telemetry contact, locked, C/N >= 5 dB, peak ~7 dB. SH-02 GNSS outage 02:44-{{at:cond:confirm-reference-recovered.0|02:59}}Z, reference in holdover through the contact (switch up, zero satellites), re-locked on return. No action at the switch.',
           },
           mustMaintain: false,
         },
@@ -792,7 +792,7 @@ export const natsEuScenario8Data: ScenarioData = {
       id: 'traffic-key-alarm',
       nice: ['K0728', 'K0874', 'T0431'],
       title: 'Read the Traffic Key',
-      description: 'Skip ahead to the 04:27 Galway window and select GW-01. Before the pass, read the payload crypto on RX analysis. It is not what you left it either.',
+      description: 'Skip ahead to the 04:26 Galway window and select GW-01. Before the pass, read the payload crypto on RX analysis. It is not what you left it either.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['confirm-reference-recovered'],
       conditions: [
@@ -815,7 +815,7 @@ export const natsEuScenario8Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question:
-              'Traffic key Mismatch on the payload crypto, command key still Valid, nobody has touched the station since {{at:obj:secure-the-chain|00:40}}. What happened, and what does it do to the 04:27 pass?',
+              'Traffic key Mismatch on the payload crypto, command key still Valid, nobody has touched the station since {{at:obj:secure-the-chain|00:40}}. What happened, and what does it do to the 04:26 pass?',
             options: [
               'Rotterdam rolled the fleet traffic key and the station did not follow; the imagery will not decrypt until the payload crypto is re-keyed',
               'Your rotation at {{at:obj:night-key-rotation|00:20}} corrupted the traffic key; the imagery will not decrypt until the command key is rolled back and re-issued',
@@ -864,7 +864,7 @@ export const natsEuScenario8Data: ScenarioData = {
       nice: ['S0421', 'K1032'],
       title: 'Acquire SAR-2 over Galway',
       description:
-        'AOS 04:27:31 from azimuth 018, and this one goes to 73 degrees. Retune modem 1 to 1370 MHz if you have not, program-track MERIDIAN-SAR-2 and confirm the carrier on RX analysis.',
+        'AOS 04:26:23 from azimuth 018, and this one goes to 73 degrees. Retune modem 1 to 1370 MHz if you have not, program-track MERIDIAN-SAR-2 and confirm the carrier on RX analysis.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['re-key-before-aos'],
       conditions: [
@@ -980,14 +980,14 @@ export const natsEuScenario8Data: ScenarioData = {
               'The contact plan, the COMSEC state of both keys, the Shetland outage record and the state of both sites',
               'Nothing beyond the pass results; each shift starts clean, and the day shift builds its own plan and checks its own keys',
               'Only the recorded telemetry and imagery, which go to the customer, and the card the link was committed on',
-              'The dropped 04:25 Shetland contact and the reason it was dropped, so the day shift can reschedule it with Fiona',
+              'The dropped 04:24 Shetland contact and the reason it was dropped, so the day shift can reschedule it with Fiona',
             ],
             correctIndex: 0,
             explanation: 'The next operator inherits all of it, not just the pass results. Qualified for NATS Europe LEO operations. The network is yours to run.',
             pointPenalty: 5,
             documentSection: 'Handover',
             documentLine:
-              '04:27Z MERIDIAN-SAR-2 GW-01: fleet traffic key rolled 04:15Z, payload crypto re-keyed before AOS (TX/RX Valid), 73 deg pass decoded, peak C/N ~17 dB. Dropped: N-SAR2-SH-2 (P3, one operator). Both sites cold, references locked, plan DECONFLICTED. Shift handed over.',
+              '04:26Z MERIDIAN-SAR-2 GW-01: fleet traffic key rolled 04:15Z, payload crypto re-keyed before AOS (TX/RX Valid), 73 deg pass decoded, peak C/N ~17 dB. Dropped: N-SAR2-SH-2 (P3, one operator). Both sites cold, references locked, plan DECONFLICTED. Shift handed over.',
           },
           mustMaintain: false,
         },
@@ -1003,7 +1003,7 @@ export const natsEuScenario8Data: ScenarioData = {
         <em>[Text message from Charlie Brooks at 23:40]</em>
       </p>
       <p>
-        "Evening shift left it tidy. SAR-1 has a 40 degree pass at 00:31 and it is the best geometry this station has seen. Rotation is pending on the command key. Rotterdam wants REC-PLAYBACK on the pass. Contact plan for the night is not built, and after Fiona goes off at one the Shetland console is yours as well. This is the qualification shift. Everything on it you have done once. Nobody is going to prompt you to do it again."
+        "Evening shift left it tidy. SAR-1 has a 40 degree pass just after half past midnight and it is the best geometry this station has seen. Rotation is pending on the command key. Rotterdam wants REC-PLAYBACK on the pass. Contact plan for the night is not built, and after Fiona goes off at one the Shetland console is yours as well. This is the qualification shift. Everything on it you have done once. Nobody is going to prompt you to do it again."
       </p>
       `,
       character: Character.CHARLIE_BROOKS,

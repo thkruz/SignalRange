@@ -523,10 +523,10 @@ export const natsEuScenario11Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'On the refined set, when and where does SAR-3 rise, and how high does she go?',
             options: [
-              'AOS 09:08:59 at azimuth 143, 31.6 degrees at 09:13:44 and 696 km, LOS 09:18:33 toward 353',
+              'AOS 09:08:58 at azimuth 143, 31.6 degrees at 09:13:44 and 696 km, LOS 09:18:33 toward 353',
               'AOS 09:08:30 at azimuth 142, 30.3 degrees at 09:13:16 and 719 km, LOS 09:18:02 toward 354',
-              'AOS 09:08:59 at azimuth 143, 25.1 degrees at 09:13:44 and 696 km, LOS 09:18:33 toward 353',
-              'AOS 09:08:59 at azimuth 353, 31.6 degrees at 09:13:44 and 696 km, LOS 09:18:33 toward 143',
+              'AOS 09:08:58 at azimuth 143, 25.1 degrees at 09:13:44 and 696 km, LOS 09:18:33 toward 353',
+              'AOS 09:08:58 at azimuth 353, 31.6 degrees at 09:13:44 and 696 km, LOS 09:18:33 toward 143',
             ],
             correctIndex: 0,
             explanation:
@@ -547,7 +547,7 @@ export const natsEuScenario11Data: ScenarioData = {
       id: 'first-acquisition',
       nice: ['T0513', 'S0421', 'K1032'],
       title: 'First Acquisition',
-      description: 'AOS 09:08:59 from azimuth 143. Program-track MERIDIAN-SAR-3 on the refined set and find the beacon on the analyzer at 1315 MHz IF.',
+      description: 'AOS 09:08:58 from azimuth 143. Program-track MERIDIAN-SAR-3 on the refined set and find the beacon on the analyzer at 1315 MHz IF.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['read-the-refined-pass'],
       conditions: [

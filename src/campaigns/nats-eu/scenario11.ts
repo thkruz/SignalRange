@@ -348,7 +348,8 @@ export const natsEuScenario11Data: ScenarioData = {
               'SAR-3 has her own frequency plan; 11711 and 1414 are SAR-1. The uplink stays cold: no command goes up before SOH is confirmed. The refined set is not here yet, and the log says so.',
             pointPenalty: 5,
             documentSection: 'Readiness',
-            documentLine: 'TRR complete 08:5x: ACU beacon 11785 MHz (SAR-3), GPSDO locked / no holdover, injection set loaded and flagged provisional, uplink cold.',
+            documentLine:
+              'TRR complete {{at:obj:test-readiness|08:55}}: ACU beacon 11785 MHz (SAR-3), GPSDO locked / no holdover, injection set loaded and flagged provisional, uplink cold.',
           },
           mustMaintain: false,
         },
@@ -658,10 +659,16 @@ export const natsEuScenario11Data: ScenarioData = {
       nice: ['T1611', 'S0842', 'K0740'],
       title: 'Beacon Level',
       description:
-        'Read the beacon level on RX analysis near culmination (09:13:44, 696 km) and record it against the prediction. A CW beacon should clear -65 dBm at the analyzer input up here.',
+        'Once she is past culmination (09:13:44, 696 km), read the beacon level on RX analysis and record it against the prediction. A CW beacon should clear -65 dBm at the analyzer input. The analyzer tap sits after the AGC, so its level stays flat near -62 dBm all pass; the number that climbs is the ACU Beacon C/N, from about 16 dB at AOS to about 27 dB at the top, so record that curve beside the level.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['acu-beacon-lock'],
       conditions: [
+        {
+          type: 'satellite-pass-phase',
+          description: 'SAR-3 Past Culmination',
+          params: { noradId: 61703, phase: 'past-culmination' },
+          mustMaintain: false,
+        },
         {
           type: 'signal-detected',
           description: 'SAR-3 Beacon >= -65 dBm at RX IF',
@@ -690,7 +697,8 @@ export const natsEuScenario11Data: ScenarioData = {
               "Today's number is the baseline every later pass is compared with. The first measurement of anything on a new spacecraft is the one every trend starts from. Take it near culmination, where the geometry is best known, and write the elevation next to it.",
             pointPenalty: 5,
             documentSection: 'State of Health',
-            documentLine: 'SOH 2: beacon level at culmination (31.6 deg, 696 km) above -65 dBm at RX IF, within prediction; CW, on frequency after Doppler.',
+            documentLine:
+              'SOH 2: beacon level above -65 dBm at RX IF (analyzer tap is post-AGC, flat across the pass); ACU Beacon C/N rose from about 16 dB at AOS to about 27 dB at culmination (31.6 deg, 696 km), within prediction; CW, on frequency after Doppler.',
           },
           mustMaintain: false,
         },
@@ -739,12 +747,18 @@ export const natsEuScenario11Data: ScenarioData = {
       id: 'secure-after-los',
       nice: ['T0431', 'K0645', 'S0842'],
       title: 'Secure After LOS',
-      description: 'LOS 09:18:33. Confirm the uplink stayed cold for the whole pass and close the LEOP log for this contact.',
+      description: 'LOS 09:18:33. When she sets, confirm the uplink stayed cold for the whole pass and close the LEOP log for this contact. The two minutes start at LOS.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['state-of-health'],
       timeLimitSeconds: 2 * 60,
-      timerStartTrigger: 'on-activate',
+      timerStartTrigger: 'on-pass-phase',
       conditions: [
+        {
+          type: 'satellite-pass-phase',
+          description: 'SAR-3 Pass Over (LOS)',
+          params: { noradId: 61703, phase: 'set' },
+          mustMaintain: false,
+        },
         {
           type: 'hpa-disabled',
           description: 'HPA Output Still Disabled',

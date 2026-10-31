@@ -40,7 +40,7 @@ import { createMeridianSar1, createMeridianSar2, createMeridianSar3, type Meridi
  *                         az 350), 9.6 min, northbound. The collect, from SH-02.
  *
  * The keyhole as the engine renders it: the pedestal's program-track lock and
- * the receiver's carrier are lost for several seconds through the top (the
+ * the receiver's carrier are lost for about twenty seconds through the top (the
  * azimuth swing of ~180 deg at 10 deg/s) and come back on the descending leg.
  * The crater objective therefore holds receiver lock for 100 s: activated on
  * the rising leg it cannot finish before the top, the dropout resets it, and
@@ -159,6 +159,19 @@ export const natsEuScenario13Data: ScenarioData = {
       horizonHours: 2,
     },
 
+    // M4 - no burn is pending. The event sits far past the end of the shift so
+    // the Pass Schedule ephemeris panel exists and reads NOMINAL with the element
+    // set epoch (the Rule Out the Ephemeris step reads it); it never fires.
+    spaceEvents: [
+      {
+        id: 'SAR2-ROUTINE',
+        satelliteNoradId: 61702,
+        maneuverAtS: 24 * 3600,
+        label: 'MERIDIAN-SAR-2 element set: no update pending',
+        newTle: { tle1: SAR2_S13_TLE.tle1 as string, tle2: SAR2_S13_TLE.tle2 as string },
+      },
+    ],
+
     workingDocument: {
       title: 'Weekly Pass-Performance Report',
       description: 'Week 13, 2027. One line per anomaly with its cause, and the recommendation to Rotterdam and to maintenance.',
@@ -259,7 +272,7 @@ export const natsEuScenario13Data: ScenarioData = {
       nice: ['T0431', 'K0740'],
       title: 'GW-01 Pre-Pass Sweep',
       description:
-        'Board, reference and downconversion before the 13:12 pass: nothing on the board but the RX AGC no-carrier warning, GPSDO locked, LNB on the 13100 MHz LO. Note what the LNB panel says while you are there.',
+        'Board, reference and downconversion before the 13:12 pass: the board carries the RX AGC no-carrier warning (empty sky) and two LNB alarms, noise temperature high (250 K) and noise figure degraded (2.70 dB), GPSDO locked, LNB on the 13100 MHz LO. Note what the LNB panel says while you are there.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['review-mission-brief'],
       timeLimitSeconds: 2 * 60,
@@ -399,10 +412,16 @@ export const natsEuScenario13Data: ScenarioData = {
       nice: ['S0892', 'K0739', 'K0740'],
       title: 'Ride Through the Keyhole',
       description:
-        'Stay on RX analysis through culmination at 13:17. The pedestal loses the bird for several seconds at the top and the receiver drops lock with it; do not chase it. Hold lock for 100 s once it comes back on the descending leg, and name what did it.',
+        'Stay on RX analysis through culmination at 13:17. The pedestal loses the bird for about twenty seconds at the top and the receiver drops lock with it; the Carrier lock lost alarm stays up until the next lock. Do not chase it. Hold lock for 100 s once it comes back on the descending leg, and name what did it.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['fly-the-zenith-pass'],
       conditions: [
+        {
+          type: 'satellite-pass-phase',
+          description: 'SAR-2 Past Culmination',
+          params: { noradId: 61702, phase: 'past-culmination' },
+          mustMaintain: false,
+        },
         {
           type: 'tab-active',
           description: 'RX Analysis Watched Through the Top',
@@ -467,7 +486,7 @@ export const natsEuScenario13Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Anomaly 1',
             documentLine:
-              '13:12Z MERIDIAN-SAR-2 GW-01, 89.5 deg: lock lost at culmination for several seconds, recovered descending leg. Cause: zenith keyhole (el-over-az pedestal azimuth rate limit). Not a fault. Ops note: passes above ~80 deg carry a culmination outage.',
+              '13:12Z MERIDIAN-SAR-2 GW-01, 89.5 deg: lock lost at culmination for about twenty seconds, recovered descending leg. Cause: zenith keyhole (el-over-az pedestal azimuth rate limit). Not a fault. Ops note: passes above ~80 deg carry a culmination outage.',
           },
           mustMaintain: false,
         },
@@ -592,6 +611,12 @@ export const natsEuScenario13Data: ScenarioData = {
           type: 'receiver-snr-threshold',
           description: 'GW-01 C/N Above 4 dB',
           params: { modemNumber: 1, minCNRatio: 4, requiresObservation: true, observationTab: 'rx-analysis' },
+          mustMaintain: false,
+        },
+        {
+          type: 'satellite-pass-phase',
+          description: 'SAR-1 Near the Top (Past Culmination)',
+          params: { noradId: 61701, phase: 'past-culmination' },
           mustMaintain: false,
         },
         {
@@ -871,14 +896,20 @@ export const natsEuScenario13Data: ScenarioData = {
           mustMaintain: true,
         },
         {
+          type: 'satellite-pass-phase',
+          description: 'SAR-3 Past Culmination',
+          params: { noradId: 61703, phase: 'past-culmination' },
+          mustMaintain: false,
+        },
+        {
           type: 'status-check',
           description: 'Shetland Baseline Read',
           params: {
             character: Character.SYSTEM,
-            question: 'Shetland peaks near 11.5 dB at 32 degrees and 694 km with a 60 K LNB. Galway gave 7 at 28 degrees and 762 km. Is Shetland the better station?',
+            question: 'Shetland peaks near 12 dB at 32 degrees and 694 km with a 60 K LNB. Galway gave 7 at 28 degrees and 762 km. Is Shetland the better station?',
             options: [
               'No: 20 log(762 / 694) is 0.8 dB of geometry, and the rest of the gap is the Galway LNB',
-              'Yes: 4.5 dB better on the same bird class is a better station, whatever the geometry says',
+              'Yes: 5 dB better on the same bird class is a better station, whatever the geometry says',
               'Unknown: SAR-3 and SAR-1 are different spacecraft, and 762 km against 694 km is not the same pass',
               'No: Shetland is reading high because its 60 K LNB is cold, and the number will settle once it warms',
             ],
@@ -925,7 +956,7 @@ export const natsEuScenario13Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Recommendation',
             documentLine:
-              'Recommendation: (1) Ops note - passes above ~80 deg carry a culmination outage, not a fault. (2) GW-01 derated 4 dB until LNB replaced; priority collects to SH-02 (13:52Z SAR-3 collect flown from SH-02, peak C/N ~11.5 dB at 32 deg). (3) Maintenance ticket: GW-01 LNB, noise temperature 250 K vs 60 K survey.',
+              'Recommendation: (1) Ops note - passes above ~80 deg carry a culmination outage, not a fault. (2) GW-01 derated 4 dB until LNB replaced; priority collects to SH-02 (13:52Z SAR-3 collect flown from SH-02, peak C/N ~12 dB at 32 deg). (3) Maintenance ticket: GW-01 LNB, noise temperature 250 K vs 60 K survey.',
           },
           mustMaintain: false,
         },

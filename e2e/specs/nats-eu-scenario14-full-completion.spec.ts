@@ -87,7 +87,7 @@ test.describe('nats-eu Scenario 14 Full Completion', () => {
   test('[review-mission-brief] reads the weather brief and the fade magnitude', async () => {
     await missionControl.openMissionBrief();
     await missionControl.closeMissionBrief();
-    await answerSystemQuiz(page, 'Several dB - about 7');
+    await answerSystemQuiz(page, 'Several dB - about 10');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Read the Weather Brief');
   });
@@ -161,7 +161,7 @@ test.describe('nats-eu Scenario 14 Full Completion', () => {
   // quiz manager picks which comes first. A passed quiz holds the next one
   // until its objective completes, so finish whichever objective it was first.
   const DECODE_QUIZ = { questionHint: 'closes the loop with Erik', answerText: 'That the collect is captured' };
-  const FADE_QUIZ = { questionHint: 'Galway, 19 degrees', answerText: 'Rain: about 7 dB of attenuation' };
+  const FADE_QUIZ = { questionHint: 'Galway, 19 degrees', answerText: 'Rain: about 10 dB of attenuation' };
 
   const finishFade = async () => {
     await missionControl.selectGroundStation('GW-01');
@@ -172,7 +172,7 @@ test.describe('nats-eu Scenario 14 Full Completion', () => {
 
   test('[decode-the-collect-from-shetland + observe-the-galway-fade] decodes at Shetland and reads the Galway fade', async () => {
     await missionControl.selectTab('rx-analysis');
-    await advanceMissionClockToUtc(page, '2027-04-02T11:14:00Z');
+    await advanceMissionClockToUtc(page, '2027-04-02T11:16:00Z');
     const first = await answerPendingQuizFrom(page, [DECODE_QUIZ, FADE_QUIZ]);
     await dismissDialogIfPresent(page);
 
@@ -185,7 +185,7 @@ test.describe('nats-eu Scenario 14 Full Completion', () => {
       await waitForObjectiveComplete(missionControl, 'Decode the Collect from Shetland', 60000);
     } else {
       await waitForObjectiveComplete(missionControl, 'Decode the Collect from Shetland', 60000);
-      await advanceMissionClockToUtc(page, '2027-04-02T11:17:00Z');
+      await advanceMissionClockToUtc(page, '2027-04-02T11:18:30Z');
       // Phase 27 B7: the fade quiz opens once the read rows hold (GW-01
       // selected, tracking, C/N under 5 dB on its RX Analysis)
       await missionControl.selectGroundStation('GW-01');
@@ -197,7 +197,7 @@ test.describe('nats-eu Scenario 14 Full Completion', () => {
 
   test('[log-the-collect] logs the collect and the measurement', async () => {
     await closeWorkingDocumentIfOpen(page);
-    await answerSystemQuiz(page, 'faded to about 2 dB');
+    await answerSystemQuiz(page, 'faded to about -1 dB');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Log the Collect');
   });
@@ -229,7 +229,7 @@ test.describe('nats-eu Scenario 14 Full Completion', () => {
     await advanceMissionClockToUtc(page, '2027-04-02T11:45:30Z');
     await programTrack(page, missionControl, '61701');
     await missionControl.selectTab('rx-analysis');
-    await advanceMissionClockToUtc(page, '2027-04-02T11:48:00Z');
+    await advanceMissionClockToUtc(page, '2027-04-02T11:50:30Z');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Ride It Out', 60000);
   });

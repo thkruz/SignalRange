@@ -466,7 +466,8 @@ export const natsEuScenario10Data: ScenarioData = {
       id: 'preposition-for-aos',
       nice: ['S0421', 'K1032'],
       title: 'Pre-position for AOS',
-      description: 'AOS 15:34:59 from azimuth 027, north-northeast. Park the tracker on the rise azimuth at 5 degrees so the slew is done before she is over the horizon.',
+      description:
+        'AOS 15:34:59 from azimuth 027, north-northeast. Park the tracker on the rise azimuth at 5 degrees, within 2 degrees on both axes, so the slew is done before she is over the horizon.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['tune-the-uplink'],
       timeLimitSeconds: 3 * 60,
@@ -474,8 +475,8 @@ export const natsEuScenario10Data: ScenarioData = {
       conditions: [
         {
           type: 'antenna-position',
-          description: 'Parked on Az 027 / El 5',
-          params: { azimuth: 27, elevation: 5, tolerance: 3 },
+          description: 'Parked on Az 027 / El 5 (within 2 degrees)',
+          params: { azimuth: 27, elevation: 5, tolerance: 2 },
           mustMaintain: false,
         },
       ],
@@ -701,10 +702,10 @@ export const natsEuScenario10Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What does the tasking log need beyond "collect tasked, imagery received"?',
             options: [
-              'The command and its ACK time, the EIRP exception (4 dB back-off, restored after), the measured C/N against the 8.1 dB prediction',
+              'The command and its ACK time, the EIRP exception (4 dB back-off, restored after), the measured C/N against the 8.3 dB prediction',
               "The customer's name and the target box, the tasking reference (as received, as accepted), the frame count against the request",
               'Just the ACK and its time, the frames received (count and quality), the note that the frames prove the rest of the chain',
-              'The worksheet inputs from the card, the predicted C/N (8.3 dB, from the card), the note that the measured figure matched it',
+              'The worksheet inputs from the card, the predicted C/N (about 9.5 dB, from the card), the note that the measured figure matched it',
             ],
             correctIndex: 0,
             explanation:
@@ -712,7 +713,7 @@ export const natsEuScenario10Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Tasking',
             documentLine:
-              '15:35Z MERIDIAN-SAR-1 GW-01, urgent collect NMW-URG-2027-0318: SAR-TASK-URGENT ACK inside the window under Doppler comp and a valid key. EIRP exception: BUC gain restored 18 -> 23 dB, HPA back-off 4 dB for the pass, restored to 10 dB after LOS. Imagery decoded at 18 deg, link committed >= 3 dB over the 4.2 dB threshold; peak C/N ~8.1 dB against 8.1 predicted.',
+              '15:35Z MERIDIAN-SAR-1 GW-01, urgent collect NMW-URG-2027-0318: SAR-TASK-URGENT ACK inside the window under Doppler comp and a valid key. EIRP exception: BUC gain restored 18 -> 23 dB, HPA back-off 4 dB for the pass, restored to 10 dB after LOS. Imagery decoded at 18 deg, link committed >= 3 dB over the 4.2 dB threshold; peak C/N ~8.1 dB against 8.3 predicted.',
           },
           mustMaintain: false,
         },

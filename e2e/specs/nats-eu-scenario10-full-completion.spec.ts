@@ -144,7 +144,7 @@ test.describe('nats-eu Scenario 10 Full Completion', () => {
   });
 
   test('[preposition-for-aos] parks the tracker on the rise azimuth', async () => {
-    // Parked az 5 / el 3; the rise is az 027 / el 5 (tolerance 3 deg).
+    // Parked az 5 / el 3; the rise is az 027 / el 5 (tolerance 2 deg).
     await parkAntenna(page, missionControl, { az: 5, el: 3 }, { az: 27, el: 5 });
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Pre-position for AOS', 60000);

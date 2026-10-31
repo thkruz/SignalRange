@@ -152,7 +152,7 @@ test.describe('nats-eu Scenario 13 Full Completion', () => {
     await advanceMissionClockToUtc(page, '2027-03-29T13:30:30Z');
     await programTrack(page, missionControl, '61701');
     await missionControl.selectTab('rx-analysis');
-    await advanceMissionClockToUtc(page, '2027-03-29T13:34:00Z');
+    await advanceMissionClockToUtc(page, '2027-03-29T13:35:30Z');
     await answerSystemQuiz(page, '2.8 dB over the 4.2 dB threshold');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Measure SAR-1 at Galway', 60000);
@@ -206,7 +206,7 @@ test.describe('nats-eu Scenario 13 Full Completion', () => {
     await advanceMissionClockToUtc(page, '2027-03-29T13:52:30Z');
     await programTrack(page, missionControl, '61703');
     await missionControl.selectTab('rx-analysis');
-    await advanceMissionClockToUtc(page, '2027-03-29T13:55:30Z');
+    await advanceMissionClockToUtc(page, '2027-03-29T13:57:30Z');
     await answerSystemQuiz(page, 'No: 20 log(762 / 694)');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Fly the Collect from Shetland', 60000);

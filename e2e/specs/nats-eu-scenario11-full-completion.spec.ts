@@ -161,7 +161,7 @@ test.describe('nats-eu Scenario 11 Full Completion', () => {
   });
 
   test('[beacon-level] reads the beacon level near culmination and logs it', async () => {
-    await advanceMissionClockToUtc(page, '2027-03-22T09:13:00Z');
+    await advanceMissionClockToUtc(page, '2027-03-22T09:14:30Z');
     await missionControl.selectTab('rx-analysis');
     await answerSystemQuiz(page, 'A level against the prediction is the transmitter');
     await dismissDialogIfPresent(page);

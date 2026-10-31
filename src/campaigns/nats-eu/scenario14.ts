@@ -11,7 +11,7 @@ import { createMeridianSar1, createMeridianSar2, type MeridianTle } from './sate
  *
  * A deep low crosses Ireland. Real Ku rain fade (phase 16, E5) sits on Galway
  * for the customer's priority-1 MERIDIAN-SAR-2 collect at 11:12: 30 mm/h on
- * a 19 degree pass is about 7 dB of path attenuation at 11.7 GHz, so the
+ * a 19 degree pass is about 10 dB of path attenuation at 11.7 GHz, so the
  * collect cannot close from GW-01 and is reallocated to SH-02, which has sky,
  * and flown FROM the Shetland console. Galway is armed anyway so the operator
  * can watch the fade eat the same pass live. Behind the rain the front turns
@@ -198,7 +198,7 @@ export const natsEuScenario14Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'A 30 mm/h cell at 11.7 GHz on a 19 degree pass. Order of magnitude of the fade?',
             options: [
-              'Several dB - about 7 on this geometry, against a link that peaks near 8.5 dB clear; the collect will not close from Galway',
+              'Several dB - about 10 on this geometry, against a link that peaks near 8.5 dB clear; the collect will not close from Galway',
               'A fraction of a dB - as it was at C-band in Vermont, against a link that peaks near 8.5 dB clear; the collect closes',
               'About 1 dB - rain only matters above 20 GHz, against a link that peaks near 8.5 dB clear; the collect closes with margin',
               'Total - rain blocks Ku entirely at 30 mm/h, whatever the link peaks at clear; the collect will not close from anywhere',
@@ -326,10 +326,10 @@ export const natsEuScenario14Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Why does the P1 collect move, when the P2 window at 11:45 might not?',
             options: [
-              'A P1 collect gets the site that can close it: 34 degrees of dry sky at Shetland against 19 degrees under 7 dB of rain',
+              'A P1 collect gets the site that can close it: 34 degrees of dry sky at Shetland against 19 degrees under 10 dB of rain',
               'Shetland is the primary site for SAR-2: 34 degrees there against 19 at Galway, and the plan defaults the P1 to the higher pass',
               'The plan will not validate with both SAR-2 windows on Galway: the P1 moves because DECONFLICTED needs one per site',
-              'It should not move: Galway is the customer site, and 7 dB of rain at 19 degrees may ease before the 11:12 rise',
+              'It should not move: Galway is the customer site, and 10 dB of rain at 19 degrees may ease before the 11:12 rise',
             ],
             correctIndex: 0,
             explanation:
@@ -501,6 +501,12 @@ export const natsEuScenario14Data: ScenarioData = {
       prerequisiteObjectiveIds: ['acquire-sar2-from-shetland'],
       conditions: [
         {
+          type: 'satellite-pass-phase',
+          description: 'SAR-2 Past Culmination at SH-02',
+          params: { noradId: 61702, phase: 'past-culmination' },
+          mustMaintain: false,
+        },
+        {
           type: 'receiver-signal-locked',
           description: 'SH-02 RX Modem Locked on SAR-2',
           params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
@@ -560,6 +566,12 @@ export const natsEuScenario14Data: ScenarioData = {
           mustMaintain: false,
         },
         {
+          type: 'satellite-pass-phase',
+          description: 'SAR-2 Past Culmination at GW-01',
+          params: { noradId: 61702, phase: 'past-culmination' },
+          mustMaintain: false,
+        },
+        {
           type: 'receiver-snr-threshold',
           description: 'GW-01 C/N At or Below 5 dB (rain fade)',
           params: { modemNumber: 1, maxCNRatio: 5, requiresObservation: true, observationTab: 'rx-analysis' },
@@ -570,9 +582,10 @@ export const natsEuScenario14Data: ScenarioData = {
           description: 'Fade Measured',
           params: {
             character: Character.SYSTEM,
-            question: 'Galway, 19 degrees, 30 mm/h: the same bird Shetland is decoding at 11 dB reads a couple of dB here, on a clean lock of the pedestal. Where did the rest go?',
+            question:
+              'Galway, 19 degrees, 30 mm/h: the same bird Shetland is decoding at 11 dB reads about -1 dB here at the peak of the fade, no lock, with the pedestal tracking cleanly. Where did the rest go?',
             options: [
-              'Rain: about 7 dB of attenuation along the slant path through the cell, plus a warmer sky raising the noise temperature',
+              'Rain: about 10 dB of attenuation along the slant path through the cell, plus a warmer sky raising the noise temperature',
               'Pointing: rain on the reflector defocuses the beam, and at 19 degrees the pedestal is chasing a low, fast target',
               'The LNB: water in the feed has raised its noise figure, and with the heater off the horn has been filling since 11:01',
               'Doppler: the demodulator lost the carrier in the rain, and at 19 degrees the range rate is near its highest of the pass',
@@ -609,7 +622,7 @@ export const natsEuScenario14Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What does the weather log need for the 11:12 collect?',
             options: [
-              'Collect worked from SH-02 at 34 degrees with margin; Galway flown for the record and faded to about 2 dB; P1 moved before AOS',
+              'Collect worked from SH-02 at 34 degrees with margin; Galway flown for the record and faded to about -1 dB with no lock at the peak; P1 moved before AOS',
               'Collect worked from SH-02 at 34 degrees with margin; Galway faded out in 30 mm/h; P1 moved after the Galway attempt failed',
               'Collect worked from SH-02 at 34 degrees with margin; the C/N at Shetland and nothing about Galway, since it was not the site',
               'Rain at Galway, collect moved to SH-02; Shetland decoded at 34 degrees with margin; nothing further needed on the line',
@@ -620,7 +633,7 @@ export const natsEuScenario14Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Contacts',
             documentLine:
-              '11:10Z MERIDIAN-SAR-2 (NMW P1 collect): reallocated to SH-02 before AOS, decoded at 34 deg with margin. GW-01 window flown unattended for the record: 30 mm/h rain, 19 deg, C/N faded to ~2 dB (about 7 dB of rain attenuation). Customer informed: collect captured.',
+              '11:10Z MERIDIAN-SAR-2 (NMW P1 collect): reallocated to SH-02 before AOS, decoded at 34 deg with margin. GW-01 window flown unattended for the record: 30 mm/h rain, 19 deg, C/N faded to about -1 dB, no lock at the peak (about 10 dB of rain attenuation). Customer informed: collect captured.',
           },
           mustMaintain: false,
         },
@@ -650,7 +663,7 @@ export const natsEuScenario14Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question:
-              'Heater on at 11:24, sleet from 11:26, pass at 11:45. What does the feed carry at culmination, and what would it carry if the heater had waited for the first fade?',
+              'Heater on at {{at:cond:protect-the-feed.0|11:24}}, sleet from 11:26, pass at 11:45. What does the feed carry at culmination, and what would it carry if the heater had waited for the first fade?',
             options: [
               'On before the sleet: nothing accumulates, the pass sees ~11 dB. Off until the fade: about 8.6 dB of ice, melting at 1 dB a minute',
               'The same either way: the heater clears ice in seconds, so the pass sees ~11 dB. Off until the fade: a minute of warm-up, then lock',
@@ -754,6 +767,12 @@ export const natsEuScenario14Data: ScenarioData = {
       prerequisiteObjectiveIds: ['retune-galway-for-sar1'],
       conditions: [
         {
+          type: 'satellite-pass-phase',
+          description: 'SAR-1 Past Culmination at GW-01',
+          params: { noradId: 61701, phase: 'past-culmination' },
+          mustMaintain: false,
+        },
+        {
           type: 'antenna-tracking-mode-set',
           description: 'GW-01 Program-Track Enabled',
           params: { trackingMode: 'program-track' },
@@ -800,10 +819,11 @@ export const natsEuScenario14Data: ScenarioData = {
           description: 'Ride-Out Logged',
           params: {
             character: Character.SYSTEM,
-            question: 'The ACU feed-loss reading stayed at zero through the pass with the heater on since 11:24. What goes in the log beside the decode?',
+            question:
+              'The ACU feed-loss reading stayed at zero through the pass with the heater on since {{at:cond:protect-the-feed.0|11:24}}. What goes in the log beside the decode?',
             options: [
               'Decoded at ~11 dB on zero feed loss, heater on before the sleet; off, the feed would have carried about 8.6 dB at culmination',
-              'Decoded at ~11 dB, heater on from 11:24; the sleet never reached the horn, so the heater made no difference to the pass',
+              'Decoded at ~11 dB, heater on from {{at:cond:protect-the-feed.0|11:24}}; the sleet never reached the horn, so the heater made no difference to the pass',
               'Decoded at ~11 dB, the weather not as bad as forecast; the sleet cleared before culmination and the feed stayed dry',
               'Decoded at ~11 dB, which proves the heater was unnecessary; a clean feed at zero loss means there was no ice to melt',
             ],
@@ -813,7 +833,7 @@ export const natsEuScenario14Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Contacts',
             documentLine:
-              '11:45Z MERIDIAN-SAR-1 GW-01 (P2): ride-out in sleet, feed heater on from 11:24 (before onset 11:26), feed loss 0 dB, decoded at 30 deg, peak C/N ~11 dB. Heater off would have carried ~8.6 dB of ice at culmination: no lock.',
+              '11:45Z MERIDIAN-SAR-1 GW-01 (P2): ride-out in sleet, feed heater on from {{at:cond:protect-the-feed.0|11:24}} (before onset 11:26), feed loss 0 dB, decoded at 30 deg, peak C/N ~11 dB. Heater off would have carried ~8.6 dB of ice at culmination: no lock.',
           },
           mustMaintain: false,
         },

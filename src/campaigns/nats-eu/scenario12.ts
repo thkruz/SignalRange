@@ -882,12 +882,18 @@ export const natsEuScenario12Data: ScenarioData = {
       id: 'chain-down-after-los',
       nice: ['S0675', 'S0421', 'K0645'],
       title: 'Chain Down After LOS',
-      description: 'LOS 10:15:29. The HPA is already off; finish the mirror order: mute the BUC, then take the carrier off the air.',
+      description: 'LOS 10:15:29. The HPA is already off; once she sets, finish the mirror order: mute the BUC, then take the carrier off the air. The two minutes start at LOS.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['first-video'],
       timeLimitSeconds: 2 * 60,
-      timerStartTrigger: 'on-activate',
+      timerStartTrigger: 'on-pass-phase',
       conditions: [
+        {
+          type: 'satellite-pass-phase',
+          description: 'SAR-3 Pass Over (LOS)',
+          params: { noradId: 61703, phase: 'set' },
+          mustMaintain: false,
+        },
         {
           type: 'hpa-disabled',
           description: 'HPA Output Disabled',

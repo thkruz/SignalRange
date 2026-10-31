@@ -363,6 +363,8 @@ export interface ConditionParams {
   backOffTolerance?: number;
   /** For hpa-not-overdriven: maximum IMD level in dBc (optional, defaults to checking isOverdriven) */
   maxImdLevel?: number;
+  /** For hpa-not-overdriven: true accepts a disabled (but powered, not overdriven) HPA. Default false: a disabled HPA is off, not linear (Phase 35 s04-F5) */
+  allowHpaDisabled?: boolean;
   /** For hpa-output-power-set: minimum output power in watts */
   minOutputPower?: number;
   /** For satellite-pass-phase: which phase of the pass to wait for */

@@ -12,6 +12,7 @@
  * determinism. No other simulation coupling, so it is unit-testable in isolation.
  */
 
+import { CryptoModule } from '@app/equipment/crypto/crypto-module-core';
 import { OrbitalSatellite, observerFromLocation } from '@app/equipment/satellite/orbital-satellite';
 import { InterferenceManager } from '@app/interference/interference-manager';
 import { OpsLogManager } from '@app/ops-log/ops-log-manager';
@@ -37,6 +38,10 @@ export interface CommandingConfig {
   keyId?: string;
   /** Identifier the key takes when a rotation is confirmed (Phase 35 s21-F3) */
   rotatedKeyId?: string;
+  /** Initial command key status; 'Pending Rotation' starts the shift with a key that needs rotating (default 'Valid') */
+  initialKeyStatus?: 'Valid' | 'Pending Rotation';
+  /** Days of life the key has left at t0, shown on the TX Chain and RX payload panels (default 62) */
+  keyExpiresInDays?: number;
   /** Command window opens at this elapsed second (omit = open from t0) */
   windowStartS?: number;
   /** Command window closes at this elapsed second (omit = never closes) */
@@ -107,6 +112,19 @@ export class CommandingManager {
   private constructor() {
     this.config_ = (ScenarioManager.getInstance().settings.commanding as CommandingConfig | undefined) ?? {};
     this.state_.keyId = this.config_.keyId;
+    if (this.config_.initialKeyStatus) this.state_.keyStatus = this.config_.initialKeyStatus;
+    this.seedCryptoModule_();
+  }
+
+  /** Mirror the authored key id, status and life onto the COMSEC unit so the payload panels agree. */
+  private seedCryptoModule_(): void {
+    const { keyId, initialKeyStatus, keyExpiresInDays } = this.config_;
+    if (keyId === undefined && initialKeyStatus === undefined && keyExpiresInDays === undefined) return;
+    CryptoModule.getInstance().seedKeyMaterial({
+      keyId,
+      pendingRotation: initialKeyStatus === 'Pending Rotation',
+      expiresInDays: keyExpiresInDays,
+    });
   }
 
   static getInstance(): CommandingManager {
@@ -165,7 +183,12 @@ export class CommandingManager {
     this.state_.keyStatus = 'Valid';
     this.state_.keyRotationCompleted = true;
     const previousKeyId = this.state_.keyId;
-    if (this.config_.rotatedKeyId) this.state_.keyId = this.config_.rotatedKeyId;
+    if (this.config_.rotatedKeyId) {
+      this.state_.keyId = this.config_.rotatedKeyId;
+      if (CryptoModule.hasInstance()) CryptoModule.getInstance().handleKeyRotation(this.config_.rotatedKeyId);
+    } else if (CryptoModule.hasInstance()) {
+      CryptoModule.getInstance().handleKeyRotation(CryptoModule.getInstance().state.keyId);
+    }
     CommandingManager.log_(`COMSEC key rotation confirmed${previousKeyId ? `: ${previousKeyId} retired, ${this.state_.keyId} in use` : ''}`);
   }
 

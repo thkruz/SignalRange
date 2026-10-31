@@ -353,6 +353,10 @@ export interface SimulationSettings {
     /** COMSEC key ids shown on the TT&C card; confirming a rotation swaps keyId for rotatedKeyId (Phase 35 E5) */
     keyId?: string;
     rotatedKeyId?: string;
+    /** Initial command key status; 'Pending Rotation' starts with a key that needs rotating (default 'Valid') */
+    initialKeyStatus?: 'Valid' | 'Pending Rotation';
+    /** Days of key life left at t0 on the TX Chain / RX payload panels (default 62) */
+    keyExpiresInDays?: number;
     /** Require uplink Doppler compensation for a command to ACK (default true) */
     requireDopplerComp?: boolean;
     /** Canned TT&C commands the console offers as one-click sends */

@@ -255,6 +255,17 @@ export class CryptoModule {
   }
 
   /**
+   * Seed the initial key material from scenario settings (commanding.keyId,
+   * initialKeyStatus, keyExpiresInDays). Only the fields given are changed.
+   */
+  seedKeyMaterial(seed: { keyId?: string; pendingRotation?: boolean; expiresInDays?: number }): void {
+    if (seed.keyId !== undefined) this.state_.keyId = seed.keyId;
+    if (seed.expiresInDays !== undefined) this.state_.keyExpiresInDays = seed.expiresInDays;
+    if (seed.pendingRotation) this.state_.keyStatus = 'Pending Rotation';
+    this.emitStateChanged_();
+  }
+
+  /**
    * Inject pending rotation warning (for scenario training)
    */
   injectPendingRotation(daysRemaining: number = 5): void {

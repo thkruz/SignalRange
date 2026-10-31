@@ -4,6 +4,7 @@ import { Events, TimeSkipEndedData, TimeSkipStartedData } from '../../src/events
 import type { TimeSkipOffer } from '../../src/objectives/objective-types';
 import { ObjectivesManager } from '../../src/objectives/objectives-manager';
 import { OpsLogManager } from '../../src/ops-log/ops-log-manager';
+import { assetSelectionState } from '../../src/pages/mission-control/asset-selection-state';
 import { PassPlannerService } from '../../src/services/pass-planner-service';
 import { getSkippedMs, missionNowMs, resetMissionClock } from '../../src/simulation/mission-clock';
 import { SimClock } from '../../src/simulation/sim-clock';
@@ -17,11 +18,12 @@ import { TimeSkipController } from '../../src/simulation/time-skip-controller';
  * anything) but the manager around them is not.
  */
 const mockSatellites: unknown[] = [];
+const mockGroundStations: unknown[] = [];
 
 vi.mock('../../src/simulation/simulation-manager', () => ({
   SimulationManager: {
     hasInstance: () => true,
-    getInstance: () => ({ satellites: mockSatellites }),
+    getInstance: () => ({ satellites: mockSatellites, groundStations: mockGroundStations }),
   },
 }));
 
@@ -48,6 +50,8 @@ describe('TimeSkipController', () => {
 
     mockSatellites.length = 0;
     mockSatellites.push(meridianSar1Satellite, meridianSar2Satellite);
+    mockGroundStations.length = 0;
+    assetSelectionState.groundStationId = null;
 
     mockSettings = {
       contactTimeline: { minElevation: 5 },
@@ -97,6 +101,25 @@ describe('TimeSkipController', () => {
       // Lands exactly leadTimeS before AOS.
       expect(target!.aosMs - target!.targetMs).toBe(120_000);
       expect(target!.deltaMs).toBe(target!.targetMs - getSimulatedNowMs());
+    });
+
+    it('should aim at the selected station pass, not the earliest across stations', () => {
+      // Galway (53.3 N) and Shetland (60.2 N) see the same bird at different times.
+      mockGroundStations.push(
+        { state: { id: 'GW-01', name: 'Galway', location: { latitude: 53.27, longitude: -9.05, elevation: 0 } } },
+        { state: { id: 'SH-02', name: 'Shetland', location: { latitude: 60.15, longitude: -1.15, elevation: 0 } } }
+      );
+      const controller = TimeSkipController.getInstance();
+
+      assetSelectionState.groundStationId = 'GW-01';
+      const galway = controller.findTarget()!;
+      assetSelectionState.groundStationId = 'SH-02';
+      const shetland = controller.findTarget()!;
+      assetSelectionState.groundStationId = null;
+      const earliest = controller.findTarget()!;
+
+      expect(galway.aosMs).not.toBe(shetland.aosMs);
+      expect(earliest.aosMs).toBe(Math.min(galway.aosMs, shetland.aosMs));
     });
 
     it('should not offer a skip shorter than minSkipS', () => {

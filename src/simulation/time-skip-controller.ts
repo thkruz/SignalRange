@@ -45,6 +45,7 @@ import { Events } from '@app/events/events';
 import type { TimeSkipOffer } from '@app/objectives/objective-types';
 import { ObjectivesManager } from '@app/objectives/objectives-manager';
 import { OpsLogManager } from '@app/ops-log/ops-log-manager';
+import { assetSelectionState } from '@app/pages/mission-control/asset-selection-state';
 import { ScenarioManager } from '@app/scenario-manager';
 import { PassPlannerService, type SatellitePass, scenarioMinElevation } from '@app/services/pass-planner-service';
 import { SimClock } from '@app/simulation/sim-clock';
@@ -399,12 +400,16 @@ export class TimeSkipController {
   /** Earliest pass across every satellite and station inside the horizon. */
   private nextPass_(nowMs: number, horizonHours: number): SatellitePass | undefined {
     const satellites = this.orbitalSatellites_();
-    // A pass at ANY site is a contact the operator may need to work, so the
-    // next pass is the earliest AOS across every station in the scenario.
+    // The skip follows the station the operator is looking at (Pass Schedule
+    // and the deck do the same), so the modal never quotes another site's pass.
+    // With no station selected, a pass at ANY site is a contact the operator may
+    // need to work, so the next pass is the earliest AOS across every station.
     // Only ever the NEXT pass, never one beyond it: searching forward for the
     // first pass with enough lead time would let an operator two minutes from
     // AOS skip straight over the contact they are about to work.
-    const observers = this.stationObservers_();
+    const allObservers = this.stationObservers_();
+    const selected = allObservers.filter((o) => o.name === assetSelectionState.groundStationId);
+    const observers = selected.length > 0 ? selected : allObservers;
     const passes = satellites.flatMap((sat) =>
       observers.length === 0 ? this.passOptions_(sat, nowMs, horizonHours) : observers.flatMap((observer) => this.passOptions_(sat, nowMs, horizonHours, observer))
     );

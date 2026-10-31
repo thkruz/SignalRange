@@ -119,7 +119,8 @@ export function promptFor(text, campaign) {
     .replace(/\bdBm\b/gu, 'dee-bee-em')
     .replace(/\bdBW\b/gu, 'dee-bee-double-you')
     .replace(/\bdB\b/gu, 'dee-bee')
-    .replace(/\bC\/N\b/gu, 'C over N')
+    // Ted (nats 10/sustain-rx-margin): "C/N is pronounced Carrier to Noise"
+    .replace(/\bC\/N\b/gu, 'carrier to noise')
     .replace(/\bG\/T\b/gu, 'G over T')
     .replace(/\bAES-256-GCM\b/gu, 'AES two fifty-six GCM')
     .replace(/\bQPSK-/gu, 'QPSK ')
@@ -134,10 +135,18 @@ export function promptFor(text, campaign) {
     .replace(/\bOBC\b/gu, 'O.B.C')
     .replace(/\bTRR\b/gu, 'T.R.R')
     .replace(/\bAOS\b/gu, 'A.O.S')
-    .replace(/\bLOS\b/gu, 'L.O.S')
+    // Ted (nats-eu 23/ride-through): "LOS is line of sight"
+    .replace(/\bLOS\b/gu, 'line of sight')
     .replace(/\bLEOP\b/gu, 'Lee-op')
     .replace(/\bNAK\b/gu, 'N.A.K')
-    .replace(/\bACK\b/gu, 'ack')
+    // Ted (nats-eu 3/confirm-execution, 12/enable-the-hpa): "ACK is pronounced Acknowledgement"; "ack" was heard as "act"
+    .replace(/\bACK\b/gu, 'acknowledgement')
+    // Ted (nats 6/enable-transmit-path): "RX is pronounced receive"
+    .replace(/\bRX\b/gu, 'receive')
+    // Ted (nats-eu 7/ephemeris-epoch-check): "go / no-go" was read with an odd "if go"
+    .replace(/\bgo \/ no-go\b/gu, 'go or no-go')
+    // Ted (nats-eu 8/shetland-remote-sweep): odd emphasis on "Night."; he suggested goodnight
+    .replace(/Station's yours\. Night\./gu, "Station's yours. Goodnight.")
     .replace(/\bComReg\b/gu, 'Com-Reg')
     .replace(/\bFaroes\b/gu, 'Fair-ohz')
     .replace(/\bUTC\b/gu, 'U.T.C')

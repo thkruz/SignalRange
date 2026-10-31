@@ -14,6 +14,7 @@
 
 import { OrbitalSatellite, observerFromLocation } from '@app/equipment/satellite/orbital-satellite';
 import { InterferenceManager } from '@app/interference/interference-manager';
+import { OpsLogManager } from '@app/ops-log/ops-log-manager';
 import { ScenarioManager } from '@app/scenario-manager';
 import { missionNowMs } from '@app/simulation/mission-clock';
 import { SimulationManager } from '@app/simulation/simulation-manager';
@@ -32,6 +33,10 @@ export interface CommandingConfig {
   groundStationId?: string;
   /** Target satellite being commanded (for display) */
   targetNoradId?: number;
+  /** Identifier of the command key on file, shown on the COMSEC card (Phase 35 s21-F3) */
+  keyId?: string;
+  /** Identifier the key takes when a rotation is confirmed (Phase 35 s21-F3) */
+  rotatedKeyId?: string;
   /** Command window opens at this elapsed second (omit = open from t0) */
   windowStartS?: number;
   /** Command window closes at this elapsed second (omit = never closes) */
@@ -77,6 +82,8 @@ interface CommandRecord {
 interface CommandingState {
   dopplerCompEnabled: boolean;
   keyStatus: CommandKeyStatus;
+  /** Key identifier on file, undefined when the scenario names none */
+  keyId?: string;
   keyRotationCompleted: boolean;
   zeroized: boolean;
   commands: CommandRecord[];
@@ -99,6 +106,7 @@ export class CommandingManager {
 
   private constructor() {
     this.config_ = (ScenarioManager.getInstance().settings.commanding as CommandingConfig | undefined) ?? {};
+    this.state_.keyId = this.config_.keyId;
   }
 
   static getInstance(): CommandingManager {
@@ -135,7 +143,9 @@ export class CommandingManager {
 
   /** Engage / disengage uplink Doppler compensation on the command carrier. */
   setDopplerComp(enabled: boolean): void {
+    const changed = this.state_.dopplerCompEnabled !== enabled;
     this.state_.dopplerCompEnabled = enabled;
+    if (changed) CommandingManager.log_(`Uplink Doppler compensation ${enabled ? 'engaged' : 'disengaged'}`);
   }
 
   /** Begin a scheduled key rotation (key becomes Pending Rotation until completed). */
@@ -144,6 +154,7 @@ export class CommandingManager {
       return;
     }
     this.state_.keyStatus = 'Pending Rotation';
+    CommandingManager.log_(`COMSEC key rotation initiated${this.state_.keyId ? ` (${this.state_.keyId})` : ''}`);
   }
 
   /** Complete the scheduled key rotation (key returns to Valid). */
@@ -153,12 +164,16 @@ export class CommandingManager {
     }
     this.state_.keyStatus = 'Valid';
     this.state_.keyRotationCompleted = true;
+    const previousKeyId = this.state_.keyId;
+    if (this.config_.rotatedKeyId) this.state_.keyId = this.config_.rotatedKeyId;
+    CommandingManager.log_(`COMSEC key rotation confirmed${previousKeyId ? `: ${previousKeyId} retired, ${this.state_.keyId} in use` : ''}`);
   }
 
   /** Emergency key destruction - all subsequent commands are rejected until re-keyed. */
   zeroizeKey(): void {
     this.state_.zeroized = true;
     this.state_.keyStatus = 'Zeroized';
+    CommandingManager.log_('COMSEC key zeroized');
   }
 
   /**
@@ -187,8 +202,25 @@ export class CommandingManager {
     }
 
     this.state_.commands.push(record);
+    CommandingManager.log_(
+      record.status === 'acked' ? `Command ${id} sent, ACK received` : `Command ${id} sent, rejected: ${CommandingManager.REJECT_TEXT_[record.reason ?? 'key-invalid']}`,
+      record.status === 'acked' ? 'action' : 'alert'
+    );
 
     return record;
+  }
+
+  private static readonly REJECT_TEXT_: Record<CommandRejectReason, string> = {
+    'no-doppler-comp': 'Doppler compensation off',
+    'key-invalid': 'COMSEC key invalid',
+    'out-of-window': 'outside command window',
+    'uplink-jammed': 'uplink jammed',
+  };
+
+  /** Ops Log line for a TT&C console action (Phase 35 s03-F2); silent without a log. */
+  private static log_(message: string, category: 'action' | 'alert' = 'action'): void {
+    if (!OpsLogManager.isInitialized()) return;
+    OpsLogManager.getInstance().log(message, category, 'TT&C');
   }
 
   /**

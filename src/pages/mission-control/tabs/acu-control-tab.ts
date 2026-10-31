@@ -16,6 +16,7 @@ import { SimulationManager } from '@app/simulation/simulation-manager';
 import { parseLocalizedNumber } from '@app/utils/parse-number';
 import { WeatherManager } from '@app/weather/weather-manager';
 import { alarmLed, applyAlarmLed } from '../alarm-led';
+import { wrapAzimuthDeg } from '../az-display';
 import './acu-control-tab.css';
 import { AntennaAdapter } from './antenna-adapter';
 import { OMTAdapter } from './omt-adapter';
@@ -610,7 +611,7 @@ export class ACUControlTab extends BaseElement {
 
     // Create fine adjustment controls with ACTUAL position values
     // Red display shows current position (matches polar plot)
-    this.azFineControl_ = FineAdjustControl.create(`az-fine-${this.groundStation.uuid}-ant${this.antennaIndex_}`, 'Azimuth', antenna.state.azimuth, '°');
+    this.azFineControl_ = FineAdjustControl.create(`az-fine-${this.groundStation.uuid}-ant${this.antennaIndex_}`, 'Azimuth', wrapAzimuthDeg(antenna.state.azimuth), '°');
 
     this.elFineControl_ = FineAdjustControl.create(`el-fine-${this.groundStation.uuid}-ant${this.antennaIndex_}`, 'Elevation', antenna.state.elevation, '°');
 
@@ -867,7 +868,7 @@ export class ACUControlTab extends BaseElement {
 
     // Sync fine adjustment controls with actual position and staged values
     // Red (active) = current position (matches polar plot), Amber (pending) = staged changes
-    this.azFineControl_?.sync(state.azimuth, state.stagedTargetAzimuth);
+    this.azFineControl_?.sync(wrapAzimuthDeg(state.azimuth), state.stagedTargetAzimuth === null ? null : wrapAzimuthDeg(state.stagedTargetAzimuth));
     this.elFineControl_?.sync(state.elevation, state.stagedTargetElevation);
     this.polFineControl_?.sync(state.polarization, state.stagedTargetPolarization);
 

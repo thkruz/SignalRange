@@ -16,6 +16,7 @@ import { Events } from '@app/events/events';
 import { GnssThreatManager } from '@app/gnss-threat/gnss-threat-manager';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import type { dB, FECType, MHz, ModulationType } from '@app/types';
+import { wrapAzimuthDeg } from '../az-display';
 import './sdr-console-tab.css';
 
 /** Known allocations painted on the band plan ribbon (RF Hz) */
@@ -1037,7 +1038,7 @@ export class SdrConsoleTab extends BaseElement {
 
     const azReadout = dom.querySelector<HTMLElement>('#sdr-rot-az');
     if (azReadout) {
-      azReadout.textContent = `${antenna.state.azimuth.toFixed(1)}°`;
+      azReadout.textContent = `${wrapAzimuthDeg(antenna.state.azimuth).toFixed(1)}°`;
     }
     const elReadout = dom.querySelector<HTMLElement>('#sdr-rot-el');
     if (elReadout) {

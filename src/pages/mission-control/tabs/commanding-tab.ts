@@ -115,9 +115,16 @@ export class CommandingTab extends BaseElement {
             <div class="card h-100">
               <div class="card-header"><h3 class="card-title">COMSEC</h3></div>
               <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
                   <span class="text-muted small">Key status:</span>
-                  <span id="cmd-key-badge" class="cmd-badge cmd-badge-good">VALID</span>
+                  <span class="d-flex align-items-center gap-2">
+                    <span id="cmd-key-led" class="card-alarm-led success" title="COMSEC key OK"></span>
+                    <span id="cmd-key-badge" class="cmd-badge cmd-badge-good">VALID</span>
+                  </span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <span class="text-muted small">Key ID:</span>
+                  <span id="cmd-key-id" class="font-monospace small">--</span>
                 </div>
                 <button id="cmd-begin-rotation" class="btn btn-outline-secondary w-100 mb-2">Initiate Key Rotation</button>
                 <button id="cmd-complete-rotation" class="btn btn-outline-secondary w-100 mb-3">Confirm Key Rotation</button>
@@ -275,7 +282,15 @@ export class CommandingTab extends BaseElement {
       keyBadge.textContent = status.toUpperCase();
       const cls = status === 'Valid' ? 'cmd-badge-good' : status === 'Pending Rotation' ? 'cmd-badge-warn' : 'cmd-badge-bad';
       keyBadge.className = `cmd-badge ${cls}`;
+      const led = this.cache_('cmd-key-led');
+      if (led) {
+        const ledState = status === 'Valid' ? 'success' : status === 'Pending Rotation' ? 'warning' : 'error';
+        led.className = `card-alarm-led ${ledState}`;
+        led.title = status === 'Valid' ? 'COMSEC key OK' : `COMSEC key: ${status}`;
+      }
     }
+    const keyIdEl = this.cache_('cmd-key-id');
+    if (keyIdEl) keyIdEl.textContent = mgr.state.keyId ?? '--';
 
     // Ranging readout
     const rangeCount = this.cache_('cmd-range-count');

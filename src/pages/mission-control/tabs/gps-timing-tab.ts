@@ -207,7 +207,7 @@ export class GPSTimingTab extends BaseElement {
               <!-- Status Row -->
               <div class="d-flex justify-content-between align-items-center mb-2">
                 <span class="text-muted small">Status:</span>
-                <span id="gpsdo-holdover-badge" class="status-badge status-badge-off">INACTIVE</span>
+                <span id="gpsdo-holdover-card-badge" class="status-badge status-badge-off">INACTIVE</span>
               </div>
 
               <!-- Duration Row -->

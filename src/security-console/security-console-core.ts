@@ -58,6 +58,30 @@ export interface AuditEventConfig {
   requiresCampaignEvidence?: { scenarioId: string; eventId: string };
 }
 
+/**
+ * Order entries by the clock time they display, not by insertion (Phase 35
+ * s17-F5: a 01:58 row listed before 01:55). Applies only when every entry
+ * carries an "HH:MM" label; a label that rolls past midnight sorts after the
+ * evening ones. Equal times keep their authored order.
+ */
+export function sortAuditByTimestamp(events: AuditEventConfig[]): AuditEventConfig[] {
+  const minutes = events.map((e) => {
+    const m = /(\d{1,2}):(\d{2})/u.exec(e.timestampLabel ?? '');
+
+    return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+  });
+  if (events.length < 2 || minutes.some((m) => m === null)) return events;
+  const first = minutes[0] as number;
+  const keyed = events.map((event, i) => {
+    const raw = minutes[i] as number;
+
+    return { event, key: raw < first - 720 ? raw + 1440 : raw, i };
+  });
+  keyed.sort((a, b) => a.key - b.key || a.i - b.i);
+
+  return keyed.map((k) => k.event);
+}
+
 /** settings.security */
 export interface SecurityConfig {
   accounts: SecurityAccountConfig[];
@@ -132,7 +156,9 @@ export class SecurityConsoleCore {
   getVisibleLog(atElapsedS?: number): AuditEventConfig[] {
     const elapsed = atElapsedS ?? this.elapsedS_();
 
-    return this.config_.events.filter((e) => this.anchors_.atS(e.timeS ?? 0, e.startAfterObjectiveId) <= elapsed);
+    const visible = this.config_.events.filter((e) => this.anchors_.atS(e.timeS ?? 0, e.startAfterObjectiveId) <= elapsed);
+
+    return sortAuditByTimestamp(visible);
   }
 
   private elapsedS_(): number {

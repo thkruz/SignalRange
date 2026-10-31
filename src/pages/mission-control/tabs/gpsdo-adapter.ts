@@ -81,6 +81,8 @@ export class GPSDOAdapter {
     this.domCache_.set('gnssBadge', qs('#gpsdo-gnss-badge', this.containerEl));
     this.domCache_.set('warmupBadge', qs('#gpsdo-warmup-badge', this.containerEl));
     this.domCache_.set('holdoverBadge', qs('#gpsdo-holdover-badge', this.containerEl));
+    // Optional: older fixtures and the SDR console host a GPSDO without the Holdover Performance card
+    this.domCache_.set('holdoverCardBadge', this.containerEl.querySelector<HTMLElement>('#gpsdo-holdover-card-badge'));
     this.domCache_.set('holdoverDuration', qs('#gpsdo-holdover-duration', this.containerEl));
     this.domCache_.set('holdoverProgress', qs('#gpsdo-holdover-progress', this.containerEl));
     this.domCache_.set('holdoverTtl', qs('#gpsdo-holdover-ttl', this.containerEl));
@@ -240,6 +242,12 @@ export class GPSDOAdapter {
       }
       holdoverBadge.textContent = text;
       holdoverBadge.className = `status-badge ${badgeClass}`;
+      // s16-F1: the Holdover Performance card has its own badge (it used to share an id and never updated)
+      const cardBadge = this.domCache_.get('holdoverCardBadge');
+      if (cardBadge) {
+        cardBadge.textContent = text;
+        cardBadge.className = `status-badge ${badgeClass}`;
+      }
     }
 
     // Update satellite count

@@ -160,6 +160,7 @@ export const galwayGroundStation = {
         isGnssSwitchUp: true,
         isGnssAcquiringLock: false,
         satelliteCount: 9,
+        nominalSatelliteCount: 9,
         utcAccuracy: 50,
         constellation: 'GPS',
         lockDuration: 7200,

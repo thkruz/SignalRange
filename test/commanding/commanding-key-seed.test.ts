@@ -35,6 +35,12 @@ describe('commanding key seeding', () => {
     expect(CryptoModule.hasInstance()).toBe(false);
   });
 
+  it('loads the authored post-rotation key life', () => {
+    Object.assign(commandingConfig, { keyId: 'K1', rotatedKeyId: 'K2', initialKeyStatus: 'Pending Rotation', keyExpiresInDays: 4, rotatedKeyValidDays: 63 });
+    CommandingManager.getInstance().completeKeyRotation();
+    expect(CryptoModule.getInstance().state.keyExpiresInDays).toBe(63);
+  });
+
   it('moves the crypto unit to the rotated id when the rotation completes', () => {
     Object.assign(commandingConfig, { keyId: 'KILO-2027-0113', rotatedKeyId: 'KILO-2027-0114', initialKeyStatus: 'Pending Rotation', keyExpiresInDays: 4 });
     const mgr = CommandingManager.getInstance();

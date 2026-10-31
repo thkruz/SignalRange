@@ -116,6 +116,9 @@ export const natsEuScenario4Data: ScenarioData = {
       rotatedKeyId: 'KEY-2027-Q1b',
       initialKeyStatus: 'Pending Rotation',
       keyExpiresInDays: 4,
+      // Fresh traffic key life after rotation; the panel floors the countdown, so 63 reads
+      // "62 days" (the brief value) for the whole shift.
+      rotatedKeyValidDays: 63,
       commands: [
         { id: 'PLD-SAFE', label: 'Payload to safe mode' },
         { id: 'REC-PLAYBACK', label: 'Start recorder playback' },
@@ -814,7 +817,7 @@ export const natsEuScenario4Data: ScenarioData = {
       'send-authenticated-command': {
         text: `
         <p>
-          "Key reads Valid on our side too. Window open - PLD-SAFE when ready."
+          "Key reads Valid on our side too. The command window is not open yet. Send PLD-SAFE once the console shows the window open."
         </p>
         `,
         character: Character.ANNEKE_VISSER,

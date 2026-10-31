@@ -353,6 +353,8 @@ export interface SimulationSettings {
     /** COMSEC key ids shown on the TT&C card; confirming a rotation swaps keyId for rotatedKeyId (Phase 35 E5) */
     keyId?: string;
     rotatedKeyId?: string;
+    /** Days of key life after a confirmed rotation (default 90; panel floors, so N shows N-1) */
+    rotatedKeyValidDays?: number;
     /** Initial command key status; 'Pending Rotation' starts with a key that needs rotating (default 'Valid') */
     initialKeyStatus?: 'Valid' | 'Pending Rotation';
     /** Days of key life left at t0 on the TX Chain / RX payload panels (default 62) */

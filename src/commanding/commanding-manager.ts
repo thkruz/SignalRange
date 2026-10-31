@@ -38,6 +38,8 @@ export interface CommandingConfig {
   keyId?: string;
   /** Identifier the key takes when a rotation is confirmed (Phase 35 s21-F3) */
   rotatedKeyId?: string;
+  /** Key life in days loaded on the crypto unit when a rotation is confirmed (default 90). The panel floors the countdown, so N reads N-1 once any time has passed. */
+  rotatedKeyValidDays?: number;
   /** Initial command key status; 'Pending Rotation' starts the shift with a key that needs rotating (default 'Valid') */
   initialKeyStatus?: 'Valid' | 'Pending Rotation';
   /** Days of life the key has left at t0, shown on the TX Chain and RX payload panels (default 62) */
@@ -185,9 +187,9 @@ export class CommandingManager {
     const previousKeyId = this.state_.keyId;
     if (this.config_.rotatedKeyId) {
       this.state_.keyId = this.config_.rotatedKeyId;
-      if (CryptoModule.hasInstance()) CryptoModule.getInstance().handleKeyRotation(this.config_.rotatedKeyId);
+      if (CryptoModule.hasInstance()) CryptoModule.getInstance().handleKeyRotation(this.config_.rotatedKeyId, this.config_.rotatedKeyValidDays);
     } else if (CryptoModule.hasInstance()) {
-      CryptoModule.getInstance().handleKeyRotation(CryptoModule.getInstance().state.keyId);
+      CryptoModule.getInstance().handleKeyRotation(CryptoModule.getInstance().state.keyId, this.config_.rotatedKeyValidDays);
     }
     CommandingManager.log_(`COMSEC key rotation confirmed${previousKeyId ? `: ${previousKeyId} retired, ${this.state_.keyId} in use` : ''}`);
   }

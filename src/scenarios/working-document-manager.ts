@@ -150,6 +150,12 @@ export class WorkingDocumentManager {
     if (this.authoredKeys_.has(dedupeKey)) return;
     this.authoredKeys_.add(dedupeKey);
 
+    // QUIZ_PASSED fires before the evaluator marks the condition satisfied, so
+    // `{{at:cond:<this objective>.<this condition>}}` has no ledger entry yet
+    // (rt-s20-F1). The pass is the moment the line records; first-write-wins
+    // keeps the evaluator's later stamp from moving it.
+    EventTimeLedger.record(`cond:${data.objectiveId}.${data.conditionIndex}`);
+
     // The filled line is stored: it carries the times this run actually had
     this.entries_.push({ section, line: fillDialogTokens(line) });
 

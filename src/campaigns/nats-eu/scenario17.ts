@@ -564,7 +564,7 @@ export const natsEuScenario17Data: ScenarioData = {
       nice: ['S0648', 'K0926', 'K0773'],
       title: 'Characterise the Carrier',
       description:
-        'Past the high point of the pass a second carrier keys up at 1410 MHz, 4 MHz below the video and inside its band, and the C/N goes with it. Frame it on the analyzer: 1410 MHz, 2 MHz span. Watch it for a minute against the video.',
+        'Just past the high point of the pass, about 02:25, a second carrier will key up at 1410 MHz, 4 MHz below the video and inside its band, and the C/N will dent (about 4 dB at onset, enough to take the decode under 8 dB). Frame it on the analyzer: 1410 MHz, 2 MHz span. Watch it against the video.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['decode-sar1'],
       conditions: [
@@ -597,7 +597,7 @@ export const natsEuScenario17Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question:
-              'Over a minute the carrier at 1410 sat still on the analyzer, where a carrier from the bird would have walked with the Doppler. What does that tell you about where it comes from?',
+              'Watch the carrier at 1410 for a few seconds: it sits still on the analyzer, where a carrier from the bird would have walked with the Doppler. What does that tell you about where it comes from?',
             options: [
               'It is not on the bird: a signal with no Doppler on a pass that has plenty is coming from something that is not moving relative to you - the ground',
               'It is on the bird: the transponder locks the carrier to the beacon reference, so only the video shows the Doppler',
@@ -619,7 +619,8 @@ export const natsEuScenario17Data: ScenarioData = {
       id: 'call-the-carrier',
       nice: ['S0648', 'K0682', 'K0926'],
       title: 'Call the Carrier',
-      description: 'Fiona has SAR-1 clean from Shetland. Your C/N is down about 8 dB with a still carrier in the band. Look at the key status, look at the carrier, then call it.',
+      description:
+        'Fiona has SAR-1 clean from Shetland. Your C/N is down about 4 dB, below the 8 dB delivery line, with a still carrier in the band. Look at the key status, look at the carrier, then call it.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['characterise-the-carrier'],
       timeLimitSeconds: 3 * 60,
@@ -731,7 +732,7 @@ export const natsEuScenario17Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Incident',
             documentLine:
-              'INC-2027-0412-GW01 opened {{at:obj:open-the-incident:start|02:25}}. (1) Password spray 01:12-01:58, one remote source, op-charlie / op-fiona / svc-legacy, 3 attempts each, stopped under lockout; svc-legacy decommissioned 14 Jan, still active. (2) Carrier 11690 MHz RF (1410 IF), ~1 MHz, from {{at:event:gw-ku-carrier:start:s|02:25:10}} through SAR-1 LOS 02:29:34 and after; no Doppler; not received at SH-02. C/N on SAR-1 video down about 8 dB while present. No cause claimed. Geolocation referred to specialist assets.',
+              'INC-2027-0412-GW01 opened {{at:obj:open-the-incident:start|02:25}}. (1) Password spray 01:12-01:58, one remote source, op-charlie / op-fiona / svc-legacy, 3 attempts each, stopped under lockout; svc-legacy decommissioned 14 Jan, still active. (2) Carrier 11690 MHz RF (1410 IF), ~1 MHz, from {{at:event:gw-ku-carrier:start:s|02:25:10}} still on the air as SAR-1 set toward LOS 02:29:34; no Doppler; not received at SH-02. C/N on SAR-1 video down about 4 dB at onset, below the 8 dB delivery line; lock lost a minute or two later. No cause claimed. Geolocation referred to specialist assets.',
           },
           mustMaintain: false,
         },

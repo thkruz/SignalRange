@@ -416,6 +416,7 @@ export const ALLOWED_LITERAL_TIMES: Record<string, string[]> = {
     '02:20:00',
     '02:22:30',
     '02:25',
+    '02:25',
     '02:29:34',
     '02:40',
     '02:40:01',

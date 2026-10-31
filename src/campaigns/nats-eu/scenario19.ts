@@ -579,7 +579,7 @@ export const natsEuScenario19Data: ScenarioData = {
           description: 'Why the NAK',
           params: {
             character: Character.ANNEKE_VISSER,
-            prompt: 'Your PLD-STATUS did not reach me and your key shows Valid at my end too. Window is open for six more minutes. What is it, and what do you want to do?',
+            prompt: 'Your PLD-STATUS did not reach me and your key shows Valid at my end too. Window is open for about seven more minutes. What is it, and what do you want to do?',
             evidence: ['key-seen', 'console-seen'],
             decisionOptions: [
               {
@@ -763,7 +763,7 @@ export const natsEuScenario19Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Window',
             documentLine:
-              'SAR-2 window 13:20:21-13:29:09Z: HK-DUMP ACK {{at:cmd:HK-DUMP:ack|13:21}} (fixed carrier 14035 MHz). PLD-STATUS NAK {{at:cmd:PLD-STATUS:nak|13:23}} "uplink denied - carrier jammed"; key Valid both ends, Doppler comp on, window open; the jam returns through the command transponder at 1320 MHz IF as a 2 MHz carrier. Called uplink denial {{at:obj:call-the-nak|13:24}}. Hop set HOP-SAR2-04 keyed at Rotterdam and GW-01, mode hopping, SYNC LOCKED {{at:obj:go-to-hopping|13:25}}. PLD-STATUS resent, ACK {{at:cmd:PLD-STATUS:ack|13:26}} under TRANSEC. Jammer present through LOS.',
+              'SAR-2 window 13:20:21-13:29:09Z: HK-DUMP ACK {{at:cmd:HK-DUMP:ack|13:21}} (fixed carrier 14035 MHz). PLD-STATUS NAK {{at:cmd:PLD-STATUS:nak|13:23}} "uplink denied - carrier jammed"; key Valid both ends, Doppler comp on, window open; the jam returns through the command transponder at 1320 MHz IF as a 2 MHz carrier. Called uplink denial {{at:obj:call-the-nak|13:24}}. Hop set HOP-SAR2-04 keyed at Rotterdam and GW-01, mode hopping, SYNC LOCKED {{at:obj:go-to-hopping|13:25}}. PLD-STATUS resent, ACK {{at:cmd:PLD-STATUS:ack|13:26}} under TRANSEC. Jammer still present after the ACK.',
           },
           mustMaintain: false,
         },
@@ -809,7 +809,7 @@ export const natsEuScenario19Data: ScenarioData = {
           description: 'Reach Read',
           params: {
             character: Character.SYSTEM,
-            question: 'SAR-1 decoded clean with nothing in the band. Why was this pass untouched when SAR-2 was denied twenty minutes ago?',
+            question: 'SAR-1 is decoding clean with nothing in the band so far. Why is this pass untouched when SAR-2 was denied earlier?',
             options: [
               'A jammer reaches what it can reach: the SAR-2 denial was an uplink at the satellite, and SAR-1 was a receive-only pass with nothing of yours on the air to sit on',
               'Because the hop set is still active: once the waveform is hopping, every carrier on the station is agile, downlinks included',
@@ -831,7 +831,7 @@ export const natsEuScenario19Data: ScenarioData = {
       id: 'close-and-debrief',
       nice: ['T1580', 'K0645', 'K0874'],
       title: 'Close the Record and Debrief',
-      description: 'Both passes worked. Close the record: what is open, what Rotterdam does about the hop set, and the line that changes the next commanding pass.',
+      description: 'SAR-2 is done and SAR-1 is locked. Close the record: what is open, what Rotterdam does about the hop set, and the line that changes the next commanding pass.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['decode-sar1'],
       timeLimitSeconds: 3 * 60,
@@ -912,7 +912,7 @@ export const natsEuScenario19Data: ScenarioData = {
       'ride-through': {
         text: `
         <p>
-          PLD-STATUS acknowledged under TRANSEC. Chain down at LOS. I will retire this set tonight and stage the next one; you did not spend it for nothing.
+          PLD-STATUS acknowledged under TRANSEC. Chain down now, no need to wait for LOS. I will retire this set tonight and stage the next one; you did not spend it for nothing.
         </p>
         `,
         character: Character.ANNEKE_VISSER,

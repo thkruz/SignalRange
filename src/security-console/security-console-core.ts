@@ -18,11 +18,12 @@
 
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
-import { fillDialogTokens } from '@app/modal/dialog-tokens';
+import { fillDialogTokens, formatStationTime } from '@app/modal/dialog-tokens';
 import { ObjectiveAnchors } from '@app/objectives/objective-anchor';
 import { ScenarioManager } from '@app/scenario-manager';
 import { CampaignDocumentStore, campaignIdOf } from '@app/scenarios/campaign-document-store';
 import { missionNowMs } from '@app/simulation/mission-clock';
+import { getSimulatedNowMs } from '@app/simulation/sim-time';
 
 export type AccountStatus = 'active' | 'disabled' | 'expired';
 export type AuditCategory = 'auth' | 'config' | 'command' | 'access';
@@ -65,6 +66,14 @@ export interface AuditEventConfig {
  * carries an "HH:MM" label; a label that rolls past midnight sorts after the
  * evening ones. Equal times keep their authored order.
  */
+/**
+ * An injected entry with no authored label is stamped with the station clock
+ * at the moment of injection, so its time cell is never blank.
+ */
+export function stampInjectedEvent(event: AuditEventConfig, elapsedS: number, nowMs: number): AuditEventConfig {
+  return { ...event, timeS: event.timeS ?? elapsedS, timestampLabel: event.timestampLabel ?? `${formatStationTime(nowMs)} UTC` };
+}
+
 export function sortAuditByTimestamp(events: AuditEventConfig[]): AuditEventConfig[] {
   const minutes = events.map((e) => {
     const m = /(\d{1,2}):(\d{2})/u.exec(fillDialogTokens(e.timestampLabel ?? ''));
@@ -198,7 +207,7 @@ export class SecurityConsoleCore {
    */
   injectEvent(event: AuditEventConfig): void {
     if (this.config_.events.some((e) => e.id === event.id)) return;
-    this.config_.events.push({ ...event, timeS: event.timeS ?? this.elapsedS_() });
+    this.config_.events.push(stampInjectedEvent(event, this.elapsedS_(), getSimulatedNowMs()));
   }
 
   /**

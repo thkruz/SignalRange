@@ -1,7 +1,7 @@
 import { EventTimeLedger } from '@app/scenarios/event-time-ledger';
 import { SimClock } from '@app/simulation/sim-clock';
 import { describe, expect, it } from 'vitest';
-import { type AuditEventConfig, sortAuditByTimestamp } from '../../src/security-console/security-console-core';
+import { type AuditEventConfig, sortAuditByTimestamp, stampInjectedEvent } from '../../src/security-console/security-console-core';
 
 const e = (id: string, timestampLabel?: string): AuditEventConfig => ({ id, timestampLabel, actor: 'a', action: 'x', category: 'auth', severity: 'info' });
 
@@ -24,5 +24,16 @@ describe('sortAuditByTimestamp', () => {
   });
   it('leaves the list alone when a label is missing', () => {
     expect(sortAuditByTimestamp([e('b', '02:00'), e('a')]).map((x) => x.id)).toEqual(['b', 'a']);
+  });
+});
+
+describe('stampInjectedEvent', () => {
+  it('stamps the station clock when an injected entry has no label', () => {
+    const stamped = stampInjectedEvent(e('inj'), 61, Date.UTC(2027, 3, 12, 8, 1, 3));
+    expect(stamped.timestampLabel).toBe('08:01 UTC');
+    expect(stamped.timeS).toBe(61);
+  });
+  it('keeps an authored label', () => {
+    expect(stampInjectedEvent(e('inj', '21:41 UTC'), 5, Date.UTC(2027, 3, 12, 8, 1, 3)).timestampLabel).toBe('21:41 UTC');
   });
 });

@@ -31,7 +31,7 @@ import { meridianSar1Satellite, meridianSar2Satellite } from './satellites';
  *   00:35:03 (581 km), LOS 00:38:49 az 338 (00:39:58). Peak C/N 13.4 dB, >= 8 dB
  *   ~00:33:10 .. 00:37:00. Command window 00:31:40 .. 00:38:30.
  *   SH-02 sees the same pass at 17 deg (00:33:31 .. 00:39:56): Fiona's, overlaps.
- * - C2 SH-02 MERIDIAN-SAR-2: AOS 02:54:39 az 042, max el 13.4 at 02:57:34
+ * - C2 SH-02 MERIDIAN-SAR-2: AOS 02:53:14 az 030, max el 13.4 at 02:57:34
  *   (1233 km), LOS 03:00:27 az 140. Peak C/N 6.6 dB, >= 5 dB for 228 s: the
  *   modem locks (threshold 4.2 dB) but never reaches the 8 dB delivery line,
  *   so it is a telemetry contact, not an imagery one. Galway sees a 5.6 deg graze.
@@ -660,7 +660,7 @@ export const natsEuScenario8Data: ScenarioData = {
       id: 'acquire-sar2-from-shetland',
       nice: ['S0421', 'K1032'],
       title: 'Acquire SAR-2 from Shetland',
-      description: 'AOS 02:53:14 from azimuth 042. Program-track MERIDIAN-SAR-2 on the SH-02 pedestal, on holdover, and confirm the carrier on Shetland’s RX analysis.',
+      description: 'AOS 02:53:14 from azimuth 030. Program-track MERIDIAN-SAR-2 on the SH-02 pedestal, on holdover, and confirm the carrier on Shetland’s RX analysis.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['holdover-diagnosis'],
       conditions: [
@@ -864,7 +864,7 @@ export const natsEuScenario8Data: ScenarioData = {
       nice: ['S0421', 'K1032'],
       title: 'Acquire SAR-2 over Galway',
       description:
-        'AOS 04:26:23 from azimuth 018, and this one goes to 73 degrees. Retune modem 1 to 1370 MHz if you have not, program-track MERIDIAN-SAR-2 and confirm the carrier on RX analysis.',
+        'AOS 04:26:23 from azimuth 017, and this one goes to 73 degrees. Retune modem 1 to 1370 MHz if you have not, program-track MERIDIAN-SAR-2 and confirm the carrier on RX analysis.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['re-key-before-aos'],
       conditions: [

@@ -34,6 +34,7 @@ import { OpsLogManager } from '@app/ops-log/ops-log-manager';
 import { ScenarioManager } from '@app/scenario-manager';
 import { missionNowMs } from '@app/simulation/mission-clock';
 import { SimulationManager } from '@app/simulation/simulation-manager';
+import type { HardwareFaultSnapshot } from '@app/sync/manager-state-types';
 
 export type HardwareFaultTarget = 'tx-modem' | 'buc-overtemp' | 'gpsdo-gnss-loss' | 'crypto-key-mismatch';
 
@@ -114,6 +115,39 @@ export class HardwareFaultManager {
     }
   }
 
+  /** Snapshot for a checkpoint: what has tripped and cleared, and when each anchor went live. */
+  getState(): HardwareFaultSnapshot {
+    return { tripped: [...this.trippedIds_], cleared: [...this.clearedIds_], anchors: this.anchors_.getState() };
+  }
+
+  /**
+   * Restore a snapshot (checkpoint path only). Faults that already tripped must not trip again
+   * after the clock jump, and cleared ones stay cleared. A timed fault that tripped and has not
+   * cleared is applied again, because its effect is not otherwise part of the saved equipment.
+   * Event ids this scenario does not define are ignored.
+   */
+  restoreState(snapshot: HardwareFaultSnapshot | undefined): void {
+    if (!snapshot) {
+      return;
+    }
+    const known = new Set(this.events_.map((e) => e.id));
+    this.trippedIds_.clear();
+    this.clearedIds_.clear();
+    for (const id of snapshot.tripped ?? []) {
+      if (known.has(id)) this.trippedIds_.add(id);
+    }
+    for (const id of snapshot.cleared ?? []) {
+      if (known.has(id) && this.trippedIds_.has(id)) this.clearedIds_.add(id);
+    }
+    this.anchors_.restoreState(snapshot.anchors);
+    for (const event of this.events_) {
+      const target = event.target ?? 'tx-modem';
+      if (this.trippedIds_.has(event.id) && !this.clearedIds_.has(event.id) && (target === 'buc-overtemp' || target === 'gpsdo-gnss-loss')) {
+        this.trip_(event, true);
+      }
+    }
+  }
+
   /** Whether the given event's fault has tripped */
   isTripped(eventId: string): boolean {
     return this.trippedIds_.has(eventId);
@@ -174,7 +208,7 @@ export class HardwareFaultManager {
   }
 
   /** Apply the fault. Returns false when the target equipment does not exist yet. */
-  private trip_(event: HardwareFaultEventConfig): boolean {
+  private trip_(event: HardwareFaultEventConfig, isReapply = false): boolean {
     const sim = SimulationManager.getInstance();
     const gs = sim.groundStations.find((g) => g.state.id === event.groundStationId);
 
@@ -202,7 +236,7 @@ export class HardwareFaultManager {
         buc.setThermalOffset(deltaC ?? (physical ? 0 : DEFAULT_OVERTEMP_DELTA_C));
         buc.setCoolingFactor(coolingFactor ?? 1);
         buc.setExcessCurrent(excessCurrentA ?? 0);
-        if (event.params?.startTemperatureC !== undefined) {
+        if (!isReapply && event.params?.startTemperatureC !== undefined) {
           buc.setTemperature(event.params.startTemperatureC);
         }
         return true;

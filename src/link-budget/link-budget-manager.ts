@@ -22,6 +22,7 @@
  */
 
 import { ScenarioManager } from '@app/scenario-manager';
+import type { LinkBudgetSnapshot } from '@app/sync/manager-state-types';
 
 /** Boltzmann constant, J/K */
 const BOLTZMANN_J_PER_K = 1.380649e-23;
@@ -220,6 +221,21 @@ export class LinkBudgetManager {
     this.state_.computedCNRDb = result.compositeCNRDb;
 
     return result.compositeCNRDb;
+  }
+
+  /**
+   * Checkpoint snapshot. Only the operator-committed margin: the computed C/N
+   * values are re-derived from the live chain every tick, so they are not saved.
+   */
+  getCheckpointState(): LinkBudgetSnapshot {
+    return { appliedMarginDb: this.state_.appliedMarginDb };
+  }
+
+  restoreCheckpointState(snapshot: LinkBudgetSnapshot | undefined): void {
+    if (!snapshot) {
+      return;
+    }
+    this.state_.appliedMarginDb = typeof snapshot.appliedMarginDb === 'number' && Number.isFinite(snapshot.appliedMarginDb) ? snapshot.appliedMarginDb : null;
   }
 
   /**

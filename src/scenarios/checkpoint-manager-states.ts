@@ -15,8 +15,13 @@
 import { CommandingManager } from '@app/commanding/commanding-manager';
 import { ContactScheduleManager } from '@app/contact-schedule/contact-schedule-manager';
 import { CryptoModule } from '@app/equipment/crypto/crypto-module-core';
+import { FaultInjector } from '@app/faults/fault-injector';
+import { HardwareFaultManager } from '@app/faults/hardware-fault-manager';
 import { GnssThreatManager } from '@app/gnss-threat/gnss-threat-manager';
+import { InterferenceManager } from '@app/interference/interference-manager';
+import { LinkBudgetManager } from '@app/link-budget/link-budget-manager';
 import { Logger } from '@app/logging/logger';
+import { DecisionManager } from '@app/modal/decision-manager';
 import { ScenarioManager } from '@app/scenario-manager';
 import { SecurityConsoleCore } from '@app/security-console/security-console-core';
 import { SpaceEventManager } from '@app/space-events/space-event-manager';
@@ -50,6 +55,12 @@ export function collectManagerStates(): ManagerStates {
   states.transec = section_('transec', () => (TransecManager.isInitialized() ? TransecManager.getInstance().getState() : undefined));
   states.contactSchedule = section_('contactSchedule', () => (ContactScheduleManager.isInitialized() ? ContactScheduleManager.getInstance().getState() : undefined));
   states.gnssThreat = section_('gnssThreat', () => (GnssThreatManager.isInitialized() ? GnssThreatManager.getInstance().getCheckpointState() : undefined));
+
+  states.hardwareFaults = section_('hardwareFaults', () => (HardwareFaultManager.isInitialized() ? HardwareFaultManager.getInstance().getState() : undefined));
+  states.interference = section_('interference', () => (InterferenceManager.isInitialized() ? InterferenceManager.getInstance().getState() : undefined));
+  states.linkBudget = section_('linkBudget', () => (LinkBudgetManager.isInitialized() ? LinkBudgetManager.getInstance().getCheckpointState() : undefined));
+  states.faultInjector = section_('faultInjector', () => (FaultInjector.isInitialized() ? FaultInjector.getInstance().getCheckpointState() : undefined));
+  states.decisions = section_('decisions', () => (DecisionManager.hasInstance() ? DecisionManager.getInstance().getCheckpointState() : undefined));
 
   return states;
 }
@@ -107,6 +118,32 @@ export function restoreManagerStates(states: ManagerStates | undefined): void {
   restore_('gnssThreat', () => {
     if (states.gnssThreat && GnssThreatManager.isInitialized()) {
       GnssThreatManager.getInstance().restoreCheckpointState(states.gnssThreat);
+    }
+  });
+  // Faults that already tripped must not trip again after the clock jump that follows
+  restore_('hardwareFaults', () => {
+    if (states.hardwareFaults && HardwareFaultManager.isInitialized()) {
+      HardwareFaultManager.getInstance().restoreState(states.hardwareFaults);
+    }
+  });
+  restore_('interference', () => {
+    if (states.interference && InterferenceManager.isInitialized()) {
+      InterferenceManager.getInstance().restoreState(states.interference);
+    }
+  });
+  restore_('linkBudget', () => {
+    if (states.linkBudget && LinkBudgetManager.isInitialized()) {
+      LinkBudgetManager.getInstance().restoreCheckpointState(states.linkBudget);
+    }
+  });
+  restore_('faultInjector', () => {
+    if (states.faultInjector && FaultInjector.isInitialized()) {
+      FaultInjector.getInstance().restoreCheckpointState(states.faultInjector);
+    }
+  });
+  restore_('decisions', () => {
+    if (states.decisions && DecisionManager.hasInstance()) {
+      DecisionManager.getInstance().restoreCheckpointState(states.decisions);
     }
   });
 }

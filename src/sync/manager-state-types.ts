@@ -36,6 +36,7 @@ export type SecuritySnapshot = {
   acknowledged: string[];
   accountStatus: Array<[string, string]>;
   reviewed: boolean;
+  anchors?: AnchorsSnapshot;
 };
 
 export type TransecSnapshot = { mode: string; keyed: boolean };
@@ -48,7 +49,39 @@ export type GnssThreatSnapshot = {
   referenceMode: string;
   lastElapsedS: number;
   lastOffsetChangeElapsedS: number;
+  anchors?: AnchorsSnapshot;
 };
+
+/** [objectiveId, mission-elapsed second the anchor went live] */
+export type AnchorsSnapshot = Array<[string, number]>;
+
+export type HardwareFaultSnapshot = { tripped: string[]; cleared: string[]; anchors: AnchorsSnapshot };
+
+export type InterferenceSnapshot = { forced: Array<[string, boolean]>; anchors: AnchorsSnapshot };
+
+/** Only the operator-committed margin: the computed C/N values are re-derived every tick */
+export type LinkBudgetSnapshot = { appliedMarginDb: number | null };
+
+export type InjectedFaultSnapshot = {
+  id: string;
+  target: string;
+  groundStationId: string;
+  state: Record<string, unknown>;
+  priority: number;
+};
+
+export type FaultInjectorSnapshot = { faults: InjectedFaultSnapshot[]; counter: number };
+
+export type DecisionRecordSnapshot = {
+  objectiveId: string;
+  conditionIndex: number;
+  prompt: string;
+  attempts: number;
+  pointsDeducted: number;
+  resolution: { optionIndex: number; label: string; correct: boolean; evidenced: boolean; missingEvidence: string[] };
+};
+
+export type DecisionsSnapshot = { records: DecisionRecordSnapshot[] };
 
 /** Operator-facing manager state that a checkpoint must carry (v1). */
 export interface ManagerStates {
@@ -64,6 +97,11 @@ export interface ManagerStates {
   transec?: TransecSnapshot;
   contactSchedule?: ContactScheduleSnapshot;
   gnssThreat?: GnssThreatSnapshot;
+  hardwareFaults?: HardwareFaultSnapshot;
+  interference?: InterferenceSnapshot;
+  linkBudget?: LinkBudgetSnapshot;
+  faultInjector?: FaultInjectorSnapshot;
+  decisions?: DecisionsSnapshot;
 }
 
 let collector_: (() => ManagerStates | undefined) | null = null;

@@ -124,6 +124,7 @@ export class GnssThreatManager {
       referenceMode: this.state_.referenceMode,
       lastElapsedS: this.lastElapsedS_,
       lastOffsetChangeElapsedS: this.lastOffsetChangeElapsedS_,
+      anchors: this.anchors_.getState(),
     };
   }
 
@@ -148,6 +149,7 @@ export class GnssThreatManager {
     if (Number.isFinite(snapshot.lastOffsetChangeElapsedS)) {
       this.lastOffsetChangeElapsedS_ = snapshot.lastOffsetChangeElapsedS;
     }
+    this.anchors_.restoreState(snapshot.anchors);
   }
 
   get state(): Readonly<GnssThreatState> {

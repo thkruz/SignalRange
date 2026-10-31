@@ -20,6 +20,7 @@ import { ScenarioManager } from '@app/scenario-manager';
 import { SignalOrigin } from '@app/signal-origin';
 import { missionNowMs } from '@app/simulation/mission-clock';
 import { SimulationManager } from '@app/simulation/simulation-manager';
+import type { InterferenceSnapshot } from '@app/sync/manager-state-types';
 import type { dBi, dBm, FECType, Hertz, ModulationType, RfFrequency, RfSignal } from '@app/types';
 import type { Milliseconds } from 'ootk';
 
@@ -208,6 +209,25 @@ export class InterferenceManager {
     } else {
       this.forced_.set(eventId, active);
     }
+  }
+
+  /** Snapshot for a checkpoint: decision-forced overrides and when each anchor went live. */
+  getState(): InterferenceSnapshot {
+    return { forced: [...this.forced_], anchors: this.anchors_.getState() };
+  }
+
+  /** Restore a snapshot (checkpoint path only); event ids this scenario does not define are ignored. */
+  restoreState(snapshot: InterferenceSnapshot | undefined): void {
+    if (!snapshot) {
+      return;
+    }
+    this.forced_.clear();
+    for (const entry of snapshot.forced ?? []) {
+      if (Array.isArray(entry) && typeof entry[1] === 'boolean' && this.events_.some((e) => e.id === entry[0])) {
+        this.forced_.set(entry[0], entry[1]);
+      }
+    }
+    this.anchors_.restoreState(snapshot.anchors);
   }
 
   isEventForced(eventId: string): boolean {

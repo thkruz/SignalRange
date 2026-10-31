@@ -11,6 +11,7 @@ import { DecisionAnsweredData, DecisionDismissedData, DecisionEvidenceStatus, De
 import { ConsequenceDispatcher } from '@app/objectives/consequence-dispatcher';
 import { evaluateFactRule } from '@app/objectives/evidence-facts';
 import type { DecisionOption, EvidenceFactId } from '@app/objectives/objective-types';
+import type { DecisionsSnapshot } from '@app/sync/manager-state-types';
 import type { Character } from './character-enum';
 import { fillDialogTokens } from './dialog-tokens';
 
@@ -64,6 +65,8 @@ export class DecisionManager {
   private static instance_: DecisionManager | null = null;
 
   private readonly decisions_ = new Map<string, DecisionState>();
+  /** Resolved decisions carried over from a checkpoint; a live decision with the same key wins */
+  private readonly restoredRecords_ = new Map<string, DecisionRecord>();
   private pendingKey_: string | null = null;
   private readonly dispatcher_ = new ConsequenceDispatcher();
 
@@ -177,6 +180,9 @@ export class DecisionManager {
   /** Every resolved decision, for the completion summary */
   getRecords(): DecisionRecord[] {
     const records: DecisionRecord[] = [];
+    for (const [key, restored] of this.restoredRecords_) {
+      if (!this.decisions_.get(key)?.resolution) records.push(restored);
+    }
     for (const state of this.decisions_.values()) {
       if (!state.resolution) continue;
       records.push({
@@ -191,7 +197,29 @@ export class DecisionManager {
     return records;
   }
 
+  /** Resolved decisions for a checkpoint (live ones, plus any carried over from an earlier restore). */
+  getCheckpointState(): DecisionsSnapshot {
+    return { records: this.getRecords().map((r) => ({ ...r, resolution: { ...r.resolution, missingEvidence: [...r.resolution.missingEvidence] } })) };
+  }
+
+  /**
+   * Restore the decisions made before the checkpoint so the completion summary keeps them.
+   * They are records only: a restored-complete objective never re-registers its decision.
+   */
+  restoreCheckpointState(snapshot: DecisionsSnapshot | undefined): void {
+    if (!snapshot) {
+      return;
+    }
+    this.restoredRecords_.clear();
+    for (const r of snapshot.records ?? []) {
+      if (r && typeof r.objectiveId === 'string' && Number.isFinite(r.conditionIndex) && r.resolution) {
+        this.restoredRecords_.set(DecisionManager.keyFor_(r.objectiveId, r.conditionIndex), r);
+      }
+    }
+  }
+
   reset(): void {
+    this.restoredRecords_.clear();
     this.decisions_.clear();
     this.pendingKey_ = null;
     this.dispatcher_.releaseAll();

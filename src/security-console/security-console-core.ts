@@ -149,7 +149,7 @@ export class SecurityConsoleCore {
 
   /** Snapshot for a checkpoint (Phase 35 rt-s24-F4); droppedEvidence_ is derived at load. */
   getState(): SecuritySnapshot {
-    return { acknowledged: [...this.acknowledged_], accountStatus: [...this.accountStatus_], reviewed: this.reviewed_ };
+    return { acknowledged: [...this.acknowledged_], accountStatus: [...this.accountStatus_], reviewed: this.reviewed_, anchors: this.anchors_.getState() };
   }
 
   /** Restore a snapshot; account ids this scenario does not define are ignored. */
@@ -169,6 +169,7 @@ export class SecurityConsoleCore {
       }
     }
     this.reviewed_ = snapshot.reviewed === true;
+    this.anchors_.restoreState(snapshot.anchors);
   }
 
   static destroy(): void {

@@ -20,13 +20,15 @@ import { QuizModal } from '@app/modal/quiz-modal';
 import { ObjectivesManager } from '@app/objectives/objectives-manager';
 import { BasePage } from '@app/pages/base-page';
 import { Body } from '@app/pages/layout/body/body';
-import { NavigationOptions } from '@app/router';
+import { MissionLoadingScreen } from '@app/pages/mission-loading-screen';
+import { NavigationOptions, Router } from '@app/router';
 import { ScenarioManager } from '@app/scenario-manager';
 import { CampaignRecordPanel } from '@app/scenarios/campaign-record-panel';
 import { ScenarioDialogManager } from '@app/scenarios/scenario-dialog-manager';
 import { WorkingDocumentManager } from '@app/scenarios/working-document-manager';
 import { SecurityConsoleCore } from '@app/security-console/security-console-core';
 import { AlarmService } from '@app/services/alarm-service';
+import { SimClock } from '@app/simulation/sim-clock';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { SoundEvents } from '@app/sound/sound-events';
 import { SpaceEventManager } from '@app/space-events/space-event-manager';
@@ -62,11 +64,19 @@ export class MissionControlPage extends BasePage {
   private tabbedCanvas_!: TabbedCanvas;
 
   private groundStations_: GroundStation[] = [];
+  private loadingScreen_: MissionLoadingScreen | null = null;
+  private disposed_ = false;
 
   private constructor(options?: NavigationOptions) {
     super();
     this.navigationOptions_ = options || {};
-    this.init_();
+    try {
+      this.init_();
+    } catch (error) {
+      this.loadingScreen_?.dispose();
+      SimClock.resume('loading');
+      throw error;
+    }
 
     Logger.info(
       `
@@ -111,6 +121,9 @@ export class MissionControlPage extends BasePage {
 
   init_(): void {
     const parentDom = document.getElementById(Body.containerId);
+    const returnPath = /^\/campaigns\/[^/]+/u.exec(globalThis.location.pathname)?.[0] ?? '/';
+    SimClock.pause('loading');
+    this.loadingScreen_ = new MissionLoadingScreen(ScenarioManager.getInstance().data, () => Router.getInstance().navigate(returnPath));
 
     try {
       // Remove any existing instance
@@ -124,6 +137,7 @@ export class MissionControlPage extends BasePage {
 
     super.init_(Body.containerId, 'add');
     this.dom_ = qs(`#${this.id}`, parentDom);
+    this.dom_.inert = true;
 
     this.commandBarCenter_ = new GlobalCommandBar('global-command-bar-container');
 
@@ -147,7 +161,13 @@ export class MissionControlPage extends BasePage {
     this.initProgressSaveManager_();
 
     // Initialize equipment and objectives asynchronously
-    this.initializeAsync_();
+    void this.initializeAsync_().catch((error) => {
+      if (this.disposed_) return;
+      Logger.error('Failed to prepare mission:', error);
+      SimClock.pause('loading');
+      this.dom_.inert = true;
+      this.loadingScreen_?.fail();
+    });
   }
 
   /**
@@ -163,11 +183,17 @@ export class MissionControlPage extends BasePage {
 
     // Load checkpoint from backend and write to local storage (before sync)
     await this.loadCheckpointIfExists_();
+    if (this.disposed_) return;
 
     // Sync equipment with storage - will read checkpoint state from local storage if loaded
     syncEquipmentWithStore(null, this.groundStations_);
 
+    await this.loadingScreen_?.reveal();
+    if (this.disposed_) return;
+    this.dom_.inert = false;
+    SimClock.resume('loading');
     await this.initializeObjectivesAndDialogs_();
+    if (this.disposed_) return;
     SoundEvents.arm();
   }
 
@@ -203,10 +229,12 @@ export class MissionControlPage extends BasePage {
 
     // Wait for auth to be ready before checking login status
     await App.authReady;
+    if (this.disposed_) return;
 
     // Check if user is logged in before trying to load from backend. A replay
     // supplies its checkpoint from memory, so it needs no sign-in.
     const isLoggedIn = ReplaySession.checkpointFor(ScenarioManager.getInstance().data.id) !== null || (await Auth.isLoggedIn());
+    if (this.disposed_) return;
     if (!isLoggedIn) {
       Logger.info('loadCheckpointIfExists_: User not logged in, skipping checkpoint load');
       return;
@@ -219,6 +247,7 @@ export class MissionControlPage extends BasePage {
       const checkpoint = (await this.progressSaveManager_.loadCheckpoint(scenario.data.id)) as {
         state: AppState;
       };
+      if (this.disposed_) return;
 
       Logger.info(`loadCheckpointIfExists_: Checkpoint result:`, checkpoint ? 'found' : 'not found');
 
@@ -298,6 +327,9 @@ export class MissionControlPage extends BasePage {
   static destroy(): void {
     // Clean up resources
     if (MissionControlPage.instance_) {
+      MissionControlPage.instance_.disposed_ = true;
+      MissionControlPage.instance_.loadingScreen_?.dispose();
+      SimClock.resume('loading');
       // Clean up progress save manager
       MissionControlPage.instance_.disposeProgressSaveManager_();
 

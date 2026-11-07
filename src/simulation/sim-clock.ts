@@ -34,7 +34,7 @@ export const SIM_SPEEDS = [1, 2, 5] as const;
 export type SimSpeed = (typeof SIM_SPEEDS)[number];
 
 /** Why the scenario reading is stopped. `hidden` also stops the run reading. */
-export type PauseReason = 'scenario' | 'hidden';
+export type PauseReason = 'scenario' | 'hidden' | 'loading';
 
 /** Default scenario epoch before a scenario sets one (menus, unit tests). */
 const DEFAULT_EPOCH_MS = Date.UTC(2026, 0, 1, 12, 0, 0);
@@ -122,7 +122,7 @@ export const SimClock = {
    * run now; the caller runs them and calls step() before each.
    */
   consumeFrame(realDtMs: number): number {
-    if (pauseReasons_.has('hidden') || !Number.isFinite(realDtMs) || realDtMs <= 0) {
+    if (pauseReasons_.has('hidden') || pauseReasons_.has('loading') || !Number.isFinite(realDtMs) || realDtMs <= 0) {
       return 0;
     }
 
@@ -224,7 +224,7 @@ export const SimClock = {
 
   resume(reason: PauseReason): void {
     pauseReasons_.delete(reason);
-    if (reason === 'hidden') {
+    if (reason === 'hidden' || reason === 'loading') {
       // Do not replay the time the tab was away
       accumulatorMs_ = 0;
     }

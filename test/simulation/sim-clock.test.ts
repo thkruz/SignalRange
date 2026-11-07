@@ -16,6 +16,18 @@ function runFrames(frameMs: number, totalMs: number): number {
 }
 
 describe('SimClock', () => {
+  it('stops both clocks during mission loading without releasing a visibility pause', () => {
+    SimClock.pause('loading');
+    SimClock.pause('hidden');
+    expect(runFrames(FIXED_STEP_MS, 1000)).toBe(0);
+    expect(SimClock.runMs()).toBe(0);
+    expect(SimClock.scenarioElapsedMs()).toBe(0);
+    SimClock.resume('loading');
+    expect(SimClock.consumeFrame(FIXED_STEP_MS)).toBe(0);
+    SimClock.resume('hidden');
+    expect(SimClock.consumeFrame(FIXED_STEP_MS)).toBe(1);
+  });
+
   it('releases the same number of steps at any frame rate', () => {
     const at30 = runFrames(1000 / 30, 10_000);
     SimClock.reset();

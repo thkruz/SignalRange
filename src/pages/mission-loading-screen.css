@@ -1,0 +1,45 @@
+.mission-loading-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  background: var(--mc-equip-bg-deep);
+  color: var(--mc-equip-text);
+  display: flex;
+  align-items: flex-end;
+  isolation: isolate;
+}
+
+.mission-loading-screen > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.65;
+  z-index: -2;
+}
+
+.mission-loading-screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(0deg, var(--mc-equip-bg-deep) 0, rgba(10, 10, 10, 0.6) 50%, transparent);
+  z-index: -1;
+}
+
+.mission-loading-content { padding: clamp(24px, 6vw, 96px); max-width: 1000px; }
+.mission-loading-content > span { display: block; color: var(--mc-text-primary); border-left: 3px solid #ba160c; padding-left: 10px; margin-bottom: 16px; font-size: 11px; letter-spacing: 2px; }
+.mission-loading-content h1 { font-size: 40px; line-height: 1.2; margin: 0 0 16px; }
+.mission-loading-content p { color: var(--mc-equip-text-bright); font-size: 16px; line-height: 1.6; }
+.mission-loading-content button {
+  padding: 12px 20px;
+  margin-top: 24px;
+  color: var(--mc-equip-text);
+  border: 1px solid var(--mc-equip-control);
+  background: var(--mc-equip-panel);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.mission-loading-content button:hover { background: var(--mc-equip-border); }
+.mission-loading-content button:focus-visible { outline: 2px solid var(--mc-equip-text-dim); outline-offset: 3px; }
+@media (max-width: 640px) { .mission-loading-content h1 { font-size: 28px; } }

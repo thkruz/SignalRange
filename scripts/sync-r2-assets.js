@@ -50,6 +50,8 @@ const shouldDelete = args.includes('--delete');
 const isVerbose = true; // args.includes('--verbose');
 const showHelp = args.includes('--help') || args.includes('-h');
 const isPull = args.includes('--pull');
+const isForce = args.includes('--force');
+const HEAD_CONCURRENCY = 16;
 
 // Colors for terminal output
 const colors = {
@@ -85,7 +87,8 @@ ${colors.bright}Options:${colors.reset}
   --pull       Download assets from R2 (skips files that exist locally)
   --dry-run    Show what would be uploaded/downloaded without actually doing it
   --delete     Remove files from R2 that don't exist locally (dangerous!)
-  --verbose    Show detailed progress information
+  --force      Upload every file, even ones whose remote copy is identical
+  --verbose   Show detailed progress information
   --help       Show this help message
 
 ${colors.bright}Examples:${colors.reset}
@@ -95,6 +98,8 @@ ${colors.bright}Examples:${colors.reset}
   npm run r2:pull:dry          # Preview what would be downloaded
 
 ${colors.bright}Notes:${colors.reset}
+  - Sync uploads only new or changed files: it compares each file's MD5 with
+    the ETag the public URL returns (R2 single-part ETag = MD5)
   - Syncs audio files: .mp3, .wav, .ogg
   - Syncs image files: .png, .jpg, .jpeg
   - Pull downloads from public URL (no auth needed)
@@ -166,6 +171,54 @@ function uploadToR2(localPath, r2Key) {
   }
 
   return runWranglerCommand(command, { silent: !isVerbose });
+}
+
+/**
+ * Read the remote object's ETag with a HEAD request to the public URL.
+ * Resolves to { status, etag } (etag without quotes, or null).
+ * The query string bypasses any edge cache so the answer reflects R2 now.
+ */
+function fetchRemoteEtag(r2Key) {
+  const url = `${PUBLIC_ASSETS_URL}/${encodeURI(r2Key)}?sync=${Date.now()}`;
+  return new Promise(resolve => {
+    const req = https.request(url, { method: 'HEAD', headers: { 'User-Agent': 'signal-range-sync/1.0' } }, res => {
+      res.resume();
+      const raw = res.headers.etag;
+      const etag = raw ? raw.replace(/^W\//u, '').replace(/"/gu, '') : null;
+      resolve({ status: res.statusCode, etag });
+    });
+    req.on('error', err => resolve({ status: 0, etag: null, error: err.message }));
+    req.setTimeout(15000, () => req.destroy(new Error('timeout')));
+    req.end();
+  });
+}
+
+/**
+ * Decide which files need uploading: new (404), changed (ETag differs) or
+ * unknown (request failed or multipart ETag). Runs HEADs in parallel.
+ */
+async function classifyFiles(entries) {
+  const results = new Array(entries.length);
+  let next = 0;
+  async function worker() {
+    while (next < entries.length) {
+      const i = next++;
+      const entry = entries[i];
+      if (isForce) {
+        results[i] = { ...entry, reason: 'forced' };
+        continue;
+      }
+      const localHash = getFileHash(entry.filePath);
+      const remote = await fetchRemoteEtag(entry.r2Key);
+      let reason;
+      if (remote.status === 404) reason = 'new';
+      else if (remote.status !== 200 || !remote.etag || remote.etag.includes('-')) reason = 'unknown';
+      else reason = remote.etag === localHash ? 'same' : 'changed';
+      results[i] = { ...entry, reason };
+    }
+  }
+  await Promise.all(Array.from({ length: HEAD_CONCURRENCY }, worker));
+  return results;
 }
 
 /**
@@ -284,13 +337,29 @@ async function syncAssets() {
   let skipped = 0;
   let failed = 0;
 
-  for (const { filePath, localDir, r2Prefix } of allFiles) {
-    const relativePath = path.relative(localDir, filePath);
-    const r2Key = `${r2Prefix}/${relativePath.replace(/\\/g, '/')}`;
+  log(isForce ? '🔁 --force: uploading every file' : '🔎 Comparing local MD5s with remote ETags...', 'blue');
+  const classified = await classifyFiles(
+    allFiles.map(({ filePath, localDir, r2Prefix }) => ({
+      filePath,
+      r2Key: `${r2Prefix}/${path.relative(localDir, filePath).replace(/\\/gu, '/')}`,
+    })),
+  );
+  const counts = classified.reduce((acc, { reason }) => ({ ...acc, [reason]: (acc[reason] || 0) + 1 }), {});
+  log(
+    `   new ${counts.new || 0}, changed ${counts.changed || 0}, unknown ${counts.unknown || 0}, ` +
+      `unchanged ${counts.same || 0}${counts.forced ? `, forced ${counts.forced}` : ''}\n`,
+    'green',
+  );
+
+  for (const { filePath, r2Key, reason } of classified) {
+    if (reason === 'same') {
+      skipped++;
+      continue;
+    }
     const fileSize = fs.statSync(filePath).size;
     const fileSizeMB = (fileSize / 1024 / 1024).toFixed(2);
 
-    log(`📤 ${r2Key} (${fileSizeMB} MB)`, 'bright');
+    log(`📤 ${r2Key} (${fileSizeMB} MB, ${reason})`, 'bright');
 
     const result = uploadToR2(filePath, r2Key);
 

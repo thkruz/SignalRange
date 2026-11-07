@@ -10,6 +10,7 @@ import { ScenarioSelectionPage } from '@app/pages/scenario-selection';
 import { PluginManager } from '@app/plugins/plugin-manager';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { Auth } from '@app/user-account/auth';
+import { selectionProgressCache } from '@app/user-account/selection-progress-cache';
 import { initUserDataService } from '@app/user-account/user-data-service';
 import { Router } from './router';
 
@@ -52,11 +53,13 @@ export class App extends BaseElement {
     // Initialize auth and cache the token - track when it's ready
     this.authReadyPromise_ = Auth.getSession().then((session) => {
       cachedAccessToken = session?.access_token || null;
+      selectionProgressCache.setAccount(session?.user.id ?? null);
     });
 
     // Listen for auth state changes to keep token updated
-    Auth.onAuthStateChange((_event, _user, _profile, accessToken) => {
+    Auth.onAuthStateChange((_event, user, _profile, accessToken) => {
       cachedAccessToken = accessToken;
+      selectionProgressCache.setAccount(user?.id ?? null);
     });
 
     initUserDataService({

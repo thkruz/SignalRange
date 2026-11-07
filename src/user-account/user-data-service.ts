@@ -700,6 +700,12 @@ export class UserDataService {
         throw new UserDataServiceError(`HTTP ${response.status}: ${response.statusText}`, response.status);
       }
 
+      // Menu snapshots must not survive a successful progress/checkpoint mutation.
+      if (method !== 'GET' && method !== 'HEAD' && (endpoint.includes('/scenarios/') || endpoint.endsWith('/progress'))) {
+        const { selectionProgressCache } = await import('./selection-progress-cache');
+        selectionProgressCache.invalidate();
+      }
+
       // HEAD and DELETE requests don't have a body
       if (method === 'HEAD' || method === 'DELETE') {
         return undefined as T;

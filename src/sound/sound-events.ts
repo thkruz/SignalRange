@@ -204,7 +204,7 @@ export class SoundEvents {
       sound.stop(Sfx.ALARM_MAJOR);
       sound.stop(Sfx.ALARM_MINOR);
     }
-    sound.play(Sfx.ALARM_ACK);
+    sound.play(Sfx.UI_CLICK);
   }
 
   /** Defer the objective cue a moment so the last objective plays the scenario cue instead. */

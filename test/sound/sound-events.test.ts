@@ -66,7 +66,7 @@ describe('SoundEvents alarm tones', () => {
     raise(alarm('Carrier lock lost'));
     SoundEvents.setAlarmsMuted(true);
     expect(SoundEvents.alarmsMuted).toBe(true);
-    expect(play).toHaveBeenCalledWith(Sfx.ALARM_ACK);
+    expect(play).toHaveBeenCalledWith(Sfx.UI_CLICK);
 
     for (let i = 0; i < 6; i++) {
       raise();

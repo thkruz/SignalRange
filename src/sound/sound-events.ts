@@ -98,7 +98,6 @@ export class SoundEvents {
       }
     });
     this.on_(Events.TX_TRANSMIT_CHANGED, (data: TxTransmitChangedData) => this.play_(data.transmitting ? Sfx.TX_ON : Sfx.TX_OFF));
-    this.on_(Events.RX_SIGNAL_LOST, () => this.play_(Sfx.CARRIER_LOSS));
     this.on_(Events.CRYPTO_KEY_ROTATED, () => this.play_(Sfx.KEYPRESS));
     this.on_(Events.CRYPTO_ZEROIZED, () => this.play_(Sfx.ZEROIZE));
 

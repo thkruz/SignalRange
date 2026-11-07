@@ -16,7 +16,6 @@ export enum Sfx {
   ALARM_ACK = 'alarm-ack',
   TX_ON = 'tx-on',
   TX_OFF = 'tx-off',
-  CARRIER_LOSS = 'carrier-loss',
   ZEROIZE = 'zeroize',
   UPS_BEEP = 'ups-beep',
   BREAKER_TRIP = 'breaker-trip',

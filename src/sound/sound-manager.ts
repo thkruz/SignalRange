@@ -36,7 +36,6 @@ const SFX_DEFS: Record<Sfx, SfxDef> = {
   [Sfx.ALARM_ACK]: { files: [sfx('alarm-ack')], volume: 0.6, throttleMs: 300 },
   [Sfx.TX_ON]: { files: [sfx('tx-on')], volume: 0.6, throttleMs: 300 },
   [Sfx.TX_OFF]: { files: [sfx('tx-off')], volume: 0.6, throttleMs: 300 },
-  [Sfx.CARRIER_LOSS]: { files: [sfx('carrier-loss')], volume: 0.6, throttleMs: 3000 },
   [Sfx.ZEROIZE]: { files: [sfx('zeroize')], volume: 0.7, throttleMs: 1000 },
   [Sfx.UPS_BEEP]: { files: [sfx('ups-beep')], volume: 0.35, throttleMs: 1000 },
   [Sfx.BREAKER_TRIP]: { files: [sfx('breaker-trip')], volume: 0.7, throttleMs: 500 },

@@ -147,3 +147,41 @@
 .header-icon-button--active:hover {
   background-color: rgba(96, 165, 250, 0.35);
 }
+/* Sound settings menu */
+.header-audio {
+  position: relative;
+}
+
+.header-audio .audio-mute {
+  display: none;
+}
+
+.header-audio--muted .audio-wave {
+  display: none;
+}
+
+.header-audio--muted .audio-mute {
+  display: inline;
+}
+
+.header-audio-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 1100;
+  min-width: 190px;
+  padding: 12px 14px;
+  background: var(--mc-bg-secondary, #1b1f27);
+  border: 1px solid var(--mc-border, rgba(255, 255, 255, 0.15));
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.header-audio-menu[hidden] {
+  display: none;
+}
+
+.header-audio-menu .form-check-label {
+  color: var(--color-text, #e5e7eb);
+}

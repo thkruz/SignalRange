@@ -1,38 +1,74 @@
+import { AudioPreferences } from './audio-preferences';
 import { Sfx } from './sfx-enum';
 import TtsService from './tts-service';
 
-const SFX_FILE_MAP: Record<Sfx, string> = {
-  [Sfx.POWER_ON]: '/sfx/startup-sound.mp3',
-  [Sfx.SWITCH]: '/sfx/light-switch-flip.mp3',
-  [Sfx.TOGGLE_OFF]: '/sfx/toggle-button-off.mp3',
-  [Sfx.TOGGLE_ON]: '/sfx/toggle-button-on.mp3',
-  [Sfx.SMALL_MOTOR]: '/sfx/small-electronic-motor.mp3',
-  [Sfx.SPEC_A_BTN_PRESS]: '/sfx/toggle-button-on.mp3',
-  [Sfx.KNOB]: '/sfx/knob.mp3',
-  [Sfx.FAULT]: '/sfx/fault.mp3',
+/**
+ * One entry per sound. Files are trimmed and loudness-matched offline
+ * (art-review/sfx-review/prepare.py), so `volume` only sets the mix.
+ * Several files make a pool: each play picks one at random.
+ */
+interface SfxDef {
+  files: readonly string[];
+  volume: number;
+  /** Minimum ms between plays; ignored for restart and loop sounds */
+  throttleMs: number;
+  /** Stop and restart the sound if it is already playing */
+  restart?: boolean;
+  /** Loop until stop() */
+  loop?: boolean;
+}
+
+const sfx = (name: string): string => `/sfx/${name}.mp3`;
+
+const SFX_DEFS: Record<Sfx, SfxDef> = {
+  [Sfx.POWER_ON]: { files: [sfx('power-on')], volume: 0.7, throttleMs: 0, restart: true },
+  [Sfx.SWITCH]: { files: [sfx('switch')], volume: 0.6, throttleMs: 200 },
+  [Sfx.TOGGLE_OFF]: { files: [sfx('toggle-off')], volume: 0.6, throttleMs: 150 },
+  [Sfx.TOGGLE_ON]: { files: [sfx('toggle-on')], volume: 0.6, throttleMs: 150 },
+  [Sfx.SMALL_MOTOR]: { files: [sfx('small-motor')], volume: 0.5, throttleMs: 200, loop: true },
+  [Sfx.SPEC_A_BTN_PRESS]: { files: [sfx('button-press')], volume: 0.6, throttleMs: 150 },
+  [Sfx.KNOB]: { files: [sfx('knob')], volume: 0.3, throttleMs: 100 },
+  [Sfx.KEYPRESS]: { files: [sfx('keypress')], volume: 0.5, throttleMs: 60 },
+  [Sfx.RELAY_CLUNK]: { files: [sfx('relay-clunk')], volume: 0.6, throttleMs: 200 },
+  [Sfx.FAULT]: { files: [sfx('fault')], volume: 0.8, throttleMs: 500 },
+  [Sfx.ALARM_MAJOR]: { files: [sfx('alarm-major')], volume: 1, throttleMs: 1500 },
+  [Sfx.ALARM_MINOR]: { files: [sfx('alarm-minor')], volume: 0.8, throttleMs: 1500 },
+  [Sfx.ALARM_ACK]: { files: [sfx('alarm-ack')], volume: 0.6, throttleMs: 300 },
+  [Sfx.TX_ON]: { files: [sfx('tx-on')], volume: 0.6, throttleMs: 300 },
+  [Sfx.TX_OFF]: { files: [sfx('tx-off')], volume: 0.6, throttleMs: 300 },
+  [Sfx.CARRIER_LOSS]: { files: [sfx('carrier-loss')], volume: 0.6, throttleMs: 3000 },
+  [Sfx.ZEROIZE]: { files: [sfx('zeroize')], volume: 0.7, throttleMs: 1000 },
+  [Sfx.UPS_BEEP]: { files: [sfx('ups-beep')], volume: 0.35, throttleMs: 1000 },
+  [Sfx.BREAKER_TRIP]: { files: [sfx('breaker-trip')], volume: 0.7, throttleMs: 500 },
+  [Sfx.BREAKER_RESET]: { files: [sfx('breaker-reset')], volume: 0.7, throttleMs: 500 },
+  [Sfx.FAN_SPINDOWN]: { files: [sfx('fan-spindown')], volume: 0.6, throttleMs: 2000 },
+  [Sfx.UI_CLICK]: { files: [sfx('ui-click')], volume: 0.35, throttleMs: 80 },
+  [Sfx.UI_CONFIRM]: { files: [sfx('ui-confirm')], volume: 0.5, throttleMs: 300 },
+  [Sfx.UI_ERROR]: { files: [sfx('ui-error')], volume: 0.5, throttleMs: 300 },
+  [Sfx.NOTIFY]: { files: [sfx('notify')], volume: 0.5, throttleMs: 1000 },
+  [Sfx.OBJECTIVE_COMPLETE]: { files: [sfx('objective-complete')], volume: 0.6, throttleMs: 800 },
+  [Sfx.SCENARIO_COMPLETE]: { files: [sfx('scenario-complete')], volume: 0.7, throttleMs: 3000 },
+  [Sfx.SCENARIO_FAILED]: { files: [sfx('scenario-failed')], volume: 0.7, throttleMs: 3000 },
+  [Sfx.TIMER_WARNING]: { files: [sfx('timer-warning')], volume: 0.7, throttleMs: 2000 },
+  [Sfx.PENALTY]: { files: [sfx('penalty')], volume: 0.6, throttleMs: 800 },
+  [Sfx.TYPING]: {
+    files: [1, 2, 3, 4, 5, 6].map((n) => sfx(`typing-${n}`)),
+    volume: 0.3,
+    throttleMs: 6000,
+  },
+  [Sfx.PRINTER]: { files: [sfx('printer')], volume: 0.5, throttleMs: 4000 },
+  [Sfx.PHONE_RING]: { files: [sfx('phone-ring')], volume: 0.6, throttleMs: 3000 },
+  [Sfx.RADIO_CALL_IN]: { files: [sfx('radio-call-in')], volume: 0.6, throttleMs: 1000 },
+  [Sfx.RADIO_CALL_OUT]: { files: [sfx('radio-call-out')], volume: 0.6, throttleMs: 1000 },
+  [Sfx.DOOR_BADGE]: { files: [sfx('door-badge')], volume: 0.5, throttleMs: 1000 },
+  [Sfx.DOOR_HEAVY]: { files: [sfx('door-heavy')], volume: 0.6, throttleMs: 2000 },
+  [Sfx.KEY_LOCK]: { files: [sfx('key-lock')], volume: 0.6, throttleMs: 500 },
+  [Sfx.CABINET_DOOR]: { files: [sfx('cabinet-door')], volume: 0.6, throttleMs: 1000 },
 };
-
-// Throttle duration in milliseconds for each sound effect
-const SFX_THROTTLE_MAP: Record<Sfx, number> = {
-  [Sfx.POWER_ON]: 0, // No throttle - uses restart behavior instead
-  [Sfx.SWITCH]: 200,
-  [Sfx.TOGGLE_OFF]: 150,
-  [Sfx.TOGGLE_ON]: 150,
-  [Sfx.SMALL_MOTOR]: 200,
-  [Sfx.SPEC_A_BTN_PRESS]: 150,
-  [Sfx.KNOB]: 100,
-  [Sfx.FAULT]: 500,
-};
-
-// Sounds that should restart if already playing (typically longer sounds)
-const SFX_RESTART_ON_PLAY: Set<Sfx> = new Set([Sfx.POWER_ON]);
-
-// Sounds that should loop until explicitly stopped
-const SFX_LOOP: Set<Sfx> = new Set([Sfx.SMALL_MOTOR]);
 
 class SoundManager {
   private static instance: SoundManager;
-  private readonly audioCache: Map<Sfx, HTMLAudioElement> = new Map();
+  private readonly audioCache: Map<string, HTMLAudioElement> = new Map();
   private readonly lastPlayTime: Map<Sfx, number> = new Map();
   private readonly currentlyPlaying: Map<Sfx, HTMLAudioElement> = new Map();
   private customAudio: HTMLAudioElement | null = null;
@@ -57,15 +93,18 @@ class SoundManager {
   }
 
   play(sfx: Sfx): void {
-    const isLooping = SFX_LOOP.has(sfx);
+    const def = SFX_DEFS[sfx];
+    if (!def || !AudioPreferences.getInstance().sfxEnabled) {
+      return;
+    }
+    const isLooping = def.loop === true;
 
     // If sound is looping and already playing, don't restart
     if (isLooping && this.currentlyPlaying.has(sfx)) {
       return;
     }
 
-    // Check if this sound should restart if already playing
-    if (SFX_RESTART_ON_PLAY.has(sfx)) {
+    if (def.restart) {
       const playing = this.currentlyPlaying.get(sfx);
       if (playing) {
         playing.pause();
@@ -73,39 +112,38 @@ class SoundManager {
         this.currentlyPlaying.delete(sfx);
       }
     } else if (!isLooping) {
-      // Check throttle for non-restart, non-looping sounds
-      const now = Date.now();
       const lastPlay = this.lastPlayTime.get(sfx) || 0;
-      const throttle = SFX_THROTTLE_MAP[sfx] || 0;
-
-      if (now - lastPlay < throttle) {
+      if (Date.now() - lastPlay < def.throttleMs) {
         return; // Throttled
       }
     }
 
-    let audio = this.audioCache.get(sfx);
+    const src = def.files.length === 1 ? def.files[0] : def.files[Math.floor(Math.random() * def.files.length)];
+    let audio = this.audioCache.get(src);
     if (audio) {
       // Create a clone to allow overlapping sounds
       audio = audio.cloneNode(true) as HTMLAudioElement;
     } else {
-      const src = SFX_FILE_MAP[sfx];
-      if (!src) return;
       audio = new Audio(src);
-      this.audioCache.set(sfx, audio);
+      this.audioCache.set(src, audio);
     }
 
-    // Set loop property for looping sounds
     if (isLooping) {
       audio.loop = true;
     }
 
+    audio.volume = def.volume;
     audio.currentTime = 0;
-    audio.play().catch(() => {
-      console.error(`Audio file not found: ${SFX_FILE_MAP[sfx]}. Run 'npm run r2:pull' to fetch assets.`);
+    audio.play().catch((err: unknown) => {
+      // NotAllowedError: no user gesture yet (autoplay policy); AbortError: paused before it started
+      const name = (err as { name?: string } | null)?.name;
+      if (name !== 'NotAllowedError' && name !== 'AbortError') {
+        console.warn(`Could not play sound ${src}`);
+      }
     });
 
     // Track currently playing audio for restart-enabled or looping sounds
-    if (SFX_RESTART_ON_PLAY.has(sfx) || isLooping) {
+    if (def.restart || isLooping) {
       this.currentlyPlaying.set(sfx, audio);
       if (!isLooping) {
         audio.addEventListener('ended', () => {
@@ -114,7 +152,6 @@ class SoundManager {
       }
     }
 
-    // Update last play time
     this.lastPlayTime.set(sfx, Date.now());
   }
 

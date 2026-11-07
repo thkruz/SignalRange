@@ -143,7 +143,7 @@ describe('SoundManager.getInstance', () => {
       it('should create and play a new audio element', () => {
         manager.play(Sfx.SWITCH);
 
-        expect(global.Audio).toHaveBeenCalledWith('/sfx/light-switch-flip.mp3');
+        expect(global.Audio).toHaveBeenCalledWith('/sfx/switch.mp3');
         expect(mockAudio.play).toHaveBeenCalled();
         expect(mockAudio.currentTime).toBe(0);
       });

@@ -28,6 +28,7 @@ import { WorkingDocumentManager } from '@app/scenarios/working-document-manager'
 import { SecurityConsoleCore } from '@app/security-console/security-console-core';
 import { AlarmService } from '@app/services/alarm-service';
 import { SimulationManager } from '@app/simulation/simulation-manager';
+import { SoundEvents } from '@app/sound/sound-events';
 import { SpaceEventManager } from '@app/space-events/space-event-manager';
 import { syncEquipmentWithStore } from '@app/sync';
 import { AppState, syncManager } from '@app/sync/storage';
@@ -158,6 +159,7 @@ export class MissionControlPage extends BasePage {
 
     // Initialize AlarmService for global alarm aggregation
     AlarmService.getInstance();
+    SoundEvents.start();
 
     // Load checkpoint from backend and write to local storage (before sync)
     await this.loadCheckpointIfExists_();
@@ -166,6 +168,7 @@ export class MissionControlPage extends BasePage {
     syncEquipmentWithStore(null, this.groundStations_);
 
     await this.initializeObjectivesAndDialogs_();
+    SoundEvents.arm();
   }
 
   /**
@@ -341,6 +344,7 @@ export class MissionControlPage extends BasePage {
     DecisionModal.destroy();
     DecisionManager.destroy();
     PendingQuizIndicator.destroy();
+    SoundEvents.destroy();
     EventBus.destroy();
   }
 }

@@ -21,6 +21,7 @@ import { ScenarioDialogManager } from '@app/scenarios/scenario-dialog-manager';
 import { WorkingDocumentManager } from '@app/scenarios/working-document-manager';
 import { SecurityConsoleCore } from '@app/security-console/security-console-core';
 import { SimulationManager } from '@app/simulation/simulation-manager';
+import { SoundEvents } from '@app/sound/sound-events';
 import { SpaceEventManager } from '@app/space-events/space-event-manager';
 import { AppState, clearPersistedStore, syncEquipmentWithStore, syncManager } from '@app/sync/storage';
 import { TelemetryManager } from '@app/telemetry/telemetry-manager';
@@ -89,8 +90,10 @@ export class SandboxPage extends BasePage {
    * Handle async initialization of equipment and objectives
    */
   private async initializeAsync_(): Promise<void> {
+    SoundEvents.start();
     await this.initEquipment_();
     await this.initializeObjectivesAndDialogs_();
+    SoundEvents.arm();
   }
 
   protected addEventListeners_(): void {
@@ -201,6 +204,7 @@ export class SandboxPage extends BasePage {
     GnssThreatManager.destroy();
     TelemetryManager.destroy();
     QuizModal.destroy();
+    SoundEvents.destroy();
     EventBus.destroy();
     const container = getEl(SandboxPage.containerId);
     if (container) {

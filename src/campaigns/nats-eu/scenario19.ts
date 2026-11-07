@@ -92,7 +92,7 @@ galwayAgility.rfFrontEnds[0].buc = { ...galwayAgility.rfFrontEnds[0].buc, isMute
 export const natsEuScenario19Data: ScenarioData = {
   id: 'nats-eu-scenario19',
   url: 'nats-eu/scenarios/nats-eu-scenario19',
-  imageUrl: 'nats/19/card.png',
+  imageUrl: 'nats-eu/19/card.png',
   number: 19,
   isDisabled: false,
   difficulty: 'advanced',

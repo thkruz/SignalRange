@@ -38,7 +38,7 @@ galwayDrifted.receivers![0].modems![0] = {
 export const natsEuScenario26Data: ScenarioData = {
   id: 'nats-eu-scenario26',
   url: 'nats-eu/scenarios/nats-eu-scenario26',
-  imageUrl: 'nats/17/card.png',
+  imageUrl: 'nats-eu/26/card.png',
   number: 26,
   isDisabled: false,
   difficulty: 'intermediate',

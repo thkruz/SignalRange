@@ -64,7 +64,7 @@ galwayComsec.rfFrontEnds[0].buc = { ...galwayComsec.rfFrontEnds[0].buc, isMuted:
 export const natsEuScenario4Data: ScenarioData = {
   id: 'nats-eu-scenario4',
   url: 'nats-eu/scenarios/nats-eu-scenario4',
-  imageUrl: 'nats/4/card.png',
+  imageUrl: 'nats-eu/4/card.png',
   number: 4,
   isDisabled: false,
   difficulty: 'intermediate',

@@ -126,7 +126,7 @@ shetlandStorm.receivers![0].modems![0] = {
 export const natsEuScenario24Data: ScenarioData = {
   id: 'nats-eu-scenario24',
   url: 'nats-eu/scenarios/nats-eu-scenario24',
-  imageUrl: 'nats/24/card.png',
+  imageUrl: 'nats-eu/24/card.png',
   number: 24,
   isDisabled: false,
   difficulty: 'advanced',

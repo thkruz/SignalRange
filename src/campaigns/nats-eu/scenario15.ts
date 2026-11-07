@@ -89,7 +89,7 @@ galwayRotationDay.rfFrontEnds[0].buc = { ...galwayRotationDay.rfFrontEnds[0].buc
 export const natsEuScenario15Data: ScenarioData = {
   id: 'nats-eu-scenario15',
   url: 'nats-eu/scenarios/nats-eu-scenario15',
-  imageUrl: 'nats/15/card.png',
+  imageUrl: 'nats-eu/15/card.png',
   number: 15,
   isDisabled: false,
   difficulty: 'advanced',

@@ -111,7 +111,7 @@ shetlandHotBuc.transmitters![0].modems[0] = {
 export const natsEuScenario16Data: ScenarioData = {
   id: 'nats-eu-scenario16',
   url: 'nats-eu/scenarios/nats-eu-scenario16',
-  imageUrl: 'nats/16/card.png',
+  imageUrl: 'nats-eu/16/card.png',
   number: 16,
   isDisabled: false,
   difficulty: 'advanced',

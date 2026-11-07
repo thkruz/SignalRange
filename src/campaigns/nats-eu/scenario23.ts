@@ -107,7 +107,7 @@ galwayDark.rfFrontEnds[0].buc = { ...galwayDark.rfFrontEnds[0].buc, isMuted: tru
 export const natsEuScenario23Data: ScenarioData = {
   id: 'nats-eu-scenario23',
   url: 'nats-eu/scenarios/nats-eu-scenario23',
-  imageUrl: 'nats/23/card.png',
+  imageUrl: 'nats-eu/23/card.png',
   number: 23,
   isDisabled: false,
   difficulty: 'advanced',

@@ -87,7 +87,7 @@ const shetlandWithSky: GroundStationConfig = structuredClone(shetlandGroundStati
 export const natsEuScenario14Data: ScenarioData = {
   id: 'nats-eu-scenario14',
   url: 'nats-eu/scenarios/nats-eu-scenario14',
-  imageUrl: 'nats/14/card.png',
+  imageUrl: 'nats-eu/14/card.png',
   number: 14,
   isDisabled: false,
   difficulty: 'advanced',

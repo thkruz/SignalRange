@@ -69,7 +69,7 @@ galwayAcceptance.rfFrontEnds[0].buc = { ...galwayAcceptance.rfFrontEnds[0].buc, 
 export const natsEuScenario2Data: ScenarioData = {
   id: 'nats-eu-scenario2',
   url: 'nats-eu/scenarios/nats-eu-scenario2',
-  imageUrl: 'nats/2/card.png',
+  imageUrl: 'nats-eu/2/card.png',
   number: 2,
   isDisabled: false,
   difficulty: 'intermediate',

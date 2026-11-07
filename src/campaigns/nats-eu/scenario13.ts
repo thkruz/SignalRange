@@ -117,7 +117,7 @@ galwayDegraded.rfFrontEnds[0].lnb = {
 export const natsEuScenario13Data: ScenarioData = {
   id: 'nats-eu-scenario13',
   url: 'nats-eu/scenarios/nats-eu-scenario13',
-  imageUrl: 'nats/13/card.png',
+  imageUrl: 'nats-eu/13/card.png',
   number: 13,
   isDisabled: false,
   difficulty: 'advanced',

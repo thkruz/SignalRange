@@ -90,7 +90,7 @@ galwayDay.receivers![0].modems![0] = {
 export const natsEuScenario18Data: ScenarioData = {
   id: 'nats-eu-scenario18',
   url: 'nats-eu/scenarios/nats-eu-scenario18',
-  imageUrl: 'nats/18/card.png',
+  imageUrl: 'nats-eu/18/card.png',
   number: 18,
   isDisabled: false,
   difficulty: 'advanced',

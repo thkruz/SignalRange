@@ -59,7 +59,7 @@ stagedModem.ifSignal = { ...stagedModem.ifSignal, frequency: 1400e6 as IfFrequen
 export const natsEuScenario3Data: ScenarioData = {
   id: 'nats-eu-scenario3',
   url: 'nats-eu/scenarios/nats-eu-scenario3',
-  imageUrl: 'nats/3/card.png',
+  imageUrl: 'nats-eu/3/card.png',
   number: 3,
   isDisabled: false,
   difficulty: 'intermediate',

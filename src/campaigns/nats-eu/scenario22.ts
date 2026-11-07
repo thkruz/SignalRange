@@ -85,7 +85,7 @@ galwayDots.rfFrontEnds[0].buc = { ...galwayDots.rfFrontEnds[0].buc, isMuted: tru
 export const natsEuScenario22Data: ScenarioData = {
   id: 'nats-eu-scenario22',
   url: 'nats-eu/scenarios/nats-eu-scenario22',
-  imageUrl: 'nats/22/card.png',
+  imageUrl: 'nats-eu/22/card.png',
   number: 22,
   isDisabled: false,
   difficulty: 'advanced',

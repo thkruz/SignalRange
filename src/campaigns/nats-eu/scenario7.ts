@@ -74,7 +74,7 @@ galwayMovingTarget.receivers![0].modems![0] = {
 export const natsEuScenario7Data: ScenarioData = {
   id: 'nats-eu-scenario7',
   url: 'nats-eu/scenarios/nats-eu-scenario7',
-  imageUrl: 'nats/7/card.png',
+  imageUrl: 'nats-eu/7/card.png',
   number: 7,
   isDisabled: false,
   difficulty: 'intermediate',

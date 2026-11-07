@@ -100,7 +100,7 @@ galwayKnock.rfFrontEnds[0].buc = { ...galwayKnock.rfFrontEnds[0].buc, isMuted: t
 export const natsEuScenario21Data: ScenarioData = {
   id: 'nats-eu-scenario21',
   url: 'nats-eu/scenarios/nats-eu-scenario21',
-  imageUrl: 'nats/21/card.png',
+  imageUrl: 'nats-eu/21/card.png',
   number: 21,
   isDisabled: false,
   difficulty: 'advanced',

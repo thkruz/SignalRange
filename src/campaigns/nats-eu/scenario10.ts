@@ -110,7 +110,7 @@ galwayTasking.transmitters![0].modems![0].ifSignal.frequency = 1435e6 as IfFrequ
 export const natsEuScenario10Data: ScenarioData = {
   id: 'nats-eu-scenario10',
   url: 'nats-eu/scenarios/nats-eu-scenario10',
-  imageUrl: 'nats/10/card.png',
+  imageUrl: 'nats-eu/10/card.png',
   number: 10,
   isDisabled: false,
   difficulty: 'intermediate',

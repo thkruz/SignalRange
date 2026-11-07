@@ -98,7 +98,7 @@ galwayNight.spectrumAnalyzers![0] = { ...galwayNight.spectrumAnalyzers![0], cent
 export const natsEuScenario17Data: ScenarioData = {
   id: 'nats-eu-scenario17',
   url: 'nats-eu/scenarios/nats-eu-scenario17',
-  imageUrl: 'nats/17/card.png',
+  imageUrl: 'nats-eu/17/card.png',
   number: 17,
   isDisabled: false,
   difficulty: 'advanced',

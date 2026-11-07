@@ -125,7 +125,7 @@ galwayLeop.rfFrontEnds[0].buc = { ...galwayLeop.rfFrontEnds[0].buc, isMuted: tru
 export const natsEuScenario11Data: ScenarioData = {
   id: 'nats-eu-scenario11',
   url: 'nats-eu/scenarios/nats-eu-scenario11',
-  imageUrl: 'nats/11/card.png',
+  imageUrl: 'nats-eu/11/card.png',
   number: 11,
   isDisabled: false,
   difficulty: 'intermediate',

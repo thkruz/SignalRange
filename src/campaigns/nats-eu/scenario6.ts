@@ -72,7 +72,7 @@ galwayBaseline.receivers![0].modems![0] = {
 export const natsEuScenario6Data: ScenarioData = {
   id: 'nats-eu-scenario6',
   url: 'nats-eu/scenarios/nats-eu-scenario6',
-  imageUrl: 'nats/6/card.png',
+  imageUrl: 'nats-eu/6/card.png',
   number: 6,
   isDisabled: false,
   difficulty: 'intermediate',

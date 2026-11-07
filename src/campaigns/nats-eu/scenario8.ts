@@ -74,7 +74,7 @@ shetlandNight.rfFrontEnds[0].buc = { ...shetlandNight.rfFrontEnds[0].buc, isMute
 export const natsEuScenario8Data: ScenarioData = {
   id: 'nats-eu-scenario8',
   url: 'nats-eu/scenarios/nats-eu-scenario8',
-  imageUrl: 'nats/8/card.png',
+  imageUrl: 'nats-eu/8/card.png',
   number: 8,
   isDisabled: false,
   difficulty: 'intermediate',

@@ -99,7 +99,7 @@ galwayMorning.receivers![0].modems![0] = {
 export const natsEuScenario9Data: ScenarioData = {
   id: 'nats-eu-scenario9',
   url: 'nats-eu/scenarios/nats-eu-scenario9',
-  imageUrl: 'nats/9/card.png',
+  imageUrl: 'nats-eu/9/card.png',
   number: 9,
   isDisabled: false,
   difficulty: 'intermediate',

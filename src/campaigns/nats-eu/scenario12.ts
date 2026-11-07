@@ -125,7 +125,7 @@ galwayCommissioning.rfFrontEnds[0].buc = { ...galwayCommissioning.rfFrontEnds[0]
 export const natsEuScenario12Data: ScenarioData = {
   id: 'nats-eu-scenario12',
   url: 'nats-eu/scenarios/nats-eu-scenario12',
-  imageUrl: 'nats/12/card.png',
+  imageUrl: 'nats-eu/12/card.png',
   number: 12,
   isDisabled: false,
   difficulty: 'intermediate',

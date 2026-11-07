@@ -73,7 +73,7 @@ galwayFirstLight.receivers![0].modems![0] = {
 export const natsEuScenario1Data: ScenarioData = {
   id: 'nats-eu-scenario1',
   url: 'nats-eu/scenarios/nats-eu-scenario1',
-  imageUrl: 'nats/8/card.png',
+  imageUrl: 'nats-eu/1/card.png',
   number: 1,
   isDisabled: false,
   difficulty: 'intermediate',

@@ -33,7 +33,7 @@ import { DRILL_BRIEF, DRILL_EQUIPMENT, drillGalway, drillSatellites } from './dr
 export const natsEuScenario28Data: ScenarioData = {
   id: 'nats-eu-scenario28',
   url: 'nats-eu/scenarios/nats-eu-scenario28',
-  imageUrl: 'nats/17/card.png',
+  imageUrl: 'nats-eu/28/card.png',
   number: 28,
   isDisabled: false,
   difficulty: 'intermediate',

@@ -101,7 +101,7 @@ galwayFalseTime.rfFrontEnds[0].buc = { ...galwayFalseTime.rfFrontEnds[0].buc, is
 export const natsEuScenario20Data: ScenarioData = {
   id: 'nats-eu-scenario20',
   url: 'nats-eu/scenarios/nats-eu-scenario20',
-  imageUrl: 'nats/20/card.png',
+  imageUrl: 'nats-eu/20/card.png',
   number: 20,
   isDisabled: false,
   difficulty: 'advanced',

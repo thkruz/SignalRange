@@ -14,6 +14,7 @@ import { ScenarioManager } from '@app/scenario-manager';
 import { AlarmService } from '@app/services/alarm-service';
 import { getSimulatedNowMs } from '@app/simulation/sim-time';
 import { SkipTarget, TimeSkipController } from '@app/simulation/time-skip-controller';
+import { SoundEvents } from '@app/sound/sound-events';
 import { glyph, severityGlyph } from './glyphs';
 import { formatAstroClock, formatDtg, formatDuration, formatDurationCompact } from './time-skip-format';
 import { TimeSkipModal } from './time-skip-modal';
@@ -116,6 +117,8 @@ export class GlobalCommandBar {
   private lastSkipTargetComputeMs_ = 0;
   private readonly boundOnTimeSkipEnded_: (data: TimeSkipEndedData) => void;
   private readonly boundOnObjectiveChanged_ = (): void => this.onObjectiveChanged_();
+  private readonly boundOnMuteClick_ = (): void => this.toggleAlarmMute_();
+  private muteBtn_: HTMLButtonElement | null = null;
 
   constructor(private readonly parentContainerId_: string) {
     this.boundOnAlarmStateChanged_ = this.onAlarmStateChanged_.bind(this);
@@ -263,6 +266,8 @@ export class GlobalCommandBar {
               ${severityGlyph('ok', 'me-1')} SYSTEM STABLE
             </span>
           </div>
+          <button id="alarm-mute-btn" type="button" class="alarm-mute-btn" aria-pressed="false"
+                  title="Mute alarm tones until you turn them back on. Alarms stay listed.">ALARM TONE ON</button>
         </div>
       </div>
 
@@ -287,6 +292,9 @@ export class GlobalCommandBar {
     this.alarmBarEl_ = qs('#alarm-bar', parentDom);
     this.countsEl_ = qs('#alarm-counts', parentDom);
     this.messagesEl_ = qs('#alarm-messages', parentDom);
+    this.muteBtn_ = parentDom?.querySelector<HTMLButtonElement>('#alarm-mute-btn') ?? null;
+    this.muteBtn_?.addEventListener('click', this.boundOnMuteClick_);
+    this.renderAlarmMute_();
     this.objectiveTimerEl_ = parentDom?.querySelector('#objective-timer-display') ?? null;
     this.scenarioTimerEl_ = parentDom?.querySelector('#scenario-timer-display') ?? null;
     this.clockEl_ = parentDom?.querySelector('#utc-clock') ?? null;
@@ -553,6 +561,23 @@ export class GlobalCommandBar {
       default:
         this.clockEl_.textContent = Number.isFinite(data.timestampMs) ? `${GlobalCommandBar.weekday_(data.timestampMs)} ${data.timeFormatted}` : data.timeFormatted;
     }
+  }
+
+  /** Alarm tone mute toggle: stays muted until the operator turns tones back on. */
+  private toggleAlarmMute_(): void {
+    SoundEvents.setAlarmsMuted(!SoundEvents.alarmsMuted);
+    this.renderAlarmMute_();
+  }
+
+  private renderAlarmMute_(): void {
+    const btn = this.muteBtn_;
+    if (!btn) {
+      return;
+    }
+    const muted = SoundEvents.alarmsMuted;
+    btn.textContent = muted ? 'ALARM TONE MUTED' : 'ALARM TONE ON';
+    btn.setAttribute('aria-pressed', String(muted));
+    btn.classList.toggle('alarm-mute-btn--muted', muted);
   }
 
   private onAlarmStateChanged_(data: AlarmStateChangedData): void {
@@ -939,6 +964,7 @@ export class GlobalCommandBar {
     EventBus.getInstance().off(Events.OBJECTIVE_COMPLETED, this.boundOnObjectiveChanged_);
     EventBus.getInstance().off(Events.OBJECTIVES_ALL_COMPLETED, this.boundOnObjectiveChanged_);
     EventBus.getInstance().off(Events.ALARM_STATE_CHANGED, this.boundOnAlarmStateChanged_);
+    this.muteBtn_?.removeEventListener('click', this.boundOnMuteClick_);
     EventBus.getInstance().off(Events.ASSET_SELECTED, this.boundOnAssetSelected_);
     EventBus.getInstance().off(Events.SIMULATED_TIME_TICK, this.boundOnSimulatedTimeTick_);
     EventBus.getInstance().off(Events.TIME_SKIP_ENDED, this.boundOnTimeSkipEnded_);

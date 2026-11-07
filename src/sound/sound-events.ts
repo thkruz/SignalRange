@@ -8,7 +8,6 @@ import {
   type TxTransmitChangedData,
   type WeatherEventData,
 } from '@app/events/events';
-import type { OpsLogEntry } from '@app/ops-log/ops-log-types';
 import { Ambience, type AmbienceLayer } from './ambience';
 import { Sfx } from './sfx-enum';
 import SoundManager from './sound-manager';
@@ -24,6 +23,8 @@ import SoundManager from './sound-manager';
  */
 const WARMUP_MS = 1000;
 const OBJECTIVE_DEFER_MS = 60;
+/** An alarm back within this long of clearing is chatter and stays quiet */
+const CHATTER_MS = 15_000;
 
 const SEVERITY_INTENSITY: Record<WeatherEventData['severity'], number> = {
   minor: 0.45,
@@ -35,11 +36,14 @@ type Handler = (...args: never[]) => void;
 
 export class SoundEvents {
   private static instance_: SoundEvents | null = null;
+  /** Operator's alarm-tone mute; every scenario starts unmuted */
+  private static alarmsMuted_ = false;
 
   private readonly bus_: EventBus;
   private armedAt_ = Number.POSITIVE_INFINITY;
   private readonly handlers_: [Events, Handler][] = [];
-  private readonly knownAlarms_ = new Set<string>();
+  private activeAlarms_ = new Set<string>();
+  private readonly clearedAt_ = new Map<string, number>();
   private readonly weather_ = new Map<string, WeatherEventData>();
   private objectiveTimer_: ReturnType<typeof setTimeout> | null = null;
 
@@ -51,6 +55,7 @@ export class SoundEvents {
 
   static start(): SoundEvents {
     SoundEvents.instance_?.dispose_();
+    SoundEvents.alarmsMuted_ = false;
     SoundEvents.instance_ = new SoundEvents();
 
     return SoundEvents.instance_;
@@ -113,11 +118,6 @@ export class SoundEvents {
     this.on_(Events.SWITCH_TAB, () => this.play_(Sfx.UI_CLICK));
     this.on_(Events.HANDOVER_INITIATED, () => this.play_(Sfx.RADIO_CALL_OUT));
     this.on_(Events.HANDOVER_COMPLETE, () => this.play_(Sfx.RADIO_CALL_IN));
-    this.on_(Events.OPS_LOG_ENTRY_ADDED, (entry: OpsLogEntry) => {
-      if (entry.category === 'action') {
-        this.play_(Sfx.TYPING);
-      }
-    });
 
     this.on_(Events.WEATHER_EVENT_STARTED, (data: WeatherEventData) => {
       this.weather_.set(data.id, data);
@@ -129,29 +129,52 @@ export class SoundEvents {
     });
   }
 
+  /**
+   * A new error sounds the major tone, a new warning the minor one. An alarm
+   * that clears and comes back within CHATTER_MS stays quiet. The operator's
+   * mute (setAlarmsMuted) silences every alarm tone until it is turned off,
+   * so an intermittent fault does not keep sounding while it is worked.
+   */
   private onAlarms_(data: AlarmStateChangedData): void {
-    const current = new Set<string>();
-    let newError = false;
-    let newWarning = false;
+    const now = Date.now();
+    const current = new Map<string, AggregatedAlarm['severity']>();
     for (const alarm of data.alarms) {
-      if (alarm.severity !== 'error' && alarm.severity !== 'warning') {
-        continue;
+      if (alarm.severity === 'error' || alarm.severity === 'warning') {
+        current.set(SoundEvents.alarmKey_(alarm), alarm.severity);
       }
-      const key = SoundEvents.alarmKey_(alarm);
-      current.add(key);
-      if (!this.knownAlarms_.has(key)) {
-        if (alarm.severity === 'error') {
-          newError = true;
-        } else {
-          newWarning = true;
-        }
-      }
-    }
-    this.knownAlarms_.clear();
-    for (const key of current) {
-      this.knownAlarms_.add(key);
     }
 
+    let newError = false;
+    let newWarning = false;
+    for (const [key, severity] of current) {
+      if (this.activeAlarms_.has(key)) {
+        continue;
+      }
+      const clearedAt = this.clearedAt_.get(key);
+      if (clearedAt !== undefined && now - clearedAt < CHATTER_MS) {
+        continue;
+      }
+      if (severity === 'error') {
+        newError = true;
+      } else {
+        newWarning = true;
+      }
+    }
+    for (const key of this.activeAlarms_) {
+      if (!current.has(key)) {
+        this.clearedAt_.set(key, now);
+      }
+    }
+    this.activeAlarms_ = new Set(current.keys());
+    for (const [key, at] of this.clearedAt_) {
+      if (now - at > CHATTER_MS) {
+        this.clearedAt_.delete(key);
+      }
+    }
+
+    if (SoundEvents.alarmsMuted_) {
+      return;
+    }
     if (newError) {
       this.play_(Sfx.ALARM_MAJOR);
     } else if (newWarning) {
@@ -159,9 +182,29 @@ export class SoundEvents {
     }
   }
 
+  /** Where an alarm is raised and what it says, without the live numbers in its text. */
   private static alarmKey_(alarm: AggregatedAlarm): string {
-    // the message can carry a live number, so key on where it is raised and when
-    return `${alarm.assetId}|${alarm.equipmentType}|${alarm.equipmentIndex}|${alarm.severity}|${alarm.raisedAtMs ?? alarm.message}`;
+    const text = alarm.message.replace(/[-+]?\d+(?:\.\d+)?/gu, '#');
+
+    return `${alarm.assetId}|${alarm.equipmentType}|${alarm.equipmentIndex}|${alarm.severity}|${text}`;
+  }
+
+  static get alarmsMuted(): boolean {
+    return SoundEvents.alarmsMuted_;
+  }
+
+  /** Operator's alarm mute toggle: muting stops a tone already playing. */
+  static setAlarmsMuted(muted: boolean): void {
+    if (SoundEvents.alarmsMuted_ === muted) {
+      return;
+    }
+    SoundEvents.alarmsMuted_ = muted;
+    const sound = SoundManager.getInstance();
+    if (muted) {
+      sound.stop(Sfx.ALARM_MAJOR);
+      sound.stop(Sfx.ALARM_MINOR);
+    }
+    sound.play(Sfx.ALARM_ACK);
   }
 
   /** Defer the objective cue a moment so the last objective plays the scenario cue instead. */

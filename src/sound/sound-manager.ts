@@ -51,11 +51,6 @@ const SFX_DEFS: Record<Sfx, SfxDef> = {
   [Sfx.SCENARIO_FAILED]: { files: [sfx('scenario-failed')], volume: 0.7, throttleMs: 3000 },
   [Sfx.TIMER_WARNING]: { files: [sfx('timer-warning')], volume: 0.7, throttleMs: 2000 },
   [Sfx.PENALTY]: { files: [sfx('penalty')], volume: 0.6, throttleMs: 800 },
-  [Sfx.TYPING]: {
-    files: [1, 2, 3, 4, 5, 6].map((n) => sfx(`typing-${n}`)),
-    volume: 0.3,
-    throttleMs: 6000,
-  },
   [Sfx.PRINTER]: { files: [sfx('printer')], volume: 0.5, throttleMs: 4000 },
   [Sfx.PHONE_RING]: { files: [sfx('phone-ring')], volume: 0.6, throttleMs: 3000 },
   [Sfx.RADIO_CALL_IN]: { files: [sfx('radio-call-in')], volume: 0.6, throttleMs: 1000 },

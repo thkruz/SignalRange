@@ -148,6 +148,31 @@
   font-weight: 500;
 }
 
+/* Alarm tone mute toggle (SoundEvents.setAlarmsMuted): mutes the tone, not the alarm */
+.alarm-mute-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+  height: 18px;
+  padding: 0 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.3);
+  color: #d1d5db;
+  font: 600 10px/16px 'Inter', sans-serif;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.alarm-mute-btn:hover {
+  border-color: rgba(255, 255, 255, 0.55);
+}
+
+.alarm-mute-btn--muted {
+  border-color: #fde047;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fde047;
+}
+
 /* Ticker row severity colours (global-command-bar.ts getColorClass_). The
    class names are Tailwind-style but no Tailwind sheet is loaded, so without
    these rules every row inherited the body grey. Same palette as the count

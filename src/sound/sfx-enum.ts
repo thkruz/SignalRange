@@ -33,7 +33,6 @@ export enum Sfx {
   TIMER_WARNING = 'timer-warning',
   PENALTY = 'penalty',
   // The room and the people in it
-  TYPING = 'typing',
   PRINTER = 'printer',
   PHONE_RING = 'phone-ring',
   RADIO_CALL_IN = 'radio-call-in',

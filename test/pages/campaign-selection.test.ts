@@ -1,5 +1,6 @@
 import { Mock, vi } from 'vitest';
 import { EventBus } from '../../src/events/event-bus';
+import { selectionProgressCache } from '../../src/user-account/selection-progress-cache';
 
 // Create shared mock for Router using vi.hoisted()
 const { mockNavigate, mockRouter } = vi.hoisted(() => ({
@@ -179,6 +180,7 @@ describe('CampaignSelectionPage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    selectionProgressCache.invalidate();
 
     // Reset singleton
     (CampaignSelectionPage as any).instance_ = undefined;
@@ -202,6 +204,20 @@ describe('CampaignSelectionPage', () => {
   });
 
   describe('singleton pattern', () => {
+    it('prefetches the selected campaign and reuses its downloaded data on mission entry', async () => {
+      const getProgress = vi.fn(async () => ({ scenarios: [] }));
+      const checkpointExists = vi.fn(async () => false);
+      (getUserDataService as Mock).mockReturnValue({ getAllScenariosProgress: getProgress, checkpointExists });
+      const page = CampaignSelectionPage.getInstance();
+      page.show();
+      await vi.waitFor(() => expect(checkpointExists).toHaveBeenCalledWith('scenario1'));
+      await selectionProgressCache.getProgress();
+      await selectionProgressCache.getCheckpoint('scenario1');
+      expect(getProgress).toHaveBeenCalledTimes(1);
+      expect(checkpointExists).toHaveBeenCalledTimes(1);
+      expect(document.querySelector('#campaign-selection-page')?.classList.contains('is-loading')).toBe(false);
+    });
+
     it('should return same instance with getInstance()', () => {
       const page1 = CampaignSelectionPage.getInstance();
       const page2 = CampaignSelectionPage.getInstance();
@@ -234,11 +250,11 @@ describe('CampaignSelectionPage', () => {
     it('should render header with title', () => {
       const header = document.querySelector('.campaign-selection-header h1');
       expect(header).not.toBeNull();
-      expect(header?.textContent).toBe('Signal Range Training');
+      expect(header?.textContent).toBe('Campaigns');
     });
 
-    it('should render subtitle', () => {
-      const subtitle = document.querySelector('.campaign-selection-header .subtitle');
+    it('should render the campaign subtitle in the briefing', () => {
+      const subtitle = document.querySelector('#campaign-detail .campaign-subtitle');
       expect(subtitle).not.toBeNull();
     });
 
@@ -344,15 +360,21 @@ describe('CampaignSelectionPage', () => {
       page = CampaignSelectionPage.getInstance();
     });
 
-    it('should navigate to campaign scenarios on card click', () => {
-      // Get the enabled campaign card and click it
-      const cards = document.querySelectorAll('.campaign-card:not(.disabled)');
-      const enabledCard = cards[0] as HTMLElement;
+    it('selects a campaign without navigating, then enters only on the explicit action', () => {
+      const row = document.querySelector('.campaign-card:not(.disabled)') as HTMLButtonElement;
+      row.click();
+      expect(row.getAttribute('aria-pressed')).toBe('true');
+      expect(mockRouter.navigate).not.toHaveBeenCalled();
+      (document.querySelector('#campaign-detail .selection-primary') as HTMLButtonElement).click();
+      expect(mockRouter.navigate).toHaveBeenCalledWith('/campaigns/nats');
+    });
 
-      if (enabledCard) {
-        enabledCard.click();
-        expect(mockRouter.navigate).toHaveBeenCalledWith('/campaigns/nats');
-      }
+    it('previews an unavailable campaign but disables its launch action', () => {
+      const row = document.querySelector('.campaign-card.disabled') as HTMLButtonElement;
+      row.click();
+      expect(document.querySelector('#campaign-detail h2')?.textContent).toBe('Coming Soon Campaign');
+      expect((document.querySelector('#campaign-detail .selection-primary') as HTMLButtonElement).disabled).toBe(true);
+      expect(mockRouter.navigate).not.toHaveBeenCalled();
     });
 
     it('should not navigate when clicking disabled card', () => {

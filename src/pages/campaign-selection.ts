@@ -5,279 +5,220 @@ import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
 import { Logger } from '@app/logging/logger';
 import { Router } from '@app/router';
-import { Auth } from '@app/user-account/auth';
-import { getUserDataService } from '@app/user-account/user-data-service';
+import { selectionProgressCache } from '@app/user-account/selection-progress-cache';
 import { getAssetUrl } from '@app/utils/asset-url';
 import { BasePage } from './base-page';
+import { selectionArtworkPosition } from './selection-artwork';
+import { animateSelection, selectionKeyboard, selectionText, updateSelectionDetail, updateSelectionList } from './selection-browser';
+import { SelectionLoadingScreen } from './selection-loading-screen';
+import { selectionStatusIcon } from './selection-status-icon';
+import './selection-browser.css';
 import './campaign-selection.css';
 
-/**
- * Campaign selection page implementation
- * Displays available campaigns and the sandbox option
- */
 export class CampaignSelectionPage extends BasePage {
   id = 'campaign-selection-page';
   private static instance_: CampaignSelectionPage;
   private completedScenarioIds_: string[] = [];
-  private dataLoaded_ = false;
-  private hasShown_ = false;
+  private selectedCampaignId_: string | null = null;
+  private readonly loadingScreen_: SelectionLoadingScreen;
+  private progressLoadToken_ = 0;
 
   private constructor() {
     super();
-    // Initialize the page immediately so it can be shown
     this.init_('body-content-container', 'add');
+    this.loadingScreen_ = new SelectionLoadingScreen(this.dom_, () => void this.loadUserDataAndUpdate_());
+    this.updateCampaignCards_();
+    selectionProgressCache.onAccountChanged(() => {
+      if (this.dom_.style.display === 'flex') void this.loadUserDataAndUpdate_();
+    });
   }
 
   static getInstance(): CampaignSelectionPage {
     if (!this.instance_) {
       this.instance_ = new CampaignSelectionPage();
-      // Start loading user data after instance is created
-      this.instance_.startLoadingUserData_();
     }
-
     return this.instance_;
   }
 
-  /**
-   * Start loading user data in the background
-   */
-  private startLoadingUserData_(): void {
-    if (this.dataLoaded_) return;
-    this.dataLoaded_ = true;
-
-    // Load user progress asynchronously and update the UI when ready
-    this.loadUserDataAndUpdate_().catch((error) => {
-      Logger.error('Failed to initialize user data loading:', error);
-    });
-  }
-
-  /**
-   * Load user progress and update the UI
-   */
   private async loadUserDataAndUpdate_(): Promise<void> {
+    const token = ++this.progressLoadToken_;
+    this.loadingScreen_.begin();
     try {
-      // Wait for auth to be initialized before trying to load user data
       const { App } = await import('@app/app');
       await App.authReady;
-
-      // Check if user is logged in and update the warning visibility
-      const isLoggedIn = await Auth.isLoggedIn();
+      if (token !== this.progressLoadToken_) return;
+      const isLoggedIn = !selectionProgressCache.isSignedOut;
+      this.loadingScreen_.update(isLoggedIn ? 'Downloading your progress...' : 'Preparing available campaigns...');
+      const progress = await selectionProgressCache.getProgress();
+      if (token !== this.progressLoadToken_) return;
       this.updateLoginWarning_(!isLoggedIn);
-
-      const userDataService = getUserDataService();
-      const progressResponse = await userDataService.getAllScenariosProgress().catch(() => null);
-
-      // Get completed scenario IDs from progress records
-      this.completedScenarioIds_ = (progressResponse?.scenarios ?? []).filter((s) => s.completedAt).map((s) => s.scenarioId);
-
-      // Re-render the campaign grid with progress data
+      this.completedScenarioIds_ = (progress?.scenarios ?? []).filter((s) => s.completedAt).map((s) => s.scenarioId);
       this.updateCampaignCards_();
+      this.loadingScreen_.finish();
+      this.prefetchSelectedCampaign_();
     } catch (error) {
+      if (token !== this.progressLoadToken_) return;
       Logger.error('Failed to load user progress:', error);
-      // Continue without progress info - user may not be authenticated
-      // Show the login warning if we couldn't load user data
-      this.updateLoginWarning_(true);
+      this.loadingScreen_.fail();
     }
   }
 
-  /**
-   * Show or hide the login warning message
-   */
   private updateLoginWarning_(show: boolean): void {
-    const warning: HTMLElement = this.dom_.querySelector('.login-warning');
-    if (warning) {
-      warning.style.display = show ? 'flex' : 'none';
-    }
+    const warning = this.dom_.querySelector<HTMLElement>('.login-warning');
+    if (warning) warning.hidden = !show;
   }
 
-  /**
-   * Update the campaign cards in the DOM with current progress data
-   */
+  private isLocked_(campaign: CampaignData): boolean {
+    const manager = CampaignManager.getInstance();
+    return (
+      !!campaign.isLocked ||
+      (!window.UNLOCK_ALL_SCENARIOS && manager.isCampaignLocked(campaign, manager.getCompletedCampaigns(this.completedScenarioIds_), this.completedScenarioIds_))
+    );
+  }
+
   private updateCampaignCards_(): void {
-    const campaignGrid = qs('.campaign-grid', this.dom_);
-    if (!campaignGrid) return;
-
-    const campaignManager = CampaignManager.getInstance();
-    const campaigns = campaignManager.getAllCampaigns();
-    const completedCampaignIds = campaignManager.getCompletedCampaigns(this.completedScenarioIds_);
-
-    // Re-render all campaign cards with updated progress data
-    campaignGrid.innerHTML = campaigns.map((campaign) => this.renderCampaignCard_(campaign, completedCampaignIds)).join('');
-
-    // Re-attach event listeners for the new cards
-    this.attachCampaignCardListeners_();
+    const campaigns = CampaignManager.getInstance().getAllCampaigns();
+    if (!campaigns.some((c) => c.id === this.selectedCampaignId_)) this.selectedCampaignId_ = campaigns[0]?.id ?? null;
+    const list = qs<HTMLElement>('.campaign-grid', this.dom_);
+    updateSelectionList(list, campaigns.map((campaign, index) => this.renderCampaignRow_(campaign, index)).join(''));
+    this.renderSelectedCampaign_();
   }
 
-  /**
-   * Attach event listeners to campaign cards
-   */
-  private attachCampaignCardListeners_(): void {
-    const campaignCards = this.dom_.querySelectorAll('.campaign-card:not(.disabled):not(.locked)');
-    campaignCards.forEach((card) => {
-      card.addEventListener('click', this.handleCampaignClick_.bind(this));
-    });
+  private renderCampaignRow_(campaign: CampaignData, index: number): string {
+    const progress = CampaignManager.getInstance().getCampaignProgress(campaign.id, this.completedScenarioIds_);
+    const locked = this.isLocked_(campaign);
+    const state = campaign.isDisabled
+      ? 'Coming Soon'
+      : locked
+        ? 'Locked'
+        : progress.isCompleted
+          ? 'Campaign completed'
+          : `${progress.completedScenarios.length} / ${progress.totalScenarios} complete`;
+    const icon = !campaign.isDisabled && (locked || progress.isCompleted) ? selectionStatusIcon(locked ? 'locked' : 'completed', state) : '';
+    const statusClass = campaign.isDisabled ? 'coming-soon-banner' : 'progress-banner';
+    return html`<button type="button" class="selection-item campaign-card ${campaign.isDisabled ? 'disabled' : ''} ${locked ? 'locked' : ''}"
+      data-campaign-id="${campaign.id}" data-selection-id="${campaign.id}" aria-pressed="${String(this.selectedCampaignId_ === campaign.id)}" aria-controls="campaign-detail">
+      <span class="selection-item-number">${String(index + 1).padStart(2, '0')}</span>
+      <span><span class="selection-item-title">${selectionText(campaign.title)}</span>
+      <span class="selection-item-subtitle">${selectionText(campaign.subtitle)}</span>
+      ${icon ? '' : `<span class="selection-item-status ${statusClass}">${state}</span>`}</span>${icon}
+    </button>`;
   }
 
-  protected html_ = html`
-    <div id="${this.id}" class="campaign-selection-page">
-      <div class="campaign-selection-header">
-        <h1>Signal Range Training</h1>
-        <div class="subtitle">Select a campaign to begin your training</div>
-        <div class="login-warning" style="display: none;">
-          <span class="login-warning-icon">&#9888;</span>
-          <span class="login-warning-text">
-            You can play <strong>Scenario 1</strong> of the North Atlantic Teleport Services campaign without an account, but you'll need to
-            <strong>create a free account</strong> (top right) to track your progress and unlock additional scenarios.
-          </span>
+  private renderSelectedCampaign_(): void {
+    const campaign = CampaignManager.getInstance()
+      .getAllCampaigns()
+      .find((c) => c.id === this.selectedCampaignId_);
+    const detail = qs<HTMLElement>('#campaign-detail', this.dom_);
+    const scroll = detail.querySelector('.selection-briefing')?.scrollTop ?? 0;
+    updateSelectionDetail(detail, campaign ? this.renderCampaignCard_(campaign) : '<p class="selection-empty">No campaigns available.</p>');
+    const briefing = detail.querySelector('.selection-briefing');
+    if (briefing) briefing.scrollTop = scroll;
+    detail.querySelector('.selection-primary')?.addEventListener('click', this.handleEnterCampaign_.bind(this));
+  }
+
+  private renderCampaignCard_(campaign: CampaignData): string {
+    const manager = CampaignManager.getInstance();
+    const progress = manager.getCampaignProgress(campaign.id, this.completedScenarioIds_);
+    const locked = this.isLocked_(campaign);
+    const prerequisite = locked ? manager.getNextPrerequisiteScenarioForCampaign(campaign, this.completedScenarioIds_) : null;
+    const status = campaign.isDisabled
+      ? campaign.disabledText || 'Coming soon'
+      : locked
+        ? prerequisite
+          ? `Complete ${prerequisite.title} to unlock.`
+          : campaign.lockedText || 'Complete the prerequisite campaign to unlock.'
+        : progress.isCompleted
+          ? 'Campaign complete. Revisit any mission.'
+          : `${progress.completedScenarios.length} of ${progress.totalScenarios} missions completed`;
+    const stage = getReleaseStage(campaign);
+    return html`<article aria-labelledby="campaign-detail-title">
+      <div class="selection-art campaign-image"><img style="object-position: ${selectionArtworkPosition(campaign.imageUrl)}" src="${getAssetUrl('/assets/campaigns/' + campaign.imageUrl)}" alt="${selectionText(campaign.title)}" onerror="this.onerror=null; this.src='/images/placeholder.png'" />
+        <span class="selection-art-caption">${selectionText(campaign.campaignType)}</span>
+      </div>
+      <div class="selection-briefing">
+        <div class="selection-detail-label">Campaign overview</div>
+        <h2 class="campaign-title" id="campaign-detail-title">${selectionText(campaign.title)}</h2>
+        <div class="campaign-subtitle">${selectionText(campaign.subtitle)}</div>
+        <div class="selection-meta campaign-badges">${renderReleaseBadge(stage)}
+          <span class="badge duration">${campaign.totalDuration}</span><span class="badge difficulty-${campaign.difficulty}">${campaign.difficulty}</span>
+          <span class="campaign-info-item">${campaign.scenarios.filter((s) => s.missionType !== 'Sandbox').length} missions</span>
         </div>
+        <div class="selection-description campaign-description">${campaign.description}</div>
+        ${renderReleaseCardNotice(stage)}
       </div>
+      <div class="selection-actions">
+        <span class="selection-action-status" role="status">${selectionText(status)}</span>
+        <button type="button" class="selection-primary" ${campaign.isDisabled || locked ? 'disabled' : ''}>${campaign.isDisabled ? 'Coming soon' : locked ? 'Campaign locked' : 'Enter campaign'} <span aria-hidden="true">→</span></button>
+      </div>
+    </article>`;
+  }
 
-      <div class="campaign-grid">
-        ${this.renderInitialCards_()}
-      </div>
+  protected html_ = html`<div id="${this.id}" class="selection-page campaign-selection-page">
+    <header class="selection-heading campaign-selection-header"><div>
+      <div class="selection-eyebrow">Signal Range / Operations</div>
+      <h1>Campaigns</h1><div class="subtitle">Choose your next assignment</div>
+      <div class="selection-status-bar"><span class="login-warning" hidden>Guest session · Play NATS Mission 1 free. Sign in to save progress and unlock further missions.</span></div>
+    </div></header>
+    <div class="selection-workspace">
+      <aside class="selection-sidebar" aria-label="Campaign browser">
+        <div class="selection-sidebar-heading">Available campaigns <span aria-hidden="true">01 / SELECT</span></div>
+        <div class="selection-list campaign-grid"></div>
+        <div class="selection-sidebar-footer">↑ ↓ Browse &nbsp; · &nbsp; Select to view briefing</div>
+      </aside>
+      <section class="selection-detail" id="campaign-detail" aria-label="Campaign briefing"></section>
     </div>
-  `;
-
-  /**
-   * Render initial cards (before user data is loaded)
-   */
-  private renderInitialCards_(): string {
-    const campaignManager = CampaignManager.getInstance();
-    const campaigns = campaignManager.getAllCampaigns();
-
-    return campaigns.map((campaign) => this.renderCampaignCard_(campaign, [])).join('');
-  }
-
-  /**
-   * Render a single campaign card
-   */
-  private renderCampaignCard_(campaign: CampaignData, completedCampaignIds: string[]): string {
-    const campaignManager = CampaignManager.getInstance();
-    const progress = campaignManager.getCampaignProgress(campaign.id, this.completedScenarioIds_);
-    // Same dev bypass the scenario grid applies, so the dev-menu unlock toggle
-    // does not leave an unlocked scenario sitting behind a locked campaign card.
-    const isLocked = window.UNLOCK_ALL_SCENARIOS ? false : campaignManager.isCampaignLocked(campaign, completedCampaignIds, this.completedScenarioIds_);
-    const isDisabledOrLocked = campaign.isDisabled || isLocked || campaign.isLocked;
-    const isCompleted = progress.isCompleted;
-    const releaseStage = getReleaseStage(campaign);
-
-    let statusBanner = '';
-    if (campaign.isDisabled) {
-      statusBanner = `
-        <div class="coming-soon-banner">${campaign.disabledText || 'Coming Soon'}</div>
-      `;
-    } else if (isLocked || campaign.isLocked) {
-      const nextPrereqScenario = campaignManager.getNextPrerequisiteScenarioForCampaign(campaign, this.completedScenarioIds_);
-      statusBanner = `
-        <div class="locked-banner">
-          <div>
-            <span class="locked-icon">${campaign.lockedText || '🔒 Locked'}</span>
-          </div>
-          <div class="locked-requirement">
-            ${nextPrereqScenario ? `<strong>${nextPrereqScenario.title}</strong> must be completed first to unlock this campaign.` : ''}
-          </div>
-        </div>
-      `;
-    }
-
-    let progressBanner = '';
-    if (isCompleted && !isDisabledOrLocked) {
-      progressBanner = `
-        <div class="completed-banner">
-          <span class="completed-icon">🏆</span>
-          Campaign Completed
-        </div>
-      `;
-    } else if (progress.completionPercentage > 0 && !isDisabledOrLocked) {
-      progressBanner = `
-        <div class="progress-banner">
-          <span class="progress-icon">📊</span>
-          ${progress.completionPercentage}% Complete (${progress.completedScenarios.length}/${progress.totalScenarios})
-        </div>
-      `;
-    }
-
-    return html`
-      <div class="campaign-card ${isLocked || campaign.isLocked ? 'locked' : ''}${campaign.isDisabled ? 'disabled' : ''}" data-campaign-id="${campaign.id}">
-        ${statusBanner}
-        ${progressBanner}
-        <div class="campaign-card-inner">
-          <div class="campaign-card-header">
-            <div class="campaign-badges">
-              ${renderReleaseBadge(releaseStage)}
-              <span class="badge duration">${campaign.totalDuration}</span>
-              <span class="badge difficulty-${campaign.difficulty}">${campaign.difficulty}</span>
-            </div>
-          </div>
-
-          <div class="campaign-image">
-            <img src="${getAssetUrl('/assets/campaigns/' + campaign.imageUrl)}" alt="${campaign.title}" onerror="this.onerror=null; this.src='/images/placeholder.png'"/>
-            <div class="campaign-image-overlay">
-              <h2 class="campaign-title">${campaign.title}</h2>
-              <div class="campaign-subtitle">${campaign.subtitle}</div>
-            </div>
-          </div>
-
-          <div class="campaign-card-body">
-            ${renderReleaseCardNotice(releaseStage)}
-            <p class="campaign-description">${campaign.description}</p>
-
-            <div class="campaign-info">
-              <div class="campaign-info-item">
-                <div class="info-label">Scenarios</div>
-                <div class="info-value">${campaign.scenarios.filter((s) => s.missionType !== 'Sandbox').length}</div>
-              </div>
-              <div class="campaign-info-item">
-                <div class="info-label">Type</div>
-                <div class="info-value">${campaign.campaignType}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-  }
+  </div>`;
 
   protected initDom_(parentId: string, type: 'add' | 'replace' = 'replace'): HTMLElement {
-    const parentDom = super.initDom_(parentId, type);
-    this.dom_ = qs(`#${this.id}`, parentDom);
+    const parent = super.initDom_(parentId, type);
+    this.dom_ = qs(`#${this.id}`, parent);
+    return parent;
+  }
 
-    return parentDom;
+  hide(): void {
+    ++this.progressLoadToken_;
+    this.loadingScreen_.cancel();
+    super.hide();
   }
 
   show(): void {
     super.show();
-
-    // Only refresh on subsequent shows (after initial load)
-    // to reflect any completion updates from playing scenarios
-    if (this.hasShown_) {
-      this.loadUserDataAndUpdate_().catch((error) => {
-        Logger.error('Failed to refresh campaign data:', error);
-      });
-    }
-    this.hasShown_ = true;
+    void this.loadUserDataAndUpdate_();
   }
 
   protected addEventListeners_(): void {
-    this.attachCampaignCardListeners_();
+    this.dom_.addEventListener('click', this.handleCampaignClick_.bind(this));
+    this.dom_.addEventListener('keydown', selectionKeyboard);
   }
 
-  /**
-   * Handle campaign card click
-   */
-  private handleCampaignClick_(event: Event): void {
-    const card: HTMLElement = (event.currentTarget as HTMLElement).closest('.campaign-card');
-    if (!card) return;
-
-    const campaignId = card.dataset.campaignId;
-    const scenarioUrl = card.dataset.scenarioUrl; // For sandbox
-
-    if (campaignId === 'sandbox' && scenarioUrl) {
-      // Navigate directly to sandbox
-      Router.getInstance().navigate(scenarioUrl);
-    } else if (campaignId) {
-      // Navigate to campaign's scenario selection page
-      Router.getInstance().navigate(`/campaigns/${campaignId}`);
+  private prefetchSelectedCampaign_(): void {
+    const campaign = CampaignManager.getInstance()
+      .getAllCampaigns()
+      .find((item) => item.id === this.selectedCampaignId_);
+    if (campaign && !campaign.isDisabled && !this.isLocked_(campaign)) {
+      void selectionProgressCache.prefetch(campaign.scenarios.map((scenario) => scenario.id)).catch(() => {});
     }
+  }
+
+  private handleCampaignClick_(event: Event): void {
+    const row = (event.target as HTMLElement).closest<HTMLElement>('.selection-item');
+    if (!row || row.dataset.campaignId === this.selectedCampaignId_) return;
+    this.selectedCampaignId_ = row.dataset.campaignId ?? null;
+    this.dom_.querySelectorAll<HTMLElement>('.selection-item').forEach((item) => item.setAttribute('aria-pressed', String(item === row)));
+    this.renderSelectedCampaign_();
+    this.prefetchSelectedCampaign_();
+    const detail = qs<HTMLElement>('#campaign-detail', this.dom_);
+    const briefing = detail.querySelector('.selection-briefing');
+    if (briefing) briefing.scrollTop = 0;
+    animateSelection(detail);
+  }
+
+  private handleEnterCampaign_(): void {
+    const campaign = CampaignManager.getInstance()
+      .getAllCampaigns()
+      .find((c) => c.id === this.selectedCampaignId_);
+    if (!campaign || campaign.isDisabled || this.isLocked_(campaign)) return;
+    Router.getInstance().navigate(`/campaigns/${campaign.id}`);
   }
 }

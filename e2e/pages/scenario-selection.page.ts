@@ -6,7 +6,7 @@ import { BasePage } from './base.page';
  * Displays scenarios for a selected campaign.
  */
 export class ScenarioSelectionPage extends BasePage {
-  readonly url = /\/campaigns\/[^/]+$/;
+  readonly url = /\/campaigns\/[^/]+$/u;
 
   // Main elements
   readonly pageContainer: Locator;
@@ -25,10 +25,10 @@ export class ScenarioSelectionPage extends BasePage {
     this.pageTitle = page.locator('.scenario-selection-header h1');
     this.subtitle = page.locator('.scenario-selection-header .subtitle');
     this.scenarioGrid = page.locator('.scenario-grid');
-    this.backButton = page.locator('a.back-button');
+    this.backButton = page.getByRole('button', { name: 'Back to Campaigns' });
     this.campaignProgress = page.locator('.campaign-progress');
     // Only match the card divs, not buttons inside them
-    this.scenarioCards = page.locator('.scenario-card');
+    this.scenarioCards = page.locator('.scenario-list-item');
   }
 
   protected async waitForPageLoad(): Promise<void> {
@@ -53,10 +53,18 @@ export class ScenarioSelectionPage extends BasePage {
     return this.page.locator(`.scenario-card[data-scenario-id="${scenarioId}"]`);
   }
 
+  private async revealScenario_(scenarioId: string): Promise<Locator> {
+    const row = this.page.locator(`.scenario-list-item[data-scenario-id="${scenarioId}"]`);
+    const toggle = this.page.locator('.selection-phase').filter({ has: row }).locator('.selection-phase-toggle');
+    if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
+    return row;
+  }
+
   /**
    * Start a scenario (for new scenarios without checkpoint).
    */
   async startScenario(scenarioId: string): Promise<void> {
+    await (await this.revealScenario_(scenarioId)).click();
     const card = this.getScenarioCard(scenarioId);
     const startButton = card.locator('.btn-start');
     await expect(startButton).toBeVisible();
@@ -67,6 +75,7 @@ export class ScenarioSelectionPage extends BasePage {
    * Continue a scenario from checkpoint.
    */
   async continueScenario(scenarioId: string): Promise<void> {
+    await (await this.revealScenario_(scenarioId)).click();
     const card = this.getScenarioCard(scenarioId);
     const continueButton = card.locator('.btn-continue');
     await expect(continueButton).toBeVisible();
@@ -77,6 +86,7 @@ export class ScenarioSelectionPage extends BasePage {
    * Play a scenario again (for completed scenarios).
    */
   async playAgain(scenarioId: string): Promise<void> {
+    await (await this.revealScenario_(scenarioId)).click();
     const card = this.getScenarioCard(scenarioId);
     const playAgainButton = card.locator('.btn-play-again');
     await expect(playAgainButton).toBeVisible();
@@ -87,6 +97,7 @@ export class ScenarioSelectionPage extends BasePage {
    * Start fresh (restart level) for a scenario with checkpoint.
    */
   async startFresh(scenarioId: string): Promise<void> {
+    await (await this.revealScenario_(scenarioId)).click();
     const card = this.getScenarioCard(scenarioId);
     const startFreshButton = card.locator('.btn-start-fresh');
     await expect(startFreshButton).toBeVisible();
@@ -101,7 +112,7 @@ export class ScenarioSelectionPage extends BasePage {
    * Check if a scenario is locked.
    */
   async isScenarioLocked(scenarioId: string): Promise<boolean> {
-    const card = this.getScenarioCard(scenarioId);
+    const card = await this.revealScenario_(scenarioId);
     const lockedBanner = card.locator('.locked-banner');
     return lockedBanner.isVisible();
   }
@@ -110,7 +121,7 @@ export class ScenarioSelectionPage extends BasePage {
    * Check if a scenario is completed.
    */
   async isScenarioCompleted(scenarioId: string): Promise<boolean> {
-    const card = this.getScenarioCard(scenarioId);
+    const card = await this.revealScenario_(scenarioId);
     const completedBanner = card.locator('.completed-banner');
     return completedBanner.isVisible();
   }
@@ -119,7 +130,7 @@ export class ScenarioSelectionPage extends BasePage {
    * Check if a scenario has a checkpoint.
    */
   async hasCheckpoint(scenarioId: string): Promise<boolean> {
-    const card = this.getScenarioCard(scenarioId);
+    const card = await this.revealScenario_(scenarioId);
     const checkpointBanner = card.locator('.checkpoint-banner');
     return checkpointBanner.isVisible();
   }
@@ -130,7 +141,7 @@ export class ScenarioSelectionPage extends BasePage {
   async goBackToCampaigns(): Promise<void> {
     await this.backButton.click();
     // Wait for navigation - the URL will be /campaigns/ with trailing slash
-    await this.page.waitForURL(/\/campaigns\/?$/);
+    await this.page.waitForURL('/');
   }
 
   /**

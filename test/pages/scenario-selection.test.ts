@@ -1,5 +1,6 @@
 import { Mock, vi } from 'vitest';
 import { EventBus } from '../../src/events/event-bus';
+import { selectionProgressCache } from '../../src/user-account/selection-progress-cache';
 
 // Mock dependencies before imports
 vi.mock('../../src/events/event-bus');
@@ -181,6 +182,7 @@ describe('ScenarioSelectionPage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    selectionProgressCache.invalidate();
 
     // Reset singleton
     (ScenarioSelectionPage as any).instance_ = undefined;
@@ -271,13 +273,13 @@ describe('ScenarioSelectionPage', () => {
       expect(progress?.textContent).toContain('0 of 1');
     });
 
-    it('should show back to campaigns link', () => {
+    it('should show back to campaigns as a button', () => {
       const page = ScenarioSelectionPage.getInstance();
       page.setCampaign('nats');
 
-      const backLink = document.querySelector('.back-button');
-      expect(backLink).not.toBeNull();
-      expect(backLink?.textContent).toContain('Back to Campaigns');
+      const backButton = document.querySelector<HTMLButtonElement>('button.back-button');
+      expect(backButton?.textContent).toContain('Back to Campaigns');
+      expect(backButton?.type).toBe('button');
     });
   });
 
@@ -391,8 +393,8 @@ describe('ScenarioSelectionPage', () => {
     });
 
     it('offers CONTINUE only on a checkpoint of a scenario not yet completed', () => {
-      expect(buttons(renderCard({ completedAt: false, score: false, checkpoint: true }))).toEqual(['Continue', 'Restart Level']);
-      expect(buttons(renderCard({ completedAt: false, score: false, checkpoint: false }))).toEqual(['Start']);
+      expect(buttons(renderCard({ completedAt: false, score: false, checkpoint: true }))).toEqual(['Continue mission', 'Restart Level']);
+      expect(buttons(renderCard({ completedAt: false, score: false, checkpoint: false }))).toEqual(['Begin mission']);
     });
 
     it('shows a Campaign complete banner at 100 % only', () => {
@@ -545,7 +547,7 @@ describe('ScenarioSelectionPage', () => {
 
       const banner = document.querySelector('.coming-soon-banner');
       expect(banner).not.toBeNull();
-      expect(banner?.textContent).toContain('Coming Soon');
+      expect(banner?.textContent).toContain('Coming soon');
     });
   });
 
@@ -809,7 +811,7 @@ describe('ScenarioSelectionPage', () => {
 
       const banner = document.querySelector('.checkpoint-banner');
       expect(banner).not.toBeNull();
-      expect(banner?.textContent).toContain('Checkpoint Available');
+      expect(banner?.textContent).toContain('Checkpoint available');
     });
   });
 
@@ -1038,8 +1040,9 @@ describe('ScenarioSelectionPage', () => {
     });
 
     it('should handle checkpoint loading error gracefully', async () => {
+      const getProgress = vi.fn().mockRejectedValueOnce(new Error('Network error')).mockResolvedValue({ scenarios: [] });
       (getUserDataService as Mock).mockReturnValue({
-        getAllScenariosProgress: vi.fn(() => Promise.reject(new Error('Network error'))),
+        getAllScenariosProgress: getProgress,
         checkpointExists: vi.fn(() => Promise.resolve(false)),
         deleteCheckpoint: vi.fn(() => Promise.resolve()),
         resetScenarioForReplay: vi.fn(() => Promise.resolve()),
@@ -1047,12 +1050,15 @@ describe('ScenarioSelectionPage', () => {
 
       const page = ScenarioSelectionPage.getInstance();
       page.setCampaign('nats');
-
-      await flushPromises();
-
-      // Should still render the page without crashing
-      const grid = document.querySelector('.scenario-grid');
-      expect(grid).not.toBeNull();
+      page.show();
+      await page.whenProgressLoaded();
+      const root = document.querySelector<HTMLElement>('#scenario-selection-page')!;
+      expect(root.classList.contains('is-loading')).toBe(true);
+      expect(root.querySelector('.selection-loading-screen')?.textContent).toContain('Progress unavailable');
+      root.querySelector<HTMLButtonElement>('.selection-loading-screen button')!.click();
+      await page.whenProgressLoaded();
+      expect(root.classList.contains('is-loading')).toBe(false);
+      expect(getProgress).toHaveBeenCalledTimes(2);
     });
 
     it('should track scenarios with completedAt for prerequisites', async () => {
@@ -1081,6 +1087,47 @@ describe('ScenarioSelectionPage', () => {
   });
 
   describe('show method', () => {
+    it('keeps the menu masked through slow progress and checkpoint loads, then opens the next available phase', async () => {
+      const manager = CampaignManager.getInstance();
+      const original = (CampaignManager.getInstance as Mock).getMockImplementation();
+      const template = manager.getCampaign('nats')!.scenarios[0];
+      const scenarios = Array.from({ length: 9 }, (_, index) => ({ ...template, id: `scenario${index + 1}`, number: index + 1, title: `Mission ${index + 1}` }));
+      (CampaignManager.getInstance as Mock).mockReturnValue({ ...manager, getCampaign: () => ({ id: 'nats', title: 'Test', scenarios }) });
+      let answerProgress!: (value: unknown) => void;
+      let answerCheckpoints!: (value: boolean) => void;
+      const checkpoints = new Promise<boolean>((resolve) => {
+        answerCheckpoints = resolve;
+      });
+      (getUserDataService as Mock).mockReturnValue({
+        getAllScenariosProgress: vi.fn(
+          () =>
+            new Promise((resolve) => {
+              answerProgress = resolve;
+            })
+        ),
+        checkpointExists: vi.fn(() => checkpoints),
+      });
+      const page = ScenarioSelectionPage.getInstance();
+      page.setCampaign('nats');
+      page.show();
+      await flushPromises();
+      const root = document.querySelector<HTMLElement>('#scenario-selection-page')!;
+      expect(root.classList.contains('is-loading')).toBe(true);
+      expect(root.querySelector<HTMLElement>('.selection-workspace')!.inert).toBe(true);
+      answerProgress({ scenarios: scenarios.slice(0, 8).map((scenario) => ({ scenarioId: scenario.id, completedAt: '2026-11-07', score: 100 })) });
+      await flushPromises();
+      expect(Logger.error).not.toHaveBeenCalled();
+      expect(root.classList.contains('is-loading')).toBe(true);
+      expect(root.querySelector('.selection-loading-screen')?.textContent).toContain('Checking saved missions');
+      answerCheckpoints(false);
+      await page.whenProgressLoaded();
+      expect(root.classList.contains('is-loading')).toBe(false);
+      expect(root.querySelector<HTMLElement>('.selection-workspace')!.inert).toBe(false);
+      expect(root.querySelector('.selection-phase-toggle[aria-expanded="true"]')?.textContent).toContain('Phase 2');
+      expect(root.querySelector('.scenario-list-item[aria-pressed="true"]')?.getAttribute('data-scenario-id')).toBe('scenario9');
+      (CampaignManager.getInstance as Mock).mockImplementation(original!);
+    });
+
     it('should refresh checkpoint data when show is called', async () => {
       const mockGetAllProgress = vi.fn(() => Promise.resolve({ scenarios: [] }));
       (getUserDataService as Mock).mockReturnValue({

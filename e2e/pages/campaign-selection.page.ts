@@ -24,7 +24,7 @@ export class CampaignSelectionPage extends BasePage {
     this.pageTitle = page.locator('.campaign-selection-header h1');
     this.subtitle = page.locator('.campaign-selection-header .subtitle');
     this.campaignGrid = page.locator('.campaign-grid');
-    this.loginWarning = page.locator('.login-warning');
+    this.loginWarning = this.pageContainer.locator('.login-warning');
     this.campaignCards = page.locator('.campaign-card');
   }
 
@@ -50,6 +50,7 @@ export class CampaignSelectionPage extends BasePage {
     await expect(card).toBeVisible();
     await expect(card).not.toHaveClass(/disabled/);
     await card.click();
+    await this.pageContainer.locator('#campaign-detail .selection-primary').click();
     await this.page.waitForURL(`/campaigns/${campaignId}`);
   }
 

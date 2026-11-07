@@ -9,6 +9,7 @@ import { Header } from '@app/pages/layout/header/header';
 import { MissionControlPage } from '@app/pages/mission-control/mission-control-page';
 import { SandboxPage } from '@app/pages/sandbox-page';
 import { ScenarioSelectionPage } from '@app/pages/scenario-selection';
+import { cancelSelectionExit, leaveSelection } from '@app/pages/selection-browser';
 import { PluginManager } from '@app/plugins/plugin-manager';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { ScenarioManager } from './scenario-manager';
@@ -133,14 +134,18 @@ export class Router {
   }
 
   navigate(path: string, options?: NavigationOptions): void {
-    this.navigationOptions_ = options || {};
-    globalThis.history.pushState({}, '', path);
-    this.handleRoute();
+    leaveSelection(() => {
+      this.navigationOptions_ = options || {};
+      globalThis.history.pushState({}, '', path);
+      this.handleRoute();
+    });
   }
 
   private handleRoute(): void {
+    cancelSelectionExit();
     const path = globalThis.location.pathname;
     this.currentPath = path;
+    document.body.classList.toggle('selection-menu', path === '/' || /^\/campaigns\/[^/]+$/u.test(path));
 
     // Tag <body> with the active campaign and its chrome variant so per-campaign
     // themes (e.g. .campaign-nats-eu) can scope CSS variable overrides and

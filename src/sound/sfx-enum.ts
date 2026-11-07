@@ -34,8 +34,6 @@ export enum Sfx {
   // The room and the people in it
   PRINTER = 'printer',
   PHONE_RING = 'phone-ring',
-  RADIO_CALL_IN = 'radio-call-in',
-  RADIO_CALL_OUT = 'radio-call-out',
   DOOR_BADGE = 'door-badge',
   DOOR_HEAVY = 'door-heavy',
   KEY_LOCK = 'key-lock',

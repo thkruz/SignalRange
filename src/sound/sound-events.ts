@@ -115,8 +115,6 @@ export class SoundEvents {
     this.on_(Events.HINT_SHOWN, () => this.play_(Sfx.NOTIFY));
     this.on_(Events.PROGRESS_SAVE_ERROR, () => this.play_(Sfx.UI_ERROR));
     this.on_(Events.SWITCH_TAB, () => this.play_(Sfx.UI_CLICK));
-    this.on_(Events.HANDOVER_INITIATED, () => this.play_(Sfx.RADIO_CALL_OUT));
-    this.on_(Events.HANDOVER_COMPLETE, () => this.play_(Sfx.RADIO_CALL_IN));
 
     this.on_(Events.WEATHER_EVENT_STARTED, (data: WeatherEventData) => {
       this.weather_.set(data.id, data);

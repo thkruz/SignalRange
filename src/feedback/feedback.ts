@@ -2,6 +2,7 @@ import { DevMenuService } from '@app/dev-menu/dev-menu-service';
 import { setMenuPause } from '@app/game-menu/menu-pause';
 import { Auth } from '@app/user-account/auth';
 import { captureFeedbackScreen, captureFeedbackState } from './feedback-capture';
+import { describeCaptureFailure } from './feedback-capture-error';
 import { type FeedbackSubmission, submitFeedback } from './feedback-service';
 import './feedback.css';
 
@@ -100,12 +101,12 @@ export class Feedback {
     preview.hidden = !this.draft_.screenshot;
     if (this.draft_.screenshot) preview.src = this.draft_.screenshot;
     else preview.removeAttribute('src');
-    this.status_.textContent = !this.screenshotToggle_.checked
-      ? 'Game state attached. Screenshot will not be uploaded.'
-      : this.capturedScreenshot_
-        ? 'Screen and game state attached. Visible only to the QA team.'
-        : this.captureFailed_
-          ? 'Screen capture failed. Turn off Include screenshot to send feedback without it.'
+    this.status_.textContent = this.captureFailed_
+      ? 'Screenshot unavailable. You can still send feedback; capture failure details and game state are attached.'
+      : !this.screenshotToggle_.checked
+        ? 'Game state attached. Screenshot will not be uploaded.'
+        : this.capturedScreenshot_
+          ? 'Screen and game state attached. Visible only to the QA team.'
           : 'Capturing screen. Game state attached.';
     this.updateSend_();
   }
@@ -157,9 +158,12 @@ export class Feedback {
           this.capturedScreenshot_ = screenshot;
           this.updateScreenshot_();
         })
-        .catch(() => {
-          if (generation !== this.generation_ || this.input_.readOnly) return;
+        .catch((error: unknown) => {
+          if (generation !== this.generation_ || !this.draft_ || this.input_.readOnly) return;
           this.captureFailed_ = true;
+          this.draft_.snapshot.screenshotCapture = describeCaptureFailure(error);
+          this.screenshotToggle_.checked = false;
+          this.screenshotToggle_.disabled = true;
           this.updateScreenshot_();
         });
     } catch {
@@ -196,7 +200,7 @@ export class Feedback {
       if (generation !== this.generation_) return;
       this.close_();
       this.notice_.hidden = false;
-      this.notice_.textContent = 'Feedback saved. Thank you.';
+      this.notice_.innerHTML = `<span class="qa-feedback-notice-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 3h13l4 4v14H3V3z"/><path d="M7 3v6h10V3M7 21v-8h10v8M14 4v3"/></svg></span><span><strong>Feedback saved</strong><span class="qa-feedback-notice-detail">Thank you for helping improve SignalRange.</span></span>`;
       this.noticeTimeout_ = setTimeout(() => this.clearNotice_(), 4000);
     } catch (error) {
       if (generation !== this.generation_) return;

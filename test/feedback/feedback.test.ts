@@ -62,7 +62,7 @@ describe('Feedback', () => {
       this.open = false;
     };
     mocks.captureScreen.mockResolvedValue('data:image/jpeg;base64,/9j/2Q==');
-    mocks.captureState.mockReturnValue({ route: '/campaigns/nats', gameState: { objectiveStates: [] } });
+    mocks.captureState.mockImplementation(() => ({ route: '/campaigns/nats', gameState: { objectiveStates: [] } }));
     mocks.submit.mockResolvedValue(undefined);
     feedback = new Feedback();
   });
@@ -156,19 +156,67 @@ describe('Feedback', () => {
     }
   });
 
-  it('lets the user exclude a failed screenshot and submit their note and state', async () => {
+  it('automatically excludes and disables a failed screenshot, submitting diagnostics with the note', async () => {
     mocks.captureScreen.mockRejectedValueOnce(new Error('Canvas error'));
     feedback.open();
     await flush();
     type('Issue');
-    expect(send().disabled).toBe(true);
-    expect(document.querySelector('[role="status"]')!.textContent).toContain('capture failed');
-    screenshotToggle().click();
+    expect(screenshotToggle().checked).toBe(false);
+    expect(screenshotToggle().disabled).toBe(true);
+    expect(document.querySelector('[role="status"]')!.textContent).toContain('failure details');
     expect(send().disabled).toBe(false);
     send().click();
     await flush();
     expect(mocks.submit.mock.calls[0][0].screenshot).toBeNull();
     expect(mocks.submit.mock.calls[0][0].snapshot.gameState).toBeDefined();
+    expect(mocks.submit.mock.calls[0][0].snapshot.screenshotCapture).toMatchObject({ status: 'failed', stage: 'render', reason: 'render-failed' });
+    feedback.open();
+    await flush();
+    expect(screenshotToggle().checked).toBe(true);
+    expect(screenshotToggle().disabled).toBe(false);
+  });
+
+  it('ignores an old capture failure after closing and reopening', async () => {
+    let fail!: (error: Error) => void;
+    mocks.captureScreen.mockReturnValueOnce(
+      new Promise<string>((_resolve, reject) => {
+        fail = reject;
+      })
+    );
+    feedback.open();
+    document.querySelector<HTMLButtonElement>('.qa-feedback-cancel')!.click();
+    feedback.open();
+    await flush();
+    fail(new Error('Old capture failed'));
+    await flush();
+    expect(screenshotToggle().checked).toBe(true);
+    expect(screenshotToggle().disabled).toBe(false);
+    type('New draft');
+    send().click();
+    await flush();
+    expect(mocks.submit.mock.calls[0][0].snapshot.screenshotCapture).toBeUndefined();
+    expect(mocks.submit.mock.calls[0][0].screenshot).not.toBeNull();
+  });
+
+  it('does not mutate an immutable retry when an excluded screenshot fails late', async () => {
+    let fail!: (error: Error) => void;
+    mocks.captureScreen.mockReturnValueOnce(
+      new Promise<string>((_resolve, reject) => {
+        fail = reject;
+      })
+    );
+    mocks.submit.mockRejectedValueOnce(new Error('Please retry'));
+    feedback.open();
+    screenshotToggle().click();
+    type('Audio issue');
+    send().click();
+    await flush();
+    const original = structuredClone(mocks.submit.mock.calls[0][0]);
+    fail(new Error('Late failure'));
+    await flush();
+    send().click();
+    await flush();
+    expect(mocks.submit.mock.calls[1][0]).toEqual(original);
   });
 
   it('can exclude and restore the original capture before sending', async () => {

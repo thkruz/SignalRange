@@ -56,6 +56,18 @@ describe('saved-result achievements', () => {
     expect(evaluateAchievements(catalog, []).every((award) => !award.unlockedAt)).toBe(true);
   });
 
+  it('awards sustained proficiency for distinct clean missions only', () => {
+    const results = Array.from({ length: 8 }, (_, index) => result(index + 1));
+    expect(evaluateAchievements(catalog, results).find((award) => award.id === 'clean-shifts-8')?.unlockedAt).toBe(results[7].completedAt);
+    expect(evaluateAchievements(catalog, results.slice(0, 7).concat(result(1))).find((award) => award.id === 'clean-shifts-8')?.unlockedAt).toBeUndefined();
+    expect(
+      evaluateAchievements(
+        catalog,
+        results.map((entry, index) => (index ? entry : { ...entry, timePenalties: 1 }))
+      ).find((award) => award.id === 'clean-shifts-8')?.unlockedAt
+    ).toBeUndefined();
+  });
+
   it('renders filters, accessible progress, and escapes authored text', () => {
     const awards = evaluateAchievements(catalog, [result(1)]);
     awards[0].title = '<img src=x onerror=alert(1)>';

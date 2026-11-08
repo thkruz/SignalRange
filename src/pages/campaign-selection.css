@@ -1,6 +1,6 @@
 /* Both browsers share geometry and motion in selection-browser.css. */
 .campaign-selection-page .selection-item { padding-block: 20px; }
-.campaign-continue:not([hidden]) { display: flex; align-items: center; gap: 22px; width: 100%; padding: 15px 20px; margin-bottom: 14px; color: #eee; background: #303030; border: 1px solid #555; border-left: 4px solid #ba160c; text-align: left; flex-shrink: 0; }
+.campaign-continue:not([hidden]) { display: flex; align-items: center; gap: 22px; width: 100%; max-width: 1680px; padding: 15px 20px; margin: 0 auto 14px; color: #eee; background: #303030; border: 1px solid #555; border-left: 4px solid #ba160c; text-align: left; flex-shrink: 0; }
 .campaign-continue:hover { background: #393939; border-color: #999; border-left-color: #ba160c; }
 .campaign-continue:focus-visible { outline: 2px solid #eee; outline-offset: 3px; }
 .continue-label { padding: 9px 14px; background: #ba160c; font-weight: 600; white-space: nowrap; }

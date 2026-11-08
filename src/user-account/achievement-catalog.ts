@@ -40,14 +40,18 @@ export function achievementCatalog(campaigns: CampaignData[]): AchievementDefini
       target: Number(target),
       qualifies: (result: ScenarioProgress) => missions.has(result.scenarioId),
     })),
-    {
-      id: 'clean-shift',
-      title: 'Clean shift',
-      category: 'Proficiency',
-      target: 1,
-      description: 'Complete a mission with no quiz or time penalties.',
-      qualifies: (result) => missions.has(result.scenarioId) && result.quizPenalties === 0 && result.timePenalties === 0,
-    },
+    ...[
+      { target: 1, title: 'Clean shift', id: 'clean-shift' },
+      { target: 8, title: 'Steady hand', id: 'clean-shifts-8' },
+      { target: 16, title: 'Proven under pressure', id: 'clean-shifts-16' },
+    ].map(({ target, title, id }) => ({
+      id,
+      title,
+      category: 'Proficiency' as const,
+      target,
+      description: `Complete ${target === 1 ? 'a mission' : `${target} distinct missions`} with no recorded quiz, decision, or time penalties.`,
+      qualifies: (result: ScenarioProgress) => missions.has(result.scenarioId) && result.quizPenalties === 0 && result.timePenalties === 0,
+    })),
   ];
   for (const campaign of campaigns) {
     const available = campaignMissions(campaign);
@@ -66,12 +70,13 @@ export function achievementCatalog(campaigns: CampaignData[]): AchievementDefini
       const phaseIds = new Set(available.filter((mission) => mission.number >= first && mission.number < first + 8).map((mission) => mission.id));
       if (phaseIds.size !== 8) continue;
       const phase = (first - 1) / 8 + 1;
+      const names = campaign.id === 'nats' ? ['Qualified operator', 'Independent watch', 'Senior operator'] : ['European watch', 'Network operator'];
       catalog.push({
         id: `phase-${campaign.id}-${phase}`,
-        title: `${campaign.title} | Phase ${phase}`,
+        title: `${names[phase - 1]} · ${campaign.title}`,
         category: 'Campaigns',
         target: 8,
-        description: `Complete missions ${first}–${first + 7}.`,
+        description: `Phase ${phase} complete: missions ${first}–${first + 7}.`,
         qualifies: (result) => phaseIds.has(result.scenarioId),
       });
     }

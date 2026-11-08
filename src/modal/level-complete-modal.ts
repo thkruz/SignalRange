@@ -4,10 +4,12 @@ import { html } from '@app/engine/utils/development/formatter';
 import { Logger } from '@app/logging/logger';
 import { OpsLogModal } from '@app/ops-log/ops-log-modal';
 import { selectionText } from '@app/pages/selection-browser';
+import niceTasks from '@app/presentation/nice-task-descriptions.json';
 import { Router } from '@app/router';
 import { WorkingDocumentManager } from '@app/scenarios/working-document-manager';
 import { type ScoreBreakdown, ScoreCalculator } from '@app/scoring/score-calculator';
 import { SimulationManager } from '@app/simulation/simulation-manager';
+import { SoundEvents } from '@app/sound/sound-events';
 import { clearPersistedStore } from '@app/sync/storage';
 import { Auth } from '@app/user-account/auth';
 import { ModalLogin } from '@app/user-account/modal-login';
@@ -15,6 +17,7 @@ import { getUserDataService } from '@app/user-account/user-data-service';
 import type { DecisionRecord } from './decision-manager';
 import { DialogManager } from './dialog-manager';
 import './level-complete-modal.css';
+import { SceneModal } from '@app/presentation/scene-modal';
 import { preloadArtwork } from '@app/presentation/transitions';
 import type { MissionDebrief } from '@app/scoring/mission-debrief';
 import { achievementBadge } from '@app/user-account/profile-record';
@@ -23,6 +26,7 @@ import { PendingQuizIndicator } from './pending-quiz-indicator';
 import { QuizModal } from './quiz-modal';
 
 interface CompletionModalOptions {
+  niceTaskCodes?: string[];
   debrief?: MissionDebrief;
   score: ScoreBreakdown;
   elapsedTimeSeconds: number;
@@ -175,13 +179,14 @@ export class LevelCompleteModal extends DraggableModal {
         </div>
 
         ${this.renderDebrief_()}
+        ${this.renderNiceTasks_()}
         ${this.renderSignUpSection_()}
         <p id="debrief-save-status" role="status"></p>
         </div>
         <div class="complete-modal__actions">
           ${this.options_.debrief?.nextMission && this.options_.isAuthenticated !== false ? '<button id="next-mission-btn" class="btn btn-primary">Next Mission</button>' : ''}
           <button id="play-again-btn" class="btn btn-secondary">Replay</button>
-          <button id="continue-btn" class="btn btn-secondary">Mission Selection</button>
+          <button id="continue-btn" class="btn ${this.options_.debrief?.epilogue ? 'btn-primary' : 'btn-secondary'}">${this.options_.debrief?.epilogue ? 'View Epilogue' : 'Mission Selection'}</button>
         </div>
       </div>
     `;
@@ -199,6 +204,21 @@ export class LevelCompleteModal extends DraggableModal {
       ${delta === null ? '' : `<div><span>Change</span><strong>${delta > 0 ? '+' : ''}${delta.toLocaleString()}</strong></div>`}</div>
       ${awards ? `<h2>Awards this run</h2><ul class="debrief-awards">${awards}</ul><p class="debrief-note">Awards are added to your service record when this result is saved.</p>` : ''}
       ${debrief.nextMission ? `<p class="debrief-next">${debrief.newlyUnlocked ? 'Next unlock' : 'Next mission'}: <strong>${selectionText(debrief.nextMission.title)}</strong></p>` : ''}
+    </section>`;
+  }
+
+  private renderNiceTasks_(): string {
+    if (!this.options_.niceTaskCodes) return '';
+    const codes = [...new Set(this.options_.niceTaskCodes)].filter((code) => /^T\d{4}$/u.test(code)).sort();
+    const rows = codes
+      .map(
+        (code) => `<li><span>${selectionText((niceTasks.tasks as Record<string, string>)[code] ?? 'Task description unavailable')}</span><code>${selectionText(code)}</code></li>`
+      )
+      .join('');
+    return `<section class="mission-nice-tasks" aria-label="NICE tasks practiced">
+      <h2>NICE tasks practiced · ${codes.length}</h2>
+      <p>Mapped to objectives you completed in this mission. This records practice within the NIST NICE workforce framework, not certification.</p>
+      ${rows ? `<ul>${rows}</ul>` : '<p>No NICE task codes are mapped to the objectives completed in this mission.</p>'}
     </section>`;
   }
 
@@ -321,6 +341,12 @@ export class LevelCompleteModal extends DraggableModal {
       }
       this.forceClose_();
       const path = `/campaigns/${campaignId}`;
+      if (action === 'selection' && debrief?.epilogue) {
+        const scene = new SceneModal(debrief.epilogue, () => {});
+        const accepted = await scene.result;
+        Router.getInstance().navigate(accepted ? '/' : path);
+        return;
+      }
       if (action === 'replay') Router.getInstance().navigate(`${path}/scenarios/${scenarioId}`, { forceReplay: true });
       else if (action === 'next' && debrief?.nextMission) Router.getInstance().navigate(`${path}/scenarios/${debrief.nextMission.id}`);
       else Router.getInstance().navigate(path);
@@ -424,6 +450,7 @@ export class LevelCompleteModal extends DraggableModal {
 
     // Close any open popups before showing completion modal
     this.closeAllPopups_();
+    SoundEvents.finish();
 
     // Force regeneration of modal content with new options
     if (this.boxEl) {

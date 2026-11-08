@@ -66,6 +66,20 @@ describe('SaveProgressToast', () => {
   });
 
   describe('showSaving', () => {
+    it('uses a compact autosave indicator but expands errors with retry', () => {
+      toast.showSaving('Saving to your account', true);
+      const element = document.querySelector<HTMLElement>('.save-progress-toast')!;
+      expect(element.classList.contains('save-progress-toast--compact')).toBe(true);
+      toast.showSuccess('Saved to your account', 2000, true);
+      expect(element.title).toBe('Saved to your account');
+      expect(element.querySelector('.save-progress-toast__message')?.textContent).toBe('Saved to your account');
+      toast.showError('Connection lost', 0);
+      toast.offerRetry(async () => {});
+      expect(element.classList.contains('save-progress-toast--compact')).toBe(false);
+      expect(element.querySelector<HTMLButtonElement>('.btn')!.hidden).toBe(false);
+      expect(element.title).toBe('');
+      expect(element.textContent).toContain('Connection lost');
+    });
     it('should display spinner icon', () => {
       toast.showSaving();
 

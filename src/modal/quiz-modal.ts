@@ -146,16 +146,16 @@ export class QuizModal extends DraggableBox {
       this.boxEl.style.minWidth = this.width;
     }
 
-    // Center the box
+    if (cb) {
+      cb();
+    }
+
+    // Center after rendering the question and reserving its feedback space.
     this.boxEl.style.top = `${window.scrollY + (window.innerHeight - this.boxEl.offsetHeight) / 2}px`;
     this.boxEl.style.left = `${(window.innerWidth - this.boxEl.offsetWidth) / 2}px`;
 
     // Bring to front
     this.boxEl.style.zIndex = DraggableBox.increaseMaxZIndex().toString();
-
-    if (cb) {
-      cb();
-    }
   }
 
   private renderQuiz_(): void {
@@ -200,9 +200,16 @@ export class QuizModal extends DraggableBox {
     // Hide and clear feedback and penalty notices: a hidden notice left over
     // from the previous quiz still reads through innerText/textContent
     // (nats-r2-s01-F2)
-    feedbackEl.style.display = 'none';
+    feedbackEl.style.display = 'block';
+    feedbackEl.style.visibility = 'hidden';
+    feedbackEl.style.minHeight = '';
+    // Measure this quiz's real response at its rendered width, then remove it
+    // so hidden answers are not present in the accessible tree or text queries.
+    feedbackEl.innerHTML = this.correctFeedbackHtml_();
+    feedbackEl.style.minHeight = `${feedbackEl.getBoundingClientRect().height}px`;
     feedbackEl.innerHTML = '';
-    penaltyEl.style.display = 'none';
+    penaltyEl.style.display = 'flex';
+    penaltyEl.style.visibility = 'hidden';
     penaltyEl.innerHTML = '';
 
     // Create option buttons with randomized order
@@ -247,6 +254,8 @@ export class QuizModal extends DraggableBox {
         btn.addEventListener('click', () => this.handleOptionClick_(originalIndex));
       }
     });
+    const content = this.boxEl?.querySelector('.draggable-box__content');
+    if (content) content.scrollTop = 0;
   }
 
   private handleOptionClick_(index: number): void {
@@ -333,7 +342,27 @@ export class QuizModal extends DraggableBox {
     }
 
     if (feedbackEl) {
-      feedbackEl.innerHTML = html`
+      feedbackEl.innerHTML = this.correctFeedbackHtml_();
+      feedbackEl.style.visibility = 'visible';
+      feedbackEl.style.display = 'block';
+      const penalty = getEl('quiz-penalty-notice');
+      if (penalty) penalty.style.visibility = 'hidden';
+
+      const continueBtn = getEl('quiz-continue-btn');
+      if (continueBtn) {
+        continueBtn.addEventListener('click', () => this.handleContinueClick_());
+        // Scroll within the stable box when long feedback needs more room.
+        continueBtn.scrollIntoView?.({ block: 'nearest' });
+        continueBtn.focus({ preventScroll: true });
+      }
+    }
+
+    this.disableOptions_();
+  }
+
+  private correctFeedbackHtml_(): string {
+    if (!this.currentQuiz_) return '';
+    return html`
         <div class="feedback-correct">
           <span class="feedback-icon">&#10003;</span>
           <span class="feedback-text">Correct!</span>
@@ -347,22 +376,6 @@ export class QuizModal extends DraggableBox {
         }
         <button id="quiz-continue-btn" class="quiz-continue-btn">Continue</button>
       `;
-      feedbackEl.style.display = 'block';
-
-      const continueBtn = getEl('quiz-continue-btn');
-      if (continueBtn) {
-        continueBtn.addEventListener('click', () => this.handleContinueClick_());
-        // The box scrolls; a long explanation pushed Continue below the fold (nats-s22-F9)
-        continueBtn.scrollIntoView?.({ block: 'nearest' });
-        continueBtn.focus();
-      }
-
-      // Adjust position if modal extends past viewport
-      this.ensureModalInViewport_();
-    }
-
-    // Disable all option buttons
-    this.disableOptions_();
   }
 
   /**
@@ -459,6 +472,7 @@ export class QuizModal extends DraggableBox {
         </div>
       `;
       feedbackEl.style.display = 'block';
+      feedbackEl.style.visibility = 'visible';
     }
 
     if (penaltyEl) {
@@ -467,6 +481,7 @@ export class QuizModal extends DraggableBox {
         <span class="penalty-total">(Total: -${this.totalPointsDeducted_} points)</span>
       `;
       penaltyEl.style.display = 'block';
+      penaltyEl.style.visibility = 'visible';
     }
 
     // Adjust position if modal extends past viewport

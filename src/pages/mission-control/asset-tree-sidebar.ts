@@ -259,7 +259,7 @@ export class AssetTreeSidebar extends BaseElement {
 
     // Only surface the icon for scenarios that declare a working document
     if (WorkingDocumentManager.isEnabled()) {
-      (btn as HTMLElement).style.display = '';
+      (btn as HTMLElement).hidden = false;
     }
 
     btn.addEventListener('click', () => {
@@ -270,7 +270,7 @@ export class AssetTreeSidebar extends BaseElement {
     // when the scenario keeps a working document and there is history to read.
     const recordBtn = qs('.campaign-record-icon', this.dom_);
     if (recordBtn && WorkingDocumentManager.isEnabled() && CampaignRecordPanel.hasContent()) {
-      (recordBtn as HTMLElement).style.display = '';
+      (recordBtn as HTMLElement).hidden = false;
       recordBtn.addEventListener('click', () => CampaignRecordPanel.getInstance().open());
     }
   }
@@ -462,13 +462,13 @@ export class AssetTreeSidebar extends BaseElement {
           </span>
           <span class="flex-fill">Checklist</span>
         </a>
-        <a class="list-group-item list-group-item-action d-flex align-items-center working-doc-icon" data-tooltip="Working Document" style="display: none;">
+        <a class="list-group-item list-group-item-action d-flex align-items-center working-doc-icon" data-tooltip="Working Document" hidden>
           <span class="item-icon">
             <img src="${checklistPng}" alt="Working Document"/>
           </span>
           <span class="flex-fill">Working Doc</span>
         </a>
-        <a class="list-group-item list-group-item-action d-flex align-items-center campaign-record-icon" data-tooltip="Campaign Record" style="display: none;">
+        <a class="list-group-item list-group-item-action d-flex align-items-center campaign-record-icon" data-tooltip="Campaign Record" hidden>
           <span class="item-icon">
             <img src="${checklistPng}" alt="Campaign Record"/>
           </span>

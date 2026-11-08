@@ -29,6 +29,19 @@
 .game-menu .game-menu-close { border: 0; background: transparent; font-size: 28px; padding: 0 8px; }
 .game-menu-actions { display: grid; gap: 10px; margin-top: 26px; }
 .game-menu-actions button { text-align: left; padding: 14px 18px; font-weight: 600; }
+.game-menu .game-menu-quit {
+  display: block;
+  padding: 14px 18px;
+  color: #eee;
+  background: #373737;
+  border: 1px solid #606060;
+  border-radius: 2px;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+}
+.game-menu .game-menu-quit:hover { background: #454545; border-color: #999; }
+.game-menu .game-menu-quit:focus-visible { outline: 2px solid #eee; outline-offset: 3px; }
 .game-menu .game-menu-primary { background: var(--mc-menu-accent); border-color: #db281e; }
 .game-menu .game-menu-primary:hover { background: #d01b10; }
 .game-menu-footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 26px; border-top: 1px solid var(--mc-menu-border); background: var(--mc-menu-inset); font-size: 12px; color: #bbb; }
@@ -41,6 +54,8 @@
 .game-menu input { accent-color: var(--mc-menu-accent); }
 .game-menu input[type="range"] { width: 100%; min-width: 0; }
 .game-setting-toggle { display: flex; gap: 10px; align-items: center; font-size: 14px; margin: 14px 0; }
+.game-setting-toggle { min-height: 36px; cursor: pointer; }
+.game-setting-toggle input[type="checkbox"] { width: 20px; height: 20px; flex: 0 0 20px; margin: 0; cursor: pointer; }
 .game-setting-select { display: flex; justify-content: space-between; gap: 16px; align-items: center; font-size: 14px; margin: 16px 0 10px; }
 .game-setting-select select { min-width: 0; max-width: 60%; }
 .game-menu #setting-fullscreen { margin-top: 12px; }

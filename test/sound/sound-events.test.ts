@@ -1,5 +1,6 @@
 import { EventBus } from '@app/events/event-bus';
 import { type AggregatedAlarm, Events } from '@app/events/events';
+import { Ambience } from '@app/sound/ambience';
 import { Sfx } from '@app/sound/sfx-enum';
 import { SoundEvents } from '@app/sound/sound-events';
 import SoundManager from '@app/sound/sound-manager';
@@ -25,7 +26,7 @@ describe('SoundEvents alarm tones', () => {
     vi.setSystemTime(1_000_000);
     EventBus.destroy();
     play = vi.fn();
-    vi.spyOn(SoundManager, 'getInstance').mockReturnValue({ play, stop: vi.fn() } as unknown as SoundManager);
+    vi.spyOn(SoundManager, 'getInstance').mockReturnValue({ play, stop: vi.fn(), setMissionActive: vi.fn(), stopCustom: vi.fn() } as unknown as SoundManager);
     SoundEvents.start();
     SoundEvents.arm();
     after(2000);
@@ -36,6 +37,28 @@ describe('SoundEvents alarm tones', () => {
     EventBus.destroy();
     vi.restoreAllMocks();
     vi.useRealTimers();
+  });
+
+  it('acknowledges the correct quiz answer immediately and uses only a click for Continue', () => {
+    const bus = EventBus.getInstance();
+    bus.emit(Events.QUIZ_PASSED, { objectiveId: 'quiz', conditionIndex: 0, attempts: 1, pointsDeducted: 0 });
+    expect(play).toHaveBeenLastCalledWith(Sfx.UI_CONFIRM);
+    play.mockClear();
+    bus.emit(Events.QUIZ_COMPLETED, { objectiveId: 'quiz', conditionIndex: 0, totalAttempts: 1, totalPointsDeducted: 0 });
+    bus.emit(Events.OBJECTIVE_COMPLETED, { objectiveId: 'quiz', objective: {}, completedAt: 0 } as never);
+    vi.advanceTimersByTime(100);
+    expect(play.mock.calls.map(([sound]) => sound)).toEqual([Sfx.UI_CLICK]);
+    bus.emit(Events.OBJECTIVE_COMPLETED, { objectiveId: 'equipment', objective: {}, completedAt: 0 } as never);
+    vi.advanceTimersByTime(100);
+    expect(play).toHaveBeenLastCalledWith(Sfx.OBJECTIVE_COMPLETE);
+  });
+
+  it('avoids the quiz completion chime when an objective listener runs before the Continue listener', () => {
+    const bus = EventBus.getInstance();
+    bus.emit(Events.OBJECTIVE_COMPLETED, { objectiveId: 'quiz', objective: {}, completedAt: 0 } as never);
+    bus.emit(Events.QUIZ_COMPLETED, { objectiveId: 'quiz', conditionIndex: 0, totalAttempts: 1, totalPointsDeducted: 0 });
+    vi.advanceTimersByTime(100);
+    expect(play.mock.calls.map(([sound]) => sound)).toEqual([Sfx.UI_CLICK]);
   });
 
   it('sounds the major tone for a new error and the minor tone for a new warning', () => {
@@ -86,6 +109,37 @@ describe('SoundEvents alarm tones', () => {
     SoundEvents.setAlarmsMuted(true);
     SoundEvents.start();
     expect(SoundEvents.alarmsMuted).toBe(false);
+  });
+
+  it('leaves backyard rooms quiet and restores the room bed for professional stations', () => {
+    const start = vi.spyOn(Ambience.getInstance(), 'start');
+    SoundEvents.arm([{ stationClass: 'backyard' }, { stationClass: 'backyard' }]);
+    expect(start).toHaveBeenLastCalledWith(false);
+    SoundEvents.arm([{ stationClass: 'professional' }]);
+    expect(start).toHaveBeenLastCalledWith(true);
+    SoundEvents.arm([{}]);
+    expect(start).toHaveBeenLastCalledWith(true);
+  });
+
+  it('ends ambience and event sounds at completion, then enables them for the next mission', () => {
+    const destroy = vi.spyOn(Ambience, 'destroy');
+    const sound = SoundManager.getInstance();
+    SoundEvents.finish();
+    expect(sound.setMissionActive).toHaveBeenLastCalledWith(false);
+    expect(sound.stopCustom).toHaveBeenCalledOnce();
+    expect(destroy).toHaveBeenCalledWith(true);
+    raise(alarm('Fault after completion'));
+    expect(alarmTones()).toEqual([]);
+    SoundEvents.arm();
+    after(2000);
+    raise(alarm('Still complete'));
+    expect(alarmTones()).toEqual([]);
+    SoundEvents.start();
+    SoundEvents.arm();
+    after(2000);
+    expect(sound.setMissionActive).toHaveBeenLastCalledWith(true);
+    raise(alarm('New mission fault'));
+    expect(alarmTones()).toEqual([Sfx.ALARM_MAJOR]);
   });
 
   it('does not voice alarms already active while the scenario loads', () => {

@@ -156,6 +156,12 @@
 .selection-detail > article { height: 100%; display: flex; flex-direction: column; min-height: 0; background: var(--mc-menu-surface); border: 1px solid var(--mc-menu-line); overflow: hidden; }
 .selection-art { position: relative; flex: 0 0 43%; min-height: 150px; max-height: 420px; overflow: hidden; background: var(--mc-menu-surface); }
 .selection-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.selection-art img { animation: selection-art-drift 28s ease-in-out infinite alternate; }
+@keyframes selection-art-drift {
+  from { transform: scale(1.015); }
+  to { transform: scale(1.055); }
+}
+html.reduce-motion .selection-art img { animation: none; }
 .selection-art::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 65%, rgba(0,0,0,0.35)); pointer-events: none; }
 .selection-art-caption { position: absolute; left: 24px; bottom: 18px; z-index: 1; color: #fff; font: 11px monospace; letter-spacing: 2px; text-transform: uppercase; padding: 6px 10px; background: rgba(0, 0, 0, 0.75); }
 .selection-briefing { padding: clamp(18px, 2vw, 30px); flex: 1; min-height: 0; overflow-y: auto; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: var(--mc-equip-control) transparent; }

@@ -2,8 +2,8 @@ import { TRANSITION_MS } from '@app/presentation/transitions';
 import { AudioPreferences } from './audio-preferences';
 
 /**
- * Ops-room ambience: a looping room bed (rack fans and HVAC) under every
- * scenario, plus weather heard through the building. Uses Web Audio so the
+ * Indoor ambience: an optional ops-room bed (rack fans and HVAC), plus
+ * weather heard through the building. Uses Web Audio so the
  * loops are gapless and layers crossfade. Does nothing where Web Audio is
  * missing (jsdom). The browser keeps the context suspended until the first
  * user gesture; the bed starts then.
@@ -74,10 +74,10 @@ export class Ambience {
     }
   }
 
-  /** Start the room bed for a scenario. */
-  start(): void {
+  /** Enable ambience; home stations omit the rack-fan/HVAC bed. */
+  start(roomBed = true): void {
     this.active_ = true;
-    this.setLayer('room', 1);
+    this.setLayer('room', roomBed ? 1 : 0);
     window.addEventListener('pointerdown', this.boundUnlock_, true);
     window.addEventListener('keydown', this.boundUnlock_, true);
   }
@@ -112,17 +112,19 @@ export class Ambience {
     void this.apply_(layer);
   }
 
-  static destroy(): void {
+  static destroy(immediate = false): void {
     const inst = Ambience.instance_;
     if (!inst) {
       return;
     }
     inst.stop();
     inst.unsubscribePrefs_();
-    // Let the old room fade while the next scene builds its ambience.
-    setTimeout(() => {
+    const close = (): void => {
       void inst.ctx_?.close().catch(() => undefined);
-    }, TRANSITION_MS.audio + 50);
+    };
+    // Completion is silent immediately; ordinary navigation keeps its crossfade.
+    if (immediate) close();
+    else setTimeout(close, TRANSITION_MS.audio + 50);
     Ambience.instance_ = null;
   }
 

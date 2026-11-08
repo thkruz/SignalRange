@@ -1,0 +1,85 @@
+/* Independently gated by SELECTION_MOTION in selection-browser.ts. */
+.selection-motion-sweep .selection-art::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 2px;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent 35%, rgba(255,255,255,.5) 49%, var(--mc-menu-accent) 50%, transparent 65%);
+  background-size: 250% 100%;
+  animation: selection-signal-sweep 18s ease-in-out infinite;
+}
+@keyframes selection-signal-sweep {
+  0% { background-position: 150% 0; opacity: 0; }
+  3% { opacity: .65; }
+  16% { background-position: -50% 0; opacity: .65; }
+  20%, 100% { background-position: -50% 0; opacity: 0; }
+}
+
+.selection-heading { position: relative; isolation: isolate; }
+.selection-orbit { display: none; }
+.selection-motion-orbit .selection-orbit {
+  display: block;
+  position: absolute;
+  left: 100px;
+  top: -4px;
+  width: 240px;
+  height: 84px;
+  border: 2px solid rgba(255,255,255,.22);
+  border-radius: 50%;
+  transform: rotate(-16deg);
+  pointer-events: none;
+  z-index: -1;
+}
+.selection-orbit > span {
+  display: block;
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ff665b;
+  opacity: .95;
+  box-shadow: 0 0 0 3px rgba(186,22,12,.2), 0 0 12px rgba(255,76,62,.55);
+  offset-path: ellipse(50% 50% at 50% 50%);
+  animation: selection-orbit-travel 32s linear infinite;
+}
+@keyframes selection-orbit-travel { to { offset-distance: 100%; } }
+
+.selection-art .selection-art-outgoing {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  animation: none;
+}
+
+.selection-motion-hover .selection-item::before {
+  content: '';
+  position: absolute;
+  left: -2px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--mc-menu-accent);
+  transform: scaleY(.2);
+  opacity: 0;
+  transition: transform 160ms ease-out, opacity 160ms ease-out;
+  pointer-events: none;
+}
+.selection-motion-hover .selection-item:is(:hover, :focus-visible, [aria-pressed="true"])::before {
+  transform: scaleY(1);
+  opacity: 1;
+}
+.selection-motion-hover .selection-item:is(:hover, :focus-visible) { background: #3d3d3d; }
+
+html.reduce-motion .selection-motion-sweep .selection-art::before { display: none; }
+html.reduce-motion .selection-orbit > span { animation: none; }
+html.reduce-motion .selection-motion-hover .selection-item::before { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  .selection-motion-sweep .selection-art::before { display: none; }
+  .selection-orbit > span { animation: none; }
+  .selection-motion-hover .selection-item::before { transition: none; }
+}

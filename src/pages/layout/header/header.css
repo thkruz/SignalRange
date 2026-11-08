@@ -21,6 +21,7 @@
 
   .header-logo-section img {
     height: 30px;
+    width: 30px;
   }
 
   .header-title-section {
@@ -65,6 +66,9 @@
 }
 
 .header-logo-section img {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
 }
@@ -119,6 +123,11 @@
 .header-icon-button:hover {
   /* subtle hover using a low-opacity primary color */
   background-color: rgba(var(--mc-accent-red-rgb, 186, 22, 12), 0.06);
+}
+
+#header-game-menu-btn { font-size: 12px; font-weight: 600; }
+@media (max-width: 640px) {
+  .selection-menu .header-icon-button { width: 36px; flex-shrink: 0; }
 }
 
 .header-icon-button .icon {

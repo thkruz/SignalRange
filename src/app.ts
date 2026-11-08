@@ -1,7 +1,9 @@
 import { BaseElement } from '@app/components/base-element';
+import './modal/confirm-modal.css';
 import { getEl } from '@app/engine/utils/get-el';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { Feedback } from '@app/feedback/feedback';
 import { GameMenu } from '@app/game-menu/game-menu';
 import { Body } from '@app/pages/layout/body/body';
 import { Footer } from '@app/pages/layout/footer/footer';
@@ -29,6 +31,7 @@ export class App extends BaseElement {
   protected html_: string = ''; // No direct HTML for App
   private readonly router = Router.getInstance();
   private static authReadyPromise_: Promise<void>;
+  private feedback_: Feedback | null = null;
 
   private constructor() {
     super();
@@ -102,6 +105,7 @@ export class App extends BaseElement {
     this.router.init();
     GameMenu.getInstance().initialize();
     initializeUiSounds();
+    this.feedback_ = new Feedback();
 
     return rootDom;
   }
@@ -123,6 +127,7 @@ export class App extends BaseElement {
   }
 
   static __resetAll__(): void {
+    App.instance_?.feedback_?.dispose();
     Header['instance_'] = null;
     Body['instance_'] = null;
     Footer['instance_'] = null;

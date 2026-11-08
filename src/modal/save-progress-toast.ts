@@ -1,5 +1,8 @@
 import './save-progress-toast.css';
 
+const SAVE_ICON =
+  '<svg class="save-progress-toast__save-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 3h12l4 4v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M7 3v6h9V3M7 21v-8h10v8M13 5v2"/></svg>';
+
 /**
  * Toast states for the save progress indicator
  */
@@ -79,18 +82,18 @@ export class SaveProgressToast {
   /**
    * Shows the toast with saving state
    */
-  showSaving(message: string = 'Saving progress to cloud...'): void {
+  showSaving(message: string = 'Saving progress to cloud...', compact = false): void {
     this.clearAutoHideTimeout_();
-    this.updateContent_(ToastState.SAVING, message);
+    this.updateContent_(ToastState.SAVING, message, compact);
     this.show_();
   }
 
   /**
    * Shows the toast with success state
    */
-  showSuccess(message: string = 'Progress saved!', autoHideDuration: number = 3000): void {
+  showSuccess(message: string = 'Progress saved!', autoHideDuration: number = 3000, compact = false): void {
     this.clearAutoHideTimeout_();
-    this.updateContent_(ToastState.SUCCESS, message);
+    this.updateContent_(ToastState.SUCCESS, message, compact);
     this.show_();
 
     // Auto-hide after duration
@@ -128,7 +131,7 @@ export class SaveProgressToast {
   /**
    * Updates the toast content based on state
    */
-  private updateContent_(state: ToastState, message: string): void {
+  private updateContent_(state: ToastState, message: string, compact = false): void {
     if (this.retryButton_) {
       this.retryButton_.hidden = true;
       this.retryButton_.onclick = null;
@@ -138,15 +141,18 @@ export class SaveProgressToast {
     }
 
     // Remove previous state classes
-    this.toastElement_.classList.remove('success', 'error');
+    this.toastElement_.classList.remove('saving', 'success', 'error');
+    this.toastElement_.classList.toggle('save-progress-toast--compact', compact);
+    this.toastElement_.title = compact ? message : '';
 
     // Update icon based on state
     switch (state) {
       case ToastState.SAVING:
-        this.iconElement_.innerHTML = '<div class="save-progress-toast__spinner"></div>';
+        this.iconElement_.innerHTML = compact ? SAVE_ICON : '<div class="save-progress-toast__spinner"></div>';
+        this.toastElement_.classList.add('saving');
         break;
       case ToastState.SUCCESS:
-        this.iconElement_.innerHTML = '<div class="save-progress-toast__checkmark">✓</div>';
+        this.iconElement_.innerHTML = compact ? SAVE_ICON : '<div class="save-progress-toast__checkmark">✓</div>';
         this.toastElement_.classList.add('success');
         break;
       case ToastState.ERROR:

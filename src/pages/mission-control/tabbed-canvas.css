@@ -12,6 +12,24 @@
 }
 
 /* Tab styling - most handled by Tabler, keep custom for icons/labels */
+.tabbed-canvas #tab-bar { position: relative; }
+.tabbed-canvas #tab-bar::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  width: var(--tab-indicator-width, 0px);
+  transform: translateX(var(--tab-indicator-x, 0px));
+  background: var(--mc-accent-red);
+  pointer-events: none;
+  transition: transform 150ms ease-out, width 150ms ease-out;
+}
+html.reduce-motion .tabbed-canvas #tab-bar::after { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  .tabbed-canvas #tab-bar::after { transition: none; }
+}
+
 .nav-tabs {
   padding: 0.25rem 0.5rem;
   overflow-x: visible;

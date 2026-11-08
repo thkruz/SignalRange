@@ -61,10 +61,22 @@ export class DevMenuBox extends DraggableBox {
       this.createDom_();
     }
     this.open();
+    // A previously dragged position can be outside a resized viewport.
+    if (this.boxEl) {
+      const bounds = this.boxEl.getBoundingClientRect();
+      if (bounds.left < 0 || bounds.right > window.innerWidth || bounds.top < 0 || bounds.bottom > window.innerHeight) {
+        this.placeOnFirstOpen(this.boxEl);
+      }
+    }
   }
 
   private getUnlockScenariosChecked_(): string {
     return window.UNLOCK_ALL_SCENARIOS ? 'checked' : '';
+  }
+
+  protected override placeOnFirstOpen(box: HTMLElement): void {
+    super.placeOnFirstOpen(box);
+    box.style.left = `${window.scrollX + (window.innerWidth - box.offsetWidth) / 2}px`;
   }
 
   private getForceEngButtonChecked_(): string {
@@ -77,6 +89,7 @@ export class DevMenuBox extends DraggableBox {
     return html`
       <div class="dev-menu">
         <div class="dev-menu__section">
+          <h3 class="dev-menu__heading">Session controls</h3>
           <div class="form-check form-switch">
             <input type="checkbox" id="dev-auto-skip" class="form-check-input" role="switch" ${autoSkipChecked} />
             <label for="dev-auto-skip" class="form-check-label">Auto-Skip Dialogs</label>
@@ -91,16 +104,18 @@ export class DevMenuBox extends DraggableBox {
           </div>
         </div>
         <div class="dev-menu__section">
+          <h3 class="dev-menu__heading">Objectives</h3>
+          <div class="dev-menu__actions">
           <button id="dev-complete-objective" class="btn btn-primary w-100">
             Complete Current Objective
           </button>
-        </div>
-        <div class="dev-menu__section">
           <button id="dev-uncomplete-objective" class="btn btn-warning w-100">
             Uncomplete Last Objective
           </button>
+          </div>
         </div>
         <div class="dev-menu__section">
+          <h3 class="dev-menu__heading">Achievement preview</h3>
           <label class="form-label" for="dev-achievement-style">Achievement style</label>
           <select id="dev-achievement-style" class="form-select mb-2">
             <option value="compact" ${achievementToast.style === 'compact' ? 'selected' : ''}>Compact (Steam-style)</option>
@@ -111,17 +126,22 @@ export class DevMenuBox extends DraggableBox {
           <button id="dev-test-achievement" type="button" class="btn btn-secondary w-100">Test achievement</button>
         </div>
         <div class="dev-menu__section">
-          <label class="form-label">Mission Timer (seconds)</label>
+          <h3 class="dev-menu__heading">Timers</h3>
+          <div class="dev-menu__timers">
+          <div>
+          <label class="form-label" for="dev-mission-timer-value">Mission (seconds)</label>
           <div class="d-flex gap-2">
             <input type="number" id="dev-mission-timer-value" class="form-control" placeholder="300" min="0" />
             <button id="dev-set-mission-timer" class="btn btn-secondary">Set</button>
           </div>
         </div>
-        <div class="dev-menu__section">
-          <label class="form-label">Objective Timer (seconds)</label>
+        <div>
+          <label class="form-label" for="dev-objective-timer-value">Objective (seconds)</label>
           <div class="d-flex gap-2">
             <input type="number" id="dev-objective-timer-value" class="form-control" placeholder="60" min="0" />
             <button id="dev-set-objective-timer" class="btn btn-secondary">Set</button>
+          </div>
+        </div>
           </div>
         </div>
         <div class="dev-menu__section">

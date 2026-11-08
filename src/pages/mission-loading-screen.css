@@ -17,6 +17,32 @@
   object-fit: cover;
   opacity: 0.65;
   z-index: -2;
+  animation: mission-art-drift 24s ease-in-out infinite alternate;
+}
+
+.mission-loading-content::before {
+  content: '';
+  display: block;
+  width: 120px;
+  height: 2px;
+  margin-bottom: 24px;
+  background: linear-gradient(90deg, transparent, var(--mc-accent-red), var(--mc-text-primary), transparent);
+  background-size: 200% 100%;
+  animation: mission-signal-sweep 2.8s ease-in-out infinite;
+}
+
+@keyframes mission-art-drift {
+  from { transform: scale(1.015); }
+  to { transform: scale(1.055); }
+}
+@keyframes mission-signal-sweep {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+html.reduce-motion .mission-loading-screen > img,
+html.reduce-motion .mission-loading-content::before { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .mission-loading-screen > img, .mission-loading-content::before { animation: none; }
 }
 
 .mission-loading-screen::before {

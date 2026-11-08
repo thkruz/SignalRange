@@ -83,6 +83,16 @@
 .mission-alarm-entry .mission-alarm-detail { color: #bbb; }
 .mission-alarm-empty { padding: 12px 0; color: #bbb; }
 
+/* Astro (C4, C5) mirrors the bar: the TASK/MSN timers lead and the identity
+   block trails (tabler-overrides.css explains why). The ID selectors above
+   outrank those body-class rules, so the mirror is restated here. */
+@media (min-width: 601px) {
+  body.chrome-astro #global-command-bar-container { grid-template-columns: 240px minmax(0, 1fr); }
+  body.chrome-astro #global-command-bar-container .command-bar-right { grid-area: 1 / 1; }
+  body.chrome-astro #global-command-bar-container .mission-heading-row { grid-area: 1 / 2; }
+}
+body.chrome-astro #global-command-bar-container .command-bar-left { order: 1; text-align: right; justify-content: flex-end; }
+
 @media (max-width: 900px) {
   #global-command-bar-container .command-bar-left { display: none; }
   #global-command-bar-container .aos-countdown { padding-left: 16px; gap: 8px; }

@@ -34,8 +34,8 @@ const UI_SOUNDS = new Set([
 ]);
 
 const SFX_DEFS: Record<Sfx, SfxDef> = {
-  [Sfx.UI_BACK]: { files: ['/sfx/ui-back.ogg'], volume: 0.45, throttleMs: 100 },
-  [Sfx.ACHIEVEMENT]: { files: ['/sfx/achievement.ogg'], volume: 0.45, throttleMs: 800 },
+  [Sfx.UI_BACK]: { files: ['/sfx/ui-click.mp3'], volume: 0.35, throttleMs: 100 },
+  [Sfx.ACHIEVEMENT]: { files: ['/sfx/ui-confirm.ogg'], volume: 0.25, throttleMs: 800 },
   [Sfx.HPA_WARMUP]: { files: [sfx('hpa-warmup')], volume: 0.5, throttleMs: 1000, restart: true },
   [Sfx.ON_TARGET]: { files: [sfx('on-target')], volume: 0.45, throttleMs: 1200 },
   [Sfx.STATIC_BURST]: { files: [sfx('static-burst')], volume: 0.35, throttleMs: 3000 },
@@ -62,9 +62,9 @@ const SFX_DEFS: Record<Sfx, SfxDef> = {
   [Sfx.BREAKER_RESET]: { files: [sfx('breaker-reset')], volume: 0.7, throttleMs: 500 },
   [Sfx.FAN_SPINDOWN]: { files: [sfx('fan-spindown')], volume: 0.6, throttleMs: 2000 },
   [Sfx.UI_CLICK]: { files: [sfx('ui-click')], volume: 0.35, throttleMs: 80 },
-  [Sfx.UI_CONFIRM]: { files: [sfx('ui-confirm')], volume: 0.5, throttleMs: 300 },
-  [Sfx.UI_ERROR]: { files: [sfx('ui-error')], volume: 0.5, throttleMs: 300 },
-  [Sfx.NOTIFY]: { files: [sfx('notify')], volume: 0.5, throttleMs: 1000 },
+  [Sfx.UI_CONFIRM]: { files: ['/sfx/ui-confirm.ogg'], volume: 0.5, throttleMs: 300 },
+  [Sfx.UI_ERROR]: { files: ['/sfx/ui-error.ogg'], volume: 0.5, throttleMs: 300 },
+  [Sfx.NOTIFY]: { files: ['/sfx/notify.ogg'], volume: 0.5, throttleMs: 1000 },
   [Sfx.OBJECTIVE_COMPLETE]: { files: [sfx('objective-complete')], volume: 0.6, throttleMs: 800 },
   [Sfx.SCENARIO_COMPLETE]: { files: [sfx('scenario-complete')], volume: 0.7, throttleMs: 3000 },
   [Sfx.SCENARIO_FAILED]: { files: [sfx('scenario-failed')], volume: 0.7, throttleMs: 3000 },
@@ -88,6 +88,7 @@ class SoundManager {
   private readonly pendingAudio_ = new Map<string, Promise<HTMLAudioElement>>();
   private ttsEnabled_: boolean = false;
   private menuPaused_ = false;
+  private missionActive_ = true;
   private customGeneration_ = 0;
   private readonly activeSounds_ = new Map<HTMLAudioElement, Sfx>();
   private readonly pausedSounds_ = new Set<HTMLAudioElement>();
@@ -127,6 +128,22 @@ class SoundManager {
     return this.ttsEnabled_;
   }
 
+  /** End equipment playback, including overlapping sounds and paused loops. UI cues remain available. */
+  setMissionActive(active: boolean): void {
+    this.missionActive_ = active;
+    if (active) return;
+    const sounds = new Map(this.activeSounds_);
+    for (const [sound, audio] of this.currentlyPlaying) sounds.set(audio, sound);
+    for (const [audio, sound] of sounds) {
+      if (UI_SOUNDS.has(sound)) continue;
+      audio.pause();
+      audio.currentTime = 0;
+      this.activeSounds_.delete(audio);
+      this.pausedSounds_.delete(audio);
+      if (this.currentlyPlaying.get(sound) === audio) this.currentlyPlaying.delete(sound);
+    }
+  }
+
   static getInstance(): SoundManager {
     if (!SoundManager.instance) {
       SoundManager.instance = new SoundManager();
@@ -136,7 +153,7 @@ class SoundManager {
 
   play(sfx: Sfx): void {
     const def = SFX_DEFS[sfx];
-    if (!def || !AudioPreferences.getInstance().sfxEnabled || (this.menuPaused_ && !UI_SOUNDS.has(sfx))) {
+    if (!def || !AudioPreferences.getInstance().sfxEnabled || ((!this.missionActive_ || this.menuPaused_) && !UI_SOUNDS.has(sfx))) {
       return;
     }
     const isLooping = def.loop === true;

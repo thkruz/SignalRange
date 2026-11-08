@@ -61,6 +61,12 @@
 .complete-modal__decisions { margin-top: 24px; padding-top: 18px; border-top: 1px solid #505050; }
 .mission-debrief { border-top: 1px solid #505050; margin-top: 22px; padding-top: 18px; }
 .mission-debrief h2 { font-size: 16px; margin-top: 20px; }
+.mission-nice-tasks { border-top: 1px solid #505050; margin-top: 22px; padding-top: 18px; }
+.mission-nice-tasks h2 { font-size: 16px; margin: 0 0 10px; }
+.mission-nice-tasks p { font-size: 12px; color: #bbb; line-height: 1.6; }
+.mission-nice-tasks ul { list-style: none; margin: 12px 0 0; padding: 0; }
+.mission-nice-tasks li { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; border-top: 1px solid #444; padding: 10px 0; font-size: 13px; line-height: 1.5; }
+.mission-nice-tasks code { flex-shrink: 0; background: none; color: #aaa; padding: 0; }
 .debrief-comparison { display: flex; flex-wrap: wrap; gap: 20px; }
 .debrief-comparison div { display: grid; gap: 5px; }
 .debrief-comparison span, .debrief-note { font-size: 12px; color: #bbb; }

@@ -51,6 +51,7 @@
   }
 }
 
+.save-progress-toast__save-icon,
 .save-progress-toast__checkmark {
   width: 20px;
   height: 20px;
@@ -98,4 +99,42 @@
 
 .save-progress-toast.error {
   border-color: var(--color-primary);
+}
+
+.save-progress-toast--compact {
+  top: auto;
+  right: auto;
+  bottom: 16px;
+  left: 16px;
+  min-width: 0;
+  width: 38px;
+  height: 38px;
+  padding: 8px;
+  gap: 0;
+  background: var(--mc-surface-1);
+  border-color: var(--mc-surface-3);
+  transform: translateY(8px);
+}
+
+.save-progress-toast--compact .save-progress-toast__message {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.save-progress-toast--compact .save-progress-toast__close {
+  display: none;
+}
+
+.save-progress-toast--compact.saving .save-progress-toast__save-icon {
+  color: var(--mc-text-primary);
+  animation: autosave-pulse 1.4s ease-in-out infinite;
+}
+@keyframes autosave-pulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+html.reduce-motion .save-progress-toast--compact.saving .save-progress-toast__save-icon { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .save-progress-toast--compact.saving .save-progress-toast__save-icon { animation: none; }
 }

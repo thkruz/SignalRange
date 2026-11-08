@@ -184,7 +184,7 @@ export class CampaignSelectionPage extends BasePage {
       <h1>Campaigns</h1><div class="subtitle">Choose your next assignment</div>
       <div class="selection-status-bar"><span class="login-warning" hidden>Guest session · Play NATS Mission 1 free. Sign in to save progress and unlock further missions.</span></div>
     </div></header>
-    <button id="campaign-continue" class="campaign-continue" type="button" hidden></button>
+    <button id="campaign-continue" class="campaign-continue" data-sound="back" type="button" hidden></button>
     <div class="selection-workspace">
       <aside class="selection-sidebar" aria-label="Campaign browser">
         <div class="selection-sidebar-heading">Available campaigns <span aria-hidden="true">01 / SELECT</span></div>

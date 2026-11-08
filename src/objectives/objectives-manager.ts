@@ -1324,7 +1324,7 @@ export class ObjectivesManager {
         collapsedClass = isActive ? '' : 'collapsed';
       }
 
-      html += `<li class="objective-item ${stateClass} ${collapsedClass}">`;
+      html += `<li class="objective-item ${stateClass} ${collapsedClass}" data-objective-id="${objective.id}">`;
       html += `<div class="objective-header" onclick="this.parentElement.classList.toggle('collapsed');">`;
       html += `<span class="accordion-icon"></span>`;
       html += `<strong>${fillDialogTokens(objective.title)}</strong> - ${stateLabel}`;

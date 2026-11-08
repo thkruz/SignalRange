@@ -96,6 +96,8 @@ export abstract class BasePage extends BaseElement {
       }
     }
 
+    if (!(await this.prepareMissionOpening_())) return;
+
     // Initialize ops log manager (always, for all scenarios)
     OpsLogManager.initialize(scenario.settings.scenarioStartWallTime, scenario.settings.scenarioStartDate, scenario.settings.previousShiftLogs);
 
@@ -218,6 +220,11 @@ export abstract class BasePage extends BaseElement {
     if (introClip && !this.navigationOptions_.continueFromCheckpoint) {
       DialogManager.getInstance().show(introClip.text, introClip.character, introClip.audioUrl, 'Introduction', introClip.emotion);
     }
+  }
+
+  /** A page may hold a fresh mission before objectives and briefing begin. */
+  protected async prepareMissionOpening_(): Promise<boolean> {
+    return true;
   }
 
   /**

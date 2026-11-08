@@ -56,10 +56,10 @@ export class Header extends BaseElement {
   }
 
   protected readonly html_ = html`
-    <header class="header">
+    <header class="header small">
       <div class="header-toolbar">
         <div class="header-logo-section">
-          <img src="/images/logo.png" alt="SignalRange Logo" height="80" />
+          <img src="/images/logo.png" alt="SignalRange Logo" width="30" height="30" />
         </div>
         <div class="header-title-section">
           <div class="header-main-title">SignalRange</div>
@@ -69,6 +69,7 @@ export class Header extends BaseElement {
           </div>
         </div>
         <div class="header-actions">
+          <button type="button" id="header-game-menu-btn" class="header-icon-button" title="Game menu (Esc)" aria-haspopup="dialog" aria-controls="game-menu">Menu</button>
           <a href="https://discord.gg/hr6jUHEgPB" target="_blank" rel="noopener noreferrer"
              class="header-icon-button" title="Get help on Discord">
             <svg class="icon" viewBox="0 -28.5 256 256" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
@@ -157,6 +158,7 @@ export class Header extends BaseElement {
     this.setupEngModeListeners_();
     this.setupDevMenuListeners_();
     this.setupAudioMenu_();
+    document.getElementById('header-game-menu-btn')?.addEventListener('click', () => GameMenu.getInstance().openMenu());
     const fullscreenButton = document.querySelector<HTMLButtonElement>('#fullscreen-btn');
     const fullscreenStatus = document.querySelector<HTMLElement>('#fullscreen-status');
     if (fullscreenButton && fullscreenStatus) setupFullscreenButton(fullscreenButton, fullscreenStatus);
@@ -176,7 +178,10 @@ export class Header extends BaseElement {
     const sync = (): void => {
       sfx.checked = prefs.sfxEnabled;
       ambience.checked = prefs.ambienceEnabled;
-      btn.classList.toggle('header-audio--muted', prefs.prefs.masterVolume === 0 || (!prefs.sfxEnabled && !prefs.ambienceEnabled && prefs.prefs.voiceVolume === 0));
+      btn.classList.toggle(
+        'header-audio--muted',
+        prefs.prefs.masterVolume === 0 || (!prefs.sfxEnabled && !prefs.ambienceEnabled && prefs.prefs.voiceVolume === 0 && prefs.prefs.musicVolume === 0)
+      );
     };
     sync();
     prefs.onChange(sync);

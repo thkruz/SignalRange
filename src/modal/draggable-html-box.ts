@@ -2,6 +2,9 @@ import { DraggableBox } from '@app/engine/ui/draggable-box';
 import { html } from '@app/engine/utils/development/formatter';
 import { getEl } from '@app/engine/utils/get-el';
 import { ObjectivesManager } from '@app/objectives/objectives-manager';
+import { updateChecklistWithMotion } from '@app/presentation/transitions';
+import { Sfx } from '@app/sound/sfx-enum';
+import SoundManager from '@app/sound/sound-manager';
 import './draggable-html-box.css';
 
 export class DraggableHtmlBox extends DraggableBox {
@@ -39,6 +42,7 @@ export class DraggableHtmlBox extends DraggableBox {
     }
     if (top) {
       e.preventDefault();
+      SoundManager.getInstance().play(Sfx.UI_BACK);
       top.close();
     }
   }
@@ -83,7 +87,7 @@ export class DraggableHtmlBox extends DraggableBox {
   }
 
   updateContent(lastChecklistHtml_: string) {
-    this.popupDom.innerHTML = lastChecklistHtml_;
+    updateChecklistWithMotion(this.popupDom, lastChecklistHtml_);
   }
 
   close(cb?: () => void): void {

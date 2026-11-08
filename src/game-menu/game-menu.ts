@@ -21,6 +21,7 @@ const CHANNELS: [VolumeChannel, string][] = [
   ['voice', 'Voice'],
   ['equipment', 'Equipment'],
   ['ambience', 'Ambience'],
+  ['music', 'Music'],
   ['ui', 'Interface'],
 ];
 
@@ -45,10 +46,10 @@ export class GameMenu {
     displayPreferences.apply();
     window.addEventListener('keydown', (event) => {
       // Window bubbling runs after the document's popover/brief handlers.
-      if (event.key !== 'Escape' || event.repeat || event.defaultPrevented || this.dialog_?.open || !this.inMission_()) return;
+      if (event.key !== 'Escape' || event.repeat || event.defaultPrevented || this.dialog_?.open || (!this.inMission_() && !this.inSelection_())) return;
       if ([...document.querySelectorAll<HTMLElement>('.modal, dialog[open]')].some((el) => el.getClientRects().length > 0)) return;
       event.preventDefault();
-      this.openPause();
+      this.openMenu();
     });
     window.addEventListener('blur', () => {
       // Focusing an embedded brief can blur the window while the page still has focus.
@@ -66,6 +67,16 @@ export class GameMenu {
 
   private inMission_(): boolean {
     return /^\/campaigns\/[^/]+\/scenarios\/[^/]+$/u.test(location.pathname) && SimulationManager.hasInstance() && !SimClock.isPaused('loading');
+  }
+
+  private inSelection_(): boolean {
+    return location.pathname === '/' || /^\/campaigns\/[^/]+$/u.test(location.pathname);
+  }
+
+  openMenu(): void {
+    if (!this.inMission_() && !this.inSelection_()) return;
+    this.settingsFromPause_ = true;
+    this.open_('pause');
   }
 
   openPause(): void {
@@ -120,17 +131,21 @@ export class GameMenu {
     this.cleanup_ = null;
     this.screen_ = screen;
     const mission = this.inMission_() ? ScenarioManager.getInstance().data : null;
-    const title = screen === 'pause' ? 'Mission paused' : screen === 'settings' ? 'Settings' : screen === 'restart' ? 'Restart mission?' : 'Return to missions?';
+    const selectionMenu = screen === 'pause' && !mission;
+    const title =
+      screen === 'pause' ? (mission ? 'Mission paused' : 'Game menu') : screen === 'settings' ? 'Settings' : screen === 'restart' ? 'Restart mission?' : 'Return to missions?';
     const body =
       screen === 'settings'
         ? this.settingsHtml_()
         : screen === 'pause'
-          ? `<p class="game-menu-mission">${selectionText(mission?.title ?? 'Mission')}</p><p class="game-menu-note">Simulation and dialogue paused.</p>
+          ? selectionMenu
+            ? `<nav class="game-menu-actions" aria-label="Game menu"><button data-action="resume" class="game-menu-primary" autofocus>Continue browsing</button><button data-action="settings">Settings</button><a class="game-menu-quit" href="https://signalrange.space/" rel="noreferrer" referrerpolicy="no-referrer">Quit game</a></nav>`
+            : `<p class="game-menu-mission">${selectionText(mission?.title ?? 'Mission')}</p><p class="game-menu-note">Simulation and dialogue paused.</p>
         <nav class="game-menu-actions" aria-label="Pause menu"><button data-action="resume" class="game-menu-primary" autofocus>Resume mission</button><button data-action="settings">Settings</button><button data-action="restart">Restart mission</button><button data-action="return">Return to missions</button></nav>`
           : `<p class="game-menu-mission">${selectionText(mission?.title ?? 'Mission')}</p><p>${screen === 'restart' ? 'Start this mission from the beginning. This replaces its checkpoint and current run progress; completed mission status is preserved.' : 'Return to mission selection. Your last saved checkpoint will be available to continue.'}</p><p id="game-menu-save-note" class="game-menu-note"></p>
         <div class="game-menu-actions"><button data-action="confirm" class="game-menu-primary">${screen === 'restart' ? 'Restart mission' : 'Save and return'}</button><button data-action="back">Keep playing</button></div>`;
     this.dialog_!.innerHTML =
-      `<header class="game-menu-heading"><div><span class="game-menu-eyebrow">SignalRange</span><h1 id="game-menu-title">${title}</h1></div><button data-action="back" class="game-menu-close" aria-label="${screen === 'pause' ? 'Resume mission' : 'Back'}">&#215;</button></header><div class="game-menu-body">${body}<p id="game-menu-status" role="status"></p></div><footer class="game-menu-footer"><span>${screen === 'settings' ? 'Changes saved on this device' : 'Mission control'}</span><button data-action="back">${screen === 'pause' ? 'Esc / Resume' : 'Back'}</button></footer>`;
+      `<header class="game-menu-heading"><div><span class="game-menu-eyebrow">SignalRange</span><h1 id="game-menu-title">${title}</h1></div><button data-action="back" class="game-menu-close" aria-label="${selectionMenu ? 'Continue browsing' : screen === 'pause' ? 'Resume mission' : 'Back'}">&#215;</button></header><div class="game-menu-body">${body}<p id="game-menu-status" role="status"></p></div><footer class="game-menu-footer"><span>${screen === 'settings' ? 'Changes saved on this device' : mission ? 'Mission control' : location.pathname === '/' ? 'Campaign selection' : 'Mission selection'}</span><button data-action="back">${selectionMenu ? 'Esc / Back' : screen === 'pause' ? 'Esc / Resume' : 'Back'}</button></footer>`;
     this.dialog_!.querySelectorAll<HTMLButtonElement>('[data-action]').forEach((button) => {
       button.onclick = () => {
         switch (button.dataset.action) {

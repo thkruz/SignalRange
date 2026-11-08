@@ -39,7 +39,8 @@ coverage/
 # Temporary files
 tmp/
 temp/
-supabase/
+supabase/*
+!supabase/migrations/
 
 # Notes
 *.notes.*
@@ -72,3 +73,6 @@ public/**/wip/
 /src/plugins-external/*
 !/src/plugins-external/.gitkeep
 !/src/plugins-external/README.md
+
+# Draft music, not shipped
+public/music/wip/

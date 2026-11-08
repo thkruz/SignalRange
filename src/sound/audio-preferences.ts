@@ -11,10 +11,11 @@ export interface AudioPrefs {
   equipmentVolume: number;
   ambienceVolume: number;
   uiVolume: number;
+  musicVolume: number;
 }
 
-export type VolumeChannel = 'master' | 'voice' | 'equipment' | 'ambience' | 'ui';
-const DEFAULTS: AudioPrefs = { sfx: true, ambience: true, masterVolume: 1, voiceVolume: 1, equipmentVolume: 1, ambienceVolume: 1, uiVolume: 1 };
+export type VolumeChannel = 'master' | 'voice' | 'equipment' | 'ambience' | 'ui' | 'music';
+const DEFAULTS: AudioPrefs = { sfx: true, ambience: true, masterVolume: 1, voiceVolume: 1, equipmentVolume: 1, ambienceVolume: 1, uiVolume: 1, musicVolume: 0.5 };
 const clampVolume = (value: unknown, fallback: number): number => (typeof value === 'number' && Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : fallback);
 
 type Listener = (prefs: Readonly<AudioPrefs>) => void;
@@ -54,7 +55,7 @@ export class AudioPreferences {
 
   set(update: Partial<AudioPrefs>): void {
     this.prefs_ = { ...this.prefs_, ...update };
-    for (const key of ['masterVolume', 'voiceVolume', 'equipmentVolume', 'ambienceVolume', 'uiVolume'] as const) {
+    for (const key of ['masterVolume', 'voiceVolume', 'equipmentVolume', 'ambienceVolume', 'uiVolume', 'musicVolume'] as const) {
       this.prefs_[key] = clampVolume(this.prefs_[key], DEFAULTS[key]);
     }
     try {
@@ -95,6 +96,7 @@ export class AudioPreferences {
         equipmentVolume: clampVolume(parsed.equipmentVolume, 1),
         ambienceVolume: clampVolume(parsed.ambienceVolume, 1),
         uiVolume: clampVolume(parsed.uiVolume, 1),
+        musicVolume: clampVolume(parsed.musicVolume, DEFAULTS.musicVolume),
         sfx: typeof parsed.sfx === 'boolean' ? parsed.sfx : defaults.sfx,
         ambience: typeof parsed.ambience === 'boolean' ? parsed.ambience : defaults.ambience,
       };

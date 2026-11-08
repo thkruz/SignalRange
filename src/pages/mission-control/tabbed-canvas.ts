@@ -14,6 +14,7 @@ import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
 import { EventBus } from '@app/events/event-bus';
 import { Events, type ObjectiveObservationPendingData } from '@app/events/events';
+import { revealPanel } from '@app/presentation/transitions';
 import { ScenarioManager } from '@app/scenario-manager';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import './tabbed-canvas.css';
@@ -62,6 +63,7 @@ export class TabbedCanvas extends BaseElement {
   private static readonly OVERVIEW_KEY = '__overview__';
 
   private activeTab_: string = 'mission-overview';
+  private tabResizeObserver_: ResizeObserver | null = null;
   /** Observation tabs (id or prefix) whose button pulses until the tab is opened (Phase 35 D3) */
   private readonly pulseTabs_ = new Set<string>();
   private selectedAssetId_: string | null = null;
@@ -454,6 +456,11 @@ export class TabbedCanvas extends BaseElement {
     this.applyTabPulse_();
 
     // Add click listeners to nav-links
+    this.updateTabIndicator_();
+    if (!this.tabResizeObserver_ && typeof ResizeObserver !== 'undefined') {
+      this.tabResizeObserver_ = new ResizeObserver(() => this.updateTabIndicator_());
+      this.tabResizeObserver_.observe(tabBar);
+    }
     tabBar.querySelectorAll('.nav-link').forEach((tabElement: HTMLElement) => {
       tabElement.addEventListener('click', (e) => {
         e.preventDefault(); // Prevent default link behavior
@@ -507,6 +514,7 @@ export class TabbedCanvas extends BaseElement {
     });
 
     this.applyTabPulse_();
+    this.updateTabIndicator_();
 
     // Render tab content
     this.renderTabContent_(tabId);
@@ -517,6 +525,7 @@ export class TabbedCanvas extends BaseElement {
    */
   private renderTabContent_(tabId: string): void {
     const content = qs('#canvas-content', this.dom_);
+    revealPanel(content);
 
     // Deactivate all existing tabs
     this.tabInstances_.forEach((tab) => tab.deactivate());
@@ -1036,6 +1045,7 @@ export class TabbedCanvas extends BaseElement {
    * Cleanup
    */
   public destroy(): void {
+    this.tabResizeObserver_?.disconnect();
     // Remove event listeners first, so a late event cannot resurrect a tab
     // while we are tearing them down.
     const eventBus = EventBus.getInstance();
@@ -1057,5 +1067,14 @@ export class TabbedCanvas extends BaseElement {
     if (TabbedCanvas.instance_ === this) {
       TabbedCanvas.instance_ = null;
     }
+  }
+
+  private updateTabIndicator_(): void {
+    const bar = this.dom_?.querySelector<HTMLElement>('#tab-bar');
+    const active = bar?.querySelector<HTMLElement>('.nav-link.active');
+    if (!bar || !active) return;
+    const bounds = active.getBoundingClientRect();
+    bar.style.setProperty('--tab-indicator-x', `${bounds.left - bar.getBoundingClientRect().left + bar.scrollLeft}px`);
+    bar.style.setProperty('--tab-indicator-width', `${bounds.width}px`);
   }
 }

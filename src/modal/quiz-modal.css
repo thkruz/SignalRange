@@ -215,6 +215,7 @@
 
 /* Penalty notice */
 .quiz-penalty-notice {
+  min-height: 36px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -236,6 +237,8 @@
 
 /* Quiz box styling (non-modal draggable box) */
 #quiz-modal.quiz-box {
+  width: min(550px, calc(100vw - 32px));
+  min-width: 0 !important;
   position: absolute;
   max-width: 550px;
   background: var(--color-dark-background, #1a1a2e);
@@ -245,7 +248,8 @@
 }
 
 #quiz-modal .draggable-box__content {
-  max-height: 70vh;
+  max-height: min(70dvh, calc(100dvh - 100px));
+  scrollbar-gutter: stable;
   overflow-y: auto;
   border: 0px;
 }

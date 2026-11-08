@@ -57,6 +57,16 @@ afterEach(() => {
 });
 
 describe('ambience pause', () => {
+  it('does not load the server-room bed at home but still plays weather', async () => {
+    const ambience = Ambience.getInstance();
+    ambience.start(false);
+    expect(fetch).not.toHaveBeenCalled();
+    ambience.setLayer('rain', 1);
+    await vi.waitFor(() => expect(contexts[0].sources).toHaveLength(1));
+    expect(fetch).toHaveBeenCalledWith('/sfx/rain-bed.mp3');
+    expect(fetch).not.toHaveBeenCalledWith('/sfx/room-bed.mp3');
+  });
+
   it('suspends loops, ignores menu input, and resumes only after every menu hold is released', async () => {
     Ambience.getInstance().start();
     await vi.waitFor(() => expect(contexts[0].sources).toHaveLength(1));

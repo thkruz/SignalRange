@@ -62,6 +62,24 @@ describe('SoundManager.getInstance', () => {
       expect(mockAudio.pause).not.toHaveBeenCalled();
     });
 
+    it('stops mission sounds, blocks late equipment cues, and preserves UI sounds and next-mission playback', () => {
+      manager.play(Sfx.SMALL_MOTOR);
+      expect(mockAudio.play).toHaveBeenCalledOnce();
+      manager.setMenuPaused(true);
+      manager.setMissionActive(false);
+      expect(mockAudio.pause).toHaveBeenCalled();
+      expect(mockAudio.currentTime).toBe(0);
+      manager.setMenuPaused(false);
+      manager.play(Sfx.RAIN_ARRIVAL);
+      manager.play(Sfx.SMALL_MOTOR);
+      expect(mockAudio.play).toHaveBeenCalledOnce();
+      manager.play(Sfx.UI_CONFIRM);
+      expect(mockAudio.play).toHaveBeenCalledTimes(2);
+      manager.setMissionActive(true);
+      manager.play(Sfx.SMALL_MOTOR);
+      expect(mockAudio.play).toHaveBeenCalledTimes(3);
+    });
+
     it('should fade out and stop a currently playing sound', () => {
       // Start playing a sound
       (manager as any).currentlyPlaying.set(Sfx.POWER_ON, mockAudio);

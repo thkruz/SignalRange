@@ -1,7 +1,8 @@
 import { Sfx } from './sfx-enum';
 import SoundManager from './sound-manager';
 
-const MENU = '.selection-page, .game-menu, .complete-modal, .mission-loading-screen, #modal-profile, .header, #header, .mission-alarm-heading';
+const MENU =
+  '.selection-page, .game-menu, .complete-modal, .mission-loading-screen, #modal-profile, .header, #header, .mission-alarm-heading, .asset-tree-sidebar, .draggable-box__title-bar';
 let installed = false;
 
 /** Delegation survives menu replacement; equipment and quizzes keep their event-driven audio. */
@@ -11,12 +12,14 @@ export function initializeUiSounds(): void {
   document.addEventListener(
     'click',
     (event) => {
-      const control = (event.target as Element | null)?.closest<HTMLElement>('button, a[href], [role="tab"], input[type="checkbox"]');
+      const control = (event.target as Element | null)?.closest<HTMLElement>(
+        'button, a[href], a.list-group-item-action, .draggable-box__close-btn, [role="tab"], input[type="checkbox"]'
+      );
       if (!control?.closest(MENU) || control.dataset.sound === 'none') return;
       const action = `${control.dataset.action ?? ''} ${control.id} ${control.className}`;
       const sound = control.matches(':disabled, [aria-disabled="true"]')
         ? Sfx.UI_ERROR
-        : /back|cancel|close|resume/iu.test(action)
+        : control.dataset.sound === 'back' || /back|cancel|close|resume/iu.test(action)
           ? Sfx.UI_BACK
           : /confirm|launch|continue|next|play-again|replay/iu.test(action)
             ? Sfx.UI_CONFIRM

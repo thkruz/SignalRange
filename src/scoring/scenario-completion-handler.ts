@@ -9,6 +9,7 @@ import { LevelCompleteModal } from '@app/modal/level-complete-modal';
 import { QuizManager } from '@app/modal/quiz-manager';
 import { QuizModal } from '@app/modal/quiz-modal';
 import { ObjectivesManager } from '@app/objectives';
+import { campaignEpilogue } from '@app/presentation/campaign-epilogue';
 import { Router } from '@app/router';
 import { ScenarioManager } from '@app/scenario-manager';
 import { ScenarioDialogManager } from '@app/scenarios/scenario-dialog-manager';
@@ -185,15 +186,23 @@ export class ScenarioCompletionHandler {
     // The score screen must still open if the optional history request is offline or slow.
     const baseline = this.baseline_;
     const session = await Auth.getSession();
+    const current = {
+      scenarioId,
+      score: score.totalScore,
+      completedAt: new Date().toISOString(),
+      quizPenalties: score.quizPenalties + score.decisionPenalties,
+      timePenalties: score.timePenalties,
+    } as ScenarioProgress;
     if (baseline && baseline.account === session?.user?.id) {
-      const current = {
-        scenarioId,
-        score: score.totalScore,
-        completedAt: new Date().toISOString(),
-        quizPenalties: score.quizPenalties + score.decisionPenalties,
-        timePenalties: score.timePenalties,
-      } as ScenarioProgress;
       debrief = buildMissionDebrief(CampaignManager.getInstance().getAllCampaigns(), campaignId, baseline.results, current, readMissionRecord(baseline.account, scenarioId));
+    } else {
+      // Guest/dev play and unavailable account history must not suppress the ending.
+      const campaign = CampaignManager.getInstance().getCampaign(campaignId);
+      const epilogue = campaign && campaignEpilogue(campaign, [current]);
+      if (epilogue) {
+        if (epilogue.record) epilogue.record.note = `Only this mission's result is available here. ${epilogue.record.note}`;
+        debrief = { bestScore: score.totalScore, personalBest: false, achievements: [], newlyUnlocked: false, epilogue };
+      }
     }
     // Show the completion modal on top of an empty screen
     LevelCompleteModal.getInstance().showCompletion(
@@ -204,6 +213,14 @@ export class ScenarioCompletionHandler {
         scenarioId,
         isAuthenticated,
         debrief,
+        niceTaskCodes: [
+          ...new Set(
+            objectives
+              .filter((state) => state.isCompleted)
+              .flatMap((state) => state.objective.nice ?? [])
+              .filter((code) => /^T\d{4}$/u.test(code))
+          ),
+        ].sort(),
         decisions: DecisionManager.hasInstance() ? DecisionManager.getInstance().getRecords() : undefined,
       },
       () => this.saveOnContinue_(scenarioId, score, scenarioNumber)

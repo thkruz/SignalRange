@@ -29,6 +29,11 @@
   cursor: pointer;
 }
 
+/* Tabler's d-flex is !important; unavailable mission tools must stay hidden. */
+.asset-tree-sidebar .list-group-item[hidden] {
+  display: none !important;
+}
+
 #asset-tree-sidebar-container.collapsed {
   width: var(--sidebar-collapsed-width);
 

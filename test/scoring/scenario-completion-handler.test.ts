@@ -1,4 +1,6 @@
 import { Mock, vi } from 'vitest';
+import { CampaignManager } from '../../src/campaigns/campaign-manager';
+import type { CampaignData } from '../../src/campaigns/campaign-types';
 import { EventBus } from '../../src/events/event-bus';
 import { Events } from '../../src/events/events';
 
@@ -253,6 +255,41 @@ describe('ScenarioCompletionHandler', () => {
   });
 
   describe('handleAllObjectivesCompleted_', () => {
+    it('includes task codes only from completed objectives, including completed optional objectives', async () => {
+      mockObjectivesManager.getObjectiveStates.mockReturnValue([
+        { objective: { id: 'one', conditions: [], nice: ['T0081', 'K0740'] }, isCompleted: true },
+        { objective: { id: 'two', conditions: [], isOptional: true, nice: ['T0153', 'T0081'] }, isCompleted: true },
+        { objective: { id: 'three', conditions: [], nice: ['T0431'] }, isCompleted: false },
+      ]);
+      ScenarioCompletionHandler.getInstance().initialize();
+      await mockEventBus.on.mock.calls[0][1]({ completedObjectives: [], totalTime: 120 });
+      expect(mockLevelCompleteModal.showCompletion.mock.calls[0][0].niceTaskCodes).toEqual(['T0081', 'T0153']);
+    });
+    it.each([null, { access_token: 'test-token' }])('offers the finale epilogue without loaded history (session=%s)', async (session) => {
+      vi.mocked(Auth.getSession).mockResolvedValue(session as Awaited<ReturnType<typeof Auth.getSession>>);
+      const campaign = {
+        id: 'nats',
+        title: 'NATS',
+        scenarios: [
+          { id: 'nats-scenario1', number: 1, objectives: [] },
+          { id: 'nats-scenario24', number: 24, objectives: [] },
+        ],
+      } as CampaignData;
+      const lookup = vi.spyOn(CampaignManager.getInstance(), 'getCampaign').mockReturnValue(campaign);
+      try {
+        mockScenarioManager.data = { id: 'nats-scenario24', number: 24 };
+        ScenarioCompletionHandler.getInstance().initialize();
+        await mockEventBus.on.mock.calls[0][1]({ completedObjectives: [], totalTime: 120 });
+        const debrief = mockLevelCompleteModal.showCompletion.mock.calls[0][0].debrief;
+        expect(debrief.epilogue.label).toBe('Final watch · Epilogue');
+        expect(debrief.epilogue.facts[0].value).toBe('1 / 2');
+        expect(debrief.epilogue.record.note).toContain("Only this mission's result");
+        expect(debrief.achievements).toEqual([]);
+      } finally {
+        lookup.mockRestore();
+      }
+    });
+
     it('should calculate and show score when objectives complete', async () => {
       const mockObjectiveStates = [
         {
@@ -644,6 +681,7 @@ describe('ScenarioCompletionHandler', () => {
           campaignId: 'advanced',
           scenarioId: 'final-scenario',
           isAuthenticated: true,
+          niceTaskCodes: [],
         },
         expect.any(Function)
       );

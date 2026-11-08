@@ -1,4 +1,5 @@
 import type { Objective } from './objectives';
+import type { SceneData } from './presentation/scene-modal';
 import type { DialogClip, SimulationSettings } from './scenario-manager';
 
 export interface ScenarioData {
@@ -15,6 +16,8 @@ export interface ScenarioData {
   missionType: string;
   description: string;
   equipment: string[];
+  /** Optional story scene before the briefing; campaign prologues have built-in defaults. */
+  openingScene?: Partial<SceneData>;
   settings: SimulationSettings;
   objectives?: Objective[];
   dialogClips?: {

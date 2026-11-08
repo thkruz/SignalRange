@@ -43,6 +43,25 @@ beforeEach(() => {
   mocks.save.mockResolvedValue(undefined);
 });
 describe('game menus', () => {
+  it.each(['/', '/campaigns/nats'])('opens selection settings and returns to browsing on %s', (route) => {
+    history.replaceState({}, '', route);
+    const opener = document.createElement('button');
+    document.body.append(opener);
+    opener.focus();
+    GameMenu.getInstance().openMenu();
+    expect(document.querySelector('#game-menu-title')?.textContent).toBe('Game menu');
+    expect(document.querySelector('[data-action="restart"]')).toBeNull();
+    expect(document.querySelector<HTMLAnchorElement>('.game-menu-quit')?.href).toBe('https://signalrange.space/');
+    click('settings');
+    expect(document.querySelector('#setting-master')).not.toBeNull();
+    click('back');
+    expect(document.querySelector('#game-menu-title')?.textContent).toBe('Game menu');
+    click('resume');
+    expect(document.querySelector<HTMLDialogElement>('#game-menu')?.open).toBe(false);
+    expect(document.activeElement).toBe(opener);
+    expect(mocks.save).not.toHaveBeenCalled();
+    expect(mocks.navigate).not.toHaveBeenCalled();
+  });
   it('opens on lost browser focus or a hidden tab and requires explicit resume', () => {
     const focused = vi.spyOn(document, 'hasFocus').mockReturnValue(true);
     const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(false);

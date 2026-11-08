@@ -12,6 +12,7 @@
     "node": "24.14.0"
   },
   "scripts": {
+    "dialog-lint": "node scripts/dialog-lint.mjs",
     "prepare": "husky",
     "prebuild": "tsx ./scripts/plugin/index.ts sync",
     "build": "cross-env NODE_ENV=production rspack build --mode production",
@@ -90,6 +91,7 @@
     "dotenv": "^17.2.3",
     "draggabilly": "^3.0.0",
     "gl-matrix": "^3.4.4",
+    "html2canvas": "1.4.1",
     "ootk": "^7.1.0",
     "uuid": "^13.0.0"
   },

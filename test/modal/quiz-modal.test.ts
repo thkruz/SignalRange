@@ -273,7 +273,8 @@ describe('QuizModal', () => {
       (modal as any).renderQuiz_();
 
       const feedbackEl = mockElements.get('quiz-feedback');
-      expect(feedbackEl?.style.display).toBe('none');
+      expect(feedbackEl?.style.visibility).toBe('hidden');
+      expect(feedbackEl?.textContent).toBe('');
     });
 
     it('should hide penalty element initially', () => {
@@ -283,7 +284,7 @@ describe('QuizModal', () => {
       (modal as any).renderQuiz_();
 
       const penaltyEl = mockElements.get('quiz-penalty-notice');
-      expect(penaltyEl?.style.display).toBe('none');
+      expect(penaltyEl?.style.visibility).toBe('hidden');
     });
 
     it('clears the previous quiz penalty notice and feedback, not just hides them (nats-r2-s01-F2)', () => {

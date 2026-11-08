@@ -197,7 +197,7 @@ export class ProgressSaveManager {
       const session = await Auth.getSession();
       if (session?.user?.id !== checkpoint.userId) throw new Error('Sign in to the original account to retry this save.');
       // Show saving toast and emit start event
-      toast.showSaving();
+      toast.showSaving('Saving to your account', true);
       this.eventBus.emit(Events.PROGRESS_SAVE_START, { timestamp });
 
       // Get current scenario info
@@ -213,7 +213,7 @@ export class ProgressSaveManager {
       Logger.info(`Progress checkpoint saved for scenario: ${scenarioId}`);
 
       // Show success toast and emit success event
-      toast.showSuccess('Saved to your account');
+      toast.showSuccess('Saved to your account', 2000, true);
       this.eventBus.emit(Events.PROGRESS_SAVE_SUCCESS, {
         timestamp: Date.now(),
         checkpointId: scenarioId,

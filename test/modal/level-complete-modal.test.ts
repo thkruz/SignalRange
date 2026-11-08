@@ -1,6 +1,9 @@
 import { vi } from 'vitest';
 import { LevelCompleteModal } from '../../src/modal/level-complete-modal';
 import { ScoreBreakdown } from '../../src/scoring/score-calculator';
+import { SoundEvents } from '../../src/sound/sound-events';
+
+vi.mock('../../src/sound/sound-events', () => ({ SoundEvents: { finish: vi.fn() } }));
 
 // Mock all dependencies - use global.document to avoid Jest mock scoping issues
 vi.mock('../../src/engine/ui/draggable-modal', () => ({
@@ -172,7 +175,65 @@ describe('LevelCompleteModal', () => {
     expect(document.querySelector('#level-complete-modal')).toBeNull();
   });
 
+  it.each([true, false])('saves before the epilogue and waits for its action (accept=%s)', async (accept) => {
+    HTMLDialogElement.prototype.showModal = function () {
+      this.setAttribute('open', '');
+    };
+    HTMLDialogElement.prototype.close = function () {
+      this.removeAttribute('open');
+    };
+    const save = vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(undefined);
+    modal.showCompletion(
+      {
+        score: defaultScore,
+        elapsedTimeSeconds: 180,
+        campaignId: 'campaign-1',
+        scenarioId: 'scenario-1',
+        debrief: {
+          bestScore: 105,
+          personalBest: true,
+          achievements: [],
+          newlyUnlocked: false,
+          epilogue: { label: 'Campaign complete', title: 'Watch complete', image: '/room.webp', imageAlt: '', facts: [], actionLabel: 'Return to campaigns' },
+        },
+      },
+      save
+    );
+    const button = document.querySelector<HTMLButtonElement>('#continue-btn')!;
+    expect(button.textContent).toBe('View Epilogue');
+    button.click();
+    await vi.waitFor(() => expect(button.disabled).toBe(false));
+    expect(document.querySelector('.scene-modal')).toBeNull();
+    button.click();
+    await vi.waitFor(() => expect(document.querySelector('.scene-modal')).not.toBeNull());
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(save).toHaveBeenCalledTimes(2);
+    if (accept) document.querySelector<HTMLButtonElement>('.scene-start')!.click();
+    else document.querySelector('.scene-modal')!.dispatchEvent(new Event('cancel', { cancelable: true }));
+    await vi.waitFor(() => expect(mockNavigate).toHaveBeenCalledWith(accept ? '/' : '/campaigns/campaign-1'));
+    expect(document.querySelector('.scene-modal')).toBeNull();
+  });
+
   describe('showCompletion', () => {
+    it('shows readable NICE tasks even without account history, deduplicating task codes', () => {
+      modal.showCompletion({
+        score: defaultScore,
+        elapsedTimeSeconds: 180,
+        campaignId: 'nats',
+        scenarioId: 'nats-scenario1',
+        isAuthenticated: false,
+        niceTaskCodes: ['T0153', 'T0081', 'T0153', 'K0740'],
+      });
+      const section = document.querySelector('.mission-nice-tasks')!;
+      expect(section.textContent).toContain('NICE tasks practiced · 2');
+      expect(section.textContent).toContain('Diagnose network connectivity problems');
+      expect(section.textContent).toContain('Monitor network capacity and performance');
+      expect(Array.from(section.querySelectorAll('code'), (code) => code.textContent)).toEqual(['T0081', 'T0153']);
+    });
+    it('stops mission audio before presenting results', () => {
+      modal.showCompletion({ score: defaultScore, elapsedTimeSeconds: 180, campaignId: 'nats', scenarioId: 'nats-scenario24' });
+      expect(SoundEvents.finish).toHaveBeenCalledOnce();
+    });
     it('should display the modal element', () => {
       modal.showCompletion({
         score: defaultScore,

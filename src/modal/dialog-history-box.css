@@ -86,20 +86,22 @@
 .dialog-history-replay-btn {
   align-self: flex-start;
   padding: 0.4rem 0.8rem;
-  background: var(--button-bg, #4a90e2);
-  color: var(--button-text, #ffffff);
-  border: none;
-  border-radius: 4px;
+  background: var(--mc-accent-red);
+  color: #fff;
+  border: 1px solid var(--mc-accent-red-light);
+  border-radius: 2px;
   font-size: 0.85rem;
   cursor: pointer;
   transition: background 0.2s ease;
   font-family: inherit;
 
   &:hover {
-    background: var(--button-bg-hover, #357abd);
+    background: var(--mc-accent-red-light);
   }
 
   &:active {
-    background: var(--button-bg-active, #2a6199);
+    background: var(--mc-accent-red-dark);
   }
+
+  &:focus-visible { outline: 2px solid var(--mc-text-primary); outline-offset: 2px; }
 }

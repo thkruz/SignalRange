@@ -21,6 +21,8 @@ import { ObjectivesManager } from '@app/objectives/objectives-manager';
 import { BasePage } from '@app/pages/base-page';
 import { Body } from '@app/pages/layout/body/body';
 import { MissionLoadingScreen } from '@app/pages/mission-loading-screen';
+import { missionOpening } from '@app/presentation/mission-opening';
+import { SceneModal } from '@app/presentation/scene-modal';
 import { NavigationOptions, Router } from '@app/router';
 import { ScenarioManager } from '@app/scenario-manager';
 import { CampaignRecordPanel } from '@app/scenarios/campaign-record-panel';
@@ -30,6 +32,7 @@ import { SecurityConsoleCore } from '@app/security-console/security-console-core
 import { AlarmService } from '@app/services/alarm-service';
 import { SimClock } from '@app/simulation/sim-clock';
 import { SimulationManager } from '@app/simulation/simulation-manager';
+import { MenuMusic } from '@app/sound/menu-music';
 import { SoundEvents } from '@app/sound/sound-events';
 import { SpaceEventManager } from '@app/space-events/space-event-manager';
 import { syncEquipmentWithStore } from '@app/sync';
@@ -65,6 +68,7 @@ export class MissionControlPage extends BasePage {
 
   private groundStations_: GroundStation[] = [];
   private loadingScreen_: MissionLoadingScreen | null = null;
+  private opening_: SceneModal | null = null;
   private disposed_ = false;
 
   private constructor(options?: NavigationOptions) {
@@ -190,11 +194,25 @@ export class MissionControlPage extends BasePage {
 
     await this.loadingScreen_?.reveal();
     if (this.disposed_) return;
-    this.dom_.inert = false;
-    SimClock.resume('loading');
     await this.initializeObjectivesAndDialogs_();
     if (this.disposed_) return;
-    SoundEvents.arm();
+    this.dom_.inert = false;
+    SimClock.resume('loading');
+    MenuMusic.getInstance().setActive(false);
+    SoundEvents.arm(ScenarioManager.getInstance().settings.groundStations);
+  }
+
+  protected override async prepareMissionOpening_(): Promise<boolean> {
+    if (this.disposed_) return false;
+    if (this.navigationOptions_.continueFromCheckpoint || ScenarioManager.getInstance().data.number === 0) return true;
+    const opening = missionOpening(ScenarioManager.getInstance().data);
+    if (!opening) return true;
+    const returnPath = /^\/campaigns\/[^/]+/u.exec(globalThis.location.pathname)?.[0] ?? '/';
+    MenuMusic.getInstance().setActive(true);
+    this.opening_ = new SceneModal(opening, () => Router.getInstance().navigate(returnPath));
+    const started = await this.opening_.result;
+    this.opening_ = null;
+    return started && !this.disposed_;
   }
 
   /**
@@ -328,6 +346,7 @@ export class MissionControlPage extends BasePage {
     // Clean up resources
     if (MissionControlPage.instance_) {
       MissionControlPage.instance_.disposed_ = true;
+      MissionControlPage.instance_.opening_?.dispose();
       MissionControlPage.instance_.loadingScreen_?.dispose();
       SimClock.resume('loading');
       // Clean up progress save manager

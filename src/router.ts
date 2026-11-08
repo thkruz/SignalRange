@@ -12,6 +12,7 @@ import { ScenarioSelectionPage } from '@app/pages/scenario-selection';
 import { cancelSelectionExit, leaveSelection } from '@app/pages/selection-browser';
 import { PluginManager } from '@app/plugins/plugin-manager';
 import { SimulationManager } from '@app/simulation/simulation-manager';
+import { MenuMusic } from '@app/sound/menu-music';
 import { ScenarioManager } from './scenario-manager';
 
 /**
@@ -145,6 +146,10 @@ export class Router {
     cancelSelectionExit();
     const path = globalThis.location.pathname;
     this.currentPath = path;
+    const selection = path === '/' || /^\/campaigns\/[^/]+$/u.test(path);
+    // Keep the menu loop through mission preparation; Start fades it into the station.
+    if (selection) MenuMusic.getInstance().setActive(true);
+    else if (!/^\/campaigns\/[^/]+\/scenarios\/[^/]+$/u.test(path) && path !== '/mission-control') MenuMusic.getInstance().setActive(false);
     document.body.classList.toggle('selection-menu', path === '/' || /^\/campaigns\/[^/]+$/u.test(path));
 
     // Tag <body> with the active campaign and its chrome variant so per-campaign
@@ -167,6 +172,7 @@ export class Router {
     if (extra) {
       SimulationManager.destroy();
       extra.route.show(extra.params, path);
+      this.finishStartup_();
       EventBus.getInstance().emit(Events.ROUTE_CHANGED, { path });
       return;
     }
@@ -309,7 +315,15 @@ export class Router {
     }
 
     // Reset navigation options after use
+    this.finishStartup_();
     this.navigationOptions_ = {};
+  }
+
+  private finishStartup_(): void {
+    const screen = document.getElementById('startup-screen');
+    if (!screen) return;
+    // The first route has now sized the shell and mounted its loading/page UI.
+    requestAnimationFrame(() => screen.remove());
   }
 
   getCurrentPath(): string {

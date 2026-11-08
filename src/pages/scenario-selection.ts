@@ -5,6 +5,8 @@ import { ModalConfirm } from '@app/engine/ui/modal-confirm';
 import { html } from '@app/engine/utils/development/formatter';
 import { qs, qsa } from '@app/engine/utils/query-selector';
 import { Logger } from '@app/logging/logger';
+import { campaignEpilogue, campaignFinale } from '@app/presentation/campaign-epilogue';
+import { type SceneData, SceneModal } from '@app/presentation/scene-modal';
 import { Router } from '@app/router';
 import { ScenarioData } from '@app/ScenarioData';
 import { getNextPrerequisiteScenario, isScenarioLocked, SCENARIOS } from '@app/scenario-manager';
@@ -57,6 +59,8 @@ export class ScenarioSelectionPage extends BasePage {
   private readonly loadingScreen_: SelectionLoadingScreen;
   private currentCampaignId_: string | null = null;
   private currentCampaign_: CampaignData | null = null;
+  private epilogue_: SceneData | undefined;
+  private epilogueModal_: SceneModal | null = null;
 
   private constructor() {
     super();
@@ -64,6 +68,8 @@ export class ScenarioSelectionPage extends BasePage {
     this.init_('body-content-container', 'add');
     this.loadingScreen_ = new SelectionLoadingScreen(this.dom_, () => void this.loadCheckpointsAndUpdate_());
     selectionProgressCache.onAccountChanged(() => {
+      this.epilogueModal_?.dispose();
+      this.epilogue_ = undefined;
       if (this.dom_.style.display === 'flex') void this.loadCheckpointsAndUpdate_();
     });
   }
@@ -84,6 +90,7 @@ export class ScenarioSelectionPage extends BasePage {
    */
   setCampaign(campaignId: string | null): void {
     if (campaignId !== this.currentCampaignId_) {
+      this.epilogue_ = undefined;
       ++this.progressLoadToken_;
       this.selectedScenarioId_ = null;
     }
@@ -121,6 +128,7 @@ export class ScenarioSelectionPage extends BasePage {
   private loadCheckpointsAndUpdate_(): Promise<void> {
     const token = ++this.progressLoadToken_;
     this.loadingScreen_.begin();
+    this.epilogue_ = undefined;
     this.isProgressLoading_ = true;
     this.updateScenarioCards_();
     this.progressLoad_ = this.probeProgress_(token)
@@ -162,6 +170,7 @@ export class ScenarioSelectionPage extends BasePage {
     this.completedScenarioIds_ = [];
     this.currentlyCompletedScenarioIds_ = [];
     if (!progressResponse) return;
+    this.epilogue_ = this.currentCampaign_ ? campaignEpilogue(this.currentCampaign_, progressResponse.scenarios) : undefined;
     for (const progress of progressResponse.scenarios) {
       if (progress.completedAt) this.completedScenarioIds_.push(progress.scenarioId);
       if (progress.score > 0) this.currentlyCompletedScenarioIds_.push(progress.scenarioId);
@@ -271,6 +280,10 @@ export class ScenarioSelectionPage extends BasePage {
   }
 
   private handleSelection_(event: Event): void {
+    if ((event.target as Element).closest('.btn-view-epilogue')) {
+      void this.showEpilogue_();
+      return;
+    }
     const phaseToggle = (event.target as Element).closest<HTMLButtonElement>('.selection-phase-toggle');
     if (phaseToggle) {
       const expanded = phaseToggle.getAttribute('aria-expanded') !== 'true';
@@ -372,6 +385,7 @@ export class ScenarioSelectionPage extends BasePage {
     // isCurrentlyCompleted = has score > 0 (for button: "Play Again" vs "Start")
     // After Play Again reset, score is 0 so this shows "Start" instead of "Play Again"
     const isCurrentlyCompleted = this.currentlyCompletedScenarioIds_.includes(scenario.id);
+    const canViewEpilogue = this.epilogue_ && this.currentCampaign_ && campaignFinale(this.currentCampaign_)?.id === scenario.id;
 
     let availabilityStatus = '';
     if (scenario.isDisabled) {
@@ -401,6 +415,7 @@ export class ScenarioSelectionPage extends BasePage {
           <button type="button" class="btn-play-again" data-scenario-id="${scenario.id}" data-scenario-url="${scenario.url}">
             Play Again
           </button>
+          ${canViewEpilogue ? '<button type="button" class="selection-secondary btn-view-epilogue">View Epilogue</button>' : ''}
           </div>
         `;
       } else if (hasCheckpoint) {
@@ -478,6 +493,8 @@ export class ScenarioSelectionPage extends BasePage {
   }
 
   hide(): void {
+    this.epilogueModal_?.dispose();
+    this.epilogueModal_ = null;
     ++this.progressLoadToken_;
     this.loadingScreen_.cancel();
     super.hide();
@@ -507,6 +524,15 @@ export class ScenarioSelectionPage extends BasePage {
     qs<HTMLButtonElement>('.back-button', this.dom_).addEventListener('click', this.handleBackToCampaigns_.bind(this));
     this.dom_.addEventListener('click', this.handleSelection_.bind(this));
     this.dom_.addEventListener('keydown', selectionKeyboard);
+  }
+
+  private async showEpilogue_(): Promise<void> {
+    if (!this.epilogue_ || this.epilogueModal_) return;
+    const modal = new SceneModal(this.epilogue_, () => {});
+    this.epilogueModal_ = modal;
+    const accepted = await modal.result;
+    this.epilogueModal_ = null;
+    if (accepted) Router.getInstance().navigate('/');
   }
 
   /**

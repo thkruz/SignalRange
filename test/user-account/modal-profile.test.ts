@@ -87,7 +87,7 @@ describe('operator profile', () => {
     expect(el('profile-score').textContent).toBe('1,500');
     expect(el('profile-name').textContent).toBe('Test Operator');
     expect(el('profile-panel-record').textContent).toContain('1 of 1 missions completed');
-    expect(el('profile-earned').textContent).toBe('3 / 6');
+    expect(el('profile-earned').textContent).toBe('3 / 8');
     expect(el('profile-achievements').textContent).not.toContain('Coming Soon');
     expect(mocks.progress).toHaveBeenCalledTimes(1);
     expect(mocks.session).toHaveBeenCalledTimes(1);
@@ -120,7 +120,7 @@ describe('operator profile', () => {
     expect(el('profile-earned').textContent).toBe('—');
     el('profile-retry').click();
     await ready();
-    expect(el('profile-earned').textContent).toBe('3 / 6');
+    expect(el('profile-earned').textContent).toBe('3 / 8');
   });
 
   it('supports keyboard tabs, achievement filters, Escape, and focus return', async () => {

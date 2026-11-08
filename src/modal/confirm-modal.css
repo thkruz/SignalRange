@@ -1,0 +1,42 @@
+/* Application theme for the engine's shared confirmation dialog. */
+#modal-confirm {
+  width: min(560px, calc(100vw - 32px));
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  background: var(--mc-surface-1);
+  color: var(--mc-text-primary);
+  border: 1px solid var(--mc-surface-3);
+  border-top: 2px solid var(--mc-accent-red);
+  border-radius: 2px;
+}
+
+#modal-confirm .draggable-box__title-bar {
+  background: var(--mc-surface-1);
+  border-bottom: 1px solid var(--mc-surface-3);
+  padding: 16px 24px;
+}
+#modal-confirm .draggable-box__title h3 { font-size: 20px; text-transform: none; }
+#modal-confirm .draggable-box__content { border: 0; }
+#modal-confirm .confirm-modal { min-width: 0; padding: 24px; gap: 24px; }
+#modal-confirm .confirm-modal__content { text-align: left; }
+#modal-confirm .confirm-modal__message { color: var(--mc-text-primary); }
+#modal-confirm .confirm-modal__actions { justify-content: flex-end; gap: 12px; }
+#modal-confirm .confirm-modal__btn {
+  border: 1px solid var(--mc-surface-3);
+  border-radius: 2px;
+  padding: 10px 16px;
+  font: inherit;
+  transform: none;
+}
+#modal-confirm .confirm-modal__btn--primary,
+#modal-confirm .confirm-modal__btn--destructive {
+  background: var(--mc-accent-red);
+  border-color: var(--mc-accent-red-light);
+}
+#modal-confirm .confirm-modal__btn--primary:hover,
+#modal-confirm .confirm-modal__btn--destructive:hover { background: var(--mc-accent-red-light); }
+#modal-confirm .confirm-modal__btn--secondary { background: var(--mc-surface-2); color: var(--mc-text-primary); }
+#modal-confirm .confirm-modal__btn--secondary:hover { background: var(--mc-surface-3); }
+#modal-confirm .confirm-modal__btn:focus-visible { outline: 2px solid var(--mc-text-primary); outline-offset: 3px; }

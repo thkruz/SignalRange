@@ -1,5 +1,76 @@
 import { prefersReducedMotion } from '@app/game-menu/display-preferences';
 import { preloadArtwork, TRANSITION_MS } from '@app/presentation/transitions';
+import './selection-motion.css';
+
+/** Independent switches for the selection-page motion audition. */
+export const SELECTION_MOTION = { signalSweep: true, orbitalTrace: false, detailReveal: true, hoverEmphasis: false };
+const detailMotion = new WeakMap<HTMLElement, { animations: Animation[]; outgoing?: HTMLImageElement }>();
+
+function configureSelectionMotion(page: HTMLElement | null): void {
+  if (!page) return;
+  page.classList.toggle('selection-motion-sweep', SELECTION_MOTION.signalSweep);
+  page.classList.toggle('selection-motion-orbit', SELECTION_MOTION.orbitalTrace);
+  page.classList.toggle('selection-motion-hover', SELECTION_MOTION.hoverEmphasis);
+  const heading = page.querySelector('.selection-heading');
+  if (heading && !heading.querySelector('.selection-orbit')) {
+    const orbit = document.createElement('span');
+    orbit.className = 'selection-orbit';
+    orbit.setAttribute('aria-hidden', 'true');
+    orbit.append(document.createElement('span'));
+    heading.append(orbit);
+  }
+}
+
+function cancelDetailMotion(detail: HTMLElement): void {
+  const previous = detailMotion.get(detail);
+  detailMotion.delete(detail);
+  previous?.animations.forEach((animation) => animation.cancel());
+  previous?.outgoing?.remove();
+}
+
+function revealSelectionDetail(detail: HTMLElement, outgoing?: HTMLImageElement): void {
+  if (!SELECTION_MOTION.detailReveal || prefersReducedMotion() || typeof detail.animate !== 'function') return;
+  const state: { animations: Animation[]; outgoing?: HTMLImageElement } = { animations: [] };
+  detailMotion.set(detail, state);
+  const groups = [detail.querySelector('.selection-briefing h2'), detail.querySelector('.selection-description'), detail.querySelector('.selection-actions')];
+  groups.forEach((element, index) => {
+    if (!element) return;
+    const animation = element.animate(
+      [
+        { opacity: 0.35, transform: 'translateY(4px)' },
+        { opacity: 1, transform: 'translateY(0)' },
+      ],
+      {
+        duration: 160,
+        delay: index * 30,
+        easing: 'ease-out',
+        fill: 'backwards',
+      }
+    );
+    state.animations.push(animation);
+  });
+  const art = detail.querySelector('.selection-art');
+  const incoming = art?.querySelector('img');
+  if (outgoing && art && incoming) {
+    state.outgoing = outgoing;
+    outgoing.classList.add('selection-art-outgoing');
+    outgoing.alt = '';
+    outgoing.setAttribute('aria-hidden', 'true');
+    art.append(outgoing);
+    // Hold decoded previous artwork until the replacement can actually paint.
+    const ready = typeof incoming.decode === 'function' ? incoming.decode().catch(() => {}) : Promise.resolve();
+    void ready.then(() => {
+      if (detailMotion.get(detail) !== state || !detail.isConnected) return;
+      if (prefersReducedMotion()) {
+        outgoing.remove();
+        return;
+      }
+      const fade = outgoing.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, easing: 'ease-out', fill: 'forwards' });
+      state.animations.push(fade);
+      void fade.finished.catch(() => {}).then(() => outgoing.remove());
+    });
+  }
+}
 
 /** Shared interaction for the two mission-library screens. */
 export function selectionKeyboard(event: KeyboardEvent): void {
@@ -39,10 +110,16 @@ export function updateSelectionList(list: HTMLElement, markup: string): void {
 
 /** Reuse decoded artwork and retain action focus across progress refreshes. */
 export function updateSelectionDetail(detail: HTMLElement, markup: string): void {
+  configureSelectionMotion(detail.closest('.selection-page'));
+  cancelDetailMotion(detail);
   const template = document.createElement('template');
   template.innerHTML = markup;
   const oldImage = detail.querySelector('img');
   const nextImage = template.content.querySelector('img');
+  const changed = oldImage?.getAttribute('src') !== nextImage?.getAttribute('src') || detail.querySelector('h2')?.textContent !== template.content.querySelector('h2')?.textContent;
+  const wasVisible = detail.getClientRects().length > 0;
+  const outgoing = oldImage && nextImage && oldImage.getAttribute('src') !== nextImage.getAttribute('src') ? oldImage : undefined;
+  if (outgoing) outgoing.style.transform = getComputedStyle(outgoing).transform;
   if (nextImage?.getAttribute('src')) preloadArtwork(nextImage.getAttribute('src')!);
   if (oldImage && nextImage && oldImage.getAttribute('src') === nextImage.getAttribute('src')) nextImage.replaceWith(oldImage);
   const briefingScroll = detail.querySelector('.selection-briefing')?.scrollTop ?? 0;
@@ -52,12 +129,21 @@ export function updateSelectionDetail(detail: HTMLElement, markup: string): void
   const briefing = detail.querySelector('.selection-briefing');
   if (briefing) briefing.scrollTop = briefingScroll;
   if (actionClass) detail.querySelector<HTMLButtonElement>(`button.${actionClass}:not(:disabled)`)?.focus({ preventScroll: true });
+  if (changed && wasVisible) revealSelectionDetail(detail, outgoing);
 }
 
 export function animateSelection(element: HTMLElement): void {
+  configureSelectionMotion(element.closest('.selection-page'));
+  // Detail changes own their crossfade; fading their parent would dim both images.
+  if (element.matches('.selection-detail')) return;
   if (typeof element.animate !== 'function' || prefersReducedMotion()) return;
   for (const animation of element.getAnimations()) animation.cancel();
   element.animate([{ opacity: 0.25 }, { opacity: 1 }], { duration: TRANSITION_MS.interface, easing: 'ease-out' });
+  const detail = element.querySelector<HTMLElement>('.selection-detail');
+  if (detail) {
+    cancelDetailMotion(detail);
+    revealSelectionDetail(detail);
+  }
 }
 
 let pendingExit: { page: HTMLElement; fade: Animation } | null = null;

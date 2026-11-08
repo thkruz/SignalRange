@@ -1,10 +1,13 @@
+import type { GroundStationConfig } from '@app/assets/ground-station/ground-station-state';
 import { EventBus } from '@app/events/event-bus';
 import {
   type AggregatedAlarm,
   type AlarmStateChangedData,
   type DecisionGradedData,
   Events,
+  type ObjectiveCompletedData,
   type QuizAnsweredData,
+  type QuizCompletedData,
   type TxTransmitChangedData,
   type WeatherEventData,
 } from '@app/events/events';
@@ -47,15 +50,17 @@ export class SoundEvents {
   private readonly clearedAt_ = new Map<string, number>();
   private readonly weather_ = new Map<string, WeatherEventData>();
   private objectiveTimer_: ReturnType<typeof setTimeout> | null = null;
+  private pendingObjectiveId_: string | null = null;
+  private quizCompletion_: { id: string; at: number } | null = null;
 
   private constructor() {
     this.bus_ = EventBus.getInstance();
     this.bind_();
-    Ambience.getInstance().start();
   }
 
   static start(): SoundEvents {
     SoundEvents.instance_?.dispose_();
+    SoundManager.getInstance().setMissionActive(true);
     SoundEvents.alarmsMuted_ = false;
     SoundEvents.instance_ = new SoundEvents();
 
@@ -63,8 +68,10 @@ export class SoundEvents {
   }
 
   /** Call once the scenario has finished loading and restoring. */
-  static arm(): void {
+  static arm(stations: readonly Pick<GroundStationConfig, 'stationClass'>[] = []): void {
     if (SoundEvents.instance_) {
+      const roomBed = stations.length === 0 || stations.some((station) => station.stationClass !== 'backyard');
+      Ambience.getInstance().start(roomBed);
       SoundEvents.instance_.armedAt_ = Date.now();
       if (WeatherManager.hasInstance()) {
         for (const event of WeatherManager.getInstance().getAllWeatherEvents()) {
@@ -79,6 +86,16 @@ export class SoundEvents {
     SoundEvents.instance_?.dispose_();
     SoundEvents.instance_ = null;
     Ambience.destroy();
+  }
+
+  /** Stop the completed mission without affecting menu and achievement audio. */
+  static finish(): void {
+    const sound = SoundManager.getInstance();
+    sound.setMissionActive(false);
+    sound.stopCustom();
+    SoundEvents.instance_?.dispose_();
+    SoundEvents.instance_ = null;
+    Ambience.destroy(true);
   }
 
   private get warmingUp_(): boolean {
@@ -109,7 +126,7 @@ export class SoundEvents {
     this.on_(Events.CRYPTO_KEY_ROTATED, () => this.play_(Sfx.KEY_LOCK));
     this.on_(Events.CRYPTO_ZEROIZED, () => this.play_(Sfx.ZEROIZE));
 
-    this.on_(Events.OBJECTIVE_COMPLETED, () => this.onObjectiveCompleted_());
+    this.on_(Events.OBJECTIVE_COMPLETED, (data: ObjectiveCompletedData) => this.onObjectiveCompleted_(data));
     this.on_(Events.OBJECTIVES_ALL_COMPLETED, () => {
       this.cancelObjectiveCue_();
       this.play_(Sfx.SCENARIO_COMPLETE);
@@ -119,6 +136,12 @@ export class SoundEvents {
     this.on_(Events.SCENARIO_TIME_EXPIRED, () => this.play_(Sfx.TIMER_WARNING));
     this.on_(Events.TIME_PENALTY_APPLIED, () => this.play_(Sfx.PENALTY));
     this.on_(Events.QUIZ_ANSWERED, (data: QuizAnsweredData) => this.play_(data.isCorrect ? Sfx.UI_CONFIRM : Sfx.UI_ERROR));
+    this.on_(Events.QUIZ_PASSED, () => this.play_(Sfx.UI_CONFIRM));
+    this.on_(Events.QUIZ_COMPLETED, (data: QuizCompletedData) => {
+      this.quizCompletion_ = { id: data.objectiveId, at: Date.now() };
+      if (this.pendingObjectiveId_ === data.objectiveId) this.cancelObjectiveCue_();
+      this.play_(Sfx.UI_CLICK);
+    });
     this.on_(Events.DECISION_GRADED, (data: DecisionGradedData) => this.play_(data.correct ? Sfx.UI_CONFIRM : Sfx.UI_ERROR));
     this.on_(Events.HINT_SHOWN, () => this.play_(Sfx.NOTIFY));
     this.on_(Events.PROGRESS_SAVE_ERROR, () => this.play_(Sfx.UI_ERROR));
@@ -231,18 +254,24 @@ export class SoundEvents {
   }
 
   /** Defer the objective cue a moment so the last objective plays the scenario cue instead. */
-  private onObjectiveCompleted_(): void {
+  private onObjectiveCompleted_(data: ObjectiveCompletedData): void {
     if (this.warmingUp_) {
       return;
     }
     this.cancelObjectiveCue_();
+    // Continue already acknowledged this quiz; don't stack a completion chime
+    // on its click. Other objectives and final mission success still sound.
+    if (this.quizCompletion_?.id === data.objectiveId && Date.now() - this.quizCompletion_.at < 1000) return;
+    this.pendingObjectiveId_ = data.objectiveId;
     this.objectiveTimer_ = setTimeout(() => {
       this.objectiveTimer_ = null;
+      this.pendingObjectiveId_ = null;
       this.play_(Sfx.OBJECTIVE_COMPLETE);
     }, OBJECTIVE_DEFER_MS);
   }
 
   private cancelObjectiveCue_(): void {
+    this.pendingObjectiveId_ = null;
     if (this.objectiveTimer_ !== null) {
       clearTimeout(this.objectiveTimer_);
       this.objectiveTimer_ = null;

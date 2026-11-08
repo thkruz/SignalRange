@@ -158,6 +158,10 @@ const config: rspack.Configuration = {
             ignore: ['**/wip/**'],
           },
         },
+        // Menu soundtrack ships with the application, independent of campaign CDN assets.
+        { from: 'public/music/', to: 'music/', globOptions: { ignore: ['**/wip/**'] } },
+        // UI and equipment effects use same-origin /sfx URLs in SoundManager.
+        { from: 'public/sfx/', to: 'sfx/', globOptions: { ignore: ['**/wip/**'] } },
         // Self-hosted web fonts. Copied verbatim (not run through the
         // asset/resource rule) so the URLs in src/fonts.css stay stable.
         {

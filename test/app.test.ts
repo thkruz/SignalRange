@@ -31,6 +31,7 @@ describe('App class', () => {
   });
 
   afterEach(() => {
+    App.__resetAll__();
     // Clear module registry so singletons are reset between tests
     vi.resetModules();
     vi.unstubAllGlobals();
@@ -78,12 +79,13 @@ describe('App class', () => {
 
     const emitSpy = vi.spyOn(EventBus.getInstance(), 'emit');
     const t0 = performance.now();
+    const nowSpy = vi.spyOn(performance, 'now').mockReturnValue(t0);
     SimulationManager.getInstance();
 
     // Run a single game-loop tick (the constructor scheduled it via rAF), one
     // 60 fps frame later so the fixed-step loop owes exactly one UPDATE.
     expect(frame).toBeDefined();
-    const nowSpy = vi.spyOn(performance, 'now').mockReturnValue(t0 + 1000 / 60);
+    nowSpy.mockReturnValue(t0 + 1000 / 60);
     frame?.(0);
     nowSpy.mockRestore();
 

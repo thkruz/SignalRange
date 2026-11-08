@@ -93,7 +93,7 @@ export class SandboxPage extends BasePage {
     SoundEvents.start();
     await this.initEquipment_();
     await this.initializeObjectivesAndDialogs_();
-    SoundEvents.arm();
+    SoundEvents.arm(ScenarioManager.getInstance().settings.groundStations);
   }
 
   protected addEventListeners_(): void {

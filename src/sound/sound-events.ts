@@ -8,6 +8,7 @@ import {
   type TxTransmitChangedData,
   type WeatherEventData,
 } from '@app/events/events';
+import { WeatherManager } from '@app/weather/weather-manager';
 import { Ambience, type AmbienceLayer } from './ambience';
 import { Sfx } from './sfx-enum';
 import SoundManager from './sound-manager';
@@ -65,6 +66,12 @@ export class SoundEvents {
   static arm(): void {
     if (SoundEvents.instance_) {
       SoundEvents.instance_.armedAt_ = Date.now();
+      if (WeatherManager.hasInstance()) {
+        for (const event of WeatherManager.getInstance().getAllWeatherEvents()) {
+          if (event.isActive) SoundEvents.instance_.weather_.set(event.id, event);
+        }
+        SoundEvents.instance_.applyWeather_();
+      }
     }
   }
 
@@ -98,7 +105,8 @@ export class SoundEvents {
       }
     });
     this.on_(Events.TX_TRANSMIT_CHANGED, (data: TxTransmitChangedData) => this.play_(data.transmitting ? Sfx.TX_ON : Sfx.TX_OFF));
-    this.on_(Events.CRYPTO_KEY_ROTATED, () => this.play_(Sfx.KEYPRESS));
+    this.on_(Events.RX_SIGNAL_LOST, () => this.play_(Sfx.STATIC_BURST));
+    this.on_(Events.CRYPTO_KEY_ROTATED, () => this.play_(Sfx.KEY_LOCK));
     this.on_(Events.CRYPTO_ZEROIZED, () => this.play_(Sfx.ZEROIZE));
 
     this.on_(Events.OBJECTIVE_COMPLETED, () => this.onObjectiveCompleted_());
@@ -115,10 +123,23 @@ export class SoundEvents {
     this.on_(Events.HINT_SHOWN, () => this.play_(Sfx.NOTIFY));
     this.on_(Events.PROGRESS_SAVE_ERROR, () => this.play_(Sfx.UI_ERROR));
     this.on_(Events.SWITCH_TAB, () => this.play_(Sfx.UI_CLICK));
+    this.on_(Events.AUDIT_EVENT_ACKNOWLEDGED, () => this.play_(Sfx.ALARM_ACK));
+    this.on_(Events.ANTENNA_SLEW_COMPLETE, (data: { targetSatelliteId: number | null }) => {
+      if (data.targetSatelliteId !== null) this.play_(Sfx.ON_TARGET);
+    });
+    this.on_(Events.HANDOVER_COMPLETE, () => this.play_(Sfx.RELAY_CLUNK));
+    this.on_(Events.EQUIPMENT_ACTION, (data: { message: string }) => {
+      if (data.message === 'HPA Power ON') this.play_(Sfx.HPA_WARMUP);
+      else if (data.message === 'HPA Power OFF') {
+        SoundManager.getInstance().stop(Sfx.HPA_WARMUP);
+        this.play_(Sfx.FAN_SPINDOWN);
+      } else if (/refused|blocked/iu.test(data.message)) this.play_(Sfx.UI_ERROR);
+    });
 
     this.on_(Events.WEATHER_EVENT_STARTED, (data: WeatherEventData) => {
       this.weather_.set(data.id, data);
       this.applyWeather_();
+      if (data.type === 'rain' || data.type === 'storm') this.play_(Sfx.RAIN_ARRIVAL);
     });
     this.on_(Events.WEATHER_EVENT_ENDED, (data: WeatherEventData) => {
       this.weather_.delete(data.id);
@@ -139,6 +160,11 @@ export class SoundEvents {
       if (alarm.severity === 'error' || alarm.severity === 'warning') {
         current.set(SoundEvents.alarmKey_(alarm), alarm.severity);
       }
+    }
+    if (data.restored) {
+      this.activeAlarms_ = new Set(current.keys());
+      this.clearedAt_.clear();
+      return;
     }
 
     let newError = false;
@@ -259,6 +285,7 @@ export class SoundEvents {
 
   private dispose_(): void {
     this.cancelObjectiveCue_();
+    SoundManager.getInstance().stop(Sfx.HPA_WARMUP);
     for (const [event, handler] of this.handlers_) {
       this.bus_.off(event, handler as never);
     }

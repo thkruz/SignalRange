@@ -1,10 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { Sfx } from '../../src/sound/sfx-enum';
+import SoundManager from '../../src/sound/sound-manager';
 import { AchievementToast } from '../../src/user-account/achievement-toast';
 
 describe('achievement notifications', () => {
   let toast: AchievementToast;
   beforeEach(() => {
     vi.useFakeTimers();
+    vi.spyOn(SoundManager.getInstance(), 'play').mockImplementation(() => {});
     localStorage.removeItem(AchievementToast.STYLE_STORAGE_KEY);
     toast = new AchievementToast();
   });
@@ -12,6 +15,7 @@ describe('achievement notifications', () => {
     toast.clear();
     document.body.innerHTML = '';
     vi.useRealTimers();
+    vi.restoreAllMocks();
     localStorage.removeItem(AchievementToast.STYLE_STORAGE_KEY);
   });
 
@@ -20,6 +24,7 @@ describe('achievement notifications', () => {
     toast.show({ id: 'two', title: 'Clean shift', description: 'No penalties.', category: 'Proficiency' });
     expect(document.querySelectorAll('.achievement-toast')).toHaveLength(1);
     expect(document.querySelector('.achievement-toast')?.textContent).toContain('First shift');
+    expect(SoundManager.getInstance().play).toHaveBeenCalledWith(Sfx.ACHIEVEMENT);
     vi.advanceTimersByTime(6000);
     expect(document.querySelector('.achievement-toast--leaving')).not.toBeNull();
     vi.advanceTimersByTime(320);

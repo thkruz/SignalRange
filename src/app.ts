@@ -10,6 +10,7 @@ import { SandboxPage } from '@app/pages/sandbox-page';
 import { ScenarioSelectionPage } from '@app/pages/scenario-selection';
 import { PluginManager } from '@app/plugins/plugin-manager';
 import { SimulationManager } from '@app/simulation/simulation-manager';
+import { initializeUiSounds } from '@app/sound/ui-sounds';
 import { initializeAchievementNotifications } from '@app/user-account/achievement-notifications';
 import { Auth } from '@app/user-account/auth';
 import { selectionProgressCache } from '@app/user-account/selection-progress-cache';
@@ -100,6 +101,7 @@ export class App extends BaseElement {
     // Initialize router
     this.router.init();
     GameMenu.getInstance().initialize();
+    initializeUiSounds();
 
     return rootDom;
   }

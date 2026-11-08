@@ -1,4 +1,6 @@
+import { fade, preloadArtwork } from '@app/presentation/transitions';
 import type { ScenarioData } from '@app/ScenarioData';
+import SoundManager from '@app/sound/sound-manager';
 import { getAssetUrl } from '@app/utils/asset-url';
 import './mission-loading-screen.css';
 
@@ -17,6 +19,8 @@ export class MissionLoadingScreen {
     this.element_.setAttribute('aria-label', 'Preparing mission');
     const image = document.createElement('img');
     image.src = getAssetUrl('/assets/campaigns/' + scenario.imageUrl);
+    preloadArtwork(image.src);
+    if (scenario.dialogClips?.intro?.audioUrl) SoundManager.getInstance().preloadVoice(scenario.dialogClips.intro.audioUrl);
     image.alt = '';
     const content = document.createElement('div');
     content.className = 'mission-loading-content';
@@ -31,9 +35,12 @@ export class MissionLoadingScreen {
     back.type = 'button';
     back.textContent = 'Back to missions';
     back.addEventListener('click', onBack);
-    // Keep Tab within the loading dialog's only interactive control.
-    back.addEventListener('keydown', (event) => {
-      if (event.key === 'Tab') event.preventDefault();
+    this.element_.addEventListener('keydown', (event) => {
+      if (event.key !== 'Tab') return;
+      const buttons = [...this.element_.querySelectorAll<HTMLButtonElement>('button')];
+      const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
+      event.preventDefault();
+      buttons[(index + (event.shiftKey ? buttons.length - 1 : 1)) % buttons.length]?.focus();
     });
     content.append(label, title, this.status_, back);
     this.element_.append(image, content);
@@ -42,14 +49,20 @@ export class MissionLoadingScreen {
   }
 
   async reveal(): Promise<void> {
-    if (typeof this.element_.animate === 'function' && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
-      await this.element_.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 240, easing: 'ease-out' }).finished.catch(() => {});
-    }
+    await fade(this.element_, 1, 0, true)?.finished.catch(() => {});
     this.dispose();
   }
 
   fail(): void {
-    this.status_.textContent = 'The station could not be prepared. Return to the mission list and try again.';
+    this.status_.textContent = 'Could not load your mission or saved progress. Check your connection and retry. Your save has not been replaced.';
+    if (!this.element_.querySelector('[data-retry]')) {
+      const retry = document.createElement('button');
+      retry.type = 'button';
+      retry.dataset.retry = '';
+      retry.textContent = 'Retry';
+      retry.onclick = () => window.location.reload();
+      this.status_.after(retry);
+    }
     if (!this.element_.isConnected) document.body.append(this.element_);
     this.element_.querySelector('button')?.focus({ preventScroll: true });
   }

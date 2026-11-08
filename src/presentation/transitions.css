@@ -1,0 +1,7 @@
+:root { --mc-interface-duration: 180ms; --mc-scene-duration: 240ms; }
+.game-menu[open], #level-complete-modal, #modal-profile { animation: mc-panel-enter var(--mc-interface-duration) ease-out; }
+@keyframes mc-panel-enter { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .game-menu[open], #level-complete-modal, #modal-profile { animation: none; }
+}
+.reduce-motion .game-menu[open], .reduce-motion #level-complete-modal, .reduce-motion #modal-profile { animation: none; }

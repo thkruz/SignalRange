@@ -1,4 +1,5 @@
 import { prefersReducedMotion } from '@app/game-menu/display-preferences';
+import { preloadArtwork, TRANSITION_MS } from '@app/presentation/transitions';
 
 /** Shared interaction for the two mission-library screens. */
 export function selectionKeyboard(event: KeyboardEvent): void {
@@ -42,6 +43,7 @@ export function updateSelectionDetail(detail: HTMLElement, markup: string): void
   template.innerHTML = markup;
   const oldImage = detail.querySelector('img');
   const nextImage = template.content.querySelector('img');
+  if (nextImage?.getAttribute('src')) preloadArtwork(nextImage.getAttribute('src')!);
   if (oldImage && nextImage && oldImage.getAttribute('src') === nextImage.getAttribute('src')) nextImage.replaceWith(oldImage);
   const briefingScroll = detail.querySelector('.selection-briefing')?.scrollTop ?? 0;
   const active = detail.contains(document.activeElement) ? (document.activeElement as HTMLElement) : null;
@@ -55,7 +57,7 @@ export function updateSelectionDetail(detail: HTMLElement, markup: string): void
 export function animateSelection(element: HTMLElement): void {
   if (typeof element.animate !== 'function' || prefersReducedMotion()) return;
   for (const animation of element.getAnimations()) animation.cancel();
-  element.animate([{ opacity: 0.25 }, { opacity: 1 }], { duration: 180, easing: 'ease-out' });
+  element.animate([{ opacity: 0.25 }, { opacity: 1 }], { duration: TRANSITION_MS.interface, easing: 'ease-out' });
 }
 
 let pendingExit: { page: HTMLElement; fade: Animation } | null = null;
@@ -71,13 +73,15 @@ export function cancelSelectionExit(): void {
 /** Fade a menu out before the router replaces it. No delay in reduced-motion mode. */
 export function leaveSelection(navigate: () => void): void {
   cancelSelectionExit();
-  const page = Array.from(document.querySelectorAll<HTMLElement>('.selection-page')).find((element) => element.style.display === 'flex');
+  const page =
+    Array.from(document.querySelectorAll<HTMLElement>('.selection-page')).find((element) => element.style.display === 'flex') ??
+    document.querySelector<HTMLElement>('#app-shell-page');
   if (!page || typeof page.animate !== 'function' || prefersReducedMotion()) {
     navigate();
     return;
   }
   page.inert = true;
-  const fade = page.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, easing: 'ease-in', fill: 'forwards' });
+  const fade = page.animate([{ opacity: 1 }, { opacity: 0 }], { duration: TRANSITION_MS.scene, easing: 'ease-out', fill: 'forwards' });
   pendingExit = { page, fade };
   void fade.finished
     .catch(() => {})

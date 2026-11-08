@@ -26,8 +26,9 @@ describe('mission loading screen', () => {
     const screen = new MissionLoadingScreen(scenario, vi.fn());
     await screen.reveal();
     screen.fail();
-    expect(document.querySelector('[role="status"]')?.textContent).toContain('could not be prepared');
-    expect(document.activeElement?.textContent).toBe('Back to missions');
+    expect(document.querySelector('[role="status"]')?.textContent).toContain('Your save has not been replaced');
+    expect(document.querySelector('[data-retry]')?.textContent).toBe('Retry');
+    expect(document.activeElement?.textContent).toBe('Retry');
     screen.dispose();
     expect(document.querySelector('.mission-loading-screen')).toBeNull();
   });

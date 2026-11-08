@@ -253,16 +253,20 @@ export class Receiver extends BaseEquipment {
     };
   }
 
+  private readonly reportedLocks_ = new Map<number, boolean>();
+
   update(): void {
     this.updateAfc_();
     // Run every powered modem's lock tracker each step, so acquisition time
     // accrues whether or not anything is looking at that modem
     for (const modem of this.state.modems) {
-      if (modem.isPowered) {
-        this.getSignalsInBandwidth(modem);
-      } else {
-        this.lockHistory_.delete(modem.modemNumber);
+      const locked = modem.isPowered && this.getSignalsInBandwidth(modem).hasLock;
+      const previous = this.reportedLocks_.get(modem.modemNumber);
+      this.reportedLocks_.set(modem.modemNumber, locked);
+      if (previous !== undefined && previous !== locked) {
+        this.emit(locked ? Events.RX_SIGNAL_FOUND : Events.RX_SIGNAL_LOST, { uuid: this.uuid, modem: modem.modemNumber });
       }
+      if (!modem.isPowered) this.lockHistory_.delete(modem.modemNumber);
     }
     this.checkForAlarms_();
     this.syncDomWithState();

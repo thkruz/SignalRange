@@ -13,7 +13,7 @@
   max-height: calc(100dvh - 40px);
   box-shadow: 0 20px 60px #0008;
 }
-.game-menu[open] { display: flex; flex-direction: column; animation: game-menu-enter 160ms ease-out; }
+.game-menu[open] { display: flex; flex-direction: column; animation: game-menu-enter var(--mc-interface-duration, 180ms) ease-out; }
 .game-menu::backdrop { background: #000a; }
 .game-menu-heading { display: flex; align-items: center; justify-content: space-between; padding: 22px 26px; border-bottom: 1px solid var(--mc-menu-border); }
 .game-menu-eyebrow { color: #c7c7c7; font-size: 12px; letter-spacing: .09em; text-transform: uppercase; }

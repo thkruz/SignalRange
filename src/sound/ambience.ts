@@ -1,3 +1,4 @@
+import { TRANSITION_MS } from '@app/presentation/transitions';
 import { AudioPreferences } from './audio-preferences';
 
 /**
@@ -73,7 +74,7 @@ export class Ambience {
     window.removeEventListener('pointerdown', this.boundUnlock_, true);
     window.removeEventListener('keydown', this.boundUnlock_, true);
     for (const layer of [...this.layers_.keys()]) {
-      this.fadeOutLayer_(layer, 0.6);
+      this.fadeOutLayer_(layer, TRANSITION_MS.audio / 1000);
     }
   }
 
@@ -102,7 +103,10 @@ export class Ambience {
     }
     inst.stop();
     inst.unsubscribePrefs_();
-    void inst.ctx_?.close().catch(() => undefined);
+    // Let the old room fade while the next scene builds its ambience.
+    setTimeout(() => {
+      void inst.ctx_?.close().catch(() => undefined);
+    }, TRANSITION_MS.audio + 50);
     Ambience.instance_ = null;
   }
 

@@ -1,4 +1,6 @@
 import { selectionText } from '@app/pages/selection-browser';
+import { Sfx } from '@app/sound/sfx-enum';
+import SoundManager from '@app/sound/sound-manager';
 import type { AchievementProgress } from './achievement-catalog';
 import { achievementBadge } from './profile-record';
 import './achievement-toast.css';
@@ -84,6 +86,7 @@ export class AchievementToast {
     toast.querySelector('button')!.onclick = () => this.dismiss_();
     this.current_ = toast;
     this.region_.append(toast);
+    SoundManager.getInstance().play(Sfx.ACHIEVEMENT);
     this.timer_ = setTimeout(() => this.dismiss_(), 6000);
   }
 

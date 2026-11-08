@@ -101,4 +101,20 @@ describe('SoundEvents alarm tones', () => {
     SoundEvents.setAlarmsMuted(false);
     expect(play).not.toHaveBeenCalled();
   });
+
+  it('plays equipment cues only after loading and leaves restored alarms silent', () => {
+    const bus = EventBus.getInstance();
+    SoundEvents.start();
+    bus.emit(Events.RX_SIGNAL_LOST, { uuid: 'rx', modem: 1 });
+    expect(play).not.toHaveBeenCalled();
+    SoundEvents.arm();
+    after(2000);
+    bus.emit(Events.ALARM_STATE_CHANGED, { alarms: [alarm('Carrier lock lost')], highestSeverity: 'error', restored: true });
+    raise(alarm('Carrier lock lost'));
+    expect(alarmTones()).toEqual([]);
+    bus.emit(Events.RX_SIGNAL_LOST, { uuid: 'rx', modem: 1 });
+    bus.emit(Events.AUDIT_EVENT_ACKNOWLEDGED, { id: 'event' });
+    bus.emit(Events.EQUIPMENT_ACTION, { message: 'HPA Power ON', system: 'RF FE', module: {} });
+    expect(play.mock.calls.map(([cue]) => cue)).toEqual([Sfx.STATIC_BURST, Sfx.ALARM_ACK, Sfx.HPA_WARMUP]);
+  });
 });

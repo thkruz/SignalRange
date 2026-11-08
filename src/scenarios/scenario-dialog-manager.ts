@@ -4,6 +4,7 @@ import { DialogManager } from '@app/modal/dialog-manager';
 import { CountdownHold } from '@app/objectives/countdown-hold';
 import type { DialogClip } from '@app/scenario-manager';
 import { ScenarioManager } from '@app/scenario-manager';
+import SoundManager from '@app/sound/sound-manager';
 
 export class ScenarioDialogManager {
   private static instance: ScenarioDialogManager;
@@ -44,6 +45,8 @@ export class ScenarioDialogManager {
   }
 
   private handleObjectiveActivated(data: ObjectiveActivatedData): void {
+    const completionClip = ScenarioManager.getInstance().data.dialogClips?.objectives?.[data.objectiveId];
+    if (completionClip?.audioUrl) SoundManager.getInstance().preloadVoice(completionClip.audioUrl);
     const clip = ScenarioManager.getInstance().data.dialogClips?.objectivesOnStart?.[data.objectiveId];
     if (clip) {
       this.scheduleClip_(clip, data.objectiveId);
@@ -56,6 +59,7 @@ export class ScenarioDialogManager {
    * through the wait too, or the clip eats the first half second of it.
    */
   private scheduleClip_(clip: DialogClip, objectiveId: string): void {
+    SoundManager.getInstance().preloadVoice(clip.audioUrl);
     const objective = ScenarioManager.getInstance().data.objectives?.find((obj) => obj.id === objectiveId);
     const title = objective?.title || objectiveId;
 

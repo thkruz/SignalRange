@@ -21,6 +21,8 @@ interface SfxDef {
 const sfx = (name: string): string => `/sfx/${name}.mp3`;
 const UI_SOUNDS = new Set([
   Sfx.UI_CLICK,
+  Sfx.UI_BACK,
+  Sfx.ACHIEVEMENT,
   Sfx.UI_CONFIRM,
   Sfx.UI_ERROR,
   Sfx.NOTIFY,
@@ -32,6 +34,13 @@ const UI_SOUNDS = new Set([
 ]);
 
 const SFX_DEFS: Record<Sfx, SfxDef> = {
+  [Sfx.UI_BACK]: { files: ['/sfx/ui-back.ogg'], volume: 0.45, throttleMs: 100 },
+  [Sfx.ACHIEVEMENT]: { files: ['/sfx/achievement.ogg'], volume: 0.45, throttleMs: 800 },
+  [Sfx.HPA_WARMUP]: { files: [sfx('hpa-warmup')], volume: 0.5, throttleMs: 1000, restart: true },
+  [Sfx.ON_TARGET]: { files: [sfx('on-target')], volume: 0.45, throttleMs: 1200 },
+  [Sfx.STATIC_BURST]: { files: [sfx('static-burst')], volume: 0.35, throttleMs: 3000 },
+  [Sfx.RAIN_ARRIVAL]: { files: [sfx('rain-arrival')], volume: 0.25, throttleMs: 5000 },
+  [Sfx.WAVEGUIDE]: { files: [sfx('waveguide')], volume: 0.5, throttleMs: 700 },
   [Sfx.POWER_ON]: { files: [sfx('power-on')], volume: 0.7, throttleMs: 0, restart: true },
   [Sfx.SWITCH]: { files: [sfx('switch')], volume: 0.6, throttleMs: 200 },
   [Sfx.TOGGLE_OFF]: { files: [sfx('toggle-off')], volume: 0.6, throttleMs: 150 },
@@ -76,6 +85,7 @@ class SoundManager {
   private readonly currentlyPlaying: Map<Sfx, HTMLAudioElement> = new Map();
   private customAudio: HTMLAudioElement | null = null;
   private readonly customAudioCache: Map<string, HTMLAudioElement> = new Map();
+  private readonly pendingAudio_ = new Map<string, Promise<HTMLAudioElement>>();
   private ttsEnabled_: boolean = false;
   private menuPaused_ = false;
   private customGeneration_ = 0;
@@ -267,7 +277,9 @@ class SoundManager {
   }
 
   private loadAudio_(audioUrl: string): Promise<HTMLAudioElement> {
-    return new Promise((resolve, reject) => {
+    const pending = this.pendingAudio_.get(audioUrl);
+    if (pending) return pending.then((audio) => audio.cloneNode(true) as HTMLAudioElement);
+    const loading = new Promise<HTMLAudioElement>((resolve, reject) => {
       // Check cache first
       const cached = this.customAudioCache.get(audioUrl);
       if (cached) {
@@ -291,15 +303,25 @@ class SoundManager {
       };
 
       const cleanup = () => {
+        clearTimeout(timeout);
         audio.removeEventListener('canplaythrough', handleCanPlay);
         audio.removeEventListener('error', handleError);
       };
 
       audio.addEventListener('canplaythrough', handleCanPlay, { once: true });
       audio.addEventListener('error', handleError, { once: true });
+      const timeout = setTimeout(handleError, 15_000);
       audio.src = audioUrl;
       audio.load();
     });
+    this.pendingAudio_.set(audioUrl, loading);
+    void loading.finally(() => this.pendingAudio_.delete(audioUrl)).catch(() => {});
+    return loading;
+  }
+
+  /** Warm the existing voice cache without starting speech or fallback TTS. */
+  preloadVoice(audioUrl: string): void {
+    if (audioUrl && !this.customAudioCache.has(audioUrl)) void this.loadAudio_(audioUrl).catch(() => {});
   }
 
   private tryTtsFallback_(text?: string, onTtsFallback?: (isTts: boolean) => void): void {

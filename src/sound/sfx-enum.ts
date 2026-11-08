@@ -23,6 +23,13 @@ export enum Sfx {
   FAN_SPINDOWN = 'fan-spindown',
   // Scenario and UI feedback
   UI_CLICK = 'ui-click',
+  UI_BACK = 'ui-back',
+  ACHIEVEMENT = 'achievement',
+  HPA_WARMUP = 'hpa-warmup',
+  ON_TARGET = 'on-target',
+  STATIC_BURST = 'static-burst',
+  RAIN_ARRIVAL = 'rain-arrival',
+  WAVEGUIDE = 'waveguide',
   UI_CONFIRM = 'ui-confirm',
   UI_ERROR = 'ui-error',
   NOTIFY = 'notify',

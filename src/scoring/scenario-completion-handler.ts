@@ -11,6 +11,7 @@ import { ObjectivesManager } from '@app/objectives';
 import { Router } from '@app/router';
 import { ScenarioManager } from '@app/scenario-manager';
 import { ScenarioDialogManager } from '@app/scenarios/scenario-dialog-manager';
+import { notifySavedAchievements } from '@app/user-account/achievement-notifications';
 import { Auth } from '@app/user-account/auth';
 import { getUserDataService } from '@app/user-account/user-data-service';
 import { ScoreBreakdown, ScoreCalculator } from './score-calculator';
@@ -310,6 +311,7 @@ export class ScenarioCompletionHandler {
       });
 
       Logger.info(`Score saved for scenario ${scenarioId}: ${score.totalScore}`);
+      void notifySavedAchievements();
     } catch (error) {
       Logger.error('Failed to save score:', error);
     }

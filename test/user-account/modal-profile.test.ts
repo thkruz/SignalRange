@@ -1,488 +1,180 @@
-// Mock all dependencies before imports
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const mocks = vi.hoisted(() => ({
+  session: vi.fn(),
+  progress: vi.fn(),
+  authChanged: vi.fn(),
+  signOut: vi.fn(),
+  confirm: vi.fn(),
+  deleteAll: vi.fn(),
+}));
 vi.mock('@app/engine/ui/draggable-modal', () => ({
-  DraggableModal: class MockDraggableModal {
+  DraggableModal: class {
     protected boxEl: HTMLElement | null = null;
-    constructor(_id: string, _options?: unknown) {}
+    protected getModalContentHtml(): string {
+      return '';
+    }
     protected onOpen(): void {}
     open(): void {
-      this.onOpen();
+      if (!this.boxEl) {
+        this.boxEl = document.createElement('div');
+        this.boxEl.id = 'modal-profile-container';
+        this.boxEl.innerHTML = `<div id="modal-profile"><span id="modal-profile-close"></span>${this.getModalContentHtml()}</div>`;
+        document.body.append(this.boxEl);
+        this.onOpen();
+      }
+      this.boxEl.style.display = 'block';
     }
-    close(): void {}
+    close(): void {
+      if (this.boxEl) this.boxEl.style.display = 'none';
+    }
   },
 }));
-
-vi.mock('@app/engine/ui/modal-confirm', () => ({
-  ModalConfirm: {
-    getInstance: () => ({ open: vi.fn() }),
-  },
-}));
-
-vi.mock('@app/engine/utils/development/formatter', () => ({
-  html: (strings: TemplateStringsArray, ...values: unknown[]) => strings.reduce((result, str, i) => result + str + (values[i] ?? ''), ''),
-}));
-
-vi.mock('@app/engine/utils/errorManager', () => ({
-  errorManagerInstance: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
-}));
-
-vi.mock('@app/sound/sound-manager', () => ({
-  default: { getInstance: () => ({ play: vi.fn() }) },
-}));
-
-vi.mock('@app/sound/sfx-enum', () => ({
-  Sfx: { TOGGLE_OFF: 'TOGGLE_OFF' },
-}));
-
-vi.mock('@app/sync/storage', () => ({
-  syncManager: { clearStorage: vi.fn() },
-}));
-
-vi.mock('@app/user-account/auth', () => ({
-  Auth: {
-    getCurrentUser: vi.fn(),
-    getUserProfile: vi.fn(),
-    signOut: vi.fn(),
-  },
-}));
-
-vi.mock('@app/user-account/user-data-service', () => ({
-  getUserDataService: () => ({
-    getAllScenariosProgress: vi.fn().mockResolvedValue({
-      summary: { totalScore: 0, completedScenarioCount: 0 },
+vi.mock('@app/engine/ui/modal-confirm', () => ({ ModalConfirm: { getInstance: () => ({ open: mocks.confirm }) } }));
+vi.mock('@app/engine/utils/errorManager', () => ({ errorManagerInstance: { error: vi.fn() } }));
+vi.mock('@app/sync/storage', () => ({ syncManager: { clearStorage: vi.fn() } }));
+vi.mock('@app/user-account/auth', () => ({ Auth: { initializeAuth: mocks.session, onAuthStateChange: mocks.authChanged, signOut: mocks.signOut } }));
+vi.mock('@app/user-account/selection-progress-cache', () => ({ selectionProgressCache: { getProgress: mocks.progress } }));
+vi.mock('@app/user-account/user-data-service', () => ({ getUserDataService: () => ({ deleteAllProgress: mocks.deleteAll }) }));
+vi.mock('@app/campaigns/campaign-manager', () => ({
+  CampaignManager: {
+    getInstance: () => ({
+      getAllCampaigns: () => [
+        {
+          id: 'sample',
+          title: 'Sample campaign',
+          scenarios: [{ id: 'sample-1', number: 1, title: 'First mission', missionType: 'Operations' }],
+        },
+      ],
     }),
-    deleteAllProgress: vi.fn(),
-  }),
+  },
 }));
 
-import { Mock, vi } from 'vitest';
 import { ModalProfile } from '../../src/user-account/modal-profile';
 
-describe('ModalProfile', () => {
+const user = { id: 'player-a', email: 'operator@example.test', created_at: '2025-02-01T12:00:00Z', user_metadata: { name: 'Test Operator' } };
+const progress = {
+  summary: { totalScore: 1500, completedScenarioCount: 1 },
+  scenarios: [
+    {
+      scenarioId: 'sample-1',
+      completedAt: '2026-01-02T12:00:00Z',
+      lastPlayed: '2026-01-02T12:00:00Z',
+      score: 1500,
+      quizPenalties: 0,
+      timePenalties: 0,
+    },
+  ],
+};
+const el = (id: string): HTMLElement => document.getElementById(id)!;
+const ready = async (): Promise<void> => {
+  await vi.waitFor(() => expect(el('profile-panels').hidden).toBe(false));
+};
+
+describe('operator profile', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    // Reset singleton between tests
+    vi.resetAllMocks();
+    document.body.innerHTML = '<button id="opener">Profile</button>';
     (ModalProfile as unknown as { instance_: null }).instance_ = null;
+    mocks.session.mockResolvedValue(user);
+    mocks.progress.mockResolvedValue(progress);
+    mocks.signOut.mockResolvedValue({ error: null });
   });
 
-  describe('getInstance', () => {
-    it('should return singleton instance', () => {
-      const instance1 = ModalProfile.getInstance();
-      const instance2 = ModalProfile.getInstance();
-      expect(instance1).toBe(instance2);
-    });
-
-    it('should throw when using new after getInstance', () => {
-      ModalProfile.getInstance();
-      expect(() => new (ModalProfile as unknown as new () => ModalProfile)()).toThrow('Use getInstance() instead of new.');
-    });
+  it('loads cached progress into the service record and real achievements', async () => {
+    ModalProfile.getInstance().open();
+    await ready();
+    expect(el('profile-score').textContent).toBe('1,500');
+    expect(el('profile-name').textContent).toBe('Test Operator');
+    expect(el('profile-panel-record').textContent).toContain('1 of 1 missions completed');
+    expect(el('profile-earned').textContent).toBe('3 / 6');
+    expect(el('profile-achievements').textContent).not.toContain('Coming Soon');
+    expect(mocks.progress).toHaveBeenCalledTimes(1);
+    expect(mocks.session).toHaveBeenCalledTimes(1);
   });
 
-  describe('getModalContentHtml', () => {
-    it('should render profile name field', () => {
-      const modal = ModalProfile.getInstance();
-      const html = (modal as unknown as { getModalContentHtml: () => string }).getModalContentHtml();
-
-      expect(html).toContain('profile-name');
-      expect(html).toContain('Name');
-    });
-
-    it('should render profile email field', () => {
-      const modal = ModalProfile.getInstance();
-      const html = (modal as unknown as { getModalContentHtml: () => string }).getModalContentHtml();
-
-      expect(html).toContain('profile-email');
-      expect(html).toContain('Email');
-    });
-
-    it('should render stats grid', () => {
-      const modal = ModalProfile.getInstance();
-      const html = (modal as unknown as { getModalContentHtml: () => string }).getModalContentHtml();
-
-      expect(html).toContain('profile-score');
-      expect(html).toContain('profile-completed');
-      expect(html).toContain('Total Score');
-      expect(html).toContain('Completed');
-    });
-
-    it('should render logout button', () => {
-      const modal = ModalProfile.getInstance();
-      const html = (modal as unknown as { getModalContentHtml: () => string }).getModalContentHtml();
-
-      expect(html).toContain('logout-btn');
-      expect(html).toContain('Logout');
-    });
-
-    it('should render clear progress button', () => {
-      const modal = ModalProfile.getInstance();
-      const html = (modal as unknown as { getModalContentHtml: () => string }).getModalContentHtml();
-
-      expect(html).toContain('clear-progress-btn');
-      expect(html).toContain('Clear Progress');
-    });
-
-    it('should render achievements section', () => {
-      const modal = ModalProfile.getInstance();
-      const html = (modal as unknown as { getModalContentHtml: () => string }).getModalContentHtml();
-
-      expect(html).toContain('Achievements');
-      expect(html).toContain('Coming Soon');
-      expect(html).toContain('achievement-tile');
-    });
-
-    it('should render 15 achievement placeholders', () => {
-      const modal = ModalProfile.getInstance();
-      const html = (modal as unknown as { getModalContentHtml: () => string }).getModalContentHtml();
-
-      const placeholderCount = (html.match(/achievement-tile--placeholder/g) || []).length;
-      expect(placeholderCount).toBe(15);
-    });
+  it('keeps old values hidden during refresh and refreshes on reopening', async () => {
+    const modal = ModalProfile.getInstance();
+    modal.open();
+    await ready();
+    modal.close();
+    let resolve!: (value: typeof progress) => void;
+    mocks.progress.mockReturnValueOnce(
+      new Promise((done) => {
+        resolve = done;
+      })
+    );
+    modal.open();
+    expect(el('profile-panels').hidden).toBe(true);
+    expect(el('profile-score').textContent).toBe('—');
+    resolve({ ...progress, summary: { totalScore: 2000, completedScenarioCount: 1 } });
+    await ready();
+    expect(el('profile-score').textContent).toBe('2,000');
   });
 
-  describe('default state', () => {
-    it('should initialize with empty userName', () => {
-      const modal = ModalProfile.getInstance();
-      const userName = (modal as unknown as { userName: string }).userName;
-      expect(userName).toBe('');
-    });
-
-    it('should initialize with empty userEmail', () => {
-      const modal = ModalProfile.getInstance();
-      const userEmail = (modal as unknown as { userEmail: string }).userEmail;
-      expect(userEmail).toBe('');
-    });
+  it('shows a retry after a failed download without presenting zero achievements', async () => {
+    mocks.progress.mockRejectedValueOnce(new Error('Offline'));
+    ModalProfile.getInstance().open();
+    await vi.waitFor(() => expect(el('profile-retry').hidden).toBe(false));
+    expect(el('profile-panels').hidden).toBe(true);
+    expect(el('profile-earned').textContent).toBe('—');
+    el('profile-retry').click();
+    await ready();
+    expect(el('profile-earned').textContent).toBe('3 / 6');
   });
 
-  describe('modal configuration', () => {
-    it('should have correct modal id', () => {
-      expect((ModalProfile as unknown as { id: string }).id).toBe('modal-profile');
-    });
-
-    it('should have 600px width', () => {
-      const modal = ModalProfile.getInstance();
-      const width = (modal as unknown as { width: string }).width;
-      expect(width).toBe('600px');
-    });
+  it('supports keyboard tabs, achievement filters, Escape, and focus return', async () => {
+    el('opener').focus();
+    ModalProfile.getInstance().open();
+    await ready();
+    el('profile-tab-record').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    expect(document.activeElement).toBe(el('profile-tab-achievements'));
+    expect(el('profile-panel-record').hidden).toBe(true);
+    expect(el('profile-tab-achievements').getAttribute('aria-selected')).toBe('true');
+    document.querySelector<HTMLButtonElement>('[data-achievement-filter="locked"]')!.click();
+    expect(el('profile-achievements').querySelectorAll('.profile-award--earned')).toHaveLength(0);
+    el('profile-tab-achievements').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(el('modal-profile-container').style.display).toBe('none');
+    expect(document.activeElement).toBe(el('opener'));
   });
 
-  describe('loadUserProfile', () => {
-    let modal: ModalProfile;
-    let mockAuth: { getCurrentUser: Mock; getUserProfile: Mock };
-
-    beforeEach(async () => {
-      vi.resetModules();
-      mockAuth = {
-        getCurrentUser: vi.fn(),
-        getUserProfile: vi.fn(),
-      };
-
-      vi.doMock('@app/user-account/auth', () => ({
-        Auth: mockAuth,
-      }));
-
-      const { ModalProfile: MP } = await import('../../src/user-account/modal-profile');
-      (MP as any).instance_ = null;
-      modal = MP.getInstance();
-      (modal as any).boxEl = document.createElement('div');
-      (modal as any).boxEl.innerHTML = `
-        <p id="profile-email">Loading...</p>
-        <p id="profile-name">Not set</p>
-      `;
-    });
-
-    it('should update DOM with user email and name', async () => {
-      mockAuth.getCurrentUser.mockResolvedValue({
-        email: 'test@example.com',
-        user_metadata: { name: 'Test User' },
-      });
-      mockAuth.getUserProfile.mockResolvedValue({ full_name: 'Full Name' });
-
-      await (modal as any).loadUserProfile();
-
-      expect((modal as any).boxEl.querySelector('#profile-email').textContent).toBe('test@example.com');
-      expect((modal as any).boxEl.querySelector('#profile-name').textContent).toBe('Full Name');
-    });
-
-    it('should use user_metadata name when full_name not available', async () => {
-      mockAuth.getCurrentUser.mockResolvedValue({
-        email: 'test@example.com',
-        user_metadata: { name: 'Metadata Name' },
-      });
-      mockAuth.getUserProfile.mockResolvedValue({});
-
-      await (modal as any).loadUserProfile();
-
-      expect((modal as any).boxEl.querySelector('#profile-name').textContent).toBe('Metadata Name');
-    });
-
-    it('should set "Not set" when no name available', async () => {
-      mockAuth.getCurrentUser.mockResolvedValue({
-        email: 'test@example.com',
-        user_metadata: {},
-      });
-      mockAuth.getUserProfile.mockResolvedValue({});
-
-      await (modal as any).loadUserProfile();
-
-      expect((modal as any).boxEl.querySelector('#profile-name').textContent).toBe('Not set');
-    });
-
-    it('should set "Unknown" when no email available', async () => {
-      mockAuth.getCurrentUser.mockResolvedValue({
-        email: null,
-        user_metadata: {},
-      });
-      mockAuth.getUserProfile.mockResolvedValue({});
-
-      await (modal as any).loadUserProfile();
-
-      expect((modal as any).boxEl.querySelector('#profile-email').textContent).toBe('Unknown');
-    });
-
-    it('should handle null user gracefully', async () => {
-      mockAuth.getCurrentUser.mockResolvedValue(null);
-      mockAuth.getUserProfile.mockResolvedValue(null);
-
-      await (modal as any).loadUserProfile();
-
-      // Should not throw, and DOM should remain unchanged
-      expect((modal as any).boxEl.querySelector('#profile-email').textContent).toBe('Loading...');
-    });
-
-    it('should handle errors gracefully', async () => {
-      mockAuth.getCurrentUser.mockRejectedValue(new Error('Network error'));
-
-      await expect((modal as any).loadUserProfile()).resolves.not.toThrow();
-    });
+  it('does not render a late response after logout or an account switch', async () => {
+    let resolve!: (value: typeof progress) => void;
+    mocks.progress.mockReturnValue(
+      new Promise((done) => {
+        resolve = done;
+      })
+    );
+    ModalProfile.getInstance().open();
+    mocks.authChanged.mock.calls[0][0]('SIGNED_OUT', null);
+    resolve(progress);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(el('modal-profile-container').style.display).toBe('none');
+    expect(el('profile-name').textContent).not.toBe('Test Operator');
   });
 
-  describe('loadProgressStats', () => {
-    let modal: ModalProfile;
-    let mockUserDataService: { getAllScenariosProgress: Mock };
-
-    beforeEach(async () => {
-      vi.resetModules();
-      mockUserDataService = {
-        getAllScenariosProgress: vi.fn(),
-      };
-
-      vi.doMock('@app/user-account/user-data-service', () => ({
-        getUserDataService: () => mockUserDataService,
-      }));
-
-      const { ModalProfile: MP } = await import('../../src/user-account/modal-profile');
-      (MP as any).instance_ = null;
-      modal = MP.getInstance();
-      (modal as any).boxEl = document.createElement('div');
-      (modal as any).boxEl.innerHTML = `
-        <span id="profile-score">--</span>
-        <span id="profile-completed">--</span>
-      `;
-    });
-
-    it('should update stats from user data service', async () => {
-      mockUserDataService.getAllScenariosProgress.mockResolvedValue({
-        summary: { totalScore: 12500, completedScenarioCount: 5 },
-      });
-
-      await (modal as any).loadProgressStats();
-
-      expect((modal as any).boxEl.querySelector('#profile-score').textContent).toBe('12,500');
-      expect((modal as any).boxEl.querySelector('#profile-completed').textContent).toBe('5 scenarios');
-    });
-
-    it('should handle zero stats', async () => {
-      mockUserDataService.getAllScenariosProgress.mockResolvedValue({
-        summary: { totalScore: 0, completedScenarioCount: 0 },
-      });
-
-      await (modal as any).loadProgressStats();
-
-      expect((modal as any).boxEl.querySelector('#profile-score').textContent).toBe('0');
-      expect((modal as any).boxEl.querySelector('#profile-completed').textContent).toBe('0 scenarios');
-    });
-
-    it('should silently fail on error', async () => {
-      mockUserDataService.getAllScenariosProgress.mockRejectedValue(new Error('API error'));
-
-      await expect((modal as any).loadProgressStats()).resolves.not.toThrow();
-      // Stats should remain unchanged
-      expect((modal as any).boxEl.querySelector('#profile-score').textContent).toBe('--');
-    });
+  it('renders account metadata as text rather than HTML', async () => {
+    mocks.session.mockResolvedValue({ ...user, user_metadata: { name: '<img src=x onerror=alert(1)>' } });
+    ModalProfile.getInstance().open();
+    await ready();
+    expect(el('profile-name').querySelector('img')).toBeNull();
+    expect(el('profile-name').textContent).toContain('<img');
   });
 
-  describe('handleLogout', () => {
-    it('should exist as a method on the modal', () => {
-      const modal = ModalProfile.getInstance();
-      expect(typeof (modal as any).handleLogout).toBe('function');
-    });
-
-    it('should not throw when called', async () => {
-      const modal = ModalProfile.getInstance();
-      // The method should handle errors gracefully
-      await expect((modal as any).handleLogout()).resolves.not.toThrow();
-    });
+  it('requires the existing destructive confirmation before deleting progress', async () => {
+    ModalProfile.getInstance().open();
+    await ready();
+    el('clear-progress-btn').click();
+    expect(mocks.confirm).toHaveBeenCalledWith(expect.any(Function), expect.objectContaining({ isDestructive: true, title: 'Clear All Progress?' }));
+    expect(mocks.deleteAll).not.toHaveBeenCalled();
   });
 
-  describe('handleClearProgress', () => {
-    let modal: ModalProfile;
-    let mockConfirmModal: { open: Mock };
-
-    beforeEach(async () => {
-      vi.resetModules();
-      mockConfirmModal = { open: vi.fn() };
-
-      vi.doMock('@app/engine/ui/modal-confirm', () => ({
-        ModalConfirm: {
-          getInstance: () => mockConfirmModal,
-        },
-      }));
-
-      const { ModalProfile: MP } = await import('../../src/user-account/modal-profile');
-      (MP as any).instance_ = null;
-      modal = MP.getInstance();
-    });
-
-    it('should open confirmation modal with correct options', () => {
-      (modal as any).handleClearProgress();
-
-      expect(mockConfirmModal.open).toHaveBeenCalledWith(
-        expect.any(Function),
-        expect.objectContaining({
-          title: 'Clear All Progress?',
-          confirmText: 'Clear Progress',
-          cancelText: 'Cancel',
-          isDestructive: true,
-        })
-      );
-    });
-
-    it('should include warning message about data loss', () => {
-      (modal as any).handleClearProgress();
-
-      const options = mockConfirmModal.open.mock.calls[0][1];
-      expect(options.message).toContain('cannot be undone');
-      expect(options.message).toContain('delete all your saved checkpoints');
-    });
-  });
-
-  describe('performClearProgress', () => {
-    it('should exist as a method on the modal', () => {
-      const modal = ModalProfile.getInstance();
-      expect(typeof (modal as any).performClearProgress).toBe('function');
-    });
-
-    it('should not throw when called (errors are caught internally)', async () => {
-      const modal = ModalProfile.getInstance();
-      // The method catches all errors internally and logs them
-      await expect((modal as any).performClearProgress()).resolves.not.toThrow();
-    });
-  });
-
-  describe('initializeButtons', () => {
-    let modal: ModalProfile;
-    let mockHandleLogout: Mock;
-    let mockHandleClearProgress: Mock;
-
-    beforeEach(() => {
-      modal = ModalProfile.getInstance();
-      mockHandleLogout = vi.fn();
-      mockHandleClearProgress = vi.fn();
-      (modal as any).handleLogout = mockHandleLogout;
-      (modal as any).handleClearProgress = mockHandleClearProgress;
-
-      (modal as any).boxEl = document.createElement('div');
-      (modal as any).boxEl.innerHTML = `
-        <button id="logout-btn">Logout</button>
-        <button id="clear-progress-btn">Clear Progress</button>
-      `;
-    });
-
-    it('should attach click handler to logout button', () => {
-      (modal as any).initializeButtons();
-
-      const logoutBtn = (modal as any).boxEl.querySelector('#logout-btn');
-      logoutBtn.click();
-
-      expect(mockHandleLogout).toHaveBeenCalled();
-    });
-
-    it('should attach click handler to clear progress button', () => {
-      (modal as any).initializeButtons();
-
-      const clearBtn = (modal as any).boxEl.querySelector('#clear-progress-btn');
-      clearBtn.click();
-
-      expect(mockHandleClearProgress).toHaveBeenCalled();
-    });
-
-    it('should handle missing buttons gracefully', () => {
-      (modal as any).boxEl = document.createElement('div');
-
-      expect(() => (modal as any).initializeButtons()).not.toThrow();
-    });
-  });
-
-  describe('profile name fallback chain', () => {
-    let modal: ModalProfile;
-    let mockAuth: { getCurrentUser: Mock; getUserProfile: Mock };
-
-    beforeEach(async () => {
-      vi.resetModules();
-      mockAuth = {
-        getCurrentUser: vi.fn(),
-        getUserProfile: vi.fn(),
-      };
-
-      vi.doMock('@app/user-account/auth', () => ({
-        Auth: mockAuth,
-      }));
-
-      const { ModalProfile: MP } = await import('../../src/user-account/modal-profile');
-      (MP as any).instance_ = null;
-      modal = MP.getInstance();
-      (modal as any).boxEl = document.createElement('div');
-      (modal as any).boxEl.innerHTML = `<p id="profile-name">Not set</p>`;
-    });
-
-    it('should prefer full_name from profile', async () => {
-      mockAuth.getCurrentUser.mockResolvedValue({
-        email: 'test@example.com',
-        user_metadata: { name: 'Metadata Name' },
-      });
-      mockAuth.getUserProfile.mockResolvedValue({
-        full_name: 'Full Name',
-        name: 'Profile Name',
-      });
-
-      await (modal as any).loadUserProfile();
-
-      expect((modal as any).boxEl.querySelector('#profile-name').textContent).toBe('Full Name');
-    });
-
-    it('should fallback to name from profile', async () => {
-      mockAuth.getCurrentUser.mockResolvedValue({
-        email: 'test@example.com',
-        user_metadata: { name: 'Metadata Name' },
-      });
-      mockAuth.getUserProfile.mockResolvedValue({
-        name: 'Profile Name',
-      });
-
-      await (modal as any).loadUserProfile();
-
-      expect((modal as any).boxEl.querySelector('#profile-name').textContent).toBe('Profile Name');
-    });
-
-    it('should fallback to user_metadata name', async () => {
-      mockAuth.getCurrentUser.mockResolvedValue({
-        email: 'test@example.com',
-        user_metadata: { name: 'Metadata Name' },
-      });
-      mockAuth.getUserProfile.mockResolvedValue({});
-
-      await (modal as any).loadUserProfile();
-
-      expect((modal as any).boxEl.querySelector('#profile-name').textContent).toBe('Metadata Name');
-    });
+  it('signs out and closes the profile', async () => {
+    ModalProfile.getInstance().open();
+    await ready();
+    el('logout-btn').click();
+    await vi.waitFor(() => expect(el('modal-profile-container').style.display).toBe('none'));
+    expect(mocks.signOut).toHaveBeenCalledTimes(1);
   });
 });

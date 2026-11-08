@@ -41,6 +41,10 @@ const ASSET_DIRS = [
     localDir: path.join(__dirname, '..', 'public', 'assets', 'characters'),
     r2Prefix: 'assets/characters',
   },
+  {
+    localDir: path.join(__dirname, '..', 'public', 'assets', 'achievements'),
+    r2Prefix: 'assets/achievements',
+  },
 ];
 
 // Parse command line arguments

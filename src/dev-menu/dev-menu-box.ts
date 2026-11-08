@@ -3,6 +3,7 @@
  * @description Draggable box providing dev tools: auto-skip dialogs, complete objective, set timer
  */
 
+import { CampaignManager } from '@app/campaigns/campaign-manager';
 import { DraggableBox } from '@app/engine/ui/draggable-box';
 import { html } from '@app/engine/utils/development/formatter';
 import { getEl, showEl } from '@app/engine/utils/get-el';
@@ -12,6 +13,8 @@ import { Header } from '@app/pages/layout/header/header';
 import { ScenarioSelectionPage } from '@app/pages/scenario-selection';
 import { PluginManager } from '@app/plugins/plugin-manager';
 import { SettingsManager } from '@app/settings/settings-manager';
+import { achievementCatalog } from '@app/user-account/achievement-catalog';
+import { achievementToast } from '@app/user-account/achievement-toast';
 import './dev-menu.css';
 
 declare global {
@@ -96,6 +99,16 @@ export class DevMenuBox extends DraggableBox {
           <button id="dev-uncomplete-objective" class="btn btn-warning w-100">
             Uncomplete Last Objective
           </button>
+        </div>
+        <div class="dev-menu__section">
+          <label class="form-label" for="dev-achievement-style">Achievement style</label>
+          <select id="dev-achievement-style" class="form-select mb-2">
+            <option value="compact" ${achievementToast.style === 'compact' ? 'selected' : ''}>Compact (Steam-style)</option>
+            <option value="card" ${achievementToast.style === 'card' ? 'selected' : ''}>Detailed card (original)</option>
+          </select>
+          <label class="form-label" for="dev-achievement-id">Achievement to preview</label>
+          <select id="dev-achievement-id" class="form-select mb-2"></select>
+          <button id="dev-test-achievement" type="button" class="btn btn-secondary w-100">Test achievement</button>
         </div>
         <div class="dev-menu__section">
           <label class="form-label">Mission Timer (seconds)</label>
@@ -186,6 +199,16 @@ export class DevMenuBox extends DraggableBox {
   }
 
   private setupEventListeners_(): void {
+    document.getElementById('dev-achievement-style')?.addEventListener('change', (event) => {
+      achievementToast.setStyle((event.target as HTMLSelectElement).value === 'card' ? 'card' : 'compact');
+    });
+    const achievementPicker = document.getElementById('dev-achievement-id') as HTMLSelectElement;
+    const catalog = achievementCatalog(CampaignManager.getInstance().getAllCampaigns());
+    for (const achievement of catalog) achievementPicker.add(new Option(`${achievement.category} / ${achievement.title}`, achievement.id));
+    document.getElementById('dev-test-achievement')?.addEventListener('click', () => {
+      const achievement = catalog.find((entry) => entry.id === achievementPicker.value);
+      if (achievement) achievementToast.showTest(achievement);
+    });
     // Cache DOM elements
     const autoSkipToggle = getEl('dev-auto-skip') as HTMLInputElement;
     const unlockScenariosToggle = getEl('dev-unlock-scenarios') as HTMLInputElement;
@@ -374,6 +397,8 @@ export class DevMenuBox extends DraggableBox {
     }
 
     showEl(this.boxEl);
+    const achievementStyle = this.boxEl.querySelector<HTMLSelectElement>('#dev-achievement-style');
+    if (achievementStyle) achievementStyle.value = achievementToast.style;
 
     if (this.width) {
       this.boxEl.style.minWidth = this.width;

@@ -810,7 +810,7 @@ export const scenario11Data: ScenarioData = {
       id: 'log-handover-entry',
       nice: ['K0645', 'T0129'],
       title: 'Log the Handover',
-      description: 'Type the handover into the Operations Log (log icon in the station sidebar): who has TM-1 now and the state VT-01 is left in.',
+      description: 'In one or more Operations Log entries (log icon in the station sidebar), record who now has TM-1 and the state VT-01 is left in.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['vt-final-rf-safety-check'],
       timeLimitSeconds: 2 * 60,
@@ -819,7 +819,7 @@ export const scenario11Data: ScenarioData = {
         {
           type: 'ops-log-entry',
           description: 'Handover Typed in Ops Log',
-          params: { logKeywords: ['me-02|maine', 'safe|maintenance'], logMinLength: 20 },
+          params: { logKeywords: ['me-02|maine', 'safe|maintenance|parked|stow|offline|out of service'], logMinLength: 20 },
           mustMaintain: false,
         },
       ],

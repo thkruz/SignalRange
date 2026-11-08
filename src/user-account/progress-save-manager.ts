@@ -3,11 +3,14 @@ import { Events } from '@app/events/events';
 import { Logger } from '@app/logging/logger';
 import { SaveProgressToast } from '@app/modal/save-progress-toast';
 import { ScenarioManager } from '@app/scenario-manager';
+import { SimClock } from '@app/simulation/sim-clock';
 import { type AppState, syncManager } from '@app/sync/storage';
 import packageJson from '../../package.json';
 import { Auth } from './auth';
+import { checkpointRecovery } from './checkpoint-recovery';
 import { ReplaySession } from './replay-session';
 import { selectionProgressCache } from './selection-progress-cache';
+import type { Checkpoint } from './types';
 import { getUserDataService } from './user-data-service';
 
 /**
@@ -21,7 +24,22 @@ export class ProgressSaveManager {
   private readonly userDataService = getUserDataService();
   private isInitialized = false;
   private isSaving = false;
-  private pendingSave_: Promise<void> = Promise.resolve();
+  private static pendingSave_: Promise<void> = Promise.resolve();
+  private static lastCaptureMs_ = 0;
+  private accountId_: string | null = null;
+  private interval_: ReturnType<typeof setInterval> | null = null;
+  private completed_ = false;
+  private readonly boundObjective_ = this.handleObjectiveCompleted.bind(this);
+  private readonly boundComplete_ = this.handleAllObjectiveCompleted.bind(this);
+  private readonly boundOnline_ = (): void => {
+    void this.retrySave().catch(() => {});
+  };
+  private readonly boundPageHide_ = (): void => {
+    this.captureRecovery_();
+  };
+  private readonly boundVisibility_ = (): void => {
+    if (document.hidden) this.captureRecovery_();
+  };
 
   constructor() {
     this.eventBus = EventBus.getInstance();
@@ -38,8 +56,17 @@ export class ProgressSaveManager {
     }
 
     // Listen for objective completions
-    this.eventBus.on(Events.OBJECTIVE_COMPLETED, this.handleObjectiveCompleted.bind(this));
-    this.eventBus.on(Events.OBJECTIVES_ALL_COMPLETED, this.handleAllObjectiveCompleted.bind(this));
+    this.eventBus.on(Events.OBJECTIVE_COMPLETED, this.boundObjective_);
+    this.eventBus.on(Events.OBJECTIVES_ALL_COMPLETED, this.boundComplete_);
+    void Auth.getSession().then((session) => {
+      if (this.isInitialized) this.accountId_ = session?.user?.id ?? null;
+    });
+    window.addEventListener('online', this.boundOnline_);
+    window.addEventListener('pagehide', this.boundPageHide_);
+    document.addEventListener('visibilitychange', this.boundVisibility_);
+    this.interval_ = setInterval(() => {
+      if (!this.completed_ && !this.isSaving && !document.hidden && !SimClock.isPaused('menu')) void this.handleObjectiveCompleted();
+    }, 30_000);
 
     this.isInitialized = true;
     Logger.info('ProgressSaveManager initialized');
@@ -49,19 +76,7 @@ export class ProgressSaveManager {
    * Handle objective completed event
    */
   private async handleObjectiveCompleted(): Promise<void> {
-    // Prevent concurrent saves
-    if (this.isSaving) {
-      Logger.warn('Already saving progress, skipping...');
-      return;
-    }
-
-    // Checkpoints only exist server-side; a signed-out session has nowhere to
-    // put one (and would otherwise toast a save error on every objective)
-    if (!(await Auth.getSession())) {
-      Logger.info('Skipping checkpoint save - not signed in');
-      return;
-    }
-
+    if (SimClock.isPaused('loading')) return;
     // A replayed player save must never overwrite the developer's own checkpoint
     if (ReplaySession.isActive()) {
       Logger.info('Skipping checkpoint save - replay session');
@@ -79,6 +94,7 @@ export class ProgressSaveManager {
   }
 
   private async handleAllObjectiveCompleted(): Promise<void> {
+    this.completed_ = true;
     // Signed out: ScenarioCompletionHandler holds the completion and offers
     // sign-up at the Mission Complete modal; it saves after a sign-in
     if (!(await Auth.getSession())) {
@@ -115,24 +131,71 @@ export class ProgressSaveManager {
    * Save current state as a checkpoint
    * Uses direct upsert API - no read-modify-write needed
    */
-  async saveCheckpoint(): Promise<void> {
+  saveCheckpoint(): Promise<void> {
+    const initialAccount = selectionProgressCache.accountId;
     const scenarioId = ScenarioManager.getInstance().data.id;
-    const state = syncManager.getCurrentState();
-    // A manual save must finish after any earlier objective autosave.
-    const save = this.pendingSave_.then(() => this.persistCheckpoint_(scenarioId, state));
-    this.pendingSave_ = save.catch(() => undefined);
+    const state = JSON.parse(JSON.stringify(syncManager.getCurrentState() ?? {})) as AppState;
+    const previous = checkpointRecovery.read(initialAccount, scenarioId)?.checkpoint.savedAt;
+    const capturedAt = Math.max(Date.now(), ProgressSaveManager.lastCaptureMs_ + 1, previous ? Date.parse(previous) + 1 : 0);
+    ProgressSaveManager.lastCaptureMs_ = capturedAt;
+    // Capture immediately, including while an earlier upload is in flight.
+    const prepared = Auth.getSession().then((session) => {
+      if (!session || ReplaySession.isActive()) return null;
+      const owner = session.user?.id;
+      if (!owner) throw new Error('Sign in again to save this mission.');
+      if (initialAccount && initialAccount !== owner) throw new Error('Account changed while saving.');
+      this.accountId_ = owner;
+      const checkpoint = this.makeCheckpoint_(owner, scenarioId, state, capturedAt);
+      return { checkpoint, locallySaved: checkpointRecovery.write(checkpoint) };
+    });
+    // Register the full operation synchronously so navigation also waits for authentication.
+    const save = Promise.all([ProgressSaveManager.pendingSave_, prepared]).then(async ([, entry]) => {
+      if (entry) await this.persistCheckpoint_(entry.checkpoint, entry.locallySaved);
+    });
+    ProgressSaveManager.pendingSave_ = save.catch(() => undefined);
     return save;
   }
 
   async waitForPendingSave(): Promise<void> {
-    await this.pendingSave_;
+    await ProgressSaveManager.pendingSave_;
   }
 
-  private async persistCheckpoint_(scenarioId: string, state: AppState): Promise<void> {
+  private makeCheckpoint_(owner: string, mission: string, state: AppState, capturedAt?: number): Checkpoint {
+    const previous = checkpointRecovery.read(owner, mission)?.checkpoint.savedAt;
+    const savedAt = new Date(capturedAt ?? Math.max(Date.now(), previous ? Date.parse(previous) + 1 : 0)).toISOString();
+    return { id: mission, userId: owner, appId: 'signalrange', scenarioId: mission, version: packageJson.version, state, savedAt, createdAt: savedAt, updatedAt: savedAt };
+  }
+
+  private captureRecovery_(): void {
+    if (!this.isInitialized || SimClock.isPaused('loading') || !this.accountId_ || this.accountId_ !== selectionProgressCache.accountId || ReplaySession.isActive()) return;
+    try {
+      const checkpoint = this.makeCheckpoint_(this.accountId_, ScenarioManager.getInstance().data.id, syncManager.getCurrentState());
+      if (checkpoint.state.equipment) checkpointRecovery.write(checkpoint);
+    } catch (error) {
+      Logger.warn('Could not keep recovery copy:', error);
+    }
+  }
+
+  retrySave(): Promise<void> {
+    const mission = ScenarioManager.getInstance().data.id;
+    const save = Promise.all([ProgressSaveManager.pendingSave_, Auth.getSession()]).then(async ([, session]) => {
+      const owner = session?.user?.id;
+      if (!owner || ReplaySession.isActive()) return;
+      const entry = checkpointRecovery.read(owner, mission);
+      if (entry?.pending) await this.persistCheckpoint_(entry.checkpoint, true);
+    });
+    ProgressSaveManager.pendingSave_ = save.catch(() => undefined);
+    return save;
+  }
+
+  private async persistCheckpoint_(checkpoint: Checkpoint, locallySaved: boolean): Promise<void> {
+    const { scenarioId, state } = checkpoint;
     const toast = SaveProgressToast.getInstance();
     const timestamp = Date.now();
 
     try {
+      const session = await Auth.getSession();
+      if (session?.user?.id !== checkpoint.userId) throw new Error('Sign in to the original account to retry this save.');
       // Show saving toast and emit start event
       toast.showSaving();
       this.eventBus.emit(Events.PROGRESS_SAVE_START, { timestamp });
@@ -145,11 +208,12 @@ export class ProgressSaveManager {
         version,
         state,
       });
+      checkpointRecovery.acknowledge(checkpoint);
 
       Logger.info(`Progress checkpoint saved for scenario: ${scenarioId}`);
 
       // Show success toast and emit success event
-      toast.showSuccess();
+      toast.showSuccess('Saved to your account');
       this.eventBus.emit(Events.PROGRESS_SAVE_SUCCESS, {
         timestamp: Date.now(),
         checkpointId: scenarioId,
@@ -158,7 +222,8 @@ export class ProgressSaveManager {
       Logger.error('Failed to save checkpoint:', error);
 
       // Show error toast and emit error event
-      toast.showError();
+      toast.showError(locallySaved ? 'Saved on this device. Cloud save pending; retry when connected.' : 'Save failed. Keep this mission open and retry.', 0);
+      toast.offerRetry(() => (locallySaved ? this.retrySave() : this.saveCheckpoint()));
       this.eventBus.emit(Events.PROGRESS_SAVE_ERROR, {
         timestamp: Date.now(),
         error: error as Error,
@@ -183,6 +248,12 @@ export class ProgressSaveManager {
       const checkpoint = await selectionProgressCache.getSavedCheckpoint(scenarioId);
 
       if (checkpoint) {
+        const local = checkpointRecovery.read(selectionProgressCache.accountId, scenarioId);
+        if (local?.pending && local.checkpoint.savedAt === checkpoint.savedAt) {
+          const toast = SaveProgressToast.getInstance();
+          toast.showError('Recovered from this device. Cloud save pending; retry when connected.', 0);
+          toast.offerRetry(() => this.retrySave());
+        }
         Logger.info(`Checkpoint found for scenario: ${scenarioId}`, checkpoint);
         return checkpoint;
       }
@@ -191,7 +262,7 @@ export class ProgressSaveManager {
       return null;
     } catch (error) {
       Logger.error('Failed to load checkpoint:', error);
-      return null;
+      throw error;
     }
   }
 
@@ -237,7 +308,12 @@ export class ProgressSaveManager {
       return;
     }
 
-    this.eventBus.off(Events.OBJECTIVE_COMPLETED, this.handleObjectiveCompleted.bind(this));
+    this.eventBus.off(Events.OBJECTIVE_COMPLETED, this.boundObjective_);
+    this.eventBus.off(Events.OBJECTIVES_ALL_COMPLETED, this.boundComplete_);
+    window.removeEventListener('online', this.boundOnline_);
+    window.removeEventListener('pagehide', this.boundPageHide_);
+    document.removeEventListener('visibilitychange', this.boundVisibility_);
+    if (this.interval_) clearInterval(this.interval_);
     this.isInitialized = false;
     Logger.info('ProgressSaveManager disposed');
   }

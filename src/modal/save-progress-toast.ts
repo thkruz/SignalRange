@@ -20,6 +20,7 @@ export class SaveProgressToast {
   private messageElement_: HTMLDivElement | null = null;
   private closeButton_: HTMLButtonElement | null = null;
   private autoHideTimeout_: number | null = null;
+  private retryButton_: HTMLButtonElement | null = null;
 
   /**
    * Private constructor to enforce singleton pattern
@@ -45,6 +46,8 @@ export class SaveProgressToast {
     // Create main toast container
     this.toastElement_ = document.createElement('div');
     this.toastElement_.className = 'save-progress-toast';
+    this.toastElement_.setAttribute('role', 'status');
+    this.toastElement_.setAttribute('aria-live', 'polite');
 
     // Create icon container
     this.iconElement_ = document.createElement('div');
@@ -55,6 +58,11 @@ export class SaveProgressToast {
     this.messageElement_ = document.createElement('div');
     this.messageElement_.className = 'save-progress-toast__message';
     this.toastElement_.appendChild(this.messageElement_);
+    this.retryButton_ = document.createElement('button');
+    this.retryButton_.className = 'btn btn-sm btn-secondary';
+    this.retryButton_.textContent = 'Retry save';
+    this.retryButton_.hidden = true;
+    this.toastElement_.appendChild(this.retryButton_);
 
     // Create close button
     this.closeButton_ = document.createElement('button');
@@ -109,10 +117,22 @@ export class SaveProgressToast {
     }
   }
 
+  offerRetry(retry: () => Promise<void>): void {
+    if (!this.retryButton_) return;
+    this.retryButton_.hidden = false;
+    this.retryButton_.onclick = () => {
+      void retry().catch(() => {});
+    };
+  }
+
   /**
    * Updates the toast content based on state
    */
   private updateContent_(state: ToastState, message: string): void {
+    if (this.retryButton_) {
+      this.retryButton_.hidden = true;
+      this.retryButton_.onclick = null;
+    }
     if (!this.toastElement_ || !this.iconElement_ || !this.messageElement_) {
       return;
     }

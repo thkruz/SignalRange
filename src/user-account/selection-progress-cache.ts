@@ -1,3 +1,4 @@
+import { checkpointRecovery } from './checkpoint-recovery';
 import type { Checkpoint, ScenariosProgressResponse } from './types';
 import type { UserDataService } from './user-data-service';
 import { getUserDataService } from './user-data-service';
@@ -27,6 +28,10 @@ export class SelectionProgressCache {
     return this.accountId_ === null;
   }
 
+  get accountId(): string | null | undefined {
+    return this.accountId_;
+  }
+
   setAccount(accountId: string | null): void {
     if (accountId === this.accountId_) return;
     this.accountId_ = accountId;
@@ -51,6 +56,7 @@ export class SelectionProgressCache {
   }
 
   getCheckpoint(scenarioId: string): Promise<boolean> {
+    if (checkpointRecovery.read(this.accountId_, scenarioId)) return Promise.resolve(true);
     if (this.isSignedOut) return Promise.resolve(false);
     let entry = this.checkpoints_.get(scenarioId);
     if (!entry) {
@@ -72,10 +78,20 @@ export class SelectionProgressCache {
       entry = { updatedAt: 0 };
       this.savedCheckpoints_.set(scenarioId, entry);
     }
+    const account = this.accountId_;
     return this.read_(entry, async () => {
-      const source = await this.source_();
-      if (!source.getCheckpoint) throw new Error('Checkpoint loading is unavailable.');
-      return source.getCheckpoint(scenarioId);
+      const local = checkpointRecovery.read(account, scenarioId)?.checkpoint;
+      try {
+        const source = await this.source_();
+        if (!source.getCheckpoint) throw new Error('Checkpoint loading is unavailable.');
+        return checkpointRecovery.newer(local, await source.getCheckpoint(scenarioId));
+      } catch (error) {
+        if (local) return local;
+        throw error;
+      }
+    }).then((checkpoint) => {
+      if (account !== this.accountId_) throw new Error('Account changed while loading. Please retry.');
+      return checkpointRecovery.newer(checkpointRecovery.read(account, scenarioId)?.checkpoint, checkpoint);
     });
   }
 

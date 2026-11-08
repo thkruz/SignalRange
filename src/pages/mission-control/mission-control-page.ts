@@ -306,8 +306,8 @@ export class MissionControlPage extends BasePage {
       }
     } catch (error) {
       Logger.error('Failed to load checkpoint:', error);
-      // Checkpoint load failed - skip completion modal and start fresh
-      this.navigationOptions_.forceReplay = true;
+      // The loading screen offers Retry. A connection failure is not a missing save.
+      throw error;
     }
   }
 

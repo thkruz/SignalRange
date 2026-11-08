@@ -13,6 +13,7 @@ const { mockEventBus, mockToast, mockUserDataService, mockSyncManager } = vi.hoi
     showSaving: vi.fn(),
     showSuccess: vi.fn(),
     showError: vi.fn(),
+    offerRetry: vi.fn(),
   },
   mockUserDataService: {
     getUserProgress: vi.fn(),
@@ -79,6 +80,7 @@ vi.mock('../../src/user-account/auth', () => ({
 
 // Import after mocks are defined
 import { Auth } from '../../src/user-account/auth';
+import { checkpointRecovery } from '../../src/user-account/checkpoint-recovery';
 import { ProgressSaveManager } from '../../src/user-account/progress-save-manager';
 import { ReplaySession } from '../../src/user-account/replay-session';
 
@@ -96,7 +98,7 @@ describe('ProgressSaveManager', () => {
       .mockResolvedValueOnce(undefined);
     mockSyncManager.getCurrentState.mockReturnValueOnce({ scenarioTimeRemaining: 100 }).mockReturnValueOnce({ scenarioTimeRemaining: 90 });
     const autosave = manager.saveCheckpoint();
-    const manual = manager.saveCheckpoint();
+    const manual = new ProgressSaveManager().saveCheckpoint();
     await vi.waitFor(() => expect(mockUserDataService.saveCheckpoint).toHaveBeenCalledTimes(1));
     finish();
     await Promise.all([autosave, manual]);
@@ -105,9 +107,60 @@ describe('ProgressSaveManager', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
     // Signed in by default; remote saves are skipped entirely when signed out
-    (Auth.getSession as Mock).mockResolvedValue({ access_token: 'test-token' });
+    (Auth.getSession as Mock).mockResolvedValue({ access_token: 'test-token', user: { id: 'test-account' } });
     manager = new ProgressSaveManager();
+  });
+
+  afterEach(() => manager.dispose());
+
+  it('keeps the latest captured state when authentication finishes out of order', async () => {
+    let firstAuth!: (session: unknown) => void;
+    let secondAuth!: (session: unknown) => void;
+    (Auth.getSession as Mock)
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          firstAuth = resolve;
+        })
+      )
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          secondAuth = resolve;
+        })
+      );
+    mockSyncManager.getCurrentState.mockReturnValueOnce({ scenarioTimeRemaining: 100 }).mockReturnValueOnce({ scenarioTimeRemaining: 90 });
+    mockUserDataService.saveCheckpoint.mockResolvedValue(undefined);
+    const first = manager.saveCheckpoint();
+    const second = new ProgressSaveManager().saveCheckpoint();
+    secondAuth({ user: { id: 'test-account' } });
+    await Promise.resolve();
+    firstAuth({ user: { id: 'test-account' } });
+    await Promise.all([first, second]);
+    expect(checkpointRecovery.read('test-account', 'scenario-123')?.checkpoint.state.scenarioTimeRemaining).toBe(90);
+    expect(mockUserDataService.saveCheckpoint.mock.calls.map((call) => call[1].state.scenarioTimeRemaining)).toEqual([100, 90]);
+  });
+
+  it('navigation waits for a save even while its authentication check is pending', async () => {
+    let authenticate!: (session: unknown) => void;
+    (Auth.getSession as Mock).mockReturnValueOnce(
+      new Promise((resolve) => {
+        authenticate = resolve;
+      })
+    );
+    mockSyncManager.getCurrentState.mockReturnValue({ scenarioTimeRemaining: 85 });
+    mockUserDataService.saveCheckpoint.mockResolvedValue(undefined);
+    const saving = manager.saveCheckpoint();
+    let finished = false;
+    const waiting = manager.waitForPendingSave().then(() => {
+      finished = true;
+    });
+    await Promise.resolve();
+    expect(finished).toBe(false);
+    authenticate({ user: { id: 'test-account' } });
+    await Promise.all([saving, waiting]);
+    expect(mockUserDataService.saveCheckpoint).toHaveBeenCalled();
+    expect(finished).toBe(true);
   });
 
   it('initializes once and registers the objective listener', () => {
@@ -119,13 +172,32 @@ describe('ProgressSaveManager', () => {
     expect(mockEventBus.on).toHaveBeenCalledWith(Events.OBJECTIVE_COMPLETED, expect.any(Function));
   });
 
-  it('skips handling when a save is already in progress', async () => {
+  it('queues a new objective save even when another save is in progress', async () => {
     const saveSpy = vi.spyOn(manager as any, 'saveCheckpoint').mockResolvedValue(undefined);
     (manager as any).isSaving = true;
 
     await (manager as any).handleObjectiveCompleted();
 
-    expect(saveSpy).not.toHaveBeenCalled();
+    expect(saveSpy).toHaveBeenCalled();
+  });
+
+  it('keeps an immutable recovery copy on cloud failure and retries that copy', async () => {
+    const state = { scenarioTimeRemaining: 85 };
+    mockSyncManager.getCurrentState.mockReturnValue(state);
+    mockUserDataService.saveCheckpoint.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(undefined);
+    const saving = manager.saveCheckpoint();
+    state.scenarioTimeRemaining = 10;
+    await expect(saving).rejects.toThrow('offline');
+    expect(mockToast.offerRetry).toHaveBeenCalledWith(expect.any(Function));
+    await manager.retrySave();
+    expect(mockUserDataService.saveCheckpoint.mock.calls.at(-1)?.[1].state.scenarioTimeRemaining).toBe(85);
+  });
+
+  it('never uploads a queued save to a newly signed-in account', async () => {
+    mockSyncManager.getCurrentState.mockReturnValue({});
+    (Auth.getSession as Mock).mockResolvedValueOnce({ user: { id: 'test-account' } }).mockResolvedValue({ user: { id: 'another-account' } });
+    await expect(manager.saveCheckpoint()).rejects.toThrow('original account');
+    expect(mockUserDataService.saveCheckpoint).not.toHaveBeenCalled();
   });
 
   it('saves when an objective completes and resets the guard flag', async () => {
@@ -139,11 +211,11 @@ describe('ProgressSaveManager', () => {
 
   it('skips the checkpoint save entirely when signed out (no error toast spam)', async () => {
     (Auth.getSession as Mock).mockResolvedValue(null);
-    const saveSpy = vi.spyOn(manager as any, 'saveCheckpoint').mockResolvedValue(undefined);
 
     await (manager as any).handleObjectiveCompleted();
 
-    expect(saveSpy).not.toHaveBeenCalled();
+    expect(mockUserDataService.saveCheckpoint).not.toHaveBeenCalled();
+    expect(localStorage.length).toBe(0);
     expect(mockToast.showError).not.toHaveBeenCalled();
   });
 

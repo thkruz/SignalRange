@@ -396,7 +396,11 @@ export class UserDataService {
    * Delete checkpoint for a specific scenario
    */
   async deleteCheckpoint(scenarioId: string): Promise<void> {
+    const { selectionProgressCache } = await import('./selection-progress-cache');
+    const { checkpointRecovery } = await import('./checkpoint-recovery');
+    const account = selectionProgressCache.accountId;
     await this.request<void>(`/api/user/apps/${this.config.appId}/scenarios/${scenarioId}/checkpoint`, 'DELETE');
+    checkpointRecovery.clear(account, scenarioId);
   }
 
   /**
@@ -404,7 +408,11 @@ export class UserDataService {
    * This is a bulk operation that clears all scenario_progress and checkpoints
    */
   async deleteAllProgress(): Promise<void> {
+    const { selectionProgressCache } = await import('./selection-progress-cache');
+    const { checkpointRecovery } = await import('./checkpoint-recovery');
+    const account = selectionProgressCache.accountId;
     await this.request<void>(`/api/user/apps/${this.config.appId}/progress`, 'DELETE');
+    checkpointRecovery.clearAccount(account);
   }
 
   /**

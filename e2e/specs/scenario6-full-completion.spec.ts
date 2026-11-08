@@ -182,7 +182,7 @@ const SCENARIO_6_OBJECTIVES: Scenario6Objective[] = [
     id: 'final-verification',
     title: 'Full Duplex Established',
     type: 'quiz',
-    correctAnswer: 'Step-track maintaining lock on beacon, RX at 1422 MHz IF, TX at 1447 MHz IF, AES-256 encrypted',
+    correctAnswer: 'Step-track on beacon, RX at 1422 MHz IF, TX at 1447 MHz IF, AES-256',
   },
 ];
 
@@ -707,7 +707,7 @@ test.describe('Scenario 6 Full Completion', () => {
     await executeObjective(page, missionControlPage, objective);
     // Phase 27: the "why no lock yet" quiz follows the configuration rows
     await waitForQuizToAppear(page);
-    await answerQuizByText(page, 'Nobody is uplinking on that slot: the carrier this modem waits for is our own, once VT-01 transmits');
+    await answerQuizByText(page, 'Nobody is uplinking on that slot; the carrier it waits for is our own');
   });
 
   // ============================================================

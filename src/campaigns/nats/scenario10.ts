@@ -65,7 +65,7 @@ export const scenario10Data: ScenarioData = {
   duration: '25-30 min',
   difficulty: 'intermediate',
   missionType: 'Customer Operations',
-  description: `SeaLink has booked a 30-minute high-priority data window on AURORA-7 - a routine maritime synchronization burst Marcus Chen in Halifax is watching live from the spacecraft side. The link is up from the overnight shift on program-track with a conservative 10 dB HPA backoff.<br><br>For a sustained high-throughput window on an inclined-orbit bird, that's not the right configuration. You need step-track to hold beacon stable through the figure-8 drift, and a tighter HPA backoff to give the customer the EIRP margin they're paying for - without overdriving the amp.<br><br>Customer is on the line. Marcus will be watching payload telemetry on his end throughout the pass. Standard work - just don't break the link with a customer watching.`,
+  description: `SeaLink has booked a 30-minute high-priority data window on AURORA-7, a routine maritime synchronization burst. Marcus Chen in Halifax is watching live from the spacecraft side. The link is up from the overnight shift on program-track with a conservative 10 dB HPA backoff.<br><br>That isn't the right setup for a sustained high-throughput window on an inclined-orbit bird. You need step-track to hold the beacon through the figure-8 drift, and a tighter HPA backoff to give the customer the EIRP margin they're paying for, without overdriving the amp.<br><br>Marcus will be watching payload telemetry on his end throughout the pass. It's standard work. Just don't break the link with a customer watching.`,
   equipment: ['9-meter C-band Antenna', 'RF Front End', 'Spectrum Analyzer', 'RX/TX Modems'],
   timeLimitSeconds: 30 * 60,
   settings: {
@@ -213,7 +213,7 @@ export const scenario10Data: ScenarioData = {
             question: 'Ready to take the SeaLink high-throughput pass on AURORA-7?',
             options: ['Yes - link is up on program-track. Switching to pass configuration.'],
             correctIndex: 0,
-            explanation: 'Pass clock running. Customer is on the line.',
+            explanation: 'The window opens at 10:00 and the customer is already on the line, so get the station into pass configuration first.',
             pointPenalty: 0,
           },
           mustMaintain: false,
@@ -276,7 +276,8 @@ export const scenario10Data: ScenarioData = {
               'GPSDO holdover - timing alarm, link at risk on AURORA-7',
             ],
             correctIndex: 0,
-            explanation: 'Nothing above informational on the board. Safe to push the link harder for the customer window.',
+            explanation:
+              "The board shows nothing above informational, so the link is healthy and it's safe to push it harder for the customer window. Any of the other three would appear as a warning or critical alarm, and none is showing.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -309,7 +310,7 @@ export const scenario10Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Program-track follows ephemeris and lets the figure-8 drift bleed off C/N. For a sustained pass on an inclined bird, step-track keeps the beacon at peak.',
+              'Program-track steers the dish along the ephemeris, which is the predicted orbit. On a long pass the figure-8 drift of an inclined bird bleeds away C/N. Step-track keeps nudging the dish to hold the beacon at its peak, which is what a sustained pass needs. The other options give reasons that have nothing to do with how the orbit moves.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -349,7 +350,7 @@ export const scenario10Data: ScenarioData = {
       id: 'acquire-stable-beacon',
       nice: ['T0153', 'K1032'],
       title: 'Acquire Stable Beacon Lock',
-      description: 'Hold beacon lock under step-track long enough to confirm stable peak.',
+      description: 'Keep the beacon locked under step-track for 15 seconds to confirm it is holding the peak.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['enable-step-track'],
       timeLimitSeconds: 3 * 60,
@@ -373,7 +374,7 @@ export const scenario10Data: ScenarioData = {
       id: 'verify-rx-lock',
       nice: ['T0153', 'T1580', 'K0740'],
       title: 'Verify Customer Downlink',
-      description: 'Confirm the AURORA-7 downlink modem is locked with C/N margin for the pass.',
+      description: 'Open RX Analysis and confirm receive modem 1 is locked on the AURORA-7 downlink with C/N above 8 dB.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['acquire-stable-beacon'],
       timeLimitSeconds: 3 * 60,
@@ -417,7 +418,7 @@ export const scenario10Data: ScenarioData = {
           description: 'Payload Health Indicators',
           params: {
             character: Character.SYSTEM,
-            question: 'Marcus wants confirmation his payload telemetry is clean. Which indicator set proves the data path is healthy end-to-end?',
+            question: 'Marcus wants confirmation that his payload telemetry is clean. Which set of indicators proves the data path is healthy from end to end?',
             options: [
               'Frame sync locked + CRC valid + FEC engaged with no uncorrectables',
               'RX power above -70 dBm + AGC in range + C/N above the 8 dB threshold',
@@ -425,7 +426,8 @@ export const scenario10Data: ScenarioData = {
               'Modem temperature inside spec + fans nominal + no hardware alarms shown',
             ],
             correctIndex: 0,
-            explanation: 'Beacon lock proves RF. Frame sync + CRC + FEC prove the data path. Different layers, different evidence - the customer cares about the data path.',
+            explanation:
+              "Beacon lock and C/N only prove the RF path. Frame sync, CRC and FEC with no uncorrectable errors show that the data itself is arriving intact, and that's the layer the customer cares about.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -438,7 +440,7 @@ export const scenario10Data: ScenarioData = {
       id: 'verify-uplink-active',
       nice: ['T0431', 'K0740'],
       title: 'Verify Uplink Return Path',
-      description: 'Confirm the uplink (BUC unmuted, HPA enabled, no overdrive) is carrying the SeaLink return traffic.',
+      description: 'On the TX Chain tab, confirm the BUC is unmuted and the HPA is enabled and not overdriven, so the uplink is carrying the SeaLink return traffic.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['payload-integrity-check'],
       timeLimitSeconds: 2 * 60,
@@ -484,7 +486,7 @@ export const scenario10Data: ScenarioData = {
       id: 'assess-current-backoff',
       nice: ['S0675', 'K0740'],
       title: 'Assess Current HPA Backoff',
-      description: 'Evaluate the HPA backoff that the link inherited from the overnight shift.',
+      description: 'Decide whether the 10 dB HPA backoff the link inherited from the overnight shift suits a customer window.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-uplink-active'],
       timeLimitSeconds: 2 * 60,
@@ -495,7 +497,7 @@ export const scenario10Data: ScenarioData = {
           description: 'Backoff Assessment',
           params: {
             character: Character.SYSTEM,
-            question: 'HPA is at 10 dB backoff. For a 30-minute customer window with sustained margin requirement, what is the operational reality?',
+            question: 'The HPA is at 10 dB backoff. For a 30-minute customer window that needs sustained margin, what is the situation?',
             options: [
               'Safe but conservative - tighter backoff gives the customer more EIRP without breaking the amp',
               'Already optimal - never take backoff below 10 dB for a customer pass whatever the margin ask',
@@ -504,7 +506,7 @@ export const scenario10Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              '10 dB is a quiet-night default: 50 dBm, 100 W. For a paying customer expecting sustained margin, 6 dB gives 54 dBm (251 W), 4 dB more EIRP - so long as the amp stays linear.',
+              '10 dB is a quiet-shift default, which gives 50 dBm (100 W). Tightening to 6 dB gives 54 dBm (251 W), which is 4 dB more EIRP for a customer expecting sustained margin, as long as the amp stays linear.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -517,7 +519,7 @@ export const scenario10Data: ScenarioData = {
       id: 'optimize-hpa-backoff',
       nice: ['S0675', 'S0421'],
       title: 'Tighten HPA Backoff for the Pass',
-      description: 'Reduce HPA backoff to 6 dB to give the customer more EIRP during the pass window.',
+      description: 'On the TX Chain tab, set the HPA backoff to 6 dB to give the customer more EIRP during the pass window.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['assess-current-backoff'],
       timeLimitSeconds: 3 * 60,
@@ -544,7 +546,7 @@ export const scenario10Data: ScenarioData = {
       id: 'verify-no-overdrive',
       nice: ['T0153', 'S0675'],
       title: 'Confirm HPA Stays Linear',
-      description: 'Verify the HPA is not overdriven after the backoff change.',
+      description: 'Watch the HPA for 10 seconds and confirm it is not overdriven at 6 dB backoff.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['optimize-hpa-backoff'],
       timeLimitSeconds: 2 * 60,
@@ -584,7 +586,7 @@ export const scenario10Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Closer to saturation means more IMD: third-order products get about 2 dB worse for every dB of back-off given up, so 10 -> 6 dB takes the IM3 (2-tone) readout from about -43 to -35 dBc. The decision is to spend a small amount of linearity for meaningful EIRP - then watch for overdrive (below 3 dB of back-off) across the window.',
+              "Closer to saturation means more IMD, the distortion products the amp creates when it's pushed hard. Third-order products get about 2 dB worse for every dB of backoff given up, so going from 10 dB to 6 dB takes the IM3 (2-tone) readout from about -43 to -35 dBc. That spends a small amount of linearity for a meaningful EIRP gain, and the thing to watch is overdrive, which starts below 3 dB of backoff.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -630,7 +632,7 @@ export const scenario10Data: ScenarioData = {
       id: 'sustain-rx-margin',
       nice: ['T1580', 'T0153'],
       title: 'Window Open: Customer Downlink Margin',
-      description: '10:00, the window is open. Hold receive C/N above the 9 dB customer threshold while Marcus confirms the payload on his side.',
+      description: 'It is 10:00 and the window is open. Hold the receive C/N above the 9 dB customer threshold while Marcus confirms the payload on his side.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['stand-by-for-window'],
       timeLimitSeconds: 3 * 60,
@@ -694,7 +696,7 @@ export const scenario10Data: ScenarioData = {
       id: 'restore-conservative-backoff',
       nice: ['S0421', 'S0675'],
       title: 'Restore Conservative Backoff',
-      description: 'Pass window has closed. Return HPA backoff to the 10 dB resting value to reduce stress between passes.',
+      description: 'The pass window has closed. Set the HPA backoff back to its 10 dB resting value, which reduces stress on the amp between passes.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['sustain-beacon-track'],
       timeLimitSeconds: 2 * 60,
@@ -719,7 +721,7 @@ export const scenario10Data: ScenarioData = {
       id: 'final-pass-snapshot',
       nice: ['T1580', 'S0478'],
       title: 'Final Pass Disposition',
-      description: 'Summarize what the customer received during the window.',
+      description: 'Pick the summary line that tells Marcus what the customer received during the window.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['restore-conservative-backoff'],
       timeLimitSeconds: 1 * 60,
@@ -738,7 +740,8 @@ export const scenario10Data: ScenarioData = {
               'AURORA-7 pass complete - step-track held throughout, C/N margin sustained, one brief overdrive event, HPA returned to 10 dB',
             ],
             correctIndex: 0,
-            explanation: 'Clean delivery. That is what the customer is paying for - and what gets logged.',
+            explanation:
+              "That's a clean delivery: step-track held, margin sustained, no overdrive, and the amp back at its resting 10 dB. The other lines either contradict what happened during the pass or leave the HPA at 6 dB.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -777,7 +780,8 @@ export const scenario10Data: ScenarioData = {
               'SeaLink pass on AURORA-7 - step-track, HPA 6 dB backoff for the window and left there. Overdrive event, customer notified.',
             ],
             correctIndex: 0,
-            explanation: 'Capture what changed (backoff), what was sustained (margin), and what was restored (resting state). Next operator picks up with full context.',
+            explanation:
+              'A good entry records what changed (the backoff), what was sustained (the margin) and what was restored (the resting state), so the next operator picks up with full context.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -831,10 +835,13 @@ export const scenario10Data: ScenarioData = {
       'sustain-beacon-track': {
         text: `
         <p>
-          That's the window. Pass is closed on our side - customer's confirmed the data, telemetry shows a clean delivery, no dropouts. Nicely done.
+          That's the end of the window. The pass is closed on our side, and the customer has confirmed the data. Telemetry shows a clean delivery with no dropouts. Nicely done.
         </p>
         <p>
-          Bring the amp back to resting and I'll send the disposition through to SeaLink ops. Thanks.
+          Put the amp back to its 10 dB backoff and I'll pass your summary on to SeaLink ops. Thanks.
+        </p>
+        <p>
+          How's Charlie getting on over in Europe, by the way? I haven't heard from him since he moved.
         </p>
         `,
         character: Character.MARCUS_CHEN,

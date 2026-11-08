@@ -126,7 +126,7 @@ export const natsEuScenario13Data: ScenarioData = {
   subtitle: 'Pass-Performance Trending',
   duration: '40 min',
   missionType: 'Trend Analysis',
-  description: `13:00 local. The week's pass log has two things wrong with it.<br><br>Every MERIDIAN-SAR-1 pass at Galway since Thursday has decoded two to four decibels under budget, and Shetland's have not moved. And the planners have handed you an 89 degree SAR-2 pass at 13:12, the best geometry all month, that Anneke expects to fall over at the top.<br><br>Fly the steep pass and explain what it does. Measure SAR-1 at the survey geometry against the survey budget, rule out the easy causes, and find the real one. Then prove Shetland is clean, move Erik's 13:52 collect there, and fly it from the Shetland console so the report carries a measurement from both sites.`,
+  description: `The shift opens at 13:00, and the week's pass log has two things wrong with it.<br><br>Every MERIDIAN-SAR-1 pass at Galway since Thursday has decoded two to four decibels under budget, while Shetland's passes haven't changed. The planners have also given you an 89 degree SAR-2 pass at 13:12, the best geometry all month, and Anneke expects it to fall over at the top.<br><br>Fly the steep pass and explain what it does. Then measure SAR-1 at the survey geometry, the same range and elevation the station was accepted at, and compare it with the survey budget. Rule out the easy causes and find the real one. After that, prove Shetland is clean, move Erik's 13:52 collect there, and fly it from the Shetland console so the report carries a measurement from both sites.`,
   equipment: [
     'GW-01 Galway: 4m Ku-Band LEO Tracker',
     'SH-02 Shetland: 4m Ku-Band LEO Tracker (remote console)',
@@ -229,7 +229,7 @@ export const natsEuScenario13Data: ScenarioData = {
       id: 'review-mission-brief',
       nice: ['K0645', 'T0349'],
       title: "Read the Week's Log",
-      description: 'Open the brief: the pass log for the week, the survey budget, and the two numbers that do not agree with it.',
+      description: "Open the brief and read the week's pass log, the survey budget and the two numbers that don't agree with it.",
       groundStation: 'GW-01',
       freezesScenarioTimer: true,
       prerequisiteObjectiveIds: [],
@@ -246,16 +246,16 @@ export const natsEuScenario13Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question:
-              'Two anomalies on the log: a link that collapsed at the top of an 89 degree pass, and four days of SAR-1 decodes 2-4 dB under budget at Galway only. Which one is a fault?',
+              'The log has two anomalies: a link that collapsed at the top of an 89 degree pass, and four days of SAR-1 decodes 2-4 dB under budget at Galway only. Going by the log alone, which one is a fault?',
             options: [
-              'You do not know yet: a one-off on the steepest pass of the month and a four-day drift on one site each need their own test',
-              'Both: two anomalies on one site inside one week is a station problem, and the pedestal and the LNB share a ticket',
-              'The keyhole pass: the link failed at the top, so something broke, while a 2-4 dB drift is a soft number',
-              'Neither: two to four dB is inside normal pass-to-pass variation, and a single lock drop on a steep pass is noise',
+              'You do not know yet: a one-off on the steepest pass of the month and a four-day drift at one site each need their own test',
+              'Both are faults: two anomalies at one site in one week is a station problem, so one ticket covers the pedestal and the LNB',
+              'Only the keyhole pass: the link failed at the top, so something broke, while a 2-4 dB drift is just a soft number',
+              'Neither is a fault: 2-4 dB is normal pass-to-pass variation, and one lock drop on a steep pass is just noise',
             ],
             correctIndex: 0,
             explanation:
-              'Trend data separates a one-off from a drift; they are different kinds of number, and neither gets a cause before its test. The steep pass is tested by flying one and watching where it fails; the drift is tested by measuring the survey geometry against the survey budget. Twelve minutes to the first pass. Shift clock started.',
+              'Trend data separates a one-off from a drift, and each one needs its own test before it gets a cause. You test the steep pass by flying one and watching where the link fails. You test the drift by measuring the survey geometry against the survey budget. The first pass, SAR-2, rises twelve minutes after the shift starts, so the shift clock starts now.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -273,7 +273,7 @@ export const natsEuScenario13Data: ScenarioData = {
       nice: ['T0431', 'K0740'],
       title: 'GW-01 Pre-Pass Sweep',
       description:
-        'Board, reference and downconversion before the 13:12 pass: the board carries the RX AGC no-carrier warning (empty sky) and two LNB alarms, noise temperature high (250 K) and noise figure degraded (2.70 dB), GPSDO locked, LNB on the 13100 MHz LO. Note what the LNB panel says while you are there.',
+        "Sweep the board before the 13:12 pass. Expect the RX AGC no-carrier warning (the sky is empty) and two LNB alarms: noise temperature high (250 K) and noise figure degraded (2.70 dB). Confirm the GPSDO is locked and the LNB is on the 13100 MHz LO, and note what the LNB panel says while you're there.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['review-mission-brief'],
       timeLimitSeconds: 2 * 60,
@@ -307,7 +307,7 @@ export const natsEuScenario13Data: ScenarioData = {
       nice: ['S0421', 'K1032', 'K0739'],
       title: 'Tune for the Zenith Pass',
       description:
-        'Modem 1 from 1414 MHz to the 1370 MHz SAR-2 imagery carrier; analyzer centred on 1370 MHz with a 2 MHz span. Then read the pass geometry and say what the pedestal will do at 89 degrees.',
+        "Retune modem 1 from 1414 MHz to the 1370 MHz SAR-2 imagery carrier, and centre the analyzer on 1370 MHz with a 2 MHz span. Then read the pass geometry and say what the pedestal, the antenna's mount, will do at 89 degrees.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['galway-pre-pass-sweep'],
       timeLimitSeconds: 3 * 60,
@@ -336,16 +336,16 @@ export const natsEuScenario13Data: ScenarioData = {
           description: 'Keyhole Predicted',
           params: {
             character: Character.SYSTEM,
-            question: 'SAR-2 rises at 13:12 from azimuth 163 and sets at 345, passing 89.5 degrees at 13:17. What does the pedestal have to do at the top, and can it?',
+            question: 'SAR-2 rises at 13:12 from azimuth 163, passes 89.5 degrees at 13:17 and sets at azimuth 345. What does the pedestal have to do at the top, and can it?',
             options: [
-              'Swing almost 180 degrees of azimuth in the seconds the bird takes to cross the zenith; at 10 deg/s it cannot',
-              'Nothing unusual: elevation goes up to 89.5 and comes back down; azimuth barely moves, so the pedestal holds',
-              'Switch to step-track through the top; step-track does not need azimuth, so the pedestal holds the beam',
-              'Reverse the elevation axis over the top; the ACU does it automatically, so the pedestal holds the beam',
+              'Swing almost 180 degrees of azimuth in the seconds the satellite takes to cross the zenith; at 10 deg/s it cannot',
+              'Nothing unusual: elevation rises to 89.5 and falls again, and azimuth barely moves, so the pedestal holds the beam',
+              'Switch to step-track through the top: step-track does not need azimuth, so the pedestal holds the beam',
+              'Reverse the elevation axis over the top: the antenna controller does it automatically, so the pedestal holds the beam',
             ],
             correctIndex: 0,
             explanation:
-              'An elevation-over-azimuth pedestal has a keyhole at the zenith: the azimuth rate it needs goes to infinity through the top, and the 0.45 degree beam falls off the spacecraft near culmination. 73 degrees was a few degrees a second and it held. 89 degrees is not.',
+              'An elevation-over-azimuth pedestal has a keyhole at the zenith, because the azimuth rate it needs climbs without limit as the satellite crosses the top. The 0.45 degree beam then falls off the spacecraft near culmination. The earlier 73 degree pass needed only a few degrees a second and the pedestal held it, but an 89 degree pass is a different case.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -358,7 +358,7 @@ export const natsEuScenario13Data: ScenarioData = {
       id: 'preposition-for-sar2',
       nice: ['S0421', 'K0739'],
       title: 'Pre-position for SAR-2',
-      description: 'Park the tracker on the AOS azimuth, 163 degrees at 5 degrees elevation, so the slew is done before the bird rises.',
+      description: 'Point the tracker at the AOS azimuth, 163 degrees at 5 degrees elevation, so the slew is finished before the satellite rises.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['tune-for-the-zenith-pass'],
       timeLimitSeconds: 3 * 60,
@@ -382,7 +382,8 @@ export const natsEuScenario13Data: ScenarioData = {
       id: 'fly-the-zenith-pass',
       nice: ['T0153', 'K0740', 'K1032'],
       title: 'Fly the Zenith Pass',
-      description: 'AOS 13:12. Program-track MERIDIAN-SAR-2, lock the 1370 MHz carrier on the ascending leg and read C/N above 8 dB on RX analysis. Keep watching as it climbs.',
+      description:
+        'SAR-2 rises at 13:12. Turn on program-track for MERIDIAN-SAR-2, lock the 1370 MHz carrier on the rising leg and read a C/N above 8 dB on RX Analysis. Keep watching as it climbs.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['preposition-for-sar2'],
       conditions: [
@@ -413,7 +414,7 @@ export const natsEuScenario13Data: ScenarioData = {
       nice: ['S0892', 'K0739', 'K0740'],
       title: 'Ride Through the Keyhole',
       description:
-        'Stay on RX analysis through culmination at 13:17. The pedestal loses the bird for about twenty seconds at the top and the receiver drops lock with it; the Carrier lock lost alarm stays up until the next lock. Do not chase it. Hold lock for 100 s once it comes back on the descending leg, and name what did it.',
+        "Stay on RX Analysis through culmination, the top of the pass, at 13:17. The pedestal loses the satellite for about twenty seconds there and the receiver drops lock with it. The Carrier lock lost alarm stays up until the next lock, so don't chase it. Once the lock comes back on the descending leg, hold it for 100 s, and name what caused the dropout.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['fly-the-zenith-pass'],
       conditions: [
@@ -441,16 +442,16 @@ export const natsEuScenario13Data: ScenarioData = {
           description: 'Crater Explained',
           params: {
             character: Character.SYSTEM,
-            question: 'Best geometry of the month, 391 km at the top, and the lock dropped exactly there. What killed the link?',
+            question: 'This was the best geometry of the month, 391 km at the top, and the lock dropped exactly there. What caused the link to fail?',
             options: [
-              'The azimuth keyhole: the pedestal cannot slew azimuth fast enough through the zenith, and the beam falls off the bird',
-              'The LNB: the same fault as the SAR-1 shortfall, and at 391 km the hot front end finally ran out of margin',
-              'Doppler: the rate of change through the zenith exceeded the demodulator loop bandwidth, and the modem lost carrier',
-              'The spacecraft: it turned its antenna away at nadir, and the beam came back only once it had rolled off the top',
+              "The azimuth keyhole: the pedestal can't slew fast enough through the zenith, so the beam falls off the satellite",
+              'The LNB: it is the same fault as the SAR-1 shortfall, and at 391 km the hot front end finally ran out of margin',
+              'Doppler: the rate of change through the zenith exceeded the demodulator loop bandwidth, so the modem lost carrier',
+              'The spacecraft: it turned its antenna away at nadir, so the beam came back only after it had rolled off the top',
             ],
             correctIndex: 0,
             explanation:
-              'Program-track never lost the elements; the pedestal lost the race, and the link is gone until it catches up on the descending leg. Physics, not a fault. Every el-over-az tracker has this hole; the only mitigations are accepting the outage, an X/Y pedestal, or a tilted axis. Wait for it on the way down.',
+              'Program-track never lost the orbit data. The pedestal lost the race with the satellite, so the link stays down until the pedestal catches up on the descending leg. That makes it physics and not a fault, because every elevation-over-azimuth tracker has this hole. The only ways around it are to accept the outage, use an X/Y pedestal or use a tilted axis, so wait for the link on the way down.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -463,7 +464,7 @@ export const natsEuScenario13Data: ScenarioData = {
       id: 'record-anomaly-1',
       nice: ['S0892', 'K1032', 'T0349'],
       title: 'Record the First Anomaly',
-      description: 'Write the zenith pass into the report as what it is: an operations note, not a fault.',
+      description: 'Write the zenith pass into the report as what it is, an operations note and not a fault.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['ride-through-the-keyhole'],
       timeLimitSeconds: 2 * 60,
@@ -474,16 +475,16 @@ export const natsEuScenario13Data: ScenarioData = {
           description: 'Anomaly 1 Recorded',
           params: {
             character: Character.SYSTEM,
-            question: 'What goes in the report for the 89 degree pass, and to whom?',
+            question: 'What goes in the report for the 89 degree pass, and who gets it?',
             options: [
-              'An operations note to the planners: zenith keyhole, pedestal rate limit; passes above about 80 degrees carry an outage',
-              'A maintenance ticket for the pedestal: azimuth drive rate limit, lock lost at culmination; the drive needs a look',
-              'A request to Rotterdam: orbit too steep over Galway, lock lost at the top; lower it so it stops going overhead',
-              'Nothing to anyone: the link recovered on the descending leg, no data lost; there is nothing here to report',
+              'An operations note to the planners: a zenith keyhole, so passes above about 80 degrees carry an outage',
+              'A maintenance ticket for the pedestal: azimuth drive rate limit and lock lost at culmination, so the drive needs a look',
+              'A request to Rotterdam: orbit too steep over Galway and lock lost at the top, so lower it to stop it going overhead',
+              'Nothing to anyone: the link recovered on the descending leg and no data was lost, so there is nothing to report',
             ],
             correctIndex: 0,
             explanation:
-              'A number that disagrees with expectation has a cause, and this cause has no fix on the rack. Not a fault: the usable segment is on the two legs, not at the top. The planners can plan around it; maintenance cannot repair geometry.',
+              'This goes to the planners as an operations note because the cause is geometry, and nothing on the rack can fix geometry. The usable parts of the pass are the two legs, so the planners can plan around the outage at the top. A maintenance ticket would send someone to repair a drive that works, and a silent pass would leave the next planner to book the same geometry again.',
             pointPenalty: 5,
             documentSection: 'Anomaly 1',
             documentLine:
@@ -504,7 +505,7 @@ export const natsEuScenario13Data: ScenarioData = {
       nice: ['S0421', 'K0773'],
       title: 'Retune for the Survey Pass',
       description:
-        'LOS 13:22. Modem 1 back to the 1414 MHz SAR-1 carrier, analyzer centred on the 1389 MHz SAR-1 beacon. The tracker stays where the zenith pass left it; program-track slews to the 13:30 rise at azimuth 5.',
+        'SAR-2 sets at 13:22. Retune modem 1 back to the 1414 MHz SAR-1 carrier and centre the analyzer on the 1389 MHz SAR-1 beacon. Leave the tracker where the zenith pass left it, because program-track will slew to the 13:30 rise at azimuth 5.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['record-anomaly-1'],
       timeLimitSeconds: 3 * 60,
@@ -531,7 +532,7 @@ export const natsEuScenario13Data: ScenarioData = {
       nice: ['T0349', 'S0646', 'K0740'],
       title: 'Compute the Survey Budget',
       description:
-        'The 13:30 pass is the acceptance geometry to the kilometre: 762 km at 28 degrees. Enter the survey worksheet in Link Analysis: EIRP 31.3 dBm, free-space path loss 171.4 dB at 11686 MHz, receive gain 50.4 dBi, system noise temperature 125 K, occupied bandwidth 36 MHz, miscellaneous losses 1 dB.',
+        "The 13:30 pass matches the survey's acceptance geometry exactly: 762 km at 28 degrees. In Link Analysis, enter the survey worksheet values: EIRP 31.3 dBm, free-space path loss 171.4 dB at 11686 MHz, receive gain 50.4 dBi, system noise temperature 125 K, occupied bandwidth 36 MHz and miscellaneous losses 1 dB.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['retune-for-the-survey-pass'],
       timeLimitSeconds: 4 * 60,
@@ -548,16 +549,17 @@ export const natsEuScenario13Data: ScenarioData = {
           description: 'Prediction vs History',
           params: {
             character: Character.SYSTEM,
-            question: 'The survey worksheet says 11.0 dB at this geometry. The log says Galway has decoded near 7 at it for four days. Which number goes on the worksheet?',
+            question:
+              'The survey worksheet predicts 11.4 dB at this geometry, but the log says Galway has decoded near 7 dB at it for four days. Which number goes on the worksheet?',
             options: [
-              'The survey number: the prediction is what a healthy station does at this geometry, and the gap is the finding',
-              'The logged 7 dB: a prediction should match what the station actually does, and the worksheet is a record of it',
-              'The average of the two: 9 dB splits the difference between the survey and the log, and the gap is halved',
-              'Whichever makes Commit Link pass: the console needs 5 dB of margin, and the worksheet is there to give it one',
+              'The survey number: the prediction is what a healthy station does here, and the gap is the finding',
+              'The logged 7 dB: a prediction should match what the station actually does, so the worksheet should record it',
+              'The average of the two: 9 dB splits the difference between the survey and the log, so the gap is halved',
+              'Whichever makes Commit Link pass: the console needs 5 dB of margin, so the worksheet should give it one',
             ],
             correctIndex: 0,
             explanation:
-              'The measurement is what this station does today; neither number may be bent toward the other. A budget that is tuned to the symptom hides the symptom. 11.4 dB predicted; measure it in four minutes.',
+              "The worksheet predicts what a healthy station should do, and the measurement shows what this station does today, so neither number may be bent toward the other. A budget tuned to match the symptom would hide the symptom. You'll measure the real value when the pass reaches its top.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -575,7 +577,7 @@ export const natsEuScenario13Data: ScenarioData = {
       nice: ['T0349', 'S0646', 'K0740'],
       title: 'Measure SAR-1 at Galway',
       description:
-        'AOS 13:30 from azimuth 5. Program-track MERIDIAN-SAR-1, confirm the beacon, lock the 1414 MHz carrier and read the C/N at maximum elevation (13:34:46, 28 degrees). Predicted 11 dB. Then say what Commit Link will do with it.',
+        'SAR-1 rises at 13:30 from azimuth 5. Turn on program-track for MERIDIAN-SAR-1, confirm the beacon, lock the 1414 MHz carrier and read the C/N at maximum elevation (13:34:46, 28 degrees). The survey predicts 11.4 dB. Then say what the Link Analysis Commit Link button will do with your reading.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['compute-the-survey-budget'],
       conditions: [
@@ -625,16 +627,17 @@ export const natsEuScenario13Data: ScenarioData = {
           description: 'Shortfall Read',
           params: {
             character: Character.SYSTEM,
-            question: 'Predicted 11.0 dB. Measured about 7 at the top of the pass, on a clean lock. What does the Link Analysis console do if you press Commit Link?',
+            question:
+              'The survey predicted 11.4 dB, and you measured about 7 dB at the top of the pass on a clean lock. What does the Link Analysis console do if you press Commit Link?',
             options: [
-              'Refuses the commit: 7 dB is 2.8 dB over the 4.2 dB threshold and the survey asks for 5 dB of margin',
-              'Accepts the commit: the modem is locked and decoding at 7 dB, which is what a link is',
+              'Refuses the commit: 7 dB is only 2.8 dB over the 4.2 dB threshold, short of the 5 dB margin',
+              'Accepts the commit: the modem is locked and decoding at 7 dB, and a locked modem is a working link',
               'Accepts the commit once the worksheet is corrected to 7 dB, so the prediction and the measurement agree',
-              'Refuses the commit: the prediction was entered wrong, since 11 dB was never going to appear on this station',
+              'Refuses the commit: the prediction was entered wrong, since this station could never reach 11 dB',
             ],
             correctIndex: 0,
             explanation:
-              'Neither number is wrong; the station is not the station the survey measured. A 4 dB shortfall at the exact survey geometry on a clean lock is a station finding, not a pass finding. Three candidate causes: element-set age, pointing, receive chain. Rule out the first two.',
+              'Neither number is wrong. The station is no longer the station the survey measured. A 4 dB shortfall at the exact survey geometry, on a clean lock, is a finding about the station and not about the pass. There are three candidate causes: the age of the orbit data (the element set), the pointing and the receive chain, so rule out the first two next.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -648,7 +651,7 @@ export const natsEuScenario13Data: ScenarioData = {
       nice: ['S0892', 'T0531', 'K0739'],
       title: 'Rule Out the Ephemeris',
       description:
-        'Open the Pass Schedule and read the ephemeris panel: element-set age, pending updates. The beacon sat on boresight and program-track never dropped. Say what is left.',
+        'Open the Pass Schedule and read the ephemeris panel for the age of the element set and any pending updates. The beacon sat on boresight and program-track never dropped, so say which cause is left.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['measure-sar1-at-galway'],
       timeLimitSeconds: 2 * 60,
@@ -666,16 +669,16 @@ export const natsEuScenario13Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question:
-              'No ephemeris events pending, elements current; the beacon peaked on boresight and the pedestal stayed program-track locked through the pass. Which candidate is left?',
+              'The ephemeris panel shows no events pending and current elements. The beacon peaked on boresight and the pedestal stayed program-track locked through the pass. Which candidate is left?',
             options: [
-              'The receive chain: stale elements and a pointing fault both show on the beacon and the tracker, and both were clean',
+              'The receive chain: stale elements or a pointing fault would show on the beacon and tracker, and both were clean',
               'The ephemeris: a 4 dB loss is exactly what 300 m of along-track error costs, and current elements can still be off',
               'Pointing: 0.1 degree of boresight error on a 0.45 degree beam is 4 dB, and program-track can hold a wrong offset',
-              'The spacecraft: its transmitter has aged since the survey, and a 4 dB loss on the same bird would look the same',
+              'The spacecraft: its transmitter has aged since the survey, and a 4 dB loss on the same satellite would look the same',
             ],
             correctIndex: 0,
             explanation:
-              'Stale elements show as a pointing miss that program-track cannot hold, and a pointing fault shows as a beacon off boresight; both were clean, so the loss is between the feed and the demodulator. Shetland decoded the same bird at budget on Thursday and Friday. A spacecraft does not degrade for one site. Read the LNB.',
+              "Stale elements would show as a pointing miss that program-track can't hold, and a pointing fault would show as a beacon off boresight. Both were clean, so the loss is between the feed and the demodulator. Shetland decoded the same satellite at budget on Thursday and Friday, and a spacecraft doesn't degrade for one site. That leaves the LNB, so read its panel next.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -688,7 +691,8 @@ export const natsEuScenario13Data: ScenarioData = {
       id: 'read-the-galway-lnb',
       nice: ['S0892', 'T0531', 'K0064'],
       title: 'Read the Galway LNB',
-      description: 'RX analysis, LNB panel: noise temperature against the 60 K survey value. Do the arithmetic and write the second anomaly into the report with its cause.',
+      description:
+        'On RX Analysis, open the LNB panel and read the noise temperature against the 60 K survey value. Do the arithmetic, then write the second anomaly into the report with its cause.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['rule-out-the-ephemeris'],
       timeLimitSeconds: 3 * 60,
@@ -707,16 +711,16 @@ export const natsEuScenario13Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question:
-              'GW-01 LNB noise temperature reads about 250 K against a 60 K survey value. The antenna (sky, spillover, feed) contributes about 65 K at 28 degrees. What does that do to the link?',
+              'The GW-01 LNB noise temperature reads about 250 K against a 60 K survey value, and the antenna (sky, spillover and feed) adds about 65 K at 28 degrees. What does that do to the link?',
             options: [
-              'The LNA is the first stage, so its noise adds straight onto the antenna temperature: 10 log((65 + 250) / (65 + 60)) is 4.0 dB',
-              'Nothing measurable, since noise temperature is a receiver spec and not a link term: the 125 K on the worksheet covers it',
-              'About 6 dB, since the LNB alone sets the system temperature: 10 log(250 / 60) overstates the shortfall',
-              'It raises the C/N, since the LNB is running hotter and therefore has more gain: about 4 dB up',
+              'The LNA is the first stage, so its noise adds onto the antenna temperature: 10 log((65 + 250) / (65 + 60)) is 4.0 dB',
+              'Nothing measurable: noise temperature is a receiver spec and not a link term, so the 125 K on the worksheet covers it',
+              'About 6 dB: the LNB alone sets the system temperature, so the loss is 10 log(250 / 60) and no antenna noise counts',
+              'It raises the C/N: the LNB is running hotter and therefore has more gain, so the link gains about 4 dB',
             ],
             correctIndex: 0,
             explanation:
-              'C/N is carrier over k T B, and T is the antenna noise plus the receiver noise, with Friis putting the first stage in charge of the receiver part. Four decibels is the whole shortfall: the feed or the LNA has degraded. Power-cycling the LNB starts the noise temperature at twice nominal and settles it back to 250 K: worse, then the same. This is a maintenance ticket.',
+              'C/N is the carrier over k T B, where T is the antenna noise plus the receiver noise, and the first stage (here the LNA) sets the receiver part. That takes the system temperature from 125 K to 315 K, which is the whole 4 dB shortfall, so the feed or the LNA has degraded. Power-cycling the LNB would start the noise temperature at twice nominal and settle back to 250 K, which is worse and then the same. This needs a maintenance ticket.',
             pointPenalty: 5,
             documentSection: 'Anomaly 2',
             documentLine:
@@ -736,7 +740,8 @@ export const natsEuScenario13Data: ScenarioData = {
       id: 'prove-shetland-is-clean',
       nice: ['T0431', 'K0689', 'S0675'],
       title: 'Prove Shetland Is Clean',
-      description: "Select SH-02. Fiona's LNB noise temperature must be inside the 100 K spec and her reference locked before the priority collect moves there.",
+      description:
+        "Select SH-02. Before the priority collect moves there, check that Fiona's LNB noise temperature is inside the 100 K spec and that her GPSDO reference is locked.",
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['read-the-galway-lnb'],
       timeLimitSeconds: 3 * 60,
@@ -769,7 +774,7 @@ export const natsEuScenario13Data: ScenarioData = {
       id: 'reallocate-the-collect',
       nice: ['K0689', 'T0129', 'S0646'],
       title: 'Reallocate the Collect',
-      description: "Erik's 13:52 SAR-3 collect is on the board for both sites. Put it on SH-02 and validate the plan.",
+      description: "Erik's 13:52 SAR-3 collect is on the board for both sites. Assign it to SH-02 and validate the plan.",
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['prove-shetland-is-clean'],
       timeLimitSeconds: 3 * 60,
@@ -799,16 +804,16 @@ export const natsEuScenario13Data: ScenarioData = {
           description: 'Standing Rule Set',
           params: {
             character: Character.SYSTEM,
-            question: 'The collect goes to Shetland. What is the standing rule for Galway until the LNB is replaced?',
+            question: "The collect is going to Shetland. What's the standing rule for Galway until its LNB is replaced?",
             options: [
-              'Derate GW-01 by 4 dB in every budget and put priority collects on SH-02: a 5 dB margin at Galway is now a miss',
-              'Take GW-01 off the board entirely until maintenance signs it off: a station with a 4 dB shortfall flies nothing',
-              'Nothing changes at GW-01 and the collects stay where they are: 7 dB still decodes, so the plan is still good',
-              'Raise the delivery standard to 11 dB in every budget and keep the collects: the shortfall is then visible on the plan',
+              'Derate GW-01 by 4 dB in every budget and put priority collects on SH-02, because a 5 dB margin at Galway is now a miss',
+              'Take GW-01 off the board until maintenance signs it off, because a station with a 4 dB shortfall flies nothing',
+              'Change nothing at GW-01 and leave the collects where they are, because 7 dB still decodes and the plan is still good',
+              'Raise the delivery standard to 11 dB in every budget and keep the collects, because the shortfall then shows on the plan',
             ],
             correctIndex: 0,
             explanation:
-              'A plan that does not know about the derate will book collects the station cannot deliver. A derated site is still a site. It flies routine passes at 7 dB; it does not carry a priority collect on a 5 dB margin it no longer has.',
+              "A plan that doesn't know about the derate will book collects the station can't deliver. A derated site is still a site, so Galway keeps flying routine passes at about 7 dB. It just doesn't carry a priority collect, because it no longer has the 5 dB margin those need.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -822,7 +827,7 @@ export const natsEuScenario13Data: ScenarioData = {
       nice: ['S0421', 'K0773', 'K1032'],
       title: 'Arm Shetland for SAR-3',
       description:
-        'SAR-3 is on its own plan: video at 1340 MHz IF, beacon at 1315 MHz. Modem 1 to 1340 MHz, analyzer centred on 1315 MHz with a 2 MHz span, tracker parked on the 13:52 AOS azimuth: 139 degrees at 5 degrees elevation.',
+        'SAR-3 has its own frequency plan: video at 1340 MHz IF and the beacon at 1315 MHz. Set modem 1 to 1340 MHz, centre the analyzer on 1315 MHz with a 2 MHz span, and point the tracker at the 13:52 AOS azimuth, 139 degrees at 5 degrees elevation.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['reallocate-the-collect'],
       timeLimitSeconds: 3 * 60,
@@ -868,7 +873,7 @@ export const natsEuScenario13Data: ScenarioData = {
       nice: ['T0153', 'K0740', 'K1032'],
       title: 'Fly the Collect from Shetland',
       description:
-        'AOS 13:52 from azimuth 139. Program-track MERIDIAN-SAR-3 on the SH-02 pedestal, lock the 1340 MHz carrier and hold C/N above 8 dB through culmination (13:56:46, 32 degrees, 694 km). Read the number against the geometry.',
+        'SAR-3 rises at 13:52 from azimuth 139. Turn on program-track for MERIDIAN-SAR-3 on the SH-02 pedestal, lock the 1340 MHz carrier and hold a C/N above 8 dB through culmination (13:56:46, 32 degrees, 694 km). Then read the number against the geometry.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['arm-shetland-for-sar3'],
       conditions: [
@@ -907,16 +912,16 @@ export const natsEuScenario13Data: ScenarioData = {
           description: 'Shetland Baseline Read',
           params: {
             character: Character.SYSTEM,
-            question: 'Shetland peaks near 12 dB at 32 degrees and 694 km with a 60 K LNB. Galway gave 7 at 28 degrees and 762 km. Is Shetland the better station?',
+            question: 'Shetland peaks near 12 dB at 32 degrees and 694 km with a 60 K LNB, while Galway gave 7 dB at 28 degrees and 762 km. Is Shetland the better station?',
             options: [
-              'No: 20 log(762 / 694) is 0.8 dB of geometry, and the rest of the gap is the Galway LNB',
-              'Yes: 5 dB better on the same bird class is a better station, whatever the geometry says',
-              'Unknown: SAR-3 and SAR-1 are different spacecraft, and 762 km against 694 km is not the same pass',
-              'No: Shetland is reading high because its 60 K LNB is cold, and the number will settle once it warms',
+              'No: 20 log(762 / 694) is 0.8 dB of geometry, so the rest of the gap is the Galway LNB',
+              'Yes: 5 dB better on the same class of satellite is a better station, whatever the geometry says',
+              'Unknown: SAR-3 and SAR-1 are different spacecraft, so 762 km against 694 km is not the same pass',
+              'No: Shetland is reading high because its 60 K LNB is cold, so the number will settle once it warms',
             ],
             correctIndex: 0,
             explanation:
-              'Shetland is a healthy station at its geometry; Galway is a degraded one at its own. A site is only underperforming when its number is worse than its geometry. Two measurements, two sites, one bird class: that is a trend report, not an opinion.',
+              'Shetland is a healthy station at its geometry, and Galway is a degraded one at its own. The difference in range explains only 0.8 dB of the 5 dB gap, so the rest is the Galway LNB. A site is underperforming only when its number is worse than its geometry predicts. Two measurements from two sites on one class of satellite make a trend report and not an opinion.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -933,7 +938,7 @@ export const natsEuScenario13Data: ScenarioData = {
       id: 'file-the-trend-report',
       nice: ['S0892', 'T1606', 'S0646'],
       title: 'File the Trend Report',
-      description: 'Close the report: one recommendation to Rotterdam, one maintenance action, and the standing rule for the planners.',
+      description: 'Close the report with one recommendation to Rotterdam, one maintenance action and the standing rule for the planners.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['fly-the-collect-from-shetland'],
       timeLimitSeconds: 3 * 60,
@@ -946,14 +951,14 @@ export const natsEuScenario13Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What goes to Rotterdam, and what goes to maintenance?',
             options: [
-              'Rotterdam: the keyhole is an operations note and GW-01 is derated 4 dB until repaired. Maintenance: LNB ticket for GW-01',
-              'Rotterdam: two faults at Galway, site unavailable until both are cleared. Maintenance: pedestal drive and LNB tickets',
+              'Rotterdam: the keyhole is an operations note, and GW-01 is derated 4 dB until repaired. Maintenance: an LNB ticket for GW-01',
+              'Rotterdam: two faults at Galway, so the site is unavailable until both clear. Maintenance: pedestal drive and LNB tickets',
               'Rotterdam: nothing until maintenance confirms the LNB reading. Maintenance: the LNB ticket, with the 250 K measurement',
-              'Rotterdam: the survey budget is wrong and needs re-issuing at 7 dB. Maintenance: nothing, the station is within its number',
+              'Rotterdam: the survey budget is wrong and needs re-issuing at 7 dB. Maintenance: nothing, because the station is within its number',
             ],
             correctIndex: 0,
             explanation:
-              'Two anomalies, two audiences, two kinds of action: plan passes above 80 degrees with a culmination outage, priority collects on SH-02 until the LNB is replaced, and the 250 K measurement attached to the ticket. The report is what turns a bad pass next week into a comparison instead of an argument.',
+              'There are two anomalies, two audiences and two kinds of action. Rotterdam gets the operations note, so the planners can allow for a culmination outage on passes above 80 degrees, and the derate, so priority collects go to SH-02 until the LNB is replaced. Maintenance gets the LNB ticket with the 250 K measurement attached. That report turns a bad pass next week into a comparison instead of an argument.',
             pointPenalty: 5,
             documentSection: 'Recommendation',
             documentLine:
@@ -973,7 +978,7 @@ export const natsEuScenario13Data: ScenarioData = {
         <em>[Text message from Anneke Visser at 12:48]</em>
       </p>
       <p>
-        "Your week's log makes no sense and I would like it to. Galway SAR-1 is two to four dB under budget since Thursday; Shetland on the same bird is not. And the planners have given you the 89 degree SAR-2 at 13:12, which I expect to fall over at the top, and I want to know why before they book another one. Two numbers, two causes. Report by 14:00 please."
+        "Your week's log doesn't make sense, and I'd like it to. Galway's SAR-1 passes have been two to four dB under budget since Thursday, but Shetland's on the same satellite haven't changed. The planners have also given you the 89 degree SAR-2 pass at 13:12, which I expect to fall over at the top, and I want to know why before they book another one. I think these are two numbers with two different causes. Please have the report to me by 14:00."
       </p>
       `,
       character: Character.ANNEKE_VISSER,
@@ -984,7 +989,7 @@ export const natsEuScenario13Data: ScenarioData = {
       'record-anomaly-1': {
         text: `
         <p>
-          So the best pass is the worst pass. Noted for the planners. Anything over eighty is a culmination outage, not a ticket. Now the one that worries me - the SAR-1 number.
+          So the best pass of the month turned out to be the worst one. Good, that's recorded as an operations note for the planners and not a maintenance ticket, because any pass over eighty degrees will have an outage at the top. Retune for the SAR-1 survey pass next, because the SAR-1 number is the one that worries me.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -997,7 +1002,7 @@ export const natsEuScenario13Data: ScenarioData = {
           <em>[Text message from Fiona MacLeod at {{stationTime}}]</em>
         </p>
         <p>
-          "Mine's reading 60 K and change, same as the day it was fitted. Yours is cooking. Don't power-cycle it, that just starts the number higher. Send Erik's collect up here - I'll be on the pedestal with a torch from ten to, so the console's yours."
+          "You've got your number, then. Mine's reading 60 K and change, the same as the day it was fitted, so the problem's on your side. Please don't power-cycle your LNB, because that only starts the number higher. Send Erik's collect up here. I'll be out at the pedestal with a torch before it starts, so the console's yours."
         </p>
         `,
         character: Character.FIONA_MACLEOD,
@@ -1010,7 +1015,7 @@ export const natsEuScenario13Data: ScenarioData = {
           <em>[Text message from Fiona MacLeod at {{stationTime}}]</em>
         </p>
         <p>
-          "Seen it on the board. SAR-3 is on its own numbers, mind - 1340 for the video, 1315 for the beacon. Thirty-two degrees from the south-east. It's a good one."
+          "I've seen the collect on the board. SAR-3 runs on its own frequencies, mind: 1340 MHz for the video and 1315 MHz for the beacon. It rises in the south-east and peaks at thirty-two degrees, so it's a good one."
         </p>
         `,
         character: Character.FIONA_MACLEOD,
@@ -1023,7 +1028,7 @@ export const natsEuScenario13Data: ScenarioData = {
           <em>[Text message from Fiona MacLeod at {{stationTime}}]</em>
         </p>
         <p>
-          "Watched the dish from the pedestal. Never wobbled, and I'd guess eleven and a bit at the top from the way the alarm panel stayed dark. That's your comparison. Same bird class, two sites, one of them cooking."
+          "I watched the dish from the pedestal and it tracked clean the whole way. From the way the alarm panel stayed dark, I'd guess about twelve at the top. That's your comparison: the same class of satellite from two sites, and only one of them has a hot LNB. Anneke's waiting on the report."
         </p>
         `,
         character: Character.FIONA_MACLEOD,
@@ -1033,7 +1038,7 @@ export const natsEuScenario13Data: ScenarioData = {
       'file-the-trend-report': {
         text: `
         <p>
-          Two anomalies, two causes, nothing alike in the data. The keyhole goes to the planners and the LNB goes to maintenance with your number on it. That is the report I wanted. Thank you, Galway.
+          Shetland has the collect, thank you. You found two anomalies with two causes, and nothing alike in the data. The keyhole goes to the planners and the LNB goes to maintenance with your number on it. That's the report I wanted. Thank you, Galway.
         </p>
         `,
         character: Character.ANNEKE_VISSER,

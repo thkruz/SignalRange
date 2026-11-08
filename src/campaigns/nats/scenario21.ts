@@ -72,7 +72,7 @@ export const scenario21Data: ScenarioData = {
   duration: '30-35 min',
   difficulty: 'advanced',
   missionType: 'Threat Response',
-  description: `Catherine's day shift flagged it before she left: intermittent broadband noise riding the TIDEMARK-2 downlink, on-off-on, gone before she could characterize it. It's back this morning. It doesn't match the cross-pol neighbors and it doesn't match weather.<br><br>Treat it as an interference incident from the first minute. Characterize the signature, discriminate jamming from a benign accident, mitigate what you can on the receive side, and build the regulator package as you go. And verify the half of this that matters most: an RF interferer denies your signal - it does not touch your data. Prove the data layer is intact, or you are no longer working an interference event.<br><br>If it turns out to be somebody's misaligned uplink, the same evidence resolves it. If it's deliberate, the evidence IS the response.`,
+  description: `Catherine's day shift flagged it before she left: intermittent broadband noise riding the TIDEMARK-2 downlink, switching on and off, and gone before she could characterize it. It's back this morning, and it doesn't look like leakage from the neighboring satellites or like weather.<br><br>Treat it as an interference incident from the first minute. Characterize the signature, work out whether it's jamming or a benign accident, mitigate what you can on the receive side, and build the regulator package as you go. Then check the half of this that matters most: an RF interferer denies your signal, but it doesn't touch your data. Prove the data layer is intact, or you're no longer working an interference event.<br><br>If it turns out to be somebody's misaligned uplink, the same evidence resolves it. If it's deliberate, the evidence is the response.`,
   equipment: ['9-meter C-band Antenna (ME-02)', 'RF Front End (notch filter)', 'Spectrum Analyzer', 'RX/TX Modems', 'Crypto module (data-layer integrity)'],
   timeLimitSeconds: 35 * 60,
   settings: {
@@ -222,7 +222,7 @@ export const scenario21Data: ScenarioData = {
       id: 'review-mission-brief',
       nice: ['K0645'],
       title: 'Review the Interference Flag',
-      description: "Open the brief and Catherine's end-of-shift note.",
+      description: "Open the mission brief and read Catherine's end-of-shift note.",
       groundStation: 'ME-02',
       freezesScenarioTimer: true,
       prerequisiteObjectiveIds: [],
@@ -238,16 +238,16 @@ export const scenario21Data: ScenarioData = {
           description: 'Frame the Incident',
           params: {
             character: Character.SYSTEM,
-            question: 'An intermittent interferer is on TM-2. How do you treat it from minute one?',
+            question: 'An intermittent interferer is on TM-2. How should you treat it from the first minute?',
             options: [
-              'As an interference incident: characterize, discriminate, mitigate, document - and verify the data layer separately',
-              'As a transient: watch, wait, time-stamp, log - and act only if it is still there at the end of the shift',
-              'As a jamming attack: disconnect TM-2, notify Dana, isolate the network, escalate - and characterize it afterward',
-              'As a receiver fault: power-cycle the LNB, re-lock, re-verify, log - and treat intermittent as a flaky front end',
+              'As an interference incident: characterize, tell jamming from accident, mitigate, document, check the data layer',
+              'As a transient: watch it, time-stamp it, log it, and act only if it is still there at the end of the shift',
+              'As a jamming attack: disconnect TM-2, notify Dana, isolate the network, escalate, and characterize it afterward',
+              'As a receiver fault: power-cycle the LNB, re-lock the modem, and treat the intermittent noise as a flaky front end',
             ],
             correctIndex: 0,
             explanation:
-              'Evidence first, conclusion last. Whether it ends as "misaligned partner uplink" or "deliberate denial," the work is identical until the evidence decides - and that discipline is what makes the eventual conclusion defensible. The same evidence resolves an accident or builds the case for deliberate interference.',
+              'Gather the evidence first and draw the conclusion last. Whether this ends as a misaligned partner uplink or deliberate denial, the work is identical until the evidence decides, and that discipline is what makes the conclusion defensible. Jumping straight to a jamming response or a receiver fix skips that evidence, and the same evidence either clears an accident or builds the case for deliberate interference.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -285,7 +285,7 @@ export const scenario21Data: ScenarioData = {
       nice: ['S0648', 'T0153'],
       title: 'Observe the Interference',
       description:
-        'Open RX Analysis. The analyzer is parked on the TM-2 beacon (1070 MHz). Retune it to the carrier: center 1458 MHz, span 40 MHz, wide enough to watch the top edge of the carrier near 1470 MHz while the interferer keys up.',
+        'Open RX Analysis. The analyzer is parked on the TM-2 beacon at 1070 MHz, so retune it to the carrier: center 1458 MHz, span 40 MHz. That is wide enough to show the top edge of the carrier, near 1470 MHz, while the interferer switches on.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['select-maine-station'],
       timeLimitSeconds: 3 * 60,
@@ -324,7 +324,8 @@ export const scenario21Data: ScenarioData = {
       id: 'duty-cycle-quiz',
       nice: ['K0926', 'S0648'],
       title: 'Characterize the Duty Cycle',
-      description: 'Stay on the 40 MHz view and watch a full on/off cycle of the shelf on the top edge of the carrier. Time it (the HUD clock is enough), then interpret it.',
+      description:
+        'Stay on the 40 MHz view and watch one full on/off cycle of the shelf on the top edge of the carrier. Time it (the HUD clock is enough), then interpret what you measured.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['open-spectrum'],
       // 150 s hold + time to answer (nats-r4-s21-F2: the hold must fit the countdown)
@@ -346,7 +347,7 @@ export const scenario21Data: ScenarioData = {
           description: 'Duty Cycle Read',
           params: {
             character: Character.SYSTEM,
-            question: 'You timed a full cycle of the interferer. What cadence did you measure, and what does it argue?',
+            question: 'You timed a full cycle of the interferer. What cadence did you measure, and what does it suggest?',
             options: [
               'About 90 s on, 60 s off, repeating - a regular minute-scale cadence: toward a switch, not an accident',
               'About 60 s on, 90 s off, repeating - a regular minute-scale cadence: toward a switch, not an accident',
@@ -355,7 +356,7 @@ export const scenario21Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'The shelf is up about 90 s and gone about 60 s, every 150 s. Radar duty cycles are seconds, not minutes, and accidental interference is continuous or erratic. A deliberate, minute-scale on/off pattern implies a hand on a switch or an automated transmitter, not weather or a stuck oscillator - one of the strongest behavioral indicators of intent, though it is an indicator, not proof.',
+              "The shelf is up about 90 s and gone about 60 s, every 150 s. Radar duty cycles are seconds, not minutes, and accidental interference is continuous or erratic. A deliberate, minute-scale on/off pattern implies a hand on a switch or an automated transmitter, not weather or a stuck oscillator. It's one of the strongest behavioral indicators of intent, but it's an indicator, not proof.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -368,7 +369,7 @@ export const scenario21Data: ScenarioData = {
       id: 'transponder-vs-local-quiz',
       nice: ['K0926', 'T0081'],
       title: 'Transponder or Local?',
-      description: 'The single most valuable discrimination test: is the interferer on the bird, or local to your site?',
+      description: "Work out whether the interferer is coming through the satellite or from somewhere local to your site. It's the most useful test you have.",
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['duty-cycle-quiz'],
       timeLimitSeconds: 2 * 60,
@@ -388,7 +389,7 @@ export const scenario21Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'This is the highest-information test in the matrix. Local interference appears at one station; uplink interference is relayed to all. Every-station visibility moves the source from "somewhere near Maine" to "transmitting at the satellite." That rules out radar, 5G, and our own equipment, and points at a misaligned or deliberate uplink.',
+              'This is the most informative test you have. Local interference appears at one station, but uplink interference is relayed by the satellite to every station that can see it. Seeing it at both Maine and Halifax moves the source from "somewhere near Maine" to "transmitting at the satellite." That rules out radar, 5G and our own equipment, and it points at a misaligned or deliberate uplink.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -401,7 +402,7 @@ export const scenario21Data: ScenarioData = {
       id: 'signature-shape-quiz',
       nice: ['K0926', 'S0648'],
       title: 'Signature vs the Database',
-      description: 'Compare bandwidth and placement against what the coordination database would explain.',
+      description: "Compare the interferer's bandwidth and placement with what the coordination database would explain.",
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['transponder-vs-local-quiz'],
       timeLimitSeconds: 2 * 60,
@@ -418,14 +419,14 @@ export const scenario21Data: ScenarioData = {
             // names partial-band noise parked on a slice of our carrier
             question: 'Compare the interferer you watched on the analyzer (bandwidth, shape, placement) with what the coordination database could explain. Which reading holds?',
             options: [
-              "It matches nothing benign: a featureless ~6 MHz noise band parked on our carrier's top edge is neither a neighbor's carrier nor a modulated uplink at a known slot",
+              "It matches nothing benign: a featureless ~6 MHz noise band on our carrier's top edge is neither a neighbor's carrier nor a modulated uplink",
               "It matches cross-pol leakage: a neighbor's carrier on the other polarization bleeds in, and cross-pol always lands on the edge of the victim's carrier",
               'It matches an aimed jammer by the book: centered on our carrier and sized to it, so the database comparison adds nothing to the case',
               'It matches nothing because shape means nothing: bandwidth and placement vary with the analyzer span, not with the source',
             ],
             correctIndex: 0,
             explanation:
-              "Accidents look like known things in the wrong place: cross-pol mirrors a listed neighbor's carrier, an errant uplink is a modulated carrier at a coordinated slot. A featureless noise band about 6 MHz wide, parked on the top edge of our carrier at the same frequency every burst, is neither. It is not the full-carrier jammer either: it is partial-band noise, all of its power on one slice of our carrier, and that slice is enough to pull the modem to the edge of lock. The absence of a benign match is itself evidence.",
+              "Accidents look like known things in the wrong place: cross-pol mirrors a listed neighbor's carrier, an errant uplink is a modulated carrier at a coordinated slot. A featureless noise band about 6 MHz wide, parked on the top edge of our carrier at the same frequency every burst, is neither. It isn't a full-carrier jammer either: it's partial-band noise, with all of its power on one slice of our carrier, and that slice is enough to pull the modem to the edge of lock. Having no benign match is itself evidence.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -442,7 +443,7 @@ export const scenario21Data: ScenarioData = {
       id: 'denial-vs-intrusion-quiz',
       nice: ['S0615', 'K0751'],
       title: 'Denial or Intrusion?',
-      description: 'Before mitigating, frame what kind of attack this is - it determines the escalation path.',
+      description: 'Before you mitigate, decide what kind of attack this would be, because that determines the escalation path.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['signature-shape-quiz'],
       timeLimitSeconds: 2 * 60,
@@ -462,7 +463,7 @@ export const scenario21Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Jamming denies availability; it does not breach confidentiality or integrity. Conflating denial with intrusion sends you down the wrong escalation path - you must check the data layer to know which incident you actually have.',
+              "Jamming denies availability; it doesn't breach confidentiality or integrity. Mixing up denial and intrusion sends you down the wrong escalation path, which is why you must check the data layer to know which incident you actually have.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -475,7 +476,7 @@ export const scenario21Data: ScenarioData = {
       id: 'verify-data-layer',
       nice: ['S0615', 'T0081'],
       title: 'Verify the Data Layer',
-      description: 'On RX Analysis, read the crypto and key state and confirm they are intact (ACTIVE, Valid) - this is RF denial, not a breach.',
+      description: "On RX Analysis, read the crypto and key state and confirm both are intact (ACTIVE and Valid). That's how you tell RF denial from a breach.",
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['denial-vs-intrusion-quiz'],
       timeLimitSeconds: 3 * 60,
@@ -501,7 +502,7 @@ export const scenario21Data: ScenarioData = {
       id: 'data-layer-meaning-quiz',
       nice: ['S0615', 'K0751'],
       title: 'What Intact Crypto Proves',
-      description: 'Confirm what the healthy data layer establishes - and what would change if it were not.',
+      description: "Work out what the healthy data layer establishes, and what would change if it weren't healthy.",
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['verify-data-layer'],
       timeLimitSeconds: 2 * 60,
@@ -512,7 +513,8 @@ export const scenario21Data: ScenarioData = {
           description: 'Data-Layer Finding',
           params: {
             character: Character.SYSTEM,
-            question: 'Crypto is ACTIVE, keys Valid, no frame anomalies outside the jamming windows. What does that confirm - and what would flip the incident?',
+            question:
+              'Crypto is ACTIVE, the keys are Valid, and there are no frame anomalies outside the jamming windows. What does that confirm, and what would flip the incident?',
             options: [
               'Confirms RF denial only - degraded, not breached; a crypto change or invalid keys mid-incident flips it to a security incident',
               'Confirms nothing - crypto is a data-layer state; interference lives on the RF layer, so no crypto reading could flip the incident',
@@ -521,7 +523,7 @@ export const scenario21Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Two layers, two verifications, never conflated. Intact crypto bounds this to a denial-of-availability event. The hypothetical - a crypto change mid-incident - is exactly the tripwire that would escalate it to an intrusion, with a different escalation: Dana, then the security officer, and nothing holding keys gets power-cycled.',
+              "Intact crypto and valid keys bound this to a denial-of-availability event, because the interferer degraded the signal without touching the data layer. The other options claim more than a crypto reading can show: it can't identify the interferer, and it can't say whether the noise has stopped. A crypto change mid-incident is the tripwire that would escalate this to an intrusion, with a different escalation: Dana, then the security officer, and nothing holding keys gets power-cycled.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -538,7 +540,7 @@ export const scenario21Data: ScenarioData = {
       id: 'mitigation-choice-quiz',
       nice: ['S0593', 'K0737'],
       title: 'Choose Mitigation',
-      description: 'Pick the right receive-side mitigation - and rule out the wrong one.',
+      description: 'Choose the right receive-side mitigation, and rule out the wrong ones.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['data-layer-meaning-quiz'],
       timeLimitSeconds: 2 * 60,
@@ -549,7 +551,7 @@ export const scenario21Data: ScenarioData = {
           description: 'Mitigation Selection',
           params: {
             character: Character.SYSTEM,
-            question: 'The interferer is a band of noise ~12 MHz off the carrier center, inside our passband. Best receive-side mitigation?',
+            question: 'The interferer is a band of noise about 12 MHz off the carrier center, inside our passband. What is the best receive-side mitigation?',
             options: [
               'Notch filter on the interferer band - excise its energy for a little SNR in that slice; reversible and customer-preserving',
               'Raise uplink power to "burn through" - out-drive the noise for a few dB of HPA headroom; fast and needs no receiver change',
@@ -558,7 +560,7 @@ export const scenario21Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              "A notch is the surgical tool: it removes the interferer's energy from the receive path. Power escalation degrades neighbors, violates coordination, and feeds the incident - there is NO transmit-side mitigation for uplink jamming available to a ground station.",
+              "A notch is the surgical tool because it removes the interferer's energy from the receive path and leaves the rest of the carrier alone. Power escalation degrades neighbors, violates coordination and feeds the incident, and there's no transmit-side mitigation for uplink jamming available to a ground station. Retuning needs a coordination request, and muting drops the carrier during each burst.",
             pointPenalty: 5,
             preserveOptionOrder: true,
           },
@@ -572,7 +574,8 @@ export const scenario21Data: ScenarioData = {
       id: 'configure-notch',
       nice: ['S0593', 'K0737'],
       title: 'Apply the Notch Filter',
-      description: 'On the Notch Filter card, set Notch 1 to 1470 MHz IF (~12 MHz above the 1458 carrier center), 8 MHz wide, 30 dB deep, enable it, then press Apply Changes.',
+      description:
+        'On the Notch Filter card, set Notch 1 to 1470 MHz IF, about 12 MHz above the 1458 MHz carrier center, with a width of 8 MHz and a depth of 30 dB. Enable it, then press Apply Changes.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['mitigation-choice-quiz'],
       timeLimitSeconds: 4 * 60,
@@ -608,7 +611,7 @@ export const scenario21Data: ScenarioData = {
       nice: ['T0153', 'S0593'],
       title: 'Confirm the Customer Survives',
       description:
-        'On RX Analysis, read RX modem 1 with the notch in: still locked, and the C/N while the interferer is keyed (watch through a burst) - mitigation must not cost the customer the link.',
+        'On RX Analysis, read RX modem 1 with the notch in. Check that it is still locked and note the C/N while the interferer is on, which means watching through a burst. Mitigation must not cost the customer the link.',
       groundStation: 'ME-02',
       intent: 'confirm',
       prerequisiteObjectiveIds: ['configure-notch'],
@@ -636,7 +639,7 @@ export const scenario21Data: ScenarioData = {
           description: 'Post-Notch C/N Read',
           params: {
             character: Character.SYSTEM,
-            question: 'With the notch applied, what does RX modem 1 show while the interferer is keyed?',
+            question: 'With the notch applied, what does RX modem 1 show while the interferer is on?',
             options: [
               'Locked at about 9 dB C/N, up from about 6 dB unnotched; about 12 dB in the off periods',
               'Locked at about 13 dB C/N - the notch removed the interferer completely and cost the carrier nothing',
@@ -645,7 +648,7 @@ export const scenario21Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'The notch takes most of the interferer out: lock margin goes from about 1.5 dB to about 5 dB during the bursts. Degraded margin raises when Es/N0 is less than 1.0 dB over the lock threshold and clears again at 1.5 dB over it. The notched 8 MHz slice costs the carrier about a dB, which is why the off periods read about 12 dB instead of the clean 13. The customer is up with margin to spare.',
+              'The notch takes most of the interferer out, so the lock margin goes from about 1.5 dB to about 5 dB during the bursts. The Degraded margin warning raises when Es/N0 is less than 1.0 dB over the lock threshold and clears again at 1.5 dB over it. The notched 8 MHz slice costs the carrier about a dB, which is why the off periods read about 12 dB instead of the clean 13. The customer stays up with margin to spare.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -658,7 +661,7 @@ export const scenario21Data: ScenarioData = {
       id: 'no-burn-through-quiz',
       nice: ['K0926', 'S0593'],
       title: 'Why Not Fight Back',
-      description: 'Confirm why escalating power against the jammer is the wrong move.',
+      description: 'Confirm why raising uplink power against the jammer is the wrong move.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['verify-carrier-survives'],
       timeLimitSeconds: 2 * 60,
@@ -678,7 +681,7 @@ export const scenario21Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              "Burn-through is a denial response that creates more denial: you cannot out-shout an uplink jammer from the ground, and trying harms bystanders. The operator's tools are receive-side mitigation and the regulator; offense belongs to the spectrum authority and geolocation services, not the victim's HPA.",
+              "Burn-through is a denial response that creates more denial. You can't out-shout an uplink jammer from the ground, and trying harms bystanders. Your tools are receive-side mitigation and the regulator, and going after the source belongs to the spectrum authority and geolocation services, not the victim's HPA.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -695,7 +698,7 @@ export const scenario21Data: ScenarioData = {
       id: 'regulator-package-quiz',
       nice: ['S0648', 'K0926'],
       title: 'Build the Regulator Package',
-      description: 'Select the fields the spectrum authority needs to act.',
+      description: 'Pick the fields the spectrum authority needs in order to act.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['no-burn-through-quiz'],
       timeLimitSeconds: 2 * 60,
@@ -728,7 +731,7 @@ export const scenario21Data: ScenarioData = {
       id: 'attribution-restraint-quiz',
       nice: ['K0751', 'S0648'],
       title: 'Conclude Carefully',
-      description: 'Set the language for the finding - confidence without overreach.',
+      description: 'Choose the wording for your finding: confident, but without overreach.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['regulator-package-quiz'],
       timeLimitSeconds: 2 * 60,
@@ -748,7 +751,7 @@ export const scenario21Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'The evidence supports "consistent with deliberate" - it does not support naming an actor or declaring intent as fact. Intent, like attribution, is for the regulator to determine. Disciplined language is what makes your evidence usable; overreach is what gets it dismissed.',
+              'The evidence supports "consistent with deliberate", but it doesn\'t support naming an actor or declaring intent as fact. Intent, like attribution, is for the regulator to determine. Playing it down, or sending raw captures with no characterization, leaves the regulator without your analysis. Disciplined wording is what makes your evidence usable, and overreach is what gets it dismissed.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -761,7 +764,7 @@ export const scenario21Data: ScenarioData = {
       id: 'log-incident',
       nice: ['K0645', 'S0593'],
       title: 'Log the Incident',
-      description: 'Record the interference incident and its disposition.',
+      description: 'Choose the log entry that records the interference incident and how it was handled.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['attribution-restraint-quiz'],
       timeLimitSeconds: 2 * 60,
@@ -781,7 +784,7 @@ export const scenario21Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Everything that matters: signature, duty cycle, the uplink confirmation, the intact data layer (crypto ACTIVE, keys Valid - denial not intrusion), the mitigation with the carrier holding, the disciplined finding (signature consistent with deliberate interference, regulator package filed), and the escalation tripwire (monitoring; escalate on any data-layer change). The next shift inherits a complete, defensible picture.',
+              'The first entry is the only one that matches what you measured. It has the 90 s on, 60 s off duty cycle, the uplink confirmation from both Maine and Halifax, the intact data layer (crypto ACTIVE, keys Valid, so denial rather than intrusion) and the notch as the mitigation. The others blame a local source or the LNB, claim a named actor, raise power, or skip the source entirely, and none of those matches what you found. The next shift inherits a complete, defensible picture.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -795,10 +798,10 @@ export const scenario21Data: ScenarioData = {
     intro: {
       text: `
       <p>
-        <em>[Call from Dana at 10:22]</em>
+        <em>[Call from Dana at {{stationTime}}]</em>
       </p>
       <p>
-        "Catherine flagged something before she left - intermittent broadband noise on the TM-2 downlink, on-off-on, gone before she could pin it. It's back. Doesn't look like our cross-pol neighbors, doesn't look like weather. Treat it as an interference incident from minute one - characterize, discriminate, mitigate, document. And check the data layer - if this is deliberate it's denial, not a breach, but I want that confirmed, not assumed."
+        "I'm on call this week, so I'm ringing you from the car. Catherine flagged something before she left: intermittent broadband noise on the TM-2 downlink, switching on and off, and gone before she could pin it down. It's back now. It doesn't look like leakage from the neighboring satellites, and it doesn't look like weather. Treat it as an interference incident from the first minute: characterize it, work out whether it's deliberate, mitigate it, and document it. Check the data layer too. If this is deliberate, it should be denial, not a breach. Denial blocks the signal, and a breach means someone got at the data. I want that confirmed, not assumed."
       </p>
       `,
       character: Character.DANA_TORRES,
@@ -811,7 +814,7 @@ export const scenario21Data: ScenarioData = {
       'duty-cycle-quiz': {
         text: `
         <p>
-          Marcus in Halifax - confirming from our side. We see the same interferer on TM-2 TP-1 that you do, and the spacecraft telemetry's clean, transponder's nominal. If we're both seeing it through the bird, it's coming up on the uplink, not local to either of us. That's not weather and it's not our hardware.
+          This is Marcus in Halifax. We're seeing the same interferer on TM-2 TP-1 that you are, on the same cadence. Our spacecraft telemetry is clean and the transponder is nominal, so it isn't our hardware.
         </p>
         `,
         character: Character.MARCUS_CHEN,
@@ -824,19 +827,19 @@ export const scenario21Data: ScenarioData = {
           <em>[Regulator coordination desk - SYSTEM notification, {{stationTime}}]</em>
         </p>
         <p>
-          "Interference report channel open for TM-2 TP-1. Submit measured parameters, spectrum captures, and cross-station confirmation. Do not attempt source attribution; geolocation tasking will be handled here. Acknowledge receipt of mitigation guidance. Receive-side only, no power escalation."
+          "The interference report channel for TM-2 TP-1 is now open. Submit measured parameters, spectrum captures and cross-station confirmation. Do NOT attempt source attribution, which means naming the transmitter. Geolocation tasking will be handled here; that means locating the transmitter. Mitigation guidance: receive-side measures only, with no power escalation."
         </p>
         `,
         character: Character.NOTICE,
         emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/21/obj-verify-data-layer.mp3'),
+        audioUrl: '', // NOTICE clips are text-only (Phase 35 decision 6)
       },
       // Introduces the notch step; keyed to the end of the data-layer read
       // instead of the notch itself, where it arrived mid-step (nats-s21-F1)
       'data-layer-meaning-quiz': {
         text: `
         <p>
-          Good - data layer's clean, so we're working a denial event, not a breach. That keeps it on our desk and the regulator's, not the security officer's. Get the notch in and prove the customer's still up, then send the package. Nice methodical work.
+          The data layer's clean, so we're working a denial event, not a breach. That keeps it with us and the regulator, not the security officer. Next you choose a receive-side mitigation, then you prove the customer's still up, and then we send the regulator a package. Nice methodical work.
         </p>
         `,
         character: Character.DANA_TORRES,
@@ -846,7 +849,7 @@ export const scenario21Data: ScenarioData = {
       'log-incident': {
         text: `
         <p>
-          That's how you work a hostile-RF event - you measured everything, concluded nothing you couldn't back, kept the customer up, and handed the regulator a package they can actually act on. "Consistent with deliberate" - not a name, not a flag, just the evidence.
+          That's how you work a hostile-RF event - you measured everything, concluded nothing you couldn't back, kept the customer up, and handed the regulator a package they can actually act on. "Consistent with deliberate" names no one and flags no one. It's just the evidence.
         </p>
         <p>
           If it changes character - especially anything on the data side - it escalates instantly. Until then, you've got it.

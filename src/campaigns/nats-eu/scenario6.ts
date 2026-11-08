@@ -81,7 +81,7 @@ export const natsEuScenario6Data: ScenarioData = {
   subtitle: 'Station Security Baseline',
   duration: '35-40 min',
   missionType: 'Security Operations',
-  description: `Quiet shift. Two routine downlinks on the plan and a monthly item nobody enjoys: the station security baseline.<br><br>Every console action at GW-01 is logged - logins, configuration changes, command traffic. Once a month somebody actually reads it. Group Security in London reads it too, eventually, but they read it a fortnight later and from four hundred miles away.<br><br>Charlie's guidance is characteristically brief: "You'll find nothing. Find it properly. And do not miss the pass while you are finding it."`,
+  description: `It's a quiet shift, with two routine downlinks on the plan and one monthly job nobody enjoys: the station security baseline.<br><br>Every console action at GW-01 is logged, including logins, configuration changes and command traffic. Once a month somebody has to read all of it. Group Security in London reads it too, but they get to it a fortnight later and from four hundred miles away.<br><br>Charlie's advice is short: "You'll find nothing. Find it properly, and don't miss the pass while you're doing it."`,
   equipment: ['GW-01 Galway: 4m Ku-Band LEO Tracker', 'Security Console (audit log + access control)', 'Spectrum Analyzer', 'RX Modem with Video Decoder'],
   settings: {
     isSync: true,
@@ -108,7 +108,7 @@ export const natsEuScenario6Data: ScenarioData = {
     workingDocument: {
       title: 'GW-01 March Baseline Return',
       description:
-        'Monthly security baseline for Group Security (ref GS-BASELINE-GW01-03). Every warning-severity entry dispositioned; every account reconciled against current authorisation.',
+        'Monthly security baseline for Group Security (ref GS-BASELINE-GW01-03). Every warning-severity entry is dispositioned, and every account is reconciled against current authorisation.',
     },
 
     // M6 - routine traffic plus three warning-severity entries to disposition:
@@ -206,7 +206,7 @@ export const natsEuScenario6Data: ScenarioData = {
       id: 'review-mission-brief',
       nice: ['K0645', 'S0844'],
       title: 'Review the Baseline Task',
-      description: 'Open the shift brief and confirm what the monthly baseline actually requires, and when the passes are.',
+      description: 'Open the shift brief and confirm what the monthly baseline requires and when the passes are.',
       groundStation: 'GW-01',
       freezesScenarioTimer: true,
       prerequisiteObjectiveIds: [],
@@ -231,7 +231,7 @@ export const natsEuScenario6Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Read everything, disposition every warning, reconcile every account. "Nothing happened" is a conclusion, not an assumption. First pass at 14:03; the log will keep, the pass will not.',
+              'The baseline covers the whole trail, every warning and every account, because "nothing happened" is a conclusion you reach by looking, not an assumption. Each wrong answer shrinks or skips the review: a search for failed logins misses the other warnings, and a blank return can\'t show you looked. The first pass is at 14:03, and the log will keep but the pass won\'t.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -248,7 +248,7 @@ export const natsEuScenario6Data: ScenarioData = {
       id: 'dashboard-sweep',
       nice: ['T0153', 'K0741'],
       title: 'GW-01 Dashboard Sweep',
-      description: 'Clear the board before the baseline: confirm the active alarm state on GW-01.',
+      description: 'Check the GW-01 dashboard and confirm which alarms are active before you start the baseline.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['review-mission-brief'],
       timeLimitSeconds: 90,
@@ -266,7 +266,7 @@ export const natsEuScenario6Data: ScenarioData = {
           description: 'Alarm State Confirmed',
           params: {
             character: Character.SYSTEM,
-            question: 'What is the active alarm state on GW-01 at turnover?',
+            question: 'What is the active alarm state on the GW-01 dashboard?',
             options: [
               'RX AGC on noise only (no carrier) - empty sky, not a fault; no hardware alarms',
               'No active alarms (all nominal) - board clear, sweep complete; nothing to carry over',
@@ -275,7 +275,7 @@ export const natsEuScenario6Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'The only entry is the receive AGC on noise with no carrier: empty sky, not a fault. The security console does not raise dashboard alarms; that is exactly why somebody has to read it.',
+              "The only entry on the board is the receive AGC sitting on noise with no carrier, which is an empty sky and not a fault. The AGC is the receiver's automatic gain control, and it has no carrier to settle on until a satellite rises. So the board isn't completely clear, but it has no hardware alarm either. The security console doesn't raise dashboard alarms, which is exactly why somebody has to read it.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -288,7 +288,7 @@ export const natsEuScenario6Data: ScenarioData = {
       id: 'reference-check',
       nice: ['T0431', 'K0740'],
       title: 'Reference Check',
-      description: 'GPSDO locked and out of holdover before the pass.',
+      description: "Confirm on the GPS Timing tab that the GPSDO is locked and not in holdover before the pass. Holdover means it's coasting on its own oscillator without GPS.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['dashboard-sweep'],
       timeLimitSeconds: 2 * 60,
@@ -315,7 +315,7 @@ export const natsEuScenario6Data: ScenarioData = {
       nice: ['S0421', 'K0773'],
       title: 'Set Up the Receiver for SAR-1',
       description:
-        'Charlie left modem 1 on the 1370 MHz SAR-2 carrier this morning - the log says so. Retune it to 1414 MHz and put the analyzer on the 1389 MHz beacon with a 2 MHz span.',
+        'Charlie left modem 1 on the 1370 MHz SAR-2 carrier this morning, and the log says so. Retune modem 1 to 1414 MHz, then put the analyzer on the 1389 MHz beacon with a 2 MHz span.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['reference-check'],
       timeLimitSeconds: 3 * 60,
@@ -352,7 +352,7 @@ export const natsEuScenario6Data: ScenarioData = {
       nice: ['S0844', 'K0685'],
       title: 'Read the Station Audit Log',
       description:
-        'Open the Security console and read the audit log end to end, then sign off the review once you have read it. Routine traffic is most of it; that is what makes the exceptions findable.',
+        "Open the Security console, read the audit log end to end, and sign off the review once you've finished. Most of it is routine traffic, which is what makes the exceptions easy to spot.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['rx-chain-ready'],
       timeLimitSeconds: 3 * 60,
@@ -378,14 +378,14 @@ export const natsEuScenario6Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Three entries carry warning severity. How many of them are findings?',
             options: [
-              'You do not know yet - severity is a hint from the logger, and each entry still has to be dispositioned',
+              "You don't know yet - severity is a hint from the logger, and each entry still has to be dispositioned",
               'All three - warning is the logger flagging a finding, and each one goes straight into the return',
               'None - nothing was breached, and a finding needs a loss or an intrusion, not just an odd entry',
               'One - only the six failed authentications count, and the new-address login and the config change are routine by definition',
             ],
             correctIndex: 0,
             explanation:
-              'The logger scores rarity; you score meaning, on who, what and when. Fiona from a new address, a service account changing its own poll interval, and six failed logins at 02:47 are three different things.',
+              "The logger scores how unusual an entry is, but you score what it means by checking who did it, what they did and when. Fiona logging in from a new address, a service account changing its own poll interval and six failed logins at 02:47 are three different things, so you can't judge them as one batch. Severity is only a hint about where to look first.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -398,7 +398,7 @@ export const natsEuScenario6Data: ScenarioData = {
       id: 'disposition-new-address',
       nice: ['S0844', 'K0686'],
       title: 'Disposition the New-Address Login',
-      description: "Fiona's 06:30 login from SH-02 tripped the new-source-address rule. Flag it for the return with its disposition, then decide what it is.",
+      description: "Fiona's 06:30 login from SH-02 tripped the new-source-address rule. Flag the entry for the return, then decide whether it's benign or a finding.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['read-the-audit-log'],
       timeLimitSeconds: 2 * 60,
@@ -415,7 +415,7 @@ export const natsEuScenario6Data: ScenarioData = {
           description: 'Benign or Finding',
           params: {
             character: Character.SYSTEM,
-            question: 'op-fiona, 06:30, console login from a source address the station has never seen. Finding?',
+            question: "Fiona's account (op-fiona) logged in at 06:30 from a source address the station has never seen. Is it a finding?",
             options: [
               'Benign: SH-02 is new to the rule and the account, hour and site register agree - note it, no action',
               'Finding: any unknown source address is an intrusion attempt until proven otherwise - lock op-fiona, escalate',
@@ -424,7 +424,7 @@ export const natsEuScenario6Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'SH-02 went operational this week and its address is new to the rule; the account, the hour and the site register all agree. Expected, explained, and checkable against the site register. A rule that fires once for a new site is doing its job; the disposition says so and the rule will not fire for Shetland again.',
+              "SH-02 went operational this week, so its address is new to the rule, and the account, the hour and the site register all agree. That makes the login expected and explained, and you can check it against the site register. Locking op-fiona or revoking remote access would punish a legitimate login. A rule that fires once for a new site is doing its job, so the disposition says so, and the rule won't fire for Shetland again.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -437,7 +437,7 @@ export const natsEuScenario6Data: ScenarioData = {
       id: 'disposition-poll-change',
       nice: ['S0844', 'K0685'],
       title: 'Disposition the Poll-Interval Change',
-      description: 'The monitoring service changed its own telemetry poll interval at 03:00. Flag it for the return with its disposition.',
+      description: "The monitoring service changed its own telemetry poll interval at 03:00. Flag the entry for the return, then decide whether it's benign or a finding.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['disposition-new-address'],
       timeLimitSeconds: 2 * 60,
@@ -454,7 +454,7 @@ export const natsEuScenario6Data: ScenarioData = {
           description: 'Benign or Finding',
           params: {
             character: Character.SYSTEM,
-            question: 'svc-monitor, 03:00, configuration change to its own poll interval, referencing change ticket CHG-0412. Finding?',
+            question: 'The monitoring service account (svc-monitor) changed its own poll interval at 03:00 and referenced change ticket CHG-0412. Is it a finding?',
             options: [
               'Benign: a service account changing its own config on schedule, with a ticket - verify the ticket, note it',
               'Finding: service accounts must never change configuration, ticket or not - revoke its config rights, report',
@@ -463,7 +463,7 @@ export const natsEuScenario6Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Who, what, when: the right actor doing the thing it exists to do, when the ticket said. Off-hours is a property of people, not of a scheduler. The ticket is the evidence; the return cites it.',
+              'Check who, what and when: the right actor did the thing it exists to do, at the time the ticket said. Off-hours is a warning sign for a person, but a scheduler runs at any hour by design. The ticket is the evidence, so the return cites it.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -480,7 +480,7 @@ export const natsEuScenario6Data: ScenarioData = {
       id: 'acquire-sar1',
       nice: ['S0421', 'K1032'],
       title: 'Acquire MERIDIAN-SAR-1',
-      description: 'The baseline pauses for the pass. Program-track SAR-1 before 14:03 and confirm the beacon on RX analysis.',
+      description: 'The baseline pauses for the pass. Set the antenna to program-track SAR-1 before 14:03, then confirm the beacon on the RX Analysis tab.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['disposition-poll-change'],
       conditions: [
@@ -515,7 +515,7 @@ export const natsEuScenario6Data: ScenarioData = {
       id: 'decode-sar1',
       nice: ['T0153', 'K0740'],
       title: 'Decode the Routine Downlink',
-      description: 'Lock the 1414 MHz imagery carrier and hold C/N above 8 dB through the high-elevation segment, roughly 14:05 to 14:08.',
+      description: 'Lock modem 1 on the 1414 MHz imagery carrier and hold C/N above 8 dB through the high-elevation part of the pass, roughly 14:05 to 14:08.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['acquire-sar1'],
       conditions: [
@@ -544,7 +544,7 @@ export const natsEuScenario6Data: ScenarioData = {
       nice: ['S0844', 'K0686'],
       title: 'Flag the Off-Hours Failures',
       description:
-        "LOS. Back to the trail: six failed logins at 02:47 against the antenna contractor's account, hours after any maintenance window and three weeks after the install closed. Flag it so Group Security sees it in this month's return.",
+        "With SAR-1 decoded, it's back to the audit log. At 02:47 there were six failed logins against the antenna contractor's account, hours outside any maintenance window and three weeks after the install closed. Flag the entry so Group Security sees it in this month's return.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['decode-sar1'],
       timeLimitSeconds: 2 * 60,
@@ -561,7 +561,7 @@ export const natsEuScenario6Data: ScenarioData = {
           description: 'Finding Confirmed',
           params: {
             character: Character.SYSTEM,
-            question: 'op-guest, 02:47, six failed logins, none succeeded. Finding?',
+            question: 'The contractor account (op-guest) had six failed logins at 02:47 and none succeeded. Is it a finding?',
             options: [
               'Finding: an account that should not exist, tried at an hour nobody authorised - report exposure and attempt',
               'Benign: unsuccessful attempts are noise, and the lockout did its job - note the count, nothing to report',
@@ -570,7 +570,7 @@ export const natsEuScenario6Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Who should not have an account, what looks like a guess sequence, when nobody is on site. You report the exposure and the attempt, not just the damage, whether or not anything got in. Flag first, note the time you saw it, then act on the account.',
+              "The account shouldn't exist any more, the failures look like password guessing, and they happened when nobody was on site. You report the exposure and the attempt, not just the damage, so a failed burst counts even if nothing got in and you don't have to wait for it to repeat. Flag it first, note the time you saw it, then act on the account.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -584,7 +584,7 @@ export const natsEuScenario6Data: ScenarioData = {
       nice: ['K0686', 'T1569'],
       title: 'Close the Contractor Account',
       description:
-        'Kilbride Antenna Services finished the feed work three weeks ago and their account is still active. Set it to disabled in the access-control panel. Nothing was breached - and that is not a reason to leave it open.',
+        "Kilbride Antenna Services finished the feed work three weeks ago, but their account is still active. Set it to disabled in the access-control panel. Nothing was breached, and that's not a reason to leave it open.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['flag-the-off-hours-failures'],
       timeLimitSeconds: 2 * 60,
@@ -610,7 +610,7 @@ export const natsEuScenario6Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Privilege should match current need, not future convenience. Least privilege is a habit, not a response. The install phase leaves things behind; the baseline is where they get picked up.',
+              "Least privilege means an account holds only the access it needs right now, not what it might need at the next feed job. An unused account is still something an attacker can aim at, and re-enabling one later takes a minute. Disabling it isn't a punishment for the contractor, because the same reason applies if nothing had been attempted. The install phase leaves things behind, and the baseline is where they get picked up.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -624,7 +624,7 @@ export const natsEuScenario6Data: ScenarioData = {
       nice: ['K0686', 'T1569', 'K0685'],
       title: 'Expire the Relief Account',
       description:
-        "T. Nakamura's Vermont secondment ended on 28 February and the last entry under op-relief is a logout the day before. The account is still active. Set it to expired, so a return visit has to be re-authorised through London rather than walking back in.",
+        "T. Nakamura's Vermont secondment ended on 28 February, and the last entry under op-relief is a logout the day before. The account is still active. Set it to expired, so that any return visit has to be re-authorised through London.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['close-the-contractor-account'],
       timeLimitSeconds: 2 * 60,
@@ -644,13 +644,13 @@ export const natsEuScenario6Data: ScenarioData = {
             question: 'Why expire the relief account rather than disable it like the contractor?',
             options: [
               'Expired records that authorisation lapsed and forces re-authorisation; disabled is a deliberate shut-off',
-              'Expired keeps the login working in case they come back; disabled would lock T. Nakamura out for good',
+              'Expired keeps the login working in case they come back; disabled would lock T. Nakamura out of the site for good',
               'Disabled is only for contractors and outside firms; expired is the status for NATS staff who move on',
               'There is no difference in what the panel enforces; either is fine, and expired just reads better',
             ],
             correctIndex: 0,
             explanation:
-              'Same effect today, different story in the return. The status is part of the record. Somebody reading the roster in six months should be able to tell a lapsed secondment from a closed contractor without asking you.',
+              "Either status blocks the account from logging in, so expired doesn't leave the door open. The difference is the story the return tells: expired says the authorisation ran out, disabled says someone shut the account on purpose. Somebody reading the roster in six months should be able to tell a lapsed secondment from a closed contractor without asking you.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -667,7 +667,7 @@ export const natsEuScenario6Data: ScenarioData = {
       id: 'retune-for-sar2',
       nice: ['S0421', 'K0773'],
       title: 'Retune for SAR-2',
-      description: 'MERIDIAN-SAR-2 rises at 14:18 from azimuth 130. Retune modem 1 to its 1370 MHz carrier and the analyzer to its 1397 MHz beacon.',
+      description: 'MERIDIAN-SAR-2 rises at 14:18 at azimuth 130 degrees. Retune modem 1 to its 1370 MHz carrier and move the analyzer to its 1397 MHz beacon.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['expire-the-relief-account'],
       timeLimitSeconds: 3 * 60,
@@ -693,7 +693,8 @@ export const natsEuScenario6Data: ScenarioData = {
       id: 'decode-sar2',
       nice: ['T0153', 'K0740', 'S0421'],
       title: 'Decode the Second Downlink',
-      description: 'Retarget program-track to SAR-2, lock the 1370 MHz carrier and hold C/N above 8 dB through the high-elevation segment, roughly 14:20:30 to 14:24.',
+      description:
+        'Point program-track at SAR-2, lock modem 1 on the 1370 MHz carrier, and hold C/N above 8 dB through the high-elevation part of the pass, roughly 14:20:30 to 14:24.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['retune-for-sar2'],
       conditions: [
@@ -727,7 +728,7 @@ export const natsEuScenario6Data: ScenarioData = {
       id: 'close-the-baseline',
       nice: ['S0844', 'T1580', 'K0685'],
       title: 'Close the Baseline',
-      description: "Record the month's findings and their dispositions for the return. Two passes decoded while you did it.",
+      description: "Record the month's findings and what you did about each one for the return. Both passes were decoded while you worked.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['decode-sar2'],
       timeLimitSeconds: 3 * 60,
@@ -740,14 +741,14 @@ export const natsEuScenario6Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'The failed logins never succeeded and nothing was taken. Why is this still a finding worth reporting?',
             options: [
-              'A dormant account with maintenance privileges is exposure whatever the outcome - and somebody was trying it.',
-              'It is not - unsuccessful attempts are noise and should be filtered out before the return goes to London.',
-              'Because the contractor breached their contract by attempting access - the report is a contractual step.',
-              'Only because Group Security requires at least one finding per return - a blank return gets sent back.',
+              'A dormant maintenance account is exposure whatever the outcome, and somebody was trying it',
+              'It is not, because unsuccessful attempts are noise and should be filtered out before the return goes to London',
+              'Because the contractor breached their contract by attempting access, so the report is a contractual step',
+              'Only because Group Security requires at least one finding per return, and a blank return gets sent back',
             ],
             correctIndex: 0,
             explanation:
-              'Somebody was trying that account at 02:47. You report the exposure and the attempt, not just the damage. Baseline closed: trail read, three warnings dispositioned, two accounts reconciled, two passes decoded.',
+              'A dormant account with maintenance privileges is exposure whether or not anyone used it, and the failed logins at 02:47 show someone was trying it. Filtering out unsuccessful attempts would hide the very thing Group Security needs to see, and a return only needs the findings that are really there. That closes the baseline: the trail is read, three warnings are dispositioned, two accounts are reconciled and two passes are decoded.',
             pointPenalty: 5,
             documentSection: 'Findings',
             documentLine:
@@ -764,10 +765,10 @@ export const natsEuScenario6Data: ScenarioData = {
     intro: {
       text: `
       <p>
-        <em>[Text message from Charlie Brooks at 13:44]</em>
+        <em>[Text message from Charlie Brooks at {{stationTime}}]</em>
       </p>
       <p>
-        "Quiet one. SAR-1 at 14:03 and SAR-2 at 14:18, both routine downlinks that need nothing from you beyond doing them properly. The item that actually needs you is the monthly security baseline, which nobody enjoys and which I want done properly too. Every console action at this site is logged. Once a month somebody reads all of it. This month that is you. You'll find nothing. Find it properly. And do not miss the pass while you are finding it."
+        "Quiet one today. SAR-1 comes up at 14:03 and SAR-2 at 14:18, and both are routine downlinks that just need doing properly. The job that actually needs you is the monthly security baseline, which nobody enjoys. Every console action at this site is logged, and once a month somebody reads all of it. This month that's you. You'll find nothing, but find it properly. And don't miss the pass while you're looking."
       </p>
       `,
       character: Character.CHARLIE_BROOKS,
@@ -781,7 +782,7 @@ export const natsEuScenario6Data: ScenarioData = {
           <em>[Memo from Priya Sharma, NATS Group Security, ref GS-BASELINE-GW01-03]</em>
         </p>
         <p>
-          "Monthly return for GW-01 is due by close of business Friday. Standard scope - full audit-trail review since the last return, every warning-severity event dispositioned, and an account roster reconciled against current authorisation. Anything flagged, tell us what it was and what you did about it. Anything not flagged, we assume you looked. A note for new sites. The install phase leaves things behind."
+          "The monthly return for GW-01 is due by close of business Friday. The scope is standard: review the whole audit trail since the last return, disposition every warning-severity event, and reconcile the account roster against current authorisation. Dispositioning an event means telling us what it was and what you did about it. If you don't flag something, we assume you looked. One note for new sites: the install phase leaves things behind."
         </p>
         `,
         character: Character.PRIYA_SHARMA,
@@ -791,7 +792,7 @@ export const natsEuScenario6Data: ScenarioData = {
       'disposition-new-address': {
         text: `
         <p>
-          That one is Fiona. The rule has never seen Shetland's address because Shetland did not exist last month. Write down why it is fine; "it is fine" on its own is what people write when they did not look.
+          That one was Fiona's. The rule had never seen Shetland's address, because Shetland didn't exist last month. You wrote down why it's fine, which is the part people skip, because "it's fine" on its own is what they write when they haven't looked. The poll-interval change is next.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -801,7 +802,7 @@ export const natsEuScenario6Data: ScenarioData = {
       'disposition-poll-change': {
         text: `
         <p>
-          Service account changing its own poll interval at three in the morning with a change ticket on it. That is a scheduler doing what schedulers do. Cite the ticket and move on.
+          The monitoring service changed its own poll interval at three in the morning, and the change has a ticket. A poll is just the service asking the equipment for telemetry, so that was a scheduler doing what schedulers do, and citing the ticket was all it needed. The pass comes before the rest of the log, so SAR-1 is next.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -811,7 +812,7 @@ export const natsEuScenario6Data: ScenarioData = {
       'acquire-sar1': {
         text: `
         <p>
-          Pass first. The log has been sitting there since six this morning; it will keep for ten minutes. The bird will not.
+          You've got SAR-1, so the pass comes first. The log has been sitting there since this morning and it'll keep until the pass is over, and the satellite won't wait for you.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -821,7 +822,7 @@ export const natsEuScenario6Data: ScenarioData = {
       'decode-sar1': {
         text: `
         <p>
-          Routine is the point. Every action you just took went into the trail you are auditing - program-track, modem lock, the lot. Next month somebody reads those and decides whether they were you.
+          Routine was the point of that one. Every action you took on that pass went into the same trail you're auditing. Next month somebody reads those entries and decides whether they were you. Back to the log now.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -831,10 +832,10 @@ export const natsEuScenario6Data: ScenarioData = {
       'flag-the-off-hours-failures': {
         text: `
         <p>
-          <em>[Text message from Priya Sharma at 14:11]</em>
+          <em>[Text message from Priya Sharma at {{stationTime}}]</em>
         </p>
         <p>
-          "Charlie says you have something on the contractor account. Do not clean it up yet. Flag the entry, note the time you saw it, then disable the account. The order matters to me later."
+          "Charlie says you've got something on the contractor account, and you've flagged the entry with the time you saw it. That's the order I wanted, because I'll be reading the record later. Now you can disable the account."
         </p>
         `,
         character: Character.PRIYA_SHARMA,
@@ -844,7 +845,7 @@ export const natsEuScenario6Data: ScenarioData = {
       'close-the-contractor-account': {
         text: `
         <p>
-          Kilbride did a good job on the feed and I would have them back tomorrow. That is a reason to re-enable the account tomorrow, not a reason to leave it open tonight.
+          Good, that's closed. Kilbride did a good job on the feed, and I'd have them back tomorrow. That's a reason to re-enable the account tomorrow, not a reason to have left it open tonight. There's one more account on the roster to look at.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -854,7 +855,7 @@ export const natsEuScenario6Data: ScenarioData = {
       'expire-the-relief-account': {
         text: `
         <p>
-          Nakamura covered for me in February and went home on the twenty-eighth. Nobody closed the account because nobody's job was to close the account. That is what the roster reconciliation is for. Expired, not disabled. The story is different and the return should say so.
+          Nakamura covered for me in February and went home on the twenty-eighth. Nobody closed the account, because nobody's job was to close the account, and that's what the roster reconciliation is for. You set it to expired rather than disabled, which is right, because the story is different and the return should say so. SAR-2 is up next.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -864,7 +865,7 @@ export const natsEuScenario6Data: ScenarioData = {
       'decode-sar2': {
         text: `
         <p>
-          Second one decoding. A baseline that cost the station a pass would not be a baseline, it would be an outage with paperwork.
+          That's SAR-2 decoded, so the baseline didn't cost us a pass. A baseline that costs the station a pass isn't a baseline, it's an outage with paperwork. Now write it up.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -874,7 +875,7 @@ export const natsEuScenario6Data: ScenarioData = {
       'close-the-baseline': {
         text: `
         <p>
-          "Thank you. That is an incident record, not a story. Send it as it is."
+          "Thanks. That's a record, not a story: what you saw, when you saw it, and what you did. Send it as written."
         </p>
         `,
         character: Character.PRIYA_SHARMA,

@@ -90,6 +90,13 @@ test('mission launch reveals the prepared console and removes the loading screen
   await page.locator('#scenario-detail .btn-start').click();
   await expect(page).toHaveURL(/\/campaigns\/nats\/scenarios\//u);
   await expect(page.locator('#app-shell-page')).toBeVisible();
+  // A fresh mission holds the console behind its opening scene until the player starts it
+  const opening = page.locator('.scene-modal[open]');
+  await page.waitForFunction(() => !!document.querySelector('.scene-modal[open]') || document.querySelector<HTMLElement>('#app-shell-page')?.inert === false);
+  if (await opening.isVisible()) {
+    await opening.getByRole('button', { name: 'Start', exact: true }).click();
+    await expect(opening).toHaveCount(0);
+  }
   await expect(page.locator('.mission-loading-screen')).toHaveCount(0);
   await expect(page.locator('#app-shell-page')).toHaveJSProperty('inert', false);
   expect(errors).toEqual([]);

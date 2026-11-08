@@ -64,7 +64,7 @@ test.describe('nats-eu Scenario 11 Full Completion', () => {
   test('[review-mission-brief] reads the LEOP card and the acquisition risk', async () => {
     await missionControl.openMissionBrief();
     await missionControl.closeMissionBrief();
-    await answerSystemQuiz(page, 'At AOS the bird can be a few degrees from prediction');
+    await answerSystemQuiz(page, 'At AOS the bird can be many beamwidths off prediction');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Read the LEOP Card');
   });
@@ -73,7 +73,7 @@ test.describe('nats-eu Scenario 11 Full Completion', () => {
     await missionControl.selectGroundStation('GW-01');
     await missionControl.selectTab('dashboard');
     await expectDashboardAlarm(page, 'AGC on noise only');
-    await answerSystemQuiz(page, 'RX AGC on noise only');
+    await answerSystemQuiz(page, 'The AGC no-carrier warning only');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'GW-01 Dashboard Sweep');
   });
@@ -101,7 +101,7 @@ test.describe('nats-eu Scenario 11 Full Completion', () => {
     await missionControl.selectTab('rx-analysis');
     await fillAndChange(page, '#sa-center-freq', '1315');
     await fillAndChange(page, '#sa-span', '2');
-    await answerSystemQuiz(page, 'At 60 MHz span a CW tone is one pixel');
+    await answerSystemQuiz(page, 'At 60 MHz a CW tone is one pixel');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Analyzer on the Beacon');
   });

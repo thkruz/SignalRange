@@ -185,7 +185,7 @@ const SCENARIO_12_OBJECTIVES: Scenario12Objective[] = [
     id: 'tx-chain-inspection',
     title: 'TX Chain Leftover Inspection',
     type: 'quiz',
-    correctAnswer: 'BUC gain is at 50 dB - testing value left over from maintenance, operating value is 23 dB',
+    correctAnswer: 'BUC gain is at 50 dB, left over from maintenance; operating value is 23 dB',
     // The brief no longer names the leftover (nats-r3-s12-F2): read it off the panel
     assertBeforeAnswer: async (page) => {
       await expect(page.locator('#buc-gain:visible').first()).toHaveValue(/^50(\.0+)?$/u, { timeout: 10000 });
@@ -218,7 +218,7 @@ const SCENARIO_12_OBJECTIVES: Scenario12Objective[] = [
     id: 'verify-tx-staged',
     title: 'Confirm TX Staged Cold',
     type: 'quiz',
-    correctAnswer: 'Two uplinks on one transponder is dual illumination - the handover swaps RF authority so only one is ever on the air',
+    correctAnswer: 'Two uplinks on one transponder is dual illumination, so the handover keeps only one on the air',
   },
 
   // ============================================================
@@ -280,7 +280,7 @@ const SCENARIO_12_OBJECTIVES: Scenario12Objective[] = [
     id: 'final-dashboard-sweep',
     title: 'Final Dashboard Sweep',
     type: 'quiz',
-    correctAnswer: 'No warning or critical alarms - all systems nominal, TM-1 traffic on primary',
+    correctAnswer: 'No warning or critical alarms; TM-1 traffic on primary',
   },
   {
     id: 'log-maintenance-complete-typed',

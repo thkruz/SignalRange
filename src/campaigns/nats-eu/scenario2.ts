@@ -78,7 +78,7 @@ export const natsEuScenario2Data: ScenarioData = {
   subtitle: 'Acceptance Testing & Link Budgets',
   duration: '30-35 min',
   missionType: 'Commissioning',
-  description: `GW-01 is not accepted yet. Yesterday you worked a pass; today you have to prove the station performs to the number on the contract, and sign a test card saying so.<br><br>The acceptance test is simple to state and unforgiving to fake: predict the carrier-to-noise ratio for the next MERIDIAN-SAR-1 pass from the link budget, then measure it on the rising leg, at culmination and on the setting leg, and show the two agree with margin over the demodulator threshold.<br><br>Charlie has left the site survey numbers on the console. Read the ones you can verify off the rack first. Do the arithmetic before AOS - the pass is seven minutes long and the useful part is shorter than that.`,
+  description: `GW-01 isn't accepted yet. Its first MERIDIAN contact worked, but now it has to prove it performs to the number on the contract, and you'll sign a test card saying so.<br><br>The acceptance test is simple to state and hard to fake. First predict the carrier-to-noise ratio (C/N) for the next MERIDIAN-SAR-1 pass from the link budget. Then measure it on the rising leg, at culmination and on the setting leg, and show the two agree with margin over the demodulator threshold.<br><br>Charlie has left the site survey numbers on the console. Read the ones you can verify off the rack first, and do the arithmetic before the pass starts, because the pass is about seven minutes long and the useful part is shorter than that.`,
   equipment: ['4m Ku-Band LEO Tracking Antenna', 'Ku-Band RF Front End (13100 MHz LNB LO)', 'Link Analysis Console', 'QPSK 3/4 Receiver'],
   settings: {
     isSync: true,
@@ -142,14 +142,15 @@ export const natsEuScenario2Data: ScenarioData = {
           description: 'Acceptance Criteria Understood',
           params: {
             character: Character.SYSTEM,
-            question: 'Acceptance needs a predicted C/N, a measured C/N, and margin over the demod threshold. Which of those can you do before AOS?',
+            question: 'Acceptance needs a predicted C/N, a measured C/N, and margin over the demodulator threshold. Which of those can you do before AOS?',
             options: [
-              'The prediction - it comes from the link budget, not the pass.',
-              'The measurement - the receiver reads C/N whether or not the bird is up.',
-              'None of them. Everything waits for AOS.',
+              'The prediction, because it comes from the link budget and not from the pass.',
+              'The measurement, because the receiver reads C/N whether or not the satellite is up.',
+              'None of them, because every step needs the satellite overhead.',
             ],
             correctIndex: 0,
-            explanation: 'Right. The budget is arithmetic on known geometry and hardware; do it now so the pass is spent measuring, not calculating. Eighteen minutes to AOS.',
+            explanation:
+              "That's right. The budget is arithmetic on known geometry and hardware, so you can do it now and spend the pass measuring instead of calculating. The measurement has to wait, because the receiver has nothing to read until the satellite rises. AOS is eighteen minutes away.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -166,7 +167,7 @@ export const natsEuScenario2Data: ScenarioData = {
       id: 'tx-cold-check',
       nice: ['T0431', 'K0645'],
       title: 'Confirm the Uplink is Cold',
-      description: 'A receive-only acceptance: HPA output disabled and BUC muted before the pass. Confirm both on the TX chain.',
+      description: 'This is a receive-only acceptance, so confirm on the TX chain that the HPA output is disabled and the BUC is muted before the pass.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['review-mission-brief'],
       timeLimitSeconds: 2 * 60,
@@ -189,16 +190,16 @@ export const natsEuScenario2Data: ScenarioData = {
           description: 'Why Cold',
           params: {
             character: Character.SYSTEM,
-            question: 'Nothing on this test card transmits. Why check the TX chain at all before the pass?',
+            question: 'Nothing on this test card transmits. Why check the TX chain before the pass anyway?',
             options: [
               'An untasked carrier breaks flight rules, and an HPA with no drive amplifies its own noise',
-              'The receiver cannot lock while the HPA is disabled, and a muted BUC drops the LNB reference',
-              'The link budget needs the HPA output power, and the card cannot be computed without it',
-              'The interlocks handle it either way, and the log shows whatever state the chain was in',
+              "The receiver can't lock while the HPA is disabled, and a muted BUC drops the LNB's reference signal",
+              "The link budget needs the HPA output power, and the card can't be computed without that number",
+              'The interlocks handle it either way, and the log records whatever state the chain was in',
             ],
             correctIndex: 0,
             explanation:
-              'Cold and confirmed. A carrier radiated at a bird with no tasking breaks flight rules, and an HPA enabled with nothing behind it amplifies its own noise into the feed. The transmit half of the licence is a later card; today the station only listens, and it has to be seen to only listen.',
+              "A carrier radiated on a pass nobody tasked you on breaks the flight rules, and an HPA that's enabled with nothing driving it amplifies its own noise into the feed. The downlink budget uses the satellite's EIRP, not the HPA's output, and the BUC doesn't feed the LNB's reference, so the lock and the link budget are unaffected either way. Today the station only listens, and the log has to show that it only listens. The transmit half of the licence belongs to a later card.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -211,7 +212,7 @@ export const natsEuScenario2Data: ScenarioData = {
       id: 'reference-and-lnb',
       nice: ['T0431', 'K0740'],
       title: 'Reference and LNB Check',
-      description: 'GPSDO locked, LNB thermally stable. Both feed the system noise figure the test card assumes.',
+      description: 'Confirm the GPSDO is locked and the LNB is thermally stable, because both feed the system noise figure the test card assumes.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['tx-cold-check'],
       timeLimitSeconds: 2 * 60,
@@ -238,7 +239,7 @@ export const natsEuScenario2Data: ScenarioData = {
       nice: ['S0015', 'K0740'],
       title: 'Read the Survey Inputs Off the Rack',
       description:
-        'Before the survey numbers go into the worksheet, verify the one you can: LNB gain 65 dB on RX analysis. Then account for the system noise temperature on the card.',
+        'Before the survey numbers go into the worksheet, verify the one you can read off the rack: LNB gain of 65 dB on RX analysis. Then work out where the system noise temperature on the card comes from.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['reference-and-lnb'],
       timeLimitSeconds: 3 * 60,
@@ -255,7 +256,7 @@ export const natsEuScenario2Data: ScenarioData = {
           description: 'System Noise Accounted For',
           params: {
             character: Character.SYSTEM,
-            question: 'The card puts Tsys at 125 K with the LNB at 60 K. Where do the other 65 K come from?',
+            question: 'The card puts Tsys, the system noise temperature, at 125 K with the LNB at 60 K. Where do the other 65 K come from?',
             options: [
               'Sky and atmosphere at 28 degrees elevation plus the feed loss ahead of the LNA',
               'The GPSDO reference plus the phase noise it adds to the LNB local oscillator',
@@ -264,7 +265,7 @@ export const natsEuScenario2Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Everything in front of the first amplifier adds noise: the sky the beam looks through, the atmosphere at that elevation, the feed and the OMT. Tsys is the sum referenced to the LNA input, and it is why the same LNB gives a different Tsys at a different elevation.',
+              "Everything in front of the first amplifier (the LNA) adds noise: the sky the beam looks through, the atmosphere at that elevation, and the feed and OMT, the part that separates transmit from receive. Tsys is the sum of those, referenced to the LNA input. That's why the same LNB gives a different Tsys at a different elevation, and why the GPSDO and the survey rounding don't belong in the sum.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -277,7 +278,7 @@ export const natsEuScenario2Data: ScenarioData = {
       id: 'open-link-analysis',
       nice: ['T0080', 'S0015'],
       title: 'Open the Link Analysis Console',
-      description: 'The Link Analysis tab holds the acceptance worksheet. Open it and read the survey numbers before you start entering values.',
+      description: 'Open the Link Analysis tab, which holds the acceptance worksheet, and read the survey numbers before you start entering values.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['read-the-rack'],
       timeLimitSeconds: 2 * 60,
@@ -298,7 +299,7 @@ export const natsEuScenario2Data: ScenarioData = {
       nice: ['T0080', 'S0015', 'K0740'],
       title: 'Predict the Downlink C/N',
       description:
-        'Fill the worksheet for MERIDIAN-SAR-1 at maximum elevation and press Compute. Survey numbers: satellite EIRP 31.3 dBm; slant range at max elevation 761 km (free-space path loss 171.4 dB at 11686 MHz); GW-01 receive gain 50.4 dBi; system noise temperature 125 K; occupied bandwidth 36 MHz; miscellaneous losses 1 dB.',
+        'Fill in the worksheet for MERIDIAN-SAR-1 at maximum elevation and press Compute. The survey numbers are: satellite EIRP 31.3 dBm; slant range at maximum elevation 761 km, which gives a free-space path loss of 171.4 dB at 11686 MHz; GW-01 receive gain 50.4 dBi; system noise temperature 125 K; occupied bandwidth 36 MHz; and miscellaneous losses 1 dB.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['open-link-analysis'],
       timeLimitSeconds: 5 * 60,
@@ -319,7 +320,7 @@ export const natsEuScenario2Data: ScenarioData = {
       nice: ['K0773', 'K0740'],
       title: 'Check the Path Loss at the Mask',
       description:
-        'The worksheet used 761 km at culmination. At the 5 degree mask the slant range is 2270 km. Work out the path loss there and what it means for the measurement window.',
+        'The worksheet used 761 km at culmination. At the 5 degree mask the slant range is 2270 km, so work out the path loss there and what it means for the measurement window.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['compute-link-budget'],
       timeLimitSeconds: 3 * 60,
@@ -330,16 +331,16 @@ export const natsEuScenario2Data: ScenarioData = {
           description: 'FSPL at AOS',
           params: {
             character: Character.SYSTEM,
-            question: 'FSPL is 171.4 dB at 761 km. What is it at 2270 km, the range at the 5 degree mask?',
+            question: 'Free-space path loss (FSPL) is 171.4 dB at 761 km. What is it at 2270 km, the range at the 5 degree mask?',
             options: [
-              '180.9 dB - about 9.5 dB more, so C/N at AOS is roughly 1.5 dB',
-              '176.1 dB - about 4.7 dB more, so C/N at AOS is roughly 6.3 dB',
-              '171.4 dB - no more at all, so C/N at AOS is still roughly 11 dB',
-              '190.4 dB - about 19 dB more, so C/N at AOS is roughly -8 dB',
+              '180.9 dB, which is about 9.5 dB more, so C/N at AOS is roughly 1.5 dB',
+              '176.1 dB, which is about 4.7 dB more, so C/N at AOS is roughly 6.3 dB',
+              '171.4 dB, which is no more at all, so C/N at AOS is still roughly 11 dB',
+              '190.4 dB, which is about 19 dB more, so C/N at AOS is roughly -8 dB',
             ],
             correctIndex: 0,
             explanation:
-              'Path loss goes with range squared: 20 log10(2270 / 761) = 9.5 dB, which takes the 11 dB at culmination down to about 1.5 dB at the mask. Ten times the log is 4.7 dB; forty times is 19 dB; neither is free-space loss. That single number is why the acceptance window is the middle of the pass and why nobody decodes at the horizon.',
+              'Path loss goes with the square of the range, so the change is 20 log10(2270 / 761) = 9.5 dB. That takes the 11 dB at culmination down to about 1.5 dB at the mask. Using 10 log instead of 20 log gives only 4.7 dB, and using 40 log gives 19 dB, and neither matches free-space loss. That one number is why the acceptance window is the middle of the pass and why nobody decodes at the horizon.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -352,7 +353,7 @@ export const natsEuScenario2Data: ScenarioData = {
       id: 'review-pass-schedule',
       nice: ['K1032', 'S0421'],
       title: 'Confirm the Measurement Point',
-      description: 'Open the Pass Schedule tab and confirm when MERIDIAN-SAR-1 culminates. That is where the card wants the number.',
+      description: 'Open the Pass Schedule tab and confirm when MERIDIAN-SAR-1 culminates, because that is where the card wants the number.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['path-loss-check'],
       timeLimitSeconds: 2 * 60,
@@ -371,14 +372,14 @@ export const natsEuScenario2Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'When and where does the acceptance measurement get taken?',
             options: [
-              '14:06:45, 28 degrees elevation, 761 km - culmination',
-              '14:03:10, 5 degrees elevation, 2270 km - AOS',
-              '14:10:18, 5 degrees elevation, 2270 km - LOS',
-              '14:22:10, 25 degrees elevation, 761 km - SAR-2 culmination',
+              'At culmination: 14:06:45, 28 degrees elevation, 761 km',
+              'At AOS: 14:03:10, 5 degrees elevation, 2270 km',
+              'At LOS: 14:10:18, 5 degrees elevation, 2270 km',
+              'At SAR-2 culmination: 14:22:10, 25 degrees elevation, 761 km',
             ],
             correctIndex: 0,
             explanation:
-              'Culmination is the shortest range of the pass, so it is the best C/N the station will see on this geometry and the number the card is written against. The 14:22 culmination is SAR-2, which is not on the card.',
+              "Culmination is the shortest range of the pass, so it gives the best C/N the station will see on this geometry, and the card is written against that number. AOS and LOS sit at the 5 degree mask, where the path loss is highest. The 14:22 culmination belongs to SAR-2, which isn't on the card.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -396,7 +397,7 @@ export const natsEuScenario2Data: ScenarioData = {
       nice: ['S0421', 'K1032'],
       title: 'Track MERIDIAN-SAR-1',
       description:
-        'Put the antenna in program-track on MERIDIAN-SAR-1 before 14:03 so the measurement is taken on boresight, not on the shoulder of the beam. Confirm the beacon on RX analysis.',
+        'Put the antenna in program-track on MERIDIAN-SAR-1 before 14:03, so the measurement is taken on boresight (the center of the beam) and not on the shoulder of the beam. Then confirm the beacon on RX analysis.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['review-pass-schedule'],
       conditions: [
@@ -432,7 +433,7 @@ export const natsEuScenario2Data: ScenarioData = {
       nice: ['T0080', 'K0740'],
       title: 'Measure on the Rising Leg',
       description:
-        'Lock the 1414 MHz carrier and read C/N around 15 degrees on the way up (about 14:04:45). Expect roughly 7 dB: locked and clear of the 4.2 dB demodulator threshold, below the acceptance line.',
+        'Lock the 1414 MHz carrier and read C/N at about 15 degrees elevation on the way up, around 14:04:45. Expect roughly 7 dB, which is locked and above the 4.2 dB demodulator threshold but below the acceptance line.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['track-for-acceptance'],
       conditions: [
@@ -457,7 +458,7 @@ export const natsEuScenario2Data: ScenarioData = {
       nice: ['T0080', 'K0740', 'S0015'],
       title: 'Measure and Commit the Link',
       description:
-        'With the receiver locked on the 1414 MHz downlink, return to Link Analysis and press Commit Link near culmination (14:05:10 to 14:08:20). Acceptance needs at least 4 dB of margin over the 4.2 dB demodulator threshold.',
+        'With the receiver locked on the 1414 MHz downlink, go back to Link Analysis and press Commit Link near culmination, between 14:05:10 and 14:08:20. Acceptance needs at least 4 dB of margin over the 4.2 dB demodulator threshold.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['rising-leg'],
       conditions: [
@@ -481,7 +482,7 @@ export const natsEuScenario2Data: ScenarioData = {
       id: 'setting-leg',
       nice: ['T0080', 'K0773'],
       title: 'Measure on the Setting Leg',
-      description: 'Stay on RX analysis past culmination and read C/N around 15 degrees on the way down (about 14:08:40). Compare it with the rising leg.',
+      description: 'Stay on RX analysis past culmination and read C/N at about 15 degrees elevation on the way down, around 14:08:40. Then compare it with the rising leg.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['commit-the-link'],
       conditions: [
@@ -502,16 +503,16 @@ export const natsEuScenario2Data: ScenarioData = {
           description: 'Curve Read',
           params: {
             character: Character.SYSTEM,
-            question: 'At 15 degrees on the way up you read about 7 dB. At 15 degrees on the way down you read about 7 dB. Why the same?',
+            question: 'At 15 degrees on the way up you read about 7 dB, and at 15 degrees on the way down you read about 7 dB again. Why are they the same?',
             options: [
-              'Same elevation, same slant range, same path loss - the curve is symmetric about culmination',
-              'The AGC has settled by the setting leg - the two readings agree once the loop catches up',
-              'Doppler is equal and opposite on the two legs - the demod reports the same C/N either way',
-              'Coincidence - the two readings are independent samples that happened to fall on the same value',
+              'Same elevation means the same slant range, so the curve is symmetric about culmination',
+              "The receiver's automatic gain control has settled by the setting leg, so the readings agree by then",
+              'Doppler is equal and opposite on the two legs, so the demodulator reports the same C/N either way',
+              "It's a coincidence, because the two readings are independent samples that happened to match",
             ],
             correctIndex: 0,
             explanation:
-              'Same elevation means the same slant range, the same path loss and the same sky noise. C/N on a pass is a function of geometry. Read one leg and you have predicted the other; a difference between them is a fault, not physics.',
+              'The same elevation means the same slant range, the same path loss and the same sky noise, so C/N on a pass is a function of geometry. That means reading one leg predicts the other. A difference between the two legs would point to a fault, not to physics.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -528,7 +529,7 @@ export const natsEuScenario2Data: ScenarioData = {
       id: 'record-measurements',
       nice: ['T0080', 'T1580'],
       title: 'Record the Measurements',
-      description: 'LOS at 14:10. Enter the measurement section of the test card.',
+      description: 'SAR-1 sets at 14:10 (LOS). Complete the measurement section of the test card with the prediction, the measured values and the margin.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['setting-leg'],
       timeLimitSeconds: 3 * 60,
@@ -541,14 +542,14 @@ export const natsEuScenario2Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What goes in the measurement section of GW-01-ATP-002?',
             options: [
-              'Predicted 11.4 dB; measured about 11 dB at 28 deg; margin about 7 dB over 4.2 dB; ~7 dB at 15 deg both legs',
-              'Predicted 11.4 dB; measured about 11 dB at 28 deg; margin 0.4 dB under prediction; no shoulder readings',
-              'Predicted 11.4 dB; measured about 11 dB at 28 deg; margin 3 dB over 8 dB; ~7 dB at 15 deg both legs',
-              'Predicted 11.4 dB; measurement not required; margin 7.2 dB over 4.2 dB; shoulders predicted ~7 dB',
+              'Predicted 11.4 dB, measured about 11 dB, margin about 7 dB over threshold, and both 15 degree readings about 7 dB',
+              'Predicted 11.4 dB, measured about 11 dB, margin 0.4 dB under prediction, and no readings on the legs',
+              'Predicted 11.4 dB, measured about 11 dB, margin 3 dB over the 8 dB service line, and both 15 degree readings about 7 dB',
+              'Predicted 11.4 dB, no measurement needed, margin 7.2 dB over threshold, and leg readings predicted at about 7 dB',
             ],
             correctIndex: 0,
             explanation:
-              'Prediction, measurement, margin over the 4.2 dB demodulator threshold, and the two shoulder readings that prove the curve. Margin is measured against the threshold, not against the prediction and not against the 8 dB service line. A card Rotterdam can check tomorrow against a different pass.',
+              'The card records the prediction, the measurement, the margin over the 4.2 dB demodulator threshold, and the two leg readings that prove the curve. Margin is measured against the threshold, not against the prediction and not against the 8 dB service line. Written that way, Rotterdam can check the card tomorrow against a different pass.',
             pointPenalty: 5,
             documentSection: 'Measurement',
             documentLine:
@@ -568,7 +569,7 @@ export const natsEuScenario2Data: ScenarioData = {
       id: 'set-up-regression',
       nice: ['S0421', 'S0015'],
       title: 'Set Up the Regression Run',
-      description: 'MERIDIAN-SAR-2 rises at 14:18:42 from azimuth 130. It is not on the card; run it anyway. Retune modem 1 to its 1370 MHz imagery carrier.',
+      description: "MERIDIAN-SAR-2 rises at 14:18:42 from azimuth 130. It isn't on the card, but run it anyway. Retune modem 1 to its 1370 MHz imagery carrier.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['record-measurements'],
       timeLimitSeconds: 4 * 60,
@@ -585,15 +586,16 @@ export const natsEuScenario2Data: ScenarioData = {
           description: 'Why a Regression Run',
           params: {
             character: Character.SYSTEM,
-            question: 'SAR-2 is not on the acceptance card. Why work its pass?',
+            question: "SAR-2 isn't on the acceptance card. Why work its pass?",
             options: [
-              'A second bird on a second geometry: if the model predicts this one too, the number was not luck',
-              'Rotterdam pays per pass: every contact worked before acceptance is billable against the contract',
-              'The receiver needs the exercise: a second lock before sign-off proves the modem is stable',
-              'No reason on the card: it is a stretch goal only, and the verdict is signed without it',
+              "It's a second satellite on a second geometry, so a match there shows the first result wasn't luck",
+              'Rotterdam pays per pass, so every contact worked before acceptance is billable against the contract',
+              'The receiver needs the exercise, because a second lock before sign-off proves the modem is stable',
+              "There's no reason on the card, because it's a stretch goal and the verdict is signed without it",
             ],
             correctIndex: 0,
-            explanation: 'Repeatability. A 25 degree pass at 828 km should come in around 10 dB; if it does, the model holds across the constellation.',
+            explanation:
+              "A second satellite on a second geometry tests the model instead of leaning on one lucky measurement. A 25 degree pass at 828 km should come in around 10 dB, and if it does, the model holds across the constellation. The pass doesn't earn billing and it isn't exercise for the modem; it only checks that the first number repeats.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -606,7 +608,8 @@ export const natsEuScenario2Data: ScenarioData = {
       id: 'regression-sar2',
       nice: ['S0421', 'T0080'],
       title: 'Regression: MERIDIAN-SAR-2',
-      description: 'Program-track MERIDIAN-SAR-2 and confirm C/N above 8 dB near its 25 degree culmination (14:22:10). Optional: the card is complete without it.',
+      description:
+        'Program-track MERIDIAN-SAR-2 and confirm C/N above 8 dB near its 25 degree culmination at 14:22:10. This one is optional, because the card is complete without it.',
       groundStation: 'GW-01',
       isOptional: true,
       prerequisiteObjectiveIds: ['set-up-regression'],
@@ -635,7 +638,7 @@ export const natsEuScenario2Data: ScenarioData = {
       id: 'sign-the-test-card',
       nice: ['T0080', 'K0740'],
       title: 'Sign the Test Card',
-      description: 'Record the acceptance verdict: does the measured link support the service, and why does the prediction matter if you measured it anyway?',
+      description: 'Record the acceptance verdict by saying whether the measured link supports the service, and why the prediction matters when you measured it anyway.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['set-up-regression'],
       timeLimitSeconds: 3 * 60,
@@ -646,15 +649,15 @@ export const natsEuScenario2Data: ScenarioData = {
           description: 'Acceptance Result Recorded',
           params: {
             character: Character.SYSTEM,
-            question: 'Measured C/N came in within a decibel of prediction. Why does acceptance require the prediction at all?',
+            question: 'The measured C/N came in within a decibel of the prediction. Why does acceptance require the prediction at all?',
             options: [
-              'Because a match proves the station performs as designed - a good number from a broken model is luck.',
-              'It does not - the measurement is the only thing that matters, and the prediction is a formality.',
-              'Because the customer contract specifies a calculation, not a test - the measurement is the formality.',
+              'Because a match proves the station performs as designed, and a good number alone could be luck.',
+              "It doesn't, because the measurement is the only thing that matters and the prediction is a formality.",
+              'Because the customer contract specifies a calculation, not a test, so the measurement is the formality.',
             ],
             correctIndex: 0,
             explanation:
-              "Exactly. A good measurement from a broken model is luck, not acceptance. Agreement between model and measurement is what lets you predict tomorrow's pass, and every pass after it. GW-01 is accepted.",
+              "That's right. A good measurement from a broken model is luck, not acceptance. Agreement between the model and the measurement is what lets you predict tomorrow's pass, and every pass after it. With the two agreeing, GW-01 is accepted.",
             pointPenalty: 5,
             documentSection: 'Verdict',
             documentLine:
@@ -674,7 +677,7 @@ export const natsEuScenario2Data: ScenarioData = {
         <em>[Text message from Charlie Brooks at 13:44]</em>
       </p>
       <p>
-        "Yesterday counted as first light. It does not count as acceptance. Rotterdam wants a number on a signed card before they schedule us for real tasking, and the number has to be predicted before it is measured or it is not a test, it is a guess that happened to work. Survey figures are on the Link Analysis console. Read the ones you can check off the rack first. Do the arithmetic before AOS."
+        "First light was a start, but it doesn't count as acceptance. Rotterdam wants a number on a signed card before they'll schedule us for real tasking, which means real customer passes. That number has to be predicted before it's measured, otherwise it isn't a test, it's a guess that happened to work. The survey figures are on the Link Analysis console. Read the ones you can check against the rack first, and do the arithmetic before AOS."
       </p>
       `,
       character: Character.CHARLIE_BROOKS,
@@ -685,7 +688,7 @@ export const natsEuScenario2Data: ScenarioData = {
       'tx-cold-check': {
         text: `
         <p>
-          Receive-only card. I want the amplifier disabled and the BUC muted where Rotterdam can see it in the log. A station that radiates when nobody asked is a station that does not get tasking.
+          That's the HPA disabled and the BUC muted, where Rotterdam can see it in the log. This is a receive-only card, and Rotterdam's flight rules are the constellation's operating rules: a station that radiates when nobody asked it to doesn't get tasking. Next, check the reference and the LNB.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -695,7 +698,7 @@ export const natsEuScenario2Data: ScenarioData = {
       'read-the-rack': {
         text: `
         <p>
-          Sixty-five dB on the LNB is on the survey and it is on the rack; check they agree. Tsys you cannot read off anything - that is the sky plus everything in front of the LNA. Know what is in the hundred and twenty-five.
+          Good, the LNB gain is 65 dB, which is what the survey says, and you've accounted for the 125 K of system noise temperature. You can't read Tsys off anything, because it's the sky plus everything in front of the LNA, the first amplifier in the LNB. Next, open the Link Analysis console.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -705,7 +708,7 @@ export const natsEuScenario2Data: ScenarioData = {
       'compute-link-budget': {
         text: `
         <p>
-          EIRP is in dBm on that sheet. Boltzmann is in dBW. Mind the thirty. Everyone loses it once; lose it now, on a worksheet, not on a card.
+          That's the predicted C/N, and it matches. The satellite's EIRP, its effective radiated power, is in dBm on that sheet, but Boltzmann's constant is in dBW, so the 30 dB difference between the two catches everyone once. It's far better to catch it on a worksheet than on a signed card. Now do the same sum at the mask.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -715,7 +718,7 @@ export const natsEuScenario2Data: ScenarioData = {
       'path-loss-check': {
         text: `
         <p>
-          Now do the same sum for the mask. Three times the range. That number is the whole reason the useful part of a pass is three minutes in the middle.
+          That's the path loss at the mask. At the mask the range is about three times longer than at culmination, and that's the whole reason the useful part of a pass is only about three minutes in the middle. Next, confirm the measurement point on the pass schedule.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -725,7 +728,7 @@ export const natsEuScenario2Data: ScenarioData = {
       'track-for-acceptance': {
         text: `
         <p>
-          Program-track before it rises. A measurement on the shoulder of the beam is a measurement of your pointing, not the station.
+          The antenna is on program-track and the beacon is up. That matters, because a measurement taken on the shoulder of the beam, off to one side of the center, tells you about your pointing and not about the station. Now wait for the satellite to climb through 15 degrees, about a minute and a half after it rises, and read the C/N.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -735,7 +738,7 @@ export const natsEuScenario2Data: ScenarioData = {
       'rising-leg': {
         text: `
         <p>
-          Read it now, low. Seven-ish at fifteen degrees. Remember the number; you will see it again on the way down and it should be the same.
+          That's the rising leg read. You should have seen about 7 dB. Remember that number, because you'll see it again on the way down and it should be the same. Now wait for culmination, the highest point of the pass, and commit the link there.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -745,7 +748,7 @@ export const natsEuScenario2Data: ScenarioData = {
       'commit-the-link': {
         text: `
         <p>
-          Top of the pass. Commit it when the margin reads what the card needs, not a second earlier. That button records what the receiver sees at the moment you press it.
+          That's the link committed. The button records what the receiver sees at the moment you press it, which is why I wanted you to wait until the margin read what the card needs. Now stay on the pass and measure again on the setting leg, once the satellite is below 15 degrees.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -758,7 +761,7 @@ export const natsEuScenario2Data: ScenarioData = {
           <em>[Text message from Anneke Visser, MERIDIAN Ops, at {{stationTime}}]</em>
         </p>
         <p>
-          "Galway - SAR-1 telemetry shows your receive window 14:04:50 to 14:08:30, clean. Send the card when it is signed and I will schedule you. Welcome to the network."
+          "Galway, SAR-1's telemetry shows your receive window from 14:04:50 to 14:08:30, and it's clean. Please send the card when it's signed and I'll schedule you. Welcome to the network. My flight dynamics team watched the pass from here, and the room went quiet, which is their way of saying it went well."
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -768,7 +771,7 @@ export const natsEuScenario2Data: ScenarioData = {
       'set-up-regression': {
         text: `
         <p>
-          Second bird is not on the card. Run it anyway. One good number is a number; two good numbers on two geometries is a model.
+          The modem is on SAR-2's imagery carrier. The second satellite isn't on the card, but running it anyway is worth it. One good number is just a number, while two good numbers from two different passes is a model. The regression run is optional, so you can sign the card whenever you're ready.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -778,7 +781,7 @@ export const natsEuScenario2Data: ScenarioData = {
       'sign-the-test-card': {
         text: `
         <p>
-          Sign it. I will countersign it. Rotterdam will pretend they never doubted us. Accepted for receive - the other half of the licence is tomorrow's problem.
+          That's the card signed, and I'll countersign it. Rotterdam will pretend they never doubted us. We're accepted for receive, and the other half of the licence, transmit, is tomorrow's problem.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

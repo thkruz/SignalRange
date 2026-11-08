@@ -45,13 +45,16 @@ import { c1TransponderPhysics, ses10Satellite, tidemark1Satellite, VERMONT_LOOK_
  * Pointing loss ~12 (gap/HPBW)^2 dB: ~6 dB now (beacon 28 dB, carrier still
  * locked near 7 dB), carrier lock lost near 0.55-0.6 deg, about one beamwidth
  * (in about twenty minutes; nats-r4-s18-F1, Phase 30 D16).
+ * MAX_GAP_DEG (0.5 deg) is a playability clamp: it holds the gap short of
+ * lock loss in the sim, so the player never sees the carrier actually drop;
+ * the quiz text describes what program-track would do if left alone.
  * Program-track is bleeding C/N. The operator (covering ME-02) must recognize
  * the signature, transition to step-track, hold the link, and feed the
  * spacecraft team ground-side observations - while staying inside the ground
  * role: Halifax flies the vehicle; we keep the lock.
  *
  * Tone: Crisis-phase. Marcus is the primary voice (spacecraft side), Dana
- * provides incident support. All quizzes SYSTEM. 6 clips.
+ * provides incident support. All quizzes SYSTEM. 5 clips.
  *
  * Sim notes:
  *   - The drifting TM-2 variant replaces the roster TM-2 for this scenario
@@ -178,7 +181,7 @@ export const scenario18Data: ScenarioData = {
   duration: '30-35 min',
   difficulty: 'advanced',
   missionType: 'Anomaly Response',
-  description: `Halifax called at 0850: TIDEMARK-2's north-south station-keeping burn this morning ran long on a stuck thruster valve and left the bird with about 1.3° of inclination. Further burns are suspended while the vehicle team investigates. From Maine's dish the satellite now swings through a daily figure-eight, about ±1.3°, that the published ephemeris (computed before the burn) does not show.<br><br>Program-track follows the ephemeris. The ephemeris is wrong, and the gap is opening fast this morning: the beacon C/N on the ACU sheds a few tenths of a dB a minute. You can watch it bleed in real time.<br><br>You have flown an inclined bird before - AURORA-7 taught you everything this needs. The difference is that this time the satellite is the patient, the spacecraft team is the surgeon, and the ground operator's whole job is to keep the monitors attached: hold the lock, feed Halifax your track data, and know exactly where the ground role ends.`,
+  description: `Halifax called at 0850. This morning's north-south station-keeping burn on TIDEMARK-2 ran long because of a stuck thruster valve, and it left the bird with about 1.3° of inclination. Further burns are suspended while the vehicle team investigates. From Maine's dish the satellite now swings through a daily figure-eight of about ±1.3°, and the published ephemeris, computed before the burn, doesn't show it.<br><br>Program-track follows the ephemeris, so it's pointing at the wrong place, and the gap is opening fast this morning. The beacon C/N on the ACU sheds a few tenths of a dB a minute, and you can watch it bleed in real time.<br><br>You've flown an inclined bird before, and AURORA-7 taught you what this needs. The difference is that the satellite is the patient and the spacecraft team is the surgeon, so the ground operator's job is to keep the monitors attached: hold the lock, feed Halifax your track data, and know where the ground role ends.`,
   equipment: ['9-meter C-band Antenna (ME-02)', 'RF Front End', 'Spectrum Analyzer', 'RX/TX Modems', 'Halifax vehicle status feed'],
   timeLimitSeconds: 35 * 60,
   settings: {
@@ -315,7 +318,7 @@ export const scenario18Data: ScenarioData = {
           description: 'Take the Shift',
           params: {
             character: Character.SYSTEM,
-            question: 'Vehicle anomaly on TIDEMARK-2, ground link degrading. What is YOUR job this shift?',
+            question: "TIDEMARK-2 has a vehicle anomaly and the ground link is degrading. What's your job this shift?",
             options: [
               'Keep the link alive and feed Halifax ground observations - the vehicle is theirs, the lock is mine',
               'Diagnose the thruster fault from the ground telemetry - the beacon trace is the data, the diagnosis is mine',
@@ -323,7 +326,8 @@ export const scenario18Data: ScenarioData = {
               'Work with Halifax to command the satellite back to its slot - the burn plan is theirs, the uplink is mine',
             ],
             correctIndex: 0,
-            explanation: 'Role clarity is the first decision of a vehicle anomaly. Halifax flies the spacecraft; the ground station flies the antenna.',
+            explanation:
+              'Knowing your role is the first decision in a vehicle anomaly. Halifax flies the spacecraft, and the ground station keeps the antenna on it, so your job is the link and the observations. Diagnosing the fault, commanding the satellite or moving traffic belongs to Halifax or to Dana.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -360,7 +364,7 @@ export const scenario18Data: ScenarioData = {
       id: 'dashboard-baseline',
       nice: ['T0153', 'K0741'],
       title: 'Station Health vs Link Health',
-      description: 'Check the Dashboard - separate what is wrong from what is healthy.',
+      description: "Open the Dashboard and sort what's wrong from what's healthy.",
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['select-maine-station'],
       timeLimitSeconds: 2 * 60,
@@ -378,16 +382,16 @@ export const scenario18Data: ScenarioData = {
           description: 'The Split',
           params: {
             character: Character.SYSTEM,
-            question: 'The board shows degraded link margin but every equipment indicator is green. What does that combination tell you?',
+            question: 'The Dashboard shows degraded link margin, but every equipment indicator is green. What does that combination tell you?',
             options: [
-              "The ground segment is healthy - the degradation is on the space side or in the geometry, matching Halifax's report",
-              'A hidden equipment fault - green indicators lag a real degradation, so the ground segment needs a full sweep first',
-              'The dashboard is stale - the link margin figure is minutes old, and a refresh will bring it back in line with the board',
-              'Weather over Maine - rain fade degrades the link while every indicator stays green, so check the precipitation sensor',
+              "The ground segment is healthy - the problem is on the space side or in the geometry, matching Halifax's report",
+              'A hidden equipment fault - green indicators can lag a real degradation, so sweep the ground segment first',
+              'A stale dashboard - the link margin figure is minutes old, so a refresh will bring it back in line with the board',
+              'Rain fade over Maine - weather degrades the link while every indicator stays green, so check the rain sensor',
             ],
             correctIndex: 0,
             explanation:
-              'Healthy equipment + sick link = look up, not down. Fault isolation on the ground is the same discipline you use on a cascade - this time pointed at the sky.',
+              "Healthy equipment and a sick link mean you look up, not down. The equipment is green, so the cause is above the station, which matches Halifax's report. A hidden fault, a stale dashboard or rain fade would each leave some other sign, and none of them fits a vehicle that has already been reported drifting.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -400,7 +404,7 @@ export const scenario18Data: ScenarioData = {
       id: 'station-keeping-quiz',
       nice: ['K1032', 'K0751'],
       title: 'What Died on the Spacecraft',
-      description: 'Confirm what the overrunning north-south burn did to TIDEMARK-2 as seen from the ground.',
+      description: 'Pick what the overrunning north-south burn looks like from Maine.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['dashboard-baseline'],
       timeLimitSeconds: 2 * 60,
@@ -411,16 +415,16 @@ export const scenario18Data: ScenarioData = {
           description: 'Orbit Mechanics',
           params: {
             character: Character.SYSTEM,
-            question: "Halifax: this morning's north-south burn ran long and left TIDEMARK-2 with about 1.3° of inclination. What does that look like from Maine?",
+            question: "Halifax says this morning's north-south burn ran long and left TIDEMARK-2 with about 1.3° of inclination. What does that look like from Maine?",
             options: [
-              'A daily figure-8 - the bird swings about 1.3° north and south of its slot every day, and the ephemeris, computed before the burn, does not show it',
-              'Orbital altitude decay - the bird drops below the GEO belt within days, and the ephemeris range figures get steadily more wrong',
+              'A daily figure-8 - the bird swings about 1.3° north and south of its slot, and the pre-burn ephemeris does not show it',
+              'Altitude decay - the bird sinks below the GEO belt within days, and the ephemeris range figures get steadily worse',
               'Longitude drift - the bird slides along the GEO arc toward the TIDEMARK-1 slot within days, and the ephemeris azimuth goes wrong first',
               'Nothing observable from Maine - inclination only matters for collision avoidance, and the ephemeris stays valid for months',
             ],
             correctIndex: 0,
             explanation:
-              'Inclination is the axis north-south burns control. A burn meant to trim a few hundredths of a degree that runs long leaves the orbit tilted: the satellite crosses the equator twice a day and swings about ±1.3° north and south of its slot, a daily figure-8 (the east-west part of the 8 is tiny at this inclination). The burn set its size; only another burn changes it. AURORA-7 got there slowly - with no burns at all inclination builds only 0.8-0.9° a year. TIDEMARK-2 got there in one bad burn this morning.',
+              "Inclination is the tilt of the orbit, and north-south burns are what control it. A burn meant to trim a few hundredths of a degree that runs long leaves the orbit tilted, so the satellite crosses the equator twice a day and swings about ±1.3° north and south of its slot. That's a daily figure-8, and the east-west part of the 8 is tiny at this inclination. The burn set its size, and only another burn changes it. AURORA-7 built up inclination slowly, only 0.8-0.9° a year with no burns at all, but TIDEMARK-2 got there in one bad burn this morning.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -433,7 +437,7 @@ export const scenario18Data: ScenarioData = {
       id: 'read-program-track-decay',
       nice: ['T0153', 'K1032'],
       title: 'Read the Program-Track Decay',
-      description: 'Open ACU Control and read what program-track is doing with a stale ephemeris.',
+      description: 'Open ACU Control and check what program-track is doing now that the ephemeris is stale.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['station-keeping-quiz'],
       timeLimitSeconds: 2 * 60,
@@ -451,16 +455,16 @@ export const scenario18Data: ScenarioData = {
           description: 'Why the C/N Sags',
           params: {
             character: Character.SYSTEM,
-            question: 'Beacon C/N is several dB below its usual value. Program-track reports it is exactly on target. Reconcile that.',
+            question: "Beacon C/N is several dB below its usual value, but program-track reports that it's exactly on target. How do you reconcile that?",
             options: [
-              'Program-track IS on the ephemeris target - the satellite is somewhere else, and the gap between prediction and reality is paid in pattern loss',
-              'The beacon transmitter is failing on the satellite - pointing is fine, and the wander is the beacon output sagging with the vehicle power bus',
-              'The ACU encoder is slipping - the dish is not where it reports, and the gap between commanded and actual pointing is paid in pattern loss',
+              'Program-track IS on the ephemeris target - the satellite is elsewhere, and the gap between prediction and reality costs pattern loss',
+              'The beacon transmitter is failing on the satellite - pointing is fine, and the wander is the beacon output sagging with the power bus',
+              "The ACU encoder is slipping - the dish isn't where it reports, and the gap between commanded and actual pointing costs pattern loss",
               'Cross-pol interference from SES-10 - pointing is fine, and the wander is the SES-10 carrier beating against our beacon C/N',
             ],
             correctIndex: 0,
             explanation:
-              'A 9-meter C-band dish has a half-degree-class beamwidth. A few tenths of a degree of ephemeris error puts the bird on the shoulder of the beam - present and degraded: 0.4 deg off costs about 6 dB at the beacon. Program-track LOCKED only means the dish is where the ephemeris said.',
+              'A 9-meter C-band dish has a beamwidth of roughly half a degree, so a few tenths of a degree of ephemeris error puts the bird on the shoulder of the beam, present but degraded. At 0.4 deg off, the beacon loses about 6 dB. Program-track LOCKED only means the dish is where the ephemeris said it should be, not where the satellite is.',
             pointPenalty: 5,
             preserveOptionOrder: true,
           },
@@ -474,7 +478,7 @@ export const scenario18Data: ScenarioData = {
       id: 'beamwidth-risk-quiz',
       nice: ['K0721', 'K1032'],
       title: 'How Long Until It Falls Off',
-      description: 'Project the risk: the gap between the stale ephemeris and the real satellite, against a fixed beamwidth.',
+      description: "Work out how long program-track can last, given the gap between the ephemeris and the real satellite and the dish's fixed beamwidth.",
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['read-program-track-decay'],
       timeLimitSeconds: 2 * 60,
@@ -486,16 +490,16 @@ export const scenario18Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question:
-              'The ephemeris predates the burn, so program-track points at a station-kept bird while the real one swings through its daily ±1.3° figure-8. The gap is about 0.4° now (beacon ~6 dB down) and opens about 0.6° an hour (the beacon sheds a few tenths of a dB a minute); the ACU HPBW is ~0.6°. What does that mean for program-track?',
+              "The ephemeris predates the burn, so program-track points at a station-kept bird while the real one swings through its daily ±1.3° figure-8. The gap is about 0.4° now (beacon ~6 dB down) and opens about 0.6° an hour, which sheds a few tenths of a dB a minute. The ACU's half-power beamwidth (HPBW) is ~0.6°. What does that mean for program-track?",
             options: [
-              'Borrowed time - in about twenty minutes the gap reaches about one beamwidth (~0.55-0.6°) and the carrier drops out of lock; by early afternoon the bird is far outside the beam',
-              'Fine for the shift - ±1.3° is the size of the figure-8, not the pointing error, and program-track already follows the figure-8 in the ephemeris',
-              'Fine with more gain - a few dB of LNB gain covers the pattern loss, and the strategy holds until Halifax publishes a corrected ephemeris',
+              'Borrowed time - in about twenty minutes the gap reaches about one beamwidth (~0.55-0.6°) and the carrier would drop out of lock',
+              'Fine for the shift - ±1.3° is the size of the figure-8, not the pointing error, and program-track already follows the figure-8',
+              'Fine with more gain - a few dB of LNB gain covers the pattern loss, and the strategy holds until Halifax publishes a fix',
               'Self-correcting - program-track refines its ephemeris from the beacon as the gap grows, and converges before Halifax publishes a fix',
             ],
             correctIndex: 0,
             explanation:
-              'Pointing loss grows with the square of the error, about 12 x (gap / beamwidth)² dB. 0.4° costs ~6 dB - what the ACU shows: beacon 28 dB, carrier still locked. At 0.6° an hour the gap reaches about one beamwidth (~0.55-0.6°) in about twenty minutes: the loss reaches ~10-12 dB and the carrier falls out of lock. At 1.3° it is tens of dB, off the beam entirely. The ephemeris knows nothing of the burn, so program-track keeps pointing at the old slot while the gap opens. No gain knob recovers pointing loss (the LNB lifts the noise with the signal): track the satellite itself, which is what the beacon is for.',
+              "Pointing loss grows with the square of the error, about 12 x (gap / beamwidth)² dB. At 0.4° the loss is ~6 dB, which is what the ACU shows: beacon 28 dB, carrier still locked. At 0.6° an hour the gap reaches about one beamwidth (~0.55-0.6°) in about twenty minutes, the loss would climb to ~10-12 dB and the carrier would fall out of lock. By 1.3° it's tens of dB and the bird is off the beam entirely. The ephemeris knows nothing about the burn, so program-track keeps pointing at the old slot while the gap opens. No gain knob recovers pointing loss, because the LNB lifts the noise along with the signal, so the fix is to track the satellite itself. That's what the beacon is for.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -512,7 +516,7 @@ export const scenario18Data: ScenarioData = {
       id: 'enable-step-track',
       nice: ['S0421', 'K1032'],
       title: 'Engage Step-Track',
-      description: 'Switch tracking strategy: let the beacon, not the ephemeris, steer the dish.',
+      description: 'Switch the antenna from program-track to step-track, so the beacon steers the dish instead of the ephemeris.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['beamwidth-risk-quiz'],
       timeLimitSeconds: 2 * 60,
@@ -543,7 +547,7 @@ export const scenario18Data: ScenarioData = {
       // back to ~34 dB in 40-60 s (nats-s18-F3; nats-step-track-validation.test.ts)
       title: 'Beacon Recovery',
       description:
-        'Watch the ACU beacon C/N while step-track hunts: it steps the dish a fraction of a beamwidth at a time and keeps whichever way reads higher. Hold here until the beacon is back to 32 dB or better for 10 s - about half a minute of stepping.',
+        'Watch the ACU beacon C/N while step-track hunts. It steps the dish a fraction of a beamwidth at a time and keeps whichever direction reads higher. Hold here until the beacon is back to 32 dB or better for 10 s, which takes about half a minute of stepping.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['enable-step-track'],
       timeLimitSeconds: 3 * 60,
@@ -567,7 +571,7 @@ export const scenario18Data: ScenarioData = {
       // Ledger (nats-scenario18.json): ME-02's own TM-2 carrier reads about 7.8 dB
       // on the stale ephemeris; step-track wins back ~6 dB (beacon 28 -> 34)
       description:
-        'Open RX Analysis and confirm the customer carrier is back: locked with C/N at least 12 dB, held for 15 s. On the stale ephemeris it sat near 7, about 3 dB above the lock point.',
+        'Open RX Analysis and confirm the customer carrier is back, locked with C/N of at least 12 dB for 15 s. On the stale ephemeris it sat near 7 dB, about 3 dB above the lock point.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['acquire-stable-beacon'],
       timeLimitSeconds: 3 * 60,
@@ -601,7 +605,7 @@ export const scenario18Data: ScenarioData = {
       id: 'no-manual-chase-quiz',
       nice: ['K0721', 'S0421'],
       title: 'Why Not Fly It By Hand',
-      description: 'Confirm why manual pointing is the wrong fallback for a drifting bird.',
+      description: 'Pick the reason hand-pointing is the wrong fallback for a drifting satellite.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['verify-carrier-recovery'],
       timeLimitSeconds: 2 * 60,
@@ -612,16 +616,16 @@ export const scenario18Data: ScenarioData = {
           description: 'Hands Off the Axes',
           params: {
             character: Character.SYSTEM,
-            question: 'A colleague suggests nudging the dish manually every few minutes instead of trusting step-track. Why is that worse?',
+            question: 'A colleague suggests nudging the dish by hand every few minutes instead of trusting step-track. Why is that worse?',
             options: [
-              'A human chases where the bird WAS; the loop tracks where it IS - nudges add error between corrections, and a bad nudge can drop the beacon',
+              'A human chases where the bird WAS while the loop tracks where it IS - nudges add error, and a bad one can drop the beacon',
               'Manual mode disables the beacon receiver; the ACU stops reporting C/N - nudges are made blind, and a bad nudge can drop the carrier',
               'It is not worse; a human reads the C/N faster than the loop steps - nudges every few minutes stay inside the beamwidth all day',
               'Manual pointing loads the drive motors; the ACU logs every nudge - a stalled axis is the risk, and a stall drops the beacon entirely',
             ],
             correctIndex: 0,
             explanation:
-              'Step-track corrects continuously against the measured beacon; a human nudging every few minutes accumulates pointing error between corrections, and fatigue guarantees a missed one. If the automation ever actually dies you will fly manual because you must - but choosing manual while the loop works is choosing worse performance at higher risk.',
+              "Step-track corrects continuously against the measured beacon, while a human nudging every few minutes lets pointing error build up between corrections, and fatigue guarantees a missed one. If the automation really does die, you'll fly manual because you must. Choosing manual while the loop works means worse performance at higher risk.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -639,7 +643,7 @@ export const scenario18Data: ScenarioData = {
       nice: ['T0153', 'T1314'],
       title: 'Watch the Link Through the Drift',
       description:
-        'Stay on ACU Control and watch step-track keep the beacon for 30 s while the figure-8 wanders - this is the new normal until Halifax fixes the vehicle. The hold counts only while you are on ACU Control.',
+        "Stay on ACU Control and watch step-track keep the beacon for 30 s while the figure-8 wanders. This is the new normal until Halifax fixes the vehicle. The hold counts only while you're on ACU Control.",
       groundStation: 'ME-02',
       // A watch: beacon, step-track and carrier are meant to stay as they are
       intent: 'confirm',
@@ -681,7 +685,7 @@ export const scenario18Data: ScenarioData = {
       id: 'ground-observations-quiz',
       nice: ['T1314', 'K1032'],
       title: 'Feed the Vehicle Team',
-      description: "Choose what ground data actually helps Halifax's investigation.",
+      description: "Pick the ground data that actually helps Halifax's investigation.",
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['sustained-hold'],
       timeLimitSeconds: 2 * 60,
@@ -694,14 +698,14 @@ export const scenario18Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which ground-side dataset is most valuable to the spacecraft team right now?',
             options: [
-              'Timestamped step-track pointing history - the dish is physically following the satellite, so its az/el trace is a measurement of the actual orbit',
+              'Timestamped step-track pointing history - the dish is following the satellite, so its az/el trace measures the actual orbit',
               'Timestamped receiver frame error counters - the demod is riding the carrier, so its error rate trace tracks the vehicle bus health',
               'Timestamped BUC and HPA temperatures - the uplink chain is loading against the drift, so its thermal trace tracks the range change',
               'Timestamped spectrum analyzer screenshots - the beacon level is tracking the excursion, so its amplitude trace maps the figure-8',
             ],
             correctIndex: 0,
             explanation:
-              'When step-track follows the beacon, the antenna becomes a tracking instrument. Halifax can fit your pointing trace against their dynamics model - ground stations have refined orbits this way for decades.',
+              'When step-track follows the beacon, the antenna becomes a tracking instrument, because its az/el trace records where the satellite really was at each moment. Halifax can fit that trace against their dynamics model, and ground stations have refined orbits this way for decades. The other datasets describe how your equipment or the carrier is doing, not where the satellite is.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -714,7 +718,7 @@ export const scenario18Data: ScenarioData = {
       id: 'impact-assessment-quiz',
       nice: ['K0721', 'T1020'],
       title: 'Customer Impact Posture',
-      description: 'Set the customer impact statement for an anomaly with no current service effect.',
+      description: "Choose the customer impact statement for an anomaly that isn't affecting service right now.",
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['ground-observations-quiz'],
       timeLimitSeconds: 2 * 60,
@@ -725,16 +729,16 @@ export const scenario18Data: ScenarioData = {
           description: 'The Statement',
           params: {
             character: Character.SYSTEM,
-            question: 'Service is fully restored under step-track. What does the customer impact assessment say?',
+            question: 'Service is fully restored under step-track. What should the customer impact assessment say?',
             options: [
-              'No current impact; service nominal under step-track. Elevated risk while the anomaly is open; decision points are step-track margin loss or a Halifax status change',
+              'No current impact; service nominal under step-track. Elevated risk while the anomaly is open; decision points: step-track margin loss, Halifax status change',
               'No impact; service nominal under step-track. Risk posture normal now that the link is recovered; no further decision points until Halifax closes the anomaly',
               'Severe impact; service at risk under step-track. Elevated risk while the anomaly is open; recommend customers migrate to TIDEMARK-1 before margin is lost',
               'Impact unknown; service nominal under step-track for now. Assessment deferred until Halifax closes the anomaly; no decision points set on the ground side',
             ],
             correctIndex: 0,
             explanation:
-              'Honest posture: green today, amber risk, named tripwires. Every board-level report you will ever write grades exactly this skill - say what you know, label what you are watching.',
+              "The honest posture is green today, amber risk, and named tripwires. Say what you know and label what you're watching, because every board-level report you write gets graded on exactly that. Reporting normal risk hides an open anomaly, and calling it severe sends customers away from a link that's working.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -747,7 +751,7 @@ export const scenario18Data: ScenarioData = {
       id: 'escalation-boundary-quiz',
       nice: ['S0593', 'K0721'],
       title: 'Escalation Tripwires',
-      description: "Define when this stops being a ride-along and starts being Dana's call.",
+      description: "Decide which events stop being yours to handle and become Dana's call.",
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['impact-assessment-quiz'],
       timeLimitSeconds: 2 * 60,
@@ -767,7 +771,7 @@ export const scenario18Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'You own the link while the link is holdable - the tripwires are anything where keeping the link stops being possible or stops being wise. The moment the question becomes "should this traffic move?" or "should this bird carry traffic at all?" - that is supervision and spacecraft authority, with your data underneath it.',
+              "You own the link while the link is holdable, so the tripwires are anything that makes holding it impossible or unwise. Once the question becomes 'should this traffic move?' or 'should this bird carry traffic at all?', that's supervision and spacecraft authority, with your data underneath it.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -780,7 +784,7 @@ export const scenario18Data: ScenarioData = {
       id: 'log-shift-summary',
       nice: ['K0645', 'T0153'],
       title: 'Log the Anomaly Response',
-      description: 'Record the shift for the next operator - the anomaly outlives your shift.',
+      description: 'Record the shift for the next operator, because the anomaly outlives your shift.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['escalation-boundary-quiz'],
       timeLimitSeconds: 2 * 60,
@@ -793,14 +797,14 @@ export const scenario18Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which entry hands this off correctly?',
             options: [
-              'TM-2 vehicle anomaly (Halifax ref): N-S burn overran, ~1.3° inclination, ephemeris stale. ME-02 step-track engaged this shift (time in the Ops Log), carrier recovered, no impact. Pointing history to Halifax. Anomaly OPEN.',
+              'TM-2 vehicle anomaly (Halifax ref): N-S burn overran, ~1.3° inclination, ephemeris stale. ME-02 on step-track (time in the Ops Log), carrier recovered, no impact. Pointing history to Halifax. Anomaly OPEN.',
               'TM-2 tracking anomaly (ME-02 ref): program-track lost margin, ephemeris stale. Step-track engaged this shift, carrier recovered, no impact. Fix confirmed, no further action. Anomaly CLOSED.',
               'TM-2 vehicle anomaly (Halifax ref): N-S burn overran, ~1.3° inclination, ephemeris stale. ME-02 step-track for the burn window only, carrier recovered, no impact. Returned to program-track. Anomaly CLOSED.',
               'TM-2 vehicle anomaly (Halifax ref): thruster degradation under investigation. ME-02 carrier nominal, no impact. Halifax holds all detail and next steps. Anomaly OPEN, no ground actions.',
             ],
             correctIndex: 0,
             explanation:
-              'OPEN in capital letters is the word that matters, and the tripwires (step-track margin, vehicle status change) belong in the handoff. The next operator inherits a healthy link inside an unresolved anomaly - the log must make both halves of that true.',
+              "The correct entry marks the anomaly OPEN, because the vehicle problem isn't fixed, and records what was done and what went to Halifax. The wrong ones close the anomaly early, blame the wrong party, or claim Halifax holds everything and the ground has no actions. The next operator inherits a healthy link inside an unresolved anomaly, and the log has to make both halves of that true.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -814,10 +818,10 @@ export const scenario18Data: ScenarioData = {
     intro: {
       text: `
       <p>
-        <em>[Text message from Dana at 09:07]</em>
+        <em>[Text message from Dana at 09:15]</em>
       </p>
       <p>
-        "Marcus called the ops line at 0850 - TM-2's north-south burn this morning ran long, stuck thruster valve, and left the bird with over a degree of inclination. Burns are suspended, vehicle team's on it. The ephemeris predates the burn and Maine's link is paying for it. You're covering ME-02 today. Keep the link, feed Halifax what you see, and know where your job ends. The vehicle is theirs. The lock is yours."
+        "Marcus called the ops line at 0850. This morning's north-south burn on TM-2 ran long because of a stuck thruster valve, and it left the bird with over a degree of inclination. Burns are suspended while the vehicle team investigates. The ephemeris predates the burn, so Maine's link is paying for it. The ephemeris is the table of predicted positions that program-track follows. You're covering ME-02 today. Keep the link, feed Halifax what you see, and know where your job ends. The vehicle is theirs. The lock is yours."
       </p>
       `,
       character: Character.DANA_TORRES,
@@ -828,7 +832,7 @@ export const scenario18Data: ScenarioData = {
       'beamwidth-risk-quiz': {
         text: `
         <p>
-          Marcus here. Confirming what you're seeing. The burn left us about 1.3 degrees of inclination, and the published ephemeris predates it, so the gap only opens from here until early afternoon. Don't wait on a corrected set from us - it'll be a while. You've got a beacon; I'd trust it over my numbers right now.
+          This is Marcus in Halifax, and I can confirm what you're seeing. The burn left us about 1.3 degrees of inclination, and the published ephemeris predates it, so the gap will keep opening. A corrected ephemeris from us will take a while, so don't wait for it. You've got a beacon, and I'd trust your measurement over my numbers right now. Switch the dish over to follow it.
         </p>
         `,
         character: Character.MARCUS_CHEN,
@@ -848,7 +852,7 @@ export const scenario18Data: ScenarioData = {
       'ground-observations-quiz': {
         text: `
         <p>
-          One more thing - keep that pointing history flowing to us. Your dish is the best orbit-determination instrument on this anomaly right now. Every hour of clean step-track trace tightens our solution for the recovery burn.
+          One more thing, keep that pointing history flowing to us. Right now your dish is the best instrument we have for orbit determination, which means working out exactly where the satellite is. Every hour of clean step-track trace tightens our fix on the orbit for the recovery burn.
         </p>
         `,
         character: Character.MARCUS_CHEN,
@@ -858,10 +862,10 @@ export const scenario18Data: ScenarioData = {
       'log-shift-summary': {
         text: `
         <p>
-          Good shift. You read the signature, made one decisive change, and stayed inside your lane while owning everything in it. That's anomaly response - the vehicle team gets to work their problem because the link stopped being one.
+          Good shift. You spotted the program-track decay, made one decisive change to step-track, and stayed inside your lane while owning everything in it. That's anomaly response: the link stopped being a problem, so the vehicle team can work on theirs.
         </p>
         <p>
-          Anomaly stays open. Tomorrow's operator starts from your log.
+          The anomaly stays open, and tomorrow's operator starts from your log.
         </p>
         `,
         character: Character.DANA_TORRES,

@@ -35,7 +35,7 @@ async function configureNotchFilter(page: Page, config: { centerFrequency: numbe
   const powerSwitch = page.locator('#notch-power');
   await expect(powerSwitch).toBeVisible({ timeout: 5000 });
   if (!(await powerSwitch.isChecked())) {
-    await powerSwitch.click();
+    await powerSwitch.evaluate((el) => (el as HTMLElement).click());
     await expect(powerSwitch).toBeChecked();
     await page.waitForTimeout(300);
   }
@@ -43,7 +43,7 @@ async function configureNotchFilter(page: Page, config: { centerFrequency: numbe
   const enableSwitch = page.locator(`#${prefix}-enabled`);
   await expect(enableSwitch).toBeVisible();
   if (!(await enableSwitch.isChecked())) {
-    await enableSwitch.click();
+    await enableSwitch.evaluate((el) => (el as HTMLElement).click());
     await expect(enableSwitch).toBeChecked();
     await page.waitForTimeout(200);
   }
@@ -62,7 +62,7 @@ async function configureNotchFilter(page: Page, config: { centerFrequency: numbe
 
   const applyBtn = page.locator('#notch-apply-btn');
   if (await applyBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-    await applyBtn.click();
+    await applyBtn.evaluate((el) => (el as HTMLElement).click());
     await page.waitForTimeout(300);
   }
   await page.waitForTimeout(500);
@@ -102,7 +102,7 @@ test.describe('nats-eu Scenario 18 Full Completion', () => {
   test('[review-mission-brief] reads the day brief and the posture', async () => {
     await missionControl.openMissionBrief();
     await missionControl.closeMissionBrief();
-    await answerSystemQuiz(page, 'The record: a second appearance is evidence of persistence');
+    await answerSystemQuiz(page, 'The record: a repeat is evidence of persistence');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Read the Day Brief');
   });

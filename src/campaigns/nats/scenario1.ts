@@ -9,7 +9,7 @@ import { tidemark1Satellite } from './satellites';
 /**
  * NATS Level 1: "First Day" - TIDEMARK-1 Health Check
  *
- * Phase: Introduction (Phase 1, Scenario 1 of 8)
+ * Phase: Introduction (Phase 1, Scenario 1 of 24)
  * Time Pressure: None (tutorial pacing)
  * Calculation Required: NO - observation and familiarization only
  * New UI Elements: All panels introduced - asset tree, tabs, equipment displays
@@ -78,7 +78,7 @@ export const scenario1Data: ScenarioData = {
       // establishes the procedural framework for the health check workflow
       nice: ['K0645'],
       title: 'Review Mission Brief',
-      description: 'Open and read the mission brief, then acknowledge you are ready to proceed.',
+      description: "Open the mission brief and read it, then confirm you're ready to start.",
       groundStation: 'VT-01',
       freezesScenarioTimer: true,
       prerequisiteObjectiveIds: [],
@@ -94,7 +94,7 @@ export const scenario1Data: ScenarioData = {
           description: 'Ready to Proceed',
           params: {
             question: 'Have you reviewed the mission brief and are you ready to begin?',
-            options: ['Yes, I have read the mission brief and I am ready to proceed.'],
+            options: ["Yes, I've read the mission brief and I'm ready to proceed."],
             correctIndex: 0,
             explanation: 'The mission timer has started. Good luck!',
             pointPenalty: 0,
@@ -171,7 +171,7 @@ export const scenario1Data: ScenarioData = {
       // indicates about the timing reference availability to downstream equipment
       nice: ['T0431', 'K0741'],
       title: 'GPSDO Status Check',
-      description: 'Verify the GPSDO is locked and providing a stable timing reference.',
+      description: "Check that the GPSDO is locked, which means it's providing a stable timing reference.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['navigate-gps-timing'],
       timeLimitSeconds: 3 * 60,
@@ -195,7 +195,8 @@ export const scenario1Data: ScenarioData = {
               'Off - GPSDO is powered down',
             ],
             correctIndex: 0,
-            explanation: 'The green "Locked" indicator means the GPSDO is receiving GPS timing signals and providing a stable 10 MHz reference to all equipment in the rack.',
+            explanation:
+              'The green "Locked" indicator means the GPSDO is receiving GPS timing signals and providing a stable 10 MHz reference to all equipment in the rack. Holdover would mean it had lost GPS and was running on its backup oscillator, so the reference would slowly drift.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -246,7 +247,7 @@ export const scenario1Data: ScenarioData = {
       // how LNB noise temperature affects overall receive chain performance
       nice: ['T0431', 'K0740', 'K0773'],
       title: 'Verify LNB Status',
-      description: 'Check that the LNB is powered, thermally stable, and noise temperature is within spec.',
+      description: 'Check that the LNB is powered and thermally stable, and that its noise temperature is within spec.',
       groundStation: 'VT-01',
       intent: 'confirm',
       prerequisiteObjectiveIds: ['navigate-rx-analysis'],
@@ -280,13 +281,13 @@ export const scenario1Data: ScenarioData = {
             question: 'What is the LNB noise temperature reading, and is it within spec?',
             options: [
               '43K - within spec (good receive sensitivity)',
-              '150K - above spec (degraded sensitivity)',
-              '290K - far above spec (major problem)',
-              'No reading - LNB is offline',
+              '150K - above spec (degraded receive sensitivity)',
+              '290K - far above spec (major receiver problem)',
+              'No reading - the LNB is offline or unpowered',
             ],
             correctIndex: 0,
             explanation:
-              'The LNB noise temperature of 43K is excellent. Lower noise temperature means better receive sensitivity. Anything under 100K is considered good for C-band.',
+              'The LNB noise temperature of 43K is excellent, because a lower noise temperature means better receive sensitivity. Anything under 100K is acceptable for C-band, so 150K would already be a degraded LNB, and 290K would be a major problem.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -303,7 +304,7 @@ export const scenario1Data: ScenarioData = {
       // selector and its role in the monitoring workflow
       nice: ['K0773', 'S0421'],
       title: 'Tap Points Configuration',
-      description: 'Review the Tap Points card to understand signal monitoring points.',
+      description: 'Read the Tap Points card to see where the spectrum analyzer takes its input.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-lnb'],
       timeLimitSeconds: 2 * 60,
@@ -328,7 +329,7 @@ export const scenario1Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'The Tap Points card selects where in the signal chain the spectrum analyzer takes its input. RX IF monitors the receive path after the LNB downconverts from RF to IF - this is the standard monitoring point for receive operations.',
+              'The Tap Points card selects where in the signal chain the spectrum analyzer takes its input. RX IF is the receive path after the LNB downconverts from RF to IF, which makes it the standard monitoring point for receive operations. TX IF would show the transmit side instead, before upconversion.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -347,7 +348,7 @@ export const scenario1Data: ScenarioData = {
       // interpreting spectrum analyzer display to identify signal characteristics
       nice: ['T0153', 'K1032', 'K0773'],
       title: 'Identify Beacon Signal',
-      description: 'Locate the TIDEMARK-1 beacon signal on the spectrum analyzer and confirm receive chain status.',
+      description: 'Find the TIDEMARK-1 beacon on the spectrum analyzer, which confirms the receive chain is working.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-tap-points'],
       timeLimitSeconds: 6 * 60,
@@ -383,7 +384,7 @@ export const scenario1Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'The beacon signal appears as a narrow spike rising above the noise floor. This CW (continuous wave) intermediate frequency signal confirms the satellite is in view and the receive chain is working.',
+              "The beacon appears as a narrow spike rising above the noise floor. It's a CW (continuous wave) signal at intermediate frequency, so seeing it confirms the satellite is in view and the receive chain is working. A display showing only noise would mean no signal is reaching the analyzer.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -400,7 +401,7 @@ export const scenario1Data: ScenarioData = {
       // spectrum analyzer settings as baseline for monitoring
       nice: ['K0773', 'K0740'],
       title: 'Spectrum Analyzer Settings',
-      description: 'Review the spectrum analyzer configuration for beacon observation.',
+      description: "Read the spectrum analyzer's center frequency and span, which are set up for watching the beacon.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['identify-beacon'],
       timeLimitSeconds: 3 * 60,
@@ -422,7 +423,7 @@ export const scenario1Data: ScenarioData = {
             options: ['1074.5 MHz center, 0.002 MHz span', '1532 MHz center, 2 kHz span', '0.002 MHz center, 1074.5 MHz span', '1074.5 MHz center, 2 MHz span'],
             correctIndex: 0,
             explanation:
-              'The beacon settings are 1074.5 MHz (beacon IF frequency for TIDEMARK-1 after LNB downconversion) with a 2 kHz (0.002 MHz) span. AUTO-TUNE on the beacon settles on the same 2 kHz. This narrow span, with RBW on Auto, shows the CW beacon as a clean spike far above the noise floor.',
+              "The beacon settings are 1074.5 MHz, which is the beacon's IF frequency for TIDEMARK-1 after LNB downconversion, with a 2 kHz (0.002 MHz) span. AUTO-TUNE on the beacon settles on the same 2 kHz. A span that narrow, with RBW on Auto, shows the CW beacon as a clean spike far above the noise floor. The other options use the wrong frequency, swap the two values, or open the span out to 2 MHz.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -439,7 +440,7 @@ export const scenario1Data: ScenarioData = {
       // thresholds and what constitutes healthy link margin for QPSK
       nice: ['T0153', 'K0740'],
       title: 'Receiver Modem Check',
-      description: 'Verify the receiver modem is locked and the link quality is good.',
+      description: 'Check that the receiver modem is locked and that its C/N shows a good link.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-speca-settings'],
       timeLimitSeconds: 3 * 60,
@@ -464,7 +465,7 @@ export const scenario1Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'C/N at or above 8 dB is a healthy QPSK 3/4 link with adequate margin for reliable data reception (Normal in the brief table; 5-8 dB is Warning). For the lock itself, the modem shows Required Es/N0 5.0 dB; with Es/N0 about 0.8 dB above Raw C/N it acquires lock from about 4.7 dB C/N (Required 5.0 plus a 0.5 dB acquisition margin, less the 0.8 dB Es/N0 offset) and holds it down to about 3.7 dB. A healthy reading confirms the entire receive chain from antenna to modem is functioning properly.',
+              "C/N at or above 8 dB is a healthy QPSK 3/4 link with adequate margin for reliable data reception. It's Normal in the brief table, and 5-8 dB is Warning. The lock itself is a separate threshold. The modem shows Required Es/N0 5.0 dB, and since Es/N0 is about 0.8 dB above Raw C/N, it acquires lock from about 4.7 dB C/N (5.0 plus a 0.5 dB acquisition margin, less the 0.8 dB offset). It then holds lock down to about 3.7 dB. A healthy reading confirms the whole receive chain from antenna to modem is working.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -481,7 +482,7 @@ export const scenario1Data: ScenarioData = {
       // as visual confirmation of healthy signal-to-noise conditions
       nice: ['K0773', 'K0740'],
       title: 'I&Q Constellation Check',
-      description: 'Examine the I&Q constellation diagram to verify signal quality.',
+      description: 'Look at the I&Q constellation diagram to judge the signal quality.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-receiver'],
       timeLimitSeconds: 3 * 60,
@@ -499,14 +500,14 @@ export const scenario1Data: ScenarioData = {
           params: {
             question: 'What does the I&Q constellation diagram show about the received signal?',
             options: [
-              'Tight clusters at symbol points - clean QPSK modulation',
+              'Tight clusters at the symbol points - clean QPSK',
               'Scattered points in a circle - high noise, poor signal',
               'Points along a line - phase-only modulation issue',
-              'Empty display - no signal lock',
+              'An empty display - the modem has no signal lock',
             ],
             correctIndex: 0,
             explanation:
-              'The tight clusters at the four QPSK symbol points indicate clean demodulation with good signal-to-noise ratio. Spread or scattered points would indicate noise, interference, or phase problems.',
+              'The tight clusters at the four QPSK symbol points show clean demodulation and a good signal-to-noise ratio. Scattered points would mean noise, interference or phase problems, and an empty display would mean the modem has no lock.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -527,7 +528,7 @@ export const scenario1Data: ScenarioData = {
       // understanding forward error correction and data validation
       nice: ['K0740', 'K0773'],
       title: 'RX Payload Data Check',
-      description: 'Review the Payload Data Integrity card to verify the receive data path is healthy.',
+      description: 'Read the Payload Data Integrity card to check that the receive data path is healthy.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-constellation'],
       timeLimitSeconds: 3 * 60,
@@ -552,7 +553,7 @@ export const scenario1Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'The Payload Data Integrity card confirms the data path is healthy: frame sync is locked (receiving valid frames), CRC checks pass (no corruption), and the Reed-Solomon decoder is actively correcting any bit errors.',
+              'The Payload Data Integrity card confirms the data path is healthy. Frame sync is locked, so valid frames are arriving, the CRC checks pass, so nothing is corrupted, and the Reed-Solomon decoder is active and correcting any bit errors. Each wrong option has something failing or missing.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -601,7 +602,7 @@ export const scenario1Data: ScenarioData = {
       // as indicators of amplifier operating margin and stress
       nice: ['T0431', 'K0740'],
       title: 'HPA Status Check',
-      description: 'Verify the High Power Amplifier is operating correctly.',
+      description: "Check that the High Power Amplifier is transmitting normally, and read how much backoff it's running.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['navigate-tx-chain'],
       timeLimitSeconds: 3 * 60,
@@ -621,7 +622,7 @@ export const scenario1Data: ScenarioData = {
             options: ['Transmitting with 10 dB backoff', 'Powered on but not enabled (safe standby)', 'Transmitting at full power', 'Powered off completely'],
             correctIndex: 0,
             explanation:
-              'The HPA is powered on and transmitting with 10 dB backoff: 50 dBm (100 W), 10 dB under its 60 dBm (1 kW) compression point. That is a safe condition for routine operations. It reduces stress on the amplifier and keeps intermodulation low while still allowing signal transmission.',
+              "The HPA is powered on and transmitting with 10 dB backoff, which is 50 dBm (100 W), 10 dB under its 60 dBm (1 kW) compression point. That's a safe condition for routine operations, because it reduces stress on the amplifier and keeps intermodulation low while the signal still goes out.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -642,7 +643,7 @@ export const scenario1Data: ScenarioData = {
       // understanding data encoding and encryption for secure communications
       nice: ['K0740', 'K0773'],
       title: 'TX Payload Data Check',
-      description: 'Review the TX Payload Data card to verify the transmit data path is ready.',
+      description: 'Read the TX Payload Data card to check that the transmit data path is ready.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-hpa-status'],
       timeLimitSeconds: 3 * 60,
@@ -667,7 +668,7 @@ export const scenario1Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'The TX Payload Data card shows the transmit path is healthy: source feed is active, encryption is enabled with a valid key, and the buffer utilization is within normal range with no overflows or underruns.',
+              "The TX Payload Data card shows the transmit path is healthy. The source feed is active, so there's data to send, encryption is enabled with a valid key, and the buffer is within its normal range with no overflows or underruns. Each wrong option has one of those items failing.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -716,7 +717,7 @@ export const scenario1Data: ScenarioData = {
       // correctly tracking the target satellite
       nice: ['K1032', 'T0153'],
       title: 'Antenna Tracking Status',
-      description: 'Verify the antenna is correctly tracking TIDEMARK-1.',
+      description: 'Check which tracking mode the antenna is using to follow TIDEMARK-1.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['navigate-acu-control'],
       timeLimitSeconds: 3 * 60,
@@ -741,7 +742,7 @@ export const scenario1Data: ScenarioData = {
             ],
             correctIndex: 1,
             explanation:
-              "Program-track mode follows the predicted orbital position of the satellite based on ephemeris data. This mode is used when the beacon signal is not available, during initial acquisition, or when the satellite is GEO stationary and we don't want the ACU to make constant adjustments.",
+              "Program-track mode follows the satellite's predicted orbital position, calculated from ephemeris data. It's used when the beacon isn't available, during initial acquisition, or when the satellite is GEO stationary and we don't want the ACU making constant adjustments. Step-track would be hunting around the beacon instead, which isn't what's happening here.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -758,7 +759,7 @@ export const scenario1Data: ScenarioData = {
       // understanding how polarization mismatch affects signal strength and cross-pol interference
       nice: ['K1032', 'K0773'],
       title: 'Polarization Check',
-      description: 'Verify the antenna polarization matches TIDEMARK-1 requirements.',
+      description: 'Check the antenna polarization angle against what TIDEMARK-1 requires.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-tracking-mode'],
       timeLimitSeconds: 3 * 60,
@@ -776,14 +777,14 @@ export const scenario1Data: ScenarioData = {
           params: {
             question: 'What is the current polarization angle shown on the ACU, and why is it set to that value?',
             options: [
-              'About +18.8° - matched to TIDEMARK-1 satellite polarization as seen from VT-01',
-              '0° - default horizontal polarization for C-band',
-              '90° - vertical polarization for the downlink',
-              '45° - midpoint setting for circular polarization',
+              'About +18.8° - matched to TIDEMARK-1 as seen from VT-01',
+              '0° - the default horizontal setting for any C-band link',
+              '90° - vertical, because this is the downlink path',
+              '45° - the midpoint setting for circular polarization',
             ],
             correctIndex: 0,
             explanation:
-              "The feed is rotated to about +18.8° to match TIDEMARK-1's polarization as seen from VT-01. A GEO bird's linear polarization looks tilted from any site off its longitude: TIDEMARK-1 at 53 W sits east of VT-01, so the skew is positive. Proper polarization alignment maximizes signal strength and minimizes cross-pol interference.",
+              "The feed is rotated to about +18.8° to match TIDEMARK-1's polarization as seen from VT-01. A GEO bird's linear polarization looks tilted from any site off its longitude, and TIDEMARK-1 at 53 W sits east of VT-01, so the skew is positive. Matching it maximizes signal strength and minimizes cross-pol interference, which is why the default 0° or 90° settings would be wrong here.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -850,14 +851,14 @@ export const scenario1Data: ScenarioData = {
           params: {
             question: 'What is the current alarm status shown on the dashboard?',
             options: [
-              'No warning or critical alarms - one informational row, Signal(s) Detected',
-              'Warning alarm - LNB temperature high',
-              'Error alarm - GPSDO in holdover mode',
-              'Critical alarm - antenna tracking lost',
+              'No warnings or criticals - one info row, Signal(s) Detected',
+              'Warning alarm - LNB Temperature High is showing in the alarm list',
+              'Error alarm - GPSDO Holdover Mode is showing in the alarm list',
+              'Critical alarm - Antenna Tracking Lost is showing in the alarm list',
             ],
             correctIndex: 0,
             explanation:
-              'No warning or critical alarms, and the one informational row (Signal(s) Detected) only says the receiver sees our carrier. That confirms all equipment is operating within normal parameters. This is the final confirmation of a healthy ground station.',
+              "The dashboard shows no warning or critical alarms. The one informational row, Signal(s) Detected, only says the receiver sees our carrier, so it isn't a fault. That confirms all equipment is operating within normal parameters, and it's the final confirmation of a healthy ground station.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -894,7 +895,7 @@ export const scenario1Data: ScenarioData = {
       'review-mission-brief': {
         text: `
       <p>
-        Alright. First thing, always - the GPSDO. GPS-Disciplined Oscillator. It's the timing heart of this whole rack. Every piece of equipment keys off that 10 MHz reference. If the GPSDO is unhappy, nothing else matters.
+        Right. The first thing you check, always, is the GPSDO, the GPS-disciplined oscillator. It's the timing heart of this whole rack, because every piece of equipment keys off its 10 MHz reference. If the GPSDO is unhappy, nothing else matters.
       </p>
       <p>
         Start by clicking Vermont Ground Station in the asset tree on the left. That'll give you access to the equipment panels.
@@ -961,10 +962,10 @@ export const scenario1Data: ScenarioData = {
       'navigate-rx-analysis': {
         text: `
       <p>
-        RX Analysis - this is your receive chain. LNB at the top, spectrum analyzer in the middle, receiver modem at the bottom. Signal flows from antenna to data.
+        RX Analysis is your receive chain. The LNB is at the top, the spectrum analyzer's in the middle, and the receiver modem's at the bottom. Signal flows from antenna to data.
       </p>
       <p>
-        The LNB - Low Noise Block downconverter - sits at the antenna feed. Converts C-band RF down to IF so it can travel through coax. First, verify it's powered and thermally stable.
+        The LNB, the low noise block downconverter, sits at the antenna feed and converts C-band RF down to IF so the signal can travel through coax. First, verify it's powered and thermally stable.
       </p>
       `,
         character: Character.CHARLIE_BROOKS,
@@ -1003,10 +1004,10 @@ export const scenario1Data: ScenarioData = {
       'verify-speca-settings': {
         text: `
       <p>
-        1074.5 center, span set to 2kHz. That's the setup for beacon watch. Get these wrong and you're either staring at the wrong frequency or your signal's buried in the noise floor. I've seen new ops spend an hour troubleshooting a "missing" signal that was just off-screen. Don't be that person.
+        The center is 1074.5 MHz and the span is 2 kHz, which is the setup for watching the beacon. Get either one wrong and you'll be staring at the wrong frequency, or your signal will be buried in the noise floor. I've seen new operators spend an hour troubleshooting a "missing" signal that was just off-screen. Don't be that person.
       </p>
       <p>
-        Receiver modem next. This is where RF becomes data. The number you care about is C/N - Carrier-to-Noise ratio.
+        Next is the receiver modem, where RF becomes data. The number you care about is C/N, the carrier-to-noise ratio.
       </p>
       `,
         character: Character.CHARLIE_BROOKS,
@@ -1016,13 +1017,13 @@ export const scenario1Data: ScenarioData = {
       'verify-receiver': {
         text: `
       <p>
-        Good margin. That headroom is what keeps you online when a storm rolls through or the satellite has a bad day. C/N is your primary health metric - know it, watch it, respect it.
+        Good margin. That headroom is what keeps you online when a storm rolls through or the satellite has a bad day, C/N is your main health metric, so know it, watch it and respect it.
       </p>
       <p>
-        Last thing on the receive side - the constellation diagram. Visual representation of the demodulated symbols.
+        The last thing on the receive side is the constellation diagram, which is a picture of the demodulated symbols.
       </p>
       <p>
-        QPSK gives you four clusters, one per symbol. Tight clusters mean clean demod. Scattered means noise. Rotating means phase problems. Empty means no lock.
+        QPSK gives you four clusters, one per symbol. Tight clusters mean clean demodulation and scattered ones mean noise. Rotating clusters mean phase problems, and an empty display means no lock.
       </p>
       `,
         character: Character.CHARLIE_BROOKS,
@@ -1032,10 +1033,10 @@ export const scenario1Data: ScenarioData = {
       'verify-constellation': {
         text: `
       <p>
-        Tight clusters. That's the picture of a healthy link. After a while you'll glance at that diagram and know instantly if something's off. Noise spreads the points, phase errors rotate them, interference makes them dance.
+        Tight clusters. That's the picture of a healthy link. After a while you'll glance at that diagram and know instantly if something's off.
       </p>
       <p>
-        One more thing on the receive side - scroll down to the Payload Data Integrity card. This shows you the data path after demodulation. Frame sync, error correction, decryption status - the whole pipeline.
+        There's one more thing on the receive side. Scroll down to the Payload Data Integrity card, which shows you the data path after demodulation, including frame sync, error correction and decryption status.
       </p>
       `,
         character: Character.CHARLIE_BROOKS,
@@ -1066,10 +1067,10 @@ export const scenario1Data: ScenarioData = {
       'navigate-tx-chain': {
         text: `
       <p>
-        TX Chain - your transmit path. BUC at the top left, HPA at the top right, transmitter modem at the bottom left, and payload data at the bottom right. Signal flows from data to antenna.
+        TX Chain is your transmit path. The BUC is at the top left, the HPA at the top right, the transmitter modem at the bottom left, and the payload data at the bottom right. Signal flows from data to antenna.
       </p>
       <p>
-        The HPA - High Power Amplifier - is the muscle. Takes your milliwatt signal and turns it into real power. It's also the equipment most likely to ruin your day if you're not paying attention.
+        The HPA, the high power amplifier, is the muscle. It takes your milliwatt signal and turns it into real power, and it's also the equipment most likely to ruin your day if you're not paying attention.
       </p>
       `,
         character: Character.CHARLIE_BROOKS,
@@ -1116,10 +1117,10 @@ export const scenario1Data: ScenarioData = {
       'navigate-acu-control': {
         text: `
       <p>
-        ACU Control - antenna control unit. The dish needs to stay pointed at TIDEMARK-1.
+        ACU Control is the antenna control unit, and its job is keeping the dish pointed at TIDEMARK-1.
       </p>
       <p>
-        There are different tracking modes - program-track follows ephemeris predictions, manual is operator-controlled, stow parks it safe. What mode are we in?
+        There are different tracking modes. There are different tracking modes. Program-track follows predictions from the satellite's ephemeris, which is its orbit data. Step-track follows the beacon, manual is operator-controlled, and stow parks the antenna safe. What mode are we in?
       </p>
       `,
         character: Character.CHARLIE_BROOKS,
@@ -1129,10 +1130,10 @@ export const scenario1Data: ScenarioData = {
       'verify-tracking-mode': {
         text: `
       <p>
-        Program-track. Right answer for a GEO bird. TIDEMARK-1 sits in essentially the same spot, so we follow the math instead of constantly hunting. Eight years old now, starting to drift a bit in its box, but nothing the ephemeris can't handle.
+        Program-track, the right answer for a GEO bird. TIDEMARK-1 sits in essentially the same spot, so we follow the math instead of constantly hunting. She drifts a little inside her station-keeping box, but nothing the ephemeris can't handle.
       </p>
       <p>
-        Next is polarization - how the wave is oriented. Has to match what the satellite expects or you lose signal. Could be horizontal at 0 degrees, vertical at 90, or something in between.
+        Next is polarization, which is how the wave is oriented. It has to match what the satellite expects, or you lose signal. It could be horizontal at 0 degrees, vertical at 90, or something in between.
       </p>
       `,
         character: Character.CHARLIE_BROOKS,
@@ -1159,10 +1160,10 @@ export const scenario1Data: ScenarioData = {
       'navigate-dashboard': {
         text: `
       <p>
-        Dashboard - your early warning system. Shows status of all equipment at a glance. Green is good. Yellow needs attention. Red means stop and investigate.
+        The dashboard is your early warning system, and it shows the status of all equipment at a glance. Green is good, yellow needs attention, and red means stop and investigate.
       </p>
       <p>
-        Could be clean, could be warnings, could be critical faults. What's it showing?
+        It could be clean, it could show warnings, or it could show critical faults. What's it showing?
       </p>
       `,
         character: Character.CHARLIE_BROOKS,
@@ -1195,10 +1196,10 @@ export const scenario1Data: ScenarioData = {
       'identify-beacon': {
         text: `
       <p>
-        You're looking for the beacon - TIDEMARK-1's CW carrier. The analyzer is already configured to show it. Should be a clean spike above the noise floor. If you don't see it, check the center frequency. Beacon IF is 1074.5 MHz after the LNB downconverts from RF.
+        You're looking for the beacon, TIDEMARK-1's CW carrier, a steady unmodulated tone. The analyzer is already set up to show it, and it should be a clean spike above the noise floor. If you don't see it, check the center frequency: the beacon IF is 1074.5 MHz after the LNB downconverts from RF.
       </p>
       <p>
-        That carrier is your canary - if you can see it, the receive path is working. If it disappears or goes ragged, something changed. Could be weather, could be equipment, could be the satellite.
+        That carrier is your canary. If you can see it, the receive path is working, and if it disappears or goes ragged, something changed. It could be weather, the equipment or the satellite.
       </p>
       <p>
         Once you've confirmed it, check the analyzer settings. Center frequency and span determine what you're actually looking at.

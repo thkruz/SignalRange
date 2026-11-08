@@ -116,7 +116,7 @@ export const natsEuScenario23Data: ScenarioData = {
   subtitle: 'Degraded Manual Operations (Gray Zone 7/8)',
   duration: '40 min',
   missionType: 'Security Operations',
-  description: `21:00, Galway, Saturday. SAR-2 has a payload thermal excursion and Rotterdam needs PLD-SAFE up on the 21:22 pass. One command. That is the shift.<br><br>The report went out on Thursday with their method in it. Priya thinks they read it. If everything they have tried once arrives at the same time tonight, the only question is which of it can lose the pass - and in what order you deal with the rest.`,
+  description: `21:00, Galway, Saturday. SAR-2's payload is running too hot, and Rotterdam needs PLD-SAFE, the safe-mode command, up on the 21:22 pass. One command. That's the shift.<br><br>The report went out on Thursday with their method in it, and Priya thinks they've read it. If everything they've tried once arrives at the same time tonight, the question is which of it can cost you the pass, and in what order you deal with the rest.`,
   equipment: [
     'GW-01 Galway: 4m Ku-Band LEO Tracker',
     'Ku-Band RF Front End (13100 MHz LNB LO, 12600 MHz BUC LO) + HPA',
@@ -264,7 +264,7 @@ export const natsEuScenario23Data: ScenarioData = {
       id: 'review-mission-brief',
       nice: ['K0645', 'S0671'],
       title: 'Read the Brief',
-      description: 'Open the shift brief: one command that has to go up tonight, everything they have tried once, and the order things lose a pass in.',
+      description: "Open the shift brief: it covers the one command that has to go up tonight, everything they've tried once, and the order in which things can lose a pass.",
       groundStation: 'GW-01',
       freezesScenarioTimer: true,
       prerequisiteObjectiveIds: [],
@@ -282,14 +282,14 @@ export const natsEuScenario23Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What is the single tasking tonight, and what does "highest priority" mean for everything else?',
             options: [
-              'PLD-SAFE up on SAR-2 inside 21:22:21-21:31:15. Everything else is dealt with in the order it can cost that command - and anything that cannot cost it waits',
+              'PLD-SAFE up on SAR-2 inside 21:22:21-21:31:15. Everything else is ranked by whether it can cost it',
               'A clean pass on SAR-2 with every alarm cleared before AOS; a command on a degraded station is not sent',
               "Both passes, SAR-2 and SAR-1, flown to the normal standard; the thermal excursion is Rotterdam's problem",
               'Protecting the station: if the surge comes, the uplink stays cold and the command goes on the next window',
             ],
             correctIndex: 0,
             explanation:
-              'One command, one window, and a bird that is warming up. Priority means every other thing on the board is ranked by whether it can stop that command going up, and only that. Twenty-two minutes to AOS.',
+              "There's one command, one window, and a bird that's warming up. Priority means every other item on the board is ranked by whether it can stop that command going up, and only by that. AOS is twenty-two minutes away.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -302,7 +302,7 @@ export const natsEuScenario23Data: ScenarioData = {
       id: 'dashboard-sweep',
       nice: ['T0153', 'K0741'],
       title: 'GW-01 Dashboard Sweep',
-      description: 'Board read. Confirm the active alarm state on GW-01 before the uplink goes anywhere near the air.',
+      description: 'Read the Dashboard and confirm the active alarm state on GW-01 before the uplink goes anywhere near the air.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['review-mission-brief'],
       timeLimitSeconds: 90,
@@ -329,7 +329,7 @@ export const natsEuScenario23Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              "Empty sky, not a fault. The spacecraft's thermal problem is in the log and on Rotterdam's screen, not on this station's alarm panel, and the element set is current - for another fourteen minutes.",
+              "An empty sky isn't a fault. The spacecraft's thermal problem is in the log and on Rotterdam's screen, not on this station's alarm panel, and the element set is still current for another fourteen minutes.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -343,7 +343,7 @@ export const natsEuScenario23Data: ScenarioData = {
       nice: ['S0421', 'K0773', 'T1567'],
       title: 'Arm the Uplink',
       description:
-        "TX modem 1 is on SAR-1's 1405 MHz command IF. Retune it for SAR-2's 14035 MHz TT&C uplink through the 12600 MHz BUC LO, and engage uplink Doppler compensation before anything else happens.",
+        "TX modem 1 is on SAR-1's 1405 MHz command IF. Set it to 1435 MHz so the 12600 MHz BUC LO carries SAR-2's 14035 MHz TT&C (telemetry, tracking and command) uplink, and turn on uplink Doppler compensation before anything else happens.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['dashboard-sweep'],
       timeLimitSeconds: 2 * 60,
@@ -369,7 +369,7 @@ export const natsEuScenario23Data: ScenarioData = {
       id: 'rx-chain-ready',
       nice: ['S0421', 'K0773'],
       title: 'Set Up the Receiver for SAR-2',
-      description: 'Retune RX modem 1 to 1370 MHz and frame the analyzer on 1370 with a 60 MHz span.',
+      description: 'Retune RX modem 1 to 1370 MHz, then set the analyzer to a center of 1370 MHz with a 60 MHz span.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['arm-the-uplink'],
       timeLimitSeconds: 3 * 60,
@@ -403,7 +403,8 @@ export const natsEuScenario23Data: ScenarioData = {
       id: 'stage-the-hop-set',
       nice: ['K0925', 'K0645'],
       title: 'Stage the Hop Set',
-      description: 'Security console: HOP-SAR2-05 is in the store and SAR-2 is keyed at Rotterdam. Read the TRANSEC card and leave it exactly as it is.',
+      description:
+        'On the Security console, read the TRANSEC card. TRANSEC is the frequency-hopping protection on the command link. HOP-SAR2-05 is in the store and SAR-2 is keyed at Rotterdam, so leave everything exactly as it is.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['rx-chain-ready'],
       timeLimitSeconds: 2 * 60,
@@ -421,16 +422,16 @@ export const natsEuScenario23Data: ScenarioData = {
           description: 'Hop Set Staged, Not Loaded',
           params: {
             character: Character.SYSTEM,
-            question: 'Priya expects the jammer back tonight and the set is staged at both ends. Why is the key still not loaded at 21:05?',
+            question: "Priya expects the jammer back tonight, and the set is staged at both ends. Why isn't the key loaded yet?",
             options: [
-              'A hop set is spent the moment it is used on the air. It goes on for a called denial inside the window, not for a forecast - and the first command of the pass still goes on the fixed carrier',
+              "A hop set is spent the moment it is used on the air, so it's for a called denial, not a forecast",
               'Because loading it drops the fixed carrier: the modem cannot hold a key and a fixed waveform at the same time',
-              'Because Rotterdam has not keyed SAR-2 yet - the store entry says staged, and staged means one end only',
+              "Because Rotterdam hasn't keyed SAR-2 yet: the store entry says staged, and staged means one end only",
               'It should be loaded now: a jammer that is expected is a jammer that is already denying the carrier',
             ],
             correctIndex: 0,
             explanation:
-              "S19's lesson, unchanged by a forecast. If they do not jam, the set stays for the next time; if they do, you hop on the call with the store one click away. What is different tonight is that everything else is going to be happening at once.",
+              "A forecast isn't a denial, so the lesson from the last jamming hasn't changed. If they don't jam, the set stays for next time; if they do, you hop on the call with the store one click away. The first command of the pass still goes on the fixed carrier. What's different tonight is that everything else is going to happen at once.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -444,7 +445,7 @@ export const natsEuScenario23Data: ScenarioData = {
       nice: ['S0648', 'K0741'],
       title: 'Read the Surge',
       description:
-        '21:14. The GNSS vs REF delta-T is walking, the Pass Schedule tab says EPHEMERIS STALE against SAR-2, and Anneke is on the line. Read the delta-T on the GPS Timing tab and say what is on the board.',
+        "It's 21:14. The GNSS vs REF delta-T (the time difference between GNSS and the station reference) is walking, the Pass Schedule tab says EPHEMERIS STALE against SAR-2, and Anneke is on the line. Read the delta-T on the GPS Timing tab, then say what's on the board.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['stage-the-hop-set'],
       conditions: [
@@ -459,16 +460,16 @@ export const natsEuScenario23Data: ScenarioData = {
           description: 'Board Read',
           params: {
             character: Character.SYSTEM,
-            question: 'What is on the board at 21:14, and what is not?',
+            question: "What's on the board at 21:14, and what isn't?",
             options: [
-              'A GNSS spoof (delta-T walking, constellation healthy) and a stale element set (SAR-2 burned at 21:14). Not on the board: any jamming - the carrier is clear and the window is eight minutes away',
+              'A GNSS spoof (delta-T walking, constellation healthy) and a stale element set after the burn. No jamming: the carrier is clear',
               'A GNSS outage, a tracking fault and a jammer - three hardware failures at once, and the station should be declared unavailable',
               "A GNSS spoof only; the ephemeris notice is routine and the jammer is Priya's guess",
               'A jammer on the command carrier; the timing and ephemeris notices are side effects of it',
             ],
             correctIndex: 0,
             explanation:
-              'Two things are true and one is expected. The spoof and the burn are on the panels now; the jammer is a warning about the future. Deal with what is on the board, in the order it can cost the pass.',
+              "Two things are true and one is only expected. The spoof and the burn are on the panels now, and the jammer is a warning about the future. Deal with what's on the board, in the order it can cost the pass.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -506,7 +507,7 @@ export const natsEuScenario23Data: ScenarioData = {
           description: 'The Order',
           params: {
             character: Character.CHARLIE_BROOKS,
-            prompt: 'Three things and eight minutes. I am not going to tell you the order. What goes first, what goes second, and what waits for a reason to happen?',
+            prompt: "That's three things and about eight minutes. I'm not going to tell you the order. What goes first, what goes second, and what waits until there's a reason?",
             evidence: ['offset-seen', 'ephemeris-seen'],
             decisionOptions: [
               {
@@ -524,23 +525,23 @@ export const natsEuScenario23Data: ScenarioData = {
                 label:
                   'Holdover first - the reference walk corrupts everything downstream, including the pass prediction. Then the ephemeris, then load the hop set so the first command goes up hopping',
                 feedback:
-                  'The reference walk corrupts timestamps; it does not move the bird. The stale element set does. And a hop set loaded before any denial is a hop set spent on a forecast - the first command goes on the fixed carrier, as it did on the 16th.',
+                  "The reference walk corrupts timestamps, but it doesn't move the bird. The stale element set does. And a hop set loaded before any denial is a hop set spent on a forecast, so the first command goes on the fixed carrier, as it did on the 16th.",
               },
               {
                 label: 'Hop set first - the carrier is about to be sat on and the key takes the longest to bring up. Ephemeris and holdover after AOS',
                 correctWhen: { fact: 'uplink-jammed', is: true },
                 consequence: { log: 'Triage: hop set first with the carrier already denied' },
                 feedback:
-                  "The carrier is clear and the window is minutes away. Keying the set now spends it on Priya's forecast, and while you are on the Security console the tracker is still pointing at where the bird was before it burned.",
+                  "The carrier is clear and the window is minutes away. Keying the set now spends it on Priya's forecast, and while you're on the Security console the tracker is still pointing where the bird was before it burned.",
               },
               {
                 label: 'Stand down - three simultaneous faults is a station that cannot be trusted with a command tonight. Tell Rotterdam PLD-SAFE goes on the next window',
                 feedback:
-                  'None of the three is a fault on this station: the reference is fine, the tracker is fine, the uplink is fine. Each is an input being lied to, and each has a ten-second answer. The payload does not have a next window.',
+                  "None of the three is a fault on this station: the reference is fine, the tracker is fine, and the uplink is fine. Each is an input being lied to, and each has a ten-second answer. The payload doesn't have a next window.",
               },
             ],
             explanation:
-              'Rank by what loses the pass. A stale element set loses it outright, so the update goes first. A walking reference costs the timestamps and pulls every LO a couple of parts per million, tens of kHz inside the Doppler the chain already tracks, so holdover goes second and takes ten seconds. A jammer that is not on the air yet costs nothing until it is - and the answer to it is one click away when it does.',
+              "Rank by what loses the pass. A stale element set loses it outright, so the update goes first. A walking reference costs the timestamps and pulls every LO a couple of parts per million, tens of kHz inside the Doppler the chain already tracks, so holdover goes second and takes ten seconds. A jammer that isn't on the air yet costs nothing until it is, and the answer to it is one click away when it does.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -554,7 +555,7 @@ export const natsEuScenario23Data: ScenarioData = {
       nice: ['T1138', 'K1032'],
       title: 'Load the Post-Burn Elements',
       description:
-        'Pass Schedule tab: the SAR-2 entry reads EPHEMERIS STALE. Load the update. The station recomputes the pass and program-track will slew to where the bird actually is.',
+        "On the Pass Schedule tab, the SAR-2 entry reads EPHEMERIS STALE, which means the station's orbit data for it is out of date. Load the update, and the station recomputes the pass so program-track slews to where the bird actually is.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['triage'],
       timeLimitSeconds: 2 * 60,
@@ -571,16 +572,16 @@ export const natsEuScenario23Data: ScenarioData = {
           description: 'Burn Read',
           params: {
             character: Character.SYSTEM,
-            question: 'A debris-avoidance burn eight minutes before a pass you have to command on. What does the pre-burn set get you at AOS?',
+            question: 'A debris-avoidance burn minutes before a pass you have to command on. What does the pre-burn set get you at AOS?',
             options: [
-              'A tracker pointing where the bird would have been: a few seconds along-track, which at 660 km is a beamwidth - the beacon never shows and the window opens on nothing',
+              'A tracker pointing where the bird would have been, off by about a beamwidth, so the beacon never shows',
               'A late acquisition: the bird arrives a few seconds after the prediction and program-track catches it up on its own',
-              'Nothing different: a burn that small moves the pass timing by under a second',
+              'Nothing different: a burn that small moves the pass timing by under a second, so the old set is fine',
               'A wrong azimuth at the horizon, corrected by the step-track layer once the beacon is in the beam',
             ],
             correctIndex: 0,
             explanation:
-              'Along-track error at LEO range is pointing error. Program-track does not search; it points where the set says. Load the post-burn set and the slew is immediate.',
+              "A position error along the orbit becomes a pointing error at LEO range. Program-track doesn't search; it points where the set says. Load the post-burn set and the slew is immediate.",
             pointPenalty: 5,
             documentSection: 'Surge',
             documentLine:
@@ -596,7 +597,8 @@ export const natsEuScenario23Data: ScenarioData = {
       id: 'go-to-holdover',
       nice: ['S0593', 'K0752'],
       title: 'Stop Trusting GNSS',
-      description: 'GPS Timing tab: GNSS switch down. Ten seconds. The reference free-runs on the OCXO for the rest of the night; the frozen offset goes in the log.',
+      description:
+        'On the GPS Timing tab, switch GNSS off to put the reference in holdover. It takes ten seconds, and from then on the reference free-runs on its own oscillator (the OCXO) for the rest of the night. The frozen offset goes in the log.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['load-the-ephemeris'],
       timeLimitSeconds: 2 * 60,
@@ -616,14 +618,14 @@ export const natsEuScenario23Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Why was holdover second and not first, when the delta-T was the first thing you saw?',
             options: [
-              'Because the walk costs timestamps, not the pass: it can run for four minutes and cost a millisecond, while four minutes of stale ephemeris costs the acquisition',
+              'Because the walk costs timestamps, not the pass; a stale ephemeris costs the acquisition itself',
               'Because the GPSDO needs the post-burn set to compute holdover - the reference and the ephemeris share the same clock',
-              "It should have been first: a walking reference makes the ACU's pass prediction wrong too",
+              "It should have been first: a walking reference makes the ACU's pass prediction wrong too, so every point is off",
               'Because holdover takes longer to engage than an ephemeris load and had to be started while the update was computing',
             ],
             correctIndex: 0,
             explanation:
-              'Same cost, different clocks. The spoof charges by the second and the bill is small; the stale set charges once and the bill is the pass. When both are on the board, the one that loses the pass goes first.',
+              'Both faults cost something, but on different clocks. The spoof charges by the second at 2 us/s, so even four minutes is 480 us, under a millisecond. The stale set charges once, and the bill is the pass. When both are on the board, the one that loses the pass goes first.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -636,7 +638,7 @@ export const natsEuScenario23Data: ScenarioData = {
       id: 'preposition-for-aos',
       nice: ['S0421', 'K1032'],
       title: 'Pre-position for AOS',
-      description: 'AOS 21:22:01 from azimuth 022, southbound - on the post-burn set. Park the tracker on the rise azimuth at 5 degrees.',
+      description: 'AOS is 21:22:01 from azimuth 022, southbound, on the post-burn set. Park the tracker at azimuth 022 and 5 degrees elevation, where SAR-2 will rise.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['go-to-holdover'],
       timeLimitSeconds: 3 * 60,
@@ -656,7 +658,7 @@ export const natsEuScenario23Data: ScenarioData = {
       id: 'acquire-sar2',
       nice: ['S0421', 'K1032'],
       title: 'Acquire MERIDIAN-SAR-2',
-      description: 'Program-track SAR-2 on the post-burn set and confirm the 1397 MHz beacon on RX analysis.',
+      description: 'Turn on program-track for SAR-2 on the post-burn set, and confirm the 1397 MHz beacon on the RX Analysis tab.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['preposition-for-aos'],
       conditions: [
@@ -691,7 +693,7 @@ export const natsEuScenario23Data: ScenarioData = {
       id: 'chain-up',
       nice: ['S0675', 'S0421', 'K0645'],
       title: 'Chain Up in Order',
-      description: 'Window open at 21:22:21. Carrier into the muted BUC, unmute, HPA. Two minutes.',
+      description: 'The command window opens at 21:22:21. Start the carrier into the muted BUC, unmute the BUC, then enable the HPA. You have two minutes.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['acquire-sar2'],
       timeLimitSeconds: 2 * 60,
@@ -724,7 +726,7 @@ export const natsEuScenario23Data: ScenarioData = {
       nice: ['T1567', 'K1032'],
       title: 'Housekeeping Dump',
       description:
-        'Send HK-DUMP on the fixed carrier and confirm the ACK. The bird is up, the set is right, the reference is free-running: prove the link before the command that matters.',
+        'Send HK-DUMP, the housekeeping dump, on the fixed carrier and confirm the ACK. The bird is up, the element set is right and the reference is free-running, so prove the link before the command that matters.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['chain-up'],
       conditions: [
@@ -739,16 +741,16 @@ export const natsEuScenario23Data: ScenarioData = {
           description: 'Link Proven',
           params: {
             character: Character.SYSTEM,
-            question: 'HK-DUMP ACKed with the reference in holdover. What did that prove about the holdover?',
+            question: 'HK-DUMP was acknowledged with the reference in holdover. What did that prove about the holdover?',
             options: [
-              'That a free-running OCXO is a perfectly good 10 MHz for the uplink: Doppler compensation, the modem clock and the BUC LO all held. Only the timestamps carry the offset',
-              'That the spoofer has stopped: an ACK is only possible with the reference re-disciplined',
-              'Nothing - the ACK came back on the transponded downlink, which does not use the station reference',
+              'That a free-running OCXO is a perfectly good 10 MHz: Doppler, the modem clock and the BUC LO all held',
+              'That the spoofer has stopped: an ACK is only possible once the reference is back under GNSS discipline',
+              "Nothing: the ACK came back on the transponded downlink, which doesn't use the station reference",
               'That the holdover error is still under the 40 us spec limit; past it the bird would have refused the frame',
             ],
             correctIndex: 0,
             explanation:
-              'Same as Monday: stable, not true, is what the RF chain needs. The command went up on a reference that was lied to for four minutes and then told to stop listening. That is a dark pass, and it works.',
+              "The RF chain needs a stable reference, not a true one, and only the timestamps carry the offset. The command went up on a reference that was fed false time for a few minutes and then told to stop listening. That's a dark pass, and it works.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -762,7 +764,7 @@ export const natsEuScenario23Data: ScenarioData = {
       nice: ['S0648', 'K0926', 'K0751'],
       title: 'Call the Denial',
       description:
-        'About ten seconds after this opens, PLD-SAFE comes back NAK: uplink denied. The reference is in holdover, the key is Valid, Doppler is engaged. Read the console and the reference, then call it - and do not blame the holdover.',
+        "About ten seconds after this opens, the jammer comes up and PLD-SAFE on the fixed carrier comes back NAK: uplink denied. The reference is in holdover, the key is Valid and Doppler is on. Read the console and the reference, then call it, and don't blame the holdover.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['first-command'],
       timeLimitSeconds: 2 * 60,
@@ -787,7 +789,8 @@ export const natsEuScenario23Data: ScenarioData = {
           description: 'Why the NAK',
           params: {
             character: Character.ANNEKE_VISSER,
-            prompt: 'PLD-SAFE did not reach me. Your key is Valid here, your reference is on holdover, and the payload is at plus seven. Six minutes of window. What is it?',
+            prompt:
+              "PLD-SAFE didn't reach me. Your key is Valid here, your reference is on holdover, and the payload is up to seven degrees over its limit now. We have six minutes of window left. What is it?",
             evidence: ['console-seen', 'reference-seen'],
             decisionOptions: [
               {
@@ -805,7 +808,7 @@ export const natsEuScenario23Data: ScenarioData = {
                 correctWhen: { fact: 'uplink-jammed', is: false },
                 consequence: { log: 'NAK attributed to the holdover reference; GNSS re-selected under an active spoof' },
                 feedback:
-                  'HK-DUMP ACKed on the same reference earlier in the window, and an OCXO drifts nanoseconds an hour. Putting GNSS back hands the reference to the spoofer again and does nothing for a carrier that is being sat on.',
+                  "HK-DUMP was acknowledged on the same reference earlier in the window, and an OCXO drifts nanoseconds an hour. Putting GNSS back hands the reference to the spoofer again and does nothing for a carrier that's being jammed.",
               },
               {
                 label: 'Key problem - Q2b has been on the air since Wednesday. Begin a rotation and resend under the next set',
@@ -815,11 +818,12 @@ export const natsEuScenario23Data: ScenarioData = {
               },
               {
                 label: 'Stand down - PLD-SAFE goes up on the next window from Shetland',
-                feedback: 'Shetland has no command key and the payload is at plus seven. There is no next window for this command. The hop set was staged for exactly this minute.',
+                feedback:
+                  "Shetland has no command key, and the payload is seven degrees over its limit. There isn't a next window for this command. The hop set was staged for exactly this minute.",
               },
             ],
             explanation:
-              'Every reason the console can give for itself is clean, and the reference already proved itself on HK-DUMP. The carrier is being denied at the satellite. The holdover is not the fault; it is the thing that is still working.',
+              "Every reason the console could give for itself is clean, and the reference already proved itself on HK-DUMP. The carrier is being denied at the satellite. The holdover isn't the fault; it's the part that is still working.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -832,7 +836,8 @@ export const natsEuScenario23Data: ScenarioData = {
       id: 'go-to-hopping',
       nice: ['K0925', 'T1567', 'S0421'],
       title: 'Go to Hopping',
-      description: 'Security console: Load Hop-Set Key (HOP-SAR2-05), waveform mode to Frequency hopping, wait for SYNC LOCKED. Anneke keys SAR-2 on the call.',
+      description:
+        'On the Security console, load the hop-set key HOP-SAR2-05, set the waveform mode to Frequency hopping, and wait for SYNC LOCKED. Anneke keys SAR-2 at her end on the call.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['call-the-denial'],
       timeLimitSeconds: 3 * 60,
@@ -855,16 +860,16 @@ export const natsEuScenario23Data: ScenarioData = {
           description: 'Second Set Read',
           params: {
             character: Character.SYSTEM,
-            question: 'This is the second hop set spent on this carrier in eight days. What does that say about the next commanding pass?',
+            question: 'This is the second hop set called on this carrier in eight days. What does that say about the next commanding pass?',
             options: [
-              'That the fixed carrier on 14035 is known and will be denied again: stage HOP-SAR2-06 before the next window and expect to hop on the first NAK, not the third command',
+              'That the fixed carrier on 14035 is known and will be denied again: stage HOP-SAR2-06 and expect to hop',
               'That hopping should be the default from AOS on every pass from now on - the sets are cheap compared with a lost window',
               'That the command carrier should move to a new frequency so the fixed waveform can be trusted again',
               'Nothing - each denial is its own event and the sets are consumed one at a time regardless',
             ],
             correctIndex: 0,
             explanation:
-              'Two denials on the same carrier is a pattern, not two events. The response is still a called hop - but staged closer, expected sooner, and written into the pre-pass sweep. Hopping from AOS burns a set on every pass that is not denied.',
+              "Two denials on the same carrier are a pattern, not two events. The response is still a called hop, but staged earlier, expected sooner and written into the pre-pass sweep. Hopping from AOS would burn a set on every pass that isn't denied.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -877,7 +882,7 @@ export const natsEuScenario23Data: ScenarioData = {
       id: 'ride-through',
       nice: ['T1277', 'S0424', 'K1032'],
       title: 'Keep the Tasking Alive',
-      description: 'Resend PLD-SAFE under TRANSEC, with the reference in holdover and the tracker on the post-burn set. That is the whole shift in one ACK.',
+      description: "Resend PLD-SAFE over the hopping link, with the reference in holdover and the tracker on the post-burn set. That's the whole shift in one ACK.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['go-to-hopping'],
       conditions: [
@@ -892,16 +897,16 @@ export const natsEuScenario23Data: ScenarioData = {
           description: 'Dark Pass Read',
           params: {
             character: Character.SYSTEM,
-            question: 'PLD-SAFE ACKed. Three inputs were being lied to or denied at that moment. Which of them did the command depend on?',
+            question: 'PLD-SAFE was acknowledged. Three inputs were being lied to or denied at that moment. Which of them did the command depend on?',
             options: [
-              'None of them as they were: the tracker was on a set they did not control, the reference was on an oscillator they could not reach, and the carrier was on a sequence they did not have',
+              "None of them as they were: each had been replaced with something the adversary couldn't touch",
               'The GNSS reference - the command went up on a spoofed clock and the timestamp will have to be corrected',
-              'The fixed carrier - the hop set rides on it and a denied carrier means a denied hop',
+              'The fixed carrier: the hop set rides on it, so a denied carrier means a denied hop',
               'The pre-burn element set - program-track was still on it and caught the bird by luck',
             ],
             correctIndex: 0,
             explanation:
-              'A dark pass is one where every automatic input has been taken away and the pass still happens - because each input was replaced with something the adversary could not touch. That is what the last eight days were for.',
+              "A dark pass is one where every automatic input has been taken away and the pass still happens, because each input was replaced with something the adversary couldn't touch. Here that was a post-burn element set loaded by hand, an oscillator they couldn't reach, and a hop sequence they didn't have. That's what the last eight days were for.",
             pointPenalty: 5,
             documentSection: 'Window',
             documentLine:
@@ -918,7 +923,7 @@ export const natsEuScenario23Data: ScenarioData = {
       nice: ['S0421', 'T1580', 'K0645'],
       title: 'Safe the Uplink and Debrief',
       description:
-        'Chain down now, no need to wait for LOS (21:31:35): HPA off, BUC muted, carrier off - and the line that goes in the log about a night when everything they had arrived at once.',
+        "Bring the chain down now; there's no need to wait for LOS at 21:31:35. Switch the HPA off, mute the BUC and turn the carrier off, then log the line about a night when everything they had arrived at once.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['ride-through'],
       timeLimitSeconds: 3 * 60,
@@ -947,16 +952,16 @@ export const natsEuScenario23Data: ScenarioData = {
           description: 'Debrief Line',
           params: {
             character: Character.SYSTEM,
-            question: 'What is the debrief line?',
+            question: 'Which line goes in the log as the debrief?',
             options: [
-              'Three inputs lost at once and one command up: the order was ephemeris, holdover, hop - by what loses the pass, not by what alarmed first. HOP-SAR2-06 staged; the reference stays in holdover until a probe says the sky is honest',
+              'Three inputs lost at once and one command up: ranked by what loses the pass',
               'The station survived a coordinated attack; commanding passes are suspended until the source is found',
-              'Everything worked because every fix had been rehearsed once; no change to procedure',
-              'The surge proves the report was a mistake: publishing the method invited the response',
+              'Everything worked because each fix had been rehearsed once, so there is no change to procedure',
+              'The surge proves the report was a mistake, because publishing the method invited the response',
             ],
             correctIndex: 0,
             explanation:
-              'Each of the three had been met once, alone. Tonight was the exam: all three, eight minutes, one command. The order is the lesson, and the report was not a mistake - it is why the next set was already staged.',
+              "Each of the three had been met once, alone, and tonight was the exam: all three, eight minutes, one command. The order is the lesson. The report wasn't a mistake either, because HOP-SAR2-05 was already staged when the surge came.",
             pointPenalty: 5,
             documentSection: 'Debrief',
             documentLine:
@@ -973,10 +978,10 @@ export const natsEuScenario23Data: ScenarioData = {
     intro: {
       text: `
       <p>
-        <em>[Text message from Priya Sharma at 20:40]</em>
+        <em>[Text message from Priya Sharma at {{stationTime}}]</em>
       </p>
       <p>
-        "The report went out Thursday with their method in it, and I would bet they have read it. Anneke needs PLD-SAFE on the 21:22 pass - the payload is warming. If they come tonight they will come with everything at once, because one at a time did not work. Nothing they have done needs a new answer. It needs the answers in the right order."
+        "The report went out Thursday with their method in it, and I'd bet they've read it. Anneke needs PLD-SAFE, the command that puts the payload into safe mode, on the 21:22 pass because the payload is overheating. If they come tonight, they'll come with everything at once, since one at a time didn't work. Nothing they've done needs a new answer. It needs the answers in the right order."
       </p>
       `,
       character: Character.PRIYA_SHARMA,
@@ -987,7 +992,7 @@ export const natsEuScenario23Data: ScenarioData = {
       'read-the-surge': {
         text: `
         <p>
-          It is me, and it is all of it. SAR-2 burned at 21:14 for a debris pass - post-burn set is in your inbox now. Your timestamps started walking the same minute. And I would plan for the carrier to be sat on the moment the window opens. Eight minutes. Tell me the order.
+          Yes, that's all of it at once. SAR-2 burned at 21:14 to avoid debris, so the post-burn element set is in your Pass Schedule inbox now. Your timestamps started drifting the same minute, and I'd plan for the carrier to be jammed the moment the window opens. It's under eight minutes to AOS, and Charlie wants your order.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -997,7 +1002,7 @@ export const natsEuScenario23Data: ScenarioData = {
       triage: {
         text: `
         <p>
-          That is the order. Ephemeris, because without it there is no pass. Holdover, because it is ten seconds. The hop set waits for a reason. Go.
+          That's the order. The ephemeris goes first, because without it there's no pass to point at. Holdover is second, because it only takes ten seconds. The hop set waits until there's a reason. Go.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1007,7 +1012,7 @@ export const natsEuScenario23Data: ScenarioData = {
       'first-command': {
         text: `
         <p>
-          HK-DUMP is acknowledged, on a reference you are not trusting and the post-burn set. Send PLD-SAFE.
+          HK-DUMP is acknowledged, so the link works on the post-burn set and on a reference you aren't trusting. Send PLD-SAFE now.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -1017,7 +1022,7 @@ export const natsEuScenario23Data: ScenarioData = {
       'call-the-denial': {
         text: `
         <p>
-          Denial. Keying SAR-2 to HOP-SAR2-05 - done. Load yours, go to hopping, and put PLD-SAFE through it. The payload is at plus seven.
+          Agreed, that's a denial. I've keyed SAR-2 to HOP-SAR2-05 at my end, so now load yours, switch to hopping, and put PLD-SAFE through it. The payload's up to seven degrees over its limit.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -1027,7 +1032,7 @@ export const natsEuScenario23Data: ScenarioData = {
       'ride-through': {
         text: `
         <p>
-          PLD-SAFE acknowledged under TRANSEC. Payload safing - temperature already turning over. Whatever else they did tonight, they did not get that one. Chain down at LOS.
+          PLD-SAFE is acknowledged over the hopping link, so the payload is going into safe mode and its temperature should start to fall. Whatever else they tried tonight, they didn't stop that one. There's nothing more to send, so you can bring the chain down now without waiting for LOS.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -1037,7 +1042,7 @@ export const natsEuScenario23Data: ScenarioData = {
       'safe-and-debrief': {
         text: `
         <p>
-          Everything they had, all at once, and the one command that mattered went up. That is not luck; that is eight days of doing each thing once until the order was obvious. Stage the next set. There is a storm coming Tuesday and I do not think they are finished.
+          They used everything they had, all at once, and the one command that mattered still went up. That wasn't luck. It was eight days of meeting each thing once until the order was obvious. Please stage the next hop set. There's a storm coming Tuesday, and I don't think they're finished.
         </p>
         `,
         character: Character.PRIYA_SHARMA,

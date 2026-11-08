@@ -83,7 +83,7 @@ export const natsEuScenario7Data: ScenarioData = {
   subtitle: 'Ephemeris Management',
   duration: '35-40 min',
   missionType: 'Anomaly Response',
-  description: `Anneke called at 05:40. Space Surveillance flagged a conjunction between MERIDIAN-SAR-2 and a spent upper stage, close enough that the constellation would rather burn than argue about probabilities. Go / no-go at 14:00; if it is go, the burn executes at 14:11, between your two passes.<br><br>The burn will be small. The problem is that everything at GW-01 - your pass predictions, your program-track pointing, the antenna's idea of where to look at AOS - is computed from an element set that will describe an orbit the spacecraft is no longer in.<br><br>Work SAR-1 first on current elements so you know what right looks like. Then find out what wrong looks like.`,
+  description: `Anneke called at 05:40. Space Surveillance flagged a conjunction, a close approach, between MERIDIAN-SAR-2 and a spent upper stage, and the constellation would rather burn than argue about probabilities. Go / no-go is at 14:00, and if it's go, the burn executes at 14:12, between your two passes.<br><br>The burn will be small, but everything at GW-01 is computed from an element set that will describe an orbit the spacecraft is no longer in. That includes your pass predictions, your program-track pointing and the antenna's idea of where to look at AOS.<br><br>Work SAR-1 first on current elements so you know what right looks like. Then find out what wrong looks like.`,
   equipment: ['GW-01 Galway: 4m Ku-Band LEO Tracker', 'Pass Schedule Console (ephemeris status)', 'Spectrum Analyzer', 'QPSK 3/4 Receiver'],
   settings: {
     isSync: true,
@@ -117,16 +117,18 @@ export const natsEuScenario7Data: ScenarioData = {
 
     // M4 - the avoidance burn on SAR-2, on the mission clock at 14:12:00. The
     // spacecraft moves onto the new set; the station keeps predicting from the
-    // old one until the operator loads the update. Mean anomaly +0.06 deg.
+    // old one until the operator loads the update. Mean anomaly +0.06 deg. The
+    // new set's epoch is 14:12:30, after the burn (the Pass Schedule tab prints
+    // it); its mean anomaly is re-propagated so the position is unchanged.
     spaceEvents: [
       {
         id: 'SAR2-CAM',
         satelliteNoradId: 61702,
         maneuverAtS: 1620,
-        label: 'MERIDIAN-SAR-2 conjunction-avoidance manoeuvre executed 14:11Z',
+        label: 'MERIDIAN-SAR-2 conjunction-avoidance manoeuvre executed 14:12Z',
         newTle: {
-          tle1: '1 61702U 27015A   27074.58333333  .00001000  00000-0  10000-3 0  9997',
-          tle2: '2 61702  98.4000  42.0000 0010000  90.0000 240.0600 15.60000000123458',
+          tle1: '1 61702U 27015A   27074.59201389  .00001000  00000-0  10000-3 0  9993',
+          tle2: '2 61702  98.4000  42.0103 0010000  89.9898 288.7888 15.60000000123457',
         },
       },
     ],
@@ -157,13 +159,14 @@ export const natsEuScenario7Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'If the burn goes ahead and you keep the old SAR-2 element set, what breaks at the ground station?',
             options: [
-              'Pass predictions and program-track pointing - the antenna aims where the elements say, so it looks where the bird used to be',
+              'Pass predictions and pointing - the antenna aims where the old elements say, so it looks where the bird used to be',
               'Nothing at the station - a small burn is a problem for the spacecraft operator, and the Ku beam is wide enough to cover it',
               'The receiver frequency - the new orbit changes the Doppler profile, so the modem has to be retuned before the bird rises',
               'The link budget - the burn changes the transmit power and the range at culmination, so the predicted C/N no longer holds',
             ],
             correctIndex: 0,
-            explanation: "The element set is the station's entire model of where the satellite is. A stale set is a confidently wrong antenna. SAR-1 did not burn; work it first.",
+            explanation:
+              "The element set is the station's whole model of where the satellite is, so a stale set points the antenna confidently at the wrong place. The Ku beam is only about 0.45 degrees wide, so a small burn is more than enough to move the bird out of it. SAR-1 didn't burn, so work it first.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -180,7 +183,7 @@ export const natsEuScenario7Data: ScenarioData = {
       id: 'dashboard-sweep',
       nice: ['T0153', 'K0741'],
       title: 'GW-01 Dashboard Sweep',
-      description: 'Clear the board: confirm the active alarm state on GW-01.',
+      description: 'Check the dashboard and confirm which alarms are active on GW-01.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['review-mission-brief'],
       timeLimitSeconds: 90,
@@ -198,7 +201,7 @@ export const natsEuScenario7Data: ScenarioData = {
           description: 'Alarm State Confirmed',
           params: {
             character: Character.SYSTEM,
-            question: 'What is the active alarm state on GW-01 at turnover?',
+            question: 'What is the alarm state on GW-01 at the start of the shift?',
             options: [
               'RX AGC on noise only - no carrier on an empty sky, no hardware alarm',
               'No active alarms - all systems nominal, board clear',
@@ -206,8 +209,7 @@ export const natsEuScenario7Data: ScenarioData = {
               'GPSDO in holdover - reference alarm, timing at risk',
             ],
             correctIndex: 0,
-            explanation:
-              'The AGC no-carrier warning is empty sky, not a fault, and there is no stale flag yet: the burn has not happened. When it does, the ephemeris panel on the Pass Schedule tab is where it shows, not the dashboard.',
+            explanation: `The AGC no-carrier warning is showing because the sky is empty, so the board isn't clear, but it isn't a hardware fault either. There's no stale flag yet because the burn hasn't happened. When it does, the ephemeris panel on the Pass Schedule tab is where it shows, not the dashboard.`,
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -220,7 +222,7 @@ export const natsEuScenario7Data: ScenarioData = {
       id: 'reference-check',
       nice: ['T0431', 'K0740'],
       title: 'Reference Check',
-      description: 'GPSDO locked and out of holdover. Timing is half of an element set: the epoch means nothing against a wrong clock.',
+      description: 'Confirm the GPSDO is locked and out of holdover. Timing is half of an element set, because an epoch means nothing against a wrong clock.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['dashboard-sweep'],
       timeLimitSeconds: 2 * 60,
@@ -246,7 +248,7 @@ export const natsEuScenario7Data: ScenarioData = {
       id: 'ephemeris-epoch-check',
       nice: ['K1032', 'T0431'],
       title: 'Check the Element Sets',
-      description: 'Open the Pass Schedule tab. Both birds show current elements with the 14:00 epoch. Know what would make either of them stale.',
+      description: 'Open the Pass Schedule tab, where both birds show current elements with a 14:00 epoch. Be ready to say what would make either set stale.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['reference-check'],
       timeLimitSeconds: 2 * 60,
@@ -263,7 +265,7 @@ export const natsEuScenario7Data: ScenarioData = {
           description: 'Staleness Understood',
           params: {
             character: Character.SYSTEM,
-            question: 'Both sets are hours old and the panel reads current. What makes an element set stale?',
+            question: 'Both sets read current on the panel. What makes an element set stale?',
             options: [
               'A manoeuvre at once, or age - drag and model error grow the along-track error each day until the beam misses',
               'Only a manoeuvre - without one an element set stays good indefinitely, because the orbit does not change on its own',
@@ -271,8 +273,7 @@ export const natsEuScenario7Data: ScenarioData = {
               'A change of ground station - elements are fitted per site, so a set computed for Galway is stale at Shetland',
             ],
             correctIndex: 0,
-            explanation:
-              'Two clocks run on a TLE: the calendar, which erodes it slowly (at 360 km, drag and model error add hundreds of metres of along-track error a day), and the thruster, which breaks it at once. Rotterdam distributes a fresh set every few days for the first reason and within minutes for the second.',
+            explanation: `Two clocks run on an element set: the calendar, which erodes it slowly as drag and model error add along-track error every day, and the thruster, which breaks it at once. That's why "only a manoeuvre" is wrong, because even a quiet orbit drifts away from its set. Rotterdam distributes a fresh set every few days for the first reason and within minutes for the second.`,
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -285,7 +286,7 @@ export const natsEuScenario7Data: ScenarioData = {
       id: 'rx-chain-ready',
       nice: ['S0421', 'K0773'],
       title: 'Set Up the Receiver for SAR-1',
-      description: "Modem 1 is on yesterday's 1370 MHz SAR-2 carrier. Retune it to 1414 MHz for SAR-1 and put the analyzer on the 1389 MHz beacon with a 2 MHz span.",
+      description: "Modem 1 is still on yesterday's 1370 MHz SAR-2 carrier. Retune it to 1414 MHz for SAR-1, then center the analyzer on the 1389 MHz beacon with a 2 MHz span.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['ephemeris-epoch-check'],
       timeLimitSeconds: 3 * 60,
@@ -317,7 +318,7 @@ export const natsEuScenario7Data: ScenarioData = {
       id: 'preposition-for-aos',
       nice: ['S0421', 'K1032'],
       title: 'Pre-position for AOS',
-      description: 'The tracker is stowed south. Slew it to the SAR-1 rise azimuth, 000 at 5 degrees, before 14:03.',
+      description: 'The tracker is stowed pointing south. Slew it to azimuth 000, elevation 5 degrees, where SAR-1 will rise, before 14:03.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['rx-chain-ready'],
       timeLimitSeconds: 3 * 60,
@@ -341,7 +342,8 @@ export const natsEuScenario7Data: ScenarioData = {
       id: 'acquire-sar1',
       nice: ['S0421', 'K1032'],
       title: 'Acquire MERIDIAN-SAR-1',
-      description: 'Program-track SAR-1 on current elements and confirm the beacon on RX analysis. This is what a good element set looks like.',
+      description:
+        'Switch to program-track so the antenna follows SAR-1 on the current elements, and confirm the beacon on RX Analysis. This is what a good element set looks like.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['preposition-for-aos'],
       conditions: [
@@ -377,7 +379,7 @@ export const natsEuScenario7Data: ScenarioData = {
       nice: ['T0153', 'K0740'],
       title: 'Decode the Baseline Pass',
       description:
-        'Lock the 1414 MHz carrier, hold C/N above 8 dB through the high-elevation segment and read the peak at culmination (14:06:45, 28 degrees). Remember what the curve looks like.',
+        'Lock the 1414 MHz carrier and hold C/N above 8 dB through the high-elevation part of the pass. Read the peak at culmination, the highest point of the pass (14:06:45, 28 degrees), and remember what the curve looks like.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['acquire-sar1'],
       conditions: [
@@ -404,16 +406,15 @@ export const natsEuScenario7Data: ScenarioData = {
           description: 'Baseline Read',
           params: {
             character: Character.SYSTEM,
-            question: 'On current elements, how did C/N behave from AOS to culmination?',
+            question: 'On current elements, what does C/N do from AOS to culmination?',
             options: [
-              'Climbed steadily with elevation to a peak of about 11 dB at 28 degrees - shorter range, nothing else changed',
-              'Peaked at AOS and fell through the pass - the beam is widest at the horizon and narrows as the bird climbs',
-              'Flat at about 8 dB throughout - the AGC holds the carrier level constant once the modem has locked',
-              'Climbed, then dipped at the top of the pass - the azimuth rate at culmination pulls the pedestal off the bird',
+              'Climbs steadily with elevation to a peak of about 11 dB at 28 degrees - shorter range, nothing else',
+              'Peaks at AOS and falls through the pass - the beam is widest at the horizon and narrows as the bird climbs',
+              'Stays flat at about 8 dB throughout - the AGC holds the carrier level constant once the modem has locked',
+              'Climbs, then dips at the top of the pass - the azimuth rate at culmination pulls the pedestal off the bird',
             ],
             correctIndex: 0,
-            explanation:
-              'Shorter range, less path loss, more signal: C/N rises with elevation and peaks where the bird is closest. Hold that picture; the next pass will not draw it.',
+            explanation: `A shorter range means less path loss, so C/N rises with elevation and peaks where the bird is closest. The antenna beam doesn't change as the bird climbs, so the "peaks at AOS" answer has it backwards. Hold that picture, because the next pass won't draw it.`,
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -430,7 +431,7 @@ export const natsEuScenario7Data: ScenarioData = {
       id: 'log-the-baseline',
       nice: ['T1580', 'K0645'],
       title: 'Log the Baseline',
-      description: 'Write the SAR-1 result into the ephemeris log: which set, which epoch, what it delivered.',
+      description: 'Record the SAR-1 result in the ephemeris log: which element set you flew on, its epoch, and what it delivered.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['baseline-decode'],
       timeLimitSeconds: 2 * 60,
@@ -449,7 +450,8 @@ export const natsEuScenario7Data: ScenarioData = {
               'Elements current (epoch 14:03), step-track locked, decoded, peak C/N about 8 dB at 28 degrees',
             ],
             correctIndex: 0,
-            explanation: 'The set and its epoch belong next to the result. When a pass goes wrong, the first question is which elements it was flown on.',
+            explanation:
+              'The log entry pairs the set and its epoch with the result, because when a pass goes wrong, the first question is which elements it was flown on. The other entries each get one fact wrong: they call a current set stale, drop the peak C/N a baseline needs, or name the wrong tracking mode and epoch.',
             pointPenalty: 5,
             documentSection: 'Contacts',
             documentLine: '14:03Z MERIDIAN-SAR-1 GW-01: elements current (epoch 2027-03-15 14:00Z), program-track locked, decoded, peak C/N ~11 dB at 28 deg. Baseline.',
@@ -465,7 +467,7 @@ export const natsEuScenario7Data: ScenarioData = {
       nice: ['S0421', 'K0773'],
       title: 'Retune for SAR-2',
       description:
-        'The burn is due at 14:11, between your passes. SAR-2 rises at 14:18 from azimuth 130: retune modem 1 to its 1370 MHz carrier and the analyzer to its 1397 MHz beacon. Leave the elements alone for now.',
+        'The burn is due at 14:12, between your passes, and SAR-2 rises at 14:18 from azimuth 130. Retune modem 1 to its 1370 MHz carrier and center the analyzer on its 1397 MHz beacon. Leave the elements alone for now.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['log-the-baseline'],
       timeLimitSeconds: 3 * 60,
@@ -491,7 +493,7 @@ export const natsEuScenario7Data: ScenarioData = {
       id: 'preposition-for-sar2',
       nice: ['S0421', 'K1032'],
       title: 'Pre-position for SAR-2',
-      description: 'Manual mode, and park the tracker on the SAR-2 rise azimuth, 130 at 5 degrees, as the old elements predict it.',
+      description: 'Switch to manual mode and slew the tracker to azimuth 130, elevation 5 degrees, where the old elements say SAR-2 will rise.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['retune-for-sar2'],
       timeLimitSeconds: 3 * 60,
@@ -516,7 +518,7 @@ export const natsEuScenario7Data: ScenarioData = {
       nice: ['K1032', 'T0431', 'K0740'],
       title: 'Attempt SAR-2 on the Old Elements',
       description:
-        'Program-track SAR-2 on the set you have. The pedestal will report LOCKED. Watch RX analysis as the bird rises: the carrier is there, weak, and it gets weaker as the elevation climbs. Read what that is telling you before you fix it.',
+        'Switch to program-track on SAR-2 with the old element set. The pedestal will report LOCKED. Watch RX Analysis as the bird rises: the carrier is there but weak, and it gets weaker as the elevation climbs. Work out what that means before you fix it.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['preposition-for-sar2'],
       conditions: [
@@ -557,8 +559,7 @@ export const natsEuScenario7Data: ScenarioData = {
               'The pedestal is slewing too slowly and lagging the pass - the azimuth rate grows toward culmination and the drive cannot keep up',
             ],
             correctIndex: 0,
-            explanation:
-              'Program-track lock means the pedestal is where it was told to go. It was told wrong. Seven and a half kilometres along track is 0.2 deg at 2000 km and half a degree at 828 km: the closer the bird, the worse the miss.',
+            explanation: `Program-track lock means the pedestal is where it was told to go, and it was told wrong. A fixed 7.5 km of along-track error covers a bigger angle as the bird gets closer: 0.2 degrees at 2000 km and half a degree at 828 km. Rain fade would ease as the elevation climbs, so it can't explain a carrier that gets weaker.`,
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -572,7 +573,7 @@ export const natsEuScenario7Data: ScenarioData = {
       nice: ['T1138', 'K1032', 'T0431'],
       title: 'Load the Post-Burn Elements',
       description:
-        'On the Pass Schedule tab the SAR-2 entry reads EPHEMERIS STALE. Press Load Updated Ephemeris. The station recomputes the pass and program-track slews to where the bird actually is.',
+        'On the Pass Schedule tab, the SAR-2 entry reads EPHEMERIS STALE. Press Load Updated Ephemeris, and the station recomputes the pass so program-track slews to where the bird actually is.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['stale-acquisition-attempt'],
       timeLimitSeconds: 2 * 60,
@@ -591,14 +592,13 @@ export const natsEuScenario7Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Two element sets for SAR-2, both dated today. What tells you which one describes the orbit the bird is in now?',
             options: [
-              'The epoch: the post-burn set is timed after 14:11, and an older set cannot know about a burn made after it was fitted',
+              "The epoch: the new set is timed after 14:12, and an older set can't know about a burn made after it was fitted",
               'The NORAD number: the catalogue issues a new number for each orbit change, so the higher one is the current orbit',
               'The load order: the set the panel loaded most recently is always the current one, whatever its epoch says',
               'Neither: they describe the same orbit, and the burn only shifted the pass timing by under ten seconds',
             ],
             correctIndex: 0,
-            explanation:
-              'An element set is a snapshot of the orbit at its epoch. Anything the spacecraft does after that instant is invisible to it. Newer is not always better; post-burn is.',
+            explanation: `An element set is a snapshot of the orbit at its epoch, so anything the spacecraft does after that instant is invisible to it. The NORAD number stays the same through a burn, and the two sets aren't equivalent, because they put the bird about 7.5 km apart along track. That's why the epoch decides it: only the set fitted after the burn knows about it.`,
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -615,7 +615,7 @@ export const natsEuScenario7Data: ScenarioData = {
       id: 'reacquire-sar2',
       nice: ['S0421', 'K1032'],
       title: 'Reacquire MERIDIAN-SAR-2',
-      description: 'Program-track slews the half degree to the real bird. Confirm the 1397 MHz beacon comes up on RX analysis where the new prediction says it should.',
+      description: 'Program-track slews the half degree to where the bird really is. Confirm the 1397 MHz beacon comes up on RX Analysis where the new prediction says it should.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['load-the-ephemeris'],
       conditions: [
@@ -646,7 +646,8 @@ export const natsEuScenario7Data: ScenarioData = {
       id: 'verify-the-reacquisition',
       nice: ['T0153', 'K0740'],
       title: 'Verify the Reacquisition',
-      description: 'Lock the 1370 MHz carrier and hold C/N above 8 dB through what is left of the high-elevation segment. A clean reacquisition draws the same curve SAR-1 drew.',
+      description:
+        "Lock the 1370 MHz carrier and hold C/N above 8 dB through what's left of the high-elevation part of the pass. A clean reacquisition draws the same curve SAR-1 drew.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['reacquire-sar2'],
       conditions: [
@@ -674,7 +675,7 @@ export const natsEuScenario7Data: ScenarioData = {
       id: 'report-to-rotterdam',
       nice: ['T1580', 'K1032', 'K0645'],
       title: 'Report to Rotterdam',
-      description: 'Close the ephemeris log and tell Anneke the bird came up where it should.',
+      description: 'Close the ephemeris log entry and tell Anneke that SAR-2 came up where the new elements said it would.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['verify-the-reacquisition'],
       timeLimitSeconds: 3 * 60,
@@ -693,8 +694,7 @@ export const natsEuScenario7Data: ScenarioData = {
               'That the pre-burn set was flagged stale, the time the flag appeared, and that the station awaits a confirmed set',
             ],
             correctIndex: 0,
-            explanation:
-              'A constellation operator distributes elements; the ground sites are how they learn the elements are right. Your reacquisition on the loaded set is their ground confirmation that the new elements are good.',
+            explanation: `A constellation operator distributes the elements, but the ground sites are how it learns they're right. Your reacquisition on the loaded set is its ground confirmation, so the report that helps is the set, its epoch and the decode. The other answers describe the old set or a pending state, and none of them tells Rotterdam the new elements are good.`,
             pointPenalty: 5,
             documentSection: 'Contacts',
             documentLine:
@@ -714,7 +714,13 @@ export const natsEuScenario7Data: ScenarioData = {
         <em>[Text message from Charlie Brooks at 13:44]</em>
       </p>
       <p>
-        "Anneke rang at 05:40, which tells you how her night went. Space Surveillance has a conjunction on SAR-2 with a spent upper stage. Rotterdam decides at 14:00; if it is go, the burn is at 14:11, which is between your passes. Small burn. New orbit, slightly. Here is the problem with slightly. Every prediction this station makes comes from an element set that will describe an orbit the bird is not in. Work SAR-1 first. It did not burn, and I want you to know what right looks like before you meet wrong."
+        "Anneke rang at 05:40, which tells you how her night went. Space Surveillance has a conjunction on SAR-2 with a spent upper stage, which means the two could pass dangerously close. Rotterdam decides at 14:00, and if it's go, the burn is at 14:12, between your passes."
+      </p>
+      <p>
+        "It's a small burn, so the new orbit is only slightly different. The trouble is that 'slightly' is enough. Every prediction this station makes comes from the element set. That's the list of numbers describing the orbit, and after the burn it describes an orbit SAR-2 isn't in any more."
+      </p>
+      <p>
+        "Work SAR-1 first. It didn't burn, and I want you to know what right looks like before you meet wrong."
       </p>
       `,
       character: Character.CHARLIE_BROOKS,
@@ -725,10 +731,10 @@ export const natsEuScenario7Data: ScenarioData = {
       'ephemeris-epoch-check': {
         text: `
         <p>
-          <em>[Text message from Anneke Visser, MERIDIAN Ops, at 13:52]</em>
+          <em>[Text message from Anneke Visser, MERIDIAN Ops, at {{stationTime}}]</em>
         </p>
         <p>
-          "Galway - conjunction MER-OPS-CAM-2027-014 on SAR-2 is go / no-go at 14:00, burn at 14:11 if go. It is a small along-track adjustment; the payload schedule is unaffected. If we burn, treat your SAR-2 set as stale from that moment and load the post-burn elements before your 14:18 window. The pass shift is under ten seconds. The pointing error at a 4 m Ku beamwidth is not."
+          "Galway, conjunction MER-OPS-CAM-2027-014 on SAR-2 is go / no-go at 14:00, with the burn at 14:12 if it's go. The burn is a small along-track adjustment. That means the satellite moves a few kilometres along its orbit, so the payload schedule is unaffected. If we burn, treat your SAR-2 set as stale from that moment and load the post-burn elements before your 14:18 window. The pass timing shifts by under ten seconds, but your 4 m dish has a beam only 0.45 degrees wide, so the pointing error matters far more."
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -738,7 +744,7 @@ export const natsEuScenario7Data: ScenarioData = {
       'preposition-for-aos': {
         text: `
         <p>
-          Park it on the rise. Same as any other day - and today "any other day" is the measurement.
+          The antenna is waiting at azimuth 000, where SAR-1 will come up over the horizon. That's the same routine as any other pass, and today that's the point, because this is the pass we compare the next one against.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -748,7 +754,7 @@ export const natsEuScenario7Data: ScenarioData = {
       'acquire-sar1': {
         text: `
         <p>
-          Beacon where the elements said it would be. Nothing remarkable about it, which is the point. Remember how unremarkable this felt.
+          The beacon is exactly where the elements put it, and there's nothing remarkable about that, which is the point. Remember how unremarkable it feels.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -758,7 +764,7 @@ export const natsEuScenario7Data: ScenarioData = {
       'baseline-decode': {
         text: `
         <p>
-          Watch the number climb with the elevation. Up, up, peak at the top, down the other side. That is the curve a good set draws. You are about to see a different one.
+          The C/N climbed with the elevation, peaked at the top of the pass and came down the other side. That's the curve a good set draws. You'll see a different one on the next pass, so log this one first.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -771,7 +777,7 @@ export const natsEuScenario7Data: ScenarioData = {
           <em>[Text message from Anneke Visser at {{stationTime}}]</em>
         </p>
         <p>
-          "The burn is go for 14:11:00. Your SAR-2 set is stale from that moment. Post-burn elements are on your ephemeris inbox within two minutes; the panel will flag them. Load before 14:18 if you can - and if you cannot, I would still like to hear what you saw."
+          "The burn is go for 14:12:00, and your SAR-2 set is stale from that moment. The post-burn elements will reach your ephemeris inbox within two minutes, and the panel will flag them. Please load them before 14:18 if you can. If you can't, I'd still like to hear what you saw."
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -781,7 +787,7 @@ export const natsEuScenario7Data: ScenarioData = {
       'stale-acquisition-attempt': {
         text: `
         <p>
-          Locked, is it. Locked on what? Look at the carrier, not the pedestal. It is there, it is weak, and it is getting weaker as the bird gets closer, which is backwards. The dish is exactly where it was told to be. That is the problem.
+          The pedestal told you it was locked. Locked on what, though? The carrier was weak, and it got weaker as the bird got closer, which is backwards. The dish is exactly where it was told to be, and that's the problem, so it's time to fix the elements.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -791,7 +797,7 @@ export const natsEuScenario7Data: ScenarioData = {
       'load-the-ephemeris': {
         text: `
         <p>
-          "Epoch on the new set is 14:11:30 - after the burn. The old one is 14:00 and knows nothing about it. Load it and the pedestal will move about half a degree, which at this beamwidth is the whole link."
+          "Good, the new set is in. Its epoch is 14:12:30, which is after the burn, and the old one was 14:00 and knew nothing about it. The pedestal will now move about half a degree, which at this beamwidth is the whole link."
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -801,7 +807,7 @@ export const natsEuScenario7Data: ScenarioData = {
       'reacquire-sar2': {
         text: `
         <p>
-          And there it is. Half a degree. The bird never moved more than a few kilometres and the station could not see it. Precise antenna, wrong place.
+          And there it is. The pedestal moved half a degree to where the bird really is. The burn moved SAR-2 only a few kilometres, and the station couldn't see it. The antenna was precise, but it was pointed at the wrong place.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -811,7 +817,7 @@ export const natsEuScenario7Data: ScenarioData = {
       'verify-the-reacquisition': {
         text: `
         <p>
-          "Seeing your lock from here. That is the ground confirmation we needed on the new set - thank you. Sleep is now a possibility."
+          "You've got the carrier lock back on the new set, and that's the ground confirmation we needed. Thank you, Galway. Sleep is now a possibility. Close your log entry and tell me what you saw."
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -821,7 +827,7 @@ export const natsEuScenario7Data: ScenarioData = {
       'report-to-rotterdam': {
         text: `
         <p>
-          Log both passes with the set they were flown on. Next time a bird comes up weak the first question is "which elements", and the log should answer it before anyone has to ask.
+          Good, both passes are logged with the element set each one was flown on. The next time a bird comes up weak, the first question will be which elements, and the log will answer it before anyone has to ask.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

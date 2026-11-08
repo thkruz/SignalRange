@@ -54,7 +54,7 @@ export const scenario19Data: ScenarioData = {
   duration: '30-35 min',
   difficulty: 'intermediate',
   missionType: 'Knowledge Transfer',
-  description: `A new hire starts ground school next month, and Dana wants a one-page quick-reference card for the AURORA-7 acquisition and step-track procedure - written by someone who actually flies it.<br><br>The method: run the procedure live this afternoon. At each step, choose the one callout, formula, or warning that belongs on the card. The card builds in front of you as you work - and at the end it gets handed to someone for whom it may be the only thing between a clean acquisition and a lost afternoon.<br><br>Anyone can execute a procedure. Teaching it means knowing which mistakes are actually waiting for the person who comes after you.`,
+  description: `A new hire starts ground school next month, and Dana wants a one-page quick-reference card for the AURORA-7 acquisition and step-track procedure, written by someone who actually flies it.<br><br>You'll run the procedure live this afternoon. At each step you choose the one callout, formula or warning that belongs on the card, and the card builds in the Working Document panel as you work. At the end it goes to a new operator, and for them it may be the only thing between a clean acquisition and a lost afternoon.<br><br>Anyone can execute a procedure. Teaching it means knowing which mistakes are waiting for the person who comes after you.`,
   equipment: ['9-meter C-band Antenna', 'RF Front End', 'Spectrum Analyzer', 'RX/TX Modems', 'Working Document panel (the card)'],
   timeLimitSeconds: 35 * 60,
   settings: {
@@ -150,7 +150,7 @@ export const scenario19Data: ScenarioData = {
       id: 'review-mission-brief',
       nice: ['K0645'],
       title: 'Review the Assignment',
-      description: 'Open the brief - the deliverable today is a document, built by flying the procedure.',
+      description: "Open the mission brief. Today's deliverable is a document, and you build it by flying the procedure.",
       groundStation: 'VT-01',
       freezesScenarioTimer: true,
       prerequisiteObjectiveIds: [],
@@ -169,7 +169,7 @@ export const scenario19Data: ScenarioData = {
             question: 'Ready to fly the AURORA-7 procedure and build the card as you go?',
             options: ['Ready - procedure live, card building in the Working Document panel.'],
             correctIndex: 0,
-            explanation: "Every teaching choice you make appends to the card. Choose like the reader's first solo shift depends on it.",
+            explanation: "Every teaching choice you make is added to the card, so choose as if the reader's first solo shift depends on it.",
             pointPenalty: 0,
           },
           mustMaintain: false,
@@ -213,7 +213,7 @@ export const scenario19Data: ScenarioData = {
           description: 'Scope Decision',
           params: {
             character: Character.SYSTEM,
-            question: 'What is a quick-reference card, as opposed to the SOP it accompanies?',
+            question: 'What is a quick-reference card, as opposed to the SOP (the standard operating procedure) it accompanies?',
             options: [
               'The numbers needed under pressure plus the highest-base-rate local mistakes - one page; the procedure stays in the SOP',
               'Every SOP step condensed into smaller type - one page; the reader never has to open the SOP itself',
@@ -222,7 +222,7 @@ export const scenario19Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Selection is the work. Everything on the card competes for attention during a real acquisition - a line that does not earn its place costs the reader time when they can least afford it. The card is a pressure kit taped to the console, not a condensed SOP, a datasheet, or a syllabus.',
+              "Selection is the work. Everything on the card competes for attention during a real acquisition, so a line that doesn't earn its place costs the reader time when they can least afford it. The card is a pressure kit taped to the console. It isn't a condensed SOP, a datasheet or a syllabus.",
             pointPenalty: 5,
             documentSection: 'Header',
             documentLine: 'AURORA-7 ACQUIRE & TRACK - console copy | Audience: first-solo operator | The SOP is the procedure; this card is the pressure kit',
@@ -241,7 +241,7 @@ export const scenario19Data: ScenarioData = {
       id: 'repoint-to-aurora',
       nice: ['S0421', 'K1032'],
       title: 'Fly It: Acquire AURORA-7',
-      description: 'ACU Control: retarget program-track to AURORA-7 (NORAD 28899) and let it slew and lock - the live half of the lesson.',
+      description: 'In ACU Control, retarget program-track to AURORA-7 (NORAD 28899) and let the dish slew and lock on. This is the live half of the lesson.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['card-scope-quiz'],
       timeLimitSeconds: 4 * 60,
@@ -290,8 +290,7 @@ export const scenario19Data: ScenarioData = {
               'Program-track FIRST - it follows the standard acquisition procedure. Nominal Az 190, El 32, launched over nineteen years ago',
             ],
             correctIndex: 0,
-            explanation:
-              'Numbers plus the why. "Use the standard procedure" teaches nothing; trivia about launch dates costs card space the reader pays for at 2 AM. Step-track cannot start without a beacon in the cone, and a manual park loses a bird that wanders ±3°.',
+            explanation: `The right line gives the numbers plus the why. "Use the standard procedure" teaches nothing, and trivia about launch dates costs card space the reader pays for at 2 AM. Step-track can't start without a beacon in capture range, and a manual park loses a bird that wanders ±3°.`,
             pointPenalty: 5,
             documentSection: 'Acquire',
             documentLine: 'Program-track FIRST - puts you inside beacon capture range. Nominal Az 190 / El 32, bird rides a ±3° figure-8',
@@ -306,7 +305,8 @@ export const scenario19Data: ScenarioData = {
       id: 'tune-beacon',
       nice: ['S0421', 'K0773'],
       title: 'Fly It: Find the Beacon',
-      description: 'RX Analysis: centre the spectrum analyzer on the AURORA-7 beacon IF with a narrow span (~2 kHz) and confirm the beacon.',
+      description:
+        'In RX Analysis, center the spectrum analyzer on the AURORA-7 beacon IF you work out from the LO, set a narrow span of about 2 kHz, and confirm you can see the beacon.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['acquire-callout-quiz'],
       timeLimitSeconds: 3 * 60,
@@ -371,8 +371,7 @@ export const scenario19Data: ScenarioData = {
               'Beacon IF = |LO − RF| per the SOP values, currently 1085 MHz. Weak CW (aging bird) - use a narrow span, ~2 kHz',
             ],
             correctIndex: 0,
-            explanation:
-              'The formula WITH the worked numbers, plus the trap (weak CW needs a narrow span). A bare "1085" breaks the day the LO changes; a bare formula breaks at 2 AM. 6080 is the Maine LO, and a 24 MHz span buries a CW line in the noise.',
+            explanation: `The right line gives the formula with the worked numbers, plus the trap. A bare "1085" breaks the day the LO changes, and a bare formula is slow to use at 2 AM. CW means continuous wave, a steady unmodulated tone, and a weak one needs a narrow span. The 6080 option is the Maine LO, and a 24 MHz span buries a CW line in the noise.`,
             pointPenalty: 5,
             documentSection: 'Acquire',
             documentLine: 'Beacon IF = LO − RF = 5250 − 4165 = 1085 MHz. Weak CW - use ~2 kHz span',
@@ -407,7 +406,7 @@ export const scenario19Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              "It actually happened here, it costs an hour, and the check takes five seconds. That ratio - cost of mistake over cost of check - is what earns a warning its card space. The LO was still at Maine's 6080 default. A dark analyzer or a stowed dish is caught by the acquisition step before it; a weaker beacon is a fact, not a mistake.",
+              "It actually happened here, it costs an hour, and the check takes five seconds. That ratio, the cost of the mistake over the cost of the check, is what earns a warning its card space. The LO was still at Maine's 6080 default. A dark analyzer is obvious the moment you look at it, and a stowed dish would have stopped the acquisition step before this one. A weaker beacon is a fact, not a mistake.",
             pointPenalty: 5,
             documentSection: 'Watch Out',
             documentLine: 'Beacon "missing"? Verify LNB LO = 5250 - the Maine default (6080) bites cross-site operators',
@@ -426,7 +425,7 @@ export const scenario19Data: ScenarioData = {
       id: 'enable-step-track',
       nice: ['S0421', 'K1032'],
       title: 'Fly It: Engage Step-Track',
-      description: 'Engage step-track on the acquired beacon - the half of the procedure the card is really for.',
+      description: 'In ACU Control, switch the antenna to step-track on the acquired beacon. This is the half of the procedure the card is really for.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['mistake-lo-quiz'],
       timeLimitSeconds: 2 * 60,
@@ -473,7 +472,7 @@ export const scenario19Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'A new hire here once engaged step-track from manual with no beacon in the capture cone and watched the dish wander. The rule plus the reason makes the mistake impossible to repeat. The loop has no ephemeris and no search - it only optimizes a beacon it can already see.',
+              "The right line gives the rule plus the reason, which keeps a new operator from repeating the mistake: a new hire here once engaged step-track from manual with no beacon in range and watched the dish wander. The loop has no search and no ephemeris (the satellite's predicted-position data), so it can only optimize a beacon it can already see.",
             pointPenalty: 5,
             documentSection: 'Track',
             documentLine: 'Step-track RIDES program-track - engage on an acquired beacon, never from MANUAL',
@@ -488,7 +487,8 @@ export const scenario19Data: ScenarioData = {
       id: 'hold-beacon',
       nice: ['T0153', 'K1032'],
       title: 'Fly It: Hold the Figure-8',
-      description: 'Stay on ACU Control and hold beacon lock for 20 s while the bird wanders - no input needed. Watch what "healthy" looks like so you can describe it.',
+      description:
+        'Stay on ACU Control for 20 seconds and keep the beacon lock while the bird wanders. You don\'t need to touch anything; watch what "healthy" looks like so you can describe it.',
       groundStation: 'VT-01',
       // A watch: the lock is meant to be there already
       intent: 'confirm',
@@ -518,7 +518,7 @@ export const scenario19Data: ScenarioData = {
       id: 'healthy-track-quiz',
       nice: ['T1411', 'T0153'],
       title: 'Card Line: What Healthy Looks Like',
-      description: 'Describe the picture of a working step-track so the reader can recognize it - and its absence.',
+      description: "Describe what a working step-track looks like, so the reader can recognize it and notice when it's missing.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['hold-beacon'],
       timeLimitSeconds: 2 * 60,
@@ -537,8 +537,7 @@ export const scenario19Data: ScenarioData = {
               'Healthy = step-track LED lit and Az/El matching the ephemeris exactly. Matched dish + any C/N is the loop WORKING',
             ],
             correctIndex: 0,
-            explanation:
-              'The counterintuitive part IS the lesson: motion is health. A new operator who expects a still dish will "fix" a working loop - this line inoculates them. A still dish on an inclined bird means the loop is NOT following it, and the LED only says the mode is selected.',
+            explanation: `The counterintuitive part is the lesson: motion is health. A new operator who expects a still dish will "fix" a working loop, and this line stops them. A still dish on a bird that traces a figure-8 means the loop isn't following it, and the LED only says the mode is selected.`,
             pointPenalty: 5,
             documentSection: 'Track',
             documentLine: 'Healthy = C/N steady at peak while Az/El wander the figure-8. Moving dish + flat C/N = loop WORKING',
@@ -553,7 +552,7 @@ export const scenario19Data: ScenarioData = {
       id: 'mistake-chase-quiz',
       nice: ['T1334', 'K0645'],
       title: 'Card Line: Second Watch-Out',
-      description: 'Pick the tracking-phase warning with the highest base rate.',
+      description: 'Pick the tracking warning for the mistake operators here make most often.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['healthy-track-quiz'],
       timeLimitSeconds: 2 * 60,
@@ -572,8 +571,7 @@ export const scenario19Data: ScenarioData = {
               'C/N sagging mid-track? Narrow the span before judging the carrier - the AURORA-7 transponder is narrower than TIDEMARK',
             ],
             correctIndex: 0,
-            explanation:
-              'Again the local base rate: the chase mistake has actually happened (an operator here hand-chased the figure-8 for twenty minutes), has a cheap check (is the loop on?), and an expensive failure mode (losing the beacon entirely). Nudging the axes under a live loop fights it; the other two are not tracking faults at all.',
+            explanation: `This is the local base rate again. The chase mistake has really happened (an operator here hand-chased the figure-8 for twenty minutes), the check is cheap (is the loop on?), and the failure is expensive (losing the beacon entirely). Nudging the axes under a live loop fights it, and the other two options aren't tracking faults at all.`,
             pointPenalty: 5,
             documentSection: 'Watch Out',
             documentLine: 'C/N sagging? Check step-track is ON before touching axes - never hand-chase the figure-8',
@@ -593,7 +591,7 @@ export const scenario19Data: ScenarioData = {
       nice: ['T1567', 'S0421'],
       title: 'Fly It: Bring the Uplink Up',
       description:
-        'TX Chain: the chain is staged for AURORA-7 (BUC LO 7500, TX modem 1447 MHz / 24 MHz) and off the air. With the dish tracking the beacon, bring it up drive first: TX modem transmitting, then unmute the BUC, then enable the HPA.',
+        'In the TX Chain tab, the transmit chain is already staged for AURORA-7 (BUC LO 7500 MHz, TX modem 1447 MHz at 24 MHz bandwidth) but is off the air. With the dish tracking the beacon, bring it up drive first: start the TX modem transmitting, then unmute the BUC, then enable the HPA.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['mistake-chase-quiz'],
       timeLimitSeconds: 3 * 60,
@@ -630,7 +628,7 @@ export const scenario19Data: ScenarioData = {
       nice: ['T0153', 'S0421'],
       title: 'Fly It: Prove the Link',
       description:
-        'RX Analysis: tune receiver modem 1 to the AURORA-7 carrier (1422 MHz IF, 24 MHz bandwidth) and Apply, then prove lock with C/N at least 8 dB - your own uplink coming back down through AURORA-7, and the proof chain the card must teach.',
+        'In RX Analysis, tune receiver modem 1 to the AURORA-7 carrier (1422 MHz IF, 24 MHz bandwidth) and click Apply. Then confirm the receiver is locked with C/N of at least 8 dB. The carrier is your own uplink coming back down through AURORA-7, and this is the proof chain the card must teach.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['key-aurora-uplink'],
       timeLimitSeconds: 3 * 60,
@@ -694,8 +692,7 @@ export const scenario19Data: ScenarioData = {
               'Proof chain, in order: beacon at 1085 (pointing + LO) → RX locked at 1447 / 24 MHz (carrier) → C/N ≥ 8 dB (margin)',
             ],
             correctIndex: 0,
-            explanation:
-              'Ordered, numeric, and explains what each check proves - the rule from your first qualified rounds (beacon proves RF, lock proves data, margin proves durability) compressed to one card line. Each link proves something the others do not, and the order matters: no margin without lock, no lock without pointing. 1447 is the TX IF, not the receive carrier; a green dashboard proves nothing by itself.',
+            explanation: `The right line is ordered, numeric, and says what each check proves. It's the rule from your first qualified shifts (the beacon proves RF, lock proves data, margin proves durability) compressed into one card line. Each link proves something the others don't, and the order matters, because there's no margin without lock and no lock without pointing. 1447 is the TX IF, not the receive carrier, and a green dashboard proves nothing by itself.`,
             pointPenalty: 5,
             documentSection: 'Verify',
             documentLine: 'Proof chain: beacon 1085 (pointing+LO) → RX locked 1422 / 24 MHz (carrier) → C/N ≥ 8 (margin)',
@@ -721,7 +718,7 @@ export const scenario19Data: ScenarioData = {
           description: 'Watch-Out Selection',
           params: {
             character: Character.SYSTEM,
-            question: 'Last warning slot on the card - which one?',
+            question: 'Which verification warning earns the last slot on the card?',
             options: [
               'Carrier "gone" but beacon fine? Widen the span - a 24 MHz carrier is invisible at the 2 kHz span you used for the beacon',
               'Carrier "gone" but beacon fine? Check Max Amp / Min Amp - a 24 MHz carrier hides under a window set for a narrow CW beacon line',
@@ -729,8 +726,7 @@ export const scenario19Data: ScenarioData = {
               'Carrier "gone" but beacon fine? Re-acquire in program-track - the dish has drifted off the transponder beam but not the beacon',
             ],
             correctIndex: 0,
-            explanation:
-              'The span trap is the natural sequel to the card\'s own beacon advice ("use 2 kHz span") - a good card warns about the mistakes its own instructions set up. An operator here once declared an outage over it. Beacon and carrier ride the same beam, so pointing is already proven; Max Amp / Min Amp move the window, not the carrier.',
+            explanation: `The span trap follows from the card's own beacon advice ("use a 2 kHz span"), and a good card warns about the mistakes its own instructions set up. An operator here once declared an outage over it. The beacon and carrier ride the same beam, so pointing is already proven, and Max Amp / Min Amp move the display window, not the carrier.`,
             pointPenalty: 5,
             documentSection: 'Watch Out',
             documentLine: 'Carrier "gone" but beacon fine? WIDEN THE SPAN - 24 MHz won\'t show at the beacon\'s 2 kHz',
@@ -765,7 +761,7 @@ export const scenario19Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'The 7500-vs-7000 trap has burned a real operator here (carrier 500 MHz off). The worked formula carries both the number and the trap in one line. The LNB LO belongs to the receive chain, and a bare number with no working breaks the day the LO changes.',
+              'The worked formula carries both the number and the trap in one line. Mixing up 7500 and 7000 has burned a real operator here, leaving the carrier 500 MHz off. The LNB LO belongs to the receive chain, and a bare number with no working breaks the day the LO changes.',
             pointPenalty: 5,
             documentSection: 'Numbers',
             documentLine: 'TX IF = 7500 − 6053 = 1447 MHz. AURORA BUC LO is 7500 - NOT the TIDEMARK 7000',
@@ -784,7 +780,7 @@ export const scenario19Data: ScenarioData = {
       id: 'card-review-quiz',
       nice: ['T1334', 'T1411'],
       title: 'Editorial Review',
-      description: 'Review the finished card in the Working Document panel - and defend what you left off.',
+      description: 'Review the finished card in the Working Document panel, then explain why you left things off it.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['tx-numbers-quiz'],
       timeLimitSeconds: 3 * 60,
@@ -804,7 +800,7 @@ export const scenario19Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              "Dana's test for the card is whether SHE would tape it to a console. Editing is the difference between a reference and a re-printed manual. The card earns trust by containing only what earns its place; the omitted material is neither restricted nor an afterthought.",
+              "Dana's test for the card is whether she'd tape it to a console herself. Editing is what separates a reference from a reprinted manual. The card earns trust by holding only what earns its place, and the omitted material is neither restricted nor an afterthought.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -817,7 +813,7 @@ export const scenario19Data: ScenarioData = {
       id: 'log-handoff',
       nice: ['K0645', 'T1411'],
       title: 'Hand Off the Card',
-      description: 'Log the deliverable for Dana.',
+      description: 'Choose the log entry that records the finished card for Dana.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['card-review-quiz'],
       timeLimitSeconds: 2 * 60,
@@ -836,8 +832,7 @@ export const scenario19Data: ScenarioData = {
               'AURORA-7 training card finished - built from the SOP step list, condensed to one page; delivered to Dana for ground school',
             ],
             correctIndex: 0,
-            explanation:
-              '"Built against a live run" is the card\'s provenance - it is what separates this document from the vendor manual it replaces. Sections: Acquire / Track / Verify / Numbers / three Watch-Outs from station history, every one flown green today.',
+            explanation: `"Built against a live run" is the card's provenance, and it's what separates this document from the vendor manual it replaces. The card has Acquire, Track, Verify and Numbers sections plus three Watch-Outs from station history, and the procedure behind it was flown green today.`,
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -865,7 +860,7 @@ export const scenario19Data: ScenarioData = {
       'mistake-chase-quiz': {
         text: `
         <p>
-          I'm reading the card as it builds - the Watch-Out section is exactly right so far. Notice every line in it is something that actually happened here? That's the difference between a warning and a superstition. Keep going.
+          I'm reading the card as it builds, and the Watch-Out section is right so far. Every line in it comes from something that actually happened here, and that's the difference between a warning and a superstition. Next you'll bring the uplink up, so keep going.
         </p>
         `,
         character: Character.DANA_TORRES,
@@ -875,10 +870,10 @@ export const scenario19Data: ScenarioData = {
       'log-handoff': {
         text: `
         <p>
-          This is the card I'd have wanted my first week. Procedure flown clean, numbers worked not copied, and three warnings that each cost somebody here a real afternoon. It goes in the new-hire packet tonight.
+          This is the card I'd have wanted my first week. You flew the procedure clean, you worked the numbers instead of copying them, and each of the three warnings cost somebody here a real afternoon. It goes in the new-hire packet today, and I'm off to see whether Maine's spare BUC has moved an inch in procurement.
         </p>
         <p>
-          You know the material differently now than you did this morning. That's not an accident - teaching it is the last step of learning it.
+          You know the material differently now than you did when you started. That's no accident, because the last step of learning something is teaching it.
         </p>
         `,
         character: Character.DANA_TORRES,

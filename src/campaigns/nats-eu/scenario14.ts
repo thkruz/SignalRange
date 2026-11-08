@@ -96,7 +96,7 @@ export const natsEuScenario14Data: ScenarioData = {
   subtitle: 'Weather Reallocation Judgment',
   duration: '40 min',
   missionType: 'Weather Operations',
-  description: `11:00 local. A deep low is crossing Ireland: heavy rain on Galway now, turning to sleet by half past, clearing by early afternoon. Shetland has sky until two.<br><br>Erik's priority-1 MERIDIAN-SAR-2 collect rises at 11:12 into the worst of it, on a 19 degree pass with no margin to lose. A priority-2 SAR-1 window at 11:45 sits behind the front, in the sleet.<br><br>Read the fade, move the collect to Shetland and fly it from there while Galway watches its own pass drown. Then decide whether the 11:45 pass is a ride-out or a hand-over, protect the feed before the sleet arrives, and write down the rule you used.`,
+  description: `11:00 UTC. A deep low is crossing Ireland: heavy rain on Galway now, turning to sleet by about half past, and clearing by early afternoon. Shetland has clear sky until two.<br><br>Erik's priority-1 MERIDIAN-SAR-2 collect rises at 11:12, straight into the worst of it, on a 19 degree pass with no margin to spare. A priority-2 SAR-1 window at 11:45 sits behind the front, in the sleet.<br><br>Read the fade, move the collect to Shetland and fly it from there while Galway watches its own pass drown. Then protect the feed before the sleet arrives, decide whether the 11:45 pass is a ride-out at Galway or a hand-over, and write down the rule you used.`,
   equipment: [
     'GW-01 Galway: 4m Ku-Band LEO Tracker (feed heater)',
     'SH-02 Shetland: 4m Ku-Band LEO Tracker (remote console)',
@@ -181,7 +181,7 @@ export const natsEuScenario14Data: ScenarioData = {
       id: 'review-mission-brief',
       nice: ['K0645', 'K0721'],
       title: 'Read the Weather Brief',
-      description: 'Open the brief: the front, its timing over both sites, the two windows and what each is worth.',
+      description: 'Open the brief and read how the front moves over both sites, what the two windows are, and what each one is worth.',
       groundStation: 'GW-01',
       freezesScenarioTimer: true,
       prerequisiteObjectiveIds: [],
@@ -197,16 +197,16 @@ export const natsEuScenario14Data: ScenarioData = {
           description: 'Fade Magnitude Read',
           params: {
             character: Character.SYSTEM,
-            question: 'A 30 mm/h cell at 11.7 GHz on a 19 degree pass. Order of magnitude of the fade?',
+            question: 'A 30 mm/h rain cell sits on a 19 degree pass at 11.7 GHz. About how big is the fade?',
             options: [
-              'Several dB - about 10 on this geometry, against a link that peaks near 8.5 dB clear; the collect will not close from Galway',
-              'A fraction of a dB - as it was at C-band in Vermont, against a link that peaks near 8.5 dB clear; the collect closes',
-              'About 1 dB - rain only matters above 20 GHz, against a link that peaks near 8.5 dB clear; the collect closes with margin',
-              'Total - rain blocks Ku entirely at 30 mm/h, whatever the link peaks at clear; the collect will not close from anywhere',
+              "Several dB, about 10 here: the link peaks near 8.5 dB clear, so the collect won't close from Galway",
+              'A fraction of a dB, as at C-band in Vermont: the link peaks near 8.5 dB clear, so the collect closes',
+              'About 1 dB, since rain only matters above 20 GHz: the link peaks near 8.5 dB clear, so the collect closes',
+              "Total, since rain blocks Ku entirely at 30 mm/h: the collect won't close from anywhere, whatever the link peaks at",
             ],
             correctIndex: 0,
             explanation:
-              'And that is before the rain also warms the sky. Rain attenuation rises steeply with frequency: a tenth of a dB at 4 GHz becomes whole decibels at 12 GHz, and a low pass drags the beam through more of the rain. This is the single most Ku-specific number this campaign teaches. Twelve minutes to the collect. Shift clock started.',
+              "Rain attenuation rises steeply with frequency: a tenth of a dB at 4 GHz becomes whole decibels at 12 GHz, and a low pass drags the beam through more of the rain. That's about 10 dB here, against a link that only peaks at 8.5 dB, so the collect can't close from Galway. The rain also warms the sky, which adds noise on top. The collect is twelve minutes away and the shift clock starts now.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -223,7 +223,7 @@ export const natsEuScenario14Data: ScenarioData = {
       id: 'read-the-fade-on-the-board',
       nice: ['K0721', 'T0153', 'K0740'],
       title: 'Read the Fade on the Board',
-      description: 'Dashboard: the RAIN FADE alarm on GW-01 is climbing with the rain rate. Read it, and say what the feed heater can do about it.',
+      description: 'Open the Dashboard and read the RAIN FADE alarm on GW-01, which climbs with the rain rate. Then say what the feed heater can do about it.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['review-mission-brief'],
       timeLimitSeconds: 2 * 60,
@@ -241,7 +241,7 @@ export const natsEuScenario14Data: ScenarioData = {
           description: 'Heater vs Rain',
           params: {
             character: Character.SYSTEM,
-            question: 'RAIN FADE on GW-01, rising. Does the feed heater help?',
+            question: 'The RAIN FADE alarm on GW-01 is rising. Will the feed heater help?',
             options: [
               'No. Rain attenuation is in the air along the whole slant path; the heater melts ice on the feed horn',
               'Yes. A warm feed sheds water as fast as it arrives; the heater recovers most of the fade on the horn',
@@ -250,7 +250,7 @@ export const natsEuScenario14Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'The heater is the answer to the sleet behind the front, not to the rain in it. Two different losses with two different fixes. Rain: reallocate or ride through on margin. Ice: heater, early. Knowing which one you are looking at is the shift.',
+              "The heater is the answer to the sleet behind the front, not to the rain in it. Rain is a loss along the whole slant path, so the only fixes are to reallocate the pass or ride it out on margin. Ice sits on the feed, so the heater fixes that, but only if you turn it on early. Telling which of the two you're looking at is most of this shift.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -263,7 +263,7 @@ export const natsEuScenario14Data: ScenarioData = {
       id: 'galway-cold-chain',
       nice: ['T0431', 'K0740', 'S0421'],
       title: 'GW-01 Cold Chain',
-      description: 'Receive-only day at Galway: GPSDO locked, BUC muted, HPA output disabled. Nothing goes up through a rain cell.',
+      description: 'Run Galway receive-only today. Confirm the GPSDO is locked, mute the BUC and make sure the HPA output is disabled, so nothing transmits through the rain cell.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['read-the-fade-on-the-board'],
       timeLimitSeconds: 2 * 60,
@@ -295,7 +295,8 @@ export const natsEuScenario14Data: ScenarioData = {
       id: 'reallocate-the-collect',
       nice: ['K0721', 'K0689', 'T0129'],
       title: 'Reallocate the Collect',
-      description: 'The P1 SAR-2 collect cannot be worked from Galway in this cell. Give the Shetland window to SH-02, assign the rest, and keep the plan DECONFLICTED.',
+      description:
+        "The priority-1 SAR-2 collect can't be worked from Galway in this rain. Assign the Shetland window to SH-02, assign the remaining windows, and keep the contact plan DECONFLICTED.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['galway-cold-chain'],
       timeLimitSeconds: 3 * 60,
@@ -325,7 +326,7 @@ export const natsEuScenario14Data: ScenarioData = {
           description: 'Reallocation Justified',
           params: {
             character: Character.SYSTEM,
-            question: 'Why does the P1 collect move, when the P2 window at 11:45 might not?',
+            question: 'The P1 collect has to move to Shetland, but the P2 window at 11:45 might stay at Galway. Why the difference?',
             options: [
               'A P1 collect gets the site that can close it: 34 degrees of dry sky at Shetland against 19 degrees under 10 dB of rain',
               'Shetland is the primary site for SAR-2: 34 degrees there against 19 at Galway, and the plan defaults the P1 to the higher pass',
@@ -334,7 +335,7 @@ export const natsEuScenario14Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Not a judgment call. The 11:45 window is behind the front, on better geometry, and can be decided on measured margin. Reallocate what the weather has already decided. Keep the decisions the weather has left you.',
+              "This one isn't a judgment call, because the rain has already decided the P1 collect. The 11:45 window is behind the front, on better geometry, so you can decide it later on measured margin. Reallocate what the weather has decided, and keep the decisions it has left you.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -348,7 +349,7 @@ export const natsEuScenario14Data: ScenarioData = {
       nice: ['S0421', 'K0721', 'K0740'],
       title: 'Arm Galway to Watch the Fade',
       description:
-        'Galway flies its own SAR-2 pass anyway, unattended, so you can measure what the rain does. Modem 1 to 1370 MHz and program-track with MERIDIAN-SAR-2 as the target before you leave for Shetland.',
+        'Galway will still fly its own SAR-2 pass, unattended, so you can measure what the rain does to it. Set modem 1 to 1370 MHz and turn on program-track with MERIDIAN-SAR-2 as the target before you leave for Shetland.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['reallocate-the-collect'],
       timeLimitSeconds: 3 * 60,
@@ -379,7 +380,7 @@ export const natsEuScenario14Data: ScenarioData = {
       nice: ['T0431', 'S0421', 'K0773'],
       title: 'SH-02 Weather Sweep',
       description:
-        'Select SH-02. Reference locked, LNB stable, and retune modem 1 from 1414 MHz to the 1370 MHz SAR-2 carrier with the analyzer centred on 1370 MHz, 2 MHz span. AOS 11:10 from azimuth 023.',
+        'Select SH-02 and check that the reference is locked and the LNB is stable. Then retune modem 1 from 1414 MHz to the 1370 MHz SAR-2 carrier, and centre the analyzer on 1370 MHz with a 2 MHz span. SAR-2 rises over Shetland at 11:10, from azimuth 23 degrees.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['arm-galway-to-watch-the-fade'],
       timeLimitSeconds: 3 * 60,
@@ -430,7 +431,7 @@ export const natsEuScenario14Data: ScenarioData = {
       id: 'preposition-shetland-for-sar2',
       nice: ['S0421', 'K1032'],
       title: 'Pre-position Shetland for SAR-2',
-      description: 'Park the SH-02 tracker on the AOS azimuth, 23 degrees at 5 degrees elevation.',
+      description: "Point the SH-02 tracker at the rise position, azimuth 23 degrees and elevation 5 degrees, so it's waiting where SAR-2 comes up.",
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['shetland-weather-sweep'],
       timeLimitSeconds: 2 * 60,
@@ -461,7 +462,7 @@ export const natsEuScenario14Data: ScenarioData = {
       id: 'acquire-sar2-from-shetland',
       nice: ['S0421', 'K1032'],
       title: 'Acquire SAR-2 from Shetland',
-      description: 'AOS 11:10:42. Program-track MERIDIAN-SAR-2 on the SH-02 pedestal and confirm the imagery carrier on the Shetland RX analysis.',
+      description: 'SAR-2 rises at 11:10:42. Turn on program-track for MERIDIAN-SAR-2 on the SH-02 pedestal, then confirm the imagery carrier on the Shetland RX Analysis tab.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['preposition-shetland-for-sar2'],
       conditions: [
@@ -497,7 +498,7 @@ export const natsEuScenario14Data: ScenarioData = {
       nice: ['T0153', 'K0740', 'S0478'],
       title: 'Decode the Collect from Shetland',
       description:
-        'Lock the 1370 MHz carrier on the SH-02 modem and log C/N above 8 dB on SH-02 RX analysis; it peaks near 12.5 dB at culmination (11:15:35, 34 degrees, 659 km). Once both rows are logged the decode is yours, so you can go to Galway for its fade. This is the collect Erik is waiting on.',
+        'Lock modem 1 on the 1370 MHz carrier at SH-02 and log a C/N above 8 dB on the RX Analysis tab. It peaks near 12.5 dB at culmination (11:15:35, 34 degrees, 659 km). Once both rows are logged the decode is yours, so you can go to Galway to watch its fade. This is the collect Erik is waiting on.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['acquire-sar2-from-shetland'],
       conditions: [
@@ -526,7 +527,8 @@ export const natsEuScenario14Data: ScenarioData = {
               'An apology for the site change, the reason it moved, and a promise that tomorrow comes from the dish he was told',
             ],
             correctIndex: 0,
-            explanation: 'Not the rain rate, not the decibels. The customer bought a collect, not a dish. The numbers go in the weather log for the people who read numbers.',
+            explanation:
+              "Erik bought a collect, not a dish, so he needs to hear that it's captured and where it came from, not the rain rate or the decibels. Those numbers go in the weather log for the people who read numbers.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -540,7 +542,7 @@ export const natsEuScenario14Data: ScenarioData = {
       nice: ['K0721', 'T0153', 'K0740'],
       title: 'Observe the Galway Fade',
       description:
-        'Select GW-01 while its own SAR-2 pass is still up (until 11:22). The pedestal is program-track locked on the bird; read the C/N the rain has left it and do the arithmetic.',
+        'Select GW-01 while its own SAR-2 pass is still up, which is until 11:22. The pedestal is tracking the satellite, so read the C/N the rain has left and work out how much fade that means.',
       groundStation: 'GW-01',
       // Phase 19.0a: opens beside the Shetland decode, not after it. Chained,
       // a player who finished the decode after Galway's LOS (1323 s) had no
@@ -578,7 +580,7 @@ export const natsEuScenario14Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question:
-              'Galway, 19 degrees, 30 mm/h: the same bird Shetland is decoding at about 12.5 dB reads about -1 dB here at the peak of the fade, no lock, with the pedestal tracking cleanly. Where did the rest go?',
+              'At Galway, 19 degrees, 30 mm/h, the satellite Shetland is decoding at about 12.5 dB reads about -1 dB at the peak of the fade, with no lock, even though the pedestal is tracking cleanly. Where did the rest of the signal go?',
             options: [
               'Rain: about 10 dB of attenuation along the slant path through the cell, plus a warmer sky raising the noise temperature',
               'Pointing: rain on the reflector defocuses the beam, and at 19 degrees the pedestal is chasing a low, fast target',
@@ -587,7 +589,7 @@ export const natsEuScenario14Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'The clear-sky number for this geometry was only about 8.5 dB to begin with, and the slant path through the cell is 7.7 km. ITU-R P.838: specific attenuation goes as k times rain rate to the power alpha, and at 12 GHz k is a hundred times what it was at 4 GHz. A low pass makes it worse twice: longer path through the rain, and less clear-sky margin to spend.',
+              'The pointing is fine, because the pedestal is tracking cleanly, so the loss is rain. The clear-sky C/N for this geometry was only about 8.5 dB to begin with, and the slant path through the cell is 7.7 km. In ITU-R P.838, specific attenuation goes as k times the rain rate to the power alpha, and at 12 GHz k is a hundred times what it was at 4 GHz. A low pass makes it worse twice, with a longer path through the rain and less clear-sky margin to spend.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -604,7 +606,7 @@ export const natsEuScenario14Data: ScenarioData = {
       id: 'log-the-collect',
       nice: ['S0575', 'K0645', 'T1580'],
       title: 'Log the Collect',
-      description: 'Write the collect into the weather log with the decision that made it: which site, why, and what Galway measured in the rain.',
+      description: 'Write the collect into the weather log with the decision behind it: which site flew it, why, and what Galway measured in the rain.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['decode-the-collect-from-shetland', 'observe-the-galway-fade'],
       timeLimitSeconds: 2 * 60,
@@ -617,14 +619,14 @@ export const natsEuScenario14Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What does the weather log need for the 11:12 collect?',
             options: [
-              'Collect worked from SH-02 at 34 degrees with margin; Galway flown for the record and faded to about -1 dB with no lock at the peak; P1 moved before AOS',
-              'Collect worked from SH-02 at 34 degrees with margin; Galway faded out in 30 mm/h; P1 moved after the Galway attempt failed',
-              'Collect worked from SH-02 at 34 degrees with margin; the C/N at Shetland and nothing about Galway, since it was not the site',
-              'Rain at Galway, collect moved to SH-02; Shetland decoded at 34 degrees with margin; nothing further needed on the line',
+              'Worked from SH-02 at 34 degrees with margin; Galway flown for the record, faded to about -1 dB; P1 moved before AOS',
+              'Worked from SH-02 at 34 degrees with margin; Galway faded out in 30 mm/h rain; P1 moved after the Galway attempt failed',
+              'Worked from SH-02 at 34 degrees with margin; the Shetland C/N only, nothing about Galway since it was not the site',
+              'Worked from SH-02 at 34 degrees with margin; rain at Galway, collect moved; nothing further needed on the line',
             ],
             correctIndex: 0,
             explanation:
-              'The reallocation came before AOS, not after a failed attempt, and Galway faded in 30 mm/h at 19 degrees. The measurement Galway made in the rain is the evidence the reallocation rule stands on next time. A decision without its number is an opinion.',
+              'The log has to show that the collect moved before AOS rather than after a failed attempt, and that Galway faded in 30 mm/h at 19 degrees. That Galway measurement is the evidence the reallocation rule stands on next time, because a decision without its number is only an opinion.',
             pointPenalty: 5,
             documentSection: 'Contacts',
             documentLine:
@@ -640,7 +642,8 @@ export const natsEuScenario14Data: ScenarioData = {
       id: 'protect-the-feed',
       nice: ['S0421', 'T0431', 'K0721'],
       title: 'Protect the Feed',
-      description: 'The rain turns to sleet at 11:26. Feed heater on at GW-01 now, before the first flake, not at the first fade. Every minute it is off costs a decibel later.',
+      description:
+        'The rain turns to sleet at 11:26. Turn the GW-01 feed heater on now, before the first flake, instead of waiting for the first fade. Every minute it stays off costs about a decibel later.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['log-the-collect'],
       timeLimitSeconds: 2 * 60,
@@ -658,7 +661,7 @@ export const natsEuScenario14Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question:
-              'Heater on at {{at:cond:protect-the-feed.0|11:24}}, sleet from 11:26, pass at 11:45. What does the feed carry at culmination, and what would it carry if the heater had waited for the first fade?',
+              'The heater went on at {{at:cond:protect-the-feed.0|11:24}}, the sleet starts at 11:26 and the pass is at 11:45. What does the feed carry at culmination? And what would it carry if the heater had waited for the first fade?',
             options: [
               'On before the sleet: nothing accumulates, the pass sees ~11 dB. Off until the fade: about 8.6 dB of ice, melting at 1 dB a minute',
               'The same either way: the heater clears ice in seconds, so the pass sees ~11 dB. Off until the fade: a minute of warm-up, then lock',
@@ -667,7 +670,7 @@ export const natsEuScenario14Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Ice builds with a 12 minute time constant and melts at 1 dB per minute; with the heater off until 11:45 there is no lock until the 8.6 dB is gone. The heater is a decision made before the loss, because after it the pass is already gone.',
+              'Ice builds with a 12 minute time constant and melts at 1 dB per minute. With the heater off until 11:45, the pass would carry about 8.6 dB of ice at culmination and have no lock until it melted. You need to decide on the heater before the loss, because by the time the fade shows, the pass is already gone.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -680,7 +683,8 @@ export const natsEuScenario14Data: ScenarioData = {
       id: 'decide-the-ride-out',
       nice: ['S0807', 'K0721', 'T0129'],
       title: 'Decide the Ride-Out',
-      description: 'The P2 SAR-1 window at 11:45: keep it at Galway or hand it to Shetland too? Decide on measured margin, then confirm the plan carries your decision.',
+      description:
+        "The priority-2 SAR-1 window at 11:45 can stay at Galway or go to Shetland too. Decide on the margin you've measured, then confirm the contact plan carries your decision.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['protect-the-feed'],
       timeLimitSeconds: 3 * 60,
@@ -703,16 +707,17 @@ export const natsEuScenario14Data: ScenarioData = {
           description: 'Ride-Out Decided',
           params: {
             character: Character.SYSTEM,
-            question: 'Rain clearing by 11:26, heater on, sleet only. 30 degree pass, clear-sky ~11 dB, delivery standard 8. What is the 11:45 call?',
+            question:
+              'The rain gives way to sleet at 11:26, and your heater is on. The 30 degree SAR-1 pass has about 11 dB of clear-sky C/N against a delivery standard of 8. What is your call on the 11:45 pass?',
             options: [
               'Keep it at Galway: with the heater on the feed carries no ice, and 3 dB of margin covers what is left of the front',
               'Hand it to Shetland: 75 degrees there beats 30 degrees anywhere, and the extra elevation is margin you never have to measure',
-              'Hand it to Shetland: a site that faded out an hour ago cannot be trusted, and 3 dB of margin is not enough to bet a window on',
+              'Hand it to Shetland: a site that faded out earlier cannot be trusted, and 3 dB of margin is not enough to bet a window on',
               'Drop it: a P2 window is not worth the risk in sleet, and Shetland has the 75 degree pass if the customer asks for it',
             ],
             correctIndex: 0,
             explanation:
-              'Handing every window to Shetland loses capacity you have; if the heater had stayed off, the answer flips. The rain decided the P1. The P2 is yours to decide, and the number that decides it is the feed loss you can read on the ACU, not the weather you can see out of the window.',
+              'With the heater on, the feed carries no ice, so the pass keeps its clear-sky 11 dB, which is 3 dB over the delivery standard. Handing every window to Shetland would throw away capacity you still have, although if the heater had stayed off the answer would flip. The rain decided the P1 collect, but the P2 window is yours to decide, and the deciding number is the feed loss on the ACU, not the weather outside the window.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -726,7 +731,7 @@ export const natsEuScenario14Data: ScenarioData = {
       nice: ['S0421', 'K0773'],
       title: 'Retune Galway for SAR-1',
       description:
-        'Modem 1 back to the 1414 MHz SAR-1 carrier, analyzer centred on the 1389 MHz SAR-1 beacon. The tracker is wherever the SAR-2 pass left it; program-track slews to the 11:45 rise at azimuth 142. Then skip ahead.',
+        'Set modem 1 back to the 1414 MHz SAR-1 carrier and centre the analyzer on the 1389 MHz SAR-1 beacon. The tracker is wherever the SAR-2 pass left it, and program-track will slew it to the 11:45 rise at azimuth 142 degrees. Then use the time skip to jump to just before the rise.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['decide-the-ride-out'],
       timeLimitSeconds: 3 * 60,
@@ -757,7 +762,7 @@ export const natsEuScenario14Data: ScenarioData = {
       nice: ['T0153', 'S0421', 'K0740'],
       title: 'Ride It Out',
       description:
-        'AOS 11:44:59 from azimuth 142, in the sleet, on a clean feed. Program-track MERIDIAN-SAR-1, lock the 1414 MHz carrier and hold C/N above 8 dB through culmination (11:49:43, 30 degrees, 732 km).',
+        'SAR-1 rises at 11:44:59 from azimuth 142 degrees, in the sleet, on a clean feed. Turn on program-track for MERIDIAN-SAR-1, lock modem 1 on the 1414 MHz carrier and hold C/N above 8 dB through culmination (11:49:43, 30 degrees, 732 km).',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['retune-galway-for-sar1'],
       conditions: [
@@ -803,7 +808,7 @@ export const natsEuScenario14Data: ScenarioData = {
       id: 'log-the-ride-out',
       nice: ['S0575', 'K0721', 'K0740'],
       title: 'Log the Ride-Out',
-      description: 'Write the 11:45 pass into the weather log with the feed loss it was flown on and the number it would have been flown on.',
+      description: 'Write the 11:45 pass into the weather log, with the feed loss it was flown on and the loss it would have carried with the heater off.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['ride-it-out'],
       timeLimitSeconds: 2 * 60,
@@ -815,7 +820,7 @@ export const natsEuScenario14Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question:
-              'The ACU feed-loss reading stayed at zero through the pass with the heater on since {{at:cond:protect-the-feed.0|11:24}}. What goes in the log beside the decode?',
+              'The ACU feed-loss reading stayed at zero through the pass, with the heater on since {{at:cond:protect-the-feed.0|11:24}}. What goes in the log beside the decode?',
             options: [
               'Decoded at ~11 dB on zero feed loss, heater on before the sleet; off, the feed would have carried about 8.6 dB at culmination',
               'Decoded at ~11 dB, heater on from {{at:cond:protect-the-feed.0|11:24}}; the sleet never reached the horn, so the heater made no difference to the pass',
@@ -824,7 +829,7 @@ export const natsEuScenario14Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'With the heater off the pass would have been lost; the ride-out was the right call on the margin measured, not on the forecast. A pass that went well on a decision is only evidence if the log says what the decision was and what it avoided.',
+              "With the heater off, this pass would have been lost to the ice, so the ride-out was the right call on the margin you measured, not on the forecast. Zero feed loss is the heater's result, not proof that it wasn't needed. A pass that went well is only evidence if the log records the decision and what it avoided.",
             pointPenalty: 5,
             documentSection: 'Contacts',
             documentLine:
@@ -840,7 +845,7 @@ export const natsEuScenario14Data: ScenarioData = {
       id: 'close-the-weather-log',
       nice: ['K0721', 'S0575', 'K0645'],
       title: 'Close the Weather Log',
-      description: 'Write the standing rule down so the next operator does not have to rediscover it in the next front.',
+      description: "Write the standing rule down so the next operator doesn't have to work it out again in the next front.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['log-the-ride-out'],
       timeLimitSeconds: 3 * 60,
@@ -851,7 +856,7 @@ export const natsEuScenario14Data: ScenarioData = {
           description: 'Standing Rule Written',
           params: {
             character: Character.SYSTEM,
-            question: 'What is the standing weather rule you write down?',
+            question: 'Which standing weather rule do you write in the log?',
             options: [
               'Heater on at the first precipitation warning; P1 windows in a rain cell reallocated before AOS; P2 ridden out on measured margin',
               'Heater on whenever the forecast says rain; every window handed to the site with the better weather; nothing ridden out at all',
@@ -860,7 +865,7 @@ export const natsEuScenario14Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Not at the first fade, and never on the forecast alone. Three sentences, three different losses: ice (prevent it), rain (route around it), margin (measure it). That is the whole of Ku weather operations.',
+              'The rule has three parts for three different losses: ice, which you prevent by heating before the first fade; rain, which you route around by reallocating before AOS; and margin, which you measure instead of guessing from the forecast. Heating at the first fade is too late, and the forecast alone is only a guess.',
             pointPenalty: 5,
             documentSection: 'Standing Rule',
             documentLine:
@@ -880,7 +885,7 @@ export const natsEuScenario14Data: ScenarioData = {
         <em>[Text message from Fiona MacLeod at 10:52]</em>
       </p>
       <p>
-        "You've got the ugly end of it. Radar has the cell on Galway till half eleven and then it goes to sleet behind. I've got sky till two and my heater's been on since dawn out of habit. Erik's collect rises at ten past for me, twelve past for you. Say the word and it's mine."
+        "You've got the ugly end of this one. Radar has the cell sitting on Galway until about half past eleven, and then it turns to sleet behind. I've got clear sky here until two, though the wind took the heat out of my tea before I got it up the hill. Erik's collect rises at ten past for me and twelve past for you, so say the word and it's mine."
       </p>
       `,
       character: Character.FIONA_MACLEOD,
@@ -891,7 +896,7 @@ export const natsEuScenario14Data: ScenarioData = {
       'reallocate-the-collect': {
         text: `
         <p>
-          I do not care which dish. I care about the 11:12 collect. If Shetland gets it, Shetland gets it - just tell me before it rises, not after.
+          I saw the Shetland assignment come through. I don't care which dish it comes from. I care about the 11:12 collect, and I'm glad you told me before it rose, not after.
         </p>
         `,
         character: Character.ERIK_HALVORSEN,
@@ -901,11 +906,11 @@ export const natsEuScenario14Data: ScenarioData = {
       'decode-the-collect-from-shetland': {
         text: `
         <p>
-          Got the frames. Vessel is where I thought it was. Same time tomorrow, whichever dish is dry.
+          I've got the frames, and the vessel is where I expected it, inside my box.
         </p>
         `,
         character: Character.ERIK_HALVORSEN,
-        emotion: Emotion.HAPPY,
+        emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats-eu/14/obj-decode-the-collect-from-shetland.mp3'),
       },
       'protect-the-feed': {
@@ -914,7 +919,7 @@ export const natsEuScenario14Data: ScenarioData = {
           <em>[Text message from Fiona MacLeod at {{stationTime}}]</em>
         </p>
         <p>
-          "Heater? Good. Mine's been on since dawn. Sleet's the one that gets you - it doesn't fade, it just sits on the horn and gets heavier. If you want the quarter-to pass I'd rather you had it; I've got the seventy-five if it goes wrong."
+          "Heater's on, good. Sleet's coming in behind the rain, and it's the one that gets you. It doesn't fade the signal, it just sits on the feed horn at the front of the dish and gets heavier. Whichever way you call the pass at quarter to twelve, I've got the seventy-five degree one here if you want it."
         </p>
         `,
         character: Character.FIONA_MACLEOD,
@@ -927,17 +932,17 @@ export const natsEuScenario14Data: ScenarioData = {
           <em>[Text message from Fiona MacLeod at {{stationTime}}]</em>
         </p>
         <p>
-          "Told you it'd clear. Watched your number from here - eleven on a clean horn in sleet. That's the heater, not the weather. Right call keeping it."
+          "I watched your number from here: eleven and a bit on a clean horn, in the sleet. That's the heater, not the weather, so keeping it on was the right call."
         </p>
         `,
         character: Character.FIONA_MACLEOD,
-        emotion: Emotion.HAPPY,
+        emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats-eu/14/obj-ride-it-out.mp3'),
       },
       'close-the-weather-log': {
         text: `
         <p>
-          Two collects, two dishes, one front, and I never had to ask which. That is what I am paying for. Talk tomorrow.
+          Two passes, two dishes, one front, and I never had to ask which dish. That's what I'm paying for. Talk tomorrow.
         </p>
         `,
         character: Character.ERIK_HALVORSEN,

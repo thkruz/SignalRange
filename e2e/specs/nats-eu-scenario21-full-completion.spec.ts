@@ -76,7 +76,7 @@ test.describe('nats-eu Scenario 21 Full Completion', () => {
   test('[review-mission-brief] reads the brief and what the counter does to a replay', async () => {
     await missionControl.openMissionBrief();
     await missionControl.closeMissionBrief();
-    await answerSystemQuiz(page, 'The bird rejects it: every authenticated frame carries a counter');
+    await answerSystemQuiz(page, 'The bird rejects it: the counter has moved on');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Read the Brief');
   });
@@ -106,7 +106,7 @@ test.describe('nats-eu Scenario 21 Full Completion', () => {
     await expect(page.locator('#sec-audit-body')).not.toContainText('KG-01 unit log');
     await domClick(page, '#sec-mark-reviewed');
     await expect(page.locator('#sec-reviewed-badge')).toHaveText('SIGNED OFF');
-    await answerSystemQuiz(page, 'KEY-2027-Q2b staged as an inactive spare');
+    await answerSystemQuiz(page, 'Q2b staged as an inactive spare');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Read the Log Before the Pass');
   });
@@ -152,7 +152,7 @@ test.describe('nats-eu Scenario 21 Full Completion', () => {
 
   test('[first-command] sends HK-DUMP and gets the ACK', async () => {
     await sendCommandAndExpectAck(page, missionControl, 'HK-DUMP');
-    await answerSystemQuiz(page, 'Anyone with a receiver under the uplink footprint');
+    await answerSystemQuiz(page, 'Anyone with a receiver under the uplink or on the transponded return');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Housekeeping Dump');
   });
@@ -162,7 +162,7 @@ test.describe('nats-eu Scenario 21 Full Completion', () => {
     await missionControl.selectTab('security-console');
     await expect(page.locator('#sec-audit-body')).toContainText('authentication counter stale', { timeout: 15000 });
     await domClick(page, 'button[data-event-id="evt-rotterdam-counter"]');
-    await answerSystemQuiz(page, 'Someone sent the bird command frames that authenticated under the live key');
+    await answerSystemQuiz(page, 'Someone re-sent genuine frames that authenticated under the live key');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Spot the Knock');
   });
@@ -175,7 +175,7 @@ test.describe('nats-eu Scenario 21 Full Completion', () => {
     await expect(page.locator('#sec-audit-body')).toContainText('KG-01 unit log', { timeout: 15000 });
     await domClick(page, 'button[data-event-id="evt-kg-replay-log"]');
     await page.waitForTimeout(3000);
-    await answerDecision(page, 'A replay against an intact key', ['Command key read on TX Chain', 'KG-01 unit log flagged on the Security console']);
+    await answerDecision(page, 'A replay on an intact key', ['Command key read on TX Chain', 'KG-01 unit log flagged on the Security console']);
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Call the Knock');
   });
@@ -187,7 +187,7 @@ test.describe('nats-eu Scenario 21 Full Completion', () => {
     await expect(page.locator('#cmd-key-badge')).toHaveText(/Pending/i, { timeout: 5000 });
     await domClick(page, '#cmd-complete-rotation');
     await expect(page.locator('#cmd-key-badge')).toHaveText(/Valid/i, { timeout: 5000 });
-    await answerSystemQuiz(page, 'Because they hold recorded traffic under it');
+    await answerSystemQuiz(page, 'Because they hold recordings under it');
     await dismissDialogIfPresent(page);
     await closeWorkingDocumentIfOpen(page);
     await waitForObjectiveComplete(missionControl, 'Rotate Out of Cycle');
@@ -214,7 +214,7 @@ test.describe('nats-eu Scenario 21 Full Completion', () => {
     // Still in the log: the earlier call did not destroy it.
     await expect(page.locator('#sec-audit-body')).toContainText('KG-01 unit log');
     await page.waitForTimeout(3000);
-    await answerDecision(page, 'Retain both under seal for CSIRT', ['KG-01 unit log re-read on the Security console']);
+    await answerDecision(page, 'Retain both under seal: the retired key', ['KG-01 unit log re-read on the Security console']);
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Retain or Zeroize');
   });
@@ -222,8 +222,8 @@ test.describe('nats-eu Scenario 21 Full Completion', () => {
   test('[close-and-debrief] files the incident, writes the debrief line and completes', async () => {
     // Two status-checks in one objective: the quiz manager picks the order.
     const answers = [
-      { questionHint: 'COMSEC incident report', answerText: 'HK-DUMP ACK under Q2' },
-      { questionHint: 'debrief line', answerText: 'Every command frame on the air is a frame they can keep' },
+      { questionHint: 'COMSEC incident report', answerText: 'HK-DUMP ACK, then three replayed frames' },
+      { questionHint: 'debrief line', answerText: 'Every command frame on the air is one they can keep' },
     ];
     await answerPendingQuizFrom(page, answers);
     await dismissDialogIfPresent(page);

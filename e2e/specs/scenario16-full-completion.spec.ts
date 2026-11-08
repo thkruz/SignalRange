@@ -52,7 +52,7 @@ const SCENARIO_16_OBJECTIVES: Scenario16Objective[] = [
     id: 'review-mission-brief',
     title: 'Review Incident Brief',
     type: 'quiz',
-    correctAnswer: 'Triage all alarms first, then act in priority order: RF safety, customer impact, equipment health',
+    correctAnswer: 'Triage all three alarms first, then act in priority order: RF safety, customer impact, equipment health',
   },
 
   // ============================================================
@@ -103,7 +103,7 @@ const SCENARIO_16_OBJECTIVES: Scenario16Objective[] = [
     id: 'disable-hpa-for-safety',
     title: 'Disable the HPA - Confirm Rationale',
     type: 'quiz',
-    correctAnswer: 'It takes the dirty uplink off the air, and an enabled HPA left without BUC drive would amplify raw noise into the feed',
+    correctAnswer: 'It takes the dirty uplink off the air, and an enabled HPA with no BUC drive would amplify raw noise into the feed',
   },
   {
     id: 'mute-buc-for-cooldown',
@@ -116,7 +116,7 @@ const SCENARIO_16_OBJECTIVES: Scenario16Objective[] = [
     id: 'diagnose-hpa-overdrive',
     title: 'Diagnose HPA Overdrive',
     type: 'quiz',
-    correctAnswer: 'Output is too close to saturation - IMD products are rising and the amplifier is at risk',
+    correctAnswer: 'The output is too close to saturation, so IMD products are rising and the amplifier is at risk',
   },
   {
     id: 'correct-hpa-backoff',
@@ -189,7 +189,7 @@ const SCENARIO_16_OBJECTIVES: Scenario16Objective[] = [
     id: 'verify-tx-output-clean',
     title: 'Restore HPA Output - Confirm Spectrum Posture',
     type: 'quiz',
-    correctAnswer: 'Clean - IMD products are back below coordination limits and we are no longer interfering',
+    correctAnswer: "Clean: IMD products are back below the coordination limits, so we're no longer interfering",
   },
 
   // Phase 27: the receiver locks on VT-01's own carrier, so it is verified
@@ -226,14 +226,13 @@ const SCENARIO_16_OBJECTIVES: Scenario16Objective[] = [
     id: 'customer-notification',
     title: 'Notify the Customer',
     type: 'quiz',
-    correctAnswer: 'Three concurrent faults identified and cleared in priority order. Link is operational. Written impact report to follow within the hour.',
+    correctAnswer: 'Three faults found and cleared in priority order. The link is operational, and a written report follows within the hour.',
   },
   {
     id: 'log-cascade-event',
     title: 'Log the Cascade Event',
     type: 'quiz',
-    correctAnswer:
-      'VT-01 concurrent unrelated faults: BUC over-temp (72°C), LNB ref unlock (sticky), HPA back-off 2 dB. Cleared in priority order: HPA, BUC, LNB. SeaLink notified.',
+    correctAnswer: 'VT-01 concurrent unrelated faults: BUC over-temp (72°C), LNB ref unlock, HPA back-off 2 dB. Cleared in priority order: HPA, BUC, LNB. SeaLink notified.',
   },
 ];
 

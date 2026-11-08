@@ -135,7 +135,7 @@ export const natsEuScenario24Data: ScenarioData = {
   subtitle: 'Campaign Capstone (Gray Zone 8/8)',
   duration: '60 min',
   missionType: 'Security Operations',
-  description: `03:00, Galway, Tuesday. An Atlantic low is on the coast: rain band now, sleet by 03:40. Three birds in an hour across both stations - SAR-1 collected from Galway in the lull, SAR-2 from Shetland on a set that is about to change, SAR-3 commanded from Galway through the sleet. Charlie is on the phone and you are incident commander for the network.<br><br>Everything they have done in the last two weeks, they can do again tonight. Everything you have done, you can do again too. The plan first.`,
+  description: `It's 03:00 at Galway on a Tuesday, and an Atlantic low is on the coast: rain now, sleet by 03:40. You have three satellites in an hour across both stations. Galway collects SAR-1 in the lull, Shetland collects SAR-2 on an orbit set that's about to change, and Galway commands SAR-3 through the sleet. Charlie's on the phone, and you're incident commander for the network.<br><br>Anything they've done in the last two weeks, they can do again tonight. Anything you've done, you can do again too. Start with the plan.`,
   equipment: [
     'GW-01 Galway: 4m Ku-Band LEO Tracker with feed heater',
     'SH-02 Shetland: 4m Ku-Band LEO Tracker',
@@ -302,7 +302,7 @@ export const natsEuScenario24Data: ScenarioData = {
           timeS: 0,
           timestampLabel: '26 Apr 18:00 UTC',
           actor: 'op-charlie',
-          action: 'Met Eireann orange warning: Atlantic low, heavy rain 02:30-03:30, sleet from 03:30, west coast',
+          action: 'Met Eireann orange warning: Atlantic low, heavy rain from 03:00 for about a quarter of an hour, sleet from 03:40, west coast',
           category: 'config',
           severity: 'warning',
         },
@@ -342,7 +342,7 @@ export const natsEuScenario24Data: ScenarioData = {
       id: 'take-command',
       nice: ['S0807', 'K0645'],
       title: 'Take Command',
-      description: 'Open the brief: the low, three birds in an hour across two sites, and the one thing an incident commander does before touching anything.',
+      description: 'Open the brief: the low, three satellites in an hour across two sites, and the one thing an incident commander does before touching anything.',
       groundStation: 'GW-01',
       freezesScenarioTimer: true,
       prerequisiteObjectiveIds: [],
@@ -360,14 +360,14 @@ export const natsEuScenario24Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Three passes, two sites, a storm and an adversary. What does the incident commander do first?',
             options: [
-              'The plan: which bird from which site, in what order, so that every P1 window has a station and no station has two - then the sites, then the passes',
-              'The uplink: SAR-3 is the only command contact and the key must be checked before anything else',
-              'The weather: heater on at Galway now, before the rain, so the whole hour is flown on a dry feed',
-              'The adversary: load the hop set and take both references to holdover so nothing they do tonight lands',
+              'The plan: which satellite flies from which site, and in what order',
+              'The uplink: SAR-3 is the only command contact, so its key gets checked before anything else',
+              'The weather: heater on at Galway now, so the whole hour is flown on a dry feed',
+              'The adversary: load the hop set and take both references to holdover, so nothing they try works',
             ],
             correctIndex: 0,
             explanation:
-              'The plan is the thing everything else hangs off, and it is the only thing that can be wrong for the whole hour at once. The heater is on before the sleet, not the rain; the hop set is spent on a called denial; the references are trusted until one lies. Twenty minutes to the first AOS.',
+              "The plan is what everything else depends on, and it's the one thing that can be wrong for the whole hour at once. The heater goes on before the sleet, not the rain. The hop set is saved for a called denial. The references are trusted until one lies. SAR-1 rises in about twenty minutes.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -380,7 +380,8 @@ export const natsEuScenario24Data: ScenarioData = {
       id: 'plan-the-network',
       nice: ['K0689', 'T0129', 'S0807'],
       title: 'Plan the Network',
-      description: 'Contact Plan: SAR-1 and SAR-3 to Galway, SAR-2 to Shetland. Three P1 contacts, no overlaps, the plan reads DECONFLICTED.',
+      description:
+        "Open the Contact Plan and assign SAR-1 and SAR-3 to Galway and SAR-2 to Shetland. That's three P1 contacts with no overlaps, and the plan should read DECONFLICTED.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['take-command'],
       timeLimitSeconds: 4 * 60,
@@ -424,14 +425,14 @@ export const natsEuScenario24Data: ScenarioData = {
             character: Character.SYSTEM,
             question: "Why does SAR-2 go to Shetland when Galway is the incident commander's own console?",
             options: [
-              'Because Galway has SAR-1 setting at 03:29 and SAR-3 rising at 03:52 with sleet between them, and Shetland has SAR-2 at 35 degrees in clear air; the plan puts each window on the site that can close it',
-              'Because Shetland has no command key and must take every receive-only contact so Galway is free to command',
-              'Because the spoofer is expected on Galway and a collect flown from Shetland is safe from it',
-              'It should not: the commander flies every pass from the console in front of them and Shetland is a backup',
+              'Because Shetland has SAR-2 at 35.1 degrees, and Galway already has two contacts',
+              'Because Shetland has no command key, so it must take every receive-only contact and leave Galway free to command',
+              'Because the spoofer is expected on Galway, and a collect flown from Shetland is safe from it',
+              'It should not: the commander flies every pass from the console in front of them, and Shetland is only a backup',
             ],
             correctIndex: 0,
             explanation:
-              'Two sites are one network when the plan says which window is whose. Galway has two contacts and weather; Shetland has one and clear sky. Nothing about the adversary is in the plan yet - the plan is geometry and weather, and it is right before anything else happens.',
+              "Two sites work as one network when the plan says which window belongs to which site. Galway has two contacts and the weather, and Shetland has one contact and clear sky. The adversary isn't part of the plan yet. The plan is geometry and weather, and it has to be right before anything else happens.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -444,7 +445,7 @@ export const natsEuScenario24Data: ScenarioData = {
       id: 'galway-dashboard-sweep',
       nice: ['T0153', 'K0741'],
       title: 'GW-01 Storm Sweep',
-      description: 'Board read at Galway with the rain band arriving. Confirm the active alarm state before the first pass.',
+      description: 'Read the board at Galway with the rain band arriving, and confirm the active alarm state before the first pass.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['plan-the-network'],
       timeLimitSeconds: 90,
@@ -462,16 +463,16 @@ export const natsEuScenario24Data: ScenarioData = {
           description: 'Alarm State Confirmed',
           params: {
             character: Character.SYSTEM,
-            question: 'What is the active alarm state on GW-01 at 03:02?',
+            question: 'What is the active alarm state on GW-01 right now?',
             options: [
-              'RX AGC on noise only - no carrier on an empty sky, no hardware alarm; the rain is a weather event on the ACU, not a fault on the chain',
-              'No active alarms - all systems nominal, board clear for the pass',
-              'Rain fade alarm - the receive chain has lost margin and the SAR-1 collect should move to Shetland',
-              'Feed heater alarm - the heater is off in precipitation and the board wants it on',
+              'RX AGC on noise only: no carrier on an empty sky, no hardware alarm',
+              'No active alarms: all systems are nominal, and the board is clear for the pass',
+              'Rain fade alarm: the receive chain has lost margin, so the SAR-1 collect should move to Shetland',
+              'Feed heater alarm: the heater is off in precipitation, and the board wants it on',
             ],
             correctIndex: 0,
             explanation:
-              'Empty sky, not a fault. Thirty millimetres an hour is on the ACU weather panel, and it ends before SAR-1 rises. The heater is for the sleet at 03:40, and the board does not nag about it.',
+              "That's an empty sky, not a fault. Thirty millimetres an hour shows on the ACU weather panel, and the rain ends before SAR-1 rises. Rain is weather, not a fault on the chain. The heater is for the sleet at 03:40, and the board doesn't nag about it.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -484,7 +485,8 @@ export const natsEuScenario24Data: ScenarioData = {
       id: 'galway-rx-ready',
       nice: ['S0421', 'K0773'],
       title: 'Galway Ready for SAR-1',
-      description: 'RX modem 1 on 1414 MHz, analyzer centred on 1414 with a 60 MHz span. The carrier that followed the plan on the 14th will be in this band if it comes.',
+      description:
+        'Set RX modem 1 to 1414 MHz, and center the analyzer on 1414 MHz with a 60 MHz span. The carrier that showed up on the 14th will be in this band if it comes back.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['galway-dashboard-sweep'],
       timeLimitSeconds: 3 * 60,
@@ -522,7 +524,8 @@ export const natsEuScenario24Data: ScenarioData = {
       id: 'shetland-baseline',
       nice: ['T0431', 'S0421'],
       title: 'Shetland Baseline',
-      description: 'Select SH-02. GPS Timing: locked, GNSS tracking, delta-T zero. Retune its RX modem 1 to 1370 MHz for SAR-2. Read the reference now; it will matter at 03:25.',
+      description:
+        'Select SH-02 and check GPS Timing: locked, GNSS tracking, delta-T at zero. Then retune its RX modem 1 to 1370 MHz for SAR-2. Note the reference now, because it matters at 03:25.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['galway-rx-ready'],
       timeLimitSeconds: 3 * 60,
@@ -561,7 +564,7 @@ export const natsEuScenario24Data: ScenarioData = {
       id: 'acquire-sar1-in-the-lull',
       nice: ['S0421', 'K1032'],
       title: 'Acquire SAR-1 in the Lull',
-      description: 'Back to GW-01. The rain band clears at 03:16; SAR-1 rises 03:19:58 from azimuth 005. Program-track it and confirm the beacon on RX analysis.',
+      description: 'Back to GW-01. The rain band clears at 03:16, and SAR-1 rises at 03:19:58 from azimuth 005. Program-track it and confirm the beacon on RX analysis.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['shetland-baseline'],
       conditions: [
@@ -604,7 +607,7 @@ export const natsEuScenario24Data: ScenarioData = {
       nice: ['K0737', 'S0593', 'T0153'],
       title: 'Notch the Carrier',
       description:
-        "From 03:21:30 the carrier is back at 1410 MHz IF, in SAR-1's band, same cadence as the 14th. Notch 1 on 1410, 2 MHz, 30 dB, and hold C/N above 7 dB through the high segment.",
+        "From 03:21:30 the carrier is back at 1410 MHz IF, inside SAR-1's band, on the same on-off cadence as the 14th. Set notch 1 to 1410 MHz, 2 MHz wide and 30 dB deep, and hold C/N above 7 dB through the high part of the pass.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['acquire-sar1-in-the-lull'],
       conditions: [
@@ -646,16 +649,16 @@ export const natsEuScenario24Data: ScenarioData = {
           description: 'Carrier Read',
           params: {
             character: Character.SYSTEM,
-            question: 'Same frequency as the 14th, same cadence, same bearing. What is different tonight about how it is handled?',
+            question: 'The carrier has the same frequency, cadence and bearing as the 14th. What is different tonight about how it is handled?',
             options: [
-              'Nothing in the handling - notch it, keep the collect, log it against the open IR. What is different is that it is one of four things happening, and it is the one the plan already has an answer for',
-              'It is escalated immediately: the third appearance of the same emitter is a criminal matter and the collect stops',
-              'The collect moves to Shetland: a known interferer in the band means Galway cannot be trusted for SAR-1',
-              'The notch is not applied: with the rain gone the margin is enough and a notch costs signal',
+              'Nothing in the handling: notch it, keep the collect, and log it on the open incident report',
+              "It's escalated immediately: a third appearance of the same emitter is a criminal matter, so the collect stops",
+              "The collect moves to Shetland: a known interferer in the band means Galway can't be trusted for SAR-1",
+              "The notch isn't applied: with the rain gone the margin is enough, and a notch costs signal",
             ],
             correctIndex: 0,
             explanation:
-              "A known event gets its known answer and no more of the commander's attention than that. The collect is being delivered, the IR gets a line, and the console is free for the things that do not have an answer yet.",
+              "A known event gets its known answer and no more of the commander's attention than that. It's one of four things happening tonight, and it's the one the plan already answers. The collect is being delivered, the incident report gets a line, and the console is free for the problems that don't have an answer yet.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -668,7 +671,7 @@ export const natsEuScenario24Data: ScenarioData = {
       id: 'load-the-ephemeris',
       nice: ['T1138', 'K1032'],
       title: 'Load the Post-Burn Elements',
-      description: "SAR-2 burned at 03:15; the Pass Schedule tab has read EPHEMERIS STALE since. Load the update before Shetland's 03:31 AOS.",
+      description: 'SAR-2 burned at 03:15, so the Pass Schedule tab has read EPHEMERIS STALE since. Load the update before SAR-2 rises at Shetland at 03:31.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['notch-the-carrier'],
       timeLimitSeconds: 2 * 60,
@@ -688,7 +691,8 @@ export const natsEuScenario24Data: ScenarioData = {
       id: 'shetland-spot-the-walk',
       nice: ['S0648', 'T0431'],
       title: 'Shetland: Spot the Walk',
-      description: "From 03:25 Rotterdam sees Shetland's timestamps drifting. Select SH-02 and read its GNSS vs REF delta-T on GPS Timing. Galway is the cross-check tonight.",
+      description:
+        "From 03:25 Rotterdam sees Shetland's timestamps drifting. Select SH-02 and read its delta-T (the gap between GNSS time and the reference) on GPS Timing, then compare it with Galway, which is the cross-check tonight.",
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['load-the-ephemeris'],
       conditions: [
@@ -710,16 +714,16 @@ export const natsEuScenario24Data: ScenarioData = {
           description: 'Roles Reversed',
           params: {
             character: Character.SYSTEM,
-            question: 'Shetland walking, Galway reading zero, both constellations healthy. What is it, and where?',
+            question: "Shetland's delta-T is walking, Galway reads zero, and both GNSS constellations are healthy. What is it, and where?",
             options: [
-              "A GNSS spoof, local to Shetland - the same signature as the 19th with the sites swapped. Galway's zero is the proof it is local, and Galway's reference is the one still trusted",
-              'A GNSS spoof on both sites: the walk starts at Shetland and Galway will follow inside a minute',
+              "A GNSS spoof, local to Shetland: Galway's zero proves it's local",
+              'A GNSS spoof on both sites: the walk starts at Shetland, and Galway will follow inside a minute',
               'A Shetland GPSDO fault: Fiona should power-cycle the unit before the SAR-2 pass',
-              'A Rotterdam reference problem: two stations cannot both be wrong, so the comparison is',
+              "A Rotterdam reference problem: two stations can't both be wrong, so the comparison is wrong",
             ],
             correctIndex: 0,
             explanation:
-              'Two receivers, two skies, one of them lied to. The 19th taught the cross-check from Galway; tonight it is read from Galway. Holdover at Shetland, fly SAR-2 on the oscillator, and Galway keeps GNSS because Galway is honest.',
+              "Two receivers have two skies, and one of them is being lied to. It's the same signature as the 19th with the sites swapped, and tonight the cross-check is read from Galway. Take Shetland to holdover and fly SAR-2 on the oscillator, and Galway keeps GNSS because Galway is honest.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -732,7 +736,7 @@ export const natsEuScenario24Data: ScenarioData = {
       id: 'shetland-holdover',
       nice: ['S0593', 'K0752'],
       title: 'Shetland: Stop Trusting GNSS',
-      description: 'SH-02 GPS Timing: GNSS switch down. The Shetland reference free-runs through the SAR-2 collect; Galway stays on GNSS.',
+      description: "On SH-02's GPS Timing, switch GNSS off so the Shetland reference runs on its own oscillator (holdover) through the SAR-2 collect. Galway stays on GNSS.",
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['shetland-spot-the-walk'],
       timeLimitSeconds: 2 * 60,
@@ -760,7 +764,7 @@ export const natsEuScenario24Data: ScenarioData = {
       id: 'acquire-sar2-from-shetland',
       nice: ['S0421', 'K1032'],
       title: 'Acquire SAR-2 from Shetland',
-      description: 'SAR-2 rises 03:31:01 from azimuth 139 at Shetland, northbound, on the post-burn set. Program-track it and confirm the beacon on RX analysis.',
+      description: 'SAR-2 rises at 03:31:01 from azimuth 139 at Shetland, heading north, on the post-burn set. Program-track it and confirm the beacon on RX analysis.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['shetland-holdover'],
       conditions: [
@@ -802,7 +806,7 @@ export const natsEuScenario24Data: ScenarioData = {
       id: 'decode-the-collect',
       nice: ['T0153', 'K0740'],
       title: 'Decode the Collect',
-      description: 'SH-02 RX modem locked on SAR-2, C/N above 8 dB through the high segment, reference in holdover. Hold the NMW collect to LOS.',
+      description: "Lock SH-02's RX modem on SAR-2, hold C/N above 8 dB through the high part of the pass, and keep the reference in holdover. Hold the collect to LOS.",
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['acquire-sar2-from-shetland'],
       conditions: [
@@ -832,14 +836,14 @@ export const natsEuScenario24Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which line goes in the incident log for the first half hour?',
             options: [
-              '03:01-03:16 rain band GW-01. 03:15 SAR-2 burn, post-burn set loaded {{at:obj:load-the-ephemeris|03:25}}. 03:20-03:29 SAR-1 collected GW-01 under the 1410 MHz carrier (notched, C/N > 7). 03:25 spoof on SH-02 reference, GW-01 clean; SH-02 holdover. 03:31 SAR-2 collecting at SH-02 on the oscillator. SAR-1 delivered, SAR-2 in progress',
-              'Half an hour of attacks on both sites; both collects at risk; incident escalated to Rotterdam',
-              'Rain, a burn, a jammer and a spoof, all handled; nothing to report to the customer',
-              'SAR-1 and SAR-2 collected as planned; weather and interference noted',
+              '03:01-03:16 rain band GW-01; 03:15 SAR-2 burn; 03:25 spoof on SH-02, holdover. SAR-1 delivered, SAR-2 in progress',
+              'Half an hour of attacks on both sites, with both collects at risk, and the incident escalated to Rotterdam for a decision',
+              'Rain, a burn, a jammer and a spoof, all handled, so there is nothing to report to the customer or the day shift',
+              'SAR-1 and SAR-2 collected as planned, with the weather and interference noted in passing and no actions listed',
             ],
             correctIndex: 0,
             explanation:
-              'Times, sites, what happened, what was done, what was delivered. Half the hour is written before the half that matters most, because the commander who writes as they go is the one who can hand over.',
+              'A log line gives times, sites, what happened, what was done and what was delivered. The first half hour is written before the half that matters most, because a commander who writes as they go is the one who can hand over.',
             pointPenalty: 5,
             documentSection: 'Incident Log',
             documentLine:
@@ -855,7 +859,7 @@ export const natsEuScenario24Data: ScenarioData = {
       id: 'protect-the-feed',
       nice: ['S0421', 'T0431'],
       title: 'Protect the Feed',
-      description: 'Back to GW-01. Sleet from 03:40, SAR-3 at 03:52. Feed heater on now, before the first flake.',
+      description: 'Back to GW-01. Sleet is due from 03:40, and SAR-3 rises at 03:52. Switch the feed heater on now, because ice that forms on the feed takes minutes to melt.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['decode-the-collect'],
       timeLimitSeconds: 2 * 60,
@@ -879,16 +883,16 @@ export const natsEuScenario24Data: ScenarioData = {
           description: 'Heater Timing',
           params: {
             character: Character.SYSTEM,
-            question: 'Why was the heater not switched on at 03:00 with the rain, when it costs nothing to run?',
+            question: "Why wasn't the heater switched on at 03:00 with the rain, when it costs nothing to run?",
             options: [
-              'Rain does not stick and a heated feed in rain is just a warm feed; sleet does. The heater is timed to the sleet and on before it, because ice that has formed takes minutes to melt and the pass will not wait',
+              "Rain doesn't stick, and sleet does, so the heater is timed to go on before the sleet",
               "It should have been: the commander's first act was the plan, and the heater is part of the plan",
               'Because a heated feed adds noise temperature, and the SAR-1 collect needed every tenth of a decibel in the rain',
-              'Because the heater draws from the same supply as the HPA and cannot run during a commanding pass',
+              "Because the heater draws from the same supply as the HPA, and can't run during a commanding pass",
             ],
             correctIndex: 0,
             explanation:
-              'Right thing, right time. On at {{at:cond:protect-the-feed.1|03:36}} for sleet at 03:40 is the whole skill; on at 03:00 is harmless but tells the log nothing about whether you knew when the sleet was coming.',
+              "Ice that has formed takes minutes to melt, and the pass won't wait, so the heater goes on before the sleet. The log now shows it on at {{at:cond:protect-the-feed.1|03:36}}, against sleet from 03:40. Switching it on at 03:00 would have been harmless, but the log wouldn't show that you knew when the sleet was coming.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -902,7 +906,7 @@ export const natsEuScenario24Data: ScenarioData = {
       nice: ['S0421', 'K0773', 'T1567'],
       title: 'Arm Galway for SAR-3',
       description:
-        "SAR-3's 14065 MHz TT&C uplink through the 12600 MHz BUC LO: TX modem 1 to 1465 MHz, uplink Doppler compensation engaged. SAR-3 video 11760 MHz: RX modem 1 to 1340 MHz.",
+        "Set TX modem 1 to 1465 MHz, which the BUC with its 12600 MHz LO converts to the 14065 MHz TT&C uplink, and turn on uplink Doppler compensation. Set RX modem 1 to 1340 MHz for SAR-3's 11760 MHz video.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['protect-the-feed'],
       timeLimitSeconds: 3 * 60,
@@ -935,7 +939,7 @@ export const natsEuScenario24Data: ScenarioData = {
       nice: ['S0421', 'K1032'],
       title: 'Acquire SAR-3 Through the Sleet',
       description:
-        'SAR-3 rises 03:52:00 from azimuth 023. Program-track it on a heated feed, centre the analyzer on the 1315 MHz beacon (2 MHz span) and confirm it on RX analysis.',
+        'SAR-3 rises at 03:52:00 from azimuth 023. Program-track it on the heated feed, center the analyzer on the 1315 MHz beacon with a 2 MHz span, and confirm the beacon on RX analysis.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['arm-galway-for-sar3'],
       conditions: [
@@ -982,7 +986,8 @@ export const natsEuScenario24Data: ScenarioData = {
       id: 'chain-up-and-command',
       nice: ['S0675', 'T1567', 'K1032'],
       title: 'Chain Up and Command',
-      description: 'Window open at 03:52:21. Carrier into the muted BUC, unmute, HPA, and HK-DUMP on the fixed carrier. One clean ACK before the one that matters.',
+      description:
+        'The window opens at 03:52:21. Bring the carrier up into the muted BUC, unmute it, enable the HPA, and send HK-DUMP on the fixed carrier. You want one clean ACK before the one that matters.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['acquire-sar3'],
       conditions: [
@@ -1019,7 +1024,7 @@ export const natsEuScenario24Data: ScenarioData = {
       nice: ['S0648', 'K0926', 'K0751'],
       title: 'Call the Denial',
       description:
-        'Send PLD-SAFE. Shortly after the HK-DUMP ACK the uplink is denied and it comes back NAK. Read the console and the key, then call it. You have done this twice; do it in the sleet with two other things on the board.',
+        "Send PLD-SAFE. Shortly after the HK-DUMP ACK the uplink is denied, and PLD-SAFE comes back NAK. Read the console and the key, then call it. You've done this twice before, and tonight you do it in sleet with two other things on the board.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['chain-up-and-command'],
       timeLimitSeconds: 2 * 60,
@@ -1044,7 +1049,8 @@ export const natsEuScenario24Data: ScenarioData = {
           description: 'Why the NAK',
           params: {
             character: Character.ANNEKE_VISSER,
-            prompt: 'SAR-3 is not taking your uplink. Key Valid at my end, window open until 04:01, and I have Shetland on holdover and Galway in sleet on my screen. What is it?',
+            prompt:
+              "SAR-3 isn't taking your uplink. The key reads Valid at my end, and the window's open until 04:01. I can see Shetland on holdover and Galway in sleet on my screen. What is it?",
             evidence: ['console-seen', 'key-seen'],
             decisionOptions: [
               {
@@ -1061,22 +1067,21 @@ export const natsEuScenario24Data: ScenarioData = {
                 label: "Rain fade on the uplink - the sleet is taking the carrier below the bird's threshold. Raise HPA back-off and resend",
                 correctWhen: { fact: 'weather-attenuation-dominant', is: true },
                 consequence: { log: 'NAK attributed to weather on the uplink' },
-                feedback:
-                  'HK-DUMP ACKed in the same sleet on the same power. Ku uplink fade at 28 degrees in sleet is a decibel or two; the NAK reason on the console is not "weak", it is "jammed".',
+                feedback: `HK-DUMP was ACKed in the same sleet on the same power. Uplink fade at 28 degrees in sleet is a decibel or two, and the console's NAK reason isn't "weak", it's "jammed".`,
               },
               {
                 label: 'Key problem - the SAR-3 key has never been used under TRANSEC. Begin a rotation and resend',
                 correctWhen: { fact: 'crypto-intact', is: false },
                 consequence: { log: 'Command-key rotation begun on a Valid key during a denial' },
-                feedback: 'Both ends read Valid and a key rejection is its own reason on the console. Minutes gone, and the window closes at 04:01.',
+                feedback: "Both ends read Valid, and a key rejection has its own reason on the console. That's minutes gone, and the window closes at 04:01.",
               },
               {
                 label: 'Stand down - the network has delivered two collects and the third bird can be commanded tomorrow',
-                feedback: 'The payload command is the P1 contact on the plan you wrote at 03:02. The hop set was staged for this minute.',
+                feedback: 'The payload command is the P1 contact on the plan you wrote at the start. The hop set was staged for this minute.',
               },
             ],
             explanation:
-              'Every reason the console can give for itself is clean, the weather is on the downlink margin and the uplink has power to spare, and the bird is not hearing you. Same call as the 16th and the 24th. The point of the capstone is that it is the same call.',
+              "Every reason the console can give for itself is clean. Weather shows up in the downlink margin, the uplink has power to spare, and the bird still isn't hearing you. That's the same call as the 16th and the 24th. The point of the capstone is that it's the same call.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -1090,7 +1095,7 @@ export const natsEuScenario24Data: ScenarioData = {
       nice: ['K0925', 'T1277', 'S0424'],
       title: 'Hop and Deliver',
       description:
-        'Security console: Load Hop-Set Key (HOP-SAR3-01), Frequency hopping, SYNC LOCKED. Then PLD-SAFE under TRANSEC, through the sleet, on a heated feed, on a network with one reference in holdover.',
+        'On the Security console, load the hop-set key HOP-SAR3-01, set the waveform to frequency hopping, and wait for SYNC LOCKED. Then send PLD-SAFE under TRANSEC through the sleet, on a heated feed, with one reference in holdover.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['call-the-denial'],
       timeLimitSeconds: 3 * 60,
@@ -1122,7 +1127,8 @@ export const natsEuScenario24Data: ScenarioData = {
       id: 'safe-the-network',
       nice: ['S0421', 'K0645'],
       title: 'Safe the Network',
-      description: 'Chain down now, no need to wait for LOS (04:01:35). Galway: HPA off, BUC muted, carrier off. Shetland stays in holdover until a probe says its sky is honest.',
+      description:
+        "Chain down now; there's no need to wait for LOS at 04:01:35. At Galway, turn the HPA off, mute the BUC and take the carrier off air. Shetland stays in holdover until a probe says its sky is honest.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['hop-and-deliver'],
       timeLimitSeconds: 2 * 60,
@@ -1154,7 +1160,7 @@ export const natsEuScenario24Data: ScenarioData = {
       id: 'incident-log-and-handover',
       nice: ['T1606', 'T1580', 'S0807'],
       title: 'Incident Log and Handover',
-      description: 'The second half of the hour goes in the log, and then the handover: what is open, what is staged, and what the day shift walks into.',
+      description: "The second half of the hour goes in the log. Then write the handover: what's still open, what's staged, and what the day shift walks into.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['safe-the-network'],
       timeLimitSeconds: 3 * 60,
@@ -1167,14 +1173,14 @@ export const natsEuScenario24Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which line goes in the incident log for the second half hour?',
             options: [
-              '{{at:cond:protect-the-feed.1|03:36}} GW-01 feed heater on; sleet from 03:40. 03:52 SAR-3 acquired GW-01, HK-DUMP ACK fixed carrier {{at:cmd:HK-DUMP:ack|03:53}}. Uplink denied (14065 MHz jammed), key Valid; called denial; HOP-SAR3-01 keyed both ends, SYNC LOCKED; PLD-SAFE ACK under TRANSEC {{at:cmd:PLD-SAFE:ack|03:57}}. Chain safed {{at:obj:safe-the-network|04:00}}. Three contacts delivered',
-              "SAR-3 commanded through jamming and sleet; the adversary's most aggressive night yet defeated by the incident commander",
-              'SAR-3 pass completed with one anomaly; hop set used; no customer impact',
-              '03:52-04:01 SAR-3 command contact; PLD-SAFE delayed by interference and sent on the second attempt',
+              '{{at:cond:protect-the-feed.1|03:36}} GW-01 heater on; sleet from 03:40. SAR-3 uplink denied, hop set keyed, PLD-SAFE ACKed. Three contacts delivered',
+              "SAR-3 commanded through jamming and sleet, and the adversary's most aggressive night yet was defeated by the incident commander, so the day shift can relax",
+              'SAR-3 pass completed with one anomaly; the hop set was used and there was no customer impact, so nothing more is needed in the log',
+              'SAR-3 command contact: PLD-SAFE was delayed by interference and sent on the second attempt, with the cause not established in the log',
             ],
             correctIndex: 0,
             explanation:
-              'Times, what came back, what was done, what was delivered - the same line as every night since the 13th. "Defeated" is a mood and "delayed by interference" hides the NAK reason. Three contacts delivered is the sentence the board reads.',
+              'A log line gives times, what came back, what was done and what was delivered, the same as every night since the 13th. "Defeated" is a mood, "no customer impact" hides the denial, and "delayed by interference" hides the NAK reason. "Three contacts delivered" is the sentence the board reads.',
             pointPenalty: 5,
             documentSection: 'Incident Log',
             documentLine:
@@ -1189,14 +1195,14 @@ export const natsEuScenario24Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What is the handover line?',
             options: [
-              'Open: SH-02 reference in holdover (spoofer active at close; probe at 04:30), jammer on 14065 (IR extension), terrestrial carrier third appearance (IR extension), HOP-SAR3-01 spent (HOP-SAR3-02 to stage). Staged: nothing new to learn - every event tonight had a procedure, and the procedures held',
-              'Open: everything. The network was under sustained attack and the day shift should expect the same',
-              'Open: nothing. Three contacts delivered, all anomalies resolved, station nominal',
-              'Open: the adversary. Until the source is located the network cannot be considered secure and commanding should be suspended',
+              "Open: SH-02 reference in holdover (probe at 04:30), jammer on 14065, carrier's third appearance, HOP-SAR3-01 spent",
+              'Open: everything. The network was under sustained attack, and the day shift should expect the same tonight and tomorrow',
+              'Open: nothing. Three contacts were delivered, all anomalies are resolved, and the station is nominal for the day shift',
+              "Open: the adversary. Until the source is located the network can't be considered secure, and commanding should be suspended",
             ],
             correctIndex: 0,
             explanation:
-              'The handover is a list of what is still true and what is staged for it. Two weeks ago every one of these would have been a first. Tonight they were all procedure, done in the order the network needed, with a storm on top. That is the campaign.',
+              "A handover lists what's still true and what's staged for it. Two weeks ago every one of these would have been a first. Tonight they were all procedure, done in the order the network needed, with a storm on top. That's the campaign.",
             pointPenalty: 5,
             documentSection: 'Handover',
             documentLine:
@@ -1216,7 +1222,7 @@ export const natsEuScenario24Data: ScenarioData = {
         <em>[Text message from Charlie Brooks at 02:40]</em>
       </p>
       <p>
-        "Orange warning on the coast, three birds in an hour, and you are incident commander for the network tonight - Fiona is on SH-02, Anneke is on the constellation, I am on the phone. Plan first. Everything they have done to us in two weeks, assume they do again, all at once, in the sleet. Everything you have done, you can do again too."
+        "Orange warning on the coast, three birds in an hour, and you're incident commander for the network tonight. Fiona's on SH-02, Anneke's on the constellation, and I'm on the phone. Plan first. Assume they do everything they've done to us in two weeks again, all at once, in the sleet. You can do everything you've done again too."
       </p>
       `,
       character: Character.CHARLIE_BROOKS,
@@ -1227,7 +1233,7 @@ export const natsEuScenario24Data: ScenarioData = {
       'plan-the-network': {
         text: `
         <p>
-          That is the plan I would have written. SAR-1 and SAR-3 are yours, SAR-2 is Fiona's. Now go and see what the weather has done to my station.
+          That's the plan I'd have written. SAR-1 and SAR-3 go from Galway, and SAR-2 goes from Shetland with Fiona on site. Now go and see what the weather's done to my station.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1237,7 +1243,7 @@ export const natsEuScenario24Data: ScenarioData = {
       'notch-the-carrier': {
         text: `
         <p>
-          Fiona here. Your carrier is on my analyzer too, faintly - same bearing as the 14th, so it is Galway-side. My band is clean. For now.
+          It's Fiona. Your carrier shows on my analyzer too, faintly, on the same bearing as the 14th, so it's coming from the Galway side. My band's clean, for now.
         </p>
         `,
         character: Character.FIONA_MACLEOD,
@@ -1247,7 +1253,7 @@ export const natsEuScenario24Data: ScenarioData = {
       'load-the-ephemeris': {
         text: `
         <p>
-          Post-burn set loaded on both stations, thank you. SAR-2 will rise at Shetland where the new set says, not where the old one did. Fiona has the pass at 03:31.
+          Post-burn set loaded on both stations, thank you. SAR-2 will rise at Shetland where the new set says, not where the old one said it would. Shetland has the pass next, and Fiona's on site with you.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -1257,7 +1263,7 @@ export const natsEuScenario24Data: ScenarioData = {
       'shetland-spot-the-walk': {
         text: `
         <p>
-          It is on me this time. Delta-T walking, nine satellites, GOOD - and you read zero. Say the word and the switch goes down; I know the drill from your record.
+          It's on my side this time. My delta-T is walking even though the receiver says GOOD with nine satellites, and Galway reads zero. I spent a week blaming that flaky GNSS antenna, and tonight it's working perfectly, which is the problem. Take Shetland off GNSS and we'll fly the pass on the oscillator.
         </p>
         `,
         character: Character.FIONA_MACLEOD,
@@ -1267,7 +1273,7 @@ export const natsEuScenario24Data: ScenarioData = {
       'decode-the-collect': {
         text: `
         <p>
-          SAR-2 collecting from Shetland, frames clean, timestamps carrying Fiona's frozen offset exactly as logged. Two of three, with SAR-2 still under way. SAR-3 at 03:52, and the sleet is on your coast.
+          SAR-2's frames from Shetland are clean, and the timestamps carry the offset Shetland froze at holdover, exactly as logged. That's SAR-1 delivered and SAR-2 nearly there. SAR-3 is next, and the sleet's coming in on your coast.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -1277,7 +1283,7 @@ export const natsEuScenario24Data: ScenarioData = {
       'protect-the-feed': {
         text: `
         <p>
-          Heater on before the sleet at 03:40. I did not have to say it. That is the difference between the 2nd of April and tonight.
+          The heater's on, and I didn't have to tell you. The first time sleet came in on Galway, on the 2nd of April, that was the whole lesson.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1287,7 +1293,7 @@ export const natsEuScenario24Data: ScenarioData = {
       'call-the-denial': {
         text: `
         <p>
-          Denial. Keying SAR-3 to HOP-SAR3-01 - done. Load yours, hop, and put PLD-SAFE through it. Third time; I am not worried.
+          That's a denial. I've keyed SAR-3 to HOP-SAR3-01 at my end. Load yours, hop, and send PLD-SAFE through it. It's the third time we've done this, so I'm not worried.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -1297,7 +1303,7 @@ export const natsEuScenario24Data: ScenarioData = {
       'hop-and-deliver': {
         text: `
         <p>
-          PLD-SAFE acknowledged under TRANSEC, through sleet, with one station on holdover and a carrier in the other one's band. Three contacts. Whatever they planned for tonight, it was not this.
+          PLD-SAFE is acknowledged under TRANSEC, through sleet, with one station on holdover, and after a carrier sat in the other station's band earlier tonight. That's three contacts. Whatever they planned for tonight, it wasn't this.
         </p>
         `,
         character: Character.PRIYA_SHARMA,
@@ -1307,7 +1313,7 @@ export const natsEuScenario24Data: ScenarioData = {
       'incident-log-and-handover': {
         text: `
         <p>
-          Handover received. Get some sleep. One more thing. My friend called back about the emitter - the two-receiver people. They read Priya's report and they have a question for you, and it is not about the emitter. It is whether you would come and do this from their side for a while. I said you would call them.
+          I've got your handover, so get some sleep. One more thing. My friend in direction finding, the two-receiver people, rang back. They've read Priya's report, and their question for you isn't about the emitter. They want to know whether you'd come and do this from their side for a while. I said you'd call them.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

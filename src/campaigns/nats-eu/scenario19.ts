@@ -101,7 +101,7 @@ export const natsEuScenario19Data: ScenarioData = {
   subtitle: 'TRANSEC Ride-Through (Gray Zone 3/8)',
   duration: '40 min',
   missionType: 'Security Operations',
-  description: `13:00, Galway. Rotterdam reissued the IF plan overnight and loaded a hop-set key on SAR-2 this morning; yours is in the COMSEC store, inactive. SAR-2 at 13:20 is a commanding pass - a housekeeping dump and a payload status. SAR-1 at 13:42 is receive-only.<br><br>Whoever has been in your band has had two days to read the new plan. If the uplink is next, the command console will tell you in one word, and the key will still say Valid. Know what that means before it happens.`,
+  description: `13:00, Galway. Rotterdam reissued the IF plan overnight and loaded a hop-set key on SAR-2 this morning; yours is in the COMSEC store, switched off. SAR-2 at 13:20 is a commanding pass, with a housekeeping dump and a payload status request. SAR-1 at 13:42 is receive only.<br><br>Whoever has been in your band has had two days to study this station, and a new plan doesn't change where SAR-2 listens. If the uplink is next, the command console will say so in one word, NAK, and the key will still read Valid. Know what that means before it happens.`,
   equipment: [
     'GW-01 Galway: 4m Ku-Band LEO Tracker',
     'Ku-Band RF Front End (13100 MHz LNB LO, 12600 MHz BUC LO) + HPA',
@@ -225,7 +225,7 @@ export const natsEuScenario19Data: ScenarioData = {
       nice: ['K0645', 'K0925'],
       title: 'Read the Brief',
       description:
-        'Open the shift brief: the reissued plan, the hop set keyed at Rotterdam, the two commands SAR-2 needs inside its window, and what a NAK with a Valid key means.',
+        'Open the shift brief. It covers the reissued plan, the hop set keyed at Rotterdam, the two commands SAR-2 needs inside its window, and what a NAK with a Valid key means.',
       groundStation: 'GW-01',
       freezesScenarioTimer: true,
       prerequisiteObjectiveIds: [],
@@ -241,16 +241,16 @@ export const natsEuScenario19Data: ScenarioData = {
           description: 'Hop Set Understood',
           params: {
             character: Character.SYSTEM,
-            question: 'Rotterdam loaded a hop-set key on SAR-2 this morning and the station has the matching key in store. Why is the waveform still fixed at 13:00?',
+            question: 'Rotterdam loaded a hop-set key on SAR-2 this morning, and the station has the matching key in its store. Why is the waveform still fixed at 13:00?',
             options: [
-              'Hopping is a response, not a default: it costs command-link margin and burns a key that has to be replaced, so it is used when a fixed carrier is denied and not before',
-              'The console cannot hop until the window opens: hop-sync needs the bird in view, so the mode switch is made at AOS every pass',
-              'The key is loaded but not verified: Rotterdam has to send a hop-verify command before the station is allowed to enable the mode',
-              'It is always fixed on the first command of a pass: the housekeeping dump must go on the known carrier so the bird can confirm the plan',
+              'Hopping is a response, not a default: it costs link margin and uses up a key, so you switch to it when a fixed carrier is denied',
+              "The console can't hop until the window opens, because hop-sync needs the satellite in view, so the mode switch is made at AOS every pass",
+              'The key is loaded but not verified, so Rotterdam has to send a hop-verify command before the station is allowed to enable the mode',
+              'The first command of a pass always goes out on the known carrier, so the satellite can confirm the plan before anything else',
             ],
             correctIndex: 0,
             explanation:
-              'A hop set is a consumable. Once it has been used on the air it is assumed observed and gets retired. You hop when a fixed carrier is being denied, on a call, with both ends keyed - and you say so in the record. Twenty minutes to AOS.',
+              "A hop set is a consumable. Once it's been used on the air, it's assumed observed and gets retired. So you hop when a fixed carrier is being denied, on a call, with both ends keyed, and you say so in the record. AOS is twenty minutes away.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -263,7 +263,7 @@ export const natsEuScenario19Data: ScenarioData = {
       id: 'dashboard-sweep',
       nice: ['T0153', 'K0741'],
       title: 'GW-01 Dashboard Sweep',
-      description: 'Board read. Confirm the active alarm state on GW-01 before the uplink goes anywhere near the air.',
+      description: 'Read the board and confirm the active alarm state on GW-01 before the uplink goes anywhere near the air.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['review-mission-brief'],
       timeLimitSeconds: 90,
@@ -281,16 +281,16 @@ export const natsEuScenario19Data: ScenarioData = {
           description: 'Alarm State Confirmed',
           params: {
             character: Character.SYSTEM,
-            question: 'What is the active alarm state on GW-01 at 13:00?',
+            question: "What's the active alarm state on GW-01 at 13:00?",
             options: [
-              'RX AGC on noise only - no carrier on an empty sky, no hardware alarm',
-              'No active alarms - all systems nominal, board clear for the pass',
-              'TRANSEC alarm - hop-set key loaded but waveform fixed, flagged as a mismatch',
-              'BUC muted alarm - the uplink is inhibited and the board wants it cleared',
+              'RX AGC on noise only: no carrier on an empty sky, and no hardware alarm',
+              'No active alarms: all systems are nominal and the board is clear for the pass',
+              'TRANSEC alarm: the hop-set key is loaded but the waveform is fixed, flagged as a mismatch',
+              'BUC muted alarm: the uplink is inhibited and the board wants it cleared',
             ],
             correctIndex: 0,
             explanation:
-              'Empty sky, not a fault. A muted BUC is the correct state for a station with nothing to send, and a loaded-but-inactive hop key is exactly what the brief says it should be. The AGC no-carrier warning clears at AOS.',
+              "The sky is empty, and that isn't a fault. A muted BUC is the right state for a station with nothing to send, and a loaded but inactive hop key is what the brief says it should be. The AGC no-carrier warning clears at AOS.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -303,7 +303,7 @@ export const natsEuScenario19Data: ScenarioData = {
       id: 'reference-check',
       nice: ['T0431', 'K0740'],
       title: 'Reference Check',
-      description: 'GPSDO locked and out of holdover, BUC on the external reference. Doppler compensation and a hopping waveform both key off it.',
+      description: 'Confirm the GPSDO is locked and out of holdover, and the BUC is on the external reference. Doppler compensation and a hopping waveform both depend on it.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['dashboard-sweep'],
       timeLimitSeconds: 2 * 60,
@@ -336,7 +336,7 @@ export const natsEuScenario19Data: ScenarioData = {
       nice: ['S0421', 'K0773', 'T1567'],
       title: 'Tune the Uplink',
       description:
-        "TX modem 1 is on SAR-1's 1405 MHz command IF from yesterday. Retune it for SAR-2's 14035 MHz TT&C uplink through the 12600 MHz BUC LO, and engage uplink Doppler compensation on the TT&C console before the window opens at 13:20:21.",
+        "TX modem 1 is still on SAR-1's 1405 MHz command IF from yesterday. Retune it for SAR-2's 14035 MHz TT&C uplink through the 12600 MHz BUC LO, and turn on uplink Doppler compensation on the TT&C console before the window opens at 13:20:21.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['reference-check'],
       timeLimitSeconds: 2 * 60,
@@ -359,11 +359,11 @@ export const natsEuScenario19Data: ScenarioData = {
           description: 'Uplink IF Arithmetic',
           params: {
             character: Character.SYSTEM,
-            question: 'BUC LO 12600 MHz, low-side. SAR-2 TT&C uplink 14035 MHz. Where does the modem go?',
+            question: 'The BUC LO is 12600 MHz, low-side, and the SAR-2 TT&C uplink is 14035 MHz. Where does the modem go?',
             options: ['1435 MHz (RF minus LO, low-side)', '1405 MHz (leave it, same modem IF)', '1370 MHz (the SAR-2 receive IF)', '26635 MHz (LO plus RF, low-side)'],
             correctIndex: 0,
             explanation:
-              'Low-side on the uplink: IF = RF - LO = 14035 - 12600 = 1435. 1405 is SAR-1 and 1370 is what you receive SAR-2 on, not what you send to it. Nothing about the reissued plan changed the arithmetic; only the numbers.',
+              "On the uplink, low-side means IF = RF - LO = 14035 - 12600 = 1435. 1405 is SAR-1's, and 1370 is what you receive SAR-2 on, not what you send to it. The arithmetic is the same on any plan.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -376,7 +376,7 @@ export const natsEuScenario19Data: ScenarioData = {
       id: 'key-check',
       nice: ['K0874', 'T0431'],
       title: 'Key Check',
-      description: 'Command key Valid on the TX chain. Remember what it reads now; it will read the same later, and that will matter.',
+      description: 'Check that the command key reads Valid on the TX chain. Remember what it reads now, because it will read the same later, and that will matter.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['tune-the-uplink'],
       timeLimitSeconds: 2 * 60,
@@ -396,7 +396,7 @@ export const natsEuScenario19Data: ScenarioData = {
       id: 'rx-chain-ready',
       nice: ['S0421', 'K0773'],
       title: 'Set Up the Receiver for SAR-2',
-      description: 'Retune RX modem 1 to 1370 MHz and frame the analyzer on 1370 with a 60 MHz span. The uplink is the story today, but the downlink is how you see it.',
+      description: "Retune RX modem 1 to 1370 MHz and centre the analyzer on 1370 with a 60 MHz span. The uplink is the story today, but the downlink is how you'll see it.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['key-check'],
       timeLimitSeconds: 3 * 60,
@@ -430,7 +430,7 @@ export const natsEuScenario19Data: ScenarioData = {
       id: 'preposition-for-aos',
       nice: ['S0421', 'K1032'],
       title: 'Pre-position for AOS',
-      description: 'AOS 13:20:01 from azimuth 138, northbound. Park the tracker on the rise azimuth at 5 degrees.',
+      description: 'AOS is 13:20:01 from azimuth 138, northbound. Park the tracker on the rise azimuth, 138 degrees, at 5 degrees elevation.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['rx-chain-ready'],
       timeLimitSeconds: 3 * 60,
@@ -450,7 +450,7 @@ export const natsEuScenario19Data: ScenarioData = {
       id: 'acquire-sar2',
       nice: ['S0421', 'K1032'],
       title: 'Acquire MERIDIAN-SAR-2',
-      description: 'Program-track SAR-2 before 13:20 and confirm the 1397 MHz beacon on RX analysis. The chain stays cold until she is locked.',
+      description: "Switch to program-track on SAR-2 before 13:20 and confirm the 1397 MHz beacon on RX analysis. The transmit chain stays cold until she's locked.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['preposition-for-aos'],
       conditions: [
@@ -485,7 +485,7 @@ export const natsEuScenario19Data: ScenarioData = {
       id: 'chain-up',
       nice: ['S0675', 'S0421', 'K0645'],
       title: 'Chain Up in Order',
-      description: 'Window open at 13:20:21. Carrier into the muted BUC, unmute, HPA. Two minutes.',
+      description: 'The window opens at 13:20:21. Put the carrier into the muted BUC, unmute it, then enable the HPA. You have two minutes.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['acquire-sar2'],
       timeLimitSeconds: 2 * 60,
@@ -517,7 +517,7 @@ export const natsEuScenario19Data: ScenarioData = {
       id: 'first-command',
       nice: ['T1567', 'K1032'],
       title: 'Housekeeping Dump',
-      description: 'Send HK-DUMP and confirm the acknowledgement. A clean ACK on the fixed carrier is the baseline for everything that follows.',
+      description: 'Send HK-DUMP and confirm the acknowledgement. A clean ACK on the fixed carrier is the baseline for everything after it.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['chain-up'],
       conditions: [
@@ -532,16 +532,16 @@ export const natsEuScenario19Data: ScenarioData = {
           description: 'ACK Read',
           params: {
             character: Character.SYSTEM,
-            question: 'HK-DUMP ACKed inside the window on the fixed carrier. What has that proven about the command link right now?',
+            question: 'HK-DUMP was acknowledged inside the window on the fixed carrier. What has that proven about the command link right now?',
             options: [
-              'That the bird heard this command: key, Doppler, window and carrier were all good at that instant - and nothing more than that instant',
-              'That the link is clear for the pass: an ACK is a link check, and the next command can go without re-reading the console',
-              'That the hop set will not be needed today: a denied carrier would have shown on the first command, not a later one',
-              'That the reissued plan is confirmed on the bird: an ACK on the new IF means SAR-2 has the same plan the station has',
+              'That the satellite heard this command: key, Doppler, window and carrier were all good at that instant, and nothing more',
+              'That the link is clear for the pass: an ACK is a link check, so the next command can go without re-reading the console',
+              "That the hop set won't be needed today: a denied carrier would have shown on the first command, not a later one",
+              'That the reissued plan is confirmed on the satellite: an ACK on the new IF means SAR-2 has the same plan the station has',
             ],
             correctIndex: 0,
             explanation:
-              'An ACK is receipt of one command at one moment. It says nothing about the next thirty seconds, which is why the console is read before every send and not once per pass.',
+              'An ACK means one command was received at one moment. It says nothing about the next thirty seconds, which is why you read the console before every send and not once per pass.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -555,7 +555,7 @@ export const natsEuScenario19Data: ScenarioData = {
       nice: ['S0648', 'K0926', 'K0751'],
       title: 'Call the NAK',
       description:
-        'From {{at:event:sar2-uplink-jam:start:s|13:22:30}} PLD-STATUS comes back NAK: uplink denied. Key reads Valid, Doppler engaged, window open. The jam returns through the command transponder at 1320 MHz IF; look there on the analyzer (center 1320 MHz, span 10 MHz), not in the 1370 MHz video window. Read the key and the console, then call it.',
+        'Send PLD-STATUS. From {{at:event:sar2-uplink-jam:start:s|13:22:30}} it comes back NAK, which means the uplink is denied, even though the key reads Valid, Doppler is on and the window is open. The jam returns through the command transponder at 1320 MHz IF, so look for it on the analyzer (center 1320 MHz, span 10 MHz), not in the 1370 MHz video window. Read the key and the console, then call it.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['first-command'],
       timeLimitSeconds: 2 * 60,
@@ -580,7 +580,7 @@ export const natsEuScenario19Data: ScenarioData = {
           description: 'Why the NAK',
           params: {
             character: Character.ANNEKE_VISSER,
-            prompt: 'Your PLD-STATUS did not reach me and your key shows Valid at my end too. Window is open for about seven more minutes. What is it, and what do you want to do?',
+            prompt: "Your PLD-STATUS didn't reach me, and your key shows Valid at my end too. The window is still open. What is it, and what do you want to do?",
             evidence: ['key-seen', 'console-seen'],
             decisionOptions: [
               {
@@ -597,21 +597,22 @@ export const natsEuScenario19Data: ScenarioData = {
                 label: 'Key problem - begin a command-key rotation and resend under the new key',
                 correctWhen: { fact: 'crypto-intact', is: false },
                 consequence: { log: 'Command-key rotation begun on a Valid key (no key fault)' },
-                feedback: 'Both ends read Valid, and a key rejection is its own reason on the console. Rotating a good key in an open window spends the window on nothing.',
+                feedback:
+                  'Both ends read Valid, and a real key fault shows up on the console as its own rejection reason. Rotating a good key in an open window spends the window on nothing.',
               },
               {
                 label: 'Doppler compensation dropped - re-engage it and resend on the fixed carrier',
-                feedback: 'Compensation is engaged; the console would have said so if it were not. A resend on the same carrier is another NAK.',
+                feedback: "Compensation is engaged, and the console would have said so if it weren't. A resend on the same carrier is just another NAK.",
               },
               {
                 label: 'Window closed early - stand down and take the payload status on SAR-1',
                 correctWhen: { fact: 'command-window-open', is: false },
                 consequence: { log: 'Commanding stood down inside an open window' },
-                feedback: 'The window badge reads OPEN and SAR-1 is a receive-only pass with no command uplink. Standing down here hands them the window.',
+                feedback: 'The window badge reads OPEN, and SAR-1 is a receive-only pass with no command uplink. Standing down here hands the jammer the window.',
               },
             ],
             explanation:
-              'Every reason the console can give for itself - key, Doppler, window - is clean, and the transponder is returning a carrier that is not yours. The uplink is being denied at the satellite. Nothing on this station is broken and no key is compromised; a fixed carrier is being sat on, and the answer to that is to stop being on one frequency.',
+              "Everything the console can report about itself is clean: key, Doppler and window. And the transponder is returning a carrier that isn't yours. So the uplink is being denied at the satellite. Nothing on this station is broken and no key is compromised. A fixed carrier is being sat on, and the answer is to stop being on one frequency.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -625,7 +626,7 @@ export const natsEuScenario19Data: ScenarioData = {
       nice: ['K0925', 'S0593', 'T1567'],
       title: 'Go to Hopping',
       description:
-        'Anneke keys SAR-2. On the Security console: load the hop-set key from the store, set the waveform to frequency hopping, and confirm SYNC LOCKED. Both ends, or it is nothing.',
+        'Anneke is keying SAR-2. On the Security console, load the hop-set key from the store, set the waveform to frequency hopping, and confirm SYNC LOCKED. It has to be keyed at both ends, or it does nothing.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['call-the-nak'],
       timeLimitSeconds: 3 * 60,
@@ -650,14 +651,14 @@ export const natsEuScenario19Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Why does hop-sync need the key loaded at both ends before the mode does anything?',
             options: [
-              'The hop set is the shared secret: the bird can only follow the carrier if it knows the same sequence, and a jammer parked on one frequency cannot',
-              'Because the station key unlocks the mode switch: without it the console refuses to leave fixed mode, as a safety interlock',
-              'Because the bird has to acknowledge the mode change on the fixed carrier first, which is why the first hop is always sent unkeyed',
-              'It does not, strictly: the key only encrypts the command payload, and hopping would work unkeyed at a lower data rate',
+              'The hop set is the shared secret: the satellite can only follow the carrier if it knows the same sequence',
+              'The station key unlocks the mode switch, so without it the console refuses to leave fixed mode, as a safety interlock',
+              'The satellite has to acknowledge the mode change on the fixed carrier first, which is why the first hop is always sent unkeyed',
+              "It doesn't, strictly: the key only encrypts the command payload, and hopping would work unkeyed at a lower data rate",
             ],
             correctIndex: 0,
             explanation:
-              'Frequency hopping is only agile to someone who does not have the sequence. The key is the sequence. With it at both ends the carrier moves and the bird moves with it; without it at one end, one of you is transmitting into nothing.',
+              "Frequency hopping is only agile to someone who doesn't have the sequence, and the key is the sequence. With it at both ends, the carrier moves and the satellite moves with it. With it at one end only, one of you is transmitting into nothing.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -670,7 +671,7 @@ export const natsEuScenario19Data: ScenarioData = {
       id: 'ride-through',
       nice: ['K0925', 'T1567', 'S0593'],
       title: 'Ride It Through',
-      description: 'Sync locked. Resend PLD-STATUS and take the ACK through the jamming. The jammer is still there; it is just no longer where you are.',
+      description: "Sync is locked. Resend PLD-STATUS and take the ACK through the jamming. The jammer is still there, it's just no longer where you are.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['go-to-hopping'],
       conditions: [
@@ -685,16 +686,16 @@ export const natsEuScenario19Data: ScenarioData = {
           description: 'What Hopping Did',
           params: {
             character: Character.SYSTEM,
-            question: 'The ACK came back with the jammer still on the analyzer. What did hopping change, and what did it not?',
+            question: "The ACK came back with the jammer still on the analyzer. What did hopping change, and what didn't it change?",
             options: [
-              'It moved your carrier out from under the jammer, at the cost of margin and a hop set that is now spent; it did not remove the jammer or tell you who it is',
-              'It removed the jammer from the transponder: a hopping carrier captures the AGC and the fixed interferer is suppressed at the bird',
+              "It moved your carrier out from under the jammer, at the cost of margin and a spent hop set; it didn't remove the jammer",
+              'It removed the jammer from the transponder: a hopping carrier captures the AGC and the fixed interferer is suppressed at the satellite',
               'It proved the jammer was never on the uplink: the NAK was a console fault that the mode change happened to reset',
               'It made the link permanently agile: the hop set stays in use for the rest of the arc and the fixed carrier is retired',
             ],
             correctIndex: 0,
             explanation:
-              'Agility is a way past a denial, not a cure for it. The carrier is spread over five channels a jammer on one frequency cannot cover; the bird follows because it has the sequence. The jammer is still transmitting, the set is now burned, and the report still has to say what was seen.',
+              "Agility is a way past a denial, not a cure for it. The carrier is spread over five channels that a jammer on one frequency can't cover, and the satellite follows because it has the sequence. The jammer is still transmitting, the set is now burned, and the report still has to say what was seen.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -707,7 +708,7 @@ export const natsEuScenario19Data: ScenarioData = {
       id: 'safe-the-uplink',
       nice: ['S0421', 'K0645'],
       title: 'Safe the Uplink',
-      description: 'Chain down now, in the mirror order: HPA output off, BUC muted, carrier off. No need to wait for LOS (13:29:29).',
+      description: "Chain down now, in the mirror order: HPA output off, BUC muted, carrier off. There's no need to wait for LOS at 13:29:29.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['ride-through'],
       timeLimitSeconds: 2 * 60,
@@ -740,7 +741,7 @@ export const natsEuScenario19Data: ScenarioData = {
       nice: ['K0946', 'T1580'],
       title: 'Log the Denial',
       description:
-        'Put the window in the record: the clean ACK, the NAK and its reason, what the console showed, the call, the hop set and when sync locked, the ACK that followed.',
+        'Put the window in the record: the clean ACK, the NAK and its reason, what the console showed, your call, the hop set and when sync locked, and the ACK that followed.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['safe-the-uplink'],
       timeLimitSeconds: 2 * 60,
@@ -751,16 +752,16 @@ export const natsEuScenario19Data: ScenarioData = {
           description: 'Window Recorded',
           params: {
             character: Character.SYSTEM,
-            question: 'Which line goes in the record for the SAR-2 window?',
+            question: 'Which entry goes in the record for the SAR-2 window?',
             options: [
               '{{at:cmd:HK-DUMP:ack|13:21}} HK-DUMP ACK fixed; {{at:cmd:PLD-STATUS:nak|13:23}} PLD-STATUS NAK uplink denied, key Valid, Doppler on, window open; called denial {{at:obj:call-the-nak|13:24}}; hop set keyed both ends, sync {{at:obj:go-to-hopping|13:25}}; PLD-STATUS ACK hopping {{at:cmd:PLD-STATUS:ack|13:26}}',
-              'SAR-2 window worked: two commands acknowledged, one on the second attempt after a transient uplink problem cleared',
-              'Jamming attack on the SAR-2 command link defeated by TRANSEC; the adversary has moved from the downlink to the uplink and is escalating',
-              'PLD-STATUS delayed by interference; the hop set was activated as a precaution and both commands completed',
+              'SAR-2 window worked: both commands acknowledged, PLD-STATUS on a second try after a transient uplink problem cleared by itself. Key valid, no station faults, nothing to report to Rotterdam',
+              'Jamming attack on SAR-2 defeated by TRANSEC. The Monday adversary has moved to the uplink and is escalating against Galway. Both commands completed, so tell the regulator and Group Security',
+              'PLD-STATUS delayed by interference on the command link. The hop set was activated as a precaution once the delay was noticed, and both commands then completed inside the window. Key valid, Doppler on, chain safed after the second ACK. No action needed beyond the usual end-of-pass log and the normal handover note.',
             ],
             correctIndex: 0,
             explanation:
-              'Times, what came back, what the console read, what was done, in order. "Transient" and "attack" are conclusions; the record has the NAK reason and the key state at the moment of the NAK, which is what anyone reading it later needs.',
+              'A good entry has the times, what came back, what the console read and what was done, in order. "Transient" and "attack" are conclusions. The record holds the NAK reason and the key state at the moment of the NAK, which is what anyone reading it later needs.',
             pointPenalty: 5,
             documentSection: 'Window',
             documentLine:
@@ -777,7 +778,7 @@ export const natsEuScenario19Data: ScenarioData = {
       nice: ['T0153', 'K0740', 'K0926'],
       title: 'Decode SAR-1 Untouched',
       description:
-        'SAR-1 rises at 13:42:01 from azimuth 005. Retune RX modem 1 to 1414 MHz, retarget program-track, lock the carrier and hold C/N above 8 dB through the high-elevation segment. Nothing should touch it.',
+        'SAR-1 rises at 13:42:01 from azimuth 005. Retune RX modem 1 to 1414 MHz, retarget program-track to SAR-1, lock the carrier, and hold C/N above 8 dB through the high part of the pass. Nothing should touch it.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['log-the-denial'],
       conditions: [
@@ -812,14 +813,14 @@ export const natsEuScenario19Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'SAR-1 is decoding clean with nothing in the band so far. Why is this pass untouched when SAR-2 was denied earlier?',
             options: [
-              'A jammer reaches what it can reach: the SAR-2 denial was an uplink at the satellite, and SAR-1 was a receive-only pass with nothing of yours on the air to sit on',
-              'Because the hop set is still active: once the waveform is hopping, every carrier on the station is agile, downlinks included',
-              'Because the adversary stood down after the ride-through: a defeated jammer stops for the day, and SAR-1 fell after that',
-              'Because SAR-1 uses a different LNB LO: the reissued plan moved SAR-1 to a band the jammer does not cover',
+              'A jammer reaches what it can reach: the SAR-2 denial hit an uplink, and this is a receive-only pass with nothing on the air to deny',
+              'The hop set is still active, so once the waveform is hopping, every carrier on the station is agile, downlinks and receive passes included',
+              'The adversary stood down after the ride-through: a defeated jammer stops for the day, and SAR-1 came after that, so nothing reached it',
+              "SAR-1 uses a different LNB LO: the reissued plan moved SAR-1 to a band that the jammer doesn't cover, so the pass was never exposed",
             ],
             correctIndex: 0,
             explanation:
-              'Uplink denial is aimed at the satellite; downlink interference is aimed at the station. They are different attacks on different ends of the link. A receive-only pass has no uplink to deny, and a jammer that was on 14035 MHz at SAR-2 has no reach into what SAR-1 sends you on 11686.',
+              "Uplink denial is aimed at the satellite, and downlink interference is aimed at the station. They're different attacks on different ends of the link. A receive-only pass has no uplink to deny, and a jammer on 14035 MHz at SAR-2 has no reach into what SAR-1 sends you on 11686.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -832,7 +833,8 @@ export const natsEuScenario19Data: ScenarioData = {
       id: 'close-and-debrief',
       nice: ['T1580', 'K0645', 'K0874'],
       title: 'Close the Record and Debrief',
-      description: 'SAR-2 is done and SAR-1 is locked. Close the record: what is open, what Rotterdam does about the hop set, and the line that changes the next commanding pass.',
+      description:
+        "SAR-2 is done and SAR-1 is locked. Close the record: what's still open, what Rotterdam does about the hop set, and the line that changes the next commanding pass.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['decode-sar1'],
       timeLimitSeconds: 3 * 60,
@@ -845,14 +847,14 @@ export const natsEuScenario19Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What is the debrief line?',
             options: [
-              'A hop set used on the air is a hop set observed: HOP-SAR2-04 is retired, the next set is staged before every commanding pass, and the mode switch is rehearsed in the pre-pass sweep',
-              'Both commands completed and TRANSEC worked as designed; no change to the procedure beyond noting the jammer for the regulator',
-              'Commanding passes should be flown from Shetland until the jammer is found: the uplink denial reaches Galway, not SH-02',
-              'The first command of every pass should go out hopping: agility from AOS removes the NAK and the delay it cost',
+              'A hop set used on the air is a hop set observed: retire HOP-SAR2-04, stage the next set before each commanding pass, and rehearse the switch',
+              "Both commands completed and TRANSEC worked as designed, so there's no change to the procedure beyond noting the jammer for the regulator and filing the log",
+              'Commanding passes should be flown from Shetland until the jammer is found, because the uplink denial reaches Galway and not SH-02',
+              'The first command of every pass should go out hopping, because agility from AOS removes the NAK and the delay it cost, and the set can be replaced',
             ],
             correctIndex: 0,
             explanation:
-              'The set that saved the window is now spent, and the switch cost {{dur:cmd:PLD-STATUS:nak..cmd:PLD-STATUS:ack|about two minutes}} of a nine-minute window because it was done for the first time under pressure. Stage the next set, rehearse the switch, hop on a call. Hopping from AOS burns a set every pass for a denial that may not come, and the denial was aimed at the satellite - Shetland would have been denied too.',
+              'The set that saved the window is spent now, and the switch cost {{dur:cmd:PLD-STATUS:nak..cmd:PLD-STATUS:ack|about two minutes}} of a nine-minute window because it was done for the first time under pressure. So stage the next set, rehearse the switch, and hop on a call. Hopping from AOS burns a set every pass for a denial that may not come, and the denial was aimed at the satellite, so Shetland would have been denied too.',
             pointPenalty: 5,
             documentSection: 'Debrief',
             documentLine:
@@ -869,10 +871,10 @@ export const natsEuScenario19Data: ScenarioData = {
     intro: {
       text: `
       <p>
-        <em>[Text message from Anneke Visser at 12:44]</em>
+        <em>[Text message from Anneke Visser at {{stationTime}}]</em>
       </p>
       <p>
-        "New IF plan is on your station as of last night. I loaded hop set HOP-SAR2-04 on SAR-2 at 08:20; your copy is in the store, inactive. SAR-2 at 13:20 is commanding - HK-DUMP, then PLD-STATUS. If your carrier is denied you call it and I key my end on the call - not before, the set is not free. SAR-1 after is receive only."
+        "The new IF plan went onto your station last night. I loaded hop set HOP-SAR2-04 on SAR-2 at 08:20, and your copy is in the store, switched off. SAR-2 at 13:20 is a commanding pass: HK-DUMP first, then PLD-STATUS. If your carrier is denied, call it and I'll key my end on your call, not before, because the set isn't free. SAR-1 comes after that, receive only."
       </p>
       `,
       character: Character.ANNEKE_VISSER,
@@ -883,7 +885,7 @@ export const natsEuScenario19Data: ScenarioData = {
       'first-command': {
         text: `
         <p>
-          HK-DUMP on my screen, acknowledged. Send the payload status when you are ready.
+          I see HK-DUMP on my screen, acknowledged. Send the payload status request when you're ready.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -893,7 +895,7 @@ export const natsEuScenario19Data: ScenarioData = {
       'call-the-nak': {
         text: `
         <p>
-          Denial it is. Keying SAR-2 now - HOP-SAR2-04 active at my end as of this moment. Load yours, go to hopping, tell me when you have sync.
+          Denial it is. I'm keying SAR-2 now, so HOP-SAR2-04 is active at my end as of this moment. Load yours, go to hopping, and tell me when you have sync.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -903,7 +905,7 @@ export const natsEuScenario19Data: ScenarioData = {
       'go-to-hopping': {
         text: `
         <p>
-          Sync at my end too. Resend PLD-STATUS. Whoever is on 14035 is about to be on it alone.
+          I have sync at my end too. Resend PLD-STATUS. Whoever is sitting on 14035 is about to be sitting there alone.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -913,7 +915,7 @@ export const natsEuScenario19Data: ScenarioData = {
       'ride-through': {
         text: `
         <p>
-          PLD-STATUS acknowledged under TRANSEC. Chain down now, no need to wait for LOS. I will retire this set tonight and stage the next one; you did not spend it for nothing.
+          PLD-STATUS acknowledged under TRANSEC. You can chain down now, there's no need to wait for LOS. I'll retire this set tonight and stage the next one, so you didn't spend it for nothing.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -923,7 +925,7 @@ export const natsEuScenario19Data: ScenarioData = {
       'close-and-debrief': {
         text: `
         <p>
-          Downlink Monday, uplink today. That is somebody working through what your station does, one end at a time. The record you just closed is how the next station on their list gets warned. Well kept.
+          Downlink on Monday, uplink today. That's somebody working through what your station does, one end at a time. I also have to correct myself. When the plan was reissued, I treated it as a reset, and the first commanding pass on it still drew a jammer on the uplink. That was my mistake, and the record you just closed is the evidence. It's also how the next station on their list gets warned.
         </p>
         `,
         character: Character.PRIYA_SHARMA,

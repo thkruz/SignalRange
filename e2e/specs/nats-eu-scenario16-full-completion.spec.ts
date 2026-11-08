@@ -150,7 +150,7 @@ test.describe('nats-eu Scenario 16 Full Completion', () => {
   test('[confirm-shetland-buc-cooling] watches the BUC come down under 70 degC', async () => {
     test.setTimeout(240000);
     await missionControl.selectTab('tx-chain');
-    await answerSystemQuiz(page, 'Twice wrong');
+    await answerSystemQuiz(page, 'Power-off does cool it');
     await dismissDialogIfPresent(page);
     // 10 min thermal time constant: from ~72 degC toward a 55 degC muted target, under 70 in ~80 s.
     await waitForObjectiveComplete(missionControl, 'Confirm the Shetland BUC Cooling', 200000);
@@ -188,7 +188,7 @@ test.describe('nats-eu Scenario 16 Full Completion', () => {
   });
 
   test('[command-on-holdover] reads the holdover and sends the watchdog reset on it', async () => {
-    // The GW-01 GNSS outage trips at 12:18:40 on the mission clock
+    // The GW-01 GNSS outage trips as command-on-holdover opens (anchored, 12:18:40 at the earliest)
     await advanceMissionClockToUtc(page, '2027-04-09T12:20:30Z');
     await missionControl.selectTab('gps-timing');
     // Both stations' GPS Timing panels stay mounted; only GW-01 is in holdover.

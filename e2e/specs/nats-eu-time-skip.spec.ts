@@ -106,7 +106,7 @@ test.describe('nats-eu time skip', () => {
     // Answer by text, not by position - the options are presented in a
     // scenario-defined order that a wrong pick would leave the objective on.
     await waitForQuizToAppear(page);
-    await page.locator('.quiz-option-btn', { hasText: 'Pass predictions and program-track pointing' }).click();
+    await page.locator('.quiz-option-btn', { hasText: 'Pass predictions and pointing' }).click();
     await page.locator('#quiz-continue-btn').click();
     await dismissDialogIfPresent(page);
 

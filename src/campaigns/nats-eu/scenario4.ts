@@ -73,7 +73,7 @@ export const natsEuScenario4Data: ScenarioData = {
   subtitle: 'Command-Link COMSEC',
   duration: '35-40 min',
   missionType: 'Commanding',
-  description: `A command link that anyone can use is not a command link, it is a liability. MERIDIAN commands carry an authentication tag; the spacecraft rejects anything it cannot verify.<br><br>Today's rotation was scheduled weeks ago and it falls, as these things do, in the middle of your only pass. The old command key is already marked for retirement and the new material is loaded but not yet active. Until you complete the rotation, the bird will not authenticate a thing you send. Anneke needs a payload safe-mode command before the bird goes into its next imaging block. You have one window.<br><br>And there is a second key on this station, the traffic key that encrypts what you send and decrypts what comes down. Rotterdam rotates that one too. Keep an eye on it after the pass.`,
+  description: `A command link that anyone can use isn't a command link, it's a liability. MERIDIAN commands carry an authentication tag, and the spacecraft rejects anything it can't verify.<br><br>Today's key rotation was scheduled weeks ago, and it falls in the middle of your only pass. The old command key is marked for retirement and the new material is loaded but not yet active, so until you complete the rotation the bird won't authenticate anything you send. Anneke needs a payload safe-mode command sent before the bird starts its next imaging block, and you have one window.<br><br>There's also a second key on this station, the traffic key that encrypts what you send and decrypts what comes down. Rotterdam rotates that one too, so keep an eye on it after the pass.`,
   equipment: ['4m Ku-Band LEO Tracking Antenna', 'Ku-Band BUC + HPA', 'TT&C Commanding Console (COMSEC)', 'Payload Crypto (AES-256-GCM)', 'QPSK 3/4 Transmit Modem'],
   settings: {
     isSync: true,
@@ -140,7 +140,7 @@ export const natsEuScenario4Data: ScenarioData = {
       id: 'review-mission-brief',
       nice: ['K0645'],
       title: 'Review the COMSEC Brief',
-      description: 'Open the shift brief and confirm the rotation schedule and the command to be sent.',
+      description: "Open the shift brief, then check the rotation schedule and the command you'll be sending.",
       groundStation: 'GW-01',
       freezesScenarioTimer: true,
       prerequisiteObjectiveIds: [],
@@ -157,14 +157,15 @@ export const natsEuScenario4Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question:
-              'The command key (KEY-2027-Q1, 4 days left) already reads Pending Rotation: the new material is loaded but not active until you complete the rotation. What happens if you send PLD-SAFE while it is still Pending Rotation?',
+              'The command key, KEY-2027-Q1, has 4 days left and reads Pending Rotation, which means the new material is loaded but not active yet. What happens if you send PLD-SAFE while it still reads Pending Rotation?',
             options: [
-              'The spacecraft cannot authenticate it and rejects it - no second window before the imaging block.',
-              'It is accepted - the rotation only affects future commands, and the imaging block goes ahead as tasked.',
-              'It is queued on the spacecraft until the rotation completes - then it executes before the imaging block.',
+              "The spacecraft can't authenticate it, so it rejects the command and there's no second window.",
+              'The spacecraft accepts it, because the rotation only affects commands sent after it completes.',
+              'The spacecraft queues it, then runs it once the rotation completes, before the imaging block.',
             ],
             correctIndex: 0,
-            explanation: 'Correct. A key mid-rotation is not a key. Complete the rotation first, then send. Eighteen minutes to the window.',
+            explanation:
+              "A key that's mid-rotation can't authenticate anything, so the spacecraft rejects the command instead of holding it for later. Complete the rotation first, then send. You have about eighteen minutes before the window opens.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -182,7 +183,7 @@ export const natsEuScenario4Data: ScenarioData = {
       nice: ['K0728', 'K0874'],
       title: 'Read Both Keys',
       description:
-        'Two keys on this station. On the TX chain and RX analysis payload panels confirm the traffic crypto is ACTIVE both ways with the traffic key Valid, now on KEY-2027-Q1b after the rotation; then read the command key on the TT&C console.',
+        'Check both keys. On the TX Chain and RX Analysis tabs, confirm the payload crypto is ACTIVE in both directions and the traffic key reads Valid. Then read the command key on the TT&C console, which should now be KEY-2027-Q1b.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['complete-key-rotation'],
       timeLimitSeconds: 3 * 60,
@@ -217,16 +218,17 @@ export const natsEuScenario4Data: ScenarioData = {
           description: 'Which Key Rotates',
           params: {
             character: Character.SYSTEM,
-            question: "Traffic key Valid on both payload panels; the command key you just rotated now reads KEY-2027-Q1b. Which one was today's rotation, and what did it gate?",
+            question:
+              'The traffic key reads Valid on both payload panels, and the command key now reads KEY-2027-Q1b. Which key did you rotate today, and what did that rotation control?',
             options: [
-              'The command key on the TT&C console - it gates whether the spacecraft accepts PLD-SAFE',
-              'The traffic key on the payload panels - it gates whether the modem can transmit at all',
-              'Both, since they are the same key material - it gates transmit and command acceptance alike',
-              'Neither, the rotation is on the spacecraft - it gates nothing until the far end confirms',
+              'The command key on the TT&C console, which decides whether the spacecraft accepts PLD-SAFE',
+              'The traffic key on the payload panels, which decides whether the modem can transmit at all',
+              'Both keys, which share the same key material and decide transmit and command acceptance',
+              'Neither key, which is rotated on the spacecraft and decides nothing until the far end confirms',
             ],
             correctIndex: 0,
             explanation:
-              'The command key signs each command so the bird can prove who sent it. The traffic key encrypts the payload data both ways. Different custody, different schedules, and today only one of them was in rotation.',
+              "The command key signs each command so the spacecraft can verify it came from NATS, and that's what today's rotation controlled. The traffic key encrypts the payload data in both directions and follows Rotterdam's schedule, not yours. The two keys are separate material on separate schedules, and only the command key was due today.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -240,7 +242,7 @@ export const natsEuScenario4Data: ScenarioData = {
       nice: ['K0874', 'K0728', 'S0077'],
       title: 'Complete the Scheduled Key Rotation',
       description:
-        'On the TT&C console: Initiate Key Rotation, then Confirm Key Rotation. The key reads Pending Rotation (4 days left) and PLD-SAFE will be NAKed until it reads Valid. Do it before the pass, not during it. Leave the zeroize control alone.',
+        'On the TT&C console, click Initiate Key Rotation, then Confirm Key Rotation. The key reads Pending Rotation with 4 days left, and the spacecraft will refuse PLD-SAFE (a NAK) until it reads Valid. Do this before the pass starts, and leave the zeroize control alone.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['review-mission-brief'],
       timeLimitSeconds: 3 * 60,
@@ -264,20 +266,20 @@ export const natsEuScenario4Data: ScenarioData = {
           description: 'Two Steps',
           params: {
             character: Character.SYSTEM,
-            question: 'Initiate, then Confirm. Why is a rotation two steps and not one switch?',
+            question: 'You initiate the rotation, then confirm it. Why is a rotation two steps and not one switch?',
             options: [
-              'The far end must acknowledge the new key before the old one retires - one step could mismatch the two ends',
-              'The console needs time to generate the key - one step would retire the old key before the new one exists',
-              'Regulations require two button presses - one step would let a single operator rotate without a witness',
-              'So the operator can zeroize between them - one step would carry the old key material into the new one',
+              'The far end must acknowledge the new key first, or one step could leave the two ends on different keys',
+              'The console needs time to generate the key, or one step would retire the old key before the new one exists',
+              'Regulations require two button presses, or one step would let a single operator rotate without a witness',
+              'The operator must be able to zeroize between the steps, or one step would carry old key material into the new key',
             ],
             correctIndex: 0,
             explanation:
-              'Rotation is a handshake, not a swap. Both ends move together or one of them stops understanding the other: a one-step swap can leave the two ends on different keys, which is a mismatch. Keep that in mind after the pass.',
+              "Rotation is a handshake, not a swap, so both ends have to move to the new key together. A one-step swap could leave them on different keys, and that's a mismatch. The new material is already loaded, so the console isn't waiting to generate anything. Keep the idea of a mismatch in mind for after the pass.",
             pointPenalty: 5,
             documentSection: 'Keys',
             documentLine:
-              '{{at:cond:complete-key-rotation.1|13:45}}Z: command key rotated KEY-2027-Q1 to KEY-2027-Q1b on the TT&C console (Initiate, then Confirm) before the pass; key reads Valid, 62 days.',
+              '{{at:cond:complete-key-rotation.1|13:45}}Z: command key rotated from KEY-2027-Q1 to KEY-2027-Q1b on the TT&C console (Initiate, then Confirm) before the pass; key reads Valid, 62 days.',
           },
           mustMaintain: false,
         },
@@ -289,7 +291,8 @@ export const natsEuScenario4Data: ScenarioData = {
       id: 'reference-check',
       nice: ['T0431', 'K0740'],
       title: 'Reference and BUC Lock',
-      description: 'GPSDO locked, BUC on the external reference: the Lock badge on the BUC panel of the TX Chain tab reads Locked. Same as last pass; it does not stop mattering.',
+      description:
+        "Confirm the GPSDO is locked and the BUC is on the external reference, which means the Lock badge on the BUC panel of the TX Chain tab reads Locked. It's the same check as last pass, and it doesn't stop mattering.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['crypto-status-check'],
       timeLimitSeconds: 2 * 60,
@@ -315,7 +318,7 @@ export const natsEuScenario4Data: ScenarioData = {
       id: 'review-pass-schedule',
       nice: ['K1032', 'T1567'],
       title: 'Confirm the Command Window',
-      description: 'Read the pass off the Pass Schedule tab and confirm when the window is open.',
+      description: 'Read the pass times on the Pass Schedule tab, then confirm when the command window opens and closes.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['reference-check'],
       timeLimitSeconds: 2 * 60,
@@ -340,7 +343,8 @@ export const natsEuScenario4Data: ScenarioData = {
               '14:06:45 only, with the command key reading Pending Rotation',
             ],
             correctIndex: 0,
-            explanation: 'Same window as last pass. This time the console also checks the key: Pending Rotation is a NAK, key invalid.',
+            explanation:
+              'PLD-SAFE can only go in the command window, 14:03:40 to 14:10:00, which is narrower than the 14:03:10 to 14:10:18 the satellite is above the mask. The console also checks the key this time, so a command sent while it reads Pending Rotation gets a NAK, a refusal from the spacecraft.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -353,7 +357,7 @@ export const natsEuScenario4Data: ScenarioData = {
       id: 'enable-doppler-comp',
       nice: ['T1567', 'K0773'],
       title: 'Enable Uplink Doppler Compensation',
-      description: 'Engage uplink Doppler compensation on the TT&C console, exactly as last pass. New lessons do not retire old ones.',
+      description: "Turn on uplink Doppler compensation on the TT&C console, exactly as you did last pass. New lessons don't retire old ones.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['review-pass-schedule'],
       timeLimitSeconds: 2 * 60,
@@ -373,7 +377,7 @@ export const natsEuScenario4Data: ScenarioData = {
       id: 'carrier-into-muted-buc',
       nice: ['S0421', 'K0645'],
       title: 'Carrier Up, BUC Muted',
-      description: 'Chain up in order. Step one: transmit modem 1 on the air into the muted BUC.',
+      description: 'Bring the chain up in order. Step one is to put transmit modem 1 on the air, into the muted BUC.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['enable-doppler-comp'],
       timeLimitSeconds: 2 * 60,
@@ -399,7 +403,7 @@ export const natsEuScenario4Data: ScenarioData = {
       id: 'unmute-buc',
       nice: ['S0421', 'K0645'],
       title: 'Unmute the BUC',
-      description: 'Step two: unmute the BUC with the carrier behind it. HPA still disabled.',
+      description: 'Step two: unmute the BUC with the carrier behind it. The HPA stays disabled.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['carrier-into-muted-buc'],
       timeLimitSeconds: 2 * 60,
@@ -425,7 +429,7 @@ export const natsEuScenario4Data: ScenarioData = {
       id: 'enable-hpa',
       nice: ['S0421', 'K0740'],
       title: 'Enable the HPA',
-      description: 'Step three: HPA output enabled, within limits.',
+      description: 'Step three: enable the HPA output and keep it within its operating limits.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['unmute-buc'],
       timeLimitSeconds: 2 * 60,
@@ -455,7 +459,7 @@ export const natsEuScenario4Data: ScenarioData = {
       id: 'track-and-acquire',
       nice: ['S0421', 'K1032'],
       title: 'Acquire MERIDIAN-SAR-1',
-      description: 'Program-track MERIDIAN-SAR-1 before 14:03 and confirm the beacon on RX analysis.',
+      description: 'Put the antenna in program-track on MERIDIAN-SAR-1 before 14:03, then confirm the beacon on the RX Analysis tab.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['enable-hpa'],
       conditions: [
@@ -490,7 +494,8 @@ export const natsEuScenario4Data: ScenarioData = {
       id: 'send-authenticated-command',
       nice: ['T1567', 'K0875', 'S0077'],
       title: 'Send the Authenticated Command',
-      description: 'In the window, send PLD-SAFE and confirm the acknowledgement. The spacecraft verifies the authentication tag under the new key before it answers.',
+      description:
+        "Once the window is open, send PLD-SAFE and confirm the acknowledgement. The spacecraft checks the command's authentication tag against the new key before it answers.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['track-and-acquire'],
       conditions: [
@@ -512,7 +517,7 @@ export const natsEuScenario4Data: ScenarioData = {
       id: 'secure-the-chain',
       nice: ['S0421', 'K0645'],
       title: 'Secure the Chain',
-      description: 'Command acknowledged. Bring the chain down in the mirror order: HPA off, BUC muted, carrier off.',
+      description: 'The command is acknowledged, so bring the chain down in the mirror order: disable the HPA, mute the BUC, then take the carrier off the air.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['send-authenticated-command'],
       timeLimitSeconds: 3 * 60,
@@ -541,15 +546,16 @@ export const natsEuScenario4Data: ScenarioData = {
           description: 'Order Confirmed',
           params: {
             character: Character.SYSTEM,
-            question: 'Three switches, one order. Which goes first on the way down?',
+            question: 'Which of the three switches goes first when you bring the chain down?',
             options: [
-              'HPA output off, while the BUC is still driving it',
-              'Transmit modem off, while the BUC is still unmuted',
-              'BUC mute, while the HPA is still enabled behind it',
-              'Any of them, because the chain is interlocked',
+              'Disable the HPA output, while the BUC is still driving it',
+              'Turn the transmit modem off, while the BUC is still unmuted',
+              'Mute the BUC, while the HPA is still enabled behind it',
+              'Switch them in any order, because the chain is interlocked',
             ],
             correctIndex: 0,
-            explanation: 'Amplifier before drive on the way down. Same as last pass, and the pass after that.',
+            explanation:
+              "The HPA comes off first so it's never left switched on with nothing driving it, because then it's only amplifying noise. Muting the BUC or stopping the modem first leaves it in exactly that state, and you can't count on an interlock to stop you. It's the same order as last pass.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -563,7 +569,7 @@ export const natsEuScenario4Data: ScenarioData = {
       nice: ['K0728', 'K0875'],
       title: 'Read the Traffic Key Alarm',
       description:
-        'Shortly after LOS the RX payload panel starts reporting decrypt failures and an unverified auth tag, and the traffic key reads Mismatch. Read it before you touch anything.',
+        'Shortly after LOS, the RX payload panel starts reporting decrypt failures and an unverified authentication tag, and the traffic key reads Mismatch. Read the alarm before you touch anything.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['secure-the-chain'],
       conditions: [
@@ -578,16 +584,17 @@ export const natsEuScenario4Data: ScenarioData = {
           description: 'Mismatch Diagnosed',
           params: {
             character: Character.SYSTEM,
-            question: 'Decrypt failing, auth tag unverified, traffic key Mismatch, and the command key still reads Valid. What happened?',
+            question:
+              'The payload crypto reports failed decryption and an unverified authentication tag, the traffic key reads Mismatch, and the command key still reads Valid. What happened?',
             options: [
-              'Rotterdam rotated the traffic key; the station is still on the old key - re-key the payload crypto',
-              'Your command-key rotation corrupted the traffic key; both keys are now suspect - zeroize and reload both',
-              'The spacecraft was zeroized; nothing on it can decrypt any more - wait for Rotterdam to reload it',
-              'The LNB LO drifted; the demodulator is losing frames and the crypto sees garbage - retune the receiver',
+              'Rotterdam rotated the traffic key and the station is still on the old one, so re-key the payload crypto',
+              'Your command-key rotation corrupted the traffic key, so both keys are suspect and you should zeroize and reload both',
+              'The spacecraft was zeroized, so nothing on it can decrypt any more and you should wait for Rotterdam to reload it',
+              "The LNB's local oscillator drifted, so the demodulator is losing frames and you should retune the receiver",
             ],
             correctIndex: 0,
             explanation:
-              'Two keys, two schedules. The one you rotated is fine. The traffic key moved at the far end and the station did not follow: a mismatch is the two ends of a handshake on different keys.',
+              "The command key you rotated still reads Valid, so it isn't the cause. The traffic key moved at Rotterdam's end and the station didn't follow, which puts the two ends on different keys and stops the authentication tag from verifying. A drifting oscillator would show up first as a poor lock on the modem, not as a key reading Mismatch.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -600,7 +607,7 @@ export const natsEuScenario4Data: ScenarioData = {
       id: 're-key-traffic',
       nice: ['K0728', 'S0077', 'K0874'],
       title: 'Re-key the Payload Crypto',
-      description: 'Load the new traffic key on the TX chain payload panel and confirm both directions read Valid again.',
+      description: 'Load the new traffic key on the payload panel of the TX Chain tab, then confirm both directions read Valid again.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['traffic-key-mismatch'],
       timeLimitSeconds: 3 * 60,
@@ -623,20 +630,20 @@ export const natsEuScenario4Data: ScenarioData = {
           description: 'Re-key Understood',
           params: {
             character: Character.SYSTEM,
-            question: 'One key load cleared the RX mismatch and the TX key together. Why?',
+            question: 'One key load fixes both the RX mismatch and the TX key status. Why does a single load cover both directions?',
             options: [
-              'The traffic key is symmetric - one key material serves both encrypt and decrypt',
-              'The RX side copies whatever the TX side does - the load propagates from the transmit panel',
-              'Re-keying resets the spacecraft - both directions come back up on the default key',
-              'It did not - the RX key needs a separate load, and the panel is only echoing the TX state',
+              'The traffic key is symmetric, so one key serves both encryption and decryption',
+              'The RX side copies the TX side, so the load propagates from the transmit panel',
+              'Re-keying resets the spacecraft, so both directions return to the default key',
+              'The RX key needs a separate load, so the panel is only echoing the TX state',
             ],
             correctIndex: 0,
             explanation:
-              'AES-256-GCM is symmetric. One key, both directions, so the station is either on the current key or it is not, and the auth tag verifies again as soon as both ends share it.',
+              "AES-256-GCM is a symmetric cipher, which means the same key encrypts and decrypts. So one key load covers both directions, and the authentication tag verifies again as soon as both ends hold that key. The RX side doesn't copy the TX side; both simply read the same key.",
             pointPenalty: 5,
             documentSection: 'Keys',
             documentLine:
-              '{{at:cond:re-key-traffic.2|14:12}}Z: traffic key Mismatch after the far-end fleet rotation; new key loaded on the payload panel, TX and RX Valid, auth tag verified.',
+              '{{at:cond:re-key-traffic.2|14:12}}Z: traffic key Mismatch after the far-end fleet rotation; new key loaded on the payload panel, TX and RX Valid, authentication tag verified.',
           },
           mustMaintain: false,
         },
@@ -649,7 +656,7 @@ export const natsEuScenario4Data: ScenarioData = {
       nice: ['K0875', 'S0421'],
       title: 'Prove the Traffic Key on SAR-2',
       description:
-        'MERIDIAN-SAR-2 rises at 14:18:42 from azimuth 130. Retune modem 1 to 1370 MHz, track it, and show the downlink decrypts under the new key. Optional: the COMSEC log is complete without it.',
+        'MERIDIAN-SAR-2 rises at 14:18:42 from azimuth 130 degrees. Retune receive modem 1 to 1370 MHz, track the satellite, and show the downlink decrypts under the new key. This one is optional, because the COMSEC log is complete without it.',
       groundStation: 'GW-01',
       isOptional: true,
       prerequisiteObjectiveIds: ['re-key-traffic'],
@@ -686,7 +693,7 @@ export const natsEuScenario4Data: ScenarioData = {
       id: 'log-the-rotation',
       nice: ['K0874', 'T1580'],
       title: 'Log the Rotation',
-      description: 'Close out the COMSEC record for the shift: both keys, both events.',
+      description: 'Close out the COMSEC record for the shift, covering both keys and both events: the rotation and the re-key.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['re-key-traffic'],
       timeLimitSeconds: 3 * 60,
@@ -697,19 +704,20 @@ export const natsEuScenario4Data: ScenarioData = {
           description: 'COMSEC Record Closed',
           params: {
             character: Character.SYSTEM,
-            question: 'Rotation complete, command authenticated, traffic key re-keyed. Why is a key rotation scheduled at all, rather than left alone while it is working?',
+            question:
+              'The rotation is done, the command was authenticated and the traffic key is re-keyed. Why are keys rotated on a schedule at all, instead of being left alone while they work?',
             options: [
-              'A key in use accumulates exposure - rotating on a schedule limits what any one compromise can reach.',
-              'Keys wear out cryptographically - after a fixed number of uses the cipher can be broken by inspection.',
-              'The spacecraft requires a new key every pass - it discards the old one at LOS and will not reuse it.',
+              'Exposure builds up while a key is in use, so a schedule limits what any one compromise can reach.',
+              'Keys wear out with use, so after a fixed number of messages the cipher can be broken by inspection.',
+              'The spacecraft needs a new key every pass, so it discards the old one at LOS and never reuses it.',
             ],
             correctIndex: 0,
             explanation:
-              'Exactly. Exposure is traffic, time, and the people who have seen the key. Scheduled rotation is hygiene, not a response to a known problem - and today showed the cost of one end rotating without the other.',
+              "Exposure grows with every message encrypted, every day in service and every person who has seen the key, and a scheduled rotation resets all three. It isn't that the cipher wears out, and it isn't a response to a known problem. Today also showed that both ends have to rotate together, or the link stops working until they match.",
             pointPenalty: 5,
             documentSection: 'Keys',
             documentLine:
-              '{{at:obj:send-authenticated-command|14:03}}Z: PLD-SAFE authenticated under the new command key, ACK received. Chain cold. Rotation and re-key are both on this log with their times.',
+              '{{at:obj:send-authenticated-command|14:03}}Z: PLD-SAFE authenticated under the new command key and acknowledged. Chain cold. The rotation and the re-key are both on this log with their times.',
           },
           mustMaintain: false,
         },
@@ -725,7 +733,7 @@ export const natsEuScenario4Data: ScenarioData = {
         <em>[Text message from Charlie Brooks at 13:44]</em>
       </p>
       <p>
-        "Clean uplink yesterday, so Rotterdam has given us a real one today. Safe-mode the payload before the next imaging block. There is a complication, which is that the scheduled key rotation was booked weeks ago and has, naturally, arrived in the middle of your only pass. The bird authenticates every command. A key that is mid-rotation is not a key. Finish the rotation before the pass, then send. And leave the zeroize switch exactly where it is."
+        "Your uplink was clean yesterday, so Rotterdam has given us a real job today. They need the payload put into safe mode before it next starts imaging. The complication is that the scheduled key rotation, booked weeks ago, has arrived in the middle of your only pass. The bird checks every command to prove it came from us, and a key that's mid-rotation doesn't count as a key, so finish the rotation before the pass and send afterwards. And leave the zeroize switch exactly where it is, because that's the one that destroys the key."
       </p>
       `,
       character: Character.CHARLIE_BROOKS,
@@ -736,7 +744,7 @@ export const natsEuScenario4Data: ScenarioData = {
       'crypto-status-check': {
         text: `
         <p>
-          Two keys on this rack and people confuse them constantly. Command key on the TT&amp;C console signs what you send. Traffic key on the payload panels encrypts what goes up and decrypts what comes down. Rotation is done, so read both now and tell me which one was today's.
+          That's both keys read, and people confuse them constantly. The command key on the TT&amp;C console, the telemetry, tracking and command screen, signs what you send, and the satellite checks every command against it. The traffic key on the payload panels encrypts what goes up and decrypts what comes down. Today's rotation was the command key. Next, check the reference and the BUC lock.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -746,10 +754,10 @@ export const natsEuScenario4Data: ScenarioData = {
       'complete-key-rotation': {
         text: `
         <p>
-          <em>[Text message from Anneke Visser, MERIDIAN Ops, at 13:50]</em>
+          <em>[Text message from Anneke Visser, MERIDIAN Ops, at {{stationTime}}]</em>
         </p>
         <p>
-          "Galway, our records show your command key in its rotation window today. Please confirm the rotation is complete and the key reads Valid before you send - an unauthenticated PLD-SAFE will be rejected and we will not get a second window before the imaging block."
+          "Galway, thank you, we can see the rotation is complete on our side. Please read the key status and confirm it reads Valid before you send. An unauthenticated PLD-SAFE will be rejected, and we won't get a second window before the imaging block."
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -759,7 +767,7 @@ export const natsEuScenario4Data: ScenarioData = {
       'carrier-into-muted-buc': {
         text: `
         <p>
-          Same three steps as yesterday. I am not going to say them again; you know them.
+          That's the carrier up behind the muted BUC, the same first step as yesterday. I'm not going to say the other two again, because you know them.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -769,7 +777,7 @@ export const natsEuScenario4Data: ScenarioData = {
       'secure-the-chain': {
         text: `
         <p>
-          Authenticated and acknowledged. Bring it down. Amplifier first.
+          That's the chain cold, with the amplifier first, so it was never left switched on with nothing feeding it. The command is acknowledged and the station is quiet again. Keep an eye on the payload panel through LOS.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -779,10 +787,10 @@ export const natsEuScenario4Data: ScenarioData = {
       'traffic-key-mismatch': {
         text: `
         <p>
-          <em>[Text message from Anneke Visser at 14:12]</em>
+          <em>[Text message from Anneke Visser at {{stationTime}}]</em>
         </p>
         <p>
-          "Galway - heads up, the fleet traffic key rolled at 14:11 on our schedule. If your payload crypto is complaining, that is why. New material should already be on your console."
+          "Galway, a heads up: the fleet traffic key rolled over at 14:11 on our schedule. If your payload crypto is complaining, this is why. The new material should already be on your console."
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -792,7 +800,7 @@ export const natsEuScenario4Data: ScenarioData = {
       're-key-traffic': {
         text: `
         <p>
-          There it is. One end of the handshake moved and the other did not. Load the new key on the payload panel. Watch both directions clear at once - it is one key.
+          That's both directions clear at once, because it's a single key. The far end had moved to the new key and ours hadn't, so the two ends no longer matched, and loading the new key on the payload panel fixed it. Two things are left: the COMSEC log, and an optional proof on SAR-2.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -802,7 +810,7 @@ export const natsEuScenario4Data: ScenarioData = {
       'prove-the-traffic-key': {
         text: `
         <p>
-          "SAR-2 is up for you at 14:18 if you want to prove the new traffic key on live frames. Not required. Appreciated."
+          "Galway, we can see SAR-2's frames decrypting cleanly on your side under the new traffic key. It wasn't required, but we appreciate it."
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -812,7 +820,7 @@ export const natsEuScenario4Data: ScenarioData = {
       'log-the-rotation': {
         text: `
         <p>
-          Log both. Rotation and re-key, with times. Whoever audits this station's COMSEC in six months will read that line before they read anything else.
+          That's both events logged, the rotation and the re-key, each with its time. Whoever audits my station's communications security in six months will read that entry before anything else.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -824,7 +832,7 @@ export const natsEuScenario4Data: ScenarioData = {
       'send-authenticated-command': {
         text: `
         <p>
-          "Key reads Valid on our side too. The command window is not open yet. Send PLD-SAFE once the console shows the window open."
+          "The key reads Valid on our side too, Galway. Send PLD-SAFE once the console shows the window open, and I'll confirm the acknowledgement when it comes down."
         </p>
         `,
         character: Character.ANNEKE_VISSER,

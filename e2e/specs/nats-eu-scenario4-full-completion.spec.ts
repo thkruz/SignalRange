@@ -69,7 +69,7 @@ test.describe('nats-eu Scenario 4 Full Completion', () => {
   test('[review-mission-brief] reviews the COMSEC brief', async () => {
     await missionControl.openMissionBrief();
     await missionControl.closeMissionBrief();
-    await answerSystemQuiz(page, 'cannot authenticate it and rejects it');
+    await answerSystemQuiz(page, "can't authenticate it, so it rejects");
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Review the COMSEC Brief');
   });
@@ -160,7 +160,7 @@ test.describe('nats-eu Scenario 4 Full Completion', () => {
     await disableHpa(page, missionControl);
     await setSwitch(page, '#buc-mute', true);
     await setSwitch(page, '#tx-transmit-switch', false);
-    await answerSystemQuiz(page, 'HPA output off, while the BUC');
+    await answerSystemQuiz(page, 'Disable the HPA output, while the BUC');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Secure the Chain');
   });
@@ -189,7 +189,7 @@ test.describe('nats-eu Scenario 4 Full Completion', () => {
 
   test('[log-the-rotation] closes the COMSEC log without the optional proof pass', async () => {
     await closeWorkingDocumentIfOpen(page);
-    await answerSystemQuiz(page, 'A key in use accumulates exposure');
+    await answerSystemQuiz(page, 'Exposure builds up while a key');
     await expect(page.locator('#level-complete-modal')).toBeVisible({ timeout: 45000 });
   });
 

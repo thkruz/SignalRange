@@ -135,7 +135,7 @@ const SCENARIO_7_OBJECTIVES: Scenario7Objective[] = [
     id: 'verify-fault-cleared-quiz',
     title: 'Verify Fault Cleared - Confirm Alarm Cleared',
     type: 'quiz',
-    correctAnswer: 'The BUC loopback alarm has cleared; only the AGC noise-only alarm remains, because no traffic carrier is up yet',
+    correctAnswer: 'The loopback alarm has cleared; only the AGC noise-only alarm remains',
     assertBeforeAnswer: expectOnlyAgcAlarmLeft,
   },
   {
@@ -253,8 +253,7 @@ const SCENARIO_7_OBJECTIVES: Scenario7Objective[] = [
     id: 'enable-loopback-quiz',
     title: 'Loopback Mode Understanding',
     type: 'quiz',
-    correctAnswer:
-      'A directional coupler samples the BUC output, a pad drops it about 66 dB and the loop translator shifts it 2,225 MHz down into the LNB; the HPA path stays connected',
+    correctAnswer: 'A coupler samples the BUC output and a translator shifts it into the LNB; the HPA path stays connected',
   },
   {
     id: 'verify-loopback-signal-tab',

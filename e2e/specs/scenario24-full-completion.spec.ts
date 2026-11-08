@@ -52,13 +52,13 @@ const SCENARIO_24_OBJECTIVES: Scenario24Objective[] = [
     id: 'review-mission-brief',
     title: 'Assume Incident Command',
     type: 'quiz',
-    correctAnswer: 'Order the board first: fixed clocks (storm ETA, pass window, board note) versus bendable trends (BUC heat, customer confidence)',
+    correctAnswer: 'Order the board: fixed clocks (storm, pass, board note) against trends you can bend (BUC heat, customer)',
   },
   {
     id: 'sequencing-quiz',
     title: 'Set the Sequence',
     type: 'quiz',
-    correctAnswer: 'VT-01 heater NOW (one switch, beats the front), then de-rate the ME-02 BUC, then set up the AURORA pass before its 0800 window',
+    correctAnswer: 'Switch the VT-01 heater on now, then de-rate the ME-02 BUC, then set up the AURORA-7 pass before 0800',
   },
 
   // TRACK 1: VT-01 STORM
@@ -99,7 +99,7 @@ const SCENARIO_24_OBJECTIVES: Scenario24Objective[] = [
     id: 'recognize-buc-signature',
     title: 'Recognize the Signature',
     type: 'quiz',
-    correctAnswer: 'The same over-gain thermal trend as before (swap still pending) - fix is the de-rate, gain back to the 23 dB operating value',
+    correctAnswer: 'The same over-gain trend as before, swap still pending. De-rate the gain back to the 23 dB operating value',
   },
   {
     id: 'derate-buc',
@@ -114,7 +114,7 @@ const SCENARIO_24_OBJECTIVES: Scenario24Objective[] = [
     // nats-r3-s24-F1: the current row holds 45 s so the Trend (1 min) has turned
     // when the quiz opens; the spec reads the panel before answering.
     type: 'quiz',
-    correctAnswer: 'Current about 3.1 A, temperature still in the low 60s but the Trend (1 min) now negative, P1dB Margin about 12 dB - the curve has turned',
+    correctAnswer: 'Current about 3.1 A, temperature still in the low 60s, Trend (1 min) negative, P1dB Margin about 12 dB',
     quizWaitMs: 90000,
     assertBucTrendTurned: true,
   },
@@ -172,7 +172,7 @@ const SCENARIO_24_OBJECTIVES: Scenario24Objective[] = [
     id: 'pass-go-nogo-quiz',
     title: 'Pass Go/No-Go',
     type: 'quiz',
-    correctAnswer: 'GO with a caveat: step-track holding, margin thin on an end-of-life beacon; flag the sunset trajectory to Marcus BEFORE 0800',
+    correctAnswer: 'GO with a caveat: the margin is thin, so flag the sunset trajectory to Marcus BEFORE 0800',
   },
 
   // CUSTOMER + BOARD
@@ -180,7 +180,7 @@ const SCENARIO_24_OBJECTIVES: Scenario24Objective[] = [
     id: 'customer-escalation-quiz',
     title: 'Manage the Customer Channel',
     type: 'quiz',
-    correctAnswer: 'Per-trunk cause/action/next-update, thirty seconds each: TM-1 on its booked backup for the window (VT-01 feed heated), TM-2 stabilized (BUC de-rated)',
+    correctAnswer: 'Cause, action and next-update time for each trunk, thirty seconds each: TM-1 on its backup, TM-2 stabilized',
   },
   {
     // Phase 29 D13: the quiz waits behind "Watch the beacon on ACU Control (held 60 s)"
@@ -195,13 +195,13 @@ const SCENARIO_24_OBJECTIVES: Scenario24Objective[] = [
     type: 'quiz',
     holdSeconds: 62,
     assertRainBand: true,
-    correctAnswer: 'The heater keeps the feed clear (Ice 0.0 dB); the rain costs the beacon about a dB (Sky Temp up), still above the 6.5 dB lock - ride it on the margin',
+    correctAnswer: 'The heater is holding the feed clear (Ice 0.0 dB) and rain costs the beacon about 1 dB, still above the 6.5 dB lock',
   },
   {
     id: 'board-note-quiz',
     title: 'The Board Note',
     type: 'quiz',
-    correctAnswer: 'Posture and exposure: both stations stable, no outage; AURORA pass GO for 0800 on a sunsetting beacon; residual risk = ME-02 BUC swap',
+    correctAnswer: 'Posture and exposure: both stations stable, no outage, AURORA pass GO for 0800 on a sunsetting beacon, BUC swap as residual risk',
   },
 
   // Verify command log BEFORE the final quizzes (modal overlays sidebar after)
@@ -216,7 +216,7 @@ const SCENARIO_24_OBJECTIVES: Scenario24Objective[] = [
     id: 'review-command-log',
     title: 'Review the Command Log',
     type: 'quiz',
-    correctAnswer: "It shows the ordered board, the sequence and why, each track's action and outcome, the comms, and the residual risk",
+    correctAnswer: "It shows the ordered board, the sequence and why, each track's action and outcome, the comms and the residual risk",
   },
   {
     id: 'log-crisis-closed',

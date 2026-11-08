@@ -78,19 +78,19 @@ const SCENARIO_17_OBJECTIVES: Scenario17Objective[] = [
     id: 'baseline-dashboard',
     title: 'Pre-Transit Baseline',
     type: 'quiz',
-    correctAnswer: 'Anything abnormal after window-open gets blamed on the Sun - a hidden fault only shows if the board was provably clean before',
+    correctAnswer: 'Anything odd after the window opens gets blamed on the Sun, so a hidden fault only shows if the board was clean first',
   },
   {
     id: 'transit-geometry-quiz',
     title: 'Transit Geometry',
     type: 'quiz',
-    correctAnswer: 'The Sun (~20,000 K at C-band) passes through the main beam behind the satellite - noise soars, C/N collapses, signal unchanged',
+    correctAnswer: 'The Sun (about 20,000 K at C-band) passes through the beam behind the satellite, so noise soars and C/N collapses; the signal is unchanged',
   },
   {
     id: 'transit-predictability-quiz',
     title: 'Why It Is Predictable',
     type: 'quiz',
-    correctAnswer: 'Twice a year near the equinoxes - a few minutes a day for several days, at a time computable years ahead from the geometry',
+    correctAnswer: 'Twice a year near the equinoxes, a few minutes a day for several days, at times you can compute years ahead',
   },
   {
     id: 'baseline-rx-tab',
@@ -114,14 +114,13 @@ const SCENARIO_17_OBJECTIVES: Scenario17Objective[] = [
     id: 'why-not-handover-quiz',
     title: 'The Handover Question',
     type: 'quiz',
-    correctAnswer: 'Brief, predicted, SLA-excluded with notice - a handover costs two transfer events, and ME-02 gets its own transit anyway',
+    correctAnswer: 'The dip is brief, predicted and SLA-excluded with notice, a handover costs two transfers, and ME-02 has its own transit anyway',
   },
   {
     id: 'notify-customer-quiz',
     title: 'Pre-Event Notification',
     type: 'quiz',
-    correctAnswer:
-      'Predicted solar transit on TIDEMARK-1, window and peak times attached; possible 1-3 minute carrier loss near peak, self-recovering; this is SLA advance notice.',
+    correctAnswer: 'Predicted solar transit on TIDEMARK-1, with window and peak times. Possible 1-3 minute carrier loss near peak, self-recovering. SLA advance notice.',
   },
 
   {
@@ -147,7 +146,7 @@ const SCENARIO_17_OBJECTIVES: Scenario17Objective[] = [
     id: 'observe-onset-quiz',
     title: 'Confirm Predicted Onset (quiz)',
     type: 'quiz',
-    correctAnswer: 'Confidence this is the predicted transit, not a coincidental fault - the alarm tracking the sheet IS the diagnosis',
+    correctAnswer: 'Confidence that this is the predicted transit, not a coincidental fault, because the alarm tracking the sheet is the diagnosis',
   },
   {
     // ride-through-peak completes on its own once the transit has passed its
@@ -163,7 +162,7 @@ const SCENARIO_17_OBJECTIVES: Scenario17Objective[] = [
     id: 'peak-behavior-quiz',
     title: 'What the Peak Looks Like',
     type: 'quiz',
-    correctAnswer: 'The downlink is buried in solar noise at OUR antenna only - the uplink is fine, and the demod relocks on its own as the Sun moves off',
+    correctAnswer: 'The downlink is buried in solar noise at our antenna only, the uplink is fine, and the demodulator relocks as the Sun moves off',
   },
 
   // ============================================================
@@ -194,19 +193,19 @@ const SCENARIO_17_OBJECTIVES: Scenario17Objective[] = [
     id: 'post-event-sweep',
     title: 'Post-Event Alarm Sweep',
     type: 'quiz',
-    correctAnswer: 'Any alarm that survived the window - the transit excuses exactly five minutes of sky noise and nothing else',
+    correctAnswer: 'Any alarm that survived the window, because the transit excuses exactly five minutes of sky noise and nothing else',
   },
   {
     id: 'marcus-confirm',
     title: 'Spacecraft-Side Confirmation',
     type: 'quiz',
-    correctAnswer: 'Nothing abnormal on the spacecraft - our uplink steady, vehicle telemetry nominal; the event existed only at our antenna',
+    correctAnswer: 'Nothing abnormal on the spacecraft: our uplink steady and vehicle telemetry nominal, because the event existed only at our antenna',
   },
   {
     id: 'document-impact',
     title: 'Impact Documentation',
     type: 'quiz',
-    correctAnswer: 'Predicted vs actual window times, peak degradation, lock-loss duration, notification timestamp (pre-window), customer impact statement',
+    correctAnswer: 'Predicted vs actual window times, peak degradation, lock-loss duration, notification timestamp, and a customer impact statement',
   },
   {
     id: 'log-shift-summary',

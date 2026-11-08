@@ -58,7 +58,7 @@ export const scenario4Data: ScenarioData = {
   timeLimitSeconds: 30 * 60,
   difficulty: 'beginner',
   missionType: 'Operations Phase',
-  description: `ME-02 is maintaining primary communications with TIDEMARK-1. The spacecraft operations team in Halifax has just confirmed that TIDEMARK-2 has completed station-keeping at 45°W and the communications payload is ready for ground operations.<br><br>Your task at VT-01 is to switch from monitoring TIDEMARK-1 to establishing full uplink and downlink with TIDEMARK-2. You'll need to repoint the antenna, acquire the new beacon, reconfigure the modems for the new frequencies, and bring up the transmit path.<br><br>Marcus Chen from Halifax spacecraft ops will confirm payload status. Take your time - ME-02 has primary coverage while you complete the switchover.`,
+  description: `ME-02 is maintaining primary communications with TIDEMARK-1. The spacecraft operations team in Halifax has just confirmed that TIDEMARK-2 has completed station-keeping at 45°W and the communications payload is ready for ground operations.<br><br>Your task at VT-01 is to switch from monitoring TIDEMARK-1 to establishing full uplink and downlink with TIDEMARK-2. You'll need to repoint the antenna, acquire the new beacon, reconfigure the modems for the new frequencies, and bring up the transmit path.<br><br>Marcus Chen from Halifax spacecraft ops will confirm payload status. Take your time, because ME-02 has primary coverage while you complete the switchover.`,
   equipment: ['9-meter C-band Antenna', 'RF Front End', 'Spectrum Analyzer', 'RX/TX Modems', 'ME-02: Available'],
   settings: {
     isSync: true,
@@ -246,7 +246,7 @@ export const scenario4Data: ScenarioData = {
             options: ['TIDEMARK-1', 'TIDEMARK-2', 'SES-10', 'None - antenna is stowed'],
             correctIndex: 0,
             explanation:
-              'VT-01 is currently tracking TIDEMARK-1. The antenna is pointed at Az: 153.2°, El: 35.2° with beacon lock confirmed. We need to switch to TIDEMARK-2 at Az: 143.4°, El: 31.9°.',
+              "The antenna is pointed at Az 153.2°, El 35.2°, which is TIDEMARK-1's position, and the beacon lock is confirmed. TIDEMARK-2 is the next target, not the current one, because the antenna hasn't moved yet. We'll slew it to Az 143.4°, El 31.9°.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -288,7 +288,7 @@ export const scenario4Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              "The antenna is in program-track mode, following TIDEMARK-1's predicted position from ephemeris data. To switch to TIDEMARK-2, we need to command new coordinates. The ACU will calculate the slew path and move the antenna smoothly to the new position.",
+              "The antenna is in program-track mode, which points it from ephemeris data, the satellite's predicted positions over time. Right now those predictions are TIDEMARK-1's, so to switch you command new coordinates and the ACU calculates the slew path. Step-track only hunts for peak signal around where it already is, so it wouldn't find a different satellite on its own.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -338,7 +338,7 @@ export const scenario4Data: ScenarioData = {
       // the relationship between orbital position and ground station look angles
       nice: ['K1032', 'K0773'],
       title: 'Understand Position Change',
-      description: 'The antenna has moved significantly. Understand why the look angles are so different.',
+      description: 'The antenna has moved to a new position. Work out why the look angles changed.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['command-antenna'],
       timeLimitSeconds: 2 * 60,
@@ -357,7 +357,7 @@ export const scenario4Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              "TIDEMARK-1 sits at 53°W and TIDEMARK-2 at 45°W, 8 degrees further east along the GEO arc. Vermont is at 72.6°W, so both slots are east of us and both sit in the south-east sky. Moving 8° east along the arc swings the dish about 10° further east in azimuth (153° to 143°) and drops it about 3° in elevation (35° to 32°): the farther a slot is from the station's own longitude, the further it sits from due south and the lower it rides. Different GEO satellites need different pointing angles from the same station.",
+              "TIDEMARK-1 sits at 53°W and TIDEMARK-2 at 45°W, 8 degrees further east along the GEO arc. Vermont is at 72.6°W, so both slots are east of us and both sit in the south-east sky. Moving 8° east along the arc swings the dish about 10° further east in azimuth (153° to 143°) and drops it about 3° in elevation (35° to 32°). That's because the farther a slot is from the station's own longitude, the further it sits from due south and the lower it rides. Different GEO satellites need different pointing angles from the same station.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -429,7 +429,7 @@ export const scenario4Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              "The LNB downconverts by mixing with the local oscillator. IF = LO - RF = 5,250 - 4,180 = 1,070 MHz. Note this is slightly different from TIDEMARK-1's beacon at 1,074.5 MHz IF - each satellite has its own beacon frequency.",
+              "The LNB downconverts by mixing with the local oscillator, so IF = LO - RF = 5,250 - 4,180 = 1,070 MHz. The 1,074.5 MHz option is TIDEMARK-1's beacon IF, and TIDEMARK-2 has its own beacon frequency. Adding LO and RF gives 9,430 MHz, which isn't an IF.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -448,7 +448,7 @@ export const scenario4Data: ScenarioData = {
       nice: ['K0773', 'S0421', 'T1567'],
       title: 'Configure Spectrum Analyzer for TIDEMARK-2 Beacon',
       description:
-        'Set the spectrum analyzer for the TIDEMARK-2 beacon: Center 1070 MHz, Span 0.01 MHz (10 kHz), Min Amp -115 dBm, Max Amp -35 dBm. Leave RBW on Auto: at a 10 kHz span it settles near 30 Hz, and a narrow RBW pulls the noise floor down under the CW beacon.',
+        'Set the spectrum analyzer for the TIDEMARK-2 beacon: Center 1070 MHz, Span 0.01 MHz (10 kHz), Min Amp -115 dBm, Max Amp -35 dBm. Leave RBW on Auto. At a 10 kHz span it settles near 30 Hz, and that narrow filter pulls the noise floor down under the CW beacon.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['understand-frequency-calculation'],
       timeLimitSeconds: 3 * 60,
@@ -543,7 +543,7 @@ export const scenario4Data: ScenarioData = {
           params: {
             question: 'What level does the TIDEMARK-2 beacon line read on the analyzer?',
             options: [
-              'Between -60 and -40 dBm, standing far above the noise floor',
+              'Between -60 and -40 dBm, far above the noise floor',
               'Below -90 dBm, barely clear of the noise floor',
               'Above -25 dBm, pinned against the top of the screen',
               'No line at 1,070 MHz: the beacon is not on screen',
@@ -552,7 +552,7 @@ export const scenario4Data: ScenarioData = {
             // Analyzer Peak -43.3 dBm with VT-01 off-air (nats-r3 S4; the AGC
             // lifts the beacon a few dB when there is no carrier in its passband)
             explanation:
-              'The beacon reads about -43 dBm (within a couple of dB), more than 50 dB over the noise floor in a 30 Hz RBW. VT-01 is not transmitting yet and nobody else uplinks to a brand-new bird, so the beacon and noise are all the AGC sees, and it lifts the beacon a few dB. A strong, steady line at the calculated IF proves the pointing and the LNB setup.',
+              "The beacon reads about -43 dBm (within a couple of dB), more than 50 dB over the noise floor in a 30 Hz RBW. VT-01 isn't transmitting yet and nobody else uplinks to a brand-new bird, so the beacon and noise are all the analyzer's AGC sees, and it lifts the beacon a few dB. The AGC is the automatic gain control. A strong, steady line at the calculated IF proves the pointing and the LNB setup.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -581,14 +581,14 @@ export const scenario4Data: ScenarioData = {
           params: {
             question: 'What does a stable beacon signal confirm?',
             options: [
-              'Antenna is pointed correctly',
-              'LNB local oscillator frequency is correct',
-              'Both antenna pointing and LNB frequency are correct',
-              'Neither - beacon is independent of ground equipment',
+              'Only the antenna pointing, not the LNB frequency',
+              'Only the LNB LO frequency, not the antenna pointing',
+              'Both the antenna pointing and the LNB frequency are correct',
+              'Neither, because the beacon is independent of ground equipment',
             ],
             correctIndex: 2,
             explanation:
-              'A stable beacon confirms both: (1) the antenna is pointed at the correct satellite, and (2) the LNB LO frequency is set correctly to downconvert the beacon RF to the expected IF. If either were wrong, you would not see the beacon at the expected frequency.',
+              "A stable beacon confirms both. First, the antenna is pointed at the correct satellite. Second, the LNB LO frequency is set correctly to downconvert the beacon RF to the expected IF. If either were wrong, you wouldn't see the beacon at the expected frequency.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -618,12 +618,12 @@ export const scenario4Data: ScenarioData = {
             options: [
               'It proves the RF path works - feed, LNB, cables - so a modem fault would be configuration',
               'The modem needs the beacon to lock - it acquires carrier, then symbol timing from it',
-              'The beacon configures the modem - center frequency, bandwidth are read from the analyzer',
+              'The beacon configures the modem - center frequency, bandwidth and more are read from the analyzer',
               'It is a procedural requirement - a checklist step, sign-off - with no technical purpose',
             ],
             correctIndex: 0,
             explanation:
-              'Seeing the beacon on the spectrum analyzer validates the entire upstream chain. If the modem fails to lock after this, you know the problem is modem configuration - not antenna pointing, not LNB settings, not cables. This systematic approach eliminates troubleshooting guesswork.',
+              'Seeing the beacon on the spectrum analyzer validates the entire upstream chain. If the modem fails to lock after this, you know the problem is modem configuration, not antenna pointing, LNB settings or cables. That systematic approach takes the guesswork out of troubleshooting.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -646,7 +646,7 @@ export const scenario4Data: ScenarioData = {
       nice: ['K0773', 'S0421', 'T1567'],
       title: 'Configure RX Modem Frequency',
       description:
-        'Set receiver modem to TIDEMARK-2 downlink IF frequency (1458 MHz), calculated from the transponder downlink RF (3,792 MHz) and the LNB LO. Bandwidth stays 36 MHz: TIDEMARK-2 runs the same 36 MHz carrier plan.',
+        "Set the receiver modem to the TIDEMARK-2 downlink IF frequency, 1458 MHz. It's calculated from the transponder downlink RF (3,792 MHz) and the LNB LO. Bandwidth stays 36 MHz, because TIDEMARK-2 runs the same 36 MHz carrier plan.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-beacon-chain-quiz'],
       timeLimitSeconds: 3 * 60,
@@ -674,7 +674,7 @@ export const scenario4Data: ScenarioData = {
       nice: ['K0773', 'T1567'],
       title: 'Configure RX Modem Modulation',
       description:
-        "Set the receiver modem FEC to 3/4 for TIDEMARK-2's carrier plan (modulation stays QPSK). Don't expect lock yet: TIDEMARK-2 is new and nobody uplinks to it, so the carrier this modem waits for is VT-01's own, once the transmit side is up.",
+        "Set the receiver modem FEC to 3/4 for TIDEMARK-2's carrier plan. Modulation stays QPSK. Don't expect lock yet, because TIDEMARK-2 is new and nobody uplinks to it. The carrier this modem waits for is VT-01's own, once the transmit side is up.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['configure-rx-frequency'],
       timeLimitSeconds: 2 * 60,
@@ -757,7 +757,7 @@ export const scenario4Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              "The transmit chain was placed in safe state for the switchover - BUC muted and HPA disabled. This is standard procedure when changing satellites. ME-02 is handling TIDEMARK-1 traffic, so VT-01 doesn't need to transmit until we're ready for TIDEMARK-2.",
+              "The transmit chain was placed in a safe state for the switchover, with the BUC muted and the HPA disabled. That's standard procedure when changing satellites, so nothing radiates at the wrong bird while you repoint. ME-02 is handling TIDEMARK-1 traffic, so VT-01 doesn't need to transmit until TIDEMARK-2 is ready.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -776,7 +776,7 @@ export const scenario4Data: ScenarioData = {
       nice: ['K0773', 'S0421', 'T1567'],
       title: 'Configure TX Modem',
       description:
-        'Retune the transmitter modem to the TIDEMARK-2 uplink (TP-1, 6,017 MHz RF): 983 MHz IF, then set it transmitting. 36 MHz, -7 dBm and QPSK 3/4 carry over from TIDEMARK-1. The BUC is still muted, so nothing radiates yet.',
+        'Retune the transmitter modem to 983 MHz IF for the TIDEMARK-2 uplink (TP-1, 6,017 MHz RF), then set it transmitting. The 36 MHz bandwidth, -7 dBm power and QPSK 3/4 carry over from TIDEMARK-1. The BUC is still muted, so nothing radiates yet.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-tx-initial-state'],
       timeLimitSeconds: 3 * 60,
@@ -830,7 +830,7 @@ export const scenario4Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              "Always enable the signal chain from input to output: BUC first, then HPA. An enabled HPA with no input signal can oscillate or amplify noise. By unmuting the BUC first, we ensure the HPA sees a proper signal as soon as it's enabled. Same principle as any amplifier chain.",
+              "Always enable the signal chain from input to output, with the BUC first and the HPA second. An enabled HPA with no input signal can oscillate or amplify noise. Unmuting the BUC first means the HPA sees a proper signal as soon as it's enabled, which is the same principle as any amplifier chain.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -881,7 +881,7 @@ export const scenario4Data: ScenarioData = {
       // required for reliable QPSK demodulation and what constitutes healthy link margin
       nice: ['T0153', 'K0740'],
       title: 'Verify RX Signal Lock',
-      description: "Back on RX Analysis: confirm the receiver modem has locked to VT-01's own carrier coming back down from TIDEMARK-2, with C/N above 10 dB.",
+      description: "Go back to the RX Analysis tab and confirm the receiver modem has locked to VT-01's own carrier coming back down from TIDEMARK-2, with C/N above 10 dB.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['enable-transmit-path'],
       timeLimitSeconds: 3 * 60,
@@ -939,7 +939,7 @@ export const scenario4Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'For QPSK with FEC 3/4 the modem shows Required Es/N0 5.0 dB; with Es/N0 about 0.8 dB above Raw C/N it acquires lock from about 4.7 dB C/N (Required 5.0 plus a 0.5 dB acquisition margin, less the 0.8 dB Es/N0 offset) and holds it down to about 3.7 dB. At threshold it still decodes cleanly, but the next 1 dB fade drops lock. With 10+ dB of C/N there is about 6 dB of margin - the link stays solid even if weather degrades it. Lock without margin is asking for trouble during the first rain fade.',
+              "For QPSK with FEC 3/4 the modem shows a Required Es/N0 of 5.0 dB. Es/N0 is about 0.8 dB above Raw C/N, so the modem acquires lock from about 4.7 dB C/N (5.0 plus a 0.5 dB acquisition margin, less the 0.8 dB offset). It holds lock down to about 3.7 dB. At threshold it still decodes cleanly, but the next 1 dB fade drops lock. With 10+ dB of C/N there's about 6 dB of margin, so the link stays solid even if weather degrades it. Lock without margin is asking for trouble during the first rain fade.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -969,13 +969,13 @@ export const scenario4Data: ScenarioData = {
             question: 'VT-01 now has both receive and transmit paths active to TIDEMARK-2. What confirms full duplex operation?',
             options: [
               'Receiver locked with good C/N, HPA enabled with backoff, no warning alarms - both directions up',
-              'Receiver locked with good C/N, satellite ack received, no warning alarms - uplink confirmed',
+              'Receiver locked with good C/N, satellite ack received, no warning alarms - uplink confirmed by the satellite',
               'TX indicator green, RX indicator green, no warning alarms - both chains showing active',
               'Modem showing "Full Duplex", HPA enabled, no warning alarms - mode confirms the link',
             ],
             correctIndex: 0,
             explanation:
-              'Full duplex means simultaneous transmit and receive. We confirm this by: (1) receiver locked with margin - downlink working, (2) HPA enabled with proper backoff - uplink active, (3) no warning or critical alarms - everything in tolerance. The satellite doesn\'t "acknowledge" uplinks - it\'s a bent-pipe transponder that simply relays what it receives.',
+              'Full duplex means simultaneous transmit and receive. We confirm it with three checks: the receiver is locked with margin, the HPA is enabled with proper backoff, and there are no warning or critical alarms. The satellite doesn\'t "acknowledge" uplinks, because it\'s a bent-pipe transponder that simply relays what it receives.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -989,18 +989,18 @@ export const scenario4Data: ScenarioData = {
     intro: {
       text: `
       <p>
-        Hey there, this is Marcus Chen from Halifax spacecraft ops. TIDEMARK-2's station-keeping is looking good - we finished the last maneuver sequence yesterday and the payload's been handed over to ground ops. She's all yours now.
+        This is Marcus Chen from Halifax spacecraft ops. We finished TIDEMARK-2's last station-keeping maneuvers yesterday, and she's all yours now. Station-keeping is how we hold a satellite in its assigned orbital slot.
       </p>
       <p>
-        Sorry for the short notice on this one. The bird came online about a week ahead of schedule, but that's a good problem to have. Charlie tells me you've been making solid progress, so I'm confident you can handle the switchover.
+        She came online a week ahead of schedule, so I'm sorry for the short notice.
       </p>
       <p>
-        The mission brief has all the details - frequencies, look angles, everything you need. ME-02's got primary on TIDEMARK-1, so there's no customer impact while you work. Take your time, be methodical, and give me a shout when you've got lock. I'll be watching the payload telemetry from our end.
+        ME-02 has primary on TIDEMARK-1, so there's no customer impact while you work. Give me a shout when you've got lock.
       </p>
       <p>
-        One thing to remember. TIDEMARK-2 is at a different orbital slot than TIDEMARK-1, so your look angles and frequencies will all be different. Don't just copy what worked for the other bird. Think through each step.
+        TIDEMARK-2 has its own slot and its own frequency plan, so don't just copy the look angles or frequencies that worked for the other bird.
       </p>
-      `,
+    `,
       character: Character.MARCUS_CHEN,
       emotion: Emotion.HAPPY,
       audioUrl: getAssetUrl('/assets/campaigns/nats/4/intro.mp3'),
@@ -1054,15 +1054,12 @@ export const scenario4Data: ScenarioData = {
       'verify-current-status': {
         text: `
         <p>
-          That's right - TIDEMARK-1. Good to confirm you know what you're working with before making changes.
+          That's right, it's TIDEMARK-1. It's good to confirm you know what you're working with before making changes.
         </p>
         <p>
-          The antenna is in program-track mode, following ephemeris predictions. That's typical for GEO satellites - they sit in essentially the same spot, so we follow the math rather than actively hunting for peak signal.
+          Next, tell me what tracking mode the antenna is in and why that matters for the switchover.
         </p>
-        <p>
-          Now let's verify the tracking mode and understand why it matters for the switchover.
-        </p>
-        `,
+      `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/4/obj-status.mp3'),
@@ -1070,15 +1067,15 @@ export const scenario4Data: ScenarioData = {
       'verify-antenna-initial-state': {
         text: `
         <p>
-          Right. Program-track uses ephemeris data - orbital predictions - to calculate where the satellite should be. The ACU continuously updates the pointing based on time and orbital parameters.
+          Right. Program-track points the dish from ephemeris data. That's the satellite's predicted position, calculated from its orbit. A GEO satellite sits in essentially the same spot, so we follow the math instead of hunting for peak signal.
         </p>
         <p>
-          When you command a new target, the ACU will calculate the slew path to TIDEMARK-2's position. The antenna will move smoothly from one set of coordinates to another. Ready to command the slew?
+          When you command a new target, the ACU calculates the slew path to TIDEMARK-2's position and moves the antenna smoothly from one set of coordinates to the other.
         </p>
         <p>
           Keep program-track, select TIDEMARK-2 as the target and press Move to Target. The ACU will handle the rest.
         </p>
-        `,
+      `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.CONFIDENT,
         audioUrl: getAssetUrl('/assets/campaigns/nats/4/obj-verify-antenna.mp3'),
@@ -1089,7 +1086,7 @@ export const scenario4Data: ScenarioData = {
           Antenna's on TIDEMARK-2. Nice and smooth - you watched the position indicators walk it across.
         </p>
         <p>
-          About 10 degrees east in azimuth and 3 degrees down in elevation. A short hop for a dish this size, and the ACU still holds it to a safe slew rate to spare the mount.
+          It moved about 10 degrees east in azimuth and 3 degrees down in elevation. That's a short hop for a dish this size, and the ACU still holds it to a safe slew rate to spare the mount.
         </p>
         <p>
           Before we go on, think about why the angles changed.
@@ -1102,7 +1099,7 @@ export const scenario4Data: ScenarioData = {
       'verify-antenna-slew-quiz': {
         text: `
         <p>
-          Exactly. TIDEMARK-1 is at 53 West, TIDEMARK-2 is at 45 West. That's 8 degrees of orbital separation along the Clarke belt. From our perspective here in Vermont, that translates to the angular change you just saw.
+          Exactly. TIDEMARK-1 is at 53 West and TIDEMARK-2 is at 45 West, so they're 8 degrees apart along the Clarke belt. That's the ring of geostationary slots above the equator. From here in Vermont, that separation is the angular change you just saw.
         </p>
         <p>
           Every satellite has its own unique look angles from any given ground station. That's why we use program-track with proper ephemeris data instead of just copying numbers from another site.
@@ -1110,7 +1107,7 @@ export const scenario4Data: ScenarioData = {
         <p>
           Now let's acquire the beacon. Go to the RX Analysis tab.
         </p>
-        `,
+      `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.CONFIDENT,
         audioUrl: getAssetUrl('/assets/campaigns/nats/4/obj-slew-quiz.mp3'),
@@ -1144,12 +1141,12 @@ export const scenario4Data: ScenarioData = {
       'configure-speca-beacon': {
         text: `
         <p>
-          Spectrum analyzer's configured correctly. 1,070 MHz center, narrow span for the CW beacon, and RBW on Auto - at ten kilohertz of span it drops to about thirty hertz, which pulls the noise floor way down under the beacon. The amplitude window's wide open so the line sits on screen.
+          Spectrum analyzer's configured correctly, with 1,070 MHz at the center. The beacon is a CW carrier, so a narrow span suits it. CW means a steady, unmodulated tone. With RBW on Auto, the 10 kHz span brings the RBW down to about 30 Hz, and that pulls the noise floor way down under the beacon. RBW is the analyzer's filter width. The amplitude window's wide open, so the line sits on screen.
         </p>
         <p>
-          The antenna's on target, so the beacon is already on screen - a clean spike right at center frequency, well above the noise floor. Read its level off the Peak readout next to Peak Search.
+          The antenna's on target, so the beacon is already on screen, a clean spike right at center frequency and well above the noise floor. Read its level off the Peak readout next to Peak Search.
         </p>
-        `,
+      `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/4/obj-speca.mp3'),
@@ -1157,15 +1154,12 @@ export const scenario4Data: ScenarioData = {
       'acquire-beacon': {
         text: `
         <p>
-          Marcus here - Charlie just pinged me to say you've got the antenna on TIDEMARK-2 and you're seeing the beacon. That's great news, exactly what we want to see from the ground side.
+          Marcus here. Charlie pinged me to say you've got the antenna on TIDEMARK-2 and you're seeing the beacon. That's great news, and exactly what we want to see from the ground side.
         </p>
         <p>
-          The beacon's been rock solid since we finished station-keeping. If you're seeing it clean on the spectrum analyzer at the expected frequency, your pointing and receive chain are good to go.
+          She's been rock solid since we finished station-keeping, and the payload telemetry is nominal from Halifax. Keep going with the configuration, and next think about what a clean beacon actually proves.
         </p>
-        <p>
-          I'm watching the payload telemetry from Halifax - everything's nominal on our end. Keep going with the configuration.
-        </p>
-        `,
+      `,
         character: Character.MARCUS_CHEN,
         emotion: Emotion.HAPPY,
         audioUrl: getAssetUrl('/assets/campaigns/nats/4/obj-beacon.mp3'),
@@ -1202,12 +1196,12 @@ export const scenario4Data: ScenarioData = {
       'configure-rx-frequency': {
         text: `
         <p>
-          Receiver frequency and bandwidth are set. 1,458 MHz, 36 MHz bandwidth to match the transponder. The modem will start searching for a carrier at that frequency.
+          Receiver frequency is set to 1,458 MHz, and the 36 MHz bandwidth matches the transponder. The modem will start searching for a carrier at that frequency.
         </p>
         <p>
-          Modulation and FEC have to match TIDEMARK-2's signal format too - QPSK with rate 3/4 coding. If you haven't applied them yet, do it now. These parameters must match exactly what the satellite is transmitting.
+          The modulation and FEC have to match TIDEMARK-2's signal format too, which is QPSK with rate 3/4 coding. FEC is forward error correction, the extra coding that lets the modem fix bit errors. If you haven't applied them yet, do it now, because these parameters must match exactly what the satellite is transmitting.
         </p>
-        `,
+      `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/4/obj-rx-freq.mp3'),
@@ -1244,12 +1238,12 @@ export const scenario4Data: ScenarioData = {
       'verify-rx-margin-quiz': {
         text: `
         <p>
-          Exactly. Right at threshold the modem still decodes, but below about 4 dB it will not hold lock, and there's nothing left for the next fade. With 10 dB or more, we have comfortable margin - enough headroom to handle rain fade, aging equipment, or any other factor that might degrade the link slightly.
+          Exactly. Right at threshold the modem still decodes, but below about 4 dB it won't hold lock, and there's nothing left for the next fade. With 10 dB or more, we have comfortable margin, enough headroom to handle rain fade, aging equipment, or any other factor that might degrade the link slightly.
         </p>
         <p>
-          And that lock is on our own uplink, relayed by TIDEMARK-2. Both directions are up.
+          And that lock is on our own uplink, relayed by TIDEMARK-2. One more question before we call the switchover done.
         </p>
-        `,
+      `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.CONFIDENT,
         audioUrl: getAssetUrl('/assets/campaigns/nats/4/obj-margin-quiz.mp3'),
@@ -1257,12 +1251,12 @@ export const scenario4Data: ScenarioData = {
       'navigate-tx-chain': {
         text: `
         <p>
-          This is the transmit chain. BUC and HPA across the top, Transmitter Modems below. Signal flows from the modem up through the BUC and HPA to the antenna.
+          This is the transmit chain, with the BUC and HPA across the top and the Transmitter Modems below them. Signal flows from the modem up through the BUC and HPA to the antenna.
         </p>
         <p>
-          Before configuring anything, check the current state. The TX chain should be in a safe configuration right now - we don't want to be transmitting until we're pointed at the right satellite.
+          Before you configure anything, check what state the chain is in right now.
         </p>
-        `,
+      `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/4/obj-navigate-tx.mp3'),
@@ -1270,15 +1264,15 @@ export const scenario4Data: ScenarioData = {
       'verify-tx-initial-state': {
         text: `
         <p>
-          Good. BUC muted, HPA disabled - that's the safe state for a switchover. No RF output until we're ready. ME-02 is handling all the traffic right now anyway.
+          Good. With the BUC muted and the HPA disabled, nothing is radiating, and that's the safe state for a switchover. ME-02 is handling all the traffic right now anyway.
         </p>
         <p>
-          This is standard procedure when changing satellites. You don't want to accidentally transmit to the wrong bird while you're repointing. Could cause interference for another operator.
+          This is standard procedure when changing satellites, because you don't want to transmit at the wrong bird while you're repointing. That could cause interference for another operator.
         </p>
         <p>
-          Now configure the TX modem for TIDEMARK-2's uplink parameters.
+          Now configure the transmitter modem for TIDEMARK-2's uplink parameters.
         </p>
-        `,
+      `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/4/obj-tx-state.mp3'),
@@ -1286,12 +1280,12 @@ export const scenario4Data: ScenarioData = {
       'configure-tx-modem': {
         text: `
         <p>
-          Transmitter modem's configured. 983 MHz IF, 36 MHz bandwidth, QPSK 3/4. The BUC LO sits at 7,000, so 7,000 minus 983 puts your signal at 6,017 megahertz, right in the middle of TIDEMARK-2's TP-1 passband.
+          Transmitter modem's configured at 983 MHz IF, and the 36 MHz bandwidth and QPSK 3/4 carry over from TIDEMARK-1. The BUC LO sits at 7,000 MHz, so 7,000 minus 983 puts your signal at 6,017 MHz, right in the middle of TIDEMARK-2's TP-1 passband. The passband is the range of frequencies that transponder channel accepts.
         </p>
         <p>
           Before we enable the RF path, let's make sure you understand the correct sequence. There's a right order for bringing up the transmit chain.
         </p>
-        `,
+      `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/4/obj-tx-modem.mp3'),
@@ -1299,15 +1293,15 @@ export const scenario4Data: ScenarioData = {
       'understand-buc-hpa-sequence': {
         text: `
         <p>
-          Right. Signal chain from input to output - BUC first, then HPA. You want the amplifier to see a proper signal when it's enabled, not noise or oscillation.
+          Right. You bring the chain up from input to output, so the BUC goes first and the HPA second. That way the amplifier sees a proper signal the moment it's enabled, instead of noise or oscillation.
         </p>
         <p>
-          An HPA enabled with no input is an amplifier looking for something to amplify. It'll find noise, and it'll amplify that. It's a kilowatt-class amplifier - that's not something you want. Drive the chain from the input side.
+          An HPA enabled with no input is an amplifier looking for something to amplify, and it'll find noise. On a kilowatt-class amplifier, that's a lot of power spent on noise.
         </p>
         <p>
           Unmute the BUC first, then enable the HPA output.
         </p>
-        `,
+      `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.CONFIDENT,
         audioUrl: getAssetUrl('/assets/campaigns/nats/4/obj-sequence.mp3'),
@@ -1315,12 +1309,12 @@ export const scenario4Data: ScenarioData = {
       'enable-transmit-path': {
         text: `
         <p>
-          Marcus again from Halifax. We're seeing your uplink appear on the payload side - clean signal, right in the passband, no anomalies. Beauty, eh?
+          Marcus again from Halifax. We're seeing your uplink appear on the payload side, a clean signal right in the passband with no anomalies. Beauty, eh?
         </p>
         <p>
-          Charlie, your trainee did good work today. Nice and methodical, no shortcuts. I'll make the call once you've confirmed everything's up on your side.
+          Charlie, your trainee did good work today. They were methodical the whole way, with no shortcuts. I'll make the call once you've confirmed everything's up on your side.
         </p>
-        `,
+      `,
         character: Character.MARCUS_CHEN,
         emotion: Emotion.HAPPY,
         audioUrl: getAssetUrl('/assets/campaigns/nats/4/obj-enable-tx.mp3'),
@@ -1328,15 +1322,15 @@ export const scenario4Data: ScenarioData = {
       'verify-full-duplex-quiz': {
         text: `
         <p>
-          That's right. Full duplex confirmed by - receiver locked with margin - downlink working. HPA enabled with proper backoff - uplink active. No warnings anywhere - everything in spec.
+          That's right. Full duplex is confirmed by three things. The receiver is locked with margin, so the downlink works. The HPA is enabled with proper backoff, so the uplink is active. And there are no warnings, so everything's in spec.
         </p>
         <p>
-          TIDEMARK-2 is a bent-pipe transponder - it just relays what it receives. It doesn't send acknowledgments or confirmations. Marcus sees our carrier on the payload side, and our receiver is locked on that same carrier coming back down - that's the round trip. He's just called it from Halifax - full duplex established, switchover complete.
+          TIDEMARK-2 is a bent-pipe transponder, so it just relays what it receives and doesn't send acknowledgments. Marcus sees our carrier on the payload side, and our receiver is locked on that same carrier coming back down, which is the round trip. He's just called it from Halifax: full duplex established and the switchover's complete.
         </p>
         <p>
-          Well done. VT-01 is now fully operational on TIDEMARK-2. Grab yourself a coffee - you've earned it.
+          Well done. VT-01 is now fully operational on TIDEMARK-2, and Catherine deserves credit for holding TIDEMARK-1 steady in Maine the whole time. Now take a proper break, since you've earned it.
         </p>
-        `,
+      `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.HAPPY,
         audioUrl: getAssetUrl('/assets/campaigns/nats/4/complete.mp3'),

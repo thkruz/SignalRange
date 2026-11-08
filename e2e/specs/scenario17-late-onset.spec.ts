@@ -158,11 +158,11 @@ test.describe('Scenario 17 Late Onset Regression', () => {
 
     await dwell(page, 20); // baseline-dashboard: 60 s
     await missionControlPage.selectTab('dashboard');
-    await answerQuiz(page, 'Anything abnormal after window-open gets blamed on the Sun - a hidden fault only shows if the board was provably clean before');
+    await answerQuiz(page, 'Anything odd after the window opens gets blamed on the Sun, so a hidden fault only shows if the board was clean first');
     await dwell(page, 100); // transit-geometry-quiz: 120 s
-    await answerQuiz(page, 'The Sun (~20,000 K at C-band) passes through the main beam behind the satellite - noise soars, C/N collapses, signal unchanged');
+    await answerQuiz(page, 'The Sun (about 20,000 K at C-band) passes through the beam behind the satellite, so noise soars and C/N collapses; the signal is unchanged');
     await dwell(page, 100); // transit-predictability-quiz: 120 s
-    await answerQuiz(page, 'Twice a year near the equinoxes - a few minutes a day for several days, at a time computable years ahead from the geometry');
+    await answerQuiz(page, 'Twice a year near the equinoxes, a few minutes a day for several days, at times you can compute years ahead');
 
     await dwell(page, 80); // baseline-rx-check: 120 s, with a maintain hold
     await missionControlPage.selectTab('rx-analysis');
@@ -170,7 +170,7 @@ test.describe('Scenario 17 Late Onset Regression', () => {
     await answerQuiz(page, 'About 13 dB');
     await waitForObjectiveComplete(missionControlPage, 'Baseline RX Snapshot');
     await dwell(page, 100); // why-not-handover-quiz: 120 s
-    await answerQuiz(page, 'Brief, predicted, SLA-excluded with notice - a handover costs two transfer events, and ME-02 gets its own transit anyway');
+    await answerQuiz(page, 'The dip is brief, predicted and SLA-excluded with notice, a handover costs two transfers, and ME-02 has its own transit anyway');
 
     // Parked on the notice quiz: onset objective not yet up
     await waitForQuizToAppear(page);
@@ -193,10 +193,7 @@ test.describe('Scenario 17 Late Onset Regression', () => {
   test('AFTER onset objective activates: transit arrives on cue and the objective completes', async () => {
     test.setTimeout(180_000);
 
-    await answerQuiz(
-      page,
-      'Predicted solar transit on TIDEMARK-1, window and peak times attached; possible 1-3 minute carrier loss near peak, self-recovering; this is SLA advance notice.'
-    );
+    await answerQuiz(page, 'Predicted solar transit on TIDEMARK-1, with window and peak times. Possible 1-3 minute carrier loss near peak, self-recovering. SLA advance notice.');
 
     // The stand-by hold waits for the sheet's window-open; no transit before it
     await expect.poll(async () => (await readObjective(page, 'stand-by-for-window'))?.isActive, { timeout: 15_000 }).toBe(true);
@@ -212,7 +209,7 @@ test.describe('Scenario 17 Late Onset Regression', () => {
     await expect.poll(() => readSkyNoiseDb(page), { timeout: 120_000, intervals: [1000] }).toBeGreaterThan(2);
 
     // Phase 27 B7: the onset quiz waits for the sky-noise row listed before it
-    await answerQuiz(page, 'Confidence this is the predicted transit, not a coincidental fault - the alarm tracking the sheet IS the diagnosis');
+    await answerQuiz(page, 'Confidence that this is the predicted transit, not a coincidental fault, because the alarm tracking the sheet is the diagnosis');
 
     // Checklist first (DOM), then engine state
     await waitForObjectiveComplete(missionControlPage, 'Confirm Predicted Onset', 30_000);
@@ -246,7 +243,7 @@ test.describe('Scenario 17 Late Onset Regression', () => {
     // The demod has dropped by the peak, and the relock row has latched it
     expect(await readLockLostSeen(page)).toBe(true);
 
-    await answerQuiz(page, 'The downlink is buried in solar noise at OUR antenna only - the uplink is fine, and the demod relocks on its own as the Sun moves off');
+    await answerQuiz(page, 'The downlink is buried in solar noise at our antenna only, the uplink is fine, and the demodulator relocks as the Sun moves off');
     await expect.poll(async () => (await readObjective(page, 'verify-recovery'))?.isActive, { timeout: 15_000 }).toBe(true);
   });
 

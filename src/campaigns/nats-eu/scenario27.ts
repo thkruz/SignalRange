@@ -101,7 +101,7 @@ export const natsEuScenario27Data: ScenarioData = {
       id: 'review-mission-brief',
       nice: ['K0645'],
       title: 'Read the Service Plan',
-      description: 'Open the plan: ticket MNT-0430 (diagnostics read, fan replacement, no firmware), the transfer rule for the enclave, and the vendor’s signed-release process.',
+      description: 'Open the plan and read ticket MNT-0430 (diagnostics read, fan replacement, no firmware), the enclave transfer rule and the vendor’s signed-release process.',
       groundStation: 'GW-01',
       freezesScenarioTimer: true,
       prerequisiteObjectiveIds: [],
@@ -113,7 +113,7 @@ export const natsEuScenario27Data: ScenarioData = {
       id: 'review-the-log',
       nice: ['S0838', 'K0803'],
       title: 'Find What Is Off the Plan',
-      description: 'Open the Security console and read the morning against MNT-0430. Two entries are not on it.',
+      description: 'Open the Security console and compare the morning’s entries with ticket MNT-0430. Two entries aren’t on it, so find them and name the rule each one breaks.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['review-mission-brief'],
       conditions: [
@@ -125,14 +125,14 @@ export const natsEuScenario27Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which entries in the log are outside ticket MNT-0430, and which rule does each break?',
             options: [
-              '07:41 USB mass storage mounted on the M&C workstation (breaks the transfer rule: nothing enters the enclave on removable media without a media ticket and a scan) and 07:44 an unsigned ACU firmware image staged from it (breaks change control: no firmware in the ticket, no signed release)',
-              'Only the 07:44 firmware stage; the USB mount is routine for a vendor visit',
-              'The 07:36 diagnostics read - the vendor should not have console access at all',
-              'None: the technician is escorted and on a ticket, so everything they do is covered by it',
+              'The 07:41 USB mount breaks the transfer rule; the 07:44 unsigned firmware stage breaks change control',
+              'Only the 07:44 firmware stage, because a USB mount is routine during any vendor visit here',
+              'Only the 07:36 diagnostics read, because the vendor should not have console access at all',
+              'None of them, because an escorted technician working on a ticket is covered for everything he does on site',
             ],
             correctIndex: 0,
             explanation:
-              'Logged. An escort and a ticket cover what the ticket says. The stick and the image are two separate rules broken in three minutes, and the second one has not finished happening yet.',
+              'An escort and a ticket cover what the ticket says, and MNT-0430 says diagnostics and a fan, nothing more. The stick had no media ticket, so it broke the transfer rule. The image was unsigned and not in the ticket, so it broke change control. These are two separate breaches three minutes apart, and the second one hasn’t finished happening yet.',
             pointPenalty: 5,
             documentLine: '07:41 USB mounted on GW-MC-01 (no media ticket); 07:44 unsigned ACU firmware acu-4.2.1-vendor.bin staged (not in MNT-0430).',
           },
@@ -147,7 +147,7 @@ export const natsEuScenario27Data: ScenarioData = {
       nice: ['K0803', 'K0721', 'S0838'],
       title: 'Call It',
       description:
-        'Flag the media entry so the record shows you saw it. Leave the firmware entry until the call is made - the call is graded on the log as it stands. Then decide what happens to the image.',
+        'Flag the USB entry so the record shows you saw it, but leave the firmware entry alone until you’ve made the call, because the call is graded on the log as it stands. Then decide what happens to the image.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['review-the-log'],
       conditions: [
@@ -162,22 +162,22 @@ export const natsEuScenario27Data: ScenarioData = {
             decisionOptions: [
               {
                 label:
-                  'No. Hold the staged image, take the workstation off the M&C segment, keep the stick as it is, and suspend the technician’s account. The image installs only after its hash matches the vendor’s signed release, obtained through the enclave transfer path, under a ticket that names it. Group Security gets the log',
+                  'No. Hold the staged image, take the workstation off the M&C segment, keep the stick as it is and suspend the technician’s account. Group Security gets the log',
                 correctWhen: { fact: 'config-drifted', is: true },
                 consequence: {
                   log: 'ACU firmware stage hold ordered; GW-MC-01 isolation and media retention requested from Charlie; vend-tech suspension ordered pending verification; anything already installed from the media to be rolled back to the last verified image',
                 },
               },
               {
-                label: 'Nothing is pending against the configuration - the log is clean. Let the service continue',
+                label: 'Nothing is pending against the configuration, so the log is clean. Let the service continue',
                 correctWhen: { fact: 'config-drifted', is: false },
                 feedback:
-                  'An unsigned firmware image is staged on the ACU controller and the entry is sitting unflagged in the log. That is a pending configuration change with nobody’s name on it.',
+                  'An unsigned firmware image is staged on the ACU controller, and its entry is still sitting unflagged in the log. That’s a pending configuration change with nobody’s name on it.',
               },
               {
-                label: 'Yes - it is the vendor’s own technician with the vendor’s own release. Let it install, acknowledge the entries, note it in the ticket afterwards',
+                label: 'Yes, it’s the vendor’s own technician with the vendor’s own release. Let it install, acknowledge the entries and note it in the ticket afterwards',
                 feedback:
-                  'The technician’s badge does not sign the file. An image that arrived on a stick, is not in the ticket, and carries no signature is exactly what a supply-chain compromise looks like from the inside - and the ACU would have rebooted on it.',
+                  'The technician’s badge doesn’t sign the file. An image that arrived on a stick, isn’t in the ticket and carries no signature is exactly what a supply-chain compromise looks like from the inside, and the ACU would have rebooted on it.',
                 consequence: {
                   pointDelta: -10,
                   auditEvent: {
@@ -193,14 +193,14 @@ export const natsEuScenario27Data: ScenarioData = {
                 },
               },
               {
-                label: 'Wipe and reimage the workstation now, destroy the stick, and send the technician off site',
+                label: 'Wipe and reimage the workstation now, destroy the stick and send the technician off site',
                 feedback:
-                  'Wiping the workstation and destroying the stick removes the only evidence of what was on them. Hold, isolate, keep - then let CSIRT decide what gets wiped.',
+                  'Wiping the workstation and destroying the stick removes the only evidence of what was on them. Hold the image, isolate the machine and keep the stick, then let CSIRT decide what gets wiped.',
                 consequence: { pointDelta: -5, log: 'Workstation wiped and media destroyed before analysis' },
               },
             ],
             explanation:
-              'The right answer is a hold, not a verdict. The image might be exactly what he says it is; the station cannot know that yet, and the machine it is staged on moves the dish. Verification is a hash against a signed release through the proper path, not a technician’s word.',
+              'The right answer is a hold, not a verdict. The image might be exactly what he says it is, but the station can’t know that yet, and the machine it’s staged on moves the dish. Verification means a hash against a signed release through the proper path, not a technician’s word.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -213,7 +213,7 @@ export const natsEuScenario27Data: ScenarioData = {
       id: 'verify-the-image',
       nice: ['K0820', 'K0803'],
       title: 'How the Image Earns Trust',
-      description: 'The technician is sure it is the service release. Say what would make the station sure.',
+      description: 'The technician is sure it’s the service release. Pick what would make the station sure too.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['call-the-media'],
       conditions: [
@@ -224,14 +224,14 @@ export const natsEuScenario27Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What makes acu-4.2.1-vendor.bin trustworthy enough to install on the ACU controller?',
             options: [
-              'A release the vendor publishes with a signature and a hash; the file obtained through the enclave transfer path (not the stick); the hash checked against the published one on the isolated workstation; and a change ticket naming the version, the window and the rollback. Any link missing, it does not install',
-              'The technician’s assurance plus a virus scan of the stick',
-              'The file name matching the version in the vendor’s release notes',
-              'Nothing can make it trustworthy; the ACU should never be updated',
+              'A signed vendor release, obtained through the transfer path, hash-checked on the isolated host and named in a ticket',
+              'The technician’s assurance, backed by a clean virus scan of the stick he brought with him to the site today',
+              'A file name that matches the version in the vendor’s release notes, since a matching name shows the file is genuine and untouched',
+              'Nothing could make it trustworthy, because a controller like the ACU should never be updated at all, by anyone',
             ],
             correctIndex: 0,
             explanation:
-              'Logged. Trusting what was installed means being able to say where it came from and prove it is what it claims to be. A signed release, a controlled path, a hash match and a ticket are that proof; a badge and a scan are not.',
+              'Trust means you can say where the file came from and prove it’s what it claims to be. A signed release, a controlled path, a hash match and a ticket naming the version, the window and the rollback give you that proof. A badge and a scan don’t, because a scanner only catches what it already knows.',
             pointPenalty: 5,
             documentLine:
               'Verification path required before any install: vendor-signed release, obtained via the enclave transfer path, hash matched against the published one on the isolated host, change ticket naming version, window and rollback. Every link must hold before it installs.',
@@ -246,7 +246,7 @@ export const natsEuScenario27Data: ScenarioData = {
       id: 'flag-the-firmware',
       nice: ['S0838', 'S0842'],
       title: 'Flag the Firmware Stage',
-      description: 'Now flag the firmware entry so the record carries the hold, and the rollback to the last verified image if anything was installed from the stick.',
+      description: 'Now flag the firmware entry so the record carries the hold, including the rollback to the last verified image if anything was installed from the stick.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['verify-the-image'],
       conditions: [{ type: 'security-event-acknowledged', description: 'Firmware Stage Flagged', params: { eventId: 'evt-fw-stage' }, mustMaintain: true }],
@@ -257,7 +257,7 @@ export const natsEuScenario27Data: ScenarioData = {
       id: 'hold-the-technician',
       nice: ['T1567', 'K0645'],
       title: 'Suspend the Technician’s Account',
-      description: 'The escorted account is disabled until the image is verified and the ticket amended. The fan can wait.',
+      description: 'Disable the escorted vendor account until the image is verified and the ticket is amended. The fan can wait.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['flag-the-firmware'],
       conditions: [{ type: 'access-control-set', description: 'vend-tech Disabled', params: { accountId: 'vend-tech', accountStatus: 'disabled' }, mustMaintain: true }],
@@ -268,7 +268,7 @@ export const natsEuScenario27Data: ScenarioData = {
       id: 'the-transfer-rule',
       nice: ['K0803', 'K0645'],
       title: 'The Right Way In',
-      description: 'The vendor does need to get firmware onto the station sometimes. Say how it is supposed to happen.',
+      description: 'The vendor does need to get firmware onto the station sometimes. Say how that’s supposed to happen.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['hold-the-technician'],
       conditions: [
@@ -279,13 +279,14 @@ export const natsEuScenario27Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'How does a file get into the M&C enclave?',
             options: [
-              'Through the transfer station: a media ticket raised in advance, the file scanned and hash-checked on the isolated kiosk, moved across by the one-way path onto site-owned media, and the whole thing logged with two names on it. Personal or vendor media never mounts on an M&C host',
-              'On any stick, as long as the workstation’s antivirus scans it first',
-              'By email to the operator, who copies it across',
-              'Vendors bring their own media; the site trusts the vendor',
+              'Through the transfer station: ticket first, scan and hash check on the isolated kiosk, one-way copy to site media',
+              'On any stick, as long as the workstation’s antivirus scans it first and the result is logged',
+              'By email to the operator, who copies the attachment across to the workstation once it looks right',
+              'On the vendor’s own media, because the site trusts its vendors and logs the visit afterwards',
             ],
             correctIndex: 0,
-            explanation: 'Logged. The rule exists so that the question "what is on this stick" never has to be answered on the machine that moves the dish. Slow by design.',
+            explanation:
+              'The rule exists so nobody has to answer “what is on this stick” on the machine that moves the dish. Every file is checked first on a kiosk that can’t reach the antenna, it crosses by the one-way path with two names in the log, and only site-owned media ever mounts on an M&C host. It’s slow by design.',
             pointPenalty: 5,
             documentLine: 'Transfer rule: media ticket, isolated kiosk scan + hash, one-way path to site media, two-name log; no foreign media on M&C hosts.',
           },
@@ -299,25 +300,25 @@ export const natsEuScenario27Data: ScenarioData = {
       id: 'why-not-a-laptop',
       nice: ['K0741', 'K0721'],
       title: 'Why Not Just Scan It',
-      description: 'The technician’s objection: every office in the country scans a stick and moves on. Say why this room is different.',
+      description: 'The technician’s objection is that every office in the country scans a stick and moves on. Say why this room is different.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['the-transfer-rule'],
       conditions: [
         {
           type: 'status-check',
-          description: 'OT Reasoning Stated',
+          description: 'Stricter Rule Explained',
           params: {
             character: Character.SYSTEM,
-            question: 'Why is "scan the stick on the workstation and install" not acceptable here when it is everywhere else?',
+            question: 'Why is “scan the stick on the workstation and install” not acceptable here when it is everywhere else?',
             options: [
-              'Because the workstation is on the segment that controls the antenna, and the ACU runs firmware nothing on that segment can inspect afterwards. A scanner catches what it knows; a modified controller image is not on its list. On operational equipment the control is the path the file took, not a scan at the end of it',
-              'Because the antivirus on the workstation is out of date',
-              'Because the vendor is not trusted by the site',
-              'It is acceptable; the drill is about paperwork',
+              'Because the workstation is on the segment that controls the antenna, and a scanner can miss a modified image',
+              'Because the workstation’s antivirus is out of date, so a scan run on it today proves nothing',
+              'Because the site doesn’t trust the vendor, so anything a vendor brings is refused at the door',
+              'It is acceptable here too, because the drill is about paperwork and a clean scan settles the question',
             ],
             correctIndex: 0,
             explanation:
-              'Logged. An office laptop can be wiped tomorrow. A controller running a bad image points a four-metre dish wherever the image says, on the next pass, with nobody watching.',
+              'An office laptop can be wiped tomorrow. A controller running a bad image points the dish wherever the image says, on the next pass, with nobody watching, and nothing on that segment can inspect the image after it installs. That’s why the control is the path the file took, not a scan at the end of it.',
             pointPenalty: 5,
             documentLine: 'OT reasoning: M&C hosts control the antenna; controller firmware cannot be inspected after install; the control is the transfer path, not a scan.',
           },
@@ -331,7 +332,7 @@ export const natsEuScenario27Data: ScenarioData = {
       id: 'log-the-event',
       nice: ['S0842', 'K0645'],
       title: 'Log the Event',
-      description: 'One entry for Group Security with the times, the hold, and what verification is waiting on.',
+      description: 'Write one entry for Group Security with the times, the hold and what verification is waiting on.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['why-not-a-laptop'],
       conditions: [
@@ -342,13 +343,14 @@ export const natsEuScenario27Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which entry closes the event?',
             options: [
-              '07:41 USB mounted on GW-MC-01 by vend-tech (no media ticket); 07:44 unsigned acu-4.2.1-vendor.bin staged on ACU (not in MNT-0430). {{at:obj:flag-the-firmware|08:05}} stage hold ordered; GW-MC-01 isolation and media retention requested from Charlie; vend-tech suspension ordered; if anything was installed from the media, ACU rolled back to the last verified image. Install only after a hash match against signed release via transfer path. Group Security notification requested',
-              'Vendor tried to install firmware; told him no',
-              'Firmware installed after the technician confirmed it was the service release',
-              'Event closed; workstation reimaged; media destroyed',
+              '07:41 USB mounted, 07:44 image staged; {{at:obj:flag-the-firmware|08:05}} hold ordered, account suspended, Group Security told',
+              'Vendor tried to install firmware and was told no, so there is nothing to record about the visit',
+              'Firmware installed after the technician confirmed that it was the service release, and the fan replaced too, all within the ticket',
+              'Event closed, with the workstation reimaged and the media destroyed before anyone could analyse what was on either one',
             ],
             correctIndex: 0,
-            explanation: 'Logged. Times, entries, hold, what is waiting on what. The service resumes when the image has a signature and a ticket, and not before.',
+            explanation:
+              'A good closing entry has the times, the two entries, the hold and what the hold is waiting on. The service resumes when the image has a signature and a ticket, and not before.',
             pointPenalty: 5,
             documentLine:
               'Closed {{stationTime}}: stage hold ordered, GW-MC-01 isolation and media retention requested from Charlie, vend-tech suspension ordered; anything installed from the media rolled back to the last verified image; install only after a verified release; Group Security notification requested.',

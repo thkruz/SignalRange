@@ -88,7 +88,7 @@ test.describe('Full Scenario Flow', () => {
   test('should complete campaign to scenario flow', async ({ campaignSelectionPage, scenarioSelectionPage, missionControlPage, page }) => {
     // Step 1: Start at campaign selection
     await campaignSelectionPage.goto();
-    await expect(campaignSelectionPage.pageTitle).toHaveText('Signal Range Training');
+    await expect(campaignSelectionPage.pageTitle).toHaveText('Campaigns');
 
     // Step 2: Select NATS campaign
     await campaignSelectionPage.selectCampaign('nats');

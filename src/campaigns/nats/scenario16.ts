@@ -73,7 +73,7 @@ export const scenario16Data: ScenarioData = {
   duration: '5-10 min',
   difficulty: 'advanced',
   missionType: 'Incident Response',
-  description: `Two minutes into your shift and the alarm board is lit up. BUC over-temperature, LNB reference unlocked, HPA overdriven - all on VT-01, all at once. The TIDEMARK-1 customer link is degraded and James Okafor (Atlantic Shipping Alliance, SeaLink's anchor customer) is on the line.<br><br>None of these faults are related. You have to triage them in the right order: protect the equipment and the spectrum first, restore customer impact next, then methodically clear each fault.<br><br>Dana is in the admin office. She trusts you with this one.`,
+  description: `Two minutes into your shift and the alarm board is lit up. BUC over-temperature, LNB reference unlocked, HPA overdriven - all on VT-01, all at once. The TIDEMARK-1 customer link is degraded and James Okafor (Atlantic Shipping Alliance, SeaLink's anchor customer) is on the line.<br><br>None of these faults is related to the others. You have to triage them in the right order: protect the equipment and the spectrum first, restore customer impact next, then methodically clear each fault.<br><br>Dana is in the admin office, and she trusts you with this one.`,
   equipment: ['9-meter C-band Antenna', 'RF Front End', 'Spectrum Analyzer', 'RX/TX Modems', 'ME-02: Operational (TIDEMARK-2)'],
   timeLimitSeconds: 25 * 60, // 25 minutes
   settings: {
@@ -159,7 +159,7 @@ export const scenario16Data: ScenarioData = {
       id: 'review-mission-brief',
       nice: ['K0645'],
       title: 'Review Incident Brief',
-      description: 'Open the incident brief and acknowledge you are taking the lead on the response.',
+      description: "Open the incident brief, then confirm you're taking the lead on the response.",
       groundStation: 'VT-01',
       freezesScenarioTimer: true,
       prerequisiteObjectiveIds: [],
@@ -175,15 +175,16 @@ export const scenario16Data: ScenarioData = {
           description: 'Take the Lead',
           params: {
             character: Character.SYSTEM,
-            question: 'Three concurrent alarms on VT-01 and SeaLink is on the line. How will you proceed?',
+            question: 'Three alarms are active on VT-01 and SeaLink is on the line. How do you proceed?',
             options: [
-              'Triage all alarms first, then act in priority order: RF safety, customer impact, equipment health',
-              'Clear the alarms in order of effort: easiest fault first, alarm count down, then the hard ones',
-              'Report to Dana first, then act on her direction: no equipment changes until she calls the order',
-              'Power cycle the whole RF chain first, then triage whatever is left: BUC, LNB, HPA all reset at once',
+              'Triage all three alarms first, then act in priority order: RF safety, customer impact, equipment health',
+              'Clear the alarms in order of effort: easiest fault first to bring the alarm count down, then the hard ones',
+              'Report to Dana first, then act on her direction, with no equipment changes until she gives the order',
+              'Power cycle the whole RF chain first, resetting the BUC, LNB and HPA at once, then triage whatever is left',
             ],
             correctIndex: 0,
-            explanation: 'Triage before action. Knowing all three faults lets you pick the order that protects equipment and the spectrum first.',
+            explanation:
+              "Triage comes before action because you can't pick a safe order until you know all three faults. Once you do, you can protect the equipment and the spectrum first, then fix what the customer feels.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -220,7 +221,7 @@ export const scenario16Data: ScenarioData = {
       id: 'triage-dashboard-alarms',
       nice: ['T0153', 'K0741', 'S0593'],
       title: 'Triage the Alarm Board',
-      description: 'Open the Dashboard and confirm what is actually broken.',
+      description: 'Open the Dashboard and read which alarms are active before you change anything.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['select-vermont-station'],
       timeLimitSeconds: 3 * 60,
@@ -247,7 +248,7 @@ export const scenario16Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Three concurrent, unrelated alarms. The BUC and HPA conditions threaten the equipment and the uplink spectrum; the LNB condition is degrading the customer receive (its free-running LO costs the TIDEMARK-1 carrier about 3 dB of Es/N0).',
+              "Three unrelated alarms are active at once. The BUC and HPA conditions threaten the equipment and the uplink spectrum, while the LNB condition degrades the customer's receive side because its free-running LO costs the TIDEMARK-1 carrier about 3 dB of Es/N0. Es/N0 is the signal-to-noise ratio per symbol.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -260,7 +261,7 @@ export const scenario16Data: ScenarioData = {
       id: 'prioritize-recovery-order',
       nice: ['S0807', 'K0721', 'S0593'],
       title: 'Set the Recovery Order',
-      description: 'Decide the order of operations before touching any equipment.',
+      description: "Choose the order you'll work the three faults in, before you touch any equipment.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['triage-dashboard-alarms'],
       timeLimitSeconds: 2 * 60,
@@ -280,7 +281,7 @@ export const scenario16Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'An overdriven HPA is putting a dirty signal on the spectrum and risking the amplifier. Disable the HPA output, mute the BUC for cooldown, fix the backoff, then clear the LNB fault, bring the uplink back, and confirm the customer carrier comes back down through TIDEMARK-1 locked.',
+              'An overdriven HPA puts a dirty signal on the spectrum and risks the amplifier, so it comes first. Disable the HPA output, mute the BUC so it cools, and fix the back-off. Then clear the LNB fault, bring the uplink back, and confirm the customer carrier comes back down through TIDEMARK-1 locked.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -297,7 +298,7 @@ export const scenario16Data: ScenarioData = {
       id: 'navigate-tx-chain',
       nice: ['S0421'],
       title: 'Open TX Chain',
-      description: 'Navigate to the TX Chain panel.',
+      description: 'Open the TX Chain panel.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['prioritize-recovery-order'],
       timeLimitSeconds: 1 * 60,
@@ -319,7 +320,7 @@ export const scenario16Data: ScenarioData = {
       nice: ['S0593', 'S0677'],
       title: 'Disable the HPA Output',
       description:
-        'Disable the HPA output to take the overdriven signal off the antenna. Amplifier comes down before its drive does - same sequencing rule as a planned power-down. Timed: running out fails the shift.',
+        'Disable the HPA output to take the overdriven signal off the antenna. The amplifier comes down before its drive does, the same sequencing rule as a planned power-down. This step is timed, and running out of time fails the shift.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['navigate-tx-chain'],
       timeLimitSeconds: 2 * 60,
@@ -345,16 +346,16 @@ export const scenario16Data: ScenarioData = {
           description: 'Why HPA First',
           params: {
             character: Character.SYSTEM,
-            question: 'Why is disabling the HPA output the correct first action - before muting the BUC?',
+            question: 'Why is disabling the HPA output the right first action, before you mute the BUC?',
             options: [
-              'It takes the dirty uplink off the air, and an enabled HPA left without BUC drive would amplify raw noise into the feed',
-              'It takes the dirty uplink off the air, and the HPA controls the BUC - disabling it mutes the BUC at the same time',
-              'It takes the dirty uplink off the air, and the HPA shares the 10 MHz reference - disabling it lets the LNB relock',
-              'It takes the dirty uplink off the air, but the order does not matter - both end up off before the BUC cools either way',
+              'It takes the dirty uplink off the air, and an enabled HPA with no BUC drive would amplify raw noise into the feed',
+              'It takes the dirty uplink off the air, and the HPA controls the BUC, so disabling it mutes the BUC at the same time',
+              'It takes the dirty uplink off the air, and the HPA shares the 10 MHz reference, so disabling it lets the LNB relock',
+              "It takes the dirty uplink off the air, but the order doesn't matter, because both end up off before the BUC cools either way",
             ],
             correctIndex: 0,
             explanation:
-              'Same rule as every planned power-down: amplifier off before drive off. Killing the HPA stops the overdriven signal AND keeps the chain safe for the BUC mute that comes next. Mute the BUC first and the enabled HPA amplifies noise into the feed.',
+              "It's the same rule as every planned power-down: the amplifier goes off before its drive. Disabling the HPA stops the overdriven signal and keeps the chain safe for the BUC mute that comes next. If you mute the BUC first, the enabled HPA amplifies noise into the feed.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -368,7 +369,7 @@ export const scenario16Data: ScenarioData = {
       nice: ['S0677', 'T1314'],
       title: 'Mute the BUC for Cooldown',
       description:
-        'With the HPA output disabled, mute the BUC on TX Chain so the over-temperature module can begin cooling. Nothing on the station mutes it for you. Timed: running out fails the shift.',
+        'With the HPA output disabled, mute the BUC on TX Chain so the over-temperature module can start cooling. Nothing on the station mutes it for you. This step is timed, and running out of time fails the shift.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['disable-hpa-for-safety'],
       timeLimitSeconds: 2 * 60,
@@ -396,7 +397,7 @@ export const scenario16Data: ScenarioData = {
       id: 'diagnose-hpa-overdrive',
       nice: ['T0081', 'T0531'],
       title: 'Diagnose HPA Overdrive',
-      description: 'Identify why the HPA was overdriven before you touch any more controls.',
+      description: 'Work out what the 2 dB back-off means for the HPA output before you touch any more controls.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['mute-buc-for-cooldown'],
       timeLimitSeconds: 2 * 60,
@@ -409,14 +410,14 @@ export const scenario16Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'The HPA back-off has drifted to 2 dB. What does that mean for the output?',
             options: [
-              'Output is too close to saturation - IMD products are rising and the amplifier is at risk',
-              'Output is too low - the amplifier is starving for drive and will trip offline within minutes',
-              'Output is correct - 2 dB is the standard back-off for a full-power uplink on a 36 MHz carrier',
-              'Output is muted - the HPA controller trips the output automatically below 3 dB back-off',
+              'The output is too close to saturation, so IMD products are rising and the amplifier is at risk',
+              'The output is too low, so the amplifier is starving for drive and will trip offline within minutes',
+              'The output is correct, because 2 dB is the standard back-off for a full-power uplink on a 36 MHz carrier',
+              'The output is muted, because the HPA controller trips the output automatically below 3 dB back-off',
             ],
             correctIndex: 0,
             explanation:
-              'Below 3 dB back-off, the HPA is overdriven. At 2 dB it puts out 58 dBm (631 W) with the IM3 (2-tone) readout near -27 dBc, against 50 dBm (100 W) and about -43 dBc at 10 dB: IMD products spill into adjacent transponders and the amplifier wears prematurely. Restore back-off to the standard 10 dB margin.',
+              "Below 3 dB of back-off, the HPA counts as overdriven. At 2 dB it puts out 58 dBm (631 W) with the IM3 (2-tone) readout near -27 dBc, against 50 dBm (100 W) and about -43 dBc at 10 dB. The IMD products spill into adjacent transponders, and the amplifier wears out early. IMD (intermodulation distortion) is the set of unwanted signals an amplifier makes when it's driven too hard. Restore the back-off to the standard 10 dB margin.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -429,7 +430,7 @@ export const scenario16Data: ScenarioData = {
       id: 'correct-hpa-backoff',
       nice: ['S0677', 'T1567'],
       title: 'Restore HPA Back-off',
-      description: 'Set the HPA back-off to the standard 10 dB operating margin.',
+      description: 'Set the HPA back-off to the standard 10 dB operating margin on TX Chain.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['diagnose-hpa-overdrive'],
       timeLimitSeconds: 2 * 60,
@@ -471,7 +472,7 @@ export const scenario16Data: ScenarioData = {
       nice: ['T1314', 'K0740'],
       title: 'Allow BUC to Cool',
       description:
-        'With the BUC muted, watch the BUC THERMAL readout on TX Chain: current drops to the 2.6 A idle at once, Trend (1 min) turns negative within about half a minute, and the temperature falls back below the 70°C threshold about a minute after the mute.',
+        'With the BUC muted, watch the BUC THERMAL readout on TX Chain. The current drops to the 2.6 A idle at once, Trend (1 min) turns negative within about half a minute, and the temperature falls back below the 70°C threshold about a minute after the mute.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['correct-hpa-backoff'],
       timeLimitSeconds: 5 * 60,
@@ -513,7 +514,7 @@ export const scenario16Data: ScenarioData = {
       id: 'navigate-rx-analysis',
       nice: ['S0421'],
       title: 'Open RX Analysis',
-      description: 'Switch to the RX Analysis panel to work the LNB fault.',
+      description: 'Open the RX Analysis panel to work on the LNB fault.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['wait-for-buc-cooling'],
       timeLimitSeconds: 1 * 60,
@@ -534,7 +535,7 @@ export const scenario16Data: ScenarioData = {
       id: 'diagnose-lnb-fault',
       nice: ['T0081', 'S0582'],
       title: 'Diagnose LNB Reference Unlock',
-      description: 'Confirm what kind of LNB fault you are looking at before acting.',
+      description: 'Work out what kind of LNB fault this is before you act on it.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['navigate-rx-analysis'],
       timeLimitSeconds: 2 * 60,
@@ -545,16 +546,16 @@ export const scenario16Data: ScenarioData = {
           description: 'LNB Fault Type',
           params: {
             character: Character.SYSTEM,
-            question: 'The GPSDO is locked and the LNB is powered, but the LNB shows reference unlocked. What is the right corrective action?',
+            question: "The GPSDO is locked and the LNB is powered, but the LNB shows reference unlocked. What's the right corrective action?",
             options: [
               'Power cycle the LNB to clear the sticky reference lock fault',
-              'Replace the LNB - the reference input has failed and will not relock',
-              'Increase LNB gain to compensate for the unlocked reference',
-              'Switch the LNB to internal reference to bypass the fault',
+              "Replace the LNB, because the reference input has failed and won't relock",
+              'Increase the LNB gain to compensate for the unlocked reference',
+              'Switch the LNB to its internal reference to bypass the fault',
             ],
             correctIndex: 0,
             explanation:
-              'A sticky reference lock fault clears on power cycle. The 10 MHz reference is available upstream (GPSDO locked); the LNB just needs to re-acquire. Until it does, its LO free-runs (around 100 kHz or more of LO error, poor phase noise) and the customer carrier runs about 3 dB down in Es/N0.',
+              'A sticky reference lock fault clears when you power cycle the LNB. The 10 MHz reference is already available upstream because the GPSDO is locked, so the LNB just needs to re-acquire it. Until it does, its LO free-runs, with around 100 kHz or more of LO error and poor phase noise, and the customer carrier runs about 3 dB down in Es/N0.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -567,8 +568,7 @@ export const scenario16Data: ScenarioData = {
       id: 'power-cycle-lnb',
       nice: ['S0677', 'T1567'],
       title: 'Power Cycle the LNB',
-      description:
-        'Power off the LNB, then power it back on. The sticky fault clears, the LNB re-acquires the reference, and it needs about 90 s to stabilize thermally after the power-on.',
+      description: 'Power the LNB off, then back on. The sticky fault clears and the LNB re-acquires the reference, but it needs about 90 s to stabilize thermally after power-on.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['diagnose-lnb-fault'],
       timeLimitSeconds: 4 * 60,
@@ -612,7 +612,7 @@ export const scenario16Data: ScenarioData = {
       id: 'return-to-tx-chain',
       nice: ['S0421'],
       title: 'Return to TX Chain',
-      description: 'Switch back to the TX Chain panel to bring the uplink back online.',
+      description: 'Open the TX Chain panel again to bring the uplink back online.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['power-cycle-lnb'],
       timeLimitSeconds: 1 * 60,
@@ -633,7 +633,7 @@ export const scenario16Data: ScenarioData = {
       id: 'unmute-buc-restore-tx',
       nice: ['S0677', 'T1567'],
       title: 'Unmute the BUC',
-      description: 'With back-off corrected and the BUC cooled, unmute the BUC first - drive comes up before the amplifier.',
+      description: 'With the back-off corrected and the BUC cooled, unmute the BUC first, because the drive comes up before the amplifier.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['return-to-tx-chain'],
       timeLimitSeconds: 2 * 60,
@@ -659,7 +659,7 @@ export const scenario16Data: ScenarioData = {
       id: 'verify-tx-output-clean',
       nice: ['T0153', 'K0740'],
       title: 'Restore HPA Output',
-      description: 'Re-enable the HPA output now that the BUC is driving again, and confirm the uplink is clean.',
+      description: 'Re-enable the HPA output now that the BUC is driving again, then confirm the uplink is clean.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['unmute-buc-restore-tx'],
       timeLimitSeconds: 2 * 60,
@@ -693,14 +693,14 @@ export const scenario16Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'With back-off at 10 dB and the BUC cool, what does the uplink look like to neighboring transponders now?',
             options: [
-              'Clean - IMD products are back below coordination limits and we are no longer interfering',
-              'Still overdriven - back-off changes output power but does not pull IMD back below the limits',
-              'Inverted polarization - the mute/unmute cycle flipped the OMT and we are now interfering cross-pol',
-              'Reduced power - IMD is down but the customer link cannot meet SLA power at 10 dB back-off',
+              "Clean: IMD products are back below the coordination limits, so we're no longer interfering",
+              "Still overdriven: back-off changes output power but doesn't pull IMD back below the limits",
+              "Inverted polarization: the mute and unmute cycle flipped the OMT, so we're interfering cross-pol",
+              "Reduced power: IMD is down, but the customer link can't meet SLA power at 10 dB back-off",
             ],
             correctIndex: 0,
             explanation:
-              'Standard 10 dB back-off (50 dBm, 100 W) puts the IM3 (2-tone) readout near -43 dBc, about 16 dB cleaner than the -27 dBc at 2 dB, well below the coordination floor while still meeting SLA power.',
+              "Standard 10 dB back-off (50 dBm, 100 W) puts the IM3 (2-tone) readout near -43 dBc, about 16 dB cleaner than the -27 dBc at 2 dB. That's well below the coordination floor, and the link still meets the service-level agreement (SLA) power.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -715,7 +715,7 @@ export const scenario16Data: ScenarioData = {
       nice: ['T0153', 'K0740'],
       title: 'Verify Receiver Locked',
       description:
-        'Switch to RX Analysis. With the uplink back on the air your own carrier comes back down through TIDEMARK-1: confirm RX modem 1 has reacquired it with a healthy C/N margin (at least 8 dB) now that the LNB is locked.',
+        'Switch to RX Analysis. With the uplink back on the air, your own carrier comes back down through TIDEMARK-1. Confirm RX modem 1 has reacquired it with a healthy C/N margin of at least 8 dB, now that the LNB is locked.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-tx-output-clean'],
       timeLimitSeconds: 3 * 60,
@@ -752,7 +752,7 @@ export const scenario16Data: ScenarioData = {
       id: 'final-alarm-sweep',
       nice: ['T0153', 'K0741'],
       title: 'Final Dashboard Sweep',
-      description: 'Open the Dashboard tab and confirm the alarm board is clean before notifying the customer.',
+      description: 'Open the Dashboard tab and confirm the alarm board is clean before you notify the customer.',
       groundStation: 'VT-01',
       // A sweep: every row confirms the recovery the player just made
       intent: 'confirm',
@@ -794,7 +794,7 @@ export const scenario16Data: ScenarioData = {
           description: 'All Clear',
           params: {
             character: Character.SYSTEM,
-            question: 'Summarize the post-recovery state of VT-01.',
+            question: 'Which statement describes VT-01 after the recovery?',
             options: [
               'All three faults cleared - BUC thermal normal, LNB locked, HPA within back-off - link operational',
               'Two faults cleared - BUC thermal normal, HPA within back-off, LNB still degraded - link returned to service',
@@ -802,7 +802,7 @@ export const scenario16Data: ScenarioData = {
               'No faults cleared - BUC still hot, LNB still unlocked, HPA still overdriven - link down, escalate to Dana',
             ],
             correctIndex: 0,
-            explanation: 'No warning or critical alarms left. All three independent faults addressed in priority order. Ready to brief the customer.',
+            explanation: "No warning or critical alarms are left. You addressed all three independent faults in priority order, so you're ready to brief the customer.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -815,7 +815,7 @@ export const scenario16Data: ScenarioData = {
       id: 'customer-notification',
       nice: ['T1538', 'S0478'],
       title: 'Notify the Customer',
-      description: 'Choose the right message to send back to SeaLink.',
+      description: 'Pick the right message to send back to SeaLink.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['final-alarm-sweep'],
       timeLimitSeconds: 2 * 60,
@@ -826,15 +826,16 @@ export const scenario16Data: ScenarioData = {
           description: 'Customer Message',
           params: {
             character: Character.SYSTEM,
-            question: 'James Okafor is still on the line. Which message is the right one?',
+            question: 'James Okafor is still on the line. Which message do you send him?',
             options: [
-              'Three concurrent faults identified and cleared in priority order. Link is operational. Written impact report to follow within the hour.',
-              'No faults found on our end after a full board check. Link is operational. Suggest you check the vessel terminals on your side.',
-              'Three faults hit VT-01 at once and the link is still degraded. Recovery is under way. Stand by for an update within the hour.',
-              'Equipment failure on VT-01 across three subsystems. Link is down. Escalating to vendor support, no restoration ETA at this time.',
+              'Three faults found and cleared in priority order. The link is operational, and a written report follows within the hour.',
+              'No faults found on our end after a full board check. The link is operational. Please check the vessel terminals on your side.',
+              'Three faults hit VT-01 at once and the link is still degraded. Recovery is under way. Expect an update within the hour.',
+              "Equipment failure on VT-01 across three subsystems. The link is down. We're escalating to vendor support, with no restoration ETA yet.",
             ],
             correctIndex: 0,
-            explanation: 'Acknowledge the impact, state what was done, commit to written follow-up. Customer comms during incidents is half technical, half credibility.',
+            explanation:
+              'The right message acknowledges the impact, says what was done, and commits to a written follow-up. During an incident, customer communication is half technical and half credibility.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -847,7 +848,7 @@ export const scenario16Data: ScenarioData = {
       id: 'log-cascade-event',
       nice: ['T1606', 'K0645'],
       title: 'Log the Cascade Event',
-      description: 'Select the correct entry for the incident log.',
+      description: 'Choose the log entry that records this incident correctly.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['customer-notification'],
       timeLimitSeconds: 2 * 60,
@@ -860,14 +861,14 @@ export const scenario16Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which log entry correctly captures this incident?',
             options: [
-              'VT-01 concurrent unrelated faults: BUC over-temp (72°C), LNB ref unlock (sticky), HPA back-off 2 dB. Cleared in priority order: HPA, BUC, LNB. SeaLink notified.',
+              'VT-01 concurrent unrelated faults: BUC over-temp (72°C), LNB ref unlock, HPA back-off 2 dB. Cleared in priority order: HPA, BUC, LNB. SeaLink notified.',
               'VT-01 routine maintenance: BUC thermal check (72°C peak), LNB reference reseated, HPA back-off reset to 10 dB. All alarms cleared. SeaLink not notified.',
               'VT-01 single fault: HPA failure (back-off drift to 2 dB) cascaded into BUC over-temp and LNB unlock. HPA replaced, link restored. SeaLink notified.',
               'VT-01 customer report: SeaLink intermittent drops on TM-1. Board checked, BUC, LNB and HPA all within limits. No fault found. SeaLink notified.',
             ],
             correctIndex: 0,
             explanation:
-              'Concurrent unrelated faults must be logged separately with the order and rationale of recovery: HPA output disabled, BUC muted for cooldown, back-off restored to 10 dB, LNB power cycled, BUC unmuted, HPA restored. The next operator inherits the trend data and the customer follow-up.',
+              'Concurrent unrelated faults get logged separately, with the order of recovery and the reason for it: HPA output disabled, BUC muted for cooldown, back-off restored to 10 dB, LNB power cycled, BUC unmuted, HPA restored. The next operator then inherits the trend data and the customer follow-up.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -884,10 +885,10 @@ export const scenario16Data: ScenarioData = {
         <em>[Text message from Dana at 09:34]</em>
       </p>
       <p>
-        "Board over here is lit up - BUC, LNB, HPA all yelling. James Okafor's on the line about TM-1 service. I'm in admin and can't break free for the next twenty minutes."
+        "Over here the board is lit up: BUC, LNB and HPA alarms all at once, and James Okafor's on the line about TM-1. I'm stuck in admin for twenty minutes."
       </p>
       <p>
-        "Take the lead. Triage before you touch anything."
+        "You take the lead. Triage first: decide what's most urgent before you touch anything."
       </p>
       `,
       character: Character.DANA_TORRES,
@@ -908,7 +909,7 @@ export const scenario16Data: ScenarioData = {
       'mute-buc-for-cooldown': {
         text: `
         <p>
-          Good sequencing - amp down before the drive. Spectrum's clean and the BUC can cool while you sort the rest.
+          Good, you took the amplifier off the air before you muted the drive, so the spectrum's clean. The BUC can cool now while you sort out the rest.
         </p>
         `,
         character: Character.DANA_TORRES,
@@ -929,7 +930,7 @@ export const scenario16Data: ScenarioData = {
       'log-cascade-event': {
         text: `
         <p>
-          Three unrelated faults at once, prioritized correctly, customer kept informed. That's the job at this level.
+          You handled three unrelated faults at once, took them in the right order, and kept the customer informed. That's the job at this level.
         </p>
         <p>
           File the impact report before end of shift. Nice work.

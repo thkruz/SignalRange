@@ -98,7 +98,7 @@ test.describe('nats-eu Scenario 6 Full Completion', () => {
     await expect(page.locator('#sec-mark-reviewed')).toBeVisible({ timeout: 10000 });
     await domClick(page, '#sec-mark-reviewed');
     await expect(page.locator('#sec-reviewed-badge')).toHaveText('SIGNED OFF');
-    await answerSystemQuiz(page, 'You do not know yet');
+    await answerSystemQuiz(page, "You don't know yet");
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Read the Station Audit Log');
   });
@@ -173,7 +173,7 @@ test.describe('nats-eu Scenario 6 Full Completion', () => {
 
   test('[close-the-baseline] files the return and completes', async () => {
     await closeWorkingDocumentIfOpen(page);
-    await answerSystemQuiz(page, 'A dormant account with maintenance privileges');
+    await answerSystemQuiz(page, 'A dormant maintenance account is exposure');
     await expect(page.locator('#level-complete-modal')).toBeVisible({ timeout: 45000 });
   });
 

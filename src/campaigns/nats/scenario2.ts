@@ -11,7 +11,7 @@ import { ses10Satellite, tidemark1Satellite } from './satellites';
 /**
  * NATS Level 2: "Scheduled Maintenance" - Power Down and Recovery Procedures
  *
- * Phase: Introduction (Phase 1, Scenario 2 of 8)
+ * Phase: Introduction (Phase 1, Scenario 2 of 24)
  * Time Pressure: Moderate (maintenance window constraint)
  * Calculation Required: NO - all values provided by Charlie
  * New UI Elements: Equipment power controls, modem transmit controls, antenna positioning
@@ -44,9 +44,9 @@ import { ses10Satellite, tidemark1Satellite } from './satellites';
  * 5. Verify link restoration via beacon signal
  *
  * Character Notes:
- *   - Charlie Brooks: More hands-off this time. You touched controls yesterday,
- *     now prove you can execute procedures correctly. He'll provide values but
- *     expects you to know which controls to use.
+ *   - Charlie Brooks: More hands-off this time. Yesterday you only watched;
+ *     today you touch the controls and prove you can run a procedure. He'll
+ *     provide values but expects you to know which controls to use.
  */
 
 export const scenario2Data: ScenarioData = {
@@ -106,7 +106,7 @@ export const scenario2Data: ScenarioData = {
       // establishes the procedural framework and RF safety requirements for maintenance
       nice: ['K0645'],
       title: 'Review Mission Brief',
-      description: 'Open and read the mission brief document including RF safety procedures, then acknowledge you are ready to proceed.',
+      description: "Open the mission brief and read the RF safety procedures, then confirm you're ready to proceed.",
       groundStation: 'VT-01',
       freezesScenarioTimer: true,
       prerequisiteObjectiveIds: [],
@@ -122,7 +122,7 @@ export const scenario2Data: ScenarioData = {
           description: 'Ready to Proceed',
           params: {
             question: 'Have you reviewed the mission brief and RF safety procedures?',
-            options: ['Yes, I have read the mission brief and I am ready to proceed.'],
+            options: ["Yes, I've read the mission brief and I'm ready to proceed."],
             correctIndex: 0,
             explanation: 'The mission timer has started. Good luck!',
             pointPenalty: 0,
@@ -156,7 +156,7 @@ export const scenario2Data: ScenarioData = {
             options: ["I have received and understood the RF safety briefing for today's maintenance work."],
             correctIndex: 0,
             explanation:
-              'Acknowledging the RF safety briefing ensures all personnel understand the hazards and procedures before maintenance work begins. Our HPA is a 1 kW amplifier and runs about 100 W at the standard 10 dB back-off - enough to cause serious RF burns.',
+              'Acknowledging the briefing makes sure everyone understands the hazards and the procedure before the work begins. Our HPA is a 1 kW amplifier, and at the standard 10 dB back-off it puts out about 100 W, which is enough to cause serious RF burns.',
             pointPenalty: 0,
           },
           mustMaintain: false,
@@ -256,7 +256,7 @@ export const scenario2Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'The HPA is currently enabled and transmitting at 10 dB backoff. This confirms there is active RF output that we need to safely shut down before maintenance personnel approach the antenna.',
+              "The panel shows the HPA enabled and transmitting at 10 dB back-off, so there's live RF output. Standby, powered off and fault would each look different on the panel, and none of them matches. This output has to be shut down before the crew goes near the antenna.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -303,7 +303,7 @@ export const scenario2Data: ScenarioData = {
       // is stopped before proceeding with shutdown
       nice: ['K0741', 'S0077'],
       title: 'Confirm HPA Output Disabled',
-      description: 'Verify the HPA output indicator shows disabled state.',
+      description: 'Check the HPA panel and confirm the output indicator shows disabled.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['disable-hpa-output'],
       timeLimitSeconds: 2 * 60,
@@ -328,7 +328,7 @@ export const scenario2Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              "The HPA Enable indicator shows OFF, meaning no RF is being transmitted. However, the amplifier is still powered and components are hot - we need to power it off completely before it's safe.",
+              "The Enable indicator shows OFF, so no RF is being transmitted, but the amplifier is still energized and its components are hot. That's why powering it off completely is the next step before anyone works near it. Power OFF would mean every indicator dark, and Enable ON would mean RF still going out.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -344,7 +344,7 @@ export const scenario2Data: ScenarioData = {
       // S0421: Skill in operating network equipment - executing the HPA power control
       nice: ['T1567', 'S0421'],
       title: 'Power Off HPA',
-      description: 'Power off the High Power Amplifier completely. The amplifier needs to cool before anyone touches anything upstream.',
+      description: 'Power off the High Power Amplifier completely. The amplifier needs to cool before anyone works near it.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-hpa-disabled-quiz'],
       timeLimitSeconds: 2 * 60,
@@ -379,7 +379,7 @@ export const scenario2Data: ScenarioData = {
       // understanding complete power-down for maintenance safety
       nice: ['T1567', 'S0421', 'K0770'],
       title: 'Power Off BUC',
-      description: 'Power off the Block Upconverter completely. Even without the HPA, the BUC still outputs tens of milliwatts - we want it completely cold.',
+      description: 'Power off the Block Upconverter completely. Even without the HPA, the BUC still puts out tens of milliwatts, so we want it fully off.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['power-off-hpa'],
       timeLimitSeconds: 2 * 60,
@@ -407,7 +407,7 @@ export const scenario2Data: ScenarioData = {
       // state as confirmation of complete transmit chain shutdown
       nice: ['K0741'],
       title: 'Confirm BUC Powered Off',
-      description: 'Verify the BUC is now completely powered down.',
+      description: "Check the BUC panel and confirm it's completely powered down.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['power-off-buc'],
       timeLimitSeconds: 2 * 60,
@@ -431,7 +431,8 @@ export const scenario2Data: ScenarioData = {
               'BUC reference indicator is UNLOCKED - lost 10 MHz lock',
             ],
             correctIndex: 0,
-            explanation: 'The BUC power indicator is OFF - the upconverter is completely de-energized. No RF energy can be generated from this equipment.',
+            explanation:
+              "The power indicator reads OFF, so the upconverter is completely de-energized and can't generate any RF. Muted, low-power and unlocked would all mean the BUC is still powered, and none of those is what we want.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -447,7 +448,7 @@ export const scenario2Data: ScenarioData = {
       // S0421: Skill in operating network equipment - executing modem transmit control
       nice: ['T1567', 'S0421'],
       title: 'Stop Modem Transmission',
-      description: 'Stop the transmitter modem from transmitting. The modem should remain powered but not actively transmitting.',
+      description: 'Stop the transmitter modem from transmitting, but leave the modem powered on.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-buc-powered-off-quiz'],
       timeLimitSeconds: 2 * 60,
@@ -507,7 +508,7 @@ export const scenario2Data: ScenarioData = {
       // S0421: Skill in operating network equipment - executing the LNB power control
       nice: ['T1567', 'S0421'],
       title: 'Power Down LNB',
-      description: 'Power off the Low Noise Block to complete RF chain shutdown. No point leaving equipment energized when the antenna is not pointed at anything useful.',
+      description: "Power off the Low Noise Block to complete the RF chain shutdown. There's no point leaving it energized while the antenna isn't pointed at anything useful.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['navigate-rx-analysis-shutdown'],
       timeLimitSeconds: 2 * 60,
@@ -556,7 +557,7 @@ export const scenario2Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Correct. The GPSDO and control systems remain powered for timing and monitoring, but all RF equipment (LNB, BUC, HPA) is completely de-energized. The antenna is safe for maintenance personnel to approach.',
+              'The GPSDO and control systems stay powered for timing and monitoring, but all the RF equipment (LNB, BUC and HPA) is de-energized, so the antenna is safe for the crew to approach. Each of the other options leaves one RF unit energized, and none of them should be.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -614,7 +615,7 @@ export const scenario2Data: ScenarioData = {
       timePenalty: {
         elapsedTimeThreshold: 12 * 60, // 12 minutes
         pointsDeducted: 30,
-        message: "You delayed maintenance getting started on time. Don't let it happen again.",
+        message: "You kept the maintenance crew waiting. Don't let that happen again.",
       },
       conditions: [
         {
@@ -671,11 +672,11 @@ export const scenario2Data: ScenarioData = {
               'Low enough for crew access, high enough to clear obstructions',
               'Low enough for crew access, but the mount cannot reach 0° elevation',
               'High enough to keep satellite lock, low enough for feed access',
-              'Low enough for crew access, and the minimum FCC rules allow',
+              'Low enough for crew access, and the FCC requires 5° for maintenance',
             ],
             correctIndex: 0,
             explanation:
-              '5° elevation gives maintenance personnel access to the feed assembly while keeping the antenna clear of any ground-level obstructions. This is the standard maintenance position for this facility.',
+              "At 5° elevation the crew can reach the feed assembly while the dish still clears anything near the ground, which is why it's this facility's standard maintenance position. Satellite lock doesn't matter with the RF chain switched off, and the FCC's 5° figure is a minimum for transmitting, which nobody is doing during maintenance.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -725,16 +726,16 @@ export const scenario2Data: ScenarioData = {
           type: 'status-check',
           description: 'Acknowledge Maintenance Complete',
           params: {
-            question: 'The maintenance crew reports work complete - waveguide flange gasket replaced. What should you verify before beginning restoration?',
+            question: 'The maintenance crew reports the work is complete and the waveguide flange gasket is replaced. What should you verify before you begin restoration?',
             options: [
               'Confirm all personnel are clear of the antenna and feed assembly',
-              'Begin powering up equipment immediately to minimize downtime',
-              'Check if the gasket part number matches the work order',
-              'Request a second maintenance crew for inspection',
+              'Begin powering up the equipment right away to minimize the downtime',
+              'Check that the new gasket part number matches the original work order',
+              'Request a second maintenance crew to inspect the finished repair work',
             ],
             correctIndex: 0,
             explanation:
-              'Before restoring RF power, you must confirm all personnel are clear of the antenna. Never re-energize equipment while people could be in the RF radiation zone.',
+              'Restoring power puts RF back on the feed, so you confirm everyone is clear of the antenna and feed assembly first. Powering up right away to save time is how someone ends up in the RF zone, and the part number or a second crew can wait.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -829,7 +830,7 @@ export const scenario2Data: ScenarioData = {
       nice: ['T1567', 'S0421', 'K0792'],
       title: 'Restore LNB',
       description:
-        'Power on the LNB and configure: LO 5,250 MHz, Gain 60 dB, then Apply Changes. The panel reads 65 dB after the power cycle, so step the gain down to 60. The LNB needs about 90 seconds to warm up and lock before it reads stable.',
+        'Power on the LNB, set the LO to 5,250 MHz and the gain to 60 dB, then press Apply Changes. The panel reads 65 dB after the power cycle, so step the gain down to 60. The LNB needs about 90 seconds to warm up and lock before it reads stable.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['navigate-rx-analysis-restore'],
       // 90 s warm-up after the power cycle, plus the configuration
@@ -901,14 +902,14 @@ export const scenario2Data: ScenarioData = {
           params: {
             question: "The LNB is now powered and configured. What key indicator confirms it's ready for operation?",
             options: [
-              'Gain reads 65 dB - the factory default after power-up',
-              'Noise temperature reads 0 K - no noise at all',
-              'LOCK shows LOCKED to the GPSDO reference and noise temperature is back near 43 K',
-              'The spectrum analyzer shows the beacon, so the LNB panel does not matter',
+              'Gain reads 65 dB, the factory default after power-up',
+              'Noise temperature reads 0 K, so the LNB adds no noise at all',
+              'LOCK shows LOCKED and noise temperature is back near 43 K',
+              'The beacon appears on the analyzer, so the LNB panel can be ignored',
             ],
             correctIndex: 2,
             explanation:
-              'LOCK confirms the LNB local oscillator is disciplined by the GPSDO 10 MHz reference, so the downconversion lands on frequency. Noise temperature back near its normal 43 K shows the LNB is amplifying cleanly. Both readouts are on the LNB card.',
+              'LOCK confirms the LNB local oscillator is locked to the GPSDO 10 MHz reference, so the downconversion lands on frequency. Noise temperature back near its normal 43 K shows the LNB is amplifying cleanly. Both readouts are on the LNB card, and the gain should read 60 dB after your change, not the 65 dB factory default.',
             pointPenalty: 10,
             preserveOptionOrder: true,
           },
@@ -974,7 +975,7 @@ export const scenario2Data: ScenarioData = {
       // calculating IF frequency from RF and LO
       nice: ['K1032', 'K0773'],
       title: 'Confirm Beacon Analysis',
-      description: 'Understand what the beacon reception tells you about link status.',
+      description: "Work out which calculation links the beacon's RF frequency to the IF you see.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-beacon'],
       timeLimitSeconds: 3 * 60,
@@ -999,7 +1000,7 @@ export const scenario2Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'The LNB performs downconversion by mixing the incoming RF signal with its Local Oscillator. LO (5,250 MHz) minus RF (4,175.5 MHz) equals IF (1,074.5 MHz). This confirms the LO is set correctly and the receive path is working.',
+              'The LNB downconverts by mixing the incoming RF signal with its local oscillator, and the result is the IF. Here LO (5,250 MHz) minus RF (4,175.5 MHz) equals 1,074.5 MHz, exactly where the beacon sits, so the LO is set correctly and the receive path is working. The other options use the wrong operation or solve for the wrong value.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -1172,7 +1173,7 @@ export const scenario2Data: ScenarioData = {
       // service restoration
       nice: ['T0153', 'K0741'],
       title: 'Confirm Service Restored',
-      description: 'Verify TIDEMARK-1 link is fully operational.',
+      description: 'Confirm the TIDEMARK-1 link is back in service, then recall the shutdown and restore order.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['enable-hpa-output'],
       timeLimitSeconds: 3 * 60,
@@ -1191,7 +1192,7 @@ export const scenario2Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Correct! Shutdown sequence is HPA (high-power) → BUC (low-power) → Modem TX → LNB → Antenna. Restoration is the reverse: Antenna → LNB → Modem TX → BUC → HPA. Always shut down high-power equipment first for safety, and restore low-power equipment first to verify signal before applying high power. Restoring in the same order as shutdown would energize the HPA before anything upstream is verified.',
+              'You shut down in the order HPA, BUC, Modem TX, LNB, Antenna, and you restore in reverse: Antenna, LNB, Modem TX, BUC, HPA. The high-power equipment goes quiet first, so nobody is exposed to RF while you work down the chain. On the way back up, you verify the receive path and the beacon before any high power returns. Restoring in the shutdown order would energize the HPA before anything upstream was verified.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -1205,10 +1206,10 @@ export const scenario2Data: ScenarioData = {
     intro: {
       text: `
       <p>
-        Maintenance crew is on site, waiting on us for the antenna feed assembly. Their window runs to 09:50, so we're taking TIDEMARK-1 offline now.
+        The maintenance crew is on site and waiting to work on the antenna feed assembly. That's the part of the antenna the signal goes in and out through. Their window runs to 09:50 on the station clock, so we're taking TIDEMARK-1 offline now.
       </p>
       <p>
-        We will shut down in sequence - HPA first, then BUC, then stop the modem, then LNB, then park the antenna at maintenance. Never skip steps, never reverse order. Read the Mission Brief. Go.
+        We'll shut down in a fixed order: the HPA first, then the BUC, then stop the modem transmitting, then the LNB, and finally we park the antenna at the maintenance position. Don't skip a step and don't swap the order, because some of that equipment can hurt someone. Start by reading the Mission Brief.
       </p>
       `,
       character: Character.CHARLIE_BROOKS,
@@ -1259,7 +1260,7 @@ export const scenario2Data: ScenarioData = {
       'navigate-tx-chain-shutdown': {
         text: `
         <p>
-          This is the transmit chain. HPA at the top right and BUC at the top left. Before you touch anything, tell me what state the HPA is in right now.
+          This is the transmit chain. The HPA is at the top right and the BUC is at the top left. Before you touch anything, tell me what state the HPA is in right now.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1432,13 +1433,13 @@ export const scenario2Data: ScenarioData = {
       'verify-maintenance-position-quiz': {
         text: `
         <p>
-          Right. Ground clearance. Different facilities have different maintenance positions based on their terrain and equipment.
+          Right, it's ground clearance. Other facilities pick different maintenance positions, depending on their terrain and equipment.
         </p>
         <p>
-          Antenna's at maintenance position. Crew has the all-clear.
+          The antenna is parked and the crew has the all-clear to start.
         </p>
         <p>
-          They're replacing a waveguide flange gasket - routine work. Mike calls it done at 09:50 on the station clock.
+          Mike's crew is replacing a waveguide flange gasket, which is routine work. That's the seal where two sections of waveguide bolt together. He'll call it done at 09:50 on the station clock, and until then the antenna stays where it is.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1469,10 +1470,7 @@ export const scenario2Data: ScenarioData = {
       'repoint-antenna': {
         text: `
         <p>
-          Antenna's back on target. Now we restore the receive path first.
-        </p>
-        <p>
-          Click the RX Analysis tab. Power up the LNB - set the local oscillator to 5,250 megahertz, gain to 60 dB. It comes back at 65 after a power cycle, so you'll need to bring the gain down.
+          Antenna's back on target. Now we restore the receive path first, so click the RX Analysis tab. The LNB comes back at 65 dB gain after a power cycle, so you'll need to bring it down to 60.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1512,7 +1510,7 @@ export const scenario2Data: ScenarioData = {
           LNB's stable. Now verify we're actually seeing the satellite.
         </p>
         <p>
-          Check the spectrum analyzer. It's still parked on the carrier from before the work - retune it to the beacon - center 1,074.5 MHz, span 0.002 MHz. TIDEMARK-1's beacon should be visible at 1,074.5 MHz on the IF side. That's our 5,250 MHz LO minus the 4,175.5 MHz RF. If you see a clean carrier there, we're pointed correctly.
+          Check the spectrum analyzer. It's still parked where it was before the work, so retune it to the beacon with the center at 1,074.5 MHz and the span at 0.002 MHz. If you see a clean carrier there, the antenna is pointed correctly and the receive chain is working.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1617,10 +1615,10 @@ export const scenario2Data: ScenarioData = {
       'final-verification': {
         text: `
         <p>
-          That's scheduled maintenance. Power down in sequence, park the antenna at maintenance, restore in reverse order. You did it correctly - no one got hurt, no equipment got damaged, all within our Authorized Service Interruption window.
+          That's scheduled maintenance. You powered down in sequence, parked the antenna at the maintenance position, and restored everything in reverse order. Nobody got hurt, nothing got damaged, and we finished inside our authorized service interruption window, the time we're approved to have the link down.
         </p>
         <p>
-          Tomorrow we'll look at what happens when things don't go according to plan. Weather events, unexpected faults, that kind of thing. For now, go get some coffee or whatever it is you do here when not training.
+          Tomorrow we'll look at what happens when things don't go according to plan, like bad weather or an unexpected fault.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

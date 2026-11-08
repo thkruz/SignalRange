@@ -65,13 +65,13 @@ const SCENARIO_18_OBJECTIVES: Scenario18Objective[] = [
     id: 'dashboard-baseline',
     title: 'Station Health vs Link Health',
     type: 'quiz',
-    correctAnswer: "The ground segment is healthy - the degradation is on the space side or in the geometry, matching Halifax's report",
+    correctAnswer: "The ground segment is healthy - the problem is on the space side or in the geometry, matching Halifax's report",
   },
   {
     id: 'station-keeping-quiz',
     title: 'What Died on the Spacecraft',
     type: 'quiz',
-    correctAnswer: 'A daily figure-8 - the bird swings about 1.3° north and south of its slot every day, and the ephemeris, computed before the burn, does not show it',
+    correctAnswer: 'A daily figure-8 - the bird swings about 1.3° north and south of its slot, and the pre-burn ephemeris does not show it',
   },
   {
     id: 'read-program-track-decay-tab',
@@ -83,7 +83,7 @@ const SCENARIO_18_OBJECTIVES: Scenario18Objective[] = [
     id: 'read-program-track-decay',
     title: 'Read the Program-Track Decay',
     type: 'quiz',
-    correctAnswer: 'Program-track IS on the ephemeris target - the satellite is somewhere else, and the gap between prediction and reality is paid in pattern loss',
+    correctAnswer: 'Program-track IS on the ephemeris target - the satellite is elsewhere, and the gap between prediction and reality costs pattern loss',
     // The sag the quiz names: ~28 dB on the stale ephemeris against ~34 under step-track
     checkScreen: async (page) => {
       const beaconCn = await readAcuBeaconCn(page);
@@ -95,8 +95,7 @@ const SCENARIO_18_OBJECTIVES: Scenario18Objective[] = [
     id: 'beamwidth-risk-quiz',
     title: 'How Long Until It Falls Off',
     type: 'quiz',
-    correctAnswer:
-      'Borrowed time - in about twenty minutes the gap reaches about one beamwidth (~0.55-0.6°) and the carrier drops out of lock; by early afternoon the bird is far outside the beam',
+    correctAnswer: 'Borrowed time - in about twenty minutes the gap reaches about one beamwidth (~0.55-0.6°) and the carrier would drop out of lock',
     // "about 0.4 deg now (beacon ~6 dB down)": the ACU still shows the sag
     checkScreen: async (page) => {
       const beaconCn = await readAcuBeaconCn(page);
@@ -134,7 +133,7 @@ const SCENARIO_18_OBJECTIVES: Scenario18Objective[] = [
     id: 'no-manual-chase-quiz',
     title: 'Why Not Fly It By Hand',
     type: 'quiz',
-    correctAnswer: 'A human chases where the bird WAS; the loop tracks where it IS - nudges add error between corrections, and a bad nudge can drop the beacon',
+    correctAnswer: 'A human chases where the bird WAS while the loop tracks where it IS - nudges add error, and a bad one can drop the beacon',
   },
 
   // PHASE 3: HOLD AND REPORT
@@ -155,14 +154,13 @@ const SCENARIO_18_OBJECTIVES: Scenario18Objective[] = [
     id: 'ground-observations-quiz',
     title: 'Feed the Vehicle Team',
     type: 'quiz',
-    correctAnswer: 'Timestamped step-track pointing history - the dish is physically following the satellite, so its az/el trace is a measurement of the actual orbit',
+    correctAnswer: 'Timestamped step-track pointing history - the dish is following the satellite, so its az/el trace measures the actual orbit',
   },
   {
     id: 'impact-assessment-quiz',
     title: 'Customer Impact Posture',
     type: 'quiz',
-    correctAnswer:
-      'No current impact; service nominal under step-track. Elevated risk while the anomaly is open; decision points are step-track margin loss or a Halifax status change',
+    correctAnswer: 'No current impact; service nominal under step-track. Elevated risk while the anomaly is open; decision points: step-track margin loss, Halifax status change',
   },
   {
     id: 'escalation-boundary-quiz',
@@ -175,7 +173,7 @@ const SCENARIO_18_OBJECTIVES: Scenario18Objective[] = [
     title: 'Log the Anomaly Response',
     type: 'quiz',
     correctAnswer:
-      'TM-2 vehicle anomaly (Halifax ref): N-S burn overran, ~1.3° inclination, ephemeris stale. ME-02 step-track engaged this shift (time in the Ops Log), carrier recovered, no impact. Pointing history to Halifax. Anomaly OPEN.',
+      'TM-2 vehicle anomaly (Halifax ref): N-S burn overran, ~1.3° inclination, ephemeris stale. ME-02 on step-track (time in the Ops Log), carrier recovered, no impact. Pointing history to Halifax. Anomaly OPEN.',
   },
 ];
 

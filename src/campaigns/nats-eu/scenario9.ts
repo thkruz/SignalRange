@@ -30,7 +30,7 @@ import { createMeridianSar1, createMeridianSar2, type MeridianTle } from './sate
  *
  *   GW-01 MERIDIAN-SAR-1 #1: AOS T+18.0 (06:18:00Z, az 143), max el 30.5 deg at
  *                            T+22.8 (06:22:47Z, 716 km), LOS T+27.6 (06:27:33Z,
- *                            az 355), 9.5 min, northbound. Peak C/N ~11 dB.
+ *                            az 355), 9.5 min, northbound. Peak C/N ~11.5-12 dB.
  *   SH-02 MERIDIAN-SAR-1 #1: AOS T+19.1 (06:19:07Z, az 167), max el 72.8 deg at
  *                            T+24.1 (409 km), LOS T+29.1 (06:29:04Z). Fiona's.
  *   SH-02 MERIDIAN-SAR-2 #1: AOS T+30.0 (06:30:00Z, az 011), max el 23.0 deg at
@@ -54,7 +54,7 @@ import { createMeridianSar1, createMeridianSar2, type MeridianTle } from './sate
  * default. SH-02 is the shared default (modem on 1414, ready for Fiona's SAR-1).
  *
  * RF is the S1 envelope, unchanged: video 28 dBm EIRP, IF 1414 / 1370 MHz,
- * C/N peaks ~11 dB at 25-30 deg max elevation under real program-track. No faults.
+ * C/N peaks ~11.5-12 dB at 25-30 deg max elevation under real program-track. No faults.
  *
  * NICE Framework Alignment:
  * Primary Codes:
@@ -108,7 +108,7 @@ export const natsEuScenario9Data: ScenarioData = {
   subtitle: 'Network Health & Daily Pass Plan',
   duration: '35 min',
   missionType: 'Network Operations',
-  description: `06:00 local. First qualified shift. Two sites, two birds, six contacts on the board and nobody to hand you the plan.<br><br>Erik Halvorsen at Nordic Maritime Watch has a standing collect on the 06:18 MERIDIAN-SAR-1 window and wants to know it is covered. Fiona is on the SH-02 console for her 73 degree pass and then she is outside on the feed heater, which makes the Shetland SAR-2 window at 06:30 yours, remotely, at the same time as Galway's own.<br><br>Sweep both sites before the first window, build the day plan, fly the collect, arm Galway to fly its second window on its own, take Shetland's from here, and tell Erik what he can count on.`,
+  description: `06:00 local. First qualified shift: two sites, two satellites, six contacts on the board, and nobody to hand you the plan.<br><br>Erik Halvorsen at Nordic Maritime Watch has a standing collect on the 06:18 MERIDIAN-SAR-1 window, and he wants to know it's covered. Fiona is on the SH-02 console for her 73 degree pass, then she's outside working on the feed heater. That makes the Shetland SAR-2 window at 06:30 yours to fly remotely, at the same time as Galway's own.<br><br>Sweep both sites before the first window, build the day plan, and fly the collect. Then arm Galway to fly its second window on its own, take Shetland's from here, and tell Erik what he can count on.`,
   equipment: [
     'GW-01 Galway: 4m Ku-Band LEO Tracker',
     'SH-02 Shetland: 4m Ku-Band LEO Tracker (remote console)',
@@ -190,7 +190,7 @@ export const natsEuScenario9Data: ScenarioData = {
       id: 'review-mission-brief',
       nice: ['K0645', 'K0737'],
       title: 'Take the Shift',
-      description: 'Open the brief; confirm the six contacts, who flies what, and the health-check list for both sites.',
+      description: 'Open the brief and confirm the six contacts, who flies what, and the health checks for both sites. P1 to P3 are the contact priorities, with P1 the highest.',
       groundStation: 'GW-01',
       freezesScenarioTimer: true,
       prerequisiteObjectiveIds: [],
@@ -206,7 +206,7 @@ export const natsEuScenario9Data: ScenarioData = {
           description: 'Plan Rule Confirmed',
           params: {
             character: Character.SYSTEM,
-            question: 'Six contacts, two sites. What must be true before you publish a plan to Fiona?',
+            question: 'There are six contacts and two sites. What must be true before you publish the plan to Fiona?',
             options: [
               'No site is double-booked and every P1 and P2 contact is assigned to a station.',
               'Every contact on the board, including the P3 second-orbit passes, is assigned to Galway.',
@@ -215,7 +215,7 @@ export const natsEuScenario9Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Overlaps go to different sites, the P1/P2 contacts are all covered, and the P3 passes are yours to keep or drop. Eighteen minutes to the first window. Shift clock started.',
+              "Overlapping contacts go to different sites, because one site can't track two satellites at once. Every P1 and P2 contact needs a station, and the P3 passes are yours to keep or drop. The first window opens in about eighteen minutes.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -232,7 +232,7 @@ export const natsEuScenario9Data: ScenarioData = {
       id: 'galway-dashboard-sweep',
       nice: ['T0153', 'K0741'],
       title: 'GW-01 Dashboard Sweep',
-      description: 'Clear the home board first: confirm the active alarm state on GW-01.',
+      description: 'Start with the Galway board. Open the dashboard and confirm which alarms are active on GW-01.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['review-mission-brief'],
       timeLimitSeconds: 90,
@@ -250,16 +250,16 @@ export const natsEuScenario9Data: ScenarioData = {
           description: 'Alarm State Confirmed',
           params: {
             character: Character.SYSTEM,
-            question: 'What is the active alarm state on GW-01 at turnover?',
+            question: "What's the active alarm state on GW-01 as the shift starts?",
             options: [
-              'RX AGC on noise only - no carrier on an empty sky, no hardware alarm',
-              'No active alarms - all systems nominal, board clear at turnover',
-              'GPSDO in holdover - reference alarm, timing at risk for the pass',
-              'Antenna drive fault - hardware alarm, pedestal down for the pass',
+              'Receive AGC on noise only: no carrier on an empty sky, no alarm',
+              'No active alarms: every system nominal and the board clear',
+              'GPSDO in holdover: a reference alarm putting pass timing at risk',
+              'Antenna drive fault: a hardware alarm with the pedestal down',
             ],
             correctIndex: 0,
             explanation:
-              'The AGC no-carrier warning is empty sky, not a fault. The evening shift left the hardware healthy and the receiver on the wrong bird; the next three checks find which is which.',
+              "The AGC, the receiver's automatic gain control, warns of no carrier because nothing is in the beam, so it isn't a fault. The evening shift left the hardware healthy but the receiver tuned to the wrong satellite, and the next three checks sort out which is which.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -272,7 +272,8 @@ export const natsEuScenario9Data: ScenarioData = {
       id: 'galway-reference-check',
       nice: ['T0431', 'K0740'],
       title: 'GW-01 Reference Check',
-      description: 'GPSDO locked and out of holdover. Every LO in the rack keys off it; confirm it before the plan commits the site to anything.',
+      description:
+        "Confirm the GPSDO, the GPS-disciplined oscillator that is the site's clock reference, is locked and out of holdover. Every local oscillator in the rack keys off it, so check it before the plan commits the site to anything.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['galway-dashboard-sweep'],
       timeLimitSeconds: 2 * 60,
@@ -299,7 +300,7 @@ export const natsEuScenario9Data: ScenarioData = {
       nice: ['T0431', 'S0421', 'K0773'],
       title: 'GW-01 Receive Chain',
       description:
-        'LNB on the 13100 MHz LO and thermally stable. The evening shift left modem 1 on the 1370 MHz SAR-2 carrier: retune it to 1414 MHz for the 06:18 SAR-1 collect and put the analyzer on the SAR-1 beacon, 1389 MHz, with a 2 MHz span.',
+        "Confirm the LNB's local oscillator is on 13100 MHz and the LNB is thermally stable. The evening shift left modem 1 on the 1370 MHz SAR-2 carrier, so retune it to 1414 MHz for the 06:18 SAR-1 collect. Then put the analyzer on the SAR-1 beacon at 1389 MHz with a 2 MHz span.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['galway-reference-check'],
       timeLimitSeconds: 3 * 60,
@@ -343,7 +344,8 @@ export const natsEuScenario9Data: ScenarioData = {
       id: 'galway-transmit-chain',
       nice: ['T0431', 'K0740', 'K0645'],
       title: 'GW-01 Transmit Chain',
-      description: 'No uplink is tasked today. Confirm the chain is cold the right way: BUC on the external reference with normal current, HPA output disabled.',
+      description:
+        'No uplink is tasked today, so confirm the transmit chain is cold the right way. The BUC, the block upconverter, should be on the external reference and drawing normal current. The HPA, the high-power amplifier, should have its output disabled.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['galway-receive-chain'],
       timeLimitSeconds: 2 * 60,
@@ -372,16 +374,16 @@ export const natsEuScenario9Data: ScenarioData = {
           description: 'Cold Chain Read',
           params: {
             character: Character.SYSTEM,
-            question: 'Receive-only shift. Which transmit-chain state is the correct "cold" for a site that might be tasked later today?',
+            question: 'This is a receive-only shift. Which transmit-chain state counts as "cold" for a site that might be tasked later today?',
             options: [
-              'Modem off air, HPA output disabled, BUC muted - everything still powered and on the reference so it can come up in order',
-              'HPA output enabled with the modem off, BUC unmuted - the chain is ready the moment a command arrives, with no carrier up',
-              'BUC and HPA powered off entirely, modem off air - nothing draws power or warms the feed until tasking comes in',
-              'Modem off air, HPA output enabled, BUC muted - the mute is the only barrier needed, and the HPA stays warm for tasking',
+              'Modem off air, HPA output disabled, BUC muted: everything still powered and on the reference so it can come up in order',
+              'HPA output enabled with the modem off, BUC unmuted: the chain is ready the moment a command arrives, with no carrier up',
+              'BUC and HPA powered off entirely, modem off air: nothing draws power or warms the feed until tasking comes in',
+              'Modem off air, HPA output enabled, BUC muted: the mute is the only barrier needed, and the HPA stays warm for tasking',
             ],
             correctIndex: 0,
             explanation:
-              'Cold is not off. An HPA enabled with nothing driving it amplifies the noise floor into the feed, and a chain that was powered down needs a reference lock and a warm-up before it can be trusted. Powered, locked, disabled.',
+              "Cold isn't the same as off. An HPA that's enabled with nothing driving it amplifies the noise floor into the feed, and a chain that was powered down needs a reference lock and a warm-up before anyone can trust it. So the right state is powered, locked and disabled.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -399,7 +401,7 @@ export const natsEuScenario9Data: ScenarioData = {
       nice: ['K0689', 'T0129'],
       title: 'Build the Day Plan',
       description:
-        "Allocate the morning's contacts across GW-01 and SH-02 with no site double-booked; leave the P3 second-orbit contacts to your judgment. The plan must read DECONFLICTED.",
+        "Assign the morning's contacts to GW-01 and SH-02 without double-booking either site. The two P3 second-orbit contacts are your call. The plan badge has to read DECONFLICTED.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['galway-transmit-chain'],
       timeLimitSeconds: 4 * 60,
@@ -435,16 +437,17 @@ export const natsEuScenario9Data: ScenarioData = {
           description: 'SAR-2 Pair Resolved',
           params: {
             character: Character.SYSTEM,
-            question: 'M-SAR2-SH opens at 06:30 and M-SAR2-GW at 06:32, both priority 1, and Fiona is outside from 06:29. One operator, two sites. How does the plan get flown?',
+            question:
+              "M-SAR2-SH opens at 06:30 and M-SAR2-GW at 06:32. Both are priority 1, and Fiona is outside from 06:29. You're one operator with two sites, so how does the plan get flown?",
             options: [
-              'Galway is armed on program-track and flies its window unattended; Shetland has no unattended-pass sign-off yet, so it is flown from here',
-              'Drop the Galway SAR-2 contact from the plan; one operator cannot fly both sites, and Shetland is the site Fiona cannot cover',
-              'Fly Galway from here and let Shetland miss its window; the customer has one collect on the board, and one site covers it',
-              'Assign both contacts to SH-02 in the plan; one pedestal takes them back to back, and its console is the one in front of you',
+              'Galway is armed on program-track and flies unattended; Shetland has no unattended sign-off yet, so you fly it from here',
+              "Drop the Galway SAR-2 contact from the plan, because one operator can't fly both sites and Shetland is the one Fiona can't cover",
+              'Fly Galway from here and let Shetland miss its window, because the customer has one collect on the board and one site covers it',
+              'Assign both contacts to SH-02 in the plan, because one pedestal takes them back to back and its console is the one in front of you',
             ],
             correctIndex: 0,
             explanation:
-              'A site does not need an operator to track a pass it has been armed for; it needs one to notice when it does not. GW-01 has been signed off for unattended passes since acceptance. SH-02 went live four days ago and has not. That is the difference the plan has to respect.',
+              "A site doesn't need an operator to track a pass it's armed for, but it does need one to notice when the track goes wrong. GW-01 has been signed off for unattended passes since acceptance. SH-02 went live four days ago and hasn't been. The two windows overlap, so one site can't take both, and the plan has to respect that difference.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -461,7 +464,7 @@ export const natsEuScenario9Data: ScenarioData = {
       id: 'shetland-dashboard-sweep',
       nice: ['T0153', 'K0741', 'S0421'],
       title: 'SH-02 Dashboard Sweep',
-      description: 'Select SH-02 in the asset tree and clear its board from here: confirm the active alarm state on Shetland.',
+      description: 'Select SH-02 in the asset tree and open its dashboard from here. Confirm which alarms are active on Shetland.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['build-the-day-plan'],
       timeLimitSeconds: 90,
@@ -486,16 +489,17 @@ export const natsEuScenario9Data: ScenarioData = {
           description: 'Remote Board Read',
           params: {
             character: Character.SYSTEM,
-            question: 'SH-02 shows one warning, the receive AGC on noise with no carrier, and nothing else. What does that board on a remote site tell you, and what does it not?',
+            question:
+              "SH-02 shows one warning, the receive AGC on noise with no carrier, and nothing else. What does that board tell you about a remote site, and what doesn't it?",
             options: [
-              'Nothing in the alarm set is tripped and the AGC no-carrier warning is empty sky; it says nothing about configuration',
+              'No alarm is tripped, and the AGC no-carrier warning is just empty sky; it says nothing about configuration',
               'The site is ready to fly and the receiver is on the carrier; it says nothing about whether the pedestal is armed',
               'Fiona has already checked it and left it configured; it says nothing that the rest of the sweep would add',
               'The equipment is powered and the reference is locked; it says nothing about whether the receive chain has a fault',
             ],
             correctIndex: 0,
             explanation:
-              'Configuration is what the next three checks are for. An alarm is a threshold crossed, and an AGC levelling noise with nothing in the beam is the threshold behaving. A modem on the wrong carrier, an analyzer on the wrong span, an antenna stowed the wrong way - none of those is an alarm, and any of them loses a pass.',
+              "Configuration is what the next three checks are for. An alarm is a threshold being crossed, and an AGC levelling out on noise with nothing in the beam is behaving normally. A modem on the wrong carrier, an analyzer on the wrong span or an antenna stowed the wrong way isn't an alarm, but any of them can lose a pass.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -508,7 +512,7 @@ export const natsEuScenario9Data: ScenarioData = {
       id: 'shetland-reference-check',
       nice: ['T0431', 'K0740'],
       title: 'SH-02 Reference Check',
-      description: 'Shetland GPSDO locked and out of holdover. The GNSS antenna up there has been flaky in the wind all week.',
+      description: 'Confirm the Shetland GPSDO is locked and out of holdover. Its GNSS antenna has been flaky in the wind all week, so read the lock state rather than assume it.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['shetland-dashboard-sweep'],
       timeLimitSeconds: 2 * 60,
@@ -542,7 +546,7 @@ export const natsEuScenario9Data: ScenarioData = {
       nice: ['T0431', 'K0773', 'K1032'],
       title: 'SH-02 Receive Chain',
       description:
-        "Shetland's LNB on the 13100 MHz LO and thermally stable. Leave modem 1 on 1414 MHz - Fiona flies SAR-1 on it at 06:19 - and read her pass on the schedule while you are there.",
+        "Confirm the Shetland LNB's local oscillator is on 13100 MHz and the LNB is thermally stable. Leave modem 1 on 1414 MHz, because Fiona flies SAR-1 on it at 06:19, and read her pass on the schedule while you're there.",
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['shetland-reference-check'],
       timeLimitSeconds: 3 * 60,
@@ -573,16 +577,16 @@ export const natsEuScenario9Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question:
-              "Same LNB, same 60 K. Fiona's SAR-1 pass peaks at 73 degrees and 409 km; Galway's peaks at 30 degrees and 716 km with about 12 dB of C/N. What should Shetland see at the top, before the pedestal has its say?",
+              "It's the same LNB at the same 60 K. Fiona's SAR-1 pass peaks at 73 degrees and 409 km, while Galway's peaks at 30 degrees and 716 km with about 12 dB of C/N. What should Shetland see at the top, assuming the pedestal tracks cleanly?",
             options: [
-              'About 17 dB: 20 log(716 / 409) is 4.9 dB less path loss, and almost no atmosphere that steep',
-              'About 12 dB: same bird, same LNB and same 60 K, so the same number at whatever elevation',
+              'About 17 dB: 20 log(716 / 409) is 4.9 dB less path loss, and very little atmosphere at that elevation',
+              'About 12 dB: same satellite, same LNB and same 60 K, so the same number at any elevation',
               'About 8 dB: a steep pass is shorter, so the receiver has less time to integrate the carrier',
-              'Nothing usable: 73 degrees is inside the keyhole, so the pedestal loses the bird at the top of the pass',
+              'Nothing usable: 73 degrees is inside the keyhole, so the pedestal loses the satellite at the top of the pass',
             ],
             correctIndex: 0,
             explanation:
-              'Range wins, and a site at 60 north gets more of these on a sun-synchronous bird than a site at 53. 73 degrees is still tracking on a 10 deg/s pedestal; the keyhole is the last few degrees to the zenith, and that is a later shift.',
+              "Range wins: the shorter path costs 4.9 dB less, and a steep pass crosses less atmosphere. A site at 60 north also gets more passes of a sun-synchronous satellite than a site at 53. At 73 degrees the pedestal is still tracking, since it turns at up to 10 degrees a second. The keyhole, where the pedestal can't turn fast enough near the zenith, is the last few degrees, and that's a later shift.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -595,7 +599,8 @@ export const natsEuScenario9Data: ScenarioData = {
       id: 'shetland-transmit-chain',
       nice: ['T0431', 'K0740', 'S0421'],
       title: 'SH-02 Transmit Chain',
-      description: 'Shetland BUC on the external reference and under 70 degrees, HPA output disabled. Cold, the right way, three hundred miles from the rack.',
+      description:
+        "Confirm the Shetland BUC is on the external reference and under 70 degrees, with the HPA output disabled. That's the same cold chain as Galway's, checked from a console away from the rack.",
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['shetland-receive-chain'],
       timeLimitSeconds: 2 * 60,
@@ -638,7 +643,8 @@ export const natsEuScenario9Data: ScenarioData = {
       id: 'acquire-sar1',
       nice: ['S0421', 'K1032'],
       title: 'Acquire MERIDIAN-SAR-1',
-      description: 'Back to GW-01. AOS 06:18 from azimuth 143. Program-track MERIDIAN-SAR-1 and confirm the beacon on RX analysis.',
+      description:
+        'Go back to GW-01. AOS, the moment the satellite rises, is 06:18 at azimuth 143. Turn on program-track for MERIDIAN-SAR-1 and confirm its beacon on the RX Analysis tab.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['shetland-transmit-chain'],
       conditions: [
@@ -680,7 +686,7 @@ export const natsEuScenario9Data: ScenarioData = {
       id: 'decode-the-standing-collect',
       nice: ['T0153', 'S0421', 'K0740'],
       title: 'Decode the Standing Collect',
-      description: "Lock the 1414 MHz imagery downlink and hold C/N above 8 dB through the high segment, roughly 06:20:30 to 06:25. This is Erik's contact.",
+      description: "Lock modem 1 on the 1414 MHz imagery downlink and keep C/N above 8 dB through the high part of the pass, roughly 06:20:30 to 06:25. This is Erik's contact.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['acquire-sar1'],
       conditions: [
@@ -701,16 +707,16 @@ export const natsEuScenario9Data: ScenarioData = {
           description: 'Delivery Standard Read',
           params: {
             character: Character.SYSTEM,
-            question: 'C/N peaks near 12 dB at 06:22:47, 30 degrees, 716 km. Erik will ask whether the frames are "good". What is the technically honest answer?',
+            question: 'C/N peaks near 12 dB at 06:22:47, when the satellite is at 30 degrees and 716 km. Erik will ask whether the frames are "good". What\'s the accurate answer?',
             options: [
-              'Decoded with about 8 dB over the QPSK 3/4 threshold: at this margin the frames are clean, with no partly decoded ones',
+              'Decoded with about 8 dB over the QPSK 3/4 threshold, so the frames are clean with no partial ones',
               'Good but degraded: anything under 14 dB loses detail, so at 12 dB the frames are usable but not at full quality',
-              'Unknown until Rotterdam reports back: the station only sees C/N, so it cannot tell whether any frames decoded',
+              "Unknown until Rotterdam reports back: the station only sees C/N, so it can't tell whether any frames decoded",
               'Marginal: 12 dB is close to the 8 dB delivery standard, so the frames are in but a fade would have cost them',
             ],
             correctIndex: 0,
             explanation:
-              'Digital links are a cliff, not a slope. Above threshold the frames are the frames; below it there are none. 8 dB is the delivery standard because it leaves nearly 4 dB over the 4.2 dB threshold for weather and pointing, not because 8 dB frames look different from 12 dB ones.',
+              'A digital link is a cliff, not a slope: above the threshold the frames decode cleanly, and below it you get none. The 8 dB delivery standard sits nearly 4 dB over the 4.2 dB threshold to leave room for weather and pointing, not because 8 dB frames look different from 12 dB ones.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -728,7 +734,7 @@ export const natsEuScenario9Data: ScenarioData = {
       nice: ['S0421', 'K0645', 'T0129'],
       title: 'Arm Galway for SAR-2',
       description:
-        'Galway flies its 06:32 SAR-2 window without you. Before you leave the console: modem 1 to the 1370 MHz SAR-2 carrier, program-track with MERIDIAN-SAR-2 as the target. The pedestal acquires on its own at AOS.',
+        'Galway will fly its 06:32 SAR-2 window without you. Before you leave the console, retune modem 1 to the 1370 MHz SAR-2 carrier and set program-track with MERIDIAN-SAR-2 as the target. The pedestal then acquires the satellite on its own when it rises.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['decode-the-standing-collect'],
       timeLimitSeconds: 3 * 60,
@@ -751,16 +757,16 @@ export const natsEuScenario9Data: ScenarioData = {
           description: 'Unattended Pass Understood',
           params: {
             character: Character.SYSTEM,
-            question: 'What does an unattended pass need from you before you leave the console, and what can it not do for itself?',
+            question: "What does an unattended pass need from you before you leave the console, and what can't it do for itself?",
             options: [
-              'Receiver on the right carrier and program-track on the right target; it cannot notice a bad number, so you check on return',
-              'Nothing before you leave; the scheduler configures the station from the contact plan, but it cannot start the modem recording',
-              'A recording started on the modem so the frames are kept; it cannot lock the pedestal, so program-track is left to the scheduler',
-              'Step-track enabled so the pedestal finds the bird without elements; it cannot judge C/N, so the number is read on return',
+              "Receiver on the right carrier and program-track on the right target; it can't notice a bad number, so you check on return",
+              "Nothing before you leave; the scheduler configures the station from the contact plan, but it can't start the modem recording",
+              "A recording started on the modem so the frames are kept; it can't lock the pedestal, so program-track is left to the scheduler",
+              "Step-track enabled so the pedestal finds the satellite without elements; it can't judge C/N, so the number is read on return",
             ],
             correctIndex: 0,
             explanation:
-              'The contact plan allocates; it does not configure. Program-track on current elements does not need an operator to acquire. What it needs is one to look at the C/N afterwards and decide whether the pass counts.',
+              "The contact plan decides who flies what, but it doesn't configure the station. Program-track on current orbital elements, the satellite's predicted position, doesn't need an operator to acquire. What the pass needs is someone to look at the C/N afterwards and decide whether it counts.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -774,7 +780,7 @@ export const natsEuScenario9Data: ScenarioData = {
       nice: ['S0421', 'K0773', 'T0129'],
       title: 'Take the Shetland Console',
       description:
-        'Fiona sets at 06:29 and goes outside. Select SH-02: retune modem 1 from her 1414 MHz SAR-1 carrier to 1370 MHz for SAR-2 and put the analyzer on the SAR-2 beacon, 1397 MHz. AOS 06:30 from azimuth 011. The three minutes start when SAR-1 sets at Shetland, not before.',
+        'Fiona hands over when SAR-1 sets at Shetland, around 06:29, and then goes outside. Select SH-02, retune modem 1 from her 1414 MHz SAR-1 carrier to 1370 MHz for SAR-2, and put the analyzer on the SAR-2 beacon at 1397 MHz. SAR-2 rises at 06:30 from azimuth 011. Your three minutes start when SAR-1 sets at Shetland, not before.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['arm-galway-for-sar2'],
       timeLimitSeconds: 3 * 60,
@@ -817,7 +823,8 @@ export const natsEuScenario9Data: ScenarioData = {
       id: 'acquire-sar2-from-shetland',
       nice: ['S0421', 'K1032'],
       title: 'Acquire SAR-2 from Shetland',
-      description: 'Program-track MERIDIAN-SAR-2 on the SH-02 pedestal and confirm its 1397 MHz beacon on the analyzer you centred on it, once the bird clears the mask.',
+      description:
+        'Turn on program-track for MERIDIAN-SAR-2 on the SH-02 pedestal, and confirm its 1397 MHz beacon on the analyzer you centred on it. The beacon shows once the satellite clears the elevation mask, the lowest angle the pedestal will track.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['take-the-shetland-console'],
       conditions: [
@@ -853,7 +860,7 @@ export const natsEuScenario9Data: ScenarioData = {
       nice: ['T0153', 'K0740', 'K1032'],
       title: 'Decode SAR-2 from Shetland',
       description:
-        'Lock the 1370 MHz carrier on the SH-02 modem and hold C/N above 7 dB through culmination, 23 degrees at 06:34:38 and 879 km; the peak is about 10 dB, a couple of decibels under the SAR-1 pass at Galway because this one is lower and further away. Galway is flying the same bird two minutes behind you.',
+        'Lock the 1370 MHz carrier on the SH-02 modem and keep C/N above 7 dB through culmination, the highest point of the pass: 23 degrees at 06:34:38 and 879 km. The peak is about 10 dB, a couple of decibels under the SAR-1 pass at Galway, because this pass is lower and farther away. Galway is flying the same satellite two minutes behind you.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['acquire-sar2-from-shetland'],
       conditions: [
@@ -874,15 +881,16 @@ export const natsEuScenario9Data: ScenarioData = {
           description: 'Unattended Check Planned',
           params: {
             character: Character.SYSTEM,
-            question: 'Galway has been tracking SAR-2 on its own since 06:32. When you get back to its console, what tells you whether its pass counted?',
+            question: "Galway's own SAR-2 pass starts at 06:32, with no operator at the console. When you go back to it, what tells you whether the pass counted?",
             options: [
-              'The pedestal still program-track locked on SAR-2 and the modem locked with C/N over threshold, read while the bird is still up',
-              'The contact plan showing M-SAR2-GW as assigned to Galway and the window closed, read after the bird has set',
-              'The absence of an alarm on the Galway dashboard and the AGC no-carrier warning cleared, read while the bird is still up',
-              'The processing confirmation from Rotterdam and the frame count it reports, read after the bird has set',
+              'The pedestal still program-track locked on SAR-2 and the modem locked over threshold, read while the satellite is up',
+              'The contact plan showing M-SAR2-GW as assigned to Galway and the window closed, read after the satellite has set',
+              'The absence of an alarm on the Galway dashboard and the AGC no-carrier warning cleared, read while the satellite is up',
+              'The processing confirmation from Rotterdam and the frame count it reports, read after the satellite has set',
             ],
             correctIndex: 0,
-            explanation: 'Assigned is a plan. Locked with a number is a pass. Galway sets at 06:41; the check has to happen before that or it is a guess.',
+            explanation:
+              "Assigned is only a plan, while locked with a good C/N number is a pass. Galway's window closes at 06:41, so the check has to happen before then, or the answer is only a guess.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -900,7 +908,7 @@ export const natsEuScenario9Data: ScenarioData = {
       nice: ['T0153', 'T0431', 'K0740'],
       title: 'Check the Unattended Pass',
       description:
-        'Shetland sets at 06:39. Select GW-01 while SAR-2 is still up (until 06:41): the pedestal should be program-track locked on it and the modem locked with C/N above 6 dB on the way down.',
+        'SAR-2 sets at Shetland at 06:39. Select GW-01 while SAR-2 is still above Galway, until 06:41, and check that the pedestal is program-track locked on it and the modem is locked with C/N above 6 dB on the way down.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['decode-sar2-from-shetland'],
       conditions: [
@@ -931,7 +939,7 @@ export const natsEuScenario9Data: ScenarioData = {
       id: 'customer-status',
       nice: ['S0478', 'T1580', 'K0645'],
       title: 'Customer Status',
-      description: 'Close the morning with Erik and write it into the report: what was captured, what is committed, what is best-effort.',
+      description: 'Answer Erik and write it into the report: what was captured, what is committed, and what is best-effort.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['check-the-unattended-pass'],
       timeLimitSeconds: 3 * 60,
@@ -944,14 +952,14 @@ export const natsEuScenario9Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Erik asks whether his 06:18 collect was captured and what the day looks like. What do you report?',
             options: [
-              'The collect decoded with margin; both SAR-2 windows were worked, one from each site; the second-orbit contacts are best-effort.',
+              'The collect decoded with margin; both SAR-2 windows were worked, one per site; second-orbit contacts are best-effort.',
               'The collect decoded; every contact on the board is committed from Galway alone; the second-orbit contacts are guaranteed.',
-              'The collect was captured; the SAR-2 windows were dropped, both sites being busy; the second orbit will cover them.',
+              'The collect was captured; both SAR-2 windows were dropped because both sites were busy; the second orbit will cover them.',
               'The collect decoded at 12 dB C/N; the margin over the QPSK 3/4 threshold was about 8 dB; the SAR-2 windows decoded as well.',
             ],
             correctIndex: 0,
             explanation:
-              'Report what was captured, what is committed, and what is best-effort. Erik does not need the C/N numbers; he needs to know what he can count on. The numbers go in the report, for the people who do.',
+              "Report what was captured, what's committed and what's best-effort, because that tells Erik what he can count on. He doesn't need the C/N numbers; they go in the report for the people who do. Best-effort means you'll try but won't promise, which is why the second orbit can't be called guaranteed.",
             pointPenalty: 5,
             documentSection: 'Contacts',
             documentLine:
@@ -971,7 +979,7 @@ export const natsEuScenario9Data: ScenarioData = {
         <em>[Text message from Erik Halvorsen at 05:52]</em>
       </p>
       <p>
-        "Morning. Standing collect on the 06:18 SAR-1 window, same as every day this week. I have a vessel track that depends on it. I do not need the details - just tell me it's covered."
+        "Morning. The standing collect is on the 06:18 SAR-1 window, same as every day this week, and I've got a vessel track that depends on it. I don't need the details. Just tell me it's covered."
       </p>
       `,
       character: Character.ERIK_HALVORSEN,
@@ -985,7 +993,7 @@ export const natsEuScenario9Data: ScenarioData = {
           <em>[Text message from Fiona MacLeod]</em>
         </p>
         <p>
-          "On console since half five and I've not touched the equipment, so what your console shows for my site is what I've got. I'll take the seventy-three at 06:19 myself - I want eyes on the pedestal through the top - and then I'm outside on the heater cable till seven. The half-past SAR-2 is yours from there. Modem's on 1414 for mine; don't move it till I'm off."
+          "I've been on console since half five and haven't touched the equipment, so what your console shows for my site is what I've got. I'll fly the seventy-three degree pass at 06:19 myself, because I want eyes on the pedestal through the top. Then I'm outside at the pedestal with a torch, finishing the feed heater cable, until seven. The half-past SAR-2 is yours from there. Modem's on 1414 for mine, so don't move it till I'm off."
         </p>
         `,
         character: Character.FIONA_MACLEOD,
@@ -995,11 +1003,11 @@ export const natsEuScenario9Data: ScenarioData = {
       'decode-the-standing-collect': {
         text: `
         <p>
-          Got the frames. Vessel is where I thought it was. Same time tomorrow?
+          I've got the frames, and the vessel is where I thought it was. That window was the only chance to see it, so thank you for holding the lock.
         </p>
         `,
         character: Character.ERIK_HALVORSEN,
-        emotion: Emotion.HAPPY,
+        emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats-eu/9/obj-decode-the-standing-collect.mp3'),
       },
       'take-the-shetland-console': {
@@ -1008,7 +1016,7 @@ export const natsEuScenario9Data: ScenarioData = {
           <em>[Text message from Fiona MacLeod]</em>
         </p>
         <p>
-          "Off. Seventy-three degrees and it never wobbled - seventeen dB at the top, for the record. Modem's still on 1414. Console's yours; SAR-2 is up in a minute from the north. Don't be gentle with it."
+          "Off. My seventy-three degrees held all the way over, and the top read seventeen dB, for the record. I left the modem on 1414 and I see you've already moved it. The console's yours, and SAR-2 rises from the north at 06:30, so get program-track on it. Don't be gentle with it."
         </p>
         `,
         character: Character.FIONA_MACLEOD,
@@ -1021,7 +1029,7 @@ export const natsEuScenario9Data: ScenarioData = {
           <em>[Text message from Fiona MacLeod]</em>
         </p>
         <p>
-          "Mine decoded from three hundred miles away and yours flew itself. Watched Galway's dish move on the site camera from the car park. Two sites, one of you. That's the network."
+          "You decoded SAR-2 from my site, and then you went and looked at Galway's pedestal and C/N, which is the only way to know that pass counted. Two sites, one operator: that's the network."
         </p>
         `,
         character: Character.FIONA_MACLEOD,
@@ -1031,11 +1039,11 @@ export const natsEuScenario9Data: ScenarioData = {
       'customer-status': {
         text: `
         <p>
-          That's what I needed. Two sites covering the morning and a straight answer on the rest. I'll take best-effort on the second orbit as long as nobody calls it guaranteed. Thanks - talk tomorrow.
+          That's what I needed: the morning's collect in hand, and SAR-2 covered across two sites, and a straight answer on the rest of the day. I'll take best-effort on the second orbit, as long as nobody calls it guaranteed, because I plan around what you tell me. Thanks, talk tomorrow.
         </p>
         `,
         character: Character.ERIK_HALVORSEN,
-        emotion: Emotion.CONFIDENT,
+        emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats-eu/9/obj-customer-status.mp3'),
       },
     },

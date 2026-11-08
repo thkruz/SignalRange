@@ -134,7 +134,7 @@ export const natsEuScenario12Data: ScenarioData = {
   subtitle: 'SAR-3 Acceptance Tests (arc 2/2)',
   duration: '35 min',
   missionType: 'Commissioning',
-  description: `09:48 local. Two days after first acquisition, MERIDIAN-SAR-3's bus is healthy and Anneke Visser has released the payload acceptance test plan: readiness, power the payload, command the test pattern, decode the first imagery, record the results on the card.<br><br>Erik Halvorsen at Nordic Maritime Watch is copied on the card, because Nordic Maritime Watch takes delivery of SAR-3 capacity the moment it is signed.<br><br>One pass, AOS 10:06, nine and a half minutes. Eighteen minutes to make the station ready for it and predict the number. Then do the card in order: chain up, power, pattern, secure, decode, chain down, sign.`,
+  description: `09:48 local. It's two days since SAR-3's first acquisition, MERIDIAN-SAR-3's bus is healthy, and Anneke Visser has released the payload acceptance test plan. You'll get the station ready, power up the payload, command the test pattern, decode the first imagery and record the results on the card.<br><br>Erik Halvorsen at Nordic Maritime Watch is copied on the card, because his company takes delivery of SAR-3 capacity the moment it's signed.<br><br>There's one pass, with AOS at 10:06 and nine and a half minutes of signal. You have eighteen minutes to get the station ready and predict the number. Then work through the card in order: chain up, power, pattern, secure, decode, chain down, sign.`,
   equipment: [
     'GW-01 Galway: 4m Ku-Band LEO Tracker',
     'Ku-Band RF Front End (13100 MHz LNB LO, 12600 MHz BUC LO) + HPA',
@@ -213,7 +213,8 @@ export const natsEuScenario12Data: ScenarioData = {
       id: 'review-mission-brief',
       nice: ['K0645', 'T0080'],
       title: 'Read the Test Plan',
-      description: 'Open the shift brief and read the acceptance test plan: readiness, chain up, power, pattern, secure, decode, record. The order is the test.',
+      description:
+        'Open the shift brief and read the acceptance test plan, which runs readiness, chain up, power, pattern, secure, decode and record. The order of those steps is part of the test.',
       groundStation: 'GW-01',
       freezesScenarioTimer: true,
       prerequisiteObjectiveIds: [],
@@ -229,16 +230,16 @@ export const natsEuScenario12Data: ScenarioData = {
           description: 'Test Order Understood',
           params: {
             character: Character.SYSTEM,
-            question: 'The test plan runs power, pattern, decode, record, in that order. Why does the order matter when the console will accept the commands in any order?',
+            question: 'The test plan runs power, pattern, decode and record in that order. Why does the order matter when the console will accept the commands in any order?',
             options: [
-              'Each step is the evidence for the next: the pattern proves the payload took power, the decode proves the pattern is on the air.',
-              'It is the order the commands are listed on the TT&C console: the card copies the console so the two records match.',
-              'It does not matter as long as every step is finished before LOS: the card records results, not the sequence.',
-              'The payload rejects PLD-TEST-PATTERN unless PLD-ON was the previous command: the order is enforced on the bird.',
+              'Each step is evidence for the next: the pattern shows power, and the decode shows the pattern is on the air.',
+              "It's the order the commands are listed on the TT&C console: the card copies the console so the two records match.",
+              "It doesn't matter if every step is finished before LOS: the card records results, not the sequence.",
+              'The payload rejects PLD-TEST-PATTERN unless PLD-ON came first: the spacecraft enforces the order itself.',
             ],
             correctIndex: 0,
             explanation:
-              'A command ACK proves the spacecraft received the command, not that the command did anything. The decode is what proves PLD-ON worked, the record captures what was measured, and the card is only as good as the order it was filled in. Out of order, an ACK or a line on the card proves nothing. Eighteen minutes to AOS.',
+              'An acknowledgement (ACK) proves the spacecraft received a command, not that the command did anything. The decode is what proves PLD-ON worked, and the card is only as good as the order it was filled in. Out of order, an ACK or a line on the card proves nothing. AOS is about eighteen minutes away.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -255,7 +256,7 @@ export const natsEuScenario12Data: ScenarioData = {
       id: 'dashboard-sweep',
       nice: ['T0153', 'K0741'],
       title: 'GW-01 Dashboard Sweep',
-      description: 'Acceptance starts with the board read. Confirm the active alarm state on GW-01.',
+      description: 'Acceptance starts with a read of the board. Check the Dashboard and confirm the active alarm state on GW-01.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['review-mission-brief'],
       timeLimitSeconds: 90,
@@ -275,14 +276,14 @@ export const natsEuScenario12Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What is the active alarm state on GW-01 as the test card opens?',
             options: [
-              'RX AGC on noise only - no carrier on an empty sky, no hardware alarm',
-              'No active alarms - all systems nominal, board clear for the card',
-              'HPA over-temperature - hardware alarm left by the morning passes',
-              'Command key expired - crypto alarm, nothing goes up until reloaded',
+              'RX AGC no-carrier warning only: empty sky, and no hardware alarm is active',
+              'No active alarms: all systems are nominal and the board is clear for the card',
+              'HPA over-temperature: a hardware alarm left over from the morning passes',
+              'Command key expired: a crypto alarm, and nothing goes up until it is reloaded',
             ],
             correctIndex: 0,
             explanation:
-              'The AGC no-carrier warning is empty sky, not a fault, and it clears when the test carrier arrives. An acceptance number measured on a station with an open alarm is not an acceptance number; the card would carry the alarm as a qualifier.',
+              "The AGC (automatic gain control) no-carrier warning just means the sky is empty. It isn't a fault, and it clears when the test carrier arrives, so the no-alarms option is wrong even though the warning is harmless. An acceptance number measured with an open alarm isn't an acceptance number, because the card would have to carry the alarm as a qualifier.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -295,7 +296,8 @@ export const natsEuScenario12Data: ScenarioData = {
       id: 'reference-check',
       nice: ['T0431', 'K0740'],
       title: 'Reference Check',
-      description: 'GPSDO locked and out of holdover, BUC on the external reference. The uplink carrier and the Doppler compensation both key off it.',
+      description:
+        'Check the GPS Timing and TX Chain tabs. The GPSDO must be locked and out of holdover, and the BUC must be on the external reference, because the uplink carrier and the Doppler compensation both depend on it.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['dashboard-sweep'],
       timeLimitSeconds: 2 * 60,
@@ -328,7 +330,7 @@ export const natsEuScenario12Data: ScenarioData = {
       nice: ['T0080', 'S0015'],
       title: 'Predict the Acceptance C/N',
       description:
-        'Fill the Link Analysis worksheet for MERIDIAN-SAR-3 at maximum elevation and press Compute. Survey numbers: satellite EIRP 31.3 dBm; slant range at max elevation 764 km (free-space path loss 171.5 dB at 11760 MHz); GW-01 receive gain 50.4 dBi; system noise temperature 125 K; occupied bandwidth 36 MHz; miscellaneous losses 1 dB. The card will quote this number back at you.',
+        'Fill in the Link Analysis worksheet for MERIDIAN-SAR-3 at maximum elevation and press Compute. Use these survey numbers: satellite EIRP 31.3 dBm, slant range at maximum elevation 764 km (free-space path loss 171.5 dB at 11760 MHz), GW-01 receive gain 50.4 dBi, system noise temperature 125 K, occupied bandwidth 36 MHz and miscellaneous losses 1 dB. The card will quote this number back to you.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['reference-check'],
       timeLimitSeconds: 4 * 60,
@@ -349,7 +351,7 @@ export const natsEuScenario12Data: ScenarioData = {
       nice: ['K0874', 'T0431', 'S0842'],
       title: 'Crypto Both Ways',
       description:
-        'The card wants both directions on record before anything is sent: TX encryption active with a Valid command key on the TX chain, RX decryption active with a Valid traffic key on RX analysis.',
+        'The card wants both directions on record before anything is sent. Check that TX encryption is active with a Valid command key on the TX Chain tab, and that RX decryption is active with a Valid traffic key on the RX Analysis tab.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['predict-acceptance'],
       timeLimitSeconds: 3 * 60,
@@ -384,16 +386,16 @@ export const natsEuScenario12Data: ScenarioData = {
           description: 'Keys Recorded',
           params: {
             character: Character.SYSTEM,
-            question: 'Command key Valid, traffic key Valid. Which half of the test needs which key?',
+            question: 'Both keys read Valid. Which half of the test needs which key?',
             options: [
-              'Command key for PLD-ON and the pattern going up; traffic key for the pattern coming down - both must be Valid',
-              'Command key only, for both halves; the test pattern comes down unencrypted - a new payload has no traffic key yet',
-              'Traffic key only, for both halves; the TT&C console carries its own key - it is always Valid on the console',
-              'Neither key, for either half; acceptance is done in crypto bypass - the numbers have to be clean',
+              'The command key for PLD-ON and the pattern going up, the traffic key for the pattern coming down: both Valid',
+              'The command key for both halves: the test pattern comes down unencrypted, as a new payload has no traffic key yet',
+              'The traffic key for both halves: the TT&C console carries its own key, and that one is always Valid',
+              'Neither key for either half: acceptance is done in crypto bypass, so the numbers have to be clean',
             ],
             correctIndex: 0,
             explanation:
-              'Two keys, two directions, and both have to be Valid before either half of the test means anything. A pattern that will not decrypt looks exactly like a payload that did not power on, and the card cannot tell them apart afterwards. Record both Valid before AOS so the decode can only mean one thing.',
+              "There are two keys for two directions, and both have to be Valid before either half of the test means anything. A pattern that won't decrypt looks exactly like a payload that didn't power on, and the card can't tell the two apart afterwards. So record both as Valid before AOS, and the decode can only mean one thing.",
             pointPenalty: 5,
             documentSection: 'Readiness',
             documentLine:
@@ -410,7 +412,7 @@ export const natsEuScenario12Data: ScenarioData = {
       nice: ['S0421', 'K0773', 'T1567'],
       title: 'Tune the Uplink',
       description:
-        "TX modem 1 is on SAR-1's 1405 MHz command IF from the morning. Retune it for SAR-3's 14065 MHz TT&C uplink through the 12600 MHz BUC LO, and engage uplink Doppler compensation on the TT&C console before the window opens at 10:06:22.",
+        "TX modem 1 is still on SAR-1's 1405 MHz command IF from the morning. Retune it for SAR-3's 14065 MHz TT&C (tracking, telemetry and command) uplink through the 12600 MHz BUC LO, and turn on uplink Doppler compensation on the TT&C console before the window opens at 10:06:22.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['crypto-both-ways'],
       timeLimitSeconds: 2 * 60,
@@ -433,11 +435,11 @@ export const natsEuScenario12Data: ScenarioData = {
           description: 'Uplink IF Arithmetic',
           params: {
             character: Character.SYSTEM,
-            question: 'BUC LO 12600 MHz, low-side. SAR-3 TT&C uplink 14065 MHz. Where does the modem go?',
-            options: ['1465 MHz (RF minus LO, low-side)', '1405 MHz (leave it, same modem IF)', '1315 MHz (LO minus RF, high-side)', '26665 MHz (LO plus RF, low-side)'],
+            question: "The BUC LO is 12600 MHz, low-side, and SAR-3's TT&C uplink is 14065 MHz. Where does the modem need to be tuned?",
+            options: ['1465 MHz: RF minus LO, low-side', '1405 MHz: leave it, same modem IF', '1315 MHz: LO minus RF, high-side', '26665 MHz: LO plus RF, low-side'],
             correctIndex: 0,
             explanation:
-              'Low-side on the uplink: RF = IF + LO, so IF = 14065 - 12600 = 1465. 1405 is SAR-1 and 1315 is the beacon IF. The receive side is high-side (IF = LO - RF); the two sides of this rack do their arithmetic with opposite signs, and the same 60 MHz mistake is possible on both.',
+              "The uplink is low-side, so RF = IF + LO and the modem goes to 14065 - 12600 = 1465 MHz. The 1405 MHz setting is SAR-1's command IF, and 1315 MHz is the beacon IF. The receive side is high-side (IF = LO - RF), so the two sides of this rack do their arithmetic with opposite signs, and the same 60 MHz mistake is possible on both.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -451,7 +453,7 @@ export const natsEuScenario12Data: ScenarioData = {
       nice: ['S0421', 'K0773'],
       title: 'Analyzer on the SAR-3 Plan',
       description:
-        'Frame the whole SAR-3 downlink plan on the analyzer: centre 1330 MHz at the 60 MHz span, so the 1315 MHz beacon and the 1322 to 1358 MHz test-pattern band are both on screen.',
+        'Frame the whole SAR-3 downlink plan on the analyzer. Center it on 1330 MHz with the 60 MHz span, so both the 1315 MHz beacon and the 1322 to 1358 MHz test-pattern band are on screen.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['tune-the-uplink'],
       timeLimitSeconds: 2 * 60,
@@ -468,16 +470,16 @@ export const natsEuScenario12Data: ScenarioData = {
           description: 'Screen Read',
           params: {
             character: Character.SYSTEM,
-            question: 'Centre 1330 MHz, span 60 MHz: 1300 to 1360 on screen. What is where, and what is just off the edge?',
+            question: 'With the center at 1330 MHz and a span of 60 MHz, the screen shows 1300 to 1360 MHz. What is where, and what sits just off the edge?',
             options: [
-              'Beacon at 1315, test pattern 1322 to 1358; the 1290 transponded return of your own uplink off the left edge',
-              'Beacon at 1315, test pattern 1322 to 1358; SAR-1 imagery at 1414 just off the right edge of the span',
-              'Test pattern 1322 to 1358 only; the beacon at 1315 sits outside the video band and off the left edge',
-              'Beacon at 1315, test pattern 1322 to 1358; the 1465 TT&C uplink mirrored by the high-side LO off the right edge',
+              'Beacon at 1315 and test pattern at 1322 to 1358, with your own uplink relayed back at 1290 off the left edge',
+              'Beacon at 1315 and test pattern at 1322 to 1358, with SAR-1 imagery at 1414 just off the right edge',
+              'Test pattern at 1322 to 1358 only, because the beacon at 1315 sits outside the video band, off the left edge',
+              'Beacon at 1315 and test pattern at 1322 to 1358, with your 1465 uplink mirrored off the right edge',
             ],
             correctIndex: 0,
             explanation:
-              'Know the neighbours. The CW beacon and the 36 MHz pattern are both on screen. That 1290 MHz return is the station hearing itself through the bird, and it is about to matter more than anything else on this screen.',
+              "Know what sits next to your signals. The CW beacon (an unmodulated tone) and the 36 MHz test pattern are both on screen. The 1290 MHz signal off the left edge is the station hearing itself through the satellite, and it'll matter more than anything else here once you start transmitting.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -490,7 +492,8 @@ export const natsEuScenario12Data: ScenarioData = {
       id: 'preposition-for-aos',
       nice: ['S0421', 'K1032'],
       title: 'Pre-position for AOS',
-      description: 'AOS 10:06:00 from azimuth 140. Park the tracker on the rise azimuth at 5 degrees so the slew is done before she is over the horizon.',
+      description:
+        'AOS is 10:06:00, and the satellite rises at azimuth 140. Point the antenna at azimuth 140, elevation 5 degrees, so the slew is finished before the satellite clears the horizon.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['analyzer-on-sar3'],
       timeLimitSeconds: 3 * 60,
@@ -514,7 +517,8 @@ export const natsEuScenario12Data: ScenarioData = {
       id: 'acquire-sar3',
       nice: ['S0421', 'K1032'],
       title: 'Acquire SAR-3',
-      description: 'AOS 10:06. Program-track MERIDIAN-SAR-3 and confirm the 11785 MHz beacon (IF 1315 MHz) on RX analysis. Chain cold until the beacon is in.',
+      description:
+        'AOS is 10:06. Turn on program-track for MERIDIAN-SAR-3 and confirm the 11785 MHz beacon (IF 1315 MHz) on the RX Analysis tab. Keep the transmit chain cold, meaning nothing on the air, until the beacon is in.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['preposition-for-aos'],
       conditions: [
@@ -553,7 +557,7 @@ export const natsEuScenario12Data: ScenarioData = {
       id: 'carrier-into-muted-buc',
       nice: ['S0675', 'S0421', 'K0645'],
       title: 'Carrier Into the Muted BUC',
-      description: 'Window open at 10:06:22. Chain up in order, first step: TX modem on air into the BUC while the BUC is still muted.',
+      description: 'The command window opens at 10:06:22. Bring the chain up in order. The first step is to put the TX modem on the air into the BUC while the BUC is still muted.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['acquire-sar3'],
       timeLimitSeconds: 60,
@@ -579,7 +583,7 @@ export const natsEuScenario12Data: ScenarioData = {
       id: 'unmute-the-buc',
       nice: ['S0675', 'S0421', 'K0645'],
       title: 'Unmute the BUC',
-      description: 'Second step: unmute the BUC. The carrier now reaches the HPA input, which is still disabled.',
+      description: 'Second step: unmute the BUC. The carrier now reaches the HPA input, and the HPA is still disabled.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['carrier-into-muted-buc'],
       timeLimitSeconds: 60,
@@ -596,16 +600,16 @@ export const natsEuScenario12Data: ScenarioData = {
           description: 'Order Read',
           params: {
             character: Character.SYSTEM,
-            question: 'Modem into a muted BUC, then unmute, then HPA. Why that order and not the reverse?',
+            question: 'The modem goes into a muted BUC, then the BUC is unmuted, then the HPA is enabled. Why that order and not the reverse?',
             options: [
-              'Every stage sees a signal before it sees gain: an HPA enabled with no drive amplifies the noise floor into the feed',
-              'The BUC cannot unmute while the HPA is enabled: the interlock on the rack holds the mute until the HPA drops',
-              'It is convention on a Ku rack: either order works, the card just wants the three steps logged as separate lines',
-              'The command key is validated before the carrier radiates: the modem has to be on air for the key check to run',
+              'Each stage gets signal before gain: an HPA with no drive amplifies the noise floor into the feed',
+              "The BUC can't unmute while the HPA is enabled: a rack interlock holds the mute until the HPA drops",
+              "It's only convention on a Ku rack: either order works, and the card just wants three separate lines",
+              'The key is checked before the carrier radiates: the modem has to be on air for that check to run',
             ],
             correctIndex: 0,
             explanation:
-              'HPA_NOISE_AMPLIFICATION is the invariant this order protects; a BUC unmuted with the modem off does the same thing at lower level. On the way down it is the mirror image: HPA off first, then mute, then the carrier.',
+              "The order protects the HPA from amplifying noise with no carrier to carry, and a BUC unmuted with the modem off would put noise into the HPA the same way, at a lower level. On the way down it's the mirror image: HPA off first, then mute the BUC, then take the carrier off the air.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -618,7 +622,7 @@ export const natsEuScenario12Data: ScenarioData = {
       id: 'enable-the-hpa',
       nice: ['S0675', 'S0421', 'K0740'],
       title: 'Enable the HPA',
-      description: 'Third step: HPA output enabled, and confirm it is linear. The uplink is on the air.',
+      description: "Third step: enable the HPA output and confirm on the TX Chain tab that it's linear, meaning it isn't overdriven. The uplink is now on the air.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['unmute-the-buc'],
       timeLimitSeconds: 60,
@@ -644,7 +648,7 @@ export const natsEuScenario12Data: ScenarioData = {
       id: 'payload-power-on',
       nice: ['T1092', 'T1567'],
       title: 'Payload Power On',
-      description: 'Send PLD-ON and confirm the acknowledgement inside the window (10:06:22 to 10:15:08).',
+      description: 'Send PLD-ON, the payload power-on command, and confirm its acknowledgement inside the window (10:06:22 to 10:15:08).',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['enable-the-hpa'],
       conditions: [
@@ -663,7 +667,7 @@ export const natsEuScenario12Data: ScenarioData = {
       nice: ['T1092', 'T1567', 'S0842'],
       title: 'Payload Test Pattern',
       description:
-        'PLD-ON is acknowledged. Send PLD-TEST-PATTERN, confirm its ACK, and record the command checkout on the card. The console does not enforce the order; the card does.',
+        "PLD-ON is acknowledged. Send PLD-TEST-PATTERN, confirm its ACK, and record the command checkout on the card. The console won't enforce the order, but the card does.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['payload-power-on'],
       conditions: [
@@ -679,16 +683,16 @@ export const natsEuScenario12Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question:
-              'Command checkout entry. PLD-ON and PLD-TEST-PATTERN were both acknowledged inside the window. What does the card record as the checkout result, and what does the ACK pair actually prove?',
+              'Command checkout entry. PLD-ON and PLD-TEST-PATTERN were both acknowledged inside the window. What does the card record as the checkout result, and what does that pair of ACKs actually prove?',
             options: [
-              'PLD-ON then PLD-TEST-PATTERN, both ACKed; the ACKs prove receipt in order, the decode proves they worked.',
-              'Two ACKs, so the payload is verified; the decode that follows is a customer courtesy, not part of the checkout.',
-              'Pattern ACK alone, so the checkout passed; PLD-ON is implied by the pattern and needs no line of its own.',
-              'Two ACKs and the HPA linear, so the uplink is accepted; the payload is accepted when Rotterdam sees telemetry.',
+              'PLD-ON then PLD-TEST-PATTERN, both ACKed: the ACKs prove receipt in order, and the decode proves they worked.',
+              'Two ACKs, so the payload is verified: the decode that follows is a customer courtesy, not part of the checkout.',
+              'The pattern ACK alone, so the checkout passed: PLD-ON is implied by the pattern and needs no line of its own.',
+              'Two ACKs and a linear HPA, so the uplink is accepted: the payload is accepted when Rotterdam sees telemetry.',
             ],
             correctIndex: 0,
             explanation:
-              'An acknowledgement is receipt, not effect. A pattern commanded to an unpowered payload ACKs just the same, which is why the checkout result is only complete once the decode is on the card.',
+              'An acknowledgement is receipt, not effect. A pattern commanded to an unpowered payload gets an ACK just the same, which is why the checkout result is only complete once the decode is on the card.',
             pointPenalty: 5,
             documentSection: 'Command',
             documentLine:
@@ -705,7 +709,7 @@ export const natsEuScenario12Data: ScenarioData = {
       nice: ['S0648', 'K0926', 'K0773'],
       title: 'Call the Return',
       description:
-        'A strong carrier has been sitting at 1290 MHz IF since the HPA came up, 50 dB over the pattern. Look at the TX chain and the RX key status, then call it: fault, interference, intrusion, or something of your own.',
+        'Since the HPA came up, a strong carrier has been sitting at 1290 MHz IF, about 50 dB above the pattern. Check the HPA state on the TX Chain tab and the key status on the RX Analysis tab, then call it: fault, interference, intrusion, or something you caused. It sits just off the left edge of your 1300 to 1360 MHz screen, so move the center down to see it.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['payload-test-pattern'],
       timeLimitSeconds: 90,
@@ -730,16 +734,16 @@ export const natsEuScenario12Data: ScenarioData = {
           description: 'Fault, interference, intrusion, or own uplink',
           params: {
             character: Character.ANNEKE_VISSER,
-            prompt: 'That carrier at 1290 has been there since your HPA came up and it is 50 dB over my pattern. What is it, and what are you doing about it?',
+            prompt: "That carrier at 1290 has been there since your HPA came up, and it's 50 dB above my pattern. What is it, and what are you doing about it?",
             evidence: ['hpa-observed', 'key-observed'],
             decisionOptions: [
               {
-                label: 'Receive-chain fault - open a ticket and hold the decode',
+                label: 'Receive-chain fault: open a ticket and hold the decode',
                 correctWhen: { fact: 'equipment-fault-active', is: true },
-                feedback: 'Nothing on the RX chain is broken; the AGC is doing exactly what an AGC does with a strong in-band signal.',
+                feedback: 'Nothing on the receive chain is broken. The AGC is doing exactly what an AGC does with a strong in-band signal.',
               },
               {
-                label: 'External interference - characterise it and report',
+                label: 'External interference: characterise it and report',
                 correctWhen: {
                   all: [
                     { fact: 'interference-active', is: true },
@@ -747,16 +751,16 @@ export const natsEuScenario12Data: ScenarioData = {
                   ],
                 },
                 consequence: { log: 'Interference report opened on the 1290 MHz carrier' },
-                feedback: 'It appeared the moment your own amplifier came up and sits exactly where your uplink transponds to. Look at what you changed.',
+                feedback: 'It appeared the moment your own amplifier came up, and it sits exactly where your uplink is relayed back to. Look at what you changed.',
               },
               {
-                label: 'Intrusion on the link - escalate and hold commanding',
+                label: 'Intrusion on the link: escalate and hold commanding',
                 correctWhen: { fact: 'crypto-intact', is: false },
                 consequence: { log: 'Escalated to CSIRT: suspected intrusion on the SAR-3 link' },
-                feedback: 'Your key reads Valid and every command has ACKed. There is no sign anyone but you is on this link.',
+                feedback: "Your key reads Valid and every command has been acknowledged, so there's no sign anyone but you is on this link.",
               },
               {
-                label: 'Own uplink transponded back - secure the HPA before the decode',
+                label: 'Own uplink relayed back: secure the HPA before the decode',
                 correctWhen: {
                   all: [
                     { fact: 'interference-active', is: false },
@@ -768,7 +772,7 @@ export const natsEuScenario12Data: ScenarioData = {
               },
             ],
             explanation:
-              'The station is hearing itself through the bird: co-polar, in the receive band, 50 dB up. No fault, no outsider, no intrusion - the evidence for all three is negative and the timing points straight at your own amplifier. Take the strong signal away and the number comes back.',
+              "The station is hearing itself through the satellite: the signal is co-polar (the same polarization as your receiver), in the receive band, and 50 dB up. There's no fault, no outsider and no intrusion, because the evidence for all three is negative and the timing points straight at your own amplifier. Take the strong signal away and the number comes back.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -782,7 +786,7 @@ export const natsEuScenario12Data: ScenarioData = {
       nice: ['S0675', 'K0773', 'T0153'],
       title: 'Secure the Uplink for the Decode',
       description:
-        'Both ACKs are in. Disable the HPA before you touch the receiver: the amplifier has nothing left to do until the next command, and while it is up the decode cannot be trusted.',
+        "Both ACKs are in. Disable the HPA before you touch the receiver, because the amplifier has nothing left to do until the next command, and while it's up the decode can't be trusted.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['call-the-return'],
       conditions: [
@@ -797,16 +801,16 @@ export const natsEuScenario12Data: ScenarioData = {
           description: 'Transponded Return Read',
           params: {
             character: Character.SYSTEM,
-            question: 'With the HPA up, the 1340 MHz test pattern reads about 3 dB of C/N instead of the 11 the worksheet predicts. What is happening?',
+            question: 'With the HPA up, the 1340 MHz test pattern reads about 3 dB of C/N instead of the 11 dB the worksheet predicts. What is happening?',
             options: [
-              "SAR-3's command transponder returns your own 14065 MHz carrier at 11810 MHz in band; the AGC pulls the chain down",
-              'The HPA heats the LNB through the feed and raises the noise temperature; Tsys climbs past the 125 K on the worksheet',
-              'Uplink Doppler compensation is dragging the receiver off frequency; the modem is locked on the skirt of the pattern',
-              'The payload cannot transmit the pattern while it is receiving commands; the ACK traffic on 14065 MHz starves the video',
+              "SAR-3's transponder returns your own 14065 MHz carrier at 11810 MHz in band, and the AGC cuts the receive gain",
+              'The HPA heats the LNB through the feed and raises the noise temperature: Tsys climbs past the 125 K on the worksheet',
+              'Uplink Doppler compensation drags the receiver off frequency: the modem locks on the skirt of the pattern',
+              "The payload can't transmit the pattern while it's receiving commands: the ACK traffic on 14065 MHz starves the video",
             ],
             correctIndex: 0,
             explanation:
-              'The station is hearing itself through the bird: co-polar, inside the receive band, some 50 dB above the pattern, and the video goes down with the AGC. Nothing on the RX chain is broken; it is doing exactly what an AGC does with a strong in-band signal. Take the strong signal away and the number comes back.',
+              "The station is hearing itself through the satellite: your carrier comes back co-polar, inside the receive band, some 50 dB above the pattern, and the video goes down with the AGC. Nothing on the receive chain is broken. It's doing exactly what an AGC does with a strong in-band signal. Take the strong signal away and the number comes back.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -820,7 +824,7 @@ export const natsEuScenario12Data: ScenarioData = {
       nice: ['T1092', 'T0153', 'S0842'],
       title: 'First Imagery Decode',
       description:
-        'Retune modem 1 from 1414 MHz to 1340 MHz (11760 MHz RF), lock the test pattern, hold C/N above 8 dB, and press Commit Link near maximum elevation (10:10:45) with at least 4 dB of margin over the 4.2 dB threshold. Then put the number on the card beside the prediction.',
+        'Retune RX modem 1 from 1414 MHz to 1340 MHz (11760 MHz RF), lock the test pattern, and hold C/N above 8 dB. Then press Commit Link near maximum elevation (10:10:45), with at least 4 dB of margin over the 4.2 dB threshold, and put the number on the card beside your prediction.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['secure-for-decode'],
       conditions: [
@@ -856,14 +860,14 @@ export const natsEuScenario12Data: ScenarioData = {
             question:
               'Payload entry. You predicted 11.3 dB at maximum elevation, the modem locked the pattern on 1340 MHz, and the link committed with at least 4 dB of margin. What goes on the card?',
             options: [
-              'The measured C/N beside the 11.3 dB prediction and the difference; agreement within a decibel is the acceptance evidence.',
-              'PASS beside the 4.2 dB threshold and the margin; clearing the threshold is the acceptance evidence, the number is not.',
-              'The peak C/N only, without the prediction; the worksheet was a planning aid and has no place on a test record.',
-              'The committed margin beside the 4.2 dB threshold; that is what the modem used, so it is the acceptance evidence.',
+              'The measured C/N beside the 11.3 dB prediction: agreement within 1 dB is the acceptance evidence.',
+              'PASS beside the 4.2 dB threshold: clearing the threshold is the acceptance evidence, not the number.',
+              'The peak C/N only: the worksheet was a planning aid and has no place on a test record.',
+              'The committed margin: it is what the modem used against the 4.2 dB threshold, so it is the evidence.',
             ],
             correctIndex: 0,
             explanation:
-              'The margin alone says the link worked today, not that the payload performs as designed. A measurement that matches the model is what lets Rotterdam and the customer predict every pass after this one. A measurement with no prediction beside it is a good day, not an acceptance.',
+              "The margin alone says the link worked today, not that the payload performs as designed. A measurement that matches the model is what lets Rotterdam and the customer predict every pass after this one. A measurement with no prediction beside it's a good day, not an acceptance.",
             pointPenalty: 5,
             documentSection: 'Payload',
             documentLine:
@@ -883,7 +887,8 @@ export const natsEuScenario12Data: ScenarioData = {
       id: 'chain-down-after-los',
       nice: ['S0675', 'S0421', 'K0645'],
       title: 'Chain Down After LOS',
-      description: 'LOS 10:15:29. The HPA is already off; once she sets, finish the mirror order: mute the BUC, then take the carrier off the air. The two minutes start at LOS.',
+      description:
+        'LOS is 10:15:29. The HPA is already off. Once the satellite sets, finish the reverse order: mute the BUC, then take the carrier off the air. The two minutes start at LOS.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['first-video'],
       timeLimitSeconds: 2 * 60,
@@ -921,7 +926,8 @@ export const natsEuScenario12Data: ScenarioData = {
       id: 'sign-the-card',
       nice: ['T1611', 'T1506', 'S0842'],
       title: 'Sign the Card',
-      description: 'The verdict, with its residual risk. Whatever is in the Verdict section when Anneke countersigns is the contract.',
+      description:
+        "Record the verdict along with its residual risk, meaning what the test didn't cover. Whatever is in the Verdict section when Anneke countersigns is the contract.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['chain-down-after-los'],
       timeLimitSeconds: 3 * 60,
@@ -933,16 +939,16 @@ export const natsEuScenario12Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question:
-              'Verdict entry. Command checkout complete, first imagery decoded at the predicted performance. What is the verdict, and what residual risk does the card carry?',
+              'Verdict entry. The command checkout is complete and the first imagery was decoded at the predicted performance. What is the verdict, and what residual risk does the card carry?',
             options: [
-              'ACCEPTED at the tested performance. Residual risk: one pass, 28 deg max elevation, one site; PLD-SAFE not exercised.',
-              'ACCEPTED with no residual risk. The payload works: one pass, 28 deg max elevation, and the rest is routine operations.',
+              'ACCEPTED at the tested performance. Residual risk: one pass, 28 deg, one site; PLD-SAFE not exercised.',
+              'ACCEPTED with no residual risk. The payload works, and the rest is routine operations.',
               'PROVISIONAL at the tested performance. Residual risk: Shetland has not repeated the test on its own pass.',
               'ACCEPTED at the tested performance. Residual risk: the decode was taken with the uplink secured rather than live.',
             ],
             correctIndex: 0,
             explanation:
-              'Acceptance is a statement about what was tested, no more. Low-elevation passes and Shetland are unproven. Writing down what was not tested is what makes the card usable when the first low pass comes in under budget. Decoding with the uplink secured is the procedure, not a risk.',
+              "Acceptance is a statement about what was tested, and no more. Low-elevation passes and Shetland are unproven, and so is PLD-SAFE, the command that puts the payload in safe mode. Writing down what wasn't tested is what makes the card usable when the first low pass comes in under budget. Decoding with the uplink secured is the procedure, not a risk.",
             pointPenalty: 5,
             documentSection: 'Verdict',
             documentLine:
@@ -958,7 +964,7 @@ export const natsEuScenario12Data: ScenarioData = {
       id: 'deliver-to-customer',
       nice: ['S0478', 'T1506'],
       title: 'Deliver to the Customer',
-      description: 'Erik is copied on the signed card and wants to task the bird. Confirm what acceptance transfers to Nordic Maritime Watch.',
+      description: 'Erik is copied on the signed card and wants to task the satellite. Confirm what acceptance transfers to Nordic Maritime Watch.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['sign-the-card'],
       timeLimitSeconds: 3 * 60,
@@ -969,16 +975,16 @@ export const natsEuScenario12Data: ScenarioData = {
           description: 'Delivery Confirmed',
           params: {
             character: Character.SYSTEM,
-            question: 'The card is signed and Erik is asking when he can task SAR-3. What does acceptance transfer to the customer?',
+            question: 'The card is signed and Erik is asking when he can task SAR-3, meaning order imagery from it. What does acceptance transfer to the customer?',
             options: [
-              'SAR-3 enters the tasking pool at the tested performance; anything below that number is now a service ticket.',
-              'Nothing yet; acceptance is an internal record, and the customer gets the bird after a further shakedown period.',
-              'Unlimited tasking; acceptance means the payload is proven under every condition it will ever fly in.',
-              'Tasking on Galway passes above 28 degrees only, until Shetland has run its own card on its own pass.',
+              'SAR-3 enters the tasking pool at the tested performance; anything below it becomes a service ticket.',
+              'Nothing yet: acceptance is an internal record, and the customer waits for a further shakedown period first.',
+              'Unlimited tasking: acceptance means the payload is proven under every condition it will ever fly in, at any site.',
+              'Tasking on Galway passes above 28 degrees only: Shetland has to run its own card on its own pass first.',
             ],
             correctIndex: 0,
             explanation:
-              'The tested performance is now the contract number. Erik can task from the next pass, and the first time a pass comes in under it, the card is what turns a complaint into a ticket with a number on it.',
+              'The tested performance is now the contract number. Erik can task from the next pass, and the first time a pass comes in under that number, the card is what turns a complaint into a ticket with a number on it.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -992,10 +998,13 @@ export const natsEuScenario12Data: ScenarioData = {
     intro: {
       text: `
       <p>
-        <em>[Text message from Anneke Visser at 09:40]</em>
+        <em>[Text message from Anneke Visser at {{stationTime}}]</em>
       </p>
       <p>
-        "Test plan attached. Bus has been clean for two days, so today is the payload - readiness on the card, chain up in order, power it, command the test pattern, secure the uplink, decode it, record it. One pass, AOS 10:06, do it in the order on the card. Erik is copied and he will ask the moment it is signed."
+        "Test plan attached. The spacecraft's bus has been clean for two days, so today is the payload. Please do readiness first, then chain up in order, power the payload, command the test pattern, secure the uplink, decode, and record, all in the order on the card.
+      </p>
+      <p>
+        There's one pass, with AOS at 10:06. Erik is copied, and he'll ask the moment it's signed."
       </p>
       `,
       character: Character.ANNEKE_VISSER,
@@ -1006,7 +1015,7 @@ export const natsEuScenario12Data: ScenarioData = {
       'enable-the-hpa': {
         text: `
         <p>
-          Carrier on my display at 14065, clean, linear. Window is open. PLD-ON when you are ready; wait for the ACK before the pattern.
+          I can see your carrier at 14065 MHz on my display, and it's clean and linear. Send PLD-ON once the command window is open, and wait for the acknowledgement before you send the pattern.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -1016,7 +1025,7 @@ export const natsEuScenario12Data: ScenarioData = {
       'payload-test-pattern': {
         text: `
         <p>
-          Both acknowledgements on my screen. Payload on, pattern transmitting. Before you take the decode - what is that carrier at 1290 on your analyzer? It has been there since your amplifier came up.
+          Both acknowledgements are on my screen, so the spacecraft has received both commands. Before you take the decode, what's that carrier at 1290? It's been there since your amplifier came up.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -1026,7 +1035,7 @@ export const natsEuScenario12Data: ScenarioData = {
       'call-the-return': {
         text: `
         <p>
-          Yes. That is you, through my transponder. Nobody else is on this link and nothing of yours is broken. Secure the amplifier and take the decode; it has done its job for today.
+          Yes, that's you, coming back through my transponder. Nobody else is on this link, and nothing of yours is broken. Secure the amplifier and take the decode, because the amplifier has done its job for today.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -1036,7 +1045,7 @@ export const natsEuScenario12Data: ScenarioData = {
       'first-video': {
         text: `
         <p>
-          First frames from SAR-3. Log it - every number on that card is the one the customer contract quotes back at us.
+          First frames from SAR-3 are on my screen. The numbers on that card are the ones the customer contract will quote back to us, so thank you for recording them against your prediction. Take the chain down once SAR-3 has set.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -1046,7 +1055,7 @@ export const natsEuScenario12Data: ScenarioData = {
       'sign-the-card': {
         text: `
         <p>
-          Copied on the card. Four sections and one of them says accepted. When can I task it?
+          I'm copied on the card. It has four sections, and the last one says accepted. When can I task it?
         </p>
         `,
         character: Character.ERIK_HALVORSEN,
@@ -1056,7 +1065,7 @@ export const natsEuScenario12Data: ScenarioData = {
       'deliver-to-customer': {
         text: `
         <p>
-          Card signed, Erik has his answer, SAR-3 is in the pool. LEOP closed after two passes from Galway. Thank you - Rotterdam out.
+          The card is signed, Erik has his answer, and SAR-3 is in the tasking pool. LEOP, the launch and early orbit phase, is closed, which means I can finally stop checking my phone. Thank you, Galway. Rotterdam out.
         </p>
         `,
         character: Character.ANNEKE_VISSER,

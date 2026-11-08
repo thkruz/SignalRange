@@ -54,6 +54,8 @@ export class ScenarioSelectionPage extends BasePage {
   }
 
   private async revealScenario_(scenarioId: string): Promise<Locator> {
+    // The list re-renders when the progress load finishes; a click before that lands on a stale button.
+    await expect(this.pageContainer).not.toHaveAttribute('aria-busy', 'true', { timeout: 30000 });
     const row = this.page.locator(`.scenario-list-item[data-scenario-id="${scenarioId}"]`);
     const toggle = this.page.locator('.selection-phase').filter({ has: row }).locator('.selection-phase-toggle');
     if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();

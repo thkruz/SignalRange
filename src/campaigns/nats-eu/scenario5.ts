@@ -90,7 +90,7 @@ export const natsEuScenario5Data: ScenarioData = {
   subtitle: 'Two-Station Pass Network',
   duration: '35-40 min',
   missionType: 'Mission Planning',
-  description: `SH-02 Shetland went operational overnight. Fiona MacLeod has been running acceptance up there for three weeks in weather you would not believe, and as of this morning NATS Europe is a network rather than a station.<br><br>That changes your job. Galway is no longer the only place a MERIDIAN pass can be worked, which means somebody has to decide which site takes which contact - and that somebody is the operator holding the plan. Four contacts today across two birds. Both sites can see all four. One antenna cannot be in two places at once.<br><br>And then somebody has to fly what the plan says. Fiona is out at the pedestal for the first window, so the Shetland console is yours, from Galway, for the network's first remote-operated pass.`,
+  description: `SH-02 Shetland went operational overnight. Fiona MacLeod has been running acceptance up there for three weeks in weather you wouldn't believe, and as of this morning NATS Europe is a network rather than a single station.<br><br>That changes your job. Galway is no longer the only place a MERIDIAN pass can be worked, so somebody has to decide which site takes which contact, and that somebody is the operator holding the plan. There are four contacts today across two birds, and both sites can see all four. One antenna can't be in two places at once.<br><br>Then somebody has to fly what the plan says. Fiona will be out at the pedestal for the first window, so the Shetland console is yours, from Galway, for the network's first remote-operated pass.`,
   equipment: [
     'GW-01 Galway: 4m Ku-Band LEO Tracker',
     'SH-02 Shetland: 4m Ku-Band LEO Tracker (remote console)',
@@ -165,15 +165,16 @@ export const natsEuScenario5Data: ScenarioData = {
           description: 'Conflict Rule Understood',
           params: {
             character: Character.SYSTEM,
-            question: 'Two contacts have overlapping windows and both are visible from Galway. What makes that a conflict?',
+            question: 'Two contacts have overlapping windows, and both are visible from Galway. What makes that a conflict?',
             options: [
-              'One antenna points at one satellite at a time, so overlapping windows on one site cannot both be worked.',
-              'The two satellites would interfere on the downlink, so overlapping windows on one site cannot both decode.',
-              'It is not a conflict, since the scheduler time-shares the antenna, so both windows on one site get worked.',
-              'The two sites share one receiver, so only one contact can decode at a time whichever site is pointing.',
+              "One antenna points at one satellite at a time, so two overlapping windows can't both be worked from one site.",
+              "The two satellites would interfere on the downlink, so two overlapping windows can't both be decoded from one site.",
+              "There's no conflict, because the scheduler time-shares the antenna, so both overlapping windows get worked from one site.",
+              'The two sites share one receiver, so only one contact can be decoded at a time, whichever site is pointing.',
             ],
             correctIndex: 0,
-            explanation: 'The constraint is the pedestal, not the spectrum. Overlapping windows have to go to different sites. Twenty minutes to the first AOS.',
+            explanation:
+              'The limit is the pedestal, not the spectrum: one antenna can only point at one satellite at a time. Overlapping windows therefore have to go to different sites.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -190,7 +191,7 @@ export const natsEuScenario5Data: ScenarioData = {
       id: 'galway-dashboard-sweep',
       nice: ['T0153', 'K0741'],
       title: 'GW-01 Dashboard Sweep',
-      description: 'Clear the home board first: confirm the active alarm state on GW-01.',
+      description: 'Sweep the home board first. Open the GW-01 dashboard and confirm which alarms are active.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['review-mission-brief'],
       timeLimitSeconds: 90,
@@ -208,16 +209,16 @@ export const natsEuScenario5Data: ScenarioData = {
           description: 'Alarm State Confirmed',
           params: {
             character: Character.SYSTEM,
-            question: 'What is the active alarm state on GW-01 at turnover?',
+            question: 'Read the GW-01 dashboard. Which alarm state is active right now?',
             options: [
-              'RX AGC on noise only (no carrier) - empty sky, not a fault; no hardware alarms',
-              'No active alarms (all nominal) - board clear, sweep complete; nothing to carry over',
-              'GPSDO in holdover (reference alarm) - timing at risk, not a fault; one hardware alarm',
-              'Antenna drive fault (pedestal stowed) - tracker cannot slew; one hardware alarm',
+              'RX AGC on noise only, no carrier: the antenna sees empty sky, and there are no hardware alarms',
+              'No active alarms: the board is clear, the sweep is complete, and there is nothing to carry over',
+              'GPSDO in holdover: the reference alarm means timing is at risk, and there is one hardware alarm',
+              "Antenna drive fault: the pedestal is stowed and can't move, and there is one hardware alarm",
             ],
             correctIndex: 0,
             explanation:
-              'The AGC no-carrier warning is the board telling you the antenna is looking at empty sky, not that something broke; it clears on acquisition. Shetland is the one nobody has swept from this console yet.',
+              'The no-carrier warning means the antenna is looking at empty sky, not that anything broke, and it clears once a signal is acquired. A fully clear board would be wrong because that warning is showing. Shetland is next, and nobody has swept it from this console yet.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -230,7 +231,7 @@ export const natsEuScenario5Data: ScenarioData = {
       id: 'galway-reference-check',
       nice: ['T0431', 'K0740'],
       title: 'GW-01 Reference Check',
-      description: 'GPSDO locked and out of holdover. Charlie flies the Galway pass on this reference; confirm it before you hand him the station.',
+      description: 'Confirm the GW-01 GPSDO is locked and out of holdover. Charlie flies the Galway pass on this reference, so check it before you hand him the station.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['galway-dashboard-sweep'],
       timeLimitSeconds: 2 * 60,
@@ -260,7 +261,8 @@ export const natsEuScenario5Data: ScenarioData = {
       id: 'allocate-galway',
       nice: ['T0129', 'K0689', 'S0421'],
       title: 'Allocate the Galway Contacts',
-      description: 'On the Contact Plan console, assign the two Galway-horizon contacts to GW-01. These are the passes this site has worked all week, and Galway keeps them.',
+      description:
+        'On the Contact Plan console, assign the two Galway contacts, SAR-1 (28 degree pass) and SAR-2 (25 degree pass), to GW-01. Those are the passes this site has worked all week, and Galway keeps them.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['galway-reference-check'],
       timeLimitSeconds: 3 * 60,
@@ -293,7 +295,7 @@ export const natsEuScenario5Data: ScenarioData = {
       id: 'hand-shetland-the-overlaps',
       nice: ['T0129', 'K0737'],
       title: 'Hand Shetland the Overlaps',
-      description: 'The two remaining contacts overlap the ones Galway is already working. Give them to SH-02 - that is what a second site is for.',
+      description: "The two remaining contacts overlap the ones Galway is working, so Galway can't take them as well. Give both to SH-02, which is what a second site is for.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['allocate-galway'],
       timeLimitSeconds: 2 * 60,
@@ -316,15 +318,16 @@ export const natsEuScenario5Data: ScenarioData = {
           description: 'Priority Rule Read',
           params: {
             character: Character.SYSTEM,
-            question: 'Three contacts are priority 1 and the Shetland SAR-2 overhead is priority 2. The plan requires priority 2 and above. What does that mean for the overhead?',
+            question: 'Three contacts are priority 1, and the Shetland SAR-2 overhead is priority 2. The plan requires priority 2 and above. What does that mean for the overhead?',
             options: [
-              'It must be allocated - priority 2 is inside the required set, so the plan stays UNALLOCATED without it',
-              'It can be left unassigned - only priority 1 is mandatory, so the plan validates with three contacts',
-              'It goes to Galway automatically - the lower priority falls to the home site, so the plan fills itself',
-              'It only affects list order - priority sets where the console lists a contact, not whether it is required',
+              'It must be allocated: priority 2 is inside the required set, so the plan stays UNALLOCATED without it',
+              'It can be left unassigned: only priority 1 is mandatory, so the plan validates with three contacts',
+              'It goes to Galway automatically: the lower priority falls to the home site, so the plan fills itself',
+              "It only affects list order: priority sets where the console lists a contact, not whether it's required",
             ],
             correctIndex: 0,
-            explanation: 'Required means required: every contact at or above the threshold has to have a site. A priority 3 contact could be dropped. There are none today.',
+            explanation:
+              'Required means required: every contact at or above the threshold has to be given a site before the plan validates. Only a priority 3 contact could be dropped, and there are none today.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -337,7 +340,7 @@ export const natsEuScenario5Data: ScenarioData = {
       id: 'validate-the-plan',
       nice: ['T0129', 'K0689'],
       title: 'Validate the Contact Plan',
-      description: 'With every contact allocated and no site double-booked, the plan status should read DECONFLICTED. Confirm it before you publish it to Fiona.',
+      description: 'Check that every contact is allocated and no site is double-booked. The plan status should then read DECONFLICTED, and you can publish it to Fiona.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['hand-shetland-the-overlaps'],
       timeLimitSeconds: 2 * 60,
@@ -354,15 +357,16 @@ export const natsEuScenario5Data: ScenarioData = {
           description: 'Plan Published',
           params: {
             character: Character.SYSTEM,
-            question: 'The plan validates. What has a second site actually bought the network here?',
+            question: 'The plan validates. What has the second site actually given the network today?',
             options: [
-              'Every contact gets worked instead of one of each overlapping pair being dropped.',
+              'Every contact gets worked, instead of one of each overlapping pair being dropped.',
               'A stronger signal, because two antennas receive the same pass and the receivers combine.',
-              'Nothing operationally - it is redundancy for the day one site is down for maintenance.',
-              'Longer passes, because the two horizons are added together into one contact window.',
+              "Nothing operationally, because it's only redundancy for the day one site is down for maintenance.",
+              'Longer passes, because the two horizons add together into one contact window.',
             ],
             correctIndex: 0,
-            explanation: 'Capacity, not just redundancy. Plan published to Shetland. Fiona is at the pedestal, so the first Shetland window is yours to fly from here.',
+            explanation:
+              'Each site has one antenna, so one site alone would have dropped one contact from each overlapping pair. With two sites all four get worked, which is capacity and not just redundancy. Each contact is still worked by one site on its own, so nothing combines and no pass gets longer. The plan is published, and since Fiona is at the pedestal, the first Shetland window is yours to fly from here.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -380,7 +384,7 @@ export const natsEuScenario5Data: ScenarioData = {
       nice: ['T0431', 'S0421', 'K0741'],
       title: 'Shetland Health Check',
       description:
-        'Select SH-02 in the asset tree and run the sweep from here: GPSDO locked and out of holdover, BUC temperature normal, LNB thermally stable. Same rack, seven degrees further north.',
+        "Select SH-02 in the asset tree and sweep it from here. Confirm the GPSDO is locked and out of holdover, the BUC temperature is normal and the LNB is thermally stable. It's the same rack as Galway, about seven degrees of latitude further north.",
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['validate-the-plan'],
       timeLimitSeconds: 3 * 60,
@@ -425,7 +429,8 @@ export const natsEuScenario5Data: ScenarioData = {
       id: 'shetland-geometry',
       nice: ['K1032', 'K0773'],
       title: "Read Shetland's Sky",
-      description: 'With SH-02 selected the Pass Schedule tab predicts from Shetland. Read the SAR-1 pass as Shetland sees it and compare it with the Galway numbers you know.',
+      description:
+        "With SH-02 selected, the Pass Schedule tab predicts passes from Shetland's position. Read the SAR-1 pass as Shetland sees it and compare it with the Galway numbers you already know.",
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['shetland-sweep'],
       timeLimitSeconds: 2 * 60,
@@ -443,16 +448,16 @@ export const natsEuScenario5Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question:
-              'SAR-1 rises over Shetland at 14:01 and peaks at 24 degrees; over Galway it rises at 14:03 and peaks at 28. Same bird, same orbit. Why does Shetland see it first and lower?',
+              "SAR-1 rises over Shetland at 14:01 and peaks at 24 degrees. Over Galway it rises at 14:03 and peaks at 28 degrees. It's the same bird on the same orbit, so why does Shetland see it first and lower?",
             options: [
-              'Southbound track west of Ireland: Shetland is further north, so sees it first, and further off-track, so lower',
+              'Southbound track: Shetland is further north, so it sees the bird first, and further off-track, so lower',
               'Elevation mask: Shetland runs a lower mask than Galway, so it sees the bird earlier, and its peak reads lower too',
-              'Element sets: the two sites are propagating different TLEs, so the times differ, and the peaks differ with them',
+              'Element sets: the two sites propagate different element sets, so the times differ, and the peaks differ with them',
               'Site altitude: Shetland sits higher, so its horizon is extended, and the bird rises earlier and appears lower',
             ],
             correctIndex: 0,
             explanation:
-              'Where you stand decides the pass. The ground track runs south, west of Ireland: Shetland is further north, so the bird crosses its horizon first, and further east of the track, so it never climbs as high. A sun-synchronous bird at 97 degrees inclination runs nearly pole to pole, so a site at 60 north sees more of its orbits than one at 53: more passes per day, and different ones. The SAR-2 pass at 14:19 goes 86 degrees overhead here and 25 over Galway.',
+              'Where you stand decides the pass. The ground track runs south, west of Ireland, so Shetland, being further north, sees the bird cross its horizon first, and being further from the track, never sees it climb as high. The orbit is tilted 97 degrees to the equator, which takes the bird nearly pole to pole, so a site at 60 degrees north sees more of its orbits than one at 53. The SAR-2 pass at 14:19 goes 86 degrees overhead here and only 25 over Galway.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -466,7 +471,7 @@ export const natsEuScenario5Data: ScenarioData = {
       nice: ['S0421', 'K0773'],
       title: 'Set Up the Shetland Receiver',
       description:
-        'Fiona left modem 1 on the 1370 MHz SAR-2 carrier from her last acceptance run. Retune it to 1414 MHz for SAR-1 and put the analyzer on the 1389 MHz beacon with a 2 MHz span.',
+        'Fiona left modem 1 on the 1370 MHz SAR-2 carrier after her last acceptance run. Retune it to 1414 MHz for SAR-1, then put the analyzer on the 1389 MHz beacon with a 2 MHz span.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['shetland-geometry'],
       timeLimitSeconds: 3 * 60,
@@ -499,7 +504,7 @@ export const natsEuScenario5Data: ScenarioData = {
       nice: ['S0421', 'K1032'],
       title: 'Pre-position the Shetland Tracker',
       description:
-        'The SH-02 tracker is stowed south against the wind. Slew it to the rise azimuth, 003 at 5 degrees, so the pedestal is waiting when SAR-1 clears the mask at 14:01.',
+        'The SH-02 tracker is stowed facing south, out of the wind. Point it at azimuth 003, elevation 5 degrees, where SAR-1 comes up over the horizon, so the pedestal is waiting when the bird clears the mask at 14:01.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['shetland-rx-ready'],
       timeLimitSeconds: 3 * 60,
@@ -523,7 +528,8 @@ export const natsEuScenario5Data: ScenarioData = {
       id: 'acquire-from-shetland',
       nice: ['S0421', 'K1032'],
       title: 'Acquire MERIDIAN-SAR-1 from Shetland',
-      description: 'Program-track SAR-1 on the SH-02 pedestal and confirm the beacon on Shetland’s RX analysis. The network’s first remote-operated pass.',
+      description:
+        "Turn on program-track for SAR-1 on the SH-02 pedestal, then confirm the beacon on Shetland's RX analysis tab. This is the network's first remote-operated pass.",
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['shetland-preposition'],
       conditions: [
@@ -558,7 +564,7 @@ export const natsEuScenario5Data: ScenarioData = {
       id: 'decode-from-shetland',
       nice: ['T0153', 'K0740'],
       title: 'Decode from Shetland',
-      description: 'Lock the 1414 MHz imagery carrier on the SH-02 modem and hold C/N above 8 dB through the high-elevation segment, roughly 14:03:30 to 14:06.',
+      description: 'Lock the SH-02 modem on the 1414 MHz imagery carrier and hold C/N above 8 dB through the high-elevation part of the pass, roughly 14:03:30 to 14:06.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['acquire-from-shetland'],
       conditions: [
@@ -583,7 +589,7 @@ export const natsEuScenario5Data: ScenarioData = {
       nice: ['K0740', 'K0773'],
       title: 'Read the Shetland Peak',
       description:
-        'Around 14:04:42 the bird is at 24 degrees and 860 km from Shetland. Confirm C/N of 9 dB or better at the top of the pass and compare it with what Galway gets from the same bird.',
+        'Around 14:04:42 the bird peaks at 24 degrees, 860 km from Shetland. Confirm C/N of 9 dB or better at the top of the pass, then compare it with what Galway gets from the same bird.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['decode-from-shetland'],
       conditions: [
@@ -598,16 +604,16 @@ export const natsEuScenario5Data: ScenarioData = {
           description: 'Peak Compared',
           params: {
             character: Character.SYSTEM,
-            question: 'Shetland peaks at about 9.8 dB at 24 degrees; Galway peaks at about 11 dB at 28 degrees on the same pass. Where does the difference come from?',
+            question: 'From the same bird, Shetland peaks at about 9.8 dB at 24 degrees and Galway peaks at about 11 dB at 28 degrees. Where does the difference come from?',
             options: [
-              'Slant range: 860 km against 761 km is about 1 dB more path loss, and lower elevation adds a little atmosphere',
-              'LNB temperature: the Shetland LNB runs warmer, so its noise figure is worse, and Tsys rises with it',
-              'Latitude: Shetland is further north, so further from a satellite over Ireland, and that costs about 1 dB',
+              'Slant range: 860 km against 761 km is about 1 dB more path loss, plus a little atmosphere',
+              'LNB temperature: the Shetland LNB runs warmer, so its noise figure is worse and the system noise rises with it',
+              'Latitude: Shetland is further north, so it is further from a satellite over Ireland, and that costs about 1 dB',
               'Remote link: the console link from Galway adds about a decibel of loss, and the display rounds the rest away',
             ],
             correctIndex: 0,
             explanation:
-              'Same hardware, same bird, different geometry. 20 log(860 / 761) is 1.1 dB. Every dB in the difference between two sites should be explained by range and elevation; one that is not is a fault.',
+              "The hardware and the bird are the same, so only the geometry differs. Path loss grows with 20 log of the range, and 20 log(860 / 761) is 1.1 dB, which is about the gap you see. The remote console link carries the display and the controls, not the radio signal, so it can't change C/N. Any dB between two sites that range and elevation don't explain is a fault to chase.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -625,7 +631,7 @@ export const natsEuScenario5Data: ScenarioData = {
       nice: ['S0421', 'K0773', 'T0129'],
       title: 'Hand Back and Retune Galway',
       description:
-        'Shetland sets at 14:08 and Fiona is back on her console. Select GW-01, retune modem 1 to the 1370 MHz SAR-2 carrier, put the analyzer on its 1397 MHz beacon and park the tracker on the rise azimuth, 130 at 5 degrees. SAR-2 clears the mask at 14:18.',
+        'Shetland sets at 14:08, and then Fiona takes her console back. Select GW-01, retune modem 1 to the 1370 MHz SAR-2 carrier, put the analyzer on its 1397 MHz beacon and point the tracker at azimuth 130, elevation 5 degrees, where SAR-2 comes up. SAR-2 clears the mask at 14:18.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['read-shetland-peak'],
       timeLimitSeconds: 4 * 60,
@@ -669,7 +675,7 @@ export const natsEuScenario5Data: ScenarioData = {
       nice: ['S0421', 'K1032', 'T0153'],
       title: 'Acquire MERIDIAN-SAR-2',
       description:
-        'Program-track SAR-2 on the GW-01 pedestal and confirm its 1397 MHz beacon on RX analysis once it clears the mask. Fiona is taking the same bird overhead at Shetland.',
+        'Turn on program-track for SAR-2 on the GW-01 pedestal, then confirm its 1397 MHz beacon on RX analysis once it clears the mask. Fiona is taking the same bird straight overhead at Shetland.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['hand-back-to-galway'],
       conditions: [
@@ -706,7 +712,8 @@ export const natsEuScenario5Data: ScenarioData = {
       id: 'decode-sar2-galway',
       nice: ['T0153', 'K0740', 'K1032'],
       title: 'Decode the Galway Contact',
-      description: 'Lock the 1370 MHz carrier and hold C/N above 8 dB through the high-elevation segment. While it holds, think about what Fiona is seeing at 86 degrees.',
+      description:
+        'Lock the GW-01 modem on the 1370 MHz carrier and hold C/N above 8 dB through the high-elevation part of the pass. While it holds, think about what Fiona is seeing at 86 degrees.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['acquire-sar2-galway'],
       conditions: [
@@ -728,16 +735,16 @@ export const natsEuScenario5Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question:
-              'SAR-2 culminates at 25 degrees and 828 km over Galway, and at 86 degrees and 393 km over Shetland. Ignoring the pedestal, whose C/N should be higher at the top, and by how much?',
+              'SAR-2 peaks at 25 degrees and 828 km over Galway, and at 86 degrees and 393 km over Shetland. Ignoring any pointing trouble at the top, whose C/N should be higher, and by how much?',
             options: [
-              "Shetland's, by about 6.5 dB - 20 log(828 / 393) of path loss, and almost no atmosphere straight up",
-              "Galway's, by about 1 dB - a lower pass (25 degrees) keeps the bird in the beam longer, so the AGC settles",
-              "The same (within 1 dB) - C/N depends on the bird's EIRP, not the site, and both run the same LNB",
-              "Shetland's, by about 1 dB - 20 log(860 / 761) again, the same SAR-1 difference and the same atmosphere",
+              "Shetland's, by about 6.5 dB: 20 log(828 / 393) of path loss, and almost no atmosphere straight up",
+              "Galway's, by about 1 dB: a lower pass at 25 degrees keeps the bird in the beam longer, so the AGC settles",
+              "The same, within 1 dB: C/N depends on the bird's transmit power, not the site, and both run the same LNB",
+              "Shetland's, by about 1 dB: 20 log(860 / 761) again, the same SAR-1 difference with the same atmosphere",
             ],
             correctIndex: 0,
             explanation:
-              'Range wins: an overhead pass is the strongest signal a site ever gets. "Ignoring the pedestal" is doing a lot of work in that question, and Fiona will tell you why when she rings.',
+              "An overhead pass is the closest the bird ever gets, so path loss drops by 20 log(828 / 393), about 6.5 dB, and the signal crosses the least atmosphere. The 1 dB answers don't fit, because that figure belongs to the SAR-1 ranges, not these. The question ignores pointing because the pedestal struggles to keep up near 86 degrees, as Fiona warned.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -754,7 +761,8 @@ export const natsEuScenario5Data: ScenarioData = {
       id: 'log-the-network',
       nice: ['T1580', 'K0645', 'K0689'],
       title: 'Log the First Network Day',
-      description: 'Four contacts on the plan, four worked: two by you, one by Charlie, one by Fiona. Write the day into the network log the way the next planner needs it.',
+      description:
+        'Four contacts on the plan, four worked: two by you, one by Charlie and one by Fiona. Write the day into the network log in the form the next planner will need.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['decode-sar2-galway'],
       timeLimitSeconds: 2 * 60,
@@ -765,16 +773,16 @@ export const natsEuScenario5Data: ScenarioData = {
           description: 'Network Log Entry',
           params: {
             character: Character.SYSTEM,
-            question: 'What does the log need to say about the SAR-1 pair, beyond "worked"?',
+            question: 'Besides "worked", what does the log need to say about each of the two SAR-1 contacts?',
             options: [
-              'Site and peak per contact: SH-02 remote, 9.8 dB at 24 degrees; GW-01, 11 dB at 28 degrees - both decoded',
-              'That the plan validated: SAR1-SH on SH-02, SAR1-GW on GW-01; plan DECONFLICTED - both allocated',
-              'Which pass was better: GW-01, 11 dB at 28 degrees; SH-02, 9.8 dB at 24 degrees - Shetland not needed',
-              'The NORAD ids only: 61701 on SH-02, 61701 on GW-01; measurements go to Rotterdam - both worked',
+              'Site and peak per contact: SH-02 remote at 9.8 dB and 24 degrees, GW-01 at 11 dB and 28 degrees, both decoded',
+              'That the plan validated: SAR1-SH on SH-02, SAR1-GW on GW-01, the plan DECONFLICTED, both allocated',
+              "Which pass was better: GW-01 at 11 dB and 28 degrees against SH-02 at 9.8 dB and 24 degrees, so Shetland wasn't needed",
+              'The NORAD ids only: 61701 on SH-02 and 61701 on GW-01, with the measurements going to Rotterdam, both worked',
             ],
             correctIndex: 0,
             explanation:
-              'Which site flew each contact and what it measured: site, operator, number. The first remote pass is a baseline for every remote pass after it. Day one as a network: nothing dropped.',
+              "The log should say which site flew each contact, who flew it and what it measured. The first remote pass becomes the baseline that every later remote pass is compared against, which is why the number matters. The plan status and the satellite ids don't tell the next planner how a pass went, and a ranking would wrongly suggest Shetland wasn't needed, when the plan needed both sites.",
             pointPenalty: 5,
             documentSection: 'Contacts',
             documentLine:
@@ -791,10 +799,10 @@ export const natsEuScenario5Data: ScenarioData = {
     intro: {
       text: `
       <p>
-        <em>[Text message from Charlie Brooks at 13:39]</em>
+        <em>[Text message from Charlie Brooks at {{stationTime}}]</em>
       </p>
       <p>
-        "Shetland signed its acceptance card overnight, which makes us a network as of this morning and makes somebody responsible for deciding which site takes which pass. That is the console you are sitting at. Four contacts, two birds, both sites can see all four. Build the plan, and then - Fiona is out at the pedestal for the first window - fly Shetland's from here. I will take the Galway one myself; it is my station too."
+        "Shetland signed off its acceptance tests overnight, so as of this morning we're a network, and somebody has to decide which site takes which pass. That's the console you're sitting at. A contact is one scheduled pass of one bird, and there are four today across two birds, and both sites can see all four. Build the plan first. Fiona will be out at the pedestal for the first window, so you'll fly Shetland's pass from here. I'll take the Galway one myself, since it's my station too."
       </p>
       `,
       character: Character.CHARLIE_BROOKS,
@@ -805,7 +813,7 @@ export const natsEuScenario5Data: ScenarioData = {
       'allocate-galway': {
         text: `
         <p>
-          Galway keeps the passes it has been working all week. The question the plan exists to answer is what you do with the other two.
+          That's Galway's two passes allocated, the ones it's been working all week. The plan exists to answer what you do with the other two, so those go to Shetland.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -815,10 +823,10 @@ export const natsEuScenario5Data: ScenarioData = {
       'hand-shetland-the-overlaps': {
         text: `
         <p>
-          <em>[Text message from Fiona MacLeod at 13:46]</em>
+          <em>[Text message from Fiona MacLeod at {{stationTime}}]</em>
         </p>
         <p>
-          "Morning Galway. Wind's forty knots gusting fifty-five and the dish is rated for worse, so I'm not worried and neither should you be. Send me the plan when it validates. If you give me a pass that overlaps one of yours I'll assume it's deliberate and then I'll ring you."
+          "Afternoon, Galway. It's Fiona, up at Shetland. The wind's forty knots gusting fifty-five, which counts as a nice day up here, and the dish is rated for worse. I can see the two passes you've handed me. Send me the plan when it validates. If any of them overlaps one of yours, I'll assume that's deliberate, and then I'll ring you."
         </p>
         `,
         character: Character.FIONA_MACLEOD,
@@ -828,7 +836,7 @@ export const natsEuScenario5Data: ScenarioData = {
       'validate-the-plan': {
         text: `
         <p>
-          "Plan received, and it's the one I'd have built. I'm going out to the pedestal for the first one - the feed heater wiring wants finishing before the weather gets its opinion in. The console's yours until I'm back. Don't be gentle with it, it's a Galway rack with a Shetland view."
+          "Plan received, and it's the one I'd have built. I'm going out to the pedestal for the first pass, because the feed heater wiring wants finishing before the weather gets its opinion in. The console's yours until I'm back. Don't be gentle with it, because it's a Galway rack with a Shetland view."
         </p>
         `,
         character: Character.FIONA_MACLEOD,
@@ -838,7 +846,7 @@ export const natsEuScenario5Data: ScenarioData = {
       'shetland-sweep': {
         text: `
         <p>
-          "Reference's locked, BUC's cold, LNB's been stable since Tuesday. You'll see the same numbers I see. The only thing you can't check from there is whether the dish is still attached, and I'm standing next to it, so."
+          "Reference is locked, the BUC's cold, and the LNB's been stable since Tuesday. You'll see the same numbers I see. One thing you can't check from your end is whether the dish is still attached, and I'm standing next to it, so I can tell you it is."
         </p>
         `,
         character: Character.FIONA_MACLEOD,
@@ -848,7 +856,7 @@ export const natsEuScenario5Data: ScenarioData = {
       'shetland-geometry': {
         text: `
         <p>
-          Look at the schedule with Shetland selected. Same bird, and it is a different pass - earlier, lower, and it will not be the last time the two sites disagree about the sky. That is the whole reason there are two of them.
+          It's the same bird but a different pass, earlier and lower than ours. That won't be the last time the two sites disagree about the sky, and it's the whole reason there are two of them.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -858,7 +866,7 @@ export const natsEuScenario5Data: ScenarioData = {
       'shetland-preposition': {
         text: `
         <p>
-          "I left the dish stowed south, pointing at the hill, because that's where the wind isn't. Bring it round to the north before the bird's up. Nine seconds, but you don't want to be doing it at AOS."
+          "That's the dish round to azimuth 003, where the bird comes up. I left it stowed facing south, toward the hill, because that's the side the wind isn't on, and it takes a while to turn that far, so you don't want to be doing it at AOS. Now turn on program-track and the pedestal will follow the bird for you."
         </p>
         `,
         character: Character.FIONA_MACLEOD,
@@ -868,7 +876,7 @@ export const natsEuScenario5Data: ScenarioData = {
       'acquire-from-shetland': {
         text: `
         <p>
-          "There it is on my analyzer, so it's on yours. First pass this site has ever flown and the operator's three hundred miles away. Rotterdam will want that in a press release."
+          "There's the beacon on your analyzer, and I can see the dish following the bird from out here. It's the first pass this site has ever flown with the operator hundreds of miles away. Now lock the imagery."
         </p>
         `,
         character: Character.FIONA_MACLEOD,
@@ -878,7 +886,7 @@ export const natsEuScenario5Data: ScenarioData = {
       'decode-from-shetland': {
         text: `
         <p>
-          I have it on Galway's dish at the same time, two minutes behind you. Two sites, one bird, both decoding. Hold yours above eight through the top; mine will do the same, a little later and a little higher.
+          That's Shetland locked with C/N above 8 dB. Galway's dish picks the bird up about two minutes after yours, so for a while we'll both be decoding the same satellite. Mine will do the same, a little later and a little higher. Now keep watching for your peak.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -888,7 +896,7 @@ export const natsEuScenario5Data: ScenarioData = {
       'read-shetland-peak': {
         text: `
         <p>
-          "Nine point eight. Charlie'll get eleven and he'll mention it. Same bird, hundred kilometres further from us. Write both down; one day one of them will be wrong and you'll want to know which."
+          "That's the Shetland peak, about nine point eight at the top. Charlie'll get eleven and he'll mention it, but it's the same bird and we're a hundred kilometres further from it. Write both numbers down, because one day one of them will be wrong and you'll want to know which."
         </p>
         `,
         character: Character.FIONA_MACLEOD,
@@ -898,7 +906,7 @@ export const natsEuScenario5Data: ScenarioData = {
       'hand-back-to-galway': {
         text: `
         <p>
-          Fiona is back on her console. Give her the station and take Galway for SAR-2. Different carrier, same arithmetic, ten minutes. She has the overhead; you have the sensible one.
+          That's Galway retuned for SAR-2, with a different carrier but the same arithmetic, and the antenna waiting on the rise azimuth. Fiona has Shetland back on her own console. She has the pass straight overhead, and you have the sensible one. Now point the tracker at SAR-2 before it rises.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -908,7 +916,7 @@ export const natsEuScenario5Data: ScenarioData = {
       'acquire-sar2-galway': {
         text: `
         <p>
-          "Mine's going straight over the top. Eighty-six degrees. I'll lose it for a minute at the top - the pedestal can't turn round fast enough - so tell your customer the middle third is what he gets. Yours is the one that'll decode clean, twenty-five degrees is a proper pass."
+          "Mine's going straight over the top, at eighty-six degrees. The pedestal can't turn fast enough to keep up there, so I'll lose the signal for about a minute at the top. Anyone waiting on imagery from me gets the whole pass except that minute. Yours is the one that'll decode clean, because twenty-five degrees is a proper pass."
         </p>
         `,
         character: Character.FIONA_MACLEOD,
@@ -918,7 +926,7 @@ export const natsEuScenario5Data: ScenarioData = {
       'log-the-network': {
         text: `
         <p>
-          Four for four on the network's first day, one of them from a console the operator was not sitting at. Log it properly - site, who flew it, the number. Then ring Fiona and tell her eleven point two.
+          That's the first network day logged: four contacts, two sites, nothing dropped, and one of those passes flown from a console the operator wasn't sitting at. Now ring Fiona and tell her I got eleven.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

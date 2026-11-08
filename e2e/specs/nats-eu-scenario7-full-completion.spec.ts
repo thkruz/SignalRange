@@ -85,7 +85,7 @@ test.describe('nats-eu Scenario 7 Full Completion', () => {
   test('[review-mission-brief] reads the conjunction notice', async () => {
     await missionControl.openMissionBrief();
     await missionControl.closeMissionBrief();
-    await answerSystemQuiz(page, 'Pass predictions and program-track pointing');
+    await answerSystemQuiz(page, 'Pass predictions and pointing');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Review the Conjunction Notice');
   });
@@ -143,7 +143,7 @@ test.describe('nats-eu Scenario 7 Full Completion', () => {
     await advanceMissionClockToUtc(page, '2027-03-15T14:05:40Z');
     await page.waitForTimeout(2500);
     await advanceMissionClockToUtc(page, '2027-03-15T14:06:40Z');
-    await answerSystemQuiz(page, 'Climbed steadily with elevation');
+    await answerSystemQuiz(page, 'Climbs steadily with elevation');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Decode the Baseline Pass', 60000);
   });
@@ -193,7 +193,7 @@ test.describe('nats-eu Scenario 7 Full Completion', () => {
     await missionControl.selectTab('pass-schedule');
     await expect(page.locator('#ephemeris-panel .ephemeris-badge-stale')).toBeVisible({ timeout: 15000 });
     await loadEphemeris(page, missionControl, 'SAR2-CAM');
-    await answerSystemQuiz(page, 'The epoch: the post-burn set');
+    await answerSystemQuiz(page, 'The epoch: the new set');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Load the Post-Burn Elements');
   });

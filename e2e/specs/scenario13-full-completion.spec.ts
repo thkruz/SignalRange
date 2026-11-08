@@ -139,19 +139,19 @@ const SCENARIO_13_OBJECTIVES: Scenario13Objective[] = [
     id: 'identify-root-cause',
     title: 'Name the Root Cause',
     type: 'quiz',
-    correctAnswer: 'Excess gain on a weak fan - 10 dB over the operating value adds dissipation the degraded fan cannot shed',
+    correctAnswer: 'Excess gain on a weak fan - 10 dB over the operating value adds heat the degraded fan cannot shed',
   },
   {
     id: 'evaluate-options',
     title: 'Choose a Course of Action',
     type: 'quiz',
-    correctAnswer: 'De-rate now - reduce BUC gain ~10 dB, watch the trend reverse, schedule a swap for the next planned window',
+    correctAnswer: 'De-rate now - cut BUC gain ~10 dB, watch the trend reverse, book a swap for the next window',
   },
   {
     id: 'confirm-action-plan',
     title: 'Confirm the Sequence',
     type: 'quiz',
-    correctAnswer: 'Lower BUC gain ~10 dB, verify HPA still linear, verify carrier still nominal, then watch the temperature curve',
+    correctAnswer: 'Lower BUC gain ~10 dB, check the HPA is still linear, check the carrier, then watch the temperature curve',
   },
 
   // ============================================================
@@ -185,7 +185,7 @@ const SCENARIO_13_OBJECTIVES: Scenario13Objective[] = [
     id: 'verify-trend-stabilizing',
     title: 'Confirm the Trend Is Bending',
     type: 'quiz',
-    correctAnswer: 'Watch a few minutes: current drops to about 3.1 A at once, Trend (1 min) turns negative, temperature passes 61°C about 3 minutes in, carrier still locked',
+    correctAnswer: 'Watch a few minutes: current falls at once, Trend (1 min) turns negative, temperature passes 61°C',
     // The quiz opens once the BUC reads below 61 degC on TX Chain: real
     // cooling after the de-rate (about 3 min of sim time)
     quizTimeoutMs: 300000,
@@ -204,7 +204,7 @@ const SCENARIO_13_OBJECTIVES: Scenario13Objective[] = [
     id: 'schedule-maintenance-ticket',
     title: 'Open the Maintenance Ticket',
     type: 'quiz',
-    correctAnswer: 'Trend record (10-min curve), cooling-fault warning, de-rate action taken, gain/backoff settings, swap recommended for next planned window',
+    correctAnswer: 'Trend record, cooling-fault warning, de-rate action taken, gain and backoff settings, swap for the next planned window',
   },
   {
     id: 'final-dashboard-sweep-tab',
@@ -216,13 +216,13 @@ const SCENARIO_13_OBJECTIVES: Scenario13Objective[] = [
     id: 'final-dashboard-sweep',
     title: 'Final Dashboard Sweep',
     type: 'quiz',
-    correctAnswer: 'Only the BUC cooling-fault warning, BUC running de-rated, carrier nominal, swap ticket open against next planned window',
+    correctAnswer: 'Only the BUC cooling-fault warning, BUC de-rated, carrier nominal, swap ticket open for the next planned window',
   },
   {
     id: 'log-shift-summary',
     title: 'Log the Shift Entry',
     type: 'quiz',
-    correctAnswer: '1003 - VT-01 BUC thermal trend (57->62°C over 10 min, fan degraded) addressed by 10 dB gain de-rate. Trend reversing, swap ticket open, carrier nominal.',
+    correctAnswer: '1003 - VT-01 BUC thermal trend (57->62°C, fan degraded) addressed by 10 dB gain de-rate. Trend reversing, swap ticket open, carrier nominal.',
   },
 ];
 

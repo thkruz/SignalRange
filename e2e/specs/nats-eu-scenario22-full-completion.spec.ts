@@ -69,7 +69,7 @@ test.describe('nats-eu Scenario 22 Full Completion', () => {
   test('[review-mission-brief] reads the brief and the scope of an attribution report', async () => {
     await missionControl.openMissionBrief();
     await missionControl.closeMissionBrief();
-    await answerSystemQuiz(page, 'What was observed, when, on which input');
+    await answerSystemQuiz(page, 'What links the events');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Read the Brief');
   });
@@ -91,7 +91,7 @@ test.describe('nats-eu Scenario 22 Full Completion', () => {
     await expect(box).toBeVisible({ timeout: 10000 });
     await expect(box).toContainText('S21 Knocking on the Door');
     await expect(box).toContainText('S17 Unusual Activity');
-    await answerSystemQuiz(page, 'Five: a downlink carrier and a login spray');
+    await answerSystemQuiz(page, 'Five: downlink (12th)');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Open the Campaign Record');
     await closeCampaignRecordIfOpen();

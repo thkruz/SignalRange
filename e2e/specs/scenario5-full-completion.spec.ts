@@ -66,13 +66,13 @@ const SCENARIO_5_OBJECTIVES: Scenario5Objective[] = [
     id: 'phase-1-observe-degradation',
     title: 'Confirm Signal Degradation',
     type: 'quiz',
-    correctAnswer: 'C/N is degraded - well below normal, locked with little margin',
+    correctAnswer: 'C/N is degraded - well below normal, with little margin',
   },
   {
     id: 'verify-receiver-state-quiz',
     title: 'Assess Full Impact',
     type: 'quiz',
-    correctAnswer: 'The ships have much smaller dishes: the same C/N loss that leaves our 9 m dish just above threshold pushes them below it',
+    correctAnswer: 'The ships have much smaller dishes, so the same C/N loss drops them below threshold',
   },
 
   // ============================================================
@@ -82,7 +82,7 @@ const SCENARIO_5_OBJECTIVES: Scenario5Objective[] = [
     id: 'verify-speca-initial-state',
     title: 'Assess Current Configuration',
     type: 'quiz',
-    correctAnswer: 'The narrow span shows only the beacon, not the 36 MHz wideband carrier with the problem',
+    correctAnswer: 'The narrow span shows only the beacon, not the 36 MHz carrier with the problem',
   },
   {
     id: 'phase-2-configure-and-locate',
@@ -104,13 +104,13 @@ const SCENARIO_5_OBJECTIVES: Scenario5Objective[] = [
     id: 'phase-4-identify-interference',
     title: 'Identify Interference',
     type: 'quiz',
-    correctAnswer: 'A narrowband spike sitting within our wideband signal',
+    correctAnswer: 'A narrowband spike inside our wideband signal',
   },
   {
     id: 'phase-5-characterize-interference',
     title: 'Characterize the Interference',
     type: 'quiz',
-    correctAnswer: 'Much narrower - a spike about 1 MHz wide within our wideband signal',
+    correctAnswer: 'Much narrower - a spike about 1 MHz wide',
   },
   {
     id: 'measure-interference-frequency',
@@ -138,7 +138,7 @@ const SCENARIO_5_OBJECTIVES: Scenario5Objective[] = [
     id: 'phase-7-understand-impact',
     title: 'Understand the AGC Impact',
     type: 'quiz',
-    correctAnswer: "The spike's own power sits inside our passband and takes a share of the transponder's output; the AGC gain is only a symptom",
+    correctAnswer: "The spike's power sits inside our passband and takes a share of the transponder's output",
   },
 
   // ============================================================
@@ -148,7 +148,7 @@ const SCENARIO_5_OBJECTIVES: Scenario5Objective[] = [
     id: 'understand-mitigation-options',
     title: 'Evaluate Mitigation Approaches',
     type: 'quiz',
-    correctAnswer: 'Notch filter - surgically removes the spike while passing the rest of our signal',
+    correctAnswer: 'Notch filter - surgically removes the spike and passes the rest of our signal',
   },
 
   // ============================================================
@@ -189,7 +189,7 @@ const SCENARIO_5_OBJECTIVES: Scenario5Objective[] = [
     id: 'document-interference-quiz',
     title: 'Understand Documentation Requirements',
     type: 'quiz',
-    correctAnswer: 'Interference frequency, bandwidth, apparent source, time of occurrence, and mitigation applied',
+    correctAnswer: 'Interference frequency, bandwidth, source, time, and mitigation applied',
   },
 ];
 

@@ -242,7 +242,7 @@ export const scenario7Data: ScenarioData = {
             options: ['BUC in loopback mode', 'LNB Reference Unlocked', 'HPA Output Fault', 'No active alarms'],
             correctIndex: 0,
             explanation:
-              'The BUC is still in loopback. The maintenance crew left it unmuted in loopback, so anything the modem sends goes straight back into our receive chain. We need to mute it and disable loopback before proceeding.',
+              'The Dashboard shows the BUC in loopback mode. The maintenance crew left it unmuted in loopback, so anything the modem sends would be fed straight back into our receive chain. We need to mute it and take it out of loopback before we go on.',
             pointPenalty: 10,
             character: Character.DANA_TORRES,
           },
@@ -278,7 +278,7 @@ export const scenario7Data: ScenarioData = {
             options: ['BUC has been on for a few hours and is overheating', 'BUC gain is set too high', 'External reference is unlocked', 'BUC temperature is too low'],
             correctIndex: 1,
             explanation:
-              "The BUC gain is set to 50 dB; the station standard is 23 dB. The modem's current -10 dBm plus 50 dB asks for 40 dBm from a BUC whose 1 dB compression point is 28 dBm: it would sit at about 30 dBm, 10 dB into compression, draw about 5 A and trip the high-current alarm. The maintenance crew likely forgot to mute it after testing.",
+              "The BUC gain is set to 50 dB, and the station standard is 23 dB. The modem's current -10 dBm plus 50 dB asks for 40 dBm from a BUC whose 1 dB compression point is 28 dBm. That's the output level where the gain has dropped by 1 dB, so past it the BUC flattens out. It'd sit at about 30 dBm, 10 dB into compression, draw about 5 A and trip the high-current alarm. The maintenance crew likely forgot to mute it after testing.",
             pointPenalty: 10,
             character: Character.DANA_TORRES,
           },
@@ -294,7 +294,7 @@ export const scenario7Data: ScenarioData = {
       // K0740: Knowledge of network performance management
       nice: ['S0582', 'K0740'],
       title: 'Secure BUC State',
-      description: 'Mute the BUC and disable loopback so nothing can drive it until you are ready.',
+      description: "Mute the BUC and disable loopback, so nothing can drive it until you're ready.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['diagnose-buc-high-current'],
       timeLimitSeconds: 2 * 60,
@@ -346,14 +346,14 @@ export const scenario7Data: ScenarioData = {
             // carrier in the receive passband until our own uplink is back)
             question: 'With the BUC muted and out of loopback, what does the Dashboard alarm list show now?',
             options: [
-              'The BUC loopback alarm has cleared; only the AGC noise-only alarm remains, because no traffic carrier is up yet',
-              'The BUC loopback alarm is still listed; it stays latched until the BUC is power-cycled',
+              'The loopback alarm has cleared; only the AGC noise-only alarm remains',
+              'The loopback alarm is still listed; it stays latched until the BUC is power-cycled',
               'Every alarm has cleared; the board shows no active alarms',
               'A BUC high-current alarm has replaced the loopback alarm',
             ],
             correctIndex: 0,
             explanation:
-              'Muting the BUC and taking it out of loopback cleared the loopback alarm. The AGC noise-only alarm stays until our own carrier is back on the air: the receive passband holds nothing but noise until then, which is expected right now. Always verify alarm resolution on the Dashboard before proceeding.',
+              'Muting the BUC and taking it out of loopback cleared the loopback alarm. The AGC noise-only alarm stays because no traffic carrier is up yet. The receive passband holds nothing but noise until our own carrier is back on the air, so that alarm is expected right now. Always check on the Dashboard that an alarm has cleared before you go on.',
             pointPenalty: 5,
             character: Character.DANA_TORRES,
           },
@@ -399,7 +399,7 @@ export const scenario7Data: ScenarioData = {
             question: 'What is the current antenna tracking mode and target satellite?',
             options: ['Program Track - TIDEMARK-1', 'Program Track - TIDEMARK-2', 'Step Track - TIDEMARK-1', 'Maintenance - Stowed'],
             correctIndex: 0,
-            explanation: 'The antenna is in Program Track mode, locked on TIDEMARK-1.',
+            explanation: "The ACU Control tab shows the antenna in Program Track mode, locked on TIDEMARK-1. That's the satellite we're about to transmit to.",
             pointPenalty: 5,
             character: Character.DANA_TORRES,
           },
@@ -460,7 +460,7 @@ export const scenario7Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Noise temperature quantifies the thermal noise added by the LNB. Lower values (e.g., 45K) mean less noise is added to the received signal, improving the signal-to-noise ratio and receiver sensitivity.',
+              "Noise temperature measures the thermal noise the LNB adds to the received signal. A lower value, such as 45 K, means less added noise, so the signal-to-noise ratio and the receiver's sensitivity are better.",
             pointPenalty: 5,
             character: Character.DANA_TORRES,
           },
@@ -477,7 +477,7 @@ export const scenario7Data: ScenarioData = {
       nice: ['K0773', 'K1032'],
       title: 'Acquire TIDEMARK-1 Beacon',
       description:
-        'Configure the spectrum analyzer for the TIDEMARK-1 beacon: Center 1074.5 MHz, Span 0.002 MHz (2 kHz), Min Amp -100 dBm, Max Amp -30 dBm. The beacon reads about -49 dBm.',
+        'Set the spectrum analyzer to Center 1074.5 MHz, Span 0.002 MHz (2 kHz), Min Amp -100 dBm and Max Amp -30 dBm to look at the TIDEMARK-1 beacon. It should read about -49 dBm.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-lnb-operational'],
       timeLimitSeconds: 3 * 60,
@@ -546,7 +546,7 @@ export const scenario7Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Beacons are unmodulated Continuous Wave (CW) carriers that appear as narrow spikes. Their purpose is to provide a frequency and power reference independent of traffic.',
+              "A beacon is an unmodulated carrier, called continuous wave or CW, so it appears as a narrow spike. Its job is to give you a frequency and power reference that doesn't depend on traffic.",
             pointPenalty: 5,
             character: Character.DANA_TORRES,
           },
@@ -564,7 +564,7 @@ export const scenario7Data: ScenarioData = {
               'All of the above',
             ],
             correctIndex: 3,
-            explanation: 'The beacon validates the entire receive chain: antenna pointing, LNB operation, and signal routing. If any component fails, the beacon disappears.',
+            explanation: 'The beacon validates the whole receive chain: antenna pointing, LNB operation and signal routing. If any one of them fails, the beacon disappears.',
             pointPenalty: 5,
             preserveOptionOrder: true,
             character: Character.DANA_TORRES,
@@ -580,7 +580,7 @@ export const scenario7Data: ScenarioData = {
       // K0773: Knowledge of telecommunications principles and practices
       nice: ['K0773'],
       title: 'Confirm Beacon IF Frequency',
-      description: 'Verify understanding of the beacon frequency conversion.',
+      description: "Work out the beacon's IF frequency from its RF frequency and the LNB LO.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['acquire-beacon'],
       timeLimitSeconds: 2 * 60,
@@ -593,7 +593,8 @@ export const scenario7Data: ScenarioData = {
             question: 'The TIDEMARK-1 beacon is at 4,175.5 MHz RF. With an LNB LO of 5,250 MHz, what IF frequency is the beacon at?',
             options: ['1,074.5 MHz', '1,174.5 MHz', '9,425.5 MHz', '925.5 MHz'],
             correctIndex: 0,
-            explanation: 'IF = LO - RF = 5,250 - 4,175.5 = 1,074.5 MHz. The LNB downconverts C-band RF to L-band IF.',
+            explanation:
+              "The LNB downconverts the C-band beacon to L-band IF by subtracting the RF from its LO: 5,250 - 4,175.5 = 1,074.5 MHz. That's the center frequency you set on the analyzer.",
             pointPenalty: 10,
             character: Character.DANA_TORRES,
           },
@@ -612,7 +613,7 @@ export const scenario7Data: ScenarioData = {
       // K0773: Knowledge of telecommunications principles and practices
       nice: ['K0773'],
       title: 'Calculate TX IF Frequency',
-      description: 'Determine the correct transmitter modem IF frequency.',
+      description: 'Work out the IF frequency the transmitter modem needs for the TIDEMARK-1 uplink.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['quiz-beacon-frequency'],
       timeLimitSeconds: 3 * 60,
@@ -625,7 +626,7 @@ export const scenario7Data: ScenarioData = {
             question: 'TIDEMARK-1 TP-1 uplink is 5,943 MHz RF. The BUC LO is 7,000 MHz. What TX IF frequency is required?',
             options: ['1,057 MHz', '12,943 MHz', '957 MHz', '1,157 MHz'],
             correctIndex: 0,
-            explanation: 'TX IF = BUC LO - RF = 7,000 - 5,943 = 1,057 MHz. The BUC upconverts IF to RF.',
+            explanation: "The BUC upconverts the modem's IF to the uplink RF, so TX IF = BUC LO - RF = 7,000 - 5,943 = 1,057 MHz.",
             pointPenalty: 10,
             character: Character.DANA_TORRES,
           },
@@ -641,7 +642,7 @@ export const scenario7Data: ScenarioData = {
       // T1567: Equipment configuration happens throughout
       nice: ['K0792', 'T1567'],
       title: 'Configure TX Modem',
-      description: 'Set the transmitter modem frequency, bandwidth, modulation, and power.',
+      description: 'Set transmitter modem 1 to 1057 MHz, 36 MHz bandwidth, QPSK with 3/4 FEC and -7 dBm power, then start it transmitting.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['calculate-tx-if'],
       timeLimitSeconds: 4 * 60,
@@ -714,7 +715,7 @@ export const scenario7Data: ScenarioData = {
       nice: ['S0582'],
       title: 'Reduce BUC Gain for Loopback',
       description:
-        'Set the BUC gain to 20 dB before loopback. The test loop couples the BUC output into the LNB about 66 dB down. At the standard 23 dB the -7 dBm modem drive puts +16 dBm out and -50 dBm into the LNB: its input compression point at 60 dB gain (0.7 dB compressed, "LNB input overload"). 20 dB puts -53 dBm in, 3 dB under it, so the loop carrier you measure is linear.',
+        'Set the BUC gain to 20 dB before loopback. The test loop couples the BUC output into the LNB about 66 dB down. At the standard 23 dB, the -7 dBm modem drive puts +16 dBm out of the BUC and -50 dBm into the LNB. That is its input compression point at 60 dB gain (0.7 dB compressed, "LNB input overload"). At 20 dB the LNB sees -53 dBm, 3 dB under it, so the loop carrier you measure is linear.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['configure-tx-modem'],
       timeLimitSeconds: 2 * 60,
@@ -745,7 +746,8 @@ export const scenario7Data: ScenarioData = {
       // T1567: Equipment configuration happens throughout
       nice: ['T1313', 'T1567'],
       title: 'Enable BUC Loopback',
-      description: 'Toggle loopback mode ON to feed a coupled sample of the TX signal back into the receive chain for testing without transmitting to the satellite.',
+      description:
+        'Turn loopback on and unmute the BUC. The loop feeds a coupled sample of the transmit signal back into the receive chain, so you can test without transmitting to the satellite.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['reduce-buc-gain'],
       timeLimitSeconds: 2 * 60,
@@ -775,14 +777,14 @@ export const scenario7Data: ScenarioData = {
             // nats-r4-s07-F2: the loop is a coupled sample (coupler + pad +
             // 2,225 MHz translator), not a switch; the HPA path stays connected
             options: [
-              'A directional coupler samples the BUC output, a pad drops it about 66 dB and the loop translator shifts it 2,225 MHz down into the LNB; the HPA path stays connected',
+              'A coupler samples the BUC output and a translator shifts it into the LNB; the HPA path stays connected',
               'A switch routes the whole BUC output to the LNB instead of the HPA, so the HPA path is cut while the loop is on',
               'The LNB LO is retuned to the BUC LO so the receive chain sees the 5,943 MHz uplink directly',
               'The BUC output is fed back into the modem RX input at IF, bypassing the LNB and the antenna',
             ],
             correctIndex: 0,
             explanation:
-              "Loopback taps the BUC output with a directional coupler, pads the sample about 66 dB down and runs it through the loop translator, which shifts it by the satellite's 2,225 MHz translation into the LNB's band. Nothing is switched out of the transmit path: the BUC still drives the HPA input, which is why the HPA stays off until the loop test is done. You verify the modem and BUC without radiating anything through the antenna.",
+              "Loopback taps the BUC output with a directional coupler, pads the sample about 66 dB down and runs it through the loop translator. The translator shifts it down by the satellite's 2,225 MHz translation, into the LNB's band. Nothing is switched out of the transmit path. The BUC still drives the HPA input, so the HPA has to stay off until the loop test is done. That way you can verify the modem and BUC without radiating anything through the antenna.",
             pointPenalty: 5,
             character: Character.DANA_TORRES,
           },
@@ -798,7 +800,7 @@ export const scenario7Data: ScenarioData = {
       nice: ['T1313'],
       title: 'Verify Loopback Signal',
       description:
-        "Find the loop carrier on the spectrum analyzer. The test loop translator shifts the 5943 MHz uplink down by the satellite's 2225 MHz translation, to 3718 MHz, so the normal LNB LO (5250 MHz) puts it at 1532 MHz IF: where our own downlink will sit. Leave the LNB alone and set Center 1532 MHz, Span 50 MHz, Min Amp -100 dBm, Max Amp -20 dBm, RBW Auto. The AGC levels the loop carrier like any other, so it reads around -55 dBm per RBW. On RX Analysis a carrier this clean reads Effective C/N well under Raw C/N: the grey ceiling line (about 40 dB) is the converter's own limit, not a fault.",
+        "Find the loop carrier on the spectrum analyzer. The test loop translator shifts the 5943 MHz uplink down by the satellite's 2225 MHz translation, to 3718 MHz. The normal LNB LO (5250 MHz) then puts it at 1532 MHz IF, which is where our own downlink will sit. Leave the LNB alone and set Center 1532 MHz, Span 50 MHz, Min Amp -100 dBm, Max Amp -20 dBm and RBW Auto. The AGC levels the loop carrier like any other, so it reads around -55 dBm per RBW. On RX Analysis, a carrier this clean reads an Effective C/N well under Raw C/N. The grey ceiling line (about 40 dB) is the converter's own limit, not a fault.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['enable-loopback'],
       timeLimitSeconds: 5 * 60,
@@ -862,7 +864,7 @@ export const scenario7Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              "The modem's 1,057 MHz IF leaves the BUC at 5,943 MHz (7,000 - 1,057). The loop translator shifts that sample down by the satellite's 2,225 MHz translation to 3,718 MHz, and the normal 5,250 MHz LNB LO puts it at 1,532 MHz IF (5,250 - 3,718): a 36 MHz modulated carrier, the same place our downlink will appear once we are on the air. The modem and BUC path are working. A C-band LNB only receives 3.4-4.2 GHz, so nobody retunes it to look for the 6 GHz uplink itself.",
+              "The modem's 1,057 MHz IF leaves the BUC at 5,943 MHz (7,000 - 1,057). The loop translator shifts that sample down by the satellite's 2,225 MHz translation to 3,718 MHz, and the normal 5,250 MHz LNB LO puts it at 1,532 MHz IF (5,250 - 3,718). That's a 36 MHz modulated carrier, in the same place our downlink will appear once we're on the air, so the modem and BUC path are working. A C-band LNB only receives 3.4-4.2 GHz, so nobody retunes it to look for the 6 GHz uplink itself.",
             pointPenalty: 10,
             character: Character.DANA_TORRES,
           },
@@ -877,7 +879,7 @@ export const scenario7Data: ScenarioData = {
       // T1313: Test network infrastructure, including software and hardware devices
       nice: ['T1313'],
       title: 'Confirm Loopback Understanding',
-      description: 'Verify understanding of the loopback test.',
+      description: 'Say what a successful loopback test tells you.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-loopback-signal'],
       timeLimitSeconds: 2 * 60,
@@ -896,7 +898,7 @@ export const scenario7Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Loopback testing verifies the low-power transmit chain (modem and BUC) without engaging the HPA or transmitting. This catches configuration errors before they cause interference.',
+              'A successful loopback test shows that the low-power part of the transmit chain, the modem and BUC, is working. It does that without engaging the HPA or transmitting, so it catches configuration errors before they can cause interference.',
             pointPenalty: 5,
             character: Character.DANA_TORRES,
           },
@@ -915,7 +917,7 @@ export const scenario7Data: ScenarioData = {
       // S0077: Skill in securing network communications
       nice: ['S0077'],
       title: 'Verify Encryption Status',
-      description: 'Confirm link security configuration before transmission.',
+      description: "Check the TX Chain tab and confirm the link's encryption is active and its key is valid.",
       groundStation: 'VT-01',
       intent: 'confirm',
       prerequisiteObjectiveIds: ['quiz-loopback-purpose'],
@@ -947,7 +949,7 @@ export const scenario7Data: ScenarioData = {
             question: 'What is the encryption status for this uplink?',
             options: ['AES-256 Enabled', 'AES-128 Enabled', 'Encryption Disabled', 'Key Expired - Renewal Required'],
             correctIndex: 0,
-            explanation: 'Link encryption is AES-256 per the TIDEMARK-1 service agreement. Never transmit without verifying encryption status.',
+            explanation: 'The link uses AES-256 encryption, as the TIDEMARK-1 service agreement requires. Always verify the encryption status before you transmit.',
             pointPenalty: 10,
             character: Character.DANA_TORRES,
           },
@@ -963,7 +965,7 @@ export const scenario7Data: ScenarioData = {
       // T1567: Equipment configuration happens throughout
       nice: ['S0421', 'T1567'],
       title: 'Disable Loopback, Restore BUC Gain',
-      description: 'Disable loopback and set the BUC gain back to the station standard 23 dB (the 20 dB loopback setting would leave the HPA 3 dB short of drive).',
+      description: 'Disable loopback and set the BUC gain back to the station standard of 23 dB. The 20 dB loopback setting would leave the HPA 3 dB short of drive.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['quiz-encryption-status'],
       timeLimitSeconds: 2 * 60,
@@ -999,7 +1001,7 @@ export const scenario7Data: ScenarioData = {
       // T1567: Equipment configuration happens throughout
       nice: ['S0421', 'T1567'],
       title: 'Enable HPA Output',
-      description: 'Enable the HPA output stage.',
+      description: 'Enable the HPA output stage without overdriving it.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['disable-loopback'],
       timeLimitSeconds: 2 * 60,
@@ -1036,7 +1038,7 @@ export const scenario7Data: ScenarioData = {
       nice: ['T0153', 'K0740'],
       title: 'Increase HPA Output Power',
       description:
-        'Lower the HPA back-off until output is above 400 W, the minimum for the TIDEMARK-1 link budget. The HPA is 60 dBm (1 kW) at P1dB: 3 dB of back-off gives 57 dBm (501 W), 4 dB gives only 398 W. Below 3 dB it trips the overdrive alarm.',
+        'Lower the HPA back-off (how far the output sits below its maximum) until output is above 400 W, the minimum for the TIDEMARK-1 link budget. The HPA is 60 dBm (1 kW) at P1dB, its 1 dB compression point. 3 dB of back-off gives 57 dBm (501 W), and 4 dB gives only 398 W. Below 3 dB it trips the overdrive alarm.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['enable-hpa-output'],
       timeLimitSeconds: 2 * 60,
@@ -1063,7 +1065,7 @@ export const scenario7Data: ScenarioData = {
       // T1313: Test network infrastructure, including software and hardware devices
       nice: ['T1313'],
       title: 'Final Configuration Verification',
-      description: 'Confirm complete uplink configuration.',
+      description: "Pick the description that matches the uplink you've just validated.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-hpa-power'],
       timeLimitSeconds: 2 * 60,
@@ -1081,7 +1083,7 @@ export const scenario7Data: ScenarioData = {
               'TX IF: 1,157 MHz → RF: 6,043 MHz, QPSK 3/4, AES-256',
             ],
             correctIndex: 0,
-            explanation: 'The validated uplink: TX IF 1,057 MHz upconverted to 5,943 MHz RF (BUC LO 7,000 MHz), QPSK modulation with 3/4 FEC, AES-256 encryption.',
+            explanation: 'The validated uplink takes the 1,057 MHz TX IF up to 5,943 MHz RF through the 7,000 MHz BUC LO, with QPSK modulation, 3/4 FEC and AES-256 encryption.',
             pointPenalty: 5,
             character: Character.DANA_TORRES,
           },
@@ -1096,13 +1098,13 @@ export const scenario7Data: ScenarioData = {
     intro: {
       text: `
       <p>
-        Hey, it's Charlie. Quick call - I'm stuck at the main office all day. Paperwork.
+        Hey, it's Charlie. Quick call: I'm stuck at the main office all day with paperwork.
       </p>
       <p>
-        Overnight crew finished the HPA work. You need to validate the uplink before we go live. Standard post-maintenance procedure.
+        The overnight crew finished the HPA work, so you need to validate the uplink before we go live. It's the standard post-maintenance procedure.
       </p>
       <p>
-        Dana's on shift if you need anything, but you should be able to handle this. Mission Brief has the details.
+        Dana's on shift if you need anything, but you should be able to handle this. The Mission Brief has the details.
       </p>
       `,
       character: Character.CHARLIE_BROOKS,
@@ -1113,10 +1115,13 @@ export const scenario7Data: ScenarioData = {
       'review-mission-brief': {
         text: `
         <p>
-          Dana Torres, shift supervisor. Don't think we've met yet. Charlie mentioned you'd be handling the uplink validation solo today.
+          I'm Dana Torres, the shift supervisor, and I don't think we've met yet. Charlie mentioned you'd be handling the uplink validation solo today.
         </p>
         <p>
-          Just making sure neither of us gets in trouble - I'll check in at a few points. Don't wait for me though. Open your checklist and get started.
+          I'll check in at a few points, just making sure neither of us gets in trouble, but don't wait for me. Go ahead and select the Vermont station.
+        </p>
+        <p>
+          I got called in early this morning, so you'll mostly have the floor to yourself.
         </p>
         `,
         character: Character.DANA_TORRES,
@@ -1126,7 +1131,7 @@ export const scenario7Data: ScenarioData = {
       'check-dashboard-status': {
         text: `
         <p>
-          Heads up - I see there's a BUC alarm on the board. Looks like maintenance may have left something misconfigured.
+          That's the BUC alarm I spotted on the board too. Maintenance may have left something misconfigured, so open the TX Chain tab and see what they left behind.
         </p>
         `,
         character: Character.DANA_TORRES,
@@ -1136,7 +1141,7 @@ export const scenario7Data: ScenarioData = {
       'diagnose-buc-high-current': {
         text: `
         <p>
-          Bingo. We'll worry about the gain later. For now just mute it and disable loopback so we can clear that alarm before anything keys up into it.
+          Bingo. We'll deal with the gain later. For now, mute the BUC and disable loopback so we can clear that alarm before the modem has a chance to transmit into it.
         </p>
         `,
         character: Character.DANA_TORRES,
@@ -1156,7 +1161,7 @@ export const scenario7Data: ScenarioData = {
       'acquire-beacon': {
         text: `
         <p>
-          RX chain confirmed. Moving on.
+          The receive chain's confirmed. Work out the beacon's IF, and then we'll move on to the uplink.
         </p>
         `,
         character: Character.DANA_TORRES,
@@ -1176,10 +1181,10 @@ export const scenario7Data: ScenarioData = {
       'final-verification': {
         text: `
         <p>
-          TIDEMARK-1 uplink validated and operational.
+          The TIDEMARK-1 uplink is validated and operational.
         </p>
         <p>
-          You caught that maintenance left the BUC unmuted in loopback, secured the equipment, then used loopback correctly for your own testing. Brought it up clean. I'll let Charlie know.
+          You caught that maintenance left the BUC unmuted in loopback, you secured it, and then you used loopback properly for your own testing. You brought the uplink up clean, and I'll let Charlie know.
         </p>
         `,
         character: Character.DANA_TORRES,
@@ -1192,12 +1197,12 @@ export const scenario7Data: ScenarioData = {
       'reduce-buc-gain': {
         text: `
         <p>
-          Before you loop back, drop the BUC gain to 20 dB. The test loop takes the BUC output about 66 dB down into the LNB. At our normal 23 dB that's right at the LNB's compression point, and a compressed loop carrier tells you nothing clean. Twenty keeps the LNB linear. And at the 50 dB maintenance left, the modem would drive the BUC itself straight into saturation.
+          Before you loop back, drop the BUC gain to 20 dB. The test loop takes the BUC output about 66 dB down into the LNB. At our normal 23 dB, that's right at the LNB's compression point, where it stops amplifying evenly. A compressed loop carrier would give you a misleading reading, and 20 dB keeps the LNB linear. At the 50 dB maintenance left, the modem would drive the BUC itself straight into saturation.
         </p>
         `,
         character: Character.DANA_TORRES,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '', // VO not recorded yet: text-to-speech fallback
+        audioUrl: getAssetUrl('/assets/campaigns/nats/7/obj-reduce-buc-gain.mp3'),
       },
     },
   },

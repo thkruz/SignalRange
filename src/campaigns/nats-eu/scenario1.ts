@@ -84,8 +84,8 @@ export const natsEuScenario1Data: ScenarioData = {
   subtitle: 'LEO Pass Operations',
   duration: '35-40 min',
   missionType: 'LEO Downlink',
-  description: `Welcome to Galway, Ireland - NATS Europe's newest LEO downlink site. Charlie Brooks has transferred from Vermont to stand up GW-01, a Ku-band station tasked with capturing SAR imagery from the MERIDIAN constellation.
-  <br/><br/>Unlike the geostationary TIDEMARK fleet you trained on, MERIDIAN satellites scream overhead in minutes. The acceptance crew left the station stowed; you have a quarter of an hour to sweep it, tune the receiver, put the analyzer on the beacon and park the tracker on the rise azimuth. Then ride the pass with program-track, decode the imagery downlink before the bird drops below the horizon, and turn the station round for a second contact seven minutes later.`,
+  description: `Welcome to Galway, Ireland, NATS Europe's newest LEO downlink site. Charlie Brooks has transferred from Vermont to stand up GW-01, a Ku-band station that will capture radar (SAR) imagery from the MERIDIAN constellation.
+  <br/><br/>Unlike the geostationary TIDEMARK fleet you trained on, MERIDIAN satellites cross the sky in minutes. The acceptance crew left the station stowed, so you have a quarter of an hour to check the board, tune the receiver, put the analyzer on the beacon and point the antenna where the first satellite will rise. Then you'll track the pass with program-track, decode the imagery before the satellite sets, and retune for a second satellite that rises about eight minutes later.`,
   equipment: [
     '4-meter Ku-band LEO Tracking Antenna',
     'Ku-band RF Front End (13.1 GHz LNB / 12.6 GHz BUC)',
@@ -111,7 +111,9 @@ export const natsEuScenario1Data: ScenarioData = {
     },
 
     // A fast operator can skip the dead air between "ready" and AOS. The skip
-    // is blocked while a timed objective runs and stops 2 min before the pass.
+    // is blocked while a timed objective runs. The campaign wait policy in
+    // campaign-data.ts (leadTimeS 0, minSkipS 1) overrides the values below, so
+    // a skip can run right up to AOS.
     timeSkip: {
       leadTimeS: 120,
       minSkipS: 120,
@@ -131,7 +133,7 @@ export const natsEuScenario1Data: ScenarioData = {
       id: 'review-mission-brief',
       nice: ['K0645'],
       title: 'Review the Shift Brief',
-      description: 'Open the shift brief and acknowledge you are ready to make the station ready for the first MERIDIAN contact.',
+      description: "Open the shift brief and confirm you're ready to prepare the station for the first MERIDIAN contact.",
       groundStation: 'GW-01',
       freezesScenarioTimer: true,
       prerequisiteObjectiveIds: [],
@@ -147,10 +149,10 @@ export const natsEuScenario1Data: ScenarioData = {
           description: 'Ready to Make Ready',
           params: {
             character: Character.SYSTEM,
-            question: 'Have you reviewed the shift brief? MERIDIAN-SAR-1 rises at 14:03 and the station is not ready.',
-            options: ['Yes, brief reviewed. Starting the pre-pass sweep.'],
+            question: "Have you reviewed the shift brief? MERIDIAN-SAR-1 rises at 14:03 and the station isn't ready yet.",
+            options: ["Yes, I've read the brief. Starting the pre-pass sweep."],
             correctIndex: 0,
-            explanation: 'Shift clock started at 13:48. Fifteen minutes to AOS.',
+            explanation: 'The shift clock started at 13:48, which leaves fifteen minutes before the first pass starts. Use that time to make the station ready.',
             pointPenalty: 0,
           },
           mustMaintain: false,
@@ -167,7 +169,7 @@ export const natsEuScenario1Data: ScenarioData = {
       id: 'dashboard-sweep',
       nice: ['T0153', 'K0741'],
       title: 'GW-01 Dashboard Sweep',
-      description: 'Clear the board before anything else: confirm the active alarm state on GW-01.',
+      description: 'Before you change anything, look over the GW-01 dashboard and confirm the active alarm state.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['review-mission-brief'],
       timeLimitSeconds: 90,
@@ -185,16 +187,16 @@ export const natsEuScenario1Data: ScenarioData = {
           description: 'Alarm State Confirmed',
           params: {
             character: Character.SYSTEM,
-            question: 'What is the active alarm state on GW-01 at turnover?',
+            question: "What's the alarm state on GW-01 now that the acceptance crew has handed it over?",
             options: [
-              'RX AGC on noise only - no carrier on an empty sky, no hardware alarm',
-              'No active alarms - all systems nominal, board clear',
-              'GPSDO in holdover - reference alarm, timing at risk',
-              'LNB reference unlocked - hardware alarm, RX chain down',
+              'RX AGC on noise only, no carrier in the beam and no hardware fault',
+              'No active faults, every system nominal and the whole board is clear',
+              'GPSDO in holdover, a reference fault that puts the timing at risk',
+              'LNB reference unlocked, a hardware fault with the receive chain down',
             ],
             correctIndex: 0,
             explanation:
-              'One line on the board and it is not a fault: the receive AGC is levelling noise with no carrier in its passband because the tracker is stowed and there is nothing in the beam. It clears when the beacon arrives. The acceptance crew left the hardware healthy; what they did not leave is a station configured for this pass.',
+              "The one line on the board isn't a fault. The receive AGC (automatic gain control) is levelling noise because the tracker is stowed, so there's no carrier in the beam, and the line clears when the beacon arrives. The acceptance crew left the hardware healthy, but they didn't leave a station configured for this pass.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -207,7 +209,8 @@ export const natsEuScenario1Data: ScenarioData = {
       id: 'reference-check',
       nice: ['T0431', 'K0740'],
       title: 'Reference Check',
-      description: 'GPSDO locked and out of holdover. Every LO in the rack keys off it, and at Ku a reference error is a frequency error you can see.',
+      description:
+        "Confirm the GPSDO is locked and not in holdover, which would mean it has lost GPS and is free-running. Every LO in the rack keys off it, and at Ku-band a reference error is multiplied up into the frequencies you're trying to receive.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['dashboard-sweep'],
       timeLimitSeconds: 2 * 60,
@@ -233,7 +236,7 @@ export const natsEuScenario1Data: ScenarioData = {
       id: 'downconversion-plan',
       nice: ['K0773', 'S0421'],
       title: 'Confirm the Ku Downconversion Plan',
-      description: 'LNB LO at 13100 MHz. Work out where the 11686 MHz SAR-1 imagery downlink comes out at IF before you tune anything to it.',
+      description: 'The LNB LO is at 13100 MHz. Work out where the 11686 MHz SAR-1 imagery downlink comes out at IF before you tune anything to it.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['reference-check'],
       timeLimitSeconds: 2 * 60,
@@ -250,11 +253,11 @@ export const natsEuScenario1Data: ScenarioData = {
           description: 'IF Arithmetic',
           params: {
             character: Character.SYSTEM,
-            question: 'LNB LO 13100 MHz, imagery downlink 11686 MHz. Where does the carrier sit at IF?',
+            question: 'The LNB LO is at 13100 MHz and the imagery downlink is at 11686 MHz. Where does the carrier sit at IF?',
             options: ['1414 MHz', '24786 MHz', '11686 MHz', '1370 MHz'],
             correctIndex: 0,
             explanation:
-              'High-side LO: IF = LO - RF = 1414 MHz. Vermont was low-side, IF = RF - LO. Same arithmetic, opposite sign, and one consequence you will see in ten minutes: the spectrum is inverted, so Doppler walks the wrong way on the analyzer.',
+              "This is a high-side LO, so IF = LO - RF, which gives 13100 - 11686 = 1414 MHz. Vermont was low-side, where IF = RF - LO, so it's the same arithmetic with the opposite sign. The 24786 MHz option adds the two frequencies instead of subtracting them. You'll see the main consequence in about ten minutes: the spectrum is inverted, so Doppler walks the wrong way on the analyzer.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -267,7 +270,7 @@ export const natsEuScenario1Data: ScenarioData = {
       id: 'tune-receiver',
       nice: ['S0421', 'K1032'],
       title: 'Tune the Receiver for SAR-1',
-      description: 'The acceptance crew left modem 1 on their 1400 MHz test carrier. Retune it for the imagery downlink: 1414 MHz, 36 MHz, QPSK, rate 3/4.',
+      description: 'The acceptance crew left modem 1 on their 1400 MHz test carrier. Retune it for the imagery downlink: 1414 MHz, 36 MHz bandwidth, QPSK, rate 3/4.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['downconversion-plan'],
       timeLimitSeconds: 3 * 60,
@@ -306,7 +309,7 @@ export const natsEuScenario1Data: ScenarioData = {
       nice: ['S0421', 'K0773'],
       title: 'Analyzer on the SAR-1 Beacon',
       description:
-        'Centre the spectrum analyzer on the SAR-1 telemetry beacon at 1389 MHz IF with a 2 MHz span. The beacon is a CW line, so it is the one signal that shows you Doppler.',
+        "Center the spectrum analyzer on the SAR-1 telemetry beacon at 1389 MHz IF with a 2 MHz span. The beacon is a CW line, a single unmodulated tone, so it's the one signal that shows you Doppler.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['tune-receiver'],
       timeLimitSeconds: 2 * 60,
@@ -314,7 +317,7 @@ export const natsEuScenario1Data: ScenarioData = {
       conditions: [
         {
           type: 'speca-center-frequency',
-          description: 'Centre 1389 MHz',
+          description: 'Center 1389 MHz',
           params: { centerFrequency: 1389e6, centerFrequencyTolerance: 100e3 },
           mustMaintain: true,
         },
@@ -329,15 +332,16 @@ export const natsEuScenario1Data: ScenarioData = {
           description: 'Why the Span',
           params: {
             character: Character.SYSTEM,
-            question: 'SAR-1 closes at over 7 km/s. Why not a 200 kHz span around the beacon?',
+            question: 'SAR-1 closes at over 7 km/s. Why not use a 200 kHz span around the beacon?',
             options: [
-              'Doppler walks the beacon about 550 kHz end to end and off a narrow span',
-              'The analyzer cannot resolve a CW line at any span below 1 MHz',
-              'The beacon is 36 MHz wide and needs the full span to fit on screen',
-              'A narrow span raises the displayed noise floor and hides the line',
+              'Doppler walks the beacon about 550 kHz, so it would leave the span',
+              "The analyzer can't resolve a CW beacon on any span under 1 MHz",
+              'The beacon is 36 MHz wide, so it needs the full span to fit on screen',
+              'A narrow span raises the displayed noise floor and hides the beacon',
             ],
             correctIndex: 0,
-            explanation: 'At 11.7 GHz the range rate gives about +/- 270 kHz. Two megahertz keeps the whole walk on screen: watch it slide through the centre at culmination.',
+            explanation:
+              "At 11.7 GHz the satellite's speed toward and away from you shifts the beacon by about plus or minus 270 kHz, which is roughly 550 kHz end to end. A 200 kHz span would lose the line within a minute, while 2 MHz keeps the whole walk on screen. Watch it slide through the center at culmination.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -350,7 +354,8 @@ export const natsEuScenario1Data: ScenarioData = {
       id: 'review-pass-schedule',
       nice: ['K1032', 'S0421'],
       title: 'Review the Contact Schedule',
-      description: 'Open the Pass Schedule tab and read off the AOS time and rise azimuth for MERIDIAN-SAR-1. The tab works the 5 degree mask, not the geometric horizon.',
+      description:
+        'Open the Pass Schedule tab and read the AOS (acquisition of signal) time and the rise azimuth for MERIDIAN-SAR-1. The tab uses the 5 degree mask, not the geometric horizon.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['analyzer-on-beacon'],
       timeLimitSeconds: 2 * 60,
@@ -367,11 +372,11 @@ export const natsEuScenario1Data: ScenarioData = {
           description: 'AOS Read',
           params: {
             character: Character.SYSTEM,
-            question: 'When does MERIDIAN-SAR-1 clear the 5 degree mask, and from where?',
+            question: 'When does MERIDIAN-SAR-1 clear the 5 degree mask, and at what azimuth?',
             options: ['14:03, azimuth 000', '14:07, azimuth 294', '14:10, azimuth 224', '14:18, azimuth 130'],
             correctIndex: 0,
             explanation:
-              'Rises due north at 14:03, culminates at 28 degrees in the west-north-west at 14:06:45, sets south-west at 14:10. Under nine minutes above the mask. 14:18 on azimuth 130 is SAR-2.',
+              "SAR-1 rises due north at 14:03, culminates at 28 degrees in the west-north-west at 14:06:45, and sets south-west at 14:10. That's about seven minutes above the mask. The 14:18 entry on azimuth 130 is SAR-2, which is the next pass rather than this one.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -384,7 +389,8 @@ export const natsEuScenario1Data: ScenarioData = {
       id: 'preposition-for-aos',
       nice: ['S0421', 'K1032'],
       title: 'Pre-position for AOS',
-      description: 'The tracker is stowed south. Slew it to the rise azimuth, 000 at 5 degrees, so the pedestal is waiting when the bird clears the mask.',
+      description:
+        'The tracker is stowed facing south. Slew it to the rise azimuth, 000 degrees at 5 degrees elevation, so the antenna is already waiting when the satellite clears the mask.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['review-pass-schedule'],
       timeLimitSeconds: 3 * 60,
@@ -409,7 +415,7 @@ export const natsEuScenario1Data: ScenarioData = {
       nice: ['S0421', 'K1032'],
       title: 'Acquire MERIDIAN-SAR-1',
       description:
-        'Set the antenna to program-track on MERIDIAN-SAR-1 and confirm the beacon on RX analysis once the bird is up. The 4 m pedestal slews at 10 deg/s - plenty for a 28 degree pass.',
+        'Set the antenna to program-track on MERIDIAN-SAR-1, then confirm the beacon on the RX Analysis tab once the satellite is up. The 4 m antenna slews at 10 degrees a second, which is plenty for a 28 degree pass.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['preposition-for-aos'],
       conditions: [
@@ -444,7 +450,7 @@ export const natsEuScenario1Data: ScenarioData = {
       id: 'lock-the-downlink',
       nice: ['T0153', 'K0740'],
       title: 'Lock the Imagery Downlink',
-      description: 'Lock the QPSK 3/4 carrier at 1414 MHz and hold C/N above 8 dB through the high-elevation segment. That is the acceptance criterion for the site.',
+      description: "Lock the QPSK 3/4 carrier at 1414 MHz and hold C/N above 8 dB through the high-elevation part of the pass. That's the acceptance criterion for the site.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['acquire-sar1'],
       conditions: [
@@ -468,7 +474,8 @@ export const natsEuScenario1Data: ScenarioData = {
       id: 'read-the-culmination',
       nice: ['K0740', 'K0773'],
       title: 'Read the Pass at Culmination',
-      description: 'Around 14:06:45 the bird is at 28 degrees and 761 km. Confirm C/N of 9 dB or better at the top of the pass, and read what the beacon did on the analyzer.',
+      description:
+        'At about 14:06:45 the satellite reaches culmination, its highest point, at 28 degrees and 761 km. Confirm C/N of 9 dB or better at the top of the pass, and watch which way the beacon moves on the analyzer.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['lock-the-downlink'],
       conditions: [
@@ -483,16 +490,17 @@ export const natsEuScenario1Data: ScenarioData = {
           description: 'Doppler Read',
           params: {
             character: Character.SYSTEM,
-            question: 'The beacon started a quarter of a megahertz BELOW 1389 MHz and crossed to above it at culmination. Why below first?',
+            question:
+              'The beacon is about a quarter of a megahertz BELOW 1389 MHz on the way in, and it will cross to above 1389 MHz after culmination. Why is it below on approach?',
             options: [
-              'Approach raises the RF and the high-side LO inverts it, so IF drops',
+              'Approach raises the RF, and the high-side LO inverts it, so IF drops',
               'The beacon transmitter drifts low while the spacecraft is still cold',
-              'The LNB LO pulled low under load, so the whole IF band sat low',
-              'The analyzer reference level was set too high, so the line read low',
+              'The LNB LO is pulled low under load, so the whole IF band sits low',
+              'The analyzer reference level is set too high, so the line reads low',
             ],
             correctIndex: 0,
             explanation:
-              'IF = LO - RF. Positive Doppler on approach makes the RF higher and the IF lower; after culmination the sign flips. On a low-side plan it would walk the other way. Peak C/N is where the range is shortest, not where the elevation is highest by accident: both happen at culmination.',
+              "On this high-side LO, IF = LO - RF, so the positive Doppler on approach makes the RF higher and the IF lower. After culmination the satellite is moving away, the sign flips, and the beacon crosses to the other side of 1389 MHz. On a low-side plan it walks the other way. C/N peaks at culmination because that's when the satellite is closest; the high elevation comes with it, but it's the shorter range that buys the extra decibels.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -510,7 +518,7 @@ export const natsEuScenario1Data: ScenarioData = {
       nice: ['S0421', 'K0773'],
       title: 'Retune for SAR-2',
       description:
-        'SAR-1 sets at 14:10; retuning while it is still in view drops its lock, so wait for LOS. MERIDIAN-SAR-2 rises at 14:18 from azimuth 130: retune modem 1 to its 1370 MHz imagery carrier and put the analyzer on its 1397 MHz beacon.',
+        "SAR-1 sets at 14:10, and retuning while it's still in view would drop its lock, so wait for LOS (loss of signal). MERIDIAN-SAR-2 rises at 14:18 from azimuth 130. Then retune modem 1 to its 1370 MHz imagery carrier and put the analyzer on its 1397 MHz beacon.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['read-the-culmination'],
       timeLimitSeconds: 3 * 60,
@@ -530,7 +538,7 @@ export const natsEuScenario1Data: ScenarioData = {
         },
         {
           type: 'speca-center-frequency',
-          description: 'Analyzer Centre 1397 MHz',
+          description: 'Analyzer Center 1397 MHz',
           params: { centerFrequency: 1397e6, centerFrequencyTolerance: 100e3 },
           mustMaintain: true,
         },
@@ -539,7 +547,7 @@ export const natsEuScenario1Data: ScenarioData = {
           description: 'SAR-2 Plan',
           params: {
             character: Character.SYSTEM,
-            question: 'SAR-2 imagery is at 11730 MHz and its beacon at 11703 MHz. Where are they at IF, and when is the next window?',
+            question: 'SAR-2 imagery is at 11730 MHz and its beacon is at 11703 MHz. Where are they at IF, and when is its next window?',
             options: [
               'Imagery 1370 MHz, beacon 1397 MHz; AOS 14:18 azimuth 130',
               'Imagery 1414 MHz, beacon 1389 MHz; AOS 14:18 azimuth 130',
@@ -548,7 +556,7 @@ export const natsEuScenario1Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              '13100 - 11730 = 1370 and 13100 - 11703 = 1397. Different bird, different carrier, same arithmetic. The 14:18 window opens seven minutes after SAR-1 sets; 15:50 is the pass after that.',
+              "With the LO at 13100 MHz, the imagery is 13100 - 11730 = 1370 MHz and the beacon is 13100 - 11703 = 1397 MHz. It's a different satellite with a different carrier, but the arithmetic is the same. The 14:18 window opens about eight minutes after SAR-1 sets, while 15:50 is the pass after that.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -565,7 +573,7 @@ export const natsEuScenario1Data: ScenarioData = {
       id: 'acquire-sar2',
       nice: ['S0421', 'K1032', 'T0153'],
       title: 'Acquire MERIDIAN-SAR-2',
-      description: 'Retarget the tracker to MERIDIAN-SAR-2 before 14:18 and confirm its 1397 MHz beacon on RX analysis once it clears the mask.',
+      description: 'Retarget the tracker to MERIDIAN-SAR-2 before 14:18, then confirm its 1397 MHz beacon on the RX Analysis tab once it clears the mask.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['retune-for-sar2'],
       conditions: [
@@ -596,7 +604,7 @@ export const natsEuScenario1Data: ScenarioData = {
       id: 'decode-sar2',
       nice: ['T0153', 'K0740'],
       title: 'Decode the Second Contact',
-      description: 'Lock the 1370 MHz carrier and hold C/N above 8 dB through the high-elevation segment of the SAR-2 pass.',
+      description: 'Lock the 1370 MHz carrier and hold C/N above 8 dB through the high-elevation part of the SAR-2 pass.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['acquire-sar2'],
       conditions: [
@@ -624,7 +632,8 @@ export const natsEuScenario1Data: ScenarioData = {
       id: 'log-first-light',
       nice: ['T1580', 'K0645'],
       title: 'Log First Light',
-      description: 'Two contacts down once SAR-2 sets. Write the acceptance result into the shift log the way Rotterdam wants it: a number the next shift can compare against.',
+      description:
+        'Once SAR-2 sets, both contacts are done. Write the acceptance result into the shift log the way Rotterdam wants it: a number the next shift can compare against.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['decode-sar2'],
       timeLimitSeconds: 2 * 60,
@@ -645,11 +654,12 @@ export const natsEuScenario1Data: ScenarioData = {
             options: [
               'Decoded; C/N held above 8 dB, peak ~11 dB at 28 degrees, no anomalies',
               'Decoded; C/N not measured, peak elevation 28 degrees, no anomalies',
-              'Missed; stale ephemeris, no C/N recorded, anomaly logged',
-              'Deferred; next pass 23:00, no C/N recorded, no anomalies',
+              'Missed; stale ephemeris, no C/N recorded, anomaly logged for follow-up',
+              'Deferred; next pass 23:00, no C/N recorded, no anomalies logged today',
             ],
             correctIndex: 0,
-            explanation: 'Peak C/N and the elevation it happened at. Predicted was 11 dB; anything more than 3 dB under that goes to Rotterdam as a flag. Site is accepted.',
+            explanation:
+              "The log needs the peak C/N and the elevation where it happened, because that's a number the next shift can compare against. The predicted peak was 11 dB, and anything more than 3 dB under that goes to Rotterdam as a flag. This contact matched the prediction, so the site is accepted.",
             pointPenalty: 5,
             documentSection: 'Contacts',
             documentLine:
@@ -669,7 +679,7 @@ export const natsEuScenario1Data: ScenarioData = {
         <em>[Text message from Charlie Brooks at 13:47]</em>
       </p>
       <p>
-        "Good to have you across the water. Acceptance crew signed the hardware off last night and left it stowed - tracker south, modem on their test carrier. First MERIDIAN window opens at 14:03 and that is the site's first light, so I would like the station ready before it, not during it. Sweep it, tune it, park it on the rise. I am in the front office if you need me. You will not."
+        "Good to have you across the water. The acceptance crew signed the hardware off last night and left it stowed, with the tracker pointing south and the modem still on their test carrier. The first MERIDIAN window opens at 14:03, and that's the site's first light, the first real signal it receives. I'd like the station ready before then, not during it. Check the board, tune the receiver, and point the antenna where the satellite's going to rise. I'm in the front office arguing with the coffee machine if you need me. You won't."
       </p>
       `,
       character: Character.CHARLIE_BROOKS,
@@ -680,7 +690,7 @@ export const natsEuScenario1Data: ScenarioData = {
       'reference-check': {
         text: `
         <p>
-          Reference first, same as Vermont. The only thing that changes up here is what hangs off it. At Ku a part-per-billion on the 10 MHz is a hundred-odd hertz on the LO, and you will be chasing a carrier that is already moving.
+          Good, the reference is locked and not in holdover. That matters more at Ku-band, because every oscillator in the rack is multiplied up from it. A reference that's one part per billion off becomes only about 13 hertz on the 13.1 GHz LO, so locked is fine. The danger is an LNB that loses its reference and free-runs at tens of parts per million, which is hundreds of kilohertz, as much as the Doppler you're about to chase. Next, work out where the SAR-1 downlink comes out.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -690,7 +700,7 @@ export const natsEuScenario1Data: ScenarioData = {
       'downconversion-plan': {
         text: `
         <p>
-          High-side LO on this LNB. IF is LO minus RF, so the whole spectrum is upside down compared with Vermont. Get the arithmetic straight now; it bites later.
+          That's the arithmetic. This LNB uses a high-side LO, which means its oscillator sits above the signal frequency, so IF is LO minus RF and the whole spectrum comes out upside down compared with Vermont. Keep that in mind, because in about ten minutes the beacon is going to drift the opposite way from what you'd expect. Now tune the receiver to the imagery carrier.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -700,7 +710,7 @@ export const natsEuScenario1Data: ScenarioData = {
       'tune-receiver': {
         text: `
         <p>
-          The acceptance people ran BPSK half-rate at 1400 for their loopback and left it there. Imagery is 36 megahertz of QPSK three-quarters at 1414. Modem does not know that until you tell it.
+          The modem is on the imagery now: 36 megahertz of QPSK at rate three-quarters, at 1414 MHz. The acceptance crew had it on BPSK half-rate at 1400 MHz for their loopback test, where the station feeds its own signal back in, and the modem wouldn't have known the difference until you told it. Next, put the analyzer on the beacon.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -710,7 +720,7 @@ export const natsEuScenario1Data: ScenarioData = {
       'analyzer-on-beacon': {
         text: `
         <p>
-          Put the analyzer on the beacon, not the video. Two megahertz wide. The video carrier is too fat to show you anything; the beacon is a single line and it is going to walk, and I want you to see which way.
+          There's the beacon, a single steady line. The imagery carrier is too wide to show you anything useful at this span, but this line is going to walk across the screen as the satellite moves, and I want you to see which way. Next, open the pass schedule and find when SAR-1 rises.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -720,7 +730,7 @@ export const natsEuScenario1Data: ScenarioData = {
       'review-pass-schedule': {
         text: `
         <p>
-          Scheduler works the five degree mask. Below that you are looking through fifty kilometres of wet air at a bird you cannot use. Read the AOS off the tab, not the horizon.
+          Good, you read the AOS time off the tab. The scheduler works to a five degree mask, which means it ignores anything lower than five degrees above the horizon, because below that you'd be looking through fifty kilometres of wet air at a satellite you can't use. Now slew the antenna to the rise azimuth, the compass direction where the satellite comes up over the horizon.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -730,7 +740,7 @@ export const natsEuScenario1Data: ScenarioData = {
       'preposition-for-aos': {
         text: `
         <p>
-          Park it on the rise azimuth. Ten degrees a second sounds like a lot until you are a hundred and eighty degrees off when the bird comes up. Manual is fine for this; program-track once it is there.
+          The antenna's on the rise azimuth. Ten degrees a second sounds fast until you're a hundred and eighty degrees off when the satellite appears, and that's exactly where the tracker started. Now select program-track and target SAR-1, so the antenna follows the predicted path by itself. If you try to follow the satellite by hand, you'll lose it inside the first minute.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -740,7 +750,7 @@ export const natsEuScenario1Data: ScenarioData = {
       'acquire-sar1': {
         text: `
         <p>
-          Program-track, target SAR-1, and let the pedestal fly it. If you try to follow this by hand you will lose it inside the first minute. Beacon on the analyzer is your proof you are on the right bird.
+          The beacon's on the analyzer, so the antenna is on the right satellite. Now lock the imagery carrier. When the modem locks, that's first light for the site, and you'll want the time written down. Eight dB is the acceptance line, so hold C/N above it through the top of the pass.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -750,7 +760,7 @@ export const natsEuScenario1Data: ScenarioData = {
       'lock-the-downlink': {
         text: `
         <p>
-          Lock. That is first light for the site - write the time down somewhere. Eight dB is the acceptance line; hold it through the top of the pass.
+          There's the lock, and C/N is above eight dB, so the site meets the acceptance line. That's first light for GW-01, so write the time down somewhere. Now watch the beacon on the analyzer as the satellite climbs toward culmination, the point where it's highest and closest.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -760,7 +770,7 @@ export const natsEuScenario1Data: ScenarioData = {
       'read-the-culmination': {
         text: `
         <p>
-          Look at the beacon now. It came up below centre, it is crossing, it will leave above. That is the inverted spectrum doing exactly what the arithmetic said.
+          That's the inverted spectrum doing exactly what the arithmetic said. The beacon came up below center, crossed the middle at culmination, and now it's leaving above center. SAR-1 sets in a few minutes, so don't retune until it's gone, or you'll drop the lock early.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -770,7 +780,7 @@ export const natsEuScenario1Data: ScenarioData = {
       'retune-for-sar2': {
         text: `
         <p>
-          Gone at 14:10. That is a pass. Nine minutes above the mask and nobody asked your permission. Second bird in seven. Different carrier, same LO - you know what to do with that.
+          SAR-1 is gone at 14:10, and that was the whole pass. The modem and analyzer are set for SAR-2, which has a different carrier on the same LO, so you already know what the arithmetic looks like. Now point the tracker at SAR-2 before it rises, not after.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -780,7 +790,7 @@ export const natsEuScenario1Data: ScenarioData = {
       'acquire-sar2': {
         text: `
         <p>
-          Retarget the tracker before it rises, not after. The pedestal will sit on the horizon at azimuth 130 waiting; that is what you want.
+          SAR-2's beacon is on the analyzer, so the tracker is on the right satellite. Now lock the imagery and hold C/N above 8 dB through the top of the pass.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -790,7 +800,7 @@ export const natsEuScenario1Data: ScenarioData = {
       'decode-sar2': {
         text: `
         <p>
-          Two for two on the site's first day. Rotterdam will pretend they expected nothing less.
+          That's two decodes on the site's first day, and the MERIDIAN operations center in Rotterdam will act like they expected nothing less. Once SAR-2 has set, write up the shift log.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -800,7 +810,7 @@ export const natsEuScenario1Data: ScenarioData = {
       'log-first-light': {
         text: `
         <p>
-          Write it down properly. Peak C/N and the elevation it came at - a number the next shift can hold you to. Then go and find some coffee; the next one is in ninety minutes and it is a graze.
+          That's the peak C/N and its elevation on record, so the next shift has a number it can hold you to. The next pass is in about ninety minutes and it's a graze, one that barely clears the horizon, so enjoy the quiet while you've got it.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

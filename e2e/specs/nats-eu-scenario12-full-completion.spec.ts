@@ -87,7 +87,7 @@ test.describe('nats-eu Scenario 12 Full Completion', () => {
   test('[review-mission-brief] reads the test plan and why the order matters', async () => {
     await missionControl.openMissionBrief();
     await missionControl.closeMissionBrief();
-    await answerSystemQuiz(page, 'Each step is the evidence for the next');
+    await answerSystemQuiz(page, 'Each step is evidence for the next');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Read the Test Plan');
   });
@@ -96,7 +96,7 @@ test.describe('nats-eu Scenario 12 Full Completion', () => {
     await missionControl.selectGroundStation('GW-01');
     await missionControl.selectTab('dashboard');
     await expectDashboardAlarm(page, 'AGC on noise only');
-    await answerSystemQuiz(page, 'RX AGC on noise only');
+    await answerSystemQuiz(page, 'RX AGC no-carrier warning only');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'GW-01 Dashboard Sweep');
   });
@@ -128,7 +128,7 @@ test.describe('nats-eu Scenario 12 Full Completion', () => {
       await missionControl.selectTab(tab);
       await page.waitForTimeout(2500);
     }
-    await answerSystemQuiz(page, 'Command key for PLD-ON and the pattern going up');
+    await answerSystemQuiz(page, 'The command key for PLD-ON and the pattern going up');
     await dismissDialogIfPresent(page);
     await closeWorkingDocumentIfOpen(page);
     await waitForObjectiveComplete(missionControl, 'Crypto Both Ways');
@@ -137,7 +137,7 @@ test.describe('nats-eu Scenario 12 Full Completion', () => {
   test('[tune-the-uplink] retunes the TX modem to 1465 MHz and engages Doppler comp', async () => {
     await setTxModemFrequency(page, missionControl, 1465);
     await enableDopplerComp(page, missionControl);
-    await answerSystemQuiz(page, '1465 MHz (RF minus LO');
+    await answerSystemQuiz(page, '1465 MHz: RF minus LO');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Tune the Uplink');
   });
@@ -145,7 +145,7 @@ test.describe('nats-eu Scenario 12 Full Completion', () => {
   test('[analyzer-on-sar3] frames the SAR-3 plan on the analyzer', async () => {
     await missionControl.selectTab('rx-analysis');
     await fillAndChange(page, '#sa-center-freq', '1330');
-    await answerSystemQuiz(page, '1290 transponded return of your own uplink');
+    await answerSystemQuiz(page, 'your own uplink relayed back at 1290');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Analyzer on the SAR-3 Plan');
   });
@@ -177,7 +177,7 @@ test.describe('nats-eu Scenario 12 Full Completion', () => {
 
   test('[unmute-the-buc] unmutes the BUC and reads the order', async () => {
     await setSwitch(page, '#buc-mute', false);
-    await answerSystemQuiz(page, 'Every stage sees a signal before it sees gain');
+    await answerSystemQuiz(page, 'Each stage gets signal before gain');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Unmute the BUC');
   });
@@ -213,7 +213,7 @@ test.describe('nats-eu Scenario 12 Full Completion', () => {
 
     // Decisions are graded on state, so the helper refuses to click until both
     // evidence items show latched in the modal.
-    await answerDecision(page, 'Own uplink transponded back', ['HPA state read on TX Chain', 'RX key status read on RX Analysis']);
+    await answerDecision(page, 'Own uplink relayed back', ['HPA state read on TX Chain', 'RX key status read on RX Analysis']);
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Call the Return');
   });
@@ -225,7 +225,7 @@ test.describe('nats-eu Scenario 12 Full Completion', () => {
     await disableHpa(page, missionControl);
     await expect(page.locator('#hpa-enable')).not.toBeChecked();
     await page.waitForTimeout(3000); // TX Chain stays on screen so the condition latches
-    await answerSystemQuiz(page, "SAR-3's command transponder returns");
+    await answerSystemQuiz(page, "SAR-3's transponder returns");
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Secure the Uplink for the Decode');
   });

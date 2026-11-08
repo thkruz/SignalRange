@@ -92,7 +92,7 @@ const SCENARIO_14_OBJECTIVES: Scenario14Objective[] = [
     id: 'pre-storm-dashboard',
     title: 'Pre-Storm Dashboard Sweep',
     type: 'quiz',
-    correctAnswer: 'No warning or critical alarms - one informational row, Signal(s) Detected - clean baseline to fade from',
+    correctAnswer: 'No warnings or criticals, just the Signal(s) Detected info row',
   },
   {
     id: 'enable-feed-heater-tab',
@@ -142,7 +142,7 @@ const SCENARIO_14_OBJECTIVES: Scenario14Objective[] = [
     id: 'baseline-margin-quiz',
     title: 'Link Margin Baseline',
     type: 'quiz',
-    correctAnswer: 'It defines how much fade the link can absorb before reaching the demodulation threshold',
+    correctAnswer: 'It shows how much fade the link can absorb before demodulation fails',
   },
 
   // ============================================================
@@ -173,13 +173,13 @@ const SCENARIO_14_OBJECTIVES: Scenario14Objective[] = [
       });
       expect(rainFadeUp).toBe(true);
     },
-    correctAnswer: 'AGC is compensating - the demodulator still sees a usable signal, and the gain stage still has headroom',
+    correctAnswer: 'The AGC is compensating, and the gain stage still has headroom',
   },
   {
     id: 'agc-headroom-quiz',
     title: 'AGC Headroom Reading',
     type: 'quiz',
-    correctAnswer: 'Plenty of headroom remaining - link is comfortable, hold is justified',
+    correctAnswer: 'Plenty of headroom is left, so holding is justified',
   },
 
   // ============================================================
@@ -195,7 +195,7 @@ const SCENARIO_14_OBJECTIVES: Scenario14Objective[] = [
     id: 'hpa-backoff-decision-quiz',
     title: 'HPA Backoff Decision',
     type: 'quiz',
-    correctAnswer: 'No - the link is healthy; trading IMD risk for unused margin is a bad bargain',
+    correctAnswer: "No. The link is healthy, and extra IMD risk buys margin we don't need",
   },
   {
     id: 'verify-hpa-still-nominal',
@@ -216,7 +216,7 @@ const SCENARIO_14_OBJECTIVES: Scenario14Objective[] = [
     id: 'handover-threshold-quiz',
     title: 'Handover Threshold',
     type: 'quiz',
-    correctAnswer: 'Raw C/N under the 7 dB action threshold and still falling, AGC at max with continued fade, or the modem dropping lock',
+    correctAnswer: 'Raw C/N under 7 dB and falling, AGC at max in a continued fade, or lost lock',
   },
   {
     id: 'decision-hold',
@@ -251,8 +251,7 @@ const SCENARIO_14_OBJECTIVES: Scenario14Objective[] = [
     id: 'document-handover-avoided',
     title: 'Log the Hold',
     type: 'quiz',
-    correctAnswer:
-      'Heavy rain cell over VT-01, about 1 dB of C/N lost (mostly sky noise). Held TM-1 per SeaLink SLA preference; watched Raw C/N 7 dB, AGC at max, modem unlock - none fired. SeaLink told service held.',
+    correctAnswer: 'Heavy rain cell over VT-01, about 1 dB of C/N lost. Held TM-1 per SeaLink SLA; watched 7 dB Raw C/N, AGC at max, modem unlock, none fired. SeaLink told.',
   },
 ];
 

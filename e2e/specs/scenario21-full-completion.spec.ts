@@ -41,7 +41,7 @@ const SCENARIO_21_OBJECTIVES: Scenario21Objective[] = [
     id: 'review-mission-brief',
     title: 'Review the Interference Flag',
     type: 'quiz',
-    correctAnswer: 'As an interference incident: characterize, discriminate, mitigate, document - and verify the data layer separately',
+    correctAnswer: 'As an interference incident: characterize, tell jamming from accident, mitigate, document, check the data layer',
   },
   {
     id: 'select-maine-station',
@@ -81,8 +81,7 @@ const SCENARIO_21_OBJECTIVES: Scenario21Objective[] = [
     id: 'signature-shape-quiz',
     title: 'Signature vs the Database',
     type: 'quiz',
-    correctAnswer:
-      "It matches nothing benign: a featureless ~6 MHz noise band parked on our carrier's top edge is neither a neighbor's carrier nor a modulated uplink at a known slot",
+    correctAnswer: "It matches nothing benign: a featureless ~6 MHz noise band on our carrier's top edge is neither a neighbor's carrier nor a modulated uplink",
   },
 
   // PHASE 2: DENIAL VS INTRUSION

@@ -148,7 +148,7 @@ test.describe('nats-eu Scenario 19 Full Completion', () => {
 
   test('[first-command] sends HK-DUMP on the fixed carrier and gets the ACK', async () => {
     await sendCommandAndExpectAck(page, missionControl, 'HK-DUMP');
-    await answerSystemQuiz(page, 'That the bird heard this command');
+    await answerSystemQuiz(page, 'That the satellite heard this command');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Housekeeping Dump');
   });

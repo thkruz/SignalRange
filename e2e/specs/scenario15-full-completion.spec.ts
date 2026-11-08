@@ -97,7 +97,7 @@ const SCENARIO_15_OBJECTIVES: Scenario15Objective[] = [
     id: 'assess-guard-adequacy',
     title: 'Assess Guard Band Adequacy',
     type: 'quiz',
-    correctAnswer: "Verify our TX chain is producing clean spectrum - no spurs or IMD falling into RedSky's band",
+    correctAnswer: "Check that our TX chain has no spurs or IMD falling into RedSky's band",
   },
 
   // ============================================================
@@ -127,19 +127,19 @@ const SCENARIO_15_OBJECTIVES: Scenario15Objective[] = [
     id: 'observe-current-hpa-backoff',
     title: 'Observe HPA Backoff',
     type: 'quiz',
-    correctAnswer: 'Operating close to saturation - third-order IMD will be elevated and spill several MHz past the carrier edges',
+    correctAnswer: 'Operating near saturation - third-order IMD will be high and spill several MHz past the carrier edges',
     answerFromScreen: async (page) => {
       await page.locator('#hpa-imd-display').scrollIntoViewIfNeeded();
       expect(Math.abs((await readNumber(page, '#hpa-obo-display')) - 5)).toBeLessThan(0.6);
       expect(Math.abs((await readNumber(page, '#hpa-imd-display')) + 33)).toBeLessThan(1.5);
-      return 'Operating close to saturation - third-order IMD will be elevated and spill several MHz past the carrier edges';
+      return 'Operating near saturation - third-order IMD will be high and spill several MHz past the carrier edges';
     },
   },
   {
     id: 'understand-imd-mechanism',
     title: 'Understand IMD Mechanism',
     type: 'quiz',
-    correctAnswer: 'Amplifier nonlinearity mixes spectral components, generating intermodulation products just outside the carrier edges',
+    correctAnswer: 'Amplifier nonlinearity mixes spectral components into intermodulation products just outside the carrier edges',
   },
 
   // ============================================================
@@ -149,7 +149,7 @@ const SCENARIO_15_OBJECTIVES: Scenario15Objective[] = [
     id: 'evaluate-mitigation-options',
     title: 'Choose Mitigation',
     type: 'quiz',
-    correctAnswer: 'Increase HPA backoff to 10 dB - suppresses IMD without dropping the carrier or coordinating with the customer',
+    correctAnswer: 'Increase HPA backoff to 10 dB - suppresses IMD and keeps SeaLink up with no customer coordination',
   },
 
   // ============================================================

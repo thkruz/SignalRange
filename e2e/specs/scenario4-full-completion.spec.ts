@@ -134,13 +134,13 @@ const SCENARIO_4_OBJECTIVES: Scenario4Objective[] = [
     id: 'acquire-beacon',
     title: 'Confirm the TIDEMARK-2 Beacon',
     type: 'quiz', // observation rows latch on the RX tab, then the level read
-    correctAnswer: 'Between -60 and -40 dBm, standing far above the noise floor',
+    correctAnswer: 'Between -60 and -40 dBm, far above the noise floor',
   },
   {
     id: 'verify-beacon-acquisition',
     title: 'Verify Beacon Acquisition',
     type: 'quiz',
-    correctAnswer: 'Both antenna pointing and LNB frequency are correct',
+    correctAnswer: 'Both the antenna pointing and the LNB frequency are correct',
   },
   {
     id: 'verify-beacon-chain-quiz',

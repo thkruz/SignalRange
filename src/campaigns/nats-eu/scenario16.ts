@@ -18,7 +18,8 @@ import { createMeridianSar1, createMeridianSar2, type MeridianTle } from './sate
  * wrong twice over. At 12:18, as the command window opens, Galway's GNSS
  * antenna drops out and the reference goes to holdover with the switch up
  * (timed fault): the command contact is flown on the oscillator and the
- * re-lock confirmed when the signal returns at 12:27. Shetland is armed on
+ * re-lock confirmed when the signal returns (45 s after the confirm objective
+ * opens). Shetland is armed on
  * program-track and takes the receive-only SAR-2 contact on a muted BUC with
  * nobody on its console until the operator comes to check the number.
  *
@@ -120,7 +121,7 @@ export const natsEuScenario16Data: ScenarioData = {
   subtitle: 'Network Multi-Failure',
   duration: '40 min',
   missionType: 'Evaluation',
-  description: `12:00 local. Densest window of the week, and the handover is a list of things that are wrong.<br><br>MERIDIAN-SAR-2 slipped 90 seconds overnight and now overlaps the SAR-1 command contact on Galway. Erik has collects on both. Fiona is on the Shetland roof with the BUC fan and the console is yours; nobody has checked the rack since the morning's uplink test. Anneke needs REC-PLAYBACK and a watchdog reset on SAR-1 inside the 12:18 window.<br><br>Order the work. Resolve the slip, ready Galway to command, cool the Shetland BUC the right way, arm Shetland to take SAR-2 on its own, fly the command contact through whatever happens to the reference, check Shetland's pass before it sets, and write the report Erik and maintenance both need. This is the qualification for the network.`,
+  description: `12:00 UTC. This is the busiest window of the week, and the handover is a list of things that are going wrong.<br><br>MERIDIAN-SAR-2 slipped 90 seconds overnight, so its Galway pass now overlaps the SAR-1 command contact. Erik wants collects on both passes. Fiona is on the Shetland roof looking at the BUC fan, the console is yours, and nobody has checked the rack since this morning's uplink test. Anneke needs REC-PLAYBACK and a watchdog reset sent to SAR-1 inside the 12:18 window.<br><br>Order the work, then do it: resolve the slip, ready Galway to command, cool the Shetland BUC the right way, arm Shetland to take SAR-2 on its own, fly the command contact through whatever happens to the reference, check Shetland's pass before it sets, and write the report that Erik and maintenance both need. This is the qualification for the network.`,
   equipment: [
     'GW-01 Galway: 4m Ku-Band LEO Tracker',
     'SH-02 Shetland: 4m Ku-Band LEO Tracker (remote console)',
@@ -230,7 +231,8 @@ export const natsEuScenario16Data: ScenarioData = {
         id: 'gw-gnss-outage',
         groundStationId: 'GW-01',
         target: 'gpsdo-gnss-loss',
-        startTime: 1120,
+        startAfterObjectiveId: 'command-on-holdover',
+        startTime: 0,
         duration: 500,
         endAfterObjectiveId: 'confirm-galway-reference-recovered',
         endOffsetS: 45,
@@ -245,7 +247,8 @@ export const natsEuScenario16Data: ScenarioData = {
       id: 'review-mission-brief',
       nice: ['K0645', 'S0807'],
       title: 'Take the Shift',
-      description: 'Open the handover: a slipped pass, a command request, a fan alarm coming, and eighteen minutes. Decide the order before you touch anything.',
+      description:
+        'Read the handover: a slipped pass, a command request at Galway, a BUC fan problem at Shetland, and about eighteen minutes before the first acquisition of signal. Decide the order of work before you touch anything.',
       groundStation: 'GW-01',
       freezesScenarioTimer: true,
       prerequisiteObjectiveIds: [],
@@ -261,16 +264,16 @@ export const natsEuScenario16Data: ScenarioData = {
           description: 'Order of Work',
           params: {
             character: Character.SYSTEM,
-            question: 'Slipped pass, command contact at 12:18, Shetland BUC alarm, SAR-2 collect. What is the order of work?',
+            question: 'The handover lists a slipped pass, a SAR-1 command contact at 12:18, a Shetland BUC fan problem and a SAR-2 collect. What is the right order of work?',
             options: [
-              'The plan first, because it decides which site needs which hardware; then Galway to command; then Shetland; then fly; report last',
-              'Shetland first, because an alarm is an alarm; then the plan; then Galway to command; then fly; report last',
-              'The command contact first, because Anneke is waiting on it; then Shetland; then the plan; then fly; report last',
-              'The report first, so nothing is forgotten in the rush; then Shetland; then the plan; then Galway to command; then fly',
+              'The plan first, since it decides what each site needs; then ready Galway, then Shetland, then fly, then report',
+              'Shetland first, because an alarm is the loudest problem; then the plan, then Galway, then fly, then report',
+              'The command contact first, because Anneke is waiting on it; then Shetland, then the plan, then fly, then report',
+              'The report first, so nothing is forgotten in the rush; then the plan, then Shetland, then Galway, then fly',
             ],
             correctIndex: 0,
             explanation:
-              'Galway before Shetland because the command window has a time, and the Shetland contact is receive-only and does not need the BUC at all. Triage is ordered by what each problem gates, not by how loud it is. A hot BUC on a receive-only site gates nothing today. Eighteen minutes to AOS. Shift clock started.',
+              'The plan comes first because it decides which site flies which pass. Galway comes before Shetland because the command window has a fixed time, while the Shetland contact is receive-only and never uses the BUC. Triage follows what each problem blocks, not how loud it is, and a hot BUC on a receive-only site blocks nothing today. You have about eighteen minutes until Galway acquires SAR-1.',
             pointPenalty: 0,
           },
           mustMaintain: false,
@@ -288,7 +291,7 @@ export const natsEuScenario16Data: ScenarioData = {
       nice: ['S0807', 'K0689', 'T0129'],
       title: 'Resolve the Slipped Pass',
       description:
-        'SAR-2 now overlaps SAR-1 on Galway. The command contact stays on GW-01; the SAR-2 collect goes to SH-02; the slipped Galway half is dropped. The plan must read DECONFLICTED.',
+        "SAR-2's Galway window now overlaps the SAR-1 command contact. Keep the command contact on GW-01, assign the SAR-2 collect to SH-02, and leave the slipped Galway SAR-2 window unassigned, so the plan reads DECONFLICTED.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['review-mission-brief'],
       timeLimitSeconds: 4 * 60,
@@ -324,16 +327,16 @@ export const natsEuScenario16Data: ScenarioData = {
           description: 'Slip Resolved',
           params: {
             character: Character.SYSTEM,
-            question: 'Why is the slipped Galway SAR-2 half dropped rather than moved?',
+            question: 'Why is the slipped Galway SAR-2 window dropped from the plan rather than moved?',
             options: [
-              'It overlaps the command contact on the only site that can command, and Shetland already has the same bird at 28 degrees',
-              'A slipped pass is unflyable by definition, and a window that has moved 90 seconds no longer matches the ephemeris on the ACU',
-              'The plan will not validate with a P2 contact assigned, and the board only needs the P1 windows covered to read DECONFLICTED',
-              'It should be moved to Shetland, not dropped: two windows on one site is a backup, and 15 degrees is still above the mask',
+              'It overlaps the command contact on the only site that can command, and Shetland already has the same satellite at 28 degrees',
+              "A slipped pass can't be flown, because a window that has moved 90 seconds no longer matches the antenna's tracking data",
+              "The plan won't validate with any P2 contact assigned, and the board only needs the P1 windows covered to read DECONFLICTED",
+              'It should be moved to Shetland instead, because two windows on one site make a backup and 15 degrees is still above the mask',
             ],
             correctIndex: 0,
             explanation:
-              'The collect is covered better from the site that is free, 28 degrees against Galway’s 15, and dropping a window is a decision the plan records. Shetland cannot take two windows on the same bird at the same time either. The slip removed one window from the network; the plan says which one, and why.',
+              "Galway can only track one satellite at a time, and the SAR-1 command contact needs the dish through the four-minute overlap. Shetland already covers the SAR-2 collect, at 28 degrees against Galway's 15, so the Galway window adds nothing the customer needs. Moving it to Shetland would double-book a site that's already tracking the same satellite. The slip removed one window from the network, and the plan records which one.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -350,7 +353,7 @@ export const natsEuScenario16Data: ScenarioData = {
       id: 'galway-reference-check',
       nice: ['T0431', 'K0740'],
       title: 'GW-01 Reference Check',
-      description: 'GPSDO locked and out of holdover. Read it now so you know what it looked like before the window.',
+      description: 'Open the GPS Timing panel and check that the GW-01 GPSDO is locked and not in holdover. Read it now, so you know what it looks like before the command window.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['resolve-the-slipped-pass'],
       timeLimitSeconds: 2 * 60,
@@ -376,7 +379,7 @@ export const natsEuScenario16Data: ScenarioData = {
       id: 'galway-crypto-check',
       nice: ['T0431', 'K0874', 'K0728'],
       title: 'GW-01 Crypto Check',
-      description: 'Both keys Valid before a command goes up: command key on the TX chain, traffic key on RX analysis.',
+      description: 'Check that both keys read Valid before any command goes up: the command key on the TX Chain tab and the traffic key on the RX Analysis tab.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['galway-reference-check'],
       timeLimitSeconds: 2 * 60,
@@ -403,7 +406,7 @@ export const natsEuScenario16Data: ScenarioData = {
       nice: ['S0421', 'K0773', 'T1567'],
       title: 'GW-01 Uplink Setup',
       description:
-        'The SAR-3 shift left TX modem 1 on 1465 MHz: retune to the 1405 MHz SAR-1 telecommand IF and engage uplink Doppler compensation on the TT&C console. RX modem 1 stays on 1414 MHz; analyzer centred on the 1389 MHz beacon, 2 MHz span.',
+        'The SAR-3 shift left TX modem 1 on 1465 MHz. Retune it to 1405 MHz, the SAR-1 command uplink, and turn on uplink Doppler compensation on the TT&C (telemetry, tracking and command) console. Leave RX modem 1 on 1414 MHz, and put the analyzer on the 1389 MHz beacon with a 2 MHz span.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['galway-crypto-check'],
       timeLimitSeconds: 3 * 60,
@@ -449,7 +452,7 @@ export const natsEuScenario16Data: ScenarioData = {
       id: 'preposition-galway-for-sar1',
       nice: ['S0421', 'K1032'],
       title: 'Pre-position Galway for SAR-1',
-      description: 'Park the tracker on the 12:18 AOS azimuth: 21 degrees at 5 degrees elevation.',
+      description: 'Point the GW-01 antenna at the spot where SAR-1 will rise: azimuth 21 degrees, elevation 5 degrees, ready for acquisition at 12:18.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['galway-uplink-setup'],
       timeLimitSeconds: 2 * 60,
@@ -473,7 +476,7 @@ export const natsEuScenario16Data: ScenarioData = {
       id: 'shetland-alarm-sweep',
       nice: ['T0153', 'K0741', 'T0531'],
       title: 'SH-02 Alarm Sweep',
-      description: 'Select SH-02 and read its board. The fan alarm on the BUC is real; what matters is why the temperature is still climbing.',
+      description: 'Select SH-02 and read its board. The BUC fan alarm is real, so work out why the temperature is still climbing.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['preposition-galway-for-sar1'],
       timeLimitSeconds: 2 * 60,
@@ -498,16 +501,17 @@ export const natsEuScenario16Data: ScenarioData = {
           description: 'Alarm Diagnosed',
           params: {
             character: Character.SYSTEM,
-            question: 'SH-02 BUC over-temperature, fan alarm, and the TX modem is still on air into the BUC from the morning’s uplink check. What is keeping it hot?',
+            question:
+              "SH-02 shows a BUC over-temperature and a fan alarm. Its HPA is off, but its TX modem is still on air from this morning's uplink check, sending a carrier (the drive) into the BUC. What is keeping the BUC hot?",
             options: [
               'The drive. A BUC dissipates heat in proportion to its output; with the fan gone, a carrier going in holds it above the alarm',
-              'The roof. A BUC on an outdoor mount takes the ambient temperature; with the fan gone, a warm afternoon holds it above the alarm',
+              'The roof. A BUC on an outdoor mount takes on the ambient temperature; with the fan gone, a warm afternoon holds it above the alarm',
               'The reference. An unlocked GPSDO makes the BUC work harder to hold frequency; with the fan gone, that holds it above the alarm',
-              'The HPA. It is off, so its heat has nowhere to go but the BUC beside it; with the fan gone, that heat holds it above the alarm',
+              'The HPA. Its heat has nowhere to go but the BUC beside it; with the fan gone, that heat holds the BUC above the alarm',
             ],
             correctIndex: 0,
             explanation:
-              'Remove the drive and it settles under the alarm, fan or no fan. The fix is on the transmit chain, not in the rack cabinet. Carrier off, BUC muted, keep it powered, let it come down.',
+              "The BUC makes heat in proportion to the drive it's given, so removing the carrier is what stops the climb, and without the fan it settles under the alarm. The HPA is off, so it can't be the source. The fix is on the transmit chain, not in the rack cabinet: take the carrier off, mute the BUC, keep it powered and let it come down.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -520,7 +524,8 @@ export const natsEuScenario16Data: ScenarioData = {
       id: 'remove-the-drive',
       nice: ['S0677', 'T0531', 'S0421'],
       title: 'Remove the Drive from the Shetland BUC',
-      description: 'SH-02 TX chain: carrier off, BUC muted, BUC still powered. Shetland is receive-only today and needs none of it.',
+      description:
+        'On the SH-02 TX Chain tab, take the TX modem off air and mute the BUC, but leave the BUC powered. Shetland is receive-only today, so it needs none of the transmit chain.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['shetland-alarm-sweep'],
       timeLimitSeconds: 2 * 60,
@@ -554,7 +559,7 @@ export const natsEuScenario16Data: ScenarioData = {
       nice: ['S0677', 'T0531', 'K0740'],
       title: 'Confirm the Shetland BUC Cooling',
       description:
-        'Watch it on the SH-02 TX chain: with the drive gone the current drops to its 2.6 A idle draw at once and the BUC comes down under 70 degrees within two or three minutes. Do not power it off.',
+        "Watch the SH-02 TX Chain tab. With the drive gone, the BUC current should drop to its 2.6 A idle draw at once, and the temperature should come down under 70 degrees within two or three minutes. Don't power the BUC off.",
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['remove-the-drive'],
       timeLimitSeconds: 4 * 60,
@@ -580,14 +585,14 @@ export const natsEuScenario16Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Why not power the BUC off and let it cool properly?',
             options: [
-              'Twice wrong: power-off hides the reading instead of removing the heat, and the alarm only closes on a powered reading',
-              'You should: off is always cooler than on, and an unpowered BUC has no output to dissipate, so the alarm clears sooner',
-              'Reference re-lock: a powered-down BUC drops the external reference, and re-locking on power-up takes about an hour',
-              'The HPA: it trips without a BUC ahead of it, and an HPA fault on top of a fan alarm takes the site off the board for the day',
+              'Power-off does cool it, but the BUC then reads off rather than normal, so the alarm only closes on a powered reading',
+              'Power-off is the right fix, because an unpowered BUC has no output to dissipate, so the alarm clears sooner than with a mute',
+              'Power-off loses the reference, because a powered-down BUC drops the external reference and re-locking on power-up takes about an hour',
+              'Power-off trips the HPA, because it faults without a BUC ahead of it, and that takes the site off the board for the day',
             ],
             correctIndex: 0,
             explanation:
-              'An off BUC does cool, but it never reads normal, it reads off, and the fan is still dead the moment it comes back up with a carrier in it. Mute removes the heat source; power-off removes the thermometer. Every equipment fault on this network has a right action and a louder wrong one. The louder one is usually the power switch.',
+              'Powering the BUC off does cool it, but it then reads off and never reads normal, and the fan is still dead when it comes back up with a carrier in it. Muting removes the heat source and keeps the thermometer working, while power-off takes the thermometer away too. Every equipment fault on this network has a right action and a louder wrong one, and the louder one is usually the power switch.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -601,7 +606,7 @@ export const natsEuScenario16Data: ScenarioData = {
       nice: ['S0421', 'K0645', 'T0129'],
       title: 'Arm Shetland for SAR-2',
       description:
-        'Shetland acquires on its own at 12:21. Modem 1 from 1414 MHz to the 1370 MHz SAR-2 carrier, program-track with MERIDIAN-SAR-2 as the target. Then back to Galway.',
+        'Shetland will acquire SAR-2 on its own at 12:21. Retune RX modem 1 from 1414 MHz to the 1370 MHz SAR-2 downlink, and set the antenna to program-track on MERIDIAN-SAR-2. Then go back to Galway.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['confirm-shetland-buc-cooling'],
       timeLimitSeconds: 3 * 60,
@@ -631,16 +636,16 @@ export const natsEuScenario16Data: ScenarioData = {
           description: 'Unattended Contact Understood',
           params: {
             character: Character.SYSTEM,
-            question: 'Shetland takes SAR-2 with a BUC alarm in the log and nobody at its console. What makes that acceptable?',
+            question: 'Shetland will take SAR-2 with a BUC alarm in the log and nobody at its console. What makes that acceptable?',
             options: [
-              'The contact is receive-only: the BUC plays no part in it, the receive path is healthy, and program-track acquires on its own',
-              'Nothing: a site with an active alarm should not fly, and a contact nobody watches is a contact nobody can log',
-              'Fiona is on the roof: she can see the dish move, the BUC is beside her, and a pedestal in sight is as good as an operator',
-              'The plan assigned it: an assigned contact configures the station, the modem tunes itself, and the pedestal follows the plan',
+              'The contact is receive-only: the BUC plays no part, the receive path is healthy, and the antenna acquires on its own',
+              "Nothing does: a site with an active alarm shouldn't fly, and a contact nobody watches is a contact nobody can log",
+              'Fiona is on the roof: she can see the dish move, the BUC is beside her, and a dish in sight is as good as an operator',
+              'The plan assigned it: an assigned contact configures the station, the modem tunes itself, and the dish follows the plan',
             ],
             correctIndex: 0,
             explanation:
-              'The BUC is the transmit chain, and a station armed on program-track acquires without an operator; what it needs is one to check the number before LOS. Assigned is a plan; armed is a station; a number read before LOS is a contact.',
+              "The BUC is part of the transmit chain and this contact only receives, so the alarm doesn't touch it. A station armed on program-track acquires without an operator, but someone still has to check the C/N before LOS. Assigning a contact only puts it in the plan, arming the station is what makes it happen, and a number read before LOS is what makes it a contact.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -657,7 +662,7 @@ export const natsEuScenario16Data: ScenarioData = {
       id: 'acquire-sar1-at-galway',
       nice: ['S0421', 'K1032'],
       title: 'Acquire SAR-1 at Galway',
-      description: 'Select GW-01. AOS 12:18 from azimuth 21. Program-track MERIDIAN-SAR-1 and confirm the beacon on RX analysis.',
+      description: 'Select GW-01. SAR-1 rises at 12:18 from azimuth 21 degrees. Turn on program-track for MERIDIAN-SAR-1 and confirm the beacon on the RX Analysis tab.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['arm-shetland-for-sar2'],
       conditions: [
@@ -699,7 +704,7 @@ export const natsEuScenario16Data: ScenarioData = {
       id: 'chain-up-for-the-command',
       nice: ['S0421', 'T1567', 'K0645'],
       title: 'Chain Up for the Command',
-      description: 'Window open at 12:18:20. Carrier into the muted BUC, unmute, HPA. In that order.',
+      description: 'The command window opens at 12:18:20. Start the carrier into the muted BUC, then unmute the BUC, then enable the HPA, in that order.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['acquire-sar1-at-galway'],
       conditions: [
@@ -729,7 +734,7 @@ export const natsEuScenario16Data: ScenarioData = {
       id: 'command-the-playback',
       nice: ['T1567', 'S0421', 'K0773'],
       title: 'Command the Playback',
-      description: 'Send REC-PLAYBACK and confirm the acknowledgement.',
+      description: 'Send REC-PLAYBACK, the command that starts the recorder playback, and confirm that the spacecraft acknowledges it.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['chain-up-for-the-command'],
       conditions: [
@@ -748,7 +753,7 @@ export const natsEuScenario16Data: ScenarioData = {
       nice: ['S0677', 'T0531', 'K0741'],
       title: 'Command on Holdover',
       description:
-        'The GPS Timing panel is not what you read at noon. Read it, decide whether the second command goes up on it, and send OBC-WDT-RESET before the window closes at 12:27:20.',
+        "Open the GPS Timing panel and read what the reference is doing now. Decide whether the second command can go up with it, and send OBC-WDT-RESET, the onboard computer's watchdog reset, before the window closes at 12:27:20.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['command-the-playback'],
       conditions: [
@@ -763,16 +768,17 @@ export const natsEuScenario16Data: ScenarioData = {
           description: 'Holdover Decision',
           params: {
             character: Character.SYSTEM,
-            question: 'GW-01 GPSDO: HOLDOVER active, GNSS switch up, zero satellites, since 12:18. The command window is open for eight more minutes. Does OBC-WDT-RESET go up?',
+            question:
+              'The GW-01 GPSDO now reads HOLDOVER, with the GNSS switch up and zero satellites, since {{at:event:gw-gnss-outage:start|12:18:40}}. The command window is still open for several more minutes. Should OBC-WDT-RESET go up?',
             options: [
-              'Yes. A GNSS outage with the switch up is an outage, not an operator error; the oscillator holds the reference for tens of minutes',
-              'No. Nothing goes up on a reference in holdover; the uplink Doppler pre-compensation needs GNSS time, and that is gone',
+              'Yes. A GNSS outage with the switch up is an outage, not an operator error; the oscillator holds for tens of minutes',
+              "No. Nothing goes up on a reference in holdover; the uplink Doppler pre-compensation needs GNSS time, and that's gone",
               'Yes, after cycling the GNSS switch; a switch cycle forces a re-lock, and the reference is back on satellites in a few seconds',
               'Yes, after power-cycling the GPSDO; a power cycle clears the holdover flag, and the reference is back inside the window',
             ],
             correctIndex: 0,
             explanation:
-              'The oscillator holds to microseconds and the uplink Doppler pre-compensation does not care. Send it, leave the switch alone, confirm re-lock when the signal returns. Holdover is what the disciplined oscillator is for. Cycling the switch cannot conjure a satellite; a power cycle is a ten-minute warm-up and the window is gone. The command goes up.',
+              "The oscillator keeps the reference accurate to microseconds while the GNSS signal is gone, and the uplink Doppler pre-compensation doesn't need more than that. Holdover is what the disciplined oscillator is for, so send the command and leave the switch alone. Cycling the switch can't bring back a satellite signal that isn't there, and a power cycle means a ten-minute warm-up that outlasts the window. Confirm the re-lock when the signal returns.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -796,7 +802,7 @@ export const natsEuScenario16Data: ScenarioData = {
       nice: ['T0153', 'T0431', 'K0740'],
       title: 'Check the Shetland Pass',
       description:
-        'Select SH-02 while SAR-2 is still up (until 12:30:51). The pedestal should be program-track locked on it and the modem locked with C/N above 8 dB around culmination at 12:26.',
+        'Select SH-02 while SAR-2 is still up, until 12:30:51. The antenna should be locked on it in program-track, and the RX modem should be locked with C/N above 8 dB around culmination, the highest point of the pass, at 12:26.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['command-on-holdover'],
       conditions: [
@@ -833,7 +839,7 @@ export const natsEuScenario16Data: ScenarioData = {
       id: 'secure-galway',
       nice: ['S0421', 'K0645'],
       title: 'Secure Galway',
-      description: 'Back to GW-01. Both commands acknowledged: chain down in the mirror order, HPA off, BUC muted, carrier off.',
+      description: 'Go back to GW-01. Both commands are acknowledged, so take the chain down in the reverse order: disable the HPA, mute the BUC, then take the TX modem off air.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['check-the-shetland-pass'],
       timeLimitSeconds: 2 * 60,
@@ -872,7 +878,8 @@ export const natsEuScenario16Data: ScenarioData = {
       id: 'confirm-galway-reference-recovered',
       nice: ['T0431', 'K0740', 'T1580'],
       title: 'Confirm the Galway Reference Recovered',
-      description: 'The GNSS signal returns at 12:27. Confirm on the GW-01 GPS Timing panel that the receiver has re-locked and left holdover, then log the contacts.',
+      description:
+        'The GNSS signal returns within a minute of this objective opening. Confirm on the GW-01 GPS Timing panel that the receiver has re-locked and left holdover, then log the contacts.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['secure-galway'],
       timeLimitSeconds: 4 * 60,
@@ -895,20 +902,20 @@ export const natsEuScenario16Data: ScenarioData = {
           description: 'Contacts Logged',
           params: {
             character: Character.SYSTEM,
-            question: 'What does the report need for the two contacts?',
+            question: 'What should the report say about the two contacts?',
             options: [
               'SAR-1: both commands ACKed in the window, the second on holdover. SAR-2: Shetland unattended on a muted BUC, with the numbers',
-              'SAR-1: both commands ACKed in the window, reference clean throughout. SAR-2: Shetland unattended, nothing to add, with the numbers',
-              'SAR-1: REC-PLAYBACK and OBC-WDT-RESET acknowledged, nothing else. SAR-2: both contacts worked, so one line covers the pair',
-              'SAR-1: both commands ACKed in the window, the second on holdover. SAR-2: Shetland’s contact, on Fiona’s log, not on this one',
+              'SAR-1: both commands ACKed in the window, reference clean throughout. SAR-2: Shetland unattended, with the numbers',
+              'SAR-1: REC-PLAYBACK and OBC-WDT-RESET acknowledged, nothing else. SAR-2: both contacts worked normally, so one line covers the pair',
+              "SAR-1: both commands ACKed in the window, the second on holdover. SAR-2: Shetland's contact, which belongs on Fiona's log",
             ],
             correctIndex: 0,
             explanation:
-              'Holdover from 12:18 to 12:27, no action at the switch, re-locked on return; Shetland locked and decoded with margin, checked before LOS. A fault that cleared is still a fault, and a contact nobody watched is still a contact. Both go in with the numbers or they did not happen.',
+              'The SAR-1 entry has to say that the second command went up on holdover, from 12:18 to {{at:cond:confirm-galway-reference-recovered.0|12:27}}, that nobody touched the switch, and that the reference re-locked on return. The SAR-2 entry has to say that Shetland acquired unattended, locked and decoded with margin, and was checked before LOS. A fault that cleared is still a fault, and a contact nobody watched is still a contact, so both go in with the numbers.',
             pointPenalty: 5,
             documentSection: 'Contacts',
             documentLine:
-              '12:18Z MERIDIAN-SAR-1 GW-01: REC-PLAYBACK ACK; GW-01 GNSS outage 12:18:40-12:27:00Z, reference in holdover (switch up, zero satellites), OBC-WDT-RESET ACK on holdover, no action at the switch, re-locked on return; chain secured HPA-BUC-modem. 12:21Z MERIDIAN-SAR-2 SH-02 (unattended acquisition, BUC muted): locked, C/N >= 8 dB at 28 deg, checked 12:26Z. Dropped: C-SAR2-GW (slipped, overlapped command contact).',
+              '12:18Z MERIDIAN-SAR-1 GW-01: REC-PLAYBACK ACK; GW-01 GNSS outage 12:18:40-{{at:cond:confirm-galway-reference-recovered.0:s|12:27:00}}Z, reference in holdover (switch up, zero satellites), OBC-WDT-RESET ACK on holdover, no action at the switch, re-locked on return; chain secured HPA-BUC-modem. 12:21Z MERIDIAN-SAR-2 SH-02 (unattended acquisition, BUC muted): locked, C/N >= 8 dB at 28 deg, checked 12:26Z. Dropped: C-SAR2-GW (slipped, overlapped command contact).',
           },
           mustMaintain: false,
         },
@@ -920,7 +927,7 @@ export const natsEuScenario16Data: ScenarioData = {
       id: 'close-the-shetland-alarm',
       nice: ['T0531', 'S0807', 'K0740'],
       title: 'Close the Shetland Alarm',
-      description: 'Select SH-02 once more: the fan is back, the BUC is normal, and the alarm closes with a cause.',
+      description: 'Select SH-02 once more. The fan is running again and the BUC temperature should read normal, so close the alarm with its cause.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['confirm-galway-reference-recovered'],
       timeLimitSeconds: 3 * 60,
@@ -948,12 +955,12 @@ export const natsEuScenario16Data: ScenarioData = {
             options: [
               'The contact was receive-only and the BUC is transmit only; the alarm closes as a fan fault with a carrier left driving the BUC',
               'The alarm cleared itself once the fan came back before LOS; the alarm closes as a transient fan fault with nothing further',
-              'Fiona was on site and on the roof beside the BUC; the alarm closes as a fan fault she can confirm by eye, with no ticket needed',
-              'It should not have, a site with an open alarm is off the board; the alarm closes as a fan fault, the contact as unplanned',
+              'Fiona was on the roof beside the BUC; the alarm closes as a fan fault she can confirm by eye, so no ticket is needed',
+              "It shouldn't have, because a site with an open alarm is off the board; the alarm closes as a fan fault and the contact as unplanned",
             ],
             correctIndex: 0,
             explanation:
-              'Mute, cool, keep the receive path working: a ticket for the fan and a note for whoever left the carrier up. A transmit-chain fault on a receive-only day gates nothing. Knowing which faults gate which work is what lets one operator run two sites.',
+              'Shetland could take SAR-2 because a transmit-chain fault blocks nothing on a receive-only day. The alarm closes as a fan fault, with a ticket for the fan and a note for whoever left the carrier up. Knowing which faults block which work is what lets one operator run two sites.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -970,7 +977,7 @@ export const natsEuScenario16Data: ScenarioData = {
       id: 'customer-impact',
       nice: ['T1606', 'T1277', 'S0478'],
       title: 'Customer Impact',
-      description: 'Two lines for Erik: what he got, and what it cost him.',
+      description: 'Write the customer impact for Erik: what he received, and what the shift cost him.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['close-the-shetland-alarm'],
       timeLimitSeconds: 3 * 60,
@@ -983,14 +990,14 @@ export const natsEuScenario16Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What is the customer impact of a slipped pass, a hot BUC and a reference in holdover?',
             options: [
-              'None he can see: both collects captured, both commands ACKed on time; the slip cost the network a redundant window',
-              'One collect lost to the slip: the Galway SAR-2 window was dropped from the plan; the slip cost the customer a collect',
-              'Both collects degraded by the faults: one on a hot BUC, one on a reference in holdover; the faults cost the customer margin',
-              'Unknown until Rotterdam processes the frames: both collects captured, both commands ACKed; the cost is theirs to report',
+              'None he can see: both collects captured, both commands ACKed on time, and the slip cost the network a redundant window',
+              'One collect lost to the slip: the Galway SAR-2 window was dropped from the plan, so the slip cost the customer a collect',
+              'Both collects degraded by the faults: one on a hot BUC, one on a reference in holdover, so the faults cost the customer margin',
+              'Unknown until Rotterdam processes the frames: both collects captured, both commands ACKed, so the cost is theirs to report',
             ],
             correctIndex: 0,
             explanation:
-              'Zero missed tasking; the slip cost the network one redundant window, not the customer a collect. Qualified means nobody notices. The impact line says so, and the actions line says what it took.',
+              'No tasking was missed. The slip cost the network one redundant window, not the customer a collect. The impact line says so plainly, and the actions line says what it took.',
             pointPenalty: 5,
             documentSection: 'Impact',
             documentLine:
@@ -1006,7 +1013,7 @@ export const natsEuScenario16Data: ScenarioData = {
       id: 'actions-and-open-items',
       nice: ['T1606', 'T1277', 'S0575'],
       title: 'Actions and Open Items',
-      description: 'One line for maintenance and one for Rotterdam: the tickets, and the question about the slip.',
+      description: 'Write the actions: the tickets for maintenance, the question about the slip for Rotterdam, and what the station itself needs to fix.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['customer-impact'],
       timeLimitSeconds: 3 * 60,
@@ -1026,11 +1033,11 @@ export const natsEuScenario16Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'The GNSS ticket carries the outage (12:18-12:27, holdover flown); the slip is Rotterdam’s to explain because a 90 second slip removed a window from the plan; and a carrier was left driving the SH-02 BUC after the morning test. Three problems, three owners, and none of them is the customer. Qualified for NATS Europe network operations. Both sites are yours to run.',
+              "The GNSS ticket carries the outage, from 12:18 to {{at:cond:confirm-galway-reference-recovered.0|12:27}} with the holdover flown. The slip is Rotterdam's to explain, because a 90 second slip removed a window from the plan. The carrier left driving the SH-02 BUC after the morning test is the station's to fix. That's three problems and three owners, and none of them is the customer. You're qualified for NATS Europe network operations, and both sites are yours to run.",
             pointPenalty: 5,
             documentSection: 'Actions',
             documentLine:
-              'Actions: (1) Maintenance - GW-01 GNSS antenna fault, outage 12:18:40-12:27:00Z, reference held on oscillator. (2) Maintenance - SH-02 BUC cooling fan; carrier found driving the BUC after the morning uplink check, removed before the 12:18Z window. (3) Rotterdam - root cause of MERIDIAN-SAR-2 90 s slip requested. Both sites cold, references locked, plan DECONFLICTED.',
+              'Actions: (1) Maintenance - GW-01 GNSS antenna fault, outage 12:18:40-{{at:cond:confirm-galway-reference-recovered.0:s|12:27:00}}Z, reference held on oscillator. (2) Maintenance - SH-02 BUC cooling fan; carrier found driving the BUC after the morning uplink check, removed before the 12:18Z window. (3) Rotterdam - root cause of MERIDIAN-SAR-2 90 s slip requested. Both sites cold, references locked, plan DECONFLICTED.',
           },
           mustMaintain: false,
         },
@@ -1043,10 +1050,10 @@ export const natsEuScenario16Data: ScenarioData = {
     intro: {
       text: `
       <p>
-        <em>[Text message from Fiona MacLeod at 11:58]</em>
+        <em>[Text message from Fiona MacLeod at {{stationTime}}]</em>
       </p>
       <p>
-        "Fan alarm on my BUC and I'm going up to look at it, so the console's yours. Nobody's touched the rack since the uplink check this morning. SAR-2 moved overnight and Rotterdam hasn't said why. Your GPSDO's been fine. Enjoy."
+        "The BUC fan on my side has been making a noise I don't like, so I'm going up to look at it and the console's yours. Nobody's touched the rack since the uplink check this morning. SAR-2 moved overnight and Rotterdam hasn't said why. Your GPSDO's been fine. Enjoy."
       </p>
       `,
       character: Character.FIONA_MACLEOD,
@@ -1057,10 +1064,10 @@ export const natsEuScenario16Data: ScenarioData = {
       'resolve-the-slipped-pass': {
         text: `
         <p>
-          <em>[Text message from Anneke Visser at 12:02]</em>
+          <em>[Text message from Anneke Visser at {{stationTime}}]</em>
         </p>
         <p>
-          "SAR-2 slipped ninety seconds overnight - ours, we are looking at it. Your SAR-1 command contact stands - REC-PLAYBACK and an OBC watchdog reset inside the 12:18 window, please. Erik still wants both collects. Sort the board first."
+          "Thank you, that's the plan deconflicted. The slip is ours: SAR-2 moved ninety seconds overnight, and we're looking into why. Your SAR-1 command contact stands, so I need REC-PLAYBACK and OBC-WDT-RESET, the onboard computer's watchdog reset, sent inside the 12:18 window. Erik still wants both collects."
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -1070,10 +1077,10 @@ export const natsEuScenario16Data: ScenarioData = {
       'remove-the-drive': {
         text: `
         <p>
-          <em>[Text message from Fiona MacLeod at 12:09]</em>
+          <em>[Text message from Fiona MacLeod at {{stationTime}}]</em>
         </p>
         <p>
-          "Fan's dead, that's confirmed. Saw the temperature stop climbing on the panel the moment you muted it - that was the carrier, then, not the roof. Leave her powered; she'll come down. I'll be up here a while."
+          "The fan's dead, I can see the blades sitting still. The temperature stopped climbing on the panel the moment you took the carrier off, so it was the carrier heating it, not the roof. Leave it powered and it'll come down by itself. I'm staying up here a while."
         </p>
         `,
         character: Character.FIONA_MACLEOD,
@@ -1083,7 +1090,7 @@ export const natsEuScenario16Data: ScenarioData = {
       'command-the-playback': {
         text: `
         <p>
-          Playback acknowledged. One more - the watchdog reset, before the window closes. Whatever your reference is doing, the bird does not know about it.
+          Playback acknowledged, thank you. The watchdog reset is the last command, and it has to go up before the window closes. Whatever your reference is doing, the spacecraft can't tell.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -1093,10 +1100,10 @@ export const natsEuScenario16Data: ScenarioData = {
       'check-the-shetland-pass': {
         text: `
         <p>
-          <em>[Text message from Fiona MacLeod at 12:27]</em>
+          <em>[Text message from Fiona MacLeod at {{stationTime}}]</em>
         </p>
         <p>
-          "Watched the dish take SAR-2 from the roof, on a hot BUC and a cold tea. Nobody at the console and it flew itself. That's the network."
+          "I watched the dish take SAR-2 from the roof with the BUC muted. Nobody was at the console and it flew itself, which is the network doing its job. And since I was up here anyway, the feed heater cable is finished at last, so the torch can go back in the shed. You've still got Galway's chain up, so go and take that down properly."
         </p>
         `,
         character: Character.FIONA_MACLEOD,
@@ -1106,7 +1113,7 @@ export const natsEuScenario16Data: ScenarioData = {
       'customer-impact': {
         text: `
         <p>
-          Both collects. Both on time. I heard afterwards there were three things wrong at once. I never noticed, which I understand is the point.
+          I've got both collects, and both were on time. I heard afterwards that three things went wrong at once, and I never noticed, which I understand is the point. That vessel that went dark off the Faroes put into port, by the way. Your pictures helped.
         </p>
         `,
         character: Character.ERIK_HALVORSEN,
@@ -1116,10 +1123,10 @@ export const natsEuScenario16Data: ScenarioData = {
       'actions-and-open-items': {
         text: `
         <p>
-          <em>[Text message from Charlie Brooks at 12:44]</em>
+          <em>[Text message from Charlie Brooks at {{stationTime}}]</em>
         </p>
         <p>
-          "Heard it was a busy lunch. A slipped pass, a hot BUC, a reference that went walkabout, and a customer who noticed none of it. Qualified means nobody notices. The network's yours."
+          "I hear it was a busy lunch. A slipped pass, a hot BUC and a reference in holdover, all inside half an hour, and you sorted them by what each one was blocking. That's the whole job. The network's yours."
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

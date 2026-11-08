@@ -68,7 +68,7 @@ const SCENARIO_23_OBJECTIVES: Scenario23Objective[] = [
     id: 'no-reboot-quiz',
     title: 'Why Not Reboot It',
     type: 'quiz',
-    correctAnswer: 'A reboot risks defaulted axis calibration and wipes the crash state IT needs - bypass keeps the link up and keeps the evidence',
+    correctAnswer: 'A reboot risks a bad axis calibration and wipes the crash state IT needs - manual keeps the link up and the evidence intact',
   },
 
   // PHASE 2: COMMIT TO MANUAL (+ UI gating assertion)
@@ -141,13 +141,13 @@ const SCENARIO_23_OBJECTIVES: Scenario23Objective[] = [
     id: 'it-coordination-quiz',
     title: 'Coordinate the Repair',
     type: 'quiz',
-    correctAnswer: 'Confirm the link is stable on manual, agree a window, then re-verify pointing on RF after recovery - ready to fall back to manual',
+    correctAnswer: 'Confirm the link is stable on manual, agree a window, then re-verify pointing on RF afterward - ready to fall back to manual',
   },
   {
     id: 'log-bypass',
     title: 'Log the Bypass',
     type: 'quiz',
-    correctAnswer: 'ACU fault 1358 (NOC-2026-2231); to manual (time-stamped), TM-1 held on sheet pointing, beacon + carrier verified on RF; not rebooted',
+    correctAnswer: 'ACU fault 1358 (NOC-2026-2231); to manual (time-stamped), TM-1 on sheet pointing, beacon + carrier checked on RF; not rebooted',
   },
   {
     id: 'log-bypass-typed',

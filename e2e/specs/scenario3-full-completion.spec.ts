@@ -87,7 +87,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'review-mission-brief',
     title: 'Review Mission Brief',
     type: 'quiz',
-    correctAnswer: 'Yes, I have read the mission brief and I am ready to proceed.',
+    correctAnswer: "Yes, I've read the brief. Starting the handover.",
   },
 
   // ============================================================
@@ -122,7 +122,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'verify-heater-quiz',
     title: 'Understand Feed Heater Consequences',
     type: 'quiz',
-    correctAnswer: 'Ice would build up on the feed horn and waveguide and attenuate the signal',
+    correctAnswer: 'Ice would build up on the feed horn and waveguide, weakening the signal',
   },
 
   // ============================================================
@@ -138,19 +138,19 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'verify-agc-status',
     title: 'Understand AGC Function',
     type: 'quiz',
-    correctAnswer: 'The level into the modem would sag with the fade, but C/N would fall just the same',
+    correctAnswer: 'The input level would sag with the fade, but C/N would fall just the same',
   },
   {
     id: 'estimate-time-remaining',
     title: 'Understand Time Pressure',
     type: 'quiz',
-    correctAnswer: 'Degradation is progressive - C/N keeps falling until it crosses the lock threshold',
+    correctAnswer: 'Degradation keeps progressing - C/N falls until it crosses the lock threshold',
   },
   {
     id: 'verify-agc-limits-quiz',
     title: 'Understand AGC Limitations',
     type: 'quiz',
-    correctAnswer: 'AGC restores level, not C/N - it amplifies the noise along with the weakened carrier',
+    correctAnswer: 'The AGC restores level, not C/N - it amplifies the noise along with the carrier',
   },
 
   // ============================================================
@@ -166,7 +166,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'verify-multisite-quiz',
     title: 'Understand Multi-Site Operations',
     type: 'quiz',
-    correctAnswer: 'Vermont continues operating normally - customers are still being served from VT-01',
+    correctAnswer: 'Vermont keeps operating normally - customers are still served from VT-01',
   },
 
   // ============================================================
@@ -188,7 +188,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'verify-gpsdo-weather-quiz',
     title: 'Understand Weather Impact on GPSDO',
     type: 'quiz',
-    correctAnswer: 'The loss is ice loading the dish feed - the GPS patch antenna sits under a radome with no feed to ice',
+    correctAnswer: 'The loss is ice on the dish feed, and the GPS antenna has no feed to ice up',
   },
 
   // ============================================================
@@ -211,7 +211,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'catherine-look-angles',
     title: "Catherine's Sanity Check",
     type: 'quiz',
-    correctAnswer: "Because look angles to a satellite depend on the ground station's geographic location",
+    correctAnswer: 'Because look angles to a satellite depend on where the ground station is',
   },
 
   // ============================================================
@@ -283,7 +283,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'verify-modem-match-quiz',
     title: 'Understand Parameter Matching',
     type: 'quiz',
-    correctAnswer: 'Both sites receive the same carrier - mismatched parameters would fail to demodulate',
+    correctAnswer: 'Both sites receive the same carrier - a mismatch would fail to demodulate',
   },
 
   // ============================================================
@@ -298,7 +298,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'verify-lock-quality-quiz',
     title: 'Understand Lock vs. Quality',
     type: 'quiz',
-    correctAnswer: 'Lock holds right down to threshold with no fade margin - we need margin for reliable data',
+    correctAnswer: 'Lock holds right down to threshold with no fade margin - we need that margin',
   },
 
   // ============================================================
@@ -351,7 +351,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'verify-handover-success-quiz',
     title: 'Confirm Handover Success',
     type: 'quiz',
-    correctAnswer: 'Traffic indicator shows ME-02 as active, VT-01 TX disabled, no ME-02 alarms, continuous data flow',
+    correctAnswer: 'Traffic indicator shows ME-02 active, VT-01 TX disabled, no ME-02 alarms, data flowing',
   },
 
   // ============================================================
@@ -380,7 +380,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'verify-stow-quiz',
     title: 'Understand Stow Position',
     type: 'quiz',
-    correctAnswer: "Turns the reflector's face away from the horizontal wind, so the wind load and the torque on the pedestal and drives are at their minimum",
+    correctAnswer: 'Turns the dish face out of the wind, so the load on the pedestal and drives is minimal',
   },
   // This is a single objective in the scenario with TWO quiz conditions.
   // The second quiz (Documentation Purpose) appears first in the UI, followed by the first quiz (What to Log).

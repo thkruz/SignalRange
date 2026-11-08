@@ -26,7 +26,7 @@ import { createMeridianSar1, createMeridianSar2, type MeridianTle } from './sate
  * Phase 18: `call-the-lie` is graded on the timing-drifting +
  * gnss-constellation-healthy fact pair - the spoof signature is that both are
  * true at once. `probe-the-sky` is a second decision whose correct answer
- * depends on the mission clock (the spoofer is up until 05:36). Two new
+ * depends on the mission clock (the spoofer is up until 150 s after `all-clear` opens, about 05:36). Two new
  * conditions debut: gpsdo-time-offset-exceeds (the read of the walk) and
  * gpsdo-time-offset-stable (the all-clear proof, gated on reference mode gnss
  * so holdover cannot fake it). M8 GnssThreatManager gains station scoping so
@@ -43,7 +43,7 @@ import { createMeridianSar1, createMeridianSar2, type MeridianTle } from './sate
  *                   southbound. Flown back on GNSS.
  *
  * The spoofer: settings.gnssThreat, GW-01 only, from T+480 s (05:08:00Z) to
- * T+2160 s (05:36:00Z), 2 us/s. Not an RF event on the Ku analyzer - L1 is
+ * T+2160 s (05:36:00Z; really 150 s after `all-clear` opens), 2 us/s. Not an RF event on the Ku analyzer - L1 is
  * not in the LNB's band, and the 2 ppm it pulls every disciplined LO while
  * GNSS is trusted (Phase 19.6: ~26 kHz on the LNB LO) is lost in the +/-250 kHz
  * Doppler - so the tell is on the GPS Timing tab and in
@@ -110,7 +110,7 @@ export const natsEuScenario20Data: ScenarioData = {
   subtitle: 'GNSS Spoof on the Reference (Gray Zone 4/8)',
   duration: '40 min',
   missionType: 'Security Operations',
-  description: `05:00, Galway, Monday. Two receive passes before the day shift: SAR-1 at 05:22, SAR-2 at 05:44. Nothing of yours on the air. Downlink, then uplink - whoever has been working through this station has one input left to try, and it is the one every clock on the site trusts without asking.<br><br>The GPSDO will say LOCKED, satellites tracked, zero error. Know what that panel cannot tell you before it stops being true.`,
+  description: `It's 05:00 on Monday at Galway, with two receive passes before the day shift: SAR-1 at 05:22 and SAR-2 at 05:44. Nothing of yours goes on the air. Whoever has been working through this station has already tried the downlink and then the uplink, and now there's one input left, the one every clock on the site trusts without asking.<br><br>The GPSDO, the GPS-disciplined reference, will say LOCKED, with satellites tracked and zero error. Know what that panel can't tell you before it stops being true.`,
   equipment: [
     'GW-01 Galway: 4m Ku-Band LEO Tracker',
     'Ku-Band RF Front End (13100 MHz LNB LO) with GPS-disciplined 10 MHz reference',
@@ -149,7 +149,7 @@ export const natsEuScenario20Data: ScenarioData = {
     },
 
     // M8 - the spoofer. GW-01 only: SH-02 sees the same constellation and no
-    // walk, which is the operator's cross-check. Up from 05:08 to about 05:36.
+    // walk, which is the operator's cross-check. Up from 05:08 to 150 s after `all-clear` opens (spoofEndS 2160 is the fallback).
     // Phase 19.0a: it goes off 150 s after 'all-clear' opens, not at a fixed
     // 2160 s. The all-clear needs the offset steady for 30 s after the spoof
     // ends, so a player who reached it before about 1690 s timed out.
@@ -204,7 +204,7 @@ export const natsEuScenario20Data: ScenarioData = {
       nice: ['K0645', 'K0752'],
       title: 'Read the Brief',
       description:
-        'Open the shift brief: two receive passes, the reference every clock on the station keys off, and what a GNSS spoof looks like on the panel that is supposed to tell you the time is good.',
+        'Open the shift brief. It covers the two receive passes, the reference that every clock on the station runs from, and what a GNSS spoof (a false satellite time signal) looks like on the panel that is meant to tell you the time is good.',
       groundStation: 'GW-01',
       freezesScenarioTimer: true,
       prerequisiteObjectiveIds: [],
@@ -222,14 +222,14 @@ export const natsEuScenario20Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'According to the brief, what does a GNSS spoof look like on the GPS Timing tab?',
             options: [
-              'A healthy constellation - LOCKED, a full satellite count - with the GNSS vs REF delta-T walking steadily in one direction',
+              'A healthy constellation - LOCKED, a full satellite count - with the delta-T walking steadily one way',
               'Satellites dropping toward zero and the lock badge going UNLOCKED as the spoofer captures the receiver',
               'The holdover badge going ACTIVE on its own as the GPSDO detects the bad time and protects itself',
-              'OCXO temperature climbing out of the oven window as the disciplining loop fights the false signal',
+              'The oscillator oven temperature climbing out of its window as the disciplining loop fights the false signal',
             ],
             correctIndex: 0,
             explanation:
-              'A spoofer does not take satellites away; it gives you satellites that agree with each other and lie together. The receiver has no way to know. The only thing on the panel that moves is the offset between what GNSS says the time is and what the reference has been keeping - and the GPSDO will steer toward the lie because that is its job. Twenty-two minutes to AOS.',
+              "A spoofer doesn't take satellites away. It gives you satellites that agree with each other and lie together, so the receiver has no way to know. The only thing on the panel that moves is the offset between what GNSS says the time is and what the reference has been keeping, and the GPSDO steers toward the lie because that's its job. It's twenty-two minutes to AOS.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -242,7 +242,7 @@ export const natsEuScenario20Data: ScenarioData = {
       id: 'dashboard-sweep',
       nice: ['T0153', 'K0741'],
       title: 'GW-01 Dashboard Sweep',
-      description: 'Board read. Confirm the active alarm state on GW-01 at 05:00 before anything else.',
+      description: 'Read the dashboard on GW-01 and confirm the active alarm state at 05:00 before you do anything else.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['review-mission-brief'],
       timeLimitSeconds: 90,
@@ -269,7 +269,7 @@ export const natsEuScenario20Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Empty sky, not a fault. The reference is locked and disciplined, the LNB is on it, and the AGC no-carrier warning clears at AOS. The board will look exactly like this in eight minutes too - that is the problem.',
+              "That's an empty sky, not a fault. The reference is locked and disciplined, the LNB is running from it, and the AGC no-carrier warning clears at AOS. The board will look exactly like this once the reference is being lied to, and that's the problem.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -282,7 +282,8 @@ export const natsEuScenario20Data: ScenarioData = {
       id: 'timing-baseline',
       nice: ['T0431', 'K0740'],
       title: 'Timing Baseline',
-      description: 'GPS Timing tab: locked, GNSS tracking, not in holdover, and read the GNSS vs REF delta-T while it still says what it should.',
+      description:
+        'On the GPS Timing tab, confirm the GPSDO is locked, GNSS is tracking and holdover is off. Then read the GNSS vs REF delta-T, the offset between GNSS time and the station reference, while it still reads true.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['dashboard-sweep'],
       timeLimitSeconds: 2 * 60,
@@ -320,7 +321,7 @@ export const natsEuScenario20Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Zero, and it should stay zero. UTC accuracy is how well the receiver thinks it knows the time; delta-T is whether the receiver and the oscillator agree about it. When those two disagree and the receiver still says it is sure, one of them is being lied to.',
+              "It reads zero, and it should stay zero. UTC accuracy is how well the receiver thinks it knows the time, while delta-T shows whether the receiver and the oscillator agree about it. When the two disagree and the receiver still says it's sure, one of them is being lied to.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -333,7 +334,8 @@ export const natsEuScenario20Data: ScenarioData = {
       id: 'rx-chain-ready',
       nice: ['S0421', 'K0773'],
       title: 'Set Up the Receiver for SAR-1',
-      description: 'Retune RX modem 1 to 1414 MHz and frame the analyzer on 1414 with a 60 MHz span. SAR-1 video is 11686 MHz; the LNB LO is 13100.',
+      description:
+        "Retune RX modem 1 to 1414 MHz and set the analyzer to center 1414 MHz with a 60 MHz span. SAR-1's video downlink is 11686 MHz and the LNB's local oscillator is 13100 MHz, which puts the signal at 1414 MHz on the receiver.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['timing-baseline'],
       timeLimitSeconds: 3 * 60,
@@ -367,7 +369,8 @@ export const natsEuScenario20Data: ScenarioData = {
       id: 'preposition-for-aos',
       nice: ['S0421', 'K1032'],
       title: 'Pre-position for AOS',
-      description: 'AOS 05:21:59 from azimuth 006, southbound. Park the tracker on the rise azimuth at 5 degrees.',
+      description:
+        'SAR-1 rises at 05:21:59 from azimuth 006 and travels southbound. Point the antenna at azimuth 006, elevation 5 degrees, so it is waiting where the satellite appears.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['rx-chain-ready'],
       timeLimitSeconds: 3 * 60,
@@ -388,7 +391,7 @@ export const natsEuScenario20Data: ScenarioData = {
       nice: ['S0648', 'T0431'],
       title: 'Spot the Walk',
       description:
-        'From 05:08 the GNSS vs REF delta-T on GW-01 starts moving. Watch it on the GPS Timing tab until it is past 20 microseconds, and read the constellation panel while it does.',
+        'From 05:08 the GNSS vs REF delta-T on GW-01 starts to move. Watch it on the GPS Timing tab until it passes 20 microseconds, and read the GNSS Constellation panel while you wait.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['preposition-for-aos'],
       conditions: [
@@ -405,14 +408,14 @@ export const natsEuScenario20Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'The offset is walking. What does the GNSS Constellation panel read while it does?',
             options: [
-              'A full satellite count and LOCKED - the constellation looks healthy the whole time',
+              'A full satellite count and LOCKED, healthy the whole time',
               'Satellites falling one by one as the spoofer captures them',
               'ACQUIRING - the receiver is cycling lock as the two signals fight',
               'Holdover ACTIVE - the GPSDO has already stopped trusting GNSS on its own',
             ],
             correctIndex: 0,
             explanation:
-              'Nothing on the constellation panel changes. That is the signature: the receiver is tracking a full, consistent set of satellites and every one of them is telling it the same wrong time. A GPSDO cannot detect a lie it has no second opinion about.',
+              "Nothing on the constellation panel changes. That's the signature: the receiver is tracking a full, consistent set of satellites, and every one of them is telling it the same wrong time. A GPSDO can't detect a lie when it has no second opinion.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -425,7 +428,7 @@ export const natsEuScenario20Data: ScenarioData = {
       id: 'cross-check-sh02',
       nice: ['S0648', 'K0740'],
       title: 'Cross-Check Shetland',
-      description: 'Select SH-02 and open its GPS Timing tab. Same constellation, three hundred miles away. Read its delta-T.',
+      description: 'Select SH-02 and open its GPS Timing tab. Shetland sees the same constellation from about 900 km away. Read its GNSS vs REF delta-T.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['spot-the-walk'],
       timeLimitSeconds: 2 * 60,
@@ -451,7 +454,7 @@ export const natsEuScenario20Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Two receivers under the same satellites, and only one of them is being walked. The satellites are fine. Something within radio range of Galway is louder than they are and is saying a different time. That is the whole diagnosis, and it took one tab.',
+              "Two receivers sit under the same satellites, and only one of them is being walked, so the satellites are fine. Something within radio range of Galway is louder than the satellites are and is broadcasting a different time. That's the whole diagnosis, and it took one tab.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -465,7 +468,7 @@ export const natsEuScenario20Data: ScenarioData = {
       nice: ['S0648', 'K0752', 'K0751'],
       title: 'Call the Lie',
       description:
-        'Back on GW-01. Rotterdam is on the line: their timestamps from your frames are drifting. Read the offset and the constellation on the GPS Timing tab, then call it.',
+        'Back on GW-01. Rotterdam is on the line because the timestamps on your frames are drifting. Read the offset and the constellation on the GPS Timing tab, then call what it is.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['cross-check-sh02'],
       timeLimitSeconds: 2 * 60,
@@ -491,7 +494,7 @@ export const natsEuScenario20Data: ScenarioData = {
           params: {
             character: Character.ANNEKE_VISSER,
             prompt:
-              'Your frames from the latest poll are timestamped ahead of ours and the gap is growing. Your GPSDO reports locked and nine satellites; Fiona at Shetland reads zero. SAR-1 is about to rise. What is it, and what do you want to do?',
+              'Your frames from the latest poll are timestamped ahead of ours, and the gap is growing. Your GPSDO reports locked with nine satellites, and Fiona at Shetland reads zero. SAR-1 is about to rise, so what is this, and what do you want to do?',
             evidence: ['offset-seen', 'constellation-seen'],
             decisionOptions: [
               {
@@ -509,25 +512,25 @@ export const natsEuScenario20Data: ScenarioData = {
                 correctWhen: { fact: 'gnss-constellation-healthy', is: false },
                 consequence: { log: 'GNSS outage called with nine satellites tracked; reference left on GNSS' },
                 feedback:
-                  'A full satellite count and LOCKED - nothing is being lost. The GPSDO will never drop into holdover on its own, because as far as it can tell GNSS is fine. Every second it stays selected it steers the reference further toward the lie.',
+                  "The panel shows a full satellite count and LOCKED, so nothing is being lost. The GPSDO won't drop into holdover on its own, because as far as it can tell GNSS is fine. Every second GNSS stays selected, the reference gets steered further toward the lie.",
               },
               {
                 label: 'GPSDO fault - the oscillator is drifting. Power-cycle the GPSDO and re-acquire before AOS',
                 correctWhen: { fact: 'equipment-fault-active', is: true },
                 consequence: { log: 'GPSDO power-cycle ordered for a reference that is following GNSS correctly' },
                 feedback:
-                  'The oscillator is doing exactly what it is told: following GNSS. A power cycle costs a warm-up, re-acquires the same lie, and Shetland already told you the box is not the problem.',
+                  "The oscillator is doing exactly what it's told, which is following GNSS. A power cycle costs a warm-up and re-acquires the same lie, and Shetland already showed you the box isn't the problem.",
               },
               {
                 label: 'Within spec - 40 us is the holdover limit and we are under it. Keep tracking and log it',
                 correctWhen: { fact: 'timing-drifting', is: false },
                 consequence: { log: 'Walking timing offset logged as within spec' },
                 feedback:
-                  'The 40 us figure is how far the oscillator may drift from a trusted GNSS. It says nothing about GNSS itself being wrong. This offset is growing two microseconds every second and will not stop until you stop listening.',
+                  "The 40 us figure is how far the oscillator may drift from a trusted GNSS, and it says nothing about GNSS itself being wrong. This offset is growing by two microseconds every second, and it won't stop until you stop listening to GNSS.",
               },
             ],
             explanation:
-              'Constellation healthy, offset walking, the other station clean: a spoof, local to Galway. Not an outage - nothing was lost. Not a fault - nothing on the station is broken. The defence is to stop trusting the input, not to fix the equipment: take GNSS down, let the OCXO free-run, and fly the pass on a reference that is a few hundred microseconds off true but no longer moving.',
+              "The constellation is healthy, the offset is walking and the other station is clean, so this is a spoof local to Galway. It isn't an outage, because nothing was lost, and it isn't a fault, because nothing on the station is broken. The defense is to stop trusting the input rather than fix the equipment: take GNSS down, let the oscillator free-run, and fly the pass on a reference that's a few hundred microseconds off true but no longer moving.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -540,7 +543,8 @@ export const natsEuScenario20Data: ScenarioData = {
       id: 'go-to-holdover',
       nice: ['S0593', 'K0740'],
       title: 'Stop Trusting GNSS',
-      description: 'GPS Timing tab: take the GNSS switch down. The GPSDO drops to holdover, the disciplining loop opens, and the reference free-runs on the OCXO. Hold it there.',
+      description:
+        'On the GPS Timing tab, take the GNSS switch down. The GPSDO drops into holdover, which opens the disciplining loop and leaves the reference free-running on its oven-controlled crystal oscillator, the OCXO. Keep it there for 20 seconds.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['call-the-lie'],
       timeLimitSeconds: 2 * 60,
@@ -560,14 +564,14 @@ export const natsEuScenario20Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What did going to holdover cost, and what did it buy?',
             options: [
-              'It froze the reference where the lie had walked it - a few hundred microseconds off true - and stopped it walking further; the OCXO now drifts nanoseconds per hour on its own',
+              'It froze the reference where the lie had walked it, and stopped the walk',
               'Nothing - holdover re-derives true time from the stored almanac and the offset returns to zero',
               'The pass - the RX modem cannot lock without a disciplined 10 MHz and SAR-1 will have to be waived',
               'One 10 MHz output - the distribution amplifier drops to four of five ports until GNSS is re-selected',
             ],
             correctIndex: 0,
             explanation:
-              'Holdover does not know the truth either; it just stops listening to the lie. The offset you see now is what the reference will carry until it is re-disciplined by a GNSS you trust, and every frame timestamp from here carries it. Write the figure down: Rotterdam corrects by it later.',
+              "Holdover doesn't know the truth either, it just stops listening to the lie. The offset on the panel now is what the reference will carry until a GNSS you trust re-disciplines it, and every frame timestamp from here carries that offset. Write the figure down, because Rotterdam corrects by it later.",
             pointPenalty: 5,
             documentSection: 'Reference',
             documentLine:
@@ -583,7 +587,8 @@ export const natsEuScenario20Data: ScenarioData = {
       id: 'acquire-sar1',
       nice: ['S0421', 'K1032'],
       title: 'Acquire MERIDIAN-SAR-1',
-      description: 'Program-track SAR-1 before 05:22 and confirm the beacon on RX analysis. The reference is free-running; the tracker does not care.',
+      description:
+        "Set the antenna to program-track SAR-1 before it rises at 05:22, then confirm its beacon on the RX Analysis tab. The reference is free-running, but the tracker doesn't depend on it.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['go-to-holdover'],
       conditions: [
@@ -618,7 +623,7 @@ export const natsEuScenario20Data: ScenarioData = {
       id: 'decode-on-holdover',
       nice: ['T0153', 'K0740'],
       title: 'Decode on the Oscillator',
-      description: 'Lock the SAR-1 carrier and hold C/N above 8 dB through the high segment with the reference in holdover. Then say why that works.',
+      description: 'Lock the SAR-1 carrier and hold C/N above 8 dB through the high part of the pass, with the reference still in holdover. Then answer why that works.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['acquire-sar1'],
       timeLimitSeconds: 6 * 60,
@@ -643,14 +648,14 @@ export const natsEuScenario20Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'The reference is in holdover and the decode is clean. Why does that work?',
             options: [
-              'The modem needs a stable 10 MHz, not a true one: a free-running OCXO holds parts in ten-to-the-eleventh for hours. The frame timestamps are what carry the error, not the symbols',
+              'The modem needs a stable 10 MHz, not a true one, and a free-running OCXO stays stable for hours',
               'Holdover switches the modem to its own internal crystal, so the GPSDO is out of the chain entirely',
-              'It does not, really - the C/N you see is the AGC compensating for a reference that is drifting the LNB LO',
+              "It doesn't, really - the C/N you see is the AGC compensating for a reference that is drifting the LNB LO",
               'The video downlink carries its own time code and re-disciplines the GPSDO through the modem',
             ],
             correctIndex: 0,
             explanation:
-              "Frequency stability and time truth are different things. The LNB LO, the modem symbol clock and the tracker all want a reference that does not move; none of them care what o'clock it is. The thing that cares is the timestamp on every frame going to Rotterdam, and that is why the frozen offset goes in the record.",
+              "Frequency stability and time truth are different things. The LNB LO, the modem symbol clock and the tracker all want a reference that doesn't move, and none of them care what o'clock it is. What does care is the timestamp on every frame going to Rotterdam, which is why the frozen offset goes in the record.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -664,7 +669,7 @@ export const natsEuScenario20Data: ScenarioData = {
       nice: ['S0593', 'T1580'],
       title: 'Report It',
       description:
-        'Security console: flag the new monitoring entry - the timestamp skew is the first external evidence. Then decide what goes to Priya and Rotterdam now, while it is still happening.',
+        'On the Security Console, flag the new monitoring entry, because the timestamp skew is the first outside evidence of the attack. Then decide what goes to Priya and Rotterdam now, while the spoof is still happening.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['decode-on-holdover'],
       timeLimitSeconds: 3 * 60,
@@ -683,14 +688,14 @@ export const natsEuScenario20Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What goes to Priya and Rotterdam now?',
             options: [
-              'Time of onset, the delta-T reading and its rate, the constellation state, the SH-02 cross-check, when GNSS was taken down and the offset it froze at, and that SAR-1 is being flown on the oscillator',
-              'That GPS is down over Ireland and every NATS station should go to holdover until further notice',
-              'Nothing until the spoofer stops - a report on an event still in progress is incomplete and will have to be reissued',
-              'The GPSDO serial number and a request for a replacement unit on the next maintenance visit',
+              'Time of onset, the delta-T reading and its rate, the constellation state, the SH-02 cross-check, and the frozen offset',
+              'That GPS is down over Ireland, and that every NATS station should go to holdover until further notice',
+              'Nothing until the spoofer stops - a report on an event still in progress is incomplete and will have to be reissued later',
+              'The GPSDO serial number and a request for a replacement unit at the next scheduled maintenance visit',
             ],
             correctIndex: 0,
             explanation:
-              'What was seen, where, when, at what rate, what the other station saw, what was done and what it cost. GPS is not down - one station is being lied to, and the report that says so is what keeps Shetland from going to holdover for nothing. An event in progress is reported in progress.',
+              "The report covers what was seen, where, when and at what rate, what the other station saw, what was done and what it cost. GPS isn't down, because one station is being lied to, and a report that says so keeps Shetland from going to holdover for nothing. An event in progress is reported while it's in progress.",
             pointPenalty: 5,
             documentSection: 'Report',
             documentLine:
@@ -707,7 +712,7 @@ export const natsEuScenario20Data: ScenarioData = {
       nice: ['S0648', 'K0926'],
       title: 'Probe the Sky',
       description:
-        'Once SAR-1 has set (LOS 05:31:28), the only way to know whether the spoofer is still up is to listen: put the GNSS switch up, watch the delta-T for a few seconds on the GPS Timing tab, and call what it does.',
+        'Wait for SAR-1 to set (LOS 05:31:28). The only way to know whether the spoofer is still up is to listen, so put the GNSS switch back up, watch the delta-T on the GPS Timing tab for a few seconds, and call what it does.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['report-the-attack'],
       timeLimitSeconds: 3 * 60,
@@ -738,7 +743,7 @@ export const natsEuScenario20Data: ScenarioData = {
           description: 'What the Offset Did',
           params: {
             character: Character.ANNEKE_VISSER,
-            prompt: 'You have GNSS back up. What is the delta-T doing, and where do you want the reference?',
+            prompt: "You've put GNSS back up. What is the delta-T doing, and where do you want the reference now?",
             evidence: ['probe-gnss', 'probe-offset'],
             decisionOptions: [
               {
@@ -759,16 +764,16 @@ export const natsEuScenario20Data: ScenarioData = {
               {
                 label: 'It reset to zero - GNSS re-acquired true time on the switch',
                 feedback:
-                  'The offset is what GNSS walked the reference to. Re-selecting GNSS does not undo the walk; it resumes it if the spoofer is still there and leaves it where it is if not. Nothing resets to zero.',
+                  "The offset is what GNSS walked the reference to. Re-selecting GNSS doesn't undo the walk. If the spoofer is still up it resumes the walk, and either way nothing resets to zero on the switch.",
               },
               {
                 label: 'Cannot tell yet - wait for the holdover error figure to clear before trusting the delta-T',
                 feedback:
-                  'The holdover error is the OCXO drift against the last discipline point; it is not the spoof and it does not clear. The delta-T is the read, and it answers in seconds.',
+                  "The holdover error is the OCXO's drift against the last discipline point. It isn't the spoof and it doesn't clear, and the delta-T is the read that answers in seconds.",
               },
             ],
             explanation:
-              'The probe is the only instrument you have: give the receiver the sky for a few seconds and watch whether the offset moves. Moving means the spoofer is up and the switch goes back down - the cost is a few more microseconds. Still means the sky is honest again. Either way the answer is on the panel, not on the clock.',
+              'The probe is the only instrument you have: give the receiver the sky for a few seconds and watch whether the offset moves. Moving means the spoofer is up and the switch goes back down, at a cost of a few more microseconds. Holding still means the sky is honest again. Either way the answer is on the panel, not on the clock.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -782,7 +787,7 @@ export const natsEuScenario20Data: ScenarioData = {
       nice: ['S0593', 'T0431'],
       title: 'Ride It Out, Then Come Back',
       description:
-        'Stay on holdover while the offset keeps moving on each probe. When GNSS is re-selected and the delta-T holds still for thirty seconds with the constellation tracking, the sky is honest again - leave it up.',
+        'Stay on holdover while the offset keeps moving on each probe. When GNSS is selected and the delta-T holds still for thirty seconds with the constellation tracking, the sky is honest again, so leave GNSS selected.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['probe-the-sky'],
       timeLimitSeconds: 8 * 60,
@@ -813,14 +818,14 @@ export const natsEuScenario20Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What did you verify before trusting GNSS again?',
             options: [
-              'The delta-T stopped moving with GNSS re-selected and stayed still - the spoofer is off the air. The satellite count was never evidence of anything',
+              'The delta-T stopped moving with GNSS re-selected, so the spoofer is off the air',
               'Thirty minutes had passed since onset - a spoofer cannot hold a receiver captured longer than that',
               'The satellite count came back to nine - the constellation re-acquired after the attack',
               'The holdover error figure dropped back to zero - the OCXO had re-converged on GNSS',
             ],
             correctIndex: 0,
             explanation:
-              'The only thing that ever moved was the offset, so the only thing that proves the all-clear is the offset not moving with the receiver listening. The count was full throughout. The clock face tells you nothing about who is on the air.',
+              "The only thing that ever moved was the offset, so the only proof of an all-clear is the offset holding still while the receiver is listening. The satellite count was full throughout, so it proves nothing, and the clock tells you nothing about who's on the air.",
             pointPenalty: 5,
             documentSection: 'Reference',
             documentLine:
@@ -836,7 +841,7 @@ export const natsEuScenario20Data: ScenarioData = {
       id: 'acquire-sar2',
       nice: ['S0421', 'K1032'],
       title: 'Acquire MERIDIAN-SAR-2',
-      description: 'SAR-2 rises 05:44:00 from azimuth 006. Retune RX modem 1 to 1370 MHz, retarget program-track, and take the lock.',
+      description: 'SAR-2 rises at 05:44:00 from azimuth 006. Retune RX modem 1 to 1370 MHz, point program-track at SAR-2, and wait for the antenna to lock on it.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['all-clear'],
       conditions: [
@@ -866,7 +871,7 @@ export const natsEuScenario20Data: ScenarioData = {
       id: 'decode-sar2',
       nice: ['T0153', 'K0740'],
       title: 'Decode SAR-2 on True Time',
-      description: 'Lock the SAR-2 carrier and hold C/N above 8 dB with the reference re-disciplined. Then say what is different about these frames.',
+      description: 'Lock the SAR-2 carrier and hold C/N above 8 dB with the reference back on GNSS. Then answer what is different about these frames.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['acquire-sar2'],
       conditions: [
@@ -889,14 +894,14 @@ export const natsEuScenario20Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'SAR-2 is decoding as cleanly as SAR-1 did. What is different about these frames?',
             options: [
-              "Their timestamps are true again. SAR-1's carry the frozen offset, and Rotterdam corrects them by the figure in the record",
+              "Their timestamps are true again, while SAR-1's carry the frozen offset",
               'Nothing - both passes were decoded at the same C/N on the same modem',
               "SAR-2's are Doppler-corrected by the re-disciplined reference; SAR-1's were not",
               "SAR-1's frames are unusable - data taken in holdover cannot be timestamped at all",
             ],
             correctIndex: 0,
             explanation:
-              'Same modem, same C/N, same decode. The only thing the spoof ever touched was the time written on each frame, and the only reason that is recoverable is the number you wrote down when you took the switch down.',
+              "It's the same modem, the same C/N and the same decode. The only thing the spoof touched was the time written on each frame, and that's recoverable only because you wrote down the offset when you took the switch down.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -909,7 +914,7 @@ export const natsEuScenario20Data: ScenarioData = {
       id: 'close-and-debrief',
       nice: ['T1580', 'K0645', 'K0752'],
       title: 'Close the Record and Debrief',
-      description: 'SAR-2 decoding, the reference back on an honest sky. Close the record with the line that changes the sweep from tomorrow.',
+      description: "SAR-2 is decoding and the reference is back on an honest sky. Close the record by choosing the debrief line that changes tomorrow's sweep.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['decode-sar2'],
       timeLimitSeconds: 3 * 60,
@@ -920,20 +925,20 @@ export const natsEuScenario20Data: ScenarioData = {
           description: 'Debrief Line',
           params: {
             character: Character.SYSTEM,
-            question: 'What is the debrief line?',
+            question: "Which debrief line should change tomorrow's sweep?",
             options: [
-              'GNSS is an input, not the truth: the delta-T goes on every sweep from now on, a healthy constellation with a walking offset is a spoof until proven otherwise, and the other station is the cross-check',
+              'GNSS is an input, not the truth: put delta-T on every sweep, and cross-check a walking offset with the other station',
               'The station runs on holdover permanently - GNSS cannot be trusted at this site and the OCXO is good enough',
-              'A second GNSS antenna is fitted on the far side of the building so the two receivers can vote',
-              'Passes are flown with the GPSDO powered down during any suspected event to deny the spoofer a target',
+              'A second GNSS antenna goes on the far side of the building, so the two receivers can vote against each other on the time',
+              'Passes are flown with the GPSDO powered down during any suspected event, to deny the spoofer a target',
             ],
             correctIndex: 0,
             explanation:
-              'Downlink, uplink, and now time. The same station, three inputs, three mornings. Each one looked healthy on the panel that was supposed to catch it. What caught them was a reading that should not have been moving and a second opinion. Put the reading on the sweep and keep the second opinion close.',
+              "Downlink, uplink and now time were three different inputs to the same station. Each one looked healthy on the panel that was supposed to catch it. What caught them was a reading that shouldn't have been moving, plus a second opinion. Put the reading on the sweep and keep the second opinion close.",
             pointPenalty: 5,
             documentSection: 'Debrief',
             documentLine:
-              'Closed {{stationTime}}Z. Open: GNSS spoofer local to GW-01 from 05:08 to about 05:35 (source unlocated, referred to Group CSIRT); frozen offset issued to Rotterdam for SAR-1 timestamp correction. Debrief: GNSS vs REF delta-T added to the dashboard sweep; healthy constellation with walking delta-T is called a spoof, not an outage; SH-02 delta-T is the cross-check before any reference action.',
+              'Closed {{stationTime}}Z. Open: GNSS spoofer local to GW-01 from 05:08 until the all-clear at {{at:obj:all-clear|05:35}} (source unlocated, referred to Group CSIRT); frozen offset issued to Rotterdam for SAR-1 timestamp correction. Debrief: GNSS vs REF delta-T added to the dashboard sweep; healthy constellation with walking delta-T is called a spoof, not an outage; SH-02 delta-T is the cross-check before any reference action.',
           },
           mustMaintain: false,
         },
@@ -949,7 +954,7 @@ export const natsEuScenario20Data: ScenarioData = {
         <em>[Text message from Anneke Visser at 04:40]</em>
       </p>
       <p>
-        "Early one. SAR-1 05:22 and SAR-2 05:44, both receive only, nothing to send. HOP-SAR2-05 is staged but you will not need it today. Our monitoring polls your station every ten minutes and compares frame timestamps against our reference; if I ring you before AOS it is because those numbers moved, not because I am awake."
+        "It's an early one, I know. SAR-1 rises at 05:22 and SAR-2 at 05:44, and both are receive only, so there's nothing to send. The new hop set, HOP-SAR2-05, is staged, but you won't need it today. Our monitoring polls your station every ten minutes and compares your frame timestamps against our reference. If I ring you before AOS, it's because those numbers moved, not because I'm awake."
       </p>
       `,
       character: Character.ANNEKE_VISSER,
@@ -960,7 +965,7 @@ export const natsEuScenario20Data: ScenarioData = {
       'spot-the-walk': {
         text: `
         <p>
-          It is me. The latest poll has your frames ahead of ours, and the 05:00 poll did not. Your GPSDO is telling us it is locked. Before I wake anyone else - look at Shetland.
+          It's Anneke. Our latest poll has your frames ahead of ours, and the 05:00 poll didn't. Your GPSDO says it's locked, so the panel alone won't settle this. Before I wake anyone else, please look at Shetland and tell me what it reads.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -970,7 +975,7 @@ export const natsEuScenario20Data: ScenarioData = {
       'call-the-lie': {
         text: `
         <p>
-          Spoof. Then the box is fine and the sky is not. Take it down and fly SAR-1 on the oscillator - write down the offset at the moment you do, because that number is on every frame you send me until this is over.
+          A spoof, then. That means the box is fine and the sky is the problem. Take GNSS down and fly SAR-1 on the oscillator, the reference's own crystal clock, and write down the offset at the moment you do, because that number will be on every frame you send me until this is over.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -980,7 +985,7 @@ export const natsEuScenario20Data: ScenarioData = {
       'decode-on-holdover': {
         text: `
         <p>
-          SAR-1 frames coming in clean, timestamps carrying your offset exactly as logged. I am correcting them at this end. Flag the monitoring entry and send the report while it is still happening; Priya will want the onset time more than she wants the ending.
+          The SAR-1 frames are coming in clean, and the timestamps carry your offset exactly as you logged it, so I'm correcting them at this end. Next, flag the monitoring entry and send the report while the spoof is still happening, because Priya will want the onset time more than she'll want the ending.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -990,7 +995,7 @@ export const natsEuScenario20Data: ScenarioData = {
       'probe-the-sky': {
         text: `
         <p>
-          A probe is cheap. A few seconds of listening and a few microseconds of offset. Back to holdover if it moves. When it holds still with the receiver up, and only then, leave it up.
+          Still walking, so the spoofer's on the air. A probe is cheap, because it costs a few seconds of listening and a few microseconds of offset. Put the switch back down to holdover and probe again later. Leave GNSS selected only when the delta-T holds still with the receiver listening.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1000,7 +1005,7 @@ export const natsEuScenario20Data: ScenarioData = {
       'all-clear': {
         text: `
         <p>
-          Your timestamps just came back into line with ours without you touching anything. Whoever it was has gone. SAR-2 at 05:44 - fly it on the honest sky and close the record.
+          Your delta-T has held still for thirty seconds with GNSS selected, so I'll treat the spoofer as gone. SAR-2 rises at 05:44, and you can fly it on the honest sky.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -1010,7 +1015,7 @@ export const natsEuScenario20Data: ScenarioData = {
       'close-and-debrief': {
         text: `
         <p>
-          Downlink, uplink, time. Three inputs in a week, each one dressed up as normal on the panel that should have caught it. What caught them was you knowing what normal looks like and one reading that was not. The source is mine to chase now. Get some sleep.
+          That's three inputs in a week, downlink, uplink and now time, and each one looked normal on the panel that should have caught it. You caught each one because you knew what normal looks like and noticed the one reading that wasn't. The source is mine to chase now. Get some sleep.
         </p>
         `,
         character: Character.PRIYA_SHARMA,

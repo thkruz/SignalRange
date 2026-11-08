@@ -232,7 +232,7 @@ export const scenario14Data: ScenarioData = {
             question: 'Have you reviewed the shift brief and SeaLink customer note?',
             options: ['Yes, brief reviewed. Standing by for the front.'],
             correctIndex: 0,
-            explanation: 'The front is minutes out. Get protective measures in place before it arrives.',
+            explanation: 'The front is only minutes out, so get your protective measures in place before it arrives.',
             pointPenalty: 0,
           },
           mustMaintain: false,
@@ -269,7 +269,7 @@ export const scenario14Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'SeaLink runs vessel telemetry that survives short C/N dips but logs a hard event on every uplink change. A handover event costs them more contractually than a C/N dip does. The customer is telling us what they value - listen.',
+              'SeaLink runs vessel telemetry that survives short C/N dips, but it logs a hard event on every uplink change. A handover event costs them more under the contract than a C/N dip does. The customer is telling us what they value, so listen.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -326,14 +326,14 @@ export const scenario14Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What is VT-01 reporting before the front arrives?',
             options: [
-              'No warning or critical alarms - one informational row, Signal(s) Detected - clean baseline to fade from',
-              'BUC over-temperature alarm - hold transmit until it cools',
-              'Antenna tracking error - beacon lock lost before the front arrived',
-              'GPSDO in holdover - reference alarm, timing at risk',
+              'No warnings or criticals, just the Signal(s) Detected info row',
+              'A BUC over-temperature alarm, so transmit waits until it cools',
+              'An antenna tracking error, with beacon lock lost before the front',
+              'A GPSDO holdover alarm, with the timing reference at risk',
             ],
             correctIndex: 0,
             explanation:
-              'Clean baseline: no warning or critical alarms, and the one informational row (Signal(s) Detected) just says the receiver sees carriers. Note the C/N now so you know what "nominal" looks like when the rain starts pulling it down.',
+              'That\'s a clean baseline: there are no warning or critical alarms, and the one informational row, Signal(s) Detected, just says the receiver sees carriers. Note the C/N now, so you know what "nominal" looks like once the rain starts pulling it down.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -347,7 +347,7 @@ export const scenario14Data: ScenarioData = {
       nice: ['S0421', 'K0689'],
       title: 'Enable Feed Heater',
       description:
-        'Open the ACU Control panel and enable the feed heater before the front arrives. The card says "Prevents ice, keeps the feed dry": in rain it is the same heater doing the second job. The Rain Blower is optional at C-band, even in a heavy cell, and is not part of this procedure.',
+        'Open the ACU Control panel and enable the feed heater before the front arrives. The card says "Prevents ice, keeps the feed dry", and in rain the same heater does the second job. The Rain Blower is optional at C-band, even in a heavy cell, and isn\'t part of this procedure.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['pre-storm-dashboard'],
       timeLimitSeconds: 3 * 60,
@@ -384,7 +384,7 @@ export const scenario14Data: ScenarioData = {
           description: 'Heater Role During Rain',
           params: {
             character: Character.SYSTEM,
-            question: 'The heater is doing what for a rain event that is well above freezing?',
+            question: 'What is the feed heater doing during a rain event that is well above freezing?',
             options: [
               'Keeping water from sheeting on the feed - dry surfaces attenuate less than wet ones',
               'Keeping the LNB warm through the cold rain - noise temperature climbs as the LNB cools',
@@ -393,7 +393,7 @@ export const scenario14Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Standing water on the feed is itself an attenuator. The heater keeps surfaces above dew point so droplets evaporate instead of beading and pooling. Same hardware as the anti-icing case in a winter storm, different mechanism - rain at 12°C is not going to freeze.',
+              "Standing water on the feed is itself an attenuator. The heater keeps surfaces above the dew point so droplets evaporate instead of beading and pooling. It's the same hardware as the anti-icing case in a winter storm, with a different mechanism, and rain at 12°C isn't going to freeze.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -432,7 +432,7 @@ export const scenario14Data: ScenarioData = {
       nice: ['T0153', 'K0773', 'K1032'],
       title: 'Baseline Beacon and Lock',
       description:
-        'Confirm the TIDEMARK-1 beacon is healthy and RX modem 1 is locked with margin before the rain hits, and note its Raw C/N: the 7 dB action threshold is read on the same readout.',
+        "Confirm the TIDEMARK-1 beacon is healthy and RX modem 1 is locked with margin before the rain hits, and note its Raw C/N too. You'll read the 7 dB action threshold on the same readout.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['open-rx-analysis-baseline'],
       timeLimitSeconds: 2 * 60,
@@ -476,7 +476,7 @@ export const scenario14Data: ScenarioData = {
             options: ['About 13 dB', 'About 7 dB', 'About 4 dB', 'About 25 dB'],
             correctIndex: 0,
             explanation:
-              'About 13 dB. That is the baseline the action rule in the brief hangs off: the threshold is RX modem 1 Raw C/N 7 dB, about 6 dB under it and still about 2.3 dB above where QPSK 3/4 acquires lock. The modem shows Required Es/N0 5.0 dB; with Es/N0 about 0.8 dB above Raw C/N it acquires lock from about 4.7 dB C/N (Required 5.0 plus a 0.5 dB acquisition margin, less the 0.8 dB Es/N0 offset) and holds it down to about 3.7 dB. Compare against the baseline when the cell is overhead.',
+              'About 13 dB. The action rule in the brief hangs off that baseline: the threshold is RX modem 1 Raw C/N of 7 dB, which is about 6 dB under it and still about 2.3 dB above where QPSK 3/4 acquires lock. The modem shows Required Es/N0 5.0 dB, and Es/N0 runs about 0.8 dB above Raw C/N. So the modem acquires lock from about 4.7 dB C/N (Required 5.0 plus a 0.5 dB acquisition margin, less the 0.8 dB Es/N0 offset) and holds it down to about 3.7 dB. Compare against the baseline when the cell is overhead.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -502,14 +502,14 @@ export const scenario14Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Why does noting the baseline C/N matter for this scenario specifically?',
             options: [
-              'It defines how much fade the link can absorb before reaching the demodulation threshold',
-              'It tells the customer how much uplink power we are spending to hold their carrier',
+              'It shows how much fade the link can absorb before demodulation fails',
+              'It tells the customer how much uplink power we spend to hold their carrier',
               'It sets the spectrum analyzer Max Amp / Min Amp before the rain shifts the noise floor',
-              'It is required by the modem firmware before it will hold lock through a fade',
+              'The modem firmware requires it before it will hold lock through a fade',
             ],
             correctIndex: 0,
             explanation:
-              'Margin = baseline C/N minus demod threshold. QPSK 3/4 acquires lock at about 4.7 dB C/N (Required 5.0 plus a 0.5 dB acquisition margin, less the 0.8 dB Es/N0 offset). With Raw C/N near 13 dB that is about 8 dB of headroom, 6 dB of it above the 7 dB action threshold, and about 1 dB of expected fade (a heavy cell at C-band costs about 1 dB of C/N, mostly sky-noise rise), we are comfortable. Without baseline data, every dip looks scary.',
+              "Margin is the baseline C/N minus the demodulation threshold. QPSK 3/4 acquires lock at about 4.7 dB C/N (Required 5.0 plus a 0.5 dB acquisition margin, less the 0.8 dB Es/N0 offset). With Raw C/N near 13 dB, that's about 8 dB of headroom, 6 dB of it above the 7 dB action threshold. A heavy cell at C-band costs only about 1 dB of C/N, mostly sky-noise rise, so we're comfortable. Without baseline data, every dip looks scary.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -527,7 +527,7 @@ export const scenario14Data: ScenarioData = {
       nice: ['T0153', 'S0675'],
       title: 'Monitor Through the Fade',
       description:
-        "Stay on RX Analysis as the front arrives (within seconds of this step opening) and watch RX modem 1's Raw C/N until the RAIN FADE alarm is up, then for 20 s more with it up. At C-band the dip is about 1 dB, not much more than the readout's normal wander; the modem loses that 1 dB because our own uplink is rained on too, while the RAIN FADE alarm detail reads the downlink loss alone, about 0.7 dB at the peak. The alarm shows once the fade passes 0.5 dB, about 2 minutes into the cell, and the ACU Environmental card shows Precipitation ACTIVE while the cell is overhead.",
+        "Stay on RX Analysis as the front arrives, within seconds of this step opening. Watch RX modem 1's Raw C/N until the RAIN FADE alarm is up, then for 20 s more with it up. At C-band the dip is about 1 dB, not much more than the readout's normal wander. The modem loses that 1 dB because our own uplink is rained on too, while the RAIN FADE alarm detail reads the downlink loss alone, about 0.7 dB at the peak. The alarm shows once the fade passes 0.5 dB, about 2 minutes into the cell, and the ACU Environmental card shows Precipitation ACTIVE while the cell is overhead.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['baseline-margin-quiz'],
       timeLimitSeconds: 6 * 60,
@@ -590,16 +590,16 @@ export const scenario14Data: ScenarioData = {
           description: 'AGC Compensation',
           params: {
             character: Character.SYSTEM,
-            question: 'The rain cell is over the dish: C/N dipped by about 1 dB and the post-AGC output level is steady. What does that tell you?',
+            question: 'The rain cell is over the dish, C/N has dipped by about 1 dB and the post-AGC output level is steady. What does that tell you?',
             options: [
-              'AGC is compensating - the demodulator still sees a usable signal, and the gain stage still has headroom',
-              'The fade is over - the rain has already passed and the input level will climb back within a minute',
-              'The LNB has raised its own gain - the front end compensates before the signal reaches the receiver',
-              'The receiver has switched to a backup carrier - the steady output is a different signal, not TM-1',
+              'The AGC is compensating, and the gain stage still has headroom',
+              'The fade is over, so the input level will climb back within a minute',
+              'The LNB has raised its own gain, so the front end compensates first',
+              'The receiver has switched to a backup carrier instead of TIDEMARK-1',
             ],
             correctIndex: 0,
             explanation:
-              'At C-band even a heavy cell costs only about 1 dB, and most of it is noise: the wet path radiates into the beam and lifts the floor while the carrier is barely attenuated (the same cell would take several dB off a Ku link). AGC absorbs what is left transparently. The thing to watch is not the output level (that is what AGC stabilizes) but how much gain the AGC is using. When it approaches its max, you are out of cushion.',
+              "At C-band even a heavy cell costs only about 1 dB, and noise accounts for most of it: the wet path radiates into the beam and lifts the floor while the carrier is barely attenuated. The same cell would take several dB off a Ku link. The AGC absorbs what's left without anyone noticing. What you watch isn't the output level, because that's what the AGC stabilizes, but how much gain the AGC is using. When that approaches its maximum, you're out of cushion.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -625,14 +625,14 @@ export const scenario14Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Through the cell the AGC gain moves by under 1 dB and stays far below its maximum. What does that say about the decision to hold?',
             options: [
-              'Plenty of headroom remaining - link is comfortable, hold is justified',
-              'Headroom is already spent - any non-zero AGC value means hand over now',
-              'Headroom is irrelevant - AGC compensation has no bearing on the handover call',
-              'Headroom is shrinking - reduce HPA backoff now to relieve the AGC',
+              'Plenty of headroom is left, so holding is justified',
+              'The headroom is already spent, so any non-zero AGC value means hand over now',
+              'Headroom is irrelevant, since AGC has no bearing on the handover call',
+              'Headroom is shrinking, so reduce HPA backoff now to relieve the AGC',
             ],
             correctIndex: 0,
             explanation:
-              'The rain moves the total passband power by under 1 dB, so the AGC gain follows by under 1 dB (0.5-1.0 dB measured), a small slice of its range: the cushion is barely touched. The handover trigger is not AGC active - it is AGC near max with continued fade, or modem unlock. We are nowhere near either.',
+              "The rain moves the total passband power by under 1 dB, so the AGC gain follows by under 1 dB (0.5-1.0 dB measured). That's a small slice of its range, so the cushion is barely touched. The handover trigger isn't the AGC being active. It's the AGC near its maximum with continued fade, or modem unlock, and we're nowhere near either.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -670,7 +670,7 @@ export const scenario14Data: ScenarioData = {
       id: 'hpa-backoff-decision-quiz',
       nice: ['S0675', 'K0721'],
       title: 'HPA Backoff Decision',
-      description: 'Reducing HPA backoff would add a couple of dB of uplink power. Decide whether that is the right move right now.',
+      description: "Reducing HPA backoff would add a couple of dB of uplink power. Decide whether that's the right move right now.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['open-tx-chain'],
       timeLimitSeconds: 2 * 60,
@@ -683,14 +683,14 @@ export const scenario14Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'The downlink C/N is holding above threshold with AGC headroom to spare. Should you reduce HPA backoff to push more uplink power?',
             options: [
-              'No - the link is healthy; trading IMD risk for unused margin is a bad bargain',
-              'Yes - the fade is active; running the HPA hot during weather is standard practice',
-              'Yes - the customer asked us to hold; maximum uplink power is what holding requires',
-              'No - the HPA is carrying traffic; backoff cannot be adjusted while transmitting',
+              "No. The link is healthy, and extra IMD risk buys margin we don't need",
+              'Yes. The fade is active, and running the HPA hot in weather is standard practice',
+              'Yes. The customer asked us to hold, and holding requires maximum uplink power',
+              "No. The HPA is carrying traffic, so backoff can't be adjusted while transmitting",
             ],
             correctIndex: 0,
             explanation:
-              'Optimization is not "turn every dial to max." If the link has margin you do not need, the responsible move is to not spend it. Reduced backoff means higher IMD on neighbors and more amplifier stress for no operational benefit here. Keep the configuration nominal.',
+              'Optimization isn\'t "turn every dial to max." If the link has margin you don\'t need, the responsible move is to leave it unspent. Reduced backoff means higher IMD on neighbors and more amplifier stress, for no operational benefit here. Keep the configuration nominal.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -746,7 +746,7 @@ export const scenario14Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Nothing on the uplink moved: 50 dBm out, 10 dB under P1dB, IM3 about -43 dBc. An HPA does not react to downlink weather on its own, and the brief says to leave it alone.',
+              "Nothing on the uplink moved: 50 dBm out, 10 dB under P1dB, IM3 about -43 dBc. An HPA doesn't react to downlink weather on its own, and the brief says to leave it alone.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -774,16 +774,16 @@ export const scenario14Data: ScenarioData = {
           description: 'When Handover IS Justified',
           params: {
             character: Character.SYSTEM,
-            question: 'The customer prefers no handover, but the customer does not get the last word on RF reality. Which condition flips the call to "hand off now"?',
+            question: 'The customer prefers no handover, but they don\'t get the last word on RF reality. Which condition flips the call to "hand off now"?',
             options: [
-              'Raw C/N under the 7 dB action threshold and still falling, AGC at max with continued fade, or the modem dropping lock',
-              'Raw C/N a dB under the baseline, AGC gain leaving its floor, or Precipitation ACTIVE on the ACU card',
-              'Rain reaching the dish, the first dB of input fade, or the beacon C/N dipping on the ACU card',
-              'ME-02 reporting available, Dana asking for a status, or James calling back about the weather',
+              'Raw C/N under 7 dB and falling, AGC at max in a continued fade, or lost lock',
+              'Raw C/N a dB below baseline, AGC gain leaving its floor, or Precipitation ACTIVE',
+              'Rain reaching the dish, the first dB of input fade, or the beacon C/N dipping',
+              'ME-02 reporting available, Dana asking for a status, or James calling back',
             ],
             correctIndex: 0,
             explanation:
-              'The customer can ask us to favor "hold." The customer cannot ask us to keep serving on a dead link. The trigger is operational, not contractual: RX modem 1 Raw C/N under 7 dB and not recovering, AGC at max and still fading, or actual lock loss.',
+              "The customer can ask us to favor a hold, but they can't ask us to keep serving on a dead link. The trigger is operational, not contractual: RX modem 1 Raw C/N under 7 dB and not recovering, AGC at max and still fading, or an actual loss of lock.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -815,7 +815,8 @@ export const scenario14Data: ScenarioData = {
               'Hold VT-01. Reduce HPA backoff 2 dB, push uplink power up, customer preference honored. Restore after the front.',
             ],
             correctIndex: 0,
-            explanation: 'Right call. We are holding. State the trigger conditions to yourself so you know when to flip - that is the discipline of holding, not just inertia.',
+            explanation:
+              "Holding is right while the AGC has headroom, the modem is locked and the customer prefers it. Keep the trigger conditions in mind so you know when to flip, because that's what makes a hold a decision and not inertia.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -833,7 +834,7 @@ export const scenario14Data: ScenarioData = {
       nice: ['T0153', 'S0675'],
       title: 'Hold Through the Cell',
       description:
-        'Keep VT-01 on TIDEMARK-1 until the rain cell has passed (about 20 minutes from its arrival): lock held, RX modem 1 Raw C/N above the 7 dB action threshold, antenna on TIDEMARK-1, heater on. Wait it out, or once the hold rows are green use the skip control in the command bar: it jumps to the end of the cell, and the mission clock is held while you wait, so both score the same.',
+        'Keep VT-01 on TIDEMARK-1 until the rain cell has passed, about 20 minutes from its arrival. Hold the lock, keep RX modem 1 Raw C/N above the 7 dB action threshold, keep the antenna on TIDEMARK-1 and leave the heater on. You can wait it out, or use the skip control in the command bar once the hold rows are green. It jumps to the end of the cell, and the mission clock is held while you wait, so both score the same.',
       groundStation: 'VT-01',
       // A watch: every row but the weather is meant to stay as it is
       intent: 'confirm',
@@ -905,7 +906,7 @@ export const scenario14Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Rain fade is transient. The AGC tracks the recovery downward without intervention, and the demod has had lock the whole time. Nothing to do but watch it normalize.',
+              "Rain fade is transient. The AGC tracks the recovery downward without intervention, and the demodulator has had lock the whole time, so there's nothing to do but watch it normalize.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -931,14 +932,14 @@ export const scenario14Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which entry correctly logs this event for the next shift?',
             options: [
-              'Heavy rain cell over VT-01, about 1 dB of C/N lost (mostly sky noise). Held TM-1 per SeaLink SLA preference; watched Raw C/N 7 dB, AGC at max, modem unlock - none fired. SeaLink told service held.',
-              'Heavy rain cell over VT-01, about 1 dB of C/N lost. Handed TM-1 to ME-02 at fade onset; AGC far from max, customer notified, service restored.',
-              'Heavy rain cell over VT-01, about 1 dB of C/N lost. Lost lock on TM-1 near peak; AGC at max, modem re-locked after the cell cleared.',
-              'Light rain over VT-01, no measurable fade. Held TM-1 as routine; AGC at floor, modem lock maintained, no customer contact.',
+              'Heavy rain cell over VT-01, about 1 dB of C/N lost. Held TM-1 per SeaLink SLA; watched 7 dB Raw C/N, AGC at max, modem unlock, none fired. SeaLink told.',
+              'Heavy rain cell over VT-01, about 1 dB of C/N lost. Handed TM-1 to ME-02 at fade onset; AGC far from max, customer notified, service restored on VT-01 afterward.',
+              'Heavy rain cell over VT-01, about 1 dB of C/N lost. Lost lock on TM-1 near peak; AGC at max, modem re-locked after the cell cleared, customer notified.',
+              'Light rain over VT-01, no measurable fade. Held TM-1 as routine; AGC at floor, modem lock maintained, no customer contact needed.',
             ],
             correctIndex: 0,
             explanation:
-              'Log what happened, what you chose and why, the trigger thresholds you watched (and that none fired), and that SeaLink heard it from us. The next operator picks up the same tripwires, and the account team can see the customer was told.',
+              'Log what happened, what you chose and why, the trigger thresholds you watched and that none fired, and that SeaLink heard it from us. The next operator picks up the same tripwires, and the account team can see the customer was told.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -955,7 +956,7 @@ export const scenario14Data: ScenarioData = {
         <em>[Text message from Dana at 13:18]</em>
       </p>
       <p>
-        "Rain cell a couple of minutes out. Heavy, twenty minutes through - at C-band that is still only about a dB. James Okafor called - their SLA likes margin loss better than handover events, so he wants us to hold if we can. ME-02 is busy on TM-2. Brief's on your terminal."
+        "There's a rain cell a couple of minutes out. It's a heavy one, twenty minutes through, but at C-band that's still only about a dB. James Okafor called, and their SLA likes margin loss better than handover events, so he wants us to hold if we can. ME-02 is busy on TIDEMARK-2. The brief's on your terminal."
       </p>
       `,
       character: Character.DANA_TORRES,
@@ -982,7 +983,7 @@ export const scenario14Data: ScenarioData = {
       'handover-threshold-quiz': {
         text: `
         <p>
-          AGC's behaving, modem's locked, customer wants the hold. I see no reason to escape. Make the call and tell me what you'd flip on.
+          The AGC's behaving, the modem's locked, and James wants us to hold, so I don't see a reason to hand off. Before we commit, tell me which readings would make you flip the call.
         </p>
         `,
         character: Character.DANA_TORRES,

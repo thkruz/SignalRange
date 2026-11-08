@@ -33,7 +33,7 @@ const SCENARIO_20_OBJECTIVES: Scenario20Objective[] = [
     id: 'review-mission-brief',
     title: 'Review the Incident Brief',
     type: 'quiz',
-    correctAnswer: 'Read both boards before fixing either - triage is a decision about order, and order needs the whole picture',
+    correctAnswer: 'Read both boards before fixing either, because the order depends on the whole picture',
   },
 
   // PHASE 1: VERMONT - START THE SLOW RECOVERY
@@ -54,7 +54,7 @@ const SCENARIO_20_OBJECTIVES: Scenario20Objective[] = [
     id: 'vt-read-board',
     title: 'Read the Vermont Board',
     type: 'quiz',
-    correctAnswer: 'The feed heater is OFF - it should have been running before the front; ice is the consequence, the cold heater is the fault',
+    correctAnswer: 'The feed heater is off, and it should have been running before the front arrived',
   },
   {
     id: 'vt-enable-heater',
@@ -81,19 +81,19 @@ const SCENARIO_20_OBJECTIVES: Scenario20Objective[] = [
     id: 'me-read-board',
     title: 'Read the Maine Board',
     type: 'quiz',
-    correctAnswer: 'One fault, two symptoms: 1 dB back-off drives the HPA near saturation - IMD rises (overdrive) and dissipation climbs (thermal)',
+    correctAnswer: 'One fault: 1 dB back-off pushes the HPA near saturation, raising IMD (overdrive) and heat dissipation (thermal)',
   },
   {
     id: 'coincidence-quiz',
     title: 'Coincidence or Attack?',
     type: 'quiz',
-    correctAnswer: 'Hold it open and collect rule-out evidence as you work: independent causes for each site, no unexplained RF on either spectrum',
+    correctAnswer: 'Hold it open and collect rule-out evidence as you work: independent causes at each site, no unexplained RF on either spectrum',
   },
   {
     id: 'triage-order-quiz',
     title: 'Defend the Order',
     type: 'quiz',
-    correctAnswer: "VT's fix is one switch that runs unattended; ME's fault is dangerous (spectrum pollution + HPA stress) and needs full attention",
+    correctAnswer: "VT's fix is one switch that runs unattended, while ME's fault is dangerous and needs your full attention",
   },
   {
     id: 'me-tx-tab',
@@ -125,7 +125,7 @@ const SCENARIO_20_OBJECTIVES: Scenario20Objective[] = [
     id: 'me-verify-quiz',
     title: 'Confirm Both Symptoms Cleared',
     type: 'quiz',
-    correctAnswer: 'It falls on its own - output power dropped ~9 dB, so the output stage dissipates a fraction of the heat and cools',
+    correctAnswer: 'It falls on its own, because output power dropped about 9 dB and the stage dissipates far less heat',
   },
   {
     id: 'me-spectrum-tab',
@@ -170,13 +170,13 @@ const SCENARIO_20_OBJECTIVES: Scenario20Objective[] = [
     id: 'spectra-read-quiz',
     title: 'What the Spectra Showed',
     type: 'quiz',
-    correctAnswer: 'One carrier at each site, where the frequency plan puts it (1458 at ME-02, 1532 at VT-01) - nothing else in either passband',
+    correctAnswer: 'One carrier at each site where the plan puts it (1458 at ME-02, 1532 at VT-01), and nothing else in either passband',
   },
   {
     id: 'storm-steady-state-quiz',
     title: 'Steady State in the Storm',
     type: 'quiz',
-    correctAnswer: 'Nothing new - the heater holds ice at bay as fast as it forms; heater ON plus periodic margin checks until the front clears',
+    correctAnswer: 'Nothing new: the heater holds ice off as fast as it forms, so leave it on and check margin until the front clears',
   },
 
   // PHASE 4: CUSTOMER, EVIDENCE, LOG
@@ -184,20 +184,20 @@ const SCENARIO_20_OBJECTIVES: Scenario20Objective[] = [
     id: 'james-comms-quiz',
     title: 'Call James Back',
     type: 'quiz',
-    correctAnswer: 'Both trunks up: Vermont was storm icing (heater on), Maine an amplifier config fault (fixed) - coincidence, and here is why',
+    correctAnswer: "Both trunks are up. Vermont was storm icing (heater on), Maine was an amplifier config fault (fixed). It was coincidence, and here's why",
   },
   {
     id: 'adversarial-ruleout-quiz',
     title: 'Close the Question Cleanly',
     type: 'quiz',
-    correctAnswer: 'VT tracked the storm (radar + precip agree, heater fixed it); ME was a config value with mundane history; both spectra clean',
+    correctAnswer: 'VT tracked the storm (radar and precipitation agree, heater fixed it), ME was a config value with a mundane history, both spectra clean',
   },
   {
     id: 'log-dual-outage',
     title: 'Log the Dual Recovery',
     type: 'quiz',
     correctAnswer:
-      'Dual degradation 0712: VT-01 icing (heater on, melted) | ME-02 HPA back-off 1 dB (10 dB restored); causes independent; process fix: feed heater on the shift-change checklist',
+      'Dual degradation 0712: VT-01 icing (heater on, melted) | ME-02 HPA back-off 1 dB (10 dB restored); causes independent; process fix: heater on shift-change checklist',
   },
 ];
 

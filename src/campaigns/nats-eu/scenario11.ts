@@ -134,7 +134,7 @@ export const natsEuScenario11Data: ScenarioData = {
   subtitle: 'SAR-3 First Acquisition',
   duration: '30 min',
   missionType: 'Launch and Early Orbit',
-  description: `08:50 local. MERIDIAN-SAR-3 separated from the upper stage 84 minutes ago and nobody on the ground has heard from her yet.<br><br>Rotterdam's only element set is the launch provider's injection estimate, quoted with a 20 s along-track uncertainty. A refined set from the first ranging arc is due on your console any minute. GW-01 is the first commercial station on her ground track, AOS in about nineteen minutes.<br><br>Anneke is LEOP lead. She wants a test readiness review, the refined elements loaded before AOS, the beacon found and read on the analyzer, and a state-of-health call built one line at a time. Nothing goes up on this pass.`,
+  description: `It's 08:50 local. MERIDIAN-SAR-3 separated from the upper stage 84 minutes ago, and nobody on the ground has heard from her yet.<br><br>Rotterdam's only element set, the orbit data the antenna points from, is the launch provider's injection estimate, quoted with a 20 s along-track uncertainty. A refined set from the first ranging arc will reach your console less than a minute after you close the brief. GW-01 is the first commercial station on her ground track, with AOS in about nineteen minutes.<br><br>Anneke is the LEOP lead. She wants a test readiness review, the refined elements loaded before AOS, the beacon found and read on the analyzer, and a state-of-health call built one line at a time. Nothing goes up on this pass.`,
   equipment: [
     'GW-01 Galway: 4m Ku-Band LEO Tracker',
     'Pass Schedule Console (ephemeris status)',
@@ -192,7 +192,7 @@ export const natsEuScenario11Data: ScenarioData = {
       id: 'review-mission-brief',
       nice: ['K0645', 'K1032'],
       title: 'Read the LEOP Card',
-      description: "Open the LEOP card. It has the SAR-3 frequency plan, the injection set's stated uncertainty, and the flight rules for this pass.",
+      description: "Open the LEOP card. It lists SAR-3's frequency plan, how uncertain the injection set is, and the flight rules for this pass.",
       groundStation: 'GW-01',
       freezesScenarioTimer: true,
       prerequisiteObjectiveIds: [],
@@ -208,16 +208,16 @@ export const natsEuScenario11Data: ScenarioData = {
           description: 'Acquisition Risk Understood',
           params: {
             character: Character.SYSTEM,
-            question: 'The injection set has a stated 1-sigma along-track error of 20 s. Your beam is 0.45 deg wide. What does that mean for acquisition?',
+            question: 'The injection set has a stated along-track error of 20 s, and your beam is 0.45 degrees wide. What does that mean for acquisition?',
             options: [
-              'At AOS the bird can be a few degrees from prediction. Refined elements before the pass, or a beacon search wider than the beam, are needed.',
-              'At AOS the bird is inside the pass window. 20 s is well inside the pass duration, so program-track will find her somewhere in it.',
-              'The beacon frequency is uncertain by the same amount. A wider receiver bandwidth on the modem, or a wider analyzer span, is needed.',
-              'Step-track will pull the pedestal onto her. Once she is within a beamwidth the ACU takes over, so no change to the elements is needed.',
+              'At AOS the bird can be many beamwidths off prediction, so you need better elements or a wider search.',
+              'At AOS the bird is inside the pass window, because 20 s is short next to the pass, so program-track will find her.',
+              'The beacon frequency is uncertain by the same amount, so you need a wider modem bandwidth or a wider analyzer span.',
+              'Step-track will pull the pedestal onto her once she is within a beamwidth, so you need no change to the elements.',
             ],
             correctIndex: 0,
             explanation:
-              'A LEO bird moves about 7.5 km every second; 20 s along-track at 700 km range is several beamwidths of pointing error. Either the elements get better before AOS, or the search does. LEOP clock started.',
+              "A LEO bird moves about 7.5 km every second, so 20 s along-track is about 150 km. At 700 km range that's many times the 0.45 degree beam, so program-track on the injection set would point at empty sky. Being inside the pass window doesn't help, because the antenna has to point at her, and step-track can only take over once she's already inside the beam. Either the elements get better before AOS or the search gets wider. The LEOP clock starts now.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -234,7 +234,7 @@ export const natsEuScenario11Data: ScenarioData = {
       id: 'dashboard-sweep',
       nice: ['T0153', 'K0741'],
       title: 'GW-01 Dashboard Sweep',
-      description: 'A new spacecraft starts with the board read. Confirm the active alarm state on GW-01.',
+      description: 'Read the GW-01 dashboard before anything else on a new spacecraft, and confirm which alarms are active.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['review-mission-brief'],
       timeLimitSeconds: 90,
@@ -252,16 +252,16 @@ export const natsEuScenario11Data: ScenarioData = {
           description: 'Alarm State Confirmed',
           params: {
             character: Character.SYSTEM,
-            question: 'What is the active alarm state on GW-01 as the LEOP card opens?',
+            question: 'What is the active alarm state on the GW-01 dashboard right now?',
             options: [
-              'RX AGC on noise only - no carrier on an empty sky, no hardware alarm',
-              'No active alarms - all systems nominal, board clear for LEOP',
-              'GPSDO in holdover - reference alarm, timing at risk for the pass',
-              'Antenna drive fault - hardware alarm, pedestal down for the pass',
+              'The AGC no-carrier warning only: an empty sky, and no hardware alarm',
+              'No active alarms: every system is nominal and the board is clear for LEOP',
+              'A GPSDO holdover alarm: the reference has dropped and timing is at risk',
+              'An antenna drive fault: a hardware alarm, with the pedestal down for the pass',
             ],
             correctIndex: 0,
             explanation:
-              'The AGC no-carrier warning is empty sky, not a fault. On a new spacecraft every anomaly will be blamed on the bird first; the board is how you prove it was not the station.',
+              "The AGC no-carrier warning is what an empty sky looks like before AOS, so it isn't a fault. On a new spacecraft every anomaly gets blamed on the bird first, and a board you read at the start is how you prove it wasn't the station.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -274,7 +274,8 @@ export const natsEuScenario11Data: ScenarioData = {
       id: 'reference-check',
       nice: ['T0431', 'K0740', 'S0630'],
       title: 'Reference Check',
-      description: 'GPSDO locked and out of holdover. Rotterdam wants the reference state on the readiness line, and the pass will show you why.',
+      description:
+        'Check on the GPS Timing tab that the GPSDO is locked and not in holdover. Rotterdam wants that reference state on record before the pass, because a timing error at the station would look like a fault on the bird.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['dashboard-sweep'],
       timeLimitSeconds: 2 * 60,
@@ -297,16 +298,16 @@ export const natsEuScenario11Data: ScenarioData = {
           description: 'Reference as Evidence',
           params: {
             character: Character.SYSTEM,
-            question: 'Why does the LEOP card want the GW-01 reference status recorded before the pass, on a receive-only contact?',
+            question: 'Why does the LEOP card want the GW-01 reference status recorded before a pass where nothing is transmitted?',
             options: [
-              'The Doppler curve is SOH evidence: a reference error at the station looks exactly like a frequency error on the bird',
-              'The uplink needs it: if the flight rules change mid-pass, a command goes up on the reference the card has recorded',
-              'It is a formality: the reference does not affect a receive-only contact, but the card has a line for it either way',
-              'The pass planner needs it: the AOS time-tag comes from the GPSDO, so the log has to show which clock it came from',
+              'The Doppler curve is SOH evidence: a station reference error looks like a frequency error on the bird',
+              'The uplink needs it: if the flight rules change mid-pass, a command goes up on the recorded reference',
+              "It's a formality: the reference doesn't affect a receive-only contact, but the card has a line for it",
+              'The pass planner needs it: the AOS time-tag comes from the GPSDO, so the log shows which clock it used',
             ],
             correctIndex: 0,
             explanation:
-              'The reference has to be on record before the measurement counts. A beacon 20 kHz off frequency on a new bird is either her transmitter or your LNB LO. With the GPSDO disciplined and logged, it is hers, and Rotterdam can act on it. Without the log line, nobody can say.',
+              "The reference has to be on record before the measurement counts, even on a receive-only pass, because every frequency you read depends on it. A beacon 20 kHz off frequency on a new bird is either her transmitter or your LNB's local oscillator. With the GPSDO locked and logged, it's her transmitter, and Rotterdam can act on that. Without the log line, nobody can say.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -320,7 +321,7 @@ export const natsEuScenario11Data: ScenarioData = {
       nice: ['S0630', 'T0513'],
       title: 'Test Readiness Review',
       description:
-        "Configure the station for a bird it has never seen: set the ACU beacon frequency to SAR-3's telemetry beacon (11785 MHz), then close the TRR checklist into the log.",
+        "Set the ACU beacon frequency to SAR-3's telemetry beacon, 11785 MHz, because the station still has SAR-1's 11711 MHz. Then close the test readiness review (TRR) checklist into the log.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['reference-check'],
       timeLimitSeconds: 3 * 60,
@@ -337,7 +338,7 @@ export const natsEuScenario11Data: ScenarioData = {
           description: 'TRR Checklist Closed',
           params: {
             character: Character.SYSTEM,
-            question: 'TRR for a first acquisition. Which line set below is the one that goes in the LEOP log?',
+            question: 'Which readiness line goes in the LEOP log for this first acquisition?',
             options: [
               'Beacon 11785 MHz on the ACU, reference disciplined, injection set loaded and flagged as provisional, uplink cold.',
               'Beacon 11711 MHz on the ACU, video IF 1414 MHz on the receiver, injection set loaded and flagged as provisional, uplink cold.',
@@ -346,7 +347,7 @@ export const natsEuScenario11Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'SAR-3 has her own frequency plan; 11711 and 1414 are SAR-1. The uplink stays cold: no command goes up before SOH is confirmed. The refined set is not here yet, and the log says so.',
+              "SAR-3 has her own frequency plan, and 11711 MHz and 1414 MHz belong to SAR-1. The uplink stays cold because no command goes up before the state of health is confirmed. The refined set hasn't been loaded yet, so the log has to call the injection set provisional, and the GPSDO has to be locked, not in holdover.",
             pointPenalty: 5,
             documentSection: 'Readiness',
             documentLine:
@@ -363,7 +364,7 @@ export const natsEuScenario11Data: ScenarioData = {
       nice: ['S0421', 'K0773'],
       title: 'Analyzer on the Beacon',
       description:
-        'Frame the search. Centre the analyzer on the predicted beacon IF, 1315 MHz, with a 2 MHz span: wide enough to hold +/- 270 kHz of Doppler and a transmitter that has never been measured.',
+        "Set the analyzer center frequency to the predicted beacon IF, 1315 MHz, and the span to 2 MHz. That's wide enough to hold +/- 270 kHz of Doppler plus a transmitter nobody has measured yet.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['test-readiness'],
       timeLimitSeconds: 2 * 60,
@@ -386,16 +387,16 @@ export const natsEuScenario11Data: ScenarioData = {
           description: 'Search Span Read',
           params: {
             character: Character.SYSTEM,
-            question: 'The analyzer boots at 60 MHz span, 1 MHz RBW, centred on 1414. Why not search for the beacon there?',
+            question: 'The analyzer starts at a 60 MHz span and a 1 MHz RBW, centered on 1414 MHz. Why not search for the beacon with those settings?',
             options: [
-              'At 60 MHz span a CW tone is one pixel over a 1 MHz noise bin, and 1315 is not even on screen; 2 MHz across 1315 shows the whole Doppler walk',
-              'The analyzer cannot display anything below 1400 MHz at that span, and 1315 is off the low edge; 2 MHz across 1315 is the only way to reach it',
-              'It would work at 60 MHz, and 1315 is inside the screen with 1 MHz RBW; 2 MHz across 1315 is a Rotterdam preference for the log',
-              'The video carrier at 1340 would hide the beacon at that span, and 1315 sits under its skirt; 2 MHz across 1315 keeps 1340 off the screen',
+              'At 60 MHz a CW tone is one pixel over a 1 MHz noise bin, and 1315 is off screen; 2 MHz across 1315 shows the Doppler walk',
+              "The analyzer can't display anything below 1400 MHz at that span, and 1315 is off the low edge; 2 MHz across 1315 reaches it",
+              'It would work at 60 MHz, because 1315 is inside the screen with a 1 MHz RBW; 2 MHz across 1315 is only a Rotterdam preference',
+              'The video carrier at 1340 would hide the beacon at that span, and 1315 sits under its skirt; 2 MHz across 1315 keeps 1340 off screen',
             ],
             correctIndex: 0,
             explanation:
-              'Span decides what you can see, RBW decides how well. At 2 MHz the tone stands clear of the floor. A first acquisition is a search: wide enough for the uncertainty, narrow enough that a 0 dBm CW tone is unmistakable. 2 MHz is both.',
+              "Span decides what you can see, and the resolution bandwidth (RBW) decides how clearly you see it. A 60 MHz span centered on 1414 MHz runs from about 1384 to 1444 MHz, so 1315 isn't even on the screen. At 2 MHz across 1315 the whole Doppler walk fits, and the tone stands clear of the noise floor. A first acquisition is a search, so the span has to be wide enough for the uncertainty.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -409,7 +410,7 @@ export const natsEuScenario11Data: ScenarioData = {
       nice: ['T0431', 'K0645', 'S0630'],
       title: 'Uplink Cold Check',
       description:
-        'Flight rule: nothing goes up. Confirm the transmit chain is cold - HPA output disabled, BUC muted, modem off air - and that it will stay that way for the whole pass.',
+        'The flight rule for this pass is that nothing goes up. Confirm the transmit chain is cold, with the HPA output disabled, the BUC muted and the modem off air, and keep it that way for the whole pass.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['analyzer-on-the-beacon'],
       timeLimitSeconds: 2 * 60,
@@ -438,7 +439,7 @@ export const natsEuScenario11Data: ScenarioData = {
           description: 'Flight Rule Read',
           params: {
             character: Character.SYSTEM,
-            question: 'The link comes up clean and the uplink chain is right there. Which state satisfies "cold" for the flight rule?',
+            question: 'The uplink chain is right there and the link will come up clean. Which state counts as "cold" under the flight rule?',
             options: [
               'Modem off air, BUC muted, HPA output disabled; all powered and on the reference, so the chain comes up in order on Wednesday',
               'BUC and HPA powered down, modem off air; nothing on the reference, so the chain gets a full warm-up and re-lock on Wednesday',
@@ -446,7 +447,8 @@ export const natsEuScenario11Data: ScenarioData = {
               'Doppler compensation off on the TT&C console, modem off air; no uplink can be tuned, so nothing can go up before Wednesday',
             ],
             correctIndex: 0,
-            explanation: 'Cold is a defined state, not an absence. Every element idle, every element ready, and nothing that could radiate if somebody leaned on a switch.',
+            explanation:
+              'Cold is a defined state, not an absence: the modem is off air, the BUC is muted and the HPA output is disabled. Every element stays powered and on the reference, so nothing needs a warm-up later, but nothing can radiate if someone leans on a switch. Enabling the HPA would leave one switch between the chain and a transmission.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -459,7 +461,8 @@ export const natsEuScenario11Data: ScenarioData = {
       id: 'load-refined-elements',
       nice: ['T1138', 'K1032'],
       title: 'Load the Refined Elements',
-      description: "Rotterdam's ranging solution replaces the injection estimate. When the ephemeris panel flags SAR-3 as STALE, load the refined set before AOS.",
+      description:
+        "On the Pass Schedule tab, load Rotterdam's refined set, which replaces the injection estimate. The ephemeris panel flags SAR-3 as STALE once the new set is waiting, and the load has to be done before AOS.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['uplink-cold-check'],
       timeLimitSeconds: 3 * 60,
@@ -483,16 +486,17 @@ export const natsEuScenario11Data: ScenarioData = {
           description: 'Origin Over Age',
           params: {
             character: Character.SYSTEM,
-            question: 'The injection set is 84 minutes old and about 30 s wrong along-track. The refined set is twenty minutes old. Which matters more, the age or the origin?',
+            question:
+              'The injection set is over an hour old and about 30 s wrong along-track, and the refined set is a fresh fit to the first ranging arc. Which matters more, the age or the origin?',
             options: [
-              'Origin: one is a launch-provider estimate from separation, the other is a solution fitted to ranging; age grows the error of either',
-              'Age: the younger set is always the better set, whatever produced it; a solution fitted an hour ago has had an hour of drag on it',
-              'Neither: on a 0.45 degree beam the two sets are equivalent; 30 s along-track at 700 km is still inside the search the ACU runs',
-              'Age: an element set older than an hour cannot be used for program-track; the injection set is out of date whatever its origin',
+              'Origin: one is a launch-provider estimate, the other is a fit to ranging; age grows the error of either',
+              'Age: the younger set is always the better set, whatever produced it, because old sets pick up drag',
+              'Neither: on a 0.45 degree beam the two sets are equivalent, because 30 s along-track is inside the ACU search',
+              'Age: a set older than an hour cannot be used for program-track, so the injection set is out whatever its origin',
             ],
             correctIndex: 0,
             explanation:
-              'A TLE is a fit to observations. The injection set is a fit to none; it is what the rocket said it did. Along-track error grows with age for both, which is why the refined set gets replaced again after this pass.',
+              "An element set is only as good as the observations it was fitted to. The injection set is a fit to none: it's the launch provider's account of what the rocket did. Along-track error grows with age on both sets, which is why the refined set gets replaced again after this pass.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -505,7 +509,8 @@ export const natsEuScenario11Data: ScenarioData = {
       id: 'read-the-refined-pass',
       nice: ['K1032', 'S0421'],
       title: 'Read the Refined Pass',
-      description: 'With the refined set loaded, read the pass off the schedule: AOS time and azimuth, peak, LOS. Those are the numbers the SOH is measured against.',
+      description:
+        'With the refined set loaded, read the pass off the Pass Schedule: the AOS time and azimuth, the peak elevation, and the LOS. The state of health is measured against these numbers.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['load-refined-elements'],
       timeLimitSeconds: 2 * 60,
@@ -531,7 +536,7 @@ export const natsEuScenario11Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Thirty seconds later and a degree higher than the injection estimate said. Northbound, rising in the south-east. 25.1 degrees is the 09:48 pass, and that is SAR-1, who is not on the card.',
+              "The refined pass starts about thirty seconds later and peaks over a degree higher than the injection estimate said. She rises in the south-east and sets in the north, so the azimuths can't be swapped. The 25.1 degree peak belongs to the 09:48 pass, which is SAR-1, and she isn't on the card.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -548,7 +553,7 @@ export const natsEuScenario11Data: ScenarioData = {
       id: 'first-acquisition',
       nice: ['T0513', 'S0421', 'K1032'],
       title: 'First Acquisition',
-      description: 'AOS 09:08:58 from azimuth 143. Program-track MERIDIAN-SAR-3 on the refined set and find the beacon on the analyzer at 1315 MHz IF.',
+      description: 'AOS is at 09:08:58 from azimuth 143. Turn on program-track for MERIDIAN-SAR-3 on the refined set, then find the beacon on the analyzer at 1315 MHz IF.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['read-the-refined-pass'],
       conditions: [
@@ -583,7 +588,7 @@ export const natsEuScenario11Data: ScenarioData = {
       id: 'narrow-the-analyzer',
       nice: ['S0421', 'K0773', 'K1032'],
       title: 'Narrow the Analyzer',
-      description: 'Tone found. Drop the resolution bandwidth to 10 kHz so the CW line is a line, and read which way it is walking.',
+      description: "The tone is found. Set the resolution bandwidth (RBW) to 10 kHz so the CW tone shows as a thin line, then read which way it's drifting.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['first-acquisition'],
       conditions: [
@@ -600,14 +605,14 @@ export const natsEuScenario11Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'The tone sits below 1315 MHz at IF and is sliding upward toward it. Is that SAR-3 approaching, and how do you know?',
             options: [
-              'Yes: the high-side LNB LO inverts the spectrum, so an approaching bird sits BELOW nominal at IF, and the upward slide is the range rate falling',
-              'No: an approaching bird is always above nominal, whatever the LO, so a tone below 1315 sliding upward is something receding',
-              'Cannot tell: the analyzer shows a tone and a direction, but only the ACU knows the range rate, so the sign has to come from there',
+              'Yes: the high-side LNB LO inverts the spectrum, so an approaching bird sits below nominal at IF and slides up as the shift shrinks',
+              'No: an approaching bird is always above nominal whatever the LO, so a tone below 1315 sliding up is something receding',
+              "Can't tell: the analyzer shows a tone and a direction, but only the ACU knows the range rate, so the sign comes from there",
               'Yes: a tone below nominal means a transmitter running slow, which is normal for a cold spacecraft, and the slide is her warming up',
             ],
             correctIndex: 0,
             explanation:
-              'IF = LO - RF. Approach raises the RF and lowers the IF; as she climbs the shift shrinks and the tone rises through 1315 at culmination, then keeps rising as she recedes. A tone on the wrong side sliding the wrong way is not your bird.',
+              "The LNB subtracts the received frequency from its local oscillator, so IF = LO - RF. An approaching bird raises the RF, which lowers the IF, so her tone starts below 1315. As she climbs, the shift shrinks and the tone rises through 1315 at culmination, then keeps rising as she recedes. A tone on the wrong side, sliding the wrong way, isn't your bird.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -620,7 +625,8 @@ export const natsEuScenario11Data: ScenarioData = {
       id: 'acu-beacon-lock',
       nice: ['T0513', 'S0421', 'S0842'],
       title: 'ACU Beacon Lock',
-      description: 'Confirm the ACU has beacon lock on 11785 MHz and record it. The pedestal seeing her in the beam centre is the first line of the state of health.',
+      description:
+        "On the ACU Control tab, confirm the ACU has beacon lock on 11785 MHz and record it. The pedestal's own receiver seeing her at the center of the beam is the first line of the state of health.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['narrow-the-analyzer'],
       conditions: [
@@ -635,7 +641,7 @@ export const natsEuScenario11Data: ScenarioData = {
           description: 'Lock Recorded',
           params: {
             character: Character.SYSTEM,
-            question: 'The ACU reports beacon LOCK under program-track. What does that add to the SOH that the tone on the analyzer did not?',
+            question: "The ACU reports beacon LOCK under program-track. What does that add to the state of health that the tone on the analyzer didn't?",
             options: [
               "The pedestal's own receiver sees the beacon at the centre of the beam: pointing, elements and transmitter all agree at once",
               'Nothing new: lock is a display of the same signal the analyzer shows, so pointing and elements are no better proven than before',
@@ -644,7 +650,7 @@ export const natsEuScenario11Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'A tone on the analyzer alone could be a sidelobe. Three independent things agreeing is what "acquired" means. Rotterdam logs the lock time; it is the first timestamp in the spacecraft\'s commercial life.',
+              "A tone on the analyzer alone could be a sidelobe, a weaker response off the edge of the beam. Lock means pointing, elements and transmitter all agree at once, and that's what \"acquired\" means. Rotterdam logs the lock time, because it's the first timestamp in the spacecraft's commercial life.",
             pointPenalty: 5,
             documentSection: 'State of Health',
             documentLine: 'SOH 1: ACU beacon lock on 11785 MHz under program-track on the refined set; pointing, elements and transmitter agree.',
@@ -660,7 +666,7 @@ export const natsEuScenario11Data: ScenarioData = {
       nice: ['T1611', 'S0842', 'K0740'],
       title: 'Beacon Level',
       description:
-        'Once she is past culmination (09:13:44, 696 km), read the beacon level on RX analysis and record it against the prediction. A CW beacon should clear -65 dBm at the analyzer input. The analyzer tap sits after the AGC, so its level stays flat near -62 dBm all pass; the number that climbs is the ACU Beacon C/N, from about 16 dB at AOS to about 27 dB at the top, so record that curve beside the level.',
+        "Wait until she's past culmination (09:13:44, 696 km). Then read the beacon level on the RX Analysis tab and record it against the prediction. A CW beacon should clear -65 dBm at the analyzer input. The analyzer tap sits after the AGC, so its level stays flat near -62 dBm all pass. The number that climbs is the ACU Beacon C/N, from about 16 dB at AOS to about 27 dB at the top, so record that curve beside the level.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['acu-beacon-lock'],
       conditions: [
@@ -686,7 +692,7 @@ export const natsEuScenario11Data: ScenarioData = {
           description: 'Level Recorded',
           params: {
             character: Character.SYSTEM,
-            question: 'Rotterdam wants the beacon level as a number, not "present". Why?',
+            question: 'Rotterdam wants the beacon level as a number, not just "present". Why?',
             options: [
               "A level against the prediction is the transmitter's health: 10 dB low with the right Doppler is a sick transmitter on a good orbit",
               'A level against the contract is the billing basis: the customer pays for a pass that met the committed margin, not one merely present',
@@ -695,7 +701,7 @@ export const natsEuScenario11Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              "Today's number is the baseline every later pass is compared with. The first measurement of anything on a new spacecraft is the one every trend starts from. Take it near culmination, where the geometry is best known, and write the elevation next to it.",
+              'Rotterdam compares every later pass with today\'s number, so the first measurement on a new spacecraft is the one every trend starts from. A level 10 dB low with the right Doppler points to a sick transmitter on a good orbit, and "present" can\'t show that. Write the elevation next to the number, because the level changes with range.',
             pointPenalty: 5,
             documentSection: 'State of Health',
             documentLine:
@@ -711,7 +717,8 @@ export const natsEuScenario11Data: ScenarioData = {
       id: 'state-of-health',
       nice: ['T1611', 'S0842'],
       title: 'Initial State of Health',
-      description: 'Close the SOH: beacon present, tracking, Doppler profile matching the refined set. Make the call for Rotterdam.',
+      description:
+        'Close the state of health (SOH) for Rotterdam. The beacon is present, the antenna is tracking, and the Doppler profile matches the refined set, so make the call.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['beacon-level'],
       conditions: [
@@ -720,7 +727,7 @@ export const natsEuScenario11Data: ScenarioData = {
           description: 'SOH Recorded',
           params: {
             character: Character.SYSTEM,
-            question: 'Beacon present and on level, antenna tracking, Doppler profile matches the refined set. What is the SOH call?',
+            question: 'The beacon is present and on level, the antenna is tracking, and the Doppler profile matches the refined set. What is the SOH call?',
             options: [
               'Spacecraft transmitting on the expected frequency and orbit; no anomaly; recommend proceeding to command checkout next pass.',
               'Spacecraft transmitting on the expected frequency and orbit; healthy; recommend commanding the payload on now while the link is up.',
@@ -729,7 +736,7 @@ export const natsEuScenario11Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'A CW beacon on frequency with the right Doppler curve tells you the transmitter, the reference, and the orbit are all as expected. If the elements had been loaded after AOS the call would carry a qualifier, because the first minute of track would have been on a set you knew was stale.',
+              "A CW beacon on frequency with the right Doppler curve shows that the transmitter, the reference and the orbit are all as expected, so the call is no anomaly. Commanding the payload now would break the flight rules, and the video isn't decoded because the payload stays unpowered until commissioning. If the elements had been loaded after AOS, the call would need a qualifier, because the first minute of track would have been on a set you knew was stale.",
             pointPenalty: 5,
             documentSection: 'State of Health',
             documentLine: 'SOH 3: beacon acquired, orbit matches refined set, Doppler profile nominal, no anomaly. Recommend command checkout next pass.',
@@ -748,7 +755,8 @@ export const natsEuScenario11Data: ScenarioData = {
       id: 'secure-after-los',
       nice: ['T0431', 'K0645', 'S0842'],
       title: 'Secure After LOS',
-      description: 'LOS 09:18:33. When she sets, confirm the uplink stayed cold for the whole pass and close the LEOP log for this contact. The two minutes start at LOS.',
+      description:
+        'She sets at 09:18:33. Confirm that the uplink stayed cold for the whole pass, and close the LEOP log for this contact. You have two minutes, and they start at LOS.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['state-of-health'],
       timeLimitSeconds: 2 * 60,
@@ -786,7 +794,7 @@ export const natsEuScenario11Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'The panel will read STALE again when the new set arrives. Every pass is more ranging. Along-track error grows with age on every set, so a bird a day old gets a set an hour old. Load what Rotterdam sends, every time, before AOS.',
+              "Rotterdam fits a new solution to every pass, so the panel will read STALE again when it arrives. Along-track error grows with age on every set, which is why the refined set can't stay good for the rest of the day. Load whatever Rotterdam sends before AOS, every time.",
             pointPenalty: 5,
             documentSection: 'Close-out',
             documentLine:
@@ -802,7 +810,7 @@ export const natsEuScenario11Data: ScenarioData = {
       id: 'leop-handover',
       nice: ['T0513', 'K0645'],
       title: 'LEOP Handover',
-      description: 'Tell Anneke what she has.',
+      description: 'Give Anneke the handover: what you acquired, what you recorded, and why nothing went up.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['secure-after-los'],
       timeLimitSeconds: 3 * 60,
@@ -813,16 +821,16 @@ export const natsEuScenario11Data: ScenarioData = {
           description: 'Handover Given',
           params: {
             character: Character.SYSTEM,
-            question: 'You had the bird, the link was clean and the uplink chain was right there. Why did nothing go up?',
+            question: 'The link was clean and the uplink chain was right there, so why did nothing go up on this pass?',
             options: [
-              'The flight rules sequence LEOP: no command until SOH is confirmed and tracking is shown. A rejected command on a new bird is unexplainable.',
-              'The TT&C key had not been loaded: no command can be authenticated without it. On a pass with the key in place it would have been fine.',
-              'The pass was too short: the chain takes minutes to bring up in order. On a longer pass with time to warm up it would have been fine.',
-              'The BUC was muted: there was no time to bring the chain up in order. On a pass with the chain already warm it would have been fine.',
+              "The flight rules sequence LEOP: no command until tracking and SOH are on record, or a failure can't be explained.",
+              "The TT&C key hadn't been loaded, so no command can be authenticated; with the key in place it would have been fine.",
+              'The pass was too short, because the chain takes minutes to bring up in order; a longer pass would have been fine.',
+              'The BUC was muted, so there was no time to bring the chain up in order; with the chain already warm it would have been fine.',
             ],
             correctIndex: 0,
             explanation:
-              'On a new spacecraft every first is evidence. If a command fails before tracking and SOH are on record, nobody can say whether the bird, the link, or the station was the cause. Commissioning is next pass.',
+              'On a new spacecraft every first is evidence. If a command fails before tracking and the state of health are on record, nobody can say whether the bird, the link or the station was the cause. The muted BUC was the flight rule being followed, not a limit of the chain. Commissioning comes later, on Wednesday.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -839,7 +847,7 @@ export const natsEuScenario11Data: ScenarioData = {
         <em>[Text message from Anneke Visser at 08:47]</em>
       </p>
       <p>
-        "Separation confirmed at 07:26. SAR-3 is on her own and Galway is the first commercial site on her track, AOS about 09:09. All I have is the launch provider's injection set; the first ranging arc is being solved now and I will push the refined elements to your console as soon as it closes. Readiness review, elements, beacon, then state of health. Nothing else."
+        "Separation was confirmed at 07:26, so SAR-3 is on her own now. Galway is the first commercial site on her track, with AOS at about 09:09. All I have is the launch provider's injection set, which is their estimate of her orbit. The first ranging arc is being solved now, and I'll push the refined elements to your console as soon as it closes. Please do the readiness review, load the elements, find the beacon, and then give me the state of health. Nothing else goes up on this pass."
       </p>
       `,
       character: Character.ANNEKE_VISSER,
@@ -850,7 +858,7 @@ export const natsEuScenario11Data: ScenarioData = {
       'test-readiness': {
         text: `
         <p>
-          TRR noted, thank you. The refined set from the first ranging arc is on its way to your console now; load it the moment the panel flags it. The injection numbers had her thirty seconds out, which on a 0.45 degree beam is not a small thing.
+          Readiness review noted, thank you, Galway. That was a satellite this station had never seen, and it's clean. The refined set from the first ranging arc is arriving on your console, and the injection numbers had her thirty seconds out, which is a lot on a 0.45 degree beam. You'll load the refined set a little later in the checklist, and it has to be in before AOS.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -863,7 +871,7 @@ export const natsEuScenario11Data: ScenarioData = {
           <em>[Text message from Anneke Visser at {{stationTime}}]</em>
         </p>
         <p>
-          "Cold chain logged on my side as well. I know it feels like a formality. On Wednesday, when we send the first command, the fact that nothing went up today is the reason a rejected command will mean something."
+          "Cold chain logged on my side as well. I know checking it felt like a formality when nothing is going up. But on Wednesday we send the first command, and the fact that nothing went up today is what lets us explain a rejected command. Load the refined set next."
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -873,7 +881,7 @@ export const natsEuScenario11Data: ScenarioData = {
       'first-acquisition': {
         text: `
         <p>
-          That's her. First contact from a commercial site, on frequency, on the refined orbit. Read her for me - level, Doppler, lock - one line at a time; I have the whole room waiting on it.
+          That's her, on the refined orbit, and the whole room just heard it. You've found the beacon. Narrow the analyzer on the tone and tell me which way she's drifting, then give me the lock and the level.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -883,7 +891,7 @@ export const natsEuScenario11Data: ScenarioData = {
       'acu-beacon-lock': {
         text: `
         <p>
-          Lock time logged. The room just noticed. Carry on.
+          Lock time logged. The tone is on frequency and moving the right way, which makes this our first contact from a commercial site. Next, give me the beacon level.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -893,7 +901,7 @@ export const natsEuScenario11Data: ScenarioData = {
       'leop-handover': {
         text: `
         <p>
-          Logged. Beacon acquired, level and Doppler on record, orbit confirmed, no anomaly, and nobody sent anything they could not explain afterwards. That is exactly what launch day is supposed to look like. Commissioning is Wednesday; I will send the acceptance test plan tonight. Well done, Galway.
+          Logged. The beacon is acquired, the level and Doppler are on record, the orbit is confirmed, there's no anomaly, and nothing went up that we'd have to explain afterwards. That's exactly what launch day should look like. I'll tell my flight dynamics people that their ranging solution held up. Commissioning is Wednesday, and I'll send the acceptance test plan tonight. Well done, Galway.
         </p>
         `,
         character: Character.ANNEKE_VISSER,

@@ -83,7 +83,7 @@ export const natsEuScenario8Data: ScenarioData = {
   subtitle: 'Solo Evaluation',
   duration: '40 min',
   missionType: 'Evaluation',
-  description: `00:15 local. Charlie is at home. Fiona takes the first Shetland pass and goes off shift at 01:00; after that SH-02 is yours, remote, along with everything else.<br><br>This is the qualification shift for NATS Europe LEO operations: a contact plan to build across two sites, a COMSEC rotation that fell on your watch, an acceptance budget to prove, a command that has to reach MERIDIAN-SAR-1 inside a seven-minute window, and then two more contacts before dawn that nobody has pre-checked for you.<br><br>Nobody is going to prompt you. Everything on this shift you have already done once.`,
+  description: `It's 00:15 local. Charlie is at home, and Fiona is on console for the first Shetland pass until she goes off shift at 01:00. After that SH-02 is yours too, remotely, along with everything else.<br><br>This is the qualification shift for NATS Europe LEO operations. You have a contact plan to build across two sites, a COMSEC rotation that fell on your watch, an acceptance budget to prove, and a command to get to MERIDIAN-SAR-1 inside a window of about seven minutes. After that come two more contacts before dawn, and nobody has pre-checked them for you.<br><br>Nobody is going to prompt you. You've already done everything on this shift once.`,
   equipment: [
     'GW-01 Galway: 4m Ku-Band LEO Tracker',
     'SH-02 Shetland: 4m Ku-Band LEO Tracker (remote console)',
@@ -202,7 +202,7 @@ export const natsEuScenario8Data: ScenarioData = {
       id: 'review-mission-brief',
       nice: ['K0645', 'T0081'],
       title: 'Take the Shift',
-      description: 'Open the shift brief and take the console. Everything you need is in it; nobody will walk you through the rest.',
+      description: 'Open the shift brief and take the console. Everything you need is in the brief, and nobody will walk you through the rest.',
       groundStation: 'GW-01',
       freezesScenarioTimer: true,
       prerequisiteObjectiveIds: [],
@@ -218,16 +218,17 @@ export const natsEuScenario8Data: ScenarioData = {
           description: 'Order of Work',
           params: {
             character: Character.SYSTEM,
-            question: 'Plan, rotation, budget. AOS is at 00:30. Which of these depend on the spacecraft being in view?',
+            question:
+              'Tonight you have a plan to build, a key rotation to complete and a link budget to predict, and AOS is at 00:30. Which of these depend on the spacecraft being in view?',
             options: [
-              'None of them - the plan, the key and the worksheet are all ground-side, so all three can be finished before AOS',
-              'The rotation - the far end must be in view to acknowledge the new key, so it waits for the 00:30 window',
-              'The budget - it needs a live C/N from the modem to compute, so the worksheet cannot be signed until AOS',
-              'The plan - a contact can only be allocated while its bird is above the mask, so it is built pass by pass',
+              'None of them: the plan, the rotation and the budget are all ground-side, so all three can be done before AOS',
+              'The rotation: the spacecraft has to be in view to acknowledge the new key, so it waits for the 00:30 window to open',
+              'The budget: it needs a live C/N reading from the modem to compute, so it cannot be signed off until after AOS',
+              'The plan: a contact can only be allocated while its satellite is above the mask, so it is built pass by pass',
             ],
             correctIndex: 0,
             explanation:
-              'The plan, the key and the worksheet are all ground-side. The pass is seven and a half minutes and none of it should be spent on preparation. The chain goes up inside the window, after the downlink is proven cold. Sixteen minutes to AOS. Shift clock started.',
+              'None of the three needs the spacecraft: the plan and the budget are worked out on the ground, and the key rotation is initiated and confirmed at your console. The pass is only seven and a half minutes long, so none of it should go on preparation. You have about fifteen minutes to AOS, and the shift clock starts now.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -244,7 +245,7 @@ export const natsEuScenario8Data: ScenarioData = {
       id: 'build-the-night-plan',
       nice: ['K0689', 'T0129'],
       title: 'Build the Night Contact Plan',
-      description: 'Allocate the required contacts across GW-01 and SH-02 with no site double-booked. The plan must read DECONFLICTED.',
+      description: 'Allocate the required contacts across GW-01 and SH-02 without double-booking either site. The plan has to read DECONFLICTED before you move on.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['review-mission-brief'],
       timeLimitSeconds: 4 * 60,
@@ -268,16 +269,17 @@ export const natsEuScenario8Data: ScenarioData = {
           description: 'Dropped Contact Justified',
           params: {
             character: Character.SYSTEM,
-            question: 'The 04:24 Shetland overhead and the 04:26 Galway pass are the same orbit. One operator, two sites. What happens to the overhead?',
+            question:
+              "The 04:24 Shetland overhead and the 04:26 Galway pass are on the same orbit, and one operator can't fly two sites at once. What should happen to the Shetland overhead?",
             options: [
-              'It is priority 3 and may be dropped: the plan is valid without it, and one operator cannot fly both sites at once',
-              'It must be allocated to SH-02: the plan is invalid without it, and a site with a pass in view cannot sit idle',
+              'It is dropped: it is priority 3, so the plan stays valid without it and only one site can be flown',
+              'It is allocated to SH-02: the plan is invalid without it, because a site with a pass in view cannot sit idle',
               'Both go to Galway: the higher pass wins, and one pedestal can take the two contacts back to back',
               'It replaces the Galway pass: 72 degrees at Shetland is the steeper geometry, so it is the one to fly alone',
             ],
             correctIndex: 0,
             explanation:
-              'The plan requires priority 2 and above. Dropping a P3 is a decision, and the plan records who made it and why: Fiona is off shift, and the 73 degree Galway pass is the stronger one to fly alone.',
+              "The plan only requires contacts of priority 2 and above, so dropping a priority 3 contact keeps it valid. The Shetland overhead overlaps the Galway pass in time, and with Fiona off shift you're the only operator for both sites. Galway's 73 degree pass is priority 1, so that's the one to fly.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -290,7 +292,7 @@ export const natsEuScenario8Data: ScenarioData = {
       id: 'night-key-rotation',
       nice: ['K0874', 'K0728', 'T1567'],
       title: 'Complete the COMSEC Rotation',
-      description: 'The scheduled rotation is pending on the command key. Initiate, then confirm, before the pass - or nothing you send will authenticate.',
+      description: 'The scheduled rotation of the command key is pending. Initiate it and then confirm it before the pass, or nothing you send will authenticate.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['review-mission-brief'],
       timeLimitSeconds: 3 * 60,
@@ -311,7 +313,7 @@ export const natsEuScenario8Data: ScenarioData = {
       nice: ['T0081', 'K0740'],
       title: 'Predict the Night Link',
       description:
-        'Compute the expected C/N for this pass. The geometry is better than the afternoon passes: 581 km at maximum elevation, free-space path loss 169.1 dB at 11686 MHz. EIRP 31.3 dBm, receive gain 50.4 dBi, system noise temperature 121 K, bandwidth 36 MHz, miscellaneous losses 1 dB.',
+        'Compute the expected C/N for this pass in Link Analysis. The geometry is better than on the afternoon passes: the satellite is 581 km away at maximum elevation, which gives a free-space path loss of 169.1 dB at 11686 MHz. Use an EIRP of 31.3 dBm, a receive gain of 50.4 dBi, a system noise temperature of 121 K, a bandwidth of 36 MHz and 1 dB of miscellaneous losses.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['review-mission-brief'],
       timeLimitSeconds: 4 * 60,
@@ -328,15 +330,16 @@ export const natsEuScenario8Data: ScenarioData = {
           description: 'Range Delta Read',
           params: {
             character: Character.SYSTEM,
-            question: 'The afternoon card used 171.4 dB of path loss at 761 km; tonight is 169.1 dB at 581 km. Where do the 2.3 dB come from?',
+            question: 'The afternoon card used 171.4 dB of path loss at 761 km, and tonight it is 169.1 dB at 581 km. Where do the 2.3 dB come from?',
             options: [
-              '20 log(761 / 581): a 40 degree pass puts the bird about a quarter closer, and path loss goes with the square of range',
-              'A cooler night sky: the noise temperature drops after dark, and the receiver gains 2.3 dB of G/T from a colder LNB',
-              'A hotter transmitter: the bird runs warmer on the night side, and the EIRP rises with the amplifier temperature',
-              'Less atmosphere at night: gaseous absorption at Ku falls after dark, and 2.3 dB is what the daytime path costs',
+              '20 log(761 / 581): the 40 degree pass is about a quarter closer, and path loss follows the range squared',
+              'A cooler night sky: the noise temperature drops after dark, so the receiver gains 2.3 dB of G/T from a colder LNB',
+              'A hotter transmitter: the satellite runs warmer on the night side, so its EIRP rises with the amplifier temperature',
+              'Less atmosphere at night: gaseous absorption at Ku falls after dark, so 2.3 dB is what the daytime path costs',
             ],
             correctIndex: 0,
-            explanation: 'Every dB of the difference is geometry. Predicted 13.8 dB; the card is wrong if the measurement is more than a decibel away.',
+            explanation:
+              "Free-space path loss depends only on range and frequency, and the frequency hasn't changed, so the whole 2.3 dB comes from the shorter range. A colder LNB or less absorption would change other lines of the budget, not the path loss. The card predicts 13.8 dB, and it's wrong if your measured C/N is more than a decibel away from that.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -349,7 +352,7 @@ export const natsEuScenario8Data: ScenarioData = {
       id: 'gw-reference-and-chain',
       nice: ['T0431', 'K0740'],
       title: 'GW-01 Reference and BUC Lock',
-      description: 'GPSDO locked, BUC on the external reference, before the chain goes up.',
+      description: 'Confirm on the GPS Timing tab that the GPSDO is locked, and on the TX Chain tab that the BUC is on the external reference, before the chain goes up.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['build-the-night-plan', 'night-key-rotation', 'night-budget'],
       timeLimitSeconds: 2 * 60,
@@ -376,7 +379,7 @@ export const natsEuScenario8Data: ScenarioData = {
       nice: ['S0421', 'T1567', 'K0645'],
       title: 'Chain Up for Commanding',
       description:
-        'Downlink proven, window open until 00:38:30. Uplink Doppler compensation on the TT&C console, then the chain in order: carrier into the muted BUC, unmute, HPA. An uplink on this rack spoils the receive measurement, which is why the link was proven cold first. Nobody will check the order for you.',
+        'The downlink is proven and the command window is open until 00:38:30. Turn on uplink Doppler compensation on the TT&C console, then bring the chain up in order: start the carrier into the muted BUC, unmute the BUC, and enable the HPA. An uplink on this rack would have spoiled the receive measurement, which is why the link was proven cold first.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['prove-the-night-link'],
       timeLimitSeconds: 2 * 60,
@@ -418,7 +421,8 @@ export const natsEuScenario8Data: ScenarioData = {
       id: 'acquire-sar1',
       nice: ['S0421', 'K1032'],
       title: 'Acquire MERIDIAN-SAR-1',
-      description: 'AOS 00:30:10. Program-track MERIDIAN-SAR-1 and confirm the beacon on RX analysis. Chain cold until the link is proven.',
+      description:
+        'AOS is at 00:30:10. Turn on program-track for MERIDIAN-SAR-1 and confirm its beacon on the RX Analysis tab, and keep the transmit chain off until the link is proven.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['gw-reference-and-chain'],
       conditions: [
@@ -454,7 +458,7 @@ export const natsEuScenario8Data: ScenarioData = {
       nice: ['T0153', 'T0081', 'K0740'],
       title: 'Prove the Night Link',
       description:
-        'Lock the 1414 MHz imagery downlink, then commit the link in Link Analysis with at least 5 dB of margin over the 4.2 dB threshold. The strong part of this pass runs 00:33 to 00:37.',
+        'Lock modem 1 on the 1414 MHz imagery downlink, then commit the link in Link Analysis with at least 5 dB of margin over the 4.2 dB threshold. The strong part of this pass runs from 00:33 to 00:37.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['acquire-sar1'],
       conditions: [
@@ -478,7 +482,7 @@ export const natsEuScenario8Data: ScenarioData = {
       id: 'command-the-bird',
       nice: ['T1567', 'S0421', 'K0874'],
       title: 'Command the Bird',
-      description: 'Send REC-PLAYBACK under the rotated key and confirm the acknowledgement before the window closes at 00:38:30.',
+      description: 'Send REC-PLAYBACK under the rotated key, and confirm that the spacecraft acknowledges it before the window closes at 00:38:30.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['chain-up-for-commanding'],
       conditions: [
@@ -497,7 +501,7 @@ export const natsEuScenario8Data: ScenarioData = {
       nice: ['S0421', 'K0645'],
       title: 'Secure the Chain',
       description:
-        'The ACK is in. When the bird sets and the pass is over, take the chain down in the mirror order: HPA off, BUC muted, carrier off. The two minutes start at LOS, not before.',
+        'The ACK is in. Wait until the satellite has set, then take the chain down in the reverse order: disable the HPA, mute the BUC, and turn the transmit carrier off. You have two minutes after LOS to do it.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['command-the-bird'],
       timeLimitSeconds: 2 * 60,
@@ -535,7 +539,7 @@ export const natsEuScenario8Data: ScenarioData = {
       id: 'log-contact-1',
       nice: ['T1580', 'K0645'],
       title: 'Log the First Contact',
-      description: 'Write contact 1 into the handover before you skip ahead. The next window is two and a half hours away and at the other site.',
+      description: "Log contact 1 in the handover before you skip ahead. The next window is more than two hours away, and it's at the other site.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['secure-the-chain'],
       timeLimitSeconds: 2 * 60,
@@ -548,13 +552,14 @@ export const natsEuScenario8Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What does the handover need for the 00:30 contact?',
             options: [
-              'Rotation completed before the window, link committed with the margin measured, REC-PLAYBACK acknowledged, chain cold',
-              'Pass worked as planned, link margin within a decibel of the card, command sent at the top, chain left up for the next contact',
-              'Rotation left for the day shift, link committed on the afternoon card, REC-PLAYBACK acknowledged, chain cold',
-              'Plan validated with the P3 dropped, link budget signed, command sent with the ACK time not recorded, HPA disabled',
+              'Key rotated before the window, link committed with its measured margin, REC-PLAYBACK acknowledged, chain secured',
+              'Key rotated before the window, link margin not recorded, REC-PLAYBACK sent without a confirmed ACK, chain left up for the next contact',
+              'Key rotation left for the day shift, link committed on the afternoon card, REC-PLAYBACK acknowledged, chain secured',
+              'Plan validated with the priority 3 dropped, link budget signed, REC-PLAYBACK acknowledged, HPA disabled',
             ],
             correctIndex: 0,
-            explanation: 'Key state, link number, command result, chain state. The day shift commands on the key you rotated and schedules against the card you signed.',
+            explanation:
+              'The entry covers the four things the day shift inherits from this contact: the key state, the link result, the command result and the chain state. The day shift commands on the key you rotated and schedules against the link result you committed, so each one has to be recorded as it actually happened. The plan-and-budget entry is all true, but it records the prediction instead of the measured margin and says nothing about the key.',
             pointPenalty: 5,
             documentSection: 'Contacts',
             documentLine:
@@ -575,7 +580,7 @@ export const natsEuScenario8Data: ScenarioData = {
       nice: ['T0431', 'S0421', 'K0741'],
       title: 'Shetland Remote Sweep',
       description:
-        'Skip ahead to the 02:53 Shetland window. Select SH-02: BUC temperature normal, LNB thermally stable, and retune modem 1 from the 1414 MHz SAR-1 carrier Fiona left it on to 1370 MHz for SAR-2.',
+        'Skip ahead to the 02:53 Shetland window and select SH-02. Check that the BUC temperature is normal and the LNB is thermally stable, then retune modem 1 from the 1414 MHz SAR-1 carrier Fiona left it on to 1370 MHz for SAR-2.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['log-contact-1'],
       conditions: [
@@ -622,7 +627,7 @@ export const natsEuScenario8Data: ScenarioData = {
       nice: ['T0431', 'K0740', 'K0741'],
       title: 'Read the Shetland Reference',
       description:
-        'The SH-02 GPS Timing panel is not what you left it. Read it - lock, GNSS, satellite count, holdover - and decide what the reference is doing and whether the pass can be flown on it.',
+        'The SH-02 GPS Timing panel has changed since your sweep. Read the lock state, the GNSS input, the satellite count and the holdover indicator, then decide what the reference is doing and whether you can fly the pass on it.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['shetland-remote-sweep'],
       timeLimitSeconds: 2 * 60,
@@ -639,16 +644,17 @@ export const natsEuScenario8Data: ScenarioData = {
           description: 'Holdover Diagnosed',
           params: {
             character: Character.SYSTEM,
-            question: 'SH-02 GPSDO: locked, HOLDOVER active, GNSS input switch up, zero satellites. What is happening, and what do you do about the 02:53 pass?',
+            question:
+              'The SH-02 GPS Timing panel shows the GPSDO locked, HOLDOVER active, the GNSS input switch up and zero satellites. What is happening, and what should you do about the 02:53 pass?',
             options: [
-              'A GNSS outage - the switch is up and nothing is received; the oscillator holds for the minutes a pass takes, so fly the pass on holdover',
-              'A switch left down - somebody isolated the GNSS input; cycle the switch and wait for lock before AOS, then fly the pass',
-              'A lost reference - the oscillator has nothing to discipline it; the 02:53 pass cannot be flown from Shetland tonight',
-              'A failed oscillator - holdover with zero satellites means it has stopped; power-cycle the GPSDO and re-lock before AOS',
+              'A GNSS outage: the switch is up but nothing is received, and the oscillator holds well enough for a pass, so fly it on holdover',
+              'A switch left off: someone isolated the GNSS input at the panel, so cycle the switch and wait for lock before AOS, then fly the pass',
+              'A lost reference: the oscillator has nothing left to discipline it, so the 02:53 pass cannot be flown from Shetland tonight',
+              'A failed oscillator: holdover with zero satellites means it has stopped, so power-cycle the GPSDO and re-lock before AOS',
             ],
             correctIndex: 0,
             explanation:
-              'Holdover is what the disciplined oscillator is for: GNSS disciplines it, and when GNSS goes away it coasts on the last correction, within microseconds for the minutes a pass takes. Switch up with zero satellites is an outage, not an operator error; cycling the switch cannot conjure a signal. Leave the switch alone and confirm re-lock when the signal returns. A few minutes of holdover is a few microseconds and a few hertz at Ku.',
+              "Holdover is what a GPSDO is for: GNSS disciplines the oscillator, and when GNSS goes away it coasts on the last correction, which keeps it within microseconds over the few minutes a pass takes. With the switch up and zero satellites, this is an outage rather than an operator error or a dead oscillator, and cycling the switch can't bring back a signal that isn't arriving. A few minutes of holdover costs a few hertz at Ku, so leave the switch alone, fly the pass, and confirm the re-lock when GNSS returns.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -661,7 +667,8 @@ export const natsEuScenario8Data: ScenarioData = {
       id: 'acquire-sar2-from-shetland',
       nice: ['S0421', 'K1032'],
       title: 'Acquire SAR-2 from Shetland',
-      description: 'AOS 02:53:14 from azimuth 030. Program-track MERIDIAN-SAR-2 on the SH-02 pedestal, on holdover, and confirm the carrier on Shetland’s RX analysis.',
+      description:
+        "AOS is at 02:53:14 from azimuth 030. Turn on program-track for MERIDIAN-SAR-2 on the SH-02 pedestal, flying on holdover, and confirm its downlink on Shetland's RX Analysis tab.",
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['holdover-diagnosis'],
       conditions: [
@@ -697,7 +704,7 @@ export const natsEuScenario8Data: ScenarioData = {
       nice: ['T0153', 'K0740', 'K1032'],
       title: 'Work the Telemetry Contact',
       description:
-        'A 13 degree pass at 1233 km will not meet the imagery delivery standard: the modem locks with only a couple of dB over threshold. Hold lock and C/N above 5 dB through culmination (02:57:34) for the state-of-health frames, and read what the geometry did to the number.',
+        "This 13 degree pass at 1233 km can't meet the 8 dB imagery delivery standard, because the modem locks with only a couple of dB over its 4.2 dB threshold. Hold lock and keep C/N above 5 dB through culmination at 02:57:34, the top of the pass. That collects the state-of-health frames, the spacecraft's own status reports, and then you can read what the geometry did to the number.",
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['acquire-sar2-from-shetland'],
       conditions: [
@@ -718,7 +725,7 @@ export const natsEuScenario8Data: ScenarioData = {
           description: 'Geometry Read',
           params: {
             character: Character.SYSTEM,
-            question: 'Contact 1 peaked near 14 dB at 40 degrees and 581 km. This one peaks near 7 dB at 13 degrees and 1233 km. Is the Shetland station underperforming?',
+            question: 'Contact 1 peaked near 14 dB at 40 degrees and 581 km, and this one peaks near 7 dB at 13 degrees and 1233 km. Is the Shetland station underperforming?',
             options: [
               'No: 20 log(1233 / 581) is 6.5 dB of extra path loss, and 13 degrees of elevation adds atmosphere on top of that',
               'Yes: the same hardware at both sites should give the same C/N, and 7 dB against 14 dB is a receive chain fault',
@@ -727,7 +734,7 @@ export const natsEuScenario8Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'The number is what the geometry predicts. A telemetry contact on a low pass is worked for what it can give: a clean lock and state-of-health frames, without the margin imagery delivery needs. A site is underperforming only when its number is worse than its geometry.',
+              'The number is what the geometry predicts: about 6.5 dB of the gap is extra range, and the low elevation adds a little more loss through the atmosphere. A few hertz of holdover drift is far too small to cost the demodulator several dB. A low pass is worth working for what it can give, which is a clean lock and state-of-health frames, and a site is underperforming only when its number is worse than its geometry predicts.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -741,7 +748,7 @@ export const natsEuScenario8Data: ScenarioData = {
       nice: ['T0431', 'K0740', 'T1580'],
       title: 'Confirm the Shetland Reference Recovered',
       description:
-        'The GNSS signal returns about a minute after this opens. Confirm on the SH-02 GPS Timing panel that the receiver has re-locked and left holdover, then log contact 2.',
+        'The GNSS signal returns within a minute of this objective opening. Confirm on the SH-02 GPS Timing panel that the receiver has re-locked and left holdover, then log contact 2 in the handover.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['telemetry-contact'],
       timeLimitSeconds: 4 * 60,
@@ -766,14 +773,14 @@ export const natsEuScenario8Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What does the handover need about the Shetland reference?',
             options: [
-              'GNSS outage 02:44 to {{at:cond:confirm-reference-recovered.0|02:59}}, reference held on the oscillator through the contact, re-locked on return, no action at the switch',
-              'GPSDO fault 02:44 to {{at:cond:confirm-reference-recovered.0|02:59}}, reference lost through the contact, replacement unit requested, switch cycled to recover',
-              'Nothing beyond the pass result, reference recovered on its own, no fault to record, no action for the day shift',
-              'GNSS outage 02:44 to {{at:cond:confirm-reference-recovered.0|02:59}}, contact flown without a reference, frames unusable, switch cycled at {{at:cond:confirm-reference-recovered.0|02:59}} to force re-lock',
+              'GNSS outage from 02:44 to {{at:cond:confirm-reference-recovered.0|02:59}}, reference held on the oscillator through the contact, re-locked on return, no action at the switch',
+              'GPSDO fault from 02:44 to {{at:cond:confirm-reference-recovered.0|02:59}}, reference lost through the contact, replacement unit requested, switch cycled to recover',
+              'Nothing beyond the pass result: the reference recovered on its own, so there is no fault to record and no action for the day shift',
+              'GNSS outage from 02:44 to {{at:cond:confirm-reference-recovered.0|02:59}}, contact flown without a reference, frames unusable, switch cycled at {{at:cond:confirm-reference-recovered.0|02:59}}',
             ],
             correctIndex: 0,
             explanation:
-              'The day shift needs to know the outage was real and the site recovered itself. A fault that cleared is still a fault. The day shift decides whether a GNSS outage in a Shetland gale is weather or a failing antenna; they cannot decide it without the record.',
+              "The day shift needs to know that the outage was real and that the site recovered by itself. A fault that cleared is still a fault, and the day shift has to decide whether a GNSS outage in the Shetland wind is weather or a failing antenna. They can't make that decision without the record, and a log that said nothing happened would hide it.",
             pointPenalty: 5,
             documentSection: 'Contacts',
             documentLine:
@@ -793,7 +800,8 @@ export const natsEuScenario8Data: ScenarioData = {
       id: 'traffic-key-alarm',
       nice: ['K0728', 'K0874', 'T0431'],
       title: 'Read the Traffic Key',
-      description: 'Skip ahead to the 04:26 Galway window and select GW-01. Before the pass, read the payload crypto on RX analysis. It is not what you left it either.',
+      description:
+        'Skip ahead to the 04:26 Galway window and select GW-01. Before the pass, read the payload crypto status on the RX Analysis tab, because like the Shetland panel it has changed since you last looked.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['confirm-reference-recovered'],
       conditions: [
@@ -816,16 +824,16 @@ export const natsEuScenario8Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question:
-              'Traffic key Mismatch on the payload crypto, command key still Valid, nobody has touched the station since {{at:obj:secure-the-chain|00:40}}. What happened, and what does it do to the 04:26 pass?',
+              'The payload crypto shows a traffic key Mismatch while the command key still reads Valid, and nobody has touched the station since {{at:obj:secure-the-chain|00:40}}. What happened, and what does it do to the 04:26 pass?',
             options: [
-              'Rotterdam rolled the fleet traffic key and the station did not follow; the imagery will not decrypt until the payload crypto is re-keyed',
-              'Your rotation at {{at:obj:night-key-rotation|00:20}} corrupted the traffic key; the imagery will not decrypt until the command key is rolled back and re-issued',
-              'The spacecraft zeroized its traffic key on a tamper event; nothing decrypts until Rotterdam uploads a new key over the command link',
-              'The holdover reference at Shetland desynchronised the crypto; the imagery will not decrypt until both sites are back on GNSS',
+              'Rotterdam rolled the fleet traffic key and the station did not follow, so the imagery will not decrypt until the payload crypto is re-keyed',
+              'Your rotation at {{at:obj:night-key-rotation|00:20}} corrupted the traffic key, so the imagery will not decrypt until the command key is rolled back and re-issued',
+              'The spacecraft erased its traffic key after a tamper event, so nothing decrypts until Rotterdam uploads a new key over the command link',
+              'The holdover reference at Shetland knocked the crypto out of sync, so the imagery will not decrypt until both sites are back on GNSS',
             ],
             correctIndex: 0,
             explanation:
-              'Two keys, two schedules, and the one you did not rotate is the one that moved on schedule. The command key is a different key and is fine. A mismatch is the two ends of a handshake on different keys; the fix is on the payload panel, not the TT&C console.',
+              "There are two keys on two schedules, and the one you didn't rotate is the one that moved on schedule. Your rotation was of the command key, which is a different key and still reads Valid, so it can't have caused this. A mismatch means the two ends of the link are using different traffic keys, and the fix is on the payload panel, not the TT&C console.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -838,7 +846,7 @@ export const natsEuScenario8Data: ScenarioData = {
       id: 're-key-before-aos',
       nice: ['K0728', 'K0874', 'S0421'],
       title: 'Re-key the Payload Crypto',
-      description: 'Load the new traffic key on the TX chain payload panel and confirm both directions read Valid before AOS.',
+      description: 'Load the new traffic key on the payload panel of the TX Chain tab, then confirm that both the transmit and receive traffic keys read Valid before AOS.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['traffic-key-alarm'],
       timeLimitSeconds: 2 * 60,
@@ -865,7 +873,7 @@ export const natsEuScenario8Data: ScenarioData = {
       nice: ['S0421', 'K1032'],
       title: 'Acquire SAR-2 over Galway',
       description:
-        'AOS 04:26:23 from azimuth 017, and this one goes to 73 degrees. Retune modem 1 to 1370 MHz if you have not, program-track MERIDIAN-SAR-2 and confirm the carrier on RX analysis.',
+        "AOS is at 04:26:23 from azimuth 017, and this pass goes up to 73 degrees. Retune modem 1 to 1370 MHz if you haven't already, turn on program-track for MERIDIAN-SAR-2, and confirm its downlink on the RX Analysis tab.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['re-key-before-aos'],
       conditions: [
@@ -906,7 +914,8 @@ export const natsEuScenario8Data: ScenarioData = {
       id: 'decode-the-steep-pass',
       nice: ['T0153', 'K0740', 'K0728'],
       title: 'Decode the Steep Pass',
-      description: 'Lock the 1370 MHz carrier, hold C/N above 8 dB through the top of the pass (04:31:23, 73 degrees, 408 km) and confirm the payload decrypts under the new key.',
+      description:
+        'Lock modem 1 on the 1370 MHz downlink, hold C/N above 8 dB through the top of the pass (04:31:23, 73 degrees, 408 km), and confirm that the payload decrypts under the new key.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['acquire-sar2-galway'],
       conditions: [
@@ -939,16 +948,17 @@ export const natsEuScenario8Data: ScenarioData = {
           description: 'Steep Pass Read',
           params: {
             character: Character.SYSTEM,
-            question: 'C/N peaks near 17 dB at 73 degrees, the best number of the night, and the pedestal held it through the top. Why did this one not keyhole?',
+            question:
+              "C/N peaks near 17 dB at 73 degrees, which is the best number of the night, and the pedestal keeps tracking through the top. Why doesn't a pass this steep keyhole?",
             options: [
               'The azimuth rate at the top of a 73 degree pass is a few degrees a second, inside the 10 deg/s the pedestal can do',
-              'Program-track disables the azimuth axis above 60 degrees, so the pedestal rides through the top on elevation alone',
-              'The bird slowed down at the top of the pass, so the azimuth rate at culmination stayed inside what the pedestal can do',
-              'It did keyhole for a few seconds at the top, and the receiver held lock through it on frames stored in the modem buffer',
+              'Program-track switches off the azimuth axis above 60 degrees, so the pedestal rides through the top on elevation alone',
+              'The satellite slows down at the top of the pass, so the azimuth rate at culmination stays inside what the pedestal can do',
+              'It does keyhole for a few seconds at the top, and the receiver holds lock through it on frames stored in the modem buffer',
             ],
             correctIndex: 0,
             explanation:
-              'The keyhole is a near-zenith problem, where the azimuth rate goes to infinity. Steep is strong, and 73 degrees is still tracking. The last few degrees to the zenith are a different problem, and a different shift.',
+              'A keyhole happens close to the zenith, where the azimuth rate climbs without limit as the elevation approaches 90 degrees. At 73 degrees the rate is still only a few degrees a second, well inside what the pedestal can do, so tracking continues. Passes that go almost straight overhead are a different problem, and a different shift.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -965,7 +975,7 @@ export const natsEuScenario8Data: ScenarioData = {
       id: 'hand-over-the-shift',
       nice: ['T0081', 'T1580', 'K0645'],
       title: 'Hand Over the Shift',
-      description: 'Close the handover for the qualification: three contacts, two sites, two faults found and cleared.',
+      description: "Close the handover for the qualification by recording tonight's three contacts, both sites, and the two faults you found and cleared.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['decode-the-steep-pass'],
       timeLimitSeconds: 3 * 60,
@@ -976,15 +986,17 @@ export const natsEuScenario8Data: ScenarioData = {
           description: 'Shift Closed',
           params: {
             character: Character.SYSTEM,
-            question: 'Plan built, key rotated, link proven, command acknowledged, a holdover flown through and a traffic key re-keyed. What carries over to the day shift?',
+            question:
+              'Tonight you built the plan, rotated the key, proved the link, got the command acknowledged, flew a pass on holdover and re-keyed the traffic key. What carries over to the day shift?',
             options: [
               'The contact plan, the COMSEC state of both keys, the Shetland outage record and the state of both sites',
-              'Nothing beyond the pass results; each shift starts clean, and the day shift builds its own plan and checks its own keys',
+              'Nothing beyond the pass results: each shift starts clean, so the day shift builds its own plan and checks its own keys',
               'Only the recorded telemetry and imagery, which go to the customer, and the card the link was committed on',
               'The dropped 04:24 Shetland contact and the reason it was dropped, so the day shift can reschedule it with Fiona',
             ],
             correctIndex: 0,
-            explanation: 'The next operator inherits all of it, not just the pass results. Qualified for NATS Europe LEO operations. The network is yours to run.',
+            explanation:
+              "The next operator inherits all of it, not only the pass results: the plan they work to, the state of both keys, the outage that might be a failing antenna, and the condition of both sites. That's the difference between a log and a handover. You're now qualified for NATS Europe LEO operations, and the network is yours to run.",
             pointPenalty: 5,
             documentSection: 'Handover',
             documentLine:
@@ -1004,7 +1016,7 @@ export const natsEuScenario8Data: ScenarioData = {
         <em>[Text message from Charlie Brooks at 23:40]</em>
       </p>
       <p>
-        "Evening shift left it tidy. SAR-1 has a 40 degree pass just after half past midnight and it is the best geometry this station has seen. Rotation is pending on the command key. Rotterdam wants REC-PLAYBACK on the pass. Contact plan for the night is not built, and after Fiona goes off at one the Shetland console is yours as well. This is the qualification shift. Everything on it you have done once. Nobody is going to prompt you to do it again."
+        "The evening shift left everything tidy. MERIDIAN-SAR-1 has a 40 degree pass just after half past midnight, which is the best geometry this station has seen. The command key rotation is still pending, Rotterdam wants REC-PLAYBACK sent on that pass, and the contact plan for the night isn't built yet. After Fiona goes off at one, the Shetland console is yours as well, remotely. This is the qualification shift. You've done everything on it once already, and nobody's going to prompt you, including me."
       </p>
       `,
       character: Character.CHARLIE_BROOKS,
@@ -1018,7 +1030,7 @@ export const natsEuScenario8Data: ScenarioData = {
           <em>[Text message from Fiona MacLeod]</em>
         </p>
         <p>
-          "On console till one. I'll take whatever the plan gives me before then and after that SH-02 is yours, remote. The GNSS antenna up here has been flaky in the wind all week; if it drops out you know what holdover looks like. Don't ring unless the building's on fire."
+          "I'm on the console till one, so I'll take whatever the plan gives me before then. After that SH-02 is yours, remotely. The GNSS antenna up here has been flaky in the wind all week, and if it drops out you already know what holdover looks like. Don't ring unless the building's on fire."
         </p>
         `,
         character: Character.FIONA_MACLEOD,
@@ -1028,7 +1040,7 @@ export const natsEuScenario8Data: ScenarioData = {
       'command-the-bird': {
         text: `
         <p>
-          "ACK on REC-PLAYBACK, authenticated under the new key. Thank you, Galway. Nothing more from us tonight - the traffic key rolls on the fleet schedule at 04:15, as it does every Tuesday."
+          "We have the ACK on REC-PLAYBACK, authenticated under the new key. Thank you, Galway. We need nothing more from you tonight, apart from the fleet traffic key, which rolls at 04:15, as it does every Tuesday."
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -1041,7 +1053,7 @@ export const natsEuScenario8Data: ScenarioData = {
           <em>[Text message from Dana Torres]</em>
         </p>
         <p>
-          "Charlie says tonight's the one. Same as Vermont. Nobody's coming, and that's the point. Text me when it's done."
+          "Charlie says tonight's the one. It's the same as Vermont: nobody's coming to help, and that's the point. Text me when it's done."
         </p>
         `,
         character: Character.DANA_TORRES,
@@ -1054,7 +1066,7 @@ export const natsEuScenario8Data: ScenarioData = {
           <em>[Text message from Fiona MacLeod]</em>
         </p>
         <p>
-          "Off. SAR-1 was seventeen degrees and decoded, for the record. Modem's still on 1414. Station's yours. Goodnight."
+          "I'm signing off a bit early, since the rest of the night is yours anyway. SAR-1 was seventeen degrees and decoded, for the record. I see you've moved the modem off the 1414 I left it on, so the station's all yours. Goodnight, Galway."
         </p>
         `,
         character: Character.FIONA_MACLEOD,
@@ -1064,10 +1076,10 @@ export const natsEuScenario8Data: ScenarioData = {
       'traffic-key-alarm': {
         text: `
         <p>
-          <em>[Automated notice from MERIDIAN Ops at 04:15]</em>
+          <em>[Automated notice from MERIDIAN Ops at {{stationTime}}]</em>
         </p>
         <p>
-          "Fleet traffic key rotation executed 04:15:00Z per schedule. Sites - load new material before your next payload contact."
+          "The fleet traffic key rotation executed at 04:15:00Z, as scheduled. It took effect at 04:15 whether or not your station had the new material. All sites should load the new key material before their next payload contact."
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -1080,7 +1092,7 @@ export const natsEuScenario8Data: ScenarioData = {
           <em>[Text message from Fiona MacLeod]</em>
         </p>
         <p>
-          "Couldn't sleep, watched yours from the flat. Seventy-three degrees and it never wobbled. Mine would've gone over the top and lost it. Right call dropping it."
+          "Couldn't sleep, so I watched yours from the flat. Seventy-three degrees and it never wobbled. I'd have had the same pass up here, and you couldn't have flown both, so dropping mine was the right call."
         </p>
         `,
         character: Character.FIONA_MACLEOD,
@@ -1090,7 +1102,7 @@ export const natsEuScenario8Data: ScenarioData = {
       'hand-over-the-shift': {
         text: `
         <p>
-          That was your night. Three contacts, two sites, a reference that went walkabout, a key that did not match and a plan that had to drop something. You did not call me. Good.
+          That was your night: three contacts across two sites, a reference that went walkabout, a key that didn't match, and a plan that had to drop something. You didn't call me once, and that's exactly how I wanted it. I'm going back to ignoring the boxes I still haven't unpacked.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

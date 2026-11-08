@@ -205,7 +205,7 @@ test.describe('nats-eu Scenario 17 Full Completion', () => {
 
   test('[close-the-shift] writes the debrief line and completes', async () => {
     await closeWorkingDocumentIfOpen(page);
-    await answerSystemQuiz(page, 'A decommissioned account was still active');
+    await answerSystemQuiz(page, 'A decommissioned account stayed active for three months');
     await expect(page.locator('#level-complete-modal')).toBeVisible({ timeout: 45000 });
   });
 

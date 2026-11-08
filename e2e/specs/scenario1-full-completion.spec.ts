@@ -28,7 +28,7 @@ const SCENARIO_1_OBJECTIVES: Scenario1Objective[] = [
     id: 'review-mission-brief',
     title: 'Review Mission Brief',
     type: 'quiz',
-    correctAnswer: 'Yes, I have read the mission brief and I am ready to proceed.',
+    correctAnswer: "Yes, I've read the mission brief and I'm ready to proceed.",
   },
   // Phase 2: Station Access
   {
@@ -90,7 +90,7 @@ const SCENARIO_1_OBJECTIVES: Scenario1Objective[] = [
     id: 'verify-constellation',
     title: 'I&Q Constellation Check',
     type: 'quiz',
-    correctAnswer: 'Tight clusters at symbol points - clean QPSK modulation',
+    correctAnswer: 'Tight clusters at the symbol points - clean QPSK',
   },
   // Phase 4b: RX Payload Data
   {
@@ -136,7 +136,7 @@ const SCENARIO_1_OBJECTIVES: Scenario1Objective[] = [
     id: 'verify-polarization',
     title: 'Polarization Check',
     type: 'quiz',
-    correctAnswer: 'About +18.8° - matched to TIDEMARK-1 satellite polarization as seen from VT-01',
+    correctAnswer: 'About +18.8° - matched to TIDEMARK-1 as seen from VT-01',
   },
   // Phase 7: Final Verification
   {
@@ -149,7 +149,7 @@ const SCENARIO_1_OBJECTIVES: Scenario1Objective[] = [
     id: 'verify-alarm-status',
     title: 'Dashboard Alarm Check',
     type: 'quiz',
-    correctAnswer: 'No warning or critical alarms - one informational row, Signal(s) Detected',
+    correctAnswer: 'No warnings or criticals - one info row, Signal(s) Detected',
   },
 ];
 
@@ -217,7 +217,7 @@ base.describe.serial('Scenario 1 Full Completion', () => {
   base('setup: navigate to scenario and prepare', async () => {
     // Step 1: Start at campaign selection
     await campaignSelectionPage.goto();
-    await expect(campaignSelectionPage.pageTitle).toHaveText('Signal Range Training');
+    await expect(campaignSelectionPage.pageTitle).toHaveText('Campaigns');
 
     // Step 2: Select NATS campaign
     await campaignSelectionPage.selectCampaign('nats');

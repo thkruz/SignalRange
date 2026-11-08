@@ -71,7 +71,7 @@ const SCENARIO_9_OBJECTIVES: Scenario9Objective[] = [
     id: 'vt-dashboard-check',
     title: 'VT-01 Dashboard Sweep',
     type: 'quiz',
-    correctAnswer: 'No warning or critical alarms - all systems nominal',
+    correctAnswer: 'No warning or critical alarms',
   },
   {
     id: 'vt-gpsdo-tab',
@@ -136,7 +136,7 @@ const SCENARIO_9_OBJECTIVES: Scenario9Objective[] = [
     id: 'me-dashboard-check',
     title: 'ME-02 Dashboard Sweep',
     type: 'quiz',
-    correctAnswer: 'No warning or critical alarms - station nominal',
+    correctAnswer: 'No warning or critical alarms',
   },
   {
     id: 'me-rx-beacon-tab',
@@ -302,8 +302,7 @@ const SCENARIO_9_OBJECTIVES: Scenario9Objective[] = [
     id: 'log-shift-summary',
     title: 'Log Shift Summary',
     type: 'quiz',
-    correctAnswer:
-      'Morning rounds complete. VT-01/TM-1, ME-02/TM-2, TM-3 beacon verified via VT-01 spot-check (TM-1 on the sister teleport meanwhile; the two expected TX-inhibit alarms on VT-01 raised and cleared). No anomalies.',
+    correctAnswer: 'Morning rounds complete. VT-01/TM-1 and ME-02/TM-2 checked, TM-3 beacon verified with TM-1 on the sister teleport. Expected alarms cleared. No anomalies.',
   },
 ];
 

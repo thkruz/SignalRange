@@ -87,7 +87,7 @@ test.describe('nats-eu Scenario 14 Full Completion', () => {
   test('[review-mission-brief] reads the weather brief and the fade magnitude', async () => {
     await missionControl.openMissionBrief();
     await missionControl.closeMissionBrief();
-    await answerSystemQuiz(page, 'Several dB - about 10');
+    await answerSystemQuiz(page, 'Several dB, about 10 here');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Read the Weather Brief');
   });

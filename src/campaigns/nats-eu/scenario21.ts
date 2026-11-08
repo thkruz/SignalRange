@@ -109,7 +109,7 @@ export const natsEuScenario21Data: ScenarioData = {
   subtitle: 'Command-Link Intrusion Attempt (Gray Zone 5/8)',
   duration: '40 min',
   missionType: 'Security Operations',
-  description: `09:00, Galway, Wednesday. SAR-2 at 09:24 is a commanding pass: a housekeeping dump, then a payload status. The key is KEY-2027-Q2, Valid at both ends; KEY-2027-Q2b has been staged in the store since Friday's debrief.<br><br>They have had the downlink, the uplink and the clock. The only thing on this station they have not touched is the key - and the console will tell you the moment they try, in a log entry that looks like nothing at all.`,
+  description: `09:00, Galway, Wednesday. The SAR-2 pass at 09:24 is a commanding pass: a housekeeping dump, then a payload status request. The command key is KEY-2027-Q2, Valid at both ends, and the spare, KEY-2027-Q2b, has been staged in the store since Friday's debrief.<br><br>They've already had the downlink, the uplink and the clock. The one thing on this station they haven't touched is the key, and if they try, the console will tell you in a log entry that looks like nothing at all.`,
   equipment: [
     'GW-01 Galway: 4m Ku-Band LEO Tracker',
     'Ku-Band RF Front End (13100 MHz LNB LO, 12600 MHz BUC LO) + HPA',
@@ -232,7 +232,7 @@ export const natsEuScenario21Data: ScenarioData = {
       nice: ['K0645', 'K0729'],
       title: 'Read the Brief',
       description:
-        'Open the shift brief: two commands in the SAR-2 window, the key that is live and the one that is staged, and what the authentication counter does when a frame arrives twice.',
+        'Open the shift brief. It covers the two commands in the SAR-2 window, the key that is live and the one that is staged, and what the authentication counter does when a frame arrives twice.',
       groundStation: 'GW-01',
       freezesScenarioTimer: true,
       prerequisiteObjectiveIds: [],
@@ -250,14 +250,14 @@ export const natsEuScenario21Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'A command frame the station sent is captured and sent again to the bird a minute later, unchanged. What happens?',
             options: [
-              'The bird rejects it: every authenticated frame carries a counter, the counter has moved on, and a stale counter fails authentication even though the key and the ciphertext are genuine',
-              'The bird executes it again: the frame is genuine, correctly encrypted under the live key, and the bird has no way to know it is a copy',
-              'The bird rejects it because the Doppler is wrong: a frame sent from elsewhere arrives off-frequency and never demodulates',
+              'The bird rejects it: the counter has moved on, so authentication fails even though the key and ciphertext are genuine',
+              "The bird executes it again: the frame is genuine and encrypted under the live key, so the bird can't tell it is a copy",
+              'The bird rejects it because of Doppler: a frame sent from elsewhere arrives off-frequency and never demodulates',
               'The station rejects it: KG-01 sees its own frame come back on the return and blocks the uplink until the key is rotated',
             ],
             correctIndex: 0,
             explanation:
-              'That is what the counter is for. A replay proves the adversary can capture and re-transmit your command traffic; it does not prove they can read it or make their own. The bird says no, and both ends log that it said no. Twenty-four minutes to AOS.',
+              "That's what the counter is for. A replay proves the adversary can capture and re-transmit your command traffic, but not that they can read it or make their own. The bird says no, and both ends log that it said no. You have twenty-four minutes until AOS.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -270,7 +270,7 @@ export const natsEuScenario21Data: ScenarioData = {
       id: 'dashboard-sweep',
       nice: ['T0153', 'K0741'],
       title: 'GW-01 Dashboard Sweep',
-      description: 'Board read. Confirm the active alarm state on GW-01 before the uplink goes anywhere near the air.',
+      description: 'Read the board and confirm the active alarm state on GW-01 before the uplink goes anywhere near the air.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['review-mission-brief'],
       timeLimitSeconds: 90,
@@ -290,14 +290,14 @@ export const natsEuScenario21Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What is the active alarm state on GW-01 at 09:00?',
             options: [
-              'RX AGC on noise only - no carrier on an empty sky, no hardware alarm',
-              'No active alarms - all systems nominal, board clear for the pass',
-              'COMSEC alarm - a spare key staged in the store is flagged until it is either loaded or destroyed',
-              'BUC muted alarm - the uplink is inhibited and the board wants it cleared',
+              'RX AGC on noise only: no carrier on an empty sky, and no hardware alarm',
+              'No active alarms: all systems nominal and the board is clear for the pass',
+              'COMSEC alarm: the staged spare key is flagged until it is loaded or destroyed',
+              'BUC muted alarm: the uplink is inhibited and the board wants it cleared',
             ],
             correctIndex: 0,
             explanation:
-              'Empty sky, not a fault. A staged spare is what a store is for, and a muted BUC is correct for a station with nothing to send yet. The board will read exactly like this at any quiet moment too.',
+              "That's an empty sky, not a fault. A staged spare is what a key store is for, and a muted BUC is correct for a station with nothing to send yet. The board will read exactly like this at any quiet moment.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -311,7 +311,7 @@ export const natsEuScenario21Data: ScenarioData = {
       nice: ['K0874', 'T0431'],
       title: 'Key Baseline',
       description:
-        'Command key Valid on the TX chain, traffic key Valid on the receive side. Read both now; both will still read Valid when the knock lands, and that is the whole problem.',
+        "Read the command key on the TX chain and the traffic key on the receive side, and confirm both read Valid. Both will still read Valid when the knock lands, and that's the whole problem.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['dashboard-sweep'],
       timeLimitSeconds: 2 * 60,
@@ -337,7 +337,7 @@ export const natsEuScenario21Data: ScenarioData = {
       id: 'audit-baseline',
       nice: ['K0946', 'K0645'],
       title: 'Read the Log Before the Pass',
-      description: 'Security console: sign off the log as it stands at 09:00, so that anything that appears during the window is new by definition.',
+      description: 'On the Security console, sign off the log as it stands at 09:00, so anything that appears during the window is new by definition.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['key-baseline'],
       timeLimitSeconds: 3 * 60,
@@ -363,14 +363,14 @@ export const natsEuScenario21Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What does the log hold at 09:00 that matters for this window?',
             options: [
-              'KEY-2027-Q2b staged as an inactive spare on the 16th, the timing incident closed on the 19th, a login and a poll - nothing anomalous, and nothing from KG-01 at all',
-              'An unacknowledged KG-01 entry from overnight - the unit has been rejecting frames since 03:00 and nobody flagged it',
-              'The spare key was loaded, not staged - Charlie activated Q2b on the 16th and the console is already on it',
-              'A svc-legacy login at 08:40 - the decommissioned bridge is answering again',
+              'Q2b staged as an inactive spare, the timing incident closed on the 19th, a login and a poll: nothing from KG-01',
+              'An unacknowledged KG-01 entry from overnight: the unit has been rejecting frames since 03:00 and nobody flagged it',
+              'The spare key was loaded, not staged: Charlie activated Q2b on the 16th and the console is already on it',
+              'A svc-legacy login at 08:40, so the decommissioned bridge is answering again',
             ],
             correctIndex: 0,
             explanation:
-              'Quiet, and signed off as quiet. KG-01 writes to this log only when it has something to say, which it has not yet. The value of the sign-off is that the next KG-01 line cannot be mistaken for background.',
+              "The log is quiet, and now it's signed off as quiet. KG-01 writes to this log only when it has something to say, and it hasn't yet. The sign-off matters because the next KG-01 line can't be mistaken for background.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -384,7 +384,7 @@ export const natsEuScenario21Data: ScenarioData = {
       nice: ['S0421', 'K0773', 'T1567'],
       title: 'Arm the Uplink',
       description:
-        "TX modem 1 is on SAR-1's 1405 MHz command IF. Retune it for SAR-2's 14035 MHz TT&C uplink through the 12600 MHz BUC LO, and engage uplink Doppler compensation on the TT&C console before the window opens at 09:24:18.",
+        "TX modem 1 is on SAR-1's 1405 MHz command IF. Retune it to 1435 MHz for SAR-2's 14035 MHz telemetry, tracking and command (TT&C) uplink, which goes through the 12600 MHz BUC LO, and turn on uplink Doppler compensation on the TT&C console before the window opens at 09:24:18.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['audit-baseline'],
       timeLimitSeconds: 2 * 60,
@@ -410,7 +410,7 @@ export const natsEuScenario21Data: ScenarioData = {
       id: 'rx-chain-ready',
       nice: ['S0421', 'K0773'],
       title: 'Set Up the Receiver for SAR-2',
-      description: 'Retune RX modem 1 to 1370 MHz and frame the analyzer on 1370 with a 60 MHz span. The return is where the bird tells you what it heard.',
+      description: 'Retune RX modem 1 to 1370 MHz and center the analyzer on 1370 MHz with a 60 MHz span. The return is where the bird tells you what it heard.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['arm-the-uplink'],
       timeLimitSeconds: 3 * 60,
@@ -444,7 +444,8 @@ export const natsEuScenario21Data: ScenarioData = {
       id: 'preposition-for-aos',
       nice: ['S0421', 'K1032'],
       title: 'Pre-position for AOS',
-      description: 'AOS 09:23:58 from azimuth 008, southbound. Park the tracker on the rise azimuth at 5 degrees.',
+      description:
+        'AOS is at 09:23:58 at azimuth 008, and the pass runs southbound. Park the tracker at azimuth 008 and 5 degrees elevation, where SAR-2 will rise over the horizon.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['rx-chain-ready'],
       timeLimitSeconds: 3 * 60,
@@ -465,7 +466,7 @@ export const natsEuScenario21Data: ScenarioData = {
       nice: ['S0421', 'K1032'],
       title: 'Acquire MERIDIAN-SAR-2',
       description:
-        'Program-track SAR-2 before 09:24 and confirm the 1397 MHz beacon on RX analysis (any framing that shows the 1397 beacon counts, and the 60 MHz video span at 1370 shows it). The chain stays cold until she is locked.',
+        "Program-track SAR-2 before 09:24 and confirm the 1397 MHz beacon on RX analysis. Any framing that shows the beacon counts, and the 60 MHz span at 1370 MHz shows it. Keep the transmit chain cold until she's locked.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['preposition-for-aos'],
       conditions: [
@@ -500,7 +501,7 @@ export const natsEuScenario21Data: ScenarioData = {
       id: 'chain-up',
       nice: ['S0675', 'S0421', 'K0645'],
       title: 'Chain Up in Order',
-      description: 'Window open at 09:24:18. Carrier into the muted BUC, unmute, HPA. Two minutes.',
+      description: 'The window opens at 09:24:18. Turn on the carrier into the muted BUC, unmute the BUC, then enable the HPA, in that order. You have two minutes.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['acquire-sar2'],
       timeLimitSeconds: 2 * 60,
@@ -532,7 +533,7 @@ export const natsEuScenario21Data: ScenarioData = {
       id: 'first-command',
       nice: ['T1567', 'K1032'],
       title: 'Housekeeping Dump',
-      description: 'Send HK-DUMP and confirm the acknowledgement. Note the time: the frame you just sent is about to come back.',
+      description: 'Send HK-DUMP and wait for the acknowledgement. Note the time you send it, because that frame is about to come back.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['chain-up'],
       conditions: [
@@ -547,16 +548,16 @@ export const natsEuScenario21Data: ScenarioData = {
           description: 'ACK Read',
           params: {
             character: Character.SYSTEM,
-            question: 'HK-DUMP ACKed at {{at:cmd:HK-DUMP:ack|09:25}} under KEY-2027-Q2. Who, apart from the bird, could now hold a copy of that frame?',
+            question: 'HK-DUMP ACKed at {{at:cmd:HK-DUMP:ack|09:25}} under KEY-2027-Q2. Besides the bird, who could now hold a copy of that frame?',
             options: [
-              'Anyone with a receiver under the uplink footprint or on the transponded return: the frame is encrypted, so they cannot read it, but they can record it',
-              'Nobody: an authenticated frame is bound to this station and the bird discards anything that did not originate here',
+              "Anyone with a receiver under the uplink or on the transponded return: they can't read the frame, but can record it",
+              "Nobody: an authenticated frame is bound to this station, and the bird discards anything that didn't originate here",
               'Rotterdam only: the frame is mirrored to constellation ops over the ground network, not over the air',
-              'Anyone who has the key: without KEY-2027-Q2 the frame is not even detectable as a command',
+              "Anyone with the key: without KEY-2027-Q2 the frame isn't even detectable as a command",
             ],
             correctIndex: 0,
             explanation:
-              'Encryption hides the content, not the transmission. A frame on the air can be captured by anyone under it, and the transponder repeats your uplink to everyone under the downlink. That is why the counter exists - and why what happens next is not a surprise.',
+              "Encryption hides the content, not the transmission. Anyone under the uplink can capture a frame on the air, and the transponder repeats your uplink to everyone under the downlink. That's why the counter exists, and why what happens next shouldn't surprise you.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -569,7 +570,8 @@ export const natsEuScenario21Data: ScenarioData = {
       id: 'spot-the-knock',
       nice: ['S0648', 'K0946'],
       title: 'Spot the Knock',
-      description: "Within the next minute, watch the log for two new lines: Rotterdam's monitoring service and KG-01. Flag the monitoring entry first and read what the bird did.",
+      description:
+        "Within the next minute, watch the Security console log for two new lines, one from Rotterdam's monitoring service and one from KG-01. Flag the monitoring entry first and read what the bird did.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['first-command'],
       conditions: [
@@ -586,14 +588,14 @@ export const natsEuScenario21Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Three inbound frames rejected at the spacecraft with a stale authentication counter. What does that entry tell you?',
             options: [
-              'Someone sent the bird command frames that authenticated under the live key but carried a counter the bird had already passed - genuine ciphertext, re-sent. The bird refused all three',
-              'The command key is out of step between the station and the bird - a counter mismatch is the first sign of a key rotation that only happened at one end',
+              'Someone re-sent genuine frames that authenticated under the live key but carried a counter the bird had already passed, so it refused them',
+              'The command key is out of step between the station and the bird: a counter mismatch is the first sign of a rotation that only happened at one end',
               "Three of the station's own frames were garbled by Doppler and re-sent by the console automatically, and the bird refused the retries",
-              "The monitoring service has a clock error - a counter is a timestamp, and Rotterdam's reference is still carrying the 19 April offset",
+              "The monitoring service has a clock error: a counter is a timestamp, and Rotterdam's reference still carries the 19 April offset",
             ],
             correctIndex: 0,
             explanation:
-              'Your one HK-DUMP ACKed at {{at:cmd:HK-DUMP:ack|09:25}}. Three more arrived at the bird that you did not send, under your key, and the bird threw them out because their counter was old. That is a replay. The key worked exactly as designed at both ends.',
+              "You sent one HK-DUMP, and it was acknowledged at {{at:cmd:HK-DUMP:ack|09:25}}. Three more arrived at the bird that you didn't send, under your key, and the bird threw them out because their counter was old. That's a replay, and the key worked exactly as designed at both ends.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -607,7 +609,7 @@ export const natsEuScenario21Data: ScenarioData = {
       nice: ['S0648', 'K0751', 'K0729'],
       title: 'Call the Knock',
       description:
-        'Read the command key on the TX chain and flag the KG-01 unit log on the Security console - the unit saw the same three frames and knows they were yours. Then call it: what is this, and what does the key need?',
+        'Read the command key on the TX chain, then flag the KG-01 unit log on the Security console, because the unit saw the same three frames and knows they were yours. Then call it: what is this, and what does the key need?',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['spot-the-knock'],
       timeLimitSeconds: 3 * 60,
@@ -633,38 +635,37 @@ export const natsEuScenario21Data: ScenarioData = {
           params: {
             character: Character.ANNEKE_VISSER,
             prompt:
-              'Three of your frames came back at my bird from somewhere else and it refused them. Your key reads Valid at my end. Window is open until 09:33 and you owe me a PLD-STATUS. What is this, and what do you want to do with the key?',
+              'Three of your frames came back at my bird from somewhere else, and it refused them. Your key reads Valid at my end. The window is open until 09:33 and you owe me a PLD-STATUS. What is this, and what do you want to do with the key?',
             evidence: ['key-seen', 'unit-log-flagged'],
             decisionOptions: [
               {
-                label:
-                  'A replay against an intact key - the bird rejected it. Keep the log, rotate to Q2b out of cycle because they hold ciphertext of Q2, and send PLD-STATUS under the new key',
+                label: 'A replay on an intact key. Keep the log, rotate to Q2b out of cycle because they hold Q2 ciphertext, send PLD-STATUS',
                 correctWhen: { fact: 'crypto-intact', is: true },
                 consequence: { log: 'Replay against intact command key called; out-of-cycle rotation to KEY-2027-Q2b requested at both ends' },
               },
               {
-                label: 'Key compromised - zeroize KEY-2027-Q2 on KG-01 now and hold commanding until Rotterdam re-keys the bird',
+                label: 'A compromised key. Zeroize Q2 on KG-01 now and hold commanding until Rotterdam re-keys the bird',
                 correctWhen: { fact: 'crypto-intact', is: false },
                 consequence: {
                   destroyEvidence: { auditEventId: 'evt-kg-replay-log' },
                   log: 'Command key zeroized on KG-01 with the key intact; unit log cleared with it',
                 },
                 feedback:
-                  "Nothing about the key failed: the bird rejected the frames because the counter had moved, which is the key working. Zeroize is for a key you believe is in someone else's hands. It also wipes the unit, and KG-01's log of what it saw goes with it - the only record on this station of where those frames came from.",
+                  "Nothing about the key failed. The bird rejected the frames because the counter had moved, which is the key doing its job. Zeroize is for a key you believe is in someone else's hands, and it also wipes the unit, so KG-01's log of what it saw goes with it. That log is the only record on this station of where those frames came from.",
               },
               {
-                label: 'Our own retries - the console re-sent HK-DUMP on a Doppler miss. Nothing to do; send PLD-STATUS',
+                label: 'Our own retries: the console re-sent HK-DUMP on a Doppler miss. Nothing to do, so send PLD-STATUS',
                 feedback:
-                  'The console sends once and logs once; there is one HK-DUMP in its history and one ACK. KG-01 says the three frames arrived on the return from a source that is not this station. Sending the next command on the same key hands them another frame to keep.',
+                  "The console sends once and logs once, and its history shows one HK-DUMP and one ACK. KG-01 says the three frames arrived on the return from a source that isn't this station. Sending the next command on the same key would hand them another frame to keep.",
               },
               {
-                label: "A counter desync after the timing incident - Rotterdam's reference still carries the 19 April offset. Ask them to resync and resend",
+                label: "A counter desync from the timing incident: Rotterdam's reference still carries the 19 April offset. Ask them to resync and resend",
                 feedback:
-                  'A counter is not a clock; it does not care what time it is. Your own HK-DUMP authenticated a minute earlier on the same counter chain. The offset was corrected on the 19th and the log says so.',
+                  "A counter isn't a clock, so it doesn't care what time it is. Your own HK-DUMP authenticated a minute earlier on the same counter chain, and the offset was corrected on the 19th, as the log says.",
               },
             ],
             explanation:
-              'Every badge on the station says Valid because the key is valid. The evidence is in two log entries: the bird said no to frames it should never have seen, and KG-01 recognised them as yours. A replay proves capture, not compromise - so the answer is proportionate: keep the record, rotate the key they have been recording, carry on.',
+              "Every badge on the station says Valid because the key is valid. The evidence is in two log entries: the bird refused frames it should never have seen, and KG-01 recognized them as yours. A replay proves capture, not compromise, so the response is proportionate: keep the record, rotate the key they've been recording, and carry on.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -678,7 +679,7 @@ export const natsEuScenario21Data: ScenarioData = {
       nice: ['K0874', 'K0875', 'T1567'],
       title: 'Rotate Out of Cycle',
       description:
-        'Anneke has keyed SAR-2 to KEY-2027-Q2b. TT&C console: begin the rotation, confirm it, and read Valid before you send anything else. The rotation itself takes seconds on the console; the cost is the pause before PLD-STATUS goes out under the new key.',
+        'Anneke has keyed SAR-2 to KEY-2027-Q2b. On the TT&C console, begin the rotation, confirm it, and check that the key reads Valid before you send anything else. The rotation takes seconds on the console; the cost is the pause before PLD-STATUS goes out under the new key.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['call-the-knock'],
       timeLimitSeconds: 3 * 60,
@@ -704,14 +705,14 @@ export const natsEuScenario21Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Why rotate a key that was never compromised?',
             options: [
-              'Because they hold recorded traffic under it: every frame captured under Q2 is a frame they can try again, and a key that has been recorded is a key you stop using - rotation bounds the exposure without destroying anything',
-              'Because the counter is exhausted: three stale rejects push the authentication counter past its limit and the key cannot sign another frame',
-              'Because Rotterdam requires it: any anomaly on the command link triggers a mandatory rotation regardless of cause',
-              'It should not be rotated - a rotation under pressure is how a good key gets replaced by one loaded wrong',
+              'Because they hold recordings under it: every captured frame is one they can retry, and rotating bounds that',
+              'Because the counter is exhausted: three stale rejects push it past its limit, and the key cannot sign another frame',
+              'Because Rotterdam requires it: any anomaly on the command link triggers a mandatory rotation, whatever the cause',
+              "It shouldn't be rotated: a rotation under pressure is how a good key gets replaced by one that's loaded wrong",
             ],
             correctIndex: 0,
             explanation:
-              'The key is fine; its history is not. Rotation retires the traffic they recorded and costs a pause in the window, seconds on the console. Zeroize would have cost the key, the unit and the evidence. Proportionate response is the whole skill.',
+              'The key is fine; its history is the problem. Rotation retires the traffic they recorded and costs only a pause in the window, which is seconds on the console. Zeroize would have cost you the key, the unit and the evidence. A proportionate response is the whole skill.',
             pointPenalty: 5,
             documentSection: 'Rotation',
             documentLine:
@@ -742,16 +743,16 @@ export const natsEuScenario21Data: ScenarioData = {
           description: 'New Key Read',
           params: {
             character: Character.SYSTEM,
-            question: 'PLD-STATUS ACKed under Q2b. If the three recorded frames are sent to the bird again tomorrow, what happens?',
+            question: 'PLD-STATUS was ACKed under Q2b. If the three recorded frames are sent to the bird again tomorrow, what happens?',
             options: [
-              'They fail twice over: the counter is stale and the key they were encrypted under is no longer loaded on the bird. What they recorded is now worth nothing',
-              'They still authenticate: a recorded frame carries its own key material, so a rotation does not touch frames captured before it',
+              'They fail twice over: the counter is stale, and the bird no longer has the key they were encrypted under',
+              "They still authenticate: a recorded frame carries its own key material, so a rotation doesn't touch frames captured before it",
               'The bird executes them: Q2b re-based the counter, so the old counter values are fresh again',
-              'They cannot be sent at all: rotation changes the uplink frequency and the recorded frames are on the old carrier',
+              "They can't be sent at all: rotation changes the uplink frequency, so the recorded frames are on the old carrier",
             ],
             correctIndex: 0,
             explanation:
-              'Two locks on the same door. The counter would have held on its own; the rotation makes their recording useless even if it did not. That is what the pause bought.',
+              "There are two locks on the same door. The counter would have held on its own, and the rotation makes the recording useless even if it hadn't. That's what the pause bought you.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -764,7 +765,7 @@ export const natsEuScenario21Data: ScenarioData = {
       id: 'safe-the-uplink',
       nice: ['S0421', 'K0645'],
       title: 'Safe the Uplink',
-      description: 'Chain down now, in the mirror order: HPA output off, BUC muted, carrier off. No need to wait for LOS (09:33:27).',
+      description: "Take the chain down now, in the mirror order: HPA output off, BUC muted, then carrier off. You don't need to wait for LOS (09:33:27).",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['second-command'],
       timeLimitSeconds: 2 * 60,
@@ -797,7 +798,7 @@ export const natsEuScenario21Data: ScenarioData = {
       nice: ['S0593', 'K0946', 'K0876'],
       title: 'Retain or Zeroize',
       description:
-        'Priya is on the line about KEY-2027-Q2 and the KG-01 unit log. Re-read the unit log entry on the Security console, then answer her: what happens to the retired key and the record of what it saw?',
+        'Priya Sharma, the NATS security lead, is on the line about KEY-2027-Q2 and the KG-01 unit log. Re-read the unit log entry on the Security console, then answer her: what should happen to the retired key and to the record of what it saw?',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['safe-the-uplink'],
       timeLimitSeconds: 3 * 60,
@@ -805,9 +806,11 @@ export const natsEuScenario21Data: ScenarioData = {
       conditions: [
         {
           id: 'unit-log-reread',
-          type: 'security-event-acknowledged',
+          type: 'audit-log-reviewed',
           description: 'KG-01 unit log re-read on the Security console',
-          params: { eventId: 'evt-kg-replay-log', requiresObservation: true, observationTab: 'security-console' },
+          // Not security-event-acknowledged: a Zeroize pick in call-the-knock removes evt-kg-replay-log
+          // (and its acknowledgement), and a removed entry can never be acknowledged again
+          params: { requiresObservation: true, observationTab: 'security-console' },
           mustMaintain: false,
         },
         {
@@ -816,16 +819,16 @@ export const natsEuScenario21Data: ScenarioData = {
           params: {
             character: Character.PRIYA_SHARMA,
             prompt:
-              'Q2 is retired and Q2b is live. The unit that held Q2 still has its log of the three frames - the only record anywhere of what came back and when. Some sites zeroize a probed key on principle. What do you want done with Q2 and with that log?',
+              'Q2 is retired and Q2b is live. The unit that held Q2 still has its log of the three frames, the only record anywhere of what came back and when. Some sites zeroize a probed key on principle. What do you want done with Q2 and with that log?',
             evidence: ['unit-log-reread'],
             decisionOptions: [
               {
-                label: 'Retain both under seal for CSIRT: the retired key is out of service, and the KG-01 log is the evidence that ties these frames to the actor',
+                label: 'Retain both under seal: the retired key is out of service and the KG-01 log is evidence',
                 correctWhen: { fact: 'crypto-intact', is: true },
                 consequence: { log: 'KEY-2027-Q2 retained under seal; KG-01 unit log export requested to CI-2027-0421-GW01 for Group CSIRT' },
               },
               {
-                label: 'Zeroize Q2 on the unit - a probed key should not exist, whatever the log says',
+                label: 'Zeroize Q2 on the unit: a probed key should not exist, whatever the log says',
                 correctWhen: { fact: 'crypto-intact', is: false },
                 consequence: {
                   destroyEvidence: { auditEventId: 'evt-kg-replay-log' },
@@ -833,21 +836,21 @@ export const natsEuScenario21Data: ScenarioData = {
                   log: 'KEY-2027-Q2 zeroized on KG-01 after rotation; unit log cleared with it',
                 },
                 feedback:
-                  "Zeroize clears the unit, and the unit is where the log lives. The key was already out of service; what you destroyed was the only record of the frames' source and timing. When Priya writes the attribution report, that line will be missing.",
+                  "Zeroize clears the unit, and the unit is where the log lives. The key was already out of service, so what you destroyed was the only record of the frames' source and timing. When Priya writes the attribution report, that line will be missing.",
               },
               {
                 label: 'Zeroize the live key as well and hold commanding until Rotterdam issues a fresh set',
                 feedback:
-                  'Q2b has never been on the air and was never recorded. Zeroizing it hands them a commanding outage they did not have to work for, and clears the unit log in the process.',
+                  "Q2b has never been on the air and was never recorded. Zeroizing it hands them a commanding outage they didn't have to work for, and it clears the unit log in the process.",
               },
               {
-                label: 'Nothing further - the rotation closed the matter and the log rolls over on its own',
+                label: 'Nothing further: the rotation closed the matter and the log rolls over on its own',
                 feedback:
-                  'The rotation closed the exposure, not the incident. A unit log rolls over; a record under seal does not. Priya asked because the answer is not "nothing".',
+                  'The rotation closed the exposure, not the incident. A unit log rolls over, but a record under seal doesn\'t. Priya asked because the answer isn\'t "nothing".',
               },
             ],
             explanation:
-              "What to reset and what to capture first. The retired key is harmless in the store and useful in a report; the unit log is the one artefact that says where the frames came from. Zeroize is for a key in someone else's hands. This one was only in their recorder.",
+              "The retired key is harmless in the store and useful in a report, and the unit log is the one artifact that says where the frames came from. Zeroize is for a key in someone else's hands, and this one was only in their recorder.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -860,7 +863,8 @@ export const natsEuScenario21Data: ScenarioData = {
       id: 'close-and-debrief',
       nice: ['T1580', 'K0645', 'K0729'],
       title: 'Report the COMSEC Incident',
-      description: 'File the COMSEC incident: what was replayed, what the key did, what was rotated, what was kept. Then the line that changes the next commanding pass.',
+      description:
+        'File the communications security (COMSEC) incident report: what was replayed, what the key did, what was rotated and what was kept. Then give the line that changes the next commanding pass.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['retain-the-evidence'],
       timeLimitSeconds: 3 * 60,
@@ -873,14 +877,14 @@ export const natsEuScenario21Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which line goes in the COMSEC incident report?',
             options: [
-              '{{at:cmd:HK-DUMP:ack|09:25}} HK-DUMP ACK under Q2. Three frames matching HK-DUMP rejected at SAR-2, counter stale, source not GW-01 (KG-01 log). Called replay, key intact. Rotated to Q2b both ends {{at:obj:rotate-on-order|09:29}}; PLD-STATUS ACK under Q2b. Q2 and KG-01 log retained under seal',
-              'Command key compromised during the SAR-2 window; emergency rotation performed; adversary now holds Q2 and the station is operating on a spare',
+              '{{at:cmd:HK-DUMP:ack|09:25}} HK-DUMP ACK, then three replayed frames rejected at SAR-2. Key intact, rotated to Q2b; KG-01 log sealed',
+              'Command key compromised during the SAR-2 window; emergency rotation performed; the adversary now holds Q2 and the station is on a spare',
               'Intermittent command rejects on SAR-2 traced to a counter error; resolved by a key rotation; no further action',
-              'Attempted intrusion on the command link defeated by cryptographic authentication; the adversary has escalated to active attack on the constellation',
+              'Attempted intrusion on the command link defeated by authentication; the adversary has escalated to active attack on the constellation',
             ],
             correctIndex: 0,
             explanation:
-              'Times, what was sent, what came back, what the key did, what was done, what was kept. "Compromised" is wrong and "resolved" is a conclusion; the report carries the counter state and the KG-01 line, because those are what the next reader needs.',
+              'The report gives the times, what was sent, what came back, what the key did, what was done and what was kept. "Compromised" is wrong, and "resolved" is a conclusion rather than a finding. The report carries the counter state and the KG-01 line because the next reader needs them.',
             pointPenalty: 5,
             documentSection: 'Report',
             documentLine:
@@ -895,14 +899,14 @@ export const natsEuScenario21Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What is the debrief line?',
             options: [
-              'Every command frame on the air is a frame they can keep: a key used in a contested window is rotated after it, the spare is always staged, and a unit log is evidence before it is a nuisance',
-              'Commanding passes stop until the source of the replay is found: the key is not safe while someone is recording it',
-              'Zeroize on every anomaly from now on: the pause a rotation costs is a pause a compromised key stays live',
-              'Doppler compensation is disabled for commanding: a replayed frame sent from elsewhere arrives off-frequency, so the bird will not hear it',
+              'Every command frame on the air is one they can keep: rotate after a contested window, stage the spare, keep the unit log',
+              "Stop commanding until the source of the replay is found, because the key isn't safe while someone is recording the uplink traffic",
+              'Zeroize on every anomaly from now on, because every pause a rotation costs is a pause a compromised key stays live',
+              "Turn off Doppler compensation for commanding: a replayed frame arrives off-frequency, so the bird won't hear it",
             ],
             correctIndex: 0,
             explanation:
-              "Recorded traffic is the threat, not the key. Stage the spare, rotate after a contested window, and treat the unit's log as something you will be asked for. Four inputs probed in eight days; the report is now a pattern, and that is Priya's next shift.",
+              "Recorded traffic is the threat, not the key. Stage the spare before a commanding pass, rotate after a contested window, and treat the unit log as something you'll be asked for. Four inputs have been probed in ten days, so the report is now a pattern, and that's Priya's next shift.",
             pointPenalty: 5,
             documentSection: 'Debrief',
             documentLine:
@@ -922,7 +926,7 @@ export const natsEuScenario21Data: ScenarioData = {
         <em>[Text message from Anneke Visser at 08:40]</em>
       </p>
       <p>
-        "SAR-2 at 09:24 is commanding - HK-DUMP, then PLD-STATUS, both under KEY-2027-Q2. Q2b is in your store and on my shelf - staged, not loaded, since Friday. I watch the bird's command counter on every pass now. If it rejects anything I did not see you send, you will hear from me inside a minute."
+        "SAR-2 commands at 09:24, with HK-DUMP first (a housekeeping telemetry dump) and then PLD-STATUS (a payload status request). Both go up under KEY-2027-Q2. Q2b is in your store and on my shelf, staged but not loaded, since Friday. I'm watching the bird's command counter on every pass now, so if it rejects anything I didn't see you send, you'll hear from me within a minute."
       </p>
       `,
       character: Character.ANNEKE_VISSER,
@@ -933,7 +937,7 @@ export const natsEuScenario21Data: ScenarioData = {
       'first-command': {
         text: `
         <p>
-          HK-DUMP acknowledged, counter 0x2F13. Payload status when you are ready.
+          HK-DUMP is acknowledged, counter 0x2F13. Hold the next command for now, because I want to watch the bird's counter for a minute before you send the payload status.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -943,7 +947,7 @@ export const natsEuScenario21Data: ScenarioData = {
       'spot-the-knock': {
         text: `
         <p>
-          It is me. The bird just refused three frames - stale counter, all three inside fifteen seconds, and I did not see you send any of them. Your key reads Valid here. Look at your unit log before you tell me what it is.
+          That's my entry. The bird refused three frames with a stale counter, meaning one it had already moved past. All three came inside fifteen seconds, and I didn't see you send any of them. Your key reads Valid here. Check your KG-01 unit log before you tell me what this is.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -953,7 +957,7 @@ export const natsEuScenario21Data: ScenarioData = {
       'call-the-knock': {
         text: `
         <p>
-          Replay. Agreed. I am keying SAR-2 to Q2b now - done. Begin your rotation, confirm it, and send me the payload status under the new key. Do not touch the unit log.
+          Replay, agreed. I'm keying SAR-2 to Q2b now, and that's done. Begin your rotation on the commanding console, confirm it, and send me the payload status under the new key. Do not touch the unit log.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -963,7 +967,7 @@ export const natsEuScenario21Data: ScenarioData = {
       'second-command': {
         text: `
         <p>
-          PLD-STATUS acknowledged under Q2b. Whatever they recorded this morning is a recording of a key that no longer exists on my bird. Chain down now; Priya wants a word about the old one.
+          PLD-STATUS is acknowledged under Q2b. Whatever they recorded this morning was made under a key that's no longer loaded on my bird, so it's useless to them. Take the transmit chain down now. Priya wants a word about the old key, and I'd wipe it tonight, because a key they've probed shouldn't exist anywhere. I've said so on the record, but evidence is Priya's call, and whatever she orders, I'll carry out.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -973,7 +977,7 @@ export const natsEuScenario21Data: ScenarioData = {
       'retain-the-evidence': {
         text: `
         <p>
-          Good. Key sealed, and the unit log export is requested to the incident record exactly as it reads - do not tidy it. Tomorrow I am going to put four incidents side by side, and that KG-01 line is the one that names the actor.
+          Good. Q2 is sealed and out of service. Whatever the KG-01 log still holds goes to the incident record exactly as it reads, so please don't tidy it. Tomorrow I'm putting five incidents side by side, and we'll see how far that line can take us.
         </p>
         `,
         character: Character.PRIYA_SHARMA,
@@ -983,7 +987,7 @@ export const natsEuScenario21Data: ScenarioData = {
       'close-and-debrief': {
         text: `
         <p>
-          Downlink, uplink, time, key. Someone has now tried every input this station has, one at a time, and written you a log entry each time they did. Tomorrow we read them together. Bring the record.
+          That's downlink, uplink, time and key. Someone has now tried every input this station has, one at a time, and each attempt left you a log entry. Tomorrow we read them together, so bring the record.
         </p>
         `,
         character: Character.PRIYA_SHARMA,

@@ -238,7 +238,7 @@ export const scenario6Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Legacy satellites with inclined orbits drift in a figure-8 pattern as seen from the ground. Step-track uses the beacon signal to continuously adjust antenna pointing, while program-track relies on TLE predictions that assume a fixed geostationary position.',
+              'Legacy satellites with inclined orbits drift in a figure-8 pattern as seen from the ground. Step-track uses the beacon signal to keep adjusting the antenna pointing, so it follows the drift. Program-track here points from predictions that treat AURORA-7 as fixed in its slot, so they miss the drift.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -271,7 +271,7 @@ export const scenario6Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              "The ACU shows TIDEMARK-1 as the program-track target, and the dish sits at TIDEMARK-1's look angles (about 153.1 / 35.1). AURORA-7 is our target for this mission - we need to change the program-track target.",
+              "The ACU shows TIDEMARK-1 as the program-track target, and the dish sits at TIDEMARK-1's look angles (about 153.1 degrees azimuth and 35.1 degrees elevation). AURORA-7 is the target for this mission, so the program-track target has to change.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -326,7 +326,7 @@ export const scenario6Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              "Program-track follows TLE predictions that assume a fixed geostationary position. AURORA-7's inclined orbit means it drifts in a figure-8 pattern, so predictions are only accurate for rough pointing. We need step-track to actively follow the beacon.",
+              "Program-track follows predictions that assume a fixed geostationary position, but AURORA-7's inclined orbit makes it drift in a figure-8 pattern. That's why the predictions are only accurate enough for rough pointing, and why we need step-track to follow the beacon.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -363,7 +363,7 @@ export const scenario6Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'The beacon IF is calculated using high-side LO injection: IF = LO - RF = 5250 - 4165 = 1085 MHz. The LNB converts the RF signal down to IF for processing.',
+              "The LNB's local oscillator sits above the beacon, so the IF is the LO minus the RF: 5250 - 4165 = 1085 MHz. The LNB converts the RF signal down to IF for the rest of the receive chain. The BUC LO belongs to the transmit side, so 7500 - 4165 = 3355 MHz isn't the beacon IF.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -494,8 +494,7 @@ export const scenario6Data: ScenarioData = {
       // T1567: Equipment configuration happens throughout
       nice: ['K0773', 'S0421', 'T1567'],
       title: 'Configure RX Modem',
-      description:
-        'Set the receiver modem to the AURORA-7 downlink: 1422 MHz IF, 24 MHz bandwidth, QPSK, FEC 3/4 (it is parked from a test carrier). It will not lock yet: the carrier it waits for is your own.',
+      description: "Set the receiver modem to the AURORA-7 downlink: 1422 MHz IF, 24 MHz bandwidth, QPSK, FEC 3/4 (it's parked from a test carrier).",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['configure-speca-downlink'],
       timeLimitSeconds: 3 * 60,
@@ -541,14 +540,14 @@ export const scenario6Data: ScenarioData = {
           params: {
             question: 'The modem is set to the AURORA-7 plan, but it shows no lock and the analyzer shows only noise at 1422 MHz. Why?',
             options: [
-              'Nobody is uplinking on that slot: the carrier this modem waits for is our own, once VT-01 transmits',
+              'Nobody is uplinking on that slot; the carrier it waits for is our own',
               'Step-track has not peaked the antenna yet, so the carrier is still below the noise',
               'The modem needs the beacon at 1085 MHz to lock before it can find the carrier',
               'AURORA-7 is in eclipse, so its transponder is switched off',
             ],
             correctIndex: 0,
             explanation:
-              "A bent-pipe transponder relays only what is uplinked into it. AURORA-7's beacon is the satellite's own (you see it at 1085 MHz), but the 24 MHz slot at 1422 MHz IF carries traffic only while a ground station transmits into it, and that station is us. Bring the transmit path up and our carrier comes back down through the transponder; the modem locks on it.",
+              "A bent-pipe transponder relays only what's uplinked into it. AURORA-7's beacon is the satellite's own, which is why you see it at 1085 MHz. The 24 MHz slot at 1422 MHz IF carries traffic only while a ground station transmits into it, and that station is us. Once you bring the transmit path up, our carrier comes back down through the transponder and the modem locks on it.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -617,7 +616,7 @@ export const scenario6Data: ScenarioData = {
             options: ['1447 MHz (7500 - 6053 = 1447)', '13553 MHz (6053 + 7500 = 13553)', '2303 MHz (6053 - 7500 / 2 = 2303)', '803 MHz (6053 - 5250 = 803)'],
             correctIndex: 0,
             explanation:
-              'The BUC LO (7500 MHz) sits above the uplink (6053 MHz), so the BUC outputs the lower sideband: RF = LO - IF, so IF = LO - RF = 7500 - 6053 = 1447 MHz. Same subtraction as the downlink, because both LOs sit above their RF. 803 MHz uses the LNB LO (5,250 MHz), which belongs to the receive side, not the BUC.',
+              "The BUC LO (7500 MHz) sits above the uplink (6053 MHz), so the BUC outputs the lower sideband: RF = LO - IF, so IF = LO - RF = 7500 - 6053 = 1447 MHz. It's the same subtraction as the downlink, because both LOs sit above their RF frequencies. The 803 MHz option uses the LNB LO (5250 MHz), which belongs to the receive side, not the BUC.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -742,14 +741,14 @@ export const scenario6Data: ScenarioData = {
           params: {
             question: 'Which statement best describes your operational link to AURORA-7?',
             options: [
-              'Step-track maintaining lock on beacon, RX at 1422 MHz IF, TX at 1447 MHz IF, AES-256 encrypted',
-              'Program-track following TLE, RX at 1085 MHz IF, TX at 1043 MHz IF, unencrypted',
-              'Manual pointing, RX at 1532 MHz IF, TX at 1057 MHz IF, AES-128 encrypted',
+              'Step-track on beacon, RX at 1422 MHz IF, TX at 1447 MHz IF, AES-256',
+              'Program-track on TLE, RX at 1085 MHz IF, TX at 1043 MHz IF, no encryption',
+              'Manual pointing, RX at 1532 MHz IF, TX at 1057 MHz IF, AES-128',
               'Step-track on beacon, RX at 3828 MHz RF, TX at 6053 MHz RF, no encryption',
             ],
             correctIndex: 0,
             explanation:
-              'Your link uses step-track mode to maintain pointing on the inclined-orbit AURORA-7 satellite. The receiver is configured for 1422 MHz IF (downlink), transmitter for 1447 MHz IF (uplink), and AES-256-GCM encryption is active.',
+              "Your link uses step-track to hold pointing on the inclined-orbit AURORA-7. The receiver's set to 1422 MHz IF (downlink), the transmitter to 1447 MHz IF (uplink), and AES-256-GCM encryption is active. The modems work at IF, so the RF values in the last option can't be right, and the other two get the mode, the frequencies or the encryption wrong.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -772,7 +771,7 @@ export const scenario6Data: ScenarioData = {
         Step-track uses the beacon signal to continuously adjust antenna pointing. The algorithm hunts for maximum signal, making small adjustments to keep the antenna optimized.
       </p>
       <p>
-        I've already configured the beacon frequency, encryption, and payload settings. Your job is to get the antenna tracking, establish receive lock, and configure the transmit path. You'll need to calculate the TX IF frequency yourself. Take your time - this is practice.
+        I've already configured the beacon frequency, encryption, and payload settings. Your job is to get the antenna tracking, establish receive lock, and configure the transmit path. You'll need to calculate the transmit IF frequency yourself. Take your time - this is practice.
       </p>
       `,
       character: Character.CHARLIE_BROOKS,
@@ -809,10 +808,10 @@ export const scenario6Data: ScenarioData = {
       'recognize-wrong-satellite': {
         text: `
         <p>
-          Good catch. The antenna was left tracking TIDEMARK-1 from the previous shift. We need AURORA-7.
+          Good catch. The antenna was left tracking TIDEMARK-1 from the previous shift. I did the same thing in my first year here: left a dish on the wrong bird at handover, and the first we heard of it was the customer ringing. So now I check the target before anything else.
         </p>
         <p>
-          Program-track gives us rough pointing using ephemeris data - it's quick and doesn't require beacon lock. Change the target to AURORA-7 and move the antenna.
+          We need AURORA-7. Program-track gives us rough pointing from ephemeris data, and it doesn't need beacon lock. Ephemeris is the predicted satellite positions. Change the target to AURORA-7 and move the antenna.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -888,7 +887,7 @@ export const scenario6Data: ScenarioData = {
       'configure-rx-modem': {
         text: `
         <p>
-          Receiver's set. No lock yet, and that's expected - the carrier it's waiting for is ours. Before we transmit, check the encryption. TX Chain tab, the TX ENCRYPTION section of the TX Payload Data card.
+          The receiver's set. There's no lock yet, and that's expected, because the carrier it's waiting for is ours. Before we transmit, check the encryption. Open the TX Chain tab and look at the TX ENCRYPTION section of the TX Payload Data card.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -898,7 +897,7 @@ export const scenario6Data: ScenarioData = {
       'verify-rx-lock': {
         text: `
         <p>
-          Receiver locked with good SNR. That's our own carrier - up to AURORA-7 and back down. Full duplex.
+          The receiver's locked with a good C/N. That's our own carrier, up to AURORA-7 and back down, so we're sending and receiving at the same time. That's full duplex.
         </p>
         <p>
           One final check - let's make sure you understand the complete link configuration.
@@ -914,7 +913,7 @@ export const scenario6Data: ScenarioData = {
           Correct. AES-256-GCM is the standard for our links. Never transmit without verifying encryption status.
         </p>
         <p>
-          Now here's your main calculation for this mission. The TX modem is set to the wrong frequency. AURORA-7's uplink is at 6,053 megahertz RF, and your BUC local oscillator is at 7,500 megahertz. Calculate the correct TX IF frequency.
+          Now here's your main calculation for this mission. The transmit modem is set to the wrong frequency. AURORA-7's uplink is at 6053 MHz RF, and your BUC local oscillator is at 7500 MHz. Calculate the correct transmit IF frequency.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -924,7 +923,7 @@ export const scenario6Data: ScenarioData = {
       'calculate-tx-if': {
         text: `
         <p>
-          1447 megahertz. Good work. The BUC LO sits above the uplink, just like the LNB LO sits above the downlink, so it's the same subtraction - LO minus RF. Set the TX modem to 1447 megahertz.
+          That's right, 1447 MHz. The BUC LO sits above the uplink, just like the LNB LO sits above the downlink, so it's the same subtraction, LO minus RF. Now set the transmit modem to 1447 MHz.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -934,7 +933,7 @@ export const scenario6Data: ScenarioData = {
       'configure-tx-modem': {
         text: `
         <p>
-          TX modem configured. Now unmute the BUC and enable the HPA to begin transmission.
+          The transmit modem's set. Now unmute the BUC and enable the HPA to start transmitting.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

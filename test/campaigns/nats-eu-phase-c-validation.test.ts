@@ -962,9 +962,12 @@ describe('nats-eu Phase E: staged physics behind S13-S16', () => {
     const shetland = settings.contactSchedule!.contacts.find((c) => c.id === 'C-SAR2-SH')!;
 
     expect(outage.target).toBe('gpsdo-gnss-loss');
-    expect(outage.startTime).toBeGreaterThanOrEqual(windowStartS);
-    expect(outage.startTime).toBeLessThan(windowEndS - 240);
-    expect(outage.startTime + outage.duration!).toBeLessThan(shetland.windowEndS - 120);
+    // Anchored to command-on-holdover, so the text that says "holdover" is never read before the drop.
+    expect(outage.startAfterObjectiveId).toBe('command-on-holdover');
+    expect(outage.startTime).toBe(0);
+    expect(windowStartS).toBeLessThan(windowEndS);
+    expect(outage.endAfterObjectiveId).toBe('confirm-galway-reference-recovered');
+    expect(windowStartS + outage.duration!).toBeLessThan(shetland.windowEndS - 120);
   });
 
   it('S16: the Shetland BUC fault reads over the alarm while driven and settles under it once the drive is removed', () => {

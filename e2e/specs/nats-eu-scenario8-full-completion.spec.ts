@@ -114,7 +114,7 @@ test.describe('nats-eu Scenario 8 Full Completion', () => {
   test('[review-mission-brief] takes the shift', async () => {
     await missionControl.openMissionBrief();
     await missionControl.closeMissionBrief();
-    await answerSystemQuiz(page, 'None of them - the plan');
+    await answerSystemQuiz(page, 'None of them: the plan');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Take the Shift');
   });
@@ -149,7 +149,7 @@ test.describe('nats-eu Scenario 8 Full Completion', () => {
     // quiz manager surfaces the last-registered quiz first, so answer the two
     // pending quizzes by their question text rather than in objective order.
     const answers = [
-      { questionHint: 'Shetland overhead', answerText: 'It is priority 3 and may be dropped' },
+      { questionHint: 'Shetland overhead', answerText: 'It is dropped: it is priority 3' },
       { questionHint: '2.3 dB', answerText: '20 log(761 / 581)' },
     ];
     await answerObjectiveQuiz(page, missionControl, 'build-the-night-plan', answers);
@@ -213,7 +213,7 @@ test.describe('nats-eu Scenario 8 Full Completion', () => {
 
   test('[log-contact-1] logs the first contact', async () => {
     await closeWorkingDocumentIfOpen(page);
-    await answerSystemQuiz(page, 'Rotation completed before the window');
+    await answerSystemQuiz(page, 'link committed with its measured margin');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Log the First Contact');
   });
@@ -236,7 +236,7 @@ test.describe('nats-eu Scenario 8 Full Completion', () => {
     await missionControl.selectTab('gps-timing');
     // Both stations' GPS Timing panels stay mounted; only SH-02 is in holdover.
     await expect(page.locator('#gpsdo-holdover-badge').filter({ hasText: /^ACTIVE$/u })).toHaveCount(1, { timeout: 15000 });
-    await answerSystemQuiz(page, 'A GNSS outage - the switch');
+    await answerSystemQuiz(page, 'A GNSS outage: the switch');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Read the Shetland Reference');
   });

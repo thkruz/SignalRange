@@ -46,7 +46,7 @@ const SCENARIO_2_OBJECTIVES: Scenario2Objective[] = [
     id: 'review-mission-brief',
     title: 'Review Mission Brief',
     type: 'quiz',
-    correctAnswer: 'Yes, I have read the mission brief and I am ready to proceed.',
+    correctAnswer: "Yes, I've read the mission brief and I'm ready to proceed.",
   },
   {
     id: 'safety-briefing',
@@ -213,7 +213,7 @@ const SCENARIO_2_OBJECTIVES: Scenario2Objective[] = [
     id: 'verify-lnb-restored-quiz',
     title: 'Verify LNB Restoration',
     type: 'quiz',
-    correctAnswer: 'LOCK shows LOCKED to the GPSDO reference and noise temperature is back near 43 K',
+    correctAnswer: 'LOCK shows LOCKED and noise temperature is back near 43 K',
   },
 
   // ============================================================

@@ -10,7 +10,7 @@ import { createMeridianSar1, type MeridianTle } from './satellites';
 /**
  * nats-eu Scenario 22 - "Connecting the Dots" / Incident Attribution Report (Gray Zone arc 6/8)
  *
- * Five events in ten days, each on a different input, each written up as it
+ * Five events in ten days across four inputs, each written up as it
  * happened and closed. Thursday afternoon Priya sits the operator down with
  * the campaign record and the station audit log and asks for the one document
  * nobody has written yet: the report that reads them together. The operator
@@ -94,7 +94,7 @@ export const natsEuScenario22Data: ScenarioData = {
   subtitle: 'Incident Attribution Report (Gray Zone 6/8)',
   duration: '40 min',
   missionType: 'Security Operations',
-  description: `14:00, Galway, Thursday. One receive pass at 14:30 and a report to write. Five incidents in ten days, each closed on its own record: a carrier and a spray, a persistent interferer, an uplink denial, a spoofed clock, a replayed command. Priya wants the document that reads them together - what links them, what it cost, who needs to know, and what changes.<br><br>The campaign record and the audit log have everything you need. Whether the last link is in them depends on what you kept on Wednesday.`,
+  description: `It's 14:00 on Thursday at Galway, with one receive pass at 14:30 and a report to write. Five incidents in ten days were each closed on their own record: a carrier and a login spray, a persistent interferer, an uplink denial, a spoofed clock and a replayed command. Priya wants the one document that reads them together, covering what links them, what they cost, who needs to know and what changes.<br><br>The campaign record and the audit log hold everything you need. Whether the last link is in them depends on what you kept on Wednesday.`,
   equipment: [
     'GW-01 Galway: 4m Ku-Band LEO Tracker',
     'Ku-Band RF Front End (13100 MHz LNB LO)',
@@ -232,7 +232,7 @@ export const natsEuScenario22Data: ScenarioData = {
       id: 'review-mission-brief',
       nice: ['K0645', 'T1606'],
       title: 'Read the Brief',
-      description: 'Open the brief: what an attribution report is for, what it may say, what it may not, and the one pass that has to be flown in the middle of writing it.',
+      description: "Open the mission brief. It covers what an attribution report is for, what it may and may not say, and the one pass you'll fly in the middle of writing it.",
       groundStation: 'GW-01',
       freezesScenarioTimer: true,
       prerequisiteObjectiveIds: [],
@@ -250,14 +250,14 @@ export const natsEuScenario22Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What is an attribution report allowed to conclude?',
             options: [
-              'What was observed, when, on which input, what each event needed to know, and what links them - a pattern is a finding; a name is a claim the station cannot make',
+              "What links the events: a pattern is a finding, but a name is a claim the station can't make",
               'Who did it: the point of correlating five incidents is to put a name on the actor so the board can act',
-              'Nothing: the station reports facts, and drawing a line between five separate records is speculation',
-              'That the station was at fault: every event exploited a weakness, and the report exists to list them',
+              'Nothing: the station reports facts, and drawing a line between five separate records is only speculation',
+              'That the station was at fault: every event exploited a weakness, and the report exists to list them all',
             ],
             correctIndex: 0,
             explanation:
-              'Five closed records say five things happened. The report says whether they are one thing. It can say "the same source, the same method, the same shopping list" if the evidence says so, and it must say where the evidence stops. Thirty minutes to AOS.',
+              'Five closed records say that five things happened. The report says whether they\'re one thing: it can write "the same source, the same method, the same shopping list" if the evidence supports it, and it must say where the evidence stops. A name for the actor is a claim the station can\'t back up, and refusing to link the records throws the evidence away. There are thirty minutes to AOS.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -270,7 +270,7 @@ export const natsEuScenario22Data: ScenarioData = {
       id: 'dashboard-sweep',
       nice: ['T0153', 'K0741'],
       title: 'GW-01 Dashboard Sweep',
-      description: 'Board read before the desk work. Confirm the active alarm state on GW-01 at 14:00.',
+      description: 'Check the dashboard before the desk work starts, and confirm the alarm state on GW-01 at 14:00.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['review-mission-brief'],
       timeLimitSeconds: 90,
@@ -297,7 +297,7 @@ export const natsEuScenario22Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Empty sky, not a fault. Carried-forward log entries are history, not alarms; a sealed key is a record, not a warning. The station is quiet. The report is about why it was not.',
+              "That's an empty sky, not a fault. The carried-forward log entries are history, not alarms, and a sealed key is a record, not a warning. The station is quiet right now, and the report is about why it wasn't quiet in April.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -310,7 +310,8 @@ export const natsEuScenario22Data: ScenarioData = {
       id: 'open-the-record',
       nice: ['K0721', 'K0946'],
       title: 'Open the Campaign Record',
-      description: 'Sidebar: Campaign Record. Every Working Document from the 12th to yesterday, as filed. Read them in order before you read anything else.',
+      description:
+        'Open the Campaign Record from the sidebar. It holds every Working Document from the 12th to yesterday, as filed, so read them in order before you read anything else.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['dashboard-sweep'],
       timeLimitSeconds: 3 * 60,
@@ -329,14 +330,14 @@ export const natsEuScenario22Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'How many incidents does the record hold since the 12th, and on which inputs?',
             options: [
-              'Five: a downlink carrier and a login spray (12th), persistent downlink interference (14th), an uplink denial (16th), a spoofed timing reference (19th), a replayed command (21st) - downlink, downlink, uplink, time, key',
+              'Five: downlink (12th), downlink (14th), uplink (16th), timing (19th), command key (21st)',
               'Four: the two interference events are one incident, and the spray was a routine credential scan closed without action',
               "Three: interference, spoofing and the replay; the spray and the export were an IT matter outside the station's record",
-              'Six: the hop-set retirement on the 16th is its own incident because it cost a key',
+              'Six: the hop-set retirement on the 16th is its own incident, because it cost the station a hop set',
             ],
             correctIndex: 0,
             explanation:
-              'Five records, five inputs, in order: what the station receives, what it transmits, what it keeps time by, what it commands with. Each one needed more access than the last, and each one was possible with what was exported on the 12th.',
+              'The record holds five incidents, in the order of what the station receives (twice), what it transmits, what it keeps time by and what it commands with. The 12th covers the carrier and the spray together, and the hop-set retirement is a cost of the 16th, not a sixth incident. Each incident needed more access than the last, and each one was possible with what was exported on the 12th.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -350,7 +351,7 @@ export const natsEuScenario22Data: ScenarioData = {
       nice: ['K0946', 'S0648'],
       title: 'Read the Chain',
       description:
-        "Security console: the arc's entries are carried forward in the log, in date order. Sign it off as read, and say what every entry after the 12th has in common with the export.",
+        "Open the Security console, where the arc's entries are carried forward in the log in date order, and sign the log off as read. Then say what every entry after the 12th has in common with the export.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['open-the-record'],
       timeLimitSeconds: 3 * 60,
@@ -376,14 +377,14 @@ export const natsEuScenario22Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What does every entry after 12 April have in common with the configuration export at 02:33 that morning?',
             options: [
-              'Each used something in it: the receive frequencies (14th), the reissued command carrier (16th), the timing dependency (19th), the command plan and window (21st). The export was the shopping list',
-              'Nothing - the export was a read, not a change, and reads do not cause incidents',
-              'The same account: svc-legacy is the actor on every later entry',
-              'The same time of day: every event happened during the night shift when the station was unattended',
+              'Each used something in it: the frequencies, the carrier, the timing and the command plan',
+              "Nothing: the export was a read, not a change, and reads don't cause incidents on their own",
+              'The same account: svc-legacy is the actor on every later entry, so one login explains them all',
+              'The same time of day: every event happened on the night shift, when the station was unattended',
             ],
             correctIndex: 0,
             explanation:
-              'A configuration export tells someone what to jam, what to spoof, when to command and on which carrier. None of the later events guessed. That is the line that turns five records into one report - and it is why the export, not the carrier, is the origin.',
+              "A configuration export tells someone what to jam, what to spoof, when to command and on which carrier, and none of the later events guessed. That's the link that turns five records into one report, and it's why the export, not the carrier, is the origin.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -396,7 +397,7 @@ export const natsEuScenario22Data: ScenarioData = {
       id: 'flag-the-origin',
       nice: ['S0648', 'T1405'],
       title: 'Flag the Origin',
-      description: 'Flag the 12 April export entry. It goes at the top of the timeline: everything after it was done with what it contained.',
+      description: 'Flag the 12 April export entry in the log. It goes at the top of the timeline, because everything after it was done with what it contained.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['read-the-chain'],
       timeLimitSeconds: 2 * 60,
@@ -415,14 +416,14 @@ export const natsEuScenario22Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What is the first line of the timeline?',
             options: [
-              '12 Apr 01:58 password spray on svc-legacy (decommissioned, still active); 02:33 full station configuration exported, no change ticket - every later event used a parameter in that export',
-              '12 Apr 02:25 terrestrial carrier on the SAR-1 downlink - the first attack, and the reason the station started keeping a record',
-              '12 Apr: incident INC-2027-0412-GW01 opened by Group CSIRT on a general warning',
+              '12 Apr 01:58 password spray on svc-legacy; 02:33 station configuration exported, no change ticket',
+              '12 Apr 02:25 terrestrial carrier on the SAR-1 downlink - the first attack, and where the report begins',
+              '12 Apr: incident INC-2027-0412-GW01 opened by Group CSIRT on a general warning, as the first entry',
               '14 Jan: svc-legacy decommissioned but left active - the root cause, and where the report begins',
             ],
             correctIndex: 0,
             explanation:
-              'The carrier was the first thing they did to the station. The export was the first thing they took from it, and it is why the rest was possible. The January decommissioning is a finding, not an event; it goes in continuity, not the timeline.',
+              "The carrier was the first thing done to the station, but the export was the first thing taken from it, and it's why the rest was possible. The January decommissioning is a finding, not an event, so it goes in the continuity section rather than the timeline.",
             pointPenalty: 5,
             documentSection: 'Timeline',
             documentLine:
@@ -439,7 +440,7 @@ export const natsEuScenario22Data: ScenarioData = {
       nice: ['T1405', 'K0946'],
       title: 'Build the Timeline',
       description:
-        'Flag the uplink denial and the timing skew entries, then write the rest of the timeline in one line: four events, four inputs, each with its date, its parameter, and what it cost.',
+        'Flag the uplink denial and timing skew entries in the log, then write the rest of the timeline in one line. Give each of the four events its date and its parameter.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['flag-the-origin'],
       timeLimitSeconds: 3 * 60,
@@ -464,14 +465,14 @@ export const natsEuScenario22Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which line completes the timeline?',
             options: [
-              '14 Apr terrestrial interference 11726/11690 MHz following the plan (IR to ComReg); 16 Apr uplink denial on 14035 MHz, hop set spent; 19 Apr GNSS spoof local to Galway, 05:08-05:36, +2 us/s; 21 Apr replay of HK-DUMP at SAR-2, key intact, rotated out of cycle',
+              '14 Apr terrestrial interference 11726/11690 MHz; 16 Apr uplink denial 14035 MHz; 19 Apr GNSS spoof 05:08-05:36; 21 Apr replay',
               'Four attacks defeated: notch filter, TRANSEC, holdover, key rotation - the station held every time and nothing was lost',
               '14-21 Apr: escalating hostile activity by a state actor against NATS Europe, culminating in an attempted seizure of the command link',
-              '14 Apr interference; 16 Apr jamming; 19 Apr GPS outage; 21 Apr counter fault - four unrelated events in a bad week',
+              '14 Apr interference; 16 Apr jamming; 19 Apr GPS outage; 21 Apr counter fault - four unrelated events in one bad week',
             ],
             correctIndex: 0,
             explanation:
-              'Dates, inputs, parameters, cost. "Defeated" is a mood, "state actor" is a claim, and "unrelated" is what the export line already disproved. The timeline carries the numbers; the attribution section carries the argument.',
+              'The right line gives each event its date, its input and its parameter, and the full entry in the record adds what each one cost. "Defeated" is a mood, "state actor" is a claim, and "unrelated" is what the export line already disproved. The timeline carries the numbers, and the attribution section carries the argument.',
             pointPenalty: 5,
             documentSection: 'Timeline',
             documentLine:
@@ -487,7 +488,7 @@ export const natsEuScenario22Data: ScenarioData = {
       id: 'rx-chain-ready',
       nice: ['S0421', 'K0773'],
       title: 'Set Up the Receiver for SAR-1',
-      description: 'The desk waits for the sky. Retune RX modem 1 to 1414 MHz and frame the analyzer on 1414 with a 60 MHz span for the 14:30 pass.',
+      description: 'Retune RX modem 1 from 1370 to 1414 MHz, and set the analyzer to center on 1414 MHz with a 60 MHz span, ready for the 14:30 pass.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['build-the-timeline'],
       timeLimitSeconds: 3 * 60,
@@ -521,7 +522,8 @@ export const natsEuScenario22Data: ScenarioData = {
       id: 'preposition-for-aos',
       nice: ['S0421', 'K1032'],
       title: 'Pre-position for AOS',
-      description: 'AOS 14:30:00 from azimuth 025, southbound. Park the tracker on the rise azimuth at 5 degrees.',
+      description:
+        "SAR-1 rises at 14:30:00 from azimuth 025 and heads south. Point the antenna at azimuth 25 and elevation 5 degrees, so it's waiting where the satellite comes up.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['rx-chain-ready'],
       timeLimitSeconds: 3 * 60,
@@ -541,7 +543,7 @@ export const natsEuScenario22Data: ScenarioData = {
       id: 'acquire-sar1',
       nice: ['S0421', 'K1032'],
       title: 'Acquire MERIDIAN-SAR-1',
-      description: 'Program-track SAR-1 before 14:30 and confirm the beacon on RX analysis.',
+      description: 'Switch the antenna to program-track on SAR-1 before 14:30, then confirm the beacon on the RX Analysis tab.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['preposition-for-aos'],
       conditions: [
@@ -576,7 +578,8 @@ export const natsEuScenario22Data: ScenarioData = {
       id: 'decode-sar1',
       nice: ['T0153', 'K0645'],
       title: 'Operations Continue',
-      description: 'Lock the SAR-1 carrier and hold C/N above 8 dB through the high segment. A routine pass, flown clean, in the middle of the report - which is the point.',
+      description:
+        "Lock the receiver on the SAR-1 carrier and hold C/N above 8 dB through the high part of the pass. It's a routine pass in the middle of the report, which is the point.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['acquire-sar1'],
       conditions: [
@@ -599,13 +602,14 @@ export const natsEuScenario22Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Why fly a routine pass in the middle of writing the report?',
             options: [
-              'Because the report is about a station that is still operating: continuity is the finding, and a pass flown clean today is a line in it',
+              'Because the report is about a station that is still operating, and a clean pass today is part of it',
               'To bait the adversary: a pass during the report may draw another event that can be recorded',
               'It should not be flown: the station is under investigation and every pass adds exposure until the report is out',
               'Because Rotterdam scheduled it and the schedule cannot be changed inside twenty-four hours',
             ],
             correctIndex: 0,
-            explanation: 'Ten days of pressure and the station has not missed a pass. That sentence is what the board reads first. Fly it, log it, go back to the desk.',
+            explanation:
+              "Ten days of pressure and the station hasn't missed a pass, and that's the sentence the board reads first. So you fly the pass, log it and go back to the desk.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -619,7 +623,7 @@ export const natsEuScenario22Data: ScenarioData = {
       nice: ['S0852', 'T1405', 'S0648'],
       title: 'Attribute the Pattern',
       description:
-        'Back at the desk. With the record open and the log signed off, make the call the report turns on: are these five events one thing, and how far does the evidence let you say so?',
+        'Back at the desk, with the record open and the log signed off, make the call the report turns on. Decide whether the five events are one thing, and how far the evidence lets you say so.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['decode-sar1'],
       timeLimitSeconds: 4 * 60,
@@ -645,38 +649,37 @@ export const natsEuScenario22Data: ScenarioData = {
           params: {
             character: Character.PRIYA_SHARMA,
             prompt:
-              'Five events, five inputs, ten days. I can write "one actor" if the evidence carries it, and I can write "we cannot say" if it does not. Which is it, and what makes it so?',
+              'Five events across ten days. I can write "one actor" if the evidence carries it, and I can write "we can\'t say" if it doesn\'t. Which is it, and what makes it so?',
             evidence: ['record-read', 'chain-read'],
             decisionOptions: [
               {
-                label:
-                  'One actor, one method: five inputs probed in order of the access each needs, every one inside the parameters exported on the 12th - and the KG-01 log ties the command-link probe to the same off-station source',
+                label: 'One actor, one method: every event used a parameter from the 12 April export, and the KG-01 log ties the command-link probe to the same off-station source',
                 correctWhen: { fact: 'evidence-chain-intact', is: true },
                 consequence: { log: 'Attribution: single actor, single method, origin the 12 April configuration export; command-link probe tied by the KG-01 unit log' },
               },
               {
                 label:
-                  'One actor for the first four; the command-link event cannot be tied to them - the KG-01 unit log was destroyed with the key, so the report records the gap and why',
+                  "One actor for the first four events: the KG-01 log was destroyed with the key, so the command-link probe can't be tied to them, and the report records the gap",
                 correctWhen: { fact: 'evidence-chain-intact', is: false },
                 consequence: {
                   pointDelta: 5,
                   log: 'Attribution: single actor for four events; command-link probe unattributable - KG-01 unit log destroyed 21 Apr',
                 },
-                feedback: 'That is the right call for the record you have. It is also the cost of Wednesday: the one line that named the source is the one that was zeroized.',
+                feedback: "That's the right call for the record you have. It's also the cost of Wednesday, because the one log that named the source is the one that was zeroized.",
               },
               {
                 label: 'Unrelated events: interference is common on the west coast, sprays are constant, the spoof was a GNSS anomaly and the replay a counter glitch',
                 feedback:
-                  'Each of those explanations was ruled out on its own day, in its own record: the carrier followed the plan, the spoof was local, the replay matched your own frame. Five coincidences inside one exported parameter set is not the simpler story.',
+                  "Each of those explanations was ruled out on its own day, in its own record: the carrier followed the plan, the spoof was local, and the replay matched your own frame. Five coincidences inside one exported parameter set isn't the simpler story.",
               },
               {
-                label: 'An insider: only someone on the station could have known the frequency plan, the command carrier and the key schedule',
+                label: 'An insider: only someone on the station could have known the frequency plan, the command carrier and the key schedule, so the leak came from inside',
                 feedback:
-                  'The export gave the plan, the carrier and the schedule to whoever pulled it - from a remote source, through an account that should not have existed. Nobody on the station needed to know anything.',
+                  "The export gave the plan, the carrier and the schedule to whoever pulled it, from a remote source, through an account that shouldn't have existed. Nobody on the station needed to know anything.",
               },
             ],
             explanation:
-              'The chain is: export, then every input in turn using what the export contained. The command-link probe is the only event the station itself can tie to an off-station source, and only through the KG-01 log. With it, the report says one actor. Without it, the report says one actor for four events and an unattributable fifth - and says why.',
+              'The chain is the export first, then every input in turn using what the export contained. The command-link probe is the only event the station can tie to an off-station source, and only through the KG-01 log. With that log, the report says one actor. Without it, the report says one actor for four events and an unattributable fifth, and says why.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -690,7 +693,7 @@ export const natsEuScenario22Data: ScenarioData = {
       nice: ['T1427', 'K0721'],
       title: 'Refer the Location',
       description:
-        "The report can say where the interferer was not - not a spacecraft, not this station - and cannot say where it was. Write the referral, and take Charlie's call.",
+        "The report can say where the interferer wasn't, which is not a spacecraft and not this station, but it can't say where it was. Write the referral that hands the location problem to someone who can solve it.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['attribute-the-actor'],
       timeLimitSeconds: 2 * 60,
@@ -701,16 +704,16 @@ export const natsEuScenario22Data: ScenarioData = {
           description: 'Referral Written',
           params: {
             character: Character.SYSTEM,
-            question: 'Who can locate a terrestrial emitter that a single dish can only characterise, and what does the report say about it?',
+            question: 'Who can locate a terrestrial emitter that a single dish can only describe, and what does the report say about it?',
             options: [
-              'A geolocation team with two or more receivers and time- and frequency-difference processing - not a single dish. The report refers it to specialist assets and says so',
+              "A geolocation team with two or more receivers; the report refers it to them and says the station can't",
               'ComReg: the regulator locates interferers as part of every IR, so the report waits for their finding',
               'The station, given time: a 4 m dish scanning in azimuth at the next event will bearing-fix the source',
-              "Nobody: an emitter that follows the plan is under the adversary's control and moves; location is not a useful finding",
+              "Nobody: an emitter that follows the plan is under the adversary's control and moves, so location isn't useful",
             ],
             correctIndex: 0,
             explanation:
-              'One receiver gives a bearing and a signature. A fix needs two or more, the time and frequency differences between them, and someone whose job that is. The report names the limit and the referral; it does not pretend to a capability the station lacks.',
+              "One receiver gives a bearing and a signature. A fix needs two or more receivers, the time and frequency differences between them, and someone whose job that is. The report names the limit and makes the referral, and it doesn't claim a capability the station lacks.",
             pointPenalty: 5,
             documentSection: 'Referral',
             documentLine:
@@ -726,7 +729,7 @@ export const natsEuScenario22Data: ScenarioData = {
       id: 'continuity-plan',
       nice: ['S0593', 'K0645'],
       title: 'Continuity of Operations',
-      description: 'Ten days of events produced ten days of changes to how the station runs. Write them down as recommendations, in the order they would have mattered.',
+      description: 'Ten days of events changed how the station should run. Write those changes down as recommendations, in the order they would have mattered.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['the-referral'],
       timeLimitSeconds: 3 * 60,
@@ -739,14 +742,14 @@ export const natsEuScenario22Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which set of recommendations goes in the continuity section?',
             options: [
-              'Decommissioned accounts disabled on the day, change tickets for any configuration export; spare key and hop set staged before every commanding pass; delta-T on every sweep with SH-02 as the cross-check; unit logs exported to the record on any anomaly',
-              'Move commanding to Shetland, run the reference on holdover permanently, and stop exporting configuration altogether',
-              'Replace the GPSDO, the KG-01 unit and the legacy telemetry bridge; the events exploited equipment, and new equipment closes them',
-              'Suspend commercial passes until the emitter is located; the station cannot be defended while the source is unknown',
+              'Decommissioned accounts disabled on the day, change tickets for exports, a spare key staged before commanding, delta-T on every sweep',
+              'Move commanding to Shetland, run the reference on holdover permanently, and stop exporting configuration altogether, so nothing is left to leak',
+              'Replace the GPSDO, the KG-01 unit and the legacy telemetry bridge; the events exploited equipment, and new equipment closes the gaps',
+              'Suspend commercial passes until the emitter is located, because the station cannot be defended while the source is unknown',
             ],
             correctIndex: 0,
             explanation:
-              'Each recommendation is one of the ten days, stated as a habit. None of them is new equipment and none of them stops the station working. That is what continuity means: the same station, run differently.',
+              "Each recommendation turns one of the ten days into a habit. None of them is new equipment, and none of them stops the station working. That's what continuity means: the same station, run differently.",
             pointPenalty: 5,
             documentSection: 'Continuity',
             documentLine:
@@ -762,7 +765,7 @@ export const natsEuScenario22Data: ScenarioData = {
       id: 'board-summary',
       nice: ['T1606', 'T1580'],
       title: 'Brief the Board',
-      description: 'One paragraph for people who will not read the timeline: impact, exposure, cost, and the ask.',
+      description: "Write one paragraph for the people who won't read the timeline. Cover the impact, the exposure, the cost and the ask.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['continuity-plan'],
       timeLimitSeconds: 3 * 60,
@@ -775,14 +778,14 @@ export const natsEuScenario22Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What does the board paragraph say?',
             options: [
-              'Five deliberate events over ten days against every input the station has, enabled by one configuration export; no pass lost, one hop set and one key rotation spent; source unlocated and referred; four procedural changes already in force',
+              'Five deliberate events over ten days, enabled by one export; no pass lost, one hop set spent, one key rotated; four changes in force',
               'The station has been under sustained attack by a hostile state and requires immediate investment in hardened equipment and additional staff',
               'Several technical anomalies occurred during April; all were resolved by the operator on duty and no further action is required',
               'A security breach on 12 April exposed the station configuration; the full extent of the compromise is still unknown',
             ],
             correctIndex: 0,
             explanation:
-              'What happened, what it cost, what was delivered anyway, what is open, what has changed. Nothing the board cannot check against the timeline, nothing that asks them to take a guess on trust.',
+              "A board paragraph says what happened, what it cost, what was delivered anyway, what's still open and what has changed. It contains nothing the board can't check against the timeline, and nothing that asks them to take a guess on trust.",
             pointPenalty: 5,
             documentSection: 'Board',
             documentLine:
@@ -798,7 +801,7 @@ export const natsEuScenario22Data: ScenarioData = {
       id: 'notifications',
       nice: ['T1427', 'S0593'],
       title: 'Notify',
-      description: 'Who is told what, by whom. The regulator, the customer, Rotterdam, Group CSIRT - and who is not told by this station.',
+      description: 'Decide who is told what, and by whom: the regulator, the customer, Rotterdam and Group CSIRT, plus whoever gets told by someone other than this station.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['board-summary'],
       timeLimitSeconds: 2 * 60,
@@ -811,14 +814,14 @@ export const natsEuScenario22Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Who is notified, and of what?',
             options: [
-              'ComReg: IR-2027-0414 extended with the 16 Apr denial. Nordic Maritime Watch (NMW), the customer: impact statement, no pass lost. Rotterdam: the full report. Group CSIRT: the report plus the sealed KG-01 log and Q2. Law enforcement: by CSIRT, not by the station',
-              'Everyone gets the full report: the regulator, the customer, Rotterdam, CSIRT and the police, at the same time, from the station',
-              'Only Group CSIRT: the report is an internal security document and nothing leaves the company until CSIRT decides',
-              'The customer and the regulator are not told: no collect was lost and no rule was broken, so there is nothing to report',
+              'ComReg: IR-2027-0414 extended. Customer: impact statement. Rotterdam: full report. CSIRT: report and sealed log; police via CSIRT',
+              'Everyone gets the full report: the regulator, the customer, Rotterdam, CSIRT and the police, all at once and all from the station',
+              'Only Group CSIRT: the report is an internal security document, and nothing leaves the company until CSIRT decides',
+              'Nobody outside: no collect was lost and no rule was broken, so the customer and the regulator have nothing to be told',
             ],
             correctIndex: 0,
             explanation:
-              'Each party gets what it needs and can act on. The regulator has an open IR to extend; the customer has a service to be told about; Rotterdam runs the constellation; CSIRT owns the case and the evidence, and the referral to the police is theirs to make. The station reports up and out, not sideways.',
+              'Each party gets what it needs and can act on. The regulator has an open interference report to extend, the customer has a service to be told about, Rotterdam runs the constellation, and CSIRT owns the case and the evidence, including the referral to the police. The station reports up and out, not sideways.',
             pointPenalty: 5,
             documentSection: 'Notifications',
             documentLine:
@@ -834,7 +837,7 @@ export const natsEuScenario22Data: ScenarioData = {
       id: 'close-the-record',
       nice: ['T1606', 'K0946'],
       title: 'Close the Record',
-      description: 'The report header: title, period, scope, finding, in one line that anyone opening the file reads first.',
+      description: 'Write the report header as one line that anyone opening the file reads first: the title, the period, the scope and the finding.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['notifications'],
       timeLimitSeconds: 3 * 60,
@@ -847,14 +850,14 @@ export const natsEuScenario22Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which line heads the report?',
             options: [
-              'IAR-2027-0422-GW01: five events 12-21 Apr against GW-01 Galway (downlink x2, uplink, timing, command link), assessed as one actor and one method enabled by the 12 Apr configuration export; attribution to a named party not made; source referred for geolocation',
-              'IAR-2027-0422-GW01: sustained hostile campaign by a state-level adversary against NATS Europe, April 2027',
-              'IAR-2027-0422-GW01: summary of April anomalies at GW-01 Galway, all resolved',
-              'IAR-2027-0422-GW01: security incident - station configuration compromised 12 Apr; consequences ongoing',
+              'IAR-2027-0422-GW01: five events 12-21 Apr, assessed as one actor and one method; no named party; source referred',
+              'IAR-2027-0422-GW01: sustained hostile campaign by a state-level adversary against NATS Europe, April 2027, still under way',
+              'IAR-2027-0422-GW01: summary of April anomalies at GW-01 Galway, all resolved with no further action needed',
+              'IAR-2027-0422-GW01: security incident - station configuration compromised 12 Apr; consequences still ongoing',
             ],
             correctIndex: 0,
             explanation:
-              'The header says what the report is, what it covers, what it found and where it stopped. "State-level" is a claim, "resolved" is a wish, and "compromised" without the rest is a headline. This one is a finding.',
+              'The header says what the report is, what it covers, what it found and where it stopped. "State-level" is a claim, "resolved" is a wish, and "compromised" without the rest is a headline. Only the first option is a finding.',
             pointPenalty: 5,
             documentSection: 'Report',
             documentLine:
@@ -870,7 +873,7 @@ export const natsEuScenario22Data: ScenarioData = {
       id: 'close-and-debrief',
       nice: ['T1580', 'K0645', 'K0946'],
       title: 'Debrief',
-      description: 'The report is out. The line that goes in the record about the record: what this station learned about reading its own history.',
+      description: 'The report is out. Write the line that goes in the record about the record, covering what this station learned about reading its own history.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['close-the-record'],
       timeLimitSeconds: 3 * 60,
@@ -883,14 +886,14 @@ export const natsEuScenario22Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What is the debrief line?',
             options: [
-              'Five records closed on their own days were one incident that nobody read until the sixth day: the campaign record is reviewed at every shift change from now on, and any two anomalies inside a week are correlated before either is closed',
-              'The station handled every event correctly and the report proves it; the procedures need no change',
+              'Five records closed on their own days were one incident; we now review the record each shift and correlate anomalies within a week',
+              'The station handled every event correctly and the report proves it, so the procedures need no change and the record can stay as it is',
               'The report should have been written on the 12th: a configuration export is an incident on its own and everything after it was avoidable',
               'The records should be kept by CSIRT, not the station: operators close incidents too early because they want to fly the next pass',
             ],
             correctIndex: 0,
             explanation:
-              "Each day's call was right and each day's record was good. What was missing was the reading of them together, and that is a habit, not a procedure. The record is opened at every handover; two anomalies in a week are one question until proven otherwise.",
+              "Each day's call was right and each day's record was good. What was missing was reading them together, and that's a habit, not a procedure. The record gets opened at every handover, and two anomalies in a week are one question until proven otherwise.",
             pointPenalty: 5,
             documentSection: 'Debrief',
             documentLine:
@@ -910,7 +913,7 @@ export const natsEuScenario22Data: ScenarioData = {
         <em>[Text message from Priya Sharma at 13:40]</em>
       </p>
       <p>
-        "I am on the desk with you at 14:00. Bring nothing; the campaign record and the audit log are the whole brief. We write the report that reads the five together, you fly SAR-1 at 14:30 in the middle of it because that is what the report is about, and by 15:30 it leaves the building. Whether the last line is in it depends on what you kept yesterday."
+        "I'll be on the desk with you at 14:00. Bring nothing, because the campaign record and the audit log are the whole brief. We'll write the report that reads the five incidents together. You fly SAR-1 at 14:30 in the middle of it, because that's what the report is about, and by 15:30 it leaves the building. Whether the last line makes it in depends on what you kept yesterday."
       </p>
       `,
       character: Character.PRIYA_SHARMA,
@@ -921,7 +924,7 @@ export const natsEuScenario22Data: ScenarioData = {
       'open-the-record': {
         text: `
         <p>
-          Five records. Read them as one document and tell me the first thing you notice is not the carrier on the 12th. It is what was taken at 02:33 that morning.
+          You've counted the five records. Now read them as one document. The first thing to notice isn't the carrier on the 12th, it's what was taken at 02:33 that morning.
         </p>
         `,
         character: Character.PRIYA_SHARMA,
@@ -931,7 +934,7 @@ export const natsEuScenario22Data: ScenarioData = {
       'decode-sar1': {
         text: `
         <p>
-          SAR-1 frames clean, timestamps true, C/N where it should be. That is the eleventh consecutive pass since the 12th with nothing lost. Put it in the report; I would.
+          SAR-1 is decoding clean, the timestamps are true and the C/N is where it should be. That's another pass with nothing lost since the 12th, and I'd put it in the report.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -941,7 +944,7 @@ export const natsEuScenario22Data: ScenarioData = {
       'attribute-the-actor': {
         text: `
         <p>
-          That is the finding, and it is exactly as far as the evidence goes and no further. I will write it as you said it. Now the parts of a report that leave the building.
+          That's the finding, and it goes exactly as far as the evidence does and no further. I'll write it the way you said it. Next come the parts of a report that leave the building: the referral, the continuity recommendations, the board summary and who gets told.
         </p>
         `,
         character: Character.PRIYA_SHARMA,
@@ -951,7 +954,7 @@ export const natsEuScenario22Data: ScenarioData = {
       'the-referral': {
         text: `
         <p>
-          The referral is right; we cannot fix an emitter from one dish. For what it is worth, I know someone who does exactly that for the military - two receivers, time differences, the whole thing. I will make a call. If they want a contractor who has seen this from the receiving end, I know one of those too.
+          The referral's right, because we can't fix an emitter's position from one dish. I know someone who does exactly that for the military. They're the two-receiver people: two receivers, and the difference in when the same signal reaches each. I'll make a call, and if they want a contractor who's seen this from the receiving end, I know one of those too.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -961,7 +964,7 @@ export const natsEuScenario22Data: ScenarioData = {
       'close-and-debrief': {
         text: `
         <p>
-          It is out. Regulator, customer, Rotterdam, my desk. Five days of right calls and one document that made them one thing. The next station on their list will get this report before they get the carrier. Well kept - all of it.
+          It's out: the regulator, the customer, Rotterdam and my desk all have it. You made five right calls over ten days, and this one document turned them into a single finding. Whoever they try next will have this report before the first carrier arrives. Well kept, all of it.
         </p>
         `,
         character: Character.PRIYA_SHARMA,

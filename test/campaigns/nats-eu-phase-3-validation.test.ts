@@ -481,16 +481,14 @@ describe('S21 Knocking on the Door', () => {
 
   it('call-the-knock: only the replay call holds with the key intact (the log entries are flagged evidence by then); the zeroize branch destroys the unit log', () => {
     expect(correctLabels('call-the-knock', { 'crypto-intact': true, 'audit-anomaly-present': false })).toEqual([
-      'A replay against an intact key - the bird rejected it. Keep the log, rotate to Q2b out of cycle because they hold ciphertext of Q2, and send PLD-STATUS under the new key',
+      'A replay on an intact key. Keep the log, rotate to Q2b out of cycle because they hold Q2 ciphertext, send PLD-STATUS',
     ]);
-    const zeroize = decisionOf('call-the-knock').params!.decisionOptions!.find((o) => o.label.startsWith('Key compromised'))!;
+    const zeroize = decisionOf('call-the-knock').params!.decisionOptions!.find((o) => o.label.startsWith('A compromised key'))!;
     expect(zeroize.consequence?.destroyEvidence?.auditEventId).toBe('evt-kg-replay-log');
   });
 
   it('retain-the-evidence: retaining is right with the key intact; zeroizing destroys the same evidence and costs points', () => {
-    expect(correctLabels('retain-the-evidence', { 'crypto-intact': true })).toEqual([
-      'Retain both under seal for CSIRT: the retired key is out of service, and the KG-01 log is the evidence that ties these frames to the actor',
-    ]);
+    expect(correctLabels('retain-the-evidence', { 'crypto-intact': true })).toEqual(['Retain both under seal: the retired key is out of service and the KG-01 log is evidence']);
     const zeroize = decisionOf('retain-the-evidence').params!.decisionOptions!.find((o) => o.label.startsWith('Zeroize Q2'))!;
     expect(zeroize.consequence?.destroyEvidence?.auditEventId).toBe('evt-kg-replay-log');
     expect(zeroize.consequence?.pointDelta).toBeGreaterThan(0);

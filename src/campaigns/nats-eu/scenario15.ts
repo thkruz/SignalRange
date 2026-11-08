@@ -98,7 +98,7 @@ export const natsEuScenario15Data: ScenarioData = {
   subtitle: 'Fleet COMSEC Under Tempo',
   duration: '40 min',
   missionType: 'COMSEC Operations',
-  description: `07:00 local. Rotterdam has ordered the fleet key rotation for today, and it happens between passes or it does not happen.<br><br>The rule is in the audit log: no command on the retiring key after the 07:16 MERIDIAN-SAR-1 window, and the first command on the new key has to reach MERIDIAN-SAR-2 inside its 07:34 window to prove it on orbit. The traffic key rolls on the fleet schedule at 07:27, in the gap, and the station will not follow it on its own.<br><br>Acknowledge the order, build the day plan, receive SAR-1 on the old keys, rotate both keys in the gap, prove both on SAR-2, safe down, and close the record with evidence rather than a story.`,
+  description: `07:00 UTC. Rotterdam has ordered the fleet key rotation for today, and it has to happen between passes.<br><br>The rule is in the audit log: no command on the retiring key after the 07:16 MERIDIAN-SAR-1 window, and the first command on the new key has to reach MERIDIAN-SAR-2 inside its 07:34 window, which proves the key on orbit. The traffic key rolls on the fleet schedule at 07:27, in the gap, and the station won't follow it on its own.<br><br>Acknowledge the order, build the day plan, receive SAR-1 on the old keys, rotate both keys in the gap, prove both on SAR-2, safe down, and close the record with evidence rather than a story.`,
   equipment: [
     'GW-01 Galway: 4m Ku-Band LEO Tracker',
     'SH-02 Shetland: 4m Ku-Band LEO Tracker (remote console)',
@@ -167,7 +167,7 @@ export const natsEuScenario15Data: ScenarioData = {
       ],
     },
 
-    // M2/M5 - the proof. Window is the SAR-2 pass: AOS 07:33:58 (2038 s) + 20 s
+    // M2/M5 - the proof. Window is the SAR-2 pass: AOS 07:33:58 (2038 s) + 22 s
     // to LOS 07:43:25 (2605 s) - 20 s. Doppler comp and a Valid command key
     // are both required for an ACK; a command sent during Pending Rotation is
     // rejected and shows in the console history.
@@ -235,7 +235,7 @@ export const natsEuScenario15Data: ScenarioData = {
       id: 'review-mission-brief',
       nice: ['K0645', 'K0876'],
       title: 'Read the Rotation Order',
-      description: 'Open the brief: the order, the two keys, the two windows, and what is forbidden between retire and activate.',
+      description: 'Open the mission brief and read the order: the two keys, the two windows, and what is forbidden between retiring the old key and activating the new one.',
       groundStation: 'GW-01',
       freezesScenarioTimer: true,
       prerequisiteObjectiveIds: [],
@@ -253,14 +253,14 @@ export const natsEuScenario15Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What is forbidden between "retire" and "activate"?',
             options: [
-              'Any command: a key in rotation is not a valid key, and a rejected command in the window is time you do not get back',
-              'Receiving: the downlink cannot be decoded while the key rotates, and a decode attempted in the gap corrupts the frames',
-              'Tracking: the pedestal must be parked during a rotation, and a program-track slew in the gap is logged against you',
-              'Nothing: the console queues commands and sends them when the key is valid, so the gap costs nothing but a delay',
+              'Any command: a key in rotation is not a valid key, and a rejected command in the window is time you can’t get back',
+              'Receiving: the downlink can’t be decoded while the key rotates, and a decode attempted in the gap corrupts the frames',
+              'Tracking: the pedestal must stay parked during a rotation, and a program-track slew in the gap is logged against you',
+              'Nothing: the console queues commands and sends them when the key is valid, so the gap only costs you a delay',
             ],
             correctIndex: 0,
             explanation:
-              'The spacecraft rejects whatever is sent on a key in rotation. Rotation is a state, not a moment. Begin it after the last command on the old key, complete it before the first on the new one, and send nothing in between. Sixteen minutes to SAR-1. Shift clock started.',
+              'The spacecraft rejects whatever is sent on a key that’s mid-rotation, so rotation is a state that lasts from Begin to Complete, not a single moment. Begin it after the last command on the old key, complete it before the first command on the new one, and send nothing in between. SAR-1 rises in about sixteen minutes, and your shift clock has started.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -277,7 +277,7 @@ export const natsEuScenario15Data: ScenarioData = {
       id: 'acknowledge-the-order',
       nice: ['K0876', 'S0844'],
       title: 'Acknowledge the Order',
-      description: 'Security console: read the audit trail, sign it off, and flag the rotation order so the record shows who saw it and when.',
+      description: 'On the security console, review the audit log and acknowledge the rotation order, so the record shows who saw it and when.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['review-mission-brief'],
       timeLimitSeconds: 3 * 60,
@@ -310,7 +310,7 @@ export const natsEuScenario15Data: ScenarioData = {
       id: 'build-the-day-plan',
       nice: ['K0689', 'T0129'],
       title: 'Build the Day Plan',
-      description: 'Four contacts, two sites, no double-booking. Both Galway halves are yours; the command contact cannot be anywhere else.',
+      description: 'Assign the four contacts across the two sites with no double-booking. Both Galway passes are yours, and the command contact can only be at Galway.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['acknowledge-the-order'],
       timeLimitSeconds: 4 * 60,
@@ -355,7 +355,7 @@ export const natsEuScenario15Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Fiona takes the telemetry contact from her side. A plan allocates receive windows. Commanding is a station capability, and only one station on this network has the key.',
+              'Fiona takes the telemetry contact from her side, because the plan allocates receive windows. Commanding is a different capability, and only Galway’s TT&C console holds the key, so the 07:34 contact has to be Galway’s whatever the elevation.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -368,7 +368,8 @@ export const natsEuScenario15Data: ScenarioData = {
       id: 'galway-reference-and-keys',
       nice: ['T0431', 'K0874', 'K0728'],
       title: 'GW-01 Reference and Keys',
-      description: 'GPSDO locked, then both keys on record before anything moves: command key Valid on the TX chain, traffic key Valid on RX analysis.',
+      description:
+        'Confirm the GPSDO is locked, then put both keys on record before anything moves: the command key reads Valid on the TX chain, and the traffic key reads Valid on RX analysis.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['build-the-day-plan'],
       timeLimitSeconds: 3 * 60,
@@ -400,13 +401,13 @@ export const natsEuScenario15Data: ScenarioData = {
             question: 'Two keys read Valid. Which is which, and who moves each one today?',
             options: [
               'Command key: uplink, rotated by you on the TT&C console in the gap. Traffic key: downlink, rolled by Rotterdam at 07:27',
-              'Command key: uplink, and it is the traffic key shown twice. One key, rotated by you on the TT&C console in the gap',
+              'Command key: uplink, and it’s the traffic key shown twice. One key, rotated by you on the TT&C console in the gap',
               'Command key: uplink, rotated by you on the TT&C console. Traffic key: downlink, rotated by you with the same two buttons',
               'Command key: uplink, rolled by Rotterdam on the fleet schedule. Traffic key: downlink, the same; the station follows both',
             ],
             correctIndex: 0,
             explanation:
-              'The command key authenticates what goes up; the traffic key decrypts what comes down, and you follow its roll by re-keying the payload crypto. Two keys, two custodians, two schedules. S8 taught you the one you did not rotate is the one that moves.',
+              'The command key authenticates what goes up, and you rotate it yourself on the TT&C console. The traffic key decrypts what comes down, and Rotterdam rolls it on the fleet schedule, so you follow it by re-keying the payload crypto. That’s two keys with two owners on two schedules, and treating them as one is the tempting mistake.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -420,7 +421,7 @@ export const natsEuScenario15Data: ScenarioData = {
       nice: ['S0421', 'K0773'],
       title: 'Tune for SAR-1',
       description:
-        'The night shift left modem 1 on 1370 MHz. Retune to the 1414 MHz SAR-1 carrier, analyzer centred on the 1389 MHz beacon with a 2 MHz span, tracker parked on the 07:16 AOS azimuth: 22 degrees at 5 degrees elevation.',
+        'The night shift left RX modem 1 on 1370 MHz, so retune it to the 1414 MHz SAR-1 carrier. Centre the analyzer on the 1389 MHz beacon with a 2 MHz span, and park the tracker where SAR-1 will rise at 07:16: azimuth 22, elevation 5.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['galway-reference-and-keys'],
       timeLimitSeconds: 3 * 60,
@@ -462,7 +463,8 @@ export const natsEuScenario15Data: ScenarioData = {
       id: 'acquire-sar1',
       nice: ['S0421', 'K1032'],
       title: 'Acquire MERIDIAN-SAR-1',
-      description: 'AOS 07:16 from azimuth 22. Program-track MERIDIAN-SAR-1 and confirm the beacon on RX analysis. Chain cold: nothing goes up on this pass.',
+      description:
+        'SAR-1 rises at 07:16 from azimuth 22. Turn on program-track for MERIDIAN-SAR-1 and confirm its beacon on RX analysis. Keep the transmit chain off, because nothing goes up on this pass.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['tune-for-sar1'],
       conditions: [
@@ -497,7 +499,7 @@ export const natsEuScenario15Data: ScenarioData = {
       id: 'receive-on-the-retiring-key',
       nice: ['T0153', 'K0740', 'K0876'],
       title: 'Receive on the Retiring Key',
-      description: 'Lock the 1414 MHz carrier, hold C/N above 8 dB through culmination (07:20:47, 27 degrees, 782 km) and confirm the payload decrypts. Do not command.',
+      description: 'Lock the 1414 MHz carrier, hold C/N above 8 dB through culmination (07:20:47, 27 degrees, 782 km) and confirm the payload decrypts. Don’t send any commands.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['acquire-sar1'],
       conditions: [
@@ -533,7 +535,7 @@ export const natsEuScenario15Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'If the rotation on the spacecraft side has already begun, the command is rejected and logged against you. The window is receive-only by order, not by capability. A key state on your console is a promise about the far end. On rotation day the promise expires at a time, not at a button.',
+              'The console still reads Valid, but that only tells you what the console holds, not what the spacecraft will accept. If the rotation has already begun on the spacecraft side, the command is rejected and logged against you. This window is receive-only by order, not because the station can’t transmit.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -546,7 +548,7 @@ export const natsEuScenario15Data: ScenarioData = {
       id: 'log-the-receive-pass',
       nice: ['K0645', 'S0575'],
       title: 'Log the Receive Pass',
-      description: 'LOS 07:25:31. One line into the rotation record: the last pass on Q1, decoded, no commands sent.',
+      description: 'SAR-1 sets at 07:25:31. Add one line to the rotation record saying this was the last pass on Q1, that it decoded, and that you sent no commands.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['receive-on-the-retiring-key'],
       timeLimitSeconds: 2 * 60,
@@ -566,7 +568,7 @@ export const natsEuScenario15Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'The record needs the absence of a command as much as the presence of one. The order says no command after this window. The evidence that you obeyed it is a line that says so, written before the key moves.',
+              'The record needs to show that no command went up, because the order says none may follow this window. The only evidence that you obeyed is a line saying so, written before the key moves. The C/N figure matters less here, because the record is about the key, not the signal.',
             pointPenalty: 5,
             documentSection: 'Retire',
             documentLine: '07:16Z MERIDIAN-SAR-1 GW-01: last contact on KEY-2027-Q1. Decoded at 27 deg, payload decrypting, zero commands sent. Q1 retired at LOS 07:25:31Z.',
@@ -586,7 +588,7 @@ export const natsEuScenario15Data: ScenarioData = {
       nice: ['K0876', 'K0874', 'S0077'],
       title: 'Rotate the Command Key',
       description:
-        'TT&C console: begin the rotation, then complete it. KEY-2027-Q2 must read Valid before the SAR-2 window opens at 07:34:18. Rotate in the gap: the three minutes start when SAR-1 sets at Galway (07:25:31).',
+        'On the TT&C console, begin the rotation and then complete it. KEY-2027-Q2 must read Valid before the SAR-2 window opens at 07:34:20. Rotate in the gap, because your three minutes start when SAR-1 sets at Galway (07:25:31).',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['log-the-receive-pass'],
       timeLimitSeconds: 3 * 60,
@@ -625,7 +627,7 @@ export const natsEuScenario15Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'The rejection is the failure mode this whole day is built to avoid. Two buttons, one state between them. The rotation is not a formality on a Monday morning; it is the interval in which the fleet has no key at all.',
+              'Between Begin and Complete the console holds no valid command key, so the spacecraft rejects anything sent and the console history records why. That rejection is the failure this whole day is built to avoid. The old key still working is the tempting wrong answer, because the console only sends on a key it counts as valid.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -638,7 +640,7 @@ export const natsEuScenario15Data: ScenarioData = {
       id: 'read-the-traffic-key',
       nice: ['K0728', 'K0874', 'S0844'],
       title: 'Read the Traffic Key',
-      description: 'The fleet traffic key rolls at 07:27. Read the payload crypto on RX analysis after it does: the decryption key will not be what you left it.',
+      description: 'The fleet traffic key rolls at 07:27. Once it has, read the payload crypto on RX analysis: the traffic key will no longer read Valid.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['rotate-the-command-key'],
       conditions: [
@@ -658,11 +660,11 @@ export const natsEuScenario15Data: ScenarioData = {
               'Rotterdam rolled the fleet traffic key and the station did not follow; the fix is the re-key on the TX chain payload panel',
               'Your command rotation broke the traffic key on the console; the fix is to undo it on the TT&C console and rotate again',
               'The spacecraft zeroized its keys when the command key changed; the fix is a KEY-VERIFY under Q2 to reload them on orbit',
-              'Nothing moved, Mismatch is the normal reading during a rotation window; the fix is to wait for the SAR-2 AOS and read again',
+              'Nothing moved: Mismatch is the normal reading during a rotation window, and the fix is to wait for the SAR-2 AOS and read again',
             ],
             correctIndex: 0,
             explanation:
-              'Not the TT&C console: the command key is a different key and is already done. Two keys, two custodians. The one Rotterdam moves is the one you follow; the one you move is the one Rotterdam verifies.',
+              'Rotterdam rolled the traffic key on the fleet schedule, and the station follows it by re-keying the payload crypto. Your command rotation can’t be the cause, because the command key is a separate key and it already reads Valid on Q2. Waiting wouldn’t help either, because the mismatch stays until someone loads the new material.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -675,7 +677,7 @@ export const natsEuScenario15Data: ScenarioData = {
       id: 're-key-the-payload-crypto',
       nice: ['K0728', 'K0874', 'S0421'],
       title: 'Re-key the Payload Crypto',
-      description: 'Load the new traffic key on the TX chain payload panel and confirm both directions read Valid before the SAR-2 window.',
+      description: 'Load the new traffic key on the TX chain payload panel, then confirm both directions read Valid before the SAR-2 window.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['read-the-traffic-key'],
       timeLimitSeconds: 2 * 60,
@@ -702,7 +704,7 @@ export const natsEuScenario15Data: ScenarioData = {
       nice: ['S0421', 'K0773', 'K1032'],
       title: 'Tune for SAR-2 and the Uplink',
       description:
-        'Modem 1 to the 1370 MHz SAR-2 carrier, analyzer centred on the 1397 MHz SAR-2 beacon; TX modem 1 from 1405 MHz to the 1435 MHz SAR-2 telecommand IF (14035 MHz at the BUC). The tracker is wherever SAR-1 left it; program-track slews to the 07:34 rise at azimuth 190.',
+        'Set RX modem 1 to the 1370 MHz SAR-2 carrier and centre the analyzer on the 1397 MHz SAR-2 beacon. Then move TX modem 1 from 1405 MHz to 1435 MHz, the SAR-2 telecommand IF (14035 MHz at the BUC). The tracker is still where SAR-1 left it, and program-track will slew it to the 07:34 rise at azimuth 190.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['re-key-the-payload-crypto'],
       timeLimitSeconds: 3 * 60,
@@ -740,7 +742,8 @@ export const natsEuScenario15Data: ScenarioData = {
       id: 'acquire-sar2',
       nice: ['S0421', 'K1032'],
       title: 'Acquire MERIDIAN-SAR-2',
-      description: 'AOS 07:34 from azimuth 190. Program-track MERIDIAN-SAR-2 and confirm its beacon on RX analysis. Chain cold until the downlink is proven.',
+      description:
+        'SAR-2 rises at 07:34 from azimuth 190. Turn on program-track for MERIDIAN-SAR-2 and confirm its beacon on RX analysis. Keep the transmit chain off until the downlink is proven.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['tune-for-sar2-and-the-uplink'],
       conditions: [
@@ -776,7 +779,7 @@ export const natsEuScenario15Data: ScenarioData = {
       nice: ['K0728', 'T0153', 'K0740'],
       title: 'Decode on the New Traffic Key',
       description:
-        'Lock the 1370 MHz carrier with the chain still cold, hold C/N above 8 dB and confirm the payload decrypts under Q2. That is the traffic key proven; an uplink on the rack would spoil this measurement, so it comes first.',
+        'Lock the 1370 MHz carrier with the transmit chain still off, hold C/N above 8 dB and confirm the payload decrypts under Q2. That proves the traffic key, and it comes before any uplink because a transmitter on the rack would spoil the measurement.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['acquire-sar2'],
       conditions: [
@@ -806,7 +809,8 @@ export const natsEuScenario15Data: ScenarioData = {
       id: 'chain-up-for-the-proof',
       nice: ['S0421', 'T1567', 'K0645'],
       title: 'Chain Up for the Proof',
-      description: 'Window open until 07:43:05. Uplink Doppler compensation on the TT&C console, then the chain in order: carrier into the muted BUC, unmute, HPA. Two minutes.',
+      description:
+        'The command window closes at 07:43:05. Turn on uplink Doppler compensation on the TT&C console, then bring the chain up in order: start the carrier into the muted BUC, unmute the BUC, then enable the HPA. You have two minutes.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['decode-on-the-new-traffic-key'],
       timeLimitSeconds: 2 * 60,
@@ -861,14 +865,14 @@ export const natsEuScenario15Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'KEY-VERIFY acknowledged. What exactly has been proven, and what has not?',
             options: [
-              'That the spacecraft authenticated a command under Q2 inside the window; nothing about the traffic key or the other spacecraft',
-              'That the whole fleet is on Q2 as of this ACK; nothing about the traffic key, which Rotterdam rolled and verifies on its own',
-              'That both keys are live on this spacecraft, since one ACK covers the link; nothing about the other spacecraft in the fleet',
-              'Only that the uplink reached the bird inside the window; nothing about either key, since the ACK does not check the key',
+              'That the spacecraft authenticated a command under Q2 inside the window, and nothing else',
+              'That the whole fleet is on Q2 as of this ACK, including the traffic key Rotterdam rolled',
+              'That both keys are live on this spacecraft, since one ACK covers the whole link',
+              'Only that the uplink reached the bird inside the window, since the ACK doesn’t check the key',
             ],
             correctIndex: 0,
             explanation:
-              'The command key is live on orbit. The traffic key was proved separately by the decode, and Rotterdam verifies the other spacecraft one by one. An ACK is proof of one thing on one bird. Rotation day is a list of them.',
+              'The ACK shows that SAR-2 authenticated one command under Q2, so the command key is live on that spacecraft. It says nothing about the traffic key, which the decode proved separately, and nothing about the rest of the fleet, which Rotterdam verifies one spacecraft at a time. That’s why the record needs both proofs.',
             pointPenalty: 5,
             documentSection: 'Activate',
             documentLine:
@@ -888,7 +892,7 @@ export const natsEuScenario15Data: ScenarioData = {
       id: 'safe-the-uplink',
       nice: ['S0421', 'K0645'],
       title: 'Safe the Uplink',
-      description: 'Proof in hand. Chain down in the mirror order: HPA output off, BUC muted, carrier off.',
+      description: 'The proof is done, so take the chain down in the reverse order: disable the HPA output, mute the BUC, then turn the carrier off.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['prove-the-new-key-on-orbit'],
       timeLimitSeconds: 2 * 60,
@@ -920,7 +924,7 @@ export const natsEuScenario15Data: ScenarioData = {
       id: 'close-the-comsec-record',
       nice: ['K0876', 'K0645', 'S0593'],
       title: 'Close the COMSEC Record',
-      description: 'Anneke wants the rotation evidence. Write it as evidence.',
+      description: 'Anneke needs the rotation record to show every step with its evidence. Choose the entry that does that.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['safe-the-uplink'],
       timeLimitSeconds: 3 * 60,
@@ -933,14 +937,14 @@ export const natsEuScenario15Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What is the rotation evidence?',
             options: [
-              'The order acknowledged, the last Q1 contact with zero commands, the rotation completed, the re-key, and the ACK under Q2',
-              'KEY-VERIFY acknowledged under Q2 inside the window, with the command history line beside it: the ACK is the evidence',
+              'The order acknowledged, the last Q1 contact with zero commands, the rotation, the re-key and the ACK under Q2',
+              'KEY-VERIFY acknowledged under Q2 inside the window, with the command history line beside it, as the one proof',
               'The console reading Valid on both keys, on the TX chain and on RX analysis, with the time each one turned Valid',
               'Anneke’s confirmation that the fleet is on Q2, countersigned in the audit log, with the 07:27 fleet notice attached',
             ],
             correctIndex: 0,
             explanation:
-              'Order in the audit log, last Q1 contact with zero commands, command rotation completed on the console, traffic re-key with both directions Valid, a decode under Q2, KEY-VERIFY acknowledged under Q2 inside the window. Any one alone is not proof. A rotation record is a chain: order, retire, rotate, follow, prove. Break any link and the fleet has a key nobody can vouch for.',
+              'The correct record is the whole chain: the order in the audit log, the last Q1 contact with zero commands, the command rotation, the traffic re-key with both directions Valid, a decode under Q2 and KEY-VERIFY acknowledged under Q2 inside the window. Any one of those alone is only part of the proof, and a missing link means nobody can vouch for the key.',
             pointPenalty: 5,
             documentSection: 'Activate',
             documentLine:
@@ -960,7 +964,7 @@ export const natsEuScenario15Data: ScenarioData = {
         <em>[Text message from Anneke Visser at 05:41]</em>
       </p>
       <p>
-        "Rotation order is in your audit log. Old command key dies after your 07:16 SAR-1 window; new key proven on SAR-2 at 07:34 with KEY-VERIFY, inside the window. No commands in between. The traffic key rolls on the fleet schedule at 07:27, in your gap, and your station will not follow it on its own. No gaps, please. Confirm each step back to me."
+        "The rotation order is in your audit log. Nothing goes up on the old command key after your 07:16 SAR-1 window. Then you prove the new key on SAR-2 at 07:34 by sending KEY-VERIFY, the test command, inside that window. Please don't send any other commands in between. The traffic key, which decrypts what the satellite sends down, rolls on the fleet schedule at 07:27, in your gap, and your station won't follow it on its own. Please confirm each step back to me."
       </p>
       `,
       character: Character.ANNEKE_VISSER,
@@ -971,10 +975,10 @@ export const natsEuScenario15Data: ScenarioData = {
       'build-the-day-plan': {
         text: `
         <p>
-          <em>[Text message from Fiona MacLeod at 07:03]</em>
+          <em>[Text message from Fiona MacLeod at {{stationTime}}]</em>
         </p>
         <p>
-          "Give me the Shetland halves and I'll stay off the uplink. Fifty-one degrees on SAR-1 and an eleven-degree graze on SAR-2 - I'll take the telemetry off the second and leave the proving to you. Not touching a key today."
+          "I can see the plan, and the Shetland halves are mine. We get fifty-one degrees on SAR-1, then an eleven-degree graze on SAR-2, which is a pass that barely clears our horizon. I'll take the telemetry off the second one and leave the proving to you. I'm not touching a key today, so the uplink is all yours."
         </p>
         `,
         character: Character.FIONA_MACLEOD,
@@ -984,7 +988,7 @@ export const natsEuScenario15Data: ScenarioData = {
       'rotate-the-command-key': {
         text: `
         <p>
-          Rotation complete on my side. Q2 is active in the fleet key store. Your window opens in a few minutes; your traffic key will have rolled by then, so look at it before you look at the sky.
+          That's the command key rotated, and I can see Q2 active in the fleet key store. The traffic key is Rotterdam's to move, and it rolls on the fleet schedule in this same gap. Once it has rolled, read the payload crypto before you retune anything, because that tells you whether your station followed.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -994,10 +998,7 @@ export const natsEuScenario15Data: ScenarioData = {
       'read-the-traffic-key': {
         text: `
         <p>
-          <em>[Automated notice from MERIDIAN Ops at 07:27]</em>
-        </p>
-        <p>
-          "Fleet traffic key rotation executed 07:27:00Z per order. Sites - load new material before your next payload contact."
+          The fleet traffic key rolled at 07:27, as ordered, so your Mismatch is the expected result. Please load the new material on the transmit chain payload panel before your next payload contact, which is SAR-2 in a few minutes.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -1007,7 +1008,7 @@ export const natsEuScenario15Data: ScenarioData = {
       'prove-the-new-key-on-orbit': {
         text: `
         <p>
-          KEY-VERIFY acknowledged under Q2. SAR-2 is on the new key, and so is Galway. Two more sites to go and then the fleet is on Q2. Close your record; I will countersign it.
+          I see the KEY-VERIFY acknowledgement under Q2, so SAR-2 is on the new key and so is Galway. Please safe the uplink first, because the proof is done and there's no reason to leave the transmitter on. Then close your record, and I'll countersign it.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
@@ -1017,7 +1018,7 @@ export const natsEuScenario15Data: ScenarioData = {
       'close-the-comsec-record': {
         text: `
         <p>
-          That is an evidence chain, not a story. Order, retire, rotate, follow, prove. Thank you, Galway - same again next quarter.
+          That's the whole evidence chain: the order, the last pass on Q1, the rotation, the re-key and the proof, each with a time. It's countersigned, and I'll see you at the next quarterly rotation.
         </p>
         `,
         character: Character.ANNEKE_VISSER,

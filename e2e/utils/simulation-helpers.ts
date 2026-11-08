@@ -8,6 +8,14 @@ export async function waitForSimulationReady(page: Page): Promise<void> {
   // Wait for the app shell to be visible
   await expect(page.locator('#app-shell-page')).toBeVisible({ timeout: 15000 });
 
+  // A fresh mission waits for the player; resumed checkpoints skip this scene.
+  await page.waitForFunction(() => !!document.querySelector('.scene-modal[open]') || document.querySelector<HTMLElement>('#app-shell-page')?.inert === false);
+  const opening = page.locator('.scene-modal[open]');
+  if (await opening.isVisible()) {
+    await opening.getByRole('button', { name: 'Start', exact: true }).click();
+    await expect(opening).toHaveCount(0);
+  }
+
   // Wait for ground stations to appear in the asset tree
   const gsItems = page.locator('[data-asset-type="ground-station"], .ground-station-item, .asset-tree-item');
   await expect(gsItems.first()).toBeVisible({ timeout: 15000 });

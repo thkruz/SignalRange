@@ -110,7 +110,7 @@ test.describe('nats-eu Scenario 2 Full Completion', () => {
 
   test('[review-pass-schedule] confirms culmination as the measurement point', async () => {
     await missionControl.selectTab('pass-schedule');
-    await answerSystemQuiz(page, '14:06:45, 28 degrees');
+    await answerSystemQuiz(page, 'At culmination: 14:06:45');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Confirm the Measurement Point');
   });
@@ -142,7 +142,7 @@ test.describe('nats-eu Scenario 2 Full Completion', () => {
   test('[setting-leg] reads C/N on the way down', async () => {
     await missionControl.selectTab('rx-analysis');
     await advanceMissionClockToUtc(page, '2027-03-15T14:08:40Z');
-    await answerSystemQuiz(page, 'Same elevation, same slant range');
+    await answerSystemQuiz(page, 'Same elevation means the same slant range');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Measure on the Setting Leg', 60000);
   });
@@ -150,7 +150,7 @@ test.describe('nats-eu Scenario 2 Full Completion', () => {
   test('[record-measurements] fills in the measurement section', async () => {
     await advanceMissionClockToUtc(page, '2027-03-15T14:10:30Z');
     await closeWorkingDocumentIfOpen(page);
-    await answerSystemQuiz(page, 'margin about 7 dB over 4.2 dB');
+    await answerSystemQuiz(page, 'margin about 7 dB over threshold');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Record the Measurements');
   });
@@ -158,7 +158,7 @@ test.describe('nats-eu Scenario 2 Full Completion', () => {
   test('[set-up-regression] retunes for SAR-2', async () => {
     await closeWorkingDocumentIfOpen(page);
     await setRxModemFrequency(page, missionControl, 1370);
-    await answerSystemQuiz(page, 'A second bird on a second geometry');
+    await answerSystemQuiz(page, 'a second satellite on a second geometry');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Set Up the Regression Run');
   });

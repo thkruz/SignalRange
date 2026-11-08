@@ -1,3 +1,4 @@
+import { displayScale, displayViewport } from '@app/game-menu/display-viewport';
 import { Rng } from '@app/simulation/rng';
 /**
  * @file Quiz Modal - Interactive quiz for status-check objective conditions
@@ -151,8 +152,8 @@ export class QuizModal extends DraggableBox {
     }
 
     // Center after rendering the question and reserving its feedback space.
-    this.boxEl.style.top = `${window.scrollY + (window.innerHeight - this.boxEl.offsetHeight) / 2}px`;
-    this.boxEl.style.left = `${(window.innerWidth - this.boxEl.offsetWidth) / 2}px`;
+    this.boxEl.style.top = `${window.scrollY + (displayViewport().height - this.boxEl.offsetHeight) / 2}px`;
+    this.boxEl.style.left = `${(displayViewport().width - this.boxEl.offsetWidth) / 2}px`;
 
     // Bring to front
     this.boxEl.style.zIndex = DraggableBox.increaseMaxZIndex().toString();
@@ -206,7 +207,7 @@ export class QuizModal extends DraggableBox {
     // Measure this quiz's real response at its rendered width, then remove it
     // so hidden answers are not present in the accessible tree or text queries.
     feedbackEl.innerHTML = this.correctFeedbackHtml_();
-    feedbackEl.style.minHeight = `${feedbackEl.getBoundingClientRect().height}px`;
+    feedbackEl.style.minHeight = `${feedbackEl.getBoundingClientRect().height / displayScale()}px`;
     feedbackEl.innerHTML = '';
     penaltyEl.style.display = 'flex';
     penaltyEl.style.visibility = 'hidden';
@@ -413,12 +414,13 @@ export class QuizModal extends DraggableBox {
 
     const rect = this.boxEl.getBoundingClientRect();
     const viewportHeight = window.innerHeight;
-    const margin = 16; // Minimum margin from viewport edge
+    const scale = displayScale();
+    const margin = 16 * scale; // Minimum margin from viewport edge
 
     if (rect.bottom > viewportHeight - margin) {
       const overflow = rect.bottom - (viewportHeight - margin);
-      const currentTop = parseFloat(this.boxEl.style.top) || rect.top;
-      const newTop = Math.max(margin, currentTop - overflow);
+      const currentTop = parseFloat(this.boxEl.style.top) || rect.top / scale;
+      const newTop = Math.max(16, currentTop - overflow / scale);
       this.boxEl.style.top = `${newTop}px`;
     }
   }

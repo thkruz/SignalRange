@@ -1,3 +1,5 @@
+import { scaleDragging } from '@app/game-menu/scaled-drag';
+import { displayViewport } from '@app/game-menu/display-viewport';
 
 import { errorManagerInstance } from '@engine/utils/errorManager';
 import { getEl } from '@engine/utils/get-el';
@@ -60,8 +62,8 @@ export abstract class DraggableModal extends DraggableBox {
       if (this.height) {
         modalContent.style.minHeight = this.height;
       }
-      modalContent.style.top = `${(window.innerHeight - modalContent.offsetHeight) / 2}px`;
-      modalContent.style.left = `${(window.innerWidth - modalContent.offsetWidth) / 2}px`;
+      modalContent.style.top = `${(displayViewport().height - modalContent.offsetHeight) / 2}px`;
+      modalContent.style.left = `${(displayViewport().width - modalContent.offsetWidth) / 2}px`;
       this.sendToFront();
       if (cb) {
         cb();
@@ -78,6 +80,7 @@ export abstract class DraggableModal extends DraggableBox {
       this.draggie = new Draggabilly(boxContent, {
         containment: getEl(`${this.boxId}-container`)!,
       });
+      scaleDragging(this.draggie, boxContent, getEl(`${this.boxId}-container`)!);
 
       // Bring modal to front when clicked or dragged
       this.draggie.on('pointerDown', () => {
@@ -86,8 +89,8 @@ export abstract class DraggableModal extends DraggableBox {
 
       boxContent.addEventListener('mousedown', (e: MouseEvent) => {
         if (e.button === 2) {
-          boxContent.style.top = `${(window.innerHeight - boxContent.offsetHeight) / 2}px`;
-          boxContent.style.left = `${(window.innerWidth - boxContent.offsetWidth) / 2}px`;
+          boxContent.style.top = `${(displayViewport().height - boxContent.offsetHeight) / 2}px`;
+          boxContent.style.left = `${(displayViewport().width - boxContent.offsetWidth) / 2}px`;
           this.sendToFront();
         }
       });

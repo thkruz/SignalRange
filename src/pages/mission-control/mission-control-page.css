@@ -2,7 +2,7 @@
 /* Layout now handled by Tabler utilities: .d-flex .flex-column */
 
 .app-shell-page {
-  height: calc(100vh - 80px);
+  height: calc(var(--mc-viewport-height, 100vh) - 80px);
   background-color: var(--mc-chrome-canvas-bg, var(--mc-surface-0));
   color: #cbd5e1;
   font-family: 'Inter', sans-serif;

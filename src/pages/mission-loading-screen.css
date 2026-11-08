@@ -53,7 +53,7 @@ html.reduce-motion .mission-loading-content::before { animation: none; }
   z-index: -1;
 }
 
-.mission-loading-content { padding: clamp(24px, 6vw, 96px); max-width: 1000px; }
+.mission-loading-content { padding: clamp(24px, calc(var(--mc-viewport-width, 100vw) * 0.06), 96px); max-width: 1000px; }
 .mission-loading-content > span { display: block; color: var(--mc-text-primary); border-left: 3px solid #ba160c; padding-left: 10px; margin-bottom: 16px; font-size: 11px; letter-spacing: 2px; }
 .mission-loading-content h1 { font-size: 40px; line-height: 1.2; margin: 0 0 16px; }
 .mission-loading-content p { color: var(--mc-equip-text-bright); font-size: 16px; line-height: 1.6; }

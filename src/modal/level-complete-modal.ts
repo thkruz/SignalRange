@@ -77,7 +77,7 @@ export class LevelCompleteModal extends DraggableModal {
 
     super(LevelCompleteModal.id, {
       title: 'Mission results',
-      width: 'min(560px, calc(100vw - 32px))',
+      width: 'min(560px, calc(var(--mc-viewport-width, 100vw) - 32px))',
     });
   }
 

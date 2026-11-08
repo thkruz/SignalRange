@@ -1,3 +1,4 @@
+import { displayViewport } from '@app/game-menu/display-viewport';
 import { Rng } from '@app/simulation/rng';
 /**
  * @file Decision Modal - presents a decision condition to the operator
@@ -78,8 +79,8 @@ export class DecisionModal extends DraggableBox {
     if (!this.boxEl) return;
     showEl(this.boxEl);
     if (this.width) this.boxEl.style.minWidth = this.width;
-    this.boxEl.style.top = `${window.scrollY + (window.innerHeight - this.boxEl.offsetHeight) / 2}px`;
-    this.boxEl.style.left = `${(window.innerWidth - this.boxEl.offsetWidth) / 2}px`;
+    this.boxEl.style.top = `${window.scrollY + (displayViewport().height - this.boxEl.offsetHeight) / 2}px`;
+    this.boxEl.style.left = `${(displayViewport().width - this.boxEl.offsetWidth) / 2}px`;
     this.boxEl.style.zIndex = DraggableBox.increaseMaxZIndex().toString();
     cb?.();
   }

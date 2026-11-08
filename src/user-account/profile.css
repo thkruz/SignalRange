@@ -7,9 +7,9 @@
   position: fixed;
   inset: 50% auto auto 50% !important;
   transform: translate(-50%, -50%);
-  width: min(880px, calc(100vw - 32px));
-  max-width: calc(100vw - 32px);
-  height: min(760px, calc(100dvh - 48px));
+  width: min(880px, calc(var(--mc-viewport-width, 100vw) - 32px));
+  max-width: calc(var(--mc-viewport-width, 100vw) - 32px);
+  height: min(760px, calc(var(--mc-viewport-height, 100dvh) - 48px));
   min-height: 0 !important;
   background: var(--mc-profile-bg);
   border: 1px solid var(--mc-profile-border);
@@ -95,7 +95,7 @@
 .operator-profile .profile-empty { padding-block: 24px; }
 
 @media (max-width: 600px) {
-  #modal-profile { height: calc(100dvh - 24px); max-width: calc(100vw - 24px); }
+  #modal-profile { height: calc(var(--mc-viewport-height, 100dvh) - 24px); max-width: calc(var(--mc-viewport-width, 100vw) - 24px); }
   .profile-identity { padding: 18px 16px; }
   #profile-name { font-size: 21px; }
   .profile-totals { padding: 0 16px 18px; gap: 12px; }

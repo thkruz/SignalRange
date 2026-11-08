@@ -48,12 +48,12 @@
 }
 
 .spec-analyzer-canvas canvas.spec-a-canvas-single {
-  height: clamp(260px, 40vh, 420px);
+  height: clamp(260px, calc(var(--mc-viewport-height, 100vh) * 0.4), 420px);
 }
 
 .spec-analyzer-canvas canvas.spec-a-canvas-spectral,
 .spec-analyzer-canvas canvas.spec-a-canvas-waterfall {
-  height: clamp(130px, 20vh, 210px);
+  height: clamp(130px, calc(var(--mc-viewport-height, 100vh) * 0.2), 210px);
 }
 
 /* Peak Search readout (player-facing) */
@@ -325,6 +325,11 @@
 }
 
 /* Compact nested cards for modems */
+.rx-analysis-tab .notch-slot > .card-header {
+  /* Match the nested card body's inset despite the shared header override. */
+  padding: 0.5rem 0.75rem !important;
+}
+
 .rx-analysis-tab .card .card .card-header {
   padding: 0.5rem 0.75rem;
 }

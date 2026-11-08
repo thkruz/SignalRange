@@ -9,8 +9,8 @@
   border-top: 3px solid var(--mc-menu-accent);
   border-radius: 3px;
   padding: 0;
-  width: min(600px, calc(100vw - 32px));
-  max-height: calc(100dvh - 40px);
+  width: min(600px, calc(var(--mc-viewport-width, 100vw) - 32px));
+  max-height: calc(var(--mc-viewport-height, 100dvh) - 40px);
   box-shadow: 0 20px 60px #0008;
 }
 .game-menu[open] { display: flex; flex-direction: column; animation: game-menu-enter var(--mc-interface-duration, 180ms) ease-out; }

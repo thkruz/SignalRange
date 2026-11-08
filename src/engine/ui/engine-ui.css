@@ -31,7 +31,7 @@
   z-index: 1000;
   overflow: auto;
   background-color: rgba(0, 0, 0, 0.7);
-  max-height: 100vh;
+  max-height: var(--mc-viewport-height, 100vh);
 }
 
 .draggable-box {
@@ -39,7 +39,7 @@
   background-color: var(--color-dark-background);
   width: fit-content;
   min-width: 300px;
-  max-width: 90vw;
+  max-width: calc(var(--mc-viewport-width, 100vw) * 0.9);
   z-index: 10001;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
 }
@@ -74,7 +74,7 @@
   border-top: 0;
   min-height: 250px;
   height: 100%;
-  max-height: 70vh;
+  max-height: calc(var(--mc-viewport-height, 100vh) * 0.7);
 }
 
 .draggable-box__btn {
@@ -196,8 +196,8 @@
 
 @media (max-width: 768px) {
   .draggable-box {
-    width: 95vw;
-    max-width: 95vw;
+    width: calc(var(--mc-viewport-width, 100vw) * 0.95);
+    max-width: calc(var(--mc-viewport-width, 100vw) * 0.95);
   }
 }
 

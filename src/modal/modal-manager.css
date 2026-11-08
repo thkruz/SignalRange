@@ -37,7 +37,7 @@
   line-height: 1.6;
   font-size: 16px;
   /* comfortable reading size */
-  max-height: 86vh;
+  max-height: calc(var(--mc-viewport-height, 100vh) * 0.86);
   /* keep original behavior */
   overflow: auto;
 

@@ -66,7 +66,7 @@
 #global-command-bar-container .alarm-mute-btn span { min-width: 5ch; text-align: left; }
 #global-command-bar-container .alarm-mute-btn--muted { color: #f1cb75; border-color: #a38c60; }
 #global-command-bar-container :focus-visible { outline: 2px solid #eee; outline-offset: -2px; }
-#mission-alarm-panel { position: absolute; top: calc(100% + 1px); right: 12px; width: min(650px, calc(100% - 24px)); max-height: min(440px, 60vh); overflow: auto; padding: 20px; background: #2e2e2e; border: 1px solid #666; box-shadow: 0 12px 24px #0006; }
+#mission-alarm-panel { position: absolute; top: calc(100% + 1px); right: 12px; width: min(650px, calc(100% - 24px)); max-height: min(440px, calc(var(--mc-viewport-height, 100vh) * 0.6)); overflow: auto; padding: 20px; background: #2e2e2e; border: 1px solid #666; box-shadow: 0 12px 24px #0006; }
 #mission-alarm-panel[hidden] { display: none; }
 .mission-alarm-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .mission-alarm-heading h2 { margin: 0; font: 600 16px 'Inter', sans-serif; color: #eee; }

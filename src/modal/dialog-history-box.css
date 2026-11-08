@@ -1,5 +1,5 @@
 #draggable-html-box-dialog-history {
-  max-height: 80vh;
+  max-height: calc(var(--mc-viewport-height, 100vh) * 0.8);
   width: 600px;
   min-width: 400px;
   min-height: 300px;
@@ -8,7 +8,7 @@
   #draggable-html-box-content-dialog-history {
     padding: 0;
     color: var(--text-color, #ffffff);
-    max-height: 70vh;
+    max-height: calc(var(--mc-viewport-height, 100vh) * 0.7);
     overflow-y: auto;
 
     &::-webkit-scrollbar {

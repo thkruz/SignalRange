@@ -429,13 +429,13 @@ export class RxAnalysisTab extends BaseElement {
           <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
               <h3 class="card-title">Notch Filter</h3>
-              <div class="form-check form-switch">
+              <div class="form-check form-switch mb-0">
                 <input type="checkbox" id="notch-power" class="form-check-input" role="switch" checked />
                 <label for="notch-power" class="form-check-label small">Power</label>
               </div>
             </div>
             <div class="card-body">
-              <div class="row g-2">
+              <div class="row g-3">
                 ${this.generateNotchSlotHtml_(0)}
                 ${this.generateNotchSlotHtml_(1)}
                 ${this.generateNotchSlotHtml_(2)}
@@ -941,19 +941,19 @@ export class RxAnalysisTab extends BaseElement {
   private generateNotchSlotHtml_(index: number): string {
     const prefix = `notch-${index}`;
     return html`
-      <div class="col-lg-4">
-        <div class="card">
-          <div class="card-header d-flex justify-content-between align-items-center py-2">
+      <div class="col-md-6 col-xl-4">
+        <div class="card notch-slot h-100">
+          <div class="card-header d-flex justify-content-between align-items-center">
             <span class="small fw-bold">
               Notch ${index + 1}
               <span id="${prefix}-applied-status" class="status-badge status-badge-off ms-1" title="Applied state of this notch">OFF</span>
             </span>
-            <div class="form-check form-switch">
+            <div class="form-check form-switch mb-0">
               <input type="checkbox" id="${prefix}-enabled" class="form-check-input" role="switch" />
               <label for="${prefix}-enabled" class="form-check-label small">Enable</label>
             </div>
           </div>
-          <div class="card-body py-2">
+          <div class="card-body">
             <!-- Center Frequency -->
             <div class="mb-2">
               <label class="form-label text-muted small text-uppercase mb-1">Center Freq (MHz)</label>
@@ -968,7 +968,7 @@ export class RxAnalysisTab extends BaseElement {
             </div>
 
             <!-- Bandwidth -->
-            <div class="row g-1 mb-2">
+            <div class="row g-2">
               <div class="col-6">
                 <label class="form-label text-muted small text-uppercase mb-1">Width (MHz)</label>
                 <div class="input-group input-group-sm">

@@ -12,6 +12,7 @@ import { achievementToast } from '@app/user-account/achievement-toast';
 import { Auth } from '@app/user-account/auth';
 import { getUserDataService } from '@app/user-account/user-data-service';
 import { displayPreferences, type TextSize } from './display-preferences';
+import { displayViewport, type GameResolution } from './display-viewport';
 import { setMenuPause } from './menu-pause';
 import './game-menu.css';
 
@@ -179,7 +180,7 @@ export class GameMenu {
     const prefs = AudioPreferences.getInstance().prefs;
     return `<section class="game-settings-section"><h2>Audio</h2>${CHANNELS.map(([channel, label]) => `<label class="game-setting" for="setting-${channel}"><span>${label}</span><input type="range" id="setting-${channel}" data-channel="${channel}" min="0" max="100" step="1" value="${Math.round(prefs[`${channel}Volume`] * 100)}"/><output for="setting-${channel}">${Math.round(prefs[`${channel}Volume`] * 100)}%</output></label>`).join('')}
       <label class="game-setting-toggle"><input id="setting-sfx" type="checkbox" ${prefs.sfx ? 'checked' : ''}/>Enable equipment and interface sounds</label><label class="game-setting-toggle"><input id="setting-ambience-enabled" type="checkbox" ${prefs.ambience ? 'checked' : ''}/>Enable room ambience</label></section>
-      <section class="game-settings-section"><h2>Display & accessibility</h2><label class="game-setting-select" for="setting-text"><span>Reading text</span><select id="setting-text"><option value="standard">Standard</option><option value="large">Large</option><option value="largest">Largest</option></select></label><p class="game-menu-note">Adjusts dialogue, objective text, and mission descriptions.</p><label class="game-setting-toggle"><input id="setting-motion" type="checkbox"/>Reduce motion</label><p class="game-menu-note">Your system's reduced motion preference is also respected.</p>
+      <section class="game-settings-section"><h2>Display & accessibility</h2><label class="game-setting-select" for="setting-resolution"><span>Game resolution</span><select id="setting-resolution" aria-describedby="setting-resolution-note"><option value="native">Native (automatic)</option><option value="1440p">2560 × 1440 (1440p)</option><option value="1080p">1920 × 1080 (1080p)</option></select></label><p id="setting-resolution-note" class="game-menu-note">Scales the interface to fill your window without changing your monitor resolution. Adapts to smaller windows; ultrawide screens keep their extra width.</p><p id="setting-resolution-status" class="game-menu-note" role="status"></p><label class="game-setting-select" for="setting-text"><span>Reading text</span><select id="setting-text"><option value="standard">Standard</option><option value="large">Large</option><option value="largest">Largest</option></select></label><p class="game-menu-note">Adjusts dialogue, objective text, and mission descriptions.</p><label class="game-setting-toggle"><input id="setting-motion" type="checkbox"/>Reduce motion</label><p class="game-menu-note">Your system's reduced motion preference is also respected.</p>
       <label class="game-setting-select" for="setting-achievements"><span>Achievement notifications</span><select id="setting-achievements"><option value="compact">Compact (Steam-style)</option><option value="card">Detailed card</option></select></label><button id="setting-fullscreen" type="button">Toggle fullscreen</button><span id="setting-fullscreen-status" role="status"></span></section>`;
   }
 
@@ -196,6 +197,15 @@ export class GameMenu {
     root.querySelector<HTMLInputElement>('#setting-sfx')!.onchange = (e) => audio.set({ sfx: (e.target as HTMLInputElement).checked });
     root.querySelector<HTMLInputElement>('#setting-ambience-enabled')!.onchange = (e) => audio.set({ ambience: (e.target as HTMLInputElement).checked });
     const size = root.querySelector<HTMLSelectElement>('#setting-text')!;
+    const resolution = root.querySelector<HTMLSelectElement>('#setting-resolution')!;
+    resolution.value = displayPreferences.prefs.resolution;
+    resolution.onchange = () => displayPreferences.set({ resolution: resolution.value as GameResolution });
+    const syncResolution = (): void => {
+      const viewport = displayViewport();
+      root.querySelector('#setting-resolution-status')!.textContent = `Current layout: ${Math.round(viewport.width)} × ${Math.round(viewport.height)}`;
+    };
+    syncResolution();
+    window.addEventListener('game-display-change', syncResolution);
     size.value = displayPreferences.prefs.textSize;
     size.onchange = () => displayPreferences.set({ textSize: size.value as TextSize });
     const motion = root.querySelector<HTMLInputElement>('#setting-motion')!;
@@ -205,7 +215,11 @@ export class GameMenu {
     style.value = achievementToast.style;
     style.onchange = () => achievementToast.setStyle(style.value === 'card' ? 'card' : 'compact');
     const button = root.querySelector<HTMLButtonElement>('#setting-fullscreen')!;
-    this.cleanup_ = setupFullscreenButton(button, root.querySelector('#setting-fullscreen-status')!);
+    const cleanupFullscreen = setupFullscreenButton(button, root.querySelector('#setting-fullscreen-status')!);
+    this.cleanup_ = () => {
+      cleanupFullscreen();
+      window.removeEventListener('game-display-change', syncResolution);
+    };
   }
 
   private async describeReturn_(): Promise<void> {

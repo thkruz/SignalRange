@@ -1,3 +1,4 @@
+import { displayViewport } from '@app/game-menu/display-viewport';
 /**
  * @file DevMenuBox - Developer menu for testing and debugging
  * @description Draggable box providing dev tools: auto-skip dialogs, complete objective, set timer
@@ -76,7 +77,7 @@ export class DevMenuBox extends DraggableBox {
 
   protected override placeOnFirstOpen(box: HTMLElement): void {
     super.placeOnFirstOpen(box);
-    box.style.left = `${window.scrollX + (window.innerWidth - box.offsetWidth) / 2}px`;
+    box.style.left = `${window.scrollX + (displayViewport().width - box.offsetWidth) / 2}px`;
   }
 
   private getForceEngButtonChecked_(): string {
@@ -425,8 +426,8 @@ export class DevMenuBox extends DraggableBox {
     }
 
     // Center the box
-    this.boxEl.style.top = `${window.scrollY + (window.innerHeight - this.boxEl.offsetHeight) / 2}px`;
-    this.boxEl.style.left = `${(window.innerWidth - this.boxEl.offsetWidth) / 2}px`;
+    this.boxEl.style.top = `${window.scrollY + (displayViewport().height - this.boxEl.offsetHeight) / 2}px`;
+    this.boxEl.style.left = `${(displayViewport().width - this.boxEl.offsetWidth) / 2}px`;
 
     // Update checkboxes to reflect current state
     const autoSkipToggle = this.domCache_.get('autoSkipToggle') as HTMLInputElement;

@@ -1,9 +1,9 @@
 /* Application theme for the engine's shared confirmation dialog. */
 #modal-confirm {
-  width: min(560px, calc(100vw - 32px));
+  width: min(560px, calc(var(--mc-viewport-width, 100vw) - 32px));
   min-width: 0 !important;
   min-height: 0 !important;
-  max-height: calc(100dvh - 32px);
+  max-height: calc(var(--mc-viewport-height, 100dvh) - 32px);
   overflow-y: auto;
   background: var(--mc-surface-1);
   color: var(--mc-text-primary);

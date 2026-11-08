@@ -5,10 +5,10 @@
   position: fixed;
   inset: 50% auto auto 50% !important;
   transform: translate(-50%, -50%);
-  width: min(560px, calc(100vw - 32px));
-  max-width: calc(100vw - 32px);
+  width: min(560px, calc(var(--mc-viewport-width, 100vw) - 32px));
+  max-width: calc(var(--mc-viewport-width, 100vw) - 32px);
   min-height: 0 !important;
-  max-height: calc(100dvh - 40px);
+  max-height: calc(var(--mc-viewport-height, 100dvh) - 40px);
   display: flex;
   flex-direction: column;
   background: #2e2e2e;
@@ -83,7 +83,7 @@
 .decision-summary-note { color: var(--mc-results-muted); font-size: 12px; }
 
 @media (max-width: 600px) {
-  #level-complete-modal { max-height: calc(100dvh - 24px); }
+  #level-complete-modal { max-height: calc(var(--mc-viewport-height, 100dvh) - 24px); }
   .complete-modal__body { padding: 20px; }
   .complete-modal__title { font-size: 22px; }
   .complete-modal__total { gap: 16px; padding: 16px; }

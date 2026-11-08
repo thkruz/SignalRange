@@ -1,10 +1,10 @@
 #dev-menu-box {
-  width: min(520px, calc(100vw - 32px));
-  max-width: calc(100vw - 32px);
+  width: min(520px, calc(var(--mc-viewport-width, 100vw) - 32px));
+  max-width: calc(var(--mc-viewport-width, 100vw) - 32px);
 }
 
 #dev-menu-box .draggable-box__content {
-  max-height: calc(100dvh - 100px);
+  max-height: calc(var(--mc-viewport-height, 100dvh) - 100px);
   overflow-y: auto;
 }
 

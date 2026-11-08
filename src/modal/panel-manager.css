@@ -3,7 +3,7 @@
   top: 0;
   bottom: 0;
   width: 400px;
-  max-width: 90vw;
+  max-width: calc(var(--mc-viewport-width, 100vw) * 0.9);
   background: var(--background-color, #1e1e1e);
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
   z-index: 1000;
@@ -108,7 +108,7 @@
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .hm-panel {
-    width: 100vw;
-    max-width: 100vw;
+    width: var(--mc-viewport-width, 100vw);
+    max-width: var(--mc-viewport-width, 100vw);
   }
 }

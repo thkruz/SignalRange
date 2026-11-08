@@ -1,4 +1,4 @@
-.achievement-notifications { position: fixed; right: 24px; bottom: 56px; width: min(360px, calc(100vw - 32px)); z-index: 100010; pointer-events: none; }
+.achievement-notifications { position: fixed; right: 24px; bottom: 56px; width: min(360px, calc(var(--mc-viewport-width, 100vw) - 32px)); z-index: 100010; pointer-events: none; }
 .achievement-toast { display: flex; gap: 14px; align-items: center; position: relative; padding: 18px 32px 18px 16px; background: #2e2e2e; color: #f5f5f5; border: 1px solid #606060; border-left: 3px solid #77dba2; box-shadow: 0 8px 24px #0007; font-family: 'Inter', sans-serif; animation: achievement-arrive 380ms cubic-bezier(0.16, 1, 0.3, 1) both; }
 .achievement-toast__badge { display: grid; place-items: center; width: 48px; height: 56px; flex-shrink: 0; background: #272727; color: #77dba2; }
 .achievement-toast__badge svg { width: 34px; height: 34px; }
@@ -16,7 +16,7 @@
 @media (max-width: 600px) { .achievement-notifications { right: 16px; bottom: 48px; } }
 
 /* Compact overlay: square icon, two lines, and a short vertical slide at the screen edge. */
-.achievement-notifications[data-style='compact'] { right: 12px; bottom: 12px; width: min(260px, calc(100vw - 24px)); }
+.achievement-notifications[data-style='compact'] { right: 12px; bottom: 12px; width: min(260px, calc(var(--mc-viewport-width, 100vw) - 24px)); }
 .achievement-toast[data-style='compact'] { height: 64px; box-sizing: border-box; gap: 10px; padding: 8px 20px 8px 8px; border: 1px solid #505050; background: #272727; box-shadow: 0 3px 12px #0005; pointer-events: auto; animation: achievement-compact-arrive 260ms ease-out both; }
 .achievement-toast[data-style='compact'] .achievement-toast__badge { width: 40px; height: 40px; background: #353535; }
 .achievement-toast[data-style='compact'] .achievement-toast__badge svg { width: 28px; height: 28px; }

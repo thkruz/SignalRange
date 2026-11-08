@@ -70,7 +70,7 @@
 }
 
 #decision-modal .draggable-box__content {
-  max-height: 70vh;
+  max-height: calc(var(--mc-viewport-height, 100vh) * 0.7);
   overflow-y: auto;
   border: 0px;
 }

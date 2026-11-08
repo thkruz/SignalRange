@@ -1,8 +1,13 @@
+/* Override Tabler's root scrollbar compensation, which mixes unscaled vw with zoomed %. */
+html:root {
+  margin: 0;
+}
+
 html,
 body {
   margin: 0;
   padding: 0;
-  min-height: 100vh;
+  min-height: var(--mc-viewport-height, 100vh);
   font-family: 'Roboto', sans-serif !important;
 }
 
@@ -176,7 +181,7 @@ input:focus {
 }
 
 .w-screen {
-  width: 100vw !important;
+  width: var(--mc-viewport-width, 100vw) !important;
 }
 
 .w-0 {
@@ -389,7 +394,7 @@ input:focus {
 }
 
 .h-screen {
-  height: 100vh !important;
+  height: var(--mc-viewport-height, 100vh) !important;
 }
 
 .h-0 {

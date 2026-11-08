@@ -22,7 +22,7 @@ const TABS: { id: ProfileTab; label: string }[] = [
 export class ModalProfile extends DraggableModal {
   private static readonly id = 'modal-profile';
   private static instance_: ModalProfile | null = null;
-  protected width: string | null = 'min(880px, calc(100vw - 32px))';
+  protected width: string | null = 'min(880px, calc(var(--mc-viewport-width, 100vw) - 32px))';
   private activeTab_: ProfileTab = 'record';
   private filter_: AchievementFilter = 'all';
   private achievements_: AchievementProgress[] = [];

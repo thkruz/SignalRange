@@ -1,3 +1,5 @@
+import { scaleDragging } from '@app/game-menu/scaled-drag';
+import { displayViewport } from '@app/game-menu/display-viewport';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import Draggabilly from 'draggabilly';
@@ -125,8 +127,8 @@ export abstract class DraggableBox {
    * window (accounting for page scroll). Override to dock it instead.
    */
   protected placeOnFirstOpen(boxContent: HTMLElement): void {
-    boxContent.style.top = `${window.scrollY + (window.innerHeight - boxContent.offsetHeight) / 2}px`;
-    boxContent.style.left = `${(window.innerWidth - boxContent.offsetWidth) / 2}px`;
+    boxContent.style.top = `${window.scrollY + (displayViewport().height - boxContent.offsetHeight) / 2}px`;
+    boxContent.style.left = `${(displayViewport().width - boxContent.offsetWidth) / 2}px`;
   }
 
   /** Whether the box's title bar is inside the window (so the player can grab it) */
@@ -137,7 +139,7 @@ export abstract class DraggableBox {
       return false;
     }
 
-    return left < window.innerWidth - 40 && left + Math.max(boxContent.offsetWidth, 40) > 40 && top >= window.scrollY && top < window.scrollY + window.innerHeight - 20;
+    return left < displayViewport().width - 40 && left + Math.max(boxContent.offsetWidth, 40) > 40 && top >= window.scrollY && top < window.scrollY + displayViewport().height - 20;
   }
 
   protected getBoxTitleHtml(): string {
@@ -151,6 +153,7 @@ export abstract class DraggableBox {
       this.draggie = new Draggabilly(boxContent, {
         containment: getEl('root')!,
       });
+      scaleDragging(this.draggie, boxContent, getEl('root')!);
       this.draggie.on('dragStart', () => {
         boxContent.style.height = 'fit-content';
         boxContent.style.maxHeight = '80%';
@@ -160,8 +163,8 @@ export abstract class DraggableBox {
       });
       boxContent.addEventListener('mousedown', (e: MouseEvent) => {
         if (e.button === 2) {
-          boxContent.style.top = `${(window.scrollY + (window.innerHeight - boxContent.offsetHeight) / 2)}px`;
-          boxContent.style.left = `${(window.innerWidth - boxContent.offsetWidth) / 2}px`;
+          boxContent.style.top = `${(window.scrollY + (displayViewport().height - boxContent.offsetHeight) / 2)}px`;
+          boxContent.style.left = `${(displayViewport().width - boxContent.offsetWidth) / 2}px`;
           this.sendToFront();
         }
       });

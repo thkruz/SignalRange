@@ -19,7 +19,7 @@
 .dialog-box {
   position: relative;
   width: 100%;
-  height: 33.33vh;
+  height: calc(var(--mc-viewport-height, 100vh) * 0.3333);
   /* Bottom third of 1920x1080 */
   /* Campaign-overridable, defaulting to the original literals so campaigns
      that do not declare these are unchanged */

@@ -237,7 +237,7 @@
 
 /* Quiz box styling (non-modal draggable box) */
 #quiz-modal.quiz-box {
-  width: min(550px, calc(100vw - 32px));
+  width: min(550px, calc(var(--mc-viewport-width, 100vw) - 32px));
   min-width: 0 !important;
   position: absolute;
   max-width: 550px;
@@ -248,7 +248,7 @@
 }
 
 #quiz-modal .draggable-box__content {
-  max-height: min(70dvh, calc(100dvh - 100px));
+  max-height: min(calc(var(--mc-viewport-height, 100dvh) * 0.7), calc(var(--mc-viewport-height, 100dvh) - 100px));
   scrollbar-gutter: stable;
   overflow-y: auto;
   border: 0px;

@@ -8,6 +8,9 @@
  *   node scripts/vo-review.mjs --summary       -> counts by status, character and tag, then exits
  *   node scripts/vo-review.mjs --outdated      -> clips with no usable current-tempo take (JSON), then exits
  *   node scripts/vo-review.mjs --archive       -> copies every live mp3 into the take archive, then exits
+ *   node scripts/vo-review.mjs --normalise [--dry-run] [--tolerance 0.5]
+ *                                              -> linear gain to --target on every live take (new takes that
+ *                                                 inherit verdicts; log in src/private/notes), then exits
  *   node scripts/vo-review.mjs --add-take <asset path> <new mp3> '<json>' [--archive-only]
  *                                              -> adds a newly generated take, then exits
  *   node scripts/vo-review.mjs --record-take <asset path> '<json>'
@@ -39,7 +42,7 @@
  * - vo-takes.json: how each take was made (voice, model, text, generation id,
  *   credits), keyed by SHA-1. `scriptText` is the scenario text the take was
  *   recorded from; when it no longer matches the scenario, the take is flagged
- *   "recorded from older text".
+ *   "recording/script mismatch". This identifies a difference, not which copy is newer.
  * Loudness (integrated LUFS and true peak, from ffmpeg loudnorm) is measured in
  * the background and cached by hash in node_modules/.cache, so it is not
  * evidence and can be deleted. A take more than 2 LU from --target (default
@@ -317,7 +320,14 @@ function outdatedReason(addedAt, record) {
   return null;
 }
 
+/**
+ * A clip's status is its live take's verdict, so a clip whose live take was never heard reads
+ * unreviewed even when an older take is approved. Pipeline approvals read 'pipeline' (QC passed,
+ * Ted has not listened). Without a live take, fall back to the takes as a whole.
+ */
 function clipStatus(takes) {
+  const live = takes.find((t) => t.live);
+  if (live) return live.status === 'approved' && live.approvedBy === 'pipeline' ? 'pipeline' : live.status;
   if (takes.some((t) => t.status === 'approved')) return 'approved';
   if (takes.length && takes.every((t) => t.status === 'rejected')) return 'rejected';
   return 'unreviewed';
@@ -336,6 +346,8 @@ function view(clip, entry, records) {
       outdated: outdatedReason(addedAt, records.takes[t.sha1]),
       live: t.sha1 === clip.sha1,
       status: v?.status ?? 'unreviewed',
+      approvedBy: v?.status === 'approved' ? (v.approvedBy ?? 'ted') : null,
+      normalisedFrom: records.takes[t.sha1]?.normalisedFrom ?? null, // the take record, which a verdict never rewrites
       tags: v?.tags ?? [],
       notes: v?.notes ?? '',
       reviewedAt: v?.reviewedAt ?? null,
@@ -367,7 +379,62 @@ function promote(clip, hash) {
   clip.exists = true;
 }
 
+/** True when the take was recorded from a script that no longer matches the scenario text. */
+const offScript = (clip, record) => Boolean(record?.scriptText && norm(record.scriptText) !== norm(clip.text));
+
+/**
+ * The live take was rejected: put the most recently approved other take back live, if there is one
+ * recorded from the current script. An approved take of an older script is never a fallback. With
+ * no fallback the rejected take stays live (the clip reads rejected) until a new take is approved.
+ */
+function fallBack(clip, entry, records) {
+  const best = Object.entries(entry.takes)
+    .filter(([h, v]) => h !== clip.sha1 && v.status === 'approved' && !offScript(clip, records[h]) && existsSync(archiveFile(clip.path, h)))
+    .sort(([, a], [, b]) => String(b.reviewedAt).localeCompare(String(a.reviewedAt)))[0];
+  if (best) promote(clip, best[0]);
+}
+
+/**
+ * Reject every take recorded from an older script: scripts change for a reason, so such a take is
+ * unusable unless the script is reverted. Runs on start and on every refresh. Returns how many.
+ */
+function rejectOffScript() {
+  const review = readReview();
+  const records = readTakes().takes;
+  const now = new Date().toISOString();
+  let n = 0;
+  for (const clip of clips) {
+    for (const t of listTakes(clip)) {
+      if (!offScript(clip, records[t.sha1])) continue;
+      const entry = (review.clips[clip.path] ??= {
+        campaign: clip.campaign, scenario: clip.scenario, number: clip.number, key: clip.key,
+        character: clip.character, characterName: clip.characterName, emotion: clip.emotion, takes: {},
+      });
+      const prev = entry.takes[t.sha1];
+      if (prev?.status === 'rejected') continue;
+      const note = 'Auto-rejected: recorded from an older script.';
+      entry.takes[t.sha1] = {
+        ...prev,
+        status: 'rejected',
+        tags: [...new Set([...(prev?.tags ?? []), 'text wrong'])],
+        notes: prev?.notes ? `${note} ${prev.notes}` : note,
+        text: clip.text,
+        reviewedAt: now,
+        autoRejected: prev?.status ?? 'unreviewed', // the verdict it replaced
+      };
+      delete entry.takes[t.sha1].approvedBy;
+      if (t.sha1 === clip.sha1) fallBack(clip, entry, records);
+      n++;
+    }
+  }
+  if (n) writeReview(review);
+  return n;
+}
+
 function applyReview(clip, hash, { status, notes, tags, approvedBy }) {
+  if (status === 'approved' && offScript(clip, readTakes().takes[hash])) {
+    throw new Error('This take was recorded from an older script and cannot be approved; re-record it.');
+  }
   const review = readReview();
   const entry = review.clips[clip.path] ?? { takes: {} };
   Object.assign(entry, {
@@ -394,11 +461,7 @@ function applyReview(clip, hash, { status, notes, tags, approvedBy }) {
   if (status === 'approved') {
     promote(clip, hash);
   } else if (status === 'rejected' && hash === clip.sha1) {
-    // The live take was rejected: put the most recently approved other take back live, if there is one
-    const best = Object.entries(entry.takes)
-      .filter(([h, v]) => h !== hash && v.status === 'approved' && existsSync(archiveFile(clip.path, h)))
-      .sort(([, a], [, b]) => String(b.reviewedAt).localeCompare(String(a.reviewedAt)))[0];
-    if (best) promote(clip, best[0]);
+    fallBack(clip, entry, readTakes().takes);
   }
 
   if (Object.keys(entry.takes).length) review.clips[clip.path] = entry;
@@ -457,11 +520,113 @@ if (args.includes('--record-take')) {
 
 let clips = loadClips(); // archives every live file as a side effect
 let byPath = new Map(clips.map((c) => [c.path, c]));
+{
+  const n = rejectOffScript();
+  if (n) console.log(`auto-rejected ${n} take(s) recorded from an older script`);
+}
 
 if (args.includes('--archive')) {
   const n = clips.filter((c) => c.exists).length;
   console.log(`archived: every one of ${n} live files is in ${archiveRoot}`);
   process.exit(0);
+}
+
+if (args.includes('--normalise')) {
+  // Linear gain to --target LUFS on every live take, capped so the true peak stays under CEILING.
+  // Each result is a new take that inherits the old take's verdict, tags, notes and take record,
+  // and becomes live. The original stays in the archive. --dry-run only reports the gains.
+  const dry = args.includes('--dry-run');
+  const tol = Number(opt('--tolerance', '0.5'));
+  const CEILING = -1.5; // dBTP, under the -1 flag with room for the MP3 encoder's overs
+  const review = readReview();
+  const records = readTakes();
+  const tmp = mkdtempSync(join(tmpdir(), 'vo-norm-'));
+  const run = (a) =>
+    new Promise((res, rej) => execFile('ffmpeg', a, (e, _o, s) => (e ? rej(new Error(s || e.message)) : res())));
+  const now = new Date().toISOString();
+  const log = [];
+  const counts = { normalised: 0, alreadyNormalised: 0, inTolerance: 0, peakCapped: 0, failed: 0 };
+  const work = async (c) => {
+    // A live take that is already a normalised take is done; rerunning only picks up new originals
+    if (records.takes[c.sha1]?.normalisedFrom) {
+      counts.alreadyNormalised++;
+      return;
+    }
+    const root = c.sha1;
+    const src = archiveFile(c.path, root);
+    const before = await measure(src);
+    if (!Number.isFinite(before?.lufs) || !Number.isFinite(before?.peak)) {
+      counts.failed++;
+      log.push({ path: c.path, error: 'could not measure' });
+      return;
+    }
+    let gain = targetLufs - before.lufs;
+    const capped = gain > CEILING - before.peak;
+    if (capped) gain = CEILING - before.peak;
+    gain = Math.round(gain * 100) / 100;
+    if (Math.abs(gain) < tol && before.peak <= -1) {
+      counts.inTolerance++;
+      return;
+    }
+    if (capped) counts.peakCapped++;
+    const row = { path: c.path, from: root, gainDb: gain, capped, before };
+    log.push(row);
+    if (dry) return;
+    const out = join(tmp, `${root}.mp3`);
+    // Every live take is 44.1 kHz mono 128 kbps; keep that. The encoder's low-pass drops some
+    // K-weighted energy, so measure the result and correct the gain (from the original) up to twice.
+    let after = null;
+    for (let pass = 0; pass < 3; pass++) {
+      await run(['-hide_banner', '-loglevel', 'error', '-y', '-i', src, '-af', `volume=${gain}dB`, '-c:a', 'libmp3lame', '-b:a', '128k', '-ar', '44100', '-ac', '1', '-map_metadata', '-1', out]);
+      after = await measure(out);
+      if (!after || pass === 2) break;
+      const next = Math.min(gain + (targetLufs - after.lufs), gain + (CEILING - after.peak));
+      if (Math.abs(next - gain) < 0.1) break;
+      gain = Math.round(next * 100) / 100;
+    }
+    row.gainDb = gain;
+    const hash = sha1(out);
+    mkdirSync(archiveDir(c.path), { recursive: true });
+    copyFileSync(out, archiveFile(c.path, hash));
+    records.takes[hash] ??= { ...records.takes[root], path: c.path, normalisedFrom: root, gainDb: gain, normalisedAt: now };
+    const entry = review.clips[c.path] ?? {
+      campaign: c.campaign, scenario: c.scenario, number: c.number, key: c.key,
+      character: c.character, characterName: c.characterName, emotion: c.emotion, takes: {},
+    };
+    // The new take inherits the original's verdict, but never overwrites a verdict it already has
+    // (ffmpeg is deterministic, so a rerun can reproduce a take Ted has since judged)
+    const prev = entry.takes[root] ?? { status: 'unreviewed', tags: [], notes: '', text: c.text };
+    entry.takes[hash] ??= { ...prev, normalisedFrom: root };
+    review.clips[c.path] = entry;
+    copyFileSync(out, liveFile(c.path));
+    if (after) loudness.set(hash, after);
+    Object.assign(row, { to: hash, after });
+    counts.normalised++;
+  };
+  const queue = clips.filter((c) => c.exists);
+  await Promise.all(
+    Array.from({ length: 6 }, async () => {
+      while (queue.length) {
+        const c = queue.shift();
+        try {
+          await work(c);
+        } catch (e) {
+          counts.failed++;
+          log.push({ path: c.path, error: String(e.message).slice(0, 300) });
+        }
+      }
+    }),
+  );
+  if (!dry) {
+    writeReview(review);
+    writeTakes(records);
+    mkdirSync(dirname(loudnessCachePath), { recursive: true });
+    writeFileSync(loudnessCachePath, JSON.stringify(Object.fromEntries(loudness)), 'utf8');
+  }
+  const logPath = join(notesDir, `vo-normalise-${now.slice(0, 10)}${dry ? '-dry' : ''}.json`);
+  writeFileSync(logPath, `${JSON.stringify({ target: targetLufs, ceiling: CEILING, tolerance: tol, counts, clips: log }, null, 2)}\n`, 'utf8');
+  console.log(`${dry ? 'dry run: ' : ''}${JSON.stringify(counts)} -> ${logPath}`);
+  process.exit(counts.failed ? 1 : 0);
 }
 
 if (args.includes('--rejected')) {
@@ -544,7 +709,7 @@ function sendAudio(req, res, file) {
 }
 
 /** Bumped with the page whenever the API shape changes; the page refuses to render against another version. */
-const API_VERSION = 4;
+const API_VERSION = 5;
 
 /**
  * The speaker's portrait as a small thumbnail, the way the game picks it (character-enum.ts
@@ -582,6 +747,7 @@ const server = createServer(async (req, res) => {
       if (url.searchParams.has('refresh')) {
         clips = loadClips();
         byPath = new Map(clips.map((c) => [c.path, c]));
+        rejectOffScript();
         queueAllLoudness();
       }
       sendJson(res, 200, { ...meta(), clips: views() });
@@ -644,6 +810,10 @@ const server = createServer(async (req, res) => {
         return;
       }
       const tags = body.tags && TAGS.filter((t) => body.tags.includes(t));
+      if (body.status === 'approved' && offScript(clip, readTakes().takes[body.take])) {
+        sendJson(res, 400, { error: 'This take was recorded from an older script; it cannot be approved. Re-record it.' });
+        return;
+      }
       sendJson(res, 200, applyReview(clip, body.take, { status: body.status, notes: body.notes, tags, approvedBy: body.approvedBy === 'pipeline' ? 'pipeline' : undefined }));
       return;
     }

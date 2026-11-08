@@ -31,6 +31,12 @@
   .clip.sel { outline: 2px solid var(--accent); outline-offset: 1px; }
   .clip.approved { border-left-color: var(--ok); }
   .clip.rejected { border-left-color: var(--bad); }
+  .clip.unreviewed:not(.missing) { border-left-color: var(--warn); }
+  .clip.pipeline { border-left-style: dashed; border-left-color: var(--ok); }
+  .tag.status-pipeline { color: var(--ok); border-style: dashed; border-color: var(--ok); }
+  .tag.status-unreviewed { color: var(--warn); border-color: var(--warn); }
+  .takes button.approved.pipeline { border-style: dashed; }
+  .takes button.more { color: var(--muted); border-style: dotted; }
   .clip.missing { opacity: .55; }
   .clip { display: flex; gap: 14px; align-items: flex-start; }
   .clip .body { flex: 1 1 auto; min-width: 0; }
@@ -88,9 +94,11 @@
     <select id="f-character"></select>
     <select id="f-status">
       <option value="">All statuses</option>
-      <option value="unreviewed">Unreviewed</option>
-      <option value="approved">Approved</option>
-      <option value="rejected">Rejected</option>
+      <option value="unreviewed">Live take unreviewed</option>
+      <option value="pipeline">Live take auto-approved (QC only)</option>
+      <option value="approved">Live take approved by you</option>
+      <option value="rejected">Live take rejected</option>
+      <option value="not-approved">Live take not approved by you</option>
     </select>
     <select id="f-tag"></select>
     <select id="f-level">
@@ -99,8 +107,9 @@
     </select>
     <select id="f-multi">
       <option value="">Any take count</option>
+      <option value="live-ted">Live take: needs-ted or mismatch</option>
       <option value="multi">2+ takes</option>
-      <option value="stale">Recorded from older text</option>
+      <option value="stale">Recording/script mismatch</option>
       <option value="outdated">Outdated audio (needs redo)</option>
     </select>
     <input id="f-search" type="search" placeholder="Search text or key">
@@ -136,11 +145,13 @@ function esc(s) {
   return String(s ?? '').replace(/[&<>"']/gu, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 }
 
-/** Default take to show: the newest unreviewed one, else the live one, else the newest. */
+/** Default take to show: the live one, else the newest. */
 function defaultTake(c) {
-  const fresh = [...c.takes].reverse().find((t) => t.status === 'unreviewed' && !t.live);
-  return (fresh ?? c.takes.find((t) => t.live) ?? c.takes[c.takes.length - 1])?.sha1 ?? null;
+  return (c.takes.find((t) => t.live) ?? c.takes[c.takes.length - 1])?.sha1 ?? null;
 }
+
+/** Clips whose other takes are expanded ("View all"). */
+const expanded = new Set();
 
 function takeOf(c) {
   const sha = picked.get(c.path);
@@ -148,7 +159,7 @@ function takeOf(c) {
 }
 
 /** Must match API_VERSION in vo-review.mjs. The page is read from disk per request but the API is whatever code the server started with. */
-const API_VERSION = 4;
+const API_VERSION = 5;
 
 function fail(msg) {
   $('#list').innerHTML = `<div class="empty">${esc(msg)}</div>`;
@@ -248,12 +259,14 @@ function matches(c, ignoreStatus = false) {
   if (f.campaign && c.campaign !== f.campaign) return false;
   if (f.scenario && `${c.campaign}|${c.number}` !== f.scenario) return false;
   if (f.character && c.character !== f.character) return false;
-  if (f.status && c.status !== f.status) return false;
+  if (f.status === 'not-approved' ? c.status === 'approved' : f.status && c.status !== f.status) return false;
   if (f.tag && !c.takes.some((t) => t.tags.includes(f.tag))) return false;
   if (f.level === 'off' && !c.takes.some(levelOff)) return false;
   if (f.multi === 'multi' && c.takes.length < 2) return false;
   if (f.multi === 'stale' && !c.takes.some((t) => t.live && t.staleScript)) return false;
   if (f.multi === 'outdated' && !c.needsRedo) return false;
+  // Live take still waiting on Ted: tagged needs-ted or mismatched, and not yet approved by him
+  if (f.multi === 'live-ted' && !c.takes.some((t) => t.live && t.approvedBy !== 'ted' && (t.staleScript || t.tags.includes('needs-ted')))) return false;
   if (f.search && !`${c.text} ${c.key} ${c.path}`.toLowerCase().includes(f.search)) return false;
   return true;
 }
@@ -271,7 +284,7 @@ function counts() {
   const n = (s) => pool.filter((c) => c.status === s).length;
   const takes = pool.reduce((k, c) => k + c.takes.length, 0);
   const redo = pool.filter((c) => c.needsRedo).length;
-  $('#counts').innerHTML = `<b>${n('unreviewed')}</b> unreviewed &middot; <b>${n('approved')}</b> approved &middot; <b>${n('rejected')}</b> rejected &middot; <b>${redo}</b> outdated &middot; ${pool.length} clips, ${takes} takes`;
+  $('#counts').innerHTML = `<b>${n('unreviewed')}</b> unreviewed &middot; <b>${n('pipeline')}</b> auto-approved &middot; <b>${n('approved')}</b> approved by you &middot; <b>${n('rejected')}</b> rejected &middot; <b>${redo}</b> outdated &middot; ${pool.length} clips, ${takes} takes`;
 }
 
 function takeLine(t) {
@@ -283,20 +296,28 @@ function takeLine(t) {
 
 function takeButtons(c, cur) {
   if (c.takes.length < 1) return '';
-  return `<div class="takes"><span class="label">Takes</span>${c.takes
+  const live = c.takes.find((t) => t.live);
+  // Collapsed: only the live take, unless a non-live take is the one being played
+  const open = !live || expanded.has(c.path) || (cur && !cur.live);
+  const list = open ? c.takes : [live];
+  const others = c.takes.length - 1;
+  const toggle = live && others > 0
+    ? `<button class="more" data-expand="1">${open ? 'Hide other takes' : `View all ${c.takes.length} takes`}</button>`
+    : '';
+  return `<div class="takes"><span class="label">${open ? 'Takes' : 'Live take'}</span>${list
     .map((t) => {
-      const mark = t.status === 'approved' ? ' ✓' : t.status === 'rejected' ? ' ✗' : '';
+      const mark = t.status === 'approved' ? (t.approvedBy === 'pipeline' ? ' ✓auto' : ' ✓') : t.status === 'rejected' ? ' ✗' : '';
       const title = `Take ${t.n}: ${t.status}${t.live ? ', live in the game' : ''}, added ${t.addedAt.slice(0, 16).replace('T', ' ')}${t.outdated ? `. Outdated: ${t.outdated}` : ''}`;
-      return `<button data-take="${t.sha1}" class="${t.status}${t.sha1 === cur?.sha1 ? ' cur' : ''}" title="${esc(title)}">Take ${t.n}${t.live ? ' · live' : ''}${t.outdated ? ' · old' : ''}${mark}</button>`;
+      return `<button data-take="${t.sha1}" class="${t.status}${t.approvedBy === 'pipeline' ? ' pipeline' : ''}${t.sha1 === cur?.sha1 ? ' cur' : ''}" title="${esc(title)}">Take ${t.n}${t.live ? ' · live' : ''}${t.outdated ? ' · old' : ''}${mark}</button>`;
     })
-    .join('')}</div>`;
+    .join('')}${toggle}</div>`;
 }
 
 function card(c, i) {
   const t = takeOf(c);
   const flags = [
     t?.textChanged ? '<span class="tag flag" title="The scenario text changed after this take was judged">text changed</span>' : '',
-    t?.staleScript ? `<span class="tag flag" title="${esc(`Recorded from: ${t.record.scriptText}`)}">recorded from older text</span>` : '',
+    t?.staleScript ? `<span class="tag flag" title="${esc(`Recorded from: ${t.record.scriptText}`)}">recording/script mismatch</span>` : '',
     c.needsRedo
       ? `<span class="tag flag" title="No current-tempo take yet: every take is outdated or rejected">outdated audio</span>`
       : t?.outdated ? `<span class="tag flag" title="${esc(t.outdated)}">this take is outdated</span>` : '',
@@ -320,7 +341,7 @@ function card(c, i) {
     ${t ? `<div class="row">
       <audio controls preload="none" src="/audio?path=${encodeURIComponent(c.path)}&take=${t.sha1}"></audio>
       <span class="verdict">
-        <button class="approve ${t.status === 'approved' ? 'on' : ''}" data-act="approved" title="Approve this take; it becomes the live file">Approve take ${t.n}</button>
+        <button class="approve ${t.status === 'approved' && t.approvedBy !== 'pipeline' ? 'on' : ''}" data-act="approved" title="${t.approvedBy === 'pipeline' ? 'Auto-approved by QC; approve to confirm you heard it' : 'Approve this take; it becomes the live file'}">Approve take ${t.n}</button>
         <button class="reject ${t.status === 'rejected' ? 'on' : ''}" data-act="rejected">Reject</button>
         <button data-act="unreviewed">Clear</button>
       </span>
@@ -426,7 +447,14 @@ $('#list').addEventListener('click', (e) => {
   if (i !== sel) { sel = i; highlight(false); }
   const btn = e.target.closest('button');
   if (!btn) return;
-  if (btn.dataset.take) pickTake(i, btn.dataset.take);
+  if (btn.dataset.expand) {
+    const c = shown[i];
+    if (expanded.has(c.path)) {
+      expanded.delete(c.path);
+      if (!takeOf(c)?.live) picked.set(c.path, defaultTake(c)); // collapsing goes back to the live take
+    } else expanded.add(c.path);
+    redraw(i);
+  } else if (btn.dataset.take) pickTake(i, btn.dataset.take);
   else if (btn.dataset.act) save(i, { status: btn.dataset.act });
   else if (btn.dataset.tag) {
     const cur = takeOf(shown[i]).tags;
@@ -487,7 +515,8 @@ for (const f of filters) {
 }
 $('#refresh').addEventListener('click', () => load(true));
 
-load();
+// Re-read source text and live hashes on page load, even with a long-running server.
+load(true);
 </script>
 </body>
 </html>

@@ -134,15 +134,18 @@ export function promptFor(text, campaign) {
     .replace(/\bGNSS\b/gu, 'G.N.S.S')
     .replace(/\bOBC\b/gu, 'O.B.C')
     .replace(/\bTRR\b/gu, 'T.R.R')
-    .replace(/\bAOS\b/gu, 'A.O.S')
-    // Ted (nats-eu 23/ride-through): "LOS is line of sight"
-    .replace(/\bLOS\b/gu, 'line of sight')
+    // Ted 2026-11-07: "AOS - acquisition of signal. LOS - loss of signal." (replaces the earlier "line of sight" note)
+    .replace(/\bAOS\b/gu, 'acquisition of signal')
+    .replace(/\bLOS\b/gu, 'loss of signal')
     .replace(/\bLEOP\b/gu, 'Lee-op')
     .replace(/\bNAK\b/gu, 'N.A.K')
     // Ted (nats-eu 3/confirm-execution, 12/enable-the-hpa): "ACK is pronounced Acknowledgement"; "ack" was heard as "act"
     .replace(/\bACK\b/gu, 'acknowledgement')
-    // Ted (nats 6/enable-transmit-path): "RX is pronounced receive"
-    .replace(/\bRX\b/gu, 'receive')
+    // Ted (nats 6/enable-transmit-path): "RX is pronounced receive"; 2026-11-07: TX was still voiced as letters
+    .replace(/\bRX\s*\/\s*TX\b/giu, 'receive and transmit')
+    .replace(/\bTX\s*\/\s*RX\b/giu, 'transmit and receive')
+    .replace(/\bRX\b/giu, 'receive')
+    .replace(/\bTX\b/giu, 'transmit')
     // Ted (nats-eu 7/ephemeris-epoch-check): "go / no-go" was read with an odd "if go"
     .replace(/\bgo \/ no-go\b/gu, 'go or no-go')
     // Ted (nats-eu 8/shetland-remote-sweep): odd emphasis on "Night."; he suggested goodnight

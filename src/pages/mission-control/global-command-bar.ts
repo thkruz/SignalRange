@@ -455,6 +455,8 @@ export class GlobalCommandBar {
 
     const controller = TimeSkipController.getInstance();
     const labelEl = this.timeSkipBtn_.querySelector('#time-skip-control-label');
+    const skipLabel = controller.leadTimeS === 0 ? 'Skip to AOS' : 'Skip';
+    if (labelEl) labelEl.textContent = skipLabel;
 
     if (controller.isSkipping) {
       this.timeSkipBtn_.disabled = true;
@@ -489,7 +491,7 @@ export class GlobalCommandBar {
     if (labelEl) {
       // Count down from the live clock, not from the value cached at predict
       // time, so the label stays truthful between recomputes.
-      labelEl.textContent = this.skipTarget_ ? `Skip ${formatDurationCompact(this.skipTarget_.targetMs - nowMs)}` : 'Skip';
+      labelEl.textContent = this.skipTarget_ ? `${skipLabel} ${formatDurationCompact(this.skipTarget_.targetMs - nowMs)}` : skipLabel;
     }
   }
 

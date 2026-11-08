@@ -38,35 +38,7 @@ import { scenario21Data } from '@app/campaigns/nats/scenario21';
 import { scenario22Data } from '@app/campaigns/nats/scenario22';
 import { scenario23Data } from '@app/campaigns/nats/scenario23';
 import { scenario24Data } from '@app/campaigns/nats/scenario24';
-import { natsEuSandboxData } from '@app/campaigns/nats-eu/sandbox';
-import { natsEuScenario1Data } from '@app/campaigns/nats-eu/scenario1';
-import { natsEuScenario2Data } from '@app/campaigns/nats-eu/scenario2';
-import { natsEuScenario3Data } from '@app/campaigns/nats-eu/scenario3';
-import { natsEuScenario4Data } from '@app/campaigns/nats-eu/scenario4';
-import { natsEuScenario5Data } from '@app/campaigns/nats-eu/scenario5';
-import { natsEuScenario6Data } from '@app/campaigns/nats-eu/scenario6';
-import { natsEuScenario7Data } from '@app/campaigns/nats-eu/scenario7';
-import { natsEuScenario8Data } from '@app/campaigns/nats-eu/scenario8';
-import { natsEuScenario9Data } from '@app/campaigns/nats-eu/scenario9';
-import { natsEuScenario10Data } from '@app/campaigns/nats-eu/scenario10';
-import { natsEuScenario11Data } from '@app/campaigns/nats-eu/scenario11';
-import { natsEuScenario12Data } from '@app/campaigns/nats-eu/scenario12';
-import { natsEuScenario13Data } from '@app/campaigns/nats-eu/scenario13';
-import { natsEuScenario14Data } from '@app/campaigns/nats-eu/scenario14';
-import { natsEuScenario15Data } from '@app/campaigns/nats-eu/scenario15';
-import { natsEuScenario16Data } from '@app/campaigns/nats-eu/scenario16';
-import { natsEuScenario17Data } from '@app/campaigns/nats-eu/scenario17';
-import { natsEuScenario18Data } from '@app/campaigns/nats-eu/scenario18';
-import { natsEuScenario19Data } from '@app/campaigns/nats-eu/scenario19';
-import { natsEuScenario20Data } from '@app/campaigns/nats-eu/scenario20';
-import { natsEuScenario21Data } from '@app/campaigns/nats-eu/scenario21';
-import { natsEuScenario22Data } from '@app/campaigns/nats-eu/scenario22';
-import { natsEuScenario23Data } from '@app/campaigns/nats-eu/scenario23';
-import { natsEuScenario24Data } from '@app/campaigns/nats-eu/scenario24';
-import { natsEuScenario25Data } from '@app/campaigns/nats-eu/scenario25';
-import { natsEuScenario26Data } from '@app/campaigns/nats-eu/scenario26';
-import { natsEuScenario27Data } from '@app/campaigns/nats-eu/scenario27';
-import { natsEuScenario28Data } from '@app/campaigns/nats-eu/scenario28';
+import { natsEuCampaignData } from '@app/campaigns/nats-eu/campaign-data';
 import { signalHunterSandboxData } from '@app/campaigns/signal-hunter/sandbox';
 import { signalHunterScenario1Data } from '@app/campaigns/signal-hunter/scenario1';
 import { signalHunterScenario2Data } from '@app/campaigns/signal-hunter/scenario2';
@@ -627,35 +599,7 @@ export const SCENARIOS: ScenarioData[] = [
   scenario22Data,
   scenario23Data,
   scenario24Data,
-  natsEuSandboxData,
-  natsEuScenario1Data,
-  natsEuScenario2Data,
-  natsEuScenario3Data,
-  natsEuScenario4Data,
-  natsEuScenario5Data,
-  natsEuScenario6Data,
-  natsEuScenario7Data,
-  natsEuScenario8Data,
-  natsEuScenario9Data,
-  natsEuScenario10Data,
-  natsEuScenario11Data,
-  natsEuScenario12Data,
-  natsEuScenario13Data,
-  natsEuScenario14Data,
-  natsEuScenario15Data,
-  natsEuScenario16Data,
-  natsEuScenario17Data,
-  natsEuScenario18Data,
-  natsEuScenario19Data,
-  natsEuScenario20Data,
-  natsEuScenario21Data,
-  natsEuScenario22Data,
-  natsEuScenario23Data,
-  natsEuScenario24Data,
-  natsEuScenario25Data,
-  natsEuScenario26Data,
-  natsEuScenario27Data,
-  natsEuScenario28Data,
+  ...natsEuCampaignData.scenarios,
   hamSdrSandboxData,
   hamSdrScenario1Data,
   hamSdrScenario2Data,

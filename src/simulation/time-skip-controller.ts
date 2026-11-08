@@ -60,7 +60,7 @@ export interface TimeSkipConfig {
    * Stop this many seconds before AOS. The operator should arrive with the
    * antenna still to be pointed and the receiver still to be tuned - handing
    * them a bird already in the beam skips the part that is the lesson.
-   * Default 120.
+   * Set to 0 to stop at AOS once preparation is done. Default 120.
    */
   leadTimeS?: number;
   /** Real-time duration of the fast-forward, ms. Default 2500. */
@@ -477,7 +477,10 @@ export class TimeSkipController {
     }
 
     const progress = Math.min(1, elapsedRealMs / this.animationMs);
-    const chunkMs = TimeSkipController.ease_(progress) * this.totalMs_ - this.skippedMs_;
+    const requestedMs = TimeSkipController.ease_(progress) * this.totalMs_ - this.skippedMs_;
+    // Normal simulation ticks also advance the clock during the animation.
+    // Never add those seconds on top of the promised pass arrival time.
+    const chunkMs = this.passSkip_ ? Math.min(requestedMs, Math.max(0, this.passSkip_.targetMs - getSimulatedNowMs())) : requestedMs;
 
     if (chunkMs > 0) {
       this.skippedMs_ += chunkMs;

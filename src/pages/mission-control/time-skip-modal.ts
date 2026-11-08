@@ -127,7 +127,8 @@ export class TimeSkipModal extends DraggableModal {
       aosEl.textContent = formatUtcClock(target.aosMs);
     }
     if (targetEl) {
-      targetEl.textContent = `${formatUtcClock(target.targetMs)} (AOS -${formatDuration(target.aosMs - target.targetMs)})`;
+      const stopLabel = target.targetMs === target.aosMs ? 'AOS' : `AOS -${formatDuration(target.aosMs - target.targetMs)}`;
+      targetEl.textContent = `${formatUtcClock(target.targetMs)} (${stopLabel})`;
     }
     if (deltaEl) {
       deltaEl.textContent = formatDuration(Math.max(0, target.targetMs - getSimulatedNowMs()));
@@ -141,8 +142,9 @@ export class TimeSkipModal extends DraggableModal {
     }
 
     if (noteEl) {
+      const stop = target.targetMs === target.aosMs ? 'at AOS' : `${formatDuration(target.aosMs - target.targetMs)} short of AOS`;
       noteEl.textContent =
-        `The clock stops ${formatDuration(target.aosMs - target.targetMs)} short of AOS - ` +
+        `The clock stops ${stop} - ` +
         `you still point the antenna and configure the chain yourself. Skipped time counts toward your ` +
         `shift, and everything scheduled during it still happens.`;
     }
@@ -154,6 +156,7 @@ export class TimeSkipModal extends DraggableModal {
     // confirm button re-checks at render time too.
     const blockedReason = controller.getBlockedReason();
     const confirmBtn = getEl('time-skip-confirm-btn') as HTMLButtonElement | null;
+    if (confirmBtn) confirmBtn.textContent = target.targetMs === target.aosMs ? 'Skip to AOS' : 'Skip Ahead';
 
     if (confirmBtn && blockedReason) {
       confirmBtn.disabled = true;

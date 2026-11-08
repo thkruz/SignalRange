@@ -92,6 +92,23 @@ describe('TimeSkipController', () => {
   });
 
   describe('findTarget', () => {
+    it('allows a short remaining wait directly to AOS without overshooting as normal ticks advance', () => {
+      mockSettings.timeSkip = { leadTimeS: 0, minSkipS: 1, horizonHours: 4 };
+      const controller = TimeSkipController.getInstance();
+      const first = controller.findTarget()!;
+      OpsLogManager.getInstance().advanceClock(first.aosMs - getSimulatedNowMs() - 30_000);
+      const target = controller.findTarget()!;
+      expect(target.targetMs).toBe(target.aosMs);
+      // The pass predictor refines AOS to sub-second precision on each search.
+      expect(Math.abs(target.deltaMs - 30_000)).toBeLessThan(1000);
+      expect(controller.start(target)).toBe(true);
+      controller.step(controller.animationMs / 2);
+      OpsLogManager.getInstance().advanceClock(1000);
+      controller.step(controller.animationMs);
+      expect(getSimulatedNowMs()).toBeCloseTo(target.aosMs, -1);
+      expect(controller.isSkipping).toBe(false);
+      expect(controller.start(target)).toBe(false);
+    });
     it('should aim at the next AOS, stopping short by the lead time', () => {
       const target = TimeSkipController.getInstance().findTarget();
 

@@ -86,7 +86,22 @@ export const natsEuCampaignData: CampaignData = {
     natsEuScenario26Data,
     natsEuScenario27Data,
     natsEuScenario28Data,
-  ],
+  ].map((scenario) => ({
+    ...scenario,
+    settings: {
+      ...scenario.settings,
+      // Pass missions and the sandbox share the campaign's wait policy.
+      // Keep this here so authored scenario settings cannot restore the old forced wait.
+      ...(scenario.settings.contactTimeline && {
+        timeSkip: {
+          horizonHours: 2,
+          ...scenario.settings.timeSkip,
+          leadTimeS: 0,
+          minSkipS: 1,
+        },
+      }),
+    },
+  })),
   isLocked: false,
   // Gated on the Campaign 1 graduation shift, matching the prerequisite on this
   // campaign's own first scenario (natsEuScenario1Data) - not on clearing all

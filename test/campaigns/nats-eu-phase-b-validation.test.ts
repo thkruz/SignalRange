@@ -294,7 +294,8 @@ describe('nats-eu Phase B: every condition is reachable', () => {
   });
 });
 
-describe('nats-eu Phase B: link budgets are correct and achievable', () => {
+// Each case runs minutes of scenario time at the 60 Hz step, about 4 s apiece: past vitest's default under load.
+describe('nats-eu Phase B: link budgets are correct and achievable', { timeout: 30_000 }, () => {
   let antenna: AntennaCore;
   let frontEnd: RFFrontEndCore;
   let receiver: Receiver;

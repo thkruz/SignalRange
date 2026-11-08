@@ -134,7 +134,8 @@ function chain(scenario: ScenarioData, stationId: string, sat: Satellite, txMode
   return { antenna, frontEnd, receiver, fly, lossToSat, carrierCn };
 }
 
-describe('C1 step-track lessons (phase 19.4)', () => {
+// Each case runs minutes of scenario time at the 60 Hz step, about 5 s apiece: past vitest's default.
+describe('C1 step-track lessons (phase 19.4)', { timeout: 30_000 }, () => {
   beforeEach(() => {
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(() => Promise.resolve());
   });

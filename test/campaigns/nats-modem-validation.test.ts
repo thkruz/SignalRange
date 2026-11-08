@@ -129,7 +129,8 @@ function chain(scenario: ScenarioData, stationId: string, sat: Satellite) {
   return { antenna, frontEnd, receiver, fly, watch };
 }
 
-describe('C1 modem lessons (phase 19.5)', () => {
+// Each case runs minutes of scenario time at the 60 Hz step, about 4 s apiece: past vitest's default under load.
+describe('C1 modem lessons (phase 19.5)', { timeout: 30_000 }, () => {
   beforeEach(() => {
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(() => Promise.resolve());
   });

@@ -61,7 +61,7 @@ export const scenario11Data: ScenarioData = {
   url: 'nats/scenarios/nats-scenario11',
   imageUrl: 'nats/11/card.png',
   number: 11,
-  title: 'Planned Maintenance: Hand Off',
+  title: 'Planned Maintenance | Hand Off',
   subtitle: 'Coordinated Traffic Transfer to Sister Teleport',
   duration: '25-30 min',
   difficulty: 'intermediate',

@@ -130,7 +130,7 @@ export const natsEuScenario12Data: ScenarioData = {
   isDisabled: false,
   difficulty: 'intermediate',
   prerequisiteScenarioIds: ['nats-eu-scenario11'],
-  title: 'LEOP: Commissioning',
+  title: 'LEOP | Commissioning',
   subtitle: 'SAR-3 Acceptance Tests (arc 2/2)',
   duration: '35 min',
   missionType: 'Commissioning',

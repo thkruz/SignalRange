@@ -63,7 +63,7 @@ export const scenario12Data: ScenarioData = {
   url: 'nats/scenarios/nats-scenario12',
   imageUrl: 'nats/12/card.png',
   number: 12,
-  title: 'Planned Maintenance: Return to Service',
+  title: 'Planned Maintenance | Return to Service',
   subtitle: 'Post-Maintenance Restoration',
   duration: '25-35 min',
   difficulty: 'intermediate',

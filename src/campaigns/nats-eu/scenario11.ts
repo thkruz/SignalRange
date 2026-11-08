@@ -130,7 +130,7 @@ export const natsEuScenario11Data: ScenarioData = {
   isDisabled: false,
   difficulty: 'intermediate',
   prerequisiteScenarioIds: ['nats-eu-scenario10'],
-  title: 'LEOP: Launch Day',
+  title: 'LEOP | Launch Day',
   subtitle: 'SAR-3 First Acquisition',
   duration: '30 min',
   missionType: 'Launch and Early Orbit',

@@ -1,0 +1,106 @@
+/* Mission-only chrome. The site header above it remains independent. */
+#global-command-bar-container {
+  --mc-header-muted: #bdbdbd;
+  --mc-header-border: #484848;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px;
+  grid-template-rows: 48px 33px;
+  height: 82px;
+  position: relative;
+  z-index: 20;
+  flex-shrink: 0;
+  background: #2e2e2e;
+  color: #f3f3f3;
+  border-bottom: 1px solid var(--mc-header-border);
+  box-shadow: none;
+  font-family: 'Inter', sans-serif;
+}
+
+#global-command-bar-container .mission-heading-row { grid-area: 1 / 1; display: flex; min-width: 0; align-items: center; height: 100%; }
+#global-command-bar-container .command-bar-left { width: 164px; min-width: 164px; padding: 0 18px; order: 0; height: auto; border: 0; background: none; text-align: left; justify-content: flex-start; }
+#global-command-bar-container .mission-station { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; white-space: nowrap; }
+#global-command-bar-container .mission-station span { color: var(--mc-accent-red-bright, #ff2827); }
+#global-command-bar-container .command-bar-center { flex: 1; min-width: 0; background: none; }
+#global-command-bar-container .aos-countdown { gap: 16px; padding: 0 18px 0 0; background: none; justify-content: space-between; }
+#global-command-bar-container #scenario-info { position: static; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; font-weight: 600; color: #f3f3f3; }
+#global-command-bar-container .command-bar-skip-controls { position: static; inset: auto; transform: none; display: flex; align-items: center; flex-shrink: 0; gap: 8px; margin: 0; }
+#global-command-bar-container .command-bar-skip-controls:empty { display: none; }
+#global-command-bar-container .command-bar-skip-controls button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid #666; border-radius: 2px; background: #393939; color: #eee; font: 500 12px 'Inter', sans-serif; }
+#global-command-bar-container .command-bar-skip-controls button:disabled { opacity: 0.45; }
+#global-command-bar-container .command-bar-right { grid-area: 1 / 2; padding: 0 12px; gap: 0; height: 100%; border: 0; background: none; }
+#global-command-bar-container .timer-display { width: 108px; height: 34px; padding: 0 12px; border: 0; border-left: 1px solid #555; border-radius: 0; background: none; animation: none; align-items: flex-start; justify-content: center; }
+#global-command-bar-container .timer-label { color: var(--mc-header-muted); font-size: 10px; letter-spacing: 0.04em; line-height: 14px; }
+#global-command-bar-container .timer-value { font-size: 16px; line-height: 20px; font-weight: 600; font-family: var(--font-monospace, monospace); font-variant-numeric: tabular-nums; }
+#global-command-bar-container .timer-warning .timer-value { color: #f1cb75; }
+#global-command-bar-container .timer-urgent .timer-value,
+#global-command-bar-container .timer-failed .timer-value { color: #ff8f86; }
+#global-command-bar-container .timer-urgent,
+#global-command-bar-container .timer-failed { border-left-color: #f2766b; }
+#global-command-bar-container .timer-unlimited .timer-value { color: var(--mc-header-muted); }
+#global-command-bar-container .timer-passed .timer-value { color: #77dba2; }
+#global-command-bar-container .timer-held .timer-value { color: #ddd; }
+#global-command-bar-container .timer-hold-tag { color: #ddd; background: #555; }
+#global-command-bar-container .mission-status-row { grid-area: 2 / 1 / 3 / -1; display: flex; align-items: center; min-width: 0; height: 33px; background: #272727; border-top: 1px solid var(--mc-header-border); }
+#global-command-bar-container .mission-clock { width: 164px; min-width: 164px; padding-left: 18px; color: var(--mc-header-muted); font: 12px var(--font-monospace, monospace); font-variant-numeric: tabular-nums; white-space: nowrap; }
+#global-command-bar-container .command-bar-alarm-bar { display: flex; flex: 1; min-width: 0; gap: 12px; height: 100%; padding: 0 18px 0 0; border: 0; background: none; }
+#global-command-bar-container #alarm-summary { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; color: #ddd; background: transparent; text-align: left; cursor: pointer; }
+#global-command-bar-container #alarm-summary:hover { background: #353535; }
+#global-command-bar-container .alarm-counts { gap: 0; }
+#global-command-bar-container .alarm-count { padding: 0; border: 0; background: none; font: 500 12px 'Inter', sans-serif; white-space: nowrap; letter-spacing: 0; }
+#global-command-bar-container .alarm-count::before { content: none; }
+#global-command-bar-container .alarm-count i { display: inline-flex; }
+#global-command-bar-container .alarm-count:not(:first-child) { display: none; }
+#global-command-bar-container .alarm-count.error { color: #ff8f86; }
+#global-command-bar-container .alarm-count.warning { color: #f1cb75; }
+#global-command-bar-container .alarm-count.info { color: #ccc; }
+#global-command-bar-container .alarm-messages { flex: 1; min-width: 0; gap: 12px; font: 12px 'Inter', sans-serif; }
+#global-command-bar-container .alarm-item { display: block; min-width: 0; padding: 0; border: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #ddd; }
+#global-command-bar-container .alarm-stable { display: inline-flex; align-items: center; gap: 8px; font: 12px 'Inter', sans-serif; color: var(--mc-header-muted); }
+#global-command-bar-container .alarm-stable i { color: #77dba2; }
+#global-command-bar-container .alarm-overflow { flex-shrink: 0; font: 11px 'Inter', sans-serif; color: #bbb; opacity: 1; }
+#global-command-bar-container .alarm-other-stations { display: none; }
+#global-command-bar-container .alarm-disclosure { width: 14px; height: 14px; flex-shrink: 0; }
+#global-command-bar-container #alarm-summary[aria-expanded='true'] .alarm-disclosure { transform: rotate(180deg); }
+#global-command-bar-container .alarm-mute-btn { display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 8px; border: 1px solid #555; border-radius: 2px; background: none; color: #ddd; font: 12px 'Inter', sans-serif; letter-spacing: 0; }
+#global-command-bar-container .alarm-mute-btn svg { width: 16px; height: 16px; }
+#global-command-bar-container .alarm-mute-btn--muted { color: #f1cb75; border-color: #a38c60; }
+#global-command-bar-container :focus-visible { outline: 2px solid #eee; outline-offset: -2px; }
+#mission-alarm-panel { position: absolute; top: calc(100% + 1px); right: 12px; width: min(650px, calc(100% - 24px)); max-height: min(440px, 60vh); overflow: auto; padding: 20px; background: #2e2e2e; border: 1px solid #666; box-shadow: 0 12px 24px #0006; }
+#mission-alarm-panel[hidden] { display: none; }
+.mission-alarm-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.mission-alarm-heading h2 { margin: 0; font: 600 16px 'Inter', sans-serif; color: #eee; }
+#mission-alarm-total { margin-left: 8px; color: #bbb; font-weight: 400; }
+#mission-alarm-close { background: #393939; color: #eee; padding: 5px 12px; border: 1px solid #666; font: 12px 'Inter', sans-serif; cursor: pointer; }
+.mission-alarm-scope { margin: 8px 0 16px; font-size: 12px; color: #bbb; }
+#mission-alarm-list { list-style: none; padding: 0; margin: 0; }
+.mission-alarm-entry { display: flex; gap: 12px; padding: 14px 0; border-top: 1px solid #484848; }
+.mission-alarm-entry > i { margin-top: 3px; flex-shrink: 0; color: #ccc; }
+.mission-alarm-entry[data-severity='error'] > i { color: #ff8f86; }
+.mission-alarm-entry[data-severity='warning'] > i { color: #f1cb75; }
+.mission-alarm-source { color: #bbb; font-size: 11px; }
+.mission-alarm-entry p { margin: 5px 0 0; font-size: 13px; color: #eee; overflow-wrap: anywhere; }
+.mission-alarm-entry .mission-alarm-detail { color: #bbb; }
+.mission-alarm-empty { padding: 12px 0; color: #bbb; }
+
+@media (max-width: 900px) {
+  #global-command-bar-container .command-bar-left { display: none; }
+  #global-command-bar-container .aos-countdown { padding-left: 16px; gap: 8px; }
+  #global-command-bar-container .mission-clock { width: 140px; min-width: 140px; padding-left: 16px; }
+}
+
+@media (max-width: 600px) {
+  #global-command-bar-container { grid-template-columns: minmax(0, 1fr); grid-template-rows: 44px 40px 33px; height: 118px; }
+  #global-command-bar-container .mission-heading-row { grid-area: 1 / 1; }
+  #global-command-bar-container .command-bar-right { grid-area: 2 / 1; }
+  #global-command-bar-container .mission-status-row { grid-area: 3 / 1; }
+  #global-command-bar-container .timer-display { width: 112px; }
+  #global-command-bar-container #scenario-info { font-size: 13px; }
+  #global-command-bar-container .mission-clock { width: 126px; min-width: 126px; font-size: 11px; }
+  #global-command-bar-container .command-bar-alarm-bar { padding-right: 8px; gap: 4px; }
+  #global-command-bar-container #alarm-summary { gap: 6px; }
+  #global-command-bar-container .alarm-count { font-size: 11px; }
+  #global-command-bar-container .alarm-messages { display: none; }
+  #global-command-bar-container .healthy .alarm-messages { display: flex; }
+  #global-command-bar-container .healthy .alarm-stable { font-size: 11px; }
+  #global-command-bar-container .alarm-mute-btn span { display: none; }
+}

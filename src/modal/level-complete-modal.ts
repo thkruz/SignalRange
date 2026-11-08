@@ -3,6 +3,7 @@ import { DraggableModal } from '@app/engine/ui/draggable-modal';
 import { html } from '@app/engine/utils/development/formatter';
 import { Logger } from '@app/logging/logger';
 import { OpsLogModal } from '@app/ops-log/ops-log-modal';
+import { selectionText } from '@app/pages/selection-browser';
 import { Router } from '@app/router';
 import { WorkingDocumentManager } from '@app/scenarios/working-document-manager';
 import { type ScoreBreakdown, ScoreCalculator } from '@app/scoring/score-calculator';
@@ -64,8 +65,8 @@ export class LevelCompleteModal extends DraggableModal {
     }
 
     super(LevelCompleteModal.id, {
-      title: 'Mission Complete!',
-      width: '400px',
+      title: 'Mission results',
+      width: 'min(560px, calc(100vw - 32px))',
     });
   }
 
@@ -77,17 +78,28 @@ export class LevelCompleteModal extends DraggableModal {
   protected getModalContentHtml(): string {
     const { score, elapsedTimeSeconds } = this.options_;
     const elapsedFormatted = this.formatTime_(elapsedTimeSeconds);
+    const mission = CampaignManager.getInstance()
+      .getScenariosForCampaign(this.options_.campaignId)
+      .find((scenario) => scenario.id === this.options_.scenarioId);
 
     return html`
       <div class="complete-modal">
-        <div class="complete-modal__icon">&#127942;</div>
-        <div class="complete-modal__title">Mission Complete!</div>
+        <div class="complete-modal__body">
+        <div class="complete-modal__heading">
+          <div class="complete-modal__icon" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2"><circle cx="24" cy="24" r="20" /><path d="m14 24 7 7 13-15" /></svg></div>
+          <div><h1 class="complete-modal__title">Mission Complete!</h1>
+            ${mission ? `<p class="complete-modal__mission">${selectionText(`${String(mission.number).padStart(2, '0')} · ${mission.title}`)}</p>` : ''}</div>
+        </div>
         ${this.isCampaignFinale_() ? `<div class="complete-modal__finale">${this.renderFinaleText_()}</div>` : ''}
 
         <div class="complete-modal__score-section">
           <div class="complete-modal__total">
+            <div>
             <span class="total-label">Total Score</span>
-            <span class="total-value">${score.totalScore}</span>
+            <span class="total-value">${score.totalScore.toLocaleString()}</span>
+            </div>
+            <div class="complete-modal__time"><span class="total-label">${this.isReplayMode_ ? 'Record' : 'Mission time'}</span>
+              <span>${this.isReplayMode_ ? 'Previously completed' : elapsedFormatted}</span></div>
           </div>
 
           <div class="complete-modal__breakdown">
@@ -155,15 +167,11 @@ export class LevelCompleteModal extends DraggableModal {
           ${this.renderDecisions_()}
         </div>
 
-        <div class="complete-modal__time">
-          ${this.isReplayMode_ ? 'Previously completed' : `Completed in ${elapsedFormatted}`}
-        </div>
-
         ${this.renderSignUpSection_()}
-
+        </div>
         <div class="complete-modal__actions">
           ${this.isReplayMode_ ? '<button id="play-again-btn" class="btn btn-primary">Play Again</button>' : ''}
-          <button id="continue-btn" class="btn btn-success">Continue</button>
+          <button id="continue-btn" class="btn btn-primary">Continue</button>
         </div>
       </div>
     `;
@@ -229,6 +237,11 @@ export class LevelCompleteModal extends DraggableModal {
 
   protected override onOpen(): void {
     super.onOpen();
+    this.draggie?.disable();
+    const dialog = this.boxEl?.querySelector(`#${LevelCompleteModal.id}`);
+    dialog?.setAttribute('role', 'dialog');
+    dialog?.setAttribute('aria-modal', 'true');
+    dialog?.setAttribute('aria-label', 'Mission complete');
 
     // Hide the close button - user must use Continue
     const closeBtn = this.boxEl?.querySelector(`#${LevelCompleteModal.id}-close`);

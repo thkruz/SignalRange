@@ -77,6 +77,42 @@ describe('GlobalCommandBar', () => {
   });
 
   describe('HTML rendering', () => {
+    it('opens every alarm in a keyboard-accessible panel and restores focus on Escape', () => {
+      const alarmHandler = mockEventBus.on.mock.calls.find((call) => call[0] === Events.ALARM_STATE_CHANGED)?.[1];
+      alarmHandler({
+        alarms: [
+          { assetId: 'VT-01', equipmentType: 'RF', equipmentIndex: 0, severity: 'warning', message: 'No carrier', detail: 'Noise only' },
+          { assetId: 'ME-02', equipmentType: 'RX', equipmentIndex: 1, severity: 'info', message: '<img src=x onerror=alert(1)>' },
+        ],
+        highestSeverity: 'warning',
+      });
+      const summary = document.querySelector<HTMLButtonElement>('#alarm-summary')!;
+      const panel = document.querySelector<HTMLElement>('#mission-alarm-panel')!;
+      expect(panel.hidden).toBe(true);
+      summary.click();
+      expect(panel.hidden).toBe(false);
+      expect(summary.getAttribute('aria-expanded')).toBe('true');
+      expect(panel.querySelectorAll('.mission-alarm-entry')).toHaveLength(2);
+      expect(panel.textContent).toContain('Noise only');
+      expect(panel.textContent).toContain('ME-02');
+      expect(panel.querySelector('img')).toBeNull();
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      expect(panel.hidden).toBe(true);
+      expect(document.activeElement).toBe(summary);
+      summary.click();
+      document.body.click();
+      expect(panel.hidden).toBe(true);
+    });
+
+    it('keeps the open alarm list current when alarms clear', () => {
+      document.querySelector<HTMLButtonElement>('#alarm-summary')!.click();
+      const handler = mockEventBus.on.mock.calls.find((call) => call[0] === Events.ALARM_STATE_CHANGED)?.[1];
+      handler({ alarms: [], highestSeverity: 'success' });
+      expect(document.querySelector('#mission-alarm-list')?.textContent).toBe('No active alarms');
+      expect(document.querySelector('#mission-alarm-total')?.textContent).toBe('0');
+      expect(document.querySelectorAll('#global-command-bar-container')).toHaveLength(1);
+    });
+
     it('should render header element', () => {
       const header = document.querySelector('#global-command-bar-container');
       expect(header).not.toBeNull();
@@ -91,7 +127,7 @@ describe('GlobalCommandBar', () => {
     it('should render UTC clock element', () => {
       const clock = document.querySelector('#utc-clock');
       expect(clock).not.toBeNull();
-      expect(clock?.textContent).toBe('--- -- --- ---- --:--:--');
+      expect(clock?.textContent).toBe('--:--:-- UTC');
     });
 
     it('should render AOS countdown section', () => {
@@ -106,7 +142,7 @@ describe('GlobalCommandBar', () => {
 
     it('should render scenario number and title', () => {
       const scenarioInfo = document.querySelector('#scenario-info');
-      expect(scenarioInfo?.textContent).toContain('SCENARIO 1: First Day');
+      expect(scenarioInfo?.textContent).toContain('01 · First Day');
     });
 
     it('should render alarm bar', () => {
@@ -124,10 +160,10 @@ describe('GlobalCommandBar', () => {
       expect(alarmMessages).not.toBeNull();
     });
 
-    it('should render SYSTEM STABLE by default', () => {
+    it('should render No active alarms by default', () => {
       const stableMessage = document.querySelector('.alarm-stable');
       expect(stableMessage).not.toBeNull();
-      expect(stableMessage?.textContent).toContain('SYSTEM STABLE');
+      expect(stableMessage?.textContent).toContain('No active alarms');
       expect(stableMessage?.querySelector('[data-glyph="ok"] svg')).not.toBeNull();
     });
 
@@ -297,7 +333,7 @@ describe('GlobalCommandBar', () => {
       expect(warningBadge?.textContent).toContain('1');
     });
 
-    it('should render max 3 inline alarms', () => {
+    it('should render one priority alarm inline', () => {
       const alarmHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ALARM_STATE_CHANGED)?.[1];
 
       const mockAlarms: AggregatedAlarm[] = Array(5)
@@ -318,7 +354,7 @@ describe('GlobalCommandBar', () => {
       });
 
       const alarmItems = document.querySelectorAll('.alarm-item');
-      expect(alarmItems.length).toBe(3);
+      expect(alarmItems.length).toBe(1);
     });
 
     it('draws inline severity glyphs, not Font Awesome classes the app never loads (Phase 32 D21)', () => {
@@ -337,14 +373,14 @@ describe('GlobalCommandBar', () => {
       expect(bar?.querySelector('[class*="fa-"]')).toBeNull();
       expect(document.querySelector('.alarm-count.error [data-glyph="error"] svg')).not.toBeNull();
       expect(document.querySelector('.alarm-count.warning [data-glyph="warning"] svg')).not.toBeNull();
-      const items = document.querySelectorAll('.alarm-item');
-      expect(items[0].classList.contains('text-red-400')).toBe(true);
+      const items = document.querySelectorAll('.mission-alarm-entry');
+      expect(items[0].getAttribute('data-severity')).toBe('error');
       expect(items[0].querySelector('[data-glyph="error"]')?.getAttribute('aria-hidden')).toBe('true');
-      expect(items[1].classList.contains('text-yellow-400')).toBe(true);
+      expect(items[1].getAttribute('data-severity')).toBe('warning');
       expect(items[1].querySelector('[data-glyph="warning"]')).not.toBeNull();
     });
 
-    it('should show overflow indicator when more than 3 alarms', () => {
+    it('should show overflow indicator when more than one alarm', () => {
       const alarmHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ALARM_STATE_CHANGED)?.[1];
 
       const mockAlarms: AggregatedAlarm[] = Array(5)
@@ -366,7 +402,7 @@ describe('GlobalCommandBar', () => {
 
       const overflow = document.querySelector('.alarm-overflow');
       expect(overflow).not.toBeNull();
-      expect(overflow?.textContent).toContain('+2 more');
+      expect(overflow?.textContent).toContain('+4 more');
     });
 
     it('lists every tier, counts them all and names the hidden ones in the tooltip (nats-r4-s16-F1)', () => {
@@ -391,10 +427,10 @@ describe('GlobalCommandBar', () => {
       });
 
       expect(document.querySelector('.alarm-stable')).toBeNull();
-      expect(document.querySelector('.alarm-count.error')?.textContent?.trim()).toBe('2');
-      expect(document.querySelector('.alarm-count.warning')?.textContent?.trim()).toBe('2');
-      expect(document.querySelector('.alarm-count.info')?.textContent?.trim()).toBe('1');
-      expect(document.querySelector('.alarm-overflow')?.textContent).toContain('+2 more');
+      expect(document.querySelector('.alarm-count.error')?.textContent?.trim()).toBe('2 errors');
+      expect(document.querySelector('.alarm-count.warning')?.textContent?.trim()).toBe('2 warnings');
+      expect(document.querySelector('.alarm-count.info')?.textContent?.trim()).toBe('1 info');
+      expect(document.querySelector('.alarm-overflow')?.textContent).toContain('+4 more');
       const tooltip = (document.querySelector('#alarm-messages') as HTMLElement).title;
       expect(tooltip.split('\n')).toHaveLength(5);
       expect(tooltip).toContain('LNB not locked to reference');
@@ -469,7 +505,7 @@ describe('GlobalCommandBar', () => {
         highestSeverity: 'error',
       });
 
-      const alarmItems = document.querySelectorAll('.alarm-item');
+      const alarmItems = document.querySelectorAll('.mission-alarm-entry');
       expect(alarmItems[0]?.textContent).toContain('Error message');
       expect(alarmItems[1]?.textContent).toContain('Warning message');
       expect(alarmItems[2]?.textContent).toContain('Info message');
@@ -749,18 +785,19 @@ describe('GlobalCommandBar', () => {
     it('should update clock on SIMULATED_TIME_TICK event', () => {
       const timeTickHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.SIMULATED_TIME_TICK)?.[1];
 
-      timeTickHandler?.({ timeFormatted: '01 Jan 2024 12:34:56' });
+      timeTickHandler?.({ timeFormatted: '01 Jan 2024 12:34:56', timestampMs: Date.UTC(2024, 0, 1, 12, 34, 56) });
 
       const clock = document.querySelector('#utc-clock');
-      expect(clock?.textContent).toBe('01 Jan 2024 12:34:56');
+      expect(clock?.textContent).toBe('12:34:56 UTC');
     });
 
-    it('prefixes the weekday of the scenario clock (briefs open with "Wednesday, 1430")', () => {
+    it('preserves the weekday in the clock tooltip (briefs open with "Wednesday, 1430")', () => {
       const timeTickHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.SIMULATED_TIME_TICK)?.[1];
 
       timeTickHandler?.({ timeFormatted: '04 FEB 2026 14:30:00', timestampMs: Date.UTC(2026, 1, 4, 14, 30, 0) });
 
-      expect(document.querySelector('#utc-clock')?.textContent).toBe('WED 04 FEB 2026 14:30:00');
+      expect(document.querySelector('#utc-clock')?.textContent).toBe('14:30:00 UTC');
+      expect(document.querySelector('#utc-clock')?.getAttribute('title')).toContain('WED 04 FEB 2026 14:30:00');
     });
 
     it('should unsubscribe from SIMULATED_TIME_TICK on dispose', () => {

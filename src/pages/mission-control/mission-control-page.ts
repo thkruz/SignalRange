@@ -104,7 +104,7 @@ export class MissionControlPage extends BasePage {
 
   protected html_ = html`
     <div id="${this.id}" class="app-shell-page flex-column" style="display: flex;">
-      <header id="global-command-bar-container"></header>
+      <div id="mission-command-bar-mount" class="flex-shrink-0"></div>
 
       <!-- Main Workspace -->
       <div class="app-shell-main d-flex flex-fill overflow-hidden">
@@ -139,7 +139,7 @@ export class MissionControlPage extends BasePage {
     this.dom_ = qs(`#${this.id}`, parentDom);
     this.dom_.inert = true;
 
-    this.commandBarCenter_ = new GlobalCommandBar('global-command-bar-container');
+    this.commandBarCenter_ = new GlobalCommandBar('mission-command-bar-mount');
 
     // Opt-in per scenario: campaigns that don't declare settings.contactTimeline
     // (Campaign 1's GEO work) never mount the deck, so the shell keeps its

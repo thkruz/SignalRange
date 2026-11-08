@@ -8,6 +8,7 @@ import { AggregatedAlarm, AlarmStateChangedData, Events, SimulatedTimeTickData, 
 import { t7e } from '@app/locales/i18n';
 import type { TimeSkipOffer } from '@app/objectives/objective-types';
 import { ObjectivesManager } from '@app/objectives/objectives-manager';
+import { selectionText } from '@app/pages/selection-browser';
 import { LoadoutModal } from '@app/sandbox/loadout-modal';
 import { SandboxLoadoutService } from '@app/sandbox/sandbox-loadout';
 import { ScenarioManager } from '@app/scenario-manager';
@@ -19,19 +20,17 @@ import { glyph, severityGlyph } from './glyphs';
 import { formatAstroClock, formatDtg, formatDuration, formatDurationCompact } from './time-skip-format';
 import { TimeSkipModal } from './time-skip-modal';
 import { TimeSkipOverlay } from './time-skip-overlay';
+import './global-command-bar.css';
 
 /**
  * GlobalCommandBar
  *
- * Displays AOS countdown and a static alarm bar.
+ * Displays mission identity, simulation time, timers, and alarm status.
  * Subscribes to ALARM_STATE_CHANGED events to update the display immediately.
  *
- * Static alarm bar shows every active alarm (AlarmService sends all tiers,
- * not only the most severe: nats-r4-s16-F1):
- * - Severity count badges (errors, warnings, info)
- * - Top 3 most severe alarms inline
- * - "+N more" overflow indicator, with the full list in the bar's tooltip
- * - "SYSTEM STABLE" only when no alarm of any severity is active
+ * The summary shows the highest-priority alarm; the disclosure lists all
+ * tiers and stations, including live alarm details. Empty state is shown
+ * only when no alarm of any severity is active.
  */
 export class GlobalCommandBar {
   readonly id = 'global-command-bar-container';
@@ -52,7 +51,8 @@ export class GlobalCommandBar {
   private scenarioInfoEl_: HTMLElement | null = null;
 
   /** Maximum number of alarms to show inline */
-  private readonly MAX_INLINE_ALARMS_ = 3;
+  private readonly MAX_INLINE_ALARMS_ = 1;
+  private readonly alarmListeners_ = new AbortController();
 
   /**
    * Re-predicting passes is an SGP4 sweep over the whole planning horizon, so
@@ -203,29 +203,28 @@ export class GlobalCommandBar {
 
   private readonly html_ = html`
     <!-- 1. GLOBAL COMMAND BAR (Top) -->
-    <header id="global-command-bar-container" class="app-shell-header shadow-lg">
+    <header id="global-command-bar-container" class="app-shell-header">
+      <div class="mission-heading-row">
 
       <!-- Left: Branding & Clock -->
       <div class="command-bar-left">
-        ${glyph(this.headerIdentity_.icon, 'text-blue-500 text-xl mr-3')}
         <div>
-          ${this.gsbDomain_ ? html`<div class="astro-gsb-domain">${this.gsbDomain_}</div>` : ''}
-          <div class="font-bold tracking-wide text-white">${this.headerIdentity_.name}<span class="text-blue-500">${this.headerIdentity_.nameAccent}</span></div>
-          <div class="text-[10px] text-slate-400 font-mono" id="utc-clock">${this.clockPlaceholder_()}</div>
+          <div class="mission-station" title="${selectionText(this.gsbDomain_ || `${this.headerIdentity_.name}${this.headerIdentity_.nameAccent}`)}">${selectionText(this.headerIdentity_.name)}<span>${selectionText(this.headerIdentity_.nameAccent)}</span></div>
         </div>
       </div>
 
-      <div id="${this.id}" class="command-bar-center">
+      <div class="command-bar-center">
         <!-- AOS Countdown -->
         <div class="aos-countdown">
-          <div id="scenario-info" class="absolute left-4 flex items-center gap-2 text-xs text-slate-500">
-            <span class="px-1.5 py-0.5">SCENARIO --</span>
+          <div id="scenario-info">
+            <span>Mission</span>
           </div>
           <!-- Skip and loadout controls live here, not beside the clock: a
                "Skip to 10:00" label squeezed the date/time out of the 256 px
                brand block (nats-r3-s10-F3), and with the clock on one line the
                sandbox LOADOUT button overflowed under this bar -->
           <div class="command-bar-skip-controls">
+            <button id="mission-pause-control" class="time-skip-btn" type="button" title="Pause mission (Escape)">Pause</button>
             ${
               this.isTimeSkipEnabled_
                 ? html`
@@ -258,18 +257,25 @@ export class GlobalCommandBar {
             }
           </div>
         </div>
-        <!-- Static Alarm Bar -->
+      </div>
+      </div>
+      <div class="mission-status-row">
+        <time id="utc-clock" class="mission-clock" tabindex="0">${this.clockPlaceholder_()}</time>
         <div id="alarm-bar" class="command-bar-alarm-bar healthy">
-          <div id="alarm-counts" class="alarm-counts"></div>
-          <div id="alarm-messages" class="alarm-messages">
-            <span class="alarm-stable text-green-400">
-              ${severityGlyph('ok', 'me-1')} SYSTEM STABLE
-            </span>
-          </div>
-          <button id="alarm-mute-btn" type="button" class="alarm-mute-btn" aria-pressed="false"
-                  title="Mute alarm tones until you turn them back on. Alarms stay listed.">ALARM TONE ON</button>
+          <button id="alarm-summary" type="button" aria-expanded="false" aria-controls="mission-alarm-panel" title="View all active alarms">
+            <span id="alarm-counts" class="alarm-counts"></span>
+            <span id="alarm-messages" class="alarm-messages"><span class="alarm-stable">${severityGlyph('ok')} No active alarms</span></span>
+            <svg class="alarm-disclosure" viewBox="0 0 16 16" fill="none" stroke="currentColor" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg>
+          </button>
+          <button id="alarm-mute-btn" type="button" class="alarm-mute-btn" aria-pressed="false"></button>
         </div>
       </div>
+      <section id="mission-alarm-panel" aria-label="Active alarms" hidden>
+        <div class="mission-alarm-heading"><h2>Active alarms <span id="mission-alarm-total">0</span></h2>
+          <button id="mission-alarm-close" type="button" aria-label="Close alarms">Close</button></div>
+        <p class="mission-alarm-scope">All stations · Highest severity first</p>
+        <ul id="mission-alarm-list"><li class="mission-alarm-empty">No active alarms</li></ul>
+      </section>
 
       <!-- Right: Timer Displays -->
       <div class="command-bar-right">
@@ -288,6 +294,10 @@ export class GlobalCommandBar {
   private init_(): void {
     const parentDom = qs(`#${this.parentContainerId_}`);
     parentDom?.insertAdjacentHTML('beforeend', this.html_);
+    parentDom?.querySelector('#mission-pause-control')?.addEventListener('click', async () => {
+      const { GameMenu } = await import('@app/game-menu/game-menu');
+      GameMenu.getInstance().openPause();
+    });
     this.dom_ = qs(`#${this.id}`, parentDom);
     this.alarmBarEl_ = qs('#alarm-bar', parentDom);
     this.countsEl_ = qs('#alarm-counts', parentDom);
@@ -295,6 +305,7 @@ export class GlobalCommandBar {
     this.muteBtn_ = parentDom?.querySelector<HTMLButtonElement>('#alarm-mute-btn') ?? null;
     this.muteBtn_?.addEventListener('click', this.boundOnMuteClick_);
     this.renderAlarmMute_();
+    this.setupAlarmPanel_();
     this.objectiveTimerEl_ = parentDom?.querySelector('#objective-timer-display') ?? null;
     this.scenarioTimerEl_ = parentDom?.querySelector('#scenario-timer-display') ?? null;
     this.clockEl_ = parentDom?.querySelector('#utc-clock') ?? null;
@@ -489,11 +500,8 @@ export class GlobalCommandBar {
       const scenarioData = ScenarioManager.getInstance().data;
       const number = scenarioData.number;
       const title = scenarioData.title;
-      this.scenarioInfoEl_.innerHTML = `
-        <span class="px-1.5 py-0.5">
-          SCENARIO ${number}: ${title}
-        </span>
-      `;
+      this.scenarioInfoEl_.textContent = `${number > 0 ? `${String(number).padStart(2, '0')} · ` : ''}${title}`;
+      this.scenarioInfoEl_.title = this.scenarioInfoEl_.textContent;
     } catch {
       // ScenarioManager not initialized yet - keep placeholder
     }
@@ -526,7 +534,7 @@ export class GlobalCommandBar {
       case 'astro':
         return '---- --- --:--:--';
       default:
-        return '--- -- --- ---- --:--:--';
+        return '--:--:-- UTC';
     }
   }
 
@@ -559,8 +567,11 @@ export class GlobalCommandBar {
         this.clockEl_.textContent = formatAstroClock(data.timestampMs);
         break;
       default:
-        this.clockEl_.textContent = Number.isFinite(data.timestampMs) ? `${GlobalCommandBar.weekday_(data.timestampMs)} ${data.timeFormatted}` : data.timeFormatted;
+        this.clockEl_.textContent = Number.isFinite(data.timestampMs) ? `${new Date(data.timestampMs).toISOString().slice(11, 19)} UTC` : '--:--:-- UTC';
     }
+    this.clockEl_.title = `Simulation time: ${GlobalCommandBar.weekday_(data.timestampMs)} ${data.timeFormatted} UTC`;
+    this.clockEl_.setAttribute('aria-label', this.clockEl_.title);
+    if (Number.isFinite(data.timestampMs)) this.clockEl_.setAttribute('datetime', new Date(data.timestampMs).toISOString());
   }
 
   /** Alarm tone mute toggle: stays muted until the operator turns tones back on. */
@@ -575,9 +586,61 @@ export class GlobalCommandBar {
       return;
     }
     const muted = SoundEvents.alarmsMuted;
-    btn.textContent = muted ? 'ALARM TONE MUTED' : 'ALARM TONE ON';
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />${muted ? '<path d="m3 3 18 18" />' : ''}</svg><span>${muted ? 'Muted' : 'Mute'}</span>`;
+    btn.title = muted ? 'Unmute alarm tones' : 'Mute alarm tones; alarms remain visible';
+    btn.setAttribute('aria-label', btn.title);
     btn.setAttribute('aria-pressed', String(muted));
     btn.classList.toggle('alarm-mute-btn--muted', muted);
+  }
+
+  private setupAlarmPanel_(): void {
+    const summary = this.dom_!.querySelector<HTMLButtonElement>('#alarm-summary')!;
+    const panel = this.dom_!.querySelector<HTMLElement>('#mission-alarm-panel')!;
+    const close = panel.querySelector<HTMLButtonElement>('#mission-alarm-close')!;
+    const setOpen = (open: boolean, restoreFocus = false): void => {
+      panel.hidden = !open;
+      summary.setAttribute('aria-expanded', String(open));
+      if (open) close.focus({ preventScroll: true });
+      else if (restoreFocus) summary.focus({ preventScroll: true });
+    };
+    const options = { signal: this.alarmListeners_.signal };
+    summary.addEventListener('click', () => setOpen(Boolean(panel.hidden)), options);
+    close.addEventListener('click', () => setOpen(false, true), options);
+    document.addEventListener(
+      'click',
+      (event) => {
+        if (!panel.hidden && !panel.contains(event.target as Node) && !summary.contains(event.target as Node)) setOpen(false);
+      },
+      options
+    );
+    document.addEventListener(
+      'keydown',
+      (event) => {
+        if (event.key === 'Escape' && !panel.hidden) {
+          event.preventDefault();
+          event.stopPropagation();
+          setOpen(false, true);
+        }
+      },
+      options
+    );
+  }
+
+  private renderAlarmPanel_(alarms: AggregatedAlarm[]): void {
+    const list = this.dom_?.querySelector('#mission-alarm-list');
+    const total = this.dom_?.querySelector('#mission-alarm-total');
+    if (!list || !total) return;
+    total.textContent = String(alarms.length);
+    list.innerHTML = alarms.length
+      ? this.getTopAlarms_(alarms, alarms.length)
+          .map((alarm) => {
+            const detail = AlarmService.detailOf(alarm);
+            return `<li class="mission-alarm-entry" data-severity="${selectionText(alarm.severity)}">
+        ${severityGlyph(alarm.severity)}<div><div class="mission-alarm-source">${selectionText(alarm.assetId)} · ${selectionText(alarm.equipmentType)}${alarm.equipmentIndex + 1} · ${selectionText(alarm.severity)}</div>
+        <p>${selectionText(alarm.message)}</p>${detail ? `<p class="mission-alarm-detail">${selectionText(detail)}</p>` : ''}</div></li>`;
+          })
+          .join('')
+      : '<li class="mission-alarm-empty">No active alarms</li>';
   }
 
   private onAlarmStateChanged_(data: AlarmStateChangedData): void {
@@ -602,6 +665,7 @@ export class GlobalCommandBar {
 
     // Update count badges
     this.renderCountBadges_(counts);
+    this.renderAlarmPanel_(alarms);
 
     // Update container class for background color
     this.alarmBarEl_.classList.remove('alarm', 'warn', 'healthy', 'info');
@@ -610,7 +674,7 @@ export class GlobalCommandBar {
       // System stable
       this.messagesEl_.innerHTML = `
         <span class="alarm-stable text-green-400">
-          ${severityGlyph('ok', 'me-1')} SYSTEM STABLE
+          ${severityGlyph('ok', 'me-1')} No active alarms
         </span>
       `;
       this.alarmBarEl_.classList.add('healthy');
@@ -642,13 +706,13 @@ export class GlobalCommandBar {
   private renderCountBadges_(counts: { error: number; warning: number; info: number }): void {
     if (!this.countsEl_) return;
 
-    const alwaysVisible = this.chromeVariant_ === 'astro';
+    const alwaysVisible = false;
     const badges: string[] = [];
 
     if (counts.error > 0 || alwaysVisible) {
       badges.push(`
         <span class="alarm-count error ${counts.error === 0 ? 'zero' : ''}" title="${counts.error} Error${counts.error > 1 ? 's' : ''}">
-          ${severityGlyph('error')} ${counts.error}
+          ${severityGlyph('error')} ${counts.error} error${counts.error === 1 ? '' : 's'}
         </span>
       `);
     }
@@ -656,7 +720,7 @@ export class GlobalCommandBar {
     if (counts.warning > 0 || alwaysVisible) {
       badges.push(`
         <span class="alarm-count warning ${counts.warning === 0 ? 'zero' : ''}" title="${counts.warning} Warning${counts.warning > 1 ? 's' : ''}">
-          ${severityGlyph('warning')} ${counts.warning}
+          ${severityGlyph('warning')} ${counts.warning} warning${counts.warning === 1 ? '' : 's'}
         </span>
       `);
     }
@@ -664,7 +728,7 @@ export class GlobalCommandBar {
     if (counts.info > 0 || alwaysVisible) {
       badges.push(`
         <span class="alarm-count info ${counts.info === 0 ? 'zero' : ''}" title="${counts.info} Info">
-          ${severityGlyph('info')} ${counts.info}
+          ${severityGlyph('info')} ${counts.info} info
         </span>
       `);
     }
@@ -698,9 +762,8 @@ export class GlobalCommandBar {
 
     const items = alarms.map((alarm, index) => {
       const color = this.getColorClass_(alarm.severity);
-      const icon = severityGlyph(alarm.severity, 'me-1');
       const separator = index > 0 ? '<span class="alarm-separator">•</span>' : '';
-      return `${separator}<span class="alarm-item ${color}">${icon}${alarm.assetId}(${alarm.equipmentType}${alarm.equipmentIndex + 1}): ${alarm.message}</span>`;
+      return `${separator}<span class="alarm-item ${color}">${selectionText(alarm.assetId)}(${selectionText(alarm.equipmentType)}${alarm.equipmentIndex + 1}): ${selectionText(alarm.message)}</span>`;
     });
 
     if (overflowCount > 0) {
@@ -907,7 +970,7 @@ export class GlobalCommandBar {
       } else if (overtimeObjective) {
         // Time ran out on a non-fatal objective: it still has to be done
         if (valueEl) {
-          valueEl.textContent = 'OVERTIME';
+          valueEl.textContent = 'Overdue';
         }
         this.objectiveTimerEl_.title = `Time ran out on ${overtimeObjective.title}. Points were deducted; finish it to carry on.`;
         this.objectiveTimerEl_.classList.add('timer-urgent');
@@ -960,6 +1023,7 @@ export class GlobalCommandBar {
   }
 
   dispose(): void {
+    this.alarmListeners_.abort();
     EventBus.getInstance().off(Events.OBJECTIVE_ACTIVATED, this.boundOnObjectiveChanged_);
     EventBus.getInstance().off(Events.OBJECTIVE_COMPLETED, this.boundOnObjectiveChanged_);
     EventBus.getInstance().off(Events.OBJECTIVES_ALL_COMPLETED, this.boundOnObjectiveChanged_);

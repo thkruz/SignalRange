@@ -255,16 +255,22 @@ describe('reference chain: GPSDO state sets every LO (one station)', () => {
     expectWithinAbs(fe.bucModule.state.frequencyError, y * 7000e6, 1e-9);
   });
 
-  referenceCase('holdover: the OCXO offset (1.67 us/h) reaches both LOs coherently', undefined, () => {
-    const { fe, step } = build();
-    fe.gpsdoModule.setGnssSignalPresent(false);
-    step(3600);
-    const y = fe.gpsdoModule.fractionalFrequencyError();
-    expectWithinRel(Math.abs(y), 1.67e-6 / 3600, 0.01);
-    expectWithinAbs(fe.lnbModule.state.frequencyError, y * 5250e6, 1e-6);
-    expectWithinAbs(fe.bucModule.state.frequencyError, y * 7000e6, 1e-6);
-    expectWithinAbs(fe.gpsdoModule.state.holdoverError, 1.67, 0.03);
-  });
+  referenceCase(
+    'holdover: the OCXO offset (1.67 us/h) reaches both LOs coherently',
+    undefined,
+    () => {
+      const { fe, step } = build();
+      fe.gpsdoModule.setGnssSignalPresent(false);
+      step(3600);
+      const y = fe.gpsdoModule.fractionalFrequencyError();
+      expectWithinRel(Math.abs(y), 1.67e-6 / 3600, 0.01);
+      expectWithinAbs(fe.lnbModule.state.frequencyError, y * 5250e6, 1e-6);
+      expectWithinAbs(fe.bucModule.state.frequencyError, y * 7000e6, 1e-6);
+      expectWithinAbs(fe.gpsdoModule.state.holdoverError, 1.67, 0.03);
+      // An hour at the 60 Hz fixed step is 216,000 ticks, about 7 s: past vitest's 5 s default.
+    },
+    30_000
+  );
 
   referenceCase('a GNSS spoof walking time at 5 us/s steers the disciplined LOs by 5 ppm', undefined, () => {
     const { fe, step } = build();

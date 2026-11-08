@@ -23,14 +23,16 @@ export const REFERENCE_DATA_DIR = resolve(__dirname, 'data');
  * `REFERENCE_STRICT=1 npx vitest run test/reference` runs deviation cases as
  * ordinary tests, so each shows how far the engine is from the reference (and
  * that it fails on the assertion, not on a harness error).
+ *
+ * `timeoutMs` is for cases that simulate long spans at the fixed 60 Hz step.
  */
-export function referenceCase(title: string, deviation: string | undefined, fn: () => void): void {
+export function referenceCase(title: string, deviation: string | undefined, fn: () => void, timeoutMs?: number): void {
   if (deviation === undefined) {
-    it(title, fn);
+    it(title, fn, timeoutMs);
     return;
   }
   const strict = process.env.REFERENCE_STRICT === '1';
-  (strict ? it : it.fails)(`${title} [${deviation}]`, fn);
+  (strict ? it : it.fails)(`${title} [${deviation}]`, fn, timeoutMs);
 }
 
 /**

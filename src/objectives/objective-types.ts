@@ -258,7 +258,9 @@ export interface ConditionParams {
   frequencyTolerance?: number;
   /**
    * For ops-log-entry: words the operator's entry must contain (case-insensitive,
-   * all required; each item may list alternatives separated by "|", e.g. "manual|bypass")
+   * all required; each item may list alternatives separated by "|", e.g. "manual|bypass").
+   * One entry may carry them all, or the entries typed since the objective activated
+   * may share them between them.
    */
   logKeywords?: string[];
   /** For ops-log-entry: minimum entry length in characters (default 10) */

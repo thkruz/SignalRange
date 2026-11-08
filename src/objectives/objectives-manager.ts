@@ -3199,10 +3199,15 @@ export class ObjectivesManager {
           .getEntries()
           .filter((e) => e.source === 'operator');
         this.observe_(typed.map((e) => e.message));
-        return typed.some((e) => {
-          const text = e.message.toLowerCase();
-          return text.length >= minLength && keywords.every((alternatives) => alternatives.some((word) => text.includes(word)));
-        });
+        const matches = (text: string) => text.length >= minLength && keywords.every((alternatives) => alternatives.some((word) => text.includes(word)));
+        if (typed.some((e) => matches(e.message.toLowerCase()))) return true;
+        // nats S11 player report: operators split one handover across several
+        // lines ("ME-02 has TM-1 now", "VT-01 parked for maintenance"). Lines
+        // typed since this objective activated count together.
+        const since = objectiveState.activatedAt;
+        if (since === undefined) return false;
+        const recent = typed.filter((e) => e.timeMs !== undefined && e.timeMs >= since);
+        return recent.length > 1 && matches(recent.map((e) => e.message.toLowerCase()).join(' '));
       }
 
       case 'mission-brief-opened': {

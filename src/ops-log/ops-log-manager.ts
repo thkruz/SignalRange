@@ -153,6 +153,7 @@ export class OpsLogManager {
       message,
       category,
       source,
+      timeMs: SimClock.nowMs(),
     };
     this.entries_.push(entry);
 

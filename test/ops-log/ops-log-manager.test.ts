@@ -186,6 +186,7 @@ describe('OpsLogManager', () => {
         message: 'Test entry',
         category: 'alert',
         source: 'Source',
+        timeMs: expect.any(Number),
       });
     });
 

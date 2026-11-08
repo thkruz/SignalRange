@@ -1939,6 +1939,34 @@ describe('ObjectivesManager', () => {
       eventBus.emit(Events.UPDATE, 16);
       expect(manager.getObjectiveState('log-obj')?.isCompleted).toBe(false);
     });
+
+    it('lets entries typed since activation share the keywords between them', () => {
+      const opsLog = OpsLogManager.initialize();
+      const params = { logKeywords: ['me-02|maine', 'safe|maintenance|parked'], logMinLength: 20 };
+      const objectives = [createTestObjective({ id: 'log-obj', conditions: [{ type: 'ops-log-entry', description: 'Log the handover', mustMaintain: false, params }] })];
+      const manager = ObjectivesManager.initialize(objectives);
+
+      opsLog.log('ME-02 has TM-1 now', 'action', 'operator');
+      eventBus.emit(Events.UPDATE, 16);
+      expect(manager.getObjectiveState('log-obj')?.isCompleted).toBe(false);
+
+      opsLog.log('VT-01 parked', 'action', 'operator');
+      eventBus.emit(Events.UPDATE, 16);
+      expect(manager.getObjectiveState('log-obj')?.isCompleted).toBe(true);
+    });
+
+    it('does not pool entries typed before the objective activated', () => {
+      const opsLog = OpsLogManager.initialize();
+      opsLog.log('ME-02 has TM-1 now', 'action', 'operator');
+      SimClock.setScenarioNowMs(SimClock.nowMs() + 60_000);
+      const params = { logKeywords: ['me-02|maine', 'safe|maintenance|parked'], logMinLength: 20 };
+      const objectives = [createTestObjective({ id: 'log-obj', conditions: [{ type: 'ops-log-entry', description: 'Log the handover', mustMaintain: false, params }] })];
+      const manager = ObjectivesManager.initialize(objectives);
+
+      opsLog.log('VT-01 parked for maintenance', 'action', 'operator');
+      eventBus.emit(Events.UPDATE, 16);
+      expect(manager.getObjectiveState('log-obj')?.isCompleted).toBe(false);
+    });
   });
 
   describe('Countdown hold (Phase 26 D2)', () => {

@@ -2235,6 +2235,85 @@ body.campaign-ccs .app-shell-page::after {
   font-size: 0.8125rem;
 }
 
+/* Equipment switches: a dark off track and an aligned label/control row.
+   Keep the native inputs and associated labels as the only click targets. */
+:is(.acu-control-tab, .rx-analysis-tab, .tx-chain-tab, .gps-timing-tab)
+  .form-switch .form-check-input {
+  box-shadow: none;
+}
+
+:is(.acu-control-tab, .rx-analysis-tab, .tx-chain-tab, .gps-timing-tab)
+  .form-switch .form-check-input:not(:checked) {
+  background-color: var(--mc-surface-0) !important;
+  border-color: #888;
+}
+
+:is(.rx-analysis-tab, .tx-chain-tab) .metric-group:has(> .form-switch) > .metric-group-title {
+  margin-bottom: 0;
+}
+
+/* Keep both HPA rows on the same two-column grid. Metric groups retain their
+   h-100 sizing so Controls aligns with the neighboring status panel. */
+.tx-chain-tab .card-body:has(#hpa-enable) > .row > :is(.col-5, .col-7) {
+  width: 50%;
+}
+
+.tx-chain-tab .metric-row:has(#hpa-power-meter) {
+  flex-wrap: wrap;
+}
+
+:is(.rx-analysis-tab, .tx-chain-tab, .gps-timing-tab)
+  :is(.metric-group, .card-body, .card-body > :is(.mb-2, .mb-3)) > .form-switch:has(> .form-check-label) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 0.75rem;
+  min-height: 42px;
+  padding: 0.625rem 0;
+  margin: 0 !important;
+}
+
+:is(.rx-analysis-tab, .tx-chain-tab, .gps-timing-tab)
+  :is(.metric-group, .card-body, .card-body > :is(.mb-2, .mb-3)) > .form-switch + .form-switch {
+  border-top: 1px solid var(--mc-panel-line);
+}
+
+:is(.rx-analysis-tab, .tx-chain-tab, .gps-timing-tab)
+  :is(.metric-group, .card-body, .card-body > :is(.mb-2, .mb-3)) > .form-switch > .form-check-label {
+  grid-area: 1 / 1;
+  width: fit-content;
+  margin: 0;
+  color: var(--mc-text-primary);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+:is(.rx-analysis-tab, .tx-chain-tab, .gps-timing-tab)
+  :is(.metric-group, .card-body, .card-body > :is(.mb-2, .mb-3)) > .form-switch > .form-check-input {
+  grid-area: 1 / 2;
+  float: none;
+  margin: 0;
+}
+
+:is(.acu-control-tab, .rx-analysis-tab, .tx-chain-tab, .gps-timing-tab)
+  .form-switch .form-check-input:disabled,
+:is(.acu-control-tab, .rx-analysis-tab, .tx-chain-tab, .gps-timing-tab)
+  .form-switch .form-check-input:disabled ~ .form-check-label {
+  cursor: not-allowed;
+}
+
+/* The modem's boot message stays below its Transmit control, including when
+   the adapter reveals it. The d-none class still owns whether it is visible. */
+.tx-chain-tab #tx-boot-status {
+  grid-column: 1 / -1;
+  margin-left: 0 !important;
+}
+
+:is(.rx-analysis-tab, .gps-timing-tab) .card-body > .form-switch + :not(.form-switch) {
+  margin-top: 0.75rem;
+}
+
 /* The asset rail leaves less usable space than Tabler's viewport grid assumes. */
 @media (min-width: 992px) and (max-width: 1199px) {
   :is(.rx-analysis-tab, .tx-chain-tab) > .row > .col-lg-6,

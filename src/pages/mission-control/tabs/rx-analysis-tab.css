@@ -330,6 +330,11 @@
   padding: 0.5rem 0.75rem !important;
 }
 
+/* Match the numeric input's border across the entire segmented control. */
+.rx-analysis-tab .notch-slot .input-group > .btn-outline-secondary {
+  border-color: #666;
+}
+
 .rx-analysis-tab .card .card .card-header {
   padding: 0.5rem 0.75rem;
 }

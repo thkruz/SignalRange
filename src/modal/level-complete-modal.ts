@@ -15,10 +15,15 @@ import { getUserDataService } from '@app/user-account/user-data-service';
 import type { DecisionRecord } from './decision-manager';
 import { DialogManager } from './dialog-manager';
 import './level-complete-modal.css';
+import { preloadArtwork } from '@app/presentation/transitions';
+import type { MissionDebrief } from '@app/scoring/mission-debrief';
+import { achievementBadge } from '@app/user-account/profile-record';
+import { getAssetUrl } from '@app/utils/asset-url';
 import { PendingQuizIndicator } from './pending-quiz-indicator';
 import { QuizModal } from './quiz-modal';
 
 interface CompletionModalOptions {
+  debrief?: MissionDebrief;
   score: ScoreBreakdown;
   elapsedTimeSeconds: number;
   campaignId: string;
@@ -56,6 +61,8 @@ export class LevelCompleteModal extends DraggableModal {
   };
 
   private onContinueCallback_: (() => void | Promise<void>) | null = null;
+  private actionPending_ = false;
+  private resultSaved_ = false;
   private isReplayMode_: boolean = false;
   private authSubscription_: { data: { subscription: { unsubscribe: () => void } } } | null = null;
 
@@ -167,14 +174,32 @@ export class LevelCompleteModal extends DraggableModal {
           ${this.renderDecisions_()}
         </div>
 
+        ${this.renderDebrief_()}
         ${this.renderSignUpSection_()}
+        <p id="debrief-save-status" role="status"></p>
         </div>
         <div class="complete-modal__actions">
-          ${this.isReplayMode_ ? '<button id="play-again-btn" class="btn btn-primary">Play Again</button>' : ''}
-          <button id="continue-btn" class="btn btn-primary">Continue</button>
+          ${this.options_.debrief?.nextMission && this.options_.isAuthenticated !== false ? '<button id="next-mission-btn" class="btn btn-primary">Next Mission</button>' : ''}
+          <button id="play-again-btn" class="btn btn-secondary">Replay</button>
+          <button id="continue-btn" class="btn btn-secondary">Mission Selection</button>
         </div>
       </div>
     `;
+  }
+
+  private renderDebrief_(): string {
+    const debrief = this.options_.debrief;
+    if (!debrief) return '';
+    const previous = debrief.previousScore;
+    const delta = previous === undefined ? null : this.options_.score.totalScore - previous;
+    const awards = debrief.achievements.map((award) => `<li><span class="debrief-badge">${achievementBadge(award)}</span><span>${selectionText(award.title)}</span></li>`).join('');
+    return `<section class="mission-debrief" aria-label="Mission debrief">
+      <div class="debrief-comparison"><div><span>Previous score</span><strong>${previous?.toLocaleString() ?? 'First recorded result'}</strong></div>
+      <div><span title="Best of results recorded on this device and the available account result">Recorded best</span><strong>${debrief.bestScore.toLocaleString()}${debrief.personalBest && previous !== undefined ? ' · New best' : ''}</strong></div>
+      ${delta === null ? '' : `<div><span>Change</span><strong>${delta > 0 ? '+' : ''}${delta.toLocaleString()}</strong></div>`}</div>
+      ${awards ? `<h2>Awards this run</h2><ul class="debrief-awards">${awards}</ul><p class="debrief-note">Awards are added to your service record when this result is saved.</p>` : ''}
+      ${debrief.nextMission ? `<p class="debrief-next">${debrief.newlyUnlocked ? 'Next unlock' : 'Next mission'}: <strong>${selectionText(debrief.nextMission.title)}</strong></p>` : ''}
+    </section>`;
   }
 
   /**
@@ -255,6 +280,7 @@ export class LevelCompleteModal extends DraggableModal {
   private initializeEventListeners_(): void {
     const continueBtn = this.boxEl?.querySelector('#continue-btn');
     continueBtn?.addEventListener('click', () => this.handleContinue_());
+    this.boxEl?.querySelector('#next-mission-btn')?.addEventListener('click', () => this.runAction_('next'));
 
     const playAgainBtn = this.boxEl?.querySelector('#play-again-btn');
     playAgainBtn?.addEventListener('click', () => this.handlePlayAgain_());
@@ -264,42 +290,50 @@ export class LevelCompleteModal extends DraggableModal {
   }
 
   private async handleContinue_(): Promise<void> {
-    // Call the callback first (to save score) - must await to ensure save completes before navigation
-    if (this.onContinueCallback_) {
-      await this.onContinueCallback_();
-    }
-
-    // Close this modal and all other popups
-    this.forceClose_();
-
-    // Navigate back to campaign scenarios
-    const { campaignId } = this.options_;
-    Router.getInstance().navigate(`/campaigns/${campaignId}`);
+    await this.runAction_('selection');
   }
 
   private async handlePlayAgain_(): Promise<void> {
-    // Close this modal
-    this.forceClose_();
-
-    const { campaignId, scenarioId } = this.options_;
-
-    // Reset progress (preserves completedAt so prerequisites stay unlocked) and clear checkpoint
-    try {
-      const userDataService = getUserDataService();
-      await Promise.all([userDataService.resetScenarioForReplay(scenarioId), userDataService.deleteCheckpoint(scenarioId)]);
-      Logger.info(`Reset progress and cleared checkpoint for Play Again: ${scenarioId}`);
-    } catch (error) {
-      Logger.error('Failed to reset progress for Play Again:', error);
-      // Continue anyway - user wants to play again
-    }
-
-    // Clear local equipment state so scenario starts with default equipment settings
-    await clearPersistedStore();
-
-    // Navigate to the same scenario to restart fresh (forceReplay skips the completion check)
-    Router.getInstance().navigate(`/campaigns/${campaignId}/scenarios/${scenarioId}`, { forceReplay: true });
+    await this.runAction_('replay');
   }
 
+  private async runAction_(action: 'selection' | 'next' | 'replay'): Promise<void> {
+    if (this.actionPending_) return;
+    this.actionPending_ = true;
+    const buttons = this.boxEl?.querySelectorAll<HTMLButtonElement>('.complete-modal__actions button');
+    buttons?.forEach((button) => {
+      button.disabled = true;
+    });
+    const status = this.boxEl?.querySelector<HTMLElement>('#debrief-save-status');
+    if (status) status.textContent = 'Saving result…';
+    try {
+      if (!this.resultSaved_ && this.onContinueCallback_) await this.onContinueCallback_();
+      this.resultSaved_ = true;
+      const { campaignId, scenarioId, debrief } = this.options_;
+      if (action === 'replay') {
+        await SimulationManager.getInstance().progressSaveManager?.waitForPendingSave();
+        if (await Auth.getSession()) {
+          const service = getUserDataService();
+          await service.deleteCheckpoint(scenarioId);
+          await service.resetScenarioForReplay(scenarioId);
+        }
+        await clearPersistedStore();
+      }
+      this.forceClose_();
+      const path = `/campaigns/${campaignId}`;
+      if (action === 'replay') Router.getInstance().navigate(`${path}/scenarios/${scenarioId}`, { forceReplay: true });
+      else if (action === 'next' && debrief?.nextMission) Router.getInstance().navigate(`${path}/scenarios/${debrief.nextMission.id}`);
+      else Router.getInstance().navigate(path);
+    } catch (error) {
+      Logger.error('Could not finish mission action:', error);
+      if (status) status.textContent = 'Could not save or prepare the next mission. Your result is still here. Check your connection and choose an action to retry.';
+    } finally {
+      this.actionPending_ = false;
+      buttons?.forEach((button) => {
+        button.disabled = false;
+      });
+    }
+  }
   /**
    * Actually close the modal (bypasses the override that prevents X/backdrop close)
    */
@@ -371,6 +405,9 @@ export class LevelCompleteModal extends DraggableModal {
 
   showCompletion(options: CompletionModalOptions, onContinue?: () => void | Promise<void>, isReplay?: boolean): void {
     this.options_ = options;
+    this.resultSaved_ = false;
+    this.actionPending_ = false;
+    if (options.debrief?.nextMission) preloadArtwork(getAssetUrl('/assets/campaigns/' + options.debrief.nextMission.imageUrl));
     this.onContinueCallback_ = onContinue ?? null;
     this.isReplayMode_ = isReplay ?? false;
 

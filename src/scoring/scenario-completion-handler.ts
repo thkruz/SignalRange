@@ -1,3 +1,4 @@
+import { CampaignManager } from '@app/campaigns/campaign-manager';
 import { EventBus } from '@app/events/event-bus';
 import { Events, ObjectivesAllCompletedData } from '@app/events/events';
 import { Logger } from '@app/logging/logger';
@@ -13,7 +14,11 @@ import { ScenarioManager } from '@app/scenario-manager';
 import { ScenarioDialogManager } from '@app/scenarios/scenario-dialog-manager';
 import { notifySavedAchievements } from '@app/user-account/achievement-notifications';
 import { Auth } from '@app/user-account/auth';
+import { selectionProgressCache } from '@app/user-account/selection-progress-cache';
+import type { ScenarioProgress } from '@app/user-account/types';
 import { getUserDataService } from '@app/user-account/user-data-service';
+import { buildMissionDebrief, type MissionDebrief } from './mission-debrief';
+import { readMissionRecord, rememberMissionResult } from './mission-records';
 import { ScoreBreakdown, ScoreCalculator } from './score-calculator';
 
 interface PendingCompletion {
@@ -48,6 +53,7 @@ export class ScenarioCompletionHandler {
   private readonly eventBus_: EventBus;
   private boundHandler_: ((data: ObjectivesAllCompletedData) => void) | null = null;
   private isInitialized_ = false;
+  private baseline_: { account: string; results: ScenarioProgress[] } | null = null;
 
   private constructor() {
     this.eventBus_ = EventBus.getInstance();
@@ -73,6 +79,12 @@ export class ScenarioCompletionHandler {
     ScenarioCompletionHandler.registerAuthFlush_();
 
     this.isInitialized_ = true;
+    void (async () => {
+      const session = await Auth.getSession();
+      if (!session?.user?.id) return;
+      const progress = await selectionProgressCache.getProgress();
+      if (progress) this.baseline_ = { account: session.user.id, results: progress.scenarios.map((result) => ({ ...result })) };
+    })().catch(() => {});
     Logger.info('ScenarioCompletionHandler initialized');
   }
 
@@ -98,7 +110,9 @@ export class ScenarioCompletionHandler {
       // caches the access token UserDataService reads, but don't depend on
       // subscriber ordering.
       setTimeout(() => {
-        ScenarioCompletionHandler.saveScore_(pending.scenarioId, pending.score, pending.scenarioNumber);
+        void ScenarioCompletionHandler.saveScore_(pending.scenarioId, pending.score, pending.scenarioNumber).catch(() => {
+          ScenarioCompletionHandler.pendingCompletion_ = pending;
+        });
       }, 0);
     });
   }
@@ -167,6 +181,20 @@ export class ScenarioCompletionHandler {
       return;
     }
 
+    let debrief: MissionDebrief | undefined;
+    // The score screen must still open if the optional history request is offline or slow.
+    const baseline = this.baseline_;
+    const session = await Auth.getSession();
+    if (baseline && baseline.account === session?.user?.id) {
+      const current = {
+        scenarioId,
+        score: score.totalScore,
+        completedAt: new Date().toISOString(),
+        quizPenalties: score.quizPenalties + score.decisionPenalties,
+        timePenalties: score.timePenalties,
+      } as ScenarioProgress;
+      debrief = buildMissionDebrief(CampaignManager.getInstance().getAllCampaigns(), campaignId, baseline.results, current, readMissionRecord(baseline.account, scenarioId));
+    }
     // Show the completion modal on top of an empty screen
     LevelCompleteModal.getInstance().showCompletion(
       {
@@ -175,6 +203,7 @@ export class ScenarioCompletionHandler {
         campaignId,
         scenarioId,
         isAuthenticated,
+        debrief,
         decisions: DecisionManager.hasInstance() ? DecisionManager.getInstance().getRecords() : undefined,
       },
       () => this.saveOnContinue_(scenarioId, score, scenarioNumber)
@@ -221,8 +250,8 @@ export class ScenarioCompletionHandler {
       return;
     }
 
-    ScenarioCompletionHandler.pendingCompletion_ = null;
     await ScenarioCompletionHandler.saveScore_(scenarioId, score, scenarioNumber);
+    ScenarioCompletionHandler.pendingCompletion_ = null;
   }
 
   /**
@@ -295,6 +324,8 @@ export class ScenarioCompletionHandler {
    */
   private static async saveScore_(scenarioId: string, score: ScoreBreakdown, scenarioNumber: number): Promise<void> {
     try {
+      const completedAt = new Date().toISOString();
+      const account = selectionProgressCache.accountId;
       // Direct update to specific scenario - backend handles totalScore aggregation
       await getUserDataService().updateScenarioProgress(scenarioId, {
         score: score.totalScore,
@@ -305,15 +336,17 @@ export class ScenarioCompletionHandler {
         quizPenalties: score.quizPenalties + score.decisionPenalties,
         timePenalties: score.timePenalties,
         hintPenalties: score.hintPenalties,
-        completedAt: new Date().toISOString(),
+        completedAt,
         lastPlayed: new Date().toISOString(),
         scenarioNumber,
       });
+      rememberMissionResult(account, { scenarioId, score: score.totalScore, completedAt });
 
       Logger.info(`Score saved for scenario ${scenarioId}: ${score.totalScore}`);
       void notifySavedAchievements();
     } catch (error) {
       Logger.error('Failed to save score:', error);
+      throw error;
     }
   }
 

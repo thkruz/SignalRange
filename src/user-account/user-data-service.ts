@@ -1,4 +1,5 @@
 import { errorManagerInstance } from '@app/engine/utils/errorManager';
+import { rememberMissionResult } from '@app/scoring/mission-records';
 import { ReplaySession } from './replay-session';
 import {
   Achievement,
@@ -353,6 +354,8 @@ export class UserDataService {
     if (!existing) {
       return null; // No progress to reset
     }
+    const { selectionProgressCache } = await import('./selection-progress-cache');
+    rememberMissionResult(selectionProgressCache.accountId, existing);
 
     // Reset all gameplay fields but preserve completedAt
     return this.updateScenarioProgress(scenarioId, {

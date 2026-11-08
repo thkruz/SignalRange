@@ -527,8 +527,8 @@ describe('ScenarioCompletionHandler', () => {
 
       const onContinueCallback = mockLevelCompleteModal.showCompletion.mock.calls[0][1];
 
-      // Should not throw
-      await expect(onContinueCallback()).resolves.toBeUndefined();
+      // The results screen must retain the result and offer retry instead of navigating.
+      await expect(onContinueCallback()).rejects.toThrow('Network error');
 
       expect(Logger.error).toHaveBeenCalledWith('Failed to save score:', expect.any(Error));
     });

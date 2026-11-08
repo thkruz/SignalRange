@@ -17,6 +17,7 @@ vi.mock('../../src/engine/ui/draggable-modal', () => ({
     open(): void {
       this.boxEl = global.document.createElement('div');
       this.boxEl.id = this.boxId;
+      this.boxEl.innerHTML = this.getModalContentHtml();
       global.document.body.appendChild(this.boxEl);
       this.onOpen();
     }
@@ -139,6 +140,36 @@ describe('LevelCompleteModal', () => {
 
       expect(instance1).toBe(instance2);
     });
+  });
+
+  it('keeps the debrief open after a failed save and retries before navigating', async () => {
+    const save = vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(undefined);
+    modal.showCompletion(
+      {
+        score: defaultScore,
+        elapsedTimeSeconds: 180,
+        campaignId: 'campaign-1',
+        scenarioId: 'scenario-1',
+        debrief: {
+          previousScore: 90,
+          bestScore: 105,
+          personalBest: true,
+          achievements: [],
+          newlyUnlocked: true,
+          nextMission: { id: 'scenario-2', title: 'Next assignment', imageUrl: '' },
+        },
+      },
+      save
+    );
+    const next = document.querySelector<HTMLButtonElement>('#next-mission-btn')!;
+    next.click();
+    await vi.waitFor(() => expect(next.disabled).toBe(false));
+    expect(document.querySelector('#debrief-save-status')?.textContent).toContain('Your result is still here');
+    expect(mockNavigate).not.toHaveBeenCalled();
+    next.click();
+    await vi.waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/campaigns/campaign-1/scenarios/scenario-2'));
+    expect(save).toHaveBeenCalledTimes(2);
+    expect(document.querySelector('#level-complete-modal')).toBeNull();
   });
 
   describe('showCompletion', () => {

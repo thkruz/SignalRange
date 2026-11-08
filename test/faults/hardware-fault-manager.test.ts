@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const clock = vi.hoisted(() => ({ nowMs: 0 }));
 const sim = vi.hoisted(() => ({ groundStations: [] as unknown[] }));
 const scenarioSettings = vi.hoisted(() => ({ settings: {} as Record<string, unknown> }));
-const crypto = vi.hoisted(() => ({ injectKeyMismatch: vi.fn() }));
+const crypto = vi.hoisted(() => ({ state: { keyStatus: 'Valid' }, injectKeyMismatch: vi.fn() }));
 const opsLog = vi.hoisted(() => ({ initialized: false, log: vi.fn() }));
 
 vi.mock('@app/simulation/mission-clock', () => ({
@@ -91,6 +91,10 @@ function boot(events: HardwareFaultEventConfig[]) {
 describe('HardwareFaultManager', () => {
   beforeEach(() => {
     crypto.injectKeyMismatch.mockClear();
+    crypto.state.keyStatus = 'Valid';
+    crypto.injectKeyMismatch.mockImplementation(() => {
+      crypto.state.keyStatus = 'Mismatch';
+    });
     opsLog.log.mockClear();
     opsLog.initialized = false;
   });
@@ -208,5 +212,38 @@ describe('HardwareFaultManager', () => {
 
     at(1);
     expect(manager.isTripped('late')).toBe(false);
+  });
+
+  it.each([false, true])('restores effective crypto fault state (repaired=%s) without a second injection', (repaired) => {
+    const events: HardwareFaultEventConfig[] = [{ id: 'key', groundStationId: 'GW-01', target: 'crypto-key-mismatch', startTime: 5 }];
+    const first = boot(events);
+    at(5);
+    if (repaired) crypto.state.keyStatus = 'Valid';
+    const saved = JSON.parse(JSON.stringify(first.manager.getState()));
+    HardwareFaultManager.destroy();
+    crypto.state.keyStatus = 'Valid';
+    crypto.injectKeyMismatch.mockClear();
+    const resumed = boot(events);
+    resumed.manager.restoreState(saved);
+    resumed.manager.restoreState(saved);
+    at(6);
+    expect(crypto.state.keyStatus).toBe(repaired ? 'Valid' : 'Mismatch');
+    expect(crypto.injectKeyMismatch).toHaveBeenCalledTimes(repaired ? 0 : 1);
+  });
+
+  it.each([false, true])('restores effective modem fault state (repaired=%s) without replaying the trip', (repaired) => {
+    const events = [{ id: 'primary', groundStationId: 'GW-01', modemNumber: 1, startTime: 5, label: 'Primary fault' }];
+    const first = boot(events);
+    at(5);
+    if (repaired) first.gw.modems[0].isFaulted = false;
+    const saved = JSON.parse(JSON.stringify(first.manager.getState()));
+    HardwareFaultManager.destroy();
+    const resumed = boot(events);
+    resumed.manager.restoreState(saved);
+    resumed.manager.restoreState(saved);
+    at(6);
+    expect(resumed.gw.modems[0].isFaulted).toBe(!repaired);
+    expect(resumed.manager.isTripped('primary')).toBe(true);
+    expect(opsLog.log).not.toHaveBeenCalled();
   });
 });

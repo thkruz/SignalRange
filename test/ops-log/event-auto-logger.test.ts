@@ -366,6 +366,19 @@ describe('Phase 30 Ops Log (nats-r5 D1, D2, D3)', () => {
     expect(messages()).toEqual(['HPA disabled']);
   });
 
+  it('restores the alarm baseline silently and logs a genuine later clear once', () => {
+    const bus = EventBus.getInstance();
+    const alarms = [{ assetId: 'VT-01', equipmentType: 'ANT', equipmentIndex: 0, severity: 'warning', message: 'Ephemeris stale' }] as const;
+    bus.emit(Events.ALARM_STATE_CHANGED, { alarms: [...alarms], highestSeverity: 'warning', restored: true });
+    bus.emit(Events.ALARM_STATE_CHANGED, { alarms: [...alarms], highestSeverity: 'warning', restored: true });
+    bus.emit(Events.ALARM_STATE_CHANGED, { alarms: [...alarms], highestSeverity: 'warning' });
+    expect(messages()).toEqual([]);
+    bus.emit(Events.ALARM_STATE_CHANGED, { alarms: [], highestSeverity: 'success' });
+    expect(messages()).toEqual(['ALARM cleared: Ephemeris stale']);
+    bus.emit(Events.ALARM_STATE_CHANGED, { alarms: [], highestSeverity: 'success' });
+    expect(messages()).toHaveLength(1);
+  });
+
   it('writes one line per mode command, completed by the target beacon (nats-r5-s02-F1)', () => {
     const bus = EventBus.getInstance();
     // PROGRAM: no target yet, so no beacon frequency

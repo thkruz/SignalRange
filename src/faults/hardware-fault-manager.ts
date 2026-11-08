@@ -117,7 +117,17 @@ export class HardwareFaultManager {
 
   /** Snapshot for a checkpoint: what has tripped and cleared, and when each anchor went live. */
   getState(): HardwareFaultSnapshot {
-    return { tripped: [...this.trippedIds_], cleared: [...this.clearedIds_], anchors: this.anchors_.getState() };
+    const active = this.events_.filter((event) => this.trippedIds_.has(event.id) && this.isEffectActive_(event)).map((event) => event.id);
+    return { tripped: [...this.trippedIds_], cleared: [...this.clearedIds_], anchors: this.anchors_.getState(), active };
+  }
+
+  private isEffectActive_(event: HardwareFaultEventConfig): boolean {
+    if (event.target === 'crypto-key-mismatch') return CryptoModule.getInstance().state?.keyStatus === 'Mismatch';
+    if ((event.target ?? 'tx-modem') === 'tx-modem') {
+      const gs = SimulationManager.getInstance().groundStations.find((station) => station.state.id === event.groundStationId);
+      return gs?.transmitters[event.transmitterIndex ?? 0]?.state.modems.find((modem) => modem.modem_number === (event.modemNumber ?? 1))?.isFaulted === true;
+    }
+    return !this.clearedIds_.has(event.id);
   }
 
   /**
@@ -142,7 +152,15 @@ export class HardwareFaultManager {
     this.anchors_.restoreState(snapshot.anchors);
     for (const event of this.events_) {
       const target = event.target ?? 'tx-modem';
-      if (this.trippedIds_.has(event.id) && !this.clearedIds_.has(event.id) && (target === 'buc-overtemp' || target === 'gpsdo-gnss-loss')) {
+      // Old snapshots rely on hydrated modem/crypto state; history alone cannot
+      // distinguish a repaired unit from an active fault.
+      const active = snapshot.active?.includes(event.id) ?? (target === 'buc-overtemp' || target === 'gpsdo-gnss-loss');
+      if (
+        this.trippedIds_.has(event.id) &&
+        !this.clearedIds_.has(event.id) &&
+        active &&
+        ((target !== 'tx-modem' && target !== 'crypto-key-mismatch') || !this.isEffectActive_(event))
+      ) {
         this.trip_(event, true);
       }
     }
@@ -215,7 +233,7 @@ export class HardwareFaultManager {
     switch (event.target ?? 'tx-modem') {
       case 'tx-modem': {
         const tx = gs?.transmitters[event.transmitterIndex ?? 0];
-        const modem = tx?.state.modems.find((m) => m.modem_number === event.modemNumber);
+        const modem = tx?.state.modems.find((m) => m.modem_number === (event.modemNumber ?? 1));
         if (!modem) {
           return false;
         }

@@ -20,6 +20,7 @@ import { ObjectiveAnchors } from '@app/objectives/objective-anchor';
 import { ScenarioManager } from '@app/scenario-manager';
 import { missionNowMs } from '@app/simulation/mission-clock';
 import { SimulationManager } from '@app/simulation/simulation-manager';
+import type { TelemetrySnapshot } from '@app/sync/manager-state-types';
 import type { Milliseconds } from 'ootk';
 
 export type TelemetryBand = 'green' | 'yellow' | 'red';
@@ -99,7 +100,7 @@ export class TelemetryManager {
   private static instance_: TelemetryManager | null = null;
 
   private readonly config_: TelemetryConfig;
-  private readonly missionStartTime_ = missionNowMs();
+  private missionStartTime_ = missionNowMs();
   private readonly boundUpdateHandler_: (dt: Milliseconds) => void;
   private readonly anchors_: ObjectiveAnchors;
   private lastElapsedS_ = 0;
@@ -142,6 +143,34 @@ export class TelemetryManager {
 
   getConfig(): TelemetryConfig {
     return this.config_;
+  }
+
+  getCheckpointState(): TelemetrySnapshot {
+    return {
+      missionStartTimeMs: this.missionStartTime_,
+      elapsedS: this.lastElapsedS_,
+      frameAccumulatorS: this.frameAccumulatorS_,
+      frameCount: this.frameCount_,
+      lastFrameElapsedS: this.lastFrameElapsedS_,
+      values: [...this.values_],
+      anchors: this.anchors_.getState(),
+    };
+  }
+
+  restoreCheckpointState(snapshot: Partial<TelemetrySnapshot> | undefined): void {
+    if (!snapshot) return;
+    const valid = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0;
+    if (valid(snapshot.missionStartTimeMs)) this.missionStartTime_ = snapshot.missionStartTimeMs;
+    if (valid(snapshot.elapsedS)) this.lastElapsedS_ = snapshot.elapsedS;
+    if (valid(snapshot.frameAccumulatorS)) this.frameAccumulatorS_ = snapshot.frameAccumulatorS;
+    if (valid(snapshot.frameCount)) this.frameCount_ = Math.floor(snapshot.frameCount);
+    if (snapshot.lastFrameElapsedS === null || (valid(snapshot.lastFrameElapsedS) && snapshot.lastFrameElapsedS <= this.lastElapsedS_)) {
+      this.lastFrameElapsedS_ = snapshot.lastFrameElapsedS;
+    }
+    for (const entry of Array.isArray(snapshot.values) ? snapshot.values : []) {
+      if (Array.isArray(entry) && this.values_.has(entry[0]) && Number.isFinite(entry[1])) this.values_.set(entry[0], entry[1]);
+    }
+    this.anchors_.restoreState(snapshot.anchors);
   }
 
   get frameCount(): number {

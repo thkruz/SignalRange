@@ -24,9 +24,12 @@ import { Logger } from '@app/logging/logger';
 import { DecisionManager } from '@app/modal/decision-manager';
 import { ScenarioManager } from '@app/scenario-manager';
 import { SecurityConsoleCore } from '@app/security-console/security-console-core';
+import { AlarmService } from '@app/services/alarm-service';
 import { SpaceEventManager } from '@app/space-events/space-event-manager';
 import type { ManagerStates } from '@app/sync/manager-state-types';
+import { TelemetryManager } from '@app/telemetry/telemetry-manager';
 import { TransecManager } from '@app/transec/transec-manager';
+import { WeatherManager } from '@app/weather/weather-manager';
 import { CampaignDocumentStore } from './campaign-document-store';
 import { EventTimeLedger } from './event-time-ledger';
 import { WorkingDocumentManager } from './working-document-manager';
@@ -45,6 +48,7 @@ function section_<T>(name: string, fn: () => T | undefined): T | undefined {
 /** Snapshot every live, initialized manager (never constructs one). */
 export function collectManagerStates(): ManagerStates {
   const states: ManagerStates = { v: 1 };
+  states.alarms = section_('alarms', () => AlarmService.getCheckpointState());
   states.spaceEvents = section_('spaceEvents', () => (SpaceEventManager.isInitialized() ? SpaceEventManager.getInstance().getState() : undefined));
   states.commanding = section_('commanding', () => (CommandingManager.isInitialized() ? CommandingManager.getInstance().getState() : undefined));
   states.crypto = section_('crypto', () => (CryptoModule.hasInstance() ? CryptoModule.getInstance().getCheckpointState() : undefined));
@@ -57,6 +61,8 @@ export function collectManagerStates(): ManagerStates {
   states.gnssThreat = section_('gnssThreat', () => (GnssThreatManager.isInitialized() ? GnssThreatManager.getInstance().getCheckpointState() : undefined));
 
   states.hardwareFaults = section_('hardwareFaults', () => (HardwareFaultManager.isInitialized() ? HardwareFaultManager.getInstance().getState() : undefined));
+  states.weather = section_('weather', () => (WeatherManager.hasInstance() ? WeatherManager.getInstance().getCheckpointState() : undefined));
+  states.telemetry = section_('telemetry', () => (TelemetryManager.isInitialized() ? TelemetryManager.getInstance().getCheckpointState() : undefined));
   states.interference = section_('interference', () => (InterferenceManager.isInitialized() ? InterferenceManager.getInstance().getState() : undefined));
   states.linkBudget = section_('linkBudget', () => (LinkBudgetManager.isInitialized() ? LinkBudgetManager.getInstance().getCheckpointState() : undefined));
   states.faultInjector = section_('faultInjector', () => (FaultInjector.isInitialized() ? FaultInjector.getInstance().getCheckpointState() : undefined));
@@ -83,6 +89,12 @@ export function restoreManagerStates(states: ManagerStates | undefined): void {
   if (!states || typeof states !== 'object') {
     return;
   }
+  restore_('weather', () => {
+    if (WeatherManager.hasInstance()) WeatherManager.getInstance().restoreCheckpointState(states.weather);
+  });
+  restore_('telemetry', () => {
+    if (TelemetryManager.isInitialized()) TelemetryManager.getInstance().restoreCheckpointState(states.telemetry);
+  });
   restore_('spaceEvents', () => {
     if (states.spaceEvents && SpaceEventManager.isInitialized()) {
       SpaceEventManager.getInstance().restoreState(states.spaceEvents);

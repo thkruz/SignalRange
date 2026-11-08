@@ -75,6 +75,9 @@ describe('restoreManagerStates', () => {
     security.markReviewed();
     security.acknowledge('evt-replay', 0);
     security.setAccountStatus('op-guest', 'disabled');
+    security.injectEvent({ id: 'runtime-audit', actor: 'operator', action: 'Review', category: 'auth', severity: 'info', timeS: 0 });
+    const removed = security.getConfig().events.find((event) => event.id !== 'evt-replay' && event.id !== 'runtime-audit');
+    if (removed) security.removeEvent(removed.id);
     CampaignDocumentStore.noteDestroyedEvidence('evt-x');
     CampaignDocumentStore.markReviewed();
 
@@ -93,6 +96,17 @@ describe('restoreManagerStates', () => {
     expect(SecurityConsoleCore.getInstance().isReviewed).toBe(true);
     expect(SecurityConsoleCore.getInstance().isEventAcknowledged('evt-replay')).toBe(true);
     expect(SecurityConsoleCore.getInstance().getAccountStatus('op-guest')).toBe('disabled');
+    expect(
+      SecurityConsoleCore.getInstance()
+        .getVisibleLog(0)
+        .some((event) => event.id === 'runtime-audit')
+    ).toBe(true);
+    if (removed)
+      expect(
+        SecurityConsoleCore.getInstance()
+          .getConfig()
+          .events.some((event) => event.id === removed.id)
+      ).toBe(false);
     expect(CampaignDocumentStore.destroyedThisRun).toEqual(['evt-x']);
     expect(CampaignDocumentStore.isReviewed).toBe(true);
   });

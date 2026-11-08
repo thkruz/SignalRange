@@ -585,6 +585,18 @@ export class EventAutoLogger {
       });
     }
 
+    if (data.restored) {
+      this.seenAlarms_.clear();
+      this.loggedAlarms_.clear();
+      this.pendingRaises_.clear();
+      this.alarmRaiseLoggedMs_.clear();
+      for (const [key, alarm] of current) {
+        this.seenAlarms_.set(key, alarm);
+        if (alarm.severity >= WARNING_RANK) this.loggedAlarms_.set(key, alarm.severity);
+      }
+      return;
+    }
+
     for (const [key, alarm] of current) {
       const previous = this.seenAlarms_.get(key);
       if (previous?.peak && (!alarm.peak || previous.peak.value > alarm.peak.value)) alarm.peak = previous.peak;

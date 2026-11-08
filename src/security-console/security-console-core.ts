@@ -103,7 +103,7 @@ export class SecurityConsoleCore {
   private static instance_: SecurityConsoleCore | null = null;
 
   private readonly config_: SecurityConfig;
-  private readonly missionStartTime_ = missionNowMs();
+  private missionStartTime_ = missionNowMs();
   private readonly acknowledged_ = new Set<string>();
   private readonly accountStatus_ = new Map<string, AccountStatus>();
   private reviewed_ = false;
@@ -149,7 +149,14 @@ export class SecurityConsoleCore {
 
   /** Snapshot for a checkpoint (Phase 35 rt-s24-F4); droppedEvidence_ is derived at load. */
   getState(): SecuritySnapshot {
-    return { acknowledged: [...this.acknowledged_], accountStatus: [...this.accountStatus_], reviewed: this.reviewed_, anchors: this.anchors_.getState() };
+    return {
+      events: structuredClone(this.config_.events),
+      missionStartTimeMs: this.missionStartTime_,
+      acknowledged: [...this.acknowledged_],
+      accountStatus: [...this.accountStatus_],
+      reviewed: this.reviewed_,
+      anchors: this.anchors_.getState(),
+    };
   }
 
   /** Restore a snapshot; account ids this scenario does not define are ignored. */
@@ -157,6 +164,8 @@ export class SecurityConsoleCore {
     if (!snapshot) {
       return;
     }
+    if (Array.isArray(snapshot.events)) this.config_.events = structuredClone(snapshot.events);
+    if (Number.isFinite(snapshot.missionStartTimeMs)) this.missionStartTime_ = snapshot.missionStartTimeMs!;
     this.acknowledged_.clear();
     for (const id of snapshot.acknowledged ?? []) {
       if (typeof id === 'string') {
@@ -213,8 +222,9 @@ export class SecurityConsoleCore {
 
   /** Acknowledge / flag a specific audit-log entry (must be visible). */
   acknowledge(eventId: string, atElapsedS?: number): void {
-    if (this.getVisibleLog(atElapsedS).some((e) => e.id === eventId)) {
+    if (!this.acknowledged_.has(eventId) && this.getVisibleLog(atElapsedS).some((e) => e.id === eventId)) {
       this.acknowledged_.add(eventId);
+      EventBus.getInstance().emit(Events.AUDIT_EVENT_ACKNOWLEDGED, { id: eventId });
     }
   }
 

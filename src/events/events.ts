@@ -347,6 +347,8 @@ export interface AggregatedAlarm {
 }
 
 export interface AlarmStateChangedData {
+  /** A restored baseline updates displays without inventing an operator event. */
+  restored?: boolean;
   /** Every active alarm, most severe first (nats-r4-s16-F1: not only the top tier) */
   alarms: AggregatedAlarm[];
   highestSeverity: 'error' | 'warning' | 'info' | 'success';
@@ -609,6 +611,7 @@ export enum Events {
 
   // Fault injection events
   FAULT_CHANGED = 'fault:changed',
+  AUDIT_EVENT_ACKNOWLEDGED = 'audit:event:acknowledged',
 }
 
 export interface EventMap {
@@ -738,4 +741,5 @@ export interface EventMap {
 
   // Fault injection events
   [Events.FAULT_CHANGED]: [{ id: string; action: 'injected' | 'cleared' }];
+  [Events.AUDIT_EVENT_ACKNOWLEDGED]: [{ id: string }];
 }

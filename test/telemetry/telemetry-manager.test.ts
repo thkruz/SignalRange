@@ -73,6 +73,47 @@ afterEach(() => {
 });
 
 describe('TelemetryManager', () => {
+  it('round-trips stale values, frame count and partial frame timing without inventing a frame', () => {
+    const original = TelemetryManager.getInstance();
+    original.advance(150.25);
+    original.setLinkOverride(false);
+    original.advance(11);
+    const readings = original.getReadings();
+    const saved = JSON.parse(JSON.stringify(original.getCheckpointState()));
+    TelemetryManager.destroy();
+    const restored = TelemetryManager.getInstance();
+    restored.restoreCheckpointState(saved);
+    restored.setLinkOverride(false);
+    expect(restored.getReadings()).toEqual(readings);
+    expect(restored.isStale).toBe(true);
+    expect(restored.secondsSinceFrame).toBe(11);
+    expect(restored.frameCount).toBe(original.frameCount);
+    expect(restored.getCheckpointState()).toEqual(saved);
+    restored.advance(1);
+    expect(restored.getReadings()).toEqual(readings);
+    restored.setLinkOverride(true);
+    restored.advance(1);
+    expect(restored.isStale).toBe(false);
+    expect(restored.frameCount).toBe(original.frameCount + 1);
+  });
+
+  it('preserves a command recovery and handles old or partial snapshots', () => {
+    commanding.initialized = true;
+    commanding.acks['EPS-LOAD-SHED'] = 1100;
+    const original = TelemetryManager.getInstance();
+    original.advance(1125);
+    const saved = JSON.parse(JSON.stringify(original.getCheckpointState()));
+    TelemetryManager.destroy();
+    const restored = TelemetryManager.getInstance();
+    expect(() => restored.restoreCheckpointState(undefined)).not.toThrow();
+    expect(() => restored.restoreCheckpointState({} as typeof saved)).not.toThrow();
+    restored.restoreCheckpointState(saved);
+    original.advance(1);
+    restored.advance(1);
+    expect(restored.getReadings()).toEqual(original.getReadings());
+    expect(restored.getCheckpointState()).toEqual(original.getCheckpointState());
+  });
+
   it('reads the link from the configured antenna: locked on the bird, or on nothing in particular', () => {
     const mgr = TelemetryManager.getInstance();
     expect(mgr.isLinked()).toBe(true);

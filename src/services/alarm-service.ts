@@ -85,6 +85,38 @@ export class AlarmService {
     return AlarmService.instance_;
   }
 
+  static getCheckpointState(): AlarmWithDetail[] | undefined {
+    if (!AlarmService.instance_) return undefined;
+    return [...AlarmService.lastPollAlarms_.values()].flat().map((alarm) => ({ ...alarm }));
+  }
+
+  static restoreCheckpointState(saved: AlarmWithDetail[] | undefined): void {
+    const service = AlarmService.instance_;
+    if (!service) return;
+    const stations = SimulationManager.getInstance().groundStations;
+    // Legacy snapshots establish their baseline from the restored model.
+    const alarms = AlarmService.sortBySeverity_(Array.isArray(saved) ? saved : stations.flatMap((station) => AlarmService.collectGroundStationAlarms_(station)));
+    service.previousAlarms_.clear();
+    service.pendingNoSignals_.clear();
+    AlarmService.raisedAtMs_.clear();
+    AlarmService.lastPollAlarms_.clear();
+    for (const alarm of alarms) {
+      const station = stations.find((item) => item.state.id === alarm.assetId);
+      if (!station) continue;
+      const key = AlarmService.raiseKey_(alarm);
+      service.previousAlarms_.set(key, { alarm: { ...alarm }, gs: station });
+      if (Number.isFinite(alarm.raisedAtMs)) AlarmService.raisedAtMs_.set(key, alarm.raisedAtMs!);
+      const list = AlarmService.lastPollAlarms_.get(station.state.id) ?? [];
+      list.push({ ...alarm });
+      AlarmService.lastPollAlarms_.set(station.state.id, list);
+    }
+    service.previousAlarmsHash_ = '';
+    service.settleFromRunMs_ = SimClock.runMs();
+    service.lastPollTime_ = -Infinity;
+    service.lastPollSecond_ = null;
+    EventBus.getInstance().emit(Events.ALARM_STATE_CHANGED, { alarms, highestSeverity: alarms[0]?.severity ?? 'success', restored: true });
+  }
+
   /**
    * Move the UPDATE handler behind every listener subscribed so far, so a
    * poll reads the state they wrote on the same tick. The page calls it once

@@ -327,6 +327,9 @@ export abstract class BasePage extends BaseElement {
       // (4) Event-time ledger (saved stamps win over the restore's re-stamps) and working document
       try {
         restoreLedgerAndDocument(managerStates);
+        if (WeatherManager.hasInstance()) WeatherManager.getInstance().refreshRestoredConditions();
+        AlarmService.restoreCheckpointState(managerStates?.alarms);
+        AlarmService.subscribeAfterExistingListeners();
       } catch (error) {
         Logger.error('Failed to restore ledger and working document from checkpoint:', error);
       }

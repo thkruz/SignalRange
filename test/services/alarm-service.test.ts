@@ -86,6 +86,20 @@ function runSteps(ms: number): void {
 }
 
 describe('AlarmService', () => {
+  it('restores severity order and original raise timestamps without logging a new transition', () => {
+    mockSimulationManager.groundStations = [gs()];
+    AlarmService.getInstance();
+    const saved = [
+      { assetId: 'gs-1', equipmentType: 'RX', equipmentIndex: 0, severity: 'info' as const, message: 'Carrier', raisedAtMs: 100 },
+      { assetId: 'gs-1', equipmentType: 'HPA', equipmentIndex: 0, severity: 'error' as const, message: 'Over temperature', raisedAtMs: 200 },
+    ];
+    AlarmService.restoreCheckpointState(JSON.parse(JSON.stringify(saved)));
+    const restored = AlarmService.getCheckpointState();
+    expect(restored?.map((entry) => entry.raisedAtMs)).toEqual([200, 100]);
+    expect(mockEventBus.emit).toHaveBeenLastCalledWith(Events.ALARM_STATE_CHANGED, expect.objectContaining({ highestSeverity: 'error', restored: true }));
+    AlarmService.restoreCheckpointState(restored);
+    expect(AlarmService.getCheckpointState()).toEqual(restored);
+  });
   beforeEach(() => {
     // The poll snapshot and the raise stamps are static: no case reads another's
     AlarmService.destroy();

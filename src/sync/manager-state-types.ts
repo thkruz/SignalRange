@@ -8,6 +8,8 @@
  * checkpoint state unchanged. Older checkpoints simply lack the field.
  */
 
+import type { AggregatedAlarm } from '@app/events/events';
+
 export type SpaceEventsSnapshot = { phases: Array<[string, string]> };
 
 export type CommandingSnapshot = {
@@ -33,6 +35,8 @@ export type EventLedgerSnapshot = {
 };
 
 export type SecuritySnapshot = {
+  events?: import('@app/security-console/security-console-core').AuditEventConfig[];
+  missionStartTimeMs?: number;
   acknowledged: string[];
   accountStatus: Array<[string, string]>;
   reviewed: boolean;
@@ -55,7 +59,30 @@ export type GnssThreatSnapshot = {
 /** [objectiveId, mission-elapsed second the anchor went live] */
 export type AnchorsSnapshot = Array<[string, number]>;
 
-export type HardwareFaultSnapshot = { tripped: string[]; cleared: string[]; anchors: AnchorsSnapshot };
+export type HardwareFaultSnapshot = {
+  tripped: string[];
+  cleared: string[];
+  anchors: AnchorsSnapshot;
+  /** Effective state of operator-repairable faults, not merely event history. */
+  active?: string[];
+};
+
+export type WeatherSnapshot = {
+  missionStartTimeMs: number;
+  anchors: AnchorsSnapshot;
+  events: Array<{ id: string; startTime: number; isActive: boolean; isAwaitingAnchor: boolean }>;
+  iceAccumulation: Array<[string, number]>;
+};
+
+export type TelemetrySnapshot = {
+  missionStartTimeMs: number;
+  elapsedS: number;
+  frameAccumulatorS: number;
+  frameCount: number;
+  lastFrameElapsedS: number | null;
+  values: Array<[string, number]>;
+  anchors: AnchorsSnapshot;
+};
 
 export type InterferenceSnapshot = { forced: Array<[string, boolean]>; anchors: AnchorsSnapshot };
 
@@ -98,6 +125,9 @@ export interface ManagerStates {
   contactSchedule?: ContactScheduleSnapshot;
   gnssThreat?: GnssThreatSnapshot;
   hardwareFaults?: HardwareFaultSnapshot;
+  weather?: WeatherSnapshot;
+  telemetry?: TelemetrySnapshot;
+  alarms?: Array<AggregatedAlarm & { detail?: string }>;
   interference?: InterferenceSnapshot;
   linkBudget?: LinkBudgetSnapshot;
   faultInjector?: FaultInjectorSnapshot;

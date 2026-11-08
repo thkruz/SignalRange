@@ -70,6 +70,56 @@ vi.mock('../../src/simulation/simulation-manager', () => ({
 }));
 
 describe('WeatherManager', () => {
+  it.each([5, 25, 80])('preserves anchored weather at second %s through a JSON checkpoint', (savedSecond) => {
+    SimClock.reset();
+    mockObjectiveStates.clear();
+    const event: WeatherEventData = {
+      id: 'rain',
+      groundStationId: 'gs-1',
+      type: 'rain',
+      severity: 'moderate',
+      startTime: 10,
+      startAfterObjectiveId: 'anchor',
+      duration: 40,
+      linkMarginDegradation: 2,
+    };
+    mockScenarioSettings.weatherEvents = [event];
+    mockAntennas = [createMockAntenna('dish')];
+    mockGroundStations.push({ state: { id: 'gs-1' }, antennas: mockAntennas });
+    let update!: (dt: number) => void;
+    mockEventBusInstance.on.mockImplementation((name, handler) => {
+      if (name === Events.UPDATE) update = handler;
+    });
+    const original = WeatherManager.getInstance();
+    if (savedSecond > 5) {
+      mockObjectiveStates.set('anchor', { isActive: true, isCompleted: false });
+      setScenarioElapsed(10000);
+      update(0);
+    }
+    setScenarioElapsed(savedSecond * 1000);
+    update(0);
+    const rain = mockAntennas[0].state.rainRate_mmh;
+    const saved = JSON.parse(JSON.stringify(original.getCheckpointState()));
+    WeatherManager.destroy();
+    const restored = WeatherManager.getInstance();
+    mockEventBusInstance.emit.mockClear();
+    restored.restoreCheckpointState(saved);
+    restored.restoreCheckpointState(saved);
+    restored.refreshRestoredConditions();
+    update(0);
+    expect(restored.getCheckpointState()).toEqual(saved);
+    expect(mockAntennas[0].state.rainRate_mmh).toBeCloseTo(rain);
+    expect(restored.hasEventEnded('rain')).toBe(savedSecond === 80);
+    expect(mockEventBusInstance.emit).not.toHaveBeenCalled();
+    expect(event.startTime).toBe(10);
+    if (savedSecond === 25) {
+      setScenarioElapsed(60000);
+      update(0);
+      expect(restored.hasEventEnded('rain')).toBe(true);
+      expect(mockEventBusInstance.emit).toHaveBeenCalledTimes(1);
+    }
+  });
+
   beforeEach(() => {
     // Reset singleton
     WeatherManager.destroy();

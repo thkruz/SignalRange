@@ -11,6 +11,7 @@ import { ScenarioManager } from '@app/scenario-manager';
 import { missionNowMs } from '@app/simulation/mission-clock';
 import { SimClock } from '@app/simulation/sim-clock';
 import { SimulationManager } from '@app/simulation/simulation-manager';
+import type { WeatherSnapshot } from '@app/sync/manager-state-types';
 import type { Milliseconds } from 'ootk';
 
 /** Configuration for ice accumulation based on weather severity */
@@ -111,6 +112,42 @@ export class WeatherManager {
       EventBus.getInstance().off(Events.UPDATE, this.instance_.boundUpdateHandler_);
       this.instance_ = null;
     }
+  }
+
+  getCheckpointState(): WeatherSnapshot {
+    return {
+      missionStartTimeMs: this.missionStartTime_,
+      anchors: this.anchors_.getState(),
+      events: this.weatherEvents_.map(({ id, startTime, isActive, isAwaitingAnchor }) => ({ id, startTime, isActive, isAwaitingAnchor: Boolean(isAwaitingAnchor) })),
+      iceAccumulation: [...this.iceAccumulationTime_],
+    };
+  }
+
+  restoreCheckpointState(snapshot: Partial<WeatherSnapshot> | undefined): void {
+    // Legacy saves retain their hydrated antenna conditions; unresolved
+    // objective anchors use the existing first-live-tick fallback.
+    if (!snapshot) return;
+    if (Number.isFinite(snapshot.missionStartTimeMs)) this.missionStartTime_ = snapshot.missionStartTimeMs!;
+    this.anchors_.restoreState(snapshot.anchors);
+    for (const saved of Array.isArray(snapshot.events) ? snapshot.events : []) {
+      const event = this.weatherEvents_.find((item) => item.id === saved?.id);
+      if (!event || !Number.isFinite(saved.startTime)) continue;
+      event.startTime = saved.startTime;
+      event.isActive = saved.isActive === true;
+      event.isAwaitingAnchor = saved.isAwaitingAnchor === true;
+    }
+    this.iceAccumulationTime_.clear();
+    for (const entry of Array.isArray(snapshot.iceAccumulation) ? snapshot.iceAccumulation : []) {
+      if (Array.isArray(entry) && typeof entry[0] === 'string' && Number.isFinite(entry[1]) && entry[1] >= 0) this.iceAccumulationTime_.set(entry[0], entry[1]);
+    }
+  }
+
+  /** Recompute environmental effects after the saved clock has been restored, without advancing ice. */
+  refreshRestoredConditions(): void {
+    const elapsed = this.getElapsedMissionTime();
+    this.updateSunTransit_(elapsed);
+    this.updateRain_(elapsed);
+    this.updateWind_(elapsed);
   }
 
   /** Load weather events from current scenario */

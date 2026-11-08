@@ -36,6 +36,7 @@ interface LayerNode {
 
 export class Ambience {
   private static instance_: Ambience | null = null;
+  private static menuPaused_ = false;
 
   private ctx_: AudioContext | null = null;
   private master_: GainNode | null = null;
@@ -56,6 +57,21 @@ export class Ambience {
     Ambience.instance_ ??= new Ambience();
 
     return Ambience.instance_;
+  }
+
+  /** Suspend the audio clock so loops resume at the same position. */
+  static setMenuPaused(paused: boolean): void {
+    Ambience.menuPaused_ = paused;
+    const instance = Ambience.instance_;
+    if (!instance) return;
+    const ctx = instance.ctx_;
+    if (paused) {
+      instance.stopThunder_();
+      if (ctx && ctx.state !== 'closed') void ctx.suspend().catch(() => undefined);
+    } else if (instance.active_) {
+      if (ctx && ctx.state !== 'closed') void ctx.resume().catch(() => undefined);
+      if (instance.targets_.has('storm')) instance.scheduleThunder_();
+    }
   }
 
   /** Start the room bed for a scenario. */
@@ -126,11 +142,13 @@ export class Ambience {
     this.master_ = this.ctx_.createGain();
     this.master_.connect(this.ctx_.destination);
     this.applyMaster_();
+    if (Ambience.menuPaused_) void this.ctx_.suspend().catch(() => undefined);
 
     return this.ctx_;
   }
 
   private unlock_(): void {
+    if (Ambience.menuPaused_ || !this.active_) return;
     const ctx = this.context_();
     if (ctx?.state === 'suspended') {
       void ctx.resume().catch(() => undefined);
@@ -218,7 +236,7 @@ export class Ambience {
   }
 
   private scheduleThunder_(): void {
-    if (this.thunderTimer_ !== null) {
+    if (Ambience.menuPaused_ || this.thunderTimer_ !== null) {
       return;
     }
     const delayMs = 12000 + Math.random() * 28000;
@@ -242,7 +260,7 @@ export class Ambience {
   private async playThunder_(): Promise<void> {
     const ctx = this.context_();
     const buffer = await this.load_(THUNDER_FILE);
-    if (!ctx || !buffer || !this.master_ || ctx.state !== 'running') {
+    if (!ctx || !buffer || !this.master_ || !this.active_ || Ambience.menuPaused_ || ctx.state !== 'running') {
       return;
     }
     const source = ctx.createBufferSource();

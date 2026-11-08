@@ -1,4 +1,5 @@
 import { SimClock } from '@app/simulation/sim-clock';
+import { Ambience } from '@app/sound/ambience';
 import SoundManager from '@app/sound/sound-manager';
 
 const owners = new Set<string>();
@@ -11,4 +12,5 @@ export function setMenuPause(owner: string, paused: boolean): void {
   if (held) SimClock.pause('menu');
   else SimClock.resume('menu');
   SoundManager.getInstance().setMenuPaused(held);
+  Ambience.setMenuPaused(held);
 }

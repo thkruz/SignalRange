@@ -43,6 +43,40 @@ beforeEach(() => {
   mocks.save.mockResolvedValue(undefined);
 });
 describe('game menus', () => {
+  it('opens on lost browser focus or a hidden tab and requires explicit resume', () => {
+    const focused = vi.spyOn(document, 'hasFocus').mockReturnValue(true);
+    const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(false);
+    const menu = GameMenu.getInstance();
+    menu.initialize();
+    window.dispatchEvent(new Event('blur'));
+    expect(document.querySelector('#game-menu')).toBeNull();
+    focused.mockReturnValue(false);
+    history.replaceState({}, '', '/campaigns/nats');
+    window.dispatchEvent(new Event('blur'));
+    expect(document.querySelector('#game-menu')).toBeNull();
+    history.replaceState({}, '', '/campaigns/nats/scenarios/one');
+    window.dispatchEvent(new Event('blur'));
+    expect(document.querySelector<HTMLDialogElement>('#game-menu')?.open).toBe(true);
+    expect(SimClock.isPaused('menu')).toBe(true);
+    focused.mockReturnValue(true);
+    window.dispatchEvent(new Event('focus'));
+    expect(SimClock.isPaused('menu')).toBe(true);
+    click('settings');
+    hidden.mockReturnValue(true);
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(document.querySelector('#game-menu-title')?.textContent).toBe('Settings');
+    click('back');
+    click('resume');
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(document.querySelector('#game-menu-title')?.textContent).toBe('Mission paused');
+    hidden.mockReturnValue(false);
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(SimClock.isPaused('menu')).toBe(true);
+    click('resume');
+    expect(SimClock.isPaused('menu')).toBe(false);
+    focused.mockRestore();
+    hidden.mockRestore();
+  });
   it('keeps the mission paused through settings and preserves other overlay/brief holds on resume', () => {
     SimClock.pause('scenario');
     const menu = GameMenu.getInstance();

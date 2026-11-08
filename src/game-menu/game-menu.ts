@@ -50,6 +50,13 @@ export class GameMenu {
       event.preventDefault();
       this.openPause();
     });
+    window.addEventListener('blur', () => {
+      // Focusing an embedded brief can blur the window while the page still has focus.
+      if (!document.hasFocus() && !this.dialog_?.open) this.openPause();
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && !this.dialog_?.open) this.openPause();
+    });
     const subscribe = (bus: EventBus): void => {
       bus.on(Events.ROUTE_CHANGED, () => this.close_());
     };

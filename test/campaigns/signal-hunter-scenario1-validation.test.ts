@@ -87,7 +87,7 @@ describe('signal-hunter scenario 1: registration and identity', () => {
     expect(scenario.difficulty).toBe('advanced');
     expect(scenario.isDisabled).toBe(false);
     expect(scenario.missionType).not.toBe('Sandbox');
-    expect(scenario.imageUrl).toBe(signalHunterSandboxData.imageUrl);
+    expect(scenario.imageUrl).toBe('signal-hunter/1/card.png');
   });
 
   it('requires the sandbox, which resolves inside the campaign', () => {

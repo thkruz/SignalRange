@@ -171,7 +171,7 @@
   z-index: 1100;
   min-width: 190px;
   padding: 12px 14px;
-  background: var(--mc-bg-secondary, #1b1f27);
+  background: #2e2e2e;
   border: 1px solid var(--mc-border, rgba(255, 255, 255, 0.15));
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
   font-size: 14px;
@@ -183,5 +183,40 @@
 }
 
 .header-audio-menu .form-check-label {
-  color: var(--color-text, #e5e7eb);
+  color: #f4f4f4;
+}
+
+.header-audio-menu .form-check-input {
+  background-color: #555;
+  border-color: #888;
+  cursor: pointer;
+}
+
+.header-audio-menu .form-check-input:checked {
+  background-color: var(--mc-accent-red, #ba160c);
+  border-color: var(--mc-accent-red, #ba160c);
+}
+
+.header-audio-menu .form-check-input:focus {
+  border-color: #ddd;
+  box-shadow: 0 0 0 3px rgb(255 255 255 / 16%);
+}
+
+.header-icon-button:focus-visible {
+  outline: 2px solid #eee;
+  outline-offset: -4px;
+}
+
+.header-icon-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+#fullscreen-btn .fullscreen-exit,
+#fullscreen-btn[aria-pressed='true'] .fullscreen-enter {
+  display: none;
+}
+
+#fullscreen-btn[aria-pressed='true'] .fullscreen-exit {
+  display: inline;
 }

@@ -2,6 +2,7 @@ import { BaseElement } from '@app/components/base-element';
 import { getEl } from '@app/engine/utils/get-el';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { GameMenu } from '@app/game-menu/game-menu';
 import { Body } from '@app/pages/layout/body/body';
 import { Footer } from '@app/pages/layout/footer/footer';
 import { Header } from '@app/pages/layout/header/header';
@@ -9,6 +10,7 @@ import { SandboxPage } from '@app/pages/sandbox-page';
 import { ScenarioSelectionPage } from '@app/pages/scenario-selection';
 import { PluginManager } from '@app/plugins/plugin-manager';
 import { SimulationManager } from '@app/simulation/simulation-manager';
+import { initializeAchievementNotifications } from '@app/user-account/achievement-notifications';
 import { Auth } from '@app/user-account/auth';
 import { selectionProgressCache } from '@app/user-account/selection-progress-cache';
 import { initUserDataService } from '@app/user-account/user-data-service';
@@ -70,6 +72,7 @@ export class App extends BaseElement {
       retryDelay: 1000,
     });
 
+    initializeAchievementNotifications();
     this.instance_.init_();
 
     return App.instance_;
@@ -96,6 +99,7 @@ export class App extends BaseElement {
 
     // Initialize router
     this.router.init();
+    GameMenu.getInstance().initialize();
 
     return rootDom;
   }

@@ -5,6 +5,7 @@ import { qs } from '@app/engine/utils/query-selector';
 import { EngineeringModeService } from '@app/engineering-mode/engineering-mode-service';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { GameMenu } from '@app/game-menu/game-menu';
 import { Router } from '@app/router';
 import { ScenarioManager } from '@app/scenario-manager';
 import { AudioPreferences } from '@app/sound/audio-preferences';
@@ -12,6 +13,7 @@ import { Auth } from '@app/user-account/auth';
 import { ModalLogin } from '@app/user-account/modal-login';
 import { ModalProfile } from '@app/user-account/modal-profile';
 import { isSupabaseApprovedDomain } from '@app/user-account/supabase-client';
+import { setupFullscreenButton } from './fullscreen-button';
 import '@app/user-account/user-account.css';
 import { html } from '@app/engine/utils/development/formatter';
 import type { User } from '@supabase/supabase-js';
@@ -80,8 +82,8 @@ export class Header extends BaseElement {
             </svg>
           </a>
           <div class="header-audio">
-            <a id="audio-menu-btn" class="header-icon-button" title="Sound settings"
-               aria-haspopup="true" aria-expanded="false" aria-controls="audio-menu">
+            <button type="button" id="audio-menu-btn" class="header-icon-button" title="Sound settings" aria-label="Sound settings"
+               aria-expanded="false" aria-controls="audio-menu">
               <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none"
                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M11 5 6 9H2v6h4l5 4V5Z"/>
@@ -89,8 +91,8 @@ export class Header extends BaseElement {
                 <path class="audio-wave" d="M19 5a10 10 0 0 1 0 14"/>
                 <path class="audio-mute" d="m16 9 6 6m0-6-6 6"/>
               </svg>
-            </a>
-            <div id="audio-menu" class="header-audio-menu" role="menu" hidden>
+            </button>
+            <div id="audio-menu" class="header-audio-menu" role="group" aria-label="Sound settings" hidden>
               <label class="form-check form-switch mb-2">
                 <input id="audio-sfx-toggle" class="form-check-input" type="checkbox" />
                 <span class="form-check-label">Sound effects</span>
@@ -99,8 +101,18 @@ export class Header extends BaseElement {
                 <input id="audio-ambience-toggle" class="form-check-input" type="checkbox" />
                 <span class="form-check-label">Room ambience</span>
               </label>
+              <button type="button" id="audio-all-settings" class="audio-settings-button">All settings</button>
             </div>
           </div>
+          <button type="button" id="fullscreen-btn" class="header-icon-button" title="Enter fullscreen"
+                  aria-label="Enter fullscreen" aria-pressed="false">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path class="fullscreen-enter" d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5" />
+              <path class="fullscreen-exit" d="M3 8h5V3m13 5h-5V3M8 21v-5H3m13 5v-5h5" />
+            </svg>
+          </button>
+          <span id="fullscreen-status" class="visually-hidden" role="status"></span>
           <a id="eng-mode-btn" class="header-icon-button" title="Engineering Mode" style="display:none;">
             <span style="font-size:11px;font-weight:bold;">ENG</span>
           </a>
@@ -116,15 +128,15 @@ export class Header extends BaseElement {
   private getUserAccountButtonHtml(): string {
     return html`
       <div class="user-account__menu-item">
-        <a id="user-account__login-btn" class="user-account__login-btn user-account__btn--hover" title="Login / Signup">
+        <button type="button" id="user-account__login-btn" class="user-account__login-btn user-account__btn--hover" title="Login / Signup" aria-label="Login / Signup">
           <img src="/images/person-gray.png" class="user-account__avatar user-account__avatar--default" alt="Login" />
-        </a>
-        <div id="user-account__profile-btn"
+        </button>
+        <button type="button" id="user-account__profile-btn"
           class="user-account__profile-btn user-account__btn--hover user-account__profile-btn--hidden"
-          title="View Profile"
+          title="View Profile" aria-label="View profile"
         >
           ??
-        </div>
+        </button>
       </div>
     `;
   }
@@ -145,6 +157,9 @@ export class Header extends BaseElement {
     this.setupEngModeListeners_();
     this.setupDevMenuListeners_();
     this.setupAudioMenu_();
+    const fullscreenButton = document.querySelector<HTMLButtonElement>('#fullscreen-btn');
+    const fullscreenStatus = document.querySelector<HTMLElement>('#fullscreen-status');
+    if (fullscreenButton && fullscreenStatus) setupFullscreenButton(fullscreenButton, fullscreenStatus);
   }
 
   /** Speaker button: a small menu with the sound effects and ambience switches. */
@@ -161,7 +176,7 @@ export class Header extends BaseElement {
     const sync = (): void => {
       sfx.checked = prefs.sfxEnabled;
       ambience.checked = prefs.ambienceEnabled;
-      btn.classList.toggle('header-audio--muted', !prefs.sfxEnabled && !prefs.ambienceEnabled);
+      btn.classList.toggle('header-audio--muted', prefs.prefs.masterVolume === 0 || (!prefs.sfxEnabled && !prefs.ambienceEnabled && prefs.prefs.voiceVolume === 0));
     };
     sync();
     prefs.onChange(sync);
@@ -175,9 +190,17 @@ export class Header extends BaseElement {
       setOpen(Boolean(menu.hidden));
     });
     menu.addEventListener('click', (e) => e.stopPropagation());
+    document.getElementById('audio-all-settings')?.addEventListener('click', () => {
+      setOpen(false);
+      GameMenu.getInstance().openSettings();
+    });
     document.addEventListener('click', () => setOpen(false));
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
+        if (!menu.hidden) {
+          e.preventDefault();
+          btn.focus();
+        }
         setOpen(false);
       }
     });

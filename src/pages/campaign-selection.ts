@@ -3,6 +3,7 @@ import { CampaignData } from '@app/campaigns/campaign-types';
 import { getReleaseStage, renderReleaseBadge, renderReleaseCardNotice } from '@app/campaigns/release-stage';
 import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
+import { findContinueMission } from '@app/game-menu/continue-mission';
 import { Logger } from '@app/logging/logger';
 import { Router } from '@app/router';
 import { selectionProgressCache } from '@app/user-account/selection-progress-cache';
@@ -54,6 +55,29 @@ export class CampaignSelectionPage extends BasePage {
       this.updateLoginWarning_(!isLoggedIn);
       this.completedScenarioIds_ = (progress?.scenarios ?? []).filter((s) => s.completedAt).map((s) => s.scenarioId);
       this.updateCampaignCards_();
+      const next = isLoggedIn
+        ? await findContinueMission(
+            progress?.scenarios ?? [],
+            CampaignManager.getInstance()
+              .getAllCampaigns()
+              .filter((campaign) => !this.isLocked_(campaign)),
+            (id) => selectionProgressCache.getCheckpoint(id),
+            (id) => selectionProgressCache.getSavedCheckpoint(id),
+            Boolean(window.UNLOCK_ALL_SCENARIOS || window.DEVELOPER_MODE)
+          )
+        : null;
+      if (token !== this.progressLoadToken_) return;
+      const resume = this.dom_.querySelector<HTMLButtonElement>('#campaign-continue')!;
+      resume.hidden = !next;
+      if (next) {
+        const completed = next.checkpoint?.state.objectiveStates?.filter((objective) => objective.isCompleted).length ?? 0;
+        const total = next.mission.objectives?.length ?? 0;
+        const saved = next.checkpoint ? new Date(next.checkpoint.savedAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : null;
+        const detail = saved ? `${completed} / ${total} objectives &middot; Saved ${selectionText(saved)}` : 'Next unlocked mission';
+        resume.innerHTML = `<span class="continue-label">${next.checkpoint ? 'Resume mission' : 'Continue campaign'}</span><span class="continue-copy"><strong>${selectionText(next.mission.title)}</strong><span>${selectionText(next.campaign.title)} &middot; ${detail}</span></span><span aria-hidden="true">&#8594;</span>`;
+        resume.onclick = () =>
+          Router.getInstance().navigate(`/campaigns/${next.campaign.id}/scenarios/${next.mission.id}`, next.checkpoint ? { continueFromCheckpoint: true } : undefined);
+      }
       this.loadingScreen_.finish();
       this.prefetchSelectedCampaign_();
     } catch (error) {
@@ -160,6 +184,7 @@ export class CampaignSelectionPage extends BasePage {
       <h1>Campaigns</h1><div class="subtitle">Choose your next assignment</div>
       <div class="selection-status-bar"><span class="login-warning" hidden>Guest session · Play NATS Mission 1 free. Sign in to save progress and unlock further missions.</span></div>
     </div></header>
+    <button id="campaign-continue" class="campaign-continue" type="button" hidden></button>
     <div class="selection-workspace">
       <aside class="selection-sidebar" aria-label="Campaign browser">
         <div class="selection-sidebar-heading">Available campaigns <span aria-hidden="true">01 / SELECT</span></div>

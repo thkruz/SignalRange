@@ -52,7 +52,7 @@ vi.mock('../../src/campaigns/campaign-manager', () => ({
           totalDuration: '2 hours',
           imageUrl: 'nats/image.jpg',
           campaignType: 'Training',
-          scenarios: [{ id: 'scenario1' }],
+          scenarios: [{ id: 'scenario1', title: 'First mission', number: 1 }],
           isDisabled: false,
         },
         {
@@ -215,7 +215,12 @@ describe('CampaignSelectionPage', () => {
       await selectionProgressCache.getCheckpoint('scenario1');
       expect(getProgress).toHaveBeenCalledTimes(1);
       expect(checkpointExists).toHaveBeenCalledTimes(1);
-      expect(document.querySelector('#campaign-selection-page')?.classList.contains('is-loading')).toBe(false);
+      await vi.waitFor(() => expect(document.querySelector('#campaign-selection-page')?.classList.contains('is-loading')).toBe(false));
+      const button = document.querySelector<HTMLButtonElement>('#campaign-continue')!;
+      expect(button.hidden).toBe(false);
+      expect(button.textContent).toContain('Continue campaign');
+      button.click();
+      expect(mockRouter.navigate).toHaveBeenCalledWith('/campaigns/nats/scenarios/scenario1', undefined);
     });
 
     it('should return same instance with getInstance()', () => {

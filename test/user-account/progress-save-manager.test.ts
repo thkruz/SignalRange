@@ -85,6 +85,24 @@ import { ReplaySession } from '../../src/user-account/replay-session';
 describe('ProgressSaveManager', () => {
   let manager: ProgressSaveManager;
 
+  it('serializes manual saves after autosaves so an older response cannot replace the latest checkpoint', async () => {
+    let finish!: () => void;
+    mockUserDataService.saveCheckpoint
+      .mockReturnValueOnce(
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        })
+      )
+      .mockResolvedValueOnce(undefined);
+    mockSyncManager.getCurrentState.mockReturnValueOnce({ scenarioTimeRemaining: 100 }).mockReturnValueOnce({ scenarioTimeRemaining: 90 });
+    const autosave = manager.saveCheckpoint();
+    const manual = manager.saveCheckpoint();
+    await vi.waitFor(() => expect(mockUserDataService.saveCheckpoint).toHaveBeenCalledTimes(1));
+    finish();
+    await Promise.all([autosave, manual]);
+    expect(mockUserDataService.saveCheckpoint.mock.calls.map((call) => call[1].state.scenarioTimeRemaining)).toEqual([100, 90]);
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     // Signed in by default; remote saves are skipped entirely when signed out

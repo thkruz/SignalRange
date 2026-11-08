@@ -3,10 +3,11 @@ import { Events } from '@app/events/events';
 import { Logger } from '@app/logging/logger';
 import { SaveProgressToast } from '@app/modal/save-progress-toast';
 import { ScenarioManager } from '@app/scenario-manager';
-import { syncManager } from '@app/sync/storage';
+import { type AppState, syncManager } from '@app/sync/storage';
 import packageJson from '../../package.json';
 import { Auth } from './auth';
 import { ReplaySession } from './replay-session';
+import { selectionProgressCache } from './selection-progress-cache';
 import { getUserDataService } from './user-data-service';
 
 /**
@@ -20,6 +21,7 @@ export class ProgressSaveManager {
   private readonly userDataService = getUserDataService();
   private isInitialized = false;
   private isSaving = false;
+  private pendingSave_: Promise<void> = Promise.resolve();
 
   constructor() {
     this.eventBus = EventBus.getInstance();
@@ -114,6 +116,19 @@ export class ProgressSaveManager {
    * Uses direct upsert API - no read-modify-write needed
    */
   async saveCheckpoint(): Promise<void> {
+    const scenarioId = ScenarioManager.getInstance().data.id;
+    const state = syncManager.getCurrentState();
+    // A manual save must finish after any earlier objective autosave.
+    const save = this.pendingSave_.then(() => this.persistCheckpoint_(scenarioId, state));
+    this.pendingSave_ = save.catch(() => undefined);
+    return save;
+  }
+
+  async waitForPendingSave(): Promise<void> {
+    await this.pendingSave_;
+  }
+
+  private async persistCheckpoint_(scenarioId: string, state: AppState): Promise<void> {
     const toast = SaveProgressToast.getInstance();
     const timestamp = Date.now();
 
@@ -123,12 +138,7 @@ export class ProgressSaveManager {
       this.eventBus.emit(Events.PROGRESS_SAVE_START, { timestamp });
 
       // Get current scenario info
-      const scenarioManager = ScenarioManager.getInstance();
-      const scenarioId = scenarioManager.data.id;
       const version = packageJson.version;
-
-      // Get current equipment state
-      const state = syncManager.getCurrentState();
 
       // Direct upsert - no need to read first
       await this.userDataService.saveCheckpoint(scenarioId, {
@@ -170,7 +180,7 @@ export class ProgressSaveManager {
     }
 
     try {
-      const checkpoint = await this.userDataService.getCheckpoint(scenarioId);
+      const checkpoint = await selectionProgressCache.getSavedCheckpoint(scenarioId);
 
       if (checkpoint) {
         Logger.info(`Checkpoint found for scenario: ${scenarioId}`, checkpoint);

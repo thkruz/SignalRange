@@ -13,6 +13,20 @@ const deferred = <T>() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe('shared selection progress', () => {
+  it('shares the downloaded checkpoint with mission loading and discards it on account changes', async () => {
+    const saved = { scenarioId: 'one', state: {}, savedAt: '2026-11-07' } as any;
+    const source = { getAllScenariosProgress: vi.fn(), checkpointExists: vi.fn(), getCheckpoint: vi.fn(async () => saved) };
+    const cache = new SelectionProgressCache(async () => source);
+    cache.setAccount('a');
+    const [preview, mission] = await Promise.all([cache.getSavedCheckpoint('one'), cache.getSavedCheckpoint('one')]);
+    expect(preview).toBe(mission);
+    expect(source.getCheckpoint).toHaveBeenCalledOnce();
+    cache.setAccount(null);
+    expect(await cache.getSavedCheckpoint('one')).toBeNull();
+    cache.setAccount('b');
+    await cache.getSavedCheckpoint('one');
+    expect(source.getCheckpoint).toHaveBeenCalledTimes(2);
+  });
   it('reuses in-flight prefetch and cached progress/checkpoints between menus', async () => {
     const answer = deferred<ScenariosProgressResponse>();
     const source = { getAllScenariosProgress: vi.fn(() => answer.promise), checkpointExists: vi.fn(async () => false) };

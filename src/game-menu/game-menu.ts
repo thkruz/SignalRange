@@ -1,0 +1,236 @@
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
+import { setupFullscreenButton } from '@app/pages/layout/header/fullscreen-button';
+import { selectionText } from '@app/pages/selection-browser';
+import { Router } from '@app/router';
+import { ScenarioManager } from '@app/scenario-manager';
+import { SimClock } from '@app/simulation/sim-clock';
+import { SimulationManager } from '@app/simulation/simulation-manager';
+import { AudioPreferences, type VolumeChannel } from '@app/sound/audio-preferences';
+import { clearPersistedStore } from '@app/sync/storage';
+import { achievementToast } from '@app/user-account/achievement-toast';
+import { Auth } from '@app/user-account/auth';
+import { getUserDataService } from '@app/user-account/user-data-service';
+import { displayPreferences, type TextSize } from './display-preferences';
+import { setMenuPause } from './menu-pause';
+import './game-menu.css';
+
+type Screen = 'pause' | 'settings' | 'restart' | 'return';
+const CHANNELS: [VolumeChannel, string][] = [
+  ['master', 'Master'],
+  ['voice', 'Voice'],
+  ['equipment', 'Equipment'],
+  ['ambience', 'Ambience'],
+  ['ui', 'Interface'],
+];
+
+/** Native modal dialog makes the underlying mission inert and contains keyboard focus. */
+export class GameMenu {
+  private static instance_: GameMenu;
+  private dialog_: HTMLDialogElement | null = null;
+  private screen_: Screen = 'pause';
+  private settingsFromPause_ = false;
+  private busy_ = false;
+  private initialized_ = false;
+  private returnFocus_: HTMLElement | null = null;
+  private cleanup_: (() => void) | null = null;
+
+  static getInstance(): GameMenu {
+    return (this.instance_ ??= new GameMenu());
+  }
+
+  initialize(): void {
+    if (this.initialized_) return;
+    this.initialized_ = true;
+    displayPreferences.apply();
+    window.addEventListener('keydown', (event) => {
+      // Window bubbling runs after the document's popover/brief handlers.
+      if (event.key !== 'Escape' || event.repeat || event.defaultPrevented || this.dialog_?.open || !this.inMission_()) return;
+      if ([...document.querySelectorAll<HTMLElement>('.modal, dialog[open]')].some((el) => el.getClientRects().length > 0)) return;
+      event.preventDefault();
+      this.openPause();
+    });
+    const subscribe = (bus: EventBus): void => {
+      bus.on(Events.ROUTE_CHANGED, () => this.close_());
+    };
+    subscribe(EventBus.getInstance());
+    EventBus.onRecreate(subscribe);
+  }
+
+  private inMission_(): boolean {
+    return /^\/campaigns\/[^/]+\/scenarios\/[^/]+$/u.test(location.pathname) && SimulationManager.hasInstance() && !SimClock.isPaused('loading');
+  }
+
+  openPause(): void {
+    if (!this.inMission_()) return;
+    this.settingsFromPause_ = true;
+    this.open_('pause');
+  }
+
+  openSettings(): void {
+    this.settingsFromPause_ = !!this.dialog_?.open;
+    this.open_('settings');
+  }
+
+  private open_(screen: Screen): void {
+    if (!this.dialog_) {
+      this.dialog_ = document.createElement('dialog');
+      this.dialog_.id = 'game-menu';
+      this.dialog_.className = 'game-menu';
+      this.dialog_.setAttribute('aria-labelledby', 'game-menu-title');
+      this.dialog_.addEventListener('keydown', (event) => event.stopPropagation());
+      this.dialog_.addEventListener('cancel', (event) => {
+        event.preventDefault();
+        this.back_();
+      });
+      document.body.append(this.dialog_);
+    }
+    if (!this.dialog_.open) {
+      this.returnFocus_ = document.activeElement as HTMLElement | null;
+      setMenuPause('game-menu', true);
+      this.dialog_.showModal();
+    }
+    this.render_(screen);
+  }
+
+  private close_(): void {
+    this.cleanup_?.();
+    this.cleanup_ = null;
+    if (!this.dialog_?.open) return;
+    this.dialog_.close();
+    setMenuPause('game-menu', false);
+    if (this.returnFocus_?.isConnected) this.returnFocus_.focus({ preventScroll: true });
+  }
+
+  private back_(): void {
+    if (this.busy_) return;
+    if (this.screen_ !== 'pause' && (this.screen_ !== 'settings' || this.settingsFromPause_)) this.render_('pause');
+    else this.close_();
+  }
+
+  private render_(screen: Screen): void {
+    this.cleanup_?.();
+    this.cleanup_ = null;
+    this.screen_ = screen;
+    const mission = this.inMission_() ? ScenarioManager.getInstance().data : null;
+    const title = screen === 'pause' ? 'Mission paused' : screen === 'settings' ? 'Settings' : screen === 'restart' ? 'Restart mission?' : 'Return to missions?';
+    const body =
+      screen === 'settings'
+        ? this.settingsHtml_()
+        : screen === 'pause'
+          ? `<p class="game-menu-mission">${selectionText(mission?.title ?? 'Mission')}</p><p class="game-menu-note">Simulation and dialogue paused.</p>
+        <nav class="game-menu-actions" aria-label="Pause menu"><button data-action="resume" class="game-menu-primary" autofocus>Resume mission</button><button data-action="settings">Settings</button><button data-action="restart">Restart mission</button><button data-action="return">Return to missions</button></nav>`
+          : `<p class="game-menu-mission">${selectionText(mission?.title ?? 'Mission')}</p><p>${screen === 'restart' ? 'Start this mission from the beginning. This replaces its checkpoint and current run progress; completed mission status is preserved.' : 'Return to mission selection. Your last saved checkpoint will be available to continue.'}</p><p id="game-menu-save-note" class="game-menu-note"></p>
+        <div class="game-menu-actions"><button data-action="confirm" class="game-menu-primary">${screen === 'restart' ? 'Restart mission' : 'Save and return'}</button><button data-action="back">Keep playing</button></div>`;
+    this.dialog_!.innerHTML =
+      `<header class="game-menu-heading"><div><span class="game-menu-eyebrow">SignalRange</span><h1 id="game-menu-title">${title}</h1></div><button data-action="back" class="game-menu-close" aria-label="${screen === 'pause' ? 'Resume mission' : 'Back'}">&#215;</button></header><div class="game-menu-body">${body}<p id="game-menu-status" role="status"></p></div><footer class="game-menu-footer"><span>${screen === 'settings' ? 'Changes saved on this device' : 'Mission control'}</span><button data-action="back">${screen === 'pause' ? 'Esc / Resume' : 'Back'}</button></footer>`;
+    this.dialog_!.querySelectorAll<HTMLButtonElement>('[data-action]').forEach((button) => {
+      button.onclick = () => {
+        switch (button.dataset.action) {
+          case 'resume':
+            this.close_();
+            break;
+          case 'back':
+            this.back_();
+            break;
+          case 'settings':
+            this.openSettings();
+            break;
+          case 'restart':
+            this.render_('restart');
+            break;
+          case 'return':
+            this.render_('return');
+            void this.describeReturn_();
+            break;
+          case 'confirm':
+            void this.confirm_();
+            break;
+        }
+      };
+    });
+    if (screen === 'settings') this.bindSettings_();
+    this.dialog_!.querySelector<HTMLElement>('[autofocus], .game-menu-body button, input')?.focus();
+  }
+
+  private settingsHtml_(): string {
+    const prefs = AudioPreferences.getInstance().prefs;
+    return `<section class="game-settings-section"><h2>Audio</h2>${CHANNELS.map(([channel, label]) => `<label class="game-setting" for="setting-${channel}"><span>${label}</span><input type="range" id="setting-${channel}" data-channel="${channel}" min="0" max="100" step="1" value="${Math.round(prefs[`${channel}Volume`] * 100)}"/><output for="setting-${channel}">${Math.round(prefs[`${channel}Volume`] * 100)}%</output></label>`).join('')}
+      <label class="game-setting-toggle"><input id="setting-sfx" type="checkbox" ${prefs.sfx ? 'checked' : ''}/>Enable equipment and interface sounds</label><label class="game-setting-toggle"><input id="setting-ambience-enabled" type="checkbox" ${prefs.ambience ? 'checked' : ''}/>Enable room ambience</label></section>
+      <section class="game-settings-section"><h2>Display & accessibility</h2><label class="game-setting-select" for="setting-text"><span>Reading text</span><select id="setting-text"><option value="standard">Standard</option><option value="large">Large</option><option value="largest">Largest</option></select></label><p class="game-menu-note">Adjusts dialogue, objective text, and mission descriptions.</p><label class="game-setting-toggle"><input id="setting-motion" type="checkbox"/>Reduce motion</label><p class="game-menu-note">Your system's reduced motion preference is also respected.</p>
+      <label class="game-setting-select" for="setting-achievements"><span>Achievement notifications</span><select id="setting-achievements"><option value="compact">Compact (Steam-style)</option><option value="card">Detailed card</option></select></label><button id="setting-fullscreen" type="button">Toggle fullscreen</button><span id="setting-fullscreen-status" role="status"></span></section>`;
+  }
+
+  private bindSettings_(): void {
+    const root = this.dialog_!;
+    const audio = AudioPreferences.getInstance();
+    root.querySelectorAll<HTMLInputElement>('[data-channel]').forEach((input) => {
+      input.oninput = () => {
+        const channel = input.dataset.channel as VolumeChannel;
+        audio.set({ [`${channel}Volume`]: Number(input.value) / 100 });
+        input.nextElementSibling!.textContent = `${input.value}%`;
+      };
+    });
+    root.querySelector<HTMLInputElement>('#setting-sfx')!.onchange = (e) => audio.set({ sfx: (e.target as HTMLInputElement).checked });
+    root.querySelector<HTMLInputElement>('#setting-ambience-enabled')!.onchange = (e) => audio.set({ ambience: (e.target as HTMLInputElement).checked });
+    const size = root.querySelector<HTMLSelectElement>('#setting-text')!;
+    size.value = displayPreferences.prefs.textSize;
+    size.onchange = () => displayPreferences.set({ textSize: size.value as TextSize });
+    const motion = root.querySelector<HTMLInputElement>('#setting-motion')!;
+    motion.checked = displayPreferences.prefs.reducedMotion;
+    motion.onchange = () => displayPreferences.set({ reducedMotion: motion.checked });
+    const style = root.querySelector<HTMLSelectElement>('#setting-achievements')!;
+    style.value = achievementToast.style;
+    style.onchange = () => achievementToast.setStyle(style.value === 'card' ? 'card' : 'compact');
+    const button = root.querySelector<HTMLButtonElement>('#setting-fullscreen')!;
+    this.cleanup_ = setupFullscreenButton(button, root.querySelector('#setting-fullscreen-status')!);
+  }
+
+  private async describeReturn_(): Promise<void> {
+    const session = await Auth.getSession();
+    if (this.screen_ !== 'return' || !this.dialog_?.open) return;
+    this.dialog_.querySelector('#game-menu-save-note')!.textContent = session
+      ? 'Your current position will be saved before leaving.'
+      : 'Guest session: progress cannot be saved. Sign in from the header to keep this run.';
+    this.dialog_.querySelector('[data-action="confirm"]')!.textContent = session ? 'Save and return' : 'Leave without saving';
+  }
+
+  private async confirm_(): Promise<void> {
+    if (this.busy_) return;
+    this.busy_ = true;
+    this.dialog_!.querySelectorAll<HTMLButtonElement>('button').forEach((button) => {
+      button.disabled = true;
+    });
+    const status = this.dialog_!.querySelector<HTMLElement>('#game-menu-status')!;
+    status.textContent = this.screen_ === 'restart' ? 'Preparing mission…' : 'Saving checkpoint…';
+    try {
+      const mission = ScenarioManager.getInstance().data;
+      const campaignPath = location.pathname.split('/scenarios/')[0];
+      const signedIn = !!(await Auth.getSession());
+      if (this.screen_ === 'restart') {
+        await SimulationManager.getInstance().progressSaveManager.waitForPendingSave();
+        if (signedIn) {
+          await getUserDataService().deleteCheckpoint(mission.id);
+          await getUserDataService().resetScenarioForReplay(mission.id);
+        }
+        await clearPersistedStore();
+        this.close_();
+        Router.getInstance().navigate(`${campaignPath}/scenarios/${mission.id}`, { forceReplay: true });
+      } else {
+        if (signedIn) {
+          await SimulationManager.getInstance().progressSaveManager.saveCheckpoint();
+          await getUserDataService().updateScenarioProgress(mission.id, { lastPlayed: new Date().toISOString(), scenarioNumber: mission.number });
+        }
+        this.close_();
+        Router.getInstance().navigate(campaignPath);
+      }
+    } catch {
+      status.textContent = 'Could not finish this action. Your mission remains paused. Please try again.';
+    } finally {
+      this.busy_ = false;
+      this.dialog_!.querySelectorAll<HTMLButtonElement>('button').forEach((button) => {
+        button.disabled = false;
+      });
+    }
+  }
+}

@@ -1,0 +1,62 @@
+.game-menu {
+  --mc-menu-panel: #2e2e2e;
+  --mc-menu-inset: #272727;
+  --mc-menu-border: #505050;
+  --mc-menu-accent: #ba160c;
+  color: #f1f1f1;
+  background: var(--mc-menu-panel);
+  border: 1px solid var(--mc-menu-border);
+  border-top: 3px solid var(--mc-menu-accent);
+  border-radius: 3px;
+  padding: 0;
+  width: min(600px, calc(100vw - 32px));
+  max-height: calc(100dvh - 40px);
+  box-shadow: 0 20px 60px #0008;
+}
+.game-menu[open] { display: flex; flex-direction: column; animation: game-menu-enter 160ms ease-out; }
+.game-menu::backdrop { background: #000a; }
+.game-menu-heading { display: flex; align-items: center; justify-content: space-between; padding: 22px 26px; border-bottom: 1px solid var(--mc-menu-border); }
+.game-menu-eyebrow { color: #c7c7c7; font-size: 12px; letter-spacing: .09em; text-transform: uppercase; }
+.game-menu h1 { margin: 5px 0 0; font-size: 27px; font-weight: 650; }
+.game-menu h2 { font-size: 15px; margin: 0 0 18px; color: #ddd; }
+.game-menu-body { padding: 24px 26px; overflow-y: auto; min-height: 0; }
+.game-menu-mission { font-size: 19px; font-weight: 600; margin: 0 0 8px; }
+.game-menu-note { color: #bdbdbd; font-size: 13px; line-height: 1.5; }
+.game-menu button, .game-menu select { color: #eee; background: #373737; border: 1px solid #606060; border-radius: 2px; padding: 10px 14px; font: inherit; }
+.game-menu button:hover { background: #454545; border-color: #999; }
+.game-menu button:focus-visible, .game-menu input:focus-visible, .game-menu select:focus-visible { outline: 2px solid #eee; outline-offset: 3px; }
+.game-menu button:disabled { opacity: .5; }
+.game-menu .game-menu-close { border: 0; background: transparent; font-size: 28px; padding: 0 8px; }
+.game-menu-actions { display: grid; gap: 10px; margin-top: 26px; }
+.game-menu-actions button { text-align: left; padding: 14px 18px; font-weight: 600; }
+.game-menu .game-menu-primary { background: var(--mc-menu-accent); border-color: #db281e; }
+.game-menu .game-menu-primary:hover { background: #d01b10; }
+.game-menu-footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 26px; border-top: 1px solid var(--mc-menu-border); background: var(--mc-menu-inset); font-size: 12px; color: #bbb; }
+.game-menu-footer button { padding: 6px 12px; }
+.game-menu #game-menu-status:empty { display: none; }
+.game-menu #game-menu-status { margin: 14px 0 0; color: #eee; }
+.game-settings-section + .game-settings-section { border-top: 1px solid var(--mc-menu-border); margin-top: 24px; padding-top: 24px; }
+.game-setting { display: grid; grid-template-columns: 90px minmax(50px, 1fr) 42px; gap: 16px; align-items: center; margin-bottom: 16px; font-size: 14px; }
+.game-setting output { text-align: right; font-variant-numeric: tabular-nums; color: #ccc; }
+.game-menu input { accent-color: var(--mc-menu-accent); }
+.game-menu input[type="range"] { width: 100%; min-width: 0; }
+.game-setting-toggle { display: flex; gap: 10px; align-items: center; font-size: 14px; margin: 14px 0; }
+.game-setting-select { display: flex; justify-content: space-between; gap: 16px; align-items: center; font-size: 14px; margin: 16px 0 10px; }
+.game-setting-select select { min-width: 0; max-width: 60%; }
+.game-menu #setting-fullscreen { margin-top: 12px; }
+.game-menu #setting-fullscreen-status { display: block; margin-top: 8px; }
+.header-audio-menu .audio-settings-button { width: 100%; margin-top: 14px; padding: 8px 12px; border: 1px solid #666; background: #373737; color: #eee; }
+@keyframes game-menu-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+html[data-text-size="large"] { --mc-reading-size: 18px; }
+html[data-text-size="largest"] { --mc-reading-size: 20px; }
+html[data-text-size="large"] :is(.selection-description, .scenario-description, .campaign-description, .dialog-text, .objective-content > p, .condition-text, .profile-note, .game-menu-body p),
+html[data-text-size="largest"] :is(.selection-description, .scenario-description, .campaign-description, .dialog-text, .objective-content > p, .condition-text, .profile-note, .game-menu-body p) { font-size: var(--mc-reading-size); line-height: 1.55; }
+html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+@media (prefers-reduced-motion: reduce) { .game-menu[open] { animation: none; } }
+@media (max-width: 480px) {
+  .game-menu-heading, .game-menu-body { padding: 18px; }
+  .game-menu-footer { padding: 12px 18px; }
+  .game-setting { grid-template-columns: 72px minmax(45px, 1fr) 38px; gap: 10px; }
+  .game-setting-select { flex-wrap: wrap; }
+  .game-setting-select select { max-width: 100%; }
+}

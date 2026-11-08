@@ -1,8 +1,8 @@
-import type { ScenariosProgressResponse } from './types';
+import type { Checkpoint, ScenariosProgressResponse } from './types';
 import type { UserDataService } from './user-data-service';
 import { getUserDataService } from './user-data-service';
 
-type ProgressSource = Pick<UserDataService, 'getAllScenariosProgress' | 'checkpointExists'>;
+type ProgressSource = Pick<UserDataService, 'getAllScenariosProgress' | 'checkpointExists'> & Partial<Pick<UserDataService, 'getCheckpoint'>>;
 interface CacheEntry<T> {
   value?: T;
   pending?: Promise<T>;
@@ -15,6 +15,7 @@ export class SelectionProgressCache {
   private generation_ = 0;
   private progress_: CacheEntry<ScenariosProgressResponse | null> = { updatedAt: 0 };
   private readonly checkpoints_ = new Map<string, CacheEntry<boolean>>();
+  private readonly savedCheckpoints_ = new Map<string, CacheEntry<Checkpoint | null>>();
   private readonly accountListeners_ = new Set<() => void>();
 
   constructor(
@@ -41,6 +42,7 @@ export class SelectionProgressCache {
     ++this.generation_;
     this.progress_ = { updatedAt: 0 };
     this.checkpoints_.clear();
+    this.savedCheckpoints_.clear();
   }
 
   getProgress(): Promise<ScenariosProgressResponse | null> {
@@ -60,6 +62,21 @@ export class SelectionProgressCache {
 
   async prefetch(scenarioIds: string[]): Promise<void> {
     await Promise.all([this.getProgress(), ...scenarioIds.map((id) => this.getCheckpoint(id))]);
+  }
+
+  /** Continue details and mission restoration share the same downloaded state. */
+  getSavedCheckpoint(scenarioId: string): Promise<Checkpoint | null> {
+    if (this.isSignedOut) return Promise.resolve(null);
+    let entry = this.savedCheckpoints_.get(scenarioId);
+    if (!entry) {
+      entry = { updatedAt: 0 };
+      this.savedCheckpoints_.set(scenarioId, entry);
+    }
+    return this.read_(entry, async () => {
+      const source = await this.source_();
+      if (!source.getCheckpoint) throw new Error('Checkpoint loading is unavailable.');
+      return source.getCheckpoint(scenarioId);
+    });
   }
 
   private read_<T>(entry: CacheEntry<T>, fetchValue: () => Promise<T>): Promise<T> {

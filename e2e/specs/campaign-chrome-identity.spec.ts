@@ -25,9 +25,8 @@ import { dismissDialogIfPresent, waitForSimulationReady } from '../utils/simulat
  * earlier revisions and both read as a broken build rather than a different
  * system - they are navigation, and novelty there costs orientation.
  *
- * C4 and C5 must agree on every structural value and differ only in hue; C1
- * and C2 likewise. That relationship is the point of the feature, so it is
- * asserted directly at the end rather than left to inspection.
+ * C4 and C5 share the site's gray/red palette and differ in classification
+ * bands. C1 and C2 share structure with different accents.
  */
 
 interface ChromeProbe {
@@ -43,10 +42,13 @@ interface ChromeProbe {
   clock: string;
   objectiveTimerLabel: string;
   accent: string;
+  surfaceBg: string;
+  border: string;
   barBg: string;
   faceplateBg: string;
   chromeFont: string;
   panelBorderWidth: string;
+  cardBg: string;
   classificationTop: string | null;
   classificationBottom: string | null;
   classificationBg: string;
@@ -96,10 +98,13 @@ async function probeChrome(page: Page): Promise<ChromeProbe> {
       clock: document.querySelector('#utc-clock')?.textContent?.trim() ?? '',
       objectiveTimerLabel: document.querySelector('#objective-timer-display .timer-label')?.textContent?.trim() ?? '',
       accent: read('--mc-accent-red'),
+      surfaceBg: read('--mc-surface-0'),
+      border: read('--mc-border'),
       barBg: header ? getComputedStyle(header).backgroundColor : '',
       faceplateBg: read('--mc-equip-panel-raised'),
       chromeFont: header ? getComputedStyle(header).fontFamily : '',
       panelBorderWidth: card ? getComputedStyle(card).borderTopWidth : '',
+      cardBg: card ? getComputedStyle(card).backgroundColor : '',
       classificationTop: top.content === 'none' ? null : top.content,
       classificationBottom: bottom.content === 'none' ? null : bottom.content,
       classificationBg: bottom.backgroundColor,
@@ -133,8 +138,8 @@ test.describe('Campaign chrome identity', () => {
 
       // Accent and faceplates must actually resolve - an unset custom property
       // reads as an empty string, which is how a whole theme goes missing.
-      expect(probe.accent).toMatch(/^#[0-9a-f]{6}$/i);
-      expect(probe.faceplateBg).toMatch(/^#[0-9a-f]{6}$/i);
+      expect(probe.accent).toMatch(/^#[0-9a-f]{6}$/iu);
+      expect(probe.faceplateBg).toMatch(/^#[0-9a-f]{6}$/iu);
       expect(probe.barBg).not.toBe('rgba(0, 0, 0, 0)');
 
       // Navigation does not move between variants: rail left, tabs on top.
@@ -142,22 +147,27 @@ test.describe('Campaign chrome identity', () => {
       expect(probe.tabsBelowContent).toBe(false);
 
       if (variant === 'astro') {
+        expect(probe.surfaceBg).toBe('#1f1f1f');
+        expect(probe.cardBg).toBe('rgb(41, 41, 41)');
+        expect(probe.border).toBe('#3a3a3a');
+        expect(probe.faceplateBg).toBe('#2a2a2a');
+        expect(probe.accent).toBe('#ba160c');
         // The TASK/MSN clocks lead the bar (time remaining first - the same
         // operational ordering that puts satellites above stations), so the
         // identity block paints to the right of the timers.
         expect(probe.commandBarMirrored).toBe(true);
         expect(probe.satellitesAboveStations).toBe(true);
         // `2027 074 22:05:15` - year, day-of-year, UTC
-        expect(probe.clock).toMatch(/^\d{4} \d{3} \d{2}:\d{2}:\d{2}$/);
+        expect(probe.clock).toMatch(/^\d{4} \d{3} \d{2}:\d{2}:\d{2}$/u);
         expect(probe.objectiveTimerLabel).toBe('TASK');
         expect(probe.chromeFont).toContain('Roboto');
         expect(probe.chromeFont).not.toContain('Roboto Condensed');
         expect(probe.panelBorderWidth).toBe('1px');
         // Banded top and bottom in ladder colors with deliberately fictional
-        // wording (nothing here is a real marking): C4 wears the Top Secret
+        // wording (nothing here is a real marking): C4 wears the Top Secret/SCI
         // style as "G14 CLASSIFIED", C5 the Secret style as "SPECIAL
         // PROGRAM". The color must not follow the campaign accent.
-        const marking = campaignId === 'ccs' ? { text: 'G14 CLASSIFIED', bg: 'rgb(255, 140, 0)' } : { text: 'SPECIAL PROGRAM', bg: 'rgb(200, 16, 46)' };
+        const marking = campaignId === 'ccs' ? { text: 'G14 CLASSIFIED', bg: 'rgb(252, 233, 58)' } : { text: 'SPECIAL PROGRAM', bg: 'rgb(200, 16, 46)' };
 
         expect(probe.classificationTop).toContain(marking.text);
         expect(probe.classificationBottom).toContain(marking.text);
@@ -174,12 +184,12 @@ test.describe('Campaign chrome identity', () => {
       }
 
       if (variant === 'sdr') {
-        expect(probe.chromeFont).toMatch(/mono/i);
+        expect(probe.chromeFont).toMatch(/mono/iu);
       }
     });
   }
 
-  test('siblings share structure and differ only in hue', () => {
+  test('siblings share structure and retain their campaign identity', () => {
     const structural = (p: ChromeProbe) => ({
       commandBarMirrored: p.commandBarMirrored,
       satellitesAboveStations: p.satellitesAboveStations,
@@ -202,7 +212,9 @@ test.describe('Campaign chrome identity', () => {
 
     // Two squadrons of one service
     expect(structural(signalHunter)).toEqual(structural(ccs));
-    expect(signalHunter.accent).not.toBe(ccs.accent);
+    expect(signalHunter.accent).toBe(ccs.accent);
+    expect(ccs.accent).toBe(nats.accent);
+    expect(signalHunter.classificationBg).not.toBe(ccs.classificationBg);
 
     // ...and the two pairs are not the same system
     expect(structural(ccs)).not.toEqual(structural(nats));

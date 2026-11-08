@@ -30,8 +30,8 @@ body {
    campaign class lands on this same element.
    ========================================================================== */
 body {
-  width: 100vw;
-  height: 100vh;
+  width: var(--mc-viewport-width, 100vw);
+  height: var(--mc-viewport-height, 100vh);
   overflow: hidden;
 
   --color-primary: var(--mc-accent-red);
@@ -827,10 +827,10 @@ body.chrome-tactical .app-shell-page::after {
 
    The Space Force console look, after the Astro UXDS design system
    (astrouxds.com) that Space Systems Command's reference apps are built on:
-   3px radii, hairline rules, Roboto chrome, and panel headers as darker
-   plates on lighter surfaces. Astro's spacing scale is deliberately NOT
+   3px radii, hairline rules, and Roboto chrome. Cards and their sections use
+   the shared surface hierarchy. Astro's spacing scale is deliberately NOT
    copied - the reference apps are far more padded than this product wants -
-   so this block changes color-slot pairings, type and relief, never padding.
+   so this block changes type and relief, never padding.
 
    Carried over from the tactical variant, because they are operational rather
    than army: the satellites-above-stations asset ordering (an EW crew works
@@ -888,46 +888,15 @@ body.chrome-astro .modal-footer {
 
 /* --------------------------------------------------------------------------
    astro: wordmark accent in the highlight tone.
-   Astro renders interactive text on dark surfaces in the light accent; the
-   base accent slot is this variant's *dark* blue (#005a8f-class), which
-   disappears against the header plate.
+   Use the bright shared accent for readable text on the dark header plate.
    -------------------------------------------------------------------------- */
 
 body.chrome-astro .command-bar-left .text-blue-500 {
   color: var(--mc-accent-red-bright, var(--mc-accent-red));
 }
 
-/* --------------------------------------------------------------------------
-   astro: panels as surface pairings.
-
-   Astro builds hierarchy with value, not line weight: a panel is a lighter
-   surface on the page, and its header is a darker plate on the panel
-   (#172635 on #1b2d3e in the reference apps - which is exactly surface-1 on
-   surface-2 in the campaign ramps below). The base theme pairs them the
-   other way around (card = surface-1, header = surface-2), so both slots are
-   restated here.
-   -------------------------------------------------------------------------- */
-
-body.chrome-astro .card,
-body.chrome-astro .metric-group,
-body.chrome-astro .modal-content {
-  background-color: var(--mc-surface-2) !important;
-}
-
-body.chrome-astro .card-header,
-body.chrome-astro .modal-header {
-  background-color: var(--mc-surface-1) !important;
-  font-weight: 600;
-}
-
-/* Input wells drop below their panel, the way Astro draws form fields as
-   recessed slots in a surface. Without this they would sit at surface-2 and
-   dissolve into the repaired card background above. */
-body.chrome-astro .form-control,
-body.chrome-astro .form-select,
-body.chrome-astro .input-group-text {
-  background-color: var(--mc-surface-1) !important;
-}
+/* Cards, metric groups, modals, and inputs inherit the shared surface rules.
+   Keeping cards at surface-1 makes their surface-2 sections distinct. */
 
 /* --------------------------------------------------------------------------
    astro: tracked objects first - same operational ordering as tactical, see
@@ -1250,8 +1219,7 @@ body.chrome-astro #asset-tree-sidebar-container .list-group-item:hover:not(.acti
   background: var(--mc-surface-2);
 }
 
-/* Selected: the Astro selected-surface slot (surface-4 in both C4/C5 ramps)
-   with a highlight edge - not a filled accent bar */
+/* Selected: the shared gray surface-4 with an accent edge. */
 body.chrome-astro #asset-tree-sidebar-container .list-group-item.active {
   background: var(--mc-surface-4) !important;
   border-left-color: var(--mc-accent-red-bright);
@@ -1282,54 +1250,13 @@ body.chrome-astro .item-status.offline {
 }
 
 /* ==========================================================================
-   Per-Campaign Theme: Signal Hunter (22nd EWS - platinum on dark slate)
-   Space-ops posture, Astro UXDS lineage: the same blue-slate family as the
-   9th EWS block below, but a step darker and desaturated, with a platinum
-   accent - USSF heraldry is exactly this silver-on-dark-blue pair, and the
-   restraint suits the silent-listener mission. Two squadrons, two accents,
-   one obvious shared issuer. Scoped to body.campaign-signal-hunter
-   (Router-applied). --mc-danger* untouched, so faults/alarms stay red in
-   every campaign.
+   Per-Campaign Identity: Signal Hunter (22nd EWS)
+   Inherit the shared gray surfaces, red interaction accent, and neutral
+   equipment faceplates. The fictional classification bands and Astro
+   chrome provide campaign identity without a separate surface palette.
    ========================================================================== */
 
 body.campaign-signal-hunter {
-  /* Primary accent: platinum steel */
-  --tblr-primary: #56708a !important;
-  --tblr-primary-rgb: 86, 112, 138 !important;
-  --tblr-primary-text-emphasis: #a8c4dc !important;
-  --tblr-primary-bg-subtle: rgba(86, 112, 138, 0.15) !important;
-  --tblr-primary-border-subtle: rgba(86, 112, 138, 0.3) !important;
-
-  --tblr-link-color: #8aa5bf !important;
-  --tblr-link-hover-color: #c6d8e8 !important;
-
-  /* Semantic accent slots (names historic, values per-campaign) */
-  --mc-accent-red: #56708a;
-  --mc-accent-red-bright: #a8c4dc;
-  --mc-accent-red-light: #6d87a1;
-  --mc-accent-red-dark: #3c4f61;
-  --mc-accent-red-rgb: 86, 112, 138;
-  --mc-accent-red-bright-rgb: 168, 196, 220;
-  --mc-accent-text-dark: #8aa5bf;
-
-  /* Dark slate surfaces: the Astro ramp below, darkened and desaturated */
-  --mc-surface-0: #0e141b;
-  --mc-surface-1: #131c26;
-  --mc-surface-2: #172230;
-  --mc-surface-3: #1c2a3b;
-  --mc-surface-4: #223347;
-  --mc-border: #263749;
-
-  --tblr-body-bg: #0e141b !important;
-  --tblr-secondary-bg: #131c26 !important;
-  --tblr-tertiary-bg: #172230 !important;
-  --tblr-border-color: #263749 !important;
-
-  /* App-shell chrome dividers, matching the slate surfaces */
-  --mc-chrome-bar-border: #263749;
-  --mc-chrome-scroll-thumb: #223347;
-  --mc-chrome-scroll-thumb-hover: #2c4257;
-
   /* Astro UXDS status ladder (astrouxds.com/patterns/status-system/).
      Declared per-campaign, not on :root, so C1-C3 - whose consoles predate
      the convention - keep their existing greens and yellows. Status colors
@@ -1354,35 +1281,6 @@ body.campaign-signal-hunter {
   --mc-geo-marker-station: #4dacff;
   --mc-geo-marker-truth: #ff3838;
 
-  /* Equipment faceplates: steel-tinted, matte. Same fixed darken + hue-bias
-     derivation from the base grey ramp as every campaign ramp (see the
-     phase-9 plan), so the relative steps between tokens - several of which
-     are gradient partners - stay intact. The 9th EWS block below is the same
-     derivation with a stronger blue bias: same issue, two squadrons. */
-  --mc-equip-bg-deepest: #040506;
-  --mc-equip-bg-deep: #08090b;
-  --mc-equip-shadow: #0c0e11;
-  --mc-equip-bg-dark: #12151a;
-  --mc-equip-bg: #16191e;
-  --mc-equip-bg-alt: #171a20;
-  --mc-equip-bg-raised: #191d23;
-  --mc-equip-shell: #1a1e25;
-  --mc-equip-panel: #1c2128;
-  --mc-equip-panel-raised: #232931;
-  --mc-equip-border: #2b323b;
-  --mc-equip-border-mid: #2f3741;
-  --mc-equip-border-alt: #313944;
-  --mc-equip-border-light: #39424e;
-  --mc-equip-control-dim: #3f4955;
-  --mc-equip-control: #485462;
-  --mc-equip-control-light: #566373;
-  --mc-equip-control-lighter: #647384;
-  --mc-equip-unlit: #63717f;
-  --mc-equip-text: #f7fafc;
-  --mc-equip-text-dim: #a6b0ba;
-  --mc-equip-text-muted: #85909b;
-  --mc-equip-text-bright: #c9d3dd;
-
   /* Classification strip: Secret *style* (the ladder colors stay untouched),
      with deliberately fictional wording so the banner cannot be mistaken for
      a real marking. */
@@ -1396,58 +1294,12 @@ body.campaign-signal-hunter .app-shell-page::after {
 }
 
 /* ==========================================================================
-   Per-Campaign Theme: Counter Communications (ccs - 9th EWS, Astro blue)
-   Offensive electronic-attack posture in Space Force colors: the Astro UXDS
-   dark-theme palette verbatim (astrouxds.com; extracted from SSC's reference
-   apps) - blue-slate surfaces with the Astro interactive blue as the accent.
-   Deliberately a sibling to the 22nd EWS "Signal Hunter" look above (same
-   slate family, platinum accent) but distinct - two EW squadrons, two
-   accents. Sits apart from Campaign 2's maritime blue (#0f62ac) through the
-   astro chrome, the colder slate surfaces and the brighter #4dacff
-   highlight. Scoped to body.campaign-ccs (Router-applied). --mc-danger*
-   untouched: alarms/faults (and the deconfliction/fratricide warnings) stay
-   red in every campaign.
+   Per-Campaign Identity: Counter Communications (ccs - 9th EWS)
+   Shares the site's gray/red palette with Signal Hunter. Yellow fictional
+   classification bands distinguish this campaign from Signal Hunter's red.
    ========================================================================== */
 
 body.campaign-ccs {
-  /* Primary accent: Astro interactive blue (dark #005a8f, highlight #4dacff) */
-  --tblr-primary: #005a8f !important;
-  --tblr-primary-rgb: 0, 90, 143 !important;
-  --tblr-primary-text-emphasis: #4dacff !important;
-  --tblr-primary-bg-subtle: rgba(0, 90, 143, 0.15) !important;
-  --tblr-primary-border-subtle: rgba(0, 90, 143, 0.3) !important;
-
-  --tblr-link-color: #4dacff !important;
-  --tblr-link-hover-color: #92cbff !important;
-
-  /* Semantic accent slots (names historic, values per-campaign) */
-  --mc-accent-red: #005a8f;
-  --mc-accent-red-bright: #4dacff;
-  --mc-accent-red-light: #2b659b;
-  --mc-accent-red-dark: #00436b;
-  --mc-accent-red-rgb: 0, 90, 143;
-  --mc-accent-red-bright-rgb: 77, 172, 255;
-  --mc-accent-text-dark: #3a91c4;
-
-  /* Astro dark-theme surface ramp, verbatim: base, header, surface, hover,
-     selected. The chrome-astro variant pairs 1-on-2 for panel headers. */
-  --mc-surface-0: #101923;
-  --mc-surface-1: #172635;
-  --mc-surface-2: #1b2d3e;
-  --mc-surface-3: #1c3851;
-  --mc-surface-4: #1c3f5e;
-  --mc-border: #2b405c;
-
-  --tblr-body-bg: #101923 !important;
-  --tblr-secondary-bg: #172635 !important;
-  --tblr-tertiary-bg: #1b2d3e !important;
-  --tblr-border-color: #2b405c !important;
-
-  /* App-shell chrome dividers, matching the slate surfaces */
-  --mc-chrome-bar-border: #2b405c;
-  --mc-chrome-scroll-thumb: #1c3f5e;
-  --mc-chrome-scroll-thumb-hover: #2b659b;
-
   /* Astro UXDS status ladder - see the note in the Signal Hunter block */
   --mc-status-normal: #56f000;
   --mc-status-normal-rgb: 86, 240, 0;
@@ -1467,43 +1319,17 @@ body.campaign-ccs {
   --mc-geo-marker-station: #4dacff;
   --mc-geo-marker-truth: #ff3838;
 
-  /* Equipment faceplates: blue-slate-tinted, matte. Same derivation as the
-     22nd EWS ramp above, stronger blue bias - the two squadrons draw the
-     same gear from the same depot. */
-  --mc-equip-bg-deepest: #030507;
-  --mc-equip-bg-deep: #070a0e;
-  --mc-equip-shadow: #0b0f14;
-  --mc-equip-bg-dark: #10161e;
-  --mc-equip-bg: #131a23;
-  --mc-equip-bg-alt: #141b25;
-  --mc-equip-bg-raised: #161e29;
-  --mc-equip-shell: #171f2b;
-  --mc-equip-panel: #19222e;
-  --mc-equip-panel-raised: #1f2a39;
-  --mc-equip-border: #263345;
-  --mc-equip-border-mid: #2a384c;
-  --mc-equip-border-alt: #2b3a4f;
-  --mc-equip-border-light: #334458;
-  --mc-equip-control-dim: #374a61;
-  --mc-equip-control: #405570;
-  --mc-equip-control-light: #4d6685;
-  --mc-equip-control-lighter: #5b7799;
-  --mc-equip-unlit: #5c7590;
-  --mc-equip-text: #f2f8ff;
-  --mc-equip-text-dim: #9fb1c4;
-  --mc-equip-text-muted: #7f8fa1;
-  --mc-equip-text-bright: #c2d4e6;
-
-  /* Classification strip: Top Secret *style* (the ladder colors stay
+  /* Classification strip: Top Secret/SCI *style* (the ladder colors stay
      untouched), with deliberately fictional wording so the banner cannot be
      mistaken for a real marking. */
-  --mc-classification-bg: var(--mc-classification-top-secret-bg);
-  --mc-classification-fg: var(--mc-classification-top-secret-fg);
+  --mc-classification-bg: var(--mc-classification-ts-sci-bg);
+  --mc-classification-fg: var(--mc-classification-ts-sci-fg);
 }
 
 body.campaign-ccs .app-shell-page::before,
 body.campaign-ccs .app-shell-page::after {
   content: 'G14 CLASSIFIED // TRAINING USE ONLY';
+  font-weight: 700;
 }
 
 /* ==========================================================================
@@ -2023,6 +1849,13 @@ body.campaign-ccs .app-shell-page::after {
   color: var(--mc-text-primary);
 }
 
+/* Tabler paints every `.table thead th` with --tblr-bg-surface-tertiary, a near-white light-theme
+   surface, which left pale header text on white in Pass Schedule, Contact Plan, TT&C and Security. */
+.table thead th {
+  background: var(--mc-surface-2);
+  color: var(--mc-text-primary);
+}
+
 .table>tbody>tr:hover {
   background-color: var(--mc-surface-2);
 }
@@ -2041,6 +1874,7 @@ body.campaign-ccs .app-shell-page::after {
   color: var(--mc-accent-red-bright);
 }
 
+.alert-info,
 .alert-secondary {
   background-color: var(--mc-surface-2);
   border-color: var(--mc-border);
@@ -2213,4 +2047,203 @@ body.campaign-ccs .app-shell-page::after {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.75rem;
   color: var(--mc-text-secondary);
+}
+
+/* ==========================================================================
+   Equipment workspaces — shared panel finish
+   Scoped to the four operator tabs; status colors and control states remain
+   owned by the equipment styles. Match the menus' flat edges and legible labels.
+   ========================================================================== */
+
+:is(.acu-control-tab, .rx-analysis-tab, .tx-chain-tab, .gps-timing-tab) {
+  --mc-panel-line: #505050;
+  --mc-panel-muted: #bdbdbd;
+}
+
+:is(.acu-control-tab, .rx-analysis-tab, .tx-chain-tab, .gps-timing-tab) > .row {
+  --tblr-gutter-x: 0.75rem;
+  --tblr-gutter-y: 0.75rem;
+}
+
+:is(.acu-control-tab, .rx-analysis-tab, .tx-chain-tab, .gps-timing-tab) .card {
+  border-color: var(--mc-panel-line) !important;
+  border-radius: 3px;
+  box-shadow: none;
+  min-width: 0;
+}
+
+:is(.acu-control-tab, .rx-analysis-tab, .tx-chain-tab, .gps-timing-tab) .card-header {
+  min-height: 44px !important;
+  gap: 0.75rem;
+}
+
+:is(.acu-control-tab, .rx-analysis-tab, .tx-chain-tab, .gps-timing-tab) .card-title {
+  justify-content: flex-start;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+:is(.acu-control-tab, .rx-analysis-tab, .tx-chain-tab, .gps-timing-tab) .card-body {
+  padding: 1rem;
+  min-width: 0;
+}
+
+:is(.rx-analysis-tab, .tx-chain-tab) .card .card .card-header {
+  padding-inline: 0.75rem !important;
+  min-height: 40px !important;
+}
+
+:is(.acu-control-tab, .rx-analysis-tab, .tx-chain-tab, .gps-timing-tab) .card-header .form-check {
+  margin-bottom: 0;
+}
+
+:is(.acu-control-tab, .rx-analysis-tab, .tx-chain-tab, .gps-timing-tab) .text-muted {
+  color: var(--mc-panel-muted) !important;
+}
+
+:is(.acu-control-tab, .rx-analysis-tab, .tx-chain-tab, .gps-timing-tab)
+  :is(.metric-label, .metric-group-title, .equip-adjust-label, .equip-adjust-unit, .fine-adjust-label, .rf-metric-label) {
+  color: var(--mc-panel-muted);
+}
+
+:is(.acu-control-tab, .rx-analysis-tab, .tx-chain-tab, .gps-timing-tab) :is(.metric-group, .metric-item) {
+  padding: 0.75rem;
+  border: 1px solid var(--mc-panel-line);
+  border-radius: 3px;
+}
+
+:is(.acu-control-tab, .rx-analysis-tab, .tx-chain-tab, .gps-timing-tab) .metric-group-title {
+  border-bottom-color: var(--mc-panel-line);
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.5rem;
+  letter-spacing: 0.06em;
+}
+
+:is(.acu-control-tab, .rx-analysis-tab, .tx-chain-tab, .gps-timing-tab) .metric-row {
+  gap: 0.75rem;
+  padding-block: 0.25rem;
+  align-items: baseline;
+}
+
+:is(.acu-control-tab, .rx-analysis-tab, .tx-chain-tab, .gps-timing-tab) .metric-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.gps-timing-tab .metric-item .metric-value {
+  text-align: left;
+}
+
+:is(.acu-control-tab, .rx-analysis-tab, .tx-chain-tab, .gps-timing-tab) .status-badge-off {
+  background: var(--mc-surface-1);
+  border-color: #666;
+  color: var(--mc-panel-muted);
+}
+
+:is(.acu-control-tab, .rx-analysis-tab, .tx-chain-tab, .gps-timing-tab) .btn-outline-primary:not(.active) {
+  color: var(--mc-text-primary);
+}
+
+:is(.acu-control-tab, .rx-analysis-tab, .tx-chain-tab, .gps-timing-tab)
+  :is(.form-control, .form-select):not(.is-invalid):not(:focus) {
+  border-color: #666;
+}
+
+:is(.acu-control-tab, .rx-analysis-tab, .tx-chain-tab, .gps-timing-tab)
+  :is(button, input, select):focus-visible {
+  outline: 2px solid var(--mc-text-primary);
+  outline-offset: 2px;
+}
+
+:is(.acu-control-tab, .rx-analysis-tab, .tx-chain-tab, .gps-timing-tab)
+  :is(.fine-adjust-display, .equip-adjust-display, .rf-metric-box, .beacon-strength-bar) {
+  border-width: 1px;
+  border-color: var(--mc-panel-line);
+  border-radius: 3px;
+}
+
+:is(.acu-control-tab, .rx-analysis-tab, .tx-chain-tab)
+  :is(.fine-adjust-value-active, .equip-adjust-input, .rf-metric-value) {
+  text-shadow: none;
+}
+
+:is(.acu-control-tab, .rx-analysis-tab, .tx-chain-tab) :is(.btn-fine, .btn-equip):hover {
+  transform: none;
+}
+
+/* Six ACU adjustment buttons must fit beside the readout at laptop widths. */
+.acu-control-tab .fine-adjust-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(6rem, 8rem) minmax(0, 1fr);
+  max-width: 29rem;
+}
+
+.acu-control-tab .fine-adjust-display {
+  min-width: 0;
+  padding-inline: 0.375rem;
+}
+
+.acu-control-tab .btn-fine {
+  flex: 1;
+  min-width: 0;
+  min-height: 30px;
+  padding-inline: 0.25rem;
+}
+
+/* Numeric input defaults vary with step/min/max; keep RF readouts aligned. */
+:is(.rx-analysis-tab, .tx-chain-tab) .equip-adjust-display {
+  flex: 0 1 7.5rem;
+  width: 7.5rem;
+  min-width: 6rem;
+}
+
+/* Trace controls wrap as complete groups instead of spilling off the card. */
+.rx-analysis-tab .sa-trace-controls .d-flex {
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: flex-start !important;
+}
+
+.rx-analysis-tab .sa-peak-row {
+  flex-wrap: wrap;
+}
+
+.rx-analysis-tab #spec-analyzer-controls > .row > .col-6 {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.rx-analysis-tab .sa-display-mode-actions .row {
+  flex-wrap: wrap;
+  row-gap: 0.75rem;
+}
+
+.rx-analysis-tab .sa-display-mode-actions .col-6 {
+  width: auto;
+  justify-content: flex-start !important;
+}
+
+.gps-timing-tab #gpsdo-10mhz-output-list {
+  text-align: left !important;
+}
+
+.gps-timing-tab #gpsdo-10mhz-output-list p {
+  margin: 0;
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--mc-panel-line);
+  font-size: 0.8125rem;
+}
+
+/* The asset rail leaves less usable space than Tabler's viewport grid assumes. */
+@media (min-width: 992px) and (max-width: 1199px) {
+  :is(.rx-analysis-tab, .tx-chain-tab) > .row > .col-lg-6,
+  .rx-analysis-tab > .row > .col-lg-9,
+  .rx-analysis-tab > .row > .col-lg-3:has(#iq-constellation-container) {
+    width: 100%;
+  }
+
+  :is(.rx-analysis-tab, .gps-timing-tab) > .row > .col-lg-3 {
+    width: 50%;
+  }
 }

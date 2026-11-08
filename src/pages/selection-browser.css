@@ -7,10 +7,10 @@
   --mc-menu-accent: #ba160c;
   position: relative;
   box-sizing: border-box;
-  height: calc(100dvh - 80px);
+  height: calc(var(--mc-viewport-height, 100dvh) - 80px);
   min-height: 0;
   flex-direction: column;
-  padding: 24px clamp(16px, 3vw, 56px);
+  padding: 24px clamp(16px, calc(var(--mc-viewport-width, 100vw) * 0.03), 56px);
   gap: 20px;
   overflow: hidden;
   color: var(--mc-text-primary);
@@ -41,7 +41,7 @@
 }
 .selection-eyebrow { display: table; background: var(--mc-menu-accent); color: #fff; padding: 4px 8px; letter-spacing: 1.5px; }
 .selection-detail-label { border-left: 3px solid var(--mc-menu-accent); padding-left: 8px; }
-.selection-heading h1 { font-size: clamp(20px, 2vw, 30px); line-height: 1.2; margin: 5px 0; font-weight: 600; letter-spacing: -0.5px; }
+.selection-heading h1 { font-size: clamp(20px, calc(var(--mc-viewport-width, 100vw) * 0.02), 30px); line-height: 1.2; margin: 5px 0; font-weight: 600; letter-spacing: -0.5px; }
 .selection-heading .subtitle { color: var(--mc-menu-muted); font-size: 13px; }
 .selection-heading .back-button {
   display: inline-flex;
@@ -164,10 +164,10 @@
 html.reduce-motion .selection-art img { animation: none; }
 .selection-art::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 65%, rgba(0,0,0,0.35)); pointer-events: none; }
 .selection-art-caption { position: absolute; left: 24px; bottom: 18px; z-index: 1; color: #fff; font: 11px monospace; letter-spacing: 2px; text-transform: uppercase; padding: 6px 10px; background: rgba(0, 0, 0, 0.75); }
-.selection-briefing { padding: clamp(18px, 2vw, 30px); flex: 1; min-height: 0; overflow-y: auto; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: var(--mc-equip-control) transparent; }
-.selection-briefing h2 { font-size: clamp(24px, 2.3vw, 36px); font-weight: 600; line-height: 1.15; letter-spacing: -0.7px; margin: 8px 0; }
+.selection-briefing { padding: clamp(18px, calc(var(--mc-viewport-width, 100vw) * 0.02), 30px); flex: 1; min-height: 0; overflow-y: auto; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: var(--mc-equip-control) transparent; }
+.selection-briefing h2 { font-size: clamp(24px, calc(var(--mc-viewport-width, 100vw) * 0.023), 36px); font-weight: 600; line-height: 1.15; letter-spacing: -0.7px; margin: 8px 0; }
 .selection-briefing .campaign-subtitle, .selection-briefing .scenario-subtitle { color: var(--mc-menu-muted); font-size: 15px; line-height: 1.5; margin-bottom: 20px; }
-.selection-description { font-size: 15px; color: var(--mc-text-primary); line-height: 1.75; max-width: 78ch; }
+.selection-description { font-size: 15px; color: var(--mc-text-primary); line-height: 1.75; }
 .selection-description p:last-child { margin-bottom: 0; }
 .selection-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin: 16px 0 20px; color: var(--mc-menu-muted); font-size: 12px; }
 .selection-meta .badge { padding: 6px 10px; border-radius: 3px; background: #383838; color: var(--mc-text-primary); font-size: 12px; font-weight: 600; border: 1px solid #555; box-shadow: none; text-transform: capitalize; }

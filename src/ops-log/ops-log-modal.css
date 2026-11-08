@@ -6,7 +6,7 @@
   display: flex;
   flex-direction: column;
   height: 400px;
-  max-height: 60vh;
+  max-height: calc(var(--mc-viewport-height, 100vh) * 0.6);
 }
 
 .ops-log-header {
@@ -14,7 +14,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--mc-border-color, #444);
+  border-bottom: 1px solid var(--mc-border);
   background: rgba(255, 255, 255, 0.03);
 }
 
@@ -22,12 +22,12 @@
   font-family: var(--font-monospace, monospace);
   font-size: 1.25rem;
   font-weight: 600;
-  color: var(--mc-text-accent, #4dabf7);
+  color: var(--mc-accent-red-light);
 }
 
 .ops-log-title {
   font-weight: 500;
-  color: var(--mc-text-muted, #adb5bd);
+  color: var(--mc-text-secondary);
   text-transform: uppercase;
   font-size: 0.75rem;
   letter-spacing: 0.05em;
@@ -54,18 +54,18 @@
 
 .ops-log-timestamp {
   font-family: var(--font-monospace, monospace);
-  color: var(--mc-text-muted, #868e96);
+  color: var(--mc-text-secondary);
   flex-shrink: 0;
   min-width: 5.5rem;
 }
 
 .ops-log-message {
   flex: 1;
-  color: var(--mc-text-primary, #e9ecef);
+  color: var(--mc-text-primary);
 }
 
 .ops-log-source {
-  color: var(--mc-text-muted, #868e96);
+  color: var(--mc-text-secondary);
   font-style: italic;
   font-size: 0.8125rem;
   flex-shrink: 0;
@@ -85,16 +85,16 @@
 }
 
 .ops-log-entry--system .ops-log-message {
-  color: var(--mc-text-muted, #868e96);
+  color: var(--mc-text-secondary);
 }
 
 .ops-log-entry--action .ops-log-timestamp {
-  color: var(--mc-text-accent, #4dabf7);
+  color: var(--mc-accent-red-light);
 }
 
 .ops-log-empty {
   text-align: center;
-  color: var(--mc-text-muted, #868e96);
+  color: var(--mc-text-secondary);
   padding: 2rem 1rem;
   font-style: italic;
 }
@@ -123,23 +123,25 @@
   display: flex;
   gap: 0.5rem;
   padding: 0.75rem;
-  border-top: 1px solid var(--mc-border-color, #444);
+  border-top: 1px solid var(--mc-border);
   background: rgba(255, 255, 255, 0.02);
 }
 
 .ops-log-input-row input {
   flex: 1;
   background: rgba(0, 0, 0, 0.3);
-  border: 1px solid var(--mc-border-color, #444);
-  color: var(--mc-text-primary, #e9ecef);
+  border: 1px solid var(--mc-border);
+  color: var(--mc-text-primary);
 }
 
 .ops-log-input-row input::placeholder {
-  color: var(--mc-text-muted, #868e96);
+  color: var(--mc-text-secondary);
 }
 
 .ops-log-input-row input:focus {
-  border-color: var(--mc-text-accent, #4dabf7);
+  border-color: var(--mc-accent-red-light);
   outline: none;
-  box-shadow: 0 0 0 2px rgba(77, 171, 247, 0.15);
+  box-shadow: none;
+  outline: 1px solid var(--mc-accent-red-light);
+  outline-offset: 1px;
 }

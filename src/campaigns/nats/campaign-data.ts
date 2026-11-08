@@ -164,7 +164,7 @@ export const geolocationCampaignData: CampaignData = {
   title: '22nd Electronic Warfare Squadron',
   subtitle: 'Signal Hunter — Geolocation of Interference Sources',
   description: `Someone is jamming allied satellites. As a member of the 22nd Electronic Warfare Squadron, you'll locate the sources of hostile interference using advanced RF geolocation.<br><br>Learn the two-satellite TDOA/FDOA cross-fix technique: an uplink jammer leaks into a neighboring satellite's sidelobes, and correlating the two downlinks lets you draw crossing lines of position over the emitter. Detect, characterize, and geolocate intermittent interference, then hand a fix and error ellipse to the incident response cell.`,
-  imageUrl: 'nats/north-atlantic-teleport-services.png',
+  imageUrl: 'signal-hunter/signal-hunter.png',
   difficulty: 'advanced',
   totalDuration: '130-170 min',
   campaignType: 'Electronic Warfare',

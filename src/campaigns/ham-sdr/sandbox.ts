@@ -26,7 +26,7 @@ import { cubehop1Satellite, navstar77Satellite, wxsat19Satellite } from './satel
 export const hamSdrSandboxData: ScenarioData = {
   id: 'ham-sdr-sandbox',
   url: 'ham-sdr/scenarios/ham-sdr-sandbox',
-  imageUrl: 'nats/8/card.png',
+  imageUrl: 'home-sdr/sandbox/card.png',
   number: 0,
   isDisabled: false,
   difficulty: 'beginner',

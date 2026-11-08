@@ -52,7 +52,7 @@ import { cobalt4Satellite } from './satellites';
 export const ccsScenario2Data: ScenarioData = {
   id: 'ccs-scenario2',
   url: 'ccs/scenarios/ccs-scenario2',
-  imageUrl: 'nats/21/card.png',
+  imageUrl: 'ccs/2/card.png',
   number: 1,
   isDisabled: false,
   difficulty: 'advanced',

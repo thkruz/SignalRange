@@ -39,7 +39,7 @@ import { cubehop1Satellite, wxsat19Satellite } from './satellites';
 export const hamSdrScenario8Data: ScenarioData = {
   id: 'ham-sdr-scenario8',
   url: 'ham-sdr/scenarios/ham-sdr-scenario8',
-  imageUrl: 'nats/8/card.png',
+  imageUrl: 'home-sdr/8/card.png',
   number: 8,
   isDisabled: false,
   difficulty: 'advanced',

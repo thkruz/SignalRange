@@ -86,7 +86,7 @@ const TALON2_CHANNELS = [
 export const ccsScenario5Data: ScenarioData = {
   id: 'ccs-scenario5',
   url: 'ccs/scenarios/ccs-scenario5',
-  imageUrl: 'nats/24/card.png',
+  imageUrl: 'ccs/5/card.png',
   number: 4,
   isDisabled: false,
   difficulty: 'advanced',

@@ -63,7 +63,7 @@ const firstLightQfhStation = {
 export const hamSdrScenario1Data: ScenarioData = {
   id: 'ham-sdr-scenario1',
   url: 'ham-sdr/scenarios/ham-sdr-scenario1',
-  imageUrl: 'nats/1/card.png',
+  imageUrl: 'home-sdr/1/card.png',
   number: 1,
   isDisabled: false,
   difficulty: 'beginner',

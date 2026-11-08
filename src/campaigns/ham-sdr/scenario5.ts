@@ -41,7 +41,7 @@ import { navstar77Satellite } from './satellites';
 export const hamSdrScenario5Data: ScenarioData = {
   id: 'ham-sdr-scenario5',
   url: 'ham-sdr/scenarios/ham-sdr-scenario5',
-  imageUrl: 'nats/5/card.png',
+  imageUrl: 'home-sdr/5/card.png',
   number: 5,
   isDisabled: false,
   difficulty: 'intermediate',

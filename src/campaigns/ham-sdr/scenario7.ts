@@ -43,7 +43,7 @@ backyardYagiS7.spectrumAnalyzers[0] = { ...backyardYagiS7.spectrumAnalyzers[0], 
 export const hamSdrScenario7Data: ScenarioData = {
   id: 'ham-sdr-scenario7',
   url: 'ham-sdr/scenarios/ham-sdr-scenario7',
-  imageUrl: 'nats/7/card.png',
+  imageUrl: 'home-sdr/7/card.png',
   number: 7,
   isDisabled: false,
   difficulty: 'advanced',

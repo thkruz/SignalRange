@@ -23,7 +23,7 @@ import { sentry7Satellite, sentry9Satellite } from './satellites';
 export const signalHunterSandboxData: ScenarioData = {
   id: 'signal-hunter-sandbox',
   url: 'signal-hunter/scenarios/signal-hunter-sandbox',
-  imageUrl: 'nats/21/card.png',
+  imageUrl: 'signal-hunter/sandbox/card.png',
   number: 0,
   isDisabled: false,
   difficulty: 'advanced',

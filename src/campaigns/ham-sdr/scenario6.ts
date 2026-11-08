@@ -45,7 +45,7 @@ const s6CubehopSatellite = makeCubehop1Satellite();
 export const hamSdrScenario6Data: ScenarioData = {
   id: 'ham-sdr-scenario6',
   url: 'ham-sdr/scenarios/ham-sdr-scenario6',
-  imageUrl: 'nats/6/card.png',
+  imageUrl: 'home-sdr/6/card.png',
   number: 6,
   isDisabled: false,
   difficulty: 'intermediate',

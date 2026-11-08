@@ -32,7 +32,7 @@ import { cubehop1Satellite } from './satellites';
 export const hamSdrScenario4Data: ScenarioData = {
   id: 'ham-sdr-scenario4',
   url: 'ham-sdr/scenarios/ham-sdr-scenario4',
-  imageUrl: 'nats/4/card.png',
+  imageUrl: 'home-sdr/4/card.png',
   number: 4,
   isDisabled: false,
   difficulty: 'intermediate',

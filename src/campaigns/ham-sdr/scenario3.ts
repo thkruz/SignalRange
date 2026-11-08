@@ -44,7 +44,7 @@ const yagiStationLhcpStart: GroundStationConfig = {
 export const hamSdrScenario3Data: ScenarioData = {
   id: 'ham-sdr-scenario3',
   url: 'ham-sdr/scenarios/ham-sdr-scenario3',
-  imageUrl: 'nats/3/card.png',
+  imageUrl: 'home-sdr/3/card.png',
   number: 3,
   isDisabled: false,
   difficulty: 'intermediate',

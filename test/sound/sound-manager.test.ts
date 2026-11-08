@@ -193,7 +193,7 @@ describe('SoundManager.getInstance', () => {
         manager.play(Sfx.POWER_ON);
 
         expect((manager as any).currentlyPlaying.has(Sfx.POWER_ON)).toBe(true);
-        expect(mockAudio.addEventListener).toHaveBeenCalledWith('ended', expect.any(Function));
+        expect(mockAudio.addEventListener).toHaveBeenCalledWith('ended', expect.any(Function), { once: true });
       });
 
       it('should track currently playing for looping sounds', () => {

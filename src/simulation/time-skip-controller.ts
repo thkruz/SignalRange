@@ -460,7 +460,7 @@ export class TimeSkipController {
     // A failed objective or an opened brief stops the clock mid-skip. Advancing
     // through a paused scenario would run the sky forward while the mission is
     // frozen, so bail out and keep whatever has been skipped so far.
-    if (OpsLogManager.isInitialized() && OpsLogManager.getInstance().isPaused()) {
+    if (SimClock.isPaused('menu') || (OpsLogManager.isInitialized() && OpsLogManager.getInstance().isPaused())) {
       this.finish_(false);
 
       return false;

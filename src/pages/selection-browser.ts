@@ -1,3 +1,5 @@
+import { prefersReducedMotion } from '@app/game-menu/display-preferences';
+
 /** Shared interaction for the two mission-library screens. */
 export function selectionKeyboard(event: KeyboardEvent): void {
   const target = event.target as HTMLElement;
@@ -51,7 +53,7 @@ export function updateSelectionDetail(detail: HTMLElement, markup: string): void
 }
 
 export function animateSelection(element: HTMLElement): void {
-  if (typeof element.animate !== 'function' || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+  if (typeof element.animate !== 'function' || prefersReducedMotion()) return;
   for (const animation of element.getAnimations()) animation.cancel();
   element.animate([{ opacity: 0.25 }, { opacity: 1 }], { duration: 180, easing: 'ease-out' });
 }
@@ -70,7 +72,7 @@ export function cancelSelectionExit(): void {
 export function leaveSelection(navigate: () => void): void {
   cancelSelectionExit();
   const page = Array.from(document.querySelectorAll<HTMLElement>('.selection-page')).find((element) => element.style.display === 'flex');
-  if (!page || typeof page.animate !== 'function' || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+  if (!page || typeof page.animate !== 'function' || prefersReducedMotion()) {
     navigate();
     return;
   }

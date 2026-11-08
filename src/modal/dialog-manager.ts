@@ -3,6 +3,7 @@ import { qs } from '@app/engine/utils/query-selector';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { CountdownHold } from '@app/objectives/countdown-hold';
+import { SimClock } from '@app/simulation/sim-clock';
 import SoundManager from '@app/sound/sound-manager';
 import { Character, CharacterCompany, CharacterNames, CharacterTitles, Emotion, getCharacterAvatarUrl } from './character-enum';
 import { DialogHistoryManager } from './dialog-history-manager';
@@ -189,10 +190,11 @@ export class DialogManager {
 
     // Focus for accessibility
     overlay.tabIndex = -1;
-    overlay.focus();
+    if (!SimClock.isPaused('menu')) overlay.focus();
   }
 
   private handleKeydown_(e: KeyboardEvent): void {
+    if (SimClock.isPaused('menu')) return;
     if (!this.dialogElement || !this.isRevealed_) return;
     if (e.key !== ' ' && e.key !== 'Enter') return;
     e.preventDefault();
@@ -251,6 +253,10 @@ export class DialogManager {
     const holdDuration = isAudioPlaying ? 1500 : 250; // 1.5 seconds while playing, 250ms when finished
 
     const updateProgress = () => {
+      if (SimClock.isPaused('menu')) {
+        this.cancelHoldTimer();
+        return;
+      }
       if (!this.isHolding || !this.holdStartTime) return;
 
       const elapsed = Date.now() - this.holdStartTime;
@@ -310,6 +316,7 @@ export class DialogManager {
    * control under the dialog (Phase 30 D6)
    */
   private dismiss_(cause: DismissCause): void {
+    if (SimClock.isPaused('menu')) return;
     if (!this.dialogElement) {
       return;
     }

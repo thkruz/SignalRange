@@ -137,7 +137,7 @@ export class Ambience {
     if (!this.ctx_ || !this.master_) {
       return;
     }
-    const on = AudioPreferences.getInstance().ambienceEnabled ? 1 : 0;
+    const on = AudioPreferences.getInstance().volume('ambience');
     this.master_.gain.setTargetAtTime(on, this.ctx_.currentTime, 0.4);
   }
 

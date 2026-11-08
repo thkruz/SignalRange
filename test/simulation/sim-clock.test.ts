@@ -16,6 +16,22 @@ function runFrames(frameMs: number, totalMs: number): number {
 }
 
 describe('SimClock', () => {
+  it('freezes run time, mission time, and scheduled equipment timers for menus without releasing brief pauses', () => {
+    const callback = vi.fn();
+    SimClock.setTimeout(callback, 100);
+    SimClock.pause('scenario');
+    SimClock.pause('menu');
+    expect(runFrames(FIXED_STEP_MS, 10_000)).toBe(0);
+    expect(SimClock.runMs()).toBe(0);
+    expect(callback).not.toHaveBeenCalled();
+    SimClock.resume('menu');
+    runFrames(FIXED_STEP_MS, 200);
+    expect(callback).toHaveBeenCalledOnce();
+    expect(SimClock.scenarioElapsedMs()).toBe(0);
+    SimClock.resume('scenario');
+    expect(runFrames(FIXED_STEP_MS, 1000)).toBe(60);
+    expect(SimClock.scenarioElapsedMs()).toBe(1000);
+  });
   it('stops both clocks during mission loading without releasing a visibility pause', () => {
     SimClock.pause('loading');
     SimClock.pause('hidden');

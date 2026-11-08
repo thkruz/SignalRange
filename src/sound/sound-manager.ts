@@ -19,6 +19,17 @@ interface SfxDef {
 }
 
 const sfx = (name: string): string => `/sfx/${name}.mp3`;
+const UI_SOUNDS = new Set([
+  Sfx.UI_CLICK,
+  Sfx.UI_CONFIRM,
+  Sfx.UI_ERROR,
+  Sfx.NOTIFY,
+  Sfx.OBJECTIVE_COMPLETE,
+  Sfx.SCENARIO_COMPLETE,
+  Sfx.SCENARIO_FAILED,
+  Sfx.TIMER_WARNING,
+  Sfx.PENALTY,
+]);
 
 const SFX_DEFS: Record<Sfx, SfxDef> = {
   [Sfx.POWER_ON]: { files: [sfx('power-on')], volume: 0.7, throttleMs: 0, restart: true },
@@ -66,8 +77,37 @@ class SoundManager {
   private customAudio: HTMLAudioElement | null = null;
   private readonly customAudioCache: Map<string, HTMLAudioElement> = new Map();
   private ttsEnabled_: boolean = false;
+  private menuPaused_ = false;
+  private customGeneration_ = 0;
+  private readonly activeSounds_ = new Map<HTMLAudioElement, Sfx>();
+  private readonly pausedSounds_ = new Set<HTMLAudioElement>();
 
-  private constructor() {}
+  private constructor() {
+    AudioPreferences.getInstance().onChange(() => this.applyVolumes_());
+  }
+
+  private applyVolumes_(): void {
+    const prefs = AudioPreferences.getInstance();
+    for (const [audio, sound] of this.activeSounds_) audio.volume = SFX_DEFS[sound].volume * prefs.volume(UI_SOUNDS.has(sound) ? 'ui' : 'equipment');
+    if (this.customAudio) this.customAudio.volume = prefs.volume('voice');
+  }
+
+  setMenuPaused(paused: boolean): void {
+    if (paused === this.menuPaused_) return;
+    this.menuPaused_ = paused;
+    if (paused) {
+      for (const audio of [...this.activeSounds_.keys(), ...(this.customAudio ? [this.customAudio] : [])]) {
+        if (!audio.paused && !audio.ended) {
+          this.pausedSounds_.add(audio);
+          audio.pause();
+        }
+      }
+    } else {
+      for (const audio of this.pausedSounds_) void audio.play().catch(() => undefined);
+      this.pausedSounds_.clear();
+    }
+    TtsService.getInstance().setPaused(paused);
+  }
 
   setTtsEnabled(enabled: boolean): void {
     this.ttsEnabled_ = enabled;
@@ -86,7 +126,7 @@ class SoundManager {
 
   play(sfx: Sfx): void {
     const def = SFX_DEFS[sfx];
-    if (!def || !AudioPreferences.getInstance().sfxEnabled) {
+    if (!def || !AudioPreferences.getInstance().sfxEnabled || (this.menuPaused_ && !UI_SOUNDS.has(sfx))) {
       return;
     }
     const isLooping = def.loop === true;
@@ -99,6 +139,8 @@ class SoundManager {
     if (def.restart) {
       const playing = this.currentlyPlaying.get(sfx);
       if (playing) {
+        this.activeSounds_.delete(playing);
+        this.pausedSounds_.delete(playing);
         playing.pause();
         playing.currentTime = 0;
         this.currentlyPlaying.delete(sfx);
@@ -124,9 +166,21 @@ class SoundManager {
       audio.loop = true;
     }
 
-    audio.volume = def.volume;
+    this.activeSounds_.set(audio, sfx);
+    if (!isLooping)
+      audio.addEventListener(
+        'ended',
+        () => {
+          this.activeSounds_.delete(audio);
+          if (this.currentlyPlaying.get(sfx) === audio) this.currentlyPlaying.delete(sfx);
+        },
+        { once: true }
+      );
+    audio.volume = def.volume * AudioPreferences.getInstance().volume(UI_SOUNDS.has(sfx) ? 'ui' : 'equipment');
     audio.currentTime = 0;
     audio.play().catch((err: unknown) => {
+      this.activeSounds_.delete(audio);
+      if (this.currentlyPlaying.get(sfx) === audio) this.currentlyPlaying.delete(sfx);
       // NotAllowedError: no user gesture yet (autoplay policy); AbortError: paused before it started
       const name = (err as { name?: string } | null)?.name;
       if (name !== 'NotAllowedError' && name !== 'AbortError') {
@@ -137,11 +191,6 @@ class SoundManager {
     // Track currently playing audio for restart-enabled or looping sounds
     if (def.restart || isLooping) {
       this.currentlyPlaying.set(sfx, audio);
-      if (!isLooping) {
-        audio.addEventListener('ended', () => {
-          this.currentlyPlaying.delete(sfx);
-        });
-      }
     }
 
     this.lastPlayTime.set(sfx, Date.now());
@@ -150,6 +199,8 @@ class SoundManager {
   stop(sfx: Sfx): void {
     const playing = this.currentlyPlaying.get(sfx);
     if (playing) {
+      this.pausedSounds_.delete(playing);
+      this.activeSounds_.delete(playing);
       // Fade out over 300ms
       const fadeDuration = 300;
       const steps = 30;
@@ -175,8 +226,10 @@ class SoundManager {
   }
 
   playCustom(audioUrl: string, fallbackText?: string, onTtsFallback?: (isTts: boolean) => void): void {
+    const generation = ++this.customGeneration_;
     // Stop any currently playing custom audio or TTS
     if (this.customAudio) {
+      this.pausedSounds_.delete(this.customAudio);
       this.customAudio.pause();
       this.customAudio.currentTime = 0;
     }
@@ -185,11 +238,15 @@ class SoundManager {
     // Try to load and play audio
     this.loadAudio_(audioUrl)
       .then((audio) => {
+        if (generation !== this.customGeneration_) return;
         audio.currentTime = 0;
-        audio.play().catch(() => {
-          // Playback failed (e.g., user hasn't interacted with page)
-          this.tryTtsFallback_(fallbackText, onTtsFallback);
-        });
+        audio.volume = AudioPreferences.getInstance().volume('voice');
+        if (this.menuPaused_) this.pausedSounds_.add(audio);
+        else
+          audio.play().catch(() => {
+            // Playback failed (e.g., user hasn't interacted with page)
+            this.tryTtsFallback_(fallbackText, onTtsFallback);
+          });
 
         this.customAudio = audio;
         onTtsFallback?.(false);
@@ -202,6 +259,7 @@ class SoundManager {
         });
       })
       .catch(() => {
+        if (generation !== this.customGeneration_) return;
         // Audio failed to load, use TTS fallback
         console.warn(`Audio file not found: ${audioUrl}. Using TTS fallback.`);
         this.tryTtsFallback_(fallbackText, onTtsFallback);
@@ -267,10 +325,12 @@ class SoundManager {
   }
 
   stopCustom(): void {
+    ++this.customGeneration_;
     // Stop TTS if active
     TtsService.getInstance().stop();
 
     if (this.customAudio) {
+      this.pausedSounds_.delete(this.customAudio);
       // Fade out over 300ms
       const fadeDuration = 300;
       const steps = 30;

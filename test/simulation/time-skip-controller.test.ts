@@ -244,6 +244,17 @@ describe('TimeSkipController', () => {
   });
 
   describe('fast-forward', () => {
+    it('stops a skip when a menu opens without spending any more mission time', () => {
+      const controller = TimeSkipController.getInstance();
+      expect(controller.start(controller.findTarget()!)).toBe(true);
+      controller.step(controller.animationMs / 4);
+      const pausedAt = missionNowMs();
+      SimClock.pause('menu');
+      expect(controller.step(controller.animationMs)).toBe(false);
+      expect(missionNowMs()).toBe(pausedAt);
+      SimClock.resume('menu');
+      expect(controller.isSkipping).toBe(false);
+    });
     it('should advance the scenario clock to the target across the animation', () => {
       const controller = TimeSkipController.getInstance();
       const target = controller.findTarget()!;

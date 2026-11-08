@@ -60,8 +60,8 @@
   border-radius: 50%;
   overflow: hidden;
   background: var(--mc-dialog-inset, #2a2a2a);
-  border: 3px solid var(--mc-dialog-avatar-ring, #691915);
-  box-shadow: 0 4px 12px var(--mc-dialog-avatar-glow, rgba(255, 53, 53, 0.3));
+  border: 3px solid var(--mc-dialog-avatar-ring, var(--mc-accent-red, #691915));
+  box-shadow: 0 4px 12px var(--mc-dialog-avatar-glow, rgba(var(--mc-accent-red-bright-rgb, 255, 53, 53), 0.3));
 }
 
 .dialog-avatar img {

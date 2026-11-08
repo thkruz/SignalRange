@@ -668,10 +668,11 @@ export const scenario5Data: ScenarioData = {
           params: {
             notchCenterFrequency: 1515, // MHz - IF frequency of interference (5250 - 3735 = 1515)
             notchBandwidth: 1, // MHz - matches narrowband interference
-            notchDepth: 40, // dB - sufficient attenuation
+            // Accepts 40-60 dB: the clips promise "at least 40 dB" and "40 dB ... below the noise floor"
+            notchDepth: 50,
             notchCenterFrequencyTolerance: 0, // Exact match required
             notchBandwidthTolerance: 0.25,
-            notchDepthTolerance: 20,
+            notchDepthTolerance: 10,
           },
           maintainUntilObjectiveComplete: true,
         },

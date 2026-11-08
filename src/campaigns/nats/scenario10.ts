@@ -834,7 +834,7 @@ export const scenario10Data: ScenarioData = {
           That's the window. Pass is closed on our side - customer's confirmed the data, telemetry shows a clean delivery, no dropouts. Nicely done.
         </p>
         <p>
-          Bring the amp back to resting and I'll send the disposition through to SeaLink ops. Thanks, eh.
+          Bring the amp back to resting and I'll send the disposition through to SeaLink ops. Thanks.
         </p>
         `,
         character: Character.MARCUS_CHEN,

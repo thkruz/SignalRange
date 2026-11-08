@@ -1037,7 +1037,7 @@ export const scenario12Data: ScenarioData = {
       'notify-customer': {
         text: `
         <p>
-          Marcus from Halifax. Spacecraft side just saw your uplink come back on TM-1 - clean signal, right in the passband, no anomalies. Customers never noticed the swap. Beauty, eh?
+          Marcus from Halifax. Spacecraft side just saw your uplink come back on TM-1 - clean signal, right in the passband, no anomalies. Customers never noticed the swap. Beauty.
         </p>
         `,
         character: Character.MARCUS_CHEN,

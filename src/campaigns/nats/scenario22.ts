@@ -804,7 +804,7 @@ export const scenario22Data: ScenarioData = {
       'measure-beacon': {
         text: `
         <p>
-          Marcus from Halifax - I hear you're writing AURORA's obituary. For your trend. Our vehicle telemetry shows the array down to about seventy percent of beginning-of-life output, and the bus is auto-shedding RF load to protect the housekeeping buses. Your beacon decline and our power numbers are the same story. She's earned her retirement, eh.
+          Marcus from Halifax - I hear you're writing AURORA's obituary. For your trend. Our vehicle telemetry shows the array down to about seventy percent of beginning-of-life output, and the bus is auto-shedding RF load to protect the housekeeping buses. Your beacon decline and our power numbers are the same story. She's earned her retirement.
         </p>
         `,
         character: Character.MARCUS_CHEN,

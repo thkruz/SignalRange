@@ -807,7 +807,7 @@ export const scenario17Data: ScenarioData = {
       'marcus-confirm': {
         text: `
         <p>
-          Marcus in Halifax. Vehicle telemetry was nominal straight through your window - your uplink never wavered on our side, not even at peak. Whatever the Sun did to your noise floor, the spacecraft never knew about it. Clean transit, eh.
+          Marcus in Halifax. Vehicle telemetry was nominal straight through your window - your uplink never wavered on our side, not even at peak. Whatever the Sun did to your noise floor, the spacecraft never knew about it. Clean transit.
         </p>
         `,
         character: Character.MARCUS_CHEN,

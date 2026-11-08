@@ -838,7 +838,7 @@ export const scenario18Data: ScenarioData = {
       'verify-carrier-recovery': {
         text: `
         <p>
-          And there it is - your uplink's back up at the transponder, right where it belongs. The dish is flying the bird instead of the prediction. Nicely done, eh.
+          And there it is - your uplink's back up at the transponder, right where it belongs. The dish is flying the bird instead of the prediction. Nicely done.
         </p>
         `,
         character: Character.MARCUS_CHEN,

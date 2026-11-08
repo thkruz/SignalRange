@@ -960,7 +960,7 @@ export const scenario24Data: ScenarioData = {
       'pass-go-nogo-quiz': {
         text: `
         <p>
-          Copy your GO with the caveat - and noted on the sunset. That's the third time AURORA's come up thin this quarter; your migration recommendation's looking less like planning and more like a schedule. We'll take the pass. Thanks, eh.
+          Copy your GO with the caveat - and noted on the sunset. That's the third time AURORA's come up thin this quarter; your migration recommendation's looking less like planning and more like a schedule. We'll take the pass. Thanks.
         </p>
         `,
         character: Character.MARCUS_CHEN,

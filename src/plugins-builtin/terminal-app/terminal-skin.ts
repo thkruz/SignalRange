@@ -24,6 +24,8 @@ export interface TerminalSkin {
   readonly sampleIntervalS: number;
   /** How long a normal beam handover drop is recorded as lasting, seconds */
   readonly handoverDropS: number;
+  /** History the app already holds when the scenario starts, seconds (warm start); absent or 0: none */
+  readonly warmStartS?: number;
 }
 
 export const SKYLINK_SKIN: TerminalSkin = {
@@ -35,6 +37,7 @@ export const SKYLINK_SKIN: TerminalSkin = {
   debugFields: ['software-version', 'uptime', 'boot-count', 'location-valid', 'gnss-satellites', 'alert-flags', 'tilt-boresight', 'obstruction-fraction'],
   sampleIntervalS: 30,
   handoverDropS: 2,
+  warmStartS: 3600,
 };
 
 /** Boot plus acquisition time for this skin; `rand01` in [0, 1] picks within the range */

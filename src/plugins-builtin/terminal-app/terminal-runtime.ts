@@ -64,6 +64,7 @@ export class TerminalRuntime implements TerminalActions {
       serviceId,
       phasedArray,
       obstruction,
+      warmStart: true,
       obstructionFraction: obstruction ? () => (obstruction.summary().coverage > 0 ? obstruction.obstructionFraction() : null) : undefined,
     });
     const runtime = new TerminalRuntime(plant, model);

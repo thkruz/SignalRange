@@ -176,21 +176,47 @@ export class ObstructionAccumulator {
     }
     const blockage = this.reader_.blockage();
     const wedges = blockage.partialIds.map((id) => this.wedge_(id));
-    const serving = this.reader_.serving();
+    this.creditAround_(beam.az, beam.el, dt, blockage.wholeSky, wedges, this.reader_.serving());
+  }
+
+  /** Mark the cells inside the footprint around a beam direction */
+  private creditAround_(beamAz: number, beamEl: number, dt: number, wholeSky: boolean, wedges: readonly TreeLineWedge[], serving: boolean): void {
     for (let r = 0; r < this.elCells_; r++) {
       const el = this.cellEl_(r);
       for (let c = 0; c < this.azCells_; c++) {
         const az = this.cellAz_(c);
-        if (skySeparationDeg(beam.az, beam.el, az, el) > this.footprintDeg_) {
+        if (skySeparationDeg(beamAz, beamEl, az, el) > this.footprintDeg_) {
           continue;
         }
         const i = r * this.azCells_ + c;
-        if (blockage.wholeSky || wedges.some((w) => wedgeContains(w, az, el))) {
+        if (wholeSky || wedges.some((w) => wedgeContains(w, az, el))) {
           this.blockedS_[i] += dt;
         } else if (serving) {
           this.servedS_[i] += dt;
         }
       }
+    }
+  }
+
+  /**
+   * Warm start (phase 40 backfill). The beam track of past hours cannot be replayed, so this is a
+   * documented approximation: it credits `spanS` seconds of beams spread over the sky above the mask
+   * (drawn from `rand`, a seeded 0..1 source; lower elevations are favoured, as satellites spend more
+   * time there), judged against the world as it stands now (observing, serving, blockage). It never
+   * touches the clock, the check flow or `lastS`.
+   */
+  backfill(spanS: number, rand: () => number, stepS = 15): void {
+    if (spanS <= 0 || !this.reader_.observing()) {
+      return;
+    }
+    const blockage = this.reader_.blockage();
+    const wedges = blockage.partialIds.map((id) => this.wedge_(id));
+    const serving = this.reader_.serving();
+    const span = 90 - this.maskElDeg;
+    for (let t = 0; t < spanS; t += stepS) {
+      const az = rand() * 360;
+      const el = this.maskElDeg + span * rand() ** 1.5;
+      this.creditAround_(az, el, Math.min(stepS, spanS - t), blockage.wholeSky, wedges, serving);
     }
   }
 

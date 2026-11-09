@@ -59,6 +59,11 @@ export interface TerminalAppModelDeps {
   obstruction?: ObstructionAccumulator | null;
   /** Uptime already accumulated at model creation, seconds */
   initialUptimeS?: number;
+  /**
+   * Warm start: backfill `skin.warmStartS` seconds of history from the state at creation (the dish
+   * has been running before the player opens the app). Off by default.
+   */
+  warmStart?: boolean;
 }
 
 export interface OutageEntry {
@@ -210,8 +215,14 @@ export class TerminalAppModel {
   private cached_: TerminalSnapshot | null = null;
   private speedTests_: SpeedTestRecord[] = [];
 
+  /** Uptime the warm start gave the dish; null when there was none */
+  private warmUptimeS_: number | null = null;
+
   constructor(deps: TerminalAppModelDeps) {
     this.deps_ = deps;
+    if (deps.warmStart) {
+      this.warmStart_(deps.skin.warmStartS ?? 0);
+    }
   }
 
   /** Advance the dish-side recording to the plant's current sim time. Call about once per second. */
@@ -222,7 +233,7 @@ export class TerminalAppModel {
     if (this.lastTickS_ === null) {
       this.lastTickS_ = now;
       this.lastSampleS_ = now;
-      this.uptimeStartS_ = now - (this.deps_.initialUptimeS ?? 0);
+      this.uptimeStartS_ = now - (this.warmUptimeS_ ?? this.deps_.initialUptimeS ?? 0);
     }
     const dt = Math.max(0, now - this.lastTickS_);
     const status = plant.dishStatus();
@@ -455,6 +466,56 @@ export class TerminalAppModel {
     this.outageSinceSampleS_ += this.deps_.skin.handoverDropS;
   }
 
+  // ------------------------------------------------------------- warm start
+
+  /**
+   * Fill the span before creation from the state at creation, through side-effect-free reads
+   * (`peekSample`) and a seeded rng, so a run is repeatable. The advance of time, evidence and
+   * transmit time are untouched. A dish that is dark or just rebooting gets no history and no
+   * uptime. A lasting fault (obstruction, no fix, account) shows as an outage for the whole span;
+   * anything that begins after creation never appears. Real beam handovers are not invented.
+   */
+  private warmStart_(spanS: number): void {
+    const { plant, skin, serviceId } = this.deps_;
+    const now = plant.nowS();
+    const status = plant.dishStatus();
+    if (spanS <= 0 || DARK_STATUSES.includes(status) || status === 'searching') {
+      return;
+    }
+    this.refreshService_();
+    const obs = this.observe_(status);
+    if (obs.outage === 'searching' || obs.outage === 'booting' || obs.outage === 'power-loss' || obs.outage === 'thermal-shutdown') {
+      return;
+    }
+    const rand = seededRandom(`${serviceId ?? 'terminal'}:${Math.round(now)}`);
+    const lasting = obs.outage !== null && obs.outage !== 'handover';
+    const base = lasting ? { downMbps: 0, upMbps: 0, latencyMs: null as number | null } : this.takeNumbers_();
+    const loss = this.lossPct_ ?? 0;
+    const interval = Math.max(1, skin.sampleIntervalS);
+    const count = Math.floor(spanS / interval);
+    for (let k = count; k >= 1; k--) {
+      const wave = Math.sin((k / count) * Math.PI * 3 + rand());
+      const scale = 1 + wave * 0.08 + (rand() - 0.5) * 0.14;
+      this.samples_.push({
+        tS: now - k * interval,
+        downMbps: lasting ? 0 : round1(base.downMbps * scale),
+        upMbps: lasting ? 0 : round1(base.upMbps * scale),
+        latencyMs: lasting || base.latencyMs === null ? null : round1(base.latencyMs * (1 + (rand() - 0.5) * 0.3)),
+        pingDropPct: lasting ? 100 : Math.min(100, round1(loss + (rand() < 0.2 ? rand() * 0.8 : 0))),
+      });
+    }
+    this.deps_.obstruction?.backfill(spanS, rand);
+    this.warmUptimeS_ = Math.max(spanS, this.deps_.initialUptimeS ?? 0);
+    this.uptimeStartS_ = now - this.warmUptimeS_;
+    if (lasting && obs.outage) {
+      this.open_ = { startS: now - spanS, key: causeLabelFor(obs.outage).key };
+    }
+    if (!lasting) {
+      this.current_ = { downMbps: base.downMbps, upMbps: base.upMbps, latencyMs: base.latencyMs };
+      this.measured_ = this.hasServiceNumber_;
+    }
+  }
+
   // ---------------------------------------------------------------- samples
 
   private sampleLoop_(now: number, interval: number): void {
@@ -618,6 +679,29 @@ export class TerminalAppModel {
       obstructionFraction: fraction === null ? null : Math.min(1, Math.max(0, fraction)),
     };
   }
+}
+
+/** Small seeded generator (mulberry32 over an FNV-1a seed), 0..1 */
+function seededRandom(seedText: string): () => number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < seedText.length; i++) {
+    h ^= seedText.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  let a = h >>> 0;
+
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function round1(x: number): number {
+  return Math.round(x * 10) / 10;
 }
 
 /** Adapt the plant manager to the model's reader (structural; `getLoadW` is the dish draw) */

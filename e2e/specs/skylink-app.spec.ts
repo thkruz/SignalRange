@@ -44,6 +44,16 @@ async function dismissDialogs(page: Page): Promise<void> {
   }
 }
 
+/** Warm start: Statistics and the obstruction map already hold history right after load, before any clock advance */
+async function expectWarmHistory(page: Page): Promise<void> {
+  await openScreen(page, 'statistics');
+  await expect(page.locator('#stats-empty')).toHaveText('');
+  await expect(page.locator('#stats-throughput svg')).toBeVisible();
+  await openScreen(page, 'obstructions');
+  await expect(page.locator('#obs-seen')).not.toHaveText(/^0\s?%$/u);
+  await expect(page.locator('#obs-seen')).toHaveText(/\d/u);
+}
+
 async function openTab(page: Page, tabId: string): Promise<void> {
   await dismissDialogs(page);
   if (tabId.startsWith('station-')) {
@@ -119,6 +129,11 @@ test.describe('SkyLink app at the Frontline field station (real browser)', () =>
 
   test.afterAll(async () => {
     await page.close();
+  });
+
+  test('Statistics and the obstruction map show history immediately after load (warm start)', async () => {
+    await expectWarmHistory(page);
+    await openScreen(page, 'home');
   });
 
   test('tab bar is Site + SkyLink, SkyLink is the default, trainer toggles engineering tabs', async () => {
@@ -270,6 +285,11 @@ test.describe('SkyLink app in the Frontline sandbox (real browser)', () => {
 
   test.afterAll(async () => {
     await page?.close();
+  });
+
+  test('Statistics and the obstruction map show history immediately after load (warm start)', async () => {
+    await expectWarmHistory(page);
+    await openScreen(page, 'home');
   });
 
   test('Home shows Online with a measured, non-zero download', async () => {

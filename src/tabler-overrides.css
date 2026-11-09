@@ -181,6 +181,14 @@ body {
   /* Darker accent used for dark-surface text highlights */
   --mc-accent-text-dark: #dd382f;
 
+  /* Sky plot / Array Control palette (campaign-invariant; the app has a single dark theme) */
+  --mc-sky-known: #4da3ff;
+  --mc-sky-target: #3ddc84;
+  --mc-sky-candidate: #3ddc84;
+  --mc-sky-zone: #e0a030;
+  --mc-sky-amber: #e0a030;
+  --mc-sky-dim: #6b7280;
+
   /* Semantic danger/fault colors - campaign themes must NOT override these:
      alarms stay red even when the brand accent changes */
   --mc-danger: #ba160c;

@@ -193,6 +193,21 @@ export class BeamScheduler {
     this.invalidate();
   }
 
+  /** Sky path of one satellite from simMs over spanMs (above the horizon only), for the page's predicted track. */
+  predictTrack(norad: number, simMs: number, spanMs: number, stepMs: number): { az: number; el: number }[] {
+    const out: { az: number; el: number }[] = [];
+
+    for (let t = 0; t <= spanMs; t += stepMs) {
+      const p = this.source_.positionOf(norad, simMs + t);
+
+      if (p && p.el >= 0) {
+        out.push({ az: p.az, el: p.el });
+      }
+    }
+
+    return out;
+  }
+
   get mode(): BeamMode {
     return this.mode_;
   }

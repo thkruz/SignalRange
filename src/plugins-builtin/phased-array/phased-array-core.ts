@@ -358,6 +358,13 @@ export class PhasedArrayCore extends AntennaCore {
     return this.geoZone_;
   }
 
+  /** Predicted sky path of the current target over the next spanMs (empty with no target). */
+  getTargetTrack(spanMs = 5 * 60_000, stepMs = 15_000): { az: number; el: number }[] {
+    const norad = this.scheduler_.targetNorad;
+
+    return norad === null ? [] : this.scheduler_.predictTrack(norad, this.lastSimMs_ || this.currentSimMs_(), spanMs, stepMs);
+  }
+
   // ── read model (WP4) ──────────────────────────────────────────────────────
 
   /** Everything the Array Control page shows, from cached scheduler output (visible list and predictions refresh at about 1 Hz). */

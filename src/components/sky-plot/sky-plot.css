@@ -1,6 +1,6 @@
 /*
  * SkyPlot palette. Everything resolves from Mission Control --mc-* tokens; the sky-specific
- * tokens (--mc-sky-*) have no global definition yet, so they carry a fallback colour.
+ * tokens (--mc-sky-*) are defined in tabler-overrides.css; the fallbacks here only cover detached DOM.
  */
 .sky-plot {
   --sky-bg: var(--mc-equip-bg, #1a1a1a);
@@ -8,7 +8,7 @@
   --sky-horizon: var(--mc-equip-control, #555555);
   --sky-label: var(--mc-equip-text-muted, #888888);
   --sky-known: var(--mc-sky-known, #4da3ff);
-  --sky-dim: var(--mc-text-muted, #6b6b6b);
+  --sky-dim: var(--mc-sky-dim, #6b6b6b);
   --sky-target: var(--mc-sky-target, #3ddc84);
   --sky-candidate: var(--mc-sky-candidate, #3ddc84);
   --sky-pinned: var(--mc-accent-red-bright, #ff2827);

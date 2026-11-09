@@ -36,7 +36,7 @@ export interface GroundStationState {
   isOperational: boolean;
   equipment: Partial<GroundStationEquipmentState>;
   /** Station class (see GroundStationConfig.stationClass); undefined = professional */
-  stationClass?: 'professional' | 'backyard';
+  stationClass?: 'professional' | 'backyard' | 'field';
 }
 
 /**
@@ -63,10 +63,11 @@ export interface GroundStationConfig {
   serverId?: number;
   /**
    * Station class. Opt-in: 'backyard' (Campaign 3+) enables the hobbyist SDR
-   * Console tab and hides the TX chain; when omitted the station renders as a
+   * Console tab and hides the TX chain; 'field' (Campaign 6) shows only the Site
+   * tab plus plugin station tabs, with the engineering tabs behind a trainer unlock; when omitted the station renders as a
    * professional site exactly as before.
    */
-  stationClass?: 'professional' | 'backyard';
+  stationClass?: 'professional' | 'backyard' | 'field';
   /**
    * The station's ACU tag (phase 27, r2-s11-F2). Omitted: derived from the
    * station number in `id` ('ME-02' -> 'ACU-02'), so two sites never both

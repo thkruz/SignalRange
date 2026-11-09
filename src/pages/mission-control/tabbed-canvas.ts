@@ -19,9 +19,10 @@ import { ScenarioManager } from '@app/scenario-manager';
 import { hasOrbitalSatellites } from '@app/simulation/sim-queries';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import './tabbed-canvas.css';
+import type { GroundStation } from '@app/assets/ground-station/ground-station';
 import { ModalConfirm } from '@app/engine/ui/modal-confirm';
 import { OrbitalSatellite } from '@app/equipment/satellite/orbital-satellite';
-import { type AntennaPage, AntennaPageRegistry } from '@app/pages/mission-control/antenna-page-registry';
+import { type AntennaPage, AntennaPageRegistry, STATION_TAB_PREFIX, type StationTabFactory } from '@app/pages/mission-control/antenna-page-registry';
 import { ACUControlTab } from '@app/pages/mission-control/tabs/acu-control-tab';
 import { CommandingTab } from '@app/pages/mission-control/tabs/commanding-tab';
 import { ContactScheduleTab } from '@app/pages/mission-control/tabs/contact-schedule-tab';
@@ -40,6 +41,7 @@ import { SecurityConsoleTab } from '@app/pages/mission-control/tabs/security-con
 import { SiteTab } from '@app/pages/mission-control/tabs/site-tab';
 import { TelemetryTab } from '@app/pages/mission-control/tabs/telemetry-tab';
 import { TxChainTab } from '@app/pages/mission-control/tabs/tx-chain-tab';
+import { FieldTabPolicy } from '@app/physical/field-tab-policy';
 import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import { KeepTrackEmbedHost } from '@app/services/keeptrack-embed-host';
 import { SettingsManager } from '@app/settings/settings-manager';
@@ -83,6 +85,9 @@ export class TabbedCanvas extends BaseElement {
    * to its first tab, so switching between assets doesn't lose a workflow.
    */
   private readonly lastTabByAsset_: Map<string, string> = new Map();
+  /** Tab ids on screen at a locked 'field' station; null elsewhere. Event-driven switches to other tabs are ignored. */
+  private fieldTabIds_: Set<string> | null = null;
+  private unsubscribeFieldPolicy_: (() => void) | null = null;
   private readonly tabInstances_: Map<
     string,
     | ACUControlTab
@@ -207,6 +212,13 @@ export class TabbedCanvas extends BaseElement {
 
     // Listen for mission overview selection
     eventBus.on(Events.MISSION_OVERVIEW_SELECTED, this.boundMissionOverviewSelected_);
+
+    // Trainer toggled the engineering tabs at a field station: rebuild the tab set
+    this.unsubscribeFieldPolicy_ = FieldTabPolicy.onChange(() => {
+      if (this.selectedAssetType_ === 'ground-station' && this.selectedAssetId_) {
+        this.showGroundStationAsset_();
+      }
+    });
   }
 
   /**
@@ -256,6 +268,7 @@ export class TabbedCanvas extends BaseElement {
    * the remembered tab.
    */
   private showMissionOverview_(): void {
+    this.fieldTabIds_ = null;
     const hasOrbitalSats = hasOrbitalSatellites(SimulationManager.getInstance());
 
     // With orbital satellites the overview gains a whole-world map alongside
@@ -309,6 +322,8 @@ export class TabbedCanvas extends BaseElement {
 
     const hasOrbitalSats = hasOrbitalSatellites(SimulationManager.getInstance());
 
+    this.fieldTabIds_ = null;
+
     // Backyard stations (Campaign 3+) are hobbyist SDR rigs: no ACU racks, no
     // professional RX/TX chains, no dashboard of links to those tabs. The SDR
     // Console (with its rotator panel) is the whole rig; Observations covers
@@ -320,6 +335,16 @@ export class TabbedCanvas extends BaseElement {
       }
       this.renderTabs_(backyardTabs);
       this.switchTab_(this.resolveActiveTab_(backyardTabs, 'sdr-console'));
+      return;
+    }
+
+    // Field stations (Campaign 6): the Site tab, tabs plugins register for the
+    // class (the terminal app), and only the engineering tabs the scenario allows.
+    // The trainer unlock restores the full professional set below.
+    const fieldMode = groundStation.state.stationClass === 'field' && !FieldTabPolicy.isEngineeringUnlocked();
+    if (fieldMode) {
+      this.showFieldStationTabs_(groundStation);
+
       return;
     }
 
@@ -393,6 +418,50 @@ export class TabbedCanvas extends BaseElement {
   }
 
   /**
+   * Tab set for a 'field' station with the engineering tabs locked: Site, then
+   * plugin station tabs for the class, then the engineering tabs the scenario
+   * lists in `settings.fieldTabs`. The default tab is a registered station tab
+   * marked `isDefault`, else Site.
+   */
+  private showFieldStationTabs_(groundStation: GroundStation): void {
+    const settings = ScenarioManager.getInstance().settings;
+    const registered = AntennaPageRegistry.getInstance().stationTabsFor(groundStation.state.stationClass);
+    const disabled = groundStation.state.isOperational === false;
+    const tabs: TabDescriptor[] = [];
+
+    if (settings.physicalPlant) {
+      tabs.push({ id: 'site', label: 'Site', icon: radarPng });
+    }
+    registered.forEach((reg) => tabs.push({ id: `${STATION_TAB_PREFIX}${reg.id}`, label: reg.label, icon: radarPng, isDisabled: disabled }));
+
+    const allowed = new Set(settings.fieldTabs ?? []);
+    const engineering: TabDescriptor[] = [
+      { id: 'dashboard', label: 'Dashboard', icon: dashboardPng },
+      ...groundStation.antennas.map((antenna, index) => ({
+        id: `acu-control-${index}`,
+        label:
+          AntennaPageRegistry.getInstance().tabLabel(antenna.config.kind) ??
+          (groundStation.antennas.length === 1 ? 'ACU Control' : `ACU: ${antenna.config.band}-Band ${antenna.config.diameter}m`),
+        icon: radarPng,
+        isDisabled: disabled,
+      })),
+      { id: 'rx-analysis', label: 'RX Analysis', icon: downlinkPng, isDisabled: disabled },
+      { id: 'tx-chain', label: 'TX Chain', icon: uplinkPng, isDisabled: disabled },
+      { id: 'gps-timing', label: 'GPS Timing', icon: gpsPng, isDisabled: disabled },
+      { id: 'pass-schedule', label: 'Pass Schedule', icon: stopwatchPng, isDisabled: disabled },
+    ];
+    // 'acu-control' allows every antenna's ACU tab
+    tabs.push(...engineering.filter((tab) => allowed.has(tab.id) || (tab.id.startsWith('acu-control-') && allowed.has('acu-control'))));
+
+    const defaultReg = registered.find((reg) => reg.isDefault);
+    const fallback = defaultReg ? `${STATION_TAB_PREFIX}${defaultReg.id}` : (tabs[0]?.id ?? 'site');
+
+    this.fieldTabIds_ = new Set(tabs.map((tab) => tab.id));
+    this.renderTabs_(tabs);
+    this.switchTab_(this.resolveActiveTab_(tabs, fallback));
+  }
+
+  /**
    * The satellite the selected asset id refers to, or null when the asset is
    * not a satellite (or the NORAD ID is unknown to the simulation).
    */
@@ -423,6 +492,7 @@ export class TabbedCanvas extends BaseElement {
    * Show a satellite: build its tab bar, then open the remembered tab.
    */
   private showSatelliteAsset_(): void {
+    this.fieldTabIds_ = null;
     const satellite = this.selectedSatellite_();
 
     if (!satellite) {
@@ -547,6 +617,9 @@ export class TabbedCanvas extends BaseElement {
    * C1-C5 behaviour is unchanged.
    */
   private requestTab_(tabId: string): void {
+    if (this.fieldTabIds_ && !this.fieldTabIds_.has(tabId)) {
+      return;
+    }
     if (!this.isGated_() || tabId === 'site' || tabId === this.activeTab_) {
       this.switchTab_(tabId);
 
@@ -638,6 +711,13 @@ export class TabbedCanvas extends BaseElement {
     if (tabId.startsWith('acu-control-')) {
       const antennaIndex = parseInt(tabId.split('-')[2], 10);
       this.renderACUControlTab_(content, antennaIndex);
+      return;
+    }
+
+    const stationTab = AntennaPageRegistry.getInstance().stationTabByTabId(tabId);
+    if (stationTab) {
+      this.renderStationTab_(tabId, stationTab.factory);
+
       return;
     }
 
@@ -795,6 +875,32 @@ export class TabbedCanvas extends BaseElement {
 
     // Activate the tab
     acuTab.activate();
+  }
+
+  /** Render a plugin-registered station tab; same lifecycle as a custom antenna page. */
+  private renderStationTab_(tabId: string, factory: StationTabFactory): void {
+    const groundStation = SimulationManager.getInstance().groundStations.find((gs) => gs.state.id === this.selectedAssetId_);
+
+    if (!groundStation) {
+      return;
+    }
+
+    const tabKey = `${tabId}-${this.selectedAssetId_}`;
+    let page = this.tabInstances_.get(tabKey) as AntennaPage | undefined;
+
+    if (page && !document.contains(page.dom)) {
+      // DOM was destroyed (e.g., by switching to a placeholder tab), recreate
+      page.dispose();
+      this.tabInstances_.delete(tabKey);
+      page = undefined;
+    }
+
+    if (!page) {
+      page = factory(groundStation, 'canvas-content');
+      this.tabInstances_.set(tabKey, page);
+    }
+
+    page.activate();
   }
 
   /**
@@ -1184,6 +1290,8 @@ export class TabbedCanvas extends BaseElement {
     eventBus.off(Events.OBJECTIVE_OBSERVATION_PENDING, this.boundObservationPending_);
     eventBus.off(Events.SWITCH_TAB, this.boundSwitchTab_);
     eventBus.off(Events.MISSION_OVERVIEW_SELECTED, this.boundMissionOverviewSelected_);
+    this.unsubscribeFieldPolicy_?.();
+    this.unsubscribeFieldPolicy_ = null;
 
     // Dispose all tab instances. Their dispose() releases resources the
     // EventBus teardown cannot (canvas pointer handlers, detached DOM).

@@ -130,6 +130,7 @@ import { MissionOverviewTab } from '../../../src/pages/mission-control/tabs/miss
 import { RxAnalysisTab } from '../../../src/pages/mission-control/tabs/rx-analysis-tab';
 import { SatelliteDashboardTab } from '../../../src/pages/mission-control/tabs/satellite-dashboard-tab';
 import { TxChainTab } from '../../../src/pages/mission-control/tabs/tx-chain-tab';
+import { FieldTabPolicy } from '../../../src/physical/field-tab-policy';
 import { PhysicalPlantService } from '../../../src/physical/physical-plant-service';
 import { ScenarioManager, type SimulationSettings } from '../../../src/scenario-manager';
 import { SimulationManager } from '../../../src/simulation/simulation-manager';
@@ -960,5 +961,107 @@ describe('TabbedCanvas outside-the-tent guard', () => {
     (document.querySelector('[data-tab-id="rx-analysis"]') as HTMLElement).click();
     expect(confirmOpen).toHaveBeenCalledTimes(1);
     expect(activeTabId()).toBe(before);
+  });
+});
+
+describe('TabbedCanvas field station tab policy', () => {
+  let tabbedCanvas: TabbedCanvas;
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
+  let savedSettings: SimulationSettings;
+
+  const tabIds = (): string[] => Array.from(document.querySelectorAll('#tab-bar .nav-link')).map((el) => el.getAttribute('data-tab-id') ?? '');
+  const activeTabId = () => document.querySelector('.nav-link.active')?.getAttribute('data-tab-id');
+  const selectStation = (): void => {
+    mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ASSET_SELECTED)?.[1]({ type: 'ground-station', id: 'GS-001' });
+  };
+  const switchHandler = () => mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.SWITCH_TAB)?.[1];
+  const setSettings = (extra: Partial<SimulationSettings>): void => {
+    ScenarioManager.getInstance().settings = { ...savedSettings, physicalPlant: {} as never, ...extra };
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    FieldTabPolicy.reset();
+    AntennaPageRegistry.destroy();
+    SimulationManager.getInstance.mockReturnValue({
+      groundStations: [
+        {
+          state: { id: 'GS-001', name: 'Field Post', isOperational: true, stationClass: 'field' },
+          antennas: [{ config: { band: 'Ku', diameter: 1.2 } }],
+        },
+      ],
+      satellites: [],
+      getSatByNoradId: vi.fn(() => null),
+    });
+    mockEventBus = { on: vi.fn(), off: vi.fn(), emit: vi.fn() };
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
+    savedSettings = ScenarioManager.getInstance().settings;
+    const containerEl = document.createElement('div');
+    containerEl.id = 'tabbed-canvas-container';
+    document.body.appendChild(containerEl);
+    tabbedCanvas = new TabbedCanvas('tabbed-canvas-container');
+  });
+
+  afterEach(() => {
+    ScenarioManager.getInstance().settings = savedSettings;
+    tabbedCanvas.destroy();
+    FieldTabPolicy.reset();
+    AntennaPageRegistry.destroy();
+    document.body.innerHTML = '';
+  });
+
+  it('shows only the Site tab by default', () => {
+    setSettings({});
+    selectStation();
+    expect(tabIds()).toEqual(['site']);
+    expect(activeTabId()).toBe('site');
+  });
+
+  it('adds scenario-allowed engineering tabs', () => {
+    setSettings({ fieldTabs: ['rx-analysis', 'acu-control'] });
+    selectStation();
+    expect(tabIds()).toEqual(['site', 'acu-control-0', 'rx-analysis']);
+  });
+
+  it('ignores event-driven switches to hidden tabs', () => {
+    setSettings({});
+    selectStation();
+    switchHandler()?.({ tabId: 'rx-analysis' });
+    expect(activeTabId()).toBe('site');
+  });
+
+  it('restores the full engineering set when the trainer unlocks, and relocks', () => {
+    setSettings({});
+    selectStation();
+    FieldTabPolicy.setEngineeringUnlocked(true);
+    expect(tabIds()).toEqual(expect.arrayContaining(['dashboard', 'acu-control-0', 'rx-analysis', 'tx-chain', 'gps-timing', 'site']));
+    FieldTabPolicy.reset();
+    expect(tabIds()).toEqual(['site']);
+  });
+
+  it('shows a registered station tab for the class, opens the default one, and runs its lifecycle', () => {
+    setSettings({});
+    const page = { ...createMockTab(), tabLabel: 'SkyLink' };
+    const factory = vi.fn(() => page);
+    AntennaPageRegistry.getInstance().registerStationTab({ id: 'skylink', label: 'SkyLink', stationClasses: ['field'], factory, isDefault: true });
+    AntennaPageRegistry.getInstance().registerStationTab({ id: 'other', label: 'Other', stationClasses: ['backyard'], factory: vi.fn() });
+    selectStation();
+    expect(tabIds()).toEqual(['site', 'station-skylink']);
+    expect(activeTabId()).toBe('station-skylink');
+    expect(factory).toHaveBeenCalledWith(expect.objectContaining({ state: expect.objectContaining({ id: 'GS-001' }) }), 'canvas-content');
+    expect(page.activate).toHaveBeenCalled();
+  });
+
+  it('drops a station tab after unregister', () => {
+    setSettings({});
+    AntennaPageRegistry.getInstance().registerStationTab({
+      id: 'skylink',
+      label: 'SkyLink',
+      stationClasses: ['field'],
+      factory: () => ({ ...createMockTab(), tabLabel: 'SkyLink' }),
+    });
+    expect(AntennaPageRegistry.getInstance().unregisterStationTab('skylink')).toBe(true);
+    selectStation();
+    expect(tabIds()).toEqual(['site']);
   });
 });

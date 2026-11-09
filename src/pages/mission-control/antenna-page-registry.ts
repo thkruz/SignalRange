@@ -26,6 +26,24 @@ export interface RegisterAntennaPageOptions {
   tabLabel?: string;
 }
 
+/** Builds a station-level tab page (not tied to one antenna). Renders into `containerId`. */
+export type StationTabFactory = (groundStation: GroundStation, containerId: string) => AntennaPage;
+
+export interface StationTabRegistration {
+  /** Unique id; the tab strip id is `station-<id>`. */
+  id: string;
+  /** Tab label shown in the tab strip. */
+  label: string;
+  /** Station classes (`GroundStationConfig.stationClass`, e.g. 'field') that show this tab. */
+  stationClasses: string[];
+  factory: StationTabFactory;
+  /** Open this tab first when the station is selected. */
+  isDefault?: boolean;
+}
+
+/** Tab strip id of a registered station tab. */
+export const STATION_TAB_PREFIX = 'station-';
+
 interface AntennaPageEntry {
   kind: string;
   factory: AntennaPageFactory;
@@ -42,6 +60,7 @@ export const DEFAULT_ANTENNA_KIND = 'reflector';
 export class AntennaPageRegistry {
   private static instance_: AntennaPageRegistry | null = null;
   private readonly entries_ = new Map<string, AntennaPageEntry>();
+  private readonly stationTabs_ = new Map<string, StationTabRegistration>();
 
   static getInstance(): AntennaPageRegistry {
     AntennaPageRegistry.instance_ ??= new AntennaPageRegistry();
@@ -70,6 +89,32 @@ export class AntennaPageRegistry {
     return kind !== undefined && this.entries_.has(kind);
   }
 
+  /** Register (or replace, for hot reload) a station-level tab for the listed station classes. */
+  registerStationTab(registration: StationTabRegistration): void {
+    if (!registration.id || !registration.label || registration.stationClasses.length === 0) {
+      throw new Error(`Station tab "${registration.id}" needs an id, a label and at least one station class`);
+    }
+    this.stationTabs_.set(registration.id, { ...registration, stationClasses: [...registration.stationClasses] });
+  }
+
+  unregisterStationTab(id: string): boolean {
+    return this.stationTabs_.delete(id);
+  }
+
+  /** Station tabs registered for a station class, in registration order. */
+  stationTabsFor(stationClass: string | undefined): StationTabRegistration[] {
+    if (stationClass === undefined) {
+      return [];
+    }
+
+    return [...this.stationTabs_.values()].filter((tab) => tab.stationClasses.includes(stationClass));
+  }
+
+  /** A station tab by its tab-strip id (`station-<id>`), or undefined. */
+  stationTabByTabId(tabId: string): StationTabRegistration | undefined {
+    return tabId.startsWith(STATION_TAB_PREFIX) ? this.stationTabs_.get(tabId.slice(STATION_TAB_PREFIX.length)) : undefined;
+  }
+
   /** Factory for a kind, or undefined (use ACU Control). */
   get(kind: string | undefined): AntennaPageFactory | undefined {
     return kind === undefined ? undefined : this.entries_.get(kind)?.factory;
@@ -89,11 +134,19 @@ export interface MissionControlApi {
    */
   registerAntennaPage(kind: string, factory: AntennaPageFactory, options?: RegisterAntennaPageOptions): void;
   unregisterAntennaPage(kind: string): boolean;
+  /**
+   * Add a tab to every station of the listed classes (e.g. 'field' for
+   * Campaign 6 stations, where the professional tabs are hidden).
+   */
+  registerStationTab(registration: StationTabRegistration): void;
+  unregisterStationTab(id: string): boolean;
 }
 
 export function createMissionControlApi(registry: AntennaPageRegistry = AntennaPageRegistry.getInstance()): MissionControlApi {
   return {
     registerAntennaPage: (kind, factory, options) => registry.register(kind, factory, options),
     unregisterAntennaPage: (kind) => registry.unregister(kind),
+    registerStationTab: (registration) => registry.registerStationTab(registration),
+    unregisterStationTab: (id) => registry.unregisterStationTab(id),
   };
 }

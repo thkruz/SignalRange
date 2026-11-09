@@ -63,6 +63,7 @@ import { Satellite } from '@app/equipment/satellite/satellite';
 import { Transmitter, TransmitterState } from '@app/equipment/transmitter/transmitter';
 import { Character, Emotion } from '@app/modal/character-enum';
 import { PreviousShiftLogEntry } from '@app/ops-log/ops-log-types';
+import { FieldTabPolicy } from '@app/physical/field-tab-policy';
 import type { PlantConfig } from '@app/physical/physical-plant-types';
 import { SandboxLoadoutService } from '@app/sandbox/sandbox-loadout';
 import { sandboxData } from '@app/scenarios/sandbox';
@@ -95,6 +96,11 @@ export interface SimulationSettings {
   receivers?: Partial<ReceiverState>[];
   /** Phase 38.1: opt-in physical-layer plant (C6 sandbox). Absent means nothing changes. */
   physicalPlant?: PlantConfig;
+  /**
+   * Engineering tab ids (e.g. 'rx-analysis', 'dashboard') a 'field' station may
+   * show without the trainer unlock. Absent: the Site tab and plugin tabs only.
+   */
+  fieldTabs?: string[];
   /** Optional HTML override for complex layouts */
   layout?: string;
   missionBriefUrl?: string;
@@ -572,6 +578,7 @@ export class ScenarioManager {
       // every other scenario gets its settings object back untouched.
       this.settings = SandboxLoadoutService.getInstance().applyToScenario(scenario);
       this.data = scenario;
+      FieldTabPolicy.reset();
       Rng.setSeed(resolveScenarioSeed(scenario.id, scenario.seed));
     } else {
       throw new Error(`Scenario ${scenarioId} not found`);

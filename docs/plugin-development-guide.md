@@ -146,6 +146,7 @@ logged and skipped; boot never fails because of a plugin.
 | `isPrivate`, `isAuthoring` | Build flags |
 | `antennas` | `AntennaRegistry`: `register(id, config, { source, core? })`, `unregister`, `get`, `find`, `has`, `list` |
 | `missionControl` | `registerAntennaPage(kind, factory, { tabLabel? })`, `unregisterAntennaPage(kind)`: custom Mission Control page for an antenna kind |
+| `missionControl` (station tabs) | `registerStationTab({ id, label, stationClasses, factory, isDefault? })`, `unregisterStationTab(id)`: a tab on every station of the listed classes (`'field'` = Campaign 6, where only the Site tab and plugin tabs show). `factory(groundStation, containerId)` returns an `AntennaPage` (same lifecycle as below) |
 | `router` | `Router`: `addRoute({ pattern, show, hide })` |
 | `campaigns` | `CampaignManager`: `registerCampaign(data)` |
 | `settings` | `SettingsManager` (read your own config with `settings.settings.plugins[id]`) |

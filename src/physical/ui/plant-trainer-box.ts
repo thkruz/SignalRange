@@ -5,6 +5,7 @@
  * (the button that opens it is hidden for everyone else).
  */
 
+import { FieldTabPolicy } from '@app/physical/field-tab-policy';
 import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import type { PlantFault, PlantFaultKind, PlantTrigger } from '@app/physical/physical-plant-types';
 import { PlantBox } from './plant-box-base';
@@ -85,6 +86,9 @@ export class PlantTrainerBox extends PlantBox {
           <label for="pt-snow">Snow</label><input id="pt-snow" type="checkbox" class="form-check-input" />
         </div>
 
+        <h4>Mission Control</h4>
+        <label class="form-check-label d-flex gap-2 align-items-center" for="pt-eng-tabs"><input id="pt-eng-tabs" type="checkbox" class="form-check-input" />Show engineering tabs</label>
+
         <button id="pt-reset" type="button" class="btn btn-warning btn-sm mt-3 w-100">Reset plant</button>
       </div>`;
   }
@@ -105,6 +109,7 @@ export class PlantTrainerBox extends PlantBox {
     for (const id of ['wind', 'rain', 'ambient']) {
       q(`#pt-${id}`).addEventListener('input', () => this.applyWeather_(root));
     }
+    q<HTMLInputElement>('#pt-eng-tabs').addEventListener('change', () => FieldTabPolicy.setEngineeringUnlocked(q<HTMLInputElement>('#pt-eng-tabs').checked));
     q('#pt-snow').addEventListener('change', () => this.applyWeather_(root));
     root.addEventListener('click', (ev) => this.onClick_(ev));
     root.addEventListener('change', (ev) => this.onSpareChange_(ev));
@@ -201,6 +206,10 @@ export class PlantTrainerBox extends PlantBox {
   }
 
   protected sync_(root: HTMLElement): void {
+    const engTabs = root.querySelector<HTMLInputElement>('#pt-eng-tabs');
+    if (engTabs && engTabs.checked !== FieldTabPolicy.isEngineeringUnlocked()) {
+      engTabs.checked = FieldTabPolicy.isEngineeringUnlocked();
+    }
     const plant = PhysicalPlantService.plantOrNull();
     if (!plant) {
       return;

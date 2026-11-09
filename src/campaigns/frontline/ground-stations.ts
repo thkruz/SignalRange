@@ -30,6 +30,7 @@ const baseFrontEnd = structuredClone(galwayGroundStation.rfFrontEnds[0]);
  */
 export const frontlineGroundStation = {
   id: 'FL-01',
+  stationClass: 'field',
   name: 'Frontline Training Post',
   location: {
     latitude: FRONTLINE_LOOK_ANGLE_SITE.latitude,

@@ -1,6 +1,7 @@
 import type { SatelliteState, TransponderConfig } from '@app/equipment/satellite/satellite';
 import { SignalOrigin } from '@app/signal-origin';
 import type { dBi, dBm, Hertz, RfFrequency, RfSignal } from '@app/types';
+import { geoBeaconHz, geoBeaconSignalId } from './geo-beacon';
 
 /**
  * RF templates give a hydrated constellation member its transponders and
@@ -99,6 +100,41 @@ function carrierTransponders_(noradId: number, plan: CarrierPlan): TransponderCo
   return out;
 }
 
+/** GEO beacon: 0.2 MHz CW-like carrier, V polarization, 60 dBm EIRP (traffic carriers are 80 dBm). */
+const GEO_BEACON_BW_HZ = 0.2e6;
+const GEO_BEACON_EIRP_DBM = 60;
+
+/** One CW-like beacon per GEO member, at the frequency derived from its NORAD number (see geo-beacon.ts). */
+function beaconTransponder_(noradId: number): TransponderConfig {
+  const down = geoBeaconHz(noradId) as RfFrequency;
+  const id = geoBeaconSignalId(noradId);
+
+  return {
+    id,
+    uplinkCenterFrequency: (down + 2.3e9) as RfFrequency,
+    bandwidth: GEO_BEACON_BW_HZ as Hertz,
+    frequencyOffset: 2.3e9 as Hertz,
+    polarization: 'V',
+    isActive: false,
+    beacon: {
+      frequency: down,
+      signalId: id,
+      serverId: 1,
+      noradId,
+      power: GEO_BEACON_EIRP_DBM as dBm,
+      bandwidth: GEO_BEACON_BW_HZ as Hertz,
+      modulation: 'CW',
+      fec: 'null',
+      polarization: 'V',
+      feed: '',
+      isDegraded: false,
+      origin: SignalOrigin.SATELLITE_TX,
+      noiseFloor: null,
+      gainInPath: 0 as dBi,
+    } as unknown as RfSignal,
+  } as TransponderConfig;
+}
+
 /**
  * Starlink-like Ku user downlink: eight 240 MHz carriers on a 250 MHz raster
  * across 10.7 to 12.7 GHz, right-hand circular, 36 dBW (66 dBm) EIRP each,
@@ -120,7 +156,8 @@ const STARLINK_PLAN: Omit<CarrierPlan, 'prefix'> = {
  * Generic GEO C/Ku: six 36 MHz C-band carriers (3.74 to 4.14 GHz, 38 dBW
  * EIRP, alternating H/V) and six 36 MHz Ku carriers (11.72 to 12.12 GHz,
  * 50 dBW). Bent-pipe transponders with the usual 2.225 GHz (C) and 2.3 GHz
- * (Ku) uplink offsets. Placeholder.
+ * (Ku) uplink offsets, plus one narrow CW beacon per satellite whose frequency
+ * comes from its NORAD number (geo-beacon.ts). Placeholder.
  */
 const GEO_C_BAND: RfBandEnvelope = { loHz: 3.7e9, hiHz: 4.2e9, maxEirpDbm: 68, carrierBwHz: 36e6 };
 const GEO_KU_BAND: RfBandEnvelope = { loHz: 11.7e9, hiHz: 12.2e9, maxEirpDbm: 80, carrierBwHz: 36e6 };
@@ -178,6 +215,7 @@ const templates_ = new Map<string, RfTemplate>([
                 transponderConfigs: [
                   ...carrierTransponders_(ctx.noradId, { prefix: 'GEOC', ...GEO_C_PLAN }),
                   ...carrierTransponders_(ctx.noradId, { prefix: 'GEOK', ...GEO_KU_PLAN }),
+                  beaconTransponder_(ctx.noradId),
                 ],
               }
             : {}),

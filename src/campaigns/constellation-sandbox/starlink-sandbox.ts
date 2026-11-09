@@ -1,7 +1,8 @@
 import { Character } from '@app/modal/character-enum';
 import type { ScenarioData } from '@app/ScenarioData';
-import { hasPinnedMember, starlinkInLine } from './evaluators';
+import { hasPinnedMember } from './evaluators';
 import { cedarMesaGroundStation } from './ground-stations';
+import { INTERFERENCE_REPORT_ID, interferenceReportFiled } from './interference-report';
 import { kuSat1 } from './satellites';
 
 /**
@@ -28,7 +29,7 @@ export const starlinkSandboxData: ScenarioData = {
   duration: 'Unlimited',
   missionType: 'Sandbox',
   description: `Your dish at Cedar Mesa is locked on KU-SAT 1, a Ku-band GEO satellite. Above it, the whole Starlink constellation is moving.
-  <br/><br/>Starlink satellites downlink in the same Ku band. When one passes through the dish beam, or close enough for the sidelobes to catch it, the noise floor rises and the GEO carriers lose margin. Watch the passes on the World Map, pin the ones you care about, and use the spectrum analyzer and the timeline to find the satellite that hurt your link. Skip time forward to find the next event. There is no timer and nothing here can fail.`,
+  <br/><br/>Starlink satellites downlink in the same Ku band. When one passes through the dish beam, or close enough for the sidelobes to catch it, the noise floor rises and the GEO carriers lose margin. Watch the passes on the World Map, pin the ones you care about, and use the spectrum analyzer and the timeline to find the satellite that hurt your link, then file an interference report with its NORAD number, the time window and the C/N drop. The report is accepted only if that satellite really was in line with the link in the window you give. Skip time forward to find the next event. There is no timer and nothing here can fail.`,
   equipment: ['2.4-meter Ku-band Antenna (program-track on KU-SAT 1)', 'Ku-band RF Front End (13100 MHz LNB LO)', 'Spectrum Analyzer', 'RX Modem'],
   settings: {
     isSync: true,
@@ -74,53 +75,29 @@ export const starlinkSandboxData: ScenarioData = {
       points: 5,
     },
     {
-      id: 'find-the-offender',
-      title: 'Find a Starlink in Line with the GEO Satellite',
+      id: 'file-the-report',
+      title: 'File an Interference Report',
       description:
-        'KU-SAT 1 sits at az 168, el 48. Find a Starlink that crosses the sky within 2 degrees of it and select it. The timeline lanes show when each pinned satellite is nearest. Skip time forward if nothing is close.',
+        'KU-SAT 1 sits at az 168, el 48. Find the Starlink that crossed the link, then open the form and file its NORAD number, a UTC time window of at most 10 minutes around the crossing, and the C/N drop you saw on modem 1. The timeline lanes show when each pinned satellite is nearest. Skip time forward if nothing is close.',
       groundStation: 'CM-01',
       prerequisiteObjectiveIds: ['pin-a-starlink'],
       conditions: [
         {
           type: 'custom',
-          description: 'Starlink Within 2 Degrees of KU-SAT 1',
-          params: { evaluator: starlinkInLine(2) },
+          description: 'Interference report filed and accepted',
+          params: { evaluator: interferenceReportFiled, reportForm: INTERFERENCE_REPORT_ID },
           mustMaintain: false,
         },
       ],
       conditionLogic: 'AND',
-      points: 10,
-    },
-    {
-      id: 'read-cn-in-line',
-      title: 'Read C/N During the Event',
-      description:
-        'With the Starlink still in line, open RX Analysis. Compare the C/N on modem 1 and the noise floor on the analyzer with what they read a few minutes earlier or later.',
-      groundStation: 'CM-01',
-      prerequisiteObjectiveIds: ['find-the-offender'],
-      conditions: [
-        {
-          type: 'tab-active',
-          description: 'RX Analysis Open',
-          params: { tab: 'rx-analysis' },
-          mustMaintain: false,
-        },
-        {
-          type: 'custom',
-          description: 'Starlink Still Within 2 Degrees',
-          params: { evaluator: starlinkInLine(2) },
-          mustMaintain: false,
-        },
-      ],
-      conditionLogic: 'AND',
-      points: 10,
+      points: 20,
     },
     {
       id: 'name-the-cause',
       title: 'What Raised the Noise',
       description: 'Decide what the Starlink did to the link.',
       groundStation: 'CM-01',
-      prerequisiteObjectiveIds: ['read-cn-in-line'],
+      prerequisiteObjectiveIds: ['file-the-report'],
       conditions: [
         {
           type: 'status-check',

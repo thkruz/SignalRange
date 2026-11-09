@@ -129,8 +129,8 @@ export const highDesertGroundStation = buildStation(
     slewing: false,
     isLocked: false,
   } as Partial<AntennaState>,
-  1220e6, // IF window 1020-1420 MHz covers the template Ku carriers
-  400e6,
+  1460e6, // IF window 1020-1900 MHz: the template Ku carriers (IF 1020-1420) and the beacons (11200-11700 MHz RF, IF 1400-1900)
+  880e6,
   1300, // 11800 MHz, the first V-pol Ku carrier of the GEO template
   36,
   16,

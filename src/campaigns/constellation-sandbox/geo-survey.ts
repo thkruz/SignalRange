@@ -1,5 +1,6 @@
 import { Character } from '@app/modal/character-enum';
 import type { ScenarioData } from '@app/ScenarioData';
+import { BEACON_REPORT_ID, beaconReportFiled, beaconTuned } from './beacon-id';
 import { dishOnPinned, pinnedAtLeast } from './evaluators';
 import { highDesertGroundStation } from './ground-stations';
 
@@ -8,8 +9,9 @@ import { highDesertGroundStation } from './ground-stations';
  *
  * A 3 m Ku dish at High Desert, parked on the southern sky. The geo-belt-2026-11
  * set (GEO payloads only, about 1,000 members, not operated) fills the arc. Each
- * payload carries the generic GEO Ku carrier plan, so every occupied slot shows
- * the same carriers; the player tells slots apart by pointing, not by frequency.
+ * payload carries the generic GEO Ku carrier plan plus one beacon set by its
+ * NORAD number: the traffic carriers look alike on every slot, the beacon tells
+ * satellites apart.
  *
  * Start time 2026-11-09 18:00:00 UTC.
  */
@@ -25,7 +27,8 @@ export const geoSurveyData: ScenarioData = {
   duration: 'Unlimited',
   missionType: 'Sandbox',
   description: `Your dish at High Desert can see part of the geostationary belt: a line of satellites over the equator, each parked at its own slot.
-  <br/><br/>Turn on the GEO belt layer on the World Map and search the asset tree to see who is up there. Then point the dish at a slot, open RX Analysis and look for carriers. An occupied slot shows a row of carriers on the spectrum analyzer. An empty one shows only noise. The dish slews slowly, so choose your slots with care. There is no timer.`,
+  <br/><br/>Turn on the GEO belt layer on the World Map and search the asset tree to see who is up there. Then point the dish at a slot, open RX Analysis and look for carriers. An occupied slot shows a row of carriers on the spectrum analyzer. An empty one shows only noise. The dish slews slowly, so choose your slots with care.
+  <br/><br/>The traffic carriers look the same on every slot, because operators reuse frequencies. Beacons are different: each satellite sends one narrow beacon between 11.2 and 11.7 GHz, and its frequency is set by its NORAD number. Tune the modem to a beacon and you know which satellite you are listening to. The Beacon ID form has a lookup that turns a NORAD number into a beacon frequency and back. There is no timer.`,
   equipment: ['3-meter Ku-band Antenna (manual)', 'Ku-band RF Front End (13100 MHz LNB LO)', 'Spectrum Analyzer', 'RX Modem'],
   settings: {
     isSync: true,
@@ -126,6 +129,42 @@ export const geoSurveyData: ScenarioData = {
       ],
       conditionLogic: 'AND',
       points: 10,
+    },
+    {
+      id: 'tune-the-beacon',
+      title: 'Tune a Beacon',
+      description:
+        'With the dish on a slot, look on the analyzer for a narrow spike above the traffic carriers, between 1400 and 1900 MHz IF (11200 to 11700 MHz RF). Set modem 1 to its IF and a bandwidth of 1 MHz until it reads a C/N of at least 10 dB.',
+      groundStation: 'HD-01',
+      prerequisiteObjectiveIds: ['read-the-carriers'],
+      conditions: [
+        {
+          type: 'custom',
+          description: 'Modem 1 on a satellite beacon, C/N at least 10 dB',
+          params: { evaluator: beaconTuned },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 10,
+    },
+    {
+      id: 'identify-by-beacon',
+      title: 'Confirm Which Satellite It Is',
+      description:
+        'Open the Beacon ID form. Use the lookup to find which satellites use the beacon frequency you tuned, pick the one the dish is pointed at, and enter its NORAD number. It is accepted only if modem 1 is measuring that satellite beacon.',
+      groundStation: 'HD-01',
+      prerequisiteObjectiveIds: ['tune-the-beacon'],
+      conditions: [
+        {
+          type: 'custom',
+          description: 'Beacon identified',
+          params: { evaluator: beaconReportFiled, reportForm: BEACON_REPORT_ID },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 15,
     },
   ],
 };

@@ -1393,6 +1393,11 @@ export class ObjectivesManager {
           }
         }
 
+        // Report form row: a button opens the form (report-form-dialog)
+        if (condition.params?.reportForm && !conditionCompleted) {
+          html += `<button class="condition-form-btn" data-report-form="${condition.params.reportForm}" title="Open the form">File</button>`;
+        }
+
         // Add quiz button for pending quizzes
         if (isQuizPending) {
           html += `<button class="condition-quiz-btn" data-objective-id="${objective.id}" data-condition-index="${i}" title="Take Quiz">?</button>`;

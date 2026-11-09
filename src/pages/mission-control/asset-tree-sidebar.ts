@@ -24,6 +24,7 @@ import { QuizManager } from '@app/modal/quiz-manager';
 import { SaveProgressToast } from '@app/modal/save-progress-toast';
 import { ObjectivesManager } from '@app/objectives';
 import { CountdownHold } from '@app/objectives/countdown-hold';
+import { openReportForm } from '@app/objectives/report-form-dialog';
 import { OpsLogModal } from '@app/ops-log/ops-log-modal';
 import { ScenarioManager } from '@app/scenario-manager';
 import { CampaignRecordPanel } from '@app/scenarios/campaign-record-panel';
@@ -355,6 +356,13 @@ export class AssetTreeSidebar extends BaseElement {
 
     checklistBox.popupDom.addEventListener('click', (e: Event) => {
       const target = e.target as HTMLElement;
+
+      // Handle report form button clicks
+      const formBtn = target.closest<HTMLButtonElement>('.condition-form-btn');
+      if (formBtn?.dataset.reportForm) {
+        openReportForm(formBtn.dataset.reportForm);
+        return;
+      }
 
       // Handle quiz button clicks
       const quizBtn = target.closest<HTMLButtonElement>('.condition-quiz-btn');

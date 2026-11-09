@@ -20,6 +20,7 @@ import { hasOrbitalSatellites } from '@app/simulation/sim-queries';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import './tabbed-canvas.css';
 import { OrbitalSatellite } from '@app/equipment/satellite/orbital-satellite';
+import { type AntennaPage, AntennaPageRegistry } from '@app/pages/mission-control/antenna-page-registry';
 import { ACUControlTab } from '@app/pages/mission-control/tabs/acu-control-tab';
 import { CommandingTab } from '@app/pages/mission-control/tabs/commanding-tab';
 import { ContactScheduleTab } from '@app/pages/mission-control/tabs/contact-schedule-tab';
@@ -79,6 +80,7 @@ export class TabbedCanvas extends BaseElement {
   private readonly tabInstances_: Map<
     string,
     | ACUControlTab
+    | AntennaPage
     | DashboardTab
     | RxAnalysisTab
     | TxChainTab
@@ -304,7 +306,8 @@ export class TabbedCanvas extends BaseElement {
     // Add one ACU tab per antenna with band/size label
     groundStation.antennas.forEach((antenna, index) => {
       const config = antenna.config;
-      const label = groundStation.antennas.length === 1 ? 'ACU Control' : `ACU: ${config.band}-Band ${config.diameter}m`;
+      const customLabel = AntennaPageRegistry.getInstance().tabLabel(config.kind);
+      const label = customLabel ?? (groundStation.antennas.length === 1 ? 'ACU Control' : `ACU: ${config.band}-Band ${config.diameter}m`);
       tabs.push({
         id: `acu-control-${index}`,
         label,
@@ -689,7 +692,7 @@ export class TabbedCanvas extends BaseElement {
 
     // Check if tab instance already exists and its DOM is still attached
     const tabKey = `acu-control-${this.selectedAssetId_}-ant${antennaIndex}`;
-    let acuTab = this.tabInstances_.get(tabKey) as ACUControlTab;
+    let acuTab = this.tabInstances_.get(tabKey) as ACUControlTab | AntennaPage;
 
     if (acuTab && !document.contains(acuTab.dom)) {
       // DOM was destroyed (e.g., by switching to a placeholder tab), recreate
@@ -700,7 +703,8 @@ export class TabbedCanvas extends BaseElement {
 
     if (!acuTab) {
       // Create new tab instance with antenna index
-      acuTab = new ACUControlTab(groundStation, 'canvas-content', antennaIndex);
+      const customFactory = AntennaPageRegistry.getInstance().get(groundStation.antennas[antennaIndex]?.config.kind);
+      acuTab = customFactory ? customFactory(groundStation, 'canvas-content', antennaIndex) : new ACUControlTab(groundStation, 'canvas-content', antennaIndex);
       this.tabInstances_.set(tabKey, acuTab);
     }
 

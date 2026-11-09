@@ -122,6 +122,7 @@ logged and skipped; boot never fails because of a plugin.
 | `engineVersion` | The host version string |
 | `isPrivate`, `isAuthoring` | Build flags |
 | `antennas` | `AntennaRegistry`: `register(id, config, { source, core? })`, `unregister`, `get`, `find`, `has`, `list` |
+| `missionControl` | `registerAntennaPage(kind, factory, { tabLabel? })`, `unregisterAntennaPage(kind)`: custom Mission Control page for an antenna kind |
 | `router` | `Router`: `addRoute({ pattern, show, hide })` |
 | `campaigns` | `CampaignManager`: `registerCampaign(data)` |
 | `settings` | `SettingsManager` (read your own config with `settings.settings.plugins[id]`) |
@@ -141,6 +142,37 @@ Pass `core` to supply a factory that builds a custom `AntennaCore` subclass. The
 factory is used for the headless variant Mission Control instantiates; the
 DOM-bearing UI classes stay the engine's. This is the hook for behaviour that a
 config cannot express (electronic beam steering, multi-beam terminals).
+
+### Antenna kinds and Mission Control pages
+
+`AntennaConfig.kind` is an optional string that picks the Mission Control page for
+an antenna. Omitted means `'reflector'`, which gets the stock ACU Control tab.
+A plugin defines its own kind (for example `'phased-array'`), sets it on its
+configs, and registers a page for it:
+
+```ts
+api.antennas.register('MY_ARRAY', { ...config, kind: 'phased-array' }, { core: ... });
+api.missionControl.registerAntennaPage(
+  'phased-array',
+  (groundStation, containerId, antennaIndex) => new MyArrayPage(groundStation, containerId, antennaIndex),
+  { tabLabel: 'Array Control' }
+);
+```
+
+The factory runs when the operator opens that antenna's tab and must return an
+`AntennaPage`: `tabLabel`, `dom` (root element, or null), `activate()`,
+`deactivate()` and `dispose()`, the same lifecycle as ACU Control. It renders
+into the element with id `containerId` (`BaseElement` subclasses do this in
+`init_`). The tab strip is drawn before a page exists, so pass `tabLabel` in the
+options to name the tab (default `'Antenna'`). Every antenna of a station gets
+its own page, keyed by `antennaIndex`. `'reflector'` cannot be registered.
+Backyard stations keep their SDR tab set and never use antenna pages.
+
+A custom `AntennaCore` subclass can override the protected gain hooks
+(`antennaGain_dBi`, `patternGain_dBi_`, `beamwidth3dB_deg_`,
+`effectiveOffAxisDeg_`, `angularSeparationDeg_`, `mainLobeEdgeDeg_`). The link
+budget and the RF narrowing callbacks both call them through `this`, so an
+override (scan loss, for instance) is seen by both.
 
 ### Locales
 
@@ -204,5 +236,5 @@ targets, installs your plugin with `add`, and runs typecheck and tests.
 
 ## Not yet available to plugins
 
-Mission Control tabs, objective condition types, fault types, and an in-app
+Mission Control tabs other than antenna pages, objective condition types, fault types, and an in-app
 plugin manager UI. Each is an additive `PluginApi` member for a later phase.

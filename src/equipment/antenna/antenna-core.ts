@@ -2088,7 +2088,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * hypot(dAz, dEl) approximation this stays correct near zenith and for
    * large angles (wide-beam Campaign 3 antennas).
    */
-  private angularSeparationDeg_(targetAz: number, targetEl: number): number {
+  protected angularSeparationDeg_(targetAz: number, targetEl: number): number {
     const d2r = Math.PI / 180;
     const el1 = this.state.elevation * d2r;
     const el2 = targetEl * d2r;
@@ -2104,7 +2104,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * combined in quadrature with the wind de-pointing and the servo's RMS
    * pointing jitter (both random in direction, so they cost their mean loss).
    */
-  private effectiveOffAxisDeg_(targetAz: number, targetEl: number): number {
+  protected effectiveOffAxisDeg_(targetAz: number, targetEl: number): number {
     const theta = this.angularSeparationDeg_(targetAz, targetEl);
     return Math.hypot(theta, this.windDePointingDeg, this.config.pointingSigma_deg ?? 0);
   }
@@ -2114,7 +2114,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * the first-sidelobe plateau (Gmax - 12 (theta/theta3)^2 = G1). Wire
    * antennas: their 3 dB beamwidth.
    */
-  private mainLobeEdgeDeg_(f_Hz: number): number {
+  protected mainLobeEdgeDeg_(f_Hz: number): number {
     const bw = this.beamwidth3dB_deg_(f_Hz);
     if (this.config.gainModel === 'fixed') {
       return bw;
@@ -2694,7 +2694,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * 3 dB beamwidth (degrees)
    * HPBW ≈ k*λ/D where k is typically 70 for parabolic dishes
    */
-  private beamwidth3dB_deg_(f_Hz: number): number {
+  protected beamwidth3dB_deg_(f_Hz: number): number {
     if (this.config.gainModel === 'fixed') {
       return this.config.fixedBeamwidth3dB_deg ?? 90;
     }
@@ -2747,7 +2747,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * Wire antennas (fixed gain model): the main-lobe rolloff capped at the
    * config's front-to-back ratio; aperture sidelobe formulas do not apply.
    */
-  private patternGain_dBi_(theta_deg: number, f_Hz: number): number {
+  protected patternGain_dBi_(theta_deg: number, f_Hz: number): number {
     const Gmax = this.antennaGain_dBi(f_Hz as Hertz);
     const bw = this.beamwidth3dB_deg_(f_Hz);
     const mainLobe = Gmax - 12 * (theta_deg / bw) ** 2;
@@ -2978,7 +2978,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * @param frequencyHz Operating frequency in Hz
    * @returns Antenna gain in dBi
    */
-  private antennaGain_dBi(frequencyHz: Hertz): number {
+  protected antennaGain_dBi(frequencyHz: Hertz): number {
     const f_Hz = frequencyHz as number;
 
     // Check if frequency is within antenna's operating range

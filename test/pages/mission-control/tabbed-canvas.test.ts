@@ -35,6 +35,8 @@ const DEFAULT_SATELLITES = [
   },
 ];
 let mockSatellites: unknown[] = DEFAULT_SATELLITES;
+/** Antenna kind the mocked ground station reports (undefined = reflector). */
+let mockAntennaKind: string | undefined;
 
 // Mock dependencies
 vi.mock('../../../src/events/event-bus');
@@ -53,6 +55,9 @@ vi.mock('../../../src/simulation/simulation-manager', () => ({
               config: {
                 band: 'C',
                 diameter: 9,
+                get kind() {
+                  return mockAntennaKind;
+                },
               },
             },
           ],
@@ -115,6 +120,7 @@ vi.mock('../../../src/engine/utils/query-selector', () => ({
   }),
 }));
 
+import { AntennaPageRegistry } from '../../../src/pages/mission-control/antenna-page-registry';
 import { ACUControlTab } from '../../../src/pages/mission-control/tabs/acu-control-tab';
 import { DashboardTab } from '../../../src/pages/mission-control/tabs/dashboard-tab';
 import { GPSTimingTab } from '../../../src/pages/mission-control/tabs/gps-timing-tab';
@@ -411,6 +417,53 @@ describe('TabbedCanvas', () => {
 
       const tabBar = document.querySelector('#tab-bar');
       expect(tabBar?.innerHTML).toBe('');
+    });
+  });
+
+  describe('antenna pages', () => {
+    const selectStation = () => {
+      const assetSelectedHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ASSET_SELECTED)?.[1];
+
+      assetSelectedHandler?.({ type: 'ground-station', id: 'GS-001' });
+    };
+    const switchTo = (tabId: string) => {
+      const switchTabHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.SWITCH_TAB)?.[1];
+
+      switchTabHandler?.({ tabId });
+    };
+
+    afterEach(() => {
+      mockAntennaKind = undefined;
+      AntennaPageRegistry.destroy();
+    });
+
+    it('uses a registered page, its label and its lifecycle for a matching kind', () => {
+      const page = { ...createMockTab(), tabLabel: 'Array Control' };
+      const factory = vi.fn(() => page);
+
+      AntennaPageRegistry.getInstance().register('phased-array', factory, { tabLabel: 'Array Control' });
+      mockAntennaKind = 'phased-array';
+      selectStation();
+      expect(document.querySelector('#tab-bar')?.innerHTML).toContain('Array Control');
+
+      switchTo('acu-control-0');
+
+      expect(factory).toHaveBeenCalledWith(expect.objectContaining({ state: expect.objectContaining({ id: 'GS-001' }) }), 'canvas-content', 0);
+      expect(page.activate).toHaveBeenCalled();
+      expect(ACUControlTab).not.toHaveBeenCalled();
+    });
+
+    it('keeps ACU Control for reflector antennas even when other kinds are registered', () => {
+      const factory = vi.fn(() => ({ ...createMockTab(), tabLabel: 'Array Control' }));
+
+      AntennaPageRegistry.getInstance().register('phased-array', factory);
+      selectStation();
+      expect(document.querySelector('#tab-bar')?.innerHTML).toContain('ACU Control');
+
+      switchTo('acu-control-0');
+
+      expect(ACUControlTab).toHaveBeenCalled();
+      expect(factory).not.toHaveBeenCalled();
     });
   });
 

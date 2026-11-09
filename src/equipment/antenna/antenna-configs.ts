@@ -51,6 +51,12 @@ export interface AntennaConfig {
    * patch) where diameter-based formulas are meaningless.
    */
   gainModel?: 'parabolic' | 'fixed';
+  /**
+   * Antenna kind, selecting the Mission Control page (see
+   * AntennaPageRegistry). Omitted means 'reflector' (ACU Control). Plugins
+   * define their own kinds. Has no effect on RF behaviour.
+   */
+  kind?: string;
   /** Boresight gain in dBi when gainModel === 'fixed' */
   fixedGain_dBi?: number;
   /** 3 dB beamwidth in degrees when gainModel === 'fixed' */

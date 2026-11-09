@@ -69,7 +69,7 @@ export class SpaceEventManager {
       if (!event.initialTle) {
         continue;
       }
-      const sat = SimulationManager.getInstance().satellites.find((s) => s.noradId === event.satelliteNoradId);
+      const sat = SimulationManager.getInstance().registry.get(event.satelliteNoradId);
       if (sat instanceof OrbitalSatellite) {
         sat.reloadTle(event.initialTle.tle1 as TleLine1, event.initialTle.tle2 as TleLine2);
       }
@@ -130,7 +130,7 @@ export class SpaceEventManager {
     // with hasInstance() so this never constructs the heavy sim singleton
     // (headless tests just verify the phase transition).
     if (SimulationManager.hasInstance()) {
-      const sat = SimulationManager.getInstance().satellites.find((s) => s.noradId === event.satelliteNoradId);
+      const sat = SimulationManager.getInstance().registry.get(event.satelliteNoradId);
       if (sat instanceof OrbitalSatellite) {
         sat.reloadTle(event.newTle.tle1 as TleLine1, event.newTle.tle2 as TleLine2);
       }
@@ -162,7 +162,7 @@ export class SpaceEventManager {
       if (!SimulationManager.hasInstance()) {
         continue;
       }
-      const sat = SimulationManager.getInstance().satellites.find((s) => s.noradId === event.satelliteNoradId);
+      const sat = SimulationManager.getInstance().registry.get(event.satelliteNoradId);
       if (sat instanceof OrbitalSatellite) {
         if (phase === 'stale') {
           sat.maneuverTo(event.newTle.tle1 as TleLine1, event.newTle.tle2 as TleLine2);
@@ -204,7 +204,7 @@ export class SpaceEventManager {
     if (!SimulationManager.hasInstance()) {
       return;
     }
-    const sat = SimulationManager.getInstance().satellites.find((s) => s.noradId === event.satelliteNoradId);
+    const sat = SimulationManager.getInstance().registry.get(event.satelliteNoradId);
     if (sat instanceof OrbitalSatellite) {
       sat.maneuverTo(event.newTle.tle1 as TleLine1, event.newTle.tle2 as TleLine2);
     }

@@ -48,6 +48,11 @@ export class MissionLoadingScreen {
     back.focus({ preventScroll: true });
   }
 
+  /** Progress text under the scenario title. */
+  setStatus(text: string): void {
+    this.status_.textContent = text;
+  }
+
   async reveal(): Promise<void> {
     await fade(this.element_, 1, 0, true)?.finished.catch(() => {});
     this.dispose();

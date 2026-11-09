@@ -310,7 +310,7 @@ export class TimeSkipController {
     }
 
     const nowMs = getSimulatedNowMs();
-    const satellites = this.orbitalSatellites_();
+    const registry = SimulationManager.getInstance().registry;
 
     for (const state of ObjectivesManager.getInstance().getObjectiveStates()) {
       if (!state.isActive || state.isCompleted || state.isFailed || state.activatedAt === undefined) {
@@ -322,7 +322,8 @@ export class TimeSkipController {
 
       for (const condition of state.objective.conditions) {
         const noradId = condition.type === 'antenna-locked' ? (condition.params?.noradId ?? condition.params?.satelliteId) : undefined;
-        const sat = noradId === undefined ? undefined : satellites.find((s) => s.noradId === noradId);
+        const found = noradId === undefined ? undefined : registry.get(noradId);
+        const sat = found instanceof OrbitalSatellite ? found : undefined;
 
         if (!sat) {
           continue;

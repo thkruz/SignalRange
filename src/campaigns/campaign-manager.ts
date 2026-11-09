@@ -7,6 +7,8 @@ import { CampaignData, CampaignProgress } from './campaign-types';
 export class CampaignManager {
   private static instance_: CampaignManager;
   private readonly campaigns_: CampaignData[] = [];
+  /** Dev-only campaigns: resolvable by id, never listed (perf harness). */
+  private readonly devCampaigns_: CampaignData[] = [];
 
   private constructor() {
     // Private constructor to enforce singleton pattern
@@ -25,6 +27,14 @@ export class CampaignManager {
   }
 
   /**
+   * Register a dev-only campaign. Resolvable by id for routing but excluded
+   * from getAllCampaigns/getAllScenarios, so no menu lists it.
+   */
+  registerDevCampaign(campaign: CampaignData): void {
+    this.devCampaigns_.push(campaign);
+  }
+
+  /**
    * Get all registered campaigns
    */
   getAllCampaigns(): CampaignData[] {
@@ -35,7 +45,7 @@ export class CampaignManager {
    * Get a specific campaign by ID
    */
   getCampaign(campaignId: string): CampaignData | undefined {
-    return this.campaigns_.find((c) => c.id === campaignId);
+    return this.campaigns_.find((c) => c.id === campaignId) ?? this.devCampaigns_.find((c) => c.id === campaignId);
   }
 
   /**
@@ -58,7 +68,7 @@ export class CampaignManager {
    * Find which campaign contains a specific scenario
    */
   getCampaignForScenario(scenarioId: string): CampaignData | undefined {
-    return this.campaigns_.find((campaign) => campaign.scenarios.some((s) => s.id === scenarioId));
+    return [...this.campaigns_, ...this.devCampaigns_].find((campaign) => campaign.scenarios.some((s) => s.id === scenarioId));
   }
 
   /**

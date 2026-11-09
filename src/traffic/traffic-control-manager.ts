@@ -210,7 +210,7 @@ export class TrafficControlManager {
     const previousOwner = ownership.owningGroundStationId;
     const newOwner = ownership.handoverTargetStationId;
 
-    const satName = SimulationManager.getInstance().satellites?.find((s) => s.noradId === satelliteId)?.name ?? `NORAD ${satelliteId}`;
+    const satName = SimulationManager.getInstance().registry.get(satelliteId)?.name ?? `NORAD ${satelliteId}`;
     this.logHandover_(`Handover ${previousOwner} -> ${newOwner} executed (${satName})`);
 
     // Disable transmission on source station FIRST (HPA off, BUC mute, its
@@ -346,7 +346,7 @@ export class TrafficControlManager {
 
     // Check each tracked satellite
     for (const satId of this.trafficOwnership_.keys()) {
-      const satellite = sim.satellites.find((s) => s.noradId === satId);
+      const satellite = sim.registry.get(satId);
       if (!satellite) continue;
 
       // Find all ground stations transmitting to this satellite

@@ -25,6 +25,7 @@ vi.mock('../../src/simulation/simulation-manager', () => ({
       getSatByNoradId: vi.fn(),
       getSatsByAzEl: () => [],
       satellites: [fakeSatellite],
+      registry: { get: (n: number) => [fakeSatellite].find((s: { noradId?: number }) => s.noradId === n) },
       isDeveloperMode: false,
     })),
     destroy: vi.fn(),

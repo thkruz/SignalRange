@@ -602,6 +602,8 @@ export enum Events {
 
   // Scenario lifecycle events
   SCENARIO_CHANGED = 'scenario:changed',
+  /** An orbital satellite's true element set changed (manoeuvre, ephemeris reload). */
+  SATELLITE_ELEMENTS_CHANGED = 'satellite:elements:changed',
 
   // Crypto events
   CRYPTO_STATE_CHANGED = 'crypto:state:changed',
@@ -732,6 +734,7 @@ export interface EventMap {
 
   // Scenario lifecycle events
   [Events.SCENARIO_CHANGED]: [{ scenarioId: string }];
+  [Events.SATELLITE_ELEMENTS_CHANGED]: [{ noradId: number }];
 
   // Crypto events
   [Events.CRYPTO_STATE_CHANGED]: [CryptoStateChangedData];

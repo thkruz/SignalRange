@@ -65,6 +65,7 @@ import { PreviousShiftLogEntry } from '@app/ops-log/ops-log-types';
 import { SandboxLoadoutService } from '@app/sandbox/sandbox-loadout';
 import { sandboxData } from '@app/scenarios/sandbox';
 import { Rng, resolveScenarioSeed } from '@app/simulation/rng';
+import type { ConstellationRef } from '@app/simulation/satellite-registry';
 import type { Degrees } from 'ootk';
 import { ScenarioData } from './ScenarioData';
 
@@ -95,6 +96,8 @@ export interface SimulationSettings {
   missionBriefUrl?: string;
   isExtraSatellitesVisible?: boolean;
   satellites: Satellite[];
+  /** TLE-set constellations (Phase 3); members hydrate on demand, see SatelliteRegistry */
+  constellations?: ConstellationRef[];
   weatherEvents?: Array<{
     id: string;
     groundStationId: string;

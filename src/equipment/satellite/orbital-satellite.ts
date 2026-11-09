@@ -27,6 +27,8 @@
  * like at a 4 m Ku beamwidth.
  */
 
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
 import { slantRangeKmAt } from '@app/simulation/geo-geometry';
 import { getSimulatedNowMs } from '@app/simulation/sim-time';
 import { Hertz, RfFrequency, RfSignal } from '@app/types';
@@ -192,6 +194,11 @@ export class OrbitalSatellite extends Satellite {
     return this.predictionSat_;
   }
 
+  /** The true (spacecraft) element set. Changes on `maneuverTo` and `reloadTle`. */
+  get trueElements(): { tle1: string; tle2: string } {
+    return { tle1: this.ootkSat_.tle1, tle2: this.ootkSat_.tle2 };
+  }
+
   /** True while the station's element set no longer describes the orbit. */
   get isPredictionStale(): boolean {
     return this.predictionSat_ !== this.ootkSat_;
@@ -210,6 +217,7 @@ export class OrbitalSatellite extends Satellite {
     this.observerCache_.clear();
     this.predictionCache_.clear();
     this.propagateTo_(getSimulatedNowMs());
+    EventBus.getInstance().emit(Events.SATELLITE_ELEMENTS_CHANGED, { noradId: this.noradId });
   }
 
   /**
@@ -221,6 +229,7 @@ export class OrbitalSatellite extends Satellite {
     this.ootkSat_ = new OotkSatellite({ name: this.ootkSat_.name, tle1, tle2 });
     this.observerCache_.clear();
     this.propagateTo_(getSimulatedNowMs());
+    EventBus.getInstance().emit(Events.SATELLITE_ELEMENTS_CHANGED, { noradId: this.noradId });
   }
 
   /** The ground station observer used for relative telemetry. */

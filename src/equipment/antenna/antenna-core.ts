@@ -10,7 +10,9 @@ import { InterferenceManager } from '@app/interference/interference-manager';
 import { SignalOrigin } from '@app/signal-origin';
 import { geoSlantRangeKm } from '@app/simulation/geo-geometry';
 import { noiseFigureToK, noiseRiseDb, noiseRiseToK, type SystemNoise, systemNoiseTemperature, thermalNoiseDbm } from '@app/simulation/noise-model';
+import { RfSelector } from '@app/simulation/rf-narrowing';
 import { SimClock } from '@app/simulation/sim-clock';
+import { candidateSatellites } from '@app/simulation/sim-queries';
 import { getSimulatedNowMs } from '@app/simulation/sim-time';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { dB, dBm, Hertz, RfFrequency, RfSignal } from '@app/types';
@@ -242,6 +244,8 @@ export abstract class AntennaCore extends BaseEquipment {
    * stations' uplinks or injected interference.
    */
   private readonly txFedSignalIds_ = new Map<number, Set<RfSignal>>();
+  /** Beam-cone candidate selection for constellation scenarios (P3-WP5); null when not narrowing */
+  private rfSelector_: RfSelector | null = null;
 
   /** Get the attached RF front-end (for signal path calculations) */
   get rfFrontEnd(): RFFrontEndCore | null {
@@ -1921,7 +1925,7 @@ export abstract class AntennaCore extends BaseEquipment {
     view: SatelliteView;
   }[] {
     const out: { sat: Satellite; signal: RfSignal; view: SatelliteView }[] = [];
-    for (const sat of SimulationManager.getInstance().satellites) {
+    for (const sat of this.rfCandidates_()) {
       const view = this.satView_(sat);
       // Orbital satellites already return nothing below the station's horizon
       if (!(sat instanceof OrbitalSatellite) && view.el <= 0) {
@@ -1936,6 +1940,58 @@ export abstract class AntennaCore extends BaseEquipment {
     }
 
     return out;
+  }
+
+  /**
+   * Satellites this antenna considers: every hot satellite, or, in a scenario
+   * with constellation members, the authored ones plus the members inside the
+   * beam cone (P3-WP5, src/simulation/rf-narrowing.ts).
+   */
+  private rfCandidates_(): readonly Satellite[] {
+    const selector = this.rfSelectorFor_();
+
+    return selector ? selector.candidates() : candidateSatellites(SimulationManager.getInstance());
+  }
+
+  /** Narrowing selector for the current scenario, or null (authored-only scenario, no station match, flag off). */
+  private rfSelectorFor_(): RfSelector | null {
+    const scheduler = SimulationManager.getInstance().scheduler;
+    if (!scheduler?.rfNarrowingActive || !this.stationLocation_) {
+      this.rfSelector_ = null;
+
+      return null;
+    }
+    if (this.rfSelector_?.scheduler === scheduler) {
+      return this.rfSelector_;
+    }
+    const { latitude, longitude, elevationM } = this.stationLocation_;
+    const stationIndex = scheduler.stationIndexOf(latitude, longitude);
+    if (stationIndex < 0 && scheduler.isTiered) {
+      return null;
+    }
+    this.rfSelector_ = new RfSelector(scheduler, stationIndex, {
+      latDeg: latitude,
+      lonDeg: longitude,
+      altKm: elevationM / 1000,
+      rxBand: [this.config.minRxFrequency, this.config.maxRxFrequency],
+      txBand: [this.config.minTxFrequency, this.config.maxTxFrequency],
+      boresight: () => ({ az: this.state.azimuth as number, el: this.state.elevation as number }),
+      patternGainDbi: (theta, f) => this.patternGain_dBi_(theta, f),
+      beamwidth3dBDeg: (f) => this.beamwidth3dB_deg_(f),
+      fsplDb: (f, km) => this.calculateFreeSpacePathLoss_(f, km),
+      atmosphericLossDb: (f, el) => this.calculateAtmosphericLoss_(f, el),
+      feedLossDb: (f) => this.feedLossAt_(f),
+      clearSkyNoiseK: (f) => this.clearSkySystemNoiseK(f),
+      offAxisDeg: (az, el) => this.effectiveOffAxisDeg_(az, el),
+      viewOf: (sat) => this.satView_(sat),
+    });
+
+    return this.rfSelector_;
+  }
+
+  /** Aggregate sidelobe noise rise from constellation members outside the beam cone, K (P3-D3). */
+  aggregateNoiseK(frequency: number): number {
+    return this.rfSelector_ && this.rfSelector_.scheduler.rfAggregate ? this.rfSelector_.aggregateK(frequency) : 0;
   }
 
   attachRfFrontEnd(rfFrontEnd: RFFrontEndCore): void {
@@ -2370,7 +2426,21 @@ export abstract class AntennaCore extends BaseEquipment {
     const isWire = this.config.gainModel === 'fixed';
     const beamwidth = this.config.fixedBeamwidth3dB_deg ?? 90;
 
-    for (const sat of SimulationManager.getInstance().satellites) {
+    const candidates = this.rfCandidates_();
+    const narrowed = this.rfSelector_ !== null && this.rfSelector_.scheduler === SimulationManager.getInstance().scheduler;
+    // Members this antenna fed that dropped out of the candidate set: withdraw what it put on them
+    if (narrowed && fedIds.size > 0) {
+      const inSet = new Set<number>();
+      for (const sat of candidates) inSet.add(sat.noradId);
+      for (const [norad, prevIds] of [...fedIds]) {
+        if (inSet.has(norad)) continue;
+        const gone = this.rfSelector_?.scheduler.registry.peek(norad);
+        if (gone) gone.rxSignal = gone.rxSignal.filter((s) => !prevIds.has(s));
+        fedIds.delete(norad);
+      }
+    }
+
+    for (const sat of candidates) {
       const view = this.satView_(sat);
       const offAxis_deg = this.effectiveOffAxisDeg_(view.az, view.el);
       const canHear = view.el > 0 && (!isWire || offAxis_deg <= beamwidth);
@@ -2769,7 +2839,9 @@ export abstract class AntennaCore extends BaseEquipment {
       feedPhysicalK: this.config.rxPhysTemp_K ?? 290,
       receiverK: this.receiverNoiseK_(),
     };
-    const base = systemNoiseTemperature(inputs);
+    // Constellation members outside the beam cone raise the noise (P3-D3); the clear-sky reference leaves them out
+    const aggregateK = weather ? this.aggregateNoiseK(frequency) : 0;
+    const base = AntennaCore.withAggregate_(systemNoiseTemperature(inputs), aggregateK);
     const sunRiseDb = sun ? this.state.skyNoiseDegradation_dB : 0;
     if (!(sunRiseDb > 0)) {
       return base;
@@ -2780,7 +2852,11 @@ export abstract class AntennaCore extends BaseEquipment {
     // passes through the feed like any other sky noise.
     const sunK = noiseRiseToK(base.systemK, sunRiseDb) * 10 ** (feedLossDb / 10);
 
-    return systemNoiseTemperature({ ...inputs, sunK });
+    return AntennaCore.withAggregate_(systemNoiseTemperature({ ...inputs, sunK }), aggregateK);
+  }
+
+  private static withAggregate_(noise: SystemNoise, aggregateK: number): SystemNoise {
+    return aggregateK > 0 ? { ...noise, antennaAtLnaK: noise.antennaAtLnaK + aggregateK, systemK: noise.systemK + aggregateK } : noise;
   }
 
   /** Clear-sky system noise temperature at the current elevation (no rain, ice or sun), K */

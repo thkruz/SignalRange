@@ -12,6 +12,7 @@ import { vi } from 'vitest';
 
 const simulationManager = {
   satellites: [] as unknown[],
+  registry: { get: (n: number) => (simulationManager.satellites as Array<{ noradId: number }>).find((s) => s.noradId === n) },
   groundStations: [] as unknown[],
   objectivesManager: undefined as unknown,
 };

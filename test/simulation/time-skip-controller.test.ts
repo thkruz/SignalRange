@@ -23,7 +23,11 @@ const mockGroundStations: unknown[] = [];
 vi.mock('../../src/simulation/simulation-manager', () => ({
   SimulationManager: {
     hasInstance: () => true,
-    getInstance: () => ({ satellites: mockSatellites, groundStations: mockGroundStations }),
+    getInstance: () => ({
+      satellites: mockSatellites,
+      registry: { get: (n: number) => (mockSatellites as Array<{ noradId: number }>).find((s) => s.noradId === n) },
+      groundStations: mockGroundStations,
+    }),
   },
 }));
 

@@ -3,7 +3,7 @@
  * units, as the UI draws them) and the site views' hotspots.
  */
 
-import { CLOSEUPS, SITE_ASPECT, SITE_HOTSPOTS } from '@app/campaigns/frontline/site-hotspots';
+import { CLOSEUPS, FORWARD_CLOSEUPS, FORWARD_HOTSPOTS, FORWARD_ROUTER_EUROSAT, FORWARD_SITE_ASPECT, SITE_ASPECT, SITE_HOTSPOTS } from '@app/campaigns/frontline/site-hotspots';
 import { VIEW_W, viewHeight } from '@app/physical/ui/plant-svg';
 import type { SiteShape } from '@app/physical/ui/site-types';
 import { describe, expect, it } from 'vitest';
@@ -146,6 +146,65 @@ describe('selection boxes do not overlap', () => {
           if (hit) {
             bad.push(`${view}: ${spots[i].id} x ${spots[j].id}`);
           }
+        }
+      }
+    }
+    expect(bad).toEqual([]);
+  });
+});
+
+describe('forward selection boxes do not overlap (FW2)', () => {
+  /** The FW2 close-ups (router variants and cable); the FS1 power box, battery and generator ones keep nested body regions */
+  const defs = [FORWARD_CLOSEUPS.router!, FORWARD_ROUTER_EUROSAT, FORWARD_CLOSEUPS['spacey-cable']!];
+
+  it('forward hotspots never overlap, with every EuroSat part present', () => {
+    const bad: string[] = [];
+    for (let i = 0; i < FORWARD_HOTSPOTS.length; i++) {
+      for (let j = i + 1; j < FORWARD_HOTSPOTS.length; j++) {
+        const hit = FORWARD_HOTSPOTS[i].shapes.some((a) => FORWARD_HOTSPOTS[j].shapes.some((b) => shapesOverlap(a, b, FORWARD_SITE_ASPECT)));
+        if (hit) {
+          bad.push(`${FORWARD_HOTSPOTS[i].id} x ${FORWARD_HOTSPOTS[j].id}`);
+        }
+      }
+    }
+    expect(bad).toEqual([]);
+  });
+
+  it('forward close-up regions never overlap each other', () => {
+    const bad: string[] = [];
+    for (const def of defs) {
+      for (let i = 0; i < def.regions.length; i++) {
+        for (let j = i + 1; j < def.regions.length; j++) {
+          if (shapesOverlap(def.regions[i].shape, def.regions[j].shape, def.aspect)) {
+            bad.push(`${def.title}: ${def.regions[i].id} x ${def.regions[j].id}`);
+          }
+        }
+      }
+    }
+    expect(bad).toEqual([]);
+  });
+
+  it('forward probe circles do not overlap each other, and never clip a region they do not sit on', () => {
+    const bad: string[] = [];
+    for (const def of defs) {
+      const h = viewHeight(def.aspect);
+      for (let i = 0; i < def.probes.length; i++) {
+        for (let j = i + 1; j < def.probes.length; j++) {
+          if (Math.hypot((def.probes[i].x - def.probes[j].x) * VIEW_W, (def.probes[i].y - def.probes[j].y) * h) < PROBE_HIT_R * 2) {
+            bad.push(`${def.title}: ${def.probes[i].id} x ${def.probes[j].id}`);
+          }
+        }
+      }
+      for (const probe of def.probes) {
+        const cx = probe.x * VIEW_W;
+        const cy = probe.y * h;
+        for (const region of def.regions) {
+          if (!shapeHas(region.shape, def.aspect, cx, cy) && circleHitsBox(cx, cy, PROBE_HIT_R, toBox(region.shape, def.aspect))) {
+            bad.push(`${def.title}: probe ${probe.id} clips region ${region.id}`);
+          }
+        }
+        if (def.regions.filter((r) => shapeHas(r.shape, def.aspect, cx, cy)).length > 1) {
+          bad.push(`${def.title}: probe ${probe.id} sits on several regions`);
         }
       }
     }

@@ -9,7 +9,12 @@
  */
 
 import type { AggregatedAlarm } from '@app/events/events';
+import type { EvidenceLogState } from '@app/physical/evidence-log';
+import type { FieldRecordsState } from '@app/physical/field-records';
 import type { PlantEnvironment, PlantState } from '@app/physical/physical-plant-types';
+import type { PlantEventState } from '@app/physical/plant-event-controller';
+import type { ServiceModelState } from '@app/physical/service-types';
+import type { WorkloadRunnerState } from '@app/physical/workload-types';
 
 export type SpaceEventsSnapshot = { phases: Array<[string, string]> };
 
@@ -127,7 +132,14 @@ export interface ManagerStates {
   gnssThreat?: GnssThreatSnapshot;
   hardwareFaults?: HardwareFaultSnapshot;
   /** Phase 38.1 physical plant (PlantState plus the trainer weather override) */
-  physicalPlant?: PlantState & { weather?: Partial<PlantEnvironment> };
+  physicalPlant?: PlantState & {
+    weather?: Partial<PlantEnvironment>;
+    events?: PlantEventState;
+    service?: ServiceModelState;
+    evidence?: EvidenceLogState;
+    workloads?: WorkloadRunnerState;
+    records?: FieldRecordsState;
+  };
   weather?: WeatherSnapshot;
   telemetry?: TelemetrySnapshot;
   alarms?: Array<AggregatedAlarm & { detail?: string }>;

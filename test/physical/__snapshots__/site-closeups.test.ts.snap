@@ -1,0 +1,962 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`forward site art (FS1) > keeps the camp hotspots, close-ups and images exactly as they were 1`] = `
+{
+  "CLOSEUPS": {
+    "flap-in": {
+      "aspect": 1.5,
+      "cables": [
+        {
+          "label": "VSAT IFL (30 m coax)",
+          "points": [
+            [
+              0.505,
+              1,
+            ],
+            [
+              0.495,
+              0.85,
+            ],
+            [
+              0.47,
+              0.7,
+            ],
+          ],
+          "target": "vsat-ifl",
+        },
+        {
+          "label": "SpaceY cable (25 m power + data)",
+          "points": [
+            [
+              0.575,
+              1,
+            ],
+            [
+              0.555,
+              0.85,
+            ],
+            [
+              0.5,
+              0.7,
+            ],
+          ],
+          "target": "spacey-cable",
+        },
+      ],
+      "id": "flap-in",
+      "image": "/assets/campaigns/frontline/physical/cu-flap-in.webp",
+      "probes": [],
+      "regions": [],
+      "title": "Cable entry flap (inside)",
+    },
+    "flap-out": {
+      "aspect": 1.5,
+      "cables": [
+        {
+          "label": "VSAT IFL (30 m coax)",
+          "points": [
+            [
+              0.58,
+              0.54,
+            ],
+            [
+              0.47,
+              0.58,
+            ],
+            [
+              0.4,
+              0.68,
+            ],
+            [
+              0.33,
+              0.8,
+            ],
+            [
+              0.18,
+              0.92,
+            ],
+            [
+              0,
+              0.98,
+            ],
+          ],
+          "target": "vsat-ifl",
+        },
+        {
+          "label": "SpaceY cable (25 m power + data)",
+          "points": [
+            [
+              0.42,
+              0.575,
+            ],
+            [
+              0.27,
+              0.572,
+            ],
+            [
+              0.12,
+              0.545,
+            ],
+            [
+              0,
+              0.525,
+            ],
+          ],
+          "target": "spacey-cable",
+        },
+      ],
+      "id": "flap-out",
+      "image": "/assets/campaigns/frontline/physical/cu-flap-out.webp",
+      "probes": [],
+      "regions": [],
+      "title": "Cable entry flap (outside)",
+    },
+    "generator": {
+      "aspect": 1.5,
+      "cables": [],
+      "id": "generator",
+      "image": "/assets/campaigns/frontline/physical/cu-generator.webp",
+      "probes": [],
+      "regions": [
+        {
+          "affordances": [
+            "inspect",
+            "feel",
+            "powerCycle",
+            "setMode",
+          ],
+          "id": "cu-generator",
+          "label": "Generator",
+          "shape": {
+            "h": 0.65,
+            "kind": "rect",
+            "w": 0.44,
+            "x": 0.2,
+            "y": 0.3,
+          },
+          "target": "generator",
+        },
+        {
+          "affordances": [
+            "inspect",
+            "refuel",
+          ],
+          "id": "cu-gen-fuel",
+          "label": "Fuel cap (refuel)",
+          "shape": {
+            "h": 0.14,
+            "kind": "rect",
+            "w": 0.1,
+            "x": 0.44,
+            "y": 0.14,
+          },
+          "target": "generator",
+        },
+        {
+          "affordances": [
+            "inspect",
+            "multimeter",
+            "reseat",
+          ],
+          "id": "cu-gen-sockets",
+          "label": "Output sockets",
+          "shape": {
+            "h": 0.3,
+            "kind": "rect",
+            "w": 0.06,
+            "x": 0.64,
+            "y": 0.53,
+          },
+          "target": "generator:out",
+        },
+      ],
+      "title": "Generator",
+    },
+    "laptop": {
+      "aspect": 1.5,
+      "cables": [],
+      "id": "laptop",
+      "image": "/assets/campaigns/frontline/physical/cu-laptop.webp",
+      "probes": [],
+      "regions": [
+        {
+          "id": "cu-laptop",
+          "label": "Laptop (opens the SpaceY app)",
+          "opensApp": true,
+          "shape": {
+            "h": 0.78,
+            "kind": "rect",
+            "w": 0.68,
+            "x": 0.15,
+            "y": 0.1,
+          },
+          "target": "laptop",
+        },
+      ],
+      "title": "Laptop",
+    },
+    "lnb": {
+      "aspect": 1.5,
+      "cables": [],
+      "id": "lnb",
+      "image": "/assets/campaigns/frontline/physical/cu-lnb.webp",
+      "probes": [
+        {
+          "id": "cu-feed-port",
+          "label": "Feed horn (ahead of the LNA)",
+          "target": "vsat-feed",
+          "x": 0.72,
+          "y": 0.22,
+        },
+        {
+          "id": "cu-ifl-lnb",
+          "label": "IFL connector under the boot",
+          "target": "vsat-ifl:lnb",
+          "x": 0.655,
+          "y": 0.68,
+        },
+      ],
+      "regions": [
+        {
+          "id": "cu-vsat-lnb",
+          "label": "LNB",
+          "shape": {
+            "h": 0.55,
+            "kind": "rect",
+            "w": 0.35,
+            "x": 0.5,
+            "y": 0.05,
+          },
+          "target": "vsat-lnb",
+        },
+      ],
+      "title": "VSAT LNB",
+    },
+    "modem": {
+      "aspect": 1.5,
+      "cables": [],
+      "id": "modem",
+      "image": "/assets/campaigns/frontline/physical/cu-modem.webp",
+      "probes": [
+        {
+          "id": "cu-modem-ifl",
+          "label": "IFL F connector at the modem",
+          "target": "vsat-ifl:modem",
+          "x": 0.705,
+          "y": 0.575,
+        },
+      ],
+      "regions": [
+        {
+          "id": "cu-modem",
+          "label": "VSAT modem",
+          "shape": {
+            "h": 0.16,
+            "kind": "rect",
+            "w": 0.43,
+            "x": 0.31,
+            "y": 0.38,
+          },
+          "target": "vsat-modem",
+        },
+        {
+          "id": "cu-modem-dc",
+          "label": "DC input",
+          "shape": {
+            "h": 0.11,
+            "kind": "rect",
+            "w": 0.06,
+            "x": 0.505,
+            "y": 0.55,
+          },
+          "target": "modem:dc",
+        },
+      ],
+      "title": "VSAT modem",
+    },
+    "power-station": {
+      "aspect": 1.5,
+      "cables": [],
+      "id": "power-station",
+      "image": "/assets/campaigns/frontline/physical/cu-power-station.webp",
+      "probes": [],
+      "regions": [
+        {
+          "id": "cu-power-station",
+          "label": "Power station",
+          "shape": {
+            "h": 0.35,
+            "kind": "rect",
+            "w": 0.48,
+            "x": 0.3,
+            "y": 0.08,
+          },
+          "target": "power-station",
+        },
+        {
+          "id": "cu-ps-out",
+          "label": "Output sockets",
+          "shape": {
+            "h": 0.18,
+            "kind": "rect",
+            "w": 0.2,
+            "x": 0.53,
+            "y": 0.68,
+          },
+          "target": "ps:ac-out",
+        },
+        {
+          "id": "cu-ps-dc",
+          "label": "DC outputs",
+          "shape": {
+            "h": 0.14,
+            "kind": "rect",
+            "w": 0.21,
+            "x": 0.53,
+            "y": 0.44,
+          },
+          "target": "ps:dc-out",
+        },
+        {
+          "id": "cu-ps-in",
+          "label": "Input port",
+          "shape": {
+            "h": 0.07,
+            "kind": "rect",
+            "w": 0.08,
+            "x": 0.6,
+            "y": 0.93,
+          },
+          "target": "ps:in",
+        },
+      ],
+      "title": "Power station",
+    },
+    "power-strip": {
+      "aspect": 1.5,
+      "cables": [],
+      "id": "power-strip",
+      "image": "/assets/campaigns/frontline/physical/cu-power-strip.webp",
+      "probes": [],
+      "regions": [
+        {
+          "id": "cu-strip",
+          "label": "Power strip (fed by the power station)",
+          "shape": {
+            "h": 0.09,
+            "kind": "rect",
+            "w": 0.48,
+            "x": 0.25,
+            "y": 0.75,
+          },
+          "target": "power-strip",
+        },
+        {
+          "id": "cu-strip-sock-router",
+          "label": "Router plug",
+          "shape": {
+            "h": 0.16,
+            "kind": "rect",
+            "w": 0.075,
+            "x": 0.61,
+            "y": 0.53,
+          },
+          "target": "strip:router",
+        },
+        {
+          "id": "cu-strip-sock-modem",
+          "label": "Modem plug",
+          "shape": {
+            "h": 0.17,
+            "kind": "rect",
+            "w": 0.065,
+            "x": 0.49,
+            "y": 0.5,
+          },
+          "target": "strip:modem",
+        },
+        {
+          "id": "cu-strip-plug",
+          "label": "Strip input cord",
+          "shape": {
+            "h": 0.12,
+            "kind": "rect",
+            "w": 0.21,
+            "x": 0.02,
+            "y": 0.56,
+          },
+          "target": "strip:in",
+        },
+      ],
+      "title": "Power strip",
+    },
+    "router": {
+      "aspect": 1.5,
+      "cables": [],
+      "id": "router",
+      "image": "/assets/campaigns/frontline/physical/cu-router.webp",
+      "probes": [
+        {
+          "id": "cu-router-cable",
+          "label": "SpaceY cable plug at the router",
+          "target": "spacey-cable:router",
+          "x": 0.455,
+          "y": 0.6,
+        },
+      ],
+      "regions": [
+        {
+          "id": "cu-router",
+          "label": "SpaceY router",
+          "shape": {
+            "h": 0.15,
+            "kind": "rect",
+            "w": 0.4,
+            "x": 0.39,
+            "y": 0.34,
+          },
+          "target": "spacey-router",
+        },
+        {
+          "id": "cu-router-dc",
+          "label": "DC input",
+          "shape": {
+            "h": 0.09,
+            "kind": "rect",
+            "w": 0.075,
+            "x": 0.735,
+            "y": 0.5,
+          },
+          "target": "router:dc",
+        },
+      ],
+      "title": "SpaceY router",
+    },
+    "spacey-cable": {
+      "aspect": 1.5,
+      "cables": [
+        {
+          "label": "SpaceY cable (25 m power + data)",
+          "points": [
+            [
+              0.88,
+              0.93,
+            ],
+            [
+              0.5,
+              0.91,
+            ],
+            [
+              0.33,
+              0.8,
+            ],
+            [
+              0.26,
+              0.68,
+            ],
+            [
+              0.25,
+              0.58,
+            ],
+            [
+              0.2,
+              0.4,
+            ],
+          ],
+          "target": "spacey-cable",
+        },
+      ],
+      "id": "spacey-cable",
+      "image": "/assets/campaigns/frontline/physical/cu-spacey-cable.webp",
+      "probes": [],
+      "regions": [],
+      "title": "SpaceY cable run",
+    },
+    "spacey-dish": {
+      "aspect": 1.5,
+      "cables": [],
+      "id": "spacey-dish",
+      "image": "/assets/campaigns/frontline/physical/cu-spacey-dish.webp",
+      "probes": [
+        {
+          "id": "cu-spacey-plug",
+          "label": "SpaceY cable plug at the mast base",
+          "target": "spacey-cable:dish",
+          "x": 0.515,
+          "y": 0.755,
+        },
+      ],
+      "regions": [
+        {
+          "id": "cu-spacey-panel",
+          "label": "SpaceY panel",
+          "shape": {
+            "h": 0.6,
+            "kind": "rect",
+            "w": 0.5,
+            "x": 0.25,
+            "y": 0.12,
+          },
+          "target": "spacey-dish",
+        },
+      ],
+      "title": "SpaceY dish",
+    },
+    "vsat-dish": {
+      "aspect": 1.5,
+      "cables": [],
+      "id": "vsat-dish",
+      "image": "/assets/campaigns/frontline/physical/cu-vsat-dish.webp",
+      "probes": [],
+      "regions": [
+        {
+          "affordances": [
+            "inspect",
+            "clearSnow",
+            "removeNet",
+          ],
+          "id": "cu-vsat-dish",
+          "label": "VSAT reflector",
+          "shape": {
+            "h": 0.66,
+            "kind": "rect",
+            "w": 0.36,
+            "x": 0.35,
+            "y": 0.07,
+          },
+          "target": "vsat-dish",
+        },
+        {
+          "affordances": [
+            "inspect",
+            "swap",
+          ],
+          "id": "cu-vsat-mount",
+          "label": "VSAT mount",
+          "shape": {
+            "h": 0.21,
+            "kind": "rect",
+            "w": 0.45,
+            "x": 0.25,
+            "y": 0.74,
+          },
+          "target": "vsat-dish",
+        },
+      ],
+      "title": "VSAT dish",
+    },
+    "vsat-ifl": {
+      "aspect": 1.5,
+      "cables": [
+        {
+          "label": "VSAT IFL (30 m coax)",
+          "points": [
+            [
+              0.38,
+              1,
+            ],
+            [
+              0.33,
+              0.88,
+            ],
+            [
+              0.29,
+              0.7,
+            ],
+            [
+              0.31,
+              0.5,
+            ],
+            [
+              0.38,
+              0.3,
+            ],
+            [
+              0.45,
+              0.15,
+            ],
+            [
+              0.57,
+              0,
+            ],
+          ],
+          "target": "vsat-ifl",
+        },
+      ],
+      "id": "vsat-ifl",
+      "image": "/assets/campaigns/frontline/physical/cu-vsat-ifl.webp",
+      "probes": [],
+      "regions": [],
+      "title": "VSAT IFL cable run",
+    },
+  },
+  "SITE_ASPECT": {
+    "inside": 1.7330754352030948,
+    "outside": 2.0433295324971494,
+  },
+  "SITE_HOTSPOTS": [
+    {
+      "anchor": [
+        0.235,
+        0.4689,
+      ],
+      "closeup": "router",
+      "id": "site-in-router",
+      "label": "SpaceY router",
+      "partIds": [
+        "spacey-router",
+      ],
+      "shapes": [
+        {
+          "h": 0.063,
+          "kind": "rect",
+          "w": 0.07,
+          "x": 0.205,
+          "y": 0.479,
+        },
+      ],
+      "view": "inside",
+    },
+    {
+      "anchor": [
+        0.309,
+        0.4876,
+      ],
+      "closeup": "modem",
+      "id": "site-in-vsat-modem",
+      "label": "VSAT modem",
+      "partIds": [
+        "vsat-modem",
+      ],
+      "shapes": [
+        {
+          "h": 0.063,
+          "kind": "rect",
+          "w": 0.064,
+          "x": 0.277,
+          "y": 0.4561,
+        },
+      ],
+      "view": "inside",
+    },
+    {
+      "anchor": [
+        0.4155,
+        0.4132,
+      ],
+      "closeup": "laptop",
+      "id": "site-in-laptop",
+      "label": "Laptop",
+      "partIds": [
+        "laptop",
+      ],
+      "shapes": [
+        {
+          "h": 0.1889,
+          "kind": "rect",
+          "w": 0.145,
+          "x": 0.343,
+          "y": 0.3187,
+        },
+      ],
+      "view": "inside",
+    },
+    {
+      "anchor": [
+        0.2575,
+        0.7767,
+      ],
+      "closeup": "power-station",
+      "id": "site-in-power-station",
+      "label": "Power station",
+      "partIds": [
+        "power-station",
+      ],
+      "shapes": [
+        {
+          "h": 0.2634,
+          "kind": "rect",
+          "w": 0.125,
+          "x": 0.195,
+          "y": 0.645,
+        },
+      ],
+      "view": "inside",
+    },
+    {
+      "anchor": [
+        0.37,
+        0.9082,
+      ],
+      "closeup": "power-strip",
+      "id": "site-in-power-strip",
+      "label": "Power strip",
+      "partIds": [
+        "power-strip",
+      ],
+      "shapes": [
+        {
+          "h": 0.0859,
+          "kind": "rect",
+          "w": 0.1,
+          "x": 0.32,
+          "y": 0.8912,
+        },
+      ],
+      "view": "inside",
+    },
+    {
+      "anchor": [
+        0.319,
+        0.3579,
+      ],
+      "closeup": "flap-in",
+      "id": "site-in-cable-entry",
+      "label": "Cable entry flap",
+      "partIds": [],
+      "shapes": [
+        {
+          "h": 0.17,
+          "kind": "rect",
+          "w": 0.044,
+          "x": 0.297,
+          "y": 0.2729,
+        },
+      ],
+      "view": "inside",
+    },
+    {
+      "action": "go-outside",
+      "anchor": [
+        0.82,
+        0.1739,
+      ],
+      "id": "site-in-door",
+      "label": "Go outside",
+      "partIds": [],
+      "shapes": [
+        {
+          "h": 0.6412,
+          "kind": "rect",
+          "w": 0.2,
+          "x": 0.72,
+          "y": 0.0267,
+        },
+      ],
+      "view": "inside",
+    },
+    {
+      "anchor": [
+        0.165,
+        0.468,
+      ],
+      "closeup": "spacey-dish",
+      "id": "site-out-spacey-dish",
+      "label": "SpaceY dish",
+      "partIds": [
+        "spacey-dish",
+      ],
+      "shapes": [
+        {
+          "h": 0.216,
+          "kind": "rect",
+          "w": 0.074,
+          "x": 0.128,
+          "y": 0.36,
+        },
+      ],
+      "view": "outside",
+    },
+    {
+      "anchor": [
+        0.2845,
+        0.3769,
+      ],
+      "closeup": "vsat-dish",
+      "id": "site-out-vsat-dish",
+      "label": "VSAT dish",
+      "partIds": [
+        "vsat-dish",
+      ],
+      "shapes": [
+        {
+          "h": 0.049,
+          "kind": "rect",
+          "w": 0.085,
+          "x": 0.242,
+          "y": 0.2587,
+        },
+        {
+          "h": 0.186,
+          "kind": "rect",
+          "w": 0.028,
+          "x": 0.242,
+          "y": 0.309,
+        },
+        {
+          "h": 0.123,
+          "kind": "rect",
+          "w": 0.015,
+          "x": 0.312,
+          "y": 0.372,
+        },
+      ],
+      "view": "outside",
+    },
+    {
+      "anchor": [
+        0.33,
+        0.3,
+      ],
+      "closeup": "lnb",
+      "id": "site-out-vsat-lnb",
+      "label": "VSAT LNB",
+      "partIds": [
+        "vsat-lnb",
+      ],
+      "shapes": [
+        {
+          "h": 0.06,
+          "kind": "rect",
+          "w": 0.035,
+          "x": 0.29,
+          "y": 0.31,
+        },
+      ],
+      "view": "outside",
+    },
+    {
+      "anchor": [
+        0.27,
+        0.636,
+      ],
+      "closeup": "generator",
+      "id": "site-out-generator",
+      "label": "Generator",
+      "partIds": [
+        "generator",
+      ],
+      "shapes": [
+        {
+          "h": 0.2565,
+          "kind": "rect",
+          "w": 0.145,
+          "x": 0.234,
+          "y": 0.5422,
+        },
+      ],
+      "view": "outside",
+    },
+    {
+      "anchor": [
+        0.426,
+        0.5524,
+      ],
+      "closeup": "flap-out",
+      "id": "site-out-cable-entry",
+      "label": "Cable entry flap",
+      "partIds": [],
+      "shapes": [
+        {
+          "h": 0.1148,
+          "kind": "rect",
+          "w": 0.068,
+          "x": 0.392,
+          "y": 0.495,
+        },
+      ],
+      "tentOnly": true,
+      "view": "outside",
+    },
+    {
+      "anchor": [
+        0.3,
+        0.4356,
+      ],
+      "closeup": "vsat-ifl",
+      "id": "site-out-vsat-ifl",
+      "label": "VSAT IFL cable",
+      "partIds": [],
+      "requires": [
+        "vsat-ifl",
+      ],
+      "shapes": [
+        {
+          "kind": "path",
+          "points": [
+            [
+              0.297,
+              0.39,
+            ],
+            [
+              0.285,
+              0.468,
+            ],
+            [
+              0.283,
+              0.515,
+            ],
+          ],
+          "width": 0.016,
+        },
+      ],
+      "view": "outside",
+    },
+    {
+      "anchor": [
+        0.2,
+        0.585,
+      ],
+      "closeup": "spacey-cable",
+      "id": "site-out-spacey-cable",
+      "label": "SpaceY cable",
+      "partIds": [],
+      "requires": [
+        "spacey-cable",
+      ],
+      "shapes": [
+        {
+          "kind": "path",
+          "points": [
+            [
+              0.18,
+              0.596,
+            ],
+            [
+              0.22,
+              0.605,
+            ],
+          ],
+          "width": 0.016,
+        },
+      ],
+      "view": "outside",
+    },
+    {
+      "action": "go-inside",
+      "anchor": [
+        0.515,
+        0.522,
+      ],
+      "id": "site-out-door",
+      "label": "Go inside",
+      "partIds": [],
+      "shapes": [
+        {
+          "h": 0.324,
+          "kind": "rect",
+          "w": 0.1,
+          "x": 0.465,
+          "y": 0.36,
+        },
+      ],
+      "tentOnly": true,
+      "view": "outside",
+    },
+  ],
+  "SITE_IMAGES": {
+    "inside": "/assets/campaigns/frontline/physical/site-inside.webp",
+    "outside": "/assets/campaigns/frontline/physical/site-outside.webp",
+  },
+}
+`;

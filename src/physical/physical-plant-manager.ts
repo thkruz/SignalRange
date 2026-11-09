@@ -19,11 +19,12 @@
  * isPartPowered is true, isLinkDropped is false and spaceyStatus is 'online'.
  */
 
-import { type GenericObsKey, hasObs, OBS_TABLE, type ObsState, type ObsTargetClass, type ObsTemplateVars, pickGeneric, pickObs } from './observation-text';
+import { fillText, type GenericObsKey, hasObs, OBS_TABLE, type ObsState, type ObsTargetClass, type ObsTemplateVars, pickGeneric, pickObs } from './observation-text';
 import {
   type CableState,
   type ConnectorState,
   DEFAULT_PLANT_SPARES,
+  type PartModeConfig,
   type PartState,
   type PlantActionListener,
   type PlantCableConfig,
@@ -42,11 +43,14 @@ import {
   type PlantTrigger,
   type PlantVerb,
   type PlantWeather,
+  type PowerForecast,
+  type PowerReadings,
   type SpaceyStatus,
   type VerbResult,
 } from './physical-plant-types';
 import { DEFAULT_ENGINE_MAP, type EnginePowerRole } from './plant-bridge';
 import { type PartClass, type RuleVerb, type TargetLocation, type TargetTraits, verbApplies } from './plant-verb-rules';
+import { type ForecastBattery, type ForecastGenerator, type ForecastNode, projectPower } from './power-forecast';
 
 /** Supply ratio below which a part browns out */
 const BROWNOUT_RATIO = 0.8;
@@ -104,6 +108,7 @@ const VERB_COST_S: Record<PlantVerb, number> = {
   returnInside: 60,
   goOutside: 30,
   refuel: 180,
+  setMode: 20,
   spotted: 0,
 };
 const SWAP_COST_S = { connector: 180, cable: 420, part: 240 };
@@ -140,6 +145,7 @@ const FACT_OF: Partial<Record<PlantFaultKind, string>> = {
 const CHARGE_FRACTION = 0.2;
 const BATTERY_RECOVER_FRACTION = 0.1;
 const UNKNOWN_COST_S = 0;
+const MAX_CHAIN_DEPTH = 16;
 /** Meter reading through a half-seated or loose contact, as a fraction of the supply */
 const PARTIAL_SEAT_METER_RATIO = 0.93;
 
@@ -182,6 +188,16 @@ export class PhysicalPlantManager {
   private spares_: PlantSpares = {};
   private trainerSpares_: PlantSpares | null = null;
   private rebootUntilS_ = new Map<string, number>();
+  /** Generator id -> scenario second its startup ends (output absent until then) */
+  private startingUntilS_ = new Map<string, number>();
+  /** Part id -> current mode id, for non-generator parts with `modes` */
+  private partModes_ = new Map<string, string>();
+  /** Generator id -> running flag, seeded from the authored config and never written back to it */
+  private running_ = new Map<string, boolean>();
+  /** Condition windows (key -> scenario second the window opened); saved in checkpoints, cleared on reset */
+  private windows_ = new Map<string, number>();
+  private forecastCache_ = new Map<string, PowerForecast>();
+  private forecastCacheSig_ = '';
   private supplied_ = new Map<string, boolean>();
   private socWh_ = new Map<string, number>();
   private fuelL_ = new Map<string, number>();
@@ -216,6 +232,11 @@ export class PhysicalPlantManager {
     this.revealedFacts_ = new Set();
     this.trainerSpares_ = null;
     this.rebootUntilS_ = new Map();
+    this.startingUntilS_ = new Map();
+    this.partModes_ = new Map();
+    this.running_ = new Map();
+    this.windows_ = new Map();
+    this.forecastCache_ = new Map();
     this.supplied_ = new Map();
     this.socWh_ = new Map();
     this.fuelL_ = new Map();
@@ -241,6 +262,9 @@ export class PhysicalPlantManager {
       }
       if (part.kind === 'generator') {
         this.fuelL_.set(part.id, part.fuelL ?? 5);
+        this.running_.set(part.id, part.running !== false && !(part.modes?.length && part.mode === 'off'));
+      } else if (part.modes?.length) {
+        this.partModes_.set(part.id, part.mode ?? part.modes[0].id);
       }
     }
     for (const cable of config.cables) {
@@ -377,7 +401,72 @@ export class PhysicalPlantManager {
       socPct: this.socPercent_(partId),
       loadW: this.loadOf_(partId, 0),
       lit: this.isPartPowered(partId),
+      ...(part.modes?.length ? { mode: this.getPartMode(partId), starting: this.isStarting(partId) } : {}),
     };
+  }
+
+  /** Current mode id of a part with `modes` ('off' or 'run' for a generator), else undefined */
+  getPartMode(partId: string): string | undefined {
+    const part = this.parts_.get(partId);
+    if (!part?.modes?.length) {
+      return undefined;
+    }
+
+    if (part.kind !== 'generator') {
+      return this.partModes_.get(partId) ?? part.mode ?? part.modes[0].id;
+    }
+
+    return this.isRunning_(part.id) ? 'run' : 'off';
+  }
+
+  /** The mode a UI toggle would switch to: off/run for a generator, else the next authored mode */
+  getNextMode(partId: string): string {
+    const part = this.parts_.get(partId);
+    const current = this.getPartMode(partId);
+    if (!part?.modes?.length || current === undefined) {
+      return 'off';
+    }
+    if (part.kind === 'generator') {
+      return current === 'off' ? 'run' : 'off';
+    }
+    const index = part.modes.findIndex((m) => m.id === current);
+
+    return part.modes[(index + 1) % part.modes.length].id;
+  }
+
+  /** The authored modes of a part (copies), empty when it has none; the power panel builds its selectors from these */
+  getModeOptions(partId: string): PartModeConfig[] {
+    return (this.parts_.get(partId)?.modes ?? []).map((m) => ({ ...m }));
+  }
+
+  /** True when the part has no modes, or its current mode serves traffic (service model, M04) */
+  modeServesTraffic(partId: string): boolean {
+    const part = this.parts_.get(partId);
+    if (!part?.modes?.length) {
+      return true;
+    }
+    const current = this.getPartMode(partId);
+
+    return part.modes.find((m) => m.id === current)?.servesTraffic !== false;
+  }
+
+  /** True while a generator is cranking toward 'run' (its supply is absent until the startup ends) */
+  isStarting(partId: string): boolean {
+    const until = this.startingUntilS_.get(partId);
+
+    return until !== undefined && this.deps_.now() < until;
+  }
+
+  /** Volts a healthy reading of this part may show (nominal +- `meter.normalBandPct`), or null without a meter config */
+  getMeterBand(partId: string): { minV: number; maxV: number } | null {
+    const meter = this.config_.meter;
+    if (!meter || !this.parts_.has(partId)) {
+      return null;
+    }
+    const nominal = this.nominalV_(partId);
+    const band = (nominal * meter.normalBandPct) / 100;
+
+    return { minV: nominal - band, maxV: nominal + band };
   }
 
   /** Loop resistance of a cable run in ohms (conductor plus return), from its length */
@@ -506,6 +595,11 @@ export class PhysicalPlantManager {
     return this.outside_;
   }
 
+  /** 'camp' (tent, trip rule) or 'forward' (one outdoor view, no trips). Absent config = camp. */
+  getSiteMode(): 'camp' | 'forward' {
+    return this.config_.site?.mode ?? 'camp';
+  }
+
   /** Scenario seconds now (the clock the log stamps use) */
   getTimeSeconds(): number {
     return this.deps_.now();
@@ -557,7 +651,168 @@ export class PhysicalPlantManager {
 
   /** Steady draw of a part in watts (0 when unpowered or unknown) */
   getLoadW(partId: string): number {
-    return this.isPartPowered(partId) ? (this.parts_.get(partId)?.loadW ?? 0) : 0;
+    const part = this.parts_.get(partId);
+
+    return part && this.isPartPowered(partId) ? this.drawOf_(part) : 0;
+  }
+
+  /** What a power-station display shows: stored energy, draws, charge, fuel and modes */
+  getPowerReadings(): PowerReadings {
+    const socWh: Record<string, number> = {};
+    const capacityWh: Record<string, number> = {};
+    const loadW: Record<string, number> = {};
+    const fuelL: Record<string, number> = {};
+    const modes: Record<string, string> = {};
+    let chargeW = 0;
+    let batteryDraw = 0;
+    let generatorDraw = 0;
+    for (const part of this.parts_.values()) {
+      if (part.kind === 'battery') {
+        socWh[part.id] = this.socWh_.get(part.id) ?? 0;
+        capacityWh[part.id] = part.capacityWh ?? 0;
+        loadW[part.id] = this.loadOf_(part.id, 0);
+        batteryDraw += loadW[part.id];
+        chargeW += this.chargeInto_(part);
+      }
+      if (part.kind === 'generator') {
+        fuelL[part.id] = this.fuelL_.get(part.id) ?? 0;
+        loadW[part.id] = this.loadOf_(part.id, 0);
+        generatorDraw += loadW[part.id];
+      }
+      if (part.modes?.length) {
+        modes[part.id] = this.getPartMode(part.id) as string;
+      }
+    }
+
+    return {
+      tS: this.deps_.now(),
+      socWh,
+      capacityWh,
+      loadW,
+      totalDrawW: Object.keys(capacityWh).length ? batteryDraw : generatorDraw,
+      chargeW,
+      fuelL,
+      modes,
+      reserveWh: this.config_.power?.reserveWh ?? null,
+    };
+  }
+
+  /**
+   * Preview the energy outlook with optional mode changes (part id -> mode id). Steps a copy of
+   * the resource drain in pure math; no plant state, clock or random stream is touched.
+   * Defaults: the configured planning horizon and basis (3600 s, battery-only without `power`).
+   */
+  forecast(modeOverrides: Record<string, string> = {}, horizonS?: number): PowerForecast {
+    // The projection is 1 Hz math over the whole horizon, so callers that ask every frame get a
+    // cached result until the plant second or anything the projection reads changes.
+    const sig = this.forecastSignature_();
+    if (sig !== this.forecastCacheSig_) {
+      this.forecastCache_.clear();
+      this.forecastCacheSig_ = sig;
+    }
+    const key = `${horizonS ?? ''}|${JSON.stringify(Object.entries(modeOverrides).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))}`;
+    let result = this.forecastCache_.get(key);
+    if (!result) {
+      result = this.computeForecast_(modeOverrides, horizonS);
+      this.forecastCache_.set(key, result);
+    }
+
+    // A copy, so a caller that sorts or edits the result cannot corrupt the cache
+    return { ...result, servicesAvailable: [...result.servicesAvailable] };
+  }
+
+  /** Everything the projection reads: the plant second, modes, run flags, faults, supplies and start timers */
+  private forecastSignature_(): string {
+    return JSON.stringify([
+      Math.floor(this.deps_.now()),
+      [...this.partModes_],
+      [...this.running_],
+      [...this.startingUntilS_],
+      [...this.socWh_],
+      [...this.fuelL_],
+      this.faults_.map((f) => `${f.fault.id}:${f.fault.kind}`),
+      [...this.supplied_],
+    ]);
+  }
+
+  private computeForecast_(modeOverrides: Record<string, string>, horizonS?: number): PowerForecast {
+    const power = this.config_.power;
+    const now = this.deps_.now();
+    const nodes: ForecastNode[] = [];
+    const batteries: ForecastBattery[] = [];
+    const generators: ForecastGenerator[] = [];
+    let startupCostS = 0;
+    for (const part of this.parts_.values()) {
+      const override = modeOverrides[part.id];
+      const current = this.getPartMode(part.id);
+      const known = override !== undefined && !!part.modes?.some((m) => m.id === override);
+      const changed = known && override !== current;
+      const mode = part.kind !== 'generator' ? part.modes?.find((m) => m.id === (changed ? override : current)) : undefined;
+      const untilS = this.startingUntilS_.get(part.id);
+      const pending = untilS !== undefined && untilS > now ? untilS - now : 0;
+      const startS = changed ? (part.modes?.find((m) => m.id === override)?.startupS ?? 0) : pending;
+      if (changed || pending > 0) {
+        startupCostS = Math.max(startupCostS, startS + (changed ? VERB_COST_S.setMode : 0));
+      }
+      const steadyW = mode ? mode.loadW : (part.loadW ?? 0);
+      nodes.push({
+        id: part.id,
+        parentId: part.poweredBy,
+        steadyW,
+        startupW: mode ? (mode.startupW ?? mode.loadW) : steadyW,
+        startRemainingS: part.kind === 'generator' ? 0 : startS,
+        ...(mode ? { servesTraffic: mode.servesTraffic !== false } : {}),
+      });
+      if (part.kind === 'battery') {
+        batteries.push({
+          id: part.id,
+          socWh: this.socWh_.get(part.id) ?? 0,
+          capacityWh: part.capacityWh ?? 0,
+          chargeW: part.poweredBy ? CHARGE_FRACTION * (part.maxOutputW ?? 500) : 0,
+          sourceId: this.generatorAbove_(part),
+        });
+      }
+      if (part.kind === 'generator') {
+        generators.push({
+          id: part.id,
+          running: (known ? override === 'run' : this.isRunning_(part.id)) && !this.hasActiveFault_(part.id, ['out-of-fuel']),
+          startRemainingS: changed && override === 'run' ? startS : pending,
+          fuelL: this.fuelL_.get(part.id) ?? 0,
+          ratedW: part.ratedW ?? 1000,
+          burnLPerHour: part.burnLPerHour ?? 1.5,
+        });
+      }
+    }
+
+    return projectPower({
+      nodes,
+      batteries,
+      generators,
+      basis: power?.basis ?? 'battery-only',
+      horizonS: horizonS ?? power?.planningHorizonS ?? 3600,
+      reserveWh: power?.reserveWh ?? null,
+      startupCostS,
+    });
+  }
+
+  /** Nearest generator in a part's supply chain, or null when it has none */
+  private generatorAbove_(part: PlantPartConfig): string | null {
+    let current = part.poweredBy ? this.parts_.get(part.poweredBy) : undefined;
+    for (let depth = 0; current && depth < MAX_CHAIN_DEPTH; depth++) {
+      if (current.kind === 'generator') {
+        return current.id;
+      }
+      current = current.poweredBy ? this.parts_.get(current.poweredBy) : undefined;
+    }
+
+    return null;
+  }
+
+  /** Watts the battery is taking in right now (same rule as the resource drain) */
+  private chargeInto_(part: PlantPartConfig): number {
+    const upstream = part.poweredBy ? this.solved_.get(part.poweredBy) : undefined;
+
+    return upstream?.ok && !this.feedCut_(part.id) ? CHARGE_FRACTION * (part.maxOutputW ?? 500) : 0;
   }
 
   getConnectorIds(): string[] {
@@ -571,6 +826,11 @@ export class PhysicalPlantManager {
   /** Display label of a part, connector or cable (falls back to the id) */
   getLabel(id: string): string {
     return this.parts_.get(id)?.label ?? id;
+  }
+
+  /** The plant configuration this manager was built from (read-only; used to draw path diagrams) */
+  getConfig(): PlantConfig {
+    return this.config_;
   }
 
   /** What kind of target this is, for the verb table and the trip rule (null for an unknown id) */
@@ -610,6 +870,9 @@ export class PhysicalPlantManager {
   /** True when the verb applies to the target (unknown targets: false) */
   verbApplies(verb: PlantVerb, id: string): boolean {
     const traits = this.getTargetTraits(id);
+    if (verb === 'setMode' && !this.parts_.get(id)?.modes?.length) {
+      return false;
+    }
 
     return traits !== null && verbApplies(verb, traits);
   }
@@ -747,11 +1010,89 @@ export class PhysicalPlantManager {
         this.fuelL_.set(partId, Math.min(tank, (this.fuelL_.get(partId) ?? 0) + FUEL_CAN_L));
         const cleared = this.removeFaults_((rt) => rt.fault.target === partId && rt.fault.kind === 'out-of-fuel');
         // A restart is a deliberate act: the generator runs again even if it was shut down
-        part.running = true;
+        this.running_.set(partId, true);
 
         return { observation: this.line_(partId, 'refuel', 'cleared'), cleared, effective: true };
       },
       true
+    );
+  }
+
+  /**
+   * Switch a generator with authored modes between 'off' and 'run'. Starting takes the verb's
+   * cost plus the mode's `startupS` before any output; with no fuel it does not catch.
+   * Parts without `modes` refuse at no cost.
+   */
+  setPartMode(partId: string, modeId: string): VerbResult {
+    const part = this.parts_.get(partId);
+    if (!part) {
+      return this.unknown_();
+    }
+    if (!this.verbApplies('setMode', partId)) {
+      return this.notApplicable_();
+    }
+    const mode = part.modes?.find((m) => m.id === modeId);
+    if (!mode) {
+      return this.notApplicable_();
+    }
+    if (part.kind !== 'generator') {
+      return this.setSimpleMode_(part, mode);
+    }
+    const stopping = modeId === 'off';
+    const noFuel = (this.fuelL_.get(partId) ?? 0) <= 0 || this.hasActiveFault_(partId, ['out-of-fuel']);
+    const running = this.isRunning_(partId) && !noFuel;
+    if (stopping && !this.isRunning_(partId)) {
+      return { observation: this.line_(partId, 'setMode', 'full'), costSeconds: 0 };
+    }
+    if (!stopping && running) {
+      return { observation: this.line_(partId, 'setMode', this.isStarting(partId) ? 'booting' : 'not-needed'), costSeconds: 0 };
+    }
+
+    return this.act_(
+      'setMode',
+      partId,
+      VERB_COST_S.setMode,
+      false,
+      () => {
+        if (stopping) {
+          this.running_.set(partId, false);
+          this.startingUntilS_.delete(partId);
+
+          return { observation: this.line_(partId, 'setMode', 'unpowered') };
+        }
+        if (noFuel) {
+          return { observation: this.line_(partId, 'setMode', 'out-of-fuel') };
+        }
+        this.running_.set(partId, true);
+        this.startingUntilS_.set(partId, this.deps_.now() + VERB_COST_S.setMode + (mode.startupS ?? 0));
+
+        return { observation: this.line_(partId, 'setMode', 'cleared') };
+      },
+      false
+    );
+  }
+
+  private setSimpleMode_(part: PlantPartConfig, mode: PartModeConfig): VerbResult {
+    if (this.getPartMode(part.id) === mode.id) {
+      return { observation: `${part.label ?? part.id} is already in ${mode.label}.`, costSeconds: 0 };
+    }
+
+    return this.act_(
+      'setMode',
+      part.id,
+      VERB_COST_S.setMode,
+      false,
+      () => {
+        this.partModes_.set(part.id, mode.id);
+        if ((mode.startupS ?? 0) > 0) {
+          this.startingUntilS_.set(part.id, this.deps_.now() + VERB_COST_S.setMode + (mode.startupS ?? 0));
+        } else {
+          this.startingUntilS_.delete(part.id);
+        }
+
+        return { observation: `You set ${part.label ?? part.id} to ${mode.label}.` };
+      },
+      false
     );
   }
 
@@ -811,6 +1152,22 @@ export class PhysicalPlantManager {
     this.solve_();
   }
 
+  /** Time a measurement takes: advances the clock without a verb (no log entry, no downtime) */
+  spendTime(seconds: number): void {
+    if (seconds > 0) {
+      this.deps_.skip(seconds);
+      this.solve_();
+    }
+  }
+
+  /** Starts a normal boot of a part now (an authored event; no verb, no cost, no downtime booked) */
+  startBoot(partId: string): void {
+    const boot = this.bootSeconds_(partId);
+    if (boot > 0 && this.parts_.has(partId)) {
+      this.rebootUntilS_.set(partId, this.deps_.now() + boot);
+    }
+  }
+
   clearFault(faultId: string): boolean {
     const removed = this.removeFaults_((rt) => rt.fault.id === faultId);
     this.solve_();
@@ -845,6 +1202,10 @@ export class PhysicalPlantManager {
         spares: this.spares_,
         trainerSpares: this.trainerSpares_,
         rebootUntilS: Object.fromEntries(this.rebootUntilS_),
+        startingUntilS: Object.fromEntries(this.startingUntilS_),
+        partModes: Object.fromEntries(this.partModes_),
+        windows: Object.fromEntries(this.windows_),
+        generatorRunning: Object.fromEntries([...this.parts_.values()].filter((part) => part.kind === 'generator').map((part) => [part.id, this.isRunning_(part.id)])),
         supplied: Object.fromEntries(this.supplied_),
         socWh: Object.fromEntries(this.socWh_),
         fuelL: Object.fromEntries(this.fuelL_),
@@ -870,6 +1231,18 @@ export class PhysicalPlantManager {
     this.spares_ = copy.spares;
     this.trainerSpares_ = copy.trainerSpares;
     this.rebootUntilS_ = new Map(Object.entries(copy.rebootUntilS));
+    this.startingUntilS_ = new Map(Object.entries(copy.startingUntilS ?? {}));
+    for (const [id, modeId] of Object.entries(copy.partModes ?? {})) {
+      if (this.parts_.get(id)?.modes?.some((m) => m.id === modeId)) {
+        this.partModes_.set(id, modeId);
+      }
+    }
+    for (const [id, running] of Object.entries(copy.generatorRunning ?? {})) {
+      if (this.parts_.has(id)) {
+        this.running_.set(id, running);
+      }
+    }
+    this.windows_ = new Map(Object.entries(copy.windows ?? {}));
     this.supplied_ = new Map(Object.entries(copy.supplied));
     this.socWh_ = new Map(Object.entries(copy.socWh));
     this.fuelL_ = new Map(Object.entries(copy.fuelL));
@@ -1132,6 +1505,10 @@ export class PhysicalPlantManager {
   }
 
   private updateTrip_(location: TargetLocation, target: string | undefined): void {
+    // Forward site: one outdoor view, so there is no trip to count and nobody to spot it
+    if (this.config_.site?.mode === 'forward') {
+      return;
+    }
     if (location === 'either') {
       return;
     }
@@ -1174,7 +1551,9 @@ export class PhysicalPlantManager {
     const supply = this.solved_.get(target);
     const supplied = part.kind === 'generator' ? this.generatorRunning_(part) : (supply?.ok ?? true);
     let state: ObsState = 'healthy';
-    if (!supplied) {
+    if (part.kind === 'generator' && this.isStarting(target)) {
+      state = 'booting';
+    } else if (!supplied) {
       state = 'unpowered';
     } else if (this.isRebooting_(target)) {
       state = 'booting';
@@ -1263,6 +1642,11 @@ export class PhysicalPlantManager {
       // A half-seated contact adds resistance: the probe reads a little low even between dropouts
       volts *= PARTIAL_SEAT_METER_RATIO;
     }
+    const meter = this.config_.meter;
+    if (meter && volts > 0) {
+      // Display jitter only; conditions read the model, never this value
+      volts *= 1 + ((this.deps_.rng('plant:meter').next() * 2 - 1) * meter.jitterPct) / 100;
+    }
     const low = !supply.ok || supply.ratio < 0.95;
     const own: string[] = [];
     const lines: string[] = [];
@@ -1276,10 +1660,34 @@ export class PhysicalPlantManager {
     if (lines.length === 0) {
       const state: ObsState = volts <= 0 ? 'supply-absent' : low ? 'supply-low' : 'healthy';
       lines.push(this.line_(target, 'multimeter', state, vars));
+      if (state === 'supply-absent') {
+        const hint = this.supplyHint_(partId);
+        if (hint) {
+          lines.push(hint);
+        }
+      }
     }
     const revealed = [...new Set([...own, ...(low ? this.powerFaultsUpstream_(partId) : [])])];
 
     return { observation: lines.join(' '), revealed };
+  }
+
+  /** Extra line after a 0 V reading, per config `supplyHint` ('off' adds nothing) */
+  private supplyHint_(partId: string): string | null {
+    const mode = this.config_.supplyHint ?? 'off';
+    if (mode === 'off') {
+      return null;
+    }
+    const feederId = this.parts_.get(partId)?.poweredBy;
+    const feeder = feederId ? this.parts_.get(feederId) : undefined;
+    if (!feeder) {
+      return pickGeneric('hint-source', this.deps_.rng('plant:obs'), this.obsLast_);
+    }
+    if (mode === 'generic') {
+      return pickGeneric('hint-generic', this.deps_.rng('plant:obs'), this.obsLast_);
+    }
+
+    return fillText(pickGeneric('hint-feeder', this.deps_.rng('plant:obs'), this.obsLast_), { feeder: (feeder.label ?? feeder.id).toLowerCase() });
   }
 
   private faultVars_(fault: PlantFault): ObsTemplateVars {
@@ -1533,6 +1941,47 @@ export class PhysicalPlantManager {
     return 12;
   }
 
+  private isRunning_(partId: string): boolean {
+    return this.running_.get(partId) ?? true;
+  }
+
+  /**
+   * A timed-condition window. While open the window start is kept (set on the first open call);
+   * closing it forgets the start. Returns the start second or null. The start rides in checkpoints.
+   */
+  holdWindow(key: string, open: boolean): number | null {
+    if (!open) {
+      this.windows_.delete(key);
+
+      return null;
+    }
+    if (!this.windows_.has(key)) {
+      this.windows_.set(key, this.deps_.now());
+    }
+
+    return this.windows_.get(key) as number;
+  }
+
+  /** Own draw of a part: its current mode's load (startup load while starting), else `loadW` */
+  private drawOf_(part: PlantPartConfig): number {
+    const mode = this.activeMode_(part);
+    if (!mode) {
+      return part.loadW ?? 0;
+    }
+
+    return this.isStarting(part.id) ? (mode.startupW ?? mode.loadW) : mode.loadW;
+  }
+
+  /** Current mode config of a non-generator part with modes */
+  private activeMode_(part: PlantPartConfig): PartModeConfig | undefined {
+    if (part.kind === 'generator' || !part.modes?.length) {
+      return undefined;
+    }
+    const id = this.getPartMode(part.id);
+
+    return part.modes.find((m) => m.id === id);
+  }
+
   /** Watts drawn from this part by everything it feeds (recursively) */
   private loadOf_(partId: string, depth: number): number {
     if (depth > 16) {
@@ -1541,7 +1990,7 @@ export class PhysicalPlantManager {
     let total = 0;
     for (const child of this.parts_.values()) {
       if (child.poweredBy === partId) {
-        total += (child.loadW ?? 0) + this.loadOf_(child.id, depth + 1);
+        total += this.drawOf_(child) + this.loadOf_(child.id, depth + 1);
       }
     }
 
@@ -1549,7 +1998,7 @@ export class PhysicalPlantManager {
   }
 
   private generatorRunning_(part: PlantPartConfig): boolean {
-    return part.running !== false && (this.fuelL_.get(part.id) ?? 0) > 0 && !this.hasActiveFault_(part.id, ['out-of-fuel']);
+    return this.isRunning_(part.id) && !this.isStarting(part.id) && (this.fuelL_.get(part.id) ?? 0) > 0 && !this.hasActiveFault_(part.id, ['out-of-fuel']);
   }
 
   private effectiveMaxOutputW_(part: PlantPartConfig): number {
@@ -1729,8 +2178,7 @@ export class PhysicalPlantManager {
         this.fuelL_.set(part.id, Math.max(0, (this.fuelL_.get(part.id) ?? 0) - burn));
       }
       if (part.kind === 'battery') {
-        const upstream = part.poweredBy ? this.solved_.get(part.poweredBy) : undefined;
-        const charging = upstream?.ok && !this.feedCut_(part.id) ? CHARGE_FRACTION * (part.maxOutputW ?? 500) : 0;
+        const charging = this.chargeInto_(part);
         const delta = (charging - this.loadOf_(part.id, 0)) / 3600;
         const soc = (this.socWh_.get(part.id) ?? 0) + delta;
         const next = Math.min(part.capacityWh ?? soc, Math.max(0, soc));

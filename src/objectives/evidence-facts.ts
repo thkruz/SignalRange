@@ -18,6 +18,7 @@ import { CryptoModule } from '@app/equipment/crypto';
 import { FaultInjector } from '@app/faults';
 import { GnssThreatManager } from '@app/gnss-threat/gnss-threat-manager';
 import { InterferenceManager } from '@app/interference/interference-manager';
+import { getActiveField } from '@app/physical/field-hooks';
 import { SecurityConsoleCore } from '@app/security-console/security-console-core';
 import { TelemetryManager } from '@app/telemetry/telemetry-manager';
 import { DecisionFactRule, EVIDENCE_FACT_IDS, EvidenceFactId, OBSERVATION_DWELL_GRACE_SECONDS } from './objective-types';
@@ -53,6 +54,13 @@ const faultActive = (ctx: EvidenceContext): boolean => ctx.gs !== null && FaultI
  * The resolvers, keyed by fact id. Each is safe to call before the subsystem
  * it reads exists: an absent subsystem reads as "nothing wrong".
  */
+const fieldServices = (): string[] => getActiveField()?.service?.getServiceIds() ?? [];
+
+const layerStatus = (serviceId: string, layer: 'power' | 'local'): string | undefined =>
+  getActiveField()
+    ?.service?.layers(serviceId)
+    .find((l) => l.layer === layer)?.status;
+
 export const EVIDENCE_FACTS: Record<EvidenceFactId, EvidenceFactResolver> = {
   'interference-active': () => interferenceActive(),
 
@@ -103,6 +111,23 @@ export const EVIDENCE_FACTS: Record<EvidenceFactId, EvidenceFactResolver> = {
   'transponder-interference-active': () => interferenceActiveVia('transponder'),
 
   'terrestrial-interference-active': () => interferenceActiveVia('terrestrial'),
+
+  'field-supply-absent': () => fieldServices().some((id) => layerStatus(id, 'power') === 'down'),
+
+  'field-provider-restricted': () => {
+    const model = getActiveField()?.service;
+
+    return model
+      ? model.getServiceIds().some((id) => {
+          const providerId = model.getPath(id)?.providerId;
+          const provider = providerId ? model.getProvider(providerId) : undefined;
+
+          return provider !== undefined && provider.status !== 'normal';
+        })
+      : false;
+  },
+
+  'field-local-path-down': () => fieldServices().some((id) => layerStatus(id, 'power') === 'up' && layerStatus(id, 'local') === 'down'),
 };
 
 /** Evaluate a rule against a fact reader (held reads in production, stubs in tests) */

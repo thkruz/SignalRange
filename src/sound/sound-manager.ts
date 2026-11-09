@@ -77,7 +77,7 @@ const SFX_DEFS: Record<Sfx, SfxDef> = {
   [Sfx.KEY_LOCK]: { files: [sfx('key-lock')], volume: 0.6, throttleMs: 500 },
   [Sfx.CABINET_DOOR]: { files: [sfx('cabinet-door')], volume: 0.6, throttleMs: 1000 },
   [Sfx.CONNECTOR_SEAT]: { files: [sfx('connector-seat')], volume: 1.0, throttleMs: 200 },
-  [Sfx.CONNECTOR_PULL]: { files: [sfx('connector-pull')], volume: 1.0, throttleMs: 200 },
+  [Sfx.CONNECTOR_PULL]: { files: [sfx('connector-pull')], volume: 0.55, throttleMs: 200 },
   [Sfx.FCONNECTOR_TIGHTEN]: { files: [sfx('fconnector-tighten')], volume: 0.6, throttleMs: 300 },
   [Sfx.CABLE_RUSTLE]: { files: [sfx('cable-rustle')], volume: 1.0, throttleMs: 300 },
   [Sfx.PROBE_BEEP]: { files: [sfx('probe-beep')], volume: 0.55, throttleMs: 300 },

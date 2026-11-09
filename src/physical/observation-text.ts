@@ -72,6 +72,10 @@ export const GENERIC_OBS = {
   spotted: ['The instructor notices how often you are going out and asks what you are looking for.'],
   'no-spare': ['The spare bin has none of those left.', 'You check the spares box. Empty for that item.'],
   'no-supply': ['There is no supply to measure here.'],
+  // Supply hints appended to a 0 V reading (config `supplyHint`); `{feeder}` is the feeding part's label
+  'hint-feeder': ['This part is fed from the {feeder}. Check what arrives there.'],
+  'hint-generic': ['Nothing is arriving from upstream.'],
+  'hint-source': ['This is a source and it is putting out nothing.'],
 } as const satisfies Record<string, ObsLines>;
 
 export type GenericObsKey = keyof typeof GENERIC_OBS;
@@ -415,6 +419,7 @@ const OBS_BY_CLASS: ObsTable = {
       'generator-noise': ['Inverter generator running smoothly. Gauge reads {fuel} L. Electrical noise is not visible from here.'],
       'out-of-fuel': ['Silent. Fuel gauge reads empty. Cap is on.'],
       unpowered: ['Silent. Gauge reads {fuel} L. The switch is off.'],
+      booting: ['The engine is cranking and catching. The output is not up yet.'],
     },
     feel: {
       healthy: ['Frame vibrates evenly and the housing is warm.', 'Warm casing, steady vibration.'],
@@ -422,6 +427,7 @@ const OBS_BY_CLASS: ObsTable = {
       'generator-noise': ['The inverter housing buzzes under your hand and the fan is running.'],
       'out-of-fuel': ['Cold and still.'],
       unpowered: ['Cold and still.'],
+      booting: ['The frame shakes unevenly as the engine catches.'],
     },
     multimeter: {
       healthy: ['{v} V AC at the socket, 50 Hz, steady. Expect {nom} V.', '{v} V AC with the load on. Steady for 10 s.'],
@@ -435,6 +441,14 @@ const OBS_BY_CLASS: ObsTable = {
       cleared: ['You stop it, wait 10 s and restart. The engine note stays even. Check the output under load.'],
       'no-effect': ['You stop it, wait 10 s and restart. It runs again at {v} V AC. Compare the load reading.'],
       'out-of-fuel': ['You pull the cord. It turns over and does not catch. The tank is empty.'],
+    },
+    setMode: {
+      cleared: ['You set the switch to run and pull the cord. The engine catches and warms up. The output is not up yet.'],
+      unpowered: ['You set the switch to off. The engine dies down and goes quiet.'],
+      'out-of-fuel': ['You set the switch to run and pull the cord. It turns over and does not catch. The tank is empty.'],
+      booting: ['The engine is already cranking. The output is not up yet.'],
+      'not-needed': ['It is already running.'],
+      full: ['It is already off.'],
     },
     refuel: {
       cleared: ['You pour a can into the tank and restart. It catches and settles. Check the gauge and the output.'],

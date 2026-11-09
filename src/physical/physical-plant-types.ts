@@ -5,8 +5,34 @@
  * imports, so the Core class runs in plain unit tests.
  */
 
+import type { EquipmentConfig } from './equipment-records';
+import type { HandoverFormConfig } from './field-records';
+import type { AccountState, EndpointState, ProviderState, ServiceModelConfig } from './service-types';
+import type { WorkloadConfig } from './workload-types';
+
 /** What a part is. Drives defaults (boot time, power role). */
 export type PlantPartKind = 'strip' | 'terminal' | 'router' | 'battery' | 'generator' | 'dish' | 'modem' | 'client';
+
+/** One operating mode of a part (generator 'off' / 'run'; any other part: standby, low-power, active ...) */
+export interface PartModeConfig {
+  id: string;
+  label: string;
+  /** Steady draw in this mode (a generator is a source, so 0) */
+  loadW: number;
+  /** Seconds to reach the mode (generator crank and warm-up); output is absent until done */
+  startupS?: number;
+  /** Draw while starting; defaults to `loadW` */
+  startupW?: number;
+  /** False for standby/off */
+  servesTraffic?: boolean;
+}
+
+/** Planning numbers for the power forecast */
+export interface PlantPowerConfig {
+  reserveWh: number;
+  planningHorizonS: number;
+  basis: 'battery-only' | 'with-generator';
+}
 
 export interface PlantPartConfig {
   id: string;
@@ -26,6 +52,10 @@ export interface PlantPartConfig {
   bootS?: number;
   /** Spare key a swap consumes (default 'power-brick') */
   spareKey?: string;
+  /** Operating modes (generator 'off'/'run', or any part with its own draw per mode); absent = today's behavior */
+  modes?: PartModeConfig[];
+  /** Starting mode id (default: first mode; generator: 'off' is the same as `running: false`) */
+  mode?: string;
   /** Generator */
   ratedW?: number;
   running?: boolean;
@@ -149,6 +179,32 @@ export interface PlantFault {
   severity?: number;
 }
 
+/** M02/M15: what an anchored plant event does. */
+export type PlantEventAction =
+  | { kind: 'inject-fault'; fault: PlantFault }
+  | { kind: 'clear-fault'; faultId: string }
+  | { kind: 'set-weather'; weather: Partial<PlantEnvironment> }
+  | { kind: 'set-account'; patch: Partial<AccountState> & { id: string } }
+  | { kind: 'set-provider'; patch: Partial<ProviderState> & { id: string } }
+  | { kind: 'set-endpoint'; patch: Partial<EndpointState> & { id: string } }
+  | { kind: 'deliver-notice'; noticeId: string; version?: number }
+  | { kind: 'respond-request'; requestId: string; status: 'approved' | 'rejected' }
+  | { kind: 'reboot-part'; partId: string }
+  | { kind: 'set-flag'; key: string; value: string | number | boolean };
+
+export interface PlantEventConfig {
+  id: string;
+  /** Objective that must be live (active or complete) before the event is due */
+  startAfterObjectiveId: string;
+  /** Seconds after the anchor, default 0 (fires on activation) */
+  offsetS?: number;
+  /** Event ids that must have fired first */
+  requiresFired?: string[];
+  actions: PlantEventAction[];
+  /** Ops-log line, optional */
+  logLine?: string;
+}
+
 export interface PlantConfig {
   /** Station whose RF chain the plant degrades when a connector/cable has no stationId */
   stationId?: string;
@@ -167,6 +223,46 @@ export interface PlantConfig {
   engineMap?: Partial<Record<'antenna' | 'lnb' | 'modem', string>>;
   /** Outdoor trips allowed before the instructor notices (default 3) */
   tripLimit?: number;
+  /**
+   * Multimeter display. Each supply reading gets a uniform jitter of +-`jitterPct` percent
+   * (stream `plant:meter`, display only) and `normalBandPct` is the percent of nominal volts
+   * a healthy reading may sit inside. A reading of 0 V stays exactly 0.0. Absent = exact values.
+   */
+  meter?: { jitterPct: number; normalBandPct: number };
+  /**
+   * What a multimeter reading of 0 V adds. 'feeder' names the part that feeds the target,
+   * 'generic' only says the loss is upstream, 'off' (default) adds nothing.
+   */
+  supplyHint?: 'feeder' | 'generic' | 'off';
+  /** Power planning (Campaign 6): the reserve the forecast is judged against. Absent = no reserve. */
+  power?: PlantPowerConfig;
+  /** Objective-anchored events (Campaign 6). Absent = no events. */
+  events?: PlantEventConfig[];
+  /** Layered link services (Campaign 6, M04). Absent = no service model. */
+  service?: ServiceModelConfig;
+  /** Requirement cards and workload runs (Campaign 6, M10). Needs `service`. Absent = no runner. */
+  workloads?: WorkloadConfig;
+  /** Path-diagram options (M24). `highlightShared: false` hides the shared-dependency highlight so the player finds them. */
+  diagram?: { highlightShared?: boolean };
+  /** Authored hypothesis causes (M21). When set the notebook cause is a select of these ids; free text is never graded. Absent = free text. */
+  causeOptions?: Array<{ id: string; label: string }>;
+  /** Handover forms the player can submit (Campaign 6, M13). Absent = no records. */
+  handovers?: HandoverFormConfig[];
+  /** Equipment records, correction requests and provider notices (Campaign 6, M15). Absent = none. */
+  equipment?: EquipmentConfig;
+  /**
+   * Site mode (Campaign 6, M07). 'camp' = the tent with the inside/outside trip rule (today's
+   * behaviour). 'forward' = one wide outdoor view: no trips are counted and nobody is spotted.
+   * `inventory` lists the part ids present on this site; `applySiteInventory` prunes the rest.
+   * Absent = camp, everything present.
+   */
+  site?: PlantSiteConfig;
+}
+
+export interface PlantSiteConfig {
+  mode: 'camp' | 'forward';
+  /** Part ids on site. Cables, connectors, faults and service paths that need an absent part are dropped. */
+  inventory?: string[];
 }
 
 export type SpaceyStatus = 'booting' | 'online' | 'obstructed' | 'heating' | 'thermal-shutdown' | 'no-power';
@@ -212,6 +308,7 @@ export type PlantVerb =
   | 'returnInside'
   | 'goOutside'
   | 'refuel'
+  | 'setMode'
   | 'spotted';
 
 /** Called after every logged plant action; `wasOutside` is the state before the action */
@@ -268,6 +365,14 @@ export interface PlantState {
   spares: PlantSpares;
   trainerSpares: PlantSpares | null;
   rebootUntilS: Record<string, number>;
+  /** Generator id -> scenario second its startup ends (optional in older checkpoints) */
+  startingUntilS?: Record<string, number>;
+  /** Condition window key -> scenario second it opened (optional in older checkpoints) */
+  windows?: Record<string, number>;
+  /** Generator id -> running flag (optional in older checkpoints) */
+  generatorRunning?: Record<string, boolean>;
+  /** Part id -> current mode id for non-generator parts with `modes` (optional in older checkpoints) */
+  partModes?: Record<string, string>;
   supplied: Record<string, boolean>;
   socWh: Record<string, number>;
   fuelL: Record<string, number>;
@@ -300,4 +405,41 @@ export interface PartState {
   loadW?: number;
   /** Painted-LED state for a later art pass: powered and booted */
   lit: boolean;
+  /** Parts with `modes` only: current mode id ('off' or 'run' for a generator) */
+  mode?: string;
+  /** Parts with `modes` only: true while the part is starting up (supply absent) */
+  starting?: boolean;
+}
+
+/** What a power-station display shows (M03) */
+export interface PowerReadings {
+  tS: number;
+  socWh: Record<string, number>;
+  capacityWh: Record<string, number>;
+  /** Watts drawn from each battery and generator by everything it feeds */
+  loadW: Record<string, number>;
+  totalDrawW: number;
+  /** Watts flowing into the batteries now */
+  chargeW: number;
+  fuelL: Record<string, number>;
+  /** Current mode of every part with `modes` */
+  modes: Record<string, string>;
+  reserveWh: number | null;
+}
+
+/** Result of a forecast preview (never changes plant state) */
+export interface PowerForecast {
+  horizonS: number;
+  basis: 'battery-only' | 'with-generator';
+  projectedSocWh: number;
+  meetsReserve: boolean;
+  /** First second the stored energy drops below the reserve, or null if it never does within the horizon */
+  secondsToReserve: number | null;
+  fuelUsedL: number;
+  /** Longest time any changed or starting part needs to reach its mode (verb cost included) */
+  startupCostS: number;
+  /** Extra energy the startups draw above their steady loads */
+  startupWh: number;
+  /** Parts with modes whose mode at the end of the horizon serves traffic */
+  servicesAvailable: string[];
 }

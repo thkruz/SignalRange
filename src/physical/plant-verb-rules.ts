@@ -58,6 +58,8 @@ export const VERB_RULES: Readonly<Record<RuleVerb, VerbRule>> = {
   // Powered devices; the generator restarts (clears a sag)
   powerCycle: { parts: POWERED },
   refuel: { parts: ['generator'] },
+  // Switch a part that has authored modes (generator start/stop, terminal standby ...) (the manager also requires `modes`)
+  setMode: { parts: ALL_PARTS },
   clearSnow: { parts: ['panel', 'reflector'] },
   removeNet: { parts: ['panel', 'reflector'] },
   reroute: { cables: true },
@@ -114,6 +116,7 @@ export const VERB_COSTS_S: Readonly<Record<RuleVerb, number>> = {
   removeNet: 240,
   reroute: 300,
   refuel: 180,
+  setMode: 20,
 };
 
 /** Swap time by what is swapped */

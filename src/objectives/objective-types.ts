@@ -180,6 +180,9 @@ export const EVIDENCE_FACT_IDS = [
   'telemetry-stale', // the telemetry stream has no fresh frame (link down)
   'transponder-interference-active', // an interference event relayed through a satellite transponder is in progress
   'terrestrial-interference-active', // an interference event arriving at the dish directly from a ground emitter is in progress
+  'field-supply-absent', // Campaign 6: a field service has no power at its source (false without a plant)
+  'field-provider-restricted', // Campaign 6: a service provider is restricted or in outage (false without a plant)
+  'field-local-path-down', // Campaign 6: a service's local path is down while its power is up (false without a plant)
 ] as const;
 
 export type EvidenceFactId = (typeof EVIDENCE_FACT_IDS)[number];

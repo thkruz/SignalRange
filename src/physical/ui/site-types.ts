@@ -42,6 +42,22 @@ export interface SiteHotspot {
   action?: 'go-outside' | 'go-inside';
   /** Plant parts whose supply state drives the pip */
   partIds: string[];
+  /** Extra plant ids (cables) that must exist on the site for the hotspot to show */
+  requires?: string[];
+  /** Belongs to the tent (door, flap): never shown on a forward site */
+  tentOnly?: boolean;
+  /** The close-up art is not painted yet: the hotspot shows (pip and label) but opens nothing */
+  pendingArt?: boolean;
+}
+
+/** A transparent webp laid over a site scene, shown while every `requires` plant id exists on the site (inventory-driven) */
+export interface SceneLayer {
+  id: string;
+  /** Path under /assets */
+  file: string;
+  /** Image-relative [x, y, w, h] */
+  bbox: [number, number, number, number];
+  requires: string[];
 }
 
 /** A part drawn as a selectable region in a close-up (snow, power cycle, swap, measure supply) */
@@ -106,4 +122,6 @@ export interface CloseupDef {
   regions: CloseupRegion[];
   probes: CloseupProbe[];
   cables: CloseupCable[];
+  /** Forward-site art: camp weather paintings and fault layers never apply */
+  forward?: boolean;
 }

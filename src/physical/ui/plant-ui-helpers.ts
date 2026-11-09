@@ -27,6 +27,7 @@ export const VERB_LABELS: Record<UiVerb, string> = {
   swap: 'Swap',
   powerCycle: 'Power cycle',
   refuel: 'Refuel',
+  setMode: 'Start / stop',
   clearSnow: 'Clear snow',
   removeNet: 'Remove net',
   reroute: 'Reroute',
@@ -36,7 +37,6 @@ export const VERB_LABELS: Record<UiVerb, string> = {
 export const plantUiState = {
   /** Draw hidden fault state (seat depth, corrosion, damage) without observing it. Trainer and developer aid, off by default. */
   xray: false,
-  tool: 'hand' as PlantTool,
 };
 
 export function targetType(plant: PhysicalPlantManager, id: string): PlantTargetType | null {
@@ -55,19 +55,18 @@ export function targetType(plant: PhysicalPlantManager, id: string): PlantTarget
 
 /** Verbs that apply to the target, per the rules table (the plant still decides what they do) */
 export function verbsFor(plant: PhysicalPlantManager, id: string): UiVerb[] {
-  return OFFERED_VERBS.filter((verb) => plant.verbApplies(verb, id)) as UiVerb[];
+  const verbs = OFFERED_VERBS.filter((verb) => plant.verbApplies(verb, id)) as UiVerb[];
+  // A generator with authored modes also offers its start/stop switch
+  if (plant.verbApplies('setMode', id)) {
+    verbs.push('setMode');
+  }
+
+  return verbs;
 }
 
 /** True when the tool can be used on the target, per the rules table. Hand always applies. */
 export function toolAppliesTo(plant: PhysicalPlantManager, tool: PlantTool, id: string): boolean {
   return tool === 'hand' || plant.verbApplies(tool, id);
-}
-
-/** Tools to offer for the target (every tool when nothing is selected); Hand is always first */
-export function toolsFor(plant: PhysicalPlantManager, id: string | null): PlantTool[] {
-  const all: PlantTool[] = ['hand', 'multimeter', 'cable-tester'];
-
-  return id === null ? all : all.filter((tool) => toolAppliesTo(plant, tool, id));
 }
 
 export function runVerb(plant: PhysicalPlantManager, verb: UiVerb, id: string) {
@@ -90,6 +89,8 @@ export function runVerb(plant: PhysicalPlantManager, verb: UiVerb, id: string) {
       return plant.powerCycle(id);
     case 'refuel':
       return plant.refuel(id);
+    case 'setMode':
+      return plant.setPartMode(id, plant.getNextMode(id));
     case 'clearSnow':
       return plant.clearSnow(id);
     case 'removeNet':

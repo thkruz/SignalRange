@@ -7,7 +7,7 @@
  * result large with the history (repeats collapsed) beneath it.
  */
 
-import { CLOSEUPS } from '@app/campaigns/frontline/site-hotspots';
+import { closeupFor } from '@app/campaigns/frontline/site-hotspots';
 import { closeupImageFor } from '@app/campaigns/frontline/site-layers';
 import { DraggableModal } from '@app/engine/ui/draggable-modal';
 import { EventBus } from '@app/events/event-bus';
@@ -58,7 +58,7 @@ const METER_LABELS: Record<MeterTool, { action: string; log: string }> = {
 const METER_TOOLS: MeterTool[] = ['multimeter', 'cable-tester'];
 
 /** Observation first, then fixes; the disruptive ones are drawn last and styled secondary */
-const VERB_ORDER: UiVerb[] = ['inspect', 'wiggle', 'feel', 'tighten', 'seal', 'refuel', 'clearSnow', 'removeNet', 'reroute', 'reseat', 'swap', 'powerCycle'];
+const VERB_ORDER: UiVerb[] = ['inspect', 'wiggle', 'feel', 'tighten', 'seal', 'refuel', 'setMode', 'clearSnow', 'removeNet', 'reroute', 'reseat', 'swap', 'powerCycle'];
 
 const PANEL_W = 340;
 const FRAME_PAD = 12;
@@ -113,7 +113,8 @@ export class PartCloseupModal extends DraggableModal {
   }
 
   showCloseup(id: CloseupId): void {
-    const def = CLOSEUPS[id];
+    const plant = PhysicalPlantService.plantOrNull();
+    const def = closeupFor(id, plant?.getSiteMode() ?? 'camp', (target) => plant?.getTargetTraits(target) != null);
     if (this.def_?.id !== id) {
       this.selected_ = null;
       this.selectedKey_ = null;

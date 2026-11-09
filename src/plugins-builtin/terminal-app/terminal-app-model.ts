@@ -108,6 +108,8 @@ export interface TerminalSnapshot {
   downMbps: number;
   upMbps: number;
   latencyMs: number | null;
+  /** False until the first service sample is in: the numbers above are not measurements yet */
+  measured: boolean;
   powerW: number;
   outages: OutageEntry[];
   stats: Record<StatsWindowId, StatsSeries>;
@@ -202,6 +204,8 @@ export class TerminalAppModel {
   private accountDown_ = false;
   private registrationDown_ = false;
   private current_ = { downMbps: 0, upMbps: 0, latencyMs: null as number | null };
+  /** True once a service sample has produced a download figure */
+  private measured_ = false;
   private lastObs_: Observation = { hero: 'online', alerts: [], outage: null };
   private cached_: TerminalSnapshot | null = null;
   private speedTests_: SpeedTestRecord[] = [];
@@ -298,6 +302,11 @@ export class TerminalAppModel {
     };
   }
 
+  /** Current sim time, seconds */
+  nowS(): number {
+    return this.deps_.plant.nowS();
+  }
+
   /** The sky map accumulator, or null when this terminal has none */
   obstructions(): ObstructionAccumulator | null {
     return this.deps_.obstruction ?? null;
@@ -314,6 +323,7 @@ export class TerminalAppModel {
     if (state.obstruction) {
       this.deps_.obstruction?.restoreState(state.obstruction);
     }
+    this.measured_ = this.samples_.some((x) => x.downMbps > 0);
     this.lastTickS_ = null;
   }
 
@@ -455,6 +465,9 @@ export class TerminalAppModel {
     const obs = this.lastObs_;
     const live = obs.outage === null ? this.takeNumbers_() : { downMbps: 0, upMbps: 0, latencyMs: null as number | null };
     this.current_ = live;
+    if (obs.outage === null && this.hasServiceNumber_) {
+      this.measured_ = true;
+    }
     let steps = 0;
     let t = this.lastSampleS_ + interval;
     // After a clock skip, fill each missed interval with the current state
@@ -485,6 +498,7 @@ export class TerminalAppModel {
   }
 
   private lossPct_: number | null = null;
+  private hasServiceNumber_ = false;
 
   /** Account / registration checks, only at sample cadence (peekSample records nothing) */
   private refreshService_(): void {
@@ -500,6 +514,8 @@ export class TerminalAppModel {
     const { services, serviceId } = this.deps_;
     this.lossPct_ = null;
     if (!services || !serviceId) {
+      this.hasServiceNumber_ = false;
+
       return { downMbps: 0, upMbps: 0, latencyMs: null };
     }
     const num = (metric: ServiceSample['metric']): number | null => {
@@ -511,6 +527,8 @@ export class TerminalAppModel {
     const up = num('upMbps');
     const rtt = num('rttMs');
     this.lossPct_ = num('lossPct');
+
+    this.hasServiceNumber_ = down !== null;
 
     return { downMbps: down ?? 0, upMbps: up ?? 0, latencyMs: down === null ? null : rtt };
   }
@@ -578,6 +596,7 @@ export class TerminalAppModel {
       downMbps: obs.outage === null ? this.current_.downMbps : 0,
       upMbps: obs.outage === null ? this.current_.upMbps : 0,
       latencyMs: obs.outage === null ? this.current_.latencyMs : null,
+      measured: this.measured_,
       powerW: this.deps_.plant.powerDrawW(),
       outages: this.currentOutages_(now),
       stats: { '15m': this.buildStats_('15m', now), '6h': this.buildStats_('6h', now), '12h': this.buildStats_('12h', now) },

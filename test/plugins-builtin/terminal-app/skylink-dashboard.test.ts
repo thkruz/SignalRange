@@ -4,6 +4,7 @@ import { AntennaPageRegistry, createMissionControlApi } from '../../../src/pages
 import type { SleepSchedule, SnowMeltMode, TerminalSettings } from '../../../src/physical/physical-plant-types';
 import { builtinPluginManifest } from '../../../src/plugins/plugin-manifest';
 import type { PluginApi } from '../../../src/plugins/signal-range-plugin';
+import { createHomeScreen } from '../../../src/plugins-builtin/terminal-app/screens/home-screen';
 import { SkylinkDashboardPage } from '../../../src/plugins-builtin/terminal-app/skylink-dashboard';
 import { TerminalAppModel } from '../../../src/plugins-builtin/terminal-app/terminal-app-model';
 import { TerminalAppPlugin } from '../../../src/plugins-builtin/terminal-app/terminal-app-plugin';
@@ -218,5 +219,39 @@ describe('TerminalAppPlugin', () => {
     expect(tabs.map((t) => t.id)).toEqual(['skylink-app']);
     expect(tabs[0]?.isDefault).toBe(true);
     expect(builtinPluginManifest.find((p) => p.id === 'TerminalApp')?.className).toBe('TerminalAppPlugin');
+  });
+});
+
+describe('SkyLink Home before the first sample', () => {
+  afterEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  it('shows a pending value and Measuring, never 0 Mbps', () => {
+    const w = { t: 500 };
+    const model = new TerminalAppModel({
+      skin: SKYLINK_SKIN,
+      plant: { nowS: () => w.t, dishStatus: () => 'online', powerDrawW: () => 55 },
+      link: new TerminalLink({ routerPowered: () => true, routerBooted: () => true, laptopOnRouter: () => true, dishCablePathIntact: () => true, dishBooted: () => true }),
+      services: { peekSample: (_i, _l, _v, _e, metric = 'status') => ({ value: metric === 'status' ? 'up' : 120, tS: w.t }) },
+      serviceId: 'skylink',
+    });
+    model.update();
+    w.t += 5;
+    model.update();
+    const screen = createHomeScreen({} as never);
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    screen.mount(host);
+    screen.sync(model.view());
+    expect(host.querySelector('#home-down')?.textContent).toBe('—');
+    expect(host.querySelector('#home-latency')?.textContent).toBe('—');
+    expect(host.querySelector('#home-down-pending')?.textContent).toBe('Measuring…');
+    expect(host.textContent).not.toContain('0 Mbps');
+    w.t += 40;
+    model.update();
+    screen.sync(model.view());
+    expect(host.querySelector('#home-down')?.textContent).toBe('120 Mbps');
+    expect(host.querySelector('#home-down-pending')?.textContent).toBe('');
   });
 });

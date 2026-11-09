@@ -1,8 +1,15 @@
 import type { ScenarioData } from '@app/ScenarioData';
+import { forwardServiceConfig } from './forward-field-config';
 import { frontlineGroundStation } from './ground-stations';
 import { frontlinePlantConfig } from './plant-config';
 import { eurosat9eSatellite } from './satellites';
 import { createFrontlineSettings } from './scenario-support';
+
+/** The base sandbox plant plus a healthy SkyLink service path (as S10 configures it), so the SkyLink app has data. No faults, no cards. */
+const sandboxPlant = structuredClone(frontlinePlantConfig);
+sandboxPlant.service = forwardServiceConfig();
+// The workload runner (the SkyLink speed test's evidence path) exists only when the plant authors workloads; the sandbox needs no cards
+sandboxPlant.workloads = { cards: [] };
 
 /**
  * Frontline Signals Sandbox (Phase 38.1)
@@ -34,7 +41,7 @@ export const frontlineSandboxData: ScenarioData = {
     isExtraSatellitesVisible: true,
     scenarioStartDate: '2027-06-15',
     scenarioStartWallTime: '10:00:00',
-    physicalPlant: frontlinePlantConfig,
+    physicalPlant: sandboxPlant,
   },
   objectives: [],
 };

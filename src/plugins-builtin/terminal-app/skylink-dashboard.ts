@@ -239,7 +239,7 @@ export class SkylinkDashboardPage implements AntennaPage {
     const blocked = this.dom_?.querySelector('#skylink-blocked') as HTMLElement;
     if (view.link === 'no-router') {
       blocked.hidden = false;
-      blocked.innerHTML = `<div class="card"><div class="card-body text-center py-5"><h2 class="mb-2">${tr('shell.noRouter.title')}</h2><div class="text-secondary">${tr('shell.noRouter.body')}</div></div></div>`;
+      blocked.innerHTML = `<div class="card skylink-noroute"><div class="card-body text-center py-5"><h2 class="mb-2 skylink-noroute-title">${tr('shell.noRouter.title')}</h2><div class="skylink-noroute-body">${tr('shell.noRouter.body')}</div></div></div>`;
       banner.hidden = true;
 
       return;

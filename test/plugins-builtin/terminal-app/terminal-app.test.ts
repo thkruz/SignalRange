@@ -415,3 +415,31 @@ describe('skins', () => {
     expect(small.screens).not.toContain('statistics');
   });
 });
+
+describe('first sample', () => {
+  it('is not measured until a service sample is in, so Home never shows a false 0', () => {
+    const w = makeWorld();
+    const m = makeModel(w);
+    m.update();
+    run(m, w, SKYLINK_SKIN.sampleIntervalS - 5);
+    const early = m.view().data;
+    expect(early?.hero).toBe('online');
+    expect(early?.measured).toBe(false);
+    run(m, w, 10);
+    const later = m.view().data;
+    expect(later?.measured).toBe(true);
+    expect(later?.downMbps).toBe(100);
+  });
+
+  it('stays unmeasured when the terminal has no service model', () => {
+    const w = makeWorld();
+    const m = new TerminalAppModel({
+      skin: SKYLINK_SKIN,
+      plant: { nowS: () => w.t, dishStatus: () => w.status, powerDrawW: () => 55 },
+      link: new TerminalLink({ routerPowered: () => true, routerBooted: () => true, laptopOnRouter: () => true, dishCablePathIntact: () => true, dishBooted: () => true }),
+    });
+    m.update();
+    run(m, w, 120);
+    expect(m.view().data?.measured).toBe(false);
+  });
+});

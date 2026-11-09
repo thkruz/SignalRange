@@ -14,7 +14,7 @@ const HERO_CLASS: Record<string, string> = {
 };
 
 function metric(id: string, label: string): string {
-  return `<div class="col-6 col-md-3"><div class="card h-100"><div class="card-body"><div class="text-secondary small">${label}</div><div class="h2 mb-0 font-monospace" id="home-${id}">${tr('home.noValue')}</div></div></div></div>`;
+  return `<div class="col-6 col-md-3"><div class="card h-100"><div class="card-body"><div class="text-secondary small">${label}</div><div class="h2 mb-0 font-monospace" id="home-${id}">${tr('home.noValue')}</div><div class="text-secondary small skylink-pending" id="home-${id}-pending"></div></div></div></div>`;
 }
 
 export const createHomeScreen: TerminalScreenFactory = (): TerminalScreen => {
@@ -56,9 +56,14 @@ export const createHomeScreen: TerminalScreenFactory = (): TerminalScreen => {
       if (dot) {
         dot.className = `badge ${HERO_CLASS[d.hero] ?? 'bg-secondary'}`;
       }
-      setText('down', tr('home.unitMbps', { value: d.downMbps.toFixed(0) }));
-      setText('up', tr('home.unitMbps', { value: d.upMbps.toFixed(0) }));
-      setText('latency', d.latencyMs === null ? tr('home.noValue') : tr('home.unitMs', { value: Math.round(d.latencyMs) }));
+      const pending = !d.measured;
+      const pendingHint = pending ? tr('home.measuring') : '';
+      setText('down', pending ? tr('home.pendingValue') : tr('home.unitMbps', { value: d.downMbps.toFixed(0) }));
+      setText('up', pending ? tr('home.pendingValue') : tr('home.unitMbps', { value: d.upMbps.toFixed(0) }));
+      setText('latency', pending ? tr('home.pendingValue') : d.latencyMs === null ? tr('home.noValue') : tr('home.unitMs', { value: Math.round(d.latencyMs) }));
+      setText('down-pending', pendingHint);
+      setText('up-pending', pendingHint);
+      setText('latency-pending', pendingHint);
       setText('uptime', formatAge(d.uptimeS));
       const alerts = q('alerts');
       if (alerts) {

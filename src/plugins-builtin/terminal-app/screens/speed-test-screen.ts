@@ -24,7 +24,7 @@ const DISH_SHARE_MIN = 0.9;
 export const SPEED_TEST_CARD: RequirementCard = { id: 'terminal-speed-test', version: 1, label: 'Speed test', windowS: SPEED_TEST_WINDOW_S, priority: 'routine' };
 
 /** The part of `WorkloadRunner` the speed test uses */
-export type SpeedTestRunner = Pick<WorkloadRunner, 'ensureCard' | 'start' | 'waitForRun' | 'effectiveProfile' | 'shareOf'>;
+export type SpeedTestRunner = Pick<WorkloadRunner, 'ensureCard' | 'start' | 'getRun' | 'waitForRun' | 'effectiveProfile' | 'shareOf'>;
 
 export interface SpeedTestBackend {
   runner: SpeedTestRunner;
@@ -46,19 +46,40 @@ export function speedTestLimit(measuredDownMbps: number, rawDownMbps: number, di
   return 'skylink';
 }
 
-/** Run one test. Returns null when it did not finish or the link carried nothing. */
-export function runSpeedTest(backend: SpeedTestBackend, model: TerminalAppModel): SpeedTestRecord | null {
+/** A speed test that has started and has not finished */
+export interface PendingSpeedTest {
+  runId: string;
+  serviceId: string;
+  startS: number;
+  endS: number;
+  share: ReturnType<SpeedTestRunner['shareOf']>;
+}
+
+/** Start a test without waiting. Returns null when the job cannot start. */
+export function beginSpeedTest(backend: SpeedTestBackend): PendingSpeedTest | null {
   const { runner, serviceId } = backend;
   runner.ensureCard(SPEED_TEST_CARD);
   const started = runner.start(SPEED_TEST_CARD.id, serviceId);
   if (!started.ok) {
     return null;
   }
-  const share = runner.shareOf(started.run);
-  const run = runner.waitForRun(started.run.id);
+
+  return { runId: started.run.id, serviceId, startS: started.run.startS, endS: started.run.endS, share: runner.shareOf(started.run) };
+}
+
+/**
+ * Read the outcome of a started test: 'running' while its window is open, null when it ended
+ * without a usable result, the record (also stored on the model) otherwise.
+ */
+export function finishSpeedTest(backend: SpeedTestBackend, model: TerminalAppModel, pending: PendingSpeedTest): SpeedTestRecord | null | 'running' {
+  const { runner, serviceId } = backend;
+  const run = runner.getRun(pending.runId);
+  if (run?.status === 'running') {
+    return 'running';
+  }
   model.update();
-  const profile = runner.effectiveProfile(serviceId, share);
-  if (!run || run.status === 'running' || run.status === 'aborted' || run.status === 'unsupported' || !profile) {
+  const profile = runner.effectiveProfile(serviceId, pending.share);
+  if (!run || run.status === 'aborted' || run.status === 'unsupported' || !profile) {
     return null;
   }
   const cap = LOCAL_NETWORK_CAP_MBPS;
@@ -75,6 +96,18 @@ export function runSpeedTest(backend: SpeedTestBackend, model: TerminalAppModel)
   return record;
 }
 
+/** Run one test to the end, burning its sim time at once. Returns null when it did not finish or the link carried nothing. */
+export function runSpeedTest(backend: SpeedTestBackend, model: TerminalAppModel): SpeedTestRecord | null {
+  const pending = beginSpeedTest(backend);
+  if (!pending) {
+    return null;
+  }
+  backend.runner.waitForRun(pending.runId);
+  const result = finishSpeedTest(backend, model, pending);
+
+  return result === 'running' ? null : result;
+}
+
 /** Default backend: the live plant's workload runner and this terminal's service path */
 function liveBackend(ctx: TerminalScreenContext): SpeedTestBackend | null {
   const runner = PhysicalPlantService.workloadsOrNull();
@@ -89,6 +122,7 @@ export function createSpeedTestScreenFor(resolve: (ctx: TerminalScreenContext) =
     let root: HTMLElement | null = null;
     let failed = false;
     let busy = false;
+    let pending: PendingSpeedTest | null = null;
     let lastView: TerminalView | null = null;
 
     const q = (id: string): HTMLElement | null => root?.querySelector(`#speed-${id}`) ?? null;
@@ -110,6 +144,16 @@ export function createSpeedTestScreenFor(resolve: (ctx: TerminalScreenContext) =
       if (button) {
         button.disabled = !available || busy;
         button.textContent = busy ? tr('speed.running') : tr('speed.start');
+      }
+      const progress = q('progress');
+      if (progress) {
+        const total = pending ? Math.round(pending.endS - pending.startS) : 0;
+        const done = pending ? Math.min(total, Math.max(0, Math.round(ctx.model.nowS() - pending.startS))) : 0;
+        const text = busy ? tr('speed.progress', { done, total }) : '';
+        progress.hidden = !busy;
+        if (progress.textContent !== text) {
+          progress.textContent = text;
+        }
       }
       setHtml('note', !connected ? tr('speed.disabled') : available ? '' : tr('speed.unavailable'));
       setHtml('failed', failed ? tr('speed.failed') : '');
@@ -146,14 +190,25 @@ export function createSpeedTestScreenFor(resolve: (ctx: TerminalScreenContext) =
       }
     }
 
-    const onStart = (): void => {
-      const backend = lastView?.link === 'connected' ? resolve(ctx) : null;
-      if (!backend || busy) {
+    /** Collect the result once the run's window has passed in sim time */
+    const settle = (): void => {
+      const backend = pending ? resolve(ctx) : null;
+      if (!pending || !backend) {
+        if (pending) {
+          pending = null;
+          busy = false;
+          failed = true;
+        }
+
         return;
       }
-      busy = true;
-      failed = false;
-      const result = runSpeedTest(backend, ctx.model);
+      const result = finishSpeedTest(backend, ctx.model, pending);
+      if (result === 'running') {
+        return;
+      }
+      pending = null;
+      busy = false;
+      failed = result === null;
       ctx.evidence?.action(
         'speed-test',
         APP_ACTION_VERBS.speedTest,
@@ -161,9 +216,23 @@ export function createSpeedTestScreenFor(resolve: (ctx: TerminalScreenContext) =
           ? `Ran a speed test in the SkyLink app: ${Math.round(result.downMbps)} down, ${Math.round(result.upMbps)} up Mbps.`
           : 'Ran a speed test in the SkyLink app; it did not finish.'
       );
-      busy = false;
-      failed = result === null;
       ctx.refresh();
+    };
+
+    const onStart = (): void => {
+      const backend = lastView?.link === 'connected' ? resolve(ctx) : null;
+      if (!backend || busy) {
+        return;
+      }
+      failed = false;
+      pending = beginSpeedTest(backend);
+      if (pending) {
+        busy = true;
+        settle();
+      } else {
+        failed = true;
+        ctx.evidence?.action('speed-test', APP_ACTION_VERBS.speedTest, 'Ran a speed test in the SkyLink app; it did not finish.');
+      }
       if (lastView) {
         render(lastView);
       }
@@ -178,6 +247,7 @@ export function createSpeedTestScreenFor(resolve: (ctx: TerminalScreenContext) =
             <div class="card-body">
               <p class="text-secondary">${tr('speed.body', { seconds: SPEED_TEST_WINDOW_S })}</p>
               <button type="button" class="btn btn-primary" id="speed-start">${tr('speed.start')}</button>
+              <div class="text-secondary mt-2" id="speed-progress" role="status" hidden></div>
               <div class="text-secondary mt-2" id="speed-note"></div>
               <div class="text-danger mt-2" id="speed-failed"></div>
             </div></div>
@@ -191,6 +261,9 @@ export function createSpeedTestScreenFor(resolve: (ctx: TerminalScreenContext) =
       },
       sync(view: TerminalView) {
         lastView = view;
+        if (busy) {
+          settle();
+        }
         render(view);
       },
       dispose() {

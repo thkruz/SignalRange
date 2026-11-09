@@ -174,7 +174,14 @@ describe('Statistics screen', () => {
 describe('Speed test screen', () => {
   const factory = (r: ReturnType<typeof rig>) => createSpeedTestScreenFor(() => ({ runner: r.runner, serviceId: 'skylink' }));
 
-  it('runs a job, advances sim time and shows the result', () => {
+  /** Let sim time pass the way the plant does: clock, plant, services, then the runner */
+  const pass = (r: ReturnType<typeof rig>, seconds: number): void => {
+    r.w.t += seconds;
+    r.runner.update();
+    r.model.update();
+  };
+
+  it('shows a running state for the test window, then the result', () => {
     const r = rig();
     r.step(4);
     const screen = factory(r)(r.ctx);
@@ -184,18 +191,59 @@ describe('Speed test screen', () => {
     expect(start.disabled).toBe(false);
     const t0 = r.w.t;
     start.click();
-    expect(r.w.t - t0).toBeGreaterThanOrEqual(SPEED_TEST_WINDOW_S);
+    // Clicking does not burn the clock and shows no result yet
+    expect(r.w.t).toBe(t0);
+    expect(start.disabled).toBe(true);
+    expect(start.textContent).toBe('Running…');
+    expect(el.querySelector('#speed-down')).toBeNull();
+    expect((el.querySelector('#speed-progress') as HTMLElement).hidden).toBe(false);
+    expect(el.querySelector('#speed-progress')?.textContent).toBe(`0 of ${SPEED_TEST_WINDOW_S} seconds`);
+    expect(r.model.speedTests().length).toBe(0);
+    expect(r.ctx.evidence).toBeUndefined();
+    // Part of the window passes: still running
+    pass(r, 10);
+    screen.sync(r.model.view());
+    expect(start.disabled).toBe(true);
+    expect(el.querySelector('#speed-progress')?.textContent).toBe(`10 of ${SPEED_TEST_WINDOW_S} seconds`);
+    expect(el.querySelector('#speed-down')).toBeNull();
+    // The window ends: the result arrives and the button is back
+    pass(r, SPEED_TEST_WINDOW_S);
+    screen.sync(r.model.view());
+    expect(start.disabled).toBe(false);
+    expect(start.textContent).toBe('Start speed test');
+    expect((el.querySelector('#speed-progress') as HTMLElement).hidden).toBe(true);
     expect(el.querySelector('#speed-down')?.textContent).toContain('Mbps');
     expect(el.querySelector('#speed-lat')?.textContent).toBe('40 ms');
     expect(el.querySelector('#speed-limit')?.textContent).toBe('SkyLink');
-    // The run is evidence: the runner holds a finished run with samples
+    // The run is evidence: the runner holds one finished run with samples
     const runs = r.runner.getRuns();
     expect(runs.length).toBe(1);
     expect(runs[0].sampleIds.length).toBeGreaterThan(0);
     expect(r.model.speedTests().length).toBe(1);
     start.click();
+    pass(r, SPEED_TEST_WINDOW_S);
     screen.sync(r.model.view());
+    expect(r.model.speedTests().length).toBe(2);
     expect(el.querySelector('#speed-history-card')?.hasAttribute('hidden')).toBe(false);
+    screen.dispose();
+  });
+
+  it('logs one evidence event per run, at the end', () => {
+    const r = rig();
+    r.step(4);
+    const action = vi.fn();
+    const ctx = { ...r.ctx, evidence: { action } } as unknown as TerminalScreenContext;
+    const screen = factory(r)(ctx);
+    const el = mount(screen);
+    screen.sync(r.model.view());
+    (el.querySelector('#speed-start') as HTMLButtonElement).click();
+    pass(r, 10);
+    screen.sync(r.model.view());
+    expect(action).not.toHaveBeenCalled();
+    pass(r, SPEED_TEST_WINDOW_S);
+    screen.sync(r.model.view());
+    screen.sync(r.model.view());
+    expect(action).toHaveBeenCalledTimes(1);
     screen.dispose();
   });
 

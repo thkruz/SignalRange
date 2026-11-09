@@ -28,3 +28,22 @@
 .skylink-confirm .card {
   max-width: 24rem;
 }
+
+/* No-router card: explicit tokens so the text keeps AA contrast on the card background */
+.skylink-noroute.card {
+  background: var(--mc-surface-1, #292929);
+  border-color: var(--mc-border, #3a3a3a);
+  color: var(--mc-text-primary, #e0e0e0);
+}
+
+.skylink-noroute .skylink-noroute-title {
+  color: var(--mc-text-primary, #e0e0e0);
+}
+
+.skylink-noroute .skylink-noroute-body {
+  color: var(--mc-text-secondary, #b8b8b8);
+}
+
+.skylink-pending {
+  min-height: 1.2em;
+}

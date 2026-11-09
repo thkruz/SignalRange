@@ -57,7 +57,9 @@
       "uptime": "Uptime",
       "unitMbps": "{{value}} Mbps",
       "unitMs": "{{value}} ms",
-      "noValue": "-"
+      "noValue": "-",
+      "pendingValue": "—",
+      "measuring": "Measuring…"
     },
     "settings": {
       "title": "Settings",
@@ -139,7 +141,8 @@
       "title": "Speed test",
       "body": "Measures the speed between your SkyLink and the internet. The test takes about {{seconds}} seconds.",
       "start": "Start speed test",
-      "running": "Testing...",
+      "running": "Running…",
+      "progress": "{{done}} of {{total}} seconds",
       "disabled": "The speed test is not available. Your SkyLink cannot be reached.",
       "unavailable": "The speed test is not available on this connection.",
       "result": "Last result",

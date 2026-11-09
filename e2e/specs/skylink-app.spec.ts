@@ -4,7 +4,7 @@ import { expect, test } from '../fixtures/test-fixtures';
 
 // Campaign 6 registers only on a local host name; localhost matches the other specs (the embed licence).
 const BASE = process.env.SR_E2E_BASE ?? 'http://localhost:3000';
-// Exercise 10 (forward post, SkyLink only): the sandbox variants author no service model, so the speed test and throughput do not work there.
+// Exercise 10 (forward post, SkyLink only) drives most tests; the base sandbox has the same healthy service and gets its own describe below.
 const URL_PATH = '/campaigns/frontline/scenarios/frontline-scenario10';
 const SHOTS = 'art-review/phase-40/screens';
 const SCREENS = ['home', 'obstructions', 'statistics', 'speed-test', 'settings', 'advanced'] as const;
@@ -165,6 +165,10 @@ test.describe('SkyLink app at the Frontline field station (real browser)', () =>
     await openScreen(page, 'speed-test');
     await expect(page.locator('#speed-start')).toBeEnabled();
     await page.locator('#speed-start').evaluate((el) => (el as HTMLElement).click());
+    // The run is visible while its sim time passes: Running, button disabled, no result yet
+    await expect(page.locator('#speed-start')).toBeDisabled();
+    await expect(page.locator('#speed-start')).toHaveText('Running…');
+    await expect(page.locator('#speed-progress')).toContainText('seconds');
     await shot(page, 'speed-test-running');
     for (let i = 0; i < 12 && !(await page.locator('#speed-down').count()); i++) {
       await advance(page, 10, 5);
@@ -224,6 +228,71 @@ test.describe('SkyLink app at the Frontline field station (real browser)', () =>
   });
 
   test('no console errors across the whole run', () => {
+    expect(consoleErrors).toEqual([]);
+  });
+});
+
+test.describe('SkyLink app in the Frontline sandbox (real browser)', () => {
+  test.use({ baseURL: BASE });
+  test.describe.configure({ mode: 'serial' });
+
+  let page: Page;
+  const consoleErrors: string[] = [];
+
+  test.beforeAll(async ({ browser }) => {
+    test.setTimeout(150000);
+    mkdirSync(SHOTS, { recursive: true });
+    page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    page.on('console', (m) => {
+      if (m.type() === 'error') {
+        consoleErrors.push(m.text());
+      }
+    });
+    page.on('pageerror', (e) => consoleErrors.push(`pageerror: ${e.message}`));
+    await page.addInitScript(() => {
+      (window as unknown as { DEVELOPER_MODE: boolean }).DEVELOPER_MODE = true;
+    });
+    await page.goto(`${BASE}/campaigns/frontline/scenarios/frontline-sandbox`);
+    await expect(page.locator('#app-shell-page')).toBeVisible({ timeout: 20000 });
+    const opening = page.locator('.scene-modal[open]');
+
+    if (await opening.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await opening.getByRole('button', { name: 'Start', exact: true }).click();
+    }
+    const station = page.getByRole('heading', { name: 'Frontline Training Post' }).first();
+
+    await expect(page.locator('.mission-loading-screen')).toHaveCount(0, { timeout: 30000 });
+    await dismissDialogs(page);
+    await station.evaluate((el) => ((el.closest('[data-asset-id], .card') as HTMLElement | null) ?? (el as HTMLElement)).click(), undefined, { timeout: 20000 });
+    await expect(page.locator('#skylink-screen')).toBeAttached({ timeout: 20000 });
+    await dismissDialogs(page);
+  });
+
+  test.afterAll(async () => {
+    await page?.close();
+  });
+
+  test('Home shows Online with a measured, non-zero download', async () => {
+    await advance(page, 180);
+    await openScreen(page, 'home');
+    await expect(page.locator('#home-hero')).toHaveText('Online', { timeout: 30000 });
+    await expect(page.locator('#home-down')).toHaveText(/^[1-9]\d* Mbps$/u, { timeout: 30000 });
+    await shot(page, 'sandbox-home');
+  });
+
+  test('speed test runs to a result', async () => {
+    await openScreen(page, 'speed-test');
+    await expect(page.locator('#speed-start')).toBeEnabled();
+    await page.locator('#speed-start').evaluate((el) => (el as HTMLElement).click());
+    await expect(page.locator('#speed-start')).toBeDisabled();
+    for (let i = 0; i < 12 && !(await page.locator('#speed-down').count()); i++) {
+      await advance(page, 10, 5);
+    }
+    await expect(page.locator('#speed-down')).toContainText('Mbps', { timeout: 15000 });
+    await expect(page.locator('#speed-start')).toBeEnabled();
+  });
+
+  test('no console errors in the sandbox run', () => {
     expect(consoleErrors).toEqual([]);
   });
 });

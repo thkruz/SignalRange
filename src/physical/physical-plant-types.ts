@@ -265,7 +265,11 @@ export interface PlantSiteConfig {
   inventory?: string[];
 }
 
-export type SkylinkStatus = 'booting' | 'online' | 'obstructed' | 'heating' | 'thermal-shutdown' | 'no-power';
+/**
+ * What the SkyLink dish reports.  is internal (GNSS denial, WP6) and displays as Searching.
+ * No stow state: SkyLink is a fixed phased array (plan D12).
+ */
+export type SkylinkStatus = 'booting' | 'online' | 'searching' | 'obstructed' | 'heating' | 'thermal-throttle' | 'thermal-shutdown' | 'sleeping' | 'no-location' | 'no-power';
 
 export interface PlantEnvironment {
   windMps: number;

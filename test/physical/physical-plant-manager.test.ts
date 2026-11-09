@@ -308,10 +308,10 @@ describe('dish status', () => {
     expect(plant.skylinkStatus()).toBe('online');
   });
 
-  it('heat drives heating and thermal shutdown', () => {
+  it('heat drives thermal throttle and thermal shutdown', () => {
     const { plant, env } = makePlant();
     env.ambientC = 47;
-    expect(plant.skylinkStatus()).toBe('heating');
+    expect(plant.skylinkStatus()).toBe('thermal-throttle');
     env.ambientC = 58;
     expect(plant.skylinkStatus()).toBe('thermal-shutdown');
   });

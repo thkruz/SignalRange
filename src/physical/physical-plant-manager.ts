@@ -343,9 +343,15 @@ export class PhysicalPlantManager {
     if (this.isRebooting_(terminal.id)) {
       return 'booting';
     }
+    // Hot ambient throttles the dish before it shuts down (was mislabelled 'heating', which is snow melt)
     if (env.ambientC >= THERMAL_HEATING_C) {
-      return 'heating';
+      return 'thermal-throttle';
     }
+    // TODO(phase-40 WP3): 'sleeping' once the power-save sleep schedule exists in the plant
+    // TODO(phase-40 WP6/E5): 'no-location' once the gnss-denied fault flag exists
+    // TODO(phase-40 WP3): 'heating' while the snow-melt setting is warming a snowed-over dish
+    // TODO(phase-40 E4): 'searching' after boot until the first beam lock; until then the terminal-app
+    // model derives it from the phased-array read model (inOutage)
     if (this.hasActiveFault_(terminal.id, ['snow', 'net'])) {
       return 'obstructed';
     }

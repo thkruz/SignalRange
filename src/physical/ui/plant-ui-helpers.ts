@@ -141,7 +141,8 @@ export function hotspotPip(plant: PhysicalPlantManager, partIds: string[]): PipS
 
 /** Laptop indicator: internet is up when either path is up */
 export function internetPaths(plant: PhysicalPlantManager): { skylink: boolean; vsat: boolean; up: boolean } {
-  const skylink = plant.skylinkStatus() === 'online';
+  const skylinkStatus = plant.skylinkStatus();
+  const skylink = skylinkStatus === 'online' || skylinkStatus === 'thermal-throttle';
   const vsat =
     plant.isPartPowered('vsat-modem') &&
     plant.isPartPowered('vsat-lnb') &&
@@ -179,8 +180,12 @@ export const SKYLINK_STATUS_TEXT: Record<SkylinkStatus, string> = {
   booting: 'Booting',
   online: 'Online',
   obstructed: 'Obstructed',
+  searching: 'Searching',
   heating: 'Heating (snow melt)',
+  'thermal-throttle': 'Thermal throttle',
   'thermal-shutdown': 'Thermal shutdown',
+  sleeping: 'Sleeping',
+  'no-location': 'Searching',
   'no-power': 'No power',
 };
 

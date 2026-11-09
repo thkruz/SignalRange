@@ -1052,6 +1052,22 @@ describe('TabbedCanvas field station tab policy', () => {
     expect(page.activate).toHaveBeenCalled();
   });
 
+  it('keeps the station tab beside the engineering tabs when the trainer unlocks', () => {
+    setSettings({});
+    AntennaPageRegistry.getInstance().registerStationTab({
+      id: 'skylink',
+      label: 'SkyLink',
+      stationClasses: ['field'],
+      factory: () => ({ ...createMockTab(), tabLabel: 'SkyLink' }),
+      isDefault: true,
+    });
+    selectStation();
+    FieldTabPolicy.setEngineeringUnlocked(true);
+    expect(tabIds()).toEqual(expect.arrayContaining(['dashboard', 'rx-analysis', 'station-skylink']));
+    FieldTabPolicy.reset();
+    expect(tabIds()).toEqual(['site', 'station-skylink']);
+  });
+
   it('drops a station tab after unregister', () => {
     setSettings({});
     AntennaPageRegistry.getInstance().registerStationTab({

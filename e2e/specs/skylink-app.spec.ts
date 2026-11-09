@@ -132,8 +132,8 @@ test.describe('SkyLink app at the Frontline field station (real browser)', () =>
     await expect.poll(async () => tabs.count()).toBeGreaterThan(2);
     const engineering = await tabs.allTextContents();
 
-    // Finding: the unlocked set is the full engineering set; the SkyLink tab is not part of it (field mode only).
-    expect(engineering.map((t) => t.trim())).toEqual(expect.arrayContaining(['ACU Control', 'RX Analysis', 'TX Chain', 'Site']));
+    // D1: the unlock adds the engineering tabs; the SkyLink tab stays.
+    expect(engineering.map((t) => t.trim())).toEqual(expect.arrayContaining(['ACU Control', 'RX Analysis', 'TX Chain', 'Site', 'SkyLink']));
     await setEngineering(page, false);
     await expect(tabs).toHaveText(['Site', 'SkyLink']);
     await openTab(page, 'station-skylink-app');

@@ -340,7 +340,7 @@ export class TabbedCanvas extends BaseElement {
 
     // Field stations (Campaign 6): the Site tab, tabs plugins register for the
     // class (the terminal app), and only the engineering tabs the scenario allows.
-    // The trainer unlock restores the full professional set below.
+    // The trainer unlock restores the full professional set below, plus the station tabs.
     const fieldMode = groundStation.state.stationClass === 'field' && !FieldTabPolicy.isEngineeringUnlocked();
     if (fieldMode) {
       this.showFieldStationTabs_(groundStation);
@@ -411,6 +411,13 @@ export class TabbedCanvas extends BaseElement {
     // Phase 38.1 physical-layer sandbox: the site view only exists with a plant
     if (settings.physicalPlant) {
       tabs.push({ id: 'site', label: 'Site', icon: radarPng });
+    }
+
+    // Unlocked field station: the terminal app stays beside the engineering tabs
+    if (groundStation.state.stationClass === 'field') {
+      AntennaPageRegistry.getInstance()
+        .stationTabsFor('field')
+        .forEach((reg) => tabs.push({ id: `${STATION_TAB_PREFIX}${reg.id}`, label: reg.label, icon: radarPng, isDisabled: groundStation.state.isOperational === false }));
     }
 
     this.renderTabs_(tabs);

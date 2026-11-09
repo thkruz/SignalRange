@@ -226,6 +226,81 @@ describe('BeamScheduler', () => {
     expect(h[0].atMs).toBeLessThanOrEqual(200_000);
   });
 
+  it('predicted handovers move toward now as the clock advances', () => {
+    // Sat 1 sets at t = 200 s, sat 2 holds 55 deg: the handover stays at the same absolute time
+    const live: SkySource = {
+      list: () => [
+        { norad: 1, name: 'A', az: 0, el: 80 },
+        { norad: 2, name: 'B', az: 180, el: 55 },
+      ],
+      positionOf: (n, t) => (n === 1 ? (t < 200_000 ? { az: 0, el: 80 } : { az: 0, el: -5 }) : { az: 180, el: 55 }),
+    };
+    const s = new BeamScheduler(live, panel, () => false, { handoverOutageMs: 100 });
+
+    s.update(0);
+    const first = s.snapshot().handovers[0];
+
+    s.update(60_000);
+    s.invalidate();
+    s.update(61_000);
+    const later = s.snapshot().handovers[0];
+
+    expect(first.toNorad).toBe(2);
+    expect(later.toNorad).toBe(2);
+    expect(later.atMs - 61_000).toBeLessThan(first.atMs - 0 - 50_000);
+    expect(s.snapshot().predictedUntilMs).toBe(61_000 + 600_000);
+  });
+
+  it('an unavailable position ends the prediction there instead of freezing the satellite', () => {
+    const live: SkySource = {
+      list: () => [
+        { norad: 1, name: 'A', az: 0, el: 80 },
+        { norad: 2, name: 'B', az: 180, el: 55 },
+      ],
+      // Sat 1 sets at 300 s; past 120 s sat 2 has no position
+      positionOf: (n, t) => (n === 2 && t > 120_000 ? null : n === 1 ? (t < 300_000 ? { az: 0, el: 80 } : { az: 0, el: -5 }) : { az: 180, el: 55 }),
+    };
+    const s = new BeamScheduler(live, panel, () => false, { handoverOutageMs: 100 });
+
+    s.update(0);
+    const snap = s.snapshot();
+
+    expect(snap.handovers).toHaveLength(0);
+    expect(snap.predictedUntilMs).toBe(120_000);
+  });
+
+  it('uses one batch look-ahead and reports progress while it is pending', async () => {
+    const calls: number[] = [];
+    const live: SkySource = {
+      list: () => [{ norad: 1, name: 'A', az: 0, el: 80 }],
+      positionOf: () => ({ az: 0, el: 80 }),
+      lookAhead: (norads, startMs, stepMs, count) => {
+        calls.push(norads.length);
+        const data = new Float32Array(norads.length * count * 2);
+
+        for (let i = 0; i < count; i++) {
+          data[i * 2] = startMs + i * stepMs < 300_000 ? 80 : -3;
+          data[i * 2 + 1] = 0;
+        }
+
+        return Promise.resolve({ norads, startMs, stepMs, count, data });
+      },
+    };
+    const s = new BeamScheduler(live, panel, () => false, { handoverOutageMs: 100 });
+
+    s.update(0);
+    expect(s.snapshot().predictedUntilMs).toBe(0);
+    await Promise.resolve();
+    await Promise.resolve();
+    const snap = s.snapshot();
+
+    expect(calls).toEqual([1]);
+    expect(snap.handovers[0]).toMatchObject({ toNorad: null, reason: 'set' });
+    expect(snap.handovers[0].atMs).toBeGreaterThanOrEqual(300_000);
+    expect(snap.predictedUntilMs).toBe(600_000);
+    expect(s.predictTrack(1, 0, 600_000, 60_000).length).toBe(5);
+  });
+
   it('stays cheap with thousands of satellites', () => {
     const sky = new FakeSky();
 

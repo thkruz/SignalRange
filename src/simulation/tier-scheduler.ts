@@ -164,6 +164,11 @@ export class TierScheduler {
     return this.tiered_ ? this.service_ : null;
   }
 
+  /** The propagation service even when the scenario is small (not tiered); null without one. */
+  get anyService(): PropagationService | null {
+    return this.service_;
+  }
+
   /** Subscribe to the simulation tick. Idempotent. */
   start(): void {
     if (this.started_) {

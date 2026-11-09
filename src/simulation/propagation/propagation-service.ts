@@ -2,6 +2,7 @@ import { PASS_STRIDE, PassField, PassSearchJob, type PassSearchSpec } from './pa
 import { POS_STRIDE, PropagatorCore, STATION_STRIDE } from './propagation-core';
 import { createPropagationHandler } from './propagation-handler';
 import { type PropagationRequest, type PropagationResponse, type SlotKind, SWEEP_GRID_MS, WARM_GRID_MS } from './propagation-protocol';
+import { TrackJob } from './track-job';
 
 /** Transport to the propagation worker (or an in-process stand-in). */
 export interface PropagationBackend {
@@ -138,6 +139,25 @@ export interface VisibilityRequest {
   count: number;
   /** Horizon, deg. Default 0 */
   minEl?: number;
+}
+
+/** Look angles of members from one station at evenly spaced times. */
+export interface LookAheadRequest {
+  noradIds: readonly number[];
+  station: number;
+  startMs: number;
+  stepMs: number;
+  count: number;
+}
+
+export interface LookAheadGrid {
+  /** Members that exist in the service, in row order */
+  norads: number[];
+  startMs: number;
+  stepMs: number;
+  count: number;
+  /** data[(row * count + i) * 2] = el, +1 = az; NaN when unavailable */
+  data: Float32Array;
 }
 
 export interface VisibilityHandle {
@@ -370,6 +390,46 @@ export class PropagationService {
   }
 
   /**
+   * El/az of members from one station over a time grid, computed by the worker
+   * in slices (on the calling thread only when there is no worker). One request
+   * answers a whole prediction horizon; nothing is read from the sample ring.
+   */
+  lookAhead(req: LookAheadRequest): Promise<LookAheadGrid> {
+    const norads: number[] = [];
+    const members: number[] = [];
+
+    for (const n of req.noradIds) {
+      const m = this.index_.get(n);
+
+      if (m !== undefined) {
+        norads.push(n);
+        members.push(m);
+      }
+    }
+    const grid = (data: Float32Array): LookAheadGrid => ({ norads, startMs: req.startMs, stepMs: req.stepMs, count: req.count, data });
+
+    if (members.length === 0 || req.station < 0 || req.station >= this.stationCount) {
+      return Promise.resolve(grid(new Float32Array(0)));
+    }
+    const indices = Int32Array.from(members);
+
+    if (!this.backend_) {
+      this.core_ ??= new PropagatorCore(this.opts_.tle1, this.opts_.tle2, this.stationsPacked_);
+      const job = new TrackJob(this.core_, { indices, station: req.station, startMs: req.startMs, stepMs: req.stepMs, count: req.count });
+
+      job.run(Number.POSITIVE_INFINITY);
+
+      return Promise.resolve(grid(job.result()));
+    }
+    const id = this.nextId_++;
+
+    return new Promise<LookAheadGrid>((resolve, reject) => {
+      this.jobs_.set(id, { resolve: (m) => resolve(grid((m as { data: Float32Array }).data)), reject });
+      this.backend_?.post({ type: 'track', id, indices, station: req.station, startMs: req.startMs, stepMs: req.stepMs, count: req.count });
+    });
+  }
+
+  /**
    * Members above the horizon per lane and station at `count` grid times,
    * computed in the worker (never on this thread: returns null without one).
    * `onPoint` receives counts[lane * stations + station] per grid time as each
@@ -579,6 +639,13 @@ export class PropagationService {
       return;
     }
     if (msg.type === 'passes') {
+      this.workerBusyMs += msg.workMs;
+      const job = this.jobs_.get(msg.id);
+      this.jobs_.delete(msg.id);
+      job?.resolve(msg);
+      return;
+    }
+    if (msg.type === 'track') {
       this.workerBusyMs += msg.workMs;
       const job = this.jobs_.get(msg.id);
       this.jobs_.delete(msg.id);

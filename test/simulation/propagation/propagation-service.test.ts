@@ -1,3 +1,4 @@
+import { PropagatorCore } from '@app/simulation/propagation/propagation-core';
 import { InlineBackend, PropagationService, type PropagationStation } from '@app/simulation/propagation/propagation-service';
 import { Satellite as OotkSatellite, type TleLine1, type TleLine2 } from 'ootk';
 import { describe, expect, it } from 'vitest';
@@ -188,5 +189,27 @@ describe('PropagationService', () => {
     expect(Array.from(bs.pos)).toEqual(Array.from(a.pos));
     expect(Array.from(bs.look)).toEqual(Array.from(a.look));
     expect(b.fallbacks).toBe(0);
+  });
+
+  it('lookAhead matches direct SGP4 look angles and flags unknown members', async () => {
+    for (const backend of [null, new InlineBackend(true)]) {
+      const { tles, svc } = build(20, backend);
+      const ids = [tles[3].noradId, tles[9].noradId, 999999999];
+      const grid = await svc.lookAhead({ noradIds: ids, station: 0, startMs: EPOCH_MS, stepMs: 15_000, count: 41 });
+
+      expect(grid.norads).toEqual([tles[3].noradId, tles[9].noradId]);
+      expect(grid.data.length).toBe(2 * 41 * 2);
+      const frames = new PropagatorCore(
+        tles.map((t) => t.tle1),
+        tles.map((t) => t.tle2),
+        Float64Array.from([STATIONS[0].latDeg, STATIONS[0].lonDeg, STATIONS[0].altKm])
+      );
+      const out = new Float64Array(3);
+      const date = new Date(EPOCH_MS + 30 * 15_000);
+
+      frames.lookAt(9, 0, date, frames.stationFrames(date), out);
+      expect(grid.data[(1 * 41 + 30) * 2]).toBeCloseTo(out[0], 3);
+      expect(grid.data[(1 * 41 + 30) * 2 + 1]).toBeCloseTo(out[1], 3);
+    }
   });
 });

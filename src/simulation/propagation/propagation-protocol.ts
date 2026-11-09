@@ -29,6 +29,8 @@ export type PropagationRequest =
   | { type: 'passes'; id: number; spec: PassSearchSpec }
   /** Members above `minEl` per lane and station at `count` grid times, answered one `visibility` response per time */
   | { type: 'visibility'; id: number; startMs: number; stepMs: number; count: number; minEl: number }
+  /** Look angles (el, az) of members from one station at `count` evenly spaced times; answered with a `track` response */
+  | { type: 'track'; id: number; indices: Int32Array; station: number; startMs: number; stepMs: number; count: number }
   /** Drop a queued or running passes/visibility job */
   | { type: 'cancel'; id: number };
 
@@ -38,4 +40,6 @@ export type PropagationResponse =
   | { type: 'passes'; id: number; records: Float64Array; workMs: number }
   /** counts[g * stations + s] for the `index`-th grid time of the request */
   | { type: 'visibility'; id: number; index: number; counts: Uint16Array; done: boolean; workMs: number }
+  /** data[(k * count + i) * 2] = el, +1 = az of the k-th requested member at the i-th time; NaN when unavailable */
+  | { type: 'track'; id: number; data: Float32Array; workMs: number }
   | { type: 'error'; message: string; id?: number };

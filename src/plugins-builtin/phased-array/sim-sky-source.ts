@@ -4,7 +4,7 @@
  * through the antenna's own `viewOf`, and `sampleAt` for look-ahead.
  */
 import type { Satellite } from '@app/equipment/satellite/satellite';
-import type { PropagationSample } from '@app/simulation/propagation/propagation-service';
+import type { LookAheadGrid, PropagationSample } from '@app/simulation/propagation/propagation-service';
 import { gmstRad } from '@app/simulation/rf-narrowing';
 import { getSimulatedNowMs } from '@app/simulation/sim-time';
 import { SimulationManager } from '@app/simulation/simulation-manager';
@@ -17,7 +17,12 @@ const WGS84_E2 = 0.00669437999014;
 /** A hydrated satellite is read through viewOf when the requested time is this close to now, sim ms */
 const NOW_WINDOW_MS = 2000;
 
+/** Constellation sets a terminal serves when nothing else is configured: the Starlink sets. */
+export const DEFAULT_SERVED_CONSTELLATIONS: readonly string[] = ['starlink-'];
+
 export interface SimSkyHost {
+  /** TLE set ids (exact, or prefix such as 'starlink-') whose members the terminal serves. Default: Starlink. */
+  servedConstellations?: readonly string[];
   location(): { latitude: number; longitude: number; elevationM: number } | null;
   viewOf(sat: Satellite): { az: number; el: number };
 }
@@ -52,9 +57,42 @@ function frameAt(latDeg: number, lonDeg: number, altKm: number, ms: number): Fra
 
 export class SimSkySource implements SkySource {
   private readonly sample_: PropagationSample | null;
+  private readonly servedCache_ = new Map<string, boolean>();
 
   constructor(private readonly host_: SimSkyHost) {
     this.sample_ = SimulationManager.getInstance().scheduler?.service?.newSample() ?? null;
+  }
+
+  /**
+   * True when the satellite belongs to a constellation this terminal serves.
+   * Authored satellites (the GEO payload among them) are never served: only
+   * registry members of a matching TLE set are.
+   */
+  isServed(norad: number): boolean {
+    const sch = SimulationManager.getInstance().scheduler;
+
+    if (!sch) {
+      return false;
+    }
+    const registry = sch.registry;
+    const idx = registry.memberIndexOf(norad);
+
+    if (idx < 0) {
+      return false;
+    }
+    const set = registry.constellationRefs()[registry.memberRefIndex(idx)]?.tleSet;
+
+    if (set === undefined) {
+      return false;
+    }
+    let match = this.servedCache_.get(set);
+
+    if (match === undefined) {
+      match = (this.host_.servedConstellations ?? DEFAULT_SERVED_CONSTELLATIONS).some((s) => set === s || set.startsWith(s));
+      this.servedCache_.set(set, match);
+    }
+
+    return match;
   }
 
   list(simMs: number, max: number): SkyObject[] {
@@ -63,20 +101,15 @@ export class SimSkySource implements SkySource {
     const out: SkyObject[] = [];
 
     if (!sch) {
-      for (const sat of sim.satellites) {
-        const v = this.host_.viewOf(sat);
-
-        if (v.el > 0) {
-          out.push({ norad: sat.noradId, name: sat.name, az: v.az, el: v.el });
-        }
-      }
-
-      return SimSkySource.cap_(out, max);
+      return out;
     }
 
     const registry = sch.registry;
 
     for (const sat of registry.hydrated) {
+      if (!this.isServed(sat.noradId)) {
+        continue;
+      }
       const v = this.host_.viewOf(sat);
 
       if (v.el > 0) {
@@ -91,7 +124,7 @@ export class SimSkySource implements SkySource {
       const frame = frameAt(loc.latitude, loc.longitude, loc.elevationM / 1000, simMs);
 
       for (const norad of sch.warmFor(stationIndex)) {
-        if (registry.isHydrated(norad)) {
+        if (registry.isHydrated(norad) || !this.isServed(norad)) {
           continue;
         }
         const p = this.warmPosition_(norad, simMs, frame);
@@ -108,8 +141,11 @@ export class SimSkySource implements SkySource {
   }
 
   positionOf(norad: number, simMs: number): { az: number; el: number } | null {
+    if (!this.isServed(norad)) {
+      return null;
+    }
     const sch = SimulationManager.getInstance().scheduler;
-    const sat = sch ? sch.registry.peek(norad) : SimulationManager.getInstance().getSatByNoradId(norad);
+    const sat = sch?.registry.peek(norad);
 
     if (sat && Math.abs(simMs - getSimulatedNowMs()) <= NOW_WINDOW_MS) {
       const v = this.host_.viewOf(sat);
@@ -122,21 +158,29 @@ export class SimSkySource implements SkySource {
       const stationIndex = sch.stationIndexOf(loc.latitude, loc.longitude);
 
       if (stationIndex >= 0) {
-        const p = this.warmPosition_(norad, simMs, frameAt(loc.latitude, loc.longitude, loc.elevationM / 1000, simMs));
-
-        if (p) {
-          return p;
-        }
+        // Only the sample ring answers here; a miss is "unknown", never "holds its slot"
+        return this.warmPosition_(norad, simMs, frameAt(loc.latitude, loc.longitude, loc.elevationM / 1000, simMs));
       }
-    }
-    if (sat) {
-      // Authored satellite looking ahead: no ephemeris here, assume it holds its slot
-      const v = this.host_.viewOf(sat);
-
-      return { az: v.az, el: v.el };
     }
 
     return null;
+  }
+
+  lookAhead(norads: readonly number[], startMs: number, stepMs: number, count: number): Promise<LookAheadGrid | null> {
+    const sch = SimulationManager.getInstance().scheduler;
+    const service = sch?.anyService;
+    const loc = this.host_.location();
+
+    if (!sch || !service || !loc) {
+      return Promise.resolve(null);
+    }
+    const station = sch.stationIndexOf(loc.latitude, loc.longitude);
+
+    if (station < 0) {
+      return Promise.resolve(null);
+    }
+
+    return service.lookAhead({ noradIds: norads.filter((n) => this.isServed(n)), station, startMs, stepMs, count }).catch(() => null);
   }
 
   touch(norad: number): void {

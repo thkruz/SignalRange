@@ -24,6 +24,7 @@ function model(over: Partial<PhasedArrayReadModel> = {}): PhasedArrayReadModel {
     target: { norad: 1, name: 'STARLINK-1', az: 10, el: 80 },
     candidate: { norad: 2, name: 'STARLINK-2', az: 200, el: 20 },
     handovers: [{ atMs: 1_120_000, fromNorad: 1, toNorad: 2, toName: 'STARLINK-2', reason: 'better' }],
+    predictedUntilMs: 1_600_000,
     handoverCount: 3,
     lastHandover: null,
     lockLostReason: null,

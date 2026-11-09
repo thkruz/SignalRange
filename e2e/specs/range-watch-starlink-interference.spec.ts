@@ -139,4 +139,43 @@ test.describe('Range Watch: Starlink Interference (phased array terminal)', () =
     // The last objective ends the mission: the completion dialog replaces the checklist
     await expect(page.getByRole('dialog', { name: 'Mission complete' })).toBeVisible({ timeout: 45000 });
   });
+  test('handover prediction looks ahead, moves toward now and only lists Starlinks', async ({ page, missionControlPage }) => {
+    test.setTimeout(180000);
+    await page.goto(URL_PATH);
+    await waitForSimulationReady(page);
+    await missionControlPage.dismissDialogIfPresent();
+    await missionControlPage.selectGroundStation('CM-01');
+    await missionControlPage.selectTab('acu-control');
+    await expect(page.locator('.array-control-tab')).toBeVisible({ timeout: 30000 });
+
+    type Pred = { simMs: number; predictedUntilMs: number; handovers: Array<{ atMs: number; toNorad: number | null; toName: string }>; visible: Array<{ name: string }> };
+    const read = (): Promise<Pred | null> => page.evaluate(() => ((window as unknown as { __arrayControl?: { model: unknown } }).__arrayControl?.model as Pred | null) ?? null);
+
+    // Wait for the first worker look-ahead to land
+    await expect.poll(async () => ((await read())?.handovers.length ?? 0) > 0, { timeout: 60000 }).toBe(true);
+    const before = (await read())!;
+    const first = before.handovers[0];
+
+    expect(first.atMs).toBeGreaterThan(before.simMs);
+    expect(before.predictedUntilMs).toBeGreaterThan(before.simMs + 300_000);
+
+    await page.evaluate(() => (window as unknown as W).advanceClock(60_000));
+    await page.waitForTimeout(1500);
+    // A fresh prediction after the jump, not the old one
+    await expect.poll(async () => (await read())?.predictedUntilMs ?? 0, { timeout: 30000 }).toBeGreaterThan(before.predictedUntilMs + 30_000);
+    const after = (await read())!;
+    const nowMs = after.simMs;
+    const same = after.handovers.find((h) => h.atMs === first.atMs || (h.toNorad === first.toNorad && Math.abs(h.atMs - first.atMs) <= 30_000));
+
+    // The same handover is about 60 s closer, or it has already happened
+    if (first.atMs > nowMs) {
+      expect(same, 'first handover still predicted').toBeTruthy();
+      expect(first.atMs - before.simMs - (same!.atMs - nowMs)).toBeGreaterThan(30_000);
+    }
+    for (const h of [...before.handovers, ...after.handovers]) {
+      expect(h.toName).not.toContain('KU-SAT');
+    }
+    expect(after.visible.every((v) => !v.name.includes('KU-SAT'))).toBe(true);
+    await expect(page.locator('.array-strip-seg[title*="KU-SAT"]')).toHaveCount(0);
+  });
 });

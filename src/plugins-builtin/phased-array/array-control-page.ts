@@ -720,9 +720,11 @@ export class ArrayControlPage implements AntennaPage {
       return;
     }
     const nowMs = m.simMs;
-    const segs: Array<{ label: string; from: number; to: number; first: boolean }> = [];
+    const segs: Array<{ label: string; from: number; to: number; first: boolean; unknown?: boolean }> = [];
     let cursor = 0;
     let label = m.target ? this.nameOf_(m.target.norad).replace(/^STARLINK-/u, 'SL-') : 'no target';
+
+    const knownMs = Math.min(STRIP_SPAN_MS, Math.max(0, m.predictedUntilMs - nowMs));
 
     for (const h of m.handovers) {
       const at = Math.max(cursor, Math.min(STRIP_SPAN_MS, h.atMs - nowMs));
@@ -731,13 +733,16 @@ export class ArrayControlPage implements AntennaPage {
       cursor = at;
       label = handoverLabel(h);
     }
-    segs.push({ label, from: cursor, to: STRIP_SPAN_MS, first: segs.length === 0 });
+    segs.push({ label, from: cursor, to: Math.max(cursor, knownMs), first: segs.length === 0 });
+    if (knownMs < STRIP_SPAN_MS) {
+      segs.push({ label: 'not predicted', from: Math.max(cursor, knownMs), to: STRIP_SPAN_MS, first: false, unknown: true });
+    }
 
     strip.innerHTML = segs
       .filter((s) => s.to > s.from)
       .map((s, i) => {
         const w = (((s.to - s.from) / STRIP_SPAN_MS) * 100).toFixed(2);
-        const bg = s.first ? 'var(--mc-sky-target)' : SEGMENT_COLOURS[i % SEGMENT_COLOURS.length];
+        const bg = s.unknown ? 'var(--mc-grid-line, #3a3a3a)' : s.first ? 'var(--mc-sky-target)' : SEGMENT_COLOURS[i % SEGMENT_COLOURS.length];
 
         return `<div class="array-strip-seg" title="${escapeHtml(s.label)}" style="flex: 0 0 ${w}%; min-width: 0; background: ${bg}; color: #0b0b0b; border-left: ${i === 0 ? '0' : '2px solid var(--mc-equip-bg, #1a1a1a)'}; padding: 0 4px; font-size: 0.72rem; line-height: 34px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(s.label)}</div>`;
       })
@@ -748,9 +753,14 @@ export class ArrayControlPage implements AntennaPage {
     );
     const next = m.handovers[0];
 
+    const cut = knownMs < STRIP_SPAN_MS - 15_000;
+    const until = cut ? ` Prediction to +${Math.floor(knownMs / 60_000)} min${knownMs % 60_000 ? ` ${Math.round((knownMs % 60_000) / 1000)} s` : ''}.` : '';
+
     note.textContent = next
-      ? `Next handover in ${Math.max(0, Math.round((next.atMs - nowMs) / 1000))} s to ${handoverLabel(next)} (${next.reason}).`
-      : 'No handover predicted in the next 10 minutes.';
+      ? `Next handover in ${Math.max(0, Math.round((next.atMs - nowMs) / 1000))} s to ${handoverLabel(next)} (${next.reason}).${until}`
+      : cut
+        ? `No handover predicted.${until}`
+        : 'No handover predicted in the next 10 minutes.';
   }
 }
 

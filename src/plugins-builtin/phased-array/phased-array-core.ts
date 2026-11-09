@@ -91,10 +91,12 @@ export class PhasedArrayCore extends AntennaCore {
       sidelobeFloor_dBc: c.sidelobeFloor_dBc ?? base.sidelobeFloor_dBc,
       handoverOutageMs: c.handoverOutageMs ?? base.handoverOutageMs,
       beamSettleMs: c.beamSettleMs ?? base.beamSettleMs,
+      servedConstellations: c.servedConstellations ?? base.servedConstellations,
     };
     this.panel_ = new PanelGeometry(this.arrayConfig_.panelAz_deg, this.arrayConfig_.panelTilt_deg, this.arrayConfig_.maxScanDeg);
     this.scheduler_ = new BeamScheduler(
       new SimSkySource({
+        servedConstellations: this.arrayConfig_.servedConstellations,
         location: () => this.stationLocation_,
         viewOf: (sat: Satellite) => this.viewOf(sat),
       }),

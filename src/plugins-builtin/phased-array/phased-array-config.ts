@@ -26,6 +26,8 @@ export interface PhasedArrayConfig extends AntennaConfig {
   handoverOutageMs: number;
   /** Time for the electronic beam to settle on a new direction, ms (no mechanical slew) */
   beamSettleMs: number;
+  /** TLE set ids the terminal serves (exact id or prefix). Anything else, GEO satellites included, is never selected, predicted or locked. */
+  servedConstellations: string[];
 }
 
 /**
@@ -81,4 +83,5 @@ export const KU_PHASED_ARRAY_UT_CONFIG: PhasedArrayConfig = {
   sidelobeFloor_dBc: -25,
   handoverOutageMs: 100,
   beamSettleMs: 5,
+  servedConstellations: ['starlink-'],
 };

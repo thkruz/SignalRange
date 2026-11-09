@@ -34,6 +34,21 @@ export interface SkySource {
   positionOf(norad: number, simMs: number): { az: number; el: number } | null;
   /** Make a satellite hot so its signals reach the antenna. */
   touch?(norad: number): void;
+  /**
+   * Whole-horizon look angles for many satellites at once (a batch to the
+   * propagation worker). Resolves null when nothing can be computed. A source
+   * without it is asked satellite by satellite through `positionOf`.
+   */
+  lookAhead?(norads: readonly number[], startMs: number, stepMs: number, count: number): Promise<LookGrid | null>;
+}
+
+/** Look angles of several satellites at evenly spaced times. data[(row * count + i) * 2] = el, +1 = az; NaN when unavailable. */
+export interface LookGrid {
+  norads: readonly number[];
+  startMs: number;
+  stepMs: number;
+  count: number;
+  data: Float32Array;
 }
 
 export interface BeamSchedulerConfig {
@@ -126,6 +141,12 @@ export interface SchedulerSnapshot {
   candidate: BeamTargetInfo | null;
   /** Next handovers over the prediction horizon (auto mode only) */
   handovers: readonly PredictedHandover[];
+  /**
+   * Sim time the handover list is valid up to. Equal to the horizon end when
+   * every position was known; earlier when a position was unavailable and the
+   * prediction was cut short (and `simMs` while the first one is still being computed).
+   */
+  predictedUntilMs: number;
   handoverCount: number;
   lastHandover: HandoverRecord | null;
   /** Why a manual lock was last dropped, if it was */
@@ -187,6 +208,11 @@ export class BeamScheduler {
   private visible_: VisibleSatellite[] = [];
   private candidate_: BeamTargetInfo | null = null;
   private handovers_: PredictedHandover[] = [];
+  private predictedUntilMs_ = -Infinity;
+  private lookGrid_: LookGrid | null = null;
+  /** Bumped whenever a prediction in flight would be out of date */
+  private predictGen_ = 0;
+  private predictInFlight_ = false;
   private lastSimMs_ = 0;
   private readonly names_ = new Map<number, string>();
 
@@ -205,15 +231,39 @@ export class BeamScheduler {
     this.invalidate();
   }
 
-  /** Sky path of one satellite from simMs over spanMs (above the horizon only), for the page's predicted track. */
+  /**
+   * Sky path of one satellite from simMs over spanMs (above the horizon only),
+   * read from the same look-ahead grid as the handover prediction. Empty when
+   * the satellite is not in the grid; it ends where the grid ends.
+   */
   predictTrack(norad: number, simMs: number, spanMs: number, stepMs: number): { az: number; el: number }[] {
+    const g = this.lookGrid_;
+    const row = g ? g.norads.indexOf(norad) : -1;
     const out: { az: number; el: number }[] = [];
 
-    for (let t = 0; t <= spanMs; t += stepMs) {
-      const p = this.source_.positionOf(norad, simMs + t);
+    if (!g || row < 0) {
+      return out;
+    }
+    const end = Math.min(simMs + spanMs, g.startMs + (g.count - 1) * g.stepMs);
 
-      if (p && p.el >= 0) {
-        out.push({ az: p.az, el: p.el });
+    for (let t = simMs; t <= end; t += stepMs) {
+      const f = (t - g.startMs) / g.stepMs;
+      const i0 = Math.max(0, Math.min(g.count - 1, Math.floor(f)));
+      const i1 = Math.min(g.count - 1, i0 + 1);
+      const w = Math.max(0, Math.min(1, f - i0));
+      const el0 = g.data[(row * g.count + i0) * 2];
+      const el1 = g.data[(row * g.count + i1) * 2];
+      const az0 = g.data[(row * g.count + i0) * 2 + 1];
+      const az1 = g.data[(row * g.count + i1) * 2 + 1];
+
+      if (Number.isNaN(el0) || Number.isNaN(el1)) {
+        break;
+      }
+      const el = el0 + (el1 - el0) * w;
+      const dAz = ((((az1 - az0) % 360) + 540) % 360) - 180;
+
+      if (el >= 0) {
+        out.push({ az: (((az0 + dAz * w) % 360) + 360) % 360, el });
       }
     }
 
@@ -250,7 +300,12 @@ export class BeamScheduler {
   /** Force the next update to re-select and re-predict (zone toggled, mode changed, time jumped). */
   invalidate(): void {
     this.lastRefreshMs_ = -Infinity;
+    this.markPredictDirty_();
+  }
+
+  private markPredictDirty_(): void {
     this.predictDirty_ = true;
+    this.predictGen_++;
   }
 
   setMode(mode: BeamMode): void {
@@ -339,11 +394,19 @@ export class BeamScheduler {
       visible: this.visible_,
       target,
       candidate: this.mode_ === 'stow' ? null : this.candidate_,
-      handovers: this.mode_ === 'auto' ? this.handovers_ : [],
+      handovers: this.mode_ === 'auto' ? this.pendingHandovers_() : [],
+      predictedUntilMs: this.mode_ === 'auto' ? Math.max(this.predictedUntilMs_, this.lastSimMs_) : this.lastSimMs_,
       handoverCount: this.handoverCount_,
       lastHandover: this.lastHandover_,
       lockLostReason: this.lockLostReason_,
     };
+  }
+
+  /** The predicted handovers that have not happened yet (the list is rebuilt every predictRefreshMs). */
+  private pendingHandovers_(): readonly PredictedHandover[] {
+    const h = this.handovers_;
+
+    return h.length > 0 && h[0].atMs <= this.lastSimMs_ ? h.filter((x) => x.atMs > this.lastSimMs_) : h;
   }
 
   // ── internals ──────────────────────────────────────────────────────────────
@@ -391,7 +454,7 @@ export class BeamScheduler {
       this.handoverCount_++;
     }
     this.lastHandover_ = { atMs: simMs, fromNorad: from, toNorad: norad, reason };
-    this.predictDirty_ = true;
+    this.markPredictDirty_();
   }
 
   /** The target can no longer be served: auto re-selects at once, manual drops the lock. */
@@ -401,7 +464,7 @@ export class BeamScheduler {
       this.logLinkDrop_({ atMs: simMs, servingNorad: this.targetNorad_, nextNorad: null, reason });
     }
     this.dropTarget_();
-    this.predictDirty_ = true;
+    this.markPredictDirty_();
     if (this.mode_ === 'manual') {
       this.lockLostReason_ = reason;
     } else {
@@ -451,12 +514,17 @@ export class BeamScheduler {
 
     this.candidate_ = other ? { norad: other.norad, name: other.name, az: other.az, el: other.el } : null;
 
-    if (this.mode_ === 'auto' && (this.predictDirty_ || simMs - this.lastPredictMs_ >= this.config.predictRefreshMs)) {
+    if (this.mode_ === 'auto' && !this.predictInFlight_ && (this.predictDirty_ || simMs - this.lastPredictMs_ >= this.config.predictRefreshMs)) {
       this.predict_(simMs, visible);
     }
   }
 
-  /** Run the selection rule forward on source positions (worker samples through the source; no propagation here). */
+  /**
+   * Run the selection rule forward over the prediction horizon. Positions come
+   * from one batch look-ahead (`source.lookAhead`, computed off the main thread)
+   * or, for a source without one, from `positionOf`. A position that is
+   * unavailable ends the prediction at the last fully known step.
+   */
   private predict_(simMs: number, visible: readonly VisibleSatellite[]): void {
     this.lastPredictMs_ = simMs;
     this.predictDirty_ = false;
@@ -467,22 +535,88 @@ export class BeamScheduler {
     if (this.targetNorad_ !== null && !ids.includes(this.targetNorad_)) {
       ids.push(this.targetNorad_);
     }
-    const out: PredictedHandover[] = [];
-    let current = this.targetNorad_;
+    const count = Math.floor(cfg.predictHorizonMs / cfg.predictStepMs) + 1;
+    const startNorad = this.targetNorad_;
 
-    for (let t = simMs + cfg.predictStepMs; t <= simMs + cfg.predictHorizonMs && out.length < cfg.maxPredicted; t += cfg.predictStepMs) {
+    if (!this.source_.lookAhead) {
+      this.applyGrid_(this.gridFromPositions_(ids, simMs, count), startNorad);
+
+      return;
+    }
+    const gen = this.predictGen_;
+
+    this.predictInFlight_ = true;
+    void this.source_
+      .lookAhead(ids, simMs, cfg.predictStepMs, count)
+      .catch(() => null)
+      .then((grid) => {
+        this.predictInFlight_ = false;
+        if (gen !== this.predictGen_) {
+          // Something changed while the worker computed; the next refresh asks again
+          return;
+        }
+        this.applyGrid_(grid ?? { norads: [], startMs: simMs, stepMs: cfg.predictStepMs, count: 1, data: new Float32Array(0) }, startNorad);
+      });
+  }
+
+  private gridFromPositions_(ids: readonly number[], simMs: number, count: number): LookGrid {
+    const step = this.config.predictStepMs;
+    const data = new Float32Array(ids.length * count * 2).fill(Number.NaN);
+
+    ids.forEach((id, k) => {
+      for (let i = 0; i < count; i++) {
+        const p = this.source_.positionOf(id, simMs + i * step);
+
+        if (p) {
+          data[(k * count + i) * 2] = p.el;
+          data[(k * count + i) * 2 + 1] = p.az;
+        }
+      }
+    });
+
+    return { norads: ids, startMs: simMs, stepMs: step, count, data };
+  }
+
+  private applyGrid_(grid: LookGrid, startNorad: number | null): void {
+    const cfg = this.config;
+    const at = (k: number, i: number): number => grid.data[(k * grid.count + i) * 2];
+    // A satellite with no position at any step cannot be propagated at all: leave it out rather than cut everyone short
+    const live: number[] = [];
+
+    for (let k = 0; k < grid.norads.length; k++) {
+      for (let i = 0; i < grid.count; i++) {
+        if (!Number.isNaN(at(k, i))) {
+          live.push(k);
+          break;
+        }
+      }
+    }
+    const out: PredictedHandover[] = [];
+    let current = startNorad;
+    let until = grid.startMs + (grid.count - 1) * grid.stepMs;
+
+    for (let i = 1; i < grid.count && out.length < cfg.maxPredicted; i++) {
+      const t = grid.startMs + i * grid.stepMs;
       const eligible: Eligible[] = [];
       let currentState: HandoverReason | null = null;
+      let unavailable = live.length === 0;
 
-      for (const id of ids) {
-        const p = this.source_.positionOf(id, t);
+      for (const k of live) {
+        const el = at(k, i);
+
+        if (Number.isNaN(el)) {
+          unavailable = true;
+          break;
+        }
+        const id = grid.norads[k];
+        const az = grid.data[(k * grid.count + i) * 2 + 1];
         let state: HandoverReason | null = null;
 
-        if (!p || p.el <= 0) {
+        if (el <= 0) {
           state = 'set';
-        } else if (!this.panel_.isInScanCone(p.az, p.el)) {
+        } else if (!this.panel_.isInScanCone(az, el)) {
           state = 'left-cone';
-        } else if (this.isExcluded_(p.az, p.el)) {
+        } else if (this.isExcluded_(az, el)) {
           state = 'exclusion';
         }
         if (state !== null) {
@@ -491,7 +625,11 @@ export class BeamScheduler {
           }
           continue;
         }
-        eligible.push({ norad: id, el: (p as { el: number }).el });
+        eligible.push({ norad: id, el });
+      }
+      if (unavailable) {
+        until = t - grid.stepMs;
+        break;
       }
       const pick = selectTarget(eligible, current, cfg.hysteresisDeg);
       const next = pick ? pick.norad : null;
@@ -508,5 +646,7 @@ export class BeamScheduler {
       }
     }
     this.handovers_ = out;
+    this.predictedUntilMs_ = until;
+    this.lookGrid_ = grid;
   }
 }

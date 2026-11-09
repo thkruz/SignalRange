@@ -309,7 +309,7 @@ export class InterferenceManager {
         continue;
       }
 
-      const satellite = sim.satellites.find((s) => s.noradId === event.satelliteNoradId);
+      const satellite = sim.registry.get(event.satelliteNoradId);
       if (!satellite) continue;
 
       if (shouldTransmit) {

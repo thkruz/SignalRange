@@ -17,6 +17,7 @@ import { GnssThreatManager } from '@app/gnss-threat/gnss-threat-manager';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import type { dB, FECType, MHz, ModulationType } from '@app/types';
 import { wrapAzimuthDeg } from '../az-display';
+import { pickerEntries, pickerOptionsHtml, SatellitePicker } from '../satellite-picker';
 import './sdr-console-tab.css';
 
 /** Known allocations painted on the band plan ribbon (RF Hz) */
@@ -50,6 +51,7 @@ export class SdrConsoleTab extends BaseElement {
   private static readonly SYNC_INTERVAL_MS = 250;
   private static readonly DISPLAY_INTERVAL_MS = 120;
 
+  private targetPicker_: SatellitePicker | null = null;
   private readonly groundStation_: GroundStation;
   private readonly receiver_: Receiver | undefined;
   private readonly antenna_: AntennaCore | undefined;
@@ -131,13 +133,13 @@ export class SdrConsoleTab extends BaseElement {
     const isCircular = this.antenna_?.config.polType === 'circular';
     const handedness = this.antenna_?.state.circularHandedness ?? 'RHCP';
 
-    const satelliteOptions = SimulationManager.getInstance()
-      .satellites.map((sat) => html`<option value="${sat.noradId}">${sat.name}</option>`)
-      .join('');
+    // Authored, pinned and selected satellites (every authored satellite in a small scenario); members are searched
+    const sim = SimulationManager.getInstance();
+    const satelliteOptions = pickerOptionsHtml(pickerEntries(sim, '', null));
 
-    // Bookmarks: every downlink beacon in the scenario
-    const bookmarkRows = SimulationManager.getInstance()
-      .satellites.flatMap((sat) => sat.transponders.filter((tp) => tp.beacon?.frequency).map((tp) => ({ name: tp.beacon!.signalId, freqHz: tp.beacon!.frequency as number })))
+    // Bookmarks: every downlink beacon of the authored and pinned satellites
+    const bookmarkRows = ((sim as { registry?: { tracked(): typeof sim.satellites } }).registry?.tracked() ?? sim.satellites)
+      .flatMap((sat) => sat.transponders.filter((tp) => tp.beacon?.frequency).map((tp) => ({ name: tp.beacon!.signalId, freqHz: tp.beacon!.frequency as number })))
       .map(
         ({ name, freqHz }) => html`
         <button class="sdr-bookmark" data-freq-hz="${freqHz}">
@@ -559,6 +561,10 @@ export class SdrConsoleTab extends BaseElement {
     // Rotator panel (only rendered for steerable antennas)
     const trackToggle = dom.querySelector<HTMLInputElement>('#sdr-rot-track');
     const targetSelect = dom.querySelector<HTMLSelectElement>('#sdr-rot-target');
+    if (targetSelect && pickerEntries(SimulationManager.getInstance(), '', null).scale) {
+      this.targetPicker_ = new SatellitePicker(targetSelect, SimulationManager.getInstance(), { placeholder: '-- select satellite --' });
+      this.targetPicker_.refresh(this.antenna_?.state.targetSatelliteId ?? null);
+    }
     trackToggle?.addEventListener('change', () => {
       if (!trackToggle.checked) {
         this.antenna_?.handleTrackingModeChange('manual');
@@ -1065,6 +1071,7 @@ export class SdrConsoleTab extends BaseElement {
 
     const targetSelect = dom.querySelector<HTMLSelectElement>('#sdr-rot-target');
     if (targetSelect && document.activeElement !== targetSelect && antenna.state.targetSatelliteId !== null) {
+      this.targetPicker_?.refresh(antenna.state.targetSatelliteId);
       targetSelect.value = String(antenna.state.targetSatelliteId);
     }
   }
@@ -1112,6 +1119,8 @@ export class SdrConsoleTab extends BaseElement {
 
   public dispose(): void {
     EventBus.getInstance().off(Events.UPDATE, this.boundUpdateHandler_);
+    this.targetPicker_?.dispose();
+    this.targetPicker_ = null;
     this.dom_?.remove();
   }
 }

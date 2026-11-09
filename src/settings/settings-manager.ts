@@ -15,19 +15,31 @@ export interface SignalRangeSettings {
   isStrictPluginList: boolean;
   /** Active UI language; only 'en' is bundled today. */
   language: string;
+  /**
+   * Explicit ground-track renderer choice; undefined means "use the default"
+   * (see SettingsManager.groundTrackRenderer).
+   */
+  groundTrackRenderer?: GroundTrackRenderer;
 }
+
+/** World-map renderer: the self-hosted KeepTrack embed, or SignalRange's own GeoMap canvas. */
+export type GroundTrackRenderer = 'embed' | 'geomap';
 
 /** Shape accepted from window.settingsOverride and ?settingsOverride=. */
 export interface SettingsOverride {
   plugins?: Record<string, Partial<PluginConfiguration>>;
   isStrictPluginList?: boolean;
   language?: string;
+  groundTrackRenderer?: GroundTrackRenderer;
 }
 
 interface PersistedSettings {
   plugins: Record<string, PluginConfiguration>;
   language?: string;
+  groundTrackRenderer?: GroundTrackRenderer;
 }
+
+const isRenderer_ = (value: unknown): value is GroundTrackRenderer => value === 'embed' || value === 'geomap';
 
 declare global {
   interface Window {
@@ -71,6 +83,23 @@ export class SettingsManager {
   /** Test seam. */
   static destroy(): void {
     SettingsManager.instance_ = null;
+  }
+
+  /**
+   * The renderer the Ground Track tab should use. An explicit choice (settings
+   * override or the persisted toggle) wins; otherwise 'embed' when a KeepTrack
+   * license was built in, else 'geomap'. A missing bundle is not detected here:
+   * the embed host falls back to GeoMap itself when it fails to boot.
+   */
+  get groundTrackRenderer(): GroundTrackRenderer {
+    return this.settings.groundTrackRenderer ?? (__KT_EMBED_LICENSE__ === '' ? 'geomap' : 'embed');
+  }
+
+  /** Persist the user's renderer choice. */
+  setGroundTrackRenderer(renderer: GroundTrackRenderer): void {
+    this.persisted_.groundTrackRenderer = renderer;
+    this.savePersisted_();
+    this.recompute_();
   }
 
   /** Where the active override came from, if any. */
@@ -161,6 +190,9 @@ export class SettingsManager {
     if ('language' in candidate && typeof candidate.language !== 'string') {
       return false;
     }
+    if ('groundTrackRenderer' in candidate && !isRenderer_(candidate.groundTrackRenderer)) {
+      return false;
+    }
 
     return true;
   }
@@ -175,7 +207,11 @@ export class SettingsManager {
 
       const parsed = JSON.parse(raw) as Partial<PersistedSettings>;
 
-      return { plugins: parsed.plugins ?? {}, language: parsed.language };
+      return {
+        plugins: parsed.plugins ?? {},
+        language: parsed.language,
+        groundTrackRenderer: isRenderer_(parsed.groundTrackRenderer) ? parsed.groundTrackRenderer : undefined,
+      };
     } catch {
       return { plugins: {} };
     }
@@ -249,5 +285,6 @@ export class SettingsManager {
     this.settings.plugins = plugins;
     this.settings.isStrictPluginList = this.override_?.isStrictPluginList ?? false;
     this.settings.language = this.override_?.language ?? this.persisted_.language ?? 'en';
+    this.settings.groundTrackRenderer = this.override_?.groundTrackRenderer ?? this.persisted_.groundTrackRenderer;
   }
 }

@@ -20,7 +20,10 @@ vi.mock('../../src/scenario-manager', () => ({
 vi.mock('../../src/simulation/simulation-manager', () => ({
   SimulationManager: {
     hasInstance: vi.fn(() => true),
-    getInstance: vi.fn(() => ({ satellites: simSatellites })),
+    getInstance: vi.fn(() => ({
+      satellites: simSatellites,
+      registry: { get: (n: number) => (simSatellites as Array<{ noradId: number }>).find((s) => s.noradId === n) },
+    })),
     destroy: vi.fn(),
   },
 }));

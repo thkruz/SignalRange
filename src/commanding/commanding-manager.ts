@@ -18,13 +18,14 @@ import { InterferenceManager } from '@app/interference/interference-manager';
 import { OpsLogManager } from '@app/ops-log/ops-log-manager';
 import { ScenarioManager } from '@app/scenario-manager';
 import { missionNowMs } from '@app/simulation/mission-clock';
+import type { SatelliteRegistry } from '@app/simulation/satellite-registry';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import type { CommandingSnapshot } from '@app/sync/manager-state-types';
 import { TransecManager } from '@app/transec/transec-manager';
 
 export type CommandKeyStatus = 'Valid' | 'Pending Rotation' | 'Zeroized';
 export type CommandStatus = 'pending' | 'acked' | 'rejected';
-export type CommandRejectReason = 'no-doppler-comp' | 'key-invalid' | 'out-of-window' | 'uplink-jammed';
+export type CommandRejectReason = 'no-doppler-comp' | 'key-invalid' | 'out-of-window' | 'uplink-jammed' | 'not-operated';
 
 /** Guard either side of the command carrier that an interferer must reach to deny it (Hz) */
 export const UPLINK_JAM_GUARD_HZ = 500e3;
@@ -249,6 +250,16 @@ export class CommandingManager {
     const elapsed = atElapsedS ?? (missionNowMs() - this.missionStartTime_) / 1000;
     const record: CommandRecord = { id, status: 'pending', elapsedS: elapsed };
 
+    const refusal = this.operatedRefusal_();
+
+    if (refusal !== null) {
+      record.status = 'rejected';
+      record.reason = 'not-operated';
+      this.state_.commands.push(record);
+      CommandingManager.log_(refusal, 'alert');
+
+      return record;
+    }
     if ((this.config_.requireDopplerComp ?? true) && !this.state_.dopplerCompEnabled) {
       record.status = 'rejected';
       record.reason = 'no-doppler-comp';
@@ -279,7 +290,23 @@ export class CommandingManager {
     'key-invalid': 'COMSEC key invalid',
     'out-of-window': 'outside command window',
     'uplink-jammed': 'uplink jammed',
+    'not-operated': 'satellite not operated',
   };
+
+  /** P3-D2: only operated satellites accept commands. Null when the target may be commanded. */
+  private operatedRefusal_(): string | null {
+    const target = this.config_.targetNoradId;
+
+    if (target === undefined) {
+      return null;
+    }
+
+    if (!SimulationManager.hasInstance()) {
+      return null;
+    }
+
+    return (SimulationManager.getInstance() as { registry?: SatelliteRegistry }).registry?.commandRefusal?.(target) ?? null;
+  }
 
   /** Ops Log line for a TT&C console action (Phase 35 s03-F2); silent without a log. */
   private static log_(message: string, category: 'action' | 'alert' = 'action'): void {

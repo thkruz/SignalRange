@@ -401,7 +401,7 @@ export class GeolocationConsoleCore {
   }
 
   private static findOrbital_(sim: SimulationManager, noradId: number): OrbitalSatellite | null {
-    const satellite = sim.satellites.find((sat) => sat.noradId === noradId);
+    const satellite = sim.registry.get(noradId);
 
     return satellite instanceof OrbitalSatellite ? satellite : null;
   }

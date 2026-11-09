@@ -35,3 +35,12 @@
 .ground-track-tab .gt-row-focus td {
   font-weight: 600;
 }
+
+/* Placeholder the persistent KeepTrack embed is positioned over (2:1 world map). */
+.ground-track-tab .gt-embed-anchor {
+  width: 100%;
+  aspect-ratio: 2 / 1;
+  max-height: 70vh;
+  background: #000;
+  border-radius: 4px;
+}

@@ -14,6 +14,8 @@ import { createMeridianSar1, type MeridianTle } from '@app/campaigns/nats-eu/sat
 import { ANTENNA_CONFIG_KEYS } from '@app/equipment/antenna/antenna-config-keys';
 import { AntennaUIHeadless } from '@app/equipment/antenna/antenna-ui-headless';
 import { groundObjectFor, type OrbitalObserver, type OrbitalSatellite, observerFromLocation } from '@app/equipment/satellite/orbital-satellite';
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
 import { PassPlannerService } from '@app/services/pass-planner-service';
 import type { Degrees, TleLine1, TleLine2 } from 'ootk';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -294,5 +296,25 @@ describe('Antenna attached to a station sees the sky from there', () => {
     expect(arrived?.frequency).toBeCloseTo(txHz * factor, 0);
     // Ku at ~7 km/s of range rate: a couple of hundred kHz
     expect((arrived?.frequency as number) - txHz).toBeGreaterThan(100e3);
+  });
+});
+
+describe('OrbitalSatellite element-change event', () => {
+  it('emits SATELLITE_ELEMENTS_CHANGED from maneuverTo and reloadTle and exposes the true set', () => {
+    simNowMs = START_MS;
+    const sat = createMeridianSar1(SAR1_S9_TLE);
+    const handler = vi.fn();
+    const bus = EventBus.getInstance();
+    const BURNED = SAR1_S9_TLE.tle2.replace('97.', '98.') as TleLine2;
+
+    bus.on(Events.SATELLITE_ELEMENTS_CHANGED, handler);
+    sat.maneuverTo(SAR1_S9_TLE.tle1, BURNED);
+    expect(handler).toHaveBeenLastCalledWith({ noradId: sat.noradId });
+    expect(sat.trueElements.tle2).toBe(BURNED);
+
+    sat.reloadTle(SAR1_S9_TLE.tle1, SAR1_S9_TLE.tle2);
+    expect(handler).toHaveBeenCalledTimes(2);
+    expect(sat.trueElements.tle2).toBe(SAR1_S9_TLE.tle2);
+    bus.off(Events.SATELLITE_ELEMENTS_CHANGED, handler);
   });
 });

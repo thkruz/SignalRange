@@ -318,3 +318,57 @@
 .asset-tree-sidebar.sidebar-locked .list-group-item-action.sidebar-lockable .item-status {
   opacity: 0.3;
 }
+
+/* === Constellation tree (virtualised member list) === */
+.constellation-tree .ct-viewport {
+  position: relative;
+  height: clamp(200px, 45vh, 520px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.constellation-tree .ct-spacer {
+  position: relative;
+  width: 100%;
+}
+
+.constellation-tree .ct-rows {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  will-change: transform;
+}
+
+.constellation-tree .ct-row {
+  box-sizing: border-box;
+  overflow: hidden;
+  white-space: nowrap;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-right: 0.5rem;
+  border-width: 0;
+}
+
+.constellation-tree .ct-node {
+  font-weight: 600;
+}
+
+.constellation-tree .ct-pin {
+  padding: 0 0.25rem;
+  opacity: 0.5;
+  color: inherit;
+}
+
+.constellation-tree .ct-row:hover .ct-pin,
+.constellation-tree .ct-pin.ct-pinned {
+  opacity: 1;
+}
+
+.constellation-tree .item-status.cold {
+  background: var(--mc-border);
+}
+
+#asset-tree-sidebar-container.collapsed .constellation-tree {
+  display: none;
+}

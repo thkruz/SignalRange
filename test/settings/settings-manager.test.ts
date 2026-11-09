@@ -148,3 +148,38 @@ describe('SettingsManager', () => {
     expect(SettingsManager.decodeOverride(btoa('{"isStrictPluginList":"yes"}'))).toBeNull();
   });
 });
+
+describe('SettingsManager groundTrackRenderer', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    delete window.settingsOverride;
+    SettingsManager.destroy();
+  });
+
+  afterEach(() => {
+    SettingsManager.destroy();
+    delete window.settingsOverride;
+    localStorage.clear();
+  });
+
+  it('defaults to embed when a license was built in, otherwise geomap', () => {
+    const expected = __KT_EMBED_LICENSE__ === '' ? 'geomap' : 'embed';
+
+    expect(SettingsManager.getInstance().groundTrackRenderer).toBe(expected);
+  });
+
+  it('persists an explicit choice and lets an override win', () => {
+    SettingsManager.getInstance().setGroundTrackRenderer('geomap');
+    SettingsManager.destroy();
+    expect(SettingsManager.getInstance().groundTrackRenderer).toBe('geomap');
+
+    SettingsManager.getInstance().setGroundTrackRenderer('embed');
+    SettingsManager.destroy();
+    window.settingsOverride = { groundTrackRenderer: 'geomap' };
+    expect(SettingsManager.getInstance().groundTrackRenderer).toBe('geomap');
+  });
+
+  it('rejects an override with an unknown renderer', () => {
+    expect(SettingsManager.decodeOverride(btoa('{"groundTrackRenderer":"canvas"}'))).toBeNull();
+  });
+});

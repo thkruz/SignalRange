@@ -167,3 +167,29 @@ describe('SimClock', () => {
     expect(SimClock.nowMs()).toBe(Date.UTC(2027, 0, 1, 0, 30));
   });
 });
+
+describe('SimClock.onChange', () => {
+  afterEach(() => {
+    SimClock.reset();
+  });
+
+  it('reports jumps, pause toggles and speed changes, and stops after unsubscribe', () => {
+    SimClock.reset();
+    const seen: string[] = [];
+    const off = SimClock.onChange((change) => seen.push(change));
+
+    SimClock.skip(5000);
+    SimClock.setScenarioNowMs(Date.UTC(2027, 0, 1));
+    SimClock.pause('menu');
+    SimClock.pause('menu'); // already paused: no second notification
+    SimClock.resume('menu');
+    SimClock.resume('menu'); // not paused: nothing to report
+    SimClock.setSpeed(5);
+    SimClock.setSpeed(5); // unchanged
+    expect(seen).toEqual(['jump', 'jump', 'pause', 'pause', 'speed']);
+
+    off();
+    SimClock.skip(1000);
+    expect(seen).toHaveLength(5);
+  });
+});

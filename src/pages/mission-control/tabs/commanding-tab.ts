@@ -12,6 +12,7 @@ const REJECT_REASON_LABELS: Record<CommandRejectReason, string> = {
   'key-invalid': 'COMSEC key invalid',
   'out-of-window': 'Outside command window',
   'uplink-jammed': 'Uplink denied - carrier jammed',
+  'not-operated': 'Refused - satellite is not operated (observed member)',
 };
 
 /** Command status -> console display (ACK/NAK vocabulary) */

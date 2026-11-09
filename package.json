@@ -14,9 +14,9 @@
   "scripts": {
     "dialog-lint": "node scripts/dialog-lint.mjs",
     "prepare": "husky",
-    "prebuild": "tsx ./scripts/plugin/index.ts sync",
+    "prebuild": "tsx ./scripts/plugin/index.ts sync && node scripts/fetch-keeptrack-embed.mjs && node scripts/fetch-tle-sets.mjs",
     "build": "cross-env NODE_ENV=production rspack build --mode production",
-    "predev": "tsx ./scripts/plugin/index.ts sync",
+    "predev": "tsx ./scripts/plugin/index.ts sync && node scripts/fetch-keeptrack-embed.mjs && node scripts/fetch-tle-sets.mjs",
     "dev": "cross-env NODE_ENV=development rspack serve --mode development",
     "plugin": "tsx ./scripts/plugin/index.ts",
     "plugin:export-template": "tsx ./scripts/plugin/export-template.ts",
@@ -32,7 +32,7 @@
     "nice-coverage": "node scripts/nice-coverage.mjs",
     "nice-catalog": "node scripts/gen-nice-catalog.mjs",
     "clean": "rm -rf dist",
-    "typecheck": "tsgo --noEmit -p tsconfig.json",
+    "typecheck": "node scripts/check-keeptrack-embed.mjs && tsgo --noEmit -p tsconfig.json",
     "typecheck:tsc": "tsc --noEmit -p tsconfig.json",
     "typecheck:test": "tsgo --noEmit -p tsconfig.test.json",
     "test": "vitest run",
@@ -49,7 +49,9 @@
     "vo-manifest": "node scripts/vo-manifest.mjs",
     "vo-review": "node scripts/vo-review.mjs",
     "author": "node scripts/author.mjs",
-    "author:intake": "node scripts/author.mjs intake"
+    "author:intake": "node scripts/author.mjs intake",
+    "tle-set:build": "tsx ./scripts/tle-sets/build.ts",
+    "fetch:tle-sets": "node scripts/fetch-tle-sets.mjs"
   },
   "keywords": [
     "space",

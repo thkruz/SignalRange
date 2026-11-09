@@ -10,6 +10,7 @@ vi.mock('../../src/simulation/simulation-manager', () => ({
     getInstance: vi.fn(() => ({
       groundStations: mockGroundStations,
       satellites: [],
+      registry: { get: () => undefined },
     })),
   },
 }));

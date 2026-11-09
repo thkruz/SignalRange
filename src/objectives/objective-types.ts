@@ -315,6 +315,8 @@ export interface ConditionParams {
   maxAmplitudeTolerance?: number;
   /** For custom conditions: custom evaluator function */
   evaluator?: () => boolean;
+  /** For custom conditions: id of a report form (report-form-registry) the checklist row offers to open */
+  reportForm?: string;
 
   // ── decision ─────────────────────────────────────────────────────────────
   /** For decision: the question put to the operator ("What is this?" / "What do you do?") */

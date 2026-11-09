@@ -16,10 +16,12 @@ import { EventBus } from '@app/events/event-bus';
 import { Events, type ObjectiveObservationPendingData } from '@app/events/events';
 import { revealPanel } from '@app/presentation/transitions';
 import { ScenarioManager } from '@app/scenario-manager';
+import { hasOrbitalSatellites } from '@app/simulation/sim-queries';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import './tabbed-canvas.css';
 import { ModalConfirm } from '@app/engine/ui/modal-confirm';
 import { OrbitalSatellite } from '@app/equipment/satellite/orbital-satellite';
+import { type AntennaPage, AntennaPageRegistry } from '@app/pages/mission-control/antenna-page-registry';
 import { ACUControlTab } from '@app/pages/mission-control/tabs/acu-control-tab';
 import { CommandingTab } from '@app/pages/mission-control/tabs/commanding-tab';
 import { ContactScheduleTab } from '@app/pages/mission-control/tabs/contact-schedule-tab';
@@ -39,6 +41,8 @@ import { SiteTab } from '@app/pages/mission-control/tabs/site-tab';
 import { TelemetryTab } from '@app/pages/mission-control/tabs/telemetry-tab';
 import { TxChainTab } from '@app/pages/mission-control/tabs/tx-chain-tab';
 import { PhysicalPlantService } from '@app/physical/physical-plant-service';
+import { KeepTrackEmbedHost } from '@app/services/keeptrack-embed-host';
+import { SettingsManager } from '@app/settings/settings-manager';
 
 /** A single entry in the tab bar. */
 interface TabDescriptor {
@@ -79,6 +83,7 @@ export class TabbedCanvas extends BaseElement {
   private readonly tabInstances_: Map<
     string,
     | ACUControlTab
+    | AntennaPage
     | DashboardTab
     | RxAnalysisTab
     | TxChainTab
@@ -138,6 +143,20 @@ export class TabbedCanvas extends BaseElement {
     this.init_(parentId, 'replace');
     this.dom_ = qs('.tabbed-canvas');
     this.showMissionOverview_();
+    this.preloadMapEmbed_();
+  }
+
+  /**
+   * Boot the KeepTrack world map in the background as soon as mission control
+   * opens, so the first World Map tab is instant. Skipped when the scenario has
+   * no orbital satellites (no map tab) or the built-in renderer is selected.
+   */
+  private preloadMapEmbed_(): void {
+    const hasOrbitalSats = hasOrbitalSatellites(SimulationManager.getInstance());
+
+    if (hasOrbitalSats && SettingsManager.getInstance().groundTrackRenderer === 'embed') {
+      KeepTrackEmbedHost.getInstance().preload();
+    }
   }
 
   /**
@@ -219,7 +238,7 @@ export class TabbedCanvas extends BaseElement {
    * the remembered tab.
    */
   private showMissionOverview_(): void {
-    const hasOrbitalSats = SimulationManager.getInstance().satellites.some((sat) => sat instanceof OrbitalSatellite);
+    const hasOrbitalSats = hasOrbitalSatellites(SimulationManager.getInstance());
 
     // With orbital satellites the overview gains a whole-world map alongside
     // it; otherwise it keeps its historical no-tab-bar look.
@@ -270,7 +289,7 @@ export class TabbedCanvas extends BaseElement {
       return;
     }
 
-    const hasOrbitalSats = SimulationManager.getInstance().satellites.some((sat) => sat instanceof OrbitalSatellite);
+    const hasOrbitalSats = hasOrbitalSatellites(SimulationManager.getInstance());
 
     // Backyard stations (Campaign 3+) are hobbyist SDR rigs: no ACU racks, no
     // professional RX/TX chains, no dashboard of links to those tabs. The SDR
@@ -291,7 +310,8 @@ export class TabbedCanvas extends BaseElement {
     // Add one ACU tab per antenna with band/size label
     groundStation.antennas.forEach((antenna, index) => {
       const config = antenna.config;
-      const label = groundStation.antennas.length === 1 ? 'ACU Control' : `ACU: ${config.band}-Band ${config.diameter}m`;
+      const customLabel = AntennaPageRegistry.getInstance().tabLabel(config.kind);
+      const label = customLabel ?? (groundStation.antennas.length === 1 ? 'ACU Control' : `ACU: ${config.band}-Band ${config.diameter}m`);
       tabs.push({
         id: `acu-control-${index}`,
         label,
@@ -560,6 +580,9 @@ export class TabbedCanvas extends BaseElement {
    * Render content for the selected tab
    */
   private renderTabContent_(tabId: string): void {
+    // The persistent map embed sits outside #canvas-content; park it before the
+    // content is rewritten. GroundTrackTab.activate() brings it back.
+    KeepTrackEmbedHost.getInstance().hide();
     const content = qs('#canvas-content', this.dom_);
     revealPanel(content);
 
@@ -709,7 +732,7 @@ export class TabbedCanvas extends BaseElement {
 
     // Check if tab instance already exists and its DOM is still attached
     const tabKey = `acu-control-${this.selectedAssetId_}-ant${antennaIndex}`;
-    let acuTab = this.tabInstances_.get(tabKey) as ACUControlTab;
+    let acuTab = this.tabInstances_.get(tabKey) as ACUControlTab | AntennaPage;
 
     if (acuTab && !document.contains(acuTab.dom)) {
       // DOM was destroyed (e.g., by switching to a placeholder tab), recreate
@@ -720,7 +743,8 @@ export class TabbedCanvas extends BaseElement {
 
     if (!acuTab) {
       // Create new tab instance with antenna index
-      acuTab = new ACUControlTab(groundStation, 'canvas-content', antennaIndex);
+      const customFactory = AntennaPageRegistry.getInstance().get(groundStation.antennas[antennaIndex]?.config.kind);
+      acuTab = customFactory ? customFactory(groundStation, 'canvas-content', antennaIndex) : new ACUControlTab(groundStation, 'canvas-content', antennaIndex);
       this.tabInstances_.set(tabKey, acuTab);
     }
 

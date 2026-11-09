@@ -9,8 +9,8 @@
  */
 
 import { CryptoModule } from '@app/equipment/crypto';
-import { OrbitalSatellite } from '@app/equipment/satellite/orbital-satellite';
 import type { AggregatedAlarm } from '@app/events/events';
+import { trackedOrbitalSatellites } from '@app/simulation/sim-queries';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 
 /** Fixed label of the traffic-key mismatch error */
@@ -45,8 +45,9 @@ export function collectCryptoKeyAlarms(): StationServiceAlarm[] {
 /** One warning per spacecraft whose element set on file no longer describes its orbit. */
 export function collectEphemerisAlarms(): StationServiceAlarm[] {
   if (!SimulationManager.hasInstance()) return [];
-  const stale = SimulationManager.getInstance()
-    .satellites.filter((sat): sat is OrbitalSatellite => sat instanceof OrbitalSatellite && sat.isPredictionStale)
+  // Authored and pinned satellites: only those can have a manoeuvre on file, and members are not scanned.
+  const stale = trackedOrbitalSatellites(SimulationManager.getInstance())
+    .filter((sat) => sat.isPredictionStale)
     .map((sat) => sat.name);
   if (stale.length === 0) return [];
 

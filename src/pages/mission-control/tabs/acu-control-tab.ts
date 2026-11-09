@@ -18,6 +18,7 @@ import { WeatherManager } from '@app/weather/weather-manager';
 import { alarmLed, applyAlarmLed } from '../alarm-led';
 import { wrapAzimuthDeg } from '../az-display';
 import './acu-control-tab.css';
+import { SatellitePicker } from '../satellite-picker';
 import { AntennaAdapter } from './antenna-adapter';
 import { OMTAdapter } from './omt-adapter';
 
@@ -94,7 +95,7 @@ export class ACUControlTab extends BaseElement {
   private lastBeaconSyncTime_: number = 0;
 
   // Satellite list the target dropdown was last built from (rebuilt when it changes)
-  private satelliteOptionsKey_: string = '';
+  private satellitePicker_: SatellitePicker | null = null;
   /**
    * Target picked in the dropdown but not yet commanded. Like MAINT/STOW and
    * the Az/El edits (staged until APPLY), a pick moves nothing until Move to
@@ -684,7 +685,7 @@ export class ACUControlTab extends BaseElement {
     }
 
     // Populate satellite dropdown (rebuilt by syncUiWithState_ if the list changes)
-    this.syncSatelliteOptions_(select);
+    this.syncSatelliteOptions_(select, antenna.state.targetSatelliteId);
 
     // Handle selection change: stage the pick; Move to Target commits it
     const selectHandler = () => {
@@ -985,9 +986,9 @@ export class ACUControlTab extends BaseElement {
     // Sync satellite dropdown selection (skip if user is interacting)
     const satelliteSelect = this.qs_<HTMLSelectElement>('satellite-select');
     if (satelliteSelect && document.activeElement !== satelliteSelect) {
-      this.syncSatelliteOptions_(satelliteSelect);
       // A staged pick stays showing until Move to Target or a mode change
       const shown = this.stagedTargetId_ !== undefined ? this.stagedTargetId_ : state.targetSatelliteId;
+      this.syncSatelliteOptions_(satelliteSelect, shown);
       satelliteSelect.value = shown?.toString() ?? '';
     }
 
@@ -1064,17 +1065,19 @@ export class ACUControlTab extends BaseElement {
   /** Display name for the antenna's target, 'No Target' when there is none. */
   private targetSatelliteName_(noradId: number | null): string {
     if (noradId === null) return 'No Target';
-    const satellite = SimulationManager.getInstance().satellites.find((sat) => sat.noradId === noradId);
+    const satellite = SimulationManager.getInstance().registry.get(noradId);
     return satellite?.name ?? `NORAD ${noradId}`;
   }
 
-  /** Rebuild the target dropdown when the simulation's satellite list changes. */
-  private syncSatelliteOptions_(select: HTMLSelectElement): void {
-    const satellites = SimulationManager.getInstance().satellites;
-    const key = satellites.map((sat) => `${sat.noradId}:${sat.name}`).join('|');
-    if (key === this.satelliteOptionsKey_) return;
-    this.satelliteOptionsKey_ = key;
-    select.innerHTML = '<option value="">-- Select Satellite --</option>' + satellites.map((sat) => `<option value="${sat.noradId}">${sat.name}</option>`).join('');
+  /**
+   * Rebuild the target dropdown when the satellite list changes. Scenarios with constellation members get a
+   * search box and list only authored, pinned and selected satellites plus `current` (P3-WP10).
+   */
+  private syncSatelliteOptions_(select: HTMLSelectElement, current: number | null): void {
+    if (!this.satellitePicker_) {
+      this.satellitePicker_ = new SatellitePicker(select, SimulationManager.getInstance(), { placeholder: '-- Select Satellite --' });
+    }
+    this.satellitePicker_.refresh(current, SimulationManager.getInstance());
   }
 
   private syncRfMetrics_(antenna: (typeof this.groundStation.antennas)[0]): void {
@@ -1315,6 +1318,8 @@ export class ACUControlTab extends BaseElement {
     }
 
     // Dispose adapters
+    this.satellitePicker_?.dispose();
+    this.satellitePicker_ = null;
     this.antennaAdapter?.dispose();
     this.omtAdapter?.dispose();
 

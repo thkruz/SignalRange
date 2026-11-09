@@ -364,6 +364,14 @@ export class Satellite {
     this.isSubscribedToEventBus_ = true;
   }
 
+  /** Stop receiving update events (a released constellation member). */
+  unsubscribeFromEventBus(): void {
+    if (this.isSubscribedToEventBus_) {
+      EventBus.getInstance().off(Events.UPDATE, this.boundUpdateHandler_);
+      this.isSubscribedToEventBus_ = false;
+    }
+  }
+
   private static getDefaultState_(): SatelliteState {
     return {
       az: 0 as Degrees,

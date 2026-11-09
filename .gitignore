@@ -77,3 +77,12 @@ public/**/wip/
 
 # Draft music, not shipped
 public/music/wip/
+public/keeptrack/
+
+# Phase 3 perf harness output and scratch runs (summaries live in src/private/plans/phase-3-results/)
+perf-results/
+e2e-wp6/
+
+# Phase 3 TLE sets: fetched from R2 (fetch-tle-sets.mjs) and builder output
+public/assets/tle-sets/
+tle-sets-out/

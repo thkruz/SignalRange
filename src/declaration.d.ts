@@ -6,6 +6,8 @@ declare global {
   const __IS_PRIVATE__: boolean;
   /** True only for development builds of the private edition; gates the scenario authoring tools. */
   const __AUTHORING__: boolean;
+  /** KeepTrack embed license key (env KT_EMBED_LICENSE at build time); empty string when unset. Domain-locked, not a secret. */
+  const __KT_EMBED_LICENSE__: string;
 
   interface Window {
     signalRange: App;

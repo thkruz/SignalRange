@@ -21,7 +21,9 @@ import './mission-overview-tab.css';
  */
 export class MissionOverviewTab extends BaseElement {
   private readonly groundStations_: GroundStation[];
-  private readonly satellites_: Satellite[];
+  /** Authored plus pinned satellites; every satellite of a small scenario. */
+  private satellites_: Satellite[];
+  private readonly boundSelectionChanged_: () => void;
   /** Station whose view of each satellite the cards show (the last one selected; the first by default) */
   private viewStationId_: string | null = null;
   private lastLookSyncMs_ = 0;
@@ -38,7 +40,7 @@ export class MissionOverviewTab extends BaseElement {
   constructor(containerId: string) {
     super();
     this.groundStations_ = SimulationManager.getInstance().groundStations;
-    this.satellites_ = SimulationManager.getInstance().satellites;
+    this.satellites_ = MissionOverviewTab.cardSatellites_();
     const remembered = MissionOverviewTab.lastSelectedStationId_;
     this.viewStationId_ = this.groundStations_.some((gs) => gs.state.id === remembered) ? remembered : (this.groundStations_[0]?.state.id ?? null);
     this.init_(containerId, 'replace');
@@ -51,7 +53,42 @@ export class MissionOverviewTab extends BaseElement {
     this.boundAssetSelected_ = this.onAssetSelected_.bind(this);
     EventBus.getInstance().on(Events.UPDATE, this.boundUpdate_);
     EventBus.getInstance().on(Events.ASSET_SELECTED, this.boundAssetSelected_);
+    this.boundSelectionChanged_ = this.onSelectionChanged_.bind(this);
+    if (this.isScale_) {
+      EventBus.getInstance().on(Events.SELECTION_CHANGED, this.boundSelectionChanged_);
+    }
     this.syncLookAngles_();
+  }
+
+  /** With constellation members, cards exist only for authored and pinned satellites (members are in the asset tree). */
+  private get isScale_(): boolean {
+    return ((SimulationManager.getInstance() as { registry?: { memberCount: number } }).registry?.memberCount ?? 0) > 0;
+  }
+
+  private static cardSatellites_(): Satellite[] {
+    const sim = SimulationManager.getInstance();
+
+    return (sim as { registry?: { memberCount: number; tracked(): Satellite[] } }).registry?.tracked() ?? sim.satellites;
+  }
+
+  /** A pin was added or removed: redraw only the satellite cards. */
+  private onSelectionChanged_(): void {
+    const host = this.dom_?.querySelector('.mo-sat-cards');
+    const next = MissionOverviewTab.cardSatellites_();
+
+    if (!host || (next.length === this.satellites_.length && next.every((sat, i) => sat === this.satellites_[i]))) {
+      return;
+    }
+    this.satellites_ = next;
+    host.innerHTML = this.renderSatelliteCards_();
+    this.bindCardClicks_(host);
+    this.syncLookAngles_();
+  }
+
+  private renderSatelliteCards_(): string {
+    return this.satellites_.length > 0
+      ? this.satellites_.map((sat) => this.renderSatelliteCard_(sat)).join('')
+      : `<div class="col-12"><p class="text-muted">No satellites in this scenario.</p></div>`;
   }
 
   /** Remember the selected ground station for the next Overview (phase 31 D16) */
@@ -156,9 +193,9 @@ export class MissionOverviewTab extends BaseElement {
             <h3 class="section-title">Satellites</h3>
           </div>
           ${
-            this.satellites_.length > 0
-              ? this.satellites_.map((sat) => this.renderSatelliteCard_(sat)).join('')
-              : `<div class="col-12"><p class="text-muted">No satellites in this scenario.</p></div>`
+            this.isScale_
+              ? `<div class="col-12"><p class="text-muted small">Authored and pinned satellites. Search the constellation in the asset tree and pin a member to add it here.</p></div><div class="mo-sat-cards" style="display: contents;">${this.renderSatelliteCards_()}</div>`
+              : this.renderSatelliteCards_()
           }
         </div>
       </div>
@@ -282,7 +319,11 @@ export class MissionOverviewTab extends BaseElement {
 
   private addEventListenersLate_(): void {
     // Add click handlers to asset cards
-    const assetCards = this.dom_.querySelectorAll('.asset-card');
+    this.bindCardClicks_(this.dom_);
+  }
+
+  private bindCardClicks_(root: Element): void {
+    const assetCards = root.querySelectorAll('.asset-card');
     assetCards.forEach((card) => {
       card.addEventListener('click', () => {
         const type = card.getAttribute('data-asset-type') as 'ground-station' | 'satellite';
@@ -310,6 +351,7 @@ export class MissionOverviewTab extends BaseElement {
   public dispose(): void {
     EventBus.getInstance().off(Events.UPDATE, this.boundUpdate_);
     EventBus.getInstance().off(Events.ASSET_SELECTED, this.boundAssetSelected_);
+    EventBus.getInstance().off(Events.SELECTION_CHANGED, this.boundSelectionChanged_);
     this.dom_?.remove();
   }
 }

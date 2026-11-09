@@ -56,6 +56,15 @@ const currentRunMs_ = (): number => stepsToMs(runSteps_) + runOffsetMs_;
 let speed_: SimSpeed = 1;
 const pauseReasons_ = new Set<PauseReason>();
 
+/** What changed: scenario time jumped (skip, checkpoint restore), a pause reason toggled, or the speed changed. */
+export type SimClockChange = 'jump' | 'pause' | 'speed';
+const changeListeners_ = new Set<(change: SimClockChange) => void>();
+const notifyChange_ = (change: SimClockChange): void => {
+  for (const listener of [...changeListeners_]) {
+    listener(change);
+  }
+};
+
 interface SimTimer {
   dueRunMs: number;
   periodMs: number | null;
@@ -134,6 +143,17 @@ export const SimClock = {
     return steps;
   },
 
+  /**
+   * Give back steps `consumeFrame` handed out but the caller did not run (a
+   * hold for late propagation data). They are owed again next frame, capped at
+   * one frame's worth so a long hold does not turn into a burst.
+   */
+  deferSteps(steps: number): void {
+    if (steps > 0) {
+      accumulatorMs_ = Math.min(accumulatorMs_ + steps * FIXED_STEP_MS, MAX_FRAME_MS * speed_);
+    }
+  },
+
   /** Advance both readings by one fixed step. */
   step(): void {
     runSteps_++;
@@ -182,6 +202,7 @@ export const SimClock = {
 
     scenarioOffsetMs_ += deltaMs;
     skippedMs_ += deltaMs;
+    notifyChange_('jump');
   },
 
   /**
@@ -216,14 +237,33 @@ export const SimClock = {
   /** Set scenario time directly (checkpoint restore). */
   setScenarioNowMs(nowMs: number): void {
     scenarioOffsetMs_ = nowMs - epochMs_ - stepsToMs(scenarioSteps_);
+    notifyChange_('jump');
+  },
+
+  /**
+   * Observe discontinuities and pause/speed changes (the KeepTrack map follows
+   * the clock through these). Returns the unsubscribe function. Not cleared by
+   * reset(): the subscriber owns its lifetime.
+   */
+  onChange(listener: (change: SimClockChange) => void): () => void {
+    changeListeners_.add(listener);
+
+    return () => {
+      changeListeners_.delete(listener);
+    };
   },
 
   pause(reason: PauseReason): void {
-    pauseReasons_.add(reason);
+    if (!pauseReasons_.has(reason)) {
+      pauseReasons_.add(reason);
+      notifyChange_('pause');
+    }
   },
 
   resume(reason: PauseReason): void {
-    pauseReasons_.delete(reason);
+    if (pauseReasons_.delete(reason)) {
+      notifyChange_('pause');
+    }
     if (reason === 'hidden' || reason === 'loading' || reason === 'menu') {
       // Do not replay the time the tab was away
       accumulatorMs_ = 0;
@@ -265,7 +305,12 @@ export const SimClock = {
 
   setSpeed(speed: SimSpeed): void {
     if (SIM_SPEEDS.includes(speed)) {
+      const changed = speed_ !== speed;
+
       speed_ = speed;
+      if (changed) {
+        notifyChange_('speed');
+      }
     }
   },
 };

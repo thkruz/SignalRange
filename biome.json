@@ -13,6 +13,7 @@
       "build/**/*.ts",
       "scripts/plugin/**/*.ts",
       "!src/engine/**",
+      "!src/vendor/keeptrack-embed/**",
       "!!src/private/**",
       "!src/plugins-external/**",
       "!**/*.min.*"

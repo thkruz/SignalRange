@@ -4,6 +4,7 @@ import { ccsScenario2Data } from '@app/campaigns/ccs/scenario2';
 import { ccsScenario3Data } from '@app/campaigns/ccs/scenario3';
 import { ccsScenario4Data } from '@app/campaigns/ccs/scenario4';
 import { ccsScenario5Data } from '@app/campaigns/ccs/scenario5';
+import { rangeWatchCampaignData } from '@app/campaigns/constellation-sandbox/campaign-data';
 import { hamSdrSandboxData } from '@app/campaigns/ham-sdr/sandbox';
 import { hamSdrScenario1Data } from '@app/campaigns/ham-sdr/scenario1';
 import { hamSdrScenario2Data } from '@app/campaigns/ham-sdr/scenario2';
@@ -66,6 +67,7 @@ import type { PlantConfig } from '@app/physical/physical-plant-types';
 import { SandboxLoadoutService } from '@app/sandbox/sandbox-loadout';
 import { sandboxData } from '@app/scenarios/sandbox';
 import { Rng, resolveScenarioSeed } from '@app/simulation/rng';
+import type { ConstellationRef } from '@app/simulation/satellite-registry';
 import type { Degrees } from 'ootk';
 import { ScenarioData } from './ScenarioData';
 
@@ -98,6 +100,8 @@ export interface SimulationSettings {
   missionBriefUrl?: string;
   isExtraSatellitesVisible?: boolean;
   satellites: Satellite[];
+  /** TLE-set constellations (Phase 3); members hydrate on demand, see SatelliteRegistry */
+  constellations?: ConstellationRef[];
   weatherEvents?: Array<{
     id: string;
     groundStationId: string;
@@ -623,6 +627,7 @@ export const SCENARIOS: ScenarioData[] = [
   ccsScenario4Data,
   ccsScenario5Data,
   // Campaign 6 (Frontline Signals) is dev-only: campaigns/frontline/frontline-gate.ts appends its scenarios when the viewer may see them
+  ...rangeWatchCampaignData.scenarios,
 ];
 
 export function isScenarioLocked(scenario: ScenarioData, completedScenarioIds: string[]): boolean {

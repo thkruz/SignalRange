@@ -1,7 +1,9 @@
 import { CampaignManager } from '@app/campaigns/campaign-manager';
 import { watchFrontlineGate } from '@app/campaigns/frontline/frontline-gate';
+import { rangeWatchCampaignData } from '@app/campaigns/constellation-sandbox/campaign-data';
 import { ccsCampaignData, geolocationCampaignData, hamSdrCampaignData, natsCampaignData } from '@app/campaigns/nats/campaign-data';
 import { natsEuCampaignData } from '@app/campaigns/nats-eu/campaign-data';
+import { registerPerfHarness } from '@app/campaigns/perf/perf-constellation';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { CampaignSelectionPage } from '@app/pages/campaign-selection';
@@ -12,8 +14,10 @@ import { SandboxPage } from '@app/pages/sandbox-page';
 import { ScenarioSelectionPage } from '@app/pages/scenario-selection';
 import { cancelSelectionExit, leaveSelection } from '@app/pages/selection-browser';
 import { PluginManager } from '@app/plugins/plugin-manager';
+import { ensureTleSets } from '@app/simulation/satellite-registry';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { MenuMusic } from '@app/sound/menu-music';
+import { loadTleSet } from '@app/tle-sets/tle-set-loader';
 import { ScenarioManager } from './scenario-manager';
 
 /**
@@ -83,6 +87,11 @@ export class Router {
         this.handleRoute();
       }
     });
+    campaignManager.registerCampaign(rangeWatchCampaignData);
+    // Dev-only perf harness (Phase 3 P3-WP0): dev server builds only, never listed in menus
+    if (process.env.NODE_ENV === 'development') {
+      registerPerfHarness(campaignManager);
+    }
 
     // Listen for popstate (back/forward buttons)
     globalThis.addEventListener('popstate', () => this.handleRoute());
@@ -310,8 +319,19 @@ export class Router {
         Footer.getInstance().makeSmall(true);
         if (params?.scenarioId) {
           ScenarioManager.getInstance().scenario = params.scenarioId;
-          MissionControlPage.create(this.navigationOptions_);
-          MissionControlPage.getInstance().show();
+          const constellations = ScenarioManager.getInstance().settings?.constellations;
+          if (constellations?.length) {
+            // TLE sets load asynchronously; the registry reads them synchronously, so
+            // they must be in place before the simulation starts
+            const options = this.navigationOptions_;
+            void ensureTleSets(constellations, loadTleSet).then(() => {
+              MissionControlPage.create(options);
+              MissionControlPage.getInstance().show();
+            });
+          } else {
+            MissionControlPage.create(this.navigationOptions_);
+            MissionControlPage.getInstance().show();
+          }
         }
         break;
       case 'mission-control':

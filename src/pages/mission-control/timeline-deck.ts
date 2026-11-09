@@ -6,6 +6,10 @@ import { Events } from '@app/events/events';
 import { SelectedStation } from '@app/pages/mission-control/selected-station';
 import { type LightingSpan, lightingSpans } from '@app/services/ground-track-math';
 import { DEFAULT_CONTACT_MIN_ELEVATION, PassPlannerService, type SatellitePass } from '@app/services/pass-planner-service';
+import { predictSatellitePasses, usesWorkerSearch } from '@app/services/pass-prediction';
+import type { VisibilityHandle } from '@app/simulation/propagation/propagation-service';
+import { getProvidedTleSet } from '@app/simulation/satellite-registry';
+import { laneOrbitalSatellites } from '@app/simulation/sim-queries';
 import { getSimulatedNowMs } from '@app/simulation/sim-time';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import type { Degrees } from 'ootk';
@@ -31,11 +35,26 @@ const LIGHTING_STEP_S = 60;
 const IN_PROGRESS_LOOKBACK_MS = 20 * 60 * 1000;
 
 /** One satellite's row: its contact blocks plus the lighting behind them. */
+/** Aggregate lane step (sim ms): members above the horizon are counted this often. */
+const AGGREGATE_STEP_MS = 5 * 60 * 1000;
+/** Aggregate lane repaint throttle while the worker fills it (wall ms). */
+const AGGREGATE_RENDER_MS = 250;
+
+/** One summary lane per top-level constellation set. */
+interface GroupLane {
+  refIndex: number;
+  label: string;
+  title: string;
+  members: number;
+}
+
 interface DeckRow {
   noradId: number;
   name: string;
   passes: SatellitePass[];
   lighting: LightingSpan[];
+  /** Passes are still being searched in the worker */
+  isLoading?: boolean;
 }
 
 /**
@@ -68,6 +87,18 @@ export class TimelineDeck {
   private readonly station_ = new SelectedStation();
   private lastStationId_: string | null = null;
   private readonly boundUpdateHandler_: () => void;
+  private readonly boundSelectionHandler_: () => void;
+
+  /** Rows of the current window by NORAD id, reused when only the selection changes */
+  private readonly rowCache_ = new Map<number, DeckRow>();
+  /** Bumped per prediction so a late worker answer for an old window is dropped */
+  private seq_ = 0;
+  /** Members-above-horizon counts by grid time: counts[lane * stations + station] */
+  private readonly aggregate_ = new Map<number, Uint16Array>();
+  private aggregateHandle_: VisibilityHandle | null = null;
+  private aggregateRange_: { from: number; to: number } | null = null;
+  private lastAggregateRenderMs_ = 0;
+  private lanes_: GroupLane[] | null = null;
 
   private horizonHours_: number;
   private rows_: DeckRow[] = [];
@@ -92,6 +123,8 @@ export class TimelineDeck {
 
     this.boundUpdateHandler_ = this.throttledSync_.bind(this);
     EventBus.getInstance().on(Events.UPDATE, this.boundUpdateHandler_);
+    this.boundSelectionHandler_ = this.handleSelectionChanged_.bind(this);
+    EventBus.getInstance().on(Events.SELECTION_CHANGED, this.boundSelectionHandler_);
   }
 
   private get html_(): string {
@@ -172,33 +205,241 @@ export class TimelineDeck {
   }
 
   private orbitalSatellites_(): OrbitalSatellite[] {
-    return SimulationManager.getInstance().satellites.filter((sat): sat is OrbitalSatellite => sat instanceof OrbitalSatellite);
+    return laneOrbitalSatellites(SimulationManager.getInstance());
   }
 
   /** Re-run pass prediction and lighting sampling for the current window. */
   private predict_(nowMs: number): void {
+    this.seq_++;
+    this.rowCache_.clear();
+    this.lastStationId_ = this.station_.stationId;
+    this.lastPredictMs_ = nowMs;
+    this.buildRows_(nowMs);
+    this.updateAggregate_(nowMs);
+  }
+
+  /**
+   * Rows for the lane satellites (authored, pinned, selected). Rows already
+   * built for this window are kept, so a selection change only searches the
+   * newcomers. Authored satellites predict on this thread exactly as before;
+   * constellation members are searched in the worker and fill in when it answers.
+   */
+  private buildRows_(nowMs: number): void {
     const endMs = nowMs + this.horizonHours_ * 3600 * 1000;
     const observer = this.station_.observer;
-    this.lastStationId_ = this.station_.stationId;
+    const fromMs = nowMs - IN_PROGRESS_LOOKBACK_MS;
+    const options = {
+      horizonHours: this.horizonHours_ + IN_PROGRESS_LOOKBACK_MS / 3_600_000,
+      aosElevation: 'receivable' as const,
+      minPeakElevation: this.config_.minElevation,
+      maxPasses: 40,
+      observer,
+    };
+    const fresh: OrbitalSatellite[] = [];
+    const seen = new Set<number>();
 
-    this.rows_ = this.orbitalSatellites_().map((sat) => ({
-      noradId: sat.noradId,
-      name: sat.name ?? `NORAD ${sat.noradId}`,
-      // From now - 20 min so a pass in progress keeps its true AOS (D7), at the
-      // receivable horizon so the deck agrees with the first signal (D5).
-      passes: this.planner_
-        .getPasses(sat, nowMs - IN_PROGRESS_LOOKBACK_MS, {
-          horizonHours: this.horizonHours_ + IN_PROGRESS_LOOKBACK_MS / 3_600_000,
-          aosElevation: 'receivable',
-          minPeakElevation: this.config_.minElevation,
-          maxPasses: 40,
-          observer,
-        })
-        .filter((pass) => pass.losMs > nowMs),
-      lighting: this.config_.showLighting ? lightingSpans(sat, nowMs, endMs, LIGHTING_STEP_S) : [],
+    this.rows_ = this.orbitalSatellites_().map((sat) => {
+      seen.add(sat.noradId);
+      const cached = this.rowCache_.get(sat.noradId);
+
+      if (cached) {
+        return cached;
+      }
+
+      const isMember = usesWorkerSearch(sat, observer);
+      const row: DeckRow = {
+        noradId: sat.noradId,
+        name: sat.name ?? `NORAD ${sat.noradId}`,
+        // From now - 20 min so a pass in progress keeps its true AOS (D7), at the
+        // receivable horizon so the deck agrees with the first signal (D5).
+        passes: isMember ? [] : this.planner_.getPasses(sat, fromMs, options).filter((pass) => pass.losMs > nowMs),
+        // Member lanes skip lighting: it is main-thread SGP4 per lane
+        lighting: this.config_.showLighting && !isMember ? lightingSpans(sat, nowMs, endMs, LIGHTING_STEP_S) : [],
+        isLoading: isMember,
+      };
+
+      this.rowCache_.set(sat.noradId, row);
+
+      if (isMember) {
+        fresh.push(sat);
+      }
+
+      return row;
+    });
+
+    for (const norad of [...this.rowCache_.keys()]) {
+      if (!seen.has(norad)) {
+        this.rowCache_.delete(norad);
+      }
+    }
+
+    if (fresh.length > 0) {
+      this.searchMembers_(fresh, fromMs, nowMs, options);
+    }
+  }
+
+  private searchMembers_(sats: OrbitalSatellite[], fromMs: number, nowMs: number, options: Parameters<typeof predictSatellitePasses>[3]): void {
+    const seq = this.seq_;
+    const { pending } = predictSatellitePasses(this.planner_, sats, fromMs, options);
+
+    void pending?.then((passes) => {
+      if (seq !== this.seq_ || !this.dom_) {
+        return;
+      }
+      for (const sat of sats) {
+        const row = this.rowCache_.get(sat.noradId);
+
+        if (row) {
+          row.passes = passes.filter((pass) => pass.noradId === sat.noradId && pass.losMs > nowMs);
+          row.isLoading = false;
+        }
+      }
+      this.render_();
+    });
+  }
+
+  /** Selection or pins changed: lanes follow, reusing every row already built for this window. */
+  private handleSelectionChanged_(): void {
+    if (!this.dom_ || !this.hasGroupLanes_()) {
+      return;
+    }
+    this.buildRows_(this.lastPredictMs_);
+    this.render_();
+  }
+
+  // === Group summary lanes ===
+
+  private groupLanes_(): GroupLane[] {
+    if (this.lanes_) {
+      return this.lanes_;
+    }
+    const registry = SimulationManager.getInstance().registry;
+    const refs = registry.constellationRefs();
+    const counts = new Array<number>(refs.length).fill(0);
+
+    for (let i = 0; i < registry.memberCount; i++) {
+      counts[registry.memberRefIndex(i)]++;
+    }
+    this.lanes_ = refs.map((ref, refIndex) => ({
+      refIndex,
+      label: ref.tleSet,
+      title: getProvidedTleSet(ref.tleSet)?.title ?? ref.tleSet,
+      members: counts[refIndex],
     }));
 
-    this.lastPredictMs_ = nowMs;
+    return this.lanes_;
+  }
+
+  /** Station index (in the propagation service) of the station the deck predicts from, or -1. */
+  private aggregateStation_(): number {
+    const observer = this.station_.observer;
+
+    return observer ? SimulationManager.getInstance().scheduler.stationIndexOf(observer.lat, observer.lon) : -1;
+  }
+
+  /**
+   * Request any missing 5 minute grid times for the window from the worker.
+   * Cached times survive slides of the window, so only the new tail is computed.
+   */
+  private updateAggregate_(nowMs: number): void {
+    const sim = SimulationManager.getInstance();
+    const service = this.hasGroupLanes_() ? sim.scheduler.service : null;
+
+    if (!service?.hasBackend) {
+      return;
+    }
+    const g0 = Math.floor(nowMs / AGGREGATE_STEP_MS) * AGGREGATE_STEP_MS;
+    const count = Math.ceil((this.horizonHours_ * 3_600_000) / AGGREGATE_STEP_MS) + 1;
+    const missing: number[] = [];
+
+    for (let i = 0; i < count; i++) {
+      if (!this.aggregate_.has(g0 + i * AGGREGATE_STEP_MS)) {
+        missing.push(g0 + i * AGGREGATE_STEP_MS);
+      }
+    }
+    for (const key of [...this.aggregate_.keys()]) {
+      if (key < g0 - 3_600_000) {
+        this.aggregate_.delete(key);
+      }
+    }
+    if (missing.length === 0) {
+      return;
+    }
+    const range = this.aggregateRange_;
+
+    if (this.aggregateHandle_ && range && missing[0] >= range.from && missing[missing.length - 1] <= range.to) {
+      return; // the running request already covers everything missing
+    }
+    this.aggregateHandle_?.cancel();
+    const from = missing[0];
+    const n = (missing[missing.length - 1] - from) / AGGREGATE_STEP_MS + 1;
+
+    service.setGroups(sim.registry.memberRefIndices(), sim.registry.constellationRefs().length);
+    this.aggregateRange_ = { from, to: from + (n - 1) * AGGREGATE_STEP_MS };
+    const handle = service.visibility({ startMs: from, stepMs: AGGREGATE_STEP_MS, count: n, minEl: 0 }, (index, counts) => {
+      this.aggregate_.set(from + index * AGGREGATE_STEP_MS, counts.slice());
+      const wall = Date.now();
+
+      if (wall - this.lastAggregateRenderMs_ > AGGREGATE_RENDER_MS || index === n - 1) {
+        this.lastAggregateRenderMs_ = wall;
+        this.renderGroups_();
+      }
+    });
+
+    this.aggregateHandle_ = handle;
+    void handle?.done.then(() => {
+      if (this.aggregateHandle_ === handle) {
+        this.aggregateHandle_ = null;
+        this.aggregateRange_ = null;
+      }
+    });
+  }
+
+  private groupsHtml_(): string {
+    if (!this.hasGroupLanes_()) {
+      return '';
+    }
+    const { startMs, spanMs } = this.windowMs_();
+    const station = this.aggregateStation_();
+    const stations = SimulationManager.getInstance().scheduler.service?.stationCount ?? 0;
+
+    if (station < 0 || stations === 0) {
+      return '';
+    }
+    const grid = [...this.aggregate_.keys()].sort((a, b) => a - b);
+
+    return this.groupLanes_()
+      .map((lane) => {
+        const at = (g: number): number => this.aggregate_.get(g)?.[lane.refIndex * stations + station] ?? 0;
+        const max = grid.reduce((m, g) => Math.max(m, at(g)), 0);
+        const cells = grid
+          .map((g) => {
+            const n = at(g);
+            const left = this.percent_(g, startMs, spanMs);
+            const right = this.percent_(g + AGGREGATE_STEP_MS, startMs, spanMs);
+
+            if (n === 0 || right <= left) {
+              return '';
+            }
+
+            return `<div class="timeline-agg-cell" style="left:${left.toFixed(2)}%;width:${(right - left).toFixed(2)}%;opacity:${(0.15 + (0.85 * n) / max).toFixed(2)}" title="${new Date(g).toISOString().slice(11, 16)}Z  ${n} of ${lane.members} above horizon"></div>`;
+          })
+          .join('');
+
+        return `<div class="timeline-track timeline-track-group" data-lane="${lane.refIndex}">
+        <div class="timeline-track-label" title="${lane.title}: members above the horizon, 5 min steps">${lane.label} (${max})</div>
+        <div class="timeline-track-lane">${cells}</div>
+      </div>`;
+      })
+      .join('');
+  }
+
+  private renderGroups_(): void {
+    const el = this.dom_?.querySelector('.timeline-groups');
+
+    if (el) {
+      el.innerHTML = this.groupsHtml_();
+    }
   }
 
   private throttledSync_(): void {
@@ -249,7 +490,9 @@ export class TimelineDeck {
 
     const { startMs, spanMs } = this.windowMs_();
 
-    if (this.rows_.length === 0) {
+    const groups = this.groupsHtml_();
+
+    if (this.rows_.length === 0 && groups === '') {
       tracks.innerHTML = html`<div class="timeline-empty">No orbital satellites in this scenario</div>`;
       axis.innerHTML = '';
 
@@ -270,6 +513,10 @@ export class TimelineDeck {
       )
       .join('');
 
+    if (this.hasGroupLanes_()) {
+      tracks.insertAdjacentHTML('beforeend', `<div class="timeline-groups">${groups}</div>`);
+    }
+
     // Axis labels line up with the grid lines plus both ends.
     const ticks = 5;
 
@@ -280,6 +527,10 @@ export class TimelineDeck {
     }).join('');
 
     this.renderPlayhead_(getSimulatedNowMs());
+  }
+
+  private hasGroupLanes_(): boolean {
+    return (SimulationManager.getInstance().registry?.memberCount ?? 0) > 0;
   }
 
   private lightingHtml_(row: DeckRow, startMs: number, spanMs: number): string {
@@ -346,6 +597,9 @@ export class TimelineDeck {
 
   dispose(): void {
     EventBus.getInstance().off(Events.UPDATE, this.boundUpdateHandler_);
+    EventBus.getInstance().off(Events.SELECTION_CHANGED, this.boundSelectionHandler_);
+    this.aggregateHandle_?.cancel();
+    this.seq_++;
     this.station_.destroy();
     this.dom_?.remove();
     this.dom_ = null;

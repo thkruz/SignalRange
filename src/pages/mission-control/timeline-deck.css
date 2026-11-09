@@ -325,3 +325,19 @@
   letter-spacing: 0.5px;
   color: var(--mc-accent-red-bright);
 }
+.timeline-groups {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--mc-border-color, rgba(255, 255, 255, 0.15));
+}
+
+.timeline-track-group .timeline-track-lane {
+  position: relative;
+}
+
+.timeline-agg-cell {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--mc-accent-color, #4fc3f7);
+}

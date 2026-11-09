@@ -191,7 +191,7 @@ export class ElectronicAttackManager {
 
     const sim = SimulationManager.getInstance();
     const gs = sim.groundStations.find((g) => g.state.id === config.groundStationId);
-    const target = sim.satellites.find((s) => s.noradId === config.targetNoradId);
+    const target = sim.registry.get(config.targetNoradId);
 
     const jamIdx = config.jamAntennaIndex ?? 0;
     const rf = gs?.rfFrontEnds[jamIdx] ?? null;

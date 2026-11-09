@@ -30,7 +30,9 @@ import { ScenarioDialogManager } from '@app/scenarios/scenario-dialog-manager';
 import { WorkingDocumentManager } from '@app/scenarios/working-document-manager';
 import { SecurityConsoleCore } from '@app/security-console/security-console-core';
 import { AlarmService } from '@app/services/alarm-service';
+import { KeepTrackEmbedHost } from '@app/services/keeptrack-embed-host';
 import { SimClock } from '@app/simulation/sim-clock';
+import { getSimulatedNowMs } from '@app/simulation/sim-time';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { MenuMusic } from '@app/sound/menu-music';
 import { SoundEvents } from '@app/sound/sound-events';
@@ -191,6 +193,11 @@ export class MissionControlPage extends BasePage {
 
     // Sync equipment with storage - will read checkpoint state from local storage if loaded
     syncEquipmentWithStore(null, this.groundStations_);
+
+    // Constellation scenarios: hold the loading screen until the propagation worker
+    // has delivered the first grid points (no-op for scenarios without constellations)
+    await SimulationManager.getInstance().scheduler?.whenPrimed(getSimulatedNowMs, (text) => this.loadingScreen_?.setStatus(text));
+    if (this.disposed_) return;
 
     await this.loadingScreen_?.reveal();
     if (this.disposed_) return;
@@ -366,6 +373,10 @@ export class MissionControlPage extends BasePage {
       // the EventBus teardown below cannot - GeoMap's canvas pointer/wheel
       // handlers, detached DOM. Without this the tabs were simply abandoned.
       MissionControlPage.instance_.tabbedCanvas_?.destroy();
+
+      // The map embed is page-scoped: a booted iframe holds a WebGL context and
+      // the previous scenario's satellites.
+      KeepTrackEmbedHost.destroyInstance();
 
       // TODO: Clean up remaining components and ground stations
       MissionControlPage.instance_ = null;

@@ -7,6 +7,7 @@ import { Events, SimulatedTimeTickData } from '@app/events/events';
 import { SelectedStation } from '@app/pages/mission-control/selected-station';
 import { ScenarioManager } from '@app/scenario-manager';
 import { PassPlannerService, SatellitePass, scenarioMinElevation } from '@app/services/pass-planner-service';
+import { trackedOrbitalSatellites } from '@app/simulation/sim-queries';
 import { getSimulatedNowMs } from '@app/simulation/sim-time';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { SpaceEventManager } from '@app/space-events/space-event-manager';
@@ -47,7 +48,7 @@ export class PassScheduleTab extends BaseElement {
 
   constructor(containerId: string) {
     super();
-    this.satellites_ = SimulationManager.getInstance().satellites.filter((sat): sat is OrbitalSatellite => sat instanceof OrbitalSatellite);
+    this.satellites_ = trackedOrbitalSatellites(SimulationManager.getInstance());
     this.init_(containerId, 'replace');
     this.dom_ = qs('.pass-schedule-tab');
 

@@ -16,6 +16,7 @@ import { EventBus } from '@app/events/event-bus';
 import { Events, type ObjectiveObservationPendingData } from '@app/events/events';
 import { revealPanel } from '@app/presentation/transitions';
 import { ScenarioManager } from '@app/scenario-manager';
+import { hasOrbitalSatellites } from '@app/simulation/sim-queries';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import './tabbed-canvas.css';
 import { OrbitalSatellite } from '@app/equipment/satellite/orbital-satellite';
@@ -36,6 +37,8 @@ import { SdrConsoleTab } from '@app/pages/mission-control/tabs/sdr-console-tab';
 import { SecurityConsoleTab } from '@app/pages/mission-control/tabs/security-console-tab';
 import { TelemetryTab } from '@app/pages/mission-control/tabs/telemetry-tab';
 import { TxChainTab } from '@app/pages/mission-control/tabs/tx-chain-tab';
+import { KeepTrackEmbedHost } from '@app/services/keeptrack-embed-host';
+import { SettingsManager } from '@app/settings/settings-manager';
 
 /** A single entry in the tab bar. */
 interface TabDescriptor {
@@ -134,6 +137,20 @@ export class TabbedCanvas extends BaseElement {
     this.init_(parentId, 'replace');
     this.dom_ = qs('.tabbed-canvas');
     this.showMissionOverview_();
+    this.preloadMapEmbed_();
+  }
+
+  /**
+   * Boot the KeepTrack world map in the background as soon as mission control
+   * opens, so the first World Map tab is instant. Skipped when the scenario has
+   * no orbital satellites (no map tab) or the built-in renderer is selected.
+   */
+  private preloadMapEmbed_(): void {
+    const hasOrbitalSats = hasOrbitalSatellites(SimulationManager.getInstance());
+
+    if (hasOrbitalSats && SettingsManager.getInstance().groundTrackRenderer === 'embed') {
+      KeepTrackEmbedHost.getInstance().preload();
+    }
   }
 
   /**
@@ -215,7 +232,7 @@ export class TabbedCanvas extends BaseElement {
    * the remembered tab.
    */
   private showMissionOverview_(): void {
-    const hasOrbitalSats = SimulationManager.getInstance().satellites.some((sat) => sat instanceof OrbitalSatellite);
+    const hasOrbitalSats = hasOrbitalSatellites(SimulationManager.getInstance());
 
     // With orbital satellites the overview gains a whole-world map alongside
     // it; otherwise it keeps its historical no-tab-bar look.
@@ -266,7 +283,7 @@ export class TabbedCanvas extends BaseElement {
       return;
     }
 
-    const hasOrbitalSats = SimulationManager.getInstance().satellites.some((sat) => sat instanceof OrbitalSatellite);
+    const hasOrbitalSats = hasOrbitalSatellites(SimulationManager.getInstance());
 
     // Backyard stations (Campaign 3+) are hobbyist SDR rigs: no ACU racks, no
     // professional RX/TX chains, no dashboard of links to those tabs. The SDR
@@ -524,6 +541,9 @@ export class TabbedCanvas extends BaseElement {
    * Render content for the selected tab
    */
   private renderTabContent_(tabId: string): void {
+    // The persistent map embed sits outside #canvas-content; park it before the
+    // content is rewritten. GroundTrackTab.activate() brings it back.
+    KeepTrackEmbedHost.getInstance().hide();
     const content = qs('#canvas-content', this.dom_);
     revealPanel(content);
 

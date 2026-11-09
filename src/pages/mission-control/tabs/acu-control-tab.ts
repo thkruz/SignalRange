@@ -1064,7 +1064,7 @@ export class ACUControlTab extends BaseElement {
   /** Display name for the antenna's target, 'No Target' when there is none. */
   private targetSatelliteName_(noradId: number | null): string {
     if (noradId === null) return 'No Target';
-    const satellite = SimulationManager.getInstance().satellites.find((sat) => sat.noradId === noradId);
+    const satellite = SimulationManager.getInstance().registry.get(noradId);
     return satellite?.name ?? `NORAD ${noradId}`;
   }
 

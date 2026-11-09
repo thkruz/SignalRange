@@ -35,6 +35,7 @@ vi.mock('../../../../src/simulation/simulation-manager', () => ({
     getInstance: vi.fn(() => ({
       satellites: [],
       getSatByNoradId: vi.fn(() => null),
+      registry: { get: (n: number) => ([] as Array<{ noradId: number }>).find((s) => s.noradId === n) },
     })),
   },
 }));
@@ -456,6 +457,15 @@ describe('ACUControlTab', () => {
           { noradId: 67890, name: 'Test Satellite 2' },
         ],
         getSatByNoradId: vi.fn(() => null),
+        registry: {
+          get: (n: number) =>
+            (
+              [
+                { noradId: 12345, name: 'Test Satellite 1' },
+                { noradId: 67890, name: 'Test Satellite 2' },
+              ] as Array<{ noradId: number }>
+            ).find((s) => s.noradId === n),
+        },
       });
 
       // Recreate tab to get updated dropdown
@@ -1195,6 +1205,7 @@ describe('ACUControlTab', () => {
       SimulationManager.getInstance.mockReturnValue({
         satellites: [{ noradId: 12345, name: 'Test Satellite 1' }],
         getSatByNoradId: vi.fn(() => null),
+        registry: { get: (n: number) => ([{ noradId: 12345, name: 'Test Satellite 1' }] as Array<{ noradId: number }>).find((s) => s.noradId === n) },
       });
 
       const antenna = mockGroundStation.antennas[0];
@@ -1237,6 +1248,7 @@ describe('ACUControlTab', () => {
         SimulationManager.getInstance.mockReturnValue({
           satellites: [{ noradId: 12345, name: 'TIDEMARK-1' }],
           getSatByNoradId: vi.fn(() => null),
+          registry: { get: (n: number) => ([{ noradId: 12345, name: 'TIDEMARK-1' }] as Array<{ noradId: number }>).find((s) => s.noradId === n) },
         });
         const display = document.querySelector(`#${PREFIX}current-target-display`) as HTMLInputElement;
 
@@ -1257,6 +1269,15 @@ describe('ACUControlTab', () => {
             { noradId: 222, name: 'SAT-B' },
           ],
           getSatByNoradId: vi.fn(() => null),
+          registry: {
+            get: (n: number) =>
+              (
+                [
+                  { noradId: 111, name: 'SAT-A' },
+                  { noradId: 222, name: 'SAT-B' },
+                ] as Array<{ noradId: number }>
+              ).find((s) => s.noradId === n),
+          },
         });
         mockGroundStation.antennas[0].state.targetSatelliteId = 222;
 
@@ -1267,7 +1288,11 @@ describe('ACUControlTab', () => {
       });
 
       it('names an unknown target by NORAD id rather than going blank', () => {
-        SimulationManager.getInstance.mockReturnValue({ satellites: [], getSatByNoradId: vi.fn(() => null) });
+        SimulationManager.getInstance.mockReturnValue({
+          satellites: [],
+          getSatByNoradId: vi.fn(() => null),
+          registry: { get: (n: number) => ([] as Array<{ noradId: number }>).find((s) => s.noradId === n) },
+        });
         mockGroundStation.antennas[0].state.targetSatelliteId = 99999;
         runUpdates();
         expect((document.querySelector(`#${PREFIX}current-target-display`) as HTMLInputElement).value).toBe('NORAD 99999');

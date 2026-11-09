@@ -6,6 +6,7 @@ import { Events } from '@app/events/events';
 import { SelectedStation } from '@app/pages/mission-control/selected-station';
 import { type LightingSpan, lightingSpans } from '@app/services/ground-track-math';
 import { DEFAULT_CONTACT_MIN_ELEVATION, PassPlannerService, type SatellitePass } from '@app/services/pass-planner-service';
+import { trackedOrbitalSatellites } from '@app/simulation/sim-queries';
 import { getSimulatedNowMs } from '@app/simulation/sim-time';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import type { Degrees } from 'ootk';
@@ -172,7 +173,7 @@ export class TimelineDeck {
   }
 
   private orbitalSatellites_(): OrbitalSatellite[] {
-    return SimulationManager.getInstance().satellites.filter((sat): sat is OrbitalSatellite => sat instanceof OrbitalSatellite);
+    return trackedOrbitalSatellites(SimulationManager.getInstance());
   }
 
   /** Re-run pass prediction and lighting sampling for the current window. */

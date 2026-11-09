@@ -23,11 +23,14 @@ describe('campaign registry', () => {
     expect(geolocationCampaignData.scenarios.length).toBeGreaterThan(0);
   });
 
-  it('keeps Frontline Signals (Campaign 6) an alpha, sandbox-only dev campaign', () => {
+  it('keeps Frontline Signals (Campaign 6) an alpha dev campaign whose only playable scenarios are the sandboxes', () => {
     expect(frontlineCampaignData.id).toBe('frontline');
     expect(frontlineCampaignData.releaseStage).toBe('alpha');
-    expect(frontlineCampaignData.totalDuration).toBe('0 min');
-    expect(frontlineCampaignData.scenarios.map((s) => s.missionType)).toEqual(['Sandbox']);
+    expect(frontlineCampaignData.totalDuration).toBe('415-575 min');
+    expect(frontlineCampaignData.scenarios[0].missionType).toBe('Sandbox');
+    const playable = frontlineCampaignData.scenarios.filter((s) => !s.isDisabled);
+
+    expect(playable.map((s) => s.missionType)).toEqual(['Sandbox', 'Sandbox', 'Sandbox']);
   });
 
   it('keeps a unique id for the 9th EWS (Campaign 4) placeholder', () => {

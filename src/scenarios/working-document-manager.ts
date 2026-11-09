@@ -103,6 +103,8 @@ export class WorkingDocumentManager {
       completedAt: new Date().toISOString(),
       entries: this.entries_.map((e) => ({ ...e })),
       destroyedEvidence: [...CampaignDocumentStore.destroyedThisRun],
+      // Only frontline files handovers; leave the key off so C1-C5 records keep their saved shape.
+      ...(CampaignDocumentStore.handoversThisRun.length > 0 ? { handovers: [...CampaignDocumentStore.handoversThisRun] } : {}),
     });
   }
 
@@ -159,6 +161,23 @@ export class WorkingDocumentManager {
   /** Number of lines accumulated so far (used by completeness checks). */
   getEntryCount(): number {
     return this.entries_.length;
+  }
+
+  /**
+   * Write a line from a source other than a quiz (a handover submission). Deduplicated like quiz
+   * lines; a closed panel gets the sidebar flag, an open one re-renders.
+   */
+  addLine(section: string, line: string): void {
+    if (!WorkingDocumentManager.isEnabled()) return;
+    const key = `${section}||${line}`;
+    if (this.authoredKeys_.has(key)) return;
+    this.authoredKeys_.add(key);
+    this.entries_.push({ section, line: fillDialogTokens(line) });
+    if (this.box_?.isOpen) {
+      this.render_();
+    } else {
+      WorkingDocumentManager.setNewEntryFlag_(true);
+    }
   }
 
   private handleQuizPassed_(data: QuizPassedData): void {

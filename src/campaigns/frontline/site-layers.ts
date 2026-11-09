@@ -106,6 +106,8 @@ const variants = (name: string, wet = true): WeatherFiles => ({
   ...(wet ? { wet: `${DIR}/${name}-wet.webp` } : {}),
 });
 
+const SITE_IMAGES_OUTSIDE = `${DIR}/site-outside.webp`;
+
 export const SITE_OUTSIDE_WEATHER: WeatherFiles = variants('site-outside');
 
 /** Outdoor close-ups with weather paintings; vsat-dish has no wet variant, so the original stays in the wet */
@@ -121,7 +123,8 @@ export const CLOSEUP_WEATHER: Partial<Record<CloseupId, WeatherFiles>> = {
 
 /** The painting of a site view for the given weather (inside is never weathered) */
 export const siteImageFor = (view: SiteView, base: string, weather: PlantWeather): string => {
-  if (view !== 'outside' || weather === 'clear') {
+  // Forward art (base is not the camp outside painting) has no weather paintings yet
+  if (view !== 'outside' || weather === 'clear' || base !== SITE_IMAGES_OUTSIDE) {
     return base;
   }
 
@@ -129,6 +132,8 @@ export const siteImageFor = (view: SiteView, base: string, weather: PlantWeather
 };
 
 /** The painting of a close-up for the given weather; falls back to the original */
-export const closeupImageFor = (def: CloseupDef, weather: PlantWeather): string => (weather === 'clear' ? def.image : (CLOSEUP_WEATHER[def.id]?.[weather] ?? def.image));
+export const closeupImageFor = (def: CloseupDef, weather: PlantWeather): string =>
+  weather === 'clear' || def.forward ? def.image : (CLOSEUP_WEATHER[def.id]?.[weather] ?? def.image);
 
-export const layersFor = (closeup: CloseupId): CloseupLayer[] => CLOSEUP_LAYERS.filter((l) => l.closeup === closeup);
+/** Layers are painted for the camp art only: forward close-ups have none yet */
+export const layersFor = (closeup: CloseupId, forward = false): CloseupLayer[] => (forward ? [] : CLOSEUP_LAYERS.filter((l) => l.closeup === closeup));

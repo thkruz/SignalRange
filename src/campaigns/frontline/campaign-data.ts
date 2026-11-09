@@ -1,5 +1,6 @@
 import type { CampaignData } from '@app/campaigns/campaign-types';
-import { frontlineSandboxData } from './sandbox';
+import { frontlineForwardEurosatSandboxData, frontlineForwardSandboxData, frontlineSandboxData } from './sandbox';
+import { frontlineScenarios } from './scenarios';
 
 /**
  * Frontline Signals (Campaign 6). Dev-only while the physical layer is built:
@@ -10,10 +11,10 @@ export const frontlineCampaignData: CampaignData = {
   id: 'frontline',
   title: 'Frontline Signals',
   subtitle: 'Field Communications Under Pressure',
-  description: `A small team keeps a field training post online with whatever the supply truck brought: a generator, a battery, a SpaceY terminal and a Ku VSAT.<br><br>This early build holds the physical-layer sandbox only. Find the loose connector, the crushed cable and the dead brick before the link does.`,
+  description: `Learn to diagnose field communications at Kivilahti training camp, then join Ola and Irena at the Rautala post. Establish what the equipment can support, distinguish local faults from service limitations, and leave a reliable handover.<br><br>The curriculum spans sixteen scenarios, alongside the physical-layer sandbox.`,
   imageUrl: 'frontline/frontline.png',
   difficulty: 'intermediate',
-  totalDuration: '0 min',
+  totalDuration: '415-575 min',
   campaignType: 'Field Communications',
   headerIdentity: {
     name: 'FRONTLINE',
@@ -22,7 +23,7 @@ export const frontlineCampaignData: CampaignData = {
   },
   chromeVariant: 'standard',
   releaseStage: 'alpha',
-  scenarios: [frontlineSandboxData],
+  scenarios: [frontlineSandboxData, frontlineForwardSandboxData, frontlineForwardEurosatSandboxData, ...frontlineScenarios],
   isLocked: false,
   isDisabled: false,
 };

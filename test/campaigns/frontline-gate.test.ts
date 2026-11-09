@@ -7,9 +7,10 @@ const inScenarios = () => SCENARIOS.some((s) => s.id === 'frontline-sandbox');
 
 afterEach(() => {
   window.DEVELOPER_MODE = false;
-  const index = SCENARIOS.findIndex((s) => s.id === 'frontline-sandbox');
-  if (index >= 0) {
-    SCENARIOS.splice(index, 1);
+  for (let index = SCENARIOS.length - 1; index >= 0; index--) {
+    if (SCENARIOS[index].id.startsWith('frontline-')) {
+      SCENARIOS.splice(index, 1);
+    }
   }
 });
 
@@ -29,6 +30,8 @@ describe('Frontline gate', () => {
     expect(registerFrontlineIfAllowed()).toBe(true);
     expect(inScenarios()).toBe(true);
     expect(SCENARIOS.filter((s) => s.id === 'frontline-sandbox')).toHaveLength(1);
+    expect(SCENARIOS.filter((s) => s.id.startsWith('frontline-scenario'))).toHaveLength(16);
+    expect(SCENARIOS.filter((s) => s.id.startsWith('frontline-scenario')).every((s) => s.isDisabled)).toBe(true);
     expect(CampaignManager.getInstance().getCampaign('frontline')).toBeDefined();
   });
 });

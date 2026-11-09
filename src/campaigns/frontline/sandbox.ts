@@ -2,6 +2,7 @@ import type { ScenarioData } from '@app/ScenarioData';
 import { frontlineGroundStation } from './ground-stations';
 import { frontlinePlantConfig } from './plant-config';
 import { eurosat9eSatellite } from './satellites';
+import { createFrontlineSettings } from './scenario-support';
 
 /**
  * Frontline Signals Sandbox (Phase 38.1)
@@ -37,3 +38,21 @@ export const frontlineSandboxData: ScenarioData = {
   },
   objectives: [],
 };
+
+/** Dev sandboxes for the forward post: same kit and site mode as S10 (Skylink only) and S11 (EuroSat added). */
+const forwardSandbox = (scenarioNumber: 10 | 11, eurosat: boolean): ScenarioData => ({
+  ...frontlineSandboxData,
+  id: eurosat ? 'frontline-sandbox-forward-eurosat' : 'frontline-sandbox-forward',
+  url: eurosat ? 'frontline/sandbox-forward-eurosat' : 'frontline/sandbox-forward',
+  title: eurosat ? 'Forward Post Sandbox (EuroSat)' : 'Forward Post Sandbox',
+  subtitle: eurosat ? 'Rautala kit as in Exercise 11' : 'Rautala kit as in Exercise 10',
+  description: `The Rautala forward post with the ${eurosat ? 'Skylink kit plus the EuroSat terminal' : 'Skylink kit only'}, as in Exercise ${scenarioNumber}. No faults, no objectives.`,
+  equipment: eurosat
+    ? ['SpaceY terminal, router and cable', 'EuroSat VSAT dish, LNB, IFL and modem', 'Generator and battery', 'Laptop']
+    : ['SpaceY terminal, router and cable', 'Generator and battery', 'Laptop'],
+  settings: { ...createFrontlineSettings(scenarioNumber), isExtraSatellitesVisible: true },
+  objectives: [],
+});
+
+export const frontlineForwardSandboxData = forwardSandbox(10, false);
+export const frontlineForwardEurosatSandboxData = forwardSandbox(11, true);

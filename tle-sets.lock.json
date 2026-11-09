@@ -1,0 +1,27 @@
+{
+  "format": "sr-tle-sets-lock/1",
+  "sets": {
+    "starlink-2026-11": {
+      "id": "starlink-2026-11",
+      "r2Bucket": "keeptrack-embed",
+      "r2Key": "sr-tle-sets/starlink-2026-11/starlink-2026-11.json.gz",
+      "sha256": "5886f09c08baa9c625c43e13310ec27ed36decf152e41762f20fb5172a60adaf",
+      "sizeBytes": 622510,
+      "rawBytes": 2611711,
+      "epoch": "2026-11-08T02:00:01.999Z",
+      "count": 11202,
+      "publishedAt": "2026-11-09T05:46:11.407Z"
+    },
+    "geo-belt-2026-11": {
+      "id": "geo-belt-2026-11",
+      "r2Bucket": "keeptrack-embed",
+      "r2Key": "sr-tle-sets/geo-belt-2026-11/geo-belt-2026-11.json.gz",
+      "sha256": "5c1f5a41f8b7983f3ee509ab31289dec0979d1575eb50d6c26c7f9aa947c967f",
+      "sizeBytes": 68993,
+      "rawBytes": 258742,
+      "epoch": "2026-11-08T04:21:33.815Z",
+      "count": 1174,
+      "publishedAt": "2026-11-09T05:46:16.480Z"
+    }
+  }
+}

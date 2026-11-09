@@ -37,6 +37,9 @@ if (process.env.NODE_ENV === 'development') {
 // For production builds, also load .env.production
 dotenv.config({ path: '.env.production' });
 
+// Local KeepTrack build to serve/copy at /keeptrack instead of the fetched bundle (see scripts/fetch-keeptrack-embed.mjs).
+const KEEPTRACK_EMBED_DIR = process.env.KEEPTRACK_EMBED_DIR ? path.resolve(process.env.KEEPTRACK_EMBED_DIR) : '';
+
 const isProduction = process.env.NODE_ENV === 'production';
 
 const config: rspack.Configuration = {
@@ -125,6 +128,7 @@ const config: rspack.Configuration = {
       'process.env.PUBLIC_USER_API_URL': JSON.stringify(process.env.PUBLIC_USER_API_URL || 'https://user.keeptrack.space'),
       'process.env.PUBLIC_ASSETS_BASE_URL': JSON.stringify(process.env.PUBLIC_ASSETS_BASE_URL || ''),
       'process.env.PUBLIC_DEV_USER_IDS': JSON.stringify(process.env.PUBLIC_DEV_USER_IDS || ''),
+      __KT_EMBED_LICENSE__: JSON.stringify(process.env.KT_EMBED_LICENSE || ''),
       'process.env.PUBLIC_LOG_LEVEL': JSON.stringify(process.env.PUBLIC_LOG_LEVEL || 'LOG'),
       __APP_VERSION__: JSON.stringify(pkg.version),
       __GIT_COMMIT_SHA__: JSON.stringify(getGitCommitSha()),
@@ -162,6 +166,16 @@ const config: rspack.Configuration = {
         { from: 'public/music/', to: 'music/', globOptions: { ignore: ['**/wip/**'] } },
         // UI and equipment effects use same-origin /sfx URLs in SoundManager.
         { from: 'public/sfx/', to: 'sfx/', globOptions: { ignore: ['**/wip/**'] } },
+        // KeepTrack embed bundle (fetched into public/keeptrack, or a local build via KEEPTRACK_EMBED_DIR).
+        // Absent bundle is fine: the app falls back to GeoMap. Files must stay under the 25 MiB Workers asset limit.
+        {
+          from: KEEPTRACK_EMBED_DIR || 'public/keeptrack/',
+          to: 'keeptrack/',
+          noErrorOnMissing: true,
+          globOptions: { ignore: ['**/*.map', '**/.embed-version'] },
+        },
+        // Phase 3 TLE sets (fetched into public/assets/tle-sets by scripts/fetch-tle-sets.mjs). Absent is fine.
+        { from: 'public/assets/tle-sets/', to: 'assets/tle-sets/', noErrorOnMissing: true },
         // Self-hosted web fonts. Copied verbatim (not run through the
         // asset/resource rule) so the URLs in src/fonts.css stay stable.
         {
@@ -204,7 +218,7 @@ const config: rspack.Configuration = {
       directory: path.join(__dirname, 'public'),
     },
     compress: false,
-    port: 3000,
+    port: Number(process.env.SR_DEV_PORT) || 3000,
     hot: true,
     historyApiFallback: {
       rewrites: [

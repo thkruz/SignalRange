@@ -23,6 +23,7 @@ export default defineConfig({
   define: {
     __IS_PRIVATE__: 'false',
     __AUTHORING__: 'false',
+    __KT_EMBED_LICENSE__: JSON.stringify(process.env.KT_EMBED_LICENSE || ''),
   },
   test: {
     /*

@@ -18,6 +18,7 @@ import { revealPanel } from '@app/presentation/transitions';
 import { ScenarioManager } from '@app/scenario-manager';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import './tabbed-canvas.css';
+import { ModalConfirm } from '@app/engine/ui/modal-confirm';
 import { OrbitalSatellite } from '@app/equipment/satellite/orbital-satellite';
 import { ACUControlTab } from '@app/pages/mission-control/tabs/acu-control-tab';
 import { CommandingTab } from '@app/pages/mission-control/tabs/commanding-tab';
@@ -34,8 +35,10 @@ import { RxAnalysisTab } from '@app/pages/mission-control/tabs/rx-analysis-tab';
 import { SatelliteDashboardTab } from '@app/pages/mission-control/tabs/satellite-dashboard-tab';
 import { SdrConsoleTab } from '@app/pages/mission-control/tabs/sdr-console-tab';
 import { SecurityConsoleTab } from '@app/pages/mission-control/tabs/security-console-tab';
+import { SiteTab } from '@app/pages/mission-control/tabs/site-tab';
 import { TelemetryTab } from '@app/pages/mission-control/tabs/telemetry-tab';
 import { TxChainTab } from '@app/pages/mission-control/tabs/tx-chain-tab';
+import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 
 /** A single entry in the tab bar. */
 interface TabDescriptor {
@@ -91,6 +94,7 @@ export class TabbedCanvas extends BaseElement {
     | TelemetryTab
     | ContactScheduleTab
     | SecurityConsoleTab
+    | SiteTab
     | GroundTrackTab
   > = new Map();
 
@@ -109,7 +113,7 @@ export class TabbedCanvas extends BaseElement {
   };
 
   private readonly boundSwitchTab_ = (data: { tabId: string }): void => {
-    this.switchTab_(data.tabId);
+    this.requestTab_(data.tabId);
   };
 
   private readonly boundMissionOverviewSelected_ = (): void => {
@@ -341,6 +345,11 @@ export class TabbedCanvas extends BaseElement {
       tabs.push({ id: 'security-console', label: 'Security', icon: activityPng, isDisabled: groundStation.state.isOperational === false });
     }
 
+    // Phase 38.1 physical-layer sandbox: the site view only exists with a plant
+    if (settings.physicalPlant) {
+      tabs.push({ id: 'site', label: 'Site', icon: radarPng });
+    }
+
     this.renderTabs_(tabs);
     this.switchTab_(this.resolveActiveTab_(tabs, 'dashboard'));
   }
@@ -466,7 +475,7 @@ export class TabbedCanvas extends BaseElement {
         e.preventDefault(); // Prevent default link behavior
         const tabId = tabElement.dataset.tabId;
         if (tabId) {
-          this.switchTab_(tabId);
+          this.requestTab_(tabId);
         }
       });
     });
@@ -491,6 +500,33 @@ export class TabbedCanvas extends BaseElement {
       const pulsing = [...this.pulseTabs_].some((pending) => TabbedCanvas.matchesTab_(tabId, pending));
       navLink.classList.toggle('tab-pulse', pulsing);
     });
+  }
+
+  /**
+   * Tab-switch guard for user and event routes. While the player is outside the
+   * tent (Frontline physical plant), the laptop and equipment tabs are out of
+   * reach: ask whether to go back inside first. A no-op without a plant, so
+   * C1-C5 behaviour is unchanged.
+   */
+  private requestTab_(tabId: string): void {
+    const plant = PhysicalPlantService.plantOrNull();
+    if (!plant?.isOutside() || tabId === 'site' || tabId === this.activeTab_) {
+      this.switchTab_(tabId);
+
+      return;
+    }
+    ModalConfirm.getInstance().open(
+      () => {
+        plant.returnInside();
+        this.switchTab_(tabId);
+      },
+      {
+        title: 'You are outside',
+        message: "You're outside. The laptop and equipment are in the tent.",
+        confirmText: 'Go inside',
+        cancelText: 'Stay outside',
+      }
+    );
   }
 
   /**
@@ -580,6 +616,10 @@ export class TabbedCanvas extends BaseElement {
 
       case 'security-console':
         this.renderSecurityConsoleTab_();
+        break;
+
+      case 'site':
+        this.renderSiteTab_();
         break;
 
       case 'telemetry':
@@ -985,6 +1025,27 @@ export class TabbedCanvas extends BaseElement {
     }
 
     csTab.activate();
+  }
+
+  /**
+   * Render Site tab (Phase 38.1 physical-layer sandbox)
+   */
+  private renderSiteTab_(): void {
+    const tabKey = 'site';
+    let siteTab = this.tabInstances_.get(tabKey) as SiteTab;
+
+    if (siteTab && !document.contains(siteTab.dom)) {
+      siteTab.dispose();
+      this.tabInstances_.delete(tabKey);
+      siteTab = null!;
+    }
+
+    if (!siteTab) {
+      siteTab = new SiteTab('canvas-content');
+      this.tabInstances_.set(tabKey, siteTab);
+    }
+
+    siteTab.activate();
   }
 
   /**

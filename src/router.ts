@@ -1,4 +1,5 @@
 import { CampaignManager } from '@app/campaigns/campaign-manager';
+import { watchFrontlineGate } from '@app/campaigns/frontline/frontline-gate';
 import { ccsCampaignData, geolocationCampaignData, hamSdrCampaignData, natsCampaignData } from '@app/campaigns/nats/campaign-data';
 import { natsEuCampaignData } from '@app/campaigns/nats-eu/campaign-data';
 import { EventBus } from '@app/events/event-bus';
@@ -74,6 +75,14 @@ export class Router {
     campaignManager.registerCampaign(hamSdrCampaignData);
     campaignManager.registerCampaign(ccsCampaignData);
     campaignManager.registerCampaign(geolocationCampaignData);
+    // Campaign 6 (Frontline Signals) is dev-only while the physical layer is built:
+    // developer mode, a whitelisted signed-in user (the flag can flip after auth
+    // resolves, so re-run the route) or the local dev server
+    watchFrontlineGate(() => {
+      if (window.location.pathname.startsWith('/campaigns/frontline')) {
+        this.handleRoute();
+      }
+    });
 
     // Listen for popstate (back/forward buttons)
     globalThis.addEventListener('popstate', () => this.handleRoute());

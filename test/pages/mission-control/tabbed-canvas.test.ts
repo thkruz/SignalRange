@@ -115,6 +115,7 @@ vi.mock('../../../src/engine/utils/query-selector', () => ({
   }),
 }));
 
+import { ModalConfirm } from '../../../src/engine/ui/modal-confirm';
 import { ACUControlTab } from '../../../src/pages/mission-control/tabs/acu-control-tab';
 import { DashboardTab } from '../../../src/pages/mission-control/tabs/dashboard-tab';
 import { GPSTimingTab } from '../../../src/pages/mission-control/tabs/gps-timing-tab';
@@ -123,6 +124,7 @@ import { MissionOverviewTab } from '../../../src/pages/mission-control/tabs/miss
 import { RxAnalysisTab } from '../../../src/pages/mission-control/tabs/rx-analysis-tab';
 import { SatelliteDashboardTab } from '../../../src/pages/mission-control/tabs/satellite-dashboard-tab';
 import { TxChainTab } from '../../../src/pages/mission-control/tabs/tx-chain-tab';
+import { PhysicalPlantService } from '../../../src/physical/physical-plant-service';
 import { ScenarioManager, type SimulationSettings } from '../../../src/scenario-manager';
 import { SimulationManager } from '../../../src/simulation/simulation-manager';
 
@@ -805,5 +807,80 @@ describe('TabbedCanvas nats-eu console tab gating', () => {
 
     expect(document.querySelector('[data-tab-id="security-console"]')).not.toBeNull();
     expect(document.querySelector('[data-tab-id="link-budget"]')).toBeNull();
+  });
+});
+
+describe('TabbedCanvas outside-the-tent guard', () => {
+  let tabbedCanvas: TabbedCanvas;
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
+  let outside = false;
+  const plant = {
+    isOutside: () => outside,
+    returnInside: vi.fn(() => {
+      outside = false;
+    }),
+  };
+  let confirmOpen: ReturnType<typeof vi.spyOn>;
+
+  const switchHandler = () => mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.SWITCH_TAB)?.[1];
+  const activeTabId = () => document.querySelector('.nav-link.active')?.getAttribute('data-tab-id');
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    outside = false;
+    mockEventBus = { on: vi.fn(), off: vi.fn(), emit: vi.fn() };
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
+    const el = document.createElement('div');
+    el.id = 'tabbed-canvas-container';
+    document.body.appendChild(el);
+    tabbedCanvas = new TabbedCanvas('tabbed-canvas-container');
+    mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ASSET_SELECTED)?.[1]({ type: 'ground-station', id: 'GS-001' });
+    confirmOpen = vi.spyOn(ModalConfirm.getInstance(), 'open').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    tabbedCanvas.destroy();
+    vi.restoreAllMocks();
+    document.body.innerHTML = '';
+  });
+
+  it('is a no-op without a plant', () => {
+    vi.spyOn(PhysicalPlantService, 'plantOrNull').mockReturnValue(null);
+    switchHandler()?.({ tabId: 'rx-analysis' });
+    expect(confirmOpen).not.toHaveBeenCalled();
+    expect(activeTabId()).toBe('rx-analysis');
+  });
+
+  it('does not gate while the player is inside', () => {
+    vi.spyOn(PhysicalPlantService, 'plantOrNull').mockReturnValue(plant as never);
+    switchHandler()?.({ tabId: 'rx-analysis' });
+    expect(confirmOpen).not.toHaveBeenCalled();
+    expect(activeTabId()).toBe('rx-analysis');
+  });
+
+  it('blocks the switch while outside, and Go inside returns then switches', () => {
+    vi.spyOn(PhysicalPlantService, 'plantOrNull').mockReturnValue(plant as never);
+    const before = activeTabId();
+    outside = true;
+    switchHandler()?.({ tabId: 'rx-analysis' });
+    expect(confirmOpen).toHaveBeenCalledTimes(1);
+    const [onConfirm, options] = confirmOpen.mock.calls[0] as [() => void, { message: string; confirmText: string; cancelText: string }];
+    expect(options.message).toBe("You're outside. The laptop and equipment are in the tent.");
+    expect(options.confirmText).toBe('Go inside');
+    expect(options.cancelText).toBe('Stay outside');
+    expect(activeTabId()).toBe(before);
+    expect(plant.returnInside).not.toHaveBeenCalled();
+    onConfirm();
+    expect(plant.returnInside).toHaveBeenCalledTimes(1);
+    expect(activeTabId()).toBe('rx-analysis');
+  });
+
+  it('blocks nav-link clicks while outside', () => {
+    vi.spyOn(PhysicalPlantService, 'plantOrNull').mockReturnValue(plant as never);
+    const before = activeTabId();
+    outside = true;
+    (document.querySelector('[data-tab-id="rx-analysis"]') as HTMLElement).click();
+    expect(confirmOpen).toHaveBeenCalledTimes(1);
+    expect(activeTabId()).toBe(before);
   });
 });

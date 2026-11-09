@@ -14,6 +14,7 @@ import { QuizModal } from '@app/modal/quiz-modal';
 import { ObjectivesManager } from '@app/objectives/objectives-manager';
 import { Body } from '@app/pages/layout/body/body';
 import { Equipment } from '@app/pages/sandbox/equipment';
+import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import { NavigationOptions } from '@app/router';
 import { ScenarioManager } from '@app/scenario-manager';
 import { CampaignRecordPanel } from '@app/scenarios/campaign-record-panel';
@@ -195,6 +196,7 @@ export class SandboxPage extends BasePage {
     InterferenceManager.destroy();
     ElectronicAttackManager.destroy();
     HardwareFaultManager.destroy();
+    PhysicalPlantService.destroy();
     LinkBudgetManager.destroy();
     CommandingManager.destroy();
     ContactScheduleManager.destroy();

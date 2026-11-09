@@ -62,6 +62,7 @@ import { Satellite } from '@app/equipment/satellite/satellite';
 import { Transmitter, TransmitterState } from '@app/equipment/transmitter/transmitter';
 import { Character, Emotion } from '@app/modal/character-enum';
 import { PreviousShiftLogEntry } from '@app/ops-log/ops-log-types';
+import type { PlantConfig } from '@app/physical/physical-plant-types';
 import { SandboxLoadoutService } from '@app/sandbox/sandbox-loadout';
 import { sandboxData } from '@app/scenarios/sandbox';
 import { Rng, resolveScenarioSeed } from '@app/simulation/rng';
@@ -90,6 +91,8 @@ export interface SimulationSettings {
   spectrumAnalyzers?: Partial<RealTimeSpectrumAnalyzerState>[];
   transmitters?: Partial<TransmitterState>[];
   receivers?: Partial<ReceiverState>[];
+  /** Phase 38.1: opt-in physical-layer plant (C6 sandbox). Absent means nothing changes. */
+  physicalPlant?: PlantConfig;
   /** Optional HTML override for complex layouts */
   layout?: string;
   missionBriefUrl?: string;
@@ -619,6 +622,7 @@ export const SCENARIOS: ScenarioData[] = [
   ccsScenario3Data,
   ccsScenario4Data,
   ccsScenario5Data,
+  // Campaign 6 (Frontline Signals) is dev-only: campaigns/frontline/frontline-gate.ts appends its scenarios when the viewer may see them
 ];
 
 export function isScenarioLocked(scenario: ScenarioData, completedScenarioIds: string[]): boolean {

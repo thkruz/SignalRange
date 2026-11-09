@@ -22,6 +22,7 @@ import { InterferenceManager } from '@app/interference/interference-manager';
 import { LinkBudgetManager } from '@app/link-budget/link-budget-manager';
 import { Logger } from '@app/logging/logger';
 import { DecisionManager } from '@app/modal/decision-manager';
+import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import { ScenarioManager } from '@app/scenario-manager';
 import { SecurityConsoleCore } from '@app/security-console/security-console-core';
 import { AlarmService } from '@app/services/alarm-service';
@@ -60,6 +61,7 @@ export function collectManagerStates(): ManagerStates {
   states.contactSchedule = section_('contactSchedule', () => (ContactScheduleManager.isInitialized() ? ContactScheduleManager.getInstance().getState() : undefined));
   states.gnssThreat = section_('gnssThreat', () => (GnssThreatManager.isInitialized() ? GnssThreatManager.getInstance().getCheckpointState() : undefined));
 
+  states.physicalPlant = section_('physicalPlant', () => (PhysicalPlantService.isInitialized() ? PhysicalPlantService.getInstance().getState() : undefined));
   states.hardwareFaults = section_('hardwareFaults', () => (HardwareFaultManager.isInitialized() ? HardwareFaultManager.getInstance().getState() : undefined));
   states.weather = section_('weather', () => (WeatherManager.hasInstance() ? WeatherManager.getInstance().getCheckpointState() : undefined));
   states.telemetry = section_('telemetry', () => (TelemetryManager.isInitialized() ? TelemetryManager.getInstance().getCheckpointState() : undefined));
@@ -133,6 +135,11 @@ export function restoreManagerStates(states: ManagerStates | undefined): void {
     }
   });
   // Faults that already tripped must not trip again after the clock jump that follows
+  restore_('physicalPlant', () => {
+    if (states.physicalPlant && PhysicalPlantService.isInitialized()) {
+      PhysicalPlantService.getInstance().restoreState(states.physicalPlant);
+    }
+  });
   restore_('hardwareFaults', () => {
     if (states.hardwareFaults && HardwareFaultManager.isInitialized()) {
       HardwareFaultManager.getInstance().restoreState(states.hardwareFaults);

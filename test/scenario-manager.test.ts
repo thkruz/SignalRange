@@ -446,4 +446,8 @@ describe('SCENARIOS constant', () => {
     const sandbox = SCENARIOS.find((s) => s.id === 'sandbox');
     expect(sandbox).toBeDefined();
   });
+
+  it('keeps the dev-only Frontline sandbox out of the lookup table without DEVELOPER_MODE', () => {
+    expect(SCENARIOS.find((s) => s.id === 'frontline-sandbox')).toBeUndefined();
+  });
 });

@@ -105,7 +105,7 @@ ${colors.bright}Notes:${colors.reset}
   - Sync uploads only new or changed files: it compares each file's MD5 with
     the ETag the public URL returns (R2 single-part ETag = MD5)
   - Syncs audio files: .mp3, .wav, .ogg
-  - Syncs image files: .png, .jpg, .jpeg
+  - Syncs image files: .png, .jpg, .jpeg, .webp
   - Pull downloads from public URL (no auth needed)
   - Sync/upload requires wrangler to be installed and authenticated
   `);
@@ -137,7 +137,7 @@ function getAssetFiles(dir, fileList = []) {
         return;
       }
       getAssetFiles(filePath, fileList);
-    } else if (/\.(mp3|wav|ogg|png|jpe?g)$/i.test(file)) {
+    } else if (/\.(mp3|wav|ogg|png|jpe?g|webp)$/i.test(file)) {
       fileList.push(filePath);
     }
   });

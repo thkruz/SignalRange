@@ -1,4 +1,5 @@
 import type { CampaignData } from '@app/campaigns/campaign-types';
+import { frontlineCampaignData } from '@app/campaigns/frontline/campaign-data';
 import { ccsCampaignData, geolocationCampaignData, hamSdrCampaignData, natsCampaignData } from '@app/campaigns/nats/campaign-data';
 import { natsEuCampaignData } from '@app/campaigns/nats-eu/campaign-data';
 import { describe, expect, it } from 'vitest';
@@ -8,7 +9,7 @@ import { describe, expect, it } from 'vitest';
  * (the pre-Campaign-5 collision). Campaign ids double as /campaigns/:id
  * routes and body theme classes, so they must be unique.
  */
-const ALL_CAMPAIGNS: CampaignData[] = [natsCampaignData, natsEuCampaignData, hamSdrCampaignData, ccsCampaignData, geolocationCampaignData];
+const ALL_CAMPAIGNS: CampaignData[] = [natsCampaignData, natsEuCampaignData, hamSdrCampaignData, ccsCampaignData, geolocationCampaignData, frontlineCampaignData];
 
 describe('campaign registry', () => {
   it('has unique campaign ids', () => {
@@ -20,6 +21,13 @@ describe('campaign registry', () => {
     expect(geolocationCampaignData.id).toBe('signal-hunter');
     expect(geolocationCampaignData.isDisabled).toBe(false);
     expect(geolocationCampaignData.scenarios.length).toBeGreaterThan(0);
+  });
+
+  it('keeps Frontline Signals (Campaign 6) an alpha, sandbox-only dev campaign', () => {
+    expect(frontlineCampaignData.id).toBe('frontline');
+    expect(frontlineCampaignData.releaseStage).toBe('alpha');
+    expect(frontlineCampaignData.totalDuration).toBe('0 min');
+    expect(frontlineCampaignData.scenarios.map((s) => s.missionType)).toEqual(['Sandbox']);
   });
 
   it('keeps a unique id for the 9th EWS (Campaign 4) placeholder', () => {

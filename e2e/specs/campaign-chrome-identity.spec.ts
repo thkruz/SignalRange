@@ -60,6 +60,8 @@ const CAMPAIGNS = {
   'ham-sdr': { scenario: 'ham-sdr-sandbox', variant: 'sdr' },
   ccs: { scenario: 'ccs-scenario1', variant: 'astro' },
   'signal-hunter': { scenario: 'signal-hunter-sandbox', variant: 'astro' },
+  // Dev-only (registered when window.DEVELOPER_MODE is set before load, see addInitScript below)
+  frontline: { scenario: 'frontline-sandbox', variant: 'standard' },
 } as const;
 
 type CampaignId = keyof typeof CAMPAIGNS;
@@ -122,6 +124,8 @@ test.describe('Campaign chrome identity', () => {
     test(`${campaignId} wears the ${variant} chrome`, async ({ page }) => {
       await page.addInitScript(() => {
         (window as unknown as { AUTO_CLOSE_DIALOGS: boolean }).AUTO_CLOSE_DIALOGS = true;
+        // The Frontline campaign registers only in developer mode
+        window.DEVELOPER_MODE = true;
         localStorage.clear();
         sessionStorage.clear();
       });

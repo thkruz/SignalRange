@@ -9,6 +9,7 @@
  */
 
 import type { AggregatedAlarm } from '@app/events/events';
+import type { PlantEnvironment, PlantState } from '@app/physical/physical-plant-types';
 
 export type SpaceEventsSnapshot = { phases: Array<[string, string]> };
 
@@ -125,6 +126,8 @@ export interface ManagerStates {
   contactSchedule?: ContactScheduleSnapshot;
   gnssThreat?: GnssThreatSnapshot;
   hardwareFaults?: HardwareFaultSnapshot;
+  /** Phase 38.1 physical plant (PlantState plus the trainer weather override) */
+  physicalPlant?: PlantState & { weather?: Partial<PlantEnvironment> };
   weather?: WeatherSnapshot;
   telemetry?: TelemetrySnapshot;
   alarms?: Array<AggregatedAlarm & { detail?: string }>;

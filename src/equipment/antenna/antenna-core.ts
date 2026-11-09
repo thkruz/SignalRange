@@ -7,6 +7,7 @@ import { Transmitter } from '@app/equipment/transmitter/transmitter';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { InterferenceManager } from '@app/interference/interference-manager';
+import { plantPowers } from '@app/physical/plant-bridge';
 import { SignalOrigin } from '@app/signal-origin';
 import { geoSlantRangeKm } from '@app/simulation/geo-geometry';
 import { noiseFigureToK, noiseRiseDb, noiseRiseToK, type SystemNoise, systemNoiseTemperature, thermalNoiseDbm } from '@app/simulation/noise-model';
@@ -486,7 +487,7 @@ export abstract class AntennaCore extends BaseEquipment {
 
     // Update program-track position continuously when tracking a satellite
     // This is the base tracking - always follows ephemeris
-    if (automationAvailable && this.state.trackingMode === 'program-track' && this.state.targetSatelliteId !== null && this.state.isPowered && this.state.isOperational) {
+    if (automationAvailable && this.state.trackingMode === 'program-track' && this.state.targetSatelliteId !== null && this.isLivePowered && this.state.isOperational) {
       this.updateProgramTrackPosition_();
       if (this.snapToAuthoredTargetPending_) {
         this.snapToTarget_();
@@ -498,7 +499,7 @@ export abstract class AntennaCore extends BaseEquipment {
     const targetOffsets = this.targetOffsets_();
 
     // Update step-track controller if step-track optimization is enabled (within program-track)
-    if (automationAvailable && this.state.isStepTrackEnabled && this.state.isPowered && this.state.isOperational) {
+    if (automationAvailable && this.state.isStepTrackEnabled && this.isLivePowered && this.state.isOperational) {
       this.stepTrackController_.update();
     }
 
@@ -569,7 +570,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * moving bird without a standing lag, and brakes so it does not overshoot.
    */
   private updateSlew_(dtMs?: number, offsets: { az: number; el: number } = this.targetOffsets_()): void {
-    if (!this.state.isPowered || !this.state.isOperational) {
+    if (!this.isLivePowered || !this.state.isOperational) {
       this.azRate_ = 0;
       this.elRate_ = 0;
       this.lastTargetAz_ = null;
@@ -905,7 +906,7 @@ export abstract class AntennaCore extends BaseEquipment {
   // ========================================================================
 
   handlePolarizationChange(value: number): void {
-    if (!this.state.isPowered) {
+    if (!this.isLivePowered) {
       return;
     }
     this.state.polarization = value as Degrees;
@@ -913,7 +914,7 @@ export abstract class AntennaCore extends BaseEquipment {
   }
 
   handleCircularHandednessChange(handedness: 'LHCP' | 'RHCP'): void {
-    if (!this.state.isPowered) {
+    if (!this.isLivePowered) {
       return;
     }
     this.state.circularHandedness = handedness;
@@ -921,7 +922,7 @@ export abstract class AntennaCore extends BaseEquipment {
   }
 
   handleAzimuthChange(value: number): void {
-    if (!this.state.isPowered) {
+    if (!this.isLivePowered) {
       return;
     }
     if (value !== this.state.azimuth) {
@@ -937,7 +938,7 @@ export abstract class AntennaCore extends BaseEquipment {
   }
 
   handleElevationChange(value: number): void {
-    if (!this.state.isPowered) {
+    if (!this.isLivePowered) {
       return;
     }
     if (value !== this.state.elevation) {
@@ -953,7 +954,7 @@ export abstract class AntennaCore extends BaseEquipment {
   }
 
   handleLoopbackToggle(isSwitchUp: boolean): void {
-    if (!this.state.isOperational || !this.state.isPowered) {
+    if (!this.state.isOperational || !this.isLivePowered) {
       return;
     }
 
@@ -966,7 +967,7 @@ export abstract class AntennaCore extends BaseEquipment {
   }
 
   handleAutoTrackToggle(isSwitchUp: boolean): void {
-    if (!this.state.isOperational || !this.state.isPowered) {
+    if (!this.state.isOperational || !this.isLivePowered) {
       return;
     }
 
@@ -1015,6 +1016,11 @@ export abstract class AntennaCore extends BaseEquipment {
     this.updateSignals_();
     this.notifyStateChange_();
     this.syncDomWithState();
+  }
+
+  /** The operator's power switch AND the physical plant's supply (read time only; the switch state is never rewritten) */
+  get isLivePowered(): boolean {
+    return this.state.isPowered && plantPowers('antenna');
   }
 
   handlePowerToggle(isPowered?: boolean): void {
@@ -1080,7 +1086,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * PROGRAM switch at once, dropping any staged park mode.
    */
   stageTrackingModeChange(mode: TrackingMode): void {
-    if (!this.state.isPowered || !this.state.isOperational) {
+    if (!this.isLivePowered || !this.state.isOperational) {
       return;
     }
     const isParkMode = mode === 'stow' || mode === 'maintenance';
@@ -1098,7 +1104,7 @@ export abstract class AntennaCore extends BaseEquipment {
   }
 
   handleTrackingModeChange(mode: TrackingMode): void {
-    if (!this.state.isPowered || !this.state.isOperational) {
+    if (!this.isLivePowered || !this.state.isOperational) {
       return;
     }
 
@@ -1190,7 +1196,7 @@ export abstract class AntennaCore extends BaseEquipment {
       // emission is the command-time line and carries the new beacon, so it
       // must read UNLOCKED too (Phase 32 D2; the logger writes the mode line
       // on the first beacon change, not on Move to Target's emission)
-      if (sat && isNewTarget && this.state.trackingMode === 'program-track' && this.state.isPowered && this.state.isOperational) {
+      if (sat && isNewTarget && this.state.trackingMode === 'program-track' && this.isLivePowered && this.state.isOperational) {
         const view = this.satView_(sat);
         this.markRepositioningIfAway_(this.calculateShortestPathTarget_(this.state.azimuth, view.az), view.el as number);
       }
@@ -1210,7 +1216,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * stale. Nothing happens if step-track is off.
    */
   private rearmStepTrack_(): void {
-    if (!this.state.isStepTrackEnabled || !this.state.isPowered) {
+    if (!this.state.isStepTrackEnabled || !this.isLivePowered) {
       return;
     }
     this.state.stepTrackAzOffset = 0 as Degrees;
@@ -1229,7 +1235,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * Move antenna to target satellite position (for program track)
    */
   moveToTargetSatellite(): void {
-    if (!this.state.isPowered || !this.state.isOperational) {
+    if (!this.isLivePowered || !this.state.isOperational) {
       return;
     }
     if (this.state.targetSatelliteId === null) {
@@ -1307,7 +1313,7 @@ export abstract class AntennaCore extends BaseEquipment {
     // the tracking receiver's readout and lock logic are the dead processor's:
     // the ACU and Dashboard show no beacon C/N and lock UNKNOWN (nats-s23-F5);
     // the spectrum analyzer and modem are the RF truth.
-    if (!this.state.isPowered || !this.state.isOperational || this.state.isAcuAutomationFaulted) {
+    if (!this.isLivePowered || !this.state.isOperational || this.state.isAcuAutomationFaulted) {
       this.state.beaconPower = null;
       this.state.beaconCN = null;
       this.smoothedBeaconCN_ = null;
@@ -1412,7 +1418,7 @@ export abstract class AntennaCore extends BaseEquipment {
 
     // C/N = Signal Power - Noise Floor (both with full RX chain gain applied).
     // An unpowered LNB or a carrier far under the floor is no beacon at all.
-    const cn = usableBeaconCn(strongestPower - noiseFloor, this.rfFrontEnd_.lnbModule.state.isPowered);
+    const cn = usableBeaconCn(strongestPower - noiseFloor, this.rfFrontEnd_.lnbModule.isLivePowered);
     if (cn === null) {
       return { power: null, cn: null };
     }
@@ -1425,7 +1431,7 @@ export abstract class AntennaCore extends BaseEquipment {
   // ========================================================================
 
   handleHeaterToggle(enabled: boolean): void {
-    if (!this.state.isPowered) {
+    if (!this.isLivePowered) {
       return;
     }
     this.state.isHeaterEnabled = enabled;
@@ -1433,7 +1439,7 @@ export abstract class AntennaCore extends BaseEquipment {
   }
 
   handleRainBlowerToggle(enabled: boolean): void {
-    if (!this.state.isPowered) {
+    if (!this.isLivePowered) {
       return;
     }
     this.state.isRainBlowerEnabled = enabled;
@@ -1539,7 +1545,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * Used by fine adjustment buttons (+/- 0.01, 1, 10 degrees)
    */
   adjustAzimuth(delta: number): void {
-    if (!this.state.isPowered || !this.state.isOperational) {
+    if (!this.isLivePowered || !this.state.isOperational) {
       return;
     }
     if (this.state.trackingMode !== 'manual') {
@@ -1554,7 +1560,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * Used by fine adjustment buttons (+/- 0.01, 1, 10 degrees)
    */
   adjustElevation(delta: number): void {
-    if (!this.state.isPowered || !this.state.isOperational) {
+    if (!this.isLivePowered || !this.state.isOperational) {
       return;
     }
     if (this.state.trackingMode !== 'manual') {
@@ -1570,7 +1576,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * Used by fine adjustment buttons (+/- 0.01, 1, 10 degrees)
    */
   adjustPolarization(delta: number): void {
-    if (!this.state.isPowered || !this.state.isOperational) {
+    if (!this.isLivePowered || !this.state.isOperational) {
       return;
     }
     // Clamp polarization between -90 and 90 degrees
@@ -1586,7 +1592,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * Stage azimuth change - does not apply until applyChanges() is called
    */
   stageAzimuthChange(delta: number): void {
-    if (!this.state.isPowered || !this.state.isOperational) {
+    if (!this.isLivePowered || !this.state.isOperational) {
       return;
     }
     if (this.state.trackingMode !== 'manual') {
@@ -1610,7 +1616,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * Stage elevation change - does not apply until applyChanges() is called
    */
   stageElevationChange(delta: number): void {
-    if (!this.state.isPowered || !this.state.isOperational) {
+    if (!this.isLivePowered || !this.state.isOperational) {
       return;
     }
     if (this.state.trackingMode !== 'manual') {
@@ -1631,7 +1637,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * Stage polarization change - does not apply until applyChanges() is called
    */
   stagePolarizationChange(delta: number): void {
-    if (!this.state.isPowered || !this.state.isOperational) {
+    if (!this.isLivePowered || !this.state.isOperational) {
       return;
     }
 
@@ -1668,7 +1674,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * to maximize beacon signal strength.
    */
   handleStepTrackToggle(enabled: boolean): void {
-    if (!this.state.isPowered || !this.state.isOperational) {
+    if (!this.isLivePowered || !this.state.isOperational) {
       return;
     }
     if (this.state.trackingMode !== 'program-track') {
@@ -1688,7 +1694,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * Should be called after beacon frequency is configured and in program-track mode.
    */
   startStepTrack(): void {
-    if (!this.state.isPowered || !this.state.isOperational) {
+    if (!this.isLivePowered || !this.state.isOperational) {
       return;
     }
     if (this.state.trackingMode !== 'program-track') {
@@ -1743,7 +1749,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * Validates limits before applying and triggers FAULT if exceeded
    */
   applyChanges(): void {
-    if (!this.state.isPowered || !this.state.isOperational) {
+    if (!this.isLivePowered || !this.state.isOperational) {
       return;
     }
 
@@ -2080,7 +2086,7 @@ export abstract class AntennaCore extends BaseEquipment {
     const alarms: AlarmStatus[] = [];
 
     // Error conditions
-    if (!this.state.isPowered) {
+    if (!this.isLivePowered) {
       alarms.push({ severity: 'off', message: '' });
       return alarms;
     }
@@ -2164,7 +2170,7 @@ export abstract class AntennaCore extends BaseEquipment {
 
     // isAutoTrackEnabled is only true under step-track, so testing it here
     // raised "Manual Tracking" during plain program-track (s01-F3).
-    if (this.state.isPowered && this.state.isOperational && !this.state.isLoopback && this.state.trackingMode === 'manual') {
+    if (this.isLivePowered && this.state.isOperational && !this.state.isLoopback && this.state.trackingMode === 'manual') {
       alarms.push({ severity: 'info', message: `Manual Tracking Enabled` });
     }
 
@@ -2187,7 +2193,7 @@ export abstract class AntennaCore extends BaseEquipment {
 
   private updateSignals_(): void {
     // Can't receive signals if Not powered or Not operational
-    if (!this.state.isPowered || !this.state.isOperational) {
+    if (!this.isLivePowered || !this.state.isOperational) {
       this.state.rxSignalsIn = [];
       return;
     }
@@ -2739,7 +2745,7 @@ export abstract class AntennaCore extends BaseEquipment {
   /** Receiver noise temperature: the attached LNB's (Friis over LNA and mixer) when powered, else the config LNA */
   private receiverNoiseK_(): number {
     const lnb = this.rfFrontEnd_?.lnbModule;
-    if (lnb?.state.isPowered) {
+    if (lnb?.isLivePowered) {
       return lnb.state.noiseTemperature;
     }
 

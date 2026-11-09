@@ -99,6 +99,12 @@ export type ConditionType =
   // Fault injection conditions
   | 'fault-active' // Check if specific fault is currently injected
   | 'fault-cleared' // Check if specific fault has been cleared
+  // Physical plant conditions (Phase 38.1, read the plant action log)
+  | 'part-inspected' // The player inspected, wiggled or felt params.partId
+  | 'part-measured' // The player measured params.partId (optionally with params.tool)
+  | 'part-swapped' // The player fitted a spare to params.partId
+  | 'plant-fault-cleared' // The plant fault params.faultId existed and is gone
+  | 'ineffective-action' // At least params.minCount (default 1) fix actions changed nothing
   | 'hardware-fault-tripped' // A scheduled hardwareFaultEvents entry has tripped (gate an objective on the event, not the clock)
   // Geolocation conditions (Campaign 5)
   | 'geolocation-measurements-collected' // >= N TDOA/FDOA captures collected
@@ -485,8 +491,14 @@ export interface ConditionParams {
   keyStatus?: 'Valid' | 'Expired' | 'Pending Rotation' | 'Mismatch' | 'Zeroized';
 
   // Fault injection condition parameters
-  /** For fault-active/fault-cleared: fault ID to check */
+  /** For fault-active/fault-cleared/plant-fault-cleared: fault ID to check */
   faultId?: string;
+
+  // Physical plant condition parameters (Phase 38.1; plant-fault-cleared reuses faultId, ineffective-action reuses minCount)
+  /** For part-inspected/part-measured/part-swapped: plant part, connector or cable id */
+  partId?: string;
+  /** For part-measured: require this tool (any tool if omitted) */
+  tool?: 'multimeter' | 'cable-tester';
 
   // Geolocation condition parameters (Campaign 5)
   /** For geolocation-measurements-collected: minimum capture count */

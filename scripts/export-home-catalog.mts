@@ -43,6 +43,7 @@ const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const outFile = resolve(process.argv[2] ?? join(repoRoot, '..', 'signal-range-home', 'src', 'data', 'signalrange-catalog.json'));
 
 // Same order the router registers them, so the catalog matches the in-app profile.
+// The dev-only Frontline campaign (alpha, router registers it only in DEVELOPER_MODE) is deliberately absent.
 const campaigns = [natsCampaignData, natsEuCampaignData, hamSdrCampaignData, ccsCampaignData, geolocationCampaignData];
 
 const isTask = (code: string): boolean => /^T\d{4}$/u.test(code);

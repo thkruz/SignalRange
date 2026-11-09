@@ -3,6 +3,7 @@ import { html } from '@app/engine/utils/development/formatter';
 import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { RFFrontEndModule } from '@app/equipment/rf-front-end/rf-front-end-module';
 import { Logger } from '@app/logging/logger';
+import { plantPreLnaLossDb } from '@app/physical/plant-bridge';
 import { SignalOrigin } from '@app/signal-origin';
 import { Rng } from '@app/simulation/rng';
 import type { dBi, dBm, RfSignal } from '@app/types';
@@ -188,9 +189,14 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
     this.txDistortionOut = this.rfFrontEnd_.hpaModule.distortionSignals.map(toFeed);
   }
 
-  /** Receive loss above the unit's nominal (a fault), dB; 0 when healthy */
+  /**
+   * Receive loss above the unit's nominal (a fault), dB; 0 when healthy. Plus the
+   * physical plant's loss ahead of the LNA (feed connector faults, Phase 38.1):
+   * one passive ahead of the LNA, so both the carriers and (via
+   * SignalPathManager.antennaNoiseAtLnaK, which reads this) the antenna noise see it.
+   */
   get excessRxInsertionLossDb(): number {
-    return Math.max(0, this.state.insertionLoss - this.nominalInsertionLossDb);
+    return Math.max(0, this.state.insertionLoss - this.nominalInsertionLossDb) + plantPreLnaLossDb(this.rfFrontEnd_.groundStationId);
   }
 
   get txSignalsIn(): RfSignal[] {

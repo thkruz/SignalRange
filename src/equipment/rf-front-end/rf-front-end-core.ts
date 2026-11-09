@@ -14,6 +14,7 @@ import { OMTModule, OMTState } from '@app/equipment/rf-front-end/omt-module/omt-
 import { Transmitter } from '@app/equipment/transmitter/transmitter';
 import { EventBus } from '@app/events/event-bus';
 import { Events, HpaNoiseAmplificationData } from '@app/events/events';
+import { plantPostLnaLossDb } from '@app/physical/plant-bridge';
 import { SignalPathManager } from '@app/simulation/signal-path-manager';
 import { SimClock } from '@app/simulation/sim-clock';
 import { Hertz, IfFrequency, RfFrequency } from '@app/types';
@@ -128,7 +129,9 @@ export abstract class RFFrontEndCore extends BaseEquipment {
 
   /** Loss of one interconnect segment, dB (0 when not configured) */
   cableLossDb(segment: keyof RfCableLosses): number {
-    return Math.max(0, this.state_.cables?.[segment] ?? 0);
+    const plantLossDb = segment === 'rxIf' ? plantPostLnaLossDb(this.groundStationId) : 0;
+
+    return Math.max(0, this.state_.cables?.[segment] ?? 0) + plantLossDb;
   }
 
   get state(): RFFrontEndState {

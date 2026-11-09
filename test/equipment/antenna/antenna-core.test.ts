@@ -1859,7 +1859,7 @@ describe('AntennaCore', () => {
       antenna.state.beaconFrequencyHz = 3_948_000_000;
       antenna.state.beaconSearchBwHz = 500_000;
       (antenna as any).rfFrontEnd_ = {
-        lnbModule: { state: { loFrequency: 5150, isPowered: true } },
+        lnbModule: { isLivePowered: true, state: { loFrequency: 5150, isPowered: true } },
         agcModule: { outputSignals: [{ frequency: 5150e6 - 3_948_000_000, power: -108, bandwidth: 25_000 }] },
         couplerModule: { signalPathManager: { getNoiseFloorAt: () => ({ noiseFloorNoGain: -120, shouldApplyGain: false }), getTotalRxGain: () => 0 } },
       };

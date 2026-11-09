@@ -1,0 +1,70 @@
+import type { PlantConfig } from '@app/physical/physical-plant-types';
+
+/**
+ * The Frontline training post's physical plant (Phase 38.1 sandbox kit).
+ *
+ * One post, two internet paths. The SpaceY path is a status model (dish ->
+ * 25 m power+data cable -> router, all fed from the power station). The VSAT
+ * path is the real RF chain toward EuroSat 9E: the feed connector sits ahead
+ * of the LNA (it costs C/N), the 30 m coax IFL carries the LNB's DC and the IF
+ * back to the modem (damage there is post-LNA loss or an unpowered LNB).
+ *
+ * The LNB is its own part, powered by the modem over the IFL, so a crushed IFL
+ * cuts the LNB while the antenna drive (fed from the power station) keeps
+ * power. No faults are authored: the trainer injects them. Spares are the
+ * defaults (one of each cable type, one power brick, one connector kit, one
+ * fuel can). Reused by the trainer panel and the site tab.
+ */
+export const FRONTLINE_STATION_ID = 'FL-01';
+
+export const frontlinePlantConfig: PlantConfig = {
+  stationId: FRONTLINE_STATION_ID,
+  parts: [
+    { id: 'generator', kind: 'generator', label: 'Petrol generator', ratedW: 2000, running: true, fuelL: 6, tankL: 7, burnLPerHour: 1.5, nominalV: 230 },
+    { id: 'power-station', kind: 'battery', label: 'Power station', poweredBy: 'generator', capacityWh: 1000, socWh: 900, maxOutputW: 600, nominalV: 12, loadW: 10 },
+    { id: 'power-strip', kind: 'strip', label: 'Power strip', poweredBy: 'power-station', loadW: 0, nominalV: 12 },
+    { id: 'spacey-router', kind: 'router', label: 'SpaceY router', poweredBy: 'power-strip', loadW: 20, nominalV: 12 },
+    { id: 'spacey-dish', kind: 'terminal', label: 'SpaceY dish', poweredBy: 'spacey-router', viaCable: 'spacey-cable', loadW: 50, nominalV: 48 },
+    { id: 'vsat-modem', kind: 'modem', label: 'VSAT modem', poweredBy: 'power-strip', loadW: 30, nominalV: 12 },
+    { id: 'vsat-dish', kind: 'dish', label: 'VSAT dish', poweredBy: 'power-station', loadW: 15, nominalV: 12 },
+    { id: 'vsat-lnb', kind: 'dish', label: 'VSAT LNB', poweredBy: 'vsat-modem', viaCable: 'vsat-ifl', loadW: 5, nominalV: 18 },
+    { id: 'laptop', kind: 'client', label: 'Laptop', poweredBy: 'power-station', loadW: 45, nominalV: 12 },
+  ],
+  cables: [
+    {
+      id: 'spacey-cable',
+      lengthM: 25,
+      cableType: 'power-data',
+      carries: ['power', 'data'],
+      from: 'spacey-router',
+      to: 'spacey-dish',
+    },
+    {
+      id: 'vsat-ifl',
+      lengthM: 30,
+      cableType: 'coax',
+      carries: ['rf', 'power'],
+      from: 'vsat-modem',
+      to: 'vsat-lnb',
+      role: 'post-lna',
+      stationId: FRONTLINE_STATION_ID,
+    },
+  ],
+  connectors: [
+    { id: 'spacey-cable:dish', cableId: 'spacey-cable', partId: 'spacey-dish' },
+    { id: 'spacey-cable:router', cableId: 'spacey-cable', partId: 'spacey-router' },
+    { id: 'vsat-feed', partId: 'vsat-dish', role: 'pre-lna', stationId: FRONTLINE_STATION_ID },
+    { id: 'vsat-ifl:lnb', cableId: 'vsat-ifl', partId: 'vsat-lnb', role: 'post-lna', stationId: FRONTLINE_STATION_ID },
+    { id: 'vsat-ifl:modem', cableId: 'vsat-ifl', partId: 'vsat-modem', role: 'post-lna', stationId: FRONTLINE_STATION_ID },
+    { id: 'generator:out', partId: 'generator', feeds: 'power-station' },
+    { id: 'ps:in', partId: 'power-station', feeds: 'power-station' },
+    { id: 'ps:ac-out', partId: 'power-station', feeds: 'power-strip' },
+    { id: 'ps:dc-out', partId: 'power-station', feeds: 'vsat-dish' },
+    { id: 'strip:in', partId: 'power-strip', feeds: 'power-strip' },
+    { id: 'strip:router', partId: 'power-strip', feeds: 'spacey-router' },
+    { id: 'strip:modem', partId: 'power-strip', feeds: 'vsat-modem' },
+    { id: 'router:dc', partId: 'spacey-router', feeds: 'spacey-router' },
+    { id: 'modem:dc', partId: 'vsat-modem', feeds: 'vsat-modem' },
+  ],
+  engineMap: { antenna: 'vsat-dish', lnb: 'vsat-lnb', modem: 'vsat-modem' },
+};

@@ -27,6 +27,7 @@ import { HintManager } from '@app/modal/hint-manager';
 import { QuizManager } from '@app/modal/quiz-manager';
 import { OpsLogManager } from '@app/ops-log/ops-log-manager';
 import { TabbedCanvas } from '@app/pages/mission-control/tabbed-canvas';
+import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import { CampaignDocumentStore } from '@app/scenarios/campaign-document-store';
 import { EventTimeLedger } from '@app/scenarios/event-time-ledger';
 import { SecurityConsoleCore } from '@app/security-console/security-console-core';
@@ -3410,6 +3411,29 @@ export class ObjectivesManager {
         const maxErrorKm = condition.params?.maxErrorKm ?? 25;
         const state = GeolocationConsoleCore.getInstance().state;
         return state.fix !== null && state.fixErrorKm !== null && state.fixErrorKm <= maxErrorKm;
+      }
+
+      case 'part-inspected':
+      case 'part-measured':
+      case 'part-swapped': {
+        // Physical plant action log (Phase 38.1)
+        const plant = PhysicalPlantService.plantOrNull();
+        const partId = condition.params?.partId;
+        if (!plant || partId === undefined) return false;
+        if (condition.type === 'part-inspected') return plant.hasInspected(partId);
+        if (condition.type === 'part-measured') return plant.hasMeasured(partId, condition.params?.tool);
+        return plant.hasSwapped(partId);
+      }
+
+      case 'plant-fault-cleared': {
+        const faultId = condition.params?.faultId;
+        const plant = PhysicalPlantService.plantOrNull();
+        return faultId !== undefined && plant !== null && plant.isFaultCleared(faultId);
+      }
+
+      case 'ineffective-action': {
+        const plant = PhysicalPlantService.plantOrNull();
+        return plant !== null && plant.ineffectiveActionCount() >= (condition.params?.minCount ?? 1);
       }
 
       case 'hardware-fault-tripped': {

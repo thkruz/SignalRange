@@ -23,6 +23,7 @@ import { TimePenaltyToast } from '@app/modal/time-penalty-toast';
 import { ObjectivesManager } from '@app/objectives/objectives-manager';
 import { EventAutoLogger } from '@app/ops-log/event-auto-logger';
 import { OpsLogManager } from '@app/ops-log/ops-log-manager';
+import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import { NavigationOptions, Router } from '@app/router';
 import { ScenarioManager } from '@app/scenario-manager';
 import { collectManagerStates, restoreLedgerAndDocument, restoreManagerStates } from '@app/scenarios/checkpoint-manager-states';
@@ -103,6 +104,12 @@ export abstract class BasePage extends BaseElement {
 
     // Initialize event auto-logger (logs equipment events at every difficulty)
     EventAutoLogger.getInstance().initialize();
+
+    // Start the C6 physical plant (Phase 38.1): only when the scenario declares one.
+    // Outside the objectives block: the sandbox has no objectives but needs its plant.
+    if (scenario.settings.physicalPlant) {
+      PhysicalPlantService.getInstance();
+    }
 
     // Initialize objectives manager if scenario has objectives
     if (scenario.data?.objectives && scenario.data.objectives.length > 0) {

@@ -101,3 +101,9 @@ beforeEach(() => {
   SimClock.reset();
   Rng.reset();
 });
+
+// jsdom does not implement media playback: play() must return a promise like a browser
+if (typeof HTMLMediaElement !== "undefined") {
+  HTMLMediaElement.prototype.play = () => Promise.resolve();
+  HTMLMediaElement.prototype.pause = () => undefined;
+}

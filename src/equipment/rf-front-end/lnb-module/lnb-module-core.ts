@@ -3,6 +3,7 @@ import { carrierTransmission, transmissionLossDb } from '@app/equipment/rf-front
 import { combinePhaseNoiseDbcHz, FreeRunDrift, LO_PHASE_NOISE_DBC_HZ } from '@app/equipment/rf-front-end/lo-reference';
 import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { RFFrontEndModule, RFFrontEndModuleState } from '@app/equipment/rf-front-end/rf-front-end-module';
+import { plantPowers } from '@app/physical/plant-bridge';
 import { SignalOrigin } from '@app/signal-origin';
 import { Rng } from '@app/simulation/rng';
 import { SimClock } from '@app/simulation/sim-clock';
@@ -176,7 +177,7 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
     this.checkAlarms_();
 
     // An unpowered LNB passes nothing: no LNA gain, no mixer, no IF output.
-    if (!this.state.isPowered) {
+    if (!this.isLivePowered) {
       this.postLNASignals = [];
       this.ifSignals = [];
       return;
@@ -254,7 +255,7 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
    * since the scenario was built with a zero stabilization time).
    */
   get secondsSincePowerOn(): number {
-    if (!this.state.isPowered) return 0;
+    if (!this.isLivePowered) return 0;
     if (this.powerOnTimestamp_ === null) return Number.POSITIVE_INFINITY;
 
     return Math.max(0, (SimClock.runMs() - this.powerOnTimestamp_) / 1000);
@@ -266,7 +267,7 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
    * used to pass at power-on, because 25 °C was inside its window).
    */
   isThermallyStable(): boolean {
-    if (!this.state.isPowered) return false;
+    if (!this.isLivePowered) return false;
     const settleS = Math.max(this.state.thermalStabilizationTime, this.state.noiseTemperatureStabilizationTime);
 
     return this.secondsSincePowerOn >= settleS;
@@ -336,7 +337,7 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
    * cause gradual noise temperature transitions rather than instant jumps.
    */
   private updateNoiseTemperature_(): void {
-    if (!this.state.isPowered) {
+    if (!this.isLivePowered) {
       this.state.noiseTemperature = 290; // Ambient temperature when off
       return;
     }
@@ -390,7 +391,7 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
     const ambientTemp = 25; // °C (room temperature)
     const operatingTemp = 50; // °C (typical LNB operating temperature)
 
-    if (!this.state.isPowered) {
+    if (!this.isLivePowered) {
       // When powered off, temperature decays to ambient
       this.state.temperature = ambientTemp;
       return;
@@ -492,14 +493,14 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
   getAlarms(): string[] {
     const alarms: string[] = [];
 
-    if (!this.state.isPowered) {
+    if (!this.isLivePowered) {
       return alarms; // No module alarms when powered off (the station raises "LNB powered off")
     }
 
     const extRefPresent = this.isExtRefPresent();
 
     // Lock alarm
-    if (this.state.isPowered && !this.state.isExtRefLocked && extRefPresent) {
+    if (this.isLivePowered && !this.state.isExtRefLocked && extRefPresent) {
       alarms.push('LNB not locked to reference');
     }
 
@@ -547,7 +548,7 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
    * @returns Gain in dB
    */
   getTotalGain(): number {
-    if (!this.state.isPowered) {
+    if (!this.isLivePowered) {
       return -100; // Effectively off
     }
     return this.state.gain;
@@ -559,10 +560,15 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
    * @returns Output IF power in dBm
    */
   getOutputPower(inputPowerDbm: number): number {
-    if (!this.state.isPowered) {
+    if (!this.isLivePowered) {
       return -120; // Effectively off
     }
     return inputPowerDbm + this.state.gain;
+  }
+
+  /** The operator's power switch AND the physical plant's supply (read time only; the switch state is never rewritten) */
+  get isLivePowered(): boolean {
+    return this.state.isPowered && plantPowers('lnb');
   }
 
   // Public handlers for UI layer

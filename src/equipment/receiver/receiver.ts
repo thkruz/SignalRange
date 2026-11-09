@@ -8,6 +8,7 @@ import { phaseNoiseSnrLimitDb } from '@app/equipment/rf-front-end/lo-reference';
 import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { plantPowers } from '@app/physical/plant-bridge';
 import { Rng } from '@app/simulation/rng';
 import { SimClock } from '@app/simulation/sim-clock';
 import { dBm, FECType, Hertz, IfSignal, MHz, ModulationType } from '@app/types';
@@ -255,18 +256,23 @@ export class Receiver extends BaseEquipment {
 
   private readonly reportedLocks_ = new Map<number, boolean>();
 
+  /** The modem's power switch AND the physical plant's supply (read time only; the switch state is never rewritten) */
+  private modemLive_(modem: { isPowered: boolean }): boolean {
+    return modem.isPowered && plantPowers('modem');
+  }
+
   update(): void {
     this.updateAfc_();
     // Run every powered modem's lock tracker each step, so acquisition time
     // accrues whether or not anything is looking at that modem
     for (const modem of this.state.modems) {
-      const locked = modem.isPowered && this.getSignalsInBandwidth(modem).hasLock;
+      const locked = this.modemLive_(modem) && this.getSignalsInBandwidth(modem).hasLock;
       const previous = this.reportedLocks_.get(modem.modemNumber);
       this.reportedLocks_.set(modem.modemNumber, locked);
       if (previous !== undefined && previous !== locked) {
         this.emit(locked ? Events.RX_SIGNAL_FOUND : Events.RX_SIGNAL_LOST, { uuid: this.uuid, modem: modem.modemNumber });
       }
-      if (!modem.isPowered) this.lockHistory_.delete(modem.modemNumber);
+      if (!this.modemLive_(modem)) this.lockHistory_.delete(modem.modemNumber);
     }
     this.checkForAlarms_();
     this.syncDomWithState();
@@ -284,7 +290,7 @@ export class Receiver extends BaseEquipment {
    */
   private updateAfc_(): void {
     for (const modem of this.state.modems) {
-      if (!modem.isAfcEnabled || !modem.isPowered) continue;
+      if (!modem.isAfcEnabled || !this.modemLive_(modem)) continue;
 
       const info = this.getSignalsInBandwidth(modem);
       if (!info.hasCarrier) continue;
@@ -527,7 +533,7 @@ export class Receiver extends BaseEquipment {
     // Any powered modem decoding a carrier, not the active modem's
     // availableSignals: a modem tab click rebuilt that list, so the alarm
     // vanished and was re-stamped (Phase 32 D15, nats-r7-s14-F2)
-    if (this.state.modems.some((modem) => modem.isPowered && this.getVisibleSignals(modem).length > 0)) {
+    if (this.state.modems.some((modem) => this.modemLive_(modem) && this.getVisibleSignals(modem).length > 0)) {
       alarms.push({
         message: `Signal(s) Detected`,
         severity: 'info',
@@ -656,7 +662,7 @@ export class Receiver extends BaseEquipment {
    * Returns null if no signal present
    */
   public getSnrForModem(modem: ReceiverModemState): number | null {
-    if (!modem.isPowered) return null;
+    if (!this.modemLive_(modem)) return null;
 
     const signalInfo = this.getSignalsInBandwidth(modem);
     if (!signalInfo.hasCarrier) return null;
@@ -669,7 +675,7 @@ export class Receiver extends BaseEquipment {
    * Returns null if no signal present
    */
   public getPowerForModem(modem: ReceiverModemState): number | null {
-    if (!modem.isPowered) return null;
+    if (!this.modemLive_(modem)) return null;
 
     const info = this.getSignalsInBandwidth(modem);
     return info.hasCarrier ? (info.signalLevel_dBm ?? null) : null;
@@ -801,7 +807,7 @@ export class Receiver extends BaseEquipment {
     const modcod = modcodFor(modem.modulation, modem.fec);
     const requiredEsN0 = modcod?.thresholdEsN0Db ?? Number.POSITIVE_INFINITY;
     const lockMargin = effectiveEsN0 - requiredEsN0;
-    const canAcquire = modem.isPowered && !formatMismatch && !isBandwidthClipped && isCentred && modcod !== null;
+    const canAcquire = this.modemLive_(modem) && !formatMismatch && !isBandwidthClipped && isCentred && modcod !== null;
     const lock = this.trackLock_(modem.modemNumber, targetSignal.signalId, canAcquire, lockMargin, symbolRate);
     this.noteLockState_(modem, lock.locked, targetSignal.signalId);
 
@@ -920,7 +926,7 @@ export class Receiver extends BaseEquipment {
    */
   private noteLockState_(modem: ReceiverModemState, locked: boolean, signalId: string): void {
     const key = Receiver.tuningKey_(modem);
-    if (!modem.isPowered) {
+    if (!this.modemLive_(modem)) {
       this.lockHistory_.delete(modem.modemNumber);
       return;
     }
@@ -946,7 +952,7 @@ export class Receiver extends BaseEquipment {
   public getLockTransition(modem: ReceiverModemState): ModemLockTransition | null {
     const history = this.lockHistory_.get(modem.modemNumber);
     if (!history) return null;
-    if (!modem.isPowered || history.tuningKey !== Receiver.tuningKey_(modem)) {
+    if (!this.modemLive_(modem) || history.tuningKey !== Receiver.tuningKey_(modem)) {
       this.lockHistory_.delete(modem.modemNumber);
       return null;
     }

@@ -6,6 +6,7 @@ import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { STATION_TAB_PREFIX } from '@app/pages/mission-control/antenna-page-registry';
 import { FieldHandoverPanel } from '@app/pages/mission-control/tabs/field-handover-panel';
 import { FieldNotebookPanel, type HypothesisScope, type NotebookTarget } from '@app/pages/mission-control/tabs/field-notebook-panel';
 import { FieldPathDiagramPanel } from '@app/pages/mission-control/tabs/field-path-diagram-panel';
@@ -19,7 +20,7 @@ import { shapeSvg, svgOpen, VIEW_W, viewHeight } from '@app/physical/ui/plant-sv
 import { PlantTrainerBox } from '@app/physical/ui/plant-trainer-box';
 import { escapeHtml, hotspotPip, internetPaths } from '@app/physical/ui/plant-ui-helpers';
 import type { SceneLayer, SiteHotspot, SiteView } from '@app/physical/ui/site-types';
-import { SkylinkAppBox } from '@app/physical/ui/skylink-app-box';
+import { SKYLINK_TAB_ID } from '@app/plugins-builtin/terminal-app/skylink-dashboard';
 import { TRIP_RULE_TEXT } from '@app/scoring/field-diagnosis';
 import { getAssetUrl } from '@app/utils/asset-url';
 import '@app/physical/ui/plant-ui.css';
@@ -285,7 +286,7 @@ export class SiteTab extends BaseElement {
       if (btn?.id === 'site-view-toggle') {
         this.setView(this.view === 'inside' ? 'outside' : 'inside');
       } else if (btn?.id === 'site-open-skylink') {
-        SkylinkAppBox.getInstance().show();
+        EventBus.getInstance().emit(Events.SWITCH_TAB, { tabId: `${STATION_TAB_PREFIX}${SKYLINK_TAB_ID}` });
       } else if (btn?.id === 'site-open-trainer') {
         PlantTrainerBox.getInstance().show();
       }

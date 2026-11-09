@@ -8,10 +8,10 @@
 import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import type { WorkloadRunner } from '@app/physical/workload-runner';
 import type { RequirementCard } from '@app/physical/workload-types';
-import { formatAge } from '../strings';
+import { formatAge, tr } from '../strings';
 import type { SpeedTestRecord, TerminalAppModel, TerminalView } from '../terminal-app-model';
 import { APP_ACTION_VERBS } from '../terminal-evidence';
-import { ts } from './stats-strings';
+
 import type { TerminalScreen, TerminalScreenContext, TerminalScreenFactory } from './terminal-screen';
 
 /** Sim seconds a speed test observes the link */
@@ -98,7 +98,7 @@ export function createSpeedTestScreenFor(resolve: (ctx: TerminalScreenContext) =
         el.innerHTML = html;
       }
     };
-    const mbps = (v: number): string => ts('speed.unitMbps', { value: v >= 100 ? Math.round(v) : v.toFixed(1) });
+    const mbps = (v: number): string => tr('speed.unitMbps', { value: v >= 100 ? Math.round(v) : v.toFixed(1) });
 
     function render(view: TerminalView): void {
       if (!root) {
@@ -109,10 +109,10 @@ export function createSpeedTestScreenFor(resolve: (ctx: TerminalScreenContext) =
       const button = q('start') as HTMLButtonElement | null;
       if (button) {
         button.disabled = !available || busy;
-        button.textContent = busy ? ts('speed.running') : ts('speed.start');
+        button.textContent = busy ? tr('speed.running') : tr('speed.start');
       }
-      setHtml('note', !connected ? ts('speed.disabled') : available ? '' : ts('speed.unavailable'));
-      setHtml('failed', failed ? ts('speed.failed') : '');
+      setHtml('note', !connected ? tr('speed.disabled') : available ? '' : tr('speed.unavailable'));
+      setHtml('failed', failed ? tr('speed.failed') : '');
       const tests = ctx.model.speedTests();
       const last = tests[tests.length - 1];
       const nowS = view.data?.sampleTimeS ?? last?.tS ?? 0;
@@ -120,12 +120,12 @@ export function createSpeedTestScreenFor(resolve: (ctx: TerminalScreenContext) =
         'result',
         last
           ? `<div class="row g-3">
-              <div class="col-6 col-md-3"><div class="text-secondary small">${ts('speed.download')}</div><div class="h2 mb-0 font-monospace" id="speed-down">${mbps(last.downMbps)}</div></div>
-              <div class="col-6 col-md-3"><div class="text-secondary small">${ts('speed.upload')}</div><div class="h2 mb-0 font-monospace" id="speed-up">${mbps(last.upMbps)}</div></div>
-              <div class="col-6 col-md-3"><div class="text-secondary small">${ts('speed.latency')}</div><div class="h2 mb-0 font-monospace" id="speed-lat">${ts('speed.unitMs', { value: Math.round(last.latencyMs) })}</div></div>
-              <div class="col-6 col-md-3"><div class="text-secondary small">${ts('speed.limit.title')}</div><div class="h2 mb-0" id="speed-limit">${ts(`speed.limit.${last.limit}`)}</div></div>
+              <div class="col-6 col-md-3"><div class="text-secondary small">${tr('speed.download')}</div><div class="h2 mb-0 font-monospace" id="speed-down">${mbps(last.downMbps)}</div></div>
+              <div class="col-6 col-md-3"><div class="text-secondary small">${tr('speed.upload')}</div><div class="h2 mb-0 font-monospace" id="speed-up">${mbps(last.upMbps)}</div></div>
+              <div class="col-6 col-md-3"><div class="text-secondary small">${tr('speed.latency')}</div><div class="h2 mb-0 font-monospace" id="speed-lat">${tr('speed.unitMs', { value: Math.round(last.latencyMs) })}</div></div>
+              <div class="col-6 col-md-3"><div class="text-secondary small">${tr('speed.limit.title')}</div><div class="h2 mb-0" id="speed-limit">${tr(`speed.limit.${last.limit}`)}</div></div>
             </div>`
-          : `<span class="text-secondary">${ts('speed.noResult')}</span>`
+          : `<span class="text-secondary">${tr('speed.noResult')}</span>`
       );
       setHtml(
         'history',
@@ -135,7 +135,7 @@ export function createSpeedTestScreenFor(resolve: (ctx: TerminalScreenContext) =
               .reverse()
               .map(
                 (t) =>
-                  `<tr><td>${ts('speed.ago', { age: formatAge(Math.max(0, nowS - t.tS)) })}</td><td>${mbps(t.downMbps)}</td><td>${mbps(t.upMbps)}</td><td>${ts('speed.unitMs', { value: Math.round(t.latencyMs) })}</td><td>${ts(`speed.limit.${t.limit}`)}</td></tr>`
+                  `<tr><td>${tr('speed.ago', { age: formatAge(Math.max(0, nowS - t.tS)) })}</td><td>${mbps(t.downMbps)}</td><td>${mbps(t.upMbps)}</td><td>${tr('speed.unitMs', { value: Math.round(t.latencyMs) })}</td><td>${tr(`speed.limit.${t.limit}`)}</td></tr>`
               )
               .join('')
           : ''
@@ -174,18 +174,18 @@ export function createSpeedTestScreenFor(resolve: (ctx: TerminalScreenContext) =
       mount(container) {
         root = container;
         container.innerHTML = `
-          <div class="card mb-3"><div class="card-header"><h3 class="card-title">${ts('speed.title')}</h3></div>
+          <div class="card mb-3"><div class="card-header"><h3 class="card-title">${tr('speed.title')}</h3></div>
             <div class="card-body">
-              <p class="text-secondary">${ts('speed.body', { seconds: SPEED_TEST_WINDOW_S })}</p>
-              <button type="button" class="btn btn-primary" id="speed-start">${ts('speed.start')}</button>
+              <p class="text-secondary">${tr('speed.body', { seconds: SPEED_TEST_WINDOW_S })}</p>
+              <button type="button" class="btn btn-primary" id="speed-start">${tr('speed.start')}</button>
               <div class="text-secondary mt-2" id="speed-note"></div>
               <div class="text-danger mt-2" id="speed-failed"></div>
             </div></div>
-          <div class="card mb-3"><div class="card-header"><h3 class="card-title">${ts('speed.result')}</h3></div>
+          <div class="card mb-3"><div class="card-header"><h3 class="card-title">${tr('speed.result')}</h3></div>
             <div class="card-body" id="speed-result"></div></div>
-          <div class="card" id="speed-history-card" hidden><div class="card-header"><h3 class="card-title">${ts('speed.history')}</h3></div>
+          <div class="card" id="speed-history-card" hidden><div class="card-header"><h3 class="card-title">${tr('speed.history')}</h3></div>
             <div class="table-responsive"><table class="table table-vcenter card-table"><thead><tr>
-              <th></th><th>${ts('speed.download')}</th><th>${ts('speed.upload')}</th><th>${ts('speed.latency')}</th><th>${ts('speed.limit.title')}</th>
+              <th></th><th>${tr('speed.download')}</th><th>${tr('speed.upload')}</th><th>${tr('speed.latency')}</th><th>${tr('speed.limit.title')}</th>
             </tr></thead><tbody id="speed-history"></tbody></table></div></div>`;
         q('start')?.addEventListener('click', onStart);
       },

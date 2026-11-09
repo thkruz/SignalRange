@@ -30,7 +30,6 @@ import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import { PartCloseupModal } from '@app/physical/ui/part-closeup-modal';
 import { buildTrigger, PlantTrainerBox } from '@app/physical/ui/plant-trainer-box';
 import { FAULT_KINDS, validTargets } from '@app/physical/ui/plant-ui-helpers';
-import { SkylinkAppBox } from '@app/physical/ui/skylink-app-box';
 import { ScenarioManager } from '@app/scenario-manager';
 import { Rng } from '@app/simulation/rng';
 import { SimClock } from '@app/simulation/sim-clock';
@@ -49,7 +48,6 @@ beforeEach(() => {
 
 afterEach(() => {
   PartCloseupModal.destroy();
-  SkylinkAppBox.destroy();
   PlantTrainerBox.destroy();
   PhysicalPlantService.destroy();
   EventBus.destroy();
@@ -234,14 +232,5 @@ describe('PlantTrainerBox', () => {
   it('builds triggers', () => {
     expect(buildTrigger('windMps', 8)).toEqual({ windMps: '>8' });
     expect(buildTrigger('always', 0)).toEqual({ always: true });
-  });
-});
-
-describe('SkylinkAppBox', () => {
-  it('reports the terminal status and power draw', () => {
-    plantService();
-    SkylinkAppBox.getInstance().show();
-    expect(document.getElementById('skylink-status-text')!.textContent!.length).toBeGreaterThan(0);
-    expect(document.getElementById('skylink-power')!.textContent).toMatch(/W$/u);
   });
 });

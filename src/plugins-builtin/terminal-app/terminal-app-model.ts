@@ -15,7 +15,7 @@ import type { SkylinkStatus } from '@app/physical/physical-plant-types';
 import type { ServiceLayer, ServiceSample } from '@app/physical/service-types';
 import type { PhasedArrayReadModel } from '../phased-array/phased-array-core';
 import type { ObstructionAccumulator, ObstructionState } from './obstruction-map';
-import { ALERT_TEXT, type CauseLabelKey, causeLabelFor, HERO_TEXT, NETWORK_MESSAGE, type OutageObservation, type TerminalAlertId, type TerminalHero } from './terminal-labels';
+import { alertText, type CauseLabelKey, causeLabelFor, heroText, networkMessage, type OutageObservation, type TerminalAlertId, type TerminalHero } from './terminal-labels';
 import type { TerminalLink, TerminalLinkState } from './terminal-link';
 import type { TerminalSkin } from './terminal-skin';
 
@@ -570,9 +570,9 @@ export class TerminalAppModel {
     return {
       sampleTimeS: now,
       hero: obs.hero,
-      heroText: HERO_TEXT[obs.hero],
-      message: obs.outage === 'network' ? NETWORK_MESSAGE : null,
-      alerts: obs.alerts.map((id) => ({ id, text: ALERT_TEXT[id] })),
+      heroText: heroText(obs.hero),
+      message: obs.outage === 'network' ? networkMessage() : null,
+      alerts: obs.alerts.map((id) => ({ id, text: alertText(id) })),
       uptimeS: uptime,
       bootCount: this.bootCount_,
       downMbps: obs.outage === null ? this.current_.downMbps : 0,

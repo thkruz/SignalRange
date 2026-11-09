@@ -1,9 +1,10 @@
 /**
  * @file terminal-labels - Cause-to-label table for the terminal app (phase 40, D5)
- * @description One module holds every string the model can emit, so WP8 can localise them.
+ * @description One module holds every string the model can emit, (texts live in the locale bundle, `skylink.label.*`).
  * The label is chosen from what the terminal could observe, never from the injected cause:
  * a cable fault and a power sag both look like the dish restarting, so both read "Booting".
  */
+import { tr } from './strings';
 
 /** What the terminal itself could observe about an outage while it happened */
 export type OutageObservation =
@@ -32,44 +33,30 @@ export const OUTAGE_LABEL_KEY: Record<OutageObservation, CauseLabelKey> = {
   network: 'offline',
 };
 
-/** Label key to display text (short sentences, no idioms; localise here) */
-export const CAUSE_LABEL_TEXT: Record<CauseLabelKey, string> = {
-  obstructed: 'Obstructed',
-  searching: 'Searching',
-  booting: 'Booting',
-  'thermal-shutdown': 'Thermal shutdown',
-  offline: 'Offline',
-};
+/** Display text of a cause label, in the active language */
+export function causeLabelText(key: CauseLabelKey): string {
+  return tr(`label.cause.${key}`);
+}
 
 export type TerminalAlertId = 'obstructed' | 'thermal-throttle' | 'thermal-shutdown' | 'heating';
 
-export const ALERT_TEXT: Record<TerminalAlertId, string> = {
-  obstructed: 'Obstructed',
-  'thermal-throttle': 'Thermal throttle',
-  'thermal-shutdown': 'Thermal shutdown',
-  heating: 'Heating',
-};
+export function alertText(id: TerminalAlertId): string {
+  return tr(`label.alert.${id}`);
+}
 
 export type TerminalHero = 'online' | 'searching' | 'booting' | 'offline' | 'sleeping';
 
-export const HERO_TEXT: Record<TerminalHero, string> = {
-  online: 'Online',
-  searching: 'Searching',
-  booting: 'Booting',
-  offline: 'Offline',
-  sleeping: 'Sleeping',
-};
+export function heroText(hero: TerminalHero): string {
+  return tr(`label.hero.${hero}`);
+}
 
 /** Generic message shown with an "Offline" caused by the network refusing the terminal */
-export const NETWORK_MESSAGE = 'Network unavailable';
-
-export const LINK_MESSAGE = {
-  'dish-unreachable': "Can't reach your SkyLink",
-  'no-router': 'No connection to the router',
-} as const;
+export function networkMessage(): string {
+  return tr('label.network');
+}
 
 export function causeLabelFor(observation: OutageObservation): { key: CauseLabelKey; text: string } {
   const key = OUTAGE_LABEL_KEY[observation];
 
-  return { key, text: CAUSE_LABEL_TEXT[key] };
+  return { key, text: causeLabelText(key) };
 }

@@ -8,6 +8,7 @@ import { forwardInventory } from '@app/campaigns/frontline/scenario-support';
 import {
   CLOSEUPS,
   closeupFor,
+  FORWARD_CABLE_EUROSAT,
   FORWARD_CLOSEUPS,
   FORWARD_HOTSPOTS,
   FORWARD_ROUTER_EUROSAT,
@@ -193,6 +194,16 @@ describe('forward site art (FS1)', () => {
     expect(closeupFor('power-strip', 'forward').title).toBe('Power box');
     expect(closeupFor('skylink-cable', 'forward')).toBe(FORWARD_CLOSEUPS['skylink-cable']);
     expect(FORWARD_CLOSEUPS['skylink-cable']?.image).toContain('cu-fwd-skylink-cable.webp');
+  });
+
+  it('the cable close-up has a modem variant (S11+) with identical regions and probes', () => {
+    const base = closeupFor('skylink-cable', 'forward', () => false);
+    const eu = closeupFor('skylink-cable', 'forward', (id) => id === 'vsat-modem');
+    expect(eu).toBe(FORWARD_CABLE_EUROSAT);
+    expect(base.image).toContain('cu-fwd-skylink-cable.webp');
+    expect(eu.image).toContain('cu-fwd-skylink-cable-eurosat.webp');
+    expect(eu.regions).toEqual(base.regions);
+    expect(eu.probes).toEqual(base.probes);
   });
 
   it('the router close-up has two variants picked by the modem, and all regions and probes are inside 0..1', () => {

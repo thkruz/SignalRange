@@ -698,6 +698,24 @@ export const FORWARD_ROUTER_EUROSAT: CloseupDef = {
   probes: [...ROUTER_BASE_PROBES, { id: 'cu-modem-ifl', target: 'vsat-ifl:modem', label: 'IFL F connector at the case wall', ...cp(1359, 598) }],
 };
 
+/** Cable run at the router case wall (router in the front pocket, modem pocket empty). The thin lead in the painting has no plant model, so it has no hotspot. */
+const FORWARD_CABLE: CloseupDef = {
+  id: 'skylink-cable',
+  title: 'SkyLink cable run',
+  image: `${DIR}/cu-fwd-skylink-cable.webp`,
+  aspect: 3 / 2,
+  forward: true,
+  regions: [{ id: 'cu-skylink-cable', target: 'skylink-cable', label: 'SkyLink cable (25 m power + data)', shape: cr(0, 340, 760, 1024) }],
+  probes: [
+    { id: 'cu-cable-dish', target: 'skylink-cable:dish', label: 'Cable at the terminal end (leaves the frame)', ...cp(22, 938) },
+    { id: 'cu-cable-router', target: 'skylink-cable:router', label: 'Cable connector at the case end', ...cp(692, 384) },
+  ],
+  cables: [],
+};
+
+/** Same wall with the EuroSat modem in the back pocket (S11 on); regions and probes are identical */
+export const FORWARD_CABLE_EUROSAT: CloseupDef = { ...FORWARD_CABLE, image: `${DIR}/cu-fwd-skylink-cable-eurosat.webp` };
+
 export const FORWARD_CLOSEUPS: Partial<Record<CloseupId, CloseupDef>> = {
   router: FORWARD_ROUTER,
   laptop: {
@@ -761,22 +779,10 @@ export const FORWARD_CLOSEUPS: Partial<Record<CloseupId, CloseupDef>> = {
     aspect: 3 / 2,
     forward: true,
     regions: [{ id: 'cu-skylink-panel', target: 'skylink-dish', label: 'SkyLink panel', shape: cr(400, 0, 1165, 520) }],
-    probes: [{ id: 'cu-skylink-plug', target: 'skylink-cable:dish', label: 'SkyLink cable plug at the tripod base', ...cp(845, 715) }],
+    probes: [{ id: 'cu-skylink-plug', target: 'skylink-cable:dish', label: 'SkyLink cable plug at the panel back edge', ...cp(452, 335) }],
     cables: [],
   },
-  'skylink-cable': {
-    id: 'skylink-cable',
-    title: 'SkyLink cable run',
-    image: `${DIR}/cu-fwd-skylink-cable.webp`,
-    aspect: 3 / 2,
-    forward: true,
-    regions: [{ id: 'cu-skylink-cable', target: 'skylink-cable', label: 'SkyLink cable (25 m power + data)', shape: cr(65, 395, 1125, 880) }],
-    probes: [
-      { id: 'cu-cable-dish', target: 'skylink-cable:dish', label: 'Cable connector at the terminal end', ...cp(517, 418) },
-      { id: 'cu-cable-router', target: 'skylink-cable:router', label: 'Cable connector at the case end', ...cp(1057, 465) },
-    ],
-    cables: [],
-  },
+  'skylink-cable': FORWARD_CABLE,
 };
 
 /**
@@ -789,6 +795,9 @@ export const closeupFor = (id: CloseupId, siteMode: 'camp' | 'forward', has: (id
   }
   if (id === 'router' && has('vsat-modem')) {
     return FORWARD_ROUTER_EUROSAT;
+  }
+  if (id === 'skylink-cable' && has('vsat-modem')) {
+    return FORWARD_CABLE_EUROSAT;
   }
 
   return FORWARD_CLOSEUPS[id] ?? CLOSEUPS[id];

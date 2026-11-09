@@ -6,9 +6,10 @@
  * snow reads as every cell blocked, a tree line as a wedge, and the player has to tell them apart.
  */
 import { CHECK_DURATION_S, type ObstructionAccumulator, type ObstructionCellState, type ObstructionGrid } from '../obstruction-map';
+import { tr } from '../strings';
 import type { TerminalView } from '../terminal-app-model';
 import { APP_ACTION_VERBS } from '../terminal-evidence';
-import { trObstructions } from './obstructions-strings';
+
 import { escapeHtml, type TerminalScreen, type TerminalScreenContext, type TerminalScreenFactory } from './terminal-screen';
 
 const SIZE = 320;
@@ -42,16 +43,16 @@ export function cellPath(grid: ObstructionGrid, azLo: number, azHi: number, elLo
 function buildSvg(grid: ObstructionGrid): string {
   const paths = grid.cells
     .map((c) => {
-      const label = trObstructions('obstructions.cell', { az: c.azLoDeg, az2: c.azHiDeg, el: c.elLoDeg, el2: c.elHiDeg, state: trObstructions(STATE_KEY[c.state]) });
+      const label = tr('obstructions.cell', { az: c.azLoDeg, az2: c.azHiDeg, el: c.elLoDeg, el2: c.elHiDeg, state: tr(STATE_KEY[c.state]) });
 
       return `<path d="${cellPath(grid, c.azLoDeg, c.azHiDeg, c.elLoDeg, c.elHiDeg)}" fill="${FILL[c.state]}" stroke="var(--tblr-bg-surface, #fff)" stroke-width="0.5"><title>${escapeHtml(label)}</title></path>`;
     })
     .join('');
   const labels: Array<[string, number]> = [
-    [trObstructions('obstructions.north'), 0],
-    [trObstructions('obstructions.east'), 90],
-    [trObstructions('obstructions.south'), 180],
-    [trObstructions('obstructions.west'), 270],
+    [tr('obstructions.north'), 0],
+    [tr('obstructions.east'), 90],
+    [tr('obstructions.south'), 180],
+    [tr('obstructions.west'), 270],
   ];
   const text = labels
     .map(([t, az]) => {
@@ -61,11 +62,11 @@ function buildSvg(grid: ObstructionGrid): string {
     })
     .join('');
 
-  return `<svg viewBox="0 0 ${SIZE} ${SIZE}" class="w-100" style="max-width:360px" role="img" aria-label="${escapeHtml(trObstructions('obstructions.mapLabel'))}">${paths}${text}</svg>`;
+  return `<svg viewBox="0 0 ${SIZE} ${SIZE}" class="w-100" style="max-width:360px" role="img" aria-label="${escapeHtml(tr('obstructions.mapLabel'))}">${paths}${text}</svg>`;
 }
 
 function legendItem(state: ObstructionCellState): string {
-  return `<span class="me-3"><span class="badge me-1" style="background:${FILL[state]}">&nbsp;</span>${trObstructions(STATE_KEY[state])}</span>`;
+  return `<span class="me-3"><span class="badge me-1" style="background:${FILL[state]}">&nbsp;</span>${tr(STATE_KEY[state])}</span>`;
 }
 
 function pct(fraction: number): string {
@@ -96,7 +97,7 @@ export const createObstructionsScreen: TerminalScreenFactory = (ctx: TerminalScr
     ctx.refresh();
   };
   const onReset = (): void => {
-    void ctx.confirm(trObstructions('obstructions.reset.confirm'), trObstructions('obstructions.reset.label')).then((ok) => {
+    void ctx.confirm(tr('obstructions.reset.confirm'), tr('obstructions.reset.label')).then((ok) => {
       if (ok) {
         acc()?.reset();
         ctx.evidence?.action('obstructions', APP_ACTION_VERBS.obstructionReset, 'Reset the obstruction map in the SkyLink app.');
@@ -111,12 +112,9 @@ export const createObstructionsScreen: TerminalScreenFactory = (ctx: TerminalScr
     const running = elapsed !== null && elapsed < CHECK_DURATION_S;
     let text = '';
     if (running) {
-      text = trObstructions('obstructions.check.running', { minutes: Math.round(CHECK_DURATION_S / 60), left: Math.max(1, Math.ceil((CHECK_DURATION_S - elapsed) / 60)) });
+      text = tr('obstructions.check.running', { minutes: Math.round(CHECK_DURATION_S / 60), left: Math.max(1, Math.ceil((CHECK_DURATION_S - elapsed) / 60)) });
     } else if (elapsed !== null) {
-      text =
-        sum.coverage > 0
-          ? trObstructions('obstructions.check.done', { blocked: pct(sum.obstructionFraction), seen: pct(sum.coverage) })
-          : trObstructions('obstructions.check.doneNone');
+      text = sum.coverage > 0 ? tr('obstructions.check.done', { blocked: pct(sum.obstructionFraction), seen: pct(sum.coverage) }) : tr('obstructions.check.doneNone');
     }
     setText('check-text', text);
     q('stop')?.classList.toggle('d-none', !running);
@@ -132,27 +130,27 @@ export const createObstructionsScreen: TerminalScreenFactory = (ctx: TerminalScr
     mount(container) {
       root = container;
       container.innerHTML = `
-        <div class="card"><div class="card-header"><h3 class="card-title">${trObstructions('obstructions.title')}</h3></div>
+        <div class="card"><div class="card-header"><h3 class="card-title">${tr('obstructions.title')}</h3></div>
           <div class="card-body">
-            <p class="text-secondary">${trObstructions('obstructions.intro')}</p>
-            <div id="obs-unavailable" class="alert alert-secondary d-none">${trObstructions('obstructions.unavailable')}</div>
-            <div id="obs-stale" class="text-secondary small mb-2 d-none">${trObstructions('obstructions.offline')}</div>
+            <p class="text-secondary">${tr('obstructions.intro')}</p>
+            <div id="obs-unavailable" class="alert alert-secondary d-none">${tr('obstructions.unavailable')}</div>
+            <div id="obs-stale" class="text-secondary small mb-2 d-none">${tr('obstructions.offline')}</div>
             <div id="obs-body">
               <div class="row g-3">
                 <div class="col-12 col-md-6 text-center"><div id="obs-map"></div>
                   <div class="small mt-2">${legendItem('served')}${legendItem('blocked')}${legendItem('unseen')}</div></div>
                 <div class="col-12 col-md-6">
                   <div class="d-flex gap-4 mb-3">
-                    <div><div class="text-secondary small">${trObstructions('obstructions.stat.blocked')}</div><div class="h2 mb-0 font-monospace" id="obs-blocked"></div></div>
-                    <div><div class="text-secondary small">${trObstructions('obstructions.stat.seen')}</div><div class="h2 mb-0 font-monospace" id="obs-seen"></div></div>
+                    <div><div class="text-secondary small">${tr('obstructions.stat.blocked')}</div><div class="h2 mb-0 font-monospace" id="obs-blocked"></div></div>
+                    <div><div class="text-secondary small">${tr('obstructions.stat.seen')}</div><div class="h2 mb-0 font-monospace" id="obs-seen"></div></div>
                   </div>
                   <div class="text-secondary mb-2" id="obs-empty"></div>
                   <div class="progress mb-2"><div class="progress-bar d-none" id="obs-progress" style="width:0"></div></div>
                   <div class="mb-3" id="obs-check-text" aria-live="polite"></div>
                   <div class="d-flex gap-2 flex-wrap">
-                    <button type="button" class="btn btn-primary" id="obs-check">${trObstructions('obstructions.check')}</button>
-                    <button type="button" class="btn btn-outline-secondary d-none" id="obs-stop">${trObstructions('obstructions.check.stop')}</button>
-                    <button type="button" class="btn btn-outline-danger" id="obs-reset">${trObstructions('obstructions.reset')}</button>
+                    <button type="button" class="btn btn-primary" id="obs-check">${tr('obstructions.check.button')}</button>
+                    <button type="button" class="btn btn-outline-secondary d-none" id="obs-stop">${tr('obstructions.check.stop')}</button>
+                    <button type="button" class="btn btn-outline-danger" id="obs-reset">${tr('obstructions.reset.button')}</button>
                   </div>
                 </div>
               </div>
@@ -178,9 +176,9 @@ export const createObstructionsScreen: TerminalScreenFactory = (ctx: TerminalScr
         map.innerHTML = buildSvg(grid);
       }
       const sum = a.summary();
-      setText('blocked', sum.coverage > 0 ? trObstructions('obstructions.stat.value', { value: pct(sum.obstructionFraction) }) : '-');
-      setText('seen', trObstructions('obstructions.stat.value', { value: pct(sum.coverage) }));
-      setText('empty', sum.coverage > 0 ? '' : trObstructions('obstructions.empty'));
+      setText('blocked', sum.coverage > 0 ? tr('obstructions.stat.value', { value: pct(sum.obstructionFraction) }) : '-');
+      setText('seen', tr('obstructions.stat.value', { value: pct(sum.coverage) }));
+      setText('empty', sum.coverage > 0 ? '' : tr('obstructions.empty'));
       syncCheck(a);
     },
     dispose() {

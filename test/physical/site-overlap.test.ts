@@ -3,7 +3,16 @@
  * units, as the UI draws them) and the site views' hotspots.
  */
 
-import { CLOSEUPS, FORWARD_CLOSEUPS, FORWARD_HOTSPOTS, FORWARD_ROUTER_EUROSAT, FORWARD_SITE_ASPECT, SITE_ASPECT, SITE_HOTSPOTS } from '@app/campaigns/frontline/site-hotspots';
+import {
+  CLOSEUPS,
+  FORWARD_CABLE_EUROSAT,
+  FORWARD_CLOSEUPS,
+  FORWARD_HOTSPOTS,
+  FORWARD_ROUTER_EUROSAT,
+  FORWARD_SITE_ASPECT,
+  SITE_ASPECT,
+  SITE_HOTSPOTS,
+} from '@app/campaigns/frontline/site-hotspots';
 import { VIEW_W, viewHeight } from '@app/physical/ui/plant-svg';
 import type { SiteShape } from '@app/physical/ui/site-types';
 import { describe, expect, it } from 'vitest';
@@ -155,7 +164,7 @@ describe('selection boxes do not overlap', () => {
 
 describe('forward selection boxes do not overlap (FW2)', () => {
   /** The FW2 close-ups (router variants and cable); the FS1 power box, battery and generator ones keep nested body regions */
-  const defs = [FORWARD_CLOSEUPS.router!, FORWARD_ROUTER_EUROSAT, FORWARD_CLOSEUPS['skylink-cable']!];
+  const defs = [FORWARD_CLOSEUPS.router!, FORWARD_ROUTER_EUROSAT, FORWARD_CLOSEUPS['skylink-cable']!, FORWARD_CABLE_EUROSAT];
 
   it('forward hotspots never overlap, with every EuroSat part present', () => {
     const bad: string[] = [];

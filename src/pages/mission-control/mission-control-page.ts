@@ -24,7 +24,6 @@ import { MissionLoadingScreen } from '@app/pages/mission-loading-screen';
 import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import { PartCloseupModal } from '@app/physical/ui/part-closeup-modal';
 import { PlantTrainerBox } from '@app/physical/ui/plant-trainer-box';
-import { SkylinkAppBox } from '@app/physical/ui/skylink-app-box';
 import { missionOpening } from '@app/presentation/mission-opening';
 import { SceneModal } from '@app/presentation/scene-modal';
 import { NavigationOptions, Router } from '@app/router';
@@ -400,7 +399,6 @@ export class MissionControlPage extends BasePage {
     HardwareFaultManager.destroy();
     PhysicalPlantService.destroy();
     PartCloseupModal.destroy();
-    SkylinkAppBox.destroy();
     PlantTrainerBox.destroy();
     LinkBudgetManager.destroy();
     CommandingManager.destroy();

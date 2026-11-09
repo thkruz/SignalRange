@@ -3,9 +3,9 @@
  * @description Reads `view.data.stats` (the dish-side record, kept across reboots, D15). Charts are
  * small inline SVG with no dependencies. Colours are fixed for the app's dark theme.
  */
-import { formatAge } from '../strings';
+import { formatAge, tr } from '../strings';
 import { STATS_WINDOWS, type StatsPoint, type StatsSeries, type StatsWindowId, type TerminalView } from '../terminal-app-model';
-import { ts } from './stats-strings';
+
 import { escapeHtml, type TerminalScreen, type TerminalScreenFactory } from './terminal-screen';
 
 const WINDOW_IDS = Object.keys(STATS_WINDOWS) as StatsWindowId[];
@@ -68,15 +68,15 @@ const hasData = (points: StatsPoint[]): boolean => points.some((p) => p.downMbps
 
 function outageRows(series: StatsSeries, nowS: number): string {
   if (series.outages.length === 0) {
-    return `<tr><td colspan="3" class="text-secondary">${ts('stats.outages.none')}</td></tr>`;
+    return `<tr><td colspan="3" class="text-secondary">${tr('stats.outages.none')}</td></tr>`;
   }
 
   return [...series.outages]
     .sort((a, b) => b.startS - a.startS)
     .map((o) => {
-      const dur = o.ongoing ? `${formatAge(o.durationS)} (${ts('stats.outages.ongoing')})` : formatAge(o.durationS);
+      const dur = o.ongoing ? `${formatAge(o.durationS)} (${tr('stats.outages.ongoing')})` : formatAge(o.durationS);
 
-      return `<tr data-outage><td>${ts('stats.outages.ago', { age: formatAge(Math.max(0, nowS - o.startS)) })}</td><td>${dur}</td><td>${escapeHtml(o.causeLabel)}</td></tr>`;
+      return `<tr data-outage><td>${tr('stats.outages.ago', { age: formatAge(Math.max(0, nowS - o.startS)) })}</td><td>${dur}</td><td>${escapeHtml(o.causeLabel)}</td></tr>`;
     })
     .join('');
 }
@@ -106,12 +106,12 @@ export const createStatisticsScreen: TerminalScreenFactory = (): TerminalScreen 
       b.classList.toggle('active', on);
       b.setAttribute('aria-pressed', String(on));
     }
-    setHtml('#stats-stale', view.stale ? ts('stats.stale') : '');
+    setHtml('#stats-stale', view.stale ? tr('stats.stale') : '');
     const series = d.stats[windowId];
     const pts = series.points;
     const empty = !hasData(pts);
-    setHtml('#stats-empty', empty ? ts('stats.noData') : '');
-    const mbps = (v: number): string => ts('stats.unitMbps', { value: Math.round(v) });
+    setHtml('#stats-empty', empty ? tr('stats.noData') : '');
+    const mbps = (v: number): string => tr('stats.unitMbps', { value: Math.round(v) });
     setHtml(
       '#stats-throughput',
       empty
@@ -125,9 +125,9 @@ export const createStatisticsScreen: TerminalScreenFactory = (): TerminalScreen 
             mbps
           )
     );
-    setHtml('#stats-latency', empty ? '' : chartSvg([{ color: '#ffd43b', values: pts.map((p) => p.latencyMs) }], 100, (v) => ts('stats.unitMs', { value: Math.round(v) })));
-    setHtml('#stats-drop', empty ? '' : chartSvg([{ color: '#ff8787', values: pts.map((p) => p.pingDropPct) }], 5, (v) => ts('stats.unitPct', { value: Math.round(v) })));
-    setHtml('#stats-axis', `<span>${ts('stats.axisStart', { age: formatAge(series.windowS) })}</span><span>${ts('stats.axisEnd')}</span>`);
+    setHtml('#stats-latency', empty ? '' : chartSvg([{ color: '#ffd43b', values: pts.map((p) => p.latencyMs) }], 100, (v) => tr('stats.unitMs', { value: Math.round(v) })));
+    setHtml('#stats-drop', empty ? '' : chartSvg([{ color: '#ff8787', values: pts.map((p) => p.pingDropPct) }], 5, (v) => tr('stats.unitPct', { value: Math.round(v) })));
+    setHtml('#stats-axis', `<span>${tr('stats.axisStart', { age: formatAge(series.windowS) })}</span><span>${tr('stats.axisEnd')}</span>`);
     setHtml('#stats-outage-rows', outageRows(series, d.sampleTimeS));
   }
 
@@ -147,23 +147,23 @@ export const createStatisticsScreen: TerminalScreenFactory = (): TerminalScreen 
     mount(container) {
       root = container;
       const buttons = WINDOW_IDS.map(
-        (id) => `<button type="button" class="btn btn-sm btn-outline-secondary" data-window="${id}" aria-pressed="false">${ts(`stats.window.${id}`)}</button>`
+        (id) => `<button type="button" class="btn btn-sm btn-outline-secondary" data-window="${id}" aria-pressed="false">${tr(`stats.window.${id}`)}</button>`
       ).join('');
       container.innerHTML = `
         <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-          <div class="btn-group" role="group" aria-label="${ts('stats.window.label')}">${buttons}</div>
+          <div class="btn-group" role="group" aria-label="${tr('stats.window.label')}">${buttons}</div>
           <span class="text-secondary small" id="stats-stale"></span>
         </div>
         <div class="text-secondary mb-2" id="stats-empty"></div>
         <div class="row g-3 mb-2">
-          ${card(ts('stats.throughput'), 'stats-throughput', `<span class="ms-auto small"><span style="color:#4dabf7">${ts('stats.download')}</span> <span style="color:#69db7c">${ts('stats.upload')}</span></span>`)}
-          ${card(ts('stats.latency'), 'stats-latency')}
-          ${card(ts('stats.pingDrop'), 'stats-drop')}
+          ${card(tr('stats.throughput'), 'stats-throughput', `<span class="ms-auto small"><span style="color:#4dabf7">${tr('stats.download')}</span> <span style="color:#69db7c">${tr('stats.upload')}</span></span>`)}
+          ${card(tr('stats.latency'), 'stats-latency')}
+          ${card(tr('stats.pingDrop'), 'stats-drop')}
         </div>
         <div class="d-flex justify-content-between small text-secondary mb-3" id="stats-axis"></div>
-        <div class="card"><div class="card-header"><h3 class="card-title">${ts('stats.outages')}</h3></div>
+        <div class="card"><div class="card-header"><h3 class="card-title">${tr('stats.outages.title')}</h3></div>
           <div class="table-responsive"><table class="table table-vcenter card-table"><thead><tr>
-            <th>${ts('stats.outages.start')}</th><th>${ts('stats.outages.duration')}</th><th>${ts('stats.outages.cause')}</th>
+            <th>${tr('stats.outages.start')}</th><th>${tr('stats.outages.duration')}</th><th>${tr('stats.outages.cause')}</th>
           </tr></thead><tbody id="stats-outage-rows"></tbody></table></div></div>`;
       container.addEventListener('click', onClick);
     },

@@ -18,6 +18,235 @@
     "noStations": "This scenario has no ground stations to configure."
   },
   "plugins": {},
+  "skylink": {
+    "shell": {
+      "title": "SkyLink",
+      "nav": {
+        "label": "SkyLink menu"
+      },
+      "noRouter": {
+        "title": "Cannot connect",
+        "body": "The app cannot connect. Check that the router is on and that your laptop is connected to it."
+      },
+      "unreachable": {
+        "title": "Can't reach your SkyLink",
+        "body": "You see the last data it sent."
+      },
+      "updatedAgo": "Last updated {{age}} ago",
+      "updatedNow": "Last updated just now",
+      "noData": "No data yet."
+    },
+    "nav": {
+      "home": "Home",
+      "obstructions": "Obstructions",
+      "statistics": "Statistics",
+      "speed-test": "Speed test",
+      "settings": "Settings",
+      "advanced": "Advanced"
+    },
+    "confirm": {
+      "cancel": "Cancel"
+    },
+    "home": {
+      "status": "Status",
+      "alerts": "Alerts",
+      "noAlerts": "No active alerts.",
+      "download": "Download",
+      "upload": "Upload",
+      "latency": "Latency",
+      "uptime": "Uptime",
+      "unitMbps": "{{value}} Mbps",
+      "unitMs": "{{value}} ms",
+      "noValue": "-"
+    },
+    "settings": {
+      "title": "Settings",
+      "reboot": {
+        "title": "Restart",
+        "body": "Restart your SkyLink. It has no service while it starts. This can take several minutes.",
+        "button": "Restart SkyLink",
+        "confirm": "Restart your SkyLink now? You will lose service until it has started again.",
+        "confirmButton": "Restart",
+        "done": "Restart started."
+      },
+      "snow": {
+        "title": "Snow melt",
+        "body": "The heater melts snow on the dish. It uses extra power.",
+        "automatic": "Automatic",
+        "automaticHint": "Heat only when snow is on the dish.",
+        "preheat": "Pre-heat",
+        "preheatHint": "Also heat when it is cold.",
+        "off": "Off",
+        "offHint": "Never heat.",
+        "saved": "Snow melt saved."
+      },
+      "sleep": {
+        "title": "Power save",
+        "body": "Your SkyLink sleeps between these times. It has no service while it sleeps.",
+        "enable": "Use a sleep schedule",
+        "start": "Sleep from",
+        "end": "Wake at",
+        "save": "Save schedule",
+        "confirm": "Save this sleep schedule? Your SkyLink will have no service between {{start}} and {{end}}.",
+        "confirmOff": "Turn off the sleep schedule?",
+        "confirmButton": "Save",
+        "saved": "Sleep schedule saved.",
+        "invalid": "Choose a start time and an end time.",
+        "current": "Now: {{value}}",
+        "currentOff": "Now: off"
+      },
+      "wifi": {
+        "title": "Wi-Fi",
+        "body": "The name and password of your router Wi-Fi.",
+        "name": "Network name",
+        "password": "Password",
+        "save": "Save Wi-Fi",
+        "saved": "Wi-Fi saved.",
+        "invalid": "Enter a name and a password of at least 8 characters."
+      },
+      "offline": "Settings are not available while the SkyLink cannot be reached."
+    },
+    "stats": {
+      "window": {
+        "label": "Time range",
+        "15m": "15 minutes",
+        "6h": "6 hours",
+        "12h": "12 hours"
+      },
+      "throughput": "Throughput",
+      "download": "Download",
+      "upload": "Upload",
+      "latency": "Latency",
+      "pingDrop": "Ping drop",
+      "unitMbps": "{{value}} Mbps",
+      "unitMs": "{{value}} ms",
+      "unitPct": "{{value}}%",
+      "noData": "No data in this time range yet.",
+      "axisStart": "{{age}} ago",
+      "axisEnd": "Now",
+      "outages": {
+        "title": "Outages",
+        "none": "No outages in this time range.",
+        "start": "Started",
+        "duration": "Duration",
+        "cause": "Cause",
+        "ago": "{{age}} ago",
+        "ongoing": "Ongoing"
+      },
+      "stale": "Showing the last data your SkyLink sent."
+    },
+    "speed": {
+      "title": "Speed test",
+      "body": "Measures the speed between your SkyLink and the internet. The test takes about {{seconds}} seconds.",
+      "start": "Start speed test",
+      "running": "Testing...",
+      "disabled": "The speed test is not available. Your SkyLink cannot be reached.",
+      "unavailable": "The speed test is not available on this connection.",
+      "result": "Last result",
+      "download": "Download",
+      "upload": "Upload",
+      "latency": "Latency",
+      "unitMbps": "{{value}} Mbps",
+      "unitMs": "{{value}} ms",
+      "limit": {
+        "title": "Limited by",
+        "skylink": "SkyLink",
+        "local-network": "Local network"
+      },
+      "failed": "The test did not finish. Check your connection and try again.",
+      "noResult": "No test has been run yet.",
+      "history": "Earlier tests",
+      "ago": "{{age}} ago"
+    },
+    "obstructions": {
+      "title": "Obstructions",
+      "intro": "The map shows the sky your SkyLink can see. It fills in over time as the SkyLink follows satellites.",
+      "unavailable": "This SkyLink does not make a sky map.",
+      "offline": "You see the last data the SkyLink sent.",
+      "mapLabel": "Sky map. North is at the top.",
+      "legend": {
+        "served": "Clear sky",
+        "blocked": "Blocked sky",
+        "unseen": "Not seen yet"
+      },
+      "north": "N",
+      "east": "E",
+      "south": "S",
+      "west": "W",
+      "stat": {
+        "blocked": "Blocked",
+        "seen": "Sky seen",
+        "value": "{{value}}%"
+      },
+      "empty": "The map is empty. It needs time to fill.",
+      "check": {
+        "button": "Check for obstructions",
+        "running": "Checking. The map needs about {{minutes}} min of time to fill. Let time run. {{left}} min left.",
+        "done": "Check finished. {{blocked}}% of the sky seen is blocked. {{seen}}% of the sky has been seen.",
+        "doneNone": "Check finished. The SkyLink could not see the sky during this time.",
+        "stop": "Stop check"
+      },
+      "reset": {
+        "button": "Reset map",
+        "confirm": "Delete the sky map? The SkyLink starts a new map.",
+        "label": "Reset"
+      },
+      "cell": "Azimuth {{az}} to {{az2}} degrees, elevation {{el}} to {{el2}} degrees: {{state}}"
+    },
+    "advanced": {
+      "title": "Advanced",
+      "intro": "Debug data for support. These values are read only.",
+      "offline": "You see the last data the SkyLink sent.",
+      "noData": "No data yet.",
+      "field": {
+        "softwareVersion": "Software version",
+        "uptime": "Uptime",
+        "bootCount": "Boot count",
+        "location": "Location",
+        "gnssSatellites": "GNSS satellites",
+        "alerts": "Active alerts",
+        "tilt": "Tilt / boresight",
+        "obstruction": "Obstruction"
+      },
+      "value": {
+        "locationValid": "Valid",
+        "locationNotValid": "Not valid",
+        "noAlerts": "None",
+        "notAvailable": "Not available",
+        "degrees": "{{value}} degrees",
+        "percent": "{{value}} percent"
+      },
+      "copy": {
+        "button": "Copy debug data",
+        "done": "Debug data copied.",
+        "failed": "Copy is not available here.",
+        "header": "SkyLink debug data"
+      }
+    },
+    "label": {
+      "cause": {
+        "obstructed": "Obstructed",
+        "searching": "Searching",
+        "booting": "Booting",
+        "thermal-shutdown": "Thermal shutdown",
+        "offline": "Offline"
+      },
+      "alert": {
+        "obstructed": "Obstructed",
+        "thermal-throttle": "Thermal throttle",
+        "thermal-shutdown": "Thermal shutdown",
+        "heating": "Heating"
+      },
+      "hero": {
+        "online": "Online",
+        "searching": "Searching",
+        "booting": "Booting",
+        "offline": "Offline",
+        "sleeping": "Sleeping"
+      },
+      "network": "Network unavailable"
+    }
+  },
   "devMenu": {
     "pluginsSection": "Plugins",
     "noPlugins": "No plugins installed.",

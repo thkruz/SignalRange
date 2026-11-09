@@ -89,6 +89,32 @@ describe('terminal app verbs (E2)', () => {
     expect(plant.getLoadW('skylink-dish')).toBe(base);
   });
 
+  it('a source that sags under the heater draw reads heating, then obstructed after the grace window, and the snow stays', () => {
+    // A small generator carries the dish and router, but not the heater on top of them
+    const { plant, advance } = make({
+      parts: [
+        { id: 'generator', kind: 'generator', ratedW: 155, fuelL: 5, nominalV: 230 },
+        { id: 'skylink-router', kind: 'router', poweredBy: 'generator', loadW: 15 },
+        { id: 'skylink-dish', kind: 'terminal', poweredBy: 'skylink-router', viaCable: 'skylink-cable', loadW: 60 },
+      ],
+    });
+    advance(5);
+    expect(plant.skylinkStatus()).toBe('online');
+    plant.injectFault({ id: 'snow', target: 'skylink-dish', kind: 'snow' });
+    advance(2);
+    // The heater is on and still inside the grace window
+    expect(plant.skylinkStatus()).toBe('heating');
+    advance(30);
+    expect(plant.skylinkStatus()).toBe('heating');
+    advance(60);
+    // Starved: the grace is over, the dish reads obstructed and the heater drew its power in vain
+    expect(plant.skylinkStatus()).toBe('obstructed');
+    // Normal snowfall melts within 240 s on adequate power; well past that the snow is still there
+    advance(600);
+    expect(plant.getFaults()).toHaveLength(1);
+    expect(plant.skylinkStatus()).toBe('obstructed');
+  });
+
   it('automatic snow melt heats a normal snowfall off the dish', () => {
     const { plant, advance } = make();
     plant.injectFault({ id: 'snow', target: 'skylink-dish', kind: 'snow' });

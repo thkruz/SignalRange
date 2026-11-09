@@ -176,19 +176,6 @@ export function escapeHtml(text: string): string {
   return text.replace(/&/gu, '&amp;').replace(/</gu, '&lt;').replace(/>/gu, '&gt;').replace(/"/gu, '&quot;');
 }
 
-export const SKYLINK_STATUS_TEXT: Record<SkylinkStatus, string> = {
-  booting: 'Booting',
-  online: 'Online',
-  obstructed: 'Obstructed',
-  searching: 'Searching',
-  heating: 'Heating (snow melt)',
-  'thermal-throttle': 'Thermal throttle',
-  'thermal-shutdown': 'Thermal shutdown',
-  sleeping: 'Sleeping',
-  'no-location': 'Searching',
-  'no-power': 'No power',
-};
-
 /** Fault kinds with the target type each applies to */
 export const FAULT_KINDS: Array<{ kind: PlantFaultKind; target: PlantTargetType; label: string; partKinds?: string[]; cableMeters?: boolean }> = [
   { kind: 'partial-seat', target: 'connector', label: 'Partially seated connector' },

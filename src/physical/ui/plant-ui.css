@@ -163,13 +163,6 @@
 .pp-box .pp-event-log { max-height: 9rem; overflow-y: auto; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; border: 1px solid var(--mc-border); padding: 0.3rem; background: var(--mc-surface-1); }
 .pp-box .pp-fault-row { display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; padding: 0.15rem 0; border-bottom: 1px solid rgba(255, 255, 255, 0.06); font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; }
 
-.pp-skylink { min-width: 280px; }
-.pp-skylink .pp-skylink-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem; }
-.pp-skylink .pp-skylink-ring { width: 3.2rem; height: 3.2rem; border-radius: 50%; border: 3px solid var(--mc-text-muted); display: grid; place-items: center; font-size: 1.2rem; }
-.pp-skylink .pp-skylink-ring.pp-pip-ok { border-color: #22c55e; }
-.pp-skylink .pp-skylink-ring.pp-pip-warn { border-color: #eab308; }
-.pp-skylink .pp-skylink-ring.pp-pip-bad { border-color: #ef3b2d; }
-
 .pp-trainer { min-width: 380px; }
 .pp-trainer .pp-grid { display: grid; grid-template-columns: 6.5rem 1fr; gap: 0.3rem 0.5rem; align-items: center; }
 .pp-trainer .pp-spares { display: grid; grid-template-columns: 1fr 4rem; gap: 0.2rem 0.5rem; align-items: center; }

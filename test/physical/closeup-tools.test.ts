@@ -30,7 +30,6 @@ import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import { SWAP_COSTS_S, VERB_COSTS_S } from '@app/physical/plant-verb-rules';
 import { PartCloseupModal } from '@app/physical/ui/part-closeup-modal';
 import { plantUiState } from '@app/physical/ui/plant-ui-helpers';
-import { SkylinkAppBox } from '@app/physical/ui/skylink-app-box';
 import { ScenarioManager } from '@app/scenario-manager';
 import { Rng } from '@app/simulation/rng';
 import { SimClock } from '@app/simulation/sim-clock';
@@ -48,7 +47,6 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
-  SkylinkAppBox.destroy();
   PartCloseupModal.destroy();
   PhysicalPlantService.destroy();
   EventBus.destroy();
@@ -95,7 +93,6 @@ describe('close-up selection and actions', () => {
 
   it('the laptop offers no measure actions', () => {
     PartCloseupModal.getInstance().showCloseup('laptop');
-    vi.spyOn(SkylinkAppBox.getInstance(), 'show').mockImplementation(() => undefined);
     click(document.querySelector('[data-target="laptop"]')!);
     expect(measures()).toEqual([]);
   });

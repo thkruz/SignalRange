@@ -1,7 +1,9 @@
+import enBundle from '@app/locales/en.json';
 import { describe, expect, it } from 'vitest';
 import type { SkylinkStatus } from '../../../src/physical/physical-plant-types';
+import { tr } from '../../../src/plugins-builtin/terminal-app/strings';
 import { TerminalAppModel, type TerminalPhasedArraySlice, type TerminalServiceReader } from '../../../src/plugins-builtin/terminal-app/terminal-app-model';
-import { CAUSE_LABEL_TEXT, OUTAGE_LABEL_KEY, type OutageObservation } from '../../../src/plugins-builtin/terminal-app/terminal-labels';
+import { causeLabelText, OUTAGE_LABEL_KEY, type OutageObservation } from '../../../src/plugins-builtin/terminal-app/terminal-labels';
 import { TerminalLink, type TerminalLinkReader } from '../../../src/plugins-builtin/terminal-app/terminal-link';
 import { bootAcquisitionSeconds, SKYLINK_SKIN, type TerminalSkin } from '../../../src/plugins-builtin/terminal-app/terminal-skin';
 
@@ -238,14 +240,34 @@ describe('cause labels', () => {
   it('every observation maps to a defined label, and the table never names a true cause', () => {
     const all: OutageObservation[] = Object.keys(OUTAGE_LABEL_KEY) as OutageObservation[];
     for (const o of all) {
-      expect(CAUSE_LABEL_TEXT[OUTAGE_LABEL_KEY[o]]).toBeTruthy();
+      expect(causeLabelText(OUTAGE_LABEL_KEY[o])).toBeTruthy();
     }
     expect(OUTAGE_LABEL_KEY['power-loss']).toBe(OUTAGE_LABEL_KEY.booting);
     expect(OUTAGE_LABEL_KEY['no-location']).toBe(OUTAGE_LABEL_KEY.handover);
-    const texts = Object.values(CAUSE_LABEL_TEXT).join(' ').toLowerCase();
+    const texts = (Object.keys(OUTAGE_LABEL_KEY) as OutageObservation[])
+      .map((o) => causeLabelText(OUTAGE_LABEL_KEY[o]))
+      .join(' ')
+      .toLowerCase();
     for (const forbidden of ['cable', 'power', 'gnss', 'interference', 'snow']) {
       expect(texts).not.toContain(forbidden);
     }
+  });
+
+  it('the app string table never names a true cause (D5) and every placeholder is filled', () => {
+    const strings: string[] = [];
+    const walk = (node: unknown): void => {
+      if (typeof node === 'string') {
+        strings.push(node);
+      } else if (node && typeof node === 'object') {
+        Object.values(node).forEach(walk);
+      }
+    };
+    walk(enBundle.skylink);
+    expect(strings.length).toBeGreaterThan(150);
+    for (const text of strings) {
+      expect(text.toLowerCase()).not.toMatch(/jam|interfer|spoof|cable cut|sabotage/u);
+    }
+    expect(tr('shell.updatedAgo', { age: '5 min' })).toBe('Last updated 5 min ago');
   });
 });
 

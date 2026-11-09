@@ -12,10 +12,12 @@ import { closeupImageFor } from '@app/campaigns/frontline/site-layers';
 import { DraggableModal } from '@app/engine/ui/draggable-modal';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { STATION_TAB_PREFIX } from '@app/pages/mission-control/antenna-page-registry';
 import type { PhysicalPlantManager } from '@app/physical/physical-plant-manager';
 import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import type { PlantWeather } from '@app/physical/physical-plant-types';
 import { DISRUPTIVE_ACTIONS, SWAP_COSTS_S, VERB_COSTS_S } from '@app/physical/plant-verb-rules';
+import { SKYLINK_TAB_ID } from '@app/plugins-builtin/terminal-app/skylink-dashboard';
 import { getAssetUrl } from '@app/utils/asset-url';
 import { activeLayers, evidenceCallouts } from './closeup-evidence';
 import { pointAlong, shapeCentre, shapeSvg, svgOpen, VIEW_W, viewHeight } from './plant-svg';
@@ -36,7 +38,6 @@ import {
 } from './plant-ui-helpers';
 import type { CloseupDef, CloseupId } from './site-types';
 import './plant-ui.css';
-import { SkylinkAppBox } from './skylink-app-box';
 
 interface LogLine {
   t: string;
@@ -320,7 +321,7 @@ export class PartCloseupModal extends DraggableModal {
     this.selectedKey_ = hit.dataset.sel ?? target;
     this.selectedLabel_ = (hit.dataset.label ?? '').split(': internet')[0];
     if (hit.dataset.opensApp === '1') {
-      SkylinkAppBox.getInstance().show();
+      EventBus.getInstance().emit(Events.SWITCH_TAB, { tabId: `${STATION_TAB_PREFIX}${SKYLINK_TAB_ID}` });
     }
     this.render_();
   }

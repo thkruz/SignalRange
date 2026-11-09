@@ -66,6 +66,17 @@ export class WorkloadRunner implements WorkloadReader {
     return [...this.cards_.values()];
   }
 
+  /** Add a card that is not there yet (a consumer app's own job, such as a speed test). Returns the card in use. */
+  ensureCard(card: RequirementCard): RequirementCard {
+    const existing = this.cards_.get(card.id);
+    if (existing) {
+      return existing;
+    }
+    this.cards_.set(card.id, { ...card });
+
+    return card;
+  }
+
   /** Replace a card's requirement. The version goes up by one; runs of older versions stop counting. */
   reviseCard(patch: Partial<RequirementCard> & { id: string }): RequirementCard | null {
     const current = this.cards_.get(patch.id);

@@ -130,8 +130,10 @@ export interface PlantReader {
   /** True when the part has no modes, or its current mode serves traffic */
   modeServesTraffic(partId: string): boolean;
   isStarting(partId: string): boolean;
+  /** True while a terminal searches for a satellite after its boot (optional for fakes) */
+  isSearching?(partId: string): boolean;
   getPartState(partId: string): { powered: boolean; rebooting: boolean } | null;
-  isFaultActive(target: string, kind: 'snow' | 'net' | 'moisture'): boolean;
+  isFaultActive(target: string, kind: 'snow' | 'net' | 'moisture' | 'gnss-denied'): boolean;
   /** Optional: logged plant actions, so effective fixes and mode changes bump the config epoch */
   onAction?(listener: (entry: { verb: string; effective?: boolean; downtimeSeconds: number }) => void): () => void;
 }

@@ -500,11 +500,17 @@ export class ServiceModel {
     if (this.plant_.isStarting(id)) {
       return down('terminal-starting');
     }
+    if (this.plant_.isSearching?.(id)) {
+      return down('terminal-searching');
+    }
     if (!this.plant_.modeServesTraffic(id)) {
       return down('mode-standby');
     }
     if (this.plant_.isFaultActive(id, 'snow') || this.plant_.isFaultActive(id, 'net')) {
       return down('obstructed');
+    }
+    if (this.plant_.isFaultActive(id, 'gnss-denied')) {
+      return down('no-location');
     }
     if (this.plant_.isLinkDropped(id)) {
       return down('link-dropped');

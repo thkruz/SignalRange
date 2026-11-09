@@ -92,7 +92,8 @@ describe('observation table coverage', () => {
     }
   });
 
-  for (const def of FAULT_KINDS) {
+  // gnss-denied has no physical finding: it shows only in the terminal app debug data
+  for (const def of FAULT_KINDS.filter((k) => k.kind !== 'gnss-denied')) {
     it(`${def.kind}: each valid target has a finding verb with text, filled and free of cause words`, () => {
       const targets = validTargets(makePlant().plant, def.kind as PlantFaultKind);
       expect(targets.length).toBeGreaterThan(0);

@@ -64,6 +64,8 @@ describe('terminal app verbs (E2)', () => {
     expect(plant.skylinkStatus()).toBe('booting');
     expect(r.downtimeSeconds).toBeGreaterThanOrEqual(90);
     advance(95);
+    expect(plant.skylinkStatus()).toBe('searching');
+    advance(210);
     expect(plant.skylinkStatus()).toBe('online');
     expect(plant.getLog().at(-1)?.verb).toBe('reboot');
   });

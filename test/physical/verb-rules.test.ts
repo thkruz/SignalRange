@@ -170,7 +170,8 @@ describe('every trainer fault kind can still be found and fixed', () => {
   /** Cleared by the model itself (recharge by a running generator) or not fixable on site */
   const NO_FIX_VERB: PlantFaultKind[] = ['battery-depleted', 'generator-noise'];
 
-  for (const def of FAULT_KINDS) {
+  // gnss-denied has no physical finding or on-site fix (it shows only in the terminal app debug data)
+  for (const def of FAULT_KINDS.filter((k) => k.kind !== 'gnss-denied')) {
     it(`${def.kind}: every valid target has an applicable verb that finds it and one that fixes it`, () => {
       const plant = makePlant();
       const targets = validTargets(plant, def.kind);

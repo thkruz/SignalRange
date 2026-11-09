@@ -208,6 +208,7 @@ export const FAULT_KINDS: Array<{ kind: PlantFaultKind; target: PlantTargetType;
   { kind: 'brick-dead', target: 'part', label: 'Dead power brick', partKinds: ['router', 'modem', 'terminal', 'dish', 'client'] },
   { kind: 'snow', target: 'part', label: 'Snow on dish', partKinds: ['terminal', 'dish'] },
   { kind: 'net', target: 'part', label: 'Camouflage net over dish', partKinds: ['terminal', 'dish'] },
+  { kind: 'gnss-denied', target: 'part', label: 'GNSS denied (no position fix)', partKinds: ['terminal', 'dish'] },
 ];
 
 /** Valid targets for a fault kind in this plant */

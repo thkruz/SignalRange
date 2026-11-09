@@ -60,7 +60,8 @@ function repair(svc: PhysicalPlantService): void {
 function verifyRun(svc: PhysicalPlantService): string {
   // The reserve window starts when the gate is first evaluated; the engine evaluates every tick
   incomplete(svc, 's08-verify-outcome');
-  tick(120);
+  // The repair restarts the terminal: boot plus satellite search takes up to 300 s
+  tick(330);
   incomplete(svc, 's08-verify-outcome');
   const start = svc.workloads?.start('ola-assess', 'skylink');
   expect(start?.ok).toBe(true);

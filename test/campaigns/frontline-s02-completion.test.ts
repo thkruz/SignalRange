@@ -83,8 +83,8 @@ function acts(svc: PhysicalPlantService): Record<string, () => void> {
     },
     's2-verify-service-reserve': () => {
       incomplete(svc, 's2-verify-service-reserve');
-      // The terminal reboots after the supply drops; a run started during the boot is unsupported
-      tick(90);
+      // The terminal reboots after the supply drops, then searches for a satellite (up to 300 s in all); a run started before that is unsupported
+      tick(300);
       const start = svc.workloads?.start('ola-voice', 'skylink');
       expect(start?.ok).toBe(true);
       const fin = svc.workloads?.waitForRun(start?.ok ? start.run.id : '');

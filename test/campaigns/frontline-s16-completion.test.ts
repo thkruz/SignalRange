@@ -99,7 +99,7 @@ function acts(svc: PhysicalPlantService): Record<string, () => void> {
       inspectSeat(svc);
       svc.plant.reseat(SEAT);
       // The terminal restarts after the supply returns
-      tick(150);
+      tick(360);
       svc.plant.inspect('power-station');
       const runId = run(svc, FIRST, SKY);
       svc.services?.takeSample(SKY, 'application', 'endpoint-report');

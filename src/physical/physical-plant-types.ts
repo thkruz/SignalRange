@@ -140,7 +140,7 @@ export const DEFAULT_PLANT_SPARES: Readonly<PlantSpares> = Object.freeze({
  * Fault kinds. Each applies to one target type:
  * - connector: partial-seat, loose-nut, unseated, corrosion, moisture, bent-pin
  * - cable: cable-nick, cable-pinch, cable-crush, cable-water (atMeters = where)
- * - part: generator-sag, generator-noise, out-of-fuel, brick-dead, battery-depleted, snow, net
+ * - part: generator-sag, generator-noise, out-of-fuel, brick-dead, battery-depleted, snow, net, gnss-denied (terminal only; interim for ootk #58)
  */
 export type PlantFaultKind =
   | 'partial-seat'
@@ -159,7 +159,8 @@ export type PlantFaultKind =
   | 'brick-dead'
   | 'battery-depleted'
   | 'snow'
-  | 'net';
+  | 'net'
+  | 'gnss-denied';
 
 /** A comparison like '>8': the trigger holds while the reading is above the number */
 export type PlantThreshold = `>${number}`;
@@ -398,6 +399,8 @@ export interface PlantState {
   spares: PlantSpares;
   trainerSpares: PlantSpares | null;
   rebootUntilS: Record<string, number>;
+  /** Terminal id -> scenario second its post-boot satellite search ends (optional in older checkpoints) */
+  searchUntilS?: Record<string, number>;
   /** Generator id -> scenario second its startup ends (optional in older checkpoints) */
   startingUntilS?: Record<string, number>;
   /** Condition window key -> scenario second it opened (optional in older checkpoints) */

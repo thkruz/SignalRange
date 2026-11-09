@@ -185,7 +185,7 @@ describe('M26 S13 completion', () => {
     driveObjectives(data, svc, states, acts(svc), { stopAfter: 's13-review-provider-evidence' });
     svc.plant.powerCycle('skylink-dish');
     svc.plant.powerCycle('skylink-router');
-    tick(120);
+    tick(330);
     svc.services?.setAccount({ id: FORWARD_SKYLINK_ACCOUNT, restriction: undefined, capacityFactor: 1 });
     svc.services?.setProvider({ id: FORWARD_EUROSAT_PROVIDER, status: 'normal' });
     // A ground-route change: the same task on the EuroSat route has a different remote leg, the remote one is untouched

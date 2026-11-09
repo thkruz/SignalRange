@@ -65,6 +65,8 @@ const DROP_LOSS_DB = 40;
 const DEFAULT_TRIP_LIMIT = 3;
 const THERMAL_HEATING_C = 45;
 const THERMAL_SHUTDOWN_C = 55;
+/** Boot plus satellite acquisition of a terminal, seconds (D13; same range as `SKYLINK_SKIN.bootAcquisitionS`) */
+export const TERMINAL_ACQUIRE_S = { minS: 120, maxS: 300 } as const;
 const DEFAULT_BOOT_S: Record<string, number> = { terminal: 90, router: 30, modem: 45 };
 
 /** Plant default for snow melt is off so authored snow faults keep obstructing; the app or a scenario turns it on. Extra watts while the heater runs. */
@@ -137,6 +139,8 @@ const FUEL_CAN_L = 5;
 /** Below this the tank counts as empty for a refuel */
 const REFUEL_NEEDED_BELOW_L = 0.5;
 /** Default tank size (L) and the fill fraction above which a refuel is refused for free */
+/** GNSS satellites a terminal with a clear view reports */
+const GNSS_SATELLITES_NOMINAL = 12;
 const DEFAULT_TANK_L = 7;
 const TANK_FULL_FRACTION = 0.8;
 
@@ -207,6 +211,8 @@ export class PhysicalPlantManager {
   private spares_: PlantSpares = {};
   private trainerSpares_: PlantSpares | null = null;
   private rebootUntilS_ = new Map<string, number>();
+  /** Terminal part id -> second its post-boot satellite search ends (D13); service is down until then */
+  private searchUntilS_ = new Map<string, number>();
   private terminalSettings_: TerminalSettings = { snowMelt: 'off', sleep: null, wifi: { ...DEFAULT_WIFI } };
   /** Generator id -> scenario second its startup ends (output absent until then) */
   private startingUntilS_ = new Map<string, number>();
@@ -252,6 +258,7 @@ export class PhysicalPlantManager {
     this.revealedFacts_ = new Set();
     this.trainerSpares_ = null;
     this.rebootUntilS_ = new Map();
+    this.searchUntilS_ = new Map();
     this.terminalSettings_ = { snowMelt: 'off', sleep: null, wifi: { ...DEFAULT_WIFI } };
     this.startingUntilS_ = new Map();
     this.partModes_ = new Map();
@@ -371,12 +378,17 @@ export class PhysicalPlantManager {
     if (this.isSleeping()) {
       return 'sleeping';
     }
-    // TODO(phase-40 WP6/E5): 'no-location' once the gnss-denied fault flag exists
+    // E5 (interim for ootk #58): a denied GNSS fix leaves the dish without a location
+    if (this.hasActiveFault_(terminal.id, ['gnss-denied'])) {
+      return 'no-location';
+    }
     if (this.isSnowMelting()) {
       return 'heating';
     }
-    // TODO(phase-40 E4): 'searching' after boot until the first beam lock; until then the terminal-app
-    // model derives it from the phased-array read model (inOutage)
+    // D13: after the boot the dish searches for a satellite; no service until the search ends
+    if (this.isSearching(terminal.id)) {
+      return 'searching';
+    }
     if (this.hasActiveFault_(terminal.id, ['snow', 'net'])) {
       return 'obstructed';
     }
@@ -386,6 +398,30 @@ export class PhysicalPlantManager {
     }
 
     return 'online';
+  }
+
+  /** GNSS state the terminal reports (E5). Denied: no valid location and no satellites. */
+  getGnssState(): { locationValid: boolean; satellites: number } {
+    const terminal = this.terminalPart_();
+    if (terminal && this.hasActiveFault_(terminal.id, ['gnss-denied'])) {
+      return { locationValid: false, satellites: 0 };
+    }
+
+    return { locationValid: true, satellites: GNSS_SATELLITES_NOMINAL };
+  }
+
+  /**
+   * What blocks the dish's view of the sky now (E4 input): snow covers the whole sky (unless the heater
+   * is melting it); each effective net fault is a partial block, a tree line, by fault id.
+   */
+  obstructionBlockage(): { wholeSky: boolean; partialIds: string[] } {
+    const terminal = this.terminalPart_();
+    if (!terminal) {
+      return { wholeSky: false, partialIds: [] };
+    }
+    const partialIds = this.faults_.filter((rt) => rt.fault.target === terminal.id && rt.fault.kind === 'net' && this.isEffective_(rt)).map((rt) => rt.fault.id);
+
+    return { wholeSky: this.hasActiveFault_(terminal.id, ['snow']) && !this.isSnowMelting(), partialIds };
   }
 
   /** The terminal part (first of kind 'terminal'), or null */
@@ -1329,7 +1365,9 @@ export class PhysicalPlantManager {
   startBoot(partId: string): void {
     const boot = this.bootSeconds_(partId);
     if (boot > 0 && this.parts_.has(partId)) {
+      // Authored scenario boot: timed by the scenario, so no post-boot search is added
       this.rebootUntilS_.set(partId, this.deps_.now() + boot);
+      this.searchUntilS_.delete(partId);
     }
   }
 
@@ -1368,6 +1406,7 @@ export class PhysicalPlantManager {
         spares: this.spares_,
         trainerSpares: this.trainerSpares_,
         rebootUntilS: Object.fromEntries(this.rebootUntilS_),
+        searchUntilS: Object.fromEntries(this.searchUntilS_),
         startingUntilS: Object.fromEntries(this.startingUntilS_),
         partModes: Object.fromEntries(this.partModes_),
         windows: Object.fromEntries(this.windows_),
@@ -1397,6 +1436,7 @@ export class PhysicalPlantManager {
     this.spares_ = copy.spares;
     this.trainerSpares_ = copy.trainerSpares;
     this.rebootUntilS_ = new Map(Object.entries(copy.rebootUntilS));
+    this.searchUntilS_ = new Map(Object.entries(copy.searchUntilS ?? {}));
     this.terminalSettings_ = copy.terminalSettings
       ? { snowMelt: copy.terminalSettings.snowMelt, sleep: copy.terminalSettings.sleep, wifi: copy.terminalSettings.wifi }
       : { snowMelt: 'off', sleep: null, wifi: { ...DEFAULT_WIFI } };
@@ -1619,7 +1659,7 @@ export class PhysicalPlantManager {
       let longestBoot = 0;
       for (const id of dependants) {
         longestBoot = Math.max(longestBoot, this.bootSeconds_(id));
-        this.rebootUntilS_.set(id, this.deps_.now() + costSeconds + this.bootSeconds_(id));
+        this.setBootEnd_(id, this.deps_.now() + costSeconds + this.bootSeconds_(id));
       }
       downtimeSeconds = costSeconds + longestBoot;
     }
@@ -2092,6 +2132,30 @@ export class PhysicalPlantManager {
     return this.deps_.now() < (this.rebootUntilS_.get(partId) ?? 0);
   }
 
+  /** True while the terminal is in its post-boot satellite search (booted, powered, no service yet) */
+  isSearching(partId: string): boolean {
+    return !this.isRebooting_(partId) && this.deps_.now() < (this.searchUntilS_.get(partId) ?? 0);
+  }
+
+  /**
+   * Record the end of a boot. A terminal then searches for a satellite until the total of boot plus
+   * acquisition reaches a seeded draw inside `TERMINAL_ACQUIRE_S` (D13; mirrors `SKYLINK_SKIN.bootAcquisitionS`).
+   */
+  private setBootEnd_(partId: string, untilS: number): void {
+    this.rebootUntilS_.set(partId, untilS);
+    if (this.parts_.get(partId)?.kind !== 'terminal') {
+      return;
+    }
+    const { minS, maxS } = TERMINAL_ACQUIRE_S;
+    const totalS = minS + this.deps_.rng('plant:acquire').next() * (maxS - minS);
+    const searchS = Math.max(0, totalS - this.bootSeconds_(partId));
+    if (searchS > 0) {
+      this.searchUntilS_.set(partId, untilS + searchS);
+    } else {
+      this.searchUntilS_.delete(partId);
+    }
+  }
+
   private bootSeconds_(partId: string): number {
     const part = this.parts_.get(partId);
 
@@ -2310,7 +2374,7 @@ export class PhysicalPlantManager {
         this.supplied_.set(id, ok);
         const boot = this.bootSeconds_(id);
         if (!was && ok && boot > 0) {
-          this.rebootUntilS_.set(id, this.deps_.now() + boot);
+          this.setBootEnd_(id, this.deps_.now() + boot);
           started = true;
         }
       }

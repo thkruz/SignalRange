@@ -239,6 +239,8 @@ describe('power faults', () => {
     advance(30);
     expect(['no-power', 'booting']).toContain(plant.skylinkStatus());
     advance(200);
+    expect(plant.skylinkStatus()).toBe('searching');
+    advance(150);
     expect(plant.skylinkStatus()).toBe('online');
     expect(plant.isPartPowered('skylink-dish')).toBe(true);
     expect(plant.measure('multimeter', 'skylink-router').observation).not.toContain('expected');
@@ -252,6 +254,8 @@ describe('power faults', () => {
 
     expect(plant.skylinkStatus()).toBe('booting');
     advance(120);
+    expect(plant.skylinkStatus()).toBe('searching');
+    advance(200);
     expect(plant.skylinkStatus()).toBe('online');
   });
 

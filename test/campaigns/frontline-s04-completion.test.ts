@@ -146,7 +146,8 @@ describe('M21 S4 completion', () => {
     tick(60);
     svc.services?.takeSample('skylink', 'registration', 'local-probe');
     expect(incomplete(svc, 's4-observe-recovery')).toEqual(['Registration came back without another restart']);
-    tick(60);
+    // Boot plus satellite search takes up to 300 s in all
+    tick(240);
     svc.services?.takeSample('skylink', 'registration', 'local-probe');
     expect(incomplete(svc, 's4-observe-recovery')).toEqual([]);
   });

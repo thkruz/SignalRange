@@ -1,0 +1,31 @@
+/*
+ * SkyPlot palette. Everything resolves from Mission Control --mc-* tokens; the sky-specific
+ * tokens (--mc-sky-*) have no global definition yet, so they carry a fallback colour.
+ */
+.sky-plot {
+  --sky-bg: var(--mc-equip-bg, #1a1a1a);
+  --sky-grid: var(--mc-equip-border, #333333);
+  --sky-horizon: var(--mc-equip-control, #555555);
+  --sky-label: var(--mc-equip-text-muted, #888888);
+  --sky-known: var(--mc-sky-known, #4da3ff);
+  --sky-dim: var(--mc-text-muted, #6b6b6b);
+  --sky-target: var(--mc-sky-target, #3ddc84);
+  --sky-candidate: var(--mc-sky-candidate, #3ddc84);
+  --sky-pinned: var(--mc-accent-red-bright, #ff2827);
+  --sky-beam: var(--mc-accent-red-bright, #ff2827);
+  --sky-mask: var(--mc-surface-0, #1f1f1f);
+  --sky-zone: var(--mc-sky-zone, #e0a030);
+  display: block;
+  position: relative;
+  width: 100%;
+}
+
+.sky-plot-canvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border: 1px solid var(--mc-equip-border-light, #444444);
+  border-radius: 4px;
+  background: var(--sky-bg);
+  touch-action: none;
+}

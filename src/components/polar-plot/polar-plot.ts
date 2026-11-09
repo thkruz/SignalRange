@@ -1,6 +1,7 @@
 import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
 import { Degrees } from 'ootk';
+import { drawPolarGrid, drawPolarLabels } from './polar-grid';
 import './polar-plot.css';
 
 export interface PolarPlotConfig {
@@ -85,95 +86,14 @@ export class PolarPlot {
     ctx.fillRect(0, 0, width, height);
 
     if (this.config.showGrid) {
-      this.drawGrid_(ctx, centerX, centerY, radius);
+      drawPolarGrid(ctx, centerX, centerY, radius);
     }
 
     if (this.config.showLabels) {
-      this.drawLabels_(ctx, centerX, centerY, radius);
+      drawPolarLabels(ctx, centerX, centerY, radius);
     }
 
     this.drawAntennaPosition_(ctx, centerX, centerY, radius);
-  }
-
-  /**
-   * Draw the polar grid (elevation circles and azimuth radials)
-   */
-  private drawGrid_(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, radius: number): void {
-    ctx.strokeStyle = '#333';
-    ctx.lineWidth = 1;
-
-    // Draw elevation circles (0°, 30°, 60°, 90°)
-    const elevationSteps = [90, 75, 60, 45, 30, 15, 0]; // From center to edge
-    for (const el of elevationSteps) {
-      const r = radius * (1 - el / 90);
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, r, 0, 2 * Math.PI);
-      ctx.stroke();
-    }
-
-    // Draw azimuth radials (every 30°)
-    for (let az = 0; az < 360; az += 30) {
-      const angleRad = ((az - 90) * Math.PI) / 180; // Offset by 90° to make 0° point up
-      const x = centerX + radius * Math.cos(angleRad);
-      const y = centerY + radius * Math.sin(angleRad);
-
-      ctx.beginPath();
-      ctx.moveTo(centerX, centerY);
-      ctx.lineTo(x, y);
-      ctx.stroke();
-    }
-
-    // Draw outer circle (horizon)
-    ctx.strokeStyle = '#555';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-    ctx.stroke();
-  }
-
-  /**
-   * Draw azimuth and elevation labels
-   */
-  private drawLabels_(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, radius: number): void {
-    ctx.fillStyle = '#888';
-    ctx.textAlign = 'center';
-
-    // Draw azimuth labels (N, E, S, W)
-    const labels = [
-      { text: 'N', az: 0 },
-      { text: 'E', az: 90 },
-      { text: 'S', az: 180 },
-      { text: 'W', az: 270 },
-    ];
-
-    for (const label of labels) {
-      const angleRad = ((label.az - 90) * Math.PI) / 180;
-      const labelRadius = radius + 12;
-      const x = centerX + labelRadius * Math.cos(angleRad);
-      const y = centerY + labelRadius * Math.sin(angleRad);
-      ctx.fillText(label.text, x, y);
-    }
-
-    // Draw elevation labels
-    ctx.textAlign = 'left';
-    const elevationLabels = [
-      { text: '90°', el: 90 },
-      { text: '75°', el: 75 },
-      { text: '60°', el: 60 },
-      { text: '45°', el: 45 },
-      { text: '30°', el: 30 },
-      { text: '15°', el: 15 },
-      { text: '0°', el: 0 },
-    ];
-
-    // Draw elevation labels up and to the right at a 30 degree angle
-    const angleRad = ((60 - 90) * Math.PI) / 180; // 30° azimuth, offset by 90°
-    for (const label of elevationLabels) {
-      const r = radius * (1 - label.el / 90);
-      const x = centerX + r * Math.cos(angleRad) + 5;
-      const y = centerY + r * Math.sin(angleRad);
-      ctx.fillText(label.text, x, y);
-    }
   }
 
   /**

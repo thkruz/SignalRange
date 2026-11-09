@@ -33,7 +33,20 @@ export interface EvidenceEntry {
   symptoms?: string[];
   /** Diagram selections (M17): the node ids the player marked on a path diagram */
   selection?: string[];
+  /** Where the player saw or did this when it came through the terminal app (phase 40 D7) */
+  provenance?: 'terminal-app';
+  /** Terminal app screen id (app view and app action entries) */
+  screen?: string;
+  /** Kinds of the plant faults injected when an action or app entry was written (wrong-cause rules read this) */
+  faultKinds?: string[];
 }
+
+/** Subject prefix of every terminal app entry: `skylink-app:<screen>` */
+export const APP_SUBJECT_PREFIX = 'skylink-app:';
+/** Verb of an app view entry */
+export const APP_VIEW_VERB = 'app-view';
+/** An unchanged view of one screen is recorded again only after this many sim seconds */
+export const APP_VIEW_DEDUPE_S = 60;
 
 export interface HypothesisEntry extends EvidenceEntry {
   kind: 'hypothesis';
@@ -145,6 +158,68 @@ export class EvidenceLog {
     return this.entries_.filter((e) => e.selection !== undefined && (diagramId === undefined || e.subject === diagramId));
   }
 
+  /**
+   * Phase 40 D7: the player opened a terminal app screen. One observation entry naming the screen
+   * and what it showed. Dedupe: the same screen with the same `text` is recorded once per
+   * `APP_VIEW_DEDUPE_S` sim seconds; a changed view is recorded at once. Returns null when deduped.
+   */
+  recordAppView(screen: string, text: string, facts: string[] = []): EvidenceEntry | null {
+    const now = this.plant_.getTimeSeconds();
+    for (let i = this.entries_.length - 1; i >= 0; i--) {
+      const e = this.entries_[i];
+      if (e.verb === APP_VIEW_VERB && e.screen === screen) {
+        if (e.text === text && now - e.tS < APP_VIEW_DEDUPE_S) {
+          return null;
+        }
+        break;
+      }
+    }
+    this.refreshFaults_();
+    const entry: EvidenceEntry = {
+      id: this.nextId_(),
+      kind: 'observation',
+      tS: now,
+      subject: `${APP_SUBJECT_PREFIX}${screen}`,
+      source: {},
+      facts,
+      text,
+      verb: APP_VIEW_VERB,
+      provenance: 'terminal-app',
+      screen,
+      faultKinds: this.faultKinds_(),
+      symptoms: this.symptoms(),
+    };
+    this.push_(entry);
+
+    return entry;
+  }
+
+  /**
+   * Phase 40 D7: an app action the plant does not already log (speed test, obstruction check, stop,
+   * reset, Wi-Fi change). Reboot, snow melt and sleep are plant verbs and arrive through the plant
+   * action log, so they are not recorded here. Never `effective`, so the fix scoring ignores it.
+   */
+  recordAppAction(screen: string, verb: string, text: string): EvidenceEntry {
+    this.refreshFaults_();
+    const entry: EvidenceEntry = {
+      id: this.nextId_(),
+      kind: 'action',
+      tS: this.plant_.getTimeSeconds(),
+      subject: `${APP_SUBJECT_PREFIX}${screen}`,
+      source: {},
+      facts: [],
+      text,
+      verb,
+      provenance: 'terminal-app',
+      screen,
+      faultKinds: this.faultKinds_(),
+      symptoms: this.symptoms(),
+    };
+    this.push_(entry);
+
+    return entry;
+  }
+
   /** Stamp an anchored event (called for every event the service model reports) */
   recordEvent(eventId: string, text = `Event ${eventId}`): EvidenceEntry {
     this.refreshFaults_();
@@ -226,6 +301,10 @@ export class EvidenceLog {
     this.entries_.push(deepFreeze(entry));
   }
 
+  private faultKinds_(): string[] {
+    return [...new Set(this.plant_.getFaults().map((f) => f.kind))];
+  }
+
   /** Remember fault id to target so revealed and cleared ids resolve after the fault is gone */
   private refreshFaults_(): void {
     for (const f of this.plant_.getFaults()) this.faultTargets_.set(f.id, f.target);
@@ -266,6 +345,7 @@ export class EvidenceLog {
       revealedTargets,
       clearedTargets,
       symptoms: this.symptoms(),
+      faultKinds: this.faultKinds_(),
     };
     if (isTest) {
       entry.positive = log.revealed.length > 0 || facts.length > 0;

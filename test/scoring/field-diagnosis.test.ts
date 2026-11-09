@@ -17,6 +17,8 @@ function summary(over: Partial<DiagnosticSummary> = {}): DiagnosticSummary {
     supportedFixes: 1,
     unsupportedFixes: 0,
     unsupportedSpares: 0,
+    wrongCauseActions: 0,
+    wrongCauseRuleIds: [],
     firstCorrectActionS: 90,
     timeToCauseS: 65,
     trips: 0,

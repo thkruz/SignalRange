@@ -215,6 +215,8 @@ export interface PlantConfig {
   /** Scenario spares; when set they win over the trainer override and the defaults */
   spares?: PlantSpares;
   faults?: PlantFault[];
+  /** Terminal snow melt mode at start and after a reset (default 'automatic'); `off` for scenarios that need snow to obstruct */
+  snowMelt?: SnowMeltMode;
   /**
    * Which plant part feeds each engine device's powered state. Defaults:
    * antenna 'vsat-dish', lnb 'vsat-dish', modem 'vsat-modem'. Model the LNB as
@@ -245,6 +247,8 @@ export interface PlantConfig {
   workloads?: WorkloadConfig;
   /** Path-diagram options (M24). `highlightShared: false` hides the shared-dependency highlight so the player finds them. */
   diagram?: { highlightShared?: boolean };
+  /** Terminal app actions that count as acting on a wrong cause (phase 40 D7). Absent = none. */
+  wrongCauseActions?: AppWrongCauseRule[];
   /** Authored hypothesis causes (M21). When set the notebook cause is a select of these ids; free text is never graded. Absent = free text. */
   causeOptions?: Array<{ id: string; label: string }>;
   /** Handover forms the player can submit (Campaign 6, M13). Absent = no records. */
@@ -386,10 +390,26 @@ export interface PlantFaultSnapshot {
   dropUntilS: number;
 }
 
+/**
+ * A scenario's declaration that an app action is acting on a wrong cause (phase 40 D7).
+ * It matches an action evidence entry when its verb is in 'verbs' (plant verbs 'reboot', 'setSnowMelt',
+ * 'setSleep', or app verbs 'app-speed-test', 'app-obstruction-check', 'app-obstruction-stop',
+ * 'app-obstruction-reset', 'app-wifi') and any of 'faultKinds' was an injected plant fault at that time.
+ */
+export interface AppWrongCauseRule {
+  id: string;
+  verbs: string[];
+  faultKinds: PlantFaultKind[];
+  /** Debrief wording, e.g. 'Rebooting does not bring back a GNSS fix' */
+  note: string;
+}
+
 /** JSON-safe checkpoint of the manager (times are absolute scenario seconds) */
 export interface PlantState {
   /** App settings of the terminal and router (optional in older checkpoints) */
   terminalSettings?: TerminalSettings;
+  /** Transmit-time intervals [startS, endS] and the last accrual time (E6; optional in older checkpoints) */
+  transmit?: { intervals: Array<[number, number]>; baseS: number; lastS: number | null };
   faults: PlantFaultSnapshot[];
   sealed: string[];
   /** Fault ids that existed and were removed (fix, recharge or trainer) */

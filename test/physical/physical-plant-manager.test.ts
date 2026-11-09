@@ -107,7 +107,9 @@ describe('connector faults', () => {
     const reseat = plant.reseat('skylink-cable:dish');
     expect(reseat.cleared).toEqual(['seat']);
     expect(reseat.costSeconds).toBe(60);
-    expect(reseat.downtimeSeconds).toBe(60 + 90);
+    // Downtime covers the press, the boot and the seeded post-boot satellite search (D13)
+    expect(reseat.downtimeSeconds).toBeGreaterThanOrEqual(60 + 90);
+    expect(reseat.downtimeSeconds).toBeLessThanOrEqual(300 + 60);
     expect(plant.getFaults()).toHaveLength(0);
 
     advance(200);
@@ -301,6 +303,8 @@ describe('power faults', () => {
 describe('dish status', () => {
   it('snow and netting obstruct the dish until cleared', () => {
     const { plant } = makePlant();
+    // D17: snow melt is automatic by default, so snow reads heating; off keeps it obstructed
+    plant.setSnowMelt('off');
     plant.injectFault(fault({ id: 'snow', target: 'skylink-dish', kind: 'snow' }));
     expect(plant.skylinkStatus()).toBe('obstructed');
     expect(plant.clearSnow('skylink-dish').cleared).toEqual(['snow']);

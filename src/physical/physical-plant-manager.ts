@@ -69,7 +69,7 @@ const THERMAL_SHUTDOWN_C = 55;
 export const TERMINAL_ACQUIRE_S = { minS: 120, maxS: 300 } as const;
 const DEFAULT_BOOT_S: Record<string, number> = { terminal: 90, router: 30, modem: 45 };
 
-/** Plant default for snow melt is off so authored snow faults keep obstructing; the app or a scenario turns it on. Extra watts while the heater runs. */
+/** Extra watts while the snow-melt heater runs (D17: snow melt defaults to automatic; `PlantConfig.snowMelt` overrides) */
 const SNOW_MELT_W = 120;
 /** Terminal draw while asleep on its power-save schedule */
 const SLEEP_W = 5;
@@ -77,6 +77,12 @@ const SLEEP_W = 5;
 const MELT_WINDOW_S: Record<SnowMeltMode, number> = { automatic: 600, preheat: 1800, off: 0 };
 /** Pre-heat turns the heater on at or below this ambient temperature */
 const PREHEAT_BELOW_C = 2;
+/** Heater run time (seconds, times fault severity) that melts snow off the dish when power holds */
+const MELT_TIME_S = 240;
+/** Below this supply voltage ratio the heater is starved: it cannot melt the snow */
+const HEATER_MIN_RATIO = 0.9;
+/** A starved heater still reads 'heating' this long before the dish reads 'obstructed' */
+const STARVED_GRACE_S = 60;
 const MELT_WINDOW_KEY = 'skylink-snow-melt';
 const SECONDS_PER_DAY = 86400;
 const DEFAULT_WIFI: RouterWifi = { ssid: 'SKYLINK-5G', password: 'changeme1' };
@@ -213,7 +219,7 @@ export class PhysicalPlantManager {
   private rebootUntilS_ = new Map<string, number>();
   /** Terminal part id -> second its post-boot satellite search ends (D13); service is down until then */
   private searchUntilS_ = new Map<string, number>();
-  private terminalSettings_: TerminalSettings = { snowMelt: 'off', sleep: null, wifi: { ...DEFAULT_WIFI } };
+  private terminalSettings_: TerminalSettings;
   /** Generator id -> scenario second its startup ends (output absent until then) */
   private startingUntilS_ = new Map<string, number>();
   /** Part id -> current mode id, for non-generator parts with `modes` */
@@ -233,6 +239,8 @@ export class PhysicalPlantManager {
   private spotted_ = false;
   private sparesUsed_: string[] = [];
   private downtimeS_ = 0;
+  /** E6 (D10): sim intervals [startS, endS] the SkyLink terminal was transmitting; never shown in the app */
+  private transmit_: { intervals: Array<[number, number]>; baseS: number; lastS: number | null } = { intervals: [], baseS: 0, lastS: null };
   private startS_: number;
   private firstCorrectS_: number | null = null;
   private accS_ = 0;
@@ -247,7 +255,13 @@ export class PhysicalPlantManager {
     this.tripLimit_ = config.tripLimit ?? DEFAULT_TRIP_LIMIT;
     this.engineMap = { ...DEFAULT_ENGINE_MAP, ...config.engineMap };
     this.startS_ = deps.now();
+    this.terminalSettings_ = this.defaultTerminalSettings_();
     this.buildFromConfig_();
+  }
+
+  /** D17: snow melt starts automatic, as on real terminals; a scenario sets `PlantConfig.snowMelt` to override */
+  private defaultTerminalSettings_(): TerminalSettings {
+    return { snowMelt: this.config_.snowMelt ?? 'automatic', sleep: null, wifi: { ...DEFAULT_WIFI } };
   }
 
   /** Trainer reset: back to the authored plant (faults, spares, trips, log, supplies) at the current time */
@@ -259,7 +273,7 @@ export class PhysicalPlantManager {
     this.trainerSpares_ = null;
     this.rebootUntilS_ = new Map();
     this.searchUntilS_ = new Map();
-    this.terminalSettings_ = { snowMelt: 'off', sleep: null, wifi: { ...DEFAULT_WIFI } };
+    this.terminalSettings_ = this.defaultTerminalSettings_();
     this.startingUntilS_ = new Map();
     this.partModes_ = new Map();
     this.running_ = new Map();
@@ -273,6 +287,7 @@ export class PhysicalPlantManager {
     this.spotted_ = false;
     this.sparesUsed_ = [];
     this.downtimeS_ = 0;
+    this.transmit_ = { intervals: [], baseS: 0, lastS: null };
     this.startS_ = this.deps_.now();
     this.firstCorrectS_ = null;
     this.accS_ = 0;
@@ -458,7 +473,34 @@ export class PhysicalPlantManager {
   isSnowMelting(): boolean {
     const terminal = this.terminalPart_();
 
-    return !!terminal && this.isHeaterOn_() && this.hasActiveFault_(terminal.id, ['snow']);
+    if (!terminal || !this.isHeaterOn_() || !this.hasActiveFault_(terminal.id, ['snow'])) {
+      return false;
+    }
+    const since = this.windows_.get(MELT_WINDOW_KEY);
+
+    return !this.isHeaterStarved_(terminal.id) || (since !== undefined && this.deps_.now() - since < STARVED_GRACE_S);
+  }
+
+  /** True when the power source cannot supply the heater draw (voltage sagging under it) */
+  private isHeaterStarved_(terminalId: string): boolean {
+    const supply = this.solved_.get(terminalId);
+
+    return !!supply && supply.ok && supply.ratio < HEATER_MIN_RATIO;
+  }
+
+  /** Melts the snow once the heater has run long enough on adequate power (heavier snow takes longer, may outlast the window) */
+  private meltSnow_(): void {
+    const terminal = this.terminalPart_();
+    const since = this.windows_.get(MELT_WINDOW_KEY);
+    if (!terminal || since === undefined || !this.isHeaterOn_() || this.isHeaterStarved_(terminal.id)) {
+      return;
+    }
+    const snow = this.faults_.filter((rt) => rt.fault.kind === 'snow' && rt.fault.target === terminal.id && this.exists_(rt));
+    const needS = MELT_TIME_S * Math.max(0, ...snow.map((rt) => rt.fault.severity ?? 1));
+    if (snow.length > 0 && this.deps_.now() - since >= needS) {
+      this.removeFaults_((rt) => snow.includes(rt));
+      this.holdWindow(MELT_WINDOW_KEY, false);
+    }
   }
 
   /** True while the heater draws power: a snowed dish (or cold, when pre-heating) inside the heater window */
@@ -1053,6 +1095,48 @@ export class PhysicalPlantManager {
     }
   }
 
+  /**
+   * E6 (D10): seconds the SkyLink terminal was transmitting inside [fromS, toS] (absolute sim seconds,
+   * default: the whole run). Transmitting = powered, booted, not sleeping, not in thermal shutdown, and
+   * its status is online, searching, obstructed, heating or thermal-throttle (it has service or is
+   * looking for it). Not transmitting: no-power, thermal-shutdown, booting, sleeping, no-location.
+   * Time between plant steps (clock skips) is credited to the status seen at the next step.
+   */
+  getTransmitSeconds(fromS = Number.NEGATIVE_INFINITY, toS = Number.POSITIVE_INFINITY): number {
+    let total = fromS === Number.NEGATIVE_INFINITY && toS === Number.POSITIVE_INFINITY ? this.transmit_.baseS : 0;
+    for (const [a, b] of this.transmit_.intervals) {
+      total += Math.max(0, Math.min(b, toS) - Math.max(a, fromS));
+    }
+
+    return total;
+  }
+
+  /** True while the terminal is transmitting now (E6 definition above) */
+  isTransmitting(): boolean {
+    const status = this.skylinkStatus();
+
+    return status === 'online' || status === 'searching' || status === 'obstructed' || status === 'heating' || status === 'thermal-throttle';
+  }
+
+  private accrueTransmit_(now: number): void {
+    const t = this.transmit_;
+    const last = t.lastS ?? now - 1;
+    t.lastS = now;
+    if (now <= last || !this.config_.parts.some((p) => p.kind === 'terminal') || !this.isTransmitting()) {
+      return;
+    }
+    const tail = t.intervals[t.intervals.length - 1];
+    if (tail && tail[1] >= last) {
+      tail[1] = now;
+    } else {
+      t.intervals.push([last, now]);
+    }
+    if (t.intervals.length > 2000) {
+      const [a, b] = t.intervals.shift() as [number, number];
+      t.baseS += b - a;
+    }
+  }
+
   getReport(): PlantReport {
     return {
       firstCorrectActionS: this.firstCorrectS_ === null ? null : this.firstCorrectS_ - this.startS_,
@@ -1419,6 +1503,7 @@ export class PhysicalPlantManager {
         spotted: this.spotted_,
         sparesUsed: this.sparesUsed_,
         downtimeS: this.downtimeS_,
+        transmit: this.transmit_,
         startS: this.startS_,
         firstCorrectS: this.firstCorrectS_,
         accS: this.accS_,
@@ -1439,7 +1524,7 @@ export class PhysicalPlantManager {
     this.searchUntilS_ = new Map(Object.entries(copy.searchUntilS ?? {}));
     this.terminalSettings_ = copy.terminalSettings
       ? { snowMelt: copy.terminalSettings.snowMelt, sleep: copy.terminalSettings.sleep, wifi: copy.terminalSettings.wifi }
-      : { snowMelt: 'off', sleep: null, wifi: { ...DEFAULT_WIFI } };
+      : this.defaultTerminalSettings_();
     this.startingUntilS_ = new Map(Object.entries(copy.startingUntilS ?? {}));
     for (const [id, modeId] of Object.entries(copy.partModes ?? {})) {
       if (this.parts_.get(id)?.modes?.some((m) => m.id === modeId)) {
@@ -1460,6 +1545,7 @@ export class PhysicalPlantManager {
     this.spotted_ = copy.spotted;
     this.sparesUsed_ = copy.sparesUsed;
     this.downtimeS_ = copy.downtimeS;
+    this.transmit_ = copy.transmit ? { intervals: copy.transmit.intervals, baseS: copy.transmit.baseS, lastS: copy.transmit.lastS } : { intervals: [], baseS: 0, lastS: null };
     this.startS_ = copy.startS;
     this.firstCorrectS_ = copy.firstCorrectS;
     this.accS_ = copy.accS;
@@ -1662,6 +1748,13 @@ export class PhysicalPlantManager {
         this.setBootEnd_(id, this.deps_.now() + costSeconds + this.bootSeconds_(id));
       }
       downtimeSeconds = costSeconds + longestBoot;
+      // D13: the outage runs on through the post-boot satellite search
+      for (const id of dependants) {
+        const searchEndS = this.searchUntilS_.get(id);
+        if (searchEndS !== undefined) {
+          downtimeSeconds = Math.max(downtimeSeconds, searchEndS - this.deps_.now());
+        }
+      }
     }
 
     this.deps_.skip(costSeconds);
@@ -2387,6 +2480,7 @@ export class PhysicalPlantManager {
   /** One second: roll intermittent faults, burn fuel and charge, re-solve */
   private step_(): void {
     const now = this.deps_.now();
+    this.accrueTransmit_(now);
     for (const rt of this.faults_) {
       if (!INTERMITTENT_KINDS.has(rt.fault.kind) || rt.dropUntilS > now || !this.exists_(rt)) {
         continue;
@@ -2401,6 +2495,7 @@ export class PhysicalPlantManager {
       }
     }
     this.trackMeltWindow_();
+    this.meltSnow_();
     this.drainResources_();
     this.solve_();
   }

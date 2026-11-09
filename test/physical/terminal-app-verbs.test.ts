@@ -17,31 +17,34 @@ function config(): PlantConfig {
   };
 }
 
-function make() {
+function make(overrides: Partial<PlantConfig> = {}) {
   let t = 100;
   const env: PlantEnvironment = { windMps: 0, rainMmH: 0, ambientC: 15 };
   const streams = new Map<string, RngStream>();
   const clock = { tod: 0 };
-  const plant: PhysicalPlantManager = new PhysicalPlantManager(config(), {
-    now: () => t,
-    skip: (s) => {
-      for (let i = 0; i < s; i++) {
-        t += 1;
-        plant.update(1);
-      }
-    },
-    env: () => env,
-    timeOfDayS: () => clock.tod + t,
-    rng: (name) => {
-      let s = streams.get(name);
-      if (!s) {
-        s = new RngStream(fnv1a(name));
-        streams.set(name, s);
-      }
+  const plant: PhysicalPlantManager = new PhysicalPlantManager(
+    { ...config(), ...overrides },
+    {
+      now: () => t,
+      skip: (s) => {
+        for (let i = 0; i < s; i++) {
+          t += 1;
+          plant.update(1);
+        }
+      },
+      env: () => env,
+      timeOfDayS: () => clock.tod + t,
+      rng: (name) => {
+        let s = streams.get(name);
+        if (!s) {
+          s = new RngStream(fnv1a(name));
+          streams.set(name, s);
+        }
 
-      return s;
-    },
-  });
+        return s;
+      },
+    }
+  );
   const advance = (s: number): void => {
     for (let i = 0; i < s; i++) {
       t += 1;
@@ -72,12 +75,12 @@ describe('terminal app verbs (E2)', () => {
 
   it('snow melt shows heating on a snowed dish, draws more power, and the heater gives up after its window', () => {
     const { plant, advance } = make();
-    plant.injectFault({ id: 'snow', target: 'skylink-dish', kind: 'snow' });
-    advance(2);
-    expect(plant.skylinkStatus()).toBe('obstructed');
+    // D17: the default is automatic
+    expect(plant.getTerminalSettings().snowMelt).toBe('automatic');
     const base = plant.getLoadW('skylink-dish');
-
-    expect(plant.setSnowMelt('automatic').costSeconds).toBe(5);
+    // Heavy snow (severity 4) outlasts the 600 s automatic window
+    plant.injectFault({ id: 'snow', target: 'skylink-dish', kind: 'snow', severity: 4 });
+    advance(2);
     expect(plant.skylinkStatus()).toBe('heating');
     expect(plant.getLoadW('skylink-dish')).toBeGreaterThan(base);
     expect(plant.forecast().servicesAvailable).toBeDefined();
@@ -86,10 +89,29 @@ describe('terminal app verbs (E2)', () => {
     expect(plant.getLoadW('skylink-dish')).toBe(base);
   });
 
+  it('automatic snow melt heats a normal snowfall off the dish', () => {
+    const { plant, advance } = make();
+    plant.injectFault({ id: 'snow', target: 'skylink-dish', kind: 'snow' });
+    advance(2);
+    expect(plant.skylinkStatus()).toBe('heating');
+    advance(300);
+    expect(plant.getFaults()).toHaveLength(0);
+    expect(plant.skylinkStatus()).not.toBe('obstructed');
+    expect(plant.skylinkStatus()).not.toBe('heating');
+  });
+
+  it('a scenario can set the snow melt mode in the plant config', () => {
+    const { plant, advance } = make({ snowMelt: 'off' });
+    expect(plant.getTerminalSettings().snowMelt).toBe('off');
+    plant.injectFault({ id: 'snow', target: 'skylink-dish', kind: 'snow' });
+    advance(2);
+    expect(plant.skylinkStatus()).toBe('obstructed');
+  });
+
   it('snow melt off never heats; pre-heat draws power in the cold without snow', () => {
     const { plant, env, advance } = make();
-    plant.injectFault({ id: 'snow', target: 'skylink-dish', kind: 'snow' });
     plant.setSnowMelt('off');
+    plant.injectFault({ id: 'snow', target: 'skylink-dish', kind: 'snow' });
     expect(plant.skylinkStatus()).toBe('obstructed');
     plant.clearSnow('skylink-dish');
     const base = plant.getLoadW('skylink-dish');

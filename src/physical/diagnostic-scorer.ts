@@ -6,6 +6,7 @@
 
 import type { DependencyGraph } from '@app/physical/dependency-graph';
 import { type EvidenceEntry, type EvidenceLog, TEST_VERBS } from '@app/physical/evidence-log';
+import type { AppWrongCauseRule } from '@app/physical/physical-plant-types';
 
 export interface TestAssessment {
   entryId: string;
@@ -22,6 +23,10 @@ export interface DiagnosticSummary {
   unsupportedFixes: number;
   /** Effective swaps without support: "lucky swaps" */
   unsupportedSpares: number;
+  /** Terminal app (or plant) actions that matched a scenario `wrongCauseActions` rule (phase 40 D7) */
+  wrongCauseActions: number;
+  /** Rule ids that matched, one per matching entry, in log order */
+  wrongCauseRuleIds: string[];
   firstCorrectActionS: number | null;
   timeToCauseS: number | null;
   trips: number;
@@ -87,7 +92,32 @@ function supportIndex(entries: readonly EvidenceEntry[], upTo: number, fix: Evid
   return -1;
 }
 
-export function scoreDiagnosis(log: EvidenceLog, plant: DiagnosticPlant, deps: DependencyGraph): DiagnosticSummary {
+/**
+ * Actions that match a wrong-cause rule: an action entry whose verb is in the rule's verbs while one of
+ * the rule's fault kinds was injected (stamped on the entry as `faultKinds`). Each entry counts once,
+ * under the first rule that matches it. Ineffective-or-not does not matter: the action was aimed at
+ * the wrong cause.
+ */
+export function matchWrongCauseActions(log: EvidenceLog, rules: readonly AppWrongCauseRule[] = []): Array<{ entryId: string; ruleId: string }> {
+  const out: Array<{ entryId: string; ruleId: string }> = [];
+  if (rules.length === 0) {
+    return out;
+  }
+  for (const e of log.entries('action')) {
+    if (e.verb === undefined) {
+      continue;
+    }
+    const kinds = e.faultKinds ?? [];
+    const rule = rules.find((r) => r.verbs.includes(e.verb as string) && r.faultKinds.some((k) => kinds.includes(k)));
+    if (rule) {
+      out.push({ entryId: e.id, ruleId: rule.id });
+    }
+  }
+
+  return out;
+}
+
+export function scoreDiagnosis(log: EvidenceLog, plant: DiagnosticPlant, deps: DependencyGraph, wrongCauseRules: readonly AppWrongCauseRule[] = []): DiagnosticSummary {
   const assessments = assessTests(log, deps);
   const entries = log.entries();
   let supportedFixes = 0;
@@ -108,6 +138,7 @@ export function scoreDiagnosis(log: EvidenceLog, plant: DiagnosticPlant, deps: D
     }
   });
   const report = plant.getReport();
+  const wrong = matchWrongCauseActions(log, wrongCauseRules);
 
   return {
     relevantTests: assessments.filter((a) => a.relevant).length,
@@ -116,6 +147,8 @@ export function scoreDiagnosis(log: EvidenceLog, plant: DiagnosticPlant, deps: D
     supportedFixes,
     unsupportedFixes,
     unsupportedSpares,
+    wrongCauseActions: wrong.length,
+    wrongCauseRuleIds: wrong.map((w) => w.ruleId),
     firstCorrectActionS: report.firstCorrectActionS,
     timeToCauseS,
     trips: report.trips,
@@ -166,6 +199,8 @@ export interface PercentEffectCaps {
   bonusPctCap: number;
   penaltyPctPerUnsupported: number;
   penaltyPctCap: number;
+  /** Percent per wrong-cause app action (default 5); shares the penalty cap */
+  penaltyPctPerWrongCause?: number;
 }
 
 export const DEFAULT_PERCENT_CAPS: Readonly<PercentEffectCaps> = Object.freeze({
@@ -173,6 +208,7 @@ export const DEFAULT_PERCENT_CAPS: Readonly<PercentEffectCaps> = Object.freeze({
   bonusPctCap: 10,
   penaltyPctPerUnsupported: 5,
   penaltyPctCap: 20,
+  penaltyPctPerWrongCause: 5,
 });
 
 export interface PercentScoreEffect {
@@ -187,7 +223,10 @@ export interface PercentScoreEffect {
 /** Convert a diagnostic summary to whole points as a capped percentage of the objectives' base points */
 export function diagnosticPercentEffect(summary: DiagnosticSummary, basePoints: number, caps: PercentEffectCaps = DEFAULT_PERCENT_CAPS): PercentScoreEffect {
   const bonusPct = Math.min(caps.bonusPctCap, Math.max(0, summary.usefulNegatives) * caps.bonusPctPerNegative);
-  const penaltyPct = Math.min(caps.penaltyPctCap, Math.max(0, summary.unsupportedFixes) * caps.penaltyPctPerUnsupported);
+  const penaltyPct = Math.min(
+    caps.penaltyPctCap,
+    Math.max(0, summary.unsupportedFixes) * caps.penaltyPctPerUnsupported + Math.max(0, summary.wrongCauseActions ?? 0) * (caps.penaltyPctPerWrongCause ?? 5)
+  );
   const base = Math.max(0, basePoints);
 
   return { bonusPct, penaltyPct, bonus: Math.floor((base * bonusPct) / 100), penalty: Math.floor((base * penaltyPct) / 100) };

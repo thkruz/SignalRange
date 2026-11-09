@@ -30,7 +30,7 @@ function minutes(seconds: number): string {
 }
 
 /** Pure: build the section text from a summary and the base points */
-export function describeFieldDiagnosis(summary: DiagnosticSummary, basePoints: number): FieldDiagnosis {
+export function describeFieldDiagnosis(summary: DiagnosticSummary, basePoints: number, wrongCauseNotes: readonly string[] = []): FieldDiagnosis {
   const effect = diagnosticPercentEffect(summary, basePoints);
   const lines: string[] = [
     summary.timeToCauseS === null ? 'Time to cause: the cause was not established with evidence.' : `Time to cause: ${minutes(summary.timeToCauseS)} from the start.`,
@@ -40,12 +40,18 @@ export function describeFieldDiagnosis(summary: DiagnosticSummary, basePoints: n
     `Fixes with earlier evidence: ${summary.supportedFixes}. Fixes without it: ${summary.unsupportedFixes}.`,
     `Trips outside: ${summary.trips}.`,
   ];
+  if (summary.wrongCauseActions > 0) {
+    lines.push(`Actions aimed at the wrong cause: ${summary.wrongCauseActions}${wrongCauseNotes.length > 0 ? ` (${wrongCauseNotes.join('; ')})` : ''}.`);
+  }
   const scoreNotes: string[] = [];
   if (summary.usefulNegatives > 0) {
     scoreNotes.push(`Bonus +${effect.bonus} points: ${effect.bonusPct}% of objective points (2% per credited negative test, capped at 10%).`);
   }
   if (summary.unsupportedFixes > 0) {
     scoreNotes.push(`Penalty -${effect.penalty} points: ${effect.penaltyPct}% of objective points (5% per fix without earlier evidence, capped at 20%).`);
+  }
+  if (summary.wrongCauseActions > 0) {
+    scoreNotes.push(`Wrong-cause actions count toward the same penalty: 5% of objective points each, within the 20% cap.`);
   }
   if (scoreNotes.length === 0) scoreNotes.push('Your diagnosis did not change the score.');
   scoreNotes.push(TRIP_RULE_TEXT);
@@ -66,7 +72,9 @@ export function buildFieldDiagnosis(source: DiagnosisSource, basePoints: number)
   if (!field?.evidence) return null;
   const config = source.config();
   if (!config) return null;
-  const summary = scoreDiagnosis(field.evidence, field.plant, new DependencyGraph(config));
+  const rules = config.wrongCauseActions ?? [];
+  const summary = scoreDiagnosis(field.evidence, field.plant, new DependencyGraph(config), rules);
+  const notes = [...new Set(summary.wrongCauseRuleIds.map((id) => rules.find((r) => r.id === id)?.note).filter((n): n is string => n !== undefined))];
 
-  return describeFieldDiagnosis(summary, basePoints);
+  return describeFieldDiagnosis(summary, basePoints, notes);
 }

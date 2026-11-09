@@ -560,3 +560,45 @@ export function diagramSelection(args: { include: string[]; exclude?: string[]; 
     args.afterEvent !== undefined
   );
 }
+
+/**
+ * E6 (phase 40 D10): the SkyLink terminal transmitted less than `maxSeconds` in the window
+ * [`fromS`, `toS`] (absolute sim seconds; default the whole run so far). The counter is never shown
+ * in the app. With `toS` the condition is false until the window has closed, so it reads as a
+ * pass/fail test ("stayed quiet through the sweep"); without `toS` it is true while under budget
+ * and false once exceeded, so pair it with `mustMaintain` on the objective for a hold.
+ */
+export function transmitTimeUnder(
+  args: { maxSeconds: number; fromS?: number; toS?: number },
+  description = `Terminal transmitted under ${Math.round(args.maxSeconds / 60)} min`
+): Condition {
+  return make(
+    `transmitTimeUnder:${args.maxSeconds}:${args.fromS ?? ''}:${args.toS ?? ''}`,
+    description,
+    () => {
+      const h = hooks();
+      if (!h) {
+        return false;
+      }
+      if (args.toS !== undefined && h.plant.getTimeSeconds() < args.toS) {
+        return false;
+      }
+
+      return h.plant.getTransmitSeconds(args.fromS, args.toS) < args.maxSeconds;
+    },
+    args.toS !== undefined
+  );
+}
+
+/** The terminal transmitted at least `minSeconds` in the window (for "kept the link up" tests) */
+export function transmitTimeAtLeast(
+  args: { minSeconds: number; fromS?: number; toS?: number },
+  description = `Terminal transmitted at least ${Math.round(args.minSeconds / 60)} min`
+): Condition {
+  return make(
+    `transmitTimeAtLeast:${args.minSeconds}:${args.fromS ?? ''}:${args.toS ?? ''}`,
+    description,
+    () => (hooks()?.plant.getTransmitSeconds(args.fromS, args.toS) ?? 0) >= args.minSeconds,
+    true
+  );
+}

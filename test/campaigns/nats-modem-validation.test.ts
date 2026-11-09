@@ -183,7 +183,11 @@ describe('C1 modem lessons (phase 19.5)', { timeout: 30_000 }, () => {
     const sat = (scenario21Data.settings.satellites as Satellite[]).find((s) => s.noradId === 61526)!;
     const { watch, fly, frontEnd } = chain(scenario21Data, 'ME-02', sat);
     fly(60_000);
-    const clean = watch(20_000);
+    // Read the clean-window numbers into primitives before the second watch(): on Node 24's V8 the
+    // first watch() result object can be clobbered with the second's values once the loop tiers up
+    // (clean.minMargin then read the jammed 1.09 dB), so nothing downstream may re-read that object.
+    const cleanWindow = watch(20_000);
+    const { minMargin: cleanMinMargin, meanMargin: cleanMeanMargin } = cleanWindow;
 
     // Radiate the scenario's jammer into the transponder as InterferenceManager does
     const event = (scenario21Data.settings as { interferenceEvents: Array<{ frequency: number; bandwidth: number; power: number; polarization: 'H' | 'V' }> })
@@ -217,10 +221,10 @@ describe('C1 modem lessons (phase 19.5)', { timeout: 30_000 }, () => {
     const shelfDb = density(jammer!) - density(carrier!);
 
     console.info(
-      `S21 ME-02 TM-2: clean margin ${clean.meanMargin.toFixed(2)} dB; jammed ${jammed.minMargin.toFixed(2)}..${jammed.maxMargin.toFixed(2)} dB, locked ${(jammed.lockedFraction * 100).toFixed(0)} %; jammer density ${shelfDb.toFixed(2)} dB over the carrier`
+      `S21 ME-02 TM-2: clean margin ${cleanMeanMargin.toFixed(2)} dB; jammed ${jammed.minMargin.toFixed(2)}..${jammed.maxMargin.toFixed(2)} dB, locked ${(jammed.lockedFraction * 100).toFixed(0)} %; jammer density ${shelfDb.toFixed(2)} dB over the carrier`
     );
 
-    expect(clean.minMargin).toBeGreaterThan(7.5); // 19.3: the relayed uplink noise (C/N_up ~24 dB) costs ~0.6 dB
+    expect(cleanMinMargin).toBeGreaterThan(7.5); // 19.3: the relayed uplink noise (C/N_up ~24 dB) costs ~0.6 dB
     // On the analyzer the jammed 6 MHz reads carrier + jammer: a shelf of
     // 10 log(1 + 10^(shelf/10)) over the carrier's own level
     expect(10 * Math.log10(1 + 10 ** (shelfDb / 10))).toBeGreaterThan(2);

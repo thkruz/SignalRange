@@ -1,6 +1,6 @@
 import { CampaignManager } from '@app/campaigns/campaign-manager';
-import { watchFrontlineGate } from '@app/campaigns/frontline/frontline-gate';
 import { rangeWatchCampaignData } from '@app/campaigns/constellation-sandbox/campaign-data';
+import { watchFrontlineGate } from '@app/campaigns/frontline/frontline-gate';
 import { ccsCampaignData, geolocationCampaignData, hamSdrCampaignData, natsCampaignData } from '@app/campaigns/nats/campaign-data';
 import { natsEuCampaignData } from '@app/campaigns/nats-eu/campaign-data';
 import { registerPerfHarness } from '@app/campaigns/perf/perf-constellation';

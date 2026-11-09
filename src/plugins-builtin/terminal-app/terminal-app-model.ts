@@ -14,6 +14,7 @@
 import type { SkylinkStatus } from '@app/physical/physical-plant-types';
 import type { ServiceLayer, ServiceSample } from '@app/physical/service-types';
 import type { PhasedArrayReadModel } from '../phased-array/phased-array-core';
+import type { ObstructionAccumulator, ObstructionState } from './obstruction-map';
 import { ALERT_TEXT, type CauseLabelKey, causeLabelFor, HERO_TEXT, NETWORK_MESSAGE, type OutageObservation, type TerminalAlertId, type TerminalHero } from './terminal-labels';
 import type { TerminalLink, TerminalLinkState } from './terminal-link';
 import type { TerminalSkin } from './terminal-skin';
@@ -23,6 +24,14 @@ export interface TerminalPlantReader {
   nowS(): number;
   dishStatus(): SkylinkStatus;
   powerDrawW(): number;
+  /** GNSS state of the terminal (E5). Absent: the model reports a valid location. */
+  gnss?(): TerminalGnss;
+}
+
+/** What the terminal knows about its position fix */
+export interface TerminalGnss {
+  locationValid: boolean;
+  satellites: number;
 }
 
 /** The part of `ServiceModel` the app uses. Never `layers()`, which is truth. */
@@ -30,7 +39,7 @@ export interface TerminalServiceReader {
   peekSample(serviceId: string, layer: ServiceLayer, via: 'terminal-app', endpointId?: string, metric?: ServiceSample['metric']): Pick<ServiceSample, 'value' | 'tS'>;
 }
 
-export type TerminalPhasedArraySlice = Pick<PhasedArrayReadModel, 'inOutage' | 'lastLinkDrop'>;
+export type TerminalPhasedArraySlice = Pick<PhasedArrayReadModel, 'inOutage' | 'lastLinkDrop'> & Partial<Pick<PhasedArrayReadModel, 'panel' | 'beam'>>;
 
 export interface TerminalAppModelDeps {
   skin: TerminalSkin;
@@ -41,6 +50,13 @@ export interface TerminalAppModelDeps {
   serviceId?: string;
   /** Absent for non-array terminals */
   phasedArray?: () => TerminalPhasedArraySlice | null;
+  /**
+   * Fraction of the sky the dish has found blocked, 0..1 (WP5 accumulator). Absent, or null
+   * while there is no data: the Advanced screen shows 'Not available'.
+   */
+  obstructionFraction?: () => number | null;
+  /** E4 sky map (WP5). Updated with the model; its state rides in `getState` (D15) */
+  obstruction?: ObstructionAccumulator | null;
   /** Uptime already accumulated at model creation, seconds */
   initialUptimeS?: number;
 }
@@ -95,6 +111,20 @@ export interface TerminalSnapshot {
   powerW: number;
   outages: OutageEntry[];
   stats: Record<StatsWindowId, StatsSeries>;
+  /** Support fields for the Advanced screen. Never names a cause (D5). */
+  debug: TerminalDebugData;
+}
+
+export interface TerminalDebugData {
+  softwareVersion: string;
+  locationValid: boolean;
+  gnssSatellites: number;
+  /** Fixed panel tilt from vertical-up, degrees; null for terminals without an array */
+  tiltDeg: number | null;
+  /** Fixed panel boresight azimuth, degrees; null for terminals without an array */
+  boresightDeg: number | null;
+  /** 0..1, or null when the app cannot tell */
+  obstructionFraction: number | null;
 }
 
 export interface TerminalView {
@@ -127,15 +157,29 @@ interface Observation {
   outage: OutageObservation | null;
 }
 
+/** One speed test the player ran, as the app shows it (WP4) */
+export interface SpeedTestRecord {
+  /** Sim time the test finished */
+  tS: number;
+  downMbps: number;
+  upMbps: number;
+  latencyMs: number;
+  /** What a consumer app can tell: the test never names the true cause */
+  limit: 'skylink' | 'local-network';
+}
+
 export interface TerminalAppState {
+  speedTests?: SpeedTestRecord[];
   bootCount: number;
   uptimeStartS: number | null;
   outages: OutageEntry[];
   open: OpenOutage | null;
   samples: StatSample[];
   lastDropAtMs: number | null;
+  obstruction?: ObstructionState;
 }
 
+const DEFAULT_GNSS_SATELLITES = 12;
 const RETENTION_S = 12 * 3600;
 const OUTAGE_CAP = 500;
 const MAX_FILL_STEPS = 1500;
@@ -160,6 +204,7 @@ export class TerminalAppModel {
   private current_ = { downMbps: 0, upMbps: 0, latencyMs: null as number | null };
   private lastObs_: Observation = { hero: 'online', alerts: [], outage: null };
   private cached_: TerminalSnapshot | null = null;
+  private speedTests_: SpeedTestRecord[] = [];
 
   constructor(deps: TerminalAppModelDeps) {
     this.deps_ = deps;
@@ -169,6 +214,7 @@ export class TerminalAppModel {
   update(): void {
     const { plant, skin } = this.deps_;
     const now = plant.nowS();
+    this.deps_.obstruction?.update();
     if (this.lastTickS_ === null) {
       this.lastTickS_ = now;
       this.lastSampleS_ = now;
@@ -222,24 +268,52 @@ export class TerminalAppModel {
     return this.buildStats_(window, this.deps_.plant.nowS());
   }
 
+  /** Keep a finished speed test (newest last, at most 10). Survives reboots like the other history (D15). */
+  recordSpeedTest(record: SpeedTestRecord): void {
+    this.speedTests_.push({ ...record });
+    if (this.speedTests_.length > 10) {
+      this.speedTests_ = this.speedTests_.slice(-10);
+    }
+  }
+
+  speedTests(): readonly SpeedTestRecord[] {
+    return this.speedTests_;
+  }
+
+  /** The service path this terminal belongs to, for jobs run through the workload runner */
+  serviceId(): string | null {
+    return this.deps_.serviceId ?? null;
+  }
+
   getState(): TerminalAppState {
     return {
+      speedTests: this.speedTests_.map((r) => ({ ...r })),
       bootCount: this.bootCount_,
       uptimeStartS: this.uptimeStartS_,
       outages: this.outages_.map((o) => ({ ...o })),
       open: this.open_ ? { ...this.open_ } : null,
       samples: this.samples_.map((s) => ({ ...s })),
       lastDropAtMs: this.lastDropAtMs_,
+      ...(this.deps_.obstruction ? { obstruction: this.deps_.obstruction.getState() } : {}),
     };
   }
 
+  /** The sky map accumulator, or null when this terminal has none */
+  obstructions(): ObstructionAccumulator | null {
+    return this.deps_.obstruction ?? null;
+  }
+
   restoreState(state: TerminalAppState): void {
+    this.speedTests_ = (state.speedTests ?? []).map((r) => ({ ...r }));
     this.bootCount_ = state.bootCount;
     this.uptimeStartS_ = state.uptimeStartS;
     this.outages_ = state.outages.map((o) => ({ ...o }));
     this.open_ = state.open ? { ...state.open } : null;
     this.samples_ = state.samples.map((s) => ({ ...s }));
     this.lastDropAtMs_ = state.lastDropAtMs;
+    if (state.obstruction) {
+      this.deps_.obstruction?.restoreState(state.obstruction);
+    }
     this.lastTickS_ = null;
   }
 
@@ -507,18 +581,35 @@ export class TerminalAppModel {
       powerW: this.deps_.plant.powerDrawW(),
       outages: this.currentOutages_(now),
       stats: { '15m': this.buildStats_('15m', now), '6h': this.buildStats_('6h', now), '12h': this.buildStats_('12h', now) },
+      debug: this.buildDebug_(),
+    };
+  }
+
+  private buildDebug_(): TerminalDebugData {
+    const gnss = this.deps_.plant.gnss?.() ?? { locationValid: true, satellites: DEFAULT_GNSS_SATELLITES };
+    const panel = this.deps_.phasedArray?.()?.panel ?? null;
+    const fraction = this.deps_.obstructionFraction?.() ?? null;
+
+    return {
+      softwareVersion: this.deps_.skin.softwareVersion,
+      locationValid: gnss.locationValid,
+      gnssSatellites: gnss.locationValid ? gnss.satellites : 0,
+      tiltDeg: panel ? panel.tiltDeg : null,
+      boresightDeg: panel ? panel.azDeg : null,
+      obstructionFraction: fraction === null ? null : Math.min(1, Math.max(0, fraction)),
     };
   }
 }
 
 /** Adapt the plant manager to the model's reader (structural; `getLoadW` is the dish draw) */
 export function plantTerminalReader(
-  plant: { getTimeSeconds(): number; skylinkStatus(): SkylinkStatus; getLoadW(partId: string): number },
+  plant: { getTimeSeconds(): number; skylinkStatus(): SkylinkStatus; getLoadW(partId: string): number; getGnssState?(): TerminalGnss },
   dishId = 'skylink-dish'
 ): TerminalPlantReader {
   return {
     nowS: () => plant.getTimeSeconds(),
     dishStatus: () => plant.skylinkStatus(),
     powerDrawW: () => plant.getLoadW(dishId),
+    gnss: plant.getGnssState ? () => plant.getGnssState?.() as TerminalGnss : undefined,
   };
 }

@@ -10,6 +10,7 @@ import type { PhysicalPlantManager } from '@app/physical/physical-plant-manager'
 import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import type { SleepSchedule, SnowMeltMode, TerminalSettings, VerbResult } from '@app/physical/physical-plant-types';
 import { PhasedArrayCore } from '../phased-array/phased-array-core';
+import { ObstructionAccumulator, plantObstructionReader } from './obstruction-map';
 import type { TerminalActions } from './screens/terminal-screen';
 import { plantTerminalReader, TerminalAppModel, type TerminalPhasedArraySlice } from './terminal-app-model';
 import { plantLinkReader, TerminalLink } from './terminal-link';
@@ -50,6 +51,7 @@ export class TerminalRuntime implements TerminalActions {
     }
     const services = PhysicalPlantService.servicesOrNull();
     const serviceId = plant.getConfig().service?.paths.find((p) => p.terminalPartId === 'skylink-dish')?.id;
+    const obstruction = phasedArray ? new ObstructionAccumulator(plantObstructionReader(plant, phasedArray)) : null;
     const model = new TerminalAppModel({
       skin: SKYLINK_SKIN,
       plant: plantTerminalReader(plant),
@@ -57,6 +59,8 @@ export class TerminalRuntime implements TerminalActions {
       services,
       serviceId,
       phasedArray,
+      obstruction,
+      obstructionFraction: obstruction ? () => (obstruction.summary().coverage > 0 ? obstruction.obstructionFraction() : null) : undefined,
     });
     const runtime = new TerminalRuntime(plant, model);
     runtime.ownerPlant_ = plant;

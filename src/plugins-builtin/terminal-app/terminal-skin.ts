@@ -13,6 +13,8 @@ export interface TerminalSkin {
   readonly id: string;
   /** Product name shown in the UI (D11) */
   readonly productName: string;
+  /** Software version shown on the Advanced screen */
+  readonly softwareVersion: string;
   readonly screens: readonly TerminalScreenId[];
   /** Realistic boot plus beam acquisition time, seconds (D13). The plant part's bootS stays authoritative for the sim. */
   readonly bootAcquisitionS: { readonly minS: number; readonly maxS: number };
@@ -27,6 +29,7 @@ export interface TerminalSkin {
 export const SKYLINK_SKIN: TerminalSkin = {
   id: 'skylink',
   productName: 'SkyLink',
+  softwareVersion: '2026.19.0',
   screens: ['home', 'obstructions', 'statistics', 'speed-test', 'settings', 'advanced'],
   bootAcquisitionS: { minS: 120, maxS: 300 },
   debugFields: ['software-version', 'uptime', 'boot-count', 'location-valid', 'gnss-satellites', 'alert-flags', 'tilt-boresight', 'obstruction-fraction'],

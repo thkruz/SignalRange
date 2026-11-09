@@ -22,8 +22,6 @@ export const TERMINAL_STRINGS = {
   'shell.updatedAgo': 'Last updated {age} ago',
   'shell.updatedNow': 'Last updated just now',
   'shell.noData': 'No data yet.',
-  'placeholder.title': 'Coming soon',
-  'placeholder.body': 'This screen is not ready yet.',
 
   // Confirm dialog
   'confirm.cancel': 'Cancel',

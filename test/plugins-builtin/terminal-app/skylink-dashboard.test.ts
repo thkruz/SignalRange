@@ -91,12 +91,14 @@ describe('SkyLink dashboard shell', () => {
     page.dispose();
   });
 
-  it('other screens show a coming-soon placeholder', () => {
+  it('every nav screen mounts its own screen, not a placeholder', () => {
     const { page } = setup();
     for (const id of ['obstructions', 'statistics', 'speed-test', 'advanced'] as const) {
       page.showScreen(id);
 
-      expect(document.querySelector(`[data-screen-host="${id}"]`)?.textContent).toContain('Coming soon');
+      const host = document.querySelector(`[data-screen-host="${id}"]`);
+      expect(host?.childElementCount).toBeGreaterThan(0);
+      expect(host?.textContent).not.toContain('Coming soon');
     }
     page.dispose();
   });

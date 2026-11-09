@@ -9,9 +9,12 @@ import type { GroundStation } from '@app/assets/ground-station/ground-station';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import type { AntennaPage } from '@app/pages/mission-control/antenna-page-registry';
+import { createAdvancedScreen } from './screens/advanced-screen';
 import { createHomeScreen } from './screens/home-screen';
-import { placeholderScreen } from './screens/placeholder-screen';
+import { createObstructionsScreen } from './screens/obstructions-screen';
 import { createSettingsScreen } from './screens/settings-screen';
+import { createSpeedTestScreen } from './screens/speed-test-screen';
+import { createStatisticsScreen } from './screens/statistics-screen';
 import type { TerminalScreen, TerminalScreenContext, TerminalScreenFactory } from './screens/terminal-screen';
 import { formatAge, type TerminalStringKey, tr } from './strings';
 import type { TerminalView } from './terminal-app-model';
@@ -25,11 +28,11 @@ export const SKYLINK_TAB_LABEL = 'SkyLink';
 /** Screen id -> factory. WP4-6 replace the placeholders here. */
 export const SCREEN_FACTORIES: Record<TerminalScreenId, TerminalScreenFactory> = {
   home: createHomeScreen,
-  obstructions: placeholderScreen('obstructions'),
-  statistics: placeholderScreen('statistics'),
-  'speed-test': placeholderScreen('speed-test'),
+  obstructions: createObstructionsScreen,
+  statistics: createStatisticsScreen,
+  'speed-test': createSpeedTestScreen,
   settings: createSettingsScreen,
-  advanced: placeholderScreen('advanced'),
+  advanced: createAdvancedScreen,
 };
 
 const SYNC_INTERVAL_MS = 1000;

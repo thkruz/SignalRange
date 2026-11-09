@@ -234,10 +234,17 @@ export class ServiceModel {
   // ---------------------------------------------------------------- samples
 
   /**
-   * Observe a layer through a provenance. A provenance that cannot see the layer (a green light
-   * cannot establish end-to-end service) yields an `unknown` sample, which is never current.
+   * The value `takeSample` would observe, without recording a sample or notifying listeners.
+   * For continuous displays (the terminal app's background feed) that must not count as the
+   * player checking something: evidence comes only from `takeSample`.
    */
-  takeSample(serviceId: string, layer: ServiceLayer, via: SampleProvenance, endpointId?: string, metric: SampleMetric = 'status'): ServiceSample {
+  peekSample(
+    serviceId: string,
+    layer: ServiceLayer,
+    via: SampleProvenance,
+    endpointId?: string,
+    metric: SampleMetric = 'status'
+  ): { tS: number; value: number | LayerStatus; metric: SampleMetric } {
     const tS = this.deps_.now();
     let value: number | LayerStatus = 'unknown';
     let usedMetric: SampleMetric = 'status';
@@ -254,6 +261,16 @@ export class ServiceModel {
         }
       }
     }
+
+    return { tS, value, metric: usedMetric };
+  }
+
+  /**
+   * Observe a layer through a provenance. A provenance that cannot see the layer (a green light
+   * cannot establish end-to-end service) yields an `unknown` sample, which is never current.
+   */
+  takeSample(serviceId: string, layer: ServiceLayer, via: SampleProvenance, endpointId?: string, metric: SampleMetric = 'status'): ServiceSample {
+    const { tS, value, metric: usedMetric } = this.peekSample(serviceId, layer, via, endpointId, metric);
 
     this.sampleSeq_ += 1;
     const sample: ServiceSample = {

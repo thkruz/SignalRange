@@ -171,6 +171,22 @@ describe('M04 samples', () => {
     expect(model.takeSample('skylink', 'registration', 'device-indicator').value).toBe('up');
   });
 
+  it('peekSample observes the same value but records nothing and notifies no one', () => {
+    const { model, plant, tick } = rig();
+    plant.setPartMode('skylink', 'active');
+    tick(1);
+    let heard = 0;
+    model.onSample(() => {
+      heard += 1;
+    });
+    const peeked = model.peekSample('skylink', 'registration', 'terminal-app');
+    expect(peeked.value).toBe('up');
+    expect(heard).toBe(0);
+    expect(model.latest('skylink', 'registration')).toBeNull();
+    expect(model.takeSample('skylink', 'registration', 'terminal-app').value).toBe(peeked.value);
+    expect(heard).toBe(1);
+  });
+
   it('only a workload run or endpoint report reads the application layer', () => {
     const { model, plant, tick } = rig();
     plant.setPartMode('skylink', 'active');

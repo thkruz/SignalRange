@@ -178,4 +178,118 @@ test.describe('Range Watch: Starlink Interference (phased array terminal)', () =
     expect(after.visible.every((v) => !v.name.includes('KU-SAT'))).toBe(true);
     await expect(page.locator('.array-strip-seg[title*="KU-SAT"]')).toHaveCount(0);
   });
+
+  test('the handover strip shows no long coverage gaps and matches brute force', async ({ page, missionControlPage }) => {
+    test.setTimeout(240000);
+    await page.goto(URL_PATH);
+    await waitForSimulationReady(page);
+    await missionControlPage.dismissDialogIfPresent();
+    await missionControlPage.selectGroundStation('CM-01');
+    await missionControlPage.selectTab('acu-control');
+    await expect(page.locator('.array-control-tab')).toBeVisible({ timeout: 30000 });
+
+    type Model = { simMs: number; predictedUntilMs: number; target: { norad: number } | null; handovers: Array<{ atMs: number; toNorad: number | null }> };
+    const read = (): Promise<Model | null> => page.evaluate(() => ((window as unknown as { __arrayControl?: { model: unknown } }).__arrayControl?.model as Model | null) ?? null);
+    const SPAN = 600_000;
+
+    /** Strip no-coverage ms inside [now, now + SPAN], from the prediction the page draws. */
+    const stripGapMs = (m: Model): number => {
+      let state: number | null = m.target?.norad ?? null;
+      let cursor = m.simMs;
+      let gap = 0;
+      const end = Math.min(m.simMs + SPAN, m.predictedUntilMs);
+
+      for (const h of m.handovers) {
+        const at = Math.min(end, Math.max(cursor, h.atMs));
+
+        if (state === null) {
+          gap += at - cursor;
+        }
+        cursor = at;
+        state = h.toNorad;
+      }
+      if (state === null) {
+        gap += end - cursor;
+      }
+
+      return gap;
+    };
+
+    /** Brute force: time with no served Starlink inside the scan cone and outside the GEO zone, 15 s grid, every member. */
+    const bruteGapMs = (): Promise<number> =>
+      page.evaluate(async (span) => {
+        const w = window as unknown as {
+          simClockMs(): number;
+          signalRange: {
+            simulationManager: {
+              scheduler: {
+                anyService: { lookAhead(r: unknown): Promise<{ norads: number[]; count: number; data: Float32Array }> };
+                registry: { memberNoradIds(): Int32Array; memberName(i: number): string };
+              };
+              groundStations: Array<{
+                antennas: Array<{ panelGeometry: { isInScanCone(az: number, el: number): boolean }; geoArcZone: { contains(az: number, el: number): boolean } | null }>;
+              }>;
+            };
+          };
+        };
+        const sim = w.signalRange.simulationManager;
+        const reg = sim.scheduler.registry;
+        const ids = reg.memberNoradIds();
+        const served: number[] = [];
+
+        for (let i = 0; i < ids.length; i++) {
+          if (reg.memberName(i).startsWith('STARLINK')) {
+            served.push(ids[i]);
+          }
+        }
+        const ant = sim.groundStations[0].antennas[0];
+        const step = 15_000;
+        const count = Math.floor(span / step) + 1;
+        const grid = await sim.scheduler.anyService.lookAhead({ noradIds: served, station: 0, startMs: w.simClockMs(), stepMs: step, count });
+        let gap = 0;
+
+        for (let i = 0; i < count - 1; i++) {
+          let covered = false;
+
+          for (let k = 0; k < grid.norads.length && !covered; k++) {
+            const el = grid.data[(k * grid.count + i) * 2];
+            const az = grid.data[(k * grid.count + i) * 2 + 1];
+
+            covered = el > 0 && ant.panelGeometry.isInScanCone(az, el) && !(ant.geoArcZone?.contains(az, el) ?? false);
+          }
+          if (!covered) {
+            gap += step;
+          }
+        }
+
+        return gap;
+      }, SPAN);
+
+    const results: Array<{ atMin: number; strip: number; truth: number }> = [];
+
+    for (let minute = 0; minute <= 6; minute += 3) {
+      if (minute > 0) {
+        await page.evaluate((d) => (window as unknown as W).advanceClock(d), 180_000);
+        await page.waitForTimeout(1500);
+      }
+      await expect
+        .poll(
+          async () => {
+            const m = await read();
+            return m !== null && m.target !== null && m.predictedUntilMs >= m.simMs + SPAN - 20_000;
+          },
+          { timeout: 60000 }
+        )
+        .toBe(true);
+      const m = (await read())!;
+
+      results.push({ atMin: minute, strip: stripGapMs(m) / SPAN, truth: (await bruteGapMs()) / SPAN });
+    }
+    console.log('coverage gaps (fraction of 10 min)', JSON.stringify(results));
+    for (const r of results) {
+      expect(r.strip, `strip gap at +${r.atMin} min`).toBeLessThan(0.1);
+      // The strip may lose a few seconds to beam outages and the 15 s grid, never invent a long gap
+      expect(r.strip - r.truth, `strip gap beyond brute force at +${r.atMin} min`).toBeLessThan(0.03);
+    }
+  });
 });

@@ -58,6 +58,8 @@ function frameAt(latDeg: number, lonDeg: number, altKm: number, ms: number): Fra
 export class SimSkySource implements SkySource {
   private readonly sample_: PropagationSample | null;
   private readonly servedCache_ = new Map<string, boolean>();
+  private served_: number[] | null = null;
+  private servedFor_ = -1;
 
   constructor(private readonly host_: SimSkyHost) {
     this.sample_ = SimulationManager.getInstance().scheduler?.service?.newSample() ?? null;
@@ -181,6 +183,51 @@ export class SimSkySource implements SkySource {
     }
 
     return service.lookAhead({ noradIds: norads.filter((n) => this.isServed(n)), station, startMs, stepMs, count }).catch(() => null);
+  }
+
+  screenAhead(startMs: number, stepMs: number, count: number, cone: { normal: [number, number, number]; maxScanDeg: number }): Promise<number[] | null> {
+    const sch = SimulationManager.getInstance().scheduler;
+    const service = sch?.anyService;
+    const loc = this.host_.location();
+
+    if (!sch || !service || !loc) {
+      return Promise.resolve(null);
+    }
+    const station = sch.stationIndexOf(loc.latitude, loc.longitude);
+
+    if (station < 0) {
+      return Promise.resolve(null);
+    }
+
+    return service
+      .screenCoverage({ noradIds: this.servedMembers_(), station, startMs, stepMs, count, normal: cone.normal, maxScanDeg: cone.maxScanDeg })
+      .then((hits) => hits.map((h) => h.noradId))
+      .catch(() => null);
+  }
+
+  /** NORAD ids of every registry member of a served constellation (cached per registry size). */
+  private servedMembers_(): readonly number[] {
+    const registry = SimulationManager.getInstance().scheduler?.registry;
+
+    if (!registry) {
+      return [];
+    }
+    if (this.served_ && this.servedFor_ === registry.memberCount) {
+      return this.served_;
+    }
+    const out: number[] = [];
+
+    for (let i = 0; i < registry.memberCount; i++) {
+      const norad = registry.memberNorad(i);
+
+      if (this.isServed(norad)) {
+        out.push(norad);
+      }
+    }
+    this.served_ = out;
+    this.servedFor_ = registry.memberCount;
+
+    return out;
   }
 
   touch(norad: number): void {

@@ -14,6 +14,7 @@ export const WARM_GRID_MS = 1000;
 export const SWEEP_GRID_MS = 60000;
 
 import type { PassSearchSpec } from './pass-search';
+import type { ScreenSpec } from './screen-job';
 
 export type SlotKind = 'warm' | 'sweep';
 
@@ -31,6 +32,8 @@ export type PropagationRequest =
   | { type: 'visibility'; id: number; startMs: number; stepMs: number; count: number; minEl: number }
   /** Look angles (el, az) of members from one station at `count` evenly spaced times; answered with a `track` response */
   | { type: 'track'; id: number; indices: Int32Array; station: number; startMs: number; stepMs: number; count: number }
+  /** Sparse coverage screen of many members at coarse times; answered with a `screen` response */
+  | { type: 'screen'; id: number; spec: ScreenSpec }
   /** Drop a queued or running passes/visibility job */
   | { type: 'cancel'; id: number };
 
@@ -42,4 +45,6 @@ export type PropagationResponse =
   | { type: 'visibility'; id: number; index: number; counts: Uint16Array; done: boolean; workMs: number }
   /** data[(k * count + i) * 2] = el, +1 = az of the k-th requested member at the i-th time; NaN when unavailable */
   | { type: 'track'; id: number; data: Float32Array; workMs: number }
+  /** ScreenJob records: SCREEN_STRIDE floats per member that clears the cone */
+  | { type: 'screen'; id: number; records: Float32Array; workMs: number }
   | { type: 'error'; message: string; id?: number };

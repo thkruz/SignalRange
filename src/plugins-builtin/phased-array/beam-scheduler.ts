@@ -40,6 +40,13 @@ export interface SkySource {
    * without it is asked satellite by satellite through `positionOf`.
    */
   lookAhead?(norads: readonly number[], startMs: number, stepMs: number, count: number): Promise<LookGrid | null>;
+  /**
+   * Every served satellite that is inside the cone (normal, maxScanDeg) at any
+   * of `count` coarse times from startMs, best first (most steps in the cone).
+   * The prediction candidate pool: includes satellites that are still below the
+   * horizon now. Resolves null when unavailable.
+   */
+  screenAhead?(startMs: number, stepMs: number, count: number, cone: { normal: [number, number, number]; maxScanDeg: number }): Promise<number[] | null>;
 }
 
 /** Look angles of several satellites at evenly spaced times. data[(row * count + i) * 2] = el, +1 = az; NaN when unavailable. */
@@ -64,8 +71,12 @@ export interface BeamSchedulerConfig {
   predictHorizonMs: number;
   /** Prediction step, sim ms */
   predictStepMs: number;
-  /** Satellites considered in a prediction (highest elevation now) */
+  /** Most satellites considered in a prediction (longest time in the scan cone over the horizon) */
   predictCandidates: number;
+  /** Step of the coverage screen that builds the candidate pool, sim ms */
+  poolStepMs: number;
+  /** The pool covers the horizon plus this, and is reused for this long, sim ms */
+  poolReuseMs: number;
   /** Predictions are recomputed at most this often, sim ms */
   predictRefreshMs: number;
   /** Handovers kept in the prediction */
@@ -79,9 +90,11 @@ export const DEFAULT_SCHEDULER_CONFIG: BeamSchedulerConfig = {
   maxVisible: 400,
   predictHorizonMs: 10 * 60_000,
   predictStepMs: 15_000,
-  predictCandidates: 120,
+  predictCandidates: 300,
+  poolStepMs: 60_000,
+  poolReuseMs: 120_000,
   predictRefreshMs: 15_000,
-  maxPredicted: 6,
+  maxPredicted: 40,
 };
 
 export type HandoverReason = 'acquire' | 'better' | 'left-cone' | 'exclusion' | 'set' | 'lost';
@@ -213,6 +226,9 @@ export class BeamScheduler {
   /** Bumped whenever a prediction in flight would be out of date */
   private predictGen_ = 0;
   private predictInFlight_ = false;
+  /** Ranked candidate pool from the coverage screen, and the sim time it starts at */
+  private pool_: number[] | null = null;
+  private poolAtMs_ = 0;
   private lastSimMs_ = 0;
   private readonly names_ = new Map<number, string>();
 
@@ -530,24 +546,28 @@ export class BeamScheduler {
     this.predictDirty_ = false;
 
     const cfg = this.config;
-    const ids = visible.slice(0, cfg.predictCandidates).map((v) => v.norad);
-
-    if (this.targetNorad_ !== null && !ids.includes(this.targetNorad_)) {
-      ids.push(this.targetNorad_);
-    }
     const count = Math.floor(cfg.predictHorizonMs / cfg.predictStepMs) + 1;
     const startNorad = this.targetNorad_;
+    const withTarget = (ids: number[]): number[] => {
+      if (startNorad !== null && !ids.includes(startNorad)) {
+        ids.push(startNorad);
+      }
+
+      return ids;
+    };
+    const visibleIds = (): number[] => withTarget(visible.slice(0, cfg.predictCandidates).map((v) => v.norad));
 
     if (!this.source_.lookAhead) {
-      this.applyGrid_(this.gridFromPositions_(ids, simMs, count), startNorad);
+      this.applyGrid_(this.gridFromPositions_(visibleIds(), simMs, count), startNorad);
 
       return;
     }
     const gen = this.predictGen_;
+    const lookAhead = this.source_.lookAhead.bind(this.source_);
 
     this.predictInFlight_ = true;
-    void this.source_
-      .lookAhead(ids, simMs, cfg.predictStepMs, count)
+    void this.poolFor_(simMs)
+      .then((pool) => lookAhead(pool ? withTarget(pool.slice(0, cfg.predictCandidates)) : visibleIds(), simMs, cfg.predictStepMs, count))
       .catch(() => null)
       .then((grid) => {
         this.predictInFlight_ = false;
@@ -557,6 +577,38 @@ export class BeamScheduler {
         }
         this.applyGrid_(grid ?? { norads: [], startMs: simMs, stepMs: cfg.predictStepMs, count: 1, data: new Float32Array(0) }, startNorad);
       });
+  }
+
+  /**
+   * Candidate pool: every served satellite that is in the scan cone at some
+   * point of the horizon (not only those above the horizon now), ranked by time
+   * in the cone. Computed by the worker over horizon + poolReuseMs and reused
+   * for poolReuseMs of sim time, so the sweep over the whole constellation
+   * runs about once a minute. Null when the source cannot screen.
+   */
+  private poolFor_(simMs: number): Promise<number[] | null> {
+    const cfg = this.config;
+    const screen = this.source_.screenAhead;
+
+    if (!screen) {
+      return Promise.resolve(null);
+    }
+    if (this.pool_ && simMs >= this.poolAtMs_ && simMs - this.poolAtMs_ < cfg.poolReuseMs) {
+      return Promise.resolve(this.pool_);
+    }
+    const steps = Math.ceil((cfg.predictHorizonMs + cfg.poolReuseMs) / cfg.poolStepMs) + 1;
+
+    return screen
+      .call(this.source_, simMs, cfg.poolStepMs, steps, { normal: this.panel_.normalEnu, maxScanDeg: this.panel_.maxScanDeg })
+      .then((pool) => {
+        if (pool) {
+          this.pool_ = pool;
+          this.poolAtMs_ = simMs;
+        }
+
+        return pool;
+      })
+      .catch(() => null);
   }
 
   private gridFromPositions_(ids: readonly number[], simMs: number, count: number): LookGrid {
@@ -644,6 +696,10 @@ export class BeamScheduler {
         });
         current = next;
       }
+    }
+    if (out.length >= cfg.maxPredicted) {
+      // The list is full: nothing is known past the last handover, so do not draw it as held
+      until = Math.min(until, out[out.length - 1].atMs);
     }
     this.handovers_ = out;
     this.predictedUntilMs_ = until;

@@ -290,8 +290,9 @@ describe('BeamScheduler', () => {
 
     s.update(0);
     expect(s.snapshot().predictedUntilMs).toBe(0);
-    await Promise.resolve();
-    await Promise.resolve();
+    for (let i = 0; i < 6; i++) {
+      await Promise.resolve();
+    }
     const snap = s.snapshot();
 
     expect(calls).toEqual([1]);
@@ -299,6 +300,103 @@ describe('BeamScheduler', () => {
     expect(snap.handovers[0].atMs).toBeGreaterThanOrEqual(300_000);
     expect(snap.predictedUntilMs).toBe(600_000);
     expect(s.predictTrack(1, 0, 600_000, 60_000).length).toBe(5);
+  });
+
+  describe('prediction candidate pool', () => {
+    /** Satellite n is up (el 70) between riseMs and setMs, else below the horizon. */
+    const windows = new Map<number, [number, number]>();
+    const elAt = (n: number, t: number): number => {
+      const w = windows.get(n);
+
+      return w && t >= w[0] && t < w[1] ? 70 : -20;
+    };
+    const makeSky = (): SkySource => ({
+      // Only satellites above the horizon now are listed
+      list: (t) => [...windows.keys()].filter((n) => elAt(n, t) > 0).map((n) => ({ norad: n, name: `S${n}`, az: 0, el: 70 })),
+      positionOf: (n, t) => ({ az: 0, el: elAt(n, t) }),
+      screenAhead: (startMs, stepMs, count) => {
+        const end = startMs + (count - 1) * stepMs;
+
+        return Promise.resolve([...windows.entries()].filter(([, w]) => w[0] <= end && w[1] > startMs).map(([n]) => n));
+      },
+      lookAhead: (norads, startMs, stepMs, n) => {
+        const data = new Float32Array(norads.length * n * 2);
+
+        norads.forEach((id, k) => {
+          for (let i = 0; i < n; i++) {
+            data[(k * n + i) * 2] = elAt(id, startMs + i * stepMs);
+          }
+        });
+
+        return Promise.resolve({ norads, startMs, stepMs, count: n, data });
+      },
+    });
+    const flush = async (): Promise<void> => {
+      for (let i = 0; i < 6; i++) {
+        await Promise.resolve();
+      }
+    };
+
+    it('a satellite below the horizon now that rises in 3 minutes becomes a predicted handover target', async () => {
+      windows.clear();
+      windows.set(1, [-100_000, 120_000]);
+      windows.set(2, [180_000, 900_000]);
+      const s = new BeamScheduler(makeSky(), panel, () => false, { handoverOutageMs: 100 });
+
+      s.update(0);
+      await flush();
+      const h = s.snapshot().handovers;
+
+      expect(h[0]).toMatchObject({ fromNorad: 1, toNorad: null, reason: 'set' });
+      expect(h[1]).toMatchObject({ toNorad: 2 });
+      expect(h[1].atMs).toBeGreaterThanOrEqual(180_000);
+      expect(h[1].atMs).toBeLessThanOrEqual(195_000);
+    });
+
+    it('predicted no-coverage time equals brute force over every satellite', async () => {
+      windows.clear();
+      // Staggered windows with two real gaps
+      const spans: [number, number][] = [
+        [-60_000, 100_000],
+        [90_000, 200_000],
+        [260_000, 330_000],
+        [330_000, 400_000],
+        [470_000, 640_000],
+        [700_000, 900_000],
+      ];
+
+      spans.forEach((w, i) => windows.set(i + 1, w));
+      const s = new BeamScheduler(makeSky(), panel, () => false, { handoverOutageMs: 100 });
+
+      s.update(0);
+      await flush();
+      const snap = s.snapshot();
+      const step = 15_000;
+      let truth = 0;
+      let predicted = 0;
+      let current: number | null = null;
+      let hi = 0;
+
+      for (let t = 0; t <= 600_000; t += step) {
+        const brute = [...windows.keys()].some((n) => elAt(n, t) > 0);
+
+        while (hi < snap.handovers.length && snap.handovers[hi].atMs <= t) {
+          current = snap.handovers[hi].toNorad;
+          hi++;
+        }
+        if (!brute) {
+          truth++;
+        }
+        if (t === 0 ? snap.target === null : current === null && hi > 0) {
+          predicted++;
+        }
+        if (brute && current === null && hi > 0 && t > 0) {
+          throw new Error(`predicted a gap at ${t} ms but a satellite is up`);
+        }
+      }
+      expect(truth).toBeGreaterThan(0);
+      expect(predicted).toBe(truth);
+    });
   });
 
   it('stays cheap with thousands of satellites', () => {

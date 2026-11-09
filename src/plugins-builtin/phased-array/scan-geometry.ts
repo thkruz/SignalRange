@@ -51,6 +51,11 @@ export class PanelGeometry {
     this.normal_ = enuUnit(panelAzDeg, 90 - panelTiltDeg);
   }
 
+  /** Panel normal as a unit (east, north, up) vector. */
+  get normalEnu(): [number, number, number] {
+    return [this.normal_[0], this.normal_[1], this.normal_[2]];
+  }
+
   /** Panel normal as az/el (the stow direction). */
   get normalAzEl(): { az: number; el: number } {
     return { az: ((this.panelAzDeg % 360) + 360) % 360, el: 90 - this.panelTiltDeg };

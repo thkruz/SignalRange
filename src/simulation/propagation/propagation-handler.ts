@@ -1,6 +1,7 @@
 import { PassSearchJob, VisibilityJob, type WorkerJob } from './pass-search';
 import { POS_STRIDE, PropagatorCore } from './propagation-core';
 import type { PropagationRequest, PropagationResponse } from './propagation-protocol';
+import { ScreenJob } from './screen-job';
 import { TrackJob } from './track-job';
 
 /** Longest slice a search job runs before yielding to queued grid requests, ms */
@@ -101,6 +102,28 @@ export function createPropagationHandler(reply: (msg: PropagationResponse, trans
                 if (done) {
                   const data = job.result();
                   reply({ type: 'track', id: msg.id, data, workMs: busy }, [data.buffer]);
+                }
+                return done;
+              },
+            },
+          });
+          schedule();
+          break;
+        }
+        case 'screen': {
+          if (!core) throw new Error('screen requested before init');
+          const job = new ScreenJob(core, msg.spec);
+          let busy = 0;
+          jobs.push({
+            id: msg.id,
+            job: {
+              run: (budget) => {
+                const s0 = performance.now();
+                const done = job.run(budget);
+                busy += performance.now() - s0;
+                if (done) {
+                  const records = job.result();
+                  reply({ type: 'screen', id: msg.id, records, workMs: busy }, [records.buffer]);
                 }
                 return done;
               },

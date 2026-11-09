@@ -2,6 +2,7 @@ import { PASS_STRIDE, PassField, PassSearchJob, type PassSearchSpec } from './pa
 import { POS_STRIDE, PropagatorCore, STATION_STRIDE } from './propagation-core';
 import { createPropagationHandler } from './propagation-handler';
 import { type PropagationRequest, type PropagationResponse, type SlotKind, SWEEP_GRID_MS, WARM_GRID_MS } from './propagation-protocol';
+import { SCREEN_STRIDE, ScreenJob, type ScreenSpec } from './screen-job';
 import { TrackJob } from './track-job';
 
 /** Transport to the propagation worker (or an in-process stand-in). */
@@ -148,6 +149,28 @@ export interface LookAheadRequest {
   startMs: number;
   stepMs: number;
   count: number;
+}
+
+/** Coverage screen of many members over a window (PA-WP5c). */
+export interface ScreenRequest {
+  noradIds: readonly number[];
+  station: number;
+  startMs: number;
+  stepMs: number;
+  count: number;
+  /** Cone axis, unit (east, north, up) */
+  normal: [number, number, number];
+  /** Cone half angle, deg */
+  maxScanDeg: number;
+}
+
+/** A member that clears the cone at least once in the screen window. */
+export interface ScreenHit {
+  noradId: number;
+  /** Coarse steps inside the cone */
+  stepsInCone: number;
+  /** Coarse steps above the horizon */
+  stepsAbove: number;
 }
 
 export interface LookAheadGrid {
@@ -430,6 +453,59 @@ export class PropagationService {
   }
 
   /**
+   * Which of many members are inside a scan cone at any of `count` coarse
+   * times from one station: a sparse list, best first (most steps in the
+   * cone). Runs in the worker in slices; on the calling thread without one.
+   */
+  screenCoverage(req: ScreenRequest): Promise<ScreenHit[]> {
+    const members: number[] = [];
+
+    for (const n of req.noradIds) {
+      const m = this.index_.get(n);
+
+      if (m !== undefined) {
+        members.push(m);
+      }
+    }
+    if (members.length === 0 || req.station < 0 || req.station >= this.stationCount) {
+      return Promise.resolve([]);
+    }
+    const spec: ScreenSpec = {
+      indices: Int32Array.from(members),
+      station: req.station,
+      startMs: req.startMs,
+      stepMs: req.stepMs,
+      count: req.count,
+      normal: req.normal,
+      cosMaxScan: Math.cos((req.maxScanDeg * Math.PI) / 180),
+    };
+    const decode = (records: Float32Array): ScreenHit[] => {
+      const out: ScreenHit[] = [];
+
+      for (let i = 0; i + SCREEN_STRIDE <= records.length; i += SCREEN_STRIDE) {
+        out.push({ noradId: this.opts_.norad[records[i]], stepsInCone: records[i + 1], stepsAbove: records[i + 2] });
+      }
+
+      return out.sort((a, b) => b.stepsInCone - a.stepsInCone || b.stepsAbove - a.stepsAbove || a.noradId - b.noradId);
+    };
+
+    if (!this.backend_) {
+      this.core_ ??= new PropagatorCore(this.opts_.tle1, this.opts_.tle2, this.stationsPacked_);
+      const job = new ScreenJob(this.core_, spec);
+
+      job.run(Number.POSITIVE_INFINITY);
+
+      return Promise.resolve(decode(job.result()));
+    }
+    const id = this.nextId_++;
+
+    return new Promise<ScreenHit[]>((resolve, reject) => {
+      this.jobs_.set(id, { resolve: (m) => resolve(decode((m as { records: Float32Array }).records)), reject });
+      this.backend_?.post({ type: 'screen', id, spec });
+    });
+  }
+
+  /**
    * Members above the horizon per lane and station at `count` grid times,
    * computed in the worker (never on this thread: returns null without one).
    * `onPoint` receives counts[lane * stations + station] per grid time as each
@@ -645,7 +721,7 @@ export class PropagationService {
       job?.resolve(msg);
       return;
     }
-    if (msg.type === 'track') {
+    if (msg.type === 'track' || msg.type === 'screen') {
       this.workerBusyMs += msg.workMs;
       const job = this.jobs_.get(msg.id);
       this.jobs_.delete(msg.id);

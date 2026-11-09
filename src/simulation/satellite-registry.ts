@@ -532,6 +532,19 @@ export class SatelliteRegistry {
     return this.overrides_.get(norad)?.operated ?? this.refs_[this.refIndex_[idx]].operated ?? false;
   }
 
+  /**
+   * Operator-facing refusal for a command aimed at `norad`, or null when it may go ahead. Only constellation
+   * members of sets not marked `operated` are refused; authored satellites and ids the registry does not know are not.
+   */
+  commandRefusal(norad: number): string | null {
+    if (!this.has(norad) || this.isOperated(norad)) {
+      return null;
+    }
+    const name = this.ref(norad)?.name ?? `NORAD ${norad}`;
+
+    return `Command refused: ${name} (${norad}) is an observed constellation member, not an operated satellite`;
+  }
+
   private refAt_(idx: number): SatelliteRef {
     const norad = this.norad_[idx];
     const sat = this.hydratedMembers_.get(norad);

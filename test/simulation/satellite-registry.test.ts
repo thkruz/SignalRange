@@ -128,6 +128,16 @@ describe('SatelliteRegistry', () => {
     expect(reg2.ref(first)?.operated).toBe(true);
   });
 
+  it('commandRefusal names a non-operated member and lets authored, operated and unknown ids through', () => {
+    const reg = new SatelliteRegistry([authoredSat(99001, set)], { observer });
+    reg.addConstellation(set, { tleSet: set.id, overrides: [{ norad: second, operated: true }] });
+    expect(reg.commandRefusal(first)).toContain('Command refused');
+    expect(reg.commandRefusal(first)).toContain(String(first));
+    expect(reg.commandRefusal(second)).toBeNull();
+    expect(reg.commandRefusal(99001)).toBeNull();
+    expect(reg.commandRefusal(1)).toBeNull();
+  });
+
   it('picks the RF template by group and honours rfTemplate overrides', () => {
     const reg = new SatelliteRegistry([], { observer });
     reg.addConstellation(set, { tleSet: set.id, rfTemplate: 'geo-c-ku-generic' });

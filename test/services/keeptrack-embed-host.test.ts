@@ -177,6 +177,46 @@ describe('KeepTrackEmbedHost', () => {
       expect(embed.setObjectStyles).not.toHaveBeenCalled();
     });
 
+    it('never asks for tracks, styles or footprints of objects the embed refused, and fills the 10 tracks with accepted ones', async () => {
+      sats.length = 0;
+      for (let i = 0; i < 12; i++) {
+        sats.push(fakeSat(100 + i, `S${i}`));
+      }
+      reg.current = fakeRegistry();
+      const refused = new Set(['sat-100', 'sat-101', 'sat-10500']);
+
+      embed.upsertObjects.mockImplementation((objects: { hostId: string }[]) =>
+        objects.map((o) => (refused.has(o.hostId) ? { hostId: o.hostId, ok: false, error: 'INVALID_TLE' } : { hostId: o.hostId, ok: true, action: 'added' }))
+      );
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      const host = makeHost();
+
+      host.show(anchor, VIEW);
+      await flush();
+      embed.setGroundTracks.mockImplementation((refs: { hostId: string }[] | null) => {
+        for (const ref of refs ?? []) {
+          if (refused.has(ref.hostId)) {
+            throw new Error('Ground track object not found');
+          }
+        }
+      });
+      host.setView({ ...VIEW, focusNoradId: 10_500 });
+      host.setView({ ...VIEW, focusNoradId: 105 });
+      const tracks = embed.setGroundTracks.mock.calls.at(-1)?.[0] as { hostId: string }[];
+
+      expect(tracks).toHaveLength(10);
+      expect(tracks.map((t) => t.hostId)).toEqual(['sat-105', 'sat-102', 'sat-103', 'sat-104', 'sat-106', 'sat-107', 'sat-108', 'sat-109', 'sat-110', 'sat-111']);
+      for (const call of embed.setGroundTracks.mock.calls) {
+        expect(((call[0] as { hostId: string }[] | null) ?? []).some((t) => refused.has(t.hostId))).toBe(false);
+      }
+      for (const call of embed.setObjectStyles.mock.calls) {
+        expect((call[0] as { ref: { hostId: string }; style: unknown }[]).some((e) => refused.has(e.ref.hostId) && e.style !== null)).toBe(false);
+      }
+      expect(warn.mock.calls.some((c) => String(c[0]).includes('ground tracks skipped'))).toBe(false);
+      expect(warn.mock.calls.some((c) => String(c[0]).includes('refused 3 of'))).toBe(true);
+      warn.mockRestore();
+    });
+
     it('removes all objects in one call on teardown', async () => {
       reg.current = fakeRegistry();
       const host = makeHost();

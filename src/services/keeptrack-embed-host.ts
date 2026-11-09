@@ -164,6 +164,11 @@ export class KeepTrackEmbedHost {
   private readonly appliedStyles_ = new Map<string, string>();
   private trackKey_ = '';
   private upsertedIds_: string[] = [];
+  /**
+   * hostIds the embed refused in upsertObjects (INVALID_TLE: its own SGP4 check fails, typically decaying or
+   * transfer-orbit Starlink members). The embed has no object for them, so they get no style, label, track or footprint.
+   */
+  private rejected_ = new Set<string>();
   private readonly hiddenSets_ = new Set<string>();
   private lastRevision_ = -1;
 
@@ -483,10 +488,13 @@ export class KeepTrackEmbedHost {
     const out = new Map<number, string>();
 
     for (const sat of this.satellites_()) {
+      if (!this.embedHas_(sat.noradId)) {
+        continue;
+      }
       out.set(sat.noradId, sat.name);
     }
     for (const sat of this.registry_()?.hot() ?? []) {
-      if (sat instanceof OrbitalSatellite && !out.has(sat.noradId)) {
+      if (sat instanceof OrbitalSatellite && !out.has(sat.noradId) && this.embedHas_(sat.noradId)) {
         out.set(sat.noradId, sat.name);
       }
     }
@@ -610,7 +618,7 @@ export class KeepTrackEmbedHost {
     for (const sat of this.satellites_()) {
       objects.push(this.toEmbedObject_(sat));
     }
-    embed.upsertObjects(objects);
+    this.recordUpsert_(embed.upsertObjects(objects), true);
     this.upsertedIds_ = [...new Set(objects.map((object) => object.hostId))];
     this.lastRevision_ = registry?.revision ?? -1;
 
@@ -649,6 +657,12 @@ export class KeepTrackEmbedHost {
    * scenarios only, so small scenarios keep their look) the satellite selected in the asset tree.
    */
   private focus_(view: EmbedMapView): number | null {
+    const focus = this.focusCandidate_(view);
+
+    return focus !== null && this.embedHas_(focus) ? focus : null;
+  }
+
+  private focusCandidate_(view: EmbedMapView): number | null {
     if (view.focusNoradId !== null) {
       return view.focusNoradId;
     }
@@ -668,13 +682,38 @@ export class KeepTrackEmbedHost {
     if (!embed || !(sat instanceof OrbitalSatellite)) {
       return;
     }
-    embed.upsertObjects([this.toEmbedObject_(sat)]);
+    this.recordUpsert_(embed.upsertObjects([this.toEmbedObject_(sat)]), false);
     const hostId = KeepTrackEmbedHost.hostId_(sat.noradId);
 
     if (this.trackKey_.split(',').includes(hostId)) {
       this.trackKey_ = '';
       this.applyTracks_(this.view_ ? this.focus_(this.view_) : null);
     }
+  }
+
+  /** Remember which objects the embed refused, so nothing later asks it about them. */
+  private recordUpsert_(results: readonly { hostId: string; ok: boolean; error?: string }[], reset: boolean): void {
+    if (reset) {
+      this.rejected_.clear();
+    }
+    let refused = 0;
+
+    for (const result of results ?? []) {
+      if (result.ok) {
+        this.rejected_.delete(result.hostId);
+      } else {
+        this.rejected_.add(result.hostId);
+        refused++;
+      }
+    }
+    if (refused > 0) {
+      console.warn(`[KeepTrackEmbedHost] embed refused ${refused} of ${results?.length ?? 0} objects (not drawn on the map)`);
+    }
+  }
+
+  /** True when the embed accepted this satellite, so it can be styled and tracked. */
+  private embedHas_(noradId: number): boolean {
+    return !this.rejected_.has(KeepTrackEmbedHost.hostId_(noradId));
   }
 
   /** Explicit track refs, at most MAX_TRACKED_OBJECTS: selected, then authored and pinned, then hot. */

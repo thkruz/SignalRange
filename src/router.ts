@@ -1,4 +1,5 @@
 import { CampaignManager } from '@app/campaigns/campaign-manager';
+import { rangeWatchCampaignData } from '@app/campaigns/constellation-sandbox/campaign-data';
 import { ccsCampaignData, geolocationCampaignData, hamSdrCampaignData, natsCampaignData } from '@app/campaigns/nats/campaign-data';
 import { natsEuCampaignData } from '@app/campaigns/nats-eu/campaign-data';
 import { registerPerfHarness } from '@app/campaigns/perf/perf-constellation';
@@ -77,6 +78,7 @@ export class Router {
     campaignManager.registerCampaign(hamSdrCampaignData);
     campaignManager.registerCampaign(ccsCampaignData);
     campaignManager.registerCampaign(geolocationCampaignData);
+    campaignManager.registerCampaign(rangeWatchCampaignData);
     // Dev-only perf harness (Phase 3 P3-WP0): dev server builds only, never listed in menus
     if (process.env.NODE_ENV === 'development') {
       registerPerfHarness(campaignManager);

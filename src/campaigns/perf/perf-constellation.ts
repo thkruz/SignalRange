@@ -443,7 +443,7 @@ export function registerPerfHarness(campaigns: CampaignManager): void {
   if (!SCENARIOS.includes(perfConstellationScenarioData)) {
     SCENARIOS.push(perfConstellationScenarioData);
   }
-  if (new URLSearchParams(globalThis.location.search).has('perfN')) {
+  if (new URLSearchParams(globalThis.location.search).has('perfN') || new URLSearchParams(globalThis.location.search).has('perfProbe')) {
     installPerfProbe();
   }
 }

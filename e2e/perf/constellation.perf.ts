@@ -30,6 +30,8 @@ const PROP = process.env.PERF_PROP !== '0';
 const SETS = process.env.PERF_SETS ?? '';
 /** PERF_SHOT=<png path> saves one full-scale screenshot of the World Map tab after the speed phases. */
 const SHOT = process.env.PERF_SHOT ?? '';
+/** PERF_SCENARIO=<campaign>/scenarios/<id> loads a real authored scenario (with ?perfProbe=1) instead of the synthetic one. */
+const SCENARIO = process.env.PERF_SCENARIO ?? '';
 const BASELINE_HEAP_MB = process.env.PERF_BASELINE_HEAP_MB ? Number(process.env.PERF_BASELINE_HEAP_MB) : null;
 const ARGS = ['--use-angle=d3d11', '--ignore-gpu-blocklist', '--enable-precise-memory-info'];
 const PHASE2_WORKING_SET_MB = 1540;
@@ -513,7 +515,9 @@ test(`constellation baseline N=${N}`, async () => {
   try {
     const t0 = Date.now();
     await page.goto(
-      `${BASE}/campaigns/perf/scenarios/perf-constellation?perfN=${N}${PROP ? '&perfProp=1' : ''}${SETS ? `&perfSets=${SETS}` : ''}${ANT ? `&perfAnt=${ANT}&perfPoint=${POINT}` : ''}`,
+      SCENARIO
+        ? `${BASE}/campaigns/${SCENARIO}?perfProbe=1`
+        : `${BASE}/campaigns/perf/scenarios/perf-constellation?perfN=${N}${PROP ? '&perfProp=1' : ''}${SETS ? `&perfSets=${SETS}` : ''}${ANT ? `&perfAnt=${ANT}&perfPoint=${POINT}` : ''}`,
       { waitUntil: 'domcontentloaded' }
     );
     try {

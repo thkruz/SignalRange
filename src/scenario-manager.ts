@@ -4,6 +4,7 @@ import { ccsScenario2Data } from '@app/campaigns/ccs/scenario2';
 import { ccsScenario3Data } from '@app/campaigns/ccs/scenario3';
 import { ccsScenario4Data } from '@app/campaigns/ccs/scenario4';
 import { ccsScenario5Data } from '@app/campaigns/ccs/scenario5';
+import { rangeWatchCampaignData } from '@app/campaigns/constellation-sandbox/campaign-data';
 import { hamSdrSandboxData } from '@app/campaigns/ham-sdr/sandbox';
 import { hamSdrScenario1Data } from '@app/campaigns/ham-sdr/scenario1';
 import { hamSdrScenario2Data } from '@app/campaigns/ham-sdr/scenario2';
@@ -622,6 +623,7 @@ export const SCENARIOS: ScenarioData[] = [
   ccsScenario3Data,
   ccsScenario4Data,
   ccsScenario5Data,
+  ...rangeWatchCampaignData.scenarios,
 ];
 
 export function isScenarioLocked(scenario: ScenarioData, completedScenarioIds: string[]): boolean {

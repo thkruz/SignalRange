@@ -250,6 +250,16 @@ export class AssetTreeSidebar extends BaseElement {
    */
   private initMissionSection_(): void {
     if (!this.missionBriefUrl_) {
+      // Constellation sandboxes have objectives but no brief: show the section with just the checklist
+      if (ScenarioManager.getInstance().settings.constellations?.length) {
+        const section = qs('#mission-icons-section', this.dom_);
+        if (section) {
+          section.style.display = 'block';
+          qs('.mission-brief-icon', this.dom_)?.setAttribute('hidden', '');
+        }
+        this.addChecklistListener_();
+        return;
+      }
       console.warn('No mission brief URL set; hiding mission section.');
       return;
     }

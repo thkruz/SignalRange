@@ -152,9 +152,11 @@ export class CampaignSelectionPage extends BasePage {
         ? prerequisite
           ? `Complete ${prerequisite.title} to unlock.`
           : campaign.lockedText || 'Complete the prerequisite campaign to unlock.'
-        : progress.isCompleted
-          ? 'Campaign complete. Revisit any mission.'
-          : `${progress.completedScenarios.length} of ${progress.totalScenarios} missions completed`;
+        : progress.totalScenarios === 0
+          ? 'Open play. Pick a sandbox.'
+          : progress.isCompleted
+            ? 'Campaign complete. Revisit any mission.'
+            : `${progress.completedScenarios.length} of ${progress.totalScenarios} missions completed`;
     const stage = getReleaseStage(campaign);
     return html`<article aria-labelledby="campaign-detail-title">
       <div class="selection-art campaign-image"><img style="object-position: ${selectionArtworkPosition(campaign.imageUrl)}" src="${getAssetUrl('/assets/campaigns/' + campaign.imageUrl)}" alt="${selectionText(campaign.title)}" onerror="this.onerror=null; this.src='/images/placeholder.png'" />
@@ -166,7 +168,7 @@ export class CampaignSelectionPage extends BasePage {
         <div class="campaign-subtitle">${selectionText(campaign.subtitle)}</div>
         <div class="selection-meta campaign-badges">${renderReleaseBadge(stage)}
           <span class="badge duration">${campaign.totalDuration}</span><span class="badge difficulty-${campaign.difficulty}">${campaign.difficulty}</span>
-          <span class="campaign-info-item">${campaign.scenarios.filter((s) => s.missionType !== 'Sandbox').length} missions</span>
+          <span class="campaign-info-item">${campaign.scenarios.filter((s) => s.missionType !== 'Sandbox').length || 'Free play'}${campaign.scenarios.some((s) => s.missionType !== 'Sandbox') ? ' missions' : ''}</span>
         </div>
         <div class="selection-description campaign-description">${campaign.description}</div>
         ${renderReleaseCardNotice(stage)}

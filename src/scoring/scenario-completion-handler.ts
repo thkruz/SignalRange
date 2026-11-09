@@ -9,6 +9,7 @@ import { LevelCompleteModal } from '@app/modal/level-complete-modal';
 import { QuizManager } from '@app/modal/quiz-manager';
 import { QuizModal } from '@app/modal/quiz-modal';
 import { ObjectivesManager } from '@app/objectives';
+import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import { campaignEpilogue } from '@app/presentation/campaign-epilogue';
 import { Router } from '@app/router';
 import { ScenarioManager } from '@app/scenario-manager';
@@ -18,6 +19,7 @@ import { Auth } from '@app/user-account/auth';
 import { selectionProgressCache } from '@app/user-account/selection-progress-cache';
 import type { ScenarioProgress } from '@app/user-account/types';
 import { getUserDataService } from '@app/user-account/user-data-service';
+import { buildFieldDiagnosis, type FieldDiagnosis } from './field-diagnosis';
 import { buildMissionDebrief, type MissionDebrief } from './mission-debrief';
 import { readMissionRecord, rememberMissionResult } from './mission-records';
 import { ScoreBreakdown, ScoreCalculator } from './score-calculator';
@@ -158,7 +160,17 @@ export class ScenarioCompletionHandler {
 
     // Calculate score
     const decisionPenalties = this.aggregateDecisionPenalties_(objectives);
-    const score = ScoreCalculator.calculate(objectives, timeRemaining, quizPenalties, timePenalties, hintPenalties, decisionPenalties);
+    let score = ScoreCalculator.calculate(objectives, timeRemaining, quizPenalties, timePenalties, hintPenalties, decisionPenalties);
+
+    // Frontline only: a scenario with a plant evidence log gets a capped diagnosis effect on the score.
+    // Every other campaign has no log, so the diagnosis is null and the score above stands unchanged.
+    const fieldDiagnosis: FieldDiagnosis | null = buildFieldDiagnosis(
+      { field: PhysicalPlantService.fieldOrNull(), config: () => scenarioManager.settings?.physicalPlant ?? null },
+      score.basePoints
+    );
+    if (fieldDiagnosis) {
+      score = ScoreCalculator.calculate(objectives, timeRemaining, quizPenalties, timePenalties, hintPenalties, decisionPenalties, fieldDiagnosis.effect);
+    }
 
     Logger.info('Score calculated:', score);
 
@@ -190,7 +202,7 @@ export class ScenarioCompletionHandler {
       scenarioId,
       score: score.totalScore,
       completedAt: new Date().toISOString(),
-      quizPenalties: score.quizPenalties + score.decisionPenalties,
+      quizPenalties: score.quizPenalties + score.decisionPenalties + (score.diagnosticPenalty ?? 0),
       timePenalties: score.timePenalties,
     } as ScenarioProgress;
     if (baseline && baseline.account === session?.user?.id) {
@@ -213,6 +225,7 @@ export class ScenarioCompletionHandler {
         scenarioId,
         isAuthenticated,
         debrief,
+        fieldDiagnosis: fieldDiagnosis ?? undefined,
         niceTaskCodes: [
           ...new Set(
             objectives
@@ -347,10 +360,10 @@ export class ScenarioCompletionHandler {
       await getUserDataService().updateScenarioProgress(scenarioId, {
         score: score.totalScore,
         basePoints: score.basePoints,
-        timeBonus: score.timeBonus,
+        timeBonus: score.timeBonus + (score.diagnosticBonus ?? 0),
         // The progress record has no decision column; fold decisions into the
         // quiz figure so the persisted parts still sum to the total.
-        quizPenalties: score.quizPenalties + score.decisionPenalties,
+        quizPenalties: score.quizPenalties + score.decisionPenalties + (score.diagnosticPenalty ?? 0),
         timePenalties: score.timePenalties,
         hintPenalties: score.hintPenalties,
         completedAt,

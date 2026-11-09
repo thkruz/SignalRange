@@ -19,6 +19,7 @@ import { DialogManager } from './dialog-manager';
 import './level-complete-modal.css';
 import { SceneModal } from '@app/presentation/scene-modal';
 import { preloadArtwork } from '@app/presentation/transitions';
+import type { FieldDiagnosis } from '@app/scoring/field-diagnosis';
 import type { MissionDebrief } from '@app/scoring/mission-debrief';
 import { achievementBadge } from '@app/user-account/profile-record';
 import { getAssetUrl } from '@app/utils/asset-url';
@@ -39,6 +40,8 @@ interface CompletionModalOptions {
    * signed in, no funnel shown.
    */
   isAuthenticated?: boolean;
+  /** Frontline only: the field diagnosis section. Absent in every other campaign. */
+  fieldDiagnosis?: FieldDiagnosis;
   /** Decisions made during the scenario, listed under the score breakdown */
   decisions?: DecisionRecord[];
 }
@@ -174,10 +177,12 @@ export class LevelCompleteModal extends DraggableModal {
             `
                 : ''
             }
+            ${this.renderDiagnosticRows_()}
           </div>
           ${this.renderDecisions_()}
         </div>
 
+        ${this.renderFieldDiagnosis_()}
         ${this.renderDebrief_()}
         ${this.renderNiceTasks_()}
         ${this.renderSignUpSection_()}
@@ -190,6 +195,37 @@ export class LevelCompleteModal extends DraggableModal {
         </div>
       </div>
     `;
+  }
+
+  /** Score rows for the capped diagnosis effect. Empty unless a field diagnosis exists. */
+  private renderDiagnosticRows_(): string {
+    const { score, fieldDiagnosis } = this.options_;
+    if (!fieldDiagnosis) return '';
+    const bonus = score.diagnosticBonus ?? 0;
+    const penalty = score.diagnosticPenalty ?? 0;
+    const bonusRow =
+      bonus > 0
+        ? `<div class="breakdown-row"><span class="breakdown-label">Diagnosis Bonus</span><span class="breakdown-value positive">+${bonus}</span></div>
+            <div class="breakdown-detail">Capped credit for tests that ruled a suspect out</div>`
+        : '';
+    const penaltyRow =
+      penalty > 0
+        ? `<div class="breakdown-row"><span class="breakdown-label">Diagnosis Penalty</span><span class="breakdown-value negative">-${penalty}</span></div>
+            <div class="breakdown-detail">Capped deduction for fixes made without earlier evidence</div>`
+        : '';
+
+    return bonusRow + penaltyRow;
+  }
+
+  /** The "Field diagnosis" debrief section, rendered only when a field report exists */
+  private renderFieldDiagnosis_(): string {
+    const diagnosis = this.options_.fieldDiagnosis;
+    if (!diagnosis) return '';
+    const lines = diagnosis.lines.map((line) => `<li>${selectionText(line)}</li>`).join('');
+    const notes = diagnosis.scoreNotes.map((note) => `<p class="debrief-note">${selectionText(note)}</p>`).join('');
+
+    return `<section class="mission-debrief field-diagnosis" aria-label="Field diagnosis">
+      <h2>Field diagnosis</h2><ul class="debrief-awards field-diagnosis__lines">${lines}</ul>${notes}</section>`;
   }
 
   private renderDebrief_(): string {

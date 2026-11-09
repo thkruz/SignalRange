@@ -302,6 +302,38 @@ describe('LevelCompleteModal', () => {
     });
   });
 
+  describe('field diagnosis section (M18)', () => {
+    const diagnosis = {
+      summary: {},
+      effect: { bonusPct: 2, penaltyPct: 0, bonus: 2, penalty: 0 },
+      lines: ['Time to cause: 1 min 05 s from the start.', 'Lucky swaps: 0.'],
+      scoreNotes: ['Bonus +2 points.'],
+    };
+
+    it('renders nothing without a field diagnosis, so other campaigns are unchanged', () => {
+      (modal as any).options_ = { score: defaultScore, elapsedTimeSeconds: 0, campaignId: 'nats', scenarioId: 's1' };
+      expect((modal as any).renderFieldDiagnosis_()).toBe('');
+      expect((modal as any).renderDiagnosticRows_()).toBe('');
+    });
+
+    it('renders the section and the score rows when a diagnosis exists', () => {
+      (modal as any).options_ = {
+        score: { ...defaultScore, diagnosticBonus: 2, diagnosticPenalty: 0 },
+        elapsedTimeSeconds: 0,
+        campaignId: 'frontline',
+        scenarioId: 'frontline-scenario1',
+        fieldDiagnosis: diagnosis,
+      };
+      const section = (modal as any).renderFieldDiagnosis_() as string;
+      expect(section).toContain('Field diagnosis');
+      expect(section).toContain('Time to cause');
+      expect(section).toContain('Bonus +2 points.');
+      const rows = (modal as any).renderDiagnosticRows_() as string;
+      expect(rows).toContain('Diagnosis Bonus');
+      expect(rows).not.toContain('Diagnosis Penalty');
+    });
+  });
+
   describe('close override', () => {
     it('should not remove modal when close is called', () => {
       modal.showCompletion({

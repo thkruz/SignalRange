@@ -98,3 +98,6 @@
 @media (prefers-reduced-motion: reduce) {
   #level-complete-modal button { transition: none; }
 }
+
+.field-diagnosis ul { list-style: none; padding: 0; margin: 8px 0; }
+.field-diagnosis li { padding: 3px 0; font-size: 14px; }

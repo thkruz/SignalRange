@@ -172,13 +172,13 @@ describe('M25 S12 completion', () => {
     expect(S12_EVENT_INTERRUPTION).toBe('s12-endpoint-interruption');
   });
 
-  it('does not accept a path that includes the Skylink-only parts', () => {
+  it('does not accept a path that includes the SkyLink-only parts', () => {
     const svc = bootScenario(data);
     takePath(svc);
     svc.evidence?.recordSelection([...PATH, `account:${FORWARD_SKYLINK_ACCOUNT}`, `provider:${FORWARD_PROVIDER}`, `endpoint:${FORWARD_ENDPOINT}`], 'Everything');
-    expect(incomplete(svc, 's12-review-path')).toContain('EuroSat path marked without the Skylink-only parts');
+    expect(incomplete(svc, 's12-review-path')).toContain('EuroSat path marked without the SkyLink-only parts');
     svc.evidence?.recordSelection(PATH, 'EuroSat path');
-    expect(incomplete(svc, 's12-review-path')).not.toContain('EuroSat path marked without the Skylink-only parts');
+    expect(incomplete(svc, 's12-review-path')).not.toContain('EuroSat path marked without the SkyLink-only parts');
   });
 
   it('rejects a diagnosis that blames local equipment or claims a physical cause', () => {

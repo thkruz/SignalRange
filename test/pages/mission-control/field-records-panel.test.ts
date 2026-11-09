@@ -14,7 +14,7 @@ const CFG: EquipmentConfig = {
   units: [
     {
       unitId: 'u1',
-      label: 'Skylink terminal',
+      label: 'SkyLink terminal',
       record: { serial: 'SN-1', accountId: 'acct-a', configVersion: 'v1' },
       installed: { serial: 'SN-1', accountId: 'acct-b', configVersion: 'v1' },
     },
@@ -49,7 +49,7 @@ describe('M16 records panel', () => {
   it('shows record against site and marks differences', () => {
     const r = rig();
     r.panel.sync();
-    expect(r.host.textContent).toContain('Skylink terminal');
+    expect(r.host.textContent).toContain('SkyLink terminal');
     expect(r.host.querySelector('[data-frp-row="u1:accountId"]')?.textContent).toContain('Differs');
     expect(r.host.querySelector('[data-frp-row="u1:serial"]')?.textContent).toContain('Matches');
   });

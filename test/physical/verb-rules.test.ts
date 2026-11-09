@@ -38,7 +38,7 @@ const ALL_VERBS: PlantVerb[] = [...OFFERED_VERBS, 'multimeter', 'cable-tester'];
 /** Allowed targets per verb as the table ships (frontline plant); group names stand for every connector, cable or non-generator part */
 const ALLOWED: Record<string, string[]> = {
   inspect: ['*'],
-  feel: ['generator', 'power-station', 'power-strip', 'spacey-router', 'vsat-modem', 'laptop', 'spacey-dish', 'connectors'],
+  feel: ['generator', 'power-station', 'power-strip', 'skylink-router', 'vsat-modem', 'laptop', 'skylink-dish', 'connectors'],
   wiggle: ['connectors', 'cables'],
   multimeter: [
     'power-station',
@@ -53,22 +53,22 @@ const ALLOWED: Record<string, string[]> = {
     'strip:modem',
     'router:dc',
     'modem:dc',
-    'spacey-router',
+    'skylink-router',
     'vsat-modem',
-    'spacey-cable:dish',
-    'spacey-cable:router',
+    'skylink-cable:dish',
+    'skylink-cable:router',
     'vsat-ifl:lnb',
     'vsat-ifl:modem',
   ],
   'cable-tester': ['signal-connectors', 'cables'],
   reseat: ['connectors'],
   tighten: ['vsat-feed', 'vsat-ifl:lnb', 'vsat-ifl:modem'],
-  seal: ['spacey-cable:dish', 'vsat-feed', 'vsat-ifl:lnb'],
+  seal: ['skylink-cable:dish', 'vsat-feed', 'vsat-ifl:lnb'],
   swap: ['parts-not-generator', 'connectors', 'cables'],
-  powerCycle: ['generator', 'power-station', 'spacey-router', 'vsat-modem', 'laptop', 'spacey-dish'],
+  powerCycle: ['generator', 'power-station', 'skylink-router', 'vsat-modem', 'laptop', 'skylink-dish'],
   refuel: ['generator'],
-  clearSnow: ['spacey-dish', 'vsat-dish'],
-  removeNet: ['spacey-dish', 'vsat-dish'],
+  clearSnow: ['skylink-dish', 'vsat-dish'],
+  removeNet: ['skylink-dish', 'vsat-dish'],
   reroute: ['cables'],
 };
 
@@ -108,7 +108,7 @@ describe('verb applicability table', () => {
 
   it('the multimeter is never offered on the laptop, reflector, LNB part, feed horn or panel', () => {
     const plant = makePlant();
-    for (const id of ['laptop', 'vsat-dish', 'vsat-lnb', 'vsat-feed', 'spacey-dish']) {
+    for (const id of ['laptop', 'vsat-dish', 'vsat-lnb', 'vsat-feed', 'skylink-dish']) {
       expect(plant.verbApplies('multimeter', id), id).toBe(false);
     }
   });
@@ -119,8 +119,8 @@ describe('verb applicability table', () => {
     const result = plant.measure('multimeter', 'laptop');
     expect(GENERIC_OBS['not-applicable']).toContain(result.observation);
     expect(result.costSeconds).toBe(0);
-    expect(GENERIC_OBS['not-applicable']).toContain(plant.refuel('spacey-router').observation);
-    expect(GENERIC_OBS['not-applicable']).toContain(plant.tighten('spacey-cable:router').observation);
+    expect(GENERIC_OBS['not-applicable']).toContain(plant.refuel('skylink-router').observation);
+    expect(GENERIC_OBS['not-applicable']).toContain(plant.tighten('skylink-cable:router').observation);
     expect(GENERIC_OBS['not-applicable']).toContain(plant.reroute('generator').observation);
     expect(GENERIC_OBS['not-applicable']).toContain(plant.swap('generator').observation);
     expect(plant.getTimeSeconds()).toBe(before);
@@ -133,7 +133,7 @@ describe('verb applicability table', () => {
 describe('a verb is worked where its target is', () => {
   it('swapping an indoor item never opens a trip or goes outside', () => {
     const plant = makePlant();
-    for (const id of ['spacey-router', 'vsat-modem', 'laptop', 'power-station', 'spacey-cable:router', 'vsat-ifl:modem']) {
+    for (const id of ['skylink-router', 'vsat-modem', 'laptop', 'power-station', 'skylink-cable:router', 'vsat-ifl:modem']) {
       plant.swap(id);
       expect(plant.isOutside(), id).toBe(false);
     }
@@ -155,10 +155,10 @@ describe('a verb is worked where its target is', () => {
 
   it('cable runs are worked wherever the player stands', () => {
     const plant = makePlant();
-    plant.inspect('spacey-cable');
+    plant.inspect('skylink-cable');
     expect(plant.getReport().trips).toBe(0);
     plant.goOutside();
-    plant.inspect('spacey-cable');
+    plant.inspect('skylink-cable');
     expect(plant.isOutside()).toBe(true);
     expect(plant.getReport().trips).toBe(1);
   });
@@ -189,18 +189,18 @@ describe('every trainer fault kind can still be found and fixed', () => {
   it('the fixing verb really clears the fault on an applicable target', () => {
     type Fix = 'reseat' | 'tighten' | 'seal' | 'swap' | 'powerCycle' | 'clearSnow' | 'removeNet' | 'reroute' | 'refuel';
     const cases: Array<[PlantFaultKind, string, Fix]> = [
-      ['partial-seat', 'spacey-cable:router', 'reseat'],
+      ['partial-seat', 'skylink-cable:router', 'reseat'],
       ['loose-nut', 'vsat-ifl:modem', 'tighten'],
       ['moisture', 'vsat-ifl:lnb', 'seal'],
-      ['corrosion', 'spacey-cable:router', 'swap'],
+      ['corrosion', 'skylink-cable:router', 'swap'],
       ['bent-pin', 'vsat-ifl:modem', 'swap'],
       ['cable-pinch', 'vsat-ifl', 'reroute'],
-      ['cable-nick', 'spacey-cable', 'swap'],
+      ['cable-nick', 'skylink-cable', 'swap'],
       ['generator-sag', 'generator', 'powerCycle'],
       ['out-of-fuel', 'generator', 'refuel'],
-      ['brick-dead', 'spacey-router', 'swap'],
+      ['brick-dead', 'skylink-router', 'swap'],
       ['snow', 'vsat-dish', 'clearSnow'],
-      ['net', 'spacey-dish', 'removeNet'],
+      ['net', 'skylink-dish', 'removeNet'],
     ];
     for (const [kind, target, verb] of cases) {
       const plant = makePlant();

@@ -28,7 +28,7 @@ vi.mock('@app/simulation/simulation-manager', () => ({
 const states = objectives.states as ObjectiveStates;
 const data = frontlineScenario8Data;
 const FAULT = 's08-local-fault';
-const CONNECTOR = 'spacey-cable:router';
+const CONNECTOR = 'skylink-cable:router';
 const incomplete = (svc: PhysicalPlantService, id: string): string[] => unmet(data.objectives.find((o) => o.id === id) as never, svc);
 const obsIds = (svc: PhysicalPlantService): string[] => (svc.evidence?.entries('observation') ?? []).map((e) => e.id);
 const actIds = (svc: PhysicalPlantService): string[] => (svc.evidence?.entries('action') ?? []).map((e) => e.id);
@@ -80,11 +80,11 @@ function acts(svc: PhysicalPlantService): Record<string, () => void> {
     's08-establish-state': () => {
       svc.services?.takeSample('skylink', 'registration', 'terminal-app');
       const app = svc.services?.takeSample('skylink', 'application', 'endpoint-report');
-      svc.plant.inspect('spacey-dish');
+      svc.plant.inspect('skylink-dish');
       ok(svc.records?.submit('plan', { symptom: { value: String(app?.value) }, check: { value: 'inspect-connectors' }, basis: { cites: obsIds(svc).slice(0, 1) } }));
     },
     's08-diagnose-fault': () => {
-      svc.plant.measure('cable-tester', 'spacey-cable');
+      svc.plant.measure('cable-tester', 'skylink-cable');
       svc.plant.inspect(CONNECTOR);
       fileHypothesis(svc, 'connector-moisture', obsIds(svc));
       ok(svc.records?.submit('diagnosis', { cause: { value: 'connector-moisture' }, observations: { cites: obsIds(svc) } }));
@@ -143,7 +143,7 @@ describe('M23 S8 completion', () => {
   it('records the brief without naming the target or a test order', () => {
     const text = [...data.objectives.flatMap((o) => [o.title, o.description, ...o.conditions.map((c) => c.description)]), JSON.stringify(data.dialogClips)].join(' ');
     expect(text).not.toContain('moisture');
-    expect(text).not.toContain('spacey-cable');
+    expect(text).not.toContain('skylink-cable');
   });
 
   it('rejects a brief with the wrong requirement or trip allowance', () => {
@@ -163,7 +163,7 @@ describe('M23 S8 completion', () => {
     const app = svc.services?.takeSample('skylink', 'application', 'endpoint-report');
     const input = (check: string, cites: string[]) => ({ symptom: { value: String(app?.value) }, check: { value: check }, basis: { cites } });
     expect(svc.records?.submit('plan', input('inspect-connectors', []))?.ok).toBe(false);
-    svc.plant.inspect('spacey-dish');
+    svc.plant.inspect('skylink-dish');
     expect(svc.records?.submit('plan', input('restart-everything', obsIds(svc)))?.ok).toBe(false);
     expect(svc.records?.submit('plan', input('compare-reference-service', obsIds(svc)))?.ok).toBe(true);
   });

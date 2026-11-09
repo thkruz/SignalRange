@@ -1,6 +1,6 @@
 /**
  * M22 S6 completion: the same prompt-response task is run on the low-delay and GEO-like profiles, then
- * on the fiber and radio variants of the Skylink path, and the queued-report task on both variants.
+ * on the fiber and radio variants of the SkyLink path, and the queued-report task on both variants.
  * The radio prompt-response case is correctly unsuitable. The suitability report must match the four
  * recorded runs; a report claiming everything works fails. A checkpoint invalidates old runs.
  */

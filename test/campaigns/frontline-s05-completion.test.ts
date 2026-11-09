@@ -153,7 +153,7 @@ describe('M22 S5 completion', () => {
     const id = svc.workloads?.running('skylink')[0]?.id ?? '';
     expect(svc.workloads?.abort(id)).toBe(false);
     svc.workloads?.waitForRun(id);
-    svc.plant.powerCycle('spacey-router');
+    svc.plant.powerCycle('skylink-router');
     tick(3);
     expect(svc.workloads?.running('skylink').map((r) => r.cardId)).toContain(TRANSFER);
   });
@@ -183,7 +183,7 @@ describe('M22 S5 completion', () => {
   it('is not satisfied by a terminal replacement or by lowering the app instead', () => {
     const svc = bootScenario(data);
     tick(10);
-    svc.plant.powerCycle('spacey-dish');
+    svc.plant.powerCycle('skylink-dish');
     expect(incomplete(svc, 's5-apply-priority')).toEqual(['Approved allocation change applied']);
     svc.workloads?.setPriority(APP, 1);
     expect(incomplete(svc, 's5-apply-priority')).toEqual(['Approved allocation change applied']);

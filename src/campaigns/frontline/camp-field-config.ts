@@ -21,12 +21,12 @@ export function campServiceConfig(): ServiceModelConfig {
     paths: [
       {
         id: SKYLINK_SERVICE,
-        label: 'Skylink',
-        terminalPartId: 'spacey-dish',
-        localPartIds: ['spacey-router', 'laptop'],
+        label: 'SkyLink',
+        terminalPartId: 'skylink-dish',
+        localPartIds: ['skylink-router', 'laptop'],
         accountId: 'camp-skylink',
         providerId: 'skylink-net',
-        linkTargetIds: ['spacey-cable', 'spacey-cable:dish', 'spacey-cable:router'],
+        linkTargetIds: ['skylink-cable', 'skylink-cable:dish', 'skylink-cable:router'],
         profile: { downMbps: 120, upMbps: 15, rttMs: 45, lossPct: 0.5 },
       },
       {
@@ -99,10 +99,10 @@ const terminalModes = (activeW: number): PartModeConfig[] => [
  */
 export function applyS2Power(plant: PlantConfig): PlantConfig {
   const part = (id: string) => plant.parts.find((p) => p.id === id);
-  const skylink = part('spacey-dish');
+  const skylink = part('skylink-dish');
   const modem = part('vsat-modem');
   if (!skylink || !modem) {
-    throw new Error('S2 power plan needs the Skylink dish and the VSAT modem');
+    throw new Error('S2 power plan needs the SkyLink dish and the VSAT modem');
   }
   skylink.modes = terminalModes(55);
   skylink.mode = 'run';

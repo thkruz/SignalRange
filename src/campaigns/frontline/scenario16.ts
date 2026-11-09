@@ -30,16 +30,16 @@ import { S11_TRANSFER_CARD } from './scenario11';
 
 /**
  * Frontline Signals — Scenario 16: Complete the Independent Shift.
- * Initial state: both terminals are installed at the forward post (Skylink unrestricted, EuroSat registered) on a 360 Wh battery
+ * Initial state: both terminals are installed at the forward post (SkyLink unrestricted, EuroSat registered) on a 360 Wh battery
  * with a 200 Wh reserve. Both terminals running misses the reserve, so the player picks the arrangement. The prior EuroSat
  * incident arrives through the S15 continuity link (S15_INCIDENT_LINK, canonical fallback when no record exists) and never
  * claims a source.
  * Staged events are objective-anchored and ordered: the local fault c6-s16-local-supply (partial-seat at ps:ac-out, not named
- * in player prompts) is injected when s16-investigate-local-change activates. The external event (a Skylink provider outage
+ * in player prompts) is injected when s16-investigate-local-change activates. The external event (a SkyLink provider outage
  * with a maintenance notice for the post account) is anchored on s16-assess-external-change, which can only activate after the
  * local objective completed (repair, evidence and a fresh post-repair run recorded), and also requires the local event fired.
  * S2 teaches this seating mechanism and evidence-before-reseat method at generator:out; no new repair verb is introduced.
- * The mission task (fwd-first) needs Skylink; during the outage only the delay-tolerant transfer is supportable on EuroSat,
+ * The mission task (fwd-first) needs SkyLink; during the outage only the delay-tolerant transfer is supportable on EuroSat,
  * so limited service is the valid final outcome and fwd-first is reported as unavailable.
  * Every threshold and window below is an implementer default flagged for Ted in art-review/c6/m27-result.md.
  * Eastern European accents belong to VO performance; audio is not recorded yet.
@@ -66,9 +66,9 @@ const briefForm: HandoverFormConfig = {
   title: 'Shift commitments',
   documentSection: 'Commitments',
   fields: [
-    { key: 'task', label: 'Mission task to demonstrate', required: true, rule: choice(FIRST, 'First forward task over Skylink') },
+    { key: 'task', label: 'Mission task to demonstrate', required: true, rule: choice(FIRST, 'First forward task over SkyLink') },
     { key: 'reserve', label: 'Battery reserve to keep', required: true, rule: choice('reserve-200', 'Keep 200 Wh of stored energy') },
-    { key: 'equipment', label: 'Equipment available', required: true, rule: choice('both-terminals', 'Skylink and EuroSat terminals, router, workstation, battery and generator') },
+    { key: 'equipment', label: 'Equipment available', required: true, rule: choice('both-terminals', 'SkyLink and EuroSat terminals, router, workstation, battery and generator') },
     { key: 'prior', label: 'Prior EuroSat incident', required: true, rule: choice('source-not-established', 'Suspected interference, source not established') },
     { key: 'unknowns', label: 'Claims that need current evidence', required: true, rule: choice('service-and-power', 'Service state and power state this shift') },
   ],
@@ -79,11 +79,11 @@ const baselineForm: HandoverFormConfig = {
   title: 'Baseline',
   documentSection: 'Baseline',
   fields: [
-    { key: 'dish', label: 'Skylink dish mode', required: true, rule: { modeIs: { partId: 'spacey-dish' } } },
+    { key: 'dish', label: 'SkyLink dish mode', required: true, rule: { modeIs: { partId: 'skylink-dish' } } },
     { key: 'modem', label: 'EuroSat modem mode', required: true, rule: { modeIs: { partId: 'vsat-modem' } } },
     { key: 'local', label: 'Local network now', required: true, rule: { matchesCurrent: { serviceId: SKY, layer: 'local' } } },
-    { key: 'application', label: 'Skylink application now', required: true, rule: { matchesCurrent: { serviceId: SKY, layer: 'application' } } },
-    { key: 'verified', label: 'First task run on Skylink', required: true, rule: { workload: { cardId: FIRST, is: ['supported'], serviceId: SKY } } },
+    { key: 'application', label: 'SkyLink application now', required: true, rule: { matchesCurrent: { serviceId: SKY, layer: 'application' } } },
+    { key: 'verified', label: 'First task run on SkyLink', required: true, rule: { workload: { cardId: FIRST, is: ['supported'], serviceId: SKY } } },
     { key: 'energy', label: 'Battery energy now (Wh)', required: true, rule: { powerWithin: { metric: 'socWh', tol: 40, partId: 'power-station' } } },
   ],
 };
@@ -96,7 +96,7 @@ const localForm: HandoverFormConfig = {
     { key: 'seating', label: 'Readings that located the cause', required: true, rule: { cites: 'observation', min: 1 } },
     { key: 'action', label: 'Intervention applied', required: true, rule: { cites: 'action', min: 1 } },
     { key: 'verified', label: 'First task run after the repair', required: true, rule: { workload: { cardId: FIRST, is: ['supported'], serviceId: SKY } } },
-    { key: 'application', label: 'Skylink application now', required: true, rule: { matchesCurrent: { serviceId: SKY, layer: 'application' } } },
+    { key: 'application', label: 'SkyLink application now', required: true, rule: { matchesCurrent: { serviceId: SKY, layer: 'application' } } },
     { key: 'energy', label: 'Battery energy now (Wh)', required: true, rule: { powerWithin: { metric: 'socWh', tol: 40, partId: 'power-station' } } },
   ],
 };
@@ -106,9 +106,9 @@ const externalForm: HandoverFormConfig = {
   title: 'Next service change',
   documentSection: 'External incident',
   fields: [
-    { key: 'scope', label: 'What the notice covers', required: true, rule: choice('skylink-provider', 'Skylink provider service for the post account') },
+    { key: 'scope', label: 'What the notice covers', required: true, rule: choice('skylink-provider', 'SkyLink provider service for the post account') },
     { key: 'local', label: 'Relation to the repaired supply fault', required: true, rule: choice('separate', 'Separate from the repaired supply fault') },
-    { key: 'provider', label: 'Skylink provider status now', required: true, rule: { matchesCurrent: { serviceId: SKY, layer: 'provider' } } },
+    { key: 'provider', label: 'SkyLink provider status now', required: true, rule: { matchesCurrent: { serviceId: SKY, layer: 'provider' } } },
     { key: 'evidence', label: 'Readings behind it', required: true, rule: { cites: 'observation', min: 3 } },
     { key: 'fix', label: 'Local restart', required: true, rule: choice('does-not-clear', 'A local restart does not clear a provider outage') },
   ],
@@ -120,9 +120,9 @@ const outcomeForm: HandoverFormConfig = {
   documentSection: 'Outcome',
   fields: [
     { key: 'modem', label: 'EuroSat modem mode', required: true, rule: { modeIs: { partId: 'vsat-modem' } } },
-    { key: 'dish', label: 'Skylink dish mode', required: true, rule: { modeIs: { partId: 'spacey-dish' } } },
+    { key: 'dish', label: 'SkyLink dish mode', required: true, rule: { modeIs: { partId: 'skylink-dish' } } },
     { key: 'verified', label: 'Transfer task run on EuroSat', required: true, rule: { workload: { cardId: TRANSFER, is: ['supported'], serviceId: EUS } } },
-    { key: 'unavailable', label: 'Mission task not available', required: true, rule: choice(FIRST, 'First forward task over Skylink') },
+    { key: 'unavailable', label: 'Mission task not available', required: true, rule: choice(FIRST, 'First forward task over SkyLink') },
     { key: 'energy', label: 'Battery energy now (Wh)', required: true, rule: { powerWithin: { metric: 'socWh', tol: 40, partId: 'power-station' } } },
   ],
 };
@@ -137,7 +137,7 @@ const finalForm: HandoverFormConfig = {
     { key: 'externalEvidence', label: 'External event readings', required: true, rule: { cites: 'observation', min: 3 } },
     { key: 'incidents', label: 'The two incidents', required: true, rule: choice('separate', 'Two separate incidents with different causes') },
     { key: 'service', label: 'Service available', required: true, rule: choice('limited', 'Limited: transfer over EuroSat only') },
-    { key: 'unavailable', label: 'Task not available', required: true, rule: choice(FIRST, 'First forward task over Skylink') },
+    { key: 'unavailable', label: 'Task not available', required: true, rule: choice(FIRST, 'First forward task over SkyLink') },
     { key: 'prior', label: 'Prior EuroSat incident', required: true, rule: choice('source-not-established', 'Suspected interference, source not established') },
     { key: 'energy', label: 'Battery energy now (Wh)', required: true, rule: { powerWithin: { metric: 'socWh', tol: 40, partId: 'power-station' } } },
   ],
@@ -150,7 +150,7 @@ if (settings.physicalPlant) {
   applyForwardEurosat(plant, { modemRunning: true });
   // Both terminals become switchable units; the battery and reserve below replace the S14 numbers
   applyForwardDualReadiness(plant);
-  // Skylink is unrestricted at the start of the shift (the S10 restriction ended in S14)
+  // SkyLink is unrestricted at the start of the shift (the S10 restriction ended in S14)
   const skylink = plant.service?.accounts.find((a) => a.id === FORWARD_SKYLINK_ACCOUNT);
   if (skylink) {
     skylink.restriction = undefined;
@@ -184,7 +184,7 @@ if (settings.physicalPlant) {
         affects: { accountId: FORWARD_SKYLINK_ACCOUNT },
         kind: 'maintenance',
         issuedAtS: 0,
-        text: 'Skylink service notice. Unplanned provider maintenance has stopped Skylink service for the forward post account. This notice covers the provider service only. It does not describe any equipment at the post.',
+        text: 'SkyLink service notice. Unplanned provider maintenance has stopped SkyLink service for the forward post account. This notice covers the provider service only. It does not describe any equipment at the post.',
       },
     ],
     requests: [],
@@ -209,7 +209,7 @@ if (settings.physicalPlant) {
       offsetS: S16_OUTAGE_OFFSET_S,
       requiresFired: [S16_EVENT_LOCAL],
       actions: [{ kind: 'set-provider', patch: { id: FORWARD_PROVIDER, status: 'outage' } }],
-      logLine: 'Skylink service stops while the local equipment is unchanged.',
+      logLine: 'SkyLink service stops while the local equipment is unchanged.',
     },
   ];
   plant.events = events;
@@ -233,7 +233,7 @@ export const frontlineScenario16Data: FrontlineScenarioData = {
   description:
     'Take responsibility for an independent shift at Rautala. Use the handover and current evidence to manage the service, investigate changes, and account for the resources left behind. Irena needs a defensible final report, including any task that remains unavailable.',
   equipment: [
-    'Skylink and EuroSat terminals',
+    'SkyLink and EuroSat terminals',
     'Router and pilot workstation',
     'Generator, battery, and shared power distribution',
     'Inspection and measurement tools',
@@ -264,7 +264,7 @@ export const frontlineScenario16Data: FrontlineScenarioData = {
         forecastMeetsReserve({}, 'Forecast keeps the 200 Wh reserve in the chosen arrangement'),
         anyServiceSupports(FIRST, [SKY], 'A configured service supports the first task'),
         samplesCurrent(SKY, ['local', 'application'], 'Current local and application readings taken'),
-        workloadVerified({ card: FIRST, service: SKY }, 'First task verified on Skylink'),
+        workloadVerified({ card: FIRST, service: SKY }, 'First task verified on SkyLink'),
         handoverValid('baseline', 'Baseline recorded'),
       ],
     },
@@ -287,7 +287,7 @@ export const frontlineScenario16Data: FrontlineScenarioData = {
         },
         eventFired(S16_EVENT_LOCAL, 'Supply change has begun'),
         faultClearedWithEvidence(S16_FAULT, 'Repair supported by recorded evidence'),
-        workloadVerified({ card: FIRST, service: SKY, afterFaultCleared: S16_FAULT }, 'First task verified on Skylink after the repair'),
+        workloadVerified({ card: FIRST, service: SKY, afterFaultCleared: S16_FAULT }, 'First task verified on SkyLink after the repair'),
         handoverValid('local', 'First service change recorded'),
       ],
     },
@@ -301,7 +301,7 @@ export const frontlineScenario16Data: FrontlineScenarioData = {
       points: 15,
       conditions: [
         eventFired(S16_EVENT_NOTICE, 'Provider notice delivered'),
-        eventFired(S16_EVENT_OUTAGE, 'Skylink service has stopped'),
+        eventFired(S16_EVENT_OUTAGE, 'SkyLink service has stopped'),
         samplesCurrent(SKY, ['local', 'provider', 'application'], 'Current local, provider and application readings taken'),
         layerObserved(SKY, 'provider', { status: 'down' }, 'Provider outage observed'),
         layerObserved(SKY, 'local', { status: 'up' }, 'Local network observed up'),

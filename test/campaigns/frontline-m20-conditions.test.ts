@@ -86,9 +86,9 @@ describe('M20 condition factories', () => {
     const svc = bootScenario(frontlineScenario2Data);
     const cond = anyServiceSupports(OLA_VOICE_CARD.id, CAMP_SERVICES);
     expect(met(cond)).toBe(true);
-    svc.plant.setPartMode('spacey-dish', 'standby');
+    svc.plant.setPartMode('skylink-dish', 'standby');
     expect(met(cond)).toBe(false);
-    svc.plant.setPartMode('spacey-dish', 'run');
+    svc.plant.setPartMode('skylink-dish', 'run');
     expect(met(cond)).toBe(true);
     expect(met(anyServiceSupports(OLA_VOICE_CARD.id, ['camp-vsat']))).toBe(false);
   });

@@ -1,5 +1,5 @@
 /**
- * M26: the remote Skylink path, the dual-readiness plan, and the workload runner's handling of a down layer behind a
+ * M26: the remote SkyLink path, the dual-readiness plan, and the workload runner's handling of a down layer behind a
  * degraded (restricted) account.
  */
 
@@ -49,7 +49,7 @@ function runCard(svc: PhysicalPlantService, card: string, service: string) {
 }
 
 describe('M26 forward remote path', () => {
-  it('adds a remote path with its own endpoint on the Skylink terminal, account and provider', () => {
+  it('adds a remote path with its own endpoint on the SkyLink terminal, account and provider', () => {
     const svc = bootScenario(frontlineScenario13Data);
     const state = svc.services?.getState();
     const remote = svc.services?.getPath(FORWARD_REMOTE_SERVICE);
@@ -77,7 +77,7 @@ describe('M26 forward remote path', () => {
     expect(svc.plant.getPowerReadings().socWh['power-station']).toBeLessThanOrEqual(DUAL_START_WH);
     expect(svc.plant.forecast({}).meetsReserve).toBe(false);
     expect(svc.plant.forecast({ 'vsat-modem': 'standby' }).meetsReserve).toBe(true);
-    expect(svc.plant.forecast({ 'spacey-dish': 'standby' }).meetsReserve).toBe(true);
+    expect(svc.plant.forecast({ 'skylink-dish': 'standby' }).meetsReserve).toBe(true);
   });
 });
 

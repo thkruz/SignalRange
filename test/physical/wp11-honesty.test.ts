@@ -52,11 +52,11 @@ describe('connectors for the power path', () => {
   it('an unseated strip socket drops only the device on it', () => {
     const { plant, advance } = makePlant();
     advance(300);
-    expect(plant.isPartPowered('spacey-router')).toBe(true);
+    expect(plant.isPartPowered('skylink-router')).toBe(true);
     expect(plant.isPartPowered('vsat-modem')).toBe(true);
     plant.injectFault({ id: 'u', target: 'strip:router', kind: 'unseated' });
     advance(3);
-    expect(plant.isPartPowered('spacey-router')).toBe(false);
+    expect(plant.isPartPowered('skylink-router')).toBe(false);
     expect(plant.isPartPowered('vsat-modem')).toBe(true);
     expect(plant.reseat('strip:router').cleared).toEqual(['u']);
   });
@@ -66,44 +66,44 @@ describe('connectors for the power path', () => {
     advance(300);
     plant.injectFault({ id: 'u', target: 'strip:in', kind: 'unseated' });
     advance(3);
-    expect(plant.isPartPowered('spacey-router')).toBe(false);
+    expect(plant.isPartPowered('skylink-router')).toBe(false);
     expect(plant.isPartPowered('vsat-modem')).toBe(false);
   });
 
   it('exposes a lit state that follows power', () => {
     const { plant, advance } = makePlant();
     advance(300);
-    expect(plant.getPartState('spacey-router')?.lit).toBe(true);
+    expect(plant.getPartState('skylink-router')?.lit).toBe(true);
     plant.injectFault({ id: 'u', target: 'router:dc', kind: 'unseated' });
     advance(3);
-    expect(plant.getPartState('spacey-router')?.lit).toBe(false);
+    expect(plant.getPartState('skylink-router')?.lit).toBe(false);
   });
 });
 
 describe('facts are revealed per target', () => {
   it('inspecting a connector with corrosion reveals only that fact, and only there', () => {
     const { plant } = makePlant();
-    plant.injectFault({ id: 'c', target: 'spacey-cable:router', kind: 'corrosion' });
-    expect(plant.isFactRevealed('spacey-cable:router', 'corrosion')).toBe(false);
-    plant.inspect('spacey-cable:router');
-    expect(plant.isFactRevealed('spacey-cable:router', 'corrosion')).toBe(true);
-    expect(plant.isFactRevealed('spacey-cable:dish', 'corrosion')).toBe(false);
-    expect(plant.isFactRevealed('spacey-cable:router', 'moisture')).toBe(false);
+    plant.injectFault({ id: 'c', target: 'skylink-cable:router', kind: 'corrosion' });
+    expect(plant.isFactRevealed('skylink-cable:router', 'corrosion')).toBe(false);
+    plant.inspect('skylink-cable:router');
+    expect(plant.isFactRevealed('skylink-cable:router', 'corrosion')).toBe(true);
+    expect(plant.isFactRevealed('skylink-cable:dish', 'corrosion')).toBe(false);
+    expect(plant.isFactRevealed('skylink-cable:router', 'moisture')).toBe(false);
   });
 
   it('a hand look at a water-filled cable shows no damage; the cable tester does', () => {
     const { plant } = makePlant();
-    plant.injectFault({ id: 'w', target: 'spacey-cable', kind: 'cable-water', atMeters: 10 });
-    plant.inspect('spacey-cable');
-    expect(plant.isFactRevealed('spacey-cable', 'damage')).toBe(false);
-    plant.measure('cable-tester', 'spacey-cable');
-    expect(plant.isFactRevealed('spacey-cable', 'damage')).toBe(true);
+    plant.injectFault({ id: 'w', target: 'skylink-cable', kind: 'cable-water', atMeters: 10 });
+    plant.inspect('skylink-cable');
+    expect(plant.isFactRevealed('skylink-cable', 'damage')).toBe(false);
+    plant.measure('cable-tester', 'skylink-cable');
+    expect(plant.isFactRevealed('skylink-cable', 'damage')).toBe(true);
   });
 
   it('the multimeter reading does not name a cause', () => {
     const { plant } = makePlant();
-    plant.injectFault({ id: 'c', target: 'spacey-cable:router', kind: 'corrosion' });
-    const text = plant.measure('cable-tester', 'spacey-cable:router').observation;
+    plant.injectFault({ id: 'c', target: 'skylink-cable:router', kind: 'corrosion' });
+    const text = plant.measure('cable-tester', 'skylink-cable:router').observation;
     expect(text).not.toMatch(/corroded|water|fixed/iu);
   });
 });

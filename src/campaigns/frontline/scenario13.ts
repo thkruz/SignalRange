@@ -19,7 +19,7 @@ import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-
 
 /**
  * Frontline Signals — Scenario 13: Recognize a Remote-Terminal Restriction.
- * Initial state: a synthetic task uses an onboard Skylink terminal through the provider network.
+ * Initial state: a synthetic task uses an onboard SkyLink terminal through the provider network.
  * A fictional remote-endpoint mobility policy activates during an authored task phase after baseline capture.
  * The separate ground-service restriction remains distinct; changing the ground route does not clear remote policy.
  * No real speed threshold, flight action, policy bypass, or direct terminal-to-terminal radio path is modeled.
@@ -53,7 +53,7 @@ const endpointsForm: HandoverFormConfig = {
       key: 'ground',
       label: 'Ground endpoint account',
       required: true,
-      rule: { choice: [FORWARD_SKYLINK_ACCOUNT], labels: { [FORWARD_SKYLINK_ACCOUNT]: 'The forward post Skylink account' } },
+      rule: { choice: [FORWARD_SKYLINK_ACCOUNT], labels: { [FORWARD_SKYLINK_ACCOUNT]: 'The forward post SkyLink account' } },
     },
     {
       key: 'remote',
@@ -181,7 +181,7 @@ if (scenarioSettings.physicalPlant) {
     units: [
       {
         unitId: FORWARD_SKYLINK_UNIT,
-        label: 'Commissioned Skylink terminal',
+        label: 'Commissioned SkyLink terminal',
         record: { serial: 'SKY-7731', accountId: FORWARD_SKYLINK_ACCOUNT, configVersion: 'depot-v3' },
       },
     ],
@@ -193,7 +193,7 @@ if (scenarioSettings.physicalPlant) {
         affects: { endpointId: FORWARD_REMOTE_ENDPOINT },
         kind: 'remote-mobility',
         issuedAtS: 0,
-        text: 'Skylink service notice. The remote terminal named in this task is under a mobility service policy, effective from the onset in the service history. The ground account restriction is unrelated to this policy. The notice reports no fault in customer equipment.',
+        text: 'SkyLink service notice. The remote terminal named in this task is under a mobility service policy, effective from the onset in the service history. The ground account restriction is unrelated to this policy. The notice reports no fault in customer equipment.',
       },
     ],
     requests: [],
@@ -228,11 +228,11 @@ export const frontlineScenario13Data: FrontlineScenarioData = {
   duration: '25-35 min',
   missionType: 'Field Communications',
   description:
-    'A synthetic task includes a Skylink terminal at the remote endpoint. Establish the path and current status, then interpret an interruption using provider evidence. Your outcome may be a justified hold rather than restored service.',
+    'A synthetic task includes a SkyLink terminal at the remote endpoint. Establish the path and current status, then interpret an interruption using provider evidence. Your outcome may be a justified hold rather than restored service.',
   equipment: [
-    'Ground Skylink and EuroSat terminals',
+    'Ground SkyLink and EuroSat terminals',
     'Local router and workstation',
-    'Simulated remote Skylink endpoint',
+    'Simulated remote SkyLink endpoint',
     'Provider status notices',
     'Task phase and endpoint history',
   ],
@@ -249,7 +249,7 @@ export const frontlineScenario13Data: FrontlineScenarioData = {
       conditions: [
         diagramSelection(
           {
-            include: ['spacey-dish', `account:${FORWARD_SKYLINK_ACCOUNT}`, `provider:${FORWARD_PROVIDER}`, REMOTE_NODE],
+            include: ['skylink-dish', `account:${FORWARD_SKYLINK_ACCOUNT}`, `provider:${FORWARD_PROVIDER}`, REMOTE_NODE],
             exclude: ['vsat-modem', `provider:${FORWARD_EUROSAT_PROVIDER}`],
           },
           'Ground terminal, provider network and remote endpoint marked'

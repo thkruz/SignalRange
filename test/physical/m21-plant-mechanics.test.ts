@@ -39,7 +39,7 @@ afterEach(() => {
 
 describe('M21 reboot-part event', () => {
   it('calls the target once and survives a restore without re-firing', () => {
-    const events: PlantEventConfig[] = [{ id: 'reboot', startAfterObjectiveId: 'anchor', actions: [{ kind: 'reboot-part', partId: 'spacey-dish' }] }];
+    const events: PlantEventConfig[] = [{ id: 'reboot', startAfterObjectiveId: 'anchor', actions: [{ kind: 'reboot-part', partId: 'skylink-dish' }] }];
     const rebootPart = vi.fn();
     const target: PlantEventTarget = { injectFault: vi.fn(), clearFault: vi.fn(() => true), setWeather: vi.fn(), rebootPart };
     const controller = new PlantEventController(events, target);
@@ -49,7 +49,7 @@ describe('M21 reboot-part event', () => {
     controller.update(10);
     controller.update(20);
     expect(rebootPart).toHaveBeenCalledTimes(1);
-    expect(rebootPart).toHaveBeenCalledWith('spacey-dish');
+    expect(rebootPart).toHaveBeenCalledWith('skylink-dish');
     const again = new PlantEventController(events, target);
     again.restoreState(controller.getState());
     again.update(30);
@@ -70,7 +70,7 @@ describe('M21 startBoot, spendTime and samplesFor', () => {
     const svc = bootScenario(frontlineScenario4Data);
     tick(200);
     expect(svc.services?.takeSample(SKYLINK_SERVICE, 'registration', 'local-probe').value).toBe('up');
-    svc.plant.startBoot('spacey-dish');
+    svc.plant.startBoot('skylink-dish');
     tick(1);
     expect(svc.services?.takeSample(SKYLINK_SERVICE, 'registration', 'local-probe').value).toBe('down');
     tick(100);

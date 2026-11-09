@@ -58,7 +58,7 @@ function resourcesInput(svc: PhysicalPlantService, over: Record<string, { value?
   return {
     energy: { value: Math.round(readings.socWh['power-station']) },
     fuel: { value: Math.round(readings.fuelL.generator * 10) / 10 },
-    skylink: { value: svc.plant.getPartMode('spacey-dish') },
+    skylink: { value: svc.plant.getPartMode('skylink-dish') },
     vsat: { value: svc.plant.getPartMode('vsat-modem') },
     verified: { value: lastRunId(svc) },
     seating: { cites: log.filter((e) => e.kind === 'observation' && e.subject.startsWith('generator')).map((e) => e.id) },
@@ -130,7 +130,7 @@ describe('M20 S2 completion', () => {
     expect(svc.events?.hasFired('s2-supply-loss')).toBe(true);
   });
 
-  it('pins the planning numbers: both terminals fail the reserve, Skylink only passes', () => {
+  it('pins the planning numbers: both terminals fail the reserve, SkyLink only passes', () => {
     const svc = bootScenario(data);
     const both = svc.plant.forecast();
     expect(both.meetsReserve).toBe(false);
@@ -140,20 +140,20 @@ describe('M20 S2 completion', () => {
     expect(sky.projectedSocWh).toBeCloseTo(270, 1);
   });
 
-  it('refuses the VSAT-only and both-on configurations, then accepts Skylink only', () => {
+  it('refuses the VSAT-only and both-on configurations, then accepts SkyLink only', () => {
     const svc = bootScenario(data);
     states.set('s2-trace-dependencies', { isActive: false, isCompleted: true });
     // Both terminals running: the low-delay card is met but the reserve is not
     expect(incomplete(svc, 's2-select-configuration')).toEqual(['Forecast keeps the 200 Wh reserve over the planning horizon']);
     // VSAT only: the reserve holds but the 620 ms path misses the 150 ms card
-    svc.plant.setPartMode('spacey-dish', 'standby');
+    svc.plant.setPartMode('skylink-dish', 'standby');
     expect(svc.plant.forecast().meetsReserve).toBe(true);
     expect(incomplete(svc, 's2-select-configuration')).toEqual(['A running terminal meets the low-delay requirement']);
     // Both off fails the card too
     svc.plant.setPartMode('vsat-modem', 'standby');
     expect(incomplete(svc, 's2-select-configuration')).toEqual(['A running terminal meets the low-delay requirement']);
-    // Recover: Skylink only
-    svc.plant.setPartMode('spacey-dish', 'run');
+    // Recover: SkyLink only
+    svc.plant.setPartMode('skylink-dish', 'run');
     expect(incomplete(svc, 's2-select-configuration')).toEqual([]);
   });
 

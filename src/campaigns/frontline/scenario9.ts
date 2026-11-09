@@ -7,9 +7,9 @@ import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-
 
 /**
  * C6 S9: first forward-site commissioning, in the fictional Rautala district.
- * Skylink is the only available service; the shared sandbox kit must not imply an available EuroSat path.
+ * SkyLink is the only available service; the shared sandbox kit must not imply an available EuroSat path.
  * No new hidden fault. Current-versus-cached evidence is the additional lesson.
- * Forward site mode (no trips, nobody spotted), Skylink only, generator off, laptop and terminal on batteries.
+ * Forward site mode (no trips, nobody spotted), SkyLink only, generator off, laptop and terminal on batteries.
  * The only plant event is s09-link-interruption (anchored to the freshness objective): it invalidates every earlier
  * reading, so the player must classify each one as current or last-known instead of reusing it. Readiness and the
  * service window each need current samples; the window must start after the readiness record is filed.
@@ -100,7 +100,7 @@ if (scenarioSettings.physicalPlant) {
     units: [
       {
         unitId: FORWARD_SKYLINK_UNIT,
-        label: 'Delivered Skylink terminal',
+        label: 'Delivered SkyLink terminal',
         record: { serial: 'SKY-7731', accountId: FORWARD_SKYLINK_ACCOUNT, configVersion: 'depot-v3' },
       },
     ],
@@ -128,8 +128,8 @@ export const frontlineScenario9Data: FrontlineScenarioData = {
   difficulty: 'intermediate',
   missionType: 'Field Service Assessment',
   description:
-    'The team has arrived at a new post in Rautala district. Irena Mazur needs a reliable service assessment before she confirms the first simulated task. Skylink is the only available satellite service; EuroSat has not been delivered.<br/><br/>Reconcile Tomek’s handover, establish the local dependencies, and collect a new baseline. Treat cached remote readings as last-known information until a current check confirms them.',
-  equipment: ['Skylink terminal and router', 'Battery power station and generator', 'Laptop', 'Delivered inventory and commissioning record'],
+    'The team has arrived at a new post in Rautala district. Irena Mazur needs a reliable service assessment before she confirms the first simulated task. SkyLink is the only available satellite service; EuroSat has not been delivered.<br/><br/>Reconcile Tomek’s handover, establish the local dependencies, and collect a new baseline. Treat cached remote readings as last-known information until a current check confirms them.',
+  equipment: ['SkyLink terminal and router', 'Battery power station and generator', 'Laptop', 'Delivered inventory and commissioning record'],
   settings: scenarioSettings,
   mechanicTodos: [],
   objectives: [
@@ -155,7 +155,7 @@ export const frontlineScenario9Data: FrontlineScenarioData = {
       conditions: [
         diagramSelection(
           {
-            include: ['spacey-dish', 'spacey-cable', 'spacey-router', 'laptop', 'power-strip', 'power-station'],
+            include: ['skylink-dish', 'skylink-cable', 'skylink-router', 'laptop', 'power-strip', 'power-station'],
             exclude: [`account:${FORWARD_SKYLINK_ACCOUNT}`, `provider:${FORWARD_PROVIDER}`, `endpoint:${FORWARD_ENDPOINT}`],
           },
           'Local power and network dependencies marked on the diagram'
@@ -175,7 +175,7 @@ export const frontlineScenario9Data: FrontlineScenarioData = {
           description: 'Delivered Router Inspected',
           mustMaintain: false,
           params: {
-            partId: 'spacey-router',
+            partId: 'skylink-router',
           },
         },
         {
@@ -256,7 +256,7 @@ export const frontlineScenario9Data: FrontlineScenarioData = {
       's09-reconcile-post': {
         character: Character.TOMASZ_WRONA,
         audioUrl: '',
-        text: "Skylink is the service in this delivery. I've included the stock list and assignment record, but the camp's successful checks don't certify the equipment after transport.",
+        text: "SkyLink is the service in this delivery. I've included the stock list and assignment record, but the camp's successful checks don't certify the equipment after transport.",
       },
       's09-map-service': {
         character: Character.IRENA_MAZUR,

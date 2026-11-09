@@ -13,7 +13,7 @@ function config(withModes = true): PlantConfig {
     parts: [
       { id: 'power-station', kind: 'battery', label: 'Power station', capacityWh: 1000, socWh: 450, maxOutputW: 600, nominalV: 12, loadW: 0 },
       { id: 'laptop', kind: 'client', label: 'Laptop', poweredBy: 'power-station', loadW: 45, nominalV: 12 },
-      { id: 'skylink', kind: 'terminal', label: 'Skylink dish', poweredBy: 'power-station', nominalV: 12, loadW: 50, ...(withModes ? { mode: 'standby', modes: modes(50) } : {}) },
+      { id: 'skylink', kind: 'terminal', label: 'SkyLink dish', poweredBy: 'power-station', nominalV: 12, loadW: 50, ...(withModes ? { mode: 'standby', modes: modes(50) } : {}) },
       { id: 'vsat-modem', kind: 'modem', label: 'VSAT modem', poweredBy: 'power-station', nominalV: 12, loadW: 50, ...(withModes ? { mode: 'standby', modes: modes(80) } : {}) },
     ],
     connectors: [],

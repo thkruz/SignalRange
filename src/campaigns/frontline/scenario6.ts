@@ -10,7 +10,7 @@ import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-
  * C6 S6: controlled service comparisons at Kivilahti, not live aircraft operation.
  * Compare two workload requirements and two connection architectures independently.
  * Low-delay and GEO-like profiles are fictional authored exercise data, not real service promises.
- * The fiber and radio cases are two more paths on the Skylink terminal that differ only in their remote leg.
+ * The fiber and radio cases are two more paths on the SkyLink terminal that differ only in their remote leg.
  * VO direction: Eastern European accents; subtitles remain natural English.
  */
 const settings = createFrontlineSettings(6);
@@ -23,7 +23,7 @@ const QUEUED_CARD = 'queued-report';
 type RunOutcome = 'supported' | 'degraded' | 'unsupported';
 const MISSED: RunOutcome[] = ['degraded', 'unsupported'];
 
-/** Fictional exercise requirement: needs a short round trip (Skylink 45 ms passes, the GEO-like 620 ms does not) */
+/** Fictional exercise requirement: needs a short round trip (SkyLink 45 ms passes, the GEO-like 620 ms does not) */
 const PROMPT_RESPONSE_CARD: RequirementCard = {
   id: PROMPT_CARD,
   version: 1,
@@ -47,11 +47,11 @@ const QUEUED_REPORT_CARD: RequirementCard = {
   priority: 'routine',
 };
 
-/** The Skylink path with a remote leg: fiber adds 10 ms, the radio segment adds 180 ms and caps the rate at 30 Mbps */
+/** The SkyLink path with a remote leg: fiber adds 10 ms, the radio segment adds 180 ms and caps the rate at 30 Mbps */
 function legPath(id: string, label: string, leg: NonNullable<ServicePathConfig['remoteLeg']>): ServicePathConfig {
   const base = campServiceConfig().paths.find((path) => path.id === SKYLINK_SERVICE);
   if (!base) {
-    throw new Error('Camp service config lost the Skylink path');
+    throw new Error('Camp service config lost the SkyLink path');
   }
 
   return { ...base, id, label, remoteLeg: leg };
@@ -143,8 +143,8 @@ if (settings.physicalPlant) {
     ]
   );
   settings.physicalPlant.service?.paths.push(
-    legPath(FIBER_SERVICE, 'Skylink, fiber connection', { kind: 'fiber', rttMs: 10, downMbps: 1000 }),
-    legPath(RADIO_SERVICE, 'Skylink, radio connection', { kind: 'radio', rttMs: 180, downMbps: 30 })
+    legPath(FIBER_SERVICE, 'SkyLink, fiber connection', { kind: 'fiber', rttMs: 10, downMbps: 1000 }),
+    legPath(RADIO_SERVICE, 'SkyLink, radio connection', { kind: 'radio', rttMs: 180, downMbps: 30 })
   );
 }
 

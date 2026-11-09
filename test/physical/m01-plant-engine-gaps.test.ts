@@ -35,9 +35,9 @@ function baseConfig(extra: Partial<PlantConfig> = {}, fuelL = 5, faults: PlantFa
       },
       { id: 'power-station', kind: 'battery', label: 'Power station', poweredBy: 'generator', capacityWh: 1000, socWh: 0, maxOutputW: 600, nominalV: 12, loadW: 10 },
       { id: 'power-strip', kind: 'strip', label: 'Power strip', poweredBy: 'power-station', loadW: 0, nominalV: 12 },
-      { id: 'spacey-router', kind: 'router', label: 'SpaceY router', poweredBy: 'power-strip', loadW: 20, nominalV: 12 },
+      { id: 'skylink-router', kind: 'router', label: 'SkyLink router', poweredBy: 'power-strip', loadW: 20, nominalV: 12 },
     ],
-    connectors: [{ id: 'strip:router', partId: 'power-strip', feeds: 'spacey-router' }],
+    connectors: [{ id: 'strip:router', partId: 'power-strip', feeds: 'skylink-router' }],
     cables: [],
     faults,
     ...extra,
@@ -79,7 +79,7 @@ const firstVolts = (text: string): number => Number(/(\d+\.\d) V/u.exec(text)?.[
 describe('M01 gap A: generator off and run', () => {
   it('off cuts the supply downstream and run restores it after startupS', () => {
     const { plant, tick } = makeRig(baseConfig());
-    expect(plant.isPartPowered('spacey-router')).toBe(true);
+    expect(plant.isPartPowered('skylink-router')).toBe(true);
     expect(plant.getPartMode('generator')).toBe('run');
 
     const off = plant.setPartMode('generator', 'off');
@@ -87,7 +87,7 @@ describe('M01 gap A: generator off and run', () => {
     expect(plant.getPartMode('generator')).toBe('off');
     expect(plant.getPartState('generator')?.mode).toBe('off');
     expect(plant.isPartPowered('power-station')).toBe(false);
-    expect(plant.isPartPowered('spacey-router')).toBe(false);
+    expect(plant.isPartPowered('skylink-router')).toBe(false);
 
     const run = plant.setPartMode('generator', 'run');
     expect(run.costSeconds).toBe(20);
@@ -105,7 +105,7 @@ describe('M01 gap A: generator off and run', () => {
     expect(plant.isPartPowered('power-station')).toBe(true);
     // The router still boots after regaining supply
     tick(40);
-    expect(plant.isPartPowered('spacey-router')).toBe(true);
+    expect(plant.isPartPowered('skylink-router')).toBe(true);
   });
 
   it('no fuel: the start fails with a line, costs time and the generator stays dead', () => {
@@ -134,9 +134,9 @@ describe('M01 gap A: generator off and run', () => {
   it('refuses unknown modes and parts without modes at no cost', () => {
     const { plant } = makeRig(baseConfig());
     expect(plant.setPartMode('generator', 'turbo').costSeconds).toBe(0);
-    expect(plant.setPartMode('spacey-router', 'run').costSeconds).toBe(0);
+    expect(plant.setPartMode('skylink-router', 'run').costSeconds).toBe(0);
     expect(plant.verbApplies('setMode', 'generator')).toBe(true);
-    expect(plant.verbApplies('setMode', 'spacey-router')).toBe(false);
+    expect(plant.verbApplies('setMode', 'skylink-router')).toBe(false);
     // Sandbox generator has no modes: the verb does not apply there
     const sandbox = makeRig(frontlinePlantConfig);
     expect(sandbox.plant.verbApplies('setMode', 'generator')).toBe(false);
@@ -222,7 +222,7 @@ describe('M01 gap C: supply hint', () => {
     const { plant } = makeRig(baseConfig(hint ? { supplyHint: hint } : {}));
     plant.setPartMode('generator', 'off');
 
-    return plant.measure('multimeter', 'spacey-router').observation;
+    return plant.measure('multimeter', 'skylink-router').observation;
   }
 
   it('off (and absent) adds nothing to a 0 V reading', () => {

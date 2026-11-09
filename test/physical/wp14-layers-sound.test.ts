@@ -65,7 +65,7 @@ describe('layer table', () => {
   });
 
   it('weather files exist', () => {
-    for (const f of ['site-outside-snow', 'site-outside-wet', 'cu-spacey-dish-snow', 'cu-spacey-dish-wet', 'cu-vsat-dish-snow', 'cu-lnb-wet']) {
+    for (const f of ['site-outside-snow', 'site-outside-wet', 'cu-skylink-dish-snow', 'cu-skylink-dish-wet', 'cu-vsat-dish-snow', 'cu-lnb-wet']) {
       expect(fs.existsSync(path.join(publicDir, `assets/campaigns/frontline/physical/${f}.webp`)), f).toBe(true);
     }
   });
@@ -82,17 +82,17 @@ describe('layer visibility follows fault state', () => {
     expect(activeLayers(plant, def('lnb'), 'clear')).toHaveLength(0);
   });
 
-  it('shows moisture at the router end of the SpaceY cable', () => {
+  it('shows moisture at the router end of the SkyLink cable', () => {
     const { plant } = makePlant();
-    fault(plant, 'spacey-cable:router', 'moisture');
+    fault(plant, 'skylink-cable:router', 'moisture');
     expect(activeLayers(plant, def('router'), 'clear').map((a) => a.layer.id)).toContain('router-moisture');
   });
 
   it('uses the on-snow variant of the snow layer in snow weather', () => {
     const { plant } = makePlant();
-    fault(plant, 'spacey-dish', 'snow');
-    expect(activeLayers(plant, def('spacey-dish'), 'clear')[0]?.src).toMatch(/layer-spacey-dish-snow\.webp$/u);
-    expect(activeLayers(plant, def('spacey-dish'), 'snow')[0]?.src).toMatch(/snow-on-snow\.webp$/u);
+    fault(plant, 'skylink-dish', 'snow');
+    expect(activeLayers(plant, def('skylink-dish'), 'clear')[0]?.src).toMatch(/layer-skylink-dish-snow\.webp$/u);
+    expect(activeLayers(plant, def('skylink-dish'), 'snow')[0]?.src).toMatch(/snow-on-snow\.webp$/u);
   });
 });
 
@@ -141,7 +141,7 @@ describe('weather', () => {
   });
 
   it('swaps outdoor close-ups; vsat-dish wet keeps the original', () => {
-    expect(closeupImageFor(def('spacey-dish'), 'wet')).toMatch(/cu-spacey-dish-wet/u);
+    expect(closeupImageFor(def('skylink-dish'), 'wet')).toMatch(/cu-skylink-dish-wet/u);
     expect(closeupImageFor(def('vsat-dish'), 'snow')).toMatch(/cu-vsat-dish-snow/u);
     expect(closeupImageFor(def('vsat-dish'), 'wet')).toBe(def('vsat-dish').image);
     expect(closeupImageFor(def('router'), 'snow')).toBe(def('router').image);

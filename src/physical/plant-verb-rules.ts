@@ -47,7 +47,7 @@ export const VERB_RULES: Readonly<Record<RuleVerb, VerbRule>> = {
   inspect: { parts: [...ALL_PARTS, 'strip'], connectors: 'all', cables: true },
   feel: { parts: WARM, connectors: 'all' },
   wiggle: { connectors: 'all', cables: true },
-  // Only points that carry power. The SpaceY panel itself is read at its cable connectors.
+  // Only points that carry power. The SkyLink panel itself is read at its cable connectors.
   multimeter: { parts: ['strip', 'power-station', 'generator', 'router', 'modem'], connectors: 'power' },
   'cable-tester': { connectors: 'signal', cables: true },
   reseat: { connectors: 'all' },

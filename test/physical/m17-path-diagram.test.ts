@@ -21,7 +21,7 @@ function cfg(): PlantConfig {
     parts: [
       { id: 'battery', kind: 'battery', label: 'Battery', capacityWh: 1000, socWh: 900, maxOutputW: 600, nominalV: 12, loadW: 0 },
       { id: 'router', kind: 'router', label: 'Router', poweredBy: 'battery', loadW: 10, nominalV: 12 },
-      { id: 'skylink', kind: 'terminal', label: 'Skylink', poweredBy: 'router', viaCable: 'dish-cable', nominalV: 12, loadW: 40 },
+      { id: 'skylink', kind: 'terminal', label: 'SkyLink', poweredBy: 'router', viaCable: 'dish-cable', nominalV: 12, loadW: 40 },
       { id: 'eurosat', kind: 'terminal', label: 'EuroSat', poweredBy: 'battery', nominalV: 12, loadW: 40 },
     ],
     connectors: [{ id: 'dish-plug', cableId: 'dish-cable', partId: 'skylink' }],
@@ -29,7 +29,7 @@ function cfg(): PlantConfig {
     faults: [],
     service: {
       paths: [
-        { id: 'skylink', label: 'Skylink', terminalPartId: 'skylink', localPartIds: ['router'], accountId: 'a1', providerId: 'skylink-ops', endpointIds: ['hq'], profile },
+        { id: 'skylink', label: 'SkyLink', terminalPartId: 'skylink', localPartIds: ['router'], accountId: 'a1', providerId: 'skylink-ops', endpointIds: ['hq'], profile },
         {
           id: 'eurosat',
           label: 'EuroSat',

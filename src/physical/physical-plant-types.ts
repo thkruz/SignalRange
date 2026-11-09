@@ -265,7 +265,7 @@ export interface PlantSiteConfig {
   inventory?: string[];
 }
 
-export type SpaceyStatus = 'booting' | 'online' | 'obstructed' | 'heating' | 'thermal-shutdown' | 'no-power';
+export type SkylinkStatus = 'booting' | 'online' | 'obstructed' | 'heating' | 'thermal-shutdown' | 'no-power';
 
 export interface PlantEnvironment {
   windMps: number;

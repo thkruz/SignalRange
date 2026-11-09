@@ -16,7 +16,7 @@ const baselineForm: HandoverFormConfig = {
   title: 'Healthy baseline',
   documentSection: 'Baseline',
   fields: [
-    { key: 'service', label: 'Service checked', required: true, rule: { choice: [SKYLINK_SERVICE], labels: { [SKYLINK_SERVICE]: 'Skylink' } } },
+    { key: 'service', label: 'Service checked', required: true, rule: { choice: [SKYLINK_SERVICE], labels: { [SKYLINK_SERVICE]: 'SkyLink' } } },
     { key: 'energy', label: 'Stored energy (Wh)', required: true, rule: { powerWithin: { metric: 'socWh', tol: 25, partId: 'power-station' } } },
     { key: 'power', label: 'Terminal power', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'power' } } },
     { key: 'local', label: 'Local network', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'local' } } },
@@ -32,14 +32,14 @@ const handoverForm: HandoverFormConfig = {
   title: 'First handover',
   documentSection: 'Handover',
   fields: [
-    { key: 'verified', label: 'Service verified', required: true, rule: { choice: [SKYLINK_SERVICE], labels: { [SKYLINK_SERVICE]: 'Skylink' } } },
+    { key: 'verified', label: 'Service verified', required: true, rule: { choice: [SKYLINK_SERVICE], labels: { [SKYLINK_SERVICE]: 'SkyLink' } } },
     { key: 'untested', label: 'Equipment left untested', required: true, rule: { choice: [CAMP_VSAT_SERVICE], labels: { [CAMP_VSAT_SERVICE]: 'Camp reference VSAT' } } },
     { key: 'run', label: 'Verified application run', required: true, rule: { workload: { cardId: OLA_CHECK_CARD.id, is: ['supported'] } } },
     {
       key: 'readiness',
       label: 'Readiness statement',
       required: true,
-      rule: { choice: ['skylink-only'], labels: { 'skylink-only': 'Skylink verified, VSAT not tested' } },
+      rule: { choice: ['skylink-only'], labels: { 'skylink-only': 'SkyLink verified, VSAT not tested' } },
     },
   ],
 };
@@ -62,7 +62,7 @@ export const frontlineScenario1Data: FrontlineScenarioData = {
   missionType: 'Field Communications Training',
   description:
     'Your first shift at Kivilahti starts with healthy equipment. Sergeant Marek Domański introduces the post, while pilot Aleksandra Wysocka prepares a simulated application check. Trace the equipment, complete the camp checks, and establish what usable service looks like before you have to diagnose a fault.',
-  equipment: ['Battery power station and generator', 'Skylink terminal and router', 'Power and data cable', 'Pilot workstation', 'Camp reference VSAT'],
+  equipment: ['Battery power station and generator', 'SkyLink terminal and router', 'Power and data cable', 'Pilot workstation', 'Camp reference VSAT'],
   settings,
   mechanicTodos: [],
   objectives: [
@@ -75,8 +75,8 @@ export const frontlineScenario1Data: FrontlineScenarioData = {
       prerequisiteObjectiveIds: [],
       conditions: [
         { type: 'part-inspected', description: 'Power source inspected', params: { partId: 'power-station' }, mustMaintain: false },
-        { type: 'part-inspected', description: 'Local router inspected', params: { partId: 'spacey-router' }, mustMaintain: false },
-        { type: 'part-inspected', description: 'Satellite terminal inspected', params: { partId: 'spacey-dish' }, mustMaintain: false },
+        { type: 'part-inspected', description: 'Local router inspected', params: { partId: 'skylink-router' }, mustMaintain: false },
+        { type: 'part-inspected', description: 'Satellite terminal inspected', params: { partId: 'skylink-dish' }, mustMaintain: false },
         { type: 'part-inspected', description: 'Workstation inspected', params: { partId: 'laptop' }, mustMaintain: false },
         {
           type: 'status-check',
@@ -106,8 +106,8 @@ export const frontlineScenario1Data: FrontlineScenarioData = {
         siteChecked(['generator'], 'Generator fuel and housing checked'),
         siteChecked(['power-station'], 'Power station checked'),
         siteChecked(['power-strip'], 'Power strip checked'),
-        siteChecked(['spacey-cable'], 'Skylink cable checked'),
-        siteChecked(['spacey-cable:dish', 'spacey-cable:router'], 'Skylink cable plugs checked'),
+        siteChecked(['skylink-cable'], 'SkyLink cable checked'),
+        siteChecked(['skylink-cable:dish', 'skylink-cable:router'], 'SkyLink cable plugs checked'),
       ],
     },
     {
@@ -125,11 +125,11 @@ export const frontlineScenario1Data: FrontlineScenarioData = {
     {
       id: 's1-test-application',
       title: 'Run the Application Check',
-      description: 'Start a new simulated application check with Ola on the Skylink connection. Confirm the completed result at both ends before calling the service usable.',
+      description: 'Start a new simulated application check with Ola on the SkyLink connection. Confirm the completed result at both ends before calling the service usable.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s1-establish-connection'],
       conditions: [
-        workloadVerified({ card: OLA_CHECK_CARD.id, service: SKYLINK_SERVICE }, 'Application check completed on the Skylink connection'),
+        workloadVerified({ card: OLA_CHECK_CARD.id, service: SKYLINK_SERVICE }, 'Application check completed on the SkyLink connection'),
         layerObserved(SKYLINK_SERVICE, 'application', { status: 'up' }, 'Result confirmed at the remote end'),
       ],
     },

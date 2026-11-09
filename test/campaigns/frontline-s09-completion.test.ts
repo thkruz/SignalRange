@@ -28,7 +28,7 @@ vi.mock('@app/simulation/simulation-manager', () => ({
 const states = objectives.states as ObjectiveStates;
 const data = frontlineScenario9Data;
 const CARD = 'fwd-first';
-const LOCAL_NODES = ['spacey-dish', 'spacey-cable', 'spacey-router', 'laptop', 'power-strip', 'power-station'];
+const LOCAL_NODES = ['skylink-dish', 'skylink-cable', 'skylink-router', 'laptop', 'power-strip', 'power-station'];
 const incomplete = (svc: PhysicalPlantService, id: string): string[] => unmet(data.objectives.find((o) => o.id === id) as never, svc);
 const obsIds = (svc: PhysicalPlantService): string[] => (svc.evidence?.entries('observation') ?? []).map((e) => e.id);
 const ok = (res: ReturnType<NonNullable<PhysicalPlantService['records']>['submit']> | undefined): void => {
@@ -58,7 +58,7 @@ function acts(svc: PhysicalPlantService): Record<string, () => void> {
       svc.evidence?.recordSelection(LOCAL_NODES, 'Local power and network chain');
     },
     's09-establish-baseline': () => {
-      svc.plant.inspect('spacey-router');
+      svc.plant.inspect('skylink-router');
       svc.plant.inspect('power-station');
       takeAll(svc);
       ok(

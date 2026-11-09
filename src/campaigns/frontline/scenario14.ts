@@ -19,11 +19,11 @@ import { S11_INTERACTIVE_CARD, S11_TRANSFER_CARD } from './scenario11';
 
 /**
  * Frontline Signals — Scenario 14: Manage Two Available Terminals.
- * Initial state: the Skylink ground-service restriction from S10 is still in force until a provider notice lifts it
+ * Initial state: the SkyLink ground-service restriction from S10 is still in force until a provider notice lifts it
  * during the scenario; EuroSat is running. The separate remote mobility policy from S13 stays in force throughout:
- * the lift event patches only the Skylink account, never the remote endpoint.
+ * the lift event patches only the SkyLink account, never the remote endpoint.
  * The player compares both services, maps the shared dependencies, chooses an active/standby arrangement against a
- * 200 Wh reserve (both terminals running misses it), then a planned Skylink outage exercises the standby terminal
+ * 200 Wh reserve (both terminals running misses it), then a planned SkyLink outage exercises the standby terminal
  * (EuroSat registration takes its modeled startup). Nothing freezes the clock: restoration and the exercise run in time.
  * Eastern European accents belong to VO performance; audio is not recorded yet.
  */
@@ -44,7 +44,7 @@ const restorationForm: HandoverFormConfig = {
   documentSection: 'Restoration',
   fields: [
     { key: 'notice', label: 'Provider notice and effective time', required: true, rule: { cites: 'result', min: 1 } },
-    { key: 'account', label: 'Skylink account state now', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'account' } } },
+    { key: 'account', label: 'SkyLink account state now', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'account' } } },
     {
       key: 'verified',
       label: 'Interactive task window you ran after the change',
@@ -61,7 +61,7 @@ const comparisonForm: HandoverFormConfig = {
   title: 'Service comparison',
   documentSection: 'Comparison',
   fields: [
-    { key: 'skylink', label: 'Interactive task on Skylink', required: true, rule: { workload: { cardId: INTERACTIVE, is: ['supported'], serviceId: SKYLINK_SERVICE } } },
+    { key: 'skylink', label: 'Interactive task on SkyLink', required: true, rule: { workload: { cardId: INTERACTIVE, is: ['supported'], serviceId: SKYLINK_SERVICE } } },
     { key: 'eurosat', label: 'Interactive task on EuroSat', required: true, rule: { workload: { cardId: INTERACTIVE, is: ['unsupported'], serviceId: EUS } } },
     { key: 'transfer', label: 'Transfer task on EuroSat', required: true, rule: { workload: { cardId: TRANSFER, is: ['supported'], serviceId: EUS } } },
     { key: 'unmet', label: 'Requirement EuroSat misses for the interactive task', required: true, rule: choice('delay', 'Round-trip delay above its limit') },
@@ -91,7 +91,7 @@ const readinessForm: HandoverFormConfig = {
   title: 'Operating configuration',
   documentSection: 'Configuration',
   fields: [
-    { key: 'active', label: 'Active connection', required: true, rule: { modeIs: { partId: 'spacey-dish' } } },
+    { key: 'active', label: 'Active connection', required: true, rule: { modeIs: { partId: 'skylink-dish' } } },
     { key: 'standby', label: 'Standby terminal', required: true, rule: { modeIs: { partId: 'vsat-modem' } } },
     { key: 'energy', label: 'Battery energy now (Wh)', required: true, rule: { powerWithin: { metric: 'socWh', tol: 40, partId: 'power-station' } } },
     { key: 'recovery', label: 'Time the standby terminal needs to register', required: true, rule: choice('about-20-s', 'About 20 seconds') },
@@ -99,7 +99,7 @@ const readinessForm: HandoverFormConfig = {
       key: 'reason',
       label: 'Why this arrangement',
       required: true,
-      rule: choice('interactive-needs-skylink', 'Only Skylink supports the interactive task, and one terminal in standby keeps the reserve'),
+      rule: choice('interactive-needs-skylink', 'Only SkyLink supports the interactive task, and one terminal in standby keeps the reserve'),
     },
   ],
 };
@@ -109,11 +109,11 @@ const transitionForm: HandoverFormConfig = {
   title: 'Readiness exercise',
   documentSection: 'Exercise',
   fields: [
-    { key: 'skylink', label: 'Skylink provider state now', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'provider' } } },
+    { key: 'skylink', label: 'SkyLink provider state now', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'provider' } } },
     { key: 'registration', label: 'EuroSat registration now', required: true, rule: { matchesCurrent: { serviceId: EUS, layer: 'registration' } } },
     { key: 'verified', label: 'Transfer window you ran after the transition', required: true, rule: { workload: { cardId: TRANSFER, is: ['supported'], serviceId: EUS } } },
     { key: 'energy', label: 'Battery energy now (Wh)', required: true, rule: { powerWithin: { metric: 'socWh', tol: 40, partId: 'power-station' } } },
-    { key: 'interactive', label: 'Interactive task while Skylink is out', required: true, rule: choice('unavailable', 'Not available on EuroSat') },
+    { key: 'interactive', label: 'Interactive task while SkyLink is out', required: true, rule: choice('unavailable', 'Not available on EuroSat') },
     { key: 'basis', label: 'Observations and events behind it', required: true, rule: { cites: 'observation', min: 3 } },
   ],
 };
@@ -124,13 +124,13 @@ const handoverForm: HandoverFormConfig = {
   documentSection: 'Dual service',
   fields: [
     { key: 'active', label: 'Active terminal mode (EuroSat)', required: true, rule: { modeIs: { partId: 'vsat-modem' } } },
-    { key: 'standby', label: 'Standby terminal mode (Skylink)', required: true, rule: { modeIs: { partId: 'spacey-dish' } } },
+    { key: 'standby', label: 'Standby terminal mode (SkyLink)', required: true, rule: { modeIs: { partId: 'skylink-dish' } } },
     { key: 'energy', label: 'Battery energy now (Wh)', required: true, rule: { powerWithin: { metric: 'socWh', tol: 40, partId: 'power-station' } } },
-    { key: 'skylink', label: 'Skylink account state now', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'account' } } },
+    { key: 'skylink', label: 'SkyLink account state now', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'account' } } },
     { key: 'remote', label: 'Remote endpoint status now', required: true, rule: { matchesCurrent: { serviceId: FORWARD_REMOTE_SERVICE, layer: 'application' } } },
     { key: 'policy', label: 'Remote terminal policy', required: true, rule: choice('remains-in-force', 'Still in force, separate from the restored ground service') },
     { key: 'shared', label: 'Dependencies still shared', required: true, rule: choice('workstation-and-power', 'The workstation and the power chain') },
-    { key: 'unsupported', label: 'Task that needs Skylink', required: true, rule: choice(INTERACTIVE, 'Interactive session, not supported on EuroSat') },
+    { key: 'unsupported', label: 'Task that needs SkyLink', required: true, rule: choice(INTERACTIVE, 'Interactive session, not supported on EuroSat') },
   ],
 };
 
@@ -149,7 +149,7 @@ if (settings.physicalPlant) {
     units: [
       {
         unitId: FORWARD_SKYLINK_UNIT,
-        label: 'Commissioned Skylink terminal',
+        label: 'Commissioned SkyLink terminal',
         record: { serial: 'SKY-7731', accountId: FORWARD_SKYLINK_ACCOUNT, configVersion: 'depot-v3' },
       },
     ],
@@ -161,7 +161,7 @@ if (settings.physicalPlant) {
         affects: { accountId: FORWARD_SKYLINK_ACCOUNT },
         kind: 'ground-capacity',
         issuedAtS: 0,
-        text: 'Skylink service notice. The ground-service capacity reduction on the forward post account is being lifted. This notice covers the ground-service allowance only. It does not change any remote terminal service policy.',
+        text: 'SkyLink service notice. The ground-service capacity reduction on the forward post account is being lifted. This notice covers the ground-service allowance only. It does not change any remote terminal service policy.',
       },
     ],
     requests: [],
@@ -184,13 +184,13 @@ if (settings.physicalPlant) {
       id: S14_EVENT_EXERCISE,
       startAfterObjectiveId: 's14-test-readiness',
       actions: [{ kind: 'set-provider', patch: { id: FORWARD_PROVIDER, status: 'outage' } }],
-      logLine: 'The planned readiness exercise begins: Skylink service stops.',
+      logLine: 'The planned readiness exercise begins: SkyLink service stops.',
     },
     {
       id: S14_EVENT_RETURN,
       startAfterObjectiveId: 's14-handover-dual-service',
       actions: [{ kind: 'set-provider', patch: { id: FORWARD_PROVIDER, status: 'normal' } }],
-      logLine: 'The exercise ends and Skylink service returns.',
+      logLine: 'The exercise ends and SkyLink service returns.',
     },
   ];
 }
@@ -208,9 +208,9 @@ export const frontlineScenario14Data: FrontlineScenarioData = {
   duration: '25-35 min',
   missionType: 'Field Communications',
   description:
-    "Skylink's ground service is available again, and EuroSat remains at the post. Verify the restoration, compare the two connections, and choose a configuration that supports the task without ignoring power use or shared dependencies.",
+    "SkyLink's ground service is available again, and EuroSat remains at the post. Verify the restoration, compare the two connections, and choose a configuration that supports the task without ignoring power use or shared dependencies.",
   equipment: [
-    'Restored ground Skylink service',
+    'Restored ground SkyLink service',
     'EuroSat GEO service',
     'Shared router and local network',
     'Generator and battery power station',
@@ -223,15 +223,15 @@ export const frontlineScenario14Data: FrontlineScenarioData = {
       id: 's14-confirm-restoration',
       title: 'Verify the Restored Ground Service',
       description:
-        'Read the restoration notice and collect current Skylink service measurements. Confirm the ground-service change without assuming it also removes the separate remote-terminal policy.',
+        'Read the restoration notice and collect current SkyLink service measurements. Confirm the ground-service change without assuming it also removes the separate remote-terminal policy.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: [],
       points: 15,
       conditions: [
         eventFired(S14_EVENT_NOTICE, 'Provider notice delivered'),
         eventFired(S14_EVENT_LIFT, 'Ground restriction lifted'),
-        workloadVerified({ card: INTERACTIVE, service: SKYLINK_SERVICE, afterEvent: S14_EVENT_LIFT }, 'Interactive task verified on Skylink after the change'),
-        layerObserved(SKYLINK_SERVICE, 'account', { status: 'up' }, 'Skylink account observed unrestricted'),
+        workloadVerified({ card: INTERACTIVE, service: SKYLINK_SERVICE, afterEvent: S14_EVENT_LIFT }, 'Interactive task verified on SkyLink after the change'),
+        layerObserved(SKYLINK_SERVICE, 'account', { status: 'up' }, 'SkyLink account observed unrestricted'),
         layerObserved(FORWARD_REMOTE_SERVICE, 'application', { status: 'down' }, 'Remote policy observed still in force'),
         handoverValid('restoration', 'Restoration recorded apart from the remote policy'),
       ],
@@ -245,7 +245,7 @@ export const frontlineScenario14Data: FrontlineScenarioData = {
       prerequisiteObjectiveIds: ['s14-confirm-restoration'],
       points: 15,
       conditions: [
-        workloadVerified({ card: INTERACTIVE, service: SKYLINK_SERVICE }, 'Interactive task supported on Skylink'),
+        workloadVerified({ card: INTERACTIVE, service: SKYLINK_SERVICE }, 'Interactive task supported on SkyLink'),
         workloadRunFinished({ card: INTERACTIVE, services: [EUS], statuses: ['unsupported'] }, 'Interactive task tried on EuroSat and missing its limit'),
         workloadVerified({ card: TRANSFER, service: EUS }, 'Transfer task supported on EuroSat'),
         handoverValid('comparison', 'Each service compared with the task requirements'),
@@ -261,7 +261,7 @@ export const frontlineScenario14Data: FrontlineScenarioData = {
       points: 15,
       conditions: [
         diagramSelection(
-          { include: ['power-station', 'power-strip', 'laptop'], exclude: ['spacey-dish', 'vsat-modem'] },
+          { include: ['power-station', 'power-strip', 'laptop'], exclude: ['skylink-dish', 'vsat-modem'] },
           'Shared power and workstation marked, terminals left out'
         ),
         handoverValid('dependencies', 'Shared and separate dependencies recorded'),
@@ -295,7 +295,7 @@ export const frontlineScenario14Data: FrontlineScenarioData = {
       prerequisiteObjectiveIds: ['s14-check-dependencies'],
       points: 15,
       conditions: [
-        modeIs('spacey-dish', 'run', 'Skylink dish active'),
+        modeIs('skylink-dish', 'run', 'SkyLink dish active'),
         modeIs('vsat-modem', 'standby', 'EuroSat modem in standby'),
         forecastMeetsReserve({}, 'Forecast keeps the 200 Wh reserve with this arrangement'),
         handoverValid('readiness', 'Operating configuration recorded'),
@@ -311,7 +311,7 @@ export const frontlineScenario14Data: FrontlineScenarioData = {
       points: 15,
       conditions: [
         eventFired(S14_EVENT_EXERCISE, 'Readiness exercise has begun'),
-        layerObserved(SKYLINK_SERVICE, 'provider', { status: 'down' }, 'Skylink outage observed'),
+        layerObserved(SKYLINK_SERVICE, 'provider', { status: 'down' }, 'SkyLink outage observed'),
         layerObserved(EUS, 'registration', { status: 'up' }, 'EuroSat registration observed up after its startup'),
         workloadVerified({ card: TRANSFER, service: EUS, afterEvent: S14_EVENT_EXERCISE }, 'Transfer task verified on EuroSat during the exercise'),
         handoverValid('transition', 'Transition and recovery time recorded'),
@@ -327,7 +327,7 @@ export const frontlineScenario14Data: FrontlineScenarioData = {
       points: 15,
       conditions: [
         modeIs('vsat-modem', 'run', 'EuroSat modem active'),
-        modeIs('spacey-dish', 'standby', 'Skylink dish in standby'),
+        modeIs('skylink-dish', 'standby', 'SkyLink dish in standby'),
         forecastMeetsReserve({}, 'Forecast keeps the reserve with the final arrangement'),
         handoverValid('dual-handover', 'Dual-service handover submitted'),
       ],
@@ -338,7 +338,7 @@ export const frontlineScenario14Data: FrontlineScenarioData = {
       character: Character.IRENA_MAZUR,
       emotion: Emotion.NEUTRAL,
       audioUrl: '',
-      text: "<p>The provider says Skylink's ground-service restriction has ended. Verify the change before we count on it. With both terminals available, I need a clear account of the service, the reserve, and what they still share.</p>",
+      text: "<p>The provider says SkyLink's ground-service restriction has ended. Verify the change before we count on it. With both terminals available, I need a clear account of the service, the reserve, and what they still share.</p>",
     },
     objectivesOnStart: {
       's14-compare-services': {

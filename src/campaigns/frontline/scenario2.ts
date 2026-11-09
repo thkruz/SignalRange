@@ -21,7 +21,7 @@ import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-
  * seconds (Ted approved these values, 2026-11-09). These are authored exercise values, not
  * operational recommendations. Both terminals start running (175 W, projects 187.5 Wh, fails);
  * one terminal alone draws 120 W (270 Wh, passes); VSAT only also keeps the reserve but misses the
- * low-delay card, so only the Skylink-only choice completes the configuration objective.
+ * low-delay card, so only the SkyLink-only choice completes the configuration objective.
  * The supply loss is anchored to s2-respond-to-outage, so a slow reader is never penalised.
  * Guided fault: partial-seat at generator:out. Teach inspection before reseating here;
  * S16 later assesses this familiar mechanism at another point in the shared supply.
@@ -37,7 +37,7 @@ const resourcesForm: HandoverFormConfig = {
   fields: [
     { key: 'energy', label: 'Stored energy (Wh)', required: true, rule: { powerWithin: { metric: 'socWh', tol: 20, partId: 'power-station' } } },
     { key: 'fuel', label: 'Generator fuel (L)', required: true, rule: { powerWithin: { metric: 'fuelL', tol: 0.5, partId: 'generator' } } },
-    { key: 'skylink', label: 'Skylink terminal mode', required: true, rule: { modeIs: { partId: 'spacey-dish' } } },
+    { key: 'skylink', label: 'SkyLink terminal mode', required: true, rule: { modeIs: { partId: 'skylink-dish' } } },
     { key: 'vsat', label: 'VSAT terminal mode', required: true, rule: { modeIs: { partId: 'vsat-modem' } } },
     { key: 'verified', label: 'Verified low-delay run', required: true, rule: { workload: { cardId: OLA_VOICE_CARD.id, is: ['supported'] } } },
     { key: 'seating', label: 'Connector observations', required: true, rule: { cites: 'observation', min: 1 } },
@@ -46,7 +46,7 @@ const resourcesForm: HandoverFormConfig = {
       key: 'limitation',
       label: 'Limitation for the next operator',
       required: true,
-      rule: { choice: ['skylink-only'], labels: { 'skylink-only': 'Only the Skylink path meets the low-delay card within the reserve' } },
+      rule: { choice: ['skylink-only'], labels: { 'skylink-only': 'Only the SkyLink path meets the low-delay card within the reserve' } },
     },
   ],
 };
@@ -78,7 +78,7 @@ export const frontlineScenario2Data: FrontlineScenarioData = {
   missionType: 'Field Communications Training',
   description:
     'The connection is healthy, but the exercise starts with a limited battery reserve. Read the equipment load, choose a configuration, and work through a guided external-supply interruption with Marek. Demonstrate the required service while retaining the stated reserve, then leave a useful resource record.',
-  equipment: ['1000 Wh battery power station', 'Generator', 'Power strip', 'Skylink terminal and router', 'Camp reference VSAT', 'Pilot workstation'],
+  equipment: ['1000 Wh battery power station', 'Generator', 'Power strip', 'SkyLink terminal and router', 'Camp reference VSAT', 'Pilot workstation'],
   settings,
   mechanicTodos: [],
   objectives: [

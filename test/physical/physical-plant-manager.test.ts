@@ -11,25 +11,25 @@ function baseConfig(overrides: Partial<PlantConfig> = {}): PlantConfig {
     parts: [
       { id: 'generator', kind: 'generator', ratedW: 1000, fuelL: 5, nominalV: 230 },
       { id: 'power-station', kind: 'battery', poweredBy: 'generator', maxOutputW: 500, socWh: 0, nominalV: 12, loadW: 20 },
-      { id: 'spacey-router', kind: 'router', poweredBy: 'power-station', loadW: 15 },
-      { id: 'spacey-dish', kind: 'terminal', poweredBy: 'spacey-router', viaCable: 'spacey-cable', loadW: 60 },
+      { id: 'skylink-router', kind: 'router', poweredBy: 'power-station', loadW: 15 },
+      { id: 'skylink-dish', kind: 'terminal', poweredBy: 'skylink-router', viaCable: 'skylink-cable', loadW: 60 },
       { id: 'vsat-modem', kind: 'modem', poweredBy: 'power-station', loadW: 40 },
       { id: 'vsat-dish', kind: 'dish', poweredBy: 'vsat-modem', viaCable: 'vsat-ifl', loadW: 5 },
     ],
     cables: [
       {
-        id: 'spacey-cable',
+        id: 'skylink-cable',
         lengthM: 25,
         cableType: 'power-data',
         carries: ['power', 'data'],
-        from: 'spacey-router',
-        to: 'spacey-dish',
+        from: 'skylink-router',
+        to: 'skylink-dish',
       },
       { id: 'vsat-ifl', lengthM: 30, cableType: 'coax', carries: ['rf', 'power'], from: 'vsat-modem', to: 'vsat-dish', role: 'post-lna' },
     ],
     connectors: [
-      { id: 'spacey-cable:dish', cableId: 'spacey-cable' },
-      { id: 'spacey-cable:router', cableId: 'spacey-cable' },
+      { id: 'skylink-cable:dish', cableId: 'skylink-cable' },
+      { id: 'skylink-cable:router', cableId: 'skylink-cable' },
       { id: 'vsat-feed', partId: 'vsat-dish', role: 'pre-lna' },
     ],
     ...overrides,
@@ -74,9 +74,9 @@ describe('PhysicalPlantManager neutrality', () => {
 
     expect(plant.preLnaLossDb(STATION)).toBe(0);
     expect(plant.postLnaLossDb(STATION)).toBe(0);
-    expect(plant.spaceyStatus()).toBe('online');
+    expect(plant.skylinkStatus()).toBe('online');
     expect(plant.isRfiPresent()).toBe(false);
-    for (const id of ['generator', 'power-station', 'spacey-router', 'spacey-dish', 'vsat-modem', 'vsat-dish']) {
+    for (const id of ['generator', 'power-station', 'skylink-router', 'skylink-dish', 'vsat-modem', 'vsat-dish']) {
       expect(plant.isPartPowered(id)).toBe(true);
       expect(plant.isLinkDropped(id)).toBe(false);
     }
@@ -95,24 +95,24 @@ describe('PhysicalPlantManager neutrality', () => {
 describe('connector faults', () => {
   it('partial seat: wiggle shows the shift and the plant reboots, reseat clears it and costs downtime', () => {
     const { plant, advance } = makePlant();
-    plant.injectFault(fault({ id: 'seat', target: 'spacey-cable:dish', kind: 'partial-seat' }));
+    plant.injectFault(fault({ id: 'seat', target: 'skylink-cable:dish', kind: 'partial-seat' }));
 
-    expect(plant.inspect('spacey-cable:dish').revealed).toBeUndefined();
-    const wiggle = plant.wiggle('spacey-cable:dish');
+    expect(plant.inspect('skylink-cable:dish').revealed).toBeUndefined();
+    const wiggle = plant.wiggle('skylink-cable:dish');
     expect(wiggle.observation).toContain('shifts');
     expect(wiggle.revealed).toEqual(['seat']);
     // The dropout cut the power cable, so the dish is now rebooting
-    expect(plant.isPartPowered('spacey-dish')).toBe(false);
+    expect(plant.isPartPowered('skylink-dish')).toBe(false);
 
-    const reseat = plant.reseat('spacey-cable:dish');
+    const reseat = plant.reseat('skylink-cable:dish');
     expect(reseat.cleared).toEqual(['seat']);
     expect(reseat.costSeconds).toBe(60);
     expect(reseat.downtimeSeconds).toBe(60 + 90);
     expect(plant.getFaults()).toHaveLength(0);
 
     advance(200);
-    expect(plant.spaceyStatus()).toBe('online');
-    expect(plant.isLinkDropped('spacey-dish')).toBe(false);
+    expect(plant.skylinkStatus()).toBe('online');
+    expect(plant.isLinkDropped('skylink-dish')).toBe(false);
   });
 
   it('a loose nut is fixed by tightening, not by reseating', () => {
@@ -126,17 +126,17 @@ describe('connector faults', () => {
 
   it('wind-triggered intermittent faults only fire in wind', () => {
     const { plant, env, advance } = makePlant();
-    plant.injectFault(fault({ id: 'seat', target: 'spacey-cable:dish', kind: 'partial-seat', trigger: { windMps: '>5' } }));
+    plant.injectFault(fault({ id: 'seat', target: 'skylink-cable:dish', kind: 'partial-seat', trigger: { windMps: '>5' } }));
     let dropsCalm = 0;
     for (let i = 0; i < 200; i++) {
       advance(1);
-      dropsCalm += plant.isLinkDropped('spacey-dish') ? 1 : 0;
+      dropsCalm += plant.isLinkDropped('skylink-dish') ? 1 : 0;
     }
     env.windMps = 12;
     let dropsWindy = 0;
     for (let i = 0; i < 200; i++) {
       advance(1);
-      dropsWindy += plant.isLinkDropped('spacey-dish') ? 1 : 0;
+      dropsWindy += plant.isLinkDropped('skylink-dish') ? 1 : 0;
     }
 
     expect(dropsCalm).toBe(0);
@@ -202,10 +202,10 @@ describe('cable faults', () => {
 
   it('a pinched cable is cleared by rerouting', () => {
     const { plant } = makePlant();
-    plant.injectFault(fault({ id: 'pinch', target: 'spacey-cable', kind: 'cable-pinch', atMeters: 8 }));
+    plant.injectFault(fault({ id: 'pinch', target: 'skylink-cable', kind: 'cable-pinch', atMeters: 8 }));
 
-    expect(plant.inspect('spacey-cable').observation).toContain('8 m');
-    expect(plant.reroute('spacey-cable').cleared).toEqual(['pinch']);
+    expect(plant.inspect('skylink-cable').observation).toContain('8 m');
+    expect(plant.reroute('skylink-cable').cleared).toEqual(['pinch']);
   });
 
   it('authored cable damage and connector state become faults at construction', () => {
@@ -226,9 +226,9 @@ describe('power faults', () => {
     const { plant, advance } = makePlant();
     plant.injectFault(fault({ id: 'sag', target: 'generator', kind: 'generator-sag', trigger: { loadW: '>100' } }));
 
-    expect(plant.isPartPowered('spacey-dish')).toBe(false);
-    expect(plant.spaceyStatus()).toBe('no-power');
-    const meter = plant.measure('multimeter', 'spacey-router');
+    expect(plant.isPartPowered('skylink-dish')).toBe(false);
+    expect(plant.skylinkStatus()).toBe('no-power');
+    const meter = plant.measure('multimeter', 'skylink-router');
     expect(meter.observation).toContain('expected');
     expect(meter.revealed).toContain('sag');
 
@@ -237,11 +237,11 @@ describe('power faults', () => {
     expect(cycle.cleared).toEqual(['sag']);
     expect(plant.isOutside()).toBe(true);
     advance(30);
-    expect(['no-power', 'booting']).toContain(plant.spaceyStatus());
+    expect(['no-power', 'booting']).toContain(plant.skylinkStatus());
     advance(200);
-    expect(plant.spaceyStatus()).toBe('online');
-    expect(plant.isPartPowered('spacey-dish')).toBe(true);
-    expect(plant.measure('multimeter', 'spacey-router').observation).not.toContain('expected');
+    expect(plant.skylinkStatus()).toBe('online');
+    expect(plant.isPartPowered('skylink-dish')).toBe(true);
+    expect(plant.measure('multimeter', 'skylink-router').observation).not.toContain('expected');
   });
 
   it('a sag that clears by itself still reboots the dish', () => {
@@ -250,21 +250,21 @@ describe('power faults', () => {
     plant.clearFault('sag');
     advance(35);
 
-    expect(plant.spaceyStatus()).toBe('booting');
+    expect(plant.skylinkStatus()).toBe('booting');
     advance(120);
-    expect(plant.spaceyStatus()).toBe('online');
+    expect(plant.skylinkStatus()).toBe('online');
   });
 
   it('a dead brick cuts the router and swapping it uses the brick spare', () => {
     const { plant, advance } = makePlant();
-    plant.injectFault(fault({ id: 'brick', target: 'spacey-router', kind: 'brick-dead' }));
+    plant.injectFault(fault({ id: 'brick', target: 'skylink-router', kind: 'brick-dead' }));
 
-    expect(plant.isPartPowered('spacey-router')).toBe(false);
-    expect(plant.spaceyStatus()).toBe('no-power');
-    expect(plant.swap('spacey-router').cleared).toEqual(['brick']);
+    expect(plant.isPartPowered('skylink-router')).toBe(false);
+    expect(plant.skylinkStatus()).toBe('no-power');
+    expect(plant.swap('skylink-router').cleared).toEqual(['brick']);
     expect(plant.getSpares()['power-brick']).toBe(0);
     advance(200);
-    expect(plant.spaceyStatus()).toBe('online');
+    expect(plant.skylinkStatus()).toBe('online');
   });
 
   it('a flat battery with a dead generator takes everything down', () => {
@@ -286,34 +286,34 @@ describe('power faults', () => {
     const config = baseConfig();
     config.parts[1] = { ...config.parts[1], socWh: 400, capacityWh: 500, maxOutputW: 120 };
     const { plant, env, advance } = makePlant(config);
-    expect(plant.isPartPowered('spacey-dish')).toBe(true);
+    expect(plant.isPartPowered('skylink-dish')).toBe(true);
 
     env.ambientC = -10;
     advance(1);
-    expect(plant.isPartPowered('spacey-dish')).toBe(false);
+    expect(plant.isPartPowered('skylink-dish')).toBe(false);
   });
 });
 
 describe('dish status', () => {
   it('snow and netting obstruct the dish until cleared', () => {
     const { plant } = makePlant();
-    plant.injectFault(fault({ id: 'snow', target: 'spacey-dish', kind: 'snow' }));
-    expect(plant.spaceyStatus()).toBe('obstructed');
-    expect(plant.clearSnow('spacey-dish').cleared).toEqual(['snow']);
-    expect(plant.spaceyStatus()).toBe('online');
+    plant.injectFault(fault({ id: 'snow', target: 'skylink-dish', kind: 'snow' }));
+    expect(plant.skylinkStatus()).toBe('obstructed');
+    expect(plant.clearSnow('skylink-dish').cleared).toEqual(['snow']);
+    expect(plant.skylinkStatus()).toBe('online');
 
-    plant.injectFault(fault({ id: 'net', target: 'spacey-dish', kind: 'net' }));
-    expect(plant.spaceyStatus()).toBe('obstructed');
-    plant.removeNet('spacey-dish');
-    expect(plant.spaceyStatus()).toBe('online');
+    plant.injectFault(fault({ id: 'net', target: 'skylink-dish', kind: 'net' }));
+    expect(plant.skylinkStatus()).toBe('obstructed');
+    plant.removeNet('skylink-dish');
+    expect(plant.skylinkStatus()).toBe('online');
   });
 
   it('heat drives heating and thermal shutdown', () => {
     const { plant, env } = makePlant();
     env.ambientC = 47;
-    expect(plant.spaceyStatus()).toBe('heating');
+    expect(plant.skylinkStatus()).toBe('heating');
     env.ambientC = 58;
-    expect(plant.spaceyStatus()).toBe('thermal-shutdown');
+    expect(plant.skylinkStatus()).toBe('thermal-shutdown');
   });
 
   it('a timed fault is dormant until its time', () => {
@@ -370,13 +370,13 @@ describe('spares, trips and the action log', () => {
     expect(plant.getReport().spotted).toBe(true);
     expect(plant.getLog().some((entry) => entry.verb === 'spotted')).toBe(true);
 
-    plant.powerCycle('spacey-router');
+    plant.powerCycle('skylink-router');
     expect(plant.isOutside()).toBe(false);
   });
 
   it('logs ineffective actions and the time to the first correct one', () => {
     const { plant, advance } = makePlant();
-    plant.injectFault(fault({ id: 'seat', target: 'spacey-cable:dish', kind: 'partial-seat' }));
+    plant.injectFault(fault({ id: 'seat', target: 'skylink-cable:dish', kind: 'partial-seat' }));
     advance(100);
 
     plant.tighten('vsat-feed');
@@ -384,7 +384,7 @@ describe('spares, trips and the action log', () => {
     expect(plant.getReport().ineffectiveActions).toBe(2);
     expect(plant.getReport().firstCorrectActionS).toBeNull();
 
-    plant.reseat('spacey-cable:dish');
+    plant.reseat('skylink-cable:dish');
     const report = plant.getReport();
     expect(report.ineffectiveActions).toBe(2);
     expect(report.firstCorrectActionS).toBe(100 + 30 + 120 + 60);
@@ -397,15 +397,15 @@ describe('spares, trips and the action log', () => {
 describe('checkpointing and determinism', () => {
   it('getState/restoreState round-trips', () => {
     const { plant, advance } = makePlant();
-    plant.injectFault(fault({ id: 'seat', target: 'spacey-cable:dish', kind: 'partial-seat' }));
+    plant.injectFault(fault({ id: 'seat', target: 'skylink-cable:dish', kind: 'partial-seat' }));
     plant.injectFault(fault({ id: 'water', target: 'vsat-ifl', kind: 'cable-water', atMeters: 4 }));
-    plant.wiggle('spacey-cable:dish');
+    plant.wiggle('skylink-cable:dish');
     plant.swap('vsat-ifl');
     advance(37);
     const saved = plant.getState();
     expect(JSON.parse(JSON.stringify(saved))).toEqual(saved);
 
-    plant.reseat('spacey-cable:dish');
+    plant.reseat('skylink-cable:dish');
     plant.injectFault(fault({ id: 'x', target: 'vsat-feed', kind: 'corrosion' }));
     advance(50);
     expect(plant.getState()).not.toEqual(saved);
@@ -419,11 +419,11 @@ describe('checkpointing and determinism', () => {
   it('intermittent faults are deterministic for a fixed seed', () => {
     const run = (seed: number): boolean[] => {
       const { plant, advance } = makePlant(baseConfig(), seed);
-      plant.injectFault(fault({ id: 'seat', target: 'spacey-cable:dish', kind: 'partial-seat' }));
+      plant.injectFault(fault({ id: 'seat', target: 'skylink-cable:dish', kind: 'partial-seat' }));
       const timeline: boolean[] = [];
       for (let i = 0; i < 300; i++) {
         advance(1);
-        timeline.push(plant.isLinkDropped('spacey-dish'));
+        timeline.push(plant.isLinkDropped('skylink-dish'));
       }
 
       return timeline;
@@ -442,10 +442,10 @@ describe('PhysicalPlantManager UI queries', () => {
 
     expect(plant.getTripLimit()).toBe(5);
     expect(plant.getEnvironment()).toEqual({ windMps: 7, rainMmH: 0, ambientC: 15 });
-    expect(plant.getPartIds()).toContain('spacey-dish');
+    expect(plant.getPartIds()).toContain('skylink-dish');
     expect(plant.getConnectorIds()).toContain('vsat-feed');
-    expect(plant.getCableIds()).toEqual(['spacey-cable', 'vsat-ifl']);
-    expect(plant.getLabel('spacey-dish')).toBe('spacey-dish');
+    expect(plant.getCableIds()).toEqual(['skylink-cable', 'vsat-ifl']);
+    expect(plant.getLabel('skylink-dish')).toBe('skylink-dish');
   });
 });
 
@@ -453,16 +453,16 @@ describe('PhysicalPlantManager load, time and reset queries', () => {
   it('reports the load only while powered, and the scenario time', () => {
     const { plant } = makePlant();
 
-    expect(plant.getLoadW('spacey-dish')).toBe(60);
-    plant.injectFault({ id: 'b', target: 'spacey-dish', kind: 'brick-dead' });
-    expect(plant.getLoadW('spacey-dish')).toBe(0);
+    expect(plant.getLoadW('skylink-dish')).toBe(60);
+    plant.injectFault({ id: 'b', target: 'skylink-dish', kind: 'brick-dead' });
+    expect(plant.getLoadW('skylink-dish')).toBe(0);
     expect(plant.getTimeSeconds()).toBe(100);
   });
 
   it('reset returns to the authored plant', () => {
     const { plant } = makePlant();
     plant.injectFault({ id: 'x', target: 'vsat-feed', kind: 'unseated' });
-    plant.clearSnow('spacey-dish');
+    plant.clearSnow('skylink-dish');
     plant.reset();
 
     expect(plant.getFaults()).toEqual([]);

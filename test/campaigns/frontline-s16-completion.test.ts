@@ -1,6 +1,6 @@
 /**
  * M27 S16 completion: the independent shift. Brief, baseline, the staged partial-seat at ps:ac-out (S2 method, no new repair
- * verb), the separate Skylink provider outage that only starts after the local repair is verified, the limited-service final
+ * verb), the separate SkyLink provider outage that only starts after the local repair is verified, the limited-service final
  * window and the final handover complete in order on the sim clock; wrong arrangements and shortcuts fail.
  */
 
@@ -85,7 +85,7 @@ function acts(svc: PhysicalPlantService): Record<string, () => void> {
       svc.services?.takeSample(SKY, 'application', 'endpoint-report');
       ok(
         svc.records?.submit('baseline', {
-          dish: mode(svc, 'spacey-dish'),
+          dish: mode(svc, 'skylink-dish'),
           modem: mode(svc, 'vsat-modem'),
           local: cur(svc, SKY, 'local'),
           application: cur(svc, SKY, 'application'),
@@ -129,8 +129,8 @@ function acts(svc: PhysicalPlantService): Record<string, () => void> {
       );
     },
     's16-verify-final-service': () => {
-      // Skylink cannot carry anything; park its dish and bring the EuroSat modem up inside the reserve
-      svc.plant.setPartMode('spacey-dish', 'standby');
+      // SkyLink cannot carry anything; park its dish and bring the EuroSat modem up inside the reserve
+      svc.plant.setPartMode('skylink-dish', 'standby');
       svc.plant.setPartMode('vsat-modem', 'run');
       tick(40);
       incomplete(svc, 's16-verify-final-service');
@@ -141,7 +141,7 @@ function acts(svc: PhysicalPlantService): Record<string, () => void> {
       ok(
         svc.records?.submit('outcome', {
           modem: mode(svc, 'vsat-modem'),
-          dish: mode(svc, 'spacey-dish'),
+          dish: mode(svc, 'skylink-dish'),
           verified: { value: runId },
           unavailable: { value: FIRST },
           energy: energy(svc),
@@ -247,7 +247,7 @@ describe('M27 S16 completion', () => {
     expect(incomplete(svc, 's16-investigate-local-change')).toContain('Repair supported by recorded evidence');
     svc.plant.reseat(SEAT);
     const missing = incomplete(svc, 's16-investigate-local-change').join('|');
-    expect(missing).toContain('First task verified on Skylink after the repair');
+    expect(missing).toContain('First task verified on SkyLink after the repair');
     expect(missing).toContain('First service change recorded');
   });
 
@@ -256,9 +256,9 @@ describe('M27 S16 completion', () => {
     driveObjectives(data, svc, states, acts(svc), { stopAfter: 's16-investigate-local-change' });
     states.set('s16-assess-external-change', { isActive: true, isCompleted: false });
     tick(S16_OUTAGE_OFFSET_S + 5);
-    svc.plant.setPartMode('spacey-dish', 'standby');
+    svc.plant.setPartMode('skylink-dish', 'standby');
     tick(2);
-    svc.plant.setPartMode('spacey-dish', 'run');
+    svc.plant.setPartMode('skylink-dish', 'run');
     tick(60);
     expect(svc.services?.takeSample(SKY, 'provider', 'provider-portal').value).toBe('down');
     const start = svc.workloads?.start(FIRST, SKY);

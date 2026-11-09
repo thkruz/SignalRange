@@ -31,7 +31,7 @@ const obj = (id: string) => data.objectives.find((o) => o.id === id) as NonNulla
 const incomplete = (svc: PhysicalPlantService, id: string): string[] => unmet(obj(id) as never, svc);
 
 const FAULT = 'c6-s3-terminal-moisture';
-const CONNECTOR = 'spacey-cable:dish';
+const CONNECTOR = 'skylink-cable:dish';
 
 /** Reads registration in a down phase and an up phase and the local network, across two flaps */
 function readPattern(svc: PhysicalPlantService): void {
@@ -89,7 +89,7 @@ function acts(svc: PhysicalPlantService): Record<string, () => void> {
     },
     's3-compare-baseline': () => {
       compareReadings(svc);
-      svc.plant.inspect('spacey-dish');
+      svc.plant.inspect('skylink-dish');
       svc.plant.inspect('power-strip');
       const res = svc.records?.submit('comparison', {
         changed: { value: 'registration' },
@@ -105,7 +105,7 @@ function acts(svc: PhysicalPlantService): Record<string, () => void> {
     },
     's3-collect-local-evidence': () => {
       svc.plant.goOutside();
-      svc.plant.measure('cable-tester', 'spacey-cable');
+      svc.plant.measure('cable-tester', 'skylink-cable');
       svc.plant.inspect(CONNECTOR);
     },
     's3-assess-local-cause': () => undefined,
@@ -173,7 +173,7 @@ describe('M21 S3 completion', () => {
 
   it('keeps the check objective open until the cause is graded as an authored option', () => {
     const svc = bootScenario(data);
-    svc.plant.inspect('spacey-dish');
+    svc.plant.inspect('skylink-dish');
     // Free-text "other" never matches, and a plan alone is not a hypothesis
     fileHypothesis(svc, 'other', observations(svc));
     checkPlan(svc);
@@ -187,14 +187,14 @@ describe('M21 S3 completion', () => {
   it('rejects a check plan that cites nothing or names an unlisted check', () => {
     const svc = bootScenario(data);
     expect(checkPlan(svc)?.ok).toBe(false);
-    svc.plant.inspect('spacey-dish');
+    svc.plant.inspect('skylink-dish');
     expect(checkPlan(svc, 'replace-everything')?.ok).toBe(false);
     expect(checkPlan(svc, 'test-cable')?.ok).toBe(true);
   });
 
   it('rejects a comparison that names the wrong changed reading', () => {
     const svc = bootScenario(data);
-    svc.plant.inspect('spacey-dish');
+    svc.plant.inspect('skylink-dish');
     const bad = svc.records?.submit('comparison', { changed: { value: 'power-and-local' }, unchanged: { value: 'registration' }, evidence: { cites: observations(svc) } });
     expect(bad?.ok).toBe(false);
   });

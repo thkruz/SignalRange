@@ -203,7 +203,7 @@ export const frontlineScenario12Data: FrontlineScenarioData = {
   description:
     'Ola reports interruptions during a simulated task, but a local connection indicator cannot locate the problem. Compare current observations along the service path, refer the issue with appropriate confidence, and verify the result after the responsible specialist responds.',
   equipment: [
-    'EuroSat service and restricted Skylink terminal',
+    'EuroSat service and restricted SkyLink terminal',
     'Local router and workstation',
     'Synthetic radio-connected workload',
     'Local and remote status records',
@@ -226,7 +226,7 @@ export const frontlineScenario12Data: FrontlineScenarioData = {
             include: ['laptop', 'vsat-modem', `provider:${FORWARD_EUROSAT_PROVIDER}`, `endpoint:${FORWARD_EUROSAT_ENDPOINT}`],
             exclude: [`account:${FORWARD_SKYLINK_ACCOUNT}`, `provider:${FORWARD_PROVIDER}`, `endpoint:${FORWARD_ENDPOINT}`],
           },
-          'EuroSat path marked without the Skylink-only parts'
+          'EuroSat path marked without the SkyLink-only parts'
         ),
         samplesCurrent(FORWARD_EUROSAT_SERVICE, ['local', 'registration', 'application'], 'Baseline readings taken before the report'),
         handoverValid('architecture', 'Shared and independent parts of the path recorded'),

@@ -27,7 +27,7 @@ const s4Events: PlantEventConfig[] = [
   {
     id: 'obstruction',
     startAfterObjectiveId: ANCHOR,
-    actions: [{ kind: 'inject-fault', fault: { id: FAULT_ID, target: 'spacey-dish', kind: 'net' } }],
+    actions: [{ kind: 'inject-fault', fault: { id: FAULT_ID, target: 'skylink-dish', kind: 'net' } }],
   },
 ];
 
@@ -126,7 +126,7 @@ describe('M02 plant event controller', () => {
         id: 'on',
         startAfterObjectiveId: 'a',
         actions: [
-          { kind: 'inject-fault', fault: { id: FAULT_ID, target: 'spacey-dish', kind: 'net' } },
+          { kind: 'inject-fault', fault: { id: FAULT_ID, target: 'skylink-dish', kind: 'net' } },
           { kind: 'set-weather', weather: { snow: true } },
         ],
       },

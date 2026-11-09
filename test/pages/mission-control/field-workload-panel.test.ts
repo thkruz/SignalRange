@@ -18,7 +18,7 @@ function config(withWorkloads = true): PlantConfig {
     parts: [
       { id: 'battery', kind: 'battery', label: 'Battery', capacityWh: 1000, socWh: 900, maxOutputW: 600, nominalV: 12, loadW: 0 },
       { id: 'router', kind: 'router', label: 'Router', poweredBy: 'battery', loadW: 10, nominalV: 12 },
-      { id: 'skylink', kind: 'terminal', label: 'Skylink', poweredBy: 'battery', nominalV: 12, loadW: 50 },
+      { id: 'skylink', kind: 'terminal', label: 'SkyLink', poweredBy: 'battery', nominalV: 12, loadW: 50 },
     ],
     connectors: [],
     cables: [],
@@ -27,7 +27,7 @@ function config(withWorkloads = true): PlantConfig {
       paths: [
         {
           id: 'skylink',
-          label: 'Skylink',
+          label: 'SkyLink',
           terminalPartId: 'skylink',
           localPartIds: ['router'],
           accountId: 'acct',
@@ -116,7 +116,7 @@ describe('M11 workload panel', () => {
     p.sync();
     host.querySelector<HTMLButtonElement>('[data-wl-card="chat"] button[data-wl-act="start"]')?.click();
     const li = host.querySelector('[data-wl-run]');
-    expect(li?.textContent).toContain('Chat on Skylink');
+    expect(li?.textContent).toContain('Chat on SkyLink');
     expect(li?.textContent).toContain('Running');
     tick(10);
     p.sync();
@@ -191,7 +191,7 @@ describe('M11 workload panel', () => {
     const res = runner.start('video', 'skylink');
     if (!res.ok) throw new Error('start failed');
     const run = { ...res.run, status: 'unsupported' as const, unmet: ['downMbps'], endS: res.run.startS + 20 };
-    const line = buildRunLine(run, runner, 'Skylink', run.endS);
+    const line = buildRunLine(run, runner, 'SkyLink', run.endS);
     expect(line.result).toBe('Unsupported, fell short on download.');
     expect(line.stamps).toMatch(/^Started \d\d:\d\d, ended \d\d:\d\d$/u);
   });

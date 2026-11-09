@@ -54,7 +54,7 @@ function acts(svc: PhysicalPlantService): Record<string, () => void> {
       ok(svc.records?.submit('symptoms', { application: value(svc, 'application'), onset: { cites: resultIds(svc) }, evidence: { cites: obsIds(svc) } }));
     },
     's10-compare-health': () => {
-      svc.plant.inspect('spacey-router');
+      svc.plant.inspect('skylink-router');
       takeAll(svc);
       svc.evidence?.recordSelection([ACCOUNT_NODE], 'The changed segment');
       ok(
@@ -155,7 +155,7 @@ describe('M24 S10 completion', () => {
     states.set('s10-record-change', { isActive: true, isCompleted: false });
     svc.evidence?.recordSelection([ACCOUNT_NODE], 'Early guess');
     tick(25);
-    svc.evidence?.recordSelection([ACCOUNT_NODE, 'spacey-router'], 'Blames the router');
+    svc.evidence?.recordSelection([ACCOUNT_NODE, 'skylink-router'], 'Blames the router');
     expect(incomplete(svc, 's10-compare-health')).toContain('Changed segment marked without local equipment');
     svc.evidence?.recordSelection([ACCOUNT_NODE], 'Account only');
     expect(incomplete(svc, 's10-compare-health')).not.toContain('Changed segment marked without local equipment');

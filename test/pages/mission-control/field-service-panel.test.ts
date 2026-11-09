@@ -14,7 +14,7 @@ const serviceCfg = (): ServiceModelConfig => ({
   paths: [
     {
       id: 'skylink',
-      label: 'Skylink',
+      label: 'SkyLink',
       terminalPartId: 'skylink',
       localPartIds: ['router'],
       accountId: 'acct',
@@ -37,7 +37,7 @@ function rig() {
       {
         id: 'skylink',
         kind: 'terminal',
-        label: 'Skylink',
+        label: 'SkyLink',
         poweredBy: 'battery',
         nominalV: 12,
         mode: 'standby',

@@ -7,7 +7,7 @@
 
 import { FRONTLINE_STATION_ID } from '@app/campaigns/frontline/plant-config';
 import type { PhysicalPlantManager } from '@app/physical/physical-plant-manager';
-import type { PlantFaultKind, PlantVerb, SpaceyStatus } from '@app/physical/physical-plant-types';
+import type { PlantFaultKind, PlantVerb, SkylinkStatus } from '@app/physical/physical-plant-types';
 import { OFFERED_VERBS } from '@app/physical/plant-verb-rules';
 
 export type PipStatus = 'ok' | 'warn' | 'bad';
@@ -106,8 +106,8 @@ export function partPip(plant: PhysicalPlantManager, partId: string): PipStatus 
   if (!state) {
     return 'ok';
   }
-  if (partId === 'spacey-dish') {
-    return spaceyPip(plant.spaceyStatus());
+  if (partId === 'skylink-dish') {
+    return skylinkPip(plant.skylinkStatus());
   }
   if (!state.powered) {
     return state.rebooting ? 'warn' : 'bad';
@@ -116,7 +116,7 @@ export function partPip(plant: PhysicalPlantManager, partId: string): PipStatus 
   return 'ok';
 }
 
-export function spaceyPip(status: SpaceyStatus): PipStatus {
+export function skylinkPip(status: SkylinkStatus): PipStatus {
   if (status === 'online') {
     return 'ok';
   }
@@ -140,8 +140,8 @@ export function hotspotPip(plant: PhysicalPlantManager, partIds: string[]): PipS
 }
 
 /** Laptop indicator: internet is up when either path is up */
-export function internetPaths(plant: PhysicalPlantManager): { spacey: boolean; vsat: boolean; up: boolean } {
-  const spacey = plant.spaceyStatus() === 'online';
+export function internetPaths(plant: PhysicalPlantManager): { skylink: boolean; vsat: boolean; up: boolean } {
+  const skylink = plant.skylinkStatus() === 'online';
   const vsat =
     plant.isPartPowered('vsat-modem') &&
     plant.isPartPowered('vsat-lnb') &&
@@ -149,7 +149,7 @@ export function internetPaths(plant: PhysicalPlantManager): { spacey: boolean; v
     !plant.isLinkDropped('vsat-ifl') &&
     plant.preLnaLossDb(FRONTLINE_STATION_ID) < VSAT_LOCK_LOSS_LIMIT_DB;
 
-  return { spacey, vsat, up: spacey || vsat };
+  return { skylink, vsat, up: skylink || vsat };
 }
 
 /** Pre-LNA loss above which the VSAT modem loses lock (engine: 6 dB breaks it, 2 dB does not) */
@@ -175,7 +175,7 @@ export function escapeHtml(text: string): string {
   return text.replace(/&/gu, '&amp;').replace(/</gu, '&lt;').replace(/>/gu, '&gt;').replace(/"/gu, '&quot;');
 }
 
-export const SPACEY_STATUS_TEXT: Record<SpaceyStatus, string> = {
+export const SKYLINK_STATUS_TEXT: Record<SkylinkStatus, string> = {
   booting: 'Booting',
   online: 'Online',
   obstructed: 'Obstructed',

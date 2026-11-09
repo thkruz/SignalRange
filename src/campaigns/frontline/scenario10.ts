@@ -79,7 +79,7 @@ const noticeForm: HandoverFormConfig = {
       key: 'account',
       label: 'Account the notice affects',
       required: true,
-      rule: { choice: [FORWARD_SKYLINK_ACCOUNT], labels: { [FORWARD_SKYLINK_ACCOUNT]: 'The forward Skylink account' } },
+      rule: { choice: [FORWARD_SKYLINK_ACCOUNT], labels: { [FORWARD_SKYLINK_ACCOUNT]: 'The forward SkyLink account' } },
     },
     { key: 'effect', label: 'What the notice limits', required: true, rule: { choice: ['ground-capacity'], labels: { 'ground-capacity': 'Ground-service capacity' } } },
     { key: 'registration', label: 'Registration according to the notice', required: true, rule: { choice: ['unchanged'], labels: { unchanged: 'Unchanged' } } },
@@ -150,7 +150,7 @@ if (scenarioSettings.physicalPlant) {
     units: [
       {
         unitId: FORWARD_SKYLINK_UNIT,
-        label: 'Commissioned Skylink terminal',
+        label: 'Commissioned SkyLink terminal',
         record: { serial: 'SKY-7731', accountId: FORWARD_SKYLINK_ACCOUNT, configVersion: 'depot-v3' },
       },
     ],
@@ -162,7 +162,7 @@ if (scenarioSettings.physicalPlant) {
         affects: { accountId: FORWARD_SKYLINK_ACCOUNT },
         kind: 'ground-capacity',
         issuedAtS: 0,
-        text: 'Skylink service notice. The ground-service capacity allowance for the forward post account has been reduced under provider policy, effective from the onset in the service history. Registration is unchanged. The notice reports no fault in customer equipment.',
+        text: 'SkyLink service notice. The ground-service capacity allowance for the forward post account has been reduced under provider policy, effective from the onset in the service history. Registration is unchanged. The notice reports no fault in customer equipment.',
       },
     ],
     requests: [{ id: S10_REQUEST, unitId: FORWARD_SKYLINK_UNIT, field: 'accountId', to: 'alternative-service', responseEventId: S10_EVENT_ACK }],
@@ -203,8 +203,8 @@ export const frontlineScenario10Data: FrontlineScenarioData = {
   difficulty: 'intermediate',
   missionType: 'Field Service Assessment',
   description:
-    'The post begins with its commissioned Skylink service. During the exercise, the provider changes the service allowance while the local equipment remains healthy.<br/><br/>Investigate the changed symptoms, compare them with the baseline, and read the provider’s notice. Determine which simulated tasks remain supportable. A useful limited-service report is the goal; replacing local hardware cannot remove an account-level restriction.',
-  equipment: ['Skylink terminal and router', 'Generator and battery power station', 'Provider notices and service history', 'Workload requirements and equipment request record'],
+    'The post begins with its commissioned SkyLink service. During the exercise, the provider changes the service allowance while the local equipment remains healthy.<br/><br/>Investigate the changed symptoms, compare them with the baseline, and read the provider’s notice. Determine which simulated tasks remain supportable. A useful limited-service report is the goal; replacing local hardware cannot remove an account-level restriction.',
+  equipment: ['SkyLink terminal and router', 'Generator and battery power station', 'Provider notices and service history', 'Workload requirements and equipment request record'],
   settings: scenarioSettings,
   mechanicTodos: [],
   objectives: [
@@ -234,14 +234,14 @@ export const frontlineScenario10Data: FrontlineScenarioData = {
           description: 'Router Inspection Recorded',
           mustMaintain: false,
           params: {
-            partId: 'spacey-router',
+            partId: 'skylink-router',
           },
         },
         samplesCurrent(SKYLINK_SERVICE, ['local', 'registration', 'account', 'application'], 'Current readings taken after the change'),
         diagramSelection(
           {
             include: [`account:${FORWARD_SKYLINK_ACCOUNT}`],
-            exclude: ['spacey-router', 'spacey-dish', 'spacey-cable', 'power-station', 'power-strip', 'laptop'],
+            exclude: ['skylink-router', 'skylink-dish', 'skylink-cable', 'power-station', 'power-strip', 'laptop'],
             afterEvent: S10_EVENT_RESTRICTION,
           },
           'Changed segment marked without local equipment'
@@ -341,7 +341,7 @@ export const frontlineScenario10Data: FrontlineScenarioData = {
       's10-read-notice': {
         character: Character.NOTICE,
         audioUrl: '',
-        text: "Skylink service notice: the ground account's capacity allowance has been reduced under provider policy. Registration remains active. The service record contains the effective time and current allowance.",
+        text: "SkyLink service notice: the ground account's capacity allowance has been reduced under provider policy. Registration remains active. The service record contains the effective time and current allowance.",
       },
       's10-assess-tasks': {
         character: Character.IRENA_MAZUR,

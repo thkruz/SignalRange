@@ -2,7 +2,7 @@
  * M25 S11 completion: the EuroSat terminal arrives as a layer on the forward site. The player reconciles the
  * delivery and accepts the authorized record, commissions the terminal (startup time, registration, account),
  * measures every layer, assesses both tasks against the GEO delay, verifies only the supported transfer after
- * the assessment, and reports the restored and unavailable work with the Skylink restriction still in force.
+ * the assessment, and reports the restored and unavailable work with the SkyLink restriction still in force.
  */
 
 import { SKYLINK_SERVICE } from '@app/campaigns/frontline/camp-field-config';
@@ -136,7 +136,7 @@ describe('M25 S11 completion', () => {
     }
   });
 
-  it('completes every objective in order with the Skylink restriction still in force', () => {
+  it('completes every objective in order with the SkyLink restriction still in force', () => {
     const svc = bootScenario(data);
     const done = driveObjectives(data, svc, states, acts(svc), {});
     expect(done).toEqual(data.objectives.map((o) => o.id));

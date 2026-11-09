@@ -36,12 +36,12 @@ function acts(svc: PhysicalPlantService): Record<string, () => void> {
 
   return {
     's1-identify-equipment': () => {
-      for (const id of ['power-station', 'spacey-router', 'spacey-dish', 'laptop']) {
+      for (const id of ['power-station', 'skylink-router', 'skylink-dish', 'laptop']) {
         svc.plant.inspect(id);
       }
     },
     's1-check-condition': () => {
-      for (const id of ['generator', 'power-station', 'power-strip', 'spacey-cable', 'spacey-cable:dish', 'spacey-cable:router']) {
+      for (const id of ['generator', 'power-station', 'power-strip', 'skylink-cable', 'skylink-cable:dish', 'skylink-cable:router']) {
         svc.plant.inspect(id);
       }
     },

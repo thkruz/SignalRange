@@ -50,15 +50,15 @@ const standbyActive = (activeW: number, startupS = 0, startupW?: number): PartMo
   { id: 'active', label: 'Active', loadW: activeW, startupS, startupW, servesTraffic: true },
 ];
 
-/** The S2 sandbox: battery-only, loads station 10, router 20, Skylink 50, VSAT modem+antenna+LNB 50 as one mode, laptop 45 */
+/** The S2 sandbox: battery-only, loads station 10, router 20, SkyLink 50, VSAT modem+antenna+LNB 50 as one mode, laptop 45 */
 function s2Config(skylink: string, vsat: string, extra: Partial<PlantConfig> = {}): PlantConfig {
   return {
     parts: [
       { id: 'power-station', kind: 'battery', label: 'Power station', capacityWh: 1000, socWh: 450, maxOutputW: 600, nominalV: 12, loadW: 0 },
       { id: 'power-strip', kind: 'strip', label: 'Power strip', poweredBy: 'power-station', loadW: 10, nominalV: 12 },
-      { id: 'spacey-router', kind: 'router', label: 'Router', poweredBy: 'power-strip', loadW: 20, nominalV: 12 },
+      { id: 'skylink-router', kind: 'router', label: 'Router', poweredBy: 'power-strip', loadW: 20, nominalV: 12 },
       { id: 'laptop', kind: 'client', label: 'Laptop', poweredBy: 'power-strip', loadW: 45, nominalV: 12 },
-      { id: 'skylink', kind: 'terminal', label: 'Skylink dish', poweredBy: 'power-strip', nominalV: 12, mode: skylink, modes: standbyActive(50) },
+      { id: 'skylink', kind: 'terminal', label: 'SkyLink dish', poweredBy: 'power-strip', nominalV: 12, mode: skylink, modes: standbyActive(50) },
       { id: 'vsat-modem', kind: 'modem', label: 'VSAT modem', poweredBy: 'power-strip', nominalV: 12, mode: vsat, modes: standbyActive(50) },
     ],
     connectors: [],
@@ -111,9 +111,9 @@ describe('M03 modes change the draw', () => {
 
   it('parts without modes behave as before and offer no mode switch', () => {
     const { plant } = makeRig(s2Config('standby', 'standby'));
-    expect(plant.getLoadW('spacey-router')).toBe(20);
-    expect(plant.getPartMode('spacey-router')).toBeUndefined();
-    expect(plant.verbApplies('setMode', 'spacey-router')).toBe(false);
+    expect(plant.getLoadW('skylink-router')).toBe(20);
+    expect(plant.getPartMode('skylink-router')).toBeUndefined();
+    expect(plant.verbApplies('setMode', 'skylink-router')).toBe(false);
     expect(plant.verbApplies('setMode', 'skylink')).toBe(true);
     expect(plant.getNextMode('skylink')).toBe('active');
   });
@@ -154,7 +154,7 @@ describe('M03 modes change the draw', () => {
 });
 
 describe('M03 forecast', () => {
-  it('S2 numbers: both paths fail the reserve, Skylink-only passes', () => {
+  it('S2 numbers: both paths fail the reserve, SkyLink-only passes', () => {
     const both = makeRig(s2Config('active', 'active')).plant.forecast();
     const skylink = makeRig(s2Config('active', 'standby')).plant.forecast();
     const vsat = makeRig(s2Config('standby', 'active')).plant.forecast();

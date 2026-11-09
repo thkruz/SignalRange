@@ -1,7 +1,7 @@
 /**
- * M26 S14 completion: the provider lifts the S10 ground restriction (only), the player measures the restored Skylink
- * service, compares Skylink and EuroSat against the same tasks, maps the dependencies both share, chooses an
- * active/standby arrangement that keeps the 200 Wh reserve, runs a planned Skylink outage on a running clock and hands
+ * M26 S14 completion: the provider lifts the S10 ground restriction (only), the player measures the restored SkyLink
+ * service, compares SkyLink and EuroSat against the same tasks, maps the dependencies both share, chooses an
+ * active/standby arrangement that keeps the 200 Wh reserve, runs a planned SkyLink outage on a running clock and hands
  * both connections over. The S13 remote mobility policy stays in force from start to finish.
  */
 
@@ -134,7 +134,7 @@ function acts(svc: PhysicalPlantService): Record<string, () => void> {
       );
     },
     's14-handover-dual-service': () => {
-      svc.plant.setPartMode('spacey-dish', 'standby');
+      svc.plant.setPartMode('skylink-dish', 'standby');
       tick(2);
       svc.plant.inspect('power-station');
       svc.services?.takeSample(SKYLINK_SERVICE, 'account', 'provider-portal');
@@ -177,17 +177,17 @@ describe('M26 S14 completion', () => {
     }
   });
 
-  it('completes every objective in order, ends on EuroSat with Skylink in standby and the remote policy untouched', () => {
+  it('completes every objective in order, ends on EuroSat with SkyLink in standby and the remote policy untouched', () => {
     const svc = bootScenario(data);
     const done = driveObjectives(data, svc, states, acts(svc), {});
     expect(done).toEqual(data.objectives.map((o) => o.id));
     tick(2);
     expect(svc.plant.getPartMode('vsat-modem')).toBe('run');
-    expect(svc.plant.getPartMode('spacey-dish')).toBe('standby');
+    expect(svc.plant.getPartMode('skylink-dish')).toBe('standby');
     expect(svc.services?.getAccount(FORWARD_SKYLINK_ACCOUNT)?.restriction).toBeUndefined();
     expect(remote(svc)?.policy).toBe('mobility-restricted');
     expect(remote(svc)?.reachable).toBe(false);
-    // The exercise ends with the last objective: Skylink service returns
+    // The exercise ends with the last objective: SkyLink service returns
     expect(svc.services?.getProvider(FORWARD_PROVIDER)?.status).toBe('normal');
     expect(S14_EVENT_RETURN).toBe('s14-skylink-returns');
   });
@@ -218,7 +218,7 @@ describe('M26 S14 completion', () => {
     tick(3);
     svc.services?.takeSample(SKYLINK_SERVICE, 'account', 'provider-portal');
     const early = run(svc, INTERACTIVE, SKYLINK_SERVICE);
-    expect(incomplete(svc, 's14-confirm-restoration').join('|')).toContain('Interactive task verified on Skylink after the change');
+    expect(incomplete(svc, 's14-confirm-restoration').join('|')).toContain('Interactive task verified on SkyLink after the change');
     tick(25);
     // The early run and account sample predate the change; the form must not take them
     const res = svc.records?.submit('restoration', {
@@ -274,7 +274,7 @@ describe('M26 S14 completion', () => {
     const result = early?.ok ? svc.workloads?.waitForRun(early.run.id) : undefined;
     expect(result?.status).not.toBe('supported');
     expect(incomplete(svc, 's14-test-readiness').length).toBeGreaterThan(0);
-    // The interactive task has no supported route while Skylink is out
+    // The interactive task has no supported route while SkyLink is out
     const interactive = svc.workloads?.start(INTERACTIVE, SKYLINK_SERVICE);
     const iRun = interactive?.ok ? svc.workloads?.waitForRun(interactive.run.id) : undefined;
     expect(iRun?.status).not.toBe('supported');
@@ -289,7 +289,7 @@ describe('M26 S14 completion', () => {
     const again = bootScenario(data);
     restoreManagerStates(saved);
     tick(2);
-    expect(again.plant.getPartMode('spacey-dish')).toBe('run');
+    expect(again.plant.getPartMode('skylink-dish')).toBe('run');
     expect(again.plant.getPartMode('vsat-modem')).toBe('standby');
     expect(again.services?.getAccount(FORWARD_SKYLINK_ACCOUNT)?.restriction).toBeUndefined();
     expect(remote(again)?.policy).toBe('mobility-restricted');

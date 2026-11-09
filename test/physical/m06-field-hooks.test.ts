@@ -46,7 +46,7 @@ function config(opts: { routerSocWh?: number; batterySocWh?: number } = {}): Pla
       {
         id: 'skylink',
         kind: 'terminal',
-        label: 'Skylink',
+        label: 'SkyLink',
         poweredBy: 'battery',
         nominalV: 12,
         mode: 'standby',
@@ -64,7 +64,7 @@ function config(opts: { routerSocWh?: number; batterySocWh?: number } = {}): Pla
       paths: [
         {
           id: 'skylink',
-          label: 'Skylink',
+          label: 'SkyLink',
           terminalPartId: 'skylink',
           localPartIds: ['router'],
           accountId: 'acct',

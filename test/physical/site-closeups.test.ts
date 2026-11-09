@@ -118,9 +118,9 @@ describe('forward site art (FS1)', () => {
     expect(FORWARD_HOTSPOTS.some((h) => h.action)).toBe(false);
     const all = (_id: string): boolean => true;
     expect(visibleHotspots('forward', all)).toHaveLength(FORWARD_HOTSPOTS.length);
-    const s10 = new Set([...forwardInventory(10), 'spacey-cable']);
+    const s10 = new Set([...forwardInventory(10), 'skylink-cable']);
     expect(visibleHotspots('forward', (id) => s10.has(id)).some((h) => /vsat/u.test(h.id))).toBe(false);
-    const s11 = new Set([...forwardInventory(11), 'spacey-cable', 'vsat-ifl']);
+    const s11 = new Set([...forwardInventory(11), 'skylink-cable', 'vsat-ifl']);
     expect(
       visibleHotspots('forward', (id) => s11.has(id))
         .map((h) => h.id)
@@ -169,7 +169,7 @@ describe('forward site art (FS1)', () => {
       expect(def.id).toBe(id);
       expect(def.forward).toBe(true);
       expect(def.image).toContain(`cu-fwd-`);
-      if (id !== 'spacey-cable') {
+      if (id !== 'skylink-cable') {
         expect(def.regions.map((r) => r.target).sort(), id).toEqual(CLOSEUPS[def.id].regions.map((r) => r.target).sort());
         expect(def.probes.map((p) => p.target).sort(), id).toEqual(CLOSEUPS[def.id].probes.map((p) => p.target).sort());
       }
@@ -191,8 +191,8 @@ describe('forward site art (FS1)', () => {
     expect(closeupFor('router', 'camp')).toBe(CLOSEUPS.router);
     expect(closeupFor('router', 'forward')).toBe(FORWARD_CLOSEUPS.router);
     expect(closeupFor('power-strip', 'forward').title).toBe('Power box');
-    expect(closeupFor('spacey-cable', 'forward')).toBe(FORWARD_CLOSEUPS['spacey-cable']);
-    expect(FORWARD_CLOSEUPS['spacey-cable']?.image).toContain('cu-fwd-spacey-cable.webp');
+    expect(closeupFor('skylink-cable', 'forward')).toBe(FORWARD_CLOSEUPS['skylink-cable']);
+    expect(FORWARD_CLOSEUPS['skylink-cable']?.image).toContain('cu-fwd-skylink-cable.webp');
   });
 
   it('the router close-up has two variants picked by the modem, and all regions and probes are inside 0..1', () => {
@@ -201,13 +201,13 @@ describe('forward site art (FS1)', () => {
     expect(eu).toBe(FORWARD_ROUTER_EUROSAT);
     expect(base.image).toContain('cu-fwd-router.webp');
     expect(eu.image).toContain('cu-fwd-router-eurosat.webp');
-    expect(base.regions.map((r) => r.target).sort()).toEqual(['router:dc', 'spacey-router']);
-    expect(base.probes.map((p) => p.target)).toEqual(['spacey-cable:router']);
-    expect(eu.regions.map((r) => r.target).sort()).toEqual(['modem:dc', 'router:dc', 'spacey-router', 'vsat-modem']);
-    expect(eu.probes.map((p) => p.target).sort()).toEqual(['spacey-cable:router', 'vsat-ifl:modem']);
+    expect(base.regions.map((r) => r.target).sort()).toEqual(['router:dc', 'skylink-router']);
+    expect(base.probes.map((p) => p.target)).toEqual(['skylink-cable:router']);
+    expect(eu.regions.map((r) => r.target).sort()).toEqual(['modem:dc', 'router:dc', 'skylink-router', 'vsat-modem']);
+    expect(eu.probes.map((p) => p.target).sort()).toEqual(['skylink-cable:router', 'vsat-ifl:modem']);
     // Camp is untouched
     expect(closeupFor('router', 'camp', () => true)).toBe(CLOSEUPS.router);
-    for (const def of [base, eu, FORWARD_CLOSEUPS['spacey-cable']!]) {
+    for (const def of [base, eu, FORWARD_CLOSEUPS['skylink-cable']!]) {
       for (const r of def.regions) {
         expect(partIds.has(r.target) || connectorIds.has(r.target) || cableIds.has(r.target), `${def.id}/${r.id}`).toBe(true);
         if (r.shape.kind === 'rect') {
@@ -233,6 +233,6 @@ describe('forward site art (FS1)', () => {
       expect(closeupImageFor(def, 'wet')).toBe(def.image);
       expect(layersFor(def.id, def.forward)).toEqual([]);
     }
-    expect(layersFor('spacey-dish').length).toBeGreaterThan(0);
+    expect(layersFor('skylink-dish').length).toBeGreaterThan(0);
   });
 });

@@ -82,7 +82,7 @@ export type GenericObsKey = keyof typeof GENERIC_OBS;
 
 // ---------------------------------------------------------------- connectors
 
-/** Multi-pin power and data plug (SpaceY cable ends) */
+/** Multi-pin power and data plug (SkyLink cable ends) */
 const PLUG: ClassText = {
   inspect: {
     healthy: [

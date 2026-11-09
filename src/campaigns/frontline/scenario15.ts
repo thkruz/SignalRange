@@ -22,10 +22,10 @@ import { S11_TRANSFER_CARD } from './scenario11';
 
 /**
  * Frontline Signals — Scenario 15: Report the EuroSat Incident.
- * Initial state: both terminals run on the battery at the forward post (Skylink unrestricted, EuroSat registered). Resources
+ * Initial state: both terminals run on the battery at the forward post (SkyLink unrestricted, EuroSat registered). Resources
  * are reduced: 300 Wh against a 150 Wh reserve, so both terminals running misses the reserve and the modem in standby keeps it.
  * The anomaly is a run of EuroSat registration drops (the modem keeps restarting) while the local network, the power chain and
- * the Skylink service stay up. The engine has no interference primitive, so the pattern is the only evidence: it supports
+ * the SkyLink service stay up. The engine has no interference primitive, so the pattern is the only evidence: it supports
  * "suspected interference" and never a source, a location or an actor. Nothing freezes the clock; the drops are staged on
  * objective activation, with later recurrences so a player who misses a down window gets another.
  * The incident form (id 'incident') is the record Campaign 5 may enrich from (see continuity-fallbacks.ts). Filing it is
@@ -53,7 +53,7 @@ const anomalyForm: HandoverFormConfig = {
     { key: 'service', label: 'Affected service', required: true, rule: choice('eurosat', 'EuroSat') },
     { key: 'onset', label: 'Onset event', required: true, rule: { cites: 'result', min: 1 } },
     { key: 'local', label: 'Local network at the same time', required: true, rule: { matchesCurrent: { serviceId: EUS, layer: 'local' } } },
-    { key: 'skylink', label: 'Skylink application now', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'application' } } },
+    { key: 'skylink', label: 'SkyLink application now', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'application' } } },
     { key: 'symptoms', label: 'Readings that show the symptoms', required: true, rule: { cites: 'observation', min: 1 } },
   ],
 };
@@ -99,7 +99,7 @@ const alternativeForm: HandoverFormConfig = {
   title: 'Alternative service',
   documentSection: 'Alternative service',
   fields: [
-    { key: 'verified', label: 'Task run on Skylink', required: true, rule: { workload: { cardId: FORWARD_FIRST_CARD.id, is: ['supported'], serviceId: SKYLINK_SERVICE } } },
+    { key: 'verified', label: 'Task run on SkyLink', required: true, rule: { workload: { cardId: FORWARD_FIRST_CARD.id, is: ['supported'], serviceId: SKYLINK_SERVICE } } },
     { key: 'modem', label: 'EuroSat modem mode', required: true, rule: { modeIs: { partId: 'vsat-modem' } } },
     { key: 'energy', label: 'Battery energy now (Wh)', required: true, rule: { powerWithin: { metric: 'socWh', tol: 40, partId: 'power-station' } } },
     { key: 'unavailable', label: 'Work that is not available', required: true, rule: choice(TRANSFER, 'Transfer task over EuroSat') },
@@ -126,7 +126,7 @@ const drop = (id: string, anchor: string, offsetS: number, requiresFired?: strin
   offsetS,
   ...(requiresFired ? { requiresFired } : {}),
   actions: [{ kind: 'reboot-part', partId: 'vsat-modem' }],
-  logLine: 'The EuroSat modem loses registration; the local network and Skylink are unchanged.',
+  logLine: 'The EuroSat modem loses registration; the local network and SkyLink are unchanged.',
 });
 
 const settings = createFrontlineSettings(15);
@@ -190,7 +190,7 @@ export const frontlineScenario15Data: FrontlineScenarioData = {
   missionType: 'Field Communications',
   description:
     "EuroSat develops an unexplained service anomaly. Preserve the observations, judge what they support, and keep the service report accurate while compatible work continues on the alternative connection. A separate investigation will assess the incident's source.",
-  equipment: ['EuroSat and Skylink terminals', 'Physical inspection kit', 'Provider and service histories', 'Synthetic workload monitor', 'Incident evidence package'],
+  equipment: ['EuroSat and SkyLink terminals', 'Physical inspection kit', 'Provider and service histories', 'Synthetic workload monitor', 'Incident evidence package'],
   settings,
   mechanicTodos: [],
   objectives: [
@@ -272,8 +272,8 @@ export const frontlineScenario15Data: FrontlineScenarioData = {
       conditions: [
         modeIs('vsat-modem', 'standby', 'EuroSat modem in standby'),
         forecastMeetsReserve({}, 'Forecast keeps the 150 Wh reserve with the modem in standby'),
-        workloadVerified({ card: FORWARD_FIRST_CARD.id, service: SKYLINK_SERVICE, afterEvent: S15_EVENT_ONSET }, 'First task verified on Skylink after the onset'),
-        layerObserved(SKYLINK_SERVICE, 'application', { status: 'up' }, 'Skylink application observed up'),
+        workloadVerified({ card: FORWARD_FIRST_CARD.id, service: SKYLINK_SERVICE, afterEvent: S15_EVENT_ONSET }, 'First task verified on SkyLink after the onset'),
+        layerObserved(SKYLINK_SERVICE, 'application', { status: 'up' }, 'SkyLink application observed up'),
         handoverValid('alternative', 'Alternative service and unavailable work recorded'),
       ],
     },

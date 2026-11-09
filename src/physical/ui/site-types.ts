@@ -17,12 +17,12 @@ export type CloseupId =
   | 'power-station'
   | 'power-strip'
   | 'flap-in'
-  | 'spacey-dish'
+  | 'skylink-dish'
   | 'vsat-dish'
   | 'lnb'
   | 'generator'
   | 'flap-out'
-  | 'spacey-cable'
+  | 'skylink-cable'
   | 'vsat-ifl';
 
 export type SiteView = 'inside' | 'outside';
@@ -67,7 +67,7 @@ export interface CloseupRegion {
   target: string;
   label: string;
   shape: SiteShape;
-  /** Opens the SpaceY app instead of selecting (the laptop) */
+  /** Opens the SkyLink app instead of selecting (the laptop) */
   opensApp?: boolean;
   /** Verbs and tools this region offers; omitted means everything that applies to the target */
   affordances?: Array<UiVerb | 'multimeter' | 'cable-tester'>;

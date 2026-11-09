@@ -42,13 +42,13 @@ if (settings.physicalPlant) {
     {
       id: RECOVERY_EVENT,
       startAfterObjectiveId: 's4-identify-recovery',
-      actions: [{ kind: 'reboot-part', partId: 'spacey-dish' }],
+      actions: [{ kind: 'reboot-part', partId: 'skylink-dish' }],
       logLine: 'The terminal restarts after a brief power dip.',
     },
     {
       id: OBSTRUCTION_EVENT,
       startAfterObjectiveId: 's4-recognize-persistence',
-      actions: [{ kind: 'inject-fault', fault: { id: faultId, target: 'spacey-dish', kind: 'net' } }],
+      actions: [{ kind: 'inject-fault', fault: { id: faultId, target: 'skylink-dish', kind: 'net' } }],
       logLine: 'Wind moves something over the terminal.',
     },
   ];
@@ -68,7 +68,7 @@ export const frontlineScenario4Data: FrontlineScenarioData = {
   missionType: 'Field Fault Diagnosis',
   description:
     'A terminal recovering normally can look unavailable before it is ready. Learn to observe that transition without repeatedly restarting it, then investigate a persistent environmental problem. Finish by verifying service through a fresh check and recording what the environment changed.',
-  equipment: ['Skylink terminal and router', 'Terminal status display', 'Outdoor site inspection', 'Pilot workstation'],
+  equipment: ['SkyLink terminal and router', 'Terminal status display', 'Outdoor site inspection', 'Pilot workstation'],
   settings,
   mechanicTodos: [],
   objectives: [
@@ -79,7 +79,7 @@ export const frontlineScenario4Data: FrontlineScenarioData = {
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: [],
       conditions: [
-        { type: 'part-inspected', description: 'Terminal inspected', params: { partId: 'spacey-dish' }, mustMaintain: false },
+        { type: 'part-inspected', description: 'Terminal inspected', params: { partId: 'skylink-dish' }, mustMaintain: false },
         {
           type: 'status-check',
           description: 'Normal start time identified',
@@ -105,7 +105,7 @@ export const frontlineScenario4Data: FrontlineScenarioData = {
       description: 'Watch the terminal through the stated recovery interval. Avoid restarting a device that is still making the expected progress.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s4-identify-recovery'],
-      conditions: [recoveryObserved(SKYLINK_SERVICE, RECOVERY_EVENT, 'spacey-dish', 'Registration came back without another restart')],
+      conditions: [recoveryObserved(SKYLINK_SERVICE, RECOVERY_EVENT, 'skylink-dish', 'Registration came back without another restart')],
     },
     {
       id: 's4-recognize-persistence',
@@ -148,7 +148,7 @@ export const frontlineScenario4Data: FrontlineScenarioData = {
           id: 's4-observed-environment-evidence',
           type: 'custom',
           description: 'Environmental fault evidence observed',
-          params: { evaluator: () => PhysicalPlantService.plantOrNull()?.isFactRevealed('spacey-dish', 'net') === true },
+          params: { evaluator: () => PhysicalPlantService.plantOrNull()?.isFactRevealed('skylink-dish', 'net') === true },
           mustMaintain: false,
         },
       ],

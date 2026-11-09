@@ -53,7 +53,7 @@ function freshCheck(svc: PhysicalPlantService): string {
 function acts(svc: PhysicalPlantService): Record<string, () => void> {
   return {
     's07-reconcile-delivery': () => {
-      svc.plant.inspect('spacey-router');
+      svc.plant.inspect('skylink-router');
       ok(
         svc.records?.submit('inventory', {
           serial: { value: 'matches' },
@@ -158,7 +158,7 @@ describe('M23 S7 completion', () => {
 
   it('does not credit readiness from the inspection alone', () => {
     const svc = bootScenario(data);
-    svc.plant.inspect('spacey-router');
+    svc.plant.inspect('skylink-router');
     expect(incomplete(svc, 's07-separate-readiness').length).toBeGreaterThan(0);
   });
 

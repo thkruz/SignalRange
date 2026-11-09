@@ -14,7 +14,7 @@ import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-
  */
 const settings = createFrontlineSettings(3);
 const faultId = 'c6-s3-terminal-moisture';
-const connectorId = 'spacey-cable:dish';
+const connectorId = 'skylink-cable:dish';
 const CAUSE_OPTIONS = [
   { id: 'connector-moisture', label: 'Moisture at a connector' },
   { id: 'cable-damage', label: 'Damaged cable' },
@@ -95,7 +95,7 @@ export const frontlineScenario3Data: FrontlineScenarioData = {
   missionType: 'Field Fault Diagnosis',
   description:
     'Ola reports recurring interruptions during a camp application exercise. Compare the new evidence with the healthy baseline, choose checks that distinguish plausible local causes, and justify an intervention. A repair is only complete when a fresh check verifies the result.',
-  equipment: ['Skylink terminal and router', 'Power and data cable', 'Multimeter and cable tester', 'Connector kit and replacement cable', 'Pilot workstation'],
+  equipment: ['SkyLink terminal and router', 'Power and data cable', 'Multimeter and cable tester', 'Connector kit and replacement cable', 'Pilot workstation'],
   settings,
   mechanicTodos: [],
   objectives: [

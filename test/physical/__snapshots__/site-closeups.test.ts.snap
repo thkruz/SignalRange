@@ -25,7 +25,7 @@ exports[`forward site art (FS1) > keeps the camp hotspots, close-ups and images 
           "target": "vsat-ifl",
         },
         {
-          "label": "SpaceY cable (25 m power + data)",
+          "label": "SkyLink cable (25 m power + data)",
           "points": [
             [
               0.575,
@@ -40,7 +40,7 @@ exports[`forward site art (FS1) > keeps the camp hotspots, close-ups and images 
               0.7,
             ],
           ],
-          "target": "spacey-cable",
+          "target": "skylink-cable",
         },
       ],
       "id": "flap-in",
@@ -83,7 +83,7 @@ exports[`forward site art (FS1) > keeps the camp hotspots, close-ups and images 
           "target": "vsat-ifl",
         },
         {
-          "label": "SpaceY cable (25 m power + data)",
+          "label": "SkyLink cable (25 m power + data)",
           "points": [
             [
               0.42,
@@ -102,7 +102,7 @@ exports[`forward site art (FS1) > keeps the camp hotspots, close-ups and images 
               0.525,
             ],
           ],
-          "target": "spacey-cable",
+          "target": "skylink-cable",
         },
       ],
       "id": "flap-out",
@@ -181,7 +181,7 @@ exports[`forward site art (FS1) > keeps the camp hotspots, close-ups and images 
       "regions": [
         {
           "id": "cu-laptop",
-          "label": "Laptop (opens the SpaceY app)",
+          "label": "Laptop (opens the SkyLink app)",
           "opensApp": true,
           "shape": {
             "h": 0.78,
@@ -398,8 +398,8 @@ exports[`forward site art (FS1) > keeps the camp hotspots, close-ups and images 
       "probes": [
         {
           "id": "cu-router-cable",
-          "label": "SpaceY cable plug at the router",
-          "target": "spacey-cable:router",
+          "label": "SkyLink cable plug at the router",
+          "target": "skylink-cable:router",
           "x": 0.455,
           "y": 0.6,
         },
@@ -407,7 +407,7 @@ exports[`forward site art (FS1) > keeps the camp hotspots, close-ups and images 
       "regions": [
         {
           "id": "cu-router",
-          "label": "SpaceY router",
+          "label": "SkyLink router",
           "shape": {
             "h": 0.15,
             "kind": "rect",
@@ -415,7 +415,7 @@ exports[`forward site art (FS1) > keeps the camp hotspots, close-ups and images 
             "x": 0.39,
             "y": 0.34,
           },
-          "target": "spacey-router",
+          "target": "skylink-router",
         },
         {
           "id": "cu-router-dc",
@@ -430,13 +430,13 @@ exports[`forward site art (FS1) > keeps the camp hotspots, close-ups and images 
           "target": "router:dc",
         },
       ],
-      "title": "SpaceY router",
+      "title": "SkyLink router",
     },
-    "spacey-cable": {
+    "skylink-cable": {
       "aspect": 1.5,
       "cables": [
         {
-          "label": "SpaceY cable (25 m power + data)",
+          "label": "SkyLink cable (25 m power + data)",
           "points": [
             [
               0.88,
@@ -463,33 +463,33 @@ exports[`forward site art (FS1) > keeps the camp hotspots, close-ups and images 
               0.4,
             ],
           ],
-          "target": "spacey-cable",
+          "target": "skylink-cable",
         },
       ],
-      "id": "spacey-cable",
-      "image": "/assets/campaigns/frontline/physical/cu-spacey-cable.webp",
+      "id": "skylink-cable",
+      "image": "/assets/campaigns/frontline/physical/cu-skylink-cable.webp",
       "probes": [],
       "regions": [],
-      "title": "SpaceY cable run",
+      "title": "SkyLink cable run",
     },
-    "spacey-dish": {
+    "skylink-dish": {
       "aspect": 1.5,
       "cables": [],
-      "id": "spacey-dish",
-      "image": "/assets/campaigns/frontline/physical/cu-spacey-dish.webp",
+      "id": "skylink-dish",
+      "image": "/assets/campaigns/frontline/physical/cu-skylink-dish.webp",
       "probes": [
         {
-          "id": "cu-spacey-plug",
-          "label": "SpaceY cable plug at the mast base",
-          "target": "spacey-cable:dish",
+          "id": "cu-skylink-plug",
+          "label": "SkyLink cable plug at the mast base",
+          "target": "skylink-cable:dish",
           "x": 0.515,
           "y": 0.755,
         },
       ],
       "regions": [
         {
-          "id": "cu-spacey-panel",
-          "label": "SpaceY panel",
+          "id": "cu-skylink-panel",
+          "label": "SkyLink panel",
           "shape": {
             "h": 0.6,
             "kind": "rect",
@@ -497,10 +497,10 @@ exports[`forward site art (FS1) > keeps the camp hotspots, close-ups and images 
             "x": 0.25,
             "y": 0.12,
           },
-          "target": "spacey-dish",
+          "target": "skylink-dish",
         },
       ],
-      "title": "SpaceY dish",
+      "title": "SkyLink dish",
     },
     "vsat-dish": {
       "aspect": 1.5,
@@ -602,9 +602,9 @@ exports[`forward site art (FS1) > keeps the camp hotspots, close-ups and images 
       ],
       "closeup": "router",
       "id": "site-in-router",
-      "label": "SpaceY router",
+      "label": "SkyLink router",
       "partIds": [
-        "spacey-router",
+        "skylink-router",
       ],
       "shapes": [
         {
@@ -750,11 +750,11 @@ exports[`forward site art (FS1) > keeps the camp hotspots, close-ups and images 
         0.165,
         0.468,
       ],
-      "closeup": "spacey-dish",
-      "id": "site-out-spacey-dish",
-      "label": "SpaceY dish",
+      "closeup": "skylink-dish",
+      "id": "site-out-skylink-dish",
+      "label": "SkyLink dish",
       "partIds": [
-        "spacey-dish",
+        "skylink-dish",
       ],
       "shapes": [
         {
@@ -907,12 +907,12 @@ exports[`forward site art (FS1) > keeps the camp hotspots, close-ups and images 
         0.2,
         0.585,
       ],
-      "closeup": "spacey-cable",
-      "id": "site-out-spacey-cable",
-      "label": "SpaceY cable",
+      "closeup": "skylink-cable",
+      "id": "site-out-skylink-cable",
+      "label": "SkyLink cable",
       "partIds": [],
       "requires": [
-        "spacey-cable",
+        "skylink-cable",
       ],
       "shapes": [
         {

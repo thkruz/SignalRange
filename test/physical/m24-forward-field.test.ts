@@ -105,12 +105,12 @@ describe('M24 forward field config', () => {
     expect(bootScenario(frontlineScenario10Data).plant.getConfig().diagram?.highlightShared).toBe(true);
   });
 
-  it('refuses a kit without the Skylink parts', () => {
+  it('refuses a kit without the SkyLink parts', () => {
     const cfg = structuredClone(frontlineScenario9Data.settings?.physicalPlant);
     if (!cfg) {
       throw new Error('S9 has no plant');
     }
-    cfg.parts = cfg.parts.filter((p) => p.id !== 'spacey-dish');
+    cfg.parts = cfg.parts.filter((p) => p.id !== 'skylink-dish');
     expect(() => applyForwardField(cfg, [], [])).toThrow();
     expect(FORWARD_SKYLINK_ACCOUNT).toBe('forward-skylink');
   });

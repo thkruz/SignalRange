@@ -35,10 +35,10 @@ export function pendingMechanic(todoId: string, description: string): Condition 
   };
 }
 
-const SKYLINK_PARTS = ['generator', 'power-station', 'power-strip', 'spacey-router', 'spacey-dish', 'laptop'];
+const SKYLINK_PARTS = ['generator', 'power-station', 'power-strip', 'skylink-router', 'skylink-dish', 'laptop'];
 const EUROSAT_PARTS = ['vsat-modem', 'vsat-dish', 'vsat-lnb'];
 
-/** Forward kit: S9-S10 Skylink only; the EuroSat terminal is delivered in S11 and shown through S16 */
+/** Forward kit: S9-S10 SkyLink only; the EuroSat terminal is delivered in S11 and shown through S16 */
 export function forwardInventory(scenarioNumber: number): string[] {
   return scenarioNumber >= 11 ? [...SKYLINK_PARTS, ...EUROSAT_PARTS] : [...SKYLINK_PARTS];
 }

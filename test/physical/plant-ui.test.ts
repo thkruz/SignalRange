@@ -1,6 +1,6 @@
 /**
  * Phase 38.1 WP4: the physical-plant UI. Site tab hotspots, the close-up verb
- * path, the trainer inject/clear, the SpaceY panel and the Frontline gate.
+ * path, the trainer inject/clear, the SkyLink panel and the Frontline gate.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -30,7 +30,7 @@ import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import { PartCloseupModal } from '@app/physical/ui/part-closeup-modal';
 import { buildTrigger, PlantTrainerBox } from '@app/physical/ui/plant-trainer-box';
 import { FAULT_KINDS, validTargets } from '@app/physical/ui/plant-ui-helpers';
-import { SpaceyAppBox } from '@app/physical/ui/spacey-app-box';
+import { SkylinkAppBox } from '@app/physical/ui/skylink-app-box';
 import { ScenarioManager } from '@app/scenario-manager';
 import { Rng } from '@app/simulation/rng';
 import { SimClock } from '@app/simulation/sim-clock';
@@ -49,7 +49,7 @@ beforeEach(() => {
 
 afterEach(() => {
   PartCloseupModal.destroy();
-  SpaceyAppBox.destroy();
+  SkylinkAppBox.destroy();
   PlantTrainerBox.destroy();
   PhysicalPlantService.destroy();
   EventBus.destroy();
@@ -119,7 +119,7 @@ describe('SiteTab', () => {
     const plant = plantService().plant;
     const tab = new SiteTab('canvas-content');
     expect(document.getElementById('site-location-text')!.textContent).toBe('Inside');
-    plant.clearSnow('spacey-dish');
+    plant.clearSnow('skylink-dish');
     tab.activate();
     expect(document.getElementById('site-location-text')!.textContent).toBe('Outside');
     expect(document.getElementById('site-trips')!.textContent).toBe(`1/${plant.getTripLimit()}`);
@@ -193,10 +193,10 @@ describe('PartCloseupModal', () => {
     const plant = plantService().plant;
     const modal = PartCloseupModal.getInstance();
     modal.showCloseup('router');
-    document.querySelector<SVGElement>('[data-target="spacey-router"]')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    expect(plant.hasMeasured('spacey-router', 'multimeter')).toBe(false);
+    document.querySelector<SVGElement>('[data-target="skylink-router"]')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(plant.hasMeasured('skylink-router', 'multimeter')).toBe(false);
     document.querySelector<HTMLElement>('[data-measure="multimeter"]')!.click();
-    expect(plant.hasMeasured('spacey-router', 'multimeter')).toBe(true);
+    expect(plant.hasMeasured('skylink-router', 'multimeter')).toBe(true);
     expect(document.querySelector('#pcu-latest')!.textContent).toContain('Multimeter');
   });
 });
@@ -237,11 +237,11 @@ describe('PlantTrainerBox', () => {
   });
 });
 
-describe('SpaceyAppBox', () => {
+describe('SkylinkAppBox', () => {
   it('reports the terminal status and power draw', () => {
     plantService();
-    SpaceyAppBox.getInstance().show();
-    expect(document.getElementById('spacey-status-text')!.textContent!.length).toBeGreaterThan(0);
-    expect(document.getElementById('spacey-power')!.textContent).toMatch(/W$/u);
+    SkylinkAppBox.getInstance().show();
+    expect(document.getElementById('skylink-status-text')!.textContent!.length).toBeGreaterThan(0);
+    expect(document.getElementById('skylink-power')!.textContent).toMatch(/W$/u);
   });
 });

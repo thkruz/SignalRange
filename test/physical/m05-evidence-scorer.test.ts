@@ -17,7 +17,7 @@ function plantConfig(): PlantConfig {
     parts: [
       { id: 'battery', kind: 'battery', label: 'Battery', capacityWh: 1000, socWh: 900, maxOutputW: 600, nominalV: 12, loadW: 0 },
       { id: 'router', kind: 'router', label: 'Router', poweredBy: 'battery', loadW: 10, nominalV: 12 },
-      { id: 'skylink', kind: 'terminal', label: 'Skylink', poweredBy: 'router', viaCable: 'dish-cable', nominalV: 12, loadW: 40 },
+      { id: 'skylink', kind: 'terminal', label: 'SkyLink', poweredBy: 'router', viaCable: 'dish-cable', nominalV: 12, loadW: 40 },
       { id: 'aux', kind: 'router', label: 'Aux', poweredBy: 'battery', loadW: 5, nominalV: 12 },
     ],
     connectors: [
@@ -31,7 +31,7 @@ function plantConfig(): PlantConfig {
       paths: [
         {
           id: 'skylink',
-          label: 'Skylink',
+          label: 'SkyLink',
           terminalPartId: 'skylink',
           localPartIds: ['router'],
           accountId: 'acct',

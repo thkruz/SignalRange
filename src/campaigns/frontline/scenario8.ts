@@ -153,7 +153,7 @@ if (scenarioSettings.physicalPlant) {
     { id: 'terminal', label: 'Terminal' },
   ];
   scenarioSettings.physicalPlant.power = { reserveWh: RESERVE_WH, planningHorizonS: 3600, basis: 'battery-only' };
-  scenarioSettings.physicalPlant.faults = [{ id: FAULT_ID, target: 'spacey-cable:router', kind: 'moisture', severity: 0.8 }];
+  scenarioSettings.physicalPlant.faults = [{ id: FAULT_ID, target: 'skylink-cable:router', kind: 'moisture', severity: 0.8 }];
   scenarioSettings.physicalPlant.spares = { 'cable:power-data': 1, 'cable:coax': 0, 'power-brick': 0, 'connector-kit': 1, 'fuel-can': 0 };
   scenarioSettings.physicalPlant.tripLimit = 3;
   const battery = scenarioSettings.physicalPlant.parts.find((part) => part.id === 'power-station');

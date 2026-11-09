@@ -2,7 +2,7 @@
  * @file PhysicalPlantManager - Power, cabling and fault model for the C6 physical layer
  * @description Pure Core class (no DOM, no engine singletons). The host drives
  * it with `update(dtSeconds)` and reads a handful of neutral-by-default
- * outputs: pre/post-LNA loss, part power, link dropouts, SpaceY dish status.
+ * outputs: pre/post-LNA loss, part power, link dropouts, SkyLink dish status.
  *
  * Model in one paragraph: the plant is a set of parts, cables and connectors.
  * Everything that can go wrong is a `PlantFault` (authored state is converted
@@ -16,7 +16,7 @@
  * injected `skip`, log themselves, and open or close outdoor trips.
  *
  * Neutral contract: with no active fault, preLnaLossDb/postLnaLossDb are 0,
- * isPartPowered is true, isLinkDropped is false and spaceyStatus is 'online'.
+ * isPartPowered is true, isLinkDropped is false and skylinkStatus is 'online'.
  */
 
 import { fillText, type GenericObsKey, hasObs, OBS_TABLE, type ObsState, type ObsTargetClass, type ObsTemplateVars, pickGeneric, pickObs } from './observation-text';
@@ -45,7 +45,7 @@ import {
   type PlantWeather,
   type PowerForecast,
   type PowerReadings,
-  type SpaceyStatus,
+  type SkylinkStatus,
   type VerbResult,
 } from './physical-plant-types';
 import { DEFAULT_ENGINE_MAP, type EnginePowerRole } from './plant-bridge';
@@ -325,8 +325,8 @@ export class PhysicalPlantManager {
     return false;
   }
 
-  /** The SpaceY dish status; 'online' when there is no terminal or nothing is wrong */
-  spaceyStatus(): SpaceyStatus {
+  /** The SkyLink dish status; 'online' when there is no terminal or nothing is wrong */
+  skylinkStatus(): SkylinkStatus {
     const terminal = this.config_.parts.find((p) => p.kind === 'terminal');
     if (!terminal) {
       return 'online';

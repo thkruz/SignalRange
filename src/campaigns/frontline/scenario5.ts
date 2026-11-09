@@ -178,7 +178,7 @@ export const frontlineScenario5Data: FrontlineScenarioData = {
   missionType: 'Service Diagnosis',
   description:
     "The terminal reports online, but Ola's application isn't meeting its exercise requirement. Compare the terminal, local network, and application evidence. Identify what is using the shared service, apply the permitted priority setting, and verify whether the application becomes usable.",
-  equipment: ['Skylink terminal and router', 'Local service panel', 'Simulated workload list', 'Pilot workstation'],
+  equipment: ['SkyLink terminal and router', 'Local service panel', 'Simulated workload list', 'Pilot workstation'],
   settings,
   mechanicTodos: [],
   objectives: [

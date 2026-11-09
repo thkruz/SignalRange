@@ -30,7 +30,7 @@ import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import { SWAP_COSTS_S, VERB_COSTS_S } from '@app/physical/plant-verb-rules';
 import { PartCloseupModal } from '@app/physical/ui/part-closeup-modal';
 import { plantUiState } from '@app/physical/ui/plant-ui-helpers';
-import { SpaceyAppBox } from '@app/physical/ui/spacey-app-box';
+import { SkylinkAppBox } from '@app/physical/ui/skylink-app-box';
 import { ScenarioManager } from '@app/scenario-manager';
 import { Rng } from '@app/simulation/rng';
 import { SimClock } from '@app/simulation/sim-clock';
@@ -48,7 +48,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
-  SpaceyAppBox.destroy();
+  SkylinkAppBox.destroy();
   PartCloseupModal.destroy();
   PhysicalPlantService.destroy();
   EventBus.destroy();
@@ -64,7 +64,7 @@ describe('close-up selection and actions', () => {
     PartCloseupModal.getInstance().showCloseup('router');
     const t0 = plant.getTimeSeconds();
     const logged = plant.getLog().length;
-    click(document.querySelector('[data-target="spacey-cable:router"]')!);
+    click(document.querySelector('[data-target="skylink-cable:router"]')!);
     expect(plant.getTimeSeconds()).toBe(t0);
     expect(plant.getLog().length).toBe(logged);
     expect(document.querySelector('#pcu-latest .pp-latest-text')).toBeNull();
@@ -88,14 +88,14 @@ describe('close-up selection and actions', () => {
 
   it('a cable connector offers the cable tester as an action', () => {
     PartCloseupModal.getInstance().showCloseup('router');
-    click(document.querySelector('[data-target="spacey-cable:router"]')!);
+    click(document.querySelector('[data-target="skylink-cable:router"]')!);
     expect(measures()).toContain('cable-tester');
     expect(document.querySelector('[data-measure="cable-tester"]')!.textContent).toContain('Test cable (cable tester)');
   });
 
   it('the laptop offers no measure actions', () => {
     PartCloseupModal.getInstance().showCloseup('laptop');
-    vi.spyOn(SpaceyAppBox.getInstance(), 'show').mockImplementation(() => undefined);
+    vi.spyOn(SkylinkAppBox.getInstance(), 'show').mockImplementation(() => undefined);
     click(document.querySelector('[data-target="laptop"]')!);
     expect(measures()).toEqual([]);
   });
@@ -103,11 +103,11 @@ describe('close-up selection and actions', () => {
   it('a measure action costs time and logs; identical repeats collapse into one row', () => {
     const plant = PhysicalPlantService.getInstance().plant;
     PartCloseupModal.getInstance().showCloseup('router');
-    click(document.querySelector('[data-target="spacey-router"]')!);
+    click(document.querySelector('[data-target="skylink-router"]')!);
     const t0 = plant.getTimeSeconds();
     click(document.querySelector('[data-measure="multimeter"]')!);
     expect(plant.getTimeSeconds()).toBeGreaterThan(t0);
-    expect(plant.hasMeasured('spacey-router', 'multimeter')).toBe(true);
+    expect(plant.hasMeasured('skylink-router', 'multimeter')).toBe(true);
     expect(document.querySelector('#pcu-latest')!.textContent).toContain('Multimeter');
     click(document.querySelector('[data-verb="inspect"]')!);
     click(document.querySelector('[data-verb="inspect"]')!);
@@ -142,7 +142,7 @@ describe('close-up selection and actions', () => {
 
   it('every action shows its cost, disruptive ones come last and are secondary, swap shows the spare use', () => {
     PartCloseupModal.getInstance().showCloseup('router');
-    click(document.querySelector('[data-target="spacey-router"]')!);
+    click(document.querySelector('[data-target="skylink-router"]')!);
     const buttons = [...document.querySelectorAll<HTMLElement>('#pcu-verbs button')];
     expect(buttons.length).toBeGreaterThan(2);
     for (const b of buttons) {
@@ -158,10 +158,10 @@ describe('close-up selection and actions', () => {
 
   it('the cost table matches what the plant charges', () => {
     const plant = PhysicalPlantService.getInstance().plant;
-    expect(plant.inspect('spacey-router').costSeconds).toBe(VERB_COSTS_S.inspect);
-    expect(plant.feel('spacey-router').costSeconds).toBe(VERB_COSTS_S.feel);
-    expect(plant.measure('multimeter', 'spacey-router').costSeconds).toBe(VERB_COSTS_S.multimeter);
-    expect(plant.swap('spacey-router').costSeconds).toBe(SWAP_COSTS_S.part);
+    expect(plant.inspect('skylink-router').costSeconds).toBe(VERB_COSTS_S.inspect);
+    expect(plant.feel('skylink-router').costSeconds).toBe(VERB_COSTS_S.feel);
+    expect(plant.measure('multimeter', 'skylink-router').costSeconds).toBe(VERB_COSTS_S.multimeter);
+    expect(plant.swap('skylink-router').costSeconds).toBe(SWAP_COSTS_S.part);
   });
 
   it('the overlay has focusable targets and markers, with outlines only on demand', () => {

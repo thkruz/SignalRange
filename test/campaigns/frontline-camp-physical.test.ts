@@ -58,14 +58,14 @@ describe('Frontline camp physical assessments', () => {
 
   it('requires actual S3 fault evidence before an effective repair', () => {
     const plant = makePlant(frontlineScenario3Data);
-    expect(plant.getFaults()).toEqual([{ id: 'c6-s3-terminal-moisture', target: 'spacey-cable:dish', kind: 'moisture', severity: 0.8 }]);
+    expect(plant.getFaults()).toEqual([{ id: 'c6-s3-terminal-moisture', target: 'skylink-cable:dish', kind: 'moisture', severity: 0.8 }]);
     expect(evaluate(frontlineScenario3Data, 's3-observed-connector-evidence')).toBe(false);
-    plant.inspect('spacey-router');
+    plant.inspect('skylink-router');
     expect(evaluate(frontlineScenario3Data, 's3-observed-connector-evidence')).toBe(false);
-    plant.inspect('spacey-cable:dish');
+    plant.inspect('skylink-cable:dish');
     expect(evaluate(frontlineScenario3Data, 's3-observed-connector-evidence')).toBe(true);
     expect(evaluate(frontlineScenario3Data, 's3-evidence-before-intervention')).toBe(false);
-    plant.seal('spacey-cable:dish');
+    plant.seal('skylink-cable:dish');
     expect(plant.isFaultCleared('c6-s3-terminal-moisture')).toBe(true);
     expect(evaluate(frontlineScenario3Data, 's3-evidence-before-intervention')).toBe(true);
     expect(evaluate(frontlineScenario3Data, 'c6:workloadVerified:ola-check:skylink:after-c6-s3-terminal-moisture')).toBe(false);
@@ -73,24 +73,24 @@ describe('Frontline camp physical assessments', () => {
 
   it('accepts the supported connector replacement after observation', () => {
     const plant = makePlant(frontlineScenario3Data);
-    plant.inspect('spacey-cable:dish');
-    plant.swap('spacey-cable:dish');
+    plant.inspect('skylink-cable:dish');
+    plant.swap('skylink-cable:dish');
     expect(evaluate(frontlineScenario3Data, 's3-evidence-before-intervention')).toBe(true);
     expect(plant.getSpares()['connector-kit']).toBe(0);
   });
 
   it('rejects an S3 repair performed before fault evidence was collected', () => {
     const plant = makePlant(frontlineScenario3Data);
-    plant.seal('spacey-cable:dish');
-    plant.inspect('spacey-cable:dish');
+    plant.seal('skylink-cable:dish');
+    plant.inspect('skylink-cable:dish');
     expect(plant.isFaultCleared('c6-s3-terminal-moisture')).toBe(true);
     expect(evaluate(frontlineScenario3Data, 's3-evidence-before-intervention')).toBe(false);
   });
 
   it('preserves evidence and repair ordering through a checkpoint restore', () => {
     const plant = makePlant(frontlineScenario3Data);
-    plant.inspect('spacey-cable:dish');
-    plant.seal('spacey-cable:dish');
+    plant.inspect('skylink-cable:dish');
+    plant.seal('skylink-cable:dish');
     const checkpoint = plant.getState();
     const restored = makePlant(frontlineScenario3Data);
     restored.restoreState(checkpoint);
@@ -103,11 +103,11 @@ describe('Frontline camp physical assessments', () => {
     expect(plant.getFaults()).toEqual([]);
     expect(evaluate(frontlineScenario4Data, 's4-observed-environment-evidence')).toBe(false);
     // Stand in for the s4-obstruction event, which the completion test drives for real.
-    plant.injectFault({ id: 'c6-s4-terminal-obstruction', target: 'spacey-dish', kind: 'net' });
-    plant.inspect('spacey-dish');
+    plant.injectFault({ id: 'c6-s4-terminal-obstruction', target: 'skylink-dish', kind: 'net' });
+    plant.inspect('skylink-dish');
     expect(evaluate(frontlineScenario4Data, 's4-observed-environment-evidence')).toBe(true);
     expect(evaluate(frontlineScenario4Data, 's4-evidence-before-correction')).toBe(false);
-    plant.removeNet('spacey-dish');
+    plant.removeNet('skylink-dish');
     expect(plant.isFaultCleared('c6-s4-terminal-obstruction')).toBe(true);
     expect(evaluate(frontlineScenario4Data, 's4-evidence-before-correction')).toBe(true);
     expect(evaluate(frontlineScenario4Data, 'c6:workloadVerified:ola-check:skylink:after-c6-s4-terminal-obstruction')).toBe(false);
@@ -115,9 +115,9 @@ describe('Frontline camp physical assessments', () => {
 
   it('rejects an S4 correction that preceded inspection', () => {
     const plant = makePlant(frontlineScenario4Data);
-    plant.injectFault({ id: 'c6-s4-terminal-obstruction', target: 'spacey-dish', kind: 'net' });
-    plant.removeNet('spacey-dish');
-    plant.inspect('spacey-dish');
+    plant.injectFault({ id: 'c6-s4-terminal-obstruction', target: 'skylink-dish', kind: 'net' });
+    plant.removeNet('skylink-dish');
+    plant.inspect('skylink-dish');
     expect(evaluate(frontlineScenario4Data, 's4-evidence-before-correction')).toBe(false);
   });
 });

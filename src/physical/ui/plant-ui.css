@@ -1,4 +1,4 @@
-/* Physical-plant UI (Phase 38.1): site tab, part close-up, SpaceY panel, trainer panel */
+/* Physical-plant UI (Phase 38.1): site tab, part close-up, SkyLink panel, trainer panel */
 
 .pp-pip {
   display: inline-block;
@@ -154,7 +154,7 @@
 .pp-damage { fill: rgba(239, 59, 45, 0.9); stroke: #fff; stroke-width: 2; vector-effect: non-scaling-stroke; }
 .pp-water-drop { fill: rgba(120, 190, 255, 0.85); }
 
-/* ---- floating boxes (SpaceY app, trainer) ---- */
+/* ---- floating boxes (SkyLink app, trainer) ---- */
 .pp-box { padding: 0.6rem; font-size: 0.8rem; color: var(--mc-text-secondary); overflow-y: auto; max-height: calc(var(--mc-viewport-height, 100vh) * 0.7); }
 .pp-box .pp-row { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; padding: 0.2rem 0; }
 .pp-box .pp-row b { color: var(--mc-text-primary); font-family: 'JetBrains Mono', monospace; }
@@ -163,12 +163,12 @@
 .pp-box .pp-event-log { max-height: 9rem; overflow-y: auto; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; border: 1px solid var(--mc-border); padding: 0.3rem; background: var(--mc-surface-1); }
 .pp-box .pp-fault-row { display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; padding: 0.15rem 0; border-bottom: 1px solid rgba(255, 255, 255, 0.06); font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; }
 
-.pp-spacey { min-width: 280px; }
-.pp-spacey .pp-spacey-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem; }
-.pp-spacey .pp-spacey-ring { width: 3.2rem; height: 3.2rem; border-radius: 50%; border: 3px solid var(--mc-text-muted); display: grid; place-items: center; font-size: 1.2rem; }
-.pp-spacey .pp-spacey-ring.pp-pip-ok { border-color: #22c55e; }
-.pp-spacey .pp-spacey-ring.pp-pip-warn { border-color: #eab308; }
-.pp-spacey .pp-spacey-ring.pp-pip-bad { border-color: #ef3b2d; }
+.pp-skylink { min-width: 280px; }
+.pp-skylink .pp-skylink-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem; }
+.pp-skylink .pp-skylink-ring { width: 3.2rem; height: 3.2rem; border-radius: 50%; border: 3px solid var(--mc-text-muted); display: grid; place-items: center; font-size: 1.2rem; }
+.pp-skylink .pp-skylink-ring.pp-pip-ok { border-color: #22c55e; }
+.pp-skylink .pp-skylink-ring.pp-pip-warn { border-color: #eab308; }
+.pp-skylink .pp-skylink-ring.pp-pip-bad { border-color: #ef3b2d; }
 
 .pp-trainer { min-width: 380px; }
 .pp-trainer .pp-grid { display: grid; grid-template-columns: 6.5rem 1fr; gap: 0.3rem 0.5rem; align-items: center; }

@@ -43,7 +43,7 @@ describe('M25 referral requests', () => {
 });
 
 describe('M25 EuroSat layer', () => {
-  it('adds the EuroSat service on top of the forward field and restricts Skylink', () => {
+  it('adds the EuroSat service on top of the forward field and restricts SkyLink', () => {
     const plant = createFrontlineSettings(11).physicalPlant;
     expect(plant).toBeDefined();
     if (!plant) {

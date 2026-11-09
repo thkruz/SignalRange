@@ -1,5 +1,5 @@
 /**
- * M26 S13 completion: the player identifies both ends of a Skylink task, takes a baseline of each, records an
+ * M26 S13 completion: the player identifies both ends of a SkyLink task, takes a baseline of each, records an
  * interruption at the remote end, correlates the provider notice, shows that local options leave the remote policy in
  * force, and reports a justified hold using "Hold for result". The ground capacity restriction is a separate state that
  * stays in force throughout. S13 has no fault, so there is no debrief diagnosis to assert.
@@ -37,7 +37,7 @@ vi.mock('@app/simulation/simulation-manager', () => ({
 const states = objectives.states as ObjectiveStates;
 const data = frontlineScenario13Data;
 const REMOTE = FORWARD_REMOTE_SERVICE;
-const PATH = ['spacey-dish', `account:${FORWARD_SKYLINK_ACCOUNT}`, `provider:${FORWARD_PROVIDER}`, `endpoint:${FORWARD_REMOTE_ENDPOINT}`];
+const PATH = ['skylink-dish', `account:${FORWARD_SKYLINK_ACCOUNT}`, `provider:${FORWARD_PROVIDER}`, `endpoint:${FORWARD_REMOTE_ENDPOINT}`];
 const incomplete = (svc: PhysicalPlantService, id: string): string[] => unmet(data.objectives.find((o) => o.id === id) as never, svc);
 const obsIds = (svc: PhysicalPlantService): string[] => (svc.evidence?.entries('observation') ?? []).map((e) => e.id);
 const resultIds = (svc: PhysicalPlantService): string[] => (svc.evidence?.entries('result') ?? []).map((e) => e.id);
@@ -64,7 +64,7 @@ function heldRun(svc: PhysicalPlantService, service = REMOTE) {
 function acts(svc: PhysicalPlantService): Record<string, () => void> {
   return {
     's13-map-endpoints': () => {
-      svc.evidence?.recordSelection(PATH, 'Skylink ground terminal to the remote terminal');
+      svc.evidence?.recordSelection(PATH, 'SkyLink ground terminal to the remote terminal');
       ok(
         svc.records?.submit('endpoints', {
           ground: { value: FORWARD_SKYLINK_ACCOUNT },
@@ -183,8 +183,8 @@ describe('M26 S13 completion', () => {
   it('leaves the remote policy in force through a local restart and a ground-route change', () => {
     const svc = bootScenario(data);
     driveObjectives(data, svc, states, acts(svc), { stopAfter: 's13-review-provider-evidence' });
-    svc.plant.powerCycle('spacey-dish');
-    svc.plant.powerCycle('spacey-router');
+    svc.plant.powerCycle('skylink-dish');
+    svc.plant.powerCycle('skylink-router');
     tick(120);
     svc.services?.setAccount({ id: FORWARD_SKYLINK_ACCOUNT, restriction: undefined, capacityFactor: 1 });
     svc.services?.setProvider({ id: FORWARD_EUROSAT_PROVIDER, status: 'normal' });

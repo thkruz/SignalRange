@@ -53,7 +53,7 @@ function plantConfig(extra: Partial<PlantConfig> = {}): PlantConfig {
       {
         id: 'skylink',
         kind: 'terminal',
-        label: 'Skylink',
+        label: 'SkyLink',
         poweredBy: 'router',
         viaCable: 'dish-cable',
         nominalV: 12,
@@ -75,7 +75,7 @@ function plantConfig(extra: Partial<PlantConfig> = {}): PlantConfig {
       paths: [
         {
           id: 'skylink',
-          label: 'Skylink',
+          label: 'SkyLink',
           terminalPartId: 'skylink',
           localPartIds: ['router'],
           linkTargetIds: ['dish-plug'],

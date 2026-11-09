@@ -19,7 +19,7 @@ import { shapeSvg, svgOpen, VIEW_W, viewHeight } from '@app/physical/ui/plant-sv
 import { PlantTrainerBox } from '@app/physical/ui/plant-trainer-box';
 import { escapeHtml, hotspotPip, internetPaths } from '@app/physical/ui/plant-ui-helpers';
 import type { SceneLayer, SiteHotspot, SiteView } from '@app/physical/ui/site-types';
-import { SpaceyAppBox } from '@app/physical/ui/spacey-app-box';
+import { SkylinkAppBox } from '@app/physical/ui/skylink-app-box';
 import { TRIP_RULE_TEXT } from '@app/scoring/field-diagnosis';
 import { getAssetUrl } from '@app/utils/asset-url';
 import '@app/physical/ui/plant-ui.css';
@@ -251,11 +251,11 @@ export class SiteTab extends BaseElement {
           <span class="site-stat" id="site-trips-wrap" title="${escapeHtml(TRIP_RULE_TEXT)}">Trips <b id="site-trips">0/0</b></span>
           <span class="pp-badge pp-badge-bad" id="site-spotted" style="display:none">Spotted</span>
           <span class="site-stat">Spares <b id="site-spares">0</b></span>
-          <span class="site-stat" id="site-internet-wrap">SpaceY <b id="site-path-spacey">-</b></span>
+          <span class="site-stat" id="site-internet-wrap">SkyLink <b id="site-path-skylink">-</b></span>
           <span class="site-stat">VSAT <b id="site-path-vsat">-</b></span>
           <span class="site-strip-spacer"></span>
           <button type="button" class="btn btn-sm btn-primary" id="site-view-toggle">Go outside</button>
-          <button type="button" class="btn btn-sm btn-outline-secondary" id="site-open-spacey">SpaceY app</button>
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="site-open-skylink">SkyLink app</button>
           <button type="button" class="btn btn-sm btn-outline-warning" id="site-open-trainer" style="display:none">Trainer</button>
         </div>
         <div class="site-stage-box"><div class="pp-stage" id="site-stage" style="--pp-ar:${this.aspect_()}">${this.stageHtml_()}</div></div>
@@ -284,8 +284,8 @@ export class SiteTab extends BaseElement {
       const btn = target.closest<HTMLElement>('button');
       if (btn?.id === 'site-view-toggle') {
         this.setView(this.view === 'inside' ? 'outside' : 'inside');
-      } else if (btn?.id === 'site-open-spacey') {
-        SpaceyAppBox.getInstance().show();
+      } else if (btn?.id === 'site-open-skylink') {
+        SkylinkAppBox.getInstance().show();
       } else if (btn?.id === 'site-open-trainer') {
         PlantTrainerBox.getInstance().show();
       }
@@ -355,7 +355,7 @@ export class SiteTab extends BaseElement {
     const spares = Object.values(plant.getSpares()).reduce((a, b) => a + b, 0);
     this.setText_('site-spares', String(spares));
     const net = internetPaths(plant);
-    this.setText_('site-path-spacey', net.spacey ? 'up' : 'down');
+    this.setText_('site-path-skylink', net.skylink ? 'up' : 'down');
     this.setText_('site-path-vsat', net.vsat ? 'up' : 'down');
     const trainer = this.cache_('site-open-trainer');
     if (trainer) trainer.style.display = isFrontlineAllowed() ? '' : 'none';

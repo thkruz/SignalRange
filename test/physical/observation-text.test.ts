@@ -149,8 +149,8 @@ describe('model gaps', () => {
     plant.injectFault({ id: 'flat', target: 'power-station', kind: 'battery-depleted' });
     advance(5);
     advance(5);
-    const dead = plant.inspect('spacey-router').observation;
-    const healthy = makePlant().plant.inspect('spacey-router').observation;
+    const dead = plant.inspect('skylink-router').observation;
+    const healthy = makePlant().plant.inspect('skylink-router').observation;
     expect(dead).not.toBe(healthy);
     expect(dead).not.toMatch(/nothing (stands out|looks wrong)/iu);
   });

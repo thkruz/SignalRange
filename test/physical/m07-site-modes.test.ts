@@ -26,11 +26,11 @@ describe('M07 site modes and inventory', () => {
     expect(applySiteInventory(frontlinePlantConfig)).toBe(frontlinePlantConfig);
   });
 
-  it('S9 and S10 have Skylink only; S11 to S16 add the EuroSat terminal', () => {
+  it('S9 and S10 have SkyLink only; S11 to S16 add the EuroSat terminal', () => {
     for (const n of [9, 10]) {
       const cfg = createFrontlineSettings(n).physicalPlant!;
       expect(ids(cfg).some((i) => i.startsWith('vsat'))).toBe(false);
-      expect(cfg.cables.map((c) => c.id)).toEqual(['spacey-cable']);
+      expect(cfg.cables.map((c) => c.id)).toEqual(['skylink-cable']);
       expect(cfg.connectors.some((c) => c.id.startsWith('vsat'))).toBe(false);
       expect(cfg.site?.mode).toBe('forward');
     }
@@ -55,7 +55,7 @@ describe('M07 site modes and inventory', () => {
       site: { mode: 'forward', inventory: forwardInventory(9) },
       faults: [
         { id: 'f1', target: 'vsat-ifl:lnb', kind: 'moisture' },
-        { id: 'f2', target: 'spacey-cable:dish', kind: 'moisture' },
+        { id: 'f2', target: 'skylink-cable:dish', kind: 'moisture' },
       ],
       events: [
         {
@@ -76,7 +76,7 @@ describe('M07 site modes and inventory', () => {
     const plant = make(createFrontlineSettings(11).physicalPlant!);
     expect(plant.getSiteMode()).toBe('forward');
     for (let i = 0; i < 6; i++) {
-      plant.clearSnow('spacey-dish');
+      plant.clearSnow('skylink-dish');
       plant.goOutside();
       plant.returnInside();
     }
@@ -101,7 +101,7 @@ describe('M07 site modes and inventory', () => {
     const s9 = make(createFrontlineSettings(9).physicalPlant!);
     const has9 = (id: string): boolean => s9.getTargetTraits(id) !== null;
     const labels9 = visibleHotspots('forward', has9).map((h) => h.id);
-    expect(labels9).toContain('site-fwd-spacey-dish');
+    expect(labels9).toContain('site-fwd-skylink-dish');
     expect(labels9).toContain('site-fwd-generator');
     expect(labels9.some((id) => /vsat/u.test(id))).toBe(false);
     expect(visibleHotspots('forward', has9).some((h) => h.action || h.closeup === 'flap-out')).toBe(false);

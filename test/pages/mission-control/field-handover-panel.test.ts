@@ -33,7 +33,7 @@ function rig(withForms = true) {
     parts: [
       { id: 'battery', kind: 'battery', label: 'Battery', capacityWh: 1000, socWh: 900, maxOutputW: 600, nominalV: 12, loadW: 0 },
       { id: 'router', kind: 'router', label: 'Router', poweredBy: 'battery', loadW: 10, nominalV: 12 },
-      { id: 'skylink', kind: 'terminal', label: 'Skylink', poweredBy: 'battery', nominalV: 12, loadW: 50 },
+      { id: 'skylink', kind: 'terminal', label: 'SkyLink', poweredBy: 'battery', nominalV: 12, loadW: 50 },
     ],
     connectors: [],
     cables: [],
@@ -42,7 +42,7 @@ function rig(withForms = true) {
       paths: [
         {
           id: 'skylink',
-          label: 'Skylink',
+          label: 'SkyLink',
           terminalPartId: 'skylink',
           localPartIds: ['router'],
           accountId: 'acct',

@@ -17,7 +17,7 @@ import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-
 
 /**
  * Frontline Signals — Scenario 11: Bring EuroSat Into Service.
- * Initial state: EuroSat equipment arrives at Rautala; Skylink remains capacity-restricted.
+ * Initial state: EuroSat equipment arrives at Rautala; SkyLink remains capacity-restricted.
  * The delivery and account record are available on entry; commissioning precedes every service measurement.
  * The intended workload is a delay-tolerant synthetic transfer. A separate interactive workload remains unsupported.
  * GEO propagation and test thresholds must come from the future service model, not the sandbox modem lock alone.
@@ -90,7 +90,7 @@ const measurementForm: HandoverFormConfig = {
     { key: 'samples', label: 'Delay, rate and loss readings kept', required: true, rule: { cites: 'observation', min: 3 } },
     {
       key: 'delay',
-      label: 'Delay against the Skylink reference',
+      label: 'Delay against the SkyLink reference',
       required: true,
       rule: { choice: ['much-higher'], labels: { 'much-higher': 'Much higher, as expected for a GEO path' } },
     },
@@ -116,7 +116,7 @@ const capabilityForm: HandoverFormConfig = {
   fields: [
     { key: 'verified', label: 'Task window you ran', required: true, rule: { workload: { cardId: S11_TRANSFER_CARD.id, is: ['supported'], serviceId: FORWARD_EUROSAT_SERVICE } } },
     { key: 'energy', label: 'Battery energy left (Wh)', required: true, rule: { powerWithin: { metric: 'socWh', tol: 40, partId: 'power-station' } } },
-    { key: 'skylink', label: 'Skylink account state now', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'account' } } },
+    { key: 'skylink', label: 'SkyLink account state now', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'account' } } },
     {
       key: 'restored',
       label: 'Capability EuroSat restored',
@@ -129,7 +129,7 @@ const capabilityForm: HandoverFormConfig = {
       required: true,
       rule: { choice: [S11_INTERACTIVE_CARD.id], labels: { [S11_INTERACTIVE_CARD.id]: 'Interactive session, because of its delay limit' } },
     },
-    { key: 'restriction', label: 'Skylink restriction', required: true, rule: { choice: ['remains-active'], labels: { 'remains-active': 'Still in force' } } },
+    { key: 'restriction', label: 'SkyLink restriction', required: true, rule: { choice: ['remains-active'], labels: { 'remains-active': 'Still in force' } } },
   ],
 };
 
@@ -145,7 +145,7 @@ if (scenarioSettings.physicalPlant) {
     units: [
       {
         unitId: FORWARD_SKYLINK_UNIT,
-        label: 'Commissioned Skylink terminal',
+        label: 'Commissioned SkyLink terminal',
         record: { serial: 'SKY-7731', accountId: FORWARD_SKYLINK_ACCOUNT, configVersion: 'depot-v3' },
       },
       {
@@ -173,7 +173,7 @@ export const frontlineScenario11Data: FrontlineScenarioData = {
     'Tomek has brought the EuroSat kit from Saarikoski depot. Commission the new connection, establish what it can support, and give Irena a service report that includes the tasks still unavailable. Ola will run the simulated workload checks once the connection is ready.',
   equipment: [
     'EuroSat GEO terminal and modem',
-    'Skylink terminal with restricted service',
+    'SkyLink terminal with restricted service',
     'Router and pilot workstation',
     'Generator and battery power station',
     'Service records and commissioning checklist',
@@ -225,7 +225,7 @@ export const frontlineScenario11Data: FrontlineScenarioData = {
       points: 15,
       conditions: [
         samplesCurrent(FORWARD_EUROSAT_SERVICE, ['power', 'local', 'registration', 'account', 'application'], 'Current readings taken for every layer'),
-        handoverValid('measurement', 'Measurements compared with the Skylink reference'),
+        handoverValid('measurement', 'Measurements compared with the SkyLink reference'),
       ],
     },
     {
@@ -277,7 +277,7 @@ export const frontlineScenario11Data: FrontlineScenarioData = {
       id: 's11-handover-capability',
       title: 'Report the Restored Capability',
       description:
-        "Record the available workload, observed power demand, and remaining Skylink restriction. State the interactive task's limitation separately from the capability restored by EuroSat.",
+        "Record the available workload, observed power demand, and remaining SkyLink restriction. State the interactive task's limitation separately from the capability restored by EuroSat.",
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s11-verify-workload'],
       points: 15,
@@ -288,7 +288,7 @@ export const frontlineScenario11Data: FrontlineScenarioData = {
           mustMaintain: false,
           params: { partId: 'power-station' },
         },
-        handoverValid('capability', 'Restored and unavailable work reported with the Skylink restriction'),
+        handoverValid('capability', 'Restored and unavailable work reported with the SkyLink restriction'),
       ],
     },
   ],

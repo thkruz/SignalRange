@@ -5,7 +5,7 @@ import type { RequirementCard } from '@app/physical/workload-types';
 import { SKYLINK_SERVICE } from './camp-field-config';
 
 /**
- * Forward (Rautala) field configuration shared by S9 onward (M24). S9-S10 carry Skylink only; S11
+ * Forward (Rautala) field configuration shared by S9 onward (M24). S9-S10 carry SkyLink only; S11
  * adds the EuroSat path on top of this config. The terminal and router run on the battery station:
  * the generator in the truck is off by default and no trips outside are counted (site mode 'forward').
  * Only frontline scenario settings call this, so Campaigns 1-5 never see a service model.
@@ -23,18 +23,18 @@ export interface ForwardFieldOptions {
   highlightShared?: boolean;
 }
 
-/** Skylink on the forward kit, with one pilot-application endpoint as the remote leg */
+/** SkyLink on the forward kit, with one pilot-application endpoint as the remote leg */
 export function forwardServiceConfig(): ServiceModelConfig {
   return {
     paths: [
       {
         id: SKYLINK_SERVICE,
-        label: 'Skylink',
-        terminalPartId: 'spacey-dish',
-        localPartIds: ['spacey-router', 'laptop'],
+        label: 'SkyLink',
+        terminalPartId: 'skylink-dish',
+        localPartIds: ['skylink-router', 'laptop'],
         accountId: FORWARD_SKYLINK_ACCOUNT,
         providerId: FORWARD_PROVIDER,
-        linkTargetIds: ['spacey-cable', 'spacey-cable:dish', 'spacey-cable:router'],
+        linkTargetIds: ['skylink-cable', 'skylink-cable:dish', 'skylink-cable:router'],
         endpointIds: [FORWARD_ENDPOINT],
         profile: { downMbps: 80, upMbps: 12, rttMs: 55, lossPct: 0.5 },
       },
@@ -61,19 +61,19 @@ export const FORWARD_FIRST_CARD: RequirementCard = {
 
 /**
  * Adds the forward service, cards, handover forms and the battery-only power plan to a plant config
- * (mutates and returns it). Throws when the forward kit lacks the Skylink parts.
+ * (mutates and returns it). Throws when the forward kit lacks the SkyLink parts.
  */
 export function applyForwardField(plant: PlantConfig, cards: RequirementCard[], handovers: HandoverFormConfig[], opts: ForwardFieldOptions = {}): PlantConfig {
   const part = (id: string) => plant.parts.find((p) => p.id === id);
   const generator = part('generator');
   const battery = part('power-station');
-  if (!generator || !battery || !part('spacey-dish')) {
-    throw new Error('Forward field needs the generator, the power station and the Skylink dish');
+  if (!generator || !battery || !part('skylink-dish')) {
+    throw new Error('Forward field needs the generator, the power station and the SkyLink dish');
   }
   plant.service = forwardServiceConfig();
   plant.workloads = { cards };
   plant.handovers = handovers;
-  // The truck generator is off until the player starts it; the laptop and Skylink run on batteries
+  // The truck generator is off until the player starts it; the laptop and SkyLink run on batteries
   generator.running = false;
   battery.socWh = FORWARD_START_WH;
   plant.power = { reserveWh: FORWARD_RESERVE_WH, planningHorizonS: 3600, basis: 'battery-only' };
@@ -92,7 +92,7 @@ export const FORWARD_EUROSAT_ENDPOINT = 'pilot-app-eurosat';
 export const FORWARD_EUROSAT_UNIT = 'rautala-eurosat';
 /** Seconds the delivered modem needs to register after it is switched to run */
 export const FORWARD_EUROSAT_STARTUP_S = 20;
-/** Share of the Skylink allowance left by the S10 restriction, still in force from S11 */
+/** Share of the SkyLink allowance left by the S10 restriction, still in force from S11 */
 export const FORWARD_SKYLINK_RESTRICTED_FACTOR = 0.25;
 
 export interface ForwardEurosatOptions {
@@ -116,7 +116,7 @@ export function forwardEurosatPath(): ServicePathConfig {
 }
 
 /**
- * Adds the EuroSat path on top of `applyForwardField` (mutates and returns the plant). The Skylink account stays
+ * Adds the EuroSat path on top of `applyForwardField` (mutates and returns the plant). The SkyLink account stays
  * under the S10 ground-capacity restriction. The modem is one switchable unit (55 W running; dish and LNB carry no
  * load of their own) that needs `FORWARD_EUROSAT_STARTUP_S` to register. S9/S10 never call this.
  */
@@ -124,7 +124,7 @@ export function applyForwardEurosat(plant: PlantConfig, opts: ForwardEurosatOpti
   const service = plant.service;
   const modem = plant.parts.find((p) => p.id === 'vsat-modem');
   if (!service || !modem) {
-    throw new Error('EuroSat layer needs the forward Skylink field and the VSAT modem');
+    throw new Error('EuroSat layer needs the forward SkyLink field and the VSAT modem');
   }
   service.paths.push(forwardEurosatPath());
   service.accounts.push({ id: FORWARD_EUROSAT_ACCOUNT, unitId: FORWARD_EUROSAT_UNIT, authorized: true, capacityFactor: 1 });
@@ -152,7 +152,7 @@ export function applyForwardEurosat(plant: PlantConfig, opts: ForwardEurosatOpti
 
 // ---------------------------------------------------------------- Remote terminal and dual readiness (M26, S13-S14)
 
-/** The Skylink task run across the provider network to the simulated onboard terminal at the remote end */
+/** The SkyLink task run across the provider network to the simulated onboard terminal at the remote end */
 export const FORWARD_REMOTE_SERVICE = 'forward-skylink-remote';
 export const FORWARD_REMOTE_ENDPOINT = 'remote-terminal';
 /** S14 plan: the dish needs this long to register after it leaves standby (the modem needs FORWARD_EUROSAT_STARTUP_S) */
@@ -166,17 +166,17 @@ export interface ForwardRemoteOptions {
 }
 
 /**
- * Adds the remote Skylink task path (S13, S14) on top of `applyForwardField`: the same ground terminal, account and
- * provider as Skylink, but its own remote endpoint. A remote mobility policy touches only this endpoint; the account's
+ * Adds the remote SkyLink task path (S13, S14) on top of `applyForwardField`: the same ground terminal, account and
+ * provider as SkyLink, but its own remote endpoint. A remote mobility policy touches only this endpoint; the account's
  * ground-capacity restriction touches the account. The two states never share a field.
  */
 export function applyForwardRemote(plant: PlantConfig, opts: ForwardRemoteOptions = {}): PlantConfig {
   const service = plant.service;
   const skylink = service?.paths.find((p) => p.id === SKYLINK_SERVICE);
   if (!service || !skylink) {
-    throw new Error('Remote terminal layer needs the forward Skylink field');
+    throw new Error('Remote terminal layer needs the forward SkyLink field');
   }
-  service.paths.push({ ...skylink, id: FORWARD_REMOTE_SERVICE, label: 'Skylink to remote terminal', endpointIds: [FORWARD_REMOTE_ENDPOINT] });
+  service.paths.push({ ...skylink, id: FORWARD_REMOTE_SERVICE, label: 'SkyLink to remote terminal', endpointIds: [FORWARD_REMOTE_ENDPOINT] });
   service.endpoints = [
     ...(service.endpoints ?? []),
     opts.policyInForce ? { id: FORWARD_REMOTE_ENDPOINT, reachable: false, policy: 'mobility-restricted' } : { id: FORWARD_REMOTE_ENDPOINT, reachable: true },
@@ -191,7 +191,7 @@ export function applyForwardRemote(plant: PlantConfig, opts: ForwardRemoteOption
  * hour projection misses the reserve; one terminal running and the other in standby keeps it.
  */
 export function applyForwardDualReadiness(plant: PlantConfig): PlantConfig {
-  const dish = plant.parts.find((p) => p.id === 'spacey-dish');
+  const dish = plant.parts.find((p) => p.id === 'skylink-dish');
   const battery = plant.parts.find((p) => p.id === 'power-station');
   if (!dish || !battery || !plant.power) {
     throw new Error('Dual readiness needs the forward field, the dish and the power station');

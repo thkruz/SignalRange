@@ -29,11 +29,11 @@ export const SITE_HOTSPOTS: SiteHotspot[] = [
   {
     id: 'site-in-router',
     view: 'inside',
-    label: 'SpaceY router',
+    label: 'SkyLink router',
     shapes: rect(0.205, 0.479, 0.07, 0.063),
     anchor: [0.235, 0.4689],
     closeup: 'router',
-    partIds: ['spacey-router'],
+    partIds: ['skylink-router'],
   },
   {
     id: 'site-in-vsat-modem',
@@ -91,13 +91,13 @@ export const SITE_HOTSPOTS: SiteHotspot[] = [
   },
   // ----------------------------------------------------------- outside
   {
-    id: 'site-out-spacey-dish',
+    id: 'site-out-skylink-dish',
     view: 'outside',
-    label: 'SpaceY dish',
+    label: 'SkyLink dish',
     shapes: rect(0.128, 0.36, 0.074, 0.216),
     anchor: [0.165, 0.468],
-    closeup: 'spacey-dish',
-    partIds: ['spacey-dish'],
+    closeup: 'skylink-dish',
+    partIds: ['skylink-dish'],
   },
   {
     id: 'site-out-vsat-dish',
@@ -158,9 +158,9 @@ export const SITE_HOTSPOTS: SiteHotspot[] = [
     requires: ['vsat-ifl'],
   },
   {
-    id: 'site-out-spacey-cable',
+    id: 'site-out-skylink-cable',
     view: 'outside',
-    label: 'SpaceY cable',
+    label: 'SkyLink cable',
     shapes: [
       {
         kind: 'path',
@@ -172,9 +172,9 @@ export const SITE_HOTSPOTS: SiteHotspot[] = [
       },
     ],
     anchor: [0.2, 0.585],
-    closeup: 'spacey-cable',
+    closeup: 'skylink-cable',
     partIds: [],
-    requires: ['spacey-cable'],
+    requires: ['skylink-cable'],
   },
   {
     id: 'site-out-door',
@@ -253,8 +253,8 @@ const fanchor = (x0: number, y0: number, x1: number): [number, number] => [fx((x
 const BATTERY: PxBox = [262, 612, 482, 888];
 /** The jerry can has no plant part and no hotspot: its corner is cut out of the battery box */
 const JERRY_CORNER: PxBox = [262, 785, 287, 888];
-const SPACEY_DISH: PxBox = [758, 536, 914, 808];
-/** Room kept for the visible Spacey cable run down the tripod (its stroke half-width is about 9 px) */
+const SKYLINK_DISH: PxBox = [758, 536, 914, 808];
+/** Room kept for the visible SkyLink cable run down the tripod (its stroke half-width is about 9 px) */
 const CABLE_A_CARVE: PxBox = [743, 610, 792, 760];
 const ROUTER_CASE: PxBox = [878, 703, 1052, 892];
 const LAPTOP_BOX: PxBox = [584, 671, 740, 799];
@@ -309,26 +309,26 @@ export const FORWARD_HOTSPOTS: SiteHotspot[] = [
   {
     id: 'site-fwd-router',
     view: 'outside',
-    label: 'SpaceY router case',
+    label: 'SkyLink router case',
     shapes: frect(...ROUTER_CASE),
     anchor: fanchor(878, 703, 1052),
     closeup: 'router',
-    partIds: ['spacey-router'],
+    partIds: ['skylink-router'],
   },
   {
-    id: 'site-fwd-spacey-dish',
+    id: 'site-fwd-skylink-dish',
     view: 'outside',
-    label: 'Skylink terminal',
-    shapes: frectMinus(SPACEY_DISH, CABLE_A_CARVE, [876, ROUTER_CASE[1], ROUTER_CASE[2], ROUTER_CASE[3]], POWER_BOX),
+    label: 'SkyLink terminal',
+    shapes: frectMinus(SKYLINK_DISH, CABLE_A_CARVE, [876, ROUTER_CASE[1], ROUTER_CASE[2], ROUTER_CASE[3]], POWER_BOX),
     anchor: fanchor(758, 536, 914),
-    closeup: 'spacey-dish',
-    partIds: ['spacey-dish'],
+    closeup: 'skylink-dish',
+    partIds: ['skylink-dish'],
   },
   {
     // Visible segments only: down the tripod, then (after the hidden stretch behind the laptop case and power box) from the box side to the router case
-    id: 'site-fwd-spacey-cable',
+    id: 'site-fwd-skylink-cable',
     view: 'outside',
-    label: 'SpaceY cable',
+    label: 'SkyLink cable',
     shapes: [
       fpath([
         [778, 625],
@@ -345,9 +345,9 @@ export const FORWARD_HOTSPOTS: SiteHotspot[] = [
       ]),
     ],
     anchor: [fx(826), fy(862)],
-    closeup: 'spacey-cable',
+    closeup: 'skylink-cable',
     partIds: [],
-    requires: ['spacey-cable'],
+    requires: ['skylink-cable'],
   },
   {
     id: 'site-fwd-vsat-dish',
@@ -419,14 +419,14 @@ export const visibleHotspots = (scene: SiteView | 'forward', has: (id: string) =
 export const CLOSEUPS: Record<CloseupId, CloseupDef> = {
   router: {
     id: 'router',
-    title: 'SpaceY router',
+    title: 'SkyLink router',
     image: `${DIR}/cu-router.webp`,
     aspect: 3 / 2,
     regions: [
-      { id: 'cu-router', target: 'spacey-router', label: 'SpaceY router', shape: { kind: 'rect', x: 0.39, y: 0.34, w: 0.4, h: 0.15 } },
+      { id: 'cu-router', target: 'skylink-router', label: 'SkyLink router', shape: { kind: 'rect', x: 0.39, y: 0.34, w: 0.4, h: 0.15 } },
       { id: 'cu-router-dc', target: 'router:dc', label: 'DC input', shape: { kind: 'rect', x: 0.735, y: 0.5, w: 0.075, h: 0.09 } },
     ],
-    probes: [{ id: 'cu-router-cable', target: 'spacey-cable:router', label: 'SpaceY cable plug at the router', x: 0.455, y: 0.6 }],
+    probes: [{ id: 'cu-router-cable', target: 'skylink-cable:router', label: 'SkyLink cable plug at the router', x: 0.455, y: 0.6 }],
     cables: [],
   },
   modem: {
@@ -446,7 +446,7 @@ export const CLOSEUPS: Record<CloseupId, CloseupDef> = {
     title: 'Laptop',
     image: `${DIR}/cu-laptop.webp`,
     aspect: 3 / 2,
-    regions: [{ id: 'cu-laptop', target: 'laptop', label: 'Laptop (opens the SpaceY app)', shape: { kind: 'rect', x: 0.15, y: 0.1, w: 0.68, h: 0.78 }, opensApp: true }],
+    regions: [{ id: 'cu-laptop', target: 'laptop', label: 'Laptop (opens the SkyLink app)', shape: { kind: 'rect', x: 0.15, y: 0.1, w: 0.68, h: 0.78 }, opensApp: true }],
     probes: [],
     cables: [],
   },
@@ -496,8 +496,8 @@ export const CLOSEUPS: Record<CloseupId, CloseupDef> = {
         ],
       },
       {
-        target: 'spacey-cable',
-        label: 'SpaceY cable (25 m power + data)',
+        target: 'skylink-cable',
+        label: 'SkyLink cable (25 m power + data)',
         points: [
           [0.575, 1.0],
           [0.555, 0.85],
@@ -506,13 +506,13 @@ export const CLOSEUPS: Record<CloseupId, CloseupDef> = {
       },
     ],
   },
-  'spacey-dish': {
-    id: 'spacey-dish',
-    title: 'SpaceY dish',
-    image: `${DIR}/cu-spacey-dish.webp`,
+  'skylink-dish': {
+    id: 'skylink-dish',
+    title: 'SkyLink dish',
+    image: `${DIR}/cu-skylink-dish.webp`,
     aspect: 3 / 2,
-    regions: [{ id: 'cu-spacey-panel', target: 'spacey-dish', label: 'SpaceY panel', shape: { kind: 'rect', x: 0.25, y: 0.12, w: 0.5, h: 0.6 } }],
-    probes: [{ id: 'cu-spacey-plug', target: 'spacey-cable:dish', label: 'SpaceY cable plug at the mast base', x: 0.515, y: 0.755 }],
+    regions: [{ id: 'cu-skylink-panel', target: 'skylink-dish', label: 'SkyLink panel', shape: { kind: 'rect', x: 0.25, y: 0.12, w: 0.5, h: 0.6 } }],
+    probes: [{ id: 'cu-skylink-plug', target: 'skylink-cable:dish', label: 'SkyLink cable plug at the mast base', x: 0.515, y: 0.755 }],
     cables: [],
   },
   'vsat-dish': {
@@ -591,8 +591,8 @@ export const CLOSEUPS: Record<CloseupId, CloseupDef> = {
         ],
       },
       {
-        target: 'spacey-cable',
-        label: 'SpaceY cable (25 m power + data)',
+        target: 'skylink-cable',
+        label: 'SkyLink cable (25 m power + data)',
         points: [
           [0.42, 0.575],
           [0.27, 0.572],
@@ -602,17 +602,17 @@ export const CLOSEUPS: Record<CloseupId, CloseupDef> = {
       },
     ],
   },
-  'spacey-cable': {
-    id: 'spacey-cable',
-    title: 'SpaceY cable run',
-    image: `${DIR}/cu-spacey-cable.webp`,
+  'skylink-cable': {
+    id: 'skylink-cable',
+    title: 'SkyLink cable run',
+    image: `${DIR}/cu-skylink-cable.webp`,
     aspect: 3 / 2,
     regions: [],
     probes: [],
     cables: [
       {
-        target: 'spacey-cable',
-        label: 'SpaceY cable (25 m power + data)',
+        target: 'skylink-cable',
+        label: 'SkyLink cable (25 m power + data)',
         points: [
           [0.88, 0.93],
           [0.5, 0.91],
@@ -663,20 +663,20 @@ const cp = (x: number, y: number): { x: number; y: number } => ({ x: Math.round(
  * Forward-art close-ups (FS1, FW2). Same ids and targets as the camp CLOSEUPS; `forward: true` switches off every
  * camp weather painting and fault layer (they are painted for the camp images). The power-box close-up replaces
  * the camp power-strip one (id 'power-strip'). The router has two paintings (FORWARD_ROUTER_EUROSAT, picked by the
- * site inventory), the spacey-cable close-up is forward art. Not here: flap-in/out, modem, lnb, vsat-dish, vsat-ifl,
+ * site inventory), the skylink-cable close-up is forward art. Not here: flap-in/out, modem, lnb, vsat-dish, vsat-ifl,
  * which have no forward art (their forward hotspots are `pendingArt`; nothing opens the camp paintings).
  * Regions never overlap: a body region stops short of its sub-regions (WP9 rule).
  */
 const ROUTER_BASE_REGIONS: CloseupDef['regions'] = [
-  { id: 'cu-router', target: 'spacey-router', label: 'SpaceY router', shape: cr(330, 285, 824, 560) },
+  { id: 'cu-router', target: 'skylink-router', label: 'SkyLink router', shape: cr(330, 285, 824, 560) },
   { id: 'cu-router-dc', target: 'router:dc', label: 'DC input', shape: cr(588, 565, 695, 630) },
 ];
-const ROUTER_BASE_PROBES: CloseupDef['probes'] = [{ id: 'cu-router-cable', target: 'spacey-cable:router', label: 'SpaceY cable plug at the router wall', ...cp(217, 516) }];
+const ROUTER_BASE_PROBES: CloseupDef['probes'] = [{ id: 'cu-router-cable', target: 'skylink-cable:router', label: 'SkyLink cable plug at the router wall', ...cp(217, 516) }];
 
 /** Router case with the modem bay empty (S9, S10) */
 const FORWARD_ROUTER: CloseupDef = {
   id: 'router',
-  title: 'SpaceY router case',
+  title: 'SkyLink router case',
   image: `${DIR}/cu-fwd-router.webp`,
   aspect: 3 / 2,
   forward: true,
@@ -688,7 +688,7 @@ const FORWARD_ROUTER: CloseupDef = {
 /** Router case with the EuroSat modem fitted (S11 on): adds the modem, its DC lead and the IFL probe at the right wall bulkhead */
 export const FORWARD_ROUTER_EUROSAT: CloseupDef = {
   ...FORWARD_ROUTER,
-  title: 'SpaceY router and EuroSat modem case',
+  title: 'SkyLink router and EuroSat modem case',
   image: `${DIR}/cu-fwd-router-eurosat.webp`,
   regions: [
     ...ROUTER_BASE_REGIONS,
@@ -706,7 +706,7 @@ export const FORWARD_CLOSEUPS: Partial<Record<CloseupId, CloseupDef>> = {
     image: `${DIR}/cu-fwd-laptop.webp`,
     aspect: 3 / 2,
     forward: true,
-    regions: [{ id: 'cu-laptop', target: 'laptop', label: 'Laptop (opens the SpaceY app)', shape: cr(395, 0, 1145, 700), opensApp: true }],
+    regions: [{ id: 'cu-laptop', target: 'laptop', label: 'Laptop (opens the SkyLink app)', shape: cr(395, 0, 1145, 700), opensApp: true }],
     probes: [],
     cables: [],
   },
@@ -754,26 +754,26 @@ export const FORWARD_CLOSEUPS: Partial<Record<CloseupId, CloseupDef>> = {
     probes: [],
     cables: [],
   },
-  'spacey-dish': {
-    id: 'spacey-dish',
-    title: 'Skylink terminal',
-    image: `${DIR}/cu-fwd-spacey-dish.webp`,
+  'skylink-dish': {
+    id: 'skylink-dish',
+    title: 'SkyLink terminal',
+    image: `${DIR}/cu-fwd-skylink-dish.webp`,
     aspect: 3 / 2,
     forward: true,
-    regions: [{ id: 'cu-spacey-panel', target: 'spacey-dish', label: 'SpaceY panel', shape: cr(400, 0, 1165, 520) }],
-    probes: [{ id: 'cu-spacey-plug', target: 'spacey-cable:dish', label: 'SpaceY cable plug at the tripod base', ...cp(845, 715) }],
+    regions: [{ id: 'cu-skylink-panel', target: 'skylink-dish', label: 'SkyLink panel', shape: cr(400, 0, 1165, 520) }],
+    probes: [{ id: 'cu-skylink-plug', target: 'skylink-cable:dish', label: 'SkyLink cable plug at the tripod base', ...cp(845, 715) }],
     cables: [],
   },
-  'spacey-cable': {
-    id: 'spacey-cable',
-    title: 'SpaceY cable run',
-    image: `${DIR}/cu-fwd-spacey-cable.webp`,
+  'skylink-cable': {
+    id: 'skylink-cable',
+    title: 'SkyLink cable run',
+    image: `${DIR}/cu-fwd-skylink-cable.webp`,
     aspect: 3 / 2,
     forward: true,
-    regions: [{ id: 'cu-spacey-cable', target: 'spacey-cable', label: 'SpaceY cable (25 m power + data)', shape: cr(65, 395, 1125, 880) }],
+    regions: [{ id: 'cu-skylink-cable', target: 'skylink-cable', label: 'SkyLink cable (25 m power + data)', shape: cr(65, 395, 1125, 880) }],
     probes: [
-      { id: 'cu-cable-dish', target: 'spacey-cable:dish', label: 'Cable connector at the terminal end', ...cp(517, 418) },
-      { id: 'cu-cable-router', target: 'spacey-cable:router', label: 'Cable connector at the case end', ...cp(1057, 465) },
+      { id: 'cu-cable-dish', target: 'skylink-cable:dish', label: 'Cable connector at the terminal end', ...cp(517, 418) },
+      { id: 'cu-cable-router', target: 'skylink-cable:router', label: 'Cable connector at the case end', ...cp(1057, 465) },
     ],
     cables: [],
   },

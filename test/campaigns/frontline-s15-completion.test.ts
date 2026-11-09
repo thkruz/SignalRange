@@ -1,7 +1,7 @@
 /**
- * M27 S15 completion: a staged run of EuroSat registration drops on a running clock (local network, power and Skylink
+ * M27 S15 completion: a staged run of EuroSat registration drops on a running clock (local network, power and SkyLink
  * stay up), the evidence comparison, a bounded "suspected interference" assessment that never names a source, the
- * incident package, a Skylink workload on reduced resources, and the investigation referral with its C5 continuity.
+ * incident package, a SkyLink workload on reduced resources, and the investigation referral with its C5 continuity.
  */
 
 import { SKYLINK_SERVICE } from '@app/campaigns/frontline/camp-field-config';
@@ -175,7 +175,7 @@ describe('M27 S15 completion', () => {
     }
   });
 
-  it('completes every objective in order and leaves the unit record and the Skylink service intact', () => {
+  it('completes every objective in order and leaves the unit record and the SkyLink service intact', () => {
     const svc = bootScenario(data);
     const before = svc.records?.equipment?.getRecord('rautala-eurosat');
     const done = driveObjectives(data, svc, states, acts(svc), {});
@@ -267,7 +267,7 @@ describe('M27 S15 completion', () => {
     const start = svc.workloads?.start(S11_TRANSFER_CARD.id, EUS);
     const run = start?.ok ? svc.workloads?.waitForRun(start.run.id) : undefined;
     expect(run?.status).not.toBe('supported');
-    expect(incomplete(svc, 's15-maintain-supported-work').join('|')).toContain('First task verified on Skylink');
+    expect(incomplete(svc, 's15-maintain-supported-work').join('|')).toContain('First task verified on SkyLink');
   });
 
   it('restores a checkpoint taken after the assessment and finishes from it', () => {

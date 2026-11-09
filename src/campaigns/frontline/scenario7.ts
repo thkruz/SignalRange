@@ -134,7 +134,7 @@ export const frontlineScenario7Data: FrontlineScenarioData = {
   missionType: 'Field Service Assessment',
   description:
     'Tomek has delivered a replacement router with a depot test record, but its service handover is incomplete. Compare the unit, authorized inventory, and configuration history before accepting it.<br/><br/>Working hardware does not establish that the correct account and configuration are in use. Preserve discrepancies, request the approved correction, and verify the result without bypassing access controls.',
-  equipment: ['Replacement router', 'Skylink terminal', 'Authorized inventory and service record', 'Laptop and physical inspection tools'],
+  equipment: ['Replacement router', 'SkyLink terminal', 'Authorized inventory and service record', 'Laptop and physical inspection tools'],
   settings,
   mechanicTodos: [],
   objectives: [
@@ -160,7 +160,7 @@ export const frontlineScenario7Data: FrontlineScenarioData = {
           description: 'Replacement Router Inspected',
           mustMaintain: false,
           params: {
-            partId: 'spacey-router',
+            partId: 'skylink-router',
           },
         },
         samplesCurrent(SKYLINK_SERVICE, ['power', 'local', 'registration'], 'Current service readings taken'),

@@ -47,7 +47,7 @@ function lastRunId(svc: PhysicalPlantService): string {
 function acts(svc: PhysicalPlantService): Record<string, () => void> {
   return {
     's4-identify-recovery': () => {
-      svc.plant.inspect('spacey-dish');
+      svc.plant.inspect('skylink-dish');
     },
     's4-observe-recovery': () => {
       waitForRecovery(svc);
@@ -59,10 +59,10 @@ function acts(svc: PhysicalPlantService): Record<string, () => void> {
     },
     's4-inspect-environment': () => {
       svc.plant.goOutside();
-      svc.plant.inspect('spacey-dish');
+      svc.plant.inspect('skylink-dish');
     },
     's4-correct-environment': () => {
-      svc.plant.removeNet('spacey-dish');
+      svc.plant.removeNet('skylink-dish');
       svc.plant.returnInside();
     },
     's4-verify-environment-result': () => {
@@ -142,7 +142,7 @@ describe('M21 S4 completion', () => {
     expect(incomplete(svc, 's4-observe-recovery')).toEqual(['Registration came back without another restart']);
     // A restart at t=60 starts a fresh 90 s boot; the first boot's finish at 90 s does not count
     tick(40);
-    svc.plant.powerCycle('spacey-dish');
+    svc.plant.powerCycle('skylink-dish');
     tick(60);
     svc.services?.takeSample('skylink', 'registration', 'local-probe');
     expect(incomplete(svc, 's4-observe-recovery')).toEqual(['Registration came back without another restart']);
@@ -214,7 +214,7 @@ describe('M21 S4 completion', () => {
     startObjective('s4-recognize-persistence');
     tick(2);
     blind.plant.goOutside();
-    blind.plant.removeNet('spacey-dish');
+    blind.plant.removeNet('skylink-dish');
     blind.plant.returnInside();
     const bad = buildFieldDiagnosis(source(blind), 100);
     expect(bad?.summary.unsupportedFixes).toBe(1);

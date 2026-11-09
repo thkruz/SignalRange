@@ -36,7 +36,7 @@ import {
 } from './plant-ui-helpers';
 import type { CloseupDef, CloseupId } from './site-types';
 import './plant-ui.css';
-import { SpaceyAppBox } from './spacey-app-box';
+import { SkylinkAppBox } from './skylink-app-box';
 
 interface LogLine {
   t: string;
@@ -320,7 +320,7 @@ export class PartCloseupModal extends DraggableModal {
     this.selectedKey_ = hit.dataset.sel ?? target;
     this.selectedLabel_ = (hit.dataset.label ?? '').split(': internet')[0];
     if (hit.dataset.opensApp === '1') {
-      SpaceyAppBox.getInstance().show();
+      SkylinkAppBox.getInstance().show();
     }
     this.render_();
   }

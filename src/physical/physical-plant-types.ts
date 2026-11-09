@@ -293,6 +293,30 @@ export interface PlantDeps {
   rng: (name: string) => { next(): number };
   /** Optional pass-through for the trainer's weather controls */
   setWeather?: (weather: Partial<PlantEnvironment>) => void;
+  /** Sim time of day in seconds (0 to 86399) for the terminal sleep schedule; defaults to `now()` modulo a day */
+  timeOfDayS?: () => number;
+}
+
+/** Terminal snow melt setting: heater runs on snow only, also pre-heats in the cold, or never */
+export type SnowMeltMode = 'automatic' | 'preheat' | 'off';
+
+/** Power-save sleep window as sim time of day in seconds; the window may cross midnight */
+export interface SleepSchedule {
+  startS: number;
+  endS: number;
+}
+
+/** Router Wi-Fi details. Cosmetic: the plant does not model wired versus wireless laptops. */
+export interface RouterWifi {
+  ssid: string;
+  password: string;
+}
+
+/** App-controlled terminal and router settings (checkpointed) */
+export interface TerminalSettings {
+  snowMelt: SnowMeltMode;
+  sleep: SleepSchedule | null;
+  wifi: RouterWifi;
 }
 
 export type PlantVerb =
@@ -313,6 +337,9 @@ export type PlantVerb =
   | 'goOutside'
   | 'refuel'
   | 'setMode'
+  | 'reboot'
+  | 'setSnowMelt'
+  | 'setSleep'
   | 'spotted';
 
 /** Called after every logged plant action; `wasOutside` is the state before the action */
@@ -360,6 +387,8 @@ export interface PlantFaultSnapshot {
 
 /** JSON-safe checkpoint of the manager (times are absolute scenario seconds) */
 export interface PlantState {
+  /** App settings of the terminal and router (optional in older checkpoints) */
+  terminalSettings?: TerminalSettings;
   faults: PlantFaultSnapshot[];
   sealed: string[];
   /** Fault ids that existed and were removed (fix, recharge or trainer) */

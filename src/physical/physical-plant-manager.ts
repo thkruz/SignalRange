@@ -45,7 +45,11 @@ import {
   type PlantWeather,
   type PowerForecast,
   type PowerReadings,
+  type RouterWifi,
   type SkylinkStatus,
+  type SleepSchedule,
+  type SnowMeltMode,
+  type TerminalSettings,
   type VerbResult,
 } from './physical-plant-types';
 import { DEFAULT_ENGINE_MAP, type EnginePowerRole } from './plant-bridge';
@@ -62,6 +66,18 @@ const DEFAULT_TRIP_LIMIT = 3;
 const THERMAL_HEATING_C = 45;
 const THERMAL_SHUTDOWN_C = 55;
 const DEFAULT_BOOT_S: Record<string, number> = { terminal: 90, router: 30, modem: 45 };
+
+/** Plant default for snow melt is off so authored snow faults keep obstructing; the app or a scenario turns it on. Extra watts while the heater runs. */
+const SNOW_MELT_W = 120;
+/** Terminal draw while asleep on its power-save schedule */
+const SLEEP_W = 5;
+/** Heater run time before the snow outlasts it (seconds), by setting */
+const MELT_WINDOW_S: Record<SnowMeltMode, number> = { automatic: 600, preheat: 1800, off: 0 };
+/** Pre-heat turns the heater on at or below this ambient temperature */
+const PREHEAT_BELOW_C = 2;
+const MELT_WINDOW_KEY = 'skylink-snow-melt';
+const SECONDS_PER_DAY = 86400;
+const DEFAULT_WIFI: RouterWifi = { ssid: 'SKYLINK-5G', password: 'changeme1' };
 
 const INTERMITTENT_KINDS: ReadonlySet<PlantFaultKind> = new Set(['partial-seat', 'loose-nut', 'cable-pinch']);
 
@@ -92,6 +108,9 @@ const FIXES: Partial<Record<PlantVerb, readonly PlantFaultKind[]>> = {
 
 /** Seconds each verb takes on the clock; swap varies by what is swapped */
 const VERB_COST_S: Record<PlantVerb, number> = {
+  reboot: 10,
+  setSnowMelt: 5,
+  setSleep: 5,
   inspect: 20,
   wiggle: 15,
   feel: 10,
@@ -188,6 +207,7 @@ export class PhysicalPlantManager {
   private spares_: PlantSpares = {};
   private trainerSpares_: PlantSpares | null = null;
   private rebootUntilS_ = new Map<string, number>();
+  private terminalSettings_: TerminalSettings = { snowMelt: 'off', sleep: null, wifi: { ...DEFAULT_WIFI } };
   /** Generator id -> scenario second its startup ends (output absent until then) */
   private startingUntilS_ = new Map<string, number>();
   /** Part id -> current mode id, for non-generator parts with `modes` */
@@ -232,6 +252,7 @@ export class PhysicalPlantManager {
     this.revealedFacts_ = new Set();
     this.trainerSpares_ = null;
     this.rebootUntilS_ = new Map();
+    this.terminalSettings_ = { snowMelt: 'off', sleep: null, wifi: { ...DEFAULT_WIFI } };
     this.startingUntilS_ = new Map();
     this.partModes_ = new Map();
     this.running_ = new Map();
@@ -347,9 +368,13 @@ export class PhysicalPlantManager {
     if (env.ambientC >= THERMAL_HEATING_C) {
       return 'thermal-throttle';
     }
-    // TODO(phase-40 WP3): 'sleeping' once the power-save sleep schedule exists in the plant
+    if (this.isSleeping()) {
+      return 'sleeping';
+    }
     // TODO(phase-40 WP6/E5): 'no-location' once the gnss-denied fault flag exists
-    // TODO(phase-40 WP3): 'heating' while the snow-melt setting is warming a snowed-over dish
+    if (this.isSnowMelting()) {
+      return 'heating';
+    }
     // TODO(phase-40 E4): 'searching' after boot until the first beam lock; until then the terminal-app
     // model derives it from the phased-array read model (inOutage)
     if (this.hasActiveFault_(terminal.id, ['snow', 'net'])) {
@@ -361,6 +386,82 @@ export class PhysicalPlantManager {
     }
 
     return 'online';
+  }
+
+  /** The terminal part (first of kind 'terminal'), or null */
+  private terminalPart_(): PlantPartConfig | null {
+    return this.config_.parts.find((p) => p.kind === 'terminal') ?? null;
+  }
+
+  /** Sim time of day in seconds */
+  private timeOfDayS_(): number {
+    const tod = this.deps_.timeOfDayS ? this.deps_.timeOfDayS() : this.deps_.now();
+
+    return ((tod % SECONDS_PER_DAY) + SECONDS_PER_DAY) % SECONDS_PER_DAY;
+  }
+
+  /** The app settings of the terminal and router */
+  getTerminalSettings(): TerminalSettings {
+    const s = this.terminalSettings_;
+
+    return { snowMelt: s.snowMelt, sleep: s.sleep ? { ...s.sleep } : null, wifi: { ...s.wifi } };
+  }
+
+  /** True while the power-save window is open (the terminal is asleep and carries no service) */
+  isSleeping(): boolean {
+    const sleep = this.terminalSettings_.sleep;
+    if (!sleep || sleep.startS === sleep.endS || !this.terminalPart_()) {
+      return false;
+    }
+    const tod = this.timeOfDayS_();
+
+    return sleep.startS < sleep.endS ? tod >= sleep.startS && tod < sleep.endS : tod >= sleep.startS || tod < sleep.endS;
+  }
+
+  /** True while the dish shows 'heating': the heater is melting snow that is on the dish */
+  isSnowMelting(): boolean {
+    const terminal = this.terminalPart_();
+
+    return !!terminal && this.isHeaterOn_() && this.hasActiveFault_(terminal.id, ['snow']);
+  }
+
+  /** True while the heater draws power: a snowed dish (or cold, when pre-heating) inside the heater window */
+  private isHeaterOn_(): boolean {
+    const terminal = this.terminalPart_();
+    const mode = this.terminalSettings_.snowMelt;
+    if (!terminal || mode === 'off' || this.isSleeping()) {
+      return false;
+    }
+    const snowed = this.hasActiveFault_(terminal.id, ['snow']);
+    const wantsHeat = snowed || (mode === 'preheat' && this.deps_.env().ambientC <= PREHEAT_BELOW_C);
+    if (!wantsHeat) {
+      return false;
+    }
+    if (!snowed) {
+      return true;
+    }
+    const since = this.windows_.get(MELT_WINDOW_KEY);
+
+    return since === undefined || this.deps_.now() - since < MELT_WINDOW_S[mode];
+  }
+
+  /** Watts added to (or taken from) the terminal's own draw by sleep and snow melt */
+  private terminalDeltaW_(part: PlantPartConfig): number {
+    if (part.kind !== 'terminal' || part.id !== this.terminalPart_()?.id) {
+      return 0;
+    }
+    if (this.isSleeping()) {
+      return SLEEP_W - (part.loadW ?? 0);
+    }
+
+    return this.isHeaterOn_() ? SNOW_MELT_W : 0;
+  }
+
+  /** Opens or closes the heater window while snow is on the dish; runs each second and after a settings change */
+  private trackMeltWindow_(): void {
+    const terminal = this.terminalPart_();
+    const snowed = !!terminal && this.terminalSettings_.snowMelt !== 'off' && !this.isSleeping() && this.hasActiveFault_(terminal.id, ['snow']);
+    this.holdWindow(MELT_WINDOW_KEY, snowed);
   }
 
   /** True while any generator is running */
@@ -738,6 +839,9 @@ export class PhysicalPlantManager {
       [...this.fuelL_],
       this.faults_.map((f) => `${f.fault.id}:${f.fault.kind}`),
       [...this.supplied_],
+      this.terminalSettings_,
+      this.isSleeping(),
+      this.isSnowMelting(),
     ]);
   }
 
@@ -760,7 +864,7 @@ export class PhysicalPlantManager {
       if (changed || pending > 0) {
         startupCostS = Math.max(startupCostS, startS + (changed ? VERB_COST_S.setMode : 0));
       }
-      const steadyW = mode ? mode.loadW : (part.loadW ?? 0);
+      const steadyW = Math.max(0, (mode ? mode.loadW : (part.loadW ?? 0)) + this.terminalDeltaW_(part));
       nodes.push({
         id: part.id,
         parentId: part.poweredBy,
@@ -1166,6 +1270,61 @@ export class PhysicalPlantManager {
     }
   }
 
+  /**
+   * App verb: reboot the SkyLink terminal. The press costs sim time; the boot then runs in sim time
+   * through `rebootUntilS`, so the outage shows in the status and the app's history.
+   */
+  reboot(): VerbResult {
+    const terminal = this.terminalPart_();
+    if (!terminal) {
+      return this.notApplicable_();
+    }
+
+    return this.act_('reboot', terminal.id, VERB_COST_S.reboot, true, () => ({ observation: 'The terminal is restarting.' }));
+  }
+
+  /** App verb: set the snow melt mode. Costs a few seconds. */
+  setSnowMelt(mode: SnowMeltMode): VerbResult {
+    const terminal = this.terminalPart_();
+    if (!terminal || !(mode in MELT_WINDOW_S)) {
+      return this.notApplicable_();
+    }
+
+    return this.act_('setSnowMelt', terminal.id, VERB_COST_S.setSnowMelt, false, () => {
+      this.terminalSettings_.snowMelt = mode;
+      this.holdWindow(MELT_WINDOW_KEY, false);
+      this.trackMeltWindow_();
+
+      return { observation: `Snow melt is set to ${mode}.` };
+    });
+  }
+
+  /** App verb: set (or clear, with null) the power-save sleep window, as sim time of day in seconds */
+  setSleep(schedule: SleepSchedule | null): VerbResult {
+    const terminal = this.terminalPart_();
+    const valid = (s: number): boolean => Number.isFinite(s) && s >= 0 && s < SECONDS_PER_DAY;
+    if (!terminal || (schedule && (!valid(schedule.startS) || !valid(schedule.endS)))) {
+      return this.notApplicable_();
+    }
+
+    return this.act_('setSleep', terminal.id, VERB_COST_S.setSleep, false, () => {
+      this.terminalSettings_.sleep = schedule ? { startS: schedule.startS, endS: schedule.endS } : null;
+      this.trackMeltWindow_();
+
+      return { observation: schedule ? 'The sleep schedule is saved.' : 'The sleep schedule is off.' };
+    });
+  }
+
+  /** App verb: set the router Wi-Fi name and password. Cosmetic (no wired versus wireless laptop in the plant). */
+  setRouterWifi(wifi: RouterWifi): VerbResult {
+    if (!this.config_.parts.some((p) => p.kind === 'router')) {
+      return this.notApplicable_();
+    }
+    this.terminalSettings_.wifi = { ssid: wifi.ssid, password: wifi.password };
+
+    return { observation: 'The Wi-Fi settings are saved.', costSeconds: 0 };
+  }
+
   /** Starts a normal boot of a part now (an authored event; no verb, no cost, no downtime booked) */
   startBoot(partId: string): void {
     const boot = this.bootSeconds_(partId);
@@ -1201,6 +1360,7 @@ export class PhysicalPlantManager {
   getState(): PlantState {
     return JSON.parse(
       JSON.stringify({
+        terminalSettings: this.terminalSettings_,
         faults: this.faults_,
         sealed: [...this.sealed_],
         clearedFaultIds: [...this.clearedFaultIds_],
@@ -1237,6 +1397,9 @@ export class PhysicalPlantManager {
     this.spares_ = copy.spares;
     this.trainerSpares_ = copy.trainerSpares;
     this.rebootUntilS_ = new Map(Object.entries(copy.rebootUntilS));
+    this.terminalSettings_ = copy.terminalSettings
+      ? { snowMelt: copy.terminalSettings.snowMelt, sleep: copy.terminalSettings.sleep, wifi: copy.terminalSettings.wifi }
+      : { snowMelt: 'off', sleep: null, wifi: { ...DEFAULT_WIFI } };
     this.startingUntilS_ = new Map(Object.entries(copy.startingUntilS ?? {}));
     for (const [id, modeId] of Object.entries(copy.partModes ?? {})) {
       if (this.parts_.get(id)?.modes?.some((m) => m.id === modeId)) {
@@ -1971,11 +2134,12 @@ export class PhysicalPlantManager {
   /** Own draw of a part: its current mode's load (startup load while starting), else `loadW` */
   private drawOf_(part: PlantPartConfig): number {
     const mode = this.activeMode_(part);
+    const delta = this.terminalDeltaW_(part);
     if (!mode) {
-      return part.loadW ?? 0;
+      return Math.max(0, (part.loadW ?? 0) + delta);
     }
 
-    return this.isStarting(part.id) ? (mode.startupW ?? mode.loadW) : mode.loadW;
+    return Math.max(0, (this.isStarting(part.id) ? (mode.startupW ?? mode.loadW) : mode.loadW) + delta);
   }
 
   /** Current mode config of a non-generator part with modes */
@@ -2172,6 +2336,7 @@ export class PhysicalPlantManager {
         rt.dropUntilS = now + DROP_SECONDS;
       }
     }
+    this.trackMeltWindow_();
     this.drainResources_();
     this.solve_();
   }

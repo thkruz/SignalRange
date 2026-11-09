@@ -65,6 +65,7 @@ export class PhysicalPlantService {
         this.sync_();
       },
       env: () => this.environment_(config.stationId),
+      timeOfDayS: () => (SimClock.nowMs() / 1000) % 86400,
       rng: (name) => Rng.stream(name),
       setWeather: (weather) => {
         this.weatherOverride_ = { ...this.weatherOverride_, ...weather };

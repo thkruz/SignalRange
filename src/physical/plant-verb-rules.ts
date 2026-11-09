@@ -27,7 +27,7 @@ export interface TargetTraits {
   feed?: boolean;
 }
 
-export type RuleVerb = Exclude<PlantVerb, 'returnInside' | 'goOutside' | 'spotted'>;
+export type RuleVerb = Exclude<PlantVerb, 'returnInside' | 'goOutside' | 'spotted' | 'reboot' | 'setSnowMelt' | 'setSleep'>;
 
 interface VerbRule {
   /** Part classes the verb applies to */

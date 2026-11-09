@@ -120,7 +120,7 @@ export class ServiceModel {
     this.unsubscribe_ =
       plant.onAction?.((entry) => {
         this.cacheTimeS_ = Number.NaN;
-        if (entry.verb === 'setMode' || entry.effective === true || entry.downtimeSeconds > 0) {
+        if (entry.verb === 'setMode' || entry.verb === 'setSnowMelt' || entry.verb === 'setSleep' || entry.effective === true || entry.downtimeSeconds > 0) {
           this.bumpConfig(`action:${entry.verb}`);
         }
       }) ?? null;

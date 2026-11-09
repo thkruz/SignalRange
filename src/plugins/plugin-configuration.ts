@@ -17,5 +17,6 @@ export interface PluginConfiguration {
 export interface SignalRangePluginsConfiguration {
   Authoring?: PluginConfiguration;
   PhasedArray?: PluginConfiguration;
+  TerminalApp?: PluginConfiguration;
   [pluginId: string]: PluginConfiguration | undefined;
 }

@@ -27,6 +27,7 @@ export const builtinPluginManifest: PluginDescriptor[] = [
     defaultConfig: { enabled: true },
     source: 'builtin',
   },
+  { id: 'TerminalApp', import: () => import('@app/plugins-builtin/terminal-app/index'), className: 'TerminalAppPlugin', defaultConfig: { enabled: true }, source: 'builtin' },
   // ── Private edition ────────────────────────────────────────────────────────
   {
     id: 'Authoring',

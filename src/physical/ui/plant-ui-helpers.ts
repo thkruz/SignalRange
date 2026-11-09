@@ -15,7 +15,7 @@ export type PlantTargetType = 'connector' | 'cable' | 'part';
 export type PlantTool = 'hand' | 'multimeter' | 'cable-tester';
 
 /** Verbs a button can fire (the plant verbs a player performs) */
-export type UiVerb = Exclude<PlantVerb, 'multimeter' | 'cable-tester' | 'returnInside' | 'goOutside' | 'spotted'>;
+export type UiVerb = Exclude<PlantVerb, 'multimeter' | 'cable-tester' | 'returnInside' | 'goOutside' | 'spotted' | 'reboot' | 'setSnowMelt' | 'setSleep'>;
 
 export const VERB_LABELS: Record<UiVerb, string> = {
   inspect: 'Inspect',

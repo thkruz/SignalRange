@@ -1,0 +1,30 @@
+.skylink-app {
+  position: relative;
+  min-height: 100%;
+  background: var(--mc-panel-bg, #11161d);
+  color: var(--mc-text, inherit);
+}
+
+.skylink-nav {
+  width: 11rem;
+  flex: 0 0 11rem;
+  border-right: 1px solid var(--mc-border, #2a323d);
+}
+
+.skylink-confirm {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0 0 0 / 55%);
+  z-index: 10;
+}
+
+.skylink-confirm[hidden] {
+  display: none;
+}
+
+.skylink-confirm .card {
+  max-width: 24rem;
+}

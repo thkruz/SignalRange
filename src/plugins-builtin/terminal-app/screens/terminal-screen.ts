@@ -7,6 +7,7 @@
  */
 import type { SleepSchedule, SnowMeltMode, TerminalSettings, VerbResult } from '@app/physical/physical-plant-types';
 import type { TerminalAppModel, TerminalView } from '../terminal-app-model';
+import type { TerminalEvidence } from '../terminal-evidence';
 import type { TerminalScreenId, TerminalSkin } from '../terminal-skin';
 
 /** What the app can do to the dish and router. Every call goes through the plant, costs sim time and is logged. */
@@ -22,6 +23,8 @@ export interface TerminalScreenContext {
   readonly skin: TerminalSkin;
   readonly model: TerminalAppModel;
   readonly actions: TerminalActions;
+  /** Evidence recorder for app-only actions (speed test, obstruction check/reset); absent in bare tests */
+  readonly evidence?: TerminalEvidence;
   /** Ask before a destructive action. Resolves true when the player confirms. */
   confirm(message: string, confirmLabel: string): Promise<boolean>;
   /** Ask the shell to call `sync` again now (after an action) */

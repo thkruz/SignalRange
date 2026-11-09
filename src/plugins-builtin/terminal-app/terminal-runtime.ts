@@ -13,6 +13,7 @@ import { PhasedArrayCore } from '../phased-array/phased-array-core';
 import { ObstructionAccumulator, plantObstructionReader } from './obstruction-map';
 import type { TerminalActions } from './screens/terminal-screen';
 import { plantTerminalReader, TerminalAppModel, type TerminalPhasedArraySlice } from './terminal-app-model';
+import { APP_ACTION_VERBS, TerminalEvidence } from './terminal-evidence';
 import { plantLinkReader, TerminalLink } from './terminal-link';
 import { SKYLINK_SKIN, type TerminalSkin } from './terminal-skin';
 
@@ -26,6 +27,8 @@ export class TerminalRuntime implements TerminalActions {
 
   readonly skin: TerminalSkin;
   readonly model: TerminalAppModel;
+  /** Records the player's views and app-only actions as evidence (D7) */
+  readonly evidence: TerminalEvidence;
   private readonly plant_: TerminalRuntimePlant;
   private readonly boundUpdate_: () => void;
   private lastRecordMs_ = 0;
@@ -35,6 +38,7 @@ export class TerminalRuntime implements TerminalActions {
   constructor(plant: TerminalRuntimePlant, model: TerminalAppModel, skin: TerminalSkin = SKYLINK_SKIN) {
     this.plant_ = plant;
     this.model = model;
+    this.evidence = new TerminalEvidence(model);
     this.skin = skin;
     this.boundUpdate_ = this.record_.bind(this);
   }
@@ -132,7 +136,10 @@ export class TerminalRuntime implements TerminalActions {
   }
 
   setRouterWifi(ssid: string, password: string): VerbResult {
-    return this.plant_.setRouterWifi({ ssid, password });
+    const result = this.plant_.setRouterWifi({ ssid, password });
+    this.evidence.action('settings', APP_ACTION_VERBS.wifi, 'Changed the router Wi-Fi name and password in the SkyLink app.');
+
+    return result;
   }
 
   settings(): TerminalSettings {

@@ -10,6 +10,7 @@ import type { WorkloadRunner } from '@app/physical/workload-runner';
 import type { RequirementCard } from '@app/physical/workload-types';
 import { formatAge } from '../strings';
 import type { SpeedTestRecord, TerminalAppModel, TerminalView } from '../terminal-app-model';
+import { APP_ACTION_VERBS } from '../terminal-evidence';
 import { ts } from './stats-strings';
 import type { TerminalScreen, TerminalScreenContext, TerminalScreenFactory } from './terminal-screen';
 
@@ -153,6 +154,13 @@ export function createSpeedTestScreenFor(resolve: (ctx: TerminalScreenContext) =
       busy = true;
       failed = false;
       const result = runSpeedTest(backend, ctx.model);
+      ctx.evidence?.action(
+        'speed-test',
+        APP_ACTION_VERBS.speedTest,
+        result
+          ? `Ran a speed test in the SkyLink app: ${Math.round(result.downMbps)} down, ${Math.round(result.upMbps)} up Mbps.`
+          : 'Ran a speed test in the SkyLink app; it did not finish.'
+      );
       busy = false;
       failed = result === null;
       ctx.refresh();

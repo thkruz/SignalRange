@@ -79,6 +79,8 @@ export class SkylinkDashboardPage implements AntennaPage {
       EventBus.getInstance().on(Events.UPDATE, this.boundUpdate_);
     }
     this.sync_();
+    // Opening the tab shows the current screen
+    this.runtime_?.evidence.viewScreen(this.current_);
   }
 
   deactivate(): void {
@@ -114,6 +116,7 @@ export class SkylinkDashboardPage implements AntennaPage {
     this.current_ = id;
     this.ensureScreen_(id);
     this.sync_();
+    this.runtime_.evidence.viewScreen(id);
   }
 
   // ---- build ----------------------------------------------------------------
@@ -171,6 +174,7 @@ export class SkylinkDashboardPage implements AntennaPage {
       skin: this.runtime_.skin,
       model: this.runtime_.model,
       actions: this.runtime_,
+      evidence: this.runtime_.evidence,
       confirm: (message, label) => this.confirm_(message, label),
       refresh: () => this.sync_(),
     };

@@ -7,6 +7,7 @@
  */
 import { CHECK_DURATION_S, type ObstructionAccumulator, type ObstructionCellState, type ObstructionGrid } from '../obstruction-map';
 import type { TerminalView } from '../terminal-app-model';
+import { APP_ACTION_VERBS } from '../terminal-evidence';
 import { trObstructions } from './obstructions-strings';
 import { escapeHtml, type TerminalScreen, type TerminalScreenContext, type TerminalScreenFactory } from './terminal-screen';
 
@@ -86,16 +87,19 @@ export const createObstructionsScreen: TerminalScreenFactory = (ctx: TerminalScr
 
   const onCheck = (): void => {
     acc()?.startCheck();
+    ctx.evidence?.action('obstructions', APP_ACTION_VERBS.obstructionCheck, 'Started a check for obstructions in the SkyLink app.');
     ctx.refresh();
   };
   const onStop = (): void => {
     acc()?.endCheck();
+    ctx.evidence?.action('obstructions', APP_ACTION_VERBS.obstructionStop, 'Stopped the check for obstructions in the SkyLink app.');
     ctx.refresh();
   };
   const onReset = (): void => {
     void ctx.confirm(trObstructions('obstructions.reset.confirm'), trObstructions('obstructions.reset.label')).then((ok) => {
       if (ok) {
         acc()?.reset();
+        ctx.evidence?.action('obstructions', APP_ACTION_VERBS.obstructionReset, 'Reset the obstruction map in the SkyLink app.');
         ctx.refresh();
       }
     });

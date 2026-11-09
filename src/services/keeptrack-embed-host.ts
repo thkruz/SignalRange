@@ -23,6 +23,7 @@ import { OrbitalSatellite } from '@app/equipment/satellite/orbital-satellite';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { Logger } from '@app/logging/logger';
+import { SelectionService } from '@app/services/selection-service';
 import { getProvidedTleSet, type SatelliteRegistry } from '@app/simulation/satellite-registry';
 import { SimClock } from '@app/simulation/sim-clock';
 import { trackedOrbitalSatellites } from '@app/simulation/sim-queries';
@@ -145,6 +146,7 @@ export class KeepTrackEmbedHost {
   private readonly listeners_ = new Set<(state: EmbedHostState) => void>();
   private readonly boundPlace_: () => void;
   private readonly boundElementsChanged_: (data: { noradId: number }) => void;
+  private readonly boundSelectionChanged_: () => void;
   private readonly boundUpdate_: () => void;
 
   private state_: EmbedHostState = 'idle';
@@ -171,6 +173,7 @@ export class KeepTrackEmbedHost {
     this.readyTimeoutMs_ = options.readyTimeoutMs ?? READY_TIMEOUT_MS;
     this.boundPlace_ = this.place_.bind(this);
     this.boundElementsChanged_ = this.onElementsChanged_.bind(this);
+    this.boundSelectionChanged_ = this.onSelectionChanged_.bind(this);
     this.boundUpdate_ = this.driftCheck_.bind(this);
   }
 
@@ -361,6 +364,7 @@ export class KeepTrackEmbedHost {
     this.unsubscribeClock_?.();
     this.unsubscribeClock_ = null;
     EventBus.getInstance().off(Events.SATELLITE_ELEMENTS_CHANGED, this.boundElementsChanged_);
+    EventBus.getInstance().off(Events.SELECTION_CHANGED, this.boundSelectionChanged_);
     EventBus.getInstance().off(Events.UPDATE, this.boundUpdate_);
     window.removeEventListener('resize', this.boundPlace_);
     window.removeEventListener('scroll', this.boundPlace_, true);
@@ -629,6 +633,31 @@ export class KeepTrackEmbedHost {
     );
     this.applyTracks_(null);
     EventBus.getInstance().on(Events.SATELLITE_ELEMENTS_CHANGED, this.boundElementsChanged_);
+    EventBus.getInstance().on(Events.SELECTION_CHANGED, this.boundSelectionChanged_);
+  }
+
+  /** Pins and the selected member changed: restyle now instead of waiting for the 1 s revision check. */
+  private onSelectionChanged_(): void {
+    if (this.embed_ && this.wantVisible_ && this.view_) {
+      this.lastRevision_ = this.registry_()?.revision ?? this.lastRevision_;
+      this.applyView_();
+    }
+  }
+
+  /**
+   * The satellite that gets track priority and the one footprint: the view's own focus, else (constellation
+   * scenarios only, so small scenarios keep their look) the satellite selected in the asset tree.
+   */
+  private focus_(view: EmbedMapView): number | null {
+    if (view.focusNoradId !== null) {
+      return view.focusNoradId;
+    }
+    if ((this.registry_()?.memberCount ?? 0) === 0) {
+      return null;
+    }
+    const selected = SelectionService.getInstance().selectedNorad;
+
+    return selected !== null && this.registry_()?.has(selected) ? selected : null;
   }
 
   /** Re-upsert the one satellite whose elements changed. Tracks are redrawn only when it has one. */
@@ -644,7 +673,7 @@ export class KeepTrackEmbedHost {
 
     if (this.trackKey_.split(',').includes(hostId)) {
       this.trackKey_ = '';
-      this.applyTracks_(this.view_?.focusNoradId ?? null);
+      this.applyTracks_(this.view_ ? this.focus_(this.view_) : null);
     }
   }
 
@@ -685,12 +714,13 @@ export class KeepTrackEmbedHost {
     embed.setLayers({ dayNight: view.showDayNight, graticule: true, orbits: false, labels: 'host', labelBudget: LABEL_BUDGET });
 
     const styled = this.styledSatellites_();
+    const focus = this.focus_(view);
 
-    if (view.focusNoradId !== null && !styled.some((entry) => entry.norad === view.focusNoradId)) {
-      const name = this.registry_()?.ref(view.focusNoradId)?.name;
+    if (focus !== null && !styled.some((entry) => entry.norad === focus)) {
+      const name = this.registry_()?.ref(focus)?.name;
 
       if (name !== undefined) {
-        styled.push({ norad: view.focusNoradId, name });
+        styled.push({ norad: focus, name });
       }
     }
 
@@ -705,7 +735,7 @@ export class KeepTrackEmbedHost {
       const key = `${hex}|${highlight}|${name}`;
 
       current.add(hostId);
-      if (norad === view.focusNoradId) {
+      if (norad === focus) {
         focusColor = hexToEmbedColor(hex);
       }
       if (this.appliedStyles_.get(hostId) !== key) {
@@ -723,12 +753,12 @@ export class KeepTrackEmbedHost {
     if (entries.length > 0) {
       embed.setObjectStyles(entries);
     }
-    this.applyTracks_(view.focusNoradId);
+    this.applyTracks_(focus);
 
-    if (view.focusNoradId === null) {
+    if (focus === null) {
       return;
     }
-    const ref = { hostId: KeepTrackEmbedHost.hostId_(view.focusNoradId) };
+    const ref = { hostId: KeepTrackEmbedHost.hostId_(focus) };
 
     // Footprint for the selected satellite only: every other satellite is just a dot.
     if (view.showCoverage && focusColor) {

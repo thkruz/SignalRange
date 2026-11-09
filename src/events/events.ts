@@ -479,6 +479,7 @@ export enum Events {
   // Ground Station events
   GROUND_STATION_STATE_CHANGED = 'ground-station:state:changed',
   ASSET_SELECTED = 'asset:selected',
+  SELECTION_CHANGED = 'selection:changed',
 
   // Transmitter events
   TX_CONFIG_CHANGED = 'tx:config:changed',
@@ -622,6 +623,7 @@ export interface EventMap {
 
   [Events.GROUND_STATION_STATE_CHANGED]: [Partial<GroundStationState>];
   [Events.ASSET_SELECTED]: [{ type: 'ground-station' | 'satellite'; id: string }];
+  [Events.SELECTION_CHANGED]: [{ selectedAssetId: string | null; selectedNorad: number | null; pinned: number[] }];
 
   [Events.RF_FE_POWER_CHANGED]: [Partial<RFFrontEndState>];
   [Events.RF_FE_BUC_CHANGED]: [Partial<BUCState>];

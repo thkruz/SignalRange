@@ -54,6 +54,8 @@ const FLAG_HYDRATED = 1;
 const FLAG_PINNED = 2;
 const FLAG_REFERENCED = 4;
 const FLAG_DIRTY = 8;
+/** The single member the operator has selected: hydrated and held until selection moves. */
+const FLAG_SELECTED = 16;
 
 /** A clean hydrated member cold this long (sim ms) is released by sweepCold. */
 /** Largest pinned set (P3-D8) */
@@ -83,7 +85,7 @@ export async function ensureTleSets(refs: ConstellationRef[] | undefined, loader
   }
 }
 
-function grow<T extends Int32Array | Uint16Array | Uint8Array | Float64Array>(arr: T, length: number): T {
+function grow<T extends Int32Array | Int16Array | Uint16Array | Uint8Array | Float64Array>(arr: T, length: number): T {
   const next = new (arr.constructor as new (n: number) => T)(length);
   next.set(arr);
   return next;
@@ -109,6 +111,8 @@ export class SatelliteRegistry {
   private norad_ = new Int32Array(0);
   private groupIndex_ = new Uint16Array(0);
   private refIndex_ = new Uint16Array(0);
+  /** Orbital plane per member, -1 when the set does not carry one. */
+  private plane_ = new Int16Array(0);
   private flags_ = new Uint8Array(0);
   private lastTouchMs_ = new Float64Array(0);
   private readonly names_: string[] = [];
@@ -118,6 +122,8 @@ export class SatelliteRegistry {
   private pinnedCount_ = 0;
 
   private readonly groups_: string[] = [];
+  private readonly groupLabels_: string[] = [];
+  private selectedIdx_ = -1;
   private readonly groupLookup_ = new Map<string, number>();
   private readonly refs_: ConstellationRef[] = [];
   private readonly index_ = new Map<number, number>();
@@ -174,14 +180,18 @@ export class SatelliteRegistry {
     this.norad_ = grow(this.norad_, total);
     this.groupIndex_ = grow(this.groupIndex_, total);
     this.refIndex_ = grow(this.refIndex_, total);
+    this.plane_ = grow(this.plane_, total);
     this.flags_ = grow(this.flags_, total);
     this.lastTouchMs_ = grow(this.lastTouchMs_, total);
+
+    const groupLabels = new Map(set.groups.map((g) => [g.id, g.label]));
 
     accepted.forEach((m, i) => {
       const idx = start + i;
       this.norad_[idx] = m.noradId;
-      this.groupIndex_[idx] = this.groupId_(m.group);
+      this.groupIndex_[idx] = this.groupId_(m.group, groupLabels.get(m.group));
       this.refIndex_[idx] = refIdx;
+      this.plane_[idx] = m.plane ?? -1;
       this.names_[idx] = m.name;
       this.tle1_[idx] = m.tle1;
       this.tle2_[idx] = m.tle2;
@@ -245,6 +255,16 @@ export class SatelliteRegistry {
   /** Group index of member `index` (see `groupName`). */
   memberGroupIndex(index: number): number {
     return this.groupIndex_[index];
+  }
+
+  /** Orbital plane of member `index`, or -1 when the set carries none. */
+  memberPlane(index: number): number {
+    return this.plane_[index];
+  }
+
+  /** Human label of a group (falls back to its id). */
+  groupLabel(groupIndex: number): string {
+    return this.groupLabels_[groupIndex];
   }
 
   groupName(groupIndex: number): string {
@@ -370,12 +390,48 @@ export class SatelliteRegistry {
       }
       this.get(norad);
       this.flags_[idx] |= FLAG_PINNED;
-      if (!wasPinned) this.pinnedCount_++;
+      if (!wasPinned) {
+        this.pinnedCount_++;
+        this.revision++;
+      }
     } else {
       this.flags_[idx] &= ~FLAG_PINNED;
-      if (wasPinned) this.pinnedCount_--;
+      if (wasPinned) {
+        this.pinnedCount_--;
+        this.revision++;
+      }
     }
     return true;
+  }
+
+  isPinned(norad: number): boolean {
+    const idx = this.index_.get(norad);
+    return idx !== undefined && (this.flags_[idx] & FLAG_PINNED) !== 0;
+  }
+
+  /**
+   * Hold `norad` as the selected member (hydrated, not released) until the
+   * selection moves. `null` or a non-member clears the hold. Returns true when
+   * the id is a member.
+   */
+  setSelected(norad: number | null): boolean {
+    const idx = norad === null ? undefined : this.index_.get(norad);
+    const next = idx ?? -1;
+
+    if (next === this.selectedIdx_) {
+      return idx !== undefined;
+    }
+    if (this.selectedIdx_ >= 0) {
+      this.flags_[this.selectedIdx_] &= ~FLAG_SELECTED;
+    }
+    this.selectedIdx_ = next;
+    if (idx !== undefined && norad !== null) {
+      this.get(norad);
+      this.flags_[idx] |= FLAG_SELECTED;
+      this.touch(norad);
+    }
+    this.revision++;
+    return idx !== undefined;
   }
 
   /** Authored satellites plus pinned members that are hydrated: what per-satellite UI lists (timeline, embed host) iterate at scale. */
@@ -411,7 +467,7 @@ export class SatelliteRegistry {
     if (idx === undefined) {
       return false;
     }
-    if (this.flags_[idx] & (FLAG_DIRTY | FLAG_PINNED | FLAG_REFERENCED)) {
+    if (this.flags_[idx] & (FLAG_DIRTY | FLAG_PINNED | FLAG_REFERENCED | FLAG_SELECTED)) {
       return true;
     }
     const sat = this.hydratedMembers_.get(norad);
@@ -504,11 +560,12 @@ export class SatelliteRegistry {
     return sat;
   }
 
-  private groupId_(id: string): number {
+  private groupId_(id: string, label?: string): number {
     let g = this.groupLookup_.get(id);
     if (g === undefined) {
       g = this.groups_.length;
       this.groups_.push(id);
+      this.groupLabels_.push(label ?? id);
       this.groupLookup_.set(id, g);
     }
     return g;

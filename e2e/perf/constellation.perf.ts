@@ -334,7 +334,76 @@ interface Row {
   pass: boolean | null;
 }
 
-function judge(phases: PhaseResult[], loadMs: number | null, heapAddedMb: number | null): Row[] {
+interface TreeResult {
+  members: number;
+  rowsTotal: number;
+  rowsRendered: number;
+  treeDomNodes: number;
+  scrollFrameMs: { mean: number; p95: number; max: number; frames: number } | null;
+  searchMs: { name: number; id: number; miss: number; worstOfRuns: number } | null;
+  searchRows: number;
+  error?: string;
+}
+
+/** Asset tree at scale (P3-WP8): expand the Starlink shell, scroll it, search, count DOM nodes. */
+async function runTreePhase(page: Page): Promise<TreeResult> {
+  const r = await withTimeout(
+    page.evaluate(async () => {
+      const tree = (window as unknown as { __srTree?: any }).__srTree;
+      if (!tree) return { error: 'no __srTree' };
+      const out: any = { members: tree.model.memberCount };
+      tree.expand(tree.model.keysUnderGroup(''));
+      out.rowsTotal = tree.totalRowCount;
+      const vp = tree.element.querySelector('.ct-viewport') as HTMLElement;
+      const deltas: number[] = [];
+      await new Promise<void>((resolve) => {
+        const max = Math.max(1, vp.scrollHeight - vp.clientHeight);
+        const t0 = performance.now();
+        let last = t0;
+        const step = (now: number) => {
+          deltas.push(now - last);
+          last = now;
+          const f = (now - t0) / 4000;
+          vp.scrollTop = Math.min(max, f * max);
+          if (f < 1) requestAnimationFrame(step);
+          else resolve();
+        };
+        requestAnimationFrame(step);
+      });
+      deltas.shift();
+      deltas.sort((a, b) => a - b);
+      const q = (f: number) => deltas[Math.min(deltas.length - 1, Math.floor(f * deltas.length))];
+      out.scrollFrameMs = { mean: deltas.reduce((a, b) => a + b, 0) / deltas.length, p95: q(0.95), max: deltas[deltas.length - 1], frames: deltas.length };
+      out.rowsRendered = tree.renderedRowCount;
+      const first = tree.model.memberCount > 0 ? 'starlink' : 'a';
+      const timeIt = (text: string) => {
+        let best = 0;
+        for (let i = 0; i < 5; i++) {
+          tree.setQuery('');
+          const t = tree.setQuery(i % 2 ? text : text + ' ');
+          best = Math.max(best, t);
+        }
+        return best;
+      };
+      const name = timeIt(first);
+      const id = timeIt('4');
+      const miss = timeIt('zzzzqq');
+      out.searchMs = { name, id, miss, worstOfRuns: Math.max(name, id, miss) };
+      // Leave the view in the screenshot state: Starlink open, search active.
+      tree.setQuery('starlink-1');
+      out.searchRows = tree.totalRowCount;
+      vp.scrollTop = 0;
+      await new Promise((r2) => requestAnimationFrame(() => r2(null)));
+      out.treeDomNodes = tree.element.querySelectorAll('*').length;
+      return out;
+    }),
+    60000
+  );
+  if (!r.ok) return { members: 0, rowsTotal: 0, rowsRendered: 0, treeDomNodes: 0, scrollFrameMs: null, searchMs: null, searchRows: 0, error: 'hung' };
+  return r.value as TreeResult;
+}
+
+function judge(phases: PhaseResult[], loadMs: number | null, heapAddedMb: number | null, tree: TreeResult | null = null): Row[] {
   const by = (n: string) => phases.find((p) => p.name === n);
   const s1 = by('speed-1x');
   const s5 = by('speed-5x');
@@ -366,6 +435,9 @@ function judge(phases: PhaseResult[], loadMs: number | null, heapAddedMb: number
       value: ws ? fmt(ws, ' MB') : 'n/a',
       pass: ws ? ws <= PHASE2_WORKING_SET_MB + 300 : null,
     },
+    { metric: 'Tree scroll frame p95 (Starlink open)', budget: '60 fps (p95 <= 17.5 ms)', value: fmt(tree?.scrollFrameMs?.p95), pass: lim(tree?.scrollFrameMs?.p95, 17.5) },
+    { metric: 'Tree search worst', budget: '<= 50 ms', value: fmt(tree?.searchMs?.worstOfRuns), pass: lim(tree?.searchMs?.worstOfRuns, 50) },
+    { metric: 'Tree DOM nodes', budget: 'n/a (windowed)', value: tree ? String(tree.treeDomNodes) : 'n/a', pass: null },
     { metric: 'Worker CPU / main-thread fallbacks', budget: 'n/a today', value: 'n/a (no worker yet)', pass: null },
   ];
 }
@@ -385,6 +457,7 @@ test(`constellation baseline N=${N}`, async () => {
   const result: Record<string, unknown> = { n: N, ant: ANT || null, point: ANT ? POINT : null, date: new Date().toISOString(), base: BASE };
   let loadMs: number | null = null;
   const phases: PhaseResult[] = [];
+  let tree: TreeResult | null = null;
   try {
     const t0 = Date.now();
     await page.goto(
@@ -428,7 +501,11 @@ test(`constellation baseline N=${N}`, async () => {
         page.evaluate(() => window.__srPerf?.SimClock.setSpeed(1)),
         15000
       );
-      if (SHOT && hostVisible) {
+      if (hostVisible && !phases.some((p) => p.hung)) {
+        tree = await runTreePhase(page);
+        result.tree = tree;
+      }
+      if (SHOT) {
         await page.screenshot({ path: SHOT, fullPage: false });
       }
       if (!phases.some((p) => p.hung)) phases.push(await runTimeSkipPhase(page, browserCdp));
@@ -438,7 +515,7 @@ test(`constellation baseline N=${N}`, async () => {
     result.consoleErrors = consoleErrors.slice(0, 10);
     const heapRef = phases.find((p) => p.name === 'speed-1x')?.heapAfterGcMb ?? null;
     const heapAdded = heapRef !== null && BASELINE_HEAP_MB !== null ? heapRef - BASELINE_HEAP_MB : null;
-    const rows = judge(phases, loadMs, heapAdded);
+    const rows = judge(phases, loadMs, heapAdded, tree);
     result.heapAddedMb = round(heapAdded, 1);
     result.budgets = rows;
     const file = nextResultPath();

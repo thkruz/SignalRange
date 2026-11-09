@@ -28,8 +28,10 @@ import { OpsLogModal } from '@app/ops-log/ops-log-modal';
 import { ScenarioManager } from '@app/scenario-manager';
 import { CampaignRecordPanel } from '@app/scenarios/campaign-record-panel';
 import { WorkingDocumentManager } from '@app/scenarios/working-document-manager';
+import { SelectionService } from '@app/services/selection-service';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { assetSelectionState } from './asset-selection-state';
+import { ConstellationTreeView } from './constellation-tree-view';
 import './asset-tree-sidebar.css';
 
 /**
@@ -74,6 +76,7 @@ export class AssetTreeSidebar extends BaseElement {
   private selectedAssetId_: string | null = null;
   private groundStations_: GroundStation[] = [];
   private satellites_: Satellite[] = [];
+  private constellationView_: ConstellationTreeView | null = null;
   private checklistRefreshIntervalId_: number | null = null;
   private lastChecklistHtml_: string | null = null;
   private missionBriefUrl_: string | null = null;
@@ -98,11 +101,22 @@ export class AssetTreeSidebar extends BaseElement {
     this.init_(parentId, 'replace');
     this.dom_ = qs('.asset-tree-sidebar');
     this.groundStations_ = SimulationManager.getInstance().groundStations;
-    this.satellites_ = SimulationManager.getInstance().satellites;
+    this.satellites_ = this.authoredSatellites_();
     this.missionBriefUrl_ = ScenarioManager.getInstance().settings.missionBriefUrl ?? null;
     this.renderAssetTree_();
     this.initMissionSection_();
     this.initSidebarLock_();
+  }
+
+  /**
+   * Authored satellites only. At constellation scale `sim.satellites` also holds
+   * hydrated members, which the virtualised constellation tree lists instead.
+   */
+  private authoredSatellites_(): Satellite[] {
+    const sim = SimulationManager.getInstance();
+    const registry = sim.registry;
+
+    return registry && registry.memberCount > 0 ? sim.satellites.slice(0, registry.authoredCount) : sim.satellites;
   }
 
   /**
@@ -153,6 +167,7 @@ export class AssetTreeSidebar extends BaseElement {
   private unlockSidebar_(): void {
     this.dom_.classList.remove('sidebar-locked');
     this.syncLockTooltips_();
+    this.constellationView_?.refresh();
   }
 
   /** True while the brief objective still holds the stations, satellites and overview */
@@ -502,7 +517,9 @@ export class AssetTreeSidebar extends BaseElement {
         ${
           this.satellites_.length > 0
             ? this.satellites_.map((sat) => this.renderSatelliteNode_(sat)).join('')
-            : `<div class="list-group-item placeholder-item">
+            : this.hasMembers_()
+              ? ''
+              : `<div class="list-group-item placeholder-item">
               <span class="item-icon">
                 <img src="${satelliteOffPng}" alt="Satellite"/>
               </span>
@@ -512,9 +529,35 @@ export class AssetTreeSidebar extends BaseElement {
       </div>
     `;
 
+    this.constellationView_?.dispose();
+    this.constellationView_ = null;
     treeContainer.innerHTML = treeHtml;
+    this.mountConstellationTree_(treeContainer);
     this.addTreeEventListeners_();
     this.syncLockTooltips_();
+  }
+
+  private hasMembers_(): boolean {
+    return (SimulationManager.getInstance().registry?.memberCount ?? 0) > 0;
+  }
+
+  /** Constellation scenarios get the virtualised member tree after the authored satellites. */
+  private mountConstellationTree_(treeContainer: HTMLElement): void {
+    const registry = SimulationManager.getInstance().registry;
+
+    if (!registry || registry.memberCount === 0) {
+      return;
+    }
+    this.constellationView_ = new ConstellationTreeView(registry, {
+      isLocked: () => this.isLocked_(),
+      onLockedClick: () => SaveProgressToast.getInstance().showError(AssetTreeSidebar.LOCKED_TEXT, 3000),
+    });
+    treeContainer.appendChild(this.constellationView_.element);
+  }
+
+  /** The member tree, for harnesses and tests (null for small scenarios). */
+  get constellationView(): ConstellationTreeView | null {
+    return this.constellationView_;
   }
 
   /**
@@ -566,7 +609,7 @@ export class AssetTreeSidebar extends BaseElement {
    * Add event listeners to tree items
    */
   private addTreeEventListeners_(): void {
-    const assetItems = this.dom_.querySelectorAll('.list-group-item-action:not(.placeholder-item):not(.mission-brief-icon):not(.checklist-icon):not(.dialog-icon)');
+    const assetItems = this.dom_.querySelectorAll('.list-group-item-action:not(.placeholder-item):not(.mission-brief-icon):not(.checklist-icon):not(.dialog-icon):not(.ct-row)');
 
     assetItems.forEach((item) => {
       item.addEventListener('click', (e) => {
@@ -590,7 +633,7 @@ export class AssetTreeSidebar extends BaseElement {
           item.classList.add('active');
 
           // Emit mission overview selected event
-          EventBus.getInstance().emit(Events.MISSION_OVERVIEW_SELECTED);
+          SelectionService.getInstance().selectOverview();
           return;
         }
 
@@ -605,7 +648,7 @@ export class AssetTreeSidebar extends BaseElement {
         item.classList.add('active');
 
         // Emit asset selected event
-        EventBus.getInstance().emit(Events.ASSET_SELECTED, { type, id });
+        SelectionService.getInstance().selectAsset(type, id);
       });
     });
   }
@@ -615,7 +658,7 @@ export class AssetTreeSidebar extends BaseElement {
    */
   public refresh(): void {
     this.groundStations_ = SimulationManager.getInstance().groundStations;
-    this.satellites_ = SimulationManager.getInstance().satellites;
+    this.satellites_ = this.authoredSatellites_();
     this.renderAssetTree_();
   }
 
@@ -623,6 +666,8 @@ export class AssetTreeSidebar extends BaseElement {
    * Cleanup
    */
   public destroy(): void {
+    this.constellationView_?.dispose();
+    this.constellationView_ = null;
     AssetTreeSidebar.selectedAssetId = null;
     AssetTreeSidebar.selectedGroundStationId = null;
     this.stopChecklistRefreshTimer_();

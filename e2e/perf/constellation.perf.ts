@@ -254,38 +254,73 @@ async function runSpeedPhase(page: Page, pageCdp: CDPSession, browserCdp: CDPSes
 
 async function runTimeSkipPhase(page: Page, browserCdp: CDPSession): Promise<PhaseResult> {
   const name = 'time-skip';
+  // Pin 24 members that are not above the horizon, as an operator working a constellation would
+  const debugPre = await withTimeout(
+    page.evaluate(() => window.__srPerf?.debugSkip()),
+    60000
+  );
+  // Members whose next AOS is at least 12 min away, so the skip has somewhere to go
+  const pinned = await withTimeout(
+    page.evaluate(() => window.__srPerf?.pinQuiet(24, 12 * 60) ?? 0),
+    120000
+  );
+  const debugMid = await withTimeout(
+    page.evaluate(() => window.__srPerf?.debugSkip()),
+    60000
+  );
+  // Timeline cost with the 24 pinned lanes plus the per-set summary lanes (before the measured window)
+  const timeline = await withTimeout(
+    page.evaluate(() => window.__srPerf?.mountTimeline()),
+    90000
+  );
   await withTimeout(
     page.evaluate(() => window.__srPerf?.reset()),
     30000
   );
+  const debug = await withTimeout(
+    page.evaluate(() => window.__srPerf?.debugSkip()),
+    60000
+  );
+  const propBefore = await withTimeout(page.evaluate(readProp), 30000);
+  // The target comes from the cached worker search: poll until it arrives
   const t0 = Date.now();
-  // findTarget scans every satellite across a 12 h horizon on the main thread
-  const find = await withTimeout(
-    page.evaluate(() => window.__srPerf?.timeFindTarget()),
-    5 * 60 * 1000
-  );
-  if (!find.ok) return { name, hung: true, extra: { stage: 'findTarget', waitedMs: Date.now() - t0 } };
-  const started = await withTimeout(
-    page.evaluate(() => {
-      const c = window.__srPerf?.TimeSkipController.getInstance();
-      const target = c?.findTarget() ?? null;
-      return { found: target !== null, started: target ? c?.start(target) === true : false, blocked: c?.getBlockedReason() ?? null };
-    }),
-    5 * 60 * 1000
-  );
-  if (!started.ok) return { name, hung: true, extra: { stage: 'start', findTargetMs: find.value?.ms ?? null } };
+  let firstTargetMs: number | null = null;
+  let maxFindMs = 0;
+  let polls = 0;
+  let started: { ok: boolean; value?: { found: boolean; started: boolean; blocked: string | null } } = { ok: true, value: { found: false, started: false, blocked: null } };
+  while (Date.now() - t0 < 120000) {
+    const poll = await withTimeout(
+      page.evaluate(() => {
+        const c = window.__srPerf?.TimeSkipController.getInstance();
+        const t1 = performance.now();
+        const target = c?.findTarget() ?? null;
+        const ms = performance.now() - t1;
+        return { ms, found: target !== null, started: target ? c?.start(target) === true : false, blocked: c?.getBlockedReason() ?? null };
+      }),
+      60000
+    );
+    if (!poll.ok) return { name, hung: true, extra: { stage: 'findTarget', waitedMs: Date.now() - t0 } };
+    polls++;
+    maxFindMs = Math.max(maxFindMs, poll.value.ms);
+    started = { ok: true, value: poll.value };
+    if (poll.value.found) {
+      firstTargetMs = Date.now() - t0;
+      break;
+    }
+    await page.waitForTimeout(500);
+  }
+  const find = { value: { ms: maxFindMs } };
   let skipMs: number | null = null;
   let forcedJump = false;
-  if (!started.value.started) {
-    // Blocked by 'in view' (always true at scale): force a 1 h clock jump so the post-jump frames are still measured
+  if (!started.value?.started) {
+    // No pass inside the horizon or the skip refused: force a 1 h clock jump so post-jump frames are still measured
     forcedJump = true;
     await withTimeout(
       page.evaluate(() => window.__srPerf?.SimClock.skip(3600e3)),
       60000
     );
-    await page.waitForTimeout(5000);
   }
-  if (started.value.started) {
+  if (started.value?.started) {
     const s0 = Date.now();
     const done = await withTimeout(
       page.waitForFunction(() => window.__srPerf?.TimeSkipController.getInstance().isSkipping === false, undefined, { timeout: 120000 }),
@@ -293,6 +328,11 @@ async function runTimeSkipPhase(page: Page, browserCdp: CDPSession): Promise<Pha
     );
     skipMs = done.ok ? Date.now() - s0 : null;
   }
+  // Let the hold gate settle after the skip, then read the counters
+  await page.waitForTimeout(8000);
+  const propAfter = await withTimeout(page.evaluate(readProp), 30000);
+  const reasonDelta: Record<string, number> = {};
+  for (const [k, v] of Object.entries(propAfter.value?.reasons ?? {})) reasonDelta[k] = v - (propBefore.value?.reasons?.[k] ?? 0);
   const data = await withTimeout(page.evaluate(readProbe), 30000);
   if (!data.ok) return { name, hung: true };
   const { perFrame, perTick } = splitSamples(data.value.samples);
@@ -307,10 +347,22 @@ async function runTimeSkipPhase(page: Page, browserCdp: CDPSession): Promise<Pha
     heapMb: data.value.heap / 1048576,
     workingSetMb: proc?.workingSetMb ?? null,
     extra: {
-      findTargetMs: round(find.value?.ms ?? null, 1),
-      targetFound: started.value.found,
-      started: started.value.started,
-      blocked: started.value.blocked,
+      pinned: pinned.value ?? null,
+      debugPre: debugPre.value ?? null,
+      debugMid: debugMid.value ?? null,
+      debug: debug.value ?? null,
+      polls,
+      firstTargetMs,
+      timeline: timeline.value ?? null,
+      skipFallbacks: (propAfter.value?.fallbacks ?? 0) - (propBefore.value?.fallbacks ?? 0),
+      skipFallbackReasons: reasonDelta,
+      holdsDuringSkip: (propAfter.value?.holds.holds ?? 0) - (propBefore.value?.holds.holds ?? 0),
+      holdEpisodesDuringSkip: (propAfter.value?.holds.episodes ?? 0) - (propBefore.value?.holds.episodes ?? 0),
+      maxHoldMs: propAfter.value?.holds.maxMs ?? null,
+      findTargetMaxMs: round(find.value.ms, 2),
+      targetFound: started.value?.found,
+      started: started.value?.started,
+      blocked: started.value?.blocked,
       skipWallMs: skipMs,
       forcedJump,
     },

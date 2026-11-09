@@ -48,6 +48,12 @@ export class PropagatorCore {
     return this.tle1_.length;
   }
 
+  /** Mean motion from TLE line 2 (rev/day), 0 when unparsable. */
+  meanMotionRevPerDay(index: number): number {
+    const v = Number.parseFloat(this.tle2_[index].slice(52, 63));
+    return Number.isFinite(v) ? v : 0;
+  }
+
   get stationCount(): number {
     return this.grounds_.length;
   }
@@ -61,7 +67,81 @@ export class PropagatorCore {
     return sat;
   }
 
-  /** Per-station ECI position (km) and geodetic-up unit vector in TEME at `date`. */
+  /** Per-station ECI position (km) and geodetic-up unit vector in TEME at `date` (6 doubles per station). */
+  stationFrames(date: Date): Float64Array {
+    return this.stationFrames_(date);
+  }
+
+  /**
+   * Elevation (deg) of member `index` at `date` for every station, into `out`
+   * (length >= stations), given frames from `stationFrames(date)`. Returns false
+   * (and writes -90) when propagation fails.
+   */
+  elevations(index: number, date: Date, frames: Float64Array, out: Float64Array): boolean {
+    let pv: ReturnType<OotkSatellite['eci']> = null;
+    try {
+      pv = this.sat_(index).eci(date);
+    } catch {
+      pv = null;
+    }
+    const stations = this.grounds_.length;
+    if (!pv) {
+      for (let s = 0; s < stations; s++) out[s] = -90;
+      return false;
+    }
+    const p = pv.position;
+    for (let s = 0; s < stations; s++) {
+      const dx = p.x - frames[s * 6];
+      const dy = p.y - frames[s * 6 + 1];
+      const dz = p.z - frames[s * 6 + 2];
+      const up = dx * frames[s * 6 + 3] + dy * frames[s * 6 + 4] + dz * frames[s * 6 + 5];
+      out[s] = Math.asin(Math.max(-1, Math.min(1, up / Math.hypot(dx, dy, dz)))) * DEG;
+    }
+    return true;
+  }
+
+  /**
+   * Elevation, azimuth (deg from north, clockwise) and range (km) of member
+   * `index` from one station. `out` = [el, az, rng]; el is -90 on failure.
+   */
+  lookAt(index: number, station: number, date: Date, frames: Float64Array, out: Float64Array): boolean {
+    let pv: ReturnType<OotkSatellite['eci']> = null;
+    try {
+      pv = this.sat_(index).eci(date);
+    } catch {
+      pv = null;
+    }
+    if (!pv) {
+      out[0] = -90;
+      out[1] = 0;
+      out[2] = 0;
+      return false;
+    }
+    const p = pv.position;
+    const f = station * 6;
+    const dx = p.x - frames[f];
+    const dy = p.y - frames[f + 1];
+    const dz = p.z - frames[f + 2];
+    const ux = frames[f + 3];
+    const uy = frames[f + 4];
+    const uz = frames[f + 5];
+    const rng = Math.hypot(dx, dy, dz);
+    const up = dx * ux + dy * uy + dz * uz;
+    // East = z x up (normalised), north = up x east
+    const eNorm = Math.hypot(ux, uy) || 1;
+    const ex = -uy / eNorm;
+    const ey = ux / eNorm;
+    const nx = -uz * ey;
+    const ny = uz * ex;
+    const nz = ux * ey - uy * ex;
+    const east = dx * ex + dy * ey;
+    const north = dx * nx + dy * ny + dz * nz;
+    out[0] = Math.asin(Math.max(-1, Math.min(1, up / rng))) * DEG;
+    out[1] = (((Math.atan2(east, north) * DEG) % 360) + 360) % 360;
+    out[2] = rng;
+    return true;
+  }
+
   private stationFrames_(date: Date): Float64Array {
     const n = this.grounds_.length;
     const out = new Float64Array(n * 6);

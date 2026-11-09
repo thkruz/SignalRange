@@ -444,6 +444,22 @@ export class SatelliteRegistry {
     return out;
   }
 
+  /** Tracked satellites plus the selected member (hydrated by selection): the full-lane set for the timeline. */
+  laneSatellites(): Satellite[] {
+    const out = this.tracked();
+    if (this.selectedIdx_ >= 0) {
+      const norad = this.norad_[this.selectedIdx_];
+      const sat = this.hydratedMembers_.get(norad);
+      if (sat && !out.includes(sat)) out.push(sat);
+    }
+    return out;
+  }
+
+  /** Group (lane) index per member in member order; for worker-side aggregates. */
+  memberRefIndices(): Uint16Array {
+    return this.refIndex_.slice(0, this.memberCount_);
+  }
+
   /** Mark a member as carrying state (commanded, faulted); keeps it hydrated until cleared. */
   markDirty(norad: number, dirty = true): void {
     const idx = this.index_.get(norad);

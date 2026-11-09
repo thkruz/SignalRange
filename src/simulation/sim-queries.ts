@@ -21,3 +21,8 @@ export function trackedOrbitalSatellites(sim: SimulationManager): OrbitalSatelli
 export function hasOrbitalSatellites(sim: SimulationManager): boolean {
   return sim.hasOrbitalSatellites?.() ?? sim.satellites.some((sat) => sat instanceof OrbitalSatellite);
 }
+
+/** Authored, pinned and selected orbital satellites: full timeline lanes. */
+export function laneOrbitalSatellites(sim: SimulationManager): OrbitalSatellite[] {
+  return sim.laneOrbitalSatellites?.() ?? trackedOrbitalSatellites(sim);
+}

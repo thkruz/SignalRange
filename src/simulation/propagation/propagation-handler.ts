@@ -1,5 +1,9 @@
+import { PassSearchJob, VisibilityJob, type WorkerJob } from './pass-search';
 import { POS_STRIDE, PropagatorCore } from './propagation-core';
 import type { PropagationRequest, PropagationResponse } from './propagation-protocol';
+
+/** Longest slice a search job runs before yielding to queued grid requests, ms */
+const JOB_SLICE_MS = 10;
 
 /**
  * The worker's message handler, free of `self` so the worker file and the
@@ -10,6 +14,29 @@ export function createPropagationHandler(reply: (msg: PropagationResponse, trans
   let warm: Int32Array = new Int32Array(0);
   let warmGen = 0;
   const pool = new Map<number, ArrayBuffer[]>();
+  let groupOf: Uint16Array | null = null;
+  let groupCount = 0;
+  // Long searches run in slices between messages so grid requests are not starved
+  const jobs: { id: number; job: WorkerJob }[] = [];
+  let pumping = false;
+  const pump = (): void => {
+    pumping = false;
+    const entry = jobs[0];
+    if (!entry) return;
+    try {
+      if (entry.job.run(JOB_SLICE_MS)) jobs.shift();
+    } catch (e) {
+      jobs.shift();
+      reply({ type: 'error', message: String((e as Error)?.message ?? e), id: entry.id }, []);
+    }
+    if (jobs.length > 0) schedule();
+  };
+  const schedule = (): void => {
+    if (!pumping) {
+      pumping = true;
+      setTimeout(pump, 0);
+    }
+  };
 
   const take = (bytes: number): Float64Array => {
     const buf = pool.get(bytes)?.pop();
@@ -27,6 +54,61 @@ export function createPropagationHandler(reply: (msg: PropagationResponse, trans
           warm = msg.indices;
           warmGen = msg.gen;
           break;
+        case 'groups':
+          groupOf = msg.groupOf;
+          groupCount = msg.groupCount;
+          break;
+        case 'cancel': {
+          const i = jobs.findIndex((j) => j.id === msg.id);
+          if (i >= 0) jobs.splice(i, 1);
+          break;
+        }
+        case 'passes': {
+          if (!core) throw new Error('passes requested before init');
+          const search = new PassSearchJob(core, msg.spec);
+          const t0 = performance.now();
+          let busy = 0;
+          jobs.push({
+            id: msg.id,
+            job: {
+              run: (budget) => {
+                const s0 = performance.now();
+                const done = search.run(budget);
+                busy += performance.now() - s0;
+                if (done) {
+                  const records = search.result();
+                  reply({ type: 'passes', id: msg.id, records, workMs: busy || performance.now() - t0 }, [records.buffer]);
+                }
+                return done;
+              },
+            },
+          });
+          schedule();
+          break;
+        }
+        case 'visibility': {
+          if (!core) throw new Error('visibility requested before init');
+          if (!groupOf) throw new Error('visibility requested before groups');
+          const total = msg.count;
+          let busy = 0;
+          const vis = new VisibilityJob(core, { startMs: msg.startMs, stepMs: msg.stepMs, count: total, minEl: msg.minEl, groupOf, groupCount }, (index, counts) => {
+            const copy = counts.slice();
+            reply({ type: 'visibility', id: msg.id, index, counts: copy, done: index === total - 1, workMs: busy }, [copy.buffer]);
+          });
+          jobs.push({
+            id: msg.id,
+            job: {
+              run: (budget) => {
+                const s0 = performance.now();
+                const done = vis.run(budget);
+                busy += performance.now() - s0;
+                return done;
+              },
+            },
+          });
+          schedule();
+          break;
+        }
         case 'recycle':
           for (const b of msg.buffers) {
             const list = pool.get(b.byteLength) ?? [];
@@ -48,7 +130,7 @@ export function createPropagationHandler(reply: (msg: PropagationResponse, trans
         }
       }
     } catch (e) {
-      reply({ type: 'error', message: String((e as Error)?.message ?? e) }, []);
+      reply({ type: 'error', message: String((e as Error)?.message ?? e), id: 'id' in msg ? (msg as { id: number }).id : undefined }, []);
     }
   };
 }

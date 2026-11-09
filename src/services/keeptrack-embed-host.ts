@@ -699,7 +699,13 @@ export class KeepTrackEmbedHost {
       return;
     }
     this.trackKey_ = key;
-    embed.setGroundTracks(ids.length > 0 ? ids.map((hostId) => ({ hostId })) : null, TRACK_OPTIONS);
+    try {
+      embed.setGroundTracks(ids.length > 0 ? ids.map((hostId) => ({ hostId })) : null, TRACK_OPTIONS);
+    } catch (error) {
+      // An object the embed does not know (not upserted yet): this runs from the sim UPDATE
+      // handler, and a throw there stops the game loop for good. trackKey_ stays set so it is not retried every tick.
+      console.warn('[KeepTrackEmbedHost] ground tracks skipped', error);
+    }
   }
 
   /** Restyle the satellites whose style changed and rebuild the overlays for the current view. */

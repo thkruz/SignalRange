@@ -48,7 +48,9 @@ import { OpsLogManager } from '@app/ops-log/ops-log-manager';
 import { assetSelectionState } from '@app/pages/mission-control/asset-selection-state';
 import { ScenarioManager } from '@app/scenario-manager';
 import { PassPlannerService, type SatellitePass, scenarioMinElevation } from '@app/services/pass-planner-service';
+import { predictSatellitePasses, usesWorkerSearch } from '@app/services/pass-prediction';
 import { SimClock } from '@app/simulation/sim-clock';
+import { trackedOrbitalSatellites } from '@app/simulation/sim-queries';
 import { getSimulatedNowMs } from '@app/simulation/sim-time';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { WeatherManager } from '@app/weather/weather-manager';
@@ -95,6 +97,8 @@ export interface SkipTarget {
 const DEFAULT_LEAD_TIME_S = 120;
 const DEFAULT_ANIMATION_MS = 2500;
 const DEFAULT_MIN_SKIP_S = 300;
+/** How long a worker pass search stays valid before the next poll refreshes it (sim ms) */
+const MEMBER_CACHE_MS = 5 * 60 * 1000;
 const DEFAULT_HORIZON_HOURS = 12;
 /** A missed-pass recovery always searches a full day ahead */
 const RECOVERY_HORIZON_HOURS = 24;
@@ -112,6 +116,13 @@ export class TimeSkipController {
   private animationFrameId_: number | null = null;
   private objectiveSkip_: TimeSkipOffer | null = null;
   private passSkip_: SkipTarget | null = null;
+  /**
+   * Worker-found passes of pinned constellation members (cached async result).
+   * The sync API returns what is here and kicks off a refresh when it is stale,
+   * so a skip never waits on the worker and never searches members on this thread.
+   */
+  private memberPasses_: { key: string; atMs: number; passes: SatellitePass[] } | null = null;
+  private memberSearchKey_: string | null = null;
 
   private constructor() {
     this.config_ = (ScenarioManager.getInstance().settings.timeSkip as TimeSkipConfig | undefined) ?? {};
@@ -411,11 +422,61 @@ export class TimeSkipController {
     const allObservers = this.stationObservers_();
     const selected = allObservers.filter((o) => o.name === assetSelectionState.groundStationId);
     const observers = selected.length > 0 ? selected : allObservers;
-    const passes = satellites.flatMap((sat) =>
-      observers.length === 0 ? this.passOptions_(sat, nowMs, horizonHours) : observers.flatMap((observer) => this.passOptions_(sat, nowMs, horizonHours, observer))
-    );
+    const hasMembers = this.hasMembers_();
+    const passes = hasMembers
+      ? this.scalePasses_(satellites, observers, nowMs, horizonHours)
+      : satellites.flatMap((sat) =>
+          observers.length === 0 ? this.passOptions_(sat, nowMs, horizonHours) : observers.flatMap((observer) => this.passOptions_(sat, nowMs, horizonHours, observer))
+        );
 
     return passes.sort((a, b) => a.aosMs - b.aosMs)[0];
+  }
+
+  private hasMembers_(): boolean {
+    return SimulationManager.hasInstance() && SimulationManager.getInstance().registry.memberCount > 0;
+  }
+
+  /**
+   * Constellation scale: authored satellites predict on this thread as always;
+   * pinned members come from the worker search, cached. A stale or missing
+   * cache starts a refresh and the next poll (the bar polls each second) reads it.
+   */
+  private scalePasses_(satellites: OrbitalSatellite[], observers: OrbitalObserver[], nowMs: number, horizonHours: number): SatellitePass[] {
+    const options = { horizonHours, aosElevation: 'receivable' as const, minPeakElevation: scenarioMinElevation(ScenarioManager.getInstance().settings), maxPasses: 1 };
+    const key = `${satellites.map((sat) => sat.noradId).join(',')}|${observers.map((o) => o.name).join(',')}|${horizonHours}`;
+    const out: SatellitePass[] = [];
+    const cache = this.memberPasses_;
+    const isFresh = cache !== null && cache.key === key && nowMs >= cache.atMs && nowMs - cache.atMs < MEMBER_CACHE_MS;
+
+    if (!isFresh && this.memberSearchKey_ !== key) {
+      this.memberSearchKey_ = key;
+      const searches: Promise<SatellitePass[]>[] = [];
+
+      for (const observer of observers) {
+        const { pending } = predictSatellitePasses(this.passPlanner_, satellites, nowMs, { ...options, observer });
+        if (pending) {
+          searches.push(pending);
+        }
+      }
+      void Promise.all(searches).then((found) => {
+        if (this.memberSearchKey_ === key) {
+          this.memberSearchKey_ = null;
+          this.memberPasses_ = { key, atMs: nowMs, passes: found.flat() };
+        }
+      });
+    }
+
+    for (const observer of observers.length > 0 ? observers : [undefined]) {
+      // Main-thread satellites only: members are covered by the cache above
+      const mainThread = satellites.filter((sat) => !usesWorkerSearch(sat, observer));
+      const { sync } = predictSatellitePasses(this.passPlanner_, mainThread, nowMs, { ...options, observer, maxPasses: observer ? 1 : 10 });
+      out.push(...sync);
+    }
+    if (cache && cache.key === key && nowMs >= cache.atMs) {
+      out.push(...cache.passes.filter((pass) => pass.losMs > nowMs));
+    }
+
+    return out;
   }
 
   /** Whether `sat` completed a pass at `observer` between `sinceMs` and `nowMs`. */
@@ -548,6 +609,9 @@ export class TimeSkipController {
     }
 
     this.isSkipping_ = false;
+    // Cached member passes predate the skip: drop them so the next poll searches afresh
+    this.memberPasses_ = null;
+    this.memberSearchKey_ = null;
 
     const objectiveSkip = this.objectiveSkip_;
     this.objectiveSkip_ = null;
@@ -589,12 +653,40 @@ export class TimeSkipController {
     return state !== undefined && state.isActive && !state.isCompleted && !state.isFailed;
   }
 
+  /**
+   * Satellites a skip must respect. Small scenarios: every orbital satellite, as
+   * ever. Constellation scale: authored, pinned and objective-target satellites
+   * only (an explicit query, not a scan of every hydrated member).
+   */
   private orbitalSatellites_(): OrbitalSatellite[] {
     if (!SimulationManager.hasInstance()) {
       return [];
     }
+    const sim = SimulationManager.getInstance();
+    const tracked = trackedOrbitalSatellites(sim);
 
-    return SimulationManager.getInstance().satellites.filter((sat): sat is OrbitalSatellite => sat instanceof OrbitalSatellite);
+    if (!(sim.registry.memberCount > 0)) {
+      return tracked;
+    }
+    const out = new Map(tracked.map((sat) => [sat.noradId, sat]));
+
+    if (ObjectivesManager.hasInstance()) {
+      for (const state of ObjectivesManager.getInstance().getObjectiveStates()) {
+        if (!state.isActive || state.isCompleted || state.isFailed) {
+          continue;
+        }
+        for (const condition of state.objective.conditions) {
+          const norad = condition.params?.noradId ?? condition.params?.satelliteId;
+          const sat = typeof norad === 'number' && !out.has(norad) ? sim.registry.get(norad) : undefined;
+
+          if (sat instanceof OrbitalSatellite) {
+            out.set(sat.noradId, sat);
+          }
+        }
+      }
+    }
+
+    return [...out.values()];
   }
 
   /** One observer per ground station in the scenario (empty when unknown). */

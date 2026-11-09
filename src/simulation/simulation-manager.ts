@@ -78,6 +78,11 @@ export class SimulationManager {
     return this.registry_.memberCount > 0 || this.registry_.hydrated.some((sat) => sat instanceof OrbitalSatellite);
   }
 
+  /** Authored, pinned and selected orbital satellites: the satellites that get a full timeline lane. */
+  laneOrbitalSatellites(): OrbitalSatellite[] {
+    return this.registry_.laneSatellites().filter((sat): sat is OrbitalSatellite => sat instanceof OrbitalSatellite);
+  }
+
   /** Every satellite in the scenario, hydrated or not. Use `registry.get(norad)` instead of scanning `satellites`. */
   get registry(): SatelliteRegistry {
     return this.registry_;

@@ -1,3 +1,4 @@
+import { PASS_STRIDE, PassField, PassSearchJob, type PassSearchSpec } from './pass-search';
 import { POS_STRIDE, PropagatorCore, STATION_STRIDE } from './propagation-core';
 import { createPropagationHandler } from './propagation-handler';
 import { type PropagationRequest, type PropagationResponse, type SlotKind, SWEEP_GRID_MS, WARM_GRID_MS } from './propagation-protocol';
@@ -101,6 +102,50 @@ export interface PropagationSample {
   gridMs: number;
 }
 
+/** One predicted pass from `searchPasses` (times are scenario-clock Unix ms). */
+export interface WorkerPass {
+  noradId: number;
+  /** Index into the service's stations */
+  station: number;
+  aosMs: number;
+  losMs: number;
+  maxElMs: number;
+  maxEl: number;
+  aosAz: number;
+  losAz: number;
+  maxElRangeKm: number;
+}
+
+export interface PassSearchRequest {
+  noradIds: readonly number[];
+  /** AOS/LOS elevation: one value for all, or one per NORAD id (deg) */
+  minEl: number | readonly number[];
+  /** Drop passes that peak below this (deg). Default: the lowest minEl */
+  minPeak?: number;
+  startMs: number;
+  horizonMs: number;
+  /** Coarse step, ms. Default 60 000 */
+  stepMs?: number;
+  /** Per member and station. Default 10 */
+  maxPasses?: number;
+  /** Station indices. Default: all */
+  stations?: readonly number[];
+}
+
+export interface VisibilityRequest {
+  startMs: number;
+  stepMs: number;
+  count: number;
+  /** Horizon, deg. Default 0 */
+  minEl?: number;
+}
+
+export interface VisibilityHandle {
+  /** Resolves true when every grid time was delivered, false when cancelled */
+  done: Promise<boolean>;
+  cancel(): void;
+}
+
 /** One 60 s sweep: ECI state and per-station look angles for every member. Read-only. */
 export interface SweepView {
   gridMs: number;
@@ -166,6 +211,11 @@ export class PropagationService {
   private readonly sweepSlots_ = new Map<number, Slot>();
   private readonly pending_ = new Set<string>();
   private readonly local_ = new Map<number, Map<number, { pos: Float64Array; look: Float64Array }>>();
+  private readonly jobs_ = new Map<number, { resolve: (m: PropagationResponse) => void; onPoint?: (index: number, counts: Uint16Array) => void; reject: (e: Error) => void }>();
+  /** Pass searches answered (worker or in-process) */
+  passSearches = 0;
+  /** Pass searches run on the calling thread because there is no worker (diagnostics; 0 in a browser) */
+  localPassSearches = 0;
   private warmPos_ = new Map<number, number>();
   private warmIndices_ = new Int32Array(0);
   private gen_ = 0;
@@ -251,6 +301,105 @@ export class PropagationService {
     this.backend_?.post({ type: 'warm', indices: this.warmIndices_.slice(), gen: this.gen_ });
     // Newly warmed members get their grid points requested now, before anyone samples them
     this.prefetch_();
+  }
+
+  /** Lane (group) of every member, in member-index order. Needed once before `visibility`. */
+  setGroups(groupOf: Uint16Array, groupCount: number): void {
+    this.backend_?.post({ type: 'groups', groupOf: groupOf.slice(), groupCount });
+  }
+
+  /**
+   * Next passes for members over a horizon, found by the worker (coarse steps,
+   * bisection refine, 5 s peak sampling). Without a worker the same search
+   * runs on the calling thread. Results are sorted by AOS. Independent of the
+   * grid: nothing here is invalidated by a time jump.
+   */
+  searchPasses(req: PassSearchRequest): Promise<WorkerPass[]> {
+    const members: number[] = [];
+    const lims: number[] = [];
+    req.noradIds.forEach((n, i) => {
+      const m = this.index_.get(n);
+      if (m !== undefined) {
+        members.push(m);
+        lims.push(typeof req.minEl === 'number' ? req.minEl : req.minEl[i]);
+      }
+    });
+    const spec: PassSearchSpec = {
+      indices: Int32Array.from(members),
+      minEl: Float64Array.from(lims),
+      minPeak: req.minPeak ?? (lims.length > 0 ? Math.min(...lims) : 0),
+      startMs: req.startMs,
+      horizonMs: req.horizonMs,
+      stepMs: req.stepMs ?? SWEEP_GRID_MS,
+      maxPasses: req.maxPasses ?? 10,
+      stations: Int32Array.from(req.stations ?? Array.from({ length: this.stationCount }, (_, i) => i)),
+    };
+    if (members.length === 0 || spec.stations.length === 0) {
+      return Promise.resolve([]);
+    }
+    const decode = (records: Float64Array): WorkerPass[] => {
+      const out: WorkerPass[] = [];
+      for (let i = 0; i + PASS_STRIDE <= records.length; i += PASS_STRIDE) {
+        out.push({
+          noradId: this.opts_.norad[records[i + PassField.Member]],
+          station: records[i + PassField.Station],
+          aosMs: records[i + PassField.Aos],
+          losMs: records[i + PassField.Los],
+          maxElMs: records[i + PassField.MaxElTime],
+          maxEl: records[i + PassField.MaxEl],
+          aosAz: records[i + PassField.AosAz],
+          losAz: records[i + PassField.LosAz],
+          maxElRangeKm: records[i + PassField.MaxElRange],
+        });
+      }
+      return out.sort((a, b) => a.aosMs - b.aosMs);
+    };
+    this.passSearches++;
+    if (!this.backend_) {
+      this.localPassSearches++;
+      this.core_ ??= new PropagatorCore(this.opts_.tle1, this.opts_.tle2, this.stationsPacked_);
+      const job = new PassSearchJob(this.core_, spec);
+      job.run(Number.POSITIVE_INFINITY);
+      return Promise.resolve(decode(job.result()));
+    }
+    const id = this.nextId_++;
+    return new Promise<WorkerPass[]>((resolve, reject) => {
+      this.jobs_.set(id, { resolve: (m) => resolve(decode((m as { records: Float64Array }).records)), reject });
+      this.backend_?.post({ type: 'passes', id, spec });
+    });
+  }
+
+  /**
+   * Members above the horizon per lane and station at `count` grid times,
+   * computed in the worker (never on this thread: returns null without one).
+   * `onPoint` receives counts[lane * stations + station] per grid time as each
+   * finishes, in order.
+   */
+  visibility(req: VisibilityRequest, onPoint: (index: number, counts: Uint16Array) => void): VisibilityHandle | null {
+    if (!this.backend_) {
+      return null;
+    }
+    const id = this.nextId_++;
+    let cancelled = false;
+    const done = new Promise<boolean>((resolve) => {
+      this.jobs_.set(id, {
+        resolve: () => resolve(!cancelled),
+        reject: () => resolve(false),
+        onPoint: (index, counts) => {
+          if (!cancelled) onPoint(index, counts);
+        },
+      });
+    });
+    this.backend_.post({ type: 'visibility', id, startMs: req.startMs, stepMs: req.stepMs, count: req.count, minEl: req.minEl ?? 0 });
+    return {
+      done,
+      cancel: () => {
+        if (this.jobs_.delete(id)) {
+          cancelled = true;
+          this.backend_?.post({ type: 'cancel', id });
+        }
+      },
+    };
   }
 
   /** Forget every cached grid point (backward jump, time skip, element change). Results in flight are dropped. */
@@ -429,7 +578,29 @@ export class PropagationService {
       this.ready_ = true;
       return;
     }
+    if (msg.type === 'passes') {
+      this.workerBusyMs += msg.workMs;
+      const job = this.jobs_.get(msg.id);
+      this.jobs_.delete(msg.id);
+      job?.resolve(msg);
+      return;
+    }
+    if (msg.type === 'visibility') {
+      const job = this.jobs_.get(msg.id);
+      job?.onPoint?.(msg.index, msg.counts);
+      if (msg.done) {
+        this.workerBusyMs += msg.workMs;
+        this.jobs_.delete(msg.id);
+        job?.resolve(msg);
+      }
+      return;
+    }
     if (msg.type === 'error') {
+      if (msg.id !== undefined) {
+        const job = this.jobs_.get(msg.id);
+        this.jobs_.delete(msg.id);
+        job?.reject(new Error(msg.message));
+      }
       return;
     }
     const key = `${msg.kind}:${msg.gridMs}`;

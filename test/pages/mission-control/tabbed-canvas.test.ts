@@ -928,6 +928,31 @@ describe('TabbedCanvas outside-the-tent guard', () => {
     expect(activeTabId()).toBe('rx-analysis');
   });
 
+  it('gates a sidebar asset switch while outside, then switches after Go inside', () => {
+    vi.spyOn(PhysicalPlantService, 'plantOrNull').mockReturnValue(plant as never);
+    const assetHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ASSET_SELECTED)?.[1];
+    outside = true;
+    mockEventBus.emit.mockClear();
+    assetHandler({ type: 'ground-station', id: 'GS-002' });
+    expect(confirmOpen).toHaveBeenCalledTimes(1);
+    // Sidebar highlight is pushed back to the asset still on screen
+    expect(mockEventBus.emit).toHaveBeenCalledWith(Events.ASSET_SELECTED, { type: 'ground-station', id: 'GS-001' });
+    mockEventBus.emit.mockClear();
+    const [onConfirm] = confirmOpen.mock.calls[0] as [() => void];
+
+    onConfirm();
+    expect(plant.returnInside).toHaveBeenCalledTimes(1);
+    expect(mockEventBus.emit).toHaveBeenCalledWith(Events.ASSET_SELECTED, { type: 'ground-station', id: 'GS-002' });
+  });
+
+  it('does not gate a sidebar asset switch while inside', () => {
+    vi.spyOn(PhysicalPlantService, 'plantOrNull').mockReturnValue(plant as never);
+    const assetHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ASSET_SELECTED)?.[1];
+
+    assetHandler({ type: 'ground-station', id: 'GS-002' });
+    expect(confirmOpen).not.toHaveBeenCalled();
+  });
+
   it('blocks nav-link clicks while outside', () => {
     vi.spyOn(PhysicalPlantService, 'plantOrNull').mockReturnValue(plant as never);
     const before = activeTabId();

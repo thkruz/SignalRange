@@ -1,0 +1,21 @@
+.fpp { margin-top: 0.6rem; background: var(--mc-surface-1); border: 1px solid var(--mc-border); border-radius: 0.375rem; color: var(--mc-text-secondary); font-size: 0.8rem; }
+.fpp .fpp-summary { cursor: pointer; padding: 0.4rem 0.75rem; color: var(--mc-text-primary); }
+.fpp .fpp-sum { color: var(--mc-text-secondary); margin-left: 0.5rem; }
+.fpp .fpp-body { padding: 0 0.75rem 0.6rem; max-height: 14rem; overflow-y: auto; }
+.fpp .fpp-stats { display: flex; flex-wrap: wrap; gap: 0.3rem 1rem; margin-bottom: 0.4rem; }
+.fpp .fpp-stat b { color: var(--mc-text-primary); font-family: 'JetBrains Mono', monospace; }
+.fpp .fpp-table { width: 100%; border-collapse: collapse; margin-bottom: 0.5rem; }
+.fpp .fpp-table th { text-align: left; font-weight: 600; color: var(--mc-text-muted); padding: 0.15rem 0.4rem; border-bottom: 1px solid var(--mc-border); }
+.fpp .fpp-table td { padding: 0.15rem 0.4rem; color: var(--mc-text-primary); }
+.fpp .fpp-num { text-align: right; font-family: 'JetBrains Mono', monospace; }
+.fpp .fpp-table select { min-width: 11rem; }
+.fpp .fpp-mode-on { color: var(--mc-status-normal, #22c55e); }
+.fpp .fpp-mode-warn { color: var(--mc-status-caution, #eab308); }
+.fpp .fpp-mode-idle { color: var(--mc-text-muted); }
+.fpp .fpp-forecast { border: 1px solid var(--mc-border); border-left-width: 3px; border-radius: 0.25rem; padding: 0.35rem 0.6rem; margin-bottom: 0.5rem; }
+.fpp .fpp-forecast.fpp-ok { border-left-color: var(--mc-status-normal, #22c55e); }
+.fpp .fpp-forecast.fpp-bad { border-left-color: var(--mc-danger, #ba160c); }
+.fpp .fpp-forecast-title { color: var(--mc-text-primary); font-weight: 600; }
+.fpp .fpp-forecast-note { color: var(--mc-text-muted); font-weight: 400; margin-left: 0.4rem; }
+.fpp .fpp-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.fpp .fpp-result { color: var(--mc-text-secondary); }

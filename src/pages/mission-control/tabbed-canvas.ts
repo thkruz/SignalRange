@@ -74,6 +74,9 @@ export class TabbedCanvas extends BaseElement {
   /** Observation tabs (id or prefix) whose button pulses until the tab is opened (Phase 35 D3) */
   private readonly pulseTabs_ = new Set<string>();
   private selectedAssetId_: string | null = null;
+  private selectedAssetType_: 'ground-station' | 'satellite' | null = null;
+  /** True while the canvas re-announces the current asset to resync the sidebar highlight. */
+  private resyncing_ = false;
   /**
    * Last tab the operator had open on each asset, keyed by asset id.
    * Reselecting an asset returns to where they left off instead of resetting
@@ -109,6 +112,15 @@ export class TabbedCanvas extends BaseElement {
    * nothing and leaves the canvas listening after it is gone.
    */
   private readonly boundAssetSelected_ = (data: { type: 'ground-station' | 'satellite'; id: string }): void => {
+    if (this.resyncing_) {
+      return;
+    }
+    if (this.isGated_()) {
+      this.confirmLeaveSite_(() => EventBus.getInstance().emit(Events.ASSET_SELECTED, data));
+      this.resyncSidebar_();
+
+      return;
+    }
     this.handleAssetSelected_(data.type, data.id);
   };
 
@@ -122,6 +134,11 @@ export class TabbedCanvas extends BaseElement {
   };
 
   private readonly boundMissionOverviewSelected_ = (): void => {
+    if (this.isGated_()) {
+      this.confirmLeaveSite_(() => EventBus.getInstance().emit(Events.MISSION_OVERVIEW_SELECTED));
+
+      return;
+    }
     this.selectedAssetId_ = null;
     this.tabInstances_.forEach((tab) => tab.dispose());
     this.tabInstances_.clear();
@@ -208,6 +225,7 @@ export class TabbedCanvas extends BaseElement {
     }
 
     this.selectedAssetId_ = id;
+    this.selectedAssetType_ = type;
 
     if (type === 'ground-station') {
       this.showGroundStationAsset_();
@@ -529,16 +547,30 @@ export class TabbedCanvas extends BaseElement {
    * C1-C5 behaviour is unchanged.
    */
   private requestTab_(tabId: string): void {
-    const plant = PhysicalPlantService.plantOrNull();
-    if (!plant?.isOutside() || tabId === 'site' || tabId === this.activeTab_) {
+    if (!this.isGated_() || tabId === 'site' || tabId === this.activeTab_) {
       this.switchTab_(tabId);
 
       return;
     }
+    this.confirmLeaveSite_(() => this.switchTab_(tabId));
+  }
+
+  /** True while the player is outside the tent: laptop and equipment are out of reach. */
+  private isGated_(): boolean {
+    return PhysicalPlantService.plantOrNull()?.isOutside() ?? false;
+  }
+
+  /**
+   * The one outside-the-tent confirm, shared by tab switches and sidebar asset
+   * switches. On confirm the player goes back inside, then `proceed` runs.
+   */
+  private confirmLeaveSite_(proceed: () => void): void {
+    const plant = PhysicalPlantService.plantOrNull();
+
     ModalConfirm.getInstance().open(
       () => {
-        plant.returnInside();
-        this.switchTab_(tabId);
+        plant?.returnInside();
+        proceed();
       },
       {
         title: 'You are outside',
@@ -547,6 +579,19 @@ export class TabbedCanvas extends BaseElement {
         cancelText: 'Stay outside',
       }
     );
+  }
+
+  /** A refused sidebar switch: put the sidebar highlight back on the asset still on screen. */
+  private resyncSidebar_(): void {
+    if (!this.selectedAssetId_ || !this.selectedAssetType_) {
+      return;
+    }
+    this.resyncing_ = true;
+    try {
+      EventBus.getInstance().emit(Events.ASSET_SELECTED, { type: this.selectedAssetType_, id: this.selectedAssetId_ });
+    } finally {
+      this.resyncing_ = false;
+    }
   }
 
   /**

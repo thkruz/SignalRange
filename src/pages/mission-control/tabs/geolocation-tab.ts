@@ -5,6 +5,7 @@ import { qs } from '@app/engine/utils/query-selector';
 import { type ConsoleMeasurement, GeolocationConsoleCore, type GeolocationConsoleState } from '@app/equipment/geolocation-console/geolocation-console-core';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { getSimulatedNowMs } from '@app/simulation/sim-time';
 import './geolocation-tab.css';
 
 /**
@@ -335,7 +336,7 @@ export class GeolocationTab extends BaseElement {
     const state = this.core_.state;
     const markers: GeoMarker[] = [];
 
-    const now = state.measurements.length > 0 ? state.measurements[state.measurements.length - 1].measurement.timestampMs : Date.now();
+    const now = state.measurements.length > 0 ? state.measurements[state.measurements.length - 1].measurement.timestampMs : getSimulatedNowMs();
     const primary = this.core_.primarySatellite;
     if (primary) {
       const lla = primary.ootkSatellite.lla(new Date(now));

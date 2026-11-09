@@ -2807,7 +2807,7 @@ export abstract class AntennaCore extends BaseEquipment {
   }
 
   /** Receiver noise temperature: the attached LNB's (Friis over LNA and mixer) when powered, else the config LNA */
-  private receiverNoiseK_(): number {
+  protected receiverNoiseK_(): number {
     const lnb = this.rfFrontEnd_?.lnbModule;
     if (lnb?.state.isPowered) {
       return lnb.state.noiseTemperature;

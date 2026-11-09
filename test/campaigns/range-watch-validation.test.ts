@@ -76,12 +76,12 @@ describe('range watch: authored geometry and RF', () => {
     }
   });
 
-  it('stations are distinct objects with their own antenna state and V-pol receive', () => {
+  it('stations are distinct objects; CM-01 receives RHCP (phased array), High Desert V-pol', () => {
     expect(cedarMesaGroundStation.antennasState).not.toBe(highDesertGroundStation.antennasState);
     for (const gs of [cedarMesaGroundStation, highDesertGroundStation]) {
       const fe = (gs as unknown as { rfFrontEnds: Array<{ omt: { rxPolarization: string }; lnb: { loFrequency: number } }> }).rfFrontEnds[0];
 
-      expect(fe.omt.rxPolarization).toBe('V');
+      expect(fe.omt.rxPolarization).toBe(gs === cedarMesaGroundStation ? 'RHCP' : 'V');
       expect(fe.lnb.loFrequency).toBe(13100);
     }
   });
@@ -98,7 +98,7 @@ describe('range watch: objectives', () => {
     describe(s.id, () => {
       const ids = s.objectives.map((o) => o.id);
 
-      it('has unique ids, valid prerequisites and a World Map first objective', () => {
+      it('has unique ids, valid prerequisites and a tab-open first objective', () => {
         expect(new Set(ids).size).toBe(ids.length);
         for (const o of s.objectives) {
           for (const p of o.prerequisiteObjectiveIds ?? []) expect(ids).toContain(p);
@@ -106,7 +106,7 @@ describe('range watch: objectives', () => {
         }
         expect(s.objectives[0].prerequisiteObjectiveIds ?? []).toEqual([]);
         expect(s.objectives[0].conditions[0].type).toBe('tab-active');
-        expect((s.objectives[0].conditions[0].params as { tab: string }).tab).toBe('ground-track');
+        expect((s.objectives[0].conditions[0].params as { tab: string }).tab).toBe(s.id === 'starlink-interference' ? 'acu-control' : 'ground-track');
       });
 
       it('references only its own ground station and uses plain wording', () => {

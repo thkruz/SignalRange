@@ -32,6 +32,8 @@ const SETS = process.env.PERF_SETS ?? '';
 const SHOT = process.env.PERF_SHOT ?? '';
 /** PERF_SCENARIO=<campaign>/scenarios/<id> loads a real authored scenario (with ?perfProbe=1) instead of the synthetic one. */
 const SCENARIO = process.env.PERF_SCENARIO ?? '';
+/** PERF_ARRAY=1 switches to the Array Control tab (phased array page) after the embed has been built, so the speed phases run with that page open. */
+const ARRAY = process.env.PERF_ARRAY === '1';
 const BASELINE_HEAP_MB = process.env.PERF_BASELINE_HEAP_MB ? Number(process.env.PERF_BASELINE_HEAP_MB) : null;
 const ARGS = ['--use-angle=d3d11', '--ignore-gpu-blocklist', '--enable-precise-memory-info'];
 const PHASE2_WORKING_SET_MB = 1540;
@@ -547,6 +549,18 @@ test(`constellation baseline N=${N}`, async () => {
         .catch(() => false);
       result.embedHostVisible = hostVisible;
       result.tabToMapMs = hostVisible ? Date.now() - tabClickMs : null;
+      if (ARRAY && hostVisible) {
+        await page.locator('[data-asset-id="CM-01"], [data-gs-id="CM-01"]').first().click({ timeout: 30000 });
+        await page
+          .locator('#tab-bar .nav-link[data-tab-id^="acu-control"]')
+          .first()
+          .evaluate((el) => (el as HTMLElement).click());
+        result.arrayPageOpen = await page
+          .locator('.array-control-tab')
+          .waitFor({ state: 'visible', timeout: 30000 })
+          .then(() => true)
+          .catch(() => false);
+      }
       const frame = hostVisible ? (page.frames().find((f) => f !== page.mainFrame()) ?? null) : null;
       for (const speed of [1, 2, 5]) {
         const r = await runSpeedPhase(page, pageCdp, browserCdp, frame, speed);
@@ -560,6 +574,13 @@ test(`constellation baseline N=${N}`, async () => {
       if (hostVisible && !phases.some((p) => p.hung)) {
         tree = await runTreePhase(page);
         result.tree = tree;
+      }
+      if (ARRAY) {
+        result.arrayDraw = await page
+          .evaluate(
+            () => (window as unknown as { __arrayControl?: { drawStats: { draws: number; totalMs: number; maxMs: number; dots: number } } }).__arrayControl?.drawStats ?? null
+          )
+          .catch(() => null);
       }
       if (SHOT) {
         await page.screenshot({ path: SHOT, fullPage: false });

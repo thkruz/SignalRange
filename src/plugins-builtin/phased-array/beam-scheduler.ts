@@ -105,6 +105,17 @@ export interface HandoverRecord {
   reason: HandoverReason;
 }
 
+/** One moment the link dropped: the satellite that was serving, and what took over (null: nothing). */
+export interface LinkDropRecord {
+  atMs: number;
+  servingNorad: number;
+  nextNorad: number | null;
+  reason: HandoverReason;
+}
+
+/** Most link drops kept */
+const MAX_LINK_DROPS = 200;
+
 /** What the scheduler publishes at about 1 Hz. */
 export interface SchedulerSnapshot {
   simMs: number;
@@ -165,6 +176,7 @@ export class BeamScheduler {
   private outageUntilMs_ = -Infinity;
   private handoverCount_ = 0;
   private lastHandover_: HandoverRecord | null = null;
+  private readonly linkDrops_: LinkDropRecord[] = [];
   private lockLostReason_: HandoverReason | null = null;
   /** Why the auto target was lost, used as the reason of the next acquisition */
   private pendingLossReason_: HandoverReason | null = null;
@@ -336,6 +348,18 @@ export class BeamScheduler {
 
   // ── internals ──────────────────────────────────────────────────────────────
 
+  private logLinkDrop_(rec: LinkDropRecord): void {
+    this.linkDrops_.push(rec);
+    if (this.linkDrops_.length > MAX_LINK_DROPS) {
+      this.linkDrops_.shift();
+    }
+  }
+
+  /** Every moment the link dropped so far, oldest first (a handover, or a loss with nothing to take over). */
+  get linkDrops(): readonly LinkDropRecord[] {
+    return this.linkDrops_;
+  }
+
   private dropTarget_(): void {
     this.targetNorad_ = null;
     this.targetName_ = '';
@@ -347,6 +371,17 @@ export class BeamScheduler {
     }
     // After a loss the target is already null; the handover still came from the lost satellite
     const from = this.targetNorad_ ?? (this.pendingLossReason_ !== null ? (this.lastHandover_?.fromNorad ?? null) : null);
+
+    // A switch with a live target is a link drop of its own; after a loss the drop was already logged and only gains its successor
+    if (this.targetNorad_ !== null) {
+      this.logLinkDrop_({ atMs: simMs, servingNorad: this.targetNorad_, nextNorad: norad, reason });
+    } else if (from !== null) {
+      const last = this.linkDrops_[this.linkDrops_.length - 1];
+
+      if (last && last.servingNorad === from && last.nextNorad === null) {
+        last.nextNorad = norad;
+      }
+    }
 
     this.targetNorad_ = norad;
     this.targetName_ = this.names_.get(norad) ?? `NORAD ${norad}`;
@@ -362,6 +397,9 @@ export class BeamScheduler {
   /** The target can no longer be served: auto re-selects at once, manual drops the lock. */
   private loseTarget_(reason: HandoverReason, simMs: number): void {
     this.lastHandover_ = { atMs: simMs, fromNorad: this.targetNorad_, toNorad: null, reason };
+    if (this.targetNorad_ !== null) {
+      this.logLinkDrop_({ atMs: simMs, servingNorad: this.targetNorad_, nextNorad: null, reason });
+    }
     this.dropTarget_();
     this.predictDirty_ = true;
     if (this.mode_ === 'manual') {

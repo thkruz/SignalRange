@@ -1,43 +1,47 @@
 import { beaconLookup, evaluateBeaconReport } from '@app/campaigns/constellation-sandbox/beacon-id';
-import { evaluateInterferenceReport, parseClock, type ReportDeps } from '@app/campaigns/constellation-sandbox/interference-report';
+import { evaluateOutageReport, parseClock, type ReportDeps } from '@app/campaigns/constellation-sandbox/outage-report';
 import { geoBeaconHz } from '@app/simulation/geo-beacon';
 import { describe, expect, it } from 'vitest';
 
 const NOW = Date.parse('2026-11-09T18:30:00Z');
 const hms = (iso: string): number => Date.parse(`2026-11-09T${iso}Z`);
 
-/** Satellite 111 is in line from 18:09:10 to 18:09:20 UTC; 222 and 333 never are. */
+/** The terminal logged a drop at 18:09:15 while 111 was serving, and one at 18:25:00 while 222 was. */
 const deps: ReportDeps = {
   nowMs: NOW,
-  isMember: (n) => [111, 222, 333].includes(n),
-  inLine: (n, t0, t1) => n === 111 && t0 <= hms('18:09:20') && t1 >= hms('18:09:10'),
+  drops: [
+    { atMs: hms('18:09:15'), servingNorad: 111 },
+    { atMs: hms('18:25:00'), servingNorad: 222 },
+  ],
 };
-const report = (over: Record<string, string> = {}) => ({ norad: '111', start: '18:08:30', end: '18:10:00', drop: '1.4', ...over });
+const report = (over: Record<string, string> = {}) => ({ norad: '111', start: '18:08:30', end: '18:10:00', ...over });
 
-describe('interference report', () => {
-  it('accepts a correct NORAD and window', () => {
-    expect(evaluateInterferenceReport(report(), deps).ok).toBe(true);
+describe('outage report', () => {
+  it('accepts the serving NORAD and a window around the drop', () => {
+    expect(evaluateOutageReport(report(), deps).ok).toBe(true);
   });
 
-  it('rejects a NORAD that was never in line', () => {
-    expect(evaluateInterferenceReport(report({ norad: '222' }), deps).ok).toBe(false);
+  it('rejects a NORAD that was not serving at the drop', () => {
+    expect(evaluateOutageReport(report({ norad: '222' }), deps).ok).toBe(false);
   });
 
-  it('rejects a satellite outside the window', () => {
-    expect(evaluateInterferenceReport(report({ start: '18:20:00', end: '18:22:00' }), deps).ok).toBe(false);
+  it('rejects a window with no drop in it', () => {
+    expect(evaluateOutageReport(report({ start: '18:20:00', end: '18:22:00' }), deps).ok).toBe(false);
   });
 
   it('rejects a window longer than 10 minutes', () => {
-    expect(evaluateInterferenceReport(report({ start: '18:00:00', end: '18:11:00' }), deps).ok).toBe(false);
-    expect(evaluateInterferenceReport(report({ start: '18:05:00', end: '18:15:00' }), deps).ok).toBe(true);
+    expect(evaluateOutageReport(report({ start: '18:00:00', end: '18:11:00' }), deps).ok).toBe(false);
+    expect(evaluateOutageReport(report({ start: '18:05:00', end: '18:15:00' }), deps).ok).toBe(true);
   });
 
-  it('rejects an unknown NORAD, bad times, bad drop and a future window', () => {
-    expect(evaluateInterferenceReport(report({ norad: '999' }), deps).ok).toBe(false);
-    expect(evaluateInterferenceReport(report({ start: 'noon' }), deps).ok).toBe(false);
-    expect(evaluateInterferenceReport(report({ drop: '' }), deps).ok).toBe(false);
-    expect(evaluateInterferenceReport(report({ drop: '-2' }), deps).ok).toBe(false);
-    expect(evaluateInterferenceReport(report({ start: '18:29:00', end: '18:35:00' }), deps).ok).toBe(false);
+  it('rejects bad input and a future window', () => {
+    expect(evaluateOutageReport(report({ norad: 'abc' }), deps).ok).toBe(false);
+    expect(evaluateOutageReport(report({ start: 'noon' }), deps).ok).toBe(false);
+    expect(evaluateOutageReport(report({ start: '18:29:00', end: '18:35:00' }), deps).ok).toBe(false);
+  });
+
+  it('has no answer without drops', () => {
+    expect(evaluateOutageReport(report(), { ...deps, drops: [] }).ok).toBe(false);
   });
 
   it('parses clock times', () => {

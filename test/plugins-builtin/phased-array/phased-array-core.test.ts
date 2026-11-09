@@ -172,6 +172,18 @@ describe('PhasedArrayCore scan loss', () => {
     expect(gt).toBeLessThan(10.5);
   });
 
+  it('G/T ignores the station LNB module and the constellation aggregate (root cause of 3.4 dB/K)', () => {
+    const a = new TestArray();
+    const hostile = a as unknown as { receiverNoiseK_: () => number; aggregateNoiseK: (f: number) => number };
+
+    // Integrated LNA from config, not the station LNB module; no aggregate noise from the Starlink fleet itself
+    expect(hostile.aggregateNoiseK(F)).toBe(0);
+    expect(hostile.receiverNoiseK_()).toBeCloseTo(290 * (10 ** ((CFG.lnaNF_dB ?? 2) / 10) - 1), 3);
+    pointAt(a, 0, 90);
+    a.update();
+    expect(a.getReadModel().gOverTDbK).toBeGreaterThan(8.5);
+  });
+
   it('the RfAntennaPort sees the scan loss', () => {
     const a = new TestArray();
 

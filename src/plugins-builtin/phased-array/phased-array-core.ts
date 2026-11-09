@@ -11,14 +11,16 @@
  * `maxScanDeg` the beam cannot point and the target is dropped. Off the main
  * beam the pattern is a flat floor relative to the scanned peak, not S.580.
  */
+
 import { ANTENNA_CONFIG_KEYS } from '@app/equipment/antenna/antenna-config-keys';
 import { AntennaCore, type AntennaState, type TrackingMode } from '@app/equipment/antenna/antenna-core';
 import type { AntennaConfigId } from '@app/equipment/antenna/antenna-registry';
 import type { Satellite } from '@app/equipment/satellite/satellite';
+import { noiseFigureToK } from '@app/simulation/noise-model';
 import { getSimulatedNowMs } from '@app/simulation/sim-time';
 import type { Hertz, RfSignal } from '@app/types';
 import type { Degrees } from 'ootk';
-import { type BeamMode, BeamScheduler, type BeamSchedulerConfig, type LockResult, type SchedulerSnapshot, type SkySource } from './beam-scheduler';
+import { type BeamMode, BeamScheduler, type BeamSchedulerConfig, type LinkDropRecord, type LockResult, type SchedulerSnapshot, type SkySource } from './beam-scheduler';
 import { ExclusionZoneSet, GeoArcExclusionZone } from './exclusion-zones';
 import { KU_PHASED_ARRAY_UT_CONFIG, type PhasedArrayConfig } from './phased-array-config';
 import { PanelGeometry } from './scan-geometry';
@@ -44,7 +46,17 @@ export interface PhasedArrayReadModel extends SchedulerSnapshot {
   gainDbi: number;
   /** G/T now, dB/K, at the receive band centre */
   gOverTDbK: number;
-  geoArc: { enabled: boolean; widthDeg: number; beamInGeoArc: boolean };
+  geoArc: {
+    enabled: boolean;
+    widthDeg: number;
+    beamInGeoArc: boolean;
+    /** Angle from the beam to the nearest point of the visible GEO arc, degrees (Infinity with no arc) */
+    separationDeg: number;
+    /** Pattern level toward that arc point relative to the scanned peak, dB (0 on the main beam, negative off it) */
+    levelTowardArcDb: number;
+  };
+  /** Last moment the link dropped, or null */
+  lastLinkDrop: LinkDropRecord | null;
   panel: { azDeg: number; tiltDeg: number };
 }
 
@@ -170,6 +182,25 @@ export class PhasedArrayCore extends AntennaCore {
     const mainLobe = peak - 12 * (theta_deg / bw) ** 2;
 
     return Math.min(peak, Math.max(mainLobe, peak + this.arrayConfig_.sidelobeFloor_dBc));
+  }
+
+  /**
+   * The panel has its own integrated LNA and beamformer, so its receive noise is
+   * the config LNA, not the station's LNB module (a 4.5 m station LNB would
+   * otherwise set the terminal's noise).
+   */
+  protected override receiverNoiseK_(): number {
+    return noiseFigureToK(this.config.lnaNF_dB ?? 2.0);
+  }
+
+  /**
+   * No aggregate sidelobe noise from the terminal's own network. The other
+   * satellites of the network are scheduled around the terminal in time and
+   * frequency; they are not co-channel interferers. (The generic aggregate would
+   * add several hundred K and pull G/T to about 3 dB/K.)
+   */
+  override aggregateNoiseK(_frequency: number): number {
+    return 0;
   }
 
   /** No servo, no wind load: the panel does not move. */
@@ -387,9 +418,24 @@ export class PhasedArrayCore extends AntennaCore {
       beamwidthDeg: this.beamwidth3dB_deg_(f),
       gainDbi: this.antennaGain_dBi(f),
       gOverTDbK: m ? m.gOverT_dBK : Number.NaN,
-      geoArc: { enabled: this.geoEnabled_, widthDeg: this.geoWidthDeg_, beamInGeoArc: this.isBeamInGeoArc() },
+      geoArc: { enabled: this.geoEnabled_, widthDeg: this.geoWidthDeg_, beamInGeoArc: this.isBeamInGeoArc(), ...this.geoSeparation_(f) },
+      lastLinkDrop: this.scheduler_.linkDrops[this.scheduler_.linkDrops.length - 1] ?? null,
       panel: { azDeg: this.arrayConfig_.panelAz_deg, tiltDeg: this.arrayConfig_.panelTilt_deg },
     };
+  }
+
+  /** Angle to the nearest GEO arc point and the pattern level toward it relative to the scanned peak. */
+  private geoSeparation_(f: Hertz): { separationDeg: number; levelTowardArcDb: number } {
+    const zone = this.geoZone_;
+    const separationDeg = zone ? zone.distanceToArcDeg(this.normalizedAzimuth, this.state.elevation) : Number.POSITIVE_INFINITY;
+    const levelTowardArcDb = Number.isFinite(separationDeg) ? this.patternGain_dBi_(separationDeg, f) - this.antennaGain_dBi(f) : Number.NEGATIVE_INFINITY;
+
+    return { separationDeg, levelTowardArcDb };
+  }
+
+  /** Every moment the link dropped, oldest first. */
+  get linkDrops(): readonly LinkDropRecord[] {
+    return this.scheduler_.linkDrops;
   }
 
   // ── update ────────────────────────────────────────────────────────────────

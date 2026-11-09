@@ -2,7 +2,9 @@ import type { GroundStationConfig } from '@app/assets/ground-station/ground-stat
 import { galwayGroundStation } from '@app/campaigns/nats-eu/ground-stations';
 import { type AntennaState } from '@app/equipment/antenna';
 import { ANTENNA_CONFIG_KEYS } from '@app/equipment/antenna/antenna-config-keys';
-import type { dB, dBm, Hertz, MHz } from '@app/types';
+import type { AntennaConfigId } from '@app/equipment/antenna/antenna-registry';
+import { KU_PHASED_ARRAY_UT } from '@app/plugins-builtin/phased-array/phased-array-config';
+import type { dBm, Hertz, MHz } from '@app/types';
 import type { Degrees } from 'ootk';
 import { KU_SAT_NORAD } from './satellites';
 
@@ -13,30 +15,33 @@ import { KU_SAT_NORAD } from './satellites';
  * IF = 13100 MHz - RF) and change only the dish, the pointing, the OMT receive
  * polarization (V at zero skew, matching the GEO carriers) and the analyzer window.
  *
- * Cedar Mesa (CM-01), 36.0 N 105.0 W, 2100 m: 2.4 m Ku dish program-tracking
- * KU-SAT 1 at az 168.1 / el 47.5. A small dish has wide sidelobes, so Starlink
- * passes well away from the beam still raise the noise floor.
+ * Cedar Mesa (CM-01), 36.0 N 105.0 W, 2100 m: a Ku flat-panel phased array user
+ * terminal (KU_PHASED_ARRAY_UT, registered by the PhasedArray plugin). It receives
+ * the generic Starlink Ku downlink: 240 MHz RHCP carriers on a 250 MHz raster.
+ * The station receive chain is set up for one of them (RHCP, 11820 MHz, IF 1280 MHz).
+ * KU-SAT 1 stays in the sky as the protected GEO satellite.
  *
  * High Desert (HD-01), same site, 3 m Ku dish parked on the southern sky for the
  * GEO belt survey. The dish slews at 0.2 deg/s, so a sweep takes patience.
  */
 
 type FrontEnd = {
-  omt: { rxPolarization: string; effectiveRxPol: string };
+  omt: { rxPolarization: 'H' | 'LHCP' | 'RHCP' | 'V'; effectiveRxPol: 'H' | 'LHCP' | 'RHCP' | 'V' };
   filter: { bandwidthIndex: number; bandwidth: MHz };
 };
 
 function buildStation(
   id: string,
   name: string,
-  antennaKey: (typeof ANTENNA_CONFIG_KEYS)[keyof typeof ANTENNA_CONFIG_KEYS],
+  antennaKey: AntennaConfigId,
   antennaState: Partial<AntennaState>,
   analyzerCenterHz: number,
   analyzerSpanHz: number,
   rxModemMHz: number,
   rxModemBwMHz: number,
   filterIndex: number,
-  filterBwMHz: number
+  filterBwMHz: number,
+  rxPol: 'H' | 'LHCP' | 'RHCP' | 'V' = 'V'
 ): GroundStationConfig {
   const base = structuredClone(galwayGroundStation) as unknown as GroundStationConfig & {
     rfFrontEnds: FrontEnd[];
@@ -54,8 +59,8 @@ function buildStation(
 
   const fe = base.rfFrontEnds[0];
 
-  fe.omt.rxPolarization = 'V';
-  fe.omt.effectiveRxPol = 'V';
+  fe.omt.rxPolarization = rxPol;
+  fe.omt.effectiveRxPol = rxPol;
   fe.filter.bandwidthIndex = filterIndex;
   fe.filter.bandwidth = filterBwMHz as MHz;
 
@@ -83,33 +88,30 @@ function buildStation(
   return base as GroundStationConfig;
 }
 
+/** Starlink-style carrier the Cedar Mesa modem is tuned to (RF MHz); IF = 13100 - RF. */
+export const CM_CARRIER_RF_MHZ = 11820;
+
 export const cedarMesaGroundStation = buildStation(
   'CM-01',
   'Cedar Mesa Teleport',
-  ANTENNA_CONFIG_KEYS.KU_BAND_2M4_ANTESTAR,
+  KU_PHASED_ARRAY_UT,
   {
-    // Program-tracking KU-SAT 1 (az 168.1 / el 47.5 from CM-01 at T+0)
+    // Flat panel: the beam is steered electronically; az/el follow the scheduler
     isPowered: true,
-    azimuth: 168.11 as Degrees,
-    elevation: 47.52 as Degrees,
+    azimuth: 180 as Degrees,
+    elevation: 90 as Degrees,
     polarization: 0 as Degrees,
     trackingMode: 'program-track',
-    isBeaconLocked: true,
-    targetSatelliteId: KU_SAT_NORAD,
-    targetAzimuth: 168.11 as Degrees,
-    targetElevation: 47.52 as Degrees,
-    targetPolarization: 0 as Degrees,
     slewing: false,
-    beaconCN: 20 as dB,
-    beaconFrequencyHz: 11740e6 as Hertz,
     isLocked: true,
   } as Partial<AntennaState>,
-  1240e6, // 1090-1390 MHz IF window covers all four carriers (IF 1120-1360)
-  300e6,
-  1360, // modem on the 11740 MHz carrier
-  36,
+  1280e6, // analyzer window 780-1780 MHz IF: Starlink-style carriers at 11.32 to 12.32 GHz
+  1000e6,
+  13100 - CM_CARRIER_RF_MHZ, // modem on the 11820 MHz carrier (IF 1280 MHz)
+  250, // carriers are 240 MHz wide; the modem must be at least as wide
   16,
-  320
+  320,
+  'RHCP'
 );
 
 export const highDesertGroundStation = buildStation(

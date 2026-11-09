@@ -79,3 +79,67 @@ export const dishOnPinned = (tolDeg: number) => (): boolean => {
 
   return (sm?.satellites ?? []).some((s) => pinned.has(s.noradId) && s.el > 0 && angularSeparationDeg(s.az, s.el, ant.azimuth, ant.elevation) <= tolDeg);
 };
+
+// ── Phased array terminal (Starlink Interference) ───────────────────────────
+
+interface TerminalLike {
+  scheduler?: { handoverCount: number };
+  beamMode?: string;
+  scanLossDb?: number;
+  geoArcEnabled?: boolean;
+  isBeamInGeoArc?: () => boolean;
+}
+
+const terminal = (): TerminalLike | null => {
+  const ant = sim()?.groundStations?.[0]?.antennas?.[0] as unknown as TerminalLike | undefined;
+
+  return ant && typeof ant.isBeamInGeoArc === 'function' ? ant : null;
+};
+
+const handoverCountOf = (t: TerminalLike): number => t.scheduler?.handoverCount ?? 0;
+
+/** Handover count when the Array Control page was first seen, per terminal. */
+const handoverBase = new WeakMap<object, number>();
+
+/** At least `n` handovers have happened since the Array Control page was first on screen. */
+export const handoversSincePageOpen = (n: number) => (): boolean => {
+  const t = terminal();
+
+  if (!t || !document.querySelector('.array-control-tab')) return false;
+  const count = handoverCountOf(t);
+
+  if (!handoverBase.has(t)) handoverBase.set(t, count);
+
+  return count - (handoverBase.get(t) ?? count) >= n;
+};
+
+/** The beam is in manual mode and the scan loss is above `db`. */
+export const manualScanLossAbove = (db: number) => (): boolean => {
+  const t = terminal();
+
+  return !!t && t.beamMode === 'manual' && (t.scanLossDb ?? 0) > db;
+};
+
+/**
+ * GEO protection cycle, in order: zone off, beam inside the GEO arc while it is
+ * off, zone back on. One phase per terminal; each condition reads the phase.
+ */
+const geoPhase = new WeakMap<object, number>();
+
+const advanceGeoPhase = (t: TerminalLike): number => {
+  let phase = geoPhase.get(t) ?? 0;
+
+  if (phase === 0 && t.geoArcEnabled === false) phase = 1;
+  if (phase === 1 && t.geoArcEnabled === false && t.isBeamInGeoArc?.()) phase = 2;
+  if (phase === 2 && t.geoArcEnabled === true) phase = 3;
+  geoPhase.set(t, phase);
+
+  return phase;
+};
+
+/** The GEO protection cycle has reached `phase` (1 zone off, 2 beam in the arc, 3 zone back on). */
+export const geoCycleReached = (phase: number) => (): boolean => {
+  const t = terminal();
+
+  return !!t && advanceGeoPhase(t) >= phase;
+};

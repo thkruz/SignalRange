@@ -105,6 +105,21 @@ describe('BeamScheduler', () => {
     expect(s.targetNorad).toBe(first);
   });
 
+  it('logs a link drop with the serving satellite at each handover', () => {
+    const sky = new FakeSky();
+
+    sky.set(1, 0, 60);
+    sky.set(2, 180, 55);
+    const s = make(sky);
+
+    s.update(0);
+    expect(s.linkDrops).toHaveLength(0);
+    sky.set(1, 0, 20);
+    s.update(1000);
+    expect(s.linkDrops).toHaveLength(1);
+    expect(s.linkDrops[0]).toMatchObject({ atMs: 1000, servingNorad: 1, nextNorad: 2 });
+  });
+
   it('hands over when the target leaves the cone, with an outage', () => {
     const sky = new FakeSky();
 

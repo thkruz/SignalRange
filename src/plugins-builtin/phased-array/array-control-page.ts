@@ -254,6 +254,10 @@ export class ArrayControlPage implements AntennaPage {
                 <div class="col-6"><div class="text-muted small">Beamwidth now</div><div id="${p}beamwidth" class="font-monospace">--</div></div>
                 <div class="col-6"><div class="text-muted small">G/T now</div><div id="${p}got" class="font-monospace">--</div></div>
               </div>
+              <div class="mb-2">
+                <div class="text-muted small">Last link drop</div>
+                <div id="${p}last-drop" class="font-monospace small">None yet</div>
+              </div>
               <div class="d-flex justify-content-between small"><span class="text-muted">Scan loss</span><span id="${p}scan-loss" class="font-monospace">--</span></div>
               <div class="progress" style="height: 8px;"><div id="${p}scan-loss-bar" class="progress-bar" role="progressbar" style="width: 0%; background: var(--mc-sky-amber);"></div></div>
             </div>
@@ -289,6 +293,19 @@ export class ArrayControlPage implements AntennaPage {
               <div id="${p}geo-warning" class="alert alert-danger py-2 mt-2 mb-0 small" style="display: none;" role="alert">
                 Beam is inside the GEO arc. It can interfere with geostationary links.
               </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <h3 class="card-title mb-0">GEO interference</h3>
+              <span id="${p}geo-risk" class="status-badge"></span>
+            </div>
+            <div class="card-body">
+              <div class="row g-2">
+                <div class="col-6"><div class="text-muted small">Beam to GEO arc</div><div id="${p}geo-sep" class="font-monospace">--</div></div>
+                <div class="col-6"><div class="text-muted small">Level toward the arc</div><div id="${p}geo-level" class="font-monospace">--</div></div>
+              </div>
+              <div class="text-muted small mt-2">This terminal has no transmit power model here, so the card shows geometry and the antenna pattern, not EIRP. Levels are typical values for a Ku flat-panel terminal, not measured Starlink figures.</div>
             </div>
           </div>
         </div>
@@ -573,7 +590,8 @@ export class ArrayControlPage implements AntennaPage {
     plot.setBeam({ azDeg: m.beam.az, elDeg: m.beam.el, beamwidthDeg: m.beamwidthDeg });
     plot.setTrack(this.track_.length > 1 ? this.track_.map((p) => ({ azDeg: p.az, elDeg: p.el })) : null);
     plot.setScanMask({ panelAzDeg: m.panel.azDeg, tiltDeg: m.panel.tiltDeg, maxScanDeg: m.maxScanDeg });
-    plot.setZones(m.geoArc.enabled && this.geoBand_(m.geoArc.widthDeg) ? [this.geoBand_(m.geoArc.widthDeg)!] : []);
+    // The band stays drawn with the protection off, so the player can see where the arc is
+    plot.setZones(this.geoBand_(m.geoArc.widthDeg) ? [this.geoBand_(m.geoArc.widthDeg)!] : []);
   }
 
   private geoBand_(widthDeg: number): ReturnType<typeof geoArcBand> {
@@ -637,9 +655,41 @@ export class ArrayControlPage implements AntennaPage {
     }
     this.updateWidthButtons_();
     this.cache_('geo-warning').style.display = m.geoArc.beamInGeoArc ? '' : 'none';
+    this.syncGeoInterference_(m);
+    const drop = m.lastLinkDrop;
+
+    this.cache_('last-drop').textContent = drop
+      ? `${new Date(drop.atMs).toISOString().slice(11, 19)} UTC, was serving ${this.nameOf_(drop.servingNorad).replace(/^STARLINK-/u, 'SL-')} (NORAD ${drop.servingNorad})`
+      : 'None yet';
 
     this.syncNotice_(m);
     this.renderStrip_(m);
+  }
+
+  private syncGeoInterference_(m: PhasedArrayReadModel): void {
+    const g = m.geoArc;
+    const has = Number.isFinite(g.separationDeg);
+    const risk = this.cache_('geo-risk');
+
+    this.cache_('geo-sep').textContent = has ? `${g.separationDeg.toFixed(1)} deg (band ${g.widthDeg.toFixed(0)})` : 'no arc in view';
+    this.cache_('geo-level').textContent = has ? `${g.levelTowardArcDb.toFixed(1)} dB from peak` : '--';
+    let text = 'CLEAR';
+    let cls = 'status-badge-green';
+
+    if (m.mode !== 'stow' && m.target && has) {
+      if (g.levelTowardArcDb > -3) {
+        text = 'MAIN BEAM ON ARC';
+        cls = 'status-badge-red';
+      } else if (g.beamInGeoArc) {
+        text = 'IN GEO ARC';
+        cls = 'status-badge-red';
+      } else if (g.separationDeg <= g.widthDeg * 2) {
+        text = 'NEAR GEO ARC';
+        cls = 'status-badge-amber';
+      }
+    }
+    risk.textContent = text;
+    risk.className = `status-badge ${cls}`;
   }
 
   private syncNotice_(m: PhasedArrayReadModel): void {

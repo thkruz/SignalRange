@@ -76,14 +76,15 @@ export const geoSurveyData: ScenarioData = {
     {
       id: 'point-at-slot',
       title: 'Point the Dish at It',
-      description: 'Read the satellite az and el from the asset panel and set the antenna to match. The dish moves at 0.2 degrees per second.',
+      description:
+        'Open the pinned satellite page and read its az and el. On the ACU Control tab, with the mode on MANUAL, step the azimuth and elevation to those values (the small arrow is 0.01 degrees, the middle one 1 degree), then press APPLY. The dish moves at 0.2 degrees per second, so a few degrees takes several seconds. The beam is under 1 degree wide and the slots are about 1 degree apart, so get within 0.5 degrees. The ACU Pointing and Beacon lines stay UNLOCKED in manual mode; the RX modem is the lock indicator.',
       groundStation: 'HD-01',
       prerequisiteObjectiveIds: ['pin-a-slot'],
       conditions: [
         {
           type: 'custom',
-          description: 'Dish Within 1 Degree of the Pinned Satellite',
-          params: { evaluator: dishOnPinned(1) },
+          description: 'Dish Within 0.5 Degrees of the Pinned Satellite',
+          params: { evaluator: dishOnPinned(0.5) },
           mustMaintain: false,
         },
       ],
@@ -93,7 +94,8 @@ export const geoSurveyData: ScenarioData = {
     {
       id: 'read-the-carriers',
       title: 'Read the Carriers',
-      description: 'Open RX Analysis. Modem 1 is tuned to 1300 MHz IF. Peak the dish on the slot until the modem reads a C/N of at least 10 dB.',
+      description:
+        'Open RX Analysis. Modem 1 is already on the carrier at 1300 MHz IF (QPSK 3/4, 36 MHz). Nudge the dish in 0.01 degree steps until the modem reads LOCKED with a C/N of at least 10 dB. Only the vertical carriers, at 1300 and 1140 MHz IF, can lock; horizontal carriers are rejected by this feed. A narrow spike is a beacon, not a carrier.',
       groundStation: 'HD-01',
       prerequisiteObjectiveIds: ['point-at-slot'],
       conditions: [

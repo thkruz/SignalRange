@@ -57,6 +57,29 @@ the lockfile and regenerates the manifest from what is on disk. `prebuild` and
 `predev` run it, so a fresh checkout that committed the lockfile rebuilds the
 same plugin set. `sync --check` fails when the committed file has drifted.
 
+## Builtin plugins (in-tree)
+
+A plugin that ships with the game lives in `src/plugins-builtin/<name>/` and is a
+normal `SignalRangePlugin` that uses only the public `PluginApi`. The first one is
+`src/plugins-builtin/phased-array/`. It is loaded through a descriptor in
+`builtinPluginManifest` (`src/plugins/plugin-manifest.ts`):
+
+```ts
+{
+  id: 'PhasedArray',
+  import: () => import('@app/plugins-builtin/phased-array/index'),
+  className: 'PhasedArrayPlugin',
+  defaultConfig: { enabled: true },
+  source: 'builtin',
+}
+```
+
+`import` is a dynamic import of the plugin entry, `className` is the named export, and
+`defaultConfig.enabled` seeds `SettingsManager.isPluginEnabled` (add the id to
+`PluginConfiguration` in `plugin-configuration.ts` so it is typed). A builtin plugin
+needs no `signal-range-plugin.json` or CLI step. Because it is loadable, the router
+waits for `PluginManager` to finish `loadAll()` before it resolves routes.
+
 ## The manifest
 
 ```json

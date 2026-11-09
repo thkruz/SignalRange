@@ -2,6 +2,7 @@ import { vi } from 'vitest';
 import { CampaignManager } from '../src/campaigns/campaign-manager';
 import { EventBus } from '../src/events/event-bus';
 import { Events } from '../src/events/events';
+import { PluginManager } from '../src/plugins/plugin-manager';
 import { Router } from '../src/router';
 
 // Mock dependencies
@@ -103,6 +104,9 @@ describe('Router', () => {
     // Reset singletons
     Router.destroy();
     EventBus.destroy();
+    // Routing is tested without plugins; the real manifest loads builtin plugins asynchronously
+    PluginManager.destroy();
+    PluginManager.getInstance().setManifest([]);
 
     // Set initial URL
     window.history.pushState({}, '', '/');

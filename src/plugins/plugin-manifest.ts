@@ -3,6 +3,7 @@
  * Array order is load order (ties broken by `order` in each plugin's config).
  *
  * Adding a built-in plugin:
+ * Builtin plugins live in src/plugins-builtin/<name>/ and are listed first below.
  * 1. Add a PluginDescriptor here (import, class name, default config).
  * 2. Optionally add its id to SignalRangePluginsConfiguration for typed access.
  *
@@ -18,6 +19,14 @@ import type { PluginDescriptor } from './plugin-descriptor';
 import { externalPluginManifest } from './plugin-manifest.external.generated';
 
 export const builtinPluginManifest: PluginDescriptor[] = [
+  // ── In-tree builtin plugins (open source, enabled by default) ──────────────
+  {
+    id: 'PhasedArray',
+    import: () => import('@app/plugins-builtin/phased-array/index'),
+    className: 'PhasedArrayPlugin',
+    defaultConfig: { enabled: true },
+    source: 'builtin',
+  },
   // ── Private edition ────────────────────────────────────────────────────────
   {
     id: 'Authoring',

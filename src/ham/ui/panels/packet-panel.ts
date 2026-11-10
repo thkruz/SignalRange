@@ -7,7 +7,7 @@
  * Test ids (<p> = the packet radio's device id from the config, default "pkt"):
  *   ham-packet-<p>-input-device, -output-device, -rx-level, -tx-level, -ptt, -system-sounds,
  *   -data-cable, -mycall, -destination, -path, -save, -connect, -send-text, -send, -disconnect,
- *   -link, -frames (log container), -frame-<n> (row), -delivery (list), -notes
+ *   -send-ui (unconnected UI test frame), -corrupt (test control: corrupt the next frame), -link, -frames (log container), -frame-<n> (row), -delivery (list), -notes
  */
 import type { HamStationManager } from '../../ham-station-manager';
 import type { PacketAudioConfig } from '../../ops/packet';
@@ -175,6 +175,21 @@ export class PacketPanel implements StationPanel {
           },
           'btn btn-primary'
         )
+      ),
+      h(
+        'div',
+        { class: 'ham-row' },
+        button(
+          id('send-ui'),
+          'Send test frame',
+          () => {
+            const t = this.text_.value.trim() || 'test';
+            act({ type: 'packet.send', text: t, ui: true });
+            this.text_.value = '';
+          },
+          'btn btn-sm btn-outline-primary'
+        ),
+        button(id('corrupt'), 'Corrupt next frame (test)', () => act({ type: 'packet.injectCorruption' }), 'btn btn-sm btn-outline-warning')
       ),
       h('div', { class: 'small fw-bold' }, 'Frame log'),
       this.frames_,

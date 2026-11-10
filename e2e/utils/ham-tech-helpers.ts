@@ -256,3 +256,55 @@ export async function setDevicePower(page: Page, id: string, on: boolean): Promi
   const label = ((await btn.textContent()) ?? '').trim();
   if (label === (on ? 'Power on' : 'Power off')) await btn.click();
 }
+
+// ---- Packet terminal (S9) and HF rig extras (S10) ----
+
+/** Packet panel test id for a packet radio (the panel keys ids on the packet radio's device id) */
+const pk = (radio: string, part: string): string => `ham-packet-${radio}-${part}`;
+
+export async function setPacketAudio(
+  page: Page,
+  radio: string,
+  v: { input?: 'laptop-mic' | 'interface'; output?: 'laptop-speakers' | 'interface'; txLevel?: number; systemSounds?: boolean }
+): Promise<void> {
+  if (v.input) await page.getByTestId(pk(radio, 'input-device')).selectOption(v.input);
+  if (v.output) await page.getByTestId(pk(radio, 'output-device')).selectOption(v.output);
+  if (v.txLevel !== undefined) await page.getByTestId(pk(radio, 'tx-level')).fill(String(v.txLevel));
+  if (v.systemSounds !== undefined) await page.getByTestId(pk(radio, 'system-sounds')).setChecked(v.systemSounds);
+}
+
+export async function savePacketStation(page: Page, radio: string, mycall: string, destination: string, path: string): Promise<void> {
+  await page.getByTestId(pk(radio, 'mycall')).fill(mycall);
+  await page.getByTestId(pk(radio, 'destination')).fill(destination);
+  await page.getByTestId(pk(radio, 'path')).fill(path);
+  await page.getByTestId(pk(radio, 'save')).click();
+}
+
+export const packetConnect = (page: Page, radio: string) => page.getByTestId(pk(radio, 'connect')).click();
+export const packetSendTestFrame = (page: Page, radio: string) => page.getByTestId(pk(radio, 'send-ui')).click();
+export const packetCorruptNext = (page: Page, radio: string) => page.getByTestId(pk(radio, 'corrupt')).click();
+export async function packetSend(page: Page, radio: string, text: string): Promise<void> {
+  await page.getByTestId(pk(radio, 'send-text')).fill(text);
+  await page.getByTestId(pk(radio, 'send')).click();
+}
+
+export const setRadioMode = (page: Page, dev: string, mode: string) => page.getByTestId(`ham-radio-${dev}-mode`).selectOption(mode);
+/** Number inputs apply on change (blur), so fill then blur */
+async function fillAndCommit(page: Page, testId: string, v: number): Promise<void> {
+  const el = page.getByTestId(testId);
+  await el.fill(String(v));
+  await el.blur();
+}
+export const setFilterHz = (page: Page, dev: string, hz: number) => fillAndCommit(page, `ham-radio-${dev}-filter-hz`, hz);
+export async function setRit(page: Page, dev: string, on: boolean, hz?: number): Promise<void> {
+  if (hz !== undefined) await fillAndCommit(page, `ham-radio-${dev}-rit-hz`, hz);
+  await page.getByTestId(`ham-radio-${dev}-rit-on`).setChecked(on);
+}
+
+/** Press Transmit on an intent the manager must refuse (e.g. band edge) and assert the inline refusal shows */
+export async function pttExpectRefusal(page: Page, dev: string, intent: PttIntent, holdS = 1): Promise<void> {
+  await page.getByTestId(`ham-ptt-${dev}-intent`).selectOption(intent.kind);
+  await page.getByTestId(`ham-ptt-${dev}-hold`).fill(String(holdS));
+  await page.getByTestId(`ham-ptt-${dev}-transmit`).click();
+  await expect(page.getByTestId(`ham-ptt-${dev}-refusal`)).toBeVisible();
+}

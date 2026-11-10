@@ -1,7 +1,7 @@
 import { CardAlarmBadge } from '@app/components/card-alarm-badge/card-alarm-badge';
 import { qs } from '@app/engine/utils/query-selector';
 import { AlarmStatus } from '@app/equipment/base-equipment';
-import { LNBModuleCore, LNBState } from '@app/equipment/rf-front-end/lnb-module/lnb-module-core';
+import { clampLnbLoFrequency, LNBModuleCore, LNBState } from '@app/equipment/rf-front-end/lnb-module/lnb-module-core';
 import { classifyRfAlarmSeverity } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
@@ -233,7 +233,7 @@ export class LNBAdapter {
 
   /** Player edit: stage a new LO and mark it pending until applied. */
   private setStagedLoFrequency_(value: number): void {
-    this.stagedLoFrequency_ = Math.max(5000, Math.min(7000, value));
+    this.stagedLoFrequency_ = clampLnbLoFrequency(value);
     this.hasPendingLoEdit_ = this.stagedLoFrequency_ !== this.lnbModule.state.loFrequency;
     this.updateStagedDisplays_(true);
   }

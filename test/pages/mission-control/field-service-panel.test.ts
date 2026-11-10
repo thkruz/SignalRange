@@ -3,7 +3,15 @@
  * no layer truth leaked, symptom history, hidden without services.
  */
 
-import { buildServicePanelModel, FieldServicePanel, formatAge, formatSampleValue, isNumericCheck, provenancesFor } from '@app/pages/mission-control/tabs/field-service-panel';
+import {
+  badgeText,
+  buildServicePanelModel,
+  FieldServicePanel,
+  formatAge,
+  formatSampleValue,
+  isNumericCheck,
+  provenancesFor,
+} from '@app/pages/mission-control/tabs/field-service-panel';
 import { PhysicalPlantManager } from '@app/physical/physical-plant-manager';
 import type { PlantConfig } from '@app/physical/physical-plant-types';
 import { ServiceModel } from '@app/physical/service-model';
@@ -87,7 +95,7 @@ describe('M09 field service panel', () => {
     panel.sync();
     const s = panel.check('skylink', 'power', 'device-indicator');
     expect(s?.tS).toBe(now());
-    expect(host.querySelector('[data-fsp="badge-skylink|power|"]')?.textContent).toBe('Current');
+    expect(host.querySelector('[data-fsp="badge-skylink|power|"]')?.textContent).toMatch(/^Current, fresh until [0-9]{2}:[0-9]{2}$/u);
     advance(30);
     panel.sync();
     expect(host.querySelector('[data-fsp="badge-skylink|power|"]')?.textContent).toBe('Stale');
@@ -162,5 +170,14 @@ describe('M09 field service panel', () => {
     new FieldServicePanel(host, () => null, now).sync();
     expect(host.style.display).toBe('none');
     expect(formatAge(200)).toBe('3 min ago');
+  });
+});
+
+describe('badgeText', () => {
+  it('says when a Current reading goes out of date', () => {
+    const sample = { tS: 600, maxAgeS: 120 } as never;
+    expect(badgeText({ freshness: 'current', sample })).toBe('Current, fresh until 12:00');
+    expect(badgeText({ freshness: 'stale', sample })).toBe('Stale');
+    expect(badgeText({ freshness: null, sample: null })).toBe('');
   });
 });

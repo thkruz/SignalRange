@@ -919,7 +919,7 @@ describe('TabbedCanvas outside-the-tent guard', () => {
     switchHandler()?.({ tabId: 'rx-analysis' });
     expect(confirmOpen).toHaveBeenCalledTimes(1);
     const [onConfirm, options] = confirmOpen.mock.calls[0] as [() => void, { message: string; confirmText: string; cancelText: string }];
-    expect(options.message).toBe("You're outside. The laptop and equipment are in the tent.");
+    expect(options.message).toBe("You're outside with the dishes, generator and cables. The laptop and equipment panels are in the tent.");
     expect(options.confirmText).toBe('Go back in');
     expect(options.cancelText).toBe('Stay outside');
     expect(activeTabId()).toBe(before);

@@ -430,6 +430,9 @@ export class LevelCompleteModal extends DraggableModal {
     const points = breakdown.map((o) => o.points);
     const allSame = points.every((p) => p === points[0]);
 
+    if (allSame && points[0] === 0) {
+      return `${count} objective${plural} completed (practice, no points)`;
+    }
     if (allSame) {
       return `${count} objective${plural} x +${points[0]} each`;
     }

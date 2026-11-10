@@ -77,7 +77,7 @@
 .pp-hotspot:hover .pp-glow, .pp-hotspot:focus .pp-glow, .pp-hotspot:focus-visible .pp-glow, .pp-hotspot:hover .pp-glow-fb, .pp-hotspot:focus .pp-glow-fb, .pp-hotspot:hover .pp-glow-fb-path, .pp-hotspot:focus .pp-glow-fb-path { opacity: 1; }
 .pp-hotspot .pp-label { font-size: 20px; fill: #fff; paint-order: stroke; stroke: rgba(0, 0, 0, 0.85); stroke-width: 4px; opacity: 0; transition: opacity 0.12s; pointer-events: none; }
 .pp-hotspot:hover .pp-label, .pp-hotspot:focus .pp-label { opacity: 1; }
-.pp-hotspot .pp-pip-svg { pointer-events: none; }
+.pp-hotspot .pp-pip-svg { pointer-events: all; cursor: pointer; }
 .pp-pip-svg { stroke: rgba(0, 0, 0, 0.6); stroke-width: 2; }
 .pp-pip-svg.ok { fill: #22c55e; }
 .pp-pip-svg.warn { fill: #eab308; }

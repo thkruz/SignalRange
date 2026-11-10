@@ -382,6 +382,12 @@ describe('LevelCompleteModal', () => {
       expect(formatDetail([{ points: 100 }])).toBe('1 objective x +100 each');
     });
 
+    it('says practice when every objective is worth zero points', () => {
+      const formatDetail = (modal as any).formatObjectivesDetail_.bind(modal);
+
+      expect(formatDetail([{ points: 0 }, { points: 0 }])).toBe('2 objectives completed (practice, no points)');
+    });
+
     it('should show uniform format when all points are same', () => {
       const formatDetail = (modal as any).formatObjectivesDetail_.bind(modal);
 

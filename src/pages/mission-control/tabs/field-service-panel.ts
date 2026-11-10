@@ -115,6 +115,14 @@ export function describeInterval(model: ServiceModel, rec: { id: string; startS:
   return `Outage started ${at(rec.startS)}. Operator activated ${at(rec.activationS)} (${span('response')} after the start). Terminal registered ${at(rec.registeredS)} (${span('startup')} after activation). Service usable ${at(rec.usableS)}. Time to restore service: ${span('restoration')}.`;
 }
 
+/** Badge text: a Current reading also says when it gets old (a change on site can still end it sooner) */
+export function badgeText(r: Pick<ServicePanelRow, 'freshness' | 'sample'>): string {
+  if (!r.freshness) return '';
+  if (r.freshness === 'current' && r.sample) return `${FRESHNESS_LABEL.current}, fresh until ${formatClock(r.sample.tS + r.sample.maxAgeS)}`;
+
+  return FRESHNESS_LABEL[r.freshness];
+}
+
 export function formatAge(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds));
   if (s < 90) {
@@ -368,7 +376,7 @@ export class FieldServicePanel {
         this.text_(`value-${r.key}`, r.value);
         this.text_(`source-${r.key}`, r.provenance);
         this.text_(`age-${r.key}`, r.age);
-        this.text_(`badge-${r.key}`, r.freshness ? FRESHNESS_LABEL[r.freshness] : '');
+        this.text_(`badge-${r.key}`, badgeText(r));
         const badge = this.el_(`badge-${r.key}`);
         const cls = `fsp-badge${r.freshness ? ` fsp-${r.freshness}` : ''}`;
         if (badge && badge.className !== cls) badge.className = cls;

@@ -1,5 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// SR_DEV_PORT lets a second worktree run its own dev server and specs beside the main tree's :3000.
+const BASE_URL = `http://127.0.0.1:${process.env.SR_DEV_PORT || '3000'}`;
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -18,7 +21,7 @@ export default defineConfig({
   use: {
     // 127.0.0.1 (not localhost) so another dev server bound to IPv6 ::1:3000
     // cannot shadow the rspack server, which binds the IPv4/dual stack.
-    baseURL: 'http://127.0.0.1:3000',
+    baseURL: BASE_URL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -31,7 +34,7 @@ export default defineConfig({
   ],
   webServer: {
     command: 'pnpm run dev',
-    url: 'http://127.0.0.1:3000',
+    url: BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
   },

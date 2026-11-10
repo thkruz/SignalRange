@@ -646,6 +646,11 @@ export async function recordsSubmit(page: Page, formId: string, input: Record<st
       if ((await backing.count()) > 0 && !(await backing.first().evaluate((n) => (n as HTMLDetailsElement).open))) {
         await backing.first().locator('summary').click();
       }
+      // Older entries per source sit behind "Show older": open it as a player would before citing one
+      const older = d.locator(`details.fhf-older[data-hf-older="${key}"]`);
+      if ((await older.count()) > 0 && !(await older.first().evaluate((n) => (n as HTMLDetailsElement).open))) {
+        await older.first().locator('summary').click();
+      }
       const boxes = d.locator(`input[data-hf-key="${key}"][data-hf-cite]`);
       if (typeof f.cites === 'number') {
         // "Cite everything": the panel redraws its entry list on the site tab's 1 s tick, so a run that finished a moment ago

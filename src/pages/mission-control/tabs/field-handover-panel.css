@@ -10,8 +10,9 @@
 .fhf .fhf-input { display: flex; gap: 0.4rem; align-items: center; }
 .fhf .fhf-input input { max-width: 14rem; }
 .fhf .fhf-hint, .fhf .fhf-none { color: var(--mc-text-muted); }
-.fhf .fhf-cites { border: 1px solid var(--mc-border); border-radius: 0.25rem; padding: 0.2rem 0.4rem; max-height: 6rem; overflow-y: auto; }
+.fhf .fhf-cites { border: 1px solid var(--mc-border); border-radius: 0.25rem; padding: 0.2rem 0.4rem; max-height: 12rem; overflow-y: auto; }
 .fhf .fhf-cite { display: block; }
+.fhf .fhf-older > summary { cursor: pointer; color: var(--mc-text-muted); }
 .fhf .fhf-note.fhf-ok { color: var(--mc-status-ok, #22c55e); }
 .fhf .fhf-note.fhf-bad { color: var(--mc-status-caution, #eab308); }
 .fhf .fhf-actions { margin-top: 0.5rem; display: flex; gap: 0.4rem; }

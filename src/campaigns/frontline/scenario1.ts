@@ -109,10 +109,10 @@ export const frontlineScenario1Data: FrontlineScenarioData = {
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: [],
       conditions: [
-        { type: 'part-inspected', description: 'Power source inspected', params: { partId: 'power-station' }, mustMaintain: false },
-        { type: 'part-inspected', description: 'Local router inspected', params: { partId: 'skylink-router' }, mustMaintain: false },
-        { type: 'part-inspected', description: 'Satellite terminal inspected', params: { partId: 'skylink-dish' }, mustMaintain: false },
-        { type: 'part-inspected', description: 'Workstation inspected', params: { partId: 'laptop' }, mustMaintain: false },
+        { type: 'part-inspected', description: 'Power station inspected (power source)', params: { partId: 'power-station' }, mustMaintain: false },
+        { type: 'part-inspected', description: 'SkyLink router inspected (local network)', params: { partId: 'skylink-router' }, mustMaintain: false },
+        { type: 'part-inspected', description: 'SkyLink dish inspected (satellite terminal, outside)', params: { partId: 'skylink-dish' }, mustMaintain: false },
+        { type: 'part-inspected', description: 'Laptop inspected (workstation)', params: { partId: 'laptop' }, mustMaintain: false },
         {
           type: 'status-check',
           description: 'Equipment roles distinguished',

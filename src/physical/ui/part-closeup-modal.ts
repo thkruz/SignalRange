@@ -135,15 +135,15 @@ export class PartCloseupModal extends DraggableModal {
       this.render_();
       this.bindOnce_();
     });
-    document.removeEventListener('keydown', this.boundKeydown_);
-    document.addEventListener('keydown', this.boundKeydown_);
+    document.removeEventListener('keydown', this.boundKeydown_, true);
+    document.addEventListener('keydown', this.boundKeydown_, true);
     this.subscribe_();
   }
 
   override close(cb?: () => void): void {
     const id = this.def_?.id;
     this.unsubscribe_();
-    document.removeEventListener('keydown', this.boundKeydown_);
+    document.removeEventListener('keydown', this.boundKeydown_, true);
     super.close(cb);
     this.returnFocus_(id);
   }
@@ -322,8 +322,22 @@ export class PartCloseupModal extends DraggableModal {
     this.selectedLabel_ = (hit.dataset.label ?? '').split(': internet')[0];
     if (hit.dataset.opensApp === '1') {
       EventBus.getInstance().emit(Events.SWITCH_TAB, { tabId: `${STATION_TAB_PREFIX}${SKYLINK_TAB_ID}` });
+      this.showNotice_('Opened the laptop: SkyLink app');
     }
     this.render_();
+  }
+
+  /** A brief visible cue (and live-region announcement) that the view changed */
+  private showNotice_(text: string): void {
+    document.getElementById('pcu-notice')?.remove();
+    const el = document.createElement('div');
+    el.id = 'pcu-notice';
+    el.setAttribute('role', 'status');
+    el.textContent = text;
+    el.style.cssText =
+      'position:fixed;top:80px;right:20px;z-index:100001;padding:10px 14px;border-radius:4px;background:#1b2330;color:#fff;border:1px solid #22c55e;font:14px monospace;pointer-events:none';
+    document.body.appendChild(el);
+    window.setTimeout(() => el.remove(), 3000);
   }
 
   /** Affordances of the selected region, when the data restricts them */

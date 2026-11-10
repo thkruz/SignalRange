@@ -3,7 +3,7 @@
  * wording, plain rule failures, submit files the record.
  */
 
-import { describeReading, FieldHandoverPanel, STALE_NOTE } from '@app/pages/mission-control/tabs/field-handover-panel';
+import { describeReading, FieldHandoverPanel, STALE_NOTE, splitLatestPerSource } from '@app/pages/mission-control/tabs/field-handover-panel';
 import { EvidenceLog } from '@app/physical/evidence-log';
 import { FieldRecords, type FieldRecordsDeps, type HandoverFormConfig } from '@app/physical/field-records';
 import { PhysicalPlantManager } from '@app/physical/physical-plant-manager';
@@ -108,6 +108,7 @@ describe('M14 handover panel', () => {
     expect(r.host.style.display).toBe('');
     expect(r.host.querySelector('[data-fhf="stale"]')?.textContent).toBe(STALE_NOTE);
     expect(STALE_NOTE).toContain('Take the reading again');
+    expect(STALE_NOTE).not.toContain('as soon as you do anything');
     expect(r.host.querySelector('input[data-hf-field="reg"]')).not.toBeNull();
     expect(r.host.querySelector('input[type="number"][data-hf-field="soc"]')).not.toBeNull();
     expect(r.host.querySelector('[data-hf-cites="why"]')?.textContent).toContain('No observed entries yet');
@@ -196,5 +197,16 @@ describe('M14 handover panel', () => {
     expect(seen.observation).toMatch(/\d+ Wh stored/u);
     r.panel.sync();
     expect(r.panel.fillFromReading('soc')).toBe(true);
+  });
+});
+
+describe('splitLatestPerSource', () => {
+  const e = (id: string, tS: number, layer: string): never =>
+    ({ id, tS, kind: 'observation', subject: 'svc', text: id, sample: { serviceId: 'svc', layer, metric: 'status', value: 'up', unit: 'state', provenance: 'x' } }) as never;
+
+  it('puts the newest entry per layer first and the rest under older', () => {
+    const { latest, older } = splitLatestPerSource([e('a1', 10, 'power'), e('b1', 20, 'local'), e('a2', 30, 'power'), e('b2', 40, 'local')]);
+    expect(latest.map((x) => x.id)).toEqual(['b2', 'a2']);
+    expect(older.map((x) => x.id)).toEqual(['b1', 'a1']);
   });
 });

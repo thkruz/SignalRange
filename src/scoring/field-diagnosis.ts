@@ -29,11 +29,24 @@ function minutes(seconds: number): string {
   return `${m} min ${String(s).padStart(2, '0')} s`;
 }
 
+function timeToCauseLine(summary: DiagnosticSummary, hasFault: boolean): string {
+  if (!hasFault) return 'Time to cause: nothing to find. This shift had no fault.';
+
+  return summary.timeToCauseS === null ? 'Time to cause: the cause was not established with evidence.' : `Time to cause: ${minutes(summary.timeToCauseS)} from the start.`;
+}
+
+/** True when the scenario can put something wrong in front of the player (a fault, an injected fault or an armed link impairment) */
+export function plantHasFault(config: PlantConfig): boolean {
+  if ((config.faults ?? []).length > 0) return true;
+
+  return (config.events ?? []).some((e) => e.actions.some((a) => a.kind === 'inject-fault' || (a.kind === 'link-impairment' && a.active)));
+}
+
 /** Pure: build the section text from a summary and the base points */
-export function describeFieldDiagnosis(summary: DiagnosticSummary, basePoints: number, wrongCauseNotes: readonly string[] = []): FieldDiagnosis {
+export function describeFieldDiagnosis(summary: DiagnosticSummary, basePoints: number, wrongCauseNotes: readonly string[] = [], hasFault = true): FieldDiagnosis {
   const effect = diagnosticPercentEffect(summary, basePoints);
   const lines: string[] = [
-    summary.timeToCauseS === null ? 'Time to cause: the cause was not established with evidence.' : `Time to cause: ${minutes(summary.timeToCauseS)} from the start.`,
+    timeToCauseLine(summary, hasFault),
     `Relevant tests: ${summary.relevantTests} on the affected path, ${summary.irrelevantTests} that did not bear on the symptom.`,
     `Credited negative tests: ${summary.usefulNegatives} (a clean result that ruled a suspect out).`,
     `Lucky swaps: ${summary.unsupportedSpares} (a spare fixed it, but no earlier test pointed there).`,
@@ -76,5 +89,5 @@ export function buildFieldDiagnosis(source: DiagnosisSource, basePoints: number)
   const summary = scoreDiagnosis(field.evidence, field.plant, new DependencyGraph(config), rules);
   const notes = [...new Set(summary.wrongCauseRuleIds.map((id) => rules.find((r) => r.id === id)?.note).filter((n): n is string => n !== undefined))];
 
-  return describeFieldDiagnosis(summary, basePoints, notes);
+  return describeFieldDiagnosis(summary, basePoints, notes, plantHasFault(config));
 }

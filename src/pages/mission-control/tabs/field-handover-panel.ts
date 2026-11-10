@@ -31,7 +31,7 @@ export interface HandoverPanelDeps {
 
 /** Said plainly wherever a form has a field that must match a service reading */
 export const STALE_NOTE =
-  'A reading goes out of date as soon as you do anything on site (inspect, switch, fix, restart). Take the reading again after your last action, then fill the field and submit.';
+  'A reading goes out of date for two reasons. It gets old: each kind of check stays good for a few minutes of game time, and every check you run uses some of that time. Or something changes on site (a fix, a restart, a setting, an outage starting or ending). Take the reading again after your last change, then fill the form right away. The Service checks table shows how long a Current reading lasts.';
 
 const KIND_LABEL: Record<string, string> = { observation: 'Observed', action: 'Did', result: 'Result', hypothesis: 'Hypothesis' };
 const CHOICE_OTHER = 'other';
@@ -40,6 +40,29 @@ function clock(tS: number): string {
   const s = Math.max(0, Math.floor(tS));
 
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+}
+
+/** The entry a notebook line is about: the same service layer and metric, or the same subject and verb */
+function sourceKey(e: EvidenceEntry): string {
+  return e.sample ? `sample|${e.sample.serviceId}|${e.sample.endpointId ?? ''}|${e.sample.layer}|${e.sample.metric}` : `${e.kind}|${e.subject}|${e.verb ?? ''}`;
+}
+
+/** Newest entry per source first (newest at the top), every earlier entry of that source behind "Show older" */
+export function splitLatestPerSource(list: readonly EvidenceEntry[]): { latest: EvidenceEntry[]; older: EvidenceEntry[] } {
+  const newestFirst = list.map((e, i) => ({ e, i })).sort((a, b) => b.e.tS - a.e.tS || b.i - a.i);
+  const seen = new Set<string>();
+  const latest: EvidenceEntry[] = [];
+  const older: EvidenceEntry[] = [];
+  for (const { e } of newestFirst) {
+    const k = sourceKey(e);
+    if (seen.has(k)) older.push(e);
+    else {
+      seen.add(k);
+      latest.push(e);
+    }
+  }
+
+  return { latest, older };
 }
 
 function humanize(id: string): string {
@@ -74,6 +97,8 @@ export class FieldHandoverPanel {
   private formId_ = '';
   private input_: HandoverInput = {};
   private dynKey_: string | null = null;
+  /** Fields whose "Show older" list the player opened (a redraw keeps it open) */
+  private readonly olderOpen_ = new Set<string>();
   private builtForm_ = '';
   private readonly slotHtml_ = new Map<string, string>();
   private pointerDownAtMs_ = 0;
@@ -86,6 +111,7 @@ export class FieldHandoverPanel {
   ) {
     this.host_.addEventListener('pointerdown', this.onPointerDown_);
     this.host_.addEventListener('pointerup', this.onPointerUp_);
+    this.host_.addEventListener('toggle', this.onToggle_, true);
     this.host_.addEventListener('click', this.onClick_);
     this.host_.addEventListener('change', this.onChange_);
     this.host_.addEventListener('input', this.onChange_);
@@ -94,6 +120,7 @@ export class FieldHandoverPanel {
   destroy(): void {
     this.host_.removeEventListener('pointerdown', this.onPointerDown_);
     this.host_.removeEventListener('pointerup', this.onPointerUp_);
+    this.host_.removeEventListener('toggle', this.onToggle_, true);
     this.host_.removeEventListener('click', this.onClick_);
     this.host_.removeEventListener('change', this.onChange_);
     this.host_.removeEventListener('input', this.onChange_);
@@ -221,6 +248,14 @@ export class FieldHandoverPanel {
 
   private readonly onPointerDown_ = (): void => {
     this.pointerDownAtMs_ = Date.now();
+  };
+
+  private readonly onToggle_ = (e: Event): void => {
+    const d = e.target as HTMLElement;
+    const key = d.getAttribute?.('data-hf-older');
+    if (key === null || key === undefined) return;
+    if ((d as HTMLDetailsElement).open) this.olderOpen_.add(key);
+    else this.olderOpen_.delete(key);
   };
 
   private readonly onPointerUp_ = (): void => {
@@ -421,13 +456,13 @@ export class FieldHandoverPanel {
       const list = entries.filter((e) => (kind === null ? e.kind !== 'hypothesis' : e.kind === kind));
       if (list.length === 0) return `<span class="fhf-none">No ${kind ? KIND_LABEL[kind]?.toLowerCase() : 'notebook'} entries yet.</span>`;
       const picked = new Set(cur.cites ?? []);
+      const box = (e: EvidenceEntry): string =>
+        `<label class="fhf-cite"><input type="checkbox" data-hf-key="${k}" data-hf-cite="${escapeHtml(e.id)}"${picked.has(e.id) ? ' checked' : ''} /> #${numbering.get(e.id)} ${escapeHtml(clock(e.tS))} ${escapeHtml(e.text)}</label>`;
+      const { latest, older } = splitLatestPerSource(list);
+      if (older.length === 0) return latest.map(box).join('');
+      const open = older.some((e) => picked.has(e.id)) || this.olderOpen_.has(f.key);
 
-      return list
-        .map(
-          (e) =>
-            `<label class="fhf-cite"><input type="checkbox" data-hf-key="${k}" data-hf-cite="${escapeHtml(e.id)}"${picked.has(e.id) ? ' checked' : ''} /> #${numbering.get(e.id)} ${escapeHtml(clock(e.tS))} ${escapeHtml(e.text)}</label>`
-        )
-        .join('');
+      return `${latest.map(box).join('')}<details class="fhf-older" data-hf-older="${k}"${open ? ' open' : ''}><summary>Show older (${older.length})</summary>${older.map(box).join('')}</details>`;
     };
     let widget: string;
     if ('cites' in rule) {

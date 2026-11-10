@@ -5,7 +5,7 @@
 
 import type { ObjectiveState } from '@app/objectives';
 import { type DiagnosticSummary, diagnosticPercentEffect } from '@app/physical/diagnostic-scorer';
-import { buildFieldDiagnosis, describeFieldDiagnosis, TRIP_RULE_TEXT } from '@app/scoring/field-diagnosis';
+import { buildFieldDiagnosis, describeFieldDiagnosis, plantHasFault, TRIP_RULE_TEXT } from '@app/scoring/field-diagnosis';
 import { ScoreCalculator } from '@app/scoring/score-calculator';
 import { describe, expect, it } from 'vitest';
 
@@ -83,6 +83,23 @@ describe('M18 score integration', () => {
     expect(buildFieldDiagnosis({ field: null, config: () => null }, 100)).toBeNull();
     expect(buildFieldDiagnosis({ field: { evidence: null, plant: {} as never }, config: () => ({ parts: [], connectors: [], cables: [], faults: [] }) as never }, 100)).toBeNull();
     expect(buildFieldDiagnosis({ field: { evidence: {} as never, plant: {} as never }, config: () => null }, 100)).toBeNull();
+  });
+});
+
+describe('no-fault scenarios', () => {
+  it('replaces the time-to-cause line when the shift had no fault', () => {
+    const d = describeFieldDiagnosis(summary({ timeToCauseS: null }), 100, [], false);
+    expect(d.lines[0]).toBe('Time to cause: nothing to find. This shift had no fault.');
+    expect(d.lines.join(' ')).not.toContain('not established');
+  });
+
+  it('sees a fault in the plant faults, an injected fault event or an armed impairment', () => {
+    const base = { parts: [], connectors: [], cables: [] } as never as Parameters<typeof plantHasFault>[0];
+    expect(plantHasFault(base)).toBe(false);
+    expect(plantHasFault({ ...base, faults: [{ id: 'f' } as never] })).toBe(true);
+    expect(plantHasFault({ ...base, events: [{ id: 'e', startAfterObjectiveId: 'o', actions: [{ kind: 'inject-fault', fault: {} as never }] }] })).toBe(true);
+    expect(plantHasFault({ ...base, events: [{ id: 'e', startAfterObjectiveId: 'o', actions: [{ kind: 'link-impairment', impairmentId: 'i', active: true }] }] })).toBe(true);
+    expect(plantHasFault({ ...base, events: [{ id: 'e', startAfterObjectiveId: 'o', actions: [{ kind: 'set-flag', key: 'k', value: 1 }] }] })).toBe(false);
   });
 });
 

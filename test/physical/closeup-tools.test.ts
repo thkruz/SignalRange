@@ -4,6 +4,8 @@
  * attempt never reaches the result log.
  */
 
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('draggabilly', () => ({
@@ -221,6 +223,35 @@ describe('close-up modal pattern', () => {
     expect(document.getElementById('part-closeup-modal')!.getAttribute('aria-modal')).toBe('true');
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     expect(modal.isOpen()).toBe(false);
+  });
+});
+
+describe('close-up modal Escape and laptop cue', () => {
+  it('closes on Escape fired from a focused control inside the dialog', () => {
+    const modal = PartCloseupModal.getInstance();
+    modal.showCloseup('generator');
+    const inner = document.querySelector<HTMLElement>('#part-closeup-modal button, #part-closeup-modal [tabindex]');
+    expect(inner).not.toBeNull();
+    inner!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(modal.isOpen()).toBe(false);
+  });
+
+  it('shows a visible notice when the laptop region switches to the SkyLink app', () => {
+    const modal = PartCloseupModal.getInstance();
+    modal.showCloseup('laptop');
+    const hit = document.querySelector<HTMLElement>('#part-closeup-modal [data-opens-app="1"]');
+    expect(hit).not.toBeNull();
+    hit!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(document.getElementById('pcu-notice')?.textContent).toContain('SkyLink');
+  });
+});
+
+describe('hotspot pip click target', () => {
+  it('the anchor dot receives pointer events so it can be clicked directly', () => {
+    const css = readFileSync(resolve(__dirname, '../../src/physical/ui/plant-ui.css'), 'utf8');
+    const rule = css.split(/\r?\n/u).find((l) => l.startsWith('.pp-hotspot .pp-pip-svg'));
+    expect(rule).toBeDefined();
+    expect(rule).not.toContain('pointer-events: none');
   });
 });
 

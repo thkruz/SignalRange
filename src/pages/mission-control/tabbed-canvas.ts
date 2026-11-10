@@ -665,7 +665,7 @@ export class TabbedCanvas extends BaseElement {
       },
       {
         title: 'You are outside',
-        message: "You're outside. The laptop and equipment are in the tent.",
+        message: "You're outside with the dishes, generator and cables. The laptop and equipment panels are in the tent.",
         confirmText: 'Go back in',
         cancelText: 'Stay outside',
       }

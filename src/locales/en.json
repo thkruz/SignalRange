@@ -30,7 +30,8 @@
       },
       "unreachable": {
         "title": "Can't reach your SkyLink",
-        "body": "You see the last data it sent."
+        "body": "You see the last data it sent.",
+        "bodyEmpty": "Your SkyLink has not sent any data yet."
       },
       "updatedAgo": "Last updated {{age}} ago",
       "updatedNow": "Last updated just now",
@@ -268,7 +269,8 @@
     },
     "unreachable": {
       "title": "Can't reach the modem.",
-      "body": "Showing the last data it gave."
+      "body": "Showing the last data the modem gave.",
+      "bodyEmpty": "The modem has not given any data yet."
     },
     "updatedNow": "Updated just now",
     "updatedAgo": "Updated {{age}} ago",

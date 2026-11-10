@@ -17,7 +17,12 @@ export interface AuthoredLinkContext {
 }
 
 /** Layers whose failure leaves the terminal unable to carry traffic */
-const TRAFFIC_LAYERS = new Set(['power', 'local', 'registration', 'account', 'provider']);
+export const TRAFFIC_LAYERS = new Set(['power', 'local', 'registration', 'account', 'provider']);
+
+/** The account times provider capacity factor, applied exactly once per sample by whichever source builds it */
+export function policyCapacityFactor(ctx: AuthoredLinkContext, path: ServicePathConfig): number {
+  return (ctx.account(path.accountId)?.capacityFactor ?? 1) * (ctx.provider(path.providerId)?.capacityFactor ?? 1);
+}
 
 export class AuthoredLinkSource implements LinkQualitySource {
   private readonly ctx_: AuthoredLinkContext;
@@ -34,7 +39,7 @@ export class AuthoredLinkSource implements LinkQualitySource {
     if (this.ctx_.layers(serviceId).some((l) => TRAFFIC_LAYERS.has(l.layer) && l.status === 'down')) {
       return null;
     }
-    const factor = (this.ctx_.account(path.accountId)?.capacityFactor ?? 1) * (this.ctx_.provider(path.providerId)?.capacityFactor ?? 1);
+    const factor = policyCapacityFactor(this.ctx_, path);
 
     const spread = path.profile.rttSpreadMs;
     const jitter = spread === undefined ? null : windowJitter(path.profile.rttMs, spread, path.profile.rttSeed ?? seedFor(serviceId), tS);

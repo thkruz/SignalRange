@@ -287,7 +287,7 @@ export class ModemDashboardPage implements AntennaPage {
     if (view.link === 'modem-unreachable') {
       const age = view.ageS === null ? '' : view.ageS < 60 ? tr('updatedNow') : tr('updatedAgo', { age: formatAge(view.ageS) });
       banner.hidden = false;
-      banner.innerHTML = `<strong>${tr('unreachable.title')}</strong> ${tr('unreachable.body')} <span class="skylink-age">${age}</span>`;
+      banner.innerHTML = `<strong>${tr('unreachable.title')}</strong> ${tr(view.ageS === null ? 'unreachable.bodyEmpty' : 'unreachable.body')} <span class="skylink-age">${age}</span>`;
     } else {
       banner.hidden = true;
     }

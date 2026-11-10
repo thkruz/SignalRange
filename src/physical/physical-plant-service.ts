@@ -86,7 +86,9 @@ export class PhysicalPlantService {
         this.weatherOverride_ = { ...this.weatherOverride_, ...weather };
       },
     });
-    this.services = config.service ? new ServiceModel(config.service, this.plant, undefined, { now: () => this.fineNowS_ ?? SimClock.scenarioElapsedMs() / 1000 }) : null;
+    this.services = config.service
+      ? new ServiceModel(config.service, this.plant, undefined, { now: () => this.fineNowS_ ?? SimClock.scenarioElapsedMs() / 1000 }, config.liveLink)
+      : null;
     this.evidence = config.service || config.events?.length ? new EvidenceLog(this.plant, this.services) : null;
     this.workloads =
       config.workloads && this.services

@@ -10,6 +10,7 @@
 
 import { AuthoredLinkSource } from './authored-link-source';
 import { AuthoredLinkImpairment } from './link-impairment';
+import { LiveLinkImpairment, LiveLinkSource, type LivePhysicsReader } from './live-link';
 import {
   type AccountState,
   type EndpointState,
@@ -19,6 +20,7 @@ import {
   type LinkImpairmentSource,
   type LinkQualitySource,
   type LinkSample,
+  type LiveLinkConfig,
   type PlantReader,
   type ProviderState,
   type RecoveryInterval,
@@ -108,7 +110,21 @@ export class ServiceModel {
   private readonly sampleListeners_: Array<(sample: ServiceSample) => void> = [];
   private readonly eventListeners_: Array<(eventId: string) => void> = [];
 
-  constructor(cfg: ServiceModelConfig, plant: PlantReader, link: LinkQualitySource | undefined, deps: ServiceModelDeps) {
+  /**
+   * `live` is the physics reader of package H. It is used only when `cfg.linkMode === 'live'`; every other
+   * configuration is authored, and passing a reader with an authored mode is an error (no silent mixing).
+   */
+  constructor(cfg: ServiceModelConfig, plant: PlantReader, link: LinkQualitySource | undefined, deps: ServiceModelDeps, live?: LivePhysicsReader) {
+    const isLive = cfg.linkMode === 'live';
+    if (isLive && (!live || !cfg.live)) {
+      throw new Error('ServiceModel linkMode "live" needs a physics reader and cfg.live mapping');
+    }
+    if (isLive && (link || cfg.impairments?.length)) {
+      throw new Error('ServiceModel linkMode "live" cannot be combined with an authored link source or impairments');
+    }
+    if (!isLive && live) {
+      throw new Error('ServiceModel got a live physics reader but linkMode is not "live"');
+    }
     this.paths_ = cfg.paths;
     for (const a of cfg.accounts) this.accounts_.set(a.id, { ...a });
     for (const p of cfg.providers) this.providers_.set(p.id, { ...p, noticeIds: [...p.noticeIds] });
@@ -116,16 +132,19 @@ export class ServiceModel {
     this.plant_ = plant;
     this.deps_ = deps;
     this.intervalCfg_ = cfg.intervals ?? [];
-    this.impairment_ = cfg.impairments?.length ? new AuthoredLinkImpairment(cfg.impairments) : null;
+    if (isLive) {
+      this.impairment_ = new LiveLinkImpairment(live as LivePhysicsReader, cfg.live as LiveLinkConfig);
+    } else {
+      this.impairment_ = cfg.impairments?.length ? new AuthoredLinkImpairment(cfg.impairments) : null;
+    }
     this.maxAge_ = { ...DEFAULT_MAX_AGE_S, ...cfg.maxAgeS };
-    this.link_ =
-      link ??
-      new AuthoredLinkSource({
-        path: (id) => this.paths_.find((p) => p.id === id),
-        layers: (id) => this.layers(id),
-        account: (id) => this.accounts_.get(id),
-        provider: (id) => this.providers_.get(id),
-      });
+    const linkCtx = {
+      path: (id: string) => this.paths_.find((p) => p.id === id),
+      layers: (id: string) => this.layers(id),
+      account: (id: string) => this.accounts_.get(id),
+      provider: (id: string) => this.providers_.get(id),
+    };
+    this.link_ = isLive ? new LiveLinkSource(linkCtx, live as LivePhysicsReader, cfg.live as LiveLinkConfig) : (link ?? new AuthoredLinkSource(linkCtx));
     // A fix that worked, a mode change or any downtime changes what an earlier reading meant
     this.unsubscribe_ =
       plant.onAction?.((entry) => {

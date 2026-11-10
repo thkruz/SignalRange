@@ -9,6 +9,7 @@ import type { EquipmentConfig } from './equipment-records';
 import type { HypothesisSpec } from './evidence-predicates';
 import type { HandoverFormConfig } from './field-records';
 import type { IncomingRecordSpec, ReferralRule } from './incoming-types';
+import type { LivePhysicsReader } from './live-link';
 import type { AccountState, EndpointState, ProviderState, ServiceModelConfig } from './service-types';
 import type { WorkloadConfig } from './workload-types';
 
@@ -251,6 +252,8 @@ export interface PlantConfig {
   events?: PlantEventConfig[];
   /** Layered link services (Campaign 6, M04). Absent = no service model. */
   service?: ServiceModelConfig;
+  /** Physics reader for `service.linkMode: 'live'` (package H). Not serialised; absent for every authored scenario. */
+  liveLink?: LivePhysicsReader;
   /** Requirement cards and workload runs (Campaign 6, M10). Needs `service`. Absent = no runner. */
   workloads?: WorkloadConfig;
   /** Path-diagram options (M24). `highlightShared: false` hides the shared-dependency highlight so the player finds them. */

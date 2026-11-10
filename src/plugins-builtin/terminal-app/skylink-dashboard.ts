@@ -248,7 +248,7 @@ export class SkylinkDashboardPage implements AntennaPage {
     if (view.link === 'dish-unreachable') {
       const age = view.ageS === null ? '' : view.ageS < 60 ? tr('shell.updatedNow') : tr('shell.updatedAgo', { age: formatAge(view.ageS) });
       banner.hidden = false;
-      banner.innerHTML = `<strong>${tr('shell.unreachable.title')}</strong> ${tr('shell.unreachable.body')} <span class="skylink-age">${age}</span>`;
+      banner.innerHTML = `<strong>${tr('shell.unreachable.title')}</strong> ${tr(view.ageS === null ? 'shell.unreachable.bodyEmpty' : 'shell.unreachable.body')} <span class="skylink-age">${age}</span>`;
     } else {
       banner.hidden = true;
     }

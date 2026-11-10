@@ -144,6 +144,24 @@ export interface EndpointState {
 
 export type SampleProvenance = 'device-indicator' | 'local-probe' | 'terminal-app' | 'provider-portal' | 'pilot-report' | 'endpoint-report' | 'workload-run';
 
+/** Explicit per-scenario link source selection (package H); absent means authored */
+export type LinkMode = 'authored' | 'live';
+
+export interface LiveLinkMapping {
+  /** C/N (dB) at which the authored profile is the truth (clear sky) */
+  nominalCnDb: number;
+  /** C/N (dB) at and below which nothing is carried */
+  thresholdCnDb: number;
+  /** Margin over threshold (dB) under which loss starts to rise (default 3) */
+  lowMarginDb?: number;
+  /** Loss added per dB under that margin, percent (default 1.5) */
+  lossPctPerDb?: number;
+}
+
+export interface LiveLinkConfig {
+  mapping: Record<string, LiveLinkMapping>;
+}
+
 export interface ServiceModelConfig {
   paths: ServicePathConfig[];
   accounts: AccountState[];
@@ -153,6 +171,10 @@ export interface ServiceModelConfig {
   maxAgeS?: Partial<Record<SampleProvenance, number>>;
   /** Authored external impairments (opt-in; absent for every other scenario) */
   impairments?: LinkImpairmentConfig[];
+  /** Link mode: 'authored' (default, deterministic profiles) or 'live' (physics-backed; needs `live` and a reader) */
+  linkMode?: LinkMode;
+  /** Mapping from physical C/N to the profile, per service (package H); required when linkMode is 'live' */
+  live?: LiveLinkConfig;
   /** Measured recovery intervals (package E; opt-in, absent for every other scenario) */
   intervals?: RecoveryIntervalConfig[];
 }

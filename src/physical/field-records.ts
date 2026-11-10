@@ -45,6 +45,8 @@ export type ClaimRule =
       accept?: string[];
       /** Evidence the field's own citations must show for a given accepted answer (an assessed conclusion needs its backing) */
       backing?: Record<string, EvidenceGroup[]>;
+      /** The answer must equal the one in the latest accepted record of another form (a later report cannot contradict an earlier filing) */
+      sameAs?: { formId: string; key: string; label: string };
     }
   /** Cited entries must fill every group with distinct entries (typed predicates; see evidence-predicates.ts) */
   | { evidence: EvidenceGroup[] };
@@ -233,6 +235,12 @@ export class FieldRecords implements RecordReader {
 
     if (!(rule.accept ?? rule.choice).includes(String(value))) {
       return fail(field.key, `${field.label} is not one of the answers this form accepts.`);
+    }
+    if (rule.sameAs) {
+      const earlier = this.recordsFor(rule.sameAs.formId).at(-1)?.values[rule.sameAs.key];
+      if (earlier !== undefined && String(earlier) !== String(value)) {
+        return fail(field.key, `${field.label} differs from the ${rule.sameAs.label} you filed. Change that filing first, or record why the conclusion moved.`);
+      }
     }
     const needs = rule.backing?.[String(value)];
     if (needs) {

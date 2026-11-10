@@ -1,4 +1,5 @@
 import { Character, Emotion } from '@app/modal/character-enum';
+import type { EvidenceGroup } from '@app/physical/evidence-predicates';
 import type { HandoverFormConfig } from '@app/physical/field-records';
 import type { RequirementCard } from '@app/physical/workload-types';
 import { SKYLINK_SERVICE } from './camp-field-config';
@@ -13,6 +14,7 @@ import {
   FORWARD_SKYLINK_UNIT,
 } from './forward-field-config';
 import { forecastMeetsReserve, handoverValid, layerObserved, modeIs, recordAccepted, samplesCurrent, workloadRunFinished, workloadVerified } from './frontline-conditions';
+import { pick, reading } from './report-choices';
 import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-support';
 
 /**
@@ -50,14 +52,31 @@ const deliveryForm: HandoverFormConfig = {
   title: 'EuroSat delivery reconciliation',
   documentSection: 'Delivery',
   fields: [
-    { key: 'serial', label: 'Terminal serial against the delivery record', required: true, rule: { choice: ['matches'], labels: { matches: 'Matches the record' } } },
-    { key: 'account', label: 'Account assignment', required: true, rule: { choice: ['matches'], labels: { matches: 'Matches the authorized account' } } },
-    { key: 'accessories', label: 'Accessories against the list', required: true, rule: { choice: ['complete'], labels: { complete: 'Complete' } } },
+    {
+      key: 'serial',
+      label: 'Terminal serial against the delivery record',
+      required: true,
+      rule: pick({ matches: 'Matches the record', mismatch: 'Does not match', unchecked: 'Not compared' }, ['matches']),
+    },
+    {
+      key: 'account',
+      label: 'Account assignment',
+      required: true,
+      rule: pick({ matches: 'Matches the authorized account', mismatch: 'Does not match', unchecked: 'Not compared' }, ['matches']),
+    },
+    {
+      key: 'accessories',
+      label: 'Accessories against the list',
+      required: true,
+      rule: pick({ complete: 'Complete', 'missing-items': 'Items missing', 'not-checked': 'Not checked' }, ['complete']),
+    },
     {
       key: 'depot',
       label: 'What the depot test covered',
       required: true,
-      rule: { choice: ['hardware-only'], labels: { 'hardware-only': 'The hardware only, with no service tested' } },
+      rule: pick({ 'hardware-only': 'The hardware only, with no service tested', 'service-tested': 'The service was tested end to end', 'nothing-tested': 'Nothing was tested' }, [
+        'hardware-only',
+      ]),
     },
   ],
 };
@@ -67,7 +86,14 @@ const commissioningForm: HandoverFormConfig = {
   title: 'EuroSat commissioning checks',
   documentSection: 'Commissioning',
   fields: [
-    { key: 'unit', label: 'Unit commissioned', required: true, rule: { choice: [FORWARD_EUROSAT_UNIT], labels: { [FORWARD_EUROSAT_UNIT]: 'The accepted EuroSat terminal' } } },
+    {
+      key: 'unit',
+      label: 'Unit commissioned',
+      required: true,
+      rule: pick({ [FORWARD_EUROSAT_UNIT]: 'The accepted EuroSat terminal', 'camp-vsat': 'The camp VSAT terminal', 'skylink-unit': 'The SkyLink terminal' }, [
+        FORWARD_EUROSAT_UNIT,
+      ]),
+    },
     { key: 'mode', label: 'Terminal mode now', required: true, rule: { modeIs: { partId: 'vsat-modem' } } },
     { key: 'registration', label: 'Terminal registration now', required: true, rule: { matchesCurrent: { serviceId: FORWARD_EUROSAT_SERVICE, layer: 'registration' } } },
     { key: 'account', label: 'Account authorization now', required: true, rule: { matchesCurrent: { serviceId: FORWARD_EUROSAT_SERVICE, layer: 'account' } } },
@@ -75,10 +101,26 @@ const commissioningForm: HandoverFormConfig = {
       key: 'service',
       label: 'What these checks establish',
       required: true,
-      rule: { choice: ['ready-not-proven'], labels: { 'ready-not-proven': 'The terminal is ready; end-to-end service is not yet measured' } },
+      rule: pick(
+        {
+          'ready-not-proven': 'The terminal is ready; end-to-end service is not yet measured',
+          proven: 'The terminal is ready and service is proven end to end',
+          'not-ready': 'The terminal is not ready',
+        },
+        ['ready-not-proven']
+      ),
     },
   ],
 };
+
+/** A numeric reading: the terminal app or local probe reads it at the registration layer, a workload run at the application layer */
+const numeric = (id: string, label: string, metric: string): EvidenceGroup => ({
+  ...reading(id, label, FORWARD_EUROSAT_SERVICE, 'registration', undefined, { metric }),
+  orMatch: [{ kind: 'observation', serviceId: FORWARD_EUROSAT_SERVICE, layer: 'application', metric }],
+});
+const EUS_DELAY = numeric('delay', 'a delay reading from the EuroSat service', 'rttMs');
+const EUS_RATE = numeric('rate', 'a download rate reading from the EuroSat service', 'downMbps');
+const EUS_LOSS = numeric('loss', 'a loss reading from the EuroSat service', 'lossPct');
 
 const measurementForm: HandoverFormConfig = {
   id: 'measurement',
@@ -87,12 +129,12 @@ const measurementForm: HandoverFormConfig = {
   fields: [
     { key: 'local', label: 'Local network now', required: true, rule: { matchesCurrent: { serviceId: FORWARD_EUROSAT_SERVICE, layer: 'local' } } },
     { key: 'application', label: 'Application service now', required: true, rule: { matchesCurrent: { serviceId: FORWARD_EUROSAT_SERVICE, layer: 'application' } } },
-    { key: 'samples', label: 'Delay, rate and loss readings kept', required: true, rule: { cites: 'observation', min: 3 } },
+    { key: 'samples', label: 'Delay, rate and loss readings kept', required: true, rule: { evidence: [EUS_DELAY, EUS_RATE, EUS_LOSS] } },
     {
       key: 'delay',
       label: 'Delay against the SkyLink reference',
       required: true,
-      rule: { choice: ['much-higher'], labels: { 'much-higher': 'Much higher, as expected for a GEO path' } },
+      rule: pick({ 'much-higher': 'Much higher, as expected for a GEO path', similar: 'About the same', lower: 'Lower' }, ['much-higher']),
     },
   ],
 };
@@ -102,10 +144,25 @@ const suitabilityForm: HandoverFormConfig = {
   title: 'Workload suitability',
   documentSection: 'Suitability',
   fields: [
-    { key: 'transfer', label: 'Delay-tolerant transfer', required: true, rule: { choice: ['supported'], labels: { supported: 'Supported by the measurements' } } },
-    { key: 'interactive', label: 'Interactive session', required: true, rule: { choice: ['unsupported'], labels: { unsupported: 'Not supported' } } },
-    { key: 'unmet', label: 'Requirement the interactive session misses', required: true, rule: { choice: ['delay'], labels: { delay: 'Round-trip delay above its limit' } } },
-    { key: 'basis', label: 'Observations behind it', required: true, rule: { cites: 'observation', min: 2 } },
+    {
+      key: 'transfer',
+      label: 'Delay-tolerant transfer',
+      required: true,
+      rule: pick({ supported: 'Supported by the measurements', unsupported: 'Not supported', marginal: 'Marginal, depends on conditions' }, ['supported']),
+    },
+    {
+      key: 'interactive',
+      label: 'Interactive session',
+      required: true,
+      rule: pick({ unsupported: 'Not supported', supported: 'Supported', marginal: 'Marginal, depends on conditions' }, ['unsupported']),
+    },
+    {
+      key: 'unmet',
+      label: 'Requirement the interactive session misses',
+      required: true,
+      rule: pick({ delay: 'Round-trip delay above its limit', rate: 'Download rate below its limit', loss: 'Packet loss above its limit' }, ['delay']),
+    },
+    { key: 'basis', label: 'Observations behind it', required: true, rule: { evidence: [EUS_DELAY, EUS_RATE] } },
   ],
 };
 
@@ -121,15 +178,22 @@ const capabilityForm: HandoverFormConfig = {
       key: 'restored',
       label: 'Capability EuroSat restored',
       required: true,
-      rule: { choice: [S11_TRANSFER_CARD.id], labels: { [S11_TRANSFER_CARD.id]: 'Delay-tolerant transfer' } },
+      rule: pick({ [S11_TRANSFER_CARD.id]: 'Delay-tolerant transfer', [S11_INTERACTIVE_CARD.id]: 'Interactive session', neither: 'Neither task' }, [S11_TRANSFER_CARD.id]),
     },
     {
       key: 'unavailable',
       label: 'Task that stays unavailable',
       required: true,
-      rule: { choice: [S11_INTERACTIVE_CARD.id], labels: { [S11_INTERACTIVE_CARD.id]: 'Interactive session, because of its delay limit' } },
+      rule: pick({ [S11_INTERACTIVE_CARD.id]: 'Interactive session, because of its delay limit', [S11_TRANSFER_CARD.id]: 'Delay-tolerant transfer', neither: 'Neither task' }, [
+        S11_INTERACTIVE_CARD.id,
+      ]),
     },
-    { key: 'restriction', label: 'SkyLink restriction', required: true, rule: { choice: ['remains-active'], labels: { 'remains-active': 'Still in force' } } },
+    {
+      key: 'restriction',
+      label: 'SkyLink restriction',
+      required: true,
+      rule: pick({ 'remains-active': 'Still in force', lifted: 'Lifted', unknown: 'Not known' }, ['remains-active']),
+    },
   ],
 };
 

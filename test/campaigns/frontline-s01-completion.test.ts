@@ -67,17 +67,18 @@ function runId(svc: PhysicalPlantService): string {
 }
 
 function baselineInput(svc: PhysicalPlantService, soc: number) {
-  const obs = entryIds(svc, 'observation');
-
-  return {
+  const input = {
     service: { value: 'skylink' },
     energy: { value: soc },
     power: { value: String(svc.services?.takeSample('skylink', 'power', 'device-indicator').value) },
     local: { value: String(svc.services?.takeSample('skylink', 'local', 'local-probe').value) },
     registration: { value: String(svc.services?.takeSample('skylink', 'registration', 'terminal-app').value) },
     application: { value: runId(svc) },
-    evidence: { cites: obs.slice(0, 2) },
+    evidence: { cites: [] as string[] },
   };
+  input.evidence.cites = entryIds(svc, 'observation');
+
+  return input;
 }
 
 function submitBaseline(svc: PhysicalPlantService): void {

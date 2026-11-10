@@ -82,7 +82,7 @@ function acts(svc: PhysicalPlantService): Record<string, () => void> {
       svc.services?.takeSample('skylink', 'registration', 'terminal-app');
       const app = svc.services?.takeSample('skylink', 'application', 'endpoint-report');
       svc.plant.inspect('skylink-dish');
-      ok(svc.records?.submit('plan', { symptom: { value: String(app?.value) }, check: { value: 'inspect-connectors' }, basis: { cites: obsIds(svc).slice(0, 1) } }));
+      ok(svc.records?.submit('plan', { symptom: { value: String(app?.value) }, check: { value: 'inspect-connectors' }, basis: { cites: obsIds(svc) } }));
     },
     's08-diagnose-fault': () => {
       svc.plant.measure('cable-tester', 'skylink-cable');

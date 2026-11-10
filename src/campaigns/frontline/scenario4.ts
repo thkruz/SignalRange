@@ -3,6 +3,7 @@ import type { HandoverFormConfig } from '@app/physical/field-records';
 import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import { applyCampField, OLA_CHECK_CARD, SKYLINK_SERVICE } from './camp-field-config';
 import { eventFired, handoverValid, recoveryObserved, sampleAfterEvent, workloadVerified } from './frontline-conditions';
+import { pick, reading, repaired } from './report-choices';
 import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-support';
 
 /**
@@ -24,14 +25,37 @@ const environmentForm: HandoverFormConfig = {
   title: 'Environment report',
   documentSection: 'Environment',
   fields: [
-    { key: 'recovery', label: 'Normal recovery you waited through', required: true, rule: { cites: 'observation', min: 2 } },
+    {
+      key: 'recovery',
+      label: 'Normal recovery you waited through',
+      required: true,
+      rule: {
+        evidence: [
+          reading('down', 'a SkyLink registration reading, down, taken after the restart', SKYLINK_SERVICE, 'registration', ['down'], { afterEvent: RECOVERY_EVENT }),
+          reading('up', 'a SkyLink registration reading, up, taken after the restart', SKYLINK_SERVICE, 'registration', ['up'], { afterEvent: RECOVERY_EVENT }),
+        ],
+      },
+    },
     {
       key: 'condition',
       label: 'Condition found at the terminal',
       required: true,
-      rule: { choice: ['obstruction'], labels: { obstruction: 'Something blocking the terminal view of the sky' } },
+      rule: pick(
+        {
+          obstruction: 'Something blocking the terminal view of the sky',
+          'power-loss': 'The terminal losing power',
+          'cable-fault': 'A fault in the cable to the terminal',
+          'slow-restart': 'A restart that was just slow to finish',
+        },
+        ['obstruction']
+      ),
     },
-    { key: 'correction', label: 'Correction you made', required: true, rule: { cites: 'action', min: 1 } },
+    {
+      key: 'correction',
+      label: 'Correction you made',
+      required: true,
+      rule: { evidence: [repaired('fix', 'a correction that changed the terminal surroundings', ['skylink-dish'])] },
+    },
     { key: 'verified', label: 'Fresh application check after the correction', required: true, rule: { workload: { cardId: OLA_CHECK_CARD.id, is: ['supported'] } } },
   ],
 };

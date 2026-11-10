@@ -2,6 +2,7 @@ import { Character, Emotion } from '@app/modal/character-enum';
 import type { HandoverFormConfig } from '@app/physical/field-records';
 import { applyCampField, OLA_CHECK_CARD, SKYLINK_SERVICE } from './camp-field-config';
 import { correctionApproved, correctionFiled, handoverValid, recordAccepted, samplesCurrent, workloadVerified } from './frontline-conditions';
+import { checked, pick } from './report-choices';
 import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-support';
 
 /**
@@ -19,24 +20,42 @@ const UNIT = 'kivilahti-router';
 const REQUEST = 's7-config-approval';
 const APPROVAL_EVENT = 's7-config-approved';
 
+/** The terminal hardware a delivery check can fairly look at */
+const HARDWARE = ['skylink-router', 'skylink-dish', 'skylink-cable', 'skylink-cable:dish', 'skylink-cable:router'];
+const HARDWARE_CHECKED = checked('hardware', 'a hands-on look at the terminal hardware', HARDWARE);
+
 const inventoryForm: HandoverFormConfig = {
   id: 'inventory',
   title: 'Delivery reconciliation',
   documentSection: 'Delivery',
   fields: [
-    { key: 'serial', label: 'Serial on the unit against the inventory', required: true, rule: { choice: ['matches'], labels: { matches: 'Matches the inventory entry' } } },
-    { key: 'account', label: 'Account assignment', required: true, rule: { choice: ['matches'], labels: { matches: 'Matches the authorized account' } } },
+    {
+      key: 'serial',
+      label: 'Serial on the unit against the inventory',
+      required: true,
+      rule: pick({ matches: 'Matches the inventory entry', differs: 'Differs from the inventory entry', 'not-checked': 'Not checked' }, ['matches']),
+    },
+    {
+      key: 'account',
+      label: 'Account assignment',
+      required: true,
+      rule: pick({ matches: 'Matches the authorized account', differs: 'Differs from the authorized account', 'not-checked': 'Not checked' }, ['matches']),
+    },
     {
       key: 'configuration',
       label: 'Configuration version',
       required: true,
-      rule: { choice: ['unconfirmed'], labels: { unconfirmed: 'Differs from the record and is not confirmed' } },
+      rule: pick({ unconfirmed: 'Differs from the record and is not confirmed', matches: 'Matches the record', 'approved-later': 'Differs from the record but was approved' }, [
+        'unconfirmed',
+      ]),
     },
     {
       key: 'depot',
       label: 'What the depot test record shows',
       required: true,
-      rule: { choice: ['earlier-test-only'], labels: { 'earlier-test-only': 'Only the earlier hardware test' } },
+      rule: pick({ 'earlier-test-only': 'Only the earlier hardware test', 'service-test': 'A full service test after the last change', 'no-record': 'No test record at all' }, [
+        'earlier-test-only',
+      ]),
     },
   ],
 };
@@ -46,15 +65,22 @@ const readinessForm: HandoverFormConfig = {
   title: 'Readiness assessment',
   documentSection: 'Readiness',
   fields: [
-    { key: 'hardware', label: 'Hardware checks you made', required: true, rule: { cites: 'observation', min: 1 } },
+    { key: 'hardware', label: 'Hardware checks you made', required: true, rule: { evidence: [HARDWARE_CHECKED] } },
     { key: 'registration', label: 'Registration reading', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'registration' } } },
     {
       key: 'authorization',
       label: 'Authorization state',
       required: true,
-      rule: { choice: ['unresolved'], labels: { unresolved: 'Unresolved until the configuration is confirmed' } },
+      rule: pick({ unresolved: 'Unresolved until the configuration is confirmed', authorized: 'Authorized, the hardware checks passed', denied: 'Denied for service' }, [
+        'unresolved',
+      ]),
     },
-    { key: 'workload', label: 'Workload readiness', required: true, rule: { choice: ['not-ready'], labels: { 'not-ready': 'Not ready for service' } } },
+    {
+      key: 'workload',
+      label: 'Workload readiness',
+      required: true,
+      rule: pick({ 'not-ready': 'Not ready for service', ready: 'Ready for service', 'ready-with-limits': 'Ready, with the unconfirmed version noted' }, ['not-ready']),
+    },
   ],
 };
 
@@ -63,10 +89,30 @@ const configReviewForm: HandoverFormConfig = {
   title: 'Configuration review',
   documentSection: 'Configuration history',
   fields: [
-    { key: 'entry', label: 'Record that differs', required: true, rule: { choice: ['configVersion'], labels: { configVersion: 'Configuration version' } } },
-    { key: 'original', label: 'Version in the approved handover', required: true, rule: { choice: ['handover-v2'], labels: { 'handover-v2': 'handover-v2' } } },
-    { key: 'unexplained', label: 'Version on the unit', required: true, rule: { choice: ['depot-v3'], labels: { 'depot-v3': 'depot-v3' } } },
-    { key: 'reference', label: 'Approval reference for the unit version', required: true, rule: { choice: ['none'], labels: { none: 'None in the record' } } },
+    {
+      key: 'entry',
+      label: 'Record that differs',
+      required: true,
+      rule: pick({ configVersion: 'Configuration version', serial: 'Serial number', account: 'Account assignment' }, ['configVersion']),
+    },
+    {
+      key: 'original',
+      label: 'Version in the approved handover',
+      required: true,
+      rule: pick({ 'handover-v2': 'handover-v2', 'handover-v1': 'handover-v1', 'depot-v3': 'depot-v3' }, ['handover-v2']),
+    },
+    {
+      key: 'unexplained',
+      label: 'Version on the unit',
+      required: true,
+      rule: pick({ 'depot-v3': 'depot-v3', 'depot-v2': 'depot-v2', 'handover-v2': 'handover-v2' }, ['depot-v3']),
+    },
+    {
+      key: 'reference',
+      label: 'Approval reference for the unit version',
+      required: true,
+      rule: pick({ none: 'None in the record', 'handover-ref': 'The handover reference', 'depot-ref': 'The depot test reference' }, ['none']),
+    },
   ],
 };
 
@@ -79,15 +125,23 @@ const acceptanceForm: HandoverFormConfig = {
       key: 'mismatch',
       label: 'Mismatch you found',
       required: true,
-      rule: { choice: ['config-version'], labels: { 'config-version': 'Configuration version without an approval reference' } },
+      rule: pick(
+        { 'config-version': 'Configuration version without an approval reference', 'serial-mismatch': 'Serial number does not match', 'wrong-account': 'Account does not match' },
+        ['config-version']
+      ),
     },
     {
       key: 'cause',
       label: 'What is known about its cause',
       required: true,
-      rule: { choice: ['not-established'], labels: { 'not-established': 'Not established by the records' } },
+      rule: pick({ 'not-established': 'Not established by the records', 'depot-error': 'A depot error', tampering: 'Tampering in transit' }, ['not-established']),
     },
-    { key: 'observations', label: 'Observations kept', required: true, rule: { cites: 'observation', min: 1 } },
+    {
+      key: 'observations',
+      label: 'Observations kept',
+      required: true,
+      rule: { evidence: [{ ...HARDWARE_CHECKED, orMatch: [{ kind: 'observation', serviceId: SKYLINK_SERVICE }] }] },
+    },
     {
       key: 'verified',
       label: 'Fresh service check after the correction',

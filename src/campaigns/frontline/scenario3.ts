@@ -1,8 +1,10 @@
 import { Character, Emotion } from '@app/modal/character-enum';
+import type { EvidenceGroup, HypothesisSpec } from '@app/physical/evidence-predicates';
 import type { HandoverFormConfig } from '@app/physical/field-records';
 import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import { applyCampField, OLA_CHECK_CARD, SKYLINK_SERVICE } from './camp-field-config';
 import { handoverValid, hypothesisFiled, interruptionPattern, negativeChecksKept, samplesCurrent, workloadVerified } from './frontline-conditions';
+import { checked, pick, reading, repaired } from './report-choices';
 import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-support';
 
 /**
@@ -22,6 +24,20 @@ const CAUSE_OPTIONS = [
   { id: 'router', label: 'Router problem' },
 ];
 const CAUSE_IDS = CAUSE_OPTIONS.map((c) => c.id);
+/** Parts and connectors on the SkyLink chain a hands-on check can fairly look at */
+const CHAIN = ['skylink-cable:dish', 'skylink-cable:router', 'skylink-dish', 'skylink-router', 'router:dc', 'strip:router', 'power-strip', 'power-station'];
+const SYMPTOM = reading('symptom', 'a SkyLink registration reading that is not up', SKYLINK_SERVICE, 'registration', ['down', 'degraded']);
+/** Either the changed reading or a hands-on look at the chain led to the plan */
+const PLAN_BASIS: EvidenceGroup = {
+  ...SYMPTOM,
+  id: 'basis',
+  label: 'a SkyLink registration reading that is not up, or a hands-on look at the chain',
+  orMatch: [{ kind: 'observation', subjectIn: CHAIN }],
+};
+const POWER_UP = reading('power-up', 'a SkyLink terminal power reading, up', SKYLINK_SERVICE, 'power', ['up']);
+const LOCAL_UP = reading('local-up', 'a SkyLink local network reading, up', SKYLINK_SERVICE, 'local', ['up']);
+
+const HYPOTHESIS_OPTS: Omit<HypothesisSpec, 'causes'> = { minCited: 1, routes: [[PLAN_BASIS]] };
 
 const comparisonForm: HandoverFormConfig = {
   id: 'comparison',
@@ -32,15 +48,15 @@ const comparisonForm: HandoverFormConfig = {
       key: 'changed',
       label: 'Reading that changed from the healthy record',
       required: true,
-      rule: { choice: ['registration'], labels: { registration: 'Terminal registration' } },
+      rule: pick({ registration: 'Terminal registration', 'power-and-local': 'Terminal power and local network', all: 'Every reading' }, ['registration']),
     },
     {
       key: 'unchanged',
       label: 'Readings that still match the healthy record',
       required: true,
-      rule: { choice: ['power-and-local'], labels: { 'power-and-local': 'Terminal power and local network' } },
+      rule: pick({ registration: 'Terminal registration', 'power-and-local': 'Terminal power and local network', none: 'None of them' }, ['power-and-local']),
     },
-    { key: 'evidence', label: 'Observations behind the comparison', required: true, rule: { cites: 'observation', min: 2 } },
+    { key: 'evidence', label: 'Observations behind the comparison', required: true, rule: { evidence: [SYMPTOM, POWER_UP, LOCAL_UP] } },
   ],
 };
 
@@ -54,8 +70,15 @@ const checkPlanForm: HandoverFormConfig = {
       label: 'Check you will make',
       required: true,
       rule: {
-        choice: ['inspect-connector', 'test-cable', 'read-power'],
-        labels: { 'inspect-connector': 'Inspect the connector', 'test-cable': 'Test the cable', 'read-power': 'Read the supply voltage' },
+        choice: ['inspect-connector', 'test-cable', 'read-power', 'swap-terminal', 'restart-router'],
+        accept: ['inspect-connector', 'test-cable', 'read-power'],
+        labels: {
+          'inspect-connector': 'Inspect the connector',
+          'test-cable': 'Test the cable',
+          'read-power': 'Read the supply voltage',
+          'swap-terminal': 'Swap the terminal for a spare',
+          'restart-router': 'Restart the router and see',
+        },
       },
     },
     {
@@ -73,7 +96,7 @@ const checkPlanForm: HandoverFormConfig = {
         },
       },
     },
-    { key: 'basis', label: 'Observations that led to it', required: true, rule: { cites: 'observation', min: 1 } },
+    { key: 'basis', label: 'Observations that led to it', required: true, rule: { evidence: [PLAN_BASIS] } },
   ],
 };
 
@@ -82,9 +105,33 @@ const diagnosisForm: HandoverFormConfig = {
   title: 'Diagnostic record',
   documentSection: 'Diagnosis',
   fields: [
-    { key: 'cause', label: 'Cause you found', required: true, rule: { choice: ['connector-moisture'], labels: { 'connector-moisture': 'Moisture at the terminal connector' } } },
-    { key: 'observations', label: 'Observations, including checks that found nothing', required: true, rule: { cites: 'observation', min: 3 } },
-    { key: 'repair', label: 'Repair you made', required: true, rule: { cites: 'action', min: 1 } },
+    {
+      key: 'cause',
+      label: 'Cause you found',
+      required: true,
+      rule: pick(
+        {
+          'connector-moisture': 'Moisture at the terminal connector',
+          'cable-damage': 'Damaged cable',
+          'power-supply': 'Power supply problem',
+          router: 'Router problem',
+        },
+        ['connector-moisture']
+      ),
+    },
+    {
+      key: 'observations',
+      label: 'Observations, including checks that found nothing',
+      required: true,
+      rule: {
+        evidence: [
+          SYMPTOM,
+          checked('connector', 'a hands-on look or test at the terminal cable connector', [connectorId]),
+          checked('ruled-out', 'a check on the chain that found nothing wrong', CHAIN, { negative: true }),
+        ],
+      },
+    },
+    { key: 'repair', label: 'Repair you made', required: true, rule: { evidence: [repaired('fix', 'a repair that changed the terminal cable connector', [connectorId])] } },
     { key: 'verified', label: 'Fresh application check after the repair', required: true, rule: { workload: { cardId: OLA_CHECK_CARD.id, is: ['supported'] } } },
   ],
 };
@@ -92,6 +139,7 @@ const diagnosisForm: HandoverFormConfig = {
 if (settings.physicalPlant) {
   applyCampField(settings.physicalPlant, [OLA_CHECK_CARD], [comparisonForm, checkPlanForm, diagnosisForm]);
   settings.physicalPlant.causeOptions = CAUSE_OPTIONS;
+  settings.physicalPlant.hypothesisSpecs = [{ causes: CAUSE_IDS, ...HYPOTHESIS_OPTS }];
   settings.physicalPlant.faults = [{ id: faultId, target: connectorId, kind: 'moisture', severity: 0.8 }];
   settings.physicalPlant.spares = { 'connector-kit': 1, 'cable:power-data': 1, 'cable:coax': 0, 'power-brick': 1, 'fuel-can': 1 };
 }
@@ -159,7 +207,7 @@ export const frontlineScenario3Data: FrontlineScenarioData = {
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s3-compare-baseline'],
       conditions: [
-        hypothesisFiled(CAUSE_IDS, { minCited: 1 }, 'Suspected cause chosen and tied to an observation'),
+        hypothesisFiled(CAUSE_IDS, HYPOTHESIS_OPTS, 'Suspected cause chosen and tied to an observation'),
         handoverValid('check-plan', 'Chosen check and expected result recorded'),
       ],
     },
@@ -177,7 +225,7 @@ export const frontlineScenario3Data: FrontlineScenarioData = {
           params: { evaluator: () => PhysicalPlantService.plantOrNull()?.isFactRevealed(connectorId, 'moisture') === true },
           mustMaintain: false,
         },
-        negativeChecksKept(1, 'A check that found nothing wrong kept as evidence'),
+        negativeChecksKept(1, 'A check that found nothing wrong kept as evidence', { subjects: CHAIN }),
       ],
     },
     {

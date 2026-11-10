@@ -13,6 +13,7 @@ import {
   reserveHeld,
   workloadVerified,
 } from './frontline-conditions';
+import { checked, pick, repaired } from './report-choices';
 import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-support';
 
 /**
@@ -40,13 +41,26 @@ const resourcesForm: HandoverFormConfig = {
     { key: 'skylink', label: 'SkyLink terminal mode', required: true, rule: { modeIs: { partId: 'skylink-dish' } } },
     { key: 'vsat', label: 'VSAT terminal mode', required: true, rule: { modeIs: { partId: 'vsat-modem' } } },
     { key: 'verified', label: 'Verified low-delay run', required: true, rule: { workload: { cardId: OLA_VOICE_CARD.id, is: ['supported'] } } },
-    { key: 'seating', label: 'Connector observations', required: true, rule: { cites: 'observation', min: 1 } },
-    { key: 'reseat', label: 'Reseat action', required: true, rule: { cites: 'action', min: 1 } },
+    {
+      key: 'seating',
+      label: 'Connector observations',
+      required: true,
+      rule: { evidence: [checked('plug', 'a hands-on look or test at the generator output plug', ['generator:out'])] },
+    },
+    { key: 'reseat', label: 'Reseat action', required: true, rule: { evidence: [repaired('fix', 'a repair that changed the generator output plug', ['generator:out'])] } },
     {
       key: 'limitation',
       label: 'Limitation for the next operator',
       required: true,
-      rule: { choice: ['skylink-only'], labels: { 'skylink-only': 'Only the SkyLink path meets the low-delay card within the reserve' } },
+      rule: pick(
+        {
+          'skylink-only': 'Only the SkyLink path meets the low-delay card within the reserve',
+          'both-paths': 'Both paths meet the low-delay card within the reserve',
+          'vsat-only': 'Only the VSAT path meets the low-delay card within the reserve',
+          'neither-path': 'Neither path meets the low-delay card within the reserve',
+        },
+        ['skylink-only']
+      ),
     },
   ],
 };

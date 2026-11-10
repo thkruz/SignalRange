@@ -93,7 +93,9 @@ export class FieldNotebookPanel {
     /** Selectable targets for a scope */
     private readonly getTargets_: (scope: HypothesisScope) => NotebookTarget[],
     /** Authored cause options (M21). When present the cause is a select of option ids plus an "other" that never matches; absent = free text */
-    private readonly getCauseOptions_: () => CauseOption[] | null = () => null
+    private readonly getCauseOptions_: () => CauseOption[] | null = () => null,
+    /** Scenario check of a saved hypothesis: the reason it does not hold up yet, or null. Never blocks saving. */
+    private readonly getFeedback_: (entry: HypothesisEntry) => string | null = () => null
   ) {
     this.host_.addEventListener('click', this.onClick_);
     this.host_.addEventListener('change', this.onChange_);
@@ -130,7 +132,8 @@ export class FieldNotebookPanel {
       confidence: input.confidence,
       citedEntryIds: cited,
     });
-    this.lastMsg_ = `Hypothesis saved at ${clock(entry.tS)}.`;
+    const why = this.getFeedback_(entry);
+    this.lastMsg_ = why ? `Hypothesis saved at ${clock(entry.tS)}, but it doesn't hold up yet. ${why}` : `Hypothesis saved at ${clock(entry.tS)}.`;
     this.sync();
 
     return entry;

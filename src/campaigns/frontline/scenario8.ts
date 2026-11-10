@@ -1,4 +1,5 @@
 import { Character, Emotion } from '@app/modal/character-enum';
+import type { EvidenceGroup, HypothesisSpec } from '@app/physical/evidence-predicates';
 import type { HandoverFormConfig } from '@app/physical/field-records';
 import type { RequirementCard } from '@app/physical/workload-types';
 import { applyCampField, SKYLINK_SERVICE } from './camp-field-config';
@@ -12,6 +13,7 @@ import {
   samplesCurrent,
   workloadVerified,
 } from './frontline-conditions';
+import { checked, pick, reading, repaired } from './report-choices';
 import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-support';
 
 /**
@@ -36,6 +38,29 @@ const FAULT_ID = 's08-local-fault';
 const RESERVE_WH = 150;
 const RESERVE_WINDOW_S = 60;
 
+const CAUSES = {
+  'connector-moisture': 'Moisture at a cable connector',
+  'cable-damage': 'Damaged cable',
+  'power-supply': 'Power supply',
+  router: 'Router',
+  terminal: 'Terminal',
+};
+/** Parts and connectors a fair diagnostic route can look at */
+const CHAIN = ['skylink-cable:dish', 'skylink-cable:router', 'skylink-cable', 'skylink-dish', 'skylink-router', 'router:dc', 'strip:router', 'power-strip', 'power-station'];
+const FAULT_SITE = ['skylink-cable:router', 'skylink-cable'];
+const SYMPTOM: EvidenceGroup = reading('symptom', 'an application reading that is not up', SKYLINK_SERVICE, 'application', ['down', 'degraded']);
+/** The local cause was located by a hands-on look at the cable or its connectors */
+const LOCATED: EvidenceGroup = checked('located', 'a hands-on look or test at the cable or its connectors', FAULT_SITE);
+const RULED_OUT: EvidenceGroup = checked('ruled-out', 'a check on the chain that found nothing wrong', CHAIN, { negative: true });
+const REPAIR: EvidenceGroup = repaired('fix', 'a repair that changed the cable or its connectors', FAULT_SITE);
+/** An operator who repaired first can still file: the repair, then the service reading up afterwards (the diagnosis is scored as unsupported) */
+const RECOVERY_ROUTE: EvidenceGroup[] = [
+  REPAIR,
+  reading('recovered', 'an application reading, up, taken after the repair', SKYLINK_SERVICE, 'application', ['up'], { afterFirstFix: true }),
+];
+
+const HYPOTHESIS_OPTS: Omit<HypothesisSpec, 'causes'> = { minCited: 2, routes: [[SYMPTOM, LOCATED], RECOVERY_ROUTE] };
+
 const assignmentForm: HandoverFormConfig = {
   id: 'assignment',
   title: 'Assessment brief',
@@ -45,16 +70,35 @@ const assignmentForm: HandoverFormConfig = {
       key: 'requirement',
       label: 'Workload requirement',
       required: true,
-      rule: { choice: ['5-2-150'], labels: { '5-2-150': 'At least 5 Mbps down, 2 Mbps up and a round trip within 150 ms' } },
+      rule: pick(
+        {
+          '5-2-150': 'At least 5 Mbps down, 2 Mbps up and a round trip within 150 ms',
+          '2-5-150': 'At least 2 Mbps down, 5 Mbps up and a round trip within 150 ms',
+          '5-2-1500': 'At least 5 Mbps down, 2 Mbps up and a round trip within 1500 ms',
+        },
+        ['5-2-150']
+      ),
     },
     {
       key: 'limits',
       label: 'Resource limits',
       required: true,
-      rule: { choice: ['one-kit-one-cable'], labels: { 'one-kit-one-cable': 'One connector kit and one power and data cable' } },
+      rule: pick(
+        {
+          'one-kit-one-cable': 'One connector kit and one power and data cable',
+          'two-kits': 'Two connector kits',
+          'unlimited-spares': 'Any spares the store holds',
+        },
+        ['one-kit-one-cable']
+      ),
     },
-    { key: 'reserve', label: 'Battery reserve to keep', required: true, rule: { choice: ['150wh'], labels: { '150wh': 'At least 150 Wh' } } },
-    { key: 'trips', label: 'Trips outside allowed', required: true, rule: { choice: ['three'], labels: { three: 'Three' } } },
+    {
+      key: 'reserve',
+      label: 'Battery reserve to keep',
+      required: true,
+      rule: pick({ '150wh': 'At least 150 Wh', '300wh': 'At least 300 Wh', '50wh': 'At least 50 Wh' }, ['150wh']),
+    },
+    { key: 'trips', label: 'Trips outside allowed', required: true, rule: pick({ one: 'One', three: 'Three', unlimited: 'As many as needed' }, ['three']) },
   ],
 };
 
@@ -69,8 +113,10 @@ const planForm: HandoverFormConfig = {
       label: 'Check that would tell causes apart',
       required: true,
       rule: {
-        choice: ['inspect-connectors', 'test-cable', 'compare-reference-service', 'read-indicators'],
+        choice: ['inspect-connectors', 'test-cable', 'compare-reference-service', 'read-indicators', 'swap-everything'],
+        accept: ['inspect-connectors', 'test-cable', 'compare-reference-service', 'read-indicators'],
         labels: {
+          'swap-everything': 'Replace parts until it works',
           'inspect-connectors': 'Inspect the connectors',
           'test-cable': 'Test the cable',
           'compare-reference-service': 'Compare with the reference service',
@@ -78,7 +124,7 @@ const planForm: HandoverFormConfig = {
         },
       },
     },
-    { key: 'basis', label: 'Observation behind it', required: true, rule: { cites: 'observation', min: 1 } },
+    { key: 'basis', label: 'Observation behind it', required: true, rule: { evidence: [{ ...SYMPTOM, orMatch: [{ kind: 'observation', subjectIn: CHAIN }] }] } },
   ],
 };
 
@@ -91,9 +137,9 @@ const diagnosisForm: HandoverFormConfig = {
       key: 'cause',
       label: 'Cause your observations support',
       required: true,
-      rule: { choice: ['connector-moisture'], labels: { 'connector-moisture': 'Moisture at a cable connector' } },
+      rule: pick(CAUSES, ['connector-moisture']),
     },
-    { key: 'observations', label: 'Observations, including checks that found nothing', required: true, rule: { cites: 'observation', min: 3 } },
+    { key: 'observations', label: 'Observations, including checks that found nothing', required: true, rule: { evidence: [SYMPTOM, LOCATED, RULED_OUT] } },
   ],
 };
 
@@ -102,9 +148,19 @@ const interventionForm: HandoverFormConfig = {
   title: 'Intervention',
   documentSection: 'Intervention',
   fields: [
-    { key: 'basis', label: 'Observations that justified it', required: true, rule: { cites: 'observation', min: 2 } },
-    { key: 'action', label: 'Action you took', required: true, rule: { cites: 'action', min: 1 } },
-    { key: 'spare', label: 'Spare used', required: true, rule: { choice: ['connector-kit'], labels: { 'connector-kit': 'Connector kit' } } },
+    { key: 'basis', label: 'Observations that justified it', required: true, rule: { evidence: [SYMPTOM, LOCATED] } },
+    { key: 'action', label: 'Action you took', required: true, rule: { evidence: [REPAIR] } },
+    {
+      key: 'spare',
+      label: 'Spare used',
+      required: true,
+      rule: {
+        ...pick({ 'connector-kit': 'Connector kit', 'cable:power-data': 'Power and data cable', 'power-brick': 'Power brick', 'fuel-can': 'Fuel can' }, [
+          'connector-kit',
+          'cable:power-data',
+        ]),
+      },
+    },
   ],
 };
 
@@ -128,15 +184,15 @@ const qualificationForm: HandoverFormConfig = {
   title: 'Qualification handover',
   documentSection: 'Qualification handover',
   fields: [
-    { key: 'observations', label: 'Observations', required: true, rule: { cites: 'observation', min: 3 } },
-    { key: 'diagnosis', label: 'Diagnosis', required: true, rule: { choice: ['connector-moisture'], labels: { 'connector-moisture': 'Moisture at a cable connector' } } },
-    { key: 'action', label: 'Corrective action', required: true, rule: { cites: 'action', min: 1 } },
+    { key: 'observations', label: 'Observations', required: true, rule: { evidence: [SYMPTOM, LOCATED, RULED_OUT] } },
+    { key: 'diagnosis', label: 'Diagnosis', required: true, rule: pick(CAUSES, ['connector-moisture']) },
+    { key: 'action', label: 'Corrective action', required: true, rule: { evidence: [REPAIR] } },
     { key: 'verification', label: 'Verification run', required: true, rule: { workload: { cardId: ASSESS_CARD.id, is: ['supported'], serviceId: SKYLINK_SERVICE } } },
     {
       key: 'limitation',
       label: 'Limitation left for the next operator',
       required: true,
-      rule: { choice: ['single-window'], labels: { 'single-window': 'Checked over one 60 second window only' } },
+      rule: pick({ 'single-window': 'Checked over one 60 second window only', 'long-term': 'Proven over a long period', 'no-limit': 'No limitation' }, ['single-window']),
     },
   ],
 };
@@ -152,6 +208,7 @@ if (scenarioSettings.physicalPlant) {
     { id: 'router', label: 'Router' },
     { id: 'terminal', label: 'Terminal' },
   ];
+  scenarioSettings.physicalPlant.hypothesisSpecs = [{ causes: ['connector-moisture'], ...HYPOTHESIS_OPTS }];
   scenarioSettings.physicalPlant.power = { reserveWh: RESERVE_WH, planningHorizonS: 3600, basis: 'battery-only' };
   scenarioSettings.physicalPlant.faults = [{ id: FAULT_ID, target: 'skylink-cable:router', kind: 'moisture', severity: 0.8 }];
   scenarioSettings.physicalPlant.spares = { 'cable:power-data': 1, 'cable:coax': 0, 'power-brick': 0, 'connector-kit': 1, 'fuel-can': 0 };
@@ -210,8 +267,8 @@ export const frontlineScenario8Data: FrontlineScenarioData = {
       points: 20,
       conditions: [
         faultEvidenceRecorded(FAULT_ID, 'Observation that shows the local cause'),
-        negativeChecksKept(1, 'A check that ruled something out kept'),
-        hypothesisFiled(['connector-moisture'], { minCited: 2 }, 'Cause filed with its observations'),
+        negativeChecksKept(1, 'A check that ruled something out kept', { subjects: CHAIN }),
+        hypothesisFiled(['connector-moisture'], HYPOTHESIS_OPTS, 'Cause filed with its observations'),
         handoverValid('diagnosis', 'Diagnosis supported by this run'),
       ],
     },

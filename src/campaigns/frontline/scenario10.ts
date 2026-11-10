@@ -1,9 +1,11 @@
 import { Character, Emotion } from '@app/modal/character-enum';
+import type { EvidenceGroup } from '@app/physical/evidence-predicates';
 import type { HandoverFormConfig } from '@app/physical/field-records';
 import type { RequirementCard } from '@app/physical/workload-types';
 import { SKYLINK_SERVICE } from './camp-field-config';
 import { applyForwardField, FORWARD_PROVIDER, FORWARD_SKYLINK_ACCOUNT, FORWARD_SKYLINK_UNIT } from './forward-field-config';
 import { correctionApproved, correctionFiled, diagramSelection, eventFired, handoverValid, sampleAfterEvent, samplesCurrent, workloadVerified } from './frontline-conditions';
+import { pick, reading } from './report-choices';
 import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-support';
 
 /**
@@ -42,14 +44,31 @@ export const S10_REPORT_CARD: RequirementCard = {
 /** Share of the healthy 80/12 Mbps allowance left after the restriction: 20/3 Mbps */
 const RESTRICTED_FACTOR = 0.25;
 
+const CARD_CHOICES = { [S10_FEED_CARD.id]: 'Camera feed task', [S10_REPORT_CARD.id]: 'Status report task' };
+const ONSET_MARK: EvidenceGroup = { id: 'onset', label: 'the entry for the change in the service', match: { kind: 'result', eventId: S10_EVENT_RESTRICTION } };
+const CHANGED_READING = reading('changed', 'an application reading, degraded, taken after the change', SKYLINK_SERVICE, 'application', ['degraded'], {
+  afterEvent: S10_EVENT_RESTRICTION,
+});
+const LOCAL_UP = reading('local-up', 'a local network reading, up, taken after the change', SKYLINK_SERVICE, 'local', ['up'], { afterEvent: S10_EVENT_RESTRICTION });
+const REGISTRATION_UP = reading('registration-up', 'a registration reading, up, taken after the change', SKYLINK_SERVICE, 'registration', ['up'], {
+  afterEvent: S10_EVENT_RESTRICTION,
+});
+/** Where the service still matches: a local network or a registration reading, up, after the change */
+const MATCHING_READING: EvidenceGroup = {
+  ...LOCAL_UP,
+  id: 'matching',
+  label: 'a local network or registration reading, up, taken after the change',
+  orMatch: [REGISTRATION_UP.match],
+};
+
 const symptomsForm: HandoverFormConfig = {
   id: 'symptoms',
   title: 'Changed symptoms',
   documentSection: 'Symptoms',
   fields: [
     { key: 'application', label: 'Application service now', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'application' } } },
-    { key: 'onset', label: 'Onset in the service history', required: true, rule: { cites: 'result', min: 1 } },
-    { key: 'evidence', label: 'Observations compared with the baseline', required: true, rule: { cites: 'observation', min: 2 } },
+    { key: 'onset', label: 'Onset in the service history', required: true, rule: { evidence: [ONSET_MARK] } },
+    { key: 'evidence', label: 'Observations compared with the baseline', required: true, rule: { evidence: [CHANGED_READING, MATCHING_READING] } },
   ],
 };
 
@@ -65,7 +84,14 @@ const healthForm: HandoverFormConfig = {
       key: 'policy',
       label: 'What these readings establish about the cause',
       required: true,
-      rule: { choice: ['not-established'], labels: { 'not-established': 'Not the cause. They show where the service still matches' } },
+      rule: pick(
+        {
+          'not-established': 'Not the cause. They show where the service still matches',
+          'local-fault': 'A local fault, because the application result changed',
+          'terminal-fault': 'A terminal fault, because the service is slower',
+        },
+        ['not-established']
+      ),
     },
   ],
 };
@@ -79,12 +105,34 @@ const noticeForm: HandoverFormConfig = {
       key: 'account',
       label: 'Account the notice affects',
       required: true,
-      rule: { choice: [FORWARD_SKYLINK_ACCOUNT], labels: { [FORWARD_SKYLINK_ACCOUNT]: 'The forward SkyLink account' } },
+      rule: pick({ [FORWARD_SKYLINK_ACCOUNT]: 'The forward SkyLink account', 'camp-account': 'The camp account', 'all-accounts': 'Every account on the post' }, [
+        FORWARD_SKYLINK_ACCOUNT,
+      ]),
     },
-    { key: 'effect', label: 'What the notice limits', required: true, rule: { choice: ['ground-capacity'], labels: { 'ground-capacity': 'Ground-service capacity' } } },
-    { key: 'registration', label: 'Registration according to the notice', required: true, rule: { choice: ['unchanged'], labels: { unchanged: 'Unchanged' } } },
-    { key: 'local', label: 'Local equipment', required: true, rule: { choice: ['not-implicated'], labels: { 'not-implicated': 'Not implicated by the notice' } } },
-    { key: 'effective', label: 'Effective event', required: true, rule: { cites: 'result', min: 1 } },
+    {
+      key: 'effect',
+      label: 'What the notice limits',
+      required: true,
+      rule: pick({ 'ground-capacity': 'Ground-service capacity', 'terminal-power': 'Terminal power', 'local-network': 'The local network' }, ['ground-capacity']),
+    },
+    {
+      key: 'registration',
+      label: 'Registration according to the notice',
+      required: true,
+      rule: pick({ unchanged: 'Unchanged', down: 'Dropped', degraded: 'Degraded' }, ['unchanged']),
+    },
+    {
+      key: 'local',
+      label: 'Local equipment',
+      required: true,
+      rule: pick({ 'not-implicated': 'Not implicated by the notice', implicated: 'Implicated by the notice', 'to-replace': 'To be replaced under the notice' }, ['not-implicated']),
+    },
+    {
+      key: 'effective',
+      label: 'Effective event',
+      required: true,
+      rule: { evidence: [{ ...ONSET_MARK, label: 'the entry for the change in the service or the notice', orMatch: [{ kind: 'result', eventId: S10_EVENT_NOTICE }] }] },
+    },
   ],
 };
 
@@ -93,9 +141,19 @@ const assessmentForm: HandoverFormConfig = {
   title: 'Task assessment',
   documentSection: 'Task assessment',
   fields: [
-    { key: 'feed', label: 'Camera feed task', required: true, rule: { choice: ['unsupported'], labels: { unsupported: 'Not supported at the restricted capacity' } } },
-    { key: 'report', label: 'Status report task', required: true, rule: { choice: ['supported'], labels: { supported: 'Supported at the restricted capacity' } } },
-    { key: 'basis', label: 'Observations behind it', required: true, rule: { cites: 'observation', min: 2 } },
+    {
+      key: 'feed',
+      label: 'Camera feed task',
+      required: true,
+      rule: pick({ unsupported: 'Not supported at the restricted capacity', supported: 'Supported at the restricted capacity' }, ['unsupported']),
+    },
+    {
+      key: 'report',
+      label: 'Status report task',
+      required: true,
+      rule: pick({ unsupported: 'Not supported at the restricted capacity', supported: 'Supported at the restricted capacity' }, ['supported']),
+    },
+    { key: 'basis', label: 'Observations behind it', required: true, rule: { evidence: [CHANGED_READING, MATCHING_READING] } },
   ],
 };
 
@@ -104,9 +162,16 @@ const limitationForm: HandoverFormConfig = {
   title: 'Service limitation report',
   documentSection: 'Limitation',
   fields: [
-    { key: 'limit', label: 'Limit in force', required: true, rule: { choice: ['ground-capacity'], labels: { 'ground-capacity': 'Provider ground-capacity restriction' } } },
-    { key: 'task', label: 'Task that can run', required: true, rule: { choice: [S10_REPORT_CARD.id], labels: { [S10_REPORT_CARD.id]: 'Status report task' } } },
-    { key: 'unavailable', label: 'Task that stays unavailable', required: true, rule: { choice: [S10_FEED_CARD.id], labels: { [S10_FEED_CARD.id]: 'Camera feed task' } } },
+    {
+      key: 'limit',
+      label: 'Limit in force',
+      required: true,
+      rule: pick({ 'ground-capacity': 'Provider ground-capacity restriction', 'terminal-fault': 'A terminal fault', 'local-congestion': 'Congestion on the local network' }, [
+        'ground-capacity',
+      ]),
+    },
+    { key: 'task', label: 'Task that can run', required: true, rule: pick(CARD_CHOICES, [S10_REPORT_CARD.id]) },
+    { key: 'unavailable', label: 'Task that stays unavailable', required: true, rule: pick(CARD_CHOICES, [S10_FEED_CARD.id]) },
   ],
 };
 
@@ -121,7 +186,7 @@ const outcomeForm: HandoverFormConfig = {
       key: 'restriction',
       label: 'Restriction at the end of the window',
       required: true,
-      rule: { choice: ['remains-active'], labels: { 'remains-active': 'Still in force' } },
+      rule: pick({ 'remains-active': 'Still in force', lifted: 'Lifted', unknown: 'Not known' }, ['remains-active']),
     },
   ],
 };
@@ -131,11 +196,16 @@ const packageForm: HandoverFormConfig = {
   title: 'Evidence package',
   documentSection: 'Equipment request',
   fields: [
-    { key: 'onset', label: 'Onset', required: true, rule: { cites: 'result', min: 1 } },
-    { key: 'local', label: 'Local checks', required: true, rule: { cites: 'observation', min: 2 } },
-    { key: 'notice', label: 'Provider notice', required: true, rule: { choice: [S10_NOTICE], labels: { [S10_NOTICE]: 'Ground-capacity notice' } } },
-    { key: 'supported', label: 'Work still supported', required: true, rule: { choice: [S10_REPORT_CARD.id], labels: { [S10_REPORT_CARD.id]: 'Status report task' } } },
-    { key: 'gap', label: 'Unmet capability', required: true, rule: { choice: [S10_FEED_CARD.id], labels: { [S10_FEED_CARD.id]: 'Camera feed task' } } },
+    { key: 'onset', label: 'Onset', required: true, rule: { evidence: [ONSET_MARK] } },
+    { key: 'local', label: 'Local checks', required: true, rule: { evidence: [LOCAL_UP, REGISTRATION_UP] } },
+    {
+      key: 'notice',
+      label: 'Provider notice',
+      required: true,
+      rule: pick({ [S10_NOTICE]: 'Ground-capacity notice', 'no-notice': 'No provider notice was received' }, [S10_NOTICE]),
+    },
+    { key: 'supported', label: 'Work still supported', required: true, rule: pick(CARD_CHOICES, [S10_REPORT_CARD.id]) },
+    { key: 'gap', label: 'Unmet capability', required: true, rule: pick(CARD_CHOICES, [S10_FEED_CARD.id]) },
   ],
 };
 

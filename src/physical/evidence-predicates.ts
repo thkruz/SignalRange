@@ -28,6 +28,8 @@ export interface EvidencePredicate {
   verbIn?: string[];
   /** A test entry that found nothing (positive === false) */
   negative?: boolean;
+  /** A fix that changed something (effective === true) */
+  effective?: boolean;
   /** Entry time is at or after / strictly before this staged event fired */
   afterEvent?: string;
   beforeEvent?: string;
@@ -44,7 +46,12 @@ export interface EvidenceGroup {
   /** Distinct entries required (default 1) */
   min?: number;
   match: EvidencePredicate;
+  /** Other entries that fill the group equally well (a valid alternate diagnostic route) */
+  orMatch?: EvidencePredicate[];
 }
+
+const groupMatches = (e: EvidenceEntry, g: EvidenceGroup, ctx: EvidenceContext, all: readonly EvidenceEntry[]): boolean =>
+  entryMatches(e, g.match, ctx, all) || (g.orMatch ?? []).some((p) => entryMatches(e, p, ctx, all));
 
 export interface EvidenceContext {
   /** Scenario time an event fired, or null when it has not */
@@ -81,6 +88,7 @@ export function entryMatches(e: EvidenceEntry, p: EvidencePredicate, ctx: Eviden
   if (p.eventId !== undefined && e.source.eventId !== p.eventId) return false;
   if (p.verbIn !== undefined && (e.verb === undefined || !p.verbIn.includes(e.verb))) return false;
   if (p.negative === true && e.positive !== false) return false;
+  if (p.effective === true && e.effective !== true) return false;
   if (p.afterEvent !== undefined) {
     const at = ctx.eventFiredAtS(p.afterEvent);
     if (at === null || e.tS < at) return false;
@@ -107,7 +115,7 @@ export function assessEvidence(citedIds: readonly string[], groups: readonly Evi
   const cited = [...new Set(citedIds)].map((id) => byId.get(id)).filter((e): e is EvidenceEntry => e !== undefined);
   const slots: Array<{ group: EvidenceGroup; options: number[] }> = [];
   for (const g of groups) {
-    const options = cited.map((e, i) => (entryMatches(e, g.match, ctx, all) ? i : -1)).filter((i) => i >= 0);
+    const options = cited.map((e, i) => (groupMatches(e, g, ctx, all) ? i : -1)).filter((i) => i >= 0);
     for (let n = 0; n < (g.min ?? 1); n++) slots.push({ group: g, options });
   }
   const used = new Set<number>();
@@ -133,7 +141,7 @@ export function assessEvidence(citedIds: readonly string[], groups: readonly Evi
     return { ok: true, missing: [], assigned };
   }
   // Report each group that cannot be filled on its own, or, failing that, the groups competing for the same entries
-  const missing = groups.filter((g) => cited.filter((e) => entryMatches(e, g.match, ctx, all)).length < (g.min ?? 1)).map((g) => g.label);
+  const missing = groups.filter((g) => cited.filter((e) => groupMatches(e, g, ctx, all)).length < (g.min ?? 1)).map((g) => g.label);
 
   return { ok: false, missing: missing.length > 0 ? missing : groups.map((g) => g.label), assigned: {} };
 }
@@ -192,4 +200,27 @@ export function assessHypothesis(
   }
 
   return { ok: true };
+}
+
+/**
+ * What to tell the player about a saved hypothesis. Only specs that name the hypothesis's cause apply; when none
+ * does, a cause the scenario knows nothing of is reported as unsupported. Returns null when it holds up (or no
+ * cause was chosen, or the scenario authored no specs).
+ */
+export function hypothesisFeedback(
+  h: { claim: { scope: string; targetId: string; cause?: string }; citedEntryIds: readonly string[] },
+  specs: readonly HypothesisSpec[],
+  all: readonly EvidenceEntry[],
+  ctx: EvidenceContext
+): string | null {
+  if (specs.length === 0 || !h.claim.cause || h.claim.cause === 'other') {
+    return null;
+  }
+  const verdicts = specs.map((spec) => assessHypothesis(h, spec, all, ctx));
+  if (verdicts.some((v) => v.ok)) {
+    return null;
+  }
+  const named = specs.findIndex((spec) => spec.causes.includes(h.claim.cause as string));
+
+  return (named >= 0 ? verdicts[named] : verdicts[0]).reason ?? null;
 }

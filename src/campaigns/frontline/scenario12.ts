@@ -1,4 +1,5 @@
 import { Character, Emotion } from '@app/modal/character-enum';
+import type { EvidenceGroup } from '@app/physical/evidence-predicates';
 import type { HandoverFormConfig } from '@app/physical/field-records';
 import {
   applyForwardEurosat,
@@ -13,6 +14,7 @@ import {
   FORWARD_SKYLINK_ACCOUNT,
 } from './forward-field-config';
 import { correctionApproved, correctionFiled, diagramSelection, eventFired, handoverValid, layerObserved, samplesCurrent, workloadVerified } from './frontline-conditions';
+import { pick, reading } from './report-choices';
 import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-support';
 import { S11_TRANSFER_CARD } from './scenario11';
 
@@ -41,16 +43,40 @@ const architectureForm: HandoverFormConfig = {
       key: 'shared',
       label: 'Dependencies both services share',
       required: true,
-      rule: { choice: ['workstation-and-power'], labels: { 'workstation-and-power': 'The local workstation and the power chain' } },
+      rule: pick({ 'workstation-and-power': 'The local workstation and the power chain', 'terminal-only': 'The terminal only', 'whole-site': 'Everything on the site' }, [
+        'workstation-and-power',
+      ]),
     },
     {
       key: 'independent',
       label: 'Parts that belong to one service only',
       required: true,
-      rule: { choice: ['terminal-account-provider-endpoint'], labels: { 'terminal-account-provider-endpoint': 'Terminal, account, provider and remote endpoint' } },
+      rule: pick(
+        {
+          'terminal-account-provider-endpoint': 'Terminal, account, provider and remote endpoint',
+          'terminal-only': 'The terminal only',
+          'terminal-account': 'Terminal and account only',
+        },
+        ['terminal-account-provider-endpoint']
+      ),
     },
   ],
 };
+
+const INTERRUPTED = reading('interrupted', 'an application reading taken after the interruption', FORWARD_EUROSAT_SERVICE, 'application', undefined, {
+  afterEvent: S12_EVENT_INTERRUPTION,
+});
+const LOCAL_AFTER = reading('local', 'a local network reading taken after the interruption', FORWARD_EUROSAT_SERVICE, 'local', undefined, { afterEvent: S12_EVENT_INTERRUPTION });
+const PATH_AFTER: EvidenceGroup = {
+  ...reading('path', 'a terminal registration or account reading taken after the interruption', FORWARD_EUROSAT_SERVICE, 'registration', undefined, {
+    afterEvent: S12_EVENT_INTERRUPTION,
+  }),
+  orMatch: [
+    { kind: 'observation', serviceId: FORWARD_EUROSAT_SERVICE, layer: 'account', afterEvent: S12_EVENT_INTERRUPTION },
+    { kind: 'observation', serviceId: FORWARD_EUROSAT_SERVICE, layer: 'provider', afterEvent: S12_EVENT_INTERRUPTION },
+  ],
+};
+const ONSET_MARK: EvidenceGroup = { id: 'onset', label: 'the entry for the interruption', match: { kind: 'result', eventId: S12_EVENT_INTERRUPTION } };
 
 const symptomsForm: HandoverFormConfig = {
   id: 'symptoms',
@@ -63,7 +89,7 @@ const symptomsForm: HandoverFormConfig = {
       required: true,
       rule: { freshnessIs: { serviceId: FORWARD_EUROSAT_SERVICE, layer: 'application' } },
     },
-    { key: 'onset', label: 'Onset in the service history', required: true, rule: { cites: 'result', min: 1 } },
+    { key: 'onset', label: 'Onset in the service history', required: true, rule: { evidence: [ONSET_MARK] } },
   ],
 };
 
@@ -79,9 +105,11 @@ const comparisonForm: HandoverFormConfig = {
       key: 'limits',
       label: 'What the local checks cannot establish',
       required: true,
-      rule: { choice: ['remote-condition'], labels: { 'remote-condition': 'The condition of the remote endpoint' } },
+      rule: pick({ 'remote-condition': 'The condition of the remote endpoint', 'local-fault': 'A fault in the local equipment', 'provider-outage': 'A provider-wide outage' }, [
+        'remote-condition',
+      ]),
     },
-    { key: 'basis', label: 'Observations behind it', required: true, rule: { cites: 'observation', min: 3 } },
+    { key: 'basis', label: 'Observations behind it', required: true, rule: { evidence: [INTERRUPTED, LOCAL_AFTER, PATH_AFTER] } },
   ],
 };
 
@@ -94,21 +122,26 @@ const diagnosisForm: HandoverFormConfig = {
       key: 'segment',
       label: 'Segment the evidence points to',
       required: true,
-      rule: { choice: ['remote-endpoint'], labels: { 'remote-endpoint': 'The remote endpoint segment' } },
+      rule: pick({ 'remote-endpoint': 'The remote endpoint segment', 'local-segment': 'The local equipment segment', 'provider-segment': 'The provider network segment' }, [
+        'remote-endpoint',
+      ]),
     },
     {
       key: 'confidence',
       label: 'Confidence',
       required: true,
-      rule: { choice: ['likely-unconfirmed'], labels: { 'likely-unconfirmed': 'Likely, not confirmed from this side' } },
+      rule: pick({ 'likely-unconfirmed': 'Likely, not confirmed from this side', confirmed: 'Confirmed', unlikely: 'Unlikely' }, ['likely-unconfirmed']),
     },
     {
       key: 'cause',
       label: 'Physical cause',
       required: true,
-      rule: { choice: ['not-established'], labels: { 'not-established': 'Not established by the evidence' } },
+      rule: pick(
+        { 'not-established': 'Not established by the evidence', 'established-local': 'Established as a local fault', 'established-remote': 'Established as a remote fault' },
+        ['not-established']
+      ),
     },
-    { key: 'basis', label: 'Observations behind it', required: true, rule: { cites: 'observation', min: 3 } },
+    { key: 'basis', label: 'Observations behind it', required: true, rule: { evidence: [INTERRUPTED, LOCAL_AFTER, PATH_AFTER] } },
   ],
 };
 
@@ -117,10 +150,27 @@ const referralForm: HandoverFormConfig = {
   title: 'Incident package',
   documentSection: 'Referral',
   fields: [
-    { key: 'segment', label: 'Affected segment', required: true, rule: { choice: ['remote-endpoint'], labels: { 'remote-endpoint': 'The remote endpoint segment' } } },
-    { key: 'confidence', label: 'Confidence', required: true, rule: { choice: ['likely-unconfirmed'], labels: { 'likely-unconfirmed': 'Likely, not confirmed from this side' } } },
-    { key: 'local', label: 'Local configuration while waiting', required: true, rule: { choice: ['unchanged'], labels: { unchanged: 'Left as it is' } } },
-    { key: 'evidence', label: 'Observations attached', required: true, rule: { cites: 'observation', min: 3 } },
+    {
+      key: 'segment',
+      label: 'Affected segment',
+      required: true,
+      rule: pick({ 'remote-endpoint': 'The remote endpoint segment', 'local-segment': 'The local equipment segment', 'provider-segment': 'The provider network segment' }, [
+        'remote-endpoint',
+      ]),
+    },
+    {
+      key: 'confidence',
+      label: 'Confidence',
+      required: true,
+      rule: pick({ 'likely-unconfirmed': 'Likely, not confirmed from this side', confirmed: 'Confirmed', unlikely: 'Unlikely' }, ['likely-unconfirmed']),
+    },
+    {
+      key: 'local',
+      label: 'Local configuration while waiting',
+      required: true,
+      rule: pick({ unchanged: 'Left as it is', restarted: 'Restarted', reconfigured: 'Reconfigured' }, ['unchanged']),
+    },
+    { key: 'evidence', label: 'Observations attached', required: true, rule: { evidence: [INTERRUPTED, LOCAL_AFTER, PATH_AFTER] } },
   ],
 };
 
@@ -140,13 +190,19 @@ const updateForm: HandoverFormConfig = {
       key: 'recovery',
       label: 'How recovery is established',
       required: true,
-      rule: { choice: ['fresh-test'], labels: { 'fresh-test': 'By the new end-to-end test, not by the specialist report' } },
+      rule: pick(
+        { 'fresh-test': 'By the new end-to-end test, not by the specialist report', 'specialist-report': 'By the specialist report alone', 'local-reading': 'By a local reading' },
+        ['fresh-test']
+      ),
     },
     {
       key: 'cause',
       label: 'Physical cause',
       required: true,
-      rule: { choice: ['not-established'], labels: { 'not-established': 'Still not established by this side' } },
+      rule: pick(
+        { 'not-established': 'Still not established by this side', 'established-local': 'Established as a local fault', 'established-remote': 'Established as a remote fault' },
+        ['not-established']
+      ),
     },
   ],
 };

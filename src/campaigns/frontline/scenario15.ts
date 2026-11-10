@@ -1,5 +1,5 @@
 import { Character, Emotion } from '@app/modal/character-enum';
-import type { EvidenceGroup } from '@app/physical/evidence-predicates';
+import type { EvidenceGroup, HypothesisSpec } from '@app/physical/evidence-predicates';
 import type { HandoverFormConfig } from '@app/physical/field-records';
 import type { PlantEventConfig } from '@app/physical/physical-plant-types';
 import { SKYLINK_SERVICE } from './camp-field-config';
@@ -18,6 +18,7 @@ import {
   siteChecked,
   workloadVerified,
 } from './frontline-conditions';
+import { pick } from './report-choices';
 import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-support';
 import { S11_TRANSFER_CARD } from './scenario11';
 
@@ -44,14 +45,6 @@ export const S15_RESERVE_WH = 150;
 
 const EUS = FORWARD_EUROSAT_SERVICE;
 const TRANSFER = S11_TRANSFER_CARD.id;
-/** Visible alternatives with the accepted answers named separately, so the list is not the answer key */
-const pick = (labels: Record<string, string>, accept: string[], backing?: Record<string, EvidenceGroup[]>) => ({
-  choice: Object.keys(labels),
-  labels,
-  accept,
-  ...(backing ? { backing } : {}),
-});
-
 /** What the repeated drops must show, as typed predicates: the sample itself, not how many were ticked */
 const LOCAL_GOOD: EvidenceGroup = {
   id: 'local-good',
@@ -87,6 +80,13 @@ const classification = pick(CLASSIFICATIONS, ['suspected-interference', 'unexpla
 const sourceStatus = pick({ 'not-established': 'Not established', 'nearest-transmitter': 'The nearest known transmitter', 'provider-ground': "The provider's ground segment" }, [
   'not-established',
 ]);
+
+const HYPOTHESIS_OPTS: Omit<HypothesisSpec, 'causes'> = {
+  minCited: 2,
+  scopes: ['segment', 'endpoint'],
+  targets: [EUS],
+  routesByCause: { 'suspected-interference': [[LOCAL_GOOD, REG_DOWN_REPEATED, REG_RECOVERED]], 'unexplained-outage': [[LOCAL_GOOD, REG_DOWN]] },
+};
 
 const anomalyForm: HandoverFormConfig = {
   id: 'anomaly',
@@ -196,7 +196,12 @@ const incidentForm: HandoverFormConfig = {
   title: 'Investigation handover',
   documentSection: 'Incident',
   fields: [
-    { key: 'classification', label: 'Classification', required: true, rule: classification },
+    {
+      key: 'classification',
+      label: 'Classification',
+      required: true,
+      rule: { ...classification, sameAs: { formId: 'assessment', key: 'classification', label: 'assessment' } },
+    },
     { key: 'source', label: 'Source', required: true, rule: sourceStatus },
     { key: 'available', label: 'Service still available', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'application' } } },
     {
@@ -240,6 +245,7 @@ if (settings.physicalPlant) {
     battery.socWh = S15_START_WH;
   }
   plant.power = { reserveWh: S15_RESERVE_WH, planningHorizonS: 3600, basis: 'battery-only' };
+  plant.hypothesisSpecs = [{ causes: ['suspected-interference', 'unexplained-outage'], ...HYPOTHESIS_OPTS }];
   plant.causeOptions = [
     { id: 'suspected-interference', label: 'Suspected interference' },
     { id: 'unexplained-outage', label: 'Unexplained outage' },
@@ -324,16 +330,7 @@ export const frontlineScenario15Data: FrontlineScenarioData = {
       prerequisiteObjectiveIds: ['s15-review-evidence'],
       points: 15,
       conditions: [
-        hypothesisFiled(
-          ['suspected-interference', 'unexplained-outage'],
-          {
-            minCited: 2,
-            scopes: ['segment', 'endpoint'],
-            targets: [EUS],
-            routesByCause: { 'suspected-interference': [[LOCAL_GOOD, REG_DOWN_REPEATED, REG_RECOVERED]], 'unexplained-outage': [[LOCAL_GOOD, REG_DOWN]] },
-          },
-          'Assessment filed on EuroSat with the readings that support it'
-        ),
+        hypothesisFiled(['suspected-interference', 'unexplained-outage'], HYPOTHESIS_OPTS, 'Assessment filed on EuroSat with the readings that support it'),
         handoverValid('assessment', 'Classification, confidence and unresolved source recorded'),
         {
           type: 'status-check',

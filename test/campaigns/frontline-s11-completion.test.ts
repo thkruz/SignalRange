@@ -77,6 +77,7 @@ function acts(svc: PhysicalPlantService): Record<string, () => void> {
     },
     's11-measure-service': () => {
       takeAll(svc);
+      for (const m of ['rttMs', 'downMbps', 'lossPct'] as const) svc.services?.takeSample(EUS, 'registration', 'terminal-app', undefined, m);
       ok(
         svc.records?.submit('measurement', {
           local: value(svc, 'local'),

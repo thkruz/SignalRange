@@ -6,6 +6,7 @@
  */
 
 import type { EquipmentConfig } from './equipment-records';
+import type { HypothesisSpec } from './evidence-predicates';
 import type { HandoverFormConfig } from './field-records';
 import type { AccountState, EndpointState, ProviderState, ServiceModelConfig } from './service-types';
 import type { WorkloadConfig } from './workload-types';
@@ -255,6 +256,8 @@ export interface PlantConfig {
   wrongCauseActions?: AppWrongCauseRule[];
   /** Authored hypothesis causes (M21). When set the notebook cause is a select of these ids; free text is never graded. Absent = free text. */
   causeOptions?: Array<{ id: string; label: string }>;
+  /** What a hypothesis must show to hold up, per cause. The notebook tells the player when a saved hypothesis does not (never blocks it). Absent = no feedback. */
+  hypothesisSpecs?: HypothesisSpec[];
   /** Handover forms the player can submit (Campaign 6, M13). Absent = no records. */
   handovers?: HandoverFormConfig[];
   /** Equipment records, correction requests and provider notices (Campaign 6, M15). Absent = none. */

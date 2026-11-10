@@ -2,6 +2,7 @@ import { Character, Emotion } from '@app/modal/character-enum';
 import type { HandoverFormConfig } from '@app/physical/field-records';
 import { applyCampField, CAMP_VSAT_SERVICE, OLA_CHECK_CARD, SKYLINK_SERVICE } from './camp-field-config';
 import { handoverValid, layerObserved, siteChecked, workloadVerified } from './frontline-conditions';
+import { pick, reading } from './report-choices';
 import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-support';
 
 /**
@@ -16,13 +17,29 @@ const baselineForm: HandoverFormConfig = {
   title: 'Healthy baseline',
   documentSection: 'Baseline',
   fields: [
-    { key: 'service', label: 'Service checked', required: true, rule: { choice: [SKYLINK_SERVICE], labels: { [SKYLINK_SERVICE]: 'SkyLink' } } },
+    {
+      key: 'service',
+      label: 'Service checked',
+      required: true,
+      rule: pick({ [SKYLINK_SERVICE]: 'SkyLink', [CAMP_VSAT_SERVICE]: 'Camp reference VSAT', both: 'Both connections' }, [SKYLINK_SERVICE]),
+    },
     { key: 'energy', label: 'Stored energy (Wh)', required: true, rule: { powerWithin: { metric: 'socWh', tol: 25, partId: 'power-station' } } },
     { key: 'power', label: 'Terminal power', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'power' } } },
     { key: 'local', label: 'Local network', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'local' } } },
     { key: 'registration', label: 'Registration', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'registration' } } },
     { key: 'application', label: 'Application check run', required: true, rule: { workload: { cardId: OLA_CHECK_CARD.id, is: ['supported'] } } },
-    { key: 'evidence', label: 'Observations behind this baseline', required: true, rule: { cites: 'observation', min: 2 } },
+    {
+      key: 'evidence',
+      label: 'Observations behind this baseline',
+      required: true,
+      rule: {
+        evidence: [
+          reading('power', 'a SkyLink terminal power reading, up', SKYLINK_SERVICE, 'power', ['up']),
+          reading('local', 'a SkyLink local network reading, up', SKYLINK_SERVICE, 'local', ['up']),
+          reading('registration', 'a SkyLink registration reading, up', SKYLINK_SERVICE, 'registration', ['up']),
+        ],
+      },
+    },
   ],
 };
 
@@ -32,14 +49,32 @@ const handoverForm: HandoverFormConfig = {
   title: 'First handover',
   documentSection: 'Handover',
   fields: [
-    { key: 'verified', label: 'Service verified', required: true, rule: { choice: [SKYLINK_SERVICE], labels: { [SKYLINK_SERVICE]: 'SkyLink' } } },
-    { key: 'untested', label: 'Equipment left untested', required: true, rule: { choice: [CAMP_VSAT_SERVICE], labels: { [CAMP_VSAT_SERVICE]: 'Camp reference VSAT' } } },
+    {
+      key: 'verified',
+      label: 'Service verified',
+      required: true,
+      rule: pick({ [SKYLINK_SERVICE]: 'SkyLink', [CAMP_VSAT_SERVICE]: 'Camp reference VSAT', both: 'Both connections' }, [SKYLINK_SERVICE]),
+    },
+    {
+      key: 'untested',
+      label: 'Equipment left untested',
+      required: true,
+      rule: pick({ [SKYLINK_SERVICE]: 'SkyLink', [CAMP_VSAT_SERVICE]: 'Camp reference VSAT', none: 'Nothing was left untested' }, [CAMP_VSAT_SERVICE]),
+    },
     { key: 'run', label: 'Verified application run', required: true, rule: { workload: { cardId: OLA_CHECK_CARD.id, is: ['supported'] } } },
     {
       key: 'readiness',
       label: 'Readiness statement',
       required: true,
-      rule: { choice: ['skylink-only'], labels: { 'skylink-only': 'SkyLink verified, VSAT not tested' } },
+      rule: pick(
+        {
+          'skylink-only': 'SkyLink verified, VSAT not tested',
+          'both-verified': 'SkyLink and VSAT both verified',
+          'vsat-only': 'VSAT verified, SkyLink not tested',
+          'none-verified': 'Neither connection verified',
+        },
+        ['skylink-only']
+      ),
     },
   ],
 };

@@ -16,6 +16,7 @@ import { FieldServicePanel } from '@app/pages/mission-control/tabs/field-service
 import { FieldWorkloadPanel } from '@app/pages/mission-control/tabs/field-workload-panel';
 import { formStepState } from '@app/pages/mission-control/tabs/form-step-state';
 import { buildNotebookTargets } from '@app/pages/mission-control/tabs/notebook-targets';
+import { hypothesisFeedback } from '@app/physical/evidence-predicates';
 import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import { GLOW_FILTERS_SVG } from '@app/physical/ui/glow-filters';
 import { PartCloseupModal } from '@app/physical/ui/part-closeup-modal';
@@ -77,7 +78,13 @@ export class SiteTab extends BaseElement {
       qs<HTMLElement>('#site-notebook-panel'),
       () => PhysicalPlantService.evidenceOrNull(),
       (scope) => this.notebookTargets_(scope),
-      () => PhysicalPlantService.plantOrNull()?.getConfig().causeOptions ?? null
+      () => PhysicalPlantService.plantOrNull()?.getConfig().causeOptions ?? null,
+      (entry) => {
+        const specs = PhysicalPlantService.plantOrNull()?.getConfig().hypothesisSpecs ?? [];
+        const log = PhysicalPlantService.evidenceOrNull();
+
+        return log ? hypothesisFeedback(entry, specs, log.entries(), { eventFiredAtS: (id) => PhysicalPlantService.eventsOrNull()?.firedAtS(id) ?? null }) : null;
+      }
     );
     this.handoverPanel_ = new FieldHandoverPanel(qs<HTMLElement>('#site-handover-panel'), {
       records: () => PhysicalPlantService.recordsOrNull(),

@@ -467,175 +467,35 @@ describe('Campaign 3: scenario registration', () => {
     }
   });
 
-  it('registers scenarios 1-4 in the campaign, the flat list, and a prerequisite chain', async () => {
+  it('registers the twelve Technician scenarios in the campaign, the flat list, and a prerequisite chain', async () => {
     const { hamSdrCampaignData } = await import('../../src/campaigns/nats/campaign-data');
     const { SCENARIOS } = await import('../../src/scenario-manager');
 
-    const ids = [
-      'ham-sdr-scenario1',
-      'ham-sdr-scenario2',
-      'ham-sdr-scenario3',
-      'ham-sdr-scenario4',
-      'ham-sdr-scenario5',
-      'ham-sdr-scenario6',
-      'ham-sdr-scenario7',
-      'ham-sdr-scenario8',
-    ];
+    const ids = Array.from({ length: 12 }, (_, i) => `ham-tech-s${String(i + 1).padStart(2, '0')}`);
     const campaignIds = hamSdrCampaignData.scenarios.map((s) => s.id);
     const flatIds = SCENARIOS.map((s) => s.id);
 
+    expect(campaignIds).toEqual(['ham-sdr-sandbox', ...ids]);
     for (const id of ids) {
-      expect(campaignIds).toContain(id);
       expect(flatIds).toContain(id);
     }
+    // The retired alpha scenarios are gone everywhere
+    expect(flatIds.some((id) => id.startsWith('ham-sdr-scenario'))).toBe(false);
     // Global namespace stays collision-free
     expect(new Set(flatIds).size).toBe(flatIds.length);
 
-    // Prerequisite chain s1 <- s2 <- s3 <- s4; every scenario has a brief URL
-    // (without missionBriefUrl the objectives checklist never renders)
     const byId = new Map(hamSdrCampaignData.scenarios.map((s) => [s.id, s]));
-    expect(byId.get('ham-sdr-scenario1')!.prerequisiteScenarioIds ?? []).toEqual([]);
-    expect(byId.get('ham-sdr-scenario2')!.prerequisiteScenarioIds).toEqual(['ham-sdr-scenario1']);
-    expect(byId.get('ham-sdr-scenario3')!.prerequisiteScenarioIds).toEqual(['ham-sdr-scenario2']);
-    expect(byId.get('ham-sdr-scenario4')!.prerequisiteScenarioIds).toEqual(['ham-sdr-scenario3']);
-    expect(byId.get('ham-sdr-scenario5')!.prerequisiteScenarioIds).toEqual(['ham-sdr-scenario4']);
-    expect(byId.get('ham-sdr-scenario6')!.prerequisiteScenarioIds).toEqual(['ham-sdr-scenario5']);
-    expect(byId.get('ham-sdr-scenario7')!.prerequisiteScenarioIds).toEqual(['ham-sdr-scenario6']);
-    expect(byId.get('ham-sdr-scenario8')!.prerequisiteScenarioIds).toEqual(['ham-sdr-scenario7']);
-    for (const id of ids) {
-      expect(byId.get(id)!.settings.missionBriefUrl).toBeTruthy();
-      // Discovery-not-procedure: no isOptional anywhere (it still gates completion)
-      for (const obj of byId.get(id)!.objectives) {
+    ids.forEach((id, i) => {
+      const s = byId.get(id)!;
+      expect(s.number).toBe(i + 1);
+      expect(s.prerequisiteScenarioIds ?? []).toEqual(i === 0 ? [] : [ids[i - 1]]);
+      // Without missionBriefUrl the objectives checklist never renders
+      expect(s.settings.missionBriefUrl).toContain(`campaign-3/scenario-${i + 1}`);
+      expect(s.settings.hamStation?.schema).toBe('c3-tech-v1');
+      expect(s.objectives[0].id).toBe('review-mission-brief');
+      for (const obj of s.objectives) {
         expect(obj.isOptional).toBeUndefined();
       }
-    }
-  });
-
-  it('scenario 1 boots the rig off-frequency on a voice channel (click-to-tune + bandwidth lessons)', async () => {
-    const { hamSdrScenario1Data } = await import('../../src/campaigns/ham-sdr/scenario1');
-
-    const modem = hamSdrScenario1Data.settings.groundStations[0].receivers?.[0]?.modems?.[0];
-    // VFO parked 70 kHz above the APT downlink, still inside the 200 kHz view
-    expect(modem?.frequency).toBe(137.17);
-    // 15 kHz voice channel: the 34 kHz APT signal cannot fit until widened
-    expect(modem?.bandwidth).toBe(0.015);
-
-    // The sandbox's shared station must stay on-frequency (S1 overrides a copy)
-    const { hamSdrSandboxData } = await import('../../src/campaigns/ham-sdr/sandbox');
-    const sandboxQfh = hamSdrSandboxData.settings.groundStations.find((gs) => gs.id === 'BKYD-QFH');
-    expect(sandboxQfh?.receivers?.[0]?.modems?.[0]?.frequency).toBe(137.1);
-    expect(sandboxQfh?.receivers?.[0]?.modems?.[0]?.bandwidth).toBe(0.05);
-  });
-
-  it('scenario 7 authors a terrestrial RFI due east and the marginal-pass gates (E1)', async () => {
-    const { hamSdrScenario7Data } = await import('../../src/campaigns/ham-sdr/scenario7');
-
-    const rfi = hamSdrScenario7Data.settings.interferenceEvents?.[0];
-    expect(rfi?.path).toBe('terrestrial');
-    // Continuous, not duty-cycled - accidents run until unplugged
-    expect(rfi?.onSeconds).toBe(rfi?.periodSeconds);
-    // Emitter due east of the backyard (DF objective expects az 90 +/-12)
-    expect(rfi?.emitter?.latitude).toBeCloseTo(44.48, 3);
-    expect((rfi?.emitter?.longitude ?? 0) > -73.21).toBe(true);
-
-    // The margin objective demands the 100 kHz IF filter (index 5)
-    const narrowCatch = hamSdrScenario7Data.objectives.find((o) => o.id === 'narrow-and-catch');
-    const filterCond = narrowCatch?.conditions.find((c) => c.type === 'filter-bandwidth-set');
-    expect(filterCond?.params?.bandwidthIndex).toBe(5);
-  });
-
-  it('scenario 6 boots CUBEHOP tampered on a scenario-local instance (E3)', async () => {
-    const { hamSdrScenario6Data } = await import('../../src/campaigns/ham-sdr/scenario6');
-    const { cubehop1Satellite } = await import('../../src/campaigns/ham-sdr/satellites');
-
-    const event = hamSdrScenario6Data.settings.spaceEvents?.[0];
-    expect(event?.satelliteNoradId).toBe(63002);
-    // The tamper is applied at load via initialTle (replay-safe); newTle is the truth
-    expect(event?.initialTle?.tle2).toContain('154.0000');
-    expect(event?.newTle.tle2).toContain(' 94.0000');
-
-    // The scenario must NOT share the roster instance S2-S4 use
-    const s6Cubehop = hamSdrScenario6Data.settings.satellites.find((s) => s.noradId === 63002);
-    expect(s6Cubehop).toBeDefined();
-    expect(s6Cubehop).not.toBe(cubehop1Satellite);
-  });
-
-  it('scenario 5 wires the spoof window to a terrestrial L1 emitter (E1+E4)', async () => {
-    const { hamSdrScenario5Data } = await import('../../src/campaigns/ham-sdr/scenario5');
-    const settings = hamSdrScenario5Data.settings;
-
-    // The gnssThreat clock walk and the spoofer's over-the-air carrier are
-    // the same fiction - their windows must agree, anchored to the same
-    // objective (phase 19.0a)
-    expect(settings.gnssThreat?.startAfterObjectiveId).toBe('spot-the-spoofer');
-    expect(settings.gnssThreat?.spoofStartS).toBe(10);
-    expect(settings.gnssThreat?.spoofEndS).toBe(490);
-
-    const spoofer = settings.interferenceEvents?.[0];
-    expect(spoofer?.path).toBe('terrestrial');
-    expect(spoofer?.emitter).toBeDefined();
-    expect(spoofer?.startAfterObjectiveId).toBe('spot-the-spoofer');
-    expect(spoofer?.startTime).toBe(10);
-    expect((spoofer?.startTime ?? 0) + (spoofer?.duration ?? 0)).toBe(490);
-    // Terrestrial = received over the air, narrow and strong; real L1 (2 MHz) sits under the floor
-    expect(spoofer?.frequency).toBe(1575.42e6);
-    expect(spoofer?.bandwidth).toBeLessThan(2e6);
-  });
-
-  it('scenario 8 authors the TX rig, the pirate relay, and the fake beacon (E2 + E1)', async () => {
-    const { hamSdrScenario8Data } = await import('../../src/campaigns/ham-sdr/scenario8');
-    const settings = hamSdrScenario8Data.settings;
-
-    // TX station: BUC powered AND unmuted (the HPA-without-drive insta-fail
-    // checks exactly those flags), 5 W brick HPA, modem parked OFF the
-    // transponder so entering 435.900 is a real objective
-    const txStation = settings.groundStations.find((gs) => gs.id === 'BKYD-YAGI');
-    expect(txStation?.rfFrontEnds[0].buc?.isPowered).toBe(true);
-    expect(txStation?.rfFrontEnds[0].buc?.isMuted).toBe(false);
-    expect(txStation?.rfFrontEnds[0].hpa?.isHpaEnabled).toBe(true);
-    expect(txStation?.rfFrontEnds[0].hpa?.maxOutputPower).toBe(37);
-    const txModem = txStation?.transmitters?.[0]?.modems?.[0];
-    expect(txModem?.isPowered).toBe(true);
-    expect(txModem?.isTransmitting).toBe(false);
-    expect(txModem?.ifSignal?.frequency).not.toBe(435.9e6);
-
-    // The weather rig rides along for the epilogue
-    expect(settings.groundStations.some((gs) => gs.id === 'BKYD-QFH')).toBe(true);
-
-    // Pirate: transponder path (satellite relay), inside the V/U passband,
-    // RHCP to match, and OFF before the 17:31 first-TX pass (T+121 min)
-    const pirate = settings.interferenceEvents?.find((e) => e.id === 'cq-pirate');
-    expect(pirate?.path).toBeUndefined();
-    expect(pirate?.satelliteNoradId).toBe(63002);
-    expect(pirate?.frequency).toBeGreaterThan(435.885e6);
-    expect(pirate?.frequency).toBeLessThan(435.915e6);
-    expect(pirate?.polarization).toBe('RHCP');
-    expect((pirate?.startTime ?? 0) + (pirate?.duration ?? 0)).toBeLessThan(121 * 60);
-
-    // Fake beacon: terrestrial (zero Doppler by construction) on exactly 137.1
-    const fake = settings.interferenceEvents?.find((e) => e.id === 'fake-wxsat');
-    expect(fake?.path).toBe('terrestrial');
-    expect(fake?.frequency).toBe(137.1e6);
-    expect(fake?.emitter).toBeDefined();
-
-    // The uplink transponder the whole act depends on: 435.90 up / 435.29 down
-    const { cubehop1Satellite } = await import('../../src/campaigns/ham-sdr/satellites');
-    const vu = cubehop1Satellite.transponders.find((tp) => tp.id === 'VU-XPD');
-    expect(vu?.uplinkFrequency).toBe(435.9e6);
-    expect(vu?.downlinkFrequency).toBe(435.29e6);
-    expect(vu?.polarization).toBe('RHCP');
-    // A 1 W SSPA linear transponder (phase 19.3 physics)
-    expect(vu?.physics.amplifier).toBe('sspa');
-    expect(vu?.physics.satEirpDbw).toBe(0);
-  });
-
-  it('scenario 3 starts the yagi wrong-handed; scenarios 2 and 4 start clean', async () => {
-    const { hamSdrScenario2Data } = await import('../../src/campaigns/ham-sdr/scenario2');
-    const { hamSdrScenario3Data } = await import('../../src/campaigns/ham-sdr/scenario3');
-    const { hamSdrScenario4Data } = await import('../../src/campaigns/ham-sdr/scenario4');
-
-    expect(hamSdrScenario3Data.settings.groundStations[0].antennasState?.[0]?.circularHandedness).toBe('LHCP');
-    expect(hamSdrScenario2Data.settings.groundStations[0].antennasState?.[0]?.circularHandedness).toBe('RHCP');
-    expect(hamSdrScenario4Data.settings.groundStations[0].antennasState?.[0]?.circularHandedness).toBe('RHCP');
+    });
   });
 });

@@ -8,8 +8,10 @@ import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
 import { GeolocationConsoleCore } from '@app/equipment/geolocation-console/geolocation-console-core';
 import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
 import { HardwareFaultManager } from '@app/faults/hardware-fault-manager';
 import { GnssThreatManager } from '@app/gnss-threat/gnss-threat-manager';
+import { HamStationService } from '@app/ham/ham-station-service';
 import { InterferenceManager } from '@app/interference/interference-manager';
 import { LinkBudgetManager } from '@app/link-budget/link-budget-manager';
 import { Logger } from '@app/logging/logger';
@@ -34,6 +36,7 @@ import { WorkingDocumentManager } from '@app/scenarios/working-document-manager'
 import { SecurityConsoleCore } from '@app/security-console/security-console-core';
 import { AlarmService } from '@app/services/alarm-service';
 import { KeepTrackEmbedHost } from '@app/services/keeptrack-embed-host';
+import { SelectionService } from '@app/services/selection-service';
 import { SimClock } from '@app/simulation/sim-clock';
 import { getSimulatedNowMs } from '@app/simulation/sim-time';
 import { SimulationManager } from '@app/simulation/simulation-manager';
@@ -75,6 +78,8 @@ export class MissionControlPage extends BasePage {
   private loadingScreen_: MissionLoadingScreen | null = null;
   private opening_: SceneModal | null = null;
   private disposed_ = false;
+
+  private boundHamUnlock_: (() => void) | null = null;
 
   private constructor(options?: NavigationOptions) {
     super();
@@ -165,6 +170,7 @@ export class MissionControlPage extends BasePage {
     // Initialize components
     this.assetTreeSidebar_ = new AssetTreeSidebar('asset-tree-sidebar-container');
     this.tabbedCanvas_ = new TabbedCanvas('tabbed-canvas-container');
+    this.openHamStation_();
 
     // Initialize progress save manager
     this.initProgressSaveManager_();
@@ -177,6 +183,26 @@ export class MissionControlPage extends BasePage {
       this.dom_.inert = true;
       this.loadingScreen_?.fail();
     });
+  }
+
+  /**
+   * Campaign 3: the Station bench is where every scenario starts, so select the
+   * home station instead of landing on the Mission Overview. The ham service
+   * starts during async init and the station stays locked until the brief is
+   * acknowledged, so this runs at the end of init and again on unlock.
+   */
+  private openHamStation_(): void {
+    this.boundHamUnlock_ = () => this.selectHamStation_();
+    EventBus.getInstance().on(Events.SCENARIO_UNLOCKED, this.boundHamUnlock_);
+  }
+
+  private selectHamStation_(): void {
+    const stations = SimulationManager.getInstance().groundStations;
+    if (this.disposed_ || !HamStationService.getInstance() || stations.length !== 1) return;
+    const id = stations[0].state.id;
+    if (TabbedCanvas.getSelectedAssetId() !== id || TabbedCanvas.getActiveTab() !== 'ham-station') {
+      SelectionService.getInstance().selectGroundStation(id);
+    }
   }
 
   /**
@@ -206,6 +232,7 @@ export class MissionControlPage extends BasePage {
     if (this.disposed_) return;
     await this.initializeObjectivesAndDialogs_();
     if (this.disposed_) return;
+    this.selectHamStation_();
     this.dom_.inert = false;
     SimClock.resume('loading');
     MenuMusic.getInstance().setActive(false);
@@ -356,6 +383,9 @@ export class MissionControlPage extends BasePage {
     // Clean up resources
     if (MissionControlPage.instance_) {
       MissionControlPage.instance_.disposed_ = true;
+      if (MissionControlPage.instance_.boundHamUnlock_) {
+        EventBus.getInstance().off(Events.SCENARIO_UNLOCKED, MissionControlPage.instance_.boundHamUnlock_);
+      }
       MissionControlPage.instance_.opening_?.dispose();
       MissionControlPage.instance_.loadingScreen_?.dispose();
       SimClock.resume('loading');
@@ -398,6 +428,7 @@ export class MissionControlPage extends BasePage {
     ElectronicAttackManager.destroy();
     HardwareFaultManager.destroy();
     PhysicalPlantService.destroy();
+    HamStationService.destroy();
     PartCloseupModal.destroy();
     PlantTrainerBox.destroy();
     LinkBudgetManager.destroy();

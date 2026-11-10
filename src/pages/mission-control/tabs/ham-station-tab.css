@@ -1,0 +1,39 @@
+/*
+ * Station tab (Campaign 3 ham-sdr). Layout lives in src/ham/ui/bench/bench.css; these are the
+ * Tabler card and control tweaks for the panels shown inside the close-up and notebook.
+ */
+
+.ham-station-tab {
+  color: var(--mc-text, inherit);
+}
+
+.ham-station-tab .card {
+  background: var(--mc-surface, var(--tblr-bg-surface));
+  border-color: var(--mc-border, var(--tblr-border-color));
+}
+
+.ham-station-tab .ham-panel-grid > [hidden] {
+  display: none;
+}
+
+.ham-station-tab .equip-adjust-display input {
+  width: 7rem;
+}
+
+.ham-station-tab .btn-equip {
+  width: 3.5rem;
+}
+
+.ham-station-tab input[type='range'] {
+  width: 100%;
+}
+
+.ham-station-tab canvas {
+  max-height: 22rem;
+  background: #10141a;
+}
+
+/* A docked mission window (checklist, history) occupies a gutter on the left of the tab */
+.ham-station-tab.has-docked-window {
+  padding-left: 316px;
+}

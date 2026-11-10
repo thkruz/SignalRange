@@ -9,6 +9,7 @@
  */
 
 import type { AggregatedAlarm } from '@app/events/events';
+import type { HamStationState } from '@app/ham/station/station-core';
 import type { EvidenceLogState } from '@app/physical/evidence-log';
 import type { FieldRecordsState } from '@app/physical/field-records';
 import type { PlantEnvironment, PlantState } from '@app/physical/physical-plant-types';
@@ -131,6 +132,8 @@ export interface ManagerStates {
   contactSchedule?: ContactScheduleSnapshot;
   gnssThreat?: GnssThreatSnapshot;
   hardwareFaults?: HardwareFaultSnapshot;
+  /** Campaign 3 ham station manager (schema c3-tech-v1) */
+  hamStation?: HamStationState;
   /** Phase 38.1 physical plant (PlantState plus the trainer weather override) */
   physicalPlant?: PlantState & {
     weather?: Partial<PlantEnvironment>;

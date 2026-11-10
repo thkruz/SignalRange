@@ -181,7 +181,17 @@ export interface ObjectiveFailedData {
 }
 
 // Quiz Event specific interfaces
-export interface QuizShowData {
+/** Optional study metadata a quiz can carry (Campaign 3 Technician quizzes) */
+export interface QuizExtras {
+  quizSource?: { kind: 'official' | 'applied'; questionId?: string; group?: string; poolRevision?: string; localId?: string };
+  figureUrl?: string;
+  figureAlt?: string;
+  /** Per-option feedback shown after that option is chosen wrongly (index = original option index) */
+  wrongAnswerFeedback?: string[];
+  reviewHint?: string;
+}
+
+export interface QuizShowData extends QuizExtras {
   objectiveId: string;
   conditionIndex: number;
   question: string;
@@ -615,6 +625,9 @@ export enum Events {
   // Fault injection events
   FAULT_CHANGED = 'fault:changed',
   AUDIT_EVENT_ACKNOWLEDGED = 'audit:event:acknowledged',
+
+  // Campaign 3 ham station (throttled to 4 Hz)
+  HAM_STATION_UPDATED = 'ham-station:updated',
 }
 
 export interface EventMap {
@@ -747,4 +760,5 @@ export interface EventMap {
   // Fault injection events
   [Events.FAULT_CHANGED]: [{ id: string; action: 'injected' | 'cleared' }];
   [Events.AUDIT_EVENT_ACKNOWLEDGED]: [{ id: string }];
+  [Events.HAM_STATION_UPDATED]: [{ stateVersion: number; nowS: number }];
 }

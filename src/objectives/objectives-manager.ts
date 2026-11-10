@@ -3072,7 +3072,16 @@ export class ObjectivesManager {
             params.explanation,
             params.pointPenalty ?? 5,
             params.character,
-            params.preserveOptionOrder
+            params.preserveOptionOrder,
+            params.quizSource || params.figureUrl || params.wrongAnswerFeedback || params.reviewHint
+              ? {
+                  quizSource: params.quizSource,
+                  figureUrl: params.figureUrl,
+                  figureAlt: params.figureAlt,
+                  wrongAnswerFeedback: params.wrongAnswerFeedback,
+                  reviewHint: params.reviewHint,
+                }
+              : undefined
           );
         }
 

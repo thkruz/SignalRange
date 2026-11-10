@@ -93,7 +93,7 @@ function* walk(dir) {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
     const p = join(dir, e.name);
     if (e.isDirectory()) yield* walk(p);
-    else if (/^scenario\d+\.ts$/u.test(e.name) || /^(drills|sandbox)\.ts$/u.test(e.name)) yield p;
+    else if (/^scenario\d+\.ts$/u.test(e.name) || /^(drills|sandbox)\.ts$/u.test(e.name) || /^s\d+-(?!station)[a-z0-9-]+\.ts$/u.test(e.name)) yield p;
   }
 }
 

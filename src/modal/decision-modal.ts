@@ -116,7 +116,7 @@ export class DecisionModal extends DraggableBox {
         <div id="${this.boxId}" class="draggable-box decision-box" style="pointer-events:auto; display:none;">
           <div class="draggable-box__title-bar">
             <div class="draggable-box__title"><span>${this.title}</span></div>
-            <span id="${this.boxId}-close" class="draggable-box__btn draggable-box__close-btn"></span>
+            <button type="button" id="${this.boxId}-close" class="draggable-box__close-btn" title="Close this window" aria-label="Close">&#x2715; Close</button>
           </div>
           <div class="draggable-box__content">${this.getBoxContentHtml()}</div>
         </div>

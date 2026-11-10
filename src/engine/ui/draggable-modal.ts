@@ -39,7 +39,7 @@ export abstract class DraggableModal extends DraggableBox {
               <div class="draggable-box__title">
                 <h3 style="margin: 0;">${this.getBoxTitleHtml()}</h3>
               </div>
-              <span id="${this.boxId}-close" class="draggable-box__btn draggable-box__close-btn"></span>
+              <button type="button" id="${this.boxId}-close" class="draggable-box__close-btn" title="Close this window" aria-label="Close">&#x2715; Close</button>
             </div>
             <div class="draggable-box__content">
               ${this.getBoxContentHtml()}

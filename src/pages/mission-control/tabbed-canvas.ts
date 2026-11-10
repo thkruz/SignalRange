@@ -22,6 +22,7 @@ import './tabbed-canvas.css';
 import type { GroundStation } from '@app/assets/ground-station/ground-station';
 import { ModalConfirm } from '@app/engine/ui/modal-confirm';
 import { OrbitalSatellite } from '@app/equipment/satellite/orbital-satellite';
+import { HamStationService } from '@app/ham/ham-station-service';
 import { type AntennaPage, AntennaPageRegistry, STATION_TAB_PREFIX, type StationTabFactory } from '@app/pages/mission-control/antenna-page-registry';
 import { fieldDefaultTabId } from '@app/pages/mission-control/field-default-tab';
 import { ACUControlTab } from '@app/pages/mission-control/tabs/acu-control-tab';
@@ -32,6 +33,7 @@ import { EaAssessmentTab } from '@app/pages/mission-control/tabs/ea-assessment-t
 import { GeolocationTab } from '@app/pages/mission-control/tabs/geolocation-tab';
 import { GPSTimingTab } from '@app/pages/mission-control/tabs/gps-timing-tab';
 import { GroundTrackTab } from '@app/pages/mission-control/tabs/ground-track-tab';
+import { HamStationTab } from '@app/pages/mission-control/tabs/ham-station-tab';
 import { LinkBudgetTab } from '@app/pages/mission-control/tabs/link-budget-tab';
 import { MissionOverviewTab } from '@app/pages/mission-control/tabs/mission-overview-tab';
 import { PassScheduleTab } from '@app/pages/mission-control/tabs/pass-schedule-tab';
@@ -102,6 +104,7 @@ export class TabbedCanvas extends BaseElement {
     | MissionOverviewTab
     | PassScheduleTab
     | SdrConsoleTab
+    | HamStationTab
     | GeolocationTab
     | EaAssessmentTab
     | LinkBudgetTab
@@ -336,12 +339,16 @@ export class TabbedCanvas extends BaseElement {
     // Console (with its rotator panel) is the whole rig; Observations covers
     // planning. Absent stationClass renders the professional tab set as before.
     if (groundStation.state.stationClass === 'backyard') {
-      const backyardTabs: TabDescriptor[] = [{ id: 'sdr-console', label: 'SDR Console', icon: radarPng, isDisabled: groundStation.state.isOperational === false }];
+      // Campaign 3 (ham-sdr) runs the headless HamStationManager: the Station tab replaces the SDR Console.
+      const hamStation = HamStationService.getInstance() !== null;
+      const backyardTabs: TabDescriptor[] = hamStation
+        ? [{ id: 'ham-station', label: 'Station', icon: radioPng }]
+        : [{ id: 'sdr-console', label: 'SDR Console', icon: radarPng, isDisabled: groundStation.state.isOperational === false }];
       if (hasOrbitalSats) {
         backyardTabs.push({ id: 'pass-schedule', label: 'Observations', icon: stopwatchPng, isDisabled: groundStation.state.isOperational === false });
       }
       this.renderTabs_(backyardTabs);
-      this.switchTab_(this.resolveActiveTab_(backyardTabs, 'sdr-console'));
+      this.switchTab_(this.resolveActiveTab_(backyardTabs, hamStation ? 'ham-station' : 'sdr-console'));
       return;
     }
 
@@ -794,6 +801,10 @@ export class TabbedCanvas extends BaseElement {
 
       case 'sdr-console':
         this.renderSdrConsoleTab_(content);
+        break;
+
+      case 'ham-station':
+        this.renderHamStationTab_(content);
         break;
 
       case 'mission-overview':
@@ -1293,6 +1304,39 @@ export class TabbedCanvas extends BaseElement {
     }
 
     sdrTab.activate();
+  }
+
+  /**
+   * Render the Station tab (Campaign 3 ham-sdr): hosts the headless HamStationManager
+   */
+  private renderHamStationTab_(content: HTMLElement): void {
+    const service = HamStationService.getInstance();
+
+    if (!service) {
+      content.innerHTML = html`
+        <div class="tab-content-placeholder">
+          <h3>Error</h3>
+          <p>Ham station is not running.</p>
+        </div>
+      `;
+      return;
+    }
+
+    const tabKey = `ham-station-${this.selectedAssetId_}`;
+    let stationTab = this.tabInstances_.get(tabKey) as HamStationTab;
+
+    if (stationTab && !document.contains(stationTab.dom)) {
+      stationTab.dispose();
+      this.tabInstances_.delete(tabKey);
+      stationTab = null!;
+    }
+
+    if (!stationTab) {
+      stationTab = new HamStationTab(service.manager, 'canvas-content');
+      this.tabInstances_.set(tabKey, stationTab);
+    }
+
+    stationTab.activate();
   }
 
   /**

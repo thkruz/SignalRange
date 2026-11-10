@@ -33,8 +33,13 @@ export const MAX_FRAME_MS = 250;
 export const SIM_SPEEDS = [1, 2, 5] as const;
 export type SimSpeed = (typeof SIM_SPEEDS)[number];
 
-/** Why the scenario reading is stopped. `hidden` also stops the run reading. */
-export type PauseReason = 'scenario' | 'hidden' | 'loading' | 'menu';
+/**
+ * Why the scenario reading is stopped. `hidden` also stops the run reading.
+ * `quiz` (opt-in, installed by the C3 quiz pause) stops scenario time exactly like
+ * `scenario` and leaves run time alone; it is a separate reason so a quiz closing
+ * never releases a brief or failure pause that is still held.
+ */
+export type PauseReason = 'scenario' | 'quiz' | 'hidden' | 'loading' | 'menu';
 
 /** Default scenario epoch before a scenario sets one (menus, unit tests). */
 const DEFAULT_EPOCH_MS = Date.UTC(2026, 0, 1, 12, 0, 0);
@@ -157,7 +162,7 @@ export const SimClock = {
   /** Advance both readings by one fixed step. */
   step(): void {
     runSteps_++;
-    if (!pauseReasons_.has('scenario')) {
+    if (!pauseReasons_.has('scenario') && !pauseReasons_.has('quiz')) {
       scenarioSteps_++;
     }
     fireDueTimers_();

@@ -103,7 +103,7 @@
 
 .draggable-box__site-dock-btn {
   position: absolute;
-  right: 2.4em;
+  right: 6.5em;
   padding: 0 0.5em;
   font-size: 0.7rem;
   line-height: 1.4;
@@ -119,12 +119,34 @@
 }
 
 .draggable-box__close-btn {
-  right: 1em;
-  background: var(--color-dark-text-accent);
+  position: absolute;
+  right: 0.5em;
+  padding: 0.15em 0.6em;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--color-dark-text, #e6e6e6);
+  background: var(--color-dark-border);
+  border: 1px solid var(--color-dark-text-accent);
+  border-radius: 4px;
+  cursor: pointer;
 }
 
-.draggable-box__close-btn:hover {
+.draggable-box__close-btn:hover,
+.draggable-box__close-btn:focus-visible {
+  color: #ffffff;
   background: var(--color-primary);
+}
+
+.draggable-box__dock-btn {
+  right: 6.5em;
+}
+
+/* Docked against the left edge (C3 bench): the content scrolls inside the window height */
+.draggable-box.is-docked-left .draggable-box__content {
+  max-height: none;
+  overflow-y: auto;
 }
 
 /* ==========================================================================

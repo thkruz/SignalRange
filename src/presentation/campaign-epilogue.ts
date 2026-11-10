@@ -20,10 +20,10 @@ const ENDINGS: Record<string, { finale: number; title: string; message: string; 
     sender: 'Charlie Brooks · NATS Europe',
   },
   'ham-sdr': {
-    finale: 8,
-    title: 'The Yard Is Yours',
+    finale: 12,
+    title: 'Your Station, Your Call',
     message:
-      'You can put an antenna in the yard, catch something from orbit, and explain what you received. You also know when a signal deserves a second look. Keep the notebook. Try another antenna. There will be another pass tomorrow. Seventy-three, operator.',
+      'You started with a receiver tuned to the wrong channel. Today you ran a station on your own: you planned the power, found the fault, kept the net moving when the repeater went down and passed the message exactly as written. Keep the logbook, and bring it with you to the exam session. Seventy-three, operator.',
     sender: 'Riley Brooks',
   },
   ccs: {

@@ -1,0 +1,547 @@
+/*
+ * Campaign 3 point-and-click bench: scene drawing, close-up column and the SDR program.
+ * Geometric stand-ins until there is artwork. Colours use the mission-control tokens so
+ * both themes work; device bodies use fixed equipment greys like real gear.
+ */
+
+.ham-station-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  height: 100%;
+  min-height: 0;
+  padding: 0.5rem;
+  overflow: hidden;
+}
+
+.ham-station-top {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  min-height: 2rem;
+}
+
+.ham-station-top .ham-feedback {
+  flex: 1 1 20rem;
+  font-size: 0.85rem;
+}
+
+.ham-hint-strip:empty,
+.ham-hint-strip > [hidden] {
+  display: none;
+}
+
+.ham-hint-strip .card {
+  background: transparent;
+}
+
+.ham-hint-strip .card-header {
+  display: none;
+}
+
+.ham-hint-strip .card-body {
+  padding: 0.25rem 0.5rem;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.ham-station-main {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(20rem, 2fr);
+  gap: 0.5rem;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+@media (max-width: 1100px) {
+  .ham-station-tab {
+    overflow-y: auto;
+  }
+
+  .ham-station-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.ham-station-scene {
+  min-height: 0;
+  display: flex;
+  border: 1px solid var(--mc-border, #2a3340);
+  border-radius: 6px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(0, 0, 0, 0.15)),
+    var(--mc-surface-1, #141a22);
+}
+
+.ham-bench {
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+}
+
+.ham-bench-svg {
+  width: 100%;
+  height: 100%;
+  min-height: 18rem;
+  user-select: none;
+}
+
+/* --- device bodies --- */
+.ham-bench .bd-body { fill: #2b3138; stroke: #59636e; stroke-width: 1.5; }
+.ham-bench .bd-face { fill: #1d2228; stroke: #3d464f; }
+.ham-bench .bd-metal { fill: #9aa3ad; stroke: #5e6770; stroke-width: 1.2; }
+.ham-bench .bd-plug { fill: #b8c0c8; stroke: #6b747d; }
+.ham-bench .bd-seam { stroke: #4a535c; stroke-width: 1.5; }
+.ham-bench .bd-element { stroke: #c9d1d9; stroke-width: 4; stroke-linecap: round; }
+.ham-bench .bd-radial { stroke: #8b949e; stroke-width: 3; stroke-linecap: round; }
+.ham-bench .bd-coax { fill: none; stroke: #2d333b; stroke-width: 7; stroke-linecap: round; filter: drop-shadow(0 0 1.5px rgb(201 209 217 / 0.7)); }
+.ham-bench .bd-dclead { fill: none; stroke: #b42318; stroke-width: 5; stroke-linecap: round; }
+.ham-bench .bd-cable-thick { fill: none; stroke: #2b3138; stroke-width: 6; }
+.ham-bench .bd-knob { fill: #15191e; stroke: #6b747d; stroke-width: 1.5; }
+.ham-bench .bd-knob-mark { stroke: #d0d7de; stroke-width: 2; }
+.ham-bench .bd-ptt { fill: #59636e; }
+.ham-bench .bd-display { fill: #0d1f14; stroke: #3d464f; }
+.ham-bench .bd-display-on { fill: #183d24; }
+.ham-bench .bd-display-text { fill: #7ee787; font: 600 11px ui-monospace, monospace; }
+.ham-bench .bd-screen { fill: #0b0e12; stroke: #3d464f; }
+.ham-bench .bd-screen-on { fill: #13233a; }
+.ham-bench .bd-screen-text { fill: #9ecbff; font: 600 11px ui-monospace, monospace; }
+.ham-bench .bd-wf { fill: #1f6feb; opacity: 0.55; }
+.ham-bench .bd-wf-1 { fill: #1158c7; }
+.ham-bench .bd-wf-2 { fill: #2f81f7; opacity: 0.7; }
+.ham-bench .bd-wf-3 { fill: #0d419d; }
+.ham-bench .bd-wf-4 { fill: #388bfd; opacity: 0.4; }
+.ham-bench .bd-led { fill: #3d1d1d; stroke: #000; }
+.ham-bench .bd-led-on { fill: #3fb950; filter: drop-shadow(0 0 3px #3fb950); }
+.ham-bench .bd-post-red { fill: #da3633; stroke: #6e1a19; }
+.ham-bench .bd-post-black { fill: #161b22; stroke: #59636e; }
+.ham-bench .bd-battery { fill: #3b3f2a; stroke: #6b7046; stroke-width: 1.5; }
+.ham-bench .bd-meter { fill: #c69026; stroke: #7a5a17; stroke-width: 1.5; }
+.ham-bench .bd-dial { fill: none; stroke: #d0d7de; stroke-width: 2; }
+.ham-bench .bd-needle { stroke: #f85149; stroke-width: 2; }
+.ham-bench .bd-fin { stroke: #6b747d; stroke-width: 3; }
+.ham-bench .bd-pcb { fill: #1a4d2e; stroke: #2ea043; }
+.ham-bench .bd-trace { stroke: #d29922; stroke-width: 2; }
+.ham-bench .bd-chip { fill: #161b22; }
+.ham-bench .bd-zigzag { fill: none; stroke: #d29922; stroke-width: 2; }
+.ham-bench .bd-label { fill: var(--mc-text-secondary, #8b949e); font: 500 12px system-ui, sans-serif; pointer-events: none; }
+.ham-bench .bd-label-dim { fill: #9aa38a; font: 600 12px system-ui, sans-serif; }
+
+/* --- interaction --- */
+.ham-bench .bench-dev { cursor: pointer; outline: none; }
+.ham-bench .bench-hit { fill: transparent; stroke: transparent; stroke-width: 2; }
+.ham-bench .bench-dev:hover .bench-hit,
+.ham-bench .bench-dev:focus-visible .bench-hit { stroke: var(--mc-text-muted, #6e7681); stroke-dasharray: 4 3; }
+.ham-bench .bench-dev.is-selected .bench-hit { stroke: var(--mc-accent, #58a6ff); stroke-dasharray: none; fill: rgba(88, 166, 255, 0.06); }
+.ham-bench .bench-dev.is-selected .bd-label { fill: var(--mc-text-primary, #e6edf3); }
+
+.ham-bench .bench-conn { cursor: pointer; outline: none; }
+.ham-bench .bench-conn-hit { fill: none; stroke: transparent; stroke-width: 16; }
+.ham-bench .bench-conn-grip { fill: transparent; }
+/* Coax: dark jacket with a light rim so it reads on the dark bench */
+.ham-bench .bench-conn-line { fill: none; stroke: #2d333b; stroke-width: 5; stroke-linecap: round; filter: drop-shadow(0 0 1.5px rgb(201 209 217 / 0.7)); }
+.ham-bench .bench-conn.role-usb-device .bench-conn-line,
+.ham-bench .bench-conn.role-usb-host .bench-conn-line { stroke: #6e7681; stroke-width: 4; }
+.ham-bench .bench-conn.role-dc-in .bench-conn-line,
+.ham-bench .bench-conn.role-dc-out .bench-conn-line { stroke: #b42318; }
+.ham-bench .bench-conn.role-audio .bench-conn-line { stroke: #8957e5; stroke-width: 3; }
+.ham-bench .bench-conn:hover .bench-conn-line,
+.ham-bench .bench-conn:focus-visible .bench-conn-line { stroke: #8b949e; }
+.ham-bench .bench-conn.is-selected .bench-conn-line { stroke: var(--mc-accent, #58a6ff); }
+.ham-bench .bench-conn.is-loose .bench-conn-line { stroke: var(--mc-status-caution, #eab308); stroke-dasharray: 6 4; }
+
+.ham-bench .bench-port { cursor: pointer; outline: none; }
+.ham-bench .bench-port-hit { fill: transparent; }
+.ham-bench .bench-port-dot { fill: #0d1117; stroke: #d0d7de; stroke-width: 2; }
+.ham-bench .bench-port.role-rf .bench-port-dot { stroke: #d4a72c; }
+.ham-bench .bench-port.role-usb-device .bench-port-dot,
+.ham-bench .bench-port.role-usb-host .bench-port-dot { stroke: #8b949e; }
+.ham-bench .bench-port.role-dc-in .bench-port-dot,
+.ham-bench .bench-port.role-dc-out .bench-port-dot { stroke: #f85149; }
+.ham-bench .bench-port.is-used .bench-port-dot { fill: #59636e; }
+.ham-bench .bench-port:hover .bench-port-dot,
+.ham-bench .bench-port:focus-visible .bench-port-dot { stroke-width: 3; r: 8; }
+.ham-bench .bench-port.is-armed .bench-port-dot { fill: var(--mc-accent, #58a6ff); stroke: #fff; r: 8; }
+.ham-bench-svg.is-arming .bench-port:not(.is-used):not(.is-armed) .bench-port-dot { stroke-dasharray: 3 2; }
+.ham-bench .bench-port-label {
+  fill: var(--mc-text-primary, #e6edf3);
+  font: 600 11px system-ui, sans-serif;
+  paint-order: stroke;
+  stroke: var(--mc-surface-1, #141a22);
+  stroke-width: 3px;
+  pointer-events: none;
+}
+
+/* --- side column --- */
+.ham-station-side {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid var(--mc-border, #2a3340);
+  border-radius: 6px;
+  background: var(--mc-surface-1, #141a22);
+}
+
+.ham-side-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--mc-border, #2a3340);
+}
+
+.ham-side-tab {
+  flex: 1;
+  padding: 0.4rem;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--mc-text-secondary, #8b949e);
+  font-weight: 600;
+}
+
+.ham-side-tab.is-active {
+  color: var(--mc-text-primary, #e6edf3);
+  border-bottom-color: var(--mc-accent, #58a6ff);
+}
+
+.ham-side-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.5rem;
+}
+
+.ham-side-body[hidden] {
+  display: none;
+}
+
+.ham-side-body .card {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.ham-side-body .card-header {
+  padding: 0.25rem 0;
+  border: 0;
+}
+
+.ham-side-body .card-body {
+  padding: 0.25rem 0;
+}
+
+.ham-notebook > .ham-slot + .ham-slot {
+  border-top: 1px solid var(--mc-border, #2a3340);
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+}
+
+.ham-slot[hidden] {
+  display: none;
+}
+
+.ham-closeup-empty {
+  color: var(--mc-text-secondary, #8b949e);
+  padding: 1rem 0;
+}
+
+.ham-closeup-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+  font-size: 1rem;
+}
+
+.ham-closeup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.4rem;
+}
+
+.ham-closeup-clue {
+  border-left: 3px solid var(--mc-accent, #58a6ff);
+  padding: 0.3rem 0.5rem;
+  margin: 0.3rem 0;
+  font-size: 0.85rem;
+  background: rgba(88, 166, 255, 0.06);
+}
+
+.ham-closeup-fault {
+  border-left: 3px solid var(--mc-status-caution, #eab308);
+  padding: 0.3rem 0.5rem;
+  margin: 0.3rem 0;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.ham-closeup-ports {
+  list-style: none;
+  padding: 0;
+  margin: 0.3rem 0;
+  font-size: 0.85rem;
+}
+
+.ham-closeup-ports li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+
+.ham-closeup-port-name {
+  color: var(--mc-text-secondary, #8b949e);
+  min-width: 8rem;
+}
+
+.ham-closeup-section {
+  font-weight: 600;
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.ham-closeup-instruments:not(:empty) {
+  border-top: 1px solid var(--mc-border, #2a3340);
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+}
+
+.ham-power-switch {
+  border: 1px solid #59636e;
+  border-radius: 999px;
+  padding: 0.15rem 0.7rem 0.15rem 1.6rem;
+  background: #1d2228;
+  color: var(--mc-text-primary, #e6edf3);
+  position: relative;
+  font-size: 0.85rem;
+}
+
+.ham-power-switch::before {
+  content: '';
+  position: absolute;
+  left: 0.35rem;
+  top: 50%;
+  width: 0.8rem;
+  height: 0.8rem;
+  margin-top: -0.4rem;
+  border-radius: 50%;
+  background: #6e7681;
+}
+
+.ham-power-switch.is-on::before {
+  background: #3fb950;
+  box-shadow: 0 0 6px #3fb950;
+}
+
+/* --- SDR program on the laptop --- */
+.ham-sdr-app {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 0 0.5rem 0.5rem;
+  color: #c9d1d9;
+}
+
+.ham-sdr-titlebar {
+  display: flex;
+  gap: 0.4rem;
+  margin: 0 -0.5rem 0.5rem;
+  padding: 0.25rem 0.5rem;
+  background: #161b22;
+  border-bottom: 1px solid #30363d;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.ham-sdr-titlebar-dim {
+  color: #6e7681;
+  font-weight: 400;
+}
+
+.ham-sdr-empty {
+  padding: 1.5rem 0.5rem;
+  text-align: center;
+  color: #8b949e;
+}
+
+.ham-sdr-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.4rem;
+}
+
+.ham-sdr-freq {
+  display: inline-flex;
+  align-items: baseline;
+  font: 600 1.9rem/1 ui-monospace, 'Cascadia Mono', monospace;
+  color: #e6edf3;
+}
+
+.ham-sdr-digit {
+  position: relative;
+  display: inline-block;
+  width: 0.62em;
+  text-align: center;
+}
+
+.ham-sdr-digit-half {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 50%;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.ham-sdr-digit-half.up { top: 0; }
+.ham-sdr-digit-half.down { bottom: 0; }
+.ham-sdr-digit-half.up:hover { background: linear-gradient(180deg, rgba(248, 81, 73, 0.35), transparent); }
+.ham-sdr-digit-half.down:hover { background: linear-gradient(0deg, rgba(56, 139, 253, 0.35), transparent); }
+
+.ham-sdr-dot,
+.ham-sdr-unit {
+  color: #6e7681;
+}
+
+.ham-sdr-unit {
+  font-size: 0.9rem;
+  margin-left: 0.4rem;
+}
+
+.ham-sdr-type-row {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.ham-sdr-type {
+  width: 7rem;
+}
+
+.ham-sdr-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  align-items: center;
+  margin-bottom: 0.3rem;
+}
+
+.ham-sdr-tool-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #8b949e;
+  min-width: 4.8rem;
+}
+
+.ham-sdr-tool {
+  border: 1px solid #30363d;
+  background: #161b22;
+  color: #c9d1d9;
+  border-radius: 4px;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.78rem;
+}
+
+.ham-sdr-tool.is-active {
+  background: #1f6feb;
+  border-color: #388bfd;
+  color: #fff;
+}
+
+.ham-sdr-spectrum canvas {
+  max-height: 11rem;
+}
+
+.ham-sdr-spectrum .card-header {
+  display: none;
+}
+
+.ham-sdr-level {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.3rem 0;
+}
+
+.ham-sdr-level-track {
+  flex: 1;
+  height: 0.5rem;
+  background: #21262d;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.ham-sdr-level-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #238636, #d29922, #f85149);
+}
+
+.ham-sdr-sliders {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.ham-sdr-slider {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.8rem;
+}
+
+.ham-sdr-slider-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.25rem;
+}
+
+.ham-sdr-slider-val {
+  font-size: 0.75rem;
+  color: #8b949e;
+}
+
+.ham-sdr-audio {
+  font-size: 0.85rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  background: #161b22;
+}
+
+.ham-sdr-audio.is-voice { color: #3fb950; }
+.ham-sdr-audio.is-hiss { color: #d29922; }
+.ham-sdr-audio.is-rough { color: #db6d28; }
+.ham-sdr-audio.is-silent { color: #8b949e; }
+
+.ham-sdr-heard {
+  font-size: 0.85rem;
+}
+
+.ham-closeup-port-free {
+  border: 1px dashed var(--mc-border, #2a3340);
+  background: transparent;
+  color: var(--mc-text-secondary, #8b949e);
+  border-radius: 4px;
+  padding: 0 0.4rem;
+  font-size: 0.8rem;
+}
+
+.ham-closeup-port-free:hover {
+  color: var(--mc-text-primary, #e6edf3);
+  border-color: var(--mc-accent, #58a6ff);
+}
+
+/* Painted equipment on the bench */
+.ham-bench .bd-art {
+  filter: drop-shadow(0 3px 4px rgb(0 0 0 / 45%));
+}
+.ham-bench .bd-art-screen-text {
+  font: 600 10px var(--tblr-font-monospace, monospace);
+  fill: #1d2a14;
+  pointer-events: none;
+}

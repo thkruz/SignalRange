@@ -612,12 +612,28 @@ describe('AssetTreeSidebar with mission brief', () => {
     const mockOpen = vi.fn();
     OpsLogModal.getInstance.mockReturnValue({
       open: mockOpen,
+      isShowing: () => false,
     });
 
     const opsLogItem = document.querySelector('.ops-log-icon') as HTMLElement;
     opsLogItem?.click();
 
     expect(mockOpen).toHaveBeenCalled();
+  });
+
+  it('should close the ops log when its sidebar item is clicked while it is open', () => {
+    const mockOpen = vi.fn();
+    const mockClose = vi.fn();
+    OpsLogModal.getInstance.mockReturnValue({
+      open: mockOpen,
+      close: mockClose,
+      isShowing: () => true,
+    });
+
+    (document.querySelector('.ops-log-icon') as HTMLElement)?.click();
+
+    expect(mockClose).toHaveBeenCalled();
+    expect(mockOpen).not.toHaveBeenCalled();
   });
 });
 

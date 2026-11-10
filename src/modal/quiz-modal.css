@@ -284,3 +284,33 @@
 .quiz-option-btn.quiz-option-single .quiz-option-text {
   text-align: center;
 }
+
+.quiz-source-label {
+  font-size: 0.75rem;
+  opacity: 0.75;
+  margin-bottom: 0.4rem;
+}
+
+.quiz-figure {
+  margin: 0.5rem 0;
+  text-align: center;
+}
+
+.quiz-figure-img {
+  max-width: 100%;
+  max-height: 260px;
+  background: #fff;
+  border-radius: 4px;
+}
+
+.quiz-figure-caption {
+  font-size: 0.7rem;
+  opacity: 0.7;
+  margin-top: 0.25rem;
+}
+
+.quiz-review-hint {
+  font-size: 0.8rem;
+  opacity: 0.85;
+  margin-top: 0.35rem;
+}

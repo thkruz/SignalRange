@@ -13,6 +13,7 @@ import {
   recordsSubmit,
   servicesTakeSample,
   waitForObjective,
+  workloadsInspect,
   workloadsSetPriority,
   workloadsStart,
   workloadsWaitForRun,
@@ -68,6 +69,8 @@ test.describe('Frontline S5 full completion', () => {
     });
 
     await test.step('[s5-identify-shared-use] Identify the Shared Workload', async () => {
+      await workloadsInspect(page, 'ola-app');
+      await workloadsInspect(page, 'sync-transfer');
       // Counterexample: blaming the app that must stay up
       await recordsExpectRefused(page, 'attribution', { workload: { value: 'ola-app' }, keep: { value: 'ola-app' }, basis: { cites: 99 } }, /workload|keep/iu);
       await recordsSubmit(page, 'attribution', {

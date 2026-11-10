@@ -89,7 +89,7 @@ export class DraggableHtmlBox extends DraggableBox {
 
   /**
    * On the field console (the tent control is present) the checklist docks at
-   * the bottom right on first open, clear of the Site scene hotspots; elsewhere
+   * the top right on first open, clear of the Site scene hotspots; elsewhere
    * it centres as before. The player can still drag it (c6-s02-F5).
    */
   protected placeOnFirstOpen(boxContent: HTMLElement): void {
@@ -98,10 +98,14 @@ export class DraggableHtmlBox extends DraggableBox {
       return;
     }
     const vp = displayViewport();
-    const left = Math.max(8, vp.width - boxContent.offsetWidth - 16);
-    const top = Math.max(150, vp.height - boxContent.offsetHeight - 40);
-    boxContent.style.left = `${left}px`;
-    boxContent.style.top = `${window.scrollY + top}px`;
+    // Narrow and top-right: the strip beside the scene is empty, while a bottom dock covered the Service checks table (c6-s02-F5)
+    const width = Math.min(360, Math.max(260, vp.width * 0.25));
+    boxContent.style.width = `${width}px`;
+    boxContent.style.maxWidth = `${width}px`;
+    boxContent.style.maxHeight = `${Math.max(240, vp.height - 190)}px`;
+    boxContent.style.overflowY = 'auto';
+    boxContent.style.left = `${Math.max(8, vp.width - width - 16)}px`;
+    boxContent.style.top = `${window.scrollY + 150}px`;
   }
 
   updateContent(lastChecklistHtml_: string) {

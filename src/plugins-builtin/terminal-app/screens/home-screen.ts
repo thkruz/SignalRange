@@ -42,6 +42,7 @@ export const createHomeScreen: TerminalScreenFactory = (): TerminalScreen => {
         <div class="row g-3 mb-3">
           ${metric('down', tr('home.download'))}${metric('up', tr('home.upload'))}${metric('latency', tr('home.latency'))}${metric('uptime', tr('home.uptime'))}
         </div>
+        <p class="text-secondary small" id="home-capacity-note">${tr('home.capacityNote')}</p>
         <div class="card"><div class="card-header"><h3 class="card-title">${tr('home.alerts')}</h3></div>
           <div class="card-body"><ul class="list-unstyled mb-0" id="home-alerts"></ul></div></div>`;
     },

@@ -225,7 +225,7 @@ export function createSpeedTestScreenFor(resolve: (ctx: TerminalScreenContext) =
         'speed-test',
         APP_ACTION_VERBS.speedTest,
         result
-          ? `Ran a speed test in the SkyLink app: ${Math.round(result.downMbps)} down, ${Math.round(result.upMbps)} up Mbps, jitter ${typeof result.jitterMs === 'number' ? `${result.jitterMs.toFixed(1)} ms` : 'unavailable'}.`
+          ? `Ran a speed test in the SkyLink app: ${Math.round(result.downMbps)} down, ${Math.round(result.upMbps)} up Mbps, jitter ${typeof result.jitterMs === 'number' ? `${result.jitterMs.toFixed(1)} ms` : 'unavailable'}. Limited by: ${tr(`speed.limit.${result.limit}`)}.`
           : 'Ran a speed test in the SkyLink app; it did not finish.'
       );
       ctx.refresh();

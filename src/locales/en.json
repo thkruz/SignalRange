@@ -60,7 +60,8 @@
       "unitMs": "{{value}} ms",
       "noValue": "-",
       "pendingValue": "—",
-      "measuring": "Measuring…"
+      "measuring": "Measuring…",
+      "capacityNote": "Download and upload are the capacity your SkyLink reports for its own link to the satellite. The Speed test shows what the devices on your network actually get."
     },
     "settings": {
       "title": "Settings",

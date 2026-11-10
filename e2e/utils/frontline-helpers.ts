@@ -671,6 +671,11 @@ export async function recordsSubmit(page: Page, formId: string, input: Record<st
           .toBeGreaterThanOrEqual(evidenceCount)
           .catch(() => undefined);
       }
+      // The newest entry can arrive after the first look: open "Show older" again so its older entries have boxes
+      const olderLate = d.locator(`details.fhf-older[data-hf-older="${key}"]`);
+      if ((await olderLate.count()) > 0 && !(await olderLate.first().evaluate((n) => (n as HTMLDetailsElement).open))) {
+        await olderLate.first().locator('summary').click();
+      }
       const ids = typeof f.cites === 'number' ? (await boxes.evaluateAll((els) => els.map((e) => e.getAttribute('data-hf-cite') ?? ''))).slice(0, f.cites) : f.cites;
       // A player can untick: drop leftovers from an earlier refused attempt so each filing is exactly what the input names
       const checked = await boxes.evaluateAll((els) => els.filter((e) => (e as HTMLInputElement).checked).map((e) => e.getAttribute('data-hf-cite') ?? ''));
@@ -972,4 +977,14 @@ export async function readDebrief(page: Page): Promise<string> {
   await expect.poll(async () => (await section.textContent()) ?? '', { timeout: 15000 }).toMatch(/Fixes with earlier evidence/u);
 
   return ((await section.textContent()) ?? '').replace(/\s+/gu, ' ');
+}
+
+/** Press Inspect on a workload card, as a player does to see what the workload uses (the S5 attribution gate). */
+export async function workloadsInspect(page: Page, cardId: string): Promise<void> {
+  await closeCloseup(page);
+  await goInside(page);
+  const d = await setPanelOpen(page, /Workloads/u, true);
+  const card = d.locator(`[data-wl-card="${cardId}"]`);
+  await expect(card, `workload card ${cardId}`).toBeVisible();
+  await card.locator('button[data-wl-act="inspect"]').click();
 }

@@ -18,3 +18,4 @@
 .fwp .fwp-b-degraded { border-color: var(--mc-status-caution, #eab308); color: var(--mc-status-caution, #eab308); }
 .fwp .fwp-b-unsupported { border-color: var(--mc-danger, #ba160c); color: var(--mc-danger, #ba160c); }
 .fwp .fwp-none { color: var(--mc-text-muted); }
+.fwp .fwp-prio-note { color: var(--mc-text-muted); font-size: 0.85em; margin-top: 0.15rem; }

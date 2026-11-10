@@ -629,6 +629,29 @@ export function workloadRunFinished(args: { card: string; services: string[]; st
   );
 }
 
+/** Every listed workload was opened with its Inspect button (the notebook holds one entry per workload) */
+export function workloadsInspected(cardIds: string[], description = 'Workloads inspected'): Condition {
+  return make(
+    `workloadsInspected:${cardIds.join(',')}`,
+    description,
+    () => {
+      const log = hooks()?.evidence;
+      if (!log) {
+        return false;
+      }
+      const seen = new Set(
+        log
+          .entries('action')
+          .filter((e) => e.verb === 'inspect-workload')
+          .map((e) => e.subject)
+      );
+
+      return cardIds.every((id) => seen.has(`workload:${id}`));
+    },
+    true
+  );
+}
+
 /** The deferred card now carries a smaller share weight than the card that must keep running */
 export function priorityDeferred(args: { defer: string; keep: string }, description = 'Priority applied'): Condition {
   return make(

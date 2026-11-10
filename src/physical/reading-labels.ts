@@ -20,6 +20,11 @@ export const LAYER_LABEL: Record<ServiceLayer, string> = {
   application: 'Application',
 };
 
+/** A download or upload number on the application layer is what the terminal could carry, before other devices take their share */
+export function capacityNote(sample: { metric: SampleMetric; layer: ServiceLayer }): string {
+  return (sample.metric === 'downMbps' || sample.metric === 'upMbps') && sample.layer === 'application' ? ' (terminal-side capacity, not shared use)' : '';
+}
+
 export const METRIC_LABEL: Record<SampleMetric, string> = {
   status: 'Status',
   rttMs: 'Latency',

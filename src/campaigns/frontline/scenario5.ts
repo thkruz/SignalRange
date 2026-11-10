@@ -3,7 +3,7 @@ import type { EvidenceGroup, HypothesisSpec } from '@app/physical/evidence-predi
 import type { HandoverFormConfig } from '@app/physical/field-records';
 import type { RequirementCard } from '@app/physical/workload-types';
 import { applyCampField, SKYLINK_SERVICE } from './camp-field-config';
-import { handoverValid, hypothesisFiled, priorityDeferred, samplesCurrent, workloadRunFinished, workloadVerified } from './frontline-conditions';
+import { handoverValid, hypothesisFiled, priorityDeferred, samplesCurrent, workloadRunFinished, workloadsInspected, workloadVerified } from './frontline-conditions';
 import { pick, reading } from './report-choices';
 import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-support';
 
@@ -44,9 +44,13 @@ const SYNC_TRANSFER_CARD: RequirementCard = {
   standing: true,
 };
 
-const DOWN_SHORT: EvidenceGroup = reading('capacity', 'an application capacity reading (download rate) from a check run', SKYLINK_SERVICE, 'application', undefined, {
-  metric: 'downMbps',
-});
+/** A terminal-side capacity reading from a check run, or the SkyLink speed test (the end-to-end rate under the shared load) */
+const DOWN_SHORT: EvidenceGroup = {
+  ...reading('capacity', 'a capacity reading (download rate) from a check run, or the SkyLink speed test result', SKYLINK_SERVICE, 'application', undefined, {
+    metric: 'downMbps',
+  }),
+  orMatch: [{ kind: 'action', verbIn: ['app-speed-test'] }],
+};
 const DELAY_READ: EvidenceGroup = reading('delay', 'an application delay reading from a check run', SKYLINK_SERVICE, 'application', undefined, { metric: 'rttMs' });
 /** The terminal is shown healthy by its registration, or by its power or local network readings */
 const TERMINAL_OK: EvidenceGroup = {
@@ -55,10 +59,10 @@ const TERMINAL_OK: EvidenceGroup = {
 };
 
 const CAUSE_OPTIONS = [
-  { id: 'shared-capacity', label: 'Another workload using the shared local service' },
-  { id: 'terminal-fault', label: 'Terminal or cable fault' },
-  { id: 'local-network', label: 'Router or laptop problem' },
-  { id: 'provider-limit', label: 'Provider restriction' },
+  { id: 'shared-capacity', label: 'Local service capacity' },
+  { id: 'terminal-fault', label: 'Terminal or cable' },
+  { id: 'local-network', label: 'Router or laptop' },
+  { id: 'provider-limit', label: 'Provider service' },
 ];
 
 const HYPOTHESIS_OPTS: Omit<HypothesisSpec, 'causes'> = { minCited: 2, targets: [SKYLINK_SERVICE, 'skylink-router', 'local-shared-service'], routes: [[DOWN_SHORT, TERMINAL_OK]] };
@@ -76,7 +80,7 @@ const comparisonForm: HandoverFormConfig = {
     },
     {
       key: 'short',
-      label: 'Reading that fell short',
+      label: 'Reading that fell short (the run shows the shortfall; the capacity entry is terminal-side)',
       required: true,
       rule: pick({ capacity: 'Available capacity', delay: 'Round-trip delay', registration: 'Terminal registration', power: 'Terminal power' }, ['capacity']),
     },
@@ -108,10 +112,10 @@ const scopeForm: HandoverFormConfig = {
       required: true,
       rule: pick(
         {
-          'local-shared-service': 'The shared local service',
-          'terminal-or-cable': 'The terminal or its cable',
-          'power-chain': 'The power chain',
-          'provider-service': "The provider's service",
+          'local-shared-service': 'Local service capacity',
+          'terminal-or-cable': 'Terminal or cable',
+          'power-chain': 'Power supply',
+          'provider-service': 'Provider service',
         },
         ['local-shared-service']
       ),
@@ -173,10 +177,10 @@ const recordForm: HandoverFormConfig = {
       required: true,
       rule: pick(
         {
-          'shared-capacity': 'Shared local capacity',
-          'terminal-fault': 'Terminal or cable fault',
-          'local-network': 'Router or laptop problem',
-          'provider-limit': 'Provider restriction',
+          'shared-capacity': 'Local service capacity',
+          'terminal-fault': 'Terminal or cable',
+          'local-network': 'Router or laptop',
+          'provider-limit': 'Provider service',
         },
         ['shared-capacity']
       ),
@@ -254,10 +258,10 @@ export const frontlineScenario5Data: FrontlineScenarioData = {
       id: 's5-read-service-quality',
       title: 'Read the Service Indicators',
       description:
-        'Read available capacity, delay, variation in delay, and interruptions in the service panel. Compare the readings with the stated application requirement and healthy reference.',
+        'Read available capacity, delay, variation in delay, and interruptions in the service panel and the SkyLink speed test. Terminal-side capacity is what the terminal could carry; the speed test and the run show what the application got. Compare them with the stated requirement, then record the comparison in Handover > Service readings.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s5-compare-endpoints'],
-      conditions: [handoverValid('service-comparison', 'Readings compared with the application requirement')],
+      conditions: [handoverValid('service-comparison', 'Readings compared with the requirement: record it in Handover > Service readings')],
     },
     {
       id: 's5-assess-service-scope',
@@ -275,16 +279,19 @@ export const frontlineScenario5Data: FrontlineScenarioData = {
       id: 's5-identify-shared-use',
       title: 'Identify the Shared Workload',
       description:
-        'Inspect the workloads using the connection. Identify which activity explains the observed demand and distinguish essential work from the exercise transfer that can wait.',
+        'Press Inspect on each workload in the Workloads list to see what it needs and what share it gets. Identify which activity explains the observed demand and distinguish essential work from the exercise transfer that can wait.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s5-assess-service-scope'],
-      conditions: [handoverValid('attribution', 'Shared demand attributed to an observed workload')],
+      conditions: [
+        workloadsInspected([APP_CARD, TRANSFER_CARD], 'Both workloads inspected (Inspect in the Workloads list)'),
+        handoverValid('attribution', 'Shared demand attributed to an observed workload'),
+      ],
     },
     {
       id: 's5-apply-priority',
       title: 'Apply the Approved Priority',
       description:
-        'Review the effect of the permitted service-priority setting on both workloads. Apply the setting that meets the required application need while recording what work is deferred.',
+        'Review the effect of the permitted service-priority setting on both workloads (each workload shows its priority now and the share each setting would give it). Apply the setting that meets the required application need while recording what work is deferred.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s5-identify-shared-use'],
       conditions: [priorityDeferred({ defer: TRANSFER_CARD, keep: APP_CARD }, 'Approved allocation change applied')],

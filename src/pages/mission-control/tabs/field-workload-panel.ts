@@ -1,3 +1,4 @@
+import { getActiveField } from '@app/physical/field-hooks';
 import { measuredLoadW } from '@app/physical/run-power';
 import type { ServiceModel } from '@app/physical/service-model';
 import { escapeHtml } from '@app/physical/ui/plant-ui-helpers';
@@ -39,6 +40,10 @@ const INVALID_LABEL: Record<string, string> = {
 
 const HISTORY_SHOWN = 10;
 
+/** Evidence verb and subject prefix of an Inspect press (the notebook entry objectives can require) */
+export const INSPECT_VERB = 'inspect-workload';
+export const INSPECT_SUBJECT_PREFIX = 'workload:';
+
 /** Why a run came back unsupported with a layer down, in the player's words */
 const LAYER_DOWN_TEXT: Record<string, string> = {
   'link-lost': 'Registration is down at the moment. Rerun once it is back.',
@@ -62,7 +67,7 @@ export function layerDownText(unmet: readonly string[]): string | null {
 function clock(tS: number): string {
   const s = Math.max(0, Math.floor(tS));
 
-  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+  return `elapsed ${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 }
 
 /** Plain-language requirement line for a card */
@@ -115,6 +120,7 @@ export function buildRunLine(run: WorkloadRun, runner: WorkloadRunner, serviceLa
   const span = Math.max(1, run.endS - run.startS);
   const progress = running ? Math.min(1, Math.max(0, (nowS - run.startS) / span)) : 1;
   const share = running ? runner.shareOf(run) : 1;
+  const sharing = running && runner.running(run.serviceId).length > 1;
   let result = '';
   if (run.status === 'aborted') {
     result = run.invalidatedBy ? `Stopped: ${INVALID_LABEL[run.invalidatedBy] ?? run.invalidatedBy}.` : 'Stopped by you.';
@@ -137,7 +143,8 @@ export function buildRunLine(run: WorkloadRun, runner: WorkloadRunner, serviceLa
     standing: running && card?.standing === true,
     progress,
     remainingS: running ? Math.max(0, Math.ceil(run.endS - nowS)) : 0,
-    shareText: running && share < 0.999 ? `${Math.round(share * 100)}% of capacity` : '',
+    shareText:
+      sharing || (running && share < 0.999) ? `${Math.round(share * 100)}% of capacity (${PRIORITY_LABEL[priorityForWeight(runner.getPriority(run.cardId))]} priority)` : '',
     stamps: running ? `Started ${clock(run.startS)}${card?.standing ? ', continuing' : ''}` : `Started ${clock(run.startS)}, ended ${clock(run.endS)}`,
     result,
   };
@@ -198,6 +205,37 @@ export class FieldWorkloadPanel {
     return ok;
   }
 
+  /** Look closely at one workload: print what it needs, what it gets now and what each priority would give it, and note it in the notebook */
+  inspect(cardId: string): void {
+    const runner = this.getRunner_();
+    const card = runner?.getCard(cardId);
+    if (!runner || !card) return;
+    const text = `Inspected workload ${card.label}: ${describeCard(card)}. ${this.shareNote_(runner, card)}`;
+    getActiveField()?.evidence?.recordAppAction(cardId, INSPECT_VERB, text, INSPECT_SUBJECT_PREFIX);
+    this.lastMsg_ = `Inspected ${card.label}.`;
+    this.sync();
+  }
+
+  /** Current priority and share of a card, and the share each priority option would give it among the runs now going */
+  private shareNote_(runner: WorkloadRunner, card: RequirementCard): string {
+    const now = priorityForWeight(runner.getPriority(card.id));
+    const running = runner.running();
+    const mine = running.find((r) => r.cardId === card.id);
+    const others = running.filter((r) => r.cardId !== card.id).reduce((sum, r) => sum + runner.getPriority(r.cardId), 0);
+    const header = `Priority now: ${PRIORITY_LABEL[now]}.`;
+    if (!mine) {
+      return `${header} ${running.length > 0 ? 'It is not running; start a run to see its share.' : 'Nothing is running, so a run would have all the capacity.'}`;
+    }
+    if (others <= 0) {
+      return `${header} It is running alone, with all the capacity.`;
+    }
+    const options = (Object.keys(PRIORITY_WEIGHT) as WorkloadPriority[])
+      .map((p) => `${PRIORITY_LABEL[p]} ${Math.round((PRIORITY_WEIGHT[p] / (PRIORITY_WEIGHT[p] + others)) * 100)}%`)
+      .join(', ');
+
+    return `${header} Share of capacity now ${Math.round(runner.shareOf(mine) * 100)}%. If set to: ${options}.`;
+  }
+
   setPriority(cardId: string, priority: WorkloadPriority): void {
     this.getRunner_()?.setPriority(cardId, PRIORITY_WEIGHT[priority]);
     this.sync();
@@ -211,6 +249,8 @@ export class FieldWorkloadPanel {
       const row = btn.closest<HTMLElement>('[data-wl-card]');
       const service = row?.querySelector<HTMLSelectElement>('select[data-wl-service]')?.value;
       if (row && service) this.start(row.dataset.wlCard ?? '', service);
+    } else if (act === 'inspect') {
+      this.inspect(btn.closest<HTMLElement>('[data-wl-card]')?.dataset.wlCard ?? '');
     } else if (act === 'hold') {
       this.hold(btn.closest<HTMLElement>('[data-wl-run]')?.dataset.wlRun ?? '');
     } else if (act === 'abort') {
@@ -253,9 +293,11 @@ export class FieldWorkloadPanel {
       <div class="fwp-card-main"><b>${escapeHtml(c.label)}</b> <span class="fwp-req">${escapeHtml(describeCard(c))}</span></div>
       <div class="fwp-card-ctl">
         <select class="form-select form-select-sm" data-wl-service aria-label="${escapeHtml(c.label)} service">${opts}</select>
-        <select class="form-select form-select-sm" data-wl-priority aria-label="${escapeHtml(c.label)} priority">${prio}</select>
+        <select class="form-select form-select-sm" data-wl-priority aria-label="${escapeHtml(c.label)} priority" title="Share priority for ${escapeHtml(c.label)}">${prio}</select>
         <button type="button" class="btn btn-sm btn-outline-primary" data-wl-act="start">Start run</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-wl-act="inspect">Inspect</button>
       </div>
+      <div class="fwp-prio-note" data-wl-note aria-live="polite"></div>
     </div>`;
   }
 
@@ -283,6 +325,12 @@ export class FieldWorkloadPanel {
       const sel = row.querySelector<HTMLSelectElement>('select[data-wl-priority]');
       const want = priorityForWeight(runner.getPriority(row.dataset.wlCard ?? ''));
       if (sel && sel.value !== want && document.activeElement !== sel) sel.value = want;
+      const card = runner.getCard(row.dataset.wlCard ?? '');
+      const note = row.querySelector<HTMLElement>('[data-wl-note]');
+      if (card && note) {
+        const text = this.shareNote_(runner, card);
+        if (note.textContent !== text) note.textContent = text;
+      }
     }
     const now = this.getNow_();
     const runs = runner.getRuns().slice(-HISTORY_SHOWN).reverse();

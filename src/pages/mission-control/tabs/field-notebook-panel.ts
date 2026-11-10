@@ -43,7 +43,7 @@ const HISTORY_SHOWN = 60;
 function clock(tS: number): string {
   const s = Math.max(0, Math.floor(tS));
 
-  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+  return `elapsed ${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 }
 
 /** Plain-language sentence a hypothesis freezes into the log */

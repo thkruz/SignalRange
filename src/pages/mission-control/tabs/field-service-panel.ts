@@ -1,5 +1,5 @@
 import { type FormStepState, SAMPLE_STEP_LATER_NOTE } from '@app/pages/mission-control/tabs/form-step-state';
-import { LAYER_LABEL, METRIC_LABEL, PROVENANCE_LABEL } from '@app/physical/reading-labels';
+import { capacityNote, LAYER_LABEL, METRIC_LABEL, PROVENANCE_LABEL } from '@app/physical/reading-labels';
 import { NUMERIC_READABLE, READABLE, type ServiceModel } from '@app/physical/service-model';
 import { type Freshness, type LayerStatus, type SampleMetric, type SampleProvenance, SERVICE_LAYERS, type ServiceLayer, type ServiceSample } from '@app/physical/service-types';
 import { escapeHtml } from '@app/physical/ui/plant-ui-helpers';
@@ -111,7 +111,7 @@ function formatClock(tS: number): string {
   const s = Math.max(0, Math.floor(tS));
   const mm = Math.floor(s / 60);
 
-  return `${String(mm).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+  return `elapsed ${String(mm).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 }
 
 export function formatSampleValue(sample: ServiceSample): string {
@@ -124,7 +124,7 @@ export function formatSampleValue(sample: ServiceSample): string {
       return `Jitter ${n} ms (mean change between 1 s delay readings, last ${sample.windowS ?? 60} s)`;
     }
 
-    return `${METRIC_LABEL[sample.metric]} ${n} ${sample.unit}`;
+    return `${METRIC_LABEL[sample.metric]}${capacityNote(sample)} ${n} ${sample.unit}`;
   }
   if (sample.value === 'down' && sample.metric !== 'status') {
     return `${METRIC_LABEL[sample.metric]}: no link`;
@@ -147,6 +147,17 @@ function rowSpecs(model: ServiceModel, serviceId: string): Array<{ layer: Servic
   return out;
 }
 
+/** An endpoint report of the application layer, with no workload run yet to back it */
+function untestedApplication(model: ServiceModel, serviceId: string, sample: ServiceSample): boolean {
+  return (
+    sample.layer === 'application' &&
+    sample.metric === 'status' &&
+    sample.provenance === 'endpoint-report' &&
+    sample.value === 'up' &&
+    !model.samplesFor(serviceId).some((s) => s.provenance === 'workload-run')
+  );
+}
+
 /** Derive everything the panel prints from the service model (no DOM, no layer truth) */
 export function buildServicePanelModel(model: ServiceModel, nowS: number): ServicePanelService[] {
   return model.getServiceIds().map((id) => {
@@ -159,7 +170,11 @@ export function buildServicePanelModel(model: ServiceModel, nowS: number): Servi
         key: `${id}|${layer}|${endpointId ?? ''}`,
         sample,
         freshness: sample ? model.freshness(sample) : null,
-        value: sample ? formatSampleValue(sample) : 'Not checked',
+        value: sample
+          ? untestedApplication(model, id, sample)
+            ? 'Not yet tested (the endpoint only reports for itself; run a workload)'
+            : formatSampleValue(sample)
+          : 'Not checked',
         provenance: sample ? PROVENANCE_LABEL[sample.provenance] : '',
         age: sample ? formatAge(nowS - sample.tS) : '',
       };

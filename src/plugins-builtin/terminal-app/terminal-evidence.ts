@@ -54,6 +54,10 @@ export class TerminalEvidence {
     if (!log) {
       return;
     }
+    // Opening the speed test before any test has run shows nothing worth keeping in the notebook
+    if (screen === 'speed-test' && view.data && this.model_.speedTests().length === 0) {
+      return;
+    }
     const entry = log.recordAppView(screen, this.describe_(screen, view));
     if (entry && screen === 'home' && view.link === 'connected') {
       this.sampleHome_();

@@ -84,6 +84,7 @@ function acts(svc: PhysicalPlantService): Record<string, () => void> {
       submitOk(svc, 'scope', { scope: { value: 'local-shared-service' }, 'ruled-out': { value: 'terminal-and-power' }, evidence: { cites: observations(svc) } });
     },
     's5-identify-shared-use': () => {
+      for (const id of [APP, TRANSFER]) svc.evidence?.recordAppAction(id, 'inspect-workload', `Inspected workload ${id}`, 'workload:');
       submitOk(svc, 'attribution', { workload: { value: TRANSFER }, keep: { value: APP }, basis: { cites: observations(svc) } });
     },
     's5-apply-priority': () => {

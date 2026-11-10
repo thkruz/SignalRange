@@ -4,7 +4,7 @@
  */
 
 import type { PlantFault, PlantLogEntry } from '@app/physical/physical-plant-types';
-import { LAYER_LABEL, METRIC_LABEL, PROVENANCE_LABEL } from '@app/physical/reading-labels';
+import { capacityNote, LAYER_LABEL, METRIC_LABEL, PROVENANCE_LABEL } from '@app/physical/reading-labels';
 import type { ServiceSample } from '@app/physical/service-types';
 
 /** Typed copy of the service sample behind an observation (frozen with the entry, never re-read from the live model) */
@@ -400,7 +400,7 @@ export class EvidenceLog {
         ...(sample.cause === undefined ? {} : { cause: sample.cause }),
       },
       facts: [],
-      text: `${LAYER_LABEL[sample.layer]} ${METRIC_LABEL[sample.metric].toLowerCase()}: ${sample.value}${sample.unit === 'state' ? '' : ` ${sample.unit}`} (${PROVENANCE_LABEL[sample.provenance]})`,
+      text: `${LAYER_LABEL[sample.layer]} ${METRIC_LABEL[sample.metric].toLowerCase()}${capacityNote(sample)}: ${sample.value}${sample.unit === 'state' ? '' : ` ${sample.unit}`} (${PROVENANCE_LABEL[sample.provenance]})`,
     });
   }
 }

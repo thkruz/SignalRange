@@ -42,7 +42,7 @@ const CHOICE_OTHER = 'other';
 function clock(tS: number): string {
   const s = Math.max(0, Math.floor(tS));
 
-  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+  return `elapsed ${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 }
 
 /** The entry a notebook line is about: the same service layer and metric, or the same subject and verb */

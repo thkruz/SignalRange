@@ -95,7 +95,7 @@ describe('M09 field service panel', () => {
     panel.sync();
     const s = panel.check('skylink', 'power', 'device-indicator');
     expect(s?.tS).toBe(now());
-    expect(host.querySelector('[data-fsp="badge-skylink|power|"]')?.textContent).toMatch(/^Current, fresh until [0-9]{2}:[0-9]{2}$/u);
+    expect(host.querySelector('[data-fsp="badge-skylink|power|"]')?.textContent).toMatch(/^Current, fresh until elapsed [0-9]{2}:[0-9]{2}$/u);
     advance(30);
     panel.sync();
     expect(host.querySelector('[data-fsp="badge-skylink|power|"]')?.textContent).toBe('Stale');
@@ -165,7 +165,7 @@ describe('M09 field service panel', () => {
     model.update();
     const [svc] = buildServicePanelModel(model, now());
     expect(svc.history.length).toBeGreaterThan(0);
-    expect(svc.history[0].text).toMatch(/^\d\d:\d\d /u);
+    expect(svc.history[0].text).toMatch(/^elapsed \d\d:\d\d /u);
     const host = document.createElement('div');
     new FieldServicePanel(host, () => null, now).sync();
     expect(host.style.display).toBe('none');
@@ -176,7 +176,7 @@ describe('M09 field service panel', () => {
 describe('badgeText', () => {
   it('says when a Current reading goes out of date', () => {
     const sample = { tS: 600, maxAgeS: 120 } as never;
-    expect(badgeText({ freshness: 'current', sample })).toBe('Current, fresh until 12:00');
+    expect(badgeText({ freshness: 'current', sample })).toBe('Current, fresh until elapsed 12:00');
     expect(badgeText({ freshness: 'stale', sample })).toBe('Stale');
     expect(badgeText({ freshness: null, sample: null })).toBe('');
   });

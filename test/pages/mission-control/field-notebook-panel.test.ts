@@ -144,7 +144,7 @@ describe('M12 notebook panel', () => {
   it('describeHypothesis and buildNotebookLine are plain language', () => {
     expect(describeHypothesis({ scope: 'power', targetId: 'b' }, 'Battery', 'low', 0)).toBe('Suspect Battery (power supply), low confidence, no cited entries.');
     const line = buildNotebookLine({ id: 'e1', kind: 'action', tS: 75, subject: 's', source: {}, facts: [], text: 'x' }, []);
-    expect(line.stamp).toBe('01:15');
+    expect(line.stamp).toBe('elapsed 01:15');
     expect(line.kindLabel).toBe('Did');
   });
 });

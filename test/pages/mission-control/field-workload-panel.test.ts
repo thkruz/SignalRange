@@ -127,7 +127,7 @@ describe('M11 workload panel', () => {
     p.sync();
     const done = host.querySelector('[data-wl-run]');
     expect(done?.textContent).toContain('Supported');
-    expect(done?.textContent).toMatch(/Started \d\d:\d\d, ended \d\d:\d\d/u);
+    expect(done?.textContent).toMatch(/Started elapsed \d\d:\d\d, ended elapsed \d\d:\d\d/u);
     expect(done?.querySelector('button')).toBeNull();
   });
 
@@ -193,6 +193,6 @@ describe('M11 workload panel', () => {
     const run = { ...res.run, status: 'unsupported' as const, unmet: ['downMbps'], endS: res.run.startS + 20 };
     const line = buildRunLine(run, runner, 'SkyLink', run.endS);
     expect(line.result).toBe('Unsupported, fell short on download.');
-    expect(line.stamps).toMatch(/^Started \d\d:\d\d, ended \d\d:\d\d$/u);
+    expect(line.stamps).toMatch(/^Started elapsed \d\d:\d\d, ended elapsed \d\d:\d\d$/u);
   });
 });

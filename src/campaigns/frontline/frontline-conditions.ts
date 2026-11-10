@@ -10,6 +10,7 @@ import type { Condition, ConditionParams } from '@app/objectives/objective-types
 import { type HypothesisEntry, TEST_VERBS } from '@app/physical/evidence-log';
 import { assessHypothesis, type HypothesisSpec } from '@app/physical/evidence-predicates';
 import { type FieldHooks, getActiveField } from '@app/physical/field-hooks';
+import { runHeldReserve } from '@app/physical/run-power';
 import type { ServiceLayer } from '@app/physical/service-types';
 
 type TimedParams = ConditionParams & { fieldTimed?: boolean };
@@ -206,52 +207,108 @@ function clearedAtS(h: FieldHooks, faultId: string): number | null {
   return hits.length > 0 ? Math.max(...hits.map((e) => e.tS)) : null;
 }
 
+interface VerifyArgs {
+  card: string;
+  service: string;
+  afterEvent?: string;
+  afterFaultCleared?: string;
+  afterRequestApproved?: string;
+  afterHandover?: string;
+}
+
+function verifyIdSuffix(args: VerifyArgs): string {
+  return `${args.afterFaultCleared === undefined ? '' : `:after-${args.afterFaultCleared}`}${args.afterRequestApproved === undefined ? '' : `:approved-${args.afterRequestApproved}`}${args.afterHandover === undefined ? '' : `:filed-${args.afterHandover}`}`;
+}
+
+/** Earliest allowed run start for the "after ..." options: a number, null for no limit, or false while a precondition has not happened */
+function verifyFromS(h: FieldHooks, args: VerifyArgs): number | null | false {
+  const after = args.afterEvent === undefined ? null : (h.events?.firedAtS(args.afterEvent) ?? null);
+  if (args.afterEvent !== undefined && after === null) {
+    return false;
+  }
+
+  let from = after;
+  if (args.afterFaultCleared !== undefined) {
+    const cleared = clearedAtS(h, args.afterFaultCleared);
+    if (cleared === null) {
+      return false;
+    }
+    from = Math.max(from ?? 0, cleared);
+  }
+
+  if (args.afterRequestApproved !== undefined) {
+    const decision = h.records?.requestDecision?.(args.afterRequestApproved);
+    if (decision?.status !== 'approved' || decision.decidedAtS === undefined) {
+      return false;
+    }
+    from = Math.max(from ?? 0, decision.decidedAtS);
+  }
+
+  if (args.afterHandover !== undefined) {
+    const filed = h.records?.handoverFiledAtS?.(args.afterHandover) ?? null;
+    if (filed === null) {
+      return false;
+    }
+    from = Math.max(from ?? 0, filed);
+  }
+
+  return from;
+}
+
 /** A supported, not invalidated workload run on the card and service (after an event or a fault's repair, when given) */
-export function workloadVerified(
-  args: { card: string; service: string; afterEvent?: string; afterFaultCleared?: string; afterRequestApproved?: string; afterHandover?: string },
-  description = 'Workload verified'
-): Condition {
+export function workloadVerified(args: VerifyArgs, description = 'Workload verified'): Condition {
   return make(
-    `workloadVerified:${args.card}:${args.service}${args.afterFaultCleared === undefined ? '' : `:after-${args.afterFaultCleared}`}${args.afterRequestApproved === undefined ? '' : `:approved-${args.afterRequestApproved}`}${args.afterHandover === undefined ? '' : `:filed-${args.afterHandover}`}`,
+    `workloadVerified:${args.card}:${args.service}${verifyIdSuffix(args)}`,
     description,
     () => {
       const h = hooks();
       if (!h?.workloads) {
         return false;
       }
-      const after = args.afterEvent === undefined ? null : (h.events?.firedAtS(args.afterEvent) ?? null);
-      if (args.afterEvent !== undefined && after === null) {
+      const from = verifyFromS(h, args);
+      if (from === false) {
         return false;
-      }
-
-      let from = after;
-      if (args.afterFaultCleared !== undefined) {
-        const cleared = clearedAtS(h, args.afterFaultCleared);
-        if (cleared === null) {
-          return false;
-        }
-        from = Math.max(from ?? 0, cleared);
-      }
-
-      if (args.afterRequestApproved !== undefined) {
-        const decision = h.records?.requestDecision?.(args.afterRequestApproved);
-        if (decision?.status !== 'approved' || decision.decidedAtS === undefined) {
-          return false;
-        }
-        from = Math.max(from ?? 0, decision.decidedAtS);
-      }
-
-      if (args.afterHandover !== undefined) {
-        const filed = h.records?.handoverFiledAtS?.(args.afterHandover) ?? null;
-        if (filed === null) {
-          return false;
-        }
-        from = Math.max(from ?? 0, filed);
       }
 
       return h.workloads
         .runs()
         .some((r) => r.cardId === args.card && r.serviceId === args.service && r.status === 'supported' && !r.invalidatedBy && (from === null || r.startS >= from));
+    },
+    true
+  );
+}
+
+/**
+ * Package F. Service and reserve over ONE window: a supported, current run of the card on the service whose own
+ * energy accounting (RunPowerRecord) shows
+ *  - the run lasted at least `windowS` scenario seconds and every one of them was accounted;
+ *  - stored energy never fell below the reserve at any plant second of the run, whatever charged it back up after;
+ *  - on a battery-only plan the stored energy would still have been at or above the reserve with all charging
+ *    removed (start minus the energy drawn), so a generator cannot rescue a battery-only claim.
+ * A reserve reading from before or after the run cannot count: the evidence is the run's own record. A run that a
+ * later change invalidated, or one stopped early, has no complete record and does not count.
+ */
+export function serviceReserveVerified(args: VerifyArgs & { windowS: number }, description = 'Service and reserve verified'): Condition {
+  return make(
+    `serviceReserveVerified:${args.card}:${args.service}:${args.windowS}${verifyIdSuffix(args)}`,
+    description,
+    () => {
+      const h = hooks();
+      if (!h?.workloads) {
+        return false;
+      }
+      const from = verifyFromS(h, args);
+      if (from === false) {
+        return false;
+      }
+
+      return h.workloads.runs().some((r) => {
+        if (r.cardId !== args.card || r.serviceId !== args.service || r.status !== 'supported' || r.invalidatedBy || (from !== null && r.startS < from)) {
+          return false;
+        }
+
+        return r.power !== undefined && runHeldReserve(r.power, r.startS, r.endS ?? r.startS, args.windowS);
+      });
     },
     true
   );

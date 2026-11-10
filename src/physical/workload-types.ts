@@ -4,6 +4,8 @@
  * can reference them without importing the runner.
  */
 
+import type { ResourceWindow } from './physical-plant-types';
+
 export type WorkloadPriority = 'mission' | 'routine' | 'background';
 
 export type WorkloadStatus = 'running' | 'supported' | 'degraded' | 'unsupported' | 'aborted';
@@ -33,6 +35,8 @@ export interface WorkloadConfig {
   cards: RequirementCard[];
   /** Fraction a metric may miss its bound by and still read 'degraded' (default 0.2) */
   degradedTolerance?: number;
+  /** Account energy and fuel over each run's window so a reserve claim rests on the same interval as the service run */
+  recordPower?: boolean;
   /** Runs started when the plant is built (standing transfers) */
   autoStart?: Array<{ cardId: string; serviceId: string }>;
 }
@@ -55,6 +59,23 @@ export interface WorkloadRun {
   unmet: string[];
   configEpoch: number;
   eventEpoch: number;
+  /** Energy and fuel accounted over this run's own window (scenarios that record power only) */
+  power?: RunPowerRecord;
+}
+
+/**
+ * The reserve side of a verification: what the plant did over the run's own scenario-time window. The run and the
+ * measurement are one interval by construction, so a reserve reading from another time cannot stand in for it.
+ */
+export interface RunPowerRecord {
+  window: ResourceWindow;
+  /** Reserve and planning basis in force when the run started */
+  reserveWh: number | null;
+  basis: 'battery-only' | 'with-generator';
+  /** Battery energy the plant forecast the run would use, on the plan's basis (start minus projected end) */
+  forecastWh: number | null;
+  /** True once the run reached its planned end with its window accounted; aborted and invalidated runs stay false */
+  complete: boolean;
 }
 
 export interface EffectiveProfile {

@@ -97,7 +97,14 @@ function acts(svc: PhysicalPlantService): Record<string, () => void> {
       runId = run?.id ?? '';
       incomplete(svc, 's09-run-first-window');
       tick(61);
-      ok(svc.records?.submit('shift', { verified: { value: runId }, energy: { value: soc(svc) }, limitation: { value: 'single-window' } }));
+      ok(
+        svc.records?.submit('shift', {
+          verified: { value: runId },
+          rate: { value: svc.records?.latestRunRateW(CARD, 'skylink') },
+          energy: { value: soc(svc) },
+          limitation: { value: 'single-window' },
+        })
+      );
     },
   };
 }
@@ -178,7 +185,7 @@ describe('M24 S9 completion', () => {
     const start = svc.workloads?.start(CARD, 'skylink');
     svc.workloads?.waitForRun(start?.ok ? start.run.id : '');
     acts(svc)['s09-confirm-readiness']();
-    expect(incomplete(svc, 's09-run-first-window')).toContain('Task window run after the readiness record');
+    expect(incomplete(svc, 's09-run-first-window')).toContain('Task window run after the readiness record with the battery reserve held through the same window');
     acts(svc)['s09-run-first-window']();
     expect(incomplete(svc, 's09-run-first-window')).toEqual([]);
   });

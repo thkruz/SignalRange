@@ -64,6 +64,7 @@ function resourcesInput(svc: PhysicalPlantService, over: Record<string, { value?
     seating: { cites: log.filter((e) => e.kind === 'observation' && e.subject.startsWith('generator')).map((e) => e.id) },
     reseat: { cites: log.filter((e) => e.kind === 'action').map((e) => e.id) },
     limitation: { value: 'skylink-only' },
+    rate: { value: svc.records?.latestRunRateW('ola-voice', 'skylink') },
     ...over,
   };
 }

@@ -23,12 +23,12 @@ import {
   handoverValid,
   layerObserved,
   modeIs,
-  reserveHeld,
   samplesCurrent,
+  serviceReserveVerified,
   workloadVerified,
 } from './frontline-conditions';
 import { checked, pick, reading, repaired } from './report-choices';
-import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-support';
+import { createFrontlineSettings, type FrontlineScenarioData, recordRunPower } from './scenario-support';
 import { S11_TRANSFER_CARD } from './scenario11';
 
 /**
@@ -196,6 +196,7 @@ const outcomeForm: HandoverFormConfig = {
     { key: 'dish', label: 'SkyLink dish mode', required: true, rule: { modeIs: { partId: 'skylink-dish' } } },
     { key: 'verified', label: 'Transfer task run on EuroSat', required: true, rule: { workload: { cardId: TRANSFER, is: ['supported'], serviceId: EUS } } },
     { key: 'unavailable', label: 'Mission task not available', required: true, rule: choice(FIRST, 'First forward task over SkyLink') },
+    { key: 'rate', label: 'Average battery draw over the run (W)', required: true, rule: { runRate: { cardId: TRANSFER, serviceId: EUS } } },
     { key: 'energy', label: 'Battery energy now (Wh)', required: true, rule: { powerWithin: { metric: 'socWh', tol: 40, partId: 'power-station' } } },
   ],
 };
@@ -221,8 +222,9 @@ const settings = createFrontlineSettings(16);
 if (settings.physicalPlant) {
   const plant = settings.physicalPlant;
   plant.incoming = [S15_INCIDENT_LINK.spec];
-  applyForwardField(plant, [FORWARD_FIRST_CARD, S11_TRANSFER_CARD], [briefForm, baselineForm, localForm, externalForm, outcomeForm, finalForm]);
+  applyForwardField(plant, [FORWARD_FIRST_CARD, { ...S11_TRANSFER_CARD, windowS: S16_FINAL_WINDOW_S }], [briefForm, baselineForm, localForm, externalForm, outcomeForm, finalForm]);
   applyForwardEurosat(plant, { modemRunning: true });
+  recordRunPower(plant);
   // Both terminals become switchable units; the battery and reserve below replace the S14 numbers
   applyForwardDualReadiness(plant);
   // SkyLink is unrestricted at the start of the shift (the S10 restriction ended in S14)
@@ -394,9 +396,11 @@ export const frontlineScenario16Data: FrontlineScenarioData = {
       conditions: [
         modeIs('vsat-modem', 'run', 'EuroSat modem running'),
         forecastMeetsReserve({}, 'Forecast keeps the 200 Wh reserve with the final arrangement'),
-        workloadVerified({ card: TRANSFER, service: EUS, afterEvent: S16_EVENT_OUTAGE }, 'Transfer task verified on EuroSat after the outage began'),
+        serviceReserveVerified(
+          { card: TRANSFER, service: EUS, afterEvent: S16_EVENT_OUTAGE, windowS: S16_FINAL_WINDOW_S },
+          'Transfer task verified on EuroSat after the outage began with the reserve held through the same window'
+        ),
         layerObserved(EUS, 'application', { status: 'up' }, 'EuroSat application observed up'),
-        reserveHeld({ windowS: S16_FINAL_WINDOW_S }, 'Reserve held through the final window'),
         handoverCurrent('outcome', 'Final outcome recorded with the unavailable task'),
       ],
     },

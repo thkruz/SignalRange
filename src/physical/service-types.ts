@@ -194,6 +194,8 @@ export interface ServiceSample {
   /** Seconds of scenario time a statistic (jitter) was computed over */
   windowS?: number;
   tS: number;
+  /** Why the layer read this way when sampled ('link-lost', 'terminal-booting'...). Status samples only; absent in older saves. */
+  cause?: string;
   provenance: SampleProvenance;
   configEpoch: number;
   eventEpoch: number;

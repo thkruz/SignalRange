@@ -12,11 +12,15 @@ import type { ServiceModel } from './service-model';
 
 /** One workload run as the condition factory reads it (the runner arrives with a later package) */
 export interface WorkloadRunReading {
+  id?: string;
   cardId: string;
   serviceId: string;
   status: 'running' | 'supported' | 'degraded' | 'unsupported' | 'aborted';
   startS: number;
+  endS?: number;
   invalidatedBy?: string;
+  /** Energy accounting over the run's own window (see RunPowerRecord) */
+  power?: import('./workload-types').RunPowerRecord;
 }
 
 export interface WorkloadReader {

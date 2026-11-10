@@ -387,6 +387,7 @@ export class ServiceModel {
   takeSample(serviceId: string, layer: ServiceLayer, via: SampleProvenance, endpointId?: string, metric: SampleMetric = 'status'): ServiceSample {
     const { tS, value, metric: usedMetric, windowS } = this.peekSample(serviceId, layer, via, endpointId, metric);
 
+    const cause = this.causeFor_(serviceId, layer, usedMetric, value, via, endpointId);
     this.sampleSeq_ += 1;
     const sample: ServiceSample = {
       id: `sample-${this.sampleSeq_}`,
@@ -397,6 +398,7 @@ export class ServiceModel {
       value,
       unit: METRIC_UNIT[usedMetric],
       ...(windowS === undefined ? {} : { windowS }),
+      ...(cause === undefined ? {} : { cause }),
       tS,
       provenance: via,
       configEpoch: this.configEpoch_,
@@ -411,6 +413,16 @@ export class ServiceModel {
     for (const listener of [...this.sampleListeners_]) listener(sample);
 
     return sample;
+  }
+
+  /** The authored reason behind a status sample of an unendpointed layer, so evidence can tell a link loss from a reboot */
+  private causeFor_(serviceId: string, layer: ServiceLayer, metric: SampleMetric, value: number | LayerStatus, via: SampleProvenance, endpointId?: string): string | undefined {
+    if (metric !== 'status' || endpointId !== undefined || value === 'unknown' || !READABLE[via].includes(layer)) {
+      return undefined;
+    }
+    const reading = this.layers(serviceId).find((l) => l.layer === layer);
+
+    return reading && reading.status === value ? reading.reason : undefined;
   }
 
   freshness(sample: ServiceSample): Freshness {

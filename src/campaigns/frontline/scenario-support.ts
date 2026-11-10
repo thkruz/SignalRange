@@ -25,6 +25,13 @@ export interface FrontlineScenarioData extends ScenarioData {
  * A knowledge quiz or the always-true service-continuity placeholder cannot
  * establish that a workload, resource reserve, or repair verification passed.
  */
+/** Package F: account battery energy and fuel over each workload run's own window (opt-in per scenario) */
+export function recordRunPower(plant: { workloads?: { recordPower?: boolean } }): void {
+  if (plant.workloads) {
+    plant.workloads.recordPower = true;
+  }
+}
+
 export function pendingMechanic(todoId: string, description: string): Condition {
   return {
     id: `pending:${todoId}`,

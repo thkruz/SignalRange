@@ -144,6 +144,7 @@ function acts(svc: PhysicalPlantService): Record<string, () => void> {
           dish: mode(svc, 'skylink-dish'),
           verified: { value: runId },
           unavailable: { value: FIRST },
+          rate: { value: svc.records?.latestRunRateW(TRANSFER, EUS) },
           energy: energy(svc),
         })
       );

@@ -9,6 +9,7 @@
  */
 
 import type { WorkloadReader, WorkloadRunReading } from './field-hooks';
+import type { ResourceWindow } from './physical-plant-types';
 import type { ServiceModel } from './service-model';
 import type {
   EffectiveProfile,
@@ -28,6 +29,17 @@ export interface WorkloadRunnerDeps {
   now(): number;
   /** Advance scenario time (used by `waitForRun`) */
   skip?(seconds: number): void;
+  /** Resource accounting over a run's window (only used when the config sets `recordPower`) */
+  power?: {
+    open(key: string, untilS: number): void;
+    close(key: string): ResourceWindow | null;
+    get(key: string): ResourceWindow | null;
+    storedWh(): number;
+    reserveWh(): number | null;
+    basis(): 'battery-only' | 'with-generator';
+    /** Stored energy the plan projects at the end of `horizonS` */
+    projectedWh(horizonS: number): number;
+  };
 }
 
 const DEFAULT_TOLERANCE = 0.2;
@@ -42,6 +54,7 @@ export class WorkloadRunner implements WorkloadReader {
   private readonly service_: ServiceModel;
   private readonly deps_: WorkloadRunnerDeps;
   private readonly tolerance_: number;
+  private readonly recordPower_: boolean;
   private runs_: WorkloadRun[] = [];
   private seq_ = 0;
 
@@ -53,6 +66,7 @@ export class WorkloadRunner implements WorkloadReader {
     this.service_ = service;
     this.deps_ = deps;
     this.tolerance_ = cfg.degradedTolerance ?? DEFAULT_TOLERANCE;
+    this.recordPower_ = cfg.recordPower === true && deps.power !== undefined;
     for (const s of cfg.autoStart ?? []) this.start(s.cardId, s.serviceId);
   }
 
@@ -248,6 +262,7 @@ export class WorkloadRunner implements WorkloadReader {
       eventEpoch: epochs.event,
     };
     this.runs_.push(run);
+    this.openPower_(run, card.standing === true);
     if (this.runs_.length > RUN_CAP) {
       this.runs_ = this.runs_.filter((r, i) => r.status === 'running' || i >= this.runs_.length - RUN_CAP);
     }
@@ -263,8 +278,42 @@ export class WorkloadRunner implements WorkloadReader {
     }
     run.status = 'aborted';
     run.endS = this.deps_.now();
+    this.closePower_(run, false);
 
     return true;
+  }
+
+  private ledgerKey_(run: WorkloadRun): string {
+    return `run:${run.id}`;
+  }
+
+  /** Open the run's resource window and note the plan's own forecast for it */
+  private openPower_(run: WorkloadRun, standing: boolean): void {
+    const power = this.deps_.power;
+    if (!this.recordPower_ || !power || standing) {
+      return;
+    }
+    const stored = power.storedWh();
+    power.open(this.ledgerKey_(run), run.endS);
+    run.power = {
+      window: power.get(this.ledgerKey_(run)) as ResourceWindow,
+      reserveWh: power.reserveWh(),
+      basis: power.basis(),
+      forecastWh: stored - power.projectedWh(Math.max(1, Math.round(run.endS - run.startS))),
+      complete: false,
+    };
+  }
+
+  /** Close the run's resource window and keep what it measured on the run (a stopped run is incomplete) */
+  private closePower_(run: WorkloadRun, complete: boolean): void {
+    const power = this.deps_.power;
+    if (!run.power || !power) {
+      return;
+    }
+    const closed = power.close(this.ledgerKey_(run));
+    if (closed) {
+      run.power = { ...run.power, window: closed, complete };
+    }
   }
 
   /** Burn the rest of a run's window on the scenario clock, then finish it */
@@ -310,6 +359,9 @@ export class WorkloadRunner implements WorkloadReader {
         if (run.status === 'running') {
           run.status = 'aborted';
           run.endS = this.deps_.now();
+          this.closePower_(run, false);
+        } else if (run.power) {
+          run.power = { ...run.power, complete: false };
         }
       }
     }
@@ -342,13 +394,14 @@ export class WorkloadRunner implements WorkloadReader {
     }
     run.sampleIds = ids;
     run.status = run.worst as WorkloadStatus;
+    this.closePower_(run, true);
   }
 
   // ------------------------------------------------------------- checkpoint
 
   getState(): WorkloadRunnerState {
     return {
-      runs: this.runs_.map((r) => ({ ...r, sampleIds: [...r.sampleIds], unmet: [...r.unmet] })),
+      runs: this.runs_.map((r) => ({ ...r, sampleIds: [...r.sampleIds], unmet: [...r.unmet], ...(r.power ? { power: { ...r.power, window: { ...r.power.window } } } : {}) })),
       weights: [...this.weights_],
       cards: this.cards(),
       seq: this.seq_,
@@ -366,13 +419,17 @@ export class WorkloadRunner implements WorkloadReader {
     for (const [id, w] of state.weights) this.weights_.set(id, w);
     this.seq_ = state.seq;
     this.runs_ = state.runs.map((r) => {
-      const run = { ...r, sampleIds: [...r.sampleIds], unmet: [...r.unmet] };
+      const run = { ...r, sampleIds: [...r.sampleIds], unmet: [...r.unmet], ...(r.power ? { power: { ...r.power, window: { ...r.power.window } } } : {}) };
       if (this.cards_.get(run.cardId)?.standing && run.status === 'running') {
         return run;
       }
       if (run.status === 'running') {
         run.status = 'aborted';
         run.endS = this.deps_.now();
+        this.closePower_(run, false);
+      }
+      if (run.power) {
+        run.power = { ...run.power, complete: false };
       }
       run.invalidatedBy ??= 'reload';
 

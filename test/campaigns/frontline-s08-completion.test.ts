@@ -96,7 +96,7 @@ function acts(svc: PhysicalPlantService): Record<string, () => void> {
     },
     's08-verify-outcome': () => {
       runId = verifyRun(svc);
-      ok(svc.records?.submit('outcome', { verified: { value: runId }, reserve: { value: soc(svc) } }));
+      ok(svc.records?.submit('outcome', { verified: { value: runId }, reserve: { value: soc(svc) }, rate: { value: svc.records?.latestRunRateW('ola-assess', 'skylink') } }));
     },
     's08-submit-handover': () => {
       ok(
@@ -190,19 +190,19 @@ describe('M23 S8 completion', () => {
     const bad = svc.records?.submit('intervention', { basis: { cites: [] }, action: { cites: actIds(svc) }, spare: { value: 'connector-kit' } });
     expect(bad?.ok).toBe(false);
     expect(incomplete(svc, 's08-repair-service')).toContain('Intervention justified and resource use recorded');
-    expect(incomplete(svc, 's08-verify-outcome')).toContain('Fresh workload check after the repair passed');
+    expect(incomplete(svc, 's08-verify-outcome')).toContain('Fresh workload check after the repair passed with the battery reserve held through the same window');
   });
 
-  it('needs the reserve to hold for the whole window', () => {
+  it('credits the reserve only from the run own window, not from time spent waiting before it', () => {
     const svc = bootScenario(data);
     driveObjectives(data, svc, states, acts(svc), { stopAfter: 's08-repair-service' });
-    tick(120);
+    incomplete(svc, 's08-verify-outcome');
+    tick(450);
+    // Plenty of reserve-only time has passed, but no run has covered it
+    expect(incomplete(svc, 's08-verify-outcome')).toContain('Fresh workload check after the repair passed with the battery reserve held through the same window');
     const start = svc.workloads?.start('ola-assess', 'skylink');
     svc.workloads?.waitForRun(start?.ok ? start.run.id : '');
-    // Evaluated for the first time this late: the window has only just started to count
-    expect(incomplete(svc, 's08-verify-outcome')).toContain('Battery reserve held through the window');
-    tick(61);
-    expect(incomplete(svc, 's08-verify-outcome')).not.toContain('Battery reserve held through the window');
+    expect(incomplete(svc, 's08-verify-outcome')).not.toContain('Fresh workload check after the repair passed with the battery reserve held through the same window');
   });
 
   it('restores a checkpoint taken mid-assessment', () => {

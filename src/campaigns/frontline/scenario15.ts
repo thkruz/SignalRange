@@ -59,7 +59,7 @@ const LOCAL_GOOD: EvidenceGroup = {
 const REG_DOWN: EvidenceGroup = {
   id: 'reg-down',
   label: 'a EuroSat registration reading, down, taken after the first drop',
-  match: { kind: 'observation', serviceId: EUS, layer: 'registration', valueIn: ['down'], afterEvent: S15_EVENT_ONSET },
+  match: { kind: 'observation', serviceId: EUS, layer: 'registration', valueIn: ['down'], causeIn: ['link-lost'], afterEvent: S15_EVENT_ONSET },
 };
 const REG_RECOVERED: EvidenceGroup = {
   id: 'reg-up',

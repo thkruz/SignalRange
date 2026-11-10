@@ -20,6 +20,8 @@ export interface EvidencePredicate {
   endpointId?: string;
   /** The sampled value is one of these */
   valueIn?: Array<string | number>;
+  /** The sample's recorded cause is one of these (a sample with no recorded cause, from an older save, passes) */
+  causeIn?: string[];
   /** Entry subject (part, connector, service or event id) is one of these */
   subjectIn?: string[];
   /** The entry is the stamp of this staged event */
@@ -74,7 +76,8 @@ function firstFixS(entries: readonly EvidenceEntry[]): number | null {
 
 export function entryMatches(e: EvidenceEntry, p: EvidencePredicate, ctx: EvidenceContext, all: readonly EvidenceEntry[]): boolean {
   if (p.kind !== undefined && e.kind !== p.kind) return false;
-  const needsSample = p.serviceId !== undefined || p.layer !== undefined || p.metric !== undefined || p.endpointId !== undefined || p.valueIn !== undefined;
+  const needsSample =
+    p.serviceId !== undefined || p.layer !== undefined || p.metric !== undefined || p.endpointId !== undefined || p.valueIn !== undefined || p.causeIn !== undefined;
   if (needsSample) {
     const s = e.sample;
     if (!s) return false;
@@ -83,6 +86,7 @@ export function entryMatches(e: EvidenceEntry, p: EvidencePredicate, ctx: Eviden
     if (p.metric !== undefined && s.metric !== p.metric) return false;
     if (p.endpointId !== undefined && s.endpointId !== p.endpointId) return false;
     if (p.valueIn !== undefined && !p.valueIn.includes(s.value)) return false;
+    if (p.causeIn !== undefined && s.cause !== undefined && !p.causeIn.includes(s.cause)) return false;
   }
   if (p.subjectIn !== undefined && !p.subjectIn.includes(e.subject)) return false;
   if (p.eventId !== undefined && e.source.eventId !== p.eventId) return false;

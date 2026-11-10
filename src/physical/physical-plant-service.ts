@@ -87,6 +87,15 @@ export class PhysicalPlantService {
               SimClock.skip(seconds * 1000);
               this.sync_();
             },
+            power: {
+              open: (key, untilS) => this.plant.openLedger(key, untilS),
+              close: (key) => this.plant.closeLedger(key),
+              get: (key) => this.plant.getLedger(key),
+              storedWh: () => Object.values(this.plant.getPowerReadings().socWh).reduce((a, b) => a + b, 0),
+              reserveWh: () => this.plant.getPowerReadings().reserveWh,
+              basis: () => this.plant.forecast({}, 1).basis,
+              projectedWh: (horizonS) => this.plant.forecast({}, horizonS).projectedSocWh,
+            },
           })
         : null;
     const ledger = config.equipment ? new EquipmentLedger(config.equipment, () => SimClock.scenarioElapsedMs() / 1000) : null;
@@ -349,7 +358,7 @@ export class PhysicalPlantService {
     const nowS = SimClock.scenarioElapsedMs() / 1000;
     const dt = nowS - this.lastSyncS_;
     this.lastSyncS_ = nowS;
-    if (dt > FINE_STEP_S && this.services?.hasIntervals()) {
+    if (dt > FINE_STEP_S && (this.services?.hasIntervals() || this.plant.hasOpenLedger())) {
       // A measured interval must not depend on how long the skip was: step the plant and the service timeline in
       // one-second slices so the boundaries are stamped to the second (events and runs still settle at the endpoint)
       const fromS = nowS - dt;
@@ -360,7 +369,7 @@ export class PhysicalPlantService {
           at += FINE_STEP_S;
           this.fineNowS_ = at;
           this.plant.update(FINE_STEP_S);
-          this.services.update();
+          this.services?.update();
           left -= FINE_STEP_S;
         }
       } finally {

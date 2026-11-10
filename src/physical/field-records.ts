@@ -17,6 +17,7 @@ import { assessEvidence, type EvidenceGroup } from './evidence-predicates';
 import type { RecordReader } from './field-hooks';
 import type { IncomingRecord } from './incoming-types';
 import type { PhysicalPlantManager } from './physical-plant-manager';
+import { measuredLoadW, rateAgrees } from './run-power';
 import type { ServiceModel } from './service-model';
 import type { SampleMetric, ServiceLayer } from './service-types';
 import type { WorkloadRun, WorkloadStatus } from './workload-types';
@@ -43,6 +44,12 @@ export type ClaimRule =
    * interval that never opened or has not closed yet cannot be claimed.
    */
   | { interval: { id: string; span: 'restoration' | 'response' | 'startup'; tolS: number } }
+  /**
+   * The value is the average battery draw (W) over the window of the latest counting, complete run of the card, within
+   * the larger of `relTol` of the measured draw (default 10 %) and `floorW` (default 5 W). Charging during the run
+   * does not enter the figure: it is the integrated load, not the change in stored energy.
+   */
+  | { runRate: { cardId: string; serviceId?: string; relTol?: number; floorW?: number } }
   /** The value must equal the part's current mode id */
   | { modeIs: { partId: string } }
   /**
@@ -290,6 +297,9 @@ export class FieldRecords implements RecordReader {
     if ('interval' in rule) {
       return this.checkInterval_(field, Number(value), rule.interval);
     }
+    if ('runRate' in rule) {
+      return this.checkRunRate_(field, Number(value), rule.runRate);
+    }
     if ('modeIs' in rule) {
       const mode = this.deps_.plant.getPartMode(rule.modeIs.partId);
 
@@ -376,6 +386,37 @@ export class FieldRecords implements RecordReader {
     }
 
     return Math.abs(claimed - actual) <= rule.tol ? pass(field.key) : fail(field.key, `${field.label} is more than ${rule.tol} away from your recorded measurement.`);
+  }
+
+  /** Measured average battery draw (W) of the latest counting, complete run of the card; null with none */
+  latestRunRateW(cardId: string, serviceId?: string): number | null {
+    const run = this.deps_
+      .runs()
+      .filter(
+        (r) =>
+          r.cardId === cardId &&
+          (serviceId === undefined || r.serviceId === serviceId) &&
+          r.status !== 'running' &&
+          r.status !== 'aborted' &&
+          !r.invalidatedBy &&
+          r.cardVersion === this.deps_.getCardVersion(r.cardId) &&
+          r.power?.complete === true
+      )
+      .at(-1);
+
+    return run?.power ? measuredLoadW(run.power) : null;
+  }
+
+  private checkRunRate_(field: HandoverFieldConfig, claimed: number, rule: { cardId: string; serviceId?: string; relTol?: number; floorW?: number }): FieldCheck {
+    if (!Number.isFinite(claimed)) {
+      return fail(field.key, `${field.label} needs a number of watts.`);
+    }
+    const measured = this.latestRunRateW(rule.cardId, rule.serviceId);
+    if (measured === null) {
+      return fail(field.key, `${field.label}: there is no finished run with a recorded battery window to compare with. Run the task first.`);
+    }
+
+    return rateAgrees(claimed, measured, rule.relTol, rule.floorW) ? pass(field.key) : fail(field.key, `${field.label} does not match the draw recorded over the run window.`);
   }
 
   private checkInterval_(field: HandoverFieldConfig, claimed: number, rule: { id: string; span: 'restoration' | 'response' | 'startup'; tolS: number }): FieldCheck {

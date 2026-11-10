@@ -439,6 +439,8 @@ export interface PlantState {
   startingUntilS?: Record<string, number>;
   /** Condition window key -> scenario second it opened (optional in older checkpoints) */
   windows?: Record<string, number>;
+  /** Resource ledger windows by key, open and closed (optional in older checkpoints) */
+  ledger?: Record<string, ResourceWindow>;
   /** Generator id -> running flag (optional in older checkpoints) */
   generatorRunning?: Record<string, boolean>;
   /** Part id -> current mode id for non-generator parts with `modes` (optional in older checkpoints) */
@@ -479,6 +481,32 @@ export interface PartState {
   mode?: string;
   /** Parts with `modes` only: true while the part is starting up (supply absent) */
   starting?: boolean;
+}
+
+/**
+ * Energy and fuel accounting over one stretch of scenario time (Campaign 6 package F). Load and charge are integrated
+ * separately every plant second, so charging cannot hide a draw and capacity clipping is visible.
+ */
+export interface ResourceWindow {
+  startS: number;
+  /** Scenario second the window closed; null while open */
+  endS: number | null;
+  /** Planned end: accounting stops at this second even when a long skip carries the plant past it */
+  untilS?: number;
+  /** Total stored energy across batteries at the start, and the lowest value seen at any plant second */
+  startStoredWh: number;
+  minStoredWh: number;
+  endStoredWh: number;
+  /** Energy drawn from the batteries (start-up draw included) */
+  loadWh: number;
+  /** Energy that actually entered the batteries after capacity clipping */
+  chargeWh: number;
+  /** Charge offered while a battery was full, which went nowhere */
+  clippedWh: number;
+  /** Fuel burnt by running generators */
+  fuelUsedL: number;
+  /** One-second plant steps accounted */
+  steps: number;
 }
 
 /** What a power-station display shows (M03) */

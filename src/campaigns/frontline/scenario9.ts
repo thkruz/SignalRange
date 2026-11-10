@@ -2,9 +2,9 @@ import { Character, Emotion } from '@app/modal/character-enum';
 import type { HandoverFormConfig } from '@app/physical/field-records';
 import { SKYLINK_SERVICE } from './camp-field-config';
 import { applyForwardField, FORWARD_ENDPOINT, FORWARD_FIRST_CARD, FORWARD_PROVIDER, FORWARD_SKYLINK_ACCOUNT, FORWARD_SKYLINK_UNIT } from './forward-field-config';
-import { diagramSelection, eventFired, forecastMeetsReserve, handoverValid, recordAccepted, reserveHeld, samplesCurrent, workloadVerified } from './frontline-conditions';
+import { diagramSelection, eventFired, forecastMeetsReserve, handoverCurrent, handoverValid, recordAccepted, samplesCurrent, serviceReserveVerified } from './frontline-conditions';
 import { pick, reading } from './report-choices';
-import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-support';
+import { createFrontlineSettings, type FrontlineScenarioData, recordRunPower } from './scenario-support';
 
 /**
  * C6 S9: first forward-site commissioning, in the fictional Rautala district.
@@ -120,11 +120,13 @@ const readinessForm: HandoverFormConfig = {
 };
 
 const shiftForm: HandoverFormConfig = {
+  certification: {},
   id: 'shift',
   title: 'Initial shift handover',
   documentSection: 'Initial handover',
   fields: [
     { key: 'verified', label: 'Task window you ran', required: true, rule: { workload: { cardId: CARD, is: ['supported'], serviceId: SKYLINK_SERVICE } } },
+    { key: 'rate', label: 'Average battery draw over the run (W)', required: true, rule: { runRate: { cardId: CARD, serviceId: SKYLINK_SERVICE } } },
     { key: 'energy', label: 'Battery energy left (Wh)', required: true, rule: { powerWithin: { metric: 'socWh', tol: 40 } } },
     {
       key: 'limitation',
@@ -138,6 +140,7 @@ const shiftForm: HandoverFormConfig = {
 const scenarioSettings = createFrontlineSettings(9);
 if (scenarioSettings.physicalPlant) {
   applyForwardField(scenarioSettings.physicalPlant, [FORWARD_FIRST_CARD], [deliveryForm, baselineForm, freshnessForm, readinessForm, shiftForm], { highlightShared: false });
+  recordRunPower(scenarioSettings.physicalPlant);
   scenarioSettings.physicalPlant.equipment = {
     units: [
       {
@@ -281,9 +284,11 @@ export const frontlineScenario9Data: FrontlineScenarioData = {
       prerequisiteObjectiveIds: ['s09-confirm-readiness'],
       points: 20,
       conditions: [
-        workloadVerified({ card: CARD, service: SKYLINK_SERVICE, afterHandover: 'readiness' }, 'Task window run after the readiness record'),
-        reserveHeld({ windowS: 60 }, 'Battery reserve held through the window'),
-        handoverValid('shift', 'Initial shift handover filed'),
+        serviceReserveVerified(
+          { card: CARD, service: SKYLINK_SERVICE, afterHandover: 'readiness', windowS: 60 },
+          'Task window run after the readiness record with the battery reserve held through the same window'
+        ),
+        handoverCurrent('shift', 'Initial shift handover filed'),
       ],
     },
   ],

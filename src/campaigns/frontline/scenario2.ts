@@ -7,14 +7,13 @@ import {
   faultClearedWithEvidence,
   faultEvidenceRecorded,
   forecastMeetsReserve,
-  handoverValid,
+  handoverCurrent,
   layerObserved,
   powerRead,
-  reserveHeld,
-  workloadVerified,
+  serviceReserveVerified,
 } from './frontline-conditions';
 import { checked, pick, repaired } from './report-choices';
-import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-support';
+import { createFrontlineSettings, type FrontlineScenarioData, recordRunPower } from './scenario-support';
 
 /**
  * S2: healthy camp service with 450 Wh initially available in the 1000 Wh battery.
@@ -35,9 +34,12 @@ const resourcesForm: HandoverFormConfig = {
   id: 'resources',
   title: 'Resource handover',
   documentSection: 'Resources',
+  // Package F: a later mode change or a lost run makes this filing out of date
+  certification: {},
   fields: [
     { key: 'energy', label: 'Stored energy (Wh)', required: true, rule: { powerWithin: { metric: 'socWh', tol: 20, partId: 'power-station' } } },
     { key: 'fuel', label: 'Generator fuel (L)', required: true, rule: { powerWithin: { metric: 'fuelL', tol: 0.5, partId: 'generator' } } },
+    { key: 'rate', label: 'Average battery draw over the run (W)', required: true, rule: { runRate: { cardId: OLA_VOICE_CARD.id, serviceId: SKYLINK_SERVICE } } },
     { key: 'skylink', label: 'SkyLink terminal mode', required: true, rule: { modeIs: { partId: 'skylink-dish' } } },
     { key: 'vsat', label: 'VSAT terminal mode', required: true, rule: { modeIs: { partId: 'vsat-modem' } } },
     { key: 'verified', label: 'Verified low-delay run', required: true, rule: { workload: { cardId: OLA_VOICE_CARD.id, is: ['supported'] } } },
@@ -68,6 +70,7 @@ const resourcesForm: HandoverFormConfig = {
 if (settings.physicalPlant) {
   applyS2Power(settings.physicalPlant);
   applyCampField(settings.physicalPlant, [OLA_VOICE_CARD], [resourcesForm]);
+  recordRunPower(settings.physicalPlant);
   settings.physicalPlant.events = [
     {
       id: SUPPLY_EVENT,
@@ -183,9 +186,11 @@ export const frontlineScenario2Data: FrontlineScenarioData = {
       prerequisiteObjectiveIds: ['s2-respond-to-outage'],
       conditions: [
         forecastMeetsReserve({}, 'Configuration still keeps the reserve over the planning horizon'),
-        workloadVerified({ card: OLA_VOICE_CARD.id, service: SKYLINK_SERVICE, afterEvent: SUPPLY_EVENT }, 'Low-delay run completed after the interruption'),
+        serviceReserveVerified(
+          { card: OLA_VOICE_CARD.id, service: SKYLINK_SERVICE, afterEvent: SUPPLY_EVENT, windowS: 120 },
+          'Low-delay run completed after the interruption with the reserve held through the same 120 seconds'
+        ),
         layerObserved(SKYLINK_SERVICE, 'application', { status: 'up' }, 'Result confirmed at the remote end (endpoint-report reading taken after the run finishes)'),
-        reserveHeld({ windowS: 120 }, 'Reserve held for the 120-second window'),
       ],
     },
     {
@@ -194,7 +199,7 @@ export const frontlineScenario2Data: FrontlineScenarioData = {
       description: 'Submit the remaining energy and fuel, the equipment left in use, and the recovery result. Explain any limitation the next operator needs to preserve.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s2-verify-service-reserve'],
-      conditions: [handoverValid('resources', 'Resource handover filed with measured values')],
+      conditions: [handoverCurrent('resources', 'Resource handover filed with measured values')],
     },
   ],
   dialogClips: {

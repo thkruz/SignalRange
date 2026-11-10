@@ -15,6 +15,8 @@ export interface SampleSnapshot {
   value: number | string;
   unit: string;
   provenance: string;
+  /** Why the layer read this way ('link-lost'...); absent in older entries */
+  cause?: string;
 }
 
 export type EvidenceKind = 'observation' | 'hypothesis' | 'action' | 'result';
@@ -391,6 +393,7 @@ export class EvidenceLog {
         value: sample.value,
         unit: sample.unit,
         provenance: sample.provenance,
+        ...(sample.cause === undefined ? {} : { cause: sample.cause }),
       },
       facts: [],
       text: `${sample.layer} ${sample.metric}: ${sample.value}${sample.unit === 'state' ? '' : ` ${sample.unit}`} (${sample.provenance})`,

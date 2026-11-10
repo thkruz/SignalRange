@@ -6,15 +6,15 @@ import { applyCampField, SKYLINK_SERVICE } from './camp-field-config';
 import {
   faultClearedWithEvidence,
   faultEvidenceRecorded,
+  handoverCurrent,
   handoverValid,
   hypothesisFiled,
   negativeChecksKept,
-  reserveHeld,
   samplesCurrent,
-  workloadVerified,
+  serviceReserveVerified,
 } from './frontline-conditions';
 import { checked, pick, reading, repaired } from './report-choices';
-import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-support';
+import { createFrontlineSettings, type FrontlineScenarioData, recordRunPower } from './scenario-support';
 
 /**
  * C6 S8: independent camp assessment using concepts introduced in S1–S7.
@@ -165,6 +165,7 @@ const interventionForm: HandoverFormConfig = {
 };
 
 const outcomeForm: HandoverFormConfig = {
+  certification: {},
   id: 'outcome',
   title: 'Assessment outcome',
   documentSection: 'Outcome',
@@ -175,6 +176,7 @@ const outcomeForm: HandoverFormConfig = {
       required: true,
       rule: { workload: { cardId: ASSESS_CARD.id, is: ['supported'], serviceId: SKYLINK_SERVICE } },
     },
+    { key: 'rate', label: 'Average battery draw over the run (W)', required: true, rule: { runRate: { cardId: ASSESS_CARD.id, serviceId: SKYLINK_SERVICE } } },
     { key: 'reserve', label: 'Battery energy left (Wh)', required: true, rule: { powerWithin: { metric: 'socWh', tol: 40 } } },
   ],
 };
@@ -201,6 +203,7 @@ const scenarioSettings = createFrontlineSettings(8);
 // Authored truth is confined to configuration; the learner must discover it.
 if (scenarioSettings.physicalPlant) {
   applyCampField(scenarioSettings.physicalPlant, [ASSESS_CARD], [assignmentForm, planForm, diagnosisForm, interventionForm, outcomeForm, qualificationForm]);
+  recordRunPower(scenarioSettings.physicalPlant);
   scenarioSettings.physicalPlant.causeOptions = [
     { id: 'connector-moisture', label: 'Moisture at a cable connector' },
     { id: 'cable-damage', label: 'Damaged cable' },
@@ -300,9 +303,11 @@ export const frontlineScenario8Data: FrontlineScenarioData = {
       prerequisiteObjectiveIds: ['s08-repair-service'],
       points: 20,
       conditions: [
-        workloadVerified({ card: ASSESS_CARD.id, service: SKYLINK_SERVICE, afterFaultCleared: FAULT_ID }, 'Fresh workload check after the repair passed'),
-        reserveHeld({ windowS: RESERVE_WINDOW_S }, 'Battery reserve held through the window'),
-        handoverValid('outcome', 'Outcome recorded against the brief'),
+        serviceReserveVerified(
+          { card: ASSESS_CARD.id, service: SKYLINK_SERVICE, afterFaultCleared: FAULT_ID, windowS: RESERVE_WINDOW_S },
+          'Fresh workload check after the repair passed with the battery reserve held through the same window'
+        ),
+        handoverCurrent('outcome', 'Outcome recorded against the brief'),
       ],
     },
     {

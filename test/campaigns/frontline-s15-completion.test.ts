@@ -10,6 +10,7 @@ import { FORWARD_EUROSAT_SERVICE, FORWARD_FIRST_CARD } from '@app/campaigns/fron
 import { S11_TRANSFER_CARD } from '@app/campaigns/frontline/scenario11';
 import { frontlineScenario15Data, S15_EVENT_ONSET, S15_REFERRAL } from '@app/campaigns/frontline/scenario15';
 import { EventBus } from '@app/events/event-bus';
+import { entryMatches } from '@app/physical/evidence-predicates';
 import type { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import { PhysicalPlantService as Service } from '@app/physical/physical-plant-service';
 import { collectManagerStates, restoreManagerStates } from '@app/scenarios/checkpoint-manager-states';
@@ -279,6 +280,24 @@ describe('M27 S15 completion', () => {
     ok(outage);
     fileHypothesis(svc, 'unexplained-outage', obsIds(svc));
     expect(incomplete(svc, 's15-assess-confidence').join('|')).not.toContain('Assessment filed on EuroSat');
+  });
+
+  it('records the cause of a registration reading, so only a link-lost reading is the EuroSat drop', () => {
+    const svc = bootScenario(data);
+    states.set('s15-record-anomaly', { isActive: true, isCompleted: false });
+    tick(20);
+    const drop = svc.services?.takeSample(EUS, 'registration', 'terminal-app');
+    expect(drop?.value).toBe('down');
+    expect(drop?.cause).toBe('link-lost');
+    const entry = svc.evidence?.entries('observation').find((e) => e.source.sampleId === drop?.id);
+    const predicate = { kind: 'observation' as const, serviceId: EUS, layer: 'registration', valueIn: ['down'], causeIn: ['link-lost'] };
+    const ctx = { eventFiredAtS: () => 0 };
+    expect(entry && entryMatches(entry, predicate, ctx, [])).toBe(true);
+    // A modem-reboot reading is down for another cause and does not count; an older entry with no cause still loads and counts
+    const reboot = entry && { ...entry, sample: { ...(entry.sample as NonNullable<typeof entry.sample>), cause: 'terminal-booting' } };
+    expect(reboot && entryMatches(reboot, predicate, ctx, [])).toBe(false);
+    const old = entry && { ...entry, sample: { ...(entry.sample as NonNullable<typeof entry.sample>), cause: undefined } };
+    expect(old && entryMatches(old, predicate, ctx, [])).toBe(true);
   });
 
   it('does not take three SkyLink readings, or a pre-incident reading, as the EuroSat interruption pattern', () => {

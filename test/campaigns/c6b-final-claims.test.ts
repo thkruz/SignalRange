@@ -4,13 +4,19 @@
  */
 
 import type { FrontlineScenarioData } from '@app/campaigns/frontline/scenario-support';
+import { frontlineScenario2Data } from '@app/campaigns/frontline/scenario2';
 import { frontlineScenario7Data } from '@app/campaigns/frontline/scenario7';
+import { frontlineScenario8Data } from '@app/campaigns/frontline/scenario8';
+import { frontlineScenario9Data } from '@app/campaigns/frontline/scenario9';
 import { frontlineScenario12Data } from '@app/campaigns/frontline/scenario12';
 import { frontlineScenario14Data } from '@app/campaigns/frontline/scenario14';
 import { frontlineScenario16Data } from '@app/campaigns/frontline/scenario16';
 import { describe, expect, it } from 'vitest';
 
 const SCENARIOS: Array<[string, FrontlineScenarioData, string[]]> = [
+  ['S2', frontlineScenario2Data as FrontlineScenarioData, ['resources']],
+  ['S8', frontlineScenario8Data as FrontlineScenarioData, ['outcome']],
+  ['S9', frontlineScenario9Data as FrontlineScenarioData, ['shift']],
   ['S7', frontlineScenario7Data as FrontlineScenarioData, ['acceptance']],
   ['S12', frontlineScenario12Data as FrontlineScenarioData, ['incident-update']],
   ['S14', frontlineScenario14Data as FrontlineScenarioData, ['dual-handover']],

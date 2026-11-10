@@ -6,14 +6,14 @@ import {
   heard,
   keyReleased,
   listenedBeforeFirstCall,
-  monitoredChannel,
+  monitoredChannelClear,
   radioSetting,
   worksheetCorrect,
 } from '@app/ham/ham-conditions';
 import { Emotion } from '@app/modal/character-enum';
 import type { ScenarioData } from '@app/ScenarioData';
 import { briefObjective, chain, quiz, riley, techSettings } from './s01-04-helpers';
-import { S03_CHANNEL_MHZ, s03Station } from './s03-station';
+import { S03_CHANNEL_MHZ, S03_CHAT_A, S03_CHAT_B, s03Station } from './s03-station';
 
 /**
  * C3 Technician Scenario 3 - "Your First Contact"
@@ -22,6 +22,9 @@ import { S03_CHANNEL_MHZ, s03Station } from './s03-station';
  * - 5 W dual-band handheld, supplied rubber-duck antenna, license technician (KF0SRT).
  * - The battery pack starts unseated (fault ht-battery); the radio boots on 146.520 MHz at 5 W.
  * - Contact channel 146.550 MHz FM simplex with W0SRC "Sam" (replies 3 s after a decoded call).
+ * - Two operators (N0DLE, W0PAT) hold a scripted conversation on the channel for 35 s after the player tunes
+ *   to it. A call during it is a collision (note 'channel-busy', no reply, never a contact).
+ * - The HT mic gain starts at 9. Sam flags distorted audio; setting the gain to 4-6 earns 'mic-adjusted'.
  *
  * Evidence: monitoredChannel counts simulated seconds with a powered radio on the channel (paused
  * quizzes do not advance it). listenedBeforeFirstCall is true once the first call has gone out
@@ -75,27 +78,32 @@ export const hamTechS03Data: ScenarioData = {
       {
         id: 'listen-before-calling',
         title: 'Listen Before Calling',
-        description: 'Tune to 146.550 MHz FM simplex and choose a low transmit power. Then listen to the channel for at least 10 seconds before you call, to make sure it is free.',
+        description:
+          'Tune to 146.550 MHz FM simplex and choose a low transmit power. Listen. If two operators are talking, wait until they are done, then keep listening for 10 more seconds with the channel clear before you call.',
         points: 15,
         conditions: [
           radioSetting('ht', (s) => onChannel(s) && s.txPowerW <= 2.5, '146.550 MHz FM simplex, low power'),
-          monitoredChannel(CH, 10, 'Channel monitored for 10 seconds'),
+          heard(S03_CHAT_A, 0.3, { deviceId: 'ht' }, 'You heard the ongoing conversation'),
+          heard(S03_CHAT_B, 0.3, { deviceId: 'ht' }, 'You heard both operators'),
+          monitoredChannelClear(CH, 10, 'Channel clear for 10 seconds'),
         ],
       },
       {
         id: 'make-first-call',
         title: 'Make the First Call',
-        description: 'Key the radio, call W0SRC with your call sign, and release the key. Then listen for the answer.',
+        description:
+          'Once the channel is clear, key the radio, call W0SRC with your call sign, and release the key. Then listen for the answer. A call over another conversation is a collision and nobody will answer.',
         points: 15,
-        conditions: [listenedBeforeFirstCall(10, 'Called after listening first'), heard('sam', 0.5, { deviceId: 'ht' }, 'W0SRC answers your call')],
+        conditions: [listenedBeforeFirstCall(10, 'Called on a clear channel after listening first'), heard('sam', 0.5, { deviceId: 'ht' }, 'W0SRC answers your call')],
       },
       {
         id: 'exchange-signal-report',
         title: 'Exchange a Signal Report',
-        description: 'Send your name, your location and a signal report one at a time, releasing the key between transmissions. Wait for Sam to answer each one.',
+        description:
+          'Send your name, your location and a signal report one at a time, releasing the key between transmissions. Wait for Sam to answer each one. If Sam says your audio is distorted, lower the microphone gain to between 4 and 6 and send again until he says it is clean.',
         points: 15,
         conditions: [
-          contactItems('sam', ['name', 'location', 'report'], 'Name, location and report exchanged'),
+          contactItems('sam', ['name', 'location', 'report', 'mic-adjusted'], 'Name, location and report exchanged, audio clean'),
           keyReleased('Key released'),
           quiz('S03-Q5'),
           quiz('S03-Q6'),
@@ -131,7 +139,7 @@ export const hamTechS03Data: ScenarioData = {
         Emotion.CONFIDENT
       ),
       'listen-before-calling': riley(
-        "Ten quiet seconds. Nobody was using the channel, so it's fine to call. Skipping this step is how new operators talk over a conversation.",
+        "They finished, and then you gave the channel ten quiet seconds. Now it's fine to call. Skipping this step is how new operators talk over a conversation.",
         Emotion.CONFIDENT
       ),
       'make-first-call': riley(
@@ -139,7 +147,7 @@ export const hamTechS03Data: ScenarioData = {
         Emotion.EXCITED
       ),
       'exchange-signal-report': riley(
-        'Name, location and a report, one transmission at a time. Letting go of the key between them is what leaves room for Sam to answer.',
+        'Name, location and a report, one transmission at a time. Your audio was too hot at first, and backing off the mic is what made it clean. Letting go of the key between them leaves room for Sam to answer.',
         Emotion.HAPPY
       ),
       'close-the-contact': riley("They heard you clearly, and you left room for the reply. That's your first complete contact on this station.", Emotion.HAPPY),

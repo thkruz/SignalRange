@@ -53,7 +53,14 @@ export class StationOps {
       this.listeners.set(id, { position, gainDbi, noiseFigureDb });
     };
     if (cfg.remoteStations) {
-      this.qso = new QsoMachine({ playerCallsign: call, stations: cfg.remoteStations.stations, busy: cfg.remoteStations.busy, hears, revision });
+      this.qso = new QsoMachine({
+        playerCallsign: call,
+        stations: cfg.remoteStations.stations,
+        busy: cfg.remoteStations.busy,
+        audioCheck: cfg.remoteStations.audioCheck,
+        hears,
+        revision,
+      });
       for (const s of cfg.remoteStations.stations) L(s.id, s.position);
     }
     if (cfg.repeater) {
@@ -166,8 +173,8 @@ export class StationOps {
     return this.hf ? this.hf.getBackgroundEmissions(nowS) : [];
   }
 
-  noteMonitoring(freqMHz: number, squelchOpen: boolean, dtS: number): void {
-    this.qso?.noteMonitoring(freqMHz, squelchOpen, dtS);
+  noteMonitoring(freqMHz: number, squelchOpen: boolean, dtS: number, nowS?: number): void {
+    this.qso?.noteMonitoring(freqMHz, squelchOpen, dtS, nowS);
   }
 
   notePlayerHeard(emissionId: string, intelligibility: number): void {

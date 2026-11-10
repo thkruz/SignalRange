@@ -280,6 +280,10 @@ export interface OnAirEmission {
   dmr?: { colorCode: number; timeSlot: 1 | 2; talkgroup: number };
   /** Audio drive 0..10 (affects clarity/deviation), 5 nominal */
   audioDrive?: number;
+  /** Transmitter output setting when keyed, W */
+  txPowerW?: number;
+  /** RF is getting back into the audio path (uncleared rf-feedback fault, power above its threshold) */
+  rfFeedback?: boolean;
   payload: EmissionPayload;
   startS: number;
   endS: number | null;

@@ -539,6 +539,16 @@ export class HamStationManager {
     return this.core_.ops.qso?.listenedBeforeFirstCall(minS) ?? false;
   }
 
+  /** Simulated seconds a powered radio monitored this frequency while no authored traffic was on it */
+  clearMonitoredFor(freqMHz: number): number {
+    return this.core_.ops.qso?.clearMonitoredFor(freqMHz) ?? 0;
+  }
+
+  /** What the remote station reported about each voice test transmission */
+  audioReports() {
+    return this.core_.ops.qso?.getAudioReports() ?? [];
+  }
+
   /** Simulated seconds a powered radio has monitored this frequency */
   monitoredFor(freqMHz: number): number {
     return this.core_.ops.qso?.monitoredFor(freqMHz) ?? 0;

@@ -28,6 +28,29 @@ export interface BusyWindow {
   freqMHz: number;
   fromS: number;
   toS: number;
+  /** When true, fromS and toS count from the first moment a powered radio monitors this frequency */
+  relativeToMonitor?: boolean;
+  /** Authored remote chatter radiated while the window is open, so the player can hear the conversation */
+  traffic?: BusyTraffic;
+}
+
+/** Scripted two-way chatter that occupies a busy channel */
+export interface BusyTraffic {
+  lines: { sourceId: string; callsign: string; text: string; position: LocalPosition }[];
+  /** Seconds between the start of one line and the next */
+  gapS: number;
+  erpDbm: number;
+  mode: HamMode;
+}
+
+/** What a remote station reported about the player's transmitted audio */
+export type AudioVerdict = 'clean' | 'overdrive' | 'feedback' | 'both';
+
+export interface AudioReport {
+  tS: number;
+  verdict: AudioVerdict;
+  drive: number;
+  powerW: number;
 }
 
 export interface QsoMachineConfig {
@@ -35,6 +58,8 @@ export interface QsoMachineConfig {
   stations: RemoteStationConfig[];
   hears: HearsFn;
   busy?: BusyWindow[];
+  /** Stations answer a voice test transmission with an audio report (no contact is started) */
+  audioCheck?: boolean;
   /** Revision stamped on contact records */
   revision?: () => number;
 }
@@ -52,6 +77,13 @@ export interface QsoState {
   monitoredS: Record<string, number>;
   squelchOpenS: Record<string, number>;
   firstCall: { freqMHz: number; monitoredS: number; tS: number } | null;
+  /** First call that went out on a clear channel, with the clear listening time before it */
+  firstClearCall?: { freqMHz: number; clearS: number; tS: number } | null;
+  clearMonitoredS?: Record<string, number>;
+  busyStartS?: Record<string, number>;
+  busyLinesSent?: Record<string, number>;
+  rfFlagged?: Record<string, number>;
+  audioReports?: AudioReport[];
   lastIdS: number | null;
   idOverdueCount: number;
   micFlagged: Record<string, boolean>;
@@ -73,12 +105,20 @@ export class QsoMachine {
   private monitoredS_: Record<string, number> = {};
   private squelchOpenS_: Record<string, number> = {};
   private firstCall_: QsoState['firstCall'] = null;
+  private firstClearCall_: NonNullable<QsoState['firstClearCall']> | null = null;
+  private clearMonitoredS_: Record<string, number> = {};
+  private busyStartS_: Record<string, number> = {};
+  private busyLinesSent_: Record<string, number> = {};
+  /** contactId -> transmit power (W) at which RF feedback was reported */
+  private rfFlagged_: Record<string, number> = {};
+  private audioReports_: AudioReport[] = [];
   private lastIdS_: number | null = null;
   private idOverdueCount_ = 0;
   private micFlagged_: Record<string, boolean> = {};
   private notes_: QsoNote[] = [];
   private lastBeaconS_: Record<string, number> = {};
   private seq_ = 0;
+  private lastNowS_ = 0;
 
   constructor(cfg: QsoMachineConfig) {
     this.cfg_ = cfg;
@@ -93,27 +133,54 @@ export class QsoMachine {
   }
 
   /** Time the player has monitored a frequency (squelchOpen = activity heard) */
-  noteMonitoring(freqMHz: number, squelchOpen: boolean, dtS: number): void {
+  noteMonitoring(freqMHz: number, squelchOpen: boolean, dtS: number, nowS?: number): void {
     const k = this.key_(freqMHz);
+    const t = nowS ?? this.lastNowS_;
+    (this.cfg_.busy ?? []).forEach((b, i) => {
+      if (b.relativeToMonitor && this.key_(b.freqMHz) === k && this.busyStartS_[String(i)] === undefined) this.busyStartS_[String(i)] = t;
+    });
     this.monitoredS_[k] = (this.monitoredS_[k] ?? 0) + dtS;
     if (squelchOpen) this.squelchOpenS_[k] = (this.squelchOpenS_[k] ?? 0) + dtS;
+    if (!this.isChannelBusy(freqMHz * 1e6, t)) this.clearMonitoredS_[k] = (this.clearMonitoredS_[k] ?? 0) + dtS;
+  }
+
+  /** Seconds the player monitored this frequency while it was free of authored traffic */
+  clearMonitoredFor(freqMHz: number): number {
+    return this.clearMonitoredS_[this.key_(freqMHz)] ?? 0;
   }
 
   monitoredFor(freqMHz: number): number {
     return this.monitoredS_[this.key_(freqMHz)] ?? 0;
   }
 
-  /** True when the player listened at least `minS` before their first call */
+  /** True when the first call that went out on a clear channel followed at least `minS` of listening while it was clear */
   listenedBeforeFirstCall(minS = 10): boolean {
-    return !!this.firstCall_ && this.firstCall_.monitoredS >= minS;
+    return !!this.firstClearCall_ && this.firstClearCall_.clearS >= minS;
+  }
+
+  /** Voice reports the remote gave on the player's audio, oldest first */
+  getAudioReports(): AudioReport[] {
+    return clone(this.audioReports_);
   }
 
   getFirstCall(): QsoState['firstCall'] {
     return this.firstCall_ ? { ...this.firstCall_ } : null;
   }
 
+  private busyBounds_(b: BusyWindow, i: number): { from: number; to: number } | null {
+    if (!b.relativeToMonitor) return { from: b.fromS, to: b.toS };
+    const start = this.busyStartS_[String(i)];
+
+    return start === undefined ? null : { from: start + b.fromS, to: start + b.toS };
+  }
+
   isChannelBusy(freqHz: number, nowS: number): boolean {
-    return (this.cfg_.busy ?? []).some((b) => sameFreq(b.freqMHz * 1e6, freqHz, 2500) && nowS >= b.fromS && nowS < b.toS);
+    return (this.cfg_.busy ?? []).some((b, i) => {
+      if (!sameFreq(b.freqMHz * 1e6, freqHz, 2500)) return false;
+      const w = this.busyBounds_(b, i);
+
+      return w !== null && nowS >= w.from && nowS < w.to;
+    });
   }
 
   /** 97.119: true when a contact is active and the last ID is older than 10 min */
@@ -147,6 +214,11 @@ export class QsoMachine {
 
   /** The player keyed up. `intent` is the content choice behind the transmission. */
   onPlayerEmission(e: OnAirEmission, intent: TxIntent | null, nowS: number): void {
+    this.lastNowS_ = nowS;
+    if (intent?.kind === 'test' && this.cfg_.audioCheck) {
+      this.handleAudioTest_(e, nowS);
+      return;
+    }
     if (intent === null || intent.kind === 'carrier' || intent.kind === 'test') {
       // A bare carrier or test tone never starts or advances a contact
       this.note_(nowS, 'carrier-only', 'Carrier/test transmission carries no call and starts no contact.');
@@ -176,6 +248,7 @@ export class QsoMachine {
       this.note_(nowS, 'channel-busy', 'Called over an ongoing conversation: collision, nobody decoded you. Listen first.');
       return;
     }
+    if (!this.firstClearCall_) this.firstClearCall_ = { freqMHz, clearS: this.clearMonitoredFor(freqMHz), tS: nowS };
     const target = intent.kind === 'call' ? intent.target : null;
     for (const st of candidates) {
       if (target && !sameCall(target, st.callsign)) continue;
@@ -199,7 +272,7 @@ export class QsoMachine {
       };
       this.contacts_.push(rec);
       this.active_[st.id] = id;
-      const mic = this.micTalk_(st, rec, e.audioDrive, nowS);
+      const mic = this.micTalk_(st, rec, e, nowS);
       this.say_(st, nowS, `${this.callsign_(e)} this is ${st.callsign}, you're five by nine here.${mic} ${st.personality[0] ?? ''}`.trim(), id);
       return; // one station answers per call
     }
@@ -208,18 +281,61 @@ export class QsoMachine {
     }
   }
 
-  private micTalk_(st: RemoteStationConfig, rec: HamContactRecord, drive: number | undefined, nowS: number): string {
-    if (drive !== undefined && drive > 7) {
+  private audioVerdict_(e: OnAirEmission): AudioVerdict {
+    const over = e.audioDrive !== undefined && e.audioDrive > 7;
+    const fb = e.rfFeedback === true;
+    if (over && fb) return 'both';
+
+    return over ? 'overdrive' : fb ? 'feedback' : 'clean';
+  }
+
+  /** Remote station report on the audio of one transmission; flags and clears the two audio problems */
+  private micTalk_(st: RemoteStationConfig, rec: HamContactRecord, e: OnAirEmission, nowS: number): string {
+    const drive = e.audioDrive;
+    const verdict = this.audioVerdict_(e);
+    let text = '';
+    if (verdict === 'overdrive' || verdict === 'both') {
       this.micFlagged_[rec.id] = true;
       this.note_(nowS, 'mic-distorted', `${st.callsign} reports distorted audio.`);
-      return ' Your audio is distorted, please back off from the microphone.';
+      text += ' Your audio is distorted at every power level and it gets worse as the mic gain goes up. Back off from the microphone.';
     }
+    if (verdict === 'feedback' || verdict === 'both') {
+      this.rfFlagged_[rec.id] = e.txPowerW ?? 0;
+      this.note_(nowS, 'rf-feedback', `${st.callsign} hears hum and squeal on the carrier at high power.`);
+      text += ' I hear hum and a squeal on your carrier, and only when you run high power. Your voice itself is not overdriven.';
+    }
+    if (text) return text;
     if (this.micFlagged_[rec.id] && drive !== undefined && drive >= 4 && drive <= 6) {
       this.micFlagged_[rec.id] = false;
       if (!rec.exchanged.includes('mic-adjusted')) rec.exchanged.push('mic-adjusted');
       return ' Much better, your audio is clean now.';
     }
+    const fbPower = this.rfFlagged_[rec.id];
+    if (fbPower !== undefined && (e.txPowerW ?? 0) >= fbPower) {
+      delete this.rfFlagged_[rec.id];
+      if (!rec.exchanged.includes('feedback-cleared')) rec.exchanged.push('feedback-cleared');
+      return ' The hum and squeal are gone, even at that power. Clean.';
+    }
+
     return '';
+  }
+
+  /** A voice test transmission: the station answers with what it hears, and no contact starts */
+  private handleAudioTest_(e: OnAirEmission, nowS: number): void {
+    const st = this.cfg_.stations.find((s) => sameFreq(s.freqMHz * 1e6, e.freqHz) && s.mode === e.mode);
+    if (!st || !this.cfg_.hears(e, st.id).decoded) {
+      this.note_(nowS, 'not-decoded', 'No station decoded the test transmission.');
+      return;
+    }
+    const verdict = this.audioVerdict_(e);
+    this.audioReports_.push({ tS: nowS, verdict, drive: e.audioDrive ?? 5, powerW: e.txPowerW ?? 0 });
+    const say: Record<AudioVerdict, string> = {
+      clean: 'Your audio is clean at this power and gain.',
+      overdrive: 'Your audio is distorted at all power levels. It follows the mic gain, not the power.',
+      feedback: 'Your voice is fine, but there is a hum and squeal on your carrier when you run this much power.',
+      both: 'Your audio is distorted, and there is also a hum and squeal on the carrier at this power.',
+    };
+    this.say_(st, nowS, `${this.callsign_(e)}, ${st.callsign} here. ${say[verdict]}`);
   }
 
   private handleExchange_(e: OnAirEmission, intent: TxIntent, candidates: RemoteStationConfig[], nowS: number): void {
@@ -233,7 +349,7 @@ export class QsoMachine {
       this.note_(nowS, 'not-decoded', `${st.callsign} did not copy that transmission.`);
       return;
     }
-    const mic = this.micTalk_(st, rec, e.audioDrive, nowS);
+    const mic = this.micTalk_(st, rec, e, nowS);
     if (intent.kind === 'reply') {
       const item = intent.item;
       if (!rec.exchanged.includes(item)) rec.exchanged.push(item);
@@ -290,6 +406,8 @@ export class QsoMachine {
 
   /** Radiate due replies and beacons */
   tick(nowS: number): OnAirEmission[] {
+    this.lastNowS_ = nowS;
+    this.emitBusyTraffic_(nowS);
     const lastId = this.lastIdS_;
     if (lastId !== null && this.identificationOverdue(nowS)) {
       if (!this.notes_.some((n) => n.code === 'id-overdue' && n.tS > lastId)) {
@@ -322,6 +440,32 @@ export class QsoMachine {
     });
   }
 
+  /** Radiate the next scripted line of each open busy window */
+  private emitBusyTraffic_(nowS: number): void {
+    (this.cfg_.busy ?? []).forEach((b, i) => {
+      const t = b.traffic;
+      const w = this.busyBounds_(b, i);
+      if (!t || !w || nowS < w.from || nowS >= w.to) return;
+      const k = String(i);
+      const idx = Math.floor((nowS - w.from) / t.gapS);
+      if (idx < (this.busyLinesSent_[k] ?? 0)) return;
+      const line = t.lines[idx % t.lines.length];
+      this.busyLinesSent_[k] = idx + 1;
+      this.outbox_.push({
+        dueS: nowS,
+        durS: Math.min(CALL_DUR_S, t.gapS),
+        sourceId: line.sourceId,
+        callsign: line.callsign,
+        text: line.text,
+        freqHz: Math.round(b.freqMHz * 1e6),
+        mode: t.mode,
+        erpDbm: t.erpDbm,
+        position: line.position,
+        tag: 'beacon',
+      });
+    });
+  }
+
   getState(): QsoState {
     return clone({
       contacts: this.contacts_,
@@ -330,6 +474,12 @@ export class QsoMachine {
       monitoredS: this.monitoredS_,
       squelchOpenS: this.squelchOpenS_,
       firstCall: this.firstCall_,
+      firstClearCall: this.firstClearCall_,
+      clearMonitoredS: this.clearMonitoredS_,
+      busyStartS: this.busyStartS_,
+      busyLinesSent: this.busyLinesSent_,
+      rfFlagged: this.rfFlagged_,
+      audioReports: this.audioReports_,
       lastIdS: this.lastIdS_,
       idOverdueCount: this.idOverdueCount_,
       micFlagged: this.micFlagged_,
@@ -348,6 +498,12 @@ export class QsoMachine {
     this.monitoredS_ = c.monitoredS;
     this.squelchOpenS_ = c.squelchOpenS;
     this.firstCall_ = c.firstCall;
+    this.firstClearCall_ = c.firstClearCall ?? null;
+    this.clearMonitoredS_ = c.clearMonitoredS ?? {};
+    this.busyStartS_ = c.busyStartS ?? {};
+    this.busyLinesSent_ = c.busyLinesSent ?? {};
+    this.rfFlagged_ = c.rfFlagged ?? {};
+    this.audioReports_ = c.audioReports ?? [];
     this.lastIdS_ = c.lastIdS;
     this.idOverdueCount_ = c.idOverdueCount;
     this.micFlagged_ = c.micFlagged;

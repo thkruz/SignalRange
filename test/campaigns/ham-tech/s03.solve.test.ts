@@ -62,23 +62,56 @@ describe('S3 Your First Contact solve', () => {
     act(h, READY);
     h.advance(4);
     expect(ok('listen-before-calling')).toBe(false); // not long enough yet
-    h.advance(8);
+    h.advance(34); // the scripted conversation is still running or only just over
+    expect(h.m.clearMonitoredFor(146.55)).toBeLessThan(10);
+    expect(ok('listen-before-calling')).toBe(false); // nobody has been quiet for 10 s yet
+    h.advance(14);
     expect(ok('listen-before-calling')).toBe(true);
+    expect(h.m.transcripts()['s03-chat-a']).toBeTruthy(); // the conversation was audible
 
     expect(ok('make-first-call')).toBe(false);
     tx(h, { kind: 'call', target: 'W0SRC' });
     expect(ok('make-first-call')).toBe(true);
+    expect(h.m.qsoNotes().some((n) => n.code === 'mic-distorted')).toBe(true);
 
     expect(ok('exchange-signal-report')).toBe(false);
     tx(h, { kind: 'reply', item: 'name' });
     tx(h, { kind: 'reply', item: 'location' });
-    expect(ok('exchange-signal-report')).toBe(false); // report missing
+    tx(h, { kind: 'reply', item: 'report' });
+    expect(ok('exchange-signal-report')).toBe(false); // mic still too hot, Sam never confirmed clean audio
+    act(h, { type: 'radio.set', deviceId: 'ht', patch: { micGain: 5 } });
     tx(h, { kind: 'reply', item: 'report' });
     expect(ok('exchange-signal-report')).toBe(true);
 
     expect(ok('close-the-contact')).toBe(false);
     tx(h, { kind: 'identify' });
     expect(ok('close-the-contact')).toBe(true);
+  });
+
+  it('negative: a call over the busy channel collides, and more power does not help', () => {
+    const h = harness(config());
+    for (const a of BATTERY) act(h, a);
+    act(h, READY);
+    h.advance(8); // conversation in progress
+    act(h, { type: 'radio.set', deviceId: 'ht', patch: { txPowerW: 5 } });
+    tx(h, { kind: 'call', target: 'W0SRC' });
+    expect(h.m.qsoNotes().some((n) => n.code === 'channel-busy')).toBe(true);
+    expect(h.m.contacts()).toHaveLength(0);
+    h.advance(60); // channel is clear for a long time afterwards
+    expect(practical(hamTechS03Data, 'make-first-call').every((c) => evaluateWith(c, h.m))).toBe(false);
+    // a fresh call after the channel cleared and 10 s of clear listening works
+    tx(h, { kind: 'call', target: 'W0SRC' });
+    expect(h.m.contacts()).toHaveLength(1);
+    expect(practical(hamTechS03Data, 'make-first-call').every((c) => evaluateWith(c, h.m))).toBe(true);
+  });
+
+  it('negative: calling the instant the conversation ends skips the clear listening', () => {
+    const h = harness(config());
+    for (const a of BATTERY) act(h, a);
+    act(h, READY);
+    h.advance(37);
+    tx(h, { kind: 'call', target: 'W0SRC' });
+    expect(practical(hamTechS03Data, 'make-first-call').every((c) => evaluateWith(c, h.m))).toBe(false);
   });
 
   it('negative: calling without listening does not satisfy the listening objective', () => {

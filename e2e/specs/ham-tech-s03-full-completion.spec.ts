@@ -9,6 +9,7 @@ import {
   pttTransmit,
   repairFault,
   reviewMissionBrief,
+  setMicGain,
   setTxPower,
   submitWorksheet,
   tuneRadio,
@@ -59,7 +60,12 @@ test('ham-tech-s03 completes all objectives', async ({ page, missionControlPage:
   // listen-before-calling (monitoring time accrues in real time)
   await tuneRadio(page, 'ht', 146.55);
   await setTxPower(page, 'ht', 0.5);
-  await page.waitForTimeout(12000);
+  // the 146.550 conversation runs for 35 s from the first monitoring; clear listening starts after it
+  await page.waitForTimeout(25000);
+  // a call over the conversation is a collision (visible failure, does not count as the first call)
+  await pttTransmit(page, 'ht', { kind: 'call', target: 'W0SRC' }, 2);
+  await page.waitForTimeout(4000);
+  await page.waitForTimeout(20000);
   await step('Listen Before Calling', 'listen-before-calling');
 
   // make-first-call
@@ -72,6 +78,10 @@ test('ham-tech-s03 completes all objectives', async ({ page, missionControlPage:
     await pttTransmit(page, 'ht', { kind: 'reply', item }, 3);
     await page.waitForTimeout(10000);
   }
+  // Sam reports distorted audio (handheld starts with the mic gain high); fix it and resend
+  await setMicGain(page, 'ht', 5);
+  await pttTransmit(page, 'ht', { kind: 'reply', item: 'report' }, 3);
+  await page.waitForTimeout(10000);
   await step('Exchange a Signal Report', 'exchange-signal-report', 3);
 
   // close-the-contact

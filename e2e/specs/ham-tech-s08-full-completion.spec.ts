@@ -14,6 +14,7 @@ import {
   setAntennaAzimuth,
   setDevicePower,
   setMicGain,
+  setTxPower,
   submitWorksheet,
   waitForObjectiveComplete,
 } from '../utils/ham-tech-helpers';
@@ -83,11 +84,28 @@ test('ham-tech-s08 completes all objectives', async ({ page, missionControlPage:
   await record();
   await step('Substitute the Noisy Supply', 'substitute-supply', 3);
 
-  // check-audio: call Riley, raise mic gain mid-contact like the headless solve, report, identify
+  // compare-audio: two test transmissions, 15 W / gain 5 then 5 W / gain 9
   await selectRadioTab(page, 'mobile');
+  await pttTransmit(page, 'mobile', { kind: 'test' }, 3);
+  await page.waitForTimeout(12000);
+  await setTxPower(page, 'mobile', 5);
+  await setMicGain(page, 'mobile', 9);
+  await pttTransmit(page, 'mobile', { kind: 'test' }, 3);
+  await page.waitForTimeout(12000);
+  await submitWorksheet(page, 's08-audio-cause', {
+    'follows-gain': 'Microphone gain set too high',
+    'follows-power': 'RF getting back into the audio path',
+    remedy: 'Fit a ferrite choke on the feed line',
+  });
+  await step('Compare Two Audio Problems', 'compare-audio');
+
+  // check-audio: back to 15 W and gain 5, call Riley (hum and squeal), choke the feed line, resend
+  await setTxPower(page, 'mobile', 15);
+  await setMicGain(page, 'mobile', 5);
   await pttTransmit(page, 'mobile', { kind: 'call', target: 'KD0RLY' }, 4);
   await page.waitForTimeout(15000);
-  await setMicGain(page, 'mobile', 5);
+  await inspectItem(page, 'feed');
+  await installSpare(page, 'feed-choked', 'feed');
   await pttTransmit(page, 'mobile', { kind: 'reply', item: 'report' }, 3);
   await page.waitForTimeout(12000);
   await pttTransmit(page, 'mobile', { kind: 'identify' }, 3);
@@ -95,7 +113,7 @@ test('ham-tech-s08 completes all objectives', async ({ page, missionControlPage:
   await step('Check the Outgoing Audio', 'check-audio');
 
   // name-the-symptom (last objective)
-  await submitWorksheet(page, 's08-symptoms', { audio: 'Microphone gain set too high' });
+  await submitWorksheet(page, 's08-symptoms', { audio: 'RF getting back into the audio path' });
   await answerTechQuizzes(page, 2);
   await expectMissionComplete(page);
 });

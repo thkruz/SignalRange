@@ -27,6 +27,9 @@ export interface PreparedTx {
   freqMHz: number;
 }
 
+/** Default transmit power (W) above which an uncleared rf-feedback fault corrupts the transmitted audio */
+export const RF_FEEDBACK_THRESHOLD_W = 5;
+
 /** Run every transmit check against the live path; a refusal is logged and changes nothing */
 export function prepareTx(core: StationCore, deviceId: string, intent: TxIntent): PreparedTx | ActionResult {
   const away = core.reachable(deviceId);
@@ -64,6 +67,12 @@ export function prepareTx(core: StationCore, deviceId: string, intent: TxIntent)
     nowS: core.state.nowS,
     position: core.positionOf(path.antennaDeviceId ?? deviceId),
   });
+  if (res.ok && res.emission) {
+    res.emission.txPowerW = d.radio.txPowerW;
+    const inPath = new Set([deviceId, ...path.elements.map((el) => el.deviceId)]);
+    const fb = core.state.faults.find((f) => f.kind === 'rf-feedback' && !f.cleared && inPath.has(f.target));
+    if (fb && d.radio.txPowerW > (fb.value ?? RF_FEEDBACK_THRESHOLD_W)) res.emission.rfFeedback = true;
+  }
   if (!res.ok || !res.emission) {
     const code = res.refusalCode ?? 'refused';
     const why = res.refusal ?? 'The radio did not key.';

@@ -103,7 +103,7 @@ describe('QsoMachine', () => {
   it('remote complains about an overdriven mic, then accepts a corrected drive', () => {
     const q = mk();
     q.onPlayerEmission(playerEmission({ freqHz: F, audioDrive: 9 }), { kind: 'cq' }, 0);
-    expect(q.tick(2)[0].payload.text).toContain('back off from the microphone');
+    expect(q.tick(2)[0].payload.text).toContain('Back off from the microphone');
     q.onPlayerEmission(playerEmission({ freqHz: F, audioDrive: 5 }), { kind: 'reply', item: 'report' }, 10);
     expect(q.getContacts()[0].exchanged).toContain('mic-adjusted');
   });

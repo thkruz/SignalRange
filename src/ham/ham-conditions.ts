@@ -249,6 +249,16 @@ export function monitoredChannel(freqMHz: number, minS = 10, description = `Moni
   return make(`monitoredChannel:${freqMHz}:${minS}`, description, (m) => m.monitoredFor(freqMHz) >= minS);
 }
 
+/** A powered radio monitored this frequency for minS simulated seconds while no authored traffic was on it */
+export function monitoredChannelClear(freqMHz: number, minS = 10, description = `Listen ${minS} s with the channel clear`): Condition {
+  return make(`monitoredChannelClear:${freqMHz}:${minS}`, description, (m) => m.clearMonitoredFor(freqMHz) >= minS);
+}
+
+/** The remote reported this audio problem on a voice test transmission */
+export function audioReported(verdict: 'clean' | 'overdrive' | 'feedback' | 'both', description = `Test report: ${verdict}`): Condition {
+  return make(`audioReported:${verdict}`, description, (m) => m.audioReports().some((r) => r.verdict === verdict));
+}
+
 export function repeaterAccess(code: RepeaterAccessCode = 'relayed', opts: { afterEvent?: string } = {}, description = `Repeater access: ${code}`): Condition {
   return make(`repeaterAccess:${code}:${opts.afterEvent ?? ''}`, description, (m) => eventsAfter(m, `repeater:${code}`, opts.afterEvent).length > 0);
 }

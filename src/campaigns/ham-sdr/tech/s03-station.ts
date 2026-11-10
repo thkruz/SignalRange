@@ -8,12 +8,21 @@
  *   the player inspects it and reseats the pack; the antenna is the supplied rubber duck
  * - Sam answers a call that he decodes, then trades name, location and report, then closes when
  *   the player identifies with KF0SRT
+ * - two other operators are mid-conversation on 146.550 for the first 35 s after the player tunes there;
+ *   a call over them is a collision and nobody answers
+ * - the HT starts with its mic gain at 9: Sam's first report says the audio is distorted, and the
+ *   player must set the gain to 4-6 for his next report to confirm clean audio ('mic-adjusted')
  */
 
 import { HAM_STATION_SCHEMA, type HamStationConfig, type Worksheet } from '@app/ham/ham-station-config';
 import type { HamConnection } from '@app/ham/ham-types';
 
 export const S03_CHANNEL_MHZ = 146.55;
+/** Seconds the scripted conversation occupies the channel, counted from the player's first tune-in */
+export const S03_BUSY_S = 35;
+/** Emitter ids of the two operators in the scripted conversation */
+export const S03_CHAT_A = 's03-chat-a';
+export const S03_CHAT_B = 's03-chat-b';
 
 const privilegesSheet: Worksheet = {
   id: 's03-privileges',
@@ -99,7 +108,7 @@ export const s03Station: HamStationConfig = {
       location: 'bench',
       profileId: 'dual-band-ht',
       powered: true,
-      radio: { vfoMHz: 146.52, mode: 'FM', txPowerW: 5, squelch: 3, volume: 6 },
+      radio: { vfoMHz: 146.52, mode: 'FM', txPowerW: 5, squelch: 3, volume: 6, micGain: 9 },
     },
     { id: 'ht-ant', kind: 'antenna', label: 'Supplied rubber-duck antenna', location: 'bench', antenna: { kind: 'rubber-duck' } },
   ],
@@ -115,6 +124,36 @@ export const s03Station: HamStationConfig = {
   ],
   emitters: [],
   remoteStations: {
+    busy: [
+      {
+        freqMHz: S03_CHANNEL_MHZ,
+        fromS: 0,
+        toS: S03_BUSY_S,
+        relativeToMonitor: true,
+        traffic: {
+          gapS: 7,
+          erpDbm: 37,
+          mode: 'FM',
+          lines: [
+            { sourceId: S03_CHAT_A, callsign: 'N0DLE', text: 'Dale here. Pat, are you still going to the club swap meet on Saturday?', position: { xKm: 3, yKm: -2, heightM: 10 } },
+            {
+              sourceId: S03_CHAT_B,
+              callsign: 'W0PAT',
+              text: 'Pat here. Yes, I am bringing the spare antenna mast. Over to you, Dale.',
+              position: { xKm: -2, yKm: 3, heightM: 10 },
+            },
+            {
+              sourceId: S03_CHAT_A,
+              callsign: 'N0DLE',
+              text: 'Good, I will meet you at the door at nine. Anything you need me to carry?',
+              position: { xKm: 3, yKm: -2, heightM: 10 },
+            },
+            { sourceId: S03_CHAT_B, callsign: 'W0PAT', text: 'Just the coax box. Nine is fine. We are about done on this channel.', position: { xKm: -2, yKm: 3, heightM: 10 } },
+            { sourceId: S03_CHAT_A, callsign: 'N0DLE', text: 'Agreed. N0DLE clear, see you Saturday.', position: { xKm: 3, yKm: -2, heightM: 10 } },
+          ],
+        },
+      },
+    ],
     stations: [
       {
         id: 'sam',

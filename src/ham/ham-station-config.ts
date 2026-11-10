@@ -161,7 +161,7 @@ export interface HamStationConfig {
   connections: HamConnection[];
   faults: HamFaultConfig[];
   emitters: AuthoredEmitter[];
-  remoteStations?: { stations: RemoteStationConfig[]; busy?: BusyWindow[] };
+  remoteStations?: { stations: RemoteStationConfig[]; busy?: BusyWindow[]; audioCheck?: boolean };
   repeater?: Wired<RepeaterConfig>;
   dmr?: Omit<DmrRepeaterConfig, 'hears'>;
   packet?: PacketBlock;

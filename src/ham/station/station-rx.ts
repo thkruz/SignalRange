@@ -185,7 +185,7 @@ export function evaluateReceivers(core: StationCore, dtS: number, lastLogged: Ma
         }
       }
     }
-    if (d.kind !== 'sdr' && powered) core.ops.noteMonitoring(fMHz, squelchOpen, dtS);
+    if (d.kind !== 'sdr' && powered) core.ops.noteMonitoring(fMHz, squelchOpen, dtS, nowS);
 
     if (d.kind === 'sdr' && powered) {
       const rows = results

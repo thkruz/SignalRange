@@ -86,3 +86,7 @@ e2e-wp6/
 # Phase 3 TLE sets: fetched from R2 (fetch-tle-sets.mjs) and builder output
 public/assets/tle-sets/
 tle-sets-out/
+
+# Agent review scratch (result notes, screenshots) and docs-shots run output
+art-review/
+scripts/docs-shots/last-failures.json

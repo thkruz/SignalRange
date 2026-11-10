@@ -41,6 +41,7 @@
     "lint": "biome check ./src ./test ./e2e ./build ./scripts/plugin",
     "lcov": "pnpm exec tsx build/open-lcov.ts",
     "test:e2e": "playwright test",
+    "docs:shots": "node scripts/docs-shots/run.mjs",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:report": "playwright show-report",

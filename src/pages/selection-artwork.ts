@@ -10,9 +10,9 @@ export function selectionArtworkPosition(imageUrl: string): string {
   if (imageUrl.startsWith('home-sdr/')) {
     return '50% 55%';
   }
-  // Frontline forward site (S9-S16): the equipment sits along the bottom of the painting
+  // Frontline forward site (S9-S16): show more of the equipment along the bottom of the painting
   if (imageUrl.startsWith('frontline/physical/site-forward')) {
-    return '50% 100%';
+    return '50% 65%';
   }
   return '50% 30%';
 }

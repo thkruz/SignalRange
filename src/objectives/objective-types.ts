@@ -435,6 +435,16 @@ export interface ConditionParams {
   character?: Character;
   /** For status-check: if true, options will not be randomized (use for "All of the above" questions) */
   preserveOptionOrder?: boolean;
+  /** For status-check: where the question comes from (official pool item or authored applied check) */
+  quizSource?: { kind: 'official' | 'applied'; questionId?: string; group?: string; poolRevision?: string; localId?: string };
+  /** For status-check: figure image shown above the options */
+  figureUrl?: string;
+  /** For status-check: alt text for figureUrl */
+  figureAlt?: string;
+  /** For status-check: per-option feedback shown after a wrong choice (indexed by original option index) */
+  wrongAnswerFeedback?: string[];
+  /** For status-check: where to review the topic, shown after a wrong answer */
+  reviewHint?: string;
   /** For status-check: line appended to the Working Document panel when this quiz is passed */
   documentLine?: string;
   /** For status-check: Working Document section the documentLine belongs to (default: "Notes") */

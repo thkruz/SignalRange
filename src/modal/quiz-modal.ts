@@ -197,6 +197,7 @@ export class QuizModal extends DraggableBox {
 
     // Set question text
     questionEl.textContent = this.currentQuiz_.question;
+    this.renderStudyMeta_(questionEl, optionsEl);
 
     // Hide and clear feedback and penalty notices: a hidden notice left over
     // from the previous quiz still reads through innerText/textContent
@@ -257,6 +258,46 @@ export class QuizModal extends DraggableBox {
     });
     const content = this.boxEl?.querySelector('.draggable-box__content');
     if (content) content.scrollTop = 0;
+  }
+
+  /** Source label above the question and optional figure below it (only for quizzes carrying the study fields) */
+  private renderStudyMeta_(questionEl: HTMLElement, optionsEl: HTMLElement): void {
+    this.boxEl?.querySelectorAll('.quiz-source-label, .quiz-figure').forEach((el) => el.remove());
+    const quiz = this.currentQuiz_;
+    if (!quiz) return;
+
+    const src = quiz.quizSource;
+    if (src) {
+      const label = document.createElement('div');
+      label.className = 'quiz-source-label';
+      label.id = 'quiz-source-label';
+      if (src.kind === 'official') {
+        const id = src.questionId ? ` ${src.questionId}` : '';
+        const rev = src.poolRevision ? ` (rev. ${src.poolRevision})` : '';
+        label.textContent = `Official NCVEC question${id} · 2026–2030 pool${rev}`;
+      } else {
+        label.textContent = 'Applied check';
+      }
+      questionEl.parentElement?.insertBefore(label, questionEl);
+    }
+
+    if (quiz.figureUrl) {
+      const fig = document.createElement('figure');
+      fig.className = 'quiz-figure';
+      fig.id = 'quiz-figure';
+      const img = document.createElement('img');
+      img.src = quiz.figureUrl;
+      img.alt = quiz.figureAlt ?? 'Figure for this question';
+      img.className = 'quiz-figure-img';
+      fig.appendChild(img);
+      if (quiz.figureAlt) {
+        const cap = document.createElement('figcaption');
+        cap.className = 'quiz-figure-caption';
+        cap.textContent = quiz.figureAlt;
+        fig.appendChild(cap);
+      }
+      optionsEl.parentElement?.insertBefore(fig, optionsEl);
+    }
   }
 
   private handleOptionClick_(index: number): void {
@@ -470,9 +511,20 @@ export class QuizModal extends DraggableBox {
       feedbackEl.innerHTML = html`
         <div class="feedback-incorrect">
           <span class="feedback-icon">&#10007;</span>
-          <span class="feedback-text">Not quite. Try again.</span>
+          <span class="feedback-text" id="quiz-wrong-text"></span>
         </div>
       `;
+      const wrongText = getEl('quiz-wrong-text');
+      if (wrongText) {
+        const optionFeedback = this.currentQuiz_.wrongAnswerFeedback?.[selectedIndex];
+        wrongText.textContent = optionFeedback ? optionFeedback : 'Not quite. Try again.';
+      }
+      if (this.currentQuiz_.reviewHint) {
+        const hint = document.createElement('div');
+        hint.className = 'quiz-review-hint';
+        hint.textContent = this.currentQuiz_.reviewHint;
+        feedbackEl.appendChild(hint);
+      }
       feedbackEl.style.display = 'block';
       feedbackEl.style.visibility = 'visible';
     }

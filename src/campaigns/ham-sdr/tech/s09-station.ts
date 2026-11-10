@@ -25,7 +25,12 @@ const traceSheet: Worksheet = {
       id: 'paths',
       label: 'Signal paths',
       kind: 'match',
-      options: ['Receive audio', 'Transmit audio', 'Push-to-talk', 'Radio lead'],
+      options: [
+        'A keying line from the interface to the radio',
+        'Computer output, then the interface, then the radio',
+        'Mini-DIN cable between the radio data port and the interface',
+        'Radio to the interface, then the computer input',
+      ],
       answer: {
         'Receive audio': 'Radio to the interface, then the computer input',
         'Transmit audio': 'Computer output, then the interface, then the radio',
@@ -66,7 +71,7 @@ const networksSheet: Worksheet = {
       id: 'kinds',
       label: 'Match each service to its job',
       kind: 'match',
-      options: ['APRS', 'Linked voice repeater', 'Winlink', 'Mesh network'],
+      options: ['Email carried through radio gateways', 'Many nodes relaying data for each other', 'Position reports and short messages', 'Voice contacts over a wide area'],
       answer: {
         APRS: 'Position reports and short messages',
         'Linked voice repeater': 'Voice contacts over a wide area',

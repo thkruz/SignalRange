@@ -49,7 +49,13 @@ const propagationSheet: Worksheet = {
       id: 'paths',
       label: 'Propagation examples',
       kind: 'match',
-      options: ['Line of sight', 'Ionospheric path', 'Sporadic E', 'Ducting', 'Radio horizon'],
+      options: [
+        'A direct path between two antennas that see each other',
+        'A layer of air near the ground that guides a VHF signal far beyond the horizon',
+        'A short-lived patch of dense ionization that opens a distant path',
+        'A signal refracted back by a charged layer high above the ground',
+        'The distance at which the curve of the Earth blocks a direct path',
+      ],
       answer: {
         'Line of sight': 'A direct path between two antennas that see each other',
         'Ionospheric path': 'A signal refracted back by a charged layer high above the ground',

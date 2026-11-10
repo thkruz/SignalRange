@@ -39,7 +39,7 @@ const siteSheet: Worksheet = {
       id: 'sites',
       label: 'Candidate sites',
       kind: 'match',
-      options: ['Under the overhead power line', 'Wobbly fence post by the garage', 'Occupied corner of the TV mast', 'Clear garden mast away from wires'],
+      options: ['Reject: contact risk if it falls', 'Reject: not stable enough', 'Reject: space already in use', 'Use this site'],
       answer: {
         'Under the overhead power line': 'Reject: contact risk if it falls',
         'Wobbly fence post by the garage': 'Reject: not stable enough',

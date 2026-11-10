@@ -23,7 +23,13 @@ const traceSheet: Worksheet = {
       id: 'order',
       label: 'Receive path',
       kind: 'match',
-      options: ['Antenna', 'Coax jumper', 'SMA adapter', 'USB SDR', 'Laptop'],
+      options: [
+        'Shows the waterfall and plays the audio',
+        'Captures the radio wave',
+        'Turns radio signals into data',
+        'Carries the signal to the receiver',
+        'Changes the connector style',
+      ],
       answer: {
         Antenna: 'Captures the radio wave',
         'Coax jumper': 'Carries the signal to the receiver',

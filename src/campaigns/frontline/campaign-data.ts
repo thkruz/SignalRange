@@ -11,7 +11,7 @@ export const frontlineCampaignData: CampaignData = {
   title: 'Frontline Signals',
   subtitle: 'Field Communications Under Pressure',
   description: `Learn to diagnose field communications at Kivilahti training camp, then join Ola and Irena at the Rautala post. Establish what the equipment can support, distinguish local faults from service limitations, and leave a reliable handover.<br><br>The curriculum spans sixteen scenarios, alongside the physical-layer sandbox.`,
-  imageUrl: 'frontline/frontline.png',
+  imageUrl: 'frontline/physical/card-forward-morning.webp',
   difficulty: 'intermediate',
   totalDuration: '415-575 min',
   campaignType: 'Field Communications',

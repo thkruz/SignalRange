@@ -23,6 +23,15 @@ function make(name: string, description: string, evaluator: () => boolean, timed
   return { id: `c6:${name}`, type: 'custom', description, params, mustMaintain: false };
 }
 
+/**
+ * Require a latched-by-default condition to hold at the same moment as its siblings. Without it a
+ * configuration check (mode, reserve forecast, service support) can be satisfied by different
+ * arrangements at different times and still complete the objective.
+ */
+export function held(c: Condition): Condition {
+  return { ...c, mustMaintain: true };
+}
+
 /** True for a factory condition that needs a sample, an event or a window to pass */
 export function isFieldTimedCondition(c: Condition): boolean {
   return (c.params as TimedParams | undefined)?.fieldTimed === true;

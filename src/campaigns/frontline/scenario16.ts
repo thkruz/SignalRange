@@ -21,6 +21,7 @@ import {
   forecastMeetsReserve,
   handoverCurrent,
   handoverValid,
+  held,
   layerObserved,
   modeIs,
   samplesCurrent,
@@ -338,8 +339,8 @@ export const frontlineScenario16Data: FrontlineScenarioData = {
       prerequisiteObjectiveIds: ['s16-review-handover'],
       points: 15,
       conditions: [
-        forecastMeetsReserve({}, 'Forecast keeps the 200 Wh reserve in the chosen arrangement'),
-        anyServiceSupports(FIRST, [SKY], 'A configured service supports the first task'),
+        held(forecastMeetsReserve({}, 'Forecast keeps the 200 Wh reserve in the chosen arrangement')),
+        held(anyServiceSupports(FIRST, [SKY], 'A configured service supports the first task')),
         samplesCurrent(SKY, ['local', 'application'], 'Current local and application readings taken'),
         workloadVerified({ card: FIRST, service: SKY }, 'First task verified on SkyLink'),
         handoverValid('baseline', 'Baseline recorded'),
@@ -394,8 +395,8 @@ export const frontlineScenario16Data: FrontlineScenarioData = {
       prerequisiteObjectiveIds: ['s16-assess-external-change'],
       points: 15,
       conditions: [
-        modeIs('vsat-modem', 'run', 'EuroSat modem running'),
-        forecastMeetsReserve({}, 'Forecast keeps the 200 Wh reserve with the final arrangement'),
+        held(modeIs('vsat-modem', 'run', 'EuroSat modem running')),
+        held(forecastMeetsReserve({}, 'Forecast keeps the 200 Wh reserve with the final arrangement')),
         serviceReserveVerified(
           { card: TRANSFER, service: EUS, afterEvent: S16_EVENT_OUTAGE, windowS: S16_FINAL_WINDOW_S },
           'Transfer task verified on EuroSat after the outage began with the reserve held through the same window'

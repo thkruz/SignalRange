@@ -11,6 +11,7 @@ import {
   eventFired,
   forecastMeetsReserve,
   handoverValid,
+  held,
   hypothesisFiled,
   interruptionPattern,
   layerObserved,
@@ -382,8 +383,8 @@ export const frontlineScenario15Data: FrontlineScenarioData = {
       prerequisiteObjectiveIds: ['s15-preserve-package'],
       points: 15,
       conditions: [
-        modeIs('vsat-modem', 'standby', 'EuroSat modem in standby'),
-        forecastMeetsReserve({}, 'Forecast keeps the 150 Wh reserve with the modem in standby'),
+        held(modeIs('vsat-modem', 'standby', 'EuroSat modem in standby')),
+        held(forecastMeetsReserve({}, 'Forecast keeps the 150 Wh reserve with the modem in standby')),
         workloadVerified({ card: FORWARD_FIRST_CARD.id, service: SKYLINK_SERVICE, afterEvent: S15_EVENT_ONSET }, 'First task verified on SkyLink after the onset'),
         layerObserved(SKYLINK_SERVICE, 'application', { status: 'up' }, 'SkyLink application observed up'),
         handoverValid('alternative', 'Alternative service and unavailable work recorded'),

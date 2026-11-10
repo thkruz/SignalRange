@@ -67,7 +67,7 @@ export function runHeldReserve(power: RunPowerRecord, runStartS: number, runEndS
   if (!power.complete || w.endS === null || power.reserveWh === null) {
     return false;
   }
-  if (Math.abs(w.startS - runStartS) > 1 || runEndS - runStartS < windowS || w.endS - w.startS < windowS - 1 || w.steps < windowS - 1) {
+  if (Math.abs(w.startS - runStartS) > 1 || runEndS - runStartS < windowS - 1e-6 || w.endS - w.startS < windowS - 1 || w.steps < windowS - 1) {
     return false;
   }
   if (w.minStoredWh + EPS_WH < power.reserveWh) {

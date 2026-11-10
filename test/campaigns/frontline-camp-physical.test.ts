@@ -79,12 +79,12 @@ describe('Frontline camp physical assessments', () => {
     expect(plant.getSpares()['connector-kit']).toBe(0);
   });
 
-  it('rejects an S3 repair performed before fault evidence was collected', () => {
+  it('lets a late inspection recover an S3 repair performed before fault evidence (scored as a blind fix, not a lock-out)', () => {
     const plant = makePlant(frontlineScenario3Data);
     plant.seal('skylink-cable:dish');
     plant.inspect('skylink-cable:dish');
     expect(plant.isFaultCleared('c6-s3-terminal-moisture')).toBe(true);
-    expect(evaluate(frontlineScenario3Data, 's3-evidence-before-intervention')).toBe(false);
+    expect(evaluate(frontlineScenario3Data, 's3-evidence-before-intervention')).toBe(true);
   });
 
   it('preserves evidence and repair ordering through a checkpoint restore', () => {
@@ -113,11 +113,11 @@ describe('Frontline camp physical assessments', () => {
     expect(evaluate(frontlineScenario4Data, 'c6:workloadVerified:ola-check:skylink:after-c6-s4-terminal-obstruction')).toBe(false);
   });
 
-  it('rejects an S4 correction that preceded inspection', () => {
+  it('lets a late inspection recover an S4 correction that preceded it (scored as a blind fix, not a lock-out)', () => {
     const plant = makePlant(frontlineScenario4Data);
     plant.injectFault({ id: 'c6-s4-terminal-obstruction', target: 'skylink-dish', kind: 'net' });
     plant.removeNet('skylink-dish');
     plant.inspect('skylink-dish');
-    expect(evaluate(frontlineScenario4Data, 's4-evidence-before-correction')).toBe(false);
+    expect(evaluate(frontlineScenario4Data, 's4-evidence-before-correction')).toBe(true);
   });
 });

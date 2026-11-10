@@ -14,7 +14,7 @@ import {
   FORWARD_SKYLINK_ACCOUNT,
   FORWARD_SKYLINK_UNIT,
 } from './forward-field-config';
-import { forecastMeetsReserve, handoverValid, layerObserved, modeIs, recordAccepted, samplesCurrent, workloadRunFinished, workloadVerified } from './frontline-conditions';
+import { forecastMeetsReserve, handoverValid, held, layerObserved, modeIs, recordAccepted, samplesCurrent, workloadRunFinished, workloadVerified } from './frontline-conditions';
 import { pick, reading } from './report-choices';
 import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-support';
 
@@ -282,9 +282,9 @@ export const frontlineScenario11Data: FrontlineScenarioData = {
       prerequisiteObjectiveIds: ['s11-receive-equipment'],
       points: 15,
       conditions: [
-        modeIs('vsat-modem', 'run', 'Terminal switched to run after acceptance'),
+        held(modeIs('vsat-modem', 'run', 'Terminal switched to run after acceptance')),
         layerObserved(FORWARD_EUROSAT_SERVICE, 'registration', { status: 'up' }, 'Registration observed up after startup'),
-        forecastMeetsReserve({}, 'Battery forecast keeps the reserve with both terminals'),
+        held(forecastMeetsReserve({}, 'Battery forecast keeps the reserve with both terminals')),
         handoverValid('commissioning', 'Commissioning checks recorded without claiming service'),
       ],
     },

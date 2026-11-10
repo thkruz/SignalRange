@@ -20,6 +20,7 @@ const FORM: HandoverFormConfig = {
   fields: [
     { key: 'reg', label: 'Registration', required: true, rule: { matchesCurrent: { serviceId: 'skylink', layer: 'registration' } } },
     { key: 'soc', label: 'Battery Wh', required: true, rule: { powerWithin: { metric: 'socWh', tol: 20, partId: 'battery' } } },
+    { key: 'fuel', label: 'Fuel L', required: false, rule: { powerWithin: { metric: 'fuelL', tol: 0.5, partId: 'gen' } } },
     { key: 'why', label: 'Basis', required: true, rule: { cites: 'observation', min: 1 } },
     { key: 'cause', label: 'Cause', required: false, rule: { choice: ['none', 'seating'] } },
     { key: 'run', label: 'Run', required: false, rule: { workload: { cardId: 'card', is: ['supported'] } } },
@@ -32,6 +33,7 @@ function rig(withForms = true) {
   const cfg = {
     parts: [
       { id: 'battery', kind: 'battery', label: 'Battery', capacityWh: 1000, socWh: 900, maxOutputW: 600, nominalV: 12, loadW: 0 },
+      { id: 'gen', kind: 'generator', label: 'Generator', running: true, fuelL: 5.9, tankL: 7, burnLPerHour: 1.5, nominalV: 230 },
       { id: 'router', kind: 'router', label: 'Router', poweredBy: 'battery', loadW: 10, nominalV: 12 },
       { id: 'skylink', kind: 'terminal', label: 'SkyLink', poweredBy: 'battery', nominalV: 12, loadW: 50 },
     ],
@@ -141,6 +143,7 @@ describe('M14 handover panel', () => {
     expect(r.records.attempts('h1')).toBe(0);
 
     r.plant.inspect('skylink');
+    r.plant.inspect('battery');
     r.service.takeSample('skylink', 'registration', 'device-indicator');
     r.panel.sync();
     r.host.querySelector<HTMLButtonElement>('button[data-hf-fill="reg"]')?.click();
@@ -174,5 +177,24 @@ describe('M14 handover panel', () => {
     r.plant.inspect('router');
     r.panel.check();
     expect(r.host.querySelector('[data-hf-note="reg"]')?.textContent).toContain('out of date');
+  });
+
+  it('use-my-reading fills fuel only after the generator was inspected', () => {
+    const r = rig();
+    r.panel.sync();
+    expect(r.panel.fillFromReading('fuel')).toBe(false);
+    r.plant.inspect('gen');
+    r.panel.sync();
+    expect(r.panel.fillFromReading('fuel')).toBe(true);
+  });
+
+  it('use-my-reading fills stored energy only after the power station was inspected, and the inspect text carries the figure', () => {
+    const r = rig();
+    r.panel.sync();
+    expect(r.panel.fillFromReading('soc')).toBe(false);
+    const seen = r.plant.inspect('battery');
+    expect(seen.observation).toMatch(/\d+ Wh stored/u);
+    r.panel.sync();
+    expect(r.panel.fillFromReading('soc')).toBe(true);
   });
 });

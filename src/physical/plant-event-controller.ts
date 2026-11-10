@@ -18,6 +18,8 @@ export interface PlantEventTarget {
   clearFault(faultId: string): boolean;
   /** Starts a normal boot of the part (the staged recovery of S4); absent targets ignore the action */
   rebootPart?(partId: string): void;
+  /** Arms or ends an authored external link impairment from scenario second `atS` */
+  setLinkImpairment?(impairmentId: string, active: boolean, durationS: number, atS: number): void;
   setWeather(weather: Partial<PlantEnvironment>): void;
   /** M15 policy and records actions; absent targets ignore the action */
   setAccount?(patch: Extract<PlantEventAction, { kind: 'set-account' }>['patch']): void;
@@ -134,6 +136,9 @@ export class PlantEventController {
           break;
         case 'reboot-part':
           this.target_.rebootPart?.(action.partId);
+          break;
+        case 'link-impairment':
+          this.target_.setLinkImpairment?.(action.impairmentId, action.active, action.durationS ?? 0, elapsedS);
           break;
         case 'set-weather':
           this.target_.setWeather(action.weather);

@@ -36,7 +36,7 @@ export function forwardServiceConfig(): ServiceModelConfig {
         providerId: FORWARD_PROVIDER,
         linkTargetIds: ['skylink-cable', 'skylink-cable:dish', 'skylink-cable:router'],
         endpointIds: [FORWARD_ENDPOINT],
-        profile: { downMbps: 80, upMbps: 12, rttMs: 55, lossPct: 0.5 },
+        profile: { downMbps: 80, upMbps: 12, rttMs: 55, lossPct: 0.5, rttSpreadMs: 6 },
       },
     ],
     accounts: [{ id: FORWARD_SKYLINK_ACCOUNT, unitId: FORWARD_SKYLINK_UNIT, authorized: true, capacityFactor: 1 }],
@@ -111,7 +111,7 @@ export function forwardEurosatPath(): ServicePathConfig {
     providerId: FORWARD_EUROSAT_PROVIDER,
     linkTargetIds: ['vsat-feed', 'vsat-ifl', 'vsat-ifl:lnb', 'vsat-ifl:modem'],
     endpointIds: [FORWARD_EUROSAT_ENDPOINT],
-    profile: { downMbps: 20, upMbps: 4, rttMs: 620, lossPct: 0.5 },
+    profile: { downMbps: 20, upMbps: 4, rttMs: 620, lossPct: 0.5, rttSpreadMs: 60 },
   };
 }
 
@@ -159,6 +159,27 @@ export const FORWARD_REMOTE_ENDPOINT = 'remote-terminal';
 export const FORWARD_SKYLINK_STARTUP_S = 30;
 export const DUAL_START_WH = 360;
 export const DUAL_RESERVE_WH = 200;
+
+/** Battery draw (W) with the dish running and the modem in standby: the correct dual-terminal arrangement (S14 to S16) */
+export const DUAL_CORRECT_DRAIN_W = 115;
+/** Battery draw (W) with both terminals running: the wrong arrangement the forecast must keep rejecting */
+export const DUAL_WRONG_DRAIN_W = 170;
+
+/** Scenario time a student may leave both terminals running (170 W) before parking the modem and still clear the reserve */
+export const DUAL_PARK_DELAY_S = 600;
+
+/**
+ * Smallest whole-Wh start charge for an end-of-shift forecast (`plant.power.shiftEndS`). On the correct arrangement the
+ * forecast at shift end is start - drainW * shiftEndS / 3600 at every moment (the draw so far plus the draw still to come
+ * is the same), so the reserve holds for as long as the student likes. The start also covers `parkDelayS` on the wrong
+ * arrangement before the modem is parked (extra draw DUAL_WRONG - drainW), plus a small rounding margin.
+ *
+ * The wrong arrangement must fail at t = 0: start < reserve + DUAL_WRONG_DRAIN_W * shiftEndS / 3600 (checked in
+ * test/campaigns/c6-reserve-margin.test.ts).
+ */
+export function reserveStartWh(reserveWh: number, drainW: number, shiftEndS: number, parkDelayS = DUAL_PARK_DELAY_S, marginWh = 3): number {
+  return Math.ceil(reserveWh + (drainW * shiftEndS) / 3600 + ((DUAL_WRONG_DRAIN_W - drainW) * parkDelayS) / 3600 + marginWh);
+}
 
 export interface ForwardRemoteOptions {
   /** The remote mobility policy is already in force (S14 starts after S13 left it in place) */

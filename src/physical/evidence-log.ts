@@ -6,6 +6,19 @@
 import type { PlantFault, PlantLogEntry } from '@app/physical/physical-plant-types';
 import type { ServiceSample } from '@app/physical/service-types';
 
+/** Typed copy of the service sample behind an observation (frozen with the entry, never re-read from the live model) */
+export interface SampleSnapshot {
+  serviceId: string;
+  endpointId?: string;
+  layer: string;
+  metric: string;
+  value: number | string;
+  unit: string;
+  provenance: string;
+  /** Why the layer read this way ('link-lost'...); absent in older entries */
+  cause?: string;
+}
+
 export type EvidenceKind = 'observation' | 'hypothesis' | 'action' | 'result';
 
 export interface EvidenceEntry {
@@ -31,6 +44,8 @@ export interface EvidenceEntry {
   clearedTargets?: string[];
   /** Services showing down/degraded in the player's latest samples when this entry was written */
   symptoms?: string[];
+  /** Typed sample snapshot (service sample observations only; older entries lack it and cannot satisfy sample predicates) */
+  sample?: SampleSnapshot;
   /** Diagram selections (M17): the node ids the player marked on a path diagram */
   selection?: string[];
   /** Where the player saw or did this when it came through the terminal app (phase 40 D7) */
@@ -43,6 +58,8 @@ export interface EvidenceEntry {
 
 /** Subject prefix of every terminal app entry: `skylink-app:<screen>` */
 export const APP_SUBJECT_PREFIX = 'skylink-app:';
+/** Subject prefix of the EuroSat modem app entries: `eurosat-app:<screen>` */
+export const EUROSAT_APP_SUBJECT_PREFIX = 'eurosat-app:';
 /** Verb of an app view entry */
 export const APP_VIEW_VERB = 'app-view';
 /** An unchanged view of one screen is recorded again only after this many sim seconds */
@@ -163,7 +180,7 @@ export class EvidenceLog {
    * and what it showed. Dedupe: the same screen with the same `text` is recorded once per
    * `APP_VIEW_DEDUPE_S` sim seconds; a changed view is recorded at once. Returns null when deduped.
    */
-  recordAppView(screen: string, text: string, facts: string[] = []): EvidenceEntry | null {
+  recordAppView(screen: string, text: string, facts: string[] = [], subjectPrefix: string = APP_SUBJECT_PREFIX): EvidenceEntry | null {
     const now = this.plant_.getTimeSeconds();
     for (let i = this.entries_.length - 1; i >= 0; i--) {
       const e = this.entries_[i];
@@ -179,7 +196,7 @@ export class EvidenceLog {
       id: this.nextId_(),
       kind: 'observation',
       tS: now,
-      subject: `${APP_SUBJECT_PREFIX}${screen}`,
+      subject: `${subjectPrefix}${screen}`,
       source: {},
       facts,
       text,
@@ -199,13 +216,13 @@ export class EvidenceLog {
    * reset, Wi-Fi change). Reboot, snow melt and sleep are plant verbs and arrive through the plant
    * action log, so they are not recorded here. Never `effective`, so the fix scoring ignores it.
    */
-  recordAppAction(screen: string, verb: string, text: string): EvidenceEntry {
+  recordAppAction(screen: string, verb: string, text: string, subjectPrefix: string = APP_SUBJECT_PREFIX): EvidenceEntry {
     this.refreshFaults_();
     const entry: EvidenceEntry = {
       id: this.nextId_(),
       kind: 'action',
       tS: this.plant_.getTimeSeconds(),
-      subject: `${APP_SUBJECT_PREFIX}${screen}`,
+      subject: `${subjectPrefix}${screen}`,
       source: {},
       facts: [],
       text,
@@ -370,6 +387,16 @@ export class EvidenceLog {
       tS: sample.tS,
       subject: sample.serviceId,
       source: { sampleId: sample.id },
+      sample: {
+        serviceId: sample.serviceId,
+        ...(sample.endpointId === undefined ? {} : { endpointId: sample.endpointId }),
+        layer: sample.layer,
+        metric: sample.metric,
+        value: sample.value,
+        unit: sample.unit,
+        provenance: sample.provenance,
+        ...(sample.cause === undefined ? {} : { cause: sample.cause }),
+      },
       facts: [],
       text: `${sample.layer} ${sample.metric}: ${sample.value}${sample.unit === 'state' ? '' : ` ${sample.unit}`} (${sample.provenance})`,
     });

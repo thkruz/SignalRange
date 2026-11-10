@@ -6,7 +6,10 @@
  */
 
 import type { EquipmentConfig } from './equipment-records';
+import type { HypothesisSpec } from './evidence-predicates';
 import type { HandoverFormConfig } from './field-records';
+import type { IncomingRecordSpec, ReferralRule } from './incoming-types';
+import type { LivePhysicsReader } from './live-link';
 import type { AccountState, EndpointState, ProviderState, ServiceModelConfig } from './service-types';
 import type { WorkloadConfig } from './workload-types';
 
@@ -31,6 +34,14 @@ export interface PartModeConfig {
 export interface PlantPowerConfig {
   reserveWh: number;
   planningHorizonS: number;
+  /**
+   * Opt-in end-of-shift basis (scenario seconds). When set, the default forecast horizon is the time left to this fixed
+   * point (shiftEndS - now, floored at 0) instead of the rolling `planningHorizonS`, so the horizon shrinks as the clock
+   * runs and an arrangement that holds the reserve at shift end keeps holding it however slowly the student works.
+   * At or after shift end the horizon is 0: the forecast is the current charge against the reserve. An explicit horizon
+   * argument to `forecast()` still wins. Unset = rolling horizon (every other scenario).
+   */
+  shiftEndS?: number;
   basis: 'battery-only' | 'with-generator';
 }
 
@@ -91,6 +102,8 @@ export type PlantSignalRole = 'pre-lna' | 'post-lna';
 
 export interface PlantConnectorConfig {
   id: string;
+  /** Player-facing name (hypothesis picker, logs); falls back to the id */
+  label?: string;
   /** Cable this connector terminates (its carried signal and power) */
   cableId?: string;
   /** Part this connector plugs into (needed when there is no cable, e.g. an antenna feed) */
@@ -114,6 +127,8 @@ export interface CableState {
 
 export interface PlantCableConfig {
   id: string;
+  /** Player-facing name (hypothesis picker, logs); falls back to the id */
+  label?: string;
   lengthM: number;
   /** Spare family, e.g. 'power-data' or 'coax' (spare key is `cable:<cableType>`) */
   cableType: string;
@@ -191,6 +206,8 @@ export type PlantEventAction =
   | { kind: 'deliver-notice'; noticeId: string; version?: number }
   | { kind: 'respond-request'; requestId: string; status: 'approved' | 'rejected' }
   | { kind: 'reboot-part'; partId: string }
+  /** Arm (active) or end an authored external link impairment; a local reboot never clears it */
+  | { kind: 'link-impairment'; impairmentId: string; active: boolean; durationS?: number }
   | { kind: 'set-flag'; key: string; value: string | number | boolean };
 
 export interface PlantEventConfig {
@@ -243,6 +260,8 @@ export interface PlantConfig {
   events?: PlantEventConfig[];
   /** Layered link services (Campaign 6, M04). Absent = no service model. */
   service?: ServiceModelConfig;
+  /** Physics reader for `service.linkMode: 'live'` (package H). Not serialised; absent for every authored scenario. */
+  liveLink?: LivePhysicsReader;
   /** Requirement cards and workload runs (Campaign 6, M10). Needs `service`. Absent = no runner. */
   workloads?: WorkloadConfig;
   /** Path-diagram options (M24). `highlightShared: false` hides the shared-dependency highlight so the player finds them. */
@@ -251,8 +270,14 @@ export interface PlantConfig {
   wrongCauseActions?: AppWrongCauseRule[];
   /** Authored hypothesis causes (M21). When set the notebook cause is a select of these ids; free text is never graded. Absent = free text. */
   causeOptions?: Array<{ id: string; label: string }>;
+  /** What a hypothesis must show to hold up, per cause. The notebook tells the player when a saved hypothesis does not (never blocks it). Absent = no feedback. */
+  hypothesisSpecs?: HypothesisSpec[];
   /** Handover forms the player can submit (Campaign 6, M13). Absent = no records. */
   handovers?: HandoverFormConfig[];
+  /** Records read from an earlier scenario, resolved at scenario load (Campaign 6 package C). Absent = none. */
+  incoming?: IncomingRecordSpec[];
+  /** Cross-campaign referrals filed when a form is accepted (Campaign 6 package C). Absent = none. */
+  referrals?: ReferralRule[];
   /** Equipment records, correction requests and provider notices (Campaign 6, M15). Absent = none. */
   equipment?: EquipmentConfig;
   /**
@@ -425,6 +450,8 @@ export interface PlantState {
   startingUntilS?: Record<string, number>;
   /** Condition window key -> scenario second it opened (optional in older checkpoints) */
   windows?: Record<string, number>;
+  /** Resource ledger windows by key, open and closed (optional in older checkpoints) */
+  ledger?: Record<string, ResourceWindow>;
   /** Generator id -> running flag (optional in older checkpoints) */
   generatorRunning?: Record<string, boolean>;
   /** Part id -> current mode id for non-generator parts with `modes` (optional in older checkpoints) */
@@ -465,6 +492,32 @@ export interface PartState {
   mode?: string;
   /** Parts with `modes` only: true while the part is starting up (supply absent) */
   starting?: boolean;
+}
+
+/**
+ * Energy and fuel accounting over one stretch of scenario time (Campaign 6 package F). Load and charge are integrated
+ * separately every plant second, so charging cannot hide a draw and capacity clipping is visible.
+ */
+export interface ResourceWindow {
+  startS: number;
+  /** Scenario second the window closed; null while open */
+  endS: number | null;
+  /** Planned end: accounting stops at this second even when a long skip carries the plant past it */
+  untilS?: number;
+  /** Total stored energy across batteries at the start, and the lowest value seen at any plant second */
+  startStoredWh: number;
+  minStoredWh: number;
+  endStoredWh: number;
+  /** Energy drawn from the batteries (start-up draw included) */
+  loadWh: number;
+  /** Energy that actually entered the batteries after capacity clipping */
+  chargeWh: number;
+  /** Charge offered while a battery was full, which went nowhere */
+  clippedWh: number;
+  /** Fuel burnt by running generators */
+  fuelUsedL: number;
+  /** One-second plant steps accounted */
+  steps: number;
 }
 
 /** What a power-station display shows (M03) */

@@ -1,4 +1,5 @@
 import { Character, Emotion } from '@app/modal/character-enum';
+import type { EvidenceGroup } from '@app/physical/evidence-predicates';
 import type { HandoverFormConfig } from '@app/physical/field-records';
 import { SKYLINK_SERVICE } from './camp-field-config';
 import {
@@ -6,14 +7,28 @@ import {
   applyForwardEurosat,
   applyForwardField,
   applyForwardRemote,
+  DUAL_RESERVE_WH,
   FORWARD_EUROSAT_SERVICE,
   FORWARD_FIRST_CARD,
   FORWARD_PROVIDER,
   FORWARD_REMOTE_SERVICE,
   FORWARD_SKYLINK_ACCOUNT,
   FORWARD_SKYLINK_UNIT,
+  reserveStartWh,
 } from './forward-field-config';
-import { diagramSelection, eventFired, forecastMeetsReserve, handoverValid, layerObserved, modeIs, workloadRunFinished, workloadVerified } from './frontline-conditions';
+import {
+  diagramSelection,
+  eventFired,
+  forecastMeetsReserve,
+  handoverCurrent,
+  handoverValid,
+  held,
+  layerObserved,
+  modeIs,
+  workloadRunFinished,
+  workloadVerified,
+} from './frontline-conditions';
+import { pick, reading } from './report-choices';
 import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-support';
 import { S11_INTERACTIVE_CARD, S11_TRANSFER_CARD } from './scenario11';
 
@@ -31,19 +46,81 @@ export const S14_EVENT_NOTICE = 's14-restoration-notice';
 export const S14_EVENT_LIFT = 's14-ground-restriction-lifted';
 export const S14_EVENT_EXERCISE = 's14-readiness-exercise';
 export const S14_EVENT_RETURN = 's14-skylink-returns';
+export const S14_INTERVAL_RESTORATION = 's14-eurosat-restoration';
 export const S14_NOTICE = 's14-ground-restoration-notice';
+/**
+ * End of shift (scenario seconds): the battery-reserve forecast looks at this fixed point, not a rolling window. No authored shift
+ * length exists, so this is a named constant; Ted wants a tunable knob, edit this one value to retune (start charge derives from it).
+ */
+export const S14_SHIFT_END_S = 7200;
+export const S14_RESERVE_WH = DUAL_RESERVE_WH;
+/** S14 ends on the modem running and the dish in standby (about 120 W), 5 W above the S15/S16 arrangement, so the start is sized for that */
+export const S14_FINAL_DRAIN_W = 120;
+/** Start charge derived from the shift end: reserve + correct-arrangement drain to shift end + 10 min of both terminals + 3 Wh margin */
+export const S14_START_WH = reserveStartWh(S14_RESERVE_WH, S14_FINAL_DRAIN_W, S14_SHIFT_END_S);
 
 const EUS = FORWARD_EUROSAT_SERVICE;
 const TRANSFER = S11_TRANSFER_CARD.id;
 const INTERACTIVE = S11_INTERACTIVE_CARD.id;
-const choice = (id: string, label: string) => ({ choice: [id], labels: { [id]: label } });
+const DECOYS: Record<string, Array<[string, string]>> = {
+  [S11_INTERACTIVE_CARD.id]: [
+    [S11_TRANSFER_CARD.id, 'Delay-tolerant transfer'],
+    ['neither', 'Neither task'],
+  ],
+  'remains-in-force': [
+    ['lifted', 'Lifted with the ground restriction'],
+    ['unknown', 'Not known'],
+  ],
+  delay: [
+    ['rate', 'Download rate below its limit'],
+    ['loss', 'Packet loss above its limit'],
+  ],
+  'workstation-and-power': [
+    ['terminal-only', 'The terminal only'],
+    ['whole-site', 'Everything on the site'],
+  ],
+  'terminal-account-provider-endpoint': [
+    ['terminal-only', 'The terminal only'],
+    ['terminal-account', 'Terminal and account only'],
+  ],
+  'terminal-or-service': [
+    ['power-only', 'A power failure'],
+    ['any-failure', 'Any failure'],
+  ],
+  'power-or-workstation': [
+    ['provider-outage', 'A provider outage'],
+    ['terminal-fault', 'A terminal fault'],
+  ],
+  'about-20-s': [
+    ['about-2-s', 'About 2 seconds'],
+    ['about-5-min', 'About 5 minutes'],
+  ],
+  'interactive-needs-skylink': [
+    ['eurosat-enough', 'EuroSat supports every task, so no standby is needed'],
+    ['both-running', 'Run both terminals, so the reserve is not needed'],
+  ],
+  unavailable: [
+    ['available', 'Available on EuroSat'],
+    ['degraded-only', 'Available but slow'],
+  ],
+};
+const choice = (id: string, label: string) => pick({ [id]: label, ...Object.fromEntries(DECOYS[id] ?? []) }, [id]);
+
+const NOTICE_MARK: EvidenceGroup = { id: 'notice', label: 'the entry for the provider notice', match: { kind: 'result', eventId: S14_EVENT_NOTICE } };
+const EUS_APP = reading('eus-app', 'an application reading of the EuroSat service', EUS, 'application');
+const EUS_DELAY: EvidenceGroup = {
+  ...reading('eus-delay', 'a delay reading from the EuroSat service', EUS, 'registration', undefined, { metric: 'rttMs' }),
+  orMatch: [{ kind: 'observation', serviceId: EUS, layer: 'application', metric: 'rttMs' }],
+};
+const EUS_REGISTRATION = reading('eus-registration', 'a registration reading of the EuroSat terminal', EUS, 'registration');
+const SKY_PROVIDER = reading('sky-provider', 'a provider reading of the SkyLink service', SKYLINK_SERVICE, 'provider');
 
 const restorationForm: HandoverFormConfig = {
   id: 'restoration',
   title: 'Restoration check',
   documentSection: 'Restoration',
   fields: [
-    { key: 'notice', label: 'Provider notice and effective time', required: true, rule: { cites: 'result', min: 1 } },
+    { key: 'notice', label: 'Provider notice and effective time', required: true, rule: { evidence: [NOTICE_MARK] } },
     { key: 'account', label: 'SkyLink account state now', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'account' } } },
     {
       key: 'verified',
@@ -65,7 +142,7 @@ const comparisonForm: HandoverFormConfig = {
     { key: 'eurosat', label: 'Interactive task on EuroSat', required: true, rule: { workload: { cardId: INTERACTIVE, is: ['unsupported'], serviceId: EUS } } },
     { key: 'transfer', label: 'Transfer task on EuroSat', required: true, rule: { workload: { cardId: TRANSFER, is: ['supported'], serviceId: EUS } } },
     { key: 'unmet', label: 'Requirement EuroSat misses for the interactive task', required: true, rule: choice('delay', 'Round-trip delay above its limit') },
-    { key: 'basis', label: 'Observations behind it', required: true, rule: { cites: 'observation', min: 2 } },
+    { key: 'basis', label: 'Observations behind it', required: true, rule: { evidence: [EUS_APP, EUS_DELAY] } },
   ],
 };
 
@@ -112,13 +189,20 @@ const transitionForm: HandoverFormConfig = {
     { key: 'skylink', label: 'SkyLink provider state now', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'provider' } } },
     { key: 'registration', label: 'EuroSat registration now', required: true, rule: { matchesCurrent: { serviceId: EUS, layer: 'registration' } } },
     { key: 'verified', label: 'Transfer window you ran after the transition', required: true, rule: { workload: { cardId: TRANSFER, is: ['supported'], serviceId: EUS } } },
+    {
+      key: 'restoration',
+      label: 'Seconds from the SkyLink outage until EuroSat carried traffic',
+      required: true,
+      rule: { interval: { id: S14_INTERVAL_RESTORATION, span: 'restoration', tolS: 2 } },
+    },
     { key: 'energy', label: 'Battery energy now (Wh)', required: true, rule: { powerWithin: { metric: 'socWh', tol: 40, partId: 'power-station' } } },
     { key: 'interactive', label: 'Interactive task while SkyLink is out', required: true, rule: choice('unavailable', 'Not available on EuroSat') },
-    { key: 'basis', label: 'Observations and events behind it', required: true, rule: { cites: 'observation', min: 3 } },
+    { key: 'basis', label: 'Observations and events behind it', required: true, rule: { evidence: [SKY_PROVIDER, EUS_REGISTRATION, EUS_APP] } },
   ],
 };
 
 const handoverForm: HandoverFormConfig = {
+  certification: { events: [S14_EVENT_NOTICE, S14_EVENT_LIFT, S14_EVENT_EXERCISE, S14_EVENT_RETURN] },
   id: 'dual-handover',
   title: 'Dual-service handover',
   documentSection: 'Dual service',
@@ -145,6 +229,14 @@ if (settings.physicalPlant) {
   applyForwardEurosat(plant, { modemRunning: true });
   applyForwardRemote(plant, { policyInForce: true });
   applyForwardDualReadiness(plant);
+  const battery = plant.parts.find((p) => p.id === 'power-station');
+  if (battery) {
+    battery.socWh = S14_START_WH;
+  }
+  plant.power = { reserveWh: S14_RESERVE_WH, planningHorizonS: S14_SHIFT_END_S, shiftEndS: S14_SHIFT_END_S, basis: 'battery-only' };
+  if (plant.service) {
+    plant.service.intervals = [{ id: S14_INTERVAL_RESTORATION, serviceId: EUS, startEventId: S14_EVENT_EXERCISE, activationPartId: 'vsat-modem' }];
+  }
   plant.equipment = {
     units: [
       {
@@ -295,9 +387,9 @@ export const frontlineScenario14Data: FrontlineScenarioData = {
       prerequisiteObjectiveIds: ['s14-check-dependencies'],
       points: 15,
       conditions: [
-        modeIs('skylink-dish', 'run', 'SkyLink dish active'),
-        modeIs('vsat-modem', 'standby', 'EuroSat modem in standby'),
-        forecastMeetsReserve({}, 'Forecast keeps the 200 Wh reserve with this arrangement'),
+        held(modeIs('skylink-dish', 'run', 'SkyLink dish active')),
+        held(modeIs('vsat-modem', 'standby', 'EuroSat modem in standby')),
+        held(forecastMeetsReserve({}, 'Forecast keeps the 200 Wh reserve with this arrangement')),
         handoverValid('readiness', 'Operating configuration recorded'),
       ],
     },
@@ -326,10 +418,10 @@ export const frontlineScenario14Data: FrontlineScenarioData = {
       prerequisiteObjectiveIds: ['s14-test-readiness'],
       points: 15,
       conditions: [
-        modeIs('vsat-modem', 'run', 'EuroSat modem active'),
-        modeIs('skylink-dish', 'standby', 'SkyLink dish in standby'),
-        forecastMeetsReserve({}, 'Forecast keeps the reserve with the final arrangement'),
-        handoverValid('dual-handover', 'Dual-service handover submitted'),
+        held(modeIs('vsat-modem', 'run', 'EuroSat modem active')),
+        held(modeIs('skylink-dish', 'standby', 'SkyLink dish in standby')),
+        held(forecastMeetsReserve({}, 'Forecast keeps the reserve with the final arrangement')),
+        handoverCurrent('dual-handover', 'Dual-service handover submitted'),
       ],
     },
   ],

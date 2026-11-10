@@ -1,3 +1,4 @@
+import { FORM_STEP_LATER_NOTE, type FormStepState } from '@app/pages/mission-control/tabs/form-step-state';
 import type { EvidenceEntry, EvidenceLog } from '@app/physical/evidence-log';
 import type { FieldRecords, HandoverFieldConfig, HandoverFormConfig, HandoverInput, HandoverValidation } from '@app/physical/field-records';
 import type { PhysicalPlantManager } from '@app/physical/physical-plant-manager';
@@ -22,6 +23,10 @@ export interface HandoverPanelDeps {
   service: () => ServiceModel | null;
   runs: () => readonly WorkloadRun[];
   plant: () => PhysicalPlantManager | null;
+  /** Where the checklist step that reads a form stands (omitted: no note) */
+  formStep?: (formId: string) => FormStepState;
+  /** Bring the simulation up to the clock before the panel reads runs and evidence */
+  catchUp?: () => void;
 }
 
 /** Said plainly wherever a form has a field that must match a service reading */
@@ -61,11 +66,17 @@ export function describeReading(service: ServiceModel | null, serviceId: string,
   return { text: `Your latest ${layer} reading, ${clock(sample.tS)}: ${value} (out of date, take a new one).`, value, current: false };
 }
 
+/** How long a press blocks a redraw of the panel (a press that never gets its release stops blocking after this) */
+const POINTER_HOLD_MS = 1500;
+
 export class FieldHandoverPanel {
   private built_ = false;
   private formId_ = '';
   private input_: HandoverInput = {};
   private dynKey_: string | null = null;
+  private builtForm_ = '';
+  private readonly slotHtml_ = new Map<string, string>();
+  private pointerDownAtMs_ = 0;
   private msg_ = '';
   private result_: HandoverValidation | null = null;
 
@@ -73,12 +84,16 @@ export class FieldHandoverPanel {
     private readonly host_: HTMLElement,
     private readonly deps_: HandoverPanelDeps
   ) {
+    this.host_.addEventListener('pointerdown', this.onPointerDown_);
+    this.host_.addEventListener('pointerup', this.onPointerUp_);
     this.host_.addEventListener('click', this.onClick_);
     this.host_.addEventListener('change', this.onChange_);
     this.host_.addEventListener('input', this.onChange_);
   }
 
   destroy(): void {
+    this.host_.removeEventListener('pointerdown', this.onPointerDown_);
+    this.host_.removeEventListener('pointerup', this.onPointerUp_);
     this.host_.removeEventListener('click', this.onClick_);
     this.host_.removeEventListener('change', this.onChange_);
     this.host_.removeEventListener('input', this.onChange_);
@@ -140,7 +155,7 @@ export class FieldHandoverPanel {
     const res = records.submit(this.formId_, this.input_);
     this.result_ = res.validation;
     if (res.ok) {
-      this.msg_ = `Submitted at ${clock(res.record.submittedAtS)}.`;
+      this.msg_ = `Submitted at ${clock(res.record.submittedAtS)}.${this.deps_.formStep?.(this.formId_) === 'later' ? ` ${FORM_STEP_LATER_NOTE}` : ''}`;
       this.input_ = {};
       this.result_ = null;
     } else {
@@ -162,20 +177,55 @@ export class FieldHandoverPanel {
     return this.form_()?.fields.find((f) => f.key === key);
   }
 
+  /**
+   * A gauge value only counts as the player's reading once they looked at the part (an inspect entry on it).
+   * The fuel gauge is read off the generator and the stored-energy figure off the power station's display;
+   * the Power panel stays a live readout the player may copy by hand, but "use my latest reading" needs the look.
+   */
+  private hasPowerReading_(r: { metric: 'socWh' | 'fuelL'; partId?: string }): boolean {
+    if (r.partId === undefined) return true;
+    const log = this.deps_.evidence();
+    return log === null ? false : log.entries('observation').some((e) => e.subject === r.partId && e.verb === 'inspect');
+  }
+
   private readingFor_(field: HandoverFieldConfig): string | undefined {
     const rule = field.rule;
     if ('matchesCurrent' in rule) return describeReading(this.deps_.service(), rule.matchesCurrent.serviceId, rule.matchesCurrent.layer).value;
     const plant = this.deps_.plant();
     if ('powerWithin' in rule && plant) {
+      if (!this.hasPowerReading_(rule.powerWithin)) return undefined;
       const table = plant.getPowerReadings()[rule.powerWithin.metric];
       const v = rule.powerWithin.partId === undefined ? Object.values(table).reduce((a, b) => a + b, 0) : table[rule.powerWithin.partId];
 
       return v === undefined ? undefined : String(Math.round(v * 10) / 10);
     }
     if ('modeIs' in rule && plant) return plant.getPartMode(rule.modeIs.partId);
+    if ('measured' in rule) {
+      const v = this.deps_.records()?.latestMeasured(rule.measured.serviceId, rule.measured.metric);
+
+      return v == null ? undefined : String(Math.round(v * 10) / 10);
+    }
+    if ('runRate' in rule) {
+      const v = this.deps_.records()?.latestRunRateW(rule.runRate.cardId, rule.runRate.serviceId);
+
+      return v == null ? undefined : String(Math.round(v * 10) / 10);
+    }
+    if ('interval' in rule) {
+      const v = this.deps_.service()?.intervalSpanS(rule.interval.id, rule.interval.span);
+
+      return v == null ? undefined : String(Math.round(v * 10) / 10);
+    }
 
     return undefined;
   }
+
+  private readonly onPointerDown_ = (): void => {
+    this.pointerDownAtMs_ = Date.now();
+  };
+
+  private readonly onPointerUp_ = (): void => {
+    this.pointerDownAtMs_ = 0;
+  };
 
   private readonly onClick_ = (e: Event): void => {
     const el = e.target as HTMLElement;
@@ -215,6 +265,7 @@ export class FieldHandoverPanel {
   // ---------------------------------------------------------------- render
 
   sync(): void {
+    this.deps_.catchUp?.();
     const records = this.deps_.records();
     const forms = records?.forms() ?? [];
     if (!records || forms.length === 0) {
@@ -250,10 +301,22 @@ export class FieldHandoverPanel {
     const runs = this.deps_.runs();
     const readings = form.fields.map((f) => this.readingHint_(f)).join('~');
     const resultKey = this.result_ ? this.result_.fields.map((c) => `${c.key}${c.ok ? 1 : 0}${c.reason ?? ''}`).join('|') : '';
-    const key = [this.formId_, entries.map((e) => e.id).join(','), runs.map((r) => `${r.id}${r.status}`).join(','), readings, resultKey, records.recordsFor(form.id).length].join(
-      '#'
-    );
+    const key = [
+      this.formId_,
+      entries.map((e) => e.id).join(','),
+      runs.map((r) => `${r.id}${r.status}`).join(','),
+      readings,
+      resultKey,
+      records.recordsFor(form.id).length,
+      records.staleNote(form.id) ?? '',
+      records
+        .incoming()
+        .map((i) => `${i.id}${i.source}`)
+        .join(','),
+    ].join('#');
     if (key === this.dynKey_) return;
+    // A press is in progress on this panel: redrawing now would swap the element under the pointer. The next sync catches up.
+    if (this.dynKey_ !== null && Date.now() - this.pointerDownAtMs_ < POINTER_HOLD_MS) return;
     this.dynKey_ = key;
 
     const numbering = new Map(entries.map((e, i) => [e.id, i + 1] as const));
@@ -264,14 +327,75 @@ export class FieldHandoverPanel {
             .map((f) => `<option value="${escapeHtml(f.id)}"${f.id === this.formId_ ? ' selected' : ''}>${escapeHtml(f.title)}</option>`)
             .join('')}</select></label>`
         : '';
-    const stale = form.fields.some((f) => 'matchesCurrent' in f.rule) ? `<div class="fhf-stale" data-fhf="stale">${escapeHtml(STALE_NOTE)}</div>` : '';
+    const outOfDate = records.staleNote(form.id);
+    const stale =
+      (form.fields.some((f) => 'matchesCurrent' in f.rule) ? `<div class="fhf-stale" data-fhf="stale">${escapeHtml(STALE_NOTE)}</div>` : '') +
+      (outOfDate ? `<div class="fhf-stale" data-fhf="out-of-date">${escapeHtml(outOfDate)}</div>` : '');
+    const incoming = records
+      .incoming()
+      .map(
+        (i) =>
+          `<div class="fhf-incoming" data-fhf="incoming" data-incoming-source="${i.source}"><div class="fhf-incoming-title">${escapeHtml(i.title)}</div><div class="fhf-incoming-from" data-fhf="incoming-from">${escapeHtml(i.provenance)}</div><div class="fhf-incoming-note">${escapeHtml(i.note)}</div>${i.rows
+            .map((row) => `<div class="fhf-incoming-row"><span>${escapeHtml(row.label)}</span> <strong>${escapeHtml(row.text)}</strong></div>`)
+            .join('')}</div>`
+      )
+      .join('');
     const fields = form.fields.map((f) => this.fieldHtml_(f, entries, numbering, runs, checks.get(f.key))).join('');
     const filed = records.recordsFor(form.id);
     const last = filed.length
       ? `<div class="fhf-filed" data-fhf="filed">Filed ${filed.length} time${filed.length === 1 ? '' : 's'}; last at ${clock(filed[filed.length - 1].submittedAtS)}.</div>`
       : '';
-    body.innerHTML = `${picker}<div class="fhf-title">${escapeHtml(form.title)}</div>${stale}<div class="fhf-fields">${fields}</div>
-      <div class="fhf-actions"><button type="button" class="btn btn-sm btn-outline-secondary" data-hf-act="check">Check</button> <button type="button" class="btn btn-sm btn-outline-primary" data-hf-act="submit">Submit</button></div>${last}`;
+    // The picker, title and Check/Submit buttons are built once per form and patched in place: a redraw that
+    // replaces the node under the pointer swallows the click. Only the field list is rebuilt when evidence changes.
+    if (this.builtForm_ !== form.id || !body.querySelector('[data-slot="fields"]')) {
+      body.innerHTML = `<div data-slot="picker"></div><div class="fhf-title" data-slot="title"></div><div data-slot="incoming"></div><div data-slot="stale"></div><div class="fhf-fields" data-slot="fields"></div>
+      <div class="fhf-actions" data-slot="actions"><button type="button" class="btn btn-sm btn-outline-secondary" data-hf-act="check">Check</button> <button type="button" class="btn btn-sm btn-outline-primary" data-hf-act="submit">Submit</button></div><div data-slot="filed"></div>`;
+      this.builtForm_ = form.id;
+      this.slotHtml_.clear();
+    }
+    this.patchSlot_(body, 'picker', picker);
+    this.patchSlot_(body, 'title', escapeHtml(form.title));
+    this.patchSlot_(body, 'incoming', incoming);
+    this.patchSlot_(body, 'stale', stale);
+    this.patchSlot_(body, 'filed', last);
+    this.patchSlot_(body, 'fields', fields, true);
+  }
+
+  /** Replace a slot's markup only when it changed; the fields slot keeps the player's focus across the redraw */
+  private patchSlot_(body: HTMLElement, name: string, markup: string, keepFocus = false): void {
+    if (this.slotHtml_.get(name) === markup) return;
+    const slot = body.querySelector<HTMLElement>(`[data-slot="${name}"]`);
+    if (!slot) return;
+    const focused = keepFocus ? this.focusKey_(slot) : null;
+    slot.innerHTML = markup;
+    this.slotHtml_.set(name, markup);
+    if (focused) this.restoreFocus_(slot, focused);
+  }
+
+  private focusKey_(slot: HTMLElement): { sel: string; start: number | null; end: number | null } | null {
+    const active = document.activeElement as HTMLElement | null;
+    if (!active || !slot.contains(active)) return null;
+    const field = active.getAttribute('data-hf-field');
+    const cite = active.getAttribute('data-hf-cite');
+    const sel = field !== null ? `[data-hf-field="${field}"]` : cite !== null ? `[data-hf-cite="${cite}"][data-hf-key="${active.getAttribute('data-hf-key') ?? ''}"]` : null;
+    if (sel === null) return null;
+    const input = active as HTMLInputElement;
+    const textual = active.tagName === 'INPUT' && input.type !== 'checkbox';
+
+    return { sel, start: textual ? input.selectionStart : null, end: textual ? input.selectionEnd : null };
+  }
+
+  private restoreFocus_(slot: HTMLElement, key: { sel: string; start: number | null; end: number | null }): void {
+    const next = slot.querySelector<HTMLInputElement>(key.sel);
+    if (!next) return;
+    next.focus({ preventScroll: true });
+    if (key.start !== null && key.end !== null) {
+      try {
+        next.setSelectionRange(key.start, key.end);
+      } catch {
+        // number inputs do not support selection ranges
+      }
+    }
   }
 
   private readingHint_(f: HandoverFieldConfig): string {
@@ -309,6 +433,9 @@ export class FieldHandoverPanel {
     if ('cites' in rule) {
       const min = rule.min ?? 1;
       widget = `<div class="fhf-cites" data-hf-cites="${k}"><div class="fhf-hint">Tick at least ${min} ${escapeHtml(KIND_LABEL[rule.cites]?.toLowerCase() ?? rule.cites)} entr${min === 1 ? 'y' : 'ies'} from the notebook.</div>${citeBoxes(rule.cites)}</div>`;
+    } else if ('evidence' in rule) {
+      const needs = rule.evidence.map((g) => `<li>${escapeHtml(g.label)}${(g.min ?? 1) > 1 ? ` (${g.min})` : ''}</li>`).join('');
+      widget = `<div class="fhf-cites" data-hf-cites="${k}"><div class="fhf-hint">Tick notebook entries that show each of these. One entry counts once.</div><ul class="fhf-needs" data-fhf="needs-${k}">${needs}</ul>${citeBoxes(null)}</div>`;
     } else if ('workload' in rule) {
       const mine = runs.filter((r) => r.cardId === rule.workload.cardId);
       const opts = mine
@@ -325,11 +452,11 @@ export class FieldHandoverPanel {
       widget = `<select class="form-select form-select-sm" data-hf-field="${k}" aria-label="${escapeHtml(f.label)}"><option value="">Pick one</option>${opts}</select>`;
     } else {
       const hint = this.readingHint_(f);
-      const type = 'powerWithin' in rule ? 'number' : 'text';
+      const type = 'powerWithin' in rule || 'measured' in rule || 'interval' in rule || 'runRate' in rule ? 'number' : 'text';
       widget = `<span class="fhf-input"><input class="form-control form-control-sm" type="${type}"${type === 'number' ? ' step="any"' : ''} value="${escapeHtml(val)}" data-hf-field="${k}" aria-label="${escapeHtml(f.label)}" /> <button type="button" class="btn btn-sm btn-outline-secondary" data-hf-fill="${k}">Use my latest reading</button></span>${hint ? `<div class="fhf-hint" data-fhf="reading-${k}">${escapeHtml(hint)}</div>` : ''}`;
     }
     const backing =
-      'cites' in rule
+      'cites' in rule || 'evidence' in rule
         ? ''
         : `<details class="fhf-backing"><summary>Back this with notebook entries${(cur.cites?.length ?? 0) > 0 ? ` (${cur.cites?.length})` : ''}</summary><div class="fhf-cites">${citeBoxes(null)}</div></details>`;
     const note = check ? `<div class="fhf-note ${check.ok ? 'fhf-ok' : 'fhf-bad'}" data-hf-note="${k}">${check.ok ? 'OK' : escapeHtml(check.reason ?? 'Not accepted.')}</div>` : '';

@@ -69,8 +69,8 @@ function fileHypothesis(svc: PhysicalPlantService, cause: string, cited: string[
   });
 }
 
-function checkPlan(svc: PhysicalPlantService, check = 'inspect-connector') {
-  return svc.records?.submit('check-plan', { check: { value: check }, basis: { cites: observations(svc).slice(0, 1) } });
+function checkPlan(svc: PhysicalPlantService, check = 'inspect-connector', expected = 'sign-of-moisture') {
+  return svc.records?.submit('check-plan', { check: { value: check }, expected: { value: expected }, basis: { cites: observations(svc).slice(0, 1) } });
 }
 
 function verifyAfterRepair(svc: PhysicalPlantService): void {
@@ -192,6 +192,15 @@ describe('M21 S3 completion', () => {
     expect(checkPlan(svc, 'test-cable')?.ok).toBe(true);
   });
 
+  it('requires an expected outcome and rejects one the baseline already contradicts', () => {
+    const svc = bootScenario(data);
+    svc.plant.inspect('skylink-dish');
+    const base = { check: { value: 'inspect-connector' }, basis: { cites: observations(svc).slice(0, 1) } };
+    expect(svc.records?.submit('check-plan', base)?.ok).toBe(false);
+    expect(checkPlan(svc, 'inspect-connector', 'no-supply')?.ok).toBe(false);
+    expect(checkPlan(svc, 'inspect-connector', 'leak-or-open')?.ok).toBe(true);
+  });
+
   it('rejects a comparison that names the wrong changed reading', () => {
     const svc = bootScenario(data);
     svc.plant.inspect('skylink-dish');
@@ -255,5 +264,13 @@ describe('M21 S3 completion', () => {
     blind.plant.returnInside();
     const bad = buildFieldDiagnosis(source(blind), 100);
     expect(bad?.summary.unsupportedFixes).toBe(1);
+  });
+
+  it('keeps a recovery route: a blind seal still satisfies the observed-evidence condition', () => {
+    const svc = bootScenario(data);
+    svc.plant.goOutside();
+    svc.plant.seal(CONNECTOR);
+    svc.plant.returnInside();
+    expect(incomplete(svc, 's3-collect-local-evidence')).not.toContain('Physical fault evidence observed');
   });
 });

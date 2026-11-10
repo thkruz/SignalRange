@@ -93,7 +93,9 @@ export class FieldNotebookPanel {
     /** Selectable targets for a scope */
     private readonly getTargets_: (scope: HypothesisScope) => NotebookTarget[],
     /** Authored cause options (M21). When present the cause is a select of option ids plus an "other" that never matches; absent = free text */
-    private readonly getCauseOptions_: () => CauseOption[] | null = () => null
+    private readonly getCauseOptions_: () => CauseOption[] | null = () => null,
+    /** Scenario check of a saved hypothesis: the reason it does not hold up yet, or null. Never blocks saving. */
+    private readonly getFeedback_: (entry: HypothesisEntry) => string | null = () => null
   ) {
     this.host_.addEventListener('click', this.onClick_);
     this.host_.addEventListener('change', this.onChange_);
@@ -130,7 +132,8 @@ export class FieldNotebookPanel {
       confidence: input.confidence,
       citedEntryIds: cited,
     });
-    this.lastMsg_ = `Hypothesis saved at ${clock(entry.tS)}.`;
+    const why = this.getFeedback_(entry);
+    this.lastMsg_ = why ? `Hypothesis saved at ${clock(entry.tS)}, but it doesn't hold up yet. ${why}` : `Hypothesis saved at ${clock(entry.tS)}.`;
     this.sync();
 
     return entry;
@@ -243,18 +246,24 @@ export class FieldNotebookPanel {
     const citeKey = citable.map((e) => e.id).join('|');
     const cites = this.host_.querySelector<HTMLElement>('[data-fnb="cites"]');
     if (cites && citeKey !== this.citeKey_) {
-      const checked = new Set([...cites.querySelectorAll<HTMLInputElement>('input:checked')].map((i) => i.dataset.nbCite));
-      this.citeKey_ = citeKey;
-      cites.innerHTML =
-        citable.length === 0
-          ? '<span class="fnb-none">No entries to cite yet.</span>'
-          : citable
-              .map((e) => {
-                const n = all.findIndex((x) => x.id === e.id) + 1;
+      const labelFor = (e: EvidenceEntry): string => {
+        const n = all.findIndex((x) => x.id === e.id) + 1;
 
-                return `<label class="fnb-cite"><input type="checkbox" data-nb-cite="${escapeHtml(e.id)}"${checked.has(e.id) ? ' checked' : ''} /> #${n} ${escapeHtml(clock(e.tS))} ${escapeHtml(e.text)}</label>`;
-              })
-              .join('');
+        return `<label class="fnb-cite"><input type="checkbox" data-nb-cite="${escapeHtml(e.id)}" /> #${n} ${escapeHtml(clock(e.tS))} ${escapeHtml(e.text)}</label>`;
+      };
+      const shown = [...cites.querySelectorAll<HTMLInputElement>('input[data-nb-cite]')].map((i) => i.dataset.nbCite);
+      const grewOnly = shown.length > 0 && shown.every((id, idx) => id === citable[idx]?.id);
+      this.citeKey_ = citeKey;
+      if (grewOnly) {
+        // New entries only append: the boxes the player is ticking stay the same nodes
+        cites.insertAdjacentHTML('beforeend', citable.slice(shown.length).map(labelFor).join(''));
+      } else {
+        const checked = new Set([...cites.querySelectorAll<HTMLInputElement>('input:checked')].map((i) => i.dataset.nbCite));
+        cites.innerHTML = citable.length === 0 ? '<span class="fnb-none">No entries to cite yet.</span>' : citable.map(labelFor).join('');
+        for (const box of cites.querySelectorAll<HTMLInputElement>('input[data-nb-cite]')) {
+          box.checked = checked.has(box.dataset.nbCite);
+        }
+      }
     }
   }
 }

@@ -84,7 +84,7 @@ export class FieldRecordsPanel {
     const ledger = this.ledger_();
     if (!ledger) return false;
     const res = ledger.submitCorrection(requestId, to ?? this.picks_.get(requestId));
-    if (res.ok) this.msg_ = 'Request filed. The answer arrives when the other office replies.';
+    if (res.ok) this.msg_ = 'Request filed. The reply can take a few minutes of site time. It appears here when it comes.';
     else if ('reason' in res && res.reason === 'already-filed') this.msg_ = 'That request is already filed.';
     else if ('reason' in res && res.reason === 'no-change') this.msg_ = 'That would not change the record.';
     else this.msg_ = 'That request is not available.';

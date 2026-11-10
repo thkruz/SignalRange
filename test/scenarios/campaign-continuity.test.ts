@@ -102,3 +102,14 @@ describe('campaigns 1-5 store behaviour is unchanged', () => {
     expect(CampaignDocumentStore.handoversThisRun).toEqual([]);
   });
 });
+
+describe('selection contract for continuity consumers', () => {
+  it('latest and first read different filings of the same form; malformed storage reads as none', () => {
+    const mk = (at: number): HandoverRecord => ({ ...filed, id: `h${at}`, submittedAtS: at, values: { n: at } });
+    CampaignDocumentStore.upsertRecord(FRONTLINE_CAMPAIGN_ID, base('s', 1, { handovers: [mk(10), mk(20)] }));
+    expect(CampaignDocumentStore.getSelectedHandover(FRONTLINE_CAMPAIGN_ID, 's', 'baseline', 'latest')?.submittedAtS).toBe(20);
+    expect(CampaignDocumentStore.getSelectedHandover(FRONTLINE_CAMPAIGN_ID, 's', 'baseline', 'first')?.submittedAtS).toBe(10);
+    CampaignDocumentStore.upsertRecord(FRONTLINE_CAMPAIGN_ID, base('s', 1, { handovers: 'broken' }));
+    expect(CampaignDocumentStore.getSelectedHandover(FRONTLINE_CAMPAIGN_ID, 's', 'baseline', 'latest')).toBeUndefined();
+  });
+});

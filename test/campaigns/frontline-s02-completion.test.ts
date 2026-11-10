@@ -64,6 +64,7 @@ function resourcesInput(svc: PhysicalPlantService, over: Record<string, { value?
     seating: { cites: log.filter((e) => e.kind === 'observation' && e.subject.startsWith('generator')).map((e) => e.id) },
     reseat: { cites: log.filter((e) => e.kind === 'action').map((e) => e.id) },
     limitation: { value: 'skylink-only' },
+    rate: { value: svc.records?.latestRunRateW('ola-voice', 'skylink') },
     ...over,
   };
 }
@@ -180,6 +181,15 @@ describe('M20 S2 completion', () => {
     expect(incomplete(svc, 's2-respond-to-outage')).toEqual([]);
   });
 
+  it('keeps a recovery route: a blind reseat still completes the outage objective (the debrief charges it)', () => {
+    const svc = bootScenario(data);
+    driveObjectives(data, svc, states, acts(svc), { stopAfter: 's2-select-configuration' });
+    states.set('s2-respond-to-outage', { isActive: true, isCompleted: false });
+    tick();
+    reseat(svc);
+    expect(incomplete(svc, 's2-respond-to-outage')).toEqual([]);
+  });
+
   it('rejects a resource handover that claims the wrong mode or an old window, then accepts the right one', () => {
     const svc = bootScenario(data);
     driveObjectives(data, svc, states, acts(svc), { stopAfter: 's2-verify-service-reserve' });
@@ -233,5 +243,16 @@ describe('M20 S2 completion', () => {
     const bad = buildFieldDiagnosis(source(blind), 100);
     expect(bad?.summary.unsupportedFixes).toBe(1);
     expect(bad?.effect.penalty).toBeGreaterThan(0);
+  });
+});
+
+describe('S2 visual inspection of the partial seat', () => {
+  it('shows a gap at the generator output plug and leaves the voltage to the multimeter', () => {
+    const svc = bootScenario(data);
+    svc.plant.goOutside();
+    svc.plant.injectFault({ id: 'seat-test', target: 'generator:out', kind: 'partial-seat' });
+    const seen = svc.plant.inspect('generator:out').observation;
+    expect(seen).toMatch(/gap/iu);
+    expect(seen).not.toMatch(/no gap|fully home/iu);
   });
 });

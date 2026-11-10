@@ -45,6 +45,7 @@ import {
   type PlantWeather,
   type PowerForecast,
   type PowerReadings,
+  type ResourceWindow,
   type RouterWifi,
   type SkylinkStatus,
   type SleepSchedule,
@@ -228,6 +229,8 @@ export class PhysicalPlantManager {
   private running_ = new Map<string, boolean>();
   /** Condition windows (key -> scenario second the window opened); saved in checkpoints, cleared on reset */
   private windows_ = new Map<string, number>();
+  /** Resource ledger windows by key; open ones accumulate every plant second */
+  private ledger_ = new Map<string, ResourceWindow>();
   private forecastCache_ = new Map<string, PowerForecast>();
   private forecastCacheSig_ = '';
   private supplied_ = new Map<string, boolean>();
@@ -278,6 +281,7 @@ export class PhysicalPlantManager {
     this.partModes_ = new Map();
     this.running_ = new Map();
     this.windows_ = new Map();
+    this.ledger_ = new Map();
     this.forecastCache_ = new Map();
     this.supplied_ = new Map();
     this.socWh_ = new Map();
@@ -977,7 +981,7 @@ export class PhysicalPlantManager {
       batteries,
       generators,
       basis: power?.basis ?? 'battery-only',
-      horizonS: horizonS ?? power?.planningHorizonS ?? 3600,
+      horizonS: horizonS ?? (power?.shiftEndS !== undefined ? Math.max(0, Math.ceil(power.shiftEndS - now)) : (power?.planningHorizonS ?? 3600)),
       reserveWh: power?.reserveWh ?? null,
       startupCostS,
     });
@@ -1013,7 +1017,7 @@ export class PhysicalPlantManager {
 
   /** Display label of a part, connector or cable (falls back to the id) */
   getLabel(id: string): string {
-    return this.parts_.get(id)?.label ?? id;
+    return this.parts_.get(id)?.label ?? this.connectors_.get(id)?.label ?? this.cables_.get(id)?.label ?? id;
   }
 
   /** The plant configuration this manager was built from (read-only; used to draw path diagrams) */
@@ -1494,6 +1498,7 @@ export class PhysicalPlantManager {
         startingUntilS: Object.fromEntries(this.startingUntilS_),
         partModes: Object.fromEntries(this.partModes_),
         windows: Object.fromEntries(this.windows_),
+        ledger: Object.fromEntries(this.ledger_),
         generatorRunning: Object.fromEntries([...this.parts_.values()].filter((part) => part.kind === 'generator').map((part) => [part.id, this.isRunning_(part.id)])),
         supplied: Object.fromEntries(this.supplied_),
         socWh: Object.fromEntries(this.socWh_),
@@ -1537,6 +1542,7 @@ export class PhysicalPlantManager {
       }
     }
     this.windows_ = new Map(Object.entries(copy.windows ?? {}));
+    this.ledger_ = new Map(Object.entries(copy.ledger ?? {}));
     this.supplied_ = new Map(Object.entries(copy.supplied));
     this.socWh_ = new Map(Object.entries(copy.socWh));
     this.fuelL_ = new Map(Object.entries(copy.fuelL));
@@ -1640,6 +1646,7 @@ export class PhysicalPlantManager {
       vars.fuel = (this.fuelL_.get(target) ?? 0).toFixed(1);
       vars.tank = part.tankL ?? DEFAULT_TANK_L;
       vars.pct = this.socPercent_(target) ?? 0;
+      vars.wh = Math.round(this.socWh_.get(target) ?? 0);
       const load = Math.round(this.loadOf_(target, 0));
       vars.w = load;
       vars.a = (Number(vars.v) > 0 ? load / Number(vars.v) : 0).toFixed(1);
@@ -1742,10 +1749,26 @@ export class PhysicalPlantManager {
 
     if (disruptive && target) {
       const dependants = this.dependants_(target);
+      // A dependant behind another restarting part only starts its own boot once that part is back
+      const readyS = new Map<string, number>();
+      const readyAt = (id: string): number => {
+        const known = readyS.get(id);
+        if (known !== undefined) {
+          return known;
+        }
+        const upstream = this.parts_.get(id)?.poweredBy;
+        const gate = upstream && dependants.includes(upstream) && upstream !== id ? readyAt(upstream) : this.deps_.now() + costSeconds;
+        const end = gate + this.bootSeconds_(id);
+        readyS.set(id, end);
+
+        return end;
+      };
       let longestBoot = 0;
       for (const id of dependants) {
-        longestBoot = Math.max(longestBoot, this.bootSeconds_(id));
-        this.setBootEnd_(id, this.deps_.now() + costSeconds + this.bootSeconds_(id));
+        const end = readyAt(id);
+        longestBoot = Math.max(longestBoot, end - (this.deps_.now() + costSeconds));
+        this.setBootEnd_(id, end);
+        this.armedUntilS_.set(id, Math.max(end, this.searchUntilS_.get(id) ?? 0));
       }
       downtimeSeconds = costSeconds + longestBoot;
       // D13: the outage runs on through the post-boot satellite search
@@ -1757,8 +1780,16 @@ export class PhysicalPlantManager {
       }
     }
 
+    const startS = this.deps_.now();
     this.deps_.skip(costSeconds);
     this.solve_();
+    if (disruptive && target) {
+      // The stated downtime must match the real restart: read it back from the final boot and search ends
+      for (const id of this.dependants_(target)) {
+        const endS = Math.max(this.rebootUntilS_.get(id) ?? 0, this.searchUntilS_.get(id) ?? 0);
+        downtimeSeconds = Math.max(downtimeSeconds, endS - startS);
+      }
+    }
     this.downtimeS_ += downtimeSeconds;
 
     if (isFix && cleared.length > 0 && this.firstCorrectS_ === null) {
@@ -1897,6 +1928,10 @@ export class PhysicalPlantManager {
         rt.dropUntilS = now + DROP_SECONDS;
       }
       lines.push(this.line_(target, verb, rt.fault.kind, this.faultVars_(rt.fault)));
+      if (verb === 'inspect' && rt.fault.kind === 'partial-seat') {
+        // The eye sees a gap but cannot call it a fault: only a wiggle or a meter confirms it
+        continue;
+      }
       revealed.push(rt.fault.id);
       this.pushFact_(facts, rt.fault, verb);
     }
@@ -2221,6 +2256,9 @@ export class PhysicalPlantManager {
 
   // ------------------------------------------------------------------- power
 
+  /** End of a boot (and search) a verb already armed; a part regaining supply before then does not draw a second acquire time */
+  private readonly armedUntilS_ = new Map<string, number>();
+
   private isRebooting_(partId: string): boolean {
     return this.deps_.now() < (this.rebootUntilS_.get(partId) ?? 0);
   }
@@ -2466,7 +2504,7 @@ export class PhysicalPlantManager {
         const was = this.supplied_.get(id) ?? true;
         this.supplied_.set(id, ok);
         const boot = this.bootSeconds_(id);
-        if (!was && ok && boot > 0) {
+        if (!was && ok && boot > 0 && this.deps_.now() >= (this.armedUntilS_.get(id) ?? 0)) {
           this.setBootEnd_(id, this.deps_.now() + boot);
           started = true;
         }
@@ -2501,23 +2539,120 @@ export class PhysicalPlantManager {
   }
 
   private drainResources_(): void {
+    let loadWh = 0;
+    let chargeWh = 0;
+    let clippedWh = 0;
+    let fuelUsed = 0;
     for (const part of this.parts_.values()) {
       if (part.kind === 'generator' && this.generatorRunning_(part)) {
         const load = Math.min(1, this.loadOf_(part.id, 0) / (part.ratedW ?? 1000));
         const burn = ((part.burnLPerHour ?? 1.5) * (0.3 + 0.7 * load)) / 3600;
-        this.fuelL_.set(part.id, Math.max(0, (this.fuelL_.get(part.id) ?? 0) - burn));
+        const before = this.fuelL_.get(part.id) ?? 0;
+        const after = Math.max(0, before - burn);
+        this.fuelL_.set(part.id, after);
+        fuelUsed += before - after;
       }
       if (part.kind === 'battery') {
         const charging = this.chargeInto_(part);
-        const delta = (charging - this.loadOf_(part.id, 0)) / 3600;
-        const soc = (this.socWh_.get(part.id) ?? 0) + delta;
+        const draw = this.loadOf_(part.id, 0);
+        const delta = (charging - draw) / 3600;
+        const before = this.socWh_.get(part.id) ?? 0;
+        const soc = before + delta;
         const next = Math.min(part.capacityWh ?? soc, Math.max(0, soc));
         this.socWh_.set(part.id, next);
+        // What the battery really gave and took: an empty battery cannot supply the whole draw, a full one refuses charge
+        const supplied = Math.min(draw / 3600, before + charging / 3600);
+        const accepted = Math.max(0, next - before + supplied);
+        loadWh += supplied;
+        chargeWh += accepted;
+        clippedWh += Math.max(0, charging / 3600 - accepted);
         if (charging > 0 && next >= BATTERY_RECOVER_FRACTION * (part.capacityWh ?? 0)) {
           this.removeFaults_((rt) => rt.fault.target === part.id && rt.fault.kind === 'battery-depleted');
         }
       }
     }
+    this.accrueLedger_(loadWh, chargeWh, clippedWh, fuelUsed);
+  }
+
+  // ----------------------------------------------------------- resource ledger
+
+  private storedWh_(): number {
+    let total = 0;
+    for (const part of this.parts_.values()) {
+      if (part.kind === 'battery') total += this.socWh_.get(part.id) ?? 0;
+    }
+
+    return total;
+  }
+
+  private accrueLedger_(loadWh: number, chargeWh: number, clippedWh: number, fuelUsed: number): void {
+    if (this.ledger_.size === 0) {
+      return;
+    }
+    const stored = this.storedWh_();
+    for (const w of this.ledger_.values()) {
+      if (w.endS !== null) continue;
+      if (w.untilS !== undefined && this.deps_.now() > w.untilS + 1e-6) {
+        // The planned window is over: this second belongs to whatever comes after it
+        w.endS = w.untilS;
+        continue;
+      }
+      w.loadWh += loadWh;
+      w.chargeWh += chargeWh;
+      w.clippedWh += clippedWh;
+      w.fuelUsedL += fuelUsed;
+      w.minStoredWh = Math.min(w.minStoredWh, stored);
+      w.endStoredWh = stored;
+      w.steps += 1;
+    }
+  }
+
+  /** Start accounting energy and fuel under `key` from now. An existing window of that key is replaced. */
+  openLedger(key: string, untilS?: number): void {
+    const stored = this.storedWh_();
+    this.ledger_.set(key, {
+      ...(untilS === undefined ? {} : { untilS }),
+      startS: this.deps_.now(),
+      endS: null,
+      startStoredWh: stored,
+      minStoredWh: stored,
+      endStoredWh: stored,
+      loadWh: 0,
+      chargeWh: 0,
+      clippedWh: 0,
+      fuelUsedL: 0,
+      steps: 0,
+    });
+  }
+
+  /** Stop accounting under `key` and stamp the end. Returns a copy, or null when the key is unknown. */
+  closeLedger(key: string, atS?: number): ResourceWindow | null {
+    const w = this.ledger_.get(key);
+    if (!w) {
+      return null;
+    }
+    if (w.endS === null) {
+      w.endS = atS ?? this.deps_.now();
+      w.endStoredWh = this.storedWh_();
+    }
+
+    return { ...w };
+  }
+
+  /** True while any window is open and still accruing (the service then steps long skips second by second) */
+  hasOpenLedger(): boolean {
+    for (const w of this.ledger_.values()) {
+      if (w.endS === null) return true;
+    }
+
+    return false;
+  }
+
+  /** A copy of the window under `key` (open or closed) */
+  getLedger(key: string): ResourceWindow | null {
+    const w = this.ledger_.get(key);
+
+    return w ? { ...w } : null;
   }
 
   // ------------------------------------------------------------------- misc

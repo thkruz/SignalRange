@@ -1,4 +1,5 @@
 import { Character, Emotion } from '@app/modal/character-enum';
+import type { EvidenceGroup } from '@app/physical/evidence-predicates';
 import type { HandoverFormConfig } from '@app/physical/field-records';
 import type { RequirementCard } from '@app/physical/workload-types';
 import { SKYLINK_SERVICE } from './camp-field-config';
@@ -15,6 +16,7 @@ import {
   FORWARD_SKYLINK_UNIT,
 } from './forward-field-config';
 import { diagramSelection, eventFired, handoverValid, layerObserved, samplesCurrent, workloadRunFinished } from './frontline-conditions';
+import { pick, reading } from './report-choices';
 import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-support';
 
 /**
@@ -42,6 +44,11 @@ export const S13_TASK_CARD: RequirementCard = {
   priority: 'mission',
 };
 
+const GROUND_ACCOUNT = reading('ground', 'a ground account reading for the SkyLink service', SKYLINK_SERVICE, 'account');
+const REMOTE_READING = reading('remote', 'a reading of the remote endpoint', FORWARD_REMOTE_SERVICE, 'application');
+const POLICY_MARK: EvidenceGroup = { id: 'policy', label: 'the entry for the remote policy change', match: { kind: 'result', eventId: S13_EVENT_POLICY } };
+const NOTICE_MARK: EvidenceGroup = { id: 'notice', label: 'the entry for the provider notice', match: { kind: 'result', eventId: S13_EVENT_NOTICE } };
+
 const REMOTE_NODE = `endpoint:${FORWARD_REMOTE_ENDPOINT}`;
 
 const endpointsForm: HandoverFormConfig = {
@@ -53,19 +60,26 @@ const endpointsForm: HandoverFormConfig = {
       key: 'ground',
       label: 'Ground endpoint account',
       required: true,
-      rule: { choice: [FORWARD_SKYLINK_ACCOUNT], labels: { [FORWARD_SKYLINK_ACCOUNT]: 'The forward post SkyLink account' } },
+      rule: pick({ [FORWARD_SKYLINK_ACCOUNT]: 'The forward post SkyLink account', 'camp-account': 'The camp account', 'all-accounts': 'Every account on the post' }, [
+        FORWARD_SKYLINK_ACCOUNT,
+      ]),
     },
     {
       key: 'remote',
       label: 'Remote endpoint',
       required: true,
-      rule: { choice: [FORWARD_REMOTE_ENDPOINT], labels: { [FORWARD_REMOTE_ENDPOINT]: 'The simulated onboard terminal' } },
+      rule: pick({ [FORWARD_REMOTE_ENDPOINT]: 'The simulated onboard terminal', 'forward-terminal': 'The forward post terminal', 'provider-gateway': 'The provider gateway' }, [
+        FORWARD_REMOTE_ENDPOINT,
+      ]),
     },
     {
       key: 'link',
       label: 'How the two ends connect',
       required: true,
-      rule: { choice: ['provider-network'], labels: { 'provider-network': 'Through the provider network, not a direct radio path' } },
+      rule: pick(
+        { 'provider-network': 'Through the provider network, not a direct radio path', 'direct-radio': 'Through a direct radio path', 'shared-local': 'Over the local network' },
+        ['provider-network']
+      ),
     },
   ],
 };
@@ -81,9 +95,11 @@ const baselineForm: HandoverFormConfig = {
       key: 'phase',
       label: 'Task phase at capture',
       required: true,
-      rule: { choice: ['before-policy-event'], labels: { 'before-policy-event': 'Before the next recorded phase' } },
+      rule: pick({ 'before-policy-event': 'Before the next recorded phase', 'after-policy-event': 'After the policy event', 'not-ordered': 'No order is established' }, [
+        'before-policy-event',
+      ]),
     },
-    { key: 'basis', label: 'Observations behind it', required: true, rule: { cites: 'observation', min: 2 } },
+    { key: 'basis', label: 'Observations behind it', required: true, rule: { evidence: [GROUND_ACCOUNT, REMOTE_READING] } },
   ],
 };
 
@@ -93,7 +109,7 @@ const interruptionForm: HandoverFormConfig = {
   documentSection: 'Interruption',
   fields: [
     { key: 'remote', label: 'Remote value in the service record', required: true, rule: { freshnessIs: { serviceId: FORWARD_REMOTE_SERVICE, layer: 'application' } } },
-    { key: 'onset', label: 'Onset in the service history', required: true, rule: { cites: 'result', min: 1 } },
+    { key: 'onset', label: 'Onset in the service history', required: true, rule: { evidence: [POLICY_MARK] } },
   ],
 };
 
@@ -106,22 +122,33 @@ const noticeForm: HandoverFormConfig = {
       key: 'endpoint',
       label: 'Endpoint the notice names',
       required: true,
-      rule: { choice: [FORWARD_REMOTE_ENDPOINT], labels: { [FORWARD_REMOTE_ENDPOINT]: 'The simulated onboard terminal' } },
+      rule: pick({ [FORWARD_REMOTE_ENDPOINT]: 'The simulated onboard terminal', 'forward-terminal': 'The forward post terminal', 'provider-gateway': 'The provider gateway' }, [
+        FORWARD_REMOTE_ENDPOINT,
+      ]),
     },
     {
       key: 'scope',
       label: 'What the notice limits',
       required: true,
-      rule: { choice: ['remote-mobility-policy'], labels: { 'remote-mobility-policy': 'Remote terminal mobility policy' } },
+      rule: pick({ 'remote-mobility-policy': 'Remote terminal mobility policy', 'local-capacity': 'Local capacity limit', 'account-suspension': 'Account suspension' }, [
+        'remote-mobility-policy',
+      ]),
     },
     {
       key: 'ground',
       label: 'Ground account restriction',
       required: true,
-      rule: { choice: ['separate-unchanged'], labels: { 'separate-unchanged': 'A separate restriction, not changed by this notice' } },
+      rule: pick({ 'separate-unchanged': 'A separate restriction, not changed by this notice', lifted: 'Lifted by this notice', replaced: 'Replaced by this notice' }, [
+        'separate-unchanged',
+      ]),
     },
-    { key: 'local', label: 'Local equipment', required: true, rule: { choice: ['not-implicated'], labels: { 'not-implicated': 'Not implicated by the notice' } } },
-    { key: 'timing', label: 'Notice and onset in the history', required: true, rule: { cites: 'result', min: 2 } },
+    {
+      key: 'local',
+      label: 'Local equipment',
+      required: true,
+      rule: pick({ 'not-implicated': 'Not implicated by the notice', implicated: 'Implicated by the notice', 'to-replace': 'To be replaced under the notice' }, ['not-implicated']),
+    },
+    { key: 'timing', label: 'Notice and onset in the history', required: true, rule: { evidence: [POLICY_MARK, NOTICE_MARK] } },
   ],
 };
 
@@ -131,9 +158,26 @@ const limitsForm: HandoverFormConfig = {
   documentSection: 'Local options',
   fields: [
     { key: 'remote', label: 'Remote endpoint status now', required: true, rule: { matchesCurrent: { serviceId: FORWARD_REMOTE_SERVICE, layer: 'application' } } },
-    { key: 'restart', label: 'A local restart', required: true, rule: { choice: ['does-not-clear'], labels: { 'does-not-clear': 'Does not clear the remote policy' } } },
-    { key: 'route', label: 'A change of ground route', required: true, rule: { choice: ['does-not-clear'], labels: { 'does-not-clear': 'Does not clear the remote policy' } } },
-    { key: 'action', label: 'Supported response', required: true, rule: { choice: ['report-and-hold'], labels: { 'report-and-hold': 'Report the limit and hold the task' } } },
+    {
+      key: 'restart',
+      label: 'A local restart',
+      required: true,
+      rule: pick({ 'does-not-clear': 'Does not clear the remote policy', clears: 'Clears the remote policy', unknown: 'Not known' }, ['does-not-clear']),
+    },
+    {
+      key: 'route',
+      label: 'A change of ground route',
+      required: true,
+      rule: pick({ 'does-not-clear': 'Does not clear the remote policy', clears: 'Clears the remote policy', unknown: 'Not known' }, ['does-not-clear']),
+    },
+    {
+      key: 'action',
+      label: 'Supported response',
+      required: true,
+      rule: pick({ 'report-and-hold': 'Report the limit and hold the task', 'keep-retrying': 'Keep retrying the task', 'swap-route': 'Switch route and retry' }, [
+        'report-and-hold',
+      ]),
+    },
   ],
 };
 
@@ -153,20 +197,34 @@ const holdForm: HandoverFormConfig = {
       key: 'limit',
       label: 'Limit in force',
       required: true,
-      rule: { choice: ['remote-mobility-policy'], labels: { 'remote-mobility-policy': 'Remote terminal mobility policy' } },
+      rule: pick({ 'remote-mobility-policy': 'Remote terminal mobility policy', 'local-capacity': 'Local capacity limit', 'account-suspension': 'Account suspension' }, [
+        'remote-mobility-policy',
+      ]),
     },
     {
       key: 'ground',
       label: 'Ground account restriction',
       required: true,
-      rule: { choice: ['separate-still-in-force'], labels: { 'separate-still-in-force': 'Separate, and still in force' } },
+      rule: pick({ 'separate-still-in-force': 'Separate, and still in force', lifted: 'Lifted', merged: 'Merged with the other restriction' }, ['separate-still-in-force']),
     },
-    { key: 'outcome', label: 'Task outcome', required: true, rule: { choice: ['hold-no-success'], labels: { 'hold-no-success': 'On hold, with no success recorded' } } },
+    {
+      key: 'outcome',
+      label: 'Task outcome',
+      required: true,
+      rule: pick({ 'hold-no-success': 'On hold, with no success recorded', success: 'Completed successfully', failed: 'Failed' }, ['hold-no-success']),
+    },
     {
       key: 'reassess',
       label: 'Condition for reassessing',
       required: true,
-      rule: { choice: ['provider-lifts-policy'], labels: { 'provider-lifts-policy': 'The provider lifts the policy and a fresh task window passes' } },
+      rule: pick(
+        {
+          'provider-lifts-policy': 'The provider lifts the policy and a fresh task window passes',
+          'local-restart': 'A local restart and a fresh task window',
+          reroute: 'A change of ground route',
+        },
+        ['provider-lifts-policy']
+      ),
     },
   ],
 };

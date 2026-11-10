@@ -1,8 +1,11 @@
 import { Character, Emotion } from '@app/modal/character-enum';
+import type { EvidenceGroup, HypothesisSpec } from '@app/physical/evidence-predicates';
 import type { HandoverFormConfig } from '@app/physical/field-records';
 import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import { applyCampField, OLA_CHECK_CARD, SKYLINK_SERVICE } from './camp-field-config';
+import { S1_BASELINE_LINK } from './continuity-fallbacks';
 import { handoverValid, hypothesisFiled, interruptionPattern, negativeChecksKept, samplesCurrent, workloadVerified } from './frontline-conditions';
+import { checked, pick, reading, repaired } from './report-choices';
 import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-support';
 
 /**
@@ -14,6 +17,11 @@ import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-
  */
 const settings = createFrontlineSettings(3);
 const faultId = 'c6-s3-terminal-moisture';
+/** An effective repair of the connector moisture is logged, whether or not it followed an observation */
+function moistureSealed(): boolean {
+  return (PhysicalPlantService.plantOrNull()?.getLog() ?? []).some((entry) => entry.cleared.includes(faultId) && entry.effective === true);
+}
+
 const connectorId = 'skylink-cable:dish';
 const CAUSE_OPTIONS = [
   { id: 'connector-moisture', label: 'Moisture at a connector' },
@@ -22,6 +30,20 @@ const CAUSE_OPTIONS = [
   { id: 'router', label: 'Router problem' },
 ];
 const CAUSE_IDS = CAUSE_OPTIONS.map((c) => c.id);
+/** Parts and connectors on the SkyLink chain a hands-on check can fairly look at */
+const CHAIN = ['skylink-cable:dish', 'skylink-cable:router', 'skylink-dish', 'skylink-router', 'router:dc', 'strip:router', 'power-strip', 'power-station'];
+const SYMPTOM = reading('symptom', 'a SkyLink registration reading that is not up', SKYLINK_SERVICE, 'registration', ['down', 'degraded']);
+/** Either the changed reading or a hands-on look at the chain led to the plan */
+const PLAN_BASIS: EvidenceGroup = {
+  ...SYMPTOM,
+  id: 'basis',
+  label: 'a SkyLink registration reading that is not up, or a hands-on look at the chain',
+  orMatch: [{ kind: 'observation', subjectIn: CHAIN }],
+};
+const POWER_UP = reading('power-up', 'a SkyLink terminal power reading, up', SKYLINK_SERVICE, 'power', ['up']);
+const LOCAL_UP = reading('local-up', 'a SkyLink local network reading, up', SKYLINK_SERVICE, 'local', ['up']);
+
+const HYPOTHESIS_OPTS: Omit<HypothesisSpec, 'causes'> = { minCited: 1, routes: [[PLAN_BASIS]] };
 
 const comparisonForm: HandoverFormConfig = {
   id: 'comparison',
@@ -32,15 +54,15 @@ const comparisonForm: HandoverFormConfig = {
       key: 'changed',
       label: 'Reading that changed from the healthy record',
       required: true,
-      rule: { choice: ['registration'], labels: { registration: 'Terminal registration' } },
+      rule: pick({ registration: 'Terminal registration', 'power-and-local': 'Terminal power and local network', all: 'Every reading' }, ['registration']),
     },
     {
       key: 'unchanged',
       label: 'Readings that still match the healthy record',
       required: true,
-      rule: { choice: ['power-and-local'], labels: { 'power-and-local': 'Terminal power and local network' } },
+      rule: pick({ registration: 'Terminal registration', 'power-and-local': 'Terminal power and local network', none: 'None of them' }, ['power-and-local']),
     },
-    { key: 'evidence', label: 'Observations behind the comparison', required: true, rule: { cites: 'observation', min: 2 } },
+    { key: 'evidence', label: 'Observations behind the comparison', required: true, rule: { evidence: [SYMPTOM, POWER_UP, LOCAL_UP] } },
   ],
 };
 
@@ -54,11 +76,33 @@ const checkPlanForm: HandoverFormConfig = {
       label: 'Check you will make',
       required: true,
       rule: {
-        choice: ['inspect-connector', 'test-cable', 'read-power'],
-        labels: { 'inspect-connector': 'Inspect the connector', 'test-cable': 'Test the cable', 'read-power': 'Read the supply voltage' },
+        choice: ['inspect-connector', 'test-cable', 'read-power', 'swap-terminal', 'restart-router'],
+        accept: ['inspect-connector', 'test-cable', 'read-power'],
+        labels: {
+          'inspect-connector': 'Inspect the connector',
+          'test-cable': 'Test the cable',
+          'read-power': 'Read the supply voltage',
+          'swap-terminal': 'Swap the terminal for a spare',
+          'restart-router': 'Restart the router and see',
+        },
       },
     },
-    { key: 'basis', label: 'Observations that led to it', required: true, rule: { cites: 'observation', min: 1 } },
+    {
+      key: 'expected',
+      label: 'Result you expect from that check',
+      required: true,
+      rule: {
+        choice: ['sign-of-moisture', 'leak-or-open', 'normal-reading', 'no-supply'],
+        accept: ['sign-of-moisture', 'leak-or-open', 'normal-reading'],
+        labels: {
+          'sign-of-moisture': 'Water, residue or corrosion at the part',
+          'leak-or-open': 'A leakage, open or short reading',
+          'normal-reading': 'A normal reading, ruling that part out',
+          'no-supply': 'No supply voltage at the part',
+        },
+      },
+    },
+    { key: 'basis', label: 'Observations that led to it', required: true, rule: { evidence: [PLAN_BASIS] } },
   ],
 };
 
@@ -67,16 +111,42 @@ const diagnosisForm: HandoverFormConfig = {
   title: 'Diagnostic record',
   documentSection: 'Diagnosis',
   fields: [
-    { key: 'cause', label: 'Cause you found', required: true, rule: { choice: ['connector-moisture'], labels: { 'connector-moisture': 'Moisture at the terminal connector' } } },
-    { key: 'observations', label: 'Observations, including checks that found nothing', required: true, rule: { cites: 'observation', min: 3 } },
-    { key: 'repair', label: 'Repair you made', required: true, rule: { cites: 'action', min: 1 } },
+    {
+      key: 'cause',
+      label: 'Cause you found',
+      required: true,
+      rule: pick(
+        {
+          'connector-moisture': 'Moisture at the terminal connector',
+          'cable-damage': 'Damaged cable',
+          'power-supply': 'Power supply problem',
+          router: 'Router problem',
+        },
+        ['connector-moisture']
+      ),
+    },
+    {
+      key: 'observations',
+      label: 'Observations, including checks that found nothing',
+      required: true,
+      rule: {
+        evidence: [
+          SYMPTOM,
+          checked('connector', 'a hands-on look or test at the terminal cable connector', [connectorId]),
+          checked('ruled-out', 'a check on the chain that found nothing wrong', CHAIN, { negative: true }),
+        ],
+      },
+    },
+    { key: 'repair', label: 'Repair you made', required: true, rule: { evidence: [repaired('fix', 'a repair that changed the terminal cable connector', [connectorId])] } },
     { key: 'verified', label: 'Fresh application check after the repair', required: true, rule: { workload: { cardId: OLA_CHECK_CARD.id, is: ['supported'] } } },
   ],
 };
 
 if (settings.physicalPlant) {
   applyCampField(settings.physicalPlant, [OLA_CHECK_CARD], [comparisonForm, checkPlanForm, diagnosisForm]);
+  settings.physicalPlant.incoming = [S1_BASELINE_LINK.spec];
   settings.physicalPlant.causeOptions = CAUSE_OPTIONS;
+  settings.physicalPlant.hypothesisSpecs = [{ causes: CAUSE_IDS, ...HYPOTHESIS_OPTS }];
   settings.physicalPlant.faults = [{ id: faultId, target: connectorId, kind: 'moisture', severity: 0.8 }];
   settings.physicalPlant.spares = { 'connector-kit': 1, 'cable:power-data': 1, 'cable:coax': 0, 'power-brick': 1, 'fuel-can': 1 };
 }
@@ -144,7 +214,7 @@ export const frontlineScenario3Data: FrontlineScenarioData = {
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s3-compare-baseline'],
       conditions: [
-        hypothesisFiled(CAUSE_IDS, { minCited: 1 }, 'Suspected cause chosen and tied to an observation'),
+        hypothesisFiled(CAUSE_IDS, HYPOTHESIS_OPTS, 'Suspected cause chosen and tied to an observation'),
         handoverValid('check-plan', 'Chosen check and expected result recorded'),
       ],
     },
@@ -159,10 +229,11 @@ export const frontlineScenario3Data: FrontlineScenarioData = {
           id: 's3-observed-connector-evidence',
           type: 'custom',
           description: 'Physical fault evidence observed',
-          params: { evaluator: () => PhysicalPlantService.plantOrNull()?.isFactRevealed(connectorId, 'moisture') === true },
+          // Recovery route: a connector sealed blind leaves nothing to inspect, so the effective seal also satisfies this (the debrief charges the unsupported fix)
+          params: { evaluator: () => PhysicalPlantService.plantOrNull()?.isFactRevealed(connectorId, 'moisture') === true || moistureSealed() },
           mustMaintain: false,
         },
-        negativeChecksKept(1, 'A check that found nothing wrong kept as evidence'),
+        negativeChecksKept(1, 'A check that found nothing wrong kept as evidence', { subjects: CHAIN }),
       ],
     },
     {
@@ -202,14 +273,8 @@ export const frontlineScenario3Data: FrontlineScenarioData = {
         {
           id: 's3-evidence-before-intervention',
           type: 'custom',
-          description: 'Effective intervention followed fault evidence',
-          params: {
-            evaluator: () => {
-              const log = PhysicalPlantService.plantOrNull()?.getLog() ?? [];
-              const observed = log.findIndex((entry) => entry.revealed.includes(faultId));
-              return observed >= 0 && log.some((entry, index) => index > observed && entry.cleared.includes(faultId) && entry.effective === true);
-            },
-          },
+          description: 'Effective intervention made (after fault evidence, or blind and charged in the debrief)',
+          params: { evaluator: moistureSealed },
           mustMaintain: false,
         },
       ],

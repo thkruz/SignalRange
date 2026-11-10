@@ -4,6 +4,7 @@ import type { ServicePathConfig } from '@app/physical/service-types';
 import type { RequirementCard } from '@app/physical/workload-types';
 import { applyCampField, CAMP_VSAT_SERVICE, campServiceConfig, SKYLINK_SERVICE } from './camp-field-config';
 import { handoverValid, workloadRunFinished } from './frontline-conditions';
+import { pick, reading } from './report-choices';
 import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-support';
 
 /**
@@ -74,13 +75,29 @@ function caseForm(
     documentSection: 'Comparison cases',
     fields: [
       { key: 'run', label: 'Run for this case', required: true, rule: { workload: rule } },
-      { key: 'depends', label: 'Segments still carrying the task', required: true, rule: { choice: Object.keys(depends), labels: depends } },
-      { key: 'finding', label: 'What the result establishes', required: true, rule: { choice: Object.keys(finding), labels: finding } },
-      { key: 'evidence', label: 'Observation behind the result', required: true, rule: { cites: 'observation', min: 1 } },
+      {
+        key: 'depends',
+        label: 'Segments still carrying the task',
+        required: true,
+        rule: pick({ ...depends, ...DEPENDS_DECOYS }, Object.keys(depends)),
+      },
+      { key: 'finding', label: 'What the result establishes', required: true, rule: pick({ ...finding, ...FINDING_DECOYS }, Object.keys(finding)) },
+      {
+        key: 'evidence',
+        label: 'Observation behind the result',
+        required: true,
+        rule: { evidence: [reading('run-reading', 'a reading from the check run on this connection', rule.serviceId, 'application')] },
+      },
     ],
   };
 }
 
+const DEPENDS_DECOYS = { 'local-only': 'Only the local network', 'satellite-only': 'Only the satellite link' };
+const FINDING_DECOYS = {
+  'terminal-fault': 'The terminal is faulty',
+  interference: 'Interference is degrading the link',
+  'no-conclusion': 'The result says nothing about the segments',
+};
 const MET = { 'requirement-met': 'The requirement is met and the other segments are unchanged' };
 
 const profileForm: HandoverFormConfig = {
@@ -90,8 +107,23 @@ const profileForm: HandoverFormConfig = {
   fields: [
     { key: 'low-delay', label: 'Run on the low-delay profile', required: true, rule: { workload: { cardId: PROMPT_CARD, is: ['supported'], serviceId: SKYLINK_SERVICE } } },
     { key: 'geo-like', label: 'Run on the GEO-like profile', required: true, rule: { workload: { cardId: PROMPT_CARD, is: MISSED, serviceId: CAMP_VSAT_SERVICE } } },
-    { key: 'changed', label: 'Requirement that changes from met to unmet', required: true, rule: { choice: ['delay'], labels: { delay: 'Round-trip delay' } } },
-    { key: 'evidence', label: 'Observations behind the comparison', required: true, rule: { cites: 'observation', min: 2 } },
+    {
+      key: 'changed',
+      label: 'Requirement that changes from met to unmet',
+      required: true,
+      rule: pick({ delay: 'Round-trip delay', capacity: 'Available capacity', registration: 'Terminal registration', loss: 'Packet loss' }, ['delay']),
+    },
+    {
+      key: 'evidence',
+      label: 'Observations behind the comparison',
+      required: true,
+      rule: {
+        evidence: [
+          reading('low-delay', 'a reading from the check run on the low-delay profile', SKYLINK_SERVICE, 'application'),
+          reading('geo-like', 'a reading from the check run on the GEO-like profile', CAMP_VSAT_SERVICE, 'application'),
+        ],
+      },
+    },
   ],
 };
 
@@ -108,19 +140,42 @@ const suitabilityForm: HandoverFormConfig = {
       key: 'supported',
       label: 'Tasks the evidence supports',
       required: true,
-      rule: { choice: ['prompt-fiber-and-queued'], labels: { 'prompt-fiber-and-queued': 'Prompt-response over fiber, and the queued report over either connection' } },
+      rule: pick(
+        {
+          'prompt-fiber-and-queued': 'Prompt-response over fiber, and the queued report over either connection',
+          'everything-both': 'Both tasks over either connection',
+          'fiber-only': 'Either task over fiber only',
+          'queued-fiber-only': 'The queued report over fiber only',
+        },
+        ['prompt-fiber-and-queued']
+      ),
     },
     {
       key: 'unmet',
       label: 'Requirement that was not met',
       required: true,
-      rule: { choice: ['prompt-radio-delay'], labels: { 'prompt-radio-delay': 'Prompt-response over radio: round-trip delay' } },
+      rule: pick(
+        {
+          'prompt-radio-delay': 'Prompt-response over radio: round-trip delay',
+          'prompt-radio-capacity': 'Prompt-response over radio: available capacity',
+          'queued-radio-delay': 'Queued report over radio: round-trip delay',
+          'none-unmet': 'Every requirement was met',
+        },
+        ['prompt-radio-delay']
+      ),
     },
     {
       key: 'unresolved',
       label: 'Limit left unresolved',
       required: true,
-      rule: { choice: ['radio-segment-not-isolated'], labels: { 'radio-segment-not-isolated': 'The radio segment was not measured on its own' } },
+      rule: pick(
+        {
+          'radio-segment-not-isolated': 'The radio segment was not measured on its own',
+          'satellite-not-measured': 'The satellite link was not measured',
+          'nothing-left': 'Nothing is left unresolved',
+        },
+        ['radio-segment-not-isolated']
+      ),
     },
   ],
 };

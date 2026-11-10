@@ -1,8 +1,10 @@
 import { Character, Emotion } from '@app/modal/character-enum';
+import type { EvidenceGroup, HypothesisSpec } from '@app/physical/evidence-predicates';
 import type { HandoverFormConfig } from '@app/physical/field-records';
 import type { RequirementCard } from '@app/physical/workload-types';
 import { applyCampField, SKYLINK_SERVICE } from './camp-field-config';
 import { handoverValid, hypothesisFiled, priorityDeferred, samplesCurrent, workloadRunFinished, workloadVerified } from './frontline-conditions';
+import { pick, reading } from './report-choices';
 import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-support';
 
 /**
@@ -42,12 +44,24 @@ const SYNC_TRANSFER_CARD: RequirementCard = {
   standing: true,
 };
 
+const DOWN_SHORT: EvidenceGroup = reading('capacity', 'an application capacity reading (download rate) from a check run', SKYLINK_SERVICE, 'application', undefined, {
+  metric: 'downMbps',
+});
+const DELAY_READ: EvidenceGroup = reading('delay', 'an application delay reading from a check run', SKYLINK_SERVICE, 'application', undefined, { metric: 'rttMs' });
+/** The terminal is shown healthy by its registration, or by its power or local network readings */
+const TERMINAL_OK: EvidenceGroup = {
+  ...reading('terminal-ok', 'a SkyLink registration reading, up', SKYLINK_SERVICE, 'registration', ['up']),
+  orMatch: [{ kind: 'observation', serviceId: SKYLINK_SERVICE, layer: 'power', valueIn: ['up'] }],
+};
+
 const CAUSE_OPTIONS = [
   { id: 'shared-capacity', label: 'Another workload using the shared local service' },
   { id: 'terminal-fault', label: 'Terminal or cable fault' },
   { id: 'local-network', label: 'Router or laptop problem' },
   { id: 'provider-limit', label: 'Provider restriction' },
 ];
+
+const HYPOTHESIS_OPTS: Omit<HypothesisSpec, 'causes'> = { minCited: 2, targets: [SKYLINK_SERVICE, 'skylink-router', 'local-shared-service'], routes: [[DOWN_SHORT, TERMINAL_OK]] };
 
 const comparisonForm: HandoverFormConfig = {
   id: 'service-comparison',
@@ -64,15 +78,22 @@ const comparisonForm: HandoverFormConfig = {
       key: 'short',
       label: 'Reading that fell short',
       required: true,
-      rule: { choice: ['capacity'], labels: { capacity: 'Available capacity' } },
+      rule: pick({ capacity: 'Available capacity', delay: 'Round-trip delay', registration: 'Terminal registration', power: 'Terminal power' }, ['capacity']),
     },
     {
       key: 'met',
       label: 'Readings that met the requirement',
       required: true,
-      rule: { choice: ['delay-and-registration'], labels: { 'delay-and-registration': 'Delay and terminal registration' } },
+      rule: pick(
+        {
+          'delay-and-registration': 'Delay and terminal registration',
+          'capacity-and-delay': 'Capacity and delay',
+          'capacity-and-registration': 'Capacity and terminal registration',
+        },
+        ['delay-and-registration']
+      ),
     },
-    { key: 'evidence', label: 'Observations behind the comparison', required: true, rule: { cites: 'observation', min: 2 } },
+    { key: 'evidence', label: 'Observations behind the comparison', required: true, rule: { evidence: [DOWN_SHORT, DELAY_READ, TERMINAL_OK] } },
   ],
 };
 
@@ -85,15 +106,26 @@ const scopeForm: HandoverFormConfig = {
       key: 'scope',
       label: 'Part of the service your evidence implicates',
       required: true,
-      rule: { choice: ['local-shared-service'], labels: { 'local-shared-service': 'The shared local service' } },
+      rule: pick(
+        {
+          'local-shared-service': 'The shared local service',
+          'terminal-or-cable': 'The terminal or its cable',
+          'power-chain': 'The power chain',
+          'provider-service': "The provider's service",
+        },
+        ['local-shared-service']
+      ),
     },
     {
       key: 'ruled-out',
       label: 'What the readings rule out',
       required: true,
-      rule: { choice: ['terminal-and-power'], labels: { 'terminal-and-power': 'Terminal registration and power' } },
+      rule: pick(
+        { 'terminal-and-power': 'Terminal registration and power', 'application-only': 'The application behaviour only', 'nothing-ruled-out': 'Nothing is ruled out yet' },
+        ['terminal-and-power']
+      ),
     },
-    { key: 'evidence', label: 'Observations that separate it from the alternatives', required: true, rule: { cites: 'observation', min: 2 } },
+    { key: 'evidence', label: 'Observations that separate it from the alternatives', required: true, rule: { evidence: [DOWN_SHORT, TERMINAL_OK] } },
   ],
 };
 
@@ -106,15 +138,15 @@ const attributionForm: HandoverFormConfig = {
       key: 'workload',
       label: 'Workload using the shared capacity',
       required: true,
-      rule: { choice: [TRANSFER_CARD], labels: { [TRANSFER_CARD]: 'Nonessential file sync' } },
+      rule: pick({ [TRANSFER_CARD]: 'Nonessential file sync', [APP_CARD]: 'Ola application update' }, [TRANSFER_CARD]),
     },
     {
       key: 'keep',
       label: 'Work that must keep its capacity',
       required: true,
-      rule: { choice: [APP_CARD], labels: { [APP_CARD]: 'Ola application update' } },
+      rule: pick({ [TRANSFER_CARD]: 'Nonessential file sync', [APP_CARD]: 'Ola application update' }, [APP_CARD]),
     },
-    { key: 'basis', label: 'Observation behind the attribution', required: true, rule: { cites: 'observation', min: 1 } },
+    { key: 'basis', label: 'Observation behind the attribution', required: true, rule: { evidence: [DOWN_SHORT] } },
   ],
 };
 
@@ -139,19 +171,27 @@ const recordForm: HandoverFormConfig = {
       key: 'cause',
       label: 'Supported cause',
       required: true,
-      rule: { choice: ['shared-capacity'], labels: { 'shared-capacity': 'Shared local capacity' } },
+      rule: pick(
+        {
+          'shared-capacity': 'Shared local capacity',
+          'terminal-fault': 'Terminal or cable fault',
+          'local-network': 'Router or laptop problem',
+          'provider-limit': 'Provider restriction',
+        },
+        ['shared-capacity']
+      ),
     },
     {
       key: 'deferred',
       label: 'Work that was deferred',
       required: true,
-      rule: { choice: [TRANSFER_CARD], labels: { [TRANSFER_CARD]: 'Nonessential file sync' } },
+      rule: pick({ [TRANSFER_CARD]: 'Nonessential file sync', [APP_CARD]: 'Ola application update' }, [TRANSFER_CARD]),
     },
     {
       key: 'terminal',
       label: 'Terminal equipment',
       required: true,
-      rule: { choice: ['unchanged'], labels: { unchanged: 'Left as it was; it was not the cause' } },
+      rule: pick({ unchanged: 'Left as it was; it was not the cause', replaced: 'Replaced with a spare', restarted: 'Restarted to clear the problem' }, ['unchanged']),
     },
   ],
 };
@@ -159,6 +199,7 @@ const recordForm: HandoverFormConfig = {
 if (settings.physicalPlant) {
   applyCampField(settings.physicalPlant, [OLA_APP_CARD, SYNC_TRANSFER_CARD], [comparisonForm, scopeForm, attributionForm, recordForm]);
   settings.physicalPlant.causeOptions = CAUSE_OPTIONS;
+  settings.physicalPlant.hypothesisSpecs = [{ causes: ['shared-capacity'], ...HYPOTHESIS_OPTS }];
   if (settings.physicalPlant.workloads) {
     settings.physicalPlant.workloads.autoStart = [{ cardId: TRANSFER_CARD, serviceId: SKYLINK_SERVICE }];
   }
@@ -226,7 +267,7 @@ export const frontlineScenario5Data: FrontlineScenarioData = {
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s5-read-service-quality'],
       conditions: [
-        hypothesisFiled(['shared-capacity'], { minCited: 2 }, 'Suspected cause chosen and tied to observations'),
+        hypothesisFiled(['shared-capacity'], HYPOTHESIS_OPTS, 'Suspected cause chosen and tied to observations'),
         handoverValid('scope', 'Affected part of the service recorded with its evidence'),
       ],
     },

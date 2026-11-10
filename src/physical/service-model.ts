@@ -9,16 +9,22 @@
  */
 
 import { AuthoredLinkSource } from './authored-link-source';
+import { AuthoredLinkImpairment } from './link-impairment';
+import { LiveLinkImpairment, LiveLinkSource, type LivePhysicsReader } from './live-link';
 import {
   type AccountState,
   type EndpointState,
   type Freshness,
   type LayerReading,
   type LayerStatus,
+  type LinkImpairmentSource,
   type LinkQualitySource,
   type LinkSample,
+  type LiveLinkConfig,
   type PlantReader,
   type ProviderState,
+  type RecoveryInterval,
+  type RecoveryIntervalConfig,
   type SampleMetric,
   type SampleProvenance,
   SERVICE_LAYERS,
@@ -64,6 +70,7 @@ const METRIC_UNIT: Record<SampleMetric, ServiceSample['unit']> = {
   downMbps: 'Mbps',
   upMbps: 'Mbps',
   lossPct: '%',
+  jitterMs: 'ms',
 };
 
 /** Moisture on the terminal link drops registration for FLAP_DOWN_S of every FLAP_PERIOD_S (plant moisture is a steady loss, not an intermittent drop) */
@@ -84,6 +91,7 @@ export class ServiceModel {
   private readonly endpoints_ = new Map<string, EndpointState>();
   private readonly plant_: PlantReader;
   private readonly link_: LinkQualitySource;
+  private readonly impairment_: LinkImpairmentSource | null;
   private readonly deps_: ServiceModelDeps;
   private readonly maxAge_: Record<SampleProvenance, number>;
   private readonly unsubscribe_: (() => void) | null;
@@ -93,6 +101,8 @@ export class ServiceModel {
   private sampleSeq_ = 0;
   private samples_: ServiceSample[] = [];
   private history_: ServiceHistoryEntry[] = [];
+  private readonly intervalCfg_: RecoveryIntervalConfig[];
+  private intervals_: RecoveryInterval[] = [];
   private lastStatus_ = new Map<string, LayerStatus>();
   private lastUpdateS_: number | null = null;
   private cache_ = new Map<string, LayerReading[]>();
@@ -100,22 +110,41 @@ export class ServiceModel {
   private readonly sampleListeners_: Array<(sample: ServiceSample) => void> = [];
   private readonly eventListeners_: Array<(eventId: string) => void> = [];
 
-  constructor(cfg: ServiceModelConfig, plant: PlantReader, link: LinkQualitySource | undefined, deps: ServiceModelDeps) {
+  /**
+   * `live` is the physics reader of package H. It is used only when `cfg.linkMode === 'live'`; every other
+   * configuration is authored, and passing a reader with an authored mode is an error (no silent mixing).
+   */
+  constructor(cfg: ServiceModelConfig, plant: PlantReader, link: LinkQualitySource | undefined, deps: ServiceModelDeps, live?: LivePhysicsReader) {
+    const isLive = cfg.linkMode === 'live';
+    if (isLive && (!live || !cfg.live)) {
+      throw new Error('ServiceModel linkMode "live" needs a physics reader and cfg.live mapping');
+    }
+    if (isLive && (link || cfg.impairments?.length)) {
+      throw new Error('ServiceModel linkMode "live" cannot be combined with an authored link source or impairments');
+    }
+    if (!isLive && live) {
+      throw new Error('ServiceModel got a live physics reader but linkMode is not "live"');
+    }
     this.paths_ = cfg.paths;
     for (const a of cfg.accounts) this.accounts_.set(a.id, { ...a });
     for (const p of cfg.providers) this.providers_.set(p.id, { ...p, noticeIds: [...p.noticeIds] });
     for (const e of cfg.endpoints ?? []) this.endpoints_.set(e.id, { ...e });
     this.plant_ = plant;
     this.deps_ = deps;
+    this.intervalCfg_ = cfg.intervals ?? [];
+    if (isLive) {
+      this.impairment_ = new LiveLinkImpairment(live as LivePhysicsReader, cfg.live as LiveLinkConfig);
+    } else {
+      this.impairment_ = cfg.impairments?.length ? new AuthoredLinkImpairment(cfg.impairments) : null;
+    }
     this.maxAge_ = { ...DEFAULT_MAX_AGE_S, ...cfg.maxAgeS };
-    this.link_ =
-      link ??
-      new AuthoredLinkSource({
-        path: (id) => this.paths_.find((p) => p.id === id),
-        layers: (id) => this.layers(id),
-        account: (id) => this.accounts_.get(id),
-        provider: (id) => this.providers_.get(id),
-      });
+    const linkCtx = {
+      path: (id: string) => this.paths_.find((p) => p.id === id),
+      layers: (id: string) => this.layers(id),
+      account: (id: string) => this.accounts_.get(id),
+      provider: (id: string) => this.providers_.get(id),
+    };
+    this.link_ = isLive ? new LiveLinkSource(linkCtx, live as LivePhysicsReader, cfg.live as LiveLinkConfig) : (link ?? new AuthoredLinkSource(linkCtx));
     // A fix that worked, a mode change or any downtime changes what an earlier reading meant
     this.unsubscribe_ =
       plant.onAction?.((entry) => {
@@ -178,6 +207,19 @@ export class ServiceModel {
     return this.layers(serviceId).find((l) => l.status !== 'up') ?? null;
   }
 
+  /** Arms or ends an authored external impairment (the S15 event action); a no-op without impairments */
+  setImpairment(id: string, active: boolean, durationS: number, atS: number): void {
+    if (!this.impairment_) {
+      return;
+    }
+    if (active) {
+      this.impairment_.start(id, atS, durationS);
+    } else {
+      this.impairment_.stop(id, atS);
+    }
+    this.cacheTimeS_ = Number.NaN;
+  }
+
   /** Call once per plant step: records every layer status change in the history */
   update(): void {
     const tS = this.plant_.getTimeSeconds();
@@ -186,18 +228,86 @@ export class ServiceModel {
     for (const path of this.paths_) {
       if (prevS !== null && tS - prevS > 0) {
         this.recordFlapEdges_(path, prevS, tS);
+        this.recordImpairmentEdges_(path, prevS, tS);
       }
       for (const reading of this.layers(path.id)) {
         const key = `${path.id}:${reading.layer}`;
         const previous = this.lastStatus_.get(key);
         this.lastStatus_.set(key, reading.status);
         if (previous !== undefined && previous !== reading.status) {
-          this.history_.push({ tS, serviceId: path.id, layer: reading.layer, from: previous, to: reading.status });
+          this.history_.push({ tS, serviceId: path.id, layer: reading.layer, from: previous, to: reading.status, reason: reading.reason });
         }
       }
     }
     if (this.history_.length > HISTORY_CAP) {
       this.history_ = this.history_.slice(-HISTORY_CAP);
+    }
+    this.trackIntervals_(tS);
+  }
+
+  // ------------------------------------------------------- recovery intervals
+
+  /** True when a scenario measures recovery intervals (the plant service then steps a long skip in one-second slices) */
+  hasIntervals(): boolean {
+    return this.intervalCfg_.length > 0;
+  }
+
+  /** Recovery intervals opened so far (copies), optionally of one service */
+  intervals(serviceId?: string): RecoveryInterval[] {
+    return this.intervals_.filter((i) => serviceId === undefined || i.serviceId === serviceId).map((i) => ({ ...i }));
+  }
+
+  /**
+   * Length (seconds) of a span of a recovery interval, or null while it is still open or its boundary is unknown.
+   * restoration = incident start to usable service; response = start to the operator's activation;
+   * startup = activation to the terminal registering.
+   */
+  intervalSpanS(id: string, span: 'restoration' | 'response' | 'startup'): number | null {
+    const rec = this.intervals_.find((i) => i.id === id);
+    if (!rec) {
+      return null;
+    }
+    if (span === 'restoration') {
+      return rec.usableS === null ? null : rec.usableS - rec.startS;
+    }
+    if (span === 'response') {
+      return rec.activationS === null ? null : Math.max(0, rec.activationS - rec.startS);
+    }
+
+    return rec.activationS === null || rec.registeredS === null ? null : Math.max(0, rec.registeredS - rec.activationS);
+  }
+
+  interval(id: string): RecoveryInterval | null {
+    const found = this.intervals_.find((i) => i.id === id);
+
+    return found ? { ...found } : null;
+  }
+
+  /**
+   * Fill in the boundaries of every open interval from the timeline at plant second `tS`. The registration and
+   * application boundaries are stamped by the step that first sees them, so the plant service steps in one-second
+   * slices while an interval is open: a coarse skip then stamps the same second a stepped run would.
+   */
+  private trackIntervals_(tS: number): void {
+    for (const cfg of this.intervalCfg_) {
+      const rec = this.intervals_.find((i) => i.id === cfg.id);
+      if (!rec || rec.usableS !== null) {
+        continue;
+      }
+      if (rec.activationS === null && cfg.activationPartId) {
+        const entry = this.plant_.getLog?.().find((e) => e.verb === 'setMode' && e.target === cfg.activationPartId && e.tSeconds >= rec.startS);
+        if (entry) {
+          rec.activationS = entry.tSeconds;
+        }
+      }
+      const layers = this.layers(cfg.serviceId);
+      if (rec.registeredS === null && layers.find((l) => l.layer === 'registration')?.status === 'up') {
+        rec.registeredS = tS;
+      }
+      const app = layers.find((l) => l.layer === 'application')?.status;
+      if (rec.registeredS !== null && (app === 'up' || app === 'degraded')) {
+        rec.usableS = tS;
+      }
     }
   }
 
@@ -221,8 +331,30 @@ export class ServiceModel {
       }
       const previous = this.lastStatus_.get(key) as LayerStatus;
       if (previous !== edge.status) {
-        this.history_.push({ tS: edge.tS, serviceId: path.id, layer: 'registration', from: previous, to: edge.status });
+        this.history_.push({ tS: edge.tS, serviceId: path.id, layer: 'registration', from: previous, to: edge.status, reason: edge.status === 'down' ? 'moisture-flap' : 'ok' });
         this.lastStatus_.set(key, edge.status);
+      }
+    }
+  }
+
+  /**
+   * Impairment windows that opened and closed inside a clock jump, recorded at their own times. Skipped while the
+   * terminal is down for another reason (standby, booting), where a window changes nothing the player could see.
+   */
+  private recordImpairmentEdges_(path: ServicePathConfig, prevS: number, nowS: number): void {
+    const key = `${path.id}:registration`;
+    if (!this.impairment_ || this.lastStatus_.get(key) === undefined) {
+      return;
+    }
+    if (this.registration_(path, this.power_(path), true).status !== 'up') {
+      return;
+    }
+    for (const edge of this.impairment_.edges(path.id, prevS, nowS)) {
+      const next: LayerStatus = edge.impaired ? 'down' : 'up';
+      const previous = this.lastStatus_.get(key) as LayerStatus;
+      if (previous !== next) {
+        this.history_.push({ tS: edge.tS, serviceId: path.id, layer: 'registration', from: previous, to: next, reason: next === 'down' ? 'link-lost' : 'ok' });
+        this.lastStatus_.set(key, next);
       }
     }
   }
@@ -244,25 +376,27 @@ export class ServiceModel {
     via: SampleProvenance,
     endpointId?: string,
     metric: SampleMetric = 'status'
-  ): { tS: number; value: number | LayerStatus; metric: SampleMetric } {
+  ): { tS: number; value: number | LayerStatus; metric: SampleMetric; windowS?: number } {
     const tS = this.deps_.now();
     let value: number | LayerStatus = 'unknown';
     let usedMetric: SampleMetric = 'status';
+    let windowS: number | undefined;
 
     if (this.getPath(serviceId) && READABLE[via].includes(layer)) {
       value = this.statusFor_(serviceId, layer, endpointId);
       if (metric !== 'status' && NUMERIC_READABLE[via] === layer) {
         const link = this.link_.sample(serviceId, tS);
         if (link) {
-          value = link[metric];
+          value = link[metric] ?? 'unknown';
           usedMetric = metric;
+          windowS = metric === 'jitterMs' ? link.jitterWindowS : undefined;
         } else {
           value = 'down';
         }
       }
     }
 
-    return { tS, value, metric: usedMetric };
+    return { tS, value, metric: usedMetric, ...(windowS === undefined ? {} : { windowS }) };
   }
 
   /**
@@ -270,8 +404,9 @@ export class ServiceModel {
    * cannot establish end-to-end service) yields an `unknown` sample, which is never current.
    */
   takeSample(serviceId: string, layer: ServiceLayer, via: SampleProvenance, endpointId?: string, metric: SampleMetric = 'status'): ServiceSample {
-    const { tS, value, metric: usedMetric } = this.peekSample(serviceId, layer, via, endpointId, metric);
+    const { tS, value, metric: usedMetric, windowS } = this.peekSample(serviceId, layer, via, endpointId, metric);
 
+    const cause = this.causeFor_(serviceId, layer, usedMetric, value, via, endpointId);
     this.sampleSeq_ += 1;
     const sample: ServiceSample = {
       id: `sample-${this.sampleSeq_}`,
@@ -281,6 +416,8 @@ export class ServiceModel {
       metric: usedMetric,
       value,
       unit: METRIC_UNIT[usedMetric],
+      ...(windowS === undefined ? {} : { windowS }),
+      ...(cause === undefined ? {} : { cause }),
       tS,
       provenance: via,
       configEpoch: this.configEpoch_,
@@ -295,6 +432,16 @@ export class ServiceModel {
     for (const listener of [...this.sampleListeners_]) listener(sample);
 
     return sample;
+  }
+
+  /** The authored reason behind a status sample of an unendpointed layer, so evidence can tell a link loss from a reboot */
+  private causeFor_(serviceId: string, layer: ServiceLayer, metric: SampleMetric, value: number | LayerStatus, via: SampleProvenance, endpointId?: string): string | undefined {
+    if (metric !== 'status' || endpointId !== undefined || value === 'unknown' || !READABLE[via].includes(layer)) {
+      return undefined;
+    }
+    const reading = this.layers(serviceId).find((l) => l.layer === layer);
+
+    return reading && reading.status === value ? reading.reason : undefined;
   }
 
   freshness(sample: ServiceSample): Freshness {
@@ -334,9 +481,16 @@ export class ServiceModel {
     this.cacheTimeS_ = Number.NaN;
   }
 
-  bumpEvent(eventId: string): void {
+  bumpEvent(eventId: string, atS?: number): void {
     this.eventEpoch_ += 1;
     this.cacheTimeS_ = Number.NaN;
+    for (const cfg of this.intervalCfg_) {
+      if (cfg.startEventId === eventId && !this.intervals_.some((i) => i.id === cfg.id)) {
+        const startS = atS ?? this.plant_.getTimeSeconds();
+        this.intervals_.push({ id: cfg.id, serviceId: cfg.serviceId, startS, activationS: null, registeredS: null, usableS: null });
+        this.trackIntervals_(this.plant_.getTimeSeconds());
+      }
+    }
     for (const listener of [...this.eventListeners_]) listener(eventId);
   }
 
@@ -406,6 +560,8 @@ export class ServiceModel {
       lastStatus: [...this.lastStatus_.entries()],
       lastUpdateS: this.lastUpdateS_,
       sampleSeq: this.sampleSeq_,
+      ...(this.impairment_ ? { impairments: this.impairment_.getState() } : {}),
+      ...(this.intervalCfg_.length ? { intervals: this.intervals_.map((i) => ({ ...i })) } : {}),
     };
   }
 
@@ -428,6 +584,8 @@ export class ServiceModel {
     this.lastStatus_ = new Map(state.lastStatus);
     this.lastUpdateS_ = state.lastUpdateS ?? null;
     this.sampleSeq_ = state.sampleSeq;
+    this.impairment_?.restoreState(state.impairments);
+    this.intervals_ = (state.intervals ?? []).map((i) => ({ ...i }));
     this.cacheTimeS_ = Number.NaN;
   }
 
@@ -488,7 +646,7 @@ export class ServiceModel {
     return { layer: 'local', status: 'up', reason: 'ok' };
   }
 
-  private registration_(path: ServicePathConfig, power: LayerReading): LayerReading {
+  private registration_(path: ServicePathConfig, power: LayerReading, ignoreImpairment = false): LayerReading {
     const id = path.terminalPartId;
     const down = (reason: string): LayerReading => ({ layer: 'registration', status: 'down', reason, subjectId: id });
     if (power.status !== 'up') {
@@ -514,6 +672,10 @@ export class ServiceModel {
     }
     if (this.plant_.isLinkDropped(id)) {
       return down('link-dropped');
+    }
+    // An external loss of the path: no terminal state is involved, so a restart cannot clear it
+    if (!ignoreImpairment && this.impairment_?.at(path.id, this.plant_.getTimeSeconds())?.unavailable) {
+      return down('link-lost');
     }
     if ((path.linkTargetIds ?? []).some((t) => this.plant_.isFaultActive(t, 'moisture')) && this.plant_.getTimeSeconds() % FLAP_PERIOD_S < FLAP_DOWN_S) {
       return down('moisture-flap');

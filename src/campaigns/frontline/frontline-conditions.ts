@@ -8,7 +8,9 @@
 
 import type { Condition, ConditionParams } from '@app/objectives/objective-types';
 import { type HypothesisEntry, TEST_VERBS } from '@app/physical/evidence-log';
+import { assessHypothesis, type HypothesisSpec } from '@app/physical/evidence-predicates';
 import { type FieldHooks, getActiveField } from '@app/physical/field-hooks';
+import { runHeldReserve } from '@app/physical/run-power';
 import type { ServiceLayer } from '@app/physical/service-types';
 
 type TimedParams = ConditionParams & { fieldTimed?: boolean };
@@ -19,6 +21,15 @@ function make(name: string, description: string, evaluator: () => boolean, timed
   const params: TimedParams = { evaluator, fieldTimed: timed };
 
   return { id: `c6:${name}`, type: 'custom', description, params, mustMaintain: false };
+}
+
+/**
+ * Require a latched-by-default condition to hold at the same moment as its siblings. Without it a
+ * configuration check (mode, reserve forecast, service support) can be satisfied by different
+ * arrangements at different times and still complete the objective.
+ */
+export function held(c: Condition): Condition {
+  return { ...c, mustMaintain: true };
 }
 
 /** True for a factory condition that needs a sample, an event or a window to pass */
@@ -205,52 +216,108 @@ function clearedAtS(h: FieldHooks, faultId: string): number | null {
   return hits.length > 0 ? Math.max(...hits.map((e) => e.tS)) : null;
 }
 
+interface VerifyArgs {
+  card: string;
+  service: string;
+  afterEvent?: string;
+  afterFaultCleared?: string;
+  afterRequestApproved?: string;
+  afterHandover?: string;
+}
+
+function verifyIdSuffix(args: VerifyArgs): string {
+  return `${args.afterFaultCleared === undefined ? '' : `:after-${args.afterFaultCleared}`}${args.afterRequestApproved === undefined ? '' : `:approved-${args.afterRequestApproved}`}${args.afterHandover === undefined ? '' : `:filed-${args.afterHandover}`}`;
+}
+
+/** Earliest allowed run start for the "after ..." options: a number, null for no limit, or false while a precondition has not happened */
+function verifyFromS(h: FieldHooks, args: VerifyArgs): number | null | false {
+  const after = args.afterEvent === undefined ? null : (h.events?.firedAtS(args.afterEvent) ?? null);
+  if (args.afterEvent !== undefined && after === null) {
+    return false;
+  }
+
+  let from = after;
+  if (args.afterFaultCleared !== undefined) {
+    const cleared = clearedAtS(h, args.afterFaultCleared);
+    if (cleared === null) {
+      return false;
+    }
+    from = Math.max(from ?? 0, cleared);
+  }
+
+  if (args.afterRequestApproved !== undefined) {
+    const decision = h.records?.requestDecision?.(args.afterRequestApproved);
+    if (decision?.status !== 'approved' || decision.decidedAtS === undefined) {
+      return false;
+    }
+    from = Math.max(from ?? 0, decision.decidedAtS);
+  }
+
+  if (args.afterHandover !== undefined) {
+    const filed = h.records?.handoverFiledAtS?.(args.afterHandover) ?? null;
+    if (filed === null) {
+      return false;
+    }
+    from = Math.max(from ?? 0, filed);
+  }
+
+  return from;
+}
+
 /** A supported, not invalidated workload run on the card and service (after an event or a fault's repair, when given) */
-export function workloadVerified(
-  args: { card: string; service: string; afterEvent?: string; afterFaultCleared?: string; afterRequestApproved?: string; afterHandover?: string },
-  description = 'Workload verified'
-): Condition {
+export function workloadVerified(args: VerifyArgs, description = 'Workload verified'): Condition {
   return make(
-    `workloadVerified:${args.card}:${args.service}${args.afterFaultCleared === undefined ? '' : `:after-${args.afterFaultCleared}`}${args.afterRequestApproved === undefined ? '' : `:approved-${args.afterRequestApproved}`}${args.afterHandover === undefined ? '' : `:filed-${args.afterHandover}`}`,
+    `workloadVerified:${args.card}:${args.service}${verifyIdSuffix(args)}`,
     description,
     () => {
       const h = hooks();
       if (!h?.workloads) {
         return false;
       }
-      const after = args.afterEvent === undefined ? null : (h.events?.firedAtS(args.afterEvent) ?? null);
-      if (args.afterEvent !== undefined && after === null) {
+      const from = verifyFromS(h, args);
+      if (from === false) {
         return false;
-      }
-
-      let from = after;
-      if (args.afterFaultCleared !== undefined) {
-        const cleared = clearedAtS(h, args.afterFaultCleared);
-        if (cleared === null) {
-          return false;
-        }
-        from = Math.max(from ?? 0, cleared);
-      }
-
-      if (args.afterRequestApproved !== undefined) {
-        const decision = h.records?.requestDecision?.(args.afterRequestApproved);
-        if (decision?.status !== 'approved' || decision.decidedAtS === undefined) {
-          return false;
-        }
-        from = Math.max(from ?? 0, decision.decidedAtS);
-      }
-
-      if (args.afterHandover !== undefined) {
-        const filed = h.records?.handoverFiledAtS?.(args.afterHandover) ?? null;
-        if (filed === null) {
-          return false;
-        }
-        from = Math.max(from ?? 0, filed);
       }
 
       return h.workloads
         .runs()
         .some((r) => r.cardId === args.card && r.serviceId === args.service && r.status === 'supported' && !r.invalidatedBy && (from === null || r.startS >= from));
+    },
+    true
+  );
+}
+
+/**
+ * Package F. Service and reserve over ONE window: a supported, current run of the card on the service whose own
+ * energy accounting (RunPowerRecord) shows
+ *  - the run lasted at least `windowS` scenario seconds and every one of them was accounted;
+ *  - stored energy never fell below the reserve at any plant second of the run, whatever charged it back up after;
+ *  - on a battery-only plan the stored energy would still have been at or above the reserve with all charging
+ *    removed (start minus the energy drawn), so a generator cannot rescue a battery-only claim.
+ * A reserve reading from before or after the run cannot count: the evidence is the run's own record. A run that a
+ * later change invalidated, or one stopped early, has no complete record and does not count.
+ */
+export function serviceReserveVerified(args: VerifyArgs & { windowS: number }, description = 'Service and reserve verified'): Condition {
+  return make(
+    `serviceReserveVerified:${args.card}:${args.service}:${args.windowS}${verifyIdSuffix(args)}`,
+    description,
+    () => {
+      const h = hooks();
+      if (!h?.workloads) {
+        return false;
+      }
+      const from = verifyFromS(h, args);
+      if (from === false) {
+        return false;
+      }
+
+      return h.workloads.runs().some((r) => {
+        if (r.cardId !== args.card || r.serviceId !== args.service || r.status !== 'supported' || r.invalidatedBy || (from !== null && r.startS < from)) {
+          return false;
+        }
+
+        return r.power !== undefined && runHeldReserve(r.power, r.startS, r.endS ?? r.startS, args.windowS);
+      });
     },
     true
   );
@@ -289,6 +356,18 @@ export function recordAccepted(unitId: string, description = `Record accepted fo
 
 export function handoverValid(formId: string, description = 'Handover form valid'): Condition {
   return make(`handoverValid:${formId}`, description, () => hooks()?.records?.isHandoverValid(formId) ?? false, true);
+}
+
+/**
+ * The latest accepted filing of the form certifies the state as it is NOW (FieldRecords.isHandoverCurrent).
+ * For a final claim. Unlike `handoverValid` the row is re-evaluated until its objective completes, so a mode
+ * change or a staged event after the filing makes the objective wait for a fresh filing. The earlier filing
+ * stays on record and `handoverValid` rows of completed objectives stay done.
+ */
+export function handoverCurrent(formId: string, description = 'Handover certifies the current state'): Condition {
+  const c = make(`handoverCurrent:${formId}`, description, () => hooks()?.records?.isHandoverCurrent?.(formId) ?? false, true);
+
+  return { ...c, mustMaintain: true, maintainUntilObjectiveComplete: true };
 }
 
 /**
@@ -333,7 +412,7 @@ export function siteChecked(targetIds: string[], description = 'Site checks reco
   );
 }
 
-/** A test showed the player the injected fault (it exists, and an observation revealed its target) */
+/** A test showed the player the injected fault (it exists, and an observation revealed its target); a blind repair that cleared it also counts, and is charged in the debrief */
 export function faultEvidenceRecorded(faultId: string, description = 'Fault evidence recorded'): Condition {
   return make(
     `faultEvidenceRecorded:${faultId}`,
@@ -345,7 +424,17 @@ export function faultEvidenceRecorded(faultId: string, description = 'Fault evid
         return false;
       }
 
-      return log.entries('observation').some((e) => e.positive === true && e.revealedTargets?.includes(target));
+      if (log.entries('observation').some((e) => e.positive === true && e.revealedTargets?.includes(target))) {
+        return true;
+      }
+      // Recovery route: a fault repaired blind leaves nothing to observe. Do not lock the scenario behind it; the unsupported fix costs points in the debrief.
+      const h = hooks();
+
+      return (
+        h !== null &&
+        !h.plant.getFaults().some((f) => f.id === faultId) &&
+        log.entries().some((e) => e.kind === 'action' && e.effective === true && e.clearedTargets?.includes(target))
+      );
     },
     true
   );
@@ -378,16 +467,24 @@ export function anyServiceSupports(cardId: string, serviceIds: string[], descrip
  * real timeline) and the player has read both sides of the pattern: a registration reading that
  * showed it down, one that showed it up, and a local-network reading that stayed up.
  */
-export function interruptionPattern(serviceId: string, minInterruptions: number, description = 'Interruption pattern recorded'): Condition {
+export function interruptionPattern(
+  serviceId: string,
+  minInterruptions: number,
+  description = 'Interruption pattern recorded',
+  /** Count only drops with these causes (S15: 'link-lost', so a modem reboot cannot manufacture drops). Entries with no recorded cause (old saves) count. */
+  opts: { reasons?: string[] } = {}
+): Condition {
   return make(
-    `interruptionPattern:${serviceId}:${minInterruptions}`,
+    `interruptionPattern:${serviceId}:${minInterruptions}${opts.reasons ? `:${opts.reasons.join(',')}` : ''}`,
     description,
     () => {
       const model = hooks()?.service;
       if (!model) {
         return false;
       }
-      const drops = model.history(serviceId).filter((e) => e.layer === 'registration' && e.to === 'down').length;
+      const drops = model
+        .history(serviceId)
+        .filter((e) => e.layer === 'registration' && e.to === 'down' && (!opts.reasons || e.reason === undefined || opts.reasons.includes(e.reason))).length;
       const samples = model.samplesFor(serviceId);
       const registration = (v: string) => samples.some((s) => s.layer === 'registration' && s.value === v);
 
@@ -397,41 +494,49 @@ export function interruptionPattern(serviceId: string, minInterruptions: number,
   );
 }
 
-/** At least `min` tests found nothing wrong (negative observations are kept as evidence, not discarded) */
-export function negativeChecksKept(min: number, description = 'Negative checks recorded'): Condition {
+/**
+ * At least `min` tests found nothing wrong (negative observations are kept as evidence, not discarded).
+ * Repeating one test on the same subject earns one credit; `subjects` limits credit to checks of the
+ * subjects relevant to the diagnosis (an off-path negative is not evidence about the cause).
+ */
+export function negativeChecksKept(min: number, description = 'Negative checks recorded', opts: { subjects?: string[] } = {}): Condition {
   return make(
-    `negativeChecksKept:${min}`,
+    `negativeChecksKept:${min}${opts.subjects ? `:${opts.subjects.join(',')}` : ''}`,
     description,
     () => {
       const log = hooks()?.evidence;
       if (!log) {
         return false;
       }
-      const negatives = log.entries('observation').filter((e) => e.verb !== undefined && TEST_VERBS.has(e.verb) && e.positive === false);
+      const negatives = log
+        .entries('observation')
+        .filter((e) => e.verb !== undefined && TEST_VERBS.has(e.verb) && e.positive === false && (opts.subjects === undefined || opts.subjects.includes(e.subject)));
 
-      return negatives.length >= min;
+      return new Set(negatives.map((e) => e.subject)).size >= min;
     },
     true
   );
 }
 
-/** A hypothesis whose cause is one of the authored options (never 'other') cites at least one observation */
-export function hypothesisFiled(causes: string[], opts: { minCited?: number } = {}, description = 'Hypothesis filed with a cause and evidence'): Condition {
+/**
+ * A hypothesis names an allowed cause (never 'other') with distinct cited observations. Optional scope,
+ * target and typed evidence routes (any one route suffices) tie it to what the player actually saw; see
+ * `assessHypothesis` for the rules and reasons.
+ */
+export function hypothesisFiled(causes: string[], opts: Omit<HypothesisSpec, 'causes'> = {}, description = 'Hypothesis filed with a cause and evidence'): Condition {
   return make(
     `hypothesisFiled:${causes.join(',')}`,
     description,
     () => {
-      const log = hooks()?.evidence;
+      const h = hooks();
+      const log = h?.evidence;
       if (!log) {
         return false;
       }
       const all = log.entries();
+      const ctx = { eventFiredAtS: (id: string) => h?.events?.firedAtS(id) ?? null };
 
-      return (log.entries('hypothesis') as readonly HypothesisEntry[]).some((h) => {
-        const cited = h.citedEntryIds.map((id) => all.find((e) => e.id === id)).filter((e) => e !== undefined);
-
-        return h.claim.cause !== undefined && causes.includes(h.claim.cause) && cited.length >= (opts.minCited ?? 1) && cited.some((e) => e.kind === 'observation');
-      });
+      return (log.entries('hypothesis') as readonly HypothesisEntry[]).some((hyp) => assessHypothesis(hyp, { ...opts, causes }, all, ctx).ok);
     },
     false
   );

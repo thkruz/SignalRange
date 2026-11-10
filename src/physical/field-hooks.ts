@@ -12,11 +12,15 @@ import type { ServiceModel } from './service-model';
 
 /** One workload run as the condition factory reads it (the runner arrives with a later package) */
 export interface WorkloadRunReading {
+  id?: string;
   cardId: string;
   serviceId: string;
   status: 'running' | 'supported' | 'degraded' | 'unsupported' | 'aborted';
   startS: number;
+  endS?: number;
   invalidatedBy?: string;
+  /** Energy accounting over the run's own window (see RunPowerRecord) */
+  power?: import('./workload-types').RunPowerRecord;
 }
 
 export interface WorkloadReader {
@@ -31,6 +35,8 @@ export interface WorkloadReader {
 export interface RecordReader {
   isAccepted(unitId: string): boolean;
   isHandoverValid(formId: string): boolean;
+  /** The latest filing of the form certifies the state as it is now (see FieldRecords.isHandoverCurrent) */
+  isHandoverCurrent?(formId: string): boolean;
   /** Status and answer time of a correction request the player filed (null before it is filed) */
   /** Scenario time of the latest accepted filing of a handover form (null before one is accepted) */
   handoverFiledAtS?(formId: string): number | null;

@@ -127,6 +127,7 @@ function acts(svc: PhysicalPlantService): Record<string, () => void> {
           skylink: value(svc, SKYLINK_SERVICE, 'provider'),
           registration: value(svc, EUS, 'registration'),
           verified: { value: transfer?.id ?? '' },
+          restoration: { value: String(svc.services?.intervalSpanS('s14-eurosat-restoration', 'restoration')) },
           energy: energy(svc),
           interactive: { value: 'unavailable' },
           basis: { cites: obsIds(svc) },

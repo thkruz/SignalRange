@@ -175,7 +175,9 @@ export class FieldPathDiagramPanel {
         const label = node.label.length > 18 ? `${node.label.slice(0, 17)}…` : node.label;
         const tip = shared && sharedIds.has(p.id) ? `${node.label} (shared by ${node.serviceIds.length} services)` : node.label;
 
-        return `<g class="${cls}" data-pd-node="${escapeHtml(p.id)}" role="button" tabindex="0" aria-pressed="${this.selected_.has(p.id)}"><title>${escapeHtml(tip)}</title><rect x="${p.x}" y="${p.y}" width="${NODE_W}" height="${NODE_H}" rx="4"/><text x="${p.x + NODE_W / 2}" y="${p.y + NODE_H / 2 + 4}" text-anchor="middle">${escapeHtml(label)}</text></g>`;
+        const domId = `fpd-${p.laneIndex}-${p.id.replace(/[^A-Za-z0-9_-]+/gu, '-')}`;
+
+        return `<g class="${cls}" id="${escapeHtml(domId)}" data-pd-lane="${p.laneIndex}" data-pd-node="${escapeHtml(p.id)}" role="button" tabindex="0" aria-pressed="${this.selected_.has(p.id)}"><title>${escapeHtml(tip)}</title><rect x="${p.x}" y="${p.y}" width="${NODE_W}" height="${NODE_H}" rx="4"/><text x="${p.x + NODE_W / 2}" y="${p.y + NODE_H / 2 + 4}" text-anchor="middle">${escapeHtml(label)}</text></g>`;
       })
       .join('');
 

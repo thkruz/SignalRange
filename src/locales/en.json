@@ -30,7 +30,8 @@
       },
       "unreachable": {
         "title": "Can't reach your SkyLink",
-        "body": "You see the last data it sent."
+        "body": "You see the last data it sent.",
+        "bodyEmpty": "Your SkyLink has not sent any data yet."
       },
       "updatedAgo": "Last updated {{age}} ago",
       "updatedNow": "Last updated just now",
@@ -149,6 +150,9 @@
       "download": "Download",
       "upload": "Upload",
       "latency": "Latency",
+      "jitter": "Jitter",
+      "jitterUnavailable": "Unavailable",
+      "jitterNote": "Jitter is the average change between one-second delay readings over the last {{seconds}} seconds. It reads Unavailable when this connection cannot be measured yet.",
       "unitMbps": "{{value}} Mbps",
       "unitMs": "{{value}} ms",
       "limit": {
@@ -248,6 +252,94 @@
         "sleeping": "Sleeping"
       },
       "network": "Network unavailable"
+    }
+  },
+  "eurosat": {
+    "title": "EuroSat modem",
+    "nav": {
+      "label": "EuroSat modem pages",
+      "status": "Status",
+      "speed": "Speed test",
+      "history": "History",
+      "restart": "Restart"
+    },
+    "noLaptop": {
+      "title": "Cannot connect",
+      "body": "The modem page opens from the laptop. The laptop is off."
+    },
+    "unreachable": {
+      "title": "Can't reach the modem.",
+      "body": "Showing the last data the modem gave.",
+      "bodyEmpty": "The modem has not given any data yet."
+    },
+    "updatedNow": "Updated just now",
+    "updatedAgo": "Updated {{age}} ago",
+    "noData": "No data yet. Connect to the modem once to see it here.",
+    "status": {
+      "registration": "Registration",
+      "registered": "Registered",
+      "notRegistered": "Not registered",
+      "accountRefused": "Registered, account check refused",
+      "download": "Download rate",
+      "upload": "Upload rate",
+      "delay": "Delay",
+      "loss": "Packet loss",
+      "jitter": "Jitter",
+      "power": "Modem power",
+      "uptime": "Time running",
+      "restarts": "Restarts",
+      "unavailable": "Unavailable",
+      "unitMbps": "{{value}} Mbps",
+      "unitMs": "{{value}} ms",
+      "unitPct": "{{value}} %",
+      "unitW": "{{value}} W",
+      "jitterNote": "Jitter is the average change between one-second delay readings over the last {{seconds}} seconds."
+    },
+    "speed": {
+      "title": "Speed test",
+      "body": "Measures the speed through the modem. The test takes about {{seconds}} seconds.",
+      "start": "Start speed test",
+      "running": "Running…",
+      "progress": "{{done}} of {{total}} seconds",
+      "disabled": "The speed test is not available. The modem cannot be reached.",
+      "failed": "The test did not finish. Try again.",
+      "noResult": "No test has been run yet.",
+      "result": "Last result",
+      "download": "Download",
+      "upload": "Upload",
+      "latency": "Latency",
+      "jitter": "Jitter",
+      "jitterUnavailable": "Unavailable",
+      "history": "Earlier tests",
+      "ago": "{{age}} ago"
+    },
+    "history": {
+      "title": "Modem history",
+      "intro": "Registration changes the modem has recorded, newest first.",
+      "empty": "No registration changes recorded.",
+      "time": "Time",
+      "event": "Event",
+      "lost": "Registration lost",
+      "restored": "Registered",
+      "reason": {
+        "signal-lost": "Receive signal lost",
+        "restart": "Modem restarted",
+        "unreported": "No reason given",
+        "registered": "Link up"
+      }
+    },
+    "restart": {
+      "title": "Restart modem",
+      "body": "Restarting the modem drops the link until it has started again. This does not restart anything else.",
+      "button": "Restart modem",
+      "confirm": "Restart the modem now? You will lose service until it has started again.",
+      "confirmButton": "Restart",
+      "done": "Restart started.",
+      "failed": "The restart did not start.",
+      "disabled": "The modem cannot be reached from here."
+    },
+    "confirm": {
+      "cancel": "Cancel"
     }
   },
   "devMenu": {

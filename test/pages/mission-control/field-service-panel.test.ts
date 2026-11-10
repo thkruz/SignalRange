@@ -95,6 +95,25 @@ describe('M09 field service panel', () => {
     expect(host.querySelector('[data-fsp="source-skylink|power|"]')?.textContent).toBe('Device light');
   });
 
+  it('adds a note when the step that reads the sample has not started', () => {
+    const { model, now } = rig();
+    const host = document.createElement('div');
+    let state: 'later' | 'active' = 'later';
+    const panel = new FieldServicePanel(
+      host,
+      () => model,
+      now,
+      null,
+      () => state
+    );
+    panel.sync();
+    panel.check('skylink', 'power', 'device-indicator');
+    expect(host.querySelector('[data-fsp="last"]')?.textContent).toContain('has not started');
+    state = 'active';
+    panel.check('skylink', 'power', 'device-indicator');
+    expect(host.querySelector('[data-fsp="last"]')?.textContent).not.toContain('has not started');
+  });
+
   it('the Check button reads the selects; numeric probe gives units; a config change invalidates', () => {
     const { model, plant, now } = rig();
     const host = document.createElement('div');

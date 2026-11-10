@@ -1,4 +1,5 @@
 import { Character, Emotion } from '@app/modal/character-enum';
+import type { EvidenceGroup } from '@app/physical/evidence-predicates';
 import type { HandoverFormConfig } from '@app/physical/field-records';
 import type { PlantEventConfig } from '@app/physical/physical-plant-types';
 import { SKYLINK_SERVICE } from './camp-field-config';
@@ -7,30 +8,35 @@ import {
   applyForwardDualReadiness,
   applyForwardEurosat,
   applyForwardField,
+  DUAL_CORRECT_DRAIN_W,
   FORWARD_EUROSAT_SERVICE,
   FORWARD_EUROSAT_UNIT,
   FORWARD_FIRST_CARD,
   FORWARD_PROVIDER,
   FORWARD_SKYLINK_ACCOUNT,
+  reserveStartWh,
 } from './forward-field-config';
 import {
   anyServiceSupports,
   eventFired,
   faultClearedWithEvidence,
   forecastMeetsReserve,
+  handoverCurrent,
   handoverValid,
+  held,
   layerObserved,
   modeIs,
-  reserveHeld,
   samplesCurrent,
+  serviceReserveVerified,
   workloadVerified,
 } from './frontline-conditions';
-import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-support';
+import { checked, pick, reading, repaired } from './report-choices';
+import { createFrontlineSettings, type FrontlineScenarioData, recordRunPower } from './scenario-support';
 import { S11_TRANSFER_CARD } from './scenario11';
 
 /**
  * Frontline Signals — Scenario 16: Complete the Independent Shift.
- * Initial state: both terminals are installed at the forward post (SkyLink unrestricted, EuroSat registered) on a 360 Wh battery
+ * Initial state: both terminals are installed at the forward post (SkyLink unrestricted, EuroSat registered) on a battery (S16_START_WH Wh)
  * with a 200 Wh reserve. Both terminals running misses the reserve, so the player picks the arrangement. The prior EuroSat
  * incident arrives through the S15 continuity link (S15_INCIDENT_LINK, canonical fallback when no record exists) and never
  * claims a source.
@@ -49,8 +55,14 @@ export const S16_EVENT_LOCAL = 's16-local-supply-loss';
 export const S16_EVENT_NOTICE = 's16-provider-notice';
 export const S16_EVENT_OUTAGE = 's16-skylink-outage';
 export const S16_NOTICE = 's16-skylink-maintenance-notice';
-export const S16_START_WH = 360;
+/**
+ * End of shift (scenario seconds): the battery-reserve forecast looks at this fixed point, not a rolling window. No authored shift
+ * length exists, so this is a named constant; Ted wants a tunable knob, edit this one value to retune (start charge derives from it).
+ */
+export const S16_SHIFT_END_S = 7200;
 export const S16_RESERVE_WH = 200;
+/** Start charge derived from the shift end: reserve + correct-arrangement drain to shift end + 10 min of both terminals + 3 Wh margin */
+export const S16_START_WH = reserveStartWh(S16_RESERVE_WH, DUAL_CORRECT_DRAIN_W, S16_SHIFT_END_S);
 export const S16_FINAL_WINDOW_S = 120;
 /** The outage starts this long after the external objective activates, so the first reading can be a clean one */
 export const S16_OUTAGE_OFFSET_S = 15;
@@ -59,7 +71,76 @@ const SKY = SKYLINK_SERVICE;
 const EUS = FORWARD_EUROSAT_SERVICE;
 const FIRST = FORWARD_FIRST_CARD.id;
 const TRANSFER = S11_TRANSFER_CARD.id;
-const choice = (id: string, label: string) => ({ choice: [id], labels: { [id]: label } });
+const DECOYS: Record<string, Array<[string, string]>> = {
+  [FIRST]: [
+    [S11_TRANSFER_CARD.id, 'Delay-tolerant transfer on EuroSat'],
+    ['neither', 'Neither task'],
+  ],
+  'reserve-200': [
+    ['reserve-0', 'Run the battery down to keep the task going'],
+    ['reserve-100', 'Keep 100 Wh of stored energy'],
+  ],
+  'both-terminals': [
+    ['skylink-only', 'The SkyLink terminal only'],
+    ['eurosat-only', 'The EuroSat terminal only'],
+  ],
+  'source-not-established': [
+    ['source-found', 'Interference from a known source'],
+    ['no-interference', 'Not interference'],
+  ],
+  'service-and-power': [
+    ['hardware-only', 'The hardware list only'],
+    ['nothing', 'Nothing, the earlier shift covered it'],
+  ],
+  'skylink-provider': [
+    ['eurosat-provider', 'EuroSat provider service'],
+    ['all-services', 'Every service on the post'],
+  ],
+  separate: [
+    ['same-cause', 'Caused by the repaired supply fault'],
+    ['unknown', 'Not known'],
+  ],
+  'does-not-clear': [
+    ['clears', 'A local restart clears a provider outage'],
+    ['unknown', 'Not known'],
+  ],
+  limited: [
+    ['full', 'Full: both services available'],
+    ['none', 'None: no service available'],
+  ],
+};
+const choice = (id: string, label: string) => pick({ [id]: label, ...Object.fromEntries(DECOYS[id] ?? []) }, [id]);
+
+// The prior-incident answer follows what the S15 handover recorded (suspected interference or an unexplained outage);
+// with no S15 record the authored fallback says suspected interference. Both answers are always visible.
+const priorIncident = () => ({
+  ...pick(
+    {
+      'source-not-established': 'Suspected interference, source not established',
+      'outage-cause-not-established': 'Unexplained outage, cause not established',
+      ...Object.fromEntries(DECOYS['source-not-established'] ?? []),
+    },
+    ['source-not-established']
+  ),
+  incoming: {
+    id: S15_INCIDENT_LINK.spec.id,
+    key: 'classification',
+    map: { 'suspected-interference': 'source-not-established', 'unexplained-outage': 'outage-cause-not-established' },
+  },
+});
+
+const SUPPLY_SITE = ['ps:ac-out'];
+const SEATING: EvidenceGroup = {
+  ...checked('seating', 'a hands-on check of the supply connection', SUPPLY_SITE),
+  orMatch: [{ kind: 'observation', serviceId: SKYLINK_SERVICE, layer: 'power', afterEvent: S16_EVENT_LOCAL }],
+};
+const SUPPLY_REPAIR = repaired('repair', 'an effective repair at the supply connection', SUPPLY_SITE);
+const OUT_PROVIDER = reading('provider', 'a provider reading taken after the outage', SKYLINK_SERVICE, 'provider', undefined, { afterEvent: S16_EVENT_OUTAGE });
+const OUT_APP = reading('app', 'an application reading taken after the outage', SKYLINK_SERVICE, 'application', undefined, { afterEvent: S16_EVENT_OUTAGE });
+const OUT_LOCAL: EvidenceGroup = {
+  ...reading('local', 'a local network reading taken after the outage', SKYLINK_SERVICE, 'local', undefined, { afterEvent: S16_EVENT_OUTAGE }),
+  orMatch: [{ kind: 'observation', serviceId: SKYLINK_SERVICE, layer: 'power', afterEvent: S16_EVENT_OUTAGE }],
+};
 
 const briefForm: HandoverFormConfig = {
   id: 'brief',
@@ -69,7 +150,7 @@ const briefForm: HandoverFormConfig = {
     { key: 'task', label: 'Mission task to demonstrate', required: true, rule: choice(FIRST, 'First forward task over SkyLink') },
     { key: 'reserve', label: 'Battery reserve to keep', required: true, rule: choice('reserve-200', 'Keep 200 Wh of stored energy') },
     { key: 'equipment', label: 'Equipment available', required: true, rule: choice('both-terminals', 'SkyLink and EuroSat terminals, router, workstation, battery and generator') },
-    { key: 'prior', label: 'Prior EuroSat incident', required: true, rule: choice('source-not-established', 'Suspected interference, source not established') },
+    { key: 'prior', label: 'Prior EuroSat incident', required: true, rule: priorIncident() },
     { key: 'unknowns', label: 'Claims that need current evidence', required: true, rule: choice('service-and-power', 'Service state and power state this shift') },
   ],
 };
@@ -93,8 +174,8 @@ const localForm: HandoverFormConfig = {
   title: 'First service change',
   documentSection: 'Local incident',
   fields: [
-    { key: 'seating', label: 'Readings that located the cause', required: true, rule: { cites: 'observation', min: 1 } },
-    { key: 'action', label: 'Intervention applied', required: true, rule: { cites: 'action', min: 1 } },
+    { key: 'seating', label: 'Readings that located the cause', required: true, rule: { evidence: [SEATING] } },
+    { key: 'action', label: 'Intervention applied', required: true, rule: { evidence: [SUPPLY_REPAIR] } },
     { key: 'verified', label: 'First task run after the repair', required: true, rule: { workload: { cardId: FIRST, is: ['supported'], serviceId: SKY } } },
     { key: 'application', label: 'SkyLink application now', required: true, rule: { matchesCurrent: { serviceId: SKY, layer: 'application' } } },
     { key: 'energy', label: 'Battery energy now (Wh)', required: true, rule: { powerWithin: { metric: 'socWh', tol: 40, partId: 'power-station' } } },
@@ -109,12 +190,13 @@ const externalForm: HandoverFormConfig = {
     { key: 'scope', label: 'What the notice covers', required: true, rule: choice('skylink-provider', 'SkyLink provider service for the post account') },
     { key: 'local', label: 'Relation to the repaired supply fault', required: true, rule: choice('separate', 'Separate from the repaired supply fault') },
     { key: 'provider', label: 'SkyLink provider status now', required: true, rule: { matchesCurrent: { serviceId: SKY, layer: 'provider' } } },
-    { key: 'evidence', label: 'Readings behind it', required: true, rule: { cites: 'observation', min: 3 } },
+    { key: 'evidence', label: 'Readings behind it', required: true, rule: { evidence: [OUT_PROVIDER, OUT_APP, OUT_LOCAL] } },
     { key: 'fix', label: 'Local restart', required: true, rule: choice('does-not-clear', 'A local restart does not clear a provider outage') },
   ],
 };
 
 const outcomeForm: HandoverFormConfig = {
+  certification: { events: [S16_EVENT_LOCAL, S16_EVENT_NOTICE, S16_EVENT_OUTAGE] },
   id: 'outcome',
   title: 'Shift outcome',
   documentSection: 'Outcome',
@@ -123,22 +205,24 @@ const outcomeForm: HandoverFormConfig = {
     { key: 'dish', label: 'SkyLink dish mode', required: true, rule: { modeIs: { partId: 'skylink-dish' } } },
     { key: 'verified', label: 'Transfer task run on EuroSat', required: true, rule: { workload: { cardId: TRANSFER, is: ['supported'], serviceId: EUS } } },
     { key: 'unavailable', label: 'Mission task not available', required: true, rule: choice(FIRST, 'First forward task over SkyLink') },
+    { key: 'rate', label: 'Average battery draw over the run (W)', required: true, rule: { runRate: { cardId: TRANSFER, serviceId: EUS } } },
     { key: 'energy', label: 'Battery energy now (Wh)', required: true, rule: { powerWithin: { metric: 'socWh', tol: 40, partId: 'power-station' } } },
   ],
 };
 
 const finalForm: HandoverFormConfig = {
+  certification: { events: [S16_EVENT_LOCAL, S16_EVENT_NOTICE, S16_EVENT_OUTAGE] },
   id: 'final',
   title: 'Independent handover',
   documentSection: 'Final handover',
   fields: [
-    { key: 'localEvidence', label: 'Local fault readings', required: true, rule: { cites: 'observation', min: 1 } },
-    { key: 'localAction', label: 'Local fault intervention', required: true, rule: { cites: 'action', min: 1 } },
-    { key: 'externalEvidence', label: 'External event readings', required: true, rule: { cites: 'observation', min: 3 } },
+    { key: 'localEvidence', label: 'Local fault readings', required: true, rule: { evidence: [SEATING] } },
+    { key: 'localAction', label: 'Local fault intervention', required: true, rule: { evidence: [SUPPLY_REPAIR] } },
+    { key: 'externalEvidence', label: 'External event readings', required: true, rule: { evidence: [OUT_PROVIDER, OUT_APP, OUT_LOCAL] } },
     { key: 'incidents', label: 'The two incidents', required: true, rule: choice('separate', 'Two separate incidents with different causes') },
     { key: 'service', label: 'Service available', required: true, rule: choice('limited', 'Limited: transfer over EuroSat only') },
     { key: 'unavailable', label: 'Task not available', required: true, rule: choice(FIRST, 'First forward task over SkyLink') },
-    { key: 'prior', label: 'Prior EuroSat incident', required: true, rule: choice('source-not-established', 'Suspected interference, source not established') },
+    { key: 'prior', label: 'Prior EuroSat incident', required: true, rule: priorIncident() },
     { key: 'energy', label: 'Battery energy now (Wh)', required: true, rule: { powerWithin: { metric: 'socWh', tol: 40, partId: 'power-station' } } },
   ],
 };
@@ -146,8 +230,10 @@ const finalForm: HandoverFormConfig = {
 const settings = createFrontlineSettings(16);
 if (settings.physicalPlant) {
   const plant = settings.physicalPlant;
-  applyForwardField(plant, [FORWARD_FIRST_CARD, S11_TRANSFER_CARD], [briefForm, baselineForm, localForm, externalForm, outcomeForm, finalForm]);
+  plant.incoming = [S15_INCIDENT_LINK.spec];
+  applyForwardField(plant, [FORWARD_FIRST_CARD, { ...S11_TRANSFER_CARD, windowS: S16_FINAL_WINDOW_S }], [briefForm, baselineForm, localForm, externalForm, outcomeForm, finalForm]);
   applyForwardEurosat(plant, { modemRunning: true });
+  recordRunPower(plant);
   // Both terminals become switchable units; the battery and reserve below replace the S14 numbers
   applyForwardDualReadiness(plant);
   // SkyLink is unrestricted at the start of the shift (the S10 restriction ended in S14)
@@ -160,7 +246,7 @@ if (settings.physicalPlant) {
   if (battery) {
     battery.socWh = S16_START_WH;
   }
-  plant.power = { reserveWh: S16_RESERVE_WH, planningHorizonS: 3600, basis: 'battery-only' };
+  plant.power = { reserveWh: S16_RESERVE_WH, planningHorizonS: S16_SHIFT_END_S, shiftEndS: S16_SHIFT_END_S, basis: 'battery-only' };
   // A blind reseat clears the fault without evidence, so the objective cannot lock on missing evidence: the debrief scores it
   plant.causeOptions = [
     { id: 'connector-seating', label: 'A connector is not fully seated' },
@@ -261,8 +347,8 @@ export const frontlineScenario16Data: FrontlineScenarioData = {
       prerequisiteObjectiveIds: ['s16-review-handover'],
       points: 15,
       conditions: [
-        forecastMeetsReserve({}, 'Forecast keeps the 200 Wh reserve in the chosen arrangement'),
-        anyServiceSupports(FIRST, [SKY], 'A configured service supports the first task'),
+        held(forecastMeetsReserve({}, 'Forecast keeps the 200 Wh reserve in the chosen arrangement')),
+        held(anyServiceSupports(FIRST, [SKY], 'A configured service supports the first task')),
         samplesCurrent(SKY, ['local', 'application'], 'Current local and application readings taken'),
         workloadVerified({ card: FIRST, service: SKY }, 'First task verified on SkyLink'),
         handoverValid('baseline', 'Baseline recorded'),
@@ -317,12 +403,14 @@ export const frontlineScenario16Data: FrontlineScenarioData = {
       prerequisiteObjectiveIds: ['s16-assess-external-change'],
       points: 15,
       conditions: [
-        modeIs('vsat-modem', 'run', 'EuroSat modem running'),
-        forecastMeetsReserve({}, 'Forecast keeps the 200 Wh reserve with the final arrangement'),
-        workloadVerified({ card: TRANSFER, service: EUS, afterEvent: S16_EVENT_OUTAGE }, 'Transfer task verified on EuroSat after the outage began'),
+        held(modeIs('vsat-modem', 'run', 'EuroSat modem running')),
+        held(forecastMeetsReserve({}, 'Forecast keeps the 200 Wh reserve with the final arrangement')),
+        serviceReserveVerified(
+          { card: TRANSFER, service: EUS, afterEvent: S16_EVENT_OUTAGE, windowS: S16_FINAL_WINDOW_S },
+          'Transfer task verified on EuroSat after the outage began with the reserve held through the same window'
+        ),
         layerObserved(EUS, 'application', { status: 'up' }, 'EuroSat application observed up'),
-        reserveHeld({ windowS: S16_FINAL_WINDOW_S }, 'Reserve held through the final window'),
-        handoverValid('outcome', 'Final outcome recorded with the unavailable task'),
+        handoverCurrent('outcome', 'Final outcome recorded with the unavailable task'),
       ],
     },
     {
@@ -333,7 +421,7 @@ export const frontlineScenario16Data: FrontlineScenarioData = {
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s16-verify-final-service'],
       points: 15,
-      conditions: [handoverValid('final', 'Independent handover accepted')],
+      conditions: [handoverCurrent('final', 'Independent handover accepted')],
     },
   ],
   dialogClips: {

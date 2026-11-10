@@ -16,3 +16,7 @@
 .fhf .fhf-note.fhf-bad { color: var(--mc-status-caution, #eab308); }
 .fhf .fhf-actions { margin-top: 0.5rem; display: flex; gap: 0.4rem; }
 .fhf .fhf-filed { margin-top: 0.3rem; color: var(--mc-text-muted); }
+.fhf .fhf-incoming { border-left: 3px solid var(--mc-text-muted); padding: 0.25rem 0.5rem; margin-bottom: 0.4rem; color: var(--mc-text-primary); }
+.fhf .fhf-incoming-title { font-weight: 600; }
+.fhf .fhf-incoming-from, .fhf .fhf-incoming-note { color: var(--mc-text-muted); }
+.fhf .fhf-incoming-row { display: flex; gap: 0.4rem; }

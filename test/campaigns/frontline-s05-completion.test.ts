@@ -47,11 +47,11 @@ const lastRunId = (svc: PhysicalPlantService, status?: string): string =>
 
 function fileHypothesis(svc: PhysicalPlantService, cause: string, cited: string[]): void {
   svc.evidence?.addHypothesis({
-    subject: 'local-service',
+    subject: 'skylink',
     source: {},
     facts: [],
     text: `Suspect ${cause}`,
-    claim: { scope: 'segment', targetId: 'local-service', cause },
+    claim: { scope: 'segment', targetId: 'skylink', cause },
     confidence: 'medium',
     citedEntryIds: cited,
   });

@@ -3,6 +3,7 @@ import type { HandoverFormConfig } from '@app/physical/field-records';
 import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import { applyCampField, OLA_CHECK_CARD, SKYLINK_SERVICE } from './camp-field-config';
 import { eventFired, handoverValid, recoveryObserved, sampleAfterEvent, workloadVerified } from './frontline-conditions';
+import { pick, reading, repaired } from './report-choices';
 import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-support';
 
 /**
@@ -19,19 +20,49 @@ const faultId = 'c6-s4-terminal-obstruction';
 const RECOVERY_EVENT = 's4-recovery-start';
 const OBSTRUCTION_EVENT = 's4-obstruction';
 
+/** An effective removal of the net is logged. Whether it followed an observation is the debrief's business (unsupported fixes cost points). */
+function netRemoved(): boolean {
+  const log = PhysicalPlantService.plantOrNull()?.getLog() ?? [];
+
+  return log.some((entry) => entry.cleared.includes(faultId) && entry.effective === true);
+}
+
 const environmentForm: HandoverFormConfig = {
   id: 'environment-report',
   title: 'Environment report',
   documentSection: 'Environment',
   fields: [
-    { key: 'recovery', label: 'Normal recovery you waited through', required: true, rule: { cites: 'observation', min: 2 } },
+    {
+      key: 'recovery',
+      label: 'Normal recovery you waited through',
+      required: true,
+      rule: {
+        evidence: [
+          reading('down', 'a SkyLink registration reading, down, taken after the restart', SKYLINK_SERVICE, 'registration', ['down'], { afterEvent: RECOVERY_EVENT }),
+          reading('up', 'a SkyLink registration reading, up, taken after the restart', SKYLINK_SERVICE, 'registration', ['up'], { afterEvent: RECOVERY_EVENT }),
+        ],
+      },
+    },
     {
       key: 'condition',
       label: 'Condition found at the terminal',
       required: true,
-      rule: { choice: ['obstruction'], labels: { obstruction: 'Something blocking the terminal view of the sky' } },
+      rule: pick(
+        {
+          obstruction: 'Something blocking the terminal view of the sky',
+          'power-loss': 'The terminal losing power',
+          'cable-fault': 'A fault in the cable to the terminal',
+          'slow-restart': 'A restart that was just slow to finish',
+        },
+        ['obstruction']
+      ),
     },
-    { key: 'correction', label: 'Correction you made', required: true, rule: { cites: 'action', min: 1 } },
+    {
+      key: 'correction',
+      label: 'Correction you made',
+      required: true,
+      rule: { evidence: [repaired('fix', 'a correction that changed the terminal surroundings', ['skylink-dish'])] },
+    },
     { key: 'verified', label: 'Fresh application check after the correction', required: true, rule: { workload: { cardId: OLA_CHECK_CARD.id, is: ['supported'] } } },
   ],
 };
@@ -148,7 +179,8 @@ export const frontlineScenario4Data: FrontlineScenarioData = {
           id: 's4-observed-environment-evidence',
           type: 'custom',
           description: 'Environmental fault evidence observed',
-          params: { evaluator: () => PhysicalPlantService.plantOrNull()?.isFactRevealed('skylink-dish', 'net') === true },
+          // Recovery route: a net removed without looking leaves nothing to inspect, so the effective removal also satisfies this (the debrief charges the unsupported fix)
+          params: { evaluator: () => PhysicalPlantService.plantOrNull()?.isFactRevealed('skylink-dish', 'net') === true || netRemoved() },
           mustMaintain: false,
         },
       ],
@@ -164,14 +196,8 @@ export const frontlineScenario4Data: FrontlineScenarioData = {
         {
           id: 's4-evidence-before-correction',
           type: 'custom',
-          description: 'Correction followed the environmental observation',
-          params: {
-            evaluator: () => {
-              const log = PhysicalPlantService.plantOrNull()?.getLog() ?? [];
-              const observed = log.findIndex((entry) => entry.revealed.includes(faultId));
-              return observed >= 0 && log.some((entry, index) => index > observed && entry.cleared.includes(faultId) && entry.effective === true);
-            },
-          },
+          description: 'Correction made (after the environmental observation, or blind and charged in the debrief)',
+          params: { evaluator: netRemoved },
           mustMaintain: false,
         },
       ],

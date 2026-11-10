@@ -2,8 +2,9 @@ import { Character, Emotion } from '@app/modal/character-enum';
 import type { HandoverFormConfig } from '@app/physical/field-records';
 import { SKYLINK_SERVICE } from './camp-field-config';
 import { applyForwardField, FORWARD_ENDPOINT, FORWARD_FIRST_CARD, FORWARD_PROVIDER, FORWARD_SKYLINK_ACCOUNT, FORWARD_SKYLINK_UNIT } from './forward-field-config';
-import { diagramSelection, eventFired, forecastMeetsReserve, handoverValid, recordAccepted, reserveHeld, samplesCurrent, workloadVerified } from './frontline-conditions';
-import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-support';
+import { diagramSelection, eventFired, forecastMeetsReserve, handoverCurrent, handoverValid, recordAccepted, samplesCurrent, serviceReserveVerified } from './frontline-conditions';
+import { pick, reading } from './report-choices';
+import { createFrontlineSettings, type FrontlineScenarioData, recordRunPower } from './scenario-support';
 
 /**
  * C6 S9: first forward-site commissioning, in the fictional Rautala district.
@@ -22,14 +23,36 @@ const deliveryForm: HandoverFormConfig = {
   title: 'Delivery reconciliation',
   documentSection: 'Delivery',
   fields: [
-    { key: 'serial', label: 'Terminal serial against the handover', required: true, rule: { choice: ['matches'], labels: { matches: 'Matches the handover' } } },
-    { key: 'account', label: 'Service account assignment', required: true, rule: { choice: ['matches'], labels: { matches: 'Matches the handover' } } },
-    { key: 'stock', label: 'Spare stock against the list', required: true, rule: { choice: ['matches-list'], labels: { 'matches-list': 'Matches the stock list' } } },
+    {
+      key: 'serial',
+      label: 'Terminal serial against the handover',
+      required: true,
+      rule: pick({ matches: 'Matches the handover', differs: 'Differs from the handover', 'not-checked': 'Not checked' }, ['matches']),
+    },
+    {
+      key: 'account',
+      label: 'Service account assignment',
+      required: true,
+      rule: pick({ matches: 'Matches the handover', differs: 'Differs from the handover', 'not-checked': 'Not checked' }, ['matches']),
+    },
+    {
+      key: 'stock',
+      label: 'Spare stock against the list',
+      required: true,
+      rule: pick({ 'matches-list': 'Matches the stock list', 'short-on-list': 'Short of the stock list', 'not-checked': 'Not checked' }, ['matches-list']),
+    },
     {
       key: 'camp',
       label: 'What the camp checks establish here',
       required: true,
-      rule: { choice: ['not-certified'], labels: { 'not-certified': 'Nothing yet, because transport voids them' } },
+      rule: pick(
+        {
+          'not-certified': 'Nothing yet, because transport voids them',
+          'still-valid': 'The camp checks still stand after transport',
+          'partly-valid': 'Only the power checks still stand',
+        },
+        ['not-certified']
+      ),
     },
   ],
 };
@@ -63,32 +86,53 @@ const readinessForm: HandoverFormConfig = {
   title: 'First task readiness',
   documentSection: 'Readiness',
   fields: [
-    { key: 'task', label: 'Task assessed', required: true, rule: { choice: [CARD], labels: { [CARD]: 'First forward task' } } },
+    { key: 'task', label: 'Task assessed', required: true, rule: pick({ [CARD]: 'First forward task', 'other-task': 'Another forward task' }, [CARD]) },
     { key: 'registration', label: 'Terminal registration now', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'registration' } } },
     { key: 'account', label: 'Account authorization now', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'account' } } },
     { key: 'application', label: 'Remote application now', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'application' } } },
-    { key: 'basis', label: 'Observations behind it', required: true, rule: { cites: 'observation', min: 2 } },
+    {
+      key: 'basis',
+      label: 'Observations behind it',
+      required: true,
+      rule: {
+        evidence: [
+          reading('registration', 'a SkyLink registration reading, up', SKYLINK_SERVICE, 'registration', ['up']),
+          reading('account', 'a SkyLink account reading, up', SKYLINK_SERVICE, 'account', ['up']),
+          reading('application', 'a SkyLink application reading, up', SKYLINK_SERVICE, 'application', ['up']),
+        ],
+      },
+    },
     {
       key: 'status',
       label: 'Readiness for the task',
       required: true,
-      rule: { choice: ['ready'], labels: { ready: 'Ready, because current evidence meets every requirement' } },
+      rule: pick(
+        {
+          ready: 'Ready, because current evidence meets every requirement',
+          'ready-on-camp': 'Ready, because the camp checks passed before transport',
+          'not-ready': 'Not ready, because no task has been run yet',
+          'ready-on-power': 'Ready, because the battery is full',
+        },
+        ['ready']
+      ),
     },
   ],
 };
 
 const shiftForm: HandoverFormConfig = {
+  certification: {},
   id: 'shift',
   title: 'Initial shift handover',
   documentSection: 'Initial handover',
   fields: [
     { key: 'verified', label: 'Task window you ran', required: true, rule: { workload: { cardId: CARD, is: ['supported'], serviceId: SKYLINK_SERVICE } } },
+    { key: 'rate', label: 'Average battery draw over the run (W)', required: true, rule: { runRate: { cardId: CARD, serviceId: SKYLINK_SERVICE } } },
     { key: 'energy', label: 'Battery energy left (Wh)', required: true, rule: { powerWithin: { metric: 'socWh', tol: 40 } } },
     {
       key: 'limitation',
       label: 'Limit left for the next shift',
       required: true,
-      rule: { choice: ['single-window'], labels: { 'single-window': 'Checked over one 60 second window only' } },
+      rule: pick({ 'single-window': 'Checked over one 60 second window only', 'long-term': 'Proven over a long period', 'no-limit': 'No limitation' }, ['single-window']),
     },
   ],
 };
@@ -96,6 +140,7 @@ const shiftForm: HandoverFormConfig = {
 const scenarioSettings = createFrontlineSettings(9);
 if (scenarioSettings.physicalPlant) {
   applyForwardField(scenarioSettings.physicalPlant, [FORWARD_FIRST_CARD], [deliveryForm, baselineForm, freshnessForm, readinessForm, shiftForm], { highlightShared: false });
+  recordRunPower(scenarioSettings.physicalPlant);
   scenarioSettings.physicalPlant.equipment = {
     units: [
       {
@@ -239,9 +284,11 @@ export const frontlineScenario9Data: FrontlineScenarioData = {
       prerequisiteObjectiveIds: ['s09-confirm-readiness'],
       points: 20,
       conditions: [
-        workloadVerified({ card: CARD, service: SKYLINK_SERVICE, afterHandover: 'readiness' }, 'Task window run after the readiness record'),
-        reserveHeld({ windowS: 60 }, 'Battery reserve held through the window'),
-        handoverValid('shift', 'Initial shift handover filed'),
+        serviceReserveVerified(
+          { card: CARD, service: SKYLINK_SERVICE, afterHandover: 'readiness', windowS: 60 },
+          'Task window run after the readiness record with the battery reserve held through the same window'
+        ),
+        handoverCurrent('shift', 'Initial shift handover filed'),
       ],
     },
   ],

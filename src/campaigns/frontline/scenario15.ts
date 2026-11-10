@@ -1,14 +1,26 @@
 import { Character, Emotion } from '@app/modal/character-enum';
+import type { EvidenceGroup, HypothesisSpec } from '@app/physical/evidence-predicates';
 import type { HandoverFormConfig } from '@app/physical/field-records';
 import type { PlantEventConfig } from '@app/physical/physical-plant-types';
 import { SKYLINK_SERVICE } from './camp-field-config';
-import { applyForwardEurosat, applyForwardField, FORWARD_EUROSAT_SERVICE, FORWARD_EUROSAT_UNIT, FORWARD_FIRST_CARD, FORWARD_SKYLINK_ACCOUNT } from './forward-field-config';
+import { C5_REFERRAL_ID } from './continuity-fallbacks';
+import {
+  applyForwardEurosat,
+  applyForwardField,
+  DUAL_CORRECT_DRAIN_W,
+  FORWARD_EUROSAT_SERVICE,
+  FORWARD_EUROSAT_UNIT,
+  FORWARD_FIRST_CARD,
+  FORWARD_SKYLINK_ACCOUNT,
+  reserveStartWh,
+} from './forward-field-config';
 import {
   correctionApproved,
   correctionFiled,
   eventFired,
   forecastMeetsReserve,
   handoverValid,
+  held,
   hypothesisFiled,
   interruptionPattern,
   layerObserved,
@@ -17,6 +29,7 @@ import {
   siteChecked,
   workloadVerified,
 } from './frontline-conditions';
+import { pick } from './report-choices';
 import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-support';
 import { S11_TRANSFER_CARD } from './scenario11';
 
@@ -24,9 +37,10 @@ import { S11_TRANSFER_CARD } from './scenario11';
  * Frontline Signals — Scenario 15: Report the EuroSat Incident.
  * Initial state: both terminals run on the battery at the forward post (SkyLink unrestricted, EuroSat registered). Resources
  * are reduced: 300 Wh against a 150 Wh reserve, so both terminals running misses the reserve and the modem in standby keeps it.
- * The anomaly is a run of EuroSat registration drops (the modem keeps restarting) while the local network, the power chain and
- * the SkyLink service stay up. The engine has no interference primitive, so the pattern is the only evidence: it supports
- * "suspected interference" and never a source, a location or an actor. Nothing freezes the clock; the drops are staged on
+ * The anomaly is a run of EuroSat registration drops on the radio path (an authored, seeded link impairment; the modem is
+ * not restarted and a restart does not clear it) while the local network, the power chain and the SkyLink service stay up.
+ * The windows are the only evidence: they support "suspected interference" or an "unexplained outage" and never a source,
+ * a location or an actor. The symptom names no cause. Nothing freezes the clock; the drops are staged on
  * objective activation, with later recurrences so a player who misses a down window gets another.
  * The incident form (id 'incident') is the record Campaign 5 may enrich from (see continuity-fallbacks.ts). Filing it is
  * optional continuity: nothing here reads the campaign store or requires a completed C6 record, and Campaign 5 is unchanged.
@@ -38,23 +52,74 @@ export const S15_EVENT_REPEAT_B = 's15-eurosat-repeat-b';
 export const S15_EVENT_REPEAT_C = 's15-eurosat-repeat-c';
 export const S15_EVENT_ACK = 's15-referral-acknowledged';
 export const S15_REFERRAL = 's15-investigation-referral';
-export const S15_START_WH = 300;
+export const S15_IMPAIRMENT = 's15-eurosat-link-loss';
+/** Each armed episode keeps the loss windows recurring this long; a repeat event re-arms it without moving the windows */
+export const S15_EPISODE_S = 1200;
+
 export const S15_RESERVE_WH = 150;
+/**
+ * End of shift (scenario seconds): the battery-reserve forecast looks at this fixed point, not a rolling window. No authored shift
+ * length exists, so this is a named constant; Ted wants a tunable knob, edit this one value to retune (start charge derives from it).
+ */
+export const S15_SHIFT_END_S = 7200;
+/** Start charge derived from the shift end: reserve + correct-arrangement drain to shift end + 10 min of both terminals + 3 Wh margin */
+export const S15_START_WH = reserveStartWh(S15_RESERVE_WH, DUAL_CORRECT_DRAIN_W, S15_SHIFT_END_S);
 
 const EUS = FORWARD_EUROSAT_SERVICE;
 const TRANSFER = S11_TRANSFER_CARD.id;
-const choice = (id: string, label: string) => ({ choice: [id], labels: { [id]: label } });
+/** What the repeated drops must show, as typed predicates: the sample itself, not how many were ticked */
+const LOCAL_GOOD: EvidenceGroup = {
+  id: 'local-good',
+  label: 'a reading of the local network, up, taken after the first drop',
+  match: { kind: 'observation', serviceId: EUS, layer: 'local', valueIn: ['up'], afterEvent: S15_EVENT_ONSET },
+};
+const REG_DOWN: EvidenceGroup = {
+  id: 'reg-down',
+  label: 'a EuroSat registration reading, down, taken after the first drop',
+  match: { kind: 'observation', serviceId: EUS, layer: 'registration', valueIn: ['down'], causeIn: ['link-lost'], afterEvent: S15_EVENT_ONSET },
+};
+const REG_RECOVERED: EvidenceGroup = {
+  id: 'reg-up',
+  label: 'a EuroSat registration reading, up, taken after the first drop',
+  match: { kind: 'observation', serviceId: EUS, layer: 'registration', valueIn: ['up'], afterEvent: S15_EVENT_ONSET },
+};
+const ONSET_MARK: EvidenceGroup = { id: 'onset', label: 'the first-drop event entry', match: { kind: 'result', eventId: S15_EVENT_ONSET } };
+/** Stronger symptoms: the registration was down more than once, so one reading is not enough */
+const REG_DOWN_REPEATED: EvidenceGroup = { ...REG_DOWN, id: 'reg-down-repeated', label: 'two separate EuroSat registration readings, down, after the first drop', min: 2 };
+const PATTERN: EvidenceGroup[] = [LOCAL_GOOD, REG_DOWN, REG_RECOVERED];
+
+const CLASSIFICATIONS = {
+  'suspected-interference': 'Suspected interference',
+  'unexplained-outage': 'Unexplained outage',
+  'terminal-fault': 'Terminal fault',
+  'provider-fault': 'Provider fault',
+};
+const CLASSIFICATION_BACKING: Record<string, EvidenceGroup[]> = {
+  'suspected-interference': [LOCAL_GOOD, REG_DOWN_REPEATED, REG_RECOVERED],
+  'unexplained-outage': [LOCAL_GOOD, REG_DOWN],
+};
+const classification = pick(CLASSIFICATIONS, ['suspected-interference', 'unexplained-outage'], CLASSIFICATION_BACKING);
+const sourceStatus = pick({ 'not-established': 'Not established', 'nearest-transmitter': 'The nearest known transmitter', 'provider-ground': "The provider's ground segment" }, [
+  'not-established',
+]);
+
+const HYPOTHESIS_OPTS: Omit<HypothesisSpec, 'causes'> = {
+  minCited: 2,
+  scopes: ['segment', 'endpoint'],
+  targets: [EUS],
+  routesByCause: { 'suspected-interference': [[LOCAL_GOOD, REG_DOWN_REPEATED, REG_RECOVERED]], 'unexplained-outage': [[LOCAL_GOOD, REG_DOWN]] },
+};
 
 const anomalyForm: HandoverFormConfig = {
   id: 'anomaly',
   title: 'Anomaly record',
   documentSection: 'Anomaly',
   fields: [
-    { key: 'service', label: 'Affected service', required: true, rule: choice('eurosat', 'EuroSat') },
-    { key: 'onset', label: 'Onset event', required: true, rule: { cites: 'result', min: 1 } },
+    { key: 'service', label: 'Affected service', required: true, rule: pick({ eurosat: 'EuroSat', skylink: 'SkyLink', both: 'Both connections' }, ['eurosat']) },
+    { key: 'onset', label: 'Onset event', required: true, rule: { evidence: [ONSET_MARK] } },
     { key: 'local', label: 'Local network at the same time', required: true, rule: { matchesCurrent: { serviceId: EUS, layer: 'local' } } },
     { key: 'skylink', label: 'SkyLink application now', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'application' } } },
-    { key: 'symptoms', label: 'Readings that show the symptoms', required: true, rule: { cites: 'observation', min: 1 } },
+    { key: 'symptoms', label: 'Readings that show the symptoms', required: true, rule: { evidence: [REG_DOWN] } },
   ],
 };
 
@@ -63,10 +128,27 @@ const evidenceForm: HandoverFormConfig = {
   title: 'Evidence comparison',
   documentSection: 'Evidence',
   fields: [
-    { key: 'pattern', label: 'Readings across the interruptions', required: true, rule: { cites: 'observation', min: 3 } },
+    { key: 'pattern', label: 'Readings across the interruptions', required: true, rule: { evidence: PATTERN } },
     { key: 'provider', label: 'EuroSat provider status now', required: true, rule: { matchesCurrent: { serviceId: EUS, layer: 'provider' } } },
-    { key: 'local', label: 'Local equipment explanation', required: true, rule: choice('ruled-out', 'Checked and not supported by the readings') },
-    { key: 'limits', label: 'What the quiet provider status shows', required: true, rule: choice('not-proof', 'A missing notice does not prove interference') },
+    {
+      key: 'local',
+      label: 'Local equipment explanation',
+      required: true,
+      rule: pick({ 'ruled-out': 'Checked and not supported by the readings', 'not-checked': 'Not checked yet', 'confirmed-fault': 'A local fault was found' }, ['ruled-out']),
+    },
+    {
+      key: 'limits',
+      label: 'What the quiet provider status shows',
+      required: true,
+      rule: pick(
+        {
+          'not-proof': 'A missing notice does not prove interference',
+          'proves-interference': 'A quiet provider status shows the fault is not on the provider side, so it is interference',
+          'proves-fault': 'A quiet provider status shows the terminal is at fault',
+        },
+        ['not-proof']
+      ),
+    },
   ],
 };
 
@@ -75,10 +157,18 @@ const assessmentForm: HandoverFormConfig = {
   title: 'Incident assessment',
   documentSection: 'Assessment',
   fields: [
-    { key: 'classification', label: 'Classification', required: true, rule: choice('suspected-interference', 'Suspected interference') },
-    { key: 'confidence', label: 'Confidence', required: true, rule: choice('moderate', 'Moderate: the pattern fits, nothing measured the cause') },
-    { key: 'source', label: 'Source', required: true, rule: choice('not-established', 'Not established') },
-    { key: 'basis', label: 'Observations behind it', required: true, rule: { cites: 'observation', min: 3 } },
+    { key: 'classification', label: 'Classification', required: true, rule: classification },
+    {
+      key: 'confidence',
+      label: 'Confidence',
+      required: true,
+      rule: pick({ low: 'Low: too little to compare', moderate: 'Moderate: the pattern fits, nothing measured the cause', high: 'High: the cause is established' }, [
+        'low',
+        'moderate',
+      ]),
+    },
+    { key: 'source', label: 'Source', required: true, rule: sourceStatus },
+    { key: 'basis', label: 'Observations behind it', required: true, rule: { evidence: [LOCAL_GOOD, REG_DOWN] } },
   ],
 };
 
@@ -87,10 +177,22 @@ const packageForm: HandoverFormConfig = {
   title: 'Incident package',
   documentSection: 'Package',
   fields: [
-    { key: 'observations', label: 'Original observations', required: true, rule: { cites: 'observation', min: 3 } },
-    { key: 'events', label: 'Staged events', required: true, rule: { cites: 'result', min: 1 } },
+    { key: 'observations', label: 'Original observations', required: true, rule: { evidence: PATTERN } },
+    { key: 'events', label: 'Staged events', required: true, rule: { evidence: [ONSET_MARK] } },
     { key: 'terminal', label: 'EuroSat modem configuration', required: true, rule: { modeIs: { partId: 'vsat-modem' } } },
-    { key: 'gap', label: 'Missing observation', required: true, rule: choice('no-source-measurement', 'No measurement of the source or where it is') },
+    {
+      key: 'gap',
+      label: 'Missing observation',
+      required: true,
+      rule: pick(
+        {
+          'no-source-measurement': 'No measurement of the source or where it is',
+          'no-times': 'No times for the interruptions',
+          'no-config': 'No record of the modem configuration',
+        },
+        ['no-source-measurement']
+      ),
+    },
   ],
 };
 
@@ -102,7 +204,12 @@ const alternativeForm: HandoverFormConfig = {
     { key: 'verified', label: 'Task run on SkyLink', required: true, rule: { workload: { cardId: FORWARD_FIRST_CARD.id, is: ['supported'], serviceId: SKYLINK_SERVICE } } },
     { key: 'modem', label: 'EuroSat modem mode', required: true, rule: { modeIs: { partId: 'vsat-modem' } } },
     { key: 'energy', label: 'Battery energy now (Wh)', required: true, rule: { powerWithin: { metric: 'socWh', tol: 40, partId: 'power-station' } } },
-    { key: 'unavailable', label: 'Work that is not available', required: true, rule: choice(TRANSFER, 'Transfer task over EuroSat') },
+    {
+      key: 'unavailable',
+      label: 'Work that is not available',
+      required: true,
+      rule: pick({ [TRANSFER]: 'Transfer task over EuroSat', [FORWARD_FIRST_CARD.id]: 'First task over SkyLink' }, [TRANSFER]),
+    },
   ],
 };
 
@@ -111,12 +218,27 @@ const incidentForm: HandoverFormConfig = {
   title: 'Investigation handover',
   documentSection: 'Incident',
   fields: [
-    { key: 'classification', label: 'Classification', required: true, rule: choice('suspected-interference', 'Suspected interference') },
-    { key: 'source', label: 'Source', required: true, rule: choice('not-established', 'Not established') },
+    {
+      key: 'classification',
+      label: 'Classification',
+      required: true,
+      rule: { ...classification, sameAs: { formId: 'assessment', key: 'classification', label: 'assessment' } },
+    },
+    { key: 'source', label: 'Source', required: true, rule: sourceStatus },
     { key: 'available', label: 'Service still available', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'application' } } },
-    { key: 'unavailable', label: 'Work still unavailable', required: true, rule: choice(TRANSFER, 'Transfer task over EuroSat') },
-    { key: 'open', label: 'Questions this post cannot answer', required: true, rule: choice('source-and-cause', 'Where it comes from and what causes it') },
-    { key: 'evidence', label: 'Readings in the package', required: true, rule: { cites: 'observation', min: 3 } },
+    {
+      key: 'unavailable',
+      label: 'Work still unavailable',
+      required: true,
+      rule: pick({ [TRANSFER]: 'Transfer task over EuroSat', [FORWARD_FIRST_CARD.id]: 'First task over SkyLink' }, [TRANSFER]),
+    },
+    {
+      key: 'open',
+      label: 'Questions this post cannot answer',
+      required: true,
+      rule: pick({ 'source-and-cause': 'Where it comes from and what causes it', 'which-terminal': 'Which terminal was affected' }, ['source-and-cause']),
+    },
+    { key: 'evidence', label: 'Readings in the package', required: true, rule: { evidence: PATTERN } },
   ],
 };
 
@@ -125,15 +247,21 @@ const drop = (id: string, anchor: string, offsetS: number, requiresFired?: strin
   startAfterObjectiveId: anchor,
   offsetS,
   ...(requiresFired ? { requiresFired } : {}),
-  actions: [{ kind: 'reboot-part', partId: 'vsat-modem' }],
-  logLine: 'The EuroSat modem loses registration; the local network and SkyLink are unchanged.',
+  actions: [{ kind: 'link-impairment', impairmentId: S15_IMPAIRMENT, active: true, durationS: S15_EPISODE_S }],
+  logLine: 'EuroSat registration is lost. The local network and SkyLink show no change.',
 });
 
 const settings = createFrontlineSettings(15);
 if (settings.physicalPlant) {
   const plant = settings.physicalPlant;
   applyForwardField(plant, [FORWARD_FIRST_CARD, S11_TRANSFER_CARD], [anomalyForm, evidenceForm, assessmentForm, packageForm, alternativeForm, incidentForm]);
+  // Accepting the incident also files the optional Campaign 5 referral (built from the typed answers, never a source)
+  plant.referrals = [{ formId: 'incident', referralId: C5_REFERRAL_ID }];
   applyForwardEurosat(plant, { modemRunning: true });
+  // External loss of the EuroSat path: seeded windows of about 35 to 40 s every 100 to 120 s, none of them tied to the modem
+  if (plant.service) {
+    plant.service.impairments = [{ id: S15_IMPAIRMENT, serviceId: EUS, seed: 1505, periodS: 100, downMinS: 35, downMaxS: 40, jitterS: 20 }];
+  }
   // The S10 restriction is over by S15; the reduced resources are the battery and its reserve
   const skylink = plant.service?.accounts.find((a) => a.id === FORWARD_SKYLINK_ACCOUNT);
   if (skylink) {
@@ -144,7 +272,8 @@ if (settings.physicalPlant) {
   if (battery) {
     battery.socWh = S15_START_WH;
   }
-  plant.power = { reserveWh: S15_RESERVE_WH, planningHorizonS: 3600, basis: 'battery-only' };
+  plant.power = { reserveWh: S15_RESERVE_WH, planningHorizonS: S15_SHIFT_END_S, shiftEndS: S15_SHIFT_END_S, basis: 'battery-only' };
+  plant.hypothesisSpecs = [{ causes: ['suspected-interference', 'unexplained-outage'], ...HYPOTHESIS_OPTS }];
   plant.causeOptions = [
     { id: 'suspected-interference', label: 'Suspected interference' },
     { id: 'unexplained-outage', label: 'Unexplained outage' },
@@ -213,9 +342,9 @@ export const frontlineScenario15Data: FrontlineScenarioData = {
       prerequisiteObjectiveIds: ['s15-record-anomaly'],
       points: 15,
       conditions: [
-        interruptionPattern(EUS, 2, 'Repeated EuroSat interruptions read, with the local network up'),
+        interruptionPattern(EUS, 2, 'Repeated EuroSat interruptions read, with the local network up', { reasons: ['link-lost'] }),
         siteChecked(['vsat-feed', 'vsat-ifl:lnb', 'vsat-ifl:modem', 'power-station'], 'Antenna feed, cables and power checked'),
-        negativeChecksKept(2, 'Checks that found nothing kept as evidence'),
+        negativeChecksKept(2, 'Checks that found nothing kept as evidence', { subjects: ['vsat-feed', 'vsat-ifl:lnb', 'vsat-ifl:modem', 'power-station'] }),
         layerObserved(EUS, 'provider', { status: 'up' }, 'EuroSat provider status read with no notice'),
         handoverValid('evidence', 'Evidence comparison recorded'),
       ],
@@ -229,7 +358,7 @@ export const frontlineScenario15Data: FrontlineScenarioData = {
       prerequisiteObjectiveIds: ['s15-review-evidence'],
       points: 15,
       conditions: [
-        hypothesisFiled(['suspected-interference'], { minCited: 3 }, 'Suspected interference filed with three observations'),
+        hypothesisFiled(['suspected-interference', 'unexplained-outage'], HYPOTHESIS_OPTS, 'Assessment filed on EuroSat with the readings that support it'),
         handoverValid('assessment', 'Classification, confidence and unresolved source recorded'),
         {
           type: 'status-check',
@@ -270,8 +399,8 @@ export const frontlineScenario15Data: FrontlineScenarioData = {
       prerequisiteObjectiveIds: ['s15-preserve-package'],
       points: 15,
       conditions: [
-        modeIs('vsat-modem', 'standby', 'EuroSat modem in standby'),
-        forecastMeetsReserve({}, 'Forecast keeps the 150 Wh reserve with the modem in standby'),
+        held(modeIs('vsat-modem', 'standby', 'EuroSat modem in standby')),
+        held(forecastMeetsReserve({}, 'Forecast keeps the 150 Wh reserve with the modem in standby')),
         workloadVerified({ card: FORWARD_FIRST_CARD.id, service: SKYLINK_SERVICE, afterEvent: S15_EVENT_ONSET }, 'First task verified on SkyLink after the onset'),
         layerObserved(SKYLINK_SERVICE, 'application', { status: 'up' }, 'SkyLink application observed up'),
         handoverValid('alternative', 'Alternative service and unavailable work recorded'),

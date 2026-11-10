@@ -6,7 +6,7 @@
  * and a fix verb returns the physical result plus an invitation to check.
  * Tokens: `{atM}` metres from the named end, `{len}` cable length, `{end}` named
  * end, `{v}` measured volts, `{nom}` expected volts, `{r}` loop resistance,
- * `{fuel}`/`{tank}` litres, `{pct}` battery percent, `{w}` load in watts,
+ * `{fuel}`/`{tank}` litres, `{pct}` battery percent, `{wh}` stored watt-hours, `{w}` load in watts,
  * `{a}` load in amps, `{boot}` boot seconds.
  * No DOM and no engine imports.
  */
@@ -55,6 +55,7 @@ export interface ObsTemplateVars {
   fuel?: string;
   tank?: string | number;
   pct?: number | string;
+  wh?: number | string;
   w?: number | string;
   a?: string;
   boot?: number | string;
@@ -89,6 +90,9 @@ const PLUG: ClassText = {
       'Plug fully home, no gap at the shell, pins clean in the visible part. Not tested electrically.',
       'Shell sits flush, latch engaged, no residue. Contacts not tested.',
       "Looks seated and dry at the shell. Can't see past the first few mm of contact.",
+    ],
+    'partial-seat': [
+      'A thin gap shows between the shell and the socket face, and the plug sits slightly crooked. It looks pushed in, but not all the way. Not tested electrically.',
     ],
     unseated: ['The plug is out of the socket and hangs on its cable. Socket face is empty.'],
     corrosion: ['Green crust on the pins and the inside of the shell. Pin tips look dull.', 'White and green powder around two pins.'],
@@ -195,6 +199,7 @@ const FEED: ClassText = {
       'Flange face is square and the screws are seated. Nothing visible in the opening.',
     ],
     'loose-nut': ['One flange screw stands proud of its hole and the washer under it turns.'],
+    'partial-seat': ['A thin gap shows along one edge of the flange, and it sits a hair off square. Looks mounted, but not fully home. Not tested electrically.'],
     unseated: ['The flange is off the feed horn. The waveguide opening is bare.'],
     corrosion: ['Green crust on the flange face and around the screw heads.'],
     moisture: ['Beads of water on the flange face and along the gasket line.'],
@@ -249,6 +254,9 @@ const FEED: ClassText = {
 const POWER: ClassText = {
   inspect: {
     healthy: ['Plug fully home in the socket, no gap, no scorch marks. Not tested electrically.', 'Sits flush, pins not visible, no residue around the socket.'],
+    'partial-seat': [
+      'A thin gap shows between the plug body and the socket face, and the plug sits slightly crooked. It looks pushed in, but not all the way. Not tested electrically.',
+    ],
     unseated: ['The plug is out of the socket and hangs on its lead. Socket face is empty.'],
     corrosion: ['Green and white crust on the pins and inside the socket.', 'Pin tips look dull, with powder around two of them.'],
     moisture: ['Beads of water on the pins and a damp ring around the socket.'],
@@ -459,8 +467,8 @@ const OBS_BY_CLASS: ObsTable = {
   'power-station': {
     inspect: {
       healthy: [
-        'Display on, {pct} percent, DC outputs lit, input LED green. Internal cells not checked.',
-        'Screen shows {pct} percent and {w} W out. Vents clear, no marks on the case.',
+        'Display on, {pct} percent ({wh} Wh stored), DC outputs lit, input LED green. Internal cells not checked.',
+        'Screen shows {pct} percent ({wh} Wh stored) and {w} W out. Vents clear, no marks on the case.',
       ],
       'battery-depleted': ['Display blank. No output LEDs. Input LED off.', 'Screen reads 0 percent and shows no output.'],
       unpowered: ['Display blank. No output LEDs. Input LED off.'],

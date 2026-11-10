@@ -5,6 +5,7 @@
  * replaces this class behind `LinkQualitySource`; nothing else in the model changes.
  */
 
+import { seedFor, windowJitter } from './rtt-jitter';
 import type { AccountState, LayerReading, LinkQualitySource, LinkSample, ProviderState, ServicePathConfig } from './service-types';
 
 /** What the source reads from the model (kept narrow so tests can fake it) */
@@ -16,7 +17,12 @@ export interface AuthoredLinkContext {
 }
 
 /** Layers whose failure leaves the terminal unable to carry traffic */
-const TRAFFIC_LAYERS = new Set(['power', 'local', 'registration', 'account', 'provider']);
+export const TRAFFIC_LAYERS = new Set(['power', 'local', 'registration', 'account', 'provider']);
+
+/** The account times provider capacity factor, applied exactly once per sample by whichever source builds it */
+export function policyCapacityFactor(ctx: AuthoredLinkContext, path: ServicePathConfig): number {
+  return (ctx.account(path.accountId)?.capacityFactor ?? 1) * (ctx.provider(path.providerId)?.capacityFactor ?? 1);
+}
 
 export class AuthoredLinkSource implements LinkQualitySource {
   private readonly ctx_: AuthoredLinkContext;
@@ -25,7 +31,7 @@ export class AuthoredLinkSource implements LinkQualitySource {
     this.ctx_ = ctx;
   }
 
-  sample(serviceId: string, _tS: number): LinkSample | null {
+  sample(serviceId: string, tS: number): LinkSample | null {
     const path = this.ctx_.path(serviceId);
     if (!path) {
       return null;
@@ -33,9 +39,13 @@ export class AuthoredLinkSource implements LinkQualitySource {
     if (this.ctx_.layers(serviceId).some((l) => TRAFFIC_LAYERS.has(l.layer) && l.status === 'down')) {
       return null;
     }
-    const factor = (this.ctx_.account(path.accountId)?.capacityFactor ?? 1) * (this.ctx_.provider(path.providerId)?.capacityFactor ?? 1);
+    const factor = policyCapacityFactor(this.ctx_, path);
+
+    const spread = path.profile.rttSpreadMs;
+    const jitter = spread === undefined ? null : windowJitter(path.profile.rttMs, spread, path.profile.rttSeed ?? seedFor(serviceId), tS);
 
     return {
+      ...(jitter ? { jitterMs: jitter.jitterMs, jitterWindowS: jitter.windowS } : {}),
       downMbps: path.profile.downMbps * factor,
       upMbps: path.profile.upMbps * factor,
       rttMs: path.profile.rttMs,

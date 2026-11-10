@@ -10,6 +10,7 @@ import { FORWARD_EUROSAT_SERVICE, FORWARD_FIRST_CARD } from '@app/campaigns/fron
 import { S11_TRANSFER_CARD } from '@app/campaigns/frontline/scenario11';
 import { frontlineScenario15Data, S15_EVENT_ONSET, S15_REFERRAL } from '@app/campaigns/frontline/scenario15';
 import { EventBus } from '@app/events/event-bus';
+import { entryMatches } from '@app/physical/evidence-predicates';
 import type { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import { PhysicalPlantService as Service } from '@app/physical/physical-plant-service';
 import { collectManagerStates, restoreManagerStates } from '@app/scenarios/checkpoint-manager-states';
@@ -41,6 +42,11 @@ type Layer = 'local' | 'registration' | 'provider' | 'application';
 const value = (svc: PhysicalPlantService, id: string, layer: Layer): { value: string } => ({ value: String(svc.services?.latest(id, layer)?.value) });
 const energy = (svc: PhysicalPlantService): { value: number } => ({ value: Math.round(svc.plant.getPowerReadings().socWh['power-station']) });
 
+/** Tick on the 1 s UI cadence until the EuroSat registration truth reads the wanted state (a player watching the app) */
+function waitReg(svc: PhysicalPlantService, want: 'up' | 'down', maxS = 240): void {
+  for (let i = 0; i < maxS && svc.services?.layers(EUS).find((l) => l.layer === 'registration')?.status !== want; i++) tick(1);
+}
+
 function fileHypothesis(svc: PhysicalPlantService, cause: string, cited: string[]): void {
   svc.evidence?.addHypothesis({
     subject: EUS,
@@ -56,7 +62,7 @@ function fileHypothesis(svc: PhysicalPlantService, cause: string, cited: string[
 function acts(svc: PhysicalPlantService): Record<string, () => void> {
   return {
     's15-record-anomaly': () => {
-      // The first drop starts 15 s after activation and lasts about 45 s
+      // The first loss window starts 15 s after activation and lasts 35 to 40 s
       tick(20);
       svc.services?.takeSample(EUS, 'registration', 'terminal-app');
       svc.services?.takeSample(EUS, 'application', 'endpoint-report');
@@ -73,9 +79,12 @@ function acts(svc: PhysicalPlantService): Record<string, () => void> {
       );
     },
     's15-review-evidence': () => {
-      // The next drop starts 50 s after activation (the first one has recovered by then)
-      tick(55);
+      // The path recovers, then the next loss window opens: one reading of each, in separate windows
+      waitReg(svc, 'up');
       svc.services?.takeSample(EUS, 'registration', 'terminal-app');
+      waitReg(svc, 'down');
+      svc.services?.takeSample(EUS, 'registration', 'terminal-app');
+      svc.services?.takeSample(EUS, 'local', 'local-probe');
       svc.services?.takeSample(EUS, 'local', 'local-probe');
       svc.plant.goOutside();
       svc.plant.inspect('vsat-feed');
@@ -83,7 +92,7 @@ function acts(svc: PhysicalPlantService): Record<string, () => void> {
       svc.plant.inspect('vsat-ifl:modem');
       svc.plant.returnInside();
       svc.plant.inspect('power-station');
-      tick(50);
+      waitReg(svc, 'up');
       svc.services?.takeSample(EUS, 'registration', 'terminal-app');
       svc.services?.takeSample(EUS, 'provider', 'provider-portal');
       ok(
@@ -99,7 +108,7 @@ function acts(svc: PhysicalPlantService): Record<string, () => void> {
       fileHypothesis(svc, 'suspected-interference', obsIds(svc));
       ok(
         svc.records?.submit('assessment', {
-          classification: { value: 'suspected-interference' },
+          classification: { value: 'suspected-interference', cites: obsIds(svc) },
           confidence: { value: 'moderate' },
           source: { value: 'not-established' },
           basis: { cites: obsIds(svc) },
@@ -138,7 +147,7 @@ function acts(svc: PhysicalPlantService): Record<string, () => void> {
       svc.services?.takeSample(SKYLINK_SERVICE, 'application', 'endpoint-report');
       ok(
         svc.records?.submit('incident', {
-          classification: { value: 'suspected-interference' },
+          classification: { value: 'suspected-interference', cites: obsIds(svc) },
           source: { value: 'not-established' },
           available: value(svc, SKYLINK_SERVICE, 'application'),
           unavailable: { value: S11_TRANSFER_CARD.id },
@@ -166,6 +175,18 @@ afterEach(() => {
 });
 
 describe('M27 S15 completion', () => {
+  it('stamps the onset event for a check made right after a clock jump, before the next UPDATE tick', () => {
+    const svc = bootScenario(data);
+    states.set('s15-record-anomaly', { isActive: true, isCompleted: false });
+    tick(1);
+    SimClock.skip(30_000);
+    expect(svc.events?.firedAtS(S15_EVENT_ONSET)).toBeNull();
+    // No UPDATE was emitted: the handover check itself must bring the simulation up to the clock
+    const res = svc.records?.validate('anomaly', {});
+    const onset = (svc.evidence?.entries('result') ?? []).some((e) => e.source && 'eventId' in e.source && e.source.eventId === S15_EVENT_ONSET);
+    expect(onset, JSON.stringify(res?.fields.find((f) => f.key === 'onset'))).toBe(true);
+  });
+
   it('has no placeholder gates and nothing passes before the player acts', () => {
     expect(data.mechanicTodos).toEqual([]);
     expect(JSON.stringify(data.objectives)).not.toContain('pending:');
@@ -220,30 +241,112 @@ describe('M27 S15 completion', () => {
     expect(res?.ok).toBe(false);
   });
 
-  it('rejects a named source, an unexplained-outage label and an under-cited assessment', () => {
+  it('rejects a named source, a wrong target and an under-cited assessment, and accepts an evidence-backed unexplained outage', () => {
     const svc = bootScenario(data);
     driveObjectives(data, svc, states, acts(svc), { stopAfter: 's15-review-evidence' });
     states.set('s15-assess-confidence', { isActive: true, isCompleted: false });
     fileHypothesis(svc, 'named-source', obsIds(svc));
-    fileHypothesis(svc, 'unexplained-outage', obsIds(svc));
-    fileHypothesis(svc, 'suspected-interference', obsIds(svc).slice(0, 2));
-    expect(incomplete(svc, 's15-assess-confidence').join('|')).toContain('Suspected interference filed');
+    fileHypothesis(svc, 'suspected-interference', obsIds(svc).slice(0, 1));
+    svc.evidence?.addHypothesis({
+      subject: 'vsat-modem',
+      source: {},
+      facts: [],
+      text: 'wrong target',
+      claim: { scope: 'part', targetId: 'vsat-modem', cause: 'unexplained-outage' },
+      confidence: 'medium',
+      citedEntryIds: obsIds(svc),
+    });
+    expect(incomplete(svc, 's15-assess-confidence').join('|')).toContain('Assessment filed on EuroSat');
     const named = svc.records?.submit('assessment', {
-      classification: { value: 'suspected-interference' },
+      classification: { value: 'suspected-interference', cites: obsIds(svc) },
       confidence: { value: 'moderate' },
-      source: { value: 'nearby-transmitter' },
+      source: { value: 'nearest-transmitter' },
       basis: { cites: obsIds(svc) },
     });
     expect(named?.ok).toBe(false);
-    const outage = svc.records?.submit('assessment', {
-      classification: { value: 'unexplained-outage' },
+    const provider = svc.records?.submit('assessment', {
+      classification: { value: 'provider-fault', cites: obsIds(svc) },
       confidence: { value: 'moderate' },
       source: { value: 'not-established' },
       basis: { cites: obsIds(svc) },
     });
-    expect(outage?.ok).toBe(false);
-    fileHypothesis(svc, 'suspected-interference', obsIds(svc));
-    expect(incomplete(svc, 's15-assess-confidence').join('|')).not.toContain('Suspected interference filed');
+    expect(provider?.ok).toBe(false);
+    const outage = svc.records?.submit('assessment', {
+      classification: { value: 'unexplained-outage', cites: obsIds(svc) },
+      confidence: { value: 'low' },
+      source: { value: 'not-established' },
+      basis: { cites: obsIds(svc) },
+    });
+    ok(outage);
+    fileHypothesis(svc, 'unexplained-outage', obsIds(svc));
+    expect(incomplete(svc, 's15-assess-confidence').join('|')).not.toContain('Assessment filed on EuroSat');
+  });
+
+  it('records the cause of a registration reading, so only a link-lost reading is the EuroSat drop', () => {
+    const svc = bootScenario(data);
+    states.set('s15-record-anomaly', { isActive: true, isCompleted: false });
+    tick(20);
+    const drop = svc.services?.takeSample(EUS, 'registration', 'terminal-app');
+    expect(drop?.value).toBe('down');
+    expect(drop?.cause).toBe('link-lost');
+    const entry = svc.evidence?.entries('observation').find((e) => e.source.sampleId === drop?.id);
+    const predicate = { kind: 'observation' as const, serviceId: EUS, layer: 'registration', valueIn: ['down'], causeIn: ['link-lost'] };
+    const ctx = { eventFiredAtS: () => 0 };
+    expect(entry && entryMatches(entry, predicate, ctx, [])).toBe(true);
+    // A modem-reboot reading is down for another cause and does not count; an older entry with no cause still loads and counts
+    const reboot = entry && { ...entry, sample: { ...(entry.sample as NonNullable<typeof entry.sample>), cause: 'terminal-booting' } };
+    expect(reboot && entryMatches(reboot, predicate, ctx, [])).toBe(false);
+    const old = entry && { ...entry, sample: { ...(entry.sample as NonNullable<typeof entry.sample>), cause: undefined } };
+    expect(old && entryMatches(old, predicate, ctx, [])).toBe(true);
+  });
+
+  it('does not take three SkyLink readings, or a pre-incident reading, as the EuroSat interruption pattern', () => {
+    const svc = bootScenario(data);
+    driveObjectives(data, svc, states, acts(svc), { stopAfter: 's15-record-anomaly' });
+    states.set('s15-review-evidence', { isActive: true, isCompleted: false });
+    const before = obsIds(svc).length;
+    svc.services?.takeSample(SKYLINK_SERVICE, 'application', 'endpoint-report');
+    svc.services?.takeSample(SKYLINK_SERVICE, 'local', 'local-probe');
+    svc.services?.takeSample(SKYLINK_SERVICE, 'registration', 'terminal-app');
+    const skylinkOnly = obsIds(svc).slice(before);
+    const res = svc.records?.validate('evidence', {
+      pattern: { cites: skylinkOnly },
+      provider: value(svc, EUS, 'provider'),
+      local: { value: 'ruled-out' },
+      limits: { value: 'not-proof' },
+    });
+    expect(res?.fields.find((f) => f.key === 'pattern')?.ok).toBe(false);
+    const repeated = skylinkOnly.length ? [skylinkOnly[0], skylinkOnly[0], skylinkOnly[0]] : [];
+    expect(svc.records?.validate('evidence', { pattern: { cites: repeated } })?.fields.find((f) => f.key === 'pattern')?.ok).toBe(false);
+  });
+
+  it('counts one credit per checked subject and ignores checks of unrelated parts', () => {
+    const svc = bootScenario(data);
+    driveObjectives(data, svc, states, acts(svc), { stopAfter: 's15-record-anomaly' });
+    states.set('s15-review-evidence', { isActive: true, isCompleted: false });
+    svc.plant.goOutside();
+    svc.plant.inspect('vsat-feed');
+    svc.plant.inspect('vsat-feed');
+    svc.plant.inspect('vsat-feed');
+    svc.plant.returnInside();
+    expect(incomplete(svc, 's15-review-evidence').join('|')).toContain('Checks that found nothing');
+    svc.plant.inspect('power-station');
+    expect(incomplete(svc, 's15-review-evidence').join('|')).not.toContain('Checks that found nothing');
+  });
+
+  it('accepts suspected interference once repeated drops are read, and rejects it on a single drop', () => {
+    const svc = bootScenario(data);
+    driveObjectives(data, svc, states, acts(svc), { stopAfter: 's15-review-evidence' });
+    const cites = obsIds(svc);
+    const base = { confidence: { value: 'moderate' }, source: { value: 'not-established' }, basis: { cites } };
+    ok(svc.records?.submit('assessment', { ...base, classification: { value: 'suspected-interference', cites } }));
+    const down = (svc.evidence?.entries('observation') ?? []).filter((e) => e.sample?.layer === 'registration' && e.sample.value === 'down').map((e) => e.id);
+    expect(down.length).toBeGreaterThanOrEqual(2);
+    const single = svc.records?.validate('assessment', {
+      ...base,
+      classification: { value: 'suspected-interference', cites: [...obsIds(svc).filter((id) => !down.includes(id)), down[0]] },
+    });
+    expect(single?.fields.find((f) => f.key === 'classification')?.ok).toBe(false);
   });
 
   it('keeps both terminals running from passing the reserve check, and a standby modem passes it', () => {
@@ -292,6 +395,9 @@ describe('M27 S15 completion', () => {
     driveObjectives(data, svc, states, acts(svc), {});
     const record = svc.records?.recordsFor('incident')[0];
     expect(record).toBeDefined();
+    // Accepting the incident filed the referral by itself, from the typed answers
+    expect(loadC5Referral().source).toBe('player');
+    expect(loadC5Referral().classification).toBe(record?.values.classification);
     const referral = fileC5Referral(record as NonNullable<typeof record>);
     expect(referral.source).toBe('player');
     expect(loadC5Referral().statements).toEqual(referral.statements);

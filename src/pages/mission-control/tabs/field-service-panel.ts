@@ -1,3 +1,4 @@
+import { type FormStepState, SAMPLE_STEP_LATER_NOTE } from '@app/pages/mission-control/tabs/form-step-state';
 import { NUMERIC_READABLE, READABLE, type ServiceModel } from '@app/physical/service-model';
 import { type Freshness, type LayerStatus, type SampleMetric, type SampleProvenance, SERVICE_LAYERS, type ServiceLayer, type ServiceSample } from '@app/physical/service-types';
 import { escapeHtml } from '@app/physical/ui/plant-ui-helpers';
@@ -39,6 +40,7 @@ const METRIC_LABEL: Record<SampleMetric, string> = {
   downMbps: 'Download',
   upMbps: 'Upload',
   lossPct: 'Loss',
+  jitterMs: 'Jitter',
 };
 
 const FRESHNESS_LABEL: Record<Freshness, string> = {
@@ -97,6 +99,20 @@ export interface ServicePanelService {
   label: string;
   rows: ServicePanelRow[];
   history: ServicePanelHistoryLine[];
+  /** Measured recovery intervals (package E): boundaries as scenario clock times, and the spans once known */
+  intervals: string[];
+}
+
+/** One recovery interval as the panel prints it: the boundaries the model recorded, never a derived guess */
+export function describeInterval(model: ServiceModel, rec: { id: string; startS: number; activationS: number | null; registeredS: number | null; usableS: number | null }): string {
+  const at = (v: number | null) => (v === null ? 'not yet' : formatClock(v));
+  const span = (k: 'restoration' | 'response' | 'startup') => {
+    const v = model.intervalSpanS(rec.id, k);
+
+    return v === null ? 'open' : `${Math.round(v * 10) / 10} s`;
+  };
+
+  return `Outage started ${at(rec.startS)}. Operator activated ${at(rec.activationS)} (${span('response')} after the start). Terminal registered ${at(rec.registeredS)} (${span('startup')} after activation). Service usable ${at(rec.usableS)}. Time to restore service: ${span('restoration')}.`;
 }
 
 export function formatAge(seconds: number): string {
@@ -121,6 +137,9 @@ export function formatSampleValue(sample: ServiceSample): string {
   }
   if (typeof sample.value === 'number') {
     const n = Math.round(sample.value * 10) / 10;
+    if (sample.metric === 'jitterMs') {
+      return `Jitter ${n} ms (mean change between 1 s delay readings, last ${sample.windowS ?? 60} s)`;
+    }
 
     return `${METRIC_LABEL[sample.metric]} ${n} ${sample.unit}`;
   }
@@ -171,7 +190,9 @@ export function buildServicePanelModel(model: ServiceModel, nowS: number): Servi
       .reverse()
       .map((h) => ({ tS: h.tS, text: `${formatClock(h.tS)} ${LAYER_LABEL[h.layer]}: ${STATUS_LABEL[h.from]} to ${STATUS_LABEL[h.to]}` }));
 
-    return { id, label: path?.label ?? id, rows, history };
+    const intervals = model.intervals(id).map((rec) => describeInterval(model, rec));
+
+    return { id, label: path?.label ?? id, rows, history, intervals };
   });
 }
 
@@ -186,7 +207,9 @@ export class FieldServicePanel {
     private readonly getModel_: () => ServiceModel | null,
     private readonly getNow_: () => number,
     /** Spends scenario seconds on a check (M21: a measurement costs time). Absent = a check is free. */
-    private readonly spend_: ((seconds: number) => void) | null = null
+    private readonly spend_: ((seconds: number) => void) | null = null,
+    /** Where the checklist steps that read this service's samples stand; absent = no note */
+    private readonly sampleStep_: ((serviceId: string) => FormStepState) | null = null
   ) {
     this.host_.addEventListener('click', this.onClick_);
     this.host_.addEventListener('change', this.onChange_);
@@ -205,6 +228,9 @@ export class FieldServicePanel {
     }
     const sample = model.takeSample(serviceId, layer, via, endpointId, isNumericCheck(via, layer) ? metric : 'status');
     this.lastCheck_ = `${LAYER_LABEL[layer]} checked by ${PROVENANCE_LABEL[via].toLowerCase()} at ${formatClock(sample.tS)}.`;
+    if (this.sampleStep_?.(serviceId) === 'later') {
+      this.lastCheck_ += ` ${SAMPLE_STEP_LATER_NOTE}`;
+    }
     this.spend_?.(CHECK_COST_S[via]);
     this.sync();
 
@@ -270,7 +296,9 @@ export class FieldServicePanel {
             const opts = provenancesFor(r.layer)
               .map((p) => `<option value="${p}">${escapeHtml(PROVENANCE_LABEL[p])}</option>`)
               .join('');
-            const metrics = (['status', 'rttMs', 'downMbps', 'upMbps', 'lossPct'] as SampleMetric[]).map((m) => `<option value="${m}">${METRIC_LABEL[m]}</option>`).join('');
+            const metrics = (['status', 'rttMs', 'jitterMs', 'downMbps', 'upMbps', 'lossPct'] as SampleMetric[])
+              .map((m) => `<option value="${m}">${METRIC_LABEL[m]}</option>`)
+              .join('');
             const name = r.endpointId ? `${LAYER_LABEL[r.layer]} (${escapeHtml(r.endpointId)})` : LAYER_LABEL[r.layer];
             const defaultVia = r.endpointId ? 'endpoint-report' : undefined;
 
@@ -296,6 +324,7 @@ export class FieldServicePanel {
             <thead><tr><th>Layer</th><th>Check with</th><th></th><th>Reading</th><th>Source</th><th>Taken</th><th>Status</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
+          <ul class="fsp-history" data-fsp="intervals-${escapeHtml(svc.id)}" style="display:none"></ul>
           <div class="fsp-history-title">Symptom history</div>
           <ul class="fsp-history" data-fsp="history-${escapeHtml(svc.id)}"></ul>
         </div>`;
@@ -343,6 +372,15 @@ export class FieldServicePanel {
         const badge = this.el_(`badge-${r.key}`);
         const cls = `fsp-badge${r.freshness ? ` fsp-${r.freshness}` : ''}`;
         if (badge && badge.className !== cls) badge.className = cls;
+      }
+      const ivs = this.el_(`intervals-${svc.id}`);
+      if (ivs) {
+        const text = svc.intervals.join('\n');
+        if (ivs.dataset.sig !== text) {
+          ivs.dataset.sig = text;
+          ivs.style.display = svc.intervals.length > 0 ? '' : 'none';
+          ivs.innerHTML = svc.intervals.map((t) => `<li>${escapeHtml(t)}</li>`).join('');
+        }
       }
       const list = this.el_(`history-${svc.id}`);
       if (list) {

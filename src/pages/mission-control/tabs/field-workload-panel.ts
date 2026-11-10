@@ -1,3 +1,4 @@
+import { measuredLoadW } from '@app/physical/run-power';
 import type { ServiceModel } from '@app/physical/service-model';
 import { escapeHtml } from '@app/physical/ui/plant-ui-helpers';
 import type { WorkloadRunner } from '@app/physical/workload-runner';
@@ -27,7 +28,7 @@ const STATUS_LABEL: Record<WorkloadRun['status'], string> = {
   aborted: 'Aborted',
 };
 
-const METRIC_LABEL: Record<string, string> = { downMbps: 'download', upMbps: 'upload', rttMs: 'latency', lossPct: 'loss' };
+const METRIC_LABEL: Record<string, string> = { downMbps: 'download', upMbps: 'upload', rttMs: 'latency', lossPct: 'loss', jitterMs: 'delay variation' };
 
 const INVALID_LABEL: Record<string, string> = {
   config: 'equipment or settings changed',
@@ -37,6 +38,26 @@ const INVALID_LABEL: Record<string, string> = {
 };
 
 const HISTORY_SHOWN = 10;
+
+/** Why a run came back unsupported with a layer down, in the player's words */
+const LAYER_DOWN_TEXT: Record<string, string> = {
+  'link-lost': 'Registration is down at the moment. Rerun once it is back.',
+  'terminal-booting': 'The terminal is still restarting, so registration is down. Rerun once it is back.',
+  'terminal-starting': 'The terminal is still starting up, so registration is down. Rerun once it is back.',
+  'terminal-searching': 'The terminal is still searching for the satellite, so registration is down. Rerun once it is registered.',
+};
+
+/** The words for an unmet entry: a metric name, or a down-layer reason such as 'layer:terminal-booting' */
+export function unmetText(m: string): string {
+  return METRIC_LABEL[m] ?? m;
+}
+
+/** A line to print when the run failed only because a layer was down (null otherwise) */
+export function layerDownText(unmet: readonly string[]): string | null {
+  const reason = unmet.find((m) => m.startsWith('layer:'))?.slice('layer:'.length);
+
+  return reason === undefined ? null : (LAYER_DOWN_TEXT[reason] ?? null);
+}
 
 function clock(tS: number): string {
   const s = Math.max(0, Math.floor(tS));
@@ -51,6 +72,7 @@ export function describeCard(card: RequirementCard): string {
   if (card.minUpMbps !== undefined) parts.push(`up at least ${card.minUpMbps} Mbps`);
   if (card.maxRttMs !== undefined) parts.push(`latency under ${card.maxRttMs} ms`);
   if (card.maxLossPct !== undefined) parts.push(`loss under ${card.maxLossPct}%`);
+  if (card.maxJitterMs !== undefined) parts.push(`delay variation (jitter) under ${card.maxJitterMs} ms`);
   parts.push(`${card.windowS} s window`);
 
   return parts.join(', ');
@@ -97,9 +119,14 @@ export function buildRunLine(run: WorkloadRun, runner: WorkloadRunner, serviceLa
   if (run.status === 'aborted') {
     result = run.invalidatedBy ? `Stopped: ${INVALID_LABEL[run.invalidatedBy] ?? run.invalidatedBy}.` : 'Stopped by you.';
   } else if (!running) {
-    const unmet = run.unmet.map((m) => METRIC_LABEL[m] ?? m);
-    result = `${STATUS_LABEL[run.status]}${unmet.length > 0 ? `, fell short on ${unmet.join(', ')}` : ''}.`;
+    const layerDown = layerDownText(run.unmet);
+    const unmet = run.unmet.map(unmetText);
+    result = layerDown ? `${STATUS_LABEL[run.status]}. ${layerDown}` : `${STATUS_LABEL[run.status]}${unmet.length > 0 ? `, fell short on ${unmet.join(', ')}` : ''}.`;
     if (run.invalidatedBy) result += ` No longer counts: ${INVALID_LABEL[run.invalidatedBy] ?? run.invalidatedBy}.`;
+    const watts = run.power?.complete ? measuredLoadW(run.power) : null;
+    if (run.power && watts !== null) {
+      result += ` Battery over the run: average draw ${Math.round(watts * 10) / 10} W, lowest stored ${Math.round(run.power.window.minStoredWh * 10) / 10} Wh.`;
+    }
   }
 
   return {

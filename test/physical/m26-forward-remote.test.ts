@@ -8,13 +8,12 @@ import {
   applyForwardDualReadiness,
   applyForwardRemote,
   DUAL_RESERVE_WH,
-  DUAL_START_WH,
   FORWARD_REMOTE_ENDPOINT,
   FORWARD_REMOTE_SERVICE,
   FORWARD_SKYLINK_ACCOUNT,
 } from '@app/campaigns/frontline/forward-field-config';
 import { frontlineScenario13Data } from '@app/campaigns/frontline/scenario13';
-import { frontlineScenario14Data } from '@app/campaigns/frontline/scenario14';
+import { frontlineScenario14Data, S14_START_WH } from '@app/campaigns/frontline/scenario14';
 import { EventBus } from '@app/events/event-bus';
 import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import { Rng } from '@app/simulation/rng';
@@ -74,7 +73,7 @@ describe('M26 forward remote path', () => {
   it('dual readiness: both terminals switchable, two running misses the reserve, one running keeps it', () => {
     const svc = bootScenario(frontlineScenario14Data);
     expect(svc.plant.getPowerReadings().reserveWh).toBe(DUAL_RESERVE_WH);
-    expect(svc.plant.getPowerReadings().socWh['power-station']).toBeLessThanOrEqual(DUAL_START_WH);
+    expect(svc.plant.getPowerReadings().socWh['power-station']).toBeLessThanOrEqual(S14_START_WH);
     expect(svc.plant.forecast({}).meetsReserve).toBe(false);
     expect(svc.plant.forecast({ 'vsat-modem': 'standby' }).meetsReserve).toBe(true);
     expect(svc.plant.forecast({ 'skylink-dish': 'standby' }).meetsReserve).toBe(true);

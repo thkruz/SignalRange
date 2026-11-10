@@ -13,6 +13,7 @@ import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { ScenarioManager } from '@app/scenario-manager';
 import { CampaignDocumentStore } from '@app/scenarios/campaign-document-store';
+import { resolveIncoming } from '@app/scenarios/incoming-records';
 import { WorkingDocumentManager } from '@app/scenarios/working-document-manager';
 import { Rng } from '@app/simulation/rng';
 import { SimClock } from '@app/simulation/sim-clock';
@@ -31,7 +32,19 @@ import type { ServiceModelState } from './service-types';
 import { WorkloadRunner } from './workload-runner';
 import type { WorkloadRunnerState } from './workload-types';
 
+/** Slice (scenario seconds) a long skip is stepped in while the service model measures a recovery interval */
+const FINE_STEP_S = 1;
+
 const DEFAULT_AMBIENT_C = 15;
+
+/** A terminal app model's checkpoint seam (the app owns the shape of its state) */
+export interface TerminalAppPersistence {
+  getState(): unknown;
+  restoreState(state: unknown): void;
+}
+
+/** Saved app state by terminal id */
+export type TerminalAppsState = Record<string, unknown>;
 
 export class PhysicalPlantService {
   private static instance_: PhysicalPlantService | null = null;
@@ -39,6 +52,8 @@ export class PhysicalPlantService {
   readonly plant: PhysicalPlantManager;
   private weatherOverride_: Partial<PlantEnvironment> = {};
   private lastSyncS_: number;
+  /** While a long skip is stepped in slices: the slice's scenario second, as the plant and the service model see it */
+  private fineNowS_: number | null = null;
   private readonly boundUpdateHandler_: () => void;
   private readonly sounds_: PlantSoundController;
   /** Present only when the plant config authors events */
@@ -59,7 +74,7 @@ export class PhysicalPlantService {
     }
     this.lastSyncS_ = SimClock.scenarioElapsedMs() / 1000;
     this.plant = new PhysicalPlantManager(config, {
-      now: () => SimClock.scenarioElapsedMs() / 1000,
+      now: () => this.fineNowS_ ?? SimClock.scenarioElapsedMs() / 1000,
       skip: (seconds) => {
         SimClock.skip(seconds * 1000);
         this.sync_();
@@ -71,7 +86,9 @@ export class PhysicalPlantService {
         this.weatherOverride_ = { ...this.weatherOverride_, ...weather };
       },
     });
-    this.services = config.service ? new ServiceModel(config.service, this.plant, undefined, { now: () => SimClock.scenarioElapsedMs() / 1000 }) : null;
+    this.services = config.service
+      ? new ServiceModel(config.service, this.plant, undefined, { now: () => this.fineNowS_ ?? SimClock.scenarioElapsedMs() / 1000 }, config.liveLink)
+      : null;
     this.evidence = config.service || config.events?.length ? new EvidenceLog(this.plant, this.services) : null;
     this.workloads =
       config.workloads && this.services
@@ -80,6 +97,15 @@ export class PhysicalPlantService {
             skip: (seconds) => {
               SimClock.skip(seconds * 1000);
               this.sync_();
+            },
+            power: {
+              open: (key, untilS) => this.plant.openLedger(key, untilS),
+              close: (key) => this.plant.closeLedger(key),
+              get: (key) => this.plant.getLedger(key),
+              storedWh: () => Object.values(this.plant.getPowerReadings().socWh).reduce((a, b) => a + b, 0),
+              reserveWh: () => this.plant.getPowerReadings().reserveWh,
+              basis: () => this.plant.forecast({}, 1).basis,
+              projectedWh: (horizonS) => this.plant.forecast({}, horizonS).projectedSocWh,
             },
           })
         : null;
@@ -93,10 +119,20 @@ export class PhysicalPlantService {
             evidence: this.evidence,
             runs: () => this.workloads?.getRuns() ?? [],
             getCardVersion: (cardId) => this.workloads?.getCard(cardId)?.version,
+            eventFiredAtS: (eventId) => this.events?.firedAtS(eventId) ?? null,
+            configEpoch: () => this.services?.getEpochs().config ?? null,
             writeLine: (section, line) => WorkingDocumentManager.getInstance().addLine(section, line),
-            storeRecord: (record) => CampaignDocumentStore.recordHandover(record),
+            storeRecord: (record) => {
+              CampaignDocumentStore.recordHandover(record);
+              // An accepted filing of a form that carries a referral rule files it now (optional continuity, no completion needed)
+              for (const rule of config.referrals ?? []) {
+                if (rule.formId === record.formId) CampaignDocumentStore.fileReferralFor(rule.referralId, record);
+              }
+            },
+            catchUp: () => this.catchUp(),
           })
         : null;
+    this.records?.setIncoming((config.incoming ?? []).map(resolveIncoming));
     this.events = config.events?.length
       ? new PlantEventController(config.events, {
           setAccount: (patch) => this.services?.setAccount(patch),
@@ -112,11 +148,12 @@ export class PhysicalPlantService {
           respondRequest: (requestId, status) => ledger?.respond(requestId, status),
           injectFault: (fault) => this.plant.injectFault(fault),
           rebootPart: (partId) => this.plant.startBoot(partId),
+          setLinkImpairment: (id, active, durationS, atS) => this.services?.setImpairment(id, active, durationS, atS),
           clearFault: (faultId) => this.plant.clearFault(faultId),
           setWeather: (weather) => this.plant.setWeather(weather),
-          onFire: (eventId) => {
+          onFire: (eventId, atS) => {
             if (this.services) {
-              this.services.bumpEvent(eventId);
+              this.services.bumpEvent(eventId, atS);
             } else {
               this.evidence?.recordEvent(eventId);
             }
@@ -176,6 +213,7 @@ export class PhysicalPlantService {
     evidence?: EvidenceLogState;
     workloads?: WorkloadRunnerState;
     records?: FieldRecordsState;
+    terminalApps?: TerminalAppsState;
   } {
     const state: PlantState & {
       weather: Partial<PlantEnvironment>;
@@ -184,6 +222,7 @@ export class PhysicalPlantService {
       evidence?: EvidenceLogState;
       workloads?: WorkloadRunnerState;
       records?: FieldRecordsState;
+      terminalApps?: TerminalAppsState;
     } = {
       ...this.plant.getState(),
       weather: { ...this.weatherOverride_ },
@@ -208,7 +247,60 @@ export class PhysicalPlantService {
       state.records = this.records.getState();
     }
 
+    const apps = this.terminalAppStates_();
+    if (Object.keys(apps).length > 0) {
+      state.terminalApps = apps;
+    }
+
     return state;
+  }
+
+  // ---- terminal apps (phase 40 / Campaign 6 G) ------------------------------------------------------------------
+
+  /** Terminal apps that persist through the plant checkpoint, by terminal id (`skylink`, `eurosat`) */
+  private readonly terminalApps_ = new Map<string, TerminalAppPersistence>();
+  /** Restored app state whose app has not been built yet (the tab is created lazily); kept so a later save still carries it */
+  private pendingTerminalApps_: TerminalAppsState = {};
+
+  /** Opt a terminal app model into the checkpoint. State restored before the app existed is applied now. */
+  static registerTerminalApp(id: string, app: TerminalAppPersistence): void {
+    this.instance_?.registerTerminalApp_(id, app);
+  }
+
+  static unregisterTerminalApp(id: string, app: TerminalAppPersistence): void {
+    if (this.instance_?.terminalApps_.get(id) === app) {
+      this.instance_.terminalApps_.delete(id);
+    }
+  }
+
+  private registerTerminalApp_(id: string, app: TerminalAppPersistence): void {
+    this.terminalApps_.set(id, app);
+    const pending = this.pendingTerminalApps_[id];
+    if (pending !== undefined) {
+      app.restoreState(pending);
+      delete this.pendingTerminalApps_[id];
+    }
+  }
+
+  private terminalAppStates_(): TerminalAppsState {
+    const out: TerminalAppsState = { ...this.pendingTerminalApps_ };
+    for (const [id, app] of this.terminalApps_) {
+      out[id] = app.getState();
+    }
+
+    return out;
+  }
+
+  private restoreTerminalApps_(states: TerminalAppsState | undefined): void {
+    this.pendingTerminalApps_ = {};
+    for (const [id, saved] of Object.entries(states ?? {})) {
+      const app = this.terminalApps_.get(id);
+      if (app) {
+        app.restoreState(saved);
+      } else {
+        this.pendingTerminalApps_[id] = saved;
+      }
+    }
   }
 
   /** Read-only bundle for Campaign 6 conditions, or null when this scenario has no plant */
@@ -283,6 +375,7 @@ export class PhysicalPlantService {
           evidence?: EvidenceLogState;
           workloads?: WorkloadRunnerState;
           records?: FieldRecordsState;
+          terminalApps?: TerminalAppsState;
         })
       | undefined
   ): void {
@@ -296,15 +389,62 @@ export class PhysicalPlantService {
     this.evidence?.restoreState(state.evidence);
     this.workloads?.restoreState(state.workloads);
     this.records?.restoreState(state.records);
+    this.restoreTerminalApps_(state.terminalApps);
     this.lastSyncS_ = SimClock.scenarioElapsedMs() / 1000;
   }
 
-  /** Feed the plant the scenario seconds that passed since the last sync (ticks, verb skips and operator skips alike) */
+  /**
+   * Step the plant, events, services and runs up to the scenario clock now. A player action that reads this state
+   * (a handover check, a panel redraw) calls it so it never sees the state of the last UPDATE tick: an event that
+   * has fired is stamped and a run that has finished is finished.
+   */
+  catchUp(): void {
+    this.sync_();
+  }
+
+  /** Catch the singleton up when one exists */
+  static catchUp(): void {
+    this.instance_?.catchUp();
+  }
+
+  private syncing_ = false;
+
   private sync_(): void {
+    if (this.syncing_) {
+      return;
+    }
+    this.syncing_ = true;
+    try {
+      this.stepToNow_();
+    } finally {
+      this.syncing_ = false;
+    }
+  }
+
+  /** Feed the plant the scenario seconds that passed since the last sync (ticks, verb skips and operator skips alike) */
+  private stepToNow_(): void {
     const nowS = SimClock.scenarioElapsedMs() / 1000;
     const dt = nowS - this.lastSyncS_;
     this.lastSyncS_ = nowS;
-    if (dt > 0) {
+    if (dt > FINE_STEP_S && (this.services?.hasIntervals() || this.plant.hasOpenLedger())) {
+      // A measured interval must not depend on how long the skip was: step the plant and the service timeline in
+      // one-second slices so the boundaries are stamped to the second (events and runs still settle at the endpoint)
+      const fromS = nowS - dt;
+      let left = dt;
+      let at = fromS;
+      try {
+        while (left > FINE_STEP_S) {
+          at += FINE_STEP_S;
+          this.fineNowS_ = at;
+          this.plant.update(FINE_STEP_S);
+          this.services?.update();
+          left -= FINE_STEP_S;
+        }
+      } finally {
+        this.fineNowS_ = null;
+      }
+      this.plant.update(left);
+    } else if (dt > 0) {
       this.plant.update(dt);
     }
     this.events?.update(nowS);

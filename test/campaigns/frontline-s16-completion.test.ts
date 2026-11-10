@@ -144,6 +144,7 @@ function acts(svc: PhysicalPlantService): Record<string, () => void> {
           dish: mode(svc, 'skylink-dish'),
           verified: { value: runId },
           unavailable: { value: FIRST },
+          rate: { value: svc.records?.latestRunRateW(TRANSFER, EUS) },
           energy: energy(svc),
         })
       );
@@ -237,6 +238,48 @@ describe('M27 S16 completion', () => {
     tick(S16_OUTAGE_OFFSET_S + 60);
     expect(svc.plant.getFaults().some((f) => f.id === S16_FAULT)).toBe(true);
     expect(svc.services?.takeSample(SKY, 'provider', 'provider-portal').value).toBe('up');
+  });
+
+  it('states a reseat downtime that matches the real restart', () => {
+    const gaps: string[] = [];
+    for (const seed of [1, 2, 3, 5, 8, 13, 21, 34]) {
+      Service.destroy();
+      EventBus.destroy();
+      SimClock.reset();
+      Rng.setSeed(seed);
+      states.clear();
+      const svc = bootScenario(data);
+      driveObjectives(data, svc, states, acts(svc), { stopAfter: 's16-establish-configuration' });
+      tick(5);
+      inspectSeat(svc);
+      const result = svc.plant.reseat(SEAT);
+      const stated = (result.downtimeSeconds ?? 0) - (result.costSeconds ?? 0);
+      let clearAt = -1;
+      for (let t = 1; t <= 900 && clearAt < 0; t++) {
+        tick(1);
+        if (!svc.plant.isSearching('skylink-dish') && !svc.plant.getPartState('skylink-dish')?.rebooting) {
+          clearAt = t;
+        }
+      }
+      // The terminal must be back by the time the stated downtime has passed
+      if (clearAt > stated + 2) {
+        gaps.push(`seed ${seed}: stated ${Math.round(stated)} s, back after ${clearAt} s`);
+      }
+    }
+    expect(gaps).toEqual([]);
+  });
+
+  it('finishes a run after a clock jump when the check catches the simulation up', () => {
+    const svc = bootScenario(data);
+    driveObjectives(data, svc, states, acts(svc), { stopAfter: 's16-establish-configuration' });
+    tick(400);
+    const start = svc.workloads?.start(FIRST, SKY);
+    expect(start?.ok).toBe(true);
+    const id = start?.ok ? start.run.id : '';
+    SimClock.skip(600_000);
+    expect(svc.workloads?.getRun(id)?.status).toBe('running');
+    svc.records?.validate('baseline', {});
+    expect(svc.workloads?.getRun(id)?.status).not.toBe('running');
   });
 
   it('rejects the local objective on a blind reseat or without a fresh post-repair run', () => {

@@ -6,6 +6,7 @@ import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { ObjectivesManager } from '@app/objectives/objectives-manager';
 import { FieldHandoverPanel } from '@app/pages/mission-control/tabs/field-handover-panel';
 import { FieldNotebookPanel, type HypothesisScope, type NotebookTarget } from '@app/pages/mission-control/tabs/field-notebook-panel';
 import { FieldPathDiagramPanel } from '@app/pages/mission-control/tabs/field-path-diagram-panel';
@@ -13,6 +14,9 @@ import { FieldPowerPanel } from '@app/pages/mission-control/tabs/field-power-pan
 import { FieldRecordsPanel } from '@app/pages/mission-control/tabs/field-records-panel';
 import { FieldServicePanel } from '@app/pages/mission-control/tabs/field-service-panel';
 import { FieldWorkloadPanel } from '@app/pages/mission-control/tabs/field-workload-panel';
+import { formStepState, sampleStepState } from '@app/pages/mission-control/tabs/form-step-state';
+import { buildNotebookTargets } from '@app/pages/mission-control/tabs/notebook-targets';
+import { hypothesisFeedback } from '@app/physical/evidence-predicates';
 import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import { GLOW_FILTERS_SVG } from '@app/physical/ui/glow-filters';
 import { PartCloseupModal } from '@app/physical/ui/part-closeup-modal';
@@ -52,6 +56,7 @@ export class SiteTab extends BaseElement {
   private renderedView_: SiteView = 'inside';
   /** The painting currently shown (changes with the weather) */
   private renderedImage_ = '';
+  private renderedAspect_ = 0;
 
   constructor(containerId: string) {
     super();
@@ -62,7 +67,8 @@ export class SiteTab extends BaseElement {
       qs<HTMLElement>('#site-service-panel'),
       () => PhysicalPlantService.servicesOrNull(),
       () => PhysicalPlantService.plantOrNull()?.getTimeSeconds() ?? 0,
-      (seconds) => PhysicalPlantService.plantOrNull()?.spendTime(seconds)
+      (seconds) => PhysicalPlantService.plantOrNull()?.spendTime(seconds),
+      (serviceId) => sampleStepState(serviceId, ObjectivesManager.getInstance().getObjectiveStates())
     );
     this.workloadPanel_ = new FieldWorkloadPanel(
       qs<HTMLElement>('#site-workload-panel'),
@@ -74,7 +80,13 @@ export class SiteTab extends BaseElement {
       qs<HTMLElement>('#site-notebook-panel'),
       () => PhysicalPlantService.evidenceOrNull(),
       (scope) => this.notebookTargets_(scope),
-      () => PhysicalPlantService.plantOrNull()?.getConfig().causeOptions ?? null
+      () => PhysicalPlantService.plantOrNull()?.getConfig().causeOptions ?? null,
+      (entry) => {
+        const specs = PhysicalPlantService.plantOrNull()?.getConfig().hypothesisSpecs ?? [];
+        const log = PhysicalPlantService.evidenceOrNull();
+
+        return log ? hypothesisFeedback(entry, specs, log.entries(), { eventFiredAtS: (id) => PhysicalPlantService.eventsOrNull()?.firedAtS(id) ?? null }) : null;
+      }
     );
     this.handoverPanel_ = new FieldHandoverPanel(qs<HTMLElement>('#site-handover-panel'), {
       records: () => PhysicalPlantService.recordsOrNull(),
@@ -82,6 +94,8 @@ export class SiteTab extends BaseElement {
       service: () => PhysicalPlantService.servicesOrNull(),
       runs: () => PhysicalPlantService.workloadsOrNull()?.getRuns() ?? [],
       plant: () => PhysicalPlantService.plantOrNull(),
+      catchUp: () => PhysicalPlantService.catchUp(),
+      formStep: (formId) => formStepState(formId, ObjectivesManager.getInstance().getObjectiveStates()),
     });
 
     this.recordsPanel_ = new FieldRecordsPanel(qs<HTMLElement>('#site-records-panel'), { records: () => PhysicalPlantService.recordsOrNull() });
@@ -99,31 +113,14 @@ export class SiteTab extends BaseElement {
 
   /** Hypothesis targets the player can pick for a scope (labels only, no fault truth) */
   private notebookTargets_(scope: HypothesisScope): NotebookTarget[] {
-    const plant = PhysicalPlantService.plantOrNull();
-    const model = PhysicalPlantService.servicesOrNull();
-    const label = (id: string): string => plant?.getLabel(id) ?? id;
-    const services = (model?.getServiceIds() ?? []).map((id) => ({ id, label: model?.getPath(id)?.label ?? id }));
-    if (scope === 'segment' || scope === 'endpoint') return services;
-    if (scope === 'provider') {
-      const ids = new Set<string>();
-      for (const s of services) {
-        const pid = model?.getPath(s.id)?.providerId;
-        if (pid) ids.add(pid);
-      }
-
-      return [...ids].map((id) => ({ id, label: id }));
-    }
-    if (!plant) return [];
-    const parts = plant.getPartIds().map((id) => ({ id, label: label(id) }));
-    if (scope === 'power') return parts;
-
-    return [...parts, ...plant.getConnectorIds().map((id) => ({ id, label: id })), ...plant.getCableIds().map((id) => ({ id, label: id }))];
+    return buildNotebookTargets(scope, { plant: PhysicalPlantService.plantOrNull(), services: PhysicalPlantService.servicesOrNull() });
   }
 
   /** The image and hotspot overlay of the current view */
   private stageHtml_(): string {
     const view = this.view;
     this.renderedView_ = view;
+    this.renderedAspect_ = this.aspect_();
     const overlay = [svgOpen(this.aspect_(), 'site-overlay')];
     overlay.push(GLOW_FILTERS_SVG);
     overlay.push(this.sceneLayersSvg_());
@@ -225,10 +222,67 @@ export class SiteTab extends BaseElement {
   /** Repaint the stage when the manager's state differs from what is painted */
   private renderStage_(): void {
     const stage = this.cache_('site-stage');
-    if (stage) {
-      stage.style.setProperty('--pp-ar', String(this.aspect_()));
-      stage.innerHTML = this.stageHtml_();
+    if (!stage) {
+      return;
     }
+    if (this.patchStage_(stage)) {
+      return;
+    }
+    stage.style.setProperty('--pp-ar', String(this.aspect_()));
+    this.renderedAspect_ = this.aspect_();
+    stage.innerHTML = this.stageHtml_();
+  }
+
+  /**
+   * A weather or inventory change touches the picture and a few hotspots, not the whole stage. Replacing every
+   * hotspot would swap the node under the pointer and swallow a click, so change only what differs.
+   * Returns false when the view itself changed and the stage needs a full repaint.
+   */
+  private patchStage_(stage: HTMLElement): boolean {
+    const svg = stage.querySelector<SVGSVGElement>('svg.site-overlay');
+    const img = stage.querySelector<HTMLImageElement>('img');
+    if (!svg || !img || this.renderedView_ !== this.view || this.renderedAspect_ !== this.aspect_()) {
+      return false;
+    }
+    const image = siteImageFor(this.view, this.baseImage_(), PhysicalPlantService.plantOrNull()?.getWeather() ?? 'clear');
+    const nextSrc = getAssetUrl(image);
+    if (img.getAttribute('src') !== nextSrc) {
+      img.setAttribute('src', nextSrc);
+    }
+    this.renderedImage_ = this.imageKey_(image);
+    const parse = (markup: string): Element[] => {
+      const tmp = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      tmp.innerHTML = markup;
+
+      return [...tmp.children];
+    };
+    for (const old of svg.querySelectorAll('.site-scene-layer')) {
+      old.remove();
+    }
+    const firstSpot = svg.querySelector('.pp-hotspot');
+    for (const layer of parse(this.sceneLayersSvg_())) {
+      svg.insertBefore(layer, firstSpot);
+    }
+    const wanted = this.spots_();
+    const wantedIds = new Set(wanted.map((spot) => spot.id));
+    const present = new Set<string>();
+    for (const g of svg.querySelectorAll<SVGElement>('.pp-hotspot')) {
+      const id = g.dataset.hotspot ?? '';
+      if (wantedIds.has(id)) {
+        present.add(id);
+      } else {
+        g.remove();
+      }
+    }
+    for (const spot of wanted) {
+      if (!present.has(spot.id)) {
+        for (const node of parse(this.hotspotHtml_(spot))) {
+          svg.appendChild(node);
+        }
+      }
+    }
+
+    return true;
   }
 
   /** Show a view. Going outside opens a trip in the plant; going inside closes it. */

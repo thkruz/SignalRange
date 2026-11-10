@@ -34,3 +34,11 @@ export function formatAge(seconds: number): string {
 
   return `${Math.floor(minutes / 60)} h ${minutes % 60} min`;
 }
+
+/** A dotted key into `eurosat.*` of the locale bundle (the EuroSat modem app, Campaign 6) */
+export type ModemStringKey = Leaves<typeof en.eurosat>;
+
+/** Looks an EuroSat modem app string up in the active language and fills `{{name}}` values */
+export function trModem(key: ModemStringKey, vars: Record<string, string | number> = {}): string {
+  return t7e(`eurosat.${key}`, vars);
+}

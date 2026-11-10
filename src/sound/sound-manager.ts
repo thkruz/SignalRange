@@ -270,7 +270,7 @@ class SoundManager {
     }
   }
 
-  playCustom(audioUrl: string, fallbackText?: string, onTtsFallback?: (isTts: boolean) => void): void {
+  playCustom(audioUrl: string | undefined, fallbackText?: string, onTtsFallback?: (isTts: boolean) => void): void {
     const generation = ++this.customGeneration_;
     // Stop any currently playing custom audio or TTS
     if (this.customAudio) {
@@ -279,6 +279,12 @@ class SoundManager {
       this.customAudio.currentTime = 0;
     }
     TtsService.getInstance().stop();
+
+    // No recording authored (empty/absent URL): go straight to TTS, no load attempt or log spam
+    if (!audioUrl || audioUrl.trim() === '') {
+      this.tryTtsFallback_(fallbackText, onTtsFallback);
+      return;
+    }
 
     // Try to load and play audio
     this.loadAudio_(audioUrl)

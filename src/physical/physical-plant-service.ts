@@ -11,6 +11,7 @@
 
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { OpsLogManager } from '@app/ops-log/ops-log-manager';
 import { ScenarioManager } from '@app/scenario-manager';
 import { CampaignDocumentStore } from '@app/scenarios/campaign-document-store';
 import { resolveIncoming } from '@app/scenarios/incoming-records';
@@ -151,11 +152,16 @@ export class PhysicalPlantService {
           setLinkImpairment: (id, active, durationS, atS) => this.services?.setImpairment(id, active, durationS, atS),
           clearFault: (faultId) => this.plant.clearFault(faultId),
           setWeather: (weather) => this.plant.setWeather(weather),
-          onFire: (eventId, atS) => {
+          log: (line) => {
+            if (OpsLogManager.isInitialized()) {
+              OpsLogManager.getInstance().log(line, 'alert', 'Site');
+            }
+          },
+          onFire: (eventId, atS, logLine) => {
             if (this.services) {
-              this.services.bumpEvent(eventId, atS);
+              this.services.bumpEvent(eventId, atS, logLine);
             } else {
-              this.evidence?.recordEvent(eventId);
+              this.evidence?.recordEvent(eventId, logLine);
             }
           },
         })

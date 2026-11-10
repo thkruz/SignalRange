@@ -3,7 +3,7 @@ import type { EvidenceEntry, EvidenceLog } from '@app/physical/evidence-log';
 import type { FieldRecords, HandoverFieldConfig, HandoverFormConfig, HandoverInput, HandoverValidation } from '@app/physical/field-records';
 import type { PhysicalPlantManager } from '@app/physical/physical-plant-manager';
 import type { ServiceModel } from '@app/physical/service-model';
-import { escapeHtml } from '@app/physical/ui/plant-ui-helpers';
+import { entryDisplayText, escapeHtml } from '@app/physical/ui/plant-ui-helpers';
 import type { WorkloadRun } from '@app/physical/workload-types';
 import './field-handover-panel.css';
 
@@ -457,7 +457,7 @@ export class FieldHandoverPanel {
       if (list.length === 0) return `<span class="fhf-none">No ${kind ? KIND_LABEL[kind]?.toLowerCase() : 'notebook'} entries yet.</span>`;
       const picked = new Set(cur.cites ?? []);
       const box = (e: EvidenceEntry): string =>
-        `<label class="fhf-cite"><input type="checkbox" data-hf-key="${k}" data-hf-cite="${escapeHtml(e.id)}"${picked.has(e.id) ? ' checked' : ''} /> #${numbering.get(e.id)} ${escapeHtml(clock(e.tS))} ${escapeHtml(e.text)}</label>`;
+        `<label class="fhf-cite"><input type="checkbox" data-hf-key="${k}" data-hf-cite="${escapeHtml(e.id)}"${picked.has(e.id) ? ' checked' : ''} /> #${numbering.get(e.id)} ${escapeHtml(clock(e.tS))} ${escapeHtml(entryDisplayText(e, this.deps_.plant()))}</label>`;
       const { latest, older } = splitLatestPerSource(list);
       if (older.length === 0) return latest.map(box).join('');
       const open = older.some((e) => picked.has(e.id)) || this.olderOpen_.has(f.key);

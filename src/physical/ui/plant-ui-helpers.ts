@@ -216,3 +216,30 @@ export function validTargets(plant: PhysicalPlantManager, kind: PlantFaultKind):
     .filter((id) => def.partKinds?.includes(plant.getPartState(id)?.kind ?? ''))
     .filter((id) => (kind === 'snow' ? plant.verbApplies('clearSnow', id) : kind === 'net' ? plant.verbApplies('removeNet', id) : true));
 }
+
+/** Header word for the SkyLink path: a restarting or searching terminal is not "up" and not plainly "down" */
+export function skylinkPathLabel(plant: PhysicalPlantManager): string {
+  const status = plant.skylinkStatus();
+  if (status === 'booting') {
+    return 'restarting';
+  }
+  if (status === 'searching') {
+    return 'searching for the satellite';
+  }
+
+  return internetPaths(plant).skylink ? 'up' : 'down';
+}
+
+/**
+ * Notebook wording for an entry: plant observations and actions are prefixed with the part or
+ * connector they are about, so lines like "Sits flush" can be told apart. Other entries keep
+ * their own text.
+ */
+export function entryDisplayText(entry: { kind: string; subject: string; verb?: string; text: string }, plant: PhysicalPlantManager | null): string {
+  if (!plant || !entry.verb || (entry.kind !== 'observation' && entry.kind !== 'action')) {
+    return entry.text;
+  }
+  const label = plant.getLabel(entry.subject);
+
+  return label === entry.subject ? entry.text : `${label}: ${entry.text}`;
+}

@@ -43,10 +43,17 @@ export function plantHasFault(config: PlantConfig): boolean {
 }
 
 /** Pure: build the section text from a summary and the base points */
-export function describeFieldDiagnosis(summary: DiagnosticSummary, basePoints: number, wrongCauseNotes: readonly string[] = [], hasFault = true): FieldDiagnosis {
+export function describeFieldDiagnosis(
+  summary: DiagnosticSummary,
+  basePoints: number,
+  wrongCauseNotes: readonly string[] = [],
+  hasFault = true,
+  /** False when the scenario has no hypothesis step: the time-to-cause line would then report a step the player was never asked to do */
+  hasHypothesisStep = true
+): FieldDiagnosis {
   const effect = diagnosticPercentEffect(summary, basePoints);
   const lines: string[] = [
-    timeToCauseLine(summary, hasFault),
+    ...(hasHypothesisStep ? [timeToCauseLine(summary, hasFault)] : []),
     `Relevant tests: ${summary.relevantTests} on the affected path, ${summary.irrelevantTests} that did not bear on the symptom.`,
     `Credited negative tests: ${summary.usefulNegatives} (a clean result that ruled a suspect out).`,
     `Lucky swaps: ${summary.unsupportedSpares} (a spare fixed it, but no earlier test pointed there).`,
@@ -89,5 +96,7 @@ export function buildFieldDiagnosis(source: DiagnosisSource, basePoints: number)
   const summary = scoreDiagnosis(field.evidence, field.plant, new DependencyGraph(config), rules);
   const notes = [...new Set(summary.wrongCauseRuleIds.map((id) => rules.find((r) => r.id === id)?.note).filter((n): n is string => n !== undefined))];
 
-  return describeFieldDiagnosis(summary, basePoints, notes, plantHasFault(config));
+  const hasHypothesisStep = (config.hypothesisSpecs?.length ?? 0) > 0 || rules.length > 0 || field.evidence.entries().some((e) => e.kind === 'hypothesis');
+
+  return describeFieldDiagnosis(summary, basePoints, notes, plantHasFault(config), hasHypothesisStep);
 }

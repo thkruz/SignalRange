@@ -108,7 +108,7 @@ export class ServiceModel {
   private cache_ = new Map<string, LayerReading[]>();
   private cacheTimeS_ = Number.NaN;
   private readonly sampleListeners_: Array<(sample: ServiceSample) => void> = [];
-  private readonly eventListeners_: Array<(eventId: string) => void> = [];
+  private readonly eventListeners_: Array<(eventId: string, logLine?: string) => void> = [];
 
   /**
    * `live` is the physics reader of package H. It is used only when `cfg.linkMode === 'live'`; every other
@@ -481,7 +481,7 @@ export class ServiceModel {
     this.cacheTimeS_ = Number.NaN;
   }
 
-  bumpEvent(eventId: string, atS?: number): void {
+  bumpEvent(eventId: string, atS?: number, logLine?: string): void {
     this.eventEpoch_ += 1;
     this.cacheTimeS_ = Number.NaN;
     for (const cfg of this.intervalCfg_) {
@@ -491,7 +491,7 @@ export class ServiceModel {
         this.trackIntervals_(this.plant_.getTimeSeconds());
       }
     }
-    for (const listener of [...this.eventListeners_]) listener(eventId);
+    for (const listener of [...this.eventListeners_]) listener(eventId, logLine);
   }
 
   /** M05: the evidence log stamps every sample the player takes */
@@ -505,7 +505,7 @@ export class ServiceModel {
   }
 
   /** M05: the evidence log stamps every anchored event that fires */
-  onEvent(listener: (eventId: string) => void): () => void {
+  onEvent(listener: (eventId: string, logLine?: string) => void): () => void {
     this.eventListeners_.push(listener);
 
     return () => {

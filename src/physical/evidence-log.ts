@@ -86,7 +86,7 @@ export interface EvidencePlant {
 /** What the log needs from the service model */
 export interface EvidenceServiceSource {
   onSample(listener: (sample: ServiceSample) => void): () => void;
-  onEvent(listener: (eventId: string) => void): () => void;
+  onEvent(listener: (eventId: string, logLine?: string) => void): () => void;
 }
 
 export interface EvidenceLogState {
@@ -119,7 +119,7 @@ export class EvidenceLog {
     this.unsubs_.push(plant.onAction((entry) => this.onPlantAction_(entry)));
     if (service) {
       this.unsubs_.push(service.onSample((sample) => this.onSample_(sample)));
-      this.unsubs_.push(service.onEvent((eventId) => this.recordEvent(eventId)));
+      this.unsubs_.push(service.onEvent((eventId, logLine) => this.recordEvent(eventId, logLine)));
     }
   }
 
@@ -238,7 +238,8 @@ export class EvidenceLog {
   }
 
   /** Stamp an anchored event (called for every event the service model reports) */
-  recordEvent(eventId: string, text = `Event ${eventId}`): EvidenceEntry {
+  recordEvent(eventId: string, logLine?: string): EvidenceEntry {
+    const text = logLine ?? 'An event happened on site.';
     this.refreshFaults_();
     const entry: EvidenceEntry = {
       id: this.nextId_(),

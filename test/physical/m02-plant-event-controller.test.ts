@@ -194,6 +194,6 @@ describe('M02 plant event controller', () => {
     controller.update(7);
     controller.update(8);
     expect(onFire).toHaveBeenCalledTimes(1);
-    expect(onFire).toHaveBeenCalledWith('obstruction', 7);
+    expect(onFire).toHaveBeenCalledWith('obstruction', 7, undefined);
   });
 });

@@ -1,8 +1,11 @@
 import { GroundStation } from '@app/assets/ground-station/ground-station';
+import { FRONTLINE_STATION_ID } from '@app/campaigns/frontline/plant-config';
 import { AlarmStatus } from '@app/equipment/base-equipment';
 import { DEGRADED_MARGIN_LABEL, LOCK_LOST_LABEL, modemLiveDetail, modemLockAlarm } from '@app/equipment/receiver/rx-signal-quality';
 import { EventBus } from '@app/events/event-bus';
 import { AggregatedAlarm, AlarmStateChangedData, Events } from '@app/events/events';
+import { getActiveField } from '@app/physical/field-hooks';
+import { FieldTabPolicy } from '@app/physical/field-tab-policy';
 import { SimClock } from '@app/simulation/sim-clock';
 import { getSimulatedNowMs, isScenarioClockRunning } from '@app/simulation/sim-time';
 import { SimulationManager } from '@app/simulation/simulation-manager';
@@ -378,6 +381,15 @@ export class AlarmService {
       .map(({ alarm }) => alarm);
   }
 
+  /**
+   * At the frontline camp the RF chain is not part of the exercise: the player sees only the Site tab,
+   * so an AGC gain warning from the legacy chain has nothing to act on. Shown again once the trainer
+   * unlocks the engineering tabs. Other stations and campaigns are untouched.
+   */
+  private static isHiddenFieldChainAlarm_(gs: GroundStation, message: string): boolean {
+    return gs.state.id === FRONTLINE_STATION_ID && getActiveField() !== null && !FieldTabPolicy.isEngineeringUnlocked() && message.startsWith('AGC at max gain');
+  }
+
   private static collectGroundStationAlarms_(gs: GroundStation): AlarmWithDetail[] {
     // Skip non-operational locations
     if (!gs.state.isOperational) return [];
@@ -404,7 +416,7 @@ export class AlarmService {
     gs.rfFrontEnds.forEach((rfFe, idx) => {
       for (const rfCase of [1, 2]) {
         for (const alarm of rfFe.getStatusAlarms(rfCase)) {
-          if (AlarmService.isDisplayableAlarm_(alarm)) {
+          if (AlarmService.isDisplayableAlarm_(alarm) && !AlarmService.isHiddenFieldChainAlarm_(gs, alarm.message)) {
             alarms.push({
               severity: alarm.severity as AggregatedAlarm['severity'],
               message: alarm.message,

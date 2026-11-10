@@ -66,7 +66,7 @@ export interface NotebookLine {
 }
 
 /** Everything one timeline row prints */
-export function buildNotebookLine(entry: EvidenceEntry, all: readonly EvidenceEntry[]): NotebookLine {
+export function buildNotebookLine(entry: EvidenceEntry, all: readonly EvidenceEntry[], textOf: (e: EvidenceEntry) => string = (e) => e.text): NotebookLine {
   let cites = '';
   if (entry.kind === 'hypothesis') {
     const ids = (entry as HypothesisEntry).citedEntryIds;
@@ -77,7 +77,7 @@ export function buildNotebookLine(entry: EvidenceEntry, all: readonly EvidenceEn
       .join(', ');
   }
 
-  return { id: entry.id, kind: entry.kind, kindLabel: KIND_LABEL[entry.kind], stamp: clock(entry.tS), text: entry.text, cites };
+  return { id: entry.id, kind: entry.kind, kindLabel: KIND_LABEL[entry.kind], stamp: clock(entry.tS), text: textOf(entry), cites };
 }
 
 export class FieldNotebookPanel {
@@ -95,7 +95,9 @@ export class FieldNotebookPanel {
     /** Authored cause options (M21). When present the cause is a select of option ids plus an "other" that never matches; absent = free text */
     private readonly getCauseOptions_: () => CauseOption[] | null = () => null,
     /** Scenario check of a saved hypothesis: the reason it does not hold up yet, or null. Never blocks saving. */
-    private readonly getFeedback_: (entry: HypothesisEntry) => string | null = () => null
+    private readonly getFeedback_: (entry: HypothesisEntry) => string | null = () => null,
+    /** Wording of one entry (part prefix); default is the entry text */
+    private readonly textOf_: (entry: EvidenceEntry) => string = (e) => e.text
   ) {
     this.host_.addEventListener('click', this.onClick_);
     this.host_.addEventListener('change', this.onChange_);
@@ -212,7 +214,7 @@ export class FieldNotebookPanel {
 
     const all = log.entries();
     const lines = all
-      .map((e) => buildNotebookLine(e, all))
+      .map((e) => buildNotebookLine(e, all, this.textOf_))
       .slice(-HISTORY_SHOWN)
       .reverse();
     const lineKey = lines.map((l) => l.id).join('|');
@@ -249,7 +251,7 @@ export class FieldNotebookPanel {
       const labelFor = (e: EvidenceEntry): string => {
         const n = all.findIndex((x) => x.id === e.id) + 1;
 
-        return `<label class="fnb-cite"><input type="checkbox" data-nb-cite="${escapeHtml(e.id)}" /> #${n} ${escapeHtml(clock(e.tS))} ${escapeHtml(e.text)}</label>`;
+        return `<label class="fnb-cite"><input type="checkbox" data-nb-cite="${escapeHtml(e.id)}" /> #${n} ${escapeHtml(clock(e.tS))} ${escapeHtml(this.textOf_(e))}</label>`;
       };
       const shown = [...cites.querySelectorAll<HTMLInputElement>('input[data-nb-cite]')].map((i) => i.dataset.nbCite);
       const grewOnly = shown.length > 0 && shown.every((id, idx) => id === citable[idx]?.id);

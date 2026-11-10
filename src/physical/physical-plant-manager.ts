@@ -2263,6 +2263,15 @@ export class PhysicalPlantManager {
     return this.deps_.now() < (this.rebootUntilS_.get(partId) ?? 0);
   }
 
+  /** What a running device is doing instead of serving: restarting after a supply loss, or searching for its satellite (null when neither) */
+  getStartupPhase(partId: string): 'restarting' | 'searching' | null {
+    if (this.isRebooting_(partId)) {
+      return 'restarting';
+    }
+
+    return this.isSearching(partId) ? 'searching' : null;
+  }
+
   /** True while the terminal is in its post-boot satellite search (booted, powered, no service yet) */
   isSearching(partId: string): boolean {
     return !this.isRebooting_(partId) && this.deps_.now() < (this.searchUntilS_.get(partId) ?? 0);

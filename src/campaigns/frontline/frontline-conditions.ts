@@ -47,13 +47,22 @@ const inRange = (v: number, r: { min?: number; max?: number } | undefined): bool
   r === undefined || ((r.min === undefined || v >= r.min) && (r.max === undefined || v <= r.max));
 
 /** The part's live power readings sit inside every given range (battery soc, any part's draw, generator fuel) */
-export function powerRead(partId: string, metrics: PowerReadMetrics, description = `Power readings for ${partId}`): Condition {
+export function powerRead(
+  partId: string,
+  metrics: PowerReadMetrics,
+  description = `Power readings for ${partId}`,
+  /** When true the row stays open until the player has inspected the part, so a passive panel figure cannot tick it */
+  opts: { afterInspect?: boolean } = {}
+): Condition {
   return make(
-    `powerRead:${partId}:${JSON.stringify(metrics)}`,
+    `powerRead:${partId}:${JSON.stringify(metrics)}${opts.afterInspect ? ':inspected' : ''}`,
     description,
     () => {
       const h = hooks();
       if (!h) {
+        return false;
+      }
+      if (opts.afterInspect && !h.plant.hasInspected(partId)) {
         return false;
       }
       const r = h.plant.getPowerReadings();

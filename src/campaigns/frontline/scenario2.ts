@@ -107,20 +107,22 @@ export const frontlineScenario2Data: FrontlineScenarioData = {
       prerequisiteObjectiveIds: [],
       conditions: [
         { type: 'part-inspected', description: 'Power station inspected', params: { partId: 'power-station' }, mustMaintain: false },
-        powerRead('power-station', { socWh: { min: 400, max: 500 } }, 'Stored energy read from the power station'),
+        powerRead('power-station', { socWh: { min: 400, max: 500 } }, 'Stored energy read from the power station', { afterInspect: true }),
         {
           type: 'status-check',
           description: 'Usable energy above the reserve worked out',
           params: {
             character: Character.SYSTEM,
-            question: 'The power station holds 450 Wh and the exercise reserve is 200 Wh. How much energy can the configuration use before it reaches the reserve?',
+            question:
+              'The power station started the exercise with about 450 Wh, and the exercise reserve is 200 Wh. How much energy can the configuration use before it reaches the reserve?',
             options: [
               '250 Wh, the difference between stored energy and the reserve.',
               '450 Wh, because the reserve only applies after the battery is empty and recharged.',
               '200 Wh, because the reserve is the amount the exercise lets you spend now.',
             ],
             correctIndex: 0,
-            explanation: 'The reserve stays untouched, so only the energy above the reserve can be used. Subtracting 200 Wh from 450 Wh leaves 250 Wh to plan with.',
+            explanation:
+              'The reserve stays untouched, so only the energy above the reserve can be used. Subtracting 200 Wh from about 450 Wh leaves about 250 Wh to plan with, even as the panel reading drifts down.',
           },
           mustMaintain: false,
         },
@@ -156,13 +158,17 @@ export const frontlineScenario2Data: FrontlineScenarioData = {
       id: 's2-select-configuration',
       title: 'Choose the Operating Configuration',
       description:
-        'Select equipment states that support the exercise workload while preserving the 200 Wh reserve. Check the predicted load before committing to the configuration.',
+        'Select equipment states that support the exercise workload while preserving the 200 Wh reserve. Check the predicted load before committing to the configuration. The low-delay card allows 150 ms: SkyLink takes about 45 ms, the camp reference VSAT about 620 ms.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s2-trace-dependencies'],
       conditions: [
         // Both must hold at the same moment: latched separately, the starting state (both terminals on) satisfies the card and a later VSAT-only pick satisfies the reserve
         { ...forecastMeetsReserve({}, 'Forecast keeps the 200 Wh reserve over the planning horizon'), mustMaintain: true },
-        { ...anyServiceSupports(OLA_VOICE_CARD.id, CAMP_SERVICES, 'A running terminal meets the low-delay requirement'), mustMaintain: true },
+        {
+          ...anyServiceSupports(OLA_VOICE_CARD.id, CAMP_SERVICES, 'A running terminal meets the low-delay requirement'),
+          hint: 'Compare each path with the 150 ms card. A SkyLink round trip is about 45 ms. The camp reference VSAT relays through a geostationary satellite and takes about 620 ms, so it cannot meet the card.',
+          mustMaintain: true,
+        },
       ],
     },
     {
@@ -223,7 +229,7 @@ export const frontlineScenario2Data: FrontlineScenarioData = {
       's2-select-configuration': {
         character: Character.MAREK_DOMANSKI,
         audioUrl: '',
-        text: "<p>Choose a configuration that meets the stated workload requirement and leaves the reserve intact. You don't need every item running to justify the equipment you keep available.</p>",
+        text: "<p>Choose a configuration that meets the stated workload requirement and leaves the reserve intact. The card allows 150 milliseconds. SkyLink takes about 45, and the reference VSAT about 620. You don't need every item running to justify the equipment you keep available.</p>",
       },
       's2-respond-to-outage': {
         character: Character.MAREK_DOMANSKI,

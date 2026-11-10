@@ -22,7 +22,7 @@ import { GLOW_FILTERS_SVG } from '@app/physical/ui/glow-filters';
 import { PartCloseupModal } from '@app/physical/ui/part-closeup-modal';
 import { shapeSvg, svgOpen, VIEW_W, viewHeight } from '@app/physical/ui/plant-svg';
 import { PlantTrainerBox } from '@app/physical/ui/plant-trainer-box';
-import { escapeHtml, hotspotPip, internetPaths } from '@app/physical/ui/plant-ui-helpers';
+import { entryDisplayText, escapeHtml, hotspotPip, internetPaths, skylinkPathLabel } from '@app/physical/ui/plant-ui-helpers';
 import type { SceneLayer, SiteHotspot, SiteView } from '@app/physical/ui/site-types';
 import { ScenarioManager } from '@app/scenario-manager';
 import { getAssetUrl } from '@app/utils/asset-url';
@@ -86,7 +86,8 @@ export class SiteTab extends BaseElement {
         const log = PhysicalPlantService.evidenceOrNull();
 
         return log ? hypothesisFeedback(entry, specs, log.entries(), { eventFiredAtS: (id) => PhysicalPlantService.eventsOrNull()?.firedAtS(id) ?? null }) : null;
-      }
+      },
+      (entry) => entryDisplayText(entry, PhysicalPlantService.plantOrNull())
     );
     this.handoverPanel_ = new FieldHandoverPanel(qs<HTMLElement>('#site-handover-panel'), {
       records: () => PhysicalPlantService.recordsOrNull(),
@@ -406,7 +407,7 @@ export class SiteTab extends BaseElement {
     const spares = Object.values(plant.getSpares()).reduce((a, b) => a + b, 0);
     this.setText_('site-spares', String(spares));
     const net = internetPaths(plant);
-    this.setText_('site-path-skylink', net.skylink ? 'up' : 'down');
+    this.setText_('site-path-skylink', skylinkPathLabel(plant));
     this.setText_('site-path-vsat', net.vsat ? 'up' : 'down');
     const trainer = this.cache_('site-open-trainer');
     if (trainer) trainer.style.display = isTrainerVisible(isFrontlineAllowed(), ScenarioManager.getInstance().data?.missionType) ? '' : 'none';

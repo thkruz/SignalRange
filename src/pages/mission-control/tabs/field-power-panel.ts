@@ -21,6 +21,8 @@ export interface PowerDeviceRow {
   current: string;
   pending: string;
   starting: boolean;
+  /** Restarting or searching after a supply loss: the row says Running but there is no service yet */
+  phase: 'restarting' | 'searching' | null;
   loadW: number;
   fuelL: number | null;
   modes: Pick<PartModeConfig, 'id' | 'label' | 'loadW'>[];
@@ -72,6 +74,7 @@ export function buildPowerPanelModel(plant: PhysicalPlantManager, pending: Reado
       current,
       pending: picked,
       starting: plant.isStarting(id),
+      phase: plant.getStartupPhase(id),
       loadW: readings.loadW[id] ?? plant.getLoadW(id),
       fuelL: id in readings.fuelL ? readings.fuelL[id] : null,
       modes: modes.map((m) => ({ id: m.id, label: m.label, loadW: m.loadW })),
@@ -251,9 +254,10 @@ export class FieldPowerPanel {
 
     for (const d of model.devices) {
       const mode = d.modes.find((m) => m.id === d.current);
-      this.text_(`mode-${d.id}`, d.starting ? `${mode?.label ?? d.current} (starting)` : (mode?.label ?? d.current));
+      const phaseText = d.phase === 'restarting' ? ' (restarting, no service yet)' : d.phase === 'searching' ? ' (searching for the satellite)' : '';
+      this.text_(`mode-${d.id}`, d.starting ? `${mode?.label ?? d.current} (starting)` : `${mode?.label ?? d.current}${phaseText}`);
       const modeEl = this.el_(`mode-${d.id}`);
-      if (modeEl) modeEl.className = `fpp-mode ${d.starting ? 'fpp-mode-warn' : d.current === 'off' || d.current === 'standby' ? 'fpp-mode-idle' : 'fpp-mode-on'}`;
+      if (modeEl) modeEl.className = `fpp-mode ${d.starting || d.phase ? 'fpp-mode-warn' : d.current === 'off' || d.current === 'standby' ? 'fpp-mode-idle' : 'fpp-mode-on'}`;
       this.text_(`load-${d.id}`, `${Math.round(d.loadW)} W`);
       this.text_(`fuel-${d.id}`, d.fuelL === null ? '' : `${d.fuelL.toFixed(1)} L`);
       const sel = this.host_.querySelector<HTMLSelectElement>(`select[data-power-part="${d.id}"]`);

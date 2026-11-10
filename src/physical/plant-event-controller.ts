@@ -30,7 +30,7 @@ export interface PlantEventTarget {
   /** Optional ops-log line writer */
   log?(line: string): void;
   /** Called after an event's actions ran (M04 bumps its event epoch and stamps an evidence marker here) */
-  onFire?(eventId: string, atS: number): void;
+  onFire?(eventId: string, atS: number, logLine?: string): void;
 }
 
 export type PlantFlagValue = string | number | boolean;
@@ -168,6 +168,6 @@ export class PlantEventController {
     if (event.logLine) {
       this.target_.log?.(event.logLine);
     }
-    this.target_.onFire?.(event.id, elapsedS);
+    this.target_.onFire?.(event.id, elapsedS, event.logLine);
   }
 }

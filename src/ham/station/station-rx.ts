@@ -16,6 +16,7 @@ import { antennaGainDbi, mismatchLossDb } from '../rf/antenna-model';
 import { cxAbs } from '../rf/complex';
 import type { StationCore } from './station-core';
 import { isReceiverKind, polarizationLabel, profileOf, sdrUsbConnected } from './station-devices';
+import { wiredIsolationDb } from './station-tx';
 
 /** Authored emitter on the air at nowS, or null */
 export function authoredEmission(e: AuthoredEmitter, nowS: number): OnAirEmission | null {
@@ -87,6 +88,24 @@ function rfiDevices(core: StationCore): RfiDevice[] {
 
 const LOG_DELTA = 0.05;
 
+/**
+ * Receiver desensitization from the player's own uplink: while the satellite uplink radio is on the air,
+ * its power reaching the downlink receiver (transmit power minus the wired isolation) raises the
+ * receiver's noise floor once it passes the overload level. A good duplexer keeps this at zero.
+ */
+export function selfDesenseRiseDb(core: StationCore, rxRadioId: string, air: readonly OnAirEmission[]): number {
+  const w = core.cfg.satellite?.wiring;
+  if (!w || w.rxRadioId !== rxRadioId) return 0;
+  const tx = air.find((e) => e.isPlayer && e.sourceId === w.txRadioId && !e.viaSatellite);
+  if (!tx) return 0;
+  const iso = wiredIsolationDb(core, w.txRadioId, w.rxRadioId, tx.freqHz / 1e6);
+  if (iso === null) return 0;
+  const arrivalDbm = 10 * Math.log10(Math.max(tx.txPowerW ?? 5, 1e-6) * 1000) - iso;
+  const over = core.cfg.satellite?.overloadDbm ?? -20;
+
+  return arrivalDbm >= over ? Math.min(40, arrivalDbm - over + 10) : 0;
+}
+
 /** Evaluate every receiver; returns the emissions considered (for the UI) */
 export function evaluateReceivers(core: StationCore, dtS: number, lastLogged: Map<string, number>): void {
   const nowS = core.state.nowS;
@@ -135,7 +154,7 @@ export function evaluateReceivers(core: StationCore, dtS: number, lastLogged: Ma
       const o = core.ops.pathLossOverride(e, nowS);
       if (o !== undefined) overrides[e.id] = o;
     }
-    const env = { noiseRiseDb: noise.riseDb, pathLossDb: overrides };
+    const env = { noiseRiseDb: noise.riseDb + selfDesenseRiseDb(core, d.id, air), pathLossDb: overrides };
     const results = evaluateReception(view, terrestrial, env);
     if (viaSat.length > 0 && sat) {
       const satView: ReceiverView = { ...view, antennaGainDb: () => (ant ? antennaGainDbi(ant, fMHz, sat.az, sat.el) : 0) };

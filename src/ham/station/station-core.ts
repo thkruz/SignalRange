@@ -54,6 +54,8 @@ export interface HamStationState {
   meter: MeterState & { targetId: string | null };
   analyzerCal: AnalyzerCalibration;
   keyed: KeyedTx | null;
+  /** A packet frame holding the radio's TX load until `untilS` (the radio is keyed for the frame, not through `keyed`) */
+  pktKey?: { radioId: string; untilS: number } | null;
   /** Ops and player emissions still on the air */
   air: OnAirEmission[];
   latest: Record<string, ReceptionResult[]>;

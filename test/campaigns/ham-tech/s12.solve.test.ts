@@ -149,6 +149,23 @@ describe('S12 negatives', () => {
     h.advance(30);
   };
 
+  it('relaying the message with the lost word missing is not exact, and a fill lets the next try pass', () => {
+    toNet();
+    h.advance(1800 - h.m.nowS + 5, 5);
+    h.actOk({ type: 'radio.set', deviceId: 'mobile', patch: { vfoMHz: S12_FALLBACK_MHZ, offset: 'simplex', txToneHz: null } as never });
+    const lost = S12_MESSAGE.split(' ')
+      .filter((_, i) => i !== 8)
+      .join(' ');
+    h.actOk({ type: 'ptt', deviceId: 'mobile', intent: { kind: 'message', text: lost }, holdS: 20 } as never);
+    h.advance(40);
+    expect(failing(data, 'relay-exact-message', h.m)).not.toEqual([]);
+    h.actOk({ type: 'ptt', deviceId: 'mobile', intent: { kind: 'reply', item: 'fill' }, holdS: 3 } as never);
+    h.advance(15);
+    h.actOk({ type: 'ptt', deviceId: 'mobile', intent: { kind: 'message', text: S12_MESSAGE }, holdS: 20 } as never);
+    h.advance(40);
+    expect(failing(data, 'relay-exact-message', h.m)).toEqual([]);
+  });
+
   it('a message with one wrong word is not exact', () => {
     toNet();
     h.advance(1800 - h.m.nowS + 5, 5);
@@ -199,5 +216,37 @@ describe('S12 negatives', () => {
     h.advance(5);
     answer('s12-defect');
     expect(failing(data, 'pack-down', h.m)).toEqual(['Radio powered down', 'Battery gauge read and the 30 Wh reserve is still there']);
+  });
+  it('a meter on DC volts holds the dip at the radio terminals when the 50 W key-up resets it', () => {
+    h = harness(cfg());
+    connectFeedTo('feed', 'a');
+    h.advance(5);
+    h.actOk({ type: 'radio.set', deviceId: 'mobile', patch: { txPowerW: 50 } });
+    h.actOk({ type: 'meter.mode', mode: 'DCV' });
+    h.actOk({ type: 'meter.place', targetId: 'batt', red: 'radio+', black: 'radio-' });
+    h.actOk({ type: 'ptt', deviceId: 'mobile', intent: { kind: 'test' }, holdS: 3 });
+    h.advance(6, 0.5);
+    const holds = h.m.events('meter:minhold');
+    expect(holds).toHaveLength(1);
+    const radioDip = h.m.measurements({ instrument: 'multimeter', quantity: 'voltage', underLoad: true, placement: { target: 'batt', red: 'radio+', black: 'radio-' } });
+    expect(radioDip).toHaveLength(1);
+    expect(radioDip[0].value).toBeLessThan(11.5);
+    // after the radio reboots, the same key-up with the probes at the battery shows the supply side holding up
+    h.advance(20, 1);
+    h.actOk({ type: 'meter.place', targetId: 'batt', red: 'psu+', black: 'psu-' });
+    h.actOk({ type: 'ptt', deviceId: 'mobile', intent: { kind: 'test' }, holdS: 3 });
+    h.advance(6, 0.5);
+    const supply = h.m.measurements({ instrument: 'multimeter', quantity: 'voltage', underLoad: true, placement: { target: 'batt', red: 'psu+', black: 'psu-' } });
+    expect(supply).toHaveLength(1);
+    expect(supply[0].value).toBeGreaterThan(radioDip[0].value + 1);
+    // no meter on the circuit means no captured reading
+    h = harness(cfg());
+    connectFeedTo('feed', 'a');
+    const bare = h;
+    bare.advance(5);
+    bare.actOk({ type: 'radio.set', deviceId: 'mobile', patch: { txPowerW: 50 } });
+    bare.actOk({ type: 'ptt', deviceId: 'mobile', intent: { kind: 'test' }, holdS: 3 });
+    bare.advance(6, 0.5);
+    expect(bare.m.events('meter:minhold')).toHaveLength(0);
   });
 });

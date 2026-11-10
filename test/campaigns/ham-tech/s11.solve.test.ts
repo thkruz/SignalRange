@@ -162,4 +162,45 @@ describe('S11 solve: a contact through space', () => {
     expect(h.m.events('sat:wrong-tone')).toHaveLength(1);
     expect(h.m.events('sat:relayed')).toHaveLength(0);
   });
+  it('negative: a poor duplexer (30 dB) desenses the downlink during the uplink, so your own signal is never heard', () => {
+    const config = cfgWith((c) => ({ ...c, devices: c.devices.map((d) => (d.id === 'duplexer' ? { ...d, isolationDb: 30 } : d)) }));
+    const { h, retuneDown, prepare, aim, key } = setup(config);
+    prepare();
+    aim();
+    for (let i = 0; i < 6; i += 1) {
+      retuneDown();
+      h.advance(10, 1);
+    }
+    // receive-only is fine: no transmitter, no desense
+    expect(allTrue(objective(hamTechS11Data, 'acquire-downlink'), h.m)).toBe(true);
+    key({ kind: 'cq' });
+    h.advance(3, 1);
+    for (let i = 0; i < 4; i += 1) {
+      retuneDown();
+      h.advance(2, 1);
+    }
+    expect(h.m.events('sat:relayed').length).toBeGreaterThan(0);
+    expect(h.m.events('isolation:desense').length).toBeGreaterThan(0);
+    expect(h.m.satelliteState()?.selfHeard).toBe(false);
+    expect(allTrue(objective(hamTechS11Data, 'first-uplink'), h.m)).toBe(false);
+  });
+
+  it('a good duplexer keeps the downlink audible while the uplink is keyed', () => {
+    const { h, retuneDown, prepare, aim, key } = setup();
+    prepare();
+    aim();
+    for (let i = 0; i < 6; i += 1) {
+      retuneDown();
+      h.advance(10, 1);
+    }
+    key({ kind: 'cq' });
+    h.advance(1, 1);
+    expect(h.m.getState().keyed).not.toBeNull();
+    for (let i = 0; i < 4; i += 1) {
+      retuneDown();
+      h.advance(2, 1);
+    }
+    expect(h.m.events('isolation:desense')).toHaveLength(0);
+    expect(h.m.satelliteState()?.selfHeard).toBe(true);
+  });
 });

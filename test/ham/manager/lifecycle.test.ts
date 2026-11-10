@@ -118,3 +118,29 @@ describe('HamStationService', () => {
     expect(HamStationManager.isInitialized()).toBe(false);
   });
 });
+
+describe('HamStationManager packet DC load', () => {
+  it('a packet frame keys the radio TX load; a weak lead browns out on a 50 W packet frame', () => {
+    const mk = (faults: boolean) => {
+      const cfg = packetConfig();
+      cfg.packet = { ...cfg.packet!, audio: { inputDevice: 'interface', outputDevice: 'interface', ptt: 'rts' } };
+      cfg.devices = cfg.devices.map((d) => (d.id === 'mobile' ? { ...d, radio: { ...d.radio, txPowerW: 50 } } : d));
+      if (faults)
+        cfg.faults = [{ id: 'lead', target: 'psu', kind: 'high-resistance-lead', inspectClue: 'The lead is warm.', clearedBy: { action: 'repair' }, deenergizeToRepair: true }];
+      return harness(cfg);
+    };
+    const ok = mk(false);
+    ok.actOk({ type: 'packet.connect' });
+    expect(ok.m.getState().pktKey?.radioId).toBe('mobile');
+    ok.m.tick(ok.m.nowS + 0.5);
+    expect(ok.m.dcSystem('psu')?.state.ptt).toBe(true);
+    ok.advance(10);
+    expect(ok.m.dcSystem('psu')?.state.ptt).toBe(false);
+    expect(ok.m.resetCount('psu')).toBe(0);
+
+    const bad = mk(true);
+    bad.actOk({ type: 'packet.connect' });
+    bad.advance(3, 0.5);
+    expect(bad.m.resetCount('psu')).toBeGreaterThan(0);
+  });
+});

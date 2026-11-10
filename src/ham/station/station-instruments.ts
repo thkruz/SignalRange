@@ -80,6 +80,34 @@ export function meterRead(core: StationCore): ActionResult {
   return done(`Meter reads ${r.display}.`, { measurement: m, warning: r.warning ?? null });
 }
 
+/**
+ * Meter min-hold: a brownout resets the radio faster than anyone can read a display. When the meter is on DC
+ * volts with its probes on this DC system's terminals, the lowest voltage at those terminals before the reset
+ * is logged as an under-load reading (the dip at the radio versus the dip, or none, at the supply).
+ */
+export function captureMinHold(core: StationCore, dcId: string, sample: { vSource: number; vRadio: number }): HamMeasurement | null {
+  const meter = core.meter.state;
+  if (meter.mode !== 'DCV' || meter.redSocket !== 'VΩ' || core.state.meter.targetId !== dcId) return null;
+  const { red, black } = meter.placement;
+  const side = (n?: string): 'src' | 'radio' | null => (n?.startsWith('psu') ? 'src' : n?.startsWith('radio') ? 'radio' : null);
+  const rs = side(red);
+  if (!rs || rs !== side(black) || red?.endsWith('-') || !black?.endsWith('-')) return null;
+  const v = Math.round((rs === 'src' ? sample.vSource : sample.vRadio) * 100) / 100;
+  const placement: Record<string, string> = { target: dcId, red: red ?? '', black: black ?? '' };
+  core.event('meter:minhold', { dcId, v });
+
+  return measure(core, {
+    instrument: 'multimeter',
+    quantity: 'voltage',
+    value: v,
+    unit: 'V',
+    placement,
+    underLoad: true,
+    context: { display: `MIN ${v.toFixed(2)} V`, minHold: true, beep: false, overload: false },
+    note: 'Lowest voltage held at the radio reset.',
+  });
+}
+
 /** Read the battery energy gauge (Wh remaining) on a battery-powered DC system */
 export function batteryRead(core: StationCore, deviceId: string): ActionResult {
   const dc = core.dcSystems.get(deviceId);

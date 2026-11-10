@@ -13,6 +13,7 @@ import { stepDummyLoad } from '../rf/instruments';
 import { txPowerThroughPath } from '../rf/tx-protection';
 import { type ActionResult, done, refuse, type StationCore } from './station-core';
 import { polarizationLabel, profileOf } from './station-devices';
+import { captureMinHold } from './station-instruments';
 
 export const DEFAULT_HOLD_S = 4;
 /** Effective gain of a dummy load: it radiates almost nothing */
@@ -145,7 +146,9 @@ export function stepPower(core: StationCore, dtS: number): void {
   for (const cfg of core.cfg.devices) {
     const dc = core.dcSystems.get(cfg.id);
     if (!dc || !cfg.dcSystem) continue;
-    const keyedHere = s.keyed?.deviceId === cfg.dcSystem.radioId;
+    const pk = s.pktKey;
+    const pktHere = !!pk && pk.radioId === cfg.dcSystem.radioId && s.nowS - dtS < pk.untilS;
+    const keyedHere = s.keyed?.deviceId === cfg.dcSystem.radioId || pktHere;
     if (cfg.dcSystem.txScalesWithPower) {
       const w = core.inService(cfg.dcSystem.radioId)?.radio?.txPowerW;
       if (typeof w === 'number') dc.state.txCurrentA = Math.round((1.5 + 0.13 * w) * 100) / 100;
@@ -162,12 +165,15 @@ export function stepPower(core: StationCore, dtS: number): void {
         vRadio: b ? round(b.vRadio) : null,
         currentA: b ? round(b.currentA) : null,
       });
+      if (b) captureMinHold(core, cfg.id, b);
       if (keyedHere) {
         core.event(`reset:${cfg.dcSystem.radioId}`);
-        endTx(core, true);
+        if (s.keyed?.deviceId === cfg.dcSystem.radioId) endTx(core, true);
+        if (pktHere) s.pktKey = null;
       }
     }
   }
+  if (s.pktKey && s.nowS >= s.pktKey.untilS) s.pktKey = null;
   for (const d of Object.values(s.devices)) {
     if (!d.dummyLoad) continue;
     const heating = s.keyed?.termination === 'dummy-load' && core.path(s.keyed.deviceId, s.keyed.emission.freqHz / 1e6).terminationDeviceId === d.id;

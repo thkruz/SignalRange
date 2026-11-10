@@ -166,9 +166,10 @@ export const s11Station: HamStationConfig = {
   ],
   hints: {
     'read-pass-card': 'Multiply the downlink frequency by the speed ratio, then decide whether an approaching satellite sounds higher or lower.',
-    'prepare-paths': 'Inspect the duplexer, then set the handheld to the uplink with the access tone and low power, and the SDR to the downlink in FM.',
+    'prepare-paths': 'Inspect the duplexer and read its isolation, then set the handheld to the uplink with the access tone and low power, and the SDR to the downlink in FM.',
     'acquire-downlink': 'Point the Yagi where the satellite rises and tune the SDR above 145.900 MHz while it approaches. Listen for the beacon before you transmit.',
-    'first-uplink': 'Correct the uplink for Doppler (a bit lower while it approaches), key briefly with a CQ, and listen for your own signal on the downlink.',
+    'first-uplink':
+      'Correct the uplink for Doppler (a bit lower while it approaches), key briefly with a CQ, and listen for your own signal on the downlink while you key. If the downlink drops out as you transmit, the two paths are not isolated enough.',
     'follow-doppler': 'The shift changes during the pass. Retune the uplink and key again later, so the satellite receiver always sees 435.900 MHz.',
     'grid-exchange': 'Call CQ, wait for W0GRD to answer with its grid, then reply and give your call sign.',
     'explain-fading': 'A regular rise and fall points to something turning, not to a power problem.',

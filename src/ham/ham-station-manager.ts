@@ -346,6 +346,8 @@ export class HamStationManager {
       return refuse(res.reason ?? 'Nothing went out over the air.', 'packet');
     }
     c.state.air.push(...res.emissions);
+    const frameEndS = Math.max(...res.emissions.map((e) => e.endS ?? nowS));
+    c.state.pktKey = { radioId, untilS: Math.max(frameEndS, nowS + 0.5) };
     c.event(`packet:${a.type.slice(7)}`);
     if (pk.getAudio().systemSoundsToInterface) {
       // A notification sound routed to the interface goes out over the air

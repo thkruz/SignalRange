@@ -11,6 +11,7 @@ import { S11_DOWNLINK_MHZ, S11_TONE_HZ, S11_UPLINK_MHZ, s11Station } from './s11
  * Fixtures (see s11-station.ts, cubehop-uv.ts and the S11 mission brief):
  * - CUBEHOP-UV: uplink 435.900 MHz FM with a 67.0 Hz access tone, downlink 145.900 MHz FM, beacon on the downlink.
  * - Start 2027-06-19 16:13 local sim time; the pass rises about 5 minutes later and peaks near 48 degrees.
+ * - If the pass is missed the next one rises about 100 minutes later (16 degrees); settings.timeSkip offers a skip to it.
  * - Doppler about +/- 3.4 kHz on the downlink and +/- 10 kHz on the uplink; the satellite receiver accepts 7 kHz.
  * - The duplexer gives 60 dB between the handheld and the SDR; a splitter (6 dB) blocks keying.
  * - W0GRD (Mo, grid EN34) is fictional and answers a CQ with its grid square.
@@ -28,7 +29,11 @@ export const hamTechS11Data: ScenarioData = {
   description:
     "<p>A small amateur satellite is about to rise over Riley's backyard. Connect the uplink and downlink radios to one Yagi through a duplexer, find the satellite's beacon without transmitting, then use a low-power uplink to reach another operator.</p><p>The satellite, the pass and the other station are simulation fixtures.</p>",
   equipment: ['Dual-band handheld (uplink)', 'USB SDR (downlink)', 'Duplexer', 'Dual-band satellite Yagi', 'Pass card'],
-  settings: techSettings(11, s11Station, { date: '2027-06-19', wallTime: '16:13:00' }, [makeCubehopUvSatellite()]),
+  // A missed first pass leaves the next one 100 minutes away (real orbit); the skip control fast-forwards to it
+  settings: {
+    ...techSettings(11, s11Station, { date: '2027-06-19', wallTime: '16:13:00' }, [makeCubehopUvSatellite()]),
+    timeSkip: { leadTimeS: 180, minSkipS: 300, horizonHours: 6 },
+  },
   objectives: [
     briefObjective('Open the mission brief. It lists the pass card, the frequencies and the order of work for the pass.'),
     ...chain('review-mission-brief', [
@@ -71,12 +76,12 @@ export const hamTechS11Data: ScenarioData = {
         nice: ['K0645'],
         title: 'Send a Modest Uplink',
         description:
-          'Correct the uplink for Doppler, key a short CQ with your call sign, and monitor the downlink until you hear your own signal come back. The satellite must accept it with no overload.',
+          'Correct the uplink for Doppler, key a short CQ with your call sign, and keep the SDR on the downlink while you transmit, and hear your own signal come back. The satellite must accept it and the SDR must not be overloaded.',
         points: 20,
         conditions: [
           eventHappened('sat:relayed', {}, 'The satellite relayed your uplink'),
           desenseFree({}, 'The uplink did not overload the receiver'),
-          satDownlinkHeard('Your own signal heard on the downlink'),
+          satDownlinkHeard('Your own signal heard on the downlink while you transmit'),
         ],
       },
       {

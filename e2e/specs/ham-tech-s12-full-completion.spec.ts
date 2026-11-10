@@ -107,6 +107,8 @@ test('ham-tech-s12 completes all objectives', async ({ page, missionControlPage:
   await step('Check into the Club Net', 'check-into-net');
 
   // diagnose-fault: 50 W browns out the radio, then 5 W with meter reads at PSU and radio
+  // meter on DC volts at the radio terminals first, so it holds the dip at the reset
+  await meterReadDcv(page, 'radio+', 'radio-');
   await setTxPower(page, 'mobile', 50);
   await pttTransmit(page, 'mobile', { kind: 'test' }, 3);
   await page.waitForTimeout(6000);
@@ -146,7 +148,9 @@ test('ham-tech-s12 completes all objectives', async ({ page, missionControlPage:
   await page.waitForTimeout(12000);
   await step('Move to the Fallback Channel', 'move-to-fallback');
 
-  // relay-exact-message
+  // relay-exact-message: the first delivery loses a word, so ask for the fill first
+  await pttTransmit(page, 'mobile', { kind: 'reply', item: 'fill' }, 3);
+  await page.waitForTimeout(15000);
   await pttTransmit(page, 'mobile', { kind: 'message', text: MESSAGE }, 20);
   await page.waitForTimeout(40000);
   await step('Relay the Exact Message', 'relay-exact-message');

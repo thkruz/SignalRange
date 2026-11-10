@@ -241,6 +241,7 @@ export const s12Station: HamStationConfig = {
       afterEvent: { event: 'repeater:relayed', since: `repair:${S12_FAULT_ID}`, delayS: 30 },
     },
     message: S12_MESSAGE,
+    missingWordIndex: 8,
   },
   energyPlan: {
     dcDeviceId: 'batt',
@@ -257,7 +258,7 @@ export const s12Station: HamStationConfig = {
     {
       id: 's12-net-card',
       title: 'Club net card',
-      body: `Net control W0SRC. Repeater W0CLB output 146.940 MHz, input 146.340 MHz (-600 kHz), tone 100.0 Hz. Check in with your call sign. Net control announces a planned repeater outage: move to simplex on ${S12_FALLBACK_MHZ.toFixed(3)} MHz FM. Relay the assigned message word for word to N0RCV, use phonetics for unusual words, ask for fills and listen to the readback. The club check source W0CHK is on ${S12_CHECK_MHZ.toFixed(3)} MHz. Club net practice: ordinary FCC rules still apply.`,
+      body: `Net control W0SRC. Repeater W0CLB output 146.940 MHz, input 146.340 MHz (-600 kHz), tone 100.0 Hz. Check in with your call sign. Net control announces a planned repeater outage: move to simplex on ${S12_FALLBACK_MHZ.toFixed(3)} MHz FM. Relay the assigned message word for word to N0RCV, use phonetics for unusual words, ask for a fill if a word is lost in noise and listen to the readback. The club check source W0CHK is on ${S12_CHECK_MHZ.toFixed(3)} MHz. Club net practice: ordinary FCC rules still apply.`,
     },
     {
       id: 's12-energy-card',
@@ -274,11 +275,12 @@ export const s12Station: HamStationConfig = {
     'plan-portable-station': 'Rule out hazards first (power lines, the public, the weather), then work the energy plan as an average power over the 90 minutes.',
     'assemble-and-test': 'Test into the dummy load at low power first, then connect the mast feed line and listen for the club check source.',
     'check-into-net': 'Wait for net control to call for check-ins. Give your call sign when you key.',
-    'diagnose-fault': 'The radio resets only at higher power. Take one reading at the battery terminals and one at the radio terminals while transmitting.',
+    'diagnose-fault':
+      'The radio resets only at higher power. Put the meter on DC volts at the radio terminals before the 50 W key-up and it holds the dip. Then take one reading at the battery terminals and one at the radio terminals while transmitting.',
     'replace-lead': 'Switch the battery off before touching the lead, replace the lead and keep the fuse, then switch back on.',
     'verify-repair': 'Repeat what exposed the fault: transmit at 50 W and read the radio terminals, then check the repeater answers.',
     'move-to-fallback': 'When the repeater is off the air, set 147.525 MHz FM with no offset or tone, and call the station at the club tent.',
-    'relay-exact-message': 'Send the assigned text word for word. Ask for a fill if you missed a word and listen to the readback.',
+    'relay-exact-message': 'The first delivery loses a word to noise. Send a reply of type fill, copy the whole text, then send it word for word and listen to the readback.',
     'check-radiogram': 'The check is the number of words in the text alone.',
     'close-station': 'Identify with your call sign at the end of the net.',
     'pack-down': 'Power down first, then read the battery gauge and compare it with the 30 Wh reserve.',

@@ -20,7 +20,7 @@ import { badge, button, card, fmt, h, isFocused, labelled, RADIO_KINDS, Rebuilde
 const COARSE_MHZ = 0.1;
 const FINE_MHZ = 0.005;
 const FILTER_PRESETS = [500, 2400, 6000, 12500, 15000, 25000];
-const REPLY_ITEMS = ['report', 'name', 'location', 'grid'];
+const REPLY_ITEMS = ['report', 'name', 'location', 'grid', 'fill'];
 
 interface RadioView {
   id: string;

@@ -91,7 +91,7 @@ export const hamTechS12Data: ScenarioData = {
         nice: ['K0645'],
         title: 'Diagnose the Station Fault',
         description:
-          'Net control asks for full power. Set 50 W and key briefly: the radio resets and the log records both voltages. Then key a short test at 5 W and read the battery terminals and the radio terminals while it transmits, and compare them.',
+          'Net control asks for full power. Set 50 W and key briefly: the radio resets and the log records both voltages. A meter on DC volts with its probes on the radio terminals holds the lowest voltage at the reset. Then key a short test at 5 W and read the battery terminals and the radio terminals while it transmits, and compare them.',
         points: 20,
         conditions: [
           brownoutSeen('batt', { maxRadioV: S12_RESET_V, minSourceV: 12.5 }, 'Reset logged with the radio below the reset point and the battery still high'),
@@ -163,7 +163,7 @@ export const hamTechS12Data: ScenarioData = {
         nice: ['K0645'],
         title: 'Relay the Exact Message',
         description:
-          'Send the assigned message to N0RCV on the fallback channel exactly as written. Use phonetics for the unusual words, ask for a fill only if you need one, and listen to the readback.',
+          'Send the assigned message to N0RCV on the fallback channel exactly as written. Use phonetics for the unusual words, one word is lost in the first delivery, so ask for a fill with a reply, and listen to the readback.',
         points: 25,
         conditions: [netMessageExact('Message relayed word for word on the fallback channel', { onFallback: true })],
       },

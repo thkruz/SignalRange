@@ -29,6 +29,8 @@ export interface NetControlConfig {
   };
   /** Authored message, deliberately containing unusual words that need phonetics */
   message: string;
+  /** Zero-based index of the message word lost to a noise burst in the first delivery; a fill supplies it */
+  missingWordIndex?: number;
   hears: HearsFn;
 }
 
@@ -219,7 +221,7 @@ export class NetControl {
           `Announcement: the repeater will be taken down for planned maintenance. When it goes off the air, move to simplex on ${c.outage.fallbackMHz.toFixed(3)} megahertz.`
         );
         this.outageAnnounced_ = true;
-        this.speak_('ncs', due + 15, `${c.playerCallsign}, I have traffic for you. Relay this message to ${c.receiver.callsign}: ${c.message}`, 'assignment');
+        this.speak_('ncs', due + 15, `${c.playerCallsign}, I have traffic for you. Relay this message to ${c.receiver.callsign}: ${this.deliveredText_()}`, 'assignment');
         this.stage_ = 'traffic-assigned';
         return;
       }
@@ -257,6 +259,15 @@ export class NetControl {
       default:
         return;
     }
+  }
+
+  /** Text as first spoken: one word is lost to a noise burst when the config says so */
+  private deliveredText_(): string {
+    const i = this.cfg_.missingWordIndex;
+    if (i === undefined) return this.cfg_.message;
+    const words = this.cfg_.message.split(' ');
+    words[i] = '(noise)';
+    return words.join(' ');
   }
 
   private onFallback_(e: OnAirEmission): boolean {

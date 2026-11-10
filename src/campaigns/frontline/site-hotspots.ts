@@ -779,12 +779,12 @@ export const FORWARD_CLOSEUPS: Partial<Record<CloseupId, CloseupDef>> = {
   },
   'power-station': {
     id: 'power-station',
-    title: 'Battery',
+    title: 'Power station',
     image: `${DIR}/cu-fwd-power-station.webp`,
     aspect: 3 / 2,
     forward: true,
     regions: [
-      { id: 'cu-power-station', target: 'power-station', label: 'Battery', shape: cr(230, 160, 1320, 580) },
+      { id: 'cu-power-station', target: 'power-station', label: 'Power station', shape: cr(230, 160, 1320, 580) },
       { id: 'cu-ps-out', target: 'ps:ac-out', label: 'Output sockets', shape: cr(600, 255, 890, 345) },
       { id: 'cu-ps-dc', target: 'ps:dc-out', label: 'DC outputs', shape: cr(915, 270, 1090, 345) },
       { id: 'cu-ps-in', target: 'ps:in', label: 'Input port', shape: cr(1125, 250, 1190, 320) },
@@ -854,7 +854,7 @@ export const FORWARD_CLOSEUPS: Partial<Record<CloseupId, CloseupDef>> = {
     cables: [
       {
         target: 'vsat-ifl',
-        label: 'VSAT IFL (30 m coax)',
+        label: 'EuroSat IFL (30 m coax)',
         points: [
           [0.1, 0.41],
           [0.17, 0.47],

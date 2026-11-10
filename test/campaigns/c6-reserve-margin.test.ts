@@ -11,7 +11,7 @@ import { frontlineScenario8Data } from '@app/campaigns/frontline/scenario8';
 import { frontlineScenario9Data } from '@app/campaigns/frontline/scenario9';
 import { frontlineScenario11Data } from '@app/campaigns/frontline/scenario11';
 import { frontlineScenario14Data, S14_SHIFT_END_S } from '@app/campaigns/frontline/scenario14';
-import { frontlineScenario15Data, S15_SHIFT_END_S } from '@app/campaigns/frontline/scenario15';
+import { frontlineScenario15Data, S15_PARK_DELAY_S, S15_SHIFT_END_S } from '@app/campaigns/frontline/scenario15';
 import { frontlineScenario16Data, S16_SHIFT_END_S } from '@app/campaigns/frontline/scenario16';
 import { EventBus } from '@app/events/event-bus';
 import { PhysicalPlantService as Service } from '@app/physical/physical-plant-service';
@@ -61,13 +61,13 @@ describe.each(ROLLING)('$name reserve margin (rolling)', ({ data, allowanceS, co
 });
 
 const SHIFT = [
-  { name: 'S14', data: frontlineScenario14Data, shiftEndS: S14_SHIFT_END_S },
-  { name: 'S15', data: frontlineScenario15Data, shiftEndS: S15_SHIFT_END_S },
-  { name: 'S16', data: frontlineScenario16Data, shiftEndS: S16_SHIFT_END_S },
+  { name: 'S14', data: frontlineScenario14Data, shiftEndS: S14_SHIFT_END_S, parkDelayS: 600 },
+  { name: 'S15', data: frontlineScenario15Data, shiftEndS: S15_SHIFT_END_S, parkDelayS: S15_PARK_DELAY_S },
+  { name: 'S16', data: frontlineScenario16Data, shiftEndS: S16_SHIFT_END_S, parkDelayS: 600 },
 ];
 const WRONG = { 'vsat-modem': 'run' };
 
-describe.each(SHIFT)('$name end-of-shift reserve', ({ data, shiftEndS }) => {
+describe.each(SHIFT)('$name end-of-shift reserve', ({ data, shiftEndS, parkDelayS }) => {
   it('is an end-of-shift basis whose horizon shrinks with the clock', () => {
     const svc = bootScenario(data);
     expect(svc.plant.forecast({}).horizonS).toBe(shiftEndS);
@@ -93,23 +93,24 @@ describe.each(SHIFT)('$name end-of-shift reserve', ({ data, shiftEndS }) => {
     expect(svc.plant.forecast(WRONG).meetsReserve).toBe(false);
   });
 
-  it('survives parking the modem 10 minutes late', () => {
+  it('survives parking the modem late (the scenario allowance)', () => {
     const svc = bootScenario(data);
-    tick(600);
+    tick(parkDelayS);
     svc.plant.setPartMode('vsat-modem', 'standby');
     expect(svc.plant.forecast({}).meetsReserve).toBe(true);
-    tick(4800);
+    tick(shiftEndS - parkDelayS - 600);
     expect(svc.plant.forecast({}).meetsReserve).toBe(true);
   });
 
-  it('held() condition is true on the correct arrangement and false again after switching to the wrong one later', () => {
+  it('held() condition is true on the correct arrangement and false again after the wrong one runs past the allowance', () => {
     const svc = bootScenario(data);
     svc.plant.setPartMode('vsat-modem', 'standby');
     const cond = held(forecastMeetsReserve({}));
-    tick(5400);
+    tick(600);
     expect(conditionMet(cond, svc)).toBe(true);
     expect(cond.mustMaintain).toBe(true);
     svc.plant.setPartMode('vsat-modem', 'run');
+    tick(parkDelayS + 400);
     expect(conditionMet(cond, svc)).toBe(false);
   });
 

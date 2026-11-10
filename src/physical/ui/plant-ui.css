@@ -36,6 +36,8 @@
 .site-tab .site-tab-col { height: 100%; display: flex; flex-direction: column; overflow-y: auto; }
 /* The stage box never collapses (the field panels below it scroll with the tab; with no panels it takes the rest of the tab); the stage inside is as large as fits at the image's aspect (fits height and width, no page scroll) */
 .site-tab .site-stage-box { flex: 1 0 auto; padding-right: var(--site-dock-gutter, 0px); min-height: min(62vh, 560px); container-type: size; display: flex; align-items: center; justify-content: center; }
+/* The panels below the scene sit under the docked boxes too: keep their selects and buttons clear of them (c6-s15 docked-box note) */
+.site-tab .site-tab-col > [id^="site-"][id$="-panel"] { padding-right: var(--site-dock-gutter, 0px); }
 .site-tab .site-stage-box > .pp-stage { width: min(100cqw, calc(100cqh * var(--pp-ar, 1.5))); aspect-ratio: var(--pp-ar, 1.5); flex: none; }
 .site-tab .site-stage-box > .pp-stage > img { height: 100%; }
 .site-tab .site-strip {

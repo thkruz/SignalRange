@@ -231,7 +231,7 @@ describe('M27 S15 completion', () => {
     svc.services?.takeSample(EUS, 'provider', 'provider-portal');
     const missing = incomplete(svc, 's15-review-evidence').join('|');
     expect(missing).toContain('Repeated EuroSat interruptions');
-    expect(missing).toContain('Antenna feed, cables and power checked');
+    expect(missing).toContain('Antenna feed, both IFL cable ends and the power station checked');
     const res = svc.records?.submit('evidence', {
       pattern: { cites: obsIds(svc) },
       provider: value(svc, EUS, 'provider'),

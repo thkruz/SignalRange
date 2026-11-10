@@ -511,9 +511,19 @@ export class PartCloseupModal extends DraggableModal {
   private renderSide_(root: HTMLElement, plant: PhysicalPlantManager): void {
     const target = this.selected_;
     root.querySelector('#pcu-target')!.textContent = target ? this.targetName_(plant, target) : 'Select a part, connector or cable in the picture.';
-    root.querySelector('#pcu-tags')!.innerHTML = target ? this.tagsHtml_(plant, target) : '';
-    root.querySelector('#pcu-verbs')!.innerHTML = target ? this.actionsHtml_(plant, target) : '<span class="pp-hint">Selecting is free. Actions take time.</span>';
+    this.setHtmlIfChanged_(root.querySelector('#pcu-tags')!, target ? this.tagsHtml_(plant, target) : '');
+    this.setHtmlIfChanged_(root.querySelector('#pcu-verbs')!, target ? this.actionsHtml_(plant, target) : '<span class="pp-hint">Selecting is free. Actions take time.</span>');
     this.renderLog_(root);
+  }
+
+  /**
+   * The 1 s refresh must not rebuild the action buttons when nothing changed: a click whose mousedown and mouseup straddle
+   * a rebuild lands on a detached button and does nothing (c6-s15-F2, the "Inspect does nothing" reports).
+   */
+  private setHtmlIfChanged_(el: Element, markup: string): void {
+    if (el.innerHTML !== markup) {
+      el.innerHTML = markup;
+    }
   }
 
   private actionsHtml_(plant: PhysicalPlantManager, target: string): string {

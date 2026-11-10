@@ -320,7 +320,7 @@ export class SiteTab extends BaseElement {
           <span class="site-stat site-outside-note" id="site-outside-note" style="display:none">Outside. Go inside to use the laptop.</span>
           <span class="site-stat">Spares <b id="site-spares">0</b></span>
           <span class="site-stat" id="site-internet-wrap">SkyLink <b id="site-path-skylink">-</b></span>
-          <span class="site-stat">VSAT <b id="site-path-vsat">-</b></span>
+          <span class="site-stat"><span id="site-path-vsat-name">VSAT</span> <b id="site-path-vsat">-</b></span>
           <span class="site-strip-spacer"></span>
           <button type="button" class="btn btn-sm btn-outline-warning" id="site-open-trainer" style="display:none">Trainer</button>
         </div>
@@ -410,6 +410,7 @@ export class SiteTab extends BaseElement {
     this.setText_('site-spares', String(spares));
     const net = internetPaths(plant);
     this.setText_('site-path-skylink', skylinkPathLabel(plant));
+    this.setText_('site-path-vsat-name', forward ? 'EuroSat' : 'VSAT');
     this.setText_('site-path-vsat', net.vsat ? 'up' : 'down');
     const trainer = this.cache_('site-open-trainer');
     if (trainer) trainer.style.display = isTrainerVisible(isFrontlineAllowed(), ScenarioManager.getInstance().data?.missionType) ? '' : 'none';

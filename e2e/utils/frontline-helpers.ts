@@ -649,7 +649,7 @@ export async function recordsSubmit(page: Page, formId: string, input: Record<st
       // A pick's backing entries sit in a collapsed details block: open it as a player would
       const backing = d.locator(`[data-hf-row="${key}"] details.fhf-backing`);
       if ((await backing.count()) > 0 && !(await backing.first().evaluate((n) => (n as HTMLDetailsElement).open))) {
-        await backing.first().locator('summary').click();
+        await backing.first().locator(':scope > summary').click();
       }
       // Older entries per source sit behind "Show older": open it as a player would before citing one
       const older = d.locator(`details.fhf-older[data-hf-older="${key}"]`);

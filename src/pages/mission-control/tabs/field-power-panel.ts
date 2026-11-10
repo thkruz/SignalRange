@@ -92,7 +92,9 @@ export function buildPowerPanelModel(plant: PhysicalPlantManager, pending: Reado
     if (!isGenerator && drawW <= 0 && plant.getLoadW(id) <= 0) {
       continue;
     }
-    const state = isGenerator ? (drawW > 0 ? 'Running' : 'Off') : 'Fixed load';
+    // A generator reports the load wired to it even when it is stopped, so the state comes from the part, not the draw (c6-s15-F8)
+    const genRunning = isGenerator && plant.isPartPowered(id);
+    const state = isGenerator ? (genRunning ? 'Running' : 'Off') : 'Fixed load';
     devices.push({
       id,
       label: plant.getLabel(id),
@@ -101,7 +103,7 @@ export function buildPowerPanelModel(plant: PhysicalPlantManager, pending: Reado
       pending: state,
       starting: false,
       phase: null,
-      loadW: drawW,
+      loadW: isGenerator && !genRunning ? 0 : drawW,
       fuelL: isGenerator ? readings.fuelL[id] : null,
       modes: [],
       fixed: true,

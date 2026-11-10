@@ -36,7 +36,7 @@ import { S11_TRANSFER_CARD } from './scenario11';
 /**
  * Frontline Signals — Scenario 15: Report the EuroSat Incident.
  * Initial state: both terminals run on the battery at the forward post (SkyLink unrestricted, EuroSat registered). Resources
- * are reduced: 300 Wh against a 150 Wh reserve, so both terminals running misses the reserve and the modem in standby keeps it.
+ * are reduced: 300 Wh against a 150 Wh reserve, so both terminals running for the whole shift misses the reserve and the modem in standby keeps it (about an hour of both is covered).
  * The anomaly is a run of EuroSat registration drops on the radio path (an authored, seeded link impairment; the modem is
  * not restarted and a restart does not clear it) while the local network, the power chain and the SkyLink service stay up.
  * The windows are the only evidence: they support "suspected interference" or an "unexplained outage" and never a source,
@@ -62,8 +62,14 @@ export const S15_RESERVE_WH = 150;
  * length exists, so this is a named constant; Ted wants a tunable knob, edit this one value to retune (start charge derives from it).
  */
 export const S15_SHIFT_END_S = 7200;
-/** Start charge derived from the shift end: reserve + correct-arrangement drain to shift end + 10 min of both terminals + 3 Wh margin */
-export const S15_START_WH = reserveStartWh(S15_RESERVE_WH, DUAL_CORRECT_DRAIN_W, S15_SHIFT_END_S);
+/**
+ * How long both terminals may run before the modem is parked and the reserve still holds. The modem has to run while the
+ * drops are read (objectives 1-4) and only objective 5 asks for standby, so a careful player spends 45-60 sim min on 170 W
+ * (c6-s15-F8: the 10 min allowance left a player who parked at 46 min with no way back).
+ */
+export const S15_PARK_DELAY_S = 3600;
+/** Start charge derived from the shift end: reserve + correct-arrangement drain to shift end + an hour of both terminals + 3 Wh margin */
+export const S15_START_WH = reserveStartWh(S15_RESERVE_WH, DUAL_CORRECT_DRAIN_W, S15_SHIFT_END_S, S15_PARK_DELAY_S);
 
 const EUS = FORWARD_EUROSAT_SERVICE;
 const TRANSFER = S11_TRANSFER_CARD.id;
@@ -327,7 +333,7 @@ export const frontlineScenario15Data: FrontlineScenarioData = {
       id: 's15-record-anomaly',
       title: 'Record the Service Anomaly',
       description:
-        "Capture the affected EuroSat service, the observed onset, and Ola's workload symptoms. Keep the first report and sample times so later evidence can be compared with the same event.",
+        "Capture the affected EuroSat service, the observed onset, and Ola's workload symptoms. Keep the first report and sample times so later evidence can be compared with the same event. The EuroSat interruptions recur (about every 100 s, down for 35 to 40 s), so press Check on the registration layer until it reads Down.",
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: [],
       points: 15,
@@ -337,13 +343,13 @@ export const frontlineScenario15Data: FrontlineScenarioData = {
       id: 's15-review-evidence',
       title: 'Review the Available Evidence',
       description:
-        'Compare the physical checks, provider status, and service observations around the anomaly. Record checks that rule out a local explanation as well as evidence that remains inconclusive.',
+        'Compare the physical checks, provider status, and service observations around the anomaly. Record checks that rule out a local explanation as well as evidence that remains inconclusive. The interruptions recur about every 100 s and last 35 to 40 s, so press Check on the EuroSat registration layer again until it reads Down.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s15-record-anomaly'],
       points: 15,
       conditions: [
         interruptionPattern(EUS, 2, 'Repeated EuroSat interruptions read, with the local network up', { reasons: ['link-lost'] }),
-        siteChecked(['vsat-feed', 'vsat-ifl:lnb', 'vsat-ifl:modem', 'power-station'], 'Antenna feed, cables and power checked'),
+        siteChecked(['vsat-feed', 'vsat-ifl:lnb', 'vsat-ifl:modem', 'power-station'], 'Antenna feed, both IFL cable ends and the power station checked'),
         negativeChecksKept(2, 'Checks that found nothing kept as evidence', { subjects: ['vsat-feed', 'vsat-ifl:lnb', 'vsat-ifl:modem', 'power-station'] }),
         layerObserved(EUS, 'provider', { status: 'up' }, 'EuroSat provider status read with no notice'),
         handoverValid('evidence', 'Evidence comparison recorded'),
@@ -384,7 +390,8 @@ export const frontlineScenario15Data: FrontlineScenarioData = {
     {
       id: 's15-preserve-package',
       title: 'Preserve the Incident Record',
-      description: 'Save the relevant observations, configuration history, and confidence statement together. Retain original timestamps and identify any gaps in the record.',
+      description:
+        'Save the relevant observations, configuration history, and confidence statement together. Retain original timestamps and identify any gaps in the record. Both terminals are still drawing on the battery, so check the forecast on the Power panel before the hour is out.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s15-assess-confidence'],
       points: 15,
@@ -426,7 +433,7 @@ export const frontlineScenario15Data: FrontlineScenarioData = {
       character: Character.IRENA_MAZUR,
       emotion: Emotion.NEUTRAL,
       audioUrl: '',
-      text: "<p>This shift needs a clear incident record if the service changes. Preserve the observations before you decide what caused them. We can refer a suspected problem without pretending we've already identified its source.</p>",
+      text: "<p>This shift needs a clear incident record if the service changes. Preserve the observations before you decide what caused them. We can refer a suspected problem without pretending we've already identified its source. Both terminals are on the battery and the generator stays off this shift: the 150 Wh reserve holds only if the EuroSat modem goes to standby within about an hour, once you have the readings you need. Watch the forecast on the Power panel.</p>",
     },
     objectivesOnStart: {
       's15-review-evidence': {

@@ -54,6 +54,8 @@ const LAYER_DOWN_TEXT: Record<string, string> = {
 
 /** The words for an unmet entry: a metric name, or a down-layer reason such as 'layer:terminal-booting' */
 export function unmetText(m: string): string {
+  if (m.startsWith('layer:')) return 'a service layer that was not working';
+
   return METRIC_LABEL[m] ?? m;
 }
 
@@ -61,7 +63,9 @@ export function unmetText(m: string): string {
 export function layerDownText(unmet: readonly string[]): string | null {
   const reason = unmet.find((m) => m.startsWith('layer:'))?.slice('layer:'.length);
 
-  return reason === undefined ? null : (LAYER_DOWN_TEXT[reason] ?? null);
+  if (reason === undefined) return null;
+
+  return LAYER_DOWN_TEXT[reason] ?? 'The service was not working for part of the run. Check each service layer, then rerun once it holds.';
 }
 
 function clock(tS: number): string {

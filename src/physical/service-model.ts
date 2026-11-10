@@ -409,8 +409,22 @@ export class ServiceModel {
    * Observe a layer through a provenance. A provenance that cannot see the layer (a green light
    * cannot establish end-to-end service) yields an `unknown` sample, which is never current.
    */
-  takeSample(serviceId: string, layer: ServiceLayer, via: SampleProvenance, endpointId?: string, metric: SampleMetric = 'status'): ServiceSample {
-    const { tS, value, metric: usedMetric, windowS } = this.peekSample(serviceId, layer, via, endpointId, metric);
+  takeSample(
+    serviceId: string,
+    layer: ServiceLayer,
+    via: SampleProvenance,
+    endpointId?: string,
+    metric: SampleMetric = 'status',
+    /** What a finished workload run saw at its worst, so a failed run is not logged with the healthy end-of-run reading */
+    worstSeen?: 'down' | 'degraded'
+  ): ServiceSample {
+    const peeked = this.peekSample(serviceId, layer, via, endpointId, metric);
+    const { tS, metric: usedMetric, windowS } = peeked;
+    let value = peeked.value;
+    if (worstSeen !== undefined && value !== 'unknown') {
+      if (usedMetric !== 'status' && worstSeen === 'down') value = 'down';
+      else if (usedMetric === 'status' && (value === 'up' || (value === 'degraded' && worstSeen === 'down'))) value = worstSeen;
+    }
 
     const cause = this.causeFor_(serviceId, layer, usedMetric, value, via, endpointId);
     this.sampleSeq_ += 1;

@@ -16,7 +16,7 @@ import { FieldServicePanel } from '@app/pages/mission-control/tabs/field-service
 import { FieldWorkloadPanel } from '@app/pages/mission-control/tabs/field-workload-panel';
 import { formStepState, sampleStepState } from '@app/pages/mission-control/tabs/form-step-state';
 import { buildNotebookTargets } from '@app/pages/mission-control/tabs/notebook-targets';
-import { hypothesisFeedback } from '@app/physical/evidence-predicates';
+import { hypothesisFeedback, hypothesisRequirementRoutes } from '@app/physical/evidence-predicates';
 import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import { GLOW_FILTERS_SVG } from '@app/physical/ui/glow-filters';
 import { PartCloseupModal } from '@app/physical/ui/part-closeup-modal';
@@ -87,7 +87,8 @@ export class SiteTab extends BaseElement {
 
         return log ? hypothesisFeedback(entry, specs, log.entries(), { eventFiredAtS: (id) => PhysicalPlantService.eventsOrNull()?.firedAtS(id) ?? null }) : null;
       },
-      (entry) => entryDisplayText(entry, PhysicalPlantService.plantOrNull())
+      (entry) => entryDisplayText(entry, PhysicalPlantService.plantOrNull()),
+      () => hypothesisRequirementRoutes(PhysicalPlantService.plantOrNull()?.getConfig().hypothesisSpecs ?? [])
     );
     this.handoverPanel_ = new FieldHandoverPanel(qs<HTMLElement>('#site-handover-panel'), {
       records: () => PhysicalPlantService.recordsOrNull(),

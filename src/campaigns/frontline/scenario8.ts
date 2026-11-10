@@ -243,7 +243,8 @@ export const frontlineScenario8Data: FrontlineScenarioData = {
     {
       id: 's08-interpret-assignment',
       title: 'Interpret the Assignment',
-      description: 'Read the workload requirement and resource limits. State the outcome you need to establish and the constraints that apply to this assessment.',
+      description:
+        'Read the workload requirement and resource limits, then record them in the Assessment brief form. The brief for this shift: the workload needs the figures on the Workloads row; the post holds one connector kit and one power and data cable (the Site header counts them as 2 spares); keep at least 150 Wh in the battery; and you may make up to three trips outside.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: [],
       points: 10,
@@ -252,7 +253,8 @@ export const frontlineScenario8Data: FrontlineScenarioData = {
     {
       id: 's08-establish-state',
       title: 'Establish the Available Service',
-      description: 'Record the current service symptoms and choose evidence that will distinguish the plausible causes. Use the equipment and records you judge relevant.',
+      description:
+        'Record the current service symptoms and choose evidence that will distinguish the plausible causes. Use the equipment and records you judge relevant. The outage repeats: the link is down for about 30 s of every 90 s cycle, so press Check on the Application layer again until it reads not up, and use the Symptom history to see when it drops.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s08-interpret-assignment'],
       points: 15,
@@ -326,7 +328,7 @@ export const frontlineScenario8Data: FrontlineScenarioData = {
       character: Character.MAREK_DOMANSKI,
       audioUrl: '',
       emotion: Emotion.NEUTRAL,
-      text: "This is your assessment shift. The brief gives you the task and resource limits; the sequence of checks is yours. I'll review the evidence and the outcome when you've finished.",
+      text: "This is your assessment shift. The brief is the first objective on your list: it gives you the task and the resource limits, and the sequence of checks is yours. I'll review the evidence and the outcome when you've finished.",
     },
     objectivesOnStart: {
       's08-establish-state': {

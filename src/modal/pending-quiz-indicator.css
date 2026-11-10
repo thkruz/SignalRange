@@ -5,7 +5,8 @@
 
 .pending-quiz-indicator {
   position: fixed;
-  top: 20px;
+  /* Below the mission control command bar (82px) so the Open Quiz button is never covered */
+  top: 96px;
   left: 50%;
   transform: translate(-50%, -20px);
   z-index: 99999;

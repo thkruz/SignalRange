@@ -168,6 +168,28 @@ export interface HypothesisSpec {
   routesByCause?: Record<string, EvidenceGroup[][]>;
 }
 
+/**
+ * Player-safe requirement lines for the Hypothesis block, one list of group labels per alternative route.
+ * Built only from the authored group labels, so it names what to show and never the cause.
+ */
+export function hypothesisRequirementRoutes(specs: readonly HypothesisSpec[]): string[][] {
+  const seen = new Set<string>();
+  const out: string[][] = [];
+  for (const spec of specs) {
+    const routes = [...(spec.routes ?? []), ...Object.values(spec.routesByCause ?? {}).flat()];
+    for (const route of routes) {
+      const lines = route.map((g) => `${g.label}${(g.min ?? 1) > 1 ? ` (${g.min})` : ''}`);
+      const key = lines.join('|');
+      if (lines.length > 0 && !seen.has(key)) {
+        seen.add(key);
+        out.push(lines);
+      }
+    }
+  }
+
+  return out;
+}
+
 export interface HypothesisVerdict {
   ok: boolean;
   /** Plain-language reason when not ok */
@@ -199,7 +221,9 @@ export function assessHypothesis(
   if (routes && routes.length > 0) {
     const verdicts = routes.map((groups) => assessEvidence(h.citedEntryIds, groups, all, ctx));
     if (!verdicts.some((v) => v.ok)) {
-      return { ok: false, reason: `The cited entries do not show: ${verdicts[0].missing.join('; ')}.` };
+      const closest = verdicts.reduce((a, b) => (b.missing.length < a.missing.length ? b : a));
+
+      return { ok: false, reason: `The cited entries do not show: ${closest.missing.join('; ')}.` };
     }
   }
 

@@ -15,3 +15,5 @@
 .fnb .fnb-cites legend { font-size: 0.75rem; color: var(--mc-text-muted); float: none; width: auto; margin: 0; padding: 0 0.3rem; }
 .fnb .fnb-cite { display: block; justify-content: flex-start; }
 .fnb .fnb-none { color: var(--mc-text-muted); }
+.fnb .fnb-hint { color: var(--mc-text-muted); font-size: 0.85em; }
+.fnb .fnb-needs ul { margin: 0 0 0.4rem 1rem; padding: 0; }

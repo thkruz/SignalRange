@@ -379,7 +379,10 @@ export class WorkloadRunner implements WorkloadReader {
 
   private finish_(run: WorkloadRun): void {
     const card = this.cards_.get(run.cardId);
-    const ids = [this.service_.takeSample(run.serviceId, 'application', 'workload-run').id];
+    // A run that failed must not read as healthy because the link happened to be up when it ended
+    const layerLost = run.unmet.some((m) => m.startsWith('layer:') || m === 'no-link');
+    const worstSeen = run.worst === 'supported' ? undefined : layerLost ? 'down' : 'degraded';
+    const ids = [this.service_.takeSample(run.serviceId, 'application', 'workload-run', undefined, 'status', worstSeen).id];
     const metrics: Array<['downMbps' | 'upMbps' | 'rttMs' | 'lossPct' | 'jitterMs', unknown]> = [
       ['downMbps', card?.minDownMbps],
       ['upMbps', card?.minUpMbps],
@@ -389,7 +392,7 @@ export class WorkloadRunner implements WorkloadReader {
     ];
     for (const [metric, bound] of metrics) {
       if (bound !== undefined) {
-        ids.push(this.service_.takeSample(run.serviceId, 'application', 'workload-run', undefined, metric).id);
+        ids.push(this.service_.takeSample(run.serviceId, 'application', 'workload-run', undefined, metric, layerLost ? 'down' : undefined).id);
       }
     }
     run.sampleIds = ids;

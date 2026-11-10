@@ -185,11 +185,15 @@ export class FieldHandoverPanel {
     const res = records.submit(this.formId_, this.input_);
     this.result_ = res.validation;
     if (res.ok) {
-      this.msg_ = `Submitted at ${clock(res.record.submittedAtS)}.${this.deps_.formStep?.(this.formId_) === 'later' ? ` ${FORM_STEP_LATER_NOTE}` : ''}`;
+      const hasHypothesis = (this.deps_.plant()?.getConfig().hypothesisSpecs?.length ?? 0) > 0;
+      const note = hasHypothesis
+        ? ' The form clears once filed. Checklist rows about a cause also need a hypothesis in the Notebook, with the entries that back it.'
+        : ' The form clears once filed.';
+      this.msg_ = `Submitted at ${clock(res.record.submittedAtS)}.${note}${this.deps_.formStep?.(this.formId_) === 'later' ? ` ${FORM_STEP_LATER_NOTE}` : ''}`;
       this.input_ = {};
       this.result_ = null;
     } else {
-      this.msg_ = 'Rejected. Nothing was filed. See the notes under each field.';
+      this.msg_ = 'Rejected. Nothing was filed. Your entries are kept; see the notes under each field for what is missing.';
     }
     this.dynKey_ = null;
     this.sync();

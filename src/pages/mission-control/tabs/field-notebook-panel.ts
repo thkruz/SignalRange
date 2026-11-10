@@ -97,7 +97,9 @@ export class FieldNotebookPanel {
     /** Scenario check of a saved hypothesis: the reason it does not hold up yet, or null. Never blocks saving. */
     private readonly getFeedback_: (entry: HypothesisEntry) => string | null = () => null,
     /** Wording of one entry (part prefix); default is the entry text */
-    private readonly textOf_: (entry: EvidenceEntry) => string = (e) => e.text
+    private readonly textOf_: (entry: EvidenceEntry) => string = (e) => e.text,
+    /** Requirement lines per alternative evidence route, from the scenario's hypothesis specs; empty = none authored */
+    private readonly getRequirements_: () => string[][] = () => []
   ) {
     this.host_.addEventListener('click', this.onClick_);
     this.host_.addEventListener('change', this.onChange_);
@@ -201,7 +203,7 @@ export class FieldNotebookPanel {
             <label>Target <select class="form-select form-select-sm" data-nb-target aria-label="Hypothesis target"></select></label>
             ${causeField}
             <label>Confidence <select class="form-select form-select-sm" data-nb-confidence aria-label="Hypothesis confidence">${conf}</select></label>
-            <fieldset class="fnb-cites"><legend>Backed by</legend><div data-fnb="cites"></div></fieldset>
+            <fieldset class="fnb-cites"><legend>Backed by</legend><div class="fnb-needs" data-fnb="needs"></div><div data-fnb="cites"></div></fieldset>
             <button type="button" class="btn btn-sm btn-outline-primary" data-nb-act="add">Add hypothesis</button>
           </div>
         </div>
@@ -242,6 +244,22 @@ export class FieldNotebookPanel {
       this.targetKey_ = targetKey;
       targetSel.innerHTML = targets.map((t) => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.label)}</option>`).join('');
       if (targets.some((t) => t.id === keep)) targetSel.value = keep;
+    }
+
+    const needs = this.host_.querySelector<HTMLElement>('[data-fnb="needs"]');
+    if (needs) {
+      const routes = this.getRequirements_();
+      const needsKey = JSON.stringify(routes);
+      if (needsKey !== needs.dataset.key) {
+        needs.dataset.key = needsKey;
+        const list = (lines: string[]): string => `<ul>${lines.map((l) => `<li>${escapeHtml(l)}</li>`).join('')}</ul>`;
+        needs.innerHTML =
+          routes.length === 0
+            ? ''
+            : routes.length === 1
+              ? `<div class="fnb-hint">Required: tick entries that show each of these.</div>${list(routes[0])}`
+              : `<div class="fnb-hint">Required: tick entries that show every item in one of these sets.</div>${routes.map((r, i) => `<div class="fnb-hint">Set ${i + 1}</div>${list(r)}`).join('')}`;
+      }
     }
 
     const citable = all.filter((e) => e.kind !== 'hypothesis');

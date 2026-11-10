@@ -98,6 +98,15 @@ export function describeReading(service: ServiceModel | null, serviceId: string,
   return { text: `Your latest ${layer} reading, ${clock(sample.tS)}: ${shown} (out of date, take a new one).`, value, current: false };
 }
 
+/** The first few failing fields with their reasons, so a refusal names the slot and why (c6-s12-F2) */
+function failureSummary(validation: HandoverValidation): string {
+  const failing = validation.fields.filter((f) => !f.ok && f.reason);
+  const shown = failing.slice(0, 3).map((f) => f.reason);
+  const more = failing.length > shown.length ? ` (and ${failing.length - shown.length} more; see the notes under each field)` : '';
+
+  return shown.length === 0 ? 'See the notes under each field.' : `${shown.join(' ')}${more}`;
+}
+
 /** How long a press blocks a redraw of the panel (a press that never gets its release stops blocking after this) */
 const POINTER_HOLD_MS = 1500;
 
@@ -177,7 +186,7 @@ export class FieldHandoverPanel {
     const records = this.deps_.records();
     if (!records || !this.formId_) return null;
     this.result_ = records.validate(this.formId_, this.input_);
-    this.msg_ = this.result_.ok ? 'Everything checks out. You can submit.' : 'Not ready yet. See the notes under each field.';
+    this.msg_ = this.result_.ok ? 'Everything checks out. You can submit.' : `Not ready yet. ${failureSummary(this.result_)}`.trim();
     this.dynKey_ = null;
     this.sync();
 
@@ -199,7 +208,7 @@ export class FieldHandoverPanel {
       this.input_ = {};
       this.result_ = null;
     } else {
-      this.msg_ = 'Rejected. Nothing was filed. Your entries are kept; see the notes under each field for what is missing.';
+      this.msg_ = `Rejected. Nothing was filed. Your entries are kept. ${failureSummary(res.validation)}`.trim();
     }
     this.dynKey_ = null;
     this.sync();

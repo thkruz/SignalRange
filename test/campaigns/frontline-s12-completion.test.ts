@@ -107,7 +107,7 @@ function acts(svc: PhysicalPlantService): Record<string, () => void> {
         })
       );
       expect(svc.records?.equipment?.submitCorrection(S12_REFERRAL)?.ok).toBe(true);
-      tick(2);
+      tick(50);
     },
     's12-verify-resolution': () => {
       tick(2);
@@ -199,7 +199,7 @@ describe('M25 S12 completion', () => {
     });
     expect(certain?.ok).toBe(false);
     svc.evidence?.recordSelection(['laptop', ENDPOINT_NODE], 'Blames the workstation');
-    expect(incomplete(svc, 's12-bound-conclusion')).toContain('Remote segment marked after the interruption');
+    expect(incomplete(svc, 's12-bound-conclusion')).toContain('Remote segment marked on the Service paths diagram again after the interruption');
   });
 
   it('holds the specialist answer until the referral is sent and does not count it as recovery', () => {

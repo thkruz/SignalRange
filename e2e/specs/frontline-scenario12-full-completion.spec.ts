@@ -94,7 +94,7 @@ test.describe('Frontline S12 full completion', () => {
         evidence: { cites: ALL },
       });
       await recordsFileRequest(page, 's12-specialist-referral');
-      await advanceClock(page, 5000);
+      await advanceClock(page, 50000);
       await waitForObjective(page, 's12-refer-incident');
     });
 

@@ -108,6 +108,16 @@ export class DraggableHtmlBox extends DraggableBox {
     this.isOpen = true;
   }
 
+  /**
+   * An objective change brings the checklist back to its dock: a dragged open box returns to the strip, and a closed
+   * one re-opens there so the player sees the new open rows (c6-s02-F5). No-op where the checklist is not docked.
+   */
+  redockForObjectiveChange(): void {
+    if (this.shouldRedockOnOpen()) {
+      this.open();
+    }
+  }
+
   updateContent(lastChecklistHtml_: string) {
     updateChecklistWithMotion(this.popupDom, lastChecklistHtml_);
   }

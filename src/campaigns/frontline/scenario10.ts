@@ -78,7 +78,7 @@ const healthForm: HandoverFormConfig = {
   documentSection: 'Health comparison',
   fields: [
     { key: 'local', label: 'Local network now', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'local' } } },
-    { key: 'registration', label: 'Terminal registration now', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'registration' } } },
+    { key: 'registration', label: 'Terminal link now', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'registration' } } },
     { key: 'application', label: 'Application service now', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'application' } } },
     {
       key: 'policy',

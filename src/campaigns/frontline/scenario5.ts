@@ -82,7 +82,7 @@ const comparisonForm: HandoverFormConfig = {
       key: 'short',
       label: 'Reading that fell short (the run shows the shortfall; the capacity entry is terminal-side)',
       required: true,
-      rule: pick({ capacity: 'Available capacity', delay: 'Round-trip delay', registration: 'Terminal registration', power: 'Terminal power' }, ['capacity']),
+      rule: pick({ capacity: 'Available capacity', delay: 'Round-trip delay', registration: 'Terminal link', power: 'Terminal power' }, ['capacity']),
     },
     {
       key: 'met',
@@ -124,10 +124,9 @@ const scopeForm: HandoverFormConfig = {
       key: 'ruled-out',
       label: 'What the readings rule out',
       required: true,
-      rule: pick(
-        { 'terminal-and-power': 'Terminal registration and power', 'application-only': 'The application behaviour only', 'nothing-ruled-out': 'Nothing is ruled out yet' },
-        ['terminal-and-power']
-      ),
+      rule: pick({ 'terminal-and-power': 'Terminal link and power', 'application-only': 'The application behaviour only', 'nothing-ruled-out': 'Nothing is ruled out yet' }, [
+        'terminal-and-power',
+      ]),
     },
     { key: 'evidence', label: 'Observations that separate it from the alternatives', required: true, rule: { evidence: [DOWN_SHORT, TERMINAL_OK] } },
   ],

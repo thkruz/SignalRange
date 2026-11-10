@@ -154,7 +154,7 @@ export const frontlineScenario1Data: FrontlineScenarioData = {
       prerequisiteObjectiveIds: ['s1-check-condition'],
       conditions: [
         layerObserved(SKYLINK_SERVICE, 'local', { status: 'up' }, 'Local network reachability observed'),
-        layerObserved(SKYLINK_SERVICE, 'registration', { status: 'up' }, 'Terminal registration observed'),
+        layerObserved(SKYLINK_SERVICE, 'registration', { status: 'up' }, 'Terminal link observed'),
       ],
     },
     {

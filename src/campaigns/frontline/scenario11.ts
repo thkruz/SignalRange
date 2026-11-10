@@ -106,7 +106,7 @@ const commissioningForm: HandoverFormConfig = {
       ]),
     },
     { key: 'mode', label: 'Terminal mode now', required: true, rule: { modeIs: { partId: 'vsat-modem' } } },
-    { key: 'registration', label: 'Terminal registration now', required: true, rule: { matchesCurrent: { serviceId: FORWARD_EUROSAT_SERVICE, layer: 'registration' } } },
+    { key: 'registration', label: 'Terminal link now', required: true, rule: { matchesCurrent: { serviceId: FORWARD_EUROSAT_SERVICE, layer: 'registration' } } },
     { key: 'account', label: 'Account authorization now', required: true, rule: { matchesCurrent: { serviceId: FORWARD_EUROSAT_SERVICE, layer: 'account' } } },
     {
       key: 'service',

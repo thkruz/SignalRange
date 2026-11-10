@@ -124,7 +124,7 @@ const profileForm: HandoverFormConfig = {
       key: 'changed',
       label: 'Requirement that changes from met to unmet',
       required: true,
-      rule: pick({ delay: 'Round-trip delay', capacity: 'Available capacity', registration: 'Terminal registration', loss: 'Packet loss' }, ['delay']),
+      rule: pick({ delay: 'Round-trip delay', capacity: 'Available capacity', registration: 'Terminal link', loss: 'Packet loss' }, ['delay']),
     },
     {
       key: 'evidence',

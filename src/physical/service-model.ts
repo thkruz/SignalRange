@@ -481,6 +481,11 @@ export class ServiceModel {
     return null;
   }
 
+  /** Seconds since a sample was taken */
+  ageS(sample: ServiceSample): number {
+    return Math.max(0, this.deps_.now() - sample.tS);
+  }
+
   freshness(sample: ServiceSample): Freshness {
     if (sample.value === 'unknown') {
       return 'unavailable';

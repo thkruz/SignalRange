@@ -345,6 +345,7 @@ export class AssetTreeSidebar extends BaseElement {
       const objectivesManager = ObjectivesManager.getInstance();
       this.lastChecklistHtml_ = objectivesManager.generateHtmlChecklist();
       SimulationManager.getInstance().checklistBox.updateContent(this.lastChecklistHtml_);
+      SimulationManager.getInstance().checklistBox.redockForObjectiveChange();
     });
   }
 

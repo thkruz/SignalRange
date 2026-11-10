@@ -65,7 +65,7 @@ const baselineForm: HandoverFormConfig = {
   documentSection: 'Baseline',
   fields: [
     { key: 'local', label: 'Local network now', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'local' } } },
-    { key: 'registration', label: 'Terminal registration now', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'registration' } } },
+    { key: 'registration', label: 'Terminal link now', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'registration' } } },
     { key: 'account', label: 'Account authorization now', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'account' } } },
     { key: 'application', label: 'Application service now', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'application' } } },
     { key: 'energy', label: 'Battery energy left (Wh)', required: true, rule: { powerWithin: { metric: 'socWh', tol: 40 } } },
@@ -79,7 +79,7 @@ const freshnessForm: HandoverFormConfig = {
   eventNote: { eventId: S9_EVENT_INTERRUPTION, text: 'Link interruption reported by the terminal' },
   fields: [
     { key: 'local', label: 'Local network reading', required: true, rule: { freshnessIs: { serviceId: SKYLINK_SERVICE, layer: 'local' } } },
-    { key: 'registration', label: 'Terminal registration reading', required: true, rule: { freshnessIs: { serviceId: SKYLINK_SERVICE, layer: 'registration' } } },
+    { key: 'registration', label: 'Terminal link reading', required: true, rule: { freshnessIs: { serviceId: SKYLINK_SERVICE, layer: 'registration' } } },
     { key: 'remote', label: 'Remote application reading', required: true, rule: { freshnessIs: { serviceId: SKYLINK_SERVICE, layer: 'application' } } },
   ],
 };
@@ -90,7 +90,7 @@ const readinessForm: HandoverFormConfig = {
   documentSection: 'Readiness',
   fields: [
     { key: 'task', label: 'Task assessed', required: true, rule: pick({ [CARD]: 'First forward task', 'other-task': 'Another forward task' }, [CARD]) },
-    { key: 'registration', label: 'Terminal registration now', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'registration' } } },
+    { key: 'registration', label: 'Terminal link now', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'registration' } } },
     { key: 'account', label: 'Account authorization now', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'account' } } },
     { key: 'application', label: 'Remote application now', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'application' } } },
     {

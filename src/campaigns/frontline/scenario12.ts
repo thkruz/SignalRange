@@ -5,6 +5,7 @@ import {
   applyForwardEurosat,
   applyForwardField,
   FORWARD_ENDPOINT,
+  FORWARD_EUROSAT_ACCOUNT,
   FORWARD_EUROSAT_ENDPOINT,
   FORWARD_EUROSAT_PROVIDER,
   FORWARD_EUROSAT_SERVICE,
@@ -41,6 +42,7 @@ export const S12_EVENT_INTERRUPTION = 's12-endpoint-interruption';
 export const S12_EVENT_RECOVERED = 's12-endpoint-recovered';
 export const S12_EVENT_RESPONSE = 's12-specialist-response';
 export const S12_REFERRAL = 's12-specialist-referral';
+export const S12_REPLY_NOTICE = 's12-specialist-reply';
 
 const architectureForm: HandoverFormConfig = {
   id: 'architecture',
@@ -109,7 +111,7 @@ const comparisonForm: HandoverFormConfig = {
   documentSection: 'Comparison',
   fields: [
     { key: 'local', label: 'Local network now', required: true, rule: { matchesCurrent: { serviceId: FORWARD_EUROSAT_SERVICE, layer: 'local' } } },
-    { key: 'registration', label: 'Terminal registration now', required: true, rule: { matchesCurrent: { serviceId: FORWARD_EUROSAT_SERVICE, layer: 'registration' } } },
+    { key: 'registration', label: 'Terminal link now', required: true, rule: { matchesCurrent: { serviceId: FORWARD_EUROSAT_SERVICE, layer: 'registration' } } },
     { key: 'application', label: 'Application service now', required: true, rule: { matchesCurrent: { serviceId: FORWARD_EUROSAT_SERVICE, layer: 'application' } } },
     {
       key: 'limits',
@@ -231,7 +233,30 @@ if (scenarioSettings.physicalPlant) {
         record: { serial: 'EUS-2208', accountId: 'forward-eurosat', configVersion: 'depot-v2' },
       },
     ],
-    requests: [{ id: S12_REFERRAL, unitId: FORWARD_EUROSAT_UNIT, field: 'accountId', to: 'specialist-review', responseEventId: S12_EVENT_RESPONSE, referral: true }],
+    requests: [
+      {
+        id: S12_REFERRAL,
+        unitId: FORWARD_EUROSAT_UNIT,
+        field: 'accountId',
+        to: 'specialist-review',
+        responseEventId: S12_EVENT_RESPONSE,
+        referral: true,
+        replyNotice: S12_REPLY_NOTICE,
+        note: 'The specialist reviews the package and answers in the Notice inbox below after a short wait. Your local configuration stays as it is.',
+      },
+    ],
+    notices: [
+      {
+        id: S12_REPLY_NOTICE,
+        version: 1,
+        providerId: FORWARD_EUROSAT_PROVIDER,
+        affects: { accountId: FORWARD_EUROSAT_ACCOUNT },
+        kind: 'maintenance',
+        issuedAtS: 0,
+        issuedOnDelivery: true,
+        text: 'Specialist review. Your incident package is accepted: the remote endpoint segment is under investigation and a recovery is being reported. This is a report, not a confirmation. Run a fresh end-to-end task and compare it with what the application shows before you update the incident record.',
+      },
+    ],
   };
   plant.events = [
     {
@@ -243,6 +268,7 @@ if (scenarioSettings.physicalPlant) {
     {
       id: S12_EVENT_RESPONSE,
       startAfterObjectiveId: 's12-refer-incident',
+      offsetS: 45,
       actions: [{ kind: 'respond-request', requestId: S12_REFERRAL, status: 'approved' }],
       logLine: 'The specialist accepts the incident package.',
     },
@@ -327,14 +353,15 @@ export const frontlineScenario12Data: FrontlineScenarioData = {
     {
       id: 's12-bound-conclusion',
       title: "State the Evidence's Limits",
-      description: 'Identify the segment supported by the collected evidence and state what remains unconfirmed. Distinguish a likely scope from proof of the physical cause.',
+      description:
+        'Identify the segment supported by the collected evidence and state what remains unconfirmed. Distinguish a likely scope from proof of the physical cause. Mark the remote segment on the Service paths diagram again after the interruption: select only the remote tile, with no laptop, modem or power station.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s12-compare-observations'],
       points: 15,
       conditions: [
         diagramSelection(
           { include: [`endpoint:${FORWARD_EUROSAT_ENDPOINT}`], exclude: ['laptop', 'vsat-modem', 'power-station'], afterEvent: S12_EVENT_INTERRUPTION },
-          'Remote segment marked after the interruption'
+          'Remote segment marked on the Service paths diagram again after the interruption'
         ),
         handoverValid('diagnosis', 'Scope and confidence recorded without a physical cause'),
         {
@@ -376,7 +403,7 @@ export const frontlineScenario12Data: FrontlineScenarioData = {
       id: 's12-verify-resolution',
       title: 'Verify the Reported Resolution',
       description:
-        "Run a new end-to-end check after the specialist responds. Update the incident record with the application's current result and distinguish confirmed recovery from the specialist's report.",
+        "Run a new end-to-end check after the specialist responds. The interactive forward task fails EuroSat on latency, so verify with the Delay-tolerant transfer task. Update the incident record with the application's current result and distinguish confirmed recovery from the specialist's report.",
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s12-refer-incident'],
       points: 15,
@@ -414,7 +441,7 @@ export const frontlineScenario12Data: FrontlineScenarioData = {
         character: Character.ALEKSANDRA_WYSOCKA,
         emotion: Emotion.NEUTRAL,
         audioUrl: '',
-        text: "<p>I've received the specialist's update. I'll run a new check now so we can compare the report with what the application actually does.</p>",
+        text: "<p>I've received the specialist's update. I'll run the delay-tolerant transfer now, since the interactive task can't tolerate this link's delay, so we can compare the report with what the application actually does.</p>",
       },
     },
     objectives: {

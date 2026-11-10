@@ -358,7 +358,12 @@ export class FieldRecords implements RecordReader {
       return fail(field.key, `${field.label}: no reading of the ${target.layer} layer has been taken yet.`);
     }
     if (svc.freshness(sample) !== 'current') {
-      return fail(field.key, `${field.label}: your last reading of the ${target.layer} layer is out of date. Take a new one.`);
+      const age = Math.round(svc.ageS(sample));
+
+      return fail(
+        field.key,
+        `${field.label}: your last reading of the ${target.layer} layer is out of date (taken ${age} s ago, readings of this kind expire after ${sample.maxAgeS} s). Take a new one.`
+      );
     }
 
     return String(sample.value) === value ? pass(field.key) : fail(field.key, `${field.label} does not match your current reading of the ${target.layer} layer.`);

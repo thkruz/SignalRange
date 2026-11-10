@@ -126,7 +126,7 @@ export const createSettingsScreen: TerminalScreenFactory = (ctx: TerminalScreenC
           <div class="col-md-6"><div class="card h-100"><div class="card-header"><h3 class="card-title">${tr('settings.wifi.title')}</h3></div>
             <div class="card-body"><p>${tr('settings.wifi.body')}</p>
               <label class="d-block mb-2">${tr('settings.wifi.name')}<input class="form-control" type="text" id="set-ssid" autocomplete="off"></label>
-              <label class="d-block mb-2">${tr('settings.wifi.password')}<input class="form-control" type="password" id="set-password" autocomplete="off"></label>
+              <label class="d-block mb-2">${tr('settings.wifi.password')}<input class="form-control" type="password" id="set-password" autocomplete="new-password" data-1p-ignore data-lpignore="true" data-bwignore data-form-type="other"></label>
               <button class="btn btn-primary" id="set-wifi-save" data-act>${tr('settings.wifi.save')}</button></div></div></div>
         </div>`;
       fillInputs();

@@ -1,4 +1,4 @@
-import { isFrontlineAllowed } from '@app/campaigns/frontline/frontline-gate';
+import { isFrontlineAllowed, isTrainerVisible } from '@app/campaigns/frontline/frontline-gate';
 import { FORWARD_SITE_ASPECT, FORWARD_SITE_IMAGE, forwardSceneLayers, SITE_ASPECT, SITE_IMAGES, visibleHotspots } from '@app/campaigns/frontline/site-hotspots';
 import { sceneLayerImageFor, siteImageFor } from '@app/campaigns/frontline/site-layers';
 import { BaseElement } from '@app/components/base-element';
@@ -22,6 +22,7 @@ import { PlantTrainerBox } from '@app/physical/ui/plant-trainer-box';
 import { escapeHtml, hotspotPip, internetPaths } from '@app/physical/ui/plant-ui-helpers';
 import type { SceneLayer, SiteHotspot, SiteView } from '@app/physical/ui/site-types';
 import { SKYLINK_TAB_ID } from '@app/plugins-builtin/terminal-app/skylink-tab-id';
+import { ScenarioManager } from '@app/scenario-manager';
 import { TRIP_RULE_TEXT } from '@app/scoring/field-diagnosis';
 import { getAssetUrl } from '@app/utils/asset-url';
 import '@app/physical/ui/plant-ui.css';
@@ -374,7 +375,7 @@ export class SiteTab extends BaseElement {
     this.setText_('site-path-skylink', net.skylink ? 'up' : 'down');
     this.setText_('site-path-vsat', net.vsat ? 'up' : 'down');
     const trainer = this.cache_('site-open-trainer');
-    if (trainer) trainer.style.display = isFrontlineAllowed() ? '' : 'none';
+    if (trainer) trainer.style.display = isTrainerVisible(isFrontlineAllowed(), ScenarioManager.getInstance().data?.missionType) ? '' : 'none';
 
     this.setText_('site-view-toggle', this.view === 'inside' ? 'Go outside' : 'Go back inside');
     for (const spot of this.spots_()) {

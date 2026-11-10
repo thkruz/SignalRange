@@ -127,64 +127,7 @@ export abstract class BasePage extends BaseElement {
       // declares settings.workingDocument)
       WorkingDocumentManager.getInstance().initialize();
 
-      // Warm up the weather manager so scheduled events (rain, sun transit)
-      // tick from scenario start rather than first ACU-tab render
-      if ((scenario.settings.weatherEvents?.length ?? 0) > 0) {
-        WeatherManager.getInstance();
-        // AlarmService subscribed first (MissionControlPage builds it before
-        // the checkpoint await): move its poll behind WeatherManager so it
-        // reads this tick's ice and rain, not the last tick's (Phase 33 D7)
-        AlarmService.subscribeAfterExistingListeners();
-      }
-
-      // Start scheduled interference events (uplink jammers etc.)
-      if ((scenario.settings.interferenceEvents?.length ?? 0) > 0) {
-        InterferenceManager.getInstance();
-      }
-
-      // Start the geolocation console engine (Campaign 5). Must come after
-      // InterferenceManager so it can query active emitter events.
-      if (scenario.settings.geolocation) {
-        GeolocationConsoleCore.getInstance();
-      }
-
-      // Start the electronic-attack engine (Campaign 4): a player-driven jam
-      // injector + J/S assessment + own-force deconfliction interlock.
-      if (scenario.settings.electronicAttack) {
-        ElectronicAttackManager.getInstance();
-      }
-
-      // Start scheduled transmit-string hardware faults (Campaign 4 redundancy)
-      if ((scenario.settings.hardwareFaultEvents?.length ?? 0) > 0) {
-        HardwareFaultManager.getInstance();
-      }
-
-      // Start the nats-eu (Campaign 2) opt-in mechanics. Each is gated by its
-      // own settings block, so no other campaign instantiates them.
-      if (scenario.settings.linkBudget) {
-        LinkBudgetManager.getInstance();
-      }
-      if (scenario.settings.commanding) {
-        CommandingManager.getInstance();
-      }
-      if (scenario.settings.contactSchedule) {
-        ContactScheduleManager.getInstance();
-      }
-      if ((scenario.settings.spaceEvents?.length ?? 0) > 0) {
-        SpaceEventManager.getInstance();
-      }
-      if (scenario.settings.security) {
-        SecurityConsoleCore.getInstance();
-      }
-      if (scenario.settings.transec) {
-        TransecManager.getInstance();
-      }
-      if (scenario.settings.gnssThreat) {
-        GnssThreatManager.getInstance();
-      }
-      if (scenario.settings.telemetry) {
-        TelemetryManager.getInstance();
-      }
+      this.startScenarioEngines_(scenario);
 
       // Let SyncManager snapshot the managers into checkpoints (collector hook: no import cycle)
       setManagerStateCollector(collectManagerStates);
@@ -214,10 +157,15 @@ export abstract class BasePage extends BaseElement {
           });
         }
       }
-    } else if (OpsLogManager.isInitialized()) {
-      // No objectives - resume simulated time immediately
-      // (OpsLogManager starts paused by default, waiting for scenario to unlock)
-      OpsLogManager.getInstance().resume();
+    } else {
+      // No objectives (the sandbox): scheduled events, faults and the opt-in
+      // mechanics still run, they never depended on an objective
+      this.startScenarioEngines_(scenario);
+      if (OpsLogManager.isInitialized()) {
+        // Resume simulated time immediately
+        // (OpsLogManager starts paused by default, waiting for scenario to unlock)
+        OpsLogManager.getInstance().resume();
+      }
     }
 
     EventBus.getInstance().emit(Events.DOM_READY);
@@ -226,6 +174,72 @@ export abstract class BasePage extends BaseElement {
     const introClip = scenario.data?.dialogClips?.intro;
     if (introClip && !this.navigationOptions_.continueFromCheckpoint) {
       DialogManager.getInstance().show(introClip.text, introClip.character, introClip.audioUrl, 'Introduction', introClip.emotion);
+    }
+  }
+
+  /**
+   * Start the scheduled-event and opt-in mechanic managers a scenario declares.
+   * Runs with or without objectives: a sandbox has none but still authors timed
+   * faults, weather and interference.
+   */
+  private startScenarioEngines_(scenario: ScenarioManager): void {
+    // Warm up the weather manager so scheduled events (rain, sun transit)
+    // tick from scenario start rather than first ACU-tab render
+    if ((scenario.settings.weatherEvents?.length ?? 0) > 0) {
+      WeatherManager.getInstance();
+      // AlarmService subscribed first (MissionControlPage builds it before
+      // the checkpoint await): move its poll behind WeatherManager so it
+      // reads this tick's ice and rain, not the last tick's (Phase 33 D7)
+      AlarmService.subscribeAfterExistingListeners();
+    }
+
+    // Start scheduled interference events (uplink jammers etc.)
+    if ((scenario.settings.interferenceEvents?.length ?? 0) > 0) {
+      InterferenceManager.getInstance();
+    }
+
+    // Start the geolocation console engine (Campaign 5). Must come after
+    // InterferenceManager so it can query active emitter events.
+    if (scenario.settings.geolocation) {
+      GeolocationConsoleCore.getInstance();
+    }
+
+    // Start the electronic-attack engine (Campaign 4): a player-driven jam
+    // injector + J/S assessment + own-force deconfliction interlock.
+    if (scenario.settings.electronicAttack) {
+      ElectronicAttackManager.getInstance();
+    }
+
+    // Start scheduled transmit-string hardware faults (Campaign 4 redundancy)
+    if ((scenario.settings.hardwareFaultEvents?.length ?? 0) > 0) {
+      HardwareFaultManager.getInstance();
+    }
+
+    // Start the nats-eu (Campaign 2) opt-in mechanics. Each is gated by its
+    // own settings block, so no other campaign instantiates them.
+    if (scenario.settings.linkBudget) {
+      LinkBudgetManager.getInstance();
+    }
+    if (scenario.settings.commanding) {
+      CommandingManager.getInstance();
+    }
+    if (scenario.settings.contactSchedule) {
+      ContactScheduleManager.getInstance();
+    }
+    if ((scenario.settings.spaceEvents?.length ?? 0) > 0) {
+      SpaceEventManager.getInstance();
+    }
+    if (scenario.settings.security) {
+      SecurityConsoleCore.getInstance();
+    }
+    if (scenario.settings.transec) {
+      TransecManager.getInstance();
+    }
+    if (scenario.settings.gnssThreat) {
+      GnssThreatManager.getInstance();
+    }
+    if (scenario.settings.telemetry) {
+      TelemetryManager.getInstance();
     }
   }
 

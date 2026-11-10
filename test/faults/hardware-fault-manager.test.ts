@@ -185,6 +185,19 @@ describe('HardwareFaultManager', () => {
     expect(manager.isCleared('gnss')).toBe(true);
   });
 
+  it('applies the Campaign 2 sandbox GNSS outage when the clock passes its authored start', async () => {
+    const { natsEuSandboxData } = await import('@app/campaigns/nats-eu/sandbox');
+    const authored = (natsEuSandboxData.settings.hardwareFaultEvents as HardwareFaultEventConfig[]).find((e) => e.target === 'gpsdo-gnss-loss');
+    expect(authored).toBeDefined();
+    const { gw } = boot([authored as HardwareFaultEventConfig]);
+
+    at((authored?.startTime ?? 0) - 1);
+    expect(gw.gpsdo.setGnssSignalPresent).not.toHaveBeenCalled();
+
+    at((authored?.startTime ?? 0) + 1);
+    expect(gw.gpsdo.setGnssSignalPresent).toHaveBeenCalledWith(false);
+  });
+
   it('puts the crypto key into Mismatch once', () => {
     boot([{ id: 'key', groundStationId: 'GW-01', target: 'crypto-key-mismatch', startTime: 45 }]);
 

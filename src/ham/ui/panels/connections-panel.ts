@@ -123,6 +123,17 @@ export class ConnectionsPanel implements StationPanel {
       head.append(
         button(tid('ham-conn', d.id, 'inspect'), 'Inspect', () => this.act_({ type: 'inspect', targetId: d.id }, d.id), 'btn btn-sm btn-outline-secondary', `Inspect ${d.label}`)
       );
+      if (d.kind === 'coax') {
+        head.append(
+          button(
+            tid('ham-conn', d.id, 'dctest'),
+            'DC test',
+            () => this.act_({ type: 'coax.dcTest', deviceId: d.id }, d.id),
+            'btn btn-sm btn-outline-secondary',
+            `DC test ${d.label}`
+          )
+        );
+      }
       if (!passive) {
         const board = d.kind === 'circuit-board';
         head.append(

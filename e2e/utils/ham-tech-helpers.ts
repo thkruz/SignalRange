@@ -221,3 +221,38 @@ export async function setDipoleLengths(page: Page, dev: string, aCm: number, bCm
   await page.getByTestId(`ham-antenna-${dev}-apply`).click();
 }
 export const setDipoleOrientation = (page: Page, dev: string, o: 'vertical' | 'horizontal') => page.getByTestId(`ham-antenna-${dev}-orientation`).selectOption(o);
+
+// ---- S6-S8: SWR meter, coax DC test, PTT release, DF yagi, mic gain ----
+
+export const pttRelease = (page: Page, dev: string) => page.getByTestId(`ham-ptt-${dev}-release`).click();
+/** Press Read on the SWR / wattmeter panel (the transmitter must be keyed) */
+export const swrRead = (page: Page, swr = 'swr') => page.getByTestId(`ham-swr-${swr}-read`).click();
+/** Key briefly for a test carrier, read the SWR meter while keyed, release */
+export async function keyAndReadSwr(page: Page, dev: string, swr = 'swr'): Promise<void> {
+  await pttTransmit(page, dev, { kind: 'test' });
+  await swrRead(page, swr);
+  await pttRelease(page, dev);
+}
+/** Centre/shield ohmmeter test on a disconnected coax cable (Inspect row button) */
+export const dcTestCoax = (page: Page, coaxId: string) => page.getByTestId(`ham-conn-${coaxId}-dctest`).click();
+export const installSpare = async (page: Page, spareId: string, replaces: string): Promise<void> => {
+  await page.getByTestId(`ham-conn-${spareId}-replaces`).selectOption(replaces);
+  await page.getByTestId(`ham-conn-${spareId}-install`).click();
+};
+/** Staged direction (antenna panel): azimuth in degrees, then Apply */
+export async function setAntennaAzimuth(page: Page, dev: string, azDeg: number): Promise<void> {
+  await page.getByTestId(`ham-antenna-${dev}-az`).fill(String(azDeg));
+  await page.getByTestId(`ham-antenna-${dev}-apply-dir`).click();
+}
+export const setMicGain = (page: Page, dev: string, v: number) => page.getByTestId(`ham-radio-${dev}-micgain`).fill(String(v));
+/** Meter panel: select DCV mode and read across two DC test points of the system */
+export async function meterReadDcv(page: Page, red: string, black: string, dmm = 'dmm1'): Promise<void> {
+  await setMeterMode(page, 'DCV', dmm);
+  await meterReadAcross(page, red, black, dmm);
+}
+/** Idempotent power: only clicks the connections-panel power button when the device is not already in the wanted state */
+export async function setDevicePower(page: Page, id: string, on: boolean): Promise<void> {
+  const btn = page.getByTestId(`ham-conn-${id}-power`);
+  const label = ((await btn.textContent()) ?? '').trim();
+  if (label === (on ? 'Power on' : 'Power off')) await btn.click();
+}

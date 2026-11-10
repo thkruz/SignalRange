@@ -625,6 +625,9 @@ export enum Events {
   // Fault injection events
   FAULT_CHANGED = 'fault:changed',
   AUDIT_EVENT_ACKNOWLEDGED = 'audit:event:acknowledged',
+
+  // Campaign 3 ham station (throttled to 4 Hz)
+  HAM_STATION_UPDATED = 'ham-station:updated',
 }
 
 export interface EventMap {
@@ -757,4 +760,5 @@ export interface EventMap {
   // Fault injection events
   [Events.FAULT_CHANGED]: [{ id: string; action: 'injected' | 'cleared' }];
   [Events.AUDIT_EVENT_ACKNOWLEDGED]: [{ id: string }];
+  [Events.HAM_STATION_UPDATED]: [{ stateVersion: number; nowS: number }];
 }

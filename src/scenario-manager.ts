@@ -61,6 +61,7 @@ import { OMTModule } from '@app/equipment/rf-front-end/omt-module/omt-module';
 import { RFFrontEndState } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { Satellite } from '@app/equipment/satellite/satellite';
 import { Transmitter, TransmitterState } from '@app/equipment/transmitter/transmitter';
+import type { HamStationConfig } from '@app/ham/ham-station-config';
 import { Character, Emotion } from '@app/modal/character-enum';
 import { PreviousShiftLogEntry } from '@app/ops-log/ops-log-types';
 import { FieldTabPolicy } from '@app/physical/field-tab-policy';
@@ -96,6 +97,8 @@ export interface SimulationSettings {
   receivers?: Partial<ReceiverState>[];
   /** Phase 38.1: opt-in physical-layer plant (C6 sandbox). Absent means nothing changes. */
   physicalPlant?: PlantConfig;
+  /** Campaign 3 (ham-sdr) station manager config; absent = no ham station */
+  hamStation?: HamStationConfig;
   /**
    * Engineering tab ids (e.g. 'rx-analysis', 'dashboard') a 'field' station may
    * show without the trainer unlock. Absent: the Site tab and plugin tabs only.

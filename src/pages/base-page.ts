@@ -9,6 +9,7 @@ import { DualTransmissionViolationData, Events, HpaNoiseAmplificationData, Objec
 import { FaultInjector } from '@app/faults/fault-injector';
 import { HardwareFaultManager } from '@app/faults/hardware-fault-manager';
 import { GnssThreatManager } from '@app/gnss-threat/gnss-threat-manager';
+import { HamStationService } from '@app/ham/ham-station-service';
 import { InterferenceManager } from '@app/interference/interference-manager';
 import { LinkBudgetManager } from '@app/link-budget/link-budget-manager';
 import { Logger } from '@app/logging/logger';
@@ -109,6 +110,10 @@ export abstract class BasePage extends BaseElement {
     // Outside the objectives block: the sandbox has no objectives but needs its plant.
     if (scenario.settings.physicalPlant) {
       PhysicalPlantService.getInstance();
+    }
+    // Campaign 3 ham station: opt-in through settings.hamStation, also outside the objectives block
+    if (scenario.settings.hamStation) {
+      HamStationService.start();
     }
 
     // Initialize objectives manager if scenario has objectives

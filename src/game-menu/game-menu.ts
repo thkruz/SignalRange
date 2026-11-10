@@ -1,5 +1,6 @@
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { HamStationService } from '@app/ham/ham-station-service';
 import { setupFullscreenButton } from '@app/pages/layout/header/fullscreen-button';
 import { selectionText } from '@app/pages/selection-browser';
 import { PhysicalPlantService } from '@app/physical/physical-plant-service';
@@ -255,6 +256,7 @@ export class GameMenu {
         // The old run's plant may still be outside the tent. Tear it down now so a stray tab or
         // asset event during the navigation cannot raise the "You are outside" confirm.
         PhysicalPlantService.destroy();
+        HamStationService.destroy();
         Router.getInstance().navigate(`${campaignPath}/scenarios/${mission.id}`, { forceReplay: true });
       } else {
         if (signedIn) {

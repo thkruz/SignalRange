@@ -10,6 +10,7 @@ import { GeolocationConsoleCore } from '@app/equipment/geolocation-console/geolo
 import { EventBus } from '@app/events/event-bus';
 import { HardwareFaultManager } from '@app/faults/hardware-fault-manager';
 import { GnssThreatManager } from '@app/gnss-threat/gnss-threat-manager';
+import { HamStationService } from '@app/ham/ham-station-service';
 import { InterferenceManager } from '@app/interference/interference-manager';
 import { LinkBudgetManager } from '@app/link-budget/link-budget-manager';
 import { Logger } from '@app/logging/logger';
@@ -398,6 +399,7 @@ export class MissionControlPage extends BasePage {
     ElectronicAttackManager.destroy();
     HardwareFaultManager.destroy();
     PhysicalPlantService.destroy();
+    HamStationService.destroy();
     PartCloseupModal.destroy();
     PlantTrainerBox.destroy();
     LinkBudgetManager.destroy();

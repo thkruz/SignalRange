@@ -18,6 +18,7 @@ import { CryptoModule } from '@app/equipment/crypto/crypto-module-core';
 import { FaultInjector } from '@app/faults/fault-injector';
 import { HardwareFaultManager } from '@app/faults/hardware-fault-manager';
 import { GnssThreatManager } from '@app/gnss-threat/gnss-threat-manager';
+import { HamStationManager } from '@app/ham/ham-station-manager';
 import { InterferenceManager } from '@app/interference/interference-manager';
 import { LinkBudgetManager } from '@app/link-budget/link-budget-manager';
 import { Logger } from '@app/logging/logger';
@@ -61,6 +62,7 @@ export function collectManagerStates(): ManagerStates {
   states.contactSchedule = section_('contactSchedule', () => (ContactScheduleManager.isInitialized() ? ContactScheduleManager.getInstance().getState() : undefined));
   states.gnssThreat = section_('gnssThreat', () => (GnssThreatManager.isInitialized() ? GnssThreatManager.getInstance().getCheckpointState() : undefined));
 
+  states.hamStation = section_('hamStation', () => (HamStationManager.isInitialized() ? HamStationManager.getInstance().getState() : undefined));
   states.physicalPlant = section_('physicalPlant', () => (PhysicalPlantService.isInitialized() ? PhysicalPlantService.getInstance().getState() : undefined));
   states.hardwareFaults = section_('hardwareFaults', () => (HardwareFaultManager.isInitialized() ? HardwareFaultManager.getInstance().getState() : undefined));
   states.weather = section_('weather', () => (WeatherManager.hasInstance() ? WeatherManager.getInstance().getCheckpointState() : undefined));
@@ -135,6 +137,11 @@ export function restoreManagerStates(states: ManagerStates | undefined): void {
     }
   });
   // Faults that already tripped must not trip again after the clock jump that follows
+  restore_('hamStation', () => {
+    if (states.hamStation && HamStationManager.isInitialized()) {
+      HamStationManager.getInstance().restoreState(states.hamStation);
+    }
+  });
   restore_('physicalPlant', () => {
     if (states.physicalPlant && PhysicalPlantService.isInitialized()) {
       PhysicalPlantService.getInstance().restoreState(states.physicalPlant);

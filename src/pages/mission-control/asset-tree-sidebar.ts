@@ -309,6 +309,11 @@ export class AssetTreeSidebar extends BaseElement {
     const btn = qs('.mission-brief-icon', this.dom_);
     btn?.addEventListener('click', () => {
       const sim = SimulationManager.getInstance();
+      // A second click on the sidebar item closes the window
+      if (sim.missionBriefBox?.isShowing()) {
+        sim.missionBriefBox.close();
+        return;
+      }
       if (!sim.missionBriefBox) {
         sim.missionBriefBox = new DraggableHtmlBox('Mission Brief', 'mission-brief', this.missionBriefUrl_, 'app-shell-page');
         // Objective countdowns stop while the brief is open (Phase 26 D2)
@@ -325,6 +330,10 @@ export class AssetTreeSidebar extends BaseElement {
 
     const btn = qs('.checklist-icon', this.dom_);
     btn?.addEventListener('click', () => {
+      if (SimulationManager.getInstance().checklistBox?.isShowing()) {
+        SimulationManager.getInstance().checklistBox.close();
+        return;
+      }
       SimulationManager.getInstance().checklistBox ??= new DraggableHtmlBox('Checklist', 'checklist', '', 'app-shell-page');
 
       // Set up event delegation for quiz buttons (only once)
@@ -416,6 +425,10 @@ export class AssetTreeSidebar extends BaseElement {
   private addDialogHistoryListener_(): void {
     const btn = qs('.dialog-icon', this.dom_);
     btn?.addEventListener('click', () => {
+      if (SimulationManager.getInstance().dialogHistoryBox?.isShowing()) {
+        SimulationManager.getInstance().dialogHistoryBox.close();
+        return;
+      }
       SimulationManager.getInstance().dialogHistoryBox ??= new DialogHistoryBox('app-shell-page');
       SimulationManager.getInstance().dialogHistoryBox.open();
     });
@@ -424,7 +437,12 @@ export class AssetTreeSidebar extends BaseElement {
   private addOpsLogListener_(): void {
     const btn = qs('.ops-log-icon', this.dom_);
     btn?.addEventListener('click', () => {
-      OpsLogModal.getInstance().open();
+      const log = OpsLogModal.getInstance();
+      if (log.isShowing()) {
+        log.close();
+        return;
+      }
+      log.open();
     });
   }
 

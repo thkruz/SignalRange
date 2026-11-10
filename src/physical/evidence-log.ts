@@ -88,6 +88,8 @@ export interface EvidencePlant {
 export interface EvidenceServiceSource {
   onSample(listener: (sample: ServiceSample) => void): () => void;
   onEvent(listener: (eventId: string, logLine?: string) => void): () => void;
+  /** Names the block a reading came from, so notebook lines say which service path they belong to */
+  getPath?(serviceId: string): { label: string } | undefined;
 }
 
 export interface EvidenceLogState {
@@ -112,8 +114,11 @@ export class EvidenceLog {
   private sampleStatus_ = new Map<string, string>();
   private faultTargets_ = new Map<string, string>();
 
+  private readonly pathLabel_: (serviceId: string) => string | undefined;
+
   constructor(plant: EvidencePlant, service: EvidenceServiceSource | null) {
     this.plant_ = plant;
+    this.pathLabel_ = (serviceId) => service?.getPath?.(serviceId)?.label;
     this.startS_ = plant.getTimeSeconds();
     this.knownFacts_ = new Set(plant.getRevealedFacts());
     this.refreshFaults_();
@@ -376,6 +381,14 @@ export class EvidenceLog {
     this.refreshFaults_();
   }
 
+  /** " on SkyLink to remote terminal, remote-terminal row": the block and the endpoint row a reading came from */
+  private sourceNote_(sample: ServiceSample): string {
+    const label = this.pathLabel_(sample.serviceId);
+    if (!label) return '';
+
+    return ` on ${label}${sample.endpointId === undefined ? '' : `, ${sample.endpointId} row`}`;
+  }
+
   private onSample_(sample: ServiceSample): void {
     if (sample.value === 'unknown' || sample.metric !== 'status') {
       // Unreadable through this provenance, or a numeric reading: it must not replace the recorded layer status
@@ -400,7 +413,7 @@ export class EvidenceLog {
         ...(sample.cause === undefined ? {} : { cause: sample.cause }),
       },
       facts: [],
-      text: `${LAYER_LABEL[sample.layer]} ${METRIC_LABEL[sample.metric].toLowerCase()}${capacityNote(sample)}: ${typeof sample.value === 'number' ? Math.round(sample.value * 10) / 10 : sample.value}${sample.unit === 'state' ? '' : ` ${sample.unit}`} (${PROVENANCE_LABEL[sample.provenance]})`,
+      text: `${LAYER_LABEL[sample.layer]} ${METRIC_LABEL[sample.metric].toLowerCase()}${capacityNote(sample)}: ${typeof sample.value === 'number' ? Math.round(sample.value * 10) / 10 : sample.value}${sample.unit === 'state' ? '' : ` ${sample.unit}`} (${PROVENANCE_LABEL[sample.provenance]})${this.sourceNote_(sample)}`,
     });
   }
 }

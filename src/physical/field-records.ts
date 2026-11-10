@@ -341,19 +341,26 @@ export class FieldRecords implements RecordReader {
 
   private checkFreshness_(field: HandoverFieldConfig, value: string, target: { serviceId: string; layer: ServiceLayer }): FieldCheck {
     const svc = this.deps_.service;
-    const sample = svc?.latest(target.serviceId, target.layer) ?? null;
+    const sample = svc?.latestAny(target.serviceId, target.layer) ?? null;
     if (!svc || !sample) {
       return fail(field.key, `${field.label}: no reading of the ${target.layer} layer has been taken yet.`);
     }
     const freshness = svc.freshness(sample);
     const truth = freshness === 'current' ? 'current' : freshness === 'unavailable' ? 'unavailable' : 'last-known';
+    if (value === truth) return pass(field.key);
+    const where = svc.getPath(target.serviceId)?.label ?? target.serviceId;
+    const age = Math.round(svc.ageS(sample));
+    const state = truth === 'current' ? `still current (taken ${age} s ago)` : truth === 'unavailable' ? 'unavailable' : `out of date (taken ${age} s ago)`;
 
-    return value === truth ? pass(field.key) : fail(field.key, `${field.label} does not match the age of your latest reading of the ${target.layer} layer.`);
+    return fail(
+      field.key,
+      `${field.label} does not match the age of your latest ${target.layer} reading on ${where}, which is ${state}. Classify the value by that reading's age.`
+    );
   }
 
   private checkMatchesCurrent_(field: HandoverFieldConfig, value: string, target: { serviceId: string; layer: ServiceLayer }): FieldCheck {
     const svc = this.deps_.service;
-    const sample = svc?.latest(target.serviceId, target.layer) ?? null;
+    const sample = svc?.latestAny(target.serviceId, target.layer) ?? null;
     if (!svc || !sample) {
       return fail(field.key, `${field.label}: no reading of the ${target.layer} layer has been taken yet.`);
     }
@@ -362,11 +369,13 @@ export class FieldRecords implements RecordReader {
 
       return fail(
         field.key,
-        `${field.label}: your last reading of the ${target.layer} layer is out of date (taken ${age} s ago, readings of this kind expire after ${sample.maxAgeS} s). Take a new one.`
+        `${field.label}: your latest ${target.layer} reading on ${svc.getPath(target.serviceId)?.label ?? target.serviceId} is out of date (taken ${age} s ago, readings of this kind expire after ${sample.maxAgeS} s). Take a new one.`
       );
     }
 
-    return String(sample.value) === value ? pass(field.key) : fail(field.key, `${field.label} does not match your current reading of the ${target.layer} layer.`);
+    return String(sample.value) === value
+      ? pass(field.key)
+      : fail(field.key, `${field.label} does not match your current ${target.layer} reading on ${svc.getPath(target.serviceId)?.label ?? target.serviceId}.`);
   }
 
   private checkWorkload_(field: HandoverFieldConfig, runId: string, rule: { cardId: string; is: WorkloadStatus[]; serviceId?: string }): FieldCheck {

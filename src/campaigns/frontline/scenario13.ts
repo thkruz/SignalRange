@@ -46,7 +46,7 @@ export const S13_TASK_CARD: RequirementCard = {
 
 const GROUND_ACCOUNT = reading('ground', 'a ground account reading for the SkyLink service', SKYLINK_SERVICE, 'account');
 const REMOTE_READING = reading('remote', 'a reading of the remote endpoint', FORWARD_REMOTE_SERVICE, 'application');
-const POLICY_MARK: EvidenceGroup = { id: 'policy', label: 'the entry for the remote policy change', match: { kind: 'result', eventId: S13_EVENT_POLICY } };
+const POLICY_MARK: EvidenceGroup = { id: 'policy', label: 'the entry that shows the change at the remote end', match: { kind: 'result', eventId: S13_EVENT_POLICY } };
 const NOTICE_MARK: EvidenceGroup = { id: 'notice', label: 'the entry for the provider notice', match: { kind: 'result', eventId: S13_EVENT_NOTICE } };
 
 const REMOTE_NODE = `endpoint:${FORWARD_REMOTE_ENDPOINT}`;
@@ -107,6 +107,7 @@ const interruptionForm: HandoverFormConfig = {
   id: 'interruption',
   title: 'Interruption record',
   documentSection: 'Interruption',
+  eventNote: { eventId: S13_EVENT_POLICY, text: 'Interruption: the task stopped updating at the remote end' },
   fields: [
     { key: 'remote', label: 'Remote value in the service record', required: true, rule: { freshnessIs: { serviceId: FORWARD_REMOTE_SERVICE, layer: 'application' } } },
     { key: 'onset', label: 'Onset in the service history', required: true, rule: { evidence: [POLICY_MARK] } },
@@ -188,7 +189,7 @@ const holdForm: HandoverFormConfig = {
   fields: [
     {
       key: 'run',
-      label: 'Task window you ran and held for',
+      label: 'Task window you ran and held for (a run that ended degraded or unsupported counts)',
       required: true,
       rule: { workload: { cardId: S13_TASK_CARD.id, is: ['degraded', 'unsupported'], serviceId: FORWARD_REMOTE_SERVICE } },
     },
@@ -251,6 +252,7 @@ if (scenarioSettings.physicalPlant) {
         affects: { endpointId: FORWARD_REMOTE_ENDPOINT },
         kind: 'remote-mobility',
         issuedAtS: 0,
+        issuedOnDelivery: true,
         text: 'SkyLink service notice. The remote terminal named in this task is under a mobility service policy, effective from the onset in the service history. The ground account restriction is unrelated to this policy. The notice reports no fault in customer equipment.',
       },
     ],
@@ -262,7 +264,8 @@ if (scenarioSettings.physicalPlant) {
       startAfterObjectiveId: 's13-record-interruption',
       offsetS: 15,
       actions: [{ kind: 'set-endpoint', patch: { id: FORWARD_REMOTE_ENDPOINT, reachable: false, policy: 'mobility-restricted' } }],
-      logLine: 'The task stops updating at the remote end.',
+      invalidationLabel: 'remote interruption',
+      logLine: 'Interruption: the task stops updating at the remote end. Earlier remote readings no longer describe it.',
     },
     {
       id: S13_EVENT_NOTICE,
@@ -300,7 +303,8 @@ export const frontlineScenario13Data: FrontlineScenarioData = {
     {
       id: 's13-map-endpoints',
       title: 'Identify Both Service Endpoints',
-      description: 'Trace the ground endpoint, provider network, and simulated onboard terminal in the task diagram. Confirm which service and account apply to each endpoint.',
+      description:
+        'Trace the ground endpoint, provider network, and simulated onboard terminal in the task diagram. Confirm which service and account apply to each endpoint, then file them on the Service endpoints handover form.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: [],
       points: 15,
@@ -312,7 +316,7 @@ export const frontlineScenario13Data: FrontlineScenarioData = {
           },
           'Ground terminal, provider network and remote endpoint marked'
         ),
-        handoverValid('endpoints', 'Both endpoints and the provider link recorded'),
+        handoverValid('endpoints', 'Both endpoints and the provider link filed on the Service endpoints form'),
       ],
     },
     {
@@ -333,13 +337,13 @@ export const frontlineScenario13Data: FrontlineScenarioData = {
       id: 's13-record-interruption',
       title: 'Preserve the Interruption Evidence',
       description:
-        "Observe the task and record any interruption when it occurs. Preserve the remote terminal's last-known state without treating that old reading as its present condition.",
+        "Observe the task and take a fresh reading of the remote endpoint when the interruption occurs, then file the Interruption record. Classify the remote value by the age of your latest reading: a fresh reading is current, an older one is last-known and is never the terminal's present condition.",
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s13-capture-baseline'],
       points: 15,
       conditions: [
         eventFired(S13_EVENT_POLICY, 'Interruption has happened'),
-        handoverValid('interruption', 'Interruption recorded with the remote value marked last known'),
+        handoverValid('interruption', 'Interruption filed with the remote value classified by its reading age'),
         layerObserved(FORWARD_REMOTE_SERVICE, 'application', { status: 'down' }, 'Remote endpoint observed down in a fresh reading'),
       ],
     },

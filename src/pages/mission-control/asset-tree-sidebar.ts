@@ -107,6 +107,21 @@ export class AssetTreeSidebar extends BaseElement {
     this.renderAssetTree_();
     this.initMissionSection_();
     this.initSidebarLock_();
+    this.openChecklistOnReady_();
+  }
+
+  /**
+   * The field console has no other way to see the first objective: open the checklist docked beside the Site
+   * stage once the page is ready (c6-s13). Narrow windows (under 1600 px) keep click-to-open: the docked strip
+   * would cover part of the service diagram there. Other pages keep the click-to-open behaviour.
+   */
+  private openChecklistOnReady_(): void {
+    if (!qs('.checklist-icon', this.dom_)) return;
+    EventBus.getInstance().on(Events.DOM_READY, () => {
+      if (document.getElementById('tent-control') && window.innerWidth >= 1600 && !SimulationManager.getInstance().checklistBox) {
+        this.openChecklist_();
+      }
+    });
   }
 
   /**
@@ -324,19 +339,7 @@ export class AssetTreeSidebar extends BaseElement {
     PendingQuizIndicator.getInstance();
 
     const btn = qs('.checklist-icon', this.dom_);
-    btn?.addEventListener('click', () => {
-      SimulationManager.getInstance().checklistBox ??= new DraggableHtmlBox('Checklist', 'checklist', '', 'app-shell-page');
-
-      // Set up event delegation for quiz buttons (only once)
-      this.setupQuizButtonDelegation_();
-
-      const objectivesManager = ObjectivesManager.getInstance();
-      objectivesManager.syncCollapsedStatesFromDOM();
-      this.lastChecklistHtml_ = objectivesManager.generateHtmlChecklist();
-      SimulationManager.getInstance().checklistBox.updateContent(this.lastChecklistHtml_);
-      SimulationManager.getInstance().checklistBox.open();
-      this.startChecklistRefreshTimer_(SimulationManager.getInstance().checklistBox);
-    });
+    btn?.addEventListener('click', () => this.openChecklist_());
 
     EventBus.getInstance().on(Events.OBJECTIVE_ACTIVATED, () => {
       if (!SimulationManager.getInstance().checklistBox) {
@@ -347,6 +350,20 @@ export class AssetTreeSidebar extends BaseElement {
       SimulationManager.getInstance().checklistBox.updateContent(this.lastChecklistHtml_);
       SimulationManager.getInstance().checklistBox.redockForObjectiveChange();
     });
+  }
+
+  private openChecklist_(): void {
+    SimulationManager.getInstance().checklistBox ??= new DraggableHtmlBox('Checklist', 'checklist', '', 'app-shell-page');
+
+    // Set up event delegation for quiz buttons (only once)
+    this.setupQuizButtonDelegation_();
+
+    const objectivesManager = ObjectivesManager.getInstance();
+    objectivesManager.syncCollapsedStatesFromDOM();
+    this.lastChecklistHtml_ = objectivesManager.generateHtmlChecklist();
+    SimulationManager.getInstance().checklistBox.updateContent(this.lastChecklistHtml_);
+    SimulationManager.getInstance().checklistBox.open();
+    this.startChecklistRefreshTimer_(SimulationManager.getInstance().checklistBox);
   }
 
   /**

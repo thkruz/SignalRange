@@ -516,6 +516,21 @@ export class ServiceModel {
     return null;
   }
 
+  /**
+   * The newest sample of that layer on the service from any of its rows (the path row or a remote-endpoint row).
+   * Handover forms judge "my latest reading" with this so a Check on either Application row counts (c6-s13-F3, F4).
+   */
+  latestAny(serviceId: string, layer: ServiceLayer): ServiceSample | null {
+    for (let i = this.samples_.length - 1; i >= 0; i--) {
+      const s = this.samples_[i];
+      if (s.serviceId === serviceId && s.layer === layer) {
+        return s;
+      }
+    }
+
+    return null;
+  }
+
   // ----------------------------------------------------------------- change
 
   bumpConfig(reason: string): void {

@@ -177,7 +177,7 @@ export abstract class DraggableBox {
   protected dockBesideSite_(boxContent: HTMLElement, cascade = true): void {
     const vp = displayViewport();
     const width = Math.min(360, Math.max(260, vp.width * 0.25));
-    const step = cascade ? (DraggableBox.siteDockCount_++ % 5) * 28 : 0;
+    const step = (cascade ? (DraggableBox.siteDockCount_++ % 5) * 28 : 0) + this.siteDockExtraStep_();
     boxContent.style.width = `${width}px`;
     boxContent.style.maxWidth = `${width}px`;
     boxContent.style.maxHeight = `${Math.max(240, vp.height - 190 - step)}px`;
@@ -187,6 +187,11 @@ export abstract class DraggableBox {
     // Reserve the strip so the Site stage shrinks to fit beside the box instead of sitting under it (c6-s02-F5)
     this.siteGutter_ = width + 16 + step + 12;
     this.reserveSiteGutter_();
+  }
+
+  /** Extra offset (px) a box wants when docking so it clears the header of the box docked before it; default none */
+  protected siteDockExtraStep_(): number {
+    return 0;
   }
 
   /** Right-hand strip (px) this box takes beside the Site stage while it is open; 0 when not docked */

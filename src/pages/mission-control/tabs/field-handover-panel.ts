@@ -87,7 +87,7 @@ const METRIC_NAME: Record<string, string> = { jitterMs: 'jitter', rttMs: 'delay'
 
 /** What the "latest reading" hint prints for a matchesCurrent field */
 export function describeReading(service: ServiceModel | null, serviceId: string, layer: Parameters<ServiceModel['latest']>[1]): { text: string; value?: string; current: boolean } {
-  const sample = service?.latest(serviceId, layer) ?? null;
+  const sample = service?.latestAny(serviceId, layer) ?? null;
   if (!service || !sample) return { text: `No ${layer} reading taken yet.`, current: false };
   const fresh = service.freshness(sample);
   const value = String(sample.value);

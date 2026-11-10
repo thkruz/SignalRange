@@ -47,6 +47,8 @@ export class DraggableHtmlBox extends DraggableBox {
     }
   }
 
+  private readonly htmlId_: string;
+
   constructor(title: string, id: string, url?: string, parentId = 'sandbox-page') {
     super(`draggable-html-box-${id}`, {
       title,
@@ -59,6 +61,7 @@ export class DraggableHtmlBox extends DraggableBox {
     `.trim(),
     });
 
+    this.htmlId_ = id;
     this.popupDom = getEl(`draggable-html-box-content-${id}`);
 
     // Register this box as opened for objective tracking
@@ -71,6 +74,11 @@ export class DraggableHtmlBox extends DraggableBox {
     }
 
     this.onOpen();
+  }
+
+  /** The Working Document opens beside the docked Checklist: drop it below that header and its Dock button (c6-s13-F8) */
+  protected override siteDockExtraStep_(): number {
+    return this.htmlId_ === 'working-document' ? 64 : 0;
   }
 
   protected getBoxContentHtml(): string {

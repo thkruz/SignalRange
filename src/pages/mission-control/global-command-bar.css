@@ -37,6 +37,8 @@
 #global-command-bar-container .timer-urgent,
 #global-command-bar-container .timer-failed { border-left-color: #f2766b; }
 #global-command-bar-container .timer-unlimited .timer-value { color: var(--mc-header-muted); }
+/* A blank clock face says why: nothing is counting down */
+#global-command-bar-container .timer-unlimited[title="No time limit"] .timer-label::after { content: ' (no limit)'; }
 #global-command-bar-container .timer-passed .timer-value { color: #77dba2; }
 #global-command-bar-container .timer-held .timer-value { color: #ddd; }
 #global-command-bar-container .timer-hold-tag { color: #ddd; background: #555; }

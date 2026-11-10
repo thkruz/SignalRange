@@ -71,7 +71,7 @@ test.describe('Frontline S6 full completion', () => {
       await recordsSubmit(page, 'case-prompt-radio', {
         run: { value: ids.pr },
         depends: { value: 'radio-and-satellite' },
-        finding: { value: 'radio-adds-delay' },
+        finding: { value: 'latency-missed' },
         evidence: { cites: 99 },
       });
       await waitForObjective(page, 's06-assess-radio');

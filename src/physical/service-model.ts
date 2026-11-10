@@ -388,6 +388,12 @@ export class ServiceModel {
         const link = this.link_.sample(serviceId, tS);
         if (link) {
           value = link[metric] ?? 'unknown';
+          // A remote leg adds its delay and caps the rate, so the reading matches what the run was judged on
+          const leg = this.getPath(serviceId)?.remoteLeg;
+          if (leg && typeof value === 'number') {
+            if (metric === 'rttMs') value += leg.rttMs;
+            else if (metric === 'downMbps') value = Math.min(value, leg.downMbps);
+          }
           usedMetric = metric;
           windowS = metric === 'jitterMs' ? link.jitterWindowS : undefined;
         } else {

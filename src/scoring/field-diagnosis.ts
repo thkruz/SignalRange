@@ -16,6 +16,8 @@ export interface FieldDiagnosis {
   lines: string[];
   /** Why the numbers above move the score, shown under the section */
   scoreNotes: string[];
+  /** True when nothing was diagnosed (no fault, no hypothesis step, nothing to credit or penalise): the debrief leaves the section out */
+  quiet?: boolean;
 }
 
 /** The instructor's camp rule, as worded in the S1 brief, the site strip tooltip and the debrief */
@@ -104,5 +106,10 @@ export function buildFieldDiagnosis(source: DiagnosisSource, basePoints: number)
 
   const hasHypothesisStep = (config.hypothesisSpecs?.length ?? 0) > 0 || rules.length > 0 || field.evidence.entries().some((e) => e.kind === 'hypothesis');
 
-  return describeFieldDiagnosis(summary, basePoints, notes, plantHasFault(config), hasHypothesisStep);
+  const hasFault = plantHasFault(config);
+  const diagnosis = describeFieldDiagnosis(summary, basePoints, notes, hasFault, hasHypothesisStep);
+  const nothingDiagnosed =
+    !hasFault && !hasHypothesisStep && summary.wrongCauseActions === 0 && summary.unsupportedFixes === 0 && summary.usefulNegatives === 0 && summary.unsupportedSpares === 0;
+
+  return nothingDiagnosed ? { ...diagnosis, quiet: true } : diagnosis;
 }

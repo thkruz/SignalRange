@@ -206,14 +206,26 @@ export class FieldWorkloadPanel {
   }
 
   /** Look closely at one workload: print what it needs, what it gets now and what each priority would give it, and note it in the notebook */
-  inspect(cardId: string): void {
+  inspect(cardId: string, serviceId?: string): void {
     const runner = this.getRunner_();
     const card = runner?.getCard(cardId);
     if (!runner || !card) return;
-    const text = `Inspected workload ${card.label}: ${describeCard(card)}. ${this.shareNote_(runner, card)}`;
+    const pathNote = this.pathNote_(serviceId);
+    const text = `Inspected workload ${card.label}: ${describeCard(card)}. ${this.shareNote_(runner, card)}${pathNote ? ` ${pathNote}` : ''}`;
     getActiveField()?.evidence?.recordAppAction(cardId, INSPECT_VERB, text, INSPECT_SUBJECT_PREFIX);
-    this.lastMsg_ = `Inspected ${card.label}.`;
+    this.lastMsg_ = `Inspected ${card.label}${pathNote ? ` on ${this.getModel_()?.getPath(serviceId ?? '')?.label ?? serviceId}` : ''}.${pathNote ? ` ${pathNote}` : ''}`;
     this.sync();
+  }
+
+  /** The connection a task would run over: what carries it and what the remote leg adds (empty when no service is chosen) */
+  private pathNote_(serviceId: string | undefined): string {
+    const path = serviceId ? this.getModel_()?.getPath(serviceId) : undefined;
+    if (!path) return '';
+    const leg = path.remoteLeg;
+    if (!leg) return '';
+    const kind = leg.kind === 'fiber' ? 'fiber' : 'radio';
+
+    return `Connection ${path.label}: the same terminal link, provider and local network, plus a ${kind} remote leg that adds about ${leg.rttMs} ms to the round trip and carries at most ${leg.downMbps} Mbps. The satellite segments are not replaced by the ${kind} leg.`;
   }
 
   /** Current priority and share of a card, and the share each priority option would give it among the runs now going */
@@ -250,7 +262,8 @@ export class FieldWorkloadPanel {
       const service = row?.querySelector<HTMLSelectElement>('select[data-wl-service]')?.value;
       if (row && service) this.start(row.dataset.wlCard ?? '', service);
     } else if (act === 'inspect') {
-      this.inspect(btn.closest<HTMLElement>('[data-wl-card]')?.dataset.wlCard ?? '');
+      const row = btn.closest<HTMLElement>('[data-wl-card]');
+      this.inspect(row?.dataset.wlCard ?? '', row?.querySelector<HTMLSelectElement>('select[data-wl-service]')?.value);
     } else if (act === 'hold') {
       this.hold(btn.closest<HTMLElement>('[data-wl-run]')?.dataset.wlRun ?? '');
     } else if (act === 'abort') {

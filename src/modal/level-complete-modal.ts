@@ -220,7 +220,7 @@ export class LevelCompleteModal extends DraggableModal {
   /** The "Field diagnosis" debrief section, rendered only when a field report exists */
   private renderFieldDiagnosis_(): string {
     const diagnosis = this.options_.fieldDiagnosis;
-    if (!diagnosis) return '';
+    if (!diagnosis || diagnosis.quiet) return '';
     const lines = diagnosis.lines.map((line) => `<li>${selectionText(line)}</li>`).join('');
     const notes = diagnosis.scoreNotes.map((note) => `<p class="debrief-note">${selectionText(note)}</p>`).join('');
 

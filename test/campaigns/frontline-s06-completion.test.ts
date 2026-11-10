@@ -78,7 +78,7 @@ function acts(svc: PhysicalPlantService): Record<string, () => void> {
     },
     's06-assess-radio': () => {
       record('pr', PROMPT, 'skylink-radio', 'unsupported');
-      submitOk(svc, 'case-prompt-radio', { run: { value: ids.pr }, ...RADIO, finding: { value: 'radio-adds-delay' }, evidence: { cites: observations(svc) } });
+      submitOk(svc, 'case-prompt-radio', { run: { value: ids.pr }, ...RADIO, finding: { value: 'latency-missed' }, evidence: { cites: observations(svc) } });
     },
     's06-assess-tolerant': () => {
       record('qf', QUEUED, 'skylink-fiber', 'supported');
@@ -159,9 +159,9 @@ describe('M22 S6 completion', () => {
     tick(120);
     const fiber = run(svc, PROMPT, 'skylink-fiber');
     const radio = run(svc, PROMPT, 'skylink-radio');
-    const wrong = svc.records?.submit('case-prompt-radio', { run: { value: fiber?.id }, ...RADIO, finding: { value: 'radio-adds-delay' }, evidence: { cites: observations(svc) } });
+    const wrong = svc.records?.submit('case-prompt-radio', { run: { value: fiber?.id }, ...RADIO, finding: { value: 'latency-missed' }, evidence: { cites: observations(svc) } });
     expect(wrong?.ok).toBe(false);
-    const right = svc.records?.submit('case-prompt-radio', { run: { value: radio?.id }, ...RADIO, finding: { value: 'radio-adds-delay' }, evidence: { cites: observations(svc) } });
+    const right = svc.records?.submit('case-prompt-radio', { run: { value: radio?.id }, ...RADIO, finding: { value: 'latency-missed' }, evidence: { cites: observations(svc) } });
     expect(right?.ok).toBe(true);
   });
 

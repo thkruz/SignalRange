@@ -58,17 +58,18 @@ function legPath(id: string, label: string, leg: NonNullable<ServicePathConfig['
   return { ...base, id, label, remoteLeg: leg };
 }
 
-const DEPENDS_FIBER = { 'satellite-and-local': 'The satellite link, provider and local network' };
-const DEPENDS_RADIO = { 'radio-and-satellite': 'The radio segment, the satellite link, provider and local network' };
+const DEPENDS_FIBER = 'satellite-and-local';
+const DEPENDS_RADIO = 'radio-and-satellite';
+/** Every case form offers the same segment lists, so the list does not say which case it is */
+const DEPENDS_OPTIONS = {
+  [DEPENDS_FIBER]: 'The satellite link, provider and local network',
+  [DEPENDS_RADIO]: 'The radio segment, the satellite link, provider and local network',
+  'local-only': 'Only the local network',
+  'satellite-only': 'Only the satellite link',
+};
 
 /** A form that binds one comparison case to the run that measured it */
-function caseForm(
-  id: string,
-  title: string,
-  rule: { cardId: string; is: RunOutcome[]; serviceId: string },
-  depends: Record<string, string>,
-  finding: Record<string, string>
-): HandoverFormConfig {
+function caseForm(id: string, title: string, rule: { cardId: string; is: RunOutcome[]; serviceId: string }, depends: string, finding: string): HandoverFormConfig {
   return {
     id,
     title,
@@ -79,9 +80,9 @@ function caseForm(
         key: 'depends',
         label: 'Segments still carrying the task',
         required: true,
-        rule: pick({ ...depends, ...DEPENDS_DECOYS }, Object.keys(depends)),
+        rule: pick(DEPENDS_OPTIONS, [depends]),
       },
-      { key: 'finding', label: 'What the result establishes', required: true, rule: pick({ ...finding, ...FINDING_DECOYS }, Object.keys(finding)) },
+      { key: 'finding', label: 'What the result establishes', required: true, rule: pick(FINDING_OPTIONS, [finding]) },
       {
         key: 'evidence',
         label: 'Observation behind the result',
@@ -92,21 +93,33 @@ function caseForm(
   };
 }
 
-const DEPENDS_DECOYS = { 'local-only': 'Only the local network', 'satellite-only': 'Only the satellite link' };
-const FINDING_DECOYS = {
-  'terminal-fault': 'The terminal is faulty',
-  interference: 'Interference is degrading the link',
-  'no-conclusion': 'The result says nothing about the segments',
+/** Parallel statements about one run, shared by all four case forms so no option names its case */
+const FINDING_OPTIONS = {
+  'requirement-met': 'The task met its requirement over this connection',
+  'latency-missed': 'The task missed its latency limit over this connection',
+  'rate-missed': 'The task missed its data-rate minimum over this connection',
+  interference: 'The task was disrupted by interference on this connection',
+  'terminal-fault': 'The task failed because of a terminal fault on this connection',
 };
-const MET = { 'requirement-met': 'The requirement is met and the other segments are unchanged' };
+const MET = 'requirement-met';
 
 const profileForm: HandoverFormConfig = {
   id: 'profile-comparison',
   title: 'Service profile comparison',
   documentSection: 'Profile comparison',
   fields: [
-    { key: 'low-delay', label: 'Run on the low-delay profile', required: true, rule: { workload: { cardId: PROMPT_CARD, is: ['supported'], serviceId: SKYLINK_SERVICE } } },
-    { key: 'geo-like', label: 'Run on the GEO-like profile', required: true, rule: { workload: { cardId: PROMPT_CARD, is: MISSED, serviceId: CAMP_VSAT_SERVICE } } },
+    {
+      key: 'low-delay',
+      label: 'Run on the low-delay profile (SkyLink)',
+      required: true,
+      rule: { workload: { cardId: PROMPT_CARD, is: ['supported'], serviceId: SKYLINK_SERVICE } },
+    },
+    {
+      key: 'geo-like',
+      label: 'Run on the GEO-like profile (Camp reference VSAT)',
+      required: true,
+      rule: { workload: { cardId: PROMPT_CARD, is: MISSED, serviceId: CAMP_VSAT_SERVICE } },
+    },
     {
       key: 'changed',
       label: 'Requirement that changes from met to unmet',
@@ -187,16 +200,16 @@ if (settings.physicalPlant) {
     [
       profileForm,
       caseForm('case-prompt-fiber', 'Prompt-response, fiber case', { cardId: PROMPT_CARD, is: ['supported'], serviceId: FIBER_SERVICE }, DEPENDS_FIBER, MET),
-      caseForm('case-prompt-radio', 'Prompt-response, radio case', { cardId: PROMPT_CARD, is: MISSED, serviceId: RADIO_SERVICE }, DEPENDS_RADIO, {
-        'radio-adds-delay': 'The radio segment adds delay past the limit; the readings do not show interference',
-      }),
+      caseForm('case-prompt-radio', 'Prompt-response, radio case', { cardId: PROMPT_CARD, is: MISSED, serviceId: RADIO_SERVICE }, DEPENDS_RADIO, 'latency-missed'),
       caseForm('case-queued-fiber', 'Queued report, fiber case', { cardId: QUEUED_CARD, is: ['supported'], serviceId: FIBER_SERVICE }, DEPENDS_FIBER, MET),
-      caseForm('case-queued-radio', 'Queued report, radio case', { cardId: QUEUED_CARD, is: ['supported'], serviceId: RADIO_SERVICE }, DEPENDS_RADIO, {
-        'requirement-met': 'The requirement is met despite the added delay',
-      }),
+      caseForm('case-queued-radio', 'Queued report, radio case', { cardId: QUEUED_CARD, is: ['supported'], serviceId: RADIO_SERVICE }, DEPENDS_RADIO, MET),
       suitabilityForm,
     ]
   );
+  for (const path of settings.physicalPlant.service?.paths ?? []) {
+    if (path.id === SKYLINK_SERVICE) path.label = 'SkyLink (low-delay profile)';
+    if (path.id === CAMP_VSAT_SERVICE) path.label = 'Camp reference VSAT (GEO-like profile)';
+  }
   settings.physicalPlant.service?.paths.push(
     legPath(FIBER_SERVICE, 'SkyLink, fiber connection', { kind: 'fiber', rttMs: 10, downMbps: 1000 }),
     legPath(RADIO_SERVICE, 'SkyLink, radio connection', { kind: 'radio', rttMs: 180, downMbps: 30 })
@@ -254,7 +267,7 @@ export const frontlineScenario6Data: FrontlineScenarioData = {
       id: 's06-compare-profiles',
       title: 'Compare the Service Profiles',
       description:
-        'Run the same comparison workload under the camp’s low-delay and GEO-like profiles. Record the readings and identify which requirements change from met to unmet.',
+        'Run the same comparison workload under the camp’s low-delay profile (SkyLink) and GEO-like profile (Camp reference VSAT). Record the readings and identify which requirements change from met to unmet.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s06-read-requirements'],
       points: 15,
@@ -267,7 +280,7 @@ export const frontlineScenario6Data: FrontlineScenarioData = {
       id: 's06-assess-fiber',
       title: 'Assess the Prompt-Response Fiber Case',
       description:
-        'Trace the fiber configuration and assess the prompt-response task against its requirement card. Identify the segments that still depend on the satellite service.',
+        'Choose the fiber connection in Workloads and press Inspect to read its configuration, then assess the prompt-response task against its requirement card. Identify the segments that still depend on the satellite service.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s06-compare-profiles'],
       points: 15,
@@ -280,7 +293,7 @@ export const frontlineScenario6Data: FrontlineScenarioData = {
       id: 's06-assess-radio',
       title: 'Assess the Prompt-Response Radio Case',
       description:
-        'Repeat the equivalent prompt-response comparison with the radio configuration. Identify the additional connection segment and state what the observations establish about it.',
+        'Repeat the equivalent prompt-response comparison with the radio connection (press Inspect with it chosen to read its configuration). Identify the additional connection segment and state what the observations establish about it.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s06-assess-fiber'],
       points: 15,

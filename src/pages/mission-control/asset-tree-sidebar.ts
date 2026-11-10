@@ -251,14 +251,18 @@ export class AssetTreeSidebar extends BaseElement {
    */
   private initMissionSection_(): void {
     if (!this.missionBriefUrl_) {
-      // Constellation sandboxes have objectives but no brief: show the section with just the checklist
-      if (ScenarioManager.getInstance().settings.constellations?.length) {
+      // No brief, but authored objectives (Campaign 6, constellation sandboxes): the player still needs the checklist,
+      // dialog history, ops log and working document. Only the Mission Brief entry is hidden.
+      if (ScenarioManager.getInstance().settings.constellations?.length || ScenarioManager.getInstance().data?.objectives?.length) {
         const section = qs('#mission-icons-section', this.dom_);
         if (section) {
           section.style.display = 'block';
           qs('.mission-brief-icon', this.dom_)?.setAttribute('hidden', '');
         }
         this.addChecklistListener_();
+        this.addDialogHistoryListener_();
+        this.addOpsLogListener_();
+        this.addWorkingDocListener_();
         return;
       }
       console.warn('No mission brief URL set; hiding mission section.');

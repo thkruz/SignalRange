@@ -33,9 +33,9 @@
 
 /* ---- site tab ---- */
 .site-tab { padding: 0.75rem; height: 100%; box-sizing: border-box; }
-.site-tab .site-tab-col { height: 100%; display: flex; flex-direction: column; }
-/* The stage box takes the rest of the tab; the stage inside is as large as fits at the image's aspect (fits height and width, no page scroll) */
-.site-tab .site-stage-box { flex: 1 1 0; min-height: 0; container-type: size; display: flex; align-items: center; justify-content: center; }
+.site-tab .site-tab-col { height: 100%; display: flex; flex-direction: column; overflow-y: auto; }
+/* The stage box never collapses (the field panels below it scroll with the tab; with no panels it takes the rest of the tab); the stage inside is as large as fits at the image's aspect (fits height and width, no page scroll) */
+.site-tab .site-stage-box { flex: 1 0 auto; min-height: min(62vh, 560px); container-type: size; display: flex; align-items: center; justify-content: center; }
 .site-tab .site-stage-box > .pp-stage { width: min(100cqw, calc(100cqh * var(--pp-ar, 1.5))); aspect-ratio: var(--pp-ar, 1.5); flex: none; }
 .site-tab .site-stage-box > .pp-stage > img { height: 100%; }
 .site-tab .site-strip {

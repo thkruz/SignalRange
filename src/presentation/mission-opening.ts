@@ -36,6 +36,15 @@ An order to interrupt a link carries limits. Friendly traffic shares the wider r
 
 You are taking responsibility for that distinction at SANDSTORM. The site has a second transmit string so the task can continue when equipment fails. Keeping the operation within its orders will depend on the person in this chair noticing what has changed.`,
   },
+  // TODO(ted): review wording
+  'frontline-scenario1': {
+    title: 'Kivilahti, First Shift',
+    body: `Frontline Signals trains people to keep a link alive where nobody can phone for help. The kit is small enough to carry: a power station, a SkyLink terminal, a router, a laptop. Together they carry a pilot's application traffic to the people who depend on it.
+
+Kivilahti is the training camp. The equipment here is healthy, which makes it the one place where you can learn what working looks like before anything breaks. Later you will be asked to find a fault, and the only way to find one is to know the baseline it departs from.
+
+Sergeant Marek Domański runs the camp and your instruction. Pilot Aleksandra Wysocka, Ola to everyone, runs the application at the other end. Your first job is to go out to the equipment, check it with your own eyes and hands, and leave a record the next operator can trust.`,
+  },
   'signal-hunter-scenario1': {
     title: 'The Quiet Between Bursts',
     body: `By the time a problem reaches the 22nd Electronic Warfare Squadron's interference team, other operators have already been watching it. They see service interruptions, check their equipment and compare notes. Their stations can be working correctly while the trouble continues to arrive through the satellite.

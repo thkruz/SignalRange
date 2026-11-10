@@ -44,8 +44,8 @@ describe('Frontline authored curriculum', () => {
         }
       });
 
-      it('keeps unsupported practical assessments disabled and traceable to concrete TODOs', () => {
-        expect(scenario.isDisabled).toBe(true);
+      it('is playable only once no mechanic TODOs remain, and keeps any TODOs traceable', () => {
+        expect(scenario.isDisabled).toBe(scenario.mechanicTodos.length > 0);
         // A converted scenario (M20) has no todos left and no pending gates; an unconverted one still has both
         const todos = new Map(scenario.mechanicTodos.map((todo) => [todo.id, todo]));
         expect(todos.size).toBe(scenario.mechanicTodos.length);

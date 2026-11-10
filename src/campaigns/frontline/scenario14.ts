@@ -198,9 +198,9 @@ if (settings.physicalPlant) {
 export const frontlineScenario14Data: FrontlineScenarioData = {
   id: 'frontline-scenario14',
   url: 'frontline/scenarios/frontline-scenario14',
-  imageUrl: 'frontline/sandbox/card.png',
+  imageUrl: 'frontline/physical/site-forward-eurosat-scene.webp',
   number: 14,
-  isDisabled: true,
+  isDisabled: false,
   prerequisiteScenarioIds: ['frontline-scenario13'],
   difficulty: 'intermediate',
   title: 'Manage Two Available Terminals',

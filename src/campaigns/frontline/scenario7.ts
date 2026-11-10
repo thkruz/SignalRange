@@ -123,9 +123,9 @@ if (settings.physicalPlant) {
 export const frontlineScenario7Data: FrontlineScenarioData = {
   id: 'frontline-scenario7',
   url: 'frontline/scenarios/frontline-scenario7',
-  imageUrl: 'frontline/sandbox/card.png',
+  imageUrl: 'frontline/physical/site.webp',
   number: 7,
-  isDisabled: true,
+  isDisabled: false,
   prerequisiteScenarioIds: ['frontline-scenario6'],
   title: 'Accept Equipment Securely',
   subtitle: 'Hardware Health and Authorized Service',

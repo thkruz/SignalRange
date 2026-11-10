@@ -84,9 +84,9 @@ if (settings.physicalPlant) {
 export const frontlineScenario3Data: FrontlineScenarioData = {
   id: 'frontline-scenario3',
   url: 'frontline/scenarios/frontline-scenario3',
-  imageUrl: 'frontline/sandbox/card.png',
+  imageUrl: 'frontline/physical/site-outside.webp',
   number: 3,
-  isDisabled: true,
+  isDisabled: false,
   prerequisiteScenarioIds: ['frontline-scenario2'],
   difficulty: 'beginner',
   title: 'Find the Intermittent Fault',

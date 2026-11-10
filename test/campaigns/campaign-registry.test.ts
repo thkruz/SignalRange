@@ -23,14 +23,15 @@ describe('campaign registry', () => {
     expect(geolocationCampaignData.scenarios.length).toBeGreaterThan(0);
   });
 
-  it('keeps Frontline Signals (Campaign 6) an alpha dev campaign whose only playable scenarios are the sandboxes', () => {
+  it('ships Frontline Signals (Campaign 6) as an alpha with three sandboxes and sixteen playable scenarios', () => {
     expect(frontlineCampaignData.id).toBe('frontline');
     expect(frontlineCampaignData.releaseStage).toBe('alpha');
     expect(frontlineCampaignData.totalDuration).toBe('415-575 min');
     expect(frontlineCampaignData.scenarios[0].missionType).toBe('Sandbox');
     const playable = frontlineCampaignData.scenarios.filter((s) => !s.isDisabled);
 
-    expect(playable.map((s) => s.missionType)).toEqual(['Sandbox', 'Sandbox', 'Sandbox']);
+    expect(playable.filter((s) => s.missionType === 'Sandbox')).toHaveLength(3);
+    expect(playable.filter((s) => s.id.startsWith('frontline-scenario'))).toHaveLength(16);
   });
 
   it('keeps a unique id for the 9th EWS (Campaign 4) placeholder', () => {

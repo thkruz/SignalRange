@@ -52,9 +52,9 @@ if (settings.physicalPlant) {
 export const frontlineScenario1Data: FrontlineScenarioData = {
   id: 'frontline-scenario1',
   url: 'frontline/scenarios/frontline-scenario1',
-  imageUrl: 'frontline/sandbox/card.png',
+  imageUrl: 'frontline/physical/site.webp',
   number: 1,
-  isDisabled: true,
+  isDisabled: false,
   difficulty: 'beginner',
   title: 'Take Over the Training Post',
   subtitle: 'Equipment, Connections, and a Healthy Baseline',

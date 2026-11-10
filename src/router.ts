@@ -79,9 +79,8 @@ export class Router {
     campaignManager.registerCampaign(hamSdrCampaignData);
     campaignManager.registerCampaign(ccsCampaignData);
     campaignManager.registerCampaign(geolocationCampaignData);
-    // Campaign 6 (Frontline Signals) is dev-only while the physical layer is built:
-    // developer mode, a whitelisted signed-in user (the flag can flip after auth
-    // resolves, so re-run the route) or the local dev server
+    // Campaign 6 (Frontline Signals) is a public alpha; frontline-gate.ts can make it
+    // developer-only again (the dev flag can flip after auth resolves, so re-run the route)
     watchFrontlineGate(() => {
       if (window.location.pathname.startsWith('/campaigns/frontline')) {
         this.handleRoute();

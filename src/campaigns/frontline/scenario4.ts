@@ -57,9 +57,9 @@ if (settings.physicalPlant) {
 export const frontlineScenario4Data: FrontlineScenarioData = {
   id: 'frontline-scenario4',
   url: 'frontline/scenarios/frontline-scenario4',
-  imageUrl: 'frontline/sandbox/card.png',
+  imageUrl: 'frontline/physical/site.webp',
   number: 4,
-  isDisabled: true,
+  isDisabled: false,
   prerequisiteScenarioIds: ['frontline-scenario3'],
   difficulty: 'beginner',
   title: 'Recognize an Environmental Problem',

@@ -151,9 +151,9 @@ if (settings.physicalPlant) {
 export const frontlineScenario6Data: FrontlineScenarioData = {
   id: 'frontline-scenario6',
   url: 'frontline/scenarios/frontline-scenario6',
-  imageUrl: 'frontline/sandbox/card.png',
+  imageUrl: 'frontline/physical/site-outside.webp',
   number: 6,
-  isDisabled: true,
+  isDisabled: false,
   prerequisiteScenarioIds: ['frontline-scenario5'],
   title: 'Match the Connection to the Task',
   subtitle: 'Requirements and Connection Architecture',

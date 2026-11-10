@@ -1,11 +1,10 @@
 /**
  * @file frontline-gate - Who may see Campaign 6 (Frontline Signals)
- * @description The campaign is an alpha physical-layer sandbox. It registers for
- * a developer only: `window.DEVELOPER_MODE`, a whitelisted signed-in user
- * (DevMenuService, which can flip after auth resolves) or the local dev server.
- * A production build never opens it for anyone else. Registration is
- * idempotent, so the router can call it at start-up and again when the
- * developer flag flips.
+ * @description The campaign is public as an alpha (releaseStage 'alpha' badges it).
+ * FRONTLINE_PUBLIC switches it back to developer-only: `window.DEVELOPER_MODE`, a
+ * whitelisted signed-in user (DevMenuService, which can flip after auth resolves)
+ * or the local dev server. Registration is idempotent, so the router can call it
+ * at start-up and again when the developer flag flips.
  */
 
 import { CampaignManager } from '@app/campaigns/campaign-manager';
@@ -20,8 +19,11 @@ export function isLocalDevServer(): boolean {
   return process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && LOCAL_HOSTS.has(window.location.hostname);
 }
 
+/** Campaign 6 is open to every player as an alpha (2026-11-09); false restores the developer-only gate */
+export const FRONTLINE_PUBLIC = true;
+
 export function isFrontlineAllowed(): boolean {
-  return isLocalDevServer() || window.DEVELOPER_MODE === true || DevMenuService.getInstance().isDev();
+  return FRONTLINE_PUBLIC || isLocalDevServer() || window.DEVELOPER_MODE === true || DevMenuService.getInstance().isDev();
 }
 
 /** Register the campaign and its scenarios once, when the viewer is allowed to see them */

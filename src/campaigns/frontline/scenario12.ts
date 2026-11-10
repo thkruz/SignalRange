@@ -191,9 +191,9 @@ if (scenarioSettings.physicalPlant) {
 export const frontlineScenario12Data: FrontlineScenarioData = {
   id: 'frontline-scenario12',
   url: 'frontline/scenarios/frontline-scenario12',
-  imageUrl: 'frontline/sandbox/card.png',
+  imageUrl: 'frontline/physical/site-forward-eurosat-scene.webp',
   number: 12,
-  isDisabled: true,
+  isDisabled: false,
   prerequisiteScenarioIds: ['frontline-scenario11'],
   difficulty: 'intermediate',
   title: 'Locate the Affected Connection Segment',

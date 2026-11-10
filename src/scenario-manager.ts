@@ -633,7 +633,7 @@ export const SCENARIOS: ScenarioData[] = [
   ccsScenario3Data,
   ccsScenario4Data,
   ccsScenario5Data,
-  // Campaign 6 (Frontline Signals) is dev-only: campaigns/frontline/frontline-gate.ts appends its scenarios when the viewer may see them
+  // Campaign 6 (Frontline Signals, public alpha): campaigns/frontline/frontline-gate.ts appends its scenarios when the viewer may see them
   ...rangeWatchCampaignData.scenarios,
 ];
 

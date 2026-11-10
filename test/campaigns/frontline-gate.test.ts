@@ -1,5 +1,5 @@
 import { CampaignManager } from '@app/campaigns/campaign-manager';
-import { isFrontlineAllowed, registerFrontlineIfAllowed } from '@app/campaigns/frontline/frontline-gate';
+import { FRONTLINE_PUBLIC, isFrontlineAllowed, registerFrontlineIfAllowed } from '@app/campaigns/frontline/frontline-gate';
 import { SCENARIOS } from '@app/scenario-manager';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -15,12 +15,13 @@ afterEach(() => {
 });
 
 describe('Frontline gate', () => {
-  it('registers nothing for a non-developer in a test (production-like) build', () => {
+  it('is public as an alpha: registers for a non-developer in a production-like build', () => {
     window.DEVELOPER_MODE = false;
 
-    expect(isFrontlineAllowed()).toBe(false);
-    expect(registerFrontlineIfAllowed()).toBe(false);
-    expect(inScenarios()).toBe(false);
+    expect(FRONTLINE_PUBLIC).toBe(true);
+    expect(isFrontlineAllowed()).toBe(true);
+    expect(registerFrontlineIfAllowed()).toBe(true);
+    expect(inScenarios()).toBe(true);
   });
 
   it('registers the scenarios once the developer flag is on, and is idempotent', () => {
@@ -31,7 +32,7 @@ describe('Frontline gate', () => {
     expect(inScenarios()).toBe(true);
     expect(SCENARIOS.filter((s) => s.id === 'frontline-sandbox')).toHaveLength(1);
     expect(SCENARIOS.filter((s) => s.id.startsWith('frontline-scenario'))).toHaveLength(16);
-    expect(SCENARIOS.filter((s) => s.id.startsWith('frontline-scenario')).every((s) => s.isDisabled)).toBe(true);
+    expect(SCENARIOS.filter((s) => s.id.startsWith('frontline-scenario')).every((s) => !s.isDisabled)).toBe(true);
     expect(CampaignManager.getInstance().getCampaign('frontline')).toBeDefined();
   });
 });

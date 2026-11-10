@@ -118,9 +118,9 @@ if (scenarioSettings.physicalPlant) {
 export const frontlineScenario9Data: FrontlineScenarioData = {
   id: 'frontline-scenario9',
   url: 'frontline/scenarios/frontline-scenario9',
-  imageUrl: 'frontline/sandbox/card.png',
+  imageUrl: 'frontline/physical/site-forward.webp',
   number: 9,
-  isDisabled: true,
+  isDisabled: false,
   prerequisiteScenarioIds: ['frontline-scenario8'],
   title: 'Commission the Forward Post',
   subtitle: 'Current Evidence at a New Site',

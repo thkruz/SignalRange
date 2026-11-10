@@ -218,9 +218,9 @@ if (scenarioSettings.physicalPlant) {
 export const frontlineScenario13Data: FrontlineScenarioData = {
   id: 'frontline-scenario13',
   url: 'frontline/scenarios/frontline-scenario13',
-  imageUrl: 'frontline/sandbox/card.png',
+  imageUrl: 'frontline/physical/site-forward-eurosat-scene.webp',
   number: 13,
-  isDisabled: true,
+  isDisabled: false,
   prerequisiteScenarioIds: ['frontline-scenario12'],
   difficulty: 'intermediate',
   title: 'Recognize a Remote-Terminal Restriction',

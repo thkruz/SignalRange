@@ -67,9 +67,9 @@ if (settings.physicalPlant) {
 export const frontlineScenario2Data: FrontlineScenarioData = {
   id: 'frontline-scenario2',
   url: 'frontline/scenarios/frontline-scenario2',
-  imageUrl: 'frontline/sandbox/card.png',
+  imageUrl: 'frontline/physical/site-inside.webp',
   number: 2,
-  isDisabled: true,
+  isDisabled: false,
   prerequisiteScenarioIds: ['frontline-scenario1'],
   difficulty: 'beginner',
   title: 'Work Within the Power Budget',

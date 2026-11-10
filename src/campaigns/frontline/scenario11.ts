@@ -160,9 +160,9 @@ if (scenarioSettings.physicalPlant) {
 export const frontlineScenario11Data: FrontlineScenarioData = {
   id: 'frontline-scenario11',
   url: 'frontline/scenarios/frontline-scenario11',
-  imageUrl: 'frontline/sandbox/card.png',
+  imageUrl: 'frontline/physical/site-forward-eurosat-scene.webp',
   number: 11,
-  isDisabled: true,
+  isDisabled: false,
   prerequisiteScenarioIds: ['frontline-scenario10'],
   difficulty: 'intermediate',
   title: 'Bring EuroSat Into Service',

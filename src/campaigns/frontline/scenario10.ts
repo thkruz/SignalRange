@@ -193,9 +193,9 @@ if (scenarioSettings.physicalPlant) {
 export const frontlineScenario10Data: FrontlineScenarioData = {
   id: 'frontline-scenario10',
   url: 'frontline/scenarios/frontline-scenario10',
-  imageUrl: 'frontline/sandbox/card.png',
+  imageUrl: 'frontline/physical/site-forward.webp',
   number: 10,
-  isDisabled: true,
+  isDisabled: false,
   prerequisiteScenarioIds: ['frontline-scenario9'],
   title: 'Identify the Provider Restriction',
   subtitle: 'An External Service Limit',

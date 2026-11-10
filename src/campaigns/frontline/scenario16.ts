@@ -221,9 +221,9 @@ export const S16_PRIOR_INCIDENT_LINK = S15_INCIDENT_LINK;
 export const frontlineScenario16Data: FrontlineScenarioData = {
   id: 'frontline-scenario16',
   url: 'frontline/scenarios/frontline-scenario16',
-  imageUrl: 'frontline/sandbox/card.png',
+  imageUrl: 'frontline/physical/site-forward-eurosat-scene.webp',
   number: 16,
-  isDisabled: true,
+  isDisabled: false,
   prerequisiteScenarioIds: ['frontline-scenario15'],
   difficulty: 'advanced',
   title: 'Complete the Independent Shift',

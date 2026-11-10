@@ -179,9 +179,9 @@ if (settings.physicalPlant) {
 export const frontlineScenario15Data: FrontlineScenarioData = {
   id: 'frontline-scenario15',
   url: 'frontline/scenarios/frontline-scenario15',
-  imageUrl: 'frontline/sandbox/card.png',
+  imageUrl: 'frontline/physical/site-forward-eurosat-scene.webp',
   number: 15,
-  isDisabled: true,
+  isDisabled: false,
   prerequisiteScenarioIds: ['frontline-scenario14'],
   difficulty: 'intermediate',
   title: 'Report the EuroSat Incident',

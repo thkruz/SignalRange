@@ -165,9 +165,9 @@ if (scenarioSettings.physicalPlant) {
 export const frontlineScenario8Data: FrontlineScenarioData = {
   id: 'frontline-scenario8',
   url: 'frontline/scenarios/frontline-scenario8',
-  imageUrl: 'frontline/sandbox/card.png',
+  imageUrl: 'frontline/physical/site-inside.webp',
   number: 8,
-  isDisabled: true,
+  isDisabled: false,
   prerequisiteScenarioIds: ['frontline-scenario7'],
   title: 'Qualify for Independent Operation',
   subtitle: 'Camp Assessment',

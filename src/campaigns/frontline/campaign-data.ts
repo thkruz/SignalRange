@@ -3,9 +3,8 @@ import { frontlineForwardEurosatSandboxData, frontlineForwardSandboxData, frontl
 import { frontlineScenarios } from './scenarios';
 
 /**
- * Frontline Signals (Campaign 6). Dev-only while the physical layer is built:
- * the router registers it only when window.DEVELOPER_MODE is on, and the home
- * catalog export leaves it out.
+ * Frontline Signals (Campaign 6). Public alpha: the router registers it through
+ * frontline-gate.ts, and the home catalog export includes it.
  */
 export const frontlineCampaignData: CampaignData = {
   id: 'frontline',

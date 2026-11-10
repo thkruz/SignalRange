@@ -17,13 +17,12 @@ import { frontlineScenario15Data } from './scenario15';
 import { frontlineScenario16Data } from './scenario16';
 
 /**
- * Authored curriculum. Unimplemented assessments keep each draft disabled.
- * TODO(C6-SCENARIO-ART): replace the shared sandbox card with approved scenario
- * cards and forward-site art. Do not request nonexistent portrait variants.
- * TODO(C6-VO): audition and record the four Eastern European accented voices;
- * empty audioUrl values are intentional until actual takes are selected.
- * TODO(C6-RELEASE): enable each scenario only after its mechanicTodos are
- * implemented, pending gates are replaced, and a full completion test passes.
+ * Authored curriculum, enabled as a public alpha (2026-11-09). Cards reuse the
+ * site paintings (camp scenes for S1-S8, forward scene for S9-S10, forward
+ * scene with the EuroSat gear composited for S11-S16).
+ * TODO(C6-VO): voice-over waits on localization; empty audioUrl values are
+ * intentional until takes are recorded.
+ * TODO(C6-QA): browser playthrough of each scenario before leaving alpha.
  */
 export const frontlineScenarios: FrontlineScenarioData[] = [
   frontlineScenario1Data,

@@ -167,9 +167,9 @@ if (settings.physicalPlant) {
 export const frontlineScenario5Data: FrontlineScenarioData = {
   id: 'frontline-scenario5',
   url: 'frontline/scenarios/frontline-scenario5',
-  imageUrl: 'frontline/sandbox/card.png',
+  imageUrl: 'frontline/physical/site-inside.webp',
   number: 5,
-  isDisabled: true,
+  isDisabled: false,
   prerequisiteScenarioIds: ['frontline-scenario4'],
   difficulty: 'intermediate',
   title: 'Check the Service Beyond the Dish',

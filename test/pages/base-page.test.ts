@@ -62,6 +62,11 @@ vi.mock('../../src/objectives/objectives-manager', () => ({
   },
 }));
 
+const { hardwareFaultGetInstance } = vi.hoisted(() => ({ hardwareFaultGetInstance: vi.fn() }));
+vi.mock('../../src/faults/hardware-fault-manager', () => ({
+  HardwareFaultManager: { getInstance: hardwareFaultGetInstance, destroy: vi.fn() },
+}));
+
 vi.mock('../../src/modal/dialog-manager', () => ({
   DialogManager: {
     getInstance: vi.fn(() => ({
@@ -300,6 +305,22 @@ describe('BasePage', () => {
     it('should emit DOM_READY event', async () => {
       await page.testInitializeObjectivesAndDialogs();
       expect(mockEventBus.emit).toHaveBeenCalledWith(Events.DOM_READY);
+    });
+
+    it('starts scheduled hardware faults even when the scenario has no objectives (sandbox)', async () => {
+      ScenarioManager.getInstance.mockReturnValue({
+        data: { id: 'sandbox', objectives: [], dialogClips: null },
+        settings: {
+          scenarioStartWallTime: Date.now(),
+          scenarioStartDate: new Date().toISOString(),
+          previousShiftLogs: [],
+          hardwareFaultEvents: [{ id: 'gw-gnss-outage', groundStationId: 'GW-01', target: 'gpsdo-gnss-loss', startTime: 2400, duration: 300 }],
+        },
+      });
+
+      await page.testInitializeObjectivesAndDialogs();
+
+      expect(hardwareFaultGetInstance).toHaveBeenCalled();
     });
 
     it('should initialize ObjectivesManager when scenario has objectives', async () => {

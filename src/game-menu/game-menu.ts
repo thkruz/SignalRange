@@ -2,6 +2,7 @@ import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { setupFullscreenButton } from '@app/pages/layout/header/fullscreen-button';
 import { selectionText } from '@app/pages/selection-browser';
+import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import { Router } from '@app/router';
 import { ScenarioManager } from '@app/scenario-manager';
 import { SimClock } from '@app/simulation/sim-clock';
@@ -251,6 +252,9 @@ export class GameMenu {
         }
         await clearPersistedStore();
         this.close_();
+        // The old run's plant may still be outside the tent. Tear it down now so a stray tab or
+        // asset event during the navigation cannot raise the "You are outside" confirm.
+        PhysicalPlantService.destroy();
         Router.getInstance().navigate(`${campaignPath}/scenarios/${mission.id}`, { forceReplay: true });
       } else {
         if (signedIn) {

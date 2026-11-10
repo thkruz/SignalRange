@@ -163,8 +163,16 @@ describe('selection boxes do not overlap', () => {
 });
 
 describe('forward selection boxes do not overlap (FW2)', () => {
-  /** The FW2 close-ups (router variants and cable); the FS1 power box, battery and generator ones keep nested body regions */
-  const defs = [FORWARD_CLOSEUPS.router!, FORWARD_ROUTER_EUROSAT, FORWARD_CLOSEUPS['skylink-cable']!, FORWARD_CABLE_EUROSAT];
+  /** The FW2 close-ups (router variants and cable) and the FW8 EuroSat ones (dish, LNB, IFL); the FS1 power box, battery and generator ones keep nested body regions */
+  const defs = [
+    FORWARD_CLOSEUPS.router!,
+    FORWARD_ROUTER_EUROSAT,
+    FORWARD_CLOSEUPS['skylink-cable']!,
+    FORWARD_CABLE_EUROSAT,
+    FORWARD_CLOSEUPS['vsat-dish']!,
+    FORWARD_CLOSEUPS.lnb!,
+    FORWARD_CLOSEUPS['vsat-ifl']!,
+  ];
 
   it('forward hotspots never overlap, with every EuroSat part present', () => {
     const bad: string[] = [];

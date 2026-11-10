@@ -67,10 +67,14 @@
 .pp-stage > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 
 .pp-hotspot { cursor: pointer; }
-.pp-hotspot .pp-hit { fill: rgba(255, 255, 255, 0.04); stroke: rgba(255, 255, 255, 0.55); stroke-width: 1.5; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; transition: fill 0.12s; }
-.pp-hotspot .pp-hit-path { fill: none; stroke: rgba(255, 255, 255, 0.08); stroke-linecap: round; stroke-linejoin: round; transition: stroke 0.12s; }
-.pp-hotspot:hover .pp-hit, .pp-hotspot:focus .pp-hit { fill: rgba(255, 220, 120, 0.22); stroke: #ffd866; stroke-dasharray: none; }
-.pp-hotspot:hover .pp-hit-path, .pp-hotspot:focus .pp-hit-path { stroke: rgba(255, 220, 120, 0.4); }
+/* Hit shapes are invisible click/hover areas; the glow (mask image, or blurred shape copy) fades in on hover and keyboard focus */
+.pp-hotspot .pp-hit, .pp-hotspot .pp-hit-path { fill: transparent; stroke: transparent; }
+.pp-hotspot .pp-hit-path { stroke-linecap: round; stroke-linejoin: round; fill: none; }
+.pp-hotspot:focus { outline: none; }
+.pp-hotspot .pp-glow, .pp-hotspot .pp-glow-fb, .pp-hotspot .pp-glow-fb-path { opacity: 0; transition: opacity 0.15s; pointer-events: none; }
+.pp-hotspot .pp-glow-fb { fill: rgba(255, 216, 102, 0.4); stroke: none; filter: url(#pp-soft); }
+.pp-hotspot .pp-glow-fb-path { fill: none; stroke: #ffd866; stroke-linecap: round; stroke-linejoin: round; filter: url(#pp-soft); }
+.pp-hotspot:hover .pp-glow, .pp-hotspot:focus .pp-glow, .pp-hotspot:focus-visible .pp-glow, .pp-hotspot:hover .pp-glow-fb, .pp-hotspot:focus .pp-glow-fb, .pp-hotspot:hover .pp-glow-fb-path, .pp-hotspot:focus .pp-glow-fb-path { opacity: 1; }
 .pp-hotspot .pp-label { font-size: 20px; fill: #fff; paint-order: stroke; stroke: rgba(0, 0, 0, 0.85); stroke-width: 4px; opacity: 0; transition: opacity 0.12s; pointer-events: none; }
 .pp-hotspot:hover .pp-label, .pp-hotspot:focus .pp-label { opacity: 1; }
 .pp-hotspot .pp-pip-svg { pointer-events: none; }

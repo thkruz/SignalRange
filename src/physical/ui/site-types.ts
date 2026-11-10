@@ -48,6 +48,8 @@ export interface SiteHotspot {
   tentOnly?: boolean;
   /** The close-up art is not painted yet: the hotspot shows (pip and label) but opens nothing */
   pendingArt?: boolean;
+  /** Silhouette matte (white object on transparent webp) for the hover glow; bbox is image-relative [x, y, w, h]. Absent: a soft fallback glow on the shapes */
+  mask?: { file: string; bbox: [number, number, number, number] };
 }
 
 /** A transparent webp laid over a site scene, shown while every `requires` plant id exists on the site (inventory-driven) */
@@ -104,6 +106,8 @@ export interface CloseupLayer {
   closeup: CloseupId;
   /** Path under /assets */
   file: string;
+  /** Shown only on this close-up painting (forward modem layers: the EuroSat router case) */
+  onlyOn?: string;
   /** Variant stacked on the snow base (snow-on-dish and net layers) */
   snowFile?: string;
   bbox: [number, number, number, number];

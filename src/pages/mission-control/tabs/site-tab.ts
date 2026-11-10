@@ -1,6 +1,6 @@
 import { isFrontlineAllowed } from '@app/campaigns/frontline/frontline-gate';
 import { FORWARD_SITE_ASPECT, FORWARD_SITE_IMAGE, forwardSceneLayers, SITE_ASPECT, SITE_IMAGES, visibleHotspots } from '@app/campaigns/frontline/site-hotspots';
-import { siteImageFor } from '@app/campaigns/frontline/site-layers';
+import { sceneLayerImageFor, siteImageFor } from '@app/campaigns/frontline/site-layers';
 import { BaseElement } from '@app/components/base-element';
 import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
@@ -15,6 +15,7 @@ import { FieldRecordsPanel } from '@app/pages/mission-control/tabs/field-records
 import { FieldServicePanel } from '@app/pages/mission-control/tabs/field-service-panel';
 import { FieldWorkloadPanel } from '@app/pages/mission-control/tabs/field-workload-panel';
 import { PhysicalPlantService } from '@app/physical/physical-plant-service';
+import { GLOW_FILTERS_SVG } from '@app/physical/ui/glow-filters';
 import { PartCloseupModal } from '@app/physical/ui/part-closeup-modal';
 import { shapeSvg, svgOpen, VIEW_W, viewHeight } from '@app/physical/ui/plant-svg';
 import { PlantTrainerBox } from '@app/physical/ui/plant-trainer-box';
@@ -126,6 +127,7 @@ export class SiteTab extends BaseElement {
     const view = this.view;
     this.renderedView_ = view;
     const overlay = [svgOpen(this.aspect_(), 'site-overlay')];
+    overlay.push(GLOW_FILTERS_SVG);
     overlay.push(this.sceneLayersSvg_());
     for (const spot of this.spots_()) {
       overlay.push(this.hotspotHtml_(spot));
@@ -162,11 +164,12 @@ export class SiteTab extends BaseElement {
 
   private sceneLayersSvg_(): string {
     const h = viewHeight(this.aspect_());
+    const weather = PhysicalPlantService.plantOrNull()?.getWeather() ?? 'clear';
 
     return this.sceneLayers_()
       .map(
         (l) =>
-          `<image class="site-scene-layer" data-scene-layer="${l.id}" href="${getAssetUrl(l.file)}" x="${(l.bbox[0] * VIEW_W).toFixed(2)}" y="${(l.bbox[1] * h).toFixed(2)}" width="${(l.bbox[2] * VIEW_W).toFixed(2)}" height="${(l.bbox[3] * h).toFixed(2)}" preserveAspectRatio="none" pointer-events="none"/>`
+          `<image class="site-scene-layer" data-scene-layer="${l.id}" href="${getAssetUrl(sceneLayerImageFor(l, weather))}" x="${(l.bbox[0] * VIEW_W).toFixed(2)}" y="${(l.bbox[1] * h).toFixed(2)}" width="${(l.bbox[2] * VIEW_W).toFixed(2)}" height="${(l.bbox[3] * h).toFixed(2)}" preserveAspectRatio="none" pointer-events="none"/>`
       )
       .join('');
   }
@@ -184,9 +187,21 @@ export class SiteTab extends BaseElement {
     return visibleHotspots(this.isForward_() ? 'forward' : this.view, this.hasTarget_);
   }
 
+  /** Hover glow: the silhouette matte through the shared glow filter, or (no matte) a soft blurred copy of the shapes */
+  private glowSvg_(spot: SiteHotspot, aspect: number): string {
+    if (!spot.mask) {
+      return spot.shapes.map((s) => shapeSvg(s, aspect, 'pp-glow-fb', 'pp-glow-fb-path')).join('');
+    }
+    const h = viewHeight(aspect);
+    const [x, y, w, hh] = spot.mask.bbox;
+
+    return `<image class="pp-glow" href="${getAssetUrl(spot.mask.file)}" x="${(x * VIEW_W).toFixed(2)}" y="${(y * h).toFixed(2)}" width="${(w * VIEW_W).toFixed(2)}" height="${(hh * h).toFixed(2)}" preserveAspectRatio="none" filter="url(#pp-glow)" pointer-events="none"/>`;
+  }
+
   private hotspotHtml_(spot: SiteHotspot): string {
     const aspect = this.aspect_();
-    const shapes = spot.shapes.map((s) => shapeSvg(s, aspect, 'pp-hit', 'pp-hit-path')).join('');
+    const hit = spot.shapes.map((s) => shapeSvg(s, aspect, 'pp-hit', 'pp-hit-path')).join('');
+    const shapes = this.glowSvg_(spot, aspect) + hit;
     const ax = spot.anchor[0] * VIEW_W;
     const ay = spot.anchor[1] * viewHeight(aspect);
     const target = spot.action ? `data-action="${spot.action}"` : spot.pendingArt ? 'data-pending="1" aria-disabled="true"' : `data-closeup="${spot.closeup}"`;

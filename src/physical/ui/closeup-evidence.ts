@@ -32,7 +32,7 @@ export interface EvidenceCallout {
 /** Layers of a close-up whose fault or state is present right now */
 export function activeLayers(plant: PhysicalPlantManager, def: CloseupDef, weather: PlantWeather): ActiveLayer[] {
   const out: ActiveLayer[] = [];
-  for (const layer of layersFor(def.id, def.forward)) {
+  for (const layer of layersFor(def.id, def.forward, def.image)) {
     const hit = matchLayer_(plant, layer);
     if (hit) {
       out.push({ layer, src: weather === 'snow' && layer.snowFile ? layer.snowFile : layer.file, ...hit });

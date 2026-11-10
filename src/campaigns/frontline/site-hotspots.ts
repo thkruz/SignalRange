@@ -24,7 +24,26 @@ export const SITE_ASPECT: Record<SiteView, number> = {
 
 const rect = (x: number, y: number, w: number, h: number): SiteHotspot['shapes'] => [{ kind: 'rect', x, y, w, h }];
 
-export const SITE_HOTSPOTS: SiteHotspot[] = [
+/** Silhouette mattes for the camp scenes (SAM 3 cut-outs of site-inside / site-outside; doors and the inside flap are plain rounded rects) */
+const CAMP_MASKS: Record<string, SiteHotspot['mask']> = {
+  'site-in-router': { file: `${DIR}/mask-camp-in-router.webp`, bbox: [0.2076, 0.4807, 0.0709, 0.06] },
+  'site-in-vsat-modem': { file: `${DIR}/mask-camp-in-vsat-modem.webp`, bbox: [0.2762, 0.4574, 0.0681, 0.0609] },
+  'site-in-laptop': { file: `${DIR}/mask-camp-in-laptop.webp`, bbox: [0.3421, 0.3191, 0.144, 0.1867] },
+  'site-in-power-station': { file: `${DIR}/mask-camp-in-power-station.webp`, bbox: [0.2143, 0.6412, 0.1071, 0.2698] },
+  'site-in-power-strip': { file: `${DIR}/mask-camp-in-power-strip.webp`, bbox: [0.3186, 0.8975, 0.0965, 0.0832] },
+  'site-in-cable-entry': { file: `${DIR}/mask-camp-in-cable-entry.webp`, bbox: [0.2958, 0.2708, 0.0469, 0.175] },
+  'site-in-door': { file: `${DIR}/mask-camp-in-door.webp`, bbox: [0.7188, 0.0251, 0.2031, 0.646] },
+  'site-out-skylink-dish': { file: `${DIR}/mask-camp-out-skylink-dish.webp`, bbox: [0.1295, 0.3751, 0.0692, 0.1802] },
+  'site-out-vsat-dish': { file: `${DIR}/mask-camp-out-vsat-dish.webp`, bbox: [0.25, 0.2611, 0.0725, 0.2406] },
+  'site-out-vsat-lnb': { file: `${DIR}/mask-camp-out-vsat-lnb.webp`, bbox: [0.3036, 0.3273, 0.0151, 0.0319] },
+  'site-out-generator': { file: `${DIR}/mask-camp-out-generator.webp`, bbox: [0.2539, 0.5382, 0.106, 0.1995] },
+  'site-out-cable-entry': { file: `${DIR}/mask-camp-out-cable-entry.webp`, bbox: [0.3934, 0.4914, 0.0642, 0.1254] },
+  'site-out-door': { file: `${DIR}/mask-camp-out-door.webp`, bbox: [0.4637, 0.358, 0.1027, 0.3295] },
+  'site-out-skylink-cable': { file: `${DIR}/mask-camp-out-skylink-cable.webp`, bbox: [0.1814, 0.5701, 0.0513, 0.041] },
+  'site-out-vsat-ifl': { file: `${DIR}/mask-camp-out-vsat-ifl.webp`, bbox: [0.2734, 0.3683, 0.0318, 0.1642] },
+};
+
+const SITE_HOTSPOTS_BASE: SiteHotspot[] = [
   // ------------------------------------------------------------ inside
   {
     id: 'site-in-router',
@@ -188,6 +207,8 @@ export const SITE_HOTSPOTS: SiteHotspot[] = [
   },
 ];
 
+export const SITE_HOTSPOTS: SiteHotspot[] = SITE_HOTSPOTS_BASE.map((h) => (CAMP_MASKS[h.id] ? { ...h, mask: CAMP_MASKS[h.id] } : h));
+
 /** The hotspots of one view */
 export const hotspotsForView = (view: SiteView): SiteHotspot[] => SITE_HOTSPOTS.filter((h) => h.view === view);
 
@@ -269,7 +290,21 @@ const IFL_ARM_CARVE: PxBox = [1280, 774, 1332, 820];
  * are in the site inventory. No hotspots for the drone, the drone ground station, the jerry can, the spares crate or
  * the table (no plant parts). The modem has no scene hotspot (it is a region of the router close-up).
  */
-export const FORWARD_HOTSPOTS: SiteHotspot[] = [
+/** Silhouette mattes for the hover glow (SAM 3 cut-outs of site-forward.webp, bbox image-relative); cable masks cover only the visible runs the hotspot paths trace */
+const FORWARD_MASKS: Record<string, SiteHotspot['mask']> = {
+  'site-fwd-generator': { file: `${DIR}/mask-forward-generator.webp`, bbox: [0.1569, 0.3644, 0.1139, 0.1809] },
+  'site-fwd-power-station': { file: `${DIR}/mask-forward-power-station.webp`, bbox: [0.1693, 0.5386, 0.1458, 0.363] },
+  'site-fwd-laptop': { file: `${DIR}/mask-forward-laptop.webp`, bbox: [0.3796, 0.613, 0.1035, 0.1755] },
+  'site-fwd-power-box': { file: `${DIR}/mask-forward-power-box.webp`, bbox: [0.3652, 0.7354, 0.1309, 0.2221] },
+  'site-fwd-router': { file: `${DIR}/mask-forward-router.webp`, bbox: [0.5716, 0.6582, 0.1126, 0.2473] },
+  'site-fwd-skylink-dish': { file: `${DIR}/mask-forward-skylink-dish.webp`, bbox: [0.4941, 0.4362, 0.0996, 0.1888] },
+  'site-fwd-vsat-dish': { file: `${DIR}/mask-forward-vsat-dish.webp`, bbox: [0.8203, 0.6077, 0.1003, 0.1848] },
+  'site-fwd-vsat-lnb': { file: `${DIR}/mask-forward-vsat-lnb.webp`, bbox: [0.8346, 0.7035, 0.0273, 0.0572] },
+  'site-fwd-skylink-cable': { file: `${DIR}/mask-forward-skylink-cable.webp`, bbox: [0.4844, 0.5439, 0.0905, 0.3271] },
+  'site-fwd-vsat-ifl': { file: `${DIR}/mask-forward-vsat-ifl.webp`, bbox: [0.7728, 0.7593, 0.0885, 0.0971] },
+};
+
+const FORWARD_HOTSPOTS_BASE: SiteHotspot[] = [
   {
     id: 'site-fwd-generator',
     view: 'outside',
@@ -357,7 +392,6 @@ export const FORWARD_HOTSPOTS: SiteHotspot[] = [
     anchor: fanchor(1246, 662, 1422),
     closeup: 'vsat-dish',
     partIds: ['vsat-dish'],
-    pendingArt: true,
   },
   {
     id: 'site-fwd-vsat-lnb',
@@ -367,7 +401,6 @@ export const FORWARD_HOTSPOTS: SiteHotspot[] = [
     anchor: fanchor(1282, 736, 1319),
     closeup: 'lnb',
     partIds: ['vsat-lnb'],
-    pendingArt: true,
   },
   {
     // Visible run only: from the crate's right edge to the tripod leg, and the arm up to the LNB (hidden behind the leg and hub between)
@@ -390,9 +423,10 @@ export const FORWARD_HOTSPOTS: SiteHotspot[] = [
     closeup: 'vsat-ifl',
     partIds: [],
     requires: ['vsat-ifl'],
-    pendingArt: true,
   },
 ];
+
+export const FORWARD_HOTSPOTS: SiteHotspot[] = FORWARD_HOTSPOTS_BASE.map((h) => (FORWARD_MASKS[h.id] ? { ...h, mask: FORWARD_MASKS[h.id] } : h));
 
 /**
  * Painted layers over the forward scene, shown by the site inventory (not by weather or faults). The base image has
@@ -663,8 +697,8 @@ const cp = (x: number, y: number): { x: number; y: number } => ({ x: Math.round(
  * Forward-art close-ups (FS1, FW2). Same ids and targets as the camp CLOSEUPS; `forward: true` switches off every
  * camp weather painting and fault layer (they are painted for the camp images). The power-box close-up replaces
  * the camp power-strip one (id 'power-strip'). The router has two paintings (FORWARD_ROUTER_EUROSAT, picked by the
- * site inventory), the skylink-cable close-up is forward art. Not here: flap-in/out, modem, lnb, vsat-dish, vsat-ifl,
- * which have no forward art (their forward hotspots are `pendingArt`; nothing opens the camp paintings).
+ * site inventory), the skylink-cable close-up is forward art. The EuroSat dish, LNB and IFL have forward art too (FW6).
+ * Not here: flap-in/out (no tent) and modem (a region of the router close-up).
  * Regions never overlap: a body region stops short of its sub-regions (WP9 rule).
  */
 const ROUTER_BASE_REGIONS: CloseupDef['regions'] = [
@@ -781,6 +815,62 @@ export const FORWARD_CLOSEUPS: Partial<Record<CloseupId, CloseupDef>> = {
     regions: [{ id: 'cu-skylink-panel', target: 'skylink-dish', label: 'SkyLink panel', shape: cr(400, 0, 1165, 520) }],
     probes: [{ id: 'cu-skylink-plug', target: 'skylink-cable:dish', label: 'SkyLink cable plug at the panel back edge', ...cp(452, 335) }],
     cables: [],
+  },
+  'vsat-dish': {
+    id: 'vsat-dish',
+    title: 'EuroSat dish',
+    image: `${DIR}/cu-fwd-vsat-dish.webp`,
+    aspect: 3 / 2,
+    forward: true,
+    regions: [
+      { id: 'cu-vsat-dish', target: 'vsat-dish', label: 'VSAT reflector', shape: cr(615, 0, 1275, 490), affordances: ['inspect', 'clearSnow', 'removeNet'] },
+      { id: 'cu-vsat-mount', target: 'vsat-dish', label: 'VSAT mount', shape: cr(560, 515, 1300, 900), affordances: ['inspect', 'swap'] },
+    ],
+    probes: [],
+    cables: [],
+  },
+  lnb: {
+    id: 'lnb',
+    title: 'EuroSat LNB',
+    image: `${DIR}/cu-fwd-lnb.webp`,
+    aspect: 3 / 2,
+    forward: true,
+    regions: [{ id: 'cu-vsat-lnb', target: 'vsat-lnb', label: 'LNB', shape: cr(715, 110, 1080, 560) }],
+    probes: [
+      { id: 'cu-feed-port', target: 'vsat-feed', label: 'Feed horn (ahead of the LNA)', ...cp(890, 250) },
+      { id: 'cu-ifl-lnb', target: 'vsat-ifl:lnb', label: 'IFL connector under the boot', ...cp(897, 655) },
+    ],
+    cables: [],
+  },
+  'vsat-ifl': {
+    id: 'vsat-ifl',
+    title: 'EuroSat IFL cable run',
+    image: `${DIR}/cu-fwd-vsat-ifl.webp`,
+    aspect: 3 / 2,
+    forward: true,
+    regions: [],
+    probes: [],
+    /** From the case wall bulkhead (t = 0) across the ground and up the tripod arm to the LNB (t = 1); the stretch up behind the hub follows the cable's loop */
+    cables: [
+      {
+        target: 'vsat-ifl',
+        label: 'VSAT IFL (30 m coax)',
+        points: [
+          [0.1, 0.41],
+          [0.17, 0.47],
+          [0.25, 0.64],
+          [0.31, 0.75],
+          [0.39, 0.79],
+          [0.49, 0.78],
+          [0.56, 0.72],
+          [0.58, 0.59],
+          [0.57, 0.47],
+          [0.54, 0.35],
+          [0.51, 0.25],
+          [0.49, 0.14],
+        ],
+      },
+    ],
   },
   'skylink-cable': FORWARD_CABLE,
 };

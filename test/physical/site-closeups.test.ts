@@ -3,6 +3,8 @@
  * item, and every close-up target exists in the frontline sandbox plant config.
  */
 
+import fs from 'node:fs';
+import path from 'node:path';
 import { frontlinePlantConfig } from '@app/campaigns/frontline/plant-config';
 import { forwardInventory } from '@app/campaigns/frontline/scenario-support';
 import {
@@ -21,9 +23,11 @@ import {
   SITE_IMAGES,
   visibleHotspots,
 } from '@app/campaigns/frontline/site-hotspots';
-import { closeupImageFor, layersFor, siteImageFor } from '@app/campaigns/frontline/site-layers';
+import { closeupImageFor, FORWARD_CLOSEUP_LAYERS, forwardArtFiles, layersFor, sceneLayerImageFor, siteImageFor } from '@app/campaigns/frontline/site-layers';
+import type { CloseupDef } from '@app/physical/ui/site-types';
 import { describe, expect, it } from 'vitest';
 
+const publicDir = path.resolve(__dirname, '../../public');
 const partIds = new Set(frontlinePlantConfig.parts.map((p) => p.id));
 const cableIds = new Set(frontlinePlantConfig.cables.map((c) => c.id));
 const connectorIds = new Set(frontlinePlantConfig.connectors.map((c) => c.id));
@@ -133,12 +137,22 @@ describe('forward site art (FS1)', () => {
     expect(visibleHotspots('forward', (id) => noIfl.has(id)).some((h) => h.id === 'site-fwd-vsat-ifl')).toBe(false);
   });
 
-  it('EuroSat hotspots are pending art: they keep a close-up id but no forward close-up exists and camp paintings are not opened', () => {
-    const pending = FORWARD_HOTSPOTS.filter((h) => h.pendingArt).map((h) => h.id);
-    expect(pending.sort()).toEqual(['site-fwd-vsat-dish', 'site-fwd-vsat-ifl', 'site-fwd-vsat-lnb']);
-    for (const id of ['vsat-dish', 'lnb', 'vsat-ifl'] as const) {
-      expect(FORWARD_CLOSEUPS[id]).toBeUndefined();
+  it('the EuroSat hotspots open forward close-ups (FW8): no pending art, forward art for dish, LNB and IFL', () => {
+    expect(FORWARD_HOTSPOTS.filter((h) => h.pendingArt)).toEqual([]);
+    for (const [id, image] of [
+      ['vsat-dish', 'cu-fwd-vsat-dish.webp'],
+      ['lnb', 'cu-fwd-lnb.webp'],
+      ['vsat-ifl', 'cu-fwd-vsat-ifl.webp'],
+    ] as const) {
+      const def = FORWARD_CLOSEUPS[id]!;
+      expect(def.forward).toBe(true);
+      expect(def.image).toContain(image);
+      expect(closeupFor(id, 'forward')).toBe(def);
+      expect(fs.existsSync(path.join(publicDir, def.image)), def.image).toBe(true);
     }
+    expect(FORWARD_CLOSEUPS['vsat-dish']!.regions.map((r) => r.id)).toEqual(['cu-vsat-dish', 'cu-vsat-mount']);
+    expect(FORWARD_CLOSEUPS.lnb!.probes.map((q) => q.target).sort()).toEqual(['vsat-feed', 'vsat-ifl:lnb']);
+    expect(FORWARD_CLOSEUPS['vsat-ifl']!.cables.map((c) => c.target)).toEqual(['vsat-ifl']);
   });
 
   it('the EuroSat scene layers show only with their parts and stay inside the crop', () => {
@@ -233,17 +247,68 @@ describe('forward site art (FS1)', () => {
     }
   });
 
-  it('draws no camp weather painting or fault layer over forward images', () => {
+  it('forward scene and close-ups get forward weather paintings, never the camp ones', () => {
     expect(FORWARD_SITE_IMAGE).toContain('site-forward.webp');
     expect(FORWARD_SITE_ASPECT).toBeCloseTo(1536 / 752, 6);
-    expect(siteImageFor('outside', FORWARD_SITE_IMAGE, 'snow')).toBe(FORWARD_SITE_IMAGE);
-    expect(siteImageFor('outside', FORWARD_SITE_IMAGE, 'wet')).toBe(FORWARD_SITE_IMAGE);
-    expect(siteImageFor('outside', SITE_IMAGES.outside, 'snow')).not.toBe(SITE_IMAGES.outside);
-    for (const def of [...Object.values(FORWARD_CLOSEUPS), FORWARD_ROUTER_EUROSAT]) {
-      expect(closeupImageFor(def, 'snow')).toBe(def.image);
-      expect(closeupImageFor(def, 'wet')).toBe(def.image);
-      expect(layersFor(def.id, def.forward)).toEqual([]);
+    expect(siteImageFor('outside', FORWARD_SITE_IMAGE, 'clear')).toBe(FORWARD_SITE_IMAGE);
+    expect(siteImageFor('outside', FORWARD_SITE_IMAGE, 'snow')).toMatch(/site-forward-snow\.webp$/u);
+    expect(siteImageFor('outside', FORWARD_SITE_IMAGE, 'wet')).toMatch(/site-forward-wet\.webp$/u);
+    expect(siteImageFor('outside', SITE_IMAGES.outside, 'snow')).toMatch(/site-outside-snow/u);
+    for (const layer of FORWARD_SCENE_LAYERS) {
+      expect(sceneLayerImageFor(layer, 'clear')).toBe(layer.file);
+      expect(sceneLayerImageFor(layer, 'snow')).toBe(layer.file.replace('.webp', '-snow.webp'));
+      expect(sceneLayerImageFor(layer, 'wet')).toBe(layer.file.replace('.webp', '-wet.webp'));
+    }
+    for (const def of [...Object.values(FORWARD_CLOSEUPS), FORWARD_ROUTER_EUROSAT, FORWARD_CABLE_EUROSAT]) {
+      expect(closeupImageFor(def, 'clear')).toBe(def.image);
+      expect(closeupImageFor(def, 'snow'), def.title).toBe(def.image.replace('.webp', '-snow.webp'));
+      // The EuroSat dish has no wet painting (as camp): the original stays
+      const wet = def.id === 'vsat-dish' ? def.image : def.image.replace('.webp', '-wet.webp');
+      expect(closeupImageFor(def, 'wet'), def.title).toBe(wet);
     }
     expect(layersFor('skylink-dish').length).toBeGreaterThan(0);
+  });
+
+  it('forward layers: own table, modem layers only on the EuroSat router, one layer serves both router and cable paintings', () => {
+    const ids = (def: CloseupDef): string[] => layersFor(def.id, def.forward, def.image).map((l) => l.id);
+    expect(ids(FORWARD_CLOSEUPS.router!).sort()).toEqual(['fwd-router-corrosion', 'fwd-router-moisture']);
+    expect(ids(FORWARD_ROUTER_EUROSAT).sort()).toEqual(['fwd-modem-corrosion', 'fwd-modem-leds-off', 'fwd-modem-moisture', 'fwd-router-corrosion', 'fwd-router-moisture']);
+    expect(ids(FORWARD_CLOSEUPS['skylink-cable']!)).toEqual(['fwd-skylink-cable-damage']);
+    expect(ids(FORWARD_CABLE_EUROSAT)).toEqual(['fwd-skylink-cable-damage']);
+    expect(ids(FORWARD_CLOSEUPS['skylink-dish']!).sort()).toEqual(['fwd-dish-collar-corrosion', 'fwd-dish-collar-moisture', 'fwd-skylink-dish-net', 'fwd-skylink-dish-snow']);
+    expect(ids(FORWARD_CLOSEUPS.lnb!).sort()).toEqual(['fwd-lnb-corrosion', 'fwd-lnb-moisture']);
+    expect(ids(FORWARD_CLOSEUPS['vsat-dish']!)).toEqual(['fwd-vsat-dish-snow']);
+    expect(ids(FORWARD_CLOSEUPS['vsat-ifl']!)).toEqual(['fwd-vsat-ifl-damage']);
+    // No power-station leds-off and no flap-in layer at the forward site; generator, laptop, power box have none
+    for (const id of ['power-station', 'generator', 'laptop', 'power-strip'] as const) {
+      expect(layersFor(id, true, FORWARD_CLOSEUPS[id]!.image), id).toEqual([]);
+    }
+    // Camp layers are untouched
+    expect(layersFor('router').map((l) => l.id)).toEqual(['router-corrosion', 'router-moisture']);
+  });
+
+  it('every forward layer targets an existing connector, part or cable, and its callout stays inside the image', () => {
+    for (const l of FORWARD_CLOSEUP_LAYERS) {
+      const p = l.present;
+      const targets = p.type === 'cable' ? p.targets : [p.target];
+      for (const t of targets) {
+        expect(partIds.has(t) || connectorIds.has(t) || cableIds.has(t), `${l.id} -> ${t}`).toBe(true);
+      }
+      if (l.callout) {
+        expect(inUnit(l.callout.at[0]) && inUnit(l.callout.at[1]), l.id).toBe(true);
+      }
+      expect(l.file, l.id).toContain('layer-fwd-');
+    }
+  });
+
+  it('every webp the forward weather and layer tables reference exists on disk', () => {
+    const files = forwardArtFiles();
+    expect(files.length).toBeGreaterThan(40);
+    for (const f of files) {
+      expect(fs.existsSync(path.join(publicDir, f)), f).toBe(true);
+    }
+    for (const layer of FORWARD_SCENE_LAYERS) {
+      expect(fs.existsSync(path.join(publicDir, layer.file)), layer.file).toBe(true);
+    }
   });
 });

@@ -153,7 +153,7 @@ export interface FieldStatus {
   services: Record<string, Array<{ layer: ServiceLayer; status: string; reason?: string; freshness: unknown }>>;
   firedEvents: string[];
   flags: Record<string, unknown>;
-  workloads: Array<{ id: string; card: string; service: string; status: string; invalidatedBy: string | null }>;
+  workloads: Array<{ id: string; card: string; service: string; status: string; invalidatedBy: string | null; startS?: number; endS?: number | null; power?: unknown }>;
   evidenceCount: number;
 }
 
@@ -541,7 +541,13 @@ export async function plantMeasure(page: Page, tool: string, partId: string): Pr
  * Service checks table and press Check. Needs the laptop, so it goes inside.
  * Returns the reading shown in the row.
  */
-export async function servicesTakeSample(page: Page, serviceId: string, layer: ServiceLayer, via: SampleVia): Promise<string> {
+export async function servicesTakeSample(
+  page: Page,
+  serviceId: string,
+  layer: ServiceLayer,
+  via: SampleVia,
+  metric?: 'rttMs' | 'jitterMs' | 'downMbps' | 'upMbps' | 'lossPct'
+): Promise<string> {
   await closeCloseup(page);
   await goInside(page);
   const d = await setPanelOpen(page, /Service checks/u, true);
@@ -550,6 +556,7 @@ export async function servicesTakeSample(page: Page, serviceId: string, layer: S
   const sel = row.locator('select[data-svc-via]');
   await expect(sel.locator(`option[value="${via}"]`), `${serviceId}/${layer} offers ${via}`).toBeAttached();
   await sel.selectOption(via);
+  if (metric) await row.locator('select[data-svc-metric]').selectOption(metric);
   const age = row.locator('[data-fsp^="age-"]');
   await row.locator('button[data-svc-check]').click();
   await expect(age).toHaveText(/\d+\s*s ago|now|just/iu);
@@ -615,7 +622,8 @@ export const LATEST = Symbol('latest reading');
 /** For a run field: pick the newest run listed as supported */
 export const LATEST_SUPPORTED_RUN = Symbol('latest supported run');
 
-export type RecordField = { value: string | number | typeof LATEST | typeof LATEST_SUPPORTED_RUN } | { cites: number | string[] };
+/** A pick or number can also carry notebook entries that back it (`value` plus `cites`) */
+export type RecordField = { value: string | number | typeof LATEST | typeof LATEST_SUPPORTED_RUN; cites?: number | string[] } | { cites: number | string[] };
 
 /**
  * records.submit(formId, input): choose the form in the Handover panel, fill
@@ -633,6 +641,11 @@ export async function recordsSubmit(page: Page, formId: string, input: Record<st
   }
   for (const [key, f] of Object.entries(input)) {
     if ('cites' in f) {
+      // A pick's backing entries sit in a collapsed details block: open it as a player would
+      const backing = d.locator(`[data-hf-row="${key}"] details.fhf-backing`);
+      if ((await backing.count()) > 0 && !(await backing.first().evaluate((n) => (n as HTMLDetailsElement).open))) {
+        await backing.first().locator('summary').click();
+      }
       const boxes = d.locator(`input[data-hf-key="${key}"][data-hf-cite]`);
       const ids = typeof f.cites === 'number' ? (await boxes.evaluateAll((els) => els.map((e) => e.getAttribute('data-hf-cite') ?? ''))).slice(0, f.cites) : f.cites;
       // A player can untick: drop leftovers from an earlier refused attempt so each filing is exactly what the input names
@@ -645,17 +658,31 @@ export async function recordsSubmit(page: Page, formId: string, input: Record<st
       for (const id of ids) {
         const box = d.locator(`input[data-hf-key="${key}"][data-hf-cite="${id}"]`);
         if (!(await box.isChecked())) {
-          await activate(page, box, `form ${formId} cite ${id}`, 'Space');
+          // The panel redraws on its own tick and can swallow a click: press again until it sticks
+          for (let attempt = 0; attempt < 3 && !(await box.isChecked()); attempt++) {
+            await activate(page, box, `form ${formId} cite ${id}`, 'Space');
+            await page.waitForTimeout(150);
+          }
           await expect(box).toBeChecked();
         }
       }
-      continue;
+      if (!('value' in f)) continue;
     }
     const field = d.locator(`[data-hf-field="${key}"]`).first();
     await expect(field, `form ${formId} has field ${key}`).toBeAttached();
     const tag = await field.evaluate((n) => n.tagName);
     if (f.value === LATEST) {
-      await activate(page, d.locator(`button[data-hf-fill="${key}"]`), `form ${formId} fill ${key}`);
+      // The panel redraws on its own tick and can swallow the click: press again until the field holds a value
+      for (let attempt = 0; attempt < 3; attempt++) {
+        await activate(page, d.locator(`button[data-hf-fill="${key}"]`), `form ${formId} fill ${key}`);
+        await page.waitForTimeout(200);
+        const filled = await d
+          .locator(`[data-hf-field="${key}"]`)
+          .first()
+          .evaluate((n) => ((n as HTMLInputElement).value ?? '') !== '')
+          .catch(() => false);
+        if (filled) break;
+      }
     } else if (f.value === LATEST_SUPPORTED_RUN) {
       const readOpts = () => field.locator('option').evaluateAll((os) => os.map((o) => ({ v: (o as HTMLOptionElement).value, t: o.textContent ?? '' })));
       // The panel redraws on its own tick, so a run that just finished can still read 'running' for a moment

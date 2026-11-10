@@ -93,6 +93,7 @@ export class PhysicalPlantService {
             evidence: this.evidence,
             runs: () => this.workloads?.getRuns() ?? [],
             getCardVersion: (cardId) => this.workloads?.getCard(cardId)?.version,
+            eventFiredAtS: (eventId) => this.events?.firedAtS(eventId) ?? null,
             writeLine: (section, line) => WorkingDocumentManager.getInstance().addLine(section, line),
             storeRecord: (record) => CampaignDocumentStore.recordHandover(record),
           })

@@ -12,7 +12,8 @@
  */
 
 import type { EquipmentLedger, EquipmentState } from './equipment-records';
-import type { EvidenceEntry, EvidenceKind, EvidenceLog } from './evidence-log';
+import type { EvidenceEntry, EvidenceKind, EvidenceLog, SampleSnapshot } from './evidence-log';
+import { assessEvidence, type EvidenceGroup } from './evidence-predicates';
 import type { RecordReader } from './field-hooks';
 import type { PhysicalPlantManager } from './physical-plant-manager';
 import type { ServiceModel } from './service-model';
@@ -33,8 +34,20 @@ export type ClaimRule =
   | { powerWithin: { metric: 'socWh' | 'fuelL'; tol: number; partId?: string } }
   /** The value must equal the part's current mode id */
   | { modeIs: { partId: string } }
-  /** The value must be one of these authored answers ('other' never matches unless listed) */
-  | { choice: string[] /** Optional player-facing label per answer id (falls back to the humanized id) */; labels?: Record<string, string> };
+  /**
+   * The value must be one of these authored answers ('other' never matches unless listed). `choice` is also
+   * the list the player sees; `accept` narrows the accepted answers so the visible options can include
+   * plausible alternatives (without it every listed answer is accepted).
+   */
+  | {
+      choice: string[] /** Optional player-facing label per answer id (falls back to the humanized id) */;
+      labels?: Record<string, string>;
+      accept?: string[];
+      /** Evidence the field's own citations must show for a given accepted answer (an assessed conclusion needs its backing) */
+      backing?: Record<string, EvidenceGroup[]>;
+    }
+  /** Cited entries must fill every group with distinct entries (typed predicates; see evidence-predicates.ts) */
+  | { evidence: EvidenceGroup[] };
 
 export interface HandoverFieldConfig {
   key: string;
@@ -66,6 +79,10 @@ export interface FrozenCitation {
   kind: EvidenceKind;
   tS: number;
   text: string;
+  /** Typed sample snapshot, when the entry was a service sample */
+  sample?: SampleSnapshot;
+  subject?: string;
+  eventId?: string;
 }
 
 export interface FieldCheck {
@@ -113,6 +130,8 @@ export interface FieldRecordsDeps {
   evidence: EvidenceLog | null;
   runs: () => readonly WorkloadRun[];
   getCardVersion: (cardId: string) => number | undefined;
+  /** Scenario time a staged event fired, for event-relative evidence predicates (absent: such predicates never match) */
+  eventFiredAtS?: (eventId: string) => number | null;
   /** Working Document line sink */
   writeLine?: (section: string, line: string) => void;
   /** Campaign record sink */
@@ -170,7 +189,7 @@ export class FieldRecords implements RecordReader {
     const rule = field.rule;
     const blank = isBlank(input.value);
     const cites = this.resolveCites_(input.cites);
-    const isCitesRule = 'cites' in rule;
+    const isCitesRule = 'cites' in rule || 'evidence' in rule;
     const empty = isCitesRule ? cites.length === 0 : blank;
     if (empty) {
       return field.required ? fail(field.key, `${field.label} is empty.`) : pass(field.key);
@@ -190,6 +209,14 @@ export class FieldRecords implements RecordReader {
 
       return have >= min ? pass(field.key) : fail(field.key, `${field.label} needs ${min} cited ${need} entr${min === 1 ? 'y' : 'ies'} from the notebook; ${have} cited.`);
     }
+    if ('evidence' in rule) {
+      const log = this.deps_.evidence;
+      const verdict = assessEvidence(input.cites ?? [], rule.evidence, log?.entries() ?? [], { eventFiredAtS: (id) => this.deps_.eventFiredAtS?.(id) ?? null });
+
+      return verdict.ok
+        ? pass(field.key)
+        : fail(field.key, `${field.label} needs notebook entries that show: ${verdict.missing.join('; ')}. Repeated or unrelated entries do not count.`);
+    }
     if ('workload' in rule) {
       return this.checkWorkload_(field, String(value), rule.workload);
     }
@@ -204,7 +231,18 @@ export class FieldRecords implements RecordReader {
         : fail(field.key, `${field.label} does not match what the ${this.deps_.plant.getLabel(rule.modeIs.partId)} shows now.`);
     }
 
-    return rule.choice.includes(String(value)) ? pass(field.key) : fail(field.key, `${field.label} is not one of the answers this form accepts.`);
+    if (!(rule.accept ?? rule.choice).includes(String(value))) {
+      return fail(field.key, `${field.label} is not one of the answers this form accepts.`);
+    }
+    const needs = rule.backing?.[String(value)];
+    if (needs) {
+      const verdict = assessEvidence(input.cites ?? [], needs, this.deps_.evidence?.entries() ?? [], { eventFiredAtS: (id) => this.deps_.eventFiredAtS?.(id) ?? null });
+      if (!verdict.ok) {
+        return fail(field.key, `${field.label}: back this answer with notebook entries that show: ${verdict.missing.join('; ')}.`);
+      }
+    }
+
+    return pass(field.key);
   }
 
   private checkFreshness_(field: HandoverFieldConfig, value: string, target: { serviceId: string; layer: ServiceLayer }): FieldCheck {
@@ -385,7 +423,7 @@ export class FieldRecords implements RecordReader {
 
   getState(): FieldRecordsState {
     return {
-      records: this.records_.map((r) => ({ ...r, values: { ...r.values }, citations: { ...r.citations }, lines: [...r.lines] })),
+      records: this.records_.map((r) => JSON.parse(JSON.stringify(r)) as HandoverRecord),
       attempts: [...this.attempts_],
       seq: this.seq_,
       accepted: [...this.accepted_],
@@ -401,7 +439,7 @@ export class FieldRecords implements RecordReader {
     if (!state) {
       return;
     }
-    this.records_ = (state.records ?? []).filter((r) => this.forms_.has(r.formId));
+    this.records_ = (state.records ?? []).filter((r) => this.forms_.has(r.formId)).map((r) => JSON.parse(JSON.stringify(r)) as HandoverRecord);
     this.attempts_ = new Map(state.attempts ?? []);
     this.accepted_ = new Set(state.accepted ?? []);
     this.deps_.equipment?.restoreState(state.equipment);
@@ -413,5 +451,13 @@ export class FieldRecords implements RecordReader {
 }
 
 function freeze(e: EvidenceEntry): FrozenCitation {
-  return { id: e.id, kind: e.kind, tS: e.tS, text: e.text };
+  return {
+    id: e.id,
+    kind: e.kind,
+    tS: e.tS,
+    text: e.text,
+    subject: e.subject,
+    ...(e.sample ? { sample: { ...e.sample } } : {}),
+    ...(e.source.eventId === undefined ? {} : { eventId: e.source.eventId }),
+  };
 }

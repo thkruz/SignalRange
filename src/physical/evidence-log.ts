@@ -6,6 +6,17 @@
 import type { PlantFault, PlantLogEntry } from '@app/physical/physical-plant-types';
 import type { ServiceSample } from '@app/physical/service-types';
 
+/** Typed copy of the service sample behind an observation (frozen with the entry, never re-read from the live model) */
+export interface SampleSnapshot {
+  serviceId: string;
+  endpointId?: string;
+  layer: string;
+  metric: string;
+  value: number | string;
+  unit: string;
+  provenance: string;
+}
+
 export type EvidenceKind = 'observation' | 'hypothesis' | 'action' | 'result';
 
 export interface EvidenceEntry {
@@ -31,6 +42,8 @@ export interface EvidenceEntry {
   clearedTargets?: string[];
   /** Services showing down/degraded in the player's latest samples when this entry was written */
   symptoms?: string[];
+  /** Typed sample snapshot (service sample observations only; older entries lack it and cannot satisfy sample predicates) */
+  sample?: SampleSnapshot;
   /** Diagram selections (M17): the node ids the player marked on a path diagram */
   selection?: string[];
   /** Where the player saw or did this when it came through the terminal app (phase 40 D7) */
@@ -370,6 +383,15 @@ export class EvidenceLog {
       tS: sample.tS,
       subject: sample.serviceId,
       source: { sampleId: sample.id },
+      sample: {
+        serviceId: sample.serviceId,
+        ...(sample.endpointId === undefined ? {} : { endpointId: sample.endpointId }),
+        layer: sample.layer,
+        metric: sample.metric,
+        value: sample.value,
+        unit: sample.unit,
+        provenance: sample.provenance,
+      },
       facts: [],
       text: `${sample.layer} ${sample.metric}: ${sample.value}${sample.unit === 'state' ? '' : ` ${sample.unit}`} (${sample.provenance})`,
     });

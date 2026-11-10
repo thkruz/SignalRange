@@ -309,6 +309,9 @@ export class FieldHandoverPanel {
     if ('cites' in rule) {
       const min = rule.min ?? 1;
       widget = `<div class="fhf-cites" data-hf-cites="${k}"><div class="fhf-hint">Tick at least ${min} ${escapeHtml(KIND_LABEL[rule.cites]?.toLowerCase() ?? rule.cites)} entr${min === 1 ? 'y' : 'ies'} from the notebook.</div>${citeBoxes(rule.cites)}</div>`;
+    } else if ('evidence' in rule) {
+      const needs = rule.evidence.map((g) => `<li>${escapeHtml(g.label)}${(g.min ?? 1) > 1 ? ` (${g.min})` : ''}</li>`).join('');
+      widget = `<div class="fhf-cites" data-hf-cites="${k}"><div class="fhf-hint">Tick notebook entries that show each of these. One entry counts once.</div><ul class="fhf-needs" data-fhf="needs-${k}">${needs}</ul>${citeBoxes(null)}</div>`;
     } else if ('workload' in rule) {
       const mine = runs.filter((r) => r.cardId === rule.workload.cardId);
       const opts = mine
@@ -329,7 +332,7 @@ export class FieldHandoverPanel {
       widget = `<span class="fhf-input"><input class="form-control form-control-sm" type="${type}"${type === 'number' ? ' step="any"' : ''} value="${escapeHtml(val)}" data-hf-field="${k}" aria-label="${escapeHtml(f.label)}" /> <button type="button" class="btn btn-sm btn-outline-secondary" data-hf-fill="${k}">Use my latest reading</button></span>${hint ? `<div class="fhf-hint" data-fhf="reading-${k}">${escapeHtml(hint)}</div>` : ''}`;
     }
     const backing =
-      'cites' in rule
+      'cites' in rule || 'evidence' in rule
         ? ''
         : `<details class="fhf-backing"><summary>Back this with notebook entries${(cur.cites?.length ?? 0) > 0 ? ` (${cur.cites?.length})` : ''}</summary><div class="fhf-cites">${citeBoxes(null)}</div></details>`;
     const note = check ? `<div class="fhf-note ${check.ok ? 'fhf-ok' : 'fhf-bad'}" data-hf-note="${k}">${check.ok ? 'OK' : escapeHtml(check.reason ?? 'Not accepted.')}</div>` : '';

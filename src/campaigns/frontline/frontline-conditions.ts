@@ -8,6 +8,7 @@
 
 import type { Condition, ConditionParams } from '@app/objectives/objective-types';
 import { type HypothesisEntry, TEST_VERBS } from '@app/physical/evidence-log';
+import { assessHypothesis, type HypothesisSpec } from '@app/physical/evidence-predicates';
 import { type FieldHooks, getActiveField } from '@app/physical/field-hooks';
 import type { ServiceLayer } from '@app/physical/service-types';
 
@@ -397,41 +398,49 @@ export function interruptionPattern(serviceId: string, minInterruptions: number,
   );
 }
 
-/** At least `min` tests found nothing wrong (negative observations are kept as evidence, not discarded) */
-export function negativeChecksKept(min: number, description = 'Negative checks recorded'): Condition {
+/**
+ * At least `min` tests found nothing wrong (negative observations are kept as evidence, not discarded).
+ * Repeating one test on the same subject earns one credit; `subjects` limits credit to checks of the
+ * subjects relevant to the diagnosis (an off-path negative is not evidence about the cause).
+ */
+export function negativeChecksKept(min: number, description = 'Negative checks recorded', opts: { subjects?: string[] } = {}): Condition {
   return make(
-    `negativeChecksKept:${min}`,
+    `negativeChecksKept:${min}${opts.subjects ? `:${opts.subjects.join(',')}` : ''}`,
     description,
     () => {
       const log = hooks()?.evidence;
       if (!log) {
         return false;
       }
-      const negatives = log.entries('observation').filter((e) => e.verb !== undefined && TEST_VERBS.has(e.verb) && e.positive === false);
+      const negatives = log
+        .entries('observation')
+        .filter((e) => e.verb !== undefined && TEST_VERBS.has(e.verb) && e.positive === false && (opts.subjects === undefined || opts.subjects.includes(e.subject)));
 
-      return negatives.length >= min;
+      return new Set(negatives.map((e) => e.subject)).size >= min;
     },
     true
   );
 }
 
-/** A hypothesis whose cause is one of the authored options (never 'other') cites at least one observation */
-export function hypothesisFiled(causes: string[], opts: { minCited?: number } = {}, description = 'Hypothesis filed with a cause and evidence'): Condition {
+/**
+ * A hypothesis names an allowed cause (never 'other') with distinct cited observations. Optional scope,
+ * target and typed evidence routes (any one route suffices) tie it to what the player actually saw; see
+ * `assessHypothesis` for the rules and reasons.
+ */
+export function hypothesisFiled(causes: string[], opts: Omit<HypothesisSpec, 'causes'> = {}, description = 'Hypothesis filed with a cause and evidence'): Condition {
   return make(
     `hypothesisFiled:${causes.join(',')}`,
     description,
     () => {
-      const log = hooks()?.evidence;
+      const h = hooks();
+      const log = h?.evidence;
       if (!log) {
         return false;
       }
       const all = log.entries();
+      const ctx = { eventFiredAtS: (id: string) => h?.events?.firedAtS(id) ?? null };
 
-      return (log.entries('hypothesis') as readonly HypothesisEntry[]).some((h) => {
-        const cited = h.citedEntryIds.map((id) => all.find((e) => e.id === id)).filter((e) => e !== undefined);
-
-        return h.claim.cause !== undefined && causes.includes(h.claim.cause) && cited.length >= (opts.minCited ?? 1) && cited.some((e) => e.kind === 'observation');
-      });
+      return (log.entries('hypothesis') as readonly HypothesisEntry[]).some((hyp) => assessHypothesis(hyp, { ...opts, causes }, all, ctx).ok);
     },
     false
   );

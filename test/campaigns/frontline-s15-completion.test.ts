@@ -99,7 +99,7 @@ function acts(svc: PhysicalPlantService): Record<string, () => void> {
       fileHypothesis(svc, 'suspected-interference', obsIds(svc));
       ok(
         svc.records?.submit('assessment', {
-          classification: { value: 'suspected-interference' },
+          classification: { value: 'suspected-interference', cites: obsIds(svc) },
           confidence: { value: 'moderate' },
           source: { value: 'not-established' },
           basis: { cites: obsIds(svc) },
@@ -138,7 +138,7 @@ function acts(svc: PhysicalPlantService): Record<string, () => void> {
       svc.services?.takeSample(SKYLINK_SERVICE, 'application', 'endpoint-report');
       ok(
         svc.records?.submit('incident', {
-          classification: { value: 'suspected-interference' },
+          classification: { value: 'suspected-interference', cites: obsIds(svc) },
           source: { value: 'not-established' },
           available: value(svc, SKYLINK_SERVICE, 'application'),
           unavailable: { value: S11_TRANSFER_CARD.id },
@@ -220,30 +220,94 @@ describe('M27 S15 completion', () => {
     expect(res?.ok).toBe(false);
   });
 
-  it('rejects a named source, an unexplained-outage label and an under-cited assessment', () => {
+  it('rejects a named source, a wrong target and an under-cited assessment, and accepts an evidence-backed unexplained outage', () => {
     const svc = bootScenario(data);
     driveObjectives(data, svc, states, acts(svc), { stopAfter: 's15-review-evidence' });
     states.set('s15-assess-confidence', { isActive: true, isCompleted: false });
     fileHypothesis(svc, 'named-source', obsIds(svc));
-    fileHypothesis(svc, 'unexplained-outage', obsIds(svc));
-    fileHypothesis(svc, 'suspected-interference', obsIds(svc).slice(0, 2));
-    expect(incomplete(svc, 's15-assess-confidence').join('|')).toContain('Suspected interference filed');
+    fileHypothesis(svc, 'suspected-interference', obsIds(svc).slice(0, 1));
+    svc.evidence?.addHypothesis({
+      subject: 'vsat-modem',
+      source: {},
+      facts: [],
+      text: 'wrong target',
+      claim: { scope: 'part', targetId: 'vsat-modem', cause: 'unexplained-outage' },
+      confidence: 'medium',
+      citedEntryIds: obsIds(svc),
+    });
+    expect(incomplete(svc, 's15-assess-confidence').join('|')).toContain('Assessment filed on EuroSat');
     const named = svc.records?.submit('assessment', {
-      classification: { value: 'suspected-interference' },
+      classification: { value: 'suspected-interference', cites: obsIds(svc) },
       confidence: { value: 'moderate' },
-      source: { value: 'nearby-transmitter' },
+      source: { value: 'nearest-transmitter' },
       basis: { cites: obsIds(svc) },
     });
     expect(named?.ok).toBe(false);
-    const outage = svc.records?.submit('assessment', {
-      classification: { value: 'unexplained-outage' },
+    const provider = svc.records?.submit('assessment', {
+      classification: { value: 'provider-fault', cites: obsIds(svc) },
       confidence: { value: 'moderate' },
       source: { value: 'not-established' },
       basis: { cites: obsIds(svc) },
     });
-    expect(outage?.ok).toBe(false);
-    fileHypothesis(svc, 'suspected-interference', obsIds(svc));
-    expect(incomplete(svc, 's15-assess-confidence').join('|')).not.toContain('Suspected interference filed');
+    expect(provider?.ok).toBe(false);
+    const outage = svc.records?.submit('assessment', {
+      classification: { value: 'unexplained-outage', cites: obsIds(svc) },
+      confidence: { value: 'low' },
+      source: { value: 'not-established' },
+      basis: { cites: obsIds(svc) },
+    });
+    ok(outage);
+    fileHypothesis(svc, 'unexplained-outage', obsIds(svc));
+    expect(incomplete(svc, 's15-assess-confidence').join('|')).not.toContain('Assessment filed on EuroSat');
+  });
+
+  it('does not take three SkyLink readings, or a pre-incident reading, as the EuroSat interruption pattern', () => {
+    const svc = bootScenario(data);
+    driveObjectives(data, svc, states, acts(svc), { stopAfter: 's15-record-anomaly' });
+    states.set('s15-review-evidence', { isActive: true, isCompleted: false });
+    const before = obsIds(svc).length;
+    svc.services?.takeSample(SKYLINK_SERVICE, 'application', 'endpoint-report');
+    svc.services?.takeSample(SKYLINK_SERVICE, 'local', 'local-probe');
+    svc.services?.takeSample(SKYLINK_SERVICE, 'registration', 'terminal-app');
+    const skylinkOnly = obsIds(svc).slice(before);
+    const res = svc.records?.validate('evidence', {
+      pattern: { cites: skylinkOnly },
+      provider: value(svc, EUS, 'provider'),
+      local: { value: 'ruled-out' },
+      limits: { value: 'not-proof' },
+    });
+    expect(res?.fields.find((f) => f.key === 'pattern')?.ok).toBe(false);
+    const repeated = skylinkOnly.length ? [skylinkOnly[0], skylinkOnly[0], skylinkOnly[0]] : [];
+    expect(svc.records?.validate('evidence', { pattern: { cites: repeated } })?.fields.find((f) => f.key === 'pattern')?.ok).toBe(false);
+  });
+
+  it('counts one credit per checked subject and ignores checks of unrelated parts', () => {
+    const svc = bootScenario(data);
+    driveObjectives(data, svc, states, acts(svc), { stopAfter: 's15-record-anomaly' });
+    states.set('s15-review-evidence', { isActive: true, isCompleted: false });
+    svc.plant.goOutside();
+    svc.plant.inspect('vsat-feed');
+    svc.plant.inspect('vsat-feed');
+    svc.plant.inspect('vsat-feed');
+    svc.plant.returnInside();
+    expect(incomplete(svc, 's15-review-evidence').join('|')).toContain('Checks that found nothing');
+    svc.plant.inspect('power-station');
+    expect(incomplete(svc, 's15-review-evidence').join('|')).not.toContain('Checks that found nothing');
+  });
+
+  it('accepts suspected interference once repeated drops are read, and rejects it on a single drop', () => {
+    const svc = bootScenario(data);
+    driveObjectives(data, svc, states, acts(svc), { stopAfter: 's15-review-evidence' });
+    const cites = obsIds(svc);
+    const base = { confidence: { value: 'moderate' }, source: { value: 'not-established' }, basis: { cites } };
+    ok(svc.records?.submit('assessment', { ...base, classification: { value: 'suspected-interference', cites } }));
+    const down = (svc.evidence?.entries('observation') ?? []).filter((e) => e.sample?.layer === 'registration' && e.sample.value === 'down').map((e) => e.id);
+    expect(down.length).toBeGreaterThanOrEqual(2);
+    const single = svc.records?.validate('assessment', {
+      ...base,
+      classification: { value: 'suspected-interference', cites: [...obsIds(svc).filter((id) => !down.includes(id)), down[0]] },
+    });
+    expect(single?.fields.find((f) => f.key === 'classification')?.ok).toBe(false);
   });
 
   it('keeps both terminals running from passing the reserve check, and a standby modem passes it', () => {

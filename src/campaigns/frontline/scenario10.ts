@@ -232,6 +232,7 @@ if (scenarioSettings.physicalPlant) {
         affects: { accountId: FORWARD_SKYLINK_ACCOUNT },
         kind: 'ground-capacity',
         issuedAtS: 0,
+        issuedOnDelivery: true,
         text: 'SkyLink service notice. The ground-service capacity allowance for the forward post account has been reduced under provider policy, effective from the onset in the service history. Registration is unchanged. The notice reports no fault in customer equipment.',
       },
     ],
@@ -287,7 +288,13 @@ export const frontlineScenario10Data: FrontlineScenarioData = {
       points: 15,
       conditions: [
         eventFired(S10_EVENT_RESTRICTION, 'Change in the service has occurred'),
-        sampleAfterEvent(SKYLINK_SERVICE, 'application', 'degraded', S10_EVENT_RESTRICTION, 'Changed application result read after the onset'),
+        sampleAfterEvent(
+          SKYLINK_SERVICE,
+          'application',
+          'degraded',
+          S10_EVENT_RESTRICTION,
+          'Changed application result read after the onset (Application Check in Service checks)'
+        ),
         handoverValid('symptoms', 'Changed symptoms and onset recorded'),
       ],
     },

@@ -141,7 +141,8 @@ export function buildRunLine(run: WorkloadRun, runner: WorkloadRunner, serviceLa
 
   return {
     id: run.id,
-    title: `${card?.label ?? run.cardId} on ${serviceLabel}`,
+    // The handover form's run picker says "Run #2", so the Runs list carries the same number (c6-s10-F6)
+    title: `Run ${run.id.replace(/^run-/u, '#')}: ${card?.label ?? run.cardId} on ${serviceLabel}`,
     status: run.status,
     running,
     standing: running && card?.standing === true,

@@ -1,7 +1,6 @@
 import { DraggableBox } from '@app/engine/ui/draggable-box';
 import { html } from '@app/engine/utils/development/formatter';
 import { getEl } from '@app/engine/utils/get-el';
-import { displayViewport } from '@app/game-menu/display-viewport';
 import { ObjectivesManager } from '@app/objectives/objectives-manager';
 import { updateChecklistWithMotion } from '@app/presentation/transitions';
 import { Sfx } from '@app/sound/sfx-enum';
@@ -97,15 +96,8 @@ export class DraggableHtmlBox extends DraggableBox {
       super.placeOnFirstOpen(boxContent);
       return;
     }
-    const vp = displayViewport();
     // Narrow and top-right: the strip beside the scene is empty, while a bottom dock covered the Service checks table (c6-s02-F5)
-    const width = Math.min(360, Math.max(260, vp.width * 0.25));
-    boxContent.style.width = `${width}px`;
-    boxContent.style.maxWidth = `${width}px`;
-    boxContent.style.maxHeight = `${Math.max(240, vp.height - 190)}px`;
-    boxContent.style.overflowY = 'auto';
-    boxContent.style.left = `${Math.max(8, vp.width - width - 16)}px`;
-    boxContent.style.top = `${window.scrollY + 150}px`;
+    this.dockBesideSite_(boxContent, false);
   }
 
   updateContent(lastChecklistHtml_: string) {

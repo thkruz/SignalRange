@@ -741,7 +741,7 @@ export async function recordsSubmit(page: Page, formId: string, input: Record<st
     await page.waitForTimeout(500);
     const bad = await d
       .locator('[data-hf-note]')
-      .evaluateAll((ns) => ns.map((n) => `${n.getAttribute('data-hf-note')}: ${(n.textContent ?? '').trim()}`).filter((t) => !/: OK$/u.test(t)));
+      .evaluateAll((ns) => ns.map((n) => `${n.getAttribute('data-hf-note')}: ${(n.textContent ?? '').trim()}`).filter((t) => !/: OK/u.test(t)));
     await setPanelOpen(page, /Handover/u, false);
     throw new Error(`form ${formId} refused on Check: ${bad.join(' | ').slice(0, 500) || checkText.slice(-400)}`);
   }

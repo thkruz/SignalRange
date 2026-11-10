@@ -3,6 +3,7 @@ import type { EvidenceEntry, EvidenceLog } from '@app/physical/evidence-log';
 import { type EvidenceGroup, entryMatches } from '@app/physical/evidence-predicates';
 import type { FieldRecords, HandoverFieldConfig, HandoverFormConfig, HandoverInput, HandoverValidation } from '@app/physical/field-records';
 import type { PhysicalPlantManager } from '@app/physical/physical-plant-manager';
+import { METRIC_LABEL } from '@app/physical/reading-labels';
 import type { ServiceModel } from '@app/physical/service-model';
 import { entryDisplayText, escapeHtml } from '@app/physical/ui/plant-ui-helpers';
 import type { WorkloadRun } from '@app/physical/workload-types';
@@ -87,9 +88,11 @@ export function describeReading(service: ServiceModel | null, serviceId: string,
   if (!service || !sample) return { text: `No ${layer} reading taken yet.`, current: false };
   const fresh = service.freshness(sample);
   const value = String(sample.value);
-  if (fresh === 'current') return { text: `Your latest ${layer} reading, ${clock(sample.tS)}: ${value} (still current).`, value, current: true };
+  // The field takes the bare value; the hint names the metric and unit so "55" is never unlabelled (c6-s10-F4)
+  const shown = sample.unit === 'state' ? value : `${METRIC_LABEL[sample.metric]} ${value} ${sample.unit}`;
+  if (fresh === 'current') return { text: `Your latest ${layer} reading, ${clock(sample.tS)}: ${shown} (still current).`, value, current: true };
 
-  return { text: `Your latest ${layer} reading, ${clock(sample.tS)}: ${value} (out of date, take a new one).`, value, current: false };
+  return { text: `Your latest ${layer} reading, ${clock(sample.tS)}: ${shown} (out of date, take a new one).`, value, current: false };
 }
 
 /** How long a press blocks a redraw of the panel (a press that never gets its release stops blocking after this) */
@@ -488,6 +491,7 @@ export class FieldHandoverPanel {
       return `${latest.map(box).join('')}<details class="fhf-older" data-hf-older="${k}"${open ? ' open' : ''}><summary>Show older (${older.length})</summary>${older.map(box).join('')}</details>`;
     };
     let widget: string;
+    let okText = 'OK. Accepted for this form';
     if ('cites' in rule) {
       const min = rule.min ?? 1;
       widget = `<div class="fhf-cites" data-hf-cites="${k}"><div class="fhf-hint">Tick at least ${min} ${escapeHtml(KIND_LABEL[rule.cites]?.toLowerCase() ?? rule.cites)} entr${min === 1 ? 'y' : 'ies'} from the notebook.</div>${citeBoxes(rule.cites)}</div>`;
@@ -508,6 +512,8 @@ export class FieldHandoverPanel {
         .map((c) => `<option value="${escapeHtml(c)}"${c === val ? ' selected' : ''}>${escapeHtml(rule.labels?.[c] ?? humanize(c))}</option>`)
         .join('');
       widget = `<select class="form-select form-select-sm" data-hf-field="${k}" aria-label="${escapeHtml(f.label)}"><option value="">Pick one</option>${opts}</select>`;
+      // A long option is cut off inside the select, so the check repeats the full chosen text (c6-s10-F5)
+      if (val) okText = `OK. Accepted: ${rule.labels?.[val] ?? humanize(val)}`;
     } else {
       const hint = this.readingHint_(f);
       const type = 'powerWithin' in rule || 'measured' in rule || 'interval' in rule || 'runRate' in rule ? 'number' : 'text';
@@ -517,7 +523,9 @@ export class FieldHandoverPanel {
       'cites' in rule || 'evidence' in rule
         ? ''
         : `<details class="fhf-backing"><summary>Back this with notebook entries${groups === null ? ' (optional)' : ''}${(cur.cites?.length ?? 0) > 0 ? ` (${cur.cites?.length})` : ''}</summary><div class="fhf-cites">${citeBoxes(null)}</div></details>`;
-    const note = check ? `<div class="fhf-note ${check.ok ? 'fhf-ok' : 'fhf-bad'}" data-hf-note="${k}">${check.ok ? 'OK' : escapeHtml(check.reason ?? 'Not accepted.')}</div>` : '';
+    const note = check
+      ? `<div class="fhf-note ${check.ok ? 'fhf-ok' : 'fhf-bad'}" data-hf-note="${k}">${check.ok ? escapeHtml(okText) : escapeHtml(check.reason ?? 'Not accepted.')}</div>`
+      : '';
 
     return `<div class="fhf-field" data-hf-row="${k}">${label}${widget}${backing}${note}</div>`;
   }

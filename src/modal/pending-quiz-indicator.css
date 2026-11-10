@@ -20,7 +20,9 @@
   align-items: center;
   gap: 12px;
   opacity: 0;
-  transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+  /* Hidden state is out of hit-testing and the a11y tree: it used to sit at opacity 0 under the alarm bar and read as a second, stale indicator (c6-s10-F3) */
+  visibility: hidden;
+  transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out, visibility 0s linear 0.3s;
   pointer-events: none;
   font-family: var(--tblr-font-sans-serif, system-ui, -apple-system, sans-serif);
   font-size: 14px;
@@ -29,6 +31,8 @@
 
 .pending-quiz-indicator.show {
   opacity: 1;
+  visibility: visible;
+  transition-delay: 0s;
   transform: translate(-50%, 0);
   pointer-events: auto;
   animation: quiz-indicator-pulse 2s ease-in-out infinite;

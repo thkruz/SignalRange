@@ -112,6 +112,8 @@ export abstract class DraggableBox {
       if (!this.hasBeenPlaced_ || !this.isOnScreen_(boxContent)) {
         this.placeOnFirstOpen(boxContent);
         this.hasBeenPlaced_ = true;
+      } else {
+        this.reserveSiteGutter_();
       }
       this.sendToFront();
     } else {
@@ -143,16 +145,41 @@ export abstract class DraggableBox {
    * On the field console the Site stage (hotspots, path diagram tiles) fills the middle, so a centred box swallows
    * clicks meant for it. First opens go to a narrow top-right strip, each one offset a little from the last.
    */
-  private dockBesideSite_(boxContent: HTMLElement): void {
+  protected dockBesideSite_(boxContent: HTMLElement, cascade = true): void {
     const vp = displayViewport();
     const width = Math.min(360, Math.max(260, vp.width * 0.25));
-    const step = (DraggableBox.siteDockCount_++ % 5) * 28;
+    const step = cascade ? (DraggableBox.siteDockCount_++ % 5) * 28 : 0;
     boxContent.style.width = `${width}px`;
     boxContent.style.maxWidth = `${width}px`;
     boxContent.style.maxHeight = `${Math.max(240, vp.height - 190 - step)}px`;
     boxContent.style.overflowY = 'auto';
     boxContent.style.left = `${Math.max(8, vp.width - width - 16 - step)}px`;
     boxContent.style.top = `${window.scrollY + 150 + step}px`;
+    // Reserve the strip so the Site stage shrinks to fit beside the box instead of sitting under it (c6-s02-F5)
+    this.siteGutter_ = width + 16 + step + 12;
+    this.reserveSiteGutter_();
+  }
+
+  /** Right-hand strip (px) this box takes beside the Site stage while it is open; 0 when not docked */
+  private siteGutter_ = 0;
+
+  /** Open boxes docked beside the Site stage, for the widest strip to keep clear */
+  private static readonly siteDocked_ = new Set<DraggableBox>();
+
+  private reserveSiteGutter_(): void {
+    if (this.siteGutter_ > 0) DraggableBox.siteDocked_.add(this);
+    DraggableBox.applySiteGutter_();
+  }
+
+  private releaseSiteGutter_(): void {
+    DraggableBox.siteDocked_.delete(this);
+    DraggableBox.applySiteGutter_();
+  }
+
+  private static applySiteGutter_(): void {
+    let gutter = 0;
+    for (const box of DraggableBox.siteDocked_) gutter = Math.max(gutter, box.siteGutter_);
+    document.documentElement.style.setProperty('--site-dock-gutter', `${gutter}px`);
   }
 
   /** Whether the box's title bar is inside the window (so the player can grab it) */
@@ -218,6 +245,7 @@ export abstract class DraggableBox {
 
   close(cb?: () => void) {
     if (this.boxEl) {
+      this.releaseSiteGutter_();
       this.boxEl.style.display = 'none';
       // ServiceLocator.getSoundManager()?.play(SoundNames.CLICK);
       if (cb) {
@@ -228,6 +256,7 @@ export abstract class DraggableBox {
 
   dock(cb?: () => void) {
     if (this.boxEl) {
+      this.releaseSiteGutter_();
       this.boxEl.style.display = 'none';
       // ServiceLocator.getSoundManager()?.play(SoundNames.CLICK);
       if (cb) {

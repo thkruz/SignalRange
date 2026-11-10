@@ -647,6 +647,20 @@ export async function recordsSubmit(page: Page, formId: string, input: Record<st
         await backing.first().locator('summary').click();
       }
       const boxes = d.locator(`input[data-hf-key="${key}"][data-hf-cite]`);
+      if (typeof f.cites === 'number') {
+        // "Cite everything": the panel redraws its entry list on the site tab's 1 s tick, so a run that finished a moment ago
+        // can be in the notebook before its boxes exist. Wait until the newest notebook entry has a box (the numbers in the
+        // box labels count every notebook entry). A notebook ending in an entry the list never offers (a filed hypothesis)
+        // falls through after a few ticks.
+        const evidenceCount = (await readFieldStatus(page)).evidenceCount;
+        await expect
+          .poll(async () => boxes.evaluateAll((els) => Math.max(0, ...els.map((e) => Number(/#(\d+)/u.exec(e.parentElement?.textContent ?? '')?.[1] ?? 0)))), {
+            timeout: 3500,
+            message: `form ${formId} lists the newest of ${evidenceCount} notebook entries`,
+          })
+          .toBeGreaterThanOrEqual(evidenceCount)
+          .catch(() => undefined);
+      }
       const ids = typeof f.cites === 'number' ? (await boxes.evaluateAll((els) => els.map((e) => e.getAttribute('data-hf-cite') ?? ''))).slice(0, f.cites) : f.cites;
       // A player can untick: drop leftovers from an earlier refused attempt so each filing is exactly what the input names
       const checked = await boxes.evaluateAll((els) => els.filter((e) => (e as HTMLInputElement).checked).map((e) => e.getAttribute('data-hf-cite') ?? ''));

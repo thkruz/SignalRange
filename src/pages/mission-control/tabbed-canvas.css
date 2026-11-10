@@ -195,3 +195,4 @@ html.reduce-motion .tabbed-canvas #tab-bar::after { transition: none; }
   white-space: nowrap;
 }
 .tent-control .tent-trips { font-size: 0.75rem; opacity: 0.8; }
+.tent-control .tent-confirm { align-items: center; gap: 0.4rem; font-size: 0.75rem; }

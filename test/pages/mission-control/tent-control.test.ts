@@ -62,6 +62,13 @@ describe('TentControl', () => {
     expect(host.querySelector<HTMLElement>('#tent-control')!.style.display).toBe('');
     expect(button.textContent).toBe('Step outside');
     button.click();
+    // Stepping out asks first and shows the trip it will spend
+    expect(plant.goOutside).not.toHaveBeenCalled();
+    expect(host.querySelector('#tent-confirm-text')!.textContent).toBe('This uses trip 1 of 3.');
+    host.querySelector<HTMLButtonElement>('#tent-cancel')!.click();
+    expect(plant.goOutside).not.toHaveBeenCalled();
+    button.click();
+    host.querySelector<HTMLButtonElement>('#tent-confirm')!.click();
     expect(plant.goOutside).toHaveBeenCalledTimes(1);
     expect(button.textContent).toBe('Go back in');
     expect(host.querySelector('#tent-location-text')!.textContent).toBe('Outside');

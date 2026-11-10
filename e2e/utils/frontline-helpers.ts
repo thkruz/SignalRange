@@ -421,6 +421,11 @@ export async function goToView(page: Page, view: 'inside' | 'outside'): Promise<
     if (await isShown(toggles.nth(i))) {
       await toggles.nth(i).click();
       clicked = true;
+      // Stepping out asks first (it spends a rationed trip)
+      const confirm = page.locator('#tent-confirm');
+      if (view === 'outside' && (await isShown(confirm))) {
+        await confirm.click();
+      }
       break;
     }
   }

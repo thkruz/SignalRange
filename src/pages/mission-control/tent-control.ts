@@ -58,10 +58,48 @@ export class TentControl {
       <span class="tent-trips" title="${escapeHtml(TRIP_RULE_TEXT)}">Trips <b id="tent-trips"></b></span>
       <span class="pp-badge pp-badge-bad" id="tent-spotted" style="display:none">Spotted</span>
       <button type="button" class="btn btn-sm btn-primary" id="tent-toggle"></button>
+      <span class="tent-confirm" id="tent-confirm-box" style="display:none">
+        <span id="tent-confirm-text"></span>
+        <button type="button" class="btn btn-sm btn-primary" id="tent-confirm">Go outside</button>
+        <button type="button" class="btn btn-sm" id="tent-cancel">Stay in</button>
+      </span>
     `;
-    this.root_.querySelector('#tent-toggle')?.addEventListener('click', () => this.toggle());
+    this.root_.querySelector('#tent-toggle')?.addEventListener('click', () => this.requestToggle());
+    this.root_.querySelector('#tent-confirm')?.addEventListener('click', () => {
+      this.closeConfirm_();
+      this.toggle();
+    });
+    this.root_.querySelector('#tent-cancel')?.addEventListener('click', () => this.closeConfirm_());
     parent.appendChild(this.root_);
     this.sync();
+  }
+
+  /**
+   * The button's click: going back in is immediate; stepping out spends a rationed trip,
+   * so it first asks (c6-s02-F11). The ask closes itself when the state changes.
+   */
+  requestToggle(): void {
+    const plant = this.plantOf_();
+    if (!plant) {
+      return;
+    }
+    if (plant.isOutside()) {
+      this.toggle();
+
+      return;
+    }
+    const report = plant.getReport();
+    const limit = plant.getTripLimit();
+    const over = report.trips + 1 > limit;
+    const text = over ? `Trip ${report.trips + 1} is over the camp limit of ${limit} and gets you spotted.` : `This uses trip ${report.trips + 1} of ${limit}.`;
+    this.root_.querySelector<HTMLElement>('#tent-confirm-text')!.textContent = text;
+    this.root_.querySelector<HTMLElement>('#tent-confirm-box')!.style.display = 'inline-flex';
+    this.root_.querySelector<HTMLElement>('#tent-toggle')!.style.display = 'none';
+  }
+
+  private closeConfirm_(): void {
+    this.root_.querySelector<HTMLElement>('#tent-confirm-box')!.style.display = 'none';
+    this.root_.querySelector<HTMLElement>('#tent-toggle')!.style.display = '';
   }
 
   /** Step out or back in through the plant manager (the same calls the Site tab used). */

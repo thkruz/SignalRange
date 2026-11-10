@@ -219,6 +219,8 @@ export class PendingQuizIndicator {
     requestAnimationFrame(() => {
       if (this.indicatorElement_) {
         this.indicatorElement_.classList.add('show');
+        // Second cue on the Checklist sidebar entry, so the gate is visible from every tab (c6-s03-F1)
+        document.body.dataset.quizPending = 'true';
       }
     });
   }
@@ -226,6 +228,7 @@ export class PendingQuizIndicator {
   private hide_(): void {
     if (!this.indicatorElement_) return;
     this.indicatorElement_.classList.remove('show');
+    delete document.body.dataset.quizPending;
   }
 
   /**

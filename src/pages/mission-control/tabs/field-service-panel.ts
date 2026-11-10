@@ -1,4 +1,5 @@
 import { type FormStepState, SAMPLE_STEP_LATER_NOTE } from '@app/pages/mission-control/tabs/form-step-state';
+import { LAYER_LABEL, METRIC_LABEL, PROVENANCE_LABEL } from '@app/physical/reading-labels';
 import { NUMERIC_READABLE, READABLE, type ServiceModel } from '@app/physical/service-model';
 import { type Freshness, type LayerStatus, type SampleMetric, type SampleProvenance, SERVICE_LAYERS, type ServiceLayer, type ServiceSample } from '@app/physical/service-types';
 import { escapeHtml } from '@app/physical/ui/plant-ui-helpers';
@@ -15,33 +16,7 @@ import './field-service-panel.css';
  * see a layer is not offered for it, so a green light cannot stand in for end-to-end service.
  */
 
-export const PROVENANCE_LABEL: Record<SampleProvenance, string> = {
-  'device-indicator': 'Device light',
-  'local-probe': 'Local probe',
-  'terminal-app': 'Terminal app',
-  'provider-portal': 'Provider portal',
-  'pilot-report': 'Pilot report',
-  'endpoint-report': 'Endpoint report',
-  'workload-run': 'Workload run',
-};
-
-export const LAYER_LABEL: Record<ServiceLayer, string> = {
-  power: 'Power',
-  local: 'Local network',
-  registration: 'Terminal link',
-  account: 'Account',
-  provider: 'Provider',
-  application: 'Application',
-};
-
-const METRIC_LABEL: Record<SampleMetric, string> = {
-  status: 'Status',
-  rttMs: 'Latency',
-  downMbps: 'Download',
-  upMbps: 'Upload',
-  lossPct: 'Loss',
-  jitterMs: 'Jitter',
-};
+export { LAYER_LABEL, PROVENANCE_LABEL };
 
 const FRESHNESS_LABEL: Record<Freshness, string> = {
   current: 'Current',

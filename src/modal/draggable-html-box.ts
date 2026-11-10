@@ -1,6 +1,7 @@
 import { DraggableBox } from '@app/engine/ui/draggable-box';
 import { html } from '@app/engine/utils/development/formatter';
 import { getEl } from '@app/engine/utils/get-el';
+import { displayViewport } from '@app/game-menu/display-viewport';
 import { ObjectivesManager } from '@app/objectives/objectives-manager';
 import { updateChecklistWithMotion } from '@app/presentation/transitions';
 import { Sfx } from '@app/sound/sfx-enum';
@@ -84,6 +85,23 @@ export class DraggableHtmlBox extends DraggableBox {
   open(cb?: () => void): void {
     super.open(cb);
     this.isOpen = true;
+  }
+
+  /**
+   * On the field console (the tent control is present) the checklist docks at
+   * the bottom right on first open, clear of the Site scene hotspots; elsewhere
+   * it centres as before. The player can still drag it (c6-s02-F5).
+   */
+  protected placeOnFirstOpen(boxContent: HTMLElement): void {
+    if (this.boxId !== 'draggable-html-box-checklist' || !document.getElementById('tent-control')) {
+      super.placeOnFirstOpen(boxContent);
+      return;
+    }
+    const vp = displayViewport();
+    const left = Math.max(8, vp.width - boxContent.offsetWidth - 16);
+    const top = Math.max(150, vp.height - boxContent.offsetHeight - 40);
+    boxContent.style.left = `${left}px`;
+    boxContent.style.top = `${window.scrollY + top}px`;
   }
 
   updateContent(lastChecklistHtml_: string) {

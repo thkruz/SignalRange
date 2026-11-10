@@ -162,11 +162,11 @@ describe('M21 S3 completion', () => {
 
   it('needs the interruptions to have happened and both sides read', () => {
     const svc = bootScenario(data);
-    expect(incomplete(svc, 's3-establish-pattern')[0]).toContain('Interruptions');
+    expect(incomplete(svc, 's3-establish-pattern')[0]).toContain('Terminal link read once while Down');
     // One down reading alone is not a pattern
     tick(15);
     svc.services?.takeSample('skylink', 'registration', 'pilot-report');
-    expect(incomplete(svc, 's3-establish-pattern')[0]).toContain('Interruptions');
+    expect(incomplete(svc, 's3-establish-pattern')[0]).toContain('Terminal link read once while Down');
     readPattern(svc);
     expect(incomplete(svc, 's3-establish-pattern')).toEqual([]);
   });

@@ -1,7 +1,7 @@
 .fwp { margin-top: 0.6rem; background: var(--mc-surface-1); border: 1px solid var(--mc-border); border-radius: 0.375rem; color: var(--mc-text-secondary); font-size: 0.8rem; }
 .fwp .fwp-summary { cursor: pointer; padding: 0.4rem 0.75rem; color: var(--mc-text-primary); }
 .fwp .fwp-last { color: var(--mc-text-secondary); margin-left: 0.5rem; }
-.fwp .fwp-body { padding: 0 0.75rem 0.6rem; max-height: 18rem; overflow-y: auto; }
+.fwp .fwp-body { padding: 0 0.75rem 0.6rem; max-height: 30rem; overflow-y: auto; }
 .fwp .fwp-group-title { color: var(--mc-text-muted); margin-top: 0.4rem; font-weight: 600; }
 .fwp .fwp-card { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; justify-content: space-between; padding: 0.2rem 0; border-bottom: 1px solid var(--mc-border); }
 .fwp .fwp-card-main { color: var(--mc-text-primary); }

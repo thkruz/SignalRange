@@ -32,12 +32,12 @@ const CAUSE_OPTIONS = [
 const CAUSE_IDS = CAUSE_OPTIONS.map((c) => c.id);
 /** Parts and connectors on the SkyLink chain a hands-on check can fairly look at */
 const CHAIN = ['skylink-cable:dish', 'skylink-cable:router', 'skylink-dish', 'skylink-router', 'router:dc', 'strip:router', 'power-strip', 'power-station'];
-const SYMPTOM = reading('symptom', 'a SkyLink registration reading that is not up', SKYLINK_SERVICE, 'registration', ['down', 'degraded']);
+const SYMPTOM = reading('symptom', 'a SkyLink Terminal link reading that is not up', SKYLINK_SERVICE, 'registration', ['down', 'degraded']);
 /** Either the changed reading or a hands-on look at the chain led to the plan */
 const PLAN_BASIS: EvidenceGroup = {
   ...SYMPTOM,
   id: 'basis',
-  label: 'a SkyLink registration reading that is not up, or a hands-on look at the chain',
+  label: 'a SkyLink Terminal link reading that is not up, or a hands-on look at the chain',
   orMatch: [{ kind: 'observation', subjectIn: CHAIN }],
 };
 const POWER_UP = reading('power-up', 'a SkyLink terminal power reading, up', SKYLINK_SERVICE, 'power', ['up']);
@@ -54,13 +54,13 @@ const comparisonForm: HandoverFormConfig = {
       key: 'changed',
       label: 'Reading that changed from the healthy record',
       required: true,
-      rule: pick({ registration: 'Terminal registration', 'power-and-local': 'Terminal power and local network', all: 'Every reading' }, ['registration']),
+      rule: pick({ registration: 'Terminal link', 'power-and-local': 'Terminal power and local network', all: 'Every reading' }, ['registration']),
     },
     {
       key: 'unchanged',
       label: 'Readings that still match the healthy record',
       required: true,
-      rule: pick({ registration: 'Terminal registration', 'power-and-local': 'Terminal power and local network', none: 'None of them' }, ['power-and-local']),
+      rule: pick({ registration: 'Terminal link', 'power-and-local': 'Terminal power and local network', none: 'None of them' }, ['power-and-local']),
     },
     { key: 'evidence', label: 'Observations behind the comparison', required: true, rule: { evidence: [SYMPTOM, POWER_UP, LOCAL_UP] } },
   ],
@@ -117,7 +117,7 @@ const diagnosisForm: HandoverFormConfig = {
       required: true,
       rule: pick(
         {
-          'connector-moisture': 'Moisture at the terminal connector',
+          'connector-moisture': 'Moisture at a connector',
           'cable-damage': 'Damaged cable',
           'power-supply': 'Power supply problem',
           router: 'Router problem',
@@ -132,12 +132,12 @@ const diagnosisForm: HandoverFormConfig = {
       rule: {
         evidence: [
           SYMPTOM,
-          checked('connector', 'a hands-on look or test at the terminal cable connector', [connectorId]),
+          checked('connector', 'a hands-on look or test at the part you suspect', [connectorId]),
           checked('ruled-out', 'a check on the chain that found nothing wrong', CHAIN, { negative: true }),
         ],
       },
     },
-    { key: 'repair', label: 'Repair you made', required: true, rule: { evidence: [repaired('fix', 'a repair that changed the terminal cable connector', [connectorId])] } },
+    { key: 'repair', label: 'Repair you made', required: true, rule: { evidence: [repaired('fix', 'a repair that changed the part you found', [connectorId])] } },
     { key: 'verified', label: 'Fresh application check after the repair', required: true, rule: { workload: { cardId: OLA_CHECK_CARD.id, is: ['supported'] } } },
   ],
 };
@@ -172,17 +172,18 @@ export const frontlineScenario3Data: FrontlineScenarioData = {
     {
       id: 's3-establish-pattern',
       title: 'Establish the Interruption Pattern',
-      description: "Compare the service history with Ola's symptom report. Record when interruptions occurred and what continued to work, without assigning a cause yet.",
+      description:
+        "Compare the service history with Ola's symptom report. Record when interruptions occurred and what continued to work, without assigning a cause yet. The Terminal link drops and recovers on a repeating cycle, so it reads Up most of the time: press Check on it more than once and watch the Symptom history. When the readings are in, a Knowledge Check opens (Open Quiz banner, or the ? in this list).",
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: [],
       conditions: [
-        interruptionPattern(SKYLINK_SERVICE, 2, 'Interruptions found in the service history and both sides read'),
+        interruptionPattern(SKYLINK_SERVICE, 2, 'Terminal link read once while Down and once while Up, Local network read Up, and 2 or more drops in the Symptom history'),
         {
           type: 'status-check',
-          description: 'Pattern described without a cause',
+          description: 'Knowledge Check answered: what the pattern tells you (it opens once the readings above are in)',
           params: {
             character: Character.SYSTEM,
-            question: 'The registration reading drops out and recovers while the local network stays up. What does that pattern tell you so far?',
+            question: 'The Terminal link reading drops out and recovers while the local network stays up. What does that pattern tell you so far?',
             options: [
               'The terminal link comes and goes while the local network holds, so the cause is open.',
               'The router has failed, because the local network and the terminal link both depend on it.',
@@ -203,7 +204,7 @@ export const frontlineScenario3Data: FrontlineScenarioData = {
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s3-establish-pattern'],
       conditions: [
-        samplesCurrent(SKYLINK_SERVICE, ['power', 'local', 'registration'], 'Current power, local and registration readings taken'),
+        samplesCurrent(SKYLINK_SERVICE, ['power', 'local', 'registration'], 'Current Power, Local network and Terminal link readings taken'),
         handoverValid('comparison', 'Changed and unchanged readings recorded'),
       ],
     },
@@ -303,7 +304,7 @@ export const frontlineScenario3Data: FrontlineScenarioData = {
       's3-establish-pattern': {
         character: Character.MAREK_DOMANSKI,
         audioUrl: '',
-        text: "<p>Start with the history and Ola's report. Find out what happened before choosing which part of the kit to investigate.</p>",
+        text: "<p>Start with the history and Ola's report. Find out what happened before choosing which part of the kit to investigate. The outages repeat on a short cycle, so a check only shows the Terminal link Down if you take it during an outage; keep checking and watch the Symptom history.</p>",
       },
       's3-compare-baseline': {
         character: Character.MAREK_DOMANSKI,

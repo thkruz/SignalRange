@@ -9,6 +9,19 @@ import { Rng } from '@app/simulation/rng';
 import { SimClock } from '@app/simulation/sim-clock';
 import { dB, dBm, Hertz, IfFrequency, IfSignal, MHz, RfFrequency, RfSignal } from '@app/types';
 
+/**
+ * Physical LO range an LNB model accepts, MHz. Covers C-band (about 5150 to
+ * 6080) and every Ku LO (9750, 10600, 10750, 11300, 13100). The LNB has no
+ * per-model LO data, so this is the shared bound for the UI and the model.
+ */
+export const LNB_LO_MIN_MHZ = 4000;
+export const LNB_LO_MAX_MHZ = 14500;
+
+/** Clamp a requested LO to the range an LNB can physically tune, MHz */
+export function clampLnbLoFrequency(mhz: number): number {
+  return Math.max(LNB_LO_MIN_MHZ, Math.min(LNB_LO_MAX_MHZ, mhz));
+}
+
 /** L-band IF passband of a block downconverter, Hz */
 export const LNB_IF_PASSBAND_LOW_HZ = 950e6;
 export const LNB_IF_PASSBAND_HIGH_HZ = 2150e6;

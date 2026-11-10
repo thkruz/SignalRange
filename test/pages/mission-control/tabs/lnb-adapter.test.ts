@@ -123,13 +123,25 @@ describe('LNBAdapter', () => {
       expect(gainInput.value).toBe('56.0');
     });
 
-    it('should clamp LO frequency to valid range (5000-7000)', () => {
+    it.each([13100, 10600, 5150])('accepts %s MHz LO (C and Ku band)', (mhz) => {
       const loInput = containerEl.querySelector('#lnb-lo-frequency') as HTMLInputElement;
 
-      loInput.value = '8000';
+      loInput.value = String(mhz);
       loInput.dispatchEvent(new Event('change'));
 
-      expect(loInput.value).toBe('7000');
+      expect(loInput.value).toBe(String(mhz));
+    });
+
+    it('should clamp LO frequency to valid range (4000-14500)', () => {
+      const loInput = containerEl.querySelector('#lnb-lo-frequency') as HTMLInputElement;
+
+      loInput.value = '20000';
+      loInput.dispatchEvent(new Event('change'));
+      expect(loInput.value).toBe('14500');
+
+      loInput.value = '1000';
+      loInput.dispatchEvent(new Event('change'));
+      expect(loInput.value).toBe('4000');
     });
 
     it('should clamp gain to valid range (0-65)', () => {

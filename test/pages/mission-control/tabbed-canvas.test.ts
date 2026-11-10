@@ -920,7 +920,7 @@ describe('TabbedCanvas outside-the-tent guard', () => {
     expect(confirmOpen).toHaveBeenCalledTimes(1);
     const [onConfirm, options] = confirmOpen.mock.calls[0] as [() => void, { message: string; confirmText: string; cancelText: string }];
     expect(options.message).toBe("You're outside. The laptop and equipment are in the tent.");
-    expect(options.confirmText).toBe('Go inside');
+    expect(options.confirmText).toBe('Go back in');
     expect(options.cancelText).toBe('Stay outside');
     expect(activeTabId()).toBe(before);
     expect(plant.returnInside).not.toHaveBeenCalled();
@@ -1047,7 +1047,8 @@ describe('TabbedCanvas field station tab policy', () => {
     AntennaPageRegistry.getInstance().registerStationTab({ id: 'other', label: 'Other', stationClasses: ['backyard'], factory: vi.fn() });
     selectStation();
     expect(tabIds()).toEqual(['site', 'station-skylink']);
-    expect(activeTabId()).toBe('station-skylink');
+    expect(activeTabId()).toBe('site');
+    switchHandler()?.({ tabId: 'station-skylink' });
     expect(factory).toHaveBeenCalledWith(expect.objectContaining({ state: expect.objectContaining({ id: 'GS-001' }) }), 'canvas-content');
     expect(page.activate).toHaveBeenCalled();
   });

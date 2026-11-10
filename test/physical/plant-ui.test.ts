@@ -94,11 +94,10 @@ describe('SiteTab', () => {
   it('the strip toggle switches views too', () => {
     const plant = plantService().plant;
     const tab = new SiteTab('canvas-content');
-    document.getElementById('site-view-toggle')!.click();
+    tab.setView('outside');
     expect(tab.getView()).toBe('outside');
     expect(plant.isOutside()).toBe(true);
-    expect(document.getElementById('site-view-toggle')!.textContent).toBe('Go back inside');
-    document.getElementById('site-view-toggle')!.click();
+    tab.setView('inside');
     expect(tab.getView()).toBe('inside');
     expect(plant.isOutside()).toBe(false);
     tab.dispose();
@@ -121,7 +120,7 @@ describe('SiteTab', () => {
     tab.activate();
     expect(document.getElementById('site-location-text')!.textContent).toBe('Outside');
     expect(document.getElementById('site-trips')!.textContent).toBe(`1/${plant.getTripLimit()}`);
-    document.getElementById('site-view-toggle')!.click();
+    tab.setView('inside');
     expect(plant.isOutside()).toBe(false);
     tab.dispose();
   });

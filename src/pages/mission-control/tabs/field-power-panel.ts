@@ -309,7 +309,7 @@ export class FieldPowerPanel {
       extra.push(`Fuel used ${f.fuelUsedL.toFixed(1)} L.`);
     }
     if (f.startupCostS > 0) {
-      extra.push(`Changes take about ${formatDuration(f.startupCostS)} to settle.`);
+      extra.push(`The slowest change takes about ${formatDuration(f.startupCostS)} to settle.`);
     }
     this.text_('forecast-extra', extra.join(' '));
     const box = this.el_('forecast-box');

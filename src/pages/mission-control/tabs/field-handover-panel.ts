@@ -519,8 +519,12 @@ export class FieldHandoverPanel {
       widget = `<div class="fhf-cites" data-hf-cites="${k}"><div class="fhf-hint">Required: tick notebook entries for &ldquo;${escapeHtml(f.label)}&rdquo; that show each of these. Only entries that can back this slot are listed, newest first. One entry counts once.</div><ul class="fhf-needs" data-fhf="needs-${k}">${needs}</ul>${citeBoxes(null)}</div>`;
     } else if ('workload' in rule) {
       const pathLabel = (serviceId: string): string => this.deps_.service()?.getPath(serviceId)?.label ?? serviceId;
-      const runLabel = (r: WorkloadRun): string => `Run ${r.id.replace(/^run-/u, '#')} on ${pathLabel(r.serviceId)}, started ${clock(r.startS)} (${r.status})`;
-      const mine = runs.filter((r) => r.cardId === rule.workload.cardId && (rule.workload.serviceId === undefined || r.serviceId === rule.workload.serviceId));
+      const runLabel = (r: WorkloadRun): string =>
+        `Run ${r.id.replace(/^run-/u, '#')} on ${pathLabel(r.serviceId)}, started ${clock(r.startS)} (${r.status})${r.invalidatedBy ? ', no longer counts' : ''}`;
+      // A run the plant event invalidated is hidden unless it is already the chosen value (c6-s14-F3)
+      const mine = runs.filter(
+        (r) => r.cardId === rule.workload.cardId && (rule.workload.serviceId === undefined || r.serviceId === rule.workload.serviceId) && (!r.invalidatedBy || r.id === val)
+      );
       const opts = mine.map((r) => `<option value="${escapeHtml(r.id)}"${r.id === val ? ' selected' : ''}>${escapeHtml(runLabel(r))}</option>`).join('');
       widget = `<select class="form-select form-select-sm" data-hf-field="${k}" aria-label="${escapeHtml(f.label)}"><option value="">${mine.length ? 'Pick a run' : 'No runs yet: start one from the Workloads panel first'}</option>${opts}</select>`;
     } else if ('freshnessIs' in rule) {

@@ -76,9 +76,9 @@ export class DraggableHtmlBox extends DraggableBox {
     this.onOpen();
   }
 
-  /** The Working Document opens beside the docked Checklist: drop it below that header and its Dock button (c6-s13-F8) */
-  protected override siteDockExtraStep_(): number {
-    return this.htmlId_ === 'working-document' ? 64 : 0;
+  /** The Working Document docks in a column beside the Checklist, not over its body (c6-s13-F8, c6-s14-F6) */
+  protected override siteDockColumn_(): boolean {
+    return this.htmlId_ === 'working-document';
   }
 
   protected getBoxContentHtml(): string {

@@ -107,7 +107,6 @@ function acts(svc: PhysicalPlantService): Record<string, () => void> {
           active: { value: 'run' },
           standby: { value: 'standby' },
           energy: energy(svc),
-          recovery: { value: 'about-20-s' },
           reason: { value: 'interactive-needs-skylink' },
         })
       );
@@ -129,6 +128,7 @@ function acts(svc: PhysicalPlantService): Record<string, () => void> {
           verified: { value: transfer?.id ?? '' },
           restoration: { value: String(svc.services?.intervalSpanS('s14-eurosat-restoration', 'restoration')) },
           energy: energy(svc),
+          'registration-time': { value: 'about-20-s' },
           interactive: { value: 'unavailable' },
           basis: { cites: obsIds(svc) },
         })

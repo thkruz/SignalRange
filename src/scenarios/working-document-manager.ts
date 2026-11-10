@@ -263,7 +263,7 @@ export class WorkingDocumentManager {
     }
 
     this.box_.updateContent(`
-      <div style="width:480px;max-width:70vw;max-height:60vh;overflow-y:auto;padding:0.75rem 1rem;">
+      <div style="width:480px;box-sizing:border-box;max-width:100%;max-height:60vh;overflow-y:auto;padding:0.75rem 1rem;">
         ${config?.description ? `<p class="small mb-2" style="opacity:0.8;">${config.description}</p>` : ''}
         ${referralHtml}
         ${this.entries_.length > 0 ? sectionsHtml : emptyHtml}

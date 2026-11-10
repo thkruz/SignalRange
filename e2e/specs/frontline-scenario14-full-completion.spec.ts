@@ -99,7 +99,6 @@ test.describe('Frontline S14 full completion', () => {
         active: { value: 'run' },
         standby: { value: 'standby' },
         energy: { value: wh },
-        recovery: { value: 'about-20-s' },
         reason: { value: 'interactive-needs-skylink' },
       });
       await waitForObjective(page, 's14-select-readiness');
@@ -120,6 +119,7 @@ test.describe('Frontline S14 full completion', () => {
         verified: { value: transfer },
         restoration: { value: LATEST },
         energy: { value: wh },
+        'registration-time': { value: 'about-20-s' },
         interactive: { value: 'unavailable' },
         basis: { cites: ALL },
       });

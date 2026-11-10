@@ -171,7 +171,6 @@ const readinessForm: HandoverFormConfig = {
     { key: 'active', label: 'Active connection', required: true, rule: { modeIs: { partId: 'skylink-dish' } } },
     { key: 'standby', label: 'Standby terminal', required: true, rule: { modeIs: { partId: 'vsat-modem' } } },
     { key: 'energy', label: 'Battery energy now (Wh)', required: true, rule: { powerWithin: { metric: 'socWh', tol: 40, partId: 'power-station' } } },
-    { key: 'recovery', label: 'Time the standby terminal needs to register', required: true, rule: choice('about-20-s', 'About 20 seconds') },
     {
       key: 'reason',
       label: 'Why this arrangement',
@@ -196,6 +195,12 @@ const transitionForm: HandoverFormConfig = {
       rule: { interval: { id: S14_INTERVAL_RESTORATION, span: 'restoration', tolS: 2 } },
     },
     { key: 'energy', label: 'Battery energy now (Wh)', required: true, rule: { powerWithin: { metric: 'socWh', tol: 40, partId: 'power-station' } } },
+    {
+      key: 'registration-time',
+      label: 'Time the EuroSat terminal took to register (from the Registration reading)',
+      required: true,
+      rule: choice('about-20-s', 'About 20 seconds'),
+    },
     { key: 'interactive', label: 'Interactive task while SkyLink is out', required: true, rule: choice('unavailable', 'Not available on EuroSat') },
     { key: 'basis', label: 'Observations and events behind it', required: true, rule: { evidence: [SKY_PROVIDER, EUS_REGISTRATION, EUS_APP] } },
   ],
@@ -359,7 +364,7 @@ export const frontlineScenario14Data: FrontlineScenarioData = {
         handoverValid('dependencies', 'Shared and separate dependencies recorded'),
         {
           type: 'status-check',
-          description: 'Shared Supply Risk Understood',
+          description: 'Shared Supply Risk Understood (Knowledge Check after the Shared dependencies form)',
           params: {
             character: Character.SYSTEM,
             question: 'Two working terminals depend on the same power station and workstation. What does the second terminal establish by itself?',
@@ -382,7 +387,7 @@ export const frontlineScenario14Data: FrontlineScenarioData = {
       id: 's14-select-readiness',
       title: 'Choose the Operating Configuration',
       description:
-        "Select the active connection and a supported standby state for the other terminal. Compare the resulting load, reserve, and recovery delay with the exercise's requirements before applying the arrangement.",
+        "Select the active connection and a supported standby state for the other terminal. Compare the resulting load and reserve with the exercise's requirements before applying the arrangement. The standby terminal's registration time is measured during the exercise, so it is recorded afterward.",
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s14-check-dependencies'],
       points: 15,
@@ -397,13 +402,13 @@ export const frontlineScenario14Data: FrontlineScenarioData = {
       id: 's14-test-readiness',
       title: 'Complete the Readiness Exercise',
       description:
-        'Run the approved readiness check for the selected arrangement. Measure the transition and recovery interval, then verify the workload after the service becomes ready.',
+        'The planned exercise starts by itself when this objective opens: SkyLink service stops. Take a Check of the SkyLink Provider or Terminal link while it reads Down, run the EuroSat modem, take a Check of EuroSat Registration once it is up, and run the transfer task. Then record the transition. The final arrangement is EuroSat running with SkyLink in standby.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s14-select-readiness'],
       points: 15,
       conditions: [
         eventFired(S14_EVENT_EXERCISE, 'Readiness exercise has begun'),
-        layerObserved(SKYLINK_SERVICE, 'provider', { status: 'down' }, 'SkyLink outage observed'),
+        layerObserved(SKYLINK_SERVICE, 'provider', { status: 'down' }, 'SkyLink outage observed (a SkyLink Provider or Terminal link Check that reads Down)'),
         layerObserved(EUS, 'registration', { status: 'up' }, 'EuroSat registration observed up after its startup'),
         workloadVerified({ card: TRANSFER, service: EUS, afterEvent: S14_EVENT_EXERCISE }, 'Transfer task verified on EuroSat during the exercise'),
         handoverValid('transition', 'Transition and recovery time recorded'),
@@ -443,7 +448,7 @@ export const frontlineScenario14Data: FrontlineScenarioData = {
         character: Character.IRENA_MAZUR,
         emotion: Emotion.NEUTRAL,
         audioUrl: '',
-        text: "<p>Choose an arrangement we can sustain, and include the time the other terminal needs to become usable. I'll assess the plan against those limits.</p>",
+        text: "<p>Choose an arrangement we can sustain: which terminal is active, which waits in standby, and what the battery holds. I'll assess the plan against the reserve. We will time the standby terminal when the exercise runs.</p>",
       },
       's14-test-readiness': {
         character: Character.ALEKSANDRA_WYSOCKA,

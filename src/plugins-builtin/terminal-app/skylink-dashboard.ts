@@ -22,7 +22,7 @@ import { TerminalRuntime } from './terminal-runtime';
 import type { TerminalScreenId } from './terminal-skin';
 import './skylink-app.css';
 
-export const SKYLINK_TAB_ID = 'skylink-app';
+export { SKYLINK_TAB_ID } from './skylink-tab-id';
 export const SKYLINK_TAB_LABEL = 'SkyLink';
 
 /** Screen id -> factory. WP4-6 replace the placeholders here. */

@@ -21,7 +21,7 @@ import { shapeSvg, svgOpen, VIEW_W, viewHeight } from '@app/physical/ui/plant-sv
 import { PlantTrainerBox } from '@app/physical/ui/plant-trainer-box';
 import { escapeHtml, hotspotPip, internetPaths } from '@app/physical/ui/plant-ui-helpers';
 import type { SceneLayer, SiteHotspot, SiteView } from '@app/physical/ui/site-types';
-import { SKYLINK_TAB_ID } from '@app/plugins-builtin/terminal-app/skylink-dashboard';
+import { SKYLINK_TAB_ID } from '@app/plugins-builtin/terminal-app/skylink-tab-id';
 import { TRIP_RULE_TEXT } from '@app/scoring/field-diagnosis';
 import { getAssetUrl } from '@app/utils/asset-url';
 import '@app/physical/ui/plant-ui.css';

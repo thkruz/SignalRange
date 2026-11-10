@@ -17,7 +17,7 @@ import type { PhysicalPlantManager } from '@app/physical/physical-plant-manager'
 import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import type { PlantWeather } from '@app/physical/physical-plant-types';
 import { DISRUPTIVE_ACTIONS, SWAP_COSTS_S, VERB_COSTS_S } from '@app/physical/plant-verb-rules';
-import { SKYLINK_TAB_ID } from '@app/plugins-builtin/terminal-app/skylink-dashboard';
+import { SKYLINK_TAB_ID } from '@app/plugins-builtin/terminal-app/skylink-tab-id';
 import { getAssetUrl } from '@app/utils/asset-url';
 import { activeLayers, evidenceCallouts } from './closeup-evidence';
 import { pointAlong, shapeCentre, shapeSvg, svgOpen, VIEW_W, viewHeight } from './plant-svg';

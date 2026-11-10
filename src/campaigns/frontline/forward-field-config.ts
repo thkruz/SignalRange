@@ -160,6 +160,25 @@ export const FORWARD_SKYLINK_STARTUP_S = 30;
 export const DUAL_START_WH = 360;
 export const DUAL_RESERVE_WH = 200;
 
+/** Battery draw (W) with the dish running and the modem in standby: the correct dual-terminal arrangement (S14 to S16) */
+export const DUAL_CORRECT_DRAIN_W = 115;
+/** Battery draw (W) with both terminals running: the wrong arrangement the forecast must keep rejecting */
+export const DUAL_WRONG_DRAIN_W = 170;
+
+/**
+ * Smallest whole-Wh start charge that lets a student spend `allowanceS` of scenario time on the correct arrangement and
+ * still have the planning forecast clear the reserve. The battery drains while the student works and the forecast is
+ * recomputed from what is left, so the start must cover the reserve, the drain over the planning horizon, the drain over
+ * the allowance and a small rounding margin: start >= reserve + drainW * (horizon + allowance) / 3600 + margin.
+ *
+ * The wrong arrangement must still fail at t = 0, which needs start - wrongDrainW * horizon / 3600 < reserve. Both limits
+ * can only hold together when horizon > allowance * correctDrain / (wrongDrain - correctDrain); at 115 W vs 170 W and a
+ * 2700 s allowance that is about 5640 s, so the dual-terminal scenarios plan over 7200 s rather than an hour.
+ */
+export function reserveStartWh(reserveWh: number, drainW: number, horizonS: number, allowanceS: number, marginWh = 5): number {
+  return Math.ceil(reserveWh + (drainW * (horizonS + allowanceS)) / 3600 + marginWh);
+}
+
 export interface ForwardRemoteOptions {
   /** The remote mobility policy is already in force (S14 starts after S13 left it in place) */
   policyInForce?: boolean;

@@ -4,7 +4,16 @@ import type { HandoverFormConfig } from '@app/physical/field-records';
 import type { PlantEventConfig } from '@app/physical/physical-plant-types';
 import { SKYLINK_SERVICE } from './camp-field-config';
 import { C5_REFERRAL_ID } from './continuity-fallbacks';
-import { applyForwardEurosat, applyForwardField, FORWARD_EUROSAT_SERVICE, FORWARD_EUROSAT_UNIT, FORWARD_FIRST_CARD, FORWARD_SKYLINK_ACCOUNT } from './forward-field-config';
+import {
+  applyForwardEurosat,
+  applyForwardField,
+  DUAL_CORRECT_DRAIN_W,
+  FORWARD_EUROSAT_SERVICE,
+  FORWARD_EUROSAT_UNIT,
+  FORWARD_FIRST_CARD,
+  FORWARD_SKYLINK_ACCOUNT,
+  reserveStartWh,
+} from './forward-field-config';
 import {
   correctionApproved,
   correctionFiled,
@@ -46,8 +55,14 @@ export const S15_REFERRAL = 's15-investigation-referral';
 export const S15_IMPAIRMENT = 's15-eurosat-link-loss';
 /** Each armed episode keeps the loss windows recurring this long; a repeat event re-arms it without moving the windows */
 export const S15_EPISODE_S = 1200;
-export const S15_START_WH = 300;
+
 export const S15_RESERVE_WH = 150;
+/** Scenario time a student may spend on the correct arrangement and still have the forecast clear the reserve (45 min, Ted's starting rule) */
+export const S15_PLANNING_ALLOWANCE_S = 2700;
+/** Planning horizon: 2 h, because the wrong arrangement can only keep failing the reserve with a horizon this long (see reserveStartWh) */
+export const S15_PLANNING_HORIZON_S = 7200;
+/** Start charge derived from the allowance: reserve + drain over horizon + drain over allowance + 5 Wh margin (was 300) */
+export const S15_START_WH = reserveStartWh(S15_RESERVE_WH, DUAL_CORRECT_DRAIN_W, S15_PLANNING_HORIZON_S, S15_PLANNING_ALLOWANCE_S);
 
 const EUS = FORWARD_EUROSAT_SERVICE;
 const TRANSFER = S11_TRANSFER_CARD.id;
@@ -256,7 +271,7 @@ if (settings.physicalPlant) {
   if (battery) {
     battery.socWh = S15_START_WH;
   }
-  plant.power = { reserveWh: S15_RESERVE_WH, planningHorizonS: 3600, basis: 'battery-only' };
+  plant.power = { reserveWh: S15_RESERVE_WH, planningHorizonS: S15_PLANNING_HORIZON_S, basis: 'battery-only' };
   plant.hypothesisSpecs = [{ causes: ['suspected-interference', 'unexplained-outage'], ...HYPOTHESIS_OPTS }];
   plant.causeOptions = [
     { id: 'suspected-interference', label: 'Suspected interference' },

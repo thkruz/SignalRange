@@ -7,12 +7,15 @@ import {
   applyForwardEurosat,
   applyForwardField,
   applyForwardRemote,
+  DUAL_CORRECT_DRAIN_W,
+  DUAL_RESERVE_WH,
   FORWARD_EUROSAT_SERVICE,
   FORWARD_FIRST_CARD,
   FORWARD_PROVIDER,
   FORWARD_REMOTE_SERVICE,
   FORWARD_SKYLINK_ACCOUNT,
   FORWARD_SKYLINK_UNIT,
+  reserveStartWh,
 } from './forward-field-config';
 import {
   diagramSelection,
@@ -46,6 +49,13 @@ export const S14_EVENT_EXERCISE = 's14-readiness-exercise';
 export const S14_EVENT_RETURN = 's14-skylink-returns';
 export const S14_INTERVAL_RESTORATION = 's14-eurosat-restoration';
 export const S14_NOTICE = 's14-ground-restoration-notice';
+/** Scenario time a student may spend on the correct arrangement and still have the forecast clear the reserve (45 min, Ted's starting rule) */
+export const S14_PLANNING_ALLOWANCE_S = 2700;
+/** Planning horizon: 2 h, because the wrong arrangement can only keep failing the reserve with a horizon this long (see reserveStartWh) */
+export const S14_PLANNING_HORIZON_S = 7200;
+export const S14_RESERVE_WH = DUAL_RESERVE_WH;
+/** Start charge derived from the allowance: reserve + drain over horizon + drain over allowance + 5 Wh margin */
+export const S14_START_WH = reserveStartWh(S14_RESERVE_WH, DUAL_CORRECT_DRAIN_W, S14_PLANNING_HORIZON_S, S14_PLANNING_ALLOWANCE_S);
 
 const EUS = FORWARD_EUROSAT_SERVICE;
 const TRANSFER = S11_TRANSFER_CARD.id;
@@ -217,6 +227,11 @@ if (settings.physicalPlant) {
   applyForwardEurosat(plant, { modemRunning: true });
   applyForwardRemote(plant, { policyInForce: true });
   applyForwardDualReadiness(plant);
+  const battery = plant.parts.find((p) => p.id === 'power-station');
+  if (battery) {
+    battery.socWh = S14_START_WH;
+  }
+  plant.power = { reserveWh: S14_RESERVE_WH, planningHorizonS: S14_PLANNING_HORIZON_S, basis: 'battery-only' };
   if (plant.service) {
     plant.service.intervals = [{ id: S14_INTERVAL_RESTORATION, serviceId: EUS, startEventId: S14_EVENT_EXERCISE, activationPartId: 'vsat-modem' }];
   }

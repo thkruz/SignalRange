@@ -8,11 +8,13 @@ import {
   applyForwardDualReadiness,
   applyForwardEurosat,
   applyForwardField,
+  DUAL_CORRECT_DRAIN_W,
   FORWARD_EUROSAT_SERVICE,
   FORWARD_EUROSAT_UNIT,
   FORWARD_FIRST_CARD,
   FORWARD_PROVIDER,
   FORWARD_SKYLINK_ACCOUNT,
+  reserveStartWh,
 } from './forward-field-config';
 import {
   anyServiceSupports,
@@ -34,7 +36,7 @@ import { S11_TRANSFER_CARD } from './scenario11';
 
 /**
  * Frontline Signals — Scenario 16: Complete the Independent Shift.
- * Initial state: both terminals are installed at the forward post (SkyLink unrestricted, EuroSat registered) on a 360 Wh battery
+ * Initial state: both terminals are installed at the forward post (SkyLink unrestricted, EuroSat registered) on a battery (S16_START_WH Wh)
  * with a 200 Wh reserve. Both terminals running misses the reserve, so the player picks the arrangement. The prior EuroSat
  * incident arrives through the S15 continuity link (S15_INCIDENT_LINK, canonical fallback when no record exists) and never
  * claims a source.
@@ -53,8 +55,13 @@ export const S16_EVENT_LOCAL = 's16-local-supply-loss';
 export const S16_EVENT_NOTICE = 's16-provider-notice';
 export const S16_EVENT_OUTAGE = 's16-skylink-outage';
 export const S16_NOTICE = 's16-skylink-maintenance-notice';
-export const S16_START_WH = 360;
+/** Scenario time a student may spend on the correct arrangement and still have the forecast clear the reserve (45 min, Ted's starting rule) */
+export const S16_PLANNING_ALLOWANCE_S = 2700;
+/** Planning horizon: 2 h, because the wrong arrangement can only keep failing the reserve with a horizon this long (see reserveStartWh) */
+export const S16_PLANNING_HORIZON_S = 7200;
 export const S16_RESERVE_WH = 200;
+/** Start charge derived from the allowance: reserve + drain over horizon + drain over allowance + 5 Wh margin (was 360) */
+export const S16_START_WH = reserveStartWh(S16_RESERVE_WH, DUAL_CORRECT_DRAIN_W, S16_PLANNING_HORIZON_S, S16_PLANNING_ALLOWANCE_S);
 export const S16_FINAL_WINDOW_S = 120;
 /** The outage starts this long after the external objective activates, so the first reading can be a clean one */
 export const S16_OUTAGE_OFFSET_S = 15;
@@ -238,7 +245,7 @@ if (settings.physicalPlant) {
   if (battery) {
     battery.socWh = S16_START_WH;
   }
-  plant.power = { reserveWh: S16_RESERVE_WH, planningHorizonS: 3600, basis: 'battery-only' };
+  plant.power = { reserveWh: S16_RESERVE_WH, planningHorizonS: S16_PLANNING_HORIZON_S, basis: 'battery-only' };
   // A blind reseat clears the fault without evidence, so the objective cannot lock on missing evidence: the debrief scores it
   plant.causeOptions = [
     { id: 'connector-seating', label: 'A connector is not fully seated' },

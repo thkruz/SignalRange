@@ -16,3 +16,6 @@
 .frp .frp-notice.frp-new { border-left-color: var(--mc-status-caution, #eab308); }
 .frp .frp-badge { color: var(--mc-status-caution, #eab308); }
 .frp .frp-none { color: var(--mc-text-muted); }
+.frp .frp-history, .frp .frp-depot { margin-top: 0.3rem; }
+.frp .frp-history ul { margin: 0.1rem 0 0; padding-left: 1.1rem; }
+.frp .frp-hint { flex-basis: 100%; color: var(--mc-text-muted); }

@@ -171,8 +171,25 @@ export abstract class DraggableBox {
     }
   }
 
+  /**
+   * Boxes that must stay above every docked or floating box while open: a close-up's X would otherwise be
+   * covered by the Checklist box whenever an objective change brings it forward (c6-s02-F5, c6-s07-F5).
+   */
+  private static readonly TOP_LAYER_IDS_ = ['part-closeup-modal'];
+
   protected sendToFront() {
-    getEl(`${this.boxId}`)!.style.zIndex = DraggableBox.increaseMaxZIndex().toString();
+    const el = getEl(`${this.boxId}`)!;
+    let z = DraggableBox.increaseMaxZIndex();
+    if (!DraggableBox.TOP_LAYER_IDS_.includes(this.boxId)) {
+      for (const id of DraggableBox.TOP_LAYER_IDS_) {
+        const top = document.getElementById(`${id}-container`);
+        const topZ = Number(top?.style.zIndex) || 0;
+        if (top && top.style.display !== 'none' && top.isConnected && topZ > 0 && topZ <= z) {
+          z = topZ - 1;
+        }
+      }
+    }
+    el.style.zIndex = z.toString();
   }
 
   close(cb?: () => void) {

@@ -488,11 +488,11 @@ export class FieldHandoverPanel {
       const needs = rule.evidence.map((g) => `<li>${escapeHtml(g.label)}${(g.min ?? 1) > 1 ? ` (${g.min})` : ''}</li>`).join('');
       widget = `<div class="fhf-cites" data-hf-cites="${k}"><div class="fhf-hint">Required: tick notebook entries for &ldquo;${escapeHtml(f.label)}&rdquo; that show each of these. Only entries that can back this slot are listed, newest first. One entry counts once.</div><ul class="fhf-needs" data-fhf="needs-${k}">${needs}</ul>${citeBoxes(null)}</div>`;
     } else if ('workload' in rule) {
+      const pathLabel = (serviceId: string): string => this.deps_.service()?.getPath(serviceId)?.label ?? serviceId;
+      const runLabel = (r: WorkloadRun): string => `Run ${r.id.replace(/^run-/u, '#')} on ${pathLabel(r.serviceId)}, started ${clock(r.startS)} (${r.status})`;
       const mine = runs.filter((r) => r.cardId === rule.workload.cardId && (rule.workload.serviceId === undefined || r.serviceId === rule.workload.serviceId));
-      const opts = mine
-        .map((r) => `<option value="${escapeHtml(r.id)}"${r.id === val ? ' selected' : ''}>${escapeHtml(r.id)} (${escapeHtml(r.status)}, started ${clock(r.startS)})</option>`)
-        .join('');
-      widget = `<select class="form-select form-select-sm" data-hf-field="${k}" aria-label="${escapeHtml(f.label)}"><option value="">${mine.length ? 'Pick a run' : 'No runs yet'}</option>${opts}</select>`;
+      const opts = mine.map((r) => `<option value="${escapeHtml(r.id)}"${r.id === val ? ' selected' : ''}>${escapeHtml(runLabel(r))}</option>`).join('');
+      widget = `<select class="form-select form-select-sm" data-hf-field="${k}" aria-label="${escapeHtml(f.label)}"><option value="">${mine.length ? 'Pick a run' : 'No runs yet: start one from the Workloads panel first'}</option>${opts}</select>`;
     } else if ('freshnessIs' in rule) {
       const opts = FRESHNESS_ANSWERS.map(([id, text]) => `<option value="${id}"${id === val ? ' selected' : ''}>${text}</option>`).join('');
       widget = `<select class="form-select form-select-sm" data-hf-field="${k}" aria-label="${escapeHtml(f.label)}"><option value="">Pick one</option>${opts}</select>`;

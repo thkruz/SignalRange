@@ -41,6 +41,10 @@ export interface EquipmentUnitConfig {
   record: Omit<EquipmentRecord, 'unitId' | 'acceptedAtS'>;
   /** What the unit shows. Absent = identical to the record (no discrepancy). */
   installed?: InstalledUnit;
+  /** Configuration and access history lines shown with the record (the player can read and cite them) */
+  history?: Array<{ at: string; text: string }>;
+  /** What the depot test record shows, one line */
+  depotRecord?: string;
 }
 
 export interface ProviderNotice {
@@ -51,6 +55,8 @@ export interface ProviderNotice {
   kind: 'ground-capacity' | 'remote-mobility' | 'maintenance';
   issuedAtS: number;
   text: string;
+  /** Stamp the notice with the scenario time it was delivered instead of `issuedAtS` */
+  issuedOnDelivery?: boolean;
 }
 
 export type RequestStatus = 'pending' | 'approved' | 'rejected';
@@ -81,6 +87,10 @@ export interface CorrectionRequestConfig {
   responseEventId: string;
   /** M25: a referral to a specialist. Filing needs no record change and answering it never edits the record. */
   referral?: boolean;
+  /** One line shown with the request, e.g. what the offered value is */
+  note?: string;
+  /** Notice delivered to the inbox when the request is answered */
+  replyNotice?: string;
 }
 
 export interface EquipmentConfig {
@@ -143,6 +153,16 @@ export class EquipmentLedger {
   /** Authored label for the inventory view (the id when none) */
   label(unitId: string): string {
     return this.cfg_.units.find((u) => u.unitId === unitId)?.label ?? unitId;
+  }
+
+  /** Authored configuration and access history for a unit (empty when none) */
+  history(unitId: string): Array<{ at: string; text: string }> {
+    return (this.cfg_.units.find((u) => u.unitId === unitId)?.history ?? []).map((h) => ({ ...h }));
+  }
+
+  /** Authored depot test record line for a unit */
+  depotRecord(unitId: string): string | undefined {
+    return this.cfg_.units.find((u) => u.unitId === unitId)?.depotRecord;
   }
 
   getRecord(unitId: string): EquipmentRecord | undefined {
@@ -267,6 +287,10 @@ export class EquipmentLedger {
         delete rec.acceptedAtS;
       }
     }
+    const replyNotice = this.requestConfigs().find((r) => r.id === requestId)?.replyNotice;
+    if (replyNotice) {
+      this.deliverNotice(replyNotice);
+    }
   }
 
   // ------------------------------------------------------------ notices
@@ -299,7 +323,7 @@ export class EquipmentLedger {
     for (const d of [...this.delivered_.values()].sort((a, b) => a.deliveredAtS - b.deliveredAtS)) {
       const n = (this.cfg_.notices ?? []).find((x) => x.id === d.id && x.version === d.version);
       if (n && (providerId === undefined || n.providerId === providerId)) {
-        out.push({ ...n });
+        out.push({ ...n, ...(n.issuedOnDelivery ? { issuedAtS: d.deliveredAtS } : {}) });
       }
     }
 

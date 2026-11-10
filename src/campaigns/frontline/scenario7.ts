@@ -19,6 +19,7 @@ const settings = createFrontlineSettings(7);
 const UNIT = 'kivilahti-router';
 const REQUEST = 's7-config-approval';
 const APPROVAL_EVENT = 's7-config-approved';
+const REPLY_NOTICE = 's7-config-reply';
 
 /** The terminal hardware a delivery check can fairly look at */
 const HARDWARE = ['skylink-router', 'skylink-dish', 'skylink-cable', 'skylink-cable:dish', 'skylink-cable:router'];
@@ -66,7 +67,12 @@ const readinessForm: HandoverFormConfig = {
   documentSection: 'Readiness',
   fields: [
     { key: 'hardware', label: 'Hardware checks you made', required: true, rule: { evidence: [HARDWARE_CHECKED] } },
-    { key: 'registration', label: 'Registration reading', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'registration' } } },
+    {
+      key: 'registration',
+      label: 'Terminal link reading (take it just before you fill this form; an old reading is refused as out of date)',
+      required: true,
+      rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'registration' } },
+    },
     {
       key: 'authorization',
       label: 'Authorization state',
@@ -145,7 +151,7 @@ const acceptanceForm: HandoverFormConfig = {
     },
     {
       key: 'verified',
-      label: 'Fresh service check after the correction',
+      label: 'Fresh service check after the correction (needs a Workload run started after the reply)',
       required: true,
       rule: { workload: { cardId: OLA_CHECK_CARD.id, is: ['supported'], serviceId: SKYLINK_SERVICE } },
     },
@@ -158,17 +164,46 @@ if (settings.physicalPlant) {
     units: [
       {
         unitId: UNIT,
-        label: 'Replacement router',
+        label: 'SkyLink router (replacement unit)',
         record: { serial: 'RT-4471', accountId: 'camp-skylink', configVersion: 'handover-v2' },
         installed: { serial: 'RT-4471', accountId: 'camp-skylink', configVersion: 'depot-v3' },
+        history: [
+          { at: 'Depot, before dispatch', text: 'Serial RT-4471 assigned to the Kivilahti camp account. Approval reference HO-2291.' },
+          { at: 'Depot, before dispatch', text: 'Configuration set to handover-v2. Approval reference HO-2291 (the approved handover).' },
+          { at: 'Depot, after the hardware test', text: 'Configuration changed to depot-v3. Approval reference: none recorded.' },
+        ],
+        depotRecord: 'Hardware test passed (power, radio, port loop). No service test is recorded after the configuration was changed.',
       },
     ],
-    requests: [{ id: REQUEST, unitId: UNIT, field: 'configVersion', to: 'depot-v3', responseEventId: APPROVAL_EVENT }],
+    notices: [
+      {
+        id: REPLY_NOTICE,
+        version: 1,
+        providerId: 'service-contact',
+        affects: { accountId: 'camp-skylink' },
+        kind: 'maintenance',
+        issuedAtS: 0,
+        issuedOnDelivery: true,
+        text: 'Correction approved. Configuration version depot-v3 is authorized for router RT-4471 under change reference CH-2231. The record now reads depot-v3. Run a fresh service check before you accept the unit.',
+      },
+    ],
+    requests: [
+      {
+        id: REQUEST,
+        unitId: UNIT,
+        field: 'configVersion',
+        to: 'depot-v3',
+        responseEventId: APPROVAL_EVENT,
+        replyNotice: REPLY_NOTICE,
+        note: 'depot-v3 is the version the unit is running now; the handover record lists handover-v2. The service contact decides whether depot-v3 is authorized. The answer arrives in the Notice inbox below after a short wait.',
+      },
+    ],
   };
   settings.physicalPlant.events = [
     {
       id: APPROVAL_EVENT,
       startAfterObjectiveId: 's07-assess-discrepancy',
+      offsetS: 45,
       actions: [{ kind: 'respond-request', requestId: REQUEST, status: 'approved' }],
       logLine: 'The service contact answers the correction request.',
     },
@@ -212,7 +247,7 @@ export const frontlineScenario7Data: FrontlineScenarioData = {
       conditions: [
         {
           type: 'part-inspected',
-          description: 'Replacement Router Inspected',
+          description: 'SkyLink router inspected',
           mustMaintain: false,
           params: {
             partId: 'skylink-router',
@@ -225,16 +260,18 @@ export const frontlineScenario7Data: FrontlineScenarioData = {
     {
       id: 's07-review-records',
       title: 'Review the Configuration History',
-      description: 'Review the access and configuration records against the approved handover. Preserve the entry whose authorization cannot be established.',
+      description:
+        'Read the configuration and access history under Records and notices (Site tab) and compare it with the approved handover. Then fill in the Configuration review form: submitting it preserves the entry whose authorization cannot be established.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s07-separate-readiness'],
       points: 15,
-      conditions: [handoverValid('config-review', 'Unexplained configuration entry preserved')],
+      conditions: [handoverValid('config-review', 'Configuration review submitted, unexplained entry preserved')],
     },
     {
       id: 's07-assess-discrepancy',
       title: 'State What the Evidence Supports',
-      description: 'The reviewed configuration record contains an entry without an approval reference. Assess what that omission establishes before requesting a correction.',
+      description:
+        'The reviewed configuration record contains an entry without an approval reference. Assess what that omission establishes before requesting a correction. A Knowledge Check opens for this step (Open Quiz banner, or the ? in this list); answering it completes the step.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s07-review-records'],
       points: 10,
@@ -262,7 +299,7 @@ export const frontlineScenario7Data: FrontlineScenarioData = {
       id: 's07-request-correction',
       title: 'Request the Authorized Correction',
       description:
-        'Send the preserved record and equipment identifiers to the authorized service contact. Retain the response and approved configuration before accepting service.',
+        'File the correction request under Records and notices. The service contact answers in the Notice inbox after a short wait. Retain the response and approved configuration before accepting service.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s07-assess-discrepancy'],
       points: 15,
@@ -271,12 +308,13 @@ export const frontlineScenario7Data: FrontlineScenarioData = {
     {
       id: 's07-verify-acceptance',
       title: 'Verify and Hand Over the Unit',
-      description: 'Run a fresh service check after the approved correction. Submit the accepted configuration, its evidence, and any unresolved concerns for the next operator.',
+      description:
+        'Start an Ola application check from the Workloads panel after the approved correction (the form needs a run that began after the reply). Accept the unit once every record row reads Matches, then submit the accepted configuration, its evidence, and any unresolved concerns for the next operator.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s07-request-correction'],
       points: 25,
       conditions: [
-        recordAccepted(UNIT, 'Replacement router accepted on a matching record'),
+        recordAccepted(UNIT, 'SkyLink router accepted on a matching record'),
         workloadVerified({ card: OLA_CHECK_CARD.id, service: SKYLINK_SERVICE, afterRequestApproved: REQUEST }, 'Service checked after the approved correction'),
         handoverCurrent('acceptance', 'Authorized service verified and handover submitted'),
       ],

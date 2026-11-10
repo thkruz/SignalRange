@@ -187,6 +187,16 @@ export class FieldRecordsPanel {
           u.acceptedAtS !== undefined
             ? `<span class="frp-ok" data-frp="accepted-${id}">Accepted at ${clock(u.acceptedAtS)}</span>`
             : `<button type="button" class="btn btn-sm btn-outline-primary" data-rp-act="accept" data-rp-unit="${id}">Accept this unit</button>`;
+        const history = ledger.history(u.unitId);
+        const historyHtml = history.length
+          ? `<div class="frp-history" data-frp="history-${id}"><b>Configuration and access history</b><ul>${history.map((h) => `<li>${escapeHtml(h.at)}: ${escapeHtml(h.text)}</li>`).join('')}</ul></div>`
+          : '';
+        const depot = ledger.depotRecord(u.unitId);
+        const depotHtml = depot ? `<div class="frp-depot" data-frp="depot-${id}"><b>Depot test record</b>: ${escapeHtml(depot)}</div>` : '';
+        const needs =
+          u.acceptedAtS === undefined && differs.size > 0
+            ? `<div class="frp-hint" data-frp="accept-needs-${id}">Accepting needs every row above to read Matches. A row that Differs has to be corrected through the records office first.</div>`
+            : '';
         const reqs = ledger
           .requestConfigs()
           .filter((r) => r.unitId === u.unitId)
@@ -195,7 +205,7 @@ export class FieldRecordsPanel {
 
         return `<div class="frp-unit" data-frp-unit="${id}"><div class="frp-unit-title">${escapeHtml(ledger.label(u.unitId))}</div>
           <table class="frp-table"><thead><tr><th></th><th>Record</th><th>On site</th><th></th></tr></thead><tbody>${rows}</tbody></table>
-          <div class="frp-actions">${action}</div>${reqs}</div>`;
+          ${historyHtml}${depotHtml}<div class="frp-actions">${action}</div>${needs}${reqs}</div>`;
       })
       .join('');
 
@@ -226,7 +236,7 @@ export class FieldRecordsPanel {
       .map((o) => `<option value="${escapeHtml(o)}"${o === cur ? ' selected' : ''}>${escapeHtml(o)}</option>`)
       .join('')}</select>`;
 
-    return `<div class="frp-req" data-frp-req="${rid}">Ask the records office to change the ${field} to ${select} <button type="button" class="btn btn-sm btn-outline-secondary" data-rp-act="request" data-rp-req="${rid}">File correction request</button></div>`;
+    return `<div class="frp-req" data-frp-req="${rid}">Ask the records office to change the ${field} to ${select} <button type="button" class="btn btn-sm btn-outline-secondary" data-rp-act="request" data-rp-req="${rid}">File correction request</button>${cfg.note ? `<div class="frp-hint">${escapeHtml(cfg.note)}</div>` : ''}</div>`;
   }
 
   private noticesHtml_(notices: ReturnType<EquipmentLedger['deliveredNotices']>): string {

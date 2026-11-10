@@ -88,6 +88,7 @@ function acts(svc: PhysicalPlantService): Record<string, () => void> {
     's07-assess-discrepancy': () => undefined,
     's07-request-correction': () => {
       expect(svc.records?.equipment?.submitCorrection(REQUEST)?.ok).toBe(true);
+      tick(50);
     },
     's07-verify-acceptance': () => {
       const runId = freshCheck(svc);
@@ -165,7 +166,7 @@ describe('M23 S7 completion', () => {
   it('holds the answer until the request is filed, and a wrong requested version never accepts the unit', () => {
     const svc = bootScenario(data);
     driveObjectives(data, svc, states, acts(svc), { stopAfter: 's07-assess-discrepancy' });
-    tick(2);
+    tick(50);
     expect(svc.events?.hasFired('s7-config-approved')).toBe(true);
     expect(incomplete(svc, 's07-request-correction')[0]).toContain('filed');
     const wrong = svc.records?.equipment?.submitCorrection(REQUEST, 'handover-v9');
@@ -173,6 +174,20 @@ describe('M23 S7 completion', () => {
     // The record now carries a version that still differs from the unit
     expect(svc.records?.equipment?.accept(UNIT).ok).toBe(false);
     expect(incomplete(svc, 's07-verify-acceptance').length).toBeGreaterThan(0);
+  });
+
+  it('shows the history and depot record, waits before answering, and posts the reply to the inbox', () => {
+    const svc = bootScenario(data);
+    const ledger = svc.records?.equipment;
+    expect(ledger?.history(UNIT).some((h) => h.text.includes('none recorded'))).toBe(true);
+    expect(ledger?.depotRecord(UNIT)).toContain('No service test');
+    driveObjectives(data, svc, states, acts(svc), { stopAfter: 's07-assess-discrepancy' });
+    ledger?.submitCorrection(REQUEST);
+    expect(ledger?.getRequest(REQUEST)?.status).toBe('pending');
+    expect(ledger?.deliveredNotices()).toEqual([]);
+    tick(50);
+    expect(ledger?.getRequest(REQUEST)?.status).toBe('approved');
+    expect(ledger?.deliveredNotices()[0]?.text).toContain('depot-v3');
   });
 
   it('does not verify with a service check that started before the approval', () => {

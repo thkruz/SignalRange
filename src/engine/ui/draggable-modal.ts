@@ -73,6 +73,19 @@ export abstract class DraggableModal extends DraggableBox {
     }
   }
 
+  /**
+   * The modal's `.modal` container is a fixed stacking context (z-index 1000), so the box's own z-index never
+   * lifts it above a box in another context such as the docked Checklist. Move the container with the box.
+   */
+  protected override sendToFront(): void {
+    super.sendToFront();
+    const container = getEl(`${this.boxId}-container`);
+    const box = getEl(`${this.boxId}`);
+    if (container && box) {
+      container.style.zIndex = box.style.zIndex;
+    }
+  }
+
   protected initDraggabilly_() {
     const boxContent = getEl(`${this.boxId}`);
 

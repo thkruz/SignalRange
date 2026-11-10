@@ -21,6 +21,8 @@ import {
   type LinkSample,
   type PlantReader,
   type ProviderState,
+  type RecoveryInterval,
+  type RecoveryIntervalConfig,
   type SampleMetric,
   type SampleProvenance,
   SERVICE_LAYERS,
@@ -66,6 +68,7 @@ const METRIC_UNIT: Record<SampleMetric, ServiceSample['unit']> = {
   downMbps: 'Mbps',
   upMbps: 'Mbps',
   lossPct: '%',
+  jitterMs: 'ms',
 };
 
 /** Moisture on the terminal link drops registration for FLAP_DOWN_S of every FLAP_PERIOD_S (plant moisture is a steady loss, not an intermittent drop) */
@@ -96,6 +99,8 @@ export class ServiceModel {
   private sampleSeq_ = 0;
   private samples_: ServiceSample[] = [];
   private history_: ServiceHistoryEntry[] = [];
+  private readonly intervalCfg_: RecoveryIntervalConfig[];
+  private intervals_: RecoveryInterval[] = [];
   private lastStatus_ = new Map<string, LayerStatus>();
   private lastUpdateS_: number | null = null;
   private cache_ = new Map<string, LayerReading[]>();
@@ -110,6 +115,7 @@ export class ServiceModel {
     for (const e of cfg.endpoints ?? []) this.endpoints_.set(e.id, { ...e });
     this.plant_ = plant;
     this.deps_ = deps;
+    this.intervalCfg_ = cfg.intervals ?? [];
     this.impairment_ = cfg.impairments?.length ? new AuthoredLinkImpairment(cfg.impairments) : null;
     this.maxAge_ = { ...DEFAULT_MAX_AGE_S, ...cfg.maxAgeS };
     this.link_ =
@@ -210,12 +216,79 @@ export class ServiceModel {
         const previous = this.lastStatus_.get(key);
         this.lastStatus_.set(key, reading.status);
         if (previous !== undefined && previous !== reading.status) {
-          this.history_.push({ tS, serviceId: path.id, layer: reading.layer, from: previous, to: reading.status });
+          this.history_.push({ tS, serviceId: path.id, layer: reading.layer, from: previous, to: reading.status, reason: reading.reason });
         }
       }
     }
     if (this.history_.length > HISTORY_CAP) {
       this.history_ = this.history_.slice(-HISTORY_CAP);
+    }
+    this.trackIntervals_(tS);
+  }
+
+  // ------------------------------------------------------- recovery intervals
+
+  /** True when a scenario measures recovery intervals (the plant service then steps a long skip in one-second slices) */
+  hasIntervals(): boolean {
+    return this.intervalCfg_.length > 0;
+  }
+
+  /** Recovery intervals opened so far (copies), optionally of one service */
+  intervals(serviceId?: string): RecoveryInterval[] {
+    return this.intervals_.filter((i) => serviceId === undefined || i.serviceId === serviceId).map((i) => ({ ...i }));
+  }
+
+  /**
+   * Length (seconds) of a span of a recovery interval, or null while it is still open or its boundary is unknown.
+   * restoration = incident start to usable service; response = start to the operator's activation;
+   * startup = activation to the terminal registering.
+   */
+  intervalSpanS(id: string, span: 'restoration' | 'response' | 'startup'): number | null {
+    const rec = this.intervals_.find((i) => i.id === id);
+    if (!rec) {
+      return null;
+    }
+    if (span === 'restoration') {
+      return rec.usableS === null ? null : rec.usableS - rec.startS;
+    }
+    if (span === 'response') {
+      return rec.activationS === null ? null : Math.max(0, rec.activationS - rec.startS);
+    }
+
+    return rec.activationS === null || rec.registeredS === null ? null : Math.max(0, rec.registeredS - rec.activationS);
+  }
+
+  interval(id: string): RecoveryInterval | null {
+    const found = this.intervals_.find((i) => i.id === id);
+
+    return found ? { ...found } : null;
+  }
+
+  /**
+   * Fill in the boundaries of every open interval from the timeline at plant second `tS`. The registration and
+   * application boundaries are stamped by the step that first sees them, so the plant service steps in one-second
+   * slices while an interval is open: a coarse skip then stamps the same second a stepped run would.
+   */
+  private trackIntervals_(tS: number): void {
+    for (const cfg of this.intervalCfg_) {
+      const rec = this.intervals_.find((i) => i.id === cfg.id);
+      if (!rec || rec.usableS !== null) {
+        continue;
+      }
+      if (rec.activationS === null && cfg.activationPartId) {
+        const entry = this.plant_.getLog?.().find((e) => e.verb === 'setMode' && e.target === cfg.activationPartId && e.tSeconds >= rec.startS);
+        if (entry) {
+          rec.activationS = entry.tSeconds;
+        }
+      }
+      const layers = this.layers(cfg.serviceId);
+      if (rec.registeredS === null && layers.find((l) => l.layer === 'registration')?.status === 'up') {
+        rec.registeredS = tS;
+      }
+      const app = layers.find((l) => l.layer === 'application')?.status;
+      if (rec.registeredS !== null && (app === 'up' || app === 'degraded')) {
+        rec.usableS = tS;
+      }
     }
   }
 
@@ -239,7 +312,7 @@ export class ServiceModel {
       }
       const previous = this.lastStatus_.get(key) as LayerStatus;
       if (previous !== edge.status) {
-        this.history_.push({ tS: edge.tS, serviceId: path.id, layer: 'registration', from: previous, to: edge.status });
+        this.history_.push({ tS: edge.tS, serviceId: path.id, layer: 'registration', from: previous, to: edge.status, reason: edge.status === 'down' ? 'moisture-flap' : 'ok' });
         this.lastStatus_.set(key, edge.status);
       }
     }
@@ -261,7 +334,7 @@ export class ServiceModel {
       const next: LayerStatus = edge.impaired ? 'down' : 'up';
       const previous = this.lastStatus_.get(key) as LayerStatus;
       if (previous !== next) {
-        this.history_.push({ tS: edge.tS, serviceId: path.id, layer: 'registration', from: previous, to: next });
+        this.history_.push({ tS: edge.tS, serviceId: path.id, layer: 'registration', from: previous, to: next, reason: next === 'down' ? 'link-lost' : 'ok' });
         this.lastStatus_.set(key, next);
       }
     }
@@ -284,25 +357,27 @@ export class ServiceModel {
     via: SampleProvenance,
     endpointId?: string,
     metric: SampleMetric = 'status'
-  ): { tS: number; value: number | LayerStatus; metric: SampleMetric } {
+  ): { tS: number; value: number | LayerStatus; metric: SampleMetric; windowS?: number } {
     const tS = this.deps_.now();
     let value: number | LayerStatus = 'unknown';
     let usedMetric: SampleMetric = 'status';
+    let windowS: number | undefined;
 
     if (this.getPath(serviceId) && READABLE[via].includes(layer)) {
       value = this.statusFor_(serviceId, layer, endpointId);
       if (metric !== 'status' && NUMERIC_READABLE[via] === layer) {
         const link = this.link_.sample(serviceId, tS);
         if (link) {
-          value = link[metric];
+          value = link[metric] ?? 'unknown';
           usedMetric = metric;
+          windowS = metric === 'jitterMs' ? link.jitterWindowS : undefined;
         } else {
           value = 'down';
         }
       }
     }
 
-    return { tS, value, metric: usedMetric };
+    return { tS, value, metric: usedMetric, ...(windowS === undefined ? {} : { windowS }) };
   }
 
   /**
@@ -310,7 +385,7 @@ export class ServiceModel {
    * cannot establish end-to-end service) yields an `unknown` sample, which is never current.
    */
   takeSample(serviceId: string, layer: ServiceLayer, via: SampleProvenance, endpointId?: string, metric: SampleMetric = 'status'): ServiceSample {
-    const { tS, value, metric: usedMetric } = this.peekSample(serviceId, layer, via, endpointId, metric);
+    const { tS, value, metric: usedMetric, windowS } = this.peekSample(serviceId, layer, via, endpointId, metric);
 
     this.sampleSeq_ += 1;
     const sample: ServiceSample = {
@@ -321,6 +396,7 @@ export class ServiceModel {
       metric: usedMetric,
       value,
       unit: METRIC_UNIT[usedMetric],
+      ...(windowS === undefined ? {} : { windowS }),
       tS,
       provenance: via,
       configEpoch: this.configEpoch_,
@@ -374,9 +450,16 @@ export class ServiceModel {
     this.cacheTimeS_ = Number.NaN;
   }
 
-  bumpEvent(eventId: string): void {
+  bumpEvent(eventId: string, atS?: number): void {
     this.eventEpoch_ += 1;
     this.cacheTimeS_ = Number.NaN;
+    for (const cfg of this.intervalCfg_) {
+      if (cfg.startEventId === eventId && !this.intervals_.some((i) => i.id === cfg.id)) {
+        const startS = atS ?? this.plant_.getTimeSeconds();
+        this.intervals_.push({ id: cfg.id, serviceId: cfg.serviceId, startS, activationS: null, registeredS: null, usableS: null });
+        this.trackIntervals_(this.plant_.getTimeSeconds());
+      }
+    }
     for (const listener of [...this.eventListeners_]) listener(eventId);
   }
 
@@ -447,6 +530,7 @@ export class ServiceModel {
       lastUpdateS: this.lastUpdateS_,
       sampleSeq: this.sampleSeq_,
       ...(this.impairment_ ? { impairments: this.impairment_.getState() } : {}),
+      ...(this.intervalCfg_.length ? { intervals: this.intervals_.map((i) => ({ ...i })) } : {}),
     };
   }
 
@@ -470,6 +554,7 @@ export class ServiceModel {
     this.lastUpdateS_ = state.lastUpdateS ?? null;
     this.sampleSeq_ = state.sampleSeq;
     this.impairment_?.restoreState(state.impairments);
+    this.intervals_ = (state.intervals ?? []).map((i) => ({ ...i }));
     this.cacheTimeS_ = Number.NaN;
   }
 

@@ -32,6 +32,9 @@ import type { ServiceModelState } from './service-types';
 import { WorkloadRunner } from './workload-runner';
 import type { WorkloadRunnerState } from './workload-types';
 
+/** Slice (scenario seconds) a long skip is stepped in while the service model measures a recovery interval */
+const FINE_STEP_S = 1;
+
 const DEFAULT_AMBIENT_C = 15;
 
 export class PhysicalPlantService {
@@ -40,6 +43,8 @@ export class PhysicalPlantService {
   readonly plant: PhysicalPlantManager;
   private weatherOverride_: Partial<PlantEnvironment> = {};
   private lastSyncS_: number;
+  /** While a long skip is stepped in slices: the slice's scenario second, as the plant and the service model see it */
+  private fineNowS_: number | null = null;
   private readonly boundUpdateHandler_: () => void;
   private readonly sounds_: PlantSoundController;
   /** Present only when the plant config authors events */
@@ -60,7 +65,7 @@ export class PhysicalPlantService {
     }
     this.lastSyncS_ = SimClock.scenarioElapsedMs() / 1000;
     this.plant = new PhysicalPlantManager(config, {
-      now: () => SimClock.scenarioElapsedMs() / 1000,
+      now: () => this.fineNowS_ ?? SimClock.scenarioElapsedMs() / 1000,
       skip: (seconds) => {
         SimClock.skip(seconds * 1000);
         this.sync_();
@@ -72,7 +77,7 @@ export class PhysicalPlantService {
         this.weatherOverride_ = { ...this.weatherOverride_, ...weather };
       },
     });
-    this.services = config.service ? new ServiceModel(config.service, this.plant, undefined, { now: () => SimClock.scenarioElapsedMs() / 1000 }) : null;
+    this.services = config.service ? new ServiceModel(config.service, this.plant, undefined, { now: () => this.fineNowS_ ?? SimClock.scenarioElapsedMs() / 1000 }) : null;
     this.evidence = config.service || config.events?.length ? new EvidenceLog(this.plant, this.services) : null;
     this.workloads =
       config.workloads && this.services
@@ -126,9 +131,9 @@ export class PhysicalPlantService {
           setLinkImpairment: (id, active, durationS, atS) => this.services?.setImpairment(id, active, durationS, atS),
           clearFault: (faultId) => this.plant.clearFault(faultId),
           setWeather: (weather) => this.plant.setWeather(weather),
-          onFire: (eventId) => {
+          onFire: (eventId, atS) => {
             if (this.services) {
-              this.services.bumpEvent(eventId);
+              this.services.bumpEvent(eventId, atS);
             } else {
               this.evidence?.recordEvent(eventId);
             }
@@ -344,7 +349,25 @@ export class PhysicalPlantService {
     const nowS = SimClock.scenarioElapsedMs() / 1000;
     const dt = nowS - this.lastSyncS_;
     this.lastSyncS_ = nowS;
-    if (dt > 0) {
+    if (dt > FINE_STEP_S && this.services?.hasIntervals()) {
+      // A measured interval must not depend on how long the skip was: step the plant and the service timeline in
+      // one-second slices so the boundaries are stamped to the second (events and runs still settle at the endpoint)
+      const fromS = nowS - dt;
+      let left = dt;
+      let at = fromS;
+      try {
+        while (left > FINE_STEP_S) {
+          at += FINE_STEP_S;
+          this.fineNowS_ = at;
+          this.plant.update(FINE_STEP_S);
+          this.services.update();
+          left -= FINE_STEP_S;
+        }
+      } finally {
+        this.fineNowS_ = null;
+      }
+      this.plant.update(left);
+    } else if (dt > 0) {
       this.plant.update(dt);
     }
     this.events?.update(nowS);

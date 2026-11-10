@@ -27,7 +27,7 @@ const STATUS_LABEL: Record<WorkloadRun['status'], string> = {
   aborted: 'Aborted',
 };
 
-const METRIC_LABEL: Record<string, string> = { downMbps: 'download', upMbps: 'upload', rttMs: 'latency', lossPct: 'loss' };
+const METRIC_LABEL: Record<string, string> = { downMbps: 'download', upMbps: 'upload', rttMs: 'latency', lossPct: 'loss', jitterMs: 'delay variation' };
 
 const INVALID_LABEL: Record<string, string> = {
   config: 'equipment or settings changed',
@@ -71,6 +71,7 @@ export function describeCard(card: RequirementCard): string {
   if (card.minUpMbps !== undefined) parts.push(`up at least ${card.minUpMbps} Mbps`);
   if (card.maxRttMs !== undefined) parts.push(`latency under ${card.maxRttMs} ms`);
   if (card.maxLossPct !== undefined) parts.push(`loss under ${card.maxLossPct}%`);
+  if (card.maxJitterMs !== undefined) parts.push(`delay variation (jitter) under ${card.maxJitterMs} ms`);
   parts.push(`${card.windowS} s window`);
 
   return parts.join(', ');

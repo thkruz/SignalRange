@@ -200,6 +200,16 @@ export class FieldHandoverPanel {
       return v === undefined ? undefined : String(Math.round(v * 10) / 10);
     }
     if ('modeIs' in rule && plant) return plant.getPartMode(rule.modeIs.partId);
+    if ('measured' in rule) {
+      const v = this.deps_.records()?.latestMeasured(rule.measured.serviceId, rule.measured.metric);
+
+      return v == null ? undefined : String(Math.round(v * 10) / 10);
+    }
+    if ('interval' in rule) {
+      const v = this.deps_.service()?.intervalSpanS(rule.interval.id, rule.interval.span);
+
+      return v == null ? undefined : String(Math.round(v * 10) / 10);
+    }
 
     return undefined;
   }
@@ -437,7 +447,7 @@ export class FieldHandoverPanel {
       widget = `<select class="form-select form-select-sm" data-hf-field="${k}" aria-label="${escapeHtml(f.label)}"><option value="">Pick one</option>${opts}</select>`;
     } else {
       const hint = this.readingHint_(f);
-      const type = 'powerWithin' in rule ? 'number' : 'text';
+      const type = 'powerWithin' in rule || 'measured' in rule || 'interval' in rule ? 'number' : 'text';
       widget = `<span class="fhf-input"><input class="form-control form-control-sm" type="${type}"${type === 'number' ? ' step="any"' : ''} value="${escapeHtml(val)}" data-hf-field="${k}" aria-label="${escapeHtml(f.label)}" /> <button type="button" class="btn btn-sm btn-outline-secondary" data-hf-fill="${k}">Use my latest reading</button></span>${hint ? `<div class="fhf-hint" data-fhf="reading-${k}">${escapeHtml(hint)}</div>` : ''}`;
     }
     const backing =

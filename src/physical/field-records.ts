@@ -18,7 +18,7 @@ import type { RecordReader } from './field-hooks';
 import type { IncomingRecord } from './incoming-types';
 import type { PhysicalPlantManager } from './physical-plant-manager';
 import type { ServiceModel } from './service-model';
-import type { ServiceLayer } from './service-types';
+import type { SampleMetric, ServiceLayer } from './service-types';
 import type { WorkloadRun, WorkloadStatus } from './workload-types';
 
 /** How one handover field is checked */
@@ -33,6 +33,16 @@ export type ClaimRule =
   | { workload: { cardId: string; is: WorkloadStatus[] /** When set, the run must also be on this service */; serviceId?: string } }
   /** The value is a number within `tol` of the plant's reading. `partId` narrows it to one part (default: sum of all) */
   | { powerWithin: { metric: 'socWh' | 'fuelL'; tol: number; partId?: string } }
+  /**
+   * The value is a number within `tol` of the player's own latest recorded sample of that metric on that service
+   * (the recorded measurement, not authored truth); with no sample of it the field cannot be met.
+   */
+  | { measured: { serviceId: string; metric: SampleMetric; tol: number } }
+  /**
+   * The value is seconds within `tolS` of a measured recovery interval span (see ServiceModel.intervalSpanS). An
+   * interval that never opened or has not closed yet cannot be claimed.
+   */
+  | { interval: { id: string; span: 'restoration' | 'response' | 'startup'; tolS: number } }
   /** The value must equal the part's current mode id */
   | { modeIs: { partId: string } }
   /**
@@ -274,6 +284,12 @@ export class FieldRecords implements RecordReader {
     if ('powerWithin' in rule) {
       return this.checkPower_(field, Number(value), rule.powerWithin);
     }
+    if ('measured' in rule) {
+      return this.checkMeasured_(field, Number(value), rule.measured);
+    }
+    if ('interval' in rule) {
+      return this.checkInterval_(field, Number(value), rule.interval);
+    }
     if ('modeIs' in rule) {
       const mode = this.deps_.plant.getPartMode(rule.modeIs.partId);
 
@@ -338,6 +354,40 @@ export class FieldRecords implements RecordReader {
     }
 
     return rule.is.includes(run.status) ? pass(field.key) : fail(field.key, `${field.label}: that run ended as ${run.status}, which this form does not accept.`);
+  }
+
+  /** The player's latest recorded sample of a metric (any layer) on the service, for the claim and its fill-in */
+  latestMeasured(serviceId: string, metric: SampleMetric): number | null {
+    const sample = this.deps_.service
+      ?.samplesFor(serviceId)
+      .filter((s) => s.metric === metric && typeof s.value === 'number')
+      .at(-1);
+
+    return sample ? (sample.value as number) : null;
+  }
+
+  private checkMeasured_(field: HandoverFieldConfig, claimed: number, rule: { serviceId: string; metric: SampleMetric; tol: number }): FieldCheck {
+    if (!Number.isFinite(claimed)) {
+      return fail(field.key, `${field.label} needs a number.`);
+    }
+    const actual = this.latestMeasured(rule.serviceId, rule.metric);
+    if (actual === null) {
+      return fail(field.key, `${field.label}: take a measurement of this first; nothing recorded to compare with.`);
+    }
+
+    return Math.abs(claimed - actual) <= rule.tol ? pass(field.key) : fail(field.key, `${field.label} is more than ${rule.tol} away from your recorded measurement.`);
+  }
+
+  private checkInterval_(field: HandoverFieldConfig, claimed: number, rule: { id: string; span: 'restoration' | 'response' | 'startup'; tolS: number }): FieldCheck {
+    if (!Number.isFinite(claimed)) {
+      return fail(field.key, `${field.label} needs a number of seconds.`);
+    }
+    const actual = this.deps_.service?.intervalSpanS(rule.id, rule.span) ?? null;
+    if (actual === null) {
+      return fail(field.key, `${field.label}: the interval has not been completed yet, so there is nothing recorded to claim.`);
+    }
+
+    return Math.abs(claimed - actual) <= rule.tolS ? pass(field.key) : fail(field.key, `${field.label} is more than ${rule.tolS} s away from the recorded interval.`);
   }
 
   private checkPower_(field: HandoverFieldConfig, claimed: number, rule: { metric: 'socWh' | 'fuelL'; tol: number; partId?: string }): FieldCheck {

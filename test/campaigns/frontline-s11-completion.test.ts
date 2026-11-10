@@ -77,13 +77,14 @@ function acts(svc: PhysicalPlantService): Record<string, () => void> {
     },
     's11-measure-service': () => {
       takeAll(svc);
-      for (const m of ['rttMs', 'downMbps', 'lossPct'] as const) svc.services?.takeSample(EUS, 'registration', 'terminal-app', undefined, m);
+      for (const m of ['rttMs', 'downMbps', 'lossPct', 'jitterMs'] as const) svc.services?.takeSample(EUS, 'registration', 'terminal-app', undefined, m);
       ok(
         svc.records?.submit('measurement', {
           local: value(svc, 'local'),
           application: value(svc, 'application'),
           samples: { cites: obsIds(svc) },
           delay: { value: 'much-higher' },
+          jitter: { value: String(svc.services?.latest(EUS, 'registration')?.value) },
         })
       );
     },

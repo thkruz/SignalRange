@@ -132,6 +132,12 @@ const measurementForm: HandoverFormConfig = {
     { key: 'application', label: 'Application service now', required: true, rule: { matchesCurrent: { serviceId: FORWARD_EUROSAT_SERVICE, layer: 'application' } } },
     { key: 'samples', label: 'Delay, rate and loss readings kept', required: true, rule: { evidence: [EUS_DELAY, EUS_RATE, EUS_LOSS] } },
     {
+      key: 'jitter',
+      label: 'Delay variation (jitter) you measured, ms',
+      required: true,
+      rule: { measured: { serviceId: FORWARD_EUROSAT_SERVICE, metric: 'jitterMs', tol: 1 } },
+    },
+    {
       key: 'delay',
       label: 'Delay against the SkyLink reference',
       required: true,

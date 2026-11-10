@@ -43,6 +43,7 @@ export const S14_EVENT_NOTICE = 's14-restoration-notice';
 export const S14_EVENT_LIFT = 's14-ground-restriction-lifted';
 export const S14_EVENT_EXERCISE = 's14-readiness-exercise';
 export const S14_EVENT_RETURN = 's14-skylink-returns';
+export const S14_INTERVAL_RESTORATION = 's14-eurosat-restoration';
 export const S14_NOTICE = 's14-ground-restoration-notice';
 
 const EUS = FORWARD_EUROSAT_SERVICE;
@@ -175,6 +176,12 @@ const transitionForm: HandoverFormConfig = {
     { key: 'skylink', label: 'SkyLink provider state now', required: true, rule: { matchesCurrent: { serviceId: SKYLINK_SERVICE, layer: 'provider' } } },
     { key: 'registration', label: 'EuroSat registration now', required: true, rule: { matchesCurrent: { serviceId: EUS, layer: 'registration' } } },
     { key: 'verified', label: 'Transfer window you ran after the transition', required: true, rule: { workload: { cardId: TRANSFER, is: ['supported'], serviceId: EUS } } },
+    {
+      key: 'restoration',
+      label: 'Seconds from the SkyLink outage until EuroSat carried traffic',
+      required: true,
+      rule: { interval: { id: S14_INTERVAL_RESTORATION, span: 'restoration', tolS: 2 } },
+    },
     { key: 'energy', label: 'Battery energy now (Wh)', required: true, rule: { powerWithin: { metric: 'socWh', tol: 40, partId: 'power-station' } } },
     { key: 'interactive', label: 'Interactive task while SkyLink is out', required: true, rule: choice('unavailable', 'Not available on EuroSat') },
     { key: 'basis', label: 'Observations and events behind it', required: true, rule: { evidence: [SKY_PROVIDER, EUS_REGISTRATION, EUS_APP] } },
@@ -209,6 +216,9 @@ if (settings.physicalPlant) {
   applyForwardEurosat(plant, { modemRunning: true });
   applyForwardRemote(plant, { policyInForce: true });
   applyForwardDualReadiness(plant);
+  if (plant.service) {
+    plant.service.intervals = [{ id: S14_INTERVAL_RESTORATION, serviceId: EUS, startEventId: S14_EVENT_EXERCISE, activationPartId: 'vsat-modem' }];
+  }
   plant.equipment = {
     units: [
       {

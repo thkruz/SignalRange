@@ -26,6 +26,13 @@ export interface LinkProfile {
   upMbps: number;
   rttMs: number;
   lossPct: number;
+  /**
+   * Half-range (ms) of the per-second RTT variation around `rttMs` (package E). Absent = the path has no delay
+   * variation data, so a jitter reading is unavailable (not zero). See rtt-jitter.ts for the statistic.
+   */
+  rttSpreadMs?: number;
+  /** Seed of the per-second RTT series (default: derived from the service id) */
+  rttSeed?: number;
 }
 
 /**
@@ -77,7 +84,12 @@ export interface LinkImpairmentSource {
   restoreState(state: LinkImpairmentState | undefined): void;
 }
 
-export type LinkSample = LinkProfile & { provenance: 'authored' | 'sdk' };
+export type LinkSample = LinkProfile & {
+  provenance: 'authored' | 'sdk';
+  /** Jitter (mean absolute change between consecutive 1 s RTT samples) over `jitterWindowS`, when the path has delay variation data */
+  jitterMs?: number;
+  jitterWindowS?: number;
+};
 
 /**
  * The only seam to the KeepTrack SDK work. Until it exists, AuthoredLinkSource returns the
@@ -101,7 +113,7 @@ export interface ServicePathConfig {
   /** S12/S13 remote ends */
   endpointIds?: string[];
   /** S6 matrix */
-  remoteLeg?: { kind: 'fiber' | 'radio'; rttMs: number; downMbps: number };
+  remoteLeg?: { kind: 'fiber' | 'radio'; rttMs: number; downMbps: number /** Independent jitter of the leg, combined in quadrature; absent = fixed delay */; jitterMs?: number };
   /** Connector or cable ids on the terminal's link; active moisture on one makes registration flap */
   linkTargetIds?: string[];
   /** Authored stand-in for LinkQualitySource */
@@ -141,9 +153,35 @@ export interface ServiceModelConfig {
   maxAgeS?: Partial<Record<SampleProvenance, number>>;
   /** Authored external impairments (opt-in; absent for every other scenario) */
   impairments?: LinkImpairmentConfig[];
+  /** Measured recovery intervals (package E; opt-in, absent for every other scenario) */
+  intervals?: RecoveryIntervalConfig[];
 }
 
-export type SampleMetric = 'status' | 'rttMs' | 'downMbps' | 'upMbps' | 'lossPct';
+/**
+ * A measured recovery interval on one service. It opens when `startEventId` fires (scenario time) and records,
+ * from the service model's own timeline: the operator's activation of `activationPartId` (plant log), the first
+ * moment the terminal registers up, and the first moment the application layer is usable (up or degraded).
+ */
+export interface RecoveryIntervalConfig {
+  id: string;
+  serviceId: string;
+  startEventId: string;
+  /** The terminal the operator activates (its first setMode after the start is the activation) */
+  activationPartId?: string;
+}
+
+export interface RecoveryInterval {
+  id: string;
+  serviceId: string;
+  /** Incident start: the scenario second the start event fired */
+  startS: number;
+  activationS: number | null;
+  registeredS: number | null;
+  /** First moment the application layer carried traffic again; closes the interval */
+  usableS: number | null;
+}
+
+export type SampleMetric = 'status' | 'rttMs' | 'downMbps' | 'upMbps' | 'lossPct' | 'jitterMs';
 
 export interface ServiceSample {
   id: string;
@@ -153,6 +191,8 @@ export interface ServiceSample {
   metric: SampleMetric;
   value: number | LayerStatus;
   unit: 'ms' | 'Mbps' | '%' | 'state';
+  /** Seconds of scenario time a statistic (jitter) was computed over */
+  windowS?: number;
   tS: number;
   provenance: SampleProvenance;
   configEpoch: number;
@@ -169,6 +209,8 @@ export interface ServiceHistoryEntry {
   layer: ServiceLayer;
   from: LayerStatus;
   to: LayerStatus;
+  /** Why the layer read this way after the change ('link-lost', 'terminal-booting', 'ok'...). Absent in older saves. */
+  reason?: string;
 }
 
 /** What the service model needs from the plant (the manager satisfies this structurally) */
@@ -185,6 +227,8 @@ export interface PlantReader {
   isSearching?(partId: string): boolean;
   getPartState(partId: string): { powered: boolean; rebooting: boolean } | null;
   isFaultActive(target: string, kind: 'snow' | 'net' | 'moisture' | 'gnss-denied'): boolean;
+  /** Optional: the plant action log, for the operator-activation boundary of a recovery interval */
+  getLog?(): Array<{ tSeconds: number; verb: string; target?: string }>;
   /** Optional: logged plant actions, so effective fixes and mode changes bump the config epoch */
   onAction?(listener: (entry: { verb: string; effective?: boolean; downtimeSeconds: number }) => void): () => void;
 }
@@ -204,4 +248,6 @@ export interface ServiceModelState {
   sampleSeq: number;
   /** Armed impairment episodes (absent in older checkpoints and in scenarios without impairments) */
   impairments?: LinkImpairmentState;
+  /** Recovery intervals (absent in older checkpoints and in scenarios without them) */
+  intervals?: RecoveryInterval[];
 }

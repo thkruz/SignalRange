@@ -36,7 +36,7 @@ export function forwardServiceConfig(): ServiceModelConfig {
         providerId: FORWARD_PROVIDER,
         linkTargetIds: ['skylink-cable', 'skylink-cable:dish', 'skylink-cable:router'],
         endpointIds: [FORWARD_ENDPOINT],
-        profile: { downMbps: 80, upMbps: 12, rttMs: 55, lossPct: 0.5 },
+        profile: { downMbps: 80, upMbps: 12, rttMs: 55, lossPct: 0.5, rttSpreadMs: 6 },
       },
     ],
     accounts: [{ id: FORWARD_SKYLINK_ACCOUNT, unitId: FORWARD_SKYLINK_UNIT, authorized: true, capacityFactor: 1 }],
@@ -111,7 +111,7 @@ export function forwardEurosatPath(): ServicePathConfig {
     providerId: FORWARD_EUROSAT_PROVIDER,
     linkTargetIds: ['vsat-feed', 'vsat-ifl', 'vsat-ifl:lnb', 'vsat-ifl:modem'],
     endpointIds: [FORWARD_EUROSAT_ENDPOINT],
-    profile: { downMbps: 20, upMbps: 4, rttMs: 620, lossPct: 0.5 },
+    profile: { downMbps: 20, upMbps: 4, rttMs: 620, lossPct: 0.5, rttSpreadMs: 60 },
   };
 }
 

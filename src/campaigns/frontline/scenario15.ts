@@ -325,7 +325,7 @@ export const frontlineScenario15Data: FrontlineScenarioData = {
       prerequisiteObjectiveIds: ['s15-record-anomaly'],
       points: 15,
       conditions: [
-        interruptionPattern(EUS, 2, 'Repeated EuroSat interruptions read, with the local network up'),
+        interruptionPattern(EUS, 2, 'Repeated EuroSat interruptions read, with the local network up', { reasons: ['link-lost'] }),
         siteChecked(['vsat-feed', 'vsat-ifl:lnb', 'vsat-ifl:modem', 'power-station'], 'Antenna feed, cables and power checked'),
         negativeChecksKept(2, 'Checks that found nothing kept as evidence', { subjects: ['vsat-feed', 'vsat-ifl:lnb', 'vsat-ifl:modem', 'power-station'] }),
         layerObserved(EUS, 'provider', { status: 'up' }, 'EuroSat provider status read with no notice'),

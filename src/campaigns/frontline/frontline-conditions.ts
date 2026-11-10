@@ -391,16 +391,24 @@ export function anyServiceSupports(cardId: string, serviceIds: string[], descrip
  * real timeline) and the player has read both sides of the pattern: a registration reading that
  * showed it down, one that showed it up, and a local-network reading that stayed up.
  */
-export function interruptionPattern(serviceId: string, minInterruptions: number, description = 'Interruption pattern recorded'): Condition {
+export function interruptionPattern(
+  serviceId: string,
+  minInterruptions: number,
+  description = 'Interruption pattern recorded',
+  /** Count only drops with these causes (S15: 'link-lost', so a modem reboot cannot manufacture drops). Entries with no recorded cause (old saves) count. */
+  opts: { reasons?: string[] } = {}
+): Condition {
   return make(
-    `interruptionPattern:${serviceId}:${minInterruptions}`,
+    `interruptionPattern:${serviceId}:${minInterruptions}${opts.reasons ? `:${opts.reasons.join(',')}` : ''}`,
     description,
     () => {
       const model = hooks()?.service;
       if (!model) {
         return false;
       }
-      const drops = model.history(serviceId).filter((e) => e.layer === 'registration' && e.to === 'down').length;
+      const drops = model
+        .history(serviceId)
+        .filter((e) => e.layer === 'registration' && e.to === 'down' && (!opts.reasons || e.reason === undefined || opts.reasons.includes(e.reason))).length;
       const samples = model.samplesFor(serviceId);
       const registration = (v: string) => samples.some((s) => s.layer === 'registration' && s.value === v);
 

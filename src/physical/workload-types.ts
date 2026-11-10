@@ -18,6 +18,8 @@ export interface RequirementCard {
   minUpMbps?: number;
   maxRttMs?: number;
   maxLossPct?: number;
+  /** Delay variation limit (ms, see rtt-jitter.ts). A path with no jitter data cannot meet it. */
+  maxJitterMs?: number;
   /** Seconds of scenario time a run observes the service */
   windowS: number;
   priority: WorkloadPriority;
@@ -60,6 +62,8 @@ export interface EffectiveProfile {
   upMbps: number;
   rttMs: number;
   lossPct: number;
+  /** Absent when the path has no delay variation data */
+  jitterMs?: number;
 }
 
 /** Suitability of a service for a card, with no run involved */
@@ -68,7 +72,7 @@ export interface WorkloadAssessment {
   cardVersion: number;
   serviceId: string;
   status: 'supported' | 'degraded' | 'unsupported';
-  /** Metric names that missed their bound ('downMbps', 'upMbps', 'rttMs', 'lossPct') */
+  /** Metric names that missed their bound ('downMbps', 'upMbps', 'rttMs', 'lossPct', 'jitterMs') */
   unmet: string[];
   /** 'ok', or 'layer:<reason>' when a layer is down, or 'no-link' */
   reason: string;

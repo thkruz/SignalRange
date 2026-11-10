@@ -138,6 +138,8 @@ export class WorkloadRunner implements WorkloadReader {
       upMbps: link.upMbps * share,
       rttMs: link.rttMs + (leg?.rttMs ?? 0),
       lossPct: link.lossPct,
+      // Independent legs: variances add, so the remote leg's own jitter combines in quadrature (no leg jitter = fixed delay)
+      ...(link.jitterMs === undefined ? {} : { jitterMs: Math.hypot(link.jitterMs, leg?.jitterMs ?? 0) }),
     };
   }
 
@@ -171,6 +173,15 @@ export class WorkloadRunner implements WorkloadReader {
     if (card.maxRttMs !== undefined) check('rttMs', eff.rttMs, eff.rttMs <= card.maxRttMs, (eff.rttMs - card.maxRttMs) / card.maxRttMs);
     if (card.maxLossPct !== undefined) {
       check('lossPct', eff.lossPct, eff.lossPct <= card.maxLossPct, card.maxLossPct === 0 ? 1 : (eff.lossPct - card.maxLossPct) / card.maxLossPct);
+    }
+    if (card.maxJitterMs !== undefined) {
+      // No delay variation data is not zero jitter: the requirement cannot be shown met
+      if (eff.jitterMs === undefined) {
+        unmet.push('jitterMs');
+        worst = 'unsupported';
+      } else {
+        check('jitterMs', eff.jitterMs, eff.jitterMs <= card.maxJitterMs, (eff.jitterMs - card.maxJitterMs) / card.maxJitterMs);
+      }
     }
     // A degraded layer (endpoint or link trouble) cannot read better than degraded. An account or provider
     // capacity restriction is already priced into the effective profile above, so the card limits decide.
@@ -317,11 +328,12 @@ export class WorkloadRunner implements WorkloadReader {
   private finish_(run: WorkloadRun): void {
     const card = this.cards_.get(run.cardId);
     const ids = [this.service_.takeSample(run.serviceId, 'application', 'workload-run').id];
-    const metrics: Array<['downMbps' | 'upMbps' | 'rttMs' | 'lossPct', unknown]> = [
+    const metrics: Array<['downMbps' | 'upMbps' | 'rttMs' | 'lossPct' | 'jitterMs', unknown]> = [
       ['downMbps', card?.minDownMbps],
       ['upMbps', card?.minUpMbps],
       ['rttMs', card?.maxRttMs],
       ['lossPct', card?.maxLossPct],
+      ['jitterMs', card?.maxJitterMs],
     ];
     for (const [metric, bound] of metrics) {
       if (bound !== undefined) {

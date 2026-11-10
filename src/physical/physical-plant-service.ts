@@ -37,6 +37,15 @@ const FINE_STEP_S = 1;
 
 const DEFAULT_AMBIENT_C = 15;
 
+/** A terminal app model's checkpoint seam (the app owns the shape of its state) */
+export interface TerminalAppPersistence {
+  getState(): unknown;
+  restoreState(state: unknown): void;
+}
+
+/** Saved app state by terminal id */
+export type TerminalAppsState = Record<string, unknown>;
+
 export class PhysicalPlantService {
   private static instance_: PhysicalPlantService | null = null;
 
@@ -202,6 +211,7 @@ export class PhysicalPlantService {
     evidence?: EvidenceLogState;
     workloads?: WorkloadRunnerState;
     records?: FieldRecordsState;
+    terminalApps?: TerminalAppsState;
   } {
     const state: PlantState & {
       weather: Partial<PlantEnvironment>;
@@ -210,6 +220,7 @@ export class PhysicalPlantService {
       evidence?: EvidenceLogState;
       workloads?: WorkloadRunnerState;
       records?: FieldRecordsState;
+      terminalApps?: TerminalAppsState;
     } = {
       ...this.plant.getState(),
       weather: { ...this.weatherOverride_ },
@@ -234,7 +245,60 @@ export class PhysicalPlantService {
       state.records = this.records.getState();
     }
 
+    const apps = this.terminalAppStates_();
+    if (Object.keys(apps).length > 0) {
+      state.terminalApps = apps;
+    }
+
     return state;
+  }
+
+  // ---- terminal apps (phase 40 / Campaign 6 G) ------------------------------------------------------------------
+
+  /** Terminal apps that persist through the plant checkpoint, by terminal id (`skylink`, `eurosat`) */
+  private readonly terminalApps_ = new Map<string, TerminalAppPersistence>();
+  /** Restored app state whose app has not been built yet (the tab is created lazily); kept so a later save still carries it */
+  private pendingTerminalApps_: TerminalAppsState = {};
+
+  /** Opt a terminal app model into the checkpoint. State restored before the app existed is applied now. */
+  static registerTerminalApp(id: string, app: TerminalAppPersistence): void {
+    this.instance_?.registerTerminalApp_(id, app);
+  }
+
+  static unregisterTerminalApp(id: string, app: TerminalAppPersistence): void {
+    if (this.instance_?.terminalApps_.get(id) === app) {
+      this.instance_.terminalApps_.delete(id);
+    }
+  }
+
+  private registerTerminalApp_(id: string, app: TerminalAppPersistence): void {
+    this.terminalApps_.set(id, app);
+    const pending = this.pendingTerminalApps_[id];
+    if (pending !== undefined) {
+      app.restoreState(pending);
+      delete this.pendingTerminalApps_[id];
+    }
+  }
+
+  private terminalAppStates_(): TerminalAppsState {
+    const out: TerminalAppsState = { ...this.pendingTerminalApps_ };
+    for (const [id, app] of this.terminalApps_) {
+      out[id] = app.getState();
+    }
+
+    return out;
+  }
+
+  private restoreTerminalApps_(states: TerminalAppsState | undefined): void {
+    this.pendingTerminalApps_ = {};
+    for (const [id, saved] of Object.entries(states ?? {})) {
+      const app = this.terminalApps_.get(id);
+      if (app) {
+        app.restoreState(saved);
+      } else {
+        this.pendingTerminalApps_[id] = saved;
+      }
+    }
   }
 
   /** Read-only bundle for Campaign 6 conditions, or null when this scenario has no plant */
@@ -309,6 +373,7 @@ export class PhysicalPlantService {
           evidence?: EvidenceLogState;
           workloads?: WorkloadRunnerState;
           records?: FieldRecordsState;
+          terminalApps?: TerminalAppsState;
         })
       | undefined
   ): void {
@@ -322,6 +387,7 @@ export class PhysicalPlantService {
     this.evidence?.restoreState(state.evidence);
     this.workloads?.restoreState(state.workloads);
     this.records?.restoreState(state.records);
+    this.restoreTerminalApps_(state.terminalApps);
     this.lastSyncS_ = SimClock.scenarioElapsedMs() / 1000;
   }
 

@@ -39,6 +39,8 @@ export interface StationTabRegistration {
   factory: StationTabFactory;
   /** Open this tab first when the station is selected. */
   isDefault?: boolean;
+  /** Hide the tab when this returns false (evaluated each time the tab set is built). Absent: always shown. */
+  isAvailable?: () => boolean;
 }
 
 /** Tab strip id of a registered station tab. */
@@ -107,7 +109,7 @@ export class AntennaPageRegistry {
       return [];
     }
 
-    return [...this.stationTabs_.values()].filter((tab) => tab.stationClasses.includes(stationClass));
+    return [...this.stationTabs_.values()].filter((tab) => tab.stationClasses.includes(stationClass) && (tab.isAvailable?.() ?? true));
   }
 
   /** A station tab by its tab-strip id (`station-<id>`), or undefined. */

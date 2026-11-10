@@ -139,6 +139,7 @@ export interface ManagerStates {
     evidence?: EvidenceLogState;
     workloads?: WorkloadRunnerState;
     records?: FieldRecordsState;
+    terminalApps?: Record<string, unknown>;
   };
   weather?: WeatherSnapshot;
   telemetry?: TelemetrySnapshot;

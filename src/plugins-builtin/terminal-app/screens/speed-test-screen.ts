@@ -6,10 +6,11 @@
  * download, upload, latency and whether the dish or the local network set the limit.
  */
 import { PhysicalPlantService } from '@app/physical/physical-plant-service';
+import { JITTER_WINDOW_S } from '@app/physical/rtt-jitter';
 import type { WorkloadRunner } from '@app/physical/workload-runner';
 import type { RequirementCard } from '@app/physical/workload-types';
 import { formatAge, tr } from '../strings';
-import type { SpeedTestRecord, TerminalAppModel, TerminalView } from '../terminal-app-model';
+import type { SpeedTestRecord, TerminalView } from '../terminal-app-model';
 import { APP_ACTION_VERBS } from '../terminal-evidence';
 
 import type { TerminalScreen, TerminalScreenContext, TerminalScreenFactory } from './terminal-screen';
@@ -71,7 +72,14 @@ export function beginSpeedTest(backend: SpeedTestBackend): PendingSpeedTest | nu
  * Read the outcome of a started test: 'running' while its window is open, null when it ended
  * without a usable result, the record (also stored on the model) otherwise.
  */
-export function finishSpeedTest(backend: SpeedTestBackend, model: TerminalAppModel, pending: PendingSpeedTest): SpeedTestRecord | null | 'running' {
+/** The part of a terminal model a speed test needs (the SkyLink and EuroSat models both satisfy it) */
+export interface SpeedTestModel {
+  update(): void;
+  recordSpeedTest(record: SpeedTestRecord): void;
+  view(): { data: { downMbps: number } | null };
+}
+
+export function finishSpeedTest(backend: SpeedTestBackend, model: SpeedTestModel, pending: PendingSpeedTest): SpeedTestRecord | null | 'running' {
   const { runner, serviceId } = backend;
   const run = runner.getRun(pending.runId);
   if (run?.status === 'running') {
@@ -90,6 +98,7 @@ export function finishSpeedTest(backend: SpeedTestBackend, model: TerminalAppMod
     upMbps: Math.min(profile.upMbps, cap),
     latencyMs: profile.rttMs,
     limit: speedTestLimit(down, profile.downMbps, model.view().data?.downMbps ?? 0),
+    jitterMs: profile.jitterMs === undefined ? null : profile.jitterMs,
   };
   model.recordSpeedTest(record);
 
@@ -97,7 +106,7 @@ export function finishSpeedTest(backend: SpeedTestBackend, model: TerminalAppMod
 }
 
 /** Run one test to the end, burning its sim time at once. Returns null when it did not finish or the link carried nothing. */
-export function runSpeedTest(backend: SpeedTestBackend, model: TerminalAppModel): SpeedTestRecord | null {
+export function runSpeedTest(backend: SpeedTestBackend, model: SpeedTestModel): SpeedTestRecord | null {
   const pending = beginSpeedTest(backend);
   if (!pending) {
     return null;
@@ -132,6 +141,7 @@ export function createSpeedTestScreenFor(resolve: (ctx: TerminalScreenContext) =
         el.innerHTML = html;
       }
     };
+    const jitter = (v: number | null | undefined): string => (typeof v === 'number' ? tr('speed.unitMs', { value: v.toFixed(1) }) : tr('speed.jitterUnavailable'));
     const mbps = (v: number): string => tr('speed.unitMbps', { value: v >= 100 ? Math.round(v) : v.toFixed(1) });
 
     function render(view: TerminalView): void {
@@ -167,8 +177,10 @@ export function createSpeedTestScreenFor(resolve: (ctx: TerminalScreenContext) =
               <div class="col-6 col-md-3"><div class="text-secondary small">${tr('speed.download')}</div><div class="h2 mb-0 font-monospace" id="speed-down">${mbps(last.downMbps)}</div></div>
               <div class="col-6 col-md-3"><div class="text-secondary small">${tr('speed.upload')}</div><div class="h2 mb-0 font-monospace" id="speed-up">${mbps(last.upMbps)}</div></div>
               <div class="col-6 col-md-3"><div class="text-secondary small">${tr('speed.latency')}</div><div class="h2 mb-0 font-monospace" id="speed-lat">${tr('speed.unitMs', { value: Math.round(last.latencyMs) })}</div></div>
+              <div class="col-6 col-md-3"><div class="text-secondary small">${tr('speed.jitter')}</div><div class="h2 mb-0 font-monospace" id="speed-jitter">${jitter(last.jitterMs)}</div></div>
               <div class="col-6 col-md-3"><div class="text-secondary small">${tr('speed.limit.title')}</div><div class="h2 mb-0" id="speed-limit">${tr(`speed.limit.${last.limit}`)}</div></div>
-            </div>`
+            </div>
+            <div class="text-secondary small mt-2" id="speed-jitter-note">${tr('speed.jitterNote', { seconds: JITTER_WINDOW_S })}</div>`
           : `<span class="text-secondary">${tr('speed.noResult')}</span>`
       );
       setHtml(
@@ -179,7 +191,7 @@ export function createSpeedTestScreenFor(resolve: (ctx: TerminalScreenContext) =
               .reverse()
               .map(
                 (t) =>
-                  `<tr><td>${tr('speed.ago', { age: formatAge(Math.max(0, nowS - t.tS)) })}</td><td>${mbps(t.downMbps)}</td><td>${mbps(t.upMbps)}</td><td>${tr('speed.unitMs', { value: Math.round(t.latencyMs) })}</td><td>${tr(`speed.limit.${t.limit}`)}</td></tr>`
+                  `<tr><td>${tr('speed.ago', { age: formatAge(Math.max(0, nowS - t.tS)) })}</td><td>${mbps(t.downMbps)}</td><td>${mbps(t.upMbps)}</td><td>${tr('speed.unitMs', { value: Math.round(t.latencyMs) })}</td><td>${jitter(t.jitterMs)}</td><td>${tr(`speed.limit.${t.limit}`)}</td></tr>`
               )
               .join('')
           : ''
@@ -213,7 +225,7 @@ export function createSpeedTestScreenFor(resolve: (ctx: TerminalScreenContext) =
         'speed-test',
         APP_ACTION_VERBS.speedTest,
         result
-          ? `Ran a speed test in the SkyLink app: ${Math.round(result.downMbps)} down, ${Math.round(result.upMbps)} up Mbps.`
+          ? `Ran a speed test in the SkyLink app: ${Math.round(result.downMbps)} down, ${Math.round(result.upMbps)} up Mbps, jitter ${typeof result.jitterMs === 'number' ? `${result.jitterMs.toFixed(1)} ms` : 'unavailable'}.`
           : 'Ran a speed test in the SkyLink app; it did not finish.'
       );
       ctx.refresh();
@@ -255,7 +267,7 @@ export function createSpeedTestScreenFor(resolve: (ctx: TerminalScreenContext) =
             <div class="card-body" id="speed-result"></div></div>
           <div class="card" id="speed-history-card" hidden><div class="card-header"><h3 class="card-title">${tr('speed.history')}</h3></div>
             <div class="table-responsive"><table class="table table-vcenter card-table"><thead><tr>
-              <th></th><th>${tr('speed.download')}</th><th>${tr('speed.upload')}</th><th>${tr('speed.latency')}</th><th>${tr('speed.limit.title')}</th>
+              <th></th><th>${tr('speed.download')}</th><th>${tr('speed.upload')}</th><th>${tr('speed.latency')}</th><th>${tr('speed.jitter')}</th><th>${tr('speed.limit.title')}</th>
             </tr></thead><tbody id="speed-history"></tbody></table></div></div>`;
         q('start')?.addEventListener('click', onStart);
       },

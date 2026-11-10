@@ -73,7 +73,7 @@ export class SkylinkDashboardPage implements AntennaPage {
     if (!this.dom_) {
       return;
     }
-    this.dom_.style.display = '';
+    this.dom_.style.removeProperty('display');
     if (!this.active_) {
       this.active_ = true;
       EventBus.getInstance().on(Events.UPDATE, this.boundUpdate_);
@@ -89,7 +89,7 @@ export class SkylinkDashboardPage implements AntennaPage {
       EventBus.getInstance().off(Events.UPDATE, this.boundUpdate_);
     }
     if (this.dom_) {
-      this.dom_.style.display = 'none';
+      this.dom_.style.setProperty('display', 'none', 'important');
     }
   }
 

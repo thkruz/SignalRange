@@ -47,3 +47,7 @@
 .skylink-pending {
   min-height: 1.2em;
 }
+
+.eurosat-app .skylink-nav {
+  width: 11rem;
+}

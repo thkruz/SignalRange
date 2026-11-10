@@ -7,14 +7,15 @@
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import type { PhysicalPlantManager } from '@app/physical/physical-plant-manager';
-import { PhysicalPlantService } from '@app/physical/physical-plant-service';
+import { PhysicalPlantService, type TerminalAppPersistence } from '@app/physical/physical-plant-service';
 import type { SleepSchedule, SnowMeltMode, TerminalSettings, VerbResult } from '@app/physical/physical-plant-types';
 import { PhasedArrayCore } from '../phased-array/phased-array-core';
 import { ObstructionAccumulator, plantObstructionReader } from './obstruction-map';
 import type { TerminalActions } from './screens/terminal-screen';
-import { plantTerminalReader, TerminalAppModel, type TerminalPhasedArraySlice } from './terminal-app-model';
+import { plantTerminalReader, TerminalAppModel, type TerminalAppState, type TerminalPhasedArraySlice } from './terminal-app-model';
 import { APP_ACTION_VERBS, TerminalEvidence } from './terminal-evidence';
 import { plantLinkReader, TerminalLink } from './terminal-link';
+import { TerminalRuntimeCache } from './terminal-runtime-cache';
 import { SKYLINK_SKIN, type TerminalSkin } from './terminal-skin';
 
 const RECORD_INTERVAL_MS = 1000;
@@ -23,7 +24,8 @@ const RECORD_INTERVAL_MS = 1000;
 export type TerminalRuntimePlant = Pick<PhysicalPlantManager, 'reboot' | 'setSnowMelt' | 'setSleep' | 'setRouterWifi' | 'getTerminalSettings' | 'getTimeSeconds'>;
 
 export class TerminalRuntime implements TerminalActions {
-  private static readonly byPlant_ = new WeakMap<PhysicalPlantManager, TerminalRuntime>();
+  /** One runtime per (plant, terminal id); see `TerminalRuntimeCache` */
+  private static readonly cache_ = new TerminalRuntimeCache<TerminalRuntime>();
 
   readonly skin: TerminalSkin;
   readonly model: TerminalAppModel;
@@ -34,6 +36,7 @@ export class TerminalRuntime implements TerminalActions {
   private lastRecordMs_ = 0;
   private disposed_ = false;
   private ownerPlant_: PhysicalPlantManager | null = null;
+  private persistence_: { id: string; app: TerminalAppPersistence } | null = null;
 
   constructor(plant: TerminalRuntimePlant, model: TerminalAppModel, skin: TerminalSkin = SKYLINK_SKIN) {
     this.plant_ = plant;
@@ -43,14 +46,14 @@ export class TerminalRuntime implements TerminalActions {
     this.boundUpdate_ = this.record_.bind(this);
   }
 
-  /** The runtime for the live plant, built on first use; null when there is no plant */
+  /** The runtime for the live plant's SkyLink terminal, built on first use; null when there is no plant */
   static forStation(phasedArray?: () => TerminalPhasedArraySlice | null): TerminalRuntime | null {
     const plant = PhysicalPlantService.plantOrNull();
     if (!plant) {
       return null;
     }
-    const existing = TerminalRuntime.byPlant_.get(plant);
-    if (existing && !existing.disposed_) {
+    const existing = TerminalRuntime.cache_.get(plant, SKYLINK_SKIN.id);
+    if (existing) {
       return existing;
     }
     const services = PhysicalPlantService.servicesOrNull();
@@ -69,7 +72,8 @@ export class TerminalRuntime implements TerminalActions {
     });
     const runtime = new TerminalRuntime(plant, model);
     runtime.ownerPlant_ = plant;
-    TerminalRuntime.byPlant_.set(plant, runtime);
+    TerminalRuntime.cache_.set(plant, SKYLINK_SKIN.id, runtime);
+    runtime.persist(SKYLINK_SKIN.id, { getState: () => model.getState(), restoreState: (s) => model.restoreState(s as TerminalAppState) });
     runtime.start();
 
     return runtime;
@@ -84,12 +88,26 @@ export class TerminalRuntime implements TerminalActions {
     };
   }
 
+  get isDisposed(): boolean {
+    return this.disposed_;
+  }
+
   start(): void {
     EventBus.getInstance().on(Events.UPDATE, this.boundUpdate_);
   }
 
+  /** Join the plant checkpoint: the model's history survives a save and restore (applies state restored earlier) */
+  persist(id: string, app: TerminalAppPersistence): void {
+    this.persistence_ = { id, app };
+    PhysicalPlantService.registerTerminalApp(id, app);
+  }
+
   dispose(): void {
     this.disposed_ = true;
+    if (this.persistence_) {
+      PhysicalPlantService.unregisterTerminalApp(this.persistence_.id, this.persistence_.app);
+      this.persistence_ = null;
+    }
     EventBus.getInstance().off(Events.UPDATE, this.boundUpdate_);
   }
 

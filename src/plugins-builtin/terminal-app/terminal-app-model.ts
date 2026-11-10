@@ -173,6 +173,12 @@ export interface SpeedTestRecord {
   latencyMs: number;
   /** What a consumer app can tell: the test never names the true cause */
   limit: 'skylink' | 'local-network';
+  /**
+   * Delay variation (ms) the path reported at the end of the test, in the definition of `rtt-jitter.ts` (mean change
+   * between consecutive 1 s delay readings over the last 60 s). `null`: the path has no measurable jitter (no
+   * delay-variation data, or too little time has passed). Absent in saves from before package G.
+   */
+  jitterMs?: number | null;
 }
 
 export interface TerminalAppState {

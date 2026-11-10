@@ -7,6 +7,8 @@
 
 /* Canvas Header */
 .canvas-header {
+  display: flex;
+  align-items: center;
   border-bottom: 1px solid var(--mc-border);
   background: var(--mc-surface-1);
 }
@@ -181,3 +183,15 @@ html.reduce-motion .tabbed-canvas #tab-bar::after { transition: none; }
   background: var(--mc-surface-3);
   border-radius: 4px;
 }
+
+/* Persistent tent location control, right of the tab strip (physical-plant scenarios only) */
+.canvas-header #tab-bar { flex: 1 1 auto; min-width: 0; }
+.tent-control {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 0.5rem;
+  padding: 0 0.75rem;
+  white-space: nowrap;
+}
+.tent-control .tent-trips { font-size: 0.75rem; opacity: 0.8; }

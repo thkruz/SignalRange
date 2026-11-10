@@ -271,7 +271,6 @@ export class SiteTab extends BaseElement {
           <span class="site-stat" id="site-internet-wrap">SkyLink <b id="site-path-skylink">-</b></span>
           <span class="site-stat">VSAT <b id="site-path-vsat">-</b></span>
           <span class="site-strip-spacer"></span>
-          <button type="button" class="btn btn-sm btn-primary" id="site-view-toggle">Go outside</button>
           <button type="button" class="btn btn-sm btn-outline-secondary" id="site-open-skylink">SkyLink app</button>
           <button type="button" class="btn btn-sm btn-outline-warning" id="site-open-trainer" style="display:none">Trainer</button>
         </div>
@@ -299,9 +298,7 @@ export class SiteTab extends BaseElement {
         return;
       }
       const btn = target.closest<HTMLElement>('button');
-      if (btn?.id === 'site-view-toggle') {
-        this.setView(this.view === 'inside' ? 'outside' : 'inside');
-      } else if (btn?.id === 'site-open-skylink') {
+      if (btn?.id === 'site-open-skylink') {
         EventBus.getInstance().emit(Events.SWITCH_TAB, { tabId: `${STATION_TAB_PREFIX}${SKYLINK_TAB_ID}` });
       } else if (btn?.id === 'site-open-trainer') {
         PlantTrainerBox.getInstance().show();
@@ -377,7 +374,6 @@ export class SiteTab extends BaseElement {
     const trainer = this.cache_('site-open-trainer');
     if (trainer) trainer.style.display = isTrainerVisible(isFrontlineAllowed(), ScenarioManager.getInstance().data?.missionType) ? '' : 'none';
 
-    this.setText_('site-view-toggle', this.view === 'inside' ? 'Go outside' : 'Go back inside');
     for (const spot of this.spots_()) {
       const pip = this.dom_.querySelector(`#${spot.id}-pip`);
       if (pip) {
@@ -386,9 +382,9 @@ export class SiteTab extends BaseElement {
     }
   }
 
-  /** The tent controls (location badge, trips, door toggle) do not exist on a forward site */
+  /** The tent controls (location badge, trips) do not exist on a forward site */
   private tentChrome_(forward: boolean): void {
-    for (const id of ['site-location', 'site-trips-wrap', 'site-view-toggle']) {
+    for (const id of ['site-location', 'site-trips-wrap']) {
       const el = this.cache_(id);
       if (el) el.style.display = forward ? 'none' : '';
     }

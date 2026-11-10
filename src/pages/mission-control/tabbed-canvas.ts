@@ -23,6 +23,7 @@ import type { GroundStation } from '@app/assets/ground-station/ground-station';
 import { ModalConfirm } from '@app/engine/ui/modal-confirm';
 import { OrbitalSatellite } from '@app/equipment/satellite/orbital-satellite';
 import { type AntennaPage, AntennaPageRegistry, STATION_TAB_PREFIX, type StationTabFactory } from '@app/pages/mission-control/antenna-page-registry';
+import { fieldDefaultTabId } from '@app/pages/mission-control/field-default-tab';
 import { ACUControlTab } from '@app/pages/mission-control/tabs/acu-control-tab';
 import { CommandingTab } from '@app/pages/mission-control/tabs/commanding-tab';
 import { ContactScheduleTab } from '@app/pages/mission-control/tabs/contact-schedule-tab';
@@ -41,6 +42,7 @@ import { SecurityConsoleTab } from '@app/pages/mission-control/tabs/security-con
 import { SiteTab } from '@app/pages/mission-control/tabs/site-tab';
 import { TelemetryTab } from '@app/pages/mission-control/tabs/telemetry-tab';
 import { TxChainTab } from '@app/pages/mission-control/tabs/tx-chain-tab';
+import { TentControl } from '@app/pages/mission-control/tent-control';
 import { FieldTabPolicy } from '@app/physical/field-tab-policy';
 import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import { KeepTrackEmbedHost } from '@app/services/keeptrack-embed-host';
@@ -150,6 +152,9 @@ export class TabbedCanvas extends BaseElement {
     this.showMissionOverview_();
   };
 
+  private tentControl_: TentControl | null = null;
+  private readonly boundTentSync_ = (): void => this.tentControl_?.sync();
+
   protected html_ = html`
     <div class="tabbed-canvas">
       <div class="canvas-header">
@@ -164,6 +169,8 @@ export class TabbedCanvas extends BaseElement {
     TabbedCanvas.instance_ = this;
     this.init_(parentId, 'replace');
     this.dom_ = qs('.tabbed-canvas');
+    this.tentControl_ = new TentControl(qs('.canvas-header', this.dom_));
+    EventBus.getInstance().on(Events.UPDATE, this.boundTentSync_);
     this.showMissionOverview_();
     this.preloadMapEmbed_();
   }
@@ -461,7 +468,11 @@ export class TabbedCanvas extends BaseElement {
     tabs.push(...engineering.filter((tab) => allowed.has(tab.id) || (tab.id.startsWith('acu-control-') && allowed.has('acu-control'))));
 
     const defaultReg = registered.find((reg) => reg.isDefault);
-    const fallback = defaultReg ? `${STATION_TAB_PREFIX}${defaultReg.id}` : (tabs[0]?.id ?? 'site');
+    const fallback = fieldDefaultTabId(
+      tabs.some((tab) => tab.id === 'site'),
+      defaultReg ? `${STATION_TAB_PREFIX}${defaultReg.id}` : null,
+      tabs[0]?.id ?? 'site'
+    );
 
     this.fieldTabIds_ = new Set(tabs.map((tab) => tab.id));
     this.renderTabs_(tabs);
@@ -655,7 +666,7 @@ export class TabbedCanvas extends BaseElement {
       {
         title: 'You are outside',
         message: "You're outside. The laptop and equipment are in the tent.",
-        confirmText: 'Go inside',
+        confirmText: 'Go back in',
         cancelText: 'Stay outside',
       }
     );
@@ -1297,6 +1308,9 @@ export class TabbedCanvas extends BaseElement {
     eventBus.off(Events.OBJECTIVE_OBSERVATION_PENDING, this.boundObservationPending_);
     eventBus.off(Events.SWITCH_TAB, this.boundSwitchTab_);
     eventBus.off(Events.MISSION_OVERVIEW_SELECTED, this.boundMissionOverviewSelected_);
+    eventBus.off(Events.UPDATE, this.boundTentSync_);
+    this.tentControl_?.dispose();
+    this.tentControl_ = null;
     this.unsubscribeFieldPolicy_?.();
     this.unsubscribeFieldPolicy_ = null;
 

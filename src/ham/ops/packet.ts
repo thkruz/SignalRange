@@ -46,6 +46,8 @@ export interface PacketNodeConfig {
   erpDbm: number;
   replyDelayS: number;
   banner: string;
+  /** Optional unconnected beacon the node sends every periodS (a reference packet to decode) */
+  beacon?: { text: string; periodS: number };
 }
 
 export interface PacketRadioCtx {
@@ -91,12 +93,16 @@ export interface PacketState {
   uiSent: string[];
   remote: { connected: boolean; vr: number; received: string[]; uiReceived: string[] };
   corruptNext: boolean;
-  rxLog: { tS: number; type: string; ok: boolean; reason?: string }[];
+  rxLog: { tS: number; type: string; ok: boolean; reason?: string; ns?: number; nr?: number }[];
+  /** Frames the player's station put on the air (UI frame log) */
+  txLog?: { tS: number; type: string; ns?: number; nr?: number; fcsOk: boolean }[];
   notes: string[];
   retryCount: number;
   radio: PacketRadioCtx | null;
   outbox: OutboxState;
   txSeq: number;
+  /** Next node beacon time, scenario seconds (absent = first period) */
+  nextBeaconS?: number;
 }
 
 const DEFAULT_AUDIO: PacketAudioConfig = {
@@ -128,10 +134,12 @@ export class PacketStation {
   private remote_ = { connected: false, vr: 0, received: [] as string[], uiReceived: [] as string[] };
   private corruptNext_ = false;
   private rxLog_: PacketState['rxLog'] = [];
+  private txLog_: NonNullable<PacketState['txLog']> = [];
   private notes_: string[] = [];
   private retryCount_ = 0;
   private radio_: PacketRadioCtx | null = null;
   private txSeq_ = 0;
+  private nextBeaconS_: number | null = null;
   private readonly t1S_: number;
   private readonly n2_: number;
 
@@ -283,6 +291,7 @@ export class PacketStation {
       frame.fcsOk = false;
       this.note_('A frame was corrupted on the air.');
     }
+    this.txLog_.push({ tS: nowS, type: frame.type, ns: frame.ns, nr: frame.nr, fcsOk: frame.fcsOk });
     const em = this.mkEmission_(frame, nowS, radio);
     this.remoteReceive_(frame, em, nowS);
     return { rf: true, emissions: [em] };
@@ -291,6 +300,10 @@ export class PacketStation {
   private remoteReceive_(frame: PacketFrame, em: OnAirEmission, nowS: number): void {
     const node = this.o_.node;
     if (!this.o_.hears(em, node.id).decoded) return;
+    if (frame.dst.toUpperCase() !== node.callsign.toUpperCase() || !frame.src || frame.src.toUpperCase() === 'N0CALL') {
+      this.rxLog_.push({ tS: nowS, type: `remote:${frame.type}`, ok: false, reason: 'not-addressed' });
+      return;
+    }
     if (!frame.fcsOk) {
       this.rxLog_.push({ tS: nowS, type: `remote:${frame.type}`, ok: false, reason: 'fcs-fail' });
       return;
@@ -419,7 +432,7 @@ export class PacketStation {
       this.rxLog_.push({ tS: nowS, type: frame.type, ok: false, reason: chain.clipped ? 'rx-level-high' : 'fcs-fail' });
       return;
     }
-    this.rxLog_.push({ tS: nowS, type: frame.type, ok: true });
+    this.rxLog_.push({ tS: nowS, type: frame.type, ok: true, ns: frame.ns, nr: frame.nr });
     const out = this.outstanding_;
     switch (frame.type) {
       case 'UA':
@@ -456,6 +469,11 @@ export class PacketStation {
       res.push(emission);
       this.playerReceive_(emission, nowS);
     }
+    const beacon = this.beacon_(nowS);
+    if (beacon) {
+      res.push(beacon);
+      this.playerReceive_(beacon, nowS);
+    }
     const out = this.outstanding_;
     if (out && this.radio_ && nowS - out.sentS >= this.t1S_) {
       out.retries++;
@@ -476,6 +494,28 @@ export class PacketStation {
     return res;
   }
 
+  /** The node's periodic unconnected beacon (UI frame), when configured */
+  private beacon_(nowS: number): OnAirEmission | null {
+    const node = this.o_.node;
+    const bc = node.beacon;
+    if (!bc) return null;
+    this.nextBeaconS_ ??= bc.periodS;
+    if (nowS < this.nextBeaconS_) return null;
+    this.nextBeaconS_ = nowS + bc.periodS;
+
+    return this.outbox_.emitNow({
+      dueS: nowS,
+      durS: FRAME_DUR_S,
+      sourceId: node.id,
+      text: bc.text,
+      freqHz: Math.round(node.freqMHz * 1e6),
+      mode: 'PKT',
+      erpDbm: node.erpDbm,
+      position: node.position,
+      payload: { kind: 'packet', text: bc.text, frame: { src: node.callsign, dst: 'BEACON', path: [], type: 'UI', info: bc.text, fcsOk: true } },
+    }).emission;
+  }
+
   getState(): PacketState {
     return clone({
       audio: this.audio_,
@@ -490,11 +530,13 @@ export class PacketStation {
       remote: this.remote_,
       corruptNext: this.corruptNext_,
       rxLog: this.rxLog_,
+      txLog: this.txLog_,
       notes: this.notes_,
       retryCount: this.retryCount_,
       radio: this.radio_,
       outbox: this.outbox_.getState(),
       txSeq: this.txSeq_,
+      nextBeaconS: this.nextBeaconS_ ?? undefined,
     });
   }
 
@@ -512,10 +554,12 @@ export class PacketStation {
     this.remote_ = c.remote;
     this.corruptNext_ = c.corruptNext;
     this.rxLog_ = c.rxLog;
+    this.txLog_ = c.txLog ?? [];
     this.notes_ = c.notes;
     this.retryCount_ = c.retryCount;
     this.radio_ = c.radio;
     this.outbox_.restoreState(c.outbox);
     this.txSeq_ = c.txSeq;
+    this.nextBeaconS_ = c.nextBeaconS ?? null;
   }
 }

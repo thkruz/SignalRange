@@ -6,14 +6,7 @@ import { ccsScenario4Data } from '@app/campaigns/ccs/scenario4';
 import { ccsScenario5Data } from '@app/campaigns/ccs/scenario5';
 import { rangeWatchCampaignData } from '@app/campaigns/constellation-sandbox/campaign-data';
 import { hamSdrSandboxData } from '@app/campaigns/ham-sdr/sandbox';
-import { hamSdrScenario1Data } from '@app/campaigns/ham-sdr/scenario1';
-import { hamSdrScenario2Data } from '@app/campaigns/ham-sdr/scenario2';
-import { hamSdrScenario3Data } from '@app/campaigns/ham-sdr/scenario3';
-import { hamSdrScenario4Data } from '@app/campaigns/ham-sdr/scenario4';
-import { hamSdrScenario5Data } from '@app/campaigns/ham-sdr/scenario5';
-import { hamSdrScenario6Data } from '@app/campaigns/ham-sdr/scenario6';
-import { hamSdrScenario7Data } from '@app/campaigns/ham-sdr/scenario7';
-import { hamSdrScenario8Data } from '@app/campaigns/ham-sdr/scenario8';
+import { hamTechScenarios } from '@app/campaigns/ham-sdr/tech';
 import { sandboxData as natsSandboxData } from '@app/campaigns/nats/sandbox';
 import { scenario1Data } from '@app/campaigns/nats/scenario1';
 import { scenario2Data } from '@app/campaigns/nats/scenario2';
@@ -618,14 +611,7 @@ export const SCENARIOS: ScenarioData[] = [
   scenario24Data,
   ...natsEuCampaignData.scenarios,
   hamSdrSandboxData,
-  hamSdrScenario1Data,
-  hamSdrScenario2Data,
-  hamSdrScenario3Data,
-  hamSdrScenario4Data,
-  hamSdrScenario5Data,
-  hamSdrScenario6Data,
-  hamSdrScenario7Data,
-  hamSdrScenario8Data,
+  ...hamTechScenarios,
   signalHunterSandboxData,
   signalHunterScenario1Data,
   signalHunterScenario2Data,

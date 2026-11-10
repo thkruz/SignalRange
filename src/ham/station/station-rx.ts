@@ -149,6 +149,16 @@ export function evaluateReceivers(core: StationCore, dtS: number, lastLogged: Ma
       if (!em) continue;
       squelchOpen = squelchOpen || r.squelchOpen;
       const key = `${d.id}|${r.emissionId}`;
+      for (const imp of ['squelch-closed', 'filter-too-narrow', 'volume-zero'] as const) {
+        const ik = `imp|${d.id}|${em.sourceId}|${imp}`;
+        const has = (r.impairments as string[]).includes(imp);
+        if (has && !lastLogged.has(ik)) {
+          lastLogged.set(ik, 1);
+          core.event(`rx:${d.id}:${imp}`, { emitter: em.sourceId });
+        } else if (!has && lastLogged.has(ik)) {
+          lastLogged.delete(ik);
+        }
+      }
       const prev = lastLogged.get(key);
       if (r.audible && (prev === undefined || Math.abs(prev - r.intelligibility) > LOG_DELTA)) {
         lastLogged.set(key, r.intelligibility);
@@ -197,4 +207,23 @@ export function evaluateReceivers(core: StationCore, dtS: number, lastLogged: Ma
     }
   }
   core.state.latest = latest;
+}
+
+/** Noise floor and rise a receiver sees right now (instrument readings and the DF exercise) */
+export function receiverNoise(core: StationCore, deviceId: string): { floorDbm: number; riseDb: number; rfiOn: Record<string, boolean> } | null {
+  const d = core.state.devices[deviceId];
+  if (!d?.radio) return null;
+  const fMHz = core.rxFreqMHz(deviceId);
+  const path = core.path(deviceId, fMHz);
+  const ant = path.antennaDeviceId ? core.inService(path.antennaDeviceId)?.antenna : undefined;
+  const nf = defaultNoiseFigureDb(d.kind);
+  const supplyId = core.dcFor(deviceId)?.id ?? (d.kind === 'sdr' ? undefined : deviceId);
+  const gainAt = (bearing: number): number => (ant ? antennaGainDbi(ant, fMHz, bearing, 0) : 0);
+  const rfi = rfiDevices(core);
+  const floorDbm = noiseFloorDbm(d.radio.filterHz, nf);
+  const noise = noiseRiseAtReceiver(rfi, { position: core.positionOf(path.antennaDeviceId ?? deviceId), supplyId, antennaGainDb: gainAt }, d.radio.filterHz, floorDbm);
+  const rfiOn: Record<string, boolean> = {};
+  for (const r of rfi) rfiOn[r.id] = r.energized;
+
+  return { floorDbm: floorDbm + noise.riseDb, riseDb: noise.riseDb, rfiOn };
 }

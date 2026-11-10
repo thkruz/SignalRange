@@ -14,9 +14,10 @@ import { applySetting, recallMemory, returnToVfo, selectDmrChannel, storeMemory 
 import type { AntennaState } from './rf/antenna-model';
 import { type ActionResult, done, type HamStationState, refuse, type SatelliteGeometryProvider, StationCore } from './station/station-core';
 import { type DeviceRuntime, profileOf } from './station/station-devices';
-import { analyzerCalibrate, analyzerRun, coaxTest, meterMode, meterPlace, meterRead, meterSocket, swrRead } from './station/station-instruments';
+import { analyzerCalibrate, analyzerRun, batteryRead, coaxTest, meterMode, meterPlace, meterRead, meterSocket, swrRead } from './station/station-instruments';
 import type { BestReception, ReceptionLogEntry, StationEvent } from './station/station-log';
 import { boardSwitch, connect, disconnect, go, inspect, install, move, type PortRef, power, repair, seat } from './station/station-physical';
+import { recordReceiver } from './station/station-record';
 import { evaluateReceivers } from './station/station-rx';
 import { endTx, isPrepared, prepareTx, ptt, stepPower } from './station/station-tx';
 
@@ -45,6 +46,8 @@ export type HamAction =
   | ({ type: 'meter.place'; targetId: string } & MeterPlacement)
   | { type: 'meter.read' }
   | { type: 'swr.read'; deviceId: string }
+  | { type: 'battery.read'; deviceId: string }
+  | { type: 'rx.record'; deviceId: string; emitterId?: string }
   | { type: 'analyzer.calibrate'; referenceDeviceId: string | null; deviceId?: string }
   | { type: 'analyzer.sweep'; start: number; stop: number; points: number; deviceId?: string }
   | ({ type: 'antenna.adjust'; deviceId: string } & Partial<Pick<AntennaState, 'elementLengthsM' | 'orientation' | 'azDeg' | 'elDeg' | 'polAngleDeg'>>)
@@ -136,10 +139,22 @@ export class HamStationManager {
     s.nowS = nowS;
     this.refreshGeometry_();
     stepPower(this.core_, dt);
+    this.armNetOutage_();
     s.air.push(...this.core_.ops.tick(nowS));
     this.core_.reconcileFaults();
     evaluateReceivers(this.core_, dt, this.lastLogged_);
     this.changed_();
+  }
+
+  /** Progress-gated net outage (config `net.outage.afterEvent`): arm it once its event is logged */
+  private armNetOutage_(): void {
+    const net = this.core_.ops.net;
+    const gate = this.config.net?.outage.afterEvent;
+    if (!net || !gate || !net.outageAwaitingArm) return;
+    const sinceS = gate.since ? this.firstEvent(gate.since)?.tS : -Infinity;
+    if (sinceS === undefined) return;
+    const hit = this.events(gate.event).find((e) => e.tS >= sinceS);
+    if (hit) net.armOutage(hit.tS + (gate.delayS ?? 0));
   }
 
   private refreshGeometry_(): void {
@@ -211,6 +226,10 @@ export class HamStationManager {
         return meterRead(c);
       case 'swr.read':
         return swrRead(c, a.deviceId);
+      case 'battery.read':
+        return batteryRead(c, a.deviceId);
+      case 'rx.record':
+        return recordReceiver(c, a.deviceId, a.emitterId);
       case 'analyzer.calibrate':
         return analyzerCalibrate(c, a.referenceDeviceId, a.deviceId);
       case 'analyzer.sweep':
@@ -267,6 +286,7 @@ export class HamStationManager {
     }
     d.radio = next;
     c.bump();
+    if (a.type === 'radio.store' || a.type === 'radio.recall') c.event(`radio:${a.type === 'radio.store' ? 'store' : 'recall'}:${a.deviceId}`, { slot: a.slot });
 
     return done('Radio updated.', { settings: next });
   }
@@ -306,6 +326,7 @@ export class HamStationManager {
     }
     if (a.type === 'packet.injectCorruption') {
       pk.corruptNextFrame();
+      c.event('packet:injectCorruption');
       return done('The next frame will be corrupted.');
     }
     const prep = prepareTx(c, radioId, { kind: 'test' });
@@ -326,6 +347,14 @@ export class HamStationManager {
     }
     c.state.air.push(...res.emissions);
     c.event(`packet:${a.type.slice(7)}`);
+    if (pk.getAudio().systemSoundsToInterface) {
+      // A notification sound routed to the interface goes out over the air
+      const chime = pk.playSystemSound(nowS);
+      if (chime.rf) {
+        c.state.air.push(...chime.emissions);
+        c.event('packet:chime');
+      }
+    }
 
     return done(res.reason ?? 'Frame sent.', { emissions: res.emissions.length });
   }
@@ -508,6 +537,11 @@ export class HamStationManager {
 
   listenedBeforeFirstCall(minS = 10): boolean {
     return this.core_.ops.qso?.listenedBeforeFirstCall(minS) ?? false;
+  }
+
+  /** Simulated seconds a powered radio has monitored this frequency */
+  monitoredFor(freqMHz: number): number {
+    return this.core_.ops.qso?.monitoredFor(freqMHz) ?? 0;
   }
 
   device(id: string): Readonly<DeviceRuntime> | undefined {

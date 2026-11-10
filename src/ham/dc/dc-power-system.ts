@@ -67,6 +67,8 @@ export interface DcSystemState {
   timeS: number;
   resetCount: number;
   lastBrownout: BrownoutSample | null;
+  /** Optional transmit current override (A), set by the station when the load follows the radio power setting */
+  txCurrentA?: number;
 }
 
 export interface DcSystemOptions {
@@ -75,6 +77,8 @@ export interface DcSystemOptions {
   batterySoc?: number;
   leadOhms?: number;
   fault?: DcFault;
+  /** The transmit current follows the radio power setting (about 2 A at 5 W, 8 A at 50 W) */
+  txScalesWithPower?: boolean;
 }
 
 const TEST_POINTS: Readonly<Record<string, string>> = {
@@ -163,7 +167,7 @@ export class DcPowerSystem implements MeterCircuit {
     const s = this.state;
     if (s.radioState !== 'on' || s.polarityReversed || s.fuseBlown) return 0;
     const tx = ptt && !s.txLocked;
-    return tx ? (MOBILE_PROFILE.power.txCurrentA ?? 8) : (MOBILE_PROFILE.power.rxCurrentA ?? 1);
+    return tx ? (s.txCurrentA ?? MOBILE_PROFILE.power.txCurrentA ?? 8) : (MOBILE_PROFILE.power.rxCurrentA ?? 1);
   }
 
   private build_(energized: boolean, loadA: number, volts: number): CircuitElement[] {

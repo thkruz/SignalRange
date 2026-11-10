@@ -5,14 +5,7 @@ import { ccsScenario3Data } from '@app/campaigns/ccs/scenario3';
 import { ccsScenario4Data } from '@app/campaigns/ccs/scenario4';
 import { ccsScenario5Data } from '@app/campaigns/ccs/scenario5';
 import { hamSdrSandboxData } from '@app/campaigns/ham-sdr/sandbox';
-import { hamSdrScenario1Data } from '@app/campaigns/ham-sdr/scenario1';
-import { hamSdrScenario2Data } from '@app/campaigns/ham-sdr/scenario2';
-import { hamSdrScenario3Data } from '@app/campaigns/ham-sdr/scenario3';
-import { hamSdrScenario4Data } from '@app/campaigns/ham-sdr/scenario4';
-import { hamSdrScenario5Data } from '@app/campaigns/ham-sdr/scenario5';
-import { hamSdrScenario6Data } from '@app/campaigns/ham-sdr/scenario6';
-import { hamSdrScenario7Data } from '@app/campaigns/ham-sdr/scenario7';
-import { hamSdrScenario8Data } from '@app/campaigns/ham-sdr/scenario8';
+import { hamTechScenarios } from '@app/campaigns/ham-sdr/tech';
 import { signalHunterSandboxData } from '@app/campaigns/signal-hunter/sandbox';
 import { signalHunterScenario1Data } from '@app/campaigns/signal-hunter/scenario1';
 import { signalHunterScenario2Data } from '@app/campaigns/signal-hunter/scenario2';
@@ -102,13 +95,13 @@ export const natsCampaignData: CampaignData = {
 export const hamSdrCampaignData: CampaignData = {
   id: 'ham-sdr',
   title: 'Backyard Operator',
-  subtitle: 'DIY Satellite Tracking with Software-Defined Radio',
-  description: `Charlie's niece Riley teaches you how to track satellites from your backyard. No mission control, no nine-meter dish - just software-defined radio, DIY antennas, and physics.<br><br>Start by catching weather images on a hand-wound quadrifilar helix. Add a crossed yagi on a TV rotator and chase cubesat Doppler by hand. Learn why handedness costs you eighteen decibels, find the GPS constellation hiding under the noise floor, and audit a link budget until a hopeless low pass decodes anyway.<br><br>Then the band turns hostile. Someone spoofs your clock. Someone hands you poisoned orbital elements. A neighbor's failing gear buries the birds in hash. And when you finally key a transmitter of your own, you meet an unlicensed operator the satellite relays as faithfully as it relays you - and a beacon claiming to be a satellite that never left the ground.<br><br>Eight scenarios, one lesson: RF is unauthenticated, and physics is your only authentication.`,
+  subtitle: 'Amateur Radio Technician Practicals',
+  description: `Riley Brooks holds an amateur radio license and has offered to show you how a working station fits together, from the first receiver on a desk to a portable station you run on your own.<br><br>Receive a training transmission on a small SDR, then measure a powered circuit with a real meter. Make your first simplex contact, get into a repeater with the right offset and tone, and find out why a digital radio needs its codeplug. Cut a dipole to length and check it with an analyzer. Chase lost watts down a crushed feed line, a radio reset down a tired power lead, and noise down to a plug-in supply.<br><br>Then reach further: packet messages that wait for an acknowledgement, a ten-metre contact when the band opens, a grid exchange through a passing satellite, and a club net that loses its repeater halfway through.<br><br>Twelve scenarios inside US Technician privileges, with practice questions from the public 2026-2030 Technician question pool. The simulator decides every result: a setting only counts when the station works.`,
   // Art lives under assets/campaigns/home-sdr/, which does not match the
   // 'ham-sdr' campaign id.
   imageUrl: 'home-sdr/home-sdr.png',
   difficulty: 'beginner',
-  totalDuration: '170-210 min',
+  totalDuration: '370-460 min',
   campaignType: 'Amateur Radio Operations',
   headerIdentity: {
     name: 'BACKYARD',
@@ -116,20 +109,10 @@ export const hamSdrCampaignData: CampaignData = {
     icon: 'dish',
   },
   chromeVariant: 'sdr',
-  // S1-S8 are shipped but the engine seams behind them (terrestrial emitters,
-  // backyard TX path, REF/holdover) are still moving, so saves can break.
+  // The Technician curriculum (phase 42) replaced the eight earlier alpha
+  // scenarios outright; old C3 completions are not migrated. Alpha until a human playtest.
   releaseStage: 'alpha',
-  scenarios: [
-    hamSdrSandboxData,
-    hamSdrScenario1Data,
-    hamSdrScenario2Data,
-    hamSdrScenario3Data,
-    hamSdrScenario4Data,
-    hamSdrScenario5Data,
-    hamSdrScenario6Data,
-    hamSdrScenario7Data,
-    hamSdrScenario8Data,
-  ],
+  scenarios: [hamSdrSandboxData, ...hamTechScenarios],
   isLocked: false,
   isDisabled: false,
 };

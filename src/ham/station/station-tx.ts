@@ -77,6 +77,18 @@ export function prepareTx(core: StationCore, deviceId: string, intent: TxIntent)
 
 export const isPrepared = (r: PreparedTx | ActionResult): r is PreparedTx => 'emission' in r;
 
+/** Isolation between the uplink radio and the downlink receiver as currently wired, dB (null = not derivable) */
+export function wiredIsolationDb(core: StationCore, txRadioId: string, rxRadioId: string, txMHz: number): number | null {
+  const tx = core.path(txRadioId, txMHz);
+  const rx = core.path(rxRadioId, core.rxFreqMHz(rxRadioId));
+  if (!tx.antennaDeviceId || !rx.antennaDeviceId) return null;
+  if (tx.antennaDeviceId !== rx.antennaDeviceId) return 30;
+  const dup = tx.elements.find((e) => e.kind === 'duplexer');
+  if (!dup) return 6;
+
+  return core.cfg.devices.find((d) => d.id === dup.deviceId)?.isolationDb ?? 60;
+}
+
 export function ptt(core: StationCore, deviceId: string, intent: TxIntent, holdS = DEFAULT_HOLD_S): ActionResult {
   const prep = prepareTx(core, deviceId, intent);
   if (!isPrepared(prep)) return prep;
@@ -87,6 +99,11 @@ export function ptt(core: StationCore, deviceId: string, intent: TxIntent, holdS
   s.air.push(emission);
   s.keyed = { deviceId, emission, intent, untilS: s.nowS + holdS, outputW: prep.outputW, deliveredW: prep.deliveredW, termination: prep.termination };
   core.event(`txOk:${deviceId}`, { freqMHz: fMHz, mode: emission.mode, termination: prep.termination, outputW: round(prep.outputW), erpDbm: round(emission.erpDbm) });
+  const wiring = core.cfg.satellite?.wiring;
+  if (wiring && wiring.txRadioId === deviceId && core.ops.sat) {
+    const iso = wiredIsolationDb(core, deviceId, wiring.rxRadioId, fMHz);
+    if (iso !== null) core.ops.sat.setIsolation(iso);
+  }
   const ops = core.ops.onPlayerEmission(emission, intent, s.nowS, prep.outputW);
   for (const ev of ops.events) core.event(ev.name, ev.data);
   s.air.push(...ops.emissions);
@@ -120,6 +137,10 @@ export function stepPower(core: StationCore, dtS: number): void {
     const dc = core.dcSystems.get(cfg.id);
     if (!dc || !cfg.dcSystem) continue;
     const keyedHere = s.keyed?.deviceId === cfg.dcSystem.radioId;
+    if (cfg.dcSystem.txScalesWithPower) {
+      const w = core.inService(cfg.dcSystem.radioId)?.radio?.txPowerW;
+      if (typeof w === 'number') dc.state.txCurrentA = Math.round((1.5 + 0.13 * w) * 100) / 100;
+    }
     dc.tick(dtS, { ptt: keyedHere });
     const prev = s.resetCounts[cfg.id] ?? 0;
     if (dc.state.resetCount > prev) {

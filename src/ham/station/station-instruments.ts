@@ -30,12 +30,14 @@ function circuit(core: StationCore, id: string | null): { kind: 'board' | 'dc'; 
 
 export function meterMode(core: StationCore, mode: MeterMode): ActionResult {
   core.meter.setMode(mode);
+  core.event(`meter:mode:${mode}`);
 
   return done(`Meter set to ${mode}.`);
 }
 
 export function meterSocket(core: StationCore, socket: RedSocket): ActionResult {
   core.meter.setRedSocket(socket);
+  core.event(`meter:socket:${socket}`);
 
   return done(`Red lead moved to the ${socket} socket.`);
 }
@@ -76,6 +78,25 @@ export function meterRead(core: StationCore): ActionResult {
   });
 
   return done(`Meter reads ${r.display}.`, { measurement: m, warning: r.warning ?? null });
+}
+
+/** Read the battery energy gauge (Wh remaining) on a battery-powered DC system */
+export function batteryRead(core: StationCore, deviceId: string): ActionResult {
+  const dc = core.dcSystems.get(deviceId);
+  if (!dc || dc.state.source !== 'battery') return refuse('That device has no battery gauge.', 'no-battery');
+  const away = core.reachable(deviceId);
+  if (away) return away;
+  const wh = Math.round(dc.state.battery.energyWh * 10) / 10;
+  const m = measure(core, {
+    instrument: 'battery-monitor',
+    quantity: 'battery-energy',
+    value: wh,
+    unit: 'Wh',
+    placement: { target: deviceId },
+    underLoad: dc.state.ptt,
+  });
+
+  return done(`Battery gauge reads ${wh.toFixed(1)} Wh.`, { measurement: m });
 }
 
 export function swrRead(core: StationCore, meterId: string): ActionResult {

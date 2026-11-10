@@ -1,0 +1,147 @@
+/**
+ * @file s03-station - Station fixture for C3 Technician S3 "Your First Contact"
+ * @description A 5 W dual-band handheld with a supplied rubber-duck antenna, license technician,
+ * and one simplex partner on 146.550 MHz FM (W0SRC, "Sam").
+ * Fixtures (match the S3 mission brief):
+ * - the HT boots on 146.520 MHz at 5 W; the contact channel is 146.550 MHz simplex
+ * - the battery pack is not seated at the start (fault `ht-battery`), so the radio is dead until
+ *   the player inspects it and reseats the pack; the antenna is the supplied rubber duck
+ * - Sam answers a call that he decodes, then trades name, location and report, then closes when
+ *   the player identifies with KF0SRT
+ */
+
+import { HAM_STATION_SCHEMA, type HamStationConfig, type Worksheet } from '@app/ham/ham-station-config';
+import type { HamConnection } from '@app/ham/ham-types';
+
+export const S03_CHANNEL_MHZ = 146.55;
+
+const privilegesSheet: Worksheet = {
+  id: 's03-privileges',
+  title: 'Confirm your station privileges',
+  prompt: 'Your call sign, KF0SRT, is in the license database as a Technician. Answer from the privilege chart on your reference card.',
+  fields: [
+    {
+      id: 'band',
+      label: '146.550 MHz FM is in the 2 meter band. A Technician may transmit there:',
+      kind: 'choice',
+      options: ['Yes, it is inside Technician privileges', 'No, it needs a General license'],
+      answer: 'Yes, it is inside Technician privileges',
+    },
+    {
+      id: 'power',
+      label: 'How much transmitter power should you use?',
+      kind: 'choice',
+      options: ['The minimum needed to communicate', 'Always the maximum the radio allows'],
+      answer: 'The minimum needed to communicate',
+    },
+    {
+      id: 'ident',
+      label: 'You must give your call sign:',
+      kind: 'choice',
+      options: ['At the end of the contact and at least every 10 minutes during it', 'Only when the other station asks'],
+      answer: 'At the end of the contact and at least every 10 minutes during it',
+    },
+  ],
+  explanation:
+    'Privileges come from your license class, not from the radio. Use only the power you need, and identify at the end of a contact and every 10 minutes during a long one.',
+  wrongFeedback: {
+    band: 'Check the privilege chart: the whole 2 meter band is open to Technicians.',
+    power: 'The rules ask for the minimum power that gets the job done.',
+    ident: 'Identification is required at the end and at least every 10 minutes.',
+  },
+};
+
+const exposureSheet: Worksheet = {
+  id: 's03-exposure',
+  title: 'Review the antenna clearance',
+  prompt: 'Your handheld puts its antenna close to your head and body. Answer the exposure questions before you transmit.',
+  fields: [
+    {
+      id: 'hold',
+      label: 'While transmitting, which way do you hold the radio?',
+      kind: 'choice',
+      options: ['Upright, with the antenna kept away from your head and body', 'With the antenna pressed against your cheek'],
+      answer: 'Upright, with the antenna kept away from your head and body',
+    },
+    {
+      id: 'power',
+      label: 'Which choice lowers your exposure and still reaches a nearby station?',
+      kind: 'choice',
+      options: ['A lower transmit power', 'A longer key-down time'],
+      answer: 'A lower transmit power',
+    },
+  ],
+  explanation:
+    'Exposure depends on power, distance from the antenna and how long you transmit. Hold the antenna away from you, use the power you need and keep transmissions short.',
+  wrongFeedback: { hold: 'Keep the antenna away from your head and body while you transmit.', power: 'Lower power and shorter transmissions both reduce exposure.' },
+};
+
+const conn = (id: string, a: [string, string], b: [string, string]): HamConnection => ({
+  id,
+  a: { deviceId: a[0], portId: a[1] },
+  b: { deviceId: b[0], portId: b[1] },
+  seated: true,
+});
+
+export const s03Station: HamStationConfig = {
+  schema: HAM_STATION_SCHEMA,
+  pauseOnQuiz: true,
+  seed: 103,
+  operator: { license: 'technician', callsign: 'KF0SRT', name: 'You' },
+  locations: [{ id: 'bench', label: 'Shack', description: 'Desk with a handheld radio', position: { xKm: 0, yKm: 0, heightM: 6 } }],
+  startLocation: 'bench',
+  stationPosition: { xKm: 0, yKm: 0, heightM: 6 },
+  devices: [
+    {
+      id: 'ht',
+      kind: 'handheld',
+      label: 'Dual-band handheld',
+      location: 'bench',
+      profileId: 'dual-band-ht',
+      powered: true,
+      radio: { vfoMHz: 146.52, mode: 'FM', txPowerW: 5, squelch: 3, volume: 6 },
+    },
+    { id: 'ht-ant', kind: 'antenna', label: 'Supplied rubber-duck antenna', location: 'bench', antenna: { kind: 'rubber-duck' } },
+  ],
+  connections: [conn('ht-ant-jack', ['ht', 'ant'], ['ht-ant', 'in'])],
+  faults: [
+    {
+      id: 'ht-battery',
+      target: 'ht',
+      kind: 'battery-unseated',
+      inspectClue: 'The battery pack is not clicked into the radio. The contacts are not touching, so the radio has no power.',
+      clearedBy: { action: 'repair' },
+    },
+  ],
+  emitters: [],
+  remoteStations: {
+    stations: [
+      {
+        id: 'sam',
+        callsign: 'W0SRC',
+        name: 'Sam',
+        location: 'across town',
+        grid: 'EN34',
+        position: { xKm: 4, yKm: 1, heightM: 12 },
+        freqMHz: S03_CHANNEL_MHZ,
+        mode: 'FM',
+        erpDbm: 37,
+        replyDelayS: 3,
+        personality: ['Thanks for the call. Go ahead whenever you are ready.'],
+      },
+    ],
+  },
+  worksheets: [privilegesSheet, exposureSheet],
+  cards: [
+    {
+      id: 's03-privileges-card',
+      title: 'Technician privilege card',
+      body: 'Technician: all amateur VHF/UHF bands, including 144 to 148 MHz. Use the minimum power needed. Identify at the end of a contact and at least every 10 minutes. This card is a training aid, not a license.',
+    },
+    {
+      id: 's03-contact-card',
+      title: 'Contact script',
+      body: 'Listen first. Call: "W0SRC, this is KF0SRT." Then exchange your name, your location and a signal report. Finish with: "W0SRC, this is KF0SRT, clear." Release the key between transmissions.',
+    },
+  ],
+};

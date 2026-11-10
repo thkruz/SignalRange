@@ -38,6 +38,9 @@ export interface SatLinkConfig {
   uplinkWindowHz: number;
   downlinkErpDbm: number;
   groundStation: SatGroundStation;
+  /** Optional downlink beacon (the reference signal to find before transmitting) and its period */
+  beaconText?: string;
+  beaconPeriodS?: number;
   playerCallsign: string;
   hears: HearsFn;
   /** SDR front-end overload threshold, dBm */
@@ -83,6 +86,9 @@ export interface SatLinkState {
   selfHeard: boolean;
   relaySeq: number;
   seq: number;
+  beaconHeard?: boolean;
+  nextBeaconS?: number;
+  beaconSeq?: number;
 }
 
 export class SatelliteLink {
@@ -97,6 +103,11 @@ export class SatelliteLink {
   private selfHeard_ = false;
   private relaySeq_ = 0;
   private seq_ = 0;
+  private beaconHeard_ = false;
+  private nextBeaconS_: number | null = null;
+  private beaconSeq_ = 0;
+  /** The beacon keeps quiet until this time so it never collides with a relay or a ground-station reply */
+  private beaconQuietUntilS_ = 0;
 
   constructor(cfg: SatLinkConfig) {
     this.cfg_ = cfg;
@@ -181,6 +192,7 @@ export class SatelliteLink {
     };
     delete relay.position;
     this.ownRelayIds_.push(relay.id);
+    this.beaconQuietUntilS_ = Math.max(this.beaconQuietUntilS_, (relay.endS ?? nowS + 4) + (intent ? this.cfg_.groundStation.replyDelayS + 5 : 1));
     this.groundStationListens_(relay, intent, nowS);
     return res('relayed', 'Uplink accepted and relayed on the downlink.', [relay]);
   }
@@ -243,13 +255,52 @@ export class SatelliteLink {
   tick(nowS: number): OnAirEmission[] {
     const g = this.geometry_;
     if (!g || !g.isAboveHorizon) return [];
-    return this.outbox_.popDue(nowS).map(({ emission, out }) => {
+    const res = this.outbox_.popDue(nowS).map(({ emission, out }) => {
       if (out.tag) this.emissionToContact_[emission.id] = out.tag;
       return emission;
     });
+    const beacon = this.beacon_(nowS);
+    if (beacon) res.push(beacon);
+
+    return res;
+  }
+
+  /** The satellite's periodic downlink beacon while it is above the horizon */
+  private beacon_(nowS: number): OnAirEmission | null {
+    const c = this.cfg_;
+    if (!c.beaconText) return null;
+    this.nextBeaconS_ ??= nowS;
+    if (nowS < this.nextBeaconS_) return null;
+    if (nowS < this.beaconQuietUntilS_) {
+      this.nextBeaconS_ = this.beaconQuietUntilS_;
+      return null;
+    }
+    const period = c.beaconPeriodS ?? 20;
+    this.nextBeaconS_ = nowS + period;
+    this.beaconSeq_++;
+    const { emission } = this.outbox_.emitNow({
+      dueS: nowS,
+      durS: Math.min(6, period - 1),
+      sourceId: c.id,
+      callsign: c.groundStation.callsign,
+      text: c.beaconText,
+      freqHz: this.downlinkHz(),
+      mode: 'FM',
+      erpDbm: c.downlinkErpDbm,
+      viaSatellite: c.id,
+    });
+    emission.id = `sat-beacon-${this.beaconSeq_}`;
+    emission.polarization = 'RHCP';
+    delete emission.payload.callsign;
+
+    return emission;
   }
 
   notePlayerHeard(emissionId: string, intelligibility: number): void {
+    if (emissionId.startsWith('sat-beacon-')) {
+      if (intelligibility >= 0.6) this.beaconHeard_ = true;
+      return;
+    }
     if (this.ownRelayIds_.includes(emissionId)) {
       // Hearing yourself on the downlink proves the uplink works, nothing more
       if (intelligibility >= 0.6) this.selfHeard_ = true;
@@ -261,6 +312,11 @@ export class SatelliteLink {
       rec.playerHeardRemote = true;
       if (!rec.exchanged.includes('grid')) rec.exchanged.push('grid');
     }
+  }
+
+  /** True once the player heard the satellite's own beacon clearly */
+  get beaconHeard(): boolean {
+    return this.beaconHeard_;
   }
 
   /** True once the player heard their own signal come back (never a contact) */
@@ -289,6 +345,9 @@ export class SatelliteLink {
       selfHeard: this.selfHeard_,
       relaySeq: this.relaySeq_,
       seq: this.seq_,
+      beaconHeard: this.beaconHeard_,
+      nextBeaconS: this.nextBeaconS_ ?? undefined,
+      beaconSeq: this.beaconSeq_,
     });
   }
 
@@ -304,5 +363,8 @@ export class SatelliteLink {
     this.selfHeard_ = c.selfHeard;
     this.relaySeq_ = c.relaySeq;
     this.seq_ = c.seq;
+    this.beaconHeard_ = c.beaconHeard ?? false;
+    this.nextBeaconS_ = c.nextBeaconS ?? null;
+    this.beaconSeq_ = c.beaconSeq ?? 0;
   }
 }

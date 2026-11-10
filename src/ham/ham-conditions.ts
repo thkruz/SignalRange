@@ -64,6 +64,17 @@ export function heard(
   );
 }
 
+/** The emitter is visible above the noise at a receiver right now (waterfall evidence, independent of audio) */
+export function signalVisible(emitterId: string, deviceId: string, minSnrDb: number, description = `See ${emitterId} in the waterfall`): Condition {
+  const blocking = ['off-frequency', 'mode-mismatch', 'no-antenna', 'usb-disconnected', 'no-power'];
+
+  return make(`signalVisible:${emitterId}:${deviceId}:${minSnrDb}`, description, (m) =>
+    m
+      .liveReception(deviceId)
+      .some((r) => (r.emissionId === emitterId || r.emissionId.startsWith(`${emitterId}#`)) && r.snrDb >= minSnrDb && !r.impairments.some((i) => blocking.includes(i)))
+  );
+}
+
 // ---- measuring ----
 
 export interface MeasuredSpec {
@@ -211,8 +222,40 @@ export function contactComplete(remoteOrPath: string, spec: ContactSpec = {}, de
   );
 }
 
+/** A two-way contact with this remote (still open or closed) has exchanged all the items */
+export function contactItems(remoteOrCallsign: string, items: string[], description = `Exchange ${items.join(', ')} with ${remoteOrCallsign}`): Condition {
+  return make(`contactItems:${remoteOrCallsign}:${items.join(',')}`, description, (m) =>
+    m
+      .contacts()
+      .some(
+        (c) =>
+          (c.remoteId === remoteOrCallsign || c.remoteCallsign === remoteOrCallsign) && c.remoteHeardPlayer && c.playerHeardRemote && items.every((i) => c.exchanged.includes(i))
+      )
+  );
+}
+
+/** No transmitter is keyed right now */
+export function keyReleased(description = 'Release the PTT'): Condition {
+  return make('keyReleased', description, (m) => !m.keyed());
+}
+
+/** The player monitored the channel for at least minS (simulated seconds) before their first call */
+export function listenedBeforeFirstCall(minS = 10, description = `Listen for ${minS} s before the first call`): Condition {
+  return make(`listenedBeforeFirstCall:${minS}`, description, (m) => m.listenedBeforeFirstCall(minS));
+}
+
+/** A powered radio has monitored this frequency for at least minS (simulated seconds, paused quizzes excluded) */
+export function monitoredChannel(freqMHz: number, minS = 10, description = `Monitor ${freqMHz.toFixed(3)} MHz for ${minS} s`): Condition {
+  return make(`monitoredChannel:${freqMHz}:${minS}`, description, (m) => m.monitoredFor(freqMHz) >= minS);
+}
+
 export function repeaterAccess(code: RepeaterAccessCode = 'relayed', opts: { afterEvent?: string } = {}, description = `Repeater access: ${code}`): Condition {
   return make(`repeaterAccess:${code}:${opts.afterEvent ?? ''}`, description, (m) => eventsAfter(m, `repeater:${code}`, opts.afterEvent).length > 0);
+}
+
+/** The repeater access log holds this code (includes wrong-frequency, which is not logged as an event) */
+export function repeaterLogged(code: RepeaterAccessCode, description = `Repeater log: ${code}`): Condition {
+  return make(`repeaterLogged:${code}`, description, (m) => m.repeaterLog().some((r) => r.code === code));
 }
 
 /** The player heard the repeater's relay of their own transmission */
@@ -238,6 +281,38 @@ export function packetAcked(opts: { retried?: boolean } = {}, description = 'Mes
   });
 }
 
+/** The packet identity is set as given (case-insensitive call signs, exact digipeater path) */
+export function packetStationIs(spec: { mycall: string; destination: string; path: string[] }, description = 'Station identity set'): Condition {
+  return make(`packetStationIs:${spec.mycall}:${spec.destination}:${spec.path.join(',')}`, description, (m) => {
+    const st = m.packetState()?.station;
+
+    return (
+      !!st &&
+      st.mycall.toUpperCase() === spec.mycall.toUpperCase() &&
+      st.destination.toUpperCase() === spec.destination.toUpperCase() &&
+      st.path.length === spec.path.length &&
+      st.path.every((p, i) => p.toUpperCase() === spec.path[i].toUpperCase())
+    );
+  });
+}
+
+/**
+ * A clean modulated frame went out with the interface as output, a transmit level in the target
+ * range and no stray system-sound chime since (the chime is logged by the manager on every send
+ * while system sounds are routed to the interface).
+ */
+export function packetTxClean(levelRange: [number, number] = [4, 6], description = 'Send a clean test frame'): Condition {
+  return make(`packetTxClean:${levelRange.join('-')}`, description, (m) => {
+    const p = m.packetState();
+    if (!p || p.audio.outputDevice !== 'interface' || p.audio.systemSoundsToInterface) return false;
+    if (p.audio.txLevel < levelRange[0] || p.audio.txLevel > levelRange[1]) return false;
+    const chimes = m.events('packet:chime');
+    const lastChime = chimes.length > 0 ? chimes[chimes.length - 1].tS : -1;
+
+    return (p.txLog ?? []).some((t) => t.fcsOk && t.tS > lastChime);
+  });
+}
+
 export function packetDecoded(description = 'Decode a frame from the node'): Condition {
   return make('packetDecoded', description, (m) => m.packetState()?.rxLog.some((r) => r.ok) === true);
 }
@@ -246,6 +321,11 @@ export function satContact(spec: ContactSpec = {}, description = 'Complete a sat
   const c = contactComplete('satellite', spec, description);
 
   return { ...c, id: `c3:satContact:${JSON.stringify(spec)}` };
+}
+
+/** The satellite's own downlink beacon was heard clearly (receive-only acquisition) */
+export function satBeaconHeard(description = 'Hear the satellite downlink beacon'): Condition {
+  return make('satBeaconHeard', description, (m) => m.satelliteState()?.beaconHeard === true);
 }
 
 export function satDownlinkHeard(description = 'Hear your own downlink'): Condition {
@@ -283,6 +363,145 @@ export function netReadback(description = 'Read back the assignment'): Condition
   });
 }
 
-export function netMessageExact(description = 'Relay the message word for word'): Condition {
-  return make('netMessageExact', description, (m) => m.netAttempts().some((a) => a.exact));
+export function netMessageExact(description = 'Relay the message word for word', opts: { onFallback?: boolean } = {}): Condition {
+  return make(`netMessageExact${opts.onFallback ? ':fallback' : ''}`, description, (m) => m.netAttempts().some((a) => a.exact && (!opts.onFallback || a.fallback === true)));
+}
+
+/** Net control announced the planned repeater outage and its start time has passed */
+export function repeaterOutageStarted(description = 'The repeater is off the air'): Condition {
+  return make('repeaterOutageStarted', description, (m) => {
+    const out = m.config.net?.outage;
+    const net = m.netState();
+    if (!out || net?.outageAnnounced !== true || m.nowS < out.startsAtS) return false;
+    if (!out.afterEvent) return true;
+
+    return net.outageArmedAtS !== undefined && m.nowS >= net.outageArmedAtS;
+  });
+}
+
+/** The net closed: message delivered exactly and the player identified afterwards */
+export function netClosed(description = 'Close out the net with your call sign'): Condition {
+  return make('netClosed', description, (m) => m.netState()?.stage === 'closed');
+}
+
+/** The device is powered off right now */
+export function devicePoweredOff(deviceId: string, description = `Power off ${deviceId}`): Condition {
+  return make(`poweredOff:${deviceId}`, description, (m) => m.device(deviceId)?.powered === false);
+}
+
+// ---- compare, locate, decide (S5, S6, S8) ----
+
+export interface ContrastSpec {
+  quantity: string;
+  /** Context values the better reading must carry (e.g. { orientation: 'vertical' }) */
+  better: Record<string, string | number | boolean>;
+  worse: Record<string, string | number | boolean>;
+  /** Context keys that must be identical in both readings (same conditions) */
+  same: string[];
+  minDelta: number;
+  /** Which direction is the improvement (default higher) */
+  improvesBy?: 'higher' | 'lower';
+  /** The newest reading of this quantity must be a `better` one (the fix is still in place) */
+  endsOn?: boolean;
+  afterEvent?: string;
+}
+
+const ctxMatches = (x: HamMeasurement, want: Record<string, string | number | boolean>): boolean => Object.entries(want).every(([k, v]) => x.context?.[k] === v);
+
+/** Two receiver readings under the same conditions differ in the wanted direction by at least minDelta */
+export function measuredContrast(spec: ContrastSpec, description = `Compare two ${spec.quantity} readings`): Condition {
+  return make(`measuredContrast:${JSON.stringify(spec)}`, description, (m) => {
+    const all = m.measurements({ instrument: 'receiver', quantity: spec.quantity, afterEvent: spec.afterEvent });
+    const dir = spec.improvesBy === 'lower' ? -1 : 1;
+    const goods = all.filter((x) => ctxMatches(x, spec.better));
+    const bads = all.filter((x) => ctxMatches(x, spec.worse));
+
+    if (spec.endsOn && (all.length === 0 || !ctxMatches(all[all.length - 1], spec.better))) return false;
+
+    return goods.some((g) => bads.some((b) => spec.same.every((k) => g.context?.[k] === b.context?.[k]) && dir * (g.value - b.value) >= spec.minDelta));
+  });
+}
+
+/** The strongest noise reading of a bearing sweep points at the expected bearing (within tolDeg) */
+export function bearingFound(
+  expectedDeg: number,
+  tolDeg: number,
+  opts: { minReadings?: number; afterEvent?: string; require?: Record<string, string | number | boolean> } = {},
+  description = 'Find the strongest direction'
+): Condition {
+  return make(`bearingFound:${expectedDeg}:${tolDeg}:${JSON.stringify(opts)}`, description, (m) => {
+    const rs = m.measurements({ instrument: 'receiver', quantity: 'noise-rise', afterEvent: opts.afterEvent }).filter((x) => ctxMatches(x, opts.require ?? {}));
+    const byAz = new Map<number, number>();
+    for (const r of rs) {
+      const az = Number(r.context?.azDeg ?? 0);
+      byAz.set(az, Math.max(byAz.get(az) ?? -Infinity, r.value));
+    }
+    if (byAz.size < (opts.minReadings ?? 4)) return false;
+    const [bestAz] = [...byAz.entries()].reduce((a, b) => (b[1] > a[1] ? b : a));
+    const diff = Math.abs(((bestAz - expectedDeg + 540) % 360) - 180);
+
+    return diff <= tolDeg;
+  });
+}
+
+/** A recorded decision made with the given choice */
+export function decisionMade(id: string, choice: string, description = `Decide: ${id}`): Condition {
+  return make(`decision:${id}:${choice}`, description, (m) => m.events(`decision:${id}`).some((e) => e.data?.choice === choice));
+}
+
+/** A successful transmission on deviceId with its transmit frequency inside [loMHz, hiMHz] (after afterEvent) */
+export function txOkWithin(
+  deviceId: string,
+  loMHz: number,
+  hiMHz: number,
+  opts: { afterEvent?: string } = {},
+  description = `Transmit between ${loMHz} and ${hiMHz} MHz`
+): Condition {
+  return make(`txOkWithin:${deviceId}:${loMHz}:${hiMHz}:${opts.afterEvent ?? ''}`, description, (m) =>
+    eventsAfter(m, `txOk:${deviceId}`, opts.afterEvent).some((e) => {
+      const f = Number(e.data?.freqMHz);
+
+      return f >= loMHz && f <= hiMHz;
+    })
+  );
+}
+
+/** A brownout reset logged with the radio terminals at or below maxRadioV while the source stayed at or above minSourceV */
+export function brownoutSeen(
+  dcId: string,
+  spec: { maxRadioV: number; minSourceV?: number; afterEvent?: string },
+  description = 'See the voltage collapse at the radio'
+): Condition {
+  return make(`brownoutSeen:${dcId}:${JSON.stringify(spec)}`, description, (m) =>
+    eventsAfter(m, 'brownout', spec.afterEvent).some(
+      (e) =>
+        e.data?.dcId === dcId &&
+        typeof e.data?.vRadio === 'number' &&
+        e.data.vRadio <= spec.maxRadioV &&
+        (spec.minSourceV === undefined || (typeof e.data?.vSource === 'number' && e.data.vSource >= spec.minSourceV))
+    )
+  );
+}
+
+/**
+ * Satellite uplinks relayed while the player was within maxOffsetHz of the satellite receiver, at least `count` of them
+ * separated by at least `minGapS` (proves the player followed the Doppler shift rather than getting one lucky key-up)
+ */
+export function satRelayedCorrected(
+  spec: { maxOffsetHz: number; count: number; minGapS: number; afterEvent?: string },
+  description = 'Follow the Doppler shift on the uplink'
+): Condition {
+  return make(`satRelayedCorrected:${JSON.stringify(spec)}`, description, (m) => {
+    const good = eventsAfter(m, 'sat:relayed', spec.afterEvent).filter((e) => typeof e.data?.offsetHz === 'number' && Math.abs(e.data.offsetHz) <= spec.maxOffsetHz);
+    let picked = 0;
+    let last = Number.NEGATIVE_INFINITY;
+    for (const e of good) {
+      if (e.tS - last >= spec.minGapS) {
+        picked += 1;
+        last = e.tS;
+      }
+    }
+
+    return picked >= spec.count;
+  });
 }

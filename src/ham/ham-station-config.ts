@@ -48,6 +48,8 @@ export interface HamDeviceConfig {
   noise?: { psdDbmHzAt1m: number; supplyId?: string; conductedBoostDb?: number; reflection?: { bearingOffsetDeg: number; extraLossDb: number } };
   dummyLoad?: { ratedW: number; ratedSeconds: number };
   calLoad?: { ratedW: number };
+  /** Duplexer-kind devices: isolation between its ports, dB (default 60; a passive splitter is about 6) */
+  isolationDb?: number;
   /** Spare fuse rating, A (spares only) */
   fuseRatingA?: number;
   /** Text shown by `inspect` when no fault clue applies */
@@ -134,6 +136,8 @@ export interface SatelliteBlock extends Wired<SatLinkConfig> {
   satelliteNoradId: number;
   /** Uplink/downlink isolation, dB (ISOLATION_DB values) */
   isolationDb?: number;
+  /** When set, isolation is derived from the live wiring of these two radios each time the uplink keys */
+  wiring?: { txRadioId: string; rxRadioId: string };
 }
 
 export interface EnergyPlan {
@@ -167,6 +171,8 @@ export interface HamStationConfig {
   energyPlan?: EnergyPlan;
   worksheets: Worksheet[];
   cards: ReferenceCard[];
+  /** Optional hint text per objective id, shown by the Station tab's "Ask Riley" button */
+  hints?: Record<string, string>;
   /** Seat refused while a powered radio/receiver is on that connection */
   seatRequiresPowerOff?: boolean;
 }

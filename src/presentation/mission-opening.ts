@@ -20,13 +20,13 @@ This room will receive radar imagery from MERIDIAN's low-orbit satellites. Marit
 
 The installation crew has finished its work. You have inherited their test settings, a new console, and a schedule that will not wait for the building to feel familiar. In time, Galway and the station in Shetland will work as a network. Today, Galway needs its first operational shift.`,
   },
-  'ham-sdr-scenario1': {
+  'ham-tech-s01': {
     title: "Riley's Side of the Hobby",
-    body: `Satellite work follows Charlie Brooks home through his niece. Riley is a licensed amateur radio operator, and her corner of it fits around a household desk: a laptop, a small receiver, and antennas she can put up in the backyard.
+    body: `Satellite work follows Charlie Brooks home through his niece. Riley is a licensed amateur radio operator, and her station fits around a household desk: a laptop, a small receiver, a handheld radio and an antenna she can carry into the yard.
 
-Some spacecraft broadcast signals anyone can receive. Weather images, amateur-radio contacts and small research payloads pass overhead while ordinary life carries on below. Getting a useful result can depend on something as modest as a connector, a piece of wire or knowing when to be outside.
+Amateur radio is a licensed service. Operators build, test and repair their own stations, and they answer for every signal those stations put on the air. Before you transmit anything, you will learn to receive, to measure and to read what the equipment is telling you.
 
-Riley has offered to show you her station. There is no customer waiting on this link and no supervisor signing off the shift. The reward is being able to point to an image on the screen and know that you received it yourself, from a machine you will never touch.`,
+Riley has set up a training transmission and left the receiver a little wrong on purpose. There is no customer waiting and no supervisor signing off the shift. The reward is hearing the message clearly and knowing why it came through.`,
   },
   'ccs-scenario2': {
     title: 'Inside SANDSTORM',

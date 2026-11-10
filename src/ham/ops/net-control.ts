@@ -18,7 +18,15 @@ export interface NetControlConfig {
   playerCallsign: string;
   openingS: number;
   /** Planned repeater outage the NCS announces after check-in */
-  outage: { startsAtS: number; fallbackMHz: number };
+  outage: {
+    startsAtS: number;
+    fallbackMHz: number;
+    /**
+     * Optional progress gate: the outage waits until the manager arms it (first `event`, logged at or
+     * after the first `since` event when given, plus `delayS`). `startsAtS` stays the earliest start.
+     */
+    afterEvent?: { event: string; since?: string; delayS?: number };
+  };
   /** Authored message, deliberately containing unusual words that need phonetics */
   message: string;
   hears: HearsFn;
@@ -32,6 +40,8 @@ export interface MessageAttempt {
   exact: boolean;
   /** Words that differ from the authored message (position-wise) */
   wrongWords: string[];
+  /** Sent on the announced simplex fallback frequency */
+  fallback?: boolean;
 }
 
 export interface Radiogram {
@@ -65,6 +75,10 @@ export interface NetState {
   radiograms: { tS: number; result: RadiogramResult }[];
   notes: string[];
   openingQueued: boolean;
+  /** Frequency the scripted stations answer on (follows the player to the fallback channel) */
+  replyMHz?: number;
+  /** Scenario second the progress-gated outage was armed for (absent = not armed) */
+  outageArmedAtS?: number;
   outbox: OutboxState;
 }
 
@@ -118,6 +132,8 @@ export class NetControl {
   private radiograms_: NetState['radiograms'] = [];
   private notes_: string[] = [];
   private openingQueued_ = false;
+  private replyMHz_: number | null = null;
+  private outageArmedAtS_: number | null = null;
 
   constructor(cfg: NetControlConfig) {
     this.cfg_ = cfg;
@@ -129,7 +145,19 @@ export class NetControl {
 
   /** Planned outage is in effect: announced to the player and its start time passed */
   outageActive(nowS: number): boolean {
-    return this.outageAnnounced_ && nowS >= this.cfg_.outage.startsAtS;
+    if (!this.outageAnnounced_ || nowS < this.cfg_.outage.startsAtS) return false;
+    if (!this.cfg_.outage.afterEvent) return true;
+    return this.outageArmedAtS_ !== null && nowS >= this.outageArmedAtS_;
+  }
+
+  /** True when the outage has a progress gate that has not been armed yet */
+  get outageAwaitingArm(): boolean {
+    return !!this.cfg_.outage.afterEvent && this.outageArmedAtS_ === null;
+  }
+
+  /** Arm a progress-gated outage to start at `atS` (first call wins) */
+  armOutage(atS: number): void {
+    if (this.outageArmedAtS_ === null) this.outageArmedAtS_ = atS;
   }
 
   private speak_(who: 'ncs' | 'receiver', dueS: number, text: string, tag?: string, freqMHz?: number): void {
@@ -140,7 +168,7 @@ export class NetControl {
       sourceId: s.id,
       callsign: s.callsign,
       text,
-      freqHz: Math.round((freqMHz ?? this.cfg_.freqMHz) * 1e6),
+      freqHz: Math.round((freqMHz ?? this.replyMHz_ ?? this.cfg_.freqMHz) * 1e6),
       mode: 'FM',
       erpDbm: s.erpDbm,
       position: s.position,
@@ -171,6 +199,7 @@ export class NetControl {
       return;
     }
     const due = nowS + 2;
+    this.replyMHz_ = this.onFallback_(e) ? c.outage.fallbackMHz : null;
     switch (intent.kind) {
       case 'net-checkin': {
         this.checkInAttempts_++;
@@ -200,7 +229,7 @@ export class NetControl {
           return;
         }
         const cmp = compareMessage(intent.text, c.message);
-        this.attempts_.push({ tS: nowS, text: intent.text, exact: cmp.exact, wrongWords: cmp.wrongWords });
+        this.attempts_.push({ tS: nowS, text: intent.text, exact: cmp.exact, wrongWords: cmp.wrongWords, fallback: this.onFallback_(e) });
         // The receiver reads back exactly what the player sent, so errors are audible
         this.speak_('receiver', due, `${c.receiver.callsign}, readback: ${intent.text}`, 'readback');
         if (cmp.exact) {
@@ -283,6 +312,8 @@ export class NetControl {
       radiograms: this.radiograms_,
       notes: this.notes_,
       openingQueued: this.openingQueued_,
+      replyMHz: this.replyMHz_ ?? undefined,
+      outageArmedAtS: this.outageArmedAtS_ ?? undefined,
       outbox: this.outbox_.getState(),
     });
   }
@@ -301,6 +332,8 @@ export class NetControl {
     this.radiograms_ = c.radiograms;
     this.notes_ = c.notes;
     this.openingQueued_ = c.openingQueued;
+    this.replyMHz_ = c.replyMHz ?? null;
+    this.outageArmedAtS_ = c.outageArmedAtS ?? null;
     this.outbox_.restoreState(c.outbox);
   }
 }

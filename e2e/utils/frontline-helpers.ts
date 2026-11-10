@@ -56,6 +56,41 @@ export const CAMP_PART_LOCATIONS: Record<string, { view: 'inside' | 'outside'; h
   'skylink-cable': { view: 'outside', hotspot: 'site-out-skylink-cable', target: 'skylink-cable' },
 };
 
+/**
+ * Forward site (Rautala, S9+): ONE outdoor scene, no tent, no trips. Hotspot ids are `site-fwd-*`,
+ * close-up targets are the same ids as the camp ones. EuroSat parts (vsat-*) only show once the
+ * scenario puts them in the inventory (S11+). The EuroSat modem is a region of the router close-up
+ * (no scene hotspot); the SkyLink and EuroSat cables are drawn as hotspots (cable + IFL).
+ * openPart / goToView choose this map when the Site scene image is the forward one (isForwardSite).
+ */
+export const FORWARD_PART_LOCATIONS: Record<string, { hotspot: string; target: string }> = {
+  generator: { hotspot: 'site-fwd-generator', target: 'generator' },
+  'generator:out': { hotspot: 'site-fwd-generator', target: 'generator:out' },
+  'power-station': { hotspot: 'site-fwd-power-station', target: 'power-station' },
+  'ps:ac-out': { hotspot: 'site-fwd-power-station', target: 'ps:ac-out' },
+  'ps:dc-out': { hotspot: 'site-fwd-power-station', target: 'ps:dc-out' },
+  'ps:in': { hotspot: 'site-fwd-power-station', target: 'ps:in' },
+  laptop: { hotspot: 'site-fwd-laptop', target: 'laptop' },
+  'power-strip': { hotspot: 'site-fwd-power-box', target: 'power-strip' },
+  'strip:router': { hotspot: 'site-fwd-power-box', target: 'strip:router' },
+  'strip:modem': { hotspot: 'site-fwd-power-box', target: 'strip:modem' },
+  'strip:in': { hotspot: 'site-fwd-power-box', target: 'strip:in' },
+  'skylink-router': { hotspot: 'site-fwd-router', target: 'skylink-router' },
+  'router:dc': { hotspot: 'site-fwd-router', target: 'router:dc' },
+  'skylink-cable:router': { hotspot: 'site-fwd-router', target: 'skylink-cable:router' },
+  'vsat-modem': { hotspot: 'site-fwd-router', target: 'vsat-modem' },
+  'modem:dc': { hotspot: 'site-fwd-router', target: 'modem:dc' },
+  'vsat-ifl:modem': { hotspot: 'site-fwd-router', target: 'vsat-ifl:modem' },
+  'skylink-dish': { hotspot: 'site-fwd-skylink-dish', target: 'skylink-dish' },
+  'skylink-cable:dish': { hotspot: 'site-fwd-skylink-dish', target: 'skylink-cable:dish' },
+  'skylink-cable': { hotspot: 'site-fwd-skylink-cable', target: 'skylink-cable' },
+  'vsat-dish': { hotspot: 'site-fwd-vsat-dish', target: 'vsat-dish' },
+  'vsat-lnb': { hotspot: 'site-fwd-vsat-lnb', target: 'vsat-lnb' },
+  'vsat-feed': { hotspot: 'site-fwd-vsat-lnb', target: 'vsat-feed' },
+  'vsat-ifl:lnb': { hotspot: 'site-fwd-vsat-lnb', target: 'vsat-ifl:lnb' },
+  'vsat-ifl': { hotspot: 'site-fwd-vsat-ifl', target: 'vsat-ifl' },
+};
+
 // ---------------------------------------------------------------------------
 // Page problems: uncaught errors, console errors, failed images, placeholder art
 // ---------------------------------------------------------------------------
@@ -236,7 +271,7 @@ export async function openFrontlineScenario(page: Page, n: number): Promise<void
   }
   await row.click();
   const card = page.locator(`.scenario-card[data-scenario-id="${id}"]`);
-  const img = card.locator('.scenario-image img');
+  const img = card.locator('.scenario-image img:not(.selection-art-outgoing)');
   await expect(img).toBeVisible();
   await expect.poll(async () => img.evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth > 0), { message: `${id} card art loads` }).toBe(true);
   const src = (await img.getAttribute('src')) ?? '';
@@ -355,6 +390,11 @@ export async function revealSiteStage(page: Page): Promise<void> {
   await expect.poll(async () => box.evaluate((n) => n.getBoundingClientRect().height)).toBeGreaterThan(150);
 }
 
+/** True on the forward (Rautala) site: its scene hotspots are `site-fwd-*` and there is no tent */
+export async function isForwardSite(page: Page): Promise<boolean> {
+  return (await page.locator('#site-stage [data-hotspot^="site-fwd-"]').count()) > 0;
+}
+
 /** Tent controls: the header control (since 04ad5e27) or the older Site strip */
 const LOCATION_TEXT = '#tent-location-text, #site-location-text';
 const VIEW_TOGGLE = '#tent-toggle, #site-view-toggle';
@@ -369,6 +409,9 @@ async function currentView(page: Page): Promise<'inside' | 'outside'> {
 /** Walk out of the tent (costs one trip at the camp) or back in, with the door button */
 export async function goToView(page: Page, view: 'inside' | 'outside'): Promise<void> {
   await openSiteTab(page);
+  if (await isForwardSite(page)) {
+    return; // forward site: one scene, no tent control, no trips
+  }
   if ((await currentView(page)) === view) {
     return;
   }
@@ -409,9 +452,10 @@ export async function closeCloseup(page: Page): Promise<void> {
  * inside or outside first when the hotspot is on the other side of the tent.
  */
 export async function openPart(page: Page, partId: string): Promise<Locator> {
-  const loc = CAMP_PART_LOCATIONS[partId];
-  if (!loc) {
-    throw new Error(`No Site location for '${partId}'; add it to CAMP_PART_LOCATIONS in e2e/utils/frontline-helpers.ts`);
+  const forward = await isForwardSite(page);
+  const loc = forward ? { view: 'outside' as const, ...FORWARD_PART_LOCATIONS[partId] } : CAMP_PART_LOCATIONS[partId];
+  if (!loc || !loc.hotspot) {
+    throw new Error(`No Site location for '${partId}'; add it to ${forward ? 'FORWARD_PART_LOCATIONS' : 'CAMP_PART_LOCATIONS'} in e2e/utils/frontline-helpers.ts`);
   }
   await closeCloseup(page);
   // A character dialog that fires after the previous close-up covers the hotspot; a player dismisses it first
@@ -421,9 +465,26 @@ export async function openPart(page: Page, partId: string): Promise<Locator> {
   }
   await goToView(page, loc.view);
   await revealSiteStage(page);
+  await page.waitForTimeout(400); // let the layout settle after the modal closed / panels collapsed, or the click lands on stale coordinates
   const spot = page.locator(`#site-stage [data-hotspot="${loc.hotspot}"]`);
   const hit = spot.locator('.pp-hit, .pp-hit-path').first();
   await activate(page, (await hit.count()) > 0 ? hit : spot, `hotspot ${loc.hotspot}`);
+  if (
+    !(await closeup(page)
+      .isVisible()
+      .catch(() => false))
+  ) {
+    // The first click did not open a close-up (seen on the forward scene right after a panel collapsed). A player would click again.
+    await page.waitForTimeout(1500);
+    if (
+      !(await closeup(page)
+        .isVisible()
+        .catch(() => false))
+    ) {
+      note(`hotspot ${loc.hotspot}: first click opened no close-up, clicked again`);
+      await activate(page, (await hit.count()) > 0 ? hit : spot, `hotspot ${loc.hotspot} (retry)`);
+    }
+  }
   await expect(closeup(page)).toBeVisible();
   const point = closeup(page).locator(`[data-target="${loc.target}"]`).first();
   await expect(point, `close-up from ${loc.hotspot} offers point ${loc.target}`).toBeAttached();
@@ -565,11 +626,22 @@ export async function recordsSubmit(page: Page, formId: string, input: Record<st
   await closeCloseup(page);
   await goInside(page);
   const d = await setPanelOpen(page, /Handover/u, true);
-  await d.locator('select[data-hf-form]').selectOption(formId);
+  // The form picker only exists when the scenario has more than one form
+  const picker = d.locator('select[data-hf-form]');
+  if ((await picker.count()) > 0) {
+    await picker.selectOption(formId);
+  }
   for (const [key, f] of Object.entries(input)) {
     if ('cites' in f) {
       const boxes = d.locator(`input[data-hf-key="${key}"][data-hf-cite]`);
       const ids = typeof f.cites === 'number' ? (await boxes.evaluateAll((els) => els.map((e) => e.getAttribute('data-hf-cite') ?? ''))).slice(0, f.cites) : f.cites;
+      // A player can untick: drop leftovers from an earlier refused attempt so each filing is exactly what the input names
+      const checked = await boxes.evaluateAll((els) => els.filter((e) => (e as HTMLInputElement).checked).map((e) => e.getAttribute('data-hf-cite') ?? ''));
+      for (const id of checked.filter((c) => !ids.includes(c))) {
+        const stale = d.locator(`input[data-hf-key="${key}"][data-hf-cite="${id}"]`);
+        await activate(page, stale, `form ${formId} untick ${id}`, 'Space');
+        await expect(stale).not.toBeChecked();
+      }
       for (const id of ids) {
         const box = d.locator(`input[data-hf-key="${key}"][data-hf-cite="${id}"]`);
         if (!(await box.isChecked())) {
@@ -585,9 +657,15 @@ export async function recordsSubmit(page: Page, formId: string, input: Record<st
     if (f.value === LATEST) {
       await activate(page, d.locator(`button[data-hf-fill="${key}"]`), `form ${formId} fill ${key}`);
     } else if (f.value === LATEST_SUPPORTED_RUN) {
-      const opts = await field.locator('option').evaluateAll((os) => os.map((o) => ({ v: (o as HTMLOptionElement).value, t: o.textContent ?? '' })));
+      const readOpts = () => field.locator('option').evaluateAll((os) => os.map((o) => ({ v: (o as HTMLOptionElement).value, t: o.textContent ?? '' })));
+      // The panel redraws on its own tick, so a run that just finished can still read 'running' for a moment
+      await expect
+        .poll(async () => (await readOpts()).some((o) => /supported/u.test(o.t) && o.v), { timeout: 8000 })
+        .toBe(true)
+        .catch(() => undefined);
+      const opts = await readOpts();
       const pick = [...opts].reverse().find((o) => /supported/u.test(o.t) && o.v);
-      expect(pick, `form ${formId} field ${key} lists a supported run`).toBeTruthy();
+      expect(pick, `form ${formId} field ${key} lists a supported run; options: ${JSON.stringify(opts)}`).toBeTruthy();
       await field.selectOption(pick!.v);
     } else if (tag === 'SELECT') {
       await field.selectOption(String(f.value));
@@ -597,12 +675,32 @@ export async function recordsSubmit(page: Page, formId: string, input: Record<st
   }
   const msg = d.locator('.fhf-msg, [data-fhf="msg"]').first();
   await activate(page, d.locator('button[data-hf-act="check"]'), `form ${formId} Check`);
+  // The verdict line is redrawn on the panel's own tick, so give it a moment before reading
+  await expect
+    .poll(async () => /Everything checks out|Not ready yet/u.test(await d.innerText()), { timeout: 8000 })
+    .toBe(true)
+    .catch(() => undefined);
   const checkText = (await d.innerText()).replace(/\s+/gu, ' ');
   if (!/Everything checks out/u.test(checkText)) {
-    const bad = await d.locator('.fhf-bad[data-hf-note]').evaluateAll((ns) => ns.map((n) => `${n.getAttribute('data-hf-note')}: ${(n.textContent ?? '').trim()}`));
-    throw new Error(`form ${formId} refused on Check: ${bad.join(' | ').slice(0, 500) || checkText.slice(0, 400)}`);
+    await page.waitForTimeout(500);
+    const bad = await d
+      .locator('[data-hf-note]')
+      .evaluateAll((ns) => ns.map((n) => `${n.getAttribute('data-hf-note')}: ${(n.textContent ?? '').trim()}`).filter((t) => !/: OK$/u.test(t)));
+    await setPanelOpen(page, /Handover/u, false);
+    throw new Error(`form ${formId} refused on Check: ${bad.join(' | ').slice(0, 500) || checkText.slice(-400)}`);
   }
   await activate(page, d.locator('button[data-hf-act="submit"]'), `form ${formId} Submit`);
+  // A Submit click is occasionally dropped when the panel redraws under it (seen S9/S12); press once more and note it
+  const submitted = await expect(d)
+    .toContainText(/Submitted at/u, { timeout: 2500 })
+    .then(
+      () => true,
+      () => false
+    );
+  if (!submitted) {
+    test.info().annotations.push({ type: 'qa-note', description: `form ${formId}: first Submit click had no effect; pressed again` });
+    await activate(page, d.locator('button[data-hf-act="submit"]'), `form ${formId} Submit (retry)`);
+  }
   await expect(d, `form ${formId} submitted`).toContainText(/Submitted at/u);
   const out = (await ((await msg.count()) > 0 ? msg.innerText() : d.innerText())).replace(/\s+/gu, ' ').slice(0, 200);
   await setPanelOpen(page, /Handover/u, false);
@@ -702,4 +800,125 @@ export async function waitForObjective(page: Page, objectiveId: string, timeoutM
 export async function expectMissionComplete(page: Page, timeoutMs = 30000): Promise<void> {
   const modal = page.locator('.complete-modal');
   await expect.poll(async () => isShown(modal), { timeout: timeoutMs, message: 'Mission Complete modal shows' }).toBe(true);
+}
+
+// ---------------------------------------------------------------------------
+// Added for S5+: workload priority and the Notebook hypothesis form
+// ---------------------------------------------------------------------------
+
+/** workloads.setPriority(cardId, weight): pick the priority in the card's select (Background / Routine / Mission) */
+export async function workloadsSetPriority(page: Page, cardId: string, priority: 'background' | 'routine' | 'mission'): Promise<void> {
+  await closeCloseup(page);
+  await goInside(page);
+  const d = await setPanelOpen(page, /Workloads/u, true);
+  const card = d.locator(`[data-wl-card="${cardId}"]`);
+  await expect(card, `workload card ${cardId}`).toBeVisible();
+  await card.locator('select[data-wl-priority]').selectOption(priority);
+  await expect(card.locator('select[data-wl-priority]')).toHaveValue(priority);
+  await setPanelOpen(page, /Workloads/u, false);
+}
+
+/**
+ * Add a hypothesis in the Notebook ("I suspect ... Add hypothesis"). `cites` is
+ * a count (the first N entries listed) or all entries when 'all'.
+ */
+export async function notebookAddHypothesis(page: Page, h: { scope: string; target: string; cause?: string; confidence?: string; cites: number | 'all' }): Promise<void> {
+  await closeCloseup(page);
+  await goInside(page);
+  const d = await setPanelOpen(page, /Notebook/u, true);
+  await d.locator('select[data-nb-scope]').selectOption(h.scope);
+  await expect(d.locator(`select[data-nb-target] option[value="${h.target}"]`), `hypothesis target ${h.target} offered`)
+    .toBeAttached({ timeout: 4000 })
+    .catch(async (e) => {
+      const have = await d.locator('select[data-nb-target] option').evaluateAll((os) => os.map((o) => `${(o as HTMLOptionElement).value}=${o.textContent}`));
+      throw new Error(`target ${h.target} not offered for scope ${h.scope}; offered: ${have.join(' | ')} (${(e as Error).message.length})`);
+    });
+  await d.locator('select[data-nb-target]').selectOption(h.target);
+  if (h.cause) {
+    const cause = d.locator('[data-nb-cause]');
+    if ((await cause.evaluate((n) => n.tagName)) === 'SELECT') {
+      await cause.selectOption(h.cause);
+    } else {
+      await cause.fill(h.cause);
+    }
+  }
+  if (h.confidence) {
+    await d.locator('select[data-nb-confidence]').selectOption(h.confidence);
+  }
+  const boxes = d.locator('input[data-nb-cite]');
+  const ids = await boxes.evaluateAll((els) => els.map((e) => e.getAttribute('data-nb-cite') ?? ''));
+  for (const id of h.cites === 'all' ? ids : ids.slice(0, h.cites)) {
+    const box = d.locator(`input[data-nb-cite="${id}"]`);
+    if (!(await box.isChecked())) {
+      await activate(page, box, `notebook cite ${id}`, 'Space');
+      await expect(box).toBeChecked();
+    }
+  }
+  await activate(page, d.locator('button[data-nb-act="add"]'), 'Add hypothesis');
+  await expect(d).toContainText(/Hypothesis saved/u);
+  await setPanelOpen(page, /Notebook/u, false);
+}
+
+// ---------------------------------------------------------------------------
+// Added for S7+: the "Records and notices" panel (equipment ledger)
+// ---------------------------------------------------------------------------
+
+/** equipment.submitCorrection(requestId): press the request's button; `pick` chooses the new value in its select when the player must */
+export async function recordsRequestCorrection(page: Page, requestId: string, pick?: string): Promise<string> {
+  await closeCloseup(page);
+  await goInside(page);
+  const d = await setPanelOpen(page, /Records and notices/u, true);
+  const req = d.locator(`[data-frp-req="${requestId}"]`);
+  await expect(req, `correction request ${requestId} is offered`).toBeVisible();
+  if (pick) {
+    await req.locator('select[data-rp-pick]').selectOption(pick);
+  }
+  await req.locator('button[data-rp-act="request"]').click();
+  await expect(d.locator('[data-frp="msg"]')).toContainText(/Request filed/u);
+  const msg = (await d.locator('[data-frp="msg"]').innerText()).trim();
+  await setPanelOpen(page, /Records and notices/u, false);
+
+  return msg;
+}
+
+/** equipment.accept(unitId): press "Accept this unit"; returns the panel message */
+export async function recordsAcceptUnit(page: Page, unitId: string): Promise<string> {
+  await closeCloseup(page);
+  await goInside(page);
+  const d = await setPanelOpen(page, /Records and notices/u, true);
+  const btn = d.locator(`button[data-rp-act="accept"][data-rp-unit="${unitId}"]`);
+  await expect(btn, `Accept this unit offered for ${unitId}`).toBeVisible();
+  await btn.click();
+  await expect(d.locator('[data-frp="msg"]')).toContainText(/accepted\.|Not accepted/u);
+  const msg = (await d.locator('[data-frp="msg"]').innerText()).trim();
+  await setPanelOpen(page, /Records and notices/u, false);
+
+  return msg;
+}
+
+/**
+ * Counterexample helper: fill the form like recordsSubmit, expect Check to refuse it, and return the panel's
+ * per-field notes (so the spec can assert the reason). Fails if the form is accepted.
+ */
+export async function recordsExpectRefused(page: Page, formId: string, input: Record<string, RecordField>, reason?: RegExp): Promise<string> {
+  let refusal = '';
+  try {
+    await recordsSubmit(page, formId, input);
+  } catch (e) {
+    refusal = String((e as Error).message);
+  }
+  expect(refusal, `form ${formId} should have been refused on Check`).toMatch(/refused on Check/u);
+  if (reason) expect(refusal, `form ${formId} refusal reason`).toMatch(reason);
+
+  return refusal;
+}
+
+/** Text of the Mission Complete modal's Field diagnosis section (debrief lines and score notes) */
+export async function readDebrief(page: Page): Promise<string> {
+  const section = page.locator('.complete-modal .field-diagnosis');
+  await expect(section).toBeAttached({ timeout: 15000 });
+  // The modal reveals its text progressively; wait for the lines to be there
+  await expect.poll(async () => (await section.textContent()) ?? '', { timeout: 15000 }).toMatch(/Fixes with earlier evidence/u);
+
+  return ((await section.textContent()) ?? '').replace(/\s+/gu, ' ');
 }

@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import {
+  advanceClock,
   answerStatusCheck,
   collectPageProblems,
   expectMissionComplete,
@@ -9,6 +10,8 @@ import {
   openFrontlineScenario,
   plantInspect,
   readFieldStatus,
+  readObjective,
+  recordsExpectRefused,
   recordsSubmit,
   servicesTakeSample,
   waitForObjective,
@@ -68,6 +71,22 @@ test.describe('Frontline S1 full completion', () => {
     await test.step('[s1-record-baseline] Capture the Healthy Baseline', async () => {
       // Readings go stale after any site action (the workload run counts), so take
       // all three again right before filling the form, as the form's hint says.
+      const baseline = {
+        service: { value: 'skylink' },
+        energy: { value: LATEST },
+        power: { value: LATEST },
+        local: { value: LATEST },
+        registration: { value: LATEST },
+        application: { value: LATEST_SUPPORTED_RUN },
+        evidence: { cites: 99 },
+      };
+      await servicesTakeSample(page, 'skylink', 'power', 'device-indicator');
+      await servicesTakeSample(page, 'skylink', 'local', 'local-probe');
+      await servicesTakeSample(page, 'skylink', 'registration', 'terminal-app');
+      // Counterexample and recovery: readings that have aged are refused, and taking them again fixes the filing
+      await advanceClock(page, 200_000);
+      await recordsExpectRefused(page, 'baseline', baseline, /out of date|stale|old|current|fresh|newer/iu);
+      expect((await readObjective(page, 's1-record-baseline')).isCompleted).toBe(false);
       await servicesTakeSample(page, 'skylink', 'power', 'device-indicator');
       await servicesTakeSample(page, 'skylink', 'local', 'local-probe');
       await servicesTakeSample(page, 'skylink', 'registration', 'terminal-app');
@@ -84,6 +103,13 @@ test.describe('Frontline S1 full completion', () => {
     });
 
     await test.step('[s1-hand-over-post] Submit the First Handover', async () => {
+      // Counterexample: naming the wrong service as the untested one is refused
+      await recordsExpectRefused(page, 'handover', {
+        verified: { value: 'camp-vsat' },
+        untested: { value: 'skylink' },
+        run: { value: LATEST_SUPPORTED_RUN },
+        readiness: { value: 'skylink-only' },
+      });
       await recordsSubmit(page, 'handover', {
         verified: { value: 'skylink' },
         untested: { value: 'camp-vsat' },

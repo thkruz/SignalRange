@@ -40,6 +40,7 @@ const HISTORY_SHOWN = 10;
 
 /** Why a run came back unsupported with a layer down, in the player's words */
 const LAYER_DOWN_TEXT: Record<string, string> = {
+  'link-lost': 'Registration is down at the moment. Rerun once it is back.',
   'terminal-booting': 'The terminal is still restarting, so registration is down. Rerun once it is back.',
   'terminal-starting': 'The terminal is still starting up, so registration is down. Rerun once it is back.',
   'terminal-searching': 'The terminal is still searching for the satellite, so registration is down. Rerun once it is registered.',

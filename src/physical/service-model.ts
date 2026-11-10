@@ -9,12 +9,14 @@
  */
 
 import { AuthoredLinkSource } from './authored-link-source';
+import { AuthoredLinkImpairment } from './link-impairment';
 import {
   type AccountState,
   type EndpointState,
   type Freshness,
   type LayerReading,
   type LayerStatus,
+  type LinkImpairmentSource,
   type LinkQualitySource,
   type LinkSample,
   type PlantReader,
@@ -84,6 +86,7 @@ export class ServiceModel {
   private readonly endpoints_ = new Map<string, EndpointState>();
   private readonly plant_: PlantReader;
   private readonly link_: LinkQualitySource;
+  private readonly impairment_: LinkImpairmentSource | null;
   private readonly deps_: ServiceModelDeps;
   private readonly maxAge_: Record<SampleProvenance, number>;
   private readonly unsubscribe_: (() => void) | null;
@@ -107,6 +110,7 @@ export class ServiceModel {
     for (const e of cfg.endpoints ?? []) this.endpoints_.set(e.id, { ...e });
     this.plant_ = plant;
     this.deps_ = deps;
+    this.impairment_ = cfg.impairments?.length ? new AuthoredLinkImpairment(cfg.impairments) : null;
     this.maxAge_ = { ...DEFAULT_MAX_AGE_S, ...cfg.maxAgeS };
     this.link_ =
       link ??
@@ -178,6 +182,19 @@ export class ServiceModel {
     return this.layers(serviceId).find((l) => l.status !== 'up') ?? null;
   }
 
+  /** Arms or ends an authored external impairment (the S15 event action); a no-op without impairments */
+  setImpairment(id: string, active: boolean, durationS: number, atS: number): void {
+    if (!this.impairment_) {
+      return;
+    }
+    if (active) {
+      this.impairment_.start(id, atS, durationS);
+    } else {
+      this.impairment_.stop(id, atS);
+    }
+    this.cacheTimeS_ = Number.NaN;
+  }
+
   /** Call once per plant step: records every layer status change in the history */
   update(): void {
     const tS = this.plant_.getTimeSeconds();
@@ -186,6 +203,7 @@ export class ServiceModel {
     for (const path of this.paths_) {
       if (prevS !== null && tS - prevS > 0) {
         this.recordFlapEdges_(path, prevS, tS);
+        this.recordImpairmentEdges_(path, prevS, tS);
       }
       for (const reading of this.layers(path.id)) {
         const key = `${path.id}:${reading.layer}`;
@@ -223,6 +241,28 @@ export class ServiceModel {
       if (previous !== edge.status) {
         this.history_.push({ tS: edge.tS, serviceId: path.id, layer: 'registration', from: previous, to: edge.status });
         this.lastStatus_.set(key, edge.status);
+      }
+    }
+  }
+
+  /**
+   * Impairment windows that opened and closed inside a clock jump, recorded at their own times. Skipped while the
+   * terminal is down for another reason (standby, booting), where a window changes nothing the player could see.
+   */
+  private recordImpairmentEdges_(path: ServicePathConfig, prevS: number, nowS: number): void {
+    const key = `${path.id}:registration`;
+    if (!this.impairment_ || this.lastStatus_.get(key) === undefined) {
+      return;
+    }
+    if (this.registration_(path, this.power_(path), true).status !== 'up') {
+      return;
+    }
+    for (const edge of this.impairment_.edges(path.id, prevS, nowS)) {
+      const next: LayerStatus = edge.impaired ? 'down' : 'up';
+      const previous = this.lastStatus_.get(key) as LayerStatus;
+      if (previous !== next) {
+        this.history_.push({ tS: edge.tS, serviceId: path.id, layer: 'registration', from: previous, to: next });
+        this.lastStatus_.set(key, next);
       }
     }
   }
@@ -406,6 +446,7 @@ export class ServiceModel {
       lastStatus: [...this.lastStatus_.entries()],
       lastUpdateS: this.lastUpdateS_,
       sampleSeq: this.sampleSeq_,
+      ...(this.impairment_ ? { impairments: this.impairment_.getState() } : {}),
     };
   }
 
@@ -428,6 +469,7 @@ export class ServiceModel {
     this.lastStatus_ = new Map(state.lastStatus);
     this.lastUpdateS_ = state.lastUpdateS ?? null;
     this.sampleSeq_ = state.sampleSeq;
+    this.impairment_?.restoreState(state.impairments);
     this.cacheTimeS_ = Number.NaN;
   }
 
@@ -488,7 +530,7 @@ export class ServiceModel {
     return { layer: 'local', status: 'up', reason: 'ok' };
   }
 
-  private registration_(path: ServicePathConfig, power: LayerReading): LayerReading {
+  private registration_(path: ServicePathConfig, power: LayerReading, ignoreImpairment = false): LayerReading {
     const id = path.terminalPartId;
     const down = (reason: string): LayerReading => ({ layer: 'registration', status: 'down', reason, subjectId: id });
     if (power.status !== 'up') {
@@ -514,6 +556,10 @@ export class ServiceModel {
     }
     if (this.plant_.isLinkDropped(id)) {
       return down('link-dropped');
+    }
+    // An external loss of the path: no terminal state is involved, so a restart cannot clear it
+    if (!ignoreImpairment && this.impairment_?.at(path.id, this.plant_.getTimeSeconds())?.unavailable) {
+      return down('link-lost');
     }
     if ((path.linkTargetIds ?? []).some((t) => this.plant_.isFaultActive(t, 'moisture')) && this.plant_.getTimeSeconds() % FLAP_PERIOD_S < FLAP_DOWN_S) {
       return down('moisture-flap');

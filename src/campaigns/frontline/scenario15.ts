@@ -27,9 +27,10 @@ import { S11_TRANSFER_CARD } from './scenario11';
  * Frontline Signals — Scenario 15: Report the EuroSat Incident.
  * Initial state: both terminals run on the battery at the forward post (SkyLink unrestricted, EuroSat registered). Resources
  * are reduced: 300 Wh against a 150 Wh reserve, so both terminals running misses the reserve and the modem in standby keeps it.
- * The anomaly is a run of EuroSat registration drops (the modem keeps restarting) while the local network, the power chain and
- * the SkyLink service stay up. The engine has no interference primitive, so the pattern is the only evidence: it supports
- * "suspected interference" and never a source, a location or an actor. Nothing freezes the clock; the drops are staged on
+ * The anomaly is a run of EuroSat registration drops on the radio path (an authored, seeded link impairment; the modem is
+ * not restarted and a restart does not clear it) while the local network, the power chain and the SkyLink service stay up.
+ * The windows are the only evidence: they support "suspected interference" or an "unexplained outage" and never a source,
+ * a location or an actor. The symptom names no cause. Nothing freezes the clock; the drops are staged on
  * objective activation, with later recurrences so a player who misses a down window gets another.
  * The incident form (id 'incident') is the record Campaign 5 may enrich from (see continuity-fallbacks.ts). Filing it is
  * optional continuity: nothing here reads the campaign store or requires a completed C6 record, and Campaign 5 is unchanged.
@@ -41,6 +42,9 @@ export const S15_EVENT_REPEAT_B = 's15-eurosat-repeat-b';
 export const S15_EVENT_REPEAT_C = 's15-eurosat-repeat-c';
 export const S15_EVENT_ACK = 's15-referral-acknowledged';
 export const S15_REFERRAL = 's15-investigation-referral';
+export const S15_IMPAIRMENT = 's15-eurosat-link-loss';
+/** Each armed episode keeps the loss windows recurring this long; a repeat event re-arms it without moving the windows */
+export const S15_EPISODE_S = 1200;
 export const S15_START_WH = 300;
 export const S15_RESERVE_WH = 150;
 
@@ -226,8 +230,8 @@ const drop = (id: string, anchor: string, offsetS: number, requiresFired?: strin
   startAfterObjectiveId: anchor,
   offsetS,
   ...(requiresFired ? { requiresFired } : {}),
-  actions: [{ kind: 'reboot-part', partId: 'vsat-modem' }],
-  logLine: 'The EuroSat modem loses registration; the local network and SkyLink are unchanged.',
+  actions: [{ kind: 'link-impairment', impairmentId: S15_IMPAIRMENT, active: true, durationS: S15_EPISODE_S }],
+  logLine: 'EuroSat registration is lost. The local network and SkyLink show no change.',
 });
 
 const settings = createFrontlineSettings(15);
@@ -237,6 +241,10 @@ if (settings.physicalPlant) {
   // Accepting the incident also files the optional Campaign 5 referral (built from the typed answers, never a source)
   plant.referrals = [{ formId: 'incident', referralId: C5_REFERRAL_ID }];
   applyForwardEurosat(plant, { modemRunning: true });
+  // External loss of the EuroSat path: seeded windows of about 35 to 40 s every 100 to 120 s, none of them tied to the modem
+  if (plant.service) {
+    plant.service.impairments = [{ id: S15_IMPAIRMENT, serviceId: EUS, seed: 1505, periodS: 100, downMinS: 35, downMaxS: 40, jitterS: 20 }];
+  }
   // The S10 restriction is over by S15; the reduced resources are the battery and its reserve
   const skylink = plant.service?.accounts.find((a) => a.id === FORWARD_SKYLINK_ACCOUNT);
   if (skylink) {

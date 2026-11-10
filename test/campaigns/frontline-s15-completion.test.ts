@@ -41,6 +41,11 @@ type Layer = 'local' | 'registration' | 'provider' | 'application';
 const value = (svc: PhysicalPlantService, id: string, layer: Layer): { value: string } => ({ value: String(svc.services?.latest(id, layer)?.value) });
 const energy = (svc: PhysicalPlantService): { value: number } => ({ value: Math.round(svc.plant.getPowerReadings().socWh['power-station']) });
 
+/** Tick on the 1 s UI cadence until the EuroSat registration truth reads the wanted state (a player watching the app) */
+function waitReg(svc: PhysicalPlantService, want: 'up' | 'down', maxS = 240): void {
+  for (let i = 0; i < maxS && svc.services?.layers(EUS).find((l) => l.layer === 'registration')?.status !== want; i++) tick(1);
+}
+
 function fileHypothesis(svc: PhysicalPlantService, cause: string, cited: string[]): void {
   svc.evidence?.addHypothesis({
     subject: EUS,
@@ -56,7 +61,7 @@ function fileHypothesis(svc: PhysicalPlantService, cause: string, cited: string[
 function acts(svc: PhysicalPlantService): Record<string, () => void> {
   return {
     's15-record-anomaly': () => {
-      // The first drop starts 15 s after activation and lasts about 45 s
+      // The first loss window starts 15 s after activation and lasts 35 to 40 s
       tick(20);
       svc.services?.takeSample(EUS, 'registration', 'terminal-app');
       svc.services?.takeSample(EUS, 'application', 'endpoint-report');
@@ -73,9 +78,12 @@ function acts(svc: PhysicalPlantService): Record<string, () => void> {
       );
     },
     's15-review-evidence': () => {
-      // The next drop starts 50 s after activation (the first one has recovered by then)
-      tick(55);
+      // The path recovers, then the next loss window opens: one reading of each, in separate windows
+      waitReg(svc, 'up');
       svc.services?.takeSample(EUS, 'registration', 'terminal-app');
+      waitReg(svc, 'down');
+      svc.services?.takeSample(EUS, 'registration', 'terminal-app');
+      svc.services?.takeSample(EUS, 'local', 'local-probe');
       svc.services?.takeSample(EUS, 'local', 'local-probe');
       svc.plant.goOutside();
       svc.plant.inspect('vsat-feed');
@@ -83,7 +91,7 @@ function acts(svc: PhysicalPlantService): Record<string, () => void> {
       svc.plant.inspect('vsat-ifl:modem');
       svc.plant.returnInside();
       svc.plant.inspect('power-station');
-      tick(50);
+      waitReg(svc, 'up');
       svc.services?.takeSample(EUS, 'registration', 'terminal-app');
       svc.services?.takeSample(EUS, 'provider', 'provider-portal');
       ok(

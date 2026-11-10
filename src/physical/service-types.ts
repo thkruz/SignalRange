@@ -28,6 +28,55 @@ export interface LinkProfile {
   lossPct: number;
 }
 
+/**
+ * External link impairment contract (Campaign 6 package D). An impairment is a loss of the radio
+ * path that the terminal cannot clear: power, boot state, account and provider policy are unchanged.
+ * It is read upstream of policy scaling, so the registration layer can ask for it without touching
+ * `LinkQualitySource` (which itself reads the layers). Package H may back it with live physics by
+ * implementing `LinkImpairmentSource`; the authored one is `AuthoredLinkImpairment`.
+ */
+export interface LinkImpairment {
+  /** True while the path carries nothing (registration reads down, reason 'link-lost') */
+  unavailable: boolean;
+}
+
+/** An authored, seeded and scenario-time-driven pattern of loss windows on one service */
+export interface LinkImpairmentConfig {
+  id: string;
+  serviceId: string;
+  /** Seed for window start jitter and length; the same seed and start give the same windows */
+  seed: number;
+  /** Seconds from one window nominal start to the next */
+  periodS: number;
+  downMinS: number;
+  downMaxS: number;
+  /** Largest random delay of a window start inside its period (the first window starts at once) */
+  jitterS: number;
+}
+
+/** Scenario-time span in which an impairment's windows recur */
+export interface LinkImpairmentEpisode {
+  id: string;
+  startS: number;
+  endS: number;
+}
+
+export interface LinkImpairmentState {
+  episodes: LinkImpairmentEpisode[];
+}
+
+export interface LinkImpairmentSource {
+  /** The impairment at scenario second `tS`, or null when the path is clear */
+  at(serviceId: string, tS: number): LinkImpairment | null;
+  /** Start and stop transitions strictly inside (fromS, toS), in time order, for the history */
+  edges(serviceId: string, fromS: number, toS: number): Array<{ tS: number; impaired: boolean }>;
+  /** Arm an impairment from `atS` for `durationS`; re-arming while active extends it without moving the windows */
+  start(id: string, atS: number, durationS: number): void;
+  stop(id: string, atS: number): void;
+  getState(): LinkImpairmentState;
+  restoreState(state: LinkImpairmentState | undefined): void;
+}
+
 export type LinkSample = LinkProfile & { provenance: 'authored' | 'sdk' };
 
 /**
@@ -90,6 +139,8 @@ export interface ServiceModelConfig {
   endpoints?: EndpointState[];
   /** Override the default seconds a sample stays current, per provenance */
   maxAgeS?: Partial<Record<SampleProvenance, number>>;
+  /** Authored external impairments (opt-in; absent for every other scenario) */
+  impairments?: LinkImpairmentConfig[];
 }
 
 export type SampleMetric = 'status' | 'rttMs' | 'downMbps' | 'upMbps' | 'lossPct';
@@ -151,4 +202,6 @@ export interface ServiceModelState {
   /** Plant second of the last history sync (optional in older checkpoints) */
   lastUpdateS?: number | null;
   sampleSeq: number;
+  /** Armed impairment episodes (absent in older checkpoints and in scenarios without impairments) */
+  impairments?: LinkImpairmentState;
 }

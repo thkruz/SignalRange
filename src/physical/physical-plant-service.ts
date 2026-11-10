@@ -123,6 +123,7 @@ export class PhysicalPlantService {
           respondRequest: (requestId, status) => ledger?.respond(requestId, status),
           injectFault: (fault) => this.plant.injectFault(fault),
           rebootPart: (partId) => this.plant.startBoot(partId),
+          setLinkImpairment: (id, active, durationS, atS) => this.services?.setImpairment(id, active, durationS, atS),
           clearFault: (faultId) => this.plant.clearFault(faultId),
           setWeather: (weather) => this.plant.setWeather(weather),
           onFire: (eventId) => {

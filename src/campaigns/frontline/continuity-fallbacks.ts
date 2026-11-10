@@ -155,8 +155,8 @@ export function resolveContinuity(link: ContinuityLink) {
 }
 
 const CLASS_STATEMENT: Record<string, string> = {
-  'suspected-interference': 'The registration losses fit interference, and the record does not establish it.',
-  'unexplained-outage': 'The registration losses were filed as an outage with no explanation the post could establish.',
+  'suspected-interference': 'The registration losses fit interference. Nothing in the record establishes it.',
+  'unexplained-outage': 'The registration losses were filed as an outage. The post could not establish a cause.',
 };
 const OPEN_QUESTIONS: Record<string, string[]> = {
   'source-and-cause': ['What caused the degradation.', 'Whether it will recur.'],

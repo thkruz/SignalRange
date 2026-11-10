@@ -197,6 +197,8 @@ export type PlantEventAction =
   | { kind: 'deliver-notice'; noticeId: string; version?: number }
   | { kind: 'respond-request'; requestId: string; status: 'approved' | 'rejected' }
   | { kind: 'reboot-part'; partId: string }
+  /** Arm (active) or end an authored external link impairment; a local reboot never clears it */
+  | { kind: 'link-impairment'; impairmentId: string; active: boolean; durationS?: number }
   | { kind: 'set-flag'; key: string; value: string | number | boolean };
 
 export interface PlantEventConfig {

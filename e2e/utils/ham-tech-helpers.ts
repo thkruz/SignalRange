@@ -151,3 +151,73 @@ export async function expectMissionComplete(page: Page): Promise<void> {
   await expect(modal).toBeVisible({ timeout: 45000 });
   await expect(modal.locator('.complete-modal__title')).toContainText('Mission Complete');
 }
+
+// ---- Radio panel extras (S3+): selects, memories, DMR, PTT, readings ----
+
+/** Switch the radio panel to another radio's tab (only needed when the station has several radios) */
+export const selectRadioTab = (page: Page, dev: string) => page.getByTestId(`ham-radio-${dev}-tab`).dispatchEvent('click');
+export const setTxPower = (page: Page, dev: string, watts: number) => page.getByTestId(`ham-radio-${dev}-txpower`).selectOption(String(watts));
+export const setOffset = (page: Page, dev: string, dir: 'simplex' | 'plus' | 'minus') => page.getByTestId(`ham-radio-${dev}-offset`).selectOption(dir);
+export const setOffsetKHz = async (page: Page, dev: string, khz: number): Promise<void> => {
+  const input = page.getByTestId(`ham-radio-${dev}-offset-khz`);
+  await input.fill(String(khz));
+  await input.blur();
+};
+/** CTCSS TX tone in Hz, or null for none */
+export const setTxTone = (page: Page, dev: string, hz: number | null) => page.getByTestId(`ham-radio-${dev}-txtone`).selectOption(hz === null ? '' : String(hz));
+export async function storeMemory(page: Page, dev: string, slot: number, name: string): Promise<void> {
+  await page.getByTestId(`ham-radio-${dev}-mem-slot`).fill(String(slot));
+  await page.getByTestId(`ham-radio-${dev}-mem-name`).fill(name);
+  await page.getByTestId(`ham-radio-${dev}-mem-store`).click();
+}
+export async function recallMemory(page: Page, dev: string, slot: number): Promise<void> {
+  await page.getByTestId(`ham-radio-${dev}-mem-slot`).fill(String(slot));
+  await page.getByTestId(`ham-radio-${dev}-mem-recall`).click();
+}
+/** DMR codeplug channel by zero-based index */
+export const selectDmrChannel = (page: Page, dev: string, index: number) => page.getByTestId(`ham-radio-${dev}-dmr-channel`).selectOption(String(index));
+
+export type PttIntent =
+  | { kind: 'cq' | 'identify' | 'net-checkin' | 'carrier' | 'test' }
+  | { kind: 'call'; target: string }
+  | { kind: 'reply'; item: string }
+  | { kind: 'message'; text: string };
+
+/** Pick an intent in the PTT area and press Transmit (holdS optional). Asserts no refusal alert. */
+export async function pttTransmit(page: Page, dev: string, intent: PttIntent, holdS?: number): Promise<void> {
+  await page.getByTestId(`ham-ptt-${dev}-intent`).selectOption(intent.kind);
+  if (intent.kind === 'call') await page.getByTestId(`ham-ptt-${dev}-target`).selectOption(intent.target);
+  if (intent.kind === 'reply') await page.getByTestId(`ham-ptt-${dev}-item`).selectOption(intent.item);
+  if (intent.kind === 'message') await page.getByTestId(`ham-ptt-${dev}-message`).fill(intent.text);
+  if (holdS !== undefined) await page.getByTestId(`ham-ptt-${dev}-hold`).fill(String(holdS));
+  await page.getByTestId(`ham-ptt-${dev}-transmit`).click();
+  await expect(page.getByTestId(`ham-ptt-${dev}-refusal`)).toBeHidden();
+}
+
+/** Receive-only radio (SDR): record a reading of one emitter ('' = noise only) */
+export async function recordReading(page: Page, dev: string, emitterId = ''): Promise<void> {
+  await page.getByTestId(`ham-radio-${dev}-record-emitter`).selectOption(emitterId);
+  await page.getByTestId(`ham-radio-${dev}-record`).click();
+}
+
+// ---- Antenna analyzer and adjustable dipole (S5) ----
+
+export const disconnectConnection = (page: Page, connectionId: string) => page.getByTestId(tid('ham-conn', connectionId, 'disconnect')).click();
+/** Calibrate with the open end at the analyzer port ('') or at the end of a feed line device */
+export async function calibrateAnalyzer(page: Page, referenceDeviceId = '', an = 'analyzer'): Promise<void> {
+  await page.getByTestId(`ham-analyzer-${an}-cal-ref`).selectOption(referenceDeviceId);
+  await page.getByTestId(`ham-analyzer-${an}-calibrate`).click();
+}
+export async function sweepAnalyzer(page: Page, startMHz: number, stopMHz: number, points: number, an = 'analyzer'): Promise<void> {
+  await page.getByTestId(`ham-analyzer-${an}-start`).fill(String(startMHz));
+  await page.getByTestId(`ham-analyzer-${an}-stop`).fill(String(stopMHz));
+  await page.getByTestId(`ham-analyzer-${an}-points`).fill(String(points));
+  await page.getByTestId(`ham-analyzer-${an}-sweep`).click();
+}
+/** Set both dipole element lengths (centimetres in the UI) and apply */
+export async function setDipoleLengths(page: Page, dev: string, aCm: number, bCm: number): Promise<void> {
+  await page.getByTestId(`ham-antenna-${dev}-len-a`).fill(String(aCm));
+  await page.getByTestId(`ham-antenna-${dev}-len-b`).fill(String(bCm));
+  await page.getByTestId(`ham-antenna-${dev}-apply`).click();
+}
+export const setDipoleOrientation = (page: Page, dev: string, o: 'vertical' | 'horizontal') => page.getByTestId(`ham-antenna-${dev}-orientation`).selectOption(o);

@@ -471,6 +471,9 @@ export class RadioPanel implements StationPanel {
       section.append(labelled(s.id, 'DMR channel', s));
     }
 
+    // --- record a deliberate reading (receive-only devices such as an SDR)
+    if (profile && !profile.txRangesMHz.length) section.append(this.buildRecord_(m, id));
+
     // --- PTT
     if (profile?.txRangesMHz.length) section.append(this.buildPtt_(m, id, dev?.label ?? id));
 
@@ -507,6 +510,21 @@ export class RadioPanel implements StationPanel {
     return view;
   }
 
+  private buildRecord_(m: HamStationManager, id: string): HTMLElement {
+    const ctx = this.ctx_;
+    const emitters = (m.config.emitters ?? []).map((e) => ({ value: e.id, label: e.label ?? e.id }));
+    const emitter = select(tid('ham-radio', id, 'record-emitter'), 'Emitter to measure', [{ value: '', label: '(noise only)' }, ...emitters], emitters[0]?.value ?? '');
+    const rec = button(
+      tid('ham-radio', id, 'record'),
+      'Record reading',
+      () => ctx.act({ type: 'rx.record', deviceId: id, emitterId: emitter.value || undefined }),
+      'btn btn-sm btn-outline-primary',
+      'Record a reading'
+    );
+
+    return h('div', { class: 'd-flex flex-wrap align-items-end gap-2 mb-2' }, labelled(emitter.id, 'Record emitter', emitter, 'mb-0'), rec);
+  }
+
   private buildPtt_(m: HamStationManager, id: string, label: string): HTMLElement {
     const ctx = this.ctx_;
     const intents = [
@@ -521,6 +539,11 @@ export class RadioPanel implements StationPanel {
     ];
     const intent = select(tid('ham-ptt', id, 'intent'), 'Transmit intent', intents, 'cq');
     const targets = (m.config.remoteStations?.stations ?? []).map((s) => ({ value: s.callsign, label: `${s.callsign} (${s.name})` }));
+    const extra = [
+      { callsign: m.config.repeater?.clubOperator?.callsign, name: m.config.repeater?.clubOperator?.name },
+      { callsign: m.config.dmr?.remote?.callsign, name: m.config.dmr?.remote?.name },
+    ];
+    for (const e of extra) if (e.callsign && !targets.some((t) => t.value === e.callsign)) targets.push({ value: e.callsign, label: `${e.callsign} (${e.name ?? 'operator'})` });
     const target = select(tid('ham-ptt', id, 'target'), 'Station to call', targets.length > 0 ? targets : [{ value: '', label: '(none)' }], targets[0]?.value ?? '');
     const item = select(
       tid('ham-ptt', id, 'item'),

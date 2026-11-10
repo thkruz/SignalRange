@@ -191,7 +191,8 @@ export async function activate(page: Page, el: Locator, what: string, key: 'Ente
     return top ? `${top.tagName.toLowerCase()}${cls}${owner ? ` in #${owner.id}` : ''}` : 'nothing (off screen or zero size)';
   });
   note(`${what}: pointer blocked (covered by ${cover}); used keyboard (focus + ${key})`);
-  await el.focus();
+  // The hit shape inside a hotspot is not focusable; focus the tabbable ancestor so Enter cannot go to whatever held focus before
+  await el.evaluate((node) => ((node.closest('[tabindex]') ?? node) as HTMLElement | SVGElement).focus());
   await page.keyboard.press(key);
 }
 
@@ -413,6 +414,11 @@ export async function openPart(page: Page, partId: string): Promise<Locator> {
     throw new Error(`No Site location for '${partId}'; add it to CAMP_PART_LOCATIONS in e2e/utils/frontline-helpers.ts`);
   }
   await closeCloseup(page);
+  // A character dialog that fires after the previous close-up covers the hotspot; a player dismisses it first
+  const dismissed = await dismissDialogs(page);
+  if (dismissed.length > 0) {
+    note(`dismissed dialog before opening ${partId}: ${dismissed[0].slice(0, 80)}`);
+  }
   await goToView(page, loc.view);
   await revealSiteStage(page);
   const spot = page.locator(`#site-stage [data-hotspot="${loc.hotspot}"]`);

@@ -53,3 +53,8 @@ export function watchFrontlineGate(onRegistered?: () => void): void {
     }
   });
 }
+
+/** The Trainer button is a sandbox tool: campaign scenarios never show it */
+export function isTrainerVisible(frontlineAllowed: boolean, missionType: string | undefined): boolean {
+  return frontlineAllowed && missionType === 'Sandbox';
+}

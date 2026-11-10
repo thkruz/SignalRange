@@ -1,4 +1,6 @@
 import { PhysicalPlantService } from '@app/physical/physical-plant-service';
+import { escapeHtml } from '@app/physical/ui/plant-ui-helpers';
+import { TRIP_RULE_TEXT } from '@app/scoring/field-diagnosis';
 
 /** The slice of the plant manager the control reads and drives. */
 export interface PlantLike {
@@ -53,7 +55,7 @@ export class TentControl {
     this.root_.style.display = 'none';
     this.root_.innerHTML = `
       <span class="pp-badge" id="tent-location"><span class="pp-pip"></span><span id="tent-location-text"></span></span>
-      <span class="tent-trips" title="Trips outside, used of allowed">Trips <b id="tent-trips"></b></span>
+      <span class="tent-trips" title="${escapeHtml(TRIP_RULE_TEXT)}">Trips <b id="tent-trips"></b></span>
       <span class="pp-badge pp-badge-bad" id="tent-spotted" style="display:none">Spotted</span>
       <button type="button" class="btn btn-sm btn-primary" id="tent-toggle"></button>
     `;

@@ -78,7 +78,6 @@ describe('SiteTab', () => {
     expect(tab.getView()).toBe('outside');
     expect(plant.isOutside()).toBe(true);
     expect(plant.getReport().trips).toBe(1);
-    expect(document.getElementById('site-trips')!.textContent).toBe(`1/${plant.getTripLimit()}`);
     expect(document.querySelector<HTMLImageElement>('.pp-stage img')!.src).toContain('site-outside.webp');
     for (const spot of SITE_HOTSPOTS) {
       expect(document.querySelector(`[data-hotspot="${spot.id}"]`) !== null).toBe(spot.view === 'outside');
@@ -112,14 +111,15 @@ describe('SiteTab', () => {
     expect(hotspotsForView('outside').some((h) => h.action === 'go-inside')).toBe(true);
   });
 
-  it('shows the header strip state and the way back inside', () => {
+  it('follows the plant outside and offers the way back inside (location chrome lives in TentControl)', () => {
     const plant = plantService().plant;
     const tab = new SiteTab('canvas-content');
-    expect(document.getElementById('site-location-text')!.textContent).toBe('Inside');
+    expect(document.getElementById('site-location-text')).toBeNull();
+    expect(document.getElementById('site-open-skylink')).toBeNull();
     plant.clearSnow('skylink-dish');
     tab.activate();
-    expect(document.getElementById('site-location-text')!.textContent).toBe('Outside');
-    expect(document.getElementById('site-trips')!.textContent).toBe(`1/${plant.getTripLimit()}`);
+    expect(tab.getView()).toBe('outside');
+    expect(document.getElementById('site-outside-note')!.style.display).toBe('');
     tab.setView('inside');
     expect(plant.isOutside()).toBe(false);
     tab.dispose();

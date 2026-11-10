@@ -6,7 +6,6 @@ import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
-import { STATION_TAB_PREFIX } from '@app/pages/mission-control/antenna-page-registry';
 import { FieldHandoverPanel } from '@app/pages/mission-control/tabs/field-handover-panel';
 import { FieldNotebookPanel, type HypothesisScope, type NotebookTarget } from '@app/pages/mission-control/tabs/field-notebook-panel';
 import { FieldPathDiagramPanel } from '@app/pages/mission-control/tabs/field-path-diagram-panel';
@@ -21,9 +20,7 @@ import { shapeSvg, svgOpen, VIEW_W, viewHeight } from '@app/physical/ui/plant-sv
 import { PlantTrainerBox } from '@app/physical/ui/plant-trainer-box';
 import { escapeHtml, hotspotPip, internetPaths } from '@app/physical/ui/plant-ui-helpers';
 import type { SceneLayer, SiteHotspot, SiteView } from '@app/physical/ui/site-types';
-import { SKYLINK_TAB_ID } from '@app/plugins-builtin/terminal-app/skylink-tab-id';
 import { ScenarioManager } from '@app/scenario-manager';
-import { TRIP_RULE_TEXT } from '@app/scoring/field-diagnosis';
 import { getAssetUrl } from '@app/utils/asset-url';
 import '@app/physical/ui/plant-ui.css';
 
@@ -32,8 +29,8 @@ import '@app/physical/ui/plant-ui.css';
  *
  * The painted site master with a hotspot per part. Hover shows the label,
  * the pip shows what the player can observe (powered, rebooting, dark), a
- * click opens the close-up. The header strip carries the inside/outside
- * state, trips, the spotted flag, the way back inside and the spares count.
+ * click opens the close-up. The header strip carries the spares count and
+ * path status; location, trips and the spotted flag live in the global TentControl.
  */
 export class SiteTab extends BaseElement {
   /** Throttle interval for passive DOM sync on the sim tick (ms) */
@@ -263,15 +260,11 @@ export class SiteTab extends BaseElement {
         <div class="site-tab-col">
         <div class="site-strip">
           <h2 class="site-strip-title">Site</h2>
-          <span class="pp-badge" id="site-location"><span class="pp-pip" id="site-location-pip"></span><span id="site-location-text">Inside</span></span>
           <span class="site-stat site-outside-note" id="site-outside-note" style="display:none">Outside. Go inside to use the laptop.</span>
-          <span class="site-stat" id="site-trips-wrap" title="${escapeHtml(TRIP_RULE_TEXT)}">Trips <b id="site-trips">0/0</b></span>
-          <span class="pp-badge pp-badge-bad" id="site-spotted" style="display:none">Spotted</span>
           <span class="site-stat">Spares <b id="site-spares">0</b></span>
           <span class="site-stat" id="site-internet-wrap">SkyLink <b id="site-path-skylink">-</b></span>
           <span class="site-stat">VSAT <b id="site-path-vsat">-</b></span>
           <span class="site-strip-spacer"></span>
-          <button type="button" class="btn btn-sm btn-outline-secondary" id="site-open-skylink">SkyLink app</button>
           <button type="button" class="btn btn-sm btn-outline-warning" id="site-open-trainer" style="display:none">Trainer</button>
         </div>
         <div class="site-stage-box"><div class="pp-stage" id="site-stage" style="--pp-ar:${this.aspect_()}">${this.stageHtml_()}</div></div>
@@ -298,9 +291,7 @@ export class SiteTab extends BaseElement {
         return;
       }
       const btn = target.closest<HTMLElement>('button');
-      if (btn?.id === 'site-open-skylink') {
-        EventBus.getInstance().emit(Events.SWITCH_TAB, { tabId: `${STATION_TAB_PREFIX}${SKYLINK_TAB_ID}` });
-      } else if (btn?.id === 'site-open-trainer') {
+      if (btn?.id === 'site-open-trainer') {
         PlantTrainerBox.getInstance().show();
       }
     });
@@ -349,7 +340,6 @@ export class SiteTab extends BaseElement {
       this.renderStage_();
     }
     const forward = this.isForward_();
-    this.tentChrome_(forward);
     this.powerPanel_?.sync();
     this.servicePanel_?.sync();
     this.workloadPanel_?.sync();
@@ -359,13 +349,6 @@ export class SiteTab extends BaseElement {
     this.pathPanel_?.sync();
     const note = this.cache_('site-outside-note');
     if (note) note.style.display = outside && !forward ? '' : 'none';
-    const report = plant.getReport();
-    const loc = this.cache_('site-location');
-    if (loc) loc.className = `pp-badge ${outside ? 'pp-badge-warn' : 'pp-badge-ok'}`;
-    this.setText_('site-location-text', outside ? 'Outside' : 'Inside');
-    this.setText_('site-trips', `${report.trips}/${plant.getTripLimit()}`);
-    const spotted = this.cache_('site-spotted');
-    if (spotted) spotted.style.display = report.spotted && !forward ? 'inline-flex' : 'none';
     const spares = Object.values(plant.getSpares()).reduce((a, b) => a + b, 0);
     this.setText_('site-spares', String(spares));
     const net = internetPaths(plant);
@@ -379,14 +362,6 @@ export class SiteTab extends BaseElement {
       if (pip) {
         pip.setAttribute('class', `pp-pip-svg ${spot.partIds.length === 0 ? 'ok' : hotspotPip(plant, spot.partIds)}`);
       }
-    }
-  }
-
-  /** The tent controls (location badge, trips) do not exist on a forward site */
-  private tentChrome_(forward: boolean): void {
-    for (const id of ['site-location', 'site-trips-wrap']) {
-      const el = this.cache_(id);
-      if (el) el.style.display = forward ? 'none' : '';
     }
   }
 

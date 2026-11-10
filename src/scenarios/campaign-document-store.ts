@@ -161,8 +161,19 @@ export class CampaignDocumentStore {
     return [...this.runHandovers_];
   }
 
-  /** A completed scenario's handover record for a form, if it was filed */
+  /**
+   * A completed scenario's handover record for a form: the LATEST accepted filing (the account the player
+   * left, after any correction). Use `getFirstHandover` for the original. Staleness is not consulted; a
+   * completed scenario's last accepted filing is its historical account.
+   */
   static getHandover(campaignId: string, scenarioId: string, formId: string): HandoverRecord | undefined {
+    const filed = this.getRecord(campaignId, scenarioId)?.handovers?.filter((h) => h.formId === formId) ?? [];
+
+    return filed[filed.length - 1];
+  }
+
+  /** The earliest accepted filing of the form in a completed scenario */
+  static getFirstHandover(campaignId: string, scenarioId: string, formId: string): HandoverRecord | undefined {
     return this.getRecord(campaignId, scenarioId)?.handovers?.find((h) => h.formId === formId);
   }
 

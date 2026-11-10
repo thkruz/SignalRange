@@ -293,6 +293,18 @@ export function handoverValid(formId: string, description = 'Handover form valid
 }
 
 /**
+ * The latest accepted filing of the form certifies the state as it is NOW (FieldRecords.isHandoverCurrent).
+ * For a final claim. Unlike `handoverValid` the row is re-evaluated until its objective completes, so a mode
+ * change or a staged event after the filing makes the objective wait for a fresh filing. The earlier filing
+ * stays on record and `handoverValid` rows of completed objectives stay done.
+ */
+export function handoverCurrent(formId: string, description = 'Handover certifies the current state'): Condition {
+  const c = make(`handoverCurrent:${formId}`, description, () => hooks()?.records?.isHandoverCurrent?.(formId) ?? false, true);
+
+  return { ...c, mustMaintain: true, maintainUntilObjectiveComplete: true };
+}
+
+/**
  * Every listed part, connector or cable has a test observation (inspect, wiggle, feel or a meter
  * reading) in the evidence log. The log writes the entry as the player acts, so this is the
  * recorded assessment of each site fact, not a click on a close-up.

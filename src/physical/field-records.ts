@@ -64,6 +64,33 @@ export interface HandoverFormConfig {
   /** Working Document section the lines go under */
   documentSection: string;
   fields: HandoverFieldConfig[];
+  /**
+   * Opt-in: a filing of this form can certify the CURRENT state (see `isHandoverCurrent`). Without it the
+   * form is a historical filing only and is never current.
+   */
+  certification?: FormCertification;
+}
+
+/** What makes an accepted filing stale. Parts and events are read from the filing itself and the live world. */
+export interface FormCertification {
+  /** Extra parts whose mode is pinned at filing (every field with a `modeIs` rule is pinned already) */
+  modes?: string[];
+  /** Staged events that must not have fired since the filing (an event already fired at filing time is part of what was certified) */
+  events?: string[];
+  /** Any service configuration change since the filing (repair, restart, setting) makes it stale */
+  config?: boolean;
+}
+
+/** Identity of the state a filing certified; stored on the record, never re-stamped by a restore */
+export interface RecordCertification {
+  /** Part mode per pinned part at filing */
+  modes: Record<string, string>;
+  /** Ids of the form's certification events that had already fired at filing */
+  firedEvents: string[];
+  /** Workload run ids the filing relied on */
+  runIds: string[];
+  /** Service configuration epoch at filing (absent when the plant has no service model) */
+  configEpoch?: number;
 }
 
 /** What the player entered for one field */
@@ -111,6 +138,11 @@ export interface HandoverRecord {
   citations: Record<string, FrozenCitation[]>;
   /** The lines written to the Working Document */
   lines: string[];
+  /**
+   * What state this filing certified. Absent on filings of forms with no `certification` and on saves that
+   * predate it; such a record is readable history but can never be a current claim.
+   */
+  certification?: RecordCertification;
 }
 
 export type SubmitResult =
@@ -132,6 +164,8 @@ export interface FieldRecordsDeps {
   evidence: EvidenceLog | null;
   runs: () => readonly WorkloadRun[];
   getCardVersion: (cardId: string) => number | undefined;
+  /** Service configuration epoch now (a change after a filing makes a `config` certification stale) */
+  configEpoch?: () => number | null;
   /** Scenario time a staged event fired, for event-relative evidence predicates (absent: such predicates never match) */
   eventFiredAtS?: (eventId: string) => number | null;
   /** Working Document line sink */
@@ -362,6 +396,7 @@ export class FieldRecords implements RecordReader {
       lines.push([shown || field.label, backing].filter(Boolean).join(' - '));
     }
     this.seq_++;
+    const certification = form.certification ? this.certify_(form, values) : undefined;
     const record: HandoverRecord = {
       id: `handover-${this.seq_}`,
       formId,
@@ -371,6 +406,7 @@ export class FieldRecords implements RecordReader {
       values,
       citations,
       lines,
+      ...(certification ? { certification } : {}),
     };
     this.records_.push(record);
     this.publish_(record);
@@ -406,8 +442,86 @@ export class FieldRecords implements RecordReader {
     return filed.length > 0 ? filed[filed.length - 1].submittedAtS : null;
   }
 
+  /** True when any accepted filing of the form exists (historical: a later change never un-files it) */
   isHandoverValid(formId: string): boolean {
     return this.records_.some((r) => r.formId === formId);
+  }
+
+  /** The most recent accepted filing of a form (the record every current claim uses) */
+  latestRecord(formId: string): HandoverRecord | undefined {
+    const filed = this.recordsFor(formId);
+
+    return filed[filed.length - 1];
+  }
+
+  /** The earliest accepted filing of a form (the original account, kept for history) */
+  firstRecord(formId: string): HandoverRecord | undefined {
+    return this.recordsFor(formId)[0];
+  }
+
+  /**
+   * Current certification: the LATEST accepted filing of the form carries certification metadata and the
+   * state it certified still holds (pinned part modes unchanged, no listed event fired since, no config
+   * change when the form asks for it, every run it relied on still counts). Never erases a filing; a fresh
+   * filing becomes the latest. Unknown forms, forms without `certification` and filings without metadata
+   * (old saves) are never current.
+   */
+  isHandoverCurrent(formId: string): boolean {
+    this.deps_.catchUp?.();
+    const form = this.forms_.get(formId);
+    const cert = this.latestRecord(formId)?.certification;
+    if (!form?.certification || !cert) {
+      return false;
+    }
+    for (const [partId, mode] of Object.entries(cert.modes)) {
+      if (this.deps_.plant.getPartMode(partId) !== mode) {
+        return false;
+      }
+    }
+    const before = new Set(cert.firedEvents);
+    for (const id of form.certification.events ?? []) {
+      if (!before.has(id) && this.deps_.eventFiredAtS?.(id) != null) {
+        return false;
+      }
+    }
+    if (form.certification.config && cert.configEpoch !== undefined && this.deps_.configEpoch?.() !== cert.configEpoch) {
+      return false;
+    }
+    if (cert.runIds.length > 0) {
+      const runs = new Map(this.deps_.runs().map((r) => [r.id, r] as const));
+      if (cert.runIds.some((id) => !runs.has(id) || runs.get(id)?.invalidatedBy !== undefined || runs.get(id)?.status === 'aborted')) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  private certify_(form: HandoverFormConfig, values: Record<string, string | number>): RecordCertification {
+    const pinned = new Set(form.certification?.modes ?? []);
+    const runIds: string[] = [];
+    for (const f of form.fields) {
+      if ('modeIs' in f.rule) {
+        pinned.add(f.rule.modeIs.partId);
+      } else if ('workload' in f.rule && values[f.key] !== undefined) {
+        runIds.push(String(values[f.key]));
+      }
+    }
+    const modes: Record<string, string> = {};
+    for (const partId of pinned) {
+      const mode = this.deps_.plant.getPartMode(partId);
+      if (mode !== undefined) {
+        modes[partId] = mode;
+      }
+    }
+    const epoch = this.deps_.configEpoch?.();
+
+    return {
+      modes,
+      firedEvents: (form.certification?.events ?? []).filter((id) => this.deps_.eventFiredAtS?.(id) != null),
+      runIds,
+      ...(epoch == null ? {} : { configEpoch: epoch }),
+    };
   }
 
   /** Manual acceptance for units with no authored equipment record */

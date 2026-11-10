@@ -14,7 +14,17 @@ import {
   FORWARD_SKYLINK_ACCOUNT,
   FORWARD_SKYLINK_UNIT,
 } from './forward-field-config';
-import { diagramSelection, eventFired, forecastMeetsReserve, handoverValid, layerObserved, modeIs, workloadRunFinished, workloadVerified } from './frontline-conditions';
+import {
+  diagramSelection,
+  eventFired,
+  forecastMeetsReserve,
+  handoverCurrent,
+  handoverValid,
+  layerObserved,
+  modeIs,
+  workloadRunFinished,
+  workloadVerified,
+} from './frontline-conditions';
 import { pick, reading } from './report-choices';
 import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-support';
 import { S11_INTERACTIVE_CARD, S11_TRANSFER_CARD } from './scenario11';
@@ -172,6 +182,7 @@ const transitionForm: HandoverFormConfig = {
 };
 
 const handoverForm: HandoverFormConfig = {
+  certification: { events: [S14_EVENT_NOTICE, S14_EVENT_LIFT, S14_EVENT_EXERCISE, S14_EVENT_RETURN] },
   id: 'dual-handover',
   title: 'Dual-service handover',
   documentSection: 'Dual service',
@@ -382,7 +393,7 @@ export const frontlineScenario14Data: FrontlineScenarioData = {
         modeIs('vsat-modem', 'run', 'EuroSat modem active'),
         modeIs('skylink-dish', 'standby', 'SkyLink dish in standby'),
         forecastMeetsReserve({}, 'Forecast keeps the reserve with the final arrangement'),
-        handoverValid('dual-handover', 'Dual-service handover submitted'),
+        handoverCurrent('dual-handover', 'Dual-service handover submitted'),
       ],
     },
   ],

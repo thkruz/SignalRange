@@ -13,7 +13,17 @@ import {
   FORWARD_PROVIDER,
   FORWARD_SKYLINK_ACCOUNT,
 } from './forward-field-config';
-import { correctionApproved, correctionFiled, diagramSelection, eventFired, handoverValid, layerObserved, samplesCurrent, workloadVerified } from './frontline-conditions';
+import {
+  correctionApproved,
+  correctionFiled,
+  diagramSelection,
+  eventFired,
+  handoverCurrent,
+  handoverValid,
+  layerObserved,
+  samplesCurrent,
+  workloadVerified,
+} from './frontline-conditions';
 import { pick, reading } from './report-choices';
 import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-support';
 import { S11_TRANSFER_CARD } from './scenario11';
@@ -175,6 +185,7 @@ const referralForm: HandoverFormConfig = {
 };
 
 const updateForm: HandoverFormConfig = {
+  certification: { events: [S12_EVENT_INTERRUPTION, S12_EVENT_RECOVERED, S12_EVENT_RESPONSE] },
   id: 'incident-update',
   title: 'Incident update',
   documentSection: 'Resolution',
@@ -375,7 +386,7 @@ export const frontlineScenario12Data: FrontlineScenarioData = {
           'New task window supported after the response'
         ),
         layerObserved(FORWARD_EUROSAT_SERVICE, 'application', { status: 'up' }, 'Application observed up in a fresh sample'),
-        handoverValid('incident-update', 'Incident updated with the fresh result'),
+        handoverCurrent('incident-update', 'Incident updated with the fresh result'),
       ],
     },
   ],

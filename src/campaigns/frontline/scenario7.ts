@@ -1,7 +1,7 @@
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { HandoverFormConfig } from '@app/physical/field-records';
 import { applyCampField, OLA_CHECK_CARD, SKYLINK_SERVICE } from './camp-field-config';
-import { correctionApproved, correctionFiled, handoverValid, recordAccepted, samplesCurrent, workloadVerified } from './frontline-conditions';
+import { correctionApproved, correctionFiled, handoverCurrent, handoverValid, recordAccepted, samplesCurrent, workloadVerified } from './frontline-conditions';
 import { checked, pick } from './report-choices';
 import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-support';
 
@@ -117,6 +117,7 @@ const configReviewForm: HandoverFormConfig = {
 };
 
 const acceptanceForm: HandoverFormConfig = {
+  certification: { events: [APPROVAL_EVENT] },
   id: 'acceptance',
   title: 'Equipment acceptance',
   documentSection: 'Acceptance',
@@ -277,7 +278,7 @@ export const frontlineScenario7Data: FrontlineScenarioData = {
       conditions: [
         recordAccepted(UNIT, 'Replacement router accepted on a matching record'),
         workloadVerified({ card: OLA_CHECK_CARD.id, service: SKYLINK_SERVICE, afterRequestApproved: REQUEST }, 'Service checked after the approved correction'),
-        handoverValid('acceptance', 'Authorized service verified and handover submitted'),
+        handoverCurrent('acceptance', 'Authorized service verified and handover submitted'),
       ],
     },
   ],

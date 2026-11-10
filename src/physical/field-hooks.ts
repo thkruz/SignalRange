@@ -31,6 +31,8 @@ export interface WorkloadReader {
 export interface RecordReader {
   isAccepted(unitId: string): boolean;
   isHandoverValid(formId: string): boolean;
+  /** The latest filing of the form certifies the state as it is now (see FieldRecords.isHandoverCurrent) */
+  isHandoverCurrent?(formId: string): boolean;
   /** Status and answer time of a correction request the player filed (null before it is filed) */
   /** Scenario time of the latest accepted filing of a handover form (null before one is accepted) */
   handoverFiledAtS?(formId: string): number | null;

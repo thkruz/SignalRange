@@ -94,6 +94,7 @@ export class PhysicalPlantService {
             runs: () => this.workloads?.getRuns() ?? [],
             getCardVersion: (cardId) => this.workloads?.getCard(cardId)?.version,
             eventFiredAtS: (eventId) => this.events?.firedAtS(eventId) ?? null,
+            configEpoch: () => this.services?.getEpochs().config ?? null,
             writeLine: (section, line) => WorkingDocumentManager.getInstance().addLine(section, line),
             storeRecord: (record) => CampaignDocumentStore.recordHandover(record),
             catchUp: () => this.catchUp(),

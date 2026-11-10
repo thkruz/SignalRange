@@ -19,6 +19,7 @@ import {
   eventFired,
   faultClearedWithEvidence,
   forecastMeetsReserve,
+  handoverCurrent,
   handoverValid,
   layerObserved,
   modeIs,
@@ -168,6 +169,7 @@ const externalForm: HandoverFormConfig = {
 };
 
 const outcomeForm: HandoverFormConfig = {
+  certification: { events: [S16_EVENT_LOCAL, S16_EVENT_NOTICE, S16_EVENT_OUTAGE] },
   id: 'outcome',
   title: 'Shift outcome',
   documentSection: 'Outcome',
@@ -181,6 +183,7 @@ const outcomeForm: HandoverFormConfig = {
 };
 
 const finalForm: HandoverFormConfig = {
+  certification: { events: [S16_EVENT_LOCAL, S16_EVENT_NOTICE, S16_EVENT_OUTAGE] },
   id: 'final',
   title: 'Independent handover',
   documentSection: 'Final handover',
@@ -375,7 +378,7 @@ export const frontlineScenario16Data: FrontlineScenarioData = {
         workloadVerified({ card: TRANSFER, service: EUS, afterEvent: S16_EVENT_OUTAGE }, 'Transfer task verified on EuroSat after the outage began'),
         layerObserved(EUS, 'application', { status: 'up' }, 'EuroSat application observed up'),
         reserveHeld({ windowS: S16_FINAL_WINDOW_S }, 'Reserve held through the final window'),
-        handoverValid('outcome', 'Final outcome recorded with the unavailable task'),
+        handoverCurrent('outcome', 'Final outcome recorded with the unavailable task'),
       ],
     },
     {
@@ -386,7 +389,7 @@ export const frontlineScenario16Data: FrontlineScenarioData = {
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s16-verify-final-service'],
       points: 15,
-      conditions: [handoverValid('final', 'Independent handover accepted')],
+      conditions: [handoverCurrent('final', 'Independent handover accepted')],
     },
   ],
   dialogClips: {

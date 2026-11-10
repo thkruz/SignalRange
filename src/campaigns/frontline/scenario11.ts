@@ -14,7 +14,17 @@ import {
   FORWARD_SKYLINK_ACCOUNT,
   FORWARD_SKYLINK_UNIT,
 } from './forward-field-config';
-import { forecastMeetsReserve, handoverValid, held, layerObserved, modeIs, recordAccepted, samplesCurrent, workloadRunFinished, workloadVerified } from './frontline-conditions';
+import {
+  forecastMeetsReserveInMode,
+  handoverValid,
+  held,
+  layerObserved,
+  modeIs,
+  recordAccepted,
+  samplesCurrent,
+  workloadRunFinished,
+  workloadVerified,
+} from './frontline-conditions';
 import { pick, reading } from './report-choices';
 import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-support';
 
@@ -119,9 +129,12 @@ const numeric = (id: string, label: string, metric: string): EvidenceGroup => ({
   ...reading(id, label, FORWARD_EUROSAT_SERVICE, 'registration', undefined, { metric }),
   orMatch: [{ kind: 'observation', serviceId: FORWARD_EUROSAT_SERVICE, layer: 'application', metric }],
 });
-const EUS_DELAY = numeric('delay', 'a delay reading from the EuroSat service', 'rttMs');
-const EUS_RATE = numeric('rate', 'a download rate reading from the EuroSat service', 'downMbps');
-const EUS_LOSS = numeric('loss', 'a loss reading from the EuroSat service', 'lossPct');
+/** Where a numeric reading comes from, named in each Required bullet (c6-s11-F2) */
+const FROM_CHECKS = (metric: string): string =>
+  `Service checks: Registration row with the local probe or terminal app, or Application row, Check with: Workload run, then choose ${metric} in the list that appears`;
+const EUS_DELAY = numeric('delay', `a delay reading from the EuroSat service (${FROM_CHECKS('Latency')})`, 'rttMs');
+const EUS_RATE = numeric('rate', `a download rate reading from the EuroSat service (${FROM_CHECKS('Download')})`, 'downMbps');
+const EUS_LOSS = numeric('loss', `a loss reading from the EuroSat service (${FROM_CHECKS('Loss')})`, 'lossPct');
 
 const measurementForm: HandoverFormConfig = {
   id: 'measurement',
@@ -224,6 +237,16 @@ if (scenarioSettings.physicalPlant) {
         unitId: FORWARD_EUROSAT_UNIT,
         label: 'Delivered EuroSat terminal',
         record: { serial: 'EUS-2208', accountId: FORWARD_EUROSAT_ACCOUNT, configVersion: 'depot-v2' },
+        historyTitle: 'Saarikoski depot delivery list and assignment record',
+        history: [
+          { at: 'Delivery, terminal', text: 'EuroSat modem serial EUS-2208, configuration depot-v2.' },
+          { at: 'Delivery, assignment', text: `Terminal assigned to service account ${FORWARD_EUROSAT_ACCOUNT}.` },
+          {
+            at: 'Delivery, accessories list',
+            text: 'Accessories listed: 1 dish with mount, 1 LNB, 1 IFL coax cable, 1 DC power lead (4 in all). Compare what arrived with this list when you fill the Accessories field.',
+          },
+          { at: 'Delivery, depot test', text: 'The depot powered the modem on the bench. No satellite service was tested.' },
+        ],
       },
     ],
   };
@@ -257,7 +280,7 @@ export const frontlineScenario11Data: FrontlineScenarioData = {
       id: 's11-receive-equipment',
       title: 'Accept the EuroSat Delivery',
       description:
-        'Compare the delivered terminal, accessories, and account assignment with the authorized delivery record. Record any discrepancy before commissioning the connection.',
+        'Compare the delivered terminal, accessories, and account assignment with the authorized delivery record and the accessories list (Records and notices on the Site tab). Record any discrepancy before commissioning the connection.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: [],
       points: 15,
@@ -284,7 +307,7 @@ export const frontlineScenario11Data: FrontlineScenarioData = {
       conditions: [
         held(modeIs('vsat-modem', 'run', 'Terminal switched to run after acceptance')),
         layerObserved(FORWARD_EUROSAT_SERVICE, 'registration', { status: 'up' }, 'Registration observed up after startup'),
-        held(forecastMeetsReserve({}, 'Battery forecast keeps the reserve with both terminals')),
+        held(forecastMeetsReserveInMode('vsat-modem', 'run', 'Battery forecast keeps the reserve with both terminals')),
         handoverValid('commissioning', 'Commissioning checks recorded without claiming service'),
       ],
     },

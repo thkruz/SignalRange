@@ -140,6 +140,8 @@ export function applyForwardEurosat(plant: PlantConfig, opts: ForwardEurosatOpti
     { id: 'run', label: 'Running', loadW: 55, startupS: FORWARD_EUROSAT_STARTUP_S, servesTraffic: true },
   ];
   modem.mode = opts.modemRunning ? 'run' : 'standby';
+  // The camp scenarios call this unit the VSAT modem; the forward post knows it as the EuroSat modem (c6-s11-F4)
+  modem.label = 'EuroSat modem';
   for (const id of ['vsat-dish', 'vsat-lnb']) {
     const p = plant.parts.find((x) => x.id === id);
     if (p) {

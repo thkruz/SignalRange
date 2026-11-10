@@ -212,6 +212,7 @@ export class ModemDashboardPage implements AntennaPage {
     }
     this.pending_ = null;
     this.speedFailed_ = result === null;
+    if (result) this.runtime_.evidence.sampleJitter();
     this.runtime_.evidence.action(
       'speed-test',
       MODEM_APP_VERBS.speedTest,

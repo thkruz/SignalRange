@@ -726,7 +726,7 @@ export const FORWARD_ROUTER_EUROSAT: CloseupDef = {
   image: `${DIR}/cu-fwd-router-eurosat.webp`,
   regions: [
     ...ROUTER_BASE_REGIONS,
-    { id: 'cu-modem', target: 'vsat-modem', label: 'VSAT modem', shape: cr(920, 413, 1320, 635) },
+    { id: 'cu-modem', target: 'vsat-modem', label: 'EuroSat modem', shape: cr(920, 413, 1320, 635) },
     { id: 'cu-modem-dc', target: 'modem:dc', label: 'DC input', shape: cr(1105, 640, 1200, 735) },
   ],
   probes: [...ROUTER_BASE_PROBES, { id: 'cu-modem-ifl', target: 'vsat-ifl:modem', label: 'IFL F connector at the case wall', ...cp(1359, 598) }],
@@ -823,8 +823,8 @@ export const FORWARD_CLOSEUPS: Partial<Record<CloseupId, CloseupDef>> = {
     aspect: 3 / 2,
     forward: true,
     regions: [
-      { id: 'cu-vsat-dish', target: 'vsat-dish', label: 'VSAT reflector', shape: cr(615, 0, 1275, 490), affordances: ['inspect', 'clearSnow', 'removeNet'] },
-      { id: 'cu-vsat-mount', target: 'vsat-dish', label: 'VSAT mount', shape: cr(560, 515, 1300, 900), affordances: ['inspect', 'swap'] },
+      { id: 'cu-vsat-dish', target: 'vsat-dish', label: 'EuroSat reflector', shape: cr(615, 0, 1275, 490), affordances: ['inspect', 'clearSnow', 'removeNet'] },
+      { id: 'cu-vsat-mount', target: 'vsat-dish', label: 'EuroSat dish mount', shape: cr(560, 515, 1300, 900), affordances: ['inspect', 'swap'] },
     ],
     probes: [],
     cables: [],

@@ -95,6 +95,19 @@ export function forecastMeetsReserve(modeOverrides: Record<string, string> = {},
   );
 }
 
+/**
+ * The part is in the mode AND the plant's forecast meets the reserve. A forecast alone passes with the terminal still in
+ * standby, so the row would tick before the player acts (c6-s11-F6).
+ */
+export function forecastMeetsReserveInMode(partId: string, mode: string, description = 'Forecast keeps the reserve'): Condition {
+  return make(
+    `forecastMeetsReserveInMode:${partId}:${mode}`,
+    description,
+    () => hooks()?.plant.getPartMode(partId) === mode && (hooks()?.plant.forecast().meetsReserve ?? false),
+    false
+  );
+}
+
 /** The latest sample of the layer has the status (when given) and, by default, is still current */
 export function layerObserved(
   serviceId: string,

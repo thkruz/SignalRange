@@ -51,6 +51,7 @@ export class DraggableHtmlBox extends DraggableBox {
     super(`draggable-html-box-${id}`, {
       title,
       parentId,
+      hasSiteDockButton: id === 'checklist',
       boxContentHtml: html`
       <div id="draggable-html-box-content-${id}" style="width:100%;height:100%;">
         ${url ? `<iframe src="${url}" style="width:600px;height:600px;max-height:calc(70vh - 5px);border:none;"></iframe>` : ''}
@@ -81,11 +82,6 @@ export class DraggableHtmlBox extends DraggableBox {
     this.isOpen = true;
   }
 
-  open(cb?: () => void): void {
-    super.open(cb);
-    this.isOpen = true;
-  }
-
   /**
    * On the field console (the tent control is present) the checklist docks at
    * the top right on first open, clear of the Site scene hotspots; elsewhere
@@ -98,6 +94,18 @@ export class DraggableHtmlBox extends DraggableBox {
     }
     // Narrow and top-right: the strip beside the scene is empty, while a bottom dock covered the Service checks table (c6-s02-F5)
     this.dockBesideSite_(boxContent, false);
+  }
+
+  /** The checklist re-opens (objective change, icon click) docked beside the Site stage, never at a dragged spot */
+  protected shouldRedockOnOpen(): boolean {
+    return this.boxId === 'draggable-html-box-checklist' && this.canDockBesideSite();
+  }
+
+  open(cb?: () => void): void {
+    super.open(cb);
+    const dockBtn = this.boxEl?.querySelector<HTMLElement>('.draggable-box__site-dock-btn');
+    if (dockBtn) dockBtn.style.display = this.canDockBesideSite() ? '' : 'none';
+    this.isOpen = true;
   }
 
   updateContent(lastChecklistHtml_: string) {

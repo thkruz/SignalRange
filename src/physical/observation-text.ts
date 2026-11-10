@@ -569,7 +569,10 @@ const OBS_BY_CLASS: ObsTable = {
   },
   reflector: {
     inspect: {
-      healthy: ['Dish surface clean, no dents. Mount bolts tight. Feed arm straight. Pointing not checked.', 'Reflector dry with no dents. Feed horn cover in place.'],
+      healthy: [
+        'Dish surface clean, no dents. Mount bolts tight. Feed arm straight. Pointing not checked.',
+        'Dish and mount dry, no dents, no loose fittings. Feed horn cover in place.',
+      ],
       snow: ['Snow lies in the bowl and on the feed arm.'],
       net: ['Netting is draped over the rim and across the feed arm.'],
       'brick-dead': ['Surface clean. The mount adapter has no light on it.'],

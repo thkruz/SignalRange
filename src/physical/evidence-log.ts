@@ -400,7 +400,7 @@ export class EvidenceLog {
         ...(sample.cause === undefined ? {} : { cause: sample.cause }),
       },
       facts: [],
-      text: `${LAYER_LABEL[sample.layer]} ${METRIC_LABEL[sample.metric].toLowerCase()}${capacityNote(sample)}: ${sample.value}${sample.unit === 'state' ? '' : ` ${sample.unit}`} (${PROVENANCE_LABEL[sample.provenance]})`,
+      text: `${LAYER_LABEL[sample.layer]} ${METRIC_LABEL[sample.metric].toLowerCase()}${capacityNote(sample)}: ${typeof sample.value === 'number' ? Math.round(sample.value * 10) / 10 : sample.value}${sample.unit === 'state' ? '' : ` ${sample.unit}`} (${PROVENANCE_LABEL[sample.provenance]})`,
     });
   }
 }

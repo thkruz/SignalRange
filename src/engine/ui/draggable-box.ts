@@ -15,6 +15,8 @@ interface DraggableBoxOptions {
   boxContentHtml?: string;
   parentId?: string;
   skipDomCreation?: boolean;
+  /** Adds a visible "Dock" control to the header that returns the box to the docked strip beside the Site stage */
+  hasSiteDockButton?: boolean;
 }
 
 export abstract class DraggableBox {
@@ -25,6 +27,7 @@ export abstract class DraggableBox {
   protected title: string = '';
   private static zIndexCounter_ = 10000;
   protected isDockable = false;
+  private readonly hasSiteDockButton_: boolean;
   height: string;
 
   static getMaxZIndex(): number {
@@ -43,6 +46,7 @@ export abstract class DraggableBox {
     this.width = opts?.width ?? '300px';
     this.height = opts?.height ?? '300px';
     this.isDockable = opts?.isDockable ?? false;
+    this.hasSiteDockButton_ = opts?.hasSiteDockButton ?? false;
 
     if (!this.boxEl && !opts?.skipDomCreation) {
       const parentDom = opts?.parentId ? getEl(opts.parentId) : document.getElementsByTagName('body')[0];
@@ -55,6 +59,7 @@ export abstract class DraggableBox {
                 ${this.getBoxTitleHtml()}
               </span>
             </div>
+            ${this.hasSiteDockButton_ ? `<button type="button" id="${this.boxId}-site-dock" class="draggable-box__site-dock-btn" title="Return this box to the docked strip beside the Site stage">Dock</button>` : ''}
             ${this.isDockable ? `<span id="${this.boxId}-dock" class="draggable-box__btn draggable-box__dock-btn"></span>` : ''}
             <span id="${this.boxId}-close" class="draggable-box__btn draggable-box__close-btn"></span>
           </div>
@@ -84,6 +89,30 @@ export abstract class DraggableBox {
       getEl(`${this.boxId}-dock`)!.addEventListener('click', () => this.dock());
     }
 
+    if (this.hasSiteDockButton_) {
+      getEl(`${this.boxId}-site-dock`)?.addEventListener('click', () => this.redockBesideSite());
+    }
+
+    this.sendToFront();
+  }
+
+  /** Boxes that always come back to the docked strip when opened (so a dragged spot is never kept); default false */
+  protected shouldRedockOnOpen(): boolean {
+    return false;
+  }
+
+  /** Whether the Site-dock control applies right now (the field console, where the Site stage exists) */
+  protected canDockBesideSite(): boolean {
+    return !!document.getElementById('tent-control');
+  }
+
+  /** Returns the box to the docked strip beside the Site stage and reflows the stage (the header "Dock" control) */
+  redockBesideSite(): void {
+    const boxContent = this.boxEl;
+    if (!boxContent || !this.canDockBesideSite()) return;
+    this.releaseSiteGutter_();
+    this.placeOnFirstOpen(boxContent);
+    this.hasBeenPlaced_ = true;
     this.sendToFront();
   }
 
@@ -109,7 +138,7 @@ export abstract class DraggableBox {
       // it; re-centring on every open put the checklist and the Working
       // Document back over the console (nats-s14-F2, s24-F5). A box that
       // would reopen off-screen (window resized since) is centred again.
-      if (!this.hasBeenPlaced_ || !this.isOnScreen_(boxContent)) {
+      if (!this.hasBeenPlaced_ || !this.isOnScreen_(boxContent) || this.shouldRedockOnOpen()) {
         this.placeOnFirstOpen(boxContent);
         this.hasBeenPlaced_ = true;
       } else {
@@ -206,6 +235,9 @@ export abstract class DraggableBox {
       });
       scaleDragging(this.draggie, boxContent, getEl('root')!);
       this.draggie.on('dragStart', () => {
+        // A dragged box is floating: the Site stage takes its strip back until the player re-docks it
+        this.releaseSiteGutter_();
+        this.siteGutter_ = 0;
         boxContent.style.height = 'fit-content';
         boxContent.style.maxHeight = '80%';
       });

@@ -43,6 +43,15 @@ export class ModemEvidence {
     this.log_()?.recordAppAction(screenKey(screen), verb, text, EUROSAT_APP_SUBJECT_PREFIX);
   }
 
+  /**
+   * A finished speed test also reads the link's delay variation through the app, so the measurement form's jitter
+   * field ("Use my latest reading") has a sample to take (c6-s11-F3).
+   */
+  sampleJitter(): void {
+    const serviceId = this.model_.serviceId();
+    if (serviceId) PhysicalPlantService.servicesOrNull()?.takeSample(serviceId, 'registration', 'terminal-app', undefined, 'jitterMs');
+  }
+
   private describe_(screen: ModemScreenId, view: ModemView): string {
     if (view.link === 'no-laptop') {
       return `EuroSat modem interface, ${screen}: could not connect (laptop off).`;

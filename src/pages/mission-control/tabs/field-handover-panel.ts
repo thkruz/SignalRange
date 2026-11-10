@@ -82,6 +82,9 @@ const FRESHNESS_ANSWERS: ReadonlyArray<readonly [string, string]> = [
   ['unavailable', 'Unavailable'],
 ];
 
+/** Plain names for the numeric metrics a measured field can take */
+const METRIC_NAME: Record<string, string> = { jitterMs: 'jitter', rttMs: 'delay', downMbps: 'download rate', upMbps: 'upload rate', lossPct: 'loss' };
+
 /** What the "latest reading" hint prints for a matchesCurrent field */
 export function describeReading(service: ServiceModel | null, serviceId: string, layer: Parameters<ServiceModel['latest']>[1]): { text: string; value?: string; current: boolean } {
   const sample = service?.latest(serviceId, layer) ?? null;
@@ -458,7 +461,14 @@ export class FieldHandoverPanel {
     const rule = f.rule;
     if ('matchesCurrent' in rule) return describeReading(this.deps_.service(), rule.matchesCurrent.serviceId, rule.matchesCurrent.layer).text;
 
-    return this.readingFor_(f) ?? '';
+    const reading = this.readingFor_(f);
+    if (reading === undefined && 'measured' in rule) {
+      const name = METRIC_NAME[rule.measured.metric] ?? 'reading';
+
+      return `No ${name} measured yet. It comes from a numeric reading: a speed test in the modem app, the local probe on the Registration row, or Service checks, Application row, Check with Workload run, then pick ${name}.`;
+    }
+
+    return reading ?? '';
   }
 
   private fieldHtml_(

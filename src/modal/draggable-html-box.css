@@ -40,3 +40,14 @@
     }
   }
 }
+/* Long lines in the Working Document wrap instead of clipping behind a horizontal scrollbar (c6-s11-F8) */
+#draggable-html-box-content-working-document {
+  overflow-x: hidden;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+#draggable-html-box-content-working-document * {
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}

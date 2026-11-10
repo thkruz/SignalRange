@@ -34,6 +34,14 @@ export interface PartModeConfig {
 export interface PlantPowerConfig {
   reserveWh: number;
   planningHorizonS: number;
+  /**
+   * Opt-in end-of-shift basis (scenario seconds). When set, the default forecast horizon is the time left to this fixed
+   * point (shiftEndS - now, floored at 0) instead of the rolling `planningHorizonS`, so the horizon shrinks as the clock
+   * runs and an arrangement that holds the reserve at shift end keeps holding it however slowly the student works.
+   * At or after shift end the horizon is 0: the forecast is the current charge against the reserve. An explicit horizon
+   * argument to `forecast()` still wins. Unset = rolling horizon (every other scenario).
+   */
+  shiftEndS?: number;
   basis: 'battery-only' | 'with-generator';
 }
 

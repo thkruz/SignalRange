@@ -165,18 +165,20 @@ export const DUAL_CORRECT_DRAIN_W = 115;
 /** Battery draw (W) with both terminals running: the wrong arrangement the forecast must keep rejecting */
 export const DUAL_WRONG_DRAIN_W = 170;
 
+/** Scenario time a student may leave both terminals running (170 W) before parking the modem and still clear the reserve */
+export const DUAL_PARK_DELAY_S = 600;
+
 /**
- * Smallest whole-Wh start charge that lets a student spend `allowanceS` of scenario time on the correct arrangement and
- * still have the planning forecast clear the reserve. The battery drains while the student works and the forecast is
- * recomputed from what is left, so the start must cover the reserve, the drain over the planning horizon, the drain over
- * the allowance and a small rounding margin: start >= reserve + drainW * (horizon + allowance) / 3600 + margin.
+ * Smallest whole-Wh start charge for an end-of-shift forecast (`plant.power.shiftEndS`). On the correct arrangement the
+ * forecast at shift end is start - drainW * shiftEndS / 3600 at every moment (the draw so far plus the draw still to come
+ * is the same), so the reserve holds for as long as the student likes. The start also covers `parkDelayS` on the wrong
+ * arrangement before the modem is parked (extra draw DUAL_WRONG - drainW), plus a small rounding margin.
  *
- * The wrong arrangement must still fail at t = 0, which needs start - wrongDrainW * horizon / 3600 < reserve. Both limits
- * can only hold together when horizon > allowance * correctDrain / (wrongDrain - correctDrain); at 115 W vs 170 W and a
- * 2700 s allowance that is about 5640 s, so the dual-terminal scenarios plan over 7200 s rather than an hour.
+ * The wrong arrangement must fail at t = 0: start < reserve + DUAL_WRONG_DRAIN_W * shiftEndS / 3600 (checked in
+ * test/campaigns/c6-reserve-margin.test.ts).
  */
-export function reserveStartWh(reserveWh: number, drainW: number, horizonS: number, allowanceS: number, marginWh = 5): number {
-  return Math.ceil(reserveWh + (drainW * (horizonS + allowanceS)) / 3600 + marginWh);
+export function reserveStartWh(reserveWh: number, drainW: number, shiftEndS: number, parkDelayS = DUAL_PARK_DELAY_S, marginWh = 3): number {
+  return Math.ceil(reserveWh + (drainW * shiftEndS) / 3600 + ((DUAL_WRONG_DRAIN_W - drainW) * parkDelayS) / 3600 + marginWh);
 }
 
 export interface ForwardRemoteOptions {

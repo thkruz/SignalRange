@@ -55,13 +55,14 @@ export const S16_EVENT_LOCAL = 's16-local-supply-loss';
 export const S16_EVENT_NOTICE = 's16-provider-notice';
 export const S16_EVENT_OUTAGE = 's16-skylink-outage';
 export const S16_NOTICE = 's16-skylink-maintenance-notice';
-/** Scenario time a student may spend on the correct arrangement and still have the forecast clear the reserve (45 min, Ted's starting rule) */
-export const S16_PLANNING_ALLOWANCE_S = 2700;
-/** Planning horizon: 2 h, because the wrong arrangement can only keep failing the reserve with a horizon this long (see reserveStartWh) */
-export const S16_PLANNING_HORIZON_S = 7200;
+/**
+ * End of shift (scenario seconds): the battery-reserve forecast looks at this fixed point, not a rolling window. No authored shift
+ * length exists, so this is a named constant; Ted wants a tunable knob, edit this one value to retune (start charge derives from it).
+ */
+export const S16_SHIFT_END_S = 7200;
 export const S16_RESERVE_WH = 200;
-/** Start charge derived from the allowance: reserve + drain over horizon + drain over allowance + 5 Wh margin (was 360) */
-export const S16_START_WH = reserveStartWh(S16_RESERVE_WH, DUAL_CORRECT_DRAIN_W, S16_PLANNING_HORIZON_S, S16_PLANNING_ALLOWANCE_S);
+/** Start charge derived from the shift end: reserve + correct-arrangement drain to shift end + 10 min of both terminals + 3 Wh margin */
+export const S16_START_WH = reserveStartWh(S16_RESERVE_WH, DUAL_CORRECT_DRAIN_W, S16_SHIFT_END_S);
 export const S16_FINAL_WINDOW_S = 120;
 /** The outage starts this long after the external objective activates, so the first reading can be a clean one */
 export const S16_OUTAGE_OFFSET_S = 15;
@@ -245,7 +246,7 @@ if (settings.physicalPlant) {
   if (battery) {
     battery.socWh = S16_START_WH;
   }
-  plant.power = { reserveWh: S16_RESERVE_WH, planningHorizonS: S16_PLANNING_HORIZON_S, basis: 'battery-only' };
+  plant.power = { reserveWh: S16_RESERVE_WH, planningHorizonS: S16_SHIFT_END_S, shiftEndS: S16_SHIFT_END_S, basis: 'battery-only' };
   // A blind reseat clears the fault without evidence, so the objective cannot lock on missing evidence: the debrief scores it
   plant.causeOptions = [
     { id: 'connector-seating', label: 'A connector is not fully seated' },

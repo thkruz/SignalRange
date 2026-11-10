@@ -7,7 +7,6 @@ import {
   applyForwardEurosat,
   applyForwardField,
   applyForwardRemote,
-  DUAL_CORRECT_DRAIN_W,
   DUAL_RESERVE_WH,
   FORWARD_EUROSAT_SERVICE,
   FORWARD_FIRST_CARD,
@@ -49,13 +48,16 @@ export const S14_EVENT_EXERCISE = 's14-readiness-exercise';
 export const S14_EVENT_RETURN = 's14-skylink-returns';
 export const S14_INTERVAL_RESTORATION = 's14-eurosat-restoration';
 export const S14_NOTICE = 's14-ground-restoration-notice';
-/** Scenario time a student may spend on the correct arrangement and still have the forecast clear the reserve (45 min, Ted's starting rule) */
-export const S14_PLANNING_ALLOWANCE_S = 2700;
-/** Planning horizon: 2 h, because the wrong arrangement can only keep failing the reserve with a horizon this long (see reserveStartWh) */
-export const S14_PLANNING_HORIZON_S = 7200;
+/**
+ * End of shift (scenario seconds): the battery-reserve forecast looks at this fixed point, not a rolling window. No authored shift
+ * length exists, so this is a named constant; Ted wants a tunable knob, edit this one value to retune (start charge derives from it).
+ */
+export const S14_SHIFT_END_S = 7200;
 export const S14_RESERVE_WH = DUAL_RESERVE_WH;
-/** Start charge derived from the allowance: reserve + drain over horizon + drain over allowance + 5 Wh margin */
-export const S14_START_WH = reserveStartWh(S14_RESERVE_WH, DUAL_CORRECT_DRAIN_W, S14_PLANNING_HORIZON_S, S14_PLANNING_ALLOWANCE_S);
+/** S14 ends on the modem running and the dish in standby (about 120 W), 5 W above the S15/S16 arrangement, so the start is sized for that */
+export const S14_FINAL_DRAIN_W = 120;
+/** Start charge derived from the shift end: reserve + correct-arrangement drain to shift end + 10 min of both terminals + 3 Wh margin */
+export const S14_START_WH = reserveStartWh(S14_RESERVE_WH, S14_FINAL_DRAIN_W, S14_SHIFT_END_S);
 
 const EUS = FORWARD_EUROSAT_SERVICE;
 const TRANSFER = S11_TRANSFER_CARD.id;
@@ -231,7 +233,7 @@ if (settings.physicalPlant) {
   if (battery) {
     battery.socWh = S14_START_WH;
   }
-  plant.power = { reserveWh: S14_RESERVE_WH, planningHorizonS: S14_PLANNING_HORIZON_S, basis: 'battery-only' };
+  plant.power = { reserveWh: S14_RESERVE_WH, planningHorizonS: S14_SHIFT_END_S, shiftEndS: S14_SHIFT_END_S, basis: 'battery-only' };
   if (plant.service) {
     plant.service.intervals = [{ id: S14_INTERVAL_RESTORATION, serviceId: EUS, startEventId: S14_EVENT_EXERCISE, activationPartId: 'vsat-modem' }];
   }

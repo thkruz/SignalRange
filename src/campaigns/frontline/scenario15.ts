@@ -57,12 +57,13 @@ export const S15_IMPAIRMENT = 's15-eurosat-link-loss';
 export const S15_EPISODE_S = 1200;
 
 export const S15_RESERVE_WH = 150;
-/** Scenario time a student may spend on the correct arrangement and still have the forecast clear the reserve (45 min, Ted's starting rule) */
-export const S15_PLANNING_ALLOWANCE_S = 2700;
-/** Planning horizon: 2 h, because the wrong arrangement can only keep failing the reserve with a horizon this long (see reserveStartWh) */
-export const S15_PLANNING_HORIZON_S = 7200;
-/** Start charge derived from the allowance: reserve + drain over horizon + drain over allowance + 5 Wh margin (was 300) */
-export const S15_START_WH = reserveStartWh(S15_RESERVE_WH, DUAL_CORRECT_DRAIN_W, S15_PLANNING_HORIZON_S, S15_PLANNING_ALLOWANCE_S);
+/**
+ * End of shift (scenario seconds): the battery-reserve forecast looks at this fixed point, not a rolling window. No authored shift
+ * length exists, so this is a named constant; Ted wants a tunable knob, edit this one value to retune (start charge derives from it).
+ */
+export const S15_SHIFT_END_S = 7200;
+/** Start charge derived from the shift end: reserve + correct-arrangement drain to shift end + 10 min of both terminals + 3 Wh margin */
+export const S15_START_WH = reserveStartWh(S15_RESERVE_WH, DUAL_CORRECT_DRAIN_W, S15_SHIFT_END_S);
 
 const EUS = FORWARD_EUROSAT_SERVICE;
 const TRANSFER = S11_TRANSFER_CARD.id;
@@ -271,7 +272,7 @@ if (settings.physicalPlant) {
   if (battery) {
     battery.socWh = S15_START_WH;
   }
-  plant.power = { reserveWh: S15_RESERVE_WH, planningHorizonS: S15_PLANNING_HORIZON_S, basis: 'battery-only' };
+  plant.power = { reserveWh: S15_RESERVE_WH, planningHorizonS: S15_SHIFT_END_S, shiftEndS: S15_SHIFT_END_S, basis: 'battery-only' };
   plant.hypothesisSpecs = [{ causes: ['suspected-interference', 'unexplained-outage'], ...HYPOTHESIS_OPTS }];
   plant.causeOptions = [
     { id: 'suspected-interference', label: 'Suspected interference' },

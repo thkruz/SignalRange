@@ -981,7 +981,7 @@ export class PhysicalPlantManager {
       batteries,
       generators,
       basis: power?.basis ?? 'battery-only',
-      horizonS: horizonS ?? power?.planningHorizonS ?? 3600,
+      horizonS: horizonS ?? (power?.shiftEndS !== undefined ? Math.max(0, Math.ceil(power.shiftEndS - now)) : (power?.planningHorizonS ?? 3600)),
       reserveWh: power?.reserveWh ?? null,
       startupCostS,
     });

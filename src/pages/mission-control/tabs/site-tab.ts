@@ -6,6 +6,7 @@ import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { ObjectivesManager } from '@app/objectives/objectives-manager';
 import { FieldHandoverPanel } from '@app/pages/mission-control/tabs/field-handover-panel';
 import { FieldNotebookPanel, type HypothesisScope, type NotebookTarget } from '@app/pages/mission-control/tabs/field-notebook-panel';
 import { FieldPathDiagramPanel } from '@app/pages/mission-control/tabs/field-path-diagram-panel';
@@ -13,6 +14,8 @@ import { FieldPowerPanel } from '@app/pages/mission-control/tabs/field-power-pan
 import { FieldRecordsPanel } from '@app/pages/mission-control/tabs/field-records-panel';
 import { FieldServicePanel } from '@app/pages/mission-control/tabs/field-service-panel';
 import { FieldWorkloadPanel } from '@app/pages/mission-control/tabs/field-workload-panel';
+import { formStepState } from '@app/pages/mission-control/tabs/form-step-state';
+import { buildNotebookTargets } from '@app/pages/mission-control/tabs/notebook-targets';
 import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import { GLOW_FILTERS_SVG } from '@app/physical/ui/glow-filters';
 import { PartCloseupModal } from '@app/physical/ui/part-closeup-modal';
@@ -82,6 +85,7 @@ export class SiteTab extends BaseElement {
       service: () => PhysicalPlantService.servicesOrNull(),
       runs: () => PhysicalPlantService.workloadsOrNull()?.getRuns() ?? [],
       plant: () => PhysicalPlantService.plantOrNull(),
+      formStep: (formId) => formStepState(formId, ObjectivesManager.getInstance().getObjectiveStates()),
     });
 
     this.recordsPanel_ = new FieldRecordsPanel(qs<HTMLElement>('#site-records-panel'), { records: () => PhysicalPlantService.recordsOrNull() });
@@ -99,25 +103,7 @@ export class SiteTab extends BaseElement {
 
   /** Hypothesis targets the player can pick for a scope (labels only, no fault truth) */
   private notebookTargets_(scope: HypothesisScope): NotebookTarget[] {
-    const plant = PhysicalPlantService.plantOrNull();
-    const model = PhysicalPlantService.servicesOrNull();
-    const label = (id: string): string => plant?.getLabel(id) ?? id;
-    const services = (model?.getServiceIds() ?? []).map((id) => ({ id, label: model?.getPath(id)?.label ?? id }));
-    if (scope === 'segment' || scope === 'endpoint') return services;
-    if (scope === 'provider') {
-      const ids = new Set<string>();
-      for (const s of services) {
-        const pid = model?.getPath(s.id)?.providerId;
-        if (pid) ids.add(pid);
-      }
-
-      return [...ids].map((id) => ({ id, label: id }));
-    }
-    if (!plant) return [];
-    const parts = plant.getPartIds().map((id) => ({ id, label: label(id) }));
-    if (scope === 'power') return parts;
-
-    return [...parts, ...plant.getConnectorIds().map((id) => ({ id, label: id })), ...plant.getCableIds().map((id) => ({ id, label: id }))];
+    return buildNotebookTargets(scope, { plant: PhysicalPlantService.plantOrNull(), services: PhysicalPlantService.servicesOrNull() });
   }
 
   /** The image and hotspot overlay of the current view */

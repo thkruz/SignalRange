@@ -58,6 +58,21 @@ const checkPlanForm: HandoverFormConfig = {
         labels: { 'inspect-connector': 'Inspect the connector', 'test-cable': 'Test the cable', 'read-power': 'Read the supply voltage' },
       },
     },
+    {
+      key: 'expected',
+      label: 'Result you expect from that check',
+      required: true,
+      rule: {
+        choice: ['sign-of-moisture', 'leak-or-open', 'normal-reading', 'no-supply'],
+        accept: ['sign-of-moisture', 'leak-or-open', 'normal-reading'],
+        labels: {
+          'sign-of-moisture': 'Water, residue or corrosion at the part',
+          'leak-or-open': 'A leakage, open or short reading',
+          'normal-reading': 'A normal reading, ruling that part out',
+          'no-supply': 'No supply voltage at the part',
+        },
+      },
+    },
     { key: 'basis', label: 'Observations that led to it', required: true, rule: { cites: 'observation', min: 1 } },
   ],
 };

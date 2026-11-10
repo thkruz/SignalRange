@@ -1013,7 +1013,7 @@ export class PhysicalPlantManager {
 
   /** Display label of a part, connector or cable (falls back to the id) */
   getLabel(id: string): string {
-    return this.parts_.get(id)?.label ?? id;
+    return this.parts_.get(id)?.label ?? this.connectors_.get(id)?.label ?? this.cables_.get(id)?.label ?? id;
   }
 
   /** The plant configuration this manager was built from (read-only; used to draw path diagrams) */
@@ -1897,6 +1897,10 @@ export class PhysicalPlantManager {
         rt.dropUntilS = now + DROP_SECONDS;
       }
       lines.push(this.line_(target, verb, rt.fault.kind, this.faultVars_(rt.fault)));
+      if (verb === 'inspect' && rt.fault.kind === 'partial-seat') {
+        // The eye sees a gap but cannot call it a fault: only a wiggle or a meter confirms it
+        continue;
+      }
       revealed.push(rt.fault.id);
       this.pushFact_(facts, rt.fault, verb);
     }

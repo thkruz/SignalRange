@@ -163,13 +163,14 @@ export const frontlineScenario2Data: FrontlineScenarioData = {
     {
       id: 's2-verify-service-reserve',
       title: 'Verify Service and Reserve',
-      description: 'Run the 120-second assessment after the response. Confirm usable application service, record recovery time, and retain at least 200 Wh at the end.',
+      description:
+        'Run the 120-second assessment after the response. Confirm usable application service with an endpoint-report reading taken after the run finishes, record recovery time, and retain at least 200 Wh at the end.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s2-respond-to-outage'],
       conditions: [
         forecastMeetsReserve({}, 'Configuration still keeps the reserve over the planning horizon'),
         workloadVerified({ card: OLA_VOICE_CARD.id, service: SKYLINK_SERVICE, afterEvent: SUPPLY_EVENT }, 'Low-delay run completed after the interruption'),
-        layerObserved(SKYLINK_SERVICE, 'application', { status: 'up' }, 'Result confirmed at the remote end'),
+        layerObserved(SKYLINK_SERVICE, 'application', { status: 'up' }, 'Result confirmed at the remote end (endpoint-report reading taken after the run finishes)'),
         reserveHeld({ windowS: 120 }, 'Reserve held for the 120-second window'),
       ],
     },

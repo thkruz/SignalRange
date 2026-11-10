@@ -125,12 +125,13 @@ export const frontlineScenario1Data: FrontlineScenarioData = {
     {
       id: 's1-test-application',
       title: 'Run the Application Check',
-      description: 'Start a new simulated application check with Ola on the SkyLink connection. Confirm the completed result at both ends before calling the service usable.',
+      description:
+        'Start a new simulated application check with Ola on the SkyLink connection. Confirm the completed result at both ends before calling the service usable. Take the endpoint-report reading after the run finishes; one taken earlier does not count.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s1-establish-connection'],
       conditions: [
         workloadVerified({ card: OLA_CHECK_CARD.id, service: SKYLINK_SERVICE }, 'Application check completed on the SkyLink connection'),
-        layerObserved(SKYLINK_SERVICE, 'application', { status: 'up' }, 'Result confirmed at the remote end'),
+        layerObserved(SKYLINK_SERVICE, 'application', { status: 'up' }, 'Result confirmed at the remote end (endpoint-report reading taken after the run finishes)'),
       ],
     },
     {

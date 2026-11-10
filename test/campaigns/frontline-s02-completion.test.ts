@@ -235,3 +235,14 @@ describe('M20 S2 completion', () => {
     expect(bad?.effect.penalty).toBeGreaterThan(0);
   });
 });
+
+describe('S2 visual inspection of the partial seat', () => {
+  it('shows a gap at the generator output plug and leaves the voltage to the multimeter', () => {
+    const svc = bootScenario(data);
+    svc.plant.goOutside();
+    svc.plant.injectFault({ id: 'seat-test', target: 'generator:out', kind: 'partial-seat' });
+    const seen = svc.plant.inspect('generator:out').observation;
+    expect(seen).toMatch(/gap/iu);
+    expect(seen).not.toMatch(/no gap|fully home/iu);
+  });
+});

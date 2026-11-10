@@ -252,3 +252,17 @@ describe('SoundManager.getInstance', () => {
     });
   });
 });
+
+describe('SoundManager.playCustom with no audio URL', () => {
+  it('skips loading and logs nothing when the URL is empty', () => {
+    (SoundManager as any).instance = undefined;
+    const sm = SoundManager.getInstance();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const loadSpy = vi.spyOn(sm as any, 'loadAudio_');
+    sm.playCustom('', 'hello', () => undefined);
+    sm.playCustom(undefined, 'hello', () => undefined);
+    expect(loadSpy).not.toHaveBeenCalled();
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+});

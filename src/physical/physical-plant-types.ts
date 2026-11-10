@@ -91,6 +91,8 @@ export type PlantSignalRole = 'pre-lna' | 'post-lna';
 
 export interface PlantConnectorConfig {
   id: string;
+  /** Player-facing name (hypothesis picker, logs); falls back to the id */
+  label?: string;
   /** Cable this connector terminates (its carried signal and power) */
   cableId?: string;
   /** Part this connector plugs into (needed when there is no cable, e.g. an antenna feed) */
@@ -114,6 +116,8 @@ export interface CableState {
 
 export interface PlantCableConfig {
   id: string;
+  /** Player-facing name (hypothesis picker, logs); falls back to the id */
+  label?: string;
   lengthM: number;
   /** Spare family, e.g. 'power-data' or 'coax' (spare key is `cable:<cableType>`) */
   cableType: string;

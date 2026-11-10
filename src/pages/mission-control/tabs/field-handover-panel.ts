@@ -1,3 +1,4 @@
+import { FORM_STEP_LATER_NOTE, type FormStepState } from '@app/pages/mission-control/tabs/form-step-state';
 import type { EvidenceEntry, EvidenceLog } from '@app/physical/evidence-log';
 import type { FieldRecords, HandoverFieldConfig, HandoverFormConfig, HandoverInput, HandoverValidation } from '@app/physical/field-records';
 import type { PhysicalPlantManager } from '@app/physical/physical-plant-manager';
@@ -22,6 +23,8 @@ export interface HandoverPanelDeps {
   service: () => ServiceModel | null;
   runs: () => readonly WorkloadRun[];
   plant: () => PhysicalPlantManager | null;
+  /** Where the checklist step that reads a form stands (omitted: no note) */
+  formStep?: (formId: string) => FormStepState;
 }
 
 /** Said plainly wherever a form has a field that must match a service reading */
@@ -140,7 +143,7 @@ export class FieldHandoverPanel {
     const res = records.submit(this.formId_, this.input_);
     this.result_ = res.validation;
     if (res.ok) {
-      this.msg_ = `Submitted at ${clock(res.record.submittedAtS)}.`;
+      this.msg_ = `Submitted at ${clock(res.record.submittedAtS)}.${this.deps_.formStep?.(this.formId_) === 'later' ? ` ${FORM_STEP_LATER_NOTE}` : ''}`;
       this.input_ = {};
       this.result_ = null;
     } else {
@@ -162,11 +165,22 @@ export class FieldHandoverPanel {
     return this.form_()?.fields.find((f) => f.key === key);
   }
 
+  /**
+   * A gauge value only counts as the player's reading once they looked at the part (an inspect entry on it).
+   * The fuel gauge is read off the generator; the stored-energy figure is a live panel readout, so it is always available.
+   */
+  private hasPowerReading_(r: { metric: 'socWh' | 'fuelL'; partId?: string }): boolean {
+    if (r.metric !== 'fuelL' || r.partId === undefined) return true;
+    const log = this.deps_.evidence();
+    return log === null ? false : log.entries('observation').some((e) => e.subject === r.partId && e.verb === 'inspect');
+  }
+
   private readingFor_(field: HandoverFieldConfig): string | undefined {
     const rule = field.rule;
     if ('matchesCurrent' in rule) return describeReading(this.deps_.service(), rule.matchesCurrent.serviceId, rule.matchesCurrent.layer).value;
     const plant = this.deps_.plant();
     if ('powerWithin' in rule && plant) {
+      if (!this.hasPowerReading_(rule.powerWithin)) return undefined;
       const table = plant.getPowerReadings()[rule.powerWithin.metric];
       const v = rule.powerWithin.partId === undefined ? Object.values(table).reduce((a, b) => a + b, 0) : table[rule.powerWithin.partId];
 

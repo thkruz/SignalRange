@@ -38,6 +38,25 @@ const INVALID_LABEL: Record<string, string> = {
 
 const HISTORY_SHOWN = 10;
 
+/** Why a run came back unsupported with a layer down, in the player's words */
+const LAYER_DOWN_TEXT: Record<string, string> = {
+  'terminal-booting': 'The terminal is still restarting, so registration is down. Rerun once it is back.',
+  'terminal-starting': 'The terminal is still starting up, so registration is down. Rerun once it is back.',
+  'terminal-searching': 'The terminal is still searching for the satellite, so registration is down. Rerun once it is registered.',
+};
+
+/** The words for an unmet entry: a metric name, or a down-layer reason such as 'layer:terminal-booting' */
+export function unmetText(m: string): string {
+  return METRIC_LABEL[m] ?? m;
+}
+
+/** A line to print when the run failed only because a layer was down (null otherwise) */
+export function layerDownText(unmet: readonly string[]): string | null {
+  const reason = unmet.find((m) => m.startsWith('layer:'))?.slice('layer:'.length);
+
+  return reason === undefined ? null : (LAYER_DOWN_TEXT[reason] ?? null);
+}
+
 function clock(tS: number): string {
   const s = Math.max(0, Math.floor(tS));
 
@@ -97,8 +116,9 @@ export function buildRunLine(run: WorkloadRun, runner: WorkloadRunner, serviceLa
   if (run.status === 'aborted') {
     result = run.invalidatedBy ? `Stopped: ${INVALID_LABEL[run.invalidatedBy] ?? run.invalidatedBy}.` : 'Stopped by you.';
   } else if (!running) {
-    const unmet = run.unmet.map((m) => METRIC_LABEL[m] ?? m);
-    result = `${STATUS_LABEL[run.status]}${unmet.length > 0 ? `, fell short on ${unmet.join(', ')}` : ''}.`;
+    const layerDown = layerDownText(run.unmet);
+    const unmet = run.unmet.map(unmetText);
+    result = layerDown ? `${STATUS_LABEL[run.status]}. ${layerDown}` : `${STATUS_LABEL[run.status]}${unmet.length > 0 ? `, fell short on ${unmet.join(', ')}` : ''}.`;
     if (run.invalidatedBy) result += ` No longer counts: ${INVALID_LABEL[run.invalidatedBy] ?? run.invalidatedBy}.`;
   }
 

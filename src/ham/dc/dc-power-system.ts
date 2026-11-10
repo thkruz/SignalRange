@@ -56,6 +56,8 @@ export interface DcSystemState {
   leadOhms: number;
   fuseRatingA: number;
   fuseBlown: boolean;
+  /** Fuse physically pulled from its holder: the lead is open */
+  fuseOut: boolean;
   sourceConnected: boolean;
   polarityReversed: boolean;
   faults: DcFault[];
@@ -102,6 +104,7 @@ export class DcPowerSystem implements MeterCircuit {
       leadOhms: opts.leadOhms ?? GOOD_LEAD_OHMS,
       fuseRatingA: LEAD_FUSE_A,
       fuseBlown: false,
+      fuseOut: false,
       sourceConnected: true,
       polarityReversed: false,
       faults: [],
@@ -142,7 +145,18 @@ export class DcPowerSystem implements MeterCircuit {
   replaceFuse(ratingA: number): { ok: boolean; reason?: string } {
     if (ratingA !== LEAD_FUSE_A) return { ok: false, reason: `Replace the fuse with the original ${LEAD_FUSE_A} A rating.` };
     this.state.fuseBlown = false;
+    this.state.fuseOut = false;
     return { ok: true };
+  }
+
+  /** Pull the inline fuse from its holder; the radio loses power. */
+  pullFuse(): void {
+    this.state.fuseOut = true;
+  }
+
+  /** Put the pulled fuse back. A blown element stays blown. */
+  refitFuse(): void {
+    this.state.fuseOut = false;
   }
 
   setSupplyLimit(limitA: number): void {
@@ -165,7 +179,7 @@ export class DcPowerSystem implements MeterCircuit {
 
   private radioLoadA_(ptt: boolean): number {
     const s = this.state;
-    if (s.radioState !== 'on' || s.polarityReversed || s.fuseBlown) return 0;
+    if (s.radioState !== 'on' || s.polarityReversed || s.fuseBlown || s.fuseOut) return 0;
     const tx = ptt && !s.txLocked;
     return tx ? (s.txCurrentA ?? MOBILE_PROFILE.power.txCurrentA ?? 8) : (MOBILE_PROFILE.power.rxCurrentA ?? 1);
   }
@@ -173,7 +187,7 @@ export class DcPowerSystem implements MeterCircuit {
   private build_(energized: boolean, loadA: number, volts: number): CircuitElement[] {
     const s = this.state;
     const els: CircuitElement[] = [
-      { id: 'lead-fuse', type: 'fuse', a: 'src', b: 'mid', ratingA: s.fuseRatingA, blown: s.fuseBlown },
+      { id: 'lead-fuse', type: 'fuse', a: 'src', b: 'mid', ratingA: s.fuseRatingA, blown: s.fuseBlown || s.fuseOut },
       { id: 'lead-r1', type: 'resistor', a: 'mid', b: 'radio+', ohms: s.leadOhms },
     ];
     if (energized) {
@@ -280,7 +294,7 @@ export class DcPowerSystem implements MeterCircuit {
   /** True while the radio is actually transmitting. */
   isTransmitting(): boolean {
     const s = this.state;
-    return s.radioState === 'on' && s.ptt && !s.txLocked && !s.fuseBlown && !s.polarityReversed;
+    return s.radioState === 'on' && s.ptt && !s.txLocked && !s.fuseBlown && !s.fuseOut && !s.polarityReversed;
   }
 
   batterySoc(): number {

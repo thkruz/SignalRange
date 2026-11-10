@@ -87,7 +87,7 @@ export const hamTechS11Data: ScenarioData = {
       {
         id: 'follow-doppler',
         nice: ['K0645'],
-        title: 'Follow the Doppler Shift',
+        title: 'Retune for the Changing Shift',
         description: 'Key up again at least 90 seconds later with the uplink retuned so that the satellite receiver sees it within 1.5 kHz of 435.900 MHz.',
         points: 10,
         conditions: [satRelayedCorrected({ maxOffsetHz: 1500, count: 2, minGapS: 90 }, 'Two corrected uplinks, 90 seconds apart')],

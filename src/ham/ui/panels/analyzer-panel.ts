@@ -94,6 +94,8 @@ export class AnalyzerPanel implements StationPanel {
       this.status_
     );
     host.append(this.root_);
+    const last = ctx.manager.lastSweep();
+    if (last) this.setSweep_(last.points, last.flags, last.measurement);
     this.update(ctx.manager);
   }
 
@@ -111,12 +113,19 @@ export class AnalyzerPanel implements StationPanel {
 
       return;
     }
-    const m = (r.data?.measurement as HamMeasurement | undefined) ?? null;
+    this.setSweep_(
+      (r.data?.points as AnalyzerPoint[] | undefined) ?? [],
+      (r.data?.flags as string[] | undefined) ?? [],
+      (r.data?.measurement as HamMeasurement | undefined) ?? null
+    );
+  }
+
+  private setSweep_(points: AnalyzerPoint[], flags: string[], m: HamMeasurement | null): void {
     this.sweep_ = {
-      points: (r.data?.points as AnalyzerPoint[] | undefined) ?? [],
+      points,
       minSwr: m ? { fMHz: m.value, swr: Number(m.context?.minSwr ?? 99) } : null,
       uncalibrated: Boolean(m?.context?.uncalibrated),
-      flags: (r.data?.flags as string[] | undefined) ?? [],
+      flags,
       m,
     };
     this.draw_();

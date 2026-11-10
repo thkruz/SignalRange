@@ -73,9 +73,9 @@ export class MeterPanel implements StationPanel {
   private beepEl_!: HTMLElement;
   private warnEl_!: HTMLElement;
   private socketHint_!: HTMLElement;
-  private last_: { ok: boolean; text: string; m?: HamMeasurement; beep: boolean; warning: string } | null = null;
+  private last_: { ok: boolean; text: string; m?: HamMeasurement; beep: boolean; warning: string; mode?: MeterMode; socket?: RedSocket } | null = null;
   private root_: HTMLElement | null = null;
-  /** Local mirror: the manager's meterState() only refreshes on snapshot */
+  /** Mirror of the manager's meterState(), refreshed on every update() */
   private mode_: MeterMode = 'OFF';
   private socket_: RedSocket = 'VΩ';
 
@@ -200,13 +200,23 @@ export class MeterPanel implements StationPanel {
     const r = this.ctx_.act({ type: 'meter.read' });
     const m = r.data?.measurement as HamMeasurement | undefined;
     if (!r.ok) this.last_ = { ok: false, text: r.message, beep: false, warning: '' };
-    else this.last_ = { ok: true, text: String(m?.context?.display ?? r.message), m, beep: Boolean(m?.context?.beep), warning: String(r.data?.warning ?? '') };
+    else
+      this.last_ = {
+        ok: true,
+        text: String(m?.context?.display ?? r.message),
+        m,
+        beep: Boolean(m?.context?.beep),
+        warning: String(r.data?.warning ?? ''),
+        mode: this.mode_,
+        socket: this.socket_,
+      };
     this.render_();
   }
 
   private render_(): void {
     const l = this.last_;
-    const stale = Boolean(l?.m && !this.ctx_.manager.isCurrent(l.m));
+    const live = this.ctx_.manager.meterState();
+    const stale = Boolean(l?.m && (!this.ctx_.manager.isCurrent(l.m) || l.mode !== live.mode || l.socket !== live.redSocket));
     setText(this.displayEl_, l ? l.text : '----');
     this.displayEl_.classList.toggle('is-refused', Boolean(l && !l.ok));
     this.displayEl_.classList.toggle('is-stale', stale);
@@ -215,8 +225,10 @@ export class MeterPanel implements StationPanel {
     setText(this.warnEl_, l?.warning ?? '');
   }
 
-  update(_m: HamStationManager): void {
-    const s = { mode: this.mode_, redSocket: this.socket_ };
+  update(m: HamStationManager): void {
+    const s = m.meterState();
+    this.mode_ = s.mode;
+    this.socket_ = s.redSocket;
     for (const [mode, b] of this.modeBtns_) b.classList.toggle('active', s.mode === mode);
     this.socketEl_.value = s.redSocket;
     let hint = '';

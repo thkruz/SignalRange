@@ -171,8 +171,11 @@ export interface HamStationConfig {
   energyPlan?: EnergyPlan;
   worksheets: Worksheet[];
   cards: ReferenceCard[];
-  /** Optional hint text per objective id, shown by the Station tab's "Ask Riley" button */
-  hints?: Record<string, string>;
+  /**
+   * Optional hint text per objective id, shown by the Station tab's "Ask Riley" button.
+   * An array gives staged hints (subsystem, measurement, interpretation): each request reveals the next.
+   */
+  hints?: Record<string, string | string[]>;
   /** Seat refused while a powered radio/receiver is on that connection */
   seatRequiresPowerOff?: boolean;
 }

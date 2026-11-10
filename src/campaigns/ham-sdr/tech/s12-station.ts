@@ -271,18 +271,62 @@ export const s12Station: HamStationConfig = {
       body: 'A battery can read well with nothing drawn from it. Compare the voltage at the battery terminals with the voltage at the radio terminals while the radio transmits, because the difference is lost in the lead.',
     },
   ],
+  // Three stages per objective: which subsystem, what to measure or check, how to read it
   hints: {
-    'plan-portable-station': 'Rule out hazards first (power lines, the public, the weather), then work the energy plan as an average power over the 90 minutes.',
-    'assemble-and-test': 'Test into the dummy load at low power first, then connect the mast feed line and listen for the club check source.',
-    'check-into-net': 'Wait for net control to call for check-ins. Give your call sign when you key.',
-    'diagnose-fault':
-      'The radio resets only at higher power. Put the meter on DC volts at the radio terminals before the 50 W key-up and it holds the dip. Then take one reading at the battery terminals and one at the radio terminals while transmitting.',
-    'replace-lead': 'Switch the battery off before touching the lead, replace the lead and keep the fuse, then switch back on.',
-    'verify-repair': 'Repeat what exposed the fault: transmit at 50 W and read the radio terminals, then check the repeater answers.',
-    'move-to-fallback': 'When the repeater is off the air, set 147.525 MHz FM with no offset or tone, and call the station at the club tent.',
-    'relay-exact-message': 'The first delivery loses a word to noise. Send a reply of type fill, copy the whole text, then send it word for word and listen to the readback.',
-    'check-radiogram': 'The check is the number of words in the text alone.',
-    'close-station': 'Identify with your call sign at the end of the net.',
-    'pack-down': 'Power down first, then read the battery gauge and compare it with the 30 Wh reserve.',
+    'plan-portable-station': [
+      'Start with the site and safety sheet, then the energy sheet.',
+      'Check power lines, the public and the weather first. For energy, work out average power over the 90 minutes from the kit list.',
+      'If energy left is below the 30 Wh reserve, the plan fails and you must cut transmit time or power.',
+    ],
+    'assemble-and-test': [
+      'Work from the radio outward: radio, then feed line, then antenna.',
+      'Key low power into the dummy load first. Then connect the mast feed line and listen for the club check source.',
+      'A clean test into the dummy load means the radio is fine. Trouble after you connect the antenna points at the feed line or the antenna.',
+    ],
+    'check-into-net': [
+      'This is the operating side: the radio panel and the net.',
+      'Wait for net control to call for check-ins, then key and give your call sign once.',
+      'If net control does not answer, check the frequency, the offset and the tone before you call again.',
+    ],
+    'diagnose-fault': [
+      'The radio resets only at higher power, so look at the DC power system.',
+      'Put the meter on DC volts at the radio terminals and key at 50 W. Then read the battery terminals and the radio terminals while transmitting.',
+      'A big drop between battery and radio under load means loss in the lead. A good battery reading alone proves nothing.',
+    ],
+    'replace-lead': [
+      'The fault is in the DC lead, so work on the DC power panel.',
+      'Switch the battery off before you touch the lead. Inspect it, then replace the lead and keep the same fuse.',
+      'Do not fit a bigger fuse. The fuse rating protects the wiring.',
+    ],
+    'verify-repair': [
+      'Repeat the test that exposed the fault, on the DC panel and the radio.',
+      'Transmit at 50 W and read the voltage at the radio terminals. Then check that the repeater answers.',
+      'If the radio holds above its minimum voltage and does not reset, the repair worked.',
+    ],
+    'move-to-fallback': [
+      'The repeater is off the air, so use the radio panel and go simplex.',
+      'Set 147.525 MHz FM with no offset and no tone.',
+      'Simplex means both stations use the same frequency. Call the station at the club tent and listen for the reply.',
+    ],
+    'relay-exact-message': [
+      'This is the net traffic part: the message pad and the radio.',
+      'The first delivery loses a word to noise. Ask for a fill, copy the whole text, then send it word for word.',
+      'The readback must match the original exactly. If one word differs, send that part again.',
+    ],
+    'check-radiogram': [
+      'Look at the radiogram header, not the message body.',
+      'Count the words in the text alone. Leave out the address and the signature.',
+      'The check in the header must equal that count, otherwise the receiver knows words were lost.',
+    ],
+    'close-station': [
+      'This is the operating side again: the end of the net.',
+      'Identify with your call sign when net control closes the net.',
+      'You must identify at the end of a contact. Your call sign alone is enough.',
+    ],
+    'pack-down': [
+      'Start with the radio, then the battery.',
+      'Power down first, then read the battery gauge and compare it with the 30 Wh reserve.',
+      'If the battery is at or above the reserve, the energy plan held.',
+    ],
   },
 };

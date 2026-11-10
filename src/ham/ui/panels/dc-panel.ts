@@ -76,6 +76,12 @@ export class DcPanel implements StationPanel {
       const r = ctx.act({ type: 'inspect', targetId: id });
       ctx.feedback(r.message, r.ok ? 'info' : 'warning');
     });
+    const fuseBtn = (op: 'pull' | 'inspect' | 'refit', label: string): HTMLElement =>
+      button(T('ham-dc', id, 'fuse', op), label, () => {
+        const r = ctx.act({ type: 'fuse', deviceId: id, op });
+        ctx.feedback(r.message, r.ok ? 'info' : 'warning');
+      });
+    const fuseRow = h('div', { class: 'mt-2 d-flex gap-2' }, fuseBtn('inspect', 'Inspect fuse'), fuseBtn('pull', 'Pull fuse'), fuseBtn('refit', 'Refit pulled fuse'));
     const gauge = isBattery
       ? button(T('ham-dc', id, 'read-gauge'), 'Read battery gauge', () => {
           const r = ctx.act({ type: 'battery.read', deviceId: id });
@@ -94,6 +100,7 @@ export class DcPanel implements StationPanel {
       kv('Radio', radio),
       brownout,
       h('div', { class: 'mt-2 d-flex gap-2' }, inspect, gauge),
+      fuseRow,
       faults,
       installs
     );
@@ -112,9 +119,9 @@ export class DcPanel implements StationPanel {
       setText(v.amps, s.sourceConnected ? `${fmt(me.currentA, 1)} A` : '0.0 A');
       if (v.soc) setText(v.soc, `${Math.round(dc.batterySoc() * 100)} %`);
       if (v.wh) setText(v.wh, `${fmt(s.battery.energyWh, 1)} Wh`);
-      setText(v.fuse, s.fuseBlown ? `${s.fuseRatingA} A BLOWN` : `${s.fuseRatingA} A ok`);
+      setText(v.fuse, s.fuseOut ? `${s.fuseRatingA} A, pulled` : s.fuseBlown ? `${s.fuseRatingA} A BLOWN` : `${s.fuseRatingA} A ok`);
       v.fuse.className = s.fuseBlown ? 'text-danger' : '';
-      setText(v.radio, s.radioState === 'rebooting' ? 'rebooting' : s.sourceConnected && !s.fuseBlown && !s.polarityReversed ? 'powered' : 'no power');
+      setText(v.radio, s.radioState === 'rebooting' ? 'rebooting' : s.sourceConnected && !s.fuseBlown && !s.fuseOut && !s.polarityReversed ? 'powered' : 'no power');
       const b = s.lastBrownout;
       const happened = s.resetCount > 0 && b !== null;
       v.brownout.classList.toggle('d-none', !happened);
@@ -131,7 +138,7 @@ export class DcPanel implements StationPanel {
     const inspected = m.events(`inspect:${v.id}`).length > 0;
     const faults = inspected ? m.faults().filter((f) => f.target === v.id && !f.cleared) : [];
     const fuseSpares = spares(m).filter((d) => d.fuseRatingA !== undefined);
-    const sig = `${faults.map((f) => f.id).join(',')}|${fuseSpares.map((d) => d.id).join(',')}`;
+    const sig = `${inspected}|${faults.map((f) => f.id).join(',')}|${fuseSpares.map((d) => d.id).join(',')}`;
     if (sig === v.sig) return;
     v.sig = sig;
     const run = (a: Parameters<PanelContext['act']>[0]): void => {
@@ -139,6 +146,7 @@ export class DcPanel implements StationPanel {
       this.ctx_.feedback(r.message, r.ok ? 'success' : 'warning');
     };
     v.faults.replaceChildren(
+      ...(inspected ? [] : [h('div', { class: 'small text-muted mb-1', 'data-testid': T('ham-dc', v.id, 'not-inspected'), text: 'Not inspected yet' })]),
       ...faults.map((f) =>
         h(
           'div',

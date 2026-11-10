@@ -87,8 +87,8 @@ export class ConnectionsPanel implements StationPanel {
     const spares = m.devices().filter((d) => d.spare && !d.removed);
     const sig = JSON.stringify([
       m.location,
-      devs.map((d) => [d.id, d.powered, d.location]),
-      conns.map((c) => [c.id, c.seated, c.a, c.b]),
+      devs.map((d) => [d.id, d.powered, d.location, m.events(`inspect:${d.id}`).length > 0]),
+      conns.map((c) => [c.id, c.seated, c.a, c.b, m.events(`inspect:${c.id}`).length > 0]),
       m.faults().map((f) => [f.id, f.cleared, m.events(`inspect:${f.target}`).length > 0]),
       spares.map((d) => d.id),
       [...this.clues_.entries()],
@@ -120,6 +120,8 @@ export class ConnectionsPanel implements StationPanel {
       const head = h('div', { class: 'd-flex flex-wrap align-items-center gap-1 mb-1' }, h('strong', { text: d.label }), badge(d.kind));
       const passive = PASSIVE_KINDS.includes(d.kind);
       if (!passive) head.append(badge(d.powered ? 'ON' : 'OFF', d.powered ? 'success' : 'secondary'));
+      if (m.events(`inspect:${d.id}`).length === 0)
+        head.append(h('span', { class: 'small text-muted', 'data-testid': tid('ham-conn', d.id, 'not-inspected'), text: 'Not inspected yet' }));
       head.append(
         button(tid('ham-conn', d.id, 'inspect'), 'Inspect', () => this.act_({ type: 'inspect', targetId: d.id }, d.id), 'btn btn-sm btn-outline-secondary', `Inspect ${d.label}`)
       );
@@ -184,6 +186,9 @@ export class ConnectionsPanel implements StationPanel {
           'div',
           { class: 'd-flex flex-wrap align-items-center gap-1 mb-1', 'data-testid': tid('ham-conn', c.id, 'row') },
           h('span', { class: 'small', text: name }),
+          m.events(`inspect:${c.id}`).length === 0
+            ? h('span', { class: 'small text-muted', 'data-testid': tid('ham-conn', c.id, 'not-inspected'), text: 'Not inspected yet' })
+            : null,
           badge(c.seated ? 'seated' : 'loose', c.seated ? 'success' : 'warning'),
           button(
             tid('ham-conn', c.id, 'inspect'),

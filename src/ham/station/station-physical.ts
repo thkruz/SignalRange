@@ -93,6 +93,37 @@ export function inspect(core: StationCore, targetId: string): ActionResult {
   return done(note ?? 'Nothing looks wrong.');
 }
 
+/** Pull, look at, or refit the inline fuse of a DC supply or battery. */
+export function fuseAction(core: StationCore, deviceId: string, op: 'pull' | 'inspect' | 'refit'): ActionResult {
+  const dc = core.dcSystems.get(deviceId);
+  if (!dc) return refuse(`${deviceId} has no inline fuse.`, 'no-fuse');
+  const away = core.reachable(deviceId);
+  if (away) return away;
+  if (core.state.keyed) return refuse('Release the PTT before touching the fuse.', 'keyed');
+  const s = dc.state;
+  if (op === 'inspect') {
+    core.event(`fuse.inspect:${deviceId}`, { blown: s.fuseBlown });
+    const where = s.fuseOut ? 'Out of the holder' : 'In the holder';
+    const element = s.fuseBlown ? 'the element is broken' : 'the element is intact';
+
+    return done(`${where}: a ${s.fuseRatingA} A fuse, ${element}.`, { ratingA: s.fuseRatingA, blown: s.fuseBlown, out: s.fuseOut });
+  }
+  if (op === 'pull') {
+    if (s.fuseOut) return done('The fuse is already out.');
+    dc.pullFuse();
+    core.bump();
+    core.event(`fuse.pull:${deviceId}`);
+
+    return done('Fuse pulled. The radio has no power.');
+  }
+  if (!s.fuseOut) return done('The fuse is already in the holder.');
+  dc.refitFuse();
+  core.bump();
+  core.event(`fuse.refit:${deviceId}`, { blown: s.fuseBlown });
+
+  return done(s.fuseBlown ? 'Fuse back in the holder, but its element is still broken.' : 'Fuse back in the holder.');
+}
+
 function targetEnergized(core: StationCore, f: FaultRuntime): boolean {
   const dc = core.dcSystems.get(f.target);
   if (dc) return dc.isEnergized();

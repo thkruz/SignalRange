@@ -16,7 +16,7 @@ import { type ActionResult, done, type HamStationState, refuse, type SatelliteGe
 import { type DeviceRuntime, profileOf } from './station/station-devices';
 import { analyzerCalibrate, analyzerRun, batteryRead, coaxTest, meterMode, meterPlace, meterRead, meterSocket, swrRead } from './station/station-instruments';
 import type { BestReception, ReceptionLogEntry, StationEvent } from './station/station-log';
-import { boardSwitch, connect, disconnect, go, inspect, install, move, type PortRef, power, repair, seat } from './station/station-physical';
+import { boardSwitch, connect, disconnect, fuseAction, go, inspect, install, move, type PortRef, power, repair, seat } from './station/station-physical';
 import { recordReceiver } from './station/station-record';
 import { evaluateReceivers } from './station/station-rx';
 import { endTx, isPrepared, prepareTx, ptt, stepPower } from './station/station-tx';
@@ -29,6 +29,7 @@ export type HamAction =
   | { type: 'seat'; connectionId: string }
   | { type: 'inspect'; targetId: string }
   | { type: 'repair'; faultId: string }
+  | { type: 'fuse'; deviceId: string; op: 'pull' | 'inspect' | 'refit' }
   | { type: 'install'; spareId: string; replaces: string }
   | { type: 'move'; deviceId: string; location: HamLocationId }
   | { type: 'power'; deviceId: string; on: boolean }
@@ -194,6 +195,8 @@ export class HamStationManager {
         return inspect(c, a.targetId);
       case 'repair':
         return repair(c, a.faultId);
+      case 'fuse':
+        return fuseAction(c, a.deviceId, a.op);
       case 'install':
         return install(c, a.spareId, a.replaces);
       case 'move':
@@ -250,14 +253,28 @@ export class HamStationManager {
         c.event(`decision:${a.id}`, { choice: a.choice });
         return done('Noted.');
       case 'hint':
-        c.event(`hint:${a.objectiveId}`);
-        return done('Hint shown.');
+        return this.hint_(a.objectiveId);
       case 'log.note':
         c.log.state.notes.push({ tS: c.state.nowS, text: a.text });
         return done('Logged.');
       default:
         return refuse('Unknown action.', 'unknown-action');
     }
+  }
+
+  /** Reveal the next hint stage for an objective (the last stage repeats) and log hint:<id>:<n> */
+  private hint_(objectiveId: string): ActionResult {
+    const c = this.core_;
+    const cfg = this.config.hints?.[objectiveId];
+    const stages = cfg === undefined ? [] : Array.isArray(cfg) ? cfg : [cfg];
+    const asked = this.events(`hint:${objectiveId}`).length;
+    const n = stages.length > 0 ? Math.min(asked + 1, stages.length) : asked + 1;
+    c.event(`hint:${objectiveId}`);
+    c.event(`hint:${objectiveId}:${n}`);
+    if (stages.length === 0) return done('Hint shown.', { stage: n, of: 0, texts: [] });
+    const texts = stages.slice(0, n);
+
+    return done(texts[n - 1], { stage: n, of: stages.length, texts });
   }
 
   private radio_(a: Extract<HamAction, { type: 'radio.set' | 'radio.store' | 'radio.recall' | 'radio.vfo' | 'radio.dmrChannel' }>): ActionResult {
@@ -604,8 +621,14 @@ export class HamStationManager {
     return this.core_.boards.get(id);
   }
 
+  /** The most recent analyzer sweep, if any (survives panel remounts) */
+  lastSweep() {
+    return this.core_.lastSweep;
+  }
+
+  /** Live meter mode, red-lead socket, placement and target (not the construction-time snapshot) */
   meterState() {
-    return this.core_.state.meter;
+    return { ...this.core_.meter.state, targetId: this.core_.state.meter.targetId };
   }
 
   keyed() {

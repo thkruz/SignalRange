@@ -203,6 +203,8 @@ export function analyzerRun(core: StationCore, startMHz: number, stopMHz: number
     },
   });
 
+  core.lastSweep = { points: sweep.points, flags: sweep.flags, measurement: m };
+
   return done(min ? `Sweep ${startMHz}-${stopMHz} MHz: minimum SWR ${min.swr.toFixed(2)} at ${min.fMHz.toFixed(3)} MHz.` : 'Sweep complete: no dip found.', {
     measurement: m,
     points: sweep.points,

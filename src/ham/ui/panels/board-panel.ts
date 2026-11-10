@@ -143,10 +143,11 @@ export class BoardPanel implements StationPanel {
     const inspected = m.events(`inspect:${v.id}`).length > 0;
     const faults = inspected ? m.faults().filter((f) => f.target === v.id && !f.cleared) : [];
     const fuseSpares = spares(m).filter((d) => d.fuseRatingA !== undefined);
-    const sig = `${faults.map((f) => f.id).join(',')}|${fuseSpares.map((d) => d.id).join(',')}`;
+    const sig = `${inspected}|${faults.map((f) => f.id).join(',')}|${fuseSpares.map((d) => d.id).join(',')}`;
     if (sig === v.sig) return;
     v.sig = sig;
     v.faults.replaceChildren(
+      ...(inspected ? [] : [h('div', { class: 'small text-muted mb-1', 'data-testid': T('ham-board', v.id, 'not-inspected'), text: 'Not inspected yet' })]),
       ...faults.map((f) =>
         h(
           'div',

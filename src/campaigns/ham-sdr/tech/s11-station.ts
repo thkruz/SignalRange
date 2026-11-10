@@ -170,7 +170,8 @@ export const s11Station: HamStationConfig = {
     'acquire-downlink': 'Point the Yagi where the satellite rises and tune the SDR above 145.900 MHz while it approaches. Listen for the beacon before you transmit.',
     'first-uplink':
       'Correct the uplink for Doppler (a bit lower while it approaches), key briefly with a CQ, and listen for your own signal on the downlink while you key. If the downlink drops out as you transmit, the two paths are not isolated enough.',
-    'follow-doppler': 'The shift changes during the pass. Retune the uplink and key again later, so the satellite receiver always sees 435.900 MHz.',
+    'follow-doppler':
+      'The shift changes during the pass. Retune the uplink and key again later, so the satellite receiver always sees 435.900 MHz. A call made low on the horizon may be relayed without you hearing it come back; higher elevation is better, so key up when the satellite is well above the trees.',
     'grid-exchange': 'Call CQ, wait for W0GRD to answer with its grid, then reply and give your call sign.',
     'explain-fading': 'A regular rise and fall points to something turning, not to a power problem.',
     'log-the-pass': 'A log entry names the date, the satellite, the other station, the grid and the frequencies.',

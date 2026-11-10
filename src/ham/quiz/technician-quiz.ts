@@ -83,6 +83,14 @@ export function groups(): Map<string, OfficialQuestion[]> {
   return map;
 }
 
+/** Quiz params that make the modal show an official figure (also used for pool questions outside the scenario items) */
+export function figureParams(figure: string): { figureUrl: string; figureAlt: string } {
+  return {
+    figureUrl: getAssetUrl(`/assets/campaigns/home-sdr/figures/${figure}`),
+    figureAlt: `${figureLabel(figure)} from the official NCVEC Technician question pool`,
+  };
+}
+
 /** "figure-T2.jpg" -> "Figure T-2" */
 function figureLabel(file: string): string {
   const m = /^figure-T(\d+)\./u.exec(file);
@@ -112,10 +120,7 @@ export function buildQuizCondition(localId: string, opts: BuildQuizOptions = {})
   if (opts.documentSection !== undefined) params.documentSection = opts.documentSection;
   if (opts.wrongAnswerFeedback) params.wrongAnswerFeedback = opts.wrongAnswerFeedback;
   if (opts.reviewHint) params.reviewHint = opts.reviewHint;
-  if (item.figure) {
-    params.figureUrl = getAssetUrl(`/assets/campaigns/home-sdr/figures/${item.figure}`);
-    params.figureAlt = `${figureLabel(item.figure)} from the official NCVEC Technician question pool`;
-  }
+  if (item.figure) Object.assign(params, figureParams(item.figure));
 
   return {
     type: 'status-check',

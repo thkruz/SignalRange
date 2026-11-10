@@ -9,14 +9,14 @@ import { type BoardState, CircuitBoard } from '../dc/circuit-board';
 import { DcPowerSystem, type DcSystemState, SUPPLY_LIMIT_A } from '../dc/dc-power-system';
 import { type MeterState, Multimeter } from '../dc/multimeter';
 import { HAM_STATION_SCHEMA, type HamFaultConfig, type HamStationConfig } from '../ham-station-config';
-import type { HamConnection, HamLocationId, LocalPosition, OnAirEmission, PortDef, ReceptionResult, TxIntent } from '../ham-types';
+import type { HamConnection, HamLocationId, HamMeasurement, LocalPosition, OnAirEmission, PortDef, ReceptionResult, TxIntent } from '../ham-types';
 import { fsplDb } from '../ops/hf-propagation';
 import type { SatGeometry } from '../ops/satellite-link';
 import { linkLoss, noiseFloorDbm } from '../radio/link-model';
 import { rxFrequencyMHz } from '../radio/radio-settings';
 import { snrToIntelligibility } from '../radio/reception-model';
 import { antennaResonanceMHz } from '../rf/antenna-model';
-import type { AnalyzerCalibration } from '../rf/instruments';
+import type { AnalyzerCalibration, AnalyzerPoint } from '../rf/instruments';
 import type { RfPath } from '../rf/rf-path';
 import { createDeviceRuntime, type DeviceRuntime, isPortable, pathFrom, portsFor, profileOf, sdrUsbConnected } from './station-devices';
 import { emptyLog, StationLog, type StationLogState } from './station-log';
@@ -86,6 +86,8 @@ export class StationCore {
   readonly dcSystems: Map<string, DcPowerSystem> = new Map();
   readonly boards: Map<string, CircuitBoard> = new Map();
   readonly meter: Multimeter = new Multimeter();
+  /** Last analyzer sweep, kept so a remounted panel can redraw it */
+  lastSweep: { points: AnalyzerPoint[]; flags: string[]; measurement: HamMeasurement } | null = null;
   readonly geometry: SatelliteGeometryProvider | null;
   /** Spectrum rows per SDR (UI only, not checkpointed) */
   readonly spectrum: Map<string, Float32Array> = new Map();
@@ -183,7 +185,7 @@ export class StationCore {
     const feed = this.dcFor(id);
     if (feed) {
       const s = feed.dc.state;
-      if (!s.sourceConnected || s.fuseBlown || s.polarityReversed || s.radioState !== 'on') return false;
+      if (!s.sourceConnected || s.fuseBlown || s.fuseOut || s.polarityReversed || s.radioState !== 'on') return false;
       const min = profileOf(d)?.power.minOperatingV ?? 0;
       if (s.source === 'battery' && s.battery.energyWh <= 0) return false;
 

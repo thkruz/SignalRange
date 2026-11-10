@@ -4,12 +4,14 @@ import {
   answerTechQuizzes,
   connectPorts,
   debugObjective,
+  disconnectConnection,
   expectMissionComplete,
   inspectItem,
   meterReadDcv,
   openStationTab,
   openTechScenario,
   pttTransmit,
+  reveal,
   reviewMissionBrief,
   setDevicePower,
   setOffset,
@@ -25,11 +27,8 @@ import { dismissDialogIfPresent } from '../utils/simulation-helpers';
 const MESSAGE = 'Zebra team requests nine quarts of water at Quincy Pavilion by noon Thursday';
 const FALLBACK_MHZ = 147.525;
 
-/** Disconnect the connection row that involves the mobile radio (the mast feed line is a separate row) */
-async function disconnectMobile(page: Page): Promise<void> {
-  const row = page.locator('[data-testid^="ham-conn-"][data-testid$="-row"]').filter({ hasText: 'Dual-band FM mobile' });
-  await row.getByRole('button', { name: /^Disconnect/u }).click();
-}
+/** Unplug the dummy-load test cable from the mobile (the mast feed line is a separate cable) */
+const disconnectMobile = (page: Page): Promise<void> => disconnectConnection(page, 'mobile.ant~dummy.in');
 
 /** Key the mobile for `holdS` seconds and take a DC reading inside the hold */
 async function keyAndMeter(page: Page, holdS: number, red: string, black: string): Promise<void> {
@@ -119,10 +118,10 @@ test('ham-tech-s12 completes all objectives', async ({ page, missionControlPage:
   await step('Diagnose the Station Fault', 'diagnose-fault');
 
   // replace-lead: inspect, de-energize, replace, power back on
-  await page.getByTestId('ham-dc-batt-inspect').click();
-  await page.getByTestId('ham-dc-batt-source').setChecked(false);
-  await page.getByTestId('ham-dc-batt-repair-poor-dc-lead').click();
-  await page.getByTestId('ham-dc-batt-source').setChecked(true);
+  await (await reveal(page, 'ham-dc-batt-inspect')).click();
+  await (await reveal(page, 'ham-dc-batt-source')).setChecked(false);
+  await (await reveal(page, 'ham-dc-batt-repair-poor-dc-lead')).click();
+  await (await reveal(page, 'ham-dc-batt-source')).setChecked(true);
   await setDevicePower(page, 'mobile', false);
   await setDevicePower(page, 'mobile', true);
   await step('Replace the Lead', 'replace-lead', 3);
@@ -166,7 +165,7 @@ test('ham-tech-s12 completes all objectives', async ({ page, missionControlPage:
 
   // pack-down (last): power down, read the gauge, close-out report
   await setDevicePower(page, 'mobile', false);
-  await page.getByTestId('ham-dc-batt-read-gauge').click();
+  await (await reveal(page, 'ham-dc-batt-read-gauge')).click();
   await submitWorksheet(page, 's12-defect', {
     'old-lead': 'Tag it as defective and set it aside so it is not used again',
     report: 'The poor lead connection, the readings that showed it, and that the spare lead is now used',

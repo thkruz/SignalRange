@@ -49,11 +49,12 @@ describe('S1 The First Signal solve', () => {
     // inspect and seat the plug (needs the receiver off)
     expect(none('inspect-antenna-plug')).toBe(true);
     h.actOk({ type: 'inspect', targetId: 'sdr-sma' });
-    expect(h.actRefused({ type: 'seat', connectionId: 'sdr-sma' }).ok).toBe(false); // receiver still powered
+    expect(h.actRefused({ type: 'seat', connectionId: 'sdr-sma' }).ok).toBe(false); // receiver powered by USB
+    expect(h.actRefused({ type: 'power', deviceId: 'sdr', on: false }).ok).toBe(false); // no power switch
     expect(ok('inspect-antenna-plug')).toBe(false);
-    h.actOk({ type: 'power', deviceId: 'sdr', on: false });
+    h.actOk({ type: 'disconnect', connectionId: 'sdr.usb~laptop.usb1' });
     h.actOk({ type: 'seat', connectionId: 'sdr-sma' });
-    h.actOk({ type: 'power', deviceId: 'sdr', on: true });
+    h.actOk(USB);
     h.advance(3);
     expect(ok('inspect-antenna-plug')).toBe(true);
 

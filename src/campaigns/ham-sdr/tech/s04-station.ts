@@ -109,6 +109,33 @@ export const s04Station: HamStationConfig = {
     remote: { id: 'dmr-user', callsign: 'KD0RLY', name: 'Riley', talkgroup: 31337, timeSlot: 2, replyDelayS: 2, lines: ['Copy you on Club Tech Net. Welcome to digital.'] },
   },
   worksheets: [directorySheet, dmrSheet],
+  hints: {
+    'read-repeater-entry': [
+      'Open the club repeater directory card on the bench and the directory worksheet in Notebook.',
+      'The worksheet wants the repeater output, the offset direction and size, and the access tone. All three are on the card.',
+    ],
+    'check-transmit-frequency': [
+      'Click the handheld and key up once. The repeater reply tells you what it heard.',
+      'A repeater listens on a different frequency than it talks on. Set the offset direction and size on the handheld, and leave the receive frequency alone.',
+    ],
+    'correct-access-tone': [
+      'Key up again and read the reply. It says what the repeater is missing.',
+      'Set the transmit tone to the access tone from the directory card. Keep the frequency and offset, then key up and listen for your own voice.',
+    ],
+    'save-and-recall-channel': [
+      'The handheld has a memory section. Give the memory a name and store the working settings there.',
+      'Switch the radio to a different frequency, then recall the memory and key up to prove it works.',
+    ],
+    'complete-repeater-contact': [
+      'Call the club operator through the repeater with your call sign. In the push to talk section, choose Call a station and key up.',
+      'A courtesy tone is not an answer. Wait for a real reply each time, trade a name or location, then end with your call sign.',
+    ],
+    'explore-digital-memory': [
+      'Copy the color code, time slot and talkgroup from the digital card into the worksheet in Notebook.',
+      'Click the loaner DMR handheld and try its channels one at a time. Each failure tells you which setting is wrong.',
+      'Load the channel that matches all three values on the card, then key up and wait for the reply.',
+    ],
+  },
   cards: [
     {
       id: 's04-directory-card',

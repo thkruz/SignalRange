@@ -6,7 +6,7 @@
  * - the SDR boots on 146.200 MHz with a 25 kHz filter and squelch at 10, so the signal is not
  *   heard until the player tunes, narrows the filter and opens the squelch
  * - the SMA connector at the SDR is partly seated (fault `loose-sma`); seating needs the SDR
- *   powered down (`seatRequiresPowerOff`)
+ *   powered down (`seatRequiresPowerOff`). A USB SDR has no switch: pull its USB plug.
  * - the USB cable starts unplugged; the player connects `sdr.usb` to `laptop.usb1`
  */
 
@@ -118,4 +118,28 @@ export const s01Station: HamStationConfig = {
       body: 'Antenna, coax, adapter, SDR, USB cable, laptop. A weak link anywhere in the chain costs signal before the receiver ever sees it.',
     },
   ],
+  // Staged: each Ask Riley press reveals the next line
+  hints: {
+    'trace-receive-path': [
+      'Follow the signal from the antenna on the left to the laptop on the right. The worksheet is under Notebook.',
+      "The receiver's USB plug is the small circle on its right end. Click it, then click a USB port on the laptop.",
+    ],
+    'inspect-antenna-plug': [
+      'Click the short cable between the adapter and the receiver, then Look closely.',
+      'The receiver has no power switch: it runs from the laptop. Unplug its USB cable, tighten the antenna plug, then plug the USB back in.',
+    ],
+    'find-training-signal': [
+      'Click the laptop: the receiver is controlled by the SDR program on its screen.',
+      'Type 146.550 in the frequency box and press Enter, choose FM, then the 15 kHz bandwidth.',
+    ],
+    'open-audio-path': [
+      'Turn the volume up and watch the speaker line. If nothing changes, something in front of the volume is closed.',
+      'Squelch keeps the speaker shut until a signal is strong enough. Slide it down to zero.',
+    ],
+    'compare-filter-settings': [
+      'An FM voice signal is about 12 kHz wide. Pick a bandwidth well under that and watch the speaker line.',
+      'Try 6 kHz: the voice comes through clipped. Then go back to 15 kHz and listen until it is clear.',
+    ],
+    'recover-message': ['Write down what the training transmission said. The heard list in the SDR program keeps the words.'],
+  },
 };

@@ -121,6 +121,33 @@ export const s02Station: HamStationConfig = {
   ],
   emitters: [],
   worksheets: [symbolsSheet, selectSheet, predictSheet, familiesSheet],
+  hints: {
+    'match-circuit-symbols': [
+      'Open Notebook for the symbols worksheet, then look at the board diagram in the mission brief. Each drawing has a part with the same label on the board.',
+      'Click the practice board and use Look closely to see the part labels. Match by the label (R1, C1, L1, D1), not by where the part sits.',
+    ],
+    'select-meter-function': [
+      'Click the meter and read its dial and sockets. The worksheet asks what to measure and which socket the red lead belongs in.',
+      'Supply voltage is a DC voltage reading. Pick the DC voltage function on the dial, and use the socket marked for voltage.',
+    ],
+    'measure-test-supply': [
+      'Click the board and open its test points. Put the red probe on the supply plus point and the black probe on the supply minus point.',
+      'For the second reading, swap the two probes. A minus sign only means the leads are the other way round.',
+    ],
+    'predict-branch-current': [
+      'Work it out on the Notebook worksheet first. Current comes from the supply voltage and the R1 value on the board card.',
+      'To measure it, the meter has to sit in the path of the current. Move the red lead to the A socket, close SW1, and use the R1 branch break point.',
+    ],
+    'find-open-branch': [
+      'Switch the board off from its panel, then read the supply test points. A meter on a dead supply should read about zero.',
+      'Leave SW1 on. Use the continuity function with one probe on each side of the SW1 contact. No beep means the path is open there.',
+    ],
+    'restore-indicator-circuit': [
+      'Click the board, open Connections & repairs and Look closely at SW1. The clue tells you which part failed.',
+      'Repair the contact with the board switched off. Then power it back on and read both branches in series, the same way as before.',
+    ],
+    'compare-circuit-families': ['Open the families worksheet in Notebook and keep the board diagram beside it. Each question points at one part of the drawing.'],
+  },
   cards: [
     {
       id: 's02-board-card',

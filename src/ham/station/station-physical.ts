@@ -68,7 +68,10 @@ export function seat(core: StationCore, connectionId: string): ActionResult {
   const away = core.reachable(c.a.deviceId) && core.reachable(c.b.deviceId);
   if (away) return away;
   if (c.seated) return done('That connector is already fully seated.');
-  if (core.cfg.seatRequiresPowerOff && [c.a.deviceId, c.b.deviceId].some((id) => core.device(id)?.powered)) {
+  const live = core.cfg.seatRequiresPowerOff ? [c.a.deviceId, c.b.deviceId].find((id) => core.isPowered(id)) : undefined;
+  if (live) {
+    if (core.device(live)?.kind === 'sdr') return refuse('The receiver is powered from the laptop. Unplug its USB cable first, then tighten the plug.', 'powered');
+
     return refuse('Power the equipment down before reseating connectors.', 'powered');
   }
   c.seated = true;
@@ -239,6 +242,7 @@ export function power(core: StationCore, deviceId: string, on: boolean): ActionR
   if (!d) return refuse(`There is no ${deviceId} in service.`, 'unknown-device');
   const away = core.reachable(deviceId);
   if (away) return away;
+  if (d.kind === 'sdr') return refuse(`${d.label} has no power switch. It runs while its USB plug is in a running laptop: unplug the USB cable to power it down.`, 'no-switch');
   const board = core.boards.get(deviceId);
   if (board) board.setPower(on);
   const dc = core.dcSystems.get(deviceId);

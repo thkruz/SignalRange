@@ -10,6 +10,7 @@ import type { Worksheet, WorksheetField } from '../../ham-station-config';
 import type { HamStationManager } from '../../ham-station-manager';
 import type { PanelContext, StationPanel } from '../station-panel';
 import { badge, button, card, h, labelled, select, textInput, tid } from '../ui-kit';
+import { buildMatchField } from './worksheet-match';
 
 type Answer = string | number | Record<string, string>;
 
@@ -90,16 +91,6 @@ export class WorksheetPanel implements StationPanel {
 
       return labelled(base, f.label, s);
     }
-    const keys = typeof f.answer === 'object' ? Object.keys(f.answer) : [];
-    const selects = new Map<string, HTMLSelectElement>();
-    const wrap = h('fieldset', { class: 'mb-2', 'data-testid': base }, h('legend', { class: 'form-label small', text: f.label }));
-    for (const k of keys) {
-      const s = select(tid(base, k), `${f.label}: ${k}`, [{ value: '', label: 'Choose...' }, ...(f.options ?? []).map((o) => ({ value: o, label: o }))], '');
-      selects.set(k, s);
-      wrap.append(labelled(s.id, k, s, 'mb-1'));
-    }
-    reads.set(f.id, () => Object.fromEntries([...selects].map(([k, s]) => [k, s.value])));
-
-    return wrap;
+    return buildMatchField(this.ctx_.manager, ws, f, reads);
   }
 }

@@ -8,6 +8,7 @@ import {
   openStationTab,
   openTechScenario,
   pttTransmit,
+  reveal,
   reviewMissionBrief,
   selectRadioTab,
   setAntennaAzimuth,
@@ -32,7 +33,7 @@ interface PassView {
 
 /** Read the live pass geometry and the computed Doppler-corrected frequencies from the Satellite pass panel */
 async function readPass(page: Page): Promise<PassView> {
-  const t = async (id: string): Promise<string | null> => page.getByTestId(id).textContent();
+  const t = async (id: string): Promise<string | null> => (await reveal(page, id)).textContent();
   return {
     az: num(await t('ham-sat-pass-az')),
     el: num(await t('ham-sat-pass-el')),
@@ -44,7 +45,7 @@ async function readPass(page: Page): Promise<PassView> {
 
 /** Point the Yagi at the satellite where the panel says it is now (azimuth and elevation, then Apply) */
 async function aimYagi(page: Page, pass: PassView): Promise<void> {
-  await page.getByTestId('ham-antenna-yagi-el').fill(String(Math.max(0, Math.round(pass.el))));
+  await (await reveal(page, 'ham-antenna-yagi-el')).fill(String(Math.max(0, Math.round(pass.el))));
   await setAntennaAzimuth(page, 'yagi', Math.round(pass.az));
 }
 
@@ -133,7 +134,7 @@ test('ham-tech-s11 completes all objectives', async ({ page, missionControlPage:
   await step('Prepare Both Paths', 'prepare-paths');
 
   // acquire-downlink: wait for the real rise, receive only, aim the Yagi and follow the Doppler shift
-  await page.getByTestId('ham-sat-doppler-toggle').check();
+  await (await reveal(page, 'ham-sat-doppler-toggle')).check();
   await expect.poll(async () => (await readPass(page)).above, { timeout: 720000, intervals: [2000] }).toBe(true);
   console.log(`rise: ${JSON.stringify(await readPass(page))}`);
   await followFor(page, 45);
@@ -168,8 +169,7 @@ test('ham-tech-s11 completes all objectives', async ({ page, missionControlPage:
   await keyCorrected(page, { kind: 'cq' });
   await followFor(page, 4);
   console.log(`second key: ${JSON.stringify(await readPass(page))}`);
-  // The title also matches a second checklist row (strict-mode clash in the helper), so ask the app directly
-  await expect.poll(async () => ((await debugObjective(page, 'follow-doppler')) as { isCompleted?: boolean } | null)?.isCompleted === true, { timeout: 30000 }).toBe(true);
+  await step('Retune for the Changing Shift', 'follow-doppler');
 
   // grid-exchange: CQ, hear W0GRD answer, reply with our grid, identify (repeat the whole exchange if the answer faded)
   for (let attempt = 0; attempt < 3 && !(await conditionMet(page, 'grid-exchange', 0)); attempt += 1) {

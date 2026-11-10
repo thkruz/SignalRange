@@ -10,7 +10,8 @@ import { s01Station } from './s01-station';
  * Fixtures (see s01-station.ts and the S1 mission brief):
  * - USB SDR -> SMA adapter -> 3 m RG-58 -> simple vertical, laptop on USB.
  * - The SMA plug at the SDR is only finger-loose (fault `loose-sma`, about 12 dB of extra loss). It
- *   can only be seated with the SDR powered down. The USB cable starts unplugged.
+ *   can only be seated with the SDR powered down; it has no switch, so that means pulling its USB plug.
+ *   The USB cable starts unplugged.
  * - The SDR boots on 146.200 MHz, 25 kHz filter, squelch 10, volume 5.
  * - Training transmission: 146.550 MHz FM, about 6.9 dB SNR with the plug loose and 18.6 dB seated.
  *   Squelch 10 (about -70 dBm) stays closed on it either way, which is the "audio path" lesson.
@@ -55,12 +56,14 @@ export const hamTechS01Data: ScenarioData = {
       {
         id: 'inspect-antenna-plug',
         title: 'Inspect the Antenna Plug',
-        description: 'Inspect the antenna plug at the receiver. Power the receiver down, seat the connector fully, then power it back on.',
+        description: 'Inspect the antenna plug at the receiver. Unplug the receiver from the laptop to power it down, tighten the connector fully, then plug it back in.',
         points: 10,
         conditions: [
           eventHappened('inspect:sdr-sma', {}, 'Plug inspected'),
           eventHappened('seat:sdr-sma', { afterEvent: 'inspect:sdr-sma' }, 'Plug seated after inspection'),
           faultCleared('loose-sma', 'Loose connector corrected'),
+          // Seating is refused while the receiver has USB power, so the plug-in must follow the seat
+          eventHappened('connect:sdr.usb~laptop.usb1', { afterEvent: 'seat:sdr-sma' }, 'Receiver plugged back in'),
         ],
       },
       {

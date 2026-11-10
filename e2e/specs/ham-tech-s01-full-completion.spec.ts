@@ -3,11 +3,11 @@ import {
   answerTechQuizzes,
   connectPorts,
   debugObjective,
+  disconnectConnection,
   expectMissionComplete,
   inspectItem,
   openStationTab,
   openTechScenario,
-  powerDevice,
   reviewMissionBrief,
   seatConnection,
   setFilterPreset,
@@ -55,11 +55,11 @@ test('ham-tech-s01 completes all objectives', async ({ page, missionControlPage:
   await connectPorts(page, { device: 'sdr', port: 'usb' }, { device: 'laptop', port: 'usb1' });
   await step('Trace the Receive Path', 'trace-receive-path', 2);
 
-  // inspect-antenna-plug: inspect, power down, seat, power up
+  // inspect-antenna-plug: inspect, pull the USB plug (the SDR has no switch), seat, plug back in
   await inspectItem(page, 'sdr-sma');
-  await powerDevice(page, 'sdr');
+  await disconnectConnection(page, 'sdr.usb~laptop.usb1');
   await seatConnection(page, 'sdr-sma');
-  await powerDevice(page, 'sdr');
+  await connectPorts(page, { device: 'sdr', port: 'usb' }, { device: 'laptop', port: 'usb1' });
   await step('Inspect the Antenna Plug', 'inspect-antenna-plug');
 
   // find-training-signal

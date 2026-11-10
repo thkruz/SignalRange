@@ -145,7 +145,7 @@ export function evaluateReceivers(core: StationCore, dtS: number, lastLogged: Ma
       position,
       noiseFigureDb: nf,
     };
-    if (d.kind === 'sdr') view.powered = d.powered;
+    if (d.kind === 'sdr') view.powered = core.isPowered(d.id);
     const own = air.filter((e) => !(transmitting && e.id === core.state.keyed?.emission.id));
     const terrestrial = own.filter((e) => !e.viaSatellite);
     const viaSat = own.filter((e) => e.viaSatellite);

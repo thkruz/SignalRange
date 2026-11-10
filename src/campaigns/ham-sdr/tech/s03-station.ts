@@ -171,6 +171,33 @@ export const s03Station: HamStationConfig = {
     ],
   },
   worksheets: [privilegesSheet, exposureSheet],
+  hints: {
+    'confirm-station-privileges': [
+      'Open the Technician privilege card on the bench, then the privileges worksheet in Notebook. The card has what you need.',
+      'Read each line of the card against the worksheet question. Frequency range, power and identification each have their own line.',
+    ],
+    'check-power-connection': [
+      'Click the handheld and use Look closely. Then do the same for the antenna.',
+      'The clue says the battery pack is not seated. Open Connections & repairs on the handheld and reseat it, then check the antenna is on.',
+    ],
+    'review-antenna-clearance': [
+      'Open the exposure worksheet in Notebook. The questions are about how you hold the radio and where its antenna sits.',
+      'Think about the distance between the antenna and your head, and which choice puts the antenna farther from you.',
+    ],
+    'listen-before-calling': [
+      'Click the handheld. Set 146.550 MHz FM simplex and a low transmit power, then listen without keying.',
+      'Two operators are talking. Wait for them to finish, then keep listening until the channel has been clear for ten more seconds.',
+    ],
+    'make-first-call': [
+      'Only call once the channel has been quiet for a while. In the push to talk section, choose Call a station, pick W0SRC, and key up.',
+      'Release the key and wait. Sam answers a few seconds later.',
+    ],
+    'exchange-signal-report': [
+      'Send your name, your location and a signal report as three separate transmissions. Release the key between each one and wait for Sam.',
+      'If Sam says your audio is distorted, lower the microphone gain on the handheld to the middle of its range, then send the item again.',
+    ],
+    'close-the-contact': ['End with a short transmission that gives your call sign, then release the key.'],
+  },
   cards: [
     {
       id: 's03-privileges-card',

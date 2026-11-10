@@ -1,12 +1,9 @@
 /*
- * Station tab (Campaign 3 ham-sdr). Tabler cards in a responsive grid; the only custom
- * rules are spacing and the mission-control colour hooks.
+ * Station tab (Campaign 3 ham-sdr). Layout lives in src/ham/ui/bench/bench.css; these are the
+ * Tabler card and control tweaks for the panels shown inside the close-up and notebook.
  */
 
 .ham-station-tab {
-  height: 100%;
-  padding: 0.5rem;
-  overflow-y: auto;
   color: var(--mc-text, inherit);
 }
 
@@ -34,4 +31,9 @@
 .ham-station-tab canvas {
   max-height: 22rem;
   background: #10141a;
+}
+
+/* A docked mission window (checklist, history) occupies a gutter on the left of the tab */
+.ham-station-tab.has-docked-window {
+  padding-left: 316px;
 }

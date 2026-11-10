@@ -74,6 +74,12 @@ export class RadioPanel implements StationPanel {
     this.views_ = [];
   }
 
+  /** Show one radio (the close-up uses this; the tab strip is hidden there) */
+  showDevice(id: string): void {
+    this.tabsHost_.hidden = true;
+    this.select_(id);
+  }
+
   private select_(id: string): void {
     this.selected_ = id;
     for (const v of this.views_) {
@@ -472,7 +478,7 @@ export class RadioPanel implements StationPanel {
     }
 
     // --- record a deliberate reading (receive-only devices such as an SDR)
-    if (profile && !profile.txRangesMHz.length) section.append(this.buildRecord_(m, id));
+    if (profile && !profile.txRangesMHz.length) section.append(this.buildRecord_(id));
 
     // --- PTT
     if (profile?.txRangesMHz.length) section.append(this.buildPtt_(m, id, dev?.label ?? id));
@@ -510,19 +516,22 @@ export class RadioPanel implements StationPanel {
     return view;
   }
 
-  private buildRecord_(m: HamStationManager, id: string): HTMLElement {
+  /** Records whatever the radio is tuned to (the strongest thing it hears), like the SDR program; the answer list is not offered */
+  private buildRecord_(id: string): HTMLElement {
     const ctx = this.ctx_;
-    const emitters = (m.config.emitters ?? []).map((e) => ({ value: e.id, label: e.label ?? e.id }));
-    const emitter = select(tid('ham-radio', id, 'record-emitter'), 'Emitter to measure', [{ value: '', label: '(noise only)' }, ...emitters], emitters[0]?.value ?? '');
     const rec = button(
       tid('ham-radio', id, 'record'),
       'Record reading',
-      () => ctx.act({ type: 'rx.record', deviceId: id, emitterId: emitter.value || undefined }),
+      () => {
+        const live = ctx.manager.liveReception(id).filter((x) => x.rssiDbm > -150);
+        const best = live.reduce<(typeof live)[number] | null>((a, x) => (!a || x.snrDb > a.snrDb ? x : a), null);
+        ctx.act({ type: 'rx.record', deviceId: id, emitterId: best?.emissionId.split('#')[0] });
+      },
       'btn btn-sm btn-outline-primary',
       'Record a reading'
     );
 
-    return h('div', { class: 'd-flex flex-wrap align-items-end gap-2 mb-2' }, labelled(emitter.id, 'Record emitter', emitter, 'mb-0'), rec);
+    return h('div', { class: 'd-flex flex-wrap align-items-end gap-2 mb-2' }, rec);
   }
 
   private buildPtt_(m: HamStationManager, id: string, label: string): HTMLElement {

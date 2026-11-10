@@ -176,11 +176,24 @@ export class StationCore {
     return undefined;
   }
 
+  /**
+   * Is the device switched on? A USB SDR has no switch: it is on while its USB plug is seated in a
+   * running laptop, so its stored `powered` flag is never read.
+   */
+  isPowered(id: string): boolean {
+    const d = this.inService(id);
+    if (!d) return false;
+    if (d.kind === 'sdr') return sdrUsbConnected(this.state.devices, this.state.connections, id);
+
+    return d.powered;
+  }
+
   /** Is this radio/receiver actually running? */
   energized(id: string): boolean {
     const d = this.inService(id);
-    if (!d?.powered) return false;
-    if (d.kind === 'sdr') return sdrUsbConnected(this.state.devices, this.state.connections, id);
+    if (!d) return false;
+    if (d.kind === 'sdr') return this.isPowered(id);
+    if (!d.powered) return false;
     if (this.openFault(id, 'battery-unseated') || this.openFault(id, 'battery-depleted')) return false;
     const feed = this.dcFor(id);
     if (feed) {

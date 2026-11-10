@@ -8,6 +8,7 @@
 import { ObjectivesManager } from '@app/objectives/objectives-manager';
 import type { PanelContext, StationPanel } from '../station-panel';
 import { button, card, h, Rebuilder, tid } from '../ui-kit';
+import { QuizPrompt } from './quiz-prompt';
 
 export class HintPanel implements StationPanel {
   readonly id = 'hints';
@@ -18,6 +19,7 @@ export class HintPanel implements StationPanel {
   private readonly rebuild_ = new Rebuilder();
   private readonly stages_ = new Map<string, boolean>();
   private readonly shown_ = new Map<string, string[]>();
+  private quizPrompt_: QuizPrompt | null = null;
 
   private static active_(): { id: string; title: string }[] {
     if (!ObjectivesManager.hasInstance()) return [];
@@ -29,7 +31,7 @@ export class HintPanel implements StationPanel {
   }
 
   isRelevant(): boolean {
-    return HintPanel.active_().length > 0;
+    return HintPanel.active_().length > 0 || QuizPrompt.isPending();
   }
 
   mount(host: HTMLElement, ctx: PanelContext): void {
@@ -37,12 +39,14 @@ export class HintPanel implements StationPanel {
     const c = card('ham-hint-card', this.title);
     this.root_ = c.root;
     this.body_ = h('div');
-    c.body.append(this.body_);
+    this.quizPrompt_ = new QuizPrompt();
+    c.body.append(this.quizPrompt_.el, this.body_);
     host.append(c.root);
     this.update();
   }
 
   update(): void {
+    this.quizPrompt_?.update();
     const active = HintPanel.active_();
     this.rebuild_.run(this.body_, JSON.stringify([active, [...this.shown_], [...this.stages_]]), () => {
       for (const o of active) {
@@ -74,6 +78,8 @@ export class HintPanel implements StationPanel {
   }
 
   dispose(): void {
+    this.quizPrompt_?.dispose();
+    this.quizPrompt_ = null;
     this.root_?.remove();
     this.root_ = null;
     this.shown_.clear();

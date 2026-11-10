@@ -8,6 +8,11 @@ const q = <T extends HTMLElement>(id: string): T => {
   return e;
 };
 
+/** Click a device or cable on the bench drawing so its Close-up shows */
+const pickOnBench = (kind: 'dev' | 'conn', id: string): void => {
+  q(`ham-bench-${kind}-${id}`).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+};
+
 function setup(license: 'none' | 'technician' = 'technician') {
   document.body.innerHTML = '<div id="canvas-content"></div>';
   const cfg = baseConfig({
@@ -40,18 +45,21 @@ describe('HamStationTab', () => {
 
   it('tunes a radio with the staged frequency and Apply', () => {
     const { h, tab } = setup();
-    const input = q<HTMLInputElement>('ham-radio-sdr-freq-input');
+    pickOnBench('dev', 'mobile');
+    const input = q<HTMLInputElement>('ham-radio-mobile-freq-input');
+    const before = h.m.radio('mobile')?.vfoMHz;
     input.value = '145.5';
     input.dispatchEvent(new Event('input'));
-    expect(h.m.radio('sdr')?.vfoMHz).toBe(146.55);
-    q('ham-radio-sdr-apply').click();
-    expect(h.m.radio('sdr')?.vfoMHz).toBe(145.5);
+    expect(h.m.radio('mobile')?.vfoMHz).toBe(before);
+    q('ham-radio-mobile-apply').click();
+    expect(h.m.radio('mobile')?.vfoMHz).toBe(145.5);
     tab.dispose();
   });
 
   it('seats a loose connection and clears the fault', () => {
     const { h, tab } = setup();
     expect(h.m.connection('sdr-feed')?.seated).toBe(false);
+    pickOnBench('conn', 'sdr-feed');
     q('ham-conn-sdr-feed-seat').click();
     expect(h.m.connection('sdr-feed')?.seated).toBe(true);
     expect(h.m.faultCleared('loose')).toBe(true);
@@ -60,6 +68,7 @@ describe('HamStationTab', () => {
 
   it('shows the inspect clue and submits a worksheet', () => {
     const { h, tab } = setup();
+    pickOnBench('conn', 'sdr-feed');
     q('ham-conn-sdr-feed-inspect').click();
     expect(q('ham-conn-sdr-feed-clue').textContent).toContain('Thread is showing');
     const pick = q<HTMLSelectElement>('ham-ws-w1-pick');
@@ -76,6 +85,7 @@ describe('HamStationTab', () => {
 
   it('shows the refusal reason when keying is refused', () => {
     const { h, tab } = setup('none');
+    pickOnBench('dev', 'mobile');
     q('ham-ptt-mobile-transmit').click();
     expect(h.m.keyed()).toBeNull();
     expect(q('ham-ptt-mobile-refusal').textContent?.length).toBeGreaterThan(0);

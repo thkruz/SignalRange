@@ -127,12 +127,12 @@ export function buildRunLine(run: WorkloadRun, runner: WorkloadRunner, serviceLa
   const sharing = running && runner.running(run.serviceId).length > 1;
   let result = '';
   if (run.status === 'aborted') {
-    result = run.invalidatedBy ? `Stopped: ${INVALID_LABEL[run.invalidatedBy] ?? run.invalidatedBy}.` : 'Stopped by you.';
+    result = run.invalidatedBy ? `Stopped: ${run.invalidatedWhy ?? INVALID_LABEL[run.invalidatedBy] ?? run.invalidatedBy}.` : 'Stopped by you.';
   } else if (!running) {
     const layerDown = layerDownText(run.unmet);
     const unmet = run.unmet.map(unmetText);
     result = layerDown ? `${STATUS_LABEL[run.status]}. ${layerDown}` : `${STATUS_LABEL[run.status]}${unmet.length > 0 ? `, fell short on ${unmet.join(', ')}` : ''}.`;
-    if (run.invalidatedBy) result += ` No longer counts: ${INVALID_LABEL[run.invalidatedBy] ?? run.invalidatedBy}.`;
+    if (run.invalidatedBy) result += ` No longer counts: ${run.invalidatedWhy ?? INVALID_LABEL[run.invalidatedBy] ?? run.invalidatedBy}.`;
     const watts = run.power?.complete ? measuredLoadW(run.power) : null;
     if (run.power && watts !== null) {
       result += ` Battery over the run: average draw ${Math.round(watts * 10) / 10} W, lowest stored ${Math.round(run.power.window.minStoredWh * 10) / 10} Wh.`;

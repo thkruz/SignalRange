@@ -147,7 +147,13 @@ const briefForm: HandoverFormConfig = {
   title: 'Shift commitments',
   documentSection: 'Commitments',
   fields: [
-    { key: 'task', label: 'Mission task to demonstrate', required: true, rule: choice(FIRST, 'First forward task over SkyLink') },
+    {
+      key: 'task',
+      label: 'Mission task to demonstrate',
+      required: true,
+      hint: 'The mission task is the first forward task over SkyLink. The EuroSat transfer task is only the fallback.',
+      rule: choice(FIRST, 'First forward task over SkyLink'),
+    },
     { key: 'reserve', label: 'Battery reserve to keep', required: true, rule: choice('reserve-200', 'Keep 200 Wh of stored energy') },
     { key: 'equipment', label: 'Equipment available', required: true, rule: choice('both-terminals', 'SkyLink and EuroSat terminals, router, workstation, battery and generator') },
     { key: 'prior', label: 'Prior EuroSat incident', required: true, rule: priorIncident() },
@@ -280,7 +286,9 @@ if (settings.physicalPlant) {
       id: S16_EVENT_LOCAL,
       startAfterObjectiveId: 's16-investigate-local-change',
       actions: [{ kind: 'inject-fault', fault: { id: S16_FAULT, target: 'ps:ac-out', kind: 'partial-seat' } }],
-      logLine: 'The supply to the equipment drops out at the power station output.',
+      logLine:
+        'The supply to the equipment drops out at the power station output. Drops like this recur and restart the terminal each time; every restart takes minutes of service, and every inspection costs scenario time and some battery.',
+      invalidationLabel: 'supply drop',
     },
     {
       id: S16_EVENT_NOTICE,
@@ -296,6 +304,7 @@ if (settings.physicalPlant) {
       requiresFired: [S16_EVENT_LOCAL],
       actions: [{ kind: 'set-provider', patch: { id: FORWARD_PROVIDER, status: 'outage' } }],
       logLine: 'SkyLink service stops while the local equipment is unchanged.',
+      invalidationLabel: 'provider outage',
     },
   ];
   plant.events = events;
@@ -332,7 +341,7 @@ export const frontlineScenario16Data: FrontlineScenarioData = {
       id: 's16-review-handover',
       title: 'Review the Shift Commitments',
       description:
-        'Read the handover, task requirements, available resources, and unresolved incident questions. Identify the outcomes you must demonstrate and the claims that still need current evidence.',
+        'Read the handover, task requirements, available resources, and unresolved incident questions. Identify the outcomes you must demonstrate (the mission task is the first forward task over SkyLink) and the claims that still need current evidence.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: [],
       points: 15,
@@ -358,7 +367,7 @@ export const frontlineScenario16Data: FrontlineScenarioData = {
       id: 's16-investigate-local-change',
       title: 'Resolve the First Service Change',
       description:
-        'Investigate the reported change using observations you judge relevant. Record the evidence, apply a justified intervention, and verify its local result while accounting for disruption and resources.',
+        'Investigate the reported change using observations you judge relevant. Supply drops may recur and restart the terminal; each inspection costs time and some battery energy. Record the evidence, apply a justified intervention, and verify its local result while accounting for disruption and resources.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s16-establish-configuration'],
       points: 15,

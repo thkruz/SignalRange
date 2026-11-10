@@ -53,6 +53,8 @@ export interface WorkloadRun {
   sampleIds: string[];
   /** Why a run no longer counts: 'config', 'event', 'card-version', 'reload' */
   invalidatedBy?: string;
+  /** Plain-language cause with the clock, for an event invalidation ("supply drop at 02:10") */
+  invalidatedWhy?: string;
   /** Worst suitability seen while the window ran */
   worst: Exclude<WorkloadStatus, 'running' | 'aborted'>;
   /** Metrics that missed their bound at the worst moment */

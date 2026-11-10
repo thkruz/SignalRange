@@ -60,7 +60,7 @@ export const frontlinePlantConfig: PlantConfig = {
     { id: 'vsat-ifl:modem', label: 'VSAT IFL coax, modem end', cableId: 'vsat-ifl', partId: 'vsat-modem', role: 'post-lna', stationId: FRONTLINE_STATION_ID },
     { id: 'generator:out', label: 'Generator output plug', partId: 'generator', feeds: 'power-station' },
     { id: 'ps:in', label: 'Power station input plug', partId: 'power-station', feeds: 'power-station' },
-    { id: 'ps:ac-out', label: 'Power station AC output', partId: 'power-station', feeds: 'power-strip' },
+    { id: 'ps:ac-out', label: 'Power station output sockets', partId: 'power-station', feeds: 'power-strip' },
     { id: 'ps:dc-out', label: 'Power station DC output', partId: 'power-station', feeds: 'vsat-dish' },
     { id: 'strip:in', label: 'Power strip input plug', partId: 'power-strip', feeds: 'power-strip' },
     { id: 'strip:router', label: 'Power strip to router plug', partId: 'power-strip', feeds: 'skylink-router' },

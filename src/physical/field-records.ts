@@ -79,6 +79,8 @@ export interface HandoverFieldConfig {
   label: string;
   required: boolean;
   rule: ClaimRule;
+  /** Optional plain-language pointer to what the answer should be; appended to the rejection message */
+  hint?: string;
 }
 
 export interface HandoverFormConfig {
@@ -320,7 +322,7 @@ export class FieldRecords implements RecordReader {
 
     const followed = rule.incoming ? rule.incoming.map[String(this.incomingValue(rule.incoming.id, rule.incoming.key))] : undefined;
     if (followed !== undefined ? String(value) !== followed : !(rule.accept ?? rule.choice).includes(String(value))) {
-      return fail(field.key, `${field.label} is not one of the answers this form accepts.`);
+      return fail(field.key, `${field.label} is not one of the answers this form accepts.${field.hint ? ` ${field.hint}` : ''}`);
     }
     if (rule.sameAs) {
       const earlier = this.recordsFor(rule.sameAs.formId).at(-1)?.values[rule.sameAs.key];
@@ -519,7 +521,7 @@ export class FieldRecords implements RecordReader {
       if (!isBlank(entry.value)) {
         values[field.key] = entry.value as string | number;
       }
-      const shown = isBlank(entry.value) ? '' : `${field.label}: ${String(entry.value)}`;
+      const shown = isBlank(entry.value) ? '' : `${field.label}: ${this.valueText_(field, entry.value)}`;
       const backing = cited.length ? `backed by ${cited.map((c) => `#${numbering.get(c.id) ?? '?'}`).join(', ')}` : '';
       lines.push([shown || field.label, backing].filter(Boolean).join(' - '));
     }
@@ -540,6 +542,17 @@ export class FieldRecords implements RecordReader {
     this.publish_(record);
 
     return { ok: true, record, validation };
+  }
+
+  /** Player-facing wording of an entered value for the Working Document: the authored answer label, or "Run #n" for a run id */
+  private valueText_(field: HandoverFieldConfig, value: unknown): string {
+    const text = String(value);
+    const rule = field.rule;
+    if ('choice' in rule && rule.labels?.[text]) {
+      return rule.labels[text];
+    }
+
+    return text.replace(/^run-(?=\d)/u, 'Run #');
   }
 
   private publish_(record: HandoverRecord): void {

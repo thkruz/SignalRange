@@ -169,7 +169,7 @@ export class FieldHandoverPanel {
     const field = this.field_(key);
     const value = field ? this.readingFor_(field) : undefined;
     if (value === undefined) {
-      this.msg_ = 'There is no reading to use yet. Take one first.';
+      this.msg_ = 'There is no reading to use yet. Take one first (for a power figure, Inspect that part in the site close-up, or type the Power panel figure).';
       this.sync();
 
       return false;
@@ -475,6 +475,12 @@ export class FieldHandoverPanel {
       const name = METRIC_NAME[rule.measured.metric] ?? 'reading';
 
       return `No ${name} measured yet. It comes from a numeric reading: a speed test in the modem app, the local probe on the Registration row, or Service checks, Application row, Check with Workload run, then pick ${name}.`;
+    }
+
+    if (reading === undefined && 'powerWithin' in rule) {
+      const part = rule.powerWithin.partId === undefined ? 'power equipment' : (this.deps_.plant()?.getLabel(rule.powerWithin.partId) ?? 'power equipment');
+
+      return `No reading yet. Inspect the ${part} in the site close-up to read its display, then use it here. You can also type the figure shown in the Power panel.`;
     }
 
     return reading ?? '';

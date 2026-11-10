@@ -356,6 +356,13 @@ export class WorkloadRunner implements WorkloadReader {
       else if (run.eventEpoch !== epochs.event) why = 'event';
       if (why) {
         run.invalidatedBy = why;
+        if (why === 'event') {
+          const bump = this.service_.eventBumpAt(run.eventEpoch);
+          if (bump) {
+            const s = Math.max(0, Math.floor(bump.atS));
+            run.invalidatedWhy = `${bump.label} at ${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+          }
+        }
         if (run.status === 'running') {
           run.status = 'aborted';
           run.endS = this.deps_.now();

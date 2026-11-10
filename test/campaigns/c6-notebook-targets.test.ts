@@ -23,7 +23,7 @@ describe('hypothesis target picker', () => {
       expect(t.label).not.toBe(t.id);
     }
     expect(targets.find((t) => t.id === 'skylink-cable:dish')?.label).toBe('SkyLink cable, dish end');
-    expect(targets.find((t) => t.id === 'ps:ac-out')?.label).toBe('Power station AC output');
+    expect(targets.find((t) => t.id === 'ps:ac-out')?.label).toBe('Power station output sockets');
   });
 
   it('lists every candidate, sorted by label so the answer does not stand out', () => {

@@ -539,6 +539,11 @@ export class ServiceModel {
     this.cacheTimeS_ = Number.NaN;
   }
 
+  /** The event that closed an event epoch: its short label and time, when known */
+  eventBumpAt(epoch: number): { atS: number; label: string } | undefined {
+    return this.eventBumps_[epoch];
+  }
+
   bumpEvent(eventId: string, atS?: number, logLine?: string, label?: string): void {
     this.eventBumps_[this.eventEpoch_] = { atS: atS ?? this.plant_.getTimeSeconds(), label: label ?? 'site event' };
     this.eventEpoch_ += 1;

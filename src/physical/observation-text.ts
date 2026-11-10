@@ -6,7 +6,7 @@
  * and a fix verb returns the physical result plus an invitation to check.
  * Tokens: `{atM}` metres from the named end, `{len}` cable length, `{end}` named
  * end, `{v}` measured volts, `{nom}` expected volts, `{r}` loop resistance,
- * `{fuel}`/`{tank}` litres, `{pct}` battery percent, `{w}` load in watts,
+ * `{fuel}`/`{tank}` litres, `{pct}` battery percent, `{wh}` stored watt-hours, `{w}` load in watts,
  * `{a}` load in amps, `{boot}` boot seconds.
  * No DOM and no engine imports.
  */
@@ -55,6 +55,7 @@ export interface ObsTemplateVars {
   fuel?: string;
   tank?: string | number;
   pct?: number | string;
+  wh?: number | string;
   w?: number | string;
   a?: string;
   boot?: number | string;
@@ -466,8 +467,8 @@ const OBS_BY_CLASS: ObsTable = {
   'power-station': {
     inspect: {
       healthy: [
-        'Display on, {pct} percent, DC outputs lit, input LED green. Internal cells not checked.',
-        'Screen shows {pct} percent and {w} W out. Vents clear, no marks on the case.',
+        'Display on, {pct} percent ({wh} Wh stored), DC outputs lit, input LED green. Internal cells not checked.',
+        'Screen shows {pct} percent ({wh} Wh stored) and {w} W out. Vents clear, no marks on the case.',
       ],
       'battery-depleted': ['Display blank. No output LEDs. Input LED off.', 'Screen reads 0 percent and shows no output.'],
       unpowered: ['Display blank. No output LEDs. Input LED off.'],

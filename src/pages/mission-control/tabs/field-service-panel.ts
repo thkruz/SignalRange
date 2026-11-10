@@ -1,3 +1,4 @@
+import { type FormStepState, SAMPLE_STEP_LATER_NOTE } from '@app/pages/mission-control/tabs/form-step-state';
 import { NUMERIC_READABLE, READABLE, type ServiceModel } from '@app/physical/service-model';
 import { type Freshness, type LayerStatus, type SampleMetric, type SampleProvenance, SERVICE_LAYERS, type ServiceLayer, type ServiceSample } from '@app/physical/service-types';
 import { escapeHtml } from '@app/physical/ui/plant-ui-helpers';
@@ -186,7 +187,9 @@ export class FieldServicePanel {
     private readonly getModel_: () => ServiceModel | null,
     private readonly getNow_: () => number,
     /** Spends scenario seconds on a check (M21: a measurement costs time). Absent = a check is free. */
-    private readonly spend_: ((seconds: number) => void) | null = null
+    private readonly spend_: ((seconds: number) => void) | null = null,
+    /** Where the checklist steps that read this service's samples stand; absent = no note */
+    private readonly sampleStep_: ((serviceId: string) => FormStepState) | null = null
   ) {
     this.host_.addEventListener('click', this.onClick_);
     this.host_.addEventListener('change', this.onChange_);
@@ -205,6 +208,9 @@ export class FieldServicePanel {
     }
     const sample = model.takeSample(serviceId, layer, via, endpointId, isNumericCheck(via, layer) ? metric : 'status');
     this.lastCheck_ = `${LAYER_LABEL[layer]} checked by ${PROVENANCE_LABEL[via].toLowerCase()} at ${formatClock(sample.tS)}.`;
+    if (this.sampleStep_?.(serviceId) === 'later') {
+      this.lastCheck_ += ` ${SAMPLE_STEP_LATER_NOTE}`;
+    }
     this.spend_?.(CHECK_COST_S[via]);
     this.sync();
 

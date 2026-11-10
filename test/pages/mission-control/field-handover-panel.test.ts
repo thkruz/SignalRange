@@ -143,6 +143,7 @@ describe('M14 handover panel', () => {
     expect(r.records.attempts('h1')).toBe(0);
 
     r.plant.inspect('skylink');
+    r.plant.inspect('battery');
     r.service.takeSample('skylink', 'registration', 'device-indicator');
     r.panel.sync();
     r.host.querySelector<HTMLButtonElement>('button[data-hf-fill="reg"]')?.click();
@@ -185,5 +186,15 @@ describe('M14 handover panel', () => {
     r.plant.inspect('gen');
     r.panel.sync();
     expect(r.panel.fillFromReading('fuel')).toBe(true);
+  });
+
+  it('use-my-reading fills stored energy only after the power station was inspected, and the inspect text carries the figure', () => {
+    const r = rig();
+    r.panel.sync();
+    expect(r.panel.fillFromReading('soc')).toBe(false);
+    const seen = r.plant.inspect('battery');
+    expect(seen.observation).toMatch(/\d+ Wh stored/u);
+    r.panel.sync();
+    expect(r.panel.fillFromReading('soc')).toBe(true);
   });
 });

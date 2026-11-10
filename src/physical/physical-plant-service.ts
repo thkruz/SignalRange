@@ -96,6 +96,7 @@ export class PhysicalPlantService {
             eventFiredAtS: (eventId) => this.events?.firedAtS(eventId) ?? null,
             writeLine: (section, line) => WorkingDocumentManager.getInstance().addLine(section, line),
             storeRecord: (record) => CampaignDocumentStore.recordHandover(record),
+            catchUp: () => this.catchUp(),
           })
         : null;
     this.events = config.events?.length
@@ -300,8 +301,36 @@ export class PhysicalPlantService {
     this.lastSyncS_ = SimClock.scenarioElapsedMs() / 1000;
   }
 
-  /** Feed the plant the scenario seconds that passed since the last sync (ticks, verb skips and operator skips alike) */
+  /**
+   * Step the plant, events, services and runs up to the scenario clock now. A player action that reads this state
+   * (a handover check, a panel redraw) calls it so it never sees the state of the last UPDATE tick: an event that
+   * has fired is stamped and a run that has finished is finished.
+   */
+  catchUp(): void {
+    this.sync_();
+  }
+
+  /** Catch the singleton up when one exists */
+  static catchUp(): void {
+    this.instance_?.catchUp();
+  }
+
+  private syncing_ = false;
+
   private sync_(): void {
+    if (this.syncing_) {
+      return;
+    }
+    this.syncing_ = true;
+    try {
+      this.stepToNow_();
+    } finally {
+      this.syncing_ = false;
+    }
+  }
+
+  /** Feed the plant the scenario seconds that passed since the last sync (ticks, verb skips and operator skips alike) */
+  private stepToNow_(): void {
     const nowS = SimClock.scenarioElapsedMs() / 1000;
     const dt = nowS - this.lastSyncS_;
     this.lastSyncS_ = nowS;

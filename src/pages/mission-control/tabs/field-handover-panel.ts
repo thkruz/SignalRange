@@ -25,6 +25,8 @@ export interface HandoverPanelDeps {
   plant: () => PhysicalPlantManager | null;
   /** Where the checklist step that reads a form stands (omitted: no note) */
   formStep?: (formId: string) => FormStepState;
+  /** Bring the simulation up to the clock before the panel reads runs and evidence */
+  catchUp?: () => void;
 }
 
 /** Said plainly wherever a form has a field that must match a service reading */
@@ -64,11 +66,17 @@ export function describeReading(service: ServiceModel | null, serviceId: string,
   return { text: `Your latest ${layer} reading, ${clock(sample.tS)}: ${value} (out of date, take a new one).`, value, current: false };
 }
 
+/** How long a press blocks a redraw of the panel (a press that never gets its release stops blocking after this) */
+const POINTER_HOLD_MS = 1500;
+
 export class FieldHandoverPanel {
   private built_ = false;
   private formId_ = '';
   private input_: HandoverInput = {};
   private dynKey_: string | null = null;
+  private builtForm_ = '';
+  private readonly slotHtml_ = new Map<string, string>();
+  private pointerDownAtMs_ = 0;
   private msg_ = '';
   private result_: HandoverValidation | null = null;
 
@@ -76,12 +84,16 @@ export class FieldHandoverPanel {
     private readonly host_: HTMLElement,
     private readonly deps_: HandoverPanelDeps
   ) {
+    this.host_.addEventListener('pointerdown', this.onPointerDown_);
+    this.host_.addEventListener('pointerup', this.onPointerUp_);
     this.host_.addEventListener('click', this.onClick_);
     this.host_.addEventListener('change', this.onChange_);
     this.host_.addEventListener('input', this.onChange_);
   }
 
   destroy(): void {
+    this.host_.removeEventListener('pointerdown', this.onPointerDown_);
+    this.host_.removeEventListener('pointerup', this.onPointerUp_);
     this.host_.removeEventListener('click', this.onClick_);
     this.host_.removeEventListener('change', this.onChange_);
     this.host_.removeEventListener('input', this.onChange_);
@@ -167,10 +179,11 @@ export class FieldHandoverPanel {
 
   /**
    * A gauge value only counts as the player's reading once they looked at the part (an inspect entry on it).
-   * The fuel gauge is read off the generator; the stored-energy figure is a live panel readout, so it is always available.
+   * The fuel gauge is read off the generator and the stored-energy figure off the power station's display;
+   * the Power panel stays a live readout the player may copy by hand, but "use my latest reading" needs the look.
    */
   private hasPowerReading_(r: { metric: 'socWh' | 'fuelL'; partId?: string }): boolean {
-    if (r.metric !== 'fuelL' || r.partId === undefined) return true;
+    if (r.partId === undefined) return true;
     const log = this.deps_.evidence();
     return log === null ? false : log.entries('observation').some((e) => e.subject === r.partId && e.verb === 'inspect');
   }
@@ -190,6 +203,14 @@ export class FieldHandoverPanel {
 
     return undefined;
   }
+
+  private readonly onPointerDown_ = (): void => {
+    this.pointerDownAtMs_ = Date.now();
+  };
+
+  private readonly onPointerUp_ = (): void => {
+    this.pointerDownAtMs_ = 0;
+  };
 
   private readonly onClick_ = (e: Event): void => {
     const el = e.target as HTMLElement;
@@ -229,6 +250,7 @@ export class FieldHandoverPanel {
   // ---------------------------------------------------------------- render
 
   sync(): void {
+    this.deps_.catchUp?.();
     const records = this.deps_.records();
     const forms = records?.forms() ?? [];
     if (!records || forms.length === 0) {
@@ -268,6 +290,8 @@ export class FieldHandoverPanel {
       '#'
     );
     if (key === this.dynKey_) return;
+    // A press is in progress on this panel: redrawing now would swap the element under the pointer. The next sync catches up.
+    if (this.dynKey_ !== null && Date.now() - this.pointerDownAtMs_ < POINTER_HOLD_MS) return;
     this.dynKey_ = key;
 
     const numbering = new Map(entries.map((e, i) => [e.id, i + 1] as const));
@@ -284,8 +308,56 @@ export class FieldHandoverPanel {
     const last = filed.length
       ? `<div class="fhf-filed" data-fhf="filed">Filed ${filed.length} time${filed.length === 1 ? '' : 's'}; last at ${clock(filed[filed.length - 1].submittedAtS)}.</div>`
       : '';
-    body.innerHTML = `${picker}<div class="fhf-title">${escapeHtml(form.title)}</div>${stale}<div class="fhf-fields">${fields}</div>
-      <div class="fhf-actions"><button type="button" class="btn btn-sm btn-outline-secondary" data-hf-act="check">Check</button> <button type="button" class="btn btn-sm btn-outline-primary" data-hf-act="submit">Submit</button></div>${last}`;
+    // The picker, title and Check/Submit buttons are built once per form and patched in place: a redraw that
+    // replaces the node under the pointer swallows the click. Only the field list is rebuilt when evidence changes.
+    if (this.builtForm_ !== form.id || !body.querySelector('[data-slot="fields"]')) {
+      body.innerHTML = `<div data-slot="picker"></div><div class="fhf-title" data-slot="title"></div><div data-slot="stale"></div><div class="fhf-fields" data-slot="fields"></div>
+      <div class="fhf-actions" data-slot="actions"><button type="button" class="btn btn-sm btn-outline-secondary" data-hf-act="check">Check</button> <button type="button" class="btn btn-sm btn-outline-primary" data-hf-act="submit">Submit</button></div><div data-slot="filed"></div>`;
+      this.builtForm_ = form.id;
+      this.slotHtml_.clear();
+    }
+    this.patchSlot_(body, 'picker', picker);
+    this.patchSlot_(body, 'title', escapeHtml(form.title));
+    this.patchSlot_(body, 'stale', stale);
+    this.patchSlot_(body, 'filed', last);
+    this.patchSlot_(body, 'fields', fields, true);
+  }
+
+  /** Replace a slot's markup only when it changed; the fields slot keeps the player's focus across the redraw */
+  private patchSlot_(body: HTMLElement, name: string, markup: string, keepFocus = false): void {
+    if (this.slotHtml_.get(name) === markup) return;
+    const slot = body.querySelector<HTMLElement>(`[data-slot="${name}"]`);
+    if (!slot) return;
+    const focused = keepFocus ? this.focusKey_(slot) : null;
+    slot.innerHTML = markup;
+    this.slotHtml_.set(name, markup);
+    if (focused) this.restoreFocus_(slot, focused);
+  }
+
+  private focusKey_(slot: HTMLElement): { sel: string; start: number | null; end: number | null } | null {
+    const active = document.activeElement as HTMLElement | null;
+    if (!active || !slot.contains(active)) return null;
+    const field = active.getAttribute('data-hf-field');
+    const cite = active.getAttribute('data-hf-cite');
+    const sel = field !== null ? `[data-hf-field="${field}"]` : cite !== null ? `[data-hf-cite="${cite}"][data-hf-key="${active.getAttribute('data-hf-key') ?? ''}"]` : null;
+    if (sel === null) return null;
+    const input = active as HTMLInputElement;
+    const textual = active.tagName === 'INPUT' && input.type !== 'checkbox';
+
+    return { sel, start: textual ? input.selectionStart : null, end: textual ? input.selectionEnd : null };
+  }
+
+  private restoreFocus_(slot: HTMLElement, key: { sel: string; start: number | null; end: number | null }): void {
+    const next = slot.querySelector<HTMLInputElement>(key.sel);
+    if (!next) return;
+    next.focus({ preventScroll: true });
+    if (key.start !== null && key.end !== null) {
+      try {
+        next.setSelectionRange(key.start, key.end);
+      } catch {
+        // number inputs do not support selection ranges
+      }
+    }
   }
 
   private readingHint_(f: HandoverFieldConfig): string {

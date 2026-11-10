@@ -78,7 +78,7 @@ test.describe('Frontline S1 full completion', () => {
         local: { value: LATEST },
         registration: { value: LATEST },
         application: { value: LATEST_SUPPORTED_RUN },
-        evidence: { cites: 3 },
+        evidence: { cites: 99 },
       });
       await waitForObjective(page, 's1-record-baseline');
     });

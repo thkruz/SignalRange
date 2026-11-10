@@ -240,9 +240,13 @@ describe('power faults', () => {
     expect(plant.isOutside()).toBe(true);
     advance(30);
     expect(['no-power', 'booting']).toContain(plant.skylinkStatus());
-    advance(200);
-    expect(plant.skylinkStatus()).toBe('searching');
-    advance(150);
+    // It passes through the satellite search (the acquire time is a seeded draw) before service returns
+    const seen = new Set<string>();
+    for (let i = 0; i < 50; i++) {
+      advance(10);
+      seen.add(plant.skylinkStatus());
+    }
+    expect(seen.has('searching')).toBe(true);
     expect(plant.skylinkStatus()).toBe('online');
     expect(plant.isPartPowered('skylink-dish')).toBe(true);
     expect(plant.measure('multimeter', 'skylink-router').observation).not.toContain('expected');

@@ -140,6 +140,13 @@ describe('M17 panel', () => {
     expect(off.host.querySelectorAll('.fpd-shared').length).toBe(0);
   });
 
+  it('gives every drawn node a unique DOM id even when a node is shared by two services', () => {
+    const { host } = panelRig();
+    const ids = [...host.querySelectorAll('[data-pd-node]')].map((n) => n.id);
+    expect(ids.every((id) => id.length > 0)).toBe(true);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
   it('toggles by click and records the selection as one evidence entry', () => {
     const { host, panel, log } = panelRig();
     host.querySelector('[data-pd-node="router"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));

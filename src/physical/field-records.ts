@@ -140,6 +140,8 @@ export interface FieldRecordsDeps {
   storeRecord?: (record: HandoverRecord) => void;
   /** M15 equipment ledger (records, corrections, notices) */
   equipment?: EquipmentLedger | null;
+  /** Bring the plant, events and runs up to the scenario clock before a verdict (a clock jump may not have been stepped yet) */
+  catchUp?: () => void;
 }
 
 const fail = (key: string, reason: string): FieldCheck => ({ key, ok: false, reason });
@@ -178,6 +180,7 @@ export class FieldRecords implements RecordReader {
 
   /** Check an entry against the form without recording anything */
   validate(formId: string, input: HandoverInput): HandoverValidation {
+    this.deps_.catchUp?.();
     const form = this.forms_.get(formId);
     if (!form) {
       return { formId, ok: false, fields: [] };

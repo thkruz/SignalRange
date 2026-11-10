@@ -166,6 +166,18 @@ afterEach(() => {
 });
 
 describe('M27 S15 completion', () => {
+  it('stamps the onset event for a check made right after a clock jump, before the next UPDATE tick', () => {
+    const svc = bootScenario(data);
+    states.set('s15-record-anomaly', { isActive: true, isCompleted: false });
+    tick(1);
+    SimClock.skip(30_000);
+    expect(svc.events?.firedAtS(S15_EVENT_ONSET)).toBeNull();
+    // No UPDATE was emitted: the handover check itself must bring the simulation up to the clock
+    const res = svc.records?.validate('anomaly', {});
+    const onset = (svc.evidence?.entries('result') ?? []).some((e) => e.source && 'eventId' in e.source && e.source.eventId === S15_EVENT_ONSET);
+    expect(onset, JSON.stringify(res?.fields.find((f) => f.key === 'onset'))).toBe(true);
+  });
+
   it('has no placeholder gates and nothing passes before the player acts', () => {
     expect(data.mechanicTodos).toEqual([]);
     expect(JSON.stringify(data.objectives)).not.toContain('pending:');

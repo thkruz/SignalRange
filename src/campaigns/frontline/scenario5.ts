@@ -61,7 +61,7 @@ const CAUSE_OPTIONS = [
   { id: 'provider-limit', label: 'Provider restriction' },
 ];
 
-const HYPOTHESIS_OPTS: Omit<HypothesisSpec, 'causes'> = { minCited: 2, targets: [SKYLINK_SERVICE, 'skylink-router'], routes: [[DOWN_SHORT, TERMINAL_OK]] };
+const HYPOTHESIS_OPTS: Omit<HypothesisSpec, 'causes'> = { minCited: 2, targets: [SKYLINK_SERVICE, 'skylink-router', 'local-shared-service'], routes: [[DOWN_SHORT, TERMINAL_OK]] };
 
 const comparisonForm: HandoverFormConfig = {
   id: 'service-comparison',

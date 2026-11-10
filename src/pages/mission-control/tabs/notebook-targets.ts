@@ -6,6 +6,9 @@ export interface NotebookTargetSource {
   services: { getServiceIds(): string[]; getPath(id: string): { label?: string; providerId?: string } | undefined } | null;
 }
 
+/** The camp network every service on site shares; a segment hypothesis can name it */
+export const SHARED_LOCAL_TARGET: NotebookTarget = { id: 'local-shared-service', label: 'The shared local service' };
+
 function humanize(id: string): string {
   const spaced = id.replace(/[-_:]+/gu, ' ').trim();
 
@@ -29,7 +32,8 @@ export function buildNotebookTargets(scope: HypothesisScope, src: NotebookTarget
     return l && l !== id ? l : humanize(id);
   };
   const services = (model?.getServiceIds() ?? []).map((id) => ({ id, label: model?.getPath(id)?.label ?? humanize(id) }));
-  if (scope === 'segment' || scope === 'endpoint') return byLabel(services);
+  if (scope === 'segment') return byLabel(services.length > 0 ? [...services, SHARED_LOCAL_TARGET] : services);
+  if (scope === 'endpoint') return byLabel(services);
   if (scope === 'provider') {
     const ids = new Set<string>();
     for (const s of services) {

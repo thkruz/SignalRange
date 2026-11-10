@@ -31,4 +31,15 @@ describe('hypothesis target picker', () => {
     const sorted = [...targets].sort((a, b) => a.label.localeCompare(b.label));
     expect(targets).toEqual(sorted);
   });
+
+  it('lets a segment hypothesis name the shared local service with a readable label', () => {
+    const services = {
+      getServiceIds: () => ['skylink', 'vsat'],
+      getPath: (id: string) => ({ label: id === 'skylink' ? 'SkyLink' : 'Camp reference VSAT' }),
+    };
+    const segment = buildNotebookTargets('segment', { plant, services });
+    expect(segment.map((t) => t.label)).toEqual(['Camp reference VSAT', 'SkyLink', 'The shared local service']);
+    expect(segment.find((t) => t.label === 'The shared local service')?.id).toBe('local-shared-service');
+    expect(buildNotebookTargets('endpoint', { plant, services }).some((t) => t.id === 'local-shared-service')).toBe(false);
+  });
 });

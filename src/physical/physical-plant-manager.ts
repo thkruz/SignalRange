@@ -1640,6 +1640,7 @@ export class PhysicalPlantManager {
       vars.fuel = (this.fuelL_.get(target) ?? 0).toFixed(1);
       vars.tank = part.tankL ?? DEFAULT_TANK_L;
       vars.pct = this.socPercent_(target) ?? 0;
+      vars.wh = Math.round(this.socWh_.get(target) ?? 0);
       const load = Math.round(this.loadOf_(target, 0));
       vars.w = load;
       vars.a = (Number(vars.v) > 0 ? load / Number(vars.v) : 0).toFixed(1);
@@ -1742,10 +1743,26 @@ export class PhysicalPlantManager {
 
     if (disruptive && target) {
       const dependants = this.dependants_(target);
+      // A dependant behind another restarting part only starts its own boot once that part is back
+      const readyS = new Map<string, number>();
+      const readyAt = (id: string): number => {
+        const known = readyS.get(id);
+        if (known !== undefined) {
+          return known;
+        }
+        const upstream = this.parts_.get(id)?.poweredBy;
+        const gate = upstream && dependants.includes(upstream) && upstream !== id ? readyAt(upstream) : this.deps_.now() + costSeconds;
+        const end = gate + this.bootSeconds_(id);
+        readyS.set(id, end);
+
+        return end;
+      };
       let longestBoot = 0;
       for (const id of dependants) {
-        longestBoot = Math.max(longestBoot, this.bootSeconds_(id));
-        this.setBootEnd_(id, this.deps_.now() + costSeconds + this.bootSeconds_(id));
+        const end = readyAt(id);
+        longestBoot = Math.max(longestBoot, end - (this.deps_.now() + costSeconds));
+        this.setBootEnd_(id, end);
+        this.armedUntilS_.set(id, Math.max(end, this.searchUntilS_.get(id) ?? 0));
       }
       downtimeSeconds = costSeconds + longestBoot;
       // D13: the outage runs on through the post-boot satellite search
@@ -1757,8 +1774,16 @@ export class PhysicalPlantManager {
       }
     }
 
+    const startS = this.deps_.now();
     this.deps_.skip(costSeconds);
     this.solve_();
+    if (disruptive && target) {
+      // The stated downtime must match the real restart: read it back from the final boot and search ends
+      for (const id of this.dependants_(target)) {
+        const endS = Math.max(this.rebootUntilS_.get(id) ?? 0, this.searchUntilS_.get(id) ?? 0);
+        downtimeSeconds = Math.max(downtimeSeconds, endS - startS);
+      }
+    }
     this.downtimeS_ += downtimeSeconds;
 
     if (isFix && cleared.length > 0 && this.firstCorrectS_ === null) {
@@ -2225,6 +2250,9 @@ export class PhysicalPlantManager {
 
   // ------------------------------------------------------------------- power
 
+  /** End of a boot (and search) a verb already armed; a part regaining supply before then does not draw a second acquire time */
+  private readonly armedUntilS_ = new Map<string, number>();
+
   private isRebooting_(partId: string): boolean {
     return this.deps_.now() < (this.rebootUntilS_.get(partId) ?? 0);
   }
@@ -2470,7 +2498,7 @@ export class PhysicalPlantManager {
         const was = this.supplied_.get(id) ?? true;
         this.supplied_.set(id, ok);
         const boot = this.bootSeconds_(id);
-        if (!was && ok && boot > 0) {
+        if (!was && ok && boot > 0 && this.deps_.now() >= (this.armedUntilS_.get(id) ?? 0)) {
           this.setBootEnd_(id, this.deps_.now() + boot);
           started = true;
         }

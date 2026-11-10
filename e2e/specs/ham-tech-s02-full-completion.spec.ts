@@ -1,4 +1,4 @@
-import { test } from '../fixtures/test-fixtures';
+import { expect, test } from '../fixtures/test-fixtures';
 import {
   answerTechQuizzes,
   debugObjective,
@@ -17,7 +17,7 @@ import {
   submitWorksheet,
   waitForObjectiveComplete,
 } from '../utils/ham-tech-helpers';
-import { dismissDialogIfPresent } from '../utils/simulation-helpers';
+import { dismissDialogIfPresent, waitForQuizToAppear } from '../utils/simulation-helpers';
 
 /**
  * Campaign 3 Technician S2 "Power on the Bench" - full completion through the Station tab.
@@ -51,7 +51,20 @@ test('ham-tech-s02 completes all objectives', async ({ page, missionControlPage:
       battery: 'BT1, the battery',
     },
   });
-  await step('Match the Circuit Symbols', 'match-circuit-symbols', 2);
+  // S02-Q2 carries official Figure T-1: the image must actually load in the quiz modal
+  let figureSeen = false;
+  for (let i = 0; i < 2; i++) {
+    await waitForQuizToAppear(page);
+    const img = page.locator('#quiz-figure img');
+    if ((await img.count()) > 0) {
+      await expect(img).toHaveAttribute('alt', /Figure T-1/u);
+      await expect.poll(() => img.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0), { timeout: 15000 }).toBe(true);
+      figureSeen = true;
+    }
+    await answerTechQuizzes(page, 1);
+  }
+  expect(figureSeen).toBe(true);
+  await step('Match the Circuit Symbols', 'match-circuit-symbols');
 
   // select-meter-function
   await submitWorksheet(page, 's02-select', { setup: 'DC voltage, red lead in the VΩ socket' });

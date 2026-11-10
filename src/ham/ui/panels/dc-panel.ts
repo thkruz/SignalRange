@@ -7,7 +7,7 @@
  *
  * Test ids (<dc> = power-supply/battery device id):
  *   ham-dc-<dc>-source (connected toggle), -volts, -amps, -soc, -wh, -fuse, -radio, -inspect,
- *   -brownout, -fault-<faultId>, -repair-<faultId>, -install-<spareId>
+ *   -read-gauge (battery only), -brownout, -fault-<faultId>, -repair-<faultId>, -install-<spareId>
  */
 import type { HamStationManager } from '../../ham-station-manager';
 import type { PanelContext, StationPanel } from '../station-panel';
@@ -76,6 +76,12 @@ export class DcPanel implements StationPanel {
       const r = ctx.act({ type: 'inspect', targetId: id });
       ctx.feedback(r.message, r.ok ? 'info' : 'warning');
     });
+    const gauge = isBattery
+      ? button(T('ham-dc', id, 'read-gauge'), 'Read battery gauge', () => {
+          const r = ctx.act({ type: 'battery.read', deviceId: id });
+          ctx.feedback(r.message, r.ok ? 'success' : 'warning');
+        })
+      : null;
     const root = h(
       'div',
       { class: 'ham-instr mb-3', 'data-testid': T('ham-dc', id, 'panel') },
@@ -87,7 +93,7 @@ export class DcPanel implements StationPanel {
       kv('Inline fuse', fuse),
       kv('Radio', radio),
       brownout,
-      h('div', { class: 'mt-2' }, inspect),
+      h('div', { class: 'mt-2 d-flex gap-2' }, inspect, gauge),
       faults,
       installs
     );

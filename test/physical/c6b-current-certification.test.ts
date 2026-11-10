@@ -268,3 +268,39 @@ describe('C6 gap B: the real ObjectivesManager', () => {
     expect(stateOf()?.isCompleted).toBe(true);
   });
 });
+
+describe('C6 gap C: the out-of-date note', () => {
+  it('names the kind of change, leaks no answer, and is gone once the filing is current', () => {
+    const r = rig();
+    expect(r.records.staleNote('final')).toBeNull();
+    r.file('r1');
+    expect(r.records.staleNote('final')).toBeNull();
+
+    r.world.mode = 'standby';
+    expect(r.records.staleCause('final')).toEqual({ kind: 'mode', partId: 'modem' });
+    expect(r.records.staleNote('final')).toMatch(/modem changed state.*File it again/u);
+    expect(r.records.staleNote('final')).not.toMatch(/standby|run\b/u);
+    r.world.mode = 'run';
+    expect(r.records.staleNote('final')).toBeNull();
+
+    r.world.fired.add(EVENT);
+    expect(r.records.staleCause('final')?.kind).toBe('event');
+    expect(r.records.staleNote('final')).toMatch(/changed on site/u);
+    r.file('r2');
+    expect(r.records.staleNote('final')).toBeNull();
+
+    r.world.runs[1].invalidatedBy = 'config';
+    expect(r.records.staleCause('final')?.kind).toBe('run');
+    expect(r.records.staleNote('final')).toMatch(/task window/u);
+  });
+
+  it('says a service setting changed for a config-certified form; unfiled and uncertified forms have no note', () => {
+    const r = rig([{ ...FORM, certification: { config: true } }, HISTORY]);
+    r.file('r1');
+    r.world.epoch += 1;
+    expect(r.records.staleNote('final')).toMatch(/service setting changed/u);
+    r.records.submit('history', { note: { value: 'a' } });
+    expect(r.records.staleNote('history')).toBeNull();
+    expect(r.records.staleNote('nope')).toBeNull();
+  });
+});

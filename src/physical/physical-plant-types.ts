@@ -8,6 +8,7 @@
 import type { EquipmentConfig } from './equipment-records';
 import type { HypothesisSpec } from './evidence-predicates';
 import type { HandoverFormConfig } from './field-records';
+import type { IncomingRecordSpec, ReferralRule } from './incoming-types';
 import type { AccountState, EndpointState, ProviderState, ServiceModelConfig } from './service-types';
 import type { WorkloadConfig } from './workload-types';
 
@@ -260,6 +261,10 @@ export interface PlantConfig {
   hypothesisSpecs?: HypothesisSpec[];
   /** Handover forms the player can submit (Campaign 6, M13). Absent = no records. */
   handovers?: HandoverFormConfig[];
+  /** Records read from an earlier scenario, resolved at scenario load (Campaign 6 package C). Absent = none. */
+  incoming?: IncomingRecordSpec[];
+  /** Cross-campaign referrals filed when a form is accepted (Campaign 6 package C). Absent = none. */
+  referrals?: ReferralRule[];
   /** Equipment records, correction requests and provider notices (Campaign 6, M15). Absent = none. */
   equipment?: EquipmentConfig;
   /**

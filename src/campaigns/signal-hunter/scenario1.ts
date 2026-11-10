@@ -1,6 +1,7 @@
 import { Character } from '@app/modal/character-enum';
 import type { ScenarioData } from '@app/ScenarioData';
 import type { dBm } from '@app/types';
+import { loadC5Referral } from '../frontline/continuity-fallbacks';
 import { petersonGroundStation } from './ground-stations';
 import { sentry7Satellite, sentry9Satellite } from './satellites';
 
@@ -74,6 +75,7 @@ export const signalHunterScenario1Data: ScenarioData = {
     workingDocument: {
       title: 'Incident Report EW-27-0244',
       description: 'SENTRY-7 TP-1 interference, PA-22, 2027-09-01. Sections: Characterization, Fix.',
+      incomingReferral: loadC5Referral,
     },
 
     interferenceEvents: [

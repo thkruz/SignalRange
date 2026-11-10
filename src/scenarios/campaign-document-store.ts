@@ -54,6 +54,8 @@ export interface CampaignReferral {
   /** Plain statements the receiving campaign may show; never a source location */
   statements: string[];
   unresolved: string[];
+  /** The classification the sender filed (e.g. suspected-interference or unexplained-outage); a consumer must not assume interference */
+  classification?: string;
   /** 'player' when filed by a completed scenario, 'fallback' when authored */
   source: ContinuitySource;
 }
@@ -167,14 +169,24 @@ export class CampaignDocumentStore {
    * completed scenario's last accepted filing is its historical account.
    */
   static getHandover(campaignId: string, scenarioId: string, formId: string): HandoverRecord | undefined {
-    const filed = this.getRecord(campaignId, scenarioId)?.handovers?.filter((h) => h.formId === formId) ?? [];
+    const all = this.getRecord(campaignId, scenarioId)?.handovers;
+    const filed = Array.isArray(all) ? all.filter((h) => h?.formId === formId) : [];
 
     return filed[filed.length - 1];
   }
 
   /** The earliest accepted filing of the form in a completed scenario */
   static getFirstHandover(campaignId: string, scenarioId: string, formId: string): HandoverRecord | undefined {
-    return this.getRecord(campaignId, scenarioId)?.handovers?.find((h) => h.formId === formId);
+    const all = this.getRecord(campaignId, scenarioId)?.handovers;
+
+    return Array.isArray(all) ? all.find((h) => h?.formId === formId) : undefined;
+  }
+
+  /**
+   * Record selection made explicit by a consumer: 'latest' = getHandover, 'first' = getFirstHandover.
+   */
+  static getSelectedHandover(campaignId: string, scenarioId: string, formId: string, select: 'latest' | 'first'): HandoverRecord | undefined {
+    return select === 'first' ? this.getFirstHandover(campaignId, scenarioId, formId) : this.getHandover(campaignId, scenarioId, formId);
   }
 
   /**
@@ -184,6 +196,22 @@ export class CampaignDocumentStore {
   static getHandoverOrFallback(campaignId: string, scenarioId: string, formId: string, fallback: HandoverRecord): { record: HandoverRecord; source: ContinuitySource } {
     const filed = this.getHandover(campaignId, scenarioId, formId);
     return filed ? { record: filed, source: 'player' } : { record: fallback, source: 'fallback' };
+  }
+
+  /** Builders that turn an accepted handover into a referral (registered by the sending campaign's module) */
+  private static readonly referralBuilders_ = new Map<string, (record: HandoverRecord) => CampaignReferral>();
+
+  static registerReferralBuilder(referralId: string, build: (record: HandoverRecord) => CampaignReferral): void {
+    this.referralBuilders_.set(referralId, build);
+  }
+
+  /** File the referral for an accepted handover when a builder is registered. Returns it, or null. */
+  static fileReferralFor(referralId: string, record: HandoverRecord): CampaignReferral | null {
+    const build = this.referralBuilders_.get(referralId);
+    if (!build) return null;
+    const referral = build(record);
+    this.saveReferral(referral);
+    return referral;
   }
 
   /** File a cross-campaign referral. Needs no completion of the sending campaign. */

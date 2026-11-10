@@ -288,6 +288,12 @@ export interface SimulationSettings {
   workingDocument?: {
     title: string;
     description?: string;
+    /**
+     * Opt-in: a read-only "Referral received" block from an earlier campaign (Campaign 5 reading the frontline
+     * incident). The loader returns the player's filed referral or the authored fallback; the block says which.
+     * It is reference, not a document entry, so it is never flushed to the campaign store.
+     */
+    incomingReferral?: () => import('./scenarios/campaign-document-store').CampaignReferral;
   };
   /** Traffic ownership configuration for handover scenarios */
   trafficOwnership?: Array<{

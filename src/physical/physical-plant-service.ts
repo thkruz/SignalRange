@@ -13,6 +13,7 @@ import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { ScenarioManager } from '@app/scenario-manager';
 import { CampaignDocumentStore } from '@app/scenarios/campaign-document-store';
+import { resolveIncoming } from '@app/scenarios/incoming-records';
 import { WorkingDocumentManager } from '@app/scenarios/working-document-manager';
 import { Rng } from '@app/simulation/rng';
 import { SimClock } from '@app/simulation/sim-clock';
@@ -96,10 +97,17 @@ export class PhysicalPlantService {
             eventFiredAtS: (eventId) => this.events?.firedAtS(eventId) ?? null,
             configEpoch: () => this.services?.getEpochs().config ?? null,
             writeLine: (section, line) => WorkingDocumentManager.getInstance().addLine(section, line),
-            storeRecord: (record) => CampaignDocumentStore.recordHandover(record),
+            storeRecord: (record) => {
+              CampaignDocumentStore.recordHandover(record);
+              // An accepted filing of a form that carries a referral rule files it now (optional continuity, no completion needed)
+              for (const rule of config.referrals ?? []) {
+                if (rule.formId === record.formId) CampaignDocumentStore.fileReferralFor(rule.referralId, record);
+              }
+            },
             catchUp: () => this.catchUp(),
           })
         : null;
+    this.records?.setIncoming((config.incoming ?? []).map(resolveIncoming));
     this.events = config.events?.length
       ? new PlantEventController(config.events, {
           setAccount: (patch) => this.services?.setAccount(patch),

@@ -250,9 +250,22 @@ export class WorkingDocumentManager {
       </p>
     `;
 
+    let referralHtml = '';
+    try {
+      const referral = config?.incomingReferral?.();
+      if (referral) {
+        const esc = (t: string) => t.replace(/&/gu, '&amp;').replace(/</gu, '&lt;').replace(/>/gu, '&gt;');
+        const from = referral.source === 'player' ? 'Filed by your earlier shift' : 'Authored reference record (no earlier filing found)';
+        referralHtml = `<div class="working-doc-referral mb-2" data-referral-source="${referral.source}"><div class="fw-bold text-uppercase small" style="opacity:0.7;">Referral received: ${esc(referral.title)}</div><div class="small" style="opacity:0.7;">${from}</div><ul class="list-unstyled mb-0 small">${[...referral.statements, ...referral.unresolved.map((u) => `Open: ${u}`)].map((l) => `<li>${esc(l)}</li>`).join('')}</ul></div>`;
+      }
+    } catch {
+      referralHtml = '';
+    }
+
     this.box_.updateContent(`
       <div style="width:480px;max-width:70vw;max-height:60vh;overflow-y:auto;padding:0.75rem 1rem;">
         ${config?.description ? `<p class="small mb-2" style="opacity:0.8;">${config.description}</p>` : ''}
+        ${referralHtml}
         ${this.entries_.length > 0 ? sectionsHtml : emptyHtml}
         <div class="small mt-2" style="opacity:0.5;">${this.entries_.length} entr${this.entries_.length === 1 ? 'y' : 'ies'}</div>
       </div>

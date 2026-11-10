@@ -15,6 +15,7 @@ import type { EquipmentLedger, EquipmentState } from './equipment-records';
 import type { EvidenceEntry, EvidenceKind, EvidenceLog, SampleSnapshot } from './evidence-log';
 import { assessEvidence, type EvidenceGroup } from './evidence-predicates';
 import type { RecordReader } from './field-hooks';
+import type { IncomingRecord } from './incoming-types';
 import type { PhysicalPlantManager } from './physical-plant-manager';
 import type { ServiceModel } from './service-model';
 import type { ServiceLayer } from './service-types';
@@ -47,6 +48,11 @@ export type ClaimRule =
       backing?: Record<string, EvidenceGroup[]>;
       /** The answer must equal the one in the latest accepted record of another form (a later report cannot contradict an earlier filing) */
       sameAs?: { formId: string; key: string; label: string };
+      /**
+       * The accepted answer follows an INCOMING record (package C): the record's stored answer `key` maps to the one
+       * answer this form accepts. With no incoming record, or an unmapped answer, `accept` applies.
+       */
+      incoming?: { id: string; key: string; map: Record<string, string> };
     }
   /** Cited entries must fill every group with distinct entries (typed predicates; see evidence-predicates.ts) */
   | { evidence: EvidenceGroup[] };
@@ -92,6 +98,9 @@ export interface RecordCertification {
   /** Service configuration epoch at filing (absent when the plant has no service model) */
   configEpoch?: number;
 }
+
+/** Which kind of change made a certifying filing stale */
+export type StaleCause = { kind: 'mode'; partId: string } | { kind: 'event' } | { kind: 'run' } | { kind: 'config' };
 
 /** What the player entered for one field */
 export interface HandoverFieldInput {
@@ -155,6 +164,8 @@ export interface FieldRecordsState {
   seq: number;
   accepted: string[];
   equipment?: EquipmentState;
+  /** The incoming records loaded at scenario start; restored as is so a resume does not re-read the campaign store */
+  incoming?: IncomingRecord[];
 }
 
 /** What the records need from the world; the sinks are optional so the class stays unit-testable */
@@ -192,6 +203,7 @@ export class FieldRecords implements RecordReader {
   private attempts_ = new Map<string, number>();
   private accepted_ = new Set<string>();
   private seq_ = 0;
+  private incoming_: IncomingRecord[] = [];
 
   constructor(forms: HandoverFormConfig[], deps: FieldRecordsDeps) {
     for (const f of forms) {
@@ -270,7 +282,8 @@ export class FieldRecords implements RecordReader {
         : fail(field.key, `${field.label} does not match what the ${this.deps_.plant.getLabel(rule.modeIs.partId)} shows now.`);
     }
 
-    if (!(rule.accept ?? rule.choice).includes(String(value))) {
+    const followed = rule.incoming ? rule.incoming.map[String(this.incomingValue(rule.incoming.id, rule.incoming.key))] : undefined;
+    if (followed !== undefined ? String(value) !== followed : !(rule.accept ?? rule.choice).includes(String(value))) {
       return fail(field.key, `${field.label} is not one of the answers this form accepts.`);
     }
     if (rule.sameAs) {
@@ -469,32 +482,68 @@ export class FieldRecords implements RecordReader {
   isHandoverCurrent(formId: string): boolean {
     this.deps_.catchUp?.();
     const form = this.forms_.get(formId);
+    if (!form?.certification || !this.latestRecord(formId)?.certification) {
+      return false;
+    }
+
+    return this.staleCause_(formId) === null;
+  }
+
+  /**
+   * Why the latest certifying filing of a form is out of date, or null when there is none to judge (never filed,
+   * a form or save with no certification) or it is still current. Read by the handover panel for the stale note.
+   */
+  staleCause(formId: string): StaleCause | null {
+    this.deps_.catchUp?.();
+
+    return this.staleCause_(formId);
+  }
+
+  /** A short, non-leading note saying which kind of change made the latest filing stale (null when current or unfiled) */
+  staleNote(formId: string): string | null {
+    const cause = this.staleCause(formId);
+    switch (cause?.kind) {
+      case undefined:
+        return null;
+      case 'mode':
+        return `Out of date: ${this.deps_.plant.getLabel(cause.partId)} changed state after this was filed. File it again to certify the site as it stands now.`;
+      case 'event':
+        return 'Out of date: something changed on site after this was filed. File it again to certify the site as it stands now.';
+      case 'run':
+        return 'Out of date: a task window this filing relied on no longer counts. Run the window again if you need to, then file it again.';
+      case 'config':
+        return 'Out of date: a service setting changed after this was filed. File it again to certify the service as it stands now.';
+    }
+  }
+
+  private staleCause_(formId: string): StaleCause | null {
+    const form = this.forms_.get(formId);
     const cert = this.latestRecord(formId)?.certification;
     if (!form?.certification || !cert) {
-      return false;
+      return null;
     }
     for (const [partId, mode] of Object.entries(cert.modes)) {
       if (this.deps_.plant.getPartMode(partId) !== mode) {
-        return false;
+        return { kind: 'mode', partId };
       }
     }
     const before = new Set(cert.firedEvents);
     for (const id of form.certification.events ?? []) {
       if (!before.has(id) && this.deps_.eventFiredAtS?.(id) != null) {
-        return false;
+        return { kind: 'event' };
       }
     }
     if (form.certification.config && cert.configEpoch !== undefined && this.deps_.configEpoch?.() !== cert.configEpoch) {
-      return false;
+      return { kind: 'config' };
     }
     if (cert.runIds.length > 0) {
       const runs = new Map(this.deps_.runs().map((r) => [r.id, r] as const));
       if (cert.runIds.some((id) => !runs.has(id) || runs.get(id)?.invalidatedBy !== undefined || runs.get(id)?.status === 'aborted')) {
-        return false;
+        return { kind: 'run' };
       }
     }
 
-    return true;
+    return null;
   }
 
   private certify_(form: HandoverFormConfig, values: Record<string, string | number>): RecordCertification {
@@ -522,6 +571,23 @@ export class FieldRecords implements RecordReader {
       runIds,
       ...(epoch == null ? {} : { configEpoch: epoch }),
     };
+  }
+
+  // ------------------------------------------------------------- incoming
+
+  /** Load the records this scenario receives (resolved by the service at scenario load) */
+  setIncoming(records: IncomingRecord[]): void {
+    this.incoming_ = records.map((r) => JSON.parse(JSON.stringify(r)) as IncomingRecord);
+  }
+
+  /** The records received from earlier scenarios, with provenance (read-only reference) */
+  incoming(): readonly IncomingRecord[] {
+    return this.incoming_;
+  }
+
+  /** One stored answer of an incoming record (undefined when there is none) */
+  incomingValue(id: string, key: string): string | number | undefined {
+    return this.incoming_.find((r) => r.id === id)?.values[key];
   }
 
   /** Manual acceptance for units with no authored equipment record */
@@ -553,6 +619,7 @@ export class FieldRecords implements RecordReader {
       seq: this.seq_,
       accepted: [...this.accepted_],
       ...(this.deps_.equipment ? { equipment: this.deps_.equipment.getState() } : {}),
+      ...(this.incoming_.length ? { incoming: JSON.parse(JSON.stringify(this.incoming_)) as IncomingRecord[] } : {}),
     };
   }
 
@@ -568,11 +635,18 @@ export class FieldRecords implements RecordReader {
     this.attempts_ = new Map(state.attempts ?? []);
     this.accepted_ = new Set(state.accepted ?? []);
     this.deps_.equipment?.restoreState(state.equipment);
+    if (Array.isArray(state.incoming)) {
+      this.incoming_ = state.incoming.filter(isIncoming).map((r) => JSON.parse(JSON.stringify(r)) as IncomingRecord);
+    }
     this.seq_ = state.seq ?? this.records_.length;
     for (const r of this.records_) {
       this.deps_.storeRecord?.(r);
     }
   }
+}
+
+function isIncoming(v: IncomingRecord): boolean {
+  return !!v && typeof v.id === 'string' && (v.source === 'player' || v.source === 'fallback') && Array.isArray(v.rows) && !!v.values && typeof v.values === 'object';
 }
 
 function freeze(e: EvidenceEntry): FrozenCitation {

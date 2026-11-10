@@ -286,9 +286,19 @@ export class FieldHandoverPanel {
     const runs = this.deps_.runs();
     const readings = form.fields.map((f) => this.readingHint_(f)).join('~');
     const resultKey = this.result_ ? this.result_.fields.map((c) => `${c.key}${c.ok ? 1 : 0}${c.reason ?? ''}`).join('|') : '';
-    const key = [this.formId_, entries.map((e) => e.id).join(','), runs.map((r) => `${r.id}${r.status}`).join(','), readings, resultKey, records.recordsFor(form.id).length].join(
-      '#'
-    );
+    const key = [
+      this.formId_,
+      entries.map((e) => e.id).join(','),
+      runs.map((r) => `${r.id}${r.status}`).join(','),
+      readings,
+      resultKey,
+      records.recordsFor(form.id).length,
+      records.staleNote(form.id) ?? '',
+      records
+        .incoming()
+        .map((i) => `${i.id}${i.source}`)
+        .join(','),
+    ].join('#');
     if (key === this.dynKey_) return;
     // A press is in progress on this panel: redrawing now would swap the element under the pointer. The next sync catches up.
     if (this.dynKey_ !== null && Date.now() - this.pointerDownAtMs_ < POINTER_HOLD_MS) return;
@@ -302,7 +312,19 @@ export class FieldHandoverPanel {
             .map((f) => `<option value="${escapeHtml(f.id)}"${f.id === this.formId_ ? ' selected' : ''}>${escapeHtml(f.title)}</option>`)
             .join('')}</select></label>`
         : '';
-    const stale = form.fields.some((f) => 'matchesCurrent' in f.rule) ? `<div class="fhf-stale" data-fhf="stale">${escapeHtml(STALE_NOTE)}</div>` : '';
+    const outOfDate = records.staleNote(form.id);
+    const stale =
+      (form.fields.some((f) => 'matchesCurrent' in f.rule) ? `<div class="fhf-stale" data-fhf="stale">${escapeHtml(STALE_NOTE)}</div>` : '') +
+      (outOfDate ? `<div class="fhf-stale" data-fhf="out-of-date">${escapeHtml(outOfDate)}</div>` : '');
+    const incoming = records
+      .incoming()
+      .map(
+        (i) =>
+          `<div class="fhf-incoming" data-fhf="incoming" data-incoming-source="${i.source}"><div class="fhf-incoming-title">${escapeHtml(i.title)}</div><div class="fhf-incoming-from" data-fhf="incoming-from">${escapeHtml(i.provenance)}</div><div class="fhf-incoming-note">${escapeHtml(i.note)}</div>${i.rows
+            .map((row) => `<div class="fhf-incoming-row"><span>${escapeHtml(row.label)}</span> <strong>${escapeHtml(row.text)}</strong></div>`)
+            .join('')}</div>`
+      )
+      .join('');
     const fields = form.fields.map((f) => this.fieldHtml_(f, entries, numbering, runs, checks.get(f.key))).join('');
     const filed = records.recordsFor(form.id);
     const last = filed.length
@@ -311,13 +333,14 @@ export class FieldHandoverPanel {
     // The picker, title and Check/Submit buttons are built once per form and patched in place: a redraw that
     // replaces the node under the pointer swallows the click. Only the field list is rebuilt when evidence changes.
     if (this.builtForm_ !== form.id || !body.querySelector('[data-slot="fields"]')) {
-      body.innerHTML = `<div data-slot="picker"></div><div class="fhf-title" data-slot="title"></div><div data-slot="stale"></div><div class="fhf-fields" data-slot="fields"></div>
+      body.innerHTML = `<div data-slot="picker"></div><div class="fhf-title" data-slot="title"></div><div data-slot="incoming"></div><div data-slot="stale"></div><div class="fhf-fields" data-slot="fields"></div>
       <div class="fhf-actions" data-slot="actions"><button type="button" class="btn btn-sm btn-outline-secondary" data-hf-act="check">Check</button> <button type="button" class="btn btn-sm btn-outline-primary" data-hf-act="submit">Submit</button></div><div data-slot="filed"></div>`;
       this.builtForm_ = form.id;
       this.slotHtml_.clear();
     }
     this.patchSlot_(body, 'picker', picker);
     this.patchSlot_(body, 'title', escapeHtml(form.title));
+    this.patchSlot_(body, 'incoming', incoming);
     this.patchSlot_(body, 'stale', stale);
     this.patchSlot_(body, 'filed', last);
     this.patchSlot_(body, 'fields', fields, true);

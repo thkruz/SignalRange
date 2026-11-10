@@ -368,6 +368,9 @@ describe('M27 S15 completion', () => {
     driveObjectives(data, svc, states, acts(svc), {});
     const record = svc.records?.recordsFor('incident')[0];
     expect(record).toBeDefined();
+    // Accepting the incident filed the referral by itself, from the typed answers
+    expect(loadC5Referral().source).toBe('player');
+    expect(loadC5Referral().classification).toBe(record?.values.classification);
     const referral = fileC5Referral(record as NonNullable<typeof record>);
     expect(referral.source).toBe('player');
     expect(loadC5Referral().statements).toEqual(referral.statements);

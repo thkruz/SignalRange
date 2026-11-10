@@ -3,6 +3,7 @@ import type { EvidenceGroup, HypothesisSpec } from '@app/physical/evidence-predi
 import type { HandoverFormConfig } from '@app/physical/field-records';
 import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import { applyCampField, OLA_CHECK_CARD, SKYLINK_SERVICE } from './camp-field-config';
+import { S1_BASELINE_LINK } from './continuity-fallbacks';
 import { handoverValid, hypothesisFiled, interruptionPattern, negativeChecksKept, samplesCurrent, workloadVerified } from './frontline-conditions';
 import { checked, pick, reading, repaired } from './report-choices';
 import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-support';
@@ -138,6 +139,7 @@ const diagnosisForm: HandoverFormConfig = {
 
 if (settings.physicalPlant) {
   applyCampField(settings.physicalPlant, [OLA_CHECK_CARD], [comparisonForm, checkPlanForm, diagnosisForm]);
+  settings.physicalPlant.incoming = [S1_BASELINE_LINK.spec];
   settings.physicalPlant.causeOptions = CAUSE_OPTIONS;
   settings.physicalPlant.hypothesisSpecs = [{ causes: CAUSE_IDS, ...HYPOTHESIS_OPTS }];
   settings.physicalPlant.faults = [{ id: faultId, target: connectorId, kind: 'moisture', severity: 0.8 }];

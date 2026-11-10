@@ -3,6 +3,7 @@ import type { EvidenceGroup } from '@app/physical/evidence-predicates';
 import type { HandoverFormConfig } from '@app/physical/field-records';
 import type { RequirementCard } from '@app/physical/workload-types';
 import { SKYLINK_SERVICE } from './camp-field-config';
+import { S10_PACKAGE_LINK } from './continuity-fallbacks';
 import {
   applyForwardEurosat,
   applyForwardField,
@@ -199,6 +200,7 @@ const capabilityForm: HandoverFormConfig = {
 
 const scenarioSettings = createFrontlineSettings(11);
 if (scenarioSettings.physicalPlant) {
+  scenarioSettings.physicalPlant.incoming = [S10_PACKAGE_LINK.spec];
   applyForwardField(
     scenarioSettings.physicalPlant,
     [FORWARD_FIRST_CARD, S11_TRANSFER_CARD, S11_INTERACTIVE_CARD],

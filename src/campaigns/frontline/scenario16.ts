@@ -102,6 +102,24 @@ const DECOYS: Record<string, Array<[string, string]>> = {
 };
 const choice = (id: string, label: string) => pick({ [id]: label, ...Object.fromEntries(DECOYS[id] ?? []) }, [id]);
 
+// The prior-incident answer follows what the S15 handover recorded (suspected interference or an unexplained outage);
+// with no S15 record the authored fallback says suspected interference. Both answers are always visible.
+const priorIncident = () => ({
+  ...pick(
+    {
+      'source-not-established': 'Suspected interference, source not established',
+      'outage-cause-not-established': 'Unexplained outage, cause not established',
+      ...Object.fromEntries(DECOYS['source-not-established'] ?? []),
+    },
+    ['source-not-established']
+  ),
+  incoming: {
+    id: S15_INCIDENT_LINK.spec.id,
+    key: 'classification',
+    map: { 'suspected-interference': 'source-not-established', 'unexplained-outage': 'outage-cause-not-established' },
+  },
+});
+
 const SUPPLY_SITE = ['ps:ac-out'];
 const SEATING: EvidenceGroup = {
   ...checked('seating', 'a hands-on check of the supply connection', SUPPLY_SITE),
@@ -123,7 +141,7 @@ const briefForm: HandoverFormConfig = {
     { key: 'task', label: 'Mission task to demonstrate', required: true, rule: choice(FIRST, 'First forward task over SkyLink') },
     { key: 'reserve', label: 'Battery reserve to keep', required: true, rule: choice('reserve-200', 'Keep 200 Wh of stored energy') },
     { key: 'equipment', label: 'Equipment available', required: true, rule: choice('both-terminals', 'SkyLink and EuroSat terminals, router, workstation, battery and generator') },
-    { key: 'prior', label: 'Prior EuroSat incident', required: true, rule: choice('source-not-established', 'Suspected interference, source not established') },
+    { key: 'prior', label: 'Prior EuroSat incident', required: true, rule: priorIncident() },
     { key: 'unknowns', label: 'Claims that need current evidence', required: true, rule: choice('service-and-power', 'Service state and power state this shift') },
   ],
 };
@@ -194,7 +212,7 @@ const finalForm: HandoverFormConfig = {
     { key: 'incidents', label: 'The two incidents', required: true, rule: choice('separate', 'Two separate incidents with different causes') },
     { key: 'service', label: 'Service available', required: true, rule: choice('limited', 'Limited: transfer over EuroSat only') },
     { key: 'unavailable', label: 'Task not available', required: true, rule: choice(FIRST, 'First forward task over SkyLink') },
-    { key: 'prior', label: 'Prior EuroSat incident', required: true, rule: choice('source-not-established', 'Suspected interference, source not established') },
+    { key: 'prior', label: 'Prior EuroSat incident', required: true, rule: priorIncident() },
     { key: 'energy', label: 'Battery energy now (Wh)', required: true, rule: { powerWithin: { metric: 'socWh', tol: 40, partId: 'power-station' } } },
   ],
 };
@@ -202,6 +220,7 @@ const finalForm: HandoverFormConfig = {
 const settings = createFrontlineSettings(16);
 if (settings.physicalPlant) {
   const plant = settings.physicalPlant;
+  plant.incoming = [S15_INCIDENT_LINK.spec];
   applyForwardField(plant, [FORWARD_FIRST_CARD, S11_TRANSFER_CARD], [briefForm, baselineForm, localForm, externalForm, outcomeForm, finalForm]);
   applyForwardEurosat(plant, { modemRunning: true });
   // Both terminals become switchable units; the battery and reserve below replace the S14 numbers

@@ -3,6 +3,7 @@ import type { EvidenceGroup, HypothesisSpec } from '@app/physical/evidence-predi
 import type { HandoverFormConfig } from '@app/physical/field-records';
 import type { PlantEventConfig } from '@app/physical/physical-plant-types';
 import { SKYLINK_SERVICE } from './camp-field-config';
+import { C5_REFERRAL_ID } from './continuity-fallbacks';
 import { applyForwardEurosat, applyForwardField, FORWARD_EUROSAT_SERVICE, FORWARD_EUROSAT_UNIT, FORWARD_FIRST_CARD, FORWARD_SKYLINK_ACCOUNT } from './forward-field-config';
 import {
   correctionApproved,
@@ -233,6 +234,8 @@ const settings = createFrontlineSettings(15);
 if (settings.physicalPlant) {
   const plant = settings.physicalPlant;
   applyForwardField(plant, [FORWARD_FIRST_CARD, S11_TRANSFER_CARD], [anomalyForm, evidenceForm, assessmentForm, packageForm, alternativeForm, incidentForm]);
+  // Accepting the incident also files the optional Campaign 5 referral (built from the typed answers, never a source)
+  plant.referrals = [{ formId: 'incident', referralId: C5_REFERRAL_ID }];
   applyForwardEurosat(plant, { modemRunning: true });
   // The S10 restriction is over by S15; the reduced resources are the battery and its reserve
   const skylink = plant.service?.accounts.find((a) => a.id === FORWARD_SKYLINK_ACCOUNT);

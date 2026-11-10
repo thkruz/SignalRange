@@ -23,7 +23,7 @@ sandboxPlant.workloads = { cards: [] };
 export const frontlineSandboxData: ScenarioData = {
   id: 'frontline-sandbox',
   url: 'frontline/sandbox',
-  imageUrl: 'frontline/sandbox/card.png',
+  imageUrl: 'frontline/physical/site-outside.webp',
   number: 0,
   isDisabled: false,
   difficulty: 'intermediate',
@@ -52,6 +52,7 @@ const forwardSandbox = (scenarioNumber: 10 | 11, eurosat: boolean): ScenarioData
   id: eurosat ? 'frontline-sandbox-forward-eurosat' : 'frontline-sandbox-forward',
   url: eurosat ? 'frontline/sandbox-forward-eurosat' : 'frontline/sandbox-forward',
   title: eurosat ? 'Forward Post Sandbox (EuroSat)' : 'Forward Post Sandbox',
+  imageUrl: eurosat ? 'frontline/physical/site-forward-eurosat-scene.webp' : 'frontline/physical/site-forward.webp',
   subtitle: eurosat ? 'Rautala kit as in Exercise 11' : 'Rautala kit as in Exercise 10',
   description: `The Rautala forward post with the ${eurosat ? 'SkyLink kit plus the EuroSat terminal' : 'SkyLink kit only'}, as in Exercise ${scenarioNumber}. No faults, no objectives.`,
   equipment: eurosat

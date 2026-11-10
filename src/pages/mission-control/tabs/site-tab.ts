@@ -96,6 +96,7 @@ export class SiteTab extends BaseElement {
       runs: () => PhysicalPlantService.workloadsOrNull()?.getRuns() ?? [],
       plant: () => PhysicalPlantService.plantOrNull(),
       catchUp: () => PhysicalPlantService.catchUp(),
+      eventFiredAtS: (id) => PhysicalPlantService.eventsOrNull()?.firedAtS(id) ?? null,
       formStep: (formId) => formStepState(formId, ObjectivesManager.getInstance().getObjectiveStates()),
     });
 

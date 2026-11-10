@@ -260,7 +260,12 @@ export class FieldRecords implements RecordReader {
     const isCitesRule = 'cites' in rule || 'evidence' in rule;
     const empty = isCitesRule ? cites.length === 0 : blank;
     if (empty) {
-      return field.required ? fail(field.key, `${field.label} is empty.`) : pass(field.key);
+      if (!field.required) {
+        return pass(field.key);
+      }
+      const kind = 'evidence' in rule || 'cites' in rule ? ' Tick the notebook entries that show what it asks for (Observed or Did entries).' : '';
+
+      return fail(field.key, `${field.label} is empty.${kind}`);
     }
     const value = input.value;
 
@@ -283,7 +288,10 @@ export class FieldRecords implements RecordReader {
 
       return verdict.ok
         ? pass(field.key)
-        : fail(field.key, `${field.label} needs notebook entries that show: ${verdict.missing.join('; ')}. Repeated or unrelated entries do not count.`);
+        : fail(
+            field.key,
+            `"${field.label}" needs notebook entries (Observed or Did) that show: ${verdict.missing.join('; ')}. Tick them in the "${field.label}" list only; repeated or unrelated entries do not count.`
+          );
     }
     if ('workload' in rule) {
       return this.checkWorkload_(field, String(value), rule.workload);

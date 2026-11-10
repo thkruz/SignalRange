@@ -49,4 +49,5 @@ export function sampleStepState(serviceId: string, steps: readonly StepLike[]): 
 }
 
 /** Shown after a sample when the step that reads it has not started */
-export const SAMPLE_STEP_LATER_NOTE = 'Noted, but the checklist step that uses this reading has not started. Check again once it is active.';
+export const SAMPLE_STEP_LATER_NOTE =
+  'Saved to your notebook. A later checklist step reads this service; if that step needs a newer reading, take it again once the step is active.';

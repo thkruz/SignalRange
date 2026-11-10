@@ -37,9 +37,9 @@ const environmentForm: HandoverFormConfig = {
       label: 'Normal recovery you waited through',
       required: true,
       rule: {
+        // Only the up reading is required: the restart window is short and the player may not be checking during it
         evidence: [
-          reading('down', 'a SkyLink registration reading, down, taken after the restart', SKYLINK_SERVICE, 'registration', ['down'], { afterEvent: RECOVERY_EVENT }),
-          reading('up', 'a SkyLink registration reading, up, taken after the restart', SKYLINK_SERVICE, 'registration', ['up'], { afterEvent: RECOVERY_EVENT }),
+          reading('up', 'a Terminal link (registration) reading of Up, taken after the restart finished', SKYLINK_SERVICE, 'registration', ['up'], { afterEvent: RECOVERY_EVENT }),
         ],
       },
     },
@@ -80,7 +80,7 @@ if (settings.physicalPlant) {
       id: OBSTRUCTION_EVENT,
       startAfterObjectiveId: 's4-recognize-persistence',
       actions: [{ kind: 'inject-fault', fault: { id: faultId, target: 'skylink-dish', kind: 'net' } }],
-      logLine: 'Wind moves something over the terminal.',
+      logLine: 'The terminal loses its signal again and stays down.',
     },
   ];
 }
@@ -110,7 +110,7 @@ export const frontlineScenario4Data: FrontlineScenarioData = {
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: [],
       conditions: [
-        { type: 'part-inspected', description: 'Terminal inspected', params: { partId: 'skylink-dish' }, mustMaintain: false },
+        { type: 'part-inspected', description: 'SkyLink dish inspected (satellite terminal, outside)', params: { partId: 'skylink-dish' }, mustMaintain: false },
         {
           type: 'status-check',
           description: 'Normal start time identified',
@@ -196,7 +196,7 @@ export const frontlineScenario4Data: FrontlineScenarioData = {
         {
           id: 's4-evidence-before-correction',
           type: 'custom',
-          description: 'Correction made (after the environmental observation, or blind and charged in the debrief)',
+          description: 'Correction made (after the environmental observation, or done without earlier evidence, which costs points in the debrief)',
           params: { evaluator: netRemoved },
           mustMaintain: false,
         },

@@ -73,7 +73,13 @@ export function describeFieldDiagnosis(
   if (summary.wrongCauseActions > 0) {
     scoreNotes.push(`Wrong-cause actions count toward the same penalty: 5% of objective points each, within the 20% cap.`);
   }
-  if (scoreNotes.length === 0) scoreNotes.push('Your diagnosis did not change the score.');
+  if (scoreNotes.length === 0) {
+    scoreNotes.push(
+      basePoints === 0
+        ? 'This scenario is practice: its objectives carry no points, so the score stays at 0. These lines are for your own review.'
+        : 'Your diagnosis did not change the score.'
+    );
+  }
   scoreNotes.push(TRIP_RULE_TEXT);
 
   return { summary, effect, lines, scoreNotes };

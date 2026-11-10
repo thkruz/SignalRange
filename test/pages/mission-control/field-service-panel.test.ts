@@ -116,10 +116,10 @@ describe('M09 field service panel', () => {
     );
     panel.sync();
     panel.check('skylink', 'power', 'device-indicator');
-    expect(host.querySelector('[data-fsp="last"]')?.textContent).toContain('has not started');
+    expect(host.querySelector('[data-fsp="last"]')?.textContent).toContain('A later checklist step reads');
     state = 'active';
     panel.check('skylink', 'power', 'device-indicator');
-    expect(host.querySelector('[data-fsp="last"]')?.textContent).not.toContain('has not started');
+    expect(host.querySelector('[data-fsp="last"]')?.textContent).not.toContain('A later checklist step reads');
   });
 
   it('the Check button reads the selects; numeric probe gives units; a config change invalidates', () => {

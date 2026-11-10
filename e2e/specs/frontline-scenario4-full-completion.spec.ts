@@ -89,12 +89,12 @@ test.describe('Frontline S4 full completion', () => {
       await waitForObjective(page, 's4-correct-environment');
     });
 
-    await test.step('[s4-verify-environment-result] counterexamples: wrong condition, one entry cannot fill both recovery readings', async () => {
+    await test.step('[s4-verify-environment-result] counterexamples: wrong condition, an empty recovery slot is refused', async () => {
       await advanceClock(page, 120_000);
       const runId = await workloadsStart(page, 'ola-check', 'skylink');
       expect(await workloadsWaitForRun(page, runId)).toBe('supported');
       const base = { condition: { value: 'obstruction' }, correction: { cites: 99 }, verified: { value: LATEST_SUPPORTED_RUN } };
-      await recordsExpectRefused(page, 'environment-report', { ...base, recovery: { cites: 1 } }, /recovery: .*(Repeated or unrelated|notebook entries)/su);
+      await recordsExpectRefused(page, 'environment-report', { ...base, recovery: { cites: 0 } }, /recovery: .*(Repeated or unrelated|notebook entries)/su);
       await recordsExpectRefused(page, 'environment-report', { ...base, recovery: { cites: 99 }, condition: { value: 'slow-restart' } }, /condition/u);
       expect((await readObjective(page, 's4-verify-environment-result')).isCompleted).toBe(false);
       await recordsSubmit(page, 'environment-report', { ...base, recovery: { cites: 99 } });

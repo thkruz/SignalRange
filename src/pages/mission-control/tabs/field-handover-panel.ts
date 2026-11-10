@@ -1,5 +1,6 @@
 import { FORM_STEP_LATER_NOTE, type FormStepState } from '@app/pages/mission-control/tabs/form-step-state';
 import type { EvidenceEntry, EvidenceLog } from '@app/physical/evidence-log';
+import { type EvidenceGroup, entryMatches } from '@app/physical/evidence-predicates';
 import type { FieldRecords, HandoverFieldConfig, HandoverFormConfig, HandoverInput, HandoverValidation } from '@app/physical/field-records';
 import type { PhysicalPlantManager } from '@app/physical/physical-plant-manager';
 import type { ServiceModel } from '@app/physical/service-model';
@@ -27,6 +28,8 @@ export interface HandoverPanelDeps {
   formStep?: (formId: string) => FormStepState;
   /** Bring the simulation up to the clock before the panel reads runs and evidence */
   catchUp?: () => void;
+  /** Scenario time a staged event fired (lets a slot list only entries that sit after that event) */
+  eventFiredAtS?: (eventId: string) => number | null;
 }
 
 /** Said plainly wherever a form has a field that must match a service reading */
@@ -433,6 +436,14 @@ export class FieldHandoverPanel {
     }
   }
 
+  /** The evidence groups a slot's entries must fill, or null when any notebook entry may back it */
+  private slotGroups_(rule: HandoverFieldConfig['rule']): EvidenceGroup[] | null {
+    if ('evidence' in rule) return rule.evidence;
+    if ('choice' in rule && rule.backing) return Object.values(rule.backing).flat();
+
+    return null;
+  }
+
   private readingHint_(f: HandoverFieldConfig): string {
     const rule = f.rule;
     if ('matchesCurrent' in rule) return describeReading(this.deps_.service(), rule.matchesCurrent.serviceId, rule.matchesCurrent.layer).text;
@@ -452,10 +463,15 @@ export class FieldHandoverPanel {
     const val = cur.value === undefined ? '' : String(cur.value);
     const k = escapeHtml(f.key);
     const label = `<span class="fhf-label">${escapeHtml(f.label)}${f.required ? '' : ' (optional)'}</span>`;
+    const groups = this.slotGroups_(rule);
+    const ctx = { eventFiredAtS: (id: string): number | null => this.deps_.eventFiredAtS?.(id) ?? null };
+    const picked = new Set(cur.cites ?? []);
+    const canBack = (e: EvidenceEntry): boolean =>
+      groups === null || picked.has(e.id) || groups.some((g) => entryMatches(e, g.match, ctx, entries) || (g.orMatch ?? []).some((p) => entryMatches(e, p, ctx, entries)));
     const citeBoxes = (kind: string | null): string => {
-      const list = entries.filter((e) => (kind === null ? e.kind !== 'hypothesis' : e.kind === kind));
-      if (list.length === 0) return `<span class="fhf-none">No ${kind ? KIND_LABEL[kind]?.toLowerCase() : 'notebook'} entries yet.</span>`;
-      const picked = new Set(cur.cites ?? []);
+      const list = entries.filter((e) => (kind === null ? e.kind !== 'hypothesis' : e.kind === kind) && canBack(e));
+      if (list.length === 0)
+        return `<span class="fhf-none">${groups ? 'No notebook entry can back this slot yet.' : `No ${kind ? KIND_LABEL[kind]?.toLowerCase() : 'notebook'} entries yet.`}</span>`;
       const box = (e: EvidenceEntry): string =>
         `<label class="fhf-cite"><input type="checkbox" data-hf-key="${k}" data-hf-cite="${escapeHtml(e.id)}"${picked.has(e.id) ? ' checked' : ''} /> #${numbering.get(e.id)} ${escapeHtml(clock(e.tS))} ${escapeHtml(entryDisplayText(e, this.deps_.plant()))}</label>`;
       const { latest, older } = splitLatestPerSource(list);
@@ -470,7 +486,7 @@ export class FieldHandoverPanel {
       widget = `<div class="fhf-cites" data-hf-cites="${k}"><div class="fhf-hint">Tick at least ${min} ${escapeHtml(KIND_LABEL[rule.cites]?.toLowerCase() ?? rule.cites)} entr${min === 1 ? 'y' : 'ies'} from the notebook.</div>${citeBoxes(rule.cites)}</div>`;
     } else if ('evidence' in rule) {
       const needs = rule.evidence.map((g) => `<li>${escapeHtml(g.label)}${(g.min ?? 1) > 1 ? ` (${g.min})` : ''}</li>`).join('');
-      widget = `<div class="fhf-cites" data-hf-cites="${k}"><div class="fhf-hint">Tick notebook entries that show each of these. One entry counts once.</div><ul class="fhf-needs" data-fhf="needs-${k}">${needs}</ul>${citeBoxes(null)}</div>`;
+      widget = `<div class="fhf-cites" data-hf-cites="${k}"><div class="fhf-hint">Tick notebook entries for &ldquo;${escapeHtml(f.label)}&rdquo; that show each of these. Only entries that can back this slot are listed, newest first. One entry counts once.</div><ul class="fhf-needs" data-fhf="needs-${k}">${needs}</ul>${citeBoxes(null)}</div>`;
     } else if ('workload' in rule) {
       const mine = runs.filter((r) => r.cardId === rule.workload.cardId);
       const opts = mine

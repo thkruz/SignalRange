@@ -52,7 +52,7 @@ if (settings.physicalPlant) {
 export const frontlineScenario1Data: FrontlineScenarioData = {
   id: 'frontline-scenario1',
   url: 'frontline/scenarios/frontline-scenario1',
-  imageUrl: 'frontline/physical/site-outside.webp',
+  imageUrl: 'frontline/physical/card-outside-morning.webp',
   number: 1,
   isDisabled: false,
   difficulty: 'beginner',

@@ -221,7 +221,7 @@ export const S16_PRIOR_INCIDENT_LINK = S15_INCIDENT_LINK;
 export const frontlineScenario16Data: FrontlineScenarioData = {
   id: 'frontline-scenario16',
   url: 'frontline/scenarios/frontline-scenario16',
-  imageUrl: 'frontline/physical/site-forward-eurosat-scene.webp',
+  imageUrl: 'frontline/physical/card-forward-eurosat-scene-snow.webp',
   number: 16,
   isDisabled: false,
   prerequisiteScenarioIds: ['frontline-scenario15'],

@@ -179,7 +179,7 @@ if (settings.physicalPlant) {
 export const frontlineScenario15Data: FrontlineScenarioData = {
   id: 'frontline-scenario15',
   url: 'frontline/scenarios/frontline-scenario15',
-  imageUrl: 'frontline/physical/site-forward-eurosat-scene.webp',
+  imageUrl: 'frontline/physical/card-forward-eurosat-scene-night.webp',
   number: 15,
   isDisabled: false,
   prerequisiteScenarioIds: ['frontline-scenario14'],

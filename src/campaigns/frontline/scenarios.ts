@@ -17,9 +17,9 @@ import { frontlineScenario15Data } from './scenario15';
 import { frontlineScenario16Data } from './scenario16';
 
 /**
- * Authored curriculum, enabled as a public alpha (2026-11-09). Cards reuse the
- * site paintings (camp outside/inside scenes for S1-S8, forward scene for S9-S10, forward
- * scene with the EuroSat gear composited for S11-S16).
+ * Authored curriculum, enabled as a public alpha (2026-11-09). Cards are the site
+ * paintings and their time-of-day and weather variants (physical/card-*.webp, picks
+ * in art-review/c6/variants): camp S1-S8, forward S9-S10, forward with EuroSat S11-S16.
  * TODO(C6-VO): voice-over waits on localization; empty audioUrl values are
  * intentional until takes are recorded.
  * TODO(C6-QA): browser playthrough of each scenario before leaving alpha.

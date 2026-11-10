@@ -189,7 +189,7 @@ export class FieldRecordsPanel {
             : `<button type="button" class="btn btn-sm btn-outline-primary" data-rp-act="accept" data-rp-unit="${id}">Accept this unit</button>`;
         const history = ledger.history(u.unitId);
         const historyHtml = history.length
-          ? `<div class="frp-history" data-frp="history-${id}"><b>Configuration and access history</b><ul>${history.map((h) => `<li>${escapeHtml(h.at)}: ${escapeHtml(h.text)}</li>`).join('')}</ul></div>`
+          ? `<div class="frp-history" data-frp="history-${id}"><b>${escapeHtml(ledger.historyTitle(u.unitId))}</b><ul>${history.map((h) => `<li>${escapeHtml(h.at)}: ${escapeHtml(h.text)}</li>`).join('')}</ul></div>`
           : '';
         const depot = ledger.depotRecord(u.unitId);
         const depotHtml = depot ? `<div class="frp-depot" data-frp="depot-${id}"><b>Depot test record</b>: ${escapeHtml(depot)}</div>` : '';

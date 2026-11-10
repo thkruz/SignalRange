@@ -43,6 +43,8 @@ export interface EquipmentUnitConfig {
   installed?: InstalledUnit;
   /** Configuration and access history lines shown with the record (the player can read and cite them) */
   history?: Array<{ at: string; text: string }>;
+  /** Heading over the history lines (default "Configuration and access history") */
+  historyTitle?: string;
   /** What the depot test record shows, one line */
   depotRecord?: string;
 }
@@ -158,6 +160,11 @@ export class EquipmentLedger {
   /** Authored configuration and access history for a unit (empty when none) */
   history(unitId: string): Array<{ at: string; text: string }> {
     return (this.cfg_.units.find((u) => u.unitId === unitId)?.history ?? []).map((h) => ({ ...h }));
+  }
+
+  /** Heading over a unit's history lines */
+  historyTitle(unitId: string): string {
+    return this.cfg_.units.find((u) => u.unitId === unitId)?.historyTitle ?? 'Configuration and access history';
   }
 
   /** Authored depot test record line for a unit */

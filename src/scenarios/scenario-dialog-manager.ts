@@ -37,6 +37,21 @@ export class ScenarioDialogManager {
     this.eventBus.on(Events.OBJECTIVE_ACTIVATED, this.boundHandleObjectiveActivated);
   }
 
+  /**
+   * Objectives with no prerequisites are active from construction, before this manager
+   * subscribes, so no OBJECTIVE_ACTIVATED ever fires for them. Play their on-start clips here
+   * (the caller has already shown the intro, so they queue behind it).
+   */
+  playInitialClips(activeObjectiveIds: readonly string[]): void {
+    const clips = ScenarioManager.getInstance().data.dialogClips?.objectivesOnStart;
+    for (const id of activeObjectiveIds) {
+      const clip = clips?.[id];
+      if (clip) {
+        this.scheduleClip_(clip, id);
+      }
+    }
+  }
+
   private handleObjectiveCompleted(data: ObjectiveCompletedData): void {
     const clip = ScenarioManager.getInstance().data.dialogClips?.objectives?.[data.objectiveId];
     if (clip) {

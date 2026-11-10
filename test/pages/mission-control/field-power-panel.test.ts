@@ -45,7 +45,7 @@ describe('M08 field power panel', () => {
   it('model lists mode devices and previews a pick without changing state', () => {
     const plant = make(config());
     const base = buildPowerPanelModel(plant, new Map());
-    expect(base.devices.map((d) => d.id)).toEqual(['skylink', 'vsat-modem']);
+    expect(base.devices.map((d) => d.id)).toEqual(['skylink', 'vsat-modem', 'laptop']);
     expect(base.changes).toEqual({});
     const picked = buildPowerPanelModel(plant, new Map([['skylink', 'active']]));
     expect(picked.changes).toEqual({ skylink: 'active' });

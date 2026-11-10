@@ -108,8 +108,8 @@ export function buildFieldDiagnosis(source: DiagnosisSource, basePoints: number)
 
   const hasFault = plantHasFault(config);
   const diagnosis = describeFieldDiagnosis(summary, basePoints, notes, hasFault, hasHypothesisStep);
-  const nothingDiagnosed =
-    !hasFault && !hasHypothesisStep && summary.wrongCauseActions === 0 && summary.unsupportedFixes === 0 && summary.usefulNegatives === 0 && summary.unsupportedSpares === 0;
+  // No fault to find and no hypothesis step: nothing was diagnosed, so no negative-test credit and no debrief block
+  const nothingDiagnosed = !hasFault && !hasHypothesisStep && summary.wrongCauseActions === 0 && summary.unsupportedFixes === 0 && summary.unsupportedSpares === 0;
 
-  return nothingDiagnosed ? { ...diagnosis, quiet: true } : diagnosis;
+  return nothingDiagnosed ? { ...diagnosis, effect: { bonusPct: 0, penaltyPct: 0, bonus: 0, penalty: 0 }, quiet: true } : diagnosis;
 }

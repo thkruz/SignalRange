@@ -95,11 +95,25 @@ export class FieldPathDiagramPanel {
     const ids = [...this.selected_];
     const names = ids.map((id) => labels.get(id) ?? id).join(', ');
     const entry = log.recordSelection(ids, `Marked on the path diagram: ${names}.`);
-    this.lastMsg_ = `Selection recorded at ${clock(entry.tS)}.`;
+    this.lastMsg_ = `Selection recorded at ${clock(entry.tS)}.${this.coverageNote_(ids)}`;
     this.selected_.clear();
     this.sync();
 
     return entry.id;
+  }
+
+  /** Says why a recorded set does not meet the step (counts only, never the tile names) */
+  private coverageNote_(picked: string[]): string {
+    const expect = this.deps_.plant()?.getConfig().diagram?.expect;
+    if (!expect) return '';
+    const missing = expect.include.filter((id) => !picked.includes(id)).length;
+    const foreign = (expect.exclude ?? []).some((id) => picked.includes(id));
+    if (missing === 0 && !foreign) return ' It covers every local component.';
+    const parts: string[] = [];
+    if (missing > 0) parts.push(`${missing} local component${missing === 1 ? ' is' : 's are'} still missing`);
+    parts.push(foreign ? 'the set includes a tile that is not a local component' : 'every tile you marked is local');
+
+    return ` This does not complete the step: ${parts.join('; ')}.`;
   }
 
   private readonly onClick_ = (e: Event): void => {

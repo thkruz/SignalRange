@@ -26,6 +26,8 @@ export interface PowerDeviceRow {
   loadW: number;
   fuelL: number | null;
   modes: Pick<PartModeConfig, 'id' | 'label' | 'loadW'>[];
+  /** No selectable modes: the row only reports the draw (a fixed load, or a generator the player starts on site) */
+  fixed?: boolean;
 }
 
 /** Everything the panel prints, derived from the plant (no DOM) */
@@ -78,6 +80,31 @@ export function buildPowerPanelModel(plant: PhysicalPlantManager, pending: Reado
       loadW: readings.loadW[id] ?? plant.getLoadW(id),
       fuelL: id in readings.fuelL ? readings.fuelL[id] : null,
       modes: modes.map((m) => ({ id: m.id, label: m.label, loadW: m.loadW })),
+    });
+  }
+  // Loads with no authored modes still draw power: list them read-only so the table matches the draw total
+  for (const id of plant.getPartIds()) {
+    if (devices.some((d) => d.id === id) || id in readings.capacityWh) {
+      continue;
+    }
+    const isGenerator = id in readings.fuelL;
+    const drawW = readings.loadW[id] ?? plant.getLoadW(id);
+    if (!isGenerator && drawW <= 0 && plant.getLoadW(id) <= 0) {
+      continue;
+    }
+    const state = isGenerator ? (drawW > 0 ? 'Running' : 'Off') : 'Fixed load';
+    devices.push({
+      id,
+      label: plant.getLabel(id),
+      kind: isGenerator ? 'generator' : 'device',
+      current: state,
+      pending: state,
+      starting: false,
+      phase: null,
+      loadW: drawW,
+      fuelL: isGenerator ? readings.fuelL[id] : null,
+      modes: [],
+      fixed: true,
     });
   }
   const socTotalWh = Object.values(readings.socWh).reduce((a, b) => a + b, 0);
@@ -187,7 +214,7 @@ export class FieldPowerPanel {
           <td><span class="fpp-mode" data-fpp="mode-${escapeHtml(d.id)}"></span></td>
           <td class="fpp-num" data-fpp="load-${escapeHtml(d.id)}"></td>
           <td class="fpp-num" data-fpp="fuel-${escapeHtml(d.id)}">${d.fuelL === null ? '' : ''}</td>
-          <td><select class="form-select form-select-sm" data-power-part="${escapeHtml(d.id)}" aria-label="${escapeHtml(d.label)} mode">${options}</select></td>
+          <td>${d.fixed ? '<span class="fpp-mode-idle">Not switchable here</span>' : `<select class="form-select form-select-sm" data-power-part="${escapeHtml(d.id)}" aria-label="${escapeHtml(d.label)} mode">${options}</select>`}</td>
         </tr>`;
       })
       .join('');

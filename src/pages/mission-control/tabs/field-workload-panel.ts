@@ -33,7 +33,7 @@ const METRIC_LABEL: Record<string, string> = { downMbps: 'download', upMbps: 'up
 
 const INVALID_LABEL: Record<string, string> = {
   config: 'equipment or settings changed',
-  event: 'conditions changed',
+  event: 'a site event changed conditions (see the Ops Log)',
   'card-version': 'requirement changed',
   reload: 'session reloaded',
 };

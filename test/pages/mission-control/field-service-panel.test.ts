@@ -143,7 +143,7 @@ describe('M09 field service panel', () => {
     expect(host.querySelector('[data-fsp="value-skylink|registration|"]')?.textContent).toMatch(/Latency .* ms/u);
     plant.setPartMode('skylink', 'standby');
     panel.sync();
-    expect(host.querySelector('[data-fsp="badge-skylink|registration|"]')?.textContent).toBe('Invalidated');
+    expect(host.querySelector('[data-fsp="badge-skylink|registration|"]')?.textContent).toContain('Invalidated');
     host.remove();
   });
 

@@ -382,4 +382,24 @@ describe('ScenarioDialogManager', () => {
       expect(mockDialogManager.show).toHaveBeenCalledTimes(2);
     });
   });
+
+  describe('playInitialClips', () => {
+    it('plays the on-start clip of an objective that was active from load', () => {
+      mockScenarioManager.data = createMockScenarioData({
+        objectives: [{ id: 'obj-1', title: 'First' } as any],
+        dialogClips: {
+          objectivesOnStart: {
+            'obj-1': { text: 'Start line', character: 'alex' as Character, audioUrl: '' },
+            'obj-2': { text: 'Later line', character: 'alex' as Character, audioUrl: '' },
+          },
+        },
+      });
+
+      ScenarioDialogManager.getInstance().playInitialClips(['obj-1']);
+      vi.advanceTimersByTime(500);
+
+      expect(mockDialogManager.show).toHaveBeenCalledTimes(1);
+      expect(mockDialogManager.show).toHaveBeenCalledWith('Start line', 'alex', '', 'First', undefined);
+    });
+  });
 });

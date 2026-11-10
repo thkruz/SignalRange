@@ -157,9 +157,9 @@ export class PhysicalPlantService {
               OpsLogManager.getInstance().log(line, 'alert', 'Site');
             }
           },
-          onFire: (eventId, atS, logLine) => {
+          onFire: (eventId, atS, logLine, label) => {
             if (this.services) {
-              this.services.bumpEvent(eventId, atS, logLine);
+              this.services.bumpEvent(eventId, atS, logLine, label);
             } else {
               this.evidence?.recordEvent(eventId, logLine);
             }

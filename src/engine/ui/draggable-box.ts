@@ -127,8 +127,32 @@ export abstract class DraggableBox {
    * window (accounting for page scroll). Override to dock it instead.
    */
   protected placeOnFirstOpen(boxContent: HTMLElement): void {
+    if (document.getElementById('tent-control')) {
+      this.dockBesideSite_(boxContent);
+
+      return;
+    }
     boxContent.style.top = `${window.scrollY + (displayViewport().height - boxContent.offsetHeight) / 2}px`;
     boxContent.style.left = `${(displayViewport().width - boxContent.offsetWidth) / 2}px`;
+  }
+
+  /** Boxes already docked beside the Site stage, so each new one cascades instead of hiding the last (c6-s02-F5, c6-s09-F4/F6) */
+  private static siteDockCount_ = 0;
+
+  /**
+   * On the field console the Site stage (hotspots, path diagram tiles) fills the middle, so a centred box swallows
+   * clicks meant for it. First opens go to a narrow top-right strip, each one offset a little from the last.
+   */
+  private dockBesideSite_(boxContent: HTMLElement): void {
+    const vp = displayViewport();
+    const width = Math.min(360, Math.max(260, vp.width * 0.25));
+    const step = (DraggableBox.siteDockCount_++ % 5) * 28;
+    boxContent.style.width = `${width}px`;
+    boxContent.style.maxWidth = `${width}px`;
+    boxContent.style.maxHeight = `${Math.max(240, vp.height - 190 - step)}px`;
+    boxContent.style.overflowY = 'auto';
+    boxContent.style.left = `${Math.max(8, vp.width - width - 16 - step)}px`;
+    boxContent.style.top = `${window.scrollY + 150 + step}px`;
   }
 
   /** Whether the box's title bar is inside the window (so the player can grab it) */

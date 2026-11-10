@@ -87,6 +87,8 @@ export interface HandoverFormConfig {
   /** Working Document section the lines go under */
   documentSection: string;
   fields: HandoverFieldConfig[];
+  /** Shown under the form title once the staged event has fired: "<text> at <scenario clock>" */
+  eventNote?: { eventId: string; text: string };
   /**
    * Opt-in: a filing of this form can certify the CURRENT state (see `isHandoverCurrent`). Without it the
    * form is a historical filing only and is never current.

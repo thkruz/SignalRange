@@ -317,7 +317,7 @@ const FORWARD_HOTSPOTS_BASE: SiteHotspot[] = [
   {
     id: 'site-fwd-power-station',
     view: 'outside',
-    label: 'Battery',
+    label: 'Power station',
     shapes: frectMinus(BATTERY, JERRY_CORNER),
     anchor: fanchor(262, 612, 482),
     closeup: 'power-station',

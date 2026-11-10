@@ -96,6 +96,9 @@ export class ServiceModel {
   private readonly maxAge_: Record<SampleProvenance, number>;
   private readonly unsubscribe_: (() => void) | null;
   private configEpoch_ = 0;
+  /** What bumped each epoch (index = epoch - 1), so an Invalidated reading can say why. Not persisted. */
+  private readonly eventBumps_: Array<{ atS: number; label: string }> = [];
+  private readonly configBumps_: Array<{ atS: number; reason: string }> = [];
   private eventEpoch_ = 0;
   private sessionEpoch_ = 0;
   private sampleSeq_ = 0;
@@ -464,6 +467,20 @@ export class ServiceModel {
     return reading && reading.status === value ? reading.reason : undefined;
   }
 
+  /** Why an Invalidated sample no longer counts: the first event or equipment change after it was taken */
+  invalidation(sample: ServiceSample): { kind: 'event'; atS: number; label: string } | { kind: 'config'; atS: number; reason: string } | null {
+    if (sample.eventEpoch !== this.eventEpoch_) {
+      const bump = this.eventBumps_[sample.eventEpoch];
+      if (bump) return { kind: 'event', ...bump };
+    }
+    if (sample.configEpoch !== this.configEpoch_) {
+      const bump = this.configBumps_[sample.configEpoch];
+      if (bump) return { kind: 'config', ...bump };
+    }
+
+    return null;
+  }
+
   freshness(sample: ServiceSample): Freshness {
     if (sample.value === 'unknown') {
       return 'unavailable';
@@ -496,12 +513,14 @@ export class ServiceModel {
 
   // ----------------------------------------------------------------- change
 
-  bumpConfig(_reason: string): void {
+  bumpConfig(reason: string): void {
+    this.configBumps_[this.configEpoch_] = { atS: this.plant_.getTimeSeconds(), reason };
     this.configEpoch_ += 1;
     this.cacheTimeS_ = Number.NaN;
   }
 
-  bumpEvent(eventId: string, atS?: number, logLine?: string): void {
+  bumpEvent(eventId: string, atS?: number, logLine?: string, label?: string): void {
+    this.eventBumps_[this.eventEpoch_] = { atS: atS ?? this.plant_.getTimeSeconds(), label: label ?? 'site event' };
     this.eventEpoch_ += 1;
     this.cacheTimeS_ = Number.NaN;
     for (const cfg of this.intervalCfg_) {

@@ -17,6 +17,8 @@ import { createFrontlineSettings, type FrontlineScenarioData, recordRunPower } f
  */
 export const S9_EVENT_INTERRUPTION = 's09-link-interruption';
 const CARD = FORWARD_FIRST_CARD.id;
+const S9_LOCAL_PATH = ['skylink-dish', 'skylink-cable', 'skylink-router', 'laptop', 'power-strip', 'power-station'];
+const S9_NOT_LOCAL = [`account:${FORWARD_SKYLINK_ACCOUNT}`, `provider:${FORWARD_PROVIDER}`, `endpoint:${FORWARD_ENDPOINT}`];
 
 const deliveryForm: HandoverFormConfig = {
   id: 'delivery',
@@ -74,6 +76,7 @@ const freshnessForm: HandoverFormConfig = {
   id: 'freshness',
   title: 'Reading freshness',
   documentSection: 'Reading freshness',
+  eventNote: { eventId: S9_EVENT_INTERRUPTION, text: 'Link interruption reported by the terminal' },
   fields: [
     { key: 'local', label: 'Local network reading', required: true, rule: { freshnessIs: { serviceId: SKYLINK_SERVICE, layer: 'local' } } },
     { key: 'registration', label: 'Terminal registration reading', required: true, rule: { freshnessIs: { serviceId: SKYLINK_SERVICE, layer: 'registration' } } },
@@ -141,12 +144,23 @@ const scenarioSettings = createFrontlineSettings(9);
 if (scenarioSettings.physicalPlant) {
   applyForwardField(scenarioSettings.physicalPlant, [FORWARD_FIRST_CARD], [deliveryForm, baselineForm, freshnessForm, readinessForm, shiftForm], { highlightShared: false });
   recordRunPower(scenarioSettings.physicalPlant);
+  scenarioSettings.physicalPlant.diagram = { ...scenarioSettings.physicalPlant.diagram, expect: { include: S9_LOCAL_PATH, exclude: S9_NOT_LOCAL } };
   scenarioSettings.physicalPlant.equipment = {
     units: [
       {
         unitId: FORWARD_SKYLINK_UNIT,
         label: 'Delivered SkyLink terminal',
         record: { serial: 'SKY-7731', accountId: FORWARD_SKYLINK_ACCOUNT, configVersion: 'depot-v3' },
+        historyTitle: 'Tomek’s handover, stock list and assignment record',
+        history: [
+          { at: 'Handover, terminal', text: 'SkyLink terminal serial SKY-7731, configuration depot-v3.' },
+          { at: 'Handover, assignment', text: `Terminal assigned to service account ${FORWARD_SKYLINK_ACCOUNT}.` },
+          {
+            at: 'Handover, stock list',
+            text: 'Spares delivered: 1 power and data cable, 0 coax cables, 1 power brick, 1 connector kit, 1 fuel can (4 in all). Compare the Spares count on the Site tab with this list.',
+          },
+          { at: 'Handover, camp checks', text: 'All camp checks passed at Kivilahti before transport. The equipment travelled by truck afterwards.' },
+        ],
       },
     ],
   };
@@ -154,6 +168,7 @@ if (scenarioSettings.physicalPlant) {
     {
       id: S9_EVENT_INTERRUPTION,
       startAfterObjectiveId: 's09-check-freshness',
+      invalidationLabel: 'link interruption',
       actions: [{ kind: 'set-flag', key: S9_EVENT_INTERRUPTION, value: true }],
       logLine: 'The terminal reports a short interruption. Earlier readings no longer describe the link.',
     },
@@ -181,7 +196,8 @@ export const frontlineScenario9Data: FrontlineScenarioData = {
     {
       id: 's09-reconcile-post',
       title: 'Reconcile the Post Handover',
-      description: 'Compare the delivered equipment, stock, and service assignment with Tomek’s handover. Record missing or unverified items before accepting the post.',
+      description:
+        'Read Tomek’s handover, stock list and assignment record under Records and notices (Site tab) and compare them with the delivered terminal, the Spares count and the service account. Fill in the Delivery reconciliation form, then accept the terminal record.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: [],
       points: 15,
@@ -193,19 +209,12 @@ export const frontlineScenario9Data: FrontlineScenarioData = {
     {
       id: 's09-map-service',
       title: 'Trace the Local Dependencies',
-      description: 'Identify the service path and the power and network components it depends on. Record the components whose failure would interrupt the same path.',
+      description:
+        'Identify the service path and the power and network components it depends on. Mark every local device on the path, including the laptop, and the power chain behind it (not the account, provider or remote endpoint), then Record selection. The note beside the button says if the set is short or includes a tile that is not local.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s09-reconcile-post'],
       points: 15,
-      conditions: [
-        diagramSelection(
-          {
-            include: ['skylink-dish', 'skylink-cable', 'skylink-router', 'laptop', 'power-strip', 'power-station'],
-            exclude: [`account:${FORWARD_SKYLINK_ACCOUNT}`, `provider:${FORWARD_PROVIDER}`, `endpoint:${FORWARD_ENDPOINT}`],
-          },
-          'Local power and network dependencies marked on the diagram'
-        ),
-      ],
+      conditions: [diagramSelection({ include: S9_LOCAL_PATH, exclude: S9_NOT_LOCAL }, 'Local power and network dependencies marked on the diagram')],
     },
     {
       id: 's09-establish-baseline',
@@ -239,7 +248,8 @@ export const frontlineScenario9Data: FrontlineScenarioData = {
     {
       id: 's09-check-freshness',
       title: 'Separate Current and Last-Known Readings',
-      description: 'Check the timestamps and freshness of the pilot and remote-endpoint readings. Request a fresh result where possible and retain any unresolved state.',
+      description:
+        'The terminal reports a short link interruption as this step opens: earlier readings are marked Invalidated with the time. Check the timestamps and freshness of the pilot and remote-endpoint readings. Request a fresh result where possible and retain any unresolved state.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s09-establish-baseline'],
       points: 15,
@@ -318,7 +328,7 @@ export const frontlineScenario9Data: FrontlineScenarioData = {
       's09-check-freshness': {
         character: Character.ALEKSANDRA_WYSOCKA,
         audioUrl: '',
-        text: "Some of the application's values can stay on screen after the connection stops updating. Check when each result was captured before you treat it as current.",
+        text: "The terminal has just reported a short interruption (it is in the Ops Log), so every earlier reading is now marked Invalidated. Some of the application's values can stay on screen after the connection stops updating. Check when each result was captured before you treat it as current.",
       },
       's09-confirm-readiness': {
         character: Character.IRENA_MAZUR,

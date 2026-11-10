@@ -175,6 +175,15 @@ export abstract class BasePage extends BaseElement {
     if (introClip && !this.navigationOptions_.continueFromCheckpoint) {
       DialogManager.getInstance().show(introClip.text, introClip.character, introClip.audioUrl, 'Introduction', introClip.emotion);
     }
+
+    // Initially active objectives never emit OBJECTIVE_ACTIVATED: play their on-start clips after the intro
+    if (!this.navigationOptions_.continueFromCheckpoint && scenario.data?.objectives?.length) {
+      const activeIds = ObjectivesManager.getInstance()
+        .getObjectiveStates()
+        .filter((state) => state.isActive && !state.isCompleted)
+        .map((state) => state.objective.id);
+      ScenarioDialogManager.getInstance().playInitialClips(activeIds);
+    }
   }
 
   /**

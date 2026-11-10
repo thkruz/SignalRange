@@ -221,6 +221,8 @@ export interface PlantEventConfig {
   actions: PlantEventAction[];
   /** Ops-log line, optional */
   logLine?: string;
+  /** Short name shown on readings this event invalidates ("Invalidated: <label> at <time>"), default "site event" */
+  invalidationLabel?: string;
 }
 
 export interface PlantConfig {
@@ -265,7 +267,11 @@ export interface PlantConfig {
   /** Requirement cards and workload runs (Campaign 6, M10). Needs `service`. Absent = no runner. */
   workloads?: WorkloadConfig;
   /** Path-diagram options (M24). `highlightShared: false` hides the shared-dependency highlight so the player finds them. */
-  diagram?: { highlightShared?: boolean };
+  diagram?: {
+    highlightShared?: boolean;
+    /** Tiles the current step wants marked (include) and tiles that do not belong (exclude); lets Record selection say what a set is missing without naming it */
+    expect?: { include: string[]; exclude?: string[] };
+  };
   /** Terminal app actions that count as acting on a wrong cause (phase 40 D7). Absent = none. */
   wrongCauseActions?: AppWrongCauseRule[];
   /** Authored hypothesis causes (M21). When set the notebook cause is a select of these ids; free text is never graded. Absent = free text. */

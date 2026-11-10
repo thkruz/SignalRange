@@ -117,6 +117,7 @@ vi.mock('../../src/scenarios/scenario-dialog-manager', () => ({
   ScenarioDialogManager: {
     getInstance: vi.fn(() => ({
       initialize: vi.fn(),
+      playInitialClips: vi.fn(),
     })),
   },
 }));

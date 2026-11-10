@@ -396,7 +396,10 @@ export class FieldHandoverPanel {
       this.slotHtml_.clear();
     }
     this.patchSlot_(body, 'picker', picker);
-    this.patchSlot_(body, 'title', escapeHtml(form.title));
+    const firedAtS = form.eventNote ? (this.deps_.eventFiredAtS?.(form.eventNote.eventId) ?? null) : null;
+    const eventNote =
+      form.eventNote && firedAtS !== null ? `<div class="fhf-incoming-note" data-fhf="event-note">${escapeHtml(form.eventNote.text)} at ${clock(firedAtS)}.</div>` : '';
+    this.patchSlot_(body, 'title', escapeHtml(form.title) + eventNote);
     this.patchSlot_(body, 'incoming', incoming);
     this.patchSlot_(body, 'stale', stale);
     this.patchSlot_(body, 'filed', last);

@@ -59,6 +59,8 @@ export interface ServicePanelRow {
   key: string;
   sample: ServiceSample | null;
   freshness: Freshness | null;
+  /** Why an Invalidated reading no longer counts ("link interruption at 10:13:36") */
+  invalidatedWhy?: string;
   value: string;
   provenance: string;
   age: string;
@@ -91,9 +93,11 @@ export function describeInterval(model: ServiceModel, rec: { id: string; startS:
 }
 
 /** Badge text: a Current reading also says when it gets old (a change on site can still end it sooner) */
-export function badgeText(r: Pick<ServicePanelRow, 'freshness' | 'sample'>): string {
+export function badgeText(r: Pick<ServicePanelRow, 'freshness' | 'sample' | 'invalidatedWhy'>): string {
   if (!r.freshness) return '';
   if (r.freshness === 'current' && r.sample) return `${FRESHNESS_LABEL.current}, fresh until ${formatClock(r.sample.tS + r.sample.maxAgeS)}`;
+
+  if (r.freshness === 'invalidated' && r.invalidatedWhy) return `${FRESHNESS_LABEL.invalidated}: ${r.invalidatedWhy}`;
 
   return FRESHNESS_LABEL[r.freshness];
 }
@@ -178,6 +182,8 @@ export function buildServicePanelModel(model: ServiceModel, nowS: number): Servi
         provenance: sample ? PROVENANCE_LABEL[sample.provenance] : '',
         age: sample ? formatAge(nowS - sample.tS) : '',
       };
+      const why = sample && row.freshness === 'invalidated' ? model.invalidation(sample) : null;
+      if (why) row.invalidatedWhy = why.kind === 'event' ? `${why.label} at ${formatClock(why.atS)}` : `equipment or settings changed at ${formatClock(why.atS)}`;
 
       return row;
     });

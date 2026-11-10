@@ -218,11 +218,26 @@ export class PendingQuizIndicator {
 
     requestAnimationFrame(() => {
       if (this.indicatorElement_) {
+        this.placeBelowHeader_();
         this.indicatorElement_.classList.add('show');
         // Second cue on the Checklist sidebar entry, so the gate is visible from every tab (c6-s03-F1)
         document.body.dataset.quizPending = 'true';
       }
     });
+  }
+
+  /**
+   * Sit under whatever header stack is on screen (the mission control command bar and the alarm bar inside it),
+   * measured rather than assumed: a fixed offset kept landing under the alarm bar (c6-s08-F1).
+   */
+  private placeBelowHeader_(): void {
+    if (!this.indicatorElement_) return;
+    let bottom = 0;
+    for (const selector of ['#global-command-bar-container', '#alarm-bar']) {
+      const el = document.querySelector<HTMLElement>(selector);
+      if (el && el.offsetParent !== null) bottom = Math.max(bottom, el.getBoundingClientRect().bottom);
+    }
+    if (bottom > 0) this.indicatorElement_.style.top = `${Math.ceil(bottom) + 8}px`;
   }
 
   private hide_(): void {

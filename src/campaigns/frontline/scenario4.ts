@@ -20,6 +20,13 @@ const faultId = 'c6-s4-terminal-obstruction';
 const RECOVERY_EVENT = 's4-recovery-start';
 const OBSTRUCTION_EVENT = 's4-obstruction';
 
+/** An effective removal of the net is logged. Whether it followed an observation is the debrief's business (unsupported fixes cost points). */
+function netRemoved(): boolean {
+  const log = PhysicalPlantService.plantOrNull()?.getLog() ?? [];
+
+  return log.some((entry) => entry.cleared.includes(faultId) && entry.effective === true);
+}
+
 const environmentForm: HandoverFormConfig = {
   id: 'environment-report',
   title: 'Environment report',
@@ -172,7 +179,8 @@ export const frontlineScenario4Data: FrontlineScenarioData = {
           id: 's4-observed-environment-evidence',
           type: 'custom',
           description: 'Environmental fault evidence observed',
-          params: { evaluator: () => PhysicalPlantService.plantOrNull()?.isFactRevealed('skylink-dish', 'net') === true },
+          // Recovery route: a net removed without looking leaves nothing to inspect, so the effective removal also satisfies this (the debrief charges the unsupported fix)
+          params: { evaluator: () => PhysicalPlantService.plantOrNull()?.isFactRevealed('skylink-dish', 'net') === true || netRemoved() },
           mustMaintain: false,
         },
       ],
@@ -188,14 +196,8 @@ export const frontlineScenario4Data: FrontlineScenarioData = {
         {
           id: 's4-evidence-before-correction',
           type: 'custom',
-          description: 'Correction followed the environmental observation',
-          params: {
-            evaluator: () => {
-              const log = PhysicalPlantService.plantOrNull()?.getLog() ?? [];
-              const observed = log.findIndex((entry) => entry.revealed.includes(faultId));
-              return observed >= 0 && log.some((entry, index) => index > observed && entry.cleared.includes(faultId) && entry.effective === true);
-            },
-          },
+          description: 'Correction made (after the environmental observation, or blind and charged in the debrief)',
+          params: { evaluator: netRemoved },
           mustMaintain: false,
         },
       ],

@@ -17,6 +17,11 @@ import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-
  */
 const settings = createFrontlineSettings(3);
 const faultId = 'c6-s3-terminal-moisture';
+/** An effective repair of the connector moisture is logged, whether or not it followed an observation */
+function moistureSealed(): boolean {
+  return (PhysicalPlantService.plantOrNull()?.getLog() ?? []).some((entry) => entry.cleared.includes(faultId) && entry.effective === true);
+}
+
 const connectorId = 'skylink-cable:dish';
 const CAUSE_OPTIONS = [
   { id: 'connector-moisture', label: 'Moisture at a connector' },
@@ -224,7 +229,8 @@ export const frontlineScenario3Data: FrontlineScenarioData = {
           id: 's3-observed-connector-evidence',
           type: 'custom',
           description: 'Physical fault evidence observed',
-          params: { evaluator: () => PhysicalPlantService.plantOrNull()?.isFactRevealed(connectorId, 'moisture') === true },
+          // Recovery route: a connector sealed blind leaves nothing to inspect, so the effective seal also satisfies this (the debrief charges the unsupported fix)
+          params: { evaluator: () => PhysicalPlantService.plantOrNull()?.isFactRevealed(connectorId, 'moisture') === true || moistureSealed() },
           mustMaintain: false,
         },
         negativeChecksKept(1, 'A check that found nothing wrong kept as evidence', { subjects: CHAIN }),
@@ -267,14 +273,8 @@ export const frontlineScenario3Data: FrontlineScenarioData = {
         {
           id: 's3-evidence-before-intervention',
           type: 'custom',
-          description: 'Effective intervention followed fault evidence',
-          params: {
-            evaluator: () => {
-              const log = PhysicalPlantService.plantOrNull()?.getLog() ?? [];
-              const observed = log.findIndex((entry) => entry.revealed.includes(faultId));
-              return observed >= 0 && log.some((entry, index) => index > observed && entry.cleared.includes(faultId) && entry.effective === true);
-            },
-          },
+          description: 'Effective intervention made (after fault evidence, or blind and charged in the debrief)',
+          params: { evaluator: moistureSealed },
           mustMaintain: false,
         },
       ],

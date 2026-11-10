@@ -265,4 +265,12 @@ describe('M21 S3 completion', () => {
     const bad = buildFieldDiagnosis(source(blind), 100);
     expect(bad?.summary.unsupportedFixes).toBe(1);
   });
+
+  it('keeps a recovery route: a blind seal still satisfies the observed-evidence condition', () => {
+    const svc = bootScenario(data);
+    svc.plant.goOutside();
+    svc.plant.seal(CONNECTOR);
+    svc.plant.returnInside();
+    expect(incomplete(svc, 's3-collect-local-evidence')).not.toContain('Physical fault evidence observed');
+  });
 });

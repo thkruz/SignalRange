@@ -160,8 +160,9 @@ export const frontlineScenario2Data: FrontlineScenarioData = {
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s2-trace-dependencies'],
       conditions: [
-        forecastMeetsReserve({}, 'Forecast keeps the 200 Wh reserve over the planning horizon'),
-        anyServiceSupports(OLA_VOICE_CARD.id, CAMP_SERVICES, 'A running terminal meets the low-delay requirement'),
+        // Both must hold at the same moment: latched separately, the starting state (both terminals on) satisfies the card and a later VSAT-only pick satisfies the reserve
+        { ...forecastMeetsReserve({}, 'Forecast keeps the 200 Wh reserve over the planning horizon'), mustMaintain: true },
+        { ...anyServiceSupports(OLA_VOICE_CARD.id, CAMP_SERVICES, 'A running terminal meets the low-delay requirement'), mustMaintain: true },
       ],
     },
     {

@@ -199,6 +199,20 @@ describe('M21 S4 completion', () => {
     expect(incomplete(again, 's4-correct-environment')).toEqual([]);
   });
 
+  it('keeps a recovery route: a net removed blind still lets inspection and correction complete (the debrief charges it)', () => {
+    const svc = bootScenario(data);
+    driveObjectives(data, svc, states, acts(svc), { stopAfter: 's4-recognize-persistence' });
+    svc.plant.goOutside();
+    svc.plant.removeNet('skylink-dish');
+    svc.plant.returnInside();
+    expect(svc.plant.getFaults().some((f) => f.id === FAULT)).toBe(false);
+    startObjective('s4-inspect-environment');
+    expect(incomplete(svc, 's4-inspect-environment')).toEqual([]);
+    states.set('s4-inspect-environment', { isActive: true, isCompleted: true });
+    startObjective('s4-correct-environment');
+    expect(incomplete(svc, 's4-correct-environment')).toEqual([]);
+  });
+
   it('grades the debrief: an inspected removal is a supported fix, a blind one is not', () => {
     const source = (svc: PhysicalPlantService) => ({ field: { evidence: svc.evidence, plant: svc.plant }, config: () => svc.plant.getConfig() });
     const supported = bootScenario(data);

@@ -181,6 +181,15 @@ describe('M20 S2 completion', () => {
     expect(incomplete(svc, 's2-respond-to-outage')).toEqual([]);
   });
 
+  it('keeps a recovery route: a blind reseat still completes the outage objective (the debrief charges it)', () => {
+    const svc = bootScenario(data);
+    driveObjectives(data, svc, states, acts(svc), { stopAfter: 's2-select-configuration' });
+    states.set('s2-respond-to-outage', { isActive: true, isCompleted: false });
+    tick();
+    reseat(svc);
+    expect(incomplete(svc, 's2-respond-to-outage')).toEqual([]);
+  });
+
   it('rejects a resource handover that claims the wrong mode or an old window, then accepts the right one', () => {
     const svc = bootScenario(data);
     driveObjectives(data, svc, states, acts(svc), { stopAfter: 's2-verify-service-reserve' });

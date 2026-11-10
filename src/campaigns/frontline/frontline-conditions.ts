@@ -403,7 +403,7 @@ export function siteChecked(targetIds: string[], description = 'Site checks reco
   );
 }
 
-/** A test showed the player the injected fault (it exists, and an observation revealed its target) */
+/** A test showed the player the injected fault (it exists, and an observation revealed its target); a blind repair that cleared it also counts, and is charged in the debrief */
 export function faultEvidenceRecorded(faultId: string, description = 'Fault evidence recorded'): Condition {
   return make(
     `faultEvidenceRecorded:${faultId}`,
@@ -415,7 +415,17 @@ export function faultEvidenceRecorded(faultId: string, description = 'Fault evid
         return false;
       }
 
-      return log.entries('observation').some((e) => e.positive === true && e.revealedTargets?.includes(target));
+      if (log.entries('observation').some((e) => e.positive === true && e.revealedTargets?.includes(target))) {
+        return true;
+      }
+      // Recovery route: a fault repaired blind leaves nothing to observe. Do not lock the scenario behind it; the unsupported fix costs points in the debrief.
+      const h = hooks();
+
+      return (
+        h !== null &&
+        !h.plant.getFaults().some((f) => f.id === faultId) &&
+        log.entries().some((e) => e.kind === 'action' && e.effective === true && e.clearedTargets?.includes(target))
+      );
     },
     true
   );

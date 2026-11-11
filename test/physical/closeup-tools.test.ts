@@ -152,7 +152,7 @@ describe('close-up selection and actions', () => {
     expect(firstDisruptive).toBeGreaterThan(0);
     expect(buttons.slice(firstDisruptive).every((b) => b.classList.contains('pp-act-disruptive'))).toBe(true);
     expect(buttons[0].dataset.verb).toBe('inspect');
-    expect(buttons[0].textContent).toContain('Inspect · 20 s');
+    expect(buttons[0].textContent).toMatch(/^Inspect\s*·?\s*20 s/u);
     expect(document.querySelector('[data-verb="swap"]')!.textContent).toMatch(/uses 1 of \d+ spares?/u);
   });
 

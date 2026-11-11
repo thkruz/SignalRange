@@ -1,3 +1,4 @@
+import { UNTESTED_APPLICATION_TEXT, untestedApplication } from '@app/pages/mission-control/tabs/field-service-panel';
 import { FORM_STEP_LATER_NOTE, type FormStepState } from '@app/pages/mission-control/tabs/form-step-state';
 import type { EvidenceEntry, EvidenceLog } from '@app/physical/evidence-log';
 import { type EvidenceGroup, entryMatches } from '@app/physical/evidence-predicates';
@@ -89,6 +90,9 @@ const METRIC_NAME: Record<string, string> = { jitterMs: 'jitter', rttMs: 'delay'
 export function describeReading(service: ServiceModel | null, serviceId: string, layer: Parameters<ServiceModel['latest']>[1]): { text: string; value?: string; current: boolean } {
   const sample = service?.latestAny(serviceId, layer) ?? null;
   if (!service || !sample) return { text: `No ${layer} reading taken yet.`, current: false };
+  // An endpoint report with no workload run behind it reads the same here as in the Service checks panel (c6-s11-F7)
+  if (untestedApplication(service, serviceId, sample))
+    return { text: `Your latest ${layer} reading, ${clock(sample.tS)}: ${UNTESTED_APPLICATION_TEXT}.`, value: String(sample.value), current: false };
   const fresh = service.freshness(sample);
   const value = String(sample.value);
   // The field takes the bare value; the hint names the metric and unit so "55" is never unlabelled (c6-s10-F4)

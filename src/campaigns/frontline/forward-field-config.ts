@@ -43,7 +43,7 @@ export function forwardServiceConfig(): ServiceModelConfig {
     providers: [{ id: FORWARD_PROVIDER, status: 'normal', capacityFactor: 1, noticeIds: [] }],
     endpoints: [{ id: FORWARD_ENDPOINT, reachable: true }],
     // Readings stay readable long enough to fill a form after taking them
-    maxAgeS: { 'device-indicator': 120, 'endpoint-report': 180 },
+    maxAgeS: { 'device-indicator': 120, 'endpoint-report': 180, 'terminal-app': 180 },
   };
 }
 

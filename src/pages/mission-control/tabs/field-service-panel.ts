@@ -152,7 +152,9 @@ function rowSpecs(model: ServiceModel, serviceId: string): Array<{ layer: Servic
 }
 
 /** An endpoint report of the application layer, with no workload run yet to back it */
-function untestedApplication(model: ServiceModel, serviceId: string, sample: ServiceSample): boolean {
+export const UNTESTED_APPLICATION_TEXT = 'Not yet tested (the endpoint only reports for itself; run a workload)';
+
+export function untestedApplication(model: ServiceModel, serviceId: string, sample: ServiceSample): boolean {
   return (
     sample.layer === 'application' &&
     sample.metric === 'status' &&
@@ -174,11 +176,7 @@ export function buildServicePanelModel(model: ServiceModel, nowS: number): Servi
         key: `${id}|${layer}|${endpointId ?? ''}`,
         sample,
         freshness: sample ? model.freshness(sample) : null,
-        value: sample
-          ? untestedApplication(model, id, sample)
-            ? 'Not yet tested (the endpoint only reports for itself; run a workload)'
-            : formatSampleValue(sample)
-          : 'Not checked',
+        value: sample ? (untestedApplication(model, id, sample) ? UNTESTED_APPLICATION_TEXT : formatSampleValue(sample)) : 'Not checked',
         provenance: sample ? PROVENANCE_LABEL[sample.provenance] : '',
         age: sample ? formatAge(nowS - sample.tS) : '',
       };

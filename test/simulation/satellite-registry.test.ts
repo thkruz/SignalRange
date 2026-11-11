@@ -155,5 +155,5 @@ describe('perf-constellation registry mode', () => {
     const reg = new SatelliteRegistry([], { observer });
     expect(reg.addConstellation(set, { tleSet: set.id })).toBe(40);
     expect(reg.hydratedMemberCount).toBe(0);
-  });
+  }, 30_000); // the dynamic import pulls in the whole campaign graph, which alone takes about 5 s cold
 });

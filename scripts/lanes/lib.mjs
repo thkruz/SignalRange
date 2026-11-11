@@ -1,0 +1,105 @@
+/** Shared helpers for the lane scripts. Node built-ins only. */
+import { execFileSync, spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import net from 'node:net';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+export const lanesDir = path.resolve(repoRoot, '..', 'sr-lanes');
+export const laneDir = (name) => path.join(lanesDir, name);
+
+export function validName(name) {
+  return typeof name === 'string' && /^[a-z0-9][a-z0-9-]{0,40}$/u.test(name);
+}
+
+export function git(cwd, ...args) {
+  return execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+}
+
+export function gitTry(cwd, ...args) {
+  try {
+    return git(cwd, ...args);
+  } catch {
+    return null;
+  }
+}
+
+/** Run a command inheriting stdio; returns the exit status. */
+export function run(cmd, args, cwd) {
+  const r = spawnSync(cmd, args, { cwd, stdio: 'inherit', shell: process.platform === 'win32' });
+  return r.status ?? 1;
+}
+
+export function readLanes() {
+  if (!fs.existsSync(lanesDir)) return [];
+  const out = [];
+  for (const name of fs.readdirSync(lanesDir)) {
+    const f = path.join(laneDir(name), '.lane.json');
+    if (!fs.existsSync(f)) continue;
+    try {
+      out.push({ ...JSON.parse(fs.readFileSync(f, 'utf8')), dir: laneDir(name) });
+    } catch {
+      /* ignore unreadable lane file */
+    }
+  }
+  return out;
+}
+
+function probe(host, port) {
+  return new Promise((resolve) => {
+    const s = net.connect({ host, port });
+    s.setTimeout(500);
+    s.once('connect', () => {
+      s.destroy();
+      resolve(true);
+    });
+    s.once('timeout', () => {
+      s.destroy();
+      resolve(false);
+    });
+    s.once('error', () => resolve(false));
+  });
+}
+
+export async function portListening(port) {
+  return (await probe('127.0.0.1', port)) || (await probe('::1', port));
+}
+
+/** PIDs listening on a TCP port. */
+export function listeningPids(port) {
+  const pids = new Set();
+  try {
+    if (process.platform === 'win32') {
+      const txt = execFileSync('netstat', ['-ano', '-p', 'tcp'], { encoding: 'utf8' });
+      const re = new RegExp(`:${port}\\s+\\S+\\s+LISTENING\\s+(\\d+)`, 'u');
+      for (const line of txt.split(/\r?\n/u)) {
+        const m = re.exec(line);
+        if (m && Number(m[1]) > 0) pids.add(Number(m[1]));
+      }
+    } else {
+      const txt = execFileSync('lsof', ['-t', `-iTCP:${port}`, '-sTCP:LISTEN'], { encoding: 'utf8' });
+      for (const p of txt.split(/\s+/u)) if (p) pids.add(Number(p));
+    }
+  } catch {
+    /* none listening or tool missing */
+  }
+  return [...pids];
+}
+
+export function killTree(pid) {
+  try {
+    if (process.platform === 'win32') execFileSync('taskkill', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore' });
+    else process.kill(pid, 'SIGKILL');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function laneState(lane) {
+  const dirty = gitTry(lane.dir, 'status', '--porcelain', '--ignore-submodules=dirty');
+  const counts = gitTry(lane.dir, 'rev-list', '--left-right', '--count', `dev...${lane.branch}`);
+  const [behind, ahead] = counts ? counts.split(/\s+/u).map(Number) : [Number.NaN, Number.NaN];
+  return { dirty: dirty === null ? null : dirty.length > 0, ahead, behind };
+}

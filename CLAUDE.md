@@ -256,3 +256,14 @@ contributors without access build and test without it.
   bundle from `dist-e2e/` (gitignored) via `scripts/e2e/serve-dist.mjs` (SPA fallback like the dev server, private
   `/__author` and `/__replay` mounted when `src/private` exists). It builds with `pnpm run build:e2e` only when
   `dist-e2e/index.html` is missing or `E2E_REBUILD=1`; rebuild after source edits. Lanes can each use their own port.
+
+### Lanes
+
+- One lane per campaign: `pnpm run lane:new <name> <port>` (worktree `../sr-lanes/<name>`, branch `lane/<name>`, install,
+  `build:e2e`), `pnpm run lane:ls`, `pnpm run lane:rm <name> [--force]`. Ports 3101+ (never 3000), one per lane. A lane
+  starts from committed HEAD only; rebuild (`E2E_REBUILD=1`) after source edits.
+- Run specs in the lane dir. The Playwright lock is machine-wide, so take it: `node D:/code/kruczek-labs/hq/tooling/run-bounded.mjs
+  --lock "$TEMP/sr-playwright.lock" --timeout 20 --idle 10 --done '\d+ passed' --log <file> -- npx playwright test <specs> --reporter=line`
+  with `E2E_STATIC=1 SR_DEV_PORT=<port>` set.
+- The test clock is proven only for ham-tech and scenario3 (workers=4 there); everything else stays at workers=1.
+- Merge order: rebase the lane on dev, run the gates, fast-forward dev, `lane:rm`.

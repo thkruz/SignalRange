@@ -55,7 +55,8 @@ export class MissionControlPage extends BasePage {
 
   protected async waitForPageLoad(): Promise<void> {
     await expect(this.pageContainer).toBeVisible();
-    await expect(this.assetTreeSidebar).toBeVisible();
+    // A backyard or field bench replaces the sidebar with the minimal HUD, so either one means the page is up
+    await expect(this.page.locator('html.mc-minimal-hud, #asset-tree-sidebar-container:visible').first()).toBeAttached();
     await expect(this.tabbedCanvas).toBeVisible();
     // Wait for simulation to initialize (ground stations to load)
     await this.page.waitForTimeout(2000);

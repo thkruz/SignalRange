@@ -178,7 +178,7 @@ export const s03Station: HamStationConfig = {
     ],
     'check-power-connection': [
       'Click the handheld and use Look closely. Then do the same for the antenna.',
-      'The clue says the battery pack is not seated. Open Connections & repairs on the handheld and reseat it, then check the antenna is on.',
+      'The clue says the battery pack is not seated. Click the battery pack connection on the handheld and press Tighten, then check the antenna is on.',
     ],
     'review-antenna-clearance': [
       'Open the exposure worksheet in Notebook. The questions are about how you hold the radio and where its antenna sits.',

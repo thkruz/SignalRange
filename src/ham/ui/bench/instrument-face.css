@@ -1,0 +1,188 @@
+/* C3 held instruments (Phase 44 slice 9): the chassis around a bench instrument panel */
+
+.immersive-instrument { background: #17120d; padding: 0; }
+
+/* Operate key in the close-up; the panel waits parked until the instrument is picked up */
+.inst-parked { display: none; }
+.inst-operate {
+  display: block;
+  width: 100%;
+  margin: 0.4rem 0;
+  padding: 0.7rem 1rem;
+  border: 1px solid #8a7a5c;
+  border-radius: 10px;
+  background: linear-gradient(#4a4236, #2f2a22);
+  color: #f1e6cc;
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  text-align: left;
+  box-shadow: 0 2px 0 #0008, inset 0 1px 0 #fff2;
+}
+.inst-operate:hover { background: linear-gradient(#5a5040, #39322a); }
+.inst-operate:focus-visible { outline: 3px solid #ffd27a; outline-offset: 2px; }
+.inst-operate small { display: block; font-weight: 400; font-size: 0.8125rem; color: #d9cfb6; }
+
+/* ---- the room ---- */
+.inst-room {
+  --inst-ink: #ece3cf;
+  --inst-dim: #cfc5ad;
+  --inst-field: #0f0d0a;
+  --inst-line: #5b5444;
+  box-sizing: border-box;
+  height: 100%;
+  overflow: auto;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: clamp(16px, 4vh, 56px) 16px 64px;
+  background:
+    radial-gradient(ellipse at 50% 12%, #6b5235aa 0%, #0000 62%),
+    repeating-linear-gradient(92deg, #3a2a1b 0 14px, #34261a 14px 31px, #3d2d1e 31px 44px),
+    #2c2016;
+  color: var(--inst-ink);
+}
+
+/* Packet and satellite run as programs inside the laptop window: same dark skin, no chassis */
+.inst-program {
+  --inst-ink: #ece3cf;
+  --inst-dim: #cfc5ad;
+  --inst-field: #0f0d0a;
+  --inst-line: #5b5444;
+  --inst-accent: #b6e07a;
+  box-sizing: border-box;
+  min-height: 100%;
+  border-radius: 0;
+  border: 0;
+  box-shadow: none;
+  background: linear-gradient(#1b1812, var(--inst-field));
+}
+.inst-program[data-panel='satellite'] { --inst-accent: #a99bff; }
+
+/* ---- the chassis ---- */
+.inst-chassis {
+  position: relative;
+  box-sizing: border-box;
+  width: min(880px, 100%);
+  padding: 22px 26px 26px;
+  border-radius: 16px;
+  border: 1px solid #0009;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--inst-body) 88%, #fff) 0%, var(--inst-body) 40%, color-mix(in srgb, var(--inst-body) 78%, #000) 100%);
+  box-shadow: 0 24px 40px #000a, 0 3px 0 #fff3 inset, 0 -4px 0 #0005 inset;
+}
+.inst-screw {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #d8d8d8, #6d6d6d 60%, #3a3a3a);
+  box-shadow: 0 1px 2px #000a;
+}
+.inst-screw::after { content: ''; position: absolute; left: 2px; right: 2px; top: 6px; height: 2px; background: #2229; transform: rotate(32deg); }
+.inst-screw.tl { top: 10px; left: 10px; }
+.inst-screw.tr { top: 10px; right: 10px; }
+.inst-screw.bl { bottom: 10px; left: 10px; }
+.inst-screw.br { bottom: 10px; right: 10px; }
+
+.inst-plate {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 14px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: linear-gradient(#17140f, #0d0b08);
+  border: 1px solid #000;
+  box-shadow: inset 0 1px 0 #fff2;
+}
+.inst-name { display: flex; flex-direction: column; line-height: 1.2; }
+.inst-name strong { font-size: 1.1rem; color: var(--inst-accent); letter-spacing: 0.04em; text-transform: uppercase; }
+.inst-name span { font-size: 0.8125rem; color: var(--inst-dim); }
+.inst-lamp { width: 16px; height: 16px; border-radius: 50%; background: #3a1d1a; border: 1px solid #000; box-shadow: inset 0 1px 2px #000a; flex: none; }
+.inst-lamp[data-on='true'] { background: #62e38a; box-shadow: 0 0 10px #62e38a, inset 0 1px 2px #fff6; }
+.inst-lamp[data-on='na'] { display: none; }
+
+/* ---- the faceplate: everything the panel draws sits in a dark recess ---- */
+.inst-face {
+  padding: 18px 20px 20px;
+  border-radius: 10px;
+  background: linear-gradient(#1b1812, var(--inst-field));
+  border: 1px solid #000;
+  box-shadow: inset 0 2px 8px #000c, 0 1px 0 #fff3;
+  font-size: 0.9375rem;
+  color: var(--inst-ink);
+}
+.inst-face .ham-closeup-panel { margin: 0; }
+.inst-face :is(.text-muted, .text-secondary, .form-text) { color: var(--inst-dim) !important; }
+.inst-face .small, .inst-face small { font-size: 0.875rem; }
+.inst-face .text-warning { color: #ffc861 !important; }
+.inst-face .text-danger { color: #ff8e82 !important; }
+.inst-face .fw-bold { color: var(--inst-accent); }
+.inst-face .form-label { color: var(--inst-dim); font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.inst-face .ham-instr { margin: 0 0 18px !important; }
+.inst-face .ham-instr + .ham-instr { padding-top: 16px; border-top: 1px solid var(--inst-line); }
+
+/* keys, fields, switches */
+.inst-face .btn {
+  min-height: 38px;
+  padding: 6px 14px;
+  border: 1px solid #000;
+  border-radius: 8px;
+  background: linear-gradient(#4d463a, #2c2820);
+  color: #f3ead2;
+  font-weight: 600;
+  box-shadow: 0 2px 0 #000a, inset 0 1px 0 #fff2;
+}
+.inst-face .btn:hover { background: linear-gradient(#5d5546, #373228); color: #fff; }
+.inst-face .btn:active { transform: translateY(2px); box-shadow: inset 0 2px 4px #000a; }
+.inst-face .btn:focus-visible, .inst-face :is(.form-control, .form-select, .form-check-input):focus-visible { outline: 3px solid #ffd27a; outline-offset: 2px; }
+.inst-face .btn-primary, .inst-face .btn.active { background: linear-gradient(color-mix(in srgb, var(--inst-accent) 78%, #fff), color-mix(in srgb, var(--inst-accent) 75%, #000)); color: #14110d; }
+.inst-face .btn-primary:hover, .inst-face .btn.active:hover { background: var(--inst-accent); color: #14110d; }
+.inst-face .btn:disabled { opacity: 0.55; }
+.inst-face :is(.form-control, .form-select) {
+  min-height: 36px;
+  border: 1px solid var(--inst-line);
+  border-radius: 6px;
+  background-color: #0a0907;
+  color: #f3ead2;
+  font-family: var(--bs-font-monospace, monospace);
+  font-size: 0.9375rem;
+}
+.inst-face .form-select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23ece3cf' stroke-width='2' d='m2 5 6 6 6-6'/%3E%3C/svg%3E"); }
+.inst-face .form-check-input { width: 2.4rem; height: 1.3rem; background-color: #3a352b; border-color: #000; }
+.inst-face .form-check-input:checked { background-color: var(--inst-accent); border-color: var(--inst-accent); }
+.inst-face .form-check-label { color: var(--inst-ink); }
+.inst-face .badge { background: #2b271f !important; color: var(--inst-ink) !important; border: 1px solid var(--inst-line); font-size: 0.8125rem; }
+.inst-face .alert { background: #2a1d10; color: #ffd9a0; border: 1px solid #7a5420; border-radius: 8px; }
+.inst-face .alert-danger { background: #2e1512; color: #ffb4a8; border-color: #8a2e22; }
+.inst-face .ham-kv { font-size: 0.9375rem; }
+.inst-face .ham-framelog { background: #0a0907; border: 1px solid var(--inst-line) !important; color: #e6ddc6; font-size: 0.8125rem; max-height: 14rem; }
+.inst-face .ham-plot { height: 300px; background: #0a1520; border: 1px solid #000; }
+.inst-face .ham-plot text { fill: #c7d4e0; font-size: 12px; }
+.inst-face .ham-display { font-size: 2.6rem; min-height: 3.6rem; border: 2px solid #000; box-shadow: inset 0 2px 6px #000b; }
+.inst-face .ham-led { width: 1.2rem; height: 1.2rem; }
+.inst-face .ham-modes { gap: 0.4rem; }
+.inst-face .list-unstyled li { padding: 2px 0; }
+
+/* per-instrument stance */
+.inst-chassis[data-panel='meter'] .inst-face .ham-display { background: #b9c9a0; color: #1a2410; text-shadow: none; }
+.inst-chassis[data-panel='swr'] .inst-face .ham-display { background: #1d2b1d; }
+.inst-chassis[data-panel='analyzer'] .inst-face .ham-plot { height: 340px; }
+.inst-chassis[data-panel='board'] .inst-face { background: linear-gradient(#10261a, #0a1810); }
+.inst-program { font-family: var(--bs-font-monospace, monospace); }
+
+@media (max-width: 700px) {
+  .inst-chassis { padding: 18px 12px 20px; }
+  .inst-face { padding: 12px; }
+}
+
+/* Multimeter: function dial and probe rotary switches (TrxKnob) */
+.inst-face .meter-dial { display: flex; align-items: center; gap: 18px; margin: 0 0 12px; }
+.inst-face .meter-dial .ham-modes { flex: 1; }
+.inst-face .meter-rotary { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.inst-face .meter-knob-slot { display: flex; }
+.inst-face .meter-rotary .form-select { width: 100%; }
+.inst-face .trx-knob-legend, .inst-face .trx-knob-wrap > span { color: var(--inst-dim); font-size: 12px; }
+.inst-face :is(.form-control, .form-select):disabled { background-color: #17150f; color: #b9b09a; opacity: 1; }
+.inst-face ::placeholder { color: #a79e88; opacity: 1; }

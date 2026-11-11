@@ -1,6 +1,6 @@
 import { ImmersiveView } from '@app/presentation/immersive-view';
 
-export type ImmersiveKind = 'equipment' | 'computer' | 'paper' | 'laptop' | 'transceiver';
+export type ImmersiveKind = 'equipment' | 'computer' | 'paper' | 'laptop' | 'transceiver' | 'instrument';
 export type ImmersiveFrame = (content: HTMLElement, leave: HTMLButtonElement) => { element: HTMLElement; dispose: () => void };
 
 /**

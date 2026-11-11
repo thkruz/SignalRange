@@ -56,6 +56,7 @@ test('ham-tech-s11 missed first pass is recoverable with the time skip', async (
   await simAdvance(page, 3000);
 
   // Before the first pass has gone there is nothing worth skipping
+  await putDownHeld(page);
   await page.locator(WATCH).click();
   await expect(page.locator(`${WATCH_WAIT}:not([disabled])`)).toHaveCount(0);
   await putDownHeld(page);
@@ -81,6 +82,7 @@ test('ham-tech-s11 missed first pass is recoverable with the time skip', async (
   expect((await readPass(page)).above).toBe(false);
 
   // The offer appears in the header and names the next pass
+  await putDownHeld(page);
   await page.locator(WATCH).click();
   const wait = page.locator(`${WATCH_WAIT}:not([disabled])`).first();
   await expect(wait).toBeVisible({ timeout: 20000 });

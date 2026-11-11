@@ -1,8 +1,10 @@
 /**
  * @file meter-panel - Digital multimeter face for the Station tab
- * @description Mode buttons, red-lead socket, probe selectors for the target circuit's test points
- * (practice board or DC system), a series break-point selector for current readings and a Read button.
- * Probes are placed and read in one step on Read (meter.place then meter.read).
+ * @description A function dial (OFF, DCV, DCA, OHM, CONT; turn it, or press a printed position), red-lead
+ * socket, a rotary switch for each probe (the target circuit's test points on the practice board or DC
+ * system), a rotary switch for the series break-point for current readings and a Read button. Each
+ * rotary switch drives a real select that reads out the position (and keeps the keyboard and test ids
+ * working). Probes are placed and read in one step on Read (meter.place then meter.read).
  *
  * Test ids (<dmm> = multimeter device id):
  *   ham-meter-<dmm>-mode-{OFF|DCV|DCA|OHM|CONT}, -socket, -target, -red, -black, -series, -read,
@@ -14,7 +16,9 @@ import type { HamMeasurement } from '../../ham-types';
 import type { PanelContext, StationPanel } from '../station-panel';
 import { button, h, select } from '../ui-kit';
 import './instruments.css';
+import './radio-front-panel.css';
 import { inService, setText, T } from './panel-util';
+import { TrxKnob } from './trx-knob';
 
 const BOARD_POINTS: [string, string][] = [
   ['tp-supply+', 'SUP+'],
@@ -64,6 +68,10 @@ export class MeterPanel implements StationPanel {
   private dmm_ = 'dmm1';
   private targets_: Target[] = [];
   private readonly modeBtns_ = new Map<MeterMode, HTMLButtonElement>();
+  private modeKnob_: TrxKnob | null = null;
+  /** Rotary switches over the probe selects; rebuilt when the circuit under test changes */
+  private probeKnobs_: { sel: HTMLSelectElement; knob: TrxKnob }[] = [];
+  private readonly probeSlots_: { sel: HTMLSelectElement; slot: HTMLElement; legend: string }[] = [];
   private socketEl_!: HTMLSelectElement;
   private targetEl_!: HTMLSelectElement;
   private redEl_!: HTMLSelectElement;
@@ -96,7 +104,20 @@ export class MeterPanel implements StationPanel {
     this.warnEl_ = h('div', { class: 'small text-warning', 'data-testid': T('ham-meter', d, 'warning') });
     this.socketHint_ = h('div', { class: 'small text-muted' });
 
-    const modes = h('div', { class: 'ham-modes mb-2' });
+    const modes = h('div', { class: 'ham-modes mb-2', role: 'group', 'aria-label': 'Function positions' });
+    this.modeKnob_ = new TrxKnob({
+      testId: T('ham-meter', d, 'dial'),
+      label: 'Function dial',
+      legend: 'FUNCTION',
+      min: 0,
+      max: MODES.length - 1,
+      step: 1,
+      detents: MODES.map((_, i) => i),
+      size: 'mid',
+      format: (v) => `Function ${MODES[v]}`,
+      onTurn: (v) => this.setMode_(MODES[v]),
+    });
+    this.modeKnob_.show(0);
     for (const mode of MODES) {
       const b = button(T('ham-meter', d, `mode-${mode}`), mode, () => this.setMode_(mode), 'btn btn-sm btn-outline-secondary');
       this.modeBtns_.set(mode, b);
@@ -126,6 +147,13 @@ export class MeterPanel implements StationPanel {
     this.redEl_ = select(T('ham-meter', d, 'red'), 'Red probe', [], '');
     this.blackEl_ = select(T('ham-meter', d, 'black'), 'Black probe', [], '');
     this.seriesEl_ = select(T('ham-meter', d, 'series'), 'Insert in series at', [], '');
+    const rotary = (label: string, sel: HTMLSelectElement, legend: string): HTMLElement => {
+      const slot = h('div', { class: 'meter-knob-slot' });
+      this.probeSlots_.push({ sel, slot, legend });
+      sel.addEventListener('change', () => this.probeKnobs_.find((k) => k.sel === sel)?.knob.show(sel.selectedIndex));
+
+      return h('div', { class: 'col-6 mb-2 meter-rotary' }, h('label', { class: 'form-label small mb-1', text: label }), slot, sel);
+    };
     this.fillPoints_();
 
     const field = (label: string, el: HTMLElement, cls = 'col-6 mb-2'): HTMLElement => h('div', { class: cls }, h('label', { class: 'form-label small mb-1', text: label }), el);
@@ -133,16 +161,16 @@ export class MeterPanel implements StationPanel {
     const row = h(
       'div',
       { class: 'row g-1' },
-      field('Red probe', this.redEl_),
-      field('Black probe', this.blackEl_),
-      field('Insert in series at (current)', this.seriesEl_),
+      rotary('Red probe', this.redEl_, 'RED'),
+      rotary('Black probe', this.blackEl_, 'BLACK'),
+      rotary('Insert in series at (current)', this.seriesEl_, 'SERIES'),
       field('Red lead socket', this.socketEl_)
     );
     this.root_ = h(
       'div',
       { class: 'ham-instr', 'data-testid': T('ham-meter', d, 'panel') },
       this.targets_.length > 1 ? field('Circuit', this.targetEl_, 'mb-2') : null,
-      modes,
+      h('div', { class: 'meter-dial' }, this.modeKnob_.el, modes),
       this.displayEl_,
       h('div', { class: 'my-1' }, this.beepEl_, this.warnEl_),
       row,
@@ -150,6 +178,7 @@ export class MeterPanel implements StationPanel {
       read
     );
     host.append(this.root_);
+    this.buildProbeKnobs_();
   }
 
   private setMode_(mode: MeterMode): void {
@@ -183,6 +212,34 @@ export class MeterPanel implements StationPanel {
     this.fill_(this.blackEl_, opts(t.points));
     this.fill_(this.seriesEl_, opts(t.breaks, 'None (across two points)'));
     this.blackEl_.selectedIndex = Math.min(1, t.points.length - 1);
+    this.buildProbeKnobs_();
+  }
+
+  /** One rotary switch per probe select, sized to the circuit's list of points */
+  private buildProbeKnobs_(): void {
+    for (const k of this.probeKnobs_) k.knob.dispose();
+    this.probeKnobs_ = [];
+    for (const { sel, slot, legend } of this.probeSlots_) {
+      const last = Math.max(0, sel.options.length - 1);
+      const knob = new TrxKnob({
+        testId: `${sel.id}-knob`,
+        label: `${legend.toLowerCase()} probe position`,
+        legend,
+        min: 0,
+        max: last,
+        step: 1,
+        detents: Array.from({ length: last + 1 }, (_, i) => i),
+        size: 'small',
+        format: (v) => sel.options[v]?.textContent ?? '',
+        onTurn: (v) => {
+          sel.selectedIndex = v;
+        },
+      });
+      knob.show(sel.selectedIndex);
+      knob.setDisabled(sel.disabled);
+      slot.replaceChildren(knob.el);
+      this.probeKnobs_.push({ sel, knob });
+    }
   }
 
   private read_(): void {
@@ -236,6 +293,11 @@ export class MeterPanel implements StationPanel {
     else if (s.mode !== 'DCA' && s.mode !== 'OFF' && s.redSocket === 'A') hint = 'Red lead is in the A socket: voltage and resistance need the VΩ socket.';
     setText(this.socketHint_, hint);
     this.seriesEl_.disabled = s.mode !== 'DCA';
+    this.modeKnob_?.show(Math.max(0, MODES.indexOf(s.mode)));
+    for (const k of this.probeKnobs_) {
+      k.knob.show(k.sel.selectedIndex);
+      k.knob.setDisabled(k.sel.disabled);
+    }
     this.render_();
   }
 
@@ -243,5 +305,8 @@ export class MeterPanel implements StationPanel {
     this.root_?.remove();
     this.root_ = null;
     this.modeBtns_.clear();
+    this.modeKnob_?.dispose();
+    for (const k of this.probeKnobs_) k.knob.dispose();
+    this.probeKnobs_ = [];
   }
 }

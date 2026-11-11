@@ -123,8 +123,13 @@ describe('AnalyzerPanel and AntennaPanel', () => {
     a.q('ham-antenna-dp1-shorten-1').click();
     expect((a.q('ham-antenna-dp1-len-a') as HTMLInputElement).value).toBe('54');
     expect((a.q('ham-antenna-dp1-len-b') as HTMLInputElement).value).toBe('54');
-    a.q('ham-antenna-dp1-apply').click();
+    // The shorten key acts at once, no separate apply
     expect(h.m.device('dp1')?.antenna?.elementLengthsM[0]).toBeCloseTo(0.54, 3);
+    // Typing a length takes effect when the field is committed
+    const lenB = a.q('ham-antenna-dp1-len-b') as HTMLInputElement;
+    lenB.value = '50';
+    lenB.dispatchEvent(new Event('change'));
+    expect(h.m.device('dp1')?.antenna?.elementLengthsM[1]).toBeCloseTo(0.5, 3);
   });
 });
 

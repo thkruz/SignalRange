@@ -26,7 +26,7 @@ test.use({ testClock: true });
 /**
  * Campaign 3 Technician S8 "Noise in the Shack" - full completion through the Station tab.
  * Mirrors test/campaigns/ham-tech/s08.solve.test.ts. Receiver readings use the SDR's
- * "Record reading" button (noise only); supplies are powered from the connections panel.
+ * "Record reading" button (noise only); supplies are powered from the bench close-up.
  */
 test('ham-tech-s08 completes all objectives', async ({ page, missionControlPage: mc }) => {
   test.setTimeout(300000);

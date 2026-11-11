@@ -6,7 +6,6 @@ import { afterEach, describe, expect, it } from 'vitest';
 import type { HamAction, HamStationManager } from '../../../src/ham/ham-station-manager';
 import type { HamDeviceKind } from '../../../src/ham/ham-types';
 import { AnalyzerPanel } from '../../../src/ham/ui/panels/analyzer-panel';
-import { ConnectionsPanel } from '../../../src/ham/ui/panels/connections-panel';
 import { DcPanel } from '../../../src/ham/ui/panels/dc-panel';
 import { MeterPanel } from '../../../src/ham/ui/panels/meter-panel';
 import type { PanelContext, StationPanel } from '../../../src/ham/ui/station-panel';
@@ -122,9 +121,6 @@ describe('Not inspected yet rows', () => {
     const dc = mount(new DcPanel(), h.m);
     expect(dc.q('ham-dc-psu-not-inspected').textContent).toBe('Not inspected yet');
     expect(dc.host.textContent).not.toContain('hot and thin');
-    const cp = mount(new ConnectionsPanel(), h.m);
-    expect(cp.q('ham-conn-psu-not-inspected')).not.toBeNull();
-    expect(cp.host.textContent).not.toContain('hot and thin');
     dc.q('ham-dc-psu-inspect').click();
     expect(dc.host.querySelector('[data-testid="ham-dc-psu-not-inspected"]')).toBeNull();
     expect(dc.host.textContent).toContain('hot and thin');

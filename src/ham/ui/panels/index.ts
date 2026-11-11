@@ -8,7 +8,6 @@ import { AnalyzerPanel } from './analyzer-panel';
 import { AntennaPanel } from './antenna-panel';
 import { BoardPanel } from './board-panel';
 import { CardsPanel } from './cards-panel';
-import { ConnectionsPanel } from './connections-panel';
 import { DcPanel } from './dc-panel';
 import { HintPanel } from './hint-panel';
 import { LogPanel } from './log-panel';
@@ -16,7 +15,6 @@ import { MeterPanel } from './meter-panel';
 import { PacketPanel } from './packet-panel';
 import { RadioPanel } from './radio-panel';
 import { SatellitePanel } from './satellite-panel';
-import { SpectrumPanel } from './spectrum-panel';
 import { SwrPanel } from './swr-panel';
 import { WorksheetPanel } from './worksheet-panel';
 
@@ -24,8 +22,6 @@ export function createStationPanels(): StationPanel[] {
   return [
     new HintPanel(),
     new RadioPanel(),
-    new SpectrumPanel(),
-    new ConnectionsPanel(),
     new MeterPanel(),
     new SwrPanel(),
     new AnalyzerPanel(),

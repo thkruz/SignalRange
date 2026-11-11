@@ -3,6 +3,7 @@
  * @description Draws `manager.spectrum(deviceId)` rows (dBm bins across the SDR span) as a trace
  * plus a scrolling waterfall. Clicking the canvas retunes the SDR to that frequency.
  * Test ids: ham-spectrum-<dev>-canvas, ham-spectrum-<dev>-readout, ham-spectrum-select.
+ * Mounted only by the SDR app (bench/sdr-app.ts); it is no longer a Station tab panel.
  */
 
 import type { HamStationManager } from '../../ham-station-manager';

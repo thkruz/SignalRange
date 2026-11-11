@@ -96,6 +96,35 @@ describe('HamStationTab', () => {
     tab.dispose();
   });
 
+  it('hides the fault clue until inspected', () => {
+    const { tab } = setup();
+    pickOnBench('conn', 'sdr-feed');
+    const closeup = q('ham-closeup');
+    expect(closeup.textContent).not.toContain('Thread is showing');
+    q('ham-conn-sdr-feed-inspect').click();
+    expect(q('ham-closeup').textContent).toContain('Thread is showing');
+    tab.dispose();
+  });
+
+  it('lifts an instrument panel on Operate, puts it down on Step back, and closes it when the selection changes', () => {
+    const { tab } = setup();
+    pickOnBench('dev', 'psu');
+    const host = (): HTMLElement => document.querySelector<HTMLElement>('.ham-closeup-panel[data-panel="dc"]')!;
+    expect(host().classList.contains('inst-parked')).toBe(true);
+    q('ham-inst-dc-operate').click();
+    expect(host().classList.contains('inst-parked')).toBe(false);
+    expect(document.querySelector('dialog.immersive-instrument')?.contains(host())).toBe(true);
+    document.querySelector<HTMLElement>('dialog.immersive-instrument .immersive-leave')!.click();
+    expect(document.querySelector('dialog.immersive-instrument')).toBeNull();
+    expect(host().classList.contains('inst-parked')).toBe(true);
+    expect(q('ham-closeup').contains(host())).toBe(true);
+    q('ham-inst-dc-operate').click();
+    expect(document.querySelector('dialog.immersive-instrument')).not.toBeNull();
+    pickOnBench('dev', 'mobile');
+    expect(document.querySelector('dialog.immersive-instrument')).toBeNull();
+    tab.dispose();
+  });
+
   it('shows the inspect clue and submits a worksheet', () => {
     const { h, tab } = setup();
     pickOnBench('conn', 'sdr-feed');

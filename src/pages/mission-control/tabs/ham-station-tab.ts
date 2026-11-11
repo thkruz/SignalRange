@@ -21,10 +21,12 @@
  *              offset-khz|txtone|rxtone|mem-slot|mem-name|mem-store|mem-recall|vfo|monitor|
  *              keylock|rit-on|rit-hz|micgain|dmr-channel|smeter|snr|sql|status|rxlog|tab>
  *   ptt        ham-ptt-<dev>-<intent|target|item|message|hold|transmit|release|refusal>
- *   spectrum   ham-spectrum-<dev>-canvas, ham-spectrum-<dev>-readout, ham-spectrum-select
+ *   spectrum   ham-spectrum-<dev>-canvas, ham-spectrum-<dev>-readout (inside the SDR app, sdr-app.ts)
  *   connect    ham-conn-<deviceId|connectionId|faultId|spareId>-<inspect|seat|disconnect|power|
- *              move|move-to|repair|install|replaces|clue>, ham-conn-new-<a|b>-<device|port>,
- *              ham-conn-new-connect, ham-conn-path-radio, ham-conn-path-text
+ *              dctest|move|repair|install|clue|signal-path> (bench close-up, closeup.ts); cabling is
+ *              done on the bench itself with ham-port-<dev>-<port>
+ *   instrument ham-inst-<meter|swr|analyzer|antenna|board|dc|packet|satellite>-operate lifts the
+ *              instrument's panel up fullscreen (bench/instrument-face.ts)
  *   worksheet  ham-ws-<id>-<fieldId>, ham-ws-<id>-<fieldId>-<matchKey>, ham-ws-<id>-submit,
  *              ham-ws-<id>-feedback, ham-ws-<id>-status
  *   cards      ham-card-<id>, ham-card-<id>-toggle
@@ -54,8 +56,6 @@ import './ham-station-tab.css';
 
 /** Panels that live in the logbook and the reference cards rather than on a device */
 const NOTEBOOK_PANELS = ['worksheets', 'cards', 'log'];
-/** Panels the bench drawing replaces or the SDR app already contains */
-const REPLACED_PANELS = ['connections', 'spectrum'];
 /** Kit page id (field-kit.ts BENCH_KIT) to the panel it shows */
 const PAGE_PANELS: Record<string, string> = { 'ham-worksheets': 'worksheets', 'ham-log': 'log', 'ham-cards': 'cards' };
 
@@ -96,7 +96,7 @@ export class HamStationTab {
     };
     this.hint_ = panels.find((p) => p.id === 'hints');
     this.notebookPanels_ = NOTEBOOK_PANELS.map((id) => panels.find((p) => p.id === id)).filter((p): p is StationPanel => !!p);
-    const devicePanels = panels.filter((p) => p !== this.hint_ && !NOTEBOOK_PANELS.includes(p.id) && !REPLACED_PANELS.includes(p.id));
+    const devicePanels = panels.filter((p) => p !== this.hint_ && !NOTEBOOK_PANELS.includes(p.id));
     this.locationBar_ = h('nav', { class: 'ham-walk', 'aria-label': 'Walk to' });
     this.feedback_ = h('div', {
       class: 'ham-feedback alert alert-info py-1 mb-0',

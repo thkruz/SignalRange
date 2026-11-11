@@ -51,6 +51,41 @@ async function isShown(page: Page, testId: string): Promise<boolean> {
   return (await l.count()) > 0 && (await l.isVisible());
 }
 
+/** Instrument panels the close-up offers to pick up (bench/instrument-face.ts), by test id prefix */
+const INSTRUMENT_PREFIXES: Record<string, string> = {
+  'ham-meter-': 'meter',
+  'ham-swr-': 'swr',
+  'ham-analyzer-': 'analyzer',
+  'ham-antenna-': 'antenna',
+  'ham-board-': 'board',
+  'ham-dc-': 'dc',
+  'ham-packet-': 'packet',
+  'ham-sat-': 'satellite',
+};
+
+/** True when the control sits on the instrument held up fullscreen right now */
+async function onHeldInstrument(page: Page, testId: string): Promise<boolean> {
+  if (!Object.keys(INSTRUMENT_PREFIXES).some((p) => testId.startsWith(p))) return false;
+
+  return await page
+    .locator('.immersive-instrument[open], .immersive-laptop[open]')
+    .getByTestId(testId)
+    .first()
+    .isVisible()
+    .catch(() => false);
+}
+
+/** With the owning device selected, pick up the instrument that carries this control. True when it shows. */
+async function pickUpInstrument(page: Page, testId: string): Promise<boolean> {
+  const prefix = Object.keys(INSTRUMENT_PREFIXES).find((p) => testId.startsWith(p));
+  if (!prefix) return false;
+  const operate = page.getByTestId(`ham-inst-${INSTRUMENT_PREFIXES[prefix]}-operate`);
+  if (!(await operate.isVisible().catch(() => false))) return false;
+  await operate.click();
+
+  return isShown(page, testId);
+}
+
 /** Put down everything held, topmost first (a radio's front panel sits over its bench close-up) */
 async function putDownAll(page: Page): Promise<void> {
   const held = page.locator('.immersive-view[open] .immersive-leave');
@@ -93,6 +128,8 @@ export const benchKind = (page: Page, id: string): Promise<string | null> =>
  * cable at this location, then the other locations. Notebook ids open the Notebook tab.
  */
 export async function reveal(page: Page, testId: string, hints: string[] = []): Promise<Locator> {
+  // A control on the instrument already held in the player's hands needs nothing else
+  if (await onHeldInstrument(page, testId)) return page.getByTestId(testId).first();
   await ensureBench(page);
   const target = page.getByTestId(testId).first();
   if (await isShown(page, testId)) return target;
@@ -108,12 +145,12 @@ export async function reveal(page: Page, testId: string, hints: string[] = []): 
     return target;
   }
   const tryHere = async (): Promise<boolean> => {
-    for (const h of hints) if ((await benchSelect(page, h)) && (await isShown(page, testId))) return true;
-    if (await isShown(page, testId)) return true;
+    for (const h of hints) if ((await benchSelect(page, h)) && ((await isShown(page, testId)) || (await pickUpInstrument(page, testId)))) return true;
+    if ((await isShown(page, testId)) || (await pickUpInstrument(page, testId))) return true;
     const owners = await page
       .locator('[data-testid^="ham-bench-dev-"], [data-testid^="ham-bench-conn-"]')
       .evaluateAll((els) => els.map((e) => e.getAttribute('data-dev') ?? e.getAttribute('data-conn') ?? ''));
-    for (const id of owners) if ((await benchSelect(page, id)) && (await isShown(page, testId))) return true;
+    for (const id of owners) if ((await benchSelect(page, id)) && ((await isShown(page, testId)) || (await pickUpInstrument(page, testId)))) return true;
 
     return false;
   };
@@ -135,7 +172,7 @@ const press = async (page: Page, testId: string, hints: string[] = []): Promise<
 /** SDR receivers have no front panel: their controls are the SDR program on the laptop */
 async function ensureBench(page: Page): Promise<void> {
   // Put down the logbook or the laptop; a bench close-up stays open (it is the bench, leaned over)
-  for (const kind of ['paper', 'computer', 'laptop', 'transceiver']) {
+  for (const kind of ['paper', 'computer', 'laptop', 'transceiver', 'instrument']) {
     const leave = page.locator(`.immersive-${kind}[open] .immersive-leave`);
     if (await leave.isVisible()) await leave.click();
   }
@@ -284,7 +321,7 @@ export async function submitWorksheet(page: Page, id: string, values: Record<str
   await expect(page.getByTestId(`ham-ws-${id}-status`)).toContainText('correct', { timeout: 5000 });
 }
 
-/** Connections panel */
+/** Bench close-up: look closely, seat, repair */
 export async function connectPorts(page: Page, a: { device: string; port: string }, b: { device: string; port: string }): Promise<void> {
   // Pick up one connector, then click the one it plugs into
   await (await reveal(page, tid('ham-port', a.device, a.port), [a.device])).dispatchEvent('click');
@@ -293,7 +330,7 @@ export async function connectPorts(page: Page, a: { device: string; port: string
 export const inspectItem = (page: Page, id: string) => press(page, tid('ham-conn', id, 'inspect'), [id]);
 export const seatConnection = (page: Page, id: string) => press(page, tid('ham-conn', id, 'seat'), [id]);
 export const repairFault = (page: Page, faultId: string) => press(page, tid('ham-conn', faultId, 'repair'));
-/** Device power button in the connections panel (toggles; not for circuit boards, use the board panel) */
+/** Device power button in the bench close-up (toggles; not for circuit boards, use the board panel) */
 export const powerDevice = (page: Page, id: string) => press(page, tid('ham-conn', id, 'power'), [id]);
 
 /** Radio panel. Frequency is staged: input then Apply. */
@@ -484,11 +521,14 @@ export async function sweepAnalyzer(page: Page, startMHz: number, stopMHz: numbe
   await page.getByTestId(`ham-analyzer-${an}-points`).fill(String(points));
   await page.getByTestId(`ham-analyzer-${an}-sweep`).click();
 }
-/** Set both dipole element lengths (centimetres in the UI) and apply */
+/** Set both dipole element lengths (centimetres in the UI); each takes effect when its field is committed with Enter */
 export async function setDipoleLengths(page: Page, dev: string, aCm: number, bCm: number): Promise<void> {
-  await (await reveal(page, `ham-antenna-${dev}-len-a`, [dev])).fill(String(aCm));
-  await page.getByTestId(`ham-antenna-${dev}-len-b`).fill(String(bCm));
-  await page.getByTestId(`ham-antenna-${dev}-apply`).click();
+  const a = await reveal(page, `ham-antenna-${dev}-len-a`, [dev]);
+  await a.fill(String(aCm));
+  await a.press('Enter');
+  const b = page.getByTestId(`ham-antenna-${dev}-len-b`);
+  await b.fill(String(bCm));
+  await b.press('Enter');
 }
 export const setDipoleOrientation = async (page: Page, dev: string, o: 'vertical' | 'horizontal') => (await reveal(page, `ham-antenna-${dev}-orientation`, [dev])).selectOption(o);
 
@@ -510,10 +550,10 @@ export const installSpare = async (page: Page, spareId: string, replaces: string
   await benchSelect(page, replaces);
   await press(page, tid('ham-conn', spareId, 'install'), [replaces]);
 };
-/** Staged direction (antenna panel): azimuth in degrees, then Apply */
+/** Turn a directional antenna: the field commits on change and the antenna turns at once (no Apply) */
 export async function setAntennaAzimuth(page: Page, dev: string, azDeg: number): Promise<void> {
   await (await reveal(page, `ham-antenna-${dev}-az`, [dev])).fill(String(azDeg));
-  await page.getByTestId(`ham-antenna-${dev}-apply-dir`).click();
+  await page.getByTestId(`ham-antenna-${dev}-az`).press('Enter');
 }
 export const setMicGain = async (page: Page, dev: string, v: number) => turnKnobTo(await onRadio(page, dev, 'micgain'), v, 1, 10);
 /** Meter panel: select DCV mode and read across two DC test points of the system */
@@ -521,7 +561,7 @@ export async function meterReadDcv(page: Page, red: string, black: string, dmm =
   await setMeterMode(page, 'DCV', dmm);
   await meterReadAcross(page, red, black, dmm);
 }
-/** Idempotent power: only clicks the connections-panel power button when the device is not already in the wanted state */
+/** Idempotent power: only clicks the bench close-up power switch when the device is not already in the wanted state */
 export async function setDevicePower(page: Page, id: string, on: boolean): Promise<void> {
   const btn = await reveal(page, tid('ham-conn', id, 'power'), [id]);
   if ((await btn.getAttribute('aria-pressed')) !== String(on)) await btn.click();

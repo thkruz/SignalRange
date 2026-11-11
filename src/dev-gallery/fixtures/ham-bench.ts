@@ -28,11 +28,19 @@ function devices(): HamDeviceConfig[] {
     { id: 'psu', kind: 'power-supply', label: '13.8 V supply', location: 'bench', powered: true, dcSystem: { radioId: 'mobile', source: 'supply' } },
     { id: 'mob-coax', kind: 'coax', label: 'RG-8X', location: 'bench', coax: { type: 'rg8x', length: 5, unit: 'm' } },
     { id: 'mob-ant', kind: 'antenna', label: 'Roof vertical', location: 'bench', antenna: { kind: 'quarter-wave-vertical' } },
+    { id: 'dmm1', kind: 'multimeter', label: 'Multimeter', location: 'bench' },
+    { id: 'swr1', kind: 'swr-meter', label: 'SWR meter', location: 'bench' },
+    { id: 'an1', kind: 'analyzer', label: 'Antenna analyzer', location: 'bench' },
+    { id: 'dp1', kind: 'antenna', label: 'Adjustable dipole', location: 'bench', antenna: { kind: 'adjustable-dipole', overrides: { elementLengthsM: [0.55, 0.55] } } },
+    { id: 'board', kind: 'circuit-board', label: 'Practice board', location: 'bench', board: true, powered: true },
     { id: 'dummy', kind: 'dummy-load', label: '100 W dummy load', location: 'bench', dummyLoad: { ratedW: 100, ratedSeconds: 300 } },
   ];
 }
 
-export function createGalleryBench(): HamStationManager {
+const PACKET_NODE = { id: 'riley-node', callsign: 'KD0RLY', freqMHz: 145.57, position: { xKm: 6, yKm: 2, heightM: 15 }, erpDbm: 40, replyDelayS: 1, banner: 'Riley node' };
+
+/** `packet` adds an audio interface and a packet link from the mobile to a node, so the laptop's packet terminal exists */
+export function createGalleryBench(opts: { packet?: boolean } = {}): HamStationManager {
   const config: HamStationConfig = {
     schema: HAM_STATION_SCHEMA,
     pauseOnQuiz: false,
@@ -41,7 +49,7 @@ export function createGalleryBench(): HamStationManager {
     locations: [{ id: 'bench', label: 'Bench', description: 'Workbench', position: BENCH }],
     startLocation: 'bench',
     stationPosition: BENCH,
-    devices: devices(),
+    devices: opts.packet ? [...devices(), { id: 'iface', kind: 'audio-interface', label: 'Audio interface', location: 'bench' }] : devices(),
     connections: [
       conn('sdr-usb', 'sdr', 'usb', 'laptop', 'usb1'),
       conn('sdr-sma', 'sdr', 'ant', 'sdr-adapter', 'a'),
@@ -50,6 +58,16 @@ export function createGalleryBench(): HamStationManager {
       conn('mob-ant-jack', 'mobile', 'ant', 'mob-coax', 'a'),
       conn('mob-feed', 'mob-coax', 'b', 'mob-ant', 'in'),
     ],
+    ...(opts.packet
+      ? {
+          packet: {
+            radioId: 'mobile',
+            node: PACKET_NODE,
+            audio: { inputDevice: 'laptop-mic', outputDevice: 'interface', ptt: 'rts' },
+            station: { mycall: 'KF0SRT', destination: 'KD0RLY', path: ['WIDE1-1'] },
+          },
+        }
+      : {}),
     faults: [],
     emitters: [],
     worksheets: [],

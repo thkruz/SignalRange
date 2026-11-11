@@ -143,7 +143,7 @@ export const s02Station: HamStationConfig = {
       'Leave SW1 on. Use the continuity function with one probe on each side of the SW1 contact. No beep means the path is open there.',
     ],
     'restore-indicator-circuit': [
-      'Click the board, open Connections & repairs and Look closely at SW1. The clue tells you which part failed.',
+      'Click the board and press Look closely. The clue names the part that failed.',
       'Repair the contact with the board switched off. Then power it back on and read both branches in series, the same way as before.',
     ],
     'compare-circuit-families': ['Open the families worksheet in Notebook and keep the board diagram beside it. Each question points at one part of the drawing.'],

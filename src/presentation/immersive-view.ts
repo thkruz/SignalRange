@@ -51,7 +51,7 @@ export class ImmersiveView {
   open(
     content: HTMLElement,
     title: string,
-    kind: 'equipment' | 'computer' | 'paper' | 'laptop' | 'transceiver',
+    kind: 'equipment' | 'computer' | 'paper' | 'laptop' | 'transceiver' | 'instrument',
     leave: () => void,
     navigation?: HTMLElement,
     frame?: (content: HTMLElement, leave: HTMLButtonElement) => { element: HTMLElement; dispose: () => void }

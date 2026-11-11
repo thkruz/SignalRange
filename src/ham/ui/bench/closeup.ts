@@ -6,7 +6,7 @@
  * a radio's front panel, a meter, a power supply. Instrument panels are the existing panel
  * classes, mounted once and moved in and out of the close-up as the selection changes.
  *
- * Keeps the connection-panel test ids for the physical actions:
+ * Keeps the ham-conn test ids of the retired connections panel for the physical actions (plus signal-path):
  * ham-conn-<deviceId|connectionId|faultId|spareId>-<inspect|seat|disconnect|power|dctest|repair|install|move|clue>.
  */
 
@@ -19,8 +19,10 @@ import { badge, button, h, PASSIVE_KINDS, PORTABLE_KINDS, RADIO_KINDS, Rebuilder
 import { artForKind } from './bench-art';
 import type { BenchScene, BenchSelection } from './bench-scene';
 import { Faceplate } from './faceplate';
+import { INSTRUMENTS, InstrumentFace, PROGRAMS } from './instrument-face';
 import { buildJobTagSection } from './job-tag-section';
 import { jobTags } from './job-tags';
+import { signalPath } from './signal-path';
 
 const KIND_NAME: Record<string, string> = {
   sdr: 'USB receiver',
@@ -99,6 +101,8 @@ export class Closeup {
   private readonly hosts_ = new Map<string, HTMLElement>();
   private readonly mounted_ = new Set<string>();
   private readonly faceplate_: Faceplate;
+  private readonly face_ = new InstrumentFace();
+  private readonly operates_ = new Map<string, HTMLButtonElement>();
   private readonly clues_ = new Map<string, string>();
   private readonly rebuild_ = new Rebuilder();
   private selection_: BenchSelection = null;
@@ -120,6 +124,7 @@ export class Closeup {
   }
 
   dispose(): void {
+    this.closeFace_();
     this.faceplate_.dispose();
     for (const id of this.mounted_) this.panels_.get(id)?.dispose();
     this.el.remove();
@@ -139,6 +144,7 @@ export class Closeup {
     if (force) this.rebuild_.run(this.head_, `${sig}#${Date.now()}`, () => this.buildHead_(m));
     else this.rebuild_.run(this.head_, sig, () => this.buildHead_(m));
     this.placeInstruments_(m);
+    if (this.face_.isOpen) this.face_.sync(m, this.selection_?.kind === 'device' ? this.selection_.id : null);
     if (this.faceplate_.active) this.faceplate_.update(m, force);
     for (const id of this.shownPanels_) {
       const p = this.panels_.get(id);
@@ -152,6 +158,67 @@ export class Closeup {
     this.update(this.ctx_.manager, true);
   }
 
+  /** Put a held instrument down and park every instrument panel again */
+  private closeFace_(): void {
+    this.face_.close();
+    for (const host of this.hosts_.values()) if (host.dataset.panel !== 'radio') host.classList.add('inst-parked');
+  }
+
+  /** The Operate key for an instrument panel: lifts the panel up fullscreen in its chassis (programs: in the laptop) */
+  private operateKey_(panelId: string, host: HTMLElement, devId: string, devLabel: string): HTMLButtonElement {
+    const spec = INSTRUMENTS[panelId];
+    const program = PROGRAMS[panelId];
+    const title = this.panels_.get(panelId)?.title ?? panelId;
+    const m0 = this.ctx_.manager;
+    // The toolbox multimeter is carried, not a device on the bench: name what is picked up, not what it measures
+    const tool = panelId === 'meter' && m0.device(devId)?.kind !== 'multimeter';
+    const name = tool ? 'multimeter' : devLabel;
+    let b = this.operates_.get(panelId);
+    if (!b) {
+      b = button(`ham-inst-${panelId}-operate`, '', () => {}, 'inst-operate');
+      this.operates_.set(panelId, b);
+    }
+    const label = program ? `Run ${program.label}` : spec ? `${spec.verb} ${name}` : title;
+    b.replaceChildren(label, h('small', { text: program ? 'Program on the laptop' : (spec?.model ?? title) }));
+    b.setAttribute('aria-label', label);
+    b.dataset.dev = devId;
+    b.onclick = () => {
+      const m = this.ctx_.manager;
+      host.classList.remove('inst-parked');
+      if (program) {
+        this.runProgram_(panelId, host);
+
+        return;
+      }
+      const kind = m.device(devId)?.kind ?? '';
+      const powered = tool || PASSIVE_KINDS.includes(kind) ? null : m.energized(devId);
+      this.face_.open(panelId, host, name, powered, () => this.closeFace_());
+      this.face_.sync(m, tool ? null : devId);
+    };
+
+    return b;
+  }
+
+  /** Open a laptop program (packet terminal, satellite tracker) in the laptop shell */
+  private runProgram_(panelId: string, host: HTMLElement): void {
+    const offered = this.shownPanels_.filter((id) => id in PROGRAMS);
+    this.face_.openProgram(
+      panelId,
+      host,
+      {
+        offered,
+        openProgram: (id) => {
+          const next = this.hosts_.get(id);
+          if (!next) return;
+          next.classList.remove('inst-parked');
+          this.runProgram_(id, next);
+        },
+        openSdr: () => EventBus.getInstance().emit(Events.SWITCH_TAB, { tabId: 'sdr-console' }),
+      },
+      () => this.closeFace_()
+    );
+  }
+
   private placeInstruments_(m: HamStationManager): void {
     const s = this.selection_;
     const dev = s?.kind === 'device' ? m.device(s.id) : undefined;
@@ -163,6 +230,7 @@ export class Closeup {
     const key = `${dev?.id ?? ''}|${showSdr}|${showPasses}|${want.join(',')}`;
     if (key === this.instruments_.dataset.key) return;
     this.instruments_.dataset.key = key;
+    this.closeFace_();
     this.instruments_.replaceChildren();
     if (dev && artForKind(dev.kind)) {
       this.instruments_.append(this.faceplate_.el);
@@ -203,7 +271,9 @@ export class Closeup {
         host = h('div', { class: 'ham-closeup-panel', 'data-panel': id });
         this.hosts_.set(id, host);
       }
+      if (id !== 'radio' && dev) this.instruments_.append(this.operateKey_(id, host, dev.id, dev.label));
       this.instruments_.append(host);
+      if (id !== 'radio') host.classList.add('inst-parked');
       if (!this.mounted_.has(id)) {
         p.mount(host, this.ctx_);
         this.mounted_.add(id);
@@ -323,6 +393,9 @@ export class Closeup {
         );
       }
       host.append(list);
+    }
+    if (RADIO_KINDS.includes(d.kind) || d.kind === 'sdr') {
+      host.append(h('div', { class: 'small text-secondary mt-1', 'data-testid': tid('ham-conn', d.id, 'signal-path'), text: `Signal path: ${signalPath(m, d.id)}` }));
     }
     if (d.kind === 'sdr') {
       const laptop = m.devices().find((x) => x.kind === 'laptop' && !x.removed && x.location === m.location);

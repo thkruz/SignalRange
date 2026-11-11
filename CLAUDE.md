@@ -122,7 +122,7 @@ For numeric equipment controls (frequency, gain, power, etc.), use the `equip-ad
 
 ### Adapter Staged Values Pattern
 
-RF equipment changes must use staged values + Apply button to prevent accidental changes:
+Computer-based RF equipment UIs (the C1/C2 Mission Control web panels) must use staged values + Apply button to prevent accidental changes. Physical devices (C3 bench, C6 field equipment, any in-world faceplate or knob) behave like the real device: if the real control takes effect immediately (a tuning dial, a switch), it does so in the game too; stage only where the real device itself stages (e.g. keypad entry confirmed with ENT).
 
 ```typescript
 private stagedValue_: number = DEFAULT;

@@ -746,7 +746,7 @@ describe('GlobalCommandBar', () => {
 
       const objectiveValue = document.querySelector('#objective-timer-value');
       const objectiveTimer = document.querySelector('#objective-timer-display');
-      expect(objectiveValue?.textContent).toBe('--:--');
+      expect(objectiveValue?.textContent).toBe('No limit');
       expect((objectiveTimer as HTMLElement | null)?.title).toBe('No time limit');
       expect(objectiveTimer?.classList.contains('timer-unlimited')).toBe(true);
     });
@@ -772,7 +772,7 @@ describe('GlobalCommandBar', () => {
       vi.advanceTimersByTime(1000);
 
       const objectiveTimer = document.querySelector<HTMLElement>('#objective-timer-display');
-      expect(document.querySelector('#objective-timer-value')?.textContent).toBe('--:--');
+      expect(document.querySelector('#objective-timer-value')?.textContent).toBe('No limit');
       expect(objectiveTimer?.title).toContain('No time limit on the questions');
     });
   });

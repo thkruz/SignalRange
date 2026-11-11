@@ -978,9 +978,9 @@ export class GlobalCommandBar {
         this.objectiveTimerEl_.classList.add('timer-urgent');
         this.objectiveTimerEl_.classList.remove('timer-warning', 'timer-unlimited', 'timer-failed', 'timer-passed');
       } else {
-        // No active timed objective: a blank clock face, with the reason on hover
+        // No active timed objective: the face says so, with the reason on hover
         if (valueEl) {
-          valueEl.textContent = '--:--';
+          valueEl.textContent = 'No limit';
         }
         this.objectiveTimerEl_.title = heldObjective ? this.heldObjectiveTitle_(objectivesManager, heldObjective) : 'No time limit';
         this.objectiveTimerEl_.classList.remove('timer-warning', 'timer-urgent', 'timer-failed', 'timer-passed');

@@ -118,3 +118,14 @@ body[data-quiz-pending='true'] .checklist-icon::after {
   border-radius: 8px;
   padding: 1px 8px;
 }
+
+/* In the laptop the top of the screen holds the app controls (tune, send): the reminder sits above the taskbar instead */
+body:has(dialog.immersive-laptop[open]) .pending-quiz-indicator {
+  top: auto;
+  bottom: 96px;
+  transform: translate(-50%, 20px);
+}
+
+body:has(dialog.immersive-laptop[open]) .pending-quiz-indicator.show {
+  transform: translate(-50%, 0);
+}

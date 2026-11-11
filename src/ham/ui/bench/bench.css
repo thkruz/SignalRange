@@ -22,31 +22,15 @@
   min-height: 2rem;
 }
 
-.ham-station-top .ham-feedback {
-  flex: 1 1 20rem;
-  font-size: 0.85rem;
+/* The feedback strip is a top-layer toast now (logbook.css); the row keeps no height of its own */
+.ham-station-top {
+  min-height: 0;
 }
 
 .ham-hint-strip:empty,
 .ham-hint-strip:not(:has(> .ham-slot:not([hidden]))),
 .ham-hint-strip > [hidden] {
   display: none;
-}
-
-.ham-hint-strip .card {
-  background: transparent;
-}
-
-.ham-hint-strip .card-header {
-  display: none;
-}
-
-.ham-hint-strip .card-body {
-  padding: 0.25rem 0.5rem;
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  flex-wrap: wrap;
 }
 
 .ham-station-main {
@@ -599,17 +583,12 @@
   font-size: 0.82rem;
 }
 
-.ham-hint-strip .card,
-.ham-hint-strip .card-body {
-  color: inherit;
-  border: 0;
-  box-shadow: none;
-}
-
 
 /* Logbook pages: the logbook shows the page that is open, the cards show the cards */
+.ham-notebook[data-page='front'] > .ham-slot:not([data-panel='front']),
 .ham-notebook[data-page='worksheets'] > .ham-slot:not([data-panel='worksheets']),
 .ham-notebook[data-page='log'] > .ham-slot:not([data-panel='log']),
+.ham-notebook[data-page='conversations'] > .ham-slot:not([data-panel='conversations']),
 .ham-notebook[data-page='cards'] > .ham-slot:not([data-panel='cards']) {
   display: none;
 }
@@ -665,50 +644,6 @@
 /* The tray's objects move over with the drawing, so the paper's lower edge never covers them */
 .mc-minimal-hud .ham-station-tab.has-docked-window > .ham-kit-tray {
   padding-left: var(--ham-dock-gutter, 316px);
-}
-
-/* Riley's note in pencil: ink on the paper, no alert boxes, the actions underlined in red pencil */
-.ham-hint-strip [data-testid='ham-hint-quiz-prompt'],
-.ham-hint-strip .alert {
-  margin: 0 0 0.25rem;
-  padding: 0;
-  color: #2d2a1c;
-  background: transparent;
-  border: 0;
-  box-shadow: none;
-  font-size: inherit;
-}
-
-.ham-hint-strip .alert::before {
-  display: none;
-}
-
-/* The SDR chrome styles every .btn as a mono instrument key with !important borders; the note's marks override it */
-.ham-station-tab .ham-hint-strip .btn {
-  padding: 0 0.15rem;
-  font-family: inherit !important;
-  font-size: inherit;
-  font-weight: 700;
-  letter-spacing: normal;
-  text-transform: none;
-  color: #2d2a1c;
-  background: transparent;
-  border-width: 0 0 2px !important;
-  border-style: solid !important;
-  border-color: #b3261e;
-  border-radius: 0 !important;
-  box-shadow: none;
-}
-
-.ham-station-tab .ham-hint-strip .btn:hover,
-.ham-station-tab .ham-hint-strip .btn:focus-visible {
-  color: #1a170d;
-  background: rgba(179, 38, 30, 0.12);
-}
-
-.ham-station-tab .ham-hint-strip .btn:focus-visible {
-  outline: 2px solid #1a170d;
-  outline-offset: 2px;
 }
 
 /* The logbook's Mission brief tab while the scenario waits on it: a red pencil ring */

@@ -86,11 +86,12 @@ export const BENCH_KIT: readonly FieldKitObject[] = [
     label: 'Logbook',
     image: logbookPng,
     sheets: [
+      { label: 'Front page', tabId: 'ham-front' },
       { label: 'Worksheets', tabId: 'ham-worksheets' },
       { label: 'Station log', tabId: 'ham-log' },
       { label: 'Checklist', mission: 'checklist' },
       { label: 'Mission brief', mission: 'brief' },
-      { label: 'Conversations', mission: 'dialog-history' },
+      { label: 'Conversations', tabId: 'ham-conversations' },
       { label: 'Working document', mission: 'working-doc' },
       { label: 'Campaign record', mission: 'campaign-record' },
       { label: 'Ops log', mission: 'ops-log' },

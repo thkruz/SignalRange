@@ -10,6 +10,7 @@ import type { Worksheet, WorksheetField } from '../../ham-station-config';
 import type { HamStationManager } from '../../ham-station-manager';
 import { jobTags, mapFieldParts } from '../bench/job-tags';
 import { h, labelled, select, tid } from '../ui-kit';
+import { field } from './paper';
 
 export const NOT_TAGGED = 'not tagged yet, click it on the bench';
 
@@ -19,16 +20,17 @@ export function buildMatchField(m: HamStationManager, ws: Worksheet, f: Workshee
   const onBench = mapFieldParts(f, m.devices());
   const selects = new Map<string, HTMLSelectElement>();
   const tagEls = new Map<string, HTMLElement>();
-  const wrap = h('fieldset', { class: 'mb-2', 'data-testid': base }, h('legend', { class: 'form-label small', text: f.label }));
+  const wrap = h('fieldset', { class: 'hl-field hl-match', 'data-testid': base }, h('legend', { class: 'hl-label', text: f.label }));
   for (const k of keys) {
     if (onBench.has(k)) {
-      const val = h('span', { class: 'small', 'data-testid': tid(base, k), 'data-tagged': 'false', text: NOT_TAGGED });
+      const val = h('span', { class: 'hl-tag', 'data-testid': tid(base, k), 'data-tagged': 'false', text: NOT_TAGGED });
       tagEls.set(k, val);
-      wrap.append(h('div', { class: 'mb-1' }, h('span', { class: 'form-label small me-2 fw-bold', text: k }), val));
+      wrap.append(h('div', { class: 'hl-match-row' }, h('span', { class: 'hl-part', text: k }), val));
     } else {
       const s = select(tid(base, k), `${f.label}: ${k}`, [{ value: '', label: 'Choose...' }, ...(f.options ?? []).map((o) => ({ value: o, label: o }))], '');
+      s.className = 'hl-input';
       selects.set(k, s);
-      wrap.append(labelled(s.id, k, s, 'mb-1'));
+      wrap.append(field(labelled(s.id, k, s)));
     }
   }
   let seen = false;

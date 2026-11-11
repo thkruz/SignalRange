@@ -9,7 +9,8 @@
 import type { Worksheet, WorksheetField } from '../../ham-station-config';
 import type { HamStationManager } from '../../ham-station-manager';
 import type { PanelContext, StationPanel } from '../station-panel';
-import { badge, button, card, h, labelled, select, textInput, tid } from '../ui-kit';
+import { button, h, labelled, select, textInput, tid } from '../ui-kit';
+import { field, pencil, sheet, stamp } from './paper';
 import { buildMatchField } from './worksheet-match';
 
 type Answer = string | number | Record<string, string>;
@@ -27,7 +28,7 @@ export class WorksheetPanel implements StationPanel {
 
   mount(host: HTMLElement, ctx: PanelContext): void {
     this.ctx_ = ctx;
-    const c = card('ham-ws-card', this.title);
+    const c = sheet('ham-ws-card', this.title);
     this.root_ = c.root;
     for (const ws of ctx.manager.config.worksheets) c.body.append(this.section_(ws));
     host.append(c.root);
@@ -37,7 +38,7 @@ export class WorksheetPanel implements StationPanel {
   update(m: HamStationManager): void {
     for (const [id, el] of this.status_) {
       const rec = m.worksheet(id);
-      el.replaceChildren(badge(rec?.correct ? 'correct' : `${rec?.attempts ?? 0} attempts`, rec?.correct ? 'success' : 'secondary'));
+      el.replaceChildren(stamp(rec?.correct ? 'correct' : `${rec?.attempts ?? 0} attempts`, rec?.correct ? 'good' : 'plain'));
     }
   }
 
@@ -49,13 +50,14 @@ export class WorksheetPanel implements StationPanel {
 
   private section_(ws: Worksheet): HTMLElement {
     const reads = new Map<string, () => Answer>();
-    const sec = h('div', { class: 'mb-3 border-bottom pb-2', 'data-testid': tid('ham-ws', ws.id) });
+    const sec = h('div', { class: 'hl-worksheet', 'data-testid': tid('ham-ws', ws.id) });
     const status = h('span', { 'data-testid': tid('ham-ws', ws.id, 'status') });
     this.status_.set(ws.id, status);
-    sec.append(h('h5', {}, ws.title, ' ', status), h('p', { class: 'small', text: ws.prompt }));
-    if (ws.figureUrl) sec.append(h('img', { src: ws.figureUrl, alt: `Figure for ${ws.title}`, class: 'img-fluid mb-2', 'data-testid': tid('ham-ws', ws.id, 'figure') }));
+    sec.append(h('h3', { class: 'hl-ws-title' }, ws.title, ' ', status), h('p', { class: 'hl-ws-prompt', text: ws.prompt }));
+    if (ws.figureUrl) sec.append(h('img', { src: ws.figureUrl, alt: `Figure for ${ws.title}`, class: 'hl-figure', 'data-testid': tid('ham-ws', ws.id, 'figure') }));
     for (const f of ws.fields) sec.append(this.field_(ws, f, reads));
-    const feedback = h('div', { class: 'alert alert-info py-1 small mt-2', role: 'status', 'data-testid': tid('ham-ws', ws.id, 'feedback'), hidden: true });
+    const feedback = pencil(tid('ham-ws', ws.id, 'feedback'));
+    feedback.hidden = true;
     const submit = button(
       tid('ham-ws', ws.id, 'submit'),
       'Submit',
@@ -65,10 +67,10 @@ export class WorksheetPanel implements StationPanel {
         const r = this.ctx_.act({ type: 'worksheet.answer', id: ws.id, values });
         const correct = r.ok && r.data?.correct === true;
         feedback.hidden = false;
-        feedback.className = `alert alert-${correct ? 'success' : 'warning'} py-1 small mt-2`;
+        feedback.className = `hl-pencil is-${correct ? 'good' : 'warn'}`;
         feedback.textContent = (correct ? 'Correct. ' : '') + r.message;
       },
-      'btn btn-sm btn-primary',
+      'hl-btn hl-btn-sign',
       `Submit ${ws.title}`
     );
     sec.append(submit, feedback);
@@ -80,16 +82,18 @@ export class WorksheetPanel implements StationPanel {
     const base = tid('ham-ws', ws.id, f.id);
     if (f.kind === 'number') {
       const i = textInput(base, f.label, '', 'number');
+      i.className = 'hl-input';
       i.setAttribute('step', 'any');
       reads.set(f.id, () => Number(i.value));
 
-      return labelled(base, f.label, i);
+      return field(labelled(base, f.label, i));
     }
     if (f.kind === 'choice') {
       const s = select(base, f.label, [{ value: '', label: 'Choose...' }, ...(f.options ?? []).map((o) => ({ value: o, label: o }))], '');
+      s.className = 'hl-input';
       reads.set(f.id, () => s.value);
 
-      return labelled(base, f.label, s);
+      return field(labelled(base, f.label, s));
     }
     return buildMatchField(this.ctx_.manager, ws, f, reads);
   }

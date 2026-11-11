@@ -442,7 +442,7 @@ export class AssetTreeSidebar extends BaseElement {
     this.setupQuizButtonDelegation_();
 
     const objectivesManager = ObjectivesManager.getInstance();
-    objectivesManager.syncCollapsedStatesFromDOM();
+    objectivesManager.syncCollapsedStatesFromDOM(SimulationManager.getInstance().checklistBox.popupDom);
     this.lastChecklistHtml_ = objectivesManager.generateHtmlChecklist();
     SimulationManager.getInstance().checklistBox.updateContent(this.lastChecklistHtml_);
     SimulationManager.getInstance().checklistBox.open();
@@ -498,7 +498,7 @@ export class AssetTreeSidebar extends BaseElement {
       }
 
       const objectivesManager = ObjectivesManager.getInstance();
-      objectivesManager.syncCollapsedStatesFromDOM();
+      objectivesManager.syncCollapsedStatesFromDOM(draggableBox.popupDom);
       const nextChecklistHtml = objectivesManager.generateHtmlChecklist();
       if (nextChecklistHtml !== this.lastChecklistHtml_) {
         this.lastChecklistHtml_ = nextChecklistHtml;

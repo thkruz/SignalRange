@@ -247,7 +247,7 @@ export class BenchScene {
         return;
       }
       this.armed_ = { deviceId, portId };
-      this.ctx_.feedback(`Holding the ${label(deviceId, portId)}. Click the connector to plug it into, or Esc to put it down.`, 'info');
+      this.ctx_.feedback(`Holding the ${label(deviceId, portId)}. Click the connector to plug it into, or Esc to put it down.`, 'info', { sticky: true, log: false });
       this.render(m, true);
 
       return;

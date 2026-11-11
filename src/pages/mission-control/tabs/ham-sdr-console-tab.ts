@@ -23,9 +23,10 @@ export class HamSdrConsoleTab {
     containerId: string
   ) {
     this.feedback_ = h('div', { class: 'ham-console-feedback', role: 'status', hidden: true });
-    this.sources_ = h('div', { class: 'ham-console-sources', role: 'group', 'aria-label': 'Receiver computer' });
+    this.sources_ = h('div', { class: 'ham-console-sources', role: 'toolbar', 'aria-label': 'SkyWatcher menu' });
     this.app_ = new SdrApp({
       manager: manager_,
+      journal: [],
       act: (action) => {
         const result = manager_.act(action);
         this.feedback_.textContent = result.message;
@@ -40,7 +41,12 @@ export class HamSdrConsoleTab {
         this.feedback_.hidden = !message;
       },
     });
-    this.dom = h('div', { class: 'sdr-console-tab ham-console', 'data-testid': 'ham-sdr-console' }, this.sources_, this.feedback_, this.app_.el);
+    this.dom = h(
+      'div',
+      { class: 'sdr-console-tab ham-console', 'data-testid': 'ham-sdr-console' },
+      h('div', { class: 'ham-console-window' }, this.sources_, this.app_.el),
+      this.feedback_
+    );
     document.getElementById(containerId)?.replaceChildren(this.dom);
     EventBus.getInstance().on(Events.HAM_STATION_UPDATED, this.refresh_);
     this.refresh_();
@@ -70,25 +76,23 @@ export class HamSdrConsoleTab {
     const key = JSON.stringify(laptops.map((d) => [d.id, d.label]));
     if (key !== this.sourceKey_) {
       this.sourceKey_ = key;
-      this.sources_.replaceChildren(h('span', { text: 'SOURCE', class: 'sdr-label' }));
-      for (const laptop of laptops) {
-        const control = button(
-          `ham-console-source-${laptop.id}`,
-          laptop.label,
-          () => {
-            this.laptopId_ = laptop.id;
-            this.refresh_();
-          },
-          'sdr-btn'
-        );
-        control.dataset.laptop = laptop.id;
-        this.sources_.append(control);
+      this.sources_.replaceChildren(h('span', { class: 'ham-console-menu-item', text: 'Receiver' }));
+      if (laptops.length > 1) {
+        const picker = h('select', { id: 'ham-console-source', 'data-testid': 'ham-console-source', class: 'ham-console-picker', 'aria-label': 'Receiver computer' });
+        for (const laptop of laptops) picker.append(h('option', { value: laptop.id, text: laptop.label }));
+        picker.value = this.laptopId_;
+        picker.addEventListener('change', () => {
+          this.laptopId_ = picker.value;
+          this.refresh_();
+        });
+        this.sources_.append(picker);
+      } else if (laptops[0]) {
+        this.sources_.append(h('span', { class: 'ham-console-menu-item ham-console-menu-name', text: laptops[0].label }));
       }
-      this.sources_.append(button('ham-console-bench', 'Station bench', () => EventBus.getInstance().emit(Events.SWITCH_TAB, { tabId: 'ham-station' }), 'sdr-btn'));
+      this.sources_.append(button('ham-console-bench', 'Station bench', () => EventBus.getInstance().emit(Events.SWITCH_TAB, { tabId: 'ham-station' }), 'ham-console-menu-btn'));
     }
-    for (const control of this.sources_.querySelectorAll<HTMLButtonElement>('[data-laptop]')) {
-      control.setAttribute('aria-pressed', String(control.dataset.laptop === this.laptopId_));
-    }
+    const picker = this.sources_.querySelector<HTMLSelectElement>('#ham-console-source');
+    if (picker && picker.value !== this.laptopId_ && document.activeElement !== picker) picker.value = this.laptopId_;
     this.app_.show(this.laptopId_);
   };
 }

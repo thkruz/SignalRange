@@ -1,5 +1,5 @@
 /**
- * @file quiz-prompt - "Take the quiz" line for the Station tab hint strip
+ * @file quiz-prompt - "Take the quiz" line on Riley's note
  * @description Shows Riley's one-line nudge and a button while a knowledge-check quiz is pending.
  * It reads `QuizManager.hasPendingQuiz()` and the button calls `reopenPendingQuiz()`, the same
  * call the floating pending-quiz banner makes, so it never registers or grades a quiz itself.
@@ -22,9 +22,9 @@ export class QuizPrompt {
   constructor() {
     this.el = h(
       'div',
-      { class: 'alert alert-warning py-1 small mb-2 d-flex align-items-center justify-content-between gap-2', role: 'status', 'data-testid': 'ham-hint-quiz-prompt', hidden: true },
-      h('span', { text: QUIZ_PROMPT_TEXT }),
-      button('ham-hint-take-quiz', 'Take the quiz', () => QuizManager.getInstance().reopenPendingQuiz(), 'btn btn-sm btn-warning')
+      { class: 'hl-riley-quiz', role: 'status', 'data-testid': 'ham-hint-quiz-prompt', hidden: true },
+      h('span', { class: 'hl-riley-quiz-text', text: QUIZ_PROMPT_TEXT }),
+      button('ham-hint-take-quiz', 'Take the quiz', () => QuizManager.getInstance().reopenPendingQuiz(), 'hl-riley-btn hl-riley-quiz-btn')
     );
     // Defer so QuizManager's own handlers (which clear the pending key) run first
     this.bound_ = () => queueMicrotask(() => this.update());

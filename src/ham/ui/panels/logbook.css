@@ -1,0 +1,641 @@
+/*
+ * The Campaign 3 logbook, reference cards and Riley's note (phase 44 slice 10).
+ * Paper held fullscreen: ruled pages with a red margin line, rubber stamps, pencil write-ins, index cards.
+ * No Tabler cards, nav pills, alerts or badges. Text is ink on paper at 4.5:1 or better, 13 px and up.
+ */
+
+/* Pencil write-ins: Caveat (SIL OFL 1.1, licence beside the font file), bundled so nothing is fetched at runtime */
+@font-face {
+  font-family: 'Caveat';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('../../../assets/fonts/caveat/caveat-latin.woff2') format('woff2');
+}
+
+/* ---- The book on the desk ---- */
+.immersive-paper:has(.ham-notebook) {
+  background: radial-gradient(ellipse at 50% 30%, #4b3d2c 0, #2a2118 75%);
+}
+
+.immersive-paper .ham-notebook {
+  box-sizing: border-box;
+  width: min(940px, calc(100% - 40px));
+  margin: 24px auto 72px;
+}
+
+.hl-sheet {
+  --hl-ink: #211d18;
+  --hl-pencil: #2f3540;
+  --hl-rule: #9b8a68;
+  --hl-stamp: #8a2a22;
+  --cbk-ink: #211d18;
+  --cbk-rule: #9b8a68;
+  --cbk-stamp: #8a2a22;
+  position: relative;
+  box-sizing: border-box;
+  padding: 22px 44px 40px 92px;
+  color: var(--hl-ink);
+  font: 16px/28px Georgia, 'Times New Roman', serif;
+  /* The red margin line and the ruled lines, a line every 28 px */
+  background:
+    linear-gradient(90deg, transparent 70px, #b3261e66 70px, #b3261e66 72px, transparent 72px),
+    repeating-linear-gradient(180deg, #e9dbb8 0, #e9dbb8 27px, #bba97f 27px, #bba97f 28px);
+  border-left: 16px solid #4a2f1e;
+  border-radius: 3px 8px 8px 3px;
+  box-shadow:
+    inset 14px 0 18px -12px #4a3a1e99,
+    0 14px 30px #000a;
+}
+
+.hl-sheet-title {
+  margin: 0 0 14px;
+  padding: 0;
+  color: var(--hl-ink);
+  font: italic 700 26px/40px Georgia, serif;
+  border-bottom: 2px solid var(--hl-ink);
+}
+
+.hl-sheet :is(p, h3) {
+  margin: 0;
+}
+
+/* ---- Ruled index tabs (station log sections) ---- */
+.hl-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+  border-bottom: 2px solid var(--hl-ink);
+}
+
+.hl-sheet .hl-tab {
+  position: relative;
+  margin: 0 0 -2px;
+  padding: 2px 14px;
+  color: var(--hl-ink);
+  font: 14px/24px Georgia, serif;
+  background: #cdb88a;
+  border: 1px solid #8c7752;
+  border-bottom: 0;
+  border-radius: 7px 7px 0 0;
+  cursor: pointer;
+}
+
+.hl-sheet .hl-tab.active {
+  font-weight: 700;
+  background: #ecdfbf;
+  border-bottom: 2px solid #ecdfbf;
+}
+
+.hl-sheet .hl-tab:hover {
+  background: #dcc89b;
+}
+
+.hl-sheet .hl-tab:focus-visible,
+.hl-sheet .hl-btn:focus-visible,
+.hl-card-title:focus-visible {
+  outline: 3px solid var(--hl-ink, #211d18);
+  outline-offset: 2px;
+}
+
+/* ---- Controls: pencilled fields and inked buttons ---- */
+.hl-field {
+  margin: 0 0 6px;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.hl-label {
+  display: block;
+  margin: 0;
+  padding: 0;
+  color: #30271c;
+  font: italic 14px/28px Georgia, serif;
+  float: none;
+  width: auto;
+}
+
+.hl-sheet .hl-input {
+  min-width: 11rem;
+  max-width: 100%;
+  height: 28px;
+  padding: 0 6px;
+  color: var(--hl-pencil);
+  font: 500 22px/26px 'Caveat', 'Segoe Print', cursive;
+  background: #f1e6c9;
+  border: 0;
+  border-bottom: 2px solid var(--hl-pencil);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.hl-sheet .hl-input:focus-visible {
+  outline: 2px solid var(--hl-ink);
+  outline-offset: 1px;
+  background: #f7eed6;
+}
+
+.hl-sheet .hl-btn {
+  margin: 4px 8px 4px 0;
+  padding: 1px 14px;
+  color: var(--hl-ink);
+  font: 700 14px/24px Georgia, serif;
+  background: #d3bd90;
+  border: 2px solid var(--hl-ink);
+  border-radius: 3px;
+  box-shadow: 1px 2px 0 #0004;
+  cursor: pointer;
+}
+
+.hl-sheet .hl-btn:hover {
+  background: #e0cca0;
+}
+
+.hl-sheet .hl-btn:active {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+.hl-sheet .hl-btn-sign {
+  color: var(--hl-stamp);
+  border-color: var(--hl-stamp);
+  background: #ecdfbf;
+}
+
+/* ---- Marks on the page ---- */
+.hl-stamp {
+  display: inline-block;
+  margin: 0 8px 0 0;
+  padding: 0 7px;
+  color: #3a3226;
+  font: 700 12px/20px 'Courier New', monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  vertical-align: middle;
+  border: 2px solid currentColor;
+  border-radius: 4px;
+  transform: rotate(-2deg);
+}
+
+.hl-stamp.is-good {
+  color: #1d5a2d;
+}
+
+.hl-stamp.is-warn {
+  color: #8a2a22;
+}
+
+.hl-stamp.is-open {
+  color: #1f4a7a;
+}
+
+.hl-pencil {
+  margin: 4px 0;
+  padding: 0 0 0 10px;
+  color: #2f3540;
+  font: 500 22px/26px 'Caveat', 'Segoe Print', cursive;
+  border-left: 3px solid #2f354066;
+}
+
+.hl-pencil[hidden] {
+  display: none;
+}
+
+.hl-pencil.is-good {
+  color: #1d5a2d;
+  border-left-color: #1d5a2d;
+}
+
+.hl-pencil.is-warn {
+  color: #8a2a22;
+  border-left-color: #8a2a22;
+}
+
+.hl-empty {
+  margin: 0;
+  color: #3e3322;
+  font: 500 22px/28px 'Caveat', 'Segoe Print', cursive;
+}
+
+.hl-figure {
+  display: block;
+  max-width: 100%;
+  margin: 6px 0;
+  padding: 4px;
+  background: #f1e6c9;
+  border: 1px solid #9b8a68;
+}
+
+/* ---- Worksheets ---- */
+.hl-worksheet {
+  margin: 0 0 14px;
+  padding-bottom: 10px;
+  border-bottom: 3px double var(--hl-rule);
+}
+
+.hl-ws-title {
+  color: var(--hl-ink);
+  font: 700 20px/32px Georgia, serif;
+}
+
+.hl-ws-prompt {
+  margin: 0 0 6px;
+  font-size: 15px;
+}
+
+.hl-match-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin: 0;
+}
+
+.hl-match-row .hl-label {
+  min-width: 8rem;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.hl-part {
+  min-width: 8rem;
+  font-weight: 700;
+}
+
+.hl-tag {
+  color: var(--hl-pencil);
+  font: 500 22px/26px 'Caveat', 'Segoe Print', cursive;
+}
+
+.hl-tag[data-tagged='false'] {
+  color: #5a4a30;
+  font-style: italic;
+}
+
+/* ---- Station log ---- */
+.hl-ledger {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.hl-ledger th {
+  padding: 0 8px;
+  color: #3e3322;
+  font: 700 12px/28px 'Courier New', monospace;
+  letter-spacing: 0.1em;
+  text-align: left;
+  text-transform: uppercase;
+  border-bottom: 2px solid var(--hl-ink);
+}
+
+.hl-ledger td {
+  height: 28px;
+  padding: 0 8px;
+  color: var(--hl-pencil);
+  font: 500 20px/26px 'Caveat', 'Segoe Print', cursive;
+  vertical-align: middle;
+  border-bottom: 1px dotted var(--hl-rule);
+}
+
+.hl-entry {
+  padding: 0;
+  color: var(--hl-pencil);
+  font: 500 21px/28px 'Caveat', 'Segoe Print', cursive;
+  border-bottom: 1px dotted var(--hl-rule);
+}
+
+.hl-note-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+}
+
+.hl-note-row .hl-input {
+  flex: 1;
+}
+
+/* The receptions list reuses the shared transcript helper (Tabler classes): bring it onto the paper */
+.hl-sheet .badge {
+  display: inline-block;
+  margin: 0 8px 0 0;
+  padding: 0 6px;
+  color: #3a3226;
+  font: 700 12px/20px 'Courier New', monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: transparent;
+  border: 2px solid currentColor;
+  border-radius: 4px;
+}
+
+.hl-sheet .badge.bg-success-lt {
+  color: #1d5a2d;
+}
+
+.hl-sheet .badge.bg-warning-lt {
+  color: #8a2a22;
+}
+
+.hl-sheet :is(.text-secondary, .small) {
+  color: #3e3322;
+  font-size: 14px;
+}
+
+.hl-transcripts {
+  margin: 0 0 8px;
+}
+
+.hl-transcripts .font-monospace {
+  color: var(--hl-pencil);
+  font: 500 20px/24px 'Caveat', 'Segoe Print', cursive;
+}
+
+/* ---- Front page (the C6 cover sheet pasted in) and conversations ---- */
+.hl-front .cbk-cover {
+  background: none;
+}
+
+.hl-said {
+  padding: 4px 0 6px;
+}
+
+.hl-said-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  align-items: baseline;
+  color: var(--hl-ink);
+  font: 700 15px/24px Georgia, serif;
+}
+
+.hl-time {
+  color: #3e3322;
+  font: 700 13px/20px 'Courier New', monospace;
+}
+
+.hl-said-text {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+/* ---- Reference cards: index cards laid on the desk ---- */
+.hl-sheet.hl-cards {
+  padding: 8px 8px 32px;
+  background: none;
+  border-left: 0;
+  box-shadow: none;
+}
+
+.hl-cards .hl-sheet-title {
+  color: #e8e1c9;
+  border-bottom-color: #e8e1c966;
+  text-align: center;
+}
+
+.hl-deck {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 26px 22px;
+  align-items: start;
+  padding: 10px 6px;
+}
+
+.hl-card {
+  position: relative;
+  color: #211d18;
+  background:
+    linear-gradient(180deg, transparent 0, transparent 39px, #6aa3c455 39px, #6aa3c455 40px, transparent 40px),
+    repeating-linear-gradient(180deg, #f4ecd3 0, #f4ecd3 25px, #c9bf9f 25px, #c9bf9f 26px);
+  border: 1px solid #b9a67d;
+  border-top: 8px solid #8a2a22;
+  border-radius: 2px;
+  box-shadow: 0 8px 14px #000a;
+  transform: rotate(-0.8deg);
+}
+
+.hl-card:nth-child(even) {
+  transform: rotate(0.7deg);
+}
+
+.hl-card:nth-child(3n) {
+  transform: rotate(-0.2deg);
+}
+
+.hl-card-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 4px 14px;
+  color: #211d18;
+  font: 700 17px/24px Georgia, serif;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.hl-card-title::after {
+  content: '\25B8';
+  font-size: 14px;
+}
+
+.hl-card.is-open .hl-card-title::after {
+  content: '\25BE';
+}
+
+.hl-card-title:hover {
+  background: #0000000f;
+}
+
+.hl-card-face {
+  padding: 0 16px 14px;
+  font: 15px/26px 'Courier New', monospace;
+}
+
+.hl-card-face p {
+  margin: 0;
+}
+
+.hl-card-face[hidden] {
+  display: none;
+}
+
+/* ---- Riley's sticky note (the hint strip) ---- */
+.ham-hint-strip {
+  position: relative;
+  font-family: 'Caveat', 'Segoe Print', cursive;
+  font-size: 20px;
+  line-height: 1.15;
+}
+
+/* A pin holds the note up */
+.ham-hint-strip::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  background: radial-gradient(circle at 35% 30%, #e86a5f, #8a2a22);
+  border-radius: 50%;
+  box-shadow: 0 2px 3px #0006;
+}
+
+.hl-riley {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 14px;
+  color: #2d2a1c;
+}
+
+.hl-riley-sign {
+  font-weight: 700;
+  font-size: 22px;
+  text-decoration: underline wavy #b3261e;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+
+.hl-riley-asks {
+  display: contents;
+}
+
+.hl-riley-ask {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 10px;
+}
+
+.hl-riley-for {
+  color: #3b3520;
+}
+
+.ham-hint-strip .hl-pencil {
+  flex-basis: 100%;
+  margin: 0 0 2px;
+  padding: 0 0 0 8px;
+  color: #2d2a1c;
+  font-size: 20px;
+  line-height: 1.15;
+  border-left: 2px solid #2d2a1c80;
+}
+
+.hl-riley-quiz {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 10px;
+  flex-basis: 100%;
+}
+
+.hl-riley-quiz[hidden] {
+  display: none;
+}
+
+/* The SDR chrome styles every button as a mono instrument key; the note's marks override it */
+.ham-station-tab .ham-hint-strip .hl-riley-btn {
+  padding: 0 0.2rem;
+  color: #2d2a1c;
+  font: 700 20px/1.15 'Caveat', 'Segoe Print', cursive !important;
+  letter-spacing: normal;
+  text-transform: none;
+  background: transparent;
+  border-width: 0 0 2px !important;
+  border-style: solid !important;
+  border-color: #b3261e;
+  border-radius: 0 !important;
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.ham-station-tab .ham-hint-strip .hl-riley-btn:hover,
+.ham-station-tab .ham-hint-strip .hl-riley-btn:focus-visible {
+  color: #1a170d;
+  background: rgba(179, 38, 30, 0.14);
+}
+
+.ham-station-tab .ham-hint-strip .hl-riley-btn:focus-visible {
+  outline: 2px solid #1a170d;
+  outline-offset: 2px;
+}
+
+/* ---- Feedback toast: a slip of label tape in the top layer, above whatever is held ---- */
+.ham-toast {
+  position: fixed;
+  inset: auto auto 78px 50%;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(680px, calc(100vw - 40px));
+  height: auto;
+  margin: 0;
+  padding: 8px 18px 8px 14px;
+  overflow: visible;
+  color: #211d18;
+  font: 15px/1.35 Georgia, 'Times New Roman', serif;
+  background: #eadcb8;
+  border: 1px solid #8c7752;
+  border-left: 7px solid #1f4a7a;
+  border-radius: 2px;
+  box-shadow: 0 8px 18px #000a;
+  transform: translateX(-50%) rotate(-0.4deg);
+  pointer-events: none;
+  animation: ham-toast-in 0.18s ease-out;
+}
+
+.ham-toast.is-success {
+  border-left-color: #1d5a2d;
+}
+
+.ham-toast.is-warning {
+  border-left-color: #b3261e;
+}
+
+.ham-toast.is-danger {
+  border-left-color: #8a2a22;
+}
+
+.ham-toast[hidden] {
+  display: none;
+}
+
+@keyframes ham-toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px) rotate(-0.4deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ham-toast {
+    animation: none;
+  }
+}
+
+/* A choice is a pencilled blank with a hand-drawn caret, not the browser's dropdown */
+.hl-sheet select.hl-input {
+  appearance: none;
+  padding-right: 24px;
+  cursor: pointer;
+  background: #f1e6c9 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='10' viewBox='0 0 16 10'%3E%3Cpath d='M2 2 L8 8 L14 2' fill='none' stroke='%2334383f' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") right 4px center / 14px 9px no-repeat;
+}
+
+/* The front page task sheet is written, not an app panel: no widget heading, folding triangles or hint buttons (Riley owns hints) */
+.hl-front .cbk-checklist :is(.objectives-checklist > h2, .accordion-icon, .condition-hint-btn) {
+  display: none;
+}
+
+.hl-front .cbk-kicker {
+  display: none;
+}

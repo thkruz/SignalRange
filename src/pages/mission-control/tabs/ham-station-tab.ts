@@ -30,6 +30,8 @@
  *   worksheet  ham-ws-<id>-<fieldId>, ham-ws-<id>-<fieldId>-<matchKey>, ham-ws-<id>-submit,
  *              ham-ws-<id>-feedback, ham-ws-<id>-status
  *   cards      ham-card-<id>, ham-card-<id>-toggle
+ *   front      ham-front-card (logbook Front page); conversations ham-conv-<i>, ham-conv-<i>-replay
+ *   console    ham-console-source (SDR console source selector)
  *   log        ham-log-tab-<receptions|measurements|contacts|notes>, ham-log-note-input,
  *              ham-log-note-add
  *   hint       ham-hint-<objectiveId>-ask, ham-hint-<objectiveId>-text
@@ -46,7 +48,7 @@ import { HamStationService } from '@app/ham/ham-station-service';
 import { BenchScene } from '@app/ham/ui/bench/bench-scene';
 import { Closeup } from '@app/ham/ui/bench/closeup';
 import { createStationPanels } from '@app/ham/ui/panels';
-import type { FeedbackKind, PanelContext, StationPanel } from '@app/ham/ui/station-panel';
+import type { FeedbackKind, FeedbackOptions, JournalEntry, PanelContext, StationPanel } from '@app/ham/ui/station-panel';
 import { button, h, tid } from '@app/ham/ui/ui-kit';
 import { BENCH_KIT, type FieldKitObject, type KitSheet, kitObjectFor, kitSheetsNav, missionItemBridge, offeredSheets } from '@app/pages/mission-control/tabs/field-kit';
 import { ImmersiveView } from '@app/presentation/immersive-view';
@@ -55,9 +57,15 @@ import '@app/ham/ui/bench/bench.css';
 import './ham-station-tab.css';
 
 /** Panels that live in the logbook and the reference cards rather than on a device */
-const NOTEBOOK_PANELS = ['worksheets', 'cards', 'log'];
+const NOTEBOOK_PANELS = ['front', 'worksheets', 'cards', 'log', 'conversations'];
 /** Kit page id (field-kit.ts BENCH_KIT) to the panel it shows */
-const PAGE_PANELS: Record<string, string> = { 'ham-worksheets': 'worksheets', 'ham-log': 'log', 'ham-cards': 'cards' };
+const PAGE_PANELS: Record<string, string> = {
+  'ham-front': 'front',
+  'ham-worksheets': 'worksheets',
+  'ham-log': 'log',
+  'ham-conversations': 'conversations',
+  'ham-cards': 'cards',
+};
 
 export class HamStationTab {
   private readonly immersive_ = new ImmersiveView();
@@ -82,6 +90,15 @@ export class HamStationTab {
   private heldKit_: string | null = null;
   private heldNav_: HTMLElement | undefined;
   private disposed_ = false;
+  private toastTimer_: number | null = null;
+  /** The journal keeps the last this many messages */
+  private static readonly JOURNAL_MAX = 200;
+  private readonly journal_: JournalEntry[] = [];
+  /** Screen-reader announcements; moves into the dialog of whatever is held, since the page behind a modal is inert */
+  private readonly announcer_: HTMLElement;
+  private readonly unsubImmersive_: () => void;
+  /** The logbook page panel that is open now (it built what only matters while it is read) */
+  private openPagePanel_: StationPanel | null = null;
   private readonly dockPolicy_: DockLeftPolicy;
   /** Width of a docked list window; the tab pads its left edge by this much while one is open */
   private static readonly DOCK_WIDTH_PX = 300;
@@ -92,20 +109,26 @@ export class HamStationTab {
     this.ctx_ = {
       manager,
       act: (a: HamAction) => this.act_(a),
-      feedback: (msg, kind) => this.feedback(msg, kind),
+      feedback: (msg, kind, opts) => this.feedback(msg, kind, opts),
+      journal: this.journal_,
+      putDown: () => this.putDown_(),
     };
     this.hint_ = panels.find((p) => p.id === 'hints');
     this.notebookPanels_ = NOTEBOOK_PANELS.map((id) => panels.find((p) => p.id === id)).filter((p): p is StationPanel => !!p);
     const devicePanels = panels.filter((p) => p !== this.hint_ && !NOTEBOOK_PANELS.includes(p.id));
     this.locationBar_ = h('nav', { class: 'ham-walk', 'aria-label': 'Walk to' });
+    // A slip of label tape that shows for a few seconds in the top layer (above whatever is held), not a Bootstrap alert
     this.feedback_ = h('div', {
-      class: 'ham-feedback alert alert-info py-1 mb-0',
-      role: 'status',
-      'aria-live': 'polite',
+      class: 'ham-toast is-info',
+      popover: 'manual',
+      // Announced through the announcer below (the toast sits outside a held object's modal dialog)
+      'aria-hidden': 'true',
       id: 'ham-station-feedback',
       'data-testid': 'ham-station-feedback',
       hidden: true,
     });
+    this.feedback_.addEventListener('click', () => this.hideToast_());
+    this.announcer_ = h('div', { class: 'visually-hidden', role: 'status', 'aria-live': 'polite', 'data-testid': 'ham-station-announcer' });
     this.hintHost_ = h('aside', { class: 'ham-hint-strip', 'aria-label': "Riley's note" });
     this.notebook_ = h('div', { class: 'ham-notebook', id: 'ham-notebook', 'data-testid': 'ham-notebook' });
     this.scene_ = new BenchScene(this.ctx_, (sel) => {
@@ -127,7 +150,7 @@ export class HamStationTab {
     this.root_ = h(
       'div',
       { class: 'ham-station-tab', id: 'ham-station-tab', 'data-testid': 'ham-station-tab' },
-      h('div', { class: 'ham-station-top' }, this.feedback_),
+      h('div', { class: 'ham-station-top' }, this.feedback_, this.announcer_),
       this.hintHost_,
       h(
         'div',
@@ -143,6 +166,12 @@ export class HamStationTab {
     parent.replaceChildren(this.root_);
     this.boundUpdate_ = this.refresh_.bind(this);
     EventBus.getInstance().on(Events.HAM_STATION_UPDATED, this.boundUpdate_);
+    // A toast shown before an object is picked up would sit under its modal: it goes, and the announcer follows the top dialog
+    this.unsubImmersive_ = ImmersiveView.onChange((dialog, change) => {
+      if (change === 'open') this.hideToast_();
+      const top = change === 'open' ? dialog : ImmersiveView.topDialog();
+      (top ?? this.root_.querySelector('.ham-station-top') ?? this.root_).append(this.announcer_);
+    });
     // Brief, checklist and history windows dock on the left so the bench stays clickable
     // Docked windows sit in a gutter at the left of the tab, so neither the asset sidebar nor the bench is covered
     const root = this.root_;
@@ -187,11 +216,86 @@ export class HamStationTab {
     this.root_.style.setProperty('--ham-dock-gutter', `${gutter}px`);
   }
 
-  /** Show a message in the feedback strip */
-  feedback(msg: string, kind: FeedbackKind): void {
-    this.feedback_.hidden = msg === '';
-    this.feedback_.className = `ham-feedback alert alert-${kind} py-1 mb-0`;
+  /**
+   * Say something on the bench. Every message is also written to the Station log "Events & notes" (read it again
+   * there) and announced to screen readers, also while an object is held. The slip of tape itself stays until the
+   * next action when it is a warning, a danger or sticky (an instruction such as "Holding the X"), otherwise it
+   * goes after a time that grows with its length; it is not shown over a held logbook or cards, which show their
+   * own pencil feedback and keep notifications out of the hand.
+   */
+  feedback(msg: string, kind: FeedbackKind, opts: FeedbackOptions = {}): void {
+    if (this.toastTimer_ !== null) window.clearTimeout(this.toastTimer_);
+    this.toastTimer_ = null;
+    this.feedback_.className = `ham-toast is-${kind}`;
     this.feedback_.textContent = msg;
+    if (msg === '') {
+      this.hideToast_();
+
+      return;
+    }
+    if (opts.log !== false) this.writeJournal_({ tS: this.manager_.nowS, kind, text: msg });
+    this.announce_(msg);
+    // Re-show so a new message restarts the animation and sits above anything opened since
+    this.hideToast_();
+    if (this.heldKit_ !== null) return;
+    this.feedback_.hidden = false;
+    try {
+      this.feedback_.showPopover?.();
+    } catch {
+      // Not connected yet (or no popover support): the element simply stays where it is
+    }
+    if (opts.sticky || kind === 'warning' || kind === 'danger') return;
+    this.toastTimer_ = window.setTimeout(() => this.hideToast_(), HamStationTab.toastMs(msg));
+  }
+
+  /** How long an info or success slip stays: long enough to read it (about 15 characters a second) plus a beat */
+  static toastMs(msg: string): number {
+    return Math.min(15000, Math.max(5000, 2500 + msg.length * 70));
+  }
+
+  private writeJournal_(entry: JournalEntry): void {
+    this.journal_.push(entry);
+    if (this.journal_.length > HamStationTab.JOURNAL_MAX) this.journal_.splice(0, this.journal_.length - HamStationTab.JOURNAL_MAX);
+    const log = this.notebookPanels_.find((p) => p.id === 'log');
+    if (log && this.mounted_.has(log.id)) log.update(this.manager_);
+  }
+
+  /** Replace the announcement text after the node is in place, so assistive tech reads it as new */
+  private announce_(msg: string): void {
+    this.announcer_.textContent = '';
+    window.setTimeout(() => {
+      if (!this.disposed_) this.announcer_.textContent = msg;
+    }, 30);
+  }
+
+  private hideToast_(): void {
+    this.feedback_.hidden = true;
+    try {
+      this.feedback_.hidePopover?.();
+    } catch {
+      // Already hidden
+    }
+  }
+
+  /** Put the held logbook or cards down (and let the page panel take itself apart) */
+  private putDown_(): void {
+    this.heldKit_ = null;
+    this.closePage_();
+    this.immersive_.close();
+  }
+
+  private closePage_(): void {
+    this.openPagePanel_?.close?.();
+    this.openPagePanel_ = null;
+  }
+
+  /** The page panel that shows now: the previous one closes, the new one opens */
+  private showPage_(panelId: string): void {
+    const next = this.notebookPanels_.find((p) => p.id === panelId) ?? null;
+    if (next === this.openPagePanel_) return;
+    this.closePage_();
+    this.openPagePanel_ = next;
+    next?.open?.();
   }
 
   activate(): void {
@@ -201,15 +305,17 @@ export class HamStationTab {
   }
 
   deactivate(): void {
-    this.immersive_.close();
+    this.putDown_();
     if (DraggableBox.dockLeft === this.dockPolicy_) DraggableBox.dockLeft = null;
     this.root_.style.display = 'none';
   }
 
   dispose(): void {
-    this.immersive_.close();
+    this.putDown_();
     if (this.disposed_) return;
     this.disposed_ = true;
+    this.unsubImmersive_();
+    if (this.toastTimer_ !== null) window.clearTimeout(this.toastTimer_);
     if (DraggableBox.dockLeft === this.dockPolicy_) DraggableBox.dockLeft = null;
     EventBus.getInstance().off(Events.HAM_STATION_UPDATED, this.boundUpdate_);
     this.scene_.dispose();
@@ -254,8 +360,7 @@ export class HamStationTab {
       // The logbook kit has no clipboard sheets
       if (!('mission' in sheet)) return;
       // Put the logbook down; the paper opens in its own window
-      this.heldKit_ = null;
-      this.immersive_.close();
+      this.putDown_();
       missionItemBridge.open(sheet.mission);
 
       return;
@@ -270,6 +375,7 @@ export class HamStationTab {
       for (const tab of this.heldNav_?.querySelectorAll<HTMLElement>('[data-field-object]') ?? []) {
         tab.setAttribute('aria-pressed', String(tab.dataset.fieldObject === sheet.tabId));
       }
+      this.showPage_(panelId);
 
       return;
     }
@@ -286,28 +392,18 @@ export class HamStationTab {
       brief.classList.add('is-due');
       brief.append(h('span', { class: 'visually-hidden', text: ' (read this first)' }));
     }
-    this.immersive_.close();
+    this.putDown_();
     this.heldKit_ = item?.id ?? null;
     this.heldNav_ = nav;
-    this.immersive_.open(
-      this.notebook_,
-      item?.label ?? 'Logbook',
-      'paper',
-      () => {
-        this.heldKit_ = null;
-        this.immersive_.close();
-      },
-      nav
-    );
+    this.showPage_(panelId);
+    this.immersive_.open(this.notebook_, item?.label ?? 'Logbook', 'paper', () => this.putDown_(), nav);
   }
 
   /** Lean over the bench: the drawing and the close-up of what was picked fill the screen */
   private focusWork_(): void {
-    this.heldKit_ = null;
-    this.immersive_.close();
+    this.putDown_();
     const work = this.root_.querySelector<HTMLElement>('.ham-station-main');
     if (!work) return;
-    work.prepend(this.feedback_);
     this.immersive_.open(work, 'Station equipment', 'equipment', () => this.immersive_.close());
   }
 

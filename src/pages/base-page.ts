@@ -272,9 +272,11 @@ export abstract class BasePage extends BaseElement {
       ObjectiveFailedModal.getInstance().showFailure({
         title: 'Objective Failed',
         message:
-          data.reason === 'window-closed'
-            ? `The command window closed before you finished: ${data.objective.title}. The pass is over and will not come back this shift.`
-            : `Time expired for: ${data.objective.title}`,
+          data.reason === 'unrecoverable'
+            ? (data.message ?? `${data.objective.title} can no longer be completed.`)
+            : data.reason === 'window-closed'
+              ? `The command window closed before you finished: ${data.objective.title}. The pass is over and will not come back this shift.`
+              : `Time expired for: ${data.objective.title}`,
         objectiveId: data.objectiveId,
         isScenarioTimeout: false,
       });

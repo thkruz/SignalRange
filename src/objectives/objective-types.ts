@@ -732,6 +732,13 @@ export interface Objective {
    * still be completed. Set true only where time pressure is the lesson.
    */
   timeoutFails?: boolean;
+  /**
+   * Unrecoverable-state check. While the objective is active and incomplete, a true result fails it at once with
+   * `failMessage` (a function so the text can quote live numbers). Must only be true when no player action can still
+   * satisfy the objective; a false positive ends a run that could have been won.
+   */
+  failWhen?: Condition;
+  failMessage?: string | (() => string);
   /** Points deducted when the timer runs out (non-fatal). Default: half the objective's points, rounded up */
   timeoutPenaltyPoints?: number;
   /** Optional time penalty: deducts points if completed after elapsed time threshold */

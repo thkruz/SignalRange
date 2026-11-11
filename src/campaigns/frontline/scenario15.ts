@@ -26,6 +26,8 @@ import {
   layerObserved,
   modeIs,
   negativeChecksKept,
+  reserveUnreachable,
+  reserveUnreachableMessage,
   siteChecked,
   workloadVerified,
 } from './frontline-conditions';
@@ -405,6 +407,8 @@ export const frontlineScenario15Data: FrontlineScenarioData = {
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s15-preserve-package'],
       points: 15,
+      failWhen: reserveUnreachable(),
+      failMessage: () => reserveUnreachableMessage('the end of the shift'),
       conditions: [
         held(modeIs('vsat-modem', 'standby', 'EuroSat modem in standby')),
         held(forecastMeetsReserve({}, 'Forecast keeps the 150 Wh reserve with the modem in standby')),

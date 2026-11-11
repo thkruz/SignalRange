@@ -50,6 +50,7 @@ import {
   type SkylinkStatus,
   type SleepSchedule,
   type SnowMeltMode,
+  type SupplyRestart,
   type TerminalSettings,
   type VerbResult,
 } from './physical-plant-types';
@@ -267,9 +268,38 @@ export class PhysicalPlantManager {
     return { snowMelt: this.config_.snowMelt ?? 'automatic', sleep: null, wifi: { ...DEFAULT_WIFI } };
   }
 
+  /** Supply-caused restarts this session (a part lost its supply and booted again), oldest first. Display only, not saved. */
+  private supplyRestarts_: SupplyRestart[] = [];
+  private supplyRestartListener_: ((restart: SupplyRestart) => void) | null = null;
+
+  /** Called once for each restart a supply drop causes; the field service writes the alarm line */
+  setSupplyRestartListener(listener: ((restart: SupplyRestart) => void) | null): void {
+    this.supplyRestartListener_ = listener;
+  }
+
+  getSupplyRestarts(): readonly SupplyRestart[] {
+    return this.supplyRestarts_;
+  }
+
+  /**
+   * Watts the batteries are supplying right now (battery loads, startup draw included), so a button can show what a
+   * timed action costs in energy before it is pressed
+   */
+  getBatteryDrawW(): number {
+    let total = 0;
+    for (const part of this.parts_.values()) {
+      if (part.kind === 'battery') {
+        total += this.loadOf_(part.id, 0);
+      }
+    }
+
+    return total;
+  }
+
   /** Trainer reset: back to the authored plant (faults, spares, trips, log, supplies) at the current time */
   reset(): void {
     this.faults_ = [];
+    this.supplyRestarts_ = [];
     this.sealed_ = new Set();
     this.clearedFaultIds_ = new Set();
     this.revealedFacts_ = new Set();
@@ -908,6 +938,51 @@ export class PhysicalPlantManager {
 
     // A copy, so a caller that sorts or edits the result cannot corrupt the cache
     return { ...result, servicesAvailable: [...result.servicesAvailable] };
+  }
+
+  /**
+   * Best case the player can still reach: every part with modes at its lowest-load mode and, when the plan counts
+   * generators, every generator running. Uses the same projection as forecast(), so it never disagrees with the panel.
+   * `unreachable` is true only when even that best case misses the reserve; anything uncertain (no reserve configured,
+   * a generator that is out of fuel and could be refuelled) reports false so the check never ends a recoverable run.
+   */
+  reserveOutlook(): { unreachable: boolean; reserveWh: number; bestProjectedWh: number; bestSecondsToReserve: number | null; currentProjectedWh: number; horizonS: number } | null {
+    const reserveWh = this.config_.power?.reserveWh;
+    if (reserveWh === undefined || reserveWh === null) {
+      return null;
+    }
+    const best: Record<string, string> = {};
+    let uncertain = false;
+    for (const part of this.parts_.values()) {
+      if (!part.modes?.length) {
+        continue;
+      }
+      if (part.kind === 'generator') {
+        if (this.hasActiveFault_(part.id, ['out-of-fuel'])) {
+          uncertain = true;
+        }
+        if (part.modes.some((m) => m.id === 'run')) {
+          best[part.id] = 'run';
+        }
+        continue;
+      }
+      const current = part.modes.find((m) => m.id === this.getPartMode(part.id));
+      const lowest = part.modes.reduce((a, b) => (b.loadW < a.loadW ? b : a));
+      if (current && lowest.loadW < current.loadW) {
+        best[part.id] = lowest.id;
+      }
+    }
+    const now = this.forecast();
+    const bestCase = this.forecast(best);
+
+    return {
+      unreachable: !uncertain && !bestCase.meetsReserve,
+      reserveWh,
+      bestProjectedWh: bestCase.projectedSocWh,
+      bestSecondsToReserve: bestCase.secondsToReserve,
+      currentProjectedWh: now.projectedSocWh,
+      horizonS: now.horizonS,
+    };
   }
 
   /** Everything the projection reads: the plant second, modes, run flags, faults, supplies and start timers */
@@ -2516,12 +2591,25 @@ export class PhysicalPlantManager {
         if (!was && ok && boot > 0 && this.deps_.now() >= (this.armedUntilS_.get(id) ?? 0)) {
           this.setBootEnd_(id, this.deps_.now() + boot);
           started = true;
+          this.noteSupplyRestart_(id);
         }
       }
       if (!started) {
         break;
       }
     }
+  }
+
+  /** A terminal that boots again because its supply came back is a supply-caused restart: record it and tell the listener */
+  private noteSupplyRestart_(partId: string): void {
+    const part = this.parts_.get(partId);
+    if (part?.kind !== 'terminal') {
+      return;
+    }
+    const source = part.poweredBy ? this.getLabel(part.poweredBy) : 'its power supply';
+    const restart: SupplyRestart = { partId, label: this.getLabel(partId), sourceLabel: source, atS: this.deps_.now() };
+    this.supplyRestarts_.push(restart);
+    this.supplyRestartListener_?.(restart);
   }
 
   /** One second: roll intermittent faults, burn fuel and charge, re-solve */

@@ -176,8 +176,10 @@ export interface ObjectiveFailedData {
   objectiveId: string;
   objective: Objective;
   failedAt: number;
-  /** timeout: its countdown ran out; window-closed: it needs the command link and the pass is over */
-  reason: 'timeout' | 'window-closed';
+  /** timeout: its countdown ran out; window-closed: it needs the command link and the pass is over; unrecoverable: its `failWhen` check says it can no longer be met */
+  reason: 'timeout' | 'window-closed' | 'unrecoverable';
+  /** unrecoverable: the objective's own explanation of why it can no longer be met */
+  message?: string;
 }
 
 // Quiz Event specific interfaces

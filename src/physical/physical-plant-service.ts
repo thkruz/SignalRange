@@ -87,6 +87,16 @@ export class PhysicalPlantService {
         this.weatherOverride_ = { ...this.weatherOverride_, ...weather };
       },
     });
+    // A supply drop restarts the terminal on its own: say so in the Ops Log and point at the supply, not the terminal
+    this.plant.setSupplyRestartListener((restart) => {
+      if (OpsLogManager.isInitialized()) {
+        OpsLogManager.getInstance().log(
+          `${restart.label} lost power and is restarting, so service stops until it is back. The supply dropped out at ${restart.sourceLabel}: check the supply, not the terminal.`,
+          'alert',
+          'Site'
+        );
+      }
+    });
     this.services = config.service
       ? new ServiceModel(config.service, this.plant, undefined, { now: () => this.fineNowS_ ?? SimClock.scenarioElapsedMs() / 1000 }, config.liveLink)
       : null;

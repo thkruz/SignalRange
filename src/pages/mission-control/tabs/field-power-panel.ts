@@ -1,5 +1,5 @@
 import type { PhysicalPlantManager } from '@app/physical/physical-plant-manager';
-import type { PartModeConfig, PowerForecast, PowerReadings } from '@app/physical/physical-plant-types';
+import type { PartModeConfig, PowerForecast, PowerReadings, SupplyRestart } from '@app/physical/physical-plant-types';
 import { escapeHtml } from '@app/physical/ui/plant-ui-helpers';
 import './field-power-panel.css';
 
@@ -39,6 +39,8 @@ export interface PowerPanelModel {
   changes: Record<string, string>;
   socTotalWh: number;
   capacityTotalWh: number;
+  /** Supply drops that restarted a terminal, for the standing supply alarm */
+  supplyRestarts: readonly SupplyRestart[];
 }
 
 /** True when the plant has anything for the panel to show: a mode-capable device or a reserve */
@@ -112,7 +114,7 @@ export function buildPowerPanelModel(plant: PhysicalPlantManager, pending: Reado
   const socTotalWh = Object.values(readings.socWh).reduce((a, b) => a + b, 0);
   const capacityTotalWh = Object.values(readings.capacityWh).reduce((a, b) => a + b, 0);
 
-  return { readings, devices, forecast: plant.forecast(changes), changes, socTotalWh, capacityTotalWh };
+  return { readings, devices, forecast: plant.forecast(changes), changes, socTotalWh, capacityTotalWh, supplyRestarts: plant.getSupplyRestarts() };
 }
 
 /** "1 h 30 min", "45 min", "40 s" */
@@ -234,6 +236,7 @@ export class FieldPowerPanel {
             <thead><tr><th>Device</th><th>Mode</th><th class="fpp-num">Draw</th><th class="fpp-num">Fuel</th><th>Set mode</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
+          <div class="fpp-forecast fpp-bad" data-fpp="supply-alarm" role="alert" style="display:none"></div>
           <div class="fpp-forecast" data-fpp="forecast-box">
             <div class="fpp-forecast-title">Forecast <span class="fpp-forecast-note" data-fpp="forecast-note"></span></div>
             <div class="fpp-forecast-line" data-fpp="forecast-line"></div>
@@ -280,6 +283,16 @@ export class FieldPowerPanel {
     if (reserveWrap) reserveWrap.style.display = r.reserveWh === null ? 'none' : '';
     this.text_('reserve', r.reserveWh === null ? '' : `${Math.round(r.reserveWh)} Wh`);
     this.text_('summary', hasBattery ? `${Math.round(model.socTotalWh)} Wh stored, drawing ${Math.round(r.totalDrawW)} W` : `drawing ${Math.round(r.totalDrawW)} W`);
+
+    const alarm = this.el_('supply-alarm');
+    if (alarm) {
+      const last = model.supplyRestarts.at(-1);
+      alarm.style.display = last ? '' : 'none';
+      if (last) {
+        const n = model.supplyRestarts.length;
+        alarm.textContent = `Supply alarm: ${last.label} has restarted ${n} time${n === 1 ? '' : 's'} because its power dropped out at ${last.sourceLabel}. Each restart stops service for minutes. Check the supply, not the terminal.`;
+      }
+    }
 
     for (const d of model.devices) {
       const mode = d.modes.find((m) => m.id === d.current);

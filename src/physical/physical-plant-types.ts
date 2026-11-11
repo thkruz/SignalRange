@@ -542,6 +542,15 @@ export interface PowerReadings {
   reserveWh: number | null;
 }
 
+/** A terminal that restarted because its supply dropped out and came back */
+export interface SupplyRestart {
+  partId: string;
+  label: string;
+  /** Label of the part that feeds it (where to look first) */
+  sourceLabel: string;
+  atS: number;
+}
+
 /** Result of a forecast preview (never changes plant state) */
 export interface PowerForecast {
   horizonS: number;

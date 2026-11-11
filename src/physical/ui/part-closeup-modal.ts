@@ -356,6 +356,7 @@ export class PartCloseupModal extends DraggableModal {
       return;
     }
     const t = formatSimTime(plant.getTimeSeconds());
+    const whBefore = storedWh_(plant);
     const result = plant.measure(tool, target);
     this.pushLog_({
       t,
@@ -363,15 +364,24 @@ export class PartCloseupModal extends DraggableModal {
       target: this.targetName_(plant, target),
       targetId: target,
       observation: result.observation,
-      cost: costText(result),
+      cost: costText(result, whBefore - storedWh_(plant)),
       count: 1,
     });
   }
 
   private perform_(plant: PhysicalPlantManager, verb: UiVerb, target: string): void {
     const t = formatSimTime(plant.getTimeSeconds());
+    const whBefore = storedWh_(plant);
     const result = runVerb(plant, verb, target);
-    this.pushLog_({ t, verb: VERB_LABELS[verb], target: this.targetName_(plant, target), targetId: target, observation: result.observation, cost: costText(result), count: 1 });
+    this.pushLog_({
+      t,
+      verb: VERB_LABELS[verb],
+      target: this.targetName_(plant, target),
+      targetId: target,
+      observation: result.observation,
+      cost: costText(result, whBefore - storedWh_(plant)),
+      count: 1,
+    });
   }
 
   private targetName_(plant: PhysicalPlantManager, target: string): string {
@@ -535,7 +545,7 @@ export class PartCloseupModal extends DraggableModal {
     const disrupt: string[] = [];
     const meters = this.meterTools_(plant, target).map(
       (tool) =>
-        `<button type="button" class="btn btn-sm btn-outline-primary pp-act" data-measure="${tool}">${METER_LABELS[tool].action}<span class="pp-cost"> &middot; ${formatCost(VERB_COSTS_S[tool])}</span></button>`
+        `<button type="button" class="btn btn-sm btn-outline-primary pp-act" data-measure="${tool}">${METER_LABELS[tool].action}<span class="pp-cost"> &middot; ${formatCost(VERB_COSTS_S[tool])}${energyText_(plant, VERB_COSTS_S[tool])}</span></button>`
     );
     for (const verb of verbs) {
       const cost = verbCost_(plant, verb, target);
@@ -543,12 +553,12 @@ export class PartCloseupModal extends DraggableModal {
         const spare = verb === 'swap' ? sparesText_(plant.getSwapSpares(target)) : '';
         const none = verb === 'swap' && plant.getSwapSpares(target) <= 0;
         disrupt.push(
-          `<button type="button" class="btn btn-sm btn-outline-secondary pp-act pp-act-disruptive${spare ? ' pp-act-wide' : ''}" data-verb="${verb}"${none ? ' disabled' : ''}>${VERB_LABELS[verb]}<span class="pp-cost"> &middot; ${formatCost(cost)}${spare}</span></button>`
+          `<button type="button" class="btn btn-sm btn-outline-secondary pp-act pp-act-disruptive${spare ? ' pp-act-wide' : ''}" data-verb="${verb}"${none ? ' disabled' : ''}>${VERB_LABELS[verb]}<span class="pp-cost"> &middot; ${formatCost(cost)}${energyText_(plant, cost)}${spare}</span></button>`
         );
       } else {
         const list = verb === 'inspect' || verb === 'wiggle' || verb === 'feel' ? observe : fix;
         list.push(
-          `<button type="button" class="btn btn-sm btn-outline-primary pp-act" data-verb="${verb}">${VERB_LABELS[verb]}<span class="pp-cost"> &middot; ${formatCost(cost)}</span></button>`
+          `<button type="button" class="btn btn-sm btn-outline-primary pp-act" data-verb="${verb}">${VERB_LABELS[verb]}<span class="pp-cost"> &middot; ${formatCost(cost)}${energyText_(plant, cost)}</span></button>`
         );
       }
     }
@@ -664,8 +674,24 @@ function sparesText_(left: number): string {
   return left <= 0 ? ' &middot; no spares left' : ` &middot; uses 1 of ${left} spare${left === 1 ? '' : 's'}`;
 }
 
-function costText(result: { costSeconds: number; downtimeSeconds?: number }): string {
+function costText(result: { costSeconds: number; downtimeSeconds?: number }, usedWh = 0): string {
   const down = result.downtimeSeconds ? `, ${formatCost(result.downtimeSeconds)} down` : '';
+  const energy = usedWh >= 0.05 ? `, ${whText_(usedWh)} of battery used` : '';
 
-  return `${formatCost(result.costSeconds)}${down}`;
+  return `${formatCost(result.costSeconds)}${down}${energy}`;
+}
+
+function storedWh_(plant: PhysicalPlantManager): number {
+  return Object.values(plant.getPowerReadings().socWh).reduce((a, b) => a + b, 0);
+}
+
+function whText_(wh: number): string {
+  return `${wh >= 10 ? Math.round(wh) : wh.toFixed(1)} Wh`;
+}
+
+/** Battery energy a timed action will cost at the present draw (empty when nothing runs off a battery or it rounds to nothing) */
+function energyText_(plant: PhysicalPlantManager, seconds: number): string {
+  const wh = (plant.getBatteryDrawW() * seconds) / 3600;
+
+  return wh >= 0.05 ? ` &middot; about ${whText_(wh)} of battery` : '';
 }

@@ -96,6 +96,27 @@ export function forecastMeetsReserve(modeOverrides: Record<string, string> = {},
 }
 
 /**
+ * The reserve can no longer be met whatever the player does: even with every part in its lowest-load mode (and generators
+ * running when the plan counts them) the forecast misses it. Use as an objective's `failWhen`, never as a completion row.
+ */
+export function reserveUnreachable(description = 'The reserve can no longer be met'): Condition {
+  return make('reserveUnreachable', description, () => hooks()?.plant.reserveOutlook()?.unreachable ?? false, false);
+}
+
+const wholeWh = (wh: number): string => `${Math.round(wh)} Wh`;
+
+/** Explanation for a reserveUnreachable fail: the reserve, what the forecast now shows and the best the plant could still do */
+export function reserveUnreachableMessage(shiftLabel = 'shift end'): string {
+  const o = hooks()?.plant.reserveOutlook();
+  if (!o) {
+    return 'The energy reserve can no longer be met.';
+  }
+  const when = o.bestSecondsToReserve === null ? '' : ` The charge falls below the reserve about ${Math.max(1, Math.round(o.bestSecondsToReserve / 60))} min from now.`;
+
+  return `The ${wholeWh(o.reserveWh)} reserve can no longer be held to ${shiftLabel}. The Power panel forecast now ends at ${wholeWh(o.currentProjectedWh)}, and even with every terminal in its lowest-power mode it ends at ${wholeWh(o.bestProjectedWh)}.${when} Too much charge went on running both terminals before the modem was parked.`;
+}
+
+/**
  * The part is in the mode AND the plant's forecast meets the reserve. A forecast alone passes with the terminal still in
  * standby, so the row would tick before the player acts (c6-s11-F6).
  */

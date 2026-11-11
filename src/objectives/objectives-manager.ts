@@ -971,7 +971,7 @@ export class ObjectivesManager {
   /**
    * Mark an objective as failed
    */
-  private failObjective_(state: ObjectiveState, reason: ObjectiveFailedData['reason']): void {
+  private failObjective_(state: ObjectiveState, reason: ObjectiveFailedData['reason'], message?: string): void {
     state.isFailed = true;
     state.failedAt = SimClock.nowMs();
 
@@ -988,7 +988,26 @@ export class ObjectivesManager {
       objective: state.objective,
       failedAt: state.failedAt,
       reason,
+      ...(message ? { message } : {}),
     });
+  }
+
+  /**
+   * Fail a live objective whose own `failWhen` check says it can no longer be met (e.g. the energy reserve is out of
+   * reach whatever the player does), with the explanation the author supplied.
+   */
+  private failOnUnrecoverable_(): void {
+    for (const state of this.objectiveStates_) {
+      const { failWhen, failMessage } = state.objective;
+      if (!failWhen || !state.isActive || state.isCompleted || state.isFailed) {
+        continue;
+      }
+      if (this.evaluateCondition_(failWhen, state)) {
+        const text = typeof failMessage === 'function' ? failMessage() : failMessage;
+        this.failObjective_(state, 'unrecoverable', text ?? `${state.objective.title} can no longer be completed.`);
+        return;
+      }
+    }
   }
 
   /**
@@ -1450,6 +1469,7 @@ export class ObjectivesManager {
 
     this.advanceCountdowns_();
     this.failOnClosedCommandWindow_();
+    this.failOnUnrecoverable_();
     this.watchLockLoss_();
 
     for (const objectiveState of this.objectiveStates_) {

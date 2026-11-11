@@ -164,7 +164,8 @@ test.describe('nats-eu Scenario 1 Full Completion', () => {
   });
 
   test('[retune-for-sar2] retunes the receiver and analyzer after LOS', async () => {
-    await advanceMissionClockToUtc(page, '2027-03-15T14:11:00Z');
+    // SAR-1 crosses the horizon at 14:11:28 (the Set phase latches there), so go past it: the quiz only registers once LOS has happened
+    await advanceMissionClockToUtc(page, '2027-03-15T14:11:45Z');
     await setRxModemFrequency(page, missionControl, 1370);
     await fillAndChange(page, '#sa-center-freq', '1397');
     await answerSystemQuiz(page, 'Imagery 1370 MHz, beacon 1397 MHz; AOS 14:18');
@@ -188,8 +189,8 @@ test.describe('nats-eu Scenario 1 Full Completion', () => {
   });
 
   test('[log-first-light] writes the shift log and completes', async () => {
-    // log-first-light waits for SAR-2 LOS (14:25:40)
-    await advanceMissionClockToUtc(page, '2027-03-15T14:25:50Z');
+    // log-first-light waits for SAR-2 LOS: 14:25:40 at the 5 deg mask, but the Set phase latches at the horizon crossing a minute or so later
+    await advanceMissionClockToUtc(page, '2027-03-15T14:27:45Z');
     await closeWorkingDocumentIfOpen(page);
     await answerSystemQuiz(page, 'peak ~11 dB at 28 degrees');
     // Last objective: its completion pops the Mission Complete modal, which

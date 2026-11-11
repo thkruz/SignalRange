@@ -248,3 +248,11 @@ contributors without access build and test without it.
   `src/private/.gitignore`.
 - `.gitmodules` uses the SSH URL (CI deploy key). Local checkouts point origin at HTTPS:
   `git -C src/private remote set-url origin https://github.com/thkruz/signal-range-private.git`.
+
+## E2E
+
+- Default: `pnpm exec playwright test` starts (or reuses) `pnpm run dev` on `SR_DEV_PORT` (default 3000).
+- Static mode: `E2E_STATIC=1 SR_DEV_PORT=3101 pnpm exec playwright test ...` serves a prebuilt development-mode
+  bundle from `dist-e2e/` (gitignored) via `scripts/e2e/serve-dist.mjs` (SPA fallback like the dev server, private
+  `/__author` and `/__replay` mounted when `src/private` exists). It builds with `pnpm run build:e2e` only when
+  `dist-e2e/index.html` is missing or `E2E_REBUILD=1`; rebuild after source edits. Lanes can each use their own port.

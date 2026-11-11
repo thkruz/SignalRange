@@ -1,6 +1,7 @@
 import { expect, Page } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
 import { waitForQuizToAppear } from './simulation-helpers';
+import { simAdvance } from './test-clock';
 
 /**
  * Shared helpers for the ccs (Campaign 4, Counter Communications) specs.
@@ -68,7 +69,7 @@ export async function advanceMissionClockToElapsed(page: Page, targetS: number, 
   if (deltaS > 0) {
     await page.evaluate((ms) => (window as any).advanceClock(ms), deltaS * 1000);
   }
-  await page.waitForTimeout(2500);
+  await simAdvance(page, 2500);
 }
 
 /**
@@ -79,7 +80,7 @@ export async function advanceMissionClockToElapsed(page: Page, targetS: number, 
 export async function advanceMissionClockBy(page: Page, deltaS: number): Promise<void> {
   await page.waitForFunction(() => typeof (window as any).advanceClock === 'function');
   await page.evaluate((ms) => (window as any).advanceClock(ms), deltaS * 1000);
-  await page.waitForTimeout(2500);
+  await simAdvance(page, 2500);
 }
 
 /**
@@ -160,7 +161,7 @@ export async function keyUpString(page: Page, missionControl: MissionControlPage
   if (transmitting && !(await powerSwitch.isChecked())) {
     await domClick(page, '#tx-power-switch');
     await expect(powerSwitch).toBeChecked({ timeout: 8000 });
-    await page.waitForTimeout(4500); // transmitter power-up delay
+    await simAdvance(page, 4500); // transmitter power-up delay
   }
 
   const txSwitch = page.locator('#tx-transmit-switch');
@@ -184,7 +185,7 @@ export async function resetFault(page: Page, missionControl: MissionControlPage)
   await missionControl.selectTab('tx-chain');
   await expect(page.locator('#tx-fault-reset-btn')).toBeVisible({ timeout: 10000 });
   await domClick(page, '#tx-fault-reset-btn');
-  await page.waitForTimeout(1000);
+  await simAdvance(page, 1000);
 }
 
 /** Live per-condition dump of one objective (window.debugObjective dev hook). */

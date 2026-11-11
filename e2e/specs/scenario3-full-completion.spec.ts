@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
 import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForSimulationReady } from '../utils/simulation-helpers';
+import { simAdvance, useTestClock } from '../utils/test-clock';
 
 /**
  * Scenario 3 objectives - Weather Emergency Handover: Multi-Site Operations.
@@ -501,7 +502,7 @@ async function waitForAntennaMovement(page: import('@playwright/test').Page, tim
   await page.waitForTimeout(500);
 
   while (Date.now() - startTime < timeout) {
-    await page.waitForTimeout(1000);
+    await simAdvance(page, 1000);
 
     // Get current elevation from the fine-adjust control display
     let elDisplay = page.locator('.fine-adjust-control', { hasText: 'Elevation' }).locator('.fine-adjust-value-active');
@@ -569,7 +570,7 @@ async function configureLnb(page: import('@playwright/test').Page, config: { loF
   await applyBtn.click();
 
   // Wait for thermal stabilization (LNB takes ~3 seconds to stabilize)
-  await page.waitForTimeout(4000);
+  await simAdvance(page, 4000);
 }
 
 /**
@@ -780,7 +781,7 @@ async function configureTxModem(
 
   // Wait for objective conditions to be evaluated
   // The objective manager needs time to check all conditions
-  await page.waitForTimeout(2000);
+  await simAdvance(page, 2000);
 }
 
 /**
@@ -793,7 +794,7 @@ async function selectSatellite(page: import('@playwright/test').Page, satelliteI
   await satTreeItem.click();
 
   // Wait for the selection to be processed and objective to complete
-  await page.waitForTimeout(1000);
+  await simAdvance(page, 1000);
 
   // Verify the satellite is now selected (has 'active' class)
   await expect(satTreeItem).toHaveClass(/active/, { timeout: 5000 });
@@ -816,7 +817,7 @@ async function executeTrafficHandover(page: import('@playwright/test').Page, tar
   await executeBtn.click();
 
   // Wait for handover to complete
-  await page.waitForTimeout(2000);
+  await simAdvance(page, 2000);
 }
 
 /**
@@ -841,7 +842,7 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
       // Observation-gated conditions latch only after the default dwell on
       // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
       // reset the read and strand the objective.
-      await page.waitForTimeout(3000);
+      await simAdvance(page, 3000);
       break;
 
     case 'toggle-switch':
@@ -895,7 +896,7 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
     case 'auto':
       // Auto-satisfied objectives complete when conditions are met
       // Signal detection and receiver lock can take several seconds
-      await page.waitForTimeout(3000);
+      await simAdvance(page, 3000);
       break;
   }
 
@@ -920,6 +921,7 @@ test.describe('Scenario 3 Full Completion', () => {
     // Create a new context and page that will be shared across all tests
     context = await browser.newContext();
     page = await context.newPage();
+    await useTestClock(page);
 
     // Set up test mode: auto-close dialogs and clear storage
     await page.addInitScript(() => {
@@ -1084,7 +1086,7 @@ test.describe('Scenario 3 Full Completion', () => {
     test.setTimeout(180000);
     const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'configure-maine-lnb')!;
     await executeObjective(page, missionControlPage, objective);
-    await page.waitForTimeout(95000);
+    await simAdvance(page, 95000);
   });
 
   test('Objective: Verify LNB Configuration', async () => {

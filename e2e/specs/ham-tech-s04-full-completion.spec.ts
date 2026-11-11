@@ -19,6 +19,9 @@ import {
   waitForObjectiveComplete,
 } from '../utils/ham-tech-helpers';
 import { dismissDialogIfPresent } from '../utils/simulation-helpers';
+import { simAdvance } from '../utils/test-clock';
+
+test.use({ testClock: true });
 
 /**
  * Campaign 3 Technician S4 "I Can Hear Them" - full completion through the Station tab.
@@ -40,7 +43,7 @@ test('ham-tech-s04 completes all objectives', async ({ page, missionControlPage:
   };
   const cq = async (): Promise<void> => {
     await pttTransmit(page, 'ht', { kind: 'cq' }, 3);
-    await page.waitForTimeout(9000);
+    await simAdvance(page, 9000);
   };
 
   await reviewMissionBrief(page, mc);
@@ -74,11 +77,11 @@ test('ham-tech-s04 completes all objectives', async ({ page, missionControlPage:
 
   // complete-repeater-contact
   await pttTransmit(page, 'ht', { kind: 'call', target: 'N0CLB' }, 3);
-  await page.waitForTimeout(9000);
+  await simAdvance(page, 9000);
   await pttTransmit(page, 'ht', { kind: 'reply', item: 'name' }, 3);
-  await page.waitForTimeout(9000);
+  await simAdvance(page, 9000);
   await pttTransmit(page, 'ht', { kind: 'identify' }, 3);
-  await page.waitForTimeout(9000);
+  await simAdvance(page, 9000);
   await step('Complete the Repeater Contact', 'complete-repeater-contact', 3);
 
   // explore-digital-memory: wrong color code, wrong time slot, then the matching channel
@@ -87,7 +90,7 @@ test('ham-tech-s04 completes all objectives', async ({ page, missionControlPage:
   for (const index of [0, 1, 2]) {
     await selectDmrChannel(page, 'dmr-ht', index);
     await pttTransmit(page, 'dmr-ht', { kind: 'call', target: 'KD0RLY' }, 2);
-    await page.waitForTimeout(index === 2 ? 15000 : 5000);
+    await simAdvance(page, index === 2 ? 15000 : 5000);
   }
   // last objective: completing it pops Mission Complete, which hides the checklist row
   await answerTechQuizzes(page, 2);

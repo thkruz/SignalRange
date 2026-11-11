@@ -13,6 +13,7 @@ import { ScenarioSelectionPage } from '@app/pages/scenario-selection';
 import { PluginManager } from '@app/plugins/plugin-manager';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { initializeUiSounds } from '@app/sound/ui-sounds';
+import { installTestHook } from '@app/testing/sr-test-hook';
 import { initializeAchievementNotifications } from '@app/user-account/achievement-notifications';
 import { Auth } from '@app/user-account/auth';
 import { selectionProgressCache } from '@app/user-account/selection-progress-cache';
@@ -51,6 +52,7 @@ export class App extends BaseElement {
 
     this.instance_ = new App();
     window.signalRange = this.instance_;
+    installTestHook();
 
     // Initialize UserDataService with configuration from .env
     // The getAccessToken function returns the cached token synchronously

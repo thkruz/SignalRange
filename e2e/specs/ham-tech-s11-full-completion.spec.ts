@@ -20,6 +20,9 @@ import {
   waitForObjectiveComplete,
 } from '../utils/ham-tech-helpers';
 import { dismissDialogIfPresent } from '../utils/simulation-helpers';
+import { advanceUntil, simAdvance } from '../utils/test-clock';
+
+test.use({ testClock: true });
 
 const num = (text: string | null): number => Number.parseFloat((text ?? '').replace(/[^0-9.+-]/gu, ''));
 
@@ -68,10 +71,10 @@ async function keyCorrected(page: Page, intent: Parameters<typeof pttTransmit>[2
 
 /** Keep tracking the downlink every few seconds for the given time */
 async function followFor(page: Page, seconds: number): Promise<void> {
-  const end = Date.now() + seconds * 1000;
-  while (Date.now() < end) {
+  // Counts page time, not wall time: under the test clock a wall-time loop would follow far longer
+  for (let followedMs = 0; followedMs < seconds * 1000; followedMs += 3000) {
     await trackDownlink(page);
-    await page.waitForTimeout(3000);
+    await simAdvance(page, 3000);
   }
 }
 
@@ -111,7 +114,7 @@ test('ham-tech-s11 completes all objectives', async ({ page, missionControlPage:
 
   await reviewMissionBrief(page, mc);
   await openStationTab(page, mc);
-  await page.waitForTimeout(3000);
+  await simAdvance(page, 3000);
 
   // read-pass-card
   await submitWorksheet(page, 's11-pass', {
@@ -135,7 +138,7 @@ test('ham-tech-s11 completes all objectives', async ({ page, missionControlPage:
 
   // acquire-downlink: wait for the real rise, receive only, aim the Yagi and follow the Doppler shift
   await (await reveal(page, 'ham-sat-doppler-toggle')).check();
-  await expect.poll(async () => (await readPass(page)).above, { timeout: 720000, intervals: [2000] }).toBe(true);
+  await advanceUntil(page, async () => (await readPass(page)).above, { maxMs: 720000, stepMs: 2000, message: 'pass rise' });
   console.log(`rise: ${JSON.stringify(await readPass(page))}`);
   await followFor(page, 45);
   console.log(`acquired: ${JSON.stringify(await readPass(page))}`);
@@ -147,7 +150,7 @@ test('ham-tech-s11 completes all objectives', async ({ page, missionControlPage:
   await expect
     .poll(
       async () => {
-        await page.waitForTimeout(3000);
+        await simAdvance(page, 3000);
         return rising();
       },
       { timeout: 300000, intervals: [100] }
@@ -159,13 +162,13 @@ test('ham-tech-s11 completes all objectives', async ({ page, missionControlPage:
   let firstKeyAt = 0;
   for (let attempt = 0; attempt < 4 && !(await conditionMet(page, 'first-uplink', 2)); attempt += 1) {
     await keyCorrected(page, { kind: 'cq' });
-    if (firstKeyAt === 0) firstKeyAt = Date.now();
+    if (firstKeyAt === 0) firstKeyAt = await page.evaluate(() => Date.now());
     await followFor(page, 12);
   }
   await step('Send a Modest Uplink', 'first-uplink');
 
   // follow-doppler: at least 90 s after the first accepted uplink the shift has changed; a second corrected key-up
-  await followFor(page, Math.max(0, 95000 - (Date.now() - firstKeyAt)) / 1000);
+  await followFor(page, Math.max(0, 95000 - ((await page.evaluate(() => Date.now())) - firstKeyAt)) / 1000);
   await keyCorrected(page, { kind: 'cq' });
   await followFor(page, 4);
   console.log(`second key: ${JSON.stringify(await readPass(page))}`);
@@ -192,6 +195,6 @@ test('ham-tech-s11 completes all objectives', async ({ page, missionControlPage:
   // log-the-pass (last)
   await submitWorksheet(page, 's11-log', { entry: 'Date, time, CUBEHOP-UV, W0GRD, grid EN34, uplink and downlink frequencies, signal report' });
   await answerTechQuizzes(page, 1);
-  await page.waitForTimeout(2000);
+  await simAdvance(page, 2000);
   await expectMissionComplete(page);
 });

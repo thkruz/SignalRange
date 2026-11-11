@@ -18,6 +18,9 @@ import {
   waitForObjectiveComplete,
 } from '../utils/ham-tech-helpers';
 import { dismissDialogIfPresent } from '../utils/simulation-helpers';
+import { simAdvance } from '../utils/test-clock';
+
+test.use({ testClock: true });
 
 /**
  * Campaign 3 Technician S1 "The First Signal" - full completion through the Station tab.
@@ -71,13 +74,13 @@ test('ham-tech-s01 completes all objectives', async ({ page, missionControlPage:
 
   // open-audio-path: volume first (squelch stays closed), then open the squelch
   await setVolume(page, 'sdr', 10);
-  await page.waitForTimeout(3000);
+  await simAdvance(page, 3000);
   await setSquelch(page, 'sdr', 0);
   await step('Open the Audio Path', 'open-audio-path', 3);
 
   // compare-filter-settings: narrow filter, then back to 15 kHz
   await setFilterPreset(page, 'sdr', 6000);
-  await page.waitForTimeout(3000);
+  await simAdvance(page, 3000);
   await setFilterPreset(page, 'sdr', 15000);
   await step('Compare the Filter Settings', 'compare-filter-settings', 3);
 

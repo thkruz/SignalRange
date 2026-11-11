@@ -2,6 +2,7 @@ import { expect, Page } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
 import { domClick } from './ham-sdr-helpers';
 import { waitForQuizToAppear } from './simulation-helpers';
+import { simAdvance } from './test-clock';
 
 /**
  * Shared console drivers for the nats-eu qualified-tier full-completion specs
@@ -158,7 +159,7 @@ export async function commitLinkWithMargin(page: Page, missionControl: MissionCo
   while (Date.now() < deadline) {
     live = await readLiveCnr(page);
     if (Number.isFinite(live) && live >= minLiveCnrDb) break;
-    await page.waitForTimeout(1000);
+    await simAdvance(page, 1000);
   }
   expect(live, `live C/N ${live} dB never reached ${minLiveCnrDb} dB`).toBeGreaterThanOrEqual(minLiveCnrDb);
 

@@ -17,6 +17,9 @@ import {
   waitForObjectiveComplete,
 } from '../utils/ham-tech-helpers';
 import { dismissDialogIfPresent } from '../utils/simulation-helpers';
+import { simAdvance } from '../utils/test-clock';
+
+test.use({ testClock: true });
 
 /**
  * Campaign 3 Technician S7 "It Only Fails on Transmit" - full completion through the Station tab.
@@ -41,21 +44,21 @@ test('ham-tech-s07 completes all objectives', async ({ page, missionControlPage:
     await pttTransmit(page, 'mobile', { kind: 'test' }, 3);
     await page.waitForTimeout(500);
     await meterReadDcv(page, red, black);
-    await page.waitForTimeout(4000);
+    await simAdvance(page, 4000);
   };
 
   await reviewMissionBrief(page, mc);
   await openStationTab(page, mc);
-  await page.waitForTimeout(12000);
+  await simAdvance(page, 12000);
 
   // reproduce-reset: radio terminals while transmitting into the dummy load
   await keyAndRead('radio+', 'radio-');
   await step('Reproduce the Reset Safely', 'reproduce-reset', 2);
 
   // compare-probe-points: idle readings at supply and radio terminals
-  await page.waitForTimeout(3000);
+  await simAdvance(page, 3000);
   await meterReadDcv(page, 'psu+', 'psu-');
-  await page.waitForTimeout(1000);
+  await simAdvance(page, 1000);
   await meterReadDcv(page, 'radio+', 'radio-');
   await step('Compare the Two Probe Points', 'compare-probe-points', 3);
 
@@ -73,17 +76,17 @@ test('ham-tech-s07 completes all objectives', async ({ page, missionControlPage:
   await step('Repair the Isolated Lead', 'repair-lead', 3);
 
   // verify-transmit-load: radio terminals under TX, feed line to the radio, contact with Riley
-  await page.waitForTimeout(3000);
+  await simAdvance(page, 3000);
   await keyAndRead('radio+', 'radio-');
   await disconnectConnection(page, 'mob-dummy');
   await connectPorts(page, { device: 'mobile', port: 'ant' }, { device: 'feed', port: 'a' });
-  await page.waitForTimeout(3000);
+  await simAdvance(page, 3000);
   await pttTransmit(page, 'mobile', { kind: 'call', target: 'KD0RLY' }, 4);
-  await page.waitForTimeout(15000);
+  await simAdvance(page, 15000);
   await pttTransmit(page, 'mobile', { kind: 'reply', item: 'report' }, 3);
-  await page.waitForTimeout(12000);
+  await simAdvance(page, 12000);
   await pttTransmit(page, 'mobile', { kind: 'identify' }, 3);
-  await page.waitForTimeout(12000);
+  await simAdvance(page, 12000);
   await step('Verify the Transmit Load', 'verify-transmit-load');
 
   // estimate-endurance (last objective)

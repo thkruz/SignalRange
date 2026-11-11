@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
+import { simAdvance } from './test-clock';
 
 /**
  * UI drivers for Campaign 6 "Frontline Signals" (campaign id `frontline`).
@@ -333,7 +334,7 @@ export async function dismissDialogs(page: Page): Promise<string[]> {
     }
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await page.mouse.down();
-    await page.waitForTimeout(1800);
+    await simAdvance(page, 1800);
     await page.mouse.up();
     await page.waitForTimeout(400);
   }
@@ -610,7 +611,7 @@ export async function openPart(page: Page, partId: string): Promise<Locator> {
       .catch(() => false))
   ) {
     // The first click did not open a close-up (seen on the forward scene right after a panel collapsed). A player would click again.
-    await page.waitForTimeout(1500);
+    await simAdvance(page, 1500);
     if (
       !(await closeup(page)
         .isVisible()

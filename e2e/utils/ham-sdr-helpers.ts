@@ -1,6 +1,7 @@
 import { expect, Locator, Page } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
 import { waitForQuizToAppear } from './simulation-helpers';
+import { advanceUntil, hasTestClock, simAdvance } from './test-clock';
 
 /**
  * Shared helpers for the ham-sdr (Campaign 3) full-completion specs.
@@ -37,7 +38,7 @@ export async function answerRileyQuiz(page: Page, answerText: string): Promise<v
 export async function advanceClock(page: Page, minutes: number): Promise<void> {
   await page.waitForFunction(() => typeof (window as any).advanceClock === 'function');
   await page.evaluate((ms) => (window as any).advanceClock(ms), minutes * 60_000);
-  await page.waitForTimeout(3000);
+  await simAdvance(page, 3000);
 }
 
 /**
@@ -51,7 +52,7 @@ export async function advanceMissionClockToUtc(page: Page, targetIsoUtc: string)
     const deltaMs = targetMs - (window as any).simClockMs();
     if (deltaMs > 0) (window as any).advanceClock(deltaMs);
   }, Date.parse(targetIsoUtc));
-  await page.waitForTimeout(2500);
+  await simAdvance(page, 2500);
 }
 
 /** True when the bench HUD replaces the station computer's chrome (no tab bar, no sidebar, no command bar) */
@@ -98,6 +99,16 @@ export function objectiveItem(missionControl: MissionControlPage, title: string)
 export async function waitForObjectiveComplete(missionControl: MissionControlPage, title: string, timeout = 45000): Promise<void> {
   await ensureChecklist(missionControl);
   try {
+    const page = missionControl.objectivesChecklist.page();
+    if (hasTestClock(page)) {
+      // Fast-forward page time until the row completes; the expect below then passes at once.
+      // evaluateAll, not getAttribute: a title can match more than one row (strict mode would throw)
+      const row = objectiveItem(missionControl, title);
+      await advanceUntil(page, () => row.evaluateAll((els) => els.some((el) => el.classList.contains('completed'))).catch(() => false), {
+        maxMs: timeout,
+        message: `'${title}' completed`,
+      }).catch(() => undefined);
+    }
     await expect(objectiveItem(missionControl, title)).toHaveClass(/completed/, { timeout });
   } catch (error) {
     // Name the rows still open: "not completed" alone cannot tell a stuck
@@ -186,7 +197,7 @@ export async function rideUntilObjectiveComplete(
       .evaluate((el) => el.classList.contains('completed'))
       .catch(() => false);
     if (done) return everLocked;
-    await page.waitForTimeout(4000);
+    await simAdvance(page, 4000);
   }
   return everLocked;
 }

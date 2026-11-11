@@ -16,6 +16,9 @@ import {
   waitForObjectiveComplete,
 } from '../utils/ham-tech-helpers';
 import { dismissDialogIfPresent } from '../utils/simulation-helpers';
+import { simAdvance } from '../utils/test-clock';
+
+test.use({ testClock: true });
 
 /**
  * Campaign 3 Technician S3 "Your First Contact" - full completion through the Station tab.
@@ -61,32 +64,32 @@ test('ham-tech-s03 completes all objectives', async ({ page, missionControlPage:
   await tuneRadio(page, 'ht', 146.55);
   await setTxPower(page, 'ht', 0.5);
   // the 146.550 conversation runs for 35 s from the first monitoring; clear listening starts after it
-  await page.waitForTimeout(25000);
+  await simAdvance(page, 25000);
   // a call over the conversation is a collision (visible failure, does not count as the first call)
   await pttTransmit(page, 'ht', { kind: 'call', target: 'W0SRC' }, 2);
-  await page.waitForTimeout(4000);
-  await page.waitForTimeout(20000);
+  await simAdvance(page, 4000);
+  await simAdvance(page, 20000);
   await step('Listen Before Calling', 'listen-before-calling');
 
   // make-first-call
   await pttTransmit(page, 'ht', { kind: 'call', target: 'W0SRC' }, 3);
-  await page.waitForTimeout(10000);
+  await simAdvance(page, 10000);
   await step('Make the First Call', 'make-first-call');
 
   // exchange-signal-report
   for (const item of ['name', 'location', 'report']) {
     await pttTransmit(page, 'ht', { kind: 'reply', item }, 3);
-    await page.waitForTimeout(10000);
+    await simAdvance(page, 10000);
   }
   // Sam reports distorted audio (handheld starts with the mic gain high); fix it and resend
   await setMicGain(page, 'ht', 5);
   await pttTransmit(page, 'ht', { kind: 'reply', item: 'report' }, 3);
-  await page.waitForTimeout(10000);
+  await simAdvance(page, 10000);
   await step('Exchange a Signal Report', 'exchange-signal-report', 3);
 
   // close-the-contact
   await pttTransmit(page, 'ht', { kind: 'identify' }, 3);
-  await page.waitForTimeout(10000);
+  await simAdvance(page, 10000);
   // last objective: completing it pops Mission Complete, which hides the checklist row
   await answerTechQuizzes(page, 2);
 

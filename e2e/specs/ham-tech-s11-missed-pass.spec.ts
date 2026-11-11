@@ -18,6 +18,9 @@ import {
   waitForObjectiveComplete,
 } from '../utils/ham-tech-helpers';
 import { dismissDialogIfPresent } from '../utils/simulation-helpers';
+import { advanceUntil, simAdvance } from '../utils/test-clock';
+
+test.use({ testClock: true });
 
 const num = (text: string | null): number => Number.parseFloat((text ?? '').replace(/[^0-9.+-]/gu, ''));
 
@@ -50,7 +53,7 @@ test('ham-tech-s11 missed first pass is recoverable with the time skip', async (
   await openTechScenario(page, mc, 'ham-tech-s11');
   await reviewMissionBrief(page, mc);
   await openStationTab(page, mc);
-  await page.waitForTimeout(3000);
+  await simAdvance(page, 3000);
 
   // Before the first pass has gone there is nothing worth skipping
   await page.locator(WATCH).click();
@@ -74,7 +77,7 @@ test('ham-tech-s11 missed first pass is recoverable with the time skip', async (
 
   await page.waitForFunction(() => typeof (window as unknown as { advanceClock?: unknown }).advanceClock === 'function');
   await page.evaluate((ms) => (window as unknown as { advanceClock: (n: number) => void }).advanceClock(ms), 20 * 60_000);
-  await page.waitForTimeout(1500);
+  await simAdvance(page, 1500);
   expect((await readPass(page)).above).toBe(false);
 
   // The offer appears in the header and names the next pass
@@ -89,14 +92,14 @@ test('ham-tech-s11 missed first pass is recoverable with the time skip', async (
 
   // The skip stops short of the rise: wait for the satellite to come up, then acquire the downlink
   await (await reveal(page, 'ham-sat-doppler-toggle')).check();
-  await expect.poll(async () => (await readPass(page)).above, { timeout: 300000, intervals: [2000] }).toBe(true);
+  await advanceUntil(page, async () => (await readPass(page)).above, { maxMs: 300000, stepMs: 2000, message: 'pass rise' });
   for (let i = 0; i < 14; i += 1) {
     const pass = await readPass(page);
     await (await reveal(page, 'ham-antenna-yagi-el')).fill(String(Math.max(0, Math.round(pass.el))));
     await setAntennaAzimuth(page, 'yagi', Math.round(pass.az));
     await selectRadioTab(page, 'sdr');
     await tuneRadio(page, 'sdr', pass.downMHz);
-    await page.waitForTimeout(3000);
+    await simAdvance(page, 3000);
   }
   await answerTechQuizzes(page, 3);
   await dismissDialogIfPresent(page);

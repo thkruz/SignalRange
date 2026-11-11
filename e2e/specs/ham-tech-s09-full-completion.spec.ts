@@ -17,6 +17,9 @@ import {
   waitForObjectiveComplete,
 } from '../utils/ham-tech-helpers';
 import { dismissDialogIfPresent } from '../utils/simulation-helpers';
+import { simAdvance } from '../utils/test-clock';
+
+test.use({ testClock: true });
 
 const MESSAGE = 'Swap meet at the club on Saturday, tables open at nine';
 
@@ -43,7 +46,7 @@ test('ham-tech-s09 completes all objectives', async ({ page, missionControlPage:
 
   await reviewMissionBrief(page, mc);
   await openStationTab(page, mc);
-  await page.waitForTimeout(3000);
+  await simAdvance(page, 3000);
 
   // trace-connections
   await inspectItem(page, 'iface-radio');
@@ -64,7 +67,7 @@ test('ham-tech-s09 completes all objectives', async ({ page, missionControlPage:
   // set-transmit-audio: first a level-5 frame with the chimes still on (not clean), then a clean one
   await setPacketAudio(page, P, { output: 'interface', txLevel: 5 });
   await packetSendTestFrame(page, P);
-  await page.waitForTimeout(2000);
+  await simAdvance(page, 2000);
   await setPacketAudio(page, P, { systemSounds: false });
   await packetSendTestFrame(page, P);
   await step('Set the Transmit Audio', 'set-transmit-audio');
@@ -75,9 +78,9 @@ test('ham-tech-s09 completes all objectives', async ({ page, missionControlPage:
 
   // connect-and-send: wait for the link, send, wait for the ack
   await packetConnect(page, P);
-  await page.waitForTimeout(6000);
+  await simAdvance(page, 6000);
   await packetSend(page, P, MESSAGE);
-  await page.waitForTimeout(8000);
+  await simAdvance(page, 8000);
   await step('Connect and Send', 'connect-and-send', 3);
 
   // recover-lost-frame: corrupt the next frame, resend, let the retry get acked

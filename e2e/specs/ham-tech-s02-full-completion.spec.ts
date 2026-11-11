@@ -18,6 +18,9 @@ import {
   waitForObjectiveComplete,
 } from '../utils/ham-tech-helpers';
 import { dismissDialogIfPresent, waitForQuizToAppear } from '../utils/simulation-helpers';
+import { simAdvance } from '../utils/test-clock';
+
+test.use({ testClock: true });
 
 /**
  * Campaign 3 Technician S2 "Power on the Bench" - full completion through the Station tab.
@@ -98,7 +101,7 @@ test('ham-tech-s02 completes all objectives', async ({ page, missionControlPage:
   await inspectBoard(page);
   await repairBoardFault(page, 'sw1-contact');
   await setBoardPower(page, true);
-  await page.waitForTimeout(2000);
+  await simAdvance(page, 2000);
   await setMeterMode(page, 'DCA');
   await setMeterSocket(page, 'A');
   await meterReadSeries(page, 'r1-branch');

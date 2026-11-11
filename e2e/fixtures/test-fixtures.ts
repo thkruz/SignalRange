@@ -2,12 +2,18 @@ import { test as base } from '@playwright/test';
 import { CampaignSelectionPage } from '../pages/campaign-selection.page';
 import { MissionControlPage } from '../pages/mission-control.page';
 import { ScenarioSelectionPage } from '../pages/scenario-selection.page';
+import { installTestClock, testClockWanted } from '../utils/test-clock';
 
 /**
  * Custom fixtures for SignalRange e2e tests.
  * Provides page objects as test fixtures.
  */
 type SignalRangeFixtures = {
+  /**
+   * Run the page on Playwright's fake clock (e2e/utils/test-clock.ts). Opt in per file with
+   * `test.use({ testClock: true })`. E2E_TEST_CLOCK=0 forces it off, E2E_TEST_CLOCK=1 forces it on.
+   */
+  testClock: boolean;
   campaignSelectionPage: CampaignSelectionPage;
   scenarioSelectionPage: ScenarioSelectionPage;
   missionControlPage: MissionControlPage;
@@ -17,8 +23,13 @@ type SignalRangeFixtures = {
  * Extended test function with SignalRange fixtures.
  */
 export const test = base.extend<SignalRangeFixtures>({
+  testClock: [false, { option: true }],
+
   // Clear storage and set test mode flags before each test
-  page: async ({ page }, use) => {
+  page: async ({ page, testClock }, use) => {
+    if (testClockWanted(testClock)) {
+      await installTestClock(page);
+    }
     // Set up test mode: auto-close dialogs and clear storage
     await page.addInitScript(() => {
       // Auto-close dialogs for faster testing

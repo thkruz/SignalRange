@@ -18,6 +18,9 @@ import {
   waitForObjectiveComplete,
 } from '../utils/ham-tech-helpers';
 import { dismissDialogIfPresent } from '../utils/simulation-helpers';
+import { simAdvance } from '../utils/test-clock';
+
+test.use({ testClock: true });
 
 /**
  * Campaign 3 Technician S5 "Build the Better Antenna" - full completion through the Station tab.
@@ -59,7 +62,7 @@ test('ham-tech-s05 completes all objectives', async ({ page, missionControlPage:
   // assemble-antenna: inspect, connect the feed line, record a baseline with the receiver
   await inspectItem(page, 'dipole');
   await connectPorts(page, { device: 'dipole-coax', port: 'b' }, { device: 'dipole', port: 'in' });
-  await page.waitForTimeout(3000);
+  await simAdvance(page, 3000);
   await recordReading(page, 'sdr', 'reference');
   await step('Assemble the Antenna', 'assemble-antenna');
 
@@ -75,10 +78,10 @@ test('ham-tech-s05 completes all objectives', async ({ page, missionControlPage:
   // match-polarization: receiver back on the coax, horizontal reading then vertical reading
   await disconnectConnection(page, 'analyzer.rf~dipole-coax.a');
   await connectPorts(page, { device: 'sdr-adapter', port: 'b' }, { device: 'dipole-coax', port: 'a' });
-  await page.waitForTimeout(3000);
+  await simAdvance(page, 3000);
   await recordReading(page, 'sdr', 'reference');
   await setDipoleOrientation(page, 'dipole', 'vertical');
-  await page.waitForTimeout(3000);
+  await simAdvance(page, 3000);
   await recordReading(page, 'sdr', 'reference');
   await step('Match the Polarization', 'match-polarization', 3);
 

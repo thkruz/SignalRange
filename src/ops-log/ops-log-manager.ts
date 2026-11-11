@@ -19,6 +19,7 @@ interface SimClockDevHooks {
   simClockMs?: () => number;
   missionElapsedMs?: () => number;
   missionSkippedMs?: () => number;
+  simRunMs?: () => number;
 }
 
 /**
@@ -65,6 +66,8 @@ export class OpsLogManager {
     devHooks.simClockMs = () => SimClock.nowMs();
     devHooks.missionElapsedMs = () => SimClock.scenarioElapsedMs();
     devHooks.missionSkippedMs = () => SimClock.skippedMs();
+    // Run time keeps counting while a brief or quiz holds scenario time (e2e test clock checks)
+    devHooks.simRunMs = () => SimClock.runMs();
 
     // Emit initial time tick
     this.emitTimeTick_();
@@ -114,6 +117,7 @@ export class OpsLogManager {
       delete devHooks.simClockMs;
       delete devHooks.missionElapsedMs;
       delete devHooks.missionSkippedMs;
+      delete devHooks.simRunMs;
       OpsLogManager.instance_ = null;
     }
   }

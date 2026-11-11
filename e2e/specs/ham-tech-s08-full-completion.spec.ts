@@ -19,6 +19,9 @@ import {
   waitForObjectiveComplete,
 } from '../utils/ham-tech-helpers';
 import { dismissDialogIfPresent } from '../utils/simulation-helpers';
+import { simAdvance } from '../utils/test-clock';
+
+test.use({ testClock: true });
 
 /**
  * Campaign 3 Technician S8 "Noise in the Shack" - full completion through the Station tab.
@@ -40,13 +43,13 @@ test('ham-tech-s08 completes all objectives', async ({ page, missionControlPage:
     }
   };
   const record = async (): Promise<void> => {
-    await page.waitForTimeout(1500);
+    await simAdvance(page, 1500);
     await recordReading(page, 'sdr', '');
   };
 
   await reviewMissionBrief(page, mc);
   await openStationTab(page, mc);
-  await page.waitForTimeout(3000);
+  await simAdvance(page, 3000);
 
   // record-pattern
   await record();
@@ -87,11 +90,11 @@ test('ham-tech-s08 completes all objectives', async ({ page, missionControlPage:
   // compare-audio: two test transmissions, 15 W / gain 5 then 5 W / gain 9
   await selectRadioTab(page, 'mobile');
   await pttTransmit(page, 'mobile', { kind: 'test' }, 3);
-  await page.waitForTimeout(12000);
+  await simAdvance(page, 12000);
   await setTxPower(page, 'mobile', 5);
   await setMicGain(page, 'mobile', 9);
   await pttTransmit(page, 'mobile', { kind: 'test' }, 3);
-  await page.waitForTimeout(12000);
+  await simAdvance(page, 12000);
   await submitWorksheet(page, 's08-audio-cause', {
     'follows-gain': 'Microphone gain set too high',
     'follows-power': 'RF getting back into the audio path',
@@ -103,13 +106,13 @@ test('ham-tech-s08 completes all objectives', async ({ page, missionControlPage:
   await setTxPower(page, 'mobile', 15);
   await setMicGain(page, 'mobile', 5);
   await pttTransmit(page, 'mobile', { kind: 'call', target: 'KD0RLY' }, 4);
-  await page.waitForTimeout(15000);
+  await simAdvance(page, 15000);
   await inspectItem(page, 'feed');
   await installSpare(page, 'feed-choked', 'feed');
   await pttTransmit(page, 'mobile', { kind: 'reply', item: 'report' }, 3);
-  await page.waitForTimeout(12000);
+  await simAdvance(page, 12000);
   await pttTransmit(page, 'mobile', { kind: 'identify' }, 3);
-  await page.waitForTimeout(12000);
+  await simAdvance(page, 12000);
   await step('Check the Outgoing Audio', 'check-audio');
 
   // name-the-symptom (last objective)

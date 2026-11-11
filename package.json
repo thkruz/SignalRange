@@ -16,6 +16,7 @@
     "prepare": "husky",
     "prebuild": "tsx ./scripts/plugin/index.ts sync && node scripts/fetch-keeptrack-embed.mjs && node scripts/fetch-tle-sets.mjs",
     "build": "cross-env NODE_ENV=production rspack build --mode production",
+    "build:e2e": "tsx ./scripts/plugin/index.ts sync && node scripts/fetch-keeptrack-embed.mjs && node scripts/fetch-tle-sets.mjs && cross-env NODE_ENV=development rspack build --mode development --config scripts/e2e/rspack.e2e.config.mts",
     "predev": "tsx ./scripts/plugin/index.ts sync && node scripts/fetch-keeptrack-embed.mjs && node scripts/fetch-tle-sets.mjs",
     "dev": "cross-env NODE_ENV=development rspack serve --mode development",
     "plugin": "tsx ./scripts/plugin/index.ts",

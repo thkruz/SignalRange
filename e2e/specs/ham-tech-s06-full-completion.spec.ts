@@ -18,6 +18,9 @@ import {
   waitForObjectiveComplete,
 } from '../utils/ham-tech-helpers';
 import { dismissDialogIfPresent } from '../utils/simulation-helpers';
+import { simAdvance } from '../utils/test-clock';
+
+test.use({ testClock: true });
 
 /**
  * Campaign 3 Technician S6 "Where Did the Watts Go?" - full completion through the Station tab.
@@ -40,7 +43,7 @@ test('ham-tech-s06 completes all objectives', async ({ page, missionControlPage:
 
   await reviewMissionBrief(page, mc);
   await openStationTab(page, mc);
-  await page.waitForTimeout(12000);
+  await simAdvance(page, 12000);
 
   // fault-baseline
   await keyAndReadSwr(page, 'mobile');
@@ -51,7 +54,7 @@ test('ham-tech-s06 completes all objectives', async ({ page, missionControlPage:
   await connectPorts(page, { device: 'swr', port: 'ant' }, { device: 'dummy', port: 'in' });
   await powerDevice(page, 'mobile');
   await powerDevice(page, 'mobile');
-  await page.waitForTimeout(3000);
+  await simAdvance(page, 3000);
   await keyAndReadSwr(page, 'mobile');
   await step('Test the Radio Locally', 'test-radio-locally');
 
@@ -61,7 +64,7 @@ test('ham-tech-s06 completes all objectives', async ({ page, missionControlPage:
   await disconnectConnection(page, 'long-ant');
   await connectPorts(page, { device: 'long-coax', port: 'b' }, { device: 'barrel', port: 'a' });
   await connectPorts(page, { device: 'barrel', port: 'b' }, { device: 'dummy', port: 'in' });
-  await page.waitForTimeout(3000);
+  await simAdvance(page, 3000);
   await keyAndReadSwr(page, 'mobile');
   await step('Test the Long Feed Line', 'test-feed-line', 3);
 
@@ -81,20 +84,20 @@ test('ham-tech-s06 completes all objectives', async ({ page, missionControlPage:
 
   // repeat-tests: dummy load first, then the antenna through the spare, then contact with Riley
   await powerDevice(page, 'mobile');
-  await page.waitForTimeout(3000);
+  await simAdvance(page, 3000);
   await connectPorts(page, { device: 'swr', port: 'ant' }, { device: 'dummy', port: 'in' });
   await keyAndReadSwr(page, 'mobile');
   await disconnectConnection(page, 'swr.ant~dummy.in');
   await connectPorts(page, { device: 'swr', port: 'ant' }, { device: 'spare-coax', port: 'a' });
   await connectPorts(page, { device: 'spare-coax', port: 'b' }, { device: 'outdoor-ant', port: 'in' });
-  await page.waitForTimeout(3000);
+  await simAdvance(page, 3000);
   await keyAndReadSwr(page, 'mobile');
   await pttTransmit(page, 'mobile', { kind: 'call', target: 'KD0RLY' }, 4);
-  await page.waitForTimeout(15000);
+  await simAdvance(page, 15000);
   await pttTransmit(page, 'mobile', { kind: 'reply', item: 'report' }, 3);
-  await page.waitForTimeout(12000);
+  await simAdvance(page, 12000);
   await pttTransmit(page, 'mobile', { kind: 'identify' }, 3);
-  await page.waitForTimeout(12000);
+  await simAdvance(page, 12000);
 
   // last objective: completing it pops Mission Complete, which hides the checklist row
   await answerTechQuizzes(page, 2);

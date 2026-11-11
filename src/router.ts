@@ -90,6 +90,7 @@ export class Router {
     // Dev-only perf harness (Phase 3 P3-WP0): dev server builds only, never listed in menus
     if (process.env.NODE_ENV === 'development') {
       registerPerfHarness(campaignManager);
+      this.addGalleryRoute_();
     }
 
     // Listen for popstate (back/forward buttons)
@@ -134,6 +135,25 @@ export class Router {
   /** Pages that build equipment or may be a plugin route wait for plugins. */
   private static needsPlugins_(path: string): boolean {
     return path === '/sandbox' || /^\/campaigns\/[^/]+\/scenarios\/[^/]+$/u.test(path) || path === '/mission-control';
+  }
+
+  /**
+   * Dev-only `/gallery` and `/gallery/<entry>/<state>` (src/dev-gallery). Called only under the
+   * NODE_ENV development guard in init(), so a production bundle drops the dynamic import and the chunk.
+   */
+  private addGalleryRoute_(): void {
+    let page: typeof import('@app/dev-gallery/gallery-page') | null = null;
+    this.addRoute({
+      pattern: /^\/gallery(?:\/(?<entry>[^/]+)\/(?<state>[^/]+))?\/?$/u,
+      show: (params) => {
+        void import('@app/dev-gallery/gallery-page').then((mod) => {
+          page = mod;
+
+          return mod.showGallery(params);
+        });
+      },
+      hide: () => page?.hideGallery(),
+    });
   }
 
   /** Register a route outside the core page set. See ExtraRoute. */

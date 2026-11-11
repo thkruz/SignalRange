@@ -16,6 +16,9 @@ import {
   waitForObjectiveComplete,
 } from '../utils/ham-tech-helpers';
 import { dismissDialogIfPresent } from '../utils/simulation-helpers';
+import { simAdvance } from '../utils/test-clock';
+
+test.use({ testClock: true });
 
 /**
  * Campaign 3 Technician S10 "Beyond the Local Horizon" - full completion through the Station tab.
@@ -45,7 +48,7 @@ test('ham-tech-s10 completes all objectives', async ({ page, missionControlPage:
 
   await reviewMissionBrief(page, mc);
   await openStationTab(page, mc);
-  await page.waitForTimeout(3000);
+  await simAdvance(page, 3000);
 
   // check-segment
   await submitWorksheet(page, 's10-segment', {
@@ -65,9 +68,9 @@ test('ham-tech-s10 completes all objectives', async ({ page, missionControlPage:
   // tune-with-rit: offset station on 28.420, RIT +700 Hz, then key up on the dial frequency
   await tuneRadio(page, 'hf', 28.42);
   await setRit(page, 'hf', true, 700);
-  await page.waitForTimeout(6000);
+  await simAdvance(page, 6000);
   await pttTransmit(page, 'hf', { kind: 'test' }, 2);
-  await page.waitForTimeout(4000);
+  await simAdvance(page, 4000);
   await step('Fine Tune with RIT', 'tune-with-rit');
   await setRit(page, 'hf', false, 0);
   await tuneRadio(page, 'hf', 28.4);
@@ -86,20 +89,20 @@ test('ham-tech-s10 completes all objectives', async ({ page, missionControlPage:
 
   // make-hf-contact: CQ, report, identify
   await pttTransmit(page, 'hf', { kind: 'cq' }, 3);
-  await page.waitForTimeout(12000);
+  await simAdvance(page, 12000);
   await pttTransmit(page, 'hf', { kind: 'reply', item: 'report' }, 3);
-  await page.waitForTimeout(12000);
+  await simAdvance(page, 12000);
   await pttTransmit(page, 'hf', { kind: 'identify' }, 3);
-  await page.waitForTimeout(12000);
+  await simAdvance(page, 12000);
   await step('Make the HF Contact', 'make-hf-contact');
 
   // compare-modes: CW example then FT8 example, then the allowed-modes worksheet
   await setRadioMode(page, 'hf', 'CW');
   await tuneRadio(page, 'hf', 28.06);
-  await page.waitForTimeout(8000);
+  await simAdvance(page, 8000);
   await setRadioMode(page, 'hf', 'FT8');
   await tuneRadio(page, 'hf', 28.074);
-  await page.waitForTimeout(8000);
+  await simAdvance(page, 8000);
   await submitWorksheet(page, 's10-allowed', {
     cw: 'CW is allowed there, in the segment below 28.300 MHz',
     ft8: 'No, it is a narrow digital mode in the data segment',
@@ -112,6 +115,6 @@ test('ham-tech-s10 completes all objectives', async ({ page, missionControlPage:
   await pttExpectRefusal(page, 'hf', { kind: 'test' });
   await tuneRadio(page, 'hf', 28.4);
   await pttTransmit(page, 'hf', { kind: 'test' }, 1);
-  await page.waitForTimeout(2000);
+  await simAdvance(page, 2000);
   await expectMissionComplete(page);
 });

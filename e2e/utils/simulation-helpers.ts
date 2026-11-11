@@ -1,4 +1,5 @@
 import { expect, Page } from '@playwright/test';
+import { advanceUntil, hasTestClock, simAdvance } from './test-clock';
 
 /**
  * Wait for the simulation to initialize and stabilize.
@@ -21,7 +22,7 @@ export async function waitForSimulationReady(page: Page): Promise<void> {
   await expect(gsItems.first().or(page.locator('html.mc-minimal-hud #app-shell-page')).first()).toBeVisible({ timeout: 15000 });
 
   // Give the simulation time to start the game loop
-  await page.waitForTimeout(2000);
+  await simAdvance(page, 2000);
 }
 
 /**
@@ -137,6 +138,37 @@ export async function isVisible(page: Page, selector: string): Promise<boolean> 
  */
 export async function waitForQuizToAppear(page: Page, timeout = 30000): Promise<void> {
   const quizModal = page.locator('#quiz-modal, .quiz-box');
+
+  // Test clock: fast-forward until the quiz or one of its openers is on screen, then open it at once
+  // (the pending indicator shows after a 5 s page-time delay)
+  if (hasTestClock(page)) {
+    // The checklist quiz button is not a reliable opener (it can show before the quiz is ready), so wait
+    // for the modal itself or the pending indicator/toast; anything else falls through to the chain below
+    const openers = [
+      page.locator('.pending-quiz-indicator__open-btn'),
+      page.locator('.pending-quiz-toast button:has-text("Open Quiz"), .toast button:has-text("Open Quiz")').first(),
+    ];
+    const shown = async (l: import('@playwright/test').Locator): Promise<boolean> => l.isVisible().catch(() => false);
+    const ready = await advanceUntil(page, async () => (await shown(quizModal)) || (await Promise.all(openers.map(shown))).some(Boolean), {
+      maxMs: timeout,
+      stepMs: 1000,
+    }).then(
+      () => true,
+      () => false
+    );
+    if (ready) {
+      if (await shown(quizModal)) {
+        return;
+      }
+      for (const opener of openers) {
+        if (await shown(opener)) {
+          await opener.click();
+          await expect(quizModal).toBeVisible({ timeout: 5000 });
+          return;
+        }
+      }
+    }
+  }
 
   // First check if quiz is already visible
   try {
@@ -280,13 +312,27 @@ export async function answerQuizByText(page: Page, answerText: string): Promise<
  */
 export async function waitForDecisionToAppear(page: Page, timeout = 30000): Promise<void> {
   const modal = page.locator('#decision-modal');
+  const pendingIndicator = page.locator('.pending-quiz-indicator__open-btn');
+  if (hasTestClock(page)) {
+    const shown = async (l: import('@playwright/test').Locator): Promise<boolean> => l.isVisible().catch(() => false);
+    await advanceUntil(page, async () => (await shown(modal)) || (await shown(pendingIndicator)), {
+      maxMs: timeout + 10000,
+      stepMs: 1000,
+      message: 'decision or pending indicator visible',
+    });
+    if (await shown(modal)) {
+      return;
+    }
+    await pendingIndicator.click();
+    await expect(modal).toBeVisible({ timeout: 10000 });
+    return;
+  }
   try {
     await expect(modal).toBeVisible({ timeout: 3000 });
     return;
   } catch {
     // not open yet - use the indicator
   }
-  const pendingIndicator = page.locator('.pending-quiz-indicator__open-btn');
   await expect(pendingIndicator).toBeVisible({ timeout });
   await pendingIndicator.click();
   await expect(modal).toBeVisible({ timeout: 10000 });

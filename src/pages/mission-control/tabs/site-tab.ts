@@ -1,5 +1,5 @@
 import { isFrontlineAllowed, isTrainerVisible } from '@app/campaigns/frontline/frontline-gate';
-import { FORWARD_SITE_ASPECT, FORWARD_SITE_IMAGE, forwardSceneLayers, SITE_ASPECT, SITE_IMAGES, visibleHotspots } from '@app/campaigns/frontline/site-hotspots';
+import { closeupFor, FORWARD_SITE_ASPECT, FORWARD_SITE_IMAGE, forwardSceneLayers, SITE_ASPECT, SITE_IMAGES, visibleHotspots } from '@app/campaigns/frontline/site-hotspots';
 import { sceneLayerImageFor, siteImageFor } from '@app/campaigns/frontline/site-layers';
 import { BaseElement } from '@app/components/base-element';
 import { html } from '@app/engine/utils/development/formatter';
@@ -10,7 +10,7 @@ import { ObjectivesManager } from '@app/objectives/objectives-manager';
 import { FieldHandoverPanel } from '@app/pages/mission-control/tabs/field-handover-panel';
 import { FieldNotebookPanel, type HypothesisScope, type NotebookTarget } from '@app/pages/mission-control/tabs/field-notebook-panel';
 import { FieldPathDiagramPanel } from '@app/pages/mission-control/tabs/field-path-diagram-panel';
-import { FieldPowerPanel } from '@app/pages/mission-control/tabs/field-power-panel';
+import { FieldPowerPanel, powerPanelRelevant } from '@app/pages/mission-control/tabs/field-power-panel';
 import { FieldRecordsPanel } from '@app/pages/mission-control/tabs/field-records-panel';
 import { FieldServicePanel } from '@app/pages/mission-control/tabs/field-service-panel';
 import { FieldWorkloadPanel } from '@app/pages/mission-control/tabs/field-workload-panel';
@@ -18,6 +18,7 @@ import { formStepState, sampleStepState } from '@app/pages/mission-control/tabs/
 import { buildNotebookTargets } from '@app/pages/mission-control/tabs/notebook-targets';
 import { hypothesisFeedback, hypothesisRequirementRoutes } from '@app/physical/evidence-predicates';
 import { PhysicalPlantService } from '@app/physical/physical-plant-service';
+import type { SampleProvenance } from '@app/physical/service-types';
 import { GLOW_FILTERS_SVG } from '@app/physical/ui/glow-filters';
 import { PartCloseupModal } from '@app/physical/ui/part-closeup-modal';
 import { shapeSvg, svgOpen, VIEW_W, viewHeight } from '@app/physical/ui/plant-svg';
@@ -27,6 +28,18 @@ import type { SceneLayer, SiteHotspot, SiteView } from '@app/physical/ui/site-ty
 import { ScenarioManager } from '@app/scenario-manager';
 import { getAssetUrl } from '@app/utils/asset-url';
 import '@app/physical/ui/plant-ui.css';
+import './site-workspace.css';
+
+const SITE_WORKSPACES = [
+  ['scene', 'Equipment'],
+  ['power', 'Power'],
+  ['service', 'Laptop'],
+  ['workload', 'Workloads'],
+  ['path', 'Service paths'],
+  ['notebook', 'Notebook'],
+  ['handover', 'Handover'],
+  ['records', 'Records and notices'],
+] as const;
 
 /**
  * SiteTab - The Frontline site view (Phase 38.1 physical-layer sandbox)
@@ -37,6 +50,49 @@ import '@app/physical/ui/plant-ui.css';
  * path status; location, trips and the spotted flag live in the global TentControl.
  */
 export class SiteTab extends BaseElement {
+  static source: SampleProvenance = 'local-probe';
+  private static desktopRequested_ = false;
+  /** Sitting down at the laptop shows its desktop; the next laptop view starts there */
+  static requestDesktop(): void {
+    SiteTab.source = 'local-probe';
+    SiteTab.desktopRequested_ = true;
+  }
+  static takeDesktopRequest(): boolean {
+    const requested = SiteTab.desktopRequested_;
+    SiteTab.desktopRequested_ = false;
+
+    return requested;
+  }
+  static openLaptop(): void {
+    EventBus.getInstance().emit(Events.SWITCH_TAB, { tabId: 'field-service', desktop: true });
+  }
+  static openSource(source: SampleProvenance): void {
+    SiteTab.source = source;
+    EventBus.getInstance().emit(Events.SWITCH_TAB, { tabId: 'field-service' });
+  }
+  /** Peer workspaces advertised in the main mission-control tab bar. */
+  static availableWorkspaces(): { id: string; label: string }[] {
+    const services = PhysicalPlantService.servicesOrNull();
+    const hasServices = (services?.getServiceIds().length ?? 0) > 0;
+    const records = PhysicalPlantService.recordsOrNull();
+    const available: Record<string, boolean> = {
+      power: powerPanelRelevant(PhysicalPlantService.plantOrNull()),
+      service: hasServices,
+      workload: hasServices && (PhysicalPlantService.workloadsOrNull()?.cards().length ?? 0) > 0,
+      path: hasServices,
+      notebook: PhysicalPlantService.evidenceOrNull() !== null,
+      handover: (records?.forms().length ?? 0) > 0,
+      records: records?.equipment != null,
+    };
+    return SITE_WORKSPACES.filter(([id]) => available[id]).map(([id, label]) => ({ id: `field-${id}`, label }));
+  }
+
+  showWorkspace(tabId: string): void {
+    this.dom_.dataset.fieldSource = tabId === 'field-service' ? SiteTab.source : '';
+    if (tabId === 'field-service') this.servicePanel_?.setSource(SiteTab.source);
+    this.workspace_ = tabId === 'site' ? 'scene' : tabId.slice('field-'.length);
+    this.syncWorkspaces_();
+  }
   /** Throttle interval for passive DOM sync on the sim tick (ms) */
   private static readonly UPDATE_INTERVAL_MS = 1000;
 
@@ -57,12 +113,18 @@ export class SiteTab extends BaseElement {
   /** The painting currently shown (changes with the weather) */
   private renderedImage_ = '';
   private renderedAspect_ = 0;
+  private workspace_ = 'scene';
+  private active_ = false;
 
-  constructor(containerId: string) {
+  constructor(containerId: string, onNotebookPutDown: () => void = () => EventBus.getInstance().emit(Events.SWITCH_TAB, { tabId: 'site' })) {
     super();
     this.init_(containerId, 'replace');
     this.dom_ = qs('.site-tab');
-    this.powerPanel_ = new FieldPowerPanel(qs<HTMLElement>('#site-power-panel'), () => PhysicalPlantService.plantOrNull());
+    this.powerPanel_ = new FieldPowerPanel(
+      qs<HTMLElement>('#site-power-panel'),
+      () => PhysicalPlantService.plantOrNull(),
+      (part) => this.visitPart_(part)
+    );
     this.servicePanel_ = new FieldServicePanel(
       qs<HTMLElement>('#site-service-panel'),
       () => PhysicalPlantService.servicesOrNull(),
@@ -88,7 +150,8 @@ export class SiteTab extends BaseElement {
         return log ? hypothesisFeedback(entry, specs, log.entries(), { eventFiredAtS: (id) => PhysicalPlantService.eventsOrNull()?.firedAtS(id) ?? null }) : null;
       },
       (entry) => entryDisplayText(entry, PhysicalPlantService.plantOrNull()),
-      () => hypothesisRequirementRoutes(PhysicalPlantService.plantOrNull()?.getConfig().hypothesisSpecs ?? [])
+      () => hypothesisRequirementRoutes(PhysicalPlantService.plantOrNull()?.getConfig().hypothesisSpecs ?? []),
+      onNotebookPutDown
     );
     this.handoverPanel_ = new FieldHandoverPanel(qs<HTMLElement>('#site-handover-panel'), {
       records: () => PhysicalPlantService.recordsOrNull(),
@@ -311,6 +374,23 @@ export class SiteTab extends BaseElement {
     }
   }
 
+  private visitPart_(partId: string): void {
+    const spots = this.isForward_() ? visibleHotspots('forward', this.hasTarget_) : [...visibleHotspots('inside', this.hasTarget_), ...visibleHotspots('outside', this.hasTarget_)];
+    // A part can sit in another hotspot's close-up (the forward EuroSat modem is on the router shelf)
+    const plant = PhysicalPlantService.plantOrNull();
+    const has = (target: string): boolean => plant?.getTargetTraits(target) != null;
+    const mode = this.isForward_() ? 'forward' : 'camp';
+    const spot =
+      spots.find((item) => item.closeup && item.partIds.includes(partId)) ??
+      spots.find((item) => item.closeup && closeupFor(item.closeup, mode, has).regions.some((region) => region.target === partId));
+    if (!spot?.closeup) return;
+    EventBus.getInstance().emit(Events.SWITCH_TAB, { tabId: 'site' });
+    if (!this.isForward_()) this.setView(spot.view);
+    const closeup = PartCloseupModal.getInstance();
+    closeup.showCloseup(spot.closeup);
+    closeup.selectTarget(partId);
+  }
+
   protected get html_(): string {
     return html`
       <div class="site-tab">
@@ -324,7 +404,15 @@ export class SiteTab extends BaseElement {
           <span class="site-strip-spacer"></span>
           <button type="button" class="btn btn-sm btn-outline-warning" id="site-open-trainer" style="display:none">Trainer</button>
         </div>
-        <div class="site-stage-box"><div class="pp-stage" id="site-stage" style="--pp-ar:${this.aspect_()}">${this.stageHtml_()}</div></div>
+        <div class="site-stage-box" id="site-scene-panel"><div class="pp-stage" id="site-stage" style="--pp-ar:${this.aspect_()}">${this.stageHtml_()}</div></div>
+        <nav class="site-field-kit" aria-label="Field kit">
+          <button data-field-object="field-notebook">Open notebook</button>
+          <button data-field-object="field-handover">Pick up handover clipboard</button>
+          <button data-field-object="field-records">Open equipment log</button>
+          <button data-field-object="field-path">Unfold wiring diagram</button>
+          <button data-field-object="field-power">Open power plan</button>
+          <button data-field-source="pilot-report">Use radio</button>
+        </nav>
         <div id="site-power-panel" style="display:none"></div>
         <div id="site-service-panel" style="display:none"></div>
         <div id="site-workload-panel" style="display:none"></div>
@@ -341,6 +429,21 @@ export class SiteTab extends BaseElement {
     const root = qs<HTMLElement>('.site-tab');
     root.addEventListener('click', (ev) => {
       const target = ev.target as Element;
+      const object = target.closest<HTMLElement>('[data-field-object]');
+      if (object) {
+        EventBus.getInstance().emit(Events.SWITCH_TAB, { tabId: object.dataset.fieldObject! });
+        return;
+      }
+      const source = target.closest<HTMLElement>('button[data-field-source]');
+      if (source) {
+        SiteTab.openSource(source.dataset.fieldSource as SampleProvenance);
+        return;
+      }
+      const summary = target.closest('summary');
+      if (summary?.parentElement?.parentElement?.getAttribute('role') === 'tabpanel') {
+        ev.preventDefault();
+        return;
+      }
       const spot = target.closest<SVGElement>('[data-closeup], [data-action]');
       if (spot) {
         this.activateSpot_(spot);
@@ -404,6 +507,7 @@ export class SiteTab extends BaseElement {
     this.handoverPanel_?.sync();
     this.recordsPanel_?.sync();
     this.pathPanel_?.sync();
+    this.syncWorkspaces_();
     const note = this.cache_('site-outside-note');
     if (note) note.style.display = outside && !forward ? '' : 'none';
     const spares = Object.values(plant.getSpares()).reduce((a, b) => a + b, 0);
@@ -423,6 +527,31 @@ export class SiteTab extends BaseElement {
     }
   }
 
+  /** One full-size workspace; scenario-inapplicable tools never appear in navigation. */
+  private syncWorkspaces_(): void {
+    const offered = new Set(SiteTab.availableWorkspaces().map((item) => item.id));
+    for (const button of this.dom_.querySelectorAll<HTMLElement>('[data-field-object]')) button.hidden = !offered.has(button.dataset.fieldObject!);
+    this.dom_.querySelector<HTMLElement>('.site-field-kit')?.toggleAttribute('hidden', this.workspace_ !== 'scene');
+    const available = SITE_WORKSPACES.filter(([id]) => id === 'scene' || this.cache_(`site-${id}-panel`)?.style.display !== 'none');
+    if (!available.some(([id]) => id === this.workspace_)) this.workspace_ = 'scene';
+    this.dom_.classList.toggle('is-notebook', this.workspace_ === 'notebook');
+    for (const [id, label] of SITE_WORKSPACES) {
+      const panel = this.cache_(`site-${id}-panel`);
+      const selected = id === this.workspace_;
+      if (panel) {
+        panel.hidden = !selected;
+        panel.setAttribute('role', 'tabpanel');
+        panel.setAttribute('aria-label', label);
+        const section = panel.firstElementChild;
+        if (section instanceof HTMLDetailsElement) {
+          section.open = true;
+          section.querySelector('summary')?.setAttribute('tabindex', '-1');
+        }
+      }
+    }
+    this.notebookPanel_?.setImmersive(this.active_ && this.workspace_ === 'notebook');
+  }
+
   private setText_(id: string, text: string): void {
     const el = this.cache_(id);
     if (el && el.textContent !== text) {
@@ -431,6 +560,7 @@ export class SiteTab extends BaseElement {
   }
 
   public activate(): void {
+    this.active_ = true;
     if (this.dom_) {
       this.dom_.style.display = 'block';
     }
@@ -439,6 +569,8 @@ export class SiteTab extends BaseElement {
   }
 
   public deactivate(): void {
+    this.active_ = false;
+    this.notebookPanel_?.setImmersive(false);
     PhysicalPlantService.setSiteTabShown(false);
     if (this.dom_) {
       this.dom_.style.display = 'none';

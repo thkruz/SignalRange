@@ -289,13 +289,7 @@ export const frontlineScenario10Data: FrontlineScenarioData = {
       points: 15,
       conditions: [
         eventFired(S10_EVENT_RESTRICTION, 'Change in the service has occurred'),
-        sampleAfterEvent(
-          SKYLINK_SERVICE,
-          'application',
-          'degraded',
-          S10_EVENT_RESTRICTION,
-          'Changed application result read after the onset (Application Check in Service checks)'
-        ),
+        sampleAfterEvent(SKYLINK_SERVICE, 'application', 'degraded', S10_EVENT_RESTRICTION, 'Changed application result read after the onset (Mission apps on the laptop)'),
         handoverValid('symptoms', 'Changed symptoms and onset recorded'),
       ],
     },

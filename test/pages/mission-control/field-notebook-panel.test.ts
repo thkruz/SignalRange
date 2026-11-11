@@ -80,7 +80,7 @@ describe('M12 notebook panel', () => {
     expect(host.style.display).toBe('none');
   });
 
-  it('shows plant actions on the timeline, newest first', () => {
+  it('shows plant actions in chronological notebook entries', () => {
     const svc = boot(config());
     const { host, p } = panel();
     p.sync();
@@ -91,7 +91,7 @@ describe('M12 notebook panel', () => {
     p.sync();
     const rows = host.querySelectorAll('[data-nb-entry]');
     expect(rows).toHaveLength(2);
-    expect(rows[0].getAttribute('data-nb-entry')).toBe(svc.evidence?.entries()[1].id);
+    expect(rows[0].getAttribute('data-nb-entry')).toBe(svc.evidence?.entries()[0].id);
     expect(host.querySelectorAll('input[data-nb-cite]')).toHaveLength(2);
   });
 
@@ -130,15 +130,38 @@ describe('M12 notebook panel', () => {
     const svc = boot(config());
     const { host, p } = panel();
     p.sync();
-    const scope = host.querySelector<HTMLSelectElement>('select[data-nb-scope]');
-    const target = host.querySelector<HTMLSelectElement>('select[data-nb-target]');
-    expect(target?.options[0].value).toBe('router');
-    if (scope) scope.value = 'provider';
+    const scope = host.querySelector<HTMLInputElement>('input[data-nb-scope][value="provider"]');
+    const target = host.querySelector<HTMLInputElement>('input[data-nb-target]:checked');
+    expect(target?.value).toBe('router');
+    if (scope) scope.checked = true;
     scope?.dispatchEvent(new Event('change', { bubbles: true }));
-    expect(host.querySelector<HTMLSelectElement>('select[data-nb-target]')?.options[0].value).toBe('prov');
+    expect(host.querySelector<HTMLInputElement>('input[data-nb-target]:checked')?.value).toBe('prov');
     host.querySelector<HTMLButtonElement>('button[data-nb-act="add"]')?.click();
     const h = svc.evidence?.entries('hypothesis')[0] as never as { claim: { scope: string; targetId: string } };
     expect(h.claim).toMatchObject({ scope: 'provider', targetId: 'prov' });
+  });
+
+  it('keeps evidence marks across page turns and saves citations from different pages', () => {
+    const svc = boot(config());
+    const { host, p } = panel();
+    for (let i = 0; i < 8; i++) svc.plant.inspect('router');
+    p.sync();
+    expect(host.querySelectorAll('[data-nb-entry]')).toHaveLength(4);
+    const mark = (): string => {
+      const box = host.querySelector<HTMLInputElement>('[data-nb-cite]')!;
+      box.checked = true;
+      box.dispatchEvent(new Event('change', { bubbles: true }));
+      return box.dataset.nbCite!;
+    };
+    const recent = mark();
+    host.querySelector<HTMLButtonElement>('[data-nb-act="older"]')!.click();
+    const earlier = mark();
+    host.querySelector<HTMLButtonElement>('[data-nb-act="newer"]')!.click();
+    expect(host.querySelector<HTMLInputElement>(`[data-nb-cite="${recent}"]`)?.checked).toBe(true);
+    host.querySelector<HTMLButtonElement>('[data-nb-act="add"]')!.click();
+    expect(svc.evidence?.entries('hypothesis')[0]).toMatchObject({ citedEntryIds: [recent, earlier] });
+    expect(host.querySelectorAll('[data-nb-cite]:checked')).toHaveLength(0);
+    p.destroy();
   });
 
   it('describeHypothesis and buildNotebookLine are plain language', () => {

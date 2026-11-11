@@ -343,6 +343,10 @@ export async function dismissDialogs(page: Page): Promise<string[]> {
 // ---------------------------------------------------------------------------
 
 export async function openSiteTab(page: Page): Promise<void> {
+  const focused = page.locator('.immersive-view[open] .immersive-leave');
+  if (await focused.isVisible()) await focused.click();
+  const book = page.getByRole('dialog', { name: 'Field notebook', exact: true });
+  if (await book.isVisible()) await book.getByRole('button', { name: 'Put notebook down', exact: true }).click();
   const tab = page.locator('[data-tab-id="site"]');
   await expect(tab).toBeVisible({ timeout: 20000 });
   if (!((await tab.getAttribute('class')) ?? '').includes('active')) {
@@ -353,11 +357,28 @@ export async function openSiteTab(page: Page): Promise<void> {
 
 /** The Site panels (Service checks, Workloads, Notebook, Handover...) by summary text */
 function panel(page: Page, title: RegExp): Locator {
-  return page.locator('.site-tab details').filter({ has: page.locator('summary', { hasText: title }) });
+  if (title.test('Laptop') || title.test('Service checks')) return page.locator('#site-service-panel');
+  if (title.test('Notebook')) return page.locator('#site-notebook-panel > .fnb');
+  return page.locator('.site-tab details, .fnb-immersive details').filter({ has: page.locator('summary', { hasText: title }) });
 }
 
-/** Open or close one Site panel by clicking its summary */
+/** Open a field workspace in the main tab bar; closing returns to Site. */
 export async function setPanelOpen(page: Page, title: RegExp, open: boolean): Promise<Locator> {
+  const focused = page.locator('.immersive-view[open] .immersive-leave');
+  if (await focused.isVisible()) await focused.click();
+  const book = page.getByRole('dialog', { name: 'Field notebook', exact: true });
+  if (await book.isVisible()) {
+    if (open && title.test('Notebook')) return panel(page, title).first();
+    await book.getByRole('button', { name: 'Put notebook down', exact: true }).click();
+  }
+  const workspaces = page.locator('#tab-bar');
+  const topTab = workspaces.locator('[data-tab-id^="field-"]').filter({ hasText: title });
+  if (await topTab.count()) {
+    await activate(page, open ? topTab : workspaces.locator('[data-tab-id="site"]'), 'Field workspace');
+    const fieldPanel = panel(page, title).first();
+    await expect(fieldPanel).toBeAttached();
+    return fieldPanel;
+  }
   const d = panel(page, title).first();
   await expect(d).toBeAttached();
   const isOpen = await d.evaluate((n) => (n as HTMLDetailsElement).open);
@@ -555,20 +576,90 @@ export async function servicesTakeSample(
 ): Promise<string> {
   await closeCloseup(page);
   await goInside(page);
-  const d = await setPanelOpen(page, /Service checks/u, true);
-  const row = d.locator(`[data-svc-service="${serviceId}"][data-svc-layer="${layer}"]`).first();
-  await expect(row, `service row ${serviceId}/${layer}`).toBeVisible();
-  const sel = row.locator('select[data-svc-via]');
-  await expect(sel.locator(`option[value="${via}"]`), `${serviceId}/${layer} offers ${via}`).toBeAttached();
-  await sel.selectOption(via);
-  if (metric) await row.locator('select[data-svc-metric]').selectOption(metric);
+  if (via === 'pilot-report' || via === 'endpoint-report') {
+    await openSiteTab(page);
+    await page.locator('[data-field-source="pilot-report"]').click();
+    if (via === 'endpoint-report') await page.getByRole('navigation', { name: 'Radio channels' }).getByRole('button', { name: 'Remote operator' }).click();
+  } else if (via === 'device-indicator') {
+    await openPart(page, /skylink/u.test(serviceId) ? 'skylink-router' : 'vsat-modem');
+  } else {
+    return laptopTakeSample(page, serviceId, layer, via, metric);
+  }
+  const row = page.locator(`.immersive-view [data-svc-service="${serviceId}"][data-svc-layer="${layer}"]`).first();
+  await expect(row, `service instrument ${serviceId}/${layer}`).toBeVisible();
   const age = row.locator('[data-fsp^="age-"]');
-  await row.locator('button[data-svc-check]').click();
+  await row.locator(`button[data-svc-check][data-svc-metric="${metric ?? 'status'}"]`).click();
   await expect(age).toHaveText(/\d+\s*s ago|now|just/iu);
   const reading = (await row.locator('[data-fsp^="value-"]').innerText()).trim();
-  await setPanelOpen(page, /Service checks/u, false);
+  await openSiteTab(page);
 
   return reading;
+}
+
+/** Sit at the laptop and launch an app from its taskbar */
+async function launchLaptopApp(page: Page, name: RegExp): Promise<void> {
+  await setPanelOpen(page, /Laptop/u, true);
+  const pins = page.getByRole('navigation', { name: 'Laptop applications' });
+  await pins.getByRole('button', { name }).first().click();
+}
+
+/**
+ * Laptop readings, taken the way a player would: NetProbe commands for local-probe, the browser's
+ * provider portal pages, and the terminal's own app (its status screen, or a speed test for link figures).
+ * Returns the text the app showed for the reading.
+ */
+async function laptopTakeSample(page: Page, serviceId: string, layer: ServiceLayer, via: SampleVia, metric?: string): Promise<string> {
+  const before = await readLastSampleId(page, serviceId);
+  let shown = '';
+  if (via === 'local-probe') {
+    await launchLaptopApp(page, /^NetProbe$/u);
+    await page.locator(`[data-np-host="${serviceId}"][data-np-layer="${layer}"]`).click();
+    const want = metric ?? 'status';
+    await page.locator(`.np-cmd[data-np-metrics~="${want}"]`).first().click();
+    await expect(page.locator('.np-running')).toHaveCount(0);
+    shown = (await page.locator('[data-np="console"] .np-block').last().innerText()).trim();
+  } else if (via === 'provider-portal') {
+    await launchLaptopApp(page, /^Browser$/u);
+    await page.locator(`.pt-bookmark[data-pt-open="${serviceId}"]`).click();
+    if (layer === 'provider') {
+      await expect(page.locator('.pt-site-nav [data-pt-page="provider"]')).toBeVisible();
+      await page.locator(`.pt-site-nav [data-pt-open="${serviceId}"][data-pt-page="provider"]`).click();
+    }
+    await expect(page.locator(`.pt-body[data-pt-layer="${layer}"] [data-pt="meta"]`)).toHaveText(/Page loaded/u);
+    shown = (await page.locator('[data-pt="head"]').innerText()).trim();
+  } else if (via === 'terminal-app') {
+    const skylink = !/eurosat/iu.test(serviceId);
+    await launchLaptopApp(page, skylink ? /SkyLink/iu : /EuroSat|modem|VSAT/iu);
+    const screenAttr = skylink ? 'data-screen' : 'data-eurosat-screen';
+    if (metric) {
+      await page.locator(`[${screenAttr}="speed-test"]`).click();
+      const start = page.locator(skylink ? '#speed-start' : '#eurosat-speed-start');
+      await start.click();
+      await expect(start).toBeEnabled({ timeout: 60000 });
+    } else {
+      await page.locator(`[${screenAttr}="${skylink ? 'home' : 'status'}"]`).click();
+    }
+    shown = (
+      await page
+        .locator(skylink ? '.skylink-app .skylink-main' : '#eurosat-screen')
+        .first()
+        .innerText()
+    ).trim();
+  } else {
+    throw new Error(`No laptop app reads '${via}'`);
+  }
+  await expect.poll(() => readLastSampleId(page, serviceId), { message: `${via} reading of ${serviceId}/${layer}${metric ? `/${metric}` : ''}` }).not.toBe(before);
+  await openSiteTab(page);
+
+  return shown.replace(/\s+/gu, ' ');
+}
+
+/** The id of a service's newest reading (null before any) */
+async function readLastSampleId(page: Page, serviceId: string): Promise<string | null> {
+  return page.evaluate(
+    (id) => (window as unknown as { __fieldStatus: () => { lastSampleIds?: Record<string, string | null> } }).__fieldStatus().lastSampleIds?.[id] ?? null,
+    serviceId
+  );
 }
 
 /** workloads.start(cardId, serviceId): returns the new run id */
@@ -882,33 +973,41 @@ export async function notebookAddHypothesis(page: Page, h: { scope: string; targ
   await closeCloseup(page);
   await goInside(page);
   const d = await setPanelOpen(page, /Notebook/u, true);
-  await d.locator('select[data-nb-scope]').selectOption(h.scope);
-  await expect(d.locator(`select[data-nb-target] option[value="${h.target}"]`), `hypothesis target ${h.target} offered`)
-    .toBeAttached({ timeout: 4000 })
-    .catch(async (e) => {
-      const have = await d.locator('select[data-nb-target] option').evaluateAll((os) => os.map((o) => `${(o as HTMLOptionElement).value}=${o.textContent}`));
-      throw new Error(`target ${h.target} not offered for scope ${h.scope}; offered: ${have.join(' | ')} (${(e as Error).message.length})`);
-    });
-  await d.locator('select[data-nb-target]').selectOption(h.target);
+  await d.locator('[data-nb-pick="scope"]').click();
+  await d.locator(`input[data-nb-scope][value="${h.scope}"]`).check();
+  // Selecting an already checked choice does not emit change; close its sheet explicitly.
+  if (await d.locator('[data-nb-picker="scope"]').isVisible()) await d.locator('[data-nb-picker="scope"] [data-nb-act="close-picker"]').click();
+  await d.locator('[data-nb-pick="target"]').click();
+  await d.locator(`input[data-nb-target][value="${h.target}"]`).check();
+  if (await d.locator('[data-nb-picker="target"]').isVisible()) await d.locator('[data-nb-picker="target"] [data-nb-act="close-picker"]').click();
   if (h.cause) {
-    const cause = d.locator('[data-nb-cause]');
-    if ((await cause.evaluate((n) => n.tagName)) === 'SELECT') {
-      await cause.selectOption(h.cause);
-    } else {
+    await d.locator('[data-nb-pick="cause"]').click();
+    const cause = d.locator('input[type="text"][data-nb-cause]');
+    if (await cause.count()) {
       await cause.fill(h.cause);
+    } else {
+      await d.locator(`input[data-nb-cause][value="${h.cause}"]`).check();
     }
+    if (await d.locator('[data-nb-picker="cause"]').isVisible()) await d.locator('[data-nb-picker="cause"] [data-nb-act="close-picker"]').click();
   }
   if (h.confidence) {
-    await d.locator('select[data-nb-confidence]').selectOption(h.confidence);
+    await d.locator('[data-nb-pick="confidence"]').click();
+    await d.locator(`input[data-nb-confidence][value="${h.confidence}"]`).check();
+    if (await d.locator('[data-nb-picker="confidence"]').isVisible()) await d.locator('[data-nb-picker="confidence"] [data-nb-act="close-picker"]').click();
   }
-  const boxes = d.locator('input[data-nb-cite]');
-  const ids = await boxes.evaluateAll((els) => els.map((e) => e.getAttribute('data-nb-cite') ?? ''));
-  for (const id of h.cites === 'all' ? ids : ids.slice(0, h.cites)) {
-    const box = d.locator(`input[data-nb-cite="${id}"]`);
-    if (!(await box.isChecked())) {
-      await activate(page, box, `notebook cite ${id}`, 'Space');
-      await expect(box).toBeChecked();
+  let marked = 0;
+  const seen = new Set<string>();
+  while (true) {
+    const ids = await d.locator('input[data-nb-cite]').evaluateAll((els) => els.map((e) => e.getAttribute('data-nb-cite') ?? ''));
+    for (const id of ids) {
+      if (seen.has(id) || (h.cites !== 'all' && marked >= h.cites)) continue;
+      seen.add(id);
+      await d.locator(`input[data-nb-cite="${id}"]`).check();
+      marked++;
     }
+    const older = d.locator('[data-nb-act="older"]');
+    if ((await older.isDisabled()) || (h.cites !== 'all' && marked >= h.cites)) break;
+    await older.click();
   }
   await activate(page, d.locator('button[data-nb-act="add"]'), 'Add hypothesis');
   await expect(d).toContainText(/Hypothesis saved/u);

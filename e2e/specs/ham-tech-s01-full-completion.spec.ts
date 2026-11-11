@@ -29,6 +29,8 @@ test('ham-tech-s01 completes all objectives', async ({ page, missionControlPage:
   test.setTimeout(170000);
   await openTechScenario(page, mc, 'ham-tech-s01');
   const step = async (title: string, id: string, quizzes = 0): Promise<void> => {
+    const exit = page.locator('.immersive-view[open] .immersive-leave');
+    if (await exit.isVisible()) await exit.click();
     if (quizzes > 0) await answerTechQuizzes(page, quizzes);
     await dismissDialogIfPresent(page);
     try {

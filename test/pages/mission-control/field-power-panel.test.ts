@@ -60,8 +60,8 @@ describe('M08 field power panel', () => {
     document.body.appendChild(host);
     const panel = new FieldPowerPanel(host, () => plant);
     panel.sync();
-    const sel = host.querySelector<HTMLSelectElement>('select[data-power-part="skylink"]') as HTMLSelectElement;
-    sel.value = 'active';
+    const sel = host.querySelector<HTMLInputElement>('input[data-power-part="skylink"][value="active"]') as HTMLInputElement;
+    sel.checked = true;
     sel.dispatchEvent(new Event('change', { bubbles: true }));
     expect(host.querySelector('[data-fpp="forecast-note"]')?.textContent).toContain('preview');
     expect(plant.getPartMode('skylink')).toBe('standby');
@@ -80,9 +80,9 @@ describe('M08 field power panel', () => {
     const panel = new FieldPowerPanel(host, () => plant);
     panel.setPending('vsat-modem', 'active');
     panel.sync();
-    expect((host.querySelector('select[data-power-part="vsat-modem"]') as HTMLSelectElement).value).toBe('active');
+    expect((host.querySelector('input[data-power-part="vsat-modem"]:checked') as HTMLInputElement).value).toBe('active');
     host.querySelector<HTMLButtonElement>('button[data-power-action="reset"]')?.click();
-    expect((host.querySelector('select[data-power-part="vsat-modem"]') as HTMLSelectElement).value).toBe('standby');
+    expect((host.querySelector('input[data-power-part="vsat-modem"]:checked') as HTMLInputElement).value).toBe('standby');
     const hidden = document.createElement('div');
     new FieldPowerPanel(hidden, () => make(config(false))).sync();
     expect(hidden.style.display).toBe('none');
@@ -92,5 +92,23 @@ describe('M08 field power panel', () => {
     expect(formatDuration(40)).toBe('40 s');
     expect(formatDuration(5400)).toBe('1 h 30 min');
     expect(formatDuration(600)).toBe('10 min');
+  });
+
+  it('a field plan retains the preview without remotely switching equipment', () => {
+    const plant = make(config());
+    const host = document.createElement('div');
+    const visits: string[] = [];
+    const panel = new FieldPowerPanel(
+      host,
+      () => plant,
+      (id) => visits.push(id)
+    );
+    const before = plant.getPartMode('vsat-modem');
+    panel.setPending('vsat-modem', 'active');
+    host.querySelector<HTMLButtonElement>('[data-power-action="apply"]')!.click();
+    expect(plant.getPartMode('vsat-modem')).toBe(before);
+    expect(panel.getPending().get('vsat-modem')).toBe('active');
+    host.querySelector<HTMLButtonElement>('[data-power-visit="vsat-modem"]')!.click();
+    expect(visits).toEqual(['vsat-modem']);
   });
 });

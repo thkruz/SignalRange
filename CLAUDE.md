@@ -1,5 +1,11 @@
 # Project instructions for Claude Code
 
+## Game UI direction
+
+Start every interface design decision by asking: "Is this how a AAA video game would present it, or is this how a website UI would present it?" SignalRange is a video game running in a browser. Favor in-world equipment, physical props, direct manipulation, and contextual game interactions. A notebook should feel like opening and writing in a notebook; paper-colored cards around a web form are insufficient. Preserve readable text, keyboard access, and real simulation behavior within that presentation.
+
+Immersion is an explicit design objective throughout the simulation. When the player picks up a notebook or focuses on an in-world object, present that object fullscreen and hide unrelated HUD, navigation, toolbars, notifications, and other windows until they put it down. Provide a clear contextual exit and Escape support, restore the previous interaction state, and keep keyboard focus inside the object while it is open. Design the experience of handling the object before choosing UI controls.
+
 ## Code Conventions
 
 - Private properties and methods end with `_` suffix (e.g., `domCache_`, `syncDomWithState_()`)

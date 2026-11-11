@@ -3,6 +3,8 @@ import { capacityNote, LAYER_LABEL, METRIC_LABEL, PROVENANCE_LABEL } from '@app/
 import { NUMERIC_READABLE, READABLE, type ServiceModel } from '@app/physical/service-model';
 import { type Freshness, type LayerStatus, type SampleMetric, type SampleProvenance, SERVICE_LAYERS, type ServiceLayer, type ServiceSample } from '@app/physical/service-types';
 import { escapeHtml } from '@app/physical/ui/plant-ui-helpers';
+import { NetProbeApp } from './laptop/netprobe-app';
+import { PortalApp } from './laptop/portal-app';
 import './field-service-panel.css';
 
 /**
@@ -111,7 +113,7 @@ export function formatAge(seconds: number): string {
   return `${Math.round(s / 60)} min ago`;
 }
 
-function formatClock(tS: number): string {
+export function formatClock(tS: number): string {
   const s = Math.max(0, Math.floor(tS));
   const mm = Math.floor(s / 60);
 
@@ -165,11 +167,17 @@ export function untestedApplication(model: ServiceModel, serviceId: string, samp
 }
 
 /** Derive everything the panel prints from the service model (no DOM, no layer truth) */
-export function buildServicePanelModel(model: ServiceModel, nowS: number): ServicePanelService[] {
+export function buildServicePanelModel(model: ServiceModel, nowS: number, source?: SampleProvenance): ServicePanelService[] {
   return model.getServiceIds().map((id) => {
     const path = model.getPath(id);
     const rows = rowSpecs(model, id).map(({ layer, endpointId }): ServicePanelRow => {
-      const sample = model.latest(id, layer, endpointId);
+      const sample = source
+        ? (model
+            .samplesFor(id)
+            .slice()
+            .reverse()
+            .find((s) => s.layer === layer && s.endpointId === endpointId && s.provenance === source) ?? null)
+        : model.latest(id, layer, endpointId);
       const row: ServicePanelRow = {
         layer,
         endpointId,
@@ -199,10 +207,27 @@ export function buildServicePanelModel(model: ServiceModel, nowS: number): Servi
 }
 
 export class FieldServicePanel {
+  private source_: SampleProvenance = 'local-probe';
+  private serviceId_: string | null = null;
+
+  /** Each instrument/application owns a fixed observation source. */
+  setSource(source: SampleProvenance, serviceId: string | null = null): void {
+    if (source === this.source_ && serviceId === this.serviceId_) return;
+    this.source_ = source;
+    this.serviceId_ = serviceId;
+    this.built_ = false;
+    this.sync();
+  }
   private built_ = false;
   private serviceKey_ = '';
   private readonly cache_ = new Map<string, HTMLElement>();
   private lastCheck_ = '';
+  /** Laptop software that owns a source: NetProbe (local probe) and the browser (provider portals) */
+  private readonly legacyHost_: HTMLElement;
+  private readonly netprobeHost_: HTMLElement;
+  private readonly portalHost_: HTMLElement;
+  readonly netprobe: NetProbeApp;
+  readonly portal: PortalApp;
 
   constructor(
     private readonly host_: HTMLElement,
@@ -213,13 +238,24 @@ export class FieldServicePanel {
     /** Where the checklist steps that read this service's samples stand; absent = no note */
     private readonly sampleStep_: ((serviceId: string) => FormStepState) | null = null
   ) {
-    this.host_.addEventListener('click', this.onClick_);
-    this.host_.addEventListener('change', this.onChange_);
+    this.legacyHost_ = document.createElement('section');
+    this.netprobeHost_ = document.createElement('section');
+    this.portalHost_ = document.createElement('section');
+    this.netprobeHost_.className = 'fsp-app';
+    this.portalHost_.className = 'fsp-app';
+    this.host_.replaceChildren(this.legacyHost_, this.netprobeHost_, this.portalHost_);
+    this.legacyHost_.addEventListener('click', this.onClick_);
+    this.netprobe = new NetProbeApp(this.netprobeHost_, (serviceId, layer, metric) => this.check(serviceId, layer, 'local-probe', undefined, metric));
+    this.netprobe.modelForClick = () => this.getModel_();
+    this.netprobe.afterRun = () => this.sync();
+    this.portal = new PortalApp(this.portalHost_, (serviceId, layer) => this.check(serviceId, layer, 'provider-portal'));
+    this.portal.afterRun = () => this.sync();
   }
 
   destroy(): void {
-    this.host_.removeEventListener('click', this.onClick_);
-    this.host_.removeEventListener('change', this.onChange_);
+    this.legacyHost_.removeEventListener('click', this.onClick_);
+    this.netprobe.destroy();
+    this.portal.destroy();
   }
 
   /** Take a sample as if the player pressed Check on that row; returns the sample */
@@ -248,28 +284,13 @@ export class FieldServicePanel {
     if (!row) {
       return;
     }
-    const via = row.querySelector<HTMLSelectElement>('select[data-svc-via]')?.value as SampleProvenance | undefined;
-    const metric = (row.querySelector<HTMLSelectElement>('select[data-svc-metric]')?.value ?? 'status') as SampleMetric;
+    const via = this.source_;
+    const metric = (btn.dataset.svcMetric ?? 'status') as SampleMetric;
     if (!via) {
       return;
     }
     this.check(row.dataset.svcService ?? '', row.dataset.svcLayer as ServiceLayer, via, row.dataset.svcEndpoint || undefined, metric);
   };
-
-  private readonly onChange_ = (e: Event): void => {
-    const sel = (e.target as HTMLElement).closest<HTMLSelectElement>('select[data-svc-via]');
-    const row = sel?.closest<HTMLElement>('[data-svc-row]');
-    if (sel && row) {
-      this.showMetric_(row, sel.value as SampleProvenance);
-    }
-  };
-
-  private showMetric_(row: HTMLElement, via: SampleProvenance): void {
-    const metric = row.querySelector<HTMLSelectElement>('select[data-svc-metric]');
-    if (metric) {
-      metric.style.display = isNumericCheck(via, row.dataset.svcLayer as ServiceLayer) ? '' : 'none';
-    }
-  }
 
   sync(): void {
     const model = this.getModel_();
@@ -279,7 +300,19 @@ export class FieldServicePanel {
       return;
     }
     this.host_.style.display = '';
-    const view = buildServicePanelModel(model, this.getNow_());
+    const app = this.source_ === 'local-probe' ? this.netprobe : this.source_ === 'provider-portal' ? this.portal : null;
+    this.legacyHost_.hidden = app !== null;
+    this.netprobeHost_.hidden = app !== this.netprobe;
+    this.portalHost_.hidden = app !== this.portal;
+    if (app) {
+      this.netprobe.setNote(this.lastCheck_);
+      app.sync(model, this.getNow_());
+
+      return;
+    }
+    const view = buildServicePanelModel(model, this.getNow_(), this.source_)
+      .filter((svc) => !this.serviceId_ || svc.id === this.serviceId_)
+      .map((svc) => ({ ...svc, rows: svc.rows.filter((row) => READABLE[this.source_].includes(row.layer) && (this.source_ === 'endpoint-report' || !row.endpointId)) }));
     const key = view.map((s) => `${s.id}:${s.rows.length}`).join('|');
     if (!this.built_ || key !== this.serviceKey_) {
       this.build_(view);
@@ -295,23 +328,16 @@ export class FieldServicePanel {
       .map((svc) => {
         const rows = svc.rows
           .map((r) => {
-            const opts = provenancesFor(r.layer)
-              .map((p) => `<option value="${p}">${escapeHtml(PROVENANCE_LABEL[p])}</option>`)
-              .join('');
-            const metrics = (['status', 'rttMs', 'jitterMs', 'downMbps', 'upMbps', 'lossPct'] as SampleMetric[])
-              .map((m) => `<option value="${m}">${METRIC_LABEL[m]}</option>`)
-              .join('');
             const name = r.endpointId ? `${LAYER_LABEL[r.layer]} (${escapeHtml(r.endpointId)})` : LAYER_LABEL[r.layer];
-            const defaultVia = r.endpointId ? 'endpoint-report' : undefined;
-
+            const metrics: SampleMetric[] = isNumericCheck(this.source_, r.layer) ? ['status', 'rttMs', 'jitterMs', 'downMbps', 'upMbps', 'lossPct'] : ['status'];
+            const controls = metrics
+              .map(
+                (metric) =>
+                  `<button type="button" data-svc-check data-svc-metric="${metric}">${metric === 'status' ? (this.source_ === 'device-indicator' ? 'Observe light' : this.source_.endsWith('report') ? 'Request report' : 'Read status') : METRIC_LABEL[metric]}</button>`
+              )
+              .join('');
             return `<tr data-svc-row="${escapeHtml(r.key)}" data-svc-service="${escapeHtml(svc.id)}" data-svc-layer="${r.layer}" data-svc-endpoint="${escapeHtml(r.endpointId ?? '')}">
-              <td>${name}</td>
-              <td><select class="form-select form-select-sm" data-svc-via aria-label="${escapeHtml(name)} check method">${opts.replace(
-                defaultVia ? `value="${defaultVia}"` : 'value="__none__"',
-                defaultVia ? `value="${defaultVia}" selected` : 'value="__none__"'
-              )}</select>
-                <select class="form-select form-select-sm" data-svc-metric style="display:none" aria-label="${escapeHtml(name)} measurement">${metrics}</select></td>
-              <td><button type="button" class="btn btn-sm btn-outline-primary" data-svc-check>Check</button></td>
+              <td>${name}</td><td class="fsp-controls">${controls}</td>
               <td data-fsp="value-${escapeHtml(r.key)}"></td>
               <td data-fsp="source-${escapeHtml(r.key)}"></td>
               <td data-fsp="age-${escapeHtml(r.key)}"></td>
@@ -323,7 +349,7 @@ export class FieldServicePanel {
         return `<div class="fsp-service" data-svc-section="${escapeHtml(svc.id)}">
           <div class="fsp-service-title">${escapeHtml(svc.label)}</div>
           <table class="fsp-table">
-            <thead><tr><th>Layer</th><th>Check with</th><th></th><th>Reading</th><th>Source</th><th>Taken</th><th>Status</th></tr></thead>
+            <thead><tr><th>Reading point</th><th>Instrument controls</th><th>Reading</th><th>Source</th><th>Taken</th><th>Status</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
           <ul class="fsp-history" data-fsp="intervals-${escapeHtml(svc.id)}" style="display:none"></ul>
@@ -332,15 +358,11 @@ export class FieldServicePanel {
         </div>`;
       })
       .join('');
-    this.host_.innerHTML = `
+    this.legacyHost_.innerHTML = `
       <details class="fsp" open>
-        <summary class="fsp-summary"><b>Service checks</b> <span class="fsp-last" data-fsp="last" aria-live="polite"></span></summary>
+        <summary class="fsp-summary"><b>${escapeHtml(PROVENANCE_LABEL[this.source_])}</b> <span class="fsp-last" data-fsp="last" aria-live="polite"></span></summary>
         <div class="fsp-body">${sections}</div>
       </details>`;
-    for (const row of this.host_.querySelectorAll<HTMLElement>('[data-svc-row]')) {
-      const via = row.querySelector<HTMLSelectElement>('select[data-svc-via]')?.value as SampleProvenance | undefined;
-      if (via) this.showMetric_(row, via);
-    }
   }
 
   private el_(key: string): HTMLElement | null {
@@ -348,7 +370,7 @@ export class FieldServicePanel {
     if (cached) {
       return cached;
     }
-    const el = this.host_.querySelector<HTMLElement>(`[data-fsp="${key}"]`);
+    const el = this.legacyHost_.querySelector<HTMLElement>(`[data-fsp="${key}"]`);
     if (el) {
       this.cache_.set(key, el);
     }

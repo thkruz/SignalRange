@@ -42,6 +42,7 @@ import { Closeup } from '@app/ham/ui/bench/closeup';
 import { createStationPanels } from '@app/ham/ui/panels';
 import type { FeedbackKind, PanelContext, StationPanel } from '@app/ham/ui/station-panel';
 import { button, h, tid } from '@app/ham/ui/ui-kit';
+import { ImmersiveView } from '@app/presentation/immersive-view';
 import '@app/ham/ui/bench/bench.css';
 import './ham-station-tab.css';
 
@@ -53,6 +54,7 @@ const REPLACED_PANELS = ['connections', 'spectrum'];
 type SideTab = 'closeup' | 'notebook';
 
 export class HamStationTab {
+  private readonly immersive_ = new ImmersiveView();
   private readonly manager_: HamStationManager;
   private readonly root_: HTMLElement;
   private readonly locationBar_: HTMLElement;
@@ -101,10 +103,19 @@ export class HamStationTab {
     this.scene_ = new BenchScene(this.ctx_, (sel) => {
       this.closeup_.select(sel);
       this.showSide_('closeup');
+      if (sel) this.focusWork_('closeup');
     });
     this.closeup_ = new Closeup(this.ctx_, this.scene_, devicePanels);
     const tabBtn = (id: SideTab, label: string): HTMLButtonElement => {
-      const b = button(tid('ham-side', id), label, () => this.showSide_(id), 'ham-side-tab');
+      const b = button(
+        tid('ham-side', id),
+        label,
+        () => {
+          this.showSide_(id);
+          this.focusWork_(id);
+        },
+        'ham-side-tab'
+      );
       b.setAttribute('role', 'tab');
 
       return b;
@@ -163,15 +174,19 @@ export class HamStationTab {
   }
 
   activate(): void {
+    DraggableBox.dockLeft = this.dockPolicy_;
     this.root_.style.display = '';
     this.refresh_();
   }
 
   deactivate(): void {
+    this.immersive_.close();
+    if (DraggableBox.dockLeft === this.dockPolicy_) DraggableBox.dockLeft = null;
     this.root_.style.display = 'none';
   }
 
   dispose(): void {
+    this.immersive_.close();
     if (this.disposed_) return;
     this.disposed_ = true;
     if (DraggableBox.dockLeft === this.dockPolicy_) DraggableBox.dockLeft = null;
@@ -185,6 +200,15 @@ export class HamStationTab {
   /** Switch the side column between the close-up and the notebook */
   showSide(tab: SideTab): void {
     this.showSide_(tab);
+    this.focusWork_(tab);
+  }
+
+  private focusWork_(tab: SideTab): void {
+    this.immersive_.close();
+    const work = this.root_.querySelector<HTMLElement>('.ham-station-main');
+    if (!work) return;
+    work.prepend(this.feedback_);
+    this.immersive_.open(work, tab === 'notebook' ? 'Station notebook' : 'Station equipment', tab === 'notebook' ? 'paper' : 'equipment', () => this.immersive_.close());
   }
 
   private showSide_(tab: SideTab): void {

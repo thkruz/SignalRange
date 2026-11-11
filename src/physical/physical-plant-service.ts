@@ -353,6 +353,7 @@ export class PhysicalPlantService {
         forecast: this.plant.getPowerReadings().reserveWh === null ? null : this.plant.forecast(),
         workloads: this.workloads?.getRuns().map((r) => ({ id: r.id, card: r.cardId, service: r.serviceId, status: r.status, invalidatedBy: r.invalidatedBy ?? null })) ?? [],
         evidenceCount: this.evidence?.entries().length ?? 0,
+        lastSampleIds: Object.fromEntries((this.services?.getServiceIds() ?? []).map((id) => [id, this.services?.samplesFor(id).at(-1)?.id ?? null])),
       };
     };
   }

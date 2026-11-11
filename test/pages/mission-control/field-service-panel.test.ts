@@ -73,6 +73,19 @@ function rig() {
 }
 
 describe('M09 field service panel', () => {
+  it('keeps readings with the instrument that actually took them', () => {
+    const { model, now } = rig();
+    const host = document.createElement('div');
+    const panel = new FieldServicePanel(host, () => model, now);
+    panel.check('skylink', 'registration', 'terminal-app');
+    panel.setSource('pilot-report');
+    expect(host.querySelector('[data-fsp="value-skylink|registration|"]')?.textContent).toBe('Not checked');
+    panel.setSource('terminal-app');
+    expect(host.querySelector('[data-fsp="source-skylink|registration|"]')?.textContent).toBe('Terminal app');
+    expect(host.querySelector('[data-svc-layer="power"]')).toBeNull();
+    expect(host.querySelector('select')).toBeNull();
+    panel.destroy();
+  });
   it('offers only provenances that can see a layer', () => {
     expect(provenancesFor('power')).toEqual(['device-indicator']);
     expect(provenancesFor('application')).toEqual(['endpoint-report', 'workload-run']);
@@ -94,6 +107,7 @@ describe('M09 field service panel', () => {
     const panel = new FieldServicePanel(host, () => model, now);
     panel.sync();
     const s = panel.check('skylink', 'power', 'device-indicator');
+    panel.setSource('device-indicator');
     expect(s?.tS).toBe(now());
     expect(host.querySelector('[data-fsp="badge-skylink|power|"]')?.textContent).toMatch(/^Current, fresh until elapsed [0-9]{2}:[0-9]{2}$/u);
     advance(30);
@@ -114,7 +128,7 @@ describe('M09 field service panel', () => {
       null,
       () => state
     );
-    panel.sync();
+    panel.setSource('device-indicator');
     panel.check('skylink', 'power', 'device-indicator');
     expect(host.querySelector('[data-fsp="last"]')?.textContent).toContain('A later checklist step reads');
     state = 'active';
@@ -122,28 +136,24 @@ describe('M09 field service panel', () => {
     expect(host.querySelector('[data-fsp="last"]')?.textContent).not.toContain('A later checklist step reads');
   });
 
-  it('the Check button reads the selects; numeric probe gives units; a config change invalidates', () => {
+  it('NetProbe pings through the terminal without a source menu; config changes invalidate the reading', () => {
     const { model, plant, now } = rig();
     const host = document.createElement('div');
     document.body.appendChild(host);
     const panel = new FieldServicePanel(host, () => model, now);
-    panel.sync();
+    panel.setSource('local-probe');
     plant.setPartMode('skylink', 'active');
     plant.update(120);
-    const row = host.querySelector<HTMLElement>('[data-svc-layer="registration"]') as HTMLElement;
-    const via = row.querySelector('select[data-svc-via]') as HTMLSelectElement;
-    via.value = 'local-probe';
-    via.dispatchEvent(new Event('change', { bubbles: true }));
-    const metric = row.querySelector('select[data-svc-metric]') as HTMLSelectElement;
-    expect(metric.style.display).toBe('');
-    metric.value = 'rttMs';
-    (row.querySelector('button[data-svc-check]') as HTMLButtonElement).click();
-    const sample = model.latest('skylink', 'registration');
-    expect(sample?.metric).toBe('rttMs');
-    expect(host.querySelector('[data-fsp="value-skylink|registration|"]')?.textContent).toMatch(/Latency .* ms/u);
+    expect(host.querySelector('select')).toBeNull();
+    panel.netprobe.selectHost('skylink', 'registration');
+    const taken = panel.netprobe.run('ping', model);
+    expect(taken.map((s) => s.metric)).toEqual(['rttMs', 'lossPct']);
+    expect(taken.every((s) => s.provenance === 'local-probe')).toBe(true);
+    panel.sync();
+    expect(host.querySelector('[data-np="console"]')?.textContent).toMatch(/Latency .* ms/u);
     plant.setPartMode('skylink', 'standby');
     panel.sync();
-    expect(host.querySelector('[data-fsp="badge-skylink|registration|"]')?.textContent).toContain('Invalidated');
+    expect(model.freshness(taken[0])).toBe('invalidated');
     host.remove();
   });
 

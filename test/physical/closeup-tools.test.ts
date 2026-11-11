@@ -28,6 +28,7 @@ vi.mock('draggabilly', () => ({
 import { frontlinePlantConfig } from '@app/campaigns/frontline/plant-config';
 import { CLOSEUPS, SITE_HOTSPOTS } from '@app/campaigns/frontline/site-hotspots';
 import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
 import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import { SWAP_COSTS_S, VERB_COSTS_S } from '@app/physical/plant-verb-rules';
 import { PartCloseupModal } from '@app/physical/ui/part-closeup-modal';
@@ -236,13 +237,18 @@ describe('close-up modal Escape and laptop cue', () => {
     expect(modal.isOpen()).toBe(false);
   });
 
-  it('shows a visible notice when the laptop region switches to the SkyLink app', () => {
+  it('the laptop region offers Use laptop, which sits down at the laptop desktop', () => {
     const modal = PartCloseupModal.getInstance();
     modal.showCloseup('laptop');
     const hit = document.querySelector<HTMLElement>('#part-closeup-modal [data-opens-app="1"]');
     expect(hit).not.toBeNull();
     hit!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    expect(document.getElementById('pcu-notice')?.textContent).toContain('SkyLink');
+    const use = document.querySelector<HTMLElement>('#part-closeup-modal [data-open-laptop]');
+    expect(use?.textContent).toBe('Use laptop');
+    const emit = vi.spyOn(EventBus.getInstance(), 'emit');
+    use!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(emit).toHaveBeenCalledWith(Events.SWITCH_TAB, { tabId: 'field-service', desktop: true });
+    emit.mockRestore();
   });
 });
 

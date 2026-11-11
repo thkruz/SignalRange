@@ -1,0 +1,62 @@
+.immersive-view { position: fixed; inset: 0; margin: 0; padding: 0 0 48px; max-width: none; max-height: none; border: 0; box-sizing: border-box; background: #111713; color: #d9ded8; overflow: auto; }
+.immersive-view[open] { display: flex; flex-direction: column; }
+.immersive-view::backdrop { background: #111713; }
+.immersive-view > #canvas-content { flex: 1; min-height: 0; overflow: auto; width: 100%; }
+.immersive-leave { position: fixed; right: 20px; bottom: 10px; color: #e8e1c9; background: #131811; border: 1px solid #73765f; padding: 5px 14px; cursor: pointer; }
+.immersive-view .qa-feedback-tab { display: none !important; }
+.immersive-apps { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 16px; background: #17232c; border-bottom: 1px solid #60727e; }
+.immersive-apps button { color: #d9e7eb; background: transparent; border: 0; padding: 8px 14px; cursor: pointer; }
+.immersive-apps button[aria-current='page'] { background: #344a59; }
+.immersive-view .site-strip { display: none; }
+.immersive-view .site-tab { height: 100%; padding: 16px; }
+.immersive-paper { background: #322a1f; }
+.immersive-paper .site-tab { background: #decca6; color: #211d18; padding: 24px 5%; }
+.immersive-equipment .ham-station-main { flex: 1; min-height: 0; padding: 16px; grid-template-columns: minmax(280px, 40%) minmax(400px, 60%); }
+.immersive-equipment .ham-station-side { max-height: none; }
+.immersive-equipment #part-closeup-modal { position: relative !important; inset: auto !important; transform: none !important; width: 100%; max-width: none; height: 100%; max-height: none; border: 0; }
+.immersive-equipment #part-closeup-modal-container { width: 100%; flex: 1; min-height: 0; }
+
+.immersive-equipment #part-closeup-modal-container { position: relative; inset: auto; background: transparent; overflow: auto; }
+.immersive-equipment .pp-side { overflow-y: auto; }
+.immersive-equipment #pcu-indicators .fsp-table { display: block; }
+.immersive-equipment #pcu-indicators thead, .immersive-equipment #pcu-indicators .fsp-history, .immersive-equipment #pcu-indicators .fsp-history-title { display: none; }
+.immersive-equipment #pcu-indicators tr { display: flex; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid #536150; }
+.immersive-equipment #pcu-indicators td { display: block; }
+.immersive-equipment .ham-feedback { grid-column: 1 / -1; }
+.immersive-paper .ham-station-main { display: block; padding: 4vh 8vw; background: #decca6; color: #211d18; }
+.immersive-paper .ham-station-scene, .immersive-paper .ham-side-tabs { display: none; }
+.immersive-paper .ham-station-side { width: 100%; max-height: none; }
+.immersive-paper :is(.site-tab, .ham-station-main) { --mc-surface-0: #decca6; --mc-surface-1: #e9d8b6; --mc-surface-2: #e5d1aa; --mc-text-primary: #211d18; --mc-text-secondary: #30271c; --mc-text-muted: #493b28; --mc-border: #9b825f; --mc-status-normal: #254c28; --mc-status-caution: #74420c; --mc-danger: #751c18; }
+.immersive-paper :is(.fhf, .frp, .fpp, .fpd, .ham-notebook .card) { border-radius: 0; box-shadow: 0 5px 16px #2a211744; }
+.immersive-paper :is(input, select, textarea) { background: #f0e2c4; color: #211d18; border-color: #97815e; }
+.site-field-kit { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; padding: 18px; background: #342e22; }
+.site-field-kit[hidden] { display: none; }
+.site-field-kit button { color: #251e16; background: #d3bd90; border: 1px solid #9c8055; padding: 18px 24px; font: italic 16px Georgia, serif; box-shadow: 2px 4px 7px #0006; transform: rotate(-1deg); cursor: pointer; }
+.site-field-kit button:nth-child(even) { transform: rotate(1deg); }
+.fsp .fsp-controls button { color: #d4e8e4; background: #263b3a; border: 1px solid #57746c; padding: 7px 12px; margin: 3px; font: 13px monospace; cursor: pointer; }
+
+.immersive-equipment .site-tab[data-field-source] { background: radial-gradient(ellipse at center, #353d2f, #10140e); padding: 5vh 10vw; }
+.immersive-equipment .site-tab[data-field-source] .fsp { background: #252b21; border: 12px ridge #454c3c; border-radius: 14px; box-shadow: 0 14px 30px #0009; padding: 20px; }
+.immersive-equipment .site-tab[data-field-source] .fsp-summary { font: 20px monospace; letter-spacing: .12em; color: #dcdfab; }
+.immersive-equipment .site-tab[data-field-source] .fsp-table thead { display: none; }
+.immersive-equipment .site-tab[data-field-source] .fsp-table tr { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; border-bottom: 1px solid #667051; padding: 12px; }
+.immersive-equipment .site-tab[data-field-source] .fsp-body { max-height: none; font-family: monospace; }
+.immersive-equipment .site-tab[data-field-source] .fsp-controls button { border-radius: 4px; background: #1b2018; border: 3px outset #687052; padding: 14px; color: #e7e7c6; }
+.radio-channels { background: #272e22; justify-content: center; }
+.radio-channels button[aria-pressed='true'] { color: #e1e69b; border-bottom: 2px solid #e1e69b; }
+.immersive-paper .site-tab { min-height: 100%; background: repeating-linear-gradient(0deg, #decca6, #decca6 31px, #9e8a6322 32px); }
+.immersive-paper .site-tab :is(summary, h2, h3, label) { font-family: Georgia, serif; color: #211d18; }
+.immersive-paper .site-tab button { border-radius: 0; }
+
+.immersive-view .site-tab .site-strip { display: none !important; }
+.immersive-view .site-tab .fsp { font-size: 15px; }
+.immersive-view .site-tab .fsp :is(.fsp-history-title, .fsp-none, th) { color: #adbeb8; }
+.immersive-view .site-tab .fsp .fsp-badge:empty { display: none; }
+.immersive-equipment .pp-act { white-space: normal; text-align: left; }
+.immersive-equipment .pp-verbs { grid-template-columns: 1fr; }
+.immersive-paper .site-tab :is(.fsp-history-title, .fsp-none, th) { color: #493b28; }
+
+.pp-mode-control { border: 0; padding: 12px 0; width: 100%; }
+.pp-mode-control legend { font: 12px monospace; text-transform: uppercase; letter-spacing: .08em; }
+.pp-mode-control button { padding: 12px; border: 3px outset #75806c; background: #242b20; color: #e8e8cf; cursor: pointer; }
+.pp-mode-control button[aria-pressed='true'] { border-style: inset; background: #434f36; box-shadow: inset 0 0 8px #111; color: #ecf6b9; }

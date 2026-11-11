@@ -232,7 +232,8 @@ describe('Speed test screen', () => {
     const r = rig();
     r.step(4);
     const action = vi.fn();
-    const ctx = { ...r.ctx, evidence: { action } } as unknown as TerminalScreenContext;
+    const sampleLink = vi.fn();
+    const ctx = { ...r.ctx, evidence: { action, sampleLink } } as unknown as TerminalScreenContext;
     const screen = factory(r)(ctx);
     const el = mount(screen);
     screen.sync(r.model.view());
@@ -244,6 +245,8 @@ describe('Speed test screen', () => {
     screen.sync(r.model.view());
     screen.sync(r.model.view());
     expect(action).toHaveBeenCalledTimes(1);
+    // The finished test's figures become terminal-app link readings, once
+    expect(sampleLink).toHaveBeenCalledTimes(1);
     screen.dispose();
   });
 

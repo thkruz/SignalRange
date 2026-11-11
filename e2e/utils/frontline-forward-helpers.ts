@@ -102,14 +102,16 @@ export async function powerSetMode(page: Page, partId: string, modeId: string): 
   await closeCloseup(page);
   await goInside(page);
   const d = await setPanelOpen(page, /^\s*Power/u, true);
-  const sel = d.locator(`select[data-power-part="${partId}"]`);
+  const sel = d.locator(`input[data-power-part="${partId}"][value="${modeId}"]`);
   await expect(sel, `Power table lists ${partId}`).toBeVisible();
-  await expect(sel.locator(`option[value="${modeId}"]`), `${partId} offers mode ${modeId}`).toBeAttached();
-  await sel.selectOption(modeId);
-  await activate(page, d.locator('button[data-power-action="apply"]'), 'Power Apply');
-  await page.waitForTimeout(300);
-  const result = (await d.locator('[data-fpp="result"]').innerText()).trim();
-  await setPanelOpen(page, /^\s*Power/u, false);
+  await sel.check();
+  await d.locator('[data-power-action="apply"]').click();
+  await d.locator(`[data-power-visit="${partId}"]`).click();
+  const control = page.locator(`#part-closeup-modal [data-equipment-mode="${modeId}"]`);
+  await expect(control).toBeVisible();
+  await control.click();
+  const result = (await page.locator('#pcu-latest').innerText()).trim();
+  await closeCloseup(page);
 
   return result;
 }

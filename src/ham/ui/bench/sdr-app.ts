@@ -52,7 +52,7 @@ export class SdrApp {
   private laptopId_ = '';
   private sdrId_: string | null = null;
   private builtFor_ = '';
-  private readonly spectrum_ = new SpectrumPanel();
+  private spectrum_ = new SpectrumPanel();
   private spectrumMounted_ = false;
   private syncs_: ((r: RadioSettings, m: HamStationManager) => void)[] = [];
 
@@ -95,7 +95,12 @@ export class SdrApp {
       this.spectrumMounted_ = false;
     }
     this.el.replaceChildren();
-    const title = h('div', { class: 'ham-sdr-titlebar' }, h('span', { text: 'SDR Receiver' }), h('span', { class: 'ham-sdr-titlebar-dim', text: '- laptop' }));
+    const title = h(
+      'div',
+      { class: 'sdr-titlebar' },
+      h('span', { text: 'SkyWatcher SDR v0.9.4 beta' }),
+      h('span', { text: m.device(this.laptopId_)?.label ?? 'No computer at this location' })
+    );
     this.el.append(title);
     if (!laptopOn) {
       this.el.append(h('div', { class: 'ham-sdr-empty', 'data-testid': 'ham-sdr-app-nodevice', text: 'The laptop is off.' }));
@@ -124,7 +129,7 @@ export class SdrApp {
     const freq = h('div', { class: 'ham-sdr-freq', id: tid('ham-sdr', id, 'freq'), 'data-testid': tid('ham-sdr', id, 'freq'), role: 'group', 'aria-label': 'Frequency' });
     const digits: { place: number; el: HTMLElement }[] = [];
     PLACES.forEach((place, i) => {
-      if (i === 3 || i === 6) freq.append(h('span', { class: 'ham-sdr-dot', text: '.' }));
+      if (i === 3) freq.append(h('span', { class: 'ham-sdr-dot', text: '.' }));
       const up = button(tid('ham-sdr', id, 'digit', place, 'up'), '', () => this.step_(id, place), 'ham-sdr-digit-half up', `Raise the ${placeName(place)} digit`);
       const down = button(tid('ham-sdr', id, 'digit', place, 'down'), '', () => this.step_(id, -place), 'ham-sdr-digit-half down', `Lower the ${placeName(place)} digit`);
       const face = h('span', { class: 'ham-sdr-digit-face', text: '0' });
@@ -182,8 +187,14 @@ export class SdrApp {
       return { hz, b };
     });
     this.syncs_.push((r) => {
-      for (const x of modeBtns) x.b.classList.toggle('is-active', x.mode === r.mode);
-      for (const x of bwBtns) x.b.classList.toggle('is-active', x.hz === r.filterHz);
+      for (const x of modeBtns) {
+        x.b.classList.toggle('is-active', x.mode === r.mode);
+        x.b.setAttribute('aria-pressed', String(x.mode === r.mode));
+      }
+      for (const x of bwBtns) {
+        x.b.classList.toggle('is-active', x.hz === r.filterHz);
+        x.b.setAttribute('aria-pressed', String(x.hz === r.filterHz));
+      }
     });
 
     // --- Sliders
@@ -287,17 +298,34 @@ export class SdrApp {
     this.syncs_.push((_r, mm) => transcriptList(mm, heard));
 
     const specHost = h('div', { class: 'ham-sdr-spectrum' });
-    this.el.append(
-      h('div', { class: 'ham-sdr-row' }, freq, h('div', { class: 'ham-sdr-type-row' }, typed, enter)),
+    const span = h('input', { type: 'range', min: 20000, max: 2000000, step: 10000, 'aria-label': 'Spectrum span', 'data-testid': tid('ham-sdr', id, 'span') });
+    span.addEventListener('input', () => set({ spanHz: Number(span.value) }));
+    this.syncs_.push((r) => {
+      if (!isFocused(span)) span.value = String(r.spanHz);
+    });
+    const sidebar = h(
+      'div',
+      { class: 'ham-console-controls' },
+      h('div', { class: 'sdr-section-header', text: 'RECEIVER' }),
       modes,
       bws,
-      level,
+      h('div', { class: 'sdr-section-header', text: 'AUDIO / RF' }),
       sliders,
-      h('div', { class: 'd-flex align-items-center gap-2 flex-wrap' }, audio, record),
-      specHost,
-      h('div', { class: 'ham-sdr-tool-label mt-2', text: 'Heard so far' }),
-      heard
+      h('div', { class: 'sdr-section-header', text: 'DISPLAY' }),
+      h('label', { class: 'ham-console-span' }, 'Span', span),
+      h('div', { class: 'sdr-section-header', text: 'RECORDER' }),
+      record
     );
+    this.el.append(
+      h('div', { class: 'sdr-topbar' }, freq, h('div', { class: 'ham-sdr-type-row' }, typed, enter), level),
+      h(
+        'div',
+        { class: 'ham-console-body' },
+        sidebar,
+        h('div', { class: 'ham-console-display' }, specHost, audio, h('div', { class: 'sdr-section-header', text: 'RECEIVED TRANSMISSIONS' }), heard)
+      )
+    );
+    this.spectrum_ = new SpectrumPanel(id);
     this.spectrum_.mount(specHost, this.ctx_);
     this.spectrumMounted_ = true;
     const r = m.radio(id);

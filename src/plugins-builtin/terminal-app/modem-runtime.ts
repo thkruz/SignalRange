@@ -12,6 +12,7 @@ import type { PhysicalPlantManager } from '@app/physical/physical-plant-manager'
 import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import type { VerbResult } from '@app/physical/physical-plant-types';
 import { MODEM_PART_ID, ModemAppModel, type ModemAppState, type ModemView, plantModemReader } from './modem-app-model';
+import { hasCurrentStatusReads } from './terminal-evidence';
 import { TerminalRuntimeCache } from './terminal-runtime-cache';
 
 export const EUROSAT_TERMINAL_ID = 'eurosat';
@@ -28,6 +29,13 @@ export type ModemRuntimePlant = Pick<PhysicalPlantManager, 'powerCycle' | 'getTi
 
 const pct = (v: number | null): string => (v === null ? 'unavailable' : `${v.toFixed(1)} %`);
 
+/** The link figures a terminal app's speed test shows, as terminal-app readings of the registration layer */
+export function sampleTerminalLink(serviceId: string | null | undefined): void {
+  const services = PhysicalPlantService.servicesOrNull();
+  if (!services || !serviceId) return;
+  for (const metric of ['rttMs', 'downMbps', 'upMbps', 'lossPct', 'jitterMs'] as const) services.takeSample(serviceId, 'registration', 'terminal-app', undefined, metric);
+}
+
 /** Records what the operator opened and did in the modem interface as `terminal-app` evidence */
 export class ModemEvidence {
   constructor(
@@ -36,7 +44,14 @@ export class ModemEvidence {
   ) {}
 
   viewScreen(screen: ModemScreenId, view: ModemView = this.model_.view()): void {
-    this.log_()?.recordAppView(screenKey(screen), this.describe_(screen, view), [], EUROSAT_APP_SUBJECT_PREFIX);
+    const entry = this.log_()?.recordAppView(screenKey(screen), this.describe_(screen, view), [], EUROSAT_APP_SUBJECT_PREFIX);
+    // The Status screen shows registration and account state: real reads through the app, like SkyLink Home
+    const serviceId = this.model_.serviceId();
+    const services = PhysicalPlantService.servicesOrNull();
+    if (screen === 'status' && view.link !== 'no-laptop' && serviceId && services && (entry || !hasCurrentStatusReads(services, serviceId))) {
+      services.takeSample(serviceId, 'registration', 'terminal-app');
+      services.takeSample(serviceId, 'account', 'terminal-app');
+    }
   }
 
   action(screen: ModemScreenId, verb: string, text: string): void {
@@ -44,12 +59,11 @@ export class ModemEvidence {
   }
 
   /**
-   * A finished speed test also reads the link's delay variation through the app, so the measurement form's jitter
-   * field ("Use my latest reading") has a sample to take (c6-s11-F3).
+   * A finished speed test reads the link through the app: delay, throughput, loss and delay variation, so the
+   * measurement form ("Use my latest reading") has terminal-app samples to take (c6-s11-F3).
    */
-  sampleJitter(): void {
-    const serviceId = this.model_.serviceId();
-    if (serviceId) PhysicalPlantService.servicesOrNull()?.takeSample(serviceId, 'registration', 'terminal-app', undefined, 'jitterMs');
+  sampleLink(): void {
+    sampleTerminalLink(this.model_.serviceId());
   }
 
   private describe_(screen: ModemScreenId, view: ModemView): string {

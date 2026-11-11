@@ -58,26 +58,47 @@ const view = (over: Partial<TerminalView> = {}): TerminalView => ({
 
 function make() {
   const f = fakeLog();
-  const takeSample = vi.fn(() => ({}) as never);
+  const samples: Array<{ layer: string; metric: string; provenance: string }> = [];
+  const fresh = { value: 'current' as 'current' | 'invalidated' };
+  const takeSample = vi.fn((_id: string, layer: string) => {
+    const s = { layer, metric: 'status', provenance: 'terminal-app' };
+    samples.push(s);
+    return s as never;
+  });
   const model = { serviceId: () => 'skylink', obstructions: () => null, speedTests: () => [] } as unknown as TerminalAppModel;
-  const ev = new TerminalEvidence(model, { log: () => f.log as never, services: () => ({ takeSample }) });
+  const services = { takeSample, samplesFor: () => samples as never, freshness: () => fresh.value };
+  const ev = new TerminalEvidence(model, { log: () => f.log as never, services: () => services });
 
-  return { f, ev, takeSample };
+  return { f, ev, takeSample, fresh };
 }
 
 describe('TerminalEvidence', () => {
-  it('Home takes real registration and account samples once per recorded view', () => {
+  it('Home takes real registration and account samples once per recorded view while they stay current', () => {
     const { ev, takeSample } = make();
     ev.viewScreen('home', view());
     ev.viewScreen('home', view());
     expect(takeSample.mock.calls.map((c) => (c as unknown[])[1])).toEqual(['registration', 'account']);
   });
 
-  it('does not sample when the dish is unreachable, and says so in the entry', () => {
+  it('Home reads again when its last reads are no longer current, even if the view text is unchanged', () => {
+    const { ev, takeSample, fresh } = make();
+    ev.viewScreen('home', view());
+    fresh.value = 'invalidated';
+    ev.viewScreen('home', view());
+    expect(takeSample).toHaveBeenCalledTimes(4);
+  });
+
+  it('reads the terminal through the router when the dish is unreachable, and says so in the entry', () => {
     const { ev, takeSample, f } = make();
     ev.viewScreen('home', view({ link: 'dish-unreachable', stale: true, ageS: 240 }));
-    expect(takeSample).not.toHaveBeenCalled();
+    expect(takeSample).toHaveBeenCalledTimes(2);
     expect(f.views[0][1]).toContain("Can't reach your SkyLink");
+  });
+
+  it('takes no reading when the app cannot reach the router', () => {
+    const { ev, takeSample } = make();
+    ev.viewScreen('home', view({ link: 'no-router', data: null }));
+    expect(takeSample).not.toHaveBeenCalled();
   });
 
   it('records what the advanced screen showed', () => {

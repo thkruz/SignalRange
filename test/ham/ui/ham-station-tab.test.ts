@@ -39,6 +39,28 @@ function setup(license: 'none' | 'technician' = 'technician') {
 }
 
 describe('HamStationTab', () => {
+  const showModal = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, 'showModal');
+  const close = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, 'close');
+  beforeAll(() => {
+    Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {
+      configurable: true,
+      value: function (this: HTMLDialogElement) {
+        this.open = true;
+      },
+    });
+    Object.defineProperty(HTMLDialogElement.prototype, 'close', {
+      configurable: true,
+      value: function (this: HTMLDialogElement) {
+        this.open = false;
+      },
+    });
+  });
+  afterAll(() => {
+    if (showModal) Object.defineProperty(HTMLDialogElement.prototype, 'showModal', showModal);
+    else Reflect.deleteProperty(HTMLDialogElement.prototype, 'showModal');
+    if (close) Object.defineProperty(HTMLDialogElement.prototype, 'close', close);
+    else Reflect.deleteProperty(HTMLDialogElement.prototype, 'close');
+  });
   afterEach(() => {
     document.body.innerHTML = '';
   });

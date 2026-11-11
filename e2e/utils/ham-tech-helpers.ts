@@ -48,6 +48,7 @@ async function isShown(page: Page, testId: string): Promise<boolean> {
 
 /** Select a device or cable on the bench drawing; false when it is not drawn at this location */
 export async function benchSelect(page: Page, id: string): Promise<boolean> {
+  await ensureBench(page);
   for (const kind of ['dev', 'conn']) {
     const el = page.getByTestId(tid(`ham-bench-${kind}`, id));
     if ((await el.count()) === 0) continue;
@@ -72,6 +73,7 @@ export const benchKind = (page: Page, id: string): Promise<string | null> =>
  * cable at this location, then the other locations. Notebook ids open the Notebook tab.
  */
 export async function reveal(page: Page, testId: string, hints: string[] = []): Promise<Locator> {
+  await ensureBench(page);
   const target = page.getByTestId(testId).first();
   if (await isShown(page, testId)) return target;
   if (NOTEBOOK_PREFIXES.some((p) => testId.startsWith(p))) {
@@ -107,13 +109,26 @@ export async function reveal(page: Page, testId: string, hints: string[] = []): 
 const press = async (page: Page, testId: string, hints: string[] = []): Promise<void> => (await reveal(page, testId, hints)).click();
 
 /** SDR receivers have no front panel: their controls are the SDR program on the laptop */
-const isSdr = async (page: Page, dev: string): Promise<boolean> => (await benchKind(page, dev)) === 'sdr';
+async function ensureBench(page: Page): Promise<void> {
+  if (await page.locator('.immersive-paper[open] .immersive-leave').isVisible()) await page.locator('.immersive-paper[open] .immersive-leave').click();
+  if (await page.locator('.immersive-computer[open] .immersive-leave').isVisible()) await page.locator('.immersive-computer[open] .immersive-leave').click();
+  if (!(await isShown(page, 'ham-station-tab'))) await page.locator('[data-tab-id="ham-station"]').click();
+}
+
+const isSdr = async (page: Page, dev: string): Promise<boolean> => {
+  if (await isShown(page, tid('ham-sdr', dev, 'freq'))) return true;
+  await ensureBench(page);
+  return (await benchKind(page, dev)) === 'sdr';
+};
 
 /** Show the laptop SDR program for this receiver (it must be plugged into a running laptop) */
 async function sdrControl(page: Page, dev: string, control: string): Promise<Locator> {
-  const laptops = await page.locator('[data-kind="laptop"]').evaluateAll((els) => els.map((e) => e.getAttribute('data-dev') ?? ''));
-
-  return reveal(page, tid('ham-sdr', dev, control), laptops);
+  const exit = page.locator('.immersive-view[open] .immersive-leave');
+  if (await exit.isVisible()) await exit.click();
+  await page.locator('[data-tab-id="sdr-console"]').click();
+  const target = page.getByTestId(tid('ham-sdr', dev, control));
+  await expect(target).toBeVisible();
+  return target;
 }
 
 /** Open a tech scenario (e.g. 'ham-tech-s01') and start it. The station stays locked until the brief is opened: call reviewMissionBrief, then openStationTab. */
@@ -139,6 +154,8 @@ export async function reviewMissionBrief(page: Page, missionControl: MissionCont
 
 /** Answer the next pending status-check quiz with the correct option from c3-quiz-items.json. Returns the localId. */
 export async function answerTechQuiz(page: Page): Promise<string> {
+  const exit = page.locator('.immersive-view[open] .immersive-leave');
+  if (await exit.isVisible()) await exit.click();
   await waitForQuizToAppear(page);
   const question = norm((await page.locator('#quiz-question').textContent()) ?? '');
   const item = items().find((i) => norm(i.stem) === question);
@@ -164,6 +181,7 @@ export async function answerTechQuizzes(page: Page, count: number): Promise<stri
 /** Fill and submit a worksheet. Match fields take a record, choice fields a string, number fields a number. */
 /** Tag a bench part with its job: select the part on the bench, then click the job button in the Close-up */
 async function tagOnBench(page: Page, part: string, job: string): Promise<void> {
+  await ensureBench(page);
   const btn = page.getByRole('button', { name: `${part}: ${job}`, exact: true });
   const shown = async (): Promise<boolean> => (await btn.count()) > 0 && (await btn.first().isVisible());
   if (await isShown(page, 'ham-side-closeup')) await page.getByTestId('ham-side-closeup').click();
@@ -258,6 +276,8 @@ export { waitForObjectiveComplete };
 
 /** The final required objective pops the Mission Complete modal. */
 export async function expectMissionComplete(page: Page): Promise<void> {
+  const exit = page.locator('.immersive-view[open] .immersive-leave');
+  if (await exit.isVisible()) await exit.click();
   const modal = page.locator('#level-complete-modal');
   await expect(modal).toBeVisible({ timeout: 45000 });
   await expect(modal.locator('.complete-modal__title')).toContainText('Mission Complete');

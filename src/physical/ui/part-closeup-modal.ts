@@ -12,12 +12,13 @@ import { closeupImageFor } from '@app/campaigns/frontline/site-layers';
 import { DraggableModal } from '@app/engine/ui/draggable-modal';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
-import { STATION_TAB_PREFIX } from '@app/pages/mission-control/antenna-page-registry';
+import { displayViewport } from '@app/game-menu/display-viewport';
+import { FieldServicePanel } from '@app/pages/mission-control/tabs/field-service-panel';
 import type { PhysicalPlantManager } from '@app/physical/physical-plant-manager';
 import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import type { PlantWeather } from '@app/physical/physical-plant-types';
 import { DISRUPTIVE_ACTIONS, SWAP_COSTS_S, VERB_COSTS_S } from '@app/physical/plant-verb-rules';
-import { SKYLINK_TAB_ID } from '@app/plugins-builtin/terminal-app/skylink-tab-id';
+import { ImmersiveView } from '@app/presentation/immersive-view';
 import { getAssetUrl } from '@app/utils/asset-url';
 import { activeLayers, evidenceCallouts } from './closeup-evidence';
 import { pointAlong, shapeCentre, shapeSvg, svgOpen, VIEW_W, viewHeight } from './plant-svg';
@@ -67,6 +68,8 @@ const TITLE_H = 44;
 const MIN_BODY_H = 520;
 
 export class PartCloseupModal extends DraggableModal {
+  private readonly immersive_ = new ImmersiveView();
+  private indicatorPanels_: FieldServicePanel[] = [];
   private static readonly MODAL_ID = 'part-closeup-modal';
   private static instance_: PartCloseupModal | null = null;
 
@@ -99,6 +102,8 @@ export class PartCloseupModal extends DraggableModal {
   }
 
   static destroy(): void {
+    PartCloseupModal.instance_?.close();
+    for (const panel of PartCloseupModal.instance_?.indicatorPanels_ ?? []) panel.destroy();
     PartCloseupModal.instance_?.unsubscribe_();
     document.getElementById(`${PartCloseupModal.MODAL_ID}-container`)?.remove();
     PartCloseupModal.instance_ = null;
@@ -107,6 +112,11 @@ export class PartCloseupModal extends DraggableModal {
   /** The id of the close-up on screen, or null when closed */
   currentId(): CloseupId | null {
     return this.isOpen() ? (this.def_?.id ?? null) : null;
+  }
+
+  selectTarget(partId: string): void {
+    const point = this.root_()?.querySelector<SVGElement>(`[data-target="${CSS.escape(partId)}"]`);
+    if (point) this.select_(point);
   }
 
   isOpen(): boolean {
@@ -134,6 +144,8 @@ export class PartCloseupModal extends DraggableModal {
       }
       this.render_();
       this.bindOnce_();
+      if (this.boxEl) this.immersive_.open(this.boxEl, def.title, 'equipment', () => this.close());
+      this.buildIndicators_();
     });
     document.removeEventListener('keydown', this.boundKeydown_, true);
     document.addEventListener('keydown', this.boundKeydown_, true);
@@ -141,6 +153,7 @@ export class PartCloseupModal extends DraggableModal {
   }
 
   override close(cb?: () => void): void {
+    this.immersive_.close();
     const id = this.def_?.id;
     this.unsubscribe_();
     document.removeEventListener('keydown', this.boundKeydown_, true);
@@ -185,6 +198,7 @@ export class PartCloseupModal extends DraggableModal {
   private onKeydown_(event: KeyboardEvent): void {
     if (event.key === 'Escape' && this.isOpen()) {
       event.stopPropagation();
+      event.preventDefault();
       this.close();
     }
   }
@@ -208,6 +222,30 @@ export class PartCloseupModal extends DraggableModal {
       return;
     }
     this.render_();
+  }
+
+  private buildIndicators_(): void {
+    for (const panel of this.indicatorPanels_) panel.destroy();
+    this.indicatorPanels_ = [];
+    const host = this.root_()?.querySelector<HTMLElement>('#pcu-indicators');
+    if (!host) return;
+    host.replaceChildren();
+    const model = PhysicalPlantService.servicesOrNull();
+    const targets = new Set(this.def_?.regions.map((region) => region.target));
+    for (const id of model?.getServiceIds() ?? []) {
+      const path = model!.getPath(id);
+      if (!path || ![path.terminalPartId, ...path.localPartIds.filter((part) => !part.includes('laptop'))].some((part) => targets.has(part))) continue;
+      const slot = document.createElement('section');
+      host.append(slot);
+      const panel = new FieldServicePanel(
+        slot,
+        () => PhysicalPlantService.servicesOrNull(),
+        () => PhysicalPlantService.plantOrNull()?.getTimeSeconds() ?? 0,
+        (seconds) => PhysicalPlantService.plantOrNull()?.spendTime(seconds)
+      );
+      panel.setSource('device-indicator', id);
+      this.indicatorPanels_.push(panel);
+    }
   }
 
   protected getModalContentHtml(): string {
@@ -237,6 +275,7 @@ export class PartCloseupModal extends DraggableModal {
               <div class="pp-section-title">History</div>
               <div class="pp-log" id="pcu-log"></div>
             </div>
+            <div id="pcu-indicators"></div>
             <div class="pp-foot">
               <label class="pp-foot-row"><input id="pcu-points" type="checkbox" /><span>Show interaction points</span></label>
               <details class="pp-trainer-foot">
@@ -281,8 +320,29 @@ export class PartCloseupModal extends DraggableModal {
 
   private onClick_(ev: Event): void {
     const el = ev.target as HTMLElement;
+    if (el.closest('[data-open-laptop]')) {
+      this.close();
+      EventBus.getInstance().emit(Events.SWITCH_TAB, { tabId: 'field-service', desktop: true });
+      return;
+    }
     const plant = PhysicalPlantService.plantOrNull();
     if (!plant) {
+      return;
+    }
+    const mode = el.closest<HTMLElement>('[data-equipment-mode]');
+    if (mode && this.selected_) {
+      const t = formatSimTime(plant.getTimeSeconds());
+      const whBefore = storedWh_(plant);
+      const result = plant.setPartMode(this.selected_, mode.dataset.equipmentMode!);
+      this.pushLog_({
+        t,
+        verb: 'Set mode',
+        target: plant.getLabel(this.selected_),
+        targetId: this.selected_,
+        observation: result.observation,
+        cost: costText(result, whBefore - storedWh_(plant)),
+        count: 1,
+      });
       return;
     }
     const measureBtn = el.closest<HTMLElement>('[data-measure]');
@@ -320,27 +380,9 @@ export class PartCloseupModal extends DraggableModal {
     this.selected_ = target;
     this.selectedKey_ = hit.dataset.sel ?? target;
     this.selectedLabel_ = (hit.dataset.label ?? '').split(': internet')[0];
-    if (hit.dataset.opensApp === '1') {
-      EventBus.getInstance().emit(Events.SWITCH_TAB, { tabId: `${STATION_TAB_PREFIX}${SKYLINK_TAB_ID}` });
-      this.showNotice_('Opened the laptop: SkyLink app');
-    }
     this.render_();
   }
 
-  /** A brief visible cue (and live-region announcement) that the view changed */
-  private showNotice_(text: string): void {
-    document.getElementById('pcu-notice')?.remove();
-    const el = document.createElement('div');
-    el.id = 'pcu-notice';
-    el.setAttribute('role', 'status');
-    el.textContent = text;
-    el.style.cssText =
-      'position:fixed;top:80px;right:20px;z-index:100001;padding:10px 14px;border-radius:4px;background:#1b2330;color:#fff;border:1px solid #22c55e;font:14px monospace;pointer-events:none';
-    document.body.appendChild(el);
-    window.setTimeout(() => el.remove(), 3000);
-  }
-
-  /** Affordances of the selected region, when the data restricts them */
   private allows_(what: string): boolean {
     const aff = this.def_?.regions.find((r) => r.id === this.selectedKey_)?.affordances;
 
@@ -404,6 +446,7 @@ export class PartCloseupModal extends DraggableModal {
   // ------------------------------------------------------------------ render
 
   private render_(): void {
+    for (const panel of this.indicatorPanels_) panel.sync();
     const root = this.root_();
     const plant = PhysicalPlantService.plantOrNull();
     const def = this.def_;
@@ -476,11 +519,8 @@ export class PartCloseupModal extends DraggableModal {
     if (!modal) {
       return;
     }
-    const cs = getComputedStyle(document.documentElement);
-    const vw = Number.parseFloat(cs.getPropertyValue('--mc-viewport-width')) || window.innerWidth;
-    const vh = Number.parseFloat(cs.getPropertyValue('--mc-viewport-height')) || window.innerHeight;
-    const maxW = Math.min(1500, vw - 32);
-    const maxBodyH = Math.min(900, vh - 48) - TITLE_H;
+    const maxW = displayViewport().width;
+    const maxBodyH = displayViewport().height - 48 - TITLE_H;
     const availW = maxW - PANEL_W - FRAME_PAD * 3;
     const availH = maxBodyH - FRAME_PAD * 2;
     const imgW = Math.floor(Math.min(availW, availH * def.aspect));
@@ -541,6 +581,14 @@ export class PartCloseupModal extends DraggableModal {
       .filter((verb) => this.allows_(verb))
       .sort((a, b) => VERB_ORDER.indexOf(a) - VERB_ORDER.indexOf(b));
     const observe: string[] = [];
+    const modes = plant.getModeOptions(target);
+    if (modes.length)
+      observe.push(
+        `<fieldset class="pp-mode-control"><legend>${escapeHtml(plant.getLabel(target))} mode</legend>${modes.map((mode) => `<button type="button" data-equipment-mode="${escapeHtml(mode.id)}" aria-pressed="${plant.getPartMode(target) === mode.id}">${escapeHtml(mode.label)}</button>`).join('')}</fieldset>`
+      );
+    if (this.def_?.regions.some((region) => region.target === target && region.opensApp)) {
+      observe.push('<button type="button" class="pp-act" data-open-laptop>Use laptop</button>');
+    }
     const fix: string[] = [];
     const disrupt: string[] = [];
     const meters = this.meterTools_(plant, target).map(

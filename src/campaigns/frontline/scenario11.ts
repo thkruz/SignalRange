@@ -130,11 +130,10 @@ const numeric = (id: string, label: string, metric: string): EvidenceGroup => ({
   orMatch: [{ kind: 'observation', serviceId: FORWARD_EUROSAT_SERVICE, layer: 'application', metric }],
 });
 /** Where a numeric reading comes from, named in each Required bullet (c6-s11-F2) */
-const FROM_CHECKS = (metric: string): string =>
-  `Service checks: Registration row with the local probe or terminal app, or Application row, Check with: Workload run, then choose ${metric} in the list that appears`;
-const EUS_DELAY = numeric('delay', `a delay reading from the EuroSat service (${FROM_CHECKS('Latency')})`, 'rttMs');
-const EUS_RATE = numeric('rate', `a download rate reading from the EuroSat service (${FROM_CHECKS('Download')})`, 'downMbps');
-const EUS_LOSS = numeric('loss', `a loss reading from the EuroSat service (${FROM_CHECKS('Loss')})`, 'lossPct');
+const FROM_CHECKS = (command: string): string => `On the laptop, run ${command} on the EuroSat terminal in NetProbe, or run a speed test in the EuroSat modem app.`;
+const EUS_DELAY = numeric('delay', `a delay reading from the EuroSat service (${FROM_CHECKS('Ping')})`, 'rttMs');
+const EUS_RATE = numeric('rate', `a download rate reading from the EuroSat service (${FROM_CHECKS('Throughput')})`, 'downMbps');
+const EUS_LOSS = numeric('loss', `a loss reading from the EuroSat service (${FROM_CHECKS('Ping')})`, 'lossPct');
 
 const measurementForm: HandoverFormConfig = {
   id: 'measurement',

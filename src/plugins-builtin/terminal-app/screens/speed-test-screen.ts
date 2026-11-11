@@ -221,6 +221,7 @@ export function createSpeedTestScreenFor(resolve: (ctx: TerminalScreenContext) =
       pending = null;
       busy = false;
       failed = result === null;
+      if (result) ctx.evidence?.sampleLink();
       ctx.evidence?.action(
         'speed-test',
         APP_ACTION_VERBS.speedTest,

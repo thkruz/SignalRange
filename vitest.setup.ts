@@ -107,3 +107,23 @@ if (typeof HTMLMediaElement !== "undefined") {
   HTMLMediaElement.prototype.play = () => Promise.resolve();
   HTMLMediaElement.prototype.pause = () => undefined;
 }
+
+// jsdom has no modal dialogs or CSS.escape; the immersive views (close-ups, laptop, notebook) use both
+if (typeof HTMLDialogElement !== 'undefined') {
+  if (typeof HTMLDialogElement.prototype.showModal !== 'function') {
+    HTMLDialogElement.prototype.showModal = function showModal(this: HTMLDialogElement) {
+      this.open = true;
+    };
+  }
+  if (typeof HTMLDialogElement.prototype.close !== 'function') {
+    HTMLDialogElement.prototype.close = function close(this: HTMLDialogElement) {
+      if (!this.open) return;
+      this.open = false;
+      this.dispatchEvent(new Event('close'));
+    };
+  }
+}
+if (typeof globalThis.CSS === 'undefined') (globalThis as { CSS?: unknown }).CSS = {};
+if (typeof (globalThis.CSS as { escape?: unknown }).escape !== 'function') {
+  (globalThis.CSS as { escape: (s: string) => string }).escape = (s: string) => String(s).replace(/[^\w-]/gu, (c) => `\${c}`);
+}

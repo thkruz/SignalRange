@@ -714,7 +714,8 @@ export interface EventMap {
 
   [Events.ALARM_STATE_CHANGED]: [AlarmStateChangedData];
 
-  [Events.SWITCH_TAB]: [{ tabId: string }];
+  /** `desktop`: sit down at the field laptop and see its desktop rather than an app window */
+  [Events.SWITCH_TAB]: [{ tabId: string; desktop?: boolean }];
   [Events.MISSION_OVERVIEW_SELECTED]: [];
 
   // Weather events

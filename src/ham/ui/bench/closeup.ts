@@ -10,6 +10,8 @@
  * ham-conn-<deviceId|connectionId|faultId|spareId>-<inspect|seat|disconnect|power|dctest|repair|install|move|clue>.
  */
 
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
 import type { HamStationManager } from '../../ham-station-manager';
 import type { RadioPanel } from '../panels/radio-panel';
 import type { PanelContext, StationPanel } from '../station-panel';
@@ -19,7 +21,6 @@ import type { BenchScene, BenchSelection } from './bench-scene';
 import { Faceplate } from './faceplate';
 import { buildJobTagSection } from './job-tag-section';
 import { jobTags } from './job-tags';
-import { SdrApp } from './sdr-app';
 
 const KIND_NAME: Record<string, string> = {
   sdr: 'USB receiver',
@@ -97,7 +98,6 @@ export class Closeup {
   private readonly panels_: Map<string, StationPanel>;
   private readonly hosts_ = new Map<string, HTMLElement>();
   private readonly mounted_ = new Set<string>();
-  private readonly sdrApp_: SdrApp;
   private readonly faceplate_: Faceplate;
   private readonly clues_ = new Map<string, string>();
   private readonly rebuild_ = new Rebuilder();
@@ -110,7 +110,6 @@ export class Closeup {
     this.panels_ = new Map(panels.map((p) => [p.id, p]));
     this.head_ = h('div', { class: 'ham-closeup-head' });
     this.instruments_ = h('div', { class: 'ham-closeup-instruments' });
-    this.sdrApp_ = new SdrApp(ctx);
     this.faceplate_ = new Faceplate(this.instruments_);
     this.el = h('div', { class: 'ham-closeup', id: 'ham-closeup', 'data-testid': 'ham-closeup' }, this.head_, this.instruments_);
   }
@@ -122,7 +121,6 @@ export class Closeup {
 
   dispose(): void {
     this.faceplate_.dispose();
-    this.sdrApp_.dispose();
     for (const id of this.mounted_) this.panels_.get(id)?.dispose();
     this.el.remove();
   }
@@ -146,7 +144,6 @@ export class Closeup {
       const p = this.panels_.get(id);
       if (p?.isRelevant(m)) p.update(m);
     }
-    if (s?.kind === 'device' && m.device(s.id)?.kind === 'laptop') this.sdrApp_.update(m);
   }
 
   private act_(a: Parameters<PanelContext['act']>[0], clueFor?: string): void {
@@ -173,8 +170,16 @@ export class Closeup {
       this.faceplate_.hide();
     }
     if (showSdr && dev) {
-      this.instruments_.append(this.sdrApp_.el);
-      this.sdrApp_.show(dev.id);
+      this.instruments_.append(
+        button(
+          'ham-open-sdr',
+          'Open SkyWatcher SDR',
+          () => {
+            EventBus.getInstance().emit(Events.SWITCH_TAB, { tabId: 'sdr-console' });
+          },
+          'sdr-btn ham-open-sdr'
+        )
+      );
     }
     for (const id of want) {
       const p = this.panels_.get(id);

@@ -14,6 +14,8 @@ import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
 import { EventBus } from '@app/events/event-bus';
 import { Events, type ObjectiveObservationPendingData } from '@app/events/events';
+import { ImmersiveView } from '@app/presentation/immersive-view';
+import { type LaptopApp, LaptopShell } from '@app/presentation/laptop-shell';
 import { revealPanel } from '@app/presentation/transitions';
 import { ScenarioManager } from '@app/scenario-manager';
 import { hasOrbitalSatellites } from '@app/simulation/sim-queries';
@@ -33,6 +35,7 @@ import { EaAssessmentTab } from '@app/pages/mission-control/tabs/ea-assessment-t
 import { GeolocationTab } from '@app/pages/mission-control/tabs/geolocation-tab';
 import { GPSTimingTab } from '@app/pages/mission-control/tabs/gps-timing-tab';
 import { GroundTrackTab } from '@app/pages/mission-control/tabs/ground-track-tab';
+import { HamSdrConsoleTab } from '@app/pages/mission-control/tabs/ham-sdr-console-tab';
 import { HamStationTab } from '@app/pages/mission-control/tabs/ham-station-tab';
 import { LinkBudgetTab } from '@app/pages/mission-control/tabs/link-budget-tab';
 import { MissionOverviewTab } from '@app/pages/mission-control/tabs/mission-overview-tab';
@@ -66,6 +69,7 @@ interface TabDescriptor {
  * - Satellite: Placeholder (Phase 8+)
  */
 export class TabbedCanvas extends BaseElement {
+  private readonly immersive_ = new ImmersiveView();
   static readonly containerId = 'tabbed-canvas-container';
   private static instance_: TabbedCanvas | null = null;
 
@@ -76,7 +80,7 @@ export class TabbedCanvas extends BaseElement {
   private static readonly OVERVIEW_KEY = '__overview__';
 
   private activeTab_: string = 'mission-overview';
-  private tabResizeObserver_: ResizeObserver | null = null;
+  private notebookReturnTab_ = 'site';
   /** Observation tabs (id or prefix) whose button pulses until the tab is opened (Phase 35 D3) */
   private readonly pulseTabs_ = new Set<string>();
   private selectedAssetId_: string | null = null;
@@ -104,6 +108,7 @@ export class TabbedCanvas extends BaseElement {
     | MissionOverviewTab
     | PassScheduleTab
     | SdrConsoleTab
+    | HamSdrConsoleTab
     | HamStationTab
     | GeolocationTab
     | EaAssessmentTab
@@ -139,11 +144,13 @@ export class TabbedCanvas extends BaseElement {
     this.applyTabPulse_();
   };
 
-  private readonly boundSwitchTab_ = (data: { tabId: string }): void => {
+  private readonly boundSwitchTab_ = (data: { tabId: string; desktop?: boolean }): void => {
+    if (data.desktop) SiteTab.requestDesktop();
     this.requestTab_(data.tabId);
   };
 
   private readonly boundMissionOverviewSelected_ = (): void => {
+    this.immersive_.close();
     if (this.isGated_()) {
       this.confirmLeaveSite_(() => EventBus.getInstance().emit(Events.MISSION_OVERVIEW_SELECTED));
 
@@ -235,6 +242,7 @@ export class TabbedCanvas extends BaseElement {
    * Handle asset selection from the asset tree
    */
   private handleAssetSelected_(type: 'ground-station' | 'satellite', id: string): void {
+    this.immersive_.close();
     // The Overview's look-angle card follows the last station picked (phase 31 D16)
     if (type === 'ground-station') {
       MissionOverviewTab.rememberStation(id);
@@ -339,10 +347,13 @@ export class TabbedCanvas extends BaseElement {
     // Console (with its rotator panel) is the whole rig; Observations covers
     // planning. Absent stationClass renders the professional tab set as before.
     if (groundStation.state.stationClass === 'backyard') {
-      // Campaign 3 (ham-sdr) runs the headless HamStationManager: the Station tab replaces the SDR Console.
+      // The physical bench and the receiver software have separate workspaces.
       const hamStation = HamStationService.getInstance() !== null;
       const backyardTabs: TabDescriptor[] = hamStation
-        ? [{ id: 'ham-station', label: 'Station', icon: radioPng }]
+        ? [
+            { id: 'ham-station', label: 'Station', icon: radioPng },
+            { id: 'sdr-console', label: 'SDR Console', icon: radarPng },
+          ]
         : [{ id: 'sdr-console', label: 'SDR Console', icon: radarPng, isDisabled: groundStation.state.isOperational === false }];
       if (hasOrbitalSats) {
         backyardTabs.push({ id: 'pass-schedule', label: 'Observations', icon: stopwatchPng, isDisabled: groundStation.state.isOperational === false });
@@ -434,6 +445,9 @@ export class TabbedCanvas extends BaseElement {
         .forEach((reg) => tabs.push({ id: `${STATION_TAB_PREFIX}${reg.id}`, label: reg.label, icon: radarPng, isDisabled: groundStation.state.isOperational === false }));
     }
 
+    if (settings.physicalPlant) {
+      tabs.push(...SiteTab.availableWorkspaces().map((tab) => ({ ...tab, icon: checklistPng })));
+    }
     this.renderTabs_(tabs);
     this.switchTab_(this.resolveActiveTab_(tabs, 'dashboard'));
   }
@@ -454,6 +468,9 @@ export class TabbedCanvas extends BaseElement {
       tabs.push({ id: 'site', label: 'Site', icon: radarPng });
     }
     registered.forEach((reg) => tabs.push({ id: `${STATION_TAB_PREFIX}${reg.id}`, label: reg.label, icon: radarPng, isDisabled: disabled }));
+    if (settings.physicalPlant) {
+      tabs.push(...SiteTab.availableWorkspaces().map((tab) => ({ ...tab, icon: checklistPng })));
+    }
 
     const allowed = new Set(settings.fieldTabs ?? []);
     const engineering: TabDescriptor[] = [
@@ -598,16 +615,12 @@ export class TabbedCanvas extends BaseElement {
     this.applyTabPulse_();
 
     // Add click listeners to nav-links
-    this.updateTabIndicator_();
-    if (!this.tabResizeObserver_ && typeof ResizeObserver !== 'undefined') {
-      this.tabResizeObserver_ = new ResizeObserver(() => this.updateTabIndicator_());
-      this.tabResizeObserver_.observe(tabBar);
-    }
     tabBar.querySelectorAll('.nav-link').forEach((tabElement: HTMLElement) => {
       tabElement.addEventListener('click', (e) => {
         e.preventDefault(); // Prevent default link behavior
         const tabId = tabElement.dataset.tabId;
         if (tabId) {
+          if (tabId === 'field-service') SiteTab.requestDesktop();
           this.requestTab_(tabId);
         }
       });
@@ -645,7 +658,10 @@ export class TabbedCanvas extends BaseElement {
     if (this.fieldTabIds_ && !this.fieldTabIds_.has(tabId)) {
       return;
     }
-    if (!this.isGated_() || tabId === 'site' || tabId === this.activeTab_) {
+    const portable =
+      ['field-power', 'field-path', 'field-notebook', 'field-handover', 'field-records'].includes(tabId) ||
+      (tabId === 'field-service' && ['pilot-report', 'endpoint-report'].includes(SiteTab.source));
+    if (!this.isGated_() || portable || tabId === 'site' || tabId === this.activeTab_) {
       this.switchTab_(tabId);
 
       return;
@@ -696,6 +712,8 @@ export class TabbedCanvas extends BaseElement {
    * Switch to a different tab
    */
   private switchTab_(tabId: string): void {
+    this.immersive_.close();
+    if (tabId === 'field-notebook' && this.activeTab_ !== 'field-notebook') this.notebookReturnTab_ = this.activeTab_ || 'site';
     this.activeTab_ = tabId;
 
     // Remember where the operator was on this asset so reselecting it later
@@ -713,10 +731,78 @@ export class TabbedCanvas extends BaseElement {
     });
 
     this.applyTabPulse_();
-    this.updateTabIndicator_();
 
+    // Keep an in-world workstation's applications mounted while changing focus.
+    const immersiveCampaign = PhysicalPlantService.plantOrNull() !== null || !!HamStationService.getInstance()?.manager;
+    let park = this.dom_?.querySelector<HTMLElement>('.immersive-park');
+    if (immersiveCampaign && !park) {
+      park = document.createElement('section');
+      park.className = 'immersive-park';
+      park.hidden = true;
+      this.dom_?.append(park);
+    }
+    if (immersiveCampaign && park) {
+      for (const tab of this.tabInstances_.values()) if (tab.dom?.parentElement?.id === 'canvas-content') park.append(tab.dom);
+    }
     // Render tab content
     this.renderTabContent_(tabId);
+    if (immersiveCampaign && park) {
+      const host = this.dom_?.querySelector('#canvas-content');
+      for (const tab of this.tabInstances_.values()) if (tab.dom?.parentElement === park && tab.dom.style.display !== 'none') host?.append(tab.dom);
+    }
+    const field = PhysicalPlantService.plantOrNull() !== null;
+    const ham = HamStationService.getInstance()?.manager;
+    const computer = (field && (tabId === 'field-service' || tabId === 'field-workload' || tabId.startsWith(STATION_TAB_PREFIX))) || (!!ham && tabId === 'sdr-console');
+    const paper = field && ['field-power', 'field-path', 'field-handover', 'field-records'].includes(tabId);
+    if (computer || paper) {
+      const content = this.dom_?.querySelector<HTMLElement>('#canvas-content');
+      if (!content) return;
+      let nav: HTMLElement | undefined;
+      let frame: ((content: HTMLElement, leave: HTMLButtonElement) => { element: HTMLElement; dispose: () => void }) | undefined;
+      const radioSource = tabId === 'field-service' && ['pilot-report', 'endpoint-report'].includes(SiteTab.source);
+      if (computer && field && !radioSource) {
+        const apps: LaptopApp[] = [
+          { id: 'netprobe', label: 'NetProbe', icon: 'probe', open: () => SiteTab.openSource('local-probe') },
+          { id: 'browser', label: 'Browser', icon: 'browser', open: () => SiteTab.openSource('provider-portal') },
+        ];
+        for (const link of this.dom_!.querySelectorAll<HTMLElement>(`[data-tab-id^="${STATION_TAB_PREFIX}"]`)) {
+          const label = link.textContent?.trim() ?? 'Terminal';
+          apps.push({ id: link.dataset.tabId!, label, icon: /skylink/iu.test(label) ? 'dish' : 'modem', open: () => this.requestTab_(link.dataset.tabId!) });
+        }
+        if (SiteTab.availableWorkspaces().some((t) => t.id === 'field-workload'))
+          apps.push({ id: 'field-workload', label: 'Mission apps', icon: 'apps', open: () => this.requestTab_('field-workload') });
+        const activeId = tabId === 'field-service' ? (SiteTab.source === 'provider-portal' ? 'browser' : 'netprobe') : tabId;
+        const showDesktop = SiteTab.takeDesktopRequest();
+        frame = (inner, leave) => {
+          const shell = new LaptopShell(inner, leave, { apps, activeId, showDesktop });
+          return { element: shell.element, dispose: () => shell.dispose() };
+        };
+      }
+      const radio = radioSource;
+      if (radio) {
+        nav = document.createElement('nav');
+        nav.className = 'immersive-apps radio-channels';
+        nav.setAttribute('aria-label', 'Radio channels');
+        for (const [source, label] of [
+          ['pilot-report', 'Pilot channel'],
+          ['endpoint-report', 'Remote operator'],
+        ] as const) {
+          const button = document.createElement('button');
+          button.textContent = label;
+          button.setAttribute('aria-pressed', String(SiteTab.source === source));
+          button.addEventListener('click', () => SiteTab.openSource(source));
+          nav.append(button);
+        }
+      }
+      this.immersive_.open(
+        content,
+        paper ? 'Field documents' : radio ? 'Field radio' : 'Laptop',
+        paper ? 'paper' : radio ? 'equipment' : frame ? 'laptop' : 'computer',
+        () => this.requestTab_(field ? 'site' : 'ham-station'),
+        nav,
+        frame
+      );
+    }
   }
 
   /**
@@ -731,6 +817,11 @@ export class TabbedCanvas extends BaseElement {
 
     // Deactivate all existing tabs
     this.tabInstances_.forEach((tab) => tab.deactivate());
+
+    if (tabId.startsWith('field-') && SiteTab.availableWorkspaces().some((tab) => tab.id === tabId)) {
+      this.renderSiteTab_(tabId);
+      return;
+    }
 
     // Handle dynamic acu-control-N tabs
     if (tabId.startsWith('acu-control-')) {
@@ -1234,7 +1325,7 @@ export class TabbedCanvas extends BaseElement {
   /**
    * Render Site tab (Phase 38.1 physical-layer sandbox)
    */
-  private renderSiteTab_(): void {
+  private renderSiteTab_(workspace = 'site'): void {
     const tabKey = 'site';
     let siteTab = this.tabInstances_.get(tabKey) as SiteTab;
 
@@ -1245,10 +1336,14 @@ export class TabbedCanvas extends BaseElement {
     }
 
     if (!siteTab) {
-      siteTab = new SiteTab('canvas-content');
+      siteTab = new SiteTab('canvas-content', () => {
+        this.requestTab_(this.notebookReturnTab_);
+        this.dom_?.querySelector<HTMLElement>(`[data-tab-id="${this.notebookReturnTab_}"]`)?.focus({ preventScroll: true });
+      });
       this.tabInstances_.set(tabKey, siteTab);
     }
 
+    siteTab.showWorkspace(workspace);
     siteTab.activate();
   }
 
@@ -1290,7 +1385,7 @@ export class TabbedCanvas extends BaseElement {
     }
 
     const tabKey = `sdr-console-${this.selectedAssetId_}`;
-    let sdrTab = this.tabInstances_.get(tabKey) as SdrConsoleTab;
+    let sdrTab = this.tabInstances_.get(tabKey) as SdrConsoleTab | HamSdrConsoleTab;
 
     if (sdrTab && !document.contains(sdrTab.dom)) {
       sdrTab.dispose();
@@ -1299,7 +1394,8 @@ export class TabbedCanvas extends BaseElement {
     }
 
     if (!sdrTab) {
-      sdrTab = new SdrConsoleTab(groundStation, 'canvas-content');
+      const ham = HamStationService.getInstance();
+      sdrTab = ham ? new HamSdrConsoleTab(ham.manager, 'canvas-content') : new SdrConsoleTab(groundStation, 'canvas-content');
       this.tabInstances_.set(tabKey, sdrTab);
     }
 
@@ -1343,7 +1439,7 @@ export class TabbedCanvas extends BaseElement {
    * Cleanup
    */
   public destroy(): void {
-    this.tabResizeObserver_?.disconnect();
+    this.immersive_.close();
     // Remove event listeners first, so a late event cannot resurrect a tab
     // while we are tearing them down.
     const eventBus = EventBus.getInstance();
@@ -1370,14 +1466,5 @@ export class TabbedCanvas extends BaseElement {
     if (TabbedCanvas.instance_ === this) {
       TabbedCanvas.instance_ = null;
     }
-  }
-
-  private updateTabIndicator_(): void {
-    const bar = this.dom_?.querySelector<HTMLElement>('#tab-bar');
-    const active = bar?.querySelector<HTMLElement>('.nav-link.active');
-    if (!bar || !active) return;
-    const bounds = active.getBoundingClientRect();
-    bar.style.setProperty('--tab-indicator-x', `${bounds.left - bar.getBoundingClientRect().left + bar.scrollLeft}px`);
-    bar.style.setProperty('--tab-indicator-width', `${bounds.width}px`);
   }
 }

@@ -76,7 +76,7 @@ describe('M21 check cost', () => {
       () => svc.plant.getTimeSeconds(),
       (s) => spent.push(s)
     );
-    panel.sync();
+    panel.setSource('device-indicator');
     const row = host.querySelector<HTMLElement>('[data-svc-layer="power"]') as HTMLElement;
     (row.querySelector('button[data-svc-check]') as HTMLButtonElement).click();
     expect(spent).toEqual([CHECK_COST_S['device-indicator']]);
@@ -87,7 +87,7 @@ describe('M21 check cost', () => {
       () => svc.services,
       () => svc.plant.getTimeSeconds()
     );
-    quiet.sync();
+    quiet.setSource('device-indicator');
     expect(() => (free.querySelector('[data-svc-layer="power"] button[data-svc-check]') as HTMLButtonElement).click()).not.toThrow();
   });
 });
@@ -111,12 +111,11 @@ describe('M21 notebook cause select', () => {
     return host;
   }
 
-  it('renders a select of the authored causes plus Something else', () => {
+  it('renders visible choices for authored causes plus Something else', () => {
     boot(config(OPTIONS));
     const host = panel(OPTIONS);
-    const select = host.querySelector<HTMLSelectElement>('select[data-nb-cause]');
-    expect(select).not.toBeNull();
-    expect([...(select?.options ?? [])].map((o) => o.value)).toEqual(['', 'connector-moisture', 'router', 'other']);
+    const choices = host.querySelectorAll<HTMLInputElement>('input[data-nb-cause]');
+    expect([...choices].map((o) => o.value)).toEqual(['connector-moisture', 'router', 'other']);
   });
 
   it('keeps the free text input without authored causes', () => {
@@ -130,8 +129,8 @@ describe('M21 notebook cause select', () => {
     const svc = boot(config(OPTIONS));
     const host = panel(OPTIONS);
     svc.plant.inspect('router');
-    const select = host.querySelector<HTMLSelectElement>('select[data-nb-cause]') as HTMLSelectElement;
-    select.value = 'connector-moisture';
+    const choice = host.querySelector<HTMLInputElement>('input[data-nb-cause][value="connector-moisture"]')!;
+    choice.checked = true;
     host.querySelector<HTMLButtonElement>('button[data-nb-act="add"]')?.click();
     const h = svc.evidence?.entries('hypothesis')[0] as unknown as { claim: { cause?: string }; text: string };
     expect(h.claim.cause).toBe('connector-moisture');

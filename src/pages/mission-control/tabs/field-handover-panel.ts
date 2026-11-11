@@ -36,7 +36,7 @@ export interface HandoverPanelDeps {
 
 /** Said plainly wherever a form has a field that must match a service reading */
 export const STALE_NOTE =
-  'A reading goes out of date for two reasons. It gets old: each kind of check stays good for a few minutes of game time, and every check you run uses some of that time. Or something changes on site (a fix, a restart, a setting, an outage starting or ending). Take the reading again after your last change, then fill the form right away. The Service checks table shows how long a Current reading lasts.';
+  'A reading goes out of date for two reasons. It gets old: each kind of check stays good for a few minutes of game time, and every check you run uses some of that time. Or something changes on site (a fix, a restart, a setting, an outage starting or ending). Take the reading again after your last change, then fill the form right away. The instrument or application that took the reading shows how long it stays current.';
 
 const KIND_LABEL: Record<string, string> = { observation: 'Observed', action: 'Did', result: 'Result', hypothesis: 'Hypothesis' };
 const CHOICE_OTHER = 'other';
@@ -85,6 +85,8 @@ const FRESHNESS_ANSWERS: ReadonlyArray<readonly [string, string]> = [
 
 /** Plain names for the numeric metrics a measured field can take */
 const METRIC_NAME: Record<string, string> = { jitterMs: 'jitter', rttMs: 'delay', downMbps: 'download rate', upMbps: 'upload rate', lossPct: 'loss' };
+/** The NetProbe command on the laptop that measures each metric */
+const METRIC_COMMAND: Record<string, string> = { jitterMs: 'Jitter', rttMs: 'Ping', downMbps: 'Throughput', upMbps: 'Throughput', lossPct: 'Ping' };
 
 /** What the "latest reading" hint prints for a matchesCurrent field */
 export function describeReading(service: ServiceModel | null, serviceId: string, layer: Parameters<ServiceModel['latest']>[1]): { text: string; value?: string; current: boolean } {
@@ -478,7 +480,8 @@ export class FieldHandoverPanel {
     if (reading === undefined && 'measured' in rule) {
       const name = METRIC_NAME[rule.measured.metric] ?? 'reading';
 
-      return `No ${name} measured yet. It comes from a numeric reading: a speed test in the modem app, the local probe on the Registration row, or Service checks, Application row, Check with Workload run, then pick ${name}.`;
+      const command = METRIC_COMMAND[rule.measured.metric] ?? 'Ping';
+      return `No ${name} measured yet. Run a speed test in the terminal's app, or run ${command} on the terminal in NetProbe on the laptop.`;
     }
 
     if (reading === undefined && 'powerWithin' in rule) {

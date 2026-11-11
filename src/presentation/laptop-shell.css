@@ -1,0 +1,246 @@
+/* The field laptop: a rugged bezel around a small desktop OS (see laptop-shell.ts) */
+
+.immersive-view.immersive-laptop {
+  padding: 0;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 120%, #2b2a22 0%, #121310 55%, #0b0c0a 100%);
+}
+.immersive-view.immersive-laptop::backdrop { background: #0b0c0a; }
+
+.lt-device {
+  --lt-bezel: clamp(14px, 2.2vmin, 26px);
+  --lt-ui: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 10px 12px 0;
+  padding: var(--lt-bezel) var(--lt-bezel) 0;
+  border-radius: 18px 18px 6px 6px;
+  background:
+    radial-gradient(circle at 18px 18px, #3a3c37 0 6px, transparent 7px),
+    radial-gradient(circle at calc(100% - 18px) 18px, #3a3c37 0 6px, transparent 7px),
+    linear-gradient(180deg, #34352f 0%, #26271f 7%, #22231d 92%, #1b1c17 100%);
+  box-shadow:
+    inset 0 1px 0 #5a5c52,
+    inset 0 0 0 1px #0d0e0b,
+    inset 0 -2px 6px #0008,
+    0 30px 60px #000b,
+    0 0 0 3px #10110d;
+  font-family: var(--lt-ui);
+}
+
+/* Rubber corner bumpers */
+.lt-device::before,
+.lt-device::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  width: 64px;
+  height: 64px;
+  border: 7px solid #191a15;
+  pointer-events: none;
+}
+.lt-device::before { left: -4px; border-right: 0; border-bottom: 0; border-radius: 20px 0 0 0; }
+.lt-device::after { right: -4px; border-left: 0; border-bottom: 0; border-radius: 0 20px 0 0; }
+
+.lt-screen {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 3px;
+  background: #0d1216;
+  box-shadow: 0 0 0 2px #070807, inset 0 0 24px #000a;
+  color: #e6ebee;
+}
+
+.lt-desktop {
+  position: absolute;
+  inset: 0 0 44px;
+  background-size: cover;
+  background-position: center right;
+}
+.lt-desktop::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, #0a101866 0%, #0a101800 45%);
+  pointer-events: none;
+}
+
+.lt-icons {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-auto-flow: row;
+  grid-template-columns: repeat(auto-fill, 104px);
+  gap: 10px;
+  margin: 0;
+  padding: 22px;
+  list-style: none;
+  max-width: 260px;
+}
+.lt-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 104px;
+  padding: 10px 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: #f1f4f6;
+  font: 13px/1.25 var(--lt-ui);
+  text-align: center;
+  text-shadow: 0 1px 3px #000, 0 0 8px #000a;
+  cursor: pointer;
+}
+.lt-icon svg {
+  width: 44px;
+  height: 44px;
+  padding: 9px;
+  border-radius: 10px;
+  color: #e9f1f5;
+  background: linear-gradient(160deg, #3b5568, #22313d);
+  box-shadow: 0 3px 8px #0009, inset 0 1px 0 #ffffff2e;
+}
+.lt-icon:hover,
+.lt-icon:focus-visible { background: #ffffff1c; border-color: #ffffff33; outline: none; }
+
+/* The app window: maximised over the desktop, above the taskbar */
+.lt-window {
+  position: absolute;
+  inset: 0 0 44px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  background: #10161b;
+  box-shadow: 0 0 0 1px #2d3a44;
+}
+.lt-window[hidden] { display: none; }
+.lt-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  flex: 0 0 auto;
+  padding: 0 0 0 10px;
+  background: linear-gradient(180deg, #26333d, #1d2830);
+  border-bottom: 1px solid #0b1014;
+  font: 600 12.5px var(--lt-ui);
+  color: #d5dee4;
+  user-select: none;
+}
+.lt-title-icon svg { width: 16px; height: 16px; display: block; color: #9fc4dc; }
+.lt-title { flex: 1; }
+.lt-win-close {
+  width: 46px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: #c9d3d9;
+  cursor: pointer;
+}
+.lt-win-close svg { width: 11px; height: 11px; }
+.lt-win-close:hover,
+.lt-win-close:focus-visible { background: #c42b1c; color: #fff; outline: none; }
+.lt-window-body { position: relative; flex: 1; min-height: 0; overflow: auto; }
+.lt-window-body > #canvas-content { height: 100%; overflow: auto; }
+
+/* Taskbar */
+.lt-taskbar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  background: #0f151bee;
+  border-top: 1px solid #2c3944;
+  backdrop-filter: blur(8px);
+}
+.lt-os svg { width: 22px; height: 22px; display: block; color: #8fc1df; margin-right: 6px; }
+.lt-pins { display: flex; gap: 2px; flex: 1; min-width: 0; }
+.lt-pin {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #cfd9df;
+  font: 13px var(--lt-ui);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.lt-pin svg { width: 18px; height: 18px; flex: 0 0 auto; }
+.lt-pin:hover,
+.lt-pin:focus-visible { background: #ffffff14; outline: none; }
+.lt-pin[aria-current] { background: #ffffff1f; color: #fff; }
+.lt-pin[aria-current]::after {
+  content: '';
+  position: absolute;
+  left: 30%;
+  right: 30%;
+  bottom: 1px;
+  height: 3px;
+  border-radius: 2px;
+  background: #6fb6e3;
+}
+.lt-tray { display: flex; align-items: center; gap: 10px; color: #cfd9df; font: 13px var(--lt-ui); font-variant-numeric: tabular-nums; }
+
+/* Faint screen glare so it reads as glass */
+.lt-glare {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  background: linear-gradient(115deg, #ffffff0a 0%, #ffffff03 28%, transparent 40%);
+}
+
+/* Bottom of the lid: brand, power LED and the way out */
+.lt-chin {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 46px;
+  flex: 0 0 auto;
+  padding: 0 6px 0 4px;
+}
+.lt-led { width: 7px; height: 7px; border-radius: 50%; background: #63e07a; box-shadow: 0 0 6px #63e07a; }
+.lt-brand { flex: 1; text-align: center; font: 700 11px/1 var(--lt-ui); letter-spacing: .35em; color: #6b6d62; text-shadow: 0 1px 0 #0008; }
+.immersive-laptop .immersive-leave {
+  position: static;
+  padding: 6px 14px;
+  border: 1px solid #45473e;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #2c2d27, #1d1e19);
+  color: #d6d4c6;
+  font: 13px var(--lt-ui);
+  box-shadow: inset 0 1px 0 #ffffff14;
+}
+.immersive-laptop .immersive-leave:hover,
+.immersive-laptop .immersive-leave:focus-visible { border-color: #8a8c7c; color: #fff; outline: none; }
+
+/* Inside the window the borrowed site/app DOM drops its page chrome */
+.lt-window-body .site-tab { padding: 0; height: 100%; background: transparent; }
+.lt-window-body .site-tab-col { height: 100%; }
+.lt-window-body > #canvas-content { padding: 0; }
+/* The docked-window gutter belongs to the tent scene, not to an app filling the laptop screen */
+.lt-window-body .site-tab .site-tab-col > [id^="site-"][id$="-panel"] { padding-right: 0; }
+.lt-window-body #site-service-panel { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.lt-window-body #site-service-panel > .fsp-app:not([hidden]) { flex: 1 1 auto; min-height: 0; }

@@ -8,7 +8,8 @@
  * text = a one-line summary of what the screen showed. Dedupe lives in `EvidenceLog.recordAppView`:
  * the same screen with the same text is recorded once per `APP_VIEW_DEDUPE_S` (60) sim seconds; a
  * changed view is recorded at once. Home also takes real `takeSample` reads of the registration and
- * account layers it shows, only when its view entry was recorded and the dish is reachable.
+ * account layers it shows whenever the app reaches the router: when its view entry was recorded, or
+ * when the last reads are no longer current. "Can't reach your SkyLink" is itself a registration reading.
  *
  * Actions: reboot, snow melt and sleep are plant verbs and reach the log through the plant action
  * log, so they are not recorded again here. Speed test, obstruction check/stop/reset and Wi-Fi
@@ -17,7 +18,7 @@
 import type { EvidenceLog } from '@app/physical/evidence-log';
 import { getActiveField } from '@app/physical/field-hooks';
 import { PhysicalPlantService } from '@app/physical/physical-plant-service';
-import type { ServiceLayer, ServiceSample } from '@app/physical/service-types';
+import type { Freshness, SampleMetric, ServiceLayer, ServiceSample } from '@app/physical/service-types';
 import type { TerminalAppModel, TerminalView } from './terminal-app-model';
 import type { TerminalScreenId } from './terminal-skin';
 
@@ -32,7 +33,28 @@ export const APP_ACTION_VERBS = {
 
 export interface TerminalEvidenceDeps {
   log: () => EvidenceLog | null;
-  services: () => { takeSample(serviceId: string, layer: ServiceLayer, via: 'terminal-app'): ServiceSample } | null;
+  services: () => TerminalReads | null;
+}
+
+/** The slice of the service model a terminal app reads through */
+export interface TerminalReads {
+  takeSample(serviceId: string, layer: ServiceLayer, via: 'terminal-app', endpointId?: string, metric?: SampleMetric): ServiceSample;
+  samplesFor?(serviceId: string): ServiceSample[];
+  freshness?(sample: ServiceSample): Freshness;
+}
+
+/**
+ * True when the app's last registration and account status reads are still current. A status screen
+ * whose text has not changed is deduped in the evidence log, but after a fix or a settings change the
+ * older reads are invalidated, and opening the screen again must read the terminal again.
+ */
+export function hasCurrentStatusReads(services: TerminalReads, serviceId: string): boolean {
+  if (!services.samplesFor || !services.freshness) return false;
+  const samples = services.samplesFor(serviceId);
+  return (['registration', 'account'] as const).every((layer) => {
+    const last = samples.filter((s) => s.layer === layer && s.metric === 'status' && s.provenance === 'terminal-app').at(-1);
+    return last !== undefined && services.freshness!(last) === 'current';
+  });
 }
 
 const liveDeps: TerminalEvidenceDeps = {
@@ -59,9 +81,19 @@ export class TerminalEvidence {
       return;
     }
     const entry = log.recordAppView(screen, this.describe_(screen, view));
-    if (entry && screen === 'home' && view.link === 'connected') {
+    const services = this.deps_.services();
+    const serviceId = this.model_.serviceId();
+    if (screen === 'home' && view.link !== 'no-router' && services && serviceId && (entry || !hasCurrentStatusReads(services, serviceId))) {
       this.sampleHome_();
     }
+  }
+
+  /** A finished speed test: the link figures it showed become terminal-app readings */
+  sampleLink(): void {
+    const services = this.deps_.services();
+    const serviceId = this.model_.serviceId();
+    if (!services || !serviceId) return;
+    for (const metric of ['rttMs', 'downMbps', 'upMbps', 'lossPct', 'jitterMs'] as const) services.takeSample(serviceId, 'registration', 'terminal-app', undefined, metric);
   }
 
   /** An app-only action (see `APP_ACTION_VERBS`) */

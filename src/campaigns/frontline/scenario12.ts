@@ -312,6 +312,7 @@ export const frontlineScenario12Data: FrontlineScenarioData = {
         "Read the task's connection diagram and service requirement. Identify the local network, satellite service, and separate remote connection segment before interpreting a symptom.",
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: [],
+      nice: ['K0689', 'K0792'],
       points: 15,
       conditions: [
         diagramSelection(
@@ -332,6 +333,7 @@ export const frontlineScenario12Data: FrontlineScenarioData = {
         "Capture Ola's symptom report and the timestamps of the related readings. Mark stale remote values as last known rather than evidence that the task is currently healthy.",
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s12-review-path'],
+      nice: ['T0081', 'K0645'],
       points: 15,
       conditions: [eventFired(S12_EVENT_INTERRUPTION, 'Interruption has been reported'), handoverValid('symptoms', 'Symptoms recorded with the remote value marked last known')],
     },
@@ -342,6 +344,7 @@ export const frontlineScenario12Data: FrontlineScenarioData = {
         "Collect current local service measurements and compare them with the remote endpoint's available evidence. Record what each check establishes and what it cannot establish.",
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s12-record-symptoms'],
+      nice: ['T0081', 'K0740'],
       points: 15,
       conditions: [
         samplesCurrent(FORWARD_EUROSAT_SERVICE, ['local', 'registration', 'application'], 'Current readings taken along the path'),
@@ -357,6 +360,7 @@ export const frontlineScenario12Data: FrontlineScenarioData = {
         'Identify the segment supported by the collected evidence and state what remains unconfirmed. Distinguish a likely scope from proof of the physical cause. Mark the remote segment on the Service paths diagram again after the interruption: select only the remote tile, with no laptop, modem or power station.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s12-compare-observations'],
+      nice: ['T0081', 'K0741'],
       points: 15,
       conditions: [
         diagramSelection(
@@ -392,6 +396,7 @@ export const frontlineScenario12Data: FrontlineScenarioData = {
         'Send the observations, affected segment, and confidence statement to the responsible specialist. Retain the local configuration while awaiting their response unless new evidence justifies a change.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s12-bound-conclusion'],
+      nice: ['K0645', 'T0081'],
       points: 15,
       conditions: [
         handoverValid('referral-package', 'Evidence package assembled with its confidence'),
@@ -406,6 +411,7 @@ export const frontlineScenario12Data: FrontlineScenarioData = {
         "Run a new end-to-end check after the specialist responds. The interactive forward task fails EuroSat on latency, so verify with the Delay-tolerant transfer task. Update the incident record with the application's current result and distinguish confirmed recovery from the specialist's report.",
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s12-refer-incident'],
+      nice: ['T0153', 'K0741'],
       points: 15,
       conditions: [
         workloadVerified(

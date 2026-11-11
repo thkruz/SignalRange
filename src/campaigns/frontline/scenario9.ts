@@ -200,6 +200,7 @@ export const frontlineScenario9Data: FrontlineScenarioData = {
         'Read Tomek’s handover, stock list and assignment record under Records and notices (Site tab) and compare them with the delivered terminal, the Spares count and the service account. Fill in the Delivery reconciliation form, then accept the terminal record.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: [],
+      nice: ['K0645', 'T0431'],
       points: 15,
       conditions: [
         handoverValid('delivery', 'Delivery, stock and assignment compared with the handover'),
@@ -213,6 +214,7 @@ export const frontlineScenario9Data: FrontlineScenarioData = {
         'Identify the service path and the power and network components it depends on. Mark every local device on the path, including the laptop, and the power chain behind it (not the account, provider or remote endpoint), then Record selection. The note beside the button says if the set is short or includes a tile that is not local.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s09-reconcile-post'],
+      nice: ['K0689', 'K0792'],
       points: 15,
       conditions: [diagramSelection({ include: S9_LOCAL_PATH, exclude: S9_NOT_LOCAL }, 'Local power and network dependencies marked on the diagram')],
     },
@@ -222,6 +224,7 @@ export const frontlineScenario9Data: FrontlineScenarioData = {
       description: 'Inspect the delivered router and power station, then complete the approved commissioning checks. Capture current power and service readings for this site.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s09-map-service'],
+      nice: ['T0153', 'K0740'],
       points: 20,
       conditions: [
         {
@@ -252,6 +255,7 @@ export const frontlineScenario9Data: FrontlineScenarioData = {
         'The terminal reports a short link interruption as this step opens: earlier readings are marked Invalidated with the time. Check the timestamps and freshness of the pilot and remote-endpoint readings. Request a fresh result where possible and retain any unresolved state.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s09-establish-baseline'],
+      nice: ['K0741', 'K0740'],
       points: 15,
       conditions: [
         eventFired(S9_EVENT_INTERRUPTION, 'Interruption has occurred'),
@@ -283,6 +287,7 @@ export const frontlineScenario9Data: FrontlineScenarioData = {
         'Compare the first simulated task’s requirements with the current commissioning results. State what is ready and what remains unverified before the task begins.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s09-check-freshness'],
+      nice: ['T0153', 'K0741'],
       points: 15,
       conditions: [handoverValid('readiness', 'Readiness recorded against current evidence')],
     },
@@ -292,6 +297,7 @@ export const frontlineScenario9Data: FrontlineScenarioData = {
       description: 'Complete the approved task’s service window. Record the operating configuration, measured outcome, remaining resources, and any limits for the next shift.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s09-confirm-readiness'],
+      nice: ['T0153', 'K0645'],
       points: 20,
       conditions: [
         serviceReserveVerified(

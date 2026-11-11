@@ -108,6 +108,8 @@ export const frontlineScenario1Data: FrontlineScenarioData = {
         'Inspect the power station, router, terminal, and workstation. Use their labels and connections to distinguish power supply, local networking, satellite access, and the application endpoint.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: [],
+      points: 10,
+      nice: ['S0421', 'T0431'],
       conditions: [
         { type: 'part-inspected', description: 'Power station inspected (power source)', params: { partId: 'power-station' }, mustMaintain: false },
         { type: 'part-inspected', description: 'SkyLink router inspected (local network)', params: { partId: 'skylink-router' }, mustMaintain: false },
@@ -137,6 +139,8 @@ export const frontlineScenario1Data: FrontlineScenarioData = {
       description: 'Complete the camp checklist before starting the application exercise. Record any condition that needs attention, including a check whose result is uncertain.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s1-identify-equipment'],
+      points: 15,
+      nice: ['T0431', 'K0741'],
       conditions: [
         siteChecked(['generator'], 'Generator fuel and housing checked'),
         siteChecked(['power-station'], 'Power station checked'),
@@ -152,6 +156,8 @@ export const frontlineScenario1Data: FrontlineScenarioData = {
         'Confirm the workstation can reach the local network and that the satellite terminal is registered. Keep those checks separate from the application test that follows.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s1-check-condition'],
+      points: 15,
+      nice: ['T1567', 'K0773'],
       conditions: [
         layerObserved(SKYLINK_SERVICE, 'local', { status: 'up' }, 'Local network reachability observed'),
         layerObserved(SKYLINK_SERVICE, 'registration', { status: 'up' }, 'Terminal link observed'),
@@ -164,6 +170,8 @@ export const frontlineScenario1Data: FrontlineScenarioData = {
         'Start a new simulated application check with Ola on the SkyLink connection. Confirm the completed result at both ends before calling the service usable. Take the endpoint-report reading after the run finishes; one taken earlier does not count.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s1-establish-connection'],
+      points: 15,
+      nice: ['T0153', 'K0740'],
       conditions: [
         workloadVerified({ card: OLA_CHECK_CARD.id, service: SKYLINK_SERVICE }, 'Application check completed on the SkyLink connection'),
         layerObserved(SKYLINK_SERVICE, 'application', { status: 'up' }, 'Result confirmed at the remote end (endpoint-report reading taken after the run finishes)'),
@@ -176,6 +184,8 @@ export const frontlineScenario1Data: FrontlineScenarioData = {
         'Record the active equipment, power use, terminal state, and application readings from this check. Include when each reading was taken so later changes can be compared fairly.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s1-test-application'],
+      points: 20,
+      nice: ['T0153', 'K0740'],
       conditions: [handoverValid('baseline', 'Baseline readings filed')],
     },
     {
@@ -185,6 +195,8 @@ export const frontlineScenario1Data: FrontlineScenarioData = {
         'Describe the service you checked, the equipment it uses, and the equipment you left untested, which is the camp VSAT this shift. Submit your readiness statement against the baseline.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s1-record-baseline'],
+      points: 25,
+      nice: ['K0645'],
       conditions: [handoverValid('handover', 'Handover filed against the baseline')],
     },
   ],

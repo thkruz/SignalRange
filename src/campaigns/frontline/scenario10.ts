@@ -285,6 +285,7 @@ export const frontlineScenario10Data: FrontlineScenarioData = {
       description: 'Capture the changed workload symptoms and their onset. Compare the current service readings with the post’s baseline before intervening.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: [],
+      nice: ['K0645', 'T0431'],
       points: 15,
       conditions: [
         eventFired(S10_EVENT_RESTRICTION, 'Change in the service has occurred'),
@@ -304,6 +305,7 @@ export const frontlineScenario10Data: FrontlineScenarioData = {
       description: 'Check physical health and registration alongside the changed service performance. Record which parts still match the baseline and which do not.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s10-record-change'],
+      nice: ['T0431', 'K0741'],
       points: 15,
       conditions: [
         {
@@ -333,6 +335,7 @@ export const frontlineScenario10Data: FrontlineScenarioData = {
         'Read the provider notice and identify the affected account, capacity limitation, and effective event. Separate the stated restriction from problems the notice does not establish.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s10-compare-health'],
+      nice: ['K0645', 'K0741'],
       points: 15,
       conditions: [
         eventFired(S10_EVENT_NOTICE, 'Provider notice delivered'),
@@ -363,6 +366,7 @@ export const frontlineScenario10Data: FrontlineScenarioData = {
         'Compare each pending workload with the restricted service readings and its requirements. Record the work still supported and the work that must remain unavailable.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s10-read-notice'],
+      nice: ['K0737', 'T0153'],
       points: 20,
       conditions: [handoverValid('assessment', 'Each pending task assessed against the restricted service')],
     },
@@ -373,6 +377,7 @@ export const frontlineScenario10Data: FrontlineScenarioData = {
         'Communicate the limitation and complete the approved reduced-service workload. Verify its outcome while keeping the provider restriction visible in the report.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s10-assess-tasks'],
+      nice: ['T0153', 'K0737'],
       points: 20,
       conditions: [
         handoverValid('limitation-report', 'Limitation reported before the task'),
@@ -389,6 +394,7 @@ export const frontlineScenario10Data: FrontlineScenarioData = {
       description: 'File the symptom history, local checks, provider notice, and remaining capability gap. Submit the alternative-equipment request and retain its acknowledgment.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s10-run-reduced-service'],
+      nice: ['K0645'],
       points: 20,
       conditions: [
         handoverValid('package', 'Evidence package filed'),

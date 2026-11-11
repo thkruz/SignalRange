@@ -105,6 +105,8 @@ export const frontlineScenario2Data: FrontlineScenarioData = {
       description: 'Inspect the power station and read its current energy, equipment load, and the 200 Wh exercise reserve. Keep stored energy separate from the voltage reading.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: [],
+      points: 10,
+      nice: ['T0431', 'K0741'],
       conditions: [
         { type: 'part-inspected', description: 'Power station inspected', params: { partId: 'power-station' }, mustMaintain: false },
         powerRead('power-station', { socWh: { min: 400, max: 500 } }, 'Stored energy read from the power station', { afterInspect: true }),
@@ -134,6 +136,8 @@ export const frontlineScenario2Data: FrontlineScenarioData = {
       description: 'Inspect the power strip and identify which devices rely on the battery. Explain why two satellite terminals can still share one point of power failure.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s2-read-resources'],
+      points: 15,
+      nice: ['K0689', 'K0792'],
       conditions: [
         { type: 'part-inspected', description: 'Power strip inspected', params: { partId: 'power-strip' }, mustMaintain: false },
         {
@@ -161,6 +165,8 @@ export const frontlineScenario2Data: FrontlineScenarioData = {
         'Select equipment states that support the exercise workload while preserving the 200 Wh reserve. Check the predicted load before committing to the configuration. The low-delay card allows 150 ms: SkyLink takes about 45 ms, the camp reference VSAT about 620 ms.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s2-trace-dependencies'],
+      points: 15,
+      nice: ['T1567', 'K0792'],
       conditions: [
         // Both must hold at the same moment: latched separately, the starting state (both terminals on) satisfies the card and a later VSAT-only pick satisfies the reserve
         { ...forecastMeetsReserve({}, 'Forecast keeps the 200 Wh reserve over the planning horizon'), mustMaintain: true },
@@ -178,6 +184,8 @@ export const frontlineScenario2Data: FrontlineScenarioData = {
         "Inspect the generator's output connector when the simulated supply interruption begins. Record the seating evidence and use the permitted reseat action if it supports that repair. Check the restored input supply and record the response before assessing application recovery.",
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s2-select-configuration'],
+      points: 15,
+      nice: ['T0081', 'K0741'],
       conditions: [
         eventFired(SUPPLY_EVENT, 'Supply interruption has begun'),
         faultEvidenceRecorded(SEAT_FAULT, 'Connector seating evidence recorded'),
@@ -191,6 +199,8 @@ export const frontlineScenario2Data: FrontlineScenarioData = {
         'Run the 120-second assessment after the response. Confirm usable application service with an endpoint-report reading taken after the run finishes, record recovery time, and retain at least 200 Wh at the end.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s2-respond-to-outage'],
+      points: 20,
+      nice: ['T0153', 'K0741'],
       conditions: [
         forecastMeetsReserve({}, 'Configuration still keeps the reserve over the planning horizon'),
         serviceReserveVerified(
@@ -206,6 +216,8 @@ export const frontlineScenario2Data: FrontlineScenarioData = {
       description: 'Submit the remaining energy and fuel, the equipment left in use, and the recovery result. Explain any limitation the next operator needs to preserve.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s2-verify-service-reserve'],
+      points: 25,
+      nice: ['K0645'],
       conditions: [handoverCurrent('resources', 'Resource handover filed with measured values')],
     },
   ],

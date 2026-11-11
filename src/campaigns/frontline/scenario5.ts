@@ -232,6 +232,8 @@ export const frontlineScenario5Data: FrontlineScenarioData = {
       description: "Observe the terminal's state and the application's current behavior. Record both results instead of treating an online indicator as proof of usable service.",
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: [],
+      points: 10,
+      nice: ['K0740', 'T0153'],
       conditions: [
         samplesCurrent(SKYLINK_SERVICE, ['registration'], 'Current terminal registration reading taken'),
         workloadRunFinished({ card: APP_CARD, services: [SKYLINK_SERVICE], statuses: ['degraded', 'unsupported'] }, 'Application check run and finished'),
@@ -260,6 +262,8 @@ export const frontlineScenario5Data: FrontlineScenarioData = {
         'Read available capacity, delay, variation in delay, and interruptions in the service panel and the SkyLink speed test. Terminal-side capacity is what the terminal could carry; the speed test and the run show what the application got. Compare them with the stated requirement, then record the comparison in Handover > Service readings.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s5-compare-endpoints'],
+      points: 15,
+      nice: ['K0740', 'K0773'],
       conditions: [handoverValid('service-comparison', 'Readings compared with the requirement: record it in Handover > Service readings')],
     },
     {
@@ -269,6 +273,8 @@ export const frontlineScenario5Data: FrontlineScenarioData = {
         'Use the observed evidence to distinguish satellite service, local networking, and application behavior. State what your evidence supports and what remains uncertain.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s5-read-service-quality'],
+      points: 15,
+      nice: ['T0081', 'K0737'],
       conditions: [
         hypothesisFiled(['shared-capacity'], HYPOTHESIS_OPTS, 'Suspected cause chosen and tied to observations'),
         handoverValid('scope', 'Affected part of the service recorded with its evidence'),
@@ -281,6 +287,8 @@ export const frontlineScenario5Data: FrontlineScenarioData = {
         'Press Inspect on each workload in the Workloads list to see what it needs and what share it gets. Identify which activity explains the observed demand and distinguish essential work from the exercise transfer that can wait.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s5-assess-service-scope'],
+      points: 15,
+      nice: ['K0737', 'K0792'],
       conditions: [
         workloadsInspected([APP_CARD, TRANSFER_CARD], 'Both workloads inspected (Inspect in the Workloads list)'),
         handoverValid('attribution', 'Shared demand attributed to an observed workload'),
@@ -293,6 +301,8 @@ export const frontlineScenario5Data: FrontlineScenarioData = {
         'Review the effect of the permitted service-priority setting on both workloads (each workload shows its priority now and the share each setting would give it). Apply the setting that meets the required application need while recording what work is deferred.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s5-identify-shared-use'],
+      points: 20,
+      nice: ['T1567', 'K0737'],
       conditions: [priorityDeferred({ defer: TRANSFER_CARD, keep: APP_CARD }, 'Approved allocation change applied')],
     },
     {
@@ -302,6 +312,8 @@ export const frontlineScenario5Data: FrontlineScenarioData = {
         'Run a new application check and compare it with the earlier result. Record the local change, the deferred work, and why terminal replacement was not justified by the evidence.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s5-apply-priority'],
+      points: 25,
+      nice: ['T0153', 'K0740'],
       conditions: [
         workloadVerified({ card: APP_CARD, service: SKYLINK_SERVICE }, 'Fresh application check meets the requirement'),
         handoverValid('service-record', 'Before and after results recorded with the deferred work'),

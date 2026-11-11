@@ -338,6 +338,7 @@ export const frontlineScenario15Data: FrontlineScenarioData = {
         "Capture the affected EuroSat service, the observed onset, and Ola's workload symptoms. Keep the first report and sample times so later evidence can be compared with the same event. The EuroSat interruptions recur (about every 100 s, down for 35 to 40 s), so press Check on the registration layer until it reads Down.",
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: [],
+      nice: ['K0645', 'T0081'],
       points: 15,
       conditions: [eventFired(S15_EVENT_ONSET, 'EuroSat anomaly has begun'), handoverValid('anomaly', 'Affected service, onset and symptoms recorded')],
     },
@@ -348,6 +349,7 @@ export const frontlineScenario15Data: FrontlineScenarioData = {
         'Compare the physical checks, provider status, and service observations around the anomaly. Record checks that rule out a local explanation as well as evidence that remains inconclusive. The interruptions recur about every 100 s and last 35 to 40 s, so press Check on the EuroSat registration layer again until it reads Down.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s15-record-anomaly'],
+      nice: ['T0081', 'K0740'],
       points: 15,
       conditions: [
         interruptionPattern(EUS, 2, 'Repeated EuroSat interruptions read, with the local network up', { reasons: ['link-lost'] }),
@@ -364,6 +366,7 @@ export const frontlineScenario15Data: FrontlineScenarioData = {
         'Decide whether the collected evidence supports suspected interference or an unexplained outage. Name the observations supporting that assessment and keep source attribution unresolved.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s15-review-evidence'],
+      nice: ['T0081', 'K0741'],
       points: 15,
       conditions: [
         hypothesisFiled(['suspected-interference', 'unexplained-outage'], HYPOTHESIS_OPTS, 'Assessment filed on EuroSat with the readings that support it'),
@@ -396,6 +399,7 @@ export const frontlineScenario15Data: FrontlineScenarioData = {
         'Save the relevant observations, configuration history, and confidence statement together. Retain original timestamps and identify any gaps in the record. Both terminals are still drawing on the battery, so check the forecast on the Power panel before the hour is out.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s15-assess-confidence'],
+      nice: ['K0645'],
       points: 15,
       conditions: [handoverValid('package', 'Incident package preserved with its gaps')],
     },
@@ -406,6 +410,7 @@ export const frontlineScenario15Data: FrontlineScenarioData = {
         'Choose only a workload supported by the remaining connection and resource allowance. Apply the permitted configuration, then verify the task with a fresh end-to-end result.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s15-preserve-package'],
+      nice: ['T0153', 'K0741'],
       points: 15,
       failWhen: reserveUnreachable(),
       failMessage: () => reserveUnreachableMessage('the end of the shift'),
@@ -424,6 +429,7 @@ export const frontlineScenario15Data: FrontlineScenarioData = {
         'Refer the preserved incident package for the separate investigation. Include the service still available, the work still unavailable, and the questions that this post has not answered.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s15-maintain-supported-work'],
+      nice: ['K0645'],
       points: 15,
       conditions: [
         handoverValid('incident', 'Investigation handover filed'),

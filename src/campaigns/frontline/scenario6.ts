@@ -240,6 +240,7 @@ export const frontlineScenario6Data: FrontlineScenarioData = {
         'The prompt-response task is sensitive to delay. The queued-report task tolerates delay. Explain why the fiber or radio connection must be assessed separately from those requirements.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: [],
+      nice: ['K0740', 'K0773'],
       points: 10,
       conditions: [
         {
@@ -270,6 +271,7 @@ export const frontlineScenario6Data: FrontlineScenarioData = {
         'Run the same comparison workload under the camp’s low-delay profile (SkyLink) and GEO-like profile (Camp reference VSAT). Record the readings and identify which requirements change from met to unmet.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s06-read-requirements'],
+      nice: ['K0740', 'K0773'],
       points: 15,
       conditions: [
         workloadRunFinished({ card: PROMPT_CARD, services: [SKYLINK_SERVICE, CAMP_VSAT_SERVICE] }, 'The same task run on both service profiles'),
@@ -283,6 +285,7 @@ export const frontlineScenario6Data: FrontlineScenarioData = {
         'Choose the fiber connection in Workloads and press Inspect to read its configuration, then assess the prompt-response task against its requirement card. Identify the segments that still depend on the satellite service.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s06-compare-profiles'],
+      nice: ['T0153', 'K0773'],
       points: 15,
       conditions: [
         workloadRunFinished({ card: PROMPT_CARD, services: [FIBER_SERVICE] }, 'Prompt-response task run over the fiber connection'),
@@ -296,6 +299,7 @@ export const frontlineScenario6Data: FrontlineScenarioData = {
         'Repeat the equivalent prompt-response comparison with the radio connection (press Inspect with it chosen to read its configuration). Identify the additional connection segment and state what the observations establish about it.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s06-assess-fiber'],
+      nice: ['T0153', 'K0773'],
       points: 15,
       conditions: [
         workloadRunFinished({ card: PROMPT_CARD, services: [RADIO_SERVICE] }, 'Prompt-response task run over the radio connection'),
@@ -308,6 +312,7 @@ export const frontlineScenario6Data: FrontlineScenarioData = {
       description: 'Run the delay-tolerant task under both connection configurations. Record which requirements are met and explain any difference from the prompt-response task.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s06-assess-radio'],
+      nice: ['T0153', 'K0740'],
       points: 20,
       conditions: [
         workloadRunFinished({ card: QUEUED_CARD, services: [FIBER_SERVICE, RADIO_SERVICE] }, 'Queued-report task run over both connections'),
@@ -321,6 +326,7 @@ export const frontlineScenario6Data: FrontlineScenarioData = {
       description: 'Submit the four-case comparison with supported tasks, unmet requirements, and unresolved limits. Keep an unsuitable result when the evidence supports it.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s06-assess-tolerant'],
+      nice: ['K0645', 'T0153'],
       points: 25,
       conditions: [handoverValid('suitability', 'Suitability report matches the four recorded results')],
     },

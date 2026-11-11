@@ -109,6 +109,8 @@ export const frontlineScenario4Data: FrontlineScenarioData = {
       description: "Read the terminal's current state and expected recovery interval. Establish what normal progress should look like before judging it as a fault.",
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: [],
+      points: 10,
+      nice: ['K0741', 'T0431'],
       conditions: [
         { type: 'part-inspected', description: 'SkyLink dish inspected (satellite terminal, outside)', params: { partId: 'skylink-dish' }, mustMaintain: false },
         {
@@ -136,6 +138,8 @@ export const frontlineScenario4Data: FrontlineScenarioData = {
       description: 'Watch the terminal through the stated recovery interval. Avoid restarting a device that is still making the expected progress.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s4-identify-recovery'],
+      points: 15,
+      nice: ['K0741', 'T0153'],
       conditions: [recoveryObserved(SKYLINK_SERVICE, RECOVERY_EVENT, 'skylink-dish', 'Registration came back without another restart')],
     },
     {
@@ -145,6 +149,8 @@ export const frontlineScenario4Data: FrontlineScenarioData = {
         'Compare the new service symptoms with the completed recovery period and the healthy reference. Decide whether more waiting still explains the current limitation.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s4-observe-recovery'],
+      points: 15,
+      nice: ['T0081', 'K0740'],
       conditions: [
         eventFired(OBSTRUCTION_EVENT, 'New symptoms appeared after the recovery'),
         sampleAfterEvent(SKYLINK_SERVICE, 'registration', 'down', OBSTRUCTION_EVENT, 'Registration read down after the recovery had finished'),
@@ -174,6 +180,8 @@ export const frontlineScenario4Data: FrontlineScenarioData = {
       description: 'Inspect the terminal and its immediate surroundings. Identify an observable environmental condition that could explain the remaining symptom.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s4-recognize-persistence'],
+      points: 15,
+      nice: ['T0431', 'S0421'],
       conditions: [
         {
           id: 's4-observed-environment-evidence',
@@ -191,6 +199,8 @@ export const frontlineScenario4Data: FrontlineScenarioData = {
       description: 'Use the permitted corrective action for the condition you observed. Record the work before testing whether it restored the required service.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s4-inspect-environment'],
+      points: 20,
+      nice: ['T0531', 'T1567'],
       conditions: [
         { type: 'plant-fault-cleared', description: 'Observed environmental defect cleared', params: { faultId }, mustMaintain: true },
         {
@@ -208,6 +218,8 @@ export const frontlineScenario4Data: FrontlineScenarioData = {
       description: 'Complete a fresh service observation window and record its result. Distinguish the earlier normal recovery from the environmental fault you later corrected.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s4-correct-environment'],
+      points: 25,
+      nice: ['T0153', 'K0740'],
       conditions: [
         workloadVerified({ card: OLA_CHECK_CARD.id, service: SKYLINK_SERVICE, afterFaultCleared: faultId }, 'Fresh application check passed after the correction'),
         handoverValid('environment-report', 'Environment report submitted'),

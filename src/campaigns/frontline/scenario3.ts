@@ -176,6 +176,8 @@ export const frontlineScenario3Data: FrontlineScenarioData = {
         "Compare the service history with Ola's symptom report. Record when interruptions occurred and what continued to work, without assigning a cause yet. The Terminal link drops and recovers on a repeating cycle, so it reads Up most of the time: press Check on it more than once and watch the Symptom history. When the readings are in, a Knowledge Check opens (Open Quiz banner, or the ? in this list).",
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: [],
+      points: 10,
+      nice: ['T0153', 'K0740'],
       conditions: [
         interruptionPattern(SKYLINK_SERVICE, 2, 'Terminal link read once while Down and once while Up, Local network read Up, and 2 or more drops in the Symptom history'),
         {
@@ -203,6 +205,8 @@ export const frontlineScenario3Data: FrontlineScenarioData = {
       description: 'Use the healthy reference to identify changed readings and checks that still look normal. Keep the evidence separate from your proposed explanation.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s3-establish-pattern'],
+      points: 10,
+      nice: ['K0740'],
       conditions: [
         samplesCurrent(SKYLINK_SERVICE, ['power', 'local', 'registration'], 'Current Power, Local network and Terminal link readings taken'),
         handoverValid('comparison', 'Changed and unchanged readings recorded'),
@@ -214,6 +218,8 @@ export const frontlineScenario3Data: FrontlineScenarioData = {
       description: 'Choose an inspection or measurement that can separate plausible local causes. State the outcome you expect before spending time or using a spare.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s3-compare-baseline'],
+      points: 10,
+      nice: ['T0081'],
       conditions: [
         hypothesisFiled(CAUSE_IDS, HYPOTHESIS_OPTS, 'Suspected cause chosen and tied to an observation'),
         handoverValid('check-plan', 'Chosen check and expected result recorded'),
@@ -225,6 +231,8 @@ export const frontlineScenario3Data: FrontlineScenarioData = {
       description: 'Carry out your chosen check and follow the observations to the affected item. Keep useful negative results so you can explain what your evidence rules out.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s3-select-check'],
+      points: 15,
+      nice: ['T0081', 'T0431'],
       conditions: [
         {
           id: 's3-observed-connector-evidence',
@@ -243,6 +251,8 @@ export const frontlineScenario3Data: FrontlineScenarioData = {
       description: 'Use the connector observation to choose a justified intervention. Explain what the observation supports and what still needs verification after the work.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s3-collect-local-evidence'],
+      points: 15,
+      nice: ['T0081', 'K0773'],
       conditions: [
         {
           type: 'status-check',
@@ -269,6 +279,8 @@ export const frontlineScenario3Data: FrontlineScenarioData = {
       description: 'Apply a supported intervention to the item identified by your evidence. Check the displayed time, disruption, and spare cost before committing.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s3-assess-local-cause'],
+      points: 20,
+      nice: ['T0531', 'T1567'],
       conditions: [
         { type: 'plant-fault-cleared', description: 'Observed local defect cleared', params: { faultId }, mustMaintain: true },
         {
@@ -287,6 +299,8 @@ export const frontlineScenario3Data: FrontlineScenarioData = {
         'Repeat the relevant service check after the intervention. Submit the evidence, repair, resources used, and new result, keeping unresolved limitations explicit.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s3-repair-local-fault'],
+      points: 20,
+      nice: ['T0153', 'K0645'],
       conditions: [
         workloadVerified({ card: OLA_CHECK_CARD.id, service: SKYLINK_SERVICE, afterFaultCleared: faultId }, 'Fresh application check passed after the repair'),
         handoverValid('diagnosis', 'Diagnostic record submitted'),

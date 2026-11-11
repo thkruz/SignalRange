@@ -307,6 +307,7 @@ export const frontlineScenario13Data: FrontlineScenarioData = {
         'Trace the ground endpoint, provider network, and simulated onboard terminal in the task diagram. Confirm which service and account apply to each endpoint, then file them on the Service endpoints handover form.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: [],
+      nice: ['K0689', 'K0792'],
       points: 15,
       conditions: [
         diagramSelection(
@@ -326,6 +327,7 @@ export const frontlineScenario13Data: FrontlineScenarioData = {
         "Capture current status for both endpoints and confirm the simulated task's requirement. Record the sample times so later last-known values can be identified correctly.",
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s13-map-endpoints'],
+      nice: ['T0153', 'K0741'],
       points: 15,
       conditions: [
         samplesCurrent(SKYLINK_SERVICE, ['registration', 'account'], 'Ground endpoint readings taken'),
@@ -340,6 +342,7 @@ export const frontlineScenario13Data: FrontlineScenarioData = {
         "Observe the task and take a fresh reading of the remote endpoint when the interruption occurs, then file the Interruption record. Classify the remote value by the age of your latest reading: a fresh reading is current, an older one is last-known and is never the terminal's present condition.",
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s13-capture-baseline'],
+      nice: ['T0081', 'K0645'],
       points: 15,
       conditions: [
         eventFired(S13_EVENT_POLICY, 'Interruption has happened'),
@@ -354,6 +357,7 @@ export const frontlineScenario13Data: FrontlineScenarioData = {
         'Read the provider notice and compare its scope and timing with the task history. Determine which endpoint is restricted and which conclusions remain unsupported.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s13-record-interruption'],
+      nice: ['T0081', 'K0773'],
       points: 15,
       conditions: [eventFired(S13_EVENT_NOTICE, 'Provider notice delivered'), handoverValid('notice-correlation', 'Notice scope compared with the event timing')],
     },
@@ -364,6 +368,7 @@ export const frontlineScenario13Data: FrontlineScenarioData = {
         'Explain what a local restart or ground-route change would affect. Record why those actions alone cannot remove the remote restriction established by the provider evidence.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s13-review-provider-evidence'],
+      nice: ['T0531', 'K0645'],
       points: 15,
       conditions: [
         layerObserved(FORWARD_REMOTE_SERVICE, 'application', { status: 'down' }, 'Remote policy still in force after the local options'),
@@ -396,6 +401,7 @@ export const frontlineScenario13Data: FrontlineScenarioData = {
         'Submit the endpoint evidence and service limitation, then place the simulated task in the approved hold state. Record the unavailable service and conditions needed for a future reassessment.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s13-assess-local-options'],
+      nice: ['K0645'],
       points: 15,
       conditions: [
         workloadRunFinished(

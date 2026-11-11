@@ -344,6 +344,7 @@ export const frontlineScenario16Data: FrontlineScenarioData = {
         'Read the handover, task requirements, available resources, and unresolved incident questions. Identify the outcomes you must demonstrate (the mission task is the first forward task over SkyLink) and the claims that still need current evidence.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: [],
+      nice: ['K0645'],
       points: 15,
       conditions: [handoverValid('brief', 'Commitments, reserve, equipment and the prior incident recorded')],
     },
@@ -354,6 +355,7 @@ export const frontlineScenario16Data: FrontlineScenarioData = {
         'Collect current service and power evidence, then select an operating configuration that meets the task and reserve requirements. Record the baseline before starting the shift workload.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s16-review-handover'],
+      nice: ['T0431', 'K0792'],
       points: 15,
       conditions: [
         held(forecastMeetsReserve({}, 'Forecast keeps the 200 Wh reserve in the chosen arrangement')),
@@ -370,6 +372,7 @@ export const frontlineScenario16Data: FrontlineScenarioData = {
         'Investigate the reported change using observations you judge relevant. Supply drops may recur and restart the terminal; each inspection costs time and some battery energy. Record the evidence, apply a justified intervention, and verify its local result while accounting for disruption and resources.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s16-establish-configuration'],
+      nice: ['T0081', 'T0531'],
       points: 15,
       conditions: [
         {
@@ -393,6 +396,7 @@ export const frontlineScenario16Data: FrontlineScenarioData = {
         'Collect new evidence for the later interruption instead of reusing the first diagnosis. Assess the available service and select a supported response without confusing an external limit with the repaired local problem.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s16-investigate-local-change'],
+      nice: ['T0081', 'K0773'],
       points: 15,
       conditions: [
         eventFired(S16_EVENT_NOTICE, 'Provider notice delivered'),
@@ -410,6 +414,7 @@ export const frontlineScenario16Data: FrontlineScenarioData = {
         'Run the supported workload through the final assessment window. Confirm the service and remaining reserve from current evidence, and record any required task that cannot be supported.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s16-assess-external-change'],
+      nice: ['T0153', 'K0740'],
       points: 15,
       conditions: [
         held(modeIs('vsat-modem', 'run', 'EuroSat modem running')),
@@ -429,6 +434,7 @@ export const frontlineScenario16Data: FrontlineScenarioData = {
         'Complete the shift record with observations, diagnoses, decisions, corrective actions, and verified outcomes. Separate the two incidents and leave the next operator an accurate account of the configuration, resources, and unresolved limits.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s16-verify-final-service'],
+      nice: ['K0645'],
       points: 15,
       conditions: [handoverCurrent('final', 'Independent handover accepted')],
     },

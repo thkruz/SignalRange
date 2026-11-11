@@ -234,6 +234,7 @@ export const frontlineScenario7Data: FrontlineScenarioData = {
       description: 'Compare the delivered unit with the authorized inventory and account assignment. Record what matches and what still lacks confirmation.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: [],
+      nice: ['T0431', 'K0645'],
       points: 15,
       conditions: [handoverValid('inventory', 'Delivered equipment and assignment compared')],
     },
@@ -243,6 +244,7 @@ export const frontlineScenario7Data: FrontlineScenarioData = {
       description: 'Inspect the replacement router and compare the hardware checks with its registration and authorization state. Keep incomplete checks visible.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s07-reconcile-delivery'],
+      nice: ['T0431', 'K0741'],
       points: 15,
       conditions: [
         {
@@ -264,6 +266,7 @@ export const frontlineScenario7Data: FrontlineScenarioData = {
         'Read the configuration and access history under Records and notices (Site tab) and compare it with the approved handover. Then fill in the Configuration review form: submitting it preserves the entry whose authorization cannot be established.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s07-separate-readiness'],
+      nice: ['K0645', 'K0792'],
       points: 15,
       conditions: [handoverValid('config-review', 'Configuration review submitted, unexplained entry preserved')],
     },
@@ -274,6 +277,7 @@ export const frontlineScenario7Data: FrontlineScenarioData = {
         'The reviewed configuration record contains an entry without an approval reference. Assess what that omission establishes before requesting a correction. A Knowledge Check opens for this step (Open Quiz banner, or the ? in this list); answering it completes the step.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s07-review-records'],
+      nice: ['T0081', 'K0792'],
       points: 10,
       conditions: [
         {
@@ -302,6 +306,7 @@ export const frontlineScenario7Data: FrontlineScenarioData = {
         'File the correction request under Records and notices. The service contact answers in the Notice inbox after a short wait. Retain the response and approved configuration before accepting service.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s07-assess-discrepancy'],
+      nice: ['T1567', 'K0645'],
       points: 15,
       conditions: [correctionFiled(REQUEST, 'Correction request filed with the service contact'), correctionApproved(REQUEST, 'Approved configuration received')],
     },
@@ -312,6 +317,7 @@ export const frontlineScenario7Data: FrontlineScenarioData = {
         'Start an Ola application check from the Workloads panel after the approved correction (the form needs a run that began after the reply). Accept the unit once every record row reads Matches, then submit the accepted configuration, its evidence, and any unresolved concerns for the next operator.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s07-request-correction'],
+      nice: ['T0431', 'K0645'],
       points: 25,
       conditions: [
         recordAccepted(UNIT, 'SkyLink router accepted on a matching record'),

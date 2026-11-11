@@ -323,6 +323,7 @@ export const frontlineScenario14Data: FrontlineScenarioData = {
         'Read the restoration notice and collect current SkyLink service measurements. Confirm the ground-service change without assuming it also removes the separate remote-terminal policy.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: [],
+      nice: ['T0431', 'K0741'],
       points: 15,
       conditions: [
         eventFired(S14_EVENT_NOTICE, 'Provider notice delivered'),
@@ -340,6 +341,7 @@ export const frontlineScenario14Data: FrontlineScenarioData = {
         'Measure each available connection and compare it with the current workload requirements. Record which tasks each connection supports before choosing an operating arrangement.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s14-confirm-restoration'],
+      nice: ['K0740', 'K0737'],
       points: 15,
       conditions: [
         workloadVerified({ card: INTERACTIVE, service: SKYLINK_SERVICE }, 'Interactive task supported on SkyLink'),
@@ -355,6 +357,7 @@ export const frontlineScenario14Data: FrontlineScenarioData = {
         'Trace the power and workstation resources used by both terminals. Record which dependencies would affect both services and which failures the alternate path could actually cover.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s14-compare-services'],
+      nice: ['K0689', 'K0741'],
       points: 15,
       conditions: [
         diagramSelection(
@@ -390,6 +393,7 @@ export const frontlineScenario14Data: FrontlineScenarioData = {
         "Select the active connection and a supported standby state for the other terminal. Compare the resulting load and reserve with the exercise's requirements before applying the arrangement. The standby terminal's registration time is measured during the exercise, so it is recorded afterward.",
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s14-check-dependencies'],
+      nice: ['T1567', 'K0792'],
       points: 15,
       conditions: [
         held(modeIs('skylink-dish', 'run', 'SkyLink dish active')),
@@ -405,6 +409,7 @@ export const frontlineScenario14Data: FrontlineScenarioData = {
         'The planned exercise starts by itself when this objective opens: SkyLink service stops. Take a Check of the SkyLink Provider or Terminal link while it reads Down, run the EuroSat modem, take a Check of EuroSat Registration once it is up, and run the transfer task. Then record the transition. The final arrangement is EuroSat running with SkyLink in standby.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s14-select-readiness'],
+      nice: ['T0153', 'T0431'],
       points: 15,
       conditions: [
         eventFired(S14_EVENT_EXERCISE, 'Readiness exercise has begun'),
@@ -421,6 +426,7 @@ export const frontlineScenario14Data: FrontlineScenarioData = {
         'Record the active path, standby state, measured recovery time, remaining reserve, and shared dependencies. State the supported tasks and any policy restrictions that remain in force.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s14-test-readiness'],
+      nice: ['K0645'],
       points: 15,
       conditions: [
         held(modeIs('vsat-modem', 'run', 'EuroSat modem active')),

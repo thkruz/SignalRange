@@ -247,6 +247,7 @@ export const frontlineScenario8Data: FrontlineScenarioData = {
         'Read the workload requirement and resource limits, then record them in the Assessment brief form. The brief for this shift: the workload needs the figures on the Workloads row; the post holds one connector kit and one power and data cable (the Site header counts them as 2 spares); keep at least 150 Wh in the battery; and you may make up to three trips outside.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: [],
+      nice: ['K0645', 'T0431'],
       points: 10,
       conditions: [handoverValid('assignment', 'Assessment requirements and limits recorded')],
     },
@@ -257,6 +258,7 @@ export const frontlineScenario8Data: FrontlineScenarioData = {
         'Record the current service symptoms and choose evidence that will distinguish the plausible causes. Use the equipment and records you judge relevant. The outage repeats: the link is down for about 30 s of every 90 s cycle, so press Check on the Application layer again until it reads not up, and use the Symptom history to see when it drops.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s08-interpret-assignment'],
+      nice: ['T0153', 'K0741'],
       points: 15,
       conditions: [
         samplesCurrent(SKYLINK_SERVICE, ['registration', 'application'], 'Current service readings taken'),
@@ -269,6 +271,7 @@ export const frontlineScenario8Data: FrontlineScenarioData = {
       description: 'Gather observations and record the conclusion they support. Include useful negative results and any uncertainty that remains.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s08-establish-state'],
+      nice: ['T0081', 'K0792'],
       points: 20,
       conditions: [
         faultEvidenceRecorded(FAULT_ID, 'Observation that shows the local cause'),
@@ -283,6 +286,7 @@ export const frontlineScenario8Data: FrontlineScenarioData = {
       description: 'Carry out the repair supported by your observations. Account for the parts used, time taken, and disruption introduced by the intervention.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s08-diagnose-fault'],
+      nice: ['T0531', 'T1567'],
       points: 15,
       conditions: [
         {
@@ -303,6 +307,7 @@ export const frontlineScenario8Data: FrontlineScenarioData = {
       description: 'Run the required service check after your intervention and observe it across the assessment window. Record the remaining reserve against the brief.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s08-repair-service'],
+      nice: ['T0153', 'K0740'],
       points: 20,
       conditions: [
         serviceReserveVerified(
@@ -319,6 +324,7 @@ export const frontlineScenario8Data: FrontlineScenarioData = {
         'Separate observations, conclusions, corrective actions, and limitations in the final report. Reference the checks that establish the state left for the next operator.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s08-verify-outcome'],
+      nice: ['K0645'],
       points: 20,
       conditions: [handoverValid('qualification', 'Qualification handover accepted')],
     },

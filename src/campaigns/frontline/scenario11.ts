@@ -283,6 +283,7 @@ export const frontlineScenario11Data: FrontlineScenarioData = {
         'Compare the delivered terminal, accessories, and account assignment with the authorized delivery record and the accessories list (Records and notices on the Site tab). Record any discrepancy before commissioning the connection.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: [],
+      nice: ['T0431', 'K0645'],
       points: 15,
       conditions: [
         {
@@ -303,6 +304,7 @@ export const frontlineScenario11Data: FrontlineScenarioData = {
       description: 'Use the approved setup procedure for the accepted EuroSat unit. Confirm readiness through its own commissioning checks before asking Ola to run a workload.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s11-receive-equipment'],
+      nice: ['T1567', 'K0773'],
       points: 15,
       conditions: [
         held(modeIs('vsat-modem', 'run', 'Terminal switched to run after acceptance')),
@@ -317,6 +319,7 @@ export const frontlineScenario11Data: FrontlineScenarioData = {
       description: 'Collect a fresh EuroSat service sample after commissioning. Compare delay, delay variation, usable capacity, and interruptions with the camp GEO reference.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s11-commission-terminal'],
+      nice: ['T0153', 'K0740'],
       points: 15,
       conditions: [
         samplesCurrent(FORWARD_EUROSAT_SERVICE, ['power', 'local', 'registration', 'account', 'application'], 'Current readings taken for every layer'),
@@ -330,6 +333,7 @@ export const frontlineScenario11Data: FrontlineScenarioData = {
         'Compare the measured connection with the displayed requirements of both pending tasks. Select the supported workload and record why the other task remains unavailable.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s11-measure-service'],
+      nice: ['K0737', 'K0740'],
       points: 15,
       conditions: [
         workloadRunFinished({ card: S11_INTERACTIVE_CARD.id, services: [FORWARD_EUROSAT_SERVICE], statuses: ['unsupported'] }, 'Interactive session tried and missing its limit'),
@@ -362,6 +366,7 @@ export const frontlineScenario11Data: FrontlineScenarioData = {
         "Run the selected workload through the commissioned EuroSat connection. Observe the whole test window and confirm that the application's result meets the displayed requirement.",
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s11-select-workload'],
+      nice: ['T0153', 'K0741'],
       points: 15,
       conditions: [
         workloadVerified({ card: S11_TRANSFER_CARD.id, service: FORWARD_EUROSAT_SERVICE, afterHandover: 'suitability' }, 'Supported task window run after the assessment'),
@@ -375,6 +380,7 @@ export const frontlineScenario11Data: FrontlineScenarioData = {
         "Record the available workload, observed power demand, and remaining SkyLink restriction. State the interactive task's limitation separately from the capability restored by EuroSat.",
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s11-verify-workload'],
+      nice: ['K0645'],
       points: 15,
       conditions: [
         {

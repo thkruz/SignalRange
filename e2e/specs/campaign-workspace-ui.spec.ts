@@ -1,5 +1,5 @@
 import { expect, test } from '../fixtures/test-fixtures';
-import { closeCloseup, openFrontlineScenario, openPart, plantInspect, servicesTakeSample, setPanelOpen } from '../utils/frontline-helpers';
+import { closeCloseup, goToPartFromSheet, openFrontlineScenario, openPart, plantInspect, servicesTakeSample, setPanelOpen } from '../utils/frontline-helpers';
 import { connectPorts, openStationTab, openTechScenario, reviewMissionBrief } from '../utils/ham-tech-helpers';
 
 test.use({ viewport: { width: 1600, height: 1000 } });
@@ -76,7 +76,8 @@ test('C6 notebook lets the operator cite observations and write a hypothesis', a
   await expect(notebook.locator('[data-nb-picker]:visible')).toHaveCount(0);
   await page.keyboard.press('Escape');
   await expect(book).toHaveCount(0);
-  await expect(page.locator('#tab-bar [data-tab-id="site"]')).toHaveClass(/active/u);
+  // Field HUD (phase 44): no tab bar; putting the notebook down returns to the site
+  await expect(page.locator('#site-stage')).toBeVisible();
   await setPanelOpen(page, /Notebook/u, true);
   await expect(notebook.locator('[data-nb-pick="cause"]')).toHaveText(draft!);
   await expect(notebook.locator('[data-nb-cite]:checked')).toHaveCount(1);
@@ -106,9 +107,32 @@ test('C3 exposes a dedicated, working SDR workspace', async ({ page, missionCont
   await openStationTab(page, mc);
   if (await mc.objectivesChecklist.isVisible()) await page.getByRole('button', { name: 'Close Checklist', exact: true }).click();
   await connectPorts(page, { device: 'sdr', port: 'usb' }, { device: 'laptop', port: 'usb1' });
+  // Bench HUD (phase 44): no tab bar or sidebar; the SDR program runs on the bench laptop
+  await expect(page.locator('html')).toHaveClass(/mc-minimal-hud/u);
+  await expect(page.locator('#tab-bar')).toBeHidden();
+  await expect(page.locator('[data-field-kit="logbook"]')).toBeVisible();
   const focused = page.locator('.immersive-view[open] .immersive-leave');
   if (await focused.isVisible()) await focused.click();
-  await mc.selectTab('sdr-console');
+  // Escape on the bench with nothing held opens the pause menu (review fix 10)
+  const pauseMenu = page.locator('dialog#game-menu[open]');
+  await page.keyboard.press('Escape');
+  await expect(pauseMenu).toBeVisible();
+  await page.screenshot({ path: 'art-review/phase-44/slice-2b-shots/10-pause-menu.png' });
+  await page.keyboard.press('Escape');
+  await expect(pauseMenu).toHaveCount(0);
+  // Escape while holding equipment puts it down first; the next Escape pauses
+  await page.getByTestId('ham-bench-dev-sdr').dispatchEvent('click');
+  await expect(page.locator('.immersive-view[open]')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.immersive-view[open]')).toHaveCount(0);
+  await expect(pauseMenu).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(pauseMenu).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(pauseMenu).toHaveCount(0);
+  await page.getByTestId('ham-bench-dev-laptop').dispatchEvent('click');
+  await page.getByTestId('ham-open-sdr').click();
+  await expect(page.getByRole('dialog', { name: 'Laptop', exact: true })).toBeVisible();
   const console = page.getByTestId('ham-sdr-console');
   await expect(console).toBeVisible();
   await expect(console).toContainText('SkyWatcher SDR');
@@ -129,11 +153,13 @@ test('C6 exposes workspaces and previews power switches', async ({ page }) => {
   await openFrontlineScenario(page, 14);
   const checklistClose = page.getByRole('button', { name: 'Close Checklist', exact: true });
   if (await checklistClose.isVisible()) await checklistClose.click();
-  const nav = page.locator('#tab-bar');
-  await expect(nav).toBeVisible();
+  // Field HUD (phase 44): the station computer's tab bar, sidebar and command bar give way to the kit tray and watch
+  await expect(page.locator('html')).toHaveClass(/mc-minimal-hud/u);
+  await expect(page.locator('#tab-bar')).toBeHidden();
+  await expect(page.locator('#asset-tree-sidebar-container')).toBeHidden();
+  await expect(page.locator('#hud-watch')).toBeVisible();
   await expect(page.locator('.site-tab [role="tablist"]')).toHaveCount(0);
-  await expect(nav.locator('[data-tab-id="site"]')).toBeVisible();
-  await expect(nav.locator('[data-tab-id="field-power"]')).toBeVisible();
+  await expect(page.locator('[data-field-kit="documents"]')).toBeVisible();
   await expect(page.locator('#site-stage')).toBeVisible();
   await setPanelOpen(page, /^\s*Power\b/u, true);
   await expect(page.locator('#site-stage')).toBeHidden();
@@ -159,7 +185,7 @@ test('C6 exposes workspaces and previews power switches', async ({ page }) => {
   const mode = await pick.inputValue();
   await pick.check();
   await page.locator('[data-power-action="apply"]').click();
-  await page.locator(`[data-power-visit="${part}"]`).click();
+  await goToPartFromSheet(page, page.locator('#site-power-panel'), part!);
   const switchPosition = page.locator(`#part-closeup-modal [data-equipment-mode="${mode}"]`);
   await expect(switchPosition).toHaveAttribute('aria-pressed', 'false');
   await switchPosition.click();

@@ -127,7 +127,7 @@ export const s04Station: HamStationConfig = {
       'Switch the radio to a different frequency, then recall the memory and key up to prove it works.',
     ],
     'complete-repeater-contact': [
-      'Call the club operator through the repeater with your call sign. In the push to talk section, choose Call a station and key up.',
+      'Call the club operator through the repeater with your call sign. On the card beside the mic, choose Call a station and press PTT.',
       'A courtesy tone is not an answer. Wait for a real reply each time, trade a name or location, then end with your call sign.',
     ],
     'explore-digital-memory': [

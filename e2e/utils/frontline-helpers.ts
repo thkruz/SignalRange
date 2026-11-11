@@ -233,11 +233,8 @@ export async function activate(page: Page, el: Locator, what: string, key: 'Ente
 
 /** Opacity-aware visibility, as a player sees it */
 export async function isShown(el: Locator): Promise<boolean> {
-  if ((await el.count()) === 0) {
-    return false;
-  }
-
-  return el.first().evaluate((n) => n.checkVisibility({ opacityProperty: true, visibilityProperty: true }));
+  // evaluateAll does not wait for the node: a dialog that closes between a count and an evaluate is just "not shown"
+  return el.evaluateAll((nodes) => nodes.length > 0 && (nodes[0] as Element).checkVisibility({ opacityProperty: true, visibilityProperty: true }));
 }
 
 // ---------------------------------------------------------------------------
@@ -288,7 +285,9 @@ export async function openFrontlineScenario(page: Page, n: number): Promise<void
     { timeout: 60000 }
   );
   await dismissDialogs(page);
-  await page.locator('a[data-asset-type="ground-station"]').first().click();
+  // A field station opens at the site by itself (phase 44: no station computer sidebar); older builds needed the click
+  const station = page.locator('a[data-asset-type="ground-station"]').first();
+  if (await isShown(station)) await station.click();
   await openSiteTab(page);
 }
 
@@ -324,9 +323,13 @@ export async function dismissDialogs(page: Page): Promise<string[]> {
       break;
     }
     seen.push((await dlg.innerText().catch(() => '')).replace(/\s+/gu, ' ').trim().slice(0, 200));
-    const box = await dlg.locator('.dialog-box').boundingBox();
+    const box = await dlg
+      .locator('.dialog-box')
+      .boundingBox({ timeout: 1000 })
+      .catch(() => null);
     if (!box) {
-      break;
+      // Closed or re-rendered between the visibility check and the measure: look again
+      continue;
     }
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await page.mouse.down();
@@ -342,27 +345,95 @@ export async function dismissDialogs(page: Page): Promise<string[]> {
 // Site tab: views, panels and the close-up
 // ---------------------------------------------------------------------------
 
-export async function openSiteTab(page: Page): Promise<void> {
+/** Put down whatever is held fullscreen (a kit object, the laptop, the watch, the notebook) */
+async function putDownHeld(page: Page): Promise<void> {
   const focused = page.locator('.immersive-view[open] .immersive-leave');
   if (await focused.isVisible()) await focused.click();
   const book = page.getByRole('dialog', { name: 'Field notebook', exact: true });
   if (await book.isVisible()) await book.getByRole('button', { name: 'Put notebook down', exact: true }).click();
+}
+
+/** True when the field HUD replaces the station computer's chrome (no tab bar, no sidebar, no command bar) */
+export async function isMinimalHud(page: Page): Promise<boolean> {
+  return page.evaluate(() => document.documentElement.classList.contains('mc-minimal-hud'));
+}
+
+export async function openSiteTab(page: Page): Promise<void> {
+  await putDownHeld(page);
+  const stage = page.locator('#site-stage');
+  // The field HUD has no tab bar: with everything put down the site is on screen
+  // (the tab link exists but is hidden under the HUD, so match the stage or a *visible* tab, not the first node)
+  await expect(stage.or(page.locator('[data-tab-id="site"]:visible')).first()).toBeVisible({ timeout: 20000 });
   const tab = page.locator('[data-tab-id="site"]');
-  await expect(tab).toBeVisible({ timeout: 20000 });
-  if (!((await tab.getAttribute('class')) ?? '').includes('active')) {
+  if (!(await isMinimalHud(page)) && (await isShown(tab)) && !((await tab.getAttribute('class')) ?? '').includes('active')) {
     await tab.click();
   }
-  await expect(page.locator('#site-stage')).toBeAttached();
+  await expect(stage).toBeAttached();
 }
 
 /** The Site panels (Service checks, Workloads, Notebook, Handover...) by summary text */
 function panel(page: Page, title: RegExp): Locator {
   if (title.test('Laptop') || title.test('Service checks')) return page.locator('#site-service-panel');
   if (title.test('Notebook')) return page.locator('#site-notebook-panel > .fnb');
+  // The clipboard sheets are paper, not folds
+  if (title.test('Handover')) return page.locator('#site-handover-panel');
+  if (title.test('Records and notices')) return page.locator('#site-records-panel');
+  // The field documents are sheets, not folds: the laminated diagram and the power planning sheet
+  if (title.test('Service paths')) return page.locator('#site-path-panel');
+  // MissionRunner, the laptop app for the workloads
+  if (title.test('Workloads')) return page.locator('#site-workload-panel');
+  if (title.test('Power')) return page.locator('#site-power-panel');
   return page.locator('.site-tab details, .fnb-immersive details').filter({ has: page.locator('summary', { hasText: title }) });
 }
 
-/** Open a field workspace in the main tab bar; closing returns to Site. */
+/** Field workspaces and where a player finds each one: a kit object on the Site tray (and its page), or the laptop */
+const FIELD_SHEETS: { title: string; tabId: string; kit: 'clipboard' | 'documents' | 'notebook' | null }[] = [
+  { title: 'Power', tabId: 'field-power', kit: 'documents' },
+  { title: 'Service paths', tabId: 'field-path', kit: 'documents' },
+  { title: 'Handover', tabId: 'field-handover', kit: 'clipboard' },
+  { title: 'Records and notices', tabId: 'field-records', kit: 'clipboard' },
+  { title: 'Notebook', tabId: 'field-notebook', kit: 'notebook' },
+  { title: 'Laptop', tabId: 'field-service', kit: null },
+  { title: 'Workloads', tabId: 'field-workload', kit: null },
+];
+
+/**
+ * Field HUD (phase 44): pick the kit object up from the Site tray and turn to the page, or sit at the laptop
+ * (the laptop close-up's "Use laptop") and launch MissionRunner for the workloads.
+ */
+async function openFieldSheet(page: Page, title: RegExp): Promise<boolean> {
+  const sheet = FIELD_SHEETS.find((item) => title.test(item.title));
+  if (!sheet) return false;
+  await closeCloseup(page);
+  if (sheet.kit === null) {
+    await openPart(page, 'laptop');
+    await page.locator('#part-closeup-modal [data-open-laptop]').click();
+    await expect(page.getByRole('dialog', { name: 'Laptop', exact: true })).toBeVisible();
+    if (sheet.tabId === 'field-workload') {
+      await page
+        .getByRole('navigation', { name: 'Laptop applications' })
+        .getByRole('button', { name: /^MissionRunner$/u })
+        .first()
+        .click();
+    }
+
+    return true;
+  }
+  await openSiteTab(page);
+  const item = page.locator(`[data-field-kit="${sheet.kit}"]`);
+  await activate(page, item, `${sheet.kit} on the kit tray`);
+  if (sheet.kit === 'notebook') return true;
+  const leaf = page
+    .locator(`.field-kit-sheets [data-field-object="${sheet.tabId}"], .cbk-tabs [data-field-object="${sheet.tabId}"], .docs-tabs [data-field-object="${sheet.tabId}"]`)
+    .first();
+  if ((await leaf.count()) > 0 && (await leaf.getAttribute('aria-pressed')) !== 'true') {
+    await leaf.click();
+  }
+
+  return true;
+}
+
+/** Open a field workspace (the kit tray or laptop with the field HUD, else the main tab bar); closing returns to Site. */
 export async function setPanelOpen(page: Page, title: RegExp, open: boolean): Promise<Locator> {
   const focused = page.locator('.immersive-view[open] .immersive-leave');
   if (await focused.isVisible()) await focused.click();
@@ -370,6 +441,17 @@ export async function setPanelOpen(page: Page, title: RegExp, open: boolean): Pr
   if (await book.isVisible()) {
     if (open && title.test('Notebook')) return panel(page, title).first();
     await book.getByRole('button', { name: 'Put notebook down', exact: true }).click();
+  }
+  if (await isMinimalHud(page)) {
+    if (open && (await openFieldSheet(page, title))) {
+      const fieldPanel = panel(page, title).first();
+      await expect(fieldPanel).toBeAttached();
+      return fieldPanel;
+    }
+    if (!open) {
+      await openSiteTab(page);
+      return panel(page, title).first();
+    }
   }
   const workspaces = page.locator('#tab-bar');
   const topTab = workspaces.locator('[data-tab-id^="field-"]').filter({ hasText: title });
@@ -381,8 +463,8 @@ export async function setPanelOpen(page: Page, title: RegExp, open: boolean): Pr
   }
   const d = panel(page, title).first();
   await expect(d).toBeAttached();
-  const isOpen = await d.evaluate((n) => (n as HTMLDetailsElement).open);
-  if (isOpen !== open) {
+  const isOpen = await d.evaluate((n) => (n as HTMLDetailsElement).open ?? true);
+  if (isOpen !== open && (await d.locator('summary').count()) > 0) {
     await d.locator('summary').first().click();
   }
 
@@ -436,6 +518,21 @@ export async function goToView(page: Page, view: 'inside' | 'outside'): Promise<
   if ((await currentView(page)) === view) {
     return;
   }
+  if (await isMinimalHud(page)) {
+    // Field HUD: the tent flap in the scene; stepping out asks first in the tent caption
+    await revealSiteStage(page);
+    const flap = page.locator(`#site-stage [data-action="${view === 'outside' ? 'go-outside' : 'go-inside'}"]`).first();
+    const hit = flap.locator('.pp-hit, .pp-hit-path').first();
+    await activate(page, (await hit.count()) > 0 ? hit : flap, 'tent flap');
+    const confirm = page.locator('#tent-confirm');
+    if (view === 'outside') {
+      await expect(confirm).toBeVisible();
+      await confirm.click();
+    }
+    await expect.poll(() => currentView(page), { message: `now ${view}` }).toBe(view);
+
+    return;
+  }
   const toggles = page.locator(VIEW_TOGGLE);
   let clicked = false;
   for (let i = 0; i < (await toggles.count()); i++) {
@@ -465,6 +562,18 @@ export async function readTrips(page: Page): Promise<{ used: number; limit: numb
 }
 
 const closeup = (page: Page) => page.locator('#part-closeup-modal');
+
+/**
+ * The power sheet's "Go to <part>": puts the sheet down and walks to the part's close-up. A part on the other
+ * side of the tent flap asks the same trip question the flap asks (outside costs a rationed trip), so the
+ * player confirms it.
+ */
+export async function goToPartFromSheet(page: Page, sheet: Locator, partId: string): Promise<void> {
+  await sheet.locator(`[data-power-visit="${partId}"]`).click();
+  const confirm = page.locator('#tent-confirm');
+  await expect.poll(async () => (await closeup(page).isVisible()) || (await confirm.isVisible())).toBe(true);
+  if (await confirm.isVisible()) await confirm.click();
+}
 
 export async function closeCloseup(page: Page): Promise<void> {
   const close = page.locator('#part-closeup-modal-close');
@@ -527,7 +636,7 @@ export async function openPart(page: Page, partId: string): Promise<Locator> {
  */
 export async function plantVerb(page: Page, verb: PlantVerb, partId: string): Promise<string> {
   const modal = await openPart(page, partId);
-  const btn = modal.locator(`button[data-verb="${verb}"]`);
+  const btn = modal.locator(`#pcu-faceplate [data-fp-control][data-verb="${verb}"]`);
   await expect(btn, `${verb} offered for ${partId}`).toBeVisible();
   const before = await modal.innerText();
   await btn.click();
@@ -546,7 +655,7 @@ export const plantInspect = (page: Page, partId: string) => plantVerb(page, 'ins
 /** Measure with a tool from the close-up (multimeter, cable tester) */
 export async function plantMeasure(page: Page, tool: string, partId: string): Promise<string> {
   const modal = await openPart(page, partId);
-  const btn = modal.locator(`button[data-measure="${tool}"]`);
+  const btn = modal.locator(`#pcu-faceplate [data-fp-control][data-measure="${tool}"]`);
   await expect(btn, `${tool} offered for ${partId}`).toBeVisible();
   const before = await modal.innerText();
   await btn.click();
@@ -563,8 +672,8 @@ export async function plantMeasure(page: Page, tool: string, partId: string): Pr
 // ---------------------------------------------------------------------------
 
 /**
- * services.takeSample(serviceId, layer, via): pick the check method in the
- * Service checks table and press Check. Needs the laptop, so it goes inside.
+ * services.takeSample(serviceId, layer, via): take a reading the way a player would. Device lights are read off
+ * the router or modem faceplate (look at the lens); the other methods use the laptop or the radio, so it goes inside.
  * Returns the reading shown in the row.
  */
 export async function servicesTakeSample(
@@ -577,20 +686,53 @@ export async function servicesTakeSample(
   await closeCloseup(page);
   await goInside(page);
   if (via === 'pilot-report' || via === 'endpoint-report') {
-    await openSiteTab(page);
-    await page.locator('[data-field-source="pilot-report"]').click();
-    if (via === 'endpoint-report') await page.getByRole('navigation', { name: 'Radio channels' }).getByRole('button', { name: 'Remote operator' }).click();
-  } else if (via === 'device-indicator') {
+    return radioTakeSample(page, serviceId, layer, via);
+  }
+  if (via === 'device-indicator') {
     await openPart(page, /skylink/u.test(serviceId) ? 'skylink-router' : 'vsat-modem');
   } else {
     return laptopTakeSample(page, serviceId, layer, via, metric);
   }
-  const row = page.locator(`.immersive-view [data-svc-service="${serviceId}"][data-svc-layer="${layer}"]`).first();
-  await expect(row, `service instrument ${serviceId}/${layer}`).toBeVisible();
-  const age = row.locator('[data-fsp^="age-"]');
-  await row.locator(`button[data-svc-check][data-svc-metric="${metric ?? 'status'}"]`).click();
-  await expect(age).toHaveText(/\d+\s*s ago|now|just/iu);
-  const reading = (await row.locator('[data-fsp^="value-"]').innerText()).trim();
+  // The light is read off the faceplate: look at the lens for this layer, then read its legend and stamp
+  const lens = page.locator(`.immersive-view [data-fp-led][data-svc-service="${serviceId}"][data-svc-layer="${layer}"]`).first();
+  await expect(lens, `faceplate light ${serviceId}/${layer}`).toBeVisible();
+  const before = await readLastSampleId(page, serviceId);
+  await lens.click();
+  await expect.poll(() => readLastSampleId(page, serviceId), { message: `a new device-indicator sample for ${serviceId}/${layer}` }).not.toBe(before);
+  const reading = ((await lens.getAttribute('data-led-value')) ?? '').trim();
+  await openSiteTab(page);
+
+  return reading;
+}
+
+/**
+ * Radio readings, taken the way a player would: pick the radio up off the kit tray, turn the channel knob to
+ * the party (the pilot for pilot reports, the remote operator for endpoint reports), step the question keys to
+ * the service and layer, press PTT and read the answer off the call-log pad. Returns the logged reading.
+ */
+async function radioTakeSample(page: Page, serviceId: string, layer: ServiceLayer, via: 'pilot-report' | 'endpoint-report'): Promise<string> {
+  await openSiteTab(page);
+  await page.locator('[data-field-kit="radio"]').click();
+  const radio = page.locator('.immersive-view [data-radio-device]');
+  await expect(radio, 'the field radio is in hand').toBeVisible();
+  const lcd = radio.locator('[data-radio-lcd]');
+  const knob = radio.locator('[data-radio-knob="channel"]');
+  const channel = via === 'pilot-report' ? 'pilot' : 'operator';
+  for (let i = 0; i < 12 && (await lcd.getAttribute('data-radio-channel')) !== channel; i++) {
+    await knob.focus();
+    await page.keyboard.press('ArrowRight');
+  }
+  await expect(lcd, `radio on the ${channel} channel`).toHaveAttribute('data-radio-channel', channel);
+  const question = `${serviceId}|${layer}|`;
+  for (let i = 0; i < 24 && (await lcd.getAttribute('data-radio-question')) !== question; i++) {
+    await radio.locator('[data-radio-ask="next"]').click();
+  }
+  await expect(lcd, `radio question ${question}`).toHaveAttribute('data-radio-question', question);
+  const before = await readLastSampleId(page, serviceId);
+  await radio.locator('[data-radio-ptt]').click();
+  await expect.poll(() => readLastSampleId(page, serviceId), { message: `${via} reading of ${serviceId}/${layer}` }).not.toBe(before);
+  const sampleId = await readLastSampleId(page, serviceId);
+  const reading = (await radio.locator(`[data-radio-entry="${sampleId}"] [data-radio-reading]`).innerText()).trim();
   await openSiteTab(page);
 
   return reading;
@@ -648,10 +790,28 @@ async function laptopTakeSample(page: Page, serviceId: string, layer: ServiceLay
   } else {
     throw new Error(`No laptop app reads '${via}'`);
   }
-  await expect.poll(() => readLastSampleId(page, serviceId), { message: `${via} reading of ${serviceId}/${layer}${metric ? `/${metric}` : ''}` }).not.toBe(before);
+  // One Home/Status view reads both registration and account, so a second layer asked for right after the
+  // first is already read (and current) when the screen opens; a status read then needs no new sample id.
+  const sharedHomeRead = via === 'terminal-app' && !metric;
+  await expect
+    .poll(async () => (await readLastSampleId(page, serviceId)) !== before || (sharedHomeRead && (await layerFreshness(page, serviceId, layer)) === 'current'), {
+      message: `${via} reading of ${serviceId}/${layer}${metric ? `/${metric}` : ''}`,
+    })
+    .toBe(true);
   await openSiteTab(page);
 
   return shown.replace(/\s+/gu, ' ');
+}
+
+/** Freshness of a service layer's newest reading (null before any) */
+async function layerFreshness(page: Page, serviceId: string, layer: ServiceLayer): Promise<string | null> {
+  return page.evaluate(
+    ([id, l]) =>
+      (window as unknown as { __fieldStatus: () => { services: Record<string, { layer: string; freshness: string | null }[]> } })
+        .__fieldStatus()
+        .services[id]?.find((x) => x.layer === l)?.freshness ?? null,
+    [serviceId, layer] as const
+  );
 }
 
 /** The id of a service's newest reading (null before any) */
@@ -662,19 +822,26 @@ async function readLastSampleId(page: Page, serviceId: string): Promise<string |
   );
 }
 
+/** Pick an application in MissionRunner's list (its toolbar then acts on it) */
+async function selectMissionApp(d: Locator, cardId: string): Promise<void> {
+  const row = d.locator(`button[data-wl-card="${cardId}"]`);
+  await expect(row, `MissionRunner application ${cardId}`).toBeVisible();
+  await row.click();
+  await expect(row).toHaveAttribute('aria-pressed', 'true');
+}
+
 /** workloads.start(cardId, serviceId): returns the new run id */
 export async function workloadsStart(page: Page, cardId: string, serviceId: string, priority?: string): Promise<string> {
   await closeCloseup(page);
   await goInside(page);
   const before = new Set((await readFieldStatus(page)).workloads.map((w) => w.id));
-  const d = await setPanelOpen(page, /Workloads/u, true);
-  const card = d.locator(`[data-wl-card="${cardId}"]`);
-  await expect(card, `workload card ${cardId}`).toBeVisible();
-  await card.locator('select[data-wl-service]').selectOption(serviceId);
+  const d = await setPanelOpen(page, /Workloads|MissionRunner/u, true);
+  await selectMissionApp(d, cardId);
+  await d.locator('select[data-wl-service]').selectOption(serviceId);
   if (priority) {
-    await card.locator('select[data-wl-priority]').selectOption(priority);
+    await d.locator('select[data-wl-priority]').selectOption(priority);
   }
-  await card.locator('button[data-wl-act="start"]').click();
+  await d.locator('button[data-wl-act="start"]').click();
   let runId = '';
   await expect
     .poll(
@@ -692,7 +859,7 @@ export async function workloadsStart(page: Page, cardId: string, serviceId: stri
 
 /** workloads.waitForRun(runId): "Hold for result", then wait until the run leaves 'running'. Returns its status. */
 export async function workloadsWaitForRun(page: Page, runId: string, timeoutMs = 90000): Promise<string> {
-  const d = await setPanelOpen(page, /Workloads/u, true);
+  const d = await setPanelOpen(page, /Workloads|MissionRunner/u, true);
   const hold = d.locator(`[data-wl-run="${runId}"] button[data-wl-act="hold"]`);
   if (await isShown(hold)) {
     await hold.click();
@@ -708,7 +875,7 @@ export async function workloadsWaitForRun(page: Page, runId: string, timeoutMs =
       { timeout: timeoutMs, message: `run ${runId} finishes` }
     )
     .not.toMatch(/^(running|queued|pending|held)$/u);
-  await setPanelOpen(page, /Workloads/u, false);
+  await setPanelOpen(page, /Workloads|MissionRunner/u, false);
 
   return status;
 }
@@ -731,9 +898,9 @@ export async function recordsSubmit(page: Page, formId: string, input: Record<st
   await goInside(page);
   const d = await setPanelOpen(page, /Handover/u, true);
   // The form picker only exists when the scenario has more than one form
-  const picker = d.locator('select[data-hf-form]');
+  const picker = d.locator(`input[type="radio"][data-hf-form][value="${formId}"]`);
   if ((await picker.count()) > 0) {
-    await picker.selectOption(formId);
+    await picker.check();
   }
   for (const [key, f] of Object.entries(input)) {
     if ('cites' in f) {
@@ -790,7 +957,7 @@ export async function recordsSubmit(page: Page, formId: string, input: Record<st
     }
     const field = d.locator(`[data-hf-field="${key}"]`).first();
     await expect(field, `form ${formId} has field ${key}`).toBeAttached();
-    const tag = await field.evaluate((n) => n.tagName);
+    const tag = await field.evaluate((n) => ((n as HTMLInputElement).type === 'radio' ? 'RADIO' : n.tagName));
     if (f.value === LATEST) {
       // The panel redraws on its own tick and can swallow the click: press again until the field holds a value
       for (let attempt = 0; attempt < 3; attempt++) {
@@ -804,7 +971,10 @@ export async function recordsSubmit(page: Page, formId: string, input: Record<st
         if (filled) break;
       }
     } else if (f.value === LATEST_SUPPORTED_RUN) {
-      const readOpts = () => field.locator('option').evaluateAll((os) => os.map((o) => ({ v: (o as HTMLOptionElement).value, t: o.textContent ?? '' })));
+      const readOpts = () =>
+        d
+          .locator(`input[type="radio"][data-hf-field="${key}"]`)
+          .evaluateAll((os) => os.map((o) => ({ v: (o as HTMLInputElement).value, t: o.nextElementSibling?.textContent ?? '' })));
       // The panel redraws on its own tick, so a run that just finished can still read 'running' for a moment
       await expect
         .poll(async () => (await readOpts()).some((o) => /supported/u.test(o.t) && o.v), { timeout: 8000 })
@@ -813,9 +983,9 @@ export async function recordsSubmit(page: Page, formId: string, input: Record<st
       const opts = await readOpts();
       const pick = [...opts].reverse().find((o) => /supported/u.test(o.t) && o.v);
       expect(pick, `form ${formId} field ${key} lists a supported run; options: ${JSON.stringify(opts)}`).toBeTruthy();
-      await field.selectOption(pick!.v);
-    } else if (tag === 'SELECT') {
-      await field.selectOption(String(f.value));
+      await d.locator(`input[type="radio"][data-hf-field="${key}"][value="${pick!.v}"]`).check();
+    } else if (tag === 'RADIO') {
+      await d.locator(`input[type="radio"][data-hf-field="${key}"][value="${String(f.value)}"]`).check();
     } else {
       await field.fill(String(f.value));
     }
@@ -957,12 +1127,11 @@ export async function expectMissionComplete(page: Page, timeoutMs = 30000): Prom
 export async function workloadsSetPriority(page: Page, cardId: string, priority: 'background' | 'routine' | 'mission'): Promise<void> {
   await closeCloseup(page);
   await goInside(page);
-  const d = await setPanelOpen(page, /Workloads/u, true);
-  const card = d.locator(`[data-wl-card="${cardId}"]`);
-  await expect(card, `workload card ${cardId}`).toBeVisible();
-  await card.locator('select[data-wl-priority]').selectOption(priority);
-  await expect(card.locator('select[data-wl-priority]')).toHaveValue(priority);
-  await setPanelOpen(page, /Workloads/u, false);
+  const d = await setPanelOpen(page, /Workloads|MissionRunner/u, true);
+  await selectMissionApp(d, cardId);
+  await d.locator('select[data-wl-priority]').selectOption(priority);
+  await expect(d.locator('select[data-wl-priority]')).toHaveValue(priority);
+  await setPanelOpen(page, /Workloads|MissionRunner/u, false);
 }
 
 /**
@@ -1026,7 +1195,7 @@ export async function recordsRequestCorrection(page: Page, requestId: string, pi
   const req = d.locator(`[data-frp-req="${requestId}"]`);
   await expect(req, `correction request ${requestId} is offered`).toBeVisible();
   if (pick) {
-    await req.locator('select[data-rp-pick]').selectOption(pick);
+    await req.locator(`input[type="radio"][data-rp-pick][value="${pick}"]`).check();
   }
   await req.locator('button[data-rp-act="request"]').click();
   await expect(d.locator('[data-frp="msg"]')).toContainText(/Request filed/u);
@@ -1036,13 +1205,13 @@ export async function recordsRequestCorrection(page: Page, requestId: string, pi
   return msg;
 }
 
-/** equipment.accept(unitId): press "Accept this unit"; returns the panel message */
+/** equipment.accept(unitId): press "Initial here"; returns the panel message */
 export async function recordsAcceptUnit(page: Page, unitId: string): Promise<string> {
   await closeCloseup(page);
   await goInside(page);
   const d = await setPanelOpen(page, /Records and notices/u, true);
   const btn = d.locator(`button[data-rp-act="accept"][data-rp-unit="${unitId}"]`);
-  await expect(btn, `Accept this unit offered for ${unitId}`).toBeVisible();
+  await expect(btn, `Initial here offered for ${unitId}`).toBeVisible();
   await btn.click();
   await expect(d.locator('[data-frp="msg"]')).toContainText(/accepted\.|Not accepted/u);
   const msg = (await d.locator('[data-frp="msg"]').innerText()).trim();
@@ -1082,8 +1251,7 @@ export async function readDebrief(page: Page): Promise<string> {
 export async function workloadsInspect(page: Page, cardId: string): Promise<void> {
   await closeCloseup(page);
   await goInside(page);
-  const d = await setPanelOpen(page, /Workloads/u, true);
-  const card = d.locator(`[data-wl-card="${cardId}"]`);
-  await expect(card, `workload card ${cardId}`).toBeVisible();
-  await card.locator('button[data-wl-act="inspect"]').click();
+  const d = await setPanelOpen(page, /Workloads|MissionRunner/u, true);
+  await selectMissionApp(d, cardId);
+  await d.locator('button[data-wl-act="inspect"]').click();
 }

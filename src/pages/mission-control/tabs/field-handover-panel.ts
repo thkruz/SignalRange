@@ -120,6 +120,8 @@ export class FieldHandoverPanel {
   private built_ = false;
   private formId_ = '';
   private input_: HandoverInput = {};
+  /** Entries of the forms the player is not looking at: switching blank forms keeps each form's own pencil */
+  private readonly drafts_ = new Map<string, HandoverInput>();
   private dynKey_: string | null = null;
   /** Fields whose "Show older" list the player opened (a redraw keeps it open) */
   private readonly olderOpen_ = new Set<string>();
@@ -154,8 +156,9 @@ export class FieldHandoverPanel {
 
   selectForm(formId: string): void {
     if (formId === this.formId_) return;
+    if (this.formId_) this.drafts_.set(this.formId_, this.input_);
     this.formId_ = formId;
-    this.input_ = {};
+    this.input_ = this.drafts_.get(formId) ?? {};
     this.result_ = null;
     this.msg_ = '';
     this.dynKey_ = null;
@@ -212,6 +215,7 @@ export class FieldHandoverPanel {
         : ' The form clears once filed.';
       this.msg_ = `Submitted at ${clock(res.record.submittedAtS)}.${note}${this.deps_.formStep?.(this.formId_) === 'later' ? ` ${FORM_STEP_LATER_NOTE}` : ''}`;
       this.input_ = {};
+      this.drafts_.delete(this.formId_);
       this.result_ = null;
     } else {
       this.msg_ = `Rejected. Nothing was filed. Your entries are kept. ${failureSummary(res.validation)}`.trim();
@@ -305,7 +309,7 @@ export class FieldHandoverPanel {
 
   private readonly onChange_ = (e: Event): void => {
     const el = e.target as HTMLElement;
-    const formSel = el.closest<HTMLSelectElement>('select[data-hf-form]');
+    const formSel = el.closest<HTMLInputElement>('input[data-hf-form]');
     if (formSel) {
       this.selectForm(formSel.value);
 
@@ -322,6 +326,7 @@ export class FieldHandoverPanel {
       return;
     }
     const field = el.closest<HTMLInputElement | HTMLSelectElement>('[data-hf-field]');
+    if (field instanceof HTMLInputElement && field.type === 'radio' && !field.checked) return;
     if (field) this.setValue(field.dataset.hfField ?? '', field.value === '' ? undefined : field.value);
   };
 
@@ -343,11 +348,16 @@ export class FieldHandoverPanel {
       this.dynKey_ = null;
     }
     if (!this.built_) {
+      // A printed form on a clipboard sheet: the margin note (pencil) reports what the last Check or Sign did
       this.host_.innerHTML = `
-      <details class="fhf" open>
-        <summary class="fhf-summary"><b>Handover</b> <span class="fhf-msg" data-fhf="msg" aria-live="polite"></span></summary>
+      <section class="fhf" aria-label="Handover form">
         <div class="fhf-body" data-fhf="body"></div>
-      </details>`;
+        <footer class="fhf-foot">
+          <p class="fhf-msg" data-fhf="msg" role="status" aria-live="polite"></p>
+          <div data-slot="filed"></div>
+          <div class="fhf-actions" data-slot="actions"><button type="button" class="fhf-pencil-btn" data-hf-act="check">Check</button><div class="fhf-sign"><span class="fhf-sign-caption">Operator signature</span><button type="button" class="fhf-sign-btn" data-hf-act="submit">Sign</button></div></div>
+        </footer>
+      </section>`;
       this.built_ = true;
     }
     const msg = this.host_.querySelector<HTMLElement>('[data-fhf="msg"]');
@@ -386,9 +396,12 @@ export class FieldHandoverPanel {
     const checks = new Map((this.result_?.fields ?? []).map((c) => [c.key, c] as const));
     const picker =
       forms.length > 1
-        ? `<label class="fhf-row">Form <select class="form-select form-select-sm" data-hf-form aria-label="Handover form">${forms
-            .map((f) => `<option value="${escapeHtml(f.id)}"${f.id === this.formId_ ? ' selected' : ''}>${escapeHtml(f.title)}</option>`)
-            .join('')}</select></label>`
+        ? `<div class="fhf-forms" role="radiogroup" aria-label="Handover form"><span class="fhf-forms-label">Form no.</span>${forms
+            .map(
+              (f, i) =>
+                `<label class="fhf-formtab"><input type="radio" name="hf-form" data-hf-form value="${escapeHtml(f.id)}"${f.id === this.formId_ ? ' checked' : ''} /><span class="fhf-formtab-no">${i + 1}</span><span>${escapeHtml(f.title)}</span></label>`
+            )
+            .join('')}</div>`
         : '';
     const outOfDate = records.staleNote(form.id);
     const stale =
@@ -411,8 +424,7 @@ export class FieldHandoverPanel {
     // The picker, title and Check/Submit buttons are built once per form and patched in place: a redraw that
     // replaces the node under the pointer swallows the click. Only the field list is rebuilt when evidence changes.
     if (this.builtForm_ !== form.id || !body.querySelector('[data-slot="fields"]')) {
-      body.innerHTML = `<div data-slot="picker"></div><div class="fhf-title" data-slot="title"></div><div data-slot="incoming"></div><div data-slot="stale"></div><div class="fhf-fields" data-slot="fields"></div>
-      <div class="fhf-actions" data-slot="actions"><button type="button" class="btn btn-sm btn-outline-secondary" data-hf-act="check">Check</button> <button type="button" class="btn btn-sm btn-outline-primary" data-hf-act="submit">Submit</button></div><div data-slot="filed"></div>`;
+      body.innerHTML = `<div data-slot="picker"></div><h2 class="fhf-title" data-slot="title"></h2><div data-slot="incoming"></div><div class="fhf-fields" data-slot="fields"></div><div data-slot="stale"></div>`;
       this.builtForm_ = form.id;
       this.slotHtml_.clear();
     }
@@ -430,7 +442,7 @@ export class FieldHandoverPanel {
   /** Replace a slot's markup only when it changed; the fields slot keeps the player's focus across the redraw */
   private patchSlot_(body: HTMLElement, name: string, markup: string, keepFocus = false): void {
     if (this.slotHtml_.get(name) === markup) return;
-    const slot = body.querySelector<HTMLElement>(`[data-slot="${name}"]`);
+    const slot = (name === 'filed' ? this.host_ : body).querySelector<HTMLElement>(`[data-slot="${name}"]`);
     if (!slot) return;
     const focused = keepFocus ? this.focusKey_(slot) : null;
     slot.innerHTML = markup;
@@ -443,10 +455,12 @@ export class FieldHandoverPanel {
     if (!active || !slot.contains(active)) return null;
     const field = active.getAttribute('data-hf-field');
     const cite = active.getAttribute('data-hf-cite');
-    const sel = field !== null ? `[data-hf-field="${field}"]` : cite !== null ? `[data-hf-cite="${cite}"][data-hf-key="${active.getAttribute('data-hf-key') ?? ''}"]` : null;
+    const radioValue = (active as HTMLInputElement).type === 'radio' ? `[value="${(active as HTMLInputElement).value}"]` : '';
+    const sel =
+      field !== null ? `[data-hf-field="${field}"]${radioValue}` : cite !== null ? `[data-hf-cite="${cite}"][data-hf-key="${active.getAttribute('data-hf-key') ?? ''}"]` : null;
     if (sel === null) return null;
     const input = active as HTMLInputElement;
-    const textual = active.tagName === 'INPUT' && input.type !== 'checkbox';
+    const textual = active.tagName === 'INPUT' && input.type !== 'checkbox' && input.type !== 'radio';
 
     return { sel, start: textual ? input.selectionStart : null, end: textual ? input.selectionEnd : null };
   }
@@ -493,6 +507,18 @@ export class FieldHandoverPanel {
     return reading ?? '';
   }
 
+  /** A written-in answer as a column of printed tick boxes, one of which is ticked */
+  private ticks_(key: string, label: string, options: ReadonlyArray<readonly [string, string]>, chosen: string): string {
+    const items = options
+      .map(
+        ([id, text]) =>
+          `<label class="fhf-tick"><input type="radio" name="hf-${key}" data-hf-field="${key}" value="${escapeHtml(id)}"${id === chosen ? ' checked' : ''} /><span>${escapeHtml(text)}</span></label>`
+      )
+      .join('');
+
+    return `<div class="fhf-ticks fhf-pick-one" role="radiogroup" aria-label="${escapeHtml(label)}"><span class="fhf-pick-cap">Tick one</span>${items}</div>`;
+  }
+
   private fieldHtml_(
     f: HandoverFieldConfig,
     entries: readonly EvidenceEntry[],
@@ -515,7 +541,7 @@ export class FieldHandoverPanel {
       if (list.length === 0)
         return `<span class="fhf-none">${groups ? 'No notebook entry can back this slot yet.' : `No ${kind ? KIND_LABEL[kind]?.toLowerCase() : 'notebook'} entries yet.`}</span>`;
       const box = (e: EvidenceEntry): string =>
-        `<label class="fhf-cite"><input type="checkbox" data-hf-key="${k}" data-hf-cite="${escapeHtml(e.id)}"${picked.has(e.id) ? ' checked' : ''} /> #${numbering.get(e.id)} ${escapeHtml(clock(e.tS))} ${escapeHtml(entryDisplayText(e, this.deps_.plant()))}</label>`;
+        `<label class="fhf-cite fhf-tick"><input type="checkbox" data-hf-key="${k}" data-hf-cite="${escapeHtml(e.id)}"${picked.has(e.id) ? ' checked' : ''} /><span>#${numbering.get(e.id)} ${escapeHtml(clock(e.tS))} ${escapeHtml(entryDisplayText(e, this.deps_.plant()))}</span></label>`;
       const { latest, older } = splitLatestPerSource(list);
       if (older.length === 0) return latest.map(box).join('');
       const open = older.some((e) => picked.has(e.id)) || this.olderOpen_.has(f.key);
@@ -538,22 +564,25 @@ export class FieldHandoverPanel {
       const mine = runs.filter(
         (r) => r.cardId === rule.workload.cardId && (rule.workload.serviceId === undefined || r.serviceId === rule.workload.serviceId) && (!r.invalidatedBy || r.id === val)
       );
-      const opts = mine.map((r) => `<option value="${escapeHtml(r.id)}"${r.id === val ? ' selected' : ''}>${escapeHtml(runLabel(r))}</option>`).join('');
-      widget = `<select class="form-select form-select-sm" data-hf-field="${k}" aria-label="${escapeHtml(f.label)}"><option value="">${mine.length ? 'Pick a run' : 'No runs yet: start one from the Workloads panel first'}</option>${opts}</select>`;
+      widget = mine.length
+        ? this.ticks_(
+            k,
+            f.label,
+            mine.map((r) => [r.id, runLabel(r)] as const),
+            val
+          )
+        : `<p class="fhf-none" data-hf-field-group="${k}">No runs yet: start one in MissionRunner on the laptop first</p>`;
     } else if ('freshnessIs' in rule) {
-      const opts = FRESHNESS_ANSWERS.map(([id, text]) => `<option value="${id}"${id === val ? ' selected' : ''}>${text}</option>`).join('');
-      widget = `<select class="form-select form-select-sm" data-hf-field="${k}" aria-label="${escapeHtml(f.label)}"><option value="">Pick one</option>${opts}</select>`;
+      widget = this.ticks_(k, f.label, FRESHNESS_ANSWERS, val);
     } else if ('choice' in rule) {
-      const opts = [...rule.choice, ...(rule.choice.includes(CHOICE_OTHER) ? [] : [CHOICE_OTHER])]
-        .map((c) => `<option value="${escapeHtml(c)}"${c === val ? ' selected' : ''}>${escapeHtml(rule.labels?.[c] ?? humanize(c))}</option>`)
-        .join('');
-      widget = `<select class="form-select form-select-sm" data-hf-field="${k}" aria-label="${escapeHtml(f.label)}"><option value="">Pick one</option>${opts}</select>`;
+      const options = [...rule.choice, ...(rule.choice.includes(CHOICE_OTHER) ? [] : [CHOICE_OTHER])].map((c) => [c, rule.labels?.[c] ?? humanize(c)] as const);
+      widget = this.ticks_(k, f.label, options, val);
       // A long option is cut off inside the select, so the check repeats the full chosen text (c6-s10-F5)
       if (val) okText = `OK. Accepted: ${rule.labels?.[val] ?? humanize(val)}`;
     } else {
       const hint = this.readingHint_(f);
       const type = 'powerWithin' in rule || 'measured' in rule || 'interval' in rule || 'runRate' in rule ? 'number' : 'text';
-      widget = `<span class="fhf-input"><input class="form-control form-control-sm" type="${type}"${type === 'number' ? ' step="any"' : ''} value="${escapeHtml(val)}" data-hf-field="${k}" aria-label="${escapeHtml(f.label)}" /> <button type="button" class="btn btn-sm btn-outline-secondary" data-hf-fill="${k}">Use my latest reading</button></span>${hint ? `<div class="fhf-hint" data-fhf="reading-${k}">${escapeHtml(hint)}</div>` : ''}`;
+      widget = `<span class="fhf-input"><input class="fhf-write" type="${type}"${type === 'number' ? ' step="any"' : ''} value="${escapeHtml(val)}" data-hf-field="${k}" aria-label="${escapeHtml(f.label)}" autocomplete="off" /><button type="button" class="fhf-pencil-btn" data-hf-fill="${k}">Copy latest reading</button></span>${hint ? `<div class="fhf-hint" data-fhf="reading-${k}">${escapeHtml(hint)}</div>` : ''}`;
     }
     const backing =
       'cites' in rule || 'evidence' in rule

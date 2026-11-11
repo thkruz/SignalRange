@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, Locator, Page } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
-import { waitForObjectiveComplete } from './ham-sdr-helpers';
+import { isMinimalHud, openLogbookMission, putDownHeld, waitForObjectiveComplete } from './ham-sdr-helpers';
 import { dismissDialogIfPresent, waitForQuizToAppear, waitForSimulationReady } from './simulation-helpers';
 
 /**
@@ -38,12 +38,32 @@ const norm = (s: string): string => s.replace(/\s+/gu, ' ').trim();
 
 // ---- Bench navigation: one Close-up at a time, worksheets/cards/log in the Notebook ----
 
-const NOTEBOOK_PREFIXES = ['ham-ws-', 'ham-card-', 'ham-log-'];
+/** Notebook ids and where they live: a kit object beside the bench and its page (field-kit.ts BENCH_KIT) */
+const NOTEBOOK_PAGES: { prefix: string; kit: 'logbook' | 'cards'; page: string }[] = [
+  { prefix: 'ham-ws-', kit: 'logbook', page: 'ham-worksheets' },
+  { prefix: 'ham-log-', kit: 'logbook', page: 'ham-log' },
+  { prefix: 'ham-card-', kit: 'cards', page: 'ham-cards' },
+];
 
 async function isShown(page: Page, testId: string): Promise<boolean> {
   const l = page.getByTestId(testId).first();
 
   return (await l.count()) > 0 && (await l.isVisible());
+}
+
+/** Put down everything held, topmost first (a radio's front panel sits over its bench close-up) */
+async function putDownAll(page: Page): Promise<void> {
+  const held = page.locator('.immersive-view[open] .immersive-leave');
+  for (
+    let i = 0;
+    i < 4 &&
+    (await held
+      .last()
+      .isVisible()
+      .catch(() => false));
+    i++
+  )
+    await held.last().click();
 }
 
 /** Select a device or cable on the bench drawing; false when it is not drawn at this location */
@@ -76,13 +96,17 @@ export async function reveal(page: Page, testId: string, hints: string[] = []): 
   await ensureBench(page);
   const target = page.getByTestId(testId).first();
   if (await isShown(page, testId)) return target;
-  if (NOTEBOOK_PREFIXES.some((p) => testId.startsWith(p))) {
-    await page.getByTestId('ham-side-notebook').click();
+  const notebook = NOTEBOOK_PAGES.find((p) => testId.startsWith(p.prefix));
+  if (notebook) {
+    // Pick the logbook or the cards up from the tray beside the bench, then turn to the page
+    await putDownHeld(page);
+    await page.locator(`[data-field-kit="${notebook.kit}"]`).click();
+    const leaf = page.locator(`.field-kit-sheets [data-field-object="${notebook.page}"]`);
+    if (!(await target.isVisible()) && (await leaf.isVisible().catch(() => false))) await leaf.click();
     await expect(target).toBeVisible({ timeout: 5000 });
 
     return target;
   }
-  if (await isShown(page, 'ham-side-closeup')) await page.getByTestId('ham-side-closeup').click();
   const tryHere = async (): Promise<boolean> => {
     for (const h of hints) if ((await benchSelect(page, h)) && (await isShown(page, testId))) return true;
     if (await isShown(page, testId)) return true;
@@ -110,9 +134,45 @@ const press = async (page: Page, testId: string, hints: string[] = []): Promise<
 
 /** SDR receivers have no front panel: their controls are the SDR program on the laptop */
 async function ensureBench(page: Page): Promise<void> {
-  if (await page.locator('.immersive-paper[open] .immersive-leave').isVisible()) await page.locator('.immersive-paper[open] .immersive-leave').click();
-  if (await page.locator('.immersive-computer[open] .immersive-leave').isVisible()) await page.locator('.immersive-computer[open] .immersive-leave').click();
-  if (!(await isShown(page, 'ham-station-tab'))) await page.locator('[data-tab-id="ham-station"]').click();
+  // Put down the logbook or the laptop; a bench close-up stays open (it is the bench, leaned over)
+  for (const kind of ['paper', 'computer', 'laptop', 'transceiver']) {
+    const leave = page.locator(`.immersive-${kind}[open] .immersive-leave`);
+    if (await leave.isVisible()) await leave.click();
+  }
+  if (await isShown(page, 'ham-station-tab')) return;
+  const tab = page.locator('[data-tab-id="ham-station"]');
+  if (await tab.isVisible()) await tab.click();
+  else await putDownHeld(page);
+  await expect(page.getByTestId('ham-station-tab')).toBeVisible();
+}
+
+/**
+ * Sit at the bench laptop and start a program on it: its close-up offers "Open SkyWatcher SDR" and "Open
+ * Observations". Walks to the location the laptop is at when it is not drawn here.
+ */
+async function openLaptopProgram(page: Page, button: 'ham-open-sdr' | 'ham-open-observations'): Promise<void> {
+  await ensureBench(page);
+  const laptopHere = async (): Promise<boolean> => {
+    const dev = page.locator('[data-testid^="ham-bench-dev-"][data-kind="laptop"]').first();
+    if ((await dev.count()) === 0) return false;
+    const id = (await dev.getAttribute('data-dev')) ?? '';
+
+    return (await benchSelect(page, id)) && (await isShown(page, button));
+  };
+  if (!(await laptopHere())) {
+    const locs = await page.locator('[data-testid^="ham-loc-"][aria-pressed="false"]').evaluateAll((els) => els.map((e) => e.getAttribute('data-testid') ?? ''));
+    let found = false;
+    for (const loc of locs) {
+      await putDownHeld(page);
+      await page.getByTestId(loc).click();
+      if (await laptopHere()) {
+        found = true;
+        break;
+      }
+    }
+    if (!found) throw new Error(`openLaptopProgram: no laptop on the bench offers ${button}`);
+  }
+  await page.getByTestId(button).click();
 }
 
 const isSdr = async (page: Page, dev: string): Promise<boolean> => {
@@ -123,10 +183,12 @@ const isSdr = async (page: Page, dev: string): Promise<boolean> => {
 
 /** Show the laptop SDR program for this receiver (it must be plugged into a running laptop) */
 async function sdrControl(page: Page, dev: string, control: string): Promise<Locator> {
-  const exit = page.locator('.immersive-view[open] .immersive-leave');
-  if (await exit.isVisible()) await exit.click();
-  await page.locator('[data-tab-id="sdr-console"]').click();
   const target = page.getByTestId(tid('ham-sdr', dev, control));
+  if (await target.isVisible()) return target;
+  await putDownAll(page);
+  const tab = page.locator('[data-tab-id="sdr-console"]');
+  if (await tab.isVisible()) await tab.click();
+  else await openLaptopProgram(page, 'ham-open-sdr');
   await expect(target).toBeVisible();
   return target;
 }
@@ -139,6 +201,12 @@ export async function openTechScenario(page: Page, missionControl: MissionContro
 }
 
 export async function openStationTab(page: Page, missionControl: MissionControlPage): Promise<void> {
+  if (await isMinimalHud(page)) {
+    // Bench HUD: no asset tree or tab bar; with everything put down the bench is on screen
+    await ensureBench(page);
+
+    return;
+  }
   await missionControl.selectGroundStation('KF0SRT-HOME');
   await missionControl.selectTab('ham-station');
   await expect(page.getByTestId('ham-station-tab')).toBeVisible({ timeout: 15000 });
@@ -146,7 +214,13 @@ export async function openStationTab(page: Page, missionControl: MissionControlP
 
 /** review-mission-brief objective: open then close the brief (unlocks the station in the asset tree). */
 export async function reviewMissionBrief(page: Page, missionControl: MissionControlPage, title = 'Read the Mission Brief'): Promise<void> {
-  await missionControl.openMissionBrief();
+  if (await isMinimalHud(page)) {
+    // Bench HUD: the brief is the logbook's front page
+    await openLogbookMission(page, 'brief');
+    await expect(missionControl.missionBriefBox).toBeVisible();
+  } else {
+    await missionControl.openMissionBrief();
+  }
   await missionControl.closeMissionBrief();
   await dismissDialogIfPresent(page);
   await waitForObjectiveComplete(missionControl, title);
@@ -154,8 +228,7 @@ export async function reviewMissionBrief(page: Page, missionControl: MissionCont
 
 /** Answer the next pending status-check quiz with the correct option from c3-quiz-items.json. Returns the localId. */
 export async function answerTechQuiz(page: Page): Promise<string> {
-  const exit = page.locator('.immersive-view[open] .immersive-leave');
-  if (await exit.isVisible()) await exit.click();
+  await putDownAll(page);
   await waitForQuizToAppear(page);
   const question = norm((await page.locator('#quiz-question').textContent()) ?? '');
   const item = items().find((i) => norm(i.stem) === question);
@@ -184,7 +257,6 @@ async function tagOnBench(page: Page, part: string, job: string): Promise<void> 
   await ensureBench(page);
   const btn = page.getByRole('button', { name: `${part}: ${job}`, exact: true });
   const shown = async (): Promise<boolean> => (await btn.count()) > 0 && (await btn.first().isVisible());
-  if (await isShown(page, 'ham-side-closeup')) await page.getByTestId('ham-side-closeup').click();
   if (!(await shown())) {
     const owners = await page.locator('[data-testid^="ham-bench-dev-"]').evaluateAll((els) => els.map((e) => e.getAttribute('data-dev') ?? ''));
     for (const dev of owners) if ((await benchSelect(page, dev)) && (await shown())) break;
@@ -232,18 +304,58 @@ export async function tuneRadio(page: Page, dev: string, mhz: number): Promise<v
 
     return;
   }
-  await (await reveal(page, `ham-radio-${dev}-freq-input`, [dev])).fill(String(mhz));
-  await press(page, `ham-radio-${dev}-apply`, [dev]);
+  // Direct entry on the keypad: F.INP, type the frequency, ENT
+  await (await onRadio(page, dev, 'finp')).click();
+  await page.getByTestId(`ham-radio-${dev}-freq-input`).fill(String(mhz));
+  await page.getByTestId(`ham-radio-${dev}-apply`).click();
+  await expect(page.getByTestId(`ham-radio-${dev}-freq-input`)).toBeHidden();
 }
 export async function setFilterPreset(page: Page, dev: string, hz: number): Promise<void> {
   if (await isSdr(page, dev)) await (await sdrControl(page, dev, `bw-${hz}`)).click();
-  else await (await reveal(page, `ham-radio-${dev}-filter-preset`, [dev])).selectOption(String(hz));
+  else await turnKnobTo(await onRadio(page, dev, 'filter-hz'), hz, 100, 1000);
 }
 export async function setSquelch(page: Page, dev: string, v: number): Promise<void> {
-  await (await ((await isSdr(page, dev)) ? sdrControl(page, dev, 'squelch') : reveal(page, `ham-radio-${dev}-squelch`, [dev]))).fill(String(v));
+  if (await isSdr(page, dev)) await (await sdrControl(page, dev, 'squelch')).fill(String(v));
+  else await turnKnobTo(await onRadio(page, dev, 'squelch'), v, 1, 10);
 }
 export async function setVolume(page: Page, dev: string, v: number): Promise<void> {
-  await (await ((await isSdr(page, dev)) ? sdrControl(page, dev, 'volume') : reveal(page, `ham-radio-${dev}-volume`, [dev]))).fill(String(v));
+  if (await isSdr(page, dev)) await (await sdrControl(page, dev, 'volume')).fill(String(v));
+  else await turnKnobTo(await onRadio(page, dev, 'volume'), v, 1, 10);
+}
+
+/**
+ * Sit down at a radio (Operate in its close-up brings the front panel up fullscreen) and return one
+ * of its front-panel controls, `ham-radio-<dev>-<control>`, or a full `ham-ptt-...` test id.
+ */
+export async function onRadio(page: Page, dev: string, control: string): Promise<Locator> {
+  const testId = control.startsWith('ham-') ? control : `ham-radio-${dev}-${control}`;
+  const target = page.getByTestId(testId).first();
+  if (await isShown(page, testId)) return target;
+  // Another radio's front panel may be up: reveal puts it down on the way to the bench
+  await (await reveal(page, `ham-radio-${dev}-operate`, [dev])).click();
+  await expect(target).toBeVisible();
+
+  return target;
+}
+
+/** Turn a front-panel knob (role=slider) to a value with the keyboard: Page Up/Down, then the arrows */
+export async function turnKnobTo(knob: Locator, target: number, step: number, bigStep: number): Promise<void> {
+  await knob.focus();
+  for (let i = 0; i < 400; i++) {
+    const now = Number(await knob.getAttribute('aria-valuenow'));
+    const diff = target - now;
+    if (Math.abs(diff) < step / 2) return;
+    if (Math.abs(diff) >= bigStep) await knob.press(diff > 0 ? 'PageUp' : 'PageDown');
+    else await knob.press(diff > 0 ? 'ArrowUp' : 'ArrowDown');
+    if (Number(await knob.getAttribute('aria-valuenow')) === now) break;
+  }
+  await expect(knob).toHaveAttribute('aria-valuenow', String(target));
+}
+
+/** Press a cycling key (SHIFT, PWR) until it shows the wanted value */
+async function cycleKeyTo(key: Locator, value: string): Promise<void> {
+  for (let i = 0; i < 12 && (await key.getAttribute('data-value')) !== value; i++) await key.click();
+  await expect(key).toHaveAttribute('data-value', value);
 }
 
 /** Meter panel (dmm defaults to 'dmm1', the id used when the config has no multimeter device) */
@@ -276,8 +388,7 @@ export { waitForObjectiveComplete };
 
 /** The final required objective pops the Mission Complete modal. */
 export async function expectMissionComplete(page: Page): Promise<void> {
-  const exit = page.locator('.immersive-view[open] .immersive-leave');
-  if (await exit.isVisible()) await exit.click();
+  await putDownAll(page);
   const modal = page.locator('#level-complete-modal');
   await expect(modal).toBeVisible({ timeout: 45000 });
   await expect(modal.locator('.complete-modal__title')).toContainText('Mission Complete');
@@ -289,28 +400,40 @@ export async function expectMissionComplete(page: Page): Promise<void> {
 /** Bring a radio up: its Close-up, or for an SDR the laptop program */
 export async function selectRadioTab(page: Page, dev: string): Promise<void> {
   if (await isSdr(page, dev)) await sdrControl(page, dev, 'freq-input');
-  else await reveal(page, `ham-radio-${dev}-freq-input`, [dev]);
+  else await onRadio(page, dev, 'dial');
 }
-export const setTxPower = async (page: Page, dev: string, watts: number) => (await reveal(page, `ham-radio-${dev}-txpower`, [dev])).selectOption(String(watts));
-export const setOffset = async (page: Page, dev: string, dir: 'simplex' | 'plus' | 'minus') => (await reveal(page, `ham-radio-${dev}-offset`, [dev])).selectOption(dir);
-export const setOffsetKHz = async (page: Page, dev: string, khz: number): Promise<void> => {
-  const input = await reveal(page, `ham-radio-${dev}-offset-khz`, [dev]);
-  await input.fill(String(khz));
-  await input.blur();
-};
-/** CTCSS TX tone in Hz, or null for none */
-export const setTxTone = async (page: Page, dev: string, hz: number | null) => (await reveal(page, `ham-radio-${dev}-txtone`, [dev])).selectOption(hz === null ? '' : String(hz));
+export const setTxPower = async (page: Page, dev: string, watts: number) => cycleKeyTo(await onRadio(page, dev, 'txpower'), String(watts));
+export const setOffset = async (page: Page, dev: string, dir: 'simplex' | 'plus' | 'minus') => cycleKeyTo(await onRadio(page, dev, 'offset'), dir);
+export const setOffsetKHz = async (page: Page, dev: string, khz: number): Promise<void> => turnKnobTo(await onRadio(page, dev, 'offset-khz'), khz, 100, 1000);
+/** CTCSS TX tone in Hz, or null for none: the TONE knob clicks through the tone list from OFF */
+export async function setTxTone(page: Page, dev: string, hz: number | null): Promise<void> {
+  const knob = await onRadio(page, dev, 'txtone');
+  await knob.focus();
+  await knob.press('Home');
+  if (hz === null) {
+    await expect(knob).toHaveAttribute('aria-valuetext', 'TX tone off');
+
+    return;
+  }
+  const want = `TX tone ${hz} Hz`;
+  for (let i = 0; i < 60 && (await knob.getAttribute('aria-valuetext')) !== want; i++) await knob.press('ArrowUp');
+  await expect(knob).toHaveAttribute('aria-valuetext', want);
+}
 export async function storeMemory(page: Page, dev: string, slot: number, name: string): Promise<void> {
-  await (await reveal(page, `ham-radio-${dev}-mem-slot`, [dev])).fill(String(slot));
-  await (await reveal(page, `ham-radio-${dev}-mem-name`, [dev])).fill(name);
-  await press(page, `ham-radio-${dev}-mem-store`, [dev]);
+  await turnKnobTo(await onRadio(page, dev, 'mem-slot'), slot, 1, 10);
+  await page.getByTestId(`ham-radio-${dev}-mem-name`).fill(name);
+  await page.getByTestId(`ham-radio-${dev}-mem-store`).click();
 }
 export async function recallMemory(page: Page, dev: string, slot: number): Promise<void> {
-  await (await reveal(page, `ham-radio-${dev}-mem-slot`, [dev])).fill(String(slot));
-  await press(page, `ham-radio-${dev}-mem-recall`, [dev]);
+  await turnKnobTo(await onRadio(page, dev, 'mem-slot'), slot, 1, 10);
+  await page.getByTestId(`ham-radio-${dev}-mem-recall`).click();
 }
-/** DMR codeplug channel by zero-based index */
-export const selectDmrChannel = async (page: Page, dev: string, index: number) => (await reveal(page, `ham-radio-${dev}-dmr-channel`, [dev])).selectOption(String(index));
+/** DMR codeplug channel by zero-based index (the CH knob) */
+/** Turn the DMR CH knob to a codeplug index (0 = channel 1) and check the display shows CH<n>; the knob starts at "--" (nothing loaded) */
+export async function selectDmrChannel(page: Page, dev: string, index: number): Promise<void> {
+  await turnKnobTo(await onRadio(page, dev, 'dmr-channel'), index, 1, 10);
+  await expect(await onRadio(page, dev, 'chan')).toHaveText(`CH${index + 1}`);
+}
 
 export type PttIntent =
   | { kind: 'cq' | 'identify' | 'net-checkin' | 'carrier' | 'test' }
@@ -318,9 +441,16 @@ export type PttIntent =
   | { kind: 'reply'; item: string }
   | { kind: 'message'; text: string };
 
-/** Pick an intent in the PTT area and press Transmit (holdS optional). Asserts no refusal alert. */
+/** Pick a line on the call card beside the mic */
+async function pickCardLine(page: Page, dev: string, kind: PttIntent['kind']): Promise<void> {
+  const line = await onRadio(page, dev, `ham-ptt-${dev}-intent-${kind}`);
+  await line.click();
+  await expect(line).toHaveAttribute('aria-checked', 'true');
+}
+
+/** Pick a line on the mic's call card and press PTT (holdS optional). Asserts no refusal. */
 export async function pttTransmit(page: Page, dev: string, intent: PttIntent, holdS?: number): Promise<void> {
-  await (await reveal(page, `ham-ptt-${dev}-intent`, [dev])).selectOption(intent.kind);
+  await pickCardLine(page, dev, intent.kind);
   if (intent.kind === 'call') await page.getByTestId(`ham-ptt-${dev}-target`).selectOption(intent.target);
   if (intent.kind === 'reply') await page.getByTestId(`ham-ptt-${dev}-item`).selectOption(intent.item);
   if (intent.kind === 'message') await page.getByTestId(`ham-ptt-${dev}-message`).fill(intent.text);
@@ -337,7 +467,7 @@ export async function recordReading(page: Page, dev: string, _emitterId = ''): P
 
     return;
   }
-  await press(page, `ham-radio-${dev}-record`, [dev]);
+  await (await onRadio(page, dev, 'record')).click();
 }
 
 // ---- Antenna analyzer and adjustable dipole (S5) ----
@@ -364,7 +494,7 @@ export const setDipoleOrientation = async (page: Page, dev: string, o: 'vertical
 
 // ---- S6-S8: SWR meter, coax DC test, PTT release, DF yagi, mic gain ----
 
-export const pttRelease = (page: Page, dev: string) => press(page, `ham-ptt-${dev}-release`, [dev]);
+export const pttRelease = async (page: Page, dev: string) => (await onRadio(page, dev, `ham-ptt-${dev}-release`)).click();
 /** Press Read on the SWR / wattmeter panel (the transmitter must be keyed) */
 export const swrRead = (page: Page, swr = 'swr') => press(page, `ham-swr-${swr}-read`, [swr]);
 /** Key briefly for a test carrier, read the SWR meter while keyed, release */
@@ -385,7 +515,7 @@ export async function setAntennaAzimuth(page: Page, dev: string, azDeg: number):
   await (await reveal(page, `ham-antenna-${dev}-az`, [dev])).fill(String(azDeg));
   await page.getByTestId(`ham-antenna-${dev}-apply-dir`).click();
 }
-export const setMicGain = async (page: Page, dev: string, v: number) => (await reveal(page, `ham-radio-${dev}-micgain`, [dev])).fill(String(v));
+export const setMicGain = async (page: Page, dev: string, v: number) => turnKnobTo(await onRadio(page, dev, 'micgain'), v, 1, 10);
 /** Meter panel: select DCV mode and read across two DC test points of the system */
 export async function meterReadDcv(page: Page, red: string, black: string, dmm = 'dmm1'): Promise<void> {
   await setMeterMode(page, 'DCV', dmm);
@@ -431,23 +561,23 @@ export async function packetSend(page: Page, radio: string, text: string): Promi
 
 export async function setRadioMode(page: Page, dev: string, mode: string): Promise<void> {
   if (await isSdr(page, dev)) await (await sdrControl(page, dev, `mode-${mode}`)).click();
-  else await (await reveal(page, `ham-radio-${dev}-mode`, [dev])).selectOption(mode);
+  else {
+    const key = await onRadio(page, dev, `mode-${mode}`);
+    await key.click();
+    await expect(key).toHaveAttribute('aria-pressed', 'true');
+  }
 }
-/** Number inputs apply on change (blur), so fill then blur */
-async function fillAndCommit(page: Page, testId: string, v: number): Promise<void> {
-  const el = page.getByTestId(testId);
-  await el.fill(String(v));
-  await el.blur();
-}
-export const setFilterHz = (page: Page, dev: string, hz: number) => fillAndCommit(page, `ham-radio-${dev}-filter-hz`, hz);
+export const setFilterHz = async (page: Page, dev: string, hz: number) => turnKnobTo(await onRadio(page, dev, 'filter-hz'), hz, 100, 1000);
 export async function setRit(page: Page, dev: string, on: boolean, hz?: number): Promise<void> {
-  if (hz !== undefined) await fillAndCommit(page, `ham-radio-${dev}-rit-hz`, hz);
-  await page.getByTestId(`ham-radio-${dev}-rit-on`).setChecked(on);
+  if (hz !== undefined) await turnKnobTo(await onRadio(page, dev, 'rit-hz'), hz, 10, 100);
+  const key = await onRadio(page, dev, 'rit-on');
+  if ((await key.getAttribute('aria-pressed')) !== String(on)) await key.click();
+  await expect(key).toHaveAttribute('aria-pressed', String(on));
 }
 
-/** Press Transmit on an intent the manager must refuse (e.g. band edge) and assert the inline refusal shows */
+/** Press PTT on an intent the manager must refuse (e.g. band edge) and assert the refusal shows */
 export async function pttExpectRefusal(page: Page, dev: string, intent: PttIntent, holdS = 1): Promise<void> {
-  await page.getByTestId(`ham-ptt-${dev}-intent`).selectOption(intent.kind);
+  await pickCardLine(page, dev, intent.kind);
   await page.getByTestId(`ham-ptt-${dev}-hold`).fill(String(holdS));
   await page.getByTestId(`ham-ptt-${dev}-transmit`).click();
   await expect(page.getByTestId(`ham-ptt-${dev}-refusal`)).toBeVisible();

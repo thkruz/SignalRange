@@ -1,9 +1,44 @@
 import { displayViewport } from '@app/game-menu/display-viewport';
 import './immersive-view.css';
 
+/** Told when a held object is picked up (`open`) and just before it is put down (`closing`), dialog still connected. */
+export type ImmersiveViewListener = (dialog: HTMLDialogElement, change: 'open' | 'closing') => void;
+
 /** A focused in-world activity. Existing nodes are borrowed, never rebuilt. */
 export class ImmersiveView {
+  /** Views holding an object now, oldest first */
+  private static readonly held_: ImmersiveView[] = [];
+  private static readonly listeners_ = new Set<ImmersiveViewListener>();
+
+  /**
+   * Put down every held object the way the player would (its leave action, so the owner restores its own state).
+   * Global surfaces that must be seen (the quiz the player asked for) use this instead of reaching into the dialog.
+   */
+  static closeAll(): void {
+    for (const view of [...ImmersiveView.held_].reverse()) {
+      view.leave_?.();
+      view.close();
+    }
+  }
+
+  /** The dialog of the most recently held object, or null when nothing is held */
+  static topDialog(): HTMLDialogElement | null {
+    return ImmersiveView.held_.at(-1)?.dialog_ ?? null;
+  }
+
+  /** Follow objects being picked up and put down; returns the unsubscribe */
+  static onChange(listener: ImmersiveViewListener): () => void {
+    ImmersiveView.listeners_.add(listener);
+
+    return () => ImmersiveView.listeners_.delete(listener);
+  }
+
+  private static notify_(dialog: HTMLDialogElement, change: 'open' | 'closing'): void {
+    for (const listener of [...ImmersiveView.listeners_]) listener(dialog, change);
+  }
+
   private dialog_: HTMLDialogElement | null = null;
+  private leave_: (() => void) | null = null;
   private marker_: Comment | null = null;
   private content_: HTMLElement | null = null;
   private opener_: HTMLElement | null = null;
@@ -16,13 +51,14 @@ export class ImmersiveView {
   open(
     content: HTMLElement,
     title: string,
-    kind: 'equipment' | 'computer' | 'paper' | 'laptop',
+    kind: 'equipment' | 'computer' | 'paper' | 'laptop' | 'transceiver',
     leave: () => void,
     navigation?: HTMLElement,
     frame?: (content: HTMLElement, leave: HTMLButtonElement) => { element: HTMLElement; dispose: () => void }
   ): void {
     this.close();
     this.opener_ = document.activeElement as HTMLElement | null;
+    this.leave_ = leave;
     this.marker_ = document.createComment('immersive-return');
     content.before(this.marker_);
     this.content_ = content;
@@ -73,10 +109,21 @@ export class ImmersiveView {
     window.addEventListener('resize', this.resize_);
     dialog.showModal();
     back.focus({ preventScroll: true });
+    ImmersiveView.held_.push(this);
+    ImmersiveView.notify_(dialog, 'open');
+  }
+
+  /** Whether this view is holding an object now */
+  isOpen(): boolean {
+    return this.dialog_ !== null;
   }
 
   close(): void {
     if (!this.dialog_) return;
+    const index = ImmersiveView.held_.indexOf(this);
+    if (index >= 0) ImmersiveView.held_.splice(index, 1);
+    ImmersiveView.notify_(this.dialog_, 'closing');
+    this.leave_ = null;
     window.removeEventListener('resize', this.resize_);
     this.dialog_.close();
     this.dispose_?.();

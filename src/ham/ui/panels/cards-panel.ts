@@ -1,6 +1,7 @@
 /**
  * @file cards-panel - Reference cards from the station config
- * @description Collapsible cards (title, body, optional image with alt text).
+ * @description Collapsible cards (title, body, optional image with alt text). The first card opens expanded, so
+ * picking up the cards shows a card to read rather than a bar of closed titles.
  * Test ids: ham-card-<id>, ham-card-<id>-toggle.
  */
 
@@ -20,10 +21,10 @@ export class CardsPanel implements StationPanel {
   mount(host: HTMLElement, ctx: PanelContext): void {
     const c = card('ham-cards-card', this.title);
     this.root_ = c.root;
-    for (const ref of ctx.manager.config.cards) {
+    for (const [index, ref] of ctx.manager.config.cards.entries()) {
       const body = h(
         'div',
-        { class: 'small', hidden: true, 'data-testid': tid('ham-card', ref.id, 'body') },
+        { class: 'small', hidden: index > 0, 'data-testid': tid('ham-card', ref.id, 'body') },
         h('p', { class: 'mb-1', style: 'white-space: pre-line', text: ref.body })
       );
       if (ref.imageUrl) body.append(h('img', { src: ref.imageUrl, alt: `Illustration for ${ref.title}`, class: 'img-fluid' }));
@@ -37,7 +38,7 @@ export class CardsPanel implements StationPanel {
         'btn btn-sm btn-outline-secondary w-100 text-start mb-1',
         ref.title
       );
-      toggle.setAttribute('aria-expanded', 'false');
+      toggle.setAttribute('aria-expanded', String(!body.hidden));
       c.body.append(h('div', { 'data-testid': tid('ham-card', ref.id) }, toggle, body));
     }
     host.append(c.root);

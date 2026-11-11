@@ -116,6 +116,13 @@ export interface CloseupLayer {
   callout?: { fact: string; at: [number, number]; text: string | Record<string, string> };
 }
 
+export interface CloseupLedAnchor {
+  /** The part whose lights these are (a part on the service path) */
+  target: string;
+  x: number;
+  y: number;
+}
+
 export interface CloseupDef {
   id: CloseupId;
   title: string;
@@ -126,6 +133,8 @@ export interface CloseupDef {
   regions: CloseupRegion[];
   probes: CloseupProbe[];
   cables: CloseupCable[];
+  /** Where each part's painted LED area sits (0..1 of the painting): the part's status lenses are laid over it. A part with no anchor keeps its lenses on the side plate */
+  leds?: CloseupLedAnchor[];
   /** Forward-site art: camp weather paintings and fault layers never apply */
   forward?: boolean;
 }

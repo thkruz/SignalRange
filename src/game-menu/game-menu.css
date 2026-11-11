@@ -75,3 +75,8 @@ html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after 
   .game-setting-select { flex-wrap: wrap; }
   .game-setting-select select { max-width: 100%; }
 }
+
+/* Field HUD only: the sound and fullscreen switches the hidden site header used to carry */
+.game-menu-quick { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.game-menu-quick button { flex: 1 1 auto; padding: 10px 14px; font-weight: 600; }
+.game-menu-quick button[aria-pressed='false'] { opacity: 0.7; text-decoration: line-through; }

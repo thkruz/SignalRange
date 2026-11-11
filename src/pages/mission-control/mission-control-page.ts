@@ -29,6 +29,7 @@ import { PlantTrainerBox } from '@app/physical/ui/plant-trainer-box';
 import { missionOpening } from '@app/presentation/mission-opening';
 import { SceneModal } from '@app/presentation/scene-modal';
 import { NavigationOptions, Router } from '@app/router';
+import { SandboxLoadoutService } from '@app/sandbox/sandbox-loadout';
 import { ScenarioManager } from '@app/scenario-manager';
 import { CampaignRecordPanel } from '@app/scenarios/campaign-record-panel';
 import { ScenarioDialogManager } from '@app/scenarios/scenario-dialog-manager';
@@ -198,11 +199,28 @@ export class MissionControlPage extends BasePage {
 
   private selectHamStation_(): void {
     const stations = SimulationManager.getInstance().groundStations;
+    if (!this.disposed_) this.selectFieldStation_(stations);
     if (this.disposed_ || !HamStationService.getInstance() || stations.length !== 1) return;
     const id = stations[0].state.id;
     if (TabbedCanvas.getSelectedAssetId() !== id || TabbedCanvas.getActiveTab() !== 'ham-station') {
       SelectionService.getInstance().selectGroundStation(id);
     }
+  }
+
+  /**
+   * Campaign 6: a field station has no station computer to pick it from (the sidebar gives way to the field
+   * HUD), so the mission opens at the site. Only when nothing is selected yet, so a player's choice stands;
+   * sandboxes keep the Mission Overview start.
+   */
+  private selectFieldStation_(stations: { state: { id: string; stationClass?: string } }[]): void {
+    const field = stations.find((station) => station.state.stationClass === 'field');
+    if (!field || TabbedCanvas.getSelectedAssetId() !== null) return;
+    try {
+      if (SandboxLoadoutService.isSandboxScenario(ScenarioManager.getInstance().data)) return;
+    } catch {
+      return;
+    }
+    SelectionService.getInstance().selectGroundStation(field.state.id);
   }
 
   /**

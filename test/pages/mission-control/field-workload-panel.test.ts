@@ -114,7 +114,8 @@ describe('M11 workload panel', () => {
     boot(config());
     const { host, p } = panel();
     p.sync();
-    host.querySelector<HTMLButtonElement>('[data-wl-card="chat"] button[data-wl-act="start"]')?.click();
+    host.querySelector<HTMLButtonElement>('button[data-wl-card="chat"]')?.click();
+    host.querySelector<HTMLButtonElement>('button[data-wl-act="start"]')?.click();
     const li = host.querySelector('[data-wl-run]');
     expect(li?.textContent).toContain('Chat on SkyLink');
     expect(li?.textContent).toContain('Running');
@@ -127,8 +128,34 @@ describe('M11 workload panel', () => {
     p.sync();
     const done = host.querySelector('[data-wl-run]');
     expect(done?.textContent).toContain('Supported');
-    expect(done?.textContent).toMatch(/Started elapsed \d\d:\d\d, ended elapsed \d\d:\d\d/u);
+    expect(done?.textContent).toMatch(/started \d\d:\d\d · ended \d\d:\d\d/u);
     expect(done?.querySelector('button')).toBeNull();
+  });
+
+  it('a changed selection rewrites a focused priority picker with the value of the newly selected app', () => {
+    boot(config());
+    const { host, p } = panel();
+    document.body.appendChild(host);
+    p.sync();
+    host.querySelector<HTMLButtonElement>('button[data-wl-card="chat"]')?.click();
+    const sel = host.querySelector<HTMLSelectElement>('select[data-wl-priority]');
+    if (!sel) throw new Error('no picker');
+    sel.focus();
+    sel.value = 'mission';
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(document.activeElement).toBe(sel);
+    host.querySelector<HTMLButtonElement>('button[data-wl-card="sync"]')?.click();
+    expect(sel.value).toBe('background');
+    expect(sel.getAttribute('aria-label')).toContain('Map sync');
+    host.remove();
+  });
+
+  it('shows both empty states before the first run', () => {
+    boot(config());
+    const { host, p } = panel();
+    p.sync();
+    expect(host.querySelector('[data-fwp="live"]')?.textContent).toContain('Nothing running');
+    expect(host.querySelector('[data-fwp="runs"]')?.textContent).toContain('No runs yet');
   });
 
   it('a second start of the same card on the same service is refused with a message', () => {
@@ -154,7 +181,8 @@ describe('M11 workload panel', () => {
     const syncRun = runner.running().find((r) => r.cardId === 'sync');
     if (!syncRun) throw new Error('no sync run');
     const before = runner.shareOf(syncRun);
-    const sel = host.querySelector<HTMLSelectElement>('[data-wl-card="sync"] select[data-wl-priority]');
+    host.querySelector<HTMLButtonElement>('button[data-wl-card="sync"]')?.click();
+    const sel = host.querySelector<HTMLSelectElement>('select[data-wl-priority]');
     expect(sel?.value).toBe('background');
     if (sel) {
       sel.value = 'mission';
@@ -193,6 +221,6 @@ describe('M11 workload panel', () => {
     const run = { ...res.run, status: 'unsupported' as const, unmet: ['downMbps'], endS: res.run.startS + 20 };
     const line = buildRunLine(run, runner, 'SkyLink', run.endS);
     expect(line.result).toBe('Unsupported, fell short on download.');
-    expect(line.stamps).toMatch(/^Started elapsed \d\d:\d\d, ended elapsed \d\d:\d\d$/u);
+    expect(line.stamps).toMatch(/^started \d\d:\d\d · ended \d\d:\d\d$/u);
   });
 });

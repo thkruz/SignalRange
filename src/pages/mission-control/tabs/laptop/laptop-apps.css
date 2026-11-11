@@ -41,7 +41,8 @@
   font: inherit;
   cursor: pointer;
 }
-.np-host:hover, .np-host:focus-visible { background: #1e272e; outline: none; }
+.np-host:hover { background: #1e272e; }
+.np-host:focus-visible { background: #1e272e; outline: 2px solid var(--np-accent); outline-offset: -2px; }
 .np-host[aria-pressed='true'] { background: #1f2d38; border-left-color: var(--np-accent); }
 .np-host-dot { grid-row: 1 / span 2; align-self: center; width: 9px; height: 9px; border-radius: 50%; background: #3a4650; }
 .np-host-dot.np-up { background: var(--np-up); box-shadow: 0 0 6px #7ee08a88; }

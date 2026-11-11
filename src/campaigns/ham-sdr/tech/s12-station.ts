@@ -284,7 +284,7 @@ export const s12Station: HamStationConfig = {
       'A clean test into the dummy load means the radio is fine. Trouble after you connect the antenna points at the feed line or the antenna.',
     ],
     'check-into-net': [
-      'This is the operating side: the radio panel and the net.',
+      'This is the operating side: the radio front panel and the net.',
       'Wait for net control to call for check-ins, then key and give your call sign once.',
       'If net control does not answer, check the frequency, the offset and the tone before you call again.',
     ],
@@ -304,7 +304,7 @@ export const s12Station: HamStationConfig = {
       'If the radio holds above its minimum voltage and does not reset, the repair worked.',
     ],
     'move-to-fallback': [
-      'The repeater is off the air, so use the radio panel and go simplex.',
+      'The repeater is off the air, so sit down at the radio and go simplex.',
       'Set 147.525 MHz FM with no offset and no tone.',
       'Simplex means both stations use the same frequency. Call the station at the club tent and listen for the reply.',
     ],

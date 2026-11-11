@@ -7,9 +7,10 @@ import './field-path-diagram-panel.css';
 /**
  * FieldPathDiagramPanel - Service-path diagram (Phase 38.2, M17)
  *
- * An SVG per authored service: power chain, local, terminal link, provider and remote segments.
- * The player clicks nodes to select them and presses Record to write the selection into the
- * evidence log. Shared dependencies (a node on more than one service path) are highlighted unless
+ * A laminated print (field documents, held fullscreen): power chain, local, terminal link, provider and
+ * remote segments. The player picks nodes with the grease pencil (a click or Enter rings them) and presses
+ * "Mark selection" to write the selection into the evidence log; the marks stay on the laminate until the
+ * next marking or until wiped. The SVG node layer stays the hit and keyboard layer. Shared dependencies (a node on more than one service path) are highlighted unless
  * the scenario turns the highlight off (a dependency-mapping task wants the player to find them).
  * The diagram is built from the plant layout only; it never shows fault truth.
  */
@@ -27,11 +28,31 @@ function clock(tS: number): string {
   return `elapsed ${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 }
 
+/** Break a label on spaces into at most two lines of about 20 characters; never cut or ellipsise */
+function wrapLabel(label: string, max = 20): string[] {
+  if (label.length <= max) return [label];
+  const words = label.split(' ');
+  let best = 0;
+  let line1 = '';
+  for (let i = 1; i < words.length; i++) {
+    const a = words.slice(0, i).join(' ');
+    if (a.length <= max || i === 1) {
+      line1 = a;
+      best = i;
+    }
+  }
+  if (!line1) return [label];
+
+  return [line1, words.slice(best).join(' ')];
+}
+
 export class FieldPathDiagramPanel {
   private built_ = false;
   private diagram_: ServicePathDiagram | null = null;
   private plantRef_: PhysicalPlantManager | null = null;
   private selected_ = new Set<string>();
+  /** The last recorded marks, kept on the laminate (display only; the evidence log holds the record) */
+  private marked_ = new Set<string>();
   private svgKey_ = '';
   private lastMsg_ = '';
 
@@ -40,10 +61,12 @@ export class FieldPathDiagramPanel {
     private readonly deps_: PathDiagramDeps
   ) {
     this.host_.addEventListener('click', this.onClick_);
+    this.host_.addEventListener('keydown', this.onKey_);
   }
 
   destroy(): void {
     this.host_.removeEventListener('click', this.onClick_);
+    this.host_.removeEventListener('keydown', this.onKey_);
   }
 
   /** The diagram (null without authored services) */
@@ -55,6 +78,7 @@ export class FieldPathDiagramPanel {
       this.diagram_ = buildServicePathDiagram(plant.getConfig(), (id) => plant.getLabel(id));
       this.svgKey_ = '';
       this.selected_.clear();
+      this.marked_.clear();
     }
 
     return this.diagram_ && this.diagram_.lanes.length > 0 ? this.diagram_ : null;
@@ -77,6 +101,7 @@ export class FieldPathDiagramPanel {
 
   clearSelection(): void {
     this.selected_.clear();
+    this.marked_.clear();
     this.sync();
   }
 
@@ -86,7 +111,7 @@ export class FieldPathDiagramPanel {
     const log = this.deps_.evidence();
     if (!diagram || !log) return 'no-log';
     if (this.selected_.size === 0) {
-      this.lastMsg_ = 'Select at least one box first.';
+      this.lastMsg_ = 'Ring at least one box first.';
       this.sync();
 
       return 'empty';
@@ -96,6 +121,7 @@ export class FieldPathDiagramPanel {
     const names = ids.map((id) => labels.get(id) ?? id).join(', ');
     const entry = log.recordSelection(ids, `Marked on the path diagram: ${names}.`);
     this.lastMsg_ = `Selection recorded at ${clock(entry.tS)}.${this.coverageNote_(ids)}`;
+    this.marked_ = new Set(ids);
     this.selected_.clear();
     this.sync();
 
@@ -133,6 +159,18 @@ export class FieldPathDiagramPanel {
     if (node?.dataset.pdNode) this.toggle(node.dataset.pdNode);
   };
 
+  private readonly onKey_ = (e: KeyboardEvent): void => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const node = (e.target as Element).closest<SVGElement>('[data-pd-node]');
+    if (!node?.dataset.pdNode) return;
+    e.preventDefault();
+    const id = node.dataset.pdNode;
+    const lane = node.dataset.pdLane;
+    this.toggle(id);
+    // The sheet repaints on a toggle, so the pencil stays on the box it was on
+    this.host_.querySelector<SVGElement>(`[data-pd-node="${CSS.escape(id)}"][data-pd-lane="${lane}"]`)?.focus({ preventScroll: true });
+  };
+
   sync(): void {
     const diagram = this.getDiagram();
     if (!diagram) {
@@ -143,28 +181,33 @@ export class FieldPathDiagramPanel {
     this.host_.style.display = '';
     if (!this.built_) {
       this.host_.innerHTML = `
-        <details class="fpd" open>
-          <summary class="fpd-summary"><b>Service paths</b> <span class="fpd-last" data-fpd="last" aria-live="polite"></span></summary>
+        <section class="fpd" aria-label="Service paths">
+          <header class="fpd-head">
+            <p class="fpd-kicker">Laminated field copy</p>
+            <h2 class="fpd-title">Service paths</h2>
+            <p class="fpd-legend">Dashed amber outline: carries more than one service. Grease pencil: your marks.</p>
+          </header>
           <div class="fpd-body">
             <div data-fpd="svg"></div>
             <div class="fpd-actions">
               <span data-fpd="count" class="fpd-count"></span>
-              <button type="button" class="btn btn-sm btn-outline-primary" data-pd-act="record">Record selection</button>
-              <button type="button" class="btn btn-sm btn-outline-secondary" data-pd-act="clear">Clear</button>
+              <button type="button" class="fpd-btn fpd-btn-mark" data-pd-act="record">Mark selection</button>
+              <button type="button" class="fpd-btn" data-pd-act="clear">Wipe marks</button>
             </div>
+            <p class="fpd-last" data-fpd="last" aria-live="polite"></p>
           </div>
-        </details>`;
+        </section>`;
       this.built_ = true;
     }
     const shared = this.deps_.highlightShared?.() ?? true;
-    const key = `${shared}|${[...this.selected_].sort().join(',')}`;
+    const key = `${shared}|${[...this.selected_].sort().join(',')}|${[...this.marked_].sort().join(',')}`;
     if (key !== this.svgKey_) {
       this.svgKey_ = key;
       const holder = this.host_.querySelector<HTMLElement>('[data-fpd="svg"]');
       if (holder) holder.innerHTML = this.svg_(diagram, shared);
     }
     const count = this.host_.querySelector<HTMLElement>('[data-fpd="count"]');
-    const text = `${this.selected_.size} selected`;
+    const text = `${this.selected_.size} ringed`;
     if (count && count.textContent !== text) count.textContent = text;
     const last = this.host_.querySelector<HTMLElement>('[data-fpd="last"]');
     if (last && last.textContent !== this.lastMsg_) last.textContent = this.lastMsg_;
@@ -185,16 +228,41 @@ export class FieldPathDiagramPanel {
       .map((p) => {
         const node = diagram.lanes[p.laneIndex].nodes.find((n) => n.id === p.id);
         if (!node) return '';
-        const cls = ['fpd-node', this.selected_.has(p.id) ? 'fpd-selected' : '', shared && sharedIds.has(p.id) ? 'fpd-shared' : ''].filter(Boolean).join(' ');
-        const label = node.label.length > 18 ? `${node.label.slice(0, 17)}…` : node.label;
+        const cls = ['fpd-node', this.selected_.has(p.id) ? 'fpd-selected' : '', this.marked_.has(p.id) ? 'fpd-marked' : '', shared && sharedIds.has(p.id) ? 'fpd-shared' : '']
+          .filter(Boolean)
+          .join(' ');
+        const lines = wrapLabel(node.label);
+        const state = [this.marked_.has(p.id) ? 'marked' : '', this.selected_.has(p.id) ? 'ringed' : ''].filter(Boolean).join(', ');
+        const aria = `${node.label}${shared && sharedIds.has(p.id) ? `, shared by ${node.serviceIds.length} services` : ''}${state ? `, ${state}` : ''}`;
+        const textY = p.y + NODE_H / 2 + (lines.length > 1 ? -1 : 4);
+        const tspans = lines.map((ln, k) => `<tspan x="${p.x + NODE_W / 2}" dy="${k === 0 ? 0 : 11}">${escapeHtml(ln)}</tspan>`).join('');
         const tip = shared && sharedIds.has(p.id) ? `${node.label} (shared by ${node.serviceIds.length} services)` : node.label;
 
         const domId = `fpd-${p.laneIndex}-${p.id.replace(/[^A-Za-z0-9_-]+/gu, '-')}`;
 
-        return `<g class="${cls}" id="${escapeHtml(domId)}" data-pd-lane="${p.laneIndex}" data-pd-node="${escapeHtml(p.id)}" role="button" tabindex="0" aria-pressed="${this.selected_.has(p.id)}"><title>${escapeHtml(tip)}</title><rect x="${p.x}" y="${p.y}" width="${NODE_W}" height="${NODE_H}" rx="4"/><text x="${p.x + NODE_W / 2}" y="${p.y + NODE_H / 2 + 4}" text-anchor="middle">${escapeHtml(label)}</text></g>`;
+        return `<g class="${cls}" id="${escapeHtml(domId)}" data-pd-lane="${p.laneIndex}" data-pd-node="${escapeHtml(p.id)}" role="button" tabindex="0" aria-pressed="${this.selected_.has(p.id)}" aria-label="${escapeHtml(aria)}"><title>${escapeHtml(tip)}</title><rect x="${p.x}" y="${p.y}" width="${NODE_W}" height="${NODE_H}" rx="2"/><text x="${p.x + NODE_W / 2}" y="${textY}" text-anchor="middle">${tspans}</text>${this.pencil_(p.x, p.y, p.laneIndex, this.marked_.has(p.id), this.selected_.has(p.id))}</g>`;
       })
       .join('');
 
     return `<svg class="fpd-svg" viewBox="0 0 ${layout.width} ${layout.height}" role="group" aria-label="Service path diagram">${heads}${lanes}${nodes}</svg>`;
+  }
+
+  /** A hand-drawn ring round a box: solid grease pencil for a recorded mark, dashed pencil while it is only ringed. Deterministic per box. */
+  private pencil_(x: number, y: number, seed: number, marked: boolean, ringed: boolean): string {
+    if (!marked && !ringed) return '';
+    const j = (n: number): number => (((Math.sin((x + 3) * 12.9898 + (y + seed) * 78.233 + n * 4.1) * 43758.5453) % 1) + 1) % 1;
+    const l = x - 5 + j(1) * 3;
+    const r = x + NODE_W + 5 - j(2) * 3;
+    const t = y - 4 + j(3) * 2;
+    const b = y + NODE_H + 4 - j(4) * 2;
+    const cx = (l + r) / 2;
+    const d = `M${cx + 6} ${t - 1} C${r + 6} ${t} ${r + 4} ${b + 2} ${cx} ${b} C${l - 5} ${b - 1} ${l - 6} ${t + 2} ${cx - 4} ${t + 1} C${cx + 10} ${t - 3} ${r - 4} ${t + 1} ${r - 2} ${t + 6}`;
+    const tick = marked ? `<path class="fpd-pencil-tick" d="M${r - 8} ${t - 5} l4 5 l9 -11"/>` : '';
+
+    // A box can be both marked (recorded) and ringed again: show the grease mark and the dashed ring together
+    const ring = ringed ? `<path class="fpd-ring" d="${d}" transform="translate(1.5 1.5)"/>` : '';
+    const grease = marked ? `<path class="fpd-grease" d="${d}"/>` : '';
+
+    return `${ring}${grease}${tick}`;
   }
 }

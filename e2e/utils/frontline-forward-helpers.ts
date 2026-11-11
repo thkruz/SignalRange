@@ -1,5 +1,5 @@
 import { expect, type Page } from '@playwright/test';
-import { activate, closeCloseup, goInside, isShown, plantInspect, setPanelOpen } from './frontline-helpers';
+import { activate, closeCloseup, goInside, goToPartFromSheet, isShown, plantInspect, setPanelOpen } from './frontline-helpers';
 
 /**
  * Extra UI drivers for the forward site (S9+) that the camp helpers do not cover:
@@ -8,7 +8,7 @@ import { activate, closeCloseup, goInside, isShown, plantInspect, setPanelOpen }
  * real clicks only, never force:true.
  */
 
-/** Records and notices: press "Accept this unit" for a delivered unit. Returns the panel message. */
+/** Records and notices: press "Initial here" for a delivered unit. Returns the panel message. */
 export async function recordsAcceptUnit(page: Page, unitId: string): Promise<string> {
   await closeCloseup(page);
   await goInside(page);
@@ -62,7 +62,7 @@ export async function listDiagramNodes(page: Page): Promise<string[]> {
 
 export { isShown };
 
-/** Records and notices: press "Mark as read" on every unread provider notice. Returns how many were marked. */
+/** Records and notices: press "Mark read" on every unread provider notice. Returns how many were marked. */
 export async function recordsReadNotices(page: Page): Promise<number> {
   await closeCloseup(page);
   await goInside(page);
@@ -70,7 +70,7 @@ export async function recordsReadNotices(page: Page): Promise<number> {
   let n = 0;
   const btn = d.locator('button[data-rp-act="read"]');
   while ((await btn.count()) > 0 && n < 10) {
-    await activate(page, btn.first(), 'notice Mark as read');
+    await activate(page, btn.first(), 'notice Mark read');
     n++;
     await page.waitForTimeout(200);
   }
@@ -106,7 +106,7 @@ export async function powerSetMode(page: Page, partId: string, modeId: string): 
   await expect(sel, `Power table lists ${partId}`).toBeVisible();
   await sel.check();
   await d.locator('[data-power-action="apply"]').click();
-  await d.locator(`[data-power-visit="${partId}"]`).click();
+  await goToPartFromSheet(page, d, partId);
   const control = page.locator(`#part-closeup-modal [data-equipment-mode="${modeId}"]`);
   await expect(control).toBeVisible();
   await control.click();

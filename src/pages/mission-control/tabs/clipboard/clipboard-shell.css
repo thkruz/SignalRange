@@ -1,0 +1,307 @@
+/* Pencil write-ins: Caveat (SIL OFL 1.1, licence beside the font file), bundled so nothing is fetched at runtime */
+@font-face {
+  font-family: 'Caveat';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('../../../../assets/fonts/caveat/caveat-latin.woff2') format('woff2');
+}
+
+/* The C6 field clipboard: one board held fullscreen, paper sheets under a steel clip, page tabs on the right edge */
+.cbk {
+  --cbk-ink: #26211a;
+  --cbk-pencil: #34383f;
+  --cbk-rule: #9b8a68;
+  --cbk-stamp: #8a2a22;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 40%, #4b3d2c 0, #2a2118 70%);
+}
+
+.cbk-board {
+  position: relative;
+  height: calc(100% - 52px);
+  max-height: 1000px;
+  /* The art's own proportions (553 x 860): drawn at its native ratio, never stretched */
+  aspect-ratio: 553 / 860;
+  max-width: calc(100% - 150px);
+  margin-right: 70px;
+  background: var(--cbk-board) center / 100% 100% no-repeat;
+  filter: drop-shadow(0 18px 28px #000a);
+}
+
+/* The sheet sits inside the board, under the clip */
+.cbk-paper {
+  position: absolute;
+  inset: 15% 8.5% 5.5% 8.5%;
+  overflow: auto;
+  background: var(--cbk-paper) center / 260px 260px;
+  color: var(--cbk-ink);
+  box-shadow: 0 1px 3px #0007, inset 0 0 22px #6b552a33;
+  scrollbar-width: thin;
+  scrollbar-color: #8c7a58 transparent;
+}
+
+/* The workspace's own content frame must not paint over the paper */
+.cbk-paper .canvas-content {
+  background: none;
+  color: var(--cbk-ink);
+  border: 0;
+  /* The paper is the one scroller, so a sheet's foot can stay pinned to it */
+  overflow: visible;
+  height: auto;
+}
+
+.cbk-paper .site-tab .site-tab-col {
+  overflow: visible;
+  height: auto;
+  max-height: none;
+}
+
+/* The held sheet replaces the workspace chrome: no card, no ruled backing, no web padding */
+.immersive-paper .cbk-paper :is(.site-tab, .cbk-cover) {
+  height: auto;
+  min-height: 0;
+  background: none;
+  padding: 18px 6% 26px;
+  color: var(--cbk-ink);
+}
+
+.immersive-paper .cbk-paper .site-tab [role='tabpanel'] {
+  background: none;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+/* Page tabs: paper tabs sticking out of the right edge of the board */
+.cbk-tabs {
+  position: absolute;
+  top: 17%;
+  left: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-left: -6px;
+}
+
+.cbk-tabs button {
+  position: relative;
+  width: 128px;
+  padding: 10px 12px 10px 14px;
+  text-align: left;
+  font: 600 14px/1.15 Georgia, 'Times New Roman', serif;
+  color: #3a2f20;
+  background: #cdbb93 var(--cbk-paper) center / 160px;
+  border: 0;
+  border-radius: 0 7px 7px 0;
+  box-shadow: 2px 2px 5px #0008;
+  cursor: pointer;
+  transform: translateX(-10px);
+  transition: transform 0.12s;
+}
+
+.cbk-tabs button:hover,
+.cbk-tabs button:focus-visible {
+  transform: translateX(-3px);
+}
+
+.cbk-tabs button:focus-visible {
+  outline: 2px solid #f2dd9c;
+  outline-offset: 2px;
+}
+
+.cbk-tabs button[aria-pressed='true'] {
+  transform: translateX(0);
+  background-color: #e6d8b5;
+  color: #1c150b;
+  box-shadow: 3px 2px 7px #000a;
+}
+
+.cbk-tabs button[data-badge]::after {
+  content: attr(data-badge);
+  position: absolute;
+  top: -6px;
+  right: 6px;
+  min-width: 18px;
+  padding: 1px 5px;
+  font: 700 11px/1.3 Georgia, serif;
+  text-align: center;
+  color: #f6ead0;
+  background: var(--cbk-stamp);
+  border-radius: 9px;
+}
+
+/* The put-down tag hangs from the foot of the board */
+.cbk-board .cbk-leave {
+  position: absolute;
+  left: 50%;
+  right: auto;
+  top: auto;
+  bottom: 9px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+/* Cover sheet: the shift package over the printed task sheet */
+.cbk-cover {
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+.cbk-cover-head {
+  border-bottom: 2px solid var(--cbk-ink);
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+}
+
+.cbk-kicker {
+  margin: 0;
+  font: 700 11px/1 'Courier New', monospace;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #5a4a30;
+}
+
+.cbk-cover h2 {
+  margin: 6px 0 2px;
+  font: 700 24px/1.15 Georgia, serif;
+  color: var(--cbk-ink);
+}
+
+.cbk-subtitle {
+  margin: 0 0 8px;
+  font-style: italic;
+  color: #4a3d28;
+}
+
+.cbk-brief {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.cbk-tasks-title {
+  margin: 0 0 6px;
+  font: 700 12px/1 'Courier New', monospace;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #5a4a30;
+}
+
+/* The objectives checklist, restyled as a printed task sheet with read-only tick boxes */
+.cbk-checklist,
+.cbk-checklist :is(.objectives-checklist, .objective-item, .objective-header, .objective-conditions, .condition-item) {
+  background: none;
+  color: var(--cbk-ink);
+  border-color: var(--cbk-rule);
+  box-shadow: none;
+}
+
+.cbk-checklist .objective-item {
+  margin: 0 0 10px;
+  padding: 6px 0 8px;
+  border: 0;
+  border-bottom: 1px dashed var(--cbk-rule);
+}
+
+.cbk-checklist .objective-item:not(.active) {
+  opacity: 0.72;
+}
+
+.cbk-checklist .condition-item {
+  position: relative;
+  padding-left: 26px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.cbk-checklist .condition-item::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 3px;
+  width: 13px;
+  height: 13px;
+  border: 1.5px solid var(--cbk-ink);
+  background: none;
+}
+
+.cbk-checklist .condition-item.completed::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 0;
+  width: 9px;
+  height: 17px;
+  border-right: 3px solid var(--cbk-pencil);
+  border-bottom: 3px solid var(--cbk-pencil);
+  transform: rotate(40deg) scale(0.8);
+}
+
+.cbk-checklist :is(.condition-icon, .condition-status, .status-icon, .objective-chevron) {
+  display: none;
+}
+
+.cbk-checklist :is(.condition-quiz-btn, .condition-hint-btn, .condition-form-btn) {
+  font: 600 12px Georgia, serif;
+  color: var(--cbk-ink);
+  background: none;
+  border: 1.5px solid var(--cbk-ink);
+  border-radius: 2px;
+  padding: 1px 8px;
+  margin-left: 6px;
+  cursor: pointer;
+}
+
+.cbk-checklist :is(.condition-quiz-btn, .condition-hint-btn, .condition-form-btn):focus-visible {
+  outline: 2px solid var(--cbk-stamp);
+  outline-offset: 2px;
+}
+
+.cbk-checklist .objective-header {
+  cursor: pointer;
+}
+
+.cbk-checklist .objective-header:focus-visible {
+  outline: 2px solid var(--cbk-stamp);
+  outline-offset: 2px;
+}
+
+/* Print the cover checklist: no highlighter bars behind objective titles. */
+.cbk-checklist .objective-header,
+.cbk-checklist .objective-header strong,
+.cbk-checklist .objective-title {
+  background: none;
+  box-shadow: none;
+  text-shadow: none;
+}
+
+.cbk-checklist .objective-item .objective-header strong {
+  background: none !important;
+  color: var(--cbk-ink, #1f1a14);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+  text-decoration-color: #8f7e5c;
+}
+
+.cbk-checklist .objective-item.locked .objective-header strong {
+  color: #8a8478;
+  text-decoration-style: dotted;
+}
+
+.cbk-checklist .objective-item.completed .objective-header strong {
+  text-decoration-color: #4f7a45;
+}
+
+.cbk-checklist .objective-item.active .objective-header strong {
+  text-decoration-color: #b8741a;
+}
+
+.cbk-checklist .objective-item.failed .objective-header strong {
+  text-decoration-color: #a3322a;
+}

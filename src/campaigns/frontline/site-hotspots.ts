@@ -462,6 +462,8 @@ export const CLOSEUPS: Record<CloseupId, CloseupDef> = {
     ],
     probes: [{ id: 'cu-router-cable', target: 'skylink-cable:router', label: 'SkyLink cable plug at the router', x: 0.455, y: 0.6 }],
     cables: [],
+    /** The painted router has no LED strip: the lenses sit on the front edge of its shell */
+    leds: [{ target: 'skylink-router', x: 0.6, y: 0.555 }],
   },
   modem: {
     id: 'modem',
@@ -474,6 +476,8 @@ export const CLOSEUPS: Record<CloseupId, CloseupDef> = {
     ],
     probes: [{ id: 'cu-modem-ifl', target: 'vsat-ifl:modem', label: 'IFL F connector at the modem', x: 0.705, y: 0.575 }],
     cables: [],
+    /** Over the six painted green bars on the modem's front panel */
+    leds: [{ target: 'vsat-modem', x: 0.608, y: 0.55 }],
   },
   laptop: {
     id: 'laptop',
@@ -717,6 +721,8 @@ const FORWARD_ROUTER: CloseupDef = {
   regions: ROUTER_BASE_REGIONS,
   probes: ROUTER_BASE_PROBES,
   cables: [],
+  /** The painted case router has no LEDs: the lenses sit on its front face beside the DC lead */
+  leds: [{ target: 'skylink-router', x: 0.32, y: 0.575 }],
 };
 
 /** Router case with the EuroSat modem fitted (S11 on): adds the modem, its DC lead and the IFL probe at the right wall bulkhead */
@@ -730,6 +736,8 @@ export const FORWARD_ROUTER_EUROSAT: CloseupDef = {
     { id: 'cu-modem-dc', target: 'modem:dc', label: 'DC input', shape: cr(1105, 640, 1200, 735) },
   ],
   probes: [...ROUTER_BASE_PROBES, { id: 'cu-modem-ifl', target: 'vsat-ifl:modem', label: 'IFL F connector at the case wall', ...cp(1359, 598) }],
+  /** The modem's three painted indicator dots sit at the left of its front panel */
+  leds: [...(FORWARD_ROUTER.leds ?? []), { target: 'vsat-modem', x: 0.655, y: 0.645 }],
 };
 
 /** Cable run at the router case wall (router in the front pocket, modem pocket empty). The thin lead in the painting has no plant model, so it has no hotspot. */

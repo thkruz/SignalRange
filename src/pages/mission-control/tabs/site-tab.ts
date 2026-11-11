@@ -7,7 +7,9 @@ import { qs } from '@app/engine/utils/query-selector';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { ObjectivesManager } from '@app/objectives/objectives-manager';
+import { ClipboardView, clipboardPages } from '@app/pages/mission-control/tabs/clipboard/clipboard-view';
 import { FieldHandoverPanel } from '@app/pages/mission-control/tabs/field-handover-panel';
+import { FIELD_KIT, type KitSheet, kitSheetsNav, type MissionItem, missionItemBridge, offeredSheets } from '@app/pages/mission-control/tabs/field-kit';
 import { FieldNotebookPanel, type HypothesisScope, type NotebookTarget } from '@app/pages/mission-control/tabs/field-notebook-panel';
 import { FieldPathDiagramPanel } from '@app/pages/mission-control/tabs/field-path-diagram-panel';
 import { FieldPowerPanel, powerPanelRelevant } from '@app/pages/mission-control/tabs/field-power-panel';
@@ -16,6 +18,7 @@ import { FieldServicePanel } from '@app/pages/mission-control/tabs/field-service
 import { FieldWorkloadPanel } from '@app/pages/mission-control/tabs/field-workload-panel';
 import { formStepState, sampleStepState } from '@app/pages/mission-control/tabs/form-step-state';
 import { buildNotebookTargets } from '@app/pages/mission-control/tabs/notebook-targets';
+import { TentControl } from '@app/pages/mission-control/tent-control';
 import { hypothesisFeedback, hypothesisRequirementRoutes } from '@app/physical/evidence-predicates';
 import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import type { SampleProvenance } from '@app/physical/service-types';
@@ -34,7 +37,7 @@ const SITE_WORKSPACES = [
   ['scene', 'Equipment'],
   ['power', 'Power'],
   ['service', 'Laptop'],
-  ['workload', 'Workloads'],
+  ['workload', 'MissionRunner'],
   ['path', 'Service paths'],
   ['notebook', 'Notebook'],
   ['handover', 'Handover'],
@@ -52,6 +55,13 @@ const SITE_WORKSPACES = [
 export class SiteTab extends BaseElement {
   static source: SampleProvenance = 'local-probe';
   private static desktopRequested_ = false;
+  /** Unread provider notices, as the equipment log last counted them (marks the log's tab on the clipboard) */
+  private static unreadNotices_ = 0;
+
+  static unreadNotices(): number {
+    return SiteTab.unreadNotices_;
+  }
+
   /** Sitting down at the laptop shows its desktop; the next laptop view starts there */
   static requestDesktop(): void {
     SiteTab.source = 'local-probe';
@@ -132,6 +142,7 @@ export class SiteTab extends BaseElement {
       (seconds) => PhysicalPlantService.plantOrNull()?.spendTime(seconds),
       (serviceId) => sampleStepState(serviceId, ObjectivesManager.getInstance().getObjectiveStates())
     );
+    this.servicePanel_.radio.conversationsAvailable = () => SiteTab.missionAvailable('dialog-history');
     this.workloadPanel_ = new FieldWorkloadPanel(
       qs<HTMLElement>('#site-workload-panel'),
       () => PhysicalPlantService.workloadsOrNull(),
@@ -366,9 +377,9 @@ export class SiteTab extends BaseElement {
 
   private activateSpot_(spot: SVGElement): void {
     if (spot.dataset.action === 'go-outside') {
-      this.setView('outside');
+      this.useFlap_('outside');
     } else if (spot.dataset.action === 'go-inside') {
-      this.setView('inside');
+      this.useFlap_('inside');
     } else {
       PartCloseupModal.getInstance().showCloseup(spot.dataset.closeup as never);
     }
@@ -384,11 +395,44 @@ export class SiteTab extends BaseElement {
       spots.find((item) => item.closeup && item.partIds.includes(partId)) ??
       spots.find((item) => item.closeup && closeupFor(item.closeup, mode, has).regions.some((region) => region.target === partId));
     if (!spot?.closeup) return;
+    const closeupId = spot.closeup;
+    // The sheet is put down first (the Site tab is the way back from every held object)
     EventBus.getInstance().emit(Events.SWITCH_TAB, { tabId: 'site' });
-    if (!this.isForward_()) this.setView(spot.view);
-    const closeup = PartCloseupModal.getInstance();
-    closeup.showCloseup(spot.closeup);
-    closeup.selectTarget(partId);
+    const show = (): void => {
+      const closeup = PartCloseupModal.getInstance();
+      closeup.showCloseup(closeupId);
+      closeup.selectTarget(partId);
+    };
+    if (this.isForward_() || !plant) {
+      show();
+
+      return;
+    }
+    const here = plant.isOutside() ? 'outside' : 'inside';
+    const tent = TentControl.active();
+    if (spot.view === here || !tent) {
+      this.setView(spot.view);
+      show();
+
+      return;
+    }
+    // The part is on the other side of the tent flap: the same trip and confirm the flap asks for. A held sheet is a
+    // modal, so the ask can only be answered once it is down; Cancel picks the sheet back up with focus on Go to.
+    tent.requestToggle(
+      () => {
+        this.setView(plant.isOutside() ? 'outside' : 'inside');
+        show();
+      },
+      () => {
+        EventBus.getInstance().emit(Events.SWITCH_TAB, { tabId: 'field-power' });
+        requestAnimationFrame(() => this.focusGoTo_(partId));
+      }
+    );
+  }
+
+  /** Put keyboard focus back on a sheet's Go to button */
+  private focusGoTo_(partId: string): void {
+    document.querySelector<HTMLElement>(`#site-power-panel button[data-power-visit="${CSS.escape(partId)}"]`)?.focus({ preventScroll: true });
   }
 
   protected get html_(): string {
@@ -405,14 +449,7 @@ export class SiteTab extends BaseElement {
           <button type="button" class="btn btn-sm btn-outline-warning" id="site-open-trainer" style="display:none">Trainer</button>
         </div>
         <div class="site-stage-box" id="site-scene-panel"><div class="pp-stage" id="site-stage" style="--pp-ar:${this.aspect_()}">${this.stageHtml_()}</div></div>
-        <nav class="site-field-kit" aria-label="Field kit">
-          <button data-field-object="field-notebook">Open notebook</button>
-          <button data-field-object="field-handover">Pick up handover clipboard</button>
-          <button data-field-object="field-records">Open equipment log</button>
-          <button data-field-object="field-path">Unfold wiring diagram</button>
-          <button data-field-object="field-power">Open power plan</button>
-          <button data-field-source="pilot-report">Use radio</button>
-        </nav>
+        <nav class="site-field-kit fk-tray" aria-label="Field kit">${SiteTab.trayHtml_()}</nav>
         <div id="site-power-panel" style="display:none"></div>
         <div id="site-service-panel" style="display:none"></div>
         <div id="site-workload-panel" style="display:none"></div>
@@ -425,10 +462,76 @@ export class SiteTab extends BaseElement {
     `;
   }
 
+  /** The kit tray: one art object per kit item; what each opens is filled in by syncWorkspaces_ */
+  private static trayHtml_(): string {
+    return (
+      FIELD_KIT.map(
+        (item) =>
+          `<button type="button" class="fk-item" data-field-kit="${item.id}"${item.id === 'radio' ? ' data-field-source="pilot-report"' : ''} aria-label="${item.label}" title="${item.label}"><img src="${item.image}" alt="" draggable="false" /><span>${item.label}</span></button>`
+      ).join('') + SiteTab.crateHtml_()
+    );
+  }
+
+  /** The spares crate at the end of the tray: under the field HUD it carries the spares tally the strip used to */
+  private static crateHtml_(): string {
+    return `<div class="fk-crate" title="Spare parts in the crate"><span class="fk-crate-box"><span class="fk-crate-stencil">Spares</span><span class="fk-crate-count" id="site-spares-crate">0</span></span><span>Spares crate</span></div>`;
+  }
+
+  /** Whether a mission item (checklist, brief, dialog history...) exists in this scenario */
+  static missionAvailable(mission: MissionItem): boolean {
+    return missionItemBridge.available(mission);
+  }
+
+  /** Open one page of a kit object: a field workspace, or a mission window after putting the object down */
+  static openSheet(sheet: KitSheet): void {
+    if ('tabId' in sheet) {
+      EventBus.getInstance().emit(Events.SWITCH_TAB, { tabId: sheet.tabId });
+
+      return;
+    }
+    EventBus.getInstance().emit(Events.SWITCH_TAB, { tabId: 'site' });
+    if ('clipboard' in sheet) {
+      SiteTab.openClipboard();
+
+      return;
+    }
+    missionItemBridge.open(sheet.mission);
+  }
+
+  /** Pick the clipboard up at its cover sheet */
+  static openClipboard(): void {
+    const offered = new Set(SiteTab.availableWorkspaces().map((item) => item.id));
+    ClipboardView.get().open(clipboardPages(offered, SiteTab.missionAvailable, () => SiteTab.openClipboard(), SiteTab.unreadNotices));
+  }
+
+  /** The tent flap: step out or back in through the tent control, so stepping out asks before it spends a trip */
+  private useFlap_(view: SiteView): void {
+    const tent = TentControl.active();
+    if (!tent || this.isForward_()) {
+      this.setView(view);
+
+      return;
+    }
+    tent.requestToggle(() => {
+      this.setView(PhysicalPlantService.plantOrNull()?.isOutside() ? 'outside' : 'inside');
+      // The scene repainted: the player stands at the flap on the other side, so focus goes there
+      this.dom_?.querySelector<SVGElement>('#site-stage [data-action="go-inside"], #site-stage [data-action="go-outside"]')?.focus({ preventScroll: true });
+    });
+  }
+
   protected addEventListeners_(): void {
     const root = qs<HTMLElement>('.site-tab');
     root.addEventListener('click', (ev) => {
       const target = ev.target as Element;
+      const mission = target.closest<HTMLElement>('[data-field-mission]');
+      if (mission) {
+        SiteTab.openSheet({ label: '', mission: mission.dataset.fieldMission as MissionItem });
+        return;
+      }
+      if (target.closest('[data-field-clipboard]')) {
+        SiteTab.openClipboard();
+        return;
+      }
       const object = target.closest<HTMLElement>('[data-field-object]');
       if (object) {
         EventBus.getInstance().emit(Events.SWITCH_TAB, { tabId: object.dataset.fieldObject! });
@@ -506,12 +609,14 @@ export class SiteTab extends BaseElement {
     this.notebookPanel_?.sync();
     this.handoverPanel_?.sync();
     this.recordsPanel_?.sync();
+    SiteTab.unreadNotices_ = this.recordsPanel_?.unreadCount() ?? 0;
     this.pathPanel_?.sync();
     this.syncWorkspaces_();
     const note = this.cache_('site-outside-note');
     if (note) note.style.display = outside && !forward ? '' : 'none';
     const spares = Object.values(plant.getSpares()).reduce((a, b) => a + b, 0);
     this.setText_('site-spares', String(spares));
+    this.setText_('site-spares-crate', String(spares));
     const net = internetPaths(plant);
     this.setText_('site-path-skylink', skylinkPathLabel(plant));
     this.setText_('site-path-vsat-name', forward ? 'EuroSat' : 'VSAT');
@@ -530,7 +635,21 @@ export class SiteTab extends BaseElement {
   /** One full-size workspace; scenario-inapplicable tools never appear in navigation. */
   private syncWorkspaces_(): void {
     const offered = new Set(SiteTab.availableWorkspaces().map((item) => item.id));
-    for (const button of this.dom_.querySelectorAll<HTMLElement>('[data-field-object]')) button.hidden = !offered.has(button.dataset.fieldObject!);
+    for (const item of FIELD_KIT) {
+      const button = this.dom_.querySelector<HTMLElement>(`[data-field-kit="${item.id}"]`);
+      if (!button || item.id === 'radio') continue;
+      // Picking an object up opens its first page the scenario offers
+      const first = offeredSheets(item, offered, SiteTab.missionAvailable)[0];
+      delete button.dataset.fieldObject;
+      delete button.dataset.fieldMission;
+      delete button.dataset.fieldClipboard;
+      if (first) {
+        if ('tabId' in first) button.dataset.fieldObject = first.tabId;
+        else if ('clipboard' in first) button.dataset.fieldClipboard = first.clipboard;
+        else button.dataset.fieldMission = first.mission;
+      }
+      button.hidden = !first;
+    }
     this.dom_.querySelector<HTMLElement>('.site-field-kit')?.toggleAttribute('hidden', this.workspace_ !== 'scene');
     const available = SITE_WORKSPACES.filter(([id]) => id === 'scene' || this.cache_(`site-${id}-panel`)?.style.display !== 'none');
     if (!available.some(([id]) => id === this.workspace_)) this.workspace_ = 'scene';
@@ -550,6 +669,15 @@ export class SiteTab extends BaseElement {
       }
     }
     this.notebookPanel_?.setImmersive(this.active_ && this.workspace_ === 'notebook');
+    if (this.active_ && this.workspace_ === 'notebook') this.addNotebookSheets_(offered);
+  }
+
+  /** The other books in the notebook's pocket (working document, campaign record, ops log) */
+  private addNotebookSheets_(offered: ReadonlySet<string>): void {
+    const dialog = document.querySelector<HTMLDialogElement>('dialog.fnb-immersive[open]');
+    if (!dialog || dialog.querySelector('.field-kit-sheets')) return;
+    const nav = kitSheetsNav('field-notebook', offered, SiteTab.missionAvailable, SiteTab.openSheet);
+    if (nav) dialog.prepend(nav);
   }
 
   private setText_(id: string, text: string): void {

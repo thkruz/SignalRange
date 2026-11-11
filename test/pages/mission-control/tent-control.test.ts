@@ -80,3 +80,79 @@ describe('TentControl', () => {
     expect(host.querySelector('#tent-control')).toBeNull();
   });
 });
+
+describe('TentControl.requestToggle (field HUD flap)', () => {
+  it('runs the follow-up only after the step out is confirmed, and drops it on cancel', () => {
+    const host = document.createElement('div');
+    const { plant } = fakePlant();
+    const control = new TentControl(host, () => plant);
+    expect(TentControl.active()).toBe(control);
+    const after = vi.fn();
+    control.requestToggle(after);
+    expect(after).not.toHaveBeenCalled();
+    host.querySelector<HTMLButtonElement>('#tent-cancel')!.click();
+    expect(after).not.toHaveBeenCalled();
+    expect(plant.goOutside).not.toHaveBeenCalled();
+    control.requestToggle(after);
+    host.querySelector<HTMLButtonElement>('#tent-confirm')!.click();
+    expect(plant.goOutside).toHaveBeenCalledTimes(1);
+    expect(after).toHaveBeenCalledTimes(1);
+    // Going back in needs no confirmation
+    const back = vi.fn();
+    control.requestToggle(back);
+    expect(plant.returnInside).toHaveBeenCalledTimes(1);
+    expect(back).toHaveBeenCalledTimes(1);
+    control.dispose();
+    expect(TentControl.active()).toBeNull();
+  });
+
+  it('moves focus to the confirm button, cancels on Escape and hands focus back to the flap', () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const flap = document.createElement('button');
+    document.body.append(flap);
+    const { plant } = fakePlant();
+    const control = new TentControl(host, () => plant);
+    flap.focus();
+    const after = vi.fn();
+    control.requestToggle(after);
+    expect(control.confirming).toBe(true);
+    expect(document.activeElement).toBe(host.querySelector('#tent-confirm'));
+    const box = host.querySelector<HTMLElement>('#tent-confirm-box')!;
+    expect(box.getAttribute('role')).toBe('group');
+    const esc = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    box.dispatchEvent(esc);
+    expect(esc.defaultPrevented).toBe(true);
+    expect(control.confirming).toBe(false);
+    expect(plant.goOutside).not.toHaveBeenCalled();
+    expect(after).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(flap);
+    control.dispose();
+    host.remove();
+    flap.remove();
+  });
+});
+
+describe('Go to a part across the flap (the sheet is down while the ask is open)', () => {
+  it('spends exactly one trip on confirm and none on cancel; Cancel runs the pick-the-sheet-back-up callback', () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const { plant, state } = fakePlant();
+    const control = new TentControl(host, () => plant);
+    // What SiteTab.visitPart_ passes: the close-up on confirm, the sheet picked back up on cancel
+    const showCloseup = vi.fn();
+    const pickSheetUp = vi.fn();
+    control.requestToggle(showCloseup, pickSheetUp);
+    host.querySelector<HTMLButtonElement>('#tent-cancel')!.click();
+    expect(state.trips).toBe(0);
+    expect(showCloseup).not.toHaveBeenCalled();
+    expect(pickSheetUp).toHaveBeenCalledTimes(1);
+    control.requestToggle(showCloseup, pickSheetUp);
+    host.querySelector<HTMLButtonElement>('#tent-confirm')!.click();
+    expect(state.trips).toBe(1);
+    expect(showCloseup).toHaveBeenCalledTimes(1);
+    expect(pickSheetUp).toHaveBeenCalledTimes(1);
+    control.dispose();
+    host.remove();
+  });
+});

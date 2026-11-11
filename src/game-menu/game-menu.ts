@@ -4,6 +4,7 @@ import { HamStationService } from '@app/ham/ham-station-service';
 import { setupFullscreenButton } from '@app/pages/layout/header/fullscreen-button';
 import { selectionText } from '@app/pages/selection-browser';
 import { PhysicalPlantService } from '@app/physical/physical-plant-service';
+import { minimalHudShown } from '@app/presentation/minimal-hud/minimal-hud-policy';
 import { Router } from '@app/router';
 import { ScenarioManager } from '@app/scenario-manager';
 import { SimClock } from '@app/simulation/sim-clock';
@@ -144,7 +145,7 @@ export class GameMenu {
           ? selectionMenu
             ? `<nav class="game-menu-actions" aria-label="Game menu"><button data-action="resume" class="game-menu-primary" autofocus>Continue browsing</button><button data-action="settings">Settings</button><a class="game-menu-quit" href="https://signalrange.space/" rel="noreferrer" referrerpolicy="no-referrer">Quit game</a></nav>`
             : `<p class="game-menu-mission">${selectionText(mission?.title ?? 'Mission')}</p><p class="game-menu-note">Simulation and dialogue paused.</p>
-        <nav class="game-menu-actions" aria-label="Pause menu"><button data-action="resume" class="game-menu-primary" autofocus>Resume mission</button><button data-action="settings">Settings</button><button data-action="restart">Restart mission</button><button data-action="return">Return to missions</button></nav>`
+        <nav class="game-menu-actions" aria-label="Pause menu"><button data-action="resume" class="game-menu-primary" autofocus>Resume mission</button><button data-action="settings">Settings</button><button data-action="restart">Restart mission</button><button data-action="return">Return to missions</button></nav>${this.quickHtml_(mission !== null)}`
           : `<p class="game-menu-mission">${selectionText(mission?.title ?? 'Mission')}</p><p>${screen === 'restart' ? 'Start this mission from the beginning. This replaces its checkpoint and current run progress; completed mission status is preserved.' : 'Return to mission selection. Your last saved checkpoint will be available to continue.'}</p><p id="game-menu-save-note" class="game-menu-note"></p>
         <div class="game-menu-actions"><button data-action="confirm" class="game-menu-primary">${screen === 'restart' ? 'Restart mission' : 'Save and return'}</button><button data-action="back">Keep playing</button></div>`;
     this.dialog_!.innerHTML =
@@ -175,7 +176,35 @@ export class GameMenu {
       };
     });
     if (screen === 'settings') this.bindSettings_();
+    if (screen === 'pause') this.bindQuick_();
     this.dialog_!.querySelector<HTMLElement>('[autofocus], .game-menu-body button, input')?.focus();
+  }
+
+  /**
+   * The field HUD hides the site header, so its sound and fullscreen switches live here, on the pause screen.
+   * Other campaigns keep them in the header.
+   */
+  private quickHtml_(inMission: boolean): string {
+    if (!inMission || !minimalHudShown()) return '';
+    const prefs = AudioPreferences.getInstance();
+
+    return `<div class="game-menu-quick" role="group" aria-label="Sound and screen"><button type="button" data-quick="sfx" aria-pressed="${prefs.sfxEnabled}">Equipment sounds</button><button type="button" data-quick="ambience" aria-pressed="${prefs.ambienceEnabled}">Ambience</button><button type="button" id="game-menu-fullscreen">Fullscreen</button><span id="game-menu-fullscreen-status" class="visually-hidden" role="status"></span></div>`;
+  }
+
+  private bindQuick_(): void {
+    const root = this.dialog_!;
+    const fullscreen = root.querySelector<HTMLButtonElement>('#game-menu-fullscreen');
+    if (!fullscreen) return;
+    const audio = AudioPreferences.getInstance();
+    root.querySelectorAll<HTMLButtonElement>('[data-quick]').forEach((button) => {
+      button.onclick = () => {
+        const sfx = button.dataset.quick === 'sfx';
+        const on = !(sfx ? audio.sfxEnabled : audio.ambienceEnabled);
+        audio.set(sfx ? { sfx: on } : { ambience: on });
+        button.setAttribute('aria-pressed', String(on));
+      };
+    });
+    this.cleanup_ = setupFullscreenButton(fullscreen, root.querySelector('#game-menu-fullscreen-status')!);
   }
 
   private settingsHtml_(): string {

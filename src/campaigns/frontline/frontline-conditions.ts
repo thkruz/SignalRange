@@ -113,7 +113,7 @@ export function reserveUnreachableMessage(shiftLabel = 'shift end'): string {
   }
   const when = o.bestSecondsToReserve === null ? '' : ` The charge falls below the reserve about ${Math.max(1, Math.round(o.bestSecondsToReserve / 60))} min from now.`;
 
-  return `The ${wholeWh(o.reserveWh)} reserve can no longer be held to ${shiftLabel}. The Power panel forecast now ends at ${wholeWh(o.currentProjectedWh)}, and even with every terminal in its lowest-power mode it ends at ${wholeWh(o.bestProjectedWh)}.${when} Next time, check which terminals are drawing power and park the one you are not using early.`;
+  return `The ${wholeWh(o.reserveWh)} reserve can no longer be held to ${shiftLabel}. The forecast on the power planning sheet now ends at ${wholeWh(o.currentProjectedWh)}, and even with every terminal in its lowest-power mode it ends at ${wholeWh(o.bestProjectedWh)}.${when} Next time, check which terminals are drawing power and park the one you are not using early.`;
 }
 
 /**

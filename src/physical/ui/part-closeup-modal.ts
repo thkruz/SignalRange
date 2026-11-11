@@ -13,7 +13,6 @@ import { DraggableModal } from '@app/engine/ui/draggable-modal';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { displayViewport } from '@app/game-menu/display-viewport';
-import { FieldServicePanel } from '@app/pages/mission-control/tabs/field-service-panel';
 import type { PhysicalPlantManager } from '@app/physical/physical-plant-manager';
 import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import type { PlantWeather } from '@app/physical/physical-plant-types';
@@ -21,6 +20,8 @@ import { DISRUPTIVE_ACTIONS, SWAP_COSTS_S, VERB_COSTS_S } from '@app/physical/pl
 import { ImmersiveView } from '@app/presentation/immersive-view';
 import { getAssetUrl } from '@app/utils/asset-url';
 import { activeLayers, evidenceCallouts } from './closeup-evidence';
+import { type FaceTone, fpPlate, fpPush, fpSelector } from './faceplate-kit';
+import { FaceplateLights, type LedAnchor } from './faceplate-lights';
 import { pointAlong, shapeCentre, shapeSvg, svgOpen, VIEW_W, viewHeight } from './plant-svg';
 import {
   escapeHtml,
@@ -38,6 +39,7 @@ import {
   verbsFor,
 } from './plant-ui-helpers';
 import type { CloseupDef, CloseupId } from './site-types';
+import './faceplate.css';
 import './plant-ui.css';
 
 interface LogLine {
@@ -62,14 +64,18 @@ const METER_TOOLS: MeterTool[] = ['multimeter', 'cable-tester'];
 /** Observation first, then fixes; the disruptive ones are drawn last and styled secondary */
 const VERB_ORDER: UiVerb[] = ['inspect', 'wiggle', 'feel', 'tighten', 'seal', 'refuel', 'setMode', 'clearSnow', 'removeNet', 'reroute', 'reseat', 'swap', 'powerCycle'];
 
-const PANEL_W = 340;
+const PANEL_W = 360;
+const THROW_MS = 650;
+const CONTROL_SELECTOR = '[data-verb], [data-measure], [data-equipment-mode], [data-open-laptop]';
 const FRAME_PAD = 12;
 const TITLE_H = 44;
 const MIN_BODY_H = 520;
 
 export class PartCloseupModal extends DraggableModal {
   private readonly immersive_ = new ImmersiveView();
-  private indicatorPanels_: FieldServicePanel[] = [];
+  private lights_: FaceplateLights | null = null;
+  /** Controls the player just used, shown pressed or thrown for a moment; keyed by part and action, each with its own timer */
+  private readonly thrown_ = new Map<string, ReturnType<typeof setTimeout>>();
   private static readonly MODAL_ID = 'part-closeup-modal';
   private static instance_: PartCloseupModal | null = null;
 
@@ -103,7 +109,8 @@ export class PartCloseupModal extends DraggableModal {
 
   static destroy(): void {
     PartCloseupModal.instance_?.close();
-    for (const panel of PartCloseupModal.instance_?.indicatorPanels_ ?? []) panel.destroy();
+    PartCloseupModal.instance_?.clearThrown_();
+    PartCloseupModal.instance_?.lights_?.dispose();
     PartCloseupModal.instance_?.unsubscribe_();
     document.getElementById(`${PartCloseupModal.MODAL_ID}-container`)?.remove();
     PartCloseupModal.instance_ = null;
@@ -145,7 +152,7 @@ export class PartCloseupModal extends DraggableModal {
       this.render_();
       this.bindOnce_();
       if (this.boxEl) this.immersive_.open(this.boxEl, def.title, 'equipment', () => this.close());
-      this.buildIndicators_();
+      this.buildLights_();
     });
     document.removeEventListener('keydown', this.boundKeydown_, true);
     document.addEventListener('keydown', this.boundKeydown_, true);
@@ -153,6 +160,7 @@ export class PartCloseupModal extends DraggableModal {
   }
 
   override close(cb?: () => void): void {
+    this.clearThrown_();
     this.immersive_.close();
     const id = this.def_?.id;
     this.unsubscribe_();
@@ -224,28 +232,32 @@ export class PartCloseupModal extends DraggableModal {
     this.render_();
   }
 
-  private buildIndicators_(): void {
-    for (const panel of this.indicatorPanels_) panel.destroy();
-    this.indicatorPanels_ = [];
+  /** The status lights this close-up's faceplate carries: services whose path runs through one of its parts */
+  private buildLights_(): void {
+    this.lights_?.dispose();
+    this.lights_ = null;
     const host = this.root_()?.querySelector<HTMLElement>('#pcu-indicators');
     if (!host) return;
-    host.replaceChildren();
+    const artHost = this.root_()?.querySelector<HTMLElement>('#pcu-lenses') ?? null;
     const model = PhysicalPlantService.servicesOrNull();
     const targets = new Set(this.def_?.regions.map((region) => region.target));
+    const ids: string[] = [];
+    const anchors: Record<string, LedAnchor | undefined> = {};
     for (const id of model?.getServiceIds() ?? []) {
       const path = model!.getPath(id);
       if (!path || ![path.terminalPartId, ...path.localPartIds.filter((part) => !part.includes('laptop'))].some((part) => targets.has(part))) continue;
-      const slot = document.createElement('section');
-      host.append(slot);
-      const panel = new FieldServicePanel(
-        slot,
-        () => PhysicalPlantService.servicesOrNull(),
-        () => PhysicalPlantService.plantOrNull()?.getTimeSeconds() ?? 0,
-        (seconds) => PhysicalPlantService.plantOrNull()?.spendTime(seconds)
-      );
-      panel.setSource('device-indicator', id);
-      this.indicatorPanels_.push(panel);
+      ids.push(id);
+      const led = this.def_?.leds?.find((anchor) => [path.terminalPartId, ...path.localPartIds].includes(anchor.target));
+      if (led) anchors[id] = { x: led.x, y: led.y };
     }
+    this.lights_ = new FaceplateLights(
+      host,
+      artHost,
+      () => PhysicalPlantService.servicesOrNull(),
+      () => PhysicalPlantService.plantOrNull()?.getTimeSeconds() ?? 0,
+      (seconds) => PhysicalPlantService.plantOrNull()?.spendTime(seconds)
+    );
+    this.lights_.setServices(ids, anchors);
   }
 
   protected getModalContentHtml(): string {
@@ -253,7 +265,7 @@ export class PartCloseupModal extends DraggableModal {
       <div class="pp-closeup">
         <div class="pp-closeup-body">
           <div class="pp-stage-box" id="pcu-stagebox">
-            <div class="pp-stage" id="pcu-stage"><img id="pcu-img" alt="" draggable="false"/><div class="pp-layers" id="pcu-layers"></div><div class="pp-overlay" id="pcu-overlay"></div><div class="pp-evidence" id="pcu-evidence"></div></div>
+            <div class="pp-stage" id="pcu-stage"><img id="pcu-img" alt="" draggable="false"/><div class="pp-layers" id="pcu-layers"></div><div class="pp-overlay" id="pcu-overlay"></div><div class="pp-evidence" id="pcu-evidence"></div><div class="pp-lenses" id="pcu-lenses"></div></div>
             <div class="pp-callout" id="pcu-callout" role="presentation" hidden></div>
           </div>
           <div class="pp-side">
@@ -263,9 +275,12 @@ export class PartCloseupModal extends DraggableModal {
               <div class="pp-target" id="pcu-target">Nothing selected</div>
               <div class="pp-tags" id="pcu-tags"></div>
             </div>
-            <div>
-              <div class="pp-section-title">Actions</div>
-              <div class="pp-verbs" id="pcu-verbs"></div>
+            <div class="fp-panel" id="pcu-faceplate">
+              <span class="fp-screw fp-screw-tl" aria-hidden="true"></span><span class="fp-screw fp-screw-tr" aria-hidden="true"></span><span class="fp-screw fp-screw-bl" aria-hidden="true"></span><span class="fp-screw fp-screw-br" aria-hidden="true"></span>
+              <div id="pcu-indicators"></div>
+              <div class="fp-controls" role="group" aria-label="Controls">
+                <div class="pp-verbs" id="pcu-verbs"></div>
+              </div>
             </div>
             <div>
               <div class="pp-section-title">Latest result</div>
@@ -275,7 +290,6 @@ export class PartCloseupModal extends DraggableModal {
               <div class="pp-section-title">History</div>
               <div class="pp-log" id="pcu-log"></div>
             </div>
-            <div id="pcu-indicators"></div>
             <div class="pp-foot">
               <label class="pp-foot-row"><input id="pcu-points" type="checkbox" /><span>Show interaction points</span></label>
               <details class="pp-trainer-foot">
@@ -329,6 +343,12 @@ export class PartCloseupModal extends DraggableModal {
     if (!plant) {
       return;
     }
+    const lens = el.closest<HTMLElement>('[data-fp-led]');
+    if (lens) {
+      // FaceplateLights has already taken the look and patched the lens; show the reading beside it
+      this.showCallout_(lens);
+      return;
+    }
     const mode = el.closest<HTMLElement>('[data-equipment-mode]');
     if (mode && this.selected_) {
       const t = formatSimTime(plant.getTimeSeconds());
@@ -347,12 +367,14 @@ export class PartCloseupModal extends DraggableModal {
     }
     const measureBtn = el.closest<HTMLElement>('[data-measure]');
     if (measureBtn && this.selected_) {
+      this.markThrown_(measureBtn);
       this.measure_(plant, measureBtn.dataset.measure as MeterTool, this.selected_);
 
       return;
     }
     const verbBtn = el.closest<HTMLElement>('[data-verb]');
     if (verbBtn && this.selected_) {
+      this.markThrown_(verbBtn);
       this.perform_(plant, verbBtn.dataset.verb as UiVerb, this.selected_);
 
       return;
@@ -446,7 +468,7 @@ export class PartCloseupModal extends DraggableModal {
   // ------------------------------------------------------------------ render
 
   private render_(): void {
-    for (const panel of this.indicatorPanels_) panel.sync();
+    this.lights_?.sync();
     const root = this.root_();
     const plant = PhysicalPlantService.plantOrNull();
     const def = this.def_;
@@ -534,7 +556,7 @@ export class PartCloseupModal extends DraggableModal {
 
   private showCallout_(el: Element): void {
     const root = this.root_();
-    const hit = el.closest?.('#pcu-overlay [data-label]') as HTMLElement | null;
+    const hit = el.closest?.('#pcu-overlay [data-label], #pcu-lenses [data-label]') as HTMLElement | null;
     const box = root?.querySelector<HTMLElement>('#pcu-stagebox');
     const callout = root?.querySelector<HTMLElement>('#pcu-callout');
     if (!hit || !box || !callout) {
@@ -568,12 +590,34 @@ export class PartCloseupModal extends DraggableModal {
 
   /**
    * The 1 s refresh must not rebuild the action buttons when nothing changed: a click whose mousedown and mouseup straddle
-   * a rebuild lands on a detached button and does nothing (c6-s15-F2, the "Inspect does nothing" reports).
+   * a rebuild lands on a detached button and does nothing (c6-s15-F2, the "Inspect does nothing" reports). The markup is
+   * compared with the source signature stored on the element, never with the live innerHTML (the browser re-serialises
+   * attributes and entities, so that comparison never matches). A real rebuild puts keyboard focus back on the same control.
    */
   private setHtmlIfChanged_(el: Element, markup: string): void {
-    if (el.innerHTML !== markup) {
-      el.innerHTML = markup;
+    const host = el as HTMLElement;
+    if (host.dataset.sig === markup) {
+      return;
     }
+    const active = document.activeElement as HTMLElement | null;
+    const focusKey = active && host.contains(active) ? PartCloseupModal.controlKey_(active) : null;
+    host.dataset.sig = markup;
+    host.innerHTML = markup;
+    if (focusKey) {
+      [...host.querySelectorAll<HTMLElement>(CONTROL_SELECTOR)].find((c) => PartCloseupModal.controlKey_(c) === focusKey && !c.hasAttribute('disabled'))?.focus();
+    }
+  }
+
+  /** Stable identity of a faceplate control (its data id), used to restore focus after a rebuild */
+  private static controlKey_(el: HTMLElement): string | null {
+    const c = el.closest<HTMLElement>(CONTROL_SELECTOR);
+    if (!c) return null;
+    const d = c.dataset;
+    if (d.verb) return `verb:${d.verb}`;
+    if (d.measure) return `measure:${d.measure}`;
+    if (d.equipmentMode) return `mode:${d.equipmentMode}`;
+
+    return 'laptop';
   }
 
   private actionsHtml_(plant: PhysicalPlantManager, target: string): string {
@@ -582,37 +626,93 @@ export class PartCloseupModal extends DraggableModal {
       .sort((a, b) => VERB_ORDER.indexOf(a) - VERB_ORDER.indexOf(b));
     const observe: string[] = [];
     const modes = plant.getModeOptions(target);
-    if (modes.length)
+    if (modes.length) {
+      const current = plant.getPartMode(target);
       observe.push(
-        `<fieldset class="pp-mode-control"><legend>${escapeHtml(plant.getLabel(target))} mode</legend>${modes.map((mode) => `<button type="button" data-equipment-mode="${escapeHtml(mode.id)}" aria-pressed="${plant.getPartMode(target) === mode.id}">${escapeHtml(mode.label)}</button>`).join('')}</fieldset>`
+        fpSelector(
+          `${plant.getLabel(target)} mode`,
+          modes.map((mode) => ({ id: mode.id, label: mode.label, on: current === mode.id })),
+          'data-equipment-mode'
+        )
       );
+    }
     if (this.def_?.regions.some((region) => region.target === target && region.opensApp)) {
-      observe.push('<button type="button" class="pp-act" data-open-laptop>Use laptop</button>');
+      observe.push(fpPush({ attrs: 'data-open-laptop', label: 'Use laptop', tone: 'port', wide: true, cls: 'pp-act' }));
     }
     const fix: string[] = [];
     const disrupt: string[] = [];
-    const meters = this.meterTools_(plant, target).map(
-      (tool) =>
-        `<button type="button" class="btn btn-sm btn-outline-primary pp-act" data-measure="${tool}">${METER_LABELS[tool].action}<span class="pp-cost"> &middot; ${formatCost(VERB_COSTS_S[tool])}${energyText_(plant, VERB_COSTS_S[tool])}</span></button>`
+    const meters = this.meterTools_(plant, target).map((tool) =>
+      fpPush({
+        attrs: `data-measure="${tool}"`,
+        label: METER_LABELS[tool].action,
+        costHtml: `${formatCost(VERB_COSTS_S[tool])}${energyText_(plant, VERB_COSTS_S[tool])}`,
+        tone: 'meter',
+        wide: true,
+        cls: 'pp-act',
+      })
     );
     for (const verb of verbs) {
       const cost = verbCost_(plant, verb, target);
+      const costHtml = `${formatCost(cost)}${energyText_(plant, cost)}`;
       if (DISRUPTIVE_ACTIONS.has(verb)) {
         const spare = verb === 'swap' ? sparesText_(plant.getSwapSpares(target)) : '';
         const none = verb === 'swap' && plant.getSwapSpares(target) <= 0;
         disrupt.push(
-          `<button type="button" class="btn btn-sm btn-outline-secondary pp-act pp-act-disruptive${spare ? ' pp-act-wide' : ''}" data-verb="${verb}"${none ? ' disabled' : ''}>${VERB_LABELS[verb]}<span class="pp-cost"> &middot; ${formatCost(cost)}${energyText_(plant, cost)}${spare}</span></button>`
+          fpPush({
+            attrs: `data-verb="${verb}"`,
+            label: VERB_LABELS[verb],
+            costHtml: costHtml + spare,
+            tone: 'hazard',
+            wide: Boolean(spare),
+            disabled: none,
+            cls: 'pp-act pp-act-disruptive',
+          })
         );
       } else {
-        const list = verb === 'inspect' || verb === 'wiggle' || verb === 'feel' ? observe : fix;
-        list.push(
-          `<button type="button" class="btn btn-sm btn-outline-primary pp-act" data-verb="${verb}">${VERB_LABELS[verb]}<span class="pp-cost"> &middot; ${formatCost(cost)}${energyText_(plant, cost)}</span></button>`
-        );
+        const observing = verb === 'inspect' || verb === 'wiggle' || verb === 'feel';
+        const tone: FaceTone = observing ? 'observe' : 'fix';
+        (observing ? observe : fix).push(fpPush({ attrs: `data-verb="${verb}"`, label: VERB_LABELS[verb], costHtml, tone, cls: 'pp-act' }));
       }
     }
-    const all = [...observe, ...meters, ...fix, ...disrupt];
+    const groups: string[] = [];
+    const group = (name: string, items: string[]): void => {
+      if (items.length > 0) groups.push(`<div class="fp-group">${fpPlate(name)}<div class="fp-group-row">${items.join('')}</div></div>`);
+    };
+    group('Look and feel', observe);
+    group('Meter', meters);
+    group('Service', fix);
+    group('Hazard: takes it down', disrupt);
 
-    return all.length === 0 ? '<span class="pp-hint">Nothing to do here.</span>' : all.join('');
+    return groups.length === 0 ? '<span class="pp-hint">Nothing to do here.</span>' : groups.join('');
+  }
+
+  /**
+   * Show a control pressed or thrown for a moment, then settle it back. The class goes on the live button (never into the
+   * markup, so it costs no rebuild); the timer is keyed by part and action so selecting another part cannot inherit it.
+   */
+  private markThrown_(button: HTMLElement): void {
+    const key = `${this.selected_ ?? ''}|${PartCloseupModal.controlKey_(button) ?? ''}`;
+    clearTimeout(this.thrown_.get(key));
+    button.classList.add('fp-thrown');
+    this.thrown_.set(
+      key,
+      setTimeout(() => {
+        this.thrown_.delete(key);
+        this.root_()
+          ?.querySelectorAll<HTMLElement>('#pcu-verbs .fp-thrown')
+          .forEach((el) => {
+            if (`${this.selected_}|${PartCloseupModal.controlKey_(el)}` === key) el.classList.remove('fp-thrown');
+          });
+      }, THROW_MS)
+    );
+  }
+
+  private clearThrown_(): void {
+    for (const timer of this.thrown_.values()) clearTimeout(timer);
+    this.thrown_.clear();
+    this.root_()
+      ?.querySelectorAll('#pcu-verbs .fp-thrown')
+      .forEach((el) => el.classList.remove('fp-thrown'));
   }
 
   /** Plant ids this close-up shows: its regions, probes and cables */

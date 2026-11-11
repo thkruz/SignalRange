@@ -1,16 +1,37 @@
-.fpd { margin-top: 0.6rem; background: var(--mc-surface-1); border: 1px solid var(--mc-border); border-radius: 0.375rem; color: var(--mc-text-secondary); font-size: 0.8rem; }
-.fpd .fpd-summary { cursor: pointer; padding: 0.4rem 0.75rem; color: var(--mc-text-primary); }
-.fpd .fpd-last { color: var(--mc-text-secondary); margin-left: 0.5rem; }
-.fpd .fpd-body { padding: 0 0.75rem 0.6rem; }
-.fpd .fpd-svg { width: 100%; height: auto; max-height: 28rem; }
-.fpd .fpd-seg { fill: var(--mc-text-muted); font-size: 10px; font-weight: 600; }
-.fpd .fpd-lane { fill: var(--mc-text-primary); font-size: 11px; font-weight: 600; }
-.fpd .fpd-sep { stroke: var(--mc-border); stroke-width: 1; }
-.fpd .fpd-node { cursor: pointer; }
-.fpd .fpd-node rect { fill: var(--mc-surface-2, #1f2937); stroke: var(--mc-border); stroke-width: 1; }
-.fpd .fpd-node text { fill: var(--mc-text-primary); font-size: 10px; pointer-events: none; }
-.fpd .fpd-node:hover rect, .fpd .fpd-node:focus rect { stroke: var(--mc-text-primary); }
-.fpd .fpd-node.fpd-shared rect { stroke: var(--mc-status-caution, #eab308); stroke-width: 2; stroke-dasharray: 4 2; }
-.fpd .fpd-node.fpd-selected rect { fill: rgba(59, 130, 246, 0.35); stroke: #3b82f6; stroke-width: 2; stroke-dasharray: none; }
-.fpd .fpd-actions { display: flex; gap: 0.5rem; align-items: center; margin-top: 0.4rem; }
-.fpd .fpd-count { margin-right: auto; color: var(--mc-text-muted); }
+/* Service path diagram: a laminated print held fullscreen. Printed ink under the laminate, grease pencil on top. */
+.fpd {
+  --fpd-ink: #1f2428;
+  --fpd-grease: #b3261e;
+  --fpd-pencil: #343a44;
+  margin: 0;
+  color: var(--fpd-ink);
+  font: 14px/1.4 Georgia, 'Times New Roman', serif;
+}
+.fpd .fpd-head { padding-bottom: 8px; border-bottom: 2px solid var(--fpd-ink); margin-bottom: 14px; }
+.fpd .fpd-kicker { margin: 0; font: 700 11px/1 'Courier New', monospace; letter-spacing: 0.2em; text-transform: uppercase; color: #4b565e; }
+.fpd .fpd-title { margin: 6px 0 2px; font: 700 26px/1.15 Georgia, serif; text-transform: uppercase; color: var(--fpd-ink); }
+.fpd .fpd-legend { margin: 0; font-style: italic; color: #3a444c; }
+.fpd .fpd-svg { width: 100%; height: auto; display: block; }
+.fpd .fpd-seg { fill: #3d4850; font: 700 10px 'Courier New', monospace; letter-spacing: 0.08em; text-transform: uppercase; }
+.fpd .fpd-lane { fill: var(--fpd-ink); font: 700 12px Georgia, serif; }
+.fpd .fpd-sep { stroke: #8c968f; stroke-width: 1; }
+.fpd .fpd-node { cursor: pointer; outline: none; }
+.fpd .fpd-node rect { fill: #f7f9f7; stroke: #2a3238; stroke-width: 1.4; }
+.fpd .fpd-node text { fill: var(--fpd-ink); font: 10px Georgia, serif; pointer-events: none; }
+.fpd .fpd-node.fpd-selected rect { fill: #fbf6df; }
+.fpd .fpd-node:hover rect { fill: #fff; stroke-width: 2; }
+.fpd .fpd-node:focus-visible rect { stroke: #0b5fa8; stroke-width: 3; }
+.fpd .fpd-node.fpd-shared rect { stroke: #b4690e; stroke-width: 2; stroke-dasharray: 4 2; }
+.fpd .fpd-ring { fill: none; stroke: var(--fpd-pencil); stroke-width: 1.6; stroke-dasharray: 5 3; stroke-linecap: round; pointer-events: none; }
+.fpd .fpd-grease { fill: none; stroke: var(--fpd-grease); stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; opacity: 0.88; pointer-events: none; }
+.fpd .fpd-pencil-tick { fill: none; stroke: var(--fpd-grease); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.fpd .fpd-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 14px; }
+.fpd .fpd-count { margin-right: auto; font: 22px/1 'Caveat', 'Segoe Print', cursive; color: var(--fpd-pencil); }
+.fpd .fpd-btn { padding: 7px 16px; font: 600 14px Georgia, serif; color: var(--fpd-ink); background: #e8ecea; border: 1.5px solid #2a3238; border-radius: 0; cursor: pointer; box-shadow: none; }
+.fpd .fpd-btn:hover { background: #fff; }
+.fpd .fpd-btn:focus-visible { outline: 3px solid #0b5fa8; outline-offset: 2px; }
+.fpd .fpd-btn-mark { border-color: var(--fpd-grease); color: #7b1812; }
+.fpd .fpd-last { min-height: 1.4em; margin: 10px 0 0; font: 22px/1.3 'Caveat', 'Segoe Print', cursive; color: var(--fpd-grease); transform: rotate(-0.4deg); }
+
+/* Laminate sheen and edge */
+.fpd .fpd-svg { background-image: linear-gradient(115deg, #ffffff38 0%, #ffffff00 40%); box-shadow: inset 0 0 0 1px #ffffff90; }

@@ -146,7 +146,7 @@ describe('close-up selection and actions', () => {
     const buttons = [...document.querySelectorAll<HTMLElement>('#pcu-verbs button')];
     expect(buttons.length).toBeGreaterThan(2);
     for (const b of buttons) {
-      expect(b.textContent).toMatch(/· \d+ (s|min)/u);
+      expect(b.textContent).toMatch(/\d+ (s|min)/u);
     }
     const firstDisruptive = buttons.findIndex((b) => b.classList.contains('pp-act-disruptive'));
     expect(firstDisruptive).toBeGreaterThan(0);

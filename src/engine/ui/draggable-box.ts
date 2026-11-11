@@ -239,7 +239,10 @@ export abstract class DraggableBox {
     boxContent.style.maxHeight = `${Math.max(240, vp.height - 190 - step)}px`;
     boxContent.style.overflowY = 'auto';
     boxContent.style.left = `${Math.max(8, vp.width - width - 16 - step - column)}px`;
-    boxContent.style.top = `${window.scrollY + 150 + step}px`;
+    // Under the field HUD the strip starts below the watch cluster (watch, tent caption), never over it
+    const hudBottom = document.querySelector('.mc-minimal-hud .mc-hud-cluster')?.getBoundingClientRect().bottom ?? 0;
+    const top = Math.max(150, Math.ceil(hudBottom) + 16);
+    boxContent.style.top = `${window.scrollY + top + step}px`;
     // Reserve the strip so the Site stage shrinks to fit beside the box instead of sitting under it (c6-s02-F5)
     this.siteGutter_ = width + 16 + step + column + 12;
     this.reserveSiteGutter_();

@@ -1,5 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 import { test } from '../fixtures/test-fixtures';
+import { putDownHeld } from '../utils/ham-sdr-helpers';
 import {
   answerTechQuizzes,
   inspectItem,
@@ -20,7 +21,9 @@ import { dismissDialogIfPresent } from '../utils/simulation-helpers';
 
 const num = (text: string | null): number => Number.parseFloat((text ?? '').replace(/[^0-9.+-]/gu, ''));
 
-const SKIP_BUTTON = '#time-skip-control';
+// Bench HUD: the header skip control is hidden; the wait is a pusher on the raised wristwatch
+const WATCH = '#hud-watch';
+const WATCH_WAIT = '.mc-watch-panel .mc-watch-wait';
 const SKIP_CONFIRM = '#time-skip-confirm-btn';
 const SKIP_OVERLAY = '#time-skip-overlay';
 
@@ -50,7 +53,9 @@ test('ham-tech-s11 missed first pass is recoverable with the time skip', async (
   await page.waitForTimeout(3000);
 
   // Before the first pass has gone there is nothing worth skipping
-  await expect(page.locator(SKIP_BUTTON)).toBeDisabled();
+  await page.locator(WATCH).click();
+  await expect(page.locator(`${WATCH_WAIT}:not([disabled])`)).toHaveCount(0);
+  await putDownHeld(page);
 
   // Work the early objectives, then let the first pass go by
   await submitWorksheet(page, 's11-pass', { uplink: 435.9, tone: 67, shift: 3.36, direction: 'Above 145.900 MHz, then lower as it passes' });
@@ -73,8 +78,10 @@ test('ham-tech-s11 missed first pass is recoverable with the time skip', async (
   expect((await readPass(page)).above).toBe(false);
 
   // The offer appears in the header and names the next pass
-  await expect(page.locator(SKIP_BUTTON)).toBeEnabled({ timeout: 20000 });
-  await page.locator(SKIP_BUTTON).click();
+  await page.locator(WATCH).click();
+  const wait = page.locator(`${WATCH_WAIT}:not([disabled])`).first();
+  await expect(wait).toBeVisible({ timeout: 20000 });
+  await wait.click();
   await expect(page.locator(SKIP_CONFIRM)).toBeVisible({ timeout: 10000 });
   await page.locator(SKIP_CONFIRM).click();
   await expect(page.locator(SKIP_OVERLAY)).toBeHidden({ timeout: 60000 });

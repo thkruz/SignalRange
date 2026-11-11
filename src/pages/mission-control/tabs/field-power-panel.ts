@@ -6,7 +6,9 @@ import './field-power-panel.css';
 /**
  * FieldPowerPanel - Power readings, mode selectors and the forecast preview (Phase 38.2, M08)
  *
- * Lives under the site stage. The player reads stored energy, per-device draw, fuel and the
+ * A printed planning sheet on graph paper, held fullscreen with the field documents: the load table is printed,
+ * the planned modes are pencilled in and the forecast is a hand-worked line on the graph. The sheet never switches
+ * equipment; each device row has "Go to <part>" that puts the sheet down and walks to the part's close-up. The player reads stored energy, per-device draw, fuel and the
  * reserve, picks modes per device, sees the forecast for those picks (a pure preview, nothing
  * changes), and only then commits with Apply. A commit goes through `setPartMode`, so every
  * change costs scenario time and is logged by the plant like any other verb. The skeleton is
@@ -129,12 +131,57 @@ export function formatDuration(seconds: number): string {
   return h > 0 ? `${h} h ${m} min` : `${m} min`;
 }
 
+/**
+ * The forecast as a hand-worked figure on the graph paper: stored energy against time, a straight line from
+ * the charge now to the charge at the horizon, the reserve as a dashed rule. It draws only what the plant's
+ * forecast already says.
+ */
+export function forecastGraph(model: PowerPanelModel): string {
+  const f = model.forecast;
+  const cap = Math.max(1, model.capacityTotalWh);
+  const W = 520;
+  const H = 190;
+  const L = 52;
+  const R = 14;
+  const T = 14;
+  const B = 34;
+  const x = (frac: number): number => L + frac * (W - L - R);
+  const y = (wh: number): number => T + (1 - Math.max(0, Math.min(1, wh / cap))) * (H - T - B);
+  const reserve = model.readings.reserveWh;
+  const y0 = y(model.socTotalWh);
+  const y1 = y(f.projectedSocWh);
+  const grid = [0, 0.25, 0.5, 0.75, 1].map((q) => `<text class="fpp-axis" x="${L - 6}" y="${y(cap * q) + 4}" text-anchor="end">${Math.round(cap * q)}</text>`).join('');
+  const reserveLine =
+    reserve === null
+      ? ''
+      : `<line class="fpp-reserve" x1="${L}" x2="${W - R}" y1="${y(reserve)}" y2="${y(reserve)}"/><text class="fpp-pencil-note" x="${L + 8}" y="${y(reserve) - 5}">reserve ${Math.round(reserve)} Wh</text>`;
+  const hit =
+    f.secondsToReserve !== null && reserve !== null && f.horizonS > 0 && f.secondsToReserve <= f.horizonS
+      ? `<circle class="fpp-cross" cx="${x(f.secondsToReserve / f.horizonS)}" cy="${y(reserve)}" r="6"/>`
+      : '';
+  const cls = f.meetsReserve ? 'fpp-line-ok' : 'fpp-line-bad';
+  const mid = (H - B + T) / 2;
+
+  return `<svg class="fpp-graph" viewBox="0 0 ${W} ${H}" aria-hidden="true">
+    <line class="fpp-axis-line" x1="${L}" y1="${T}" x2="${L}" y2="${H - B}"/><line class="fpp-axis-line" x1="${L}" y1="${H - B}" x2="${W - R}" y2="${H - B}"/>
+    ${grid}${reserveLine}
+    <line class="fpp-line ${cls}" x1="${x(0)}" y1="${y0}" x2="${x(1)}" y2="${y1}"/>${hit}
+    <circle class="fpp-dot" cx="${x(0)}" cy="${y0}" r="3.5"/><circle class="fpp-dot" cx="${x(1)}" cy="${y1}" r="3.5"/>
+    <text class="fpp-pencil-note" x="${x(0) + 8}" y="${y0 - 8}">now ${Math.round(model.socTotalWh)} Wh</text>
+    <text class="fpp-pencil-note" x="${x(1) - 4}" y="${y1 + (y1 < H - B - 26 ? 20 : -10)}" text-anchor="end">${Math.round(f.projectedSocWh)} Wh</text>
+    <text class="fpp-axis" x="${x(0)}" y="${H - 16}" text-anchor="middle">0</text><text class="fpp-axis" x="${x(1) + 6}" y="${H - 16}" text-anchor="end">${escapeHtml(formatDuration(f.horizonS))}</text>
+    <text class="fpp-axis" x="${(L + W - R) / 2}" y="${H - 3}" text-anchor="middle">time ahead</text>
+    <text class="fpp-axis" x="10" y="${mid}" text-anchor="middle" transform="rotate(-90 10 ${mid})">Wh</text>
+  </svg>`;
+}
+
 export class FieldPowerPanel {
   private readonly pending_ = new Map<string, string>();
   private readonly cache_ = new Map<string, HTMLElement>();
   private built_ = false;
   private deviceKey_ = '';
   private lastResult_: string[] = [];
+  private lastGraph_ = '';
 
   constructor(
     private readonly host_: HTMLElement,
@@ -223,23 +270,30 @@ export class FieldPowerPanel {
         const options = d.modes
           .map(
             (m) =>
-              `<label class="fpp-switch-position"><input type="radio" name="power-${escapeHtml(d.id)}" data-power-part="${escapeHtml(d.id)}" value="${escapeHtml(m.id)}" /><span>${escapeHtml(m.label)}<small>${m.loadW} W</small></span></label>`
+              `<label class="fpp-switch-position"><input type="radio" name="power-${escapeHtml(d.id)}" data-power-part="${escapeHtml(d.id)}" value="${escapeHtml(m.id)}" /><span class="fpp-tick-box" aria-hidden="true"></span><span class="fpp-tick-label">${escapeHtml(m.label)}<small>${m.loadW} W</small></span></label>`
           )
           .join('');
+        const plan = d.fixed
+          ? '<span class="fpp-mode-idle">Not switchable here</span>'
+          : `<fieldset class="fpp-mode-switch"><legend class="fpp-sr">${escapeHtml(d.label)} mode</legend>${options}</fieldset>`;
+        const go = this.visit_ && !d.fixed ? `<button type="button" class="fpp-go" data-power-visit="${escapeHtml(d.id)}">Go to ${escapeHtml(d.label)}</button>` : '';
 
-        return `<section class="fpp-device" data-power-row="${escapeHtml(d.id)}">
-          <h4>${escapeHtml(d.label)}</h4>
-          ${this.visit_ && !d.fixed ? `<button type="button" data-power-visit="${escapeHtml(d.id)}">Go to ${escapeHtml(d.label)}</button>` : ''}
-          <div class="fpp-device-readings"><span class="fpp-mode" data-fpp="mode-${escapeHtml(d.id)}"></span>
-          <b class="fpp-num" data-fpp="load-${escapeHtml(d.id)}"></b>
-          <span class="fpp-num" data-fpp="fuel-${escapeHtml(d.id)}"></span></div>
-          ${d.fixed ? '<span class="fpp-mode-idle">Not switchable here</span>' : `<fieldset class="fpp-mode-switch"><legend>${escapeHtml(d.label)} mode</legend>${options}</fieldset>`}
-        </section>`;
+        return `<tr class="fpp-device" data-power-row="${escapeHtml(d.id)}">
+          <th scope="row">${escapeHtml(d.label)}</th>
+          <td class="fpp-now"><span class="fpp-mode" data-fpp="mode-${escapeHtml(d.id)}"></span></td>
+          <td class="fpp-load"><b class="fpp-num" data-fpp="load-${escapeHtml(d.id)}"></b><span class="fpp-num fpp-fuel" data-fpp="fuel-${escapeHtml(d.id)}"></span></td>
+          <td class="fpp-plan">${plan}</td>
+          <td class="fpp-goto">${go}</td>
+        </tr>`;
       })
       .join('');
     this.host_.innerHTML = `
-      <details class="fpp" open>
-        <summary class="fpp-summary"><b>Power</b> <span class="fpp-sum" data-fpp="summary"></span></summary>
+      <section class="fpp" aria-label="Power plan">
+        <header class="fpp-head">
+          <p class="fpp-kicker">Planning sheet</p>
+          <h2 class="fpp-title">Power plan</h2>
+          <p class="fpp-sum" data-fpp="summary"></p>
+        </header>
         <div class="fpp-body">
           <div class="fpp-stats">
             <span class="fpp-stat">Stored <b data-fpp="soc"></b></span>
@@ -247,26 +301,25 @@ export class FieldPowerPanel {
             <span class="fpp-stat" data-fpp="charge-wrap">Charge <b data-fpp="charge"></b></span>
             <span class="fpp-stat" data-fpp="reserve-wrap">Reserve <b data-fpp="reserve"></b></span>
           </div>
-          <div class="fpp-device-grid">${rows}</div>
+          <table class="fpp-table">
+            <caption class="fpp-caption">Loads. Pencil a tick for the mode you want; the switches stay on the equipment.</caption>
+            <thead><tr><th scope="col">Device</th><th scope="col">Now</th><th scope="col">Load</th><th scope="col">Plan</th><th scope="col"><span class="fpp-sr">Walk to</span></th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
           <div class="fpp-forecast fpp-bad" data-fpp="supply-alarm" role="alert" style="display:none"></div>
           <div class="fpp-forecast" data-fpp="forecast-box">
             <div class="fpp-forecast-title">Forecast <span class="fpp-forecast-note" data-fpp="forecast-note"></span></div>
-            <div class="fpp-energy" data-fpp="energy" role="img" aria-label="Battery forecast">
-              <div class="fpp-energy-current" data-fpp="energy-current"></div>
-              <div class="fpp-energy-projected" data-fpp="energy-projected"></div>
-              <span class="fpp-energy-reserve" data-fpp="energy-reserve"></span>
-            </div>
-            <div class="fpp-energy-key" data-fpp="energy-key">Solid: projected charge · Outline: current charge · Marker: reserve</div>
+            <div class="fpp-energy" data-fpp="energy" role="img" aria-label="Battery forecast"></div>
             <div class="fpp-forecast-line" data-fpp="forecast-line"></div>
             <div class="fpp-forecast-line" data-fpp="forecast-extra"></div>
           </div>
           <div class="fpp-actions">
-            <button type="button" class="btn btn-sm btn-primary" data-power-action="apply">${this.visit_ ? 'Keep plan' : 'Apply'}</button>
-            <button type="button" class="btn btn-sm btn-outline-secondary" data-power-action="reset">Discard picks</button>
+            <button type="button" class="fpp-btn fpp-btn-keep" data-power-action="apply">${this.visit_ ? 'Keep plan' : 'Apply'}</button>
+            <button type="button" class="fpp-btn" data-power-action="reset">Discard picks</button>
             <span class="fpp-result" data-fpp="result" aria-live="polite"></span>
           </div>
         </div>
-      </details>`;
+      </section>`;
   }
 
   private el_(key: string): HTMLElement | null {
@@ -329,7 +382,6 @@ export class FieldPowerPanel {
 
     const f = model.forecast;
     const preview = Object.keys(model.changes).length > 0;
-    const pct = (wh: number): number => (model.capacityTotalWh > 0 ? Math.max(0, Math.min(100, (100 * wh) / model.capacityTotalWh)) : 0);
     const energy = this.el_('energy');
     if (energy) {
       energy.hidden = !hasBattery;
@@ -337,17 +389,11 @@ export class FieldPowerPanel {
         'aria-label',
         `Current charge ${Math.round(model.socTotalWh)} Wh; projected charge ${Math.round(f.projectedSocWh)} Wh; reserve ${Math.round(r.reserveWh ?? 0)} Wh.`
       );
-    }
-    const energyKey = this.el_('energy-key');
-    if (energyKey) energyKey.hidden = !hasBattery;
-    const current = this.el_('energy-current');
-    if (current) current.style.width = `${pct(model.socTotalWh)}%`;
-    const projected = this.el_('energy-projected');
-    if (projected) projected.style.width = `${pct(f.projectedSocWh)}%`;
-    const reserve = this.el_('energy-reserve');
-    if (reserve) {
-      reserve.hidden = r.reserveWh === null;
-      reserve.style.left = `${pct(r.reserveWh ?? 0)}%`;
+      const svg = hasBattery ? forecastGraph(model) : '';
+      if (this.lastGraph_ !== svg) {
+        this.lastGraph_ = svg;
+        energy.innerHTML = svg;
+      }
     }
     this.text_('forecast-note', preview ? '(preview of your picks, nothing changed yet)' : '(current modes)');
     const basis = f.basis === 'battery-only' ? 'on batteries alone' : 'with the generator';

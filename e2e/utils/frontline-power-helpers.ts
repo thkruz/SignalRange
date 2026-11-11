@@ -1,9 +1,9 @@
 import { expect, type Page } from '@playwright/test';
-import { closeCloseup, setPanelOpen } from './frontline-helpers';
+import { closeCloseup, goToPartFromSheet, setPanelOpen } from './frontline-helpers';
 
 /**
- * Power panel (Site tab, inside view): read the stored energy and forecast, pick device modes in the
- * selectors, then Apply. Returns the panel's result lines for the applied changes.
+ * Power plan (the planning sheet held from the documents on the kit tray): read the stored energy and forecast,
+ * pencil device modes, keep the plan, then walk to each part with "Go to <part>" and set the mode on the equipment. Returns the panel's result lines for the applied changes.
  */
 export async function powerApplyModes(page: Page, modes: Record<string, string>): Promise<string> {
   await closeCloseup(page);
@@ -17,7 +17,7 @@ export async function powerApplyModes(page: Page, modes: Record<string, string>)
   const results: string[] = [];
   for (const [partId, modeId] of Object.entries(modes)) {
     const plan = await setPanelOpen(page, /^\s*Power\b/u, true);
-    await plan.locator(`[data-power-visit="${partId}"]`).click();
+    await goToPartFromSheet(page, plan, partId);
     const control = page.locator(`#part-closeup-modal [data-equipment-mode="${modeId}"]`);
     await expect(control).toBeVisible();
     await control.click();

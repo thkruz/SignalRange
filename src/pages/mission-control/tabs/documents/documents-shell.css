@@ -1,0 +1,130 @@
+/* Pencil write-ins: Caveat (SIL OFL 1.1, licence beside the font file), bundled so nothing is fetched at runtime */
+@font-face {
+  font-family: 'Caveat';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('../../../../assets/fonts/caveat/caveat-latin.woff2') format('woff2');
+}
+
+/* The C6 field documents: one printed sheet held fullscreen over the desk, a tab for the other document */
+.docs {
+  --docs-ink: #1f2428;
+  --docs-pencil: #343a44;
+  --docs-grease: #b3261e;
+  --docs-rule: #8c968f;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 40%, #4b3d2c 0, #2a2118 70%);
+}
+
+.docs-holder {
+  position: relative;
+  height: calc(100% - 90px);
+  width: min(1180px, calc(100% - 170px));
+  margin-right: 70px;
+}
+
+.docs-sheet {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  color: var(--docs-ink);
+  border-radius: 10px;
+  box-shadow:
+    0 18px 28px #000a,
+    inset 0 0 0 5px #ffffffb0,
+    inset 0 0 0 6px #9aa3a0;
+  background: var(--docs-laminate) center / 384px 384px;
+  scrollbar-width: thin;
+  scrollbar-color: #8c968f transparent;
+}
+
+.docs[data-docs-sheet='field-power'] .docs-sheet {
+  border-radius: 3px;
+  background: var(--docs-graph) center / 384px 384px;
+  box-shadow:
+    0 18px 28px #000a,
+    inset 0 0 22px #6b552a33;
+}
+
+/* The workspace's own content frame must not paint over the sheet */
+.docs .canvas-content {
+  background: none;
+  color: var(--docs-ink);
+  border: 0;
+  overflow: visible;
+  height: auto;
+  max-height: none;
+}
+
+.immersive-paper .docs .site-tab {
+  height: auto;
+  min-height: 0;
+  background: none;
+  padding: 22px 34px 30px;
+  color: var(--docs-ink);
+}
+
+.immersive-paper .docs .site-tab [role='tabpanel'] {
+  background: none;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+.docs-tabs {
+  position: absolute;
+  top: 8%;
+  left: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-left: -4px;
+}
+
+.docs-tabs button {
+  width: 136px;
+  padding: 10px 12px 10px 14px;
+  text-align: left;
+  font: 600 14px/1.15 Georgia, 'Times New Roman', serif;
+  color: #26303a;
+  background: #c9d0cc var(--docs-laminate) center / 160px;
+  border: 0;
+  border-radius: 0 7px 7px 0;
+  box-shadow: 2px 2px 5px #0008;
+  cursor: pointer;
+  transform: translateX(-10px);
+  transition: transform 0.12s;
+}
+
+.docs-tabs button:hover,
+.docs-tabs button:focus-visible {
+  transform: translateX(-3px);
+}
+
+.docs-tabs button:focus-visible {
+  outline: 2px solid #f2dd9c;
+  outline-offset: 2px;
+}
+
+.docs-tabs button[aria-pressed='true'] {
+  transform: translateX(0);
+  background-color: #eef1ee;
+  color: #0f151b;
+  box-shadow: 3px 2px 7px #000a;
+}
+
+.docs-holder .docs-leave {
+  position: absolute;
+  left: 50%;
+  right: auto;
+  top: auto;
+  bottom: -40px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}

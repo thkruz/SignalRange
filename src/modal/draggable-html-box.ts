@@ -2,6 +2,7 @@ import { DraggableBox } from '@app/engine/ui/draggable-box';
 import { html } from '@app/engine/utils/development/formatter';
 import { getEl } from '@app/engine/utils/get-el';
 import { ObjectivesManager } from '@app/objectives/objectives-manager';
+import { minimalHudShown } from '@app/presentation/minimal-hud/minimal-hud-policy';
 import { updateChecklistWithMotion } from '@app/presentation/transitions';
 import { Sfx } from '@app/sound/sfx-enum';
 import SoundManager from '@app/sound/sound-manager';
@@ -118,9 +119,11 @@ export class DraggableHtmlBox extends DraggableBox {
 
   /**
    * An objective change brings the checklist back to its dock: a dragged open box returns to the strip, and a closed
-   * one re-opens there so the player sees the new open rows (c6-s02-F5). No-op where the checklist is not docked.
+   * one re-opens there so the player sees the new open rows (c6-s02-F5). No-op where the checklist is not docked,
+   * and under the field HUD, where the checklist lives on the clipboard and opens only when the player turns to it.
    */
   redockForObjectiveChange(): void {
+    if (minimalHudShown()) return;
     if (this.shouldRedockOnOpen()) {
       this.open();
     }

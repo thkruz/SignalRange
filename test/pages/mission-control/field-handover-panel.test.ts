@@ -87,10 +87,11 @@ function rig(withForms = true) {
   return { plant, service, log, records, host, panel, lines };
 }
 
+/** Tick the answer `value` of a written-in choice (a printed tick box), as a click on it does */
 function pick(host: HTMLElement, sel: string, value: string): void {
-  const el = host.querySelector<HTMLSelectElement>(sel);
+  const el = host.querySelector<HTMLInputElement>(`${sel}[value="${value}"]`);
   if (el) {
-    el.value = value;
+    el.checked = true;
     el.dispatchEvent(new Event('change', { bubbles: true }));
   }
 }
@@ -112,9 +113,9 @@ describe('M14 handover panel', () => {
     expect(r.host.querySelector('input[data-hf-field="reg"]')).not.toBeNull();
     expect(r.host.querySelector('input[type="number"][data-hf-field="soc"]')).not.toBeNull();
     expect(r.host.querySelector('[data-hf-cites="why"]')?.textContent).toContain('No observed entries yet');
-    const opts = [...r.host.querySelectorAll<HTMLOptionElement>('select[data-hf-field="cause"] option')].map((o) => o.value);
-    expect(opts).toEqual(['', 'none', 'seating', 'other']);
-    expect(r.host.querySelector('select[data-hf-field="run"]')?.textContent).toContain('No runs yet');
+    const opts = [...r.host.querySelectorAll<HTMLInputElement>('input[type="radio"][data-hf-field="cause"]')].map((o) => o.value);
+    expect(opts).toEqual(['none', 'seating', 'other']);
+    expect(r.host.querySelector('[data-hf-field-group="run"]')?.textContent).toContain('No runs yet');
   });
 
   it('fills from the latest reading and says when it is out of date', () => {
@@ -155,13 +156,13 @@ describe('M14 handover panel', () => {
       cite.checked = true;
       cite.dispatchEvent(new Event('change', { bubbles: true }));
     }
-    pick(r.host, 'select[data-hf-field="cause"]', 'other');
+    pick(r.host, 'input[type="radio"][data-hf-field="cause"]', 'other');
     r.host.querySelector<HTMLButtonElement>('button[data-hf-act="submit"]')?.click();
     expect(r.host.querySelector('[data-hf-note="cause"]')?.textContent).toContain('not one of the answers');
     expect(r.records.allRecords()).toHaveLength(0);
     expect(r.records.attempts('h1')).toBe(1);
 
-    pick(r.host, 'select[data-hf-field="cause"]', 'seating');
+    pick(r.host, 'input[type="radio"][data-hf-field="cause"]', 'seating');
     r.host.querySelector<HTMLButtonElement>('button[data-hf-act="submit"]')?.click();
     expect(r.records.allRecords()).toHaveLength(1);
     expect(r.lines.length).toBeGreaterThan(0);

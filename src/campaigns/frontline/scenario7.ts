@@ -314,7 +314,7 @@ export const frontlineScenario7Data: FrontlineScenarioData = {
       id: 's07-verify-acceptance',
       title: 'Verify and Hand Over the Unit',
       description:
-        'Start an Ola application check from the Workloads panel after the approved correction (the form needs a run that began after the reply). Accept the unit once every record row reads Matches, then submit the accepted configuration, its evidence, and any unresolved concerns for the next operator.',
+        'Start an Ola application check from MissionRunner after the approved correction (the form needs a run that began after the reply). Accept the unit once every record row reads Matches, then submit the accepted configuration, its evidence, and any unresolved concerns for the next operator.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s07-request-correction'],
       nice: ['T0431', 'K0645'],

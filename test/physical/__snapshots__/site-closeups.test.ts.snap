@@ -237,6 +237,13 @@ exports[`forward site art (FS1) > keeps the camp hotspots, close-ups and images 
       "cables": [],
       "id": "modem",
       "image": "/assets/campaigns/frontline/physical/cu-modem.webp",
+      "leds": [
+        {
+          "target": "vsat-modem",
+          "x": 0.608,
+          "y": 0.55,
+        },
+      ],
       "probes": [
         {
           "id": "cu-modem-ifl",
@@ -395,6 +402,13 @@ exports[`forward site art (FS1) > keeps the camp hotspots, close-ups and images 
       "cables": [],
       "id": "router",
       "image": "/assets/campaigns/frontline/physical/cu-router.webp",
+      "leds": [
+        {
+          "target": "skylink-router",
+          "x": 0.6,
+          "y": 0.555,
+        },
+      ],
       "probes": [
         {
           "id": "cu-router-cable",

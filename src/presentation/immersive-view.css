@@ -18,13 +18,9 @@
 
 .immersive-equipment #part-closeup-modal-container { position: relative; inset: auto; background: transparent; overflow: auto; }
 .immersive-equipment .pp-side { overflow-y: auto; }
-.immersive-equipment #pcu-indicators .fsp-table { display: block; }
-.immersive-equipment #pcu-indicators thead, .immersive-equipment #pcu-indicators .fsp-history, .immersive-equipment #pcu-indicators .fsp-history-title { display: none; }
-.immersive-equipment #pcu-indicators tr { display: flex; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid #536150; }
-.immersive-equipment #pcu-indicators td { display: block; }
 .immersive-equipment .ham-feedback { grid-column: 1 / -1; }
 .immersive-paper .ham-station-main { display: block; padding: 4vh 8vw; background: #decca6; color: #211d18; }
-.immersive-paper .ham-station-scene, .immersive-paper .ham-side-tabs { display: none; }
+.immersive-paper .ham-station-scene { display: none; }
 .immersive-paper .ham-station-side { width: 100%; max-height: none; }
 .immersive-paper :is(.site-tab, .ham-station-main) { --mc-surface-0: #decca6; --mc-surface-1: #e9d8b6; --mc-surface-2: #e5d1aa; --mc-text-primary: #211d18; --mc-text-secondary: #30271c; --mc-text-muted: #493b28; --mc-border: #9b825f; --mc-status-normal: #254c28; --mc-status-caution: #74420c; --mc-danger: #751c18; }
 .immersive-paper :is(.fhf, .frp, .fpp, .fpd, .ham-notebook .card) { border-radius: 0; box-shadow: 0 5px 16px #2a211744; }
@@ -35,13 +31,8 @@
 .site-field-kit button:nth-child(even) { transform: rotate(1deg); }
 .fsp .fsp-controls button { color: #d4e8e4; background: #263b3a; border: 1px solid #57746c; padding: 7px 12px; margin: 3px; font: 13px monospace; cursor: pointer; }
 
-.immersive-equipment .site-tab[data-field-source] { background: radial-gradient(ellipse at center, #353d2f, #10140e); padding: 5vh 10vw; }
-.immersive-equipment .site-tab[data-field-source] .fsp { background: #252b21; border: 12px ridge #454c3c; border-radius: 14px; box-shadow: 0 14px 30px #0009; padding: 20px; }
-.immersive-equipment .site-tab[data-field-source] .fsp-summary { font: 20px monospace; letter-spacing: .12em; color: #dcdfab; }
-.immersive-equipment .site-tab[data-field-source] .fsp-table thead { display: none; }
-.immersive-equipment .site-tab[data-field-source] .fsp-table tr { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; border-bottom: 1px solid #667051; padding: 12px; }
-.immersive-equipment .site-tab[data-field-source] .fsp-body { max-height: none; font-family: monospace; }
-.immersive-equipment .site-tab[data-field-source] .fsp-controls button { border-radius: 4px; background: #1b2018; border: 3px outset #687052; padding: 14px; color: #e7e7c6; }
+.immersive-equipment .site-tab[data-field-source] { padding: 0; background: #0c0f0a; }
+.immersive-equipment .site-tab[data-field-source] #site-service-panel, .immersive-equipment .fsp-radio { height: 100%; }
 .radio-channels { background: #272e22; justify-content: center; }
 .radio-channels button[aria-pressed='true'] { color: #e1e69b; border-bottom: 2px solid #e1e69b; }
 .immersive-paper .site-tab { min-height: 100%; background: repeating-linear-gradient(0deg, #decca6, #decca6 31px, #9e8a6322 32px); }
@@ -52,11 +43,5 @@
 .immersive-view .site-tab .fsp { font-size: 15px; }
 .immersive-view .site-tab .fsp :is(.fsp-history-title, .fsp-none, th) { color: #adbeb8; }
 .immersive-view .site-tab .fsp .fsp-badge:empty { display: none; }
-.immersive-equipment .pp-act { white-space: normal; text-align: left; }
-.immersive-equipment .pp-verbs { grid-template-columns: 1fr; }
 .immersive-paper .site-tab :is(.fsp-history-title, .fsp-none, th) { color: #493b28; }
 
-.pp-mode-control { border: 0; padding: 12px 0; width: 100%; }
-.pp-mode-control legend { font: 12px monospace; text-transform: uppercase; letter-spacing: .08em; }
-.pp-mode-control button { padding: 12px; border: 3px outset #75806c; background: #242b20; color: #e8e8cf; cursor: pointer; }
-.pp-mode-control button[aria-pressed='true'] { border-style: inset; background: #434f36; box-shadow: inset 0 0 8px #111; color: #ecf6b9; }

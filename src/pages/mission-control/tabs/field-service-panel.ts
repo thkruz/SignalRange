@@ -1,10 +1,12 @@
 import { type FormStepState, SAMPLE_STEP_LATER_NOTE } from '@app/pages/mission-control/tabs/form-step-state';
-import { capacityNote, LAYER_LABEL, METRIC_LABEL, PROVENANCE_LABEL } from '@app/physical/reading-labels';
+import { badgeText, formatClock, formatSampleValue, STATUS_LABEL, UNTESTED_APPLICATION_TEXT, untestedApplication } from '@app/physical/field-evidence-format';
+import { LAYER_LABEL, METRIC_LABEL, PROVENANCE_LABEL } from '@app/physical/reading-labels';
 import { NUMERIC_READABLE, READABLE, type ServiceModel } from '@app/physical/service-model';
-import { type Freshness, type LayerStatus, type SampleMetric, type SampleProvenance, SERVICE_LAYERS, type ServiceLayer, type ServiceSample } from '@app/physical/service-types';
+import { type Freshness, type SampleMetric, type SampleProvenance, SERVICE_LAYERS, type ServiceLayer, type ServiceSample } from '@app/physical/service-types';
 import { escapeHtml } from '@app/physical/ui/plant-ui-helpers';
 import { NetProbeApp } from './laptop/netprobe-app';
 import { PortalApp } from './laptop/portal-app';
+import { FieldRadio } from './radio/radio-app';
 import './field-service-panel.css';
 
 /**
@@ -16,18 +18,13 @@ import './field-service-panel.css';
  * latest sample with its value, units, provenance, age and a current / stale / invalidated badge,
  * plus the symptom history (status changes the player could have seen). A provenance that cannot
  * see a layer is not offered for it, so a green light cannot stand in for end-to-end service.
+ *
+ * Phase 44: the table is now only the device-light rows inside part close-ups. Each other source has its own
+ * device: NetProbe (local probe) and the browser (provider portal) on the laptop, the handheld radio (pilot and
+ * endpoint reports). All of them take readings through `check`.
  */
 
-export { LAYER_LABEL, PROVENANCE_LABEL };
-
-const FRESHNESS_LABEL: Record<Freshness, string> = {
-  current: 'Current',
-  stale: 'Stale',
-  invalidated: 'Invalidated',
-  unavailable: 'Cannot see this',
-};
-
-const STATUS_LABEL: Record<LayerStatus, string> = { up: 'Up', degraded: 'Degraded', down: 'Down', unknown: 'Unknown' };
+export { badgeText, formatClock, formatSampleValue, LAYER_LABEL, PROVENANCE_LABEL, UNTESTED_APPLICATION_TEXT, untestedApplication };
 
 /** Order a provenance menu the way a player escalates: lights first, workload last */
 /** Scenario seconds a check by each provenance takes (the reading is stamped before the time is spent) */
@@ -94,16 +91,6 @@ export function describeInterval(model: ServiceModel, rec: { id: string; startS:
   return `Outage started ${at(rec.startS)}. Operator activated ${at(rec.activationS)} (${span('response')} after the start). Terminal registered ${at(rec.registeredS)} (${span('startup')} after activation). Service usable ${at(rec.usableS)}. Time to restore service: ${span('restoration')}.`;
 }
 
-/** Badge text: a Current reading also says when it gets old (a change on site can still end it sooner) */
-export function badgeText(r: Pick<ServicePanelRow, 'freshness' | 'sample' | 'invalidatedWhy'>): string {
-  if (!r.freshness) return '';
-  if (r.freshness === 'current' && r.sample) return `${FRESHNESS_LABEL.current}, fresh until ${formatClock(r.sample.tS + r.sample.maxAgeS)}`;
-
-  if (r.freshness === 'invalidated' && r.invalidatedWhy) return `${FRESHNESS_LABEL.invalidated}: ${r.invalidatedWhy}`;
-
-  return FRESHNESS_LABEL[r.freshness];
-}
-
 export function formatAge(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds));
   if (s < 90) {
@@ -111,32 +98,6 @@ export function formatAge(seconds: number): string {
   }
 
   return `${Math.round(s / 60)} min ago`;
-}
-
-export function formatClock(tS: number): string {
-  const s = Math.max(0, Math.floor(tS));
-  const mm = Math.floor(s / 60);
-
-  return `elapsed ${String(mm).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
-}
-
-export function formatSampleValue(sample: ServiceSample): string {
-  if (sample.value === 'unknown') {
-    return 'No reading';
-  }
-  if (typeof sample.value === 'number') {
-    const n = Math.round(sample.value * 10) / 10;
-    if (sample.metric === 'jitterMs') {
-      return `Jitter ${n} ms (mean change between 1 s delay readings, last ${sample.windowS ?? 60} s)`;
-    }
-
-    return `${METRIC_LABEL[sample.metric]}${capacityNote(sample)} ${n} ${sample.unit}`;
-  }
-  if (sample.value === 'down' && sample.metric !== 'status') {
-    return `${METRIC_LABEL[sample.metric]}: no link`;
-  }
-
-  return STATUS_LABEL[sample.value];
 }
 
 /** Rows for one service: each layer once, the application layer once more per endpoint */
@@ -151,19 +112,6 @@ function rowSpecs(model: ServiceModel, serviceId: string): Array<{ layer: Servic
   }
 
   return out;
-}
-
-/** An endpoint report of the application layer, with no workload run yet to back it */
-export const UNTESTED_APPLICATION_TEXT = 'Not yet tested (the endpoint only reports for itself; run a workload)';
-
-export function untestedApplication(model: ServiceModel, serviceId: string, sample: ServiceSample): boolean {
-  return (
-    sample.layer === 'application' &&
-    sample.metric === 'status' &&
-    sample.provenance === 'endpoint-report' &&
-    sample.value === 'up' &&
-    !model.samplesFor(serviceId).some((s) => s.provenance === 'workload-run')
-  );
 }
 
 /** Derive everything the panel prints from the service model (no DOM, no layer truth) */
@@ -215,6 +163,7 @@ export class FieldServicePanel {
     if (source === this.source_ && serviceId === this.serviceId_) return;
     this.source_ = source;
     this.serviceId_ = serviceId;
+    if (source === 'pilot-report' || source === 'endpoint-report') this.radio.tuneTo(source);
     this.built_ = false;
     this.sync();
   }
@@ -226,8 +175,11 @@ export class FieldServicePanel {
   private readonly legacyHost_: HTMLElement;
   private readonly netprobeHost_: HTMLElement;
   private readonly portalHost_: HTMLElement;
+  /** The handheld radio owns pilot and endpoint reports */
+  private readonly radioHost_: HTMLElement;
   readonly netprobe: NetProbeApp;
   readonly portal: PortalApp;
+  readonly radio: FieldRadio;
 
   constructor(
     private readonly host_: HTMLElement,
@@ -241,21 +193,27 @@ export class FieldServicePanel {
     this.legacyHost_ = document.createElement('section');
     this.netprobeHost_ = document.createElement('section');
     this.portalHost_ = document.createElement('section');
+    this.radioHost_ = document.createElement('section');
     this.netprobeHost_.className = 'fsp-app';
     this.portalHost_.className = 'fsp-app';
-    this.host_.replaceChildren(this.legacyHost_, this.netprobeHost_, this.portalHost_);
+    this.radioHost_.className = 'fsp-app fsp-radio';
+    this.host_.replaceChildren(this.legacyHost_, this.netprobeHost_, this.portalHost_, this.radioHost_);
     this.legacyHost_.addEventListener('click', this.onClick_);
     this.netprobe = new NetProbeApp(this.netprobeHost_, (serviceId, layer, metric) => this.check(serviceId, layer, 'local-probe', undefined, metric));
     this.netprobe.modelForClick = () => this.getModel_();
     this.netprobe.afterRun = () => this.sync();
     this.portal = new PortalApp(this.portalHost_, (serviceId, layer) => this.check(serviceId, layer, 'provider-portal'));
     this.portal.afterRun = () => this.sync();
+    this.radio = new FieldRadio(this.radioHost_, (serviceId, layer, via, endpointId) => this.check(serviceId, layer, via, endpointId));
+    this.radio.modelForClick = () => this.getModel_();
+    this.radio.afterRun = () => this.sync();
   }
 
   destroy(): void {
     this.legacyHost_.removeEventListener('click', this.onClick_);
     this.netprobe.destroy();
     this.portal.destroy();
+    this.radio.destroy();
   }
 
   /** Take a sample as if the player pressed Check on that row; returns the sample */
@@ -300,12 +258,21 @@ export class FieldServicePanel {
       return;
     }
     this.host_.style.display = '';
-    const app = this.source_ === 'local-probe' ? this.netprobe : this.source_ === 'provider-portal' ? this.portal : null;
+    const app =
+      this.source_ === 'local-probe'
+        ? this.netprobe
+        : this.source_ === 'provider-portal'
+          ? this.portal
+          : this.source_ === 'pilot-report' || this.source_ === 'endpoint-report'
+            ? this.radio
+            : null;
     this.legacyHost_.hidden = app !== null;
     this.netprobeHost_.hidden = app !== this.netprobe;
     this.portalHost_.hidden = app !== this.portal;
+    this.radioHost_.hidden = app !== this.radio;
     if (app) {
       this.netprobe.setNote(this.lastCheck_);
+      this.radio.setNote(this.lastCheck_);
       app.sync(model, this.getNow_());
 
       return;

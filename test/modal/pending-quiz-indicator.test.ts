@@ -3,6 +3,7 @@ import { EventBus } from '../../src/events/event-bus';
 import { Events } from '../../src/events/events';
 import { PendingQuizIndicator } from '../../src/modal/pending-quiz-indicator';
 import { QuizManager } from '../../src/modal/quiz-manager';
+import { ImmersiveView } from '../../src/presentation/immersive-view';
 
 // Mock QuizManager
 vi.mock('../../src/modal/quiz-manager', () => ({
@@ -361,6 +362,116 @@ describe('PendingQuizIndicator', () => {
       vi.runAllTimers();
 
       expect(indicator.isVisible()).toBe(false);
+    });
+  });
+
+  describe('held objects (ImmersiveView)', () => {
+    const showModal = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, 'showModal');
+    const close = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, 'close');
+    beforeAll(() => {
+      Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {
+        configurable: true,
+        value: function (this: HTMLDialogElement) {
+          this.open = true;
+        },
+      });
+      Object.defineProperty(HTMLDialogElement.prototype, 'close', {
+        configurable: true,
+        value: function (this: HTMLDialogElement) {
+          this.open = false;
+        },
+      });
+    });
+    afterAll(() => {
+      if (showModal) Object.defineProperty(HTMLDialogElement.prototype, 'showModal', showModal);
+      else Reflect.deleteProperty(HTMLDialogElement.prototype, 'showModal');
+      if (close) Object.defineProperty(HTMLDialogElement.prototype, 'close', close);
+      else Reflect.deleteProperty(HTMLDialogElement.prototype, 'close');
+    });
+
+    const el = (): HTMLElement => document.querySelector<HTMLElement>('.pending-quiz-indicator')!;
+    const showIndicator = (): void => {
+      eventBus.emit(Events.QUIZ_DISMISSED, { objectiveId: 'obj-1', conditionIndex: 0 });
+      vi.runAllTimers();
+    };
+    const hold = (leave?: () => void): ImmersiveView => {
+      const view = new ImmersiveView();
+      const content = document.createElement('div');
+      document.body.append(content);
+      view.open(content, 'Logbook', 'paper', leave ?? (() => view.close()));
+
+      return view;
+    };
+
+    afterEach(() => ImmersiveView.closeAll());
+
+    it('rides inside a held object and survives it being put down', () => {
+      const view = hold();
+      showIndicator();
+      expect(el().parentElement).toBe(ImmersiveView.topDialog());
+
+      view.close();
+      expect(el().isConnected).toBe(true);
+      expect(el().parentElement).toBe(document.body);
+      expect(indicator.isVisible()).toBe(true);
+    });
+
+    it('stays pressable across a reopened object (page turn by close and open)', () => {
+      const view = hold();
+      showIndicator();
+      const content = document.createElement('div');
+      document.body.append(content);
+      view.open(content, 'Logbook', 'paper', () => view.close());
+      expect(el().parentElement).toBe(ImmersiveView.topDialog());
+      expect(el().isConnected).toBe(true);
+    });
+
+    it('moves into an object picked up while it is already showing', () => {
+      showIndicator();
+      expect(el().parentElement).toBe(document.body);
+      hold();
+      expect(el().parentElement).toBe(ImmersiveView.topDialog());
+    });
+
+    it('never moves into other modal dialogs such as the pause menu', () => {
+      const menu = document.createElement('dialog');
+      menu.id = 'game-menu';
+      document.body.append(menu);
+      menu.showModal();
+      showIndicator();
+      expect(el().parentElement).toBe(document.body);
+    });
+
+    it('lets a quiz that becomes due while an object is held wait, without putting the object down', () => {
+      hold();
+      eventBus.emit(Events.QUIZ_PENDING, { objectiveId: 'obj-1', conditionIndex: 0 });
+      vi.advanceTimersByTime(5000);
+      vi.runAllTimers();
+      expect(ImmersiveView.topDialog()).not.toBeNull();
+      expect(indicator.isVisible()).toBe(true);
+      expect(el().parentElement).toBe(ImmersiveView.topDialog());
+    });
+
+    it('puts the held object down through its leave action and focuses the first answer on Open Quiz', () => {
+      const reopen = vi.fn(() => {
+        document.body.insertAdjacentHTML(
+          'beforeend',
+          '<div id="quiz-options"><button class="quiz-option-btn" id="quiz-option-0">A</button><button class="quiz-option-btn" id="quiz-option-1">B</button></div>'
+        );
+      });
+      (QuizManager.getInstance as Mock).mockReturnValue({ reopenPendingQuiz: reopen });
+      let view: ImmersiveView | null = null;
+      const leave = vi.fn(() => view?.close());
+      view = hold(leave);
+      showIndicator();
+
+      el().querySelector<HTMLButtonElement>('.pending-quiz-indicator__open-btn')!.click();
+
+      expect(leave).toHaveBeenCalledTimes(1);
+      expect(ImmersiveView.topDialog()).toBeNull();
+      expect(document.querySelector('dialog.immersive-view')).toBeNull();
+      expect(reopen).toHaveBeenCalledTimes(1);
+      expect(document.activeElement?.id).toBe('quiz-option-0');
     });
   });
 

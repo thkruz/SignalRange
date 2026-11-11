@@ -158,7 +158,9 @@ export class Closeup {
     const toolMeter = !m.devices().some((d) => d.kind === 'multimeter' && !d.spare && !d.removed);
     const want = dev ? panelsFor(dev.kind, toolMeter).filter((id) => this.panels_.get(id)?.isRelevant(m)) : [];
     const showSdr = dev?.kind === 'laptop';
-    const key = `${dev?.id ?? ''}|${showSdr}|${want.join(',')}`;
+    // The pass planner is a second program on the laptop when the scenario has satellites to plan for
+    const showPasses = showSdr && document.querySelector('[data-tab-id="pass-schedule"]') !== null;
+    const key = `${dev?.id ?? ''}|${showSdr}|${showPasses}|${want.join(',')}`;
     if (key === this.instruments_.dataset.key) return;
     this.instruments_.dataset.key = key;
     this.instruments_.replaceChildren();
@@ -180,6 +182,18 @@ export class Closeup {
           'sdr-btn ham-open-sdr'
         )
       );
+      if (showPasses) {
+        this.instruments_.append(
+          button(
+            'ham-open-observations',
+            'Open Observations',
+            () => {
+              EventBus.getInstance().emit(Events.SWITCH_TAB, { tabId: 'pass-schedule' });
+            },
+            'sdr-btn ham-open-sdr'
+          )
+        );
+      }
     }
     for (const id of want) {
       const p = this.panels_.get(id);

@@ -27,6 +27,8 @@ export interface LaptopShellOptions {
   activeId: string;
   /** Start with the window closed, showing the desktop */
   showDesktop: boolean;
+  /** Maker's name on the chin; the C6 field laptop's by default */
+  brand?: string;
 }
 
 const ICONS: Record<LaptopIcon, string> = {
@@ -90,6 +92,7 @@ export class LaptopShell {
         <span class="lt-brand" aria-hidden="true">FIELDBOOK R7</span>
       </div>`;
     this.element = root;
+    if (options_.brand) root.querySelector<HTMLElement>('.lt-brand')!.textContent = options_.brand;
     this.window_ = root.querySelector<HTMLElement>('.lt-window')!;
     this.clock_ = root.querySelector<HTMLElement>('.lt-clock')!;
     root.querySelector('.lt-window-body')!.append(content);

@@ -222,7 +222,7 @@ export const frontlineScenario5Data: FrontlineScenarioData = {
   missionType: 'Service Diagnosis',
   description:
     "The terminal reports online, but Ola's application isn't meeting its exercise requirement. Compare the terminal, local network, and application evidence. Identify what is using the shared service, apply the permitted priority setting, and verify whether the application becomes usable.",
-  equipment: ['SkyLink terminal and router', 'Local service panel', 'Simulated workload list', 'Pilot workstation'],
+  equipment: ['SkyLink terminal and router', 'Local service panel', 'Simulated workload app', 'Pilot workstation'],
   settings,
   mechanicTodos: [],
   objectives: [
@@ -284,13 +284,13 @@ export const frontlineScenario5Data: FrontlineScenarioData = {
       id: 's5-identify-shared-use',
       title: 'Identify the Shared Workload',
       description:
-        'Press Inspect on each workload in the Workloads list to see what it needs and what share it gets. Identify which activity explains the observed demand and distinguish essential work from the exercise transfer that can wait.',
+        'In MissionRunner on the laptop, select each workload in the Applications list and press Inspect to see what it needs and what share it gets. Identify which activity explains the observed demand and distinguish essential work from the exercise transfer that can wait.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s5-assess-service-scope'],
       points: 15,
       nice: ['K0737', 'K0792'],
       conditions: [
-        workloadsInspected([APP_CARD, TRANSFER_CARD], 'Both workloads inspected (Inspect in the Workloads list)'),
+        workloadsInspected([APP_CARD, TRANSFER_CARD], 'Both workloads inspected (Inspect in MissionRunner)'),
         handoverValid('attribution', 'Shared demand attributed to an observed workload'),
       ],
     },

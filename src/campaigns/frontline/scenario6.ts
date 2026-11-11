@@ -282,7 +282,7 @@ export const frontlineScenario6Data: FrontlineScenarioData = {
       id: 's06-assess-fiber',
       title: 'Assess the Prompt-Response Fiber Case',
       description:
-        'Choose the fiber connection in Workloads and press Inspect to read its configuration, then assess the prompt-response task against its requirement card. Identify the segments that still depend on the satellite service.',
+        'In MissionRunner, set Route to the fiber connection and press Inspect to read its configuration, then assess the prompt-response task against its requirement card. Identify the segments that still depend on the satellite service.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s06-compare-profiles'],
       nice: ['T0153', 'K0773'],

@@ -111,7 +111,7 @@
 #part-closeup-modal :focus-visible { outline: 2px solid #eee; outline-offset: -3px; }
 
 .pp-closeup { height: 100%; display: flex; flex-direction: column; min-height: 0; background: var(--mc-surface-0); color: var(--mc-text-secondary); }
-.pp-closeup .pp-closeup-body { flex: 1; min-height: 0; display: grid; grid-template-columns: var(--pcu-img-w, 1fr) 340px; gap: 12px; padding: 12px; overflow: hidden; align-content: start; }
+.pp-closeup .pp-closeup-body { flex: 1; min-height: 0; display: grid; grid-template-columns: var(--pcu-img-w, 1fr) 360px; gap: 12px; padding: 12px; overflow: hidden; align-content: start; }
 /* The image pane: exactly the fitted painting, top-aligned; the overlay shares the drawn image's box */
 .pp-closeup .pp-stage-box { position: relative; width: var(--pcu-img-w); height: var(--pcu-img-h); align-self: start; }
 .pp-closeup .pp-stage-box > .pp-stage { width: 100%; height: 100%; border: 0; }
@@ -125,11 +125,6 @@
 .pp-closeup .pp-section-title { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--mc-text-muted); margin: 0 0 0.25rem; }
 .pp-closeup .pp-target { font-size: 0.9rem; color: var(--mc-text-primary); min-height: 1.3rem; }
 .pp-closeup .pp-tags { min-height: 1.6rem; }
-.pp-closeup .pp-verbs { display: flex; flex-wrap: wrap; gap: 0.3rem; min-height: 4.6rem; max-height: 9.5rem; overflow-y: auto; align-content: flex-start; }
-.pp-closeup .pp-act { flex: 1 1 calc(50% - 0.3rem); justify-content: flex-start; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pp-closeup .pp-act-wide { flex-basis: 100%; }
-.pp-closeup .pp-cost { padding-left: 0.2rem; color: var(--mc-text-muted); font-size: 0.72rem; }
-.pp-closeup .pp-act-disruptive { opacity: 0.85; border-style: dashed; }
 .pp-closeup .pp-hint { color: var(--mc-text-muted); font-size: 0.78rem; }
 .pp-closeup .pp-latest { min-height: 5.6rem; max-height: 9rem; overflow-y: auto; padding: 0.5rem 0.6rem; border: 1px solid var(--mc-border); border-radius: 0.25rem; background: var(--mc-surface-1); }
 .pp-closeup .pp-latest-meta { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--mc-text-muted); margin-bottom: 0.25rem; }

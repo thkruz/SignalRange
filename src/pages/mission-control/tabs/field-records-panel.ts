@@ -119,8 +119,8 @@ export class FieldRecordsPanel {
   };
 
   private readonly onChange_ = (e: Event): void => {
-    const sel = (e.target as HTMLElement).closest<HTMLSelectElement>('select[data-rp-pick]');
-    if (sel) this.picks_.set(sel.dataset.rpPick ?? '', sel.value);
+    const pick = (e.target as HTMLElement).closest<HTMLInputElement>('input[data-rp-pick]');
+    if (pick?.checked) this.picks_.set(pick.dataset.rpPick ?? '', pick.value);
   };
 
   // ---------------------------------------------------------------- render
@@ -135,10 +135,11 @@ export class FieldRecordsPanel {
     this.host_.style.display = '';
     if (!this.built_) {
       this.host_.innerHTML = `
-      <details class="frp" open>
-        <summary class="frp-summary"><b>Records and notices</b> <span class="frp-unread" data-frp="unread"></span> <span class="frp-msg" data-frp="msg" aria-live="polite"></span></summary>
+      <section class="frp" aria-label="Equipment log and notices">
+        <header class="frp-head"><h2 class="frp-heading">Equipment log</h2><span class="frp-unread" data-frp="unread"></span></header>
+        <p class="frp-msg" data-frp="msg" role="status" aria-live="polite"></p>
         <div class="frp-body" data-frp="body"></div>
-      </details>`;
+      </section>`;
       this.built_ = true;
     }
     const msg = this.host_.querySelector<HTMLElement>('[data-frp="msg"]');
@@ -186,7 +187,7 @@ export class FieldRecordsPanel {
         const action =
           u.acceptedAtS !== undefined
             ? `<span class="frp-ok" data-frp="accepted-${id}">Accepted at ${clock(u.acceptedAtS)}</span>`
-            : `<button type="button" class="btn btn-sm btn-outline-primary" data-rp-act="accept" data-rp-unit="${id}">Accept this unit</button>`;
+            : `<button type="button" class="frp-initial" data-rp-act="accept" data-rp-unit="${id}">Initial here</button>`;
         const history = ledger.history(u.unitId);
         const historyHtml = history.length
           ? `<div class="frp-history" data-frp="history-${id}"><b>${escapeHtml(ledger.historyTitle(u.unitId))}</b><ul>${history.map((h) => `<li>${escapeHtml(h.at)}: ${escapeHtml(h.text)}</li>`).join('')}</ul></div>`
@@ -209,7 +210,7 @@ export class FieldRecordsPanel {
       })
       .join('');
 
-    return `<div class="frp-section"><div class="frp-title">Equipment records</div>${cards}</div>`;
+    return `<div class="frp-section"><h3 class="frp-title">Equipment records</h3>${cards}</div>`;
   }
 
   private requestHtml_(ledger: EquipmentLedger, requestId: string): string {
@@ -225,18 +226,21 @@ export class FieldRecordsPanel {
       return `<div class="frp-req" data-frp-req="${rid}">Correction filed at ${clock(filed.submittedAtS)}: change ${field} from ${escapeHtml(filed.from)} to ${escapeHtml(filed.to)}. <b data-frp="req-status-${rid}">${STATUS_LABEL[filed.status]}</b></div>`;
     }
     if (cfg.referral) {
-      return `<div class="frp-req" data-frp-req="${rid}">Send the incident package to the specialist <button type="button" class="btn btn-sm btn-outline-secondary" data-rp-act="request" data-rp-req="${rid}">Send referral</button></div>`;
+      return `<div class="frp-req" data-frp-req="${rid}">Send the incident package to the specialist <button type="button" class="frp-pencil-btn" data-rp-act="request" data-rp-req="${rid}">Send referral</button></div>`;
     }
     const rec = ledger.getRecord(cfg.unitId);
     const inst = ledger.getInstalled(cfg.unitId);
     const options = [...new Set([cfg.to, inst?.[cfg.field]].filter((v): v is string => !!v && v !== rec?.[cfg.field]))];
     if (options.length === 0) return '';
     const cur = this.picks_.get(requestId) ?? cfg.to;
-    const select = `<select class="form-select form-select-sm" data-rp-pick="${rid}" aria-label="New ${field}">${options
-      .map((o) => `<option value="${escapeHtml(o)}"${o === cur ? ' selected' : ''}>${escapeHtml(o)}</option>`)
-      .join('')}</select>`;
+    const ticks = `<span class="frp-ticks" role="radiogroup" aria-label="New ${field}">${options
+      .map(
+        (o) =>
+          `<label class="frp-tick"><input type="radio" name="rp-${rid}" data-rp-pick="${rid}" value="${escapeHtml(o)}"${o === cur ? ' checked' : ''} /><span>${escapeHtml(o)}</span></label>`
+      )
+      .join('')}</span>`;
 
-    return `<div class="frp-req" data-frp-req="${rid}">Ask the records office to change the ${field} to ${select} <button type="button" class="btn btn-sm btn-outline-secondary" data-rp-act="request" data-rp-req="${rid}">File correction request</button>${cfg.note ? `<div class="frp-hint">${escapeHtml(cfg.note)}</div>` : ''}</div>`;
+    return `<div class="frp-req frp-slip" data-frp-req="${rid}"><span class="frp-slip-title">Correction slip</span>Ask the records office to change the ${field} to ${ticks} <button type="button" class="frp-pencil-btn" data-rp-act="request" data-rp-req="${rid}">File correction slip</button>${cfg.note ? `<div class="frp-hint">${escapeHtml(cfg.note)}</div>` : ''}</div>`;
   }
 
   private noticesHtml_(notices: ReturnType<EquipmentLedger['deliveredNotices']>): string {
@@ -248,13 +252,13 @@ export class FieldRecordsPanel {
             const isRead = this.read_.has(ver);
             const kind = KIND_LABEL[n.kind] ?? humanize(n.kind);
             const mark = isRead ? '' : ` <span class="frp-badge">new</span>`;
-            const btn = isRead ? '' : `<button type="button" class="btn btn-sm btn-outline-secondary" data-rp-act="read" data-rp-notice="${escapeHtml(ver)}">Mark as read</button>`;
+            const btn = isRead ? '' : `<button type="button" class="frp-pencil-btn" data-rp-act="read" data-rp-notice="${escapeHtml(ver)}">Mark read</button>`;
 
             return `<div class="frp-notice${isRead ? '' : ' frp-new'}" data-frp-notice="${escapeHtml(n.id)}"><div><b>${escapeHtml(kind)}</b> from ${escapeHtml(humanize(n.providerId))}, version ${n.version}, ${clock(n.issuedAtS)}${mark}</div><div>${escapeHtml(n.text)}</div>${btn}</div>`;
           })
           .join('')
       : '<div class="frp-none">No notices yet.</div>';
 
-    return `<div class="frp-section"><div class="frp-title">Notice inbox</div>${items}</div>`;
+    return `<div class="frp-section frp-memos"><h3 class="frp-title">Notice inbox</h3>${items}</div>`;
   }
 }

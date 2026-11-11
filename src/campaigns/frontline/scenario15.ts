@@ -396,7 +396,7 @@ export const frontlineScenario15Data: FrontlineScenarioData = {
       id: 's15-preserve-package',
       title: 'Preserve the Incident Record',
       description:
-        'Save the relevant observations, configuration history, and confidence statement together. Retain original timestamps and identify any gaps in the record. Both terminals are still drawing on the battery, so check the forecast on the Power panel before the hour is out.',
+        'Save the relevant observations, configuration history, and confidence statement together. Retain original timestamps and identify any gaps in the record. Both terminals are still drawing on the battery, so check the forecast on the power planning sheet before the hour is out.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s15-assess-confidence'],
       nice: ['K0645'],
@@ -443,7 +443,7 @@ export const frontlineScenario15Data: FrontlineScenarioData = {
       character: Character.IRENA_MAZUR,
       emotion: Emotion.NEUTRAL,
       audioUrl: '',
-      text: "<p>This shift needs a clear incident record if the service changes. Preserve the observations before you decide what caused them. We can refer a suspected problem without pretending we've already identified its source. Both terminals are on the battery and the generator stays off this shift: the 150 Wh reserve holds only if the EuroSat modem goes to standby within about an hour, once you have the readings you need. Watch the forecast on the Power panel.</p>",
+      text: "<p>This shift needs a clear incident record if the service changes. Preserve the observations before you decide what caused them. We can refer a suspected problem without pretending we've already identified its source. Both terminals are on the battery and the generator stays off this shift: the 150 Wh reserve holds only if the EuroSat modem goes to standby within about an hour, once you have the readings you need. Watch the forecast on the power planning sheet.</p>",
     },
     objectivesOnStart: {
       's15-review-evidence': {

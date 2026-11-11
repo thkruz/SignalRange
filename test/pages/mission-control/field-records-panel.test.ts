@@ -111,7 +111,7 @@ describe('M16 ClaimRule choice labels', () => {
     const host = document.createElement('div');
     const panel = new FieldHandoverPanel(host, { records: () => records, evidence: () => null, service: () => null, runs: () => [], plant: () => null });
     panel.sync();
-    const labels = [...host.querySelectorAll('select[data-hf-field="c"] option')].map((o) => o.textContent);
-    expect(labels).toEqual(['Pick one', 'A plug came loose', 'Other thing', 'Other']);
+    const labels = [...host.querySelectorAll('input[type="radio"][data-hf-field="c"] + span')].map((o) => o.textContent);
+    expect(labels).toEqual(['A plug came loose', 'Other thing', 'Other']);
   });
 });

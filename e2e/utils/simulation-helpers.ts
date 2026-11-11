@@ -16,9 +16,9 @@ export async function waitForSimulationReady(page: Page): Promise<void> {
     await expect(opening).toHaveCount(0);
   }
 
-  // Wait for ground stations to appear in the asset tree
+  // Wait for ground stations to appear in the asset tree, or for the minimal HUD (C3 bench, C6 field), which hides it
   const gsItems = page.locator('[data-asset-type="ground-station"], .ground-station-item, .asset-tree-item');
-  await expect(gsItems.first()).toBeVisible({ timeout: 15000 });
+  await expect(gsItems.first().or(page.locator('html.mc-minimal-hud #app-shell-page')).first()).toBeVisible({ timeout: 15000 });
 
   // Give the simulation time to start the game loop
   await page.waitForTimeout(2000);

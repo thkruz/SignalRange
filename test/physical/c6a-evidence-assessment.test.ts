@@ -262,8 +262,8 @@ describe('C6 gap A: records and panel', () => {
     const host = document.createElement('div');
     const panel = new FieldHandoverPanel(host, { records: () => r.records, evidence: () => r.log, service: () => r.service, runs: () => [], plant: () => r.plant });
     panel.sync();
-    const opts = [...host.querySelectorAll<HTMLOptionElement>('select[data-hf-field="class"] option')].map((o) => o.textContent);
-    expect(opts).toEqual(['Pick one', 'Suspected interference', 'Unexplained outage', 'Terminal fault', 'Other']);
+    const opts = [...host.querySelectorAll<HTMLElement>('input[type="radio"][data-hf-field="class"] + span')].map((o) => o.textContent);
+    expect(opts).toEqual(['Suspected interference', 'Unexplained outage', 'Terminal fault', 'Other']);
     expect(host.querySelector('[data-fhf="needs-basis"]')?.textContent).toContain('a SkyLink reading after the incident');
   });
 

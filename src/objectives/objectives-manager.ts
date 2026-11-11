@@ -1271,10 +1271,11 @@ export class ObjectivesManager {
 
   /**
    * Capture current collapse states from the DOM before regenerating HTML
-   * Should be called before generateHtmlChecklist() to preserve user preferences
+   * Should be called before generateHtmlChecklist() to preserve user preferences.
+   * `root` scopes the read to one rendered checklist when several are on the page (the clipboard cover and the sidebar).
    */
-  syncCollapsedStatesFromDOM(): void {
-    const checklistElement = document.querySelector('.objectives-checklist');
+  syncCollapsedStatesFromDOM(root: ParentNode = document): void {
+    const checklistElement = root.querySelector('.objectives-checklist');
     if (!checklistElement) {
       return;
     }

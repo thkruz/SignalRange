@@ -1,0 +1,719 @@
+/* Minimal field HUD (phase 44 slice 2a). Active only while the document root has .mc-minimal-hud. */
+
+/* The station computer's chrome, the site header and footer, and the status strip give way to the physical site */
+.mc-minimal-hud #mission-command-bar-mount,
+.mc-minimal-hud #asset-tree-sidebar-container,
+.mc-minimal-hud .tabbed-canvas > .canvas-header,
+.mc-minimal-hud header.header,
+.mc-minimal-hud footer.footer,
+.mc-minimal-hud .site-strip {
+  display: none !important;
+}
+
+/* Stepping out and in goes through the tent flap in the scene; the caption stays */
+.mc-minimal-hud #tent-toggle {
+  display: none !important;
+}
+
+.tabbed-canvas {
+  position: relative;
+}
+
+.mc-hud {
+  display: none;
+}
+
+.mc-minimal-hud .mc-hud {
+  display: block;
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+}
+
+/* Anything held fullscreen hides the HUD until it is put down (MinimalHud also holds back new plates) */
+body:has(dialog.immersive-view[open]) .mc-hud,
+body:has(dialog.fnb-immersive[open]) .mc-hud {
+  visibility: hidden;
+}
+
+.mc-hud-cluster {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.mc-hud-cluster > * {
+  pointer-events: auto;
+}
+
+/* Tent caption: a stencilled canvas tag on the tent pole, no lamps or pills */
+.mc-hud-tent .tent-control {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: baseline;
+  gap: 4px 14px;
+  max-width: 360px;
+  padding: 7px 14px 8px;
+  margin-top: 22px;
+  color: #ebe3cb;
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.03) 0 2px, transparent 2px 4px),
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.08) 0 2px, transparent 2px 4px),
+    #4a4c33;
+  border: 0;
+  border-radius: 1px;
+  box-shadow:
+    inset 0 0 0 1px rgba(20, 20, 10, 0.5),
+    inset 0 0 14px rgba(0, 0, 0, 0.45),
+    0 3px 8px rgba(0, 0, 0, 0.5);
+  font-family: 'Roboto Condensed', 'Arial Narrow', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-shadow: 0 0 1px rgba(235, 227, 203, 0.4);
+}
+
+.mc-hud-tent .tent-control .pp-badge {
+  padding: 0;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  font: inherit;
+  letter-spacing: inherit;
+}
+
+.mc-hud-tent .tent-control .pp-pip {
+  display: none;
+}
+
+.mc-hud-tent .tent-control[data-state='outside'] #tent-location {
+  color: #f0c46a;
+}
+
+.mc-hud-tent .tent-control .tent-trips b {
+  font-weight: 700;
+}
+
+.mc-hud-tent .tent-control #tent-spotted {
+  color: #f08a6e;
+}
+
+/* The step-out ask: chalked on the same tag, with plain lettered choices */
+.mc-hud-tent .tent-control .tent-confirm {
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: baseline;
+  gap: 6px 12px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(235, 227, 203, 0.35);
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+
+.mc-hud-tent .tent-control .tent-confirm .btn {
+  padding: 2px 10px;
+  color: #ebe3cb;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(235, 227, 203, 0.55);
+  border-radius: 0;
+  font: inherit;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.mc-hud-tent .tent-control .tent-confirm #tent-confirm {
+  color: #241f12;
+  background: #e7d9a8;
+  border-color: #e7d9a8;
+}
+
+.mc-hud-tent .tent-control .tent-confirm .btn:focus-visible {
+  outline: 2px solid #f0c46a;
+  outline-offset: 2px;
+}
+
+/* The wristwatch: transparent art with a DOM readout laid over its blank LCD */
+.mc-watch {
+  position: relative;
+  width: 104px;
+  height: 104px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  container-type: inline-size;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.65));
+}
+
+.mc-watch img,
+.mc-watch-big img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  user-select: none;
+}
+
+.mc-watch:focus-visible {
+  outline: 2px solid #e1e69b;
+  outline-offset: 2px;
+  border-radius: 12px;
+}
+
+.mc-watch-lcd {
+  position: absolute;
+  left: 33%;
+  top: 37%;
+  width: 32%;
+  height: 23%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4%;
+  overflow: hidden;
+  color: #1d2318;
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* HH:MM is 5 Courier cells of 0.6em: 8.5cqw x 3 = 25.5cqw, inside the 32cqw LCD */
+.mc-watch .mc-watch-time {
+  font-size: 8.5cqw;
+  letter-spacing: 0;
+}
+
+/* Alarm lamp on the strap below the case: a backlit glyph and the count of raised alarms */
+.mc-watch-alarm {
+  position: absolute;
+  left: 50%;
+  bottom: 2px;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  color: #ffd27a;
+  background: #1a1408;
+  border: 1px solid #6b5216;
+  border-radius: 2px;
+  box-shadow: 0 0 6px rgba(255, 190, 70, 0.55);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  pointer-events: none;
+  animation: mc-watch-blink 1.1s steps(2, jump-none) infinite;
+}
+
+.mc-watch-alarm[hidden] {
+  display: none;
+}
+
+.mc-watch-alarm[data-severity='error'] {
+  color: #ff8a73;
+  background: #1c0b07;
+  border-color: #7a2a1c;
+  box-shadow: 0 0 7px rgba(255, 90, 60, 0.6);
+}
+
+.mc-watch-alarm-glyph {
+  font-size: 0.8em;
+}
+
+@keyframes mc-watch-blink {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0.35;
+  }
+}
+
+.mc-watch-park {
+  display: none;
+}
+
+/* The watch raised to the face: the readouts sit around it like the watch's own sub-dials and pushers */
+.mc-watch-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin: auto;
+  padding: 24px;
+  color: #ece4cf;
+}
+
+.mc-watch-big {
+  position: relative;
+  width: min(380px, 58vh);
+  aspect-ratio: 1;
+  container-type: inline-size;
+  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.7));
+}
+
+/* HH:MM:SS is 8 cells: 6cqw x 4.8 = 28.8cqw, inside the 32cqw LCD at every size */
+.mc-watch-big .mc-watch-time {
+  font-size: 6cqw;
+}
+
+.mc-watch-big .mc-watch-sub {
+  font-size: 3.6cqw;
+  opacity: 0.85;
+}
+
+.mc-watch-big .mc-watch-sub:empty {
+  display: none;
+}
+
+.mc-watch-readouts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+.mc-watch-readouts[hidden] {
+  display: none;
+}
+
+/* A sub-display: the same grey-green LCD glass as the watch face */
+.mc-watch-readout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 132px;
+  padding: 6px 14px 7px;
+  color: #1d2318;
+  background: linear-gradient(180deg, #a9b08f, #959c7b);
+  border: 3px solid #23251f;
+  border-radius: 6px;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.35), 0 2px 6px rgba(0, 0, 0, 0.5);
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.mc-watch-readout-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.mc-watch-readout-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.mc-watch-hold {
+  padding: 0 3px;
+  color: #a9b08f;
+  background: #1d2318;
+}
+
+.mc-watch-alarms {
+  display: grid;
+  gap: 4px;
+  max-width: min(560px, 90vw);
+  margin: 0;
+  padding: 8px 14px;
+  list-style: none;
+  color: #ffd27a;
+  background: #15120a;
+  border: 1px solid #5a4614;
+  border-radius: 4px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.9rem;
+}
+
+.mc-watch-alarms[hidden] {
+  display: none;
+}
+
+.mc-watch-alarms li[data-severity='error'] {
+  color: #ff9a85;
+}
+
+.mc-watch-skips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+
+/* The watch's own pushers: knurled steel buttons with engraved lettering */
+.mc-watch-pusher {
+  padding: 9px 18px;
+  color: #e6e3d8;
+  background: linear-gradient(180deg, #5d615e 0%, #3b3e3c 45%, #2a2c2b 100%);
+  border: 1px solid #181918;
+  border-radius: 999px / 14px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.5),
+    0 3px 6px rgba(0, 0, 0, 0.55);
+  font-family: 'Roboto Condensed', 'Arial Narrow', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.7);
+  cursor: pointer;
+}
+
+.mc-watch-pusher:hover:not(:disabled) {
+  background: linear-gradient(180deg, #6c706c 0%, #474a47 45%, #303231 100%);
+}
+
+.mc-watch-pusher:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.mc-watch-pusher:focus-visible {
+  outline: 2px solid #e1e69b;
+  outline-offset: 3px;
+}
+
+.mc-watch-pusher:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mc-watch-pusher[hidden] {
+  display: none;
+}
+
+.mc-watch-pause {
+  padding: 6px 14px;
+  font-size: 0.75rem;
+}
+
+.mc-watch-none {
+  margin: 0;
+  font-family: 'Roboto Condensed', 'Arial Narrow', sans-serif;
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  opacity: 0.7;
+}
+
+/* A new warning or critical alarm: a stencilled warning plate top centre, up until acknowledged */
+.mc-hud-notice {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: min(520px, 56%);
+  pointer-events: auto;
+}
+
+.mc-hud-notice[hidden] {
+  display: none;
+}
+
+.mc-hud-plate {
+  --plate-stripe: #e0b52c;
+  --plate-face: #2b2614;
+  --plate-ink: #f3e7c1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px 10px 14px;
+  color: var(--plate-ink);
+  background:
+    radial-gradient(circle at 7px 7px, #8d8a7c 1.6px, transparent 2.2px),
+    radial-gradient(circle at calc(100% - 7px) 7px, #8d8a7c 1.6px, transparent 2.2px),
+    radial-gradient(circle at 7px calc(100% - 7px), #8d8a7c 1.6px, transparent 2.2px),
+    radial-gradient(circle at calc(100% - 7px) calc(100% - 7px), #8d8a7c 1.6px, transparent 2.2px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.18)),
+    var(--plate-face);
+  border: 5px solid transparent;
+  border-image: repeating-linear-gradient(-45deg, var(--plate-stripe) 0 8px, #1b1a16 8px 16px) 5;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+  font-family: 'Roboto Condensed', 'Arial Narrow', sans-serif;
+}
+
+.mc-hud-notice[data-severity='error'] .mc-hud-plate {
+  --plate-stripe: #c8412b;
+  --plate-face: #331512;
+}
+
+.mc-hud-plate-lamp {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #fff4c2, var(--plate-stripe) 55%, #3a2a08 100%);
+  box-shadow: 0 0 10px var(--plate-stripe);
+  animation: mc-watch-blink 0.9s steps(2, jump-none) infinite;
+}
+
+.mc-hud-plate-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mc-hud-plate-kicker {
+  color: var(--plate-stripe);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.mc-hud-plate-text {
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.mc-hud-plate-ack {
+  flex: none;
+  padding: 6px 12px;
+  color: #1b1a16;
+  background: linear-gradient(180deg, #ece2c0, #c9bd94);
+  border: 1px solid #1b1a16;
+  border-radius: 2px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 2px 0 #0e0d0a;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.mc-hud-plate-ack:active {
+  transform: translateY(1px);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.mc-hud-plate-ack:focus-visible {
+  outline: 2px solid var(--plate-ink);
+  outline-offset: 2px;
+}
+
+/* Field kit tray along the bottom of the Site view (C6) and of the ham bench (C3) */
+.fk-tray {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 14px;
+  padding: 8px 12px 6px;
+  background: linear-gradient(180deg, rgba(36, 40, 28, 0.85), rgba(26, 29, 20, 0.95));
+  border-top: 1px solid rgba(214, 200, 160, 0.25);
+}
+
+.fk-tray[hidden] {
+  display: none;
+}
+
+.fk-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  color: #ece4cf;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: transform 120ms ease;
+}
+
+.fk-item img {
+  height: 64px;
+  width: auto;
+  border-radius: 3px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.55);
+  user-select: none;
+}
+
+.fk-item:hover,
+.fk-item:focus-visible {
+  transform: translateY(-4px);
+  border-color: rgba(225, 230, 155, 0.6);
+  outline: none;
+}
+
+.fk-item.tab-pulse img {
+  box-shadow: 0 0 0 2px #e1e69b, 0 0 12px 2px rgba(225, 230, 155, 0.7);
+}
+
+.fk-item[hidden] {
+  display: none;
+}
+
+/* The spares crate on the tray (HUD only; the strip carries the count elsewhere) */
+.fk-crate {
+  display: none;
+}
+
+.mc-minimal-hud .fk-crate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  color: #ece4cf;
+  font-size: 0.72rem;
+}
+
+.fk-crate-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 84px;
+  height: 64px;
+  color: #2a1d0e;
+  background:
+    linear-gradient(90deg, transparent 0 6px, rgba(0, 0, 0, 0.18) 6px 8px, transparent 8px calc(100% - 8px), rgba(0, 0, 0, 0.18) calc(100% - 8px) calc(100% - 6px), transparent calc(100% - 6px)),
+    repeating-linear-gradient(180deg, #a77d4b 0 20px, #8e6639 20px 21px),
+    #9c7244;
+  border: 2px solid #5b3e1d;
+  border-radius: 2px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.55);
+  font-family: 'Roboto Condensed', 'Arial Narrow', sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.fk-crate-stencil {
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+}
+
+.fk-crate-count {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+/* Pages of a held paper object: manila index tabs along the top edge, not a nav bar */
+.field-kit-sheets {
+  justify-content: center;
+}
+
+.immersive-paper .field-kit-sheets,
+.fnb-immersive .field-kit-sheets {
+  gap: 2px;
+  padding: 10px 16px 0;
+  background: transparent;
+  border: 0;
+  align-items: flex-end;
+}
+
+.immersive-paper .field-kit-sheets button,
+.fnb-immersive .field-kit-sheets button {
+  position: relative;
+  padding: 7px 18px 6px;
+  color: #3a2f1c;
+  background: linear-gradient(180deg, #d9c590, #c7b07a);
+  border: 1px solid #8f7a4c;
+  border-bottom: 0;
+  border-radius: 9px 9px 0 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 -1px 3px rgba(0, 0, 0, 0.25);
+  font-family: 'Roboto Condensed', 'Arial Narrow', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.immersive-paper .field-kit-sheets button[aria-pressed='true'],
+.fnb-immersive .field-kit-sheets button[aria-pressed='true'] {
+  padding-top: 10px;
+  color: #211d18;
+  background: #decca6;
+  border-color: #a08a5a;
+}
+
+.immersive-paper .field-kit-sheets button:hover,
+.fnb-immersive .field-kit-sheets button:hover {
+  background: linear-gradient(180deg, #e3d19f, #d1bb85);
+}
+
+.immersive-paper .field-kit-sheets button:focus-visible,
+.fnb-immersive .field-kit-sheets button:focus-visible {
+  outline: 2px solid #f1e7c4;
+  outline-offset: 2px;
+}
+
+.fnb-immersive .field-kit-sheets {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Radio channels: embossed label tape on the radio's faceplate */
+.immersive-apps.radio-channels {
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: linear-gradient(180deg, #2a2d27, #1e201c);
+  border-bottom: 2px solid #0f100e;
+}
+
+.immersive-apps.radio-channels button {
+  padding: 5px 12px;
+  color: #f2f2ec;
+  background: linear-gradient(180deg, #1b1b1b, #0c0c0c);
+  border: 0;
+  border-radius: 2px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 1px 2px rgba(0, 0, 0, 0.8);
+  font-family: 'Roboto Condensed', 'Arial Narrow', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.9), 0 -1px 0 rgba(255, 255, 255, 0.25);
+}
+
+/* The selected channel: the selector knob's pointer rests on its label */
+.immersive-apps.radio-channels button[aria-pressed='true'] {
+  color: #1b1b1b;
+  background: linear-gradient(180deg, #e9dfb8, #cdbf8e);
+  text-shadow: none;
+}
+
+.immersive-apps.radio-channels button:focus-visible {
+  outline: 2px solid #e1e69b;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fk-item {
+    transition: none;
+  }
+
+  .mc-watch-alarm,
+  .mc-hud-plate-lamp {
+    animation: none;
+  }
+}
+
+/* The header and footer are hidden under the HUD, so the page takes the whole viewport (no 80 px band below) */
+.mc-minimal-hud .app-shell-page {
+  height: var(--mc-viewport-height, 100vh);
+}

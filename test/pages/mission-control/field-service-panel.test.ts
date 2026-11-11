@@ -12,11 +12,13 @@ import {
   isNumericCheck,
   provenancesFor,
 } from '@app/pages/mission-control/tabs/field-service-panel';
+import { RADIO_TX_MS } from '@app/pages/mission-control/tabs/radio/radio-app';
+import { callLog, radioChannels, replyText } from '@app/pages/mission-control/tabs/radio/radio-calls';
 import { PhysicalPlantManager } from '@app/physical/physical-plant-manager';
 import type { PlantConfig } from '@app/physical/physical-plant-types';
 import { ServiceModel } from '@app/physical/service-model';
 import type { ServiceModelConfig } from '@app/physical/service-types';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 const serviceCfg = (): ServiceModelConfig => ({
   paths: [
@@ -79,7 +81,8 @@ describe('M09 field service panel', () => {
     const panel = new FieldServicePanel(host, () => model, now);
     panel.check('skylink', 'registration', 'terminal-app');
     panel.setSource('pilot-report');
-    expect(host.querySelector('[data-fsp="value-skylink|registration|"]')?.textContent).toBe('Not checked');
+    // The radio's call log holds pilot and endpoint reports only: the terminal-app reading is not on it
+    expect(host.querySelector('[data-radio="log"]')?.textContent).toContain('No calls yet.');
     panel.setSource('terminal-app');
     expect(host.querySelector('[data-fsp="source-skylink|registration|"]')?.textContent).toBe('Terminal app');
     expect(host.querySelector('[data-svc-layer="power"]')).toBeNull();
@@ -189,5 +192,164 @@ describe('badgeText', () => {
     expect(badgeText({ freshness: 'current', sample })).toBe('Current, fresh until elapsed 12:00');
     expect(badgeText({ freshness: 'stale', sample })).toBe('Stale');
     expect(badgeText({ freshness: null, sample: null })).toBe('');
+  });
+});
+
+describe('Phase 44 field radio', () => {
+  it('offers a channel per party: pilot, remote operator, each endpoint', () => {
+    const { model } = rig();
+    const channels = radioChannels(model);
+    expect(channels.map((c) => [c.id, c.via, c.number])).toEqual([
+      ['pilot', 'pilot-report', 1],
+      ['operator', 'endpoint-report', 2],
+      ['endpoint:hq', 'endpoint-report', 3],
+    ]);
+    expect(channels[0].questions.map((q) => q.layer)).toEqual(['registration', 'provider']);
+    expect(channels[2].questions[0]).toMatchObject({ serviceId: 'skylink', layer: 'application', endpointId: 'hq' });
+  });
+
+  it('a push-to-talk call takes the same sample, costs the same time and logs it on the pad', () => {
+    vi.useFakeTimers();
+    try {
+      const { model, now } = rig();
+      const host = document.createElement('div');
+      const spent: number[] = [];
+      const panel = new FieldServicePanel(
+        host,
+        () => model,
+        now,
+        (s) => spent.push(s)
+      );
+      panel.setSource('endpoint-report');
+      const lcd = host.querySelector<HTMLElement>('[data-radio-lcd]');
+      expect(lcd?.dataset.radioChannel).toBe('operator');
+      expect(lcd?.dataset.radioQuestion).toBe('skylink|application|');
+      host.querySelector<HTMLButtonElement>('[data-radio-ptt]')?.click();
+      expect(host.querySelector('[data-radio="mode"]')?.textContent).toBe('TX');
+      expect(model.samplesFor('skylink')).toHaveLength(0);
+      vi.advanceTimersByTime(RADIO_TX_MS);
+      const [s] = model.samplesFor('skylink');
+      expect(s).toMatchObject({ provenance: 'endpoint-report', layer: 'application', endpointId: undefined });
+      expect(spent).toEqual([15]);
+      expect(host.querySelector('[data-radio="reply"]')?.textContent).toMatch(/^Remote operator \(SkyLink\): .+Over\.$/u);
+      const entry = host.querySelector(`[data-radio-entry="${s.id}"]`);
+      expect(entry?.querySelector('[data-radio-reading]')?.textContent).toBeTruthy();
+      expect(entry?.querySelector('[data-radio-badge]')?.textContent).toMatch(/^Current, fresh until/u);
+      panel.destroy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('turns the channel knob with the keyboard and steps questions with the keys', () => {
+    const { model, now } = rig();
+    const host = document.createElement('div');
+    const panel = new FieldServicePanel(host, () => model, now);
+    panel.setSource('pilot-report');
+    const knob = host.querySelector<HTMLElement>('[data-radio-knob="channel"]')!;
+    const lcd = () => host.querySelector<HTMLElement>('[data-radio-lcd]')!;
+    expect(lcd().dataset.radioChannel).toBe('pilot');
+    host.querySelector<HTMLButtonElement>('[data-radio-ask="next"]')?.click();
+    expect(lcd().dataset.radioQuestion).toBe('skylink|provider|');
+    knob.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    expect(lcd().dataset.radioChannel).toBe('operator');
+    expect(knob.getAttribute('aria-valuetext')).toBe('Channel 2, Remote operator');
+    knob.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+    knob.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+    expect(lcd().dataset.radioChannel).toBe('endpoint:hq');
+    panel.destroy();
+  });
+
+  it('a second PTT press during TX takes one sample and PTT keeps focus (aria-disabled, not disabled)', () => {
+    vi.useFakeTimers();
+    try {
+      const { model, now } = rig();
+      const host = document.createElement('div');
+      document.body.append(host);
+      const panel = new FieldServicePanel(host, () => model, now);
+      panel.setSource('pilot-report');
+      const ptt = host.querySelector<HTMLButtonElement>('[data-radio-ptt]')!;
+      ptt.focus();
+      ptt.click();
+      ptt.click();
+      expect(ptt.getAttribute('aria-disabled')).toBe('true');
+      expect(ptt.disabled).toBe(false);
+      expect(document.activeElement).toBe(ptt);
+      vi.advanceTimersByTime(RADIO_TX_MS * 3);
+      expect(model.samplesFor('skylink')).toHaveLength(1);
+      expect(document.activeElement).toBe(ptt);
+      expect(ptt.getAttribute('aria-disabled')).toBe('false');
+      panel.destroy();
+      host.remove();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('an endpoint channel passes its endpoint id and the reply names the service', () => {
+    vi.useFakeTimers();
+    try {
+      const { model, now } = rig();
+      const host = document.createElement('div');
+      const panel = new FieldServicePanel(host, () => model, now);
+      panel.setSource('endpoint-report');
+      host.querySelector<HTMLElement>('[data-radio-knob="channel"]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+      expect(host.querySelector<HTMLElement>('[data-radio-lcd]')?.dataset.radioChannel).toBe('endpoint:hq');
+      host.querySelector<HTMLButtonElement>('[data-radio-ptt]')?.click();
+      vi.advanceTimersByTime(RADIO_TX_MS);
+      expect(model.samplesFor('skylink')[0]).toMatchObject({ provenance: 'endpoint-report', endpointId: 'hq' });
+      expect(host.querySelector('[data-radio="reply"]')?.textContent).toMatch(/^Hq \(SkyLink\): /u);
+      // Changing the question clears the reply and the RX state
+      host.querySelector<HTMLButtonElement>('[data-radio-ask="next"]')?.click();
+      expect(host.querySelector<HTMLElement>('[data-radio="reply"]')?.hidden).toBe(true);
+      expect(host.querySelector<HTMLElement>('.frd-radio')?.dataset.radioState).toBe('idle');
+      panel.destroy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('destroy() mid-TX takes no sample', () => {
+    vi.useFakeTimers();
+    try {
+      const { model, now } = rig();
+      const host = document.createElement('div');
+      const panel = new FieldServicePanel(host, () => model, now);
+      panel.setSource('pilot-report');
+      host.querySelector<HTMLButtonElement>('[data-radio-ptt]')?.click();
+      panel.destroy();
+      vi.advanceTimersByTime(RADIO_TX_MS * 2);
+      expect(model.samplesFor('skylink')).toHaveLength(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('the wheel needs about 50 px of travel per detent', () => {
+    const { model, now } = rig();
+    const host = document.createElement('div');
+    const panel = new FieldServicePanel(host, () => model, now);
+    panel.setSource('pilot-report');
+    const knob = host.querySelector<HTMLElement>('[data-radio-knob="channel"]')!;
+    const lcd = () => host.querySelector<HTMLElement>('[data-radio-lcd]')!;
+    const wheel = (deltaY: number) => knob.dispatchEvent(new WheelEvent('wheel', { deltaY, bubbles: true, cancelable: true }));
+    for (let i = 0; i < 4; i++) wheel(10);
+    expect(lcd().dataset.radioChannel).toBe('pilot');
+    wheel(10);
+    expect(lcd().dataset.radioChannel).toBe('operator');
+    wheel(120);
+    expect(lcd().dataset.radioChannel).toBe('pilot');
+    panel.destroy();
+  });
+
+  it('words replies plainly and keeps the formal reading and freshness in the call log', () => {
+    const { model, advance } = rig();
+    const pilot = model.takeSample('skylink', 'registration', 'pilot-report');
+    expect(replyText(model, pilot)).toMatch(/Over\.$/u);
+    model.takeSample('skylink', 'registration', 'terminal-app');
+    advance(700);
+    const log = callLog(model);
+    expect(log).toHaveLength(1);
+    expect(log[0]).toMatchObject({ party: 'Pilot', subject: 'SkyLink · Terminal link', freshness: 'stale', badge: 'Stale' });
   });
 });

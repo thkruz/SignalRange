@@ -122,7 +122,15 @@ test.describe('SkyLink app at the Frontline field station (real browser)', () =>
 
     await expect(page.locator('.mission-loading-screen')).toHaveCount(0, { timeout: 30000 });
     await dismissDialogs(page);
-    await station.evaluate((el) => ((el.closest('[data-asset-id], .card') as HTMLElement | null) ?? (el as HTMLElement)).click(), undefined, { timeout: 20000 });
+    // The C6 field HUD has no sidebar: the mission opens at the field station already selected
+    if (await station.isVisible()) {
+      await station.evaluate((el) => ((el.closest('[data-asset-id], .card') as HTMLElement | null) ?? (el as HTMLElement)).click(), undefined, { timeout: 20000 });
+    }
+    // The station's tabs are built on demand; open the SkyLink app (the tab bar is only hidden under the HUD)
+    await page
+      .locator('#tab-bar .nav-link[data-tab-id="station-skylink-app"], #tab-bar .nav-link[data-tab-id="skylink-app"]')
+      .first()
+      .evaluate((el) => (el as HTMLElement).click());
     await expect(page.locator('#skylink-screen')).toBeAttached({ timeout: 20000 });
     await dismissDialogs(page);
   });
@@ -136,21 +144,20 @@ test.describe('SkyLink app at the Frontline field station (real browser)', () =>
     await openScreen(page, 'home');
   });
 
-  test('tab bar is Site + SkyLink, SkyLink is the default, trainer toggles engineering tabs', async () => {
+  test('field tabs include Site + SkyLink, the HUD opens at Site, trainer toggles engineering tabs', async () => {
     const tabs = page.locator('#tab-bar .nav-link');
+    const labels = async (): Promise<string[]> => (await tabs.allTextContents()).map((t) => t.replace(/\s+/gu, ' ').trim());
+    const ENGINEERING = ['ACU Control', 'RX Analysis', 'TX Chain'];
 
-    await expect(tabs).toHaveText(['Site', 'SkyLink']);
-    await expect(page.locator('#tab-bar .nav-link.active')).toHaveText('SkyLink');
+    // The C6 workspaces (laptop, notebook, power...) live in the hidden tab bar beside Site and SkyLink
+    expect(await labels()).toEqual(expect.arrayContaining(['Site', 'SkyLink']));
+    expect(await labels()).not.toEqual(expect.arrayContaining(ENGINEERING));
 
     await openTrainer(page);
     await setEngineering(page, true);
-    await expect.poll(async () => tabs.count()).toBeGreaterThan(2);
-    const engineering = await tabs.allTextContents();
-
-    // D1: the unlock adds the engineering tabs; the SkyLink tab stays.
-    expect(engineering.map((t) => t.trim())).toEqual(expect.arrayContaining(['ACU Control', 'RX Analysis', 'TX Chain', 'Site', 'SkyLink']));
+    await expect.poll(async () => labels()).toEqual(expect.arrayContaining([...ENGINEERING, 'Site', 'SkyLink']));
     await setEngineering(page, false);
-    await expect(tabs).toHaveText(['Site', 'SkyLink']);
+    await expect.poll(async () => labels()).not.toEqual(expect.arrayContaining(ENGINEERING));
     await openTab(page, 'station-skylink-app');
   });
 
@@ -278,7 +285,15 @@ test.describe('SkyLink app in the Frontline sandbox (real browser)', () => {
 
     await expect(page.locator('.mission-loading-screen')).toHaveCount(0, { timeout: 30000 });
     await dismissDialogs(page);
-    await station.evaluate((el) => ((el.closest('[data-asset-id], .card') as HTMLElement | null) ?? (el as HTMLElement)).click(), undefined, { timeout: 20000 });
+    // The C6 field HUD has no sidebar: the mission opens at the field station already selected
+    if (await station.isVisible()) {
+      await station.evaluate((el) => ((el.closest('[data-asset-id], .card') as HTMLElement | null) ?? (el as HTMLElement)).click(), undefined, { timeout: 20000 });
+    }
+    // The station's tabs are built on demand; open the SkyLink app (the tab bar is only hidden under the HUD)
+    await page
+      .locator('#tab-bar .nav-link[data-tab-id="station-skylink-app"], #tab-bar .nav-link[data-tab-id="skylink-app"]')
+      .first()
+      .evaluate((el) => (el as HTMLElement).click());
     await expect(page.locator('#skylink-screen')).toBeAttached({ timeout: 20000 });
     await dismissDialogs(page);
   });

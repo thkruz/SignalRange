@@ -211,7 +211,7 @@ export const frontlineScenario9Data: FrontlineScenarioData = {
       id: 's09-map-service',
       title: 'Trace the Local Dependencies',
       description:
-        'Identify the service path and the power and network components it depends on. Mark every local device on the path, including the laptop, and the power chain behind it (not the account, provider or remote endpoint), then Record selection. The note beside the button says if the set is short or includes a tile that is not local.',
+        'Identify the service path and the power and network components it depends on. On the Service paths diagram, ring every local device on the path, including the laptop, and the power chain behind it, but not the account, provider or remote endpoint. Then press Mark selection. The note below the button says if the set is short or includes a box that is not local.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s09-reconcile-post'],
       nice: ['K0689', 'K0792'],

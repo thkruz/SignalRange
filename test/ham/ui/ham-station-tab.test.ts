@@ -1,3 +1,4 @@
+import { missionItemBridge } from '../../../src/pages/mission-control/tabs/field-kit';
 import { HamStationTab } from '../../../src/pages/mission-control/tabs/ham-station-tab';
 import { baseConfig, baseConnections, baseDevices, harness } from '../manager/harness';
 
@@ -65,16 +66,23 @@ describe('HamStationTab', () => {
     document.body.innerHTML = '';
   });
 
-  it('tunes a radio with the staged frequency and Apply', () => {
+  it('tunes a radio by direct entry (F.INP, type, ENT) and with the main dial', () => {
     const { h, tab } = setup();
     pickOnBench('dev', 'mobile');
+    q('ham-radio-mobile-operate').click();
+    q('ham-radio-mobile-finp').click();
     const input = q<HTMLInputElement>('ham-radio-mobile-freq-input');
+    expect(input.hidden).toBe(false);
     const before = h.m.radio('mobile')?.vfoMHz;
     input.value = '145.5';
-    input.dispatchEvent(new Event('input'));
     expect(h.m.radio('mobile')?.vfoMHz).toBe(before);
     q('ham-radio-mobile-apply').click();
     expect(h.m.radio('mobile')?.vfoMHz).toBe(145.5);
+    expect(input.hidden).toBe(true);
+    const dial = q('ham-radio-mobile-dial');
+    dial.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+    expect(h.m.radio('mobile')?.vfoMHz).toBe(145.505);
+    expect(dial.getAttribute('aria-valuetext')).toContain('145.5050 MHz');
     tab.dispose();
   });
 
@@ -121,5 +129,70 @@ describe('HamStationTab', () => {
     expect(h.m.location).toBe('yard');
     tab.dispose();
     expect(document.querySelector('[data-testid="ham-station-tab"]')).toBeNull();
+  });
+
+  it('marks where you stand with a plaque and the other spots with walk signs', () => {
+    const { h, tab } = setup();
+    expect(q('ham-loc-bench').getAttribute('aria-pressed')).toBe('true');
+    expect(q('ham-loc-yard').getAttribute('aria-label')).toMatch(/^Walk to/u);
+    q('ham-loc-yard').click();
+    expect(q('ham-loc-yard').getAttribute('aria-pressed')).toBe('true');
+    expect(h.m.location).toBe('yard');
+    tab.dispose();
+  });
+
+  it('opens the logbook at the worksheets and turns to the station log', () => {
+    const { tab } = setup();
+    const logbook = document.querySelector<HTMLButtonElement>('[data-field-kit="logbook"]');
+    expect(logbook?.hidden).toBe(false);
+    logbook?.click();
+    const dialog = document.querySelector('dialog.immersive-paper');
+    expect(dialog?.hasAttribute('open') || (dialog as HTMLDialogElement | null)?.open).toBe(true);
+    expect(q('ham-notebook').dataset.page).toBe('worksheets');
+    expect(dialog?.contains(q('ham-ws-w1-submit'))).toBe(true);
+    const logTab = document.querySelector<HTMLButtonElement>('[data-field-object="ham-log"]');
+    logTab?.focus();
+    logTab?.click();
+    expect(q('ham-notebook').dataset.page).toBe('log');
+    // The page turns in place: same dialog, the pressed tab moves, focus stays on the tab
+    expect(document.querySelectorAll('dialog.immersive-paper')).toHaveLength(1);
+    expect(document.querySelector('dialog.immersive-paper')).toBe(dialog);
+    expect(logTab?.getAttribute('aria-pressed')).toBe('true');
+    expect(document.querySelector('[data-field-object="ham-worksheets"]')?.getAttribute('aria-pressed')).toBe('false');
+    expect(document.activeElement).toBe(logTab);
+    tab.dispose();
+  });
+
+  it('opens the reference cards from the tray', () => {
+    const { tab } = setup();
+    document.querySelector<HTMLButtonElement>('[data-field-kit="cards"]')?.click();
+    expect(q('ham-notebook').dataset.page).toBe('cards');
+    expect(document.querySelector('dialog.immersive-paper')?.contains(q('ham-card-c1'))).toBe(true);
+    // The first card lies open, not a bar of closed titles
+    expect(q('ham-card-c1-body').hidden).toBe(false);
+    expect(q('ham-card-c1-toggle').getAttribute('aria-expanded')).toBe('true');
+    tab.dispose();
+  });
+
+  it('opens the logbook with the Mission brief tab marked while the scenario waits on the brief', () => {
+    const saved = { ...missionItemBridge };
+    missionItemBridge.available = (item) => item === 'brief';
+    missionItemBridge.locked = () => true;
+    const open = vi.fn(() => true);
+    missionItemBridge.open = open;
+    try {
+      const { tab } = setup();
+      document.querySelector<HTMLButtonElement>('[data-field-kit="logbook"]')?.click();
+      expect(q('ham-notebook').dataset.page).toBe('worksheets');
+      const brief = document.querySelector<HTMLButtonElement>('dialog.immersive-paper [data-field-mission="brief"]');
+      expect(brief?.classList.contains('is-due')).toBe(true);
+      expect(brief?.textContent).toContain('read this first');
+      brief?.click();
+      expect(open).toHaveBeenCalledWith('brief');
+      expect(document.querySelector('dialog.immersive-paper')).toBeNull();
+      tab.dispose();
+    } finally {
+      Object.assign(missionItemBridge, saved);
+    }
   });
 });

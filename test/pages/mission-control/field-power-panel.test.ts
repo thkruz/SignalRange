@@ -111,4 +111,22 @@ describe('M08 field power panel', () => {
     host.querySelector<HTMLButtonElement>('[data-power-visit="vsat-modem"]')!.click();
     expect(visits).toEqual(['vsat-modem']);
   });
+
+  it('draws the forecast as a hand-worked graph with the reserve rule and follows the picks', () => {
+    const plant = make(config());
+    const host = document.createElement('div');
+    const panel = new FieldPowerPanel(
+      host,
+      () => plant,
+      () => undefined
+    );
+    panel.sync();
+    const graph = host.querySelector('[data-fpp="energy"] svg.fpp-graph');
+    expect(graph).not.toBeNull();
+    expect(graph?.querySelector('.fpp-reserve')).not.toBeNull();
+    const before = host.querySelector('[data-fpp="energy"]')?.innerHTML;
+    panel.setPending('vsat-modem', 'active');
+    expect(host.querySelector('[data-fpp="energy"]')?.innerHTML).not.toBe(before);
+    expect(host.querySelector('[data-power-row="vsat-modem"] [data-power-visit]')?.textContent).toBe('Go to VSAT modem');
+  });
 });

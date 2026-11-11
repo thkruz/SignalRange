@@ -39,9 +39,10 @@ function controlsFor(artKey: string, region: string, id: string, meterMode: stri
     case 'mobile':
     case 'hf':
       if (region === 'ptt') return [`ham-ptt-${id}-transmit`];
-      if (region === 'keys' || region === 'keypad' || region === 'topKeys') return [radio('mode'), radio('freq-input')];
-      if (region === 'volumeKnob' || region === 'smallKnobs') return [radio('volume'), radio('freq-input')];
-      if (region === 'screen' || region === 'mainKnob') return [radio('freq-input')];
+      if (region === 'keypad') return [radio('finp')];
+      if (region === 'keys' || region === 'topKeys') return [`[data-testid^="${radio('mode-')}"]`, radio('dial')];
+      if (region === 'volumeKnob' || region === 'smallKnobs') return [radio('volume'), radio('dial')];
+      if (region === 'screen' || region === 'mainKnob') return [radio('dial')];
 
       return [];
     case 'multimeter':
@@ -265,8 +266,12 @@ export class Faceplate {
   // ---- click -------------------------------------------------------------------------------
 
   private activate_(artKey: string, region: string, id: string): void {
+    // A radio's controls are on its front panel: sit down at it first, then go to the control there
+    const operate = this.controlsRoot_.querySelector<HTMLElement>(`[data-testid="ham-radio-${id}-operate"]`);
+    if (operate && RADIO_ARTS.includes(artKey)) operate.click();
     for (const testId of controlsFor(artKey, region, id, this.meterMode_)) {
-      const target = this.controlsRoot_.querySelector<HTMLElement>(`[data-testid="${testId}"]`);
+      const sel = testId.startsWith('[') ? testId : `[data-testid="${testId}"]`;
+      const target = this.controlsRoot_.querySelector<HTMLElement>(sel) ?? (operate ? document.querySelector<HTMLElement>(`.immersive-transceiver ${sel}`) : null);
       if (!target) continue;
       target.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
       target.focus?.({ preventScroll: true });

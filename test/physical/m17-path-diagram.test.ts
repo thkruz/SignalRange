@@ -140,6 +140,20 @@ describe('M17 panel', () => {
     expect(off.host.querySelectorAll('.fpd-shared').length).toBe(0);
   });
 
+  it('rings a node in pencil on Enter, keeps the grease-pencil mark after recording, and wipes it', () => {
+    const { host, panel, log } = panelRig();
+    const node = host.querySelector<SVGElement>('[data-pd-node="router"]')!;
+    node.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    expect(panel.getSelection()).toEqual(['router']);
+    expect(host.querySelectorAll('.fpd-ring').length).toBe(1);
+    host.querySelector<HTMLButtonElement>('[data-pd-act="record"]')!.click();
+    expect(log.entries().length).toBeGreaterThan(0);
+    expect(panel.getSelection()).toEqual([]);
+    expect(host.querySelectorAll('.fpd-grease').length).toBeGreaterThan(0);
+    host.querySelector<HTMLButtonElement>('[data-pd-act="clear"]')!.click();
+    expect(host.querySelectorAll('.fpd-grease').length).toBe(0);
+  });
+
   it('gives every drawn node a unique DOM id even when a node is shared by two services', () => {
     const { host } = panelRig();
     const ids = [...host.querySelectorAll('[data-pd-node]')].map((n) => n.id);

@@ -28,6 +28,7 @@
 }
 
 .ham-hint-strip:empty,
+.ham-hint-strip:not(:has(> .ham-slot:not([hidden]))),
 .ham-hint-strip > [hidden] {
   display: none;
 }
@@ -183,26 +184,6 @@
   border: 1px solid var(--mc-border, #2a3340);
   border-radius: 6px;
   background: var(--mc-surface-1, #141a22);
-}
-
-.ham-side-tabs {
-  display: flex;
-  border-bottom: 1px solid var(--mc-border, #2a3340);
-}
-
-.ham-side-tab {
-  flex: 1;
-  padding: 0.4rem;
-  background: transparent;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  color: var(--mc-text-secondary, #8b949e);
-  font-weight: 600;
-}
-
-.ham-side-tab.is-active {
-  color: var(--mc-text-primary, #e6edf3);
-  border-bottom-color: var(--mc-accent, #58a6ff);
 }
 
 .ham-side-body {
@@ -543,5 +524,200 @@
 .ham-bench .bd-art-screen-text {
   font: 600 10px var(--tblr-font-monospace, monospace);
   fill: #1d2a14;
+  pointer-events: none;
+}
+
+/* Walk signs: a brass plaque where you stand, painted boards pointing to the other spots */
+.ham-station-scene {
+  position: relative;
+}
+
+.ham-walk {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 2;
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  pointer-events: none;
+}
+
+.ham-walk[hidden] {
+  display: none;
+}
+
+.ham-walk-spot {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.7rem;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #f3e6c4;
+  background: linear-gradient(180deg, #7a5530, #5b3d20);
+  border: 1px solid #3a2612;
+  border-radius: 3px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 230, 180, 0.25);
+  cursor: pointer;
+  transition: transform 120ms ease;
+}
+
+.ham-walk-spot:hover,
+.ham-walk-spot:focus-visible {
+  transform: translateY(-2px);
+  outline: 2px solid #e1e69b;
+  outline-offset: 1px;
+}
+
+.ham-walk-spot.is-here {
+  color: #2b2210;
+  background: linear-gradient(180deg, #d9c27a, #a98d43);
+  border-color: #6b5520;
+  cursor: default;
+}
+
+.ham-walk-spot.is-here:hover {
+  transform: none;
+}
+
+/* Riley's sticky note: Ask Riley and the quiz nudge on a square of yellow paper */
+.ham-hint-strip {
+  align-self: flex-start;
+  max-width: 34rem;
+  padding: 0.35rem 0.6rem 0.4rem;
+  color: #2d2a1c;
+  background: linear-gradient(180deg, #fff3a6, #f6e27a);
+  border-radius: 2px;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.45);
+  transform: rotate(-0.6deg);
+  font-family: 'Segoe Print', 'Comic Sans MS', cursive;
+  font-size: 0.82rem;
+}
+
+.ham-hint-strip .card,
+.ham-hint-strip .card-body {
+  color: inherit;
+  border: 0;
+  box-shadow: none;
+}
+
+
+/* Logbook pages: the logbook shows the page that is open, the cards show the cards */
+.ham-notebook[data-page='worksheets'] > .ham-slot:not([data-panel='worksheets']),
+.ham-notebook[data-page='log'] > .ham-slot:not([data-panel='log']),
+.ham-notebook[data-page='cards'] > .ham-slot:not([data-panel='cards']) {
+  display: none;
+}
+
+.ham-notebook[data-page] > .ham-slot + .ham-slot {
+  border-top: 0;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+/* The kit tray runs along the bottom of the bench */
+.ham-kit-tray {
+  flex: 0 0 auto;
+  margin: 0 -0.5rem -0.5rem;
+}
+
+/*
+ * Bench home under the minimal HUD (phase 44 slice 2b review): the drawing is the room, not a pair of web cards.
+ * No card borders; the drawing takes the full width until a part is picked (the close-up then opens fullscreen);
+ * the kit tray sits on the bottom edge of the screen.
+ */
+.mc-minimal-hud #canvas-content:has(> .ham-station-tab) {
+  padding: 0;
+}
+
+.mc-minimal-hud .ham-station-scene,
+.mc-minimal-hud .ham-station-side {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.mc-minimal-hud .ham-station-main:has(.ham-closeup-empty) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.mc-minimal-hud .ham-station-side:has(.ham-closeup-empty) {
+  display: none;
+}
+
+/*
+ * A docked mission paper (the brief at half the screen) opens below Riley's note; the drawing moves over by the
+ * paper's real width so the whole bench stays visible beside it. The note and the tray stay where they are.
+ */
+.mc-minimal-hud .ham-station-tab.has-docked-window {
+  padding-left: 0.5rem;
+}
+
+.mc-minimal-hud .ham-station-tab.has-docked-window > .ham-station-main {
+  margin-left: calc(var(--ham-dock-gutter, 316px) - 0.5rem);
+}
+
+/* The tray's objects move over with the drawing, so the paper's lower edge never covers them */
+.mc-minimal-hud .ham-station-tab.has-docked-window > .ham-kit-tray {
+  padding-left: var(--ham-dock-gutter, 316px);
+}
+
+/* Riley's note in pencil: ink on the paper, no alert boxes, the actions underlined in red pencil */
+.ham-hint-strip [data-testid='ham-hint-quiz-prompt'],
+.ham-hint-strip .alert {
+  margin: 0 0 0.25rem;
+  padding: 0;
+  color: #2d2a1c;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  font-size: inherit;
+}
+
+.ham-hint-strip .alert::before {
+  display: none;
+}
+
+/* The SDR chrome styles every .btn as a mono instrument key with !important borders; the note's marks override it */
+.ham-station-tab .ham-hint-strip .btn {
+  padding: 0 0.15rem;
+  font-family: inherit !important;
+  font-size: inherit;
+  font-weight: 700;
+  letter-spacing: normal;
+  text-transform: none;
+  color: #2d2a1c;
+  background: transparent;
+  border-width: 0 0 2px !important;
+  border-style: solid !important;
+  border-color: #b3261e;
+  border-radius: 0 !important;
+  box-shadow: none;
+}
+
+.ham-station-tab .ham-hint-strip .btn:hover,
+.ham-station-tab .ham-hint-strip .btn:focus-visible {
+  color: #1a170d;
+  background: rgba(179, 38, 30, 0.12);
+}
+
+.ham-station-tab .ham-hint-strip .btn:focus-visible {
+  outline: 2px solid #1a170d;
+  outline-offset: 2px;
+}
+
+/* The logbook's Mission brief tab while the scenario waits on it: a red pencil ring */
+.immersive-paper .field-kit-sheets button.is-due::after {
+  content: '';
+  position: absolute;
+  inset: 2px -4px -2px;
+  border: 2px solid #b3261e;
+  border-radius: 50% 46% 52% 48%;
+  transform: rotate(-3deg);
   pointer-events: none;
 }

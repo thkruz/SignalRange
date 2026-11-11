@@ -1,0 +1,477 @@
+/* FieldRadio: the C6 handheld radio held up in front of you, the call-log pad beside it (Phase 44 slice 3) */
+.frd {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(24px, 5vw, 80px);
+  min-height: 100%;
+  padding: 3vh 4vw 12vh;
+  box-sizing: border-box;
+  background: radial-gradient(ellipse at 40% 45%, #3a4130 0%, #1c2118 55%, #0c0f0a 100%);
+  color: #e8e4d2;
+}
+
+.frd-stage {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.frd-radio {
+  --frd-h: min(80vh, 820px);
+  position: relative;
+  height: var(--frd-h);
+  aspect-ratio: 386 / 900;
+  filter: drop-shadow(0 22px 28px #000a);
+  transform: rotate(-2deg);
+}
+
+.frd-body {
+  display: block;
+  width: 100%;
+  height: 100%;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Channel knob: the big knob on top, turned by click (left half back, right half on), arrows or wheel */
+.frd-knob {
+  position: absolute;
+  left: 38.5%;
+  top: 9.5%;
+  width: 18%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  cursor: ew-resize;
+}
+
+.frd-knob-grip {
+  position: absolute;
+  inset: 8%;
+  border-radius: 50%;
+  transform: rotate(var(--frd-turn, -120deg));
+  transition: transform 0.18s ease-out;
+}
+
+/* The white index line painted on the knob cap */
+.frd-knob-grip::after {
+  content: '';
+  position: absolute;
+  left: 46%;
+  top: 2%;
+  width: 8%;
+  height: 34%;
+  border-radius: 2px;
+  background: #ece7cf;
+  box-shadow: 0 0 2px #000;
+}
+
+.frd-knob:focus-visible {
+  outline: 3px solid #e1e69b;
+  outline-offset: 3px;
+}
+
+/* The display: backlit LCD sitting in the painted window */
+.frd-lcd {
+  position: absolute;
+  left: 21%;
+  top: 26%;
+  width: 55%;
+  height: 15%;
+  box-sizing: border-box;
+  padding: 2.5% 3.5%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #b7c49a, #9fb083);
+  box-shadow:
+    inset 0 2px 8px #0008,
+    inset 0 0 0 1px #2b3322;
+  color: #11180c;
+  font: 600 clamp(10px, 1.5vh, 15px) / 1.2 'Cascadia Mono', Consolas, 'Courier New', monospace;
+  overflow: hidden;
+}
+
+.frd-lcd-top {
+  flex: none;
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  border-bottom: 1px solid #11180c55;
+  padding-bottom: 2px;
+}
+
+.frd-lcd-ch {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.frd-lcd-mode {
+  flex: none;
+  min-width: 2.2em;
+  text-align: center;
+  background: #11180c;
+  color: #b7c49a;
+  border-radius: 2px;
+}
+
+.frd-lcd-mode:empty {
+  visibility: hidden;
+}
+
+/* The question takes what the tag row and the hint leave, and steps down a size so the longest service label fits */
+.frd-lcd-q {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+  font-size: 0.86em;
+  line-height: 1.2;
+  font-weight: 500;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+}
+
+.frd-lcd-hint {
+  flex: none;
+  font-size: 0.85em;
+  opacity: 0.75;
+  white-space: nowrap;
+}
+
+/* Speaker grille: a faint glow while the other party talks */
+.frd-speaker {
+  position: absolute;
+  left: 19%;
+  top: 53%;
+  width: 59%;
+  height: 15%;
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+.frd-radio[data-radio-state='rx'] .frd-speaker {
+  animation: frd-rx 0.9s ease-out 2;
+}
+
+@keyframes frd-rx {
+  0% {
+    box-shadow: 0 0 0 0 #e1e69b00;
+  }
+  40% {
+    box-shadow: 0 0 22px 4px #e1e69b55;
+  }
+  100% {
+    box-shadow: 0 0 0 0 #e1e69b00;
+  }
+}
+
+/* Question keys on the lower plate */
+.frd-keys {
+  position: absolute;
+  left: 24%;
+  top: 77%;
+  width: 48%;
+  height: 9%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.frd-key {
+  width: 32%;
+  height: 74%;
+  border: 0;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #2c2f27, #15170f);
+  box-shadow:
+    inset 0 1px 0 #ffffff22,
+    0 2px 3px #000c;
+  color: #e8e4d2;
+  font-size: clamp(14px, 2vh, 20px);
+  cursor: pointer;
+}
+
+.frd-key:active:not([aria-disabled='true']) {
+  transform: translateY(1px);
+  box-shadow: inset 0 1px 3px #000c;
+}
+
+.frd-key-label {
+  color: #d9d4bd;
+  font: 700 clamp(10px, 1.3vh, 13px) 'Roboto Condensed', 'Arial Narrow', sans-serif;
+  letter-spacing: 0.18em;
+  text-shadow: 0 1px 0 #000;
+}
+
+/* Push-to-talk: the long rubber bar on the left side */
+.frd-ptt {
+  position: absolute;
+  left: -3.5%;
+  top: 25%;
+  width: 9%;
+  height: 16%;
+  border: 0;
+  border-radius: 8px 3px 3px 8px;
+  background: linear-gradient(90deg, #11120e, #2b2d25 60%, #1a1b16);
+  box-shadow: -2px 3px 5px #000b;
+  color: #d9d4bd;
+  cursor: pointer;
+}
+
+.frd-ptt span {
+  display: inline-block;
+  transform: rotate(-90deg);
+  font: 700 clamp(9px, 1.2vh, 12px) 'Roboto Condensed', 'Arial Narrow', sans-serif;
+  letter-spacing: 0.2em;
+}
+
+.frd-ptt:active:not([aria-disabled='true']),
+.frd-radio[data-radio-state='tx'] .frd-ptt {
+  transform: translateX(2px);
+  background: linear-gradient(90deg, #1c1d17, #3b3e30 60%, #24251e);
+}
+
+.frd-ptt[aria-disabled='true'],
+.frd-key[aria-disabled='true'] {
+  cursor: default;
+  opacity: 0.85;
+}
+
+:is(.frd-key, .frd-ptt):focus-visible {
+  outline: 3px solid #e1e69b;
+  outline-offset: 2px;
+}
+
+/* TX lamp: the top bezel glows red while keyed */
+.frd-radio[data-radio-state='tx']::after {
+  content: '';
+  position: absolute;
+  left: 30%;
+  top: 19.4%;
+  width: 6%;
+  height: 0.9%;
+  border-radius: 3px;
+  background: #ff4c3b;
+  box-shadow: 0 0 10px 2px #ff4c3b99;
+}
+
+/* Subtitle: what the other party says, game-style, under the radio */
+.frd-subtitle {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 18px);
+  transform: translateX(-50%);
+  width: max(360px, 150%);
+  max-width: 46vw;
+  padding: 8px 14px;
+  background: #0b0d09d9;
+  border-left: 3px solid #e1e69b;
+  color: #f1edd8;
+  font: 17px/1.45 'Segoe UI', system-ui, sans-serif;
+  text-shadow: 0 1px 2px #000;
+}
+
+.frd-subtitle[hidden] {
+  display: none;
+}
+
+.frd-subtitle b {
+  color: #e1e69b;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.frd-sub-static {
+  font-style: italic;
+  color: #b9b5a2;
+}
+
+/* Call-log pad: paper clipped beside the radio, written in pencil. The ruled lines are ~4.7% of the pad
+   height apart, so every row of text is one pitch tall and sits between two lines. */
+.frd-pad {
+  --frd-padh: min(84vh, 900px);
+  --frd-pitch: calc(var(--frd-padh) * 0.047);
+  position: relative;
+  flex: 0 1 auto;
+  height: var(--frd-padh);
+  aspect-ratio: 602 / 900;
+  background: var(--frd-pad) center / 100% 100% no-repeat;
+  filter: drop-shadow(0 16px 20px #000a);
+  transform: rotate(1.5deg);
+  color: #262018;
+}
+
+.frd-pad-sheet {
+  position: absolute;
+  inset: 13.1% 5% 7.1% 19%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font: 600 clamp(13px, calc(var(--frd-pitch) * 0.5), 18px) / var(--frd-pitch) 'Segoe Print', 'Bradley Hand', cursive;
+}
+
+.frd-pad-tabs {
+  flex: none;
+  display: flex;
+  gap: 14px;
+  height: var(--frd-pitch);
+}
+
+.frd-pad-tab {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: 700 clamp(14px, calc(var(--frd-pitch) * 0.6), 21px) / var(--frd-pitch) 'Segoe Print', 'Bradley Hand', cursive;
+  color: #6a7388;
+  cursor: pointer;
+}
+
+.frd-pad-tab[aria-selected='true'] {
+  color: #1c2a4a;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: -4px;
+}
+
+.frd-pad-tab:focus-visible {
+  outline: 2px solid #1c2a4a;
+  outline-offset: 1px;
+}
+
+.frd-log {
+  flex: 1 1 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #8a7d64 transparent;
+}
+
+.frd-entry-line {
+  min-height: var(--frd-pitch);
+  overflow-wrap: anywhere;
+}
+
+.frd-entry-time {
+  font-family: 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.9em;
+  color: #3e3527;
+}
+
+.frd-entry-who {
+  font-weight: 700;
+  color: #1c2a4a;
+}
+
+.frd-entry-subject {
+  color: #262018;
+  font-weight: 500;
+}
+
+.frd-entry-reading {
+  color: #13213c;
+  font-weight: 700;
+}
+
+.frd-entry-badge {
+  font: italic 600 max(12px, 0.9em) Georgia, serif;
+  color: #5a4b33;
+}
+
+/* A reading that still counts gets a pencil tick */
+.frd-entry.frd-f-current .frd-entry-badge {
+  color: #24502a;
+}
+
+.frd-entry.frd-f-current .frd-entry-badge::before {
+  content: '\2713 ';
+}
+
+/* Old readings are struck through and the badge is circled in red pencil, so they cannot pass for current ones */
+.frd-entry.frd-f-stale .frd-entry-reading,
+.frd-entry.frd-f-invalidated .frd-entry-reading {
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+  text-decoration-color: #7a2a1d;
+  opacity: 0.75;
+}
+
+.frd-entry.frd-f-stale .frd-entry-badge,
+.frd-entry.frd-f-invalidated .frd-entry-badge {
+  color: #7a2a1d;
+  font-weight: 700;
+  padding: 0 7px;
+  border: 1.5px solid #7a2a1d;
+  border-radius: 40% 60% 55% 45% / 60% 45% 55% 40%;
+}
+
+/* A Down reading is written hard in red pencil and double underlined */
+.frd-entry.frd-down .frd-entry-reading {
+  color: #a3200f;
+  text-decoration: underline double;
+  text-decoration-color: #a3200f;
+  text-underline-offset: -3px;
+}
+
+.frd-entry.frd-down.frd-f-stale .frd-entry-reading,
+.frd-entry.frd-down.frd-f-invalidated .frd-entry-reading {
+  text-decoration: line-through;
+  text-decoration-color: #7a2a1d;
+}
+
+.frd-talk-text {
+  font-weight: 500;
+  color: #1c2a4a;
+  overflow-wrap: anywhere;
+}
+
+.frd-log-none {
+  min-height: var(--frd-pitch);
+  font-style: italic;
+  color: #5a4b33;
+}
+
+.frd-pad-note {
+  flex: none;
+  margin: 0;
+  height: var(--frd-pitch);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: italic 500 max(12px, 0.85em) / var(--frd-pitch) Georgia, serif;
+  color: #5a4b33;
+}
+
+.frd-pad-note:empty {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .frd {
+    flex-direction: column;
+  }
+
+  .frd-pad {
+    --frd-padh: min(84vh, 760px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .frd-knob-grip {
+    transition: none;
+  }
+
+  .frd-radio[data-radio-state='rx'] .frd-speaker {
+    animation: none;
+  }
+}

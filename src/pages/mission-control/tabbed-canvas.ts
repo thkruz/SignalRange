@@ -28,10 +28,14 @@ import { HamStationService } from '@app/ham/ham-station-service';
 import { type AntennaPage, AntennaPageRegistry, STATION_TAB_PREFIX, type StationTabFactory } from '@app/pages/mission-control/antenna-page-registry';
 import { fieldDefaultTabId } from '@app/pages/mission-control/field-default-tab';
 import { ACUControlTab } from '@app/pages/mission-control/tabs/acu-control-tab';
+import { ClipboardShell } from '@app/pages/mission-control/tabs/clipboard/clipboard-shell';
+import { clipboardPages } from '@app/pages/mission-control/tabs/clipboard/clipboard-view';
 import { CommandingTab } from '@app/pages/mission-control/tabs/commanding-tab';
 import { ContactScheduleTab } from '@app/pages/mission-control/tabs/contact-schedule-tab';
 import { DashboardTab } from '@app/pages/mission-control/tabs/dashboard-tab';
+import { type DocumentsPage, DocumentsShell } from '@app/pages/mission-control/tabs/documents/documents-shell';
 import { EaAssessmentTab } from '@app/pages/mission-control/tabs/ea-assessment-tab';
+import { FIELD_KIT, type KitSheet, kitObjectFor, offeredSheets } from '@app/pages/mission-control/tabs/field-kit';
 import { GeolocationTab } from '@app/pages/mission-control/tabs/geolocation-tab';
 import { GPSTimingTab } from '@app/pages/mission-control/tabs/gps-timing-tab';
 import { GroundTrackTab } from '@app/pages/mission-control/tabs/ground-track-tab';
@@ -50,6 +54,9 @@ import { TxChainTab } from '@app/pages/mission-control/tabs/tx-chain-tab';
 import { TentControl } from '@app/pages/mission-control/tent-control';
 import { FieldTabPolicy } from '@app/physical/field-tab-policy';
 import { PhysicalPlantService } from '@app/physical/physical-plant-service';
+import { MinimalHud } from '@app/presentation/minimal-hud/minimal-hud';
+import { minimalHudActive } from '@app/presentation/minimal-hud/minimal-hud-policy';
+import { SandboxLoadoutService } from '@app/sandbox/sandbox-loadout';
 import { KeepTrackEmbedHost } from '@app/services/keeptrack-embed-host';
 import { SettingsManager } from '@app/settings/settings-manager';
 
@@ -163,6 +170,7 @@ export class TabbedCanvas extends BaseElement {
   };
 
   private tentControl_: TentControl | null = null;
+  private hud_: MinimalHud | null = null;
   private readonly boundTentSync_ = (): void => this.tentControl_?.sync();
 
   protected html_ = html`
@@ -180,6 +188,10 @@ export class TabbedCanvas extends BaseElement {
     this.init_(parentId, 'replace');
     this.dom_ = qs('.tabbed-canvas');
     this.tentControl_ = new TentControl(qs('.canvas-header', this.dom_));
+    // The watch's Pause pusher opens the game menu (lazy, like the command bar's menu button, to keep it out of this module's imports)
+    this.hud_ = new MinimalHud(this.dom_, {
+      onPause: () => void import('@app/game-menu/game-menu').then(({ GameMenu }) => GameMenu.getInstance().openMenu()),
+    });
     EventBus.getInstance().on(Events.UPDATE, this.boundTentSync_);
     this.showMissionOverview_();
     this.preloadMapEmbed_();
@@ -285,7 +297,32 @@ export class TabbedCanvas extends BaseElement {
    * Show the mission overview (no asset selected): build its tab bar, then open
    * the remembered tab.
    */
+  /**
+   * Field stations (Campaign 6) and the ham bench (Campaign 3) are worked with physical equipment: the station
+   * computer's sidebar, command bar and tab bar give way to the minimal HUD, and the tent caption moves beside
+   * the watch. Everything else keeps the full chrome. Called on every asset or overview change.
+   */
+  private syncMinimalHud_(stationClass: string | null | undefined): void {
+    let sandbox = false;
+    try {
+      sandbox = SandboxLoadoutService.isSandboxScenario(ScenarioManager.getInstance().data);
+    } catch {
+      sandbox = false;
+    }
+    const active = minimalHudActive({
+      stationClass,
+      engineeringUnlocked: FieldTabPolicy.isEngineeringUnlocked(),
+      sandbox,
+      hamBench: HamStationService.getInstance() !== null,
+    });
+    this.hud_?.setActive(active);
+    const tent = this.tentControl_?.element;
+    const home = active ? this.hud_?.tentSlot : this.dom_?.querySelector('.canvas-header');
+    if (tent && home && tent.parentElement !== home) home.append(tent);
+  }
+
   private showMissionOverview_(): void {
+    this.syncMinimalHud_(null);
     this.fieldTabIds_ = null;
     const hasOrbitalSats = hasOrbitalSatellites(SimulationManager.getInstance());
 
@@ -341,6 +378,7 @@ export class TabbedCanvas extends BaseElement {
     const hasOrbitalSats = hasOrbitalSatellites(SimulationManager.getInstance());
 
     this.fieldTabIds_ = null;
+    this.syncMinimalHud_(groundStation.state.stationClass);
 
     // Backyard stations (Campaign 3+) are hobbyist SDR rigs: no ACU racks, no
     // professional RX/TX chains, no dashboard of links to those tabs. The SDR
@@ -534,6 +572,7 @@ export class TabbedCanvas extends BaseElement {
    * Show a satellite: build its tab bar, then open the remembered tab.
    */
   private showSatelliteAsset_(): void {
+    this.syncMinimalHud_(null);
     this.fieldTabIds_ = null;
     const satellite = this.selectedSatellite_();
 
@@ -646,6 +685,11 @@ export class TabbedCanvas extends BaseElement {
       const pulsing = [...this.pulseTabs_].some((pending) => TabbedCanvas.matchesTab_(tabId, pending));
       navLink.classList.toggle('tab-pulse', pulsing);
     });
+    // With the tab bar hidden (field HUD), the kit object that holds a pending page pulses instead
+    const pendingKits = new Set([...this.pulseTabs_].map((pending) => kitObjectFor(pending)?.id).filter(Boolean));
+    this.dom_?.querySelectorAll<HTMLElement>('[data-field-kit]').forEach((item) => {
+      item.classList.toggle('tab-pulse', pendingKits.has(item.dataset.fieldKit as never));
+    });
   }
 
   /**
@@ -752,12 +796,13 @@ export class TabbedCanvas extends BaseElement {
     }
     const field = PhysicalPlantService.plantOrNull() !== null;
     const ham = HamStationService.getInstance()?.manager;
-    const computer = (field && (tabId === 'field-service' || tabId === 'field-workload' || tabId.startsWith(STATION_TAB_PREFIX))) || (!!ham && tabId === 'sdr-console');
+    const computer =
+      (field && (tabId === 'field-service' || tabId === 'field-workload' || tabId.startsWith(STATION_TAB_PREFIX))) ||
+      (!!ham && (tabId === 'sdr-console' || tabId === 'pass-schedule'));
     const paper = field && ['field-power', 'field-path', 'field-handover', 'field-records'].includes(tabId);
     if (computer || paper) {
       const content = this.dom_?.querySelector<HTMLElement>('#canvas-content');
       if (!content) return;
-      let nav: HTMLElement | undefined;
       let frame: ((content: HTMLElement, leave: HTMLButtonElement) => { element: HTMLElement; dispose: () => void }) | undefined;
       const radioSource = tabId === 'field-service' && ['pilot-report', 'endpoint-report'].includes(SiteTab.source);
       if (computer && field && !radioSource) {
@@ -770,7 +815,7 @@ export class TabbedCanvas extends BaseElement {
           apps.push({ id: link.dataset.tabId!, label, icon: /skylink/iu.test(label) ? 'dish' : 'modem', open: () => this.requestTab_(link.dataset.tabId!) });
         }
         if (SiteTab.availableWorkspaces().some((t) => t.id === 'field-workload'))
-          apps.push({ id: 'field-workload', label: 'Mission apps', icon: 'apps', open: () => this.requestTab_('field-workload') });
+          apps.push({ id: 'field-workload', label: 'MissionRunner', icon: 'apps', open: () => this.requestTab_('field-workload') });
         const activeId = tabId === 'field-service' ? (SiteTab.source === 'provider-portal' ? 'browser' : 'netprobe') : tabId;
         const showDesktop = SiteTab.takeDesktopRequest();
         frame = (inner, leave) => {
@@ -778,20 +823,45 @@ export class TabbedCanvas extends BaseElement {
           return { element: shell.element, dispose: () => shell.dispose() };
         };
       }
+      if (computer && ham) {
+        // The bench laptop: the receiver program and the pass planner are its applications
+        const apps: LaptopApp[] = [{ id: 'sdr-console', label: 'SkyWatcher SDR', icon: 'probe', open: () => this.requestTab_('sdr-console') }];
+        if (this.dom_?.querySelector('[data-tab-id="pass-schedule"]'))
+          apps.push({ id: 'pass-schedule', label: 'Observations', icon: 'dish', open: () => this.requestTab_('pass-schedule') });
+        frame = (inner, leave) => {
+          const shell = new LaptopShell(inner, leave, { apps, activeId: tabId, showDesktop: false, brand: 'BENCHMATE 14' });
+          return { element: shell.element, dispose: () => shell.dispose() };
+        };
+      }
       const radio = radioSource;
-      if (radio) {
-        nav = document.createElement('nav');
-        nav.className = 'immersive-apps radio-channels';
-        nav.setAttribute('aria-label', 'Radio channels');
-        for (const [source, label] of [
-          ['pilot-report', 'Pilot channel'],
-          ['endpoint-report', 'Remote operator'],
-        ] as const) {
-          const button = document.createElement('button');
-          button.textContent = label;
-          button.setAttribute('aria-pressed', String(SiteTab.source === source));
-          button.addEventListener('click', () => SiteTab.openSource(source));
-          nav.append(button);
+      // Dialog history is the call-log pad's second page (Conversations), so the held radio has no nav strip
+      if (paper) {
+        const offered = new Set(SiteTab.availableWorkspaces().map((item) => item.id));
+        if (tabId === 'field-handover' || tabId === 'field-records') {
+          // The handover form and the equipment log are sheets on the clipboard
+          const pages = clipboardPages(
+            offered,
+            SiteTab.missionAvailable,
+            () => {
+              this.requestTab_('site');
+              SiteTab.openClipboard();
+            },
+            SiteTab.unreadNotices
+          );
+          frame = (inner, leave) => {
+            const shell = new ClipboardShell(inner, leave, { pages, activeId: tabId });
+            return { element: shell.element, dispose: () => shell.dispose() };
+          };
+        } else {
+          // The wiring diagram (laminate) and the power plan (graph paper) are the two documents held
+          const docs = FIELD_KIT.find((item) => item.id === 'documents');
+          const pages: DocumentsPage[] = offeredSheets(docs!, offered, SiteTab.missionAvailable)
+            .filter((sheet): sheet is KitSheet & { tabId: string } => 'tabId' in sheet)
+            .map((sheet) => ({ id: sheet.tabId, label: sheet.label, open: () => SiteTab.openSheet(sheet) }));
+          frame = (inner, leave) => {
+            const shell = new DocumentsShell(inner, leave, { pages, activeId: tabId });
+            return { element: shell.element, dispose: () => shell.dispose() };
+          };
         }
       }
       this.immersive_.open(
@@ -799,7 +869,7 @@ export class TabbedCanvas extends BaseElement {
         paper ? 'Field documents' : radio ? 'Field radio' : 'Laptop',
         paper ? 'paper' : radio ? 'equipment' : frame ? 'laptop' : 'computer',
         () => this.requestTab_(field ? 'site' : 'ham-station'),
-        nav,
+        undefined,
         frame
       );
     }
@@ -1451,6 +1521,8 @@ export class TabbedCanvas extends BaseElement {
     eventBus.off(Events.UPDATE, this.boundTentSync_);
     this.tentControl_?.dispose();
     this.tentControl_ = null;
+    this.hud_?.dispose();
+    this.hud_ = null;
     this.unsubscribeFieldPolicy_?.();
     this.unsubscribeFieldPolicy_ = null;
 

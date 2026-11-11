@@ -189,7 +189,7 @@ export const s03Station: HamStationConfig = {
       'Two operators are talking. Wait for them to finish, then keep listening until the channel has been clear for ten more seconds.',
     ],
     'make-first-call': [
-      'Only call once the channel has been quiet for a while. In the push to talk section, choose Call a station, pick W0SRC, and key up.',
+      'Only call once the channel has been quiet for a while. On the card beside the mic, choose Call a station, pick W0SRC, and press PTT.',
       'Release the key and wait. Sam answers a few seconds later.',
     ],
     'exchange-signal-report': [

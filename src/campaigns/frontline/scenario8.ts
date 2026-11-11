@@ -244,7 +244,7 @@ export const frontlineScenario8Data: FrontlineScenarioData = {
       id: 's08-interpret-assignment',
       title: 'Interpret the Assignment',
       description:
-        'Read the workload requirement and resource limits, then record them in the Assessment brief form. The brief for this shift: the workload needs the figures on the Workloads row; the post holds one connector kit and one power and data cable (the Site header counts them as 2 spares); keep at least 150 Wh in the battery; and you may make up to three trips outside.',
+        'Read the workload requirement and resource limits, then record them in the Assessment brief form. The brief for this shift: the workload needs the figures on its MissionRunner row; the post holds one connector kit and one power and data cable (the Site header counts them as 2 spares); keep at least 150 Wh in the battery; and you may make up to three trips outside.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: [],
       nice: ['K0645', 'T0431'],

@@ -54,6 +54,41 @@ export async function advanceMissionClockToUtc(page: Page, targetIsoUtc: string)
   await page.waitForTimeout(2500);
 }
 
+/** True when the bench HUD replaces the station computer's chrome (no tab bar, no sidebar, no command bar) */
+export async function isMinimalHud(page: Page): Promise<boolean> {
+  return page.evaluate(() => document.documentElement.classList.contains('mc-minimal-hud'));
+}
+
+/** Put down whatever is held fullscreen (the logbook, the laptop, a close-up) */
+export async function putDownHeld(page: Page): Promise<void> {
+  const held = page.locator('.immersive-view[open] .immersive-leave');
+  for (let i = 0; i < 3 && (await held.last().isVisible()); i++) await held.last().click();
+}
+
+/**
+ * Campaign 3 bench HUD (phase 44): the mission papers are pages of the logbook beside the bench. Pick the
+ * logbook up from the kit tray and turn to the paper (it opens in its own window and the logbook is put down).
+ */
+export async function openLogbookMission(page: Page, mission: 'brief' | 'checklist' | 'dialog-history' | 'ops-log' | 'working-doc' | 'campaign-record'): Promise<void> {
+  await putDownHeld(page);
+  await page.locator('[data-field-kit="logbook"]').click();
+  const leaf = page.locator(`.field-kit-sheets [data-field-mission="${mission}"]`);
+  if (await leaf.isVisible().catch(() => false)) await leaf.click();
+}
+
+/** Open the objectives checklist: the sidebar button, or the logbook's checklist page under the bench HUD */
+async function ensureChecklist(missionControl: MissionControlPage): Promise<void> {
+  if (await missionControl.objectivesChecklist.isVisible().catch(() => false)) return;
+  const page = missionControl.objectivesChecklist.page();
+  if (await isMinimalHud(page)) {
+    await openLogbookMission(page, 'checklist');
+    await expect(missionControl.objectivesChecklist).toBeVisible();
+
+    return;
+  }
+  await missionControl.openChecklist();
+}
+
 /** The checklist `.objective-item` whose title matches, regardless of collapse. */
 export function objectiveItem(missionControl: MissionControlPage, title: string): Locator {
   return missionControl.objectivesChecklist.locator('.objective-item', { hasText: title });
@@ -61,9 +96,7 @@ export function objectiveItem(missionControl: MissionControlPage, title: string)
 
 /** Poll the checklist until the named objective carries the `completed` class. */
 export async function waitForObjectiveComplete(missionControl: MissionControlPage, title: string, timeout = 45000): Promise<void> {
-  if (!(await missionControl.objectivesChecklist.isVisible().catch(() => false))) {
-    await missionControl.openChecklist();
-  }
+  await ensureChecklist(missionControl);
   try {
     await expect(objectiveItem(missionControl, title)).toHaveClass(/completed/, { timeout });
   } catch (error) {
@@ -81,7 +114,7 @@ ${String(error)}`);
 /** Read the SDR console carrier-offset readout ("+4300 Hz"), NaN when idle. */
 export async function readOffsetHz(page: Page): Promise<number> {
   const text = (await page.locator('#sdr-offset-readout').textContent()) ?? '';
-  return parseInt(text.replace(/[^\d+-]/g, ''), 10);
+  return parseInt(text.replace(/[^\d+-]/gu, ''), 10);
 }
 
 /**
@@ -139,9 +172,7 @@ export async function rideUntilObjectiveComplete(
   opts: { maxMs?: number; correct?: boolean } = {}
 ): Promise<boolean> {
   const { maxMs = 220_000, correct = true } = opts;
-  if (!(await missionControl.objectivesChecklist.isVisible().catch(() => false))) {
-    await missionControl.openChecklist();
-  }
+  await ensureChecklist(missionControl);
 
   const lockIndicator = page.locator('#sdr-lock-indicator');
   const deadline = Date.now() + maxMs;

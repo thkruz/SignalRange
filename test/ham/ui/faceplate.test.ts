@@ -114,7 +114,7 @@ describe('Faceplate', () => {
   it('clicking a region focuses and flashes the matching control', () => {
     const { fp, root: r } = make();
     const input = document.createElement('input');
-    input.setAttribute('data-testid', 'ham-radio-dev-freq-input');
+    input.setAttribute('data-testid', 'ham-radio-dev-dial');
     const ptt = document.createElement('button');
     ptt.setAttribute('data-testid', 'ham-ptt-dev-transmit');
     r.append(input, ptt);

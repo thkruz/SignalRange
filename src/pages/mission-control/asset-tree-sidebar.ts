@@ -17,22 +17,22 @@ import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { DialogHistoryBox } from '@app/modal/dialog-history-box';
 import { DraggableHtmlBox } from '@app/modal/draggable-html-box';
-import { HintManager } from '@app/modal/hint-manager';
-import { HintModal } from '@app/modal/hint-modal';
 import { PendingQuizIndicator } from '@app/modal/pending-quiz-indicator';
-import { QuizManager } from '@app/modal/quiz-manager';
 import { SaveProgressToast } from '@app/modal/save-progress-toast';
 import { ObjectivesManager } from '@app/objectives';
 import { CountdownHold } from '@app/objectives/countdown-hold';
-import { openReportForm } from '@app/objectives/report-form-dialog';
 import { OpsLogModal } from '@app/ops-log/ops-log-modal';
+import { FieldTabPolicy } from '@app/physical/field-tab-policy';
+import { minimalHudActive, minimalHudShown } from '@app/presentation/minimal-hud/minimal-hud-policy';
 import { ScenarioManager } from '@app/scenario-manager';
 import { CampaignRecordPanel } from '@app/scenarios/campaign-record-panel';
 import { WorkingDocumentManager } from '@app/scenarios/working-document-manager';
 import { SelectionService } from '@app/services/selection-service';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { assetSelectionState } from './asset-selection-state';
+import { handleChecklistClick } from './checklist-actions';
 import { ConstellationTreeView } from './constellation-tree-view';
+import { type MissionItem, missionItemBridge } from './tabs/field-kit';
 import './asset-tree-sidebar.css';
 
 /**
@@ -43,6 +43,48 @@ import './asset-tree-sidebar.css';
  * - Satellites (placeholder for Phase 8+)
  */
 export class AssetTreeSidebar extends BaseElement {
+  private static instance_: AssetTreeSidebar | null = null;
+  private static readonly MISSION_ITEM_SELECTORS_: Record<MissionItem, string> = {
+    brief: '.mission-brief-icon',
+    checklist: '.checklist-icon',
+    'dialog-history': '.dialog-icon',
+    'ops-log': '.ops-log-icon',
+    'working-doc': '.working-doc-icon',
+    'campaign-record': '.campaign-record-icon',
+  };
+
+  private static missionItemEl_(item: MissionItem): HTMLElement | null {
+    const section = AssetTreeSidebar.instance_?.dom_?.querySelector<HTMLElement>('#mission-icons-section');
+    if (!section || section.style.display === 'none') return null;
+    const el = section.querySelector<HTMLElement>(AssetTreeSidebar.MISSION_ITEM_SELECTORS_[item]);
+
+    return el && !el.hidden && !el.hasAttribute('hidden') ? el : null;
+  }
+
+  /** Whether the scenario has this mission item (the field kit offers the same set the sidebar shows). */
+  static missionItemAvailable(item: MissionItem): boolean {
+    return AssetTreeSidebar.missionItemEl_(item) !== null;
+  }
+
+  /**
+   * Open a mission item through the sidebar's own handler, so the field kit (Campaign 6, where the sidebar is
+   * hidden) opens the same window with the same side effects. Opening one that is already showing leaves it open.
+   */
+  static openMissionItem(item: MissionItem): boolean {
+    const el = AssetTreeSidebar.missionItemEl_(item);
+    if (!el) return false;
+    const sim = SimulationManager.getInstance();
+    const showing: Partial<Record<MissionItem, boolean | undefined>> = {
+      brief: sim.missionBriefBox?.isShowing(),
+      checklist: sim.checklistBox?.isShowing(),
+      'dialog-history': sim.dialogHistoryBox?.isShowing(),
+      'ops-log': OpsLogModal.getInstance().isShowing(),
+    };
+    if (!showing[item]) el.click();
+
+    return true;
+  }
+
   static readonly containerId = 'asset-tree-sidebar-container';
 
   /**
@@ -101,6 +143,10 @@ export class AssetTreeSidebar extends BaseElement {
     super();
     this.init_(parentId, 'replace');
     this.dom_ = qs('.asset-tree-sidebar');
+    AssetTreeSidebar.instance_ = this;
+    missionItemBridge.available = AssetTreeSidebar.missionItemAvailable;
+    missionItemBridge.open = AssetTreeSidebar.openMissionItem;
+    missionItemBridge.locked = () => this.isLocked_();
     this.groundStations_ = SimulationManager.getInstance().groundStations;
     this.satellites_ = this.authoredSatellites_();
     this.missionBriefUrl_ = ScenarioManager.getInstance().settings.missionBriefUrl ?? null;
@@ -114,14 +160,39 @@ export class AssetTreeSidebar extends BaseElement {
    * The field console has no other way to see the first objective: open the checklist docked beside the Site
    * stage once the page is ready (c6-s13). Narrow windows (under 1600 px) keep click-to-open: the docked strip
    * would cover part of the service diagram there. Other pages keep the click-to-open behaviour.
+   * Under the field HUD the checklist lives on the clipboard and never opens on its own.
    */
   private openChecklistOnReady_(): void {
     if (!qs('.checklist-icon', this.dom_)) return;
     EventBus.getInstance().on(Events.DOM_READY, () => {
+      if (AssetTreeSidebar.fieldHudExpected_()) return;
       if (document.getElementById('tent-control') && window.innerWidth >= 1600 && !SimulationManager.getInstance().checklistBox) {
         this.openChecklist_();
       }
     });
+  }
+
+  /**
+   * Whether the field HUD is on, or will be once the field station is auto-selected (DOM_READY fires before that
+   * selection, so the root class is not there yet).
+   */
+  private static fieldHudExpected_(): boolean {
+    if (minimalHudShown()) return true;
+    const classes = SimulationManager.getInstance().groundStations.map((station) => station.state.stationClass);
+    const field = classes.includes('field');
+    let sandbox = true;
+    let hamBench = false;
+    try {
+      // Same test as SandboxLoadoutService.isSandboxScenario
+      sandbox = ScenarioManager.getInstance().data.missionType === 'Sandbox';
+      // Campaign 3: the ham station (the drawn bench) starts from this setting
+      hamBench = !!ScenarioManager.getInstance().settings.hamStation;
+    } catch {
+      sandbox = true;
+    }
+    const stationClass = field ? 'field' : classes.includes('backyard') ? 'backyard' : null;
+
+    return minimalHudActive({ stationClass, engineeringUnlocked: FieldTabPolicy.isEngineeringUnlocked(), sandbox, hamBench });
   }
 
   /**
@@ -388,57 +459,7 @@ export class AssetTreeSidebar extends BaseElement {
     const checklistBox = SimulationManager.getInstance().checklistBox;
     if (!checklistBox) return;
 
-    checklistBox.popupDom.addEventListener('click', (e: Event) => {
-      const target = e.target as HTMLElement;
-
-      // Handle report form button clicks
-      const formBtn = target.closest<HTMLButtonElement>('.condition-form-btn');
-      if (formBtn?.dataset.reportForm) {
-        openReportForm(formBtn.dataset.reportForm);
-        return;
-      }
-
-      // Handle quiz button clicks
-      const quizBtn = target.closest<HTMLButtonElement>('.condition-quiz-btn');
-      if (quizBtn) {
-        const objectiveId = quizBtn.dataset.objectiveId;
-        const conditionIndex = parseInt(quizBtn.dataset.conditionIndex ?? '0', 10);
-
-        if (objectiveId) {
-          QuizManager.getInstance().showQuiz(objectiveId, conditionIndex);
-        }
-        return;
-      }
-
-      // Handle hint button clicks
-      const hintBtn = target.closest<HTMLButtonElement>('.condition-hint-btn');
-      if (hintBtn) {
-        const objectiveId = hintBtn.dataset.objectiveId;
-        const conditionIndex = parseInt(hintBtn.dataset.conditionIndex ?? '0', 10);
-        const isHintAlreadyUsed = hintBtn.dataset.hintUsed === 'true';
-
-        if (objectiveId) {
-          const hintManager = HintManager.getInstance();
-          const hint = hintManager.getHint(objectiveId, conditionIndex);
-
-          if (hint) {
-            if (isHintAlreadyUsed) {
-              // Hint already revealed - show directly without confirmation
-              HintModal.getInstance().showHintDirectly(objectiveId, conditionIndex, hint);
-            } else {
-              // First time - show confirmation with penalty warning
-              const penaltyPoints = hintManager.getPenaltyPoints(objectiveId);
-              const objectiveTitle =
-                ObjectivesManager.getInstance()
-                  .getObjectiveStates()
-                  .find((s) => s.objective.id === objectiveId)?.objective.title ?? 'Unknown';
-
-              HintModal.getInstance().showConfirmation(objectiveId, conditionIndex, hint, penaltyPoints, objectiveTitle);
-            }
-          }
-        }
-      }
-    });
+    checklistBox.popupDom.addEventListener('click', handleChecklistClick);
 
     this.quizDelegationSetup_ = true;
   }
@@ -732,5 +753,6 @@ export class AssetTreeSidebar extends BaseElement {
     AssetTreeSidebar.selectedAssetId = null;
     AssetTreeSidebar.selectedGroundStationId = null;
     this.stopChecklistRefreshTimer_();
+    if (AssetTreeSidebar.instance_ === this) AssetTreeSidebar.instance_ = null;
   }
 }

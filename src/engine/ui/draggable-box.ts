@@ -198,6 +198,7 @@ export abstract class DraggableBox {
         this.reserveSiteGutter_();
       }
       this.sendToFront();
+      this.yieldToReadingBoxes_();
       DraggableBox.notifyDock_();
     } else {
       console.log(`Failed to open box: ${this.boxId}`);
@@ -355,6 +356,24 @@ export abstract class DraggableBox {
    * covered by the Checklist box whenever an objective change brings it forward (c6-s02-F5, c6-s07-F5).
    */
   private static readonly TOP_LAYER_IDS_ = ['part-closeup-modal'];
+
+  /**
+   * Boxes the player opened to read (the Campaign Record). The Checklist re-opens by itself on every objective change and
+   * would otherwise cover them, including their Close button; it goes just behind them instead. Clicking the Checklist
+   * still raises it (sendToFront from the pointer handler).
+   */
+  private static readonly READING_BOX_IDS_ = ['draggable-html-box-campaign-record'];
+
+  private yieldToReadingBoxes_(): void {
+    if (this.boxId !== 'draggable-html-box-checklist' || !this.boxEl) return;
+    for (const id of DraggableBox.READING_BOX_IDS_) {
+      const other = document.getElementById(id);
+      const otherZ = Number(other?.style.zIndex) || 0;
+      if (other && other.isConnected && other.style.display !== 'none' && otherZ > 0) {
+        this.boxEl.style.zIndex = Math.max(1, Math.min(Number(this.boxEl.style.zIndex) || otherZ, otherZ - 1)).toString();
+      }
+    }
+  }
 
   protected sendToFront() {
     const el = getEl(`${this.boxId}`)!;

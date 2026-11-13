@@ -651,7 +651,8 @@ export const scenario5Data: ScenarioData = {
       id: 'phase-8-apply-notch-filter',
       nice: ['K0737', 'S0582', 'S0421'], // K0737: Knowledge of RF spectrum characteristics, S0582: Skill in troubleshooting RF systems, S0421: Skill in using test equipment
       title: 'Configure Notch Filter',
-      description: 'Open the Notch Filter card on RX Analysis and set a notch that covers the spike you measured: center frequency 1515 MHz, bandwidth 1 MHz and depth 40 dB.',
+      description:
+        'Open the Notch Filter card on RX Analysis and set a notch that covers the spike you measured: center frequency 1515 MHz, bandwidth 1 MHz and a depth of at least 40 dB.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['understand-mitigation-options'],
       timeLimitSeconds: 3 * 60,

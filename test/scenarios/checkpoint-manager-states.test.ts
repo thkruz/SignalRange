@@ -306,6 +306,65 @@ describe('weather and telemetry collectors (#243, #246)', () => {
     expect(tm.valueAt(channel, 350)).toBeCloseTo(28, 9);
   });
 
+  const restoreFresh = (): TelemetryManager => {
+    const saved = roundTrip(collectManagerStates());
+    destroyAll();
+    CommandingManager.getInstance();
+    TelemetryManager.getInstance();
+    restoreManagerStates(saved);
+
+    return TelemetryManager.getInstance();
+  };
+
+  it('continues an objective-anchored excursion from its saved anchor after restore (#246)', () => {
+    ScenarioManager.getInstance().settings = {
+      ...natsEuSandboxData.settings,
+      telemetry: {
+        groundStationId: 'GW-01',
+        satelliteNoradId: 1,
+        frameRateHz: 1,
+        channels: [{ id: 'bus-v', nominal: 28 }],
+        excursions: [{ id: 'sag', channelId: 'bus-v', startTime: 20, rampToValue: 26, rampSeconds: 100, startAfterObjectiveId: 'obj-a' }],
+      },
+    } as unknown as typeof natsEuSandboxData.settings;
+    const channel = { id: 'bus-v', nominal: 28 };
+    let tm = TelemetryManager.getInstance();
+    tm.setLinkOverride(true);
+    // The anchor objective goes live at 60 s, so the excursion starts at 80 s.
+    vi.spyOn(SimulationManager, 'getInstance').mockReturnValue({
+      objectivesManager: { getObjectiveState: () => ({ isActive: true, isCompleted: false }) },
+    } as unknown as SimulationManager);
+    (tm as unknown as { anchors_: { poll(s: number): void } }).anchors_.poll(60);
+    vi.restoreAllMocks();
+    tm.advance(130); // 50 s into the ramp: 28 - 2 * 0.5 = 27
+    expect(tm.valueAt(channel, 130)).toBeCloseTo(27, 9);
+
+    // The objective is not live in the fresh process; only the saved anchor can place the excursion.
+    tm = restoreFresh();
+    expect(tm.getCheckpointState().anchors).toBeDefined();
+    expect(tm.valueAt(channel, 130)).toBeCloseTo(27, 9);
+    expect(tm.valueAt(channel, 160)).toBeCloseTo(26.4, 9);
+    expect(tm.valueAt(channel, 70)).toBeCloseTo(28, 9);
+    expect(tm.getReading('bus-v')?.value).toBeCloseTo(27, 9);
+  });
+
+  it('keeps non-zero freshness timers and staleness after restore (#246)', () => {
+    ScenarioManager.getInstance().settings = {
+      ...natsEuSandboxData.settings,
+      telemetry: { groundStationId: 'GW-01', satelliteNoradId: 1, frameRateHz: 0.5, staleAfterS: 10, channels: [{ id: 'bus-v', nominal: 28 }] },
+    } as unknown as typeof natsEuSandboxData.settings;
+    let tm = TelemetryManager.getInstance();
+    tm.setLinkOverride(true);
+    tm.advance(5); // 2 frames at 2 s period, 1 s left in the accumulator, last frame at 5 s
+    tm.advance(0.5); // no new frame: accumulator 1.5, 0.5 s since the last frame
+    expect(tm.getCheckpointState()).toMatchObject({ frameCount: 2, frameAccumulatorS: 1.5, lastFrameElapsedS: 5, elapsedS: 5.5 });
+
+    tm = restoreFresh();
+    expect(tm.getCheckpointState()).toMatchObject({ frameCount: 2, frameAccumulatorS: 1.5, lastFrameElapsedS: 5, elapsedS: 5.5 });
+    expect(tm.secondsSinceFrame).toBeCloseTo(0.5, 9);
+    expect(tm.isStale).toBe(false);
+  });
+
   it('captures a TelemetrySnapshot with frame counts, freshness timers and channel values and round-trips through JSON', () => {
     ScenarioManager.getInstance().settings = {
       ...natsEuSandboxData.settings,

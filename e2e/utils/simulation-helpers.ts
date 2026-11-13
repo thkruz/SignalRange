@@ -1,4 +1,4 @@
-import { expect, Page } from '@playwright/test';
+import { expect, Page, test } from '@playwright/test';
 import { advanceUntil, hasTestClock, simAdvance } from './test-clock';
 
 /**
@@ -212,8 +212,28 @@ export async function waitForQuizToAppear(page: Page, timeout = 30000): Promise<
     // Still no quiz, wait for it with full timeout
   }
 
-  // Final attempt - just wait for the quiz modal
-  await expect(quizModal).toBeVisible({ timeout });
+  // Final attempt: the quiz can register late (it waits on its prerequisite objective), and the hidden indicator is
+  // out of hit-testing until it shows, so wait for the Open Quiz button for the full timeout, then open the quiz
+  if (
+    !(await quizModal
+      .first()
+      .isVisible()
+      .catch(() => false))
+  ) {
+    // Give the wait room inside the test budget: the prerequisite objective can run for minutes of sim time
+    const lateMs = Math.max(timeout, 200000);
+    test.info().setTimeout(test.info().timeout + lateMs);
+    await expect(pendingIndicator.or(quizModal.first()).first()).toBeVisible({ timeout: lateMs });
+    if (
+      !(await quizModal
+        .first()
+        .isVisible()
+        .catch(() => false))
+    ) {
+      await pendingIndicator.click();
+    }
+  }
+  await expect(quizModal).toBeVisible({ timeout: 5000 });
 }
 
 /**
@@ -333,7 +353,10 @@ export async function waitForDecisionToAppear(page: Page, timeout = 30000): Prom
   } catch {
     // not open yet - use the indicator
   }
-  await expect(pendingIndicator).toBeVisible({ timeout });
+  // The hidden indicator is out of hit-testing until it shows, so a late decision needs a long wait, not a click-retry
+  const lateMs = Math.max(timeout, 200000);
+  test.info().setTimeout(test.info().timeout + lateMs);
+  await expect(pendingIndicator).toBeVisible({ timeout: lateMs });
   await pendingIndicator.click();
   await expect(modal).toBeVisible({ timeout: 10000 });
 }

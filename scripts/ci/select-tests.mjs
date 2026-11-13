@@ -29,6 +29,8 @@ const walk = (dir, out = []) => {
 
 const rel = (root, p) => norm(path.relative(root, p));
 
+const LEGACY_NATS_SPEC = /^scenario\d+-.*\.spec\.ts$/u;
+
 /** Derive campaigns from src/campaigns dirs and the e2e/test file names that exist. */
 export function discoverCampaigns(root) {
   const dirs = listDirs(path.join(root, 'src/campaigns'));
@@ -45,7 +47,9 @@ export function discoverCampaigns(root) {
     return { dir, prefixes };
   });
   // A file belongs to the campaign with the longest matching prefix (nats vs nats-eu).
+  // Campaign 1 predates the prefix convention: its specs are named scenarioN-*.spec.ts.
   const owner = (name) => {
+    if (LEGACY_NATS_SPEC.test(name) && dirs.includes('nats')) return 'nats';
     let best = null;
     let bestLen = -1;
     for (const c of campaigns) {

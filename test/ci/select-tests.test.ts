@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -20,7 +20,7 @@ beforeAll(() => {
     mkdirSync(path.join(root, 'src/campaigns', d), { recursive: true });
   }
   for (const s of [
-    'nats-scenario1-full-completion',
+    'scenario1-full-completion',
     'nats-eu-scenario1-full-completion',
     'ham-tech-s01-full-completion',
     'ham-tech-s11-missed-pass',
@@ -49,10 +49,17 @@ afterAll(() => rmSync(root, { recursive: true, force: true }));
 const run = (...paths: string[]): Result => select(root, paths);
 
 describe('select-tests', () => {
+  it('every full-completion spec in the real repo belongs to a campaign', () => {
+    const real = path.resolve(__dirname, '../..');
+    const all = ['nats', 'nats-eu', 'ham-sdr', 'ccs', 'signal-hunter', 'frontline'].flatMap((c) => (select(real, [`src/campaigns/${c}/x.ts`]) as Result).e2e);
+    const onDisk = readdirSync(path.join(real, 'e2e/specs')).filter((n) => n.includes('full-completion'));
+    expect(new Set(all).size).toBe(onDisk.length);
+  });
+
   it('nats change selects nats specs/tests and not nats-eu (prefix collision)', () => {
     const r = run('src/campaigns/nats/scenario1.ts');
     expect(r.full).toBe(false);
-    expect(r.e2e).toEqual(['e2e/specs/nats-scenario1-full-completion.spec.ts']);
+    expect(r.e2e).toEqual(['e2e/specs/scenario1-full-completion.spec.ts']);
     expect(r.vitest).toEqual(['test/campaigns/nats-s3-stow-agc.test.ts']);
   });
 

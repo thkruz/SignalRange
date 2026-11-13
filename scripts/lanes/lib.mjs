@@ -103,3 +103,57 @@ export function laneState(lane) {
   const [behind, ahead] = counts ? counts.split(/\s+/u).map(Number) : [Number.NaN, Number.NaN];
   return { dirty: dirty === null ? null : dirty.length > 0, ahead, behind };
 }
+
+/**
+ * Hard-link (copy as fallback) every file under `src` that is missing in `dest`. Existing files are never touched, so
+ * tracked files in the lane stay as git checked them out. Returns the number of files added.
+ */
+function mirrorMissing(src, dest) {
+  let added = 0;
+  fs.mkdirSync(dest, { recursive: true });
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    const from = path.join(src, entry.name);
+    const to = path.join(dest, entry.name);
+    if (entry.isDirectory()) {
+      added += mirrorMissing(from, to);
+    } else if (!fs.existsSync(to)) {
+      try {
+        fs.linkSync(from, to);
+      } catch {
+        fs.copyFileSync(from, to);
+      }
+      added += 1;
+    }
+  }
+  return added;
+}
+
+/**
+ * Give a lane what git does not carry, so it runs the same tests as the main tree:
+ *  1. the gitignored campaign assets (mp3/webp/png, R2-backed), hard-linked from the main checkout. Hard links, not a
+ *     directory junction, because the tracked READMEs/.gitkeep live in the same directories (a junction would hide them
+ *     and show as deletions) and the build and tests only read these files, so sharing the bytes is safe and costs
+ *     no disk. Falls back to copying across volumes.
+ *  2. the private app's node_modules (ts-morph etc.) when src/private/app exists; skipped for OSS checkouts.
+ */
+export function syncLaneExtras(dir) {
+  const srcAssets = path.join(repoRoot, 'public', 'assets', 'campaigns');
+  if (fs.existsSync(srcAssets)) {
+    const n = mirrorMissing(srcAssets, path.join(dir, 'public', 'assets', 'campaigns'));
+    console.log(`[lane] campaign assets: ${n} file(s) linked from the main checkout`);
+  } else {
+    console.log('[lane] no public/assets/campaigns in the main checkout; skipping asset link');
+  }
+  const appDir = path.join(dir, 'src', 'private', 'app');
+  if (fs.existsSync(path.join(appDir, 'package.json'))) {
+    if (fs.existsSync(path.join(appDir, 'node_modules', 'ts-morph'))) {
+      console.log('[lane] private app dependencies already installed');
+    } else {
+      const lock = fs.existsSync(path.join(appDir, 'package-lock.json'));
+      const status = run('npm', [lock ? 'ci' : 'install', '--no-audit', '--no-fund'], appDir);
+      if (status !== 0) console.log('[lane] warning: private app install failed; private app tests will fail in this lane');
+    }
+  } else {
+    console.log('[lane] no src/private/app; skipping private app install');
+  }
+}

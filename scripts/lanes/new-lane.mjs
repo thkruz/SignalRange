@@ -5,7 +5,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { git, gitTry, laneDir, lanesDir, portListening, readLanes, repoRoot, run, validName } from './lib.mjs';
+import { git, gitTry, laneDir, lanesDir, portListening, readLanes, repoRoot, run, syncLaneExtras, validName } from './lib.mjs';
 
 const [name, portArg] = process.argv.slice(2);
 const port = Number(portArg);
@@ -42,6 +42,8 @@ lap('submodule');
 
 if (run('pnpm', ['install', '--frozen-lockfile', '--prefer-offline'], dir) !== 0) fail('pnpm install failed');
 lap('install');
+syncLaneExtras(dir);
+lap('assets + private app deps');
 if (run('pnpm', ['run', 'build:e2e'], dir) !== 0) fail('build:e2e failed');
 lap('build:e2e');
 

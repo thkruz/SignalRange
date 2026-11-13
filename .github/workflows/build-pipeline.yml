@@ -7,6 +7,7 @@ on:
     branches:
       - main
       - develop
+      - dev
     paths-ignore:
       - '**.md'
       - 'docs/**'
@@ -16,6 +17,7 @@ on:
     branches:
       - main
       - develop
+      - dev
     paths-ignore:
       - '**.md'
       - 'docs/**'
@@ -85,9 +87,54 @@ jobs:
           echo "### Type Check Results" >> $GITHUB_STEP_SUMMARY
           echo "TypeScript compilation: Passed" >> $GITHUB_STEP_SUMMARY
 
+  # ============================================
+  # TEST SELECTION (PRs only)
+  # ============================================
+
+  select:
+    name: Select Tests
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    outputs:
+      full: ${{ steps.select.outputs.full }}
+      vitest: ${{ steps.select.outputs.vitest }}
+      e2e: ${{ steps.select.outputs.e2e }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: false
+
+      - name: Select Tests
+        id: select
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          node scripts/ci/select-tests.mjs --base "origin/${BASE_REF}" --json > selection.json
+          jq -c . selection.json
+          echo "full=$(jq -r '.full' selection.json)" >> "$GITHUB_OUTPUT"
+          echo "vitest=$(jq -r '.vitest | join(" ")' selection.json)" >> "$GITHUB_OUTPUT"
+          echo "e2e=$(jq -r '.e2e | join(" ")' selection.json)" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Test selection"
+            echo "- Base: origin/${BASE_REF}"
+            echo "- Full run: $(jq -r '.full' selection.json)"
+            echo "- Vitest files: $(jq -r '.vitest | length' selection.json)"
+            echo "- E2E specs: $(jq -r '.e2e | length' selection.json)"
+            echo ""
+            echo "Reasons:"
+            jq -r '.reasons[]? | "- " + (if type == "string" then . else tojson end)' selection.json
+          } >> "$GITHUB_STEP_SUMMARY"
+
   test:
     name: Test
+    needs: [select]
+    if: ${{ !cancelled() && (needs.select.result == 'success' || needs.select.result == 'skipped') }}
     runs-on: ubuntu-latest
+    env:
+      SEL_FULL: ${{ needs.select.outputs.full }}
+      SEL_VITEST: ${{ needs.select.outputs.vitest }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v6
@@ -102,11 +149,30 @@ jobs:
         with:
           timezoneLinux: 'America/New_York'
 
+      - name: Decide Test Scope
+        id: scope
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ] || [ "$SEL_FULL" = "true" ]; then
+            echo "mode=full" >> "$GITHUB_OUTPUT"
+          elif [ -n "$SEL_VITEST" ]; then
+            echo "mode=selected" >> "$GITHUB_OUTPUT"
+          else
+            echo "mode=none" >> "$GITHUB_OUTPUT"
+            echo "### Test Results" >> "$GITHUB_STEP_SUMMARY"
+            echo "Unit tests: skipped, the selector chose no vitest files for this PR" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Run Selected Tests
+        if: steps.scope.outputs.mode == 'selected'
+        run: pnpm test -- $SEL_VITEST
+
       - name: Run Tests with Coverage
+        if: steps.scope.outputs.mode == 'full'
         run: pnpm test -- --coverage --coverage.reporter=text --coverage.reporter=lcov
              --coverage.reporter=json-summary --coverage.reporter=json
 
       - name: Upload Coverage Artifact
+        if: steps.scope.outputs.mode == 'full'
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
@@ -114,7 +180,7 @@ jobs:
           retention-days: 7
 
       - name: Coverage Report to PR
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && steps.scope.outputs.mode == 'full'
         uses: davelosert/vitest-coverage-report-action@v2
         with:
           json-summary-path: coverage/coverage-summary.json
@@ -124,9 +190,10 @@ jobs:
         continue-on-error: true
 
       - name: Test Summary
+        if: steps.scope.outputs.mode != 'none'
         run: |
           echo "### Test Results" >> $GITHUB_STEP_SUMMARY
-          echo "Unit tests: Passed" >> $GITHUB_STEP_SUMMARY
+          echo "Unit tests (${{ steps.scope.outputs.mode }}): Passed" >> $GITHUB_STEP_SUMMARY
           if [ -f coverage/coverage-summary.json ]; then
             COVERAGE=$(jq -r '.total.lines.pct' coverage/coverage-summary.json 2>/dev/null || echo "N/A")
             echo "Line coverage: ${COVERAGE}%" >> $GITHUB_STEP_SUMMARY
@@ -134,9 +201,9 @@ jobs:
 
   e2e-tests:
     name: E2E Tests
-    needs: [lint, type-check, test, security-audit]
+    needs: [select, lint, type-check, test, security-audit]
     if: >-
-      (github.event_name == 'pull_request' &&
+      !cancelled() && !failure() && (github.event_name == 'pull_request' &&
       contains(github.event.pull_request.labels.*.name, 'run-e2e')) ||
       github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
@@ -154,7 +221,18 @@ jobs:
 
       - name: Run E2E Tests
         id: e2e
-        run: pnpm run test:e2e
+        env:
+          SEL_FULL: ${{ needs.select.outputs.full }}
+          SEL_E2E: ${{ needs.select.outputs.e2e }}
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ] || [ "$SEL_FULL" = "true" ]; then
+            pnpm run test:e2e
+          elif [ -n "$SEL_E2E" ]; then
+            echo "Selected specs: $SEL_E2E" >> "$GITHUB_STEP_SUMMARY"
+            pnpm exec playwright test $SEL_E2E
+          else
+            echo "No e2e specs selected for this PR, skipping." | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Upload Playwright Report
         if: always()

@@ -11,7 +11,35 @@ import { describe, expect, it } from 'vitest';
  */
 const ALL_CAMPAIGNS: CampaignData[] = [natsCampaignData, natsEuCampaignData, hamSdrCampaignData, ccsCampaignData, geolocationCampaignData, frontlineCampaignData];
 
+const NUMBER_WORDS: Record<string, number> = {
+  twenty: 20,
+  'twenty-one': 21,
+  'twenty-two': 22,
+  'twenty-three': 23,
+  'twenty-four': 24,
+  'twenty-five': 25,
+  'twenty-six': 26,
+  'twenty-seven': 27,
+  'twenty-eight': 28,
+  'twenty-nine': 29,
+  thirty: 30,
+};
+
 describe('campaign registry', () => {
+  it('nats-eu description states the number of authored scenarios (#253)', () => {
+    const authored = Object.keys(import.meta.glob('../../src/campaigns/nats-eu/scenario*.ts')).filter((p) => /scenario\d+\.ts$/u.test(p));
+    const playable = natsEuCampaignData.scenarios.filter((s) => s.missionType !== 'Sandbox');
+    const match = /through ([a-z-]+|\d+) scenarios/iu.exec(natsEuCampaignData.description);
+
+    expect(match, 'description names a scenario count').not.toBeNull();
+    const stated = /^\d+$/u.test(match![1]) ? Number(match![1]) : NUMBER_WORDS[match![1].toLowerCase()];
+
+    expect(authored).toHaveLength(28);
+    expect(stated).toBe(authored.length);
+    expect(playable).toHaveLength(authored.length);
+    expect(natsEuCampaignData.description).not.toMatch(/twenty-four/iu);
+  });
+
   it('has unique campaign ids', () => {
     const ids = ALL_CAMPAIGNS.map((c) => c.id);
     expect(new Set(ids).size).toBe(ids.length);

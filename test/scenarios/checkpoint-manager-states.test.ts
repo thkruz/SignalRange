@@ -19,7 +19,9 @@ import { EventTimeLedger } from '../../src/scenarios/event-time-ledger';
 import { SecurityConsoleCore } from '../../src/security-console/security-console-core';
 import { SpaceEventManager } from '../../src/space-events/space-event-manager';
 import type { ManagerStates } from '../../src/sync/manager-state-types';
+import { TelemetryManager } from '../../src/telemetry/telemetry-manager';
 import { TransecManager } from '../../src/transec/transec-manager';
+import { WeatherManager } from '../../src/weather/weather-manager';
 
 const roundTrip = (s: ManagerStates): ManagerStates => JSON.parse(JSON.stringify(s)) as ManagerStates;
 
@@ -31,6 +33,8 @@ const destroyAll = (): void => {
   TransecManager.destroy();
   GnssThreatManager.destroy();
   CryptoModule.resetInstance();
+  WeatherManager.destroy();
+  TelemetryManager.destroy();
   EventBus.destroy();
 };
 
@@ -170,5 +174,65 @@ describe('restoreManagerStates', () => {
     expect(() => restoreManagerStates({ v: 1, security: { acknowledged: ['x'], accountStatus: [], reviewed: true }, transec: { mode: 'hopping', keyed: true } })).not.toThrow();
     expect(SecurityConsoleCore.isInitialized()).toBe(false);
     expect(TransecManager.isInitialized()).toBe(false);
+  });
+});
+
+describe('weather and telemetry collectors (#243, #246)', () => {
+  it('captures a versioned WeatherSnapshot with pending, running and expired events and round-trips through JSON', () => {
+    ScenarioManager.getInstance().settings = {
+      ...natsEuSandboxData.settings,
+      weatherEvents: [
+        { id: 'w-expired', groundStationId: 'GW-01', type: 'rain', severity: 'minor', startTime: 10, duration: 20, linkMarginDegradation: 1 },
+        { id: 'w-pending', groundStationId: 'GW-01', type: 'rain', severity: 'minor', startTime: 5000, duration: 60, linkMarginDegradation: 1 },
+        {
+          id: 'w-anchored',
+          groundStationId: 'GW-01',
+          type: 'rain',
+          severity: 'minor',
+          startTime: 30,
+          duration: 60,
+          linkMarginDegradation: 1,
+          startAfterObjectiveId: 'some-objective',
+        },
+      ],
+    } as typeof natsEuSandboxData.settings;
+    WeatherManager.getInstance();
+
+    const states = collectManagerStates();
+    const weather = roundTrip(states).weather;
+
+    expect(states.v).toBe(1);
+    expect(weather).toBeDefined();
+    expect(Number.isFinite(weather!.missionStartTimeMs)).toBe(true);
+    expect(weather!.anchors).toBeDefined();
+    expect(weather!.iceAccumulation).toEqual([]);
+    expect(weather!.events.map((e) => e.id)).toEqual(['w-expired', 'w-pending', 'w-anchored']);
+    expect(weather!.events.find((e) => e.id === 'w-anchored')).toMatchObject({ isActive: false, isAwaitingAnchor: true });
+    expect(weather!.events.find((e) => e.id === 'w-pending')).toMatchObject({ startTime: 5000, isActive: false, isAwaitingAnchor: false });
+    expect(weather).toEqual(states.weather);
+  });
+
+  it('omits the weather section when no WeatherManager exists', () => {
+    expect(collectManagerStates().weather).toBeUndefined();
+  });
+
+  it('captures a TelemetrySnapshot with frame counts, freshness timers and channel values and round-trips through JSON', () => {
+    ScenarioManager.getInstance().settings = {
+      ...natsEuSandboxData.settings,
+      telemetry: { groundStationId: 'GW-01', satelliteNoradId: 1, channels: [{ id: 'bus-v', nominal: 28 }] },
+    } as unknown as typeof natsEuSandboxData.settings;
+    TelemetryManager.getInstance();
+
+    const states = collectManagerStates();
+    const telemetry = roundTrip(states).telemetry;
+
+    expect(telemetry).toBeDefined();
+    expect(telemetry).toMatchObject({ frameCount: 0, frameAccumulatorS: 0, elapsedS: 0, lastFrameElapsedS: null });
+    expect(Number.isFinite(telemetry!.missionStartTimeMs)).toBe(true);
+    expect(telemetry!.values).toEqual([['bus-v', 28]]);
+    expect(telemetry!.anchors).toBeDefined();
+    // The type carries no explicit excursion or recovery fields: excursions are anchored, so they ride in `anchors`
+    expect(Object.keys(telemetry!)).not.toContain('excursion');
+    expect(telemetry).toEqual(states.telemetry);
   });
 });

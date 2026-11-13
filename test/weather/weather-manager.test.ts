@@ -1541,3 +1541,64 @@ describe('WeatherManager objective-anchored events', () => {
     expect(antenna.state.skyNoiseDegradation_dB).toBeCloseTo(12, 6);
   });
 });
+
+describe('WeatherManager restore from checkpoint (#244)', () => {
+  let updateHandler: (dt: number) => void;
+
+  const tickAt = (elapsedMs: number) => {
+    setScenarioElapsed(elapsedMs);
+    updateHandler(1000);
+  };
+
+  beforeEach(() => {
+    WeatherManager.destroy();
+    vi.clearAllMocks();
+    mockAntennas = [];
+    mockGroundStations.length = 0;
+    mockObjectiveStates.clear();
+    mockEventBusInstance.on.mockImplementation((event: string, handler: any) => {
+      if (event === Events.UPDATE) updateHandler = handler;
+    });
+    mockScenarioSettings.weatherEvents = [
+      { id: 'w-expired', groundStationId: 'VT-01', type: 'rain', severity: 'minor', startTime: 10, duration: 20, linkMarginDegradation: 1 },
+      { id: 'w-running', groundStationId: 'VT-01', type: 'rain', severity: 'minor', startTime: 100, duration: 200, linkMarginDegradation: 1 },
+      { id: 'w-pending', groundStationId: 'VT-01', type: 'rain', severity: 'minor', startTime: 1000, duration: 60, linkMarginDegradation: 1 },
+      { id: 'w-anchored', groundStationId: 'VT-01', type: 'rain', severity: 'minor', startTime: 30, duration: 60, linkMarginDegradation: 1, startAfterObjectiveId: 'gate' },
+    ];
+    mockGroundStations.push({ state: { id: 'VT-01' }, antennas: [] });
+  });
+
+  afterEach(() => {
+    WeatherManager.destroy();
+  });
+
+  const startedIds = () =>
+    mockEventBusInstance.emit.mock.calls.filter(([name]: [string]) => name === Events.WEATHER_EVENT_STARTED).map(([, event]: [string, { id: string }]) => event.id);
+
+  it('restores pending, running and expired events; expired events do not replay, pending keep their anchors', () => {
+    const original = WeatherManager.getInstance();
+    tickAt(150_000); // w-expired ran and ended, w-running is live
+    const saved = JSON.parse(JSON.stringify(original.getCheckpointState()));
+    expect(saved.events.find((e: { id: string }) => e.id === 'w-running').isActive).toBe(true);
+
+    WeatherManager.destroy();
+    const restored = WeatherManager.getInstance();
+    mockEventBusInstance.emit.mockClear();
+    restored.restoreCheckpointState(saved);
+    restored.refreshRestoredConditions();
+    tickAt(160_000);
+
+    expect(startedIds()).not.toContain('w-expired');
+    // the running event was restored active, so it is not started a second time
+    expect(startedIds()).not.toContain('w-running');
+    expect(restored.getActiveWeatherEvents('VT-01').map((e) => e.id)).toEqual(['w-running']);
+    const after = restored.getCheckpointState();
+    expect(after.events.find((e) => e.id === 'w-pending')).toMatchObject({ startTime: 1000, isActive: false, isAwaitingAnchor: false });
+    expect(after.events.find((e) => e.id === 'w-anchored')).toMatchObject({ isActive: false, isAwaitingAnchor: true });
+
+    // the expired event stays quiet through the rest of its former window and long after
+    tickAt(400_000);
+    expect(startedIds()).not.toContain('w-expired');
+    expect(restored.getActiveWeatherEvents('VT-01')).toHaveLength(0);
+  });
+});

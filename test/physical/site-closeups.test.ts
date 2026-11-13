@@ -28,6 +28,8 @@ import type { CloseupDef } from '@app/physical/ui/site-types';
 import { describe, expect, it } from 'vitest';
 
 const publicDir = path.resolve(__dirname, '../../public');
+// Campaign webp art is gitignored (synced from R2), so CI checkouts have none: the on-disk checks run only where it exists.
+const hasArt = fs.existsSync(path.join(publicDir, 'assets/campaigns/frontline/physical'));
 const partIds = new Set(frontlinePlantConfig.parts.map((p) => p.id));
 const cableIds = new Set(frontlinePlantConfig.cables.map((c) => c.id));
 const connectorIds = new Set(frontlinePlantConfig.connectors.map((c) => c.id));
@@ -148,7 +150,7 @@ describe('forward site art (FS1)', () => {
       expect(def.forward).toBe(true);
       expect(def.image).toContain(image);
       expect(closeupFor(id, 'forward')).toBe(def);
-      expect(fs.existsSync(path.join(publicDir, def.image)), def.image).toBe(true);
+      if (hasArt) expect(fs.existsSync(path.join(publicDir, def.image)), def.image).toBe(true);
     }
     expect(FORWARD_CLOSEUPS['vsat-dish']!.regions.map((r) => r.id)).toEqual(['cu-vsat-dish', 'cu-vsat-mount']);
     expect(FORWARD_CLOSEUPS.lnb!.probes.map((q) => q.target).sort()).toEqual(['vsat-feed', 'vsat-ifl:lnb']);
@@ -301,7 +303,7 @@ describe('forward site art (FS1)', () => {
     }
   });
 
-  it('every webp the forward weather and layer tables reference exists on disk', () => {
+  it.skipIf(!hasArt)('every webp the forward weather and layer tables reference exists on disk', () => {
     const files = forwardArtFiles();
     expect(files.length).toBeGreaterThan(40);
     for (const f of files) {

@@ -47,12 +47,14 @@ const fault = (plant: PhysicalPlantManager, target: string, kind: PlantFaultKind
   return id;
 };
 const publicDir = path.resolve(__dirname, '../../public');
+// Campaign media is gitignored (synced from R2), so CI checkouts have none: the on-disk checks run only where it exists.
+const hasArt = fs.existsSync(path.join(publicDir, 'assets/campaigns/frontline/physical'));
 
 describe('layer table', () => {
   it('points at existing files with valid bboxes', () => {
     for (const layer of CLOSEUP_LAYERS) {
       for (const file of [layer.file, layer.snowFile].filter(Boolean) as string[]) {
-        expect(fs.existsSync(path.join(publicDir, file)), file).toBe(true);
+        if (hasArt) expect(fs.existsSync(path.join(publicDir, file)), file).toBe(true);
       }
       const [x, y, w, h] = layer.bbox;
       expect(x).toBeGreaterThanOrEqual(0);
@@ -64,7 +66,7 @@ describe('layer table', () => {
     }
   });
 
-  it('weather files exist', () => {
+  it.skipIf(!hasArt)('weather files exist', () => {
     for (const f of ['site-outside-snow', 'site-outside-wet', 'cu-skylink-dish-snow', 'cu-skylink-dish-wet', 'cu-vsat-dish-snow', 'cu-lnb-wet']) {
       expect(fs.existsSync(path.join(publicDir, `assets/campaigns/frontline/physical/${f}.webp`)), f).toBe(true);
     }

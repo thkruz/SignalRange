@@ -42,6 +42,9 @@ function collectRefs(): Array<{ where: string; path: string }> {
   return refs;
 }
 
+// Campaign media is gitignored (synced from R2), so CI checkouts have none: the on-disk checks run only where it exists.
+const hasAudio = existsSync(join(PUBLIC_DIR, 'assets/campaigns/nats'));
+
 describe('campaign audio references', () => {
   const refs = collectRefs();
 
@@ -49,7 +52,7 @@ describe('campaign audio references', () => {
     expect(refs.length).toBeGreaterThan(100);
   });
 
-  it('every audio path in src/campaigns resolves to a file on disk', () => {
+  it.skipIf(!hasAudio)('every audio path in src/campaigns resolves to a file on disk', () => {
     const missing = refs.filter((r) => !existsSync(join(PUBLIC_DIR, r.path))).map((r) => `${r.where} ${r.path}`);
 
     expect(missing).toEqual([]);
@@ -67,7 +70,7 @@ describe('campaign audio references', () => {
       const clip = /audioUrl:\s*(?:getAssetUrl\('([^']*)'\)|'([^']*)')/u.exec(block);
       const path = clip?.[1] ?? clip?.[2] ?? '';
 
-      expect(path === '' || existsSync(join(PUBLIC_DIR, path))).toBe(true);
+      expect(path === '' || !hasAudio || existsSync(join(PUBLIC_DIR, path))).toBe(true);
     }
   });
 });

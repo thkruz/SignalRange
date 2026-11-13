@@ -143,7 +143,8 @@ function chain(scenario: ScenarioData, stationId: string, noradId: number, plant
   return { sat, antenna, frontEnd, receiver, plant, fly, read };
 }
 
-describe('physical plant on the real chain (phase 38.1)', () => {
+// Full-chain runs take several seconds on a CI runner; the 5 s default timed out there.
+describe('physical plant on the real chain (phase 38.1)', { timeout: 30_000 }, () => {
   beforeEach(() => {
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(() => Promise.resolve());
   });

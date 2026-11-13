@@ -1,3 +1,4 @@
+// CI selection probe (temporary, revert before merge)
 import { Character } from '@app/modal/character-enum';
 import type { ScenarioData } from '@app/ScenarioData';
 import { sandstormGroundStation } from './ground-stations';

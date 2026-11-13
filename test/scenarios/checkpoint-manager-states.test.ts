@@ -11,12 +11,15 @@ import { CommandingManager } from '../../src/commanding/commanding-manager';
 import { ContactScheduleManager } from '../../src/contact-schedule/contact-schedule-manager';
 import { CryptoModule } from '../../src/equipment/crypto/crypto-module-core';
 import { EventBus } from '../../src/events/event-bus';
+import { Events } from '../../src/events/events';
 import { GnssThreatManager } from '../../src/gnss-threat/gnss-threat-manager';
 import { ScenarioManager } from '../../src/scenario-manager';
 import { CampaignDocumentStore } from '../../src/scenarios/campaign-document-store';
 import { collectManagerStates, restoreLedgerAndDocument, restoreManagerStates } from '../../src/scenarios/checkpoint-manager-states';
 import { EventTimeLedger } from '../../src/scenarios/event-time-ledger';
 import { SecurityConsoleCore } from '../../src/security-console/security-console-core';
+import { missionNowMs } from '../../src/simulation/mission-clock';
+import { SimulationManager } from '../../src/simulation/simulation-manager';
 import { SpaceEventManager } from '../../src/space-events/space-event-manager';
 import type { ManagerStates } from '../../src/sync/manager-state-types';
 import { TelemetryManager } from '../../src/telemetry/telemetry-manager';
@@ -44,6 +47,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.restoreAllMocks();
   destroyAll();
   EventTimeLedger.end();
 });
@@ -212,8 +216,94 @@ describe('weather and telemetry collectors (#243, #246)', () => {
     expect(weather).toEqual(states.weather);
   });
 
+  it('captures a RUNNING event (isActive, remaining time derivable) and an EXPIRED event once the clock has advanced', () => {
+    ScenarioManager.getInstance().settings = {
+      ...natsEuSandboxData.settings,
+      weatherEvents: [
+        { id: 'w-expired', groundStationId: 'GW-01', type: 'rain', severity: 'minor', startTime: 10, duration: 20, linkMarginDegradation: 1 },
+        { id: 'w-running', groundStationId: 'GW-01', type: 'rain', severity: 'minor', startTime: 100, duration: 200, linkMarginDegradation: 1 },
+        { id: 'w-pending', groundStationId: 'GW-01', type: 'rain', severity: 'minor', startTime: 5000, duration: 60, linkMarginDegradation: 1 },
+      ],
+    } as typeof natsEuSandboxData.settings;
+    vi.spyOn(SimulationManager, 'getInstance').mockReturnValue({ groundStations: [], satellites: [] } as never);
+    const manager = WeatherManager.getInstance();
+    // Put the mission start 150 s in the past, then let one UPDATE tick evaluate the events
+    manager.restoreCheckpointState({ missionStartTimeMs: missionNowMs() - 150_000 });
+    EventBus.getInstance().emit(Events.UPDATE, 16 as never);
+
+    const states = collectManagerStates();
+    const weather = roundTrip(states).weather!;
+    const elapsedS = (missionNowMs() - weather.missionStartTimeMs) / 1000;
+    const running = weather.events.find((e) => e.id === 'w-running')!;
+    const expired = weather.events.find((e) => e.id === 'w-expired')!;
+    const pending = weather.events.find((e) => e.id === 'w-pending')!;
+
+    expect(running.isActive).toBe(true);
+    // remaining = startTime + authored duration - elapsed, derivable from the snapshot alone: 100 + 200 - ~150
+    expect(running.startTime + 200 - elapsedS).toBeGreaterThan(149);
+    expect(running.startTime + 200 - elapsedS).toBeLessThan(151);
+    expect(expired.isActive).toBe(false);
+    expect(expired.startTime + 20).toBeLessThan(elapsedS);
+    expect(pending.isActive).toBe(false);
+    expect(pending.startTime).toBeGreaterThan(elapsedS);
+    expect(weather).toEqual(states.weather);
+  });
+
   it('omits the weather section when no WeatherManager exists', () => {
     expect(collectManagerStates().weather).toBeUndefined();
+  });
+
+  it('resumes an in-progress excursion and a commanded recovery after restore: telemetry anchors + config + commanding snapshot reconstruct them', () => {
+    ScenarioManager.getInstance().settings = {
+      ...natsEuSandboxData.settings,
+      telemetry: {
+        groundStationId: 'GW-01',
+        satelliteNoradId: 1,
+        frameRateHz: 1,
+        channels: [{ id: 'bus-v', nominal: 28 }],
+        excursions: [{ id: 'sag', channelId: 'bus-v', startTime: 100, rampToValue: 26, rampSeconds: 100, endsOnCommandId: 'LOAD-SHED', recoverySeconds: 50 }],
+      },
+    } as unknown as typeof natsEuSandboxData.settings;
+    const channel = { id: 'bus-v', nominal: 28 };
+    const roundTripAndRestore = (): TelemetryManager => {
+      const saved = roundTrip(collectManagerStates());
+      destroyAll();
+      CommandingManager.getInstance();
+      TelemetryManager.getInstance();
+      restoreManagerStates(saved);
+
+      return TelemetryManager.getInstance();
+    };
+
+    const cmd = CommandingManager.getInstance();
+    cmd.setDopplerComp(true);
+    let tm = TelemetryManager.getInstance();
+    tm.setLinkOverride(true);
+    tm.advance(150); // mid-ramp: 28 - 2 * 0.5 = 27
+    expect(tm.valueAt(channel, 150)).toBeCloseTo(27, 9);
+    const countBefore = tm.frameCount;
+    expect(countBefore).toBeGreaterThan(0);
+
+    // Mid-excursion: resume reads the same value at the same elapsed time and continues down the ramp
+    tm = roundTripAndRestore();
+    tm.setLinkOverride(true);
+    expect(tm.getCheckpointState()).toMatchObject({ frameCount: countBefore, elapsedS: 150 });
+    expect(tm.valueAt(channel, 150)).toBeCloseTo(27, 9);
+    expect(tm.valueAt(channel, 180)).toBeCloseTo(26.4, 9);
+
+    // Command ACK at 300 s ends the excursion at 26 V; recovery over 50 s
+    CommandingManager.getInstance().setDopplerComp(true);
+    tm.advance(150); // to 300
+    const record = CommandingManager.getInstance().sendCommand('LOAD-SHED', 300);
+    expect(record.status).toBe('acked');
+    tm.advance(25); // 325 s: halfway through recovery, 27 V
+    expect(tm.valueAt(channel, 325)).toBeCloseTo(27, 9);
+
+    tm = roundTripAndRestore();
+    expect(CommandingManager.getInstance().acknowledgedAt('LOAD-SHED')).toBe(300);
+    expect(tm.getCheckpointState().elapsedS).toBe(325);
+    expect(tm.valueAt(channel, 325)).toBeCloseTo(27, 9);
+    expect(tm.valueAt(channel, 350)).toBeCloseTo(28, 9);
   });
 
   it('captures a TelemetrySnapshot with frame counts, freshness timers and channel values and round-trips through JSON', () => {

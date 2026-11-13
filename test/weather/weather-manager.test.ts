@@ -1601,4 +1601,68 @@ describe('WeatherManager restore from checkpoint (#244)', () => {
     expect(startedIds()).not.toContain('w-expired');
     expect(restored.getActiveWeatherEvents('VT-01')).toHaveLength(0);
   });
+
+  const saveAndRestore = (saveAtMs: number) => {
+    const original = WeatherManager.getInstance();
+    tickAt(saveAtMs);
+    const saved = JSON.parse(JSON.stringify(original.getCheckpointState()));
+    WeatherManager.destroy();
+    const restored = WeatherManager.getInstance();
+    mockEventBusInstance.emit.mockClear();
+    restored.restoreCheckpointState(saved);
+    restored.refreshRestoredConditions();
+    return { restored, saved };
+  };
+
+  it('keeps the original end across restore: 299 s still active, 301 s ended (not restarted at the restore point)', () => {
+    const { restored } = saveAndRestore(150_000); // w-running 100..300, 150 s elapsed, 150 s left
+    tickAt(299_000);
+    expect(restored.getActiveWeatherEvents('VT-01').map((e) => e.id)).toEqual(['w-running']);
+    tickAt(301_000);
+    expect(restored.getActiveWeatherEvents('VT-01')).toHaveLength(0);
+    expect(startedIds()).not.toContain('w-running');
+  });
+
+  it('a save taken at 101 s resumes with 199 s left; one past the end (300 s) does not replay', () => {
+    const { restored } = saveAndRestore(101_000);
+    tickAt(299_000);
+    expect(restored.getActiveWeatherEvents('VT-01').map((e) => e.id)).toEqual(['w-running']);
+    tickAt(300_000);
+    tickAt(301_000);
+    expect(restored.getActiveWeatherEvents('VT-01')).toHaveLength(0);
+    expect(startedIds()).not.toContain('w-running');
+  });
+
+  it('a live objective anchor survives restore: w-anchored starts at anchor + 30 s, not at the restore point', () => {
+    mockObjectiveStates.set('gate', { isActive: true, isCompleted: false });
+    const original = WeatherManager.getInstance();
+    tickAt(120_000); // gate live at 120 s -> w-anchored start 150 s, end 210 s
+    tickAt(130_000);
+    const saved = JSON.parse(JSON.stringify(original.getCheckpointState()));
+    expect(saved.anchors).not.toEqual({});
+    expect(saved.events.find((e: { id: string }) => e.id === 'w-anchored')).toMatchObject({ startTime: 150, isActive: false, isAwaitingAnchor: false });
+
+    WeatherManager.destroy();
+    mockObjectiveStates.set('gate', { isActive: false, isCompleted: false });
+    const restored = WeatherManager.getInstance();
+    mockEventBusInstance.emit.mockClear();
+    restored.restoreCheckpointState(saved);
+    restored.refreshRestoredConditions();
+
+    tickAt(145_000);
+    expect(restored.getActiveWeatherEvents('VT-01').map((e) => e.id)).not.toContain('w-anchored');
+    tickAt(160_000);
+    expect(restored.getActiveWeatherEvents('VT-01').map((e) => e.id)).toContain('w-anchored');
+    tickAt(215_000);
+    expect(restored.getActiveWeatherEvents('VT-01').map((e) => e.id)).not.toContain('w-anchored');
+  });
+
+  it('a pending event still fires on its original schedule after restore', () => {
+    const { restored } = saveAndRestore(150_000);
+    tickAt(999_000);
+    expect(startedIds()).not.toContain('w-pending');
+    tickAt(1_001_000);
+    expect(startedIds()).toContain('w-pending');
+    expect(restored.getActiveWeatherEvents('VT-01').map((e) => e.id)).toEqual(['w-pending']);
+  });
 });

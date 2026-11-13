@@ -259,4 +259,52 @@ describe('HardwareFaultManager', () => {
     expect(resumed.manager.isTripped('primary')).toBe(true);
     expect(opsLog.log).not.toHaveBeenCalled();
   });
+
+  it('restores an ACTIVE buc-overtemp fault through JSON: delta reapplied, temperature not re-jumped, original clear time kept', () => {
+    const events: HardwareFaultEventConfig[] = [
+      { id: 'sh-buc', groundStationId: 'SH-02', target: 'buc-overtemp', startTime: 60, duration: 300, params: { deltaC: 35, startTemperatureC: 68 } },
+    ];
+    const first = boot(events);
+    at(100);
+    expect(first.manager.isTripped('sh-buc')).toBe(true);
+    const saved = JSON.parse(JSON.stringify(first.manager.getState()));
+    HardwareFaultManager.destroy();
+    opsLog.log.mockClear();
+    const resumed = boot(events);
+    resumed.manager.restoreState(saved);
+    expect(resumed.manager.isTripped('sh-buc')).toBe(true);
+    expect(resumed.manager.isCleared('sh-buc')).toBe(false);
+    expect(resumed.sh.buc.setThermalOffset).toHaveBeenCalledWith(35);
+    expect(resumed.sh.buc.setThermalOffset).toHaveBeenCalledTimes(1);
+    expect(resumed.sh.buc.setTemperature).not.toHaveBeenCalled();
+    at(101);
+    expect(resumed.sh.buc.setThermalOffset).toHaveBeenCalledTimes(1);
+    expect(resumed.sh.buc.setTemperature).not.toHaveBeenCalled();
+    at(359);
+    expect(resumed.manager.isCleared('sh-buc')).toBe(false);
+    at(360);
+    expect(resumed.manager.isCleared('sh-buc')).toBe(true);
+    expect(resumed.sh.buc.setThermalOffset).toHaveBeenLastCalledWith(0);
+  });
+
+  it('restores an ACTIVE gpsdo-gnss-loss fault through JSON: signal stays lost, not re-tripped, clears at original end', () => {
+    const events: HardwareFaultEventConfig[] = [{ id: 'gnss', groundStationId: 'GW-01', target: 'gpsdo-gnss-loss', startTime: 30, duration: 600 }];
+    const first = boot(events);
+    at(100);
+    const saved = JSON.parse(JSON.stringify(first.manager.getState()));
+    HardwareFaultManager.destroy();
+    const resumed = boot(events);
+    resumed.manager.restoreState(saved);
+    expect(resumed.manager.isTripped('gnss')).toBe(true);
+    expect(resumed.manager.isCleared('gnss')).toBe(false);
+    expect(resumed.gw.gpsdo.setGnssSignalPresent).toHaveBeenCalledTimes(1);
+    expect(resumed.gw.gpsdo.setGnssSignalPresent).toHaveBeenCalledWith(false);
+    at(101);
+    expect(resumed.gw.gpsdo.setGnssSignalPresent).toHaveBeenCalledTimes(1);
+    at(629);
+    expect(resumed.manager.isCleared('gnss')).toBe(false);
+    at(630);
+    expect(resumed.manager.isCleared('gnss')).toBe(true);
+    expect(resumed.gw.gpsdo.setGnssSignalPresent).toHaveBeenLastCalledWith(true);
+  });
 });

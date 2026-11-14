@@ -151,6 +151,20 @@ export function wasStripped(counts: StripCounts): boolean {
   return Object.entries(counts).some(([name, n]) => name !== 'blankLinesCollapsed' && n > 0);
 }
 
+/** Number of code points; a lone surrogate counts as one. */
+function countCodePoints(s: string): number {
+  let n = 0;
+  for (let i = 0; i < s.length; i++) {
+    n++;
+    const c = s.charCodeAt(i);
+    if (c >= 0xd800 && c <= 0xdbff && i + 1 < s.length) {
+      const d = s.charCodeAt(i + 1);
+      if (d >= 0xdc00 && d <= 0xdfff) i++;
+    }
+  }
+  return n;
+}
+
 export function sanitizeText(input: unknown, tier: FeedbackTier): TextResult {
   const stripped = emptyCounts();
   if (typeof input !== 'string') return { ok: false, reason: 'not-a-string', stripped };
@@ -164,7 +178,8 @@ export function sanitizeText(input: unknown, tier: FeedbackTier): TextResult {
   text = text.trim();
   // U+2800 (braille blank) renders as nothing but is neither whitespace nor default-ignorable.
   if (text.length === 0 || text.replace(BRAILLE_BLANK, '').trim().length === 0) return { ok: false, reason: 'empty', stripped };
-  if (text.length > limits.maxChars) return { ok: false, reason: 'too-long', stripped };
+  // The limit counts characters (code points), not UTF-16 units: 4000 emoji are 4000 characters.
+  if (countCodePoints(text) > limits.maxChars) return { ok: false, reason: 'too-long', stripped };
   if (text.split('\n').length > limits.maxLines) return { ok: false, reason: 'too-many-lines', stripped };
   return { ok: true, text, stripped };
 }

@@ -8,7 +8,8 @@
 //     with the pre-parse in jpeg.ts can never make the decoder run long. Hitting either throws.
 //  2. ES module export instead of CommonJS.
 //  3. Progressive frames (SOF2) are refused, SOS selectors must be distinct and exist in the frame, and a work
-//     counter (MAX_BLOCK_DECODES) aborts a scan set that decodes more blocks than one 6 MP baseline image holds.
+//     counter (MAX_BLOCK_DECODES) aborts a scan set that decodes more blocks than one 1920x1080 baseline image holds.
+//  4. readBit throws at the end of the data instead of returning zero bits forever.
 // @ts-nocheck
 // deno-lint-ignore-file
 /* -*- tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- /
@@ -41,8 +42,8 @@
 export const MAX_SCANS = 16;
 /** feedback-submit: most marker segments read per image, counting every pass of the marker loop. */
 export const MAX_SEGMENTS = 512;
-/** feedback-submit: most block decodes per image; 6 MP is 93,750 blocks per component, four components at most. */
-export const MAX_BLOCK_DECODES = 400000;
+/** feedback-submit: most block decodes per image; 1920x1080 is 32,400 blocks per component, four components at most. */
+export const MAX_BLOCK_DECODES = 135000;
 var blockDecodes = 0;
 
 var JpegImage = (function jpegImage() {
@@ -128,6 +129,7 @@ var JpegImage = (function jpegImage() {
         bitsCount--;
         return (bitsData >> bitsCount) & 1;
       }
+      if (offset >= data.length) throw new Error("unexpected end of JPEG data"); // feedback-submit
       bitsData = data[offset++];
       if (bitsData == 0xFF) {
         var nextByte = data[offset++];

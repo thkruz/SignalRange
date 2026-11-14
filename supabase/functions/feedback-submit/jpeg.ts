@@ -1,14 +1,16 @@
 // JPEG helpers for the feedback-submit function. Pure: no network, no Deno APIs.
 
-export const MAX_SCREENSHOT_BYTES = 1_500_000;
-export const MAX_SCREENSHOT_DIMENSION = 2560;
+/** The client never sends more than 1920x1080 (feedback-capture.ts: scale = min(1, 1920 / innerWidth, 1080 / innerHeight)). */
+export const MAX_SCREENSHOT_BYTES = 1_000_000;
+export const MAX_SCREENSHOT_WIDTH = 1920;
+export const MAX_SCREENSHOT_HEIGHT = 1080;
 /** Pixel budget; the decoder gets the same cap (see jpeg-codec.ts). */
-export const MAX_SCREENSHOT_PIXELS = 6_000_000;
+export const MAX_SCREENSHOT_PIXELS = MAX_SCREENSHOT_WIDTH * MAX_SCREENSHOT_HEIGHT;
 /** A baseline canvas export has exactly one scan; the decoder keeps a looser cap as a backstop. */
 export const MAX_JPEG_SCANS = 1;
 
-/** Base64 length of the largest accepted image (1.5 MB is 2,000,000 characters). */
-export const MAX_SCREENSHOT_BASE64_CHARS = 2_000_100;
+/** Base64 length of the largest accepted image (1 MB is 1,333,336 characters). */
+export const MAX_SCREENSHOT_BASE64_CHARS = 1_333_400;
 
 export const DATA_URL_PREFIX = 'data:image/jpeg;base64,';
 
@@ -64,7 +66,7 @@ export function inspectJpeg(b: Uint8Array): JpegInfo | null {
     // Allowlist: only markers jpeg-js reads the same way this parser does. DNL (FFDC), TEM, DRI (FFDD),
     // RSTn anywhere, arithmetic and lossless SOFs and every reserved marker are refused. jpeg-js reads only 4
     // bytes after DNL and treats the rest of its payload as markers, so skipping by length hides scans.
-    const allowed = (marker >= 0xe0 && marker <= 0xef) || marker === 0xfe || marker === 0xdb || marker === 0xc4 || marker === 0xc0 || marker === 0xc1 || marker === 0xda;
+    const allowed = (marker >= 0xe0 && marker <= 0xef) || marker === 0xfe || marker === 0xdb || marker === 0xc4 || marker === 0xc0 || marker === 0xda;
     if (!allowed) return null;
     if (i + 4 > b.length) return null;
     const len = (b[i + 2] << 8) | b[i + 3];
@@ -72,12 +74,11 @@ export function inspectJpeg(b: Uint8Array): JpegInfo | null {
     const start = i + 4;
     const end = i + 2 + len;
     if (marker === 0xdb) {
-      // DQT: one or more tables of 1 + 64 (8-bit) or 1 + 128 (16-bit) bytes filling the segment.
+      // DQT: one or more 8-bit tables (1 + 64 bytes) filling the segment. 16-bit tables are refused.
       let p = start;
       while (p < end) {
-        const pq = b[p] >> 4;
-        if (pq > 1 || (b[p] & 0x0f) > 3) return null;
-        p += 1 + (pq === 0 ? 64 : 128);
+        if (b[p] >> 4 !== 0 || (b[p] & 0x0f) > 3) return null;
+        p += 65;
       }
       if (p !== end) return null;
     } else if (marker === 0xc4) {
@@ -91,9 +92,9 @@ export function inspectJpeg(b: Uint8Array): JpegInfo | null {
         p += 17 + total;
       }
       if (p !== end) return null;
-    } else if (marker === 0xc0 || marker === 0xc1 || marker === 0xc2) {
-      // SOF0 baseline and SOF1 extended sequential (8-bit only, the same decode path). SOF2 progressive and every
-      // other SOF are refused: a refinement scan costs pixels x selectors x spectral band, not pixels.
+    } else if (marker === 0xc0) {
+      // SOF0 baseline, 8-bit samples only. SOF1 (extended sequential), SOF2 progressive and every other SOF are
+      // refused: a baseline canvas export needs none of them.
       if (sof !== null || len < 8 || b[start] !== 8) return null;
       const components = b[start + 5];
       if (components < 1 || components > 4 || len !== 8 + 3 * components) return null;

@@ -199,4 +199,14 @@ describe('review findings (phase-46 PR 230)', () => {
       expect(validateFeedback(p, 'player', own), id).toEqual({ ok: false, reasons: ['unknown-scenario'] });
     }
   });
+
+  it('message length counts code points, not UTF-16 units', () => {
+    const emoji = String.fromCodePoint(0x1f600);
+    expect(text(emoji.repeat(4000), 'player')).toMatchObject({ ok: true });
+    expect(text(emoji.repeat(4001), 'player')).toMatchObject({ ok: false, reason: 'too-long' });
+    expect(text(`${emoji.repeat(3999)}é`, 'player')).toMatchObject({ ok: true });
+    expect(text(emoji.repeat(10_000), 'developer')).toMatchObject({ ok: true });
+    expect(text(emoji.repeat(10_001), 'developer')).toMatchObject({ ok: false, reason: 'too-long' });
+    expect(text('x'.repeat(4001), 'player')).toMatchObject({ ok: false, reason: 'too-long' });
+  });
 });

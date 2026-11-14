@@ -42,3 +42,11 @@ Deno.test('prune endpoint needs the shared secret and POST', async () => {
   assert.equal((await handlePrune(new Request('http://x', { method: 'POST', headers: { 'x-prune-secret': 's3cret' } }), f.deps, 's3cret')).status, 200);
   assert.equal(secretMatches('x', ''), false, 'an unset secret never matches');
 });
+
+Deno.test('the handler checks only the secret; the service role bearer is verified by the gateway before it runs', async () => {
+  const f = fake([], []);
+  const req = new Request('http://x', { method: 'POST', headers: { authorization: 'Bearer service-role-key', 'x-prune-secret': 's3cret' } });
+  assert.equal((await handlePrune(req, f.deps, 's3cret')).status, 200);
+  const noSecret = new Request('http://x', { method: 'POST', headers: { authorization: 'Bearer service-role-key' } });
+  assert.equal((await handlePrune(noSecret, f.deps, 's3cret')).status, 401);
+});

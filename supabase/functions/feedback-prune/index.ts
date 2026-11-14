@@ -1,5 +1,6 @@
 // Supabase Edge Function entry for screenshot retention. Run it daily with a schedule that
-// POSTs with the x-prune-secret header (see README.md).
+// POSTs with `Authorization: Bearer <service role key>` (gateway JWT check, left on) and the
+// x-prune-secret header (see README.md).
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4';
 import { handlePrune, type PruneDeps } from './prune.ts';
 

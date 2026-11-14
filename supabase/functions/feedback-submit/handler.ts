@@ -1,12 +1,14 @@
 // Request handler for feedback-submit. All I/O comes in through `Deps`, so the
 // whole policy (auth, limits, validation, image handling) runs without a network.
 import { type CleanFeedback, type FeedbackDeps, type FeedbackTier, validateFeedback, wasStripped } from '../_shared/feedback-rules.ts';
-import { DATA_URL_PREFIX, decodeBase64, hasJpegMagic, MAX_SCREENSHOT_BASE64_CHARS, MAX_SCREENSHOT_BYTES, MAX_SCREENSHOT_DIMENSION, MAX_SCREENSHOT_PIXELS, inspectJpeg } from './jpeg.ts';
+import { DATA_URL_PREFIX, decodeBase64, hasJpegMagic, MAX_SCREENSHOT_BASE64_CHARS, MAX_SCREENSHOT_BYTES, MAX_SCREENSHOT_HEIGHT, MAX_SCREENSHOT_PIXELS, MAX_SCREENSHOT_WIDTH, inspectJpeg } from './jpeg.ts';
 import { computeRiskFlags } from './risk-flags.ts';
 
 export const RATE_LIMITS = { perHour: 5, perDay: 20, globalPerHour: 300 } as const;
 /** Raw request body cap in bytes: a 1.5 MB image is ~2 MB of base64, plus snapshot and text. */
 export const MAX_BODY_BYTES = 3_300_000;
+/** The body must arrive within this long; a slow-drip sender is cut off. */
+export const BODY_READ_TIMEOUT_MS = 10_000;
 
 export interface AuthUser {
   id: string;
@@ -44,6 +46,8 @@ export interface Deps {
   now(): number;
   log?(event: string, detail?: Record<string, unknown>): void;
   allowedOrigin?: string;
+  /** Body read timeout in ms; defaults to BODY_READ_TIMEOUT_MS. */
+  bodyTimeoutMs?: number;
 }
 
 function respond(status: number, body: Record<string, unknown>, deps: Deps, extra: Record<string, string> = {}): Response {
@@ -75,6 +79,10 @@ export async function handleFeedbackRequest(req: Request, deps: Deps): Promise<R
   if (req.method !== 'POST') return fail(405, 'method-not-allowed', deps, undefined, { Allow: 'POST, OPTIONS' });
 
   try {
+    // 0. Refuse on the headers alone, before auth and before the body is touched: a declared length over the
+    // limit, a length that is not a plain integer, or no length at all on a body that is not chunked.
+    if (declaredLengthRefused(req)) return fail(413, 'payload-too-large', deps);
+
     // 1. Authenticate before reading the body.
     const jwt = bearer(req);
     if (!jwt) return fail(401, 'unauthorized', deps);
@@ -83,10 +91,9 @@ export async function handleFeedbackRequest(req: Request, deps: Deps): Promise<R
     if (user.isAnonymous) return fail(403, 'sign-in-required', deps);
 
     // 2. Bounded body read.
-    const declared = Number(req.headers.get('content-length') ?? '0');
-    if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) return fail(413, 'payload-too-large', deps);
     if (!/^application\/json\b/iu.test(req.headers.get('content-type') ?? '')) return fail(415, 'unsupported-media-type', deps);
-    const raw = await readBounded(req, MAX_BODY_BYTES);
+    const raw = await readBounded(req, MAX_BODY_BYTES, deps.bodyTimeoutMs ?? BODY_READ_TIMEOUT_MS);
+    if (raw === 'timeout') return fail(408, 'request-timeout', deps);
     if (raw === null) return fail(413, 'payload-too-large', deps);
     let payload: unknown;
     try {
@@ -200,20 +207,41 @@ function snapshotWasSanitized(c: CleanFeedback): boolean {
   return wasStripped(f.stripped) || f.truncatedStrings > 0 || f.droppedKeys > 0 || f.droppedValues > 0 || f.depthExceeded || f.keyLimitHit;
 }
 
-async function readBounded(req: Request, max: number): Promise<string | null> {
+/** True when the headers alone say the body must not be read. */
+function declaredLengthRefused(req: Request): boolean {
+  const cl = req.headers.get('content-length');
+  if (cl !== null) {
+    if (!/^\d{1,12}$/u.test(cl.trim())) return true;
+    return Number(cl) > MAX_BODY_BYTES;
+  }
+  return !/\bchunked\b/iu.test(req.headers.get('transfer-encoding') ?? '');
+}
+
+/** Reads at most `max` bytes within `timeoutMs`. Null on overrun, 'timeout' when the sender is too slow. */
+async function readBounded(req: Request, max: number, timeoutMs: number): Promise<string | null | 'timeout'> {
   if (!req.body) return '';
   const reader = req.body.getReader();
+  const signal = AbortSignal.timeout(timeoutMs);
+  const aborted = new Promise<'timeout'>((resolve) => {
+    if (signal.aborted) resolve('timeout');
+    else signal.addEventListener('abort', () => resolve('timeout'), { once: true });
+  });
   const chunks: Uint8Array[] = [];
   let total = 0;
   for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.length;
+    const next = await Promise.race([reader.read(), aborted]);
+    if (next === 'timeout') {
+      // Do not wait for the cancel: a stalled sender may never answer it.
+      reader.cancel().catch(() => undefined);
+      return 'timeout';
+    }
+    if (next.done) break;
+    total += next.value.length;
     if (total > max) {
-      await reader.cancel();
+      reader.cancel().catch(() => undefined);
       return null;
     }
-    chunks.push(value);
+    chunks.push(next.value);
   }
   const all = new Uint8Array(total);
   let off = 0;
@@ -236,7 +264,7 @@ async function processScreenshot(clean: CleanFeedback, deps: Deps): Promise<Proc
   // Strict pre-parse: anything it cannot account for byte by byte never reaches the decoder.
   const info = inspectJpeg(bytes);
   if (info === null) return { ok: false, status: 400, error: 'invalid-screenshot' };
-  if (info.width > MAX_SCREENSHOT_DIMENSION || info.height > MAX_SCREENSHOT_DIMENSION || info.width * info.height > MAX_SCREENSHOT_PIXELS) return { ok: false, status: 413, error: 'screenshot-too-large' };
+  if (info.width > MAX_SCREENSHOT_WIDTH || info.height > MAX_SCREENSHOT_HEIGHT || info.width * info.height > MAX_SCREENSHOT_PIXELS) return { ok: false, status: 413, error: 'screenshot-too-large' };
   try {
     const out = await deps.reencodeJpeg(bytes);
     if (!hasJpegMagic(out) || out.length > MAX_SCREENSHOT_BYTES * 2) return { ok: false, status: 400, error: 'invalid-screenshot' };

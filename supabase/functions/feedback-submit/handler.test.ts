@@ -83,9 +83,11 @@ const snapshot = () => ({
 const body = (over: Record<string, unknown> = {}) => ({ id: ID1, category: 'bug', message: 'Antenna stuck', screenshot: null, snapshot: snapshot(), ...over });
 
 function post(payload: unknown, token: string | null = 'good-token', headers: Record<string, string> = {}): Request {
-  const h: Record<string, string> = { 'content-type': 'application/json', ...headers };
+  const text = typeof payload === 'string' ? payload : JSON.stringify(payload);
+  // A real request declares its length (or is chunked); the handler refuses one that does neither.
+  const h: Record<string, string> = { 'content-type': 'application/json', 'content-length': String(new TextEncoder().encode(text).length), ...headers };
   if (token) h.authorization = `Bearer ${token}`;
-  return new Request('http://local/feedback-submit', { method: 'POST', headers: h, body: typeof payload === 'string' ? payload : JSON.stringify(payload) });
+  return new Request('http://local/feedback-submit', { method: 'POST', headers: h, body: text });
 }
 const json = async (r: Response) => (await r.json()) as Record<string, unknown>;
 
@@ -127,7 +129,7 @@ Deno.test('bad token: 401 with no detail', async () => {
 
 Deno.test('malformed Authorization scheme: 401', async () => {
   const f = makeFake();
-  const req = new Request('http://local/', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Basic good-token' }, body: '{}' });
+  const req = new Request('http://local/', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Basic good-token', 'content-length': '2' }, body: '{}' });
   assert.equal((await handleFeedbackRequest(req, f.deps)).status, 401);
 });
 
@@ -495,8 +497,8 @@ Deno.test('JPEG pre-parse: DHT length mismatch, second SOF and truncation are re
   assert.notEqual(inspectJpeg(jpegOf(DQT(), SOF(0xc0, 16, 16), DHT(), SOS())), null);
 });
 
-Deno.test('image over the pixel budget or 2560 px per side is refused before decoding', async () => {
-  for (const [w, h] of [[2561, 100], [2560, 2561], [2500, 2500]]) {
+Deno.test('image over 1920 px wide, 1080 px high or the pixel budget is refused before decoding', async () => {
+  for (const [w, h] of [[1921, 100], [100, 1081], [2560, 2561], [2500, 2500]]) {
     const f = makeFake();
     const r = await handleFeedbackRequest(post(body({ screenshot: toDataUrl(jpegOf(DQT(), SOF(0xc0, w, h), DHT(), SOS())) })), f.deps);
     assert.equal(r.status, 413, `${w}x${h}`);
@@ -724,18 +726,18 @@ const SOFN = (m: number, w: number, h: number, ids: number[]) => MARKER(m, 8, h 
 const SOSN = (selectors: number[], ss: number, se: number, a: number, entropy: number[] = [0x00]) => [...MARKER(0xda, selectors.length, ...selectors.flatMap((s) => [s, 0]), ss, se, a), ...entropy];
 const DHT_AC = () => MARKER(0xc4, 0x10, 1, ...new Array(15).fill(0), 0xe0);
 
-/** Reviewer's refinement-scan file: SOF2 2560x2343, 16 scans of four selectors all naming component 1, Ss=1 Se=63 Ah=1. */
-const refinementBomb = () => jpegOf(DQT(), SOFN(0xc2, 2560, 2343, [1]), DHT_AC(), ...Array.from({ length: 16 }, () => SOSN([1, 1, 1, 1], 1, 63, 0x10, new Array(13).fill(0))));
+/** Reviewer's refinement-scan file: SOF2 1920x1080, 16 scans of four selectors all naming component 1, Ss=1 Se=63 Ah=1. */
+const refinementBomb = () => jpegOf(DQT(), SOFN(0xc2, 1920, 1080, [1]), DHT_AC(), ...Array.from({ length: 16 }, () => SOSN([1, 1, 1, 1], 1, 63, 0x10, new Array(13).fill(0))));
 /** One scan naming 255 selectors, all the same component. */
-const selectorBomb = () => jpegOf(DQT(), SOFN(0xc0, 2560, 2343, [1]), DHT(), SOSN(new Array(255).fill(1), 0, 63, 0));
+const selectorBomb = () => jpegOf(DQT(), SOFN(0xc0, 1920, 1080, [1]), DHT(), SOSN(new Array(255).fill(1), 0, 63, 0));
 /** Sixteen baseline scans over a full-size frame: each is cheap but together they exceed one image's worth of blocks. */
-const scanBomb = () => jpegOf(DQT(), SOFN(0xc0, 2560, 2343, [1]), DHT(), MARKER(0xc4, 0x10, 1, ...new Array(15).fill(0), 0), ...Array.from({ length: 16 }, () => SOSN([1], 0, 63, 0, new Array(24000).fill(0))));
+const scanBomb = () => jpegOf(DQT(), SOFN(0xc0, 1920, 1080, [1]), DHT(), MARKER(0xc4, 0x10, 1, ...new Array(15).fill(0), 0), ...Array.from({ length: 16 }, () => SOSN([1], 0, 63, 0, new Array(24000).fill(0))));
 
-Deno.test('round 4: pre-parse refuses progressive and every SOF but SOF0 and SOF1', () => {
+Deno.test('round 4: pre-parse refuses progressive and every SOF but SOF0', () => {
   assert.equal(inspectJpeg(refinementBomb()), null);
   assert.equal(inspectJpeg(jpegOf(DQT(), SOF(0xc2, 16, 16), DHT(), SOS())), null, 'SOF2');
   for (const m of [0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf]) assert.equal(inspectJpeg(jpegOf(DQT(), SOF(m, 16, 16), DHT(), SOS())), null, `SOF ${m.toString(16)}`);
-  assert.notEqual(inspectJpeg(jpegOf(DQT(), SOF(0xc1, 16, 16), DHT(), SOS())), null, 'SOF1');
+  assert.equal(inspectJpeg(jpegOf(DQT(), SOF(0xc1, 16, 16), DHT(), SOS())), null, 'SOF1');
   assert.notEqual(inspectJpeg(jpegOf(DQT(), SOF(0xc0, 16, 16), DHT(), SOS())), null, 'SOF0');
 });
 
@@ -830,4 +832,171 @@ Deno.test('round 4: an insert that throws removes the object only when no row re
   };
   await handleFeedbackRequest(post(body({ screenshot: toDataUrl(makeJpeg()) })), blind.deps);
   assert.equal(blind.objects.size, 1);
+});
+
+// ---- Round 5 ----
+
+/** Worst-case shape from the round 5 review scaled to the cap: 1920x1080, three 4:4:4 components, one 1-bit DC code (diff 0), AC code `0` -> 0x01 and `10` -> EOB, 8-bit DQT of 255, every block `acPerBlock` coefficients of +-1 with a random sign. */
+function maxEntropyJpeg(acPerBlock: number): Uint8Array {
+  const w = 1920;
+  const h = 1080;
+  const blocks = 3 * (w / 8) * (h / 8);
+  const out: number[] = [];
+  let acc = 0;
+  let nbits = 0;
+  const bit = (b: number) => {
+    acc = (acc << 1) | b;
+    if (++nbits === 8) {
+      out.push(acc);
+      if (acc === 0xff) out.push(0);
+      acc = 0;
+      nbits = 0;
+    }
+  };
+  let seed = 12345;
+  const rnd = () => ((seed = (Math.imul(seed, 1103515245) + 12345) >>> 0) >>> 16) & 1;
+  for (let i = 0; i < blocks; i++) {
+    bit(0);
+    for (let k = 0; k < acPerBlock; k++) {
+      bit(0);
+      bit(rnd());
+    }
+    if (acPerBlock < 63) {
+      bit(1);
+      bit(0);
+    }
+  }
+  while (nbits !== 0) bit(1);
+  const dqt = MARKER(0xdb, 0, ...new Array(64).fill(255));
+  const sof = MARKER(0xc0, 8, h >> 8, h & 255, w >> 8, w & 255, 3, 1, 0x11, 0, 2, 0x11, 0, 3, 0x11, 0);
+  const dc = MARKER(0xc4, 0x00, 1, ...new Array(15).fill(0), 0);
+  const ac = MARKER(0xc4, 0x10, 1, 1, ...new Array(14).fill(0), 0x01, 0x00);
+  const sos = MARKER(0xda, 3, 1, 0, 2, 0, 3, 0, 0, 63, 0);
+  return jpegOf(dqt, sof, dc, ac, sos, out);
+}
+
+Deno.test('round 5: worst-case 1920x1080 maximum-entropy file fits the byte cap and re-encodes under 0.7 s', async () => {
+  const file = maxEntropyJpeg(39);
+  assert.ok(file.length <= 1_000_000 && file.length > 950_000, `${file.length} bytes`);
+  assert.deepEqual(readJpegSize(file), { width: 1920, height: 1080 });
+  const times: number[] = [];
+  for (let i = 0; i < 3; i++) {
+    const t0 = performance.now();
+    const out = await reencodeJpeg(file);
+    times.push(performance.now() - t0);
+    assert.ok(out.length > 0);
+  }
+  console.log(`worst-case re-encode: ${times.map((t) => `${t.toFixed(0)} ms`).join(', ')} (${file.length} bytes)`);
+  assert.ok(Math.min(...times) < 700, `${times.join(', ')} ms`);
+  const f = makeFake();
+  // Noise re-encodes to several MB, over twice the input, so the handler refuses it after the CPU is spent;
+  // the point of the cap is that the CPU spent is bounded (measured above).
+  const r = await handleFeedbackRequest(post(body({ screenshot: toDataUrl(file) })), f.deps);
+  assert.equal(r.status, 400);
+  assert.equal(f.reencodeCalls.n, 1);
+});
+
+Deno.test('round 5: images over 1 MB are refused by size, SOF1 and 16-bit DQT are refused by the pre-parse', async () => {
+  const over = new Uint8Array(1_000_001);
+  over.set(jpegOf(DQT(), SOF(0xc0, 16, 16), DHT(), SOS()));
+  const f = makeFake();
+  assert.equal((await handleFeedbackRequest(post(body({ screenshot: toDataUrl(over) })), f.deps)).status, 413);
+  assert.equal(f.reencodeCalls.n, 0);
+  assert.equal(inspectJpeg(jpegOf(DQT(), SOF(0xc1, 16, 16), DHT(), SOS())), null, 'SOF1');
+  assert.equal(inspectJpeg(jpegOf(MARKER(0xdb, 0x10, ...new Array(128).fill(1)), SOF(0xc0, 16, 16), DHT(), SOS())), null, '16-bit DQT');
+  assert.notEqual(inspectJpeg(jpegOf(MARKER(0xdb, 0, ...new Array(64).fill(1), 1, ...new Array(64).fill(1)), SOF(0xc0, 16, 16), DHT(), SOS())), null, 'two 8-bit tables');
+});
+
+Deno.test('round 5: the decoder throws at the end of the data (tiny file, pre-parse bypassed)', () => {
+  const dc = MARKER(0xc4, 0x00, ...new Array(15).fill(0), 1, 255);
+  const ac = MARKER(0xc4, 0x10, ...new Array(15).fill(0), 1, 0x0f);
+  // No entropy bytes and no EOI: the file ends right after the SOS header.
+  const tiny = new Uint8Array([0xff, 0xd8, ...DQT(), ...SOF(0xc0, 1920, 1080), ...dc, ...ac, ...MARKER(0xda, 1, 1, 0, 0, 63, 0)]);
+  assert.ok(tiny.length < 200, `${tiny.length} bytes`);
+  const t0 = performance.now();
+  assert.throws(() => reencodeJpegSync(tiny), /unexpected end of JPEG data/u);
+  assert.ok(performance.now() - t0 < 200, `${performance.now() - t0} ms`);
+});
+
+Deno.test('round 5: risk flags ignore ordinary "override above" and "override prior" wording', async () => {
+  for (const msg of [
+    'override above 40 dB',
+    'I had to override prior settings to lock the carrier',
+    'can I override above the limit',
+    'operator should ignore above-threshold spikes',
+    'I forget the above-mentioned step',
+    'ignore prior art',
+  ]) {
+    assert.deepEqual(await flagsFor(msg), [], msg);
+  }
+});
+
+// ------------------------------------------------------------------ declared length and body timeout
+
+const streamed = (stream: ReadableStream<Uint8Array>, headers: Record<string, string>) =>
+  new Request('http://local/feedback-submit', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: 'Bearer good-token', ...headers },
+    body: stream,
+    // @ts-ignore Deno needs duplex for a streamed request body.
+    duplex: 'half',
+  });
+
+Deno.test('round 5: a declared Content-Length over the limit is refused with 413 before the body is read', async () => {
+  const f = makeFake();
+  const stream = new ReadableStream<Uint8Array>({ pull: (c) => c.enqueue(new Uint8Array(4)) });
+  const req = streamed(stream, { 'content-length': '99999999' });
+  assert.equal((await handleFeedbackRequest(req, f.deps)).status, 413);
+  assert.equal(req.bodyUsed, false, 'body untouched');
+  assert.equal((await handleFeedbackRequest(post('{}', 'good-token', { 'content-length': '3300001' }), f.deps)).status, 413);
+  assert.equal((await handleFeedbackRequest(post('{}', 'good-token', { 'content-length': 'abc' }), f.deps)).status, 413);
+});
+
+Deno.test('round 5: a body with no Content-Length that is not chunked is refused with 413', async () => {
+  const f = makeFake();
+  const stream = new ReadableStream<Uint8Array>({
+    start(c) {
+      c.enqueue(new TextEncoder().encode('{}'));
+      c.close();
+    },
+  });
+  assert.equal((await handleFeedbackRequest(streamed(stream, {}), f.deps)).status, 413);
+  const chunked = streamed(new ReadableStream<Uint8Array>({ start(c) { c.enqueue(new TextEncoder().encode(JSON.stringify(body()))); c.close(); } }), { 'transfer-encoding': 'chunked' });
+  assert.equal((await handleFeedbackRequest(chunked, f.deps)).status, 200);
+});
+
+Deno.test('round 5: a chunked body that grows past the limit is cut off with 413', async () => {
+  const f = makeFake();
+  const chunk = new Uint8Array(1_000_000).fill(0x20);
+  let sent = 0;
+  const stream = new ReadableStream<Uint8Array>({
+    pull(c) {
+      sent++;
+      if (sent > 10) c.close();
+      else c.enqueue(chunk);
+    },
+  });
+  assert.equal((await handleFeedbackRequest(streamed(stream, { 'transfer-encoding': 'chunked' }), f.deps)).status, 413);
+  assert.ok(sent <= 6, `${sent} chunks pulled`);
+});
+
+Deno.test('round 5: a body that stalls is refused with 408 after the read timeout', async () => {
+  const f = makeFake();
+  f.deps.bodyTimeoutMs = 150;
+  const stream = new ReadableStream<Uint8Array>({
+    start(c) {
+      c.enqueue(new TextEncoder().encode('{"id":'));
+    },
+  });
+  const t0 = performance.now();
+  assert.equal((await handleFeedbackRequest(streamed(stream, { 'transfer-encoding': 'chunked' }), f.deps)).status, 408);
+  assert.ok(performance.now() - t0 < 2000);
+});
+
+Deno.test('round 5: 4000 emoji are accepted and 4001 are refused (code points, not UTF-16 units)', async () => {
+  const emoji = String.fromCodePoint(0x1f600);
+  const f = makeFake();
+  assert.equal((await handleFeedbackRequest(post(body({ message: emoji.repeat(4000) })), f.deps)).status, 200);
+  const g = makeFake();
+  assert.equal((await handleFeedbackRequest(post(body({ message: emoji.repeat(4001) })), g.deps)).status, 400);
 });

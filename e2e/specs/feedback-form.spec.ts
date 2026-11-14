@@ -276,6 +276,15 @@ test.describe('field report form', () => {
     await expect(page.locator('#fr-shot')).toBeDisabled();
     await page.locator('#fr-message').fill('The capture failed on my machine.');
     await expect(page.locator('#fr-send')).toBeEnabled();
+    // The global `button { transition: all 0.2s }` rule once left the enabled button painting at the disabled opacity.
+    const paint = await page.locator('#fr-send').evaluate((el) => {
+      const opacities: number[] = [];
+      for (let node: Element | null = el; node; node = node.parentElement) opacities.push(Number(getComputedStyle(node).opacity));
+      return { opacities, running: el.getAnimations().length };
+    });
+    expect(paint.running).toBe(0);
+    expect(paint.opacities[0]).toBe(1);
+    expect(paint.opacities.every((opacity) => opacity === 1)).toBe(true);
     if (SHOT_DIR) await page.screenshot({ path: `${SHOT_DIR}/08-capture-failed-note.png` });
     await page.locator('#fr-send').click();
     await expect(page.locator('#fr-filed')).toBeVisible();

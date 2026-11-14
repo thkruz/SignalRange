@@ -135,7 +135,7 @@
 .fr-status { min-height: 2.6em; margin: 10px 0 8px; font-size: 13px; line-height: 1.4; color: var(--fr-ink-soft); }
 .fr-status-error { color: var(--fr-stamp); font-weight: 700; padding-left: 10px; border-left: 4px solid var(--fr-stamp); }
 .fr-actions { position: sticky; bottom: 0; display: flex; justify-content: flex-end; gap: 10px; margin: 0 -28px; padding: 12px 28px; border-top: 2px solid var(--fr-ink); background: var(--fr-paper-edge); }
-.fr-btn { padding: 8px 18px; border: 2px solid var(--fr-ink); border-radius: 2px; background: transparent; color: var(--fr-ink); font: 700 13px ui-monospace, 'Cascadia Mono', 'Consolas', monospace; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; }
+.fr-btn { padding: 8px 18px; border: 2px solid var(--fr-ink); border-radius: 2px; background: transparent; color: var(--fr-ink); font: 700 13px ui-monospace, 'Cascadia Mono', 'Consolas', monospace; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; transition: none; /* the global `button` rule animates all properties, which painted an enabled button mid-fade at the disabled opacity */ }
 .fr-btn:not(.fr-btn-primary):hover:not(:disabled) { background: #1d27331a; }
 .fr-btn:focus-visible { outline: 3px solid var(--fr-stamp); outline-offset: 2px; }
 .fr-btn:disabled { opacity: 0.45; cursor: default; }

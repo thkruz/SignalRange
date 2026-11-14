@@ -1,11 +1,11 @@
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 // @ts-expect-error plain .mjs script without types
-import { formatText, select } from '../../scripts/ci/select-tests.mjs';
+import { CAMPAIGN_WIDE, formatText, select } from '../../scripts/ci/select-tests.mjs';
 
-type Result = { full: boolean; vitest: string[]; e2e: string[]; reasons: string[] };
+type Result = { full: boolean; vitest: string[]; related: string[]; e2e: string[]; reasons: string[] };
 
 let root: string;
 const touch = (rel: string) => {
@@ -126,5 +126,43 @@ describe('select-tests', () => {
 
   it('normalises backslashes', () => {
     expect(run('src\\campaigns\\ccs\\x.ts').e2e).toHaveLength(1);
+  });
+
+  it('a campaign source file yields related-mode inputs plus the CAMPAIGN_WIDE list', () => {
+    const real = path.resolve(__dirname, '../..');
+    const r = select(real, ['src/campaigns/frontline/plant-config.ts']) as Result;
+    expect(r.full).toBe(false);
+    expect(r.related).toEqual(['src/campaigns/frontline/plant-config.ts']);
+    for (const f of CAMPAIGN_WIDE) {
+      expect(r.vitest).toContain(f);
+    }
+  });
+
+  it('CAMPAIGN_WIDE entries exist in the real repo', () => {
+    const real = path.resolve(__dirname, '../..');
+    for (const f of CAMPAIGN_WIDE) {
+      expect(existsSync(path.join(real, f)), f).toBe(true);
+    }
+  });
+
+  it('campaigns without tests (constellation-sandbox, perf) still get CAMPAIGN_WIDE and related', () => {
+    const real = path.resolve(__dirname, '../..');
+    for (const c of ['constellation-sandbox', 'perf']) {
+      const r = select(real, [`src/campaigns/${c}/x.ts`]) as Result;
+      expect(r.full).toBe(false);
+      expect(r.related).toEqual([`src/campaigns/${c}/x.ts`]);
+      expect(r.vitest).toEqual([...CAMPAIGN_WIDE].sort());
+    }
+  });
+
+  it('changed tests run directly and are not related inputs; non-code campaign files are not related inputs', () => {
+    const r = run('test/campaigns/nats-s3-stow-agc.test.ts', 'src/campaigns/nats/data.json');
+    expect(r.related).toEqual([]);
+    expect(r.vitest).toContain('test/campaigns/nats-s3-stow-agc.test.ts');
+  });
+
+  it('FULL output keeps full/e2e keys and empties the vitest selection', () => {
+    const r = run('src/equipment/x.ts');
+    expect(r).toMatchObject({ full: true, vitest: [], related: [], e2e: [] });
   });
 });

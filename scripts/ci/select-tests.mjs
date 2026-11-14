@@ -89,15 +89,36 @@ export function campaignTests(root, dir, discovered = discoverCampaigns(root)) {
   return { vitest: [...vitest].sort(), e2e: [...e2e].sort() };
 }
 
+/**
+ * Tests that read src/campaigns from disk (readFileSync/readdirSync) instead of importing it, so the
+ * import graph (`vitest related`) cannot see them. Any src/campaigns/<dir>/ change selects all of them.
+ */
+export const CAMPAIGN_WIDE = [
+  'test/campaigns/campaign-audio-assets.test.ts',
+  'test/campaigns/campaign-registry.test.ts',
+  'test/campaigns/nice-coverage.test.ts',
+  'test/campaigns/range-watch-reports.test.ts',
+  'test/campaigns/range-watch-validation.test.ts',
+  'test/scenarios/campaign-continuity.test.ts',
+  'test/physical/closeup-tools.test.ts',
+  'test/physical/physical-plant-engine.test.ts',
+];
+
+const SOURCE_FILE = /^(src|scripts|e2e)\/.*\.[cm]?[jt]s$/u;
+
 const DOC_ONLY = [/^docs\//u, /\.mdx?$/u, /^src\/private\//u, /^art-review\//u, /^\.claude\//u, /^LICENSE/u, /^\.vscode\//u];
 const TEST_FILE = /^test\/.*\.test\.[cm]?[jt]sx?$/u;
 const SPEC_FILE = /^e2e\/specs\/.*\.spec\.[cm]?[jt]sx?$/u;
 
-/** Pure selector. Returns { full, vitest, e2e, reasons }. */
+/**
+ * Pure selector. Returns { full, vitest, related, e2e, reasons }.
+ * vitest: explicit test files (run directly). related: changed source files for `vitest related`.
+ */
 export function select(root, changed) {
   const discovered = discoverCampaigns(root);
   const vitest = new Set();
   const e2e = new Set();
+  const related = new Set();
   const reasons = [];
   let full = false;
   const campaignDirs = new Set(discovered.campaigns.map((c) => c.dir));
@@ -112,6 +133,8 @@ export function select(root, changed) {
       const t = campaignTests(root, m[1], discovered);
       for (const f of t.vitest) vitest.add(f);
       for (const f of t.e2e) e2e.add(f);
+      for (const f of CAMPAIGN_WIDE) if (existsSync(path.join(root, f))) vitest.add(f);
+      if (SOURCE_FILE.test(p) && !TEST_FILE.test(p) && !SPEC_FILE.test(p)) related.add(p);
       reasons.push(`${p} -> campaign ${m[1]}`);
       continue;
     }
@@ -130,13 +153,13 @@ export function select(root, changed) {
     full = true;
     reasons.push(`${p} -> FULL`);
   }
-  if (full) return { full: true, vitest: [], e2e: [], reasons };
-  return { full: false, vitest: [...vitest].sort(), e2e: [...e2e].sort(), reasons };
+  if (full) return { full: true, vitest: [], related: [], e2e: [], reasons };
+  return { full: false, vitest: [...vitest].sort(), related: [...related].sort(), e2e: [...e2e].sort(), reasons };
 }
 
 export function formatText(r) {
   if (r.full) return 'FULL';
-  return [...r.vitest, ...r.e2e].join('\n');
+  return [...r.vitest, ...(r.related ?? []), ...r.e2e].join('\n');
 }
 
 function main(argv) {
@@ -153,7 +176,7 @@ function main(argv) {
   }
   let changed = paths;
   if (base) {
-    const out = execFileSync('git', ['diff', '--name-only', `${base}...HEAD`], { cwd: root, encoding: 'utf8' });
+    const out = execFileSync('git', ['diff', '--name-only', '--diff-filter=d', `${base}...HEAD`], { cwd: root, encoding: 'utf8' });
     changed = out.split(/\r?\n/u).filter(Boolean);
   }
   const r = select(root, changed);

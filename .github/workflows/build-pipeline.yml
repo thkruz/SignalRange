@@ -179,29 +179,27 @@ jobs:
             echo "Selected run: $(jq '.testResults | length' selected-results.json) test files" | tee -a "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Run Tests with Coverage
+      - name: Run Full Tests
         if: steps.scope.outputs.mode == 'full'
+        run: pnpm exec vitest run
+
+      # Coverage instrumentation slows the simulation-heavy suites past their timeouts, so it does not gate:
+      # it runs on pushes to the long-lived branches only, with a longer timeout, and its result is informational.
+      - name: Coverage (informational)
+        if: steps.scope.outputs.mode == 'full' && github.event_name == 'push'
+        continue-on-error: true
         run: >-
-          pnpm exec vitest run --coverage --coverage.reporter=text --coverage.reporter=lcov
-          --coverage.reporter=json-summary --coverage.reporter=json
+          pnpm exec vitest run --coverage --testTimeout=60000 --coverage.reporter=text-summary
+          --coverage.reporter=lcov --coverage.reporter=json-summary --coverage.reporter=json
 
       - name: Upload Coverage Artifact
-        if: steps.scope.outputs.mode == 'full'
+        if: steps.scope.outputs.mode == 'full' && github.event_name == 'push'
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
           path: coverage/
           retention-days: 7
-
-      - name: Coverage Report to PR
-        if: github.event_name == 'pull_request' && steps.scope.outputs.mode == 'full'
-        uses: davelosert/vitest-coverage-report-action@v2
-        with:
-          json-summary-path: coverage/coverage-summary.json
-          json-final-path: coverage/coverage-final.json
-          vite-config-path: ''
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
+          if-no-files-found: ignore
 
       - name: Test Summary
         if: steps.scope.outputs.mode != 'none'

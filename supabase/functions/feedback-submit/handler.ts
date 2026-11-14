@@ -48,6 +48,36 @@ export interface Deps {
   allowedOrigin?: string;
   /** Body read timeout in ms; defaults to BODY_READ_TIMEOUT_MS. */
   bodyTimeoutMs?: number;
+  /** Concurrent body reads allowed per user and per isolate; defaults to MAX_READS_PER_USER / MAX_READS_PER_ISOLATE. */
+  maxReadsPerUser?: number;
+  maxReadsPerIsolate?: number;
+}
+
+export const MAX_READS_PER_USER = 2;
+export const MAX_READS_PER_ISOLATE = 12;
+
+// In-flight body reads (a concurrency limit, not quota). Module state is per isolate.
+const readsByUser = new Map<string, number>();
+let readsInIsolate = 0;
+
+/** Test hook: current in-flight counts. */
+export function inflightReads(): { total: number; users: number } {
+  return { total: readsInIsolate, users: readsByUser.size };
+}
+
+function acquireRead(userId: string, deps: Deps): boolean {
+  const mine = readsByUser.get(userId) ?? 0;
+  if (mine >= (deps.maxReadsPerUser ?? MAX_READS_PER_USER) || readsInIsolate >= (deps.maxReadsPerIsolate ?? MAX_READS_PER_ISOLATE)) return false;
+  readsByUser.set(userId, mine + 1);
+  readsInIsolate++;
+  return true;
+}
+
+function releaseRead(userId: string): void {
+  const mine = (readsByUser.get(userId) ?? 1) - 1;
+  if (mine <= 0) readsByUser.delete(userId);
+  else readsByUser.set(userId, mine);
+  readsInIsolate = Math.max(0, readsInIsolate - 1);
 }
 
 function respond(status: number, body: Record<string, unknown>, deps: Deps, extra: Record<string, string> = {}): Response {
@@ -92,7 +122,16 @@ export async function handleFeedbackRequest(req: Request, deps: Deps): Promise<R
 
     // 2. Bounded body read.
     if (!/^application\/json\b/iu.test(req.headers.get('content-type') ?? '')) return fail(415, 'unsupported-media-type', deps);
-    const raw = await readBounded(req, MAX_BODY_BYTES, deps.bodyTimeoutMs ?? BODY_READ_TIMEOUT_MS);
+    if (!acquireRead(user.id, deps)) {
+      deps.log?.('read-limited');
+      return fail(429, 'too-many-requests', deps, undefined, { 'Retry-After': '2' });
+    }
+    let raw: string | null | 'timeout';
+    try {
+      raw = await readBounded(req, MAX_BODY_BYTES, deps.bodyTimeoutMs ?? BODY_READ_TIMEOUT_MS);
+    } finally {
+      releaseRead(user.id);
+    }
     if (raw === 'timeout') return fail(408, 'request-timeout', deps);
     if (raw === null) return fail(413, 'payload-too-large', deps);
     let payload: unknown;
@@ -227,11 +266,25 @@ const INITIAL_BODY_BUFFER = 65_536;
  */
 async function readBounded(req: Request, max: number, timeoutMs: number): Promise<string | null | 'timeout'> {
   if (!req.body) return '';
-  const reader = req.body.getReader();
-  const declared = Number(req.headers.get('content-length') ?? '');
-  let buf = new Uint8Array(Number.isInteger(declared) && declared > 0 ? Math.min(declared, max) : Math.min(INITIAL_BODY_BUFFER, max));
+  // A BYOB reader lands bytes straight in our buffer, so a flood of tiny reads allocates nothing per read. Streams that
+  // are not byte streams (tests, other runtimes) refuse it and use the default reader.
+  let byob: ReadableStreamBYOBReader | null = null;
+  let reader: ReadableStreamDefaultReader<Uint8Array> | ReadableStreamBYOBReader;
+  try {
+    byob = req.body.getReader({ mode: 'byob' });
+    reader = byob;
+  } catch {
+    reader = req.body.getReader();
+  }
+  // Never size the buffer from the declared length: a sender can declare a large body and then stall.
+  let buf = new Uint8Array(Math.min(INITIAL_BODY_BUFFER, max));
   let total = 0;
   let timedOut = false;
+  const grow = (need: number) => {
+    const grown = new Uint8Array(Math.min(max, Math.max(buf.length * 2, need)));
+    grown.set(buf.subarray(0, total));
+    buf = grown;
+  };
   // One timer for the whole body. Cancelling resolves a pending read as done; it is not awaited, so a stalled sender cannot hold us.
   const timer = setTimeout(() => {
     timedOut = true;
@@ -243,7 +296,22 @@ async function readBounded(req: Request, max: number, timeoutMs: number): Promis
         reader.cancel().catch(() => undefined);
         return null;
       }
-      const next = await reader.read();
+      if (byob) {
+        if (total === buf.length && buf.length < max) grow(total + 1);
+        const room = buf.length - total;
+        // With no room left, one probe byte tells "body ended exactly at the limit" from "body is over the limit".
+        const next = await byob.read(room > 0 ? new Uint8Array(buf.buffer, total, room) : new Uint8Array(1));
+        if (timedOut) return 'timeout';
+        if (room > 0 && next.value) buf = new Uint8Array(next.value.buffer);
+        if (next.done) break;
+        if (room === 0) {
+          reader.cancel().catch(() => undefined);
+          return null;
+        }
+        total += next.value.byteLength;
+        continue;
+      }
+      const next = await (reader as ReadableStreamDefaultReader<Uint8Array>).read();
       if (timedOut) return 'timeout';
       if (next.done) break;
       const chunk = next.value;
@@ -251,11 +319,7 @@ async function readBounded(req: Request, max: number, timeoutMs: number): Promis
         reader.cancel().catch(() => undefined);
         return null;
       }
-      if (total + chunk.length > buf.length) {
-        const grown = new Uint8Array(Math.min(max, Math.max(buf.length * 2, total + chunk.length)));
-        grown.set(buf.subarray(0, total));
-        buf = grown;
-      }
+      if (total + chunk.length > buf.length) grow(total + chunk.length);
       buf.set(chunk, total);
       total += chunk.length;
     }

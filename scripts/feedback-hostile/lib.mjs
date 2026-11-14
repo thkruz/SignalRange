@@ -15,12 +15,25 @@ export function assertLocal(url) {
   }
 }
 
-const SCRUBBED_ENV = ['HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY', 'NODE_USE_ENV_PROXY', 'DOCKER_HOST'];
+const PROXY_ENV = ['HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY', 'NODE_USE_ENV_PROXY'];
 
-// Remote-project credentials, proxies and a remote Docker daemon must never reach this process.
+/** Names of proxy settings present at launch, including `--use-env-proxy` in NODE_OPTIONS or the exec args. */
+export function proxySettings(env = process.env, execArgv = process.execArgv) {
+  const found = Object.keys(env).filter((k) => PROXY_ENV.includes(k.toUpperCase()));
+  if (/--use-env-proxy/u.test(env.NODE_OPTIONS ?? '') || execArgv.includes('--use-env-proxy')) found.push('--use-env-proxy');
+  return found;
+}
+
+// Node builds its proxy dispatcher at startup, so deleting the variables here would be too late: refuse instead.
+// Remote-project credentials and a remote Docker daemon are scrubbed, since children spawned later read them.
 export function scrubEnv() {
+  const proxies = proxySettings();
+  if (proxies.length > 0) {
+    console.error(`ABORT: proxy settings present at launch (${proxies.join(', ')}). Unset them and start the suite again.`);
+    process.exit(2);
+  }
   for (const k of Object.keys(process.env)) {
-    if (k.startsWith('SUPABASE_') || SCRUBBED_ENV.includes(k.toUpperCase())) delete process.env[k];
+    if (k.startsWith('SUPABASE_') || k.toUpperCase() === 'DOCKER_HOST') delete process.env[k];
   }
 }
 

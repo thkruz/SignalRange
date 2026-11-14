@@ -41,7 +41,7 @@
     "typecheck:tsc": "tsc --noEmit -p tsconfig.json",
     "typecheck:test": "tsgo --noEmit -p tsconfig.test.json",
     "test": "vitest run",
-    "test:edge": "deno test --config supabase/functions/feedback-submit/deno.json --no-lock supabase/functions/feedback-submit && deno test --config supabase/functions/feedback-prune/deno.json --no-lock supabase/functions/feedback-prune",
+    "test:edge": "deno test --config supabase/functions/feedback-submit/deno.json --no-lock --allow-net=127.0.0.1 --allow-env=SKIP_EDGE_MEMORY_TEST supabase/functions/feedback-submit && deno test --config supabase/functions/feedback-prune/deno.json --no-lock supabase/functions/feedback-prune",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "lint": "biome check ./src ./test ./e2e ./build ./scripts/plugin",

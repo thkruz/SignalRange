@@ -18,3 +18,8 @@ npx supabase stop
 The script starts and stops `supabase functions serve` itself, with a random `FEEDBACK_PRUNE_SECRET`.
 `--stage post --apply-revoke` applies `supabase/pending/signalrange_feedback_revoke_old_rpc.sql` to the local database.
 Areas: smoke, auth, payload, jpeg, text, rate, idempotency, rls, storage, prune. `results-*.json` are local output and ignored.
+
+Notes
+- The latest Supabase CLI rejects `[inbucket]` in `supabase/config.toml`; set `FEEDBACK_SUPABASE_CLI=supabase@2.106.0` to make the suite call that version through `npx`.
+- `--stage pre` aborts if the pending revoke is already applied to the local database (it survives `supabase stop`). Use `supabase stop --no-backup` and start a fresh stack before a pre run. On a fresh volume `supabase start` fails at the cron migration: start with an empty `supabase/migrations`, create the `pg_cron` extension, restore the folder and run `migration up --local`.
+- Cases that end in a 502 (or a never-finishing lying Content-Length) are the local gateway reacting to the function's early 413. They print `KNOWN` and are counted apart from real failures.

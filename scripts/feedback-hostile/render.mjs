@@ -16,7 +16,7 @@ export function render(files) {
     for (const a of areas) {
       const rows = run.results.filter((x) => x.area === a).sort((x, y) => Number(x.pass) - Number(y.pass));
       out += `### ${a} (${rows.filter((x) => x.pass).length}/${rows.length} pass)\n\n| Result | Case | HTTP | ms | Expected | Notes / failing input |\n|---|---|---|---|---|---|\n`;
-      for (const x of rows) out += `| ${x.pass ? 'pass' : '**FAIL**'} | ${cell(x.name)} | ${x.status} | ${x.ms} | ${cell(x.expect)} | ${cell([x.note, x.input && `input: ${x.input}`, x.response && `response: ${x.response}`].filter(Boolean).join(' / '))} |\n`;
+      for (const x of rows) out += `| ${x.pass ? 'pass' : x.known ? 'known gateway' : '**FAIL**'} | ${cell(x.name)} | ${x.status} | ${x.ms} | ${cell(x.expect)} | ${cell([x.note, x.input && `input: ${x.input}`, x.response && `response: ${x.response}`].filter(Boolean).join(' / '))} |\n`;
       out += '\n';
     }
   }

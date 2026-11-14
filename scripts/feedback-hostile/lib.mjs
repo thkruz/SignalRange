@@ -38,7 +38,7 @@ export function scrubEnv() {
 }
 
 export function localStatus() {
-  const out = execFileSync('npx', ['supabase', 'status', '-o', 'env'], { encoding: 'utf8', shell: true, env: process.env });
+  const out = execFileSync('npx', [process.env.FEEDBACK_SUPABASE_CLI ?? 'supabase', 'status', '-o', 'env'], { encoding: 'utf8', shell: true, env: process.env });
   const env = {};
   for (const line of out.split(/\r?\n/u)) {
     const m = /^([A-Z0-9_]+)="?(.*?)"?$/u.exec(line.trim());

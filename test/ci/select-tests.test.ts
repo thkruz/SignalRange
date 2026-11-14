@@ -155,10 +155,18 @@ describe('select-tests', () => {
     }
   });
 
-  it('changed tests run directly and are not related inputs; non-code campaign files are not related inputs', () => {
-    const r = run('test/campaigns/nats-s3-stow-agc.test.ts', 'src/campaigns/nats/data.json');
+  it('changed tests run directly and are not related inputs', () => {
+    const r = run('test/campaigns/nats-s3-stow-agc.test.ts');
     expect(r.related).toEqual([]);
     expect(r.vitest).toContain('test/campaigns/nats-s3-stow-agc.test.ts');
+  });
+
+  it('campaign JSON data is a related input (quiz pools are imported by src/ham)', () => {
+    expect(run('src/campaigns/ham-sdr/quiz/technician-pool.json').related).toEqual(['src/campaigns/ham-sdr/quiz/technician-pool.json']);
+  });
+
+  it('non-code campaign assets are not related inputs', () => {
+    expect(run('src/campaigns/nats/notes.txt').related).toEqual([]);
   });
 
   it('FULL output keeps full/e2e keys and empties the vitest selection', () => {

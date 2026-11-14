@@ -297,6 +297,8 @@ jobs:
   build:
     name: Build
     needs: [lint, type-check, test, security-audit]
+    # select only runs on PRs; without this, its skip propagates and Build/CodeQL/Secrets Scan never run on push.
+    if: ${{ !cancelled() && !failure() }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code

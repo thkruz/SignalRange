@@ -104,7 +104,8 @@ export const CAMPAIGN_WIDE = [
   'test/physical/physical-plant-engine.test.ts',
 ];
 
-const SOURCE_FILE = /^(src|scripts|e2e)\/.*\.[cm]?[jt]s$/u;
+// JSON is in the import graph too (quiz pools, campaign data), so `vitest related` can trace it.
+const SOURCE_FILE = /^(src|scripts|e2e)\/.*\.(?:[cm]?[jt]s|json)$/u;
 
 const DOC_ONLY = [/^docs\//u, /\.mdx?$/u, /^src\/private\//u, /^art-review\//u, /^\.claude\//u, /^LICENSE/u, /^\.vscode\//u];
 const TEST_FILE = /^test\/.*\.test\.[cm]?[jt]sx?$/u;

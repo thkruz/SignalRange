@@ -7,9 +7,11 @@ import type { StripCounts } from '../_shared/feedback-rules.ts';
  * Words are separated by `\s+` for the same reason.
  */
 const RULES: ReadonlyArray<readonly [string, RegExp]> = [
-  ['instruction-phrase', /(?:ignore|disregard|forget|override)\s+(?:(?:all|any|your|my|the|everything|these|those)\s+)*(?:previous|prior|above|earlier|preceding|before)|system\s+prompt|you\s+are\s+now|new\s+instructions/iu],
+  // Instruction-shaped only: the verb, optional determiners, a "previous" word and then an instruction noun
+  // or the end of the sentence. "the override from the previous scenario" and "forget my previous frequency" pass.
+  ['instruction-phrase', /(?:ignore|disregard|forget|override)\s+(?:(?:all|any|your|my|the|everything|these|those)\s+)*(?:(?:previous|prior|above|earlier|preceding|before)(?:\s+(?:instructions?|prompts?|rules?|messages?|directions?|directives?|commands?|orders?|guidelines?|context|conversation)\b|\s*(?:[.!?,;:]|$))|(?:everything|anything)\s+(?:above|before))|system\s+prompt|you\s+are\s+now|new\s+instructions/iu],
   ['role-marker', /^\W*(?:system|assistant|user|human)\W*:|<\|im_(?:start|end)\|>|\[\/?inst\]|<<\/?sys>>/imu],
-  ['tool-name', /(?:execute|run)[\s_]sql|delete[\s_]feedback|apply[\s_]migration|(?:deploy|create|get)[\s_]edge[\s_]function|(?:merge|reset|rebase|delete|create)[\s_]branch|(?:restore|pause|create)[\s_]project|list[\s_]tables|(?:tool|function)[\s_]?(?:calls?|use)|invoke[\s_]tool|\bgh\s|\brm\s+-|\bcurl\b|\bwget\b|\bsudo\b|\bpowershell\b|\bbash\b/iu],
+  ['tool-name', /(?:execute|run)[\s_]sql|delete[\s_]feedback|apply[\s_]migration|(?:deploy|create|get)[\s_]edge[\s_]function|(?:merge|reset|rebase|delete|create)[\s_]branch|(?:restore|pause|create)[\s_]project|list[\s_]tables|tool[\s_]?(?:calls?|use)\b|function_?calls?\b|invoke[\s_]tool|\bgh\s|\brm\s+-|\bcurl\b|\bwget\b|\bsudo\b|\bpowershell\b|\bbash\b/iu],
   ['code-fence', /```|~~~/u],
   ['url', /\b(?:https?|ftp|file|data|javascript):\/?\/?[^\s]+|\bwww\.[^\s]+/iu],
   ['long-base64', /[A-Za-z0-9+/=]{200,}/u],
@@ -27,29 +29,44 @@ export interface RiskInput {
   snapshot?: unknown;
 }
 
-const fold = (s: string): string => s.normalize('NFKC').toLowerCase();
+const ASCII_ONLY = /^[\x00-\x7f]*$/u;
+/** NFKC fold, done once per text. ASCII text needs none: every rule carries the i flag. */
+const fold = (s: string): string => (ASCII_ONLY.test(s) ? s : s.normalize('NFKC').toLowerCase());
 /** Folded copy with every run of non-letters and non-digits (hyphen, underscore, dots) as one space. */
 const collapse = (folded: string): string => folded.replace(/[^\p{L}\p{N}]+/gu, ' ');
 /** Rules that also run on the collapsed copy, so "ignore-previous" and "execute_sql" match. */
 const COLLAPSED_RULES = new Set(['instruction-phrase', 'tool-name']);
 
+/** The only rules the cross-field joins run: PII, URL and base64 rules gain nothing from a join. */
+const JOIN_RULES: ReadonlyArray<readonly [string, RegExp]> = RULES.filter(([name]) => name === 'instruction-phrase' || name === 'tool-name' || name === 'role-marker');
+
 const LATIN = /\p{Script=Latin}/u;
 const OTHER_ALPHABET = /[\p{Script=Cyrillic}\p{Script=Greek}]/u;
+/** Greek letters used as unit and maths symbols (μV, Δf, kΩ, λ/4, π, θ, Σ, Φ, Ψ): not homoglyph evidence. */
+const UNIT_SYMBOLS = /[μµΔΩΩλπθΣΦΨ]/gu;
+const WORD = /[\p{L}\p{M}]+/gu;
+const COMBINING_ON_ASCII = /[A-Za-z]\p{M}/u;
 /** A word mixing Latin with Cyrillic or Greek letters: a homoglyph substitution. */
 function hasMixedScriptWord(text: string): boolean {
-  for (const m of text.matchAll(/[\p{L}\p{M}]+/gu)) if (LATIN.test(m[0]) && OTHER_ALPHABET.test(m[0])) return true;
+  if (!OTHER_ALPHABET.test(text)) return false;
+  for (const m of text.matchAll(WORD)) {
+    const word = m[0].replace(UNIT_SYMBOLS, '');
+    if (LATIN.test(word) && OTHER_ALPHABET.test(word)) return true;
+  }
   return false;
 }
 
-function matchRules(text: string): string[] {
+function matchRules(text: string, rules: ReadonlyArray<readonly [string, RegExp]> = RULES, perField = true): string[] {
   const folded = fold(text);
   const collapsed = collapse(folded);
   const hits: string[] = [];
-  for (const [name, re] of RULES) {
+  for (const [name, re] of rules) {
     if (re.test(text) || (folded !== text && re.test(folded)) || (COLLAPSED_RULES.has(name) && re.test(collapsed))) hits.push(name);
   }
-  if (hasMixedScriptWord(text)) hits.push('mixed-script');
-  if (/[A-Za-z]\p{M}/u.test(text)) hits.push('combining-on-ascii');
+  if (perField) {
+    if (hasMixedScriptWord(text)) hits.push('mixed-script');
+    if (COMBINING_ON_ASCII.test(text)) hits.push('combining-on-ascii');
+  }
   return hits;
 }
 
@@ -103,7 +120,7 @@ export function computeRiskFlags(input: RiskInput): string[] {
     [input.message, ...strings.filter(([field]) => field === 'gameState.value').map(([, text]) => text)].join(' '),
   ];
   for (const joined of joins) {
-    for (const name of matchRules(joined)) {
+    for (const name of matchRules(joined, JOIN_RULES, false)) {
       const seen = flags.has(name) || [...flags].some((f) => f.startsWith(`snapshot-${name}@`));
       if (!seen && flags.size < MAX_FLAGS) flags.add(`cross-field-${name}`);
     }

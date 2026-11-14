@@ -61,10 +61,10 @@ export function inspectJpeg(b: Uint8Array): JpegInfo | null {
       i += 2;
       break;
     }
-    // Allowlist: only markers jpeg-js reads the same way this parser does. DNL (FFDC), TEM, top-level
-    // RSTn, arithmetic and lossless SOFs and every reserved marker are refused. jpeg-js reads only 4
+    // Allowlist: only markers jpeg-js reads the same way this parser does. DNL (FFDC), TEM, DRI (FFDD),
+    // RSTn anywhere, arithmetic and lossless SOFs and every reserved marker are refused. jpeg-js reads only 4
     // bytes after DNL and treats the rest of its payload as markers, so skipping by length hides scans.
-    const allowed = (marker >= 0xe0 && marker <= 0xef) || marker === 0xfe || marker === 0xdb || marker === 0xc4 || marker === 0xdd || marker === 0xc0 || marker === 0xc1 || marker === 0xc2 || marker === 0xda;
+    const allowed = (marker >= 0xe0 && marker <= 0xef) || marker === 0xfe || marker === 0xdb || marker === 0xc4 || marker === 0xc0 || marker === 0xc1 || marker === 0xc2 || marker === 0xda;
     if (!allowed) return null;
     if (i + 4 > b.length) return null;
     const len = (b[i + 2] << 8) | b[i + 3];
@@ -91,8 +91,6 @@ export function inspectJpeg(b: Uint8Array): JpegInfo | null {
         p += 17 + total;
       }
       if (p !== end) return null;
-    } else if (marker === 0xdd) {
-      if (len !== 4) return null;
     } else if (marker === 0xc0 || marker === 0xc1 || marker === 0xc2) {
       // SOF: baseline, extended sequential and progressive Huffman.
       if (sof !== null || len < 8) return null;
@@ -105,11 +103,16 @@ export function inspectJpeg(b: Uint8Array): JpegInfo | null {
       if (scans > MAX_JPEG_SCANS) return null;
       const components = b[start];
       if (components < 1 || components > 4 || len !== 6 + 2 * components) return null;
-      // Skip entropy-coded data: it ends at the next marker that is neither a stuffed 00 nor RSTn.
+      // Skip entropy-coded data: it ends at the next FF xx with xx not 00. An RSTn there is refused (and DRI
+      // never passes the allowlist): jpeg-js steps over an RSTn back into its top-level marker reader and
+      // reads the following bytes at an offset this parser does not share.
       let p = end;
       for (;;) {
         if (p + 1 >= b.length) return null;
-        if (b[p] === 0xff && b[p + 1] !== 0x00 && !(b[p + 1] >= 0xd0 && b[p + 1] <= 0xd7)) break;
+        if (b[p] === 0xff && b[p + 1] !== 0x00) {
+          if (b[p + 1] >= 0xd0 && b[p + 1] <= 0xd7) return null;
+          break;
+        }
         p++;
       }
       i = p;

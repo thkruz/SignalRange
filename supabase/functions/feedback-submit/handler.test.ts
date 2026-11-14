@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import jpeg from 'npm:jpeg-js@0.4.4';
 import { type AuthUser, type Deps, type FeedbackRow, handleFeedbackRequest, RATE_LIMITS, type RateDecision } from './handler.ts';
 import { reencodeJpeg } from './jpeg-codec.ts';
+const reencodeJpegSync = (b: Uint8Array) => reencodeJpeg(b);
+import { computeRiskFlags } from './risk-flags.ts';
 import { inspectJpeg, MAX_JPEG_SCANS, readJpegSize } from './jpeg.ts';
 
 const USER = '11111111-1111-4111-8111-111111111111';
@@ -555,7 +557,8 @@ Deno.test('JPEG pre-parse: markers outside the allowlist are refused, allowliste
   for (const m of [0xdc, 0xc3, 0xc9, 0xcc, 0xde, 0xdf, 0xf0, 0xfd, 0x02]) assert.equal(inspectJpeg(base(MARKER(m, 0, 0))), null, `marker ${m.toString(16)}`);
   assert.equal(inspectJpeg(base([0xff, 0x01])), null, 'TEM');
   assert.equal(inspectJpeg(base([0xff, 0xd3])), null, 'top-level RST');
-  assert.notEqual(inspectJpeg(base([...MARKER(0xe1, 1, 2, 3), ...MARKER(0xfe, 65, 66), ...MARKER(0xdd, 0, 4)])), null);
+  assert.notEqual(inspectJpeg(base([...MARKER(0xe1, 1, 2, 3), ...MARKER(0xfe, 65, 66)])), null);
+  assert.equal(inspectJpeg(base(MARKER(0xdd, 0, 4))), null, 'DRI');
 });
 
 Deno.test('retry after an upload whose insert never ran finishes the insert instead of 409', async () => {
@@ -609,4 +612,108 @@ Deno.test('risk flags: a phrase split across fields is flagged as cross-field', 
   const f = makeFake();
   await handleFeedbackRequest(post(body({ message: 'Please ignore', snapshot: { ...snapshot(), gameState: { note: 'previous instructions and more' } } })), f.deps);
   assert.ok((f.rows.get(ID1)?.riskFlags ?? []).includes('cross-field-instruction-phrase'));
+});
+
+// ------------------------------------------------------------------ round 3
+
+/** Round 3 fixture: RSTn inside a scan's entropy data, then bytes that jpeg-js reads as marker 0x00E0 (malformed-APP1
+ * recovery), which jumps into the payload of a real APP1 segment holding `hidden` scans. The pre-parse skips that APP1 by length. */
+const rstHidden = (hidden: number) => {
+  const scans = Array.from({ length: hidden }, () => SOS()).flat();
+  const app1 = MARKER(0xe1, ...scans);
+  return jpegOf(DQT(), SOF(0xc2, 16, 16), DHT(), SOS([0x00, 0xff, 0xd0, 0x00, 0xe0, 0x00, 0x06]), app1);
+};
+const withDri = () => jpegOf(DQT(), SOF(0xc0, 16, 16), DHT(), MARKER(0xdd, 0, 4), SOS());
+const dnlHidden = () => jpegOf(DQT(), SOF(0xc2, 16, 16), DHT(), MARKER(0xdc, 0, 0, ...Array.from({ length: 5000 }, () => SOS()).flat()), SOS());
+
+Deno.test('JPEG pre-parse: DRI and every RSTn are refused', () => {
+  assert.equal(inspectJpeg(withDri()), null);
+  assert.notEqual(inspectJpeg(jpegOf(DQT(), SOF(0xc0, 16, 16), DHT(), SOS([0x00, 0x12]))), null);
+  for (let n = 0xd0; n <= 0xd7; n++) {
+    assert.equal(inspectJpeg(jpegOf(DQT(), SOF(0xc0, 16, 16), DHT(), SOS([0x00, 0xff, n, 0x00]))), null, `RST${n - 0xd0} in entropy`);
+    assert.equal(inspectJpeg(jpegOf(DQT(), SOF(0xc0, 16, 16), DHT(), MARKER(n), SOS())), null, `RST${n - 0xd0} at top level`);
+  }
+});
+
+Deno.test('round 3 file (RSTn into malformed-APP1 recovery) is refused by the pre-parse and never decoded', async () => {
+  const hostile = rstHidden(3000);
+  assert.ok(hostile.length < 1_500_000);
+  assert.equal(inspectJpeg(hostile), null);
+  const f = makeFake();
+  const r = await handleFeedbackRequest(post(body({ screenshot: toDataUrl(hostile) })), f.deps);
+  assert.equal(r.status, 400);
+  assert.equal(f.reencodeCalls.n, 0);
+});
+
+Deno.test('decoder caps: round 2 (DNL) and round 3 (RSTn) files fail fast with the pre-parse bypassed', () => {
+  // The unpatched jpeg-js walks the hidden scans (that is the parser difference); the vendored decoder stops at the cap.
+  const round3 = rstHidden(3000);
+  const t0 = performance.now();
+  assert.throws(() => reencodeJpegSync(round3), /too many JPEG scans/u);
+  assert.ok(performance.now() - t0 < 500, `round 3 took ${performance.now() - t0} ms`);
+  const t1 = performance.now();
+  assert.throws(() => reencodeJpegSync(dnlHidden()), /too many JPEG scans/u);
+  assert.ok(performance.now() - t1 < 500, `round 2 took ${performance.now() - t1} ms`);
+  assert.throws(() => reencodeJpegSync(progressive(5000)), /too many JPEG scans/u);
+});
+
+Deno.test('decoder caps: marker segments are capped and a normal image still decodes', () => {
+  const t0 = performance.now();
+  const comments = jpegOf(DQT(), SOF(0xc0, 16, 16), DHT(), ...Array.from({ length: 5000 }, () => MARKER(0xfe, 0x41)), SOS());
+  assert.throws(() => reencodeJpegSync(comments), /too many JPEG marker segments/u);
+  assert.ok(performance.now() - t0 < 500);
+  assert.doesNotThrow(() => reencodeJpegSync(makeJpeg(64, 48)));
+  assert.doesNotThrow(() => reencodeJpegSync(new Uint8Array(jpeg.encode({ data: new Uint8Array(64 * 48 * 4).fill(120), width: 64, height: 48 }, 90).data)));
+});
+
+Deno.test('same user, same id, concurrent screenshots: the duplicate loser leaves the stored object alone', async () => {
+  const f = makeFake();
+  const realInsert = f.deps.insert;
+  let release: () => void = () => {};
+  const gate = new Promise<void>((res) => (release = res));
+  // Request A uploads first, then waits at insert until request B has inserted its row.
+  f.deps.insert = async (row) => {
+    if (row.message === 'first') await gate;
+    return realInsert(row);
+  };
+  const shot = toDataUrl(makeJpeg());
+  const a = handleFeedbackRequest(post(body({ message: 'first', screenshot: shot })), f.deps);
+  while (f.objects.size === 0) await new Promise((res) => setTimeout(res, 1));
+  const rb = await handleFeedbackRequest(post(body({ message: 'second', screenshot: shot })), f.deps);
+  assert.equal(rb.status, 200);
+  release();
+  const ra = await a;
+  assert.equal(ra.status, 200);
+  assert.equal((await json(ra)).duplicate, true);
+  const path = f.rows.get(ID1)?.screenshotPath;
+  assert.equal(f.rows.get(ID1)?.message, 'second');
+  assert.ok(path && f.objects.has(path), 'row still references a stored object');
+});
+
+Deno.test('risk flags: Greek unit and maths symbols in English text do not raise mixed-script', async () => {
+  for (const msg of ['Noise floor is about 5 μV and Δf = 3 kHz, the 10 kΩ load', 'Use a λ/4 stub at 2.4 GHz', 'Gain is 3 dB, Σ of the lobes, φ = 30 degrees, θ = 12 degrees']) {
+    assert.deepEqual(await flagsFor(msg), [], msg);
+  }
+});
+
+Deno.test('risk flags: ordinary "previous", "override" and "function calls" wording is not flagged', async () => {
+  for (const msg of [
+    'the override from the previous scenario stays on',
+    'function calls in the console show an error',
+    'the game seems to forget my previous frequency',
+    'I had to override the previous setting on the HPA',
+    "Don't forget the earlier step",
+    'Please ignore the previous report',
+  ]) {
+    assert.deepEqual(await flagsFor(msg), [], msg);
+  }
+});
+
+Deno.test('risk flags: developer-tier scan of 2,000 long gameState strings stays fast', async () => {
+  const gameState = Array.from({ length: 2000 }, () => `${'A'.repeat(499)}@`);
+  const t0 = performance.now();
+  computeRiskFlags({ message: 'Antenna stuck', stripped: { bidi: 0, zeroWidth: 0, tags: 0, variationSelectors: 0, controls: 0, surrogates: 0, blankLinesCollapsed: 0 }, snapshotSanitized: false, snapshot: { ...snapshot(), gameState } });
+  const ms = performance.now() - t0;
+  console.log(`developer flag scan: ${ms.toFixed(0)} ms`);
+  assert.ok(ms < 1500, `${ms} ms`);
 });

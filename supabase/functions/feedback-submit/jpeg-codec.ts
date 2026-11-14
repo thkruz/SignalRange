@@ -2,10 +2,12 @@
 // Decoding to raw pixels and encoding again drops EXIF, ICC, comments, thumbnails
 // and any bytes appended after the image: only pixels survive.
 import jpeg from 'npm:jpeg-js@0.4.4';
+// Vendored decoder with hard caps on scans and marker segments (see jpeg-decoder.js).
+import decodeJpeg from './jpeg-decoder.js';
 import { MAX_SCREENSHOT_DIMENSION } from './jpeg.ts';
 
 export function reencodeJpeg(bytes: Uint8Array): Promise<Uint8Array> {
-  const decoded = jpeg.decode(bytes, {
+  const decoded = decodeJpeg(bytes, {
     useTArray: true,
     formatAsRGBA: true,
     // The handler refuses headers above 6 MP; the decoder is held to the same bound.

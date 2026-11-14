@@ -164,7 +164,9 @@ export async function handleFeedbackRequest(req: Request, deps: Deps): Promise<R
       if (storedHere && screenshotPath !== null) await removeQuietly(deps, screenshotPath);
       throw err;
     }
-    if (outcome !== 'inserted' && storedHere && screenshotPath !== null) await removeQuietly(deps, screenshotPath);
+    // On 'duplicate' keep the object: the path is fixed per user and id, so a row by this same user
+    // (a concurrent request that inserted first) may reference it; the orphan sweep collects it otherwise.
+    if (outcome === 'conflict' && storedHere && screenshotPath !== null) await removeQuietly(deps, screenshotPath);
     if (outcome === 'conflict') return fail(409, 'id-conflict', deps);
     return respond(200, { ok: true, id: clean.id, duplicate: outcome === 'duplicate' }, deps);
   } catch (err) {

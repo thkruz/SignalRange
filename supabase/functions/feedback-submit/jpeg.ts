@@ -4,8 +4,8 @@ export const MAX_SCREENSHOT_BYTES = 1_500_000;
 export const MAX_SCREENSHOT_DIMENSION = 2560;
 /** Pixel budget; the decoder gets the same cap (see jpeg-codec.ts). */
 export const MAX_SCREENSHOT_PIXELS = 6_000_000;
-/** A canvas export has one scan (baseline) or about ten (progressive); thousands is an attack. */
-export const MAX_JPEG_SCANS = 16;
+/** A baseline canvas export has exactly one scan; the decoder keeps a looser cap as a backstop. */
+export const MAX_JPEG_SCANS = 1;
 
 /** Base64 length of the largest accepted image (1.5 MB is 2,000,000 characters). */
 export const MAX_SCREENSHOT_BASE64_CHARS = 2_000_100;
@@ -43,7 +43,7 @@ export interface JpegInfo {
 export function inspectJpeg(b: Uint8Array): JpegInfo | null {
   if (!hasJpegMagic(b)) return null;
   let i = 2;
-  let sof: { width: number; height: number; progressive: boolean } | null = null;
+  let sof: { width: number; height: number; progressive: boolean; ids: number[] } | null = null;
   let scans = 0;
   let eoi = false;
   while (i < b.length) {
@@ -64,7 +64,7 @@ export function inspectJpeg(b: Uint8Array): JpegInfo | null {
     // Allowlist: only markers jpeg-js reads the same way this parser does. DNL (FFDC), TEM, DRI (FFDD),
     // RSTn anywhere, arithmetic and lossless SOFs and every reserved marker are refused. jpeg-js reads only 4
     // bytes after DNL and treats the rest of its payload as markers, so skipping by length hides scans.
-    const allowed = (marker >= 0xe0 && marker <= 0xef) || marker === 0xfe || marker === 0xdb || marker === 0xc4 || marker === 0xc0 || marker === 0xc1 || marker === 0xc2 || marker === 0xda;
+    const allowed = (marker >= 0xe0 && marker <= 0xef) || marker === 0xfe || marker === 0xdb || marker === 0xc4 || marker === 0xc0 || marker === 0xc1 || marker === 0xda;
     if (!allowed) return null;
     if (i + 4 > b.length) return null;
     const len = (b[i + 2] << 8) | b[i + 3];
@@ -92,17 +92,29 @@ export function inspectJpeg(b: Uint8Array): JpegInfo | null {
       }
       if (p !== end) return null;
     } else if (marker === 0xc0 || marker === 0xc1 || marker === 0xc2) {
-      // SOF: baseline, extended sequential and progressive Huffman.
-      if (sof !== null || len < 8) return null;
+      // SOF0 baseline and SOF1 extended sequential (8-bit only, the same decode path). SOF2 progressive and every
+      // other SOF are refused: a refinement scan costs pixels x selectors x spectral band, not pixels.
+      if (sof !== null || len < 8 || b[start] !== 8) return null;
       const components = b[start + 5];
       if (components < 1 || components > 4 || len !== 8 + 3 * components) return null;
-      sof = { height: (b[start + 1] << 8) | b[start + 2], width: (b[start + 3] << 8) | b[start + 4], progressive: marker === 0xc2 };
+      const ids: number[] = [];
+      for (let k = 0; k < components; k++) ids.push(b[start + 6 + 3 * k]);
+      if (new Set(ids).size !== components) return null;
+      sof = { height: (b[start + 1] << 8) | b[start + 2], width: (b[start + 3] << 8) | b[start + 4], progressive: false, ids };
     } else if (marker === 0xda) {
       if (sof === null) return null;
       scans++;
       if (scans > MAX_JPEG_SCANS) return null;
       const components = b[start];
       if (components < 1 || components > 4 || len !== 6 + 2 * components) return null;
+      // Selectors must be distinct and exist in the frame header; a baseline scan is Ss=0, Se=63, Ah=Al=0.
+      const seen = new Set<number>();
+      for (let k = 0; k < components; k++) {
+        const sel = b[start + 1 + 2 * k];
+        if (!sof.ids.includes(sel) || seen.has(sel)) return null;
+        seen.add(sel);
+      }
+      if (b[start + 1 + 2 * components] !== 0 || b[start + 2 + 2 * components] !== 63 || b[start + 3 + 2 * components] !== 0) return null;
       // Skip entropy-coded data: it ends at the next FF xx with xx not 00. An RSTn there is refused (and DRI
       // never passes the allowlist): jpeg-js steps over an RSTn back into its top-level marker reader and
       // reads the following bytes at an offset this parser does not share.

@@ -9,9 +9,9 @@ import type { StripCounts } from '../_shared/feedback-rules.ts';
 const RULES: ReadonlyArray<readonly [string, RegExp]> = [
   // Instruction-shaped only: the verb, optional determiners, a "previous" word and then an instruction noun
   // or the end of the sentence. "the override from the previous scenario" and "forget my previous frequency" pass.
-  ['instruction-phrase', /(?:ignore|disregard|forget|override)\s+(?:(?:all|any|your|my|the|everything|these|those)\s+)*(?:(?:previous|prior|above|earlier|preceding|before)(?:\s+(?:instructions?|prompts?|rules?|messages?|directions?|directives?|commands?|orders?|guidelines?|context|conversation)\b|\s*(?:[.!?,;:]|$))|(?:everything|anything)\s+(?:above|before))|system\s+prompt|you\s+are\s+now|new\s+instructions/iu],
+  ['instruction-phrase', /(?:ignore|disregard|forget|override)\s+(?:(?:all|any|your|my|the|everything|these|those)\s+)*(?:(?:above|prior)\b|(?:previous|earlier|preceding|before)(?:\s+(?:(?:system|user)\s+)?(?:instructions?|prompts?|rules?|messages?|directions?|directives?|commands?|orders?|guidelines?|guidance|context|conversation|text|input|task|content)\b|\s+(?:and|then)\b|\s*(?:[.!?,;:]|$))|(?:everything|anything)\s+(?:above|before))|system\s+prompt|you\s+are\s+now|new\s+instructions/imu],
   ['role-marker', /^\W*(?:system|assistant|user|human)\W*:|<\|im_(?:start|end)\|>|\[\/?inst\]|<<\/?sys>>/imu],
-  ['tool-name', /(?:execute|run)[\s_]sql|delete[\s_]feedback|apply[\s_]migration|(?:deploy|create|get)[\s_]edge[\s_]function|(?:merge|reset|rebase|delete|create)[\s_]branch|(?:restore|pause|create)[\s_]project|list[\s_]tables|tool[\s_]?(?:calls?|use)\b|function_?calls?\b|invoke[\s_]tool|\bgh\s|\brm\s+-|\bcurl\b|\bwget\b|\bsudo\b|\bpowershell\b|\bbash\b/iu],
+  ['tool-name', /(?:execute|run)[\s_]sql|delete[\s_]feedback|apply[\s_]migration|(?:deploy|create|get)[\s_]edge[\s_]function|(?:merge|reset|rebase|delete|create)[\s_]branch|(?:restore|pause|create)[\s_]project|list[\s_]tables|tool[\s_]?(?:calls?|use)\b|function[-_.]?calls?\b|invoke[\s_]tool|\bgh\s|\brm\s+-|\bcurl\b|\bwget\b|\bsudo\b|\bpowershell\b|\bbash\b/iu],
   ['code-fence', /```|~~~/u],
   ['url', /\b(?:https?|ftp|file|data|javascript):\/?\/?[^\s]+|\bwww\.[^\s]+/iu],
   ['long-base64', /[A-Za-z0-9+/=]{200,}/u],
@@ -42,8 +42,8 @@ const JOIN_RULES: ReadonlyArray<readonly [string, RegExp]> = RULES.filter(([name
 
 const LATIN = /\p{Script=Latin}/u;
 const OTHER_ALPHABET = /[\p{Script=Cyrillic}\p{Script=Greek}]/u;
-/** Greek letters used as unit and maths symbols (μV, Δf, kΩ, λ/4, π, θ, Σ, Φ, Ψ): not homoglyph evidence. */
-const UNIT_SYMBOLS = /[μµΔΩΩλπθΣΦΨ]/gu;
+/** Greek letters used as unit and maths symbols (μV before a unit letter, Δf, kΩ, λ/4, π, θ, Σ, Φ, Ψ): not homoglyph evidence. */
+const UNIT_SYMBOLS = /[ΔΩΩλπθΣΦΨ]|[μµ](?=[VAsmFHW])/gu;
 const WORD = /[\p{L}\p{M}]+/gu;
 const COMBINING_ON_ASCII = /[A-Za-z]\p{M}/u;
 /** A word mixing Latin with Cyrillic or Greek letters: a homoglyph substitution. */

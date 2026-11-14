@@ -1,12 +1,14 @@
 // Vendored from jpeg-js 0.4.4 (lib/decoder.js, npm package jpeg-js).
 // jpeg-js is BSD-3-Clause (Copyright (c) 2014, Eugene Ware, see LICENSE-jpeg-js); this decoder file
-// carries the Apache-2.0 header of the pdf.js-derived code below (Copyright 2011 notmasteryet).
+// carries the Apache-2.0 header of the pdf.js-derived code below (Copyright 2011 notmasteryet; text in LICENSE-Apache-2.0).
 // Both licences permit redistribution with the notices kept; they are kept here.
 //
 // Local changes, all marked "feedback-submit":
 //  1. Hard caps (MAX_SCANS, MAX_SEGMENTS) checked inside the marker loop, so a parser difference
 //     with the pre-parse in jpeg.ts can never make the decoder run long. Hitting either throws.
 //  2. ES module export instead of CommonJS.
+//  3. Progressive frames (SOF2) are refused, SOS selectors must be distinct and exist in the frame, and a work
+//     counter (MAX_BLOCK_DECODES) aborts a scan set that decodes more blocks than one 6 MP baseline image holds.
 // @ts-nocheck
 // deno-lint-ignore-file
 /* -*- tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- /
@@ -39,6 +41,9 @@
 export const MAX_SCANS = 16;
 /** feedback-submit: most marker segments read per image, counting every pass of the marker loop. */
 export const MAX_SEGMENTS = 512;
+/** feedback-submit: most block decodes per image; 6 MP is 93,750 blocks per component, four components at most. */
+export const MAX_BLOCK_DECODES = 400000;
+var blockDecodes = 0;
 
 var JpegImage = (function jpegImage() {
   "use strict";
@@ -270,6 +275,7 @@ var JpegImage = (function jpegImage() {
       }
     }
     function decodeMcu(component, decode, mcu, row, col) {
+      if (++blockDecodes > MAX_BLOCK_DECODES) throw new Error("JPEG work limit exceeded"); // feedback-submit
       var mcuRow = (mcu / mcusPerLine) | 0;
       var mcuCol = mcu % mcusPerLine;
       var blockRow = mcuRow * component.v + row;
@@ -280,6 +286,7 @@ var JpegImage = (function jpegImage() {
       decode(component, component.blocks[blockRow][blockCol]);
     }
     function decodeBlock(component, decode, mcu) {
+      if (++blockDecodes > MAX_BLOCK_DECODES) throw new Error("JPEG work limit exceeded"); // feedback-submit
       var blockRow = (mcu / component.blocksPerLine) | 0;
       var blockCol = mcu % component.blocksPerLine;
       // If the block is missing and we're in tolerant mode, just skip it.
@@ -649,6 +656,7 @@ var JpegImage = (function jpegImage() {
 
       fileMarker = readUint16();
       var segmentCount = 0, scanCount = 0; // feedback-submit
+      blockDecodes = 0; // feedback-submit
       while (fileMarker != 0xFFD9) { // EOI (End of image)
         if (++segmentCount > MAX_SEGMENTS) throw new Error("too many JPEG marker segments"); // feedback-submit
         var i, j, l;
@@ -742,6 +750,7 @@ var JpegImage = (function jpegImage() {
           case 0xFFC0: // SOF0 (Start of Frame, Baseline DCT)
           case 0xFFC1: // SOF1 (Start of Frame, Extended DCT)
           case 0xFFC2: // SOF2 (Start of Frame, Progressive DCT)
+            if (fileMarker === 0xFFC2) throw new Error("progressive JPEG not supported"); // feedback-submit
             readUint16(); // skip data length
             frame = {};
             frame.extended = (fileMarker === 0xFFC1);
@@ -818,8 +827,10 @@ var JpegImage = (function jpegImage() {
             var scanLength = readUint16();
             var selectorsCount = data[offset++];
             var components = [], component;
+            if (!frame || selectorsCount < 1 || selectorsCount > frame.componentsOrder.length) throw new Error("bad JPEG scan header"); // feedback-submit
             for (i = 0; i < selectorsCount; i++) {
               component = frame.components[data[offset++]];
+              if (!component || components.indexOf(component) !== -1) throw new Error("bad JPEG scan selector"); // feedback-submit
               var tableSpec = data[offset++];
               component.huffmanTableDC = huffmanTablesDC[tableSpec >> 4];
               component.huffmanTableAC = huffmanTablesAC[tableSpec & 15];

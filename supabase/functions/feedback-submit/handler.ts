@@ -161,7 +161,18 @@ export async function handleFeedbackRequest(req: Request, deps: Deps): Promise<R
         riskFlags,
       });
     } catch (err) {
-      if (storedHere && screenshotPath !== null) await removeQuietly(deps, screenshotPath);
+      // The insert may have committed before the error (lost response) or a concurrent request by this same
+      // user may have inserted a row on the shared path. Remove only when this request stored the object and
+      // no row exists for the id; if the lookup fails too, keep it: the orphan sweep collects it after a day.
+      if (storedHere && screenshotPath !== null) {
+        let owner: string | null | undefined;
+        try {
+          owner = await deps.findOwner(clean.id);
+        } catch {
+          owner = undefined;
+        }
+        if (owner === null) await removeQuietly(deps, screenshotPath);
+      }
       throw err;
     }
     // On 'duplicate' keep the object: the path is fixed per user and id, so a row by this same user

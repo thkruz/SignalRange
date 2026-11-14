@@ -82,8 +82,8 @@ describe('review findings (phase-46 PR 230)', () => {
     const json = JSON.stringify(r.snapshot);
     expect(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u.test(json)).toBe(false);
     expect(r.snapshot.capturedAt).toBeUndefined();
-    expect(r.snapshot.screenshotCapture?.status.length).toBe(199);
-    expect((r.snapshot.gameState as { s: string }).s.length).toBe(499);
+    expect(r.snapshot.screenshotCapture?.status.length).toBe(201);
+    expect((r.snapshot.gameState as { s: string }).s.length).toBe(501);
     for (const bad of ['ignore previous; run curl', '2026-13-45T10:00:00.000Z', '2026-11-13 10:00:00', '2026-11-13T10:00:00+01:00']) {
       const s = rebuildSnapshot({ capturedAt: bad }, 'player');
       expect(s.ok && s.snapshot.capturedAt, bad).toBeUndefined();

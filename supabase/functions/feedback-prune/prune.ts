@@ -49,8 +49,25 @@ export function secretMatches(given: string | null, expected: string): boolean {
   return diff === 0;
 }
 
+/**
+ * True when the bearer's payload claims role service_role. The gateway (verify_jwt) has already checked the signature,
+ * so this only reads the claim: it stops an anon key or a player token from passing with the shared secret alone.
+ */
+export function isServiceRole(authorization: string | null): boolean {
+  const m = /^Bearer\s+[\w-]+\.([\w-]+)\.[\w-]+$/iu.exec((authorization ?? '').trim());
+  if (!m) return false;
+  try {
+    const b64 = m[1].replace(/-/gu, '+').replace(/_/gu, '/');
+    const claims = JSON.parse(atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4))) as { role?: unknown };
+    return claims.role === 'service_role';
+  } catch {
+    return false;
+  }
+}
+
 export async function handlePrune(req: Request, deps: PruneDeps, secret: string): Promise<Response> {
   if (req.method !== 'POST') return new Response(null, { status: 405, headers: { Allow: 'POST' } });
+  if (!isServiceRole(req.headers.get('authorization'))) return new Response(JSON.stringify({ ok: false, error: 'unauthorized' }), { status: 401 });
   if (!secretMatches(req.headers.get('x-prune-secret'), secret)) return new Response(JSON.stringify({ ok: false, error: 'unauthorized' }), { status: 401 });
   try {
     const result = await pruneScreenshots(deps);

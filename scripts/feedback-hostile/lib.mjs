@@ -1,22 +1,27 @@
 // Shared helpers for the feedback hostile-input suite. LOCAL ONLY: every request is checked
-// against a 127.0.0.1 / localhost allowlist before it is sent.
+// against a 127.0.0.1 / [::1] allowlist before it is sent.
 import { execFileSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import http from 'node:http';
 
-export const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost']);
+// Literal loopback addresses only: `localhost` would be resolved through the hosts file, so it is refused.
+export const LOCAL_HOSTS = new Set(['127.0.0.1', '[::1]']);
 
 export function assertLocal(url) {
   const host = new URL(url).hostname;
   if (!LOCAL_HOSTS.has(host)) {
-    console.error(`ABORT: refusing non-local host ${host}`);
+    console.error(`ABORT: refusing host ${host} (only 127.0.0.1 and [::1] are allowed)`);
     process.exit(2);
   }
 }
 
-// Remote-project credentials must never reach this process.
+const SCRUBBED_ENV = ['HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY', 'NODE_USE_ENV_PROXY', 'DOCKER_HOST'];
+
+// Remote-project credentials, proxies and a remote Docker daemon must never reach this process.
 export function scrubEnv() {
-  for (const k of Object.keys(process.env)) if (k.startsWith('SUPABASE_')) delete process.env[k];
+  for (const k of Object.keys(process.env)) {
+    if (k.startsWith('SUPABASE_') || SCRUBBED_ENV.includes(k.toUpperCase())) delete process.env[k];
+  }
 }
 
 export function localStatus() {
@@ -60,7 +65,11 @@ export async function timedFetch(url, init = {}) {
   assertLocal(url);
   const t0 = performance.now();
   try {
-    const res = await fetch(url, init);
+    const res = await fetch(url, { ...init, redirect: 'manual' });
+    if (res.status >= 300 && res.status < 400) {
+      console.error(`ABORT: refusing redirect (${res.status}) from ${url}`);
+      process.exit(2);
+    }
     const text = await res.text();
     const ms = Math.round(performance.now() - t0);
     let json = null;

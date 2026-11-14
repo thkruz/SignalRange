@@ -217,39 +217,52 @@ function declaredLengthRefused(req: Request): boolean {
   return !/\bchunked\b/iu.test(req.headers.get('transfer-encoding') ?? '');
 }
 
-/** Reads at most `max` bytes within `timeoutMs`. Null on overrun, 'timeout' when the sender is too slow. */
+const MAX_BODY_READS = 4096;
+const INITIAL_BODY_BUFFER = 65_536;
+
+/**
+ * Reads at most `max` bytes within `timeoutMs`. Null on overrun (bytes or read count), 'timeout' when the sender is too slow.
+ * Each chunk is copied into one buffer and the read view dropped at once: on Deno a 1-byte read is a view over a
+ * 64 KB ArrayBuffer, so keeping views would pin 64 KB per read.
+ */
 async function readBounded(req: Request, max: number, timeoutMs: number): Promise<string | null | 'timeout'> {
   if (!req.body) return '';
   const reader = req.body.getReader();
-  const signal = AbortSignal.timeout(timeoutMs);
-  const aborted = new Promise<'timeout'>((resolve) => {
-    if (signal.aborted) resolve('timeout');
-    else signal.addEventListener('abort', () => resolve('timeout'), { once: true });
-  });
-  const chunks: Uint8Array[] = [];
+  const declared = Number(req.headers.get('content-length') ?? '');
+  let buf = new Uint8Array(Number.isInteger(declared) && declared > 0 ? Math.min(declared, max) : Math.min(INITIAL_BODY_BUFFER, max));
   let total = 0;
-  for (;;) {
-    const next = await Promise.race([reader.read(), aborted]);
-    if (next === 'timeout') {
-      // Do not wait for the cancel: a stalled sender may never answer it.
-      reader.cancel().catch(() => undefined);
-      return 'timeout';
+  let timedOut = false;
+  // One timer for the whole body. Cancelling resolves a pending read as done; it is not awaited, so a stalled sender cannot hold us.
+  const timer = setTimeout(() => {
+    timedOut = true;
+    reader.cancel().catch(() => undefined);
+  }, timeoutMs);
+  try {
+    for (let reads = 0; ; reads++) {
+      if (reads >= MAX_BODY_READS) {
+        reader.cancel().catch(() => undefined);
+        return null;
+      }
+      const next = await reader.read();
+      if (timedOut) return 'timeout';
+      if (next.done) break;
+      const chunk = next.value;
+      if (total + chunk.length > max) {
+        reader.cancel().catch(() => undefined);
+        return null;
+      }
+      if (total + chunk.length > buf.length) {
+        const grown = new Uint8Array(Math.min(max, Math.max(buf.length * 2, total + chunk.length)));
+        grown.set(buf.subarray(0, total));
+        buf = grown;
+      }
+      buf.set(chunk, total);
+      total += chunk.length;
     }
-    if (next.done) break;
-    total += next.value.length;
-    if (total > max) {
-      reader.cancel().catch(() => undefined);
-      return null;
-    }
-    chunks.push(next.value);
+  } finally {
+    clearTimeout(timer);
   }
-  const all = new Uint8Array(total);
-  let off = 0;
-  for (const c of chunks) {
-    all.set(c, off);
-    off += c.length;
-  }
-  return new TextDecoder().decode(all);
+  return new TextDecoder().decode(buf.subarray(0, total));
 }
 
 type Processed = { ok: true; bytes: Uint8Array } | { ok: false; status: number; error: string };

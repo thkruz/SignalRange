@@ -151,6 +151,16 @@ export function wasStripped(counts: StripCounts): boolean {
   return Object.entries(counts).some(([name, n]) => name !== 'blankLinesCollapsed' && n > 0);
 }
 
+/** Cut to at most max code points; a pair is never split. */
+function sliceCodePoints(s: string, max: number): string {
+  let i = 0;
+  for (let n = 0; n < max && i < s.length; n++) {
+    const c = s.charCodeAt(i);
+    i += c >= 0xd800 && c <= 0xdbff && i + 1 < s.length && (s.charCodeAt(i + 1) & 0xfc00) === 0xdc00 ? 2 : 1;
+  }
+  return s.slice(0, i);
+}
+
 /** Number of code points; a lone surrogate counts as one. */
 function countCodePoints(s: string): number {
   let n = 0;
@@ -272,15 +282,17 @@ class Rebuilder {
     const cap = maxChars * 4;
     let s = v.length > cap ? safeSlice(v, cap) : v;
     s = cleanCore(s, this.flags.stripped).trim();
-    if (s.length > maxChars || v.length > cap) {
+    if (s.length > maxChars && countCodePoints(s) > maxChars) {
       this.flags.truncatedStrings += 1;
-      s = safeSlice(s, maxChars);
+      s = sliceCodePoints(s, maxChars);
+    } else if (v.length > cap) {
+      this.flags.truncatedStrings += 1;
     }
     return s;
   }
 
   key(k: string): string | null {
-    if (FORBIDDEN_KEYS.has(k) || k.length === 0 || k.length > SNAPSHOT_LIMITS.maxKeyChars) return null;
+    if (FORBIDDEN_KEYS.has(k) || k.length === 0 || (k.length > SNAPSHOT_LIMITS.maxKeyChars && countCodePoints(k) > SNAPSHOT_LIMITS.maxKeyChars)) return null;
     return cleanCore(k, emptyCounts()) === k ? k : null;
   }
 

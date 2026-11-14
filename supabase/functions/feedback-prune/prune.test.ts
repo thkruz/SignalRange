@@ -34,19 +34,25 @@ Deno.test('a failed object delete leaves the row path in place for the next run'
   assert.equal(f.rows.get('a'), 'u/a.jpg');
 });
 
-Deno.test('prune endpoint needs the shared secret and POST', async () => {
+const jwt = (role: string) => `${btoa('{"alg":"HS256"}')}.${btoa(JSON.stringify({ role })).replace(/=+$/u, '')}.sig`;
+const call = (headers: Record<string, string>) => new Request('http://x', { method: 'POST', headers });
+
+Deno.test('prune endpoint needs a service role bearer, the shared secret and POST', async () => {
   const f = fake([], []);
-  assert.equal((await handlePrune(new Request('http://x', { method: 'POST' }), f.deps, 's3cret')).status, 401);
-  assert.equal((await handlePrune(new Request('http://x', { method: 'POST', headers: { 'x-prune-secret': 'wrong!' } }), f.deps, 's3cret')).status, 401);
-  assert.equal((await handlePrune(new Request('http://x', { method: 'GET' }), f.deps, 's3cret')).status, 405);
-  assert.equal((await handlePrune(new Request('http://x', { method: 'POST', headers: { 'x-prune-secret': 's3cret' } }), f.deps, 's3cret')).status, 200);
+  const svc = { authorization: `Bearer ${jwt('service_role')}` };
+  assert.equal((await handlePrune(call(svc), f.deps, 's3cret')).status, 401, 'no secret');
+  assert.equal((await handlePrune(call({ ...svc, 'x-prune-secret': 'wrong!' }), f.deps, 's3cret')).status, 401);
+  assert.equal((await handlePrune(new Request('http://x', { method: 'GET', headers: svc }), f.deps, 's3cret')).status, 405);
+  assert.equal((await handlePrune(call({ ...svc, 'x-prune-secret': 's3cret' }), f.deps, 's3cret')).status, 200);
   assert.equal(secretMatches('x', ''), false, 'an unset secret never matches');
 });
 
-Deno.test('the handler checks only the secret; the service role bearer is verified by the gateway before it runs', async () => {
+Deno.test('an ordinary user or anon JWT with the correct secret is refused', async () => {
   const f = fake([], []);
-  const req = new Request('http://x', { method: 'POST', headers: { authorization: 'Bearer service-role-key', 'x-prune-secret': 's3cret' } });
-  assert.equal((await handlePrune(req, f.deps, 's3cret')).status, 200);
-  const noSecret = new Request('http://x', { method: 'POST', headers: { authorization: 'Bearer service-role-key' } });
-  assert.equal((await handlePrune(noSecret, f.deps, 's3cret')).status, 401);
+  for (const role of ['authenticated', 'anon']) {
+    const req = call({ authorization: `Bearer ${jwt(role)}`, 'x-prune-secret': 's3cret' });
+    assert.equal((await handlePrune(req, f.deps, 's3cret')).status, 401, role);
+  }
+  assert.equal((await handlePrune(call({ 'x-prune-secret': 's3cret' }), f.deps, 's3cret')).status, 401, 'no bearer');
+  assert.equal((await handlePrune(call({ authorization: 'Bearer not-a-jwt', 'x-prune-secret': 's3cret' }), f.deps, 's3cret')).status, 401);
 });

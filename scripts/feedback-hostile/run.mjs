@@ -6,7 +6,7 @@
 //
 // Prerequisites: `npx supabase start` with the feedback migrations applied (see README.md).
 // The script starts `supabase functions serve` itself and stops it again. Nothing here contacts a
-// remote project: every URL is checked against 127.0.0.1 / localhost before it is sent.
+// remote project: every URL is checked against 127.0.0.1 / [::1] before it is sent.
 import { spawn, execFileSync } from 'node:child_process';
 import crypto, { randomUUID } from 'node:crypto';
 import fs from 'node:fs';

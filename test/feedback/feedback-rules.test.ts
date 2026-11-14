@@ -176,6 +176,18 @@ describe('rebuildSnapshot', () => {
     expect(gs.t).toBe('xy');
     expect(r.flags.truncatedStrings).toBe(1);
   });
+  it('counts snapshot strings and keys in code points, not UTF-16 units', () => {
+    const e = String.fromCodePoint(0x1f600);
+    const r = rebuildSnapshot({ gameState: { s: e.repeat(500), t: e.repeat(501), [e.repeat(100)]: 1, [e.repeat(101)]: 2 } }, 'player');
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const gs = r.snapshot.gameState as Record<string, string>;
+    expect(Array.from(gs.s)).toHaveLength(500);
+    expect(Array.from(gs.t)).toHaveLength(500);
+    expect(r.flags.truncatedStrings).toBe(1);
+    expect(Object.keys(gs)).toContain(e.repeat(100));
+    expect(Object.keys(gs)).not.toContain(e.repeat(101));
+  });
   it('does not choke on a 10 MB string inside the snapshot', () => {
     const t = performance.now();
     const r = rebuildSnapshot({ gameState: { s: 'a'.repeat(10 * 1024 * 1024) } }, 'player');

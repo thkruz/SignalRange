@@ -3,6 +3,7 @@ import { setMenuPause } from '@app/game-menu/menu-pause';
 import { Auth } from '@app/user-account/auth';
 import { captureFeedbackScreen, captureFeedbackState } from './feedback-capture';
 import { describeCaptureFailure } from './feedback-capture-error';
+import { TIER_LIMITS } from './feedback-rules';
 import { type FeedbackSubmission, submitFeedback } from './feedback-service';
 import './feedback.css';
 
@@ -37,7 +38,7 @@ export class Feedback {
         <div class="qa-feedback-heading"><h2 id="qa-feedback-title">Feedback</h2><span>DEV QA</span></div>
         <p class="qa-feedback-help">Describe what you noticed. Game state is attached automatically; include the screenshot when it helps explain your feedback.</p>
         <label for="qa-feedback-message">Observation or issue</label>
-        <textarea id="qa-feedback-message" class="form-control" maxlength="10000" rows="5" required placeholder="What happened? What did you expect?"></textarea>
+        <textarea id="qa-feedback-message" class="form-control" maxlength="20000" rows="5" required placeholder="What happened? What did you expect?"></textarea>
         <label class="form-check form-switch qa-feedback-screenshot-toggle">
           <input type="checkbox" class="form-check-input" id="qa-feedback-include-screenshot" checked />
           <span class="form-check-label">Include screenshot</span>
@@ -63,7 +64,10 @@ export class Feedback {
       event.preventDefault();
       void this.send_();
     });
-    this.input_.addEventListener('input', () => this.updateSend_());
+    this.input_.addEventListener('input', () => {
+      this.clampInput_();
+      this.updateSend_();
+    });
     this.screenshotToggle_.addEventListener('change', () => this.updateScreenshot_());
     this.unsubscribeDev_ = DevMenuService.getInstance().onChange(() => this.updateVisibility_());
     this.authSubscription_ = Auth.onAuthStateChange((_event, user) => {
@@ -177,6 +181,12 @@ export class Feedback {
   private updateSend_(): void {
     this.dialog_.querySelector<HTMLButtonElement>('.qa-feedback-send')!.disabled =
       this.busy_ || !this.draft_ || (this.screenshotToggle_.checked && !this.draft_.screenshot) || !this.input_.value.trim();
+  }
+
+  /** maxlength counts UTF-16 units; the limit is 10,000 code points, so clamp in code. */
+  private clampInput_(): void {
+    const cps = Array.from(this.input_.value);
+    if (cps.length > TIER_LIMITS.developer.maxChars) this.input_.value = cps.slice(0, TIER_LIMITS.developer.maxChars).join('');
   }
 
   private async send_(): Promise<void> {

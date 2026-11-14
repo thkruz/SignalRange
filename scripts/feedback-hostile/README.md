@@ -1,7 +1,7 @@
 # Feedback hostile-input suite (local only)
 
 Runs hostile requests against `feedback-submit` and `feedback-prune` on a LOCAL Supabase stack.
-Every URL is checked against 127.0.0.1 / localhost before it is sent, and `SUPABASE_*` variables are
+Every URL is checked against 127.0.0.1 / [::1] before it is sent, and `SUPABASE_*` variables are
 removed from the process environment. Never point it at a remote project.
 
 ```

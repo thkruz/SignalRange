@@ -16,6 +16,7 @@ import {
   type ErrorView,
   type FeedbackDraft,
   tierFor,
+  waitLabelShort,
 } from './feedback-form';
 import { FEEDBACK_CATEGORIES, type FeedbackCategory, TIER_LIMITS } from './feedback-rules';
 import { FeedbackSubmitError, submitFeedback } from './feedback-service';
@@ -126,7 +127,7 @@ export class Feedback {
       .catch(() => {});
     // The entry lives on the body and steps aside whenever another dialog, menu or in-world object view is open.
     this.observer_ = new MutationObserver(() => this.syncEntry_());
-    this.observer_.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['open'] });
+    this.observer_.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['open', 'style'] });
     this.syncEntry_();
   }
 
@@ -227,7 +228,9 @@ export class Feedback {
   private syncEntry_(): void {
     if (!this.formAvailable_ && this.dialog_.open) this.close_();
     // Menus, notebooks, part close-ups and every other held object own the screen: no entry over them.
-    const covered = document.querySelector('dialog[open]:not(.fr-dialog), #part-closeup-modal') !== null;
+    // The close-up's modal container stays in the DOM after the first open and is only hidden, so test its state, not its presence.
+    const closeup = document.getElementById('part-closeup-modal-container');
+    const covered = document.querySelector('dialog[open]:not(.fr-dialog)') !== null || (closeup !== null && closeup.style.display !== 'none');
     this.tab_.hidden = !this.formAvailable_ || covered;
     this.contact_.hidden = this.formAvailable_ || covered;
   }
@@ -477,7 +480,7 @@ export class Feedback {
     else if (draft === null && !filed) status.textContent = 'The game state could not be read. Close the form and try again.';
     else status.textContent = '';
     const retrying = this.view_.kind === 'error' && this.view_.error.retryable;
-    send.textContent = sending ? 'Filing…' : waiting > 0 ? `Retry in ${waiting}s` : retrying ? 'Retry filing' : 'File report';
+    send.textContent = sending ? 'Filing…' : waiting > 0 ? `Retry in ${waitLabelShort(waiting)}` : retrying ? 'Retry filing' : 'File report';
     send.disabled = sending || !draft || waiting > 0 || (shotOn && !draft.screenshot) || (!retrying && codePointCount(draft.message.trim()) === 0);
     this.el_<HTMLButtonElement>('fr-discard').disabled = sending;
     this.el_<HTMLButtonElement>('fr-putaway').disabled = sending;

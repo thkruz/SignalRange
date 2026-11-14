@@ -17,6 +17,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, type Page, type Route, test } from '@playwright/test';
 import { validateFeedback } from '../../src/feedback/feedback-rules';
+import { closeCloseup, openFrontlineScenario, openPart } from '../utils/frontline-helpers';
 
 const SCENARIO_IDS = new Set<string>(JSON.parse(readFileSync('supabase/functions/feedback-submit/scenario-ids.json', 'utf8')) as string[]);
 
@@ -253,13 +254,13 @@ test.describe('field report form', () => {
     await page.locator('#fr-send').click();
     await expect(page.locator('#fr-status')).toContainText('Retry in 60 minutes');
     await expect(page.locator('#fr-send')).toBeDisabled();
-    await expect(page.locator('#fr-send')).toHaveText(/^Retry in (3599|3600)s$/u);
+    await expect(page.locator('#fr-send')).toHaveText(/^Retry in 60 min$/u);
     if (SHOT_DIR) await page.screenshot({ path: `${SHOT_DIR}/07-rate-limit-countdown.png` });
     await page.keyboard.press('Escape');
     await expect(page.locator('dialog.fr-dialog')).toBeHidden();
     await entry(page).click();
     await expect(page.locator('#fr-send')).toBeDisabled();
-    await expect(page.locator('#fr-send')).toHaveText(/^Retry in \d+s$/u);
+    await expect(page.locator('#fr-send')).toHaveText(/^Retry in 60 min$/u);
     expect(received).toHaveLength(1);
   });
 
@@ -274,10 +275,28 @@ test.describe('field report form', () => {
     await expect(page.locator('#fr-shot-note')).toContainText('could not be made');
     await expect(page.locator('#fr-shot')).toBeDisabled();
     await page.locator('#fr-message').fill('The capture failed on my machine.');
+    await expect(page.locator('#fr-send')).toBeEnabled();
     if (SHOT_DIR) await page.screenshot({ path: `${SHOT_DIR}/08-capture-failed-note.png` });
     await page.locator('#fr-send').click();
     await expect(page.locator('#fr-filed')).toBeVisible();
     expect(received[0].body.screenshot).toBeNull();
+  });
+
+  test('the entry comes back after a part close-up is opened and closed', async ({ page }) => {
+    test.setTimeout(180_000);
+    await installFakeApi(page, [{ status: 200 }]);
+    await seedSession(page, fakeSession());
+    // The field scenario helper clears storage on its first load unless this marker is set; keep the seeded session.
+    await page.addInitScript(() => sessionStorage.setItem('frontline-qa-cleared', '1'));
+    await openFrontlineScenario(page, 1);
+    await expect(entry(page)).toBeVisible();
+    await openPart(page, 'skylink-router');
+    await expect(page.locator('#part-closeup-modal')).toBeVisible();
+    await expect(entry(page)).toBeHidden();
+    await closeCloseup(page);
+    await expect(page.locator('#part-closeup-modal')).toBeHidden();
+    await expect(entry(page)).toBeVisible();
+    if (SHOT_DIR) await page.screenshot({ path: `${SHOT_DIR}/09-entry-after-closeup.png` });
   });
 
   test('the entry steps aside while another dialog is open', async ({ page }) => {

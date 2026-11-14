@@ -75,6 +75,13 @@ function waitPhrase(seconds: number): string {
   return `${Math.ceil(seconds / 3600)} hours`;
 }
 
+/** Same units as the status line (seconds under 90 s, minutes under 90 min, then hours), shortened for the button. */
+export function waitLabelShort(seconds: number): string {
+  if (seconds < 90) return `${seconds}s`;
+  if (seconds < 5400) return `${Math.ceil(seconds / 60)} min`;
+  return `${Math.ceil(seconds / 3600)} h`;
+}
+
 export function describeSubmitError(error: unknown): ErrorView {
   if (!(error instanceof FeedbackSubmitError)) {
     return { message: 'The report did not go out. Your draft is kept. Try again.', retryable: true, retryAfterSec: null, editable: false };

@@ -114,6 +114,25 @@ describe('Feedback field report', () => {
     expect(contact().hidden).toBe(true);
   });
 
+  it('hides the entry while a part close-up is shown and brings it back once it is closed', async () => {
+    signIn();
+    const closeup = document.createElement('div');
+    closeup.id = 'part-closeup-modal-container';
+    closeup.style.display = 'block';
+    document.body.append(closeup);
+    await flush();
+    expect(tab().hidden).toBe(true);
+    expect(contact().hidden).toBe(true);
+    closeup.style.display = 'none';
+    await flush();
+    expect(tab().hidden).toBe(false);
+    expect(contact().hidden).toBe(true);
+    closeup.style.display = 'block';
+    await flush();
+    expect(tab().hidden).toBe(true);
+    closeup.remove();
+  });
+
   it('shows only the contact link to a signed-in player while the Edge Function is not live', () => {
     feedback.dispose();
     feedback = new Feedback({ edgeLive: false });
@@ -260,7 +279,7 @@ describe('Feedback field report', () => {
     await flush();
     vi.advanceTimersByTime(61_000);
     expect(send().disabled).toBe(true);
-    expect(send().textContent).toBe('Retry in 3539s');
+    expect(send().textContent).toBe('Retry in 59 min');
   });
 
   it('keeps the Retry-After wait through Escape and reopen of the same draft', async () => {
@@ -275,7 +294,7 @@ describe('Feedback field report', () => {
     dialog().dispatchEvent(new Event('cancel', { cancelable: true }));
     feedback.open();
     expect(send().disabled).toBe(true);
-    expect(send().textContent).toMatch(/^Retry in \d+s$/u);
+    expect(send().textContent).toMatch(/^Retry in 2 min$/u);
     vi.advanceTimersByTime(121_000);
     expect(send().disabled).toBe(false);
   });

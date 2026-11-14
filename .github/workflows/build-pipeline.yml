@@ -338,6 +338,7 @@ jobs:
   secrets-scan:
     name: Secrets Scan
     needs: build
+    if: ${{ !cancelled() && needs.build.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -357,6 +358,7 @@ jobs:
   codeql:
     name: CodeQL
     needs: build
+    if: ${{ !cancelled() && needs.build.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository

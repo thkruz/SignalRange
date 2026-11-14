@@ -39,7 +39,8 @@ export default defineConfig({
     include: ['**/test/**/*.(spec|test).ts?(x)', '**/test/**/*.(spec|test).js?(x)'],
     // External plugin tests belong to their own repos; `pnpm run plugin -- test <name>`
     // runs them through vitest.external.config.mts.
-    exclude: ['node_modules/', 'dist/', 'src/engine/', 'e2e/', 'src/plugins-external/**'],
+    // .claude/worktrees holds agent worktrees (full repo copies); never collect their tests.
+    exclude: ['node_modules/', 'dist/', 'src/engine/', 'e2e/', 'src/plugins-external/**', '**/.claude/**'],
     coverage: {
       provider: 'v8',
       reportsDirectory: 'coverage',

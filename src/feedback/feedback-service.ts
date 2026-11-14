@@ -77,5 +77,6 @@ export async function submitFeedback(request: FeedbackRequest, fetchImpl: typeof
     return { duplicate: body.duplicate === true };
   }
   const reasons = response.status === 400 ? await readReasons(response) : [];
+  // The server lists Retry-After in Access-Control-Expose-Headers; without that the browser hides it on a cross-origin call.
   throw new FeedbackSubmitError(classify(response.status), response.status, parseRetryAfter(response.headers.get('Retry-After')), reasons);
 }

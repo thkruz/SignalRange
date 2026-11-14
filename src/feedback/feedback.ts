@@ -1,3 +1,4 @@
+import { FEEDBACK_CONTACT_URL } from '@app/campaigns/release-stage';
 import { DevMenuService } from '@app/dev-menu/dev-menu-service';
 import { setMenuPause } from '@app/game-menu/menu-pause';
 import { Auth } from '@app/user-account/auth';
@@ -20,8 +21,15 @@ import { FEEDBACK_CATEGORIES, type FeedbackCategory, TIER_LIMITS } from './feedb
 import { FeedbackSubmitError, submitFeedback } from './feedback-service';
 import './feedback.css';
 
-/** Where signed-out players are sent instead of the form. */
-export const FEEDBACK_CONTACT_URL = 'https://signalrange.space/contact';
+/**
+ * Whether the feedback-submit Edge Function is live for everyone. Build-time flag `__FEEDBACK_EDGE_LIVE__`
+ * (env `PUBLIC_FEEDBACK_EDGE_LIVE=true`), off by default. While it is off, only the developer tier sees the form
+ * (it posts to the same function) and everyone else sees the contact link. After the production smoke test in
+ * supabase/functions/feedback-submit/README.md passes, switching this on is that one env change; there is no RPC fallback.
+ */
+export interface FeedbackOptions {
+  edgeLive?: boolean;
+}
 
 type CaptureState = 'pending' | 'ready' | 'failed';
 type View = { kind: 'edit' } | { kind: 'sending' } | { kind: 'error'; error: ErrorView } | { kind: 'filed'; ticket: string };
@@ -54,14 +62,24 @@ export class Feedback {
   private view_: View = { kind: 'edit' };
   private captureState_: CaptureState = 'pending';
   private captureNote_ = '';
-  private generation_ = 0;
+  /** Bumped on open and close so a capture that resolves late is dropped. */
+  private captureGeneration_ = 0;
+  /** Bumped when the draft is discarded so a reply for a dead draft is dropped. */
+  private sendGeneration_ = 0;
   private userId_: string | null = null;
   private signedIn_ = false;
   private previousFocus_: HTMLElement | null = null;
   private retryUntil_ = 0;
   private countdownTimer_: ReturnType<typeof setInterval> | null = null;
+  private held_ = false;
+  private readonly edgeLive_: boolean;
+  private readonly boundClose_ = (): void => {
+    // A stale close event from a form that was reopened in the same turn must not tear down the new session.
+    if (!this.dialog_.open) this.teardown_();
+  };
 
-  constructor() {
+  constructor(options: FeedbackOptions = {}) {
+    this.edgeLive_ = options.edgeLive ?? __FEEDBACK_EDGE_LIVE__;
     this.tab_.type = 'button';
     this.tab_.className = 'fr-tab';
     this.tab_.textContent = 'Feedback';
@@ -87,6 +105,7 @@ export class Feedback {
     // Game hotkeys must not fire while the operator types.
     this.dialog_.addEventListener('keydown', (event) => event.stopPropagation());
     this.dialog_.addEventListener('cancel', this.boundCancel_);
+    this.dialog_.addEventListener('close', this.boundClose_);
     this.form_.addEventListener('submit', this.boundSubmit_);
     this.el_('fr-discard').addEventListener('click', () => this.discard_());
     this.el_('fr-putaway').addEventListener('click', () => this.close_());
@@ -95,17 +114,19 @@ export class Feedback {
     this.el_('fr-shot').addEventListener('change', () => this.onScreenshotToggle_());
     this.el_('fr-category').addEventListener('change', (event) => this.onCategory_(event));
 
-    this.unsubscribeDev_ = DevMenuService.getInstance().onChange(() => this.render_());
+    this.unsubscribeDev_ = DevMenuService.getInstance().onChange(() => {
+      this.syncEntry_();
+      this.render_();
+    });
     this.authSubscription_ = Auth.onAuthStateChange((_event, user) => this.setUser_(user));
     void Auth.getCurrentUser()
       .then((user) => {
         if (this.userId_ === null) this.setUser_(user);
       })
       .catch(() => {});
-    // A native modal dialog makes the rest of the page inert. Keep the entry inside the top-most open dialog
-    // so Feedback stays reachable from the pause and loadout menus.
-    this.observer_ = new MutationObserver(() => this.positionEntry_());
-    this.observer_.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['open', 'disabled'] });
+    // The entry lives on the body and steps aside whenever another dialog, menu or in-world object view is open.
+    this.observer_ = new MutationObserver(() => this.syncEntry_());
+    this.observer_.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['open'] });
     this.syncEntry_();
   }
 
@@ -188,8 +209,9 @@ export class Feedback {
   private setUser_(user: { id: string; is_anonymous?: boolean } | null): void {
     const nextId = user?.id ?? null;
     if (this.userId_ !== nextId) {
-      // Another account must not inherit a draft.
+      // Another account must not inherit a draft or a wait.
       this.discardDraft_();
+      this.stopCountdown_();
       if (this.dialog_.open) this.close_();
     }
     this.userId_ = nextId;
@@ -197,27 +219,26 @@ export class Feedback {
     this.syncEntry_();
   }
 
-  private syncEntry_(): void {
-    this.tab_.hidden = !this.signedIn_;
-    this.contact_.hidden = this.signedIn_;
-    if (!this.signedIn_ && this.dialog_.open) this.close_();
-    this.positionEntry_();
+  /** Signed-in players use the form once the Edge Function is live; developers always do. */
+  private get formAvailable_(): boolean {
+    return this.signedIn_ && (this.edgeLive_ || this.isDeveloper_);
   }
 
-  private positionEntry_(): void {
-    // Some menus disable every descendant button while navigating; the entry belongs to the app.
-    if (this.tab_.disabled) this.tab_.disabled = false;
-    const dialogs = Array.from(document.querySelectorAll<HTMLDialogElement>('dialog[open]')).filter((dialog) => dialog !== this.dialog_);
-    const parent = dialogs.at(-1) ?? document.body;
-    for (const entry of [this.tab_, this.contact_]) if (entry.parentElement !== parent) parent.append(entry);
+  private syncEntry_(): void {
+    if (!this.formAvailable_ && this.dialog_.open) this.close_();
+    // Menus, notebooks, part close-ups and every other held object own the screen: no entry over them.
+    const covered = document.querySelector('dialog[open]:not(.fr-dialog), #part-closeup-modal') !== null;
+    this.tab_.hidden = !this.formAvailable_ || covered;
+    this.contact_.hidden = this.formAvailable_ || covered;
   }
 
   // ------------------------------------------------------------------ open and close
 
   open(): void {
-    if (!this.signedIn_ || this.dialog_.open) return;
+    if (!this.formAvailable_ || this.dialog_.open) return;
+    this.held_ = true;
     this.previousFocus_ = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const generation = ++this.generation_;
+    const generation = ++this.captureGeneration_;
     setMenuPause('feedback', true);
     try {
       if (!this.draft_ || this.view_.kind === 'filed') {
@@ -240,13 +261,13 @@ export class Feedback {
       const capture = captureFeedbackScreen();
       void capture
         .then((screenshot) => {
-          if (generation !== this.generation_ || !this.draft_ || this.draft_.locked) return;
+          if (generation !== this.captureGeneration_ || !this.draft_ || this.draft_.locked) return;
           this.draft_.screenshot = screenshot;
           this.captureState_ = 'ready';
           this.render_();
         })
         .catch((error: unknown) => {
-          if (generation !== this.generation_ || !this.draft_ || this.draft_.locked) return;
+          if (generation !== this.captureGeneration_ || !this.draft_ || this.draft_.locked) return;
           const failure = describeCaptureFailure(error);
           this.draft_.snapshot.screenshotCapture = failure;
           this.captureState_ = 'failed';
@@ -261,6 +282,7 @@ export class Feedback {
       this.captureState_ = draft.screenshot ? 'ready' : 'failed';
     }
     this.dialog_.showModal();
+    if (this.retryUntil_ > Date.now()) this.startCountdown_();
     this.render_();
     if (this.view_.kind === 'error' && this.view_.error.retryable) this.el_('fr-send').focus();
     else this.el_('fr-message').focus();
@@ -268,15 +290,25 @@ export class Feedback {
 
   /** Put the form away. An unfinished or unconfirmed draft stays for the next time. */
   private close_(): void {
-    ++this.generation_;
-    this.stopCountdown_();
     if (this.dialog_.open) this.dialog_.close();
+    this.teardown_();
+  }
+
+  /** Runs for every way the dialog can close, including a native close while a send is in flight. Idempotent. */
+  private teardown_(): void {
+    if (!this.held_) return;
+    this.held_ = false;
+    ++this.captureGeneration_;
+    // The wait survives closing; open() restarts the countdown.
+    this.stopCountdown_(false);
     if (this.view_.kind === 'filed') {
       this.draft_ = null;
       this.view_ = { kind: 'edit' };
-    } else if (this.view_.kind === 'sending') {
-      this.view_ = { kind: 'edit' };
     }
+    // An unsent capture is dropped. Only a locked draft that will resend it keeps the data.
+    if (this.draft_ && !(this.draft_.locked && this.draft_.includeScreenshot)) this.draft_.screenshot = null;
+    this.captureState_ = 'pending';
+    this.el_('fr-preview').removeAttribute('src');
     setMenuPause('feedback', false);
     const target = this.previousFocus_ && this.previousFocus_.isConnected ? this.previousFocus_ : this.signedIn_ ? this.tab_ : null;
     this.previousFocus_ = null;
@@ -289,9 +321,10 @@ export class Feedback {
   }
 
   private discardDraft_(): void {
+    ++this.sendGeneration_;
     this.draft_ = null;
     this.view_ = { kind: 'edit' };
-    this.stopCountdown_();
+    this.stopCountdown_(false);
     const input = this.dialog_.querySelector<HTMLTextAreaElement>('#fr-message');
     if (input) input.value = '';
   }
@@ -341,11 +374,11 @@ export class Feedback {
     // Retries resend this exact payload under the same id, so a lost response cannot file the report twice.
     draft.locked = true;
     this.view_ = { kind: 'sending' };
-    const generation = this.generation_;
+    const generation = this.sendGeneration_;
     this.render_();
     try {
       await submitFeedback(built.request);
-      if (generation !== this.generation_) return;
+      if (generation !== this.sendGeneration_) return;
       const ticket = draft.id.slice(0, 8).toUpperCase();
       this.draft_ = null;
       this.el_<HTMLTextAreaElement>('fr-message').value = '';
@@ -353,7 +386,7 @@ export class Feedback {
       this.render_();
       this.el_('fr-done').focus();
     } catch (error) {
-      if (generation !== this.generation_) return;
+      if (generation !== this.sendGeneration_) return;
       const view = describeSubmitError(error);
       if (view.editable) {
         // Nothing was stored. Unlock for edits and use a fresh id for the corrected report.
@@ -363,7 +396,7 @@ export class Feedback {
       }
       this.view_ = { kind: 'error', error: view };
       this.retryUntil_ = view.retryAfterSec ? Date.now() + view.retryAfterSec * 1000 : 0;
-      if (this.retryUntil_) this.startCountdown_();
+      if (this.retryUntil_ && this.dialog_.open) this.startCountdown_();
       this.render_();
       this.el_(view.retryable ? 'fr-send' : 'fr-message').focus();
     }
@@ -444,17 +477,18 @@ export class Feedback {
     else if (draft === null && !filed) status.textContent = 'The game state could not be read. Close the form and try again.';
     else status.textContent = '';
     const retrying = this.view_.kind === 'error' && this.view_.error.retryable;
-    send.textContent = sending ? 'Filing…' : retrying ? (waiting > 0 ? `Retry in ${waiting}s` : 'Retry filing') : 'File report';
+    send.textContent = sending ? 'Filing…' : waiting > 0 ? `Retry in ${waiting}s` : retrying ? 'Retry filing' : 'File report';
     send.disabled = sending || !draft || waiting > 0 || (shotOn && !draft.screenshot) || (!retrying && codePointCount(draft.message.trim()) === 0);
     this.el_<HTMLButtonElement>('fr-discard').disabled = sending;
     this.el_<HTMLButtonElement>('fr-putaway').disabled = sending;
   }
 
   dispose(): void {
-    this.stopCountdown_();
     this.discardDraft_();
+    this.stopCountdown_();
     if (this.dialog_.open) this.close_();
     this.dialog_.removeEventListener('cancel', this.boundCancel_);
+    this.dialog_.removeEventListener('close', this.boundClose_);
     this.form_.removeEventListener('submit', this.boundSubmit_);
     this.observer_.disconnect();
     this.unsubscribeDev_();

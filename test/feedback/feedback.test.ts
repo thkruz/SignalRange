@@ -1,4 +1,4 @@
-import { FEEDBACK_CONTACT_URL, Feedback } from '../../src/feedback/feedback';
+import { Feedback } from '../../src/feedback/feedback';
 import { FeedbackSubmitError } from '../../src/feedback/feedback-service';
 import { setMenuPause } from '../../src/game-menu/menu-pause';
 import { SimClock } from '../../src/simulation/sim-clock';
@@ -84,7 +84,7 @@ describe('Feedback field report', () => {
     mocks.captureScreen.mockResolvedValue(SHOT);
     mocks.captureState.mockImplementation(snapshot);
     mocks.submit.mockResolvedValue({ duplicate: false });
-    feedback = new Feedback();
+    feedback = new Feedback({ edgeLive: true });
   });
   afterEach(() => {
     feedback.dispose();
@@ -94,7 +94,7 @@ describe('Feedback field report', () => {
   it('shows a contact link and no form to signed-out players', () => {
     expect(tab().hidden).toBe(true);
     expect(contact().hidden).toBe(false);
-    expect(contact().href).toBe(FEEDBACK_CONTACT_URL);
+    expect(contact().href).toBe('https://signalrange.space/contact-us');
     expect(contact().rel).toContain('noopener');
     feedback.open();
     expect(dialog().open).toBe(false);
@@ -112,6 +112,34 @@ describe('Feedback field report', () => {
     expect(tab().hidden).toBe(false);
     expect(tab().textContent).toBe('Feedback');
     expect(contact().hidden).toBe(true);
+  });
+
+  it('shows only the contact link to a signed-in player while the Edge Function is not live', () => {
+    feedback.dispose();
+    feedback = new Feedback({ edgeLive: false });
+    signIn();
+    expect(tab().hidden).toBe(true);
+    expect(contact().hidden).toBe(false);
+    feedback.open();
+    expect(dialog().open).toBe(false);
+    mocks.isDev = true;
+    mocks.devChanged();
+    expect(tab().hidden).toBe(false);
+    expect(contact().hidden).toBe(true);
+  });
+
+  it('steps aside for other dialogs and never moves into them', async () => {
+    signIn();
+    const other = document.createElement('dialog');
+    document.body.append(other);
+    other.setAttribute('open', '');
+    await flush();
+    expect(tab().hidden).toBe(true);
+    expect(tab().parentElement).toBe(document.body);
+    other.removeAttribute('open');
+    await flush();
+    expect(tab().hidden).toBe(false);
+    expect(tab().parentElement).toBe(document.body);
   });
 
   it('opens with the screenshot off and no preview, and pauses the game', async () => {
@@ -169,6 +197,23 @@ describe('Feedback field report', () => {
     expect($('#fr-filed').hidden).toBe(true);
   });
 
+  it('draws a new report id after a report is filed', async () => {
+    signIn();
+    feedback.open();
+    await flush();
+    type('First');
+    send().click();
+    await flush();
+    $<HTMLButtonElement>('#fr-done').click();
+    feedback.open();
+    await flush();
+    type('Second');
+    send().click();
+    await flush();
+    const [first, second] = mocks.submit.mock.calls.map(([r]) => r);
+    expect(second.id).not.toBe(first.id);
+  });
+
   it('keeps the draft and reuses the same id when a retry follows a failure', async () => {
     signIn();
     mocks.submit.mockRejectedValueOnce(new FeedbackSubmitError('server', 503)).mockResolvedValueOnce({ duplicate: false });
@@ -202,6 +247,37 @@ describe('Feedback field report', () => {
     vi.advanceTimersByTime(3100);
     expect(send().disabled).toBe(false);
     expect(send().textContent).toBe('Retry filing');
+  });
+
+  it('waits a full Retry-After of 3600 s, not 60 s', async () => {
+    vi.useFakeTimers();
+    signIn();
+    mocks.submit.mockRejectedValueOnce(new FeedbackSubmitError('rate-limited', 429, 3600));
+    feedback.open();
+    await flush();
+    type('Hourly limit');
+    send().click();
+    await flush();
+    vi.advanceTimersByTime(61_000);
+    expect(send().disabled).toBe(true);
+    expect(send().textContent).toBe('Retry in 3539s');
+  });
+
+  it('keeps the Retry-After wait through Escape and reopen of the same draft', async () => {
+    vi.useFakeTimers();
+    signIn();
+    mocks.submit.mockRejectedValueOnce(new FeedbackSubmitError('rate-limited', 429, 120));
+    feedback.open();
+    await flush();
+    type('Wait for it');
+    send().click();
+    await flush();
+    dialog().dispatchEvent(new Event('cancel', { cancelable: true }));
+    feedback.open();
+    expect(send().disabled).toBe(true);
+    expect(send().textContent).toMatch(/^Retry in \d+s$/u);
+    vi.advanceTimersByTime(121_000);
+    expect(send().disabled).toBe(false);
   });
 
   it('unlocks the form with a new id after a 400 so the operator can edit', async () => {
@@ -257,9 +333,56 @@ describe('Feedback field report', () => {
     type('Never mind');
     $<HTMLButtonElement>('#fr-discard').click();
     expect(dialog().open).toBe(false);
+    expect(SimClock.isPaused('menu')).toBe(false);
     feedback.open();
     expect(input().value).toBe('');
-    setMenuPause('feedback', false);
+  });
+
+  it('releases the pause and drops the unsent capture on Escape', async () => {
+    signIn();
+    feedback.open();
+    await flush();
+    expect(SimClock.isPaused('menu')).toBe(true);
+    shot().checked = true;
+    shot().dispatchEvent(new Event('change'));
+    expect($<HTMLImageElement>('#fr-preview').getAttribute('src')).toBe(SHOT);
+    dialog().dispatchEvent(new Event('cancel', { cancelable: true }));
+    expect(SimClock.isPaused('menu')).toBe(false);
+    expect($<HTMLImageElement>('#fr-preview').hasAttribute('src')).toBe(false);
+  });
+
+  it('runs the same teardown when the dialog is closed natively during a send', async () => {
+    signIn();
+    const opener = document.createElement('button');
+    document.body.append(opener);
+    opener.focus();
+    let finish: (v: { duplicate: boolean }) => void = () => {};
+    mocks.submit.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    feedback.open();
+    type('Slow link');
+    send().click();
+    expect(SimClock.isPaused('menu')).toBe(true);
+    dialog().close();
+    dialog().dispatchEvent(new Event('close'));
+    expect(SimClock.isPaused('menu')).toBe(false);
+    expect(document.activeElement).toBe(opener);
+    finish({ duplicate: false });
+    await flush();
+    expect(SimClock.isPaused('menu')).toBe(false);
+  });
+
+  it('does not send a capture that was taken and then toggled off', async () => {
+    signIn();
+    feedback.open();
+    await flush();
+    shot().checked = true;
+    shot().dispatchEvent(new Event('change'));
+    shot().checked = false;
+    shot().dispatchEvent(new Event('change'));
+    type('No picture please');
+    send().click();
+    await flush();
+    expect(mocks.submit.mock.calls[0][0].screenshot).toBeNull();
   });
 
   it('drops a draft when another account signs in', async () => {

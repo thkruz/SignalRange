@@ -9,11 +9,20 @@
  * `npx supabase functions serve feedback-submit`) with a real sign-up. It needs the bundle built with that
  * stack's anon key and FEEDBACK_LOCAL_ANON_KEY set to the same key.
  *
+ * Also build with PUBLIC_USER_API_URL=http://127.0.0.1:54322 (the intercepted progress API) and PUBLIC_FEEDBACK_EDGE_LIVE=true; without it signed-in non-developers see the
+ * contact link only (the Edge Function is not live for everyone yet).
+ *
  * FEEDBACK_SHOT_DIR=<dir> additionally writes the review screenshots at 1600x900.
  */
+import { readFileSync } from 'node:fs';
 import { expect, type Page, type Route, test } from '@playwright/test';
+import { validateFeedback } from '../../src/feedback/feedback-rules';
+
+const SCENARIO_IDS = new Set<string>(JSON.parse(readFileSync('supabase/functions/feedback-submit/scenario-ids.json', 'utf8')) as string[]);
 
 const API = 'http://127.0.0.1:54321';
+// Player progress API; the bundle is built with PUBLIC_USER_API_URL pointing here so nothing leaves the machine.
+const USER_API = 'http://127.0.0.1:54322';
 const USER_ID = '7d1c3a52-0b0e-4c8f-9a52-3f6a9e1d2b44';
 const LOCAL_STACK = process.env.FEEDBACK_LOCAL_STACK === '1';
 const SHOT_DIR = process.env.FEEDBACK_SHOT_DIR ?? '';
@@ -21,6 +30,8 @@ const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  // The real function sends this; without it Chromium hides Retry-After from a cross-origin page.
+  'Access-Control-Expose-Headers': 'Retry-After',
 };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 
@@ -76,12 +87,23 @@ async function installFakeApi(page: Page, statuses: Array<{ status: number; head
   const received: Received[] = [];
   // Anything else aimed at the (fake) project gets an empty answer, never a real network call.
   await page.route(`${API}/**`, (route) => route.fulfill({ status: 200, contentType: 'application/json', headers: CORS, body: '[]' }));
+  await page.route(`${USER_API}/**`, (route) => {
+    const request = route.request();
+    if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS });
+    const path = new URL(request.url()).pathname;
+    // No saved checkpoint; an empty progress list and summary everywhere else.
+    if (path.endsWith('/checkpoint')) return route.fulfill({ status: 404, contentType: 'application/json', headers: CORS, body: JSON.stringify({ error: 'none' }) });
+    return route.fulfill({ status: 200, contentType: 'application/json', headers: CORS, body: JSON.stringify({ scenarios: [], summary: {}, preferences: {}, achievements: [] }) });
+  });
   await page.route(`${API}/auth/v1/user`, (route) => route.fulfill({ status: 200, contentType: 'application/json', headers: CORS, body: JSON.stringify(fakeSession().user) }));
   await page.route(`${API}/functions/v1/feedback-submit`, async (route: Route) => {
     const request = route.request();
     if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS });
     const body = JSON.parse(request.postData() ?? '{}') as Record<string, unknown>;
     received.push({ body, authorization: request.headers().authorization });
+    // The same shared rules the server runs: a body the real handler would refuse fails here.
+    const verdict = validateFeedback(body, 'player', { isRegisteredScenario: (id) => SCENARIO_IDS.has(id) });
+    expect(verdict, JSON.stringify(verdict)).toMatchObject({ ok: true });
     const next = statuses[Math.min(received.length - 1, statuses.length - 1)];
     const ok = next.status === 200;
     return route.fulfill({
@@ -109,6 +131,20 @@ function expectPayloadShape(received: Received): void {
 
 const entry = (page: Page) => page.getByRole('button', { name: 'Feedback' });
 
+/** The campaign grid has finished downloading progress, so the tab is shown over the real menu. */
+async function openMenu(page: Page): Promise<void> {
+  await page.goto('/');
+  await expect(entry(page)).toBeVisible();
+  await expect(page.locator('.selection-loading-screen:visible')).toHaveCount(0, { timeout: 30_000 });
+}
+
+async function openScenario(page: Page): Promise<void> {
+  await page.goto('/campaigns/nats/scenarios/nats-scenario1');
+  // The prologue is an open dialog, so the entry correctly stays away until the player starts the shift.
+  await page.getByRole('button', { name: 'Start', exact: true }).click({ timeout: 30_000 });
+  await expect(entry(page)).toBeVisible({ timeout: 30_000 });
+}
+
 test.describe('field report form', () => {
   test.use({ viewport: { width: 1600, height: 900 } });
   test.skip(LOCAL_STACK, 'the intercepted variant is skipped when FEEDBACK_LOCAL_STACK=1');
@@ -116,8 +152,7 @@ test.describe('field report form', () => {
   test('a signed-in player files a report; a failed first send is retried with the same id', async ({ page }) => {
     const received = await installFakeApi(page, [{ status: 503 }, { status: 200 }]);
     await seedSession(page, fakeSession());
-    await page.goto('/');
-    await expect(entry(page)).toBeVisible();
+    await openMenu(page);
     const shot = async (name: string) => {
       if (SHOT_DIR) await page.screenshot({ path: `${SHOT_DIR}/${name}.png` });
     };
@@ -154,17 +189,25 @@ test.describe('field report form', () => {
     await expect(dialog).toBeHidden();
     await entry(page).click();
     await expect(page.locator('#fr-message')).toHaveValue('');
+    await page.locator('#fr-message').fill('A second, separate report.');
+    await page.locator('#fr-send').click();
+    await expect(page.locator('#fr-filed')).toBeVisible();
+    expect(received).toHaveLength(3);
+    expect(received[2].body.id).not.toBe(received[1].body.id);
+    await page.locator('#fr-done').click();
+    await expect.poll(() => page.evaluate(() => document.querySelector('dialog[open]') === null)).toBe(true);
   });
 
   test('the screenshot is off by default and, when attached, is a baseline JPEG inside 1920x1080', async ({ page }) => {
     const received = await installFakeApi(page, [{ status: 200 }]);
     await seedSession(page, fakeSession());
-    await page.goto('/');
+    await openScenario(page);
     await entry(page).click();
     await expect(page.locator('#fr-shot')).not.toBeChecked();
     await page.locator('#fr-message').fill('The menu looks wrong at this size.');
     await page.getByText('Attach a screen capture').click();
     await expect(page.locator('#fr-preview')).toBeVisible();
+    const previewSrc = await page.locator('#fr-preview').getAttribute('src');
     await expect(page.locator('#fr-manifest')).toContainText('Screenshot');
     await expect(page.locator('.fr-consent')).toBeVisible();
     if (SHOT_DIR) await page.screenshot({ path: `${SHOT_DIR}/03-screenshot-on.png` });
@@ -174,6 +217,7 @@ test.describe('field report form', () => {
     expect(received).toHaveLength(1);
     expectPayloadShape(received[0]);
     const screenshot = received[0].body.screenshot as string;
+    expect(screenshot).toBe(previewSrc);
     expect(screenshot.startsWith('data:image/jpeg;base64,')).toBe(true);
     const bytes = Buffer.from(screenshot.slice('data:image/jpeg;base64,'.length), 'base64');
     expect(bytes.length).toBeLessThanOrEqual(1_000_000);
@@ -184,10 +228,83 @@ test.describe('field report form', () => {
     expect(info!.height).toBeLessThanOrEqual(1080);
   });
 
+  test('a capture that was switched on and then off is not sent', async ({ page }) => {
+    const received = await installFakeApi(page, [{ status: 200 }]);
+    await seedSession(page, fakeSession());
+    await openMenu(page);
+    await entry(page).click();
+    await page.locator('#fr-message').fill('No picture, please.');
+    await page.getByText('Attach a screen capture').click();
+    await expect(page.locator('#fr-preview')).toBeVisible();
+    await page.getByText('Attach a screen capture').click();
+    await expect(page.locator('#fr-preview')).toBeHidden();
+    await page.locator('#fr-send').click();
+    await expect(page.locator('#fr-filed')).toBeVisible();
+    expect(received).toHaveLength(1);
+    expect(received[0].body.screenshot).toBeNull();
+  });
+
+  test('a 429 shows the full Retry-After countdown and it survives Escape and reopen', async ({ page }) => {
+    const received = await installFakeApi(page, [{ status: 429, headers: { 'Retry-After': '3600' } }, { status: 200 }]);
+    await seedSession(page, fakeSession());
+    await openMenu(page);
+    await entry(page).click();
+    await page.locator('#fr-message').fill('Hitting the hourly limit.');
+    await page.locator('#fr-send').click();
+    await expect(page.locator('#fr-status')).toContainText('Retry in 60 minutes');
+    await expect(page.locator('#fr-send')).toBeDisabled();
+    await expect(page.locator('#fr-send')).toHaveText(/^Retry in (3599|3600)s$/u);
+    if (SHOT_DIR) await page.screenshot({ path: `${SHOT_DIR}/07-rate-limit-countdown.png` });
+    await page.keyboard.press('Escape');
+    await expect(page.locator('dialog.fr-dialog')).toBeHidden();
+    await entry(page).click();
+    await expect(page.locator('#fr-send')).toBeDisabled();
+    await expect(page.locator('#fr-send')).toHaveText(/^Retry in \d+s$/u);
+    expect(received).toHaveLength(1);
+  });
+
+  test('a failed capture leaves a visible note and nothing is attached', async ({ page }) => {
+    await page.addInitScript(() => {
+      HTMLCanvasElement.prototype.toBlob = (callback: BlobCallback) => callback(null);
+    });
+    const received = await installFakeApi(page, [{ status: 200 }]);
+    await seedSession(page, fakeSession());
+    await openMenu(page);
+    await entry(page).click();
+    await expect(page.locator('#fr-shot-note')).toContainText('could not be made');
+    await expect(page.locator('#fr-shot')).toBeDisabled();
+    await page.locator('#fr-message').fill('The capture failed on my machine.');
+    if (SHOT_DIR) await page.screenshot({ path: `${SHOT_DIR}/08-capture-failed-note.png` });
+    await page.locator('#fr-send').click();
+    await expect(page.locator('#fr-filed')).toBeVisible();
+    expect(received[0].body.screenshot).toBeNull();
+  });
+
+  test('the entry steps aside while another dialog is open', async ({ page }) => {
+    await installFakeApi(page, [{ status: 200 }]);
+    await seedSession(page, fakeSession());
+    await openMenu(page);
+    await entry(page).click();
+    await expect(page.locator('dialog.fr-dialog')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('dialog.fr-dialog')).toBeHidden();
+    await expect(entry(page)).toBeVisible();
+    await page.evaluate(() => {
+      const other = document.createElement('dialog');
+      other.id = 'e2e-foreign';
+      document.body.append(other);
+      other.show();
+    });
+    await expect(entry(page)).toBeHidden();
+    expect(await page.evaluate(() => document.querySelector('#e2e-foreign')?.contains(document.querySelector('.fr-tab')))).toBe(false);
+    await page.evaluate(() => document.querySelector<HTMLDialogElement>('#e2e-foreign')?.close());
+    await expect(entry(page)).toBeVisible();
+  });
+
   test('Escape puts the form away and returns focus to the entry', async ({ page }) => {
     await installFakeApi(page, [{ status: 200 }]);
     await seedSession(page, fakeSession());
-    await page.goto('/');
+    await openMenu(page);
     await entry(page).focus();
     await entry(page).click();
     await expect(page.locator('dialog.fr-dialog')).toBeVisible();
@@ -201,7 +318,9 @@ test.describe('field report form', () => {
     await installFakeApi(page, [{ status: 200 }]);
     await page.goto('/');
     await expect(page.getByRole('link', { name: 'Contact' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Contact' })).toHaveAttribute('href', 'https://signalrange.space/contact-us');
     await expect(entry(page)).toHaveCount(0);
+    if (SHOT_DIR) await page.screenshot({ path: `${SHOT_DIR}/06-signed-out-contact.png` });
     await expect(page.locator('dialog.fr-dialog')).toBeHidden();
   });
 });

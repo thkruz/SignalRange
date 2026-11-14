@@ -89,6 +89,8 @@ function respond(status: number, body: Record<string, unknown>, deps: Deps, extr
       'Access-Control-Allow-Origin': deps.allowedOrigin ?? '*',
       'Access-Control-Allow-Headers': 'authorization, content-type, apikey, x-client-info',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      // Retry-After is not CORS-safelisted; without this the browser hides it from the game.
+      'Access-Control-Expose-Headers': 'Retry-After',
       Vary: 'Origin',
       ...extra,
     },

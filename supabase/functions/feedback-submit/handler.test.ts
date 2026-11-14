@@ -146,6 +146,9 @@ Deno.test('GET is 405, OPTIONS is 204 with CORS', async () => {
   const o = await handleFeedbackRequest(new Request('http://local/', { method: 'OPTIONS' }), f.deps);
   assert.equal(o.status, 204);
   assert.ok(o.headers.get('access-control-allow-methods')?.includes('POST'));
+  const allowed = (o.headers.get('access-control-allow-headers') ?? '').split(',').map((h) => h.trim().toLowerCase());
+  for (const h of ['authorization', 'content-type', 'apikey']) assert.ok(allowed.includes(h), h);
+  assert.equal(o.headers.get('access-control-expose-headers'), 'Retry-After');
 });
 
 // ------------------------------------------------------------------ happy path and validation
@@ -208,6 +211,7 @@ Deno.test('6th submission within an hour is refused with 429 and Retry-After', a
   const r = await handleFeedbackRequest(post(body({ id: '123e4567-e89b-12d3-a456-426614174009' })), f.deps);
   assert.equal(r.status, 429);
   assert.ok(Number(r.headers.get('retry-after')) >= 1);
+  assert.equal(r.headers.get('access-control-expose-headers'), 'Retry-After');
   assert.equal((await json(r)).scope, 'hour');
 });
 

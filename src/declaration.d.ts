@@ -8,6 +8,8 @@ declare global {
   const __AUTHORING__: boolean;
   /** KeepTrack embed license key (env KT_EMBED_LICENSE at build time); empty string when unset. Domain-locked, not a secret. */
   const __KT_EMBED_LICENSE__: string;
+  /** True when env PUBLIC_FEEDBACK_EDGE_LIVE is "true" at build time: the feedback-submit function is deployed and smoked, so every signed-in player sees the Feedback form. */
+  const __FEEDBACK_EDGE_LIVE__: boolean;
 
   interface Window {
     signalRange: App;

@@ -129,6 +129,7 @@ const config: rspack.Configuration = {
       'process.env.PUBLIC_ASSETS_BASE_URL': JSON.stringify(process.env.PUBLIC_ASSETS_BASE_URL || ''),
       'process.env.PUBLIC_DEV_USER_IDS': JSON.stringify(process.env.PUBLIC_DEV_USER_IDS || ''),
       __KT_EMBED_LICENSE__: JSON.stringify(process.env.KT_EMBED_LICENSE || ''),
+      __FEEDBACK_EDGE_LIVE__: JSON.stringify(process.env.PUBLIC_FEEDBACK_EDGE_LIVE === 'true'),
       'process.env.PUBLIC_LOG_LEVEL': JSON.stringify(process.env.PUBLIC_LOG_LEVEL || 'LOG'),
       __APP_VERSION__: JSON.stringify(pkg.version),
       __GIT_COMMIT_SHA__: JSON.stringify(getGitCommitSha()),

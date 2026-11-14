@@ -1,3 +1,4 @@
+import { describeSubmitError } from '../../src/feedback/feedback-form';
 import { FEEDBACK_ENDPOINT_PATH, type FeedbackRequest, FeedbackSubmitError, submitFeedback } from '../../src/feedback/feedback-service';
 
 const token = vi.hoisted(() => ({ value: 'jwt-1' as string | null }));
@@ -62,6 +63,13 @@ describe('submitFeedback', () => {
   it('reads Retry-After from a 429', async () => {
     const fetchMock = vi.fn().mockResolvedValue(reply(429, { ok: false }, { 'Retry-After': '90' }));
     await expect(submitFeedback(request, fetchMock)).rejects.toMatchObject({ kind: 'rate-limited', retryAfterSec: 90 });
+  });
+
+  it('waits the full Retry-After of an hourly limit, not the 60 s fallback', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(reply(429, { ok: false }, { 'Retry-After': '3600' }));
+    const error = (await submitFeedback(request, fetchMock).catch((e: unknown) => e)) as FeedbackSubmitError;
+    expect(error.retryAfterSec).toBe(3600);
+    expect(describeSubmitError(error).retryAfterSec).toBe(3600);
   });
 
   it('ignores a malformed Retry-After', async () => {

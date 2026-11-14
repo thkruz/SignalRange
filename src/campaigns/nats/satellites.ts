@@ -1,3 +1,4 @@
+// probe: selector check, do not merge
 import { Satellite, type SignalDegradationConfig, TransponderConfig } from '@app/equipment/satellite/satellite';
 import type { TransponderPhysics } from '@app/equipment/satellite/transponder-model';
 import { SignalOrigin } from '@app/signal-origin';

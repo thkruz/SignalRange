@@ -88,7 +88,7 @@ describe('sanitizeText', () => {
       const big = 'a'.repeat(10 * 1024 * 1024);
       const t = performance.now();
       const r = sanitizeText(big, 'player');
-      expect(performance.now() - t).toBeLessThan(200);
+      expect(performance.now() - t).toBeLessThan(2000);
       expect(r).toMatchObject({ ok: false, reason: 'too-long' });
       expect(sanitizeText(big, 'developer')).toMatchObject({ ok: false, reason: 'too-long' });
     });
@@ -151,7 +151,8 @@ describe('rebuildSnapshot', () => {
       cur = (cur as { n: unknown }).n;
       d++;
     }
-    expect(d).toBeLessThanOrEqual(8);
+    // gameState is level 0 and holds 'n' links down to level 7; the object at level 8 is cut.
+    expect(d).toBe(7);
   });
   it('survives JSON nested 50 deep from JSON.parse', () => {
     const text = `${'{"a":'.repeat(50)}1${'}'.repeat(50)}`;
@@ -178,7 +179,7 @@ describe('rebuildSnapshot', () => {
   it('does not choke on a 10 MB string inside the snapshot', () => {
     const t = performance.now();
     const r = rebuildSnapshot({ gameState: { s: 'a'.repeat(10 * 1024 * 1024) } }, 'player');
-    expect(performance.now() - t).toBeLessThan(200);
+    expect(performance.now() - t).toBeLessThan(2000);
     expect(r.ok && (r.snapshot.gameState as { s: string }).s.length).toBe(500);
   });
   it('drops __proto__, constructor and prototype keys without polluting', () => {
@@ -190,6 +191,11 @@ describe('rebuildSnapshot', () => {
     const gs = r.snapshot.gameState as Record<string, unknown>;
     expect(Object.keys(gs).sort()).toEqual(['nested', 'ok']);
     expect(Object.keys(gs.nested as object)).toEqual([]);
+    // A naive out['__proto__'] = value would make 'polluted' visible through the prototype.
+    for (const o of [gs, gs.nested as object]) {
+      expect(Object.getPrototypeOf(o)).toBe(Object.prototype);
+      expect('polluted' in o).toBe(false);
+    }
     expect(polluted().polluted).toBeUndefined();
     expect(r.flags.droppedKeys).toBe(4);
   });

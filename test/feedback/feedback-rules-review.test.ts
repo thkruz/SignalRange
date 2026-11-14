@@ -46,7 +46,7 @@ describe('review findings (phase-46 PR 230)', () => {
   });
 
   it('finding 2: every invisible character class is stripped, one fixture each', () => {
-    const fixtures = ['؜', '‎', '‏', '᠎', '͏', '­', '⁡', '⁤', '⁪', '⁯', '￹', '￻', 'ᅟ', 'ᅠ', 'ㅤ', 'ﾠ', '឴', '\u{1D173}', '\u{1D17A}', '\u{E0080}', '\u{E0FFF}', '‌', '⁦'];
+    const fixtures = ['؜', '‎', '‏', '᠎', '͏', '­', '⁡', '⁤', '⁪', '⁯', '￹', '￻', 'ᅟ', 'ᅠ', 'ㅤ', 'ﾠ', '឴', '\u{1D173}', '\u{1D17A}', '\u{E0080}', '\u{E0FFF}', '\u200C', '⁦'];
     for (const ch of fixtures) {
       const label = `U+${ch.codePointAt(0)?.toString(16)}`;
       const r = text(`a${ch}b`);
@@ -109,13 +109,13 @@ describe('review findings (phase-46 PR 230)', () => {
   });
 
   it('finding 7: ZWJ between emoji is kept and does not raise a risk flag', () => {
-    const family = '\u{1F468}‍\u{1F469}‍\u{1F467}';
+    const family = '\u{1F468}\u200D\u{1F469}\u200D\u{1F467}';
     const r = text(family);
     expect(r.ok && r.text).toBe(family);
     expect(wasStripped(r.stripped)).toBe(false);
-    expect(kept('a‍b')).toBe('ab');
-    expect(kept('\u{1F468}‍a')).toBe('\u{1F468}a');
-    expect(kept('❤️‍\u{1F525}')).toBe('❤️‍\u{1F525}');
+    expect(kept('a\u200Db')).toBe('ab');
+    expect(kept('\u{1F468}\u200Da')).toBe('\u{1F468}a');
+    expect(kept('❤️\u200D\u{1F525}')).toBe('❤️\u200D\u{1F525}');
   });
 
   it('finding 8: collapsing blank lines alone is not a risk flag', () => {

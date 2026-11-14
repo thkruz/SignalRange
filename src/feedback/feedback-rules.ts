@@ -115,7 +115,7 @@ function stripInvisibles(input: string, counts: StripCounts): string {
       if (prev === '\uFE0F' || prev === '\uFE0E') prev = cpBefore(whole, offset - 1);
       if ((PICTO_ONE.test(prev) || EMOJI_MODIFIER_ONE.test(prev)) && PICTO_ONE.test(cpAt(whole, offset + 1))) return ch;
     }
-    if ((ch === '‌' || ch === '‍') && isSameScriptJoin(before, cpAt(whole, offset + 1))) return ch;
+    if ((ch === '\u200C' || ch === '\u200D') && isSameScriptJoin(before, cpAt(whole, offset + 1))) return ch;
     if (VS_ONE.test(ch)) counts.variationSelectors += 1;
     else if (BIDI_ONE.test(ch)) counts.bidi += 1;
     else if (TAG_ONE.test(ch)) counts.tags += 1;

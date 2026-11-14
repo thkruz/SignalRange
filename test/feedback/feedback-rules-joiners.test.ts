@@ -7,10 +7,10 @@ const intact = (s: string) => {
 
 describe('feedback rules: legitimate joiners and emoji', () => {
   it.each([
-    ['woman technologist, medium skin', '\u{1F469}\u{1F3FD}‍\u{1F4BB}'],
-    ['runner with tone and sign', '\u{1F3C3}\u{1F3FD}‍♀️'],
-    ['red hair with tone', '\u{1F9D1}\u{1F3FB}‍\u{1F9B0}'],
-    ['handshake with two tones', '\u{1F469}\u{1F3FD}‍\u{1F91D}‍\u{1F468}\u{1F3FF}'],
+    ['woman technologist, medium skin', '\u{1F469}\u{1F3FD}\u200D\u{1F4BB}'],
+    ['runner with tone and sign', '\u{1F3C3}\u{1F3FD}\u200D♀️'],
+    ['red hair with tone', '\u{1F9D1}\u{1F3FB}\u200D\u{1F9B0}'],
+    ['handshake with two tones', '\u{1F469}\u{1F3FD}\u200D\u{1F91D}\u200D\u{1F468}\u{1F3FF}'],
   ])('keeps a ZWJ after a skin-tone modifier: %s', (_n, s) => {
     expect(intact(s)).toBe(true);
   });
@@ -35,16 +35,16 @@ describe('feedback rules: legitimate joiners and emoji', () => {
   });
 
   it.each([
-    ['Persian ZWNJ', 'می‌خواهم'],
-    ['Sinhala ZWJ', 'ශ්‍රී'],
-    ['Bengali ZWJ', 'র‍্য'],
-    ['Devanagari ZWJ', 'क्‍ष'],
+    ['Persian ZWNJ', 'می\u200Cخواهم'],
+    ['Sinhala ZWJ', 'ශ්\u200Dරී'],
+    ['Bengali ZWJ', 'র\u200D্য'],
+    ['Devanagari ZWJ', 'क्\u200Dष'],
   ])('keeps %s between same-script letters without a risk flag', (_n, s) => {
     expect(intact(s)).toBe(true);
   });
 
   it('still strips a joiner between Latin letters, across scripts, or in a run', () => {
-    for (const j of ['‌', '‍']) {
+    for (const j of ['\u200C', '\u200D']) {
       const latin = sanitizeText(`a${j}b`, 'player');
       expect(latin.ok && latin.text).toBe('ab');
       expect(latin.stripped.zeroWidth).toBe(1);

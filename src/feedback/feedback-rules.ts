@@ -38,15 +38,19 @@ const emptyCounts = (): StripCounts => ({ controls: 0, bidi: 0, zeroWidth: 0, ta
 // C0 (except \t=09 and \n=0A) and C1 controls, plus DEL.
 // biome-ignore lint/suspicious/noControlCharactersInRegex: matching control characters is the point
 const CONTROLS = /[\u0000-\u0008\u000B-\u001F\u007F-\u009F]/gu;
-const BIDI = /[\u202A-\u202E\u2066-\u2069]/gu;
-const ZERO_WIDTH = /[\u200B-\u200D\u2060\uFEFF]/gu;
-const TAGS = /[\u{E0000}-\u{E007F}]/gu;
-// A single variation selector after an emoji is legitimate; runs are a smuggling channel.
-const VARIATION_RUNS = /[\uFE00-\uFE0F\u{E0100}-\u{E01EF}]{2,}/gu;
+// Invisible and format characters: every default-ignorable and format (Cf) code point, the bidi
+// controls, the Hangul fillers and the whole tag/plane-14 block. Variation selectors and ZWJ are in
+// this class too; the callback below keeps the few legitimate emoji uses.
+const INVISIBLES = /[\p{Bidi_Control}\p{Default_Ignorable_Code_Point}\p{Cf}\u115F\u1160\u3164\uFFA0\u{E0000}-\u{E0FFF}]/gu;
+const BIDI_ONE = /^\p{Bidi_Control}$/u;
+const TAG_ONE = /^[\u{E0000}-\u{E0FFF}]$/u;
+const VS_ONE = /^[\uFE00-\uFE0F\u{E0100}-\u{E01EF}]$/u;
+const PICTO_ONE = /^\p{Extended_Pictographic}$/u;
+const KEYCAP_BASE = /^[#*0-9]$/u;
 // With the u flag, only unpaired surrogates match this class.
 const LONE_SURROGATES = /[\uD800-\uDFFF]/gu;
-const BLANK_LINE_RUNS = /\n(?:[ \t]*\n){3,}/gu;
-const LINE_ENDINGS = /\r\n?/gu;
+const BLANK_LINE_RUNS = /\n(?:[\p{Zs}\t]*\n){3,}/gu;
+const LINE_ENDINGS = /\r\n?|[\u2028\u2029]/gu;
 
 function stripAll(input: string, re: RegExp): { text: string; count: number } {
   let count = 0;
@@ -57,6 +61,49 @@ function stripAll(input: string, re: RegExp): { text: string; count: number } {
   return { text, count };
 }
 
+/** Code point that ends just before index i ('' at the start). Input has no lone surrogates. */
+function cpBefore(s: string, i: number): string {
+  if (i <= 0) return '';
+  const low = s.charCodeAt(i - 1);
+  if (low >= 0xdc00 && low <= 0xdfff && i >= 2) return s.slice(i - 2, i);
+  return s.slice(i - 1, i);
+}
+
+/** Code point that starts at index i ('' at the end). */
+function cpAt(s: string, i: number): string {
+  if (i >= s.length) return '';
+  const cp = s.codePointAt(i) as number;
+  return String.fromCodePoint(cp);
+}
+
+function stripInvisibles(input: string, counts: StripCounts): string {
+  return input.replace(INVISIBLES, (ch, offset: number, whole: string) => {
+    const before = cpBefore(whole, offset);
+    if (ch === '\uFE0F' || ch === '\uFE0E') {
+      if (PICTO_ONE.test(before)) return ch;
+      if (ch === '\uFE0F' && KEYCAP_BASE.test(before) && cpAt(whole, offset + 1) === '\u20E3') return ch;
+    } else if (ch === '\u200D') {
+      let prev = before;
+      if (prev === '\uFE0F' || prev === '\uFE0E') prev = cpBefore(whole, offset - 1);
+      if (PICTO_ONE.test(prev) && PICTO_ONE.test(cpAt(whole, offset + 1))) return ch;
+    }
+    if (VS_ONE.test(ch)) counts.variationSelectors += 1;
+    else if (BIDI_ONE.test(ch)) counts.bidi += 1;
+    else if (TAG_ONE.test(ch)) counts.tags += 1;
+    else counts.zeroWidth += 1;
+    return '';
+  });
+}
+
+/** Cut to at most max UTF-16 units without leaving half of a surrogate pair. */
+function safeSlice(s: string, max: number): string {
+  if (s.length <= max) return s;
+  let end = max;
+  const last = s.charCodeAt(end - 1);
+  if (end > 0 && last >= 0xd800 && last <= 0xdbff) end -= 1;
+  return s.slice(0, end);
+}
+
 function cleanCore(input: string, counts: StripCounts): string {
   let text = input.replace(LINE_ENDINGS, '\n').normalize('NFC');
   let r = stripAll(text, LONE_SURROGATES);
@@ -65,24 +112,14 @@ function cleanCore(input: string, counts: StripCounts): string {
   r = stripAll(text, CONTROLS);
   text = r.text;
   counts.controls += r.count;
-  r = stripAll(text, BIDI);
-  text = r.text;
-  counts.bidi += r.count;
-  r = stripAll(text, ZERO_WIDTH);
-  text = r.text;
-  counts.zeroWidth += r.count;
-  r = stripAll(text, TAGS);
-  text = r.text;
-  counts.tags += r.count;
-  r = stripAll(text, VARIATION_RUNS);
-  text = r.text;
-  counts.variationSelectors += r.count;
-  return text;
+  text = stripInvisibles(text, counts);
+  // Stripping can unblock a composition (e + ZWSP + U+0301), so normalise again.
+  return text.normalize('NFC');
 }
 
-/** True when anything was removed, so the server can set a risk flag. */
+/** True when a hostile or invisible character was removed (blank-line collapsing is only formatting). */
 export function wasStripped(counts: StripCounts): boolean {
-  return Object.values(counts).some((n) => n > 0);
+  return Object.entries(counts).some(([name, n]) => name !== 'blankLinesCollapsed' && n > 0);
 }
 
 export function sanitizeText(input: unknown, tier: FeedbackTier): TextResult {
@@ -104,18 +141,23 @@ export function sanitizeText(input: unknown, tier: FeedbackTier): TextResult {
 
 // ---------------------------------------------------------------- field validators
 
-export const ROUTE_PATTERN = /^\/[a-z0-9/-]{0,128}$/u;
+export const ROUTE_PATTERN = /^(?!.*\/\/)\/[a-z0-9/-]{0,128}$/u;
 export const SEMVER_PATTERN = /^\d{1,9}\.\d{1,9}\.\d{1,9}(?:-[0-9A-Za-z.-]{1,64})?(?:\+[0-9A-Za-z.-]{1,64})?$/u;
 export const COMMIT_PATTERN = /^[0-9a-f]{7,40}$/iu;
 export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 
+export const CAPTURED_AT_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/u;
+export const SCREENSHOT_PATTERN = /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/u;
+
 export const isFeedbackCategory = (v: unknown): v is FeedbackCategory => typeof v === 'string' && (FEEDBACK_CATEGORIES as readonly string[]).includes(v);
 export const isValidRoute = (v: unknown): v is string => typeof v === 'string' && v.length <= 129 && ROUTE_PATTERN.test(v);
 export const isValidVersion = (v: unknown): v is string => typeof v === 'string' && v.length <= 140 && SEMVER_PATTERN.test(v);
+export const isValidCapturedAt = (v: unknown): v is string => typeof v === 'string' && v.length <= 24 && CAPTURED_AT_PATTERN.test(v) && !Number.isNaN(Date.parse(v));
 export const isValidCommit = (v: unknown): v is string => typeof v === 'string' && COMMIT_PATTERN.test(v);
 export const isValidSubmissionId = (v: unknown): v is string => typeof v === 'string' && UUID_PATTERN.test(v);
 
 export interface FeedbackDeps {
+  /** Must be an own-property check (Set.has or Object.hasOwn), never `id in registry`: 'constructor' and '__proto__' are not scenarios. */
   isRegisteredScenario(id: string): boolean;
 }
 
@@ -165,8 +207,12 @@ export function utf8Length(s: string): number {
   return n;
 }
 
+/** Visited keys (valid or dropped) allowed per snapshot, as a multiple of maxKeys. */
+const KEY_VISIT_FACTOR = 4;
+
 class Rebuilder {
   keys = 0;
+  visited = 0;
   readonly flags: SnapshotFlags = {
     stripped: emptyCounts(),
     truncatedStrings: 0,
@@ -176,15 +222,14 @@ class Rebuilder {
     keyLimitHit: false,
   };
 
-  str(v: string): string {
+  str(v: string, maxChars: number = SNAPSHOT_LIMITS.maxStringChars): string {
     // Bound the work first: a huge string never reaches the regexes.
-    const cap = SNAPSHOT_LIMITS.maxStringChars * 4;
-    let s = v.length > cap ? v.slice(0, cap) : v;
+    const cap = maxChars * 4;
+    let s = v.length > cap ? safeSlice(v, cap) : v;
     s = cleanCore(s, this.flags.stripped).trim();
-    if (s.length > SNAPSHOT_LIMITS.maxStringChars || v.length > cap) {
+    if (s.length > maxChars || v.length > cap) {
       this.flags.truncatedStrings += 1;
-      // Slicing can split a surrogate pair; remove any half left behind.
-      s = s.slice(0, SNAPSHOT_LIMITS.maxStringChars).replace(LONE_SURROGATES, '');
+      s = safeSlice(s, maxChars);
     }
     return s;
   }
@@ -228,6 +273,12 @@ class Rebuilder {
     const source = v as Record<string, unknown>;
     const out: Record<string, unknown> = {};
     for (const k of Object.keys(source)) {
+      // Dropped keys cost scan time too, so every visited key counts against a budget.
+      this.visited += 1;
+      if (this.visited > SNAPSHOT_LIMITS.maxKeys * KEY_VISIT_FACTOR) {
+        this.flags.keyLimitHit = true;
+        break;
+      }
       const safe = this.key(k);
       if (safe === null) {
         this.flags.droppedKeys += 1;
@@ -270,7 +321,7 @@ export function rebuildSnapshot(raw: unknown, tier: FeedbackTier): SnapshotResul
   const rb = new Rebuilder();
   if (!isRecord(raw)) return { ok: false, reason: 'not-an-object', flags: rb.flags };
   const snap: CleanSnapshot = {};
-  if (typeof raw.capturedAt === 'string') snap.capturedAt = rb.str(raw.capturedAt).slice(0, 40);
+  if (isValidCapturedAt(raw.capturedAt)) snap.capturedAt = raw.capturedAt;
   if (isValidVersion(raw.version)) snap.version = raw.version;
   if (isValidCommit(raw.commit)) snap.commit = raw.commit;
   if (isValidRoute(raw.route)) snap.route = raw.route;
@@ -283,7 +334,7 @@ export function rebuildSnapshot(raw: unknown, tier: FeedbackTier): SnapshotResul
   if (isRecord(raw.screen)) snap.screen = { dialogs: stringList(rb, raw.screen.dialogs), tabs: stringList(rb, raw.screen.tabs) };
   if (isRecord(raw.screenshotCapture)) {
     const c = raw.screenshotCapture;
-    const f = (x: unknown): string => (typeof x === 'string' ? rb.str(x).slice(0, 200) : '');
+    const f = (x: unknown): string => (typeof x === 'string' ? rb.str(x, 200) : '');
     snap.screenshotCapture = { status: f(c.status), renderer: f(c.renderer), stage: f(c.stage), reason: f(c.reason), message: f(c.message) };
   }
   if ('gameState' in raw) {
@@ -343,7 +394,7 @@ export function validateFeedback(payload: unknown, tier: FeedbackTier, deps: Fee
   let screenshot: string | null = null;
   const shot = payload.screenshot;
   if (shot !== undefined && shot !== null) {
-    if (typeof shot !== 'string' || shot.length > MAX_SCREENSHOT_CHARS || !shot.startsWith('data:image/jpeg;base64,')) reasons.push('invalid-screenshot');
+    if (typeof shot !== 'string' || shot.length > MAX_SCREENSHOT_CHARS || !SCREENSHOT_PATTERN.test(shot)) reasons.push('invalid-screenshot');
     else screenshot = shot;
   }
 

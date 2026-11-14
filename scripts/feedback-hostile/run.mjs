@@ -56,6 +56,7 @@ const clip = (v, n = 400) => {
  */
 // `gatewayLimit` marks cases where the local edge gateway, not the function, ends the exchange: the function answers an
 // oversized body with an early 413 and closes, and the gateway reports 502 (or never finishes a lying Content-Length).
+// Only cases flagged `gatewayLimit` can be KNOWN; a 502 anywhere else is a real FAIL.
 // A failure with one of those symptoms is labelled KNOWN and counted apart; any other failure of the case is a real FAIL.
 async function t(name, { expect, run, check, input, maxMs, rate = false, area = currentArea, gatewayLimit = false }) {
   if (!rate) psql('delete from signalrange_private.feedback_rate');
@@ -77,7 +78,7 @@ async function t(name, { expect, run, check, input, maxMs, rate = false, area = 
     }
   }
   const pass = notes.length === 0;
-  const known = !pass && (res.status === 502 || (gatewayLimit && res.status === 0));
+  const known = !pass && gatewayLimit && (res.status === 502 || res.status === 0);
   if (known) notes.unshift('KNOWN local gateway behaviour');
   results.push({ area, name, pass, known, status: res.status, ms: res.ms, expect: expect.join('/'), note: notes.join('; '), input: pass ? '' : clip(input ?? ''), response: pass ? '' : clip(res.text ?? '', 300) });
   process.stdout.write(`${pass ? 'PASS' : known ? 'KNOWN' : 'FAIL'} [${area}] ${name} ${res.status} ${res.ms}ms${pass ? '' : ` :: ${notes.join('; ')}`}\n`);
@@ -237,9 +238,9 @@ try {
     await t('invalid JSON', { expect: [400], input: '{"id":', run: () => submit(A.token, '{"id":') });
     for (const [n, v] of [['array', '[]'], ['null', 'null'], ['string', '"x"'], ['number', '42'], ['true', 'true']]) await t(`top-level JSON ${n}`, { expect: [400], input: v, run: () => submit(A.token, v) });
     await t('declared Content-Length over cap (header only)', { expect: [413, 0, 400], input: 'content-length: 99999999 with 10 byte body', run: () => streamBody(FN, authHeaders(A.token), 10, { lieContentLength: 99_999_999 }), maxMs: 10000, gatewayLimit: true });
-    await t('streamed 20 MB chunked body is cut off', { expect: [413, 0], input: '20 MB of spaces, chunked', run: () => streamBody(FN, authHeaders(A.token), 20 * 1024 * 1024), maxMs: 20000 });
-    await t('body just over 3.3 MB (JSON string)', { expect: [413], input: `message of ${3_400_000} chars`, run: () => submit(A.token, JSON.stringify(payload({ message: 'a'.repeat(3_400_000) }))), maxMs: 10000 });
-    await t('10 MB message string', { expect: [413, 0], input: '10 MB message', run: () => submit(A.token, JSON.stringify(payload({ message: 'a'.repeat(10_000_000) }))), maxMs: 20000 });
+    await t('streamed 20 MB chunked body is cut off', { expect: [413, 0], input: '20 MB of spaces, chunked', run: () => streamBody(FN, authHeaders(A.token), 20 * 1024 * 1024), maxMs: 20000, gatewayLimit: true });
+    await t('body just over 3.3 MB (JSON string)', { expect: [413], input: `message of ${3_400_000} chars`, run: () => submit(A.token, JSON.stringify(payload({ message: 'a'.repeat(3_400_000) }))), maxMs: 10000, gatewayLimit: true });
+    await t('10 MB message string', { expect: [413, 0], input: '10 MB message', run: () => submit(A.token, JSON.stringify(payload({ message: 'a'.repeat(10_000_000) }))), maxMs: 20000, gatewayLimit: true });
     await t('message 4001 chars (player limit)', { expect: [400], input: '4001 x a', run: () => submit(A.token, payload({ message: 'a'.repeat(4001) })) });
     await t('message exactly 4000 chars', { expect: [200], input: '4000 x a', run: () => submit(A.token, payload({ message: 'a'.repeat(4000) })) });
     await t('message 201 lines (player limit)', { expect: [400], input: '201 lines', run: () => submit(A.token, payload({ message: Array.from({ length: 201 }, (_, i) => `l${i}`).join('\n') })) });
@@ -366,9 +367,9 @@ try {
     await ok('very long unicode (4000 astral chars)', '\u{1F600}'.repeat(4000), () => null);
     await ok('RTL and mixed scripts', 'שלום world مرحبا', (row) => (row[2].includes('שלום') ? null : 'altered'));
     // Snapshot hostility.
-    const sn = (name, gameState, verify, expect = [200]) => {
+    const sn = (name, gameState, verify, expect = [200], gatewayLimit = false) => {
       const id = randomUUID();
-      return t(name, { expect, maxMs: 8000, input: clip(typeof gameState === 'string' ? gameState : JSON.stringify(gameState), 200), run: () => submit(A.token, typeof gameState === 'string' ? gameState.replace('__ID__', id) : payload({ id, snapshot: snapshot({ gameState }) })), check: (r) => (r.status === 200 && verify ? verify(stored(id)) : r.status >= 500 ? '5xx' : null) });
+      return t(name, { expect, maxMs: 8000, gatewayLimit, input: clip(typeof gameState === 'string' ? gameState : JSON.stringify(gameState), 200), run: () => submit(A.token, typeof gameState === 'string' ? gameState.replace('__ID__', id) : payload({ id, snapshot: snapshot({ gameState }) })), check: (r) => (r.status === 200 && verify ? verify(stored(id)) : r.status >= 500 ? '5xx' : null) });
     };
     await sn('gameState with __proto__ key (JSON.parse own property)', JSON.parse('{"__proto__":{"polluted":"yes"},"ok":1}'), (row) => (row[5].includes('polluted') ? '__proto__ content stored' : null));
     await sn('gameState with constructor.prototype', { constructor: { prototype: { polluted: 'yes' } }, prototype: { polluted: 'yes' }, ok: 1 }, (row) => (row[5].includes('polluted') ? 'constructor/prototype content stored' : null));
@@ -387,7 +388,7 @@ try {
       await sn(`object nesting depth ${d}`, `{"id":"__ID__","category":"bug","message":"deep ${d}","snapshot":{"route":"/","version":"1.0.0","commit":"abcdef1","gameState":${'{"a":'.repeat(d)}1${'}'.repeat(d)}}}`, null, [200, 400, 413]);
     }
     await sn('depth 1,000,000 as the payload itself', `${'['.repeat(1_000_000)}${']'.repeat(1_000_000)}`, null, [400, 413]);
-    await sn('array of 1.5M nulls', `{"id":"__ID__","category":"bug","message":"nulls","snapshot":{"route":"/","version":"1.0.0","commit":"abcdef1","gameState":[${'null,'.repeat(750_000)}null]}}`, null, [200, 400, 413]);
+    await sn('array of 1.5M nulls', `{"id":"__ID__","category":"bug","message":"nulls","snapshot":{"route":"/","version":"1.0.0","commit":"abcdef1","gameState":[${'null,'.repeat(750_000)}null]}}`, null, [200, 400, 413], true);
     await sn('array of 500k empty arrays', `{"id":"__ID__","category":"bug","message":"arr","snapshot":{"route":"/","version":"1.0.0","commit":"abcdef1","gameState":[${'[],'.repeat(500_000)}[]]}}`, null, [200, 400, 413]);
     await sn('500-char and 501-char strings in gameState', { a: 'x'.repeat(500), b: 'y'.repeat(501), c: 'z'.repeat(100_000) }, (row) => (row[5].length > 20000 ? 'long string stored in full' : null));
     await sn('mixed types: functions-like strings, booleans, big ints', { a: true, b: null, c: 12345678901234567890, d: 'function(){}', e: [1, 'two', [3]] }, null);

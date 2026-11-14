@@ -652,7 +652,8 @@ try {
     const oldOrphan2 = `${A.id}/${randomUUID()}.jpg`;
     await jpgUpload('feedback-screenshots', oldOrphan2);
     psql(`update storage.objects set created_at = now() - interval '2 days' where bucket_id='feedback-screenshots' and name='${oldOrphan2}'`);
-    await t('right secret but no Authorization/apikey (as the README schedule describes)', { expect: [200], rate: true, input: 'POST with only x-prune-secret', run: () => call({ 'x-prune-secret': PRUNE_SECRET }), check: (r) => (r.status === 200 ? null : 'gateway rejects the call before the secret check; the README schedule omits the required JWT header') });
+    await t('right secret but no Authorization (the gateway refuses it; JWT verification stays on)', { expect: [401], input: 'POST with only x-prune-secret', run: () => call({ 'x-prune-secret': PRUNE_SECRET }), check: untouched });
+    await t('service role bearer plus the right secret, as the README schedule sends it', { expect: [200], rate: true, input: 'POST with Authorization: Bearer <service role key> and x-prune-secret', run: () => call({ Authorization: `Bearer ${SERVICE}`, 'x-prune-secret': PRUNE_SECRET }), check: (r) => (r.json?.ok === true ? null : 'ok != true') });
     const expired4 = await mk(34);
     const r = await t('right secret prunes', { expect: [200], rate: true, input: 'POST with anon JWT and the secret', run: () => call({ ...gate, 'x-prune-secret': PRUNE_SECRET }), check: (res) => (res.json?.ok === true ? null : 'ok != true') });
     const rowGone = (id) => psql(`select screenshot_path is null from signalrange_private.qa_feedback where id='${id}'`) === 't';

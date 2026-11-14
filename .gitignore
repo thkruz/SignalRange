@@ -42,6 +42,7 @@ tmp/
 temp/
 supabase/*
 !supabase/migrations/
+!supabase/functions/
 
 # Notes
 *.notes.*

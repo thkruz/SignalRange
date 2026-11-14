@@ -41,7 +41,30 @@ const CONTROLS = /[\u0000-\u0008\u000B-\u001F\u007F-\u009F]/gu;
 // Invisible and format characters: every default-ignorable and format (Cf) code point, the bidi
 // controls, the Hangul fillers and the whole tag/plane-14 block. Variation selectors and ZWJ are in
 // this class too; the callback below keeps the few legitimate emoji uses.
-const INVISIBLES = /[\p{Bidi_Control}\p{Default_Ignorable_Code_Point}\p{Cf}\u115F\u1160\u3164\uFFA0\u{E0000}-\u{E0FFF}]/gu;
+// The three RGI subdivision flags (England, Scotland, Wales): black flag, tag letters, cancel tag.
+// They are matched as one unit before the invisible class, so the scan stays linear. Any other tag
+// run, including a different payload between flag and cancel tag, is still stripped.
+const INVISIBLES =
+  /\u{1F3F4}(?:\u{E0067}\u{E0062}(?:\u{E0065}\u{E006E}\u{E0067}|\u{E0073}\u{E0063}\u{E0074}|\u{E0077}\u{E006C}\u{E0073}))\u{E007F}|[\p{Bidi_Control}\p{Default_Ignorable_Code_Point}\p{Cf}\u115F\u1160\u3164\uFFA0\u{E0000}-\u{E0FFF}]/gu;
+const TAG_FLAG_ONE = /^\u{1F3F4}(?:\u{E0067}\u{E0062}(?:\u{E0065}\u{E006E}\u{E0067}|\u{E0073}\u{E0063}\u{E0074}|\u{E0077}\u{E006C}\u{E0073}))\u{E007F}$/u;
+const EMOJI_MODIFIER_ONE = /^\p{Emoji_Modifier}$/u;
+// ZWNJ/ZWJ are kept between two letters or marks of the same script, but only for scripts that need
+// them (Persian and Arabic ZWNJ, Indic and Sinhala virama sequences). Latin, Cyrillic, Greek, CJK and
+// the rest stay stripped: a joiner there is only a carrier.
+const JOINER_SCRIPTS: readonly RegExp[] = [
+  /^(?=\p{Script=Arabic})[\p{L}\p{M}]$/u,
+  /^(?=\p{Script=Devanagari})[\p{L}\p{M}]$/u,
+  /^(?=\p{Script=Bengali})[\p{L}\p{M}]$/u,
+  /^(?=\p{Script=Gurmukhi})[\p{L}\p{M}]$/u,
+  /^(?=\p{Script=Gujarati})[\p{L}\p{M}]$/u,
+  /^(?=\p{Script=Oriya})[\p{L}\p{M}]$/u,
+  /^(?=\p{Script=Tamil})[\p{L}\p{M}]$/u,
+  /^(?=\p{Script=Telugu})[\p{L}\p{M}]$/u,
+  /^(?=\p{Script=Kannada})[\p{L}\p{M}]$/u,
+  /^(?=\p{Script=Malayalam})[\p{L}\p{M}]$/u,
+  /^(?=\p{Script=Sinhala})[\p{L}\p{M}]$/u,
+];
+const BRAILLE_BLANK = /\u2800/gu;
 const BIDI_ONE = /^\p{Bidi_Control}$/u;
 const TAG_ONE = /^[\u{E0000}-\u{E0FFF}]$/u;
 const VS_ONE = /^[\uFE00-\uFE0F\u{E0100}-\u{E01EF}]$/u;
@@ -76,8 +99,13 @@ function cpAt(s: string, i: number): string {
   return String.fromCodePoint(cp);
 }
 
+function isSameScriptJoin(before: string, after: string): boolean {
+  return JOINER_SCRIPTS.some((re) => re.test(before) && re.test(after));
+}
+
 function stripInvisibles(input: string, counts: StripCounts): string {
   return input.replace(INVISIBLES, (ch, offset: number, whole: string) => {
+    if (TAG_FLAG_ONE.test(ch)) return ch;
     const before = cpBefore(whole, offset);
     if (ch === '\uFE0F' || ch === '\uFE0E') {
       if (PICTO_ONE.test(before)) return ch;
@@ -85,8 +113,9 @@ function stripInvisibles(input: string, counts: StripCounts): string {
     } else if (ch === '\u200D') {
       let prev = before;
       if (prev === '\uFE0F' || prev === '\uFE0E') prev = cpBefore(whole, offset - 1);
-      if (PICTO_ONE.test(prev) && PICTO_ONE.test(cpAt(whole, offset + 1))) return ch;
+      if ((PICTO_ONE.test(prev) || EMOJI_MODIFIER_ONE.test(prev)) && PICTO_ONE.test(cpAt(whole, offset + 1))) return ch;
     }
+    if ((ch === '‌' || ch === '‍') && isSameScriptJoin(before, cpAt(whole, offset + 1))) return ch;
     if (VS_ONE.test(ch)) counts.variationSelectors += 1;
     else if (BIDI_ONE.test(ch)) counts.bidi += 1;
     else if (TAG_ONE.test(ch)) counts.tags += 1;
@@ -133,7 +162,8 @@ export function sanitizeText(input: unknown, tier: FeedbackTier): TextResult {
     return '\n\n';
   });
   text = text.trim();
-  if (text.length === 0) return { ok: false, reason: 'empty', stripped };
+  // U+2800 (braille blank) renders as nothing but is neither whitespace nor default-ignorable.
+  if (text.length === 0 || text.replace(BRAILLE_BLANK, '').trim().length === 0) return { ok: false, reason: 'empty', stripped };
   if (text.length > limits.maxChars) return { ok: false, reason: 'too-long', stripped };
   if (text.split('\n').length > limits.maxLines) return { ok: false, reason: 'too-many-lines', stripped };
   return { ok: true, text, stripped };

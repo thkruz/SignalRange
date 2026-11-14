@@ -3,6 +3,7 @@ import { SimClock } from '@app/simulation/sim-clock';
 import { syncManager } from '@app/sync/storage';
 import html2canvas from 'html2canvas';
 import { type CaptureFailure, type CaptureStage, describeCaptureFailure, FeedbackCaptureError } from './feedback-capture-error';
+import { encodeScreenshot } from './feedback-image';
 
 export interface FeedbackSnapshot {
   capturedAt: string;
@@ -106,18 +107,7 @@ export async function captureFeedbackScreen(): Promise<string> {
       },
     });
     stage = 'encode';
-    const screenshot = canvas.toDataURL('image/jpeg', 0.85);
-    if (!screenshot.startsWith('data:image/jpeg;base64,') || screenshot.length > 3_000_000) {
-      const tooLarge = screenshot.length > 3_000_000;
-      throw new FeedbackCaptureError({
-        status: 'failed',
-        renderer: 'html2canvas',
-        stage: 'validate',
-        reason: tooLarge ? 'too-large' : 'invalid-image',
-        message: tooLarge ? 'The screenshot exceeds the 3 MB attachment limit.' : 'The browser returned an empty or unsupported screenshot format.',
-      });
-    }
-    return screenshot;
+    return (await encodeScreenshot(canvas)).dataUrl;
   } catch (error) {
     throw new FeedbackCaptureError(describeCaptureFailure(error, stage));
   }

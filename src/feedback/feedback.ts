@@ -3,256 +3,465 @@ import { setMenuPause } from '@app/game-menu/menu-pause';
 import { Auth } from '@app/user-account/auth';
 import { captureFeedbackScreen, captureFeedbackState } from './feedback-capture';
 import { describeCaptureFailure } from './feedback-capture-error';
-import { TIER_LIMITS } from './feedback-rules';
-import { type FeedbackSubmission, submitFeedback } from './feedback-service';
+import {
+  attachmentSummary,
+  buildRequest,
+  CATEGORY_LABELS,
+  clampMessage,
+  codePointCount,
+  createDraft,
+  describeRejection,
+  describeSubmitError,
+  type ErrorView,
+  type FeedbackDraft,
+  tierFor,
+} from './feedback-form';
+import { FEEDBACK_CATEGORIES, type FeedbackCategory, TIER_LIMITS } from './feedback-rules';
+import { FeedbackSubmitError, submitFeedback } from './feedback-service';
 import './feedback.css';
 
-/** App-lifetime UI; independent of the per-scenario EventBus. */
+/** Where signed-out players are sent instead of the form. */
+export const FEEDBACK_CONTACT_URL = 'https://signalrange.space/contact';
+
+type CaptureState = 'pending' | 'ready' | 'failed';
+type View = { kind: 'edit' } | { kind: 'sending' } | { kind: 'error'; error: ErrorView } | { kind: 'filed'; ticket: string };
+
+const q = <T extends Element>(root: ParentNode, selector: string): T => {
+  const el = root.querySelector<T>(selector);
+  if (!el) throw new Error(`feedback form is missing ${selector}`);
+  return el;
+};
+
+/**
+ * In-game field report. Signed-in players file it from a tab on the console; signed-out players get a
+ * contact link instead. App-lifetime UI, independent of the per-scenario EventBus.
+ */
 export class Feedback {
   private readonly tab_ = document.createElement('button');
+  private readonly contact_ = document.createElement('a');
   private readonly dialog_ = document.createElement('dialog');
-  private readonly notice_ = document.createElement('div');
-  private noticeTimeout_: ReturnType<typeof setTimeout> | null = null;
   private readonly observer_: MutationObserver;
-  private draft_: FeedbackSubmission | null = null;
-  private generation_ = 0;
-  private busy_ = false;
-  private capturedScreenshot_: string | null = null;
-  private captureFailed_ = false;
-  private owner_: string | null = null;
   private readonly unsubscribeDev_: () => void;
   private readonly authSubscription_: ReturnType<typeof Auth.onAuthStateChange>;
+  private readonly domCache_ = new Map<string, HTMLElement>();
+  private readonly boundCancel_ = (event: Event): void => this.onCancel_(event);
+  private readonly boundSubmit_ = (event: Event): void => {
+    event.preventDefault();
+    void this.send_();
+  };
+
+  private draft_: FeedbackDraft | null = null;
+  private view_: View = { kind: 'edit' };
+  private captureState_: CaptureState = 'pending';
+  private captureNote_ = '';
+  private generation_ = 0;
+  private userId_: string | null = null;
+  private signedIn_ = false;
+  private previousFocus_: HTMLElement | null = null;
+  private retryUntil_ = 0;
+  private countdownTimer_: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
     this.tab_.type = 'button';
-    this.tab_.className = 'qa-feedback-tab';
+    this.tab_.className = 'fr-tab';
     this.tab_.textContent = 'Feedback';
     this.tab_.setAttribute('data-feedback-ui', '');
     this.tab_.setAttribute('aria-haspopup', 'dialog');
+    this.tab_.hidden = true;
     this.tab_.addEventListener('click', () => this.open());
-    this.dialog_.className = 'qa-feedback-dialog';
+    this.contact_.className = 'fr-tab fr-tab-contact';
+    this.contact_.textContent = 'Contact';
+    this.contact_.href = FEEDBACK_CONTACT_URL;
+    this.contact_.target = '_blank';
+    this.contact_.rel = 'noopener noreferrer';
+    this.contact_.referrerPolicy = 'no-referrer';
+    this.contact_.setAttribute('data-feedback-ui', '');
+    this.contact_.hidden = true;
+
+    this.dialog_.className = 'fr-dialog';
     this.dialog_.setAttribute('data-feedback-ui', '');
-    this.dialog_.setAttribute('aria-labelledby', 'qa-feedback-title');
-    this.dialog_.innerHTML = `
-      <form class="qa-feedback-form">
-        <div class="qa-feedback-heading"><h2 id="qa-feedback-title">Feedback</h2><span>DEV QA</span></div>
-        <p class="qa-feedback-help">Describe what you noticed. Game state is attached automatically; include the screenshot when it helps explain your feedback.</p>
-        <label for="qa-feedback-message">Observation or issue</label>
-        <textarea id="qa-feedback-message" class="form-control" maxlength="20000" rows="5" required placeholder="What happened? What did you expect?"></textarea>
-        <label class="form-check form-switch qa-feedback-screenshot-toggle">
-          <input type="checkbox" class="form-check-input" id="qa-feedback-include-screenshot" checked />
-          <span class="form-check-label">Include screenshot</span>
-        </label>
-        <img class="qa-feedback-preview" alt="Game screen captured before opening feedback" hidden />
-        <p class="qa-feedback-status" role="status" aria-live="polite"></p>
-        <div class="qa-feedback-actions"><button type="button" class="btn qa-feedback-cancel">Cancel</button><button type="submit" class="btn btn-primary qa-feedback-send" disabled>Send feedback</button></div>
-      </form>`;
-    document.body.append(this.tab_, this.dialog_);
-    this.notice_.className = 'qa-feedback-notice';
-    this.notice_.hidden = true;
-    this.notice_.setAttribute('role', 'status');
-    this.notice_.setAttribute('aria-live', 'polite');
-    this.notice_.setAttribute('data-feedback-ui', '');
-    document.body.append(this.notice_);
+    this.dialog_.setAttribute('aria-labelledby', 'fr-title');
+    this.dialog_.innerHTML = this.template_();
+    document.body.append(this.tab_, this.contact_, this.dialog_);
+
+    // Game hotkeys must not fire while the operator types.
     this.dialog_.addEventListener('keydown', (event) => event.stopPropagation());
-    this.dialog_.addEventListener('cancel', (event) => {
-      event.preventDefault();
-      if (!this.busy_) this.close_();
-    });
-    this.dialog_.querySelector('.qa-feedback-cancel')!.addEventListener('click', () => this.close_());
-    this.dialog_.querySelector('form')!.addEventListener('submit', (event) => {
-      event.preventDefault();
-      void this.send_();
-    });
-    this.input_.addEventListener('input', () => {
-      this.clampInput_();
-      this.updateSend_();
-    });
-    this.screenshotToggle_.addEventListener('change', () => this.updateScreenshot_());
-    this.unsubscribeDev_ = DevMenuService.getInstance().onChange(() => this.updateVisibility_());
-    this.authSubscription_ = Auth.onAuthStateChange((_event, user) => {
-      if (this.owner_ && this.owner_ !== user?.id) this.close_();
-      this.owner_ = user?.id ?? null;
-      this.updateVisibility_();
-    });
+    this.dialog_.addEventListener('cancel', this.boundCancel_);
+    this.form_.addEventListener('submit', this.boundSubmit_);
+    this.el_('fr-discard').addEventListener('click', () => this.discard_());
+    this.el_('fr-putaway').addEventListener('click', () => this.close_());
+    this.el_('fr-done').addEventListener('click', () => this.close_());
+    this.el_('fr-message').addEventListener('input', () => this.onMessageInput_());
+    this.el_('fr-shot').addEventListener('change', () => this.onScreenshotToggle_());
+    this.el_('fr-category').addEventListener('change', (event) => this.onCategory_(event));
+
+    this.unsubscribeDev_ = DevMenuService.getInstance().onChange(() => this.render_());
+    this.authSubscription_ = Auth.onAuthStateChange((_event, user) => this.setUser_(user));
     void Auth.getCurrentUser()
       .then((user) => {
-        this.owner_ ??= user?.id ?? null;
+        if (this.userId_ === null) this.setUser_(user);
       })
       .catch(() => {});
-    // Native modal dialogs make the body inert. Move the tab into the active
-    // dialog so feedback remains clickable from pause/loadout and other menus.
-    this.observer_ = new MutationObserver(() => this.positionTab_());
+    // A native modal dialog makes the rest of the page inert. Keep the entry inside the top-most open dialog
+    // so Feedback stays reachable from the pause and loadout menus.
+    this.observer_ = new MutationObserver(() => this.positionEntry_());
     this.observer_.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['open', 'disabled'] });
-    this.updateVisibility_();
+    this.syncEntry_();
   }
 
-  private get input_(): HTMLTextAreaElement {
-    return this.dialog_.querySelector('textarea')!;
-  }
-  private get status_(): HTMLElement {
-    return this.dialog_.querySelector('.qa-feedback-status')!;
+  private template_(): string {
+    const stamps = FEEDBACK_CATEGORIES.map(
+      (key, index) => `
+        <label class="fr-stamp-option">
+          <input type="radio" name="fr-category" value="${key}" ${index === 0 ? 'checked' : ''} />
+          <span class="fr-stamp-face"><strong>${CATEGORY_LABELS[key].label}</strong><small>${CATEGORY_LABELS[key].hint}</small></span>
+        </label>`
+    ).join('');
+    return `
+      <form class="fr-form" novalidate>
+        <div class="fr-clip" aria-hidden="true"></div>
+        <header class="fr-head">
+          <div>
+            <p class="fr-formno">FORM SR-FR &middot; STATION FIELD REPORT <span id="fr-tier" hidden>&middot; DEV QA</span></p>
+            <h2 id="fr-title">Field report</h2>
+          </div>
+          <div class="fr-ticket" aria-label="Report number"><span>REPORT NO.</span><b id="fr-ticket">--------</b></div>
+          <button type="button" id="fr-putaway" class="fr-icon-btn" aria-label="Put the form away (Escape)">&times;</button>
+        </header>
+        <div id="fr-edit">
+          <fieldset class="fr-category" id="fr-category">
+            <legend>Report type</legend>
+            <div class="fr-stamps">${stamps}</div>
+          </fieldset>
+          <label class="fr-label" for="fr-message">Report body</label>
+          <textarea id="fr-message" class="fr-body" rows="7" placeholder="What did you see? What did you expect? What were you doing at the console?" autocomplete="off" spellcheck="true"></textarea>
+          <p class="fr-count" id="fr-count" aria-live="polite"></p>
+          <section class="fr-attach" aria-labelledby="fr-attach-title">
+            <h3 id="fr-attach-title">Attachments</h3>
+            <label class="fr-switch">
+              <input type="checkbox" id="fr-shot" />
+              <span class="fr-switch-track" aria-hidden="true"></span>
+              <span class="fr-switch-text">Attach a screen capture</span>
+            </label>
+            <div id="fr-shot-panel" hidden>
+              <p class="fr-consent">The capture shows what was on your screen when you opened this form. It is stored privately and read only by the team that triages reports. Nothing is sent until you file.</p>
+              <img id="fr-preview" class="fr-preview" alt="Screen capture that will be attached to this report" hidden />
+            </div>
+            <p class="fr-note" id="fr-shot-note" hidden></p>
+            <p class="fr-manifest-title">Filed with this report</p>
+            <ul class="fr-manifest" id="fr-manifest"></ul>
+          </section>
+        </div>
+        <section id="fr-filed" class="fr-filed" hidden>
+          <div class="fr-filed-stamp" aria-hidden="true">FILED</div>
+          <p class="fr-filed-line"><strong>Report filed.</strong> Number <b id="fr-filed-no">--------</b></p>
+          <p class="fr-filed-sub">It went to the team that reads these. Thank you for the field note.</p>
+        </section>
+        <p class="fr-status" id="fr-status" role="status" aria-live="polite"></p>
+        <footer class="fr-actions">
+          <button type="button" id="fr-discard" class="fr-btn">Discard draft</button>
+          <button type="submit" id="fr-send" class="fr-btn fr-btn-primary">File report</button>
+          <button type="button" id="fr-done" class="fr-btn fr-btn-primary" hidden>Close</button>
+        </footer>
+      </form>`;
   }
 
-  private get screenshotToggle_(): HTMLInputElement {
-    return this.dialog_.querySelector('#qa-feedback-include-screenshot')!;
+  private get form_(): HTMLFormElement {
+    return q<HTMLFormElement>(this.dialog_, 'form');
   }
 
-  private updateScreenshot_(): void {
-    if (!this.draft_ || this.input_.readOnly) return;
-    this.draft_.screenshot = this.screenshotToggle_.checked ? this.capturedScreenshot_ : null;
-    const preview = this.dialog_.querySelector<HTMLImageElement>('img')!;
-    preview.hidden = !this.draft_.screenshot;
-    if (this.draft_.screenshot) preview.src = this.draft_.screenshot;
-    else preview.removeAttribute('src');
-    this.status_.textContent = this.captureFailed_
-      ? 'Screenshot unavailable. You can still send feedback; capture failure details and game state are attached.'
-      : !this.screenshotToggle_.checked
-        ? 'Game state attached. Screenshot will not be uploaded.'
-        : this.capturedScreenshot_
-          ? 'Screen and game state attached. Visible only to the QA team.'
-          : 'Capturing screen. Game state attached.';
-    this.updateSend_();
+  private el_<T extends HTMLElement = HTMLElement>(id: string): T {
+    let el = this.domCache_.get(id);
+    if (!el) {
+      el = q<HTMLElement>(this.dialog_, `#${id}`);
+      this.domCache_.set(id, el);
+    }
+    return el as T;
   }
 
-  private positionTab_(): void {
-    // Some menus disable all descendant buttons during navigation. The QA tab
-    // belongs to the app and must remain usable after that menu is removed.
+  private get isDeveloper_(): boolean {
+    return DevMenuService.getInstance().isDev();
+  }
+
+  // ------------------------------------------------------------------ entry point and auth
+
+  private setUser_(user: { id: string; is_anonymous?: boolean } | null): void {
+    const nextId = user?.id ?? null;
+    if (this.userId_ !== nextId) {
+      // Another account must not inherit a draft.
+      this.discardDraft_();
+      if (this.dialog_.open) this.close_();
+    }
+    this.userId_ = nextId;
+    this.signedIn_ = user !== null && user.is_anonymous !== true;
+    this.syncEntry_();
+  }
+
+  private syncEntry_(): void {
+    this.tab_.hidden = !this.signedIn_;
+    this.contact_.hidden = this.signedIn_;
+    if (!this.signedIn_ && this.dialog_.open) this.close_();
+    this.positionEntry_();
+  }
+
+  private positionEntry_(): void {
+    // Some menus disable every descendant button while navigating; the entry belongs to the app.
     if (this.tab_.disabled) this.tab_.disabled = false;
     const dialogs = Array.from(document.querySelectorAll<HTMLDialogElement>('dialog[open]')).filter((dialog) => dialog !== this.dialog_);
     const parent = dialogs.at(-1) ?? document.body;
-    if (this.tab_.parentElement !== parent) parent.append(this.tab_);
-    if (this.notice_.parentElement !== parent) parent.append(this.notice_);
+    for (const entry of [this.tab_, this.contact_]) if (entry.parentElement !== parent) parent.append(entry);
   }
 
-  private updateVisibility_(): void {
-    this.tab_.hidden = !DevMenuService.getInstance().isDev();
-    if (this.tab_.hidden && this.dialog_.open) this.close_();
-    this.positionTab_();
-  }
+  // ------------------------------------------------------------------ open and close
 
   open(): void {
-    if (!DevMenuService.getInstance().isDev() || this.dialog_.open) return;
-    this.clearNotice_();
+    if (!this.signedIn_ || this.dialog_.open) return;
+    this.previousFocus_ = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const generation = ++this.generation_;
-    this.busy_ = false;
-    this.capturedScreenshot_ = null;
-    this.captureFailed_ = false;
-    this.screenshotToggle_.checked = true;
-    this.screenshotToggle_.disabled = false;
-    this.input_.value = '';
-    this.input_.disabled = false;
-    this.input_.readOnly = false;
-    const cancel = this.dialog_.querySelector<HTMLButtonElement>('.qa-feedback-cancel')!;
-    cancel.disabled = false;
-    cancel.textContent = 'Cancel';
-    const preview = this.dialog_.querySelector<HTMLImageElement>('img')!;
-    preview.hidden = true;
-    preview.removeAttribute('src');
-    this.status_.textContent = 'Capturing screen and game state…';
     setMenuPause('feedback', true);
     try {
-      this.draft_ = { id: crypto.randomUUID(), message: '', screenshot: null, snapshot: captureFeedbackState() };
-      const capture = captureFeedbackScreen();
-      this.dialog_.showModal();
-      this.input_.focus();
-      void capture
-        .then((screenshot) => {
-          if (generation !== this.generation_ || !this.draft_ || this.input_.readOnly) return;
-          this.capturedScreenshot_ = screenshot;
-          this.updateScreenshot_();
-        })
-        .catch((error: unknown) => {
-          if (generation !== this.generation_ || !this.draft_ || this.input_.readOnly) return;
-          this.captureFailed_ = true;
-          this.draft_.snapshot.screenshotCapture = describeCaptureFailure(error);
-          this.screenshotToggle_.checked = false;
-          this.screenshotToggle_.disabled = true;
-          this.updateScreenshot_();
-        });
+      if (!this.draft_ || this.view_.kind === 'filed') {
+        this.draft_ = createDraft(captureFeedbackState());
+        this.view_ = { kind: 'edit' };
+        this.el_<HTMLTextAreaElement>('fr-message').value = '';
+      } else if (!this.draft_.locked) {
+        this.draft_.snapshot = captureFeedbackState();
+      }
     } catch {
       this.draft_ = null;
-      this.dialog_.showModal();
-      this.status_.textContent = 'Game state could not be captured. Close feedback and try again.';
     }
-    this.updateSend_();
+    const draft = this.draft_;
+    // A draft with an unconfirmed send keeps its original capture; a fresh draft captures the live screen
+    // before the dialog covers it. The capture stays on this device until the operator files.
+    if (draft && !draft.locked) {
+      this.captureState_ = 'pending';
+      this.captureNote_ = '';
+      draft.screenshot = null;
+      const capture = captureFeedbackScreen();
+      void capture
+        .then((screenshot) => {
+          if (generation !== this.generation_ || !this.draft_ || this.draft_.locked) return;
+          this.draft_.screenshot = screenshot;
+          this.captureState_ = 'ready';
+          this.render_();
+        })
+        .catch((error: unknown) => {
+          if (generation !== this.generation_ || !this.draft_ || this.draft_.locked) return;
+          const failure = describeCaptureFailure(error);
+          this.draft_.snapshot.screenshotCapture = failure;
+          this.captureState_ = 'failed';
+          this.captureNote_ =
+            failure.reason === 'too-large'
+              ? 'The screen capture was too large to attach, even at low quality, so it was left off.'
+              : 'The screen capture could not be made, so it was left off.';
+          this.draft_.includeScreenshot = false;
+          this.render_();
+        });
+    } else if (draft) {
+      this.captureState_ = draft.screenshot ? 'ready' : 'failed';
+    }
+    this.dialog_.showModal();
+    this.render_();
+    if (this.view_.kind === 'error' && this.view_.error.retryable) this.el_('fr-send').focus();
+    else this.el_('fr-message').focus();
   }
 
-  private updateSend_(): void {
-    this.dialog_.querySelector<HTMLButtonElement>('.qa-feedback-send')!.disabled =
-      this.busy_ || !this.draft_ || (this.screenshotToggle_.checked && !this.draft_.screenshot) || !this.input_.value.trim();
+  /** Put the form away. An unfinished or unconfirmed draft stays for the next time. */
+  private close_(): void {
+    ++this.generation_;
+    this.stopCountdown_();
+    if (this.dialog_.open) this.dialog_.close();
+    if (this.view_.kind === 'filed') {
+      this.draft_ = null;
+      this.view_ = { kind: 'edit' };
+    } else if (this.view_.kind === 'sending') {
+      this.view_ = { kind: 'edit' };
+    }
+    setMenuPause('feedback', false);
+    const target = this.previousFocus_ && this.previousFocus_.isConnected ? this.previousFocus_ : this.signedIn_ ? this.tab_ : null;
+    this.previousFocus_ = null;
+    target?.focus();
   }
 
-  /** maxlength counts UTF-16 units; the limit is 10,000 code points, so clamp in code. */
-  private clampInput_(): void {
-    const cps = Array.from(this.input_.value);
-    if (cps.length > TIER_LIMITS.developer.maxChars) this.input_.value = cps.slice(0, TIER_LIMITS.developer.maxChars).join('');
+  private discard_(): void {
+    this.discardDraft_();
+    this.close_();
   }
+
+  private discardDraft_(): void {
+    this.draft_ = null;
+    this.view_ = { kind: 'edit' };
+    this.stopCountdown_();
+    const input = this.dialog_.querySelector<HTMLTextAreaElement>('#fr-message');
+    if (input) input.value = '';
+  }
+
+  private onCancel_(event: Event): void {
+    event.preventDefault();
+    if (this.view_.kind !== 'sending') this.close_();
+  }
+
+  // ------------------------------------------------------------------ field handlers
+
+  private onMessageInput_(): void {
+    if (!this.draft_ || this.draft_.locked) return;
+    const input = this.el_<HTMLTextAreaElement>('fr-message');
+    const clamped = clampMessage(input.value, tierFor(this.isDeveloper_));
+    if (clamped !== input.value) input.value = clamped;
+    this.draft_.message = clamped;
+    if (this.view_.kind === 'error') this.view_ = { kind: 'edit' };
+    this.render_();
+  }
+
+  private onCategory_(event: Event): void {
+    if (!this.draft_ || this.draft_.locked) return;
+    const target = event.target as HTMLInputElement;
+    this.draft_.category = target.value as FeedbackCategory;
+    this.render_();
+  }
+
+  private onScreenshotToggle_(): void {
+    if (!this.draft_ || this.draft_.locked) return;
+    this.draft_.includeScreenshot = this.el_<HTMLInputElement>('fr-shot').checked;
+    this.render_();
+  }
+
+  // ------------------------------------------------------------------ send
 
   private async send_(): Promise<void> {
-    if (this.busy_ || !this.draft_ || (this.screenshotToggle_.checked && !this.draft_.screenshot) || !this.input_.value.trim() || !DevMenuService.getInstance().isDev()) return;
-    this.busy_ = true;
-    const generation = this.generation_;
-    this.draft_.message = this.input_.value;
-    // A failed response may already have committed. Keep the original payload
-    // immutable so retrying its receipt cannot silently discard later edits.
-    this.input_.readOnly = true;
-    this.screenshotToggle_.disabled = true;
-    if (!this.screenshotToggle_.checked) {
-      this.draft_.screenshot = null;
-      this.capturedScreenshot_ = null;
+    const draft = this.draft_;
+    if (!draft || this.view_.kind === 'sending' || this.view_.kind === 'filed' || Date.now() < this.retryUntil_) return;
+    if (draft.includeScreenshot && !draft.screenshot) return;
+    const built = buildRequest(draft, tierFor(this.isDeveloper_));
+    if (built.ok === false) {
+      this.view_ = { kind: 'error', error: { message: describeRejection(built.reason), retryable: false, retryAfterSec: null, editable: true } };
+      this.render_();
+      return;
     }
-    this.dialog_.querySelector<HTMLButtonElement>('.qa-feedback-cancel')!.disabled = true;
-    this.status_.textContent = 'Saving feedback…';
-    this.updateSend_();
+    // Retries resend this exact payload under the same id, so a lost response cannot file the report twice.
+    draft.locked = true;
+    this.view_ = { kind: 'sending' };
+    const generation = this.generation_;
+    this.render_();
     try {
-      await submitFeedback(this.draft_);
+      await submitFeedback(built.request);
       if (generation !== this.generation_) return;
-      this.close_();
-      this.notice_.hidden = false;
-      this.notice_.innerHTML = `<span class="qa-feedback-notice-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 3h13l4 4v14H3V3z"/><path d="M7 3v6h10V3M7 21v-8h10v8M14 4v3"/></svg></span><span><strong>Feedback saved</strong><span class="qa-feedback-notice-detail">Thank you for helping improve SignalRange.</span></span>`;
-      this.noticeTimeout_ = setTimeout(() => this.clearNotice_(), 4000);
+      const ticket = draft.id.slice(0, 8).toUpperCase();
+      this.draft_ = null;
+      this.el_<HTMLTextAreaElement>('fr-message').value = '';
+      this.view_ = { kind: 'filed', ticket };
+      this.render_();
+      this.el_('fr-done').focus();
     } catch (error) {
       if (generation !== this.generation_) return;
-      this.status_.textContent = error instanceof Error ? error.message : 'Could not save. Please retry.';
-      this.input_.disabled = false;
-    } finally {
-      if (generation === this.generation_) {
-        this.busy_ = false;
-        this.dialog_.querySelector<HTMLButtonElement>('.qa-feedback-cancel')!.disabled = false;
-        this.updateSend_();
+      const view = describeSubmitError(error);
+      if (view.editable) {
+        // Nothing was stored. Unlock for edits and use a fresh id for the corrected report.
+        draft.locked = false;
+        draft.id = crypto.randomUUID().toLowerCase();
+        if (error instanceof FeedbackSubmitError && error.reasons.includes('unknown-scenario')) draft.snapshot.scenarioId = null;
       }
+      this.view_ = { kind: 'error', error: view };
+      this.retryUntil_ = view.retryAfterSec ? Date.now() + view.retryAfterSec * 1000 : 0;
+      if (this.retryUntil_) this.startCountdown_();
+      this.render_();
+      this.el_(view.retryable ? 'fr-send' : 'fr-message').focus();
     }
   }
 
-  private close_(): void {
-    this.clearNotice_();
-    ++this.generation_;
-    if (this.dialog_.open) this.dialog_.close();
-    this.draft_ = null;
-    this.capturedScreenshot_ = null;
-    this.dialog_.querySelector<HTMLImageElement>('img')!.removeAttribute('src');
-    this.input_.value = '';
-    this.busy_ = false;
-    this.updateSend_();
-    setMenuPause('feedback', false);
-    if (!this.tab_.hidden) this.tab_.focus();
+  private startCountdown_(): void {
+    this.stopCountdown_(false);
+    this.countdownTimer_ = setInterval(() => {
+      if (Date.now() >= this.retryUntil_) this.stopCountdown_();
+      this.render_();
+    }, 1000);
   }
 
-  private clearNotice_(): void {
-    if (this.noticeTimeout_ !== null) clearTimeout(this.noticeTimeout_);
-    this.noticeTimeout_ = null;
-    this.notice_.hidden = true;
-    this.notice_.textContent = '';
+  private stopCountdown_(reset = true): void {
+    if (this.countdownTimer_ !== null) clearInterval(this.countdownTimer_);
+    this.countdownTimer_ = null;
+    if (reset) this.retryUntil_ = 0;
+  }
+
+  // ------------------------------------------------------------------ render
+
+  private render_(): void {
+    const draft = this.draft_;
+    const filed = this.view_.kind === 'filed';
+    const sending = this.view_.kind === 'sending';
+    const tier = tierFor(this.isDeveloper_);
+    const max = TIER_LIMITS[tier].maxChars;
+    this.el_('fr-tier').hidden = !this.isDeveloper_;
+    this.el_('fr-edit').hidden = filed;
+    this.el_('fr-filed').hidden = !filed;
+    this.el_('fr-discard').hidden = filed;
+    this.el_('fr-send').hidden = filed;
+    this.el_('fr-done').hidden = !filed;
+    this.el_('fr-ticket').textContent = this.view_.kind === 'filed' ? this.view_.ticket : (draft?.id.slice(0, 8).toUpperCase() ?? '--------');
+    if (this.view_.kind === 'filed') this.el_('fr-filed-no').textContent = this.view_.ticket;
+
+    const locked = !draft || draft.locked || sending;
+    const input = this.el_<HTMLTextAreaElement>('fr-message');
+    input.readOnly = locked;
+    for (const radio of Array.from(this.dialog_.querySelectorAll<HTMLInputElement>('input[name="fr-category"]'))) {
+      radio.disabled = locked;
+      radio.checked = radio.value === (draft?.category ?? 'bug');
+    }
+    const used = codePointCount(input.value);
+    const count = this.el_('fr-count');
+    count.textContent = `${used.toLocaleString('en-US')} / ${max.toLocaleString('en-US')} characters`;
+    count.classList.toggle('fr-count-warn', used >= max * 0.9);
+
+    const toggle = this.el_<HTMLInputElement>('fr-shot');
+    const shotOn = draft?.includeScreenshot ?? false;
+    toggle.checked = shotOn;
+    toggle.disabled = locked || this.captureState_ === 'failed';
+    this.el_('fr-shot-panel').hidden = !shotOn;
+    const preview = this.el_<HTMLImageElement>('fr-preview');
+    const showPreview = shotOn && !!draft?.screenshot;
+    preview.hidden = !showPreview;
+    if (showPreview && preview.getAttribute('src') !== draft!.screenshot) preview.src = draft!.screenshot!;
+    if (!showPreview) preview.removeAttribute('src');
+    const note = this.el_('fr-shot-note');
+    note.hidden = this.captureNote_ === '' && !(shotOn && this.captureState_ === 'pending');
+    note.textContent = this.captureState_ === 'failed' ? this.captureNote_ : 'Preparing the screen capture…';
+
+    const manifest = this.el_('fr-manifest');
+    manifest.replaceChildren(
+      ...(draft ? attachmentSummary(draft) : []).map((line) => {
+        const li = document.createElement('li');
+        li.textContent = line;
+        return li;
+      })
+    );
+
+    const status = this.el_('fr-status');
+    const send = this.el_<HTMLButtonElement>('fr-send');
+    const waiting = Math.max(0, Math.ceil((this.retryUntil_ - Date.now()) / 1000));
+    status.classList.toggle('fr-status-error', this.view_.kind === 'error');
+    if (this.view_.kind === 'sending') status.textContent = 'Filing the report…';
+    else if (this.view_.kind === 'error') status.textContent = this.view_.error.message;
+    else if (draft === null && !filed) status.textContent = 'The game state could not be read. Close the form and try again.';
+    else status.textContent = '';
+    const retrying = this.view_.kind === 'error' && this.view_.error.retryable;
+    send.textContent = sending ? 'Filing…' : retrying ? (waiting > 0 ? `Retry in ${waiting}s` : 'Retry filing') : 'File report';
+    send.disabled = sending || !draft || waiting > 0 || (shotOn && !draft.screenshot) || (!retrying && codePointCount(draft.message.trim()) === 0);
+    this.el_<HTMLButtonElement>('fr-discard').disabled = sending;
+    this.el_<HTMLButtonElement>('fr-putaway').disabled = sending;
   }
 
   dispose(): void {
-    this.close_();
+    this.stopCountdown_();
+    this.discardDraft_();
+    if (this.dialog_.open) this.close_();
+    this.dialog_.removeEventListener('cancel', this.boundCancel_);
+    this.form_.removeEventListener('submit', this.boundSubmit_);
     this.observer_.disconnect();
     this.unsubscribeDev_();
     this.authSubscription_?.data.subscription.unsubscribe();
     this.tab_.remove();
+    this.contact_.remove();
     this.dialog_.remove();
-    this.notice_.remove();
+    this.domCache_.clear();
   }
 }

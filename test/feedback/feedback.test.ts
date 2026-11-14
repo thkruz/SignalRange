@@ -1,11 +1,12 @@
-import { Feedback } from '../../src/feedback/feedback';
+import { FEEDBACK_CONTACT_URL, Feedback } from '../../src/feedback/feedback';
+import { FeedbackSubmitError } from '../../src/feedback/feedback-service';
 import { setMenuPause } from '../../src/game-menu/menu-pause';
 import { SimClock } from '../../src/simulation/sim-clock';
 
 const mocks = vi.hoisted(() => ({
-  isDev: true,
+  isDev: false,
   devChanged: () => {},
-  authChanged: (_event: string, _user: { id: string } | null) => {},
+  authChanged: (_event: string, _user: { id: string; is_anonymous?: boolean } | null) => {},
   captureScreen: vi.fn(),
   captureState: vi.fn(),
   submit: vi.fn(),
@@ -24,277 +25,276 @@ vi.mock('@app/dev-menu/dev-menu-service', () => ({
 }));
 vi.mock('@app/user-account/auth', () => ({
   Auth: {
-    getCurrentUser: async () => ({ id: 'developer-a' }),
+    getCurrentUser: async () => null,
+    getValidAccessToken: async () => 'jwt',
     onAuthStateChange: (callback: typeof mocks.authChanged) => {
       mocks.authChanged = callback;
       return { data: { subscription: { unsubscribe: mocks.unsubscribe } } };
     },
   },
 }));
+vi.mock('@app/user-account/supabase-client', () => ({ SUPABASE_URL: 'http://127.0.0.1:54321', SUPABASE_ANON_KEY: 'anon' }));
 vi.mock('../../src/feedback/feedback-capture', () => ({ captureFeedbackScreen: mocks.captureScreen, captureFeedbackState: mocks.captureState }));
-vi.mock('../../src/feedback/feedback-service', () => ({ submitFeedback: mocks.submit }));
+vi.mock('../../src/feedback/feedback-service', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../src/feedback/feedback-service')>()),
+  submitFeedback: mocks.submit,
+}));
 vi.mock('@app/sound/sound-manager', () => ({ default: { getInstance: () => ({ setMenuPaused: vi.fn() }) } }));
 vi.mock('@app/sound/ambience', () => ({ Ambience: { setMenuPaused: vi.fn() } }));
 
-describe('Feedback', () => {
+const SHOT = 'data:image/jpeg;base64,/9j/2Q==';
+const snapshot = () => ({
+  capturedAt: '2026-11-14T10:00:00.000Z',
+  version: '1.1.0',
+  commit: 'abcdef1',
+  route: '/campaigns/nats',
+  scenarioId: 'nats-1',
+  gameState: {},
+});
+
+describe('Feedback field report', () => {
   let feedback: Feedback;
-  const input = () => document.querySelector<HTMLTextAreaElement>('textarea')!;
-  const send = () => document.querySelector<HTMLButtonElement>('.qa-feedback-send')!;
-  const screenshotToggle = () => document.querySelector<HTMLInputElement>('#qa-feedback-include-screenshot')!;
+  const $ = <T extends Element>(selector: string) => document.querySelector<T>(selector)!;
+  const input = () => $<HTMLTextAreaElement>('#fr-message');
+  const send = () => $<HTMLButtonElement>('#fr-send');
+  const shot = () => $<HTMLInputElement>('#fr-shot');
+  const tab = () => $<HTMLButtonElement>('.fr-tab:not(.fr-tab-contact)');
+  const contact = () => $<HTMLAnchorElement>('.fr-tab-contact');
+  const dialog = () => $<HTMLDialogElement>('.fr-dialog');
   const type = (message: string) => {
     input().value = message;
     input().dispatchEvent(new Event('input'));
   };
   const flush = async () => {
-    await Promise.resolve();
-    await Promise.resolve();
+    for (let i = 0; i < 5; i += 1) await Promise.resolve();
   };
+  const signIn = (id = 'player-a', extra: object = {}) => mocks.authChanged('SIGNED_IN', { id, ...extra });
 
   beforeEach(() => {
     vi.clearAllMocks();
     document.body.innerHTML = '';
     SimClock.reset();
-    mocks.isDev = true;
+    mocks.isDev = false;
     HTMLDialogElement.prototype.showModal = function () {
       this.open = true;
     };
     HTMLDialogElement.prototype.close = function () {
       this.open = false;
     };
-    mocks.captureScreen.mockResolvedValue('data:image/jpeg;base64,/9j/2Q==');
-    mocks.captureState.mockImplementation(() => ({ route: '/campaigns/nats', gameState: { objectiveStates: [] } }));
-    mocks.submit.mockResolvedValue(undefined);
+    mocks.captureScreen.mockResolvedValue(SHOT);
+    mocks.captureState.mockImplementation(snapshot);
+    mocks.submit.mockResolvedValue({ duplicate: false });
     feedback = new Feedback();
   });
   afterEach(() => {
     feedback.dispose();
+    vi.useRealTimers();
   });
 
-  it('hides the tab and refuses opening for non-developers', () => {
-    mocks.isDev = false;
-    mocks.devChanged();
+  it('shows a contact link and no form to signed-out players', () => {
+    expect(tab().hidden).toBe(true);
+    expect(contact().hidden).toBe(false);
+    expect(contact().href).toBe(FEEDBACK_CONTACT_URL);
+    expect(contact().rel).toContain('noopener');
     feedback.open();
-    expect(document.querySelector<HTMLButtonElement>('.qa-feedback-tab')!.hidden).toBe(true);
+    expect(dialog().open).toBe(false);
     expect(mocks.captureScreen).not.toHaveBeenCalled();
   });
 
-  it('captures before covering the screen, freezes the game and preserves existing menu pauses', async () => {
-    setMenuPause('existing-menu', true);
-    mocks.captureScreen.mockImplementation(() => {
-      expect(document.querySelector<HTMLDialogElement>('.qa-feedback-dialog')!.open).toBe(false);
-      expect(SimClock.consumeFrame(100)).toBe(0);
-      return Promise.resolve('data:image/jpeg;base64,/9j/2Q==');
-    });
-    feedback.open();
-    await flush();
-    expect(send().disabled).toBe(true);
-    type('  ');
-    expect(send().disabled).toBe(true);
-    type('Menu is clipped');
-    expect(send().disabled).toBe(false);
-    document.querySelector<HTMLButtonElement>('.qa-feedback-cancel')!.click();
-    expect(SimClock.isPaused('menu')).toBe(true);
-    setMenuPause('existing-menu', false);
-    expect(SimClock.isPaused('menu')).toBe(false);
+  it('treats an anonymous session as signed out', () => {
+    signIn('guest', { is_anonymous: true });
+    expect(tab().hidden).toBe(true);
+    expect(contact().hidden).toBe(false);
   });
 
-  it('retains note and original evidence on failure; retry uses the same receipt', async () => {
-    mocks.submit.mockRejectedValueOnce(new Error('Please retry'));
-    feedback.open();
-    await flush();
-    type('Menu is clipped');
-    send().click();
-    await flush();
-    expect(input().value).toBe('Menu is clipped');
-    expect(input().disabled).toBe(false);
-    expect(input().readOnly).toBe(true);
-    expect(document.querySelector('[role="status"]')!.textContent).toContain('retry');
-    const first = structuredClone(mocks.submit.mock.calls[0][0]);
-    send().click();
-    await flush();
-    expect(mocks.submit.mock.calls[1][0]).toEqual(first);
-    expect(mocks.captureScreen).toHaveBeenCalledTimes(1);
-    expect(send().disabled).toBe(true);
-    expect(document.querySelector<HTMLDialogElement>('.qa-feedback-dialog')!.open).toBe(false);
-    expect(document.querySelector('.qa-feedback-notice')!.textContent).toContain('saved');
-    expect(SimClock.isPaused('menu')).toBe(false);
+  it('shows the Feedback entry to every signed-in player, not only developers', () => {
+    signIn();
+    expect(tab().hidden).toBe(false);
+    expect(tab().textContent).toBe('Feedback');
+    expect(contact().hidden).toBe(true);
   });
 
-  it('blocks duplicates and dismissal while a request is in flight', async () => {
-    mocks.submit.mockReturnValue(new Promise(() => {}));
+  it('opens with the screenshot off and no preview, and pauses the game', async () => {
+    signIn();
+    tab().click();
+    await flush();
+    expect(dialog().open).toBe(true);
+    expect(shot().checked).toBe(false);
+    expect($<HTMLImageElement>('#fr-preview').hidden).toBe(true);
+    expect($('#fr-manifest').textContent).toContain('nats-1');
+    expect($('#fr-manifest').textContent).not.toMatch(/Screenshot/u);
+    expect(send().disabled).toBe(true);
+  });
+
+  it('shows the preview, consent text and the attachment line when the screenshot is switched on', async () => {
+    signIn();
     feedback.open();
     await flush();
-    type('Issue');
+    shot().checked = true;
+    shot().dispatchEvent(new Event('change'));
+    expect($<HTMLImageElement>('#fr-preview').hidden).toBe(false);
+    expect($<HTMLImageElement>('#fr-preview').src).toBe(SHOT);
+    expect($('#fr-shot-panel').hidden).toBe(false);
+    expect($('#fr-manifest').textContent).toMatch(/Screenshot/u);
+  });
+
+  it('counts code points and clamps to the player limit', async () => {
+    signIn();
+    feedback.open();
+    type('a😀b');
+    expect($('#fr-count').textContent).toContain('3 / 4,000');
+    type('😀'.repeat(4100));
+    expect(Array.from(input().value)).toHaveLength(4000);
+  });
+
+  it('files a report, shows the confirmation and clears the draft', async () => {
+    signIn();
+    feedback.open();
+    await flush();
+    $<HTMLInputElement>('input[value="idea"]').click();
+    type('Add a dark mode');
     send().click();
-    send().click();
-    document.querySelector<HTMLDialogElement>('dialog')!.dispatchEvent(new Event('cancel', { cancelable: true }));
+    await flush();
     expect(mocks.submit).toHaveBeenCalledTimes(1);
-    expect(input().readOnly).toBe(true);
-    expect(input().disabled).toBe(false);
-    expect(document.querySelector<HTMLDialogElement>('dialog')!.open).toBe(true);
-  });
-
-  it('closes on success, preserves the underlying menu pause and clears its confirmation', async () => {
-    vi.useFakeTimers();
-    try {
-      setMenuPause('existing-menu', true);
-      feedback.open();
-      await flush();
-      type('Issue');
-      send().click();
-      await flush();
-      expect(document.querySelector<HTMLDialogElement>('.qa-feedback-dialog')!.open).toBe(false);
-      expect(input().value).toBe('');
-      expect(SimClock.isPaused('menu')).toBe(true);
-      const notice = document.querySelector<HTMLElement>('.qa-feedback-notice')!;
-      expect(notice.hidden).toBe(false);
-      vi.advanceTimersByTime(4000);
-      expect(notice.hidden).toBe(true);
-    } finally {
-      setMenuPause('existing-menu', false);
-      vi.useRealTimers();
-    }
-  });
-
-  it('automatically excludes and disables a failed screenshot, submitting diagnostics with the note', async () => {
-    mocks.captureScreen.mockRejectedValueOnce(new Error('Canvas error'));
-    feedback.open();
-    await flush();
-    type('Issue');
-    expect(screenshotToggle().checked).toBe(false);
-    expect(screenshotToggle().disabled).toBe(true);
-    expect(document.querySelector('[role="status"]')!.textContent).toContain('failure details');
-    expect(send().disabled).toBe(false);
-    send().click();
-    await flush();
-    expect(mocks.submit.mock.calls[0][0].screenshot).toBeNull();
-    expect(mocks.submit.mock.calls[0][0].snapshot.gameState).toBeDefined();
-    expect(mocks.submit.mock.calls[0][0].snapshot.screenshotCapture).toMatchObject({ status: 'failed', stage: 'render', reason: 'render-failed' });
-    feedback.open();
-    await flush();
-    expect(screenshotToggle().checked).toBe(true);
-    expect(screenshotToggle().disabled).toBe(false);
-  });
-
-  it('ignores an old capture failure after closing and reopening', async () => {
-    let fail!: (error: Error) => void;
-    mocks.captureScreen.mockReturnValueOnce(
-      new Promise<string>((_resolve, reject) => {
-        fail = reject;
-      })
-    );
-    feedback.open();
-    document.querySelector<HTMLButtonElement>('.qa-feedback-cancel')!.click();
-    feedback.open();
-    await flush();
-    fail(new Error('Old capture failed'));
-    await flush();
-    expect(screenshotToggle().checked).toBe(true);
-    expect(screenshotToggle().disabled).toBe(false);
-    type('New draft');
-    send().click();
-    await flush();
-    expect(mocks.submit.mock.calls[0][0].snapshot.screenshotCapture).toBeUndefined();
-    expect(mocks.submit.mock.calls[0][0].screenshot).not.toBeNull();
-  });
-
-  it('does not mutate an immutable retry when an excluded screenshot fails late', async () => {
-    let fail!: (error: Error) => void;
-    mocks.captureScreen.mockReturnValueOnce(
-      new Promise<string>((_resolve, reject) => {
-        fail = reject;
-      })
-    );
-    mocks.submit.mockRejectedValueOnce(new Error('Please retry'));
-    feedback.open();
-    screenshotToggle().click();
-    type('Audio issue');
-    send().click();
-    await flush();
-    const original = structuredClone(mocks.submit.mock.calls[0][0]);
-    fail(new Error('Late failure'));
-    await flush();
-    send().click();
-    await flush();
-    expect(mocks.submit.mock.calls[1][0]).toEqual(original);
-  });
-
-  it('can exclude and restore the original capture before sending', async () => {
-    feedback.open();
-    await flush();
-    expect(screenshotToggle().checked).toBe(true);
-    screenshotToggle().click();
-    expect(document.querySelector<HTMLImageElement>('img')!.hidden).toBe(true);
-    expect(document.querySelector<HTMLImageElement>('img')!.getAttribute('src')).toBeNull();
-    screenshotToggle().click();
-    expect(document.querySelector<HTMLImageElement>('img')!.hidden).toBe(false);
-    type('Visible issue');
-    send().click();
-    await flush();
-    expect(mocks.submit.mock.calls[0][0].screenshot).toBe('data:image/jpeg;base64,/9j/2Q==');
-    expect(mocks.captureScreen).toHaveBeenCalledTimes(1);
-  });
-
-  it('sends without waiting for an excluded image, and a late capture cannot change a retry', async () => {
-    let complete!: (value: string) => void;
-    mocks.captureScreen.mockReturnValue(
-      new Promise<string>((resolve) => {
-        complete = resolve;
-      })
-    );
-    mocks.submit.mockRejectedValueOnce(new Error('Please retry'));
-    feedback.open();
-    type('Audio observation');
-    screenshotToggle().click();
-    send().click();
-    await flush();
-    expect(screenshotToggle().disabled).toBe(true);
-    const first = structuredClone(mocks.submit.mock.calls[0][0]);
-    complete('data:image/jpeg;base64,/9j/2Q==');
-    await flush();
-    expect(document.querySelector<HTMLImageElement>('img')!.hidden).toBe(true);
-    send().click();
-    await flush();
-    expect(mocks.submit.mock.calls[1][0]).toEqual(first);
-    expect(first.screenshot).toBeNull();
-  });
-
-  it('moves the tab into a native modal so it stays interactive', async () => {
-    const menu = document.createElement('dialog');
-    document.body.append(menu);
-    menu.showModal();
-    await flush();
-    expect(menu.querySelector('.qa-feedback-tab')).not.toBeNull();
-    menu.querySelector<HTMLButtonElement>('.qa-feedback-tab')!.disabled = true;
-    menu.close();
-    await flush();
-    expect(document.querySelector('.qa-feedback-tab')!.parentElement).toBe(document.body);
-    expect(document.querySelector<HTMLButtonElement>('.qa-feedback-tab')!.disabled).toBe(false);
-  });
-
-  it('clears the draft and releases only its own pause on account change', async () => {
-    await flush();
-    feedback.open();
-    await flush();
-    type('Private observation');
-    mocks.authChanged('SIGNED_OUT', null);
-    expect(document.querySelector<HTMLDialogElement>('.qa-feedback-dialog')!.open).toBe(false);
+    const request = mocks.submit.mock.calls[0][0];
+    expect(request).toMatchObject({ category: 'idea', message: 'Add a dark mode', screenshot: null });
+    expect(request.id).toMatch(/^[0-9a-f-]{36}$/u);
+    expect($('#fr-filed').hidden).toBe(false);
+    expect($('#fr-filed-no').textContent).toBe(request.id.slice(0, 8).toUpperCase());
     expect(input().value).toBe('');
-    expect(SimClock.isPaused('menu')).toBe(false);
+    $<HTMLButtonElement>('#fr-done').click();
+    expect(dialog().open).toBe(false);
+    feedback.open();
+    expect(input().value).toBe('');
+    expect($('#fr-filed').hidden).toBe(true);
   });
 
-  it('ignores a late screenshot after closing', async () => {
-    let complete!: (value: string) => void;
-    mocks.captureScreen.mockReturnValue(
-      new Promise<string>((resolve) => {
-        complete = resolve;
-      })
-    );
+  it('keeps the draft and reuses the same id when a retry follows a failure', async () => {
+    signIn();
+    mocks.submit.mockRejectedValueOnce(new FeedbackSubmitError('server', 503)).mockResolvedValueOnce({ duplicate: false });
     feedback.open();
-    document.querySelector<HTMLButtonElement>('.qa-feedback-cancel')!.click();
-    complete('data:image/jpeg;base64,/9j/2Q==');
     await flush();
-    expect(document.querySelector<HTMLImageElement>('.qa-feedback-preview')!.hidden).toBe(true);
-    expect(SimClock.isPaused('menu')).toBe(false);
+    type('It broke');
+    send().click();
+    await flush();
+    expect($('#fr-status').textContent).toMatch(/draft is kept/iu);
+    expect(send().textContent).toBe('Retry filing');
+    expect(input().readOnly).toBe(true);
+    send().click();
+    await flush();
+    const [first, second] = mocks.submit.mock.calls.map(([r]) => r);
+    expect(second.id).toBe(first.id);
+    expect(second).toEqual(first);
+    expect($('#fr-filed').hidden).toBe(false);
+  });
+
+  it('counts a 429 down from Retry-After before Retry is allowed', async () => {
+    vi.useFakeTimers();
+    signIn();
+    mocks.submit.mockRejectedValueOnce(new FeedbackSubmitError('rate-limited', 429, 3));
+    feedback.open();
+    await flush();
+    type('Wait for it');
+    send().click();
+    await flush();
+    expect(send().disabled).toBe(true);
+    expect(send().textContent).toBe('Retry in 3s');
+    vi.advanceTimersByTime(3100);
+    expect(send().disabled).toBe(false);
+    expect(send().textContent).toBe('Retry filing');
+  });
+
+  it('unlocks the form with a new id after a 400 so the operator can edit', async () => {
+    signIn();
+    mocks.submit.mockRejectedValueOnce(new FeedbackSubmitError('invalid', 400, null, ['unknown-scenario']));
+    feedback.open();
+    await flush();
+    type('Something odd');
+    send().click();
+    await flush();
+    expect(input().readOnly).toBe(false);
+    expect($('#fr-status').textContent).toMatch(/rejected/iu);
+    send().click();
+    await flush();
+    const [first, second] = mocks.submit.mock.calls.map(([r]) => r);
+    expect(second.id).not.toBe(first.id);
+    expect(second.snapshot.scenarioId).toBeNull();
+  });
+
+  it('puts the form away on Escape, restores focus and keeps the draft', async () => {
+    signIn();
+    const opener = document.createElement('button');
+    document.body.append(opener);
+    opener.focus();
+    feedback.open();
+    type('Half written');
+    const cancel = new Event('cancel', { cancelable: true });
+    dialog().dispatchEvent(cancel);
+    expect(cancel.defaultPrevented).toBe(true);
+    expect(dialog().open).toBe(false);
+    expect(document.activeElement).toBe(opener);
+    feedback.open();
+    expect(input().value).toBe('Half written');
+  });
+
+  it('does not close on Escape while a report is being sent', async () => {
+    signIn();
+    let finish: (v: { duplicate: boolean }) => void = () => {};
+    mocks.submit.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    feedback.open();
+    type('Slow link');
+    send().click();
+    dialog().dispatchEvent(new Event('cancel', { cancelable: true }));
+    expect(dialog().open).toBe(true);
+    finish({ duplicate: false });
+    await flush();
+    expect($('#fr-filed').hidden).toBe(false);
+  });
+
+  it('discards the draft on request and releases the menu pause', async () => {
+    signIn();
+    feedback.open();
+    type('Never mind');
+    $<HTMLButtonElement>('#fr-discard').click();
+    expect(dialog().open).toBe(false);
+    feedback.open();
+    expect(input().value).toBe('');
+    setMenuPause('feedback', false);
+  });
+
+  it('drops a draft when another account signs in', async () => {
+    signIn('player-a');
+    feedback.open();
+    type('Mine');
+    signIn('player-b');
+    expect(dialog().open).toBe(false);
+    feedback.open();
+    expect(input().value).toBe('');
+  });
+
+  it('turns the screenshot off with a visible note when the capture fails', async () => {
+    signIn();
+    mocks.captureScreen.mockRejectedValue(new Error('boom'));
+    feedback.open();
+    await flush();
+    expect(shot().disabled).toBe(true);
+    expect($('#fr-shot-note').hidden).toBe(false);
+    expect($('#fr-shot-note').textContent).toMatch(/left off/u);
+  });
+
+  it('uses the developer limit and DEV QA label for developers', () => {
+    mocks.isDev = true;
+    signIn();
+    feedback.open();
+    expect($('#fr-tier').hidden).toBe(false);
+    expect($('#fr-count').textContent).toContain('/ 10,000');
+  });
+
+  it('renders user text as text, never markup', async () => {
+    signIn();
+    feedback.open();
+    await flush();
+    type('<img src=x onerror=alert(1)>');
+    expect(dialog().querySelector('img[src="x"]')).toBeNull();
   });
 });

@@ -259,13 +259,22 @@ function declaredLengthRefused(req: Request): boolean {
 const MAX_BODY_READS = 4096;
 const INITIAL_BODY_BUFFER = 65_536;
 
+const MIN_BYOB_READ = 4096;
+
+/** Reads at most `max` bytes as text. Null on overrun, 'timeout' when the sender is too slow. */
+async function readBounded(req: Request, max: number, timeoutMs: number): Promise<string | null | 'timeout'> {
+  const bytes = await readBodyBytes(req, max, timeoutMs);
+  return bytes === null || bytes === 'timeout' ? bytes : new TextDecoder().decode(bytes);
+}
+
 /**
  * Reads at most `max` bytes within `timeoutMs`. Null on overrun (bytes or read count), 'timeout' when the sender is too slow.
  * Each chunk is copied into one buffer and the read view dropped at once: on Deno a 1-byte read is a view over a
  * 64 KB ArrayBuffer, so keeping views would pin 64 KB per read.
+ * Exported for the integrity tests.
  */
-async function readBounded(req: Request, max: number, timeoutMs: number): Promise<string | null | 'timeout'> {
-  if (!req.body) return '';
+export async function readBodyBytes(req: Request, max: number, timeoutMs: number): Promise<Uint8Array | null | 'timeout'> {
+  if (!req.body) return new Uint8Array(0);
   // A BYOB reader lands bytes straight in our buffer, so a flood of tiny reads allocates nothing per read. Streams that
   // are not byte streams (tests, other runtimes) refuse it and use the default reader.
   let byob: ReadableStreamBYOBReader | null = null;
@@ -278,6 +287,9 @@ async function readBounded(req: Request, max: number, timeoutMs: number): Promis
   }
   // Never size the buffer from the declared length: a sender can declare a large body and then stall.
   let buf = new Uint8Array(Math.min(INITIAL_BODY_BUFFER, max));
+  // Deno.serve hangs a BYOB read into a view of 3 bytes or fewer on chunked bodies, so every BYOB read gets at least
+  // MIN_BYOB_READ bytes of room: the main buffer when it has that much, this scratch view when it does not.
+  let scratch: Uint8Array | null = null;
   let total = 0;
   let timedOut = false;
   const grow = (need: number) => {
@@ -297,18 +309,32 @@ async function readBounded(req: Request, max: number, timeoutMs: number): Promis
         return null;
       }
       if (byob) {
-        if (total === buf.length && buf.length < max) grow(total + 1);
+        // Grow before the room gets small, so the scratch path only runs once the buffer is at the cap.
+        if (buf.length - total < MIN_BYOB_READ && buf.length < max) grow(total + MIN_BYOB_READ);
         const room = buf.length - total;
-        // With no room left, one probe byte tells "body ended exactly at the limit" from "body is over the limit".
-        const next = await byob.read(room > 0 ? new Uint8Array(buf.buffer, total, room) : new Uint8Array(1));
+        const direct = room >= MIN_BYOB_READ;
+        const view: Uint8Array = direct ? new Uint8Array(buf.buffer, total, room) : (scratch ??= new Uint8Array(MIN_BYOB_READ));
+        // Reading transfers the underlying buffer, so the view that comes back replaces the one handed in.
+        const next = await byob.read(view);
         if (timedOut) return 'timeout';
-        if (room > 0 && next.value) buf = new Uint8Array(next.value.buffer);
-        if (next.done) break;
-        if (room === 0) {
-          reader.cancel().catch(() => undefined);
-          return null;
+        const got = next.value;
+        if (got) {
+          if (direct) buf = new Uint8Array(got.buffer as ArrayBuffer);
+          else scratch = new Uint8Array(got.buffer as ArrayBuffer);
         }
-        total += next.value.byteLength;
+        if (next.done) break;
+        const n = got ? got.byteLength : 0;
+        if (direct) {
+          total += n;
+        } else {
+          // Only the cap's last bytes fit; anything beyond them is over the limit.
+          if (n > room) {
+            reader.cancel().catch(() => undefined);
+            return null;
+          }
+          buf.set((scratch as Uint8Array).subarray(0, n), total);
+          total += n;
+        }
         continue;
       }
       const next = await (reader as ReadableStreamDefaultReader<Uint8Array>).read();
@@ -326,7 +352,7 @@ async function readBounded(req: Request, max: number, timeoutMs: number): Promis
   } finally {
     clearTimeout(timer);
   }
-  return new TextDecoder().decode(buf.subarray(0, total));
+  return buf.slice(0, total);
 }
 
 type Processed = { ok: true; bytes: Uint8Array } | { ok: false; status: number; error: string };

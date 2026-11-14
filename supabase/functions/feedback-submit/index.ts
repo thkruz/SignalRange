@@ -40,8 +40,15 @@ const deps: Deps = {
     return data.allowed ? { allowed: true } : { allowed: false, scope: data.scope, retryAfterSec: Number(data.retry_after_sec) || 60 };
   },
   async putScreenshot(path, bytes) {
-    const { error } = await admin.storage.from(BUCKET).upload(path, bytes, { contentType: 'image/jpeg', upsert: true });
-    if (error) throw new Error('storage failed');
+    const { error } = await admin.storage.from(BUCKET).upload(path, bytes, { contentType: 'image/jpeg', upsert: false });
+    if (!error) return 'stored';
+    const e = error as { statusCode?: string | number; message?: string };
+    if (String(e.statusCode) === '409' || /already exists|duplicate/iu.test(e.message ?? '')) return 'exists';
+    throw new Error('storage failed');
+  },
+  async removeScreenshot(path) {
+    const { error } = await admin.storage.from(BUCKET).remove([path]);
+    if (error) throw new Error('storage cleanup failed');
   },
   reencodeJpeg,
   async insert(row) {

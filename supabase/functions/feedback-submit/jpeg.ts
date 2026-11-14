@@ -1,7 +1,14 @@
 // JPEG helpers for the feedback-submit function. Pure: no network, no Deno APIs.
 
 export const MAX_SCREENSHOT_BYTES = 1_500_000;
-export const MAX_SCREENSHOT_DIMENSION = 4096;
+export const MAX_SCREENSHOT_DIMENSION = 2560;
+/** Pixel budget; the decoder gets the same cap (see jpeg-codec.ts). */
+export const MAX_SCREENSHOT_PIXELS = 6_000_000;
+/** A canvas export has one scan (baseline) or about ten (progressive); thousands is an attack. */
+export const MAX_JPEG_SCANS = 16;
+
+/** Base64 length of the largest accepted image (1.5 MB is 2,000,000 characters). */
+export const MAX_SCREENSHOT_BASE64_CHARS = 2_000_100;
 
 export const DATA_URL_PREFIX = 'data:image/jpeg;base64,';
 
@@ -20,34 +27,103 @@ export function decodeBase64(b64: string): Uint8Array | null {
 
 export const hasJpegMagic = (b: Uint8Array): boolean => b.length > 4 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff;
 
+export interface JpegInfo {
+  width: number;
+  height: number;
+  scans: number;
+  progressive: boolean;
+}
+
 /**
- * Read width and height from the first SOF marker without decoding pixels, so an
- * oversized image is refused before any large allocation. Returns null if no SOF is found.
+ * Strict structural pre-parse. Walks every marker segment, requires each declared length to fit
+ * exactly (DQT and DHT contents must fill their segment, so jpeg-js and this parser agree on where
+ * every segment ends), counts SOS scans and requires exactly one SOF and a closing EOI.
+ * Returns null for anything it cannot account for byte by byte; callers refuse null.
  */
-export function readJpegSize(b: Uint8Array): { width: number; height: number } | null {
+export function inspectJpeg(b: Uint8Array): JpegInfo | null {
+  if (!hasJpegMagic(b)) return null;
   let i = 2;
-  while (i + 9 < b.length) {
+  let sof: { width: number; height: number; progressive: boolean } | null = null;
+  let scans = 0;
+  let eoi = false;
+  while (i < b.length) {
     if (b[i] !== 0xff) return null;
     let marker = b[i + 1];
+    // Fill bytes before a marker.
     while (marker === 0xff && i + 2 < b.length) {
       i++;
       marker = b[i + 1];
     }
-    // Standalone markers carry no length.
-    if (marker === 0xd8 || marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) {
+    if (marker === undefined || marker === 0x00) return null;
+    if (marker === 0xd8) return null;
+    if (marker === 0xd9) {
+      eoi = true;
+      i += 2;
+      break;
+    }
+    if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) {
       i += 2;
       continue;
     }
-    if (marker === 0xd9 || marker === 0xda) return null;
+    if (i + 4 > b.length) return null;
     const len = (b[i + 2] << 8) | b[i + 3];
-    if (len < 2) return null;
-    const isSof = marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc;
-    if (isSof) {
-      const height = (b[i + 5] << 8) | b[i + 6];
-      const width = (b[i + 7] << 8) | b[i + 8];
-      return { width, height };
+    if (len < 2 || i + 2 + len > b.length) return null;
+    const start = i + 4;
+    const end = i + 2 + len;
+    if (marker === 0xdb) {
+      // DQT: one or more tables of 1 + 64 (8-bit) or 1 + 128 (16-bit) bytes filling the segment.
+      let p = start;
+      while (p < end) {
+        const pq = b[p] >> 4;
+        if (pq > 1 || (b[p] & 0x0f) > 3) return null;
+        p += 1 + (pq === 0 ? 64 : 128);
+      }
+      if (p !== end) return null;
+    } else if (marker === 0xc4) {
+      // DHT: 1 + 16 + sum(counts) bytes per table, filling the segment.
+      let p = start;
+      while (p < end) {
+        if (p + 17 > end) return null;
+        let total = 0;
+        for (let k = 1; k <= 16; k++) total += b[p + k];
+        if (total > 256) return null;
+        p += 17 + total;
+      }
+      if (p !== end) return null;
+    } else if (marker === 0xdd) {
+      if (len !== 4) return null;
+    } else if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc8 && marker !== 0xcc) {
+      // SOF. Only baseline, extended sequential and progressive Huffman are accepted.
+      if (marker !== 0xc0 && marker !== 0xc1 && marker !== 0xc2) return null;
+      if (sof !== null || len < 8) return null;
+      const components = b[start + 5];
+      if (components < 1 || components > 4 || len !== 8 + 3 * components) return null;
+      sof = { height: (b[start + 1] << 8) | b[start + 2], width: (b[start + 3] << 8) | b[start + 4], progressive: marker === 0xc2 };
+    } else if (marker === 0xda) {
+      if (sof === null) return null;
+      scans++;
+      if (scans > MAX_JPEG_SCANS) return null;
+      const components = b[start];
+      if (components < 1 || components > 4 || len !== 6 + 2 * components) return null;
+      // Skip entropy-coded data: it ends at the next marker that is neither a stuffed 00 nor RSTn.
+      let p = end;
+      for (;;) {
+        if (p + 1 >= b.length) return null;
+        if (b[p] === 0xff && b[p + 1] !== 0x00 && !(b[p + 1] >= 0xd0 && b[p + 1] <= 0xd7)) break;
+        p++;
+      }
+      i = p;
+      continue;
     }
-    i += 2 + len;
+    i = end;
   }
-  return null;
+  if (!eoi || sof === null || scans === 0) return null;
+  if (sof.width < 1 || sof.height < 1) return null;
+  return { width: sof.width, height: sof.height, scans, progressive: sof.progressive };
+}
+
+/** Width and height from the strict pre-parse, or null. */
+export function readJpegSize(b: Uint8Array): { width: number; height: number } | null {
+  const info = inspectJpeg(b);
+  return info === null ? null : { width: info.width, height: info.height };
 }

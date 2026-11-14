@@ -1,7 +1,7 @@
 // Request handler for feedback-submit. All I/O comes in through `Deps`, so the
 // whole policy (auth, limits, validation, image handling) runs without a network.
 import { type CleanFeedback, type FeedbackDeps, type FeedbackTier, validateFeedback, wasStripped } from '../_shared/feedback-rules.ts';
-import { DATA_URL_PREFIX, decodeBase64, hasJpegMagic, MAX_SCREENSHOT_BYTES, MAX_SCREENSHOT_DIMENSION, readJpegSize } from './jpeg.ts';
+import { DATA_URL_PREFIX, decodeBase64, hasJpegMagic, MAX_SCREENSHOT_BASE64_CHARS, MAX_SCREENSHOT_BYTES, MAX_SCREENSHOT_DIMENSION, MAX_SCREENSHOT_PIXELS, inspectJpeg } from './jpeg.ts';
 import { computeRiskFlags } from './risk-flags.ts';
 
 export const RATE_LIMITS = { perHour: 5, perDay: 20, globalPerHour: 300 } as const;
@@ -34,7 +34,10 @@ export interface Deps {
   findOwner(id: string): Promise<string | null>;
   /** Records the attempt and decides atomically. */
   consumeRate(userId: string, nowMs: number): Promise<RateDecision>;
-  putScreenshot(path: string, bytes: Uint8Array): Promise<void>;
+  /** Stores without overwriting. Resolves 'exists' when the object is already there. */
+  putScreenshot(path: string, bytes: Uint8Array): Promise<'stored' | 'exists'>;
+  /** Best-effort delete of an object this request uploaded. */
+  removeScreenshot(path: string): Promise<void>;
   /** Decode and re-encode. Throws on anything that is not a decodable JPEG. */
   reencodeJpeg(bytes: Uint8Array): Promise<Uint8Array>;
   insert(row: FeedbackRow): Promise<'inserted' | 'duplicate' | 'conflict'>;
@@ -97,7 +100,8 @@ export async function handleFeedbackRequest(req: Request, deps: Deps): Promise<R
     const scenarioDeps: FeedbackDeps = { isRegisteredScenario: (id) => deps.isRegisteredScenario(id) };
     const result = validateFeedback(payload, tier, scenarioDeps);
     if (result.ok === false) return fail(400, 'invalid-feedback', deps, { reasons: result.reasons });
-    const clean = result.value;
+    // Ids are compared and stored lowercase: the path check and the uuid column both expect it.
+    const clean = { ...result.value, id: result.value.id.toLowerCase() };
 
     // 4. Idempotency before rate limiting: a replay costs the player nothing.
     const owner = await deps.findOwner(clean.id);
@@ -110,37 +114,64 @@ export async function handleFeedbackRequest(req: Request, deps: Deps): Promise<R
       return fail(429, 'rate-limited', deps, { scope: rate.scope === 'global' ? 'global' : rate.scope }, { 'Retry-After': String(Math.max(1, Math.ceil(rate.retryAfterSec))) });
     }
 
-    // 6. Screenshot: validate, re-encode, store the path only.
-    let screenshotPath: string | null = null;
+    // 6. Screenshot: validate and re-encode before anything is stored.
+    let processedBytes: Uint8Array | null = null;
     if (clean.screenshot !== null) {
       const processed = await processScreenshot(clean, deps);
       if (processed.ok === false) return fail(processed.status, processed.error, deps);
-      screenshotPath = `${user.id}/${clean.id}.jpg`;
-      await deps.putScreenshot(screenshotPath, processed.bytes);
+      processedBytes = processed.bytes;
     }
 
-    // 7. Flag, do not reject.
+    // 7. Flag, do not reject. Every stored string is scanned, not only the message.
     const riskFlags = computeRiskFlags({
       message: clean.message,
       stripped: clean.stripped,
       snapshotSanitized: snapshotWasSanitized(clean),
+      snapshot: clean.snapshot,
     });
 
-    const outcome = await deps.insert({
-      id: clean.id,
-      userId: user.id,
-      category: clean.category,
-      message: clean.message,
-      snapshot: clean.snapshot,
-      screenshotPath,
-      riskFlags,
-    });
+    // 8. Upload last, and take the object back if the row does not end up referencing it.
+    let screenshotPath: string | null = null;
+    if (processedBytes !== null) {
+      const path = `${user.id}/${clean.id}.jpg`;
+      if ((await deps.putScreenshot(path, processedBytes)) === 'exists') {
+        // A concurrent request with this id got there first.
+        const now = await deps.findOwner(clean.id);
+        return now === user.id ? respond(200, { ok: true, id: clean.id, duplicate: true }, deps) : fail(409, 'id-conflict', deps);
+      }
+      screenshotPath = path;
+    }
+
+    let outcome: 'inserted' | 'duplicate' | 'conflict';
+    try {
+      outcome = await deps.insert({
+        id: clean.id,
+        userId: user.id,
+        category: clean.category,
+        message: clean.message,
+        snapshot: clean.snapshot,
+        screenshotPath,
+        riskFlags,
+      });
+    } catch (err) {
+      if (screenshotPath !== null) await removeQuietly(deps, screenshotPath);
+      throw err;
+    }
+    if (outcome !== 'inserted' && screenshotPath !== null) await removeQuietly(deps, screenshotPath);
     if (outcome === 'conflict') return fail(409, 'id-conflict', deps);
     return respond(200, { ok: true, id: clean.id, duplicate: outcome === 'duplicate' }, deps);
   } catch (err) {
     // Detail goes to the server log only.
     deps.log?.('internal-error', { name: err instanceof Error ? err.name : 'unknown' });
     return fail(500, 'internal-error', deps);
+  }
+}
+
+async function removeQuietly(deps: Deps, path: string): Promise<void> {
+  try {
+    await deps.removeScreenshot(path);
+  } catch {
+    deps.log?.('orphan-cleanup-failed');
   }
 }
 
@@ -178,12 +209,14 @@ type Processed = { ok: true; bytes: Uint8Array } | { ok: false; status: number; 
 async function processScreenshot(clean: CleanFeedback, deps: Deps): Promise<Processed> {
   const shot = clean.screenshot as string;
   if (!shot.startsWith(DATA_URL_PREFIX)) return { ok: false, status: 400, error: 'invalid-screenshot' };
+  if (shot.length - DATA_URL_PREFIX.length > MAX_SCREENSHOT_BASE64_CHARS) return { ok: false, status: 413, error: 'screenshot-too-large' };
   const bytes = decodeBase64(shot.slice(DATA_URL_PREFIX.length));
   if (bytes === null || !hasJpegMagic(bytes)) return { ok: false, status: 400, error: 'invalid-screenshot' };
   if (bytes.length > MAX_SCREENSHOT_BYTES) return { ok: false, status: 413, error: 'screenshot-too-large' };
-  const size = readJpegSize(bytes);
-  if (size === null || size.width < 1 || size.height < 1) return { ok: false, status: 400, error: 'invalid-screenshot' };
-  if (size.width > MAX_SCREENSHOT_DIMENSION || size.height > MAX_SCREENSHOT_DIMENSION) return { ok: false, status: 413, error: 'screenshot-too-large' };
+  // Strict pre-parse: anything it cannot account for byte by byte never reaches the decoder.
+  const info = inspectJpeg(bytes);
+  if (info === null) return { ok: false, status: 400, error: 'invalid-screenshot' };
+  if (info.width > MAX_SCREENSHOT_DIMENSION || info.height > MAX_SCREENSHOT_DIMENSION || info.width * info.height > MAX_SCREENSHOT_PIXELS) return { ok: false, status: 413, error: 'screenshot-too-large' };
   try {
     const out = await deps.reencodeJpeg(bytes);
     if (!hasJpegMagic(out) || out.length > MAX_SCREENSHOT_BYTES * 2) return { ok: false, status: 400, error: 'invalid-screenshot' };

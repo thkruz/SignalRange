@@ -16,7 +16,7 @@ ids; `pnpm exec vitest run test/feedback/edge-drift.test.ts` fails when either d
 ## Run locally (needs Docker)
 
     npx supabase start
-    npx supabase db reset            # applies every migration, including the revoke (fine locally; the client must then use the function)
+    npx supabase db reset            # applies every migration (the revoke is in supabase/pending/ and stays out)
     npx supabase functions serve feedback-submit
 
 Get a user token from the local Auth (sign up through the local Studio or
@@ -26,7 +26,7 @@ Get a user token from the local Auth (sign up through the local Studio or
       -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
       -d '{"id":"<uuid>","category":"bug","message":"test","screenshot":null,"snapshot":{...}}'
 
-The migration `20261113999999_signalrange_feedback_revoke_old_rpc.sql` must NOT be applied to
+The revoke in `supabase/pending/` (not a migration) must NOT be applied to
 production before the function is deployed and the client uses it.
 
 ## Production smoke (once, after Ted's OK; one test account)

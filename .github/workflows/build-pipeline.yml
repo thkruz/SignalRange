@@ -211,6 +211,41 @@ jobs:
             echo "Line coverage: ${COVERAGE}%" >> $GITHUB_STEP_SUMMARY
           fi
 
+  # The select job only knows vitest and e2e paths, so this job decides for itself:
+  # pull requests run it when a file under supabase/ changed, pushes always run it.
+  edge-tests:
+    name: Edge Function Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: false
+
+      - name: Detect supabase changes
+        id: changed
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ] && ! git diff --name-only "origin/${BASE_REF}...HEAD" | grep -q '^supabase/'; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "Edge function tests: skipped, nothing under supabase/ changed" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Deno
+        if: steps.changed.outputs.run == 'true'
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: 2.9.8
+
+      - name: Run Edge Function Tests
+        if: steps.changed.outputs.run == 'true'
+        # Same script as `pnpm run test:edge`; the tests need no node_modules.
+        run: npm run test:edge
+
   e2e-tests:
     name: E2E Tests
     needs: [select, lint, type-check, test, security-audit]
@@ -296,7 +331,7 @@ jobs:
 
   build:
     name: Build
-    needs: [lint, type-check, test, security-audit]
+    needs: [lint, type-check, test, security-audit, edge-tests]
     # select only runs on PRs; without this, its skip propagates and Build/CodeQL/Secrets Scan never run on push.
     if: ${{ !cancelled() && !failure() }}
     runs-on: ubuntu-latest

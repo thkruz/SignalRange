@@ -61,10 +61,11 @@ export function inspectJpeg(b: Uint8Array): JpegInfo | null {
       i += 2;
       break;
     }
-    if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) {
-      i += 2;
-      continue;
-    }
+    // Allowlist: only markers jpeg-js reads the same way this parser does. DNL (FFDC), TEM, top-level
+    // RSTn, arithmetic and lossless SOFs and every reserved marker are refused. jpeg-js reads only 4
+    // bytes after DNL and treats the rest of its payload as markers, so skipping by length hides scans.
+    const allowed = (marker >= 0xe0 && marker <= 0xef) || marker === 0xfe || marker === 0xdb || marker === 0xc4 || marker === 0xdd || marker === 0xc0 || marker === 0xc1 || marker === 0xc2 || marker === 0xda;
+    if (!allowed) return null;
     if (i + 4 > b.length) return null;
     const len = (b[i + 2] << 8) | b[i + 3];
     if (len < 2 || i + 2 + len > b.length) return null;
@@ -92,9 +93,8 @@ export function inspectJpeg(b: Uint8Array): JpegInfo | null {
       if (p !== end) return null;
     } else if (marker === 0xdd) {
       if (len !== 4) return null;
-    } else if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc8 && marker !== 0xcc) {
-      // SOF. Only baseline, extended sequential and progressive Huffman are accepted.
-      if (marker !== 0xc0 && marker !== 0xc1 && marker !== 0xc2) return null;
+    } else if (marker === 0xc0 || marker === 0xc1 || marker === 0xc2) {
+      // SOF: baseline, extended sequential and progressive Huffman.
       if (sof !== null || len < 8) return null;
       const components = b[start + 5];
       if (components < 1 || components > 4 || len !== 8 + 3 * components) return null;

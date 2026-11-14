@@ -132,12 +132,19 @@ export async function handleFeedbackRequest(req: Request, deps: Deps): Promise<R
 
     // 8. Upload last, and take the object back if the row does not end up referencing it.
     let screenshotPath: string | null = null;
+    // True only when this request stored the object; only then may it remove it again.
+    let storedHere = false;
     if (processedBytes !== null) {
       const path = `${user.id}/${clean.id}.jpg`;
       if ((await deps.putScreenshot(path, processedBytes)) === 'exists') {
-        // A concurrent request with this id got there first.
+        // The path starts with the caller's own id, so the object is theirs: an earlier attempt that
+        // uploaded but never inserted, or a concurrent request. A row owned by someone else still refuses.
         const now = await deps.findOwner(clean.id);
-        return now === user.id ? respond(200, { ok: true, id: clean.id, duplicate: true }, deps) : fail(409, 'id-conflict', deps);
+        if (now === user.id) return respond(200, { ok: true, id: clean.id, duplicate: true }, deps);
+        if (now !== null) return fail(409, 'id-conflict', deps);
+        // No row yet: finish the insert against the existing object (never overwritten, never removed here).
+      } else {
+        storedHere = true;
       }
       screenshotPath = path;
     }
@@ -154,10 +161,10 @@ export async function handleFeedbackRequest(req: Request, deps: Deps): Promise<R
         riskFlags,
       });
     } catch (err) {
-      if (screenshotPath !== null) await removeQuietly(deps, screenshotPath);
+      if (storedHere && screenshotPath !== null) await removeQuietly(deps, screenshotPath);
       throw err;
     }
-    if (outcome !== 'inserted' && screenshotPath !== null) await removeQuietly(deps, screenshotPath);
+    if (outcome !== 'inserted' && storedHere && screenshotPath !== null) await removeQuietly(deps, screenshotPath);
     if (outcome === 'conflict') return fail(409, 'id-conflict', deps);
     return respond(200, { ok: true, id: clean.id, duplicate: outcome === 'duplicate' }, deps);
   } catch (err) {

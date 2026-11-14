@@ -7,9 +7,9 @@ import type { StripCounts } from '../_shared/feedback-rules.ts';
  * Words are separated by `\s+` for the same reason.
  */
 const RULES: ReadonlyArray<readonly [string, RegExp]> = [
-  ['instruction-phrase', /ignore\s+(?:(?:all|any)\s+)?(?:the\s+)?(?:previous|prior|above)|system\s+prompt|you\s+are\s+now|disregard\s+(?:(?:the|all)\s+)*(?:previous|prior|above)|new\s+instructions/iu],
+  ['instruction-phrase', /(?:ignore|disregard|forget|override)\s+(?:(?:all|any|your|my|the|everything|these|those)\s+)*(?:previous|prior|above|earlier|preceding|before)|system\s+prompt|you\s+are\s+now|new\s+instructions/iu],
   ['role-marker', /^\W*(?:system|assistant|user|human)\W*:|<\|im_(?:start|end)\|>|\[\/?inst\]|<<\/?sys>>/imu],
-  ['tool-name', /execute_sql|\bgh\s|\brm\s+-|\bcurl\b|\bwget\b|\bsudo\b|\bpowershell\b|\bbash\b/iu],
+  ['tool-name', /(?:execute|run)[\s_]sql|delete[\s_]feedback|apply[\s_]migration|(?:deploy|create|get)[\s_]edge[\s_]function|(?:merge|reset|rebase|delete|create)[\s_]branch|(?:restore|pause|create)[\s_]project|list[\s_]tables|(?:tool|function)[\s_]?(?:calls?|use)|invoke[\s_]tool|\bgh\s|\brm\s+-|\bcurl\b|\bwget\b|\bsudo\b|\bpowershell\b|\bbash\b/iu],
   ['code-fence', /```|~~~/u],
   ['url', /\b(?:https?|ftp|file|data|javascript):\/?\/?[^\s]+|\bwww\.[^\s]+/iu],
   ['long-base64', /[A-Za-z0-9+/=]{200,}/u],
@@ -28,11 +28,28 @@ export interface RiskInput {
 }
 
 const fold = (s: string): string => s.normalize('NFKC').toLowerCase();
+/** Folded copy with every run of non-letters and non-digits (hyphen, underscore, dots) as one space. */
+const collapse = (folded: string): string => folded.replace(/[^\p{L}\p{N}]+/gu, ' ');
+/** Rules that also run on the collapsed copy, so "ignore-previous" and "execute_sql" match. */
+const COLLAPSED_RULES = new Set(['instruction-phrase', 'tool-name']);
+
+const LATIN = /\p{Script=Latin}/u;
+const OTHER_ALPHABET = /[\p{Script=Cyrillic}\p{Script=Greek}]/u;
+/** A word mixing Latin with Cyrillic or Greek letters: a homoglyph substitution. */
+function hasMixedScriptWord(text: string): boolean {
+  for (const m of text.matchAll(/[\p{L}\p{M}]+/gu)) if (LATIN.test(m[0]) && OTHER_ALPHABET.test(m[0])) return true;
+  return false;
+}
 
 function matchRules(text: string): string[] {
   const folded = fold(text);
+  const collapsed = collapse(folded);
   const hits: string[] = [];
-  for (const [name, re] of RULES) if (re.test(text) || (folded !== text && re.test(folded))) hits.push(name);
+  for (const [name, re] of RULES) {
+    if (re.test(text) || (folded !== text && re.test(folded)) || (COLLAPSED_RULES.has(name) && re.test(collapsed))) hits.push(name);
+  }
+  if (hasMixedScriptWord(text)) hits.push('mixed-script');
+  if (/[A-Za-z]\p{M}/u.test(text)) hits.push('combining-on-ascii');
   return hits;
 }
 
@@ -74,8 +91,22 @@ export function snapshotStrings(snapshot: unknown): Array<[string, string]> {
 export function computeRiskFlags(input: RiskInput): string[] {
   const flags = new Set<string>();
   for (const name of matchRules(input.message)) flags.add(name);
-  for (const [field, text] of snapshotStrings(input.snapshot)) {
+  const strings = snapshotStrings(input.snapshot);
+  for (const [field, text] of strings) {
     for (const name of matchRules(text)) if (flags.size < MAX_FLAGS) flags.add(`snapshot-${name}@${field}`);
+  }
+  // A phrase split across fields ("Ignore" / "previous instructions"): scan everything joined with spaces.
+  // Two joins: everything, and the message plus free-text gameState values only (so fixed metadata
+  // such as version and route cannot sit between the halves of a phrase).
+  const joins = [
+    [input.message, ...strings.map(([, text]) => text)].join(' '),
+    [input.message, ...strings.filter(([field]) => field === 'gameState.value').map(([, text]) => text)].join(' '),
+  ];
+  for (const joined of joins) {
+    for (const name of matchRules(joined)) {
+      const seen = flags.has(name) || [...flags].some((f) => f.startsWith(`snapshot-${name}@`));
+      if (!seen && flags.size < MAX_FLAGS) flags.add(`cross-field-${name}`);
+    }
   }
   const s = input.stripped;
   if (s.bidi + s.zeroWidth + s.tags + s.variationSelectors + s.controls + s.surrogates > 0) flags.add('hidden-characters');

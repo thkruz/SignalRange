@@ -593,6 +593,19 @@ describe('TabbedCanvas', () => {
       expect(activeTabId()).toBe('gps-timing');
     });
 
+    it('marks a tab active on the very first satellite selection', () => {
+      selectAsset('satellite', 'sat-12345');
+
+      expect(activeTabId()).toBe('sat-dashboard');
+    });
+
+    it('keeps a tab active when the same satellite is selected again', () => {
+      selectAsset('satellite', 'sat-12345');
+      selectAsset('satellite', 'sat-12345');
+
+      expect(document.querySelectorAll('.nav-link.active')).toHaveLength(1);
+    });
+
     it('falls back to the default tab when the remembered tab is gone', () => {
       selectAsset('ground-station', 'GS-001');
       switchTab('rx-analysis');

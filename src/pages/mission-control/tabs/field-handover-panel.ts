@@ -180,7 +180,7 @@ export class FieldHandoverPanel {
     if (value === undefined) {
       this.msg_ =
         field && 'runRate' in field.rule
-          ? 'There is no run rate to copy yet. Finish the task run first; the draw is recorded over the run window, then press Copy latest reading again.'
+          ? 'There is no run rate to copy yet. The draw is recorded over a finished task run, so start the run in MissionRunner on the laptop and let it finish, then press Copy latest reading again.'
           : 'There is no reading to use yet. Take one first (for a power figure, Inspect that part in the site close-up, or type the Power panel figure).';
       this.sync();
 

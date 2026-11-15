@@ -252,7 +252,7 @@ describe('M14 handover panel typing and wording (P42)', () => {
     // Once focus leaves, the next sync catches up with the new reading hint
     (input as HTMLInputElement).blur();
     r.panel.sync();
-    expect(r.host.querySelector('[data-fhf="reading-soc"]')).not.toBeNull();
+    expect(r.host.querySelector('[data-fhf="reading-soc"]')?.textContent ?? '').toContain('Latest reading');
     expect(r.host.querySelector<HTMLInputElement>('input[data-hf-field="soc"]')?.value).toBe('443');
     r.host.remove();
   });
@@ -274,7 +274,31 @@ describe('M14 handover panel typing and wording (P42)', () => {
     expect(r.panel.check()?.ok).toBe(false);
   });
 
-  it('Copy latest reading on an empty run-rate field says to finish the run, not to inspect a power part', () => {
+  it('a mode answer accepts the label the Power panel shows as well as the stored key, and rejects another mode', () => {
+    const form: HandoverFormConfig = {
+      id: 'm',
+      title: 'Mode',
+      documentSection: 'M',
+      fields: [{ key: 'mode', label: 'Terminal mode', required: true, rule: { modeIs: { partId: 'gen' } } }],
+    };
+    const r = rig(true, form);
+    vi.spyOn(r.plant, 'getPartMode').mockReturnValue('run');
+    vi.spyOn(r.plant, 'getModeOptions').mockReturnValue([
+      { id: 'standby', label: 'Standby', loadW: 0 },
+      { id: 'run', label: 'Running', loadW: 50 },
+    ]);
+    r.panel.selectForm('m');
+    for (const typed of ['run', 'Running', '  RUNNING ', 'ru n']) {
+      r.panel.setValue('mode', typed);
+      expect(r.panel.check()?.ok, typed).toBe(true);
+    }
+    for (const typed of ['standby', 'Standby', 'stopped', '']) {
+      r.panel.setValue('mode', typed);
+      expect(r.panel.check()?.ok, typed).toBe(false);
+    }
+  });
+
+  it('Copy latest reading on an empty run-rate field says to start the run, not to inspect a power part', () => {
     const form: HandoverFormConfig = {
       id: 'rr',
       title: 'RR',
@@ -286,7 +310,8 @@ describe('M14 handover panel typing and wording (P42)', () => {
     expect(r.panel.fillFromReading('w')).toBe(false);
     const msg = r.host.querySelector('[data-fhf="msg"]')?.textContent ?? '';
     expect(msg).not.toMatch(/Inspect|Power panel/u);
-    expect(msg).toMatch(/run/iu);
+    expect(msg).toMatch(/start the run/iu);
+    expect(msg).not.toMatch(/Finish the task run first/u);
   });
 });
 

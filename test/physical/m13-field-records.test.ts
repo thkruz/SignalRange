@@ -16,7 +16,7 @@ import { ScenarioManager } from '@app/scenario-manager';
 import { collectManagerStates, restoreManagerStates } from '@app/scenarios/checkpoint-manager-states';
 import { fnv1a, Rng, RngStream } from '@app/simulation/rng';
 import { SimClock } from '@app/simulation/sim-clock';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 function plantConfig(handovers?: HandoverFormConfig[]): PlantConfig {
   return {
@@ -189,6 +189,26 @@ describe('M13 handover validation', () => {
     expect(f().ok).toBe(true);
     expect(f('seating').ok).toBe(true);
     expect(f('other').ok).toBe(false);
+  });
+
+  it('modeIs accepts the key or a displayed label and files the canonical key', () => {
+    const r = rig();
+    vi.spyOn(r.plant, 'getPartMode').mockReturnValue('run');
+    vi.spyOn(r.plant, 'getModeOptions').mockReturnValue([
+      { id: 'standby', label: 'Standby', loadW: 0 },
+      { id: 'run', label: 'Running', loadW: 50 },
+    ]);
+    const forms: HandoverFormConfig[] = [
+      { id: 'm', title: 'M', documentSection: 'S', fields: [{ key: 'mode', label: 'Mode', required: true, rule: { modeIs: { partId: 'router' } } }] },
+    ];
+    const rec = new FieldRecords(forms, { plant: r.plant, service: r.service, evidence: r.log, runs: () => [], getCardVersion: () => 2 });
+    const ok = (v: string) => field(rec.validate('m', { mode: { value: v } }), 'mode').ok;
+    expect(ok('Running')).toBe(true);
+    expect(ok(' run ')).toBe(true);
+    expect(ok('STANDBY')).toBe(false);
+    expect(ok('stopped')).toBe(false);
+    const res = rec.submit('m', { mode: { value: '  RUNNING ' } });
+    expect(JSON.stringify(res)).toContain('"mode":"run"');
   });
 
   it('modeIs and workload rules', () => {

@@ -324,7 +324,7 @@ export class FieldRecords implements RecordReader {
     if ('modeIs' in rule) {
       const mode = this.deps_.plant.getPartMode(rule.modeIs.partId);
 
-      return mode !== undefined && String(value).trim().toLowerCase() === mode.trim().toLowerCase()
+      return mode !== undefined && this.canonicalMode_(rule.modeIs.partId, value) === mode
         ? pass(field.key)
         : fail(field.key, `${field.label} does not match what the ${this.deps_.plant.getLabel(rule.modeIs.partId)} shows now.`);
     }
@@ -421,6 +421,19 @@ export class FieldRecords implements RecordReader {
     }
 
     return Math.abs(claimed - actual) <= rule.tol ? pass(field.key) : fail(field.key, `${field.label} is more than ${rule.tol} away from your recorded measurement.`);
+  }
+
+  /**
+   * A typed mode answer as the stored mode key: the key or any label the game shows for the part's modes
+   * ("run" or "Running"), ignoring case and whitespace. An answer that names no mode comes back as typed.
+   */
+  private canonicalMode_(partId: string, value: unknown): string {
+    const fold = (t: unknown): string => String(t).replace(/\s+/gu, '').toLowerCase();
+    const typed = fold(value);
+    const hit = (this.deps_.plant.getModeOptions?.(partId) ?? []).find((m) => fold(m.id) === typed || fold(m.label) === typed);
+    const current = this.deps_.plant.getPartMode(partId);
+
+    return hit ? hit.id : current !== undefined && fold(current) === typed ? current : String(value);
   }
 
   /** Measured average battery draw (W) of the latest counting, complete run of the card; null with none */
@@ -528,7 +541,7 @@ export class FieldRecords implements RecordReader {
         continue;
       }
       if (!isBlank(entry.value)) {
-        values[field.key] = entry.value as string | number;
+        values[field.key] = 'modeIs' in field.rule ? this.canonicalMode_(field.rule.modeIs.partId, entry.value) : (entry.value as string | number);
       }
       const shown = isBlank(entry.value) ? '' : `${field.label}: ${this.valueText_(field, entry.value)}`;
       const backing = cited.length ? `backed by ${cited.map((c) => `#${numbering.get(c.id) ?? '?'}`).join(', ')}` : '';

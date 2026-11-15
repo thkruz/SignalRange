@@ -225,7 +225,7 @@ export const frontlineScenario2Data: FrontlineScenarioData = {
     intro: {
       character: Character.MAREK_DOMANSKI,
       audioUrl: '',
-      text: '<p>Today the connection works, but we have less energy available. The exercise reserve is 200 watt-hours. Choose what needs to run, then show that the service remains useful when the external supply is interrupted.</p>',
+      text: '<p>Today the connection works, but we have less energy available. The exercise reserve is 200 watt-hours. Choose what needs to run, then show that the service remains useful when the external supply is interrupted.</p><p>Your task sheet is on the clipboard in the tray. Work down it in order; each line opens when the one above is done, and the power plan comes after the first two.</p>',
     },
     objectivesOnStart: {
       's2-read-resources': {

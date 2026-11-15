@@ -142,6 +142,30 @@ describe('M13 handover validation', () => {
     expect(reason).toContain('expire after 300 s');
   });
 
+  it('a refusal submitted while the form is still held counts the open hold', () => {
+    const r = rig();
+    const sample = r.service.takeSample('skylink', 'registration', 'device-indicator');
+    r.plant.spendTime(150);
+    r.service.pauseAging();
+    r.plant.spendTime(180);
+    r.service.bumpConfig('test');
+    const reason = field(r.records.validate('h1', { reg: { value: String(sample.value) } }), 'reg').reason ?? '';
+    expect(reason).toContain('taken 330 s ago, and 150 s of that counts');
+  });
+
+  it('an earlier hold plus an open hold are both explained', () => {
+    const r = rig();
+    const sample = r.service.takeSample('skylink', 'registration', 'device-indicator');
+    r.service.pauseAging();
+    r.plant.spendTime(100);
+    r.service.resumeAging();
+    r.plant.spendTime(350);
+    r.service.pauseAging();
+    r.plant.spendTime(51);
+    const reason = field(r.records.validate('h1', { reg: { value: String(sample.value) } }), 'reg').reason ?? '';
+    expect(reason).toContain('taken 501 s ago, and 350 s of that counts');
+  });
+
   it('powerWithin honours the tolerance and rejects non-numbers', () => {
     const r = rig();
     const f = (v: string | number) => field(r.records.validate('h1', { soc: { value: v } }), 'soc');

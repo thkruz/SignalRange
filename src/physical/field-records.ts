@@ -218,11 +218,12 @@ function isBlank(v: string | number | undefined): boolean {
 }
 
 /** Elapsed time since the reading, noting that time spent holding a view does not age it. */
-function readingAgeText(countedS: number, heldS: number): string {
+function readingAgeText(countedS: number, elapsedS: number): string {
   const counted = Math.round(countedS);
-  const held = Math.round(heldS);
+  const elapsed = Math.max(counted, Math.round(elapsedS));
+  const held = elapsed - counted;
 
-  return held > 0 ? `taken ${counted + held} s ago, and ${counted} s of that counts because time you spent holding a view does not age it` : `taken ${counted} s ago`;
+  return held > 0 ? `taken ${elapsed} s ago, and ${counted} s of that counts because time you spent holding a view does not age it` : `taken ${counted} s ago`;
 }
 
 export class FieldRecords implements RecordReader {
@@ -359,7 +360,7 @@ export class FieldRecords implements RecordReader {
     const truth = freshness === 'current' ? 'current' : freshness === 'unavailable' ? 'unavailable' : 'last-known';
     if (value === truth) return pass(field.key);
     const where = svc.getPath(target.serviceId)?.label ?? target.serviceId;
-    const age = readingAgeText(svc.ageS(sample), sample.heldS ?? 0);
+    const age = readingAgeText(svc.ageS(sample), svc.elapsedS(sample));
     const state = truth === 'current' ? `still current (${age})` : truth === 'unavailable' ? 'unavailable' : `out of date (${age})`;
 
     return fail(
@@ -375,7 +376,7 @@ export class FieldRecords implements RecordReader {
       return fail(field.key, `${field.label}: no reading of the ${target.layer} layer has been taken yet.`);
     }
     if (svc.freshness(sample) !== 'current') {
-      const age = readingAgeText(svc.ageS(sample), sample.heldS ?? 0);
+      const age = readingAgeText(svc.ageS(sample), svc.elapsedS(sample));
 
       return fail(
         field.key,

@@ -521,6 +521,11 @@ export class ServiceModel {
     return Math.max(0, this.agingNowS_() - sample.tS - (sample.heldS ?? 0));
   }
 
+  /** Real seconds since a sample was taken on the live clock, including a hold that is still open */
+  elapsedS(sample: ServiceSample): number {
+    return Math.max(0, this.deps_.now() - sample.tS);
+  }
+
   freshness(sample: ServiceSample): Freshness {
     if (sample.value === 'unknown') {
       return 'unavailable';

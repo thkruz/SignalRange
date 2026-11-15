@@ -6,6 +6,8 @@
  * and unlabelled keys; text, readouts, needles and hit areas are SVG/HTML drawn on top.
  */
 
+import { getAssetUrl } from '@app/utils/asset-url';
+
 export interface ArtBox {
   x: number;
   y: number;
@@ -23,7 +25,9 @@ export interface EquipmentArt {
   regions: Record<string, ArtBox>;
 }
 
-const ART_ROOT = '/assets/campaigns/home-sdr/bench/';
+/** Site-relative folder of the art; the pictures are served from the assets host (R2) in production, so URLs go through getAssetUrl */
+export const ART_PATH = '/assets/campaigns/home-sdr/bench/';
+const ART_ROOT = getAssetUrl(ART_PATH);
 
 const box = (x: number, y: number, w: number, h: number): ArtBox => ({ x, y, w, h });
 

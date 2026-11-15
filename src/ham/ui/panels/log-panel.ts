@@ -68,7 +68,7 @@ export class LogPanel implements StationPanel {
   }
 
   update(m: HamStationManager): void {
-    transcriptList(m, this.transcriptHost_);
+    transcriptList(m, this.transcriptHost_, null);
     this.rebuilders_.receptions.run(this.lists_.receptions.lastElementChild as HTMLElement, `${m.stateVersion}`, () => this.receptions_(m));
     this.rebuilders_.measurements.run(this.lists_.measurements, `${m.stateVersion}|${m.revision}`, () => this.measurements_(m));
     this.rebuilders_.contacts.run(this.lists_.contacts, `${m.stateVersion}`, () => this.contacts_(m));

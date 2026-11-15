@@ -95,12 +95,7 @@ export class SdrApp {
       this.spectrumMounted_ = false;
     }
     this.el.replaceChildren();
-    const title = h(
-      'div',
-      { class: 'sdr-titlebar' },
-      h('span', { text: 'SkyWatcher SDR v0.9.4 beta' }),
-      h('span', { text: m.device(this.laptopId_)?.label ?? 'No computer at this location' })
-    );
+    const title = h('div', { class: 'sdr-titlebar' }, h('span', { text: 'SkyWatcher SDR v0.9.4 beta' }));
     this.el.append(title);
     if (!laptopOn) {
       this.el.append(h('div', { class: 'ham-sdr-empty', 'data-testid': 'ham-sdr-app-nodevice', text: 'The laptop is off.' }));

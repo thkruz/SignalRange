@@ -101,9 +101,23 @@
   background: var(--colorCautionDarken2);
 }
 
-.draggable-box__site-dock-btn {
+/* Dock and Close share one right-aligned flex group so neither can overprint the other or the title */
+.draggable-box__actions {
   position: absolute;
-  right: 6.5em;
+  right: 0.5em;
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  z-index: 1;
+}
+
+.draggable-box__actions .draggable-box__close-btn {
+  position: static;
+}
+
+.draggable-box__site-dock-btn {
+  position: static;
+  flex: none;
   padding: 0 0.5em;
   font-size: 0.7rem;
   line-height: 1.4;
@@ -277,4 +291,11 @@
 #top-menu-user-account-icon:hover,
 .user-account__btn--hover:hover {
   filter: brightness(1.2);
+}
+/* A bar with Dock and Close keeps its title to the left of them, so the buttons never print over the text */
+.draggable-box__title-bar:has(.draggable-box__actions .draggable-box__site-dock-btn) .draggable-box__title {
+  justify-content: flex-start;
+  box-sizing: border-box;
+  padding: 0 0.6em;
+  padding-right: 11.5rem;
 }

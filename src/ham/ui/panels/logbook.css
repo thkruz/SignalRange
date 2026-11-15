@@ -18,6 +18,23 @@
   background: radial-gradient(ellipse at 50% 30%, #4b3d2c 0, #2a2118 75%);
 }
 
+/* The book keeps one x position on every page: a page long enough to scroll must not shift it by a scrollbar */
+.immersive-paper:has(.ham-notebook) {
+  scrollbar-gutter: stable both-edges;
+}
+
+/* A fade at the foot of the screen says the page runs on below (the front page is longer than the screen) */
+.immersive-paper .ham-notebook::after {
+  content: '';
+  position: sticky;
+  bottom: 0;
+  display: block;
+  height: 40px;
+  margin-top: -40px;
+  background: linear-gradient(180deg, transparent, #2a2118cc);
+  pointer-events: none;
+}
+
 .immersive-paper .ham-notebook {
   box-sizing: border-box;
   width: min(940px, calc(100% - 40px));
@@ -459,7 +476,32 @@
 
 .hl-card-face {
   padding: 0 16px 14px;
-  font: 15px/26px 'Courier New', monospace;
+  color: #1a1610;
+  font: 600 16px/26px 'Courier New', monospace;
+}
+
+/* One card on the desk: bigger, centred, always open, and no fold arrow (there is nothing to fold it against) */
+.hl-deck.is-single {
+  display: flex;
+  justify-content: center;
+  padding-top: 24px;
+}
+
+.hl-deck.is-single .hl-card {
+  width: min(760px, 100%);
+}
+
+.hl-deck.is-single .hl-card-title {
+  cursor: default;
+}
+
+.hl-deck.is-single .hl-card-title::after {
+  content: none;
+}
+
+.hl-deck.is-single .hl-card-face {
+  font-size: 18px;
+  line-height: 30px;
 }
 
 .hl-card-face p {
@@ -638,4 +680,30 @@
 
 .hl-front .cbk-kicker {
   display: none;
+}
+
+/* The floating Checklist window under the bench HUD: no solid green or orange blocks behind objective names;
+   the state shows as a coloured underline, the same way the printed checklist does */
+.mc-minimal-hud #draggable-html-box-checklist .objectives-checklist .objective-item strong {
+  background: none;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+  text-decoration-color: #8f7e5c;
+}
+
+.mc-minimal-hud #draggable-html-box-checklist .objectives-checklist .objective-item.completed strong {
+  text-decoration-color: #4caf50;
+}
+
+.mc-minimal-hud #draggable-html-box-checklist .objectives-checklist .objective-item.active strong {
+  text-decoration-color: #ff9f1a;
+}
+
+.mc-minimal-hud #draggable-html-box-checklist .objectives-checklist .objective-item.failed strong {
+  text-decoration-color: #dc3545;
+}
+
+.mc-minimal-hud #draggable-html-box-checklist .objectives-checklist .objective-item.locked strong {
+  text-decoration-style: dotted;
 }

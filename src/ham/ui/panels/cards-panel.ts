@@ -24,11 +24,12 @@ export class CardsPanel implements StationPanel {
     const c = sheet('ham-cards-card', this.title);
     c.root.classList.add('hl-cards');
     this.root_ = c.root;
-    const deck = h('div', { class: 'hl-deck' });
+    const single = ctx.manager.config.cards.length === 1;
+    const deck = h('div', { class: single ? 'hl-deck is-single' : 'hl-deck' });
     for (const [index, ref] of ctx.manager.config.cards.entries()) {
       const body = h(
         'div',
-        { class: 'hl-card-face', hidden: index > 0, 'data-testid': tid('ham-card', ref.id, 'body') },
+        { class: 'hl-card-face', hidden: index > 0 && !single, 'data-testid': tid('ham-card', ref.id, 'body') },
         h('p', { style: 'white-space: pre-line', text: ref.body })
       );
       if (ref.imageUrl) body.append(h('img', { src: ref.imageUrl, alt: `Illustration for ${ref.title}`, class: 'hl-figure' }));

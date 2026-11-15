@@ -107,14 +107,15 @@ export function emitterLabel(m: HamStationManager, id: string): string {
 }
 
 /** Fill `host` with the revealed transcripts and how intelligible each was (rebuilt only on change) */
-export function transcriptList(m: HamStationManager, host: HTMLElement): void {
+/** `emptyText` null leaves the host blank when nothing was heard (the station log has its own empty line) */
+export function transcriptList(m: HamStationManager, host: HTMLElement, emptyText: string | null = 'Nothing heard yet.'): void {
   const entries = Object.entries(m.transcripts());
   const sig = JSON.stringify(entries);
   if (host.dataset.sig === sig) return;
   host.dataset.sig = sig;
   host.replaceChildren();
   if (entries.length === 0) {
-    host.append(h('div', { class: 'text-secondary small', text: 'Nothing heard yet.' }));
+    if (emptyText !== null) host.append(h('div', { class: 'text-secondary small', text: emptyText }));
 
     return;
   }

@@ -112,9 +112,11 @@ export abstract class DraggableBox {
                 ${this.getBoxTitleHtml()}
               </span>
             </div>
-            ${this.hasSiteDockButton_ ? `<button type="button" id="${this.boxId}-site-dock" class="draggable-box__site-dock-btn" title="Return this box to the docked strip beside the Site stage">Dock</button>` : ''}
             ${this.isDockable ? `<span id="${this.boxId}-dock" class="draggable-box__btn draggable-box__dock-btn"></span>` : ''}
+            <div class="draggable-box__actions">
+            ${this.hasSiteDockButton_ ? `<button type="button" id="${this.boxId}-site-dock" class="draggable-box__site-dock-btn" title="Return this box to the docked strip beside the Site stage">Dock</button>` : ''}
             <button type="button" id="${this.boxId}-close" class="draggable-box__close-btn" title="Close this window" aria-label="Close ${this.title}">&#x2715; Close</button>
+            </div>
           </div>
           <div class="draggable-box__content">
             ${opts?.boxContentHtml ?? this.getBoxContentHtml()}

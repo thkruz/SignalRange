@@ -200,6 +200,7 @@ export const signalHunterScenario1Data: ScenarioData = {
           type: 'tab-active',
           description: 'Geolocation Console Open',
           params: { tab: 'geolocation' },
+          next: 'open the Geolocation tab.',
           mustMaintain: false,
         },
       ],
@@ -211,7 +212,7 @@ export const signalHunterScenario1Data: ScenarioData = {
       nice: ['K0926', 'K1032', 'S0421'],
       title: 'Capture Inside the Window',
       description:
-        'Next: type the interferer uplink into TARGET FREQUENCY (RF = LO - IF, then uplink = RF + TP-1 translation) and set CORRELATION BANDWIDTH to the carrier width you measured. Then press CAPTURE in the first 30 seconds of an on-window, because the correlator needs the carrier present for 70% of its 12 s window or it reports NO CORRELATION. AUTO keeps retrying through the off windows. Collect six good captures.',
+        'Enter the interferer uplink in TARGET FREQUENCY (RF = LO - IF, then uplink = RF + TP-1 translation) and set CORRELATION BANDWIDTH to the carrier width you read off the analyzer. The correlator needs the carrier present for most of its 12 s window, or it reports NO CORRELATION, so start each capture early in an on-window. AUTO retries for you. Collect six good captures.',
       groundStation: 'PA-22',
       prerequisiteObjectiveIds: ['open-geolocation-console'],
       conditions: [
@@ -219,6 +220,7 @@ export const signalHunterScenario1Data: ScenarioData = {
           type: 'geolocation-measurements-collected',
           description: 'At least 6 TDOA/FDOA captures on the interferer',
           params: { minCount: 6, interferenceEventId: 'quay-hostile' },
+          next: 'enter the uplink and bandwidth, then press CAPTURE early in an on-window, or AUTO.',
           hint: 'Read the message under the CAPTURE button: NO CORRELATION means the frequency or bandwidth is off, or the carrier was in an off window.',
           mustMaintain: false,
         },
@@ -239,6 +241,7 @@ export const signalHunterScenario1Data: ScenarioData = {
           type: 'geolocation-fix-accuracy',
           description: 'Fix within 25 km of the emitter',
           params: { maxErrorKm: 25 },
+          next: 'press COMPUTE FIX and read the Emitter Fix card.',
           hint: 'A wide ellipse means the captures are bunched in time; spread them across more cycles and compute again.',
           mustMaintain: false,
         },
@@ -358,7 +361,7 @@ export const signalHunterScenario1Data: ScenarioData = {
       'open-geolocation-console': {
         character: Character.CHARLIE_BROOKS,
         audioUrl: '',
-        text: "<p>This is the correlator, the console that measures the carrier through two satellites at once. It's new to you, so read the buttons before you touch it. CAPTURE starts one twelve-second measurement, AUTO repeats that for you, and COMPUTE FIX turns your captures into a position.</p>",
+        text: "<p>The Geolocation tab holds the correlator, the console that measures the carrier through two satellites at once. It's new to you, so read the buttons before you touch it. CAPTURE starts one twelve-second measurement, AUTO repeats that for you, and COMPUTE FIX turns your captures into a position.</p>",
       },
       'collect-measurements': {
         character: Character.CHARLIE_BROOKS,

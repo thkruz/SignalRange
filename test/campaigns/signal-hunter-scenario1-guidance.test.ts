@@ -23,11 +23,21 @@ describe('signal-hunter scenario 1 guidance', () => {
   });
 
   it('names the console controls on the capture step the blind run stalled on', () => {
-    const text = byId.get('collect-measurements')?.description ?? '';
+    const o = byId.get('collect-measurements');
+    const text = `${o?.description ?? ''} ${o?.conditions[0].next ?? ''}`;
 
     for (const label of ['TARGET FREQUENCY', 'CORRELATION BANDWIDTH', 'CAPTURE', 'AUTO']) {
       expect(text).toContain(label);
     }
+  });
+
+  it('uses the condition next field and keeps the quiz cadence out of unlocked-row text', () => {
+    const text = byId.get('collect-measurements')?.description ?? '';
+    expect(text).not.toMatch(/^Next:/u);
+    expect(text).not.toMatch(/30 seconds|off windows/u);
+    expect(byId.get('collect-measurements')?.conditions[0].next).toBeTruthy();
+    expect(byId.get('compute-fix')?.conditions[0].next).toBeTruthy();
+    expect(byId.get('open-geolocation-console')?.conditions[0].next).toBeTruthy();
   });
 
   it('gives the capture and fix steps a condition hint', () => {

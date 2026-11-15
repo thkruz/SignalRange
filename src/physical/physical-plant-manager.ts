@@ -208,6 +208,7 @@ export class PhysicalPlantManager {
   private readonly parts_ = new Map<string, PlantPartConfig>();
   private readonly cables_ = new Map<string, PlantCableConfig>();
   private readonly connectors_ = new Map<string, PlantConnectorConfig>();
+  private readonly lookedAt_ = new Set<string>();
   private readonly tripLimit_: number;
   /** Plant part behind each engine device's powered state (config `engineMap` over the defaults) */
   readonly engineMap: Readonly<Record<EnginePowerRole, string>>;
@@ -766,9 +767,29 @@ export class PhysicalPlantManager {
 
   // ------------------------------------------- condition queries (action log)
 
-  /** The player looked at the part by hand (inspect, wiggle or feel) */
+  /**
+   * The player looked at the part by hand (inspect, wiggle or feel). Looking at one of its connectors counts
+   * (the DC outputs of the power station, the DC input of the router), and so does reading its status lights.
+   */
   hasInspected(target: string): boolean {
-    return this.log_.some((entry) => entry.target === target && (entry.verb === 'inspect' || entry.verb === 'wiggle' || entry.verb === 'feel'));
+    if (this.lookedAt_.has(target)) {
+      return true;
+    }
+
+    return this.log_.some((entry) => {
+      if (entry.verb !== 'inspect' && entry.verb !== 'wiggle' && entry.verb !== 'feel') {
+        return false;
+      }
+
+      return entry.target === target || (entry.target !== undefined && this.connectors_.get(entry.target)?.partId === target);
+    });
+  }
+
+  /** The player read a part's status lights: that is looking at the part */
+  noteLookedAt(partId: string): void {
+    if (this.parts_.has(partId)) {
+      this.lookedAt_.add(partId);
+    }
   }
 
   /** The player has seen this fact about the target (seat, corrosion, moisture, bent-pin, damage, snow, net) */

@@ -255,7 +255,12 @@ export class PartCloseupModal extends DraggableModal {
       artHost,
       () => PhysicalPlantService.servicesOrNull(),
       () => PhysicalPlantService.plantOrNull()?.getTimeSeconds() ?? 0,
-      (seconds) => PhysicalPlantService.plantOrNull()?.spendTime(seconds)
+      (seconds) => {
+        const plant = PhysicalPlantService.plantOrNull();
+        plant?.spendTime(seconds);
+        // Reading the lights of the gear in this picture is looking at it
+        for (const target of targets) plant?.noteLookedAt(target);
+      }
     );
     this.lights_.setServices(ids, anchors);
   }

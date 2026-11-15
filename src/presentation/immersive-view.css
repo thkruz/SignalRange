@@ -45,3 +45,7 @@
 .immersive-view .site-tab .fsp .fsp-badge:empty { display: none; }
 .immersive-paper .site-tab :is(.fsp-history-title, .fsp-none, th) { color: #493b28; }
 
+
+/* An equipment close-up is the whole view: no strip under it, the exit sits on the plate's top corner */
+.immersive-view.immersive-equipment:has(#part-closeup-modal) { padding: 0; background: #0e120f; overflow: hidden; }
+.immersive-equipment:has(#part-closeup-modal) .immersive-leave { top: 14px; right: 28px; bottom: auto; padding: 4px 12px; font-size: 0.74rem; letter-spacing: 0.08em; text-transform: uppercase; color: #e4e1c6; background: #1a201d; border: 1px solid #6d7774; border-radius: 3px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 2px 4px rgba(0, 0, 0, 0.5); z-index: 2147483000; }

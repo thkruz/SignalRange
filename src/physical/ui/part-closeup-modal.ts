@@ -68,8 +68,7 @@ const PANEL_W = 360;
 const THROW_MS = 650;
 const CONTROL_SELECTOR = '[data-verb], [data-measure], [data-equipment-mode], [data-open-laptop]';
 const FRAME_PAD = 12;
-const TITLE_H = 44;
-const MIN_BODY_H = 520;
+const TAG_H = 132;
 
 export class PartCloseupModal extends DraggableModal {
   private readonly immersive_ = new ImmersiveView();
@@ -273,38 +272,41 @@ export class PartCloseupModal extends DraggableModal {
     return `
       <div class="pp-closeup">
         <div class="pp-closeup-body">
-          <div class="pp-stage-box" id="pcu-stagebox">
-            <div class="pp-stage" id="pcu-stage"><img id="pcu-img" alt="" draggable="false"/><div class="pp-layers" id="pcu-layers"></div><div class="pp-overlay" id="pcu-overlay"></div><div class="pp-evidence" id="pcu-evidence"></div><div class="pp-lenses" id="pcu-lenses"></div></div>
-            <div class="pp-callout" id="pcu-callout" role="presentation" hidden></div>
+          <div class="pp-stage-col">
+            <div class="pp-stage-box" id="pcu-stagebox">
+              <div class="pp-stage" id="pcu-stage"><img id="pcu-img" alt="" draggable="false"/><div class="pp-layers" id="pcu-layers"></div><div class="pp-overlay" id="pcu-overlay"></div><div class="pp-evidence" id="pcu-evidence"></div><div class="pp-lenses" id="pcu-lenses"></div></div>
+              <div class="pp-callout" id="pcu-callout" role="presentation" hidden></div>
+            </div>
+            <div class="pp-svc-tag" id="pcu-tag" role="group" aria-label="Service tag">
+              <div class="pp-svc-tag-latest">
+                <div class="pp-section-title">Latest result</div>
+                <div class="pp-latest" id="pcu-latest" aria-live="polite"></div>
+              </div>
+              <div class="pp-history-wrap">
+                <div class="pp-section-title">History</div>
+                <div class="pp-log" id="pcu-log"></div>
+              </div>
+            </div>
           </div>
           <div class="pp-side">
-            <h2 class="pp-item-title" id="pcu-title"></h2>
-            <div>
-              <div class="pp-section-title">Selected</div>
-              <div class="pp-target" id="pcu-target">Nothing selected</div>
-              <div class="pp-tags" id="pcu-tags"></div>
-            </div>
             <div class="fp-panel" id="pcu-faceplate">
               <span class="fp-screw fp-screw-tl" aria-hidden="true"></span><span class="fp-screw fp-screw-tr" aria-hidden="true"></span><span class="fp-screw fp-screw-bl" aria-hidden="true"></span><span class="fp-screw fp-screw-br" aria-hidden="true"></span>
+              <h2 class="pp-item-title" id="pcu-title"></h2>
+              <div class="fp-window">
+                <div class="pp-target" id="pcu-target">Nothing selected</div>
+                <div class="pp-tags" id="pcu-tags"></div>
+              </div>
               <div id="pcu-indicators"></div>
               <div class="fp-controls" role="group" aria-label="Controls">
                 <div class="pp-verbs" id="pcu-verbs"></div>
               </div>
-            </div>
-            <div>
-              <div class="pp-section-title">Latest result</div>
-              <div class="pp-latest" id="pcu-latest" aria-live="polite"></div>
-            </div>
-            <div class="pp-history-wrap">
-              <div class="pp-section-title">History</div>
-              <div class="pp-log" id="pcu-log"></div>
-            </div>
-            <div class="pp-foot">
-              <label class="pp-foot-row"><input id="pcu-points" type="checkbox" /><span>Show interaction points</span></label>
-              <details class="pp-trainer-foot">
-                <summary>Trainer</summary>
-                <label class="pp-foot-row"><input id="pcu-xray" type="checkbox" /><span>Show hidden state</span></label>
-              </details>
+              <div class="pp-foot">
+                <label class="pp-foot-row"><input id="pcu-points" type="checkbox" /><span>Show interaction points</span></label>
+                <details class="pp-trainer-foot">
+                  <summary>Trainer</summary>
+                  <label class="pp-foot-row"><input id="pcu-xray" type="checkbox" /><span>Show hidden state</span></label>
+                </details>
+              </div>
             </div>
           </div>
         </div>
@@ -354,8 +356,7 @@ export class PartCloseupModal extends DraggableModal {
     }
     const lens = el.closest<HTMLElement>('[data-fp-led]');
     if (lens) {
-      // FaceplateLights has already taken the look and patched the lens; show the reading beside it
-      this.showCallout_(lens);
+      // FaceplateLights has already taken the look and patched the lens; the reading is on the plate
       return;
     }
     const mode = el.closest<HTMLElement>('[data-equipment-mode]');
@@ -544,28 +545,24 @@ export class PartCloseupModal extends DraggableModal {
     }
   }
 
-  /** The frame is sized around the fitted painting plus the right panel, and only changes with the close-up */
+  /** The painting fills what the plate and the service tag leave; only the close-up changes it */
   private sizeFrame_(def: CloseupDef): void {
     const modal = document.getElementById(PartCloseupModal.MODAL_ID);
     if (!modal) {
       return;
     }
-    const maxW = displayViewport().width;
-    const maxBodyH = displayViewport().height - 48 - TITLE_H;
-    const availW = maxW - PANEL_W - FRAME_PAD * 3;
-    const availH = maxBodyH - FRAME_PAD * 2;
+    const viewport = displayViewport();
+    const availW = viewport.width - PANEL_W - FRAME_PAD * 3;
+    const availH = viewport.height - FRAME_PAD * 3 - TAG_H;
     const imgW = Math.floor(Math.min(availW, availH * def.aspect));
     const imgH = Math.floor(imgW / def.aspect);
-    const bodyH = Math.max(imgH + FRAME_PAD * 2, Math.min(MIN_BODY_H, maxBodyH));
     modal.style.setProperty('--pcu-img-w', `${imgW}px`);
     modal.style.setProperty('--pcu-img-h', `${imgH}px`);
-    modal.style.setProperty('--pcu-w', `${imgW + PANEL_W + FRAME_PAD * 3}px`);
-    modal.style.setProperty('--pcu-h', `${bodyH + TITLE_H}px`);
   }
 
   private showCallout_(el: Element): void {
     const root = this.root_();
-    const hit = el.closest?.('#pcu-overlay [data-label], #pcu-lenses [data-label]') as HTMLElement | null;
+    const hit = el.closest?.('#pcu-overlay [data-label]') as HTMLElement | null;
     const box = root?.querySelector<HTMLElement>('#pcu-stagebox');
     const callout = root?.querySelector<HTMLElement>('#pcu-callout');
     if (!hit || !box || !callout) {
@@ -591,7 +588,11 @@ export class PartCloseupModal extends DraggableModal {
 
   private renderSide_(root: HTMLElement, plant: PhysicalPlantManager): void {
     const target = this.selected_;
-    root.querySelector('#pcu-target')!.textContent = target ? this.targetName_(plant, target) : 'Select a part, connector or cable in the picture.';
+    const name = target ? this.targetName_(plant, target) : 'Select a part, connector or cable in the picture.';
+    const targetEl = root.querySelector<HTMLElement>('#pcu-target')!;
+    targetEl.textContent = name;
+    // The nameplate already engraves the device; the window only names a selection that is something else
+    targetEl.hidden = Boolean(target) && name === this.def_?.title;
     this.setHtmlIfChanged_(root.querySelector('#pcu-tags')!, target ? this.tagsHtml_(plant, target) : '');
     this.setHtmlIfChanged_(root.querySelector('#pcu-verbs')!, target ? this.actionsHtml_(plant, target) : '<span class="pp-hint">Selecting is free. Actions take time.</span>');
     this.renderLog_(root);
@@ -764,7 +765,7 @@ export class PartCloseupModal extends DraggableModal {
     if (seen('snow') && faults.some((f) => f.kind === 'snow')) tags.push('<span class="pp-tag pp-tag-warn">Snow on dish</span>');
     if (seen('net') && faults.some((f) => f.kind === 'net')) tags.push('<span class="pp-tag pp-tag-warn">Net over dish</span>');
     if (state?.kind === 'generator') {
-      tags.push(`<span class="pp-tag">${state.powered ? 'Running' : 'Stopped'}</span>`, `<span class="pp-tag">Fuel ${(state.fuelL ?? 0).toFixed(1)} L</span>`);
+      tags.push(`<span class="pp-tag">${state.powered ? 'Running' : 'Stopped'}</span>`, fuelGauge_(state.fuelL ?? 0, state.tankL ?? 7));
     } else if (state?.powered && state.lit) {
       tags.push('<span class="pp-tag">Lit</span>');
     }
@@ -817,6 +818,13 @@ export class PartCloseupModal extends DraggableModal {
 
     return `<g class="pp-point pp-probe${sel}" ${attrs}><circle class="pp-ring" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="22"/><circle class="pp-marker" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="7"/></g>`;
   }
+}
+
+/** The generator's fuel read off a stencilled gauge on its plate (a bar over the tank size, the litres beside it) */
+function fuelGauge_(litres: number, tankL: number): string {
+  const pct = Math.max(0, Math.min(100, (litres / tankL) * 100));
+
+  return `<span class="fp-gauge" role="meter" aria-label="Fuel" aria-valuemin="0" aria-valuemax="${tankL}" aria-valuenow="${litres.toFixed(1)}" aria-valuetext="${litres.toFixed(1)} litres"><span class="fp-gauge-legend">FUEL</span><span class="fp-gauge-bar"><span class="fp-gauge-fill" style="width:${pct.toFixed(0)}%"></span></span><span class="fp-gauge-val">${litres.toFixed(1)} L</span></span>`;
 }
 
 function verbCost_(plant: PhysicalPlantManager, verb: UiVerb, target: string): number {

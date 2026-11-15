@@ -15,10 +15,10 @@
   --fp-green: #4be07a;
   --fp-red: #ff5144;
   position: relative;
-  flex: 0 1 auto;
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 auto;
   min-height: 6rem;
-  overflow-y: auto;
-  overscroll-behavior: contain;
   padding: 1.15rem 0.9rem 0.7rem;
   border-radius: 6px;
   border: 1px solid #1d2220;
@@ -107,7 +107,8 @@
 .pp-closeup .fp-readouts { margin: 0.35rem 0 0; padding: 0; list-style: none; font: 0.75rem/1.3 'JetBrains Mono', monospace; color: #dcdec6; }
 .pp-closeup .fp-readouts li:empty { display: none; }
 .pp-closeup .fp-readouts li { margin-top: 0.15rem; }
-.pp-closeup .fp-look-note { margin: 0.4rem 0 0; min-height: 0.9rem; font: 0.75rem/1.25 'JetBrains Mono', monospace; color: #eceac9; }
+/* The per-layer readout already carries the reading, its age and its provenance; the stamp of the last look is kept for screen readers only */
+.pp-closeup .fp-look-note { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .pp-closeup .fp-light-log { margin-top: 0.25rem; font-size: 0.75rem; color: #dcdec6; }
 .pp-closeup .fp-light-log summary { cursor: pointer; font: 700 0.75rem 'JetBrains Mono', monospace; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fp-label); text-shadow: 0 1px 1px rgba(0, 0, 0, 0.8); }
 .pp-closeup .fp-light-log ul { margin: 0.25rem 0 0; padding-left: 1rem; max-height: 5rem; overflow-y: auto; }
@@ -115,7 +116,7 @@
 /* Lenses laid over the painted LED area of the device itself (the row is a dark window that also covers the painted LEDs) */
 .pp-closeup .pp-lenses { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
 .pp-closeup .pp-lenses[hidden] { display: none; }
-.pp-closeup .fp-lens-row { position: absolute; display: flex; gap: 3px; padding: 4px; transform: translate(-50%, -50%); border-radius: 6px; background: #121615; box-shadow: inset 0 0 0 1px #3c4542, 0 2px 6px rgba(0, 0, 0, 0.6); pointer-events: auto; --fp-art-lens: max(40px, calc(var(--pcu-img-w, 1200px) * 0.032)); }
+.pp-closeup .fp-lens-row { position: absolute; display: flex; gap: 3px; padding: 4px; transform: translate(-50%, -50%); border-radius: 6px; pointer-events: auto; --fp-art-lens: max(40px, calc(var(--pcu-img-w, 1200px) * 0.032)); }
 .pp-closeup .fp-lens-row .fp-led { flex: none; padding: 0; gap: 0; border: 0; background: none; box-shadow: none; border-radius: 50%; }
 .pp-closeup .fp-lens-row .fp-lens { width: var(--fp-art-lens); height: var(--fp-art-lens); box-shadow: 0 0 0 2px #232927, 0 0 0 3px #77807c, inset 0 -2px 4px rgba(0, 0, 0, 0.7); }
 .pp-closeup .fp-lens-row .fp-led[data-led-state='up'] .fp-lens { box-shadow: 0 0 0 2px #232927, 0 0 0 3px #77807c, 0 0 12px 3px rgba(75, 224, 122, 0.7); }
@@ -126,3 +127,6 @@
 @media (prefers-reduced-motion: reduce) {
   .pp-closeup .fp-lens, .pp-closeup .fp-lever-arm, .pp-closeup .fp-cap, .pp-closeup .fp-position { transition: none; animation: none !important; }
 }
+
+/* Lenses sit on the device face itself: the state is the lens colour, the words live in the plate readout */
+.pp-closeup .fp-lens-row .fp-lens::after { display: none; }

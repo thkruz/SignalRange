@@ -577,9 +577,10 @@ export async function goToPartFromSheet(page: Page, sheet: Locator, partId: stri
 }
 
 export async function closeCloseup(page: Page): Promise<void> {
-  const close = page.locator('#part-closeup-modal-close');
-  if (await isShown(close)) {
-    await close.click();
+  // The close-up is a held object with no title bar: the player puts it down with the "Step back" control
+  const stepBack = page.locator('.immersive-view:has(#part-closeup-modal) .immersive-leave');
+  if (await isShown(stepBack)) {
+    await stepBack.click();
   }
 }
 

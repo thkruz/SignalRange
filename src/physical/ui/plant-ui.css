@@ -86,58 +86,76 @@
 .pp-pip-svg.bad { fill: #ef3b2d; }
 
 /* ---- close-up ---- */
-/* Fixed, centred modal sized around the fitted painting plus the right panel (vars set by sizeFrame_): nothing inside can resize it */
+/* The device and its plate are the whole view (the immersive dialog is the frame): no title bar, no band, no side panel.
+   Left: the painting with the service tag under it. Right: one steel plate that carries the controls. */
 #part-closeup-modal {
   position: fixed;
-  inset: 50% auto auto 50% !important;
-  transform: translate(-50%, -50%);
-  width: var(--pcu-w, min(1200px, calc(var(--mc-viewport-width, 100vw) - 32px)));
-  max-width: calc(var(--mc-viewport-width, 100vw) - 32px);
-  height: var(--pcu-h, min(760px, calc(var(--mc-viewport-height, 100dvh) - 48px)));
-  max-height: calc(var(--mc-viewport-height, 100dvh) - 48px);
+  inset: 0 !important;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
   min-height: 0 !important;
   display: flex;
   flex-direction: column;
-  background: #2e2e2e;
-  border: 1px solid #505050;
+  background: #0e120f;
+  border: 0;
   color: #f5f5f5;
 }
-#part-closeup-modal .draggable-box__title-bar { height: 44px; min-height: 44px; background: #272727; border-bottom: 1px solid #505050; }
-#part-closeup-modal .draggable-box__title { justify-content: flex-start; padding-left: 24px; }
-#part-closeup-modal .draggable-box__title h3 { font-size: 14px; font-weight: 500; color: #ccc; }
-#part-closeup-modal .draggable-box__close-btn { right: 18px; width: 24px; height: 24px; background: transparent; box-shadow: none; cursor: pointer; }
-#part-closeup-modal .draggable-box__close-btn:hover { background: #484848; }
+#part-closeup-modal .draggable-box__title-bar { display: none; }
 #part-closeup-modal .draggable-box__content { border: 0; min-height: 0; max-height: none; flex: 1; overflow: hidden; }
 #part-closeup-modal :focus-visible { outline: 2px solid #eee; outline-offset: -3px; }
 
-.pp-closeup { height: 100%; display: flex; flex-direction: column; min-height: 0; background: var(--mc-surface-0); color: var(--mc-text-secondary); }
-.pp-closeup .pp-closeup-body { flex: 1; min-height: 0; display: grid; grid-template-columns: var(--pcu-img-w, 1fr) 360px; gap: 12px; padding: 12px; overflow: hidden; align-content: start; }
-/* The image pane: exactly the fitted painting, top-aligned; the overlay shares the drawn image's box */
-.pp-closeup .pp-stage-box { position: relative; width: var(--pcu-img-w); height: var(--pcu-img-h); align-self: start; }
+.pp-closeup { height: 100%; display: flex; flex-direction: column; min-height: 0; background: #0e120f; color: var(--mc-text-secondary); }
+.pp-closeup .pp-closeup-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 12px; padding: 12px; overflow: hidden; }
+.pp-closeup .pp-stage-col { min-width: 0; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+/* The image pane: exactly the fitted painting; the overlay shares the drawn image's box */
+.pp-closeup .pp-stage-box { position: relative; width: var(--pcu-img-w); height: var(--pcu-img-h); flex: none; }
 .pp-closeup .pp-stage-box > .pp-stage { width: 100%; height: 100%; border: 0; }
 .pp-closeup .pp-stage > img { height: 100%; object-fit: fill; }
 .pp-closeup .pp-overlay { position: absolute; inset: 0; }
 .pp-closeup .pp-overlay > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-.pp-closeup .pp-side { display: flex; flex-direction: column; gap: 0.55rem; min-width: 0; min-height: 0; overflow: hidden; }
-.pp-closeup .pp-side > div { flex: none; }
-.pp-closeup .pp-side > .pp-history-wrap { flex: 1 1 0; min-height: 3rem; display: flex; flex-direction: column; }
-.pp-closeup .pp-item-title { font-size: 1.05rem; font-weight: 600; margin: 0; color: var(--mc-text-primary); }
+/* The plate is the column: it scrolls as one piece if a short screen cannot hold it, never inside itself */
+.pp-closeup .pp-side { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.pp-closeup .pp-item-title { font-size: 1rem; font-weight: 700; margin: 0 0 0.5rem; padding-right: 8.5rem; letter-spacing: 0.1em; text-transform: uppercase; color: #e4e1c6; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6); }
 .pp-closeup .pp-section-title { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--mc-text-muted); margin: 0 0 0.25rem; }
-.pp-closeup .pp-target { font-size: 0.9rem; color: var(--mc-text-primary); min-height: 1.3rem; }
-.pp-closeup .pp-tags { min-height: 1.6rem; }
+/* Selection and state read in a recessed window on the plate */
+.pp-closeup .fp-window { margin-bottom: 0.6rem; padding: 0.4rem 0.55rem; border-radius: 4px; background: #0f1512; box-shadow: inset 0 2px 5px #000, 0 1px 0 rgba(255, 255, 255, 0.16); border: 1px solid #1a1f1d; }
+.pp-closeup .pp-target { font: 0.82rem/1.3 'JetBrains Mono', monospace; color: #cfe9c4; min-height: 1.1rem; }
+.pp-closeup .pp-target[hidden] { display: none; }
+.pp-closeup .pp-tags { min-height: 1.3rem; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.4rem; }
 .pp-closeup .pp-hint { color: var(--mc-text-muted); font-size: 0.78rem; }
-.pp-closeup .pp-latest { min-height: 5.6rem; max-height: 9rem; overflow-y: auto; padding: 0.5rem 0.6rem; border: 1px solid var(--mc-border); border-radius: 0.25rem; background: var(--mc-surface-1); }
-.pp-closeup .pp-latest-meta { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--mc-text-muted); margin-bottom: 0.25rem; }
-.pp-closeup .pp-latest-text { font-size: 0.95rem; line-height: 1.35; color: var(--mc-text-primary); }
-.pp-closeup .pp-log { font-size: 0.75rem; flex: 1 1 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; border-top: 1px solid var(--mc-border); padding-top: 0.25rem; }
-.pp-closeup .pp-log-row { padding: 0.2rem 0; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
-.pp-closeup .pp-log-row:last-child { border-bottom: 0; }
-.pp-closeup .pp-log-meta { font-family: 'JetBrains Mono', monospace; color: var(--mc-text-muted); font-size: 0.68rem; }
-.pp-closeup .pp-tag { display: inline-block; margin: 0.1rem 0.25rem 0 0; padding: 0.05rem 0.4rem; border-radius: 0.2rem; font-size: 0.7rem; background: rgba(255, 255, 255, 0.07); color: var(--mc-text-secondary); border: 1px solid var(--mc-border); }
-.pp-closeup .pp-tag-warn, .pp-closeup .pp-tag-bad { background: rgba(234, 179, 8, 0.18); color: var(--mc-status-caution, #eab308); border-color: rgba(234, 179, 8, 0.4); }
-.pp-closeup .pp-foot { margin-top: auto; font-size: 0.74rem; color: var(--mc-text-muted); }
+.pp-closeup .pp-tag { display: inline-block; padding: 0.02rem 0.35rem; border-radius: 2px; font: 700 0.68rem/1.4 'JetBrains Mono', monospace; letter-spacing: 0.06em; text-transform: uppercase; background: rgba(160, 230, 150, 0.1); color: #a9e69b; border: 1px solid rgba(160, 230, 150, 0.35); }
+.pp-closeup .pp-tag-warn, .pp-closeup .pp-tag-bad { background: rgba(240, 180, 41, 0.14); color: #f0b429; border-color: rgba(240, 180, 41, 0.5); }
+.pp-closeup .fp-gauge { display: inline-flex; align-items: center; gap: 0.4rem; font: 0.7rem/1.4 'JetBrains Mono', monospace; color: #a9e69b; }
+.pp-closeup .fp-gauge-legend { font-weight: 700; letter-spacing: 0.08em; }
+.pp-closeup .fp-gauge-bar { position: relative; width: 5.5rem; height: 0.7rem; border: 1px solid rgba(160, 230, 150, 0.5); background: repeating-linear-gradient(90deg, transparent 0 calc(25% - 1px), rgba(160, 230, 150, 0.35) calc(25% - 1px) 25%); }
+.pp-closeup .fp-gauge-fill { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, #2f8f4a, #7bdc7a); opacity: 0.85; }
+.pp-closeup .pp-foot { margin-top: auto; padding-top: 0.6rem; font-size: 0.72rem; color: #e4e1c6; letter-spacing: 0.06em; text-transform: uppercase; }
 .pp-closeup .pp-foot-row { display: flex; align-items: center; gap: 0.4rem; margin: 0.1rem 0; cursor: pointer; }
-.pp-closeup .pp-trainer-foot summary { cursor: pointer; }
+.pp-closeup .pp-trainer-foot summary { cursor: pointer; opacity: 0.8; }
+
+/* The service tag: a paper tag on the bench under the device. Latest result is the entry just written, History the earlier ones. */
+.pp-closeup .pp-stage-col > .pp-svc-tag {
+  --mc-surface-1: #e9d8b6; --mc-text-primary: #211d18; --mc-text-secondary: #30271c; --mc-text-muted: #5a4a31; --mc-border: #9b825f;
+  position: relative; flex: none; box-sizing: border-box; width: max(var(--pcu-img-w, 0px), min(620px, 100%)); max-width: 100%; height: 132px;
+  display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 0.9rem; padding: 0.55rem 0.9rem 0.5rem 1.6rem;
+  margin: 0; text-transform: none; letter-spacing: normal; font-size: inherit; border: 0; border-radius: 3px 10px 10px 3px;
+  background: repeating-linear-gradient(0deg, #decca6, #decca6 23px, rgba(158, 138, 99, 0.22) 24px); color: #211d18;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(90, 70, 40, 0.35);
+}
+.pp-closeup .pp-stage-col > .pp-svc-tag::before { content: ''; position: absolute; left: 0.55rem; top: 50%; width: 0.6rem; height: 0.6rem; margin-top: -0.3rem; border-radius: 50%; background: #0e120f; box-shadow: inset 0 1px 2px #000, 0 1px 0 rgba(255, 255, 255, 0.4); }
+.pp-closeup .pp-svc-tag .pp-section-title { font-family: Georgia, serif; color: #5a4a31; }
+.pp-closeup .pp-svc-tag-latest { min-width: 0; display: flex; flex-direction: column; }
+.pp-closeup .pp-latest { flex: 1; min-height: 0; overflow-y: auto; padding: 0; border: 0; background: transparent; }
+.pp-closeup .pp-latest-meta { font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; color: #5a4a31; margin-bottom: 0.2rem; }
+.pp-closeup .pp-latest-text { font: 0.92rem/1.3 Georgia, serif; color: #211d18; }
+.pp-closeup .pp-stage-col > .pp-svc-tag .pp-hint { color: #5a4a31; font-family: Georgia, serif; font-style: italic; }
+.pp-closeup .pp-history-wrap { min-width: 0; min-height: 0; display: flex; flex-direction: column; border-left: 1px dashed #9b825f; padding-left: 0.8rem; }
+.pp-closeup .pp-log { font-size: 0.74rem; flex: 1 1 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; color: #30271c; font-family: Georgia, serif; }
+.pp-closeup .pp-log-row { padding: 0.15rem 0; border-bottom: 1px solid rgba(90, 70, 40, 0.25); }
+.pp-closeup .pp-log-row:last-child { border-bottom: 0; }
+.pp-closeup .pp-log-meta { font-family: 'JetBrains Mono', monospace; color: #5a4a31; font-size: 0.64rem; }
 
 /* Overlay: neutral markers at rest; outline and callout on hover, focus or selection */
 .pp-point { cursor: pointer; outline: none; }
@@ -145,7 +163,9 @@
 .pp-point .pp-region-box { fill: transparent; stroke: transparent; stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: all; }
 .pp-point .pp-ring { fill: transparent; stroke: transparent; stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: all; }
 .pp-point .pp-cable-line { fill: none; stroke: transparent; stroke-linecap: round; stroke-linejoin: round; pointer-events: stroke; }
-.pp-point:hover .pp-region-box, .pp-point:focus .pp-region-box, .pp-point.pp-selected .pp-region-box, .pp-show-points .pp-region-box { fill: rgba(255, 220, 120, 0.1); stroke: rgba(255, 216, 102, 0.9); }
+.pp-point:hover .pp-region-box, .pp-point:focus-visible .pp-region-box, .pp-show-points .pp-region-box { fill: rgba(255, 220, 120, 0.1); stroke: rgba(255, 216, 102, 0.9); }
+/* A selected part is lit from within, never boxed */
+.pp-point.pp-selected .pp-region-box { fill: rgba(255, 244, 200, 0.12); stroke: transparent; }
 .pp-point:hover .pp-ring, .pp-point:focus .pp-ring, .pp-point.pp-selected .pp-ring, .pp-show-points .pp-ring { stroke: rgba(255, 216, 102, 0.9); fill: rgba(255, 216, 102, 0.1); }
 .pp-point:hover .pp-cable-line, .pp-point:focus .pp-cable-line, .pp-point.pp-selected .pp-cable-line, .pp-show-points .pp-cable-line { stroke: rgba(255, 216, 102, 0.35); }
 .pp-point.pp-selected .pp-marker, .pp-point:hover .pp-marker, .pp-point:focus .pp-marker { stroke: #ffd866; }

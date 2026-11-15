@@ -181,7 +181,9 @@ export class FieldHandoverPanel {
       this.msg_ =
         field && 'runRate' in field.rule
           ? 'There is no run rate to copy yet. The draw is recorded over a finished task run, so start the run in MissionRunner on the laptop and let it finish, then press Copy latest reading again.'
-          : 'There is no reading to use yet. Take one first (for a power figure, Inspect that part in the site close-up, or type the Power panel figure).';
+          : field && 'matchesCurrent' in field.rule
+            ? `There is no ${field.rule.matchesCurrent.layer} reading to copy yet. ${this.howToRead_(field.rule.matchesCurrent.serviceId, field.rule.matchesCurrent.layer)}`
+            : 'There is no reading to use yet. Take one first (for a power figure, Inspect that part in the site close-up, or type the Power panel figure).';
       this.sync();
 
       return false;
@@ -331,6 +333,13 @@ export class FieldHandoverPanel {
     const field = el.closest<HTMLInputElement | HTMLSelectElement>('[data-hf-field]');
     if (field instanceof HTMLInputElement && field.type === 'radio' && !field.checked) return;
     if (field) this.setValue(field.dataset.hfField ?? '', field.value === '' ? undefined : field.value);
+    // A tick answers the red note beside it: drop that field's verdict now, so the page never shows a ticked box under "is empty"
+    if (field instanceof HTMLInputElement && field.type === 'radio' && this.result_) {
+      const key = field.dataset.hfField ?? '';
+      this.result_ = { ...this.result_, fields: this.result_.fields.filter((c) => c.key !== key) };
+      this.dynKey_ = null;
+      this.sync();
+    }
   };
 
   // ---------------------------------------------------------------- render
@@ -503,7 +512,11 @@ export class FieldHandoverPanel {
 
   private readingHint_(f: HandoverFieldConfig): string {
     const rule = f.rule;
-    if ('matchesCurrent' in rule) return describeReading(this.deps_.service(), rule.matchesCurrent.serviceId, rule.matchesCurrent.layer).text;
+    if ('matchesCurrent' in rule) {
+      const described = describeReading(this.deps_.service(), rule.matchesCurrent.serviceId, rule.matchesCurrent.layer);
+
+      return described.value === undefined ? `${described.text} ${this.howToRead_(rule.matchesCurrent.serviceId, rule.matchesCurrent.layer)}` : described.text;
+    }
 
     const reading = this.readingFor_(f);
     if (reading === undefined && 'measured' in rule) {
@@ -523,6 +536,21 @@ export class FieldHandoverPanel {
 
     // A bare figure under an empty line reads like an entry already written in (blind run c6s2-r7), so say it is a reading to copy
     return reading === undefined ? '' : `Latest reading: ${reading}. Press Copy latest reading to write it on the line, or type it.`;
+  }
+
+  /** Where the player takes a reading of a service layer: the real control and its place (never the answer) */
+  private howToRead_(serviceId: string, layer: Parameters<ServiceModel['latest']>[1]): string {
+    const path = this.deps_.service()?.getPath(serviceId);
+    const plant = this.deps_.plant();
+    const partId = path?.localPartIds.find((p) => !p.includes('laptop')) ?? path?.terminalPartId;
+    const part = partId === undefined ? 'router' : (plant?.getLabel(partId) ?? 'router');
+    if (layer === 'power') return `Open the ${part} close-up at the site and look at its Power light (the lens reads LOOK until you do), then press Copy latest reading.`;
+    if (layer === 'local')
+      return `Run Ping on the Local network line in NetProbe on the laptop, or look at the Local network light on the ${part} close-up, then press Copy latest reading.`;
+    if (layer === 'registration')
+      return `Run Link status on the Through the terminal line in NetProbe on the laptop, or look at the Terminal link light on the ${part} close-up, then press Copy latest reading.`;
+
+    return 'Take it from the Service checks panel first.';
   }
 
   /** A written-in answer as a column of printed tick boxes, one of which is ticked */

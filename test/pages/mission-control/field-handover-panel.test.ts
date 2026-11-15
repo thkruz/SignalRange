@@ -325,3 +325,54 @@ describe('splitLatestPerSource', () => {
     expect(older.map((x) => x.id)).toEqual(['b1', 'a1']);
   });
 });
+
+describe('M14 handover panel unread readings and ticks (P46)', () => {
+  const form: HandoverFormConfig = {
+    id: 'p46',
+    title: 'Baseline',
+    documentSection: 'B',
+    fields: [
+      { key: 'service', label: 'Service checked', required: true, rule: { choice: ['skylink', 'both'], labels: { skylink: 'SkyLink', both: 'Both' } } },
+      { key: 'power', label: 'Terminal power', required: true, rule: { matchesCurrent: { serviceId: 'skylink', layer: 'power' } } },
+      { key: 'reg', label: 'Registration', required: true, rule: { matchesCurrent: { serviceId: 'skylink', layer: 'registration' } } },
+    ],
+  };
+
+  it('a terminal power field with no reading names the light to look at and where, not just that there is none', () => {
+    const r = rig(true, form);
+    r.panel.selectForm('p46');
+    const hint = r.host.querySelector('[data-fhf="reading-power"]')?.textContent ?? '';
+    expect(hint).toMatch(/Power light/u);
+    expect(hint).toMatch(/Router/u);
+    expect(hint).toMatch(/close-up/u);
+  });
+
+  it('a registration field with no reading names the NetProbe command and the light', () => {
+    const r = rig(true, form);
+    r.panel.selectForm('p46');
+    const hint = r.host.querySelector('[data-fhf="reading-reg"]')?.textContent ?? '';
+    expect(hint).toMatch(/Link status/u);
+    expect(hint).toMatch(/NetProbe/u);
+  });
+
+  it('Copy latest reading with no reading to copy says how to take it, beside the field message', () => {
+    const r = rig(true, form);
+    r.panel.selectForm('p46');
+    expect(r.panel.fillFromReading('reg')).toBe(false);
+    const msg = r.host.querySelector('[data-fhf="msg"]')?.textContent ?? '';
+    expect(msg).toMatch(/registration reading to copy/u);
+    expect(msg).toMatch(/Link status/u);
+    expect(msg).not.toMatch(/Inspect that part/u);
+  });
+
+  it('ticking an answer clears the "is empty" note on that field at once', () => {
+    const r = rig(true, form);
+    r.panel.selectForm('p46');
+    r.panel.check();
+    expect(r.host.querySelector('[data-hf-note="service"]')?.textContent).toMatch(/is empty/u);
+    pick(r.host, 'input[type="radio"][data-hf-field="service"]', 'skylink');
+    expect(r.host.querySelector('[data-hf-note="service"]')).toBeNull();
+    expect(r.host.querySelector<HTMLInputElement>('input[data-hf-field="service"][value="skylink"]')?.checked).toBe(true);
+    expect(r.panel.check()?.fields.find((c) => c.key === 'service')?.ok).toBe(true);
+  });
+});

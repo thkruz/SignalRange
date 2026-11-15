@@ -57,6 +57,17 @@ const LABEL_CHAR_W = 14.5;
 const LABEL_PAD_X = 10;
 const LABEL_GAP = 14;
 
+/** The hover label as a tag hung beside the dot, flipped to the dot's left when it would run past the art's right edge */
+export function siteLabelTagSvg(id: string, label: string, ax: number, ay: number): string {
+  const width = Math.round(label.length * LABEL_CHAR_W + 2 * LABEL_PAD_X);
+  const flip = ax + LABEL_GAP + width > VIEW_W;
+  const x = flip ? ax - LABEL_GAP - width : ax + LABEL_GAP;
+  const anchor = flip ? 'end' : 'start';
+  const textX = flip ? x + width - LABEL_PAD_X : x + LABEL_PAD_X;
+
+  return `<g class="pp-label-tag" data-for="${id}"><rect class="pp-label-bg" x="${x.toFixed(1)}" y="${(ay - 15).toFixed(1)}" width="${width}" height="30" rx="2"/><text class="pp-label" text-anchor="${anchor}" x="${textX.toFixed(1)}" y="${(ay + 6).toFixed(1)}">${escapeHtml(label)}</text></g>`;
+}
+
 export class SiteTab extends BaseElement {
   static source: SampleProvenance = 'local-probe';
   private static desktopRequested_ = false;
@@ -211,6 +222,7 @@ export class SiteTab extends BaseElement {
     for (const spot of this.spots_()) {
       overlay.push(this.hotspotHtml_(spot));
     }
+    overlay.push(this.labelLayerHtml_());
     overlay.push('</svg>');
     const alt = this.isForward_() ? 'The forward post' : view === 'inside' ? 'Inside the tent' : 'The compound outside the tent';
 
@@ -286,18 +298,24 @@ export class SiteTab extends BaseElement {
     const ay = spot.anchor[1] * viewHeight(aspect);
     const target = spot.action ? `data-action="${spot.action}"` : spot.pendingArt ? 'data-pending="1" aria-disabled="true"' : `data-closeup="${spot.closeup}"`;
 
-    return `<g class="pp-hotspot" data-hotspot="${spot.id}" ${target} tabindex="0" role="button" aria-label="${escapeHtml(spot.label)}">${shapes}<circle class="pp-pip-svg ok" id="${spot.id}-pip" cx="${ax.toFixed(1)}" cy="${ay.toFixed(1)}" r="9"/>${SiteTab.labelTagSvg_(spot.label, ax, ay)}</g>`;
+    return `<g class="pp-hotspot" data-hotspot="${spot.id}" ${target} tabindex="0" role="button" aria-label="${escapeHtml(spot.label)}">${shapes}<circle class="pp-pip-svg ok" id="${spot.id}-pip" cx="${ax.toFixed(1)}" cy="${ay.toFixed(1)}" r="9"/></g>`;
   }
 
-  /** The hover label as a canvas tag hung beside the dot, flipped to the dot's left when it would run past the art's right edge */
-  private static labelTagSvg_(label: string, ax: number, ay: number): string {
-    const width = Math.round(label.length * LABEL_CHAR_W + 2 * LABEL_PAD_X);
-    const flip = ax + LABEL_GAP + width > VIEW_W;
-    const x = flip ? ax - LABEL_GAP - width : ax + LABEL_GAP;
-    const anchor = flip ? 'end' : 'start';
-    const textX = flip ? x + width - LABEL_PAD_X : x + LABEL_PAD_X;
+  /** Every hover tag, in one group painted after all hotspots so no dot or glow ever covers a tag */
+  private labelLayerHtml_(): string {
+    const aspect = this.aspect_();
+    const tags = this.spots_()
+      .map((spot) => siteLabelTagSvg(spot.id, spot.label, spot.anchor[0] * VIEW_W, spot.anchor[1] * viewHeight(aspect)))
+      .join('');
 
-    return `<g class="pp-label-tag"><rect class="pp-label-bg" x="${x.toFixed(1)}" y="${(ay - 15).toFixed(1)}" width="${width}" height="30" rx="2"/><text class="pp-label" text-anchor="${anchor}" x="${textX.toFixed(1)}" y="${(ay + 6).toFixed(1)}">${escapeHtml(label)}</text></g>`;
+    return `<g class="pp-label-layer" pointer-events="none">${tags}</g>`;
+  }
+
+  /** Show the tag of the hovered or focused hotspot (null hides all) */
+  private showTag_(id: string | null): void {
+    for (const tag of this.dom_?.querySelectorAll<SVGElement>('.pp-label-tag') ?? []) {
+      tag.classList.toggle('on', id !== null && tag.dataset.for === id);
+    }
   }
 
   /** Current view, derived from the plant manager (never stored separately) */
@@ -385,6 +403,10 @@ export class SiteTab extends BaseElement {
           svg.appendChild(node);
         }
       }
+    }
+    svg.querySelector('.pp-label-layer')?.remove();
+    for (const node of parse(this.labelLayerHtml_())) {
+      svg.appendChild(node);
     }
 
     return true;
@@ -592,6 +614,13 @@ export class SiteTab extends BaseElement {
         PlantTrainerBox.getInstance().show();
       }
     });
+    const tagFor = (ev: Event): string | null => (ev.target as Element).closest?.('.pp-hotspot')?.getAttribute('data-hotspot') ?? null;
+    root.addEventListener('pointerover', (ev) => this.showTag_(tagFor(ev)));
+    root.addEventListener('pointerout', (ev) => {
+      if (tagFor(ev)) this.showTag_(null);
+    });
+    root.addEventListener('focusin', (ev) => this.showTag_(tagFor(ev)));
+    root.addEventListener('focusout', () => this.showTag_(null));
     root.addEventListener('keydown', (ev) => {
       if (ev.key !== 'Enter' && ev.key !== ' ') {
         return;

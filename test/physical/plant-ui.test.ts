@@ -25,7 +25,7 @@ vi.mock('draggabilly', () => ({
 import { frontlinePlantConfig } from '@app/campaigns/frontline/plant-config';
 import { hotspotsForView, SITE_HOTSPOTS } from '@app/campaigns/frontline/site-hotspots';
 import { EventBus } from '@app/events/event-bus';
-import { SiteTab } from '@app/pages/mission-control/tabs/site-tab';
+import { SiteTab, siteLabelTagSvg } from '@app/pages/mission-control/tabs/site-tab';
 import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import { PartCloseupModal } from '@app/physical/ui/part-closeup-modal';
 import { buildTrigger, PlantTrainerBox } from '@app/physical/ui/plant-trainer-box';
@@ -69,6 +69,36 @@ describe('SiteTab', () => {
     document.querySelector<SVGElement>('[data-hotspot="site-in-power-station"]')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(PartCloseupModal.getInstance().currentId()).toBe('power-station');
     tab.dispose();
+  });
+
+  it('every hover tag is painted after every hotspot dot, and only the hovered one shows', () => {
+    plantService();
+    const tab = new SiteTab('canvas-content');
+    const svg = document.querySelector('svg.site-overlay')!;
+    const order = [...svg.children];
+    const layer = svg.querySelector('.pp-label-layer')!;
+    const lastHotspot = Math.max(...[...svg.querySelectorAll('.pp-hotspot')].map((g) => order.indexOf(g)));
+    expect(order.indexOf(layer)).toBeGreaterThan(lastHotspot);
+    expect(svg.querySelectorAll('.pp-hotspot .pp-label-tag').length).toBe(0);
+    expect(layer.querySelectorAll('.pp-label-tag').length).toBe(hotspotsForView('inside').length);
+    const first = hotspotsForView('inside')[0].id;
+    document.querySelector(`[data-hotspot="${first}"]`)!.dispatchEvent(new Event('pointerover', { bubbles: true }));
+    const on = [...layer.querySelectorAll('.pp-label-tag.on')];
+    expect(on.map((t) => t.getAttribute('data-for'))).toEqual([first]);
+    tab.dispose();
+  });
+
+  it('a label tag hangs right of the dot and flips left when it would pass the right edge', () => {
+    const x = (svg: string): number => Number(/<rect[^>]* x="(-?[\d.]+)"/u.exec(svg)![1]);
+    const near = siteLabelTagSvg('a', 'LAPTOP', 200, 100);
+    expect(x(near)).toBeGreaterThan(200);
+    expect(near).toContain('text-anchor="start"');
+    const edge = siteLabelTagSvg('b', 'EUROSAT DISH', 950, 100);
+    expect(x(edge)).toBeLessThan(950);
+    expect(edge).toContain('text-anchor="end"');
+    const width = Number(/<rect[^>]* width="(\d+)"/u.exec(edge)![1]);
+    expect(x(edge) + width).toBeLessThan(950);
+    expect(x(edge)).toBeGreaterThan(0);
   });
 
   it('go outside opens a trip and swaps the view; go inside closes it', () => {

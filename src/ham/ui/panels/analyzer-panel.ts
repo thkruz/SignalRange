@@ -11,14 +11,17 @@
 import type { HamStationManager } from '../../ham-station-manager';
 import type { HamMeasurement } from '../../ham-types';
 import type { AnalyzerPoint } from '../../rf/instruments';
+import { FACE_ART } from '../bench/bench-art';
 import type { PanelContext, StationPanel } from '../station-panel';
 import { button, fmt, h, select } from '../ui-kit';
 import './instruments.css';
+import { paintedFace } from './painted-face';
 import { inService, numInput, setText, T } from './panel-util';
+import { TrxKnob } from './trx-knob';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const W = 400;
-const H = 180;
+const H = 350;
 const PAD = { l: 30, r: 8, t: 8, b: 18 };
 const SWR_MAX = 10;
 const REFERENCE_KINDS = ['cal-load', 'dummy-load', 'adapter', 'coax', 'antenna'];
@@ -47,6 +50,8 @@ export class AnalyzerPanel implements StationPanel {
   private status_!: HTMLElement;
   private sweep_: { points: AnalyzerPoint[]; minSwr: { fMHz: number; swr: number } | null; uncalibrated: boolean; flags: string[]; m: HamMeasurement | null } | null = null;
   private refSig_ = '';
+  private refSlot_!: HTMLElement;
+  private refKnob_: TrxKnob | null = null;
 
   isRelevant(m: HamStationManager): boolean {
     return inService(m, 'analyzer').length > 0;
@@ -59,6 +64,7 @@ export class AnalyzerPanel implements StationPanel {
     this.stop_ = numInput(T('ham-analyzer', d, 'stop'), 'Stop MHz', 150, 0.5, 0.1, 1000);
     this.points_ = numInput(T('ham-analyzer', d, 'points'), 'Points', 41, 1, 2, 401);
     this.ref_ = select(T('ham-analyzer', d, 'cal-ref'), 'Calibration reference', [{ value: '', label: 'At analyzer port' }], '');
+    this.ref_.addEventListener('change', () => this.refKnob_?.show(this.ref_.selectedIndex));
     this.plot_ = svgEl('svg', {
       viewBox: `0 0 ${W} ${H}`,
       class: 'ham-plot',
@@ -71,29 +77,42 @@ export class AnalyzerPanel implements StationPanel {
     this.calStatus_ = h('span', { class: 'small text-muted', 'data-testid': T('ham-analyzer', d, 'cal-status') });
     this.status_ = h('div', { class: 'small text-muted', 'data-testid': T('ham-analyzer', d, 'status') });
 
-    const f = (label: string, el: HTMLElement): HTMLElement => h('div', { class: 'col-4' }, h('label', { class: 'form-label small mb-1', text: label }), el);
+    // Painted face (issue 307): the plot is the screen, the three entry windows hold the start, stop and
+    // point count, the keys sweep and calibrate, and the rotary picks the calibration reference
+    const entry = (cap: string, input: HTMLInputElement): HTMLElement => {
+      input.classList.remove('form-control', 'form-control-sm');
+
+      return h('div', { class: 'pf-window' }, h('span', { class: 'pf-cap', text: cap }), input);
+    };
+    const sweepKey = button(T('ham-analyzer', d, 'sweep'), 'SWEEP', () => this.sweep_run_(), 'pf-key', 'Sweep');
+    const calKey = button(T('ham-analyzer', d, 'calibrate'), 'CAL', () => this.calibrate_(), 'pf-key', 'Calibrate');
+    this.refSlot_ = h('div', { class: 'analyzer-knob-slot' });
+    const face = paintedFace(FACE_ART.analyzer, 'analyzer', [
+      ['screen', h('div', { class: 'pf-screen' }, this.plot_)],
+      ['entry1', entry('START MHz', this.start_)],
+      ['entry2', entry('STOP MHz', this.stop_)],
+      ['entry3', entry('POINTS', this.points_)],
+      ['keyLeft', sweepKey],
+      ['keyRight', calKey],
+      ['knob', this.refSlot_],
+    ]);
+    this.ref_.id = T('ham-analyzer', d, 'cal-ref');
     this.root_ = h(
       'div',
-      { class: 'ham-instr', 'data-testid': T('ham-analyzer', d, 'panel') },
-      h('div', { class: 'row g-1 mb-2' }, f('Start (MHz)', this.start_), f('Stop (MHz)', this.stop_), f('Points', this.points_)),
+      { class: 'ham-instr pface-layout', 'data-testid': T('ham-analyzer', d, 'panel') },
+      face,
       h(
         'div',
-        { class: 'ham-row' },
-        button(T('ham-analyzer', d, 'sweep'), 'Sweep', () => this.sweep_run_(), 'btn btn-primary btn-sm')
-      ),
-      h(
-        'div',
-        { class: 'ham-row' },
-        this.ref_,
-        button(T('ham-analyzer', d, 'calibrate'), 'Calibrate', () => this.calibrate_(), 'btn btn-outline-secondary btn-sm'),
-        this.calStatus_
-      ),
-      this.plot_,
-      this.min_,
-      this.flag_,
-      this.status_
+        { class: 'pface-side' },
+        h('div', {}, h('label', { class: 'form-label', for: this.ref_.id, text: 'Calibration reference' }), this.ref_),
+        this.calStatus_,
+        this.min_,
+        this.flag_,
+        this.status_
+      )
     );
     host.append(this.root_);
+    this.buildRefKnob_();
     const last = ctx.manager.lastSweep();
     if (last) this.setSweep_(last.points, last.flags, last.measurement);
     this.update(ctx.manager);
@@ -181,13 +200,40 @@ export class AnalyzerPanel implements StationPanel {
       const cur = this.ref_.value;
       this.ref_.replaceChildren(h('option', { value: '', text: 'At analyzer port' }), ...refs.map((d) => h('option', { value: d.id, text: `At end of ${d.label}` })));
       this.ref_.value = cur;
+      this.buildRefKnob_();
     }
+    this.refKnob_?.show(this.ref_.selectedIndex);
     const cal = m.events(`calibrate:${this.an_}`);
     const last = cal[cal.length - 1];
     setText(this.calStatus_, last ? (last.data?.referenceDeviceId ? `Calibrated (cable end)` : 'Calibrated (port)') : 'Not calibrated');
   }
 
+  /** The rotary switch over the calibration-reference select: one position per reference, sized to the list */
+  private buildRefKnob_(): void {
+    this.refKnob_?.dispose();
+    const last = Math.max(0, this.ref_.options.length - 1);
+    const knob = new TrxKnob({
+      testId: `${this.ref_.id}-knob`,
+      label: 'Calibration reference position',
+      legend: 'CAL REF',
+      min: 0,
+      max: last,
+      step: 1,
+      detents: Array.from({ length: last + 1 }, (_, i) => i),
+      size: 'mid',
+      format: (v) => this.ref_.options[v]?.textContent ?? '',
+      onTurn: (v) => {
+        this.ref_.selectedIndex = v;
+      },
+    });
+    knob.show(this.ref_.selectedIndex);
+    this.refKnob_ = knob;
+    this.refSlot_.replaceChildren(knob.el);
+  }
+
   dispose(): void {
+    this.refKnob_?.dispose();
+    this.refKnob_ = null;
     this.root_?.remove();
     this.root_ = null;
   }

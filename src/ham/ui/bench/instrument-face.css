@@ -166,9 +166,6 @@
 .inst-face .list-unstyled li { padding: 2px 0; }
 
 /* per-instrument stance */
-.inst-chassis[data-panel='meter'] .inst-face .ham-display { background: #b9c9a0; color: #1a2410; text-shadow: none; }
-.inst-chassis[data-panel='swr'] .inst-face .ham-display { background: #1d2b1d; }
-.inst-chassis[data-panel='analyzer'] .inst-face .ham-plot { height: 340px; }
 .inst-chassis[data-panel='board'] .inst-face { background: linear-gradient(#10261a, #0a1810); }
 .inst-program { font-family: var(--bs-font-monospace, monospace); }
 
@@ -186,3 +183,10 @@
 .inst-face .trx-knob-legend, .inst-face .trx-knob-wrap > span { color: var(--inst-dim); font-size: 12px; }
 .inst-face :is(.form-control, .form-select):disabled { background-color: #17150f; color: #b9b09a; opacity: 1; }
 .inst-face ::placeholder { color: #a79e88; opacity: 1; }
+
+/* Painted instruments (issue 307): the picture is the chassis, so the chassis, screws and recess drop away */
+.inst-chassis.inst-painted { width: auto; max-width: 100%; padding: 0; border: 0; background: none; box-shadow: none; }
+.inst-painted .inst-screw { display: none; }
+.inst-painted .inst-plate { margin: 0 0 12px; padding: 6px 12px; background: #0009; border-color: #0000; box-shadow: none; }
+.inst-painted .inst-face { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+.inst-painted .inst-face .ham-instr { margin: 0 !important; padding: 0; border: 0; }

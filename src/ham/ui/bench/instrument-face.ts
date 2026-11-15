@@ -22,12 +22,14 @@ export interface InstrumentSpec {
   accent: string;
   /** Chassis body (CSS colour) */
   body: string;
+  /** The panel draws a painted faceplate (the picture is the chassis); no CSS chassis or recess around it */
+  painted?: boolean;
 }
 
 export const INSTRUMENTS: Record<string, InstrumentSpec> = {
-  meter: { verb: 'Pick up', model: 'Digital multimeter', accent: '#f2c230', body: '#d6a516' },
-  swr: { verb: 'Read', model: 'SWR and power meter', accent: '#e8b45a', body: '#3b3f46' },
-  analyzer: { verb: 'Use', model: 'Antenna analyzer', accent: '#6cc4f0', body: '#2f4a5e' },
+  meter: { verb: 'Pick up', model: 'Digital multimeter', accent: '#f2c230', body: '#d6a516', painted: true },
+  swr: { verb: 'Read', model: 'SWR and power meter', accent: '#e8b45a', body: '#3b3f46', painted: true },
+  analyzer: { verb: 'Use', model: 'Antenna analyzer', accent: '#6cc4f0', body: '#2f4a5e', painted: true },
   antenna: { verb: 'Adjust', model: 'Antenna rig', accent: '#9bd37a', body: '#3d5030' },
   board: { verb: 'Work on', model: 'Circuit board', accent: '#7ee0a0', body: '#1e5b3a' },
   dc: { verb: 'Check', model: 'Power supply', accent: '#ff9d4d', body: '#4a4d52' },
@@ -77,7 +79,7 @@ export class InstrumentFace {
       const face = h('div', { class: 'inst-face' }, content);
       const chassis = h(
         'section',
-        { class: 'inst-chassis', 'data-panel': panelId, style: `--inst-accent:${spec.accent};--inst-body:${spec.body}` },
+        { class: spec.painted ? 'inst-chassis inst-painted' : 'inst-chassis', 'data-panel': panelId, style: `--inst-accent:${spec.accent};--inst-body:${spec.body}` },
         h('i', { class: 'inst-screw tl', 'aria-hidden': 'true' }),
         h('i', { class: 'inst-screw tr', 'aria-hidden': 'true' }),
         h('i', { class: 'inst-screw bl', 'aria-hidden': 'true' }),

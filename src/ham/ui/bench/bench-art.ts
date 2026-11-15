@@ -133,6 +133,59 @@ export const EQUIPMENT_ART: Record<string, EquipmentArt> = {
   },
 };
 
+/**
+ * Front-on faceplates for the held instruments (Phase 47, issue 307): the painted controls are wells the live
+ * DOM controls sit on (see painted-face.ts). Same cut-out format as EQUIPMENT_ART, but a flat view, with the
+ * screen, windows, knobs and keys left blank for the UI to draw on. Boxes are fractions of the picture.
+ */
+export const FACE_ART: Record<string, EquipmentArt> = {
+  analyzer: {
+    src: `${ART_ROOT}analyzer-face.webp`,
+    width: 745,
+    height: 1094,
+    regions: {
+      screen: box(0.148, 0.151, 0.708, 0.428),
+      entry1: box(0.152, 0.617, 0.2, 0.086),
+      entry2: box(0.4, 0.617, 0.2, 0.086),
+      entry3: box(0.647, 0.617, 0.2, 0.086),
+      keyLeft: box(0.144, 0.754, 0.173, 0.115),
+      keyRight: box(0.687, 0.754, 0.173, 0.115),
+      knob: box(0.357, 0.738, 0.288, 0.196),
+    },
+  },
+  swr: {
+    src: `${ART_ROOT}swr-face.webp`,
+    width: 1100,
+    height: 768,
+    regions: {
+      face: box(0.1, 0.105, 0.77, 0.54),
+      window1: box(0.082, 0.734, 0.2, 0.137),
+      window2: box(0.319, 0.734, 0.2, 0.137),
+      window3: box(0.563, 0.734, 0.203, 0.137),
+      key: box(0.808, 0.723, 0.1, 0.144),
+    },
+  },
+  multimeter: {
+    src: `${ART_ROOT}multimeter-face.webp`,
+    width: 635,
+    height: 1100,
+    regions: {
+      screen: box(0.181, 0.083, 0.638, 0.129),
+      dial: box(0.25, 0.318, 0.5, 0.287),
+      // The five printed dots round the dial: the function positions
+      modeOff: box(0.124, 0.534, 0.14, 0.044),
+      modeDcv: box(0.136, 0.305, 0.14, 0.044),
+      modeDca: box(0.426, 0.246, 0.14, 0.044),
+      modeOhm: box(0.707, 0.305, 0.14, 0.044),
+      modeCont: box(0.734, 0.534, 0.14, 0.044),
+      knobRed: box(0.164, 0.649, 0.124, 0.072),
+      knobBlack: box(0.33, 0.649, 0.124, 0.072),
+      knobSeries: box(0.496, 0.649, 0.124, 0.072),
+      key: box(0.697, 0.63, 0.16, 0.092),
+    },
+  },
+};
+
 /** Device kinds (HamDeviceKind) drawn with painted art */
 export const ART_FOR_KIND: Record<string, keyof typeof EQUIPMENT_ART> = {
   handheld: 'ht',

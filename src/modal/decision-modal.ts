@@ -14,8 +14,8 @@ import { html } from '@app/engine/utils/development/formatter';
 import { getEl, showEl } from '@app/engine/utils/get-el';
 import { EventBus } from '@app/events/event-bus';
 import { DecisionAnsweredData, DecisionDismissedData, DecisionEvidenceStatus, DecisionGradedData, DecisionResolvedData, DecisionShowData, Events } from '@app/events/events';
-import { Character, CharacterNames, Emotion, getCharacterAvatarUrl } from './character-enum';
-import { renderCharacterPortrait } from './character-portrait';
+import { Character, CharacterNames, Emotion } from './character-enum';
+import { renderCharacterPortrait, setPortraitEmotion } from './character-portrait';
 import { DecisionManager } from './decision-manager';
 import './decision-modal.css';
 import { optionLetter } from './quiz-modal';
@@ -327,8 +327,7 @@ export class DecisionModal extends DraggableBox {
 
   private setAvatar_(emotion: Emotion): void {
     if (this.currentCharacter_ === Character.SYSTEM) return;
-    const avatar = getEl('decision-avatar') as HTMLImageElement | null;
-    if (avatar) avatar.src = getCharacterAvatarUrl(this.currentCharacter_, emotion);
+    setPortraitEmotion(document.getElementById('decision-avatar'), this.currentCharacter_, emotion);
   }
 
   private disableOptions_(): void {

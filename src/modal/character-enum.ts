@@ -49,7 +49,7 @@ export enum Emotion {
   FRUSTRATED = 'frustrated',
 }
 
-const UNCAST_CHARACTER_AVATAR = '/images/placeholder-avatar.png';
+export const UNCAST_CHARACTER_AVATAR = '/images/placeholder-avatar.png';
 
 export const CharacterAvatars: Record<Character, string> = {
   [Character.CHARLIE_BROOKS]: getAssetUrl('/assets/characters/charlie-brooks.png'),

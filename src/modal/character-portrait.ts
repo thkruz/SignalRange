@@ -1,9 +1,9 @@
 import './character-portrait.css';
-import { Character, CharacterAvatars, CharacterNames, Emotion, getCharacterAvatarUrl } from './character-enum';
+import { Character, CharacterAvatars, CharacterNames, Emotion, getCharacterAvatarUrl, UNCAST_CHARACTER_AVATAR } from './character-enum';
 
 /** Uncast characters have no painted portrait yet; their avatar is a developer placeholder image. */
 export function isUncastAvatar(character: Character): boolean {
-  return CharacterAvatars[character].includes('placeholder-avatar');
+  return CharacterAvatars[character] === UNCAST_CHARACTER_AVATAR;
 }
 
 /** Two-letter initials from the display name, ignoring quoted nicknames: "Marek Domański" -> "MD". */
@@ -30,9 +30,14 @@ export function renderCharacterPortrait(character: Character, emotion: Emotion |
   const cls = options.className ? `${escapeAttr(options.className)} ` : '';
   const uncast = isUncastAvatar(character) || !CharacterAvatars[character];
   const plate = `<span class="character-portrait-plate ${cls}" role="img" aria-label="${name}"${uncast ? '' : ' hidden'}>${getCharacterInitials(character)}</span>`;
-  if (uncast) return plate;
   const id = options.id ? ` id="${escapeAttr(options.id)}"` : '';
+  if (uncast) return plate.replace('<span ', `<span${id} `);
   const alt = escapeAttr(options.alt ?? CharacterNames[character]);
   const img = `<img${id} class="${cls.trim()}" src="${escapeAttr(getCharacterAvatarUrl(character, emotion))}" alt="${alt}" onerror="this.onerror=null;this.hidden=true;this.nextElementSibling.hidden=false;" />`;
   return img + plate;
+}
+
+/** Swap the emotion on a rendered portrait. A missing element or the uncast initials plate is left alone. */
+export function setPortraitEmotion(el: HTMLElement | null, character: Character, emotion: Emotion): void {
+  if (el instanceof HTMLImageElement) el.src = getCharacterAvatarUrl(character, emotion);
 }

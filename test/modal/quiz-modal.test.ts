@@ -67,6 +67,7 @@ vi.mock('../../src/modal/character-enum', () => ({
   Character: {
     CHARLIE_BROOKS: 'charlie_brooks',
   },
+  UNCAST_CHARACTER_AVATAR: '/images/placeholder-avatar.png',
   CharacterAvatars: {
     charlie_brooks: '/avatars/charlie_brooks.png',
   },

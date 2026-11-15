@@ -41,6 +41,7 @@ vi.mock('../../src/modal/character-enum', () => ({
     HAPPY: 'happy',
     ANGRY: 'angry',
   },
+  UNCAST_CHARACTER_AVATAR: '/images/placeholder-avatar.png',
   CharacterAvatars: {
     charlie_brooks: '/assets/characters/charlie-brooks.png',
     catherine_vega: '/assets/characters/catherine-vega.png',

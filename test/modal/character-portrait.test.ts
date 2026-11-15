@@ -34,3 +34,17 @@ describe('character portraits', () => {
     expect(markup).toContain('hidden>CB<');
   });
 });
+
+describe('dialog-manager call site', () => {
+  it('renders the speaker through renderCharacterPortrait, not a raw <img>', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync('src/modal/dialog-manager.ts', 'utf8');
+    expect(src).toContain('renderCharacterPortrait(');
+    expect(src).not.toMatch(/<img[^>]*getCharacterAvatarUrl/u);
+    expect(src).not.toMatch(/<img\b/u);
+  });
+
+  it('uncast plates carry the requested id', () => {
+    expect(renderCharacterPortrait(Character.MAREK_DOMANSKI, Emotion.HAPPY, { id: 'quiz-avatar' })).toContain('id="quiz-avatar"');
+  });
+});

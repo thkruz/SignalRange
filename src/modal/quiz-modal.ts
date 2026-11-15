@@ -10,8 +10,8 @@ import { html } from '@app/engine/utils/development/formatter';
 import { getEl, showEl } from '@app/engine/utils/get-el';
 import { EventBus } from '@app/events/event-bus';
 import { Events, QuizAnsweredData, QuizCompletedData, QuizDismissedData, QuizPassedData, QuizShowData } from '@app/events/events';
-import { Character, CharacterAvatars, CharacterNames, Emotion, getCharacterAvatarUrl } from './character-enum';
-import { renderCharacterPortrait } from './character-portrait';
+import { Character, CharacterAvatars, CharacterNames, Emotion } from './character-enum';
+import { renderCharacterPortrait, setPortraitEmotion } from './character-portrait';
 import './quiz-modal.css';
 
 /** Seeded draws for this module (see simulation/rng.ts). */
@@ -378,10 +378,7 @@ export class QuizModal extends DraggableBox {
 
     // Update avatar emotion (skip for SYSTEM mode - no avatar)
     if (this.currentCharacter_ !== Character.SYSTEM) {
-      const avatarEl = getEl('quiz-avatar') as HTMLImageElement;
-      if (avatarEl) {
-        avatarEl.src = getCharacterAvatarUrl(this.currentCharacter_, Emotion.HAPPY);
-      }
+      setPortraitEmotion(document.getElementById('quiz-avatar'), this.currentCharacter_, Emotion.HAPPY);
     }
 
     if (feedbackEl) {
@@ -502,10 +499,7 @@ export class QuizModal extends DraggableBox {
 
     // Update avatar emotion (skip for SYSTEM mode - no avatar)
     if (this.currentCharacter_ !== Character.SYSTEM) {
-      const avatarEl = getEl('quiz-avatar') as HTMLImageElement;
-      if (avatarEl) {
-        avatarEl.src = getCharacterAvatarUrl(this.currentCharacter_, Emotion.CONCERNED);
-      }
+      setPortraitEmotion(document.getElementById('quiz-avatar'), this.currentCharacter_, Emotion.CONCERNED);
     }
 
     if (feedbackEl) {
@@ -554,9 +548,8 @@ export class QuizModal extends DraggableBox {
     // Reset avatar after a short delay (skip for SYSTEM mode - no avatar)
     if (this.currentCharacter_ !== Character.SYSTEM) {
       setTimeout(() => {
-        const avatarEl = getEl('quiz-avatar') as HTMLImageElement;
-        if (avatarEl && !this.isShowingFeedback_) {
-          avatarEl.src = getCharacterAvatarUrl(this.currentCharacter_, Emotion.CONFIDENT);
+        if (!this.isShowingFeedback_) {
+          setPortraitEmotion(document.getElementById('quiz-avatar'), this.currentCharacter_, Emotion.CONFIDENT);
         }
       }, 1500);
     }

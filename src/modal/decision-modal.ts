@@ -1,4 +1,5 @@
 import { displayViewport } from '@app/game-menu/display-viewport';
+import { clampBoxTop } from '@app/modal/clamp-box-top';
 import { Rng } from '@app/simulation/rng';
 /**
  * @file Decision Modal - presents a decision condition to the operator
@@ -273,10 +274,18 @@ export class DecisionModal extends DraggableBox {
       continueBtn?.addEventListener('click', () => this.handleContinueClick_());
       // The box scrolls; keep Continue in view (nats-s22-F9)
       continueBtn?.scrollIntoView?.({ block: 'nearest' });
+      this.keepInViewport_();
       continueBtn?.focus();
     }
     this.renderPenalty_(data.pointsDeducted);
     this.disableOptions_();
+  }
+
+  /** Feedback grows the box downward from its centred top; pull it back inside the viewport */
+  private keepInViewport_(): void {
+    if (!this.boxEl) return;
+    const top = parseFloat(this.boxEl.style.top) || 0;
+    this.boxEl.style.top = `${clampBoxTop(top, this.boxEl.offsetHeight, displayViewport().height, window.scrollY)}px`;
   }
 
   private showIncorrectFeedback_(data: DecisionGradedData): void {

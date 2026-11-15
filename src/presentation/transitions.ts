@@ -16,12 +16,27 @@ export function updateChecklistWithMotion(container: HTMLElement, content: strin
     Array.from(container.querySelectorAll<HTMLElement>('.objective-item[data-objective-id]'), (row) => [row.dataset.objectiveId, row.classList.contains('completed')])
   );
   const visible = container.getClientRects().length > 0;
+  const previousActiveId = container.querySelector<HTMLElement>('.objective-item.active[data-objective-id]')?.dataset.objectiveId;
   container.innerHTML = content;
+  revealNewActiveObjective(container, previousActiveId);
   if (!visible || prefersReducedMotion()) return;
   for (const row of container.querySelectorAll<HTMLElement>('.objective-item.completed[data-objective-id]')) {
     if (previous.get(row.dataset.objectiveId) !== false) continue;
     row.querySelector('.objective-header')?.animate?.([{ backgroundColor: 'rgba(76, 175, 80, 0.24)' }, { backgroundColor: 'transparent' }], { duration: 450, easing: 'ease-out' });
   }
+}
+
+/**
+ * The checklist window scrolls and is short on a 1280x720 screen, so objectives
+ * past the first four sit below the fold with no scrollbar cue. When the active
+ * objective changes, bring it into view so the player sees what to do next
+ * instead of a list that reads as finished. Unchanged refreshes never scroll,
+ * so a player reading further down the list is not pulled back.
+ */
+function revealNewActiveObjective(container: HTMLElement, previousActiveId: string | undefined): void {
+  const active = container.querySelector<HTMLElement>('.objective-item.active[data-objective-id]');
+  if (!active || active.dataset.objectiveId === previousActiveId) return;
+  active.scrollIntoView?.({ block: 'nearest' });
 }
 
 export function fade(element: Pick<Element, 'animate'>, from: number, to: number, scene = false): Animation | null {

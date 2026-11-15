@@ -215,7 +215,7 @@ export const frontlineScenario2Data: FrontlineScenarioData = {
         ),
         withNext(
           layerObserved(SKYLINK_SERVICE, 'application', { status: 'up' }, "Result confirmed by the remote operator's report, taken after the run finishes"),
-          'when the run has finished, pick up the Radio from the tray. It opens on CH1 PILOT, who cannot see the far end. Turn the channel knob to CH2 REM OP, choose the SkyLink question and press PTT. The laptop browser does not carry it.'
+          'when the run has finished, pick up the Radio from the tray. It opens on CH1 PILOT, who cannot see the far end. Turn the channel knob to CH2 REM OP, choose the SkyLink question (ASK arrows) and press PTT. The report from the far end does not come through the laptop browser.'
         ),
       ],
     },

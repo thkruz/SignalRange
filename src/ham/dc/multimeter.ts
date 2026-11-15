@@ -148,12 +148,11 @@ export function readMeter(state: MeterState, target: MeterCircuit): MeterReading
   let ohms = ((sol.voltages[nodes.red] ?? 0) - (sol.voltages[nodes.black] ?? 0)) / TEST_CURRENT_A;
   if (nodes.red === nodes.black) ohms = 0;
   const open = ohms >= OPEN_CIRCUIT_OHMS || ohms < 0;
-  if (open) ohms = Infinity;
   if (mode === 'CONT') {
     const beep = !open && ohms < CONTINUITY_THRESHOLD_OHMS;
     return {
       ok: true,
-      value: open ? null : ohms,
+      value: open ? OPEN_CIRCUIT_OHMS : ohms,
       unit: 'Ω',
       display: open ? 'OL' : formatResistance(ohms),
       beep,
@@ -162,7 +161,7 @@ export function readMeter(state: MeterState, target: MeterCircuit): MeterReading
   }
   return {
     ok: true,
-    value: open ? null : ohms,
+    value: open ? OPEN_CIRCUIT_OHMS : ohms,
     unit: 'Ω',
     display: open ? 'OL' : formatResistance(ohms),
     overload: open,

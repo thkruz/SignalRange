@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { hamTechS02Data } from '../../../src/campaigns/ham-sdr/tech/s02-power-on-the-bench';
 import { S02_SYMBOL_ANSWER } from '../../../src/campaigns/ham-sdr/tech/s02-station';
-import { evaluateWith } from '../../../src/ham/ham-conditions';
+import { evaluateWith, measured } from '../../../src/ham/ham-conditions';
 import { HamStationManager } from '../../../src/ham/ham-station-manager';
 import { harness } from '../../ham/manager/harness';
 import { practical, quizIds } from './solve-utils-a';
@@ -196,5 +196,42 @@ describe('S2 Power on the Bench solve', () => {
     act(h, { type: 'worksheet.answer', id: 's02-predict', values: { current: 1.0, power: 12 } });
     expect(h.m.events('worksheet:s02-predict:wrong').length).toBe(1);
     expect(practical(hamTechS02Data, 'predict-branch-current').every((c) => evaluateWith(c, h.m))).toBe(false);
+  });
+});
+
+describe('S2 OL readings are logged (open contact)', () => {
+  const row = (id: string, label: string) => practical(hamTechS02Data, id).filter((c) => c.description === label);
+  const open = () => {
+    const h = harness(config());
+    h.advance(2);
+    act(h, { type: 'meter.mode', mode: 'DCV' });
+    act(h, { type: 'meter.socket', socket: 'VOHM' });
+    act(h, { type: 'board.switch', deviceId: 'board', on: true });
+    act(h, { type: 'power', deviceId: 'board', on: false });
+    act(h, { type: 'meter.mode', mode: 'CONT' });
+    return h;
+  };
+  const read = (h: H, red: string, black: string) => {
+    act(h, { type: 'meter.place', targetId: 'board', red, black });
+    act(h, { type: 'meter.read' });
+  };
+
+  it('the swapped-lead OL reading is logged and ticks the no-continuity row', () => {
+    const h = open();
+    read(h, 'tp-sw1-out', 'tp-sw1-in');
+    const x = h.m.lastMeasurement({ instrument: 'multimeter', quantity: 'continuity' });
+    expect(x?.context?.display).toBe('OL');
+    expect(x?.context?.overload).toBe(true);
+    expect(row('find-open-branch', 'No continuity across the SW1 contact').every((c) => evaluateWith(c, h.m))).toBe(true);
+  });
+
+  it('an OL reading is finite, survives JSON, and does not satisfy a max-bounded row', () => {
+    const h = open();
+    read(h, 'tp-sw1-out', 'tp-sw1-in');
+    const x = h.m.lastMeasurement({ instrument: 'multimeter', quantity: 'continuity' });
+    expect(Number.isFinite(x?.value)).toBe(true);
+    expect(JSON.parse(JSON.stringify(x)).value).toBe(x?.value);
+    const lowOnly = measured({ instrument: 'multimeter', quantity: 'continuity', placement: { target: 'board', red: 'tp-sw1-in', black: 'tp-sw1-out' }, max: 100 }, 'low');
+    expect(evaluateWith(lowOnly, h.m)).toBe(false);
   });
 });

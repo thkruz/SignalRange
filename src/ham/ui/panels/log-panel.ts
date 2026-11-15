@@ -135,7 +135,7 @@ export class LogPanel implements StationPanel {
           { 'data-testid': tid('ham-log-measurement', x.id) },
           h('td', { text: x.instrument }),
           h('td', { text: x.quantity }),
-          h('td', { text: `${fmt(x.value, 3)} ${x.unit}` }),
+          h('td', { text: x.context?.overload === true ? 'OL' : `${fmt(x.value, 3)} ${x.unit}` }),
           h('td', {
             text:
               Object.entries(x.placement)

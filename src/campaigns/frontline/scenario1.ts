@@ -79,9 +79,36 @@ const handoverForm: HandoverFormConfig = {
   ],
 };
 
+const S1_WELCOME_NOTICE = 's1-welcome-notice';
+
 const settings = createFrontlineSettings(1);
 if (settings.physicalPlant) {
   applyCampField(settings.physicalPlant, [OLA_CHECK_CARD], [baselineForm, handoverForm]);
+  // One provider notice, so the Equipment log has a memo and its clipboard tab carries an unread badge from the first shift.
+  settings.physicalPlant.equipment = {
+    units: [],
+    notices: [
+      {
+        id: S1_WELCOME_NOTICE,
+        version: 1,
+        providerId: 'skylink-net',
+        affects: { accountId: 'camp-skylink' },
+        kind: 'maintenance',
+        issuedAtS: 0,
+        issuedOnDelivery: true,
+        text: 'Camp account in good standing. No planned maintenance on the SkyLink service this week.',
+      },
+    ],
+  };
+  settings.physicalPlant.events = [
+    ...(settings.physicalPlant.events ?? []),
+    {
+      id: 's1-welcome-notice-event',
+      startAfterObjectiveId: 's1-identify-equipment',
+      actions: [{ kind: 'deliver-notice', noticeId: S1_WELCOME_NOTICE }],
+      logLine: 'A provider notice arrives for the post account.',
+    },
+  ];
 }
 
 export const frontlineScenario1Data: FrontlineScenarioData = {

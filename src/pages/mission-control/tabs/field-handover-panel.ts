@@ -419,7 +419,7 @@ export class FieldHandoverPanel {
     const fields = form.fields.map((f) => this.fieldHtml_(f, entries, numbering, runs, checks.get(f.key))).join('');
     const filed = records.recordsFor(form.id);
     const last = filed.length
-      ? `<div class="fhf-filed" data-fhf="filed">Filed ${filed.length} time${filed.length === 1 ? '' : 's'}; last at ${clock(filed[filed.length - 1].submittedAtS)}.</div>`
+      ? `<div class="fhf-filed" data-fhf="filed">Filed ${filed.length} time${filed.length === 1 ? '.' : `s; last at ${clock(filed[filed.length - 1].submittedAtS)}.`}</div>`
       : '';
     // The picker, title and Check/Submit buttons are built once per form and patched in place: a redraw that
     // replaces the node under the pointer swallows the click. Only the field list is rebuilt when evidence changes.

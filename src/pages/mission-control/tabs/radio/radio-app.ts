@@ -6,6 +6,7 @@ import type { ServiceModel } from '@app/physical/service-model';
 import type { SampleProvenance, ServiceLayer, ServiceSample } from '@app/physical/service-types';
 import { escapeHtml } from '@app/physical/ui/plant-ui-helpers';
 import { callLog, type RadioChannel, type RadioQuestion, radioChannels, replyText } from './radio-calls';
+import { toPlainLine, toPlainParagraphs } from './radio-text';
 import './radio-app.css';
 
 /**
@@ -165,7 +166,7 @@ export class FieldRadio {
     }
     this.setText_('ch', ch ? `CH${ch.number} ${ch.tag}` : 'NO NET');
     this.setText_('mode', this.busy_ ? 'TX' : this.reply_ ? 'RX' : '');
-    this.setText_('question', q ? q.text : 'Nobody to call on this channel.');
+    this.setText_('question', q ? toPlainLine(q.text) : 'Nobody to call on this channel.');
     this.setText_('hint', ch && ch.questions.length > 1 ? `Ask ${this.questionIndex_ + 1} of ${ch.questions.length}` : '');
     const radio = this.host_.querySelector<HTMLElement>('.frd-radio');
     const state = this.busy_ ? 'tx' : this.reply_ ? 'rx' : 'idle';
@@ -180,7 +181,7 @@ export class FieldRadio {
       const html = this.busy_
         ? '<span class="frd-sub-static">Calling…</span>'
         : this.reply_
-          ? `<b>${escapeHtml(this.reply_.party)}${this.reply_.subject ? ` (${escapeHtml(this.reply_.subject)})` : ''}:</b> ${escapeHtml(this.reply_.text)}`
+          ? `<b>${escapeHtml(this.reply_.party)}${this.reply_.subject ? ` (${escapeHtml(this.reply_.subject)})` : ''}:</b> ${escapeHtml(toPlainLine(this.reply_.text))}`
           : '';
       if (sub.dataset.sig !== html) {
         sub.dataset.sig = html;
@@ -190,7 +191,8 @@ export class FieldRadio {
     }
 
     this.patchPad_(model);
-    this.setText_('note', this.note_);
+    // The newest call-log entry already carries the time, so the footer drops it; Conversations has no call to confirm.
+    this.setText_('note', this.page_ === 'conversations' ? '' : this.note_.replace(/ at elapsed [\d:]+\.$/u, '.'));
   }
 
   private patchPad_(model: ServiceModel): void {
@@ -234,8 +236,10 @@ export class FieldRadio {
       .map(
         (h) => `<li class="frd-entry frd-talk" data-radio-talk>
           <div class="frd-entry-line"><span class="frd-entry-who">${escapeHtml(CharacterNames[h.character] ?? '')}</span> <span class="frd-entry-time">${escapeHtml(new Date(h.timestamp).toISOString().slice(11, 19))}</span></div>
-          <div class="frd-entry-line frd-entry-subject">${escapeHtml(h.title)}</div>
-          <div class="frd-talk-text">${escapeHtml(h.text)}</div>
+          <div class="frd-entry-line frd-entry-subject">${escapeHtml(toPlainLine(h.title))}</div>
+          <div class="frd-talk-text">${toPlainParagraphs(h.text)
+            .map((p) => `<p>${escapeHtml(p)}</p>`)
+            .join('')}</div>
         </li>`
       )
       .join('');

@@ -18,7 +18,7 @@
 }
 
 .frd-radio {
-  --frd-h: min(80vh, 820px);
+  --frd-h: min(68vh, 820px);
   position: relative;
   height: var(--frd-h);
   aspect-ratio: 386 / 900;
@@ -265,16 +265,20 @@
 /* Subtitle: what the other party says, game-style, under the radio */
 .frd-subtitle {
   position: absolute;
+  z-index: 3;
   left: 50%;
   top: calc(100% + 18px);
   transform: translateX(-50%);
-  width: max(360px, 150%);
+  width: max(440px, 170%);
   max-width: 46vw;
-  padding: 8px 14px;
+  max-height: 22vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 6px 12px;
   background: #0b0d09d9;
   border-left: 3px solid #e1e69b;
   color: #f1edd8;
-  font: 17px/1.45 'Segoe UI', system-ui, sans-serif;
+  font: clamp(14px, 2.1vh, 17px) / 1.4 'Segoe UI', system-ui, sans-serif;
   text-shadow: 0 1px 2px #000;
 }
 
@@ -427,6 +431,14 @@
 .frd-entry.frd-down.frd-f-invalidated .frd-entry-reading {
   text-decoration: line-through;
   text-decoration-color: #7a2a1d;
+}
+
+.frd-talk-text p {
+  margin: 0 0 var(--frd-pitch);
+}
+
+.frd-talk-text p:last-child {
+  margin-bottom: 0;
 }
 
 .frd-talk-text {

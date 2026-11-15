@@ -388,7 +388,8 @@
 .fhf .fhf-filed {
   position: relative;
   margin-top: 4px;
-  padding: 8px 10px 8px 96px;
+  padding: 8px 10px 8px 132px;
+  min-height: 40px;
   font: 18px/1.4 'Caveat', 'Segoe Print', 'Bradley Hand', 'Noteworthy', 'Comic Sans MS', cursive;
   color: var(--fhf-pencil);
 }

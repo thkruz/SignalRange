@@ -324,7 +324,7 @@ export class FieldRecords implements RecordReader {
     if ('modeIs' in rule) {
       const mode = this.deps_.plant.getPartMode(rule.modeIs.partId);
 
-      return mode !== undefined && String(value) === mode
+      return mode !== undefined && String(value).trim().toLowerCase() === mode.trim().toLowerCase()
         ? pass(field.key)
         : fail(field.key, `${field.label} does not match what the ${this.deps_.plant.getLabel(rule.modeIs.partId)} shows now.`);
     }

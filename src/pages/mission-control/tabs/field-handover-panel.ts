@@ -178,7 +178,10 @@ export class FieldHandoverPanel {
     const field = this.field_(key);
     const value = field ? this.readingFor_(field) : undefined;
     if (value === undefined) {
-      this.msg_ = 'There is no reading to use yet. Take one first (for a power figure, Inspect that part in the site close-up, or type the Power panel figure).';
+      this.msg_ =
+        field && 'runRate' in field.rule
+          ? 'There is no run rate to copy yet. Finish the task run first; the draw is recorded over the run window, then press Copy latest reading again.'
+          : 'There is no reading to use yet. Take one first (for a power figure, Inspect that part in the site close-up, or type the Power panel figure).';
       this.sync();
 
       return false;
@@ -389,6 +392,8 @@ export class FieldHandoverPanel {
         .join(','),
     ].join('#');
     if (key === this.dynKey_) return;
+    // The player is typing in a field: a rebuild would drop the caret or a half-typed figure like "443.". The next sync after focus leaves catches up.
+    if (this.dynKey_ !== null && this.typingInField_()) return;
     // A press is in progress on this panel: redrawing now would swap the element under the pointer. The next sync catches up.
     if (this.dynKey_ !== null && Date.now() - this.pointerDownAtMs_ < POINTER_HOLD_MS) return;
     this.dynKey_ = key;
@@ -439,6 +444,14 @@ export class FieldHandoverPanel {
     this.patchSlot_(body, 'stale', stale);
     this.patchSlot_(body, 'filed', last);
     this.patchSlot_(body, 'fields', fields, true);
+  }
+
+  private typingInField_(): boolean {
+    const active = document.activeElement as HTMLElement | null;
+    if (!active || !this.host_.contains(active) || active.tagName !== 'INPUT') return false;
+    const type = (active as HTMLInputElement).type;
+
+    return active.hasAttribute('data-hf-field') && type !== 'radio' && type !== 'checkbox';
   }
 
   /** Replace a slot's markup only when it changed; the fields slot keeps the player's focus across the redraw */

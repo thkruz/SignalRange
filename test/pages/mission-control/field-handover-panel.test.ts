@@ -11,7 +11,7 @@ import type { PlantConfig } from '@app/physical/physical-plant-types';
 import { ServiceModel } from '@app/physical/service-model';
 import type { WorkloadRun } from '@app/physical/workload-types';
 import { fnv1a, RngStream } from '@app/simulation/rng';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 const FORM: HandoverFormConfig = {
   id: 'h1',
@@ -27,7 +27,7 @@ const FORM: HandoverFormConfig = {
   ],
 };
 
-function rig(withForms = true) {
+function rig(withForms = true, form: HandoverFormConfig = FORM) {
   let t = 100;
   const streams = new Map<string, RngStream>();
   const cfg = {
@@ -74,7 +74,7 @@ function rig(withForms = true) {
   const lines: Array<[string, string]> = [];
   const runs: WorkloadRun[] = [];
   const deps: FieldRecordsDeps = { plant, service, evidence: log, runs: () => runs, getCardVersion: () => 1, writeLine: (s, l) => lines.push([s, l]) };
-  const records = new FieldRecords(withForms ? [FORM] : [], deps);
+  const records = new FieldRecords(withForms ? [form] : [], deps);
   const host = document.createElement('div');
   const panel = new FieldHandoverPanel(host, {
     records: () => (withForms ? records : null),
@@ -228,6 +228,65 @@ describe('M14 handover panel', () => {
     expect(foot?.querySelector('[data-hf-act="check"]')).not.toBeNull();
     expect(foot?.querySelector('[data-hf-act="submit"]')).not.toBeNull();
     expect(foot?.querySelector('[data-fhf="howto"]')?.textContent).toMatch(/Sign here to file/u);
+  });
+});
+
+describe('M14 handover panel typing and wording (P42)', () => {
+  it('a periodic sync never rebuilds or overwrites a field the player is typing in', () => {
+    const r = rig();
+    document.body.appendChild(r.host);
+    r.panel.sync();
+    const input = r.host.querySelector<HTMLInputElement>('input[data-hf-field="soc"]');
+    expect(input).not.toBeNull();
+    (input as HTMLInputElement).focus();
+    (input as HTMLInputElement).value = '443';
+    input?.dispatchEvent(new Event('input', { bubbles: true }));
+    // Something the form depends on changes, so a naive sync would rebuild the fields
+    r.plant.inspect('battery');
+    r.panel.sync();
+    r.panel.sync();
+    const after = r.host.querySelector<HTMLInputElement>('input[data-hf-field="soc"]');
+    expect(after).toBe(input);
+    expect(document.activeElement).toBe(input);
+    expect(after?.value).toBe('443');
+    // Once focus leaves, the next sync catches up with the new reading hint
+    (input as HTMLInputElement).blur();
+    r.panel.sync();
+    expect(r.host.querySelector('[data-fhf="reading-soc"]')).not.toBeNull();
+    expect(r.host.querySelector<HTMLInputElement>('input[data-hf-field="soc"]')?.value).toBe('443');
+    r.host.remove();
+  });
+
+  it('a mode answer matches without regard to case or surrounding spaces', () => {
+    const mode = 'run';
+    const form: HandoverFormConfig = {
+      id: 'm',
+      title: 'Mode',
+      documentSection: 'M',
+      fields: [{ key: 'mode', label: 'Generator mode', required: true, rule: { modeIs: { partId: 'gen' } } }],
+    };
+    const r = rig(true, form);
+    vi.spyOn(r.plant, 'getPartMode').mockReturnValue('run');
+    r.panel.selectForm('m');
+    r.panel.setValue('mode', `  ${mode.toUpperCase()} `);
+    expect(r.panel.check()?.ok).toBe(true);
+    r.panel.setValue('mode', `${mode}x`);
+    expect(r.panel.check()?.ok).toBe(false);
+  });
+
+  it('Copy latest reading on an empty run-rate field says to finish the run, not to inspect a power part', () => {
+    const form: HandoverFormConfig = {
+      id: 'rr',
+      title: 'RR',
+      documentSection: 'R',
+      fields: [{ key: 'w', label: 'Run rate W', required: true, rule: { runRate: { cardId: 'card' } } }],
+    };
+    const r = rig(true, form);
+    r.panel.selectForm('rr');
+    expect(r.panel.fillFromReading('w')).toBe(false);
+    const msg = r.host.querySelector('[data-fhf="msg"]')?.textContent ?? '';
+    expect(msg).not.toMatch(/Inspect|Power panel/u);
+    expect(msg).toMatch(/run/iu);
   });
 });
 

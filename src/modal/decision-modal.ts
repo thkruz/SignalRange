@@ -15,6 +15,7 @@ import { getEl, showEl } from '@app/engine/utils/get-el';
 import { EventBus } from '@app/events/event-bus';
 import { DecisionAnsweredData, DecisionDismissedData, DecisionEvidenceStatus, DecisionGradedData, DecisionResolvedData, DecisionShowData, Events } from '@app/events/events';
 import { Character, CharacterNames, Emotion, getCharacterAvatarUrl } from './character-enum';
+import { renderCharacterPortrait } from './character-portrait';
 import { DecisionManager } from './decision-manager';
 import './decision-modal.css';
 import { optionLetter } from './quiz-modal';
@@ -160,7 +161,7 @@ export class DecisionModal extends DraggableBox {
             </div>
           `
         : html`
-            <img id="decision-avatar" class="quiz-avatar" src="${getCharacterAvatarUrl(this.currentCharacter_, Emotion.CONFIDENT)}" alt="${CharacterNames[this.currentCharacter_]}">
+            ${renderCharacterPortrait(this.currentCharacter_, Emotion.CONFIDENT, { id: 'decision-avatar', className: 'quiz-avatar' })}
             <div class="quiz-header-text">
               <span class="quiz-character-name">${CharacterNames[this.currentCharacter_]}</span>
               <span class="quiz-prompt-label">needs a call:</span>

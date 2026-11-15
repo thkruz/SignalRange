@@ -1,4 +1,5 @@
 import { Character, CharacterAvatars, CharacterNames, CharacterTitles } from '@app/modal/character-enum';
+import { renderCharacterPortrait } from '@app/modal/character-portrait';
 import type { ScenarioData } from '@app/ScenarioData';
 import { selectionText } from './selection-browser';
 
@@ -26,7 +27,7 @@ export function renderSelectionCrew(scenario: ScenarioData): string {
   return `<section class="selection-crew" aria-label="Mission participants"><h3>Mission crew</h3><ul>${characters
     .map(
       (character) =>
-        `<li title="${selectionText(CharacterTitles[character])}"><img src="${selectionText(CharacterAvatars[character])}" alt="" width="56" height="64" decoding="async" onerror="this.onerror=null; this.src='/images/placeholder-avatar.png'" /><span>${selectionText(CharacterNames[character])}</span></li>`
+        `<li title="${selectionText(CharacterTitles[character])}">${renderCharacterPortrait(character, undefined, { alt: '' })}<span>${selectionText(CharacterNames[character])}</span></li>`
     )
     .join('')}</ul></section>`;
 }

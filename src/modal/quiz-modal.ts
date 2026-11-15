@@ -11,6 +11,7 @@ import { getEl, showEl } from '@app/engine/utils/get-el';
 import { EventBus } from '@app/events/event-bus';
 import { Events, QuizAnsweredData, QuizCompletedData, QuizDismissedData, QuizPassedData, QuizShowData } from '@app/events/events';
 import { Character, CharacterAvatars, CharacterNames, Emotion, getCharacterAvatarUrl } from './character-enum';
+import { renderCharacterPortrait } from './character-portrait';
 import './quiz-modal.css';
 
 /** Seeded draws for this module (see simulation/rng.ts). */
@@ -186,7 +187,7 @@ export class QuizModal extends DraggableBox {
       } else {
         // NPC mode: show avatar and name
         headerEl.innerHTML = html`
-          <img id="quiz-avatar" class="quiz-avatar" src="${getCharacterAvatarUrl(this.currentCharacter_, Emotion.CONFIDENT)}" alt="${CharacterNames[this.currentCharacter_]}">
+          ${renderCharacterPortrait(this.currentCharacter_, Emotion.CONFIDENT, { id: 'quiz-avatar', className: 'quiz-avatar' })}
           <div class="quiz-header-text">
             <span class="quiz-character-name">${CharacterNames[this.currentCharacter_]}</span>
             <span class="quiz-prompt-label">asks:</span>

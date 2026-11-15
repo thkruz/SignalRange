@@ -1,0 +1,35 @@
+/* In-world stand-in for a speaker with no painted portrait: a plain frame with initials */
+.character-portrait-plate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(160deg, var(--mc-dialog-inset, #2a2a2a), #151515);
+  color: var(--mc-text-secondary, #b8b8b8);
+  font-family: inherit;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: clamp(0.8rem, 3.5em, 4rem);
+  line-height: 1;
+}
+.character-portrait-plate[hidden] { display: none; }
+.dialog-avatar .character-portrait-plate { font-size: 4rem; }
+.quiz-avatar.character-portrait-plate {
+  flex: 0 0 48px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid var(--mc-dialog-avatar-ring, var(--mc-accent-red, #ff3535));
+  font-size: 1rem;
+}
+.selection-crew .character-portrait-plate {
+  flex: 0 0 56px;
+  width: 56px;
+  height: 64px;
+  border: 1px solid #555;
+  border-radius: 3px;
+  font-size: 1.1rem;
+}

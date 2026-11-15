@@ -5,7 +5,8 @@ import { Events } from '@app/events/events';
 import { CountdownHold } from '@app/objectives/countdown-hold';
 import { SimClock } from '@app/simulation/sim-clock';
 import SoundManager from '@app/sound/sound-manager';
-import { Character, CharacterCompany, CharacterNames, CharacterTitles, Emotion, getCharacterAvatarUrl } from './character-enum';
+import { Character, CharacterCompany, CharacterNames, CharacterTitles, Emotion } from './character-enum';
+import { renderCharacterPortrait } from './character-portrait';
 import { DialogHistoryManager } from './dialog-history-manager';
 import { type DismissCause, DismissInputGuard } from './dismiss-input-guard';
 import './dialog-manager.css';
@@ -111,7 +112,6 @@ export class DialogManager {
     // Track this dialog in history
     DialogHistoryManager.getInstance().addEntry(shownText, character, audioUrl, title, emotion);
 
-    const avatarUrl = getCharacterAvatarUrl(character, emotion);
     const characterName = CharacterNames[character];
     const characterTitle = CharacterTitles[character];
     const characterCompany = CharacterCompany[character];
@@ -127,7 +127,7 @@ export class DialogManager {
         <div class="dialog-content">
           <div class="dialog-avatar-container col-4">
             <div class="dialog-avatar">
-              <img src="${avatarUrl}" alt="${character}" onerror="this.onerror=null; this.src='/images/placeholder-avatar.png';" />
+              ${renderCharacterPortrait(character, emotion, { alt: character })}
             </div>
             <div class="dialog-character-info">
               <div class="dialog-character-name">${characterName}</div>

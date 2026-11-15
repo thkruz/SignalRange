@@ -220,11 +220,11 @@ export const frontlineScenario1Data: FrontlineScenarioData = {
       conditions: [
         withNext(
           layerObserved(SKYLINK_SERVICE, 'local', { status: 'up' }, 'Local network reachability observed'),
-          'press Use laptop in the laptop close-up, then check the local network reading there.'
+          'press Use laptop in the laptop close-up, open NetProbe, pick Local network and run Ping.'
         ),
         withNext(
           layerObserved(SKYLINK_SERVICE, 'registration', { status: 'up' }, 'Terminal link observed'),
-          'read the terminal registration, from the router light or the laptop, and press Check.'
+          'look at the Terminal link light on the router, or in NetProbe on the laptop pick Through the terminal and run Link status.'
         ),
       ],
     },
@@ -240,7 +240,7 @@ export const frontlineScenario1Data: FrontlineScenarioData = {
       conditions: [
         withNext(
           workloadVerified({ card: OLA_CHECK_CARD.id, service: SKYLINK_SERVICE }, 'Application check completed on the SkyLink connection'),
-          'open the laptop (Use laptop), choose the application card and press Start run.'
+          'open the laptop (Use laptop), open MissionRunner, choose the application card and press Start run.'
         ),
         withNext(
           layerObserved(SKYLINK_SERVICE, 'application', { status: 'up' }, 'Result confirmed at the remote end (endpoint-report reading taken after the run finishes)'),
@@ -276,7 +276,7 @@ export const frontlineScenario1Data: FrontlineScenarioData = {
       character: Character.MAREK_DOMANSKI,
       emotion: Emotion.NEUTRAL,
       audioUrl: '',
-      text: "<p>Welcome to Kivilahti. I'm Marek Domański, your communications instructor. We'll start with healthy equipment so you have something useful to compare against later.</p><p>Ola runs the simulated application at the other end. Your job is to establish what the service can do and leave a record someone else can trust.</p><p>One rule is mine, not the service's. At this camp you may go outside to the equipment three times. A fourth trip gets you spotted. It's a training rule for this post, and it won't follow you to a forward site.</p><p>Your task sheet is on the clipboard in the tray along the bottom of the Site view. Under each line I've pencilled where to go next.</p>",
+      text: "<p>Welcome to Kivilahti. I'm Marek Domański, your communications instructor. We'll start with healthy equipment so you have something useful to compare against later.</p><p>Ola runs the simulated application at the other end. Your job is to establish what the service can do and leave a record someone else can trust.</p><p>One rule is mine, not the service's. At this camp you may go outside to the equipment three times. A fourth trip gets you spotted. It's a training rule for this post, and it won't follow you to a forward site.</p><p>Your task sheet is on the clipboard in the tray along the bottom of the Site view. Under most lines I've pencilled where to go next.</p>",
     },
     objectivesOnStart: {
       's1-identify-equipment': {

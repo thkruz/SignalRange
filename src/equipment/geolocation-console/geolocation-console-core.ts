@@ -88,7 +88,11 @@ export class GeolocationConsoleCore {
   private captureTicks_ = 0;
   private captureActiveTicks_ = 0;
   private lastCaptureMessage_ = '';
+  /** Outcome line of the previous AUTO attempt, shown while the next one integrates */
+  private lastAttemptMessage_ = '';
   private autoCapture_ = false;
+  /** True when the last failed capture found no event at the staged tuning (retry cannot help) */
+  private lastFailureIsTuning_ = false;
   private measurements_: ConsoleMeasurement[] = [];
   private fix_: GeolocationFix | null = null;
   private fixErrorKm_: number | null = null;
@@ -225,7 +229,12 @@ export class GeolocationConsoleCore {
     this.captureProgress_ = 0;
     this.captureTicks_ = 0;
     this.captureActiveTicks_ = 0;
-    this.lastCaptureMessage_ = this.autoCapture_ ? 'AUTO: integrating...' : 'INTEGRATING...';
+    this.lastCaptureMessage_ = this.autoCapture_ ? this.autoIntegratingMessage_() : 'INTEGRATING...';
+  }
+
+  /** AUTO status line: keeps the previous attempt's outcome visible between retries */
+  private autoIntegratingMessage_(): string {
+    return this.lastAttemptMessage_ ? `AUTO: integrating... (last attempt: ${this.lastAttemptMessage_})` : 'AUTO: integrating...';
   }
 
   /**
@@ -237,6 +246,7 @@ export class GeolocationConsoleCore {
    */
   setAutoCapture(on: boolean): void {
     this.autoCapture_ = on;
+    this.lastAttemptMessage_ = '';
     if (on && this.captureStatus_ !== 'integrating') {
       this.startCapture();
     }
@@ -273,6 +283,7 @@ export class GeolocationConsoleCore {
     this.fix_ = null;
     this.fixErrorKm_ = null;
     this.lastCaptureMessage_ = '';
+    this.lastAttemptMessage_ = '';
     this.captureStatus_ = 'idle';
     this.autoCapture_ = false;
   }
@@ -300,10 +311,16 @@ export class GeolocationConsoleCore {
       // trying across the interferer's on/off cycle until the operator stops it
       // (the guard just prevents an unattended runaway).
       if (this.autoCapture_) {
-        if (this.pairMeasurements.length >= AUTO_CAPTURE_MAX) {
+        if (this.lastFailureIsTuning_) {
+          // Retrying cannot help: nothing in the pair matches the staged tuning.
+          // Stop and say so instead of looping on a bar that never completes.
+          this.autoCapture_ = false;
+          this.lastCaptureMessage_ = 'AUTO stopped: NO CORRELATION - nothing found at this target frequency and bandwidth. Retune and press AUTO again.';
+        } else if (this.pairMeasurements.length >= AUTO_CAPTURE_MAX) {
           this.autoCapture_ = false;
           this.lastCaptureMessage_ = `AUTO stopped: ${this.pairMeasurements.length} measurements collected`;
         } else {
+          this.lastAttemptMessage_ = (this.captureStatus_ as CaptureStatus) === 'failed' ? this.lastCaptureMessage_ : '';
           this.startCapture();
         }
       }
@@ -312,9 +329,11 @@ export class GeolocationConsoleCore {
 
   private finishCapture_(): void {
     const event = this.findTunedEvent_();
+    this.lastFailureIsTuning_ = false;
     const onFraction = this.captureTicks_ > 0 ? this.captureActiveTicks_ / this.captureTicks_ : 0;
 
     if (!event) {
+      this.lastFailureIsTuning_ = true;
       this.captureStatus_ = 'failed';
       this.lastCaptureMessage_ = 'NO CORRELATION - check target frequency and bandwidth';
       return;

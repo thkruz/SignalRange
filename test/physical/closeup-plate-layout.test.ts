@@ -82,7 +82,8 @@ describe('close-up plate layout', () => {
     click(document.querySelector('[data-target="skylink-router"]')!);
     const target = document.querySelector<HTMLElement>('#pcu-target')!;
     expect(document.querySelector('#pcu-title')!.textContent).toBe(CLOSEUPS.router.title);
-    if (target.textContent === CLOSEUPS.router.title) expect(target.hidden).toBe(true);
+    expect(target.textContent).toBe(CLOSEUPS.router.title);
+    expect(target.hidden).toBe(true);
     click(document.querySelector('[data-target="skylink-cable:router"]')!);
     expect(target.hidden).toBe(false);
   });
@@ -96,12 +97,39 @@ describe('close-up plate layout', () => {
     expect(document.querySelector('#pcu-faceplate')!.contains(gauge)).toBe(true);
   });
 
+  it('the tooltip never repeats the device name the plate already engraves', () => {
+    PartCloseupModal.getInstance().showCloseup('router');
+    const hit = document.querySelector<HTMLElement>(`#pcu-overlay [data-label="${CLOSEUPS.router.title}"]`);
+    expect(hit, 'the device hit area is labelled with the device name').not.toBeNull();
+    hit!.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+    expect(document.querySelector<HTMLElement>('#pcu-callout')!.hidden).toBe(true);
+  });
+
+  it('the viewing aids are stencilled switches on the plate, keyboard reachable, not form checkboxes', () => {
+    PartCloseupModal.getInstance().showCloseup('router');
+    const points = document.querySelector<HTMLElement>('#pcu-points')!;
+    const xray = document.querySelector<HTMLElement>('#pcu-xray')!;
+    for (const el of [points, xray]) {
+      expect(el.tagName).toBe('BUTTON');
+      expect(el.getAttribute('role')).toBe('switch');
+      expect(el.getAttribute('aria-checked')).toBe('false');
+    }
+    expect(document.querySelectorAll('#pcu-faceplate input[type="checkbox"]').length).toBe(0);
+    points.click();
+    expect(document.querySelector('#pcu-points')!.getAttribute('aria-checked')).toBe('true');
+  });
+
   it('a lens look keeps its stamp for screen readers and shows no floating tooltip', () => {
     PartCloseupModal.getInstance().showCloseup('router');
-    const lens = document.querySelector<HTMLElement>('#pcu-lenses [data-fp-led]');
-    if (lens) {
-      click(lens);
-      expect(document.querySelector<HTMLElement>('#pcu-callout')!.hidden).toBe(true);
-    }
+    // The jsdom plant has no service model, so no lens is built: put one where the lights component puts it
+    const host = document.querySelector<HTMLElement>('#pcu-lenses')!;
+    host.innerHTML = '<button type="button" class="fp-led" data-fp-led data-label="Power light"></button>';
+    const lens = host.querySelector<HTMLElement>('[data-fp-led]')!;
+    lens.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+    lens.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+    click(lens);
+    const callout = document.querySelector<HTMLElement>('#pcu-callout')!;
+    expect(callout.hidden).toBe(true);
+    expect(callout.textContent).toBe('');
   });
 });

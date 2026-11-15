@@ -170,9 +170,8 @@ describe('close-up selection and actions', () => {
     expect(pts.length).toBeGreaterThan(0);
     expect(pts.every((p) => p.getAttribute('tabindex') === '0' && p.getAttribute('role') === 'button' && p.querySelector('.pp-marker'))).toBe(true);
     expect(document.querySelector('.pp-show-points')).toBeNull();
-    const toggle = document.querySelector<HTMLInputElement>('#pcu-points')!;
-    toggle.checked = true;
-    toggle.dispatchEvent(new Event('change', { bubbles: true }));
+    const toggle = document.querySelector<HTMLElement>('#pcu-points')!;
+    toggle.click();
     expect(document.querySelector('.pp-show-points')).not.toBeNull();
   });
 
@@ -183,11 +182,12 @@ describe('close-up selection and actions', () => {
     expect(document.querySelectorAll('.pp-selected').length).toBe(1);
   });
 
-  it('the hidden-state toggle lives in a collapsed Trainer footer', () => {
+  it('the hidden-state toggle is an off-by-default Trainer switch in the plate footer', () => {
     PartCloseupModal.getInstance().showCloseup('generator');
-    const foot = document.querySelector<HTMLDetailsElement>('.pp-trainer-foot')!;
-    expect(foot.open).toBe(false);
-    expect(foot.contains(document.querySelector('#pcu-xray'))).toBe(true);
+    const foot = document.querySelector<HTMLElement>('.pp-foot')!;
+    const xray = document.querySelector<HTMLElement>('#pcu-xray')!;
+    expect(foot.contains(xray)).toBe(true);
+    expect(xray.getAttribute('aria-checked')).toBe('false');
     expect(plantUiState.xray).toBe(false);
   });
 

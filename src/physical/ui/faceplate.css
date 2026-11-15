@@ -130,3 +130,25 @@
 
 /* Lenses sit on the device face itself: the state is the lens colour, the words live in the plate readout */
 .pp-closeup .fp-lens-row .fp-lens::after { display: none; }
+
+/* Compact plate: every action of a device fits on one screen (1280x720 and up), so nothing is cut off or scrolled to */
+.pp-closeup .pp-side > .fp-panel { padding: 0.8rem 0.75rem 0.5rem; }
+.pp-closeup .pp-item-title { position: sticky; top: 0; z-index: 1; margin: -0.8rem -0.75rem 0.4rem; padding: 0.8rem 9rem 0.35rem 0.75rem; background: #434b49; }
+.pp-closeup .fp-window { margin-bottom: 0.4rem; padding: 0.3rem 0.5rem; }
+.pp-closeup .fp-hint { margin: 0 0 0.2rem; font-size: 0.7rem; }
+.pp-closeup .fp-readouts { margin-top: 0.2rem; font-size: 0.7rem; line-height: 1.25; }
+.pp-closeup .fp-readouts li { margin-top: 0.08rem; }
+.pp-closeup .fp-plate { margin-bottom: 0.2rem; font-size: 0.68rem; }
+.pp-closeup .fp-group { margin-bottom: 0.4rem; }
+.pp-closeup .fp-group-row { gap: 0.35rem; }
+.pp-closeup .fp-push, .pp-closeup .fp-breaker { grid-template-columns: 1.7rem 1fr; column-gap: 0.45rem; min-height: 2.3rem; padding: 0.25rem 0.4rem; }
+.pp-closeup .fp-push .fp-cap { width: 1.6rem; height: 1.6rem; }
+.pp-closeup .fp-breaker .fp-lever { width: 1.6rem; height: 1.8rem; }
+.pp-closeup .fp-breaker .fp-lever-arm { height: 1.1rem; }
+.pp-closeup .fp-engrave { font-size: 0.72rem; }
+.pp-closeup .fp-cost { font-size: 0.66rem; line-height: 1.2; }
+.pp-closeup .fp-positions { padding: 0.2rem; gap: 0.25rem; }
+.pp-closeup .fp-position, .pp-closeup .fp-rocker .fp-position { min-height: 2.1rem; padding: 0.2rem 0.45rem; }
+@media (max-height: 860px) {
+  .pp-closeup .fp-hint { display: none; }
+}

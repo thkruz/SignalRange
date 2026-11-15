@@ -92,11 +92,13 @@ export class PartCloseupModal extends DraggableModal {
   private lastRenderMs_ = 0;
   private subscribed_ = false;
   private readonly boundUpdate_: () => void;
+  private readonly boundResize_: () => void;
   private readonly boundKeydown_: (event: KeyboardEvent) => void;
 
   private constructor() {
     super(PartCloseupModal.MODAL_ID, { title: 'Close-up' });
     this.boundUpdate_ = this.onUpdate_.bind(this);
+    this.boundResize_ = this.render_.bind(this);
     this.boundKeydown_ = this.onKeydown_.bind(this);
   }
 
@@ -215,6 +217,7 @@ export class PartCloseupModal extends DraggableModal {
   private subscribe_(): void {
     if (!this.subscribed_) {
       EventBus.getInstance().on(Events.UPDATE, this.boundUpdate_);
+      window.addEventListener('resize', this.boundResize_);
       this.subscribed_ = true;
     }
   }
@@ -222,6 +225,7 @@ export class PartCloseupModal extends DraggableModal {
   private unsubscribe_(): void {
     if (this.subscribed_) {
       EventBus.getInstance().off(Events.UPDATE, this.boundUpdate_);
+      window.removeEventListener('resize', this.boundResize_);
       this.subscribed_ = false;
     }
   }
@@ -300,12 +304,9 @@ export class PartCloseupModal extends DraggableModal {
               <div class="fp-controls" role="group" aria-label="Controls">
                 <div class="pp-verbs" id="pcu-verbs"></div>
               </div>
-              <div class="pp-foot">
-                <label class="pp-foot-row"><input id="pcu-points" type="checkbox" /><span>Show interaction points</span></label>
-                <details class="pp-trainer-foot">
-                  <summary>Trainer</summary>
-                  <label class="pp-foot-row"><input id="pcu-xray" type="checkbox" /><span>Show hidden state</span></label>
-                </details>
+              <div class="pp-foot" role="group" aria-label="Viewing aids">
+                <button type="button" id="pcu-points" class="fp-toggle" role="switch" aria-checked="false"><span class="fp-toggle-sw" aria-hidden="true"></span><span class="fp-toggle-label">Show points</span></button>
+                <button type="button" id="pcu-xray" class="fp-toggle" role="switch" aria-checked="false"><span class="fp-toggle-sw" aria-hidden="true"></span><span class="fp-toggle-label">Trainer: hidden state</span></button>
               </div>
             </div>
           </div>
@@ -327,14 +328,12 @@ export class PartCloseupModal extends DraggableModal {
     root.addEventListener('focusin', (ev) => this.showCallout_(ev.target as Element));
     root.addEventListener('mouseout', () => this.hideCallout_());
     root.addEventListener('focusout', () => this.hideCallout_());
-    const xray = root.querySelector<HTMLInputElement>('#pcu-xray');
-    xray?.addEventListener('change', () => {
-      plantUiState.xray = xray.checked;
+    root.querySelector<HTMLElement>('#pcu-xray')?.addEventListener('click', () => {
+      plantUiState.xray = !plantUiState.xray;
       this.render_();
     });
-    const points = root.querySelector<HTMLInputElement>('#pcu-points');
-    points?.addEventListener('change', () => {
-      this.showPoints_ = points.checked;
+    root.querySelector<HTMLElement>('#pcu-points')?.addEventListener('click', () => {
+      this.showPoints_ = !this.showPoints_;
       this.render_();
     });
   }
@@ -509,13 +508,24 @@ export class PartCloseupModal extends DraggableModal {
     }
     root.querySelector('#pcu-title')!.textContent = def.title;
     this.renderSide_(root, plant);
-    const xray = root.querySelector<HTMLInputElement>('#pcu-xray');
-    if (xray) {
-      xray.checked = plantUiState.xray;
-    }
-    const points = root.querySelector<HTMLInputElement>('#pcu-points');
-    if (points) {
-      points.checked = this.showPoints_;
+    root.querySelector('#pcu-xray')?.setAttribute('aria-checked', String(plantUiState.xray));
+    root.querySelector('#pcu-points')?.setAttribute('aria-checked', String(this.showPoints_));
+    this.fitPlate_(root);
+  }
+
+  /**
+   * Every action stays in view: the plate is laid out compact, and when a short screen still cannot hold what the part
+   * offers, the plate is scaled down (never below 70 percent) instead of cutting controls off.
+   */
+  private fitPlate_(root: HTMLElement): void {
+    const side = root.querySelector<HTMLElement>('.pp-side');
+    const plate = root.querySelector<HTMLElement>('#pcu-faceplate');
+    if (!side || !plate) return;
+    plate.style.removeProperty('zoom');
+    let zoom = 1;
+    for (let pass = 0; pass < 3 && side.clientHeight > 0 && side.scrollHeight - side.clientHeight > 1 && zoom > 0.7; pass++) {
+      zoom = Math.max(0.7, Math.floor(zoom * (side.clientHeight / side.scrollHeight) * 100) / 100);
+      plate.style.setProperty('zoom', String(zoom));
     }
   }
 
@@ -565,7 +575,8 @@ export class PartCloseupModal extends DraggableModal {
     const hit = el.closest?.('#pcu-overlay [data-label]') as HTMLElement | null;
     const box = root?.querySelector<HTMLElement>('#pcu-stagebox');
     const callout = root?.querySelector<HTMLElement>('#pcu-callout');
-    if (!hit || !box || !callout) {
+    // The plate engraves the device name once; the tooltip only names parts of it
+    if (!hit || !box || !callout || (hit.dataset.label ?? '').toLowerCase() === (this.def_?.title ?? '').toLowerCase()) {
       return;
     }
     callout.textContent = hit.dataset.label ?? '';

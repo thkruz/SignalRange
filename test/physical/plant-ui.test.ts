@@ -88,7 +88,7 @@ describe('SiteTab', () => {
     tab.dispose();
   });
 
-  it('keyboard focus and hover tags are tracked apart, and a rebuilt label layer keeps the shown tag', () => {
+  it('keyboard focus and hover tags are tracked apart', () => {
     plantService();
     const tab = new SiteTab('canvas-content');
     const [a, b] = hotspotsForView('inside');
@@ -103,6 +103,19 @@ describe('SiteTab', () => {
     expect(shown()).toEqual([a.id]);
     elA.dispatchEvent(new Event('focusout', { bubbles: true }));
     expect(shown()).toEqual([]);
+    tab.dispose();
+  });
+
+  it('a rebuilt label layer keeps the shown tag', () => {
+    plantService();
+    const tab = new SiteTab('canvas-content');
+    const [a] = hotspotsForView('inside');
+    document.querySelector(`[data-hotspot="${a.id}"]`)!.dispatchEvent(new Event('focusin', { bubbles: true }));
+    const oldLayer = document.querySelector('.pp-label-layer')!;
+    const stage = document.querySelector('svg.site-overlay')!.parentElement as HTMLElement;
+    expect((tab as unknown as { patchStage_(s: HTMLElement): boolean }).patchStage_(stage)).toBe(true);
+    expect(document.querySelector('.pp-label-layer')).not.toBe(oldLayer);
+    expect([...document.querySelectorAll('.pp-label-tag.on')].map((t) => t.getAttribute('data-for'))).toEqual([a.id]);
     tab.dispose();
   });
 

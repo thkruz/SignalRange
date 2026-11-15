@@ -61,18 +61,18 @@ import './objectives-manager.css';
 /** Conditions only a live command link can satisfy (failOnClosedCommandWindow_) */
 const COMMAND_LINK_CONDITIONS: ReadonlySet<string> = new Set(['command-acknowledged', 'ranging-measurements']);
 
-/**
- * Manages objective tracking for scenario-based learning
- */
 /** The free "what to do next" line of an open checklist row (empty once the row is done or while its objective is locked) */
 export function conditionNextHtml(next: string | undefined, completed: boolean, active: boolean): string {
   if (!next || completed || !active) {
     return '';
   }
 
-  return `<span class="condition-next">Next: ${next}</span>`;
+  return `<span class="condition-next">Next: ${fillDialogTokens(next)}</span>`;
 }
 
+/**
+ * Manages objective tracking for scenario-based learning
+ */
 export class ObjectivesManager {
   private static instance_: ObjectivesManager | null = null;
   private static openedBoxIds_: Set<string> = new Set();

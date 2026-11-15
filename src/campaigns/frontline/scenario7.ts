@@ -331,7 +331,7 @@ export const frontlineScenario7Data: FrontlineScenarioData = {
       character: Character.TOMASZ_WRONA,
       audioUrl: '',
       emotion: Emotion.NEUTRAL,
-      text: "The replacement router passed its depot test, but the account handover hasn't been confirmed. I've brought the records with the unit. Check them together before you count it as ready. The clipboard in the tray holds your task sheet, and the next step for each line is written on it.",
+      text: "The replacement router passed its depot test, but the account handover hasn't been confirmed. I've brought the records with the unit. Check them together before you count it as ready. Your task sheet is on the clipboard in the tray.",
     },
     objectivesOnStart: {
       's07-reconcile-delivery': {

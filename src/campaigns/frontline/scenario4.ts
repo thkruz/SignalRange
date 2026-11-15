@@ -230,7 +230,7 @@ export const frontlineScenario4Data: FrontlineScenarioData = {
     intro: {
       character: Character.MAREK_DOMANSKI,
       audioUrl: '',
-      text: "<p>This exercise starts with a normal recovery period. Find out what the terminal is doing before deciding that it needs intervention. Later, you'll have a separate service problem to assess.</p><p>The clipboard in the tray holds your task sheet, and the next step for each line is written on it.</p>",
+      text: "<p>This exercise starts with a normal recovery period. Find out what the terminal is doing before deciding that it needs intervention. Later, you'll have a separate service problem to assess.</p><p>Your task sheet is on the clipboard in the tray.</p>",
     },
     objectivesOnStart: {
       's4-identify-recovery': {

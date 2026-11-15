@@ -185,7 +185,7 @@ export const frontlineScenario1Data: FrontlineScenarioData = {
             explanation: "Each device serves a different part of the path. Identifying those roles helps you choose a useful check when the application doesn't work.",
           },
           mustMaintain: false,
-          next: 'press the ? button on this row and pick the answer that matches what you saw.',
+          next: 'once the four items are inspected, press the ? on this row and pick the answer that matches what you saw.',
         },
       ],
     },
@@ -276,7 +276,7 @@ export const frontlineScenario1Data: FrontlineScenarioData = {
       character: Character.MAREK_DOMANSKI,
       emotion: Emotion.NEUTRAL,
       audioUrl: '',
-      text: "<p>Welcome to Kivilahti. I'm Marek Domański, your communications instructor. We'll start with healthy equipment so you have something useful to compare against later.</p><p>Ola runs the simulated application at the other end. Your job is to establish what the service can do and leave a record someone else can trust.</p><p>One rule is mine, not the service's. At this camp you may go outside to the equipment three times. A fourth trip gets you spotted. It's a training rule for this post, and it won't follow you to a forward site.</p><p>Your task sheet is on the clipboard in the tray along the bottom of the Site view. Each line has a Next note under it that says where to act.</p>",
+      text: "<p>Welcome to Kivilahti. I'm Marek Domański, your communications instructor. We'll start with healthy equipment so you have something useful to compare against later.</p><p>Ola runs the simulated application at the other end. Your job is to establish what the service can do and leave a record someone else can trust.</p><p>One rule is mine, not the service's. At this camp you may go outside to the equipment three times. A fourth trip gets you spotted. It's a training rule for this post, and it won't follow you to a forward site.</p><p>Your task sheet is on the clipboard in the tray along the bottom of the Site view. Under each line I've pencilled where to go next.</p>",
     },
     objectivesOnStart: {
       's1-identify-equipment': {

@@ -105,6 +105,20 @@ describe('close-up plate layout', () => {
     expect(document.querySelector<HTMLElement>('#pcu-callout')!.hidden).toBe(true);
   });
 
+  it('repeatsPlate_ hides the callout for the laptop region and shows it for a part with its own name', () => {
+    PartCloseupModal.getInstance().showCloseup('laptop');
+    const repeats = (label: string, sel = ''): boolean => {
+      const hit = document.createElement('div');
+      hit.dataset.label = label;
+      hit.dataset.sel = sel;
+
+      return (PartCloseupModal.getInstance() as unknown as { repeatsPlate_(h: HTMLElement): boolean }).repeatsPlate_(hit);
+    };
+    expect(repeats('Laptop: internet up')).toBe(true);
+    expect(repeats('Laptop (opens the SkyLink app)', 'cu-laptop')).toBe(true);
+    expect(repeats('Power light', 'cu-light')).toBe(false);
+  });
+
   it('the viewing aids are stencilled switches on the plate, keyboard reachable, not form checkboxes', () => {
     PartCloseupModal.getInstance().showCloseup('router');
     const points = document.querySelector<HTMLElement>('#pcu-points')!;

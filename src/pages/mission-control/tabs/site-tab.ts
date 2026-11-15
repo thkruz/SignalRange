@@ -298,7 +298,7 @@ export class SiteTab extends BaseElement {
     const ay = spot.anchor[1] * viewHeight(aspect);
     const target = spot.action ? `data-action="${spot.action}"` : spot.pendingArt ? 'data-pending="1" aria-disabled="true"' : `data-closeup="${spot.closeup}"`;
 
-    return `<g class="pp-hotspot" data-hotspot="${spot.id}" ${target} tabindex="0" role="button" aria-label="${escapeHtml(spot.label)}">${shapes}<circle class="pp-pip-svg ok" id="${spot.id}-pip" cx="${ax.toFixed(1)}" cy="${ay.toFixed(1)}" r="9"/></g>`;
+    return `<g class="pp-hotspot" data-hotspot="${spot.id}" ${target} tabindex="0" role="button" aria-label="${escapeHtml(spot.label)}">${shapes}<circle class="pp-pip-svg ok" id="${spot.id}-pip" cx="${ax.toFixed(1)}" cy="${ay.toFixed(1)}" r="6"/></g>`;
   }
 
   /** Every hover tag, in one group painted after all hotspots so no dot or glow ever covers a tag */
@@ -311,18 +311,11 @@ export class SiteTab extends BaseElement {
     return `<g class="pp-label-layer" pointer-events="none">${tags}</g>`;
   }
 
-  /** Show the tag of the hovered or focused hotspot (null hides all) */
   private hoverTagId_: string | null = null;
   private focusTagId_: string | null = null;
-  private shownTagId_: string | null = null;
 
-  /** Id whose tag is showing (for tests) */
-  shownTag(): string | null {
-    return this.shownTagId_;
-  }
-
+  /** Show the tag of the hovered or focused hotspot (null hides all) */
   private showTag_(id: string | null): void {
-    this.shownTagId_ = id;
     for (const tag of this.dom_?.querySelectorAll<SVGElement>('.pp-label-tag') ?? []) {
       tag.classList.toggle('on', id !== null && tag.dataset.for === id);
     }

@@ -136,29 +136,33 @@ export const frontlineScenario2Data: FrontlineScenarioData = {
     {
       id: 's2-trace-dependencies',
       title: 'Trace the Shared Supply',
-      description: 'Inspect the power strip and identify which devices rely on the battery. Explain why two satellite terminals can still share one point of power failure.',
+      description:
+        'Inspect the power strip and identify which devices rely on the battery. Explain why two satellite terminals can still share one point of power failure. A Knowledge Check opens once the strip is inspected (Open Quiz banner, or the ? in this list); answering it completes the step.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s2-read-resources'],
       points: 15,
       nice: ['K0689', 'K0792'],
       conditions: [
         { type: 'part-inspected', description: 'Power strip inspected', params: { partId: 'power-strip' }, mustMaintain: false },
-        {
-          type: 'status-check',
-          description: 'Shared power dependency recognized',
-          params: {
-            character: Character.SYSTEM,
-            question: 'Both terminal paths draw from the same battery. What does a second terminal change about a failure of that battery?',
-            options: [
-              'It provides an independent power source because each terminal reaches a different satellite service.',
-              'It leaves the shared supply dependency, even though the two satellite service paths differ.',
-              'It prevents a battery interruption because both terminals can keep the router powered remotely.',
-            ],
-            correctIndex: 1,
-            explanation: "Both paths still need the shared battery, so a battery failure can affect both. A second service path doesn't create a separate power source.",
+        withNext(
+          {
+            type: 'status-check',
+            description: 'Shared power dependency recognized',
+            params: {
+              character: Character.SYSTEM,
+              question: 'Both terminal paths draw from the same battery. What does a second terminal change about a failure of that battery?',
+              options: [
+                'It provides an independent power source because each terminal reaches a different satellite service.',
+                'It leaves the shared supply dependency, even though the two satellite service paths differ.',
+                'It prevents a battery interruption because both terminals can keep the router powered remotely.',
+              ],
+              correctIndex: 1,
+              explanation: "Both paths still need the shared battery, so a battery failure can affect both. A second service path doesn't create a separate power source.",
+            },
+            mustMaintain: false,
           },
-          mustMaintain: false,
-        },
+          'after the power strip is inspected, answer the Knowledge Check: press Open Quiz on the banner, or the ? beside this row. The Notebook theory does not complete this row.'
+        ),
       ],
     },
     {

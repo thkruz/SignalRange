@@ -52,6 +52,11 @@ const SITE_WORKSPACES = [
  * click opens the close-up. The header strip carries the spares count and
  * path status; location, trips and the spotted flag live in the global TentControl.
  */
+/** Hover label tag metrics in scene units: the stencil face is about 14.5 units a character at 19 units with its tracking */
+const LABEL_CHAR_W = 14.5;
+const LABEL_PAD_X = 10;
+const LABEL_GAP = 14;
+
 export class SiteTab extends BaseElement {
   static source: SampleProvenance = 'local-probe';
   private static desktopRequested_ = false;
@@ -281,7 +286,18 @@ export class SiteTab extends BaseElement {
     const ay = spot.anchor[1] * viewHeight(aspect);
     const target = spot.action ? `data-action="${spot.action}"` : spot.pendingArt ? 'data-pending="1" aria-disabled="true"' : `data-closeup="${spot.closeup}"`;
 
-    return `<g class="pp-hotspot" data-hotspot="${spot.id}" ${target} tabindex="0" role="button" aria-label="${escapeHtml(spot.label)}">${shapes}<circle class="pp-pip-svg ok" id="${spot.id}-pip" cx="${ax.toFixed(1)}" cy="${ay.toFixed(1)}" r="9"/><text class="pp-label" x="${(ax + 14).toFixed(1)}" y="${(ay + 6).toFixed(1)}">${escapeHtml(spot.label)}</text></g>`;
+    return `<g class="pp-hotspot" data-hotspot="${spot.id}" ${target} tabindex="0" role="button" aria-label="${escapeHtml(spot.label)}">${shapes}<circle class="pp-pip-svg ok" id="${spot.id}-pip" cx="${ax.toFixed(1)}" cy="${ay.toFixed(1)}" r="9"/>${SiteTab.labelTagSvg_(spot.label, ax, ay)}</g>`;
+  }
+
+  /** The hover label as a canvas tag hung beside the dot, flipped to the dot's left when it would run past the art's right edge */
+  private static labelTagSvg_(label: string, ax: number, ay: number): string {
+    const width = Math.round(label.length * LABEL_CHAR_W + 2 * LABEL_PAD_X);
+    const flip = ax + LABEL_GAP + width > VIEW_W;
+    const x = flip ? ax - LABEL_GAP - width : ax + LABEL_GAP;
+    const anchor = flip ? 'end' : 'start';
+    const textX = flip ? x + width - LABEL_PAD_X : x + LABEL_PAD_X;
+
+    return `<g class="pp-label-tag"><rect class="pp-label-bg" x="${x.toFixed(1)}" y="${(ay - 15).toFixed(1)}" width="${width}" height="30" rx="2"/><text class="pp-label" text-anchor="${anchor}" x="${textX.toFixed(1)}" y="${(ay + 6).toFixed(1)}">${escapeHtml(label)}</text></g>`;
   }
 
   /** Current view, derived from the plant manager (never stored separately) */

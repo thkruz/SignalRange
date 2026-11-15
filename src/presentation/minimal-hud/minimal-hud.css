@@ -420,17 +420,31 @@ body:has(dialog.fnb-immersive[open]) .mc-hud {
   display: none;
 }
 
-.mc-watch-pause {
-  padding: 6px 14px;
-  font-size: 0.75rem;
+/* Engraved on the case below the glass, and the pause pusher on the case's lower edge: both on the watch itself */
+.mc-watch-big .mc-watch-pause {
+  position: absolute;
+  left: 50%;
+  top: 67%;
+  transform: translateX(-50%);
+  padding: 3px 12px;
+  font-size: 3.4cqw;
 }
 
-.mc-watch-none {
+.mc-watch-big .mc-watch-pause:active:not(:disabled) {
+  transform: translateX(-50%) translateY(1px);
+}
+
+/* A line of the watch's own LCD: the readout when there is no timer to wait on */
+.mc-watch-big .mc-watch-none {
   margin: 0;
-  font-family: 'Roboto Condensed', 'Arial Narrow', sans-serif;
-  font-size: 0.85rem;
-  letter-spacing: 0.06em;
-  opacity: 0.7;
+  font-size: 2.5cqw;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.mc-watch-none[hidden] {
+  display: none;
 }
 
 /* A new warning or critical alarm: a stencilled warning plate top centre, up until acknowledged */
@@ -619,6 +633,7 @@ body:has(dialog.fnb-immersive[open]) .mc-hud {
   border-radius: 2px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.55);
   font-family: 'Roboto Condensed', 'Arial Narrow', sans-serif;
+  font-style: normal;
   font-weight: 700;
   text-transform: uppercase;
 }

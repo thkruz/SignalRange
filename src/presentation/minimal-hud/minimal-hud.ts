@@ -109,13 +109,12 @@ export class MinimalHud {
         <section class="mc-watch-panel" id="hud-watch-panel">
           <div class="mc-watch-big">
             <img src="${watchPng}" alt="" draggable="false" />
-            <span class="mc-watch-lcd"><span class="mc-watch-time" id="hud-watch-panel-time">--:--</span><span class="mc-watch-sub" id="hud-watch-panel-sub"></span></span>
+            <span class="mc-watch-lcd"><span class="mc-watch-time" id="hud-watch-panel-time">--:--</span><span class="mc-watch-sub" id="hud-watch-panel-sub"></span><span class="mc-watch-none" id="hud-watch-none">Nothing to wait for</span></span>
+            <button type="button" class="mc-watch-pusher mc-watch-pause" id="hud-watch-pause"${this.onPause_ ? '' : ' hidden'}>Pause</button>
           </div>
           <div class="mc-watch-readouts" id="hud-watch-timers"></div>
           <ul class="mc-watch-alarms" id="hud-watch-alarms" aria-label="Alarms raised" hidden></ul>
           <div class="mc-watch-skips" id="hud-watch-skips"></div>
-          <p class="mc-watch-none" id="hud-watch-none">Nothing to wait for right now.</p>
-          <button type="button" class="mc-watch-pusher mc-watch-pause" id="hud-watch-pause"${this.onPause_ ? '' : ' hidden'}>Pause</button>
         </section>
       </div>
     `;

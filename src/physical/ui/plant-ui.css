@@ -80,8 +80,10 @@
 .pp-hotspot .pp-glow-fb { fill: rgba(255, 216, 102, 0.4); stroke: none; filter: url(#pp-soft); }
 .pp-hotspot .pp-glow-fb-path { fill: none; stroke: #ffd866; stroke-linecap: round; stroke-linejoin: round; filter: url(#pp-soft); }
 .pp-hotspot:hover .pp-glow, .pp-hotspot:focus .pp-glow, .pp-hotspot:focus-visible .pp-glow, .pp-hotspot:hover .pp-glow-fb, .pp-hotspot:focus .pp-glow-fb, .pp-hotspot:hover .pp-glow-fb-path, .pp-hotspot:focus .pp-glow-fb-path { opacity: 1; }
-.pp-hotspot .pp-label { font-family: 'Roboto Condensed', 'Arial Narrow', sans-serif; font-size: 19px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; fill: #ebe3cb; paint-order: stroke; stroke: #2b2d1c; stroke-width: 7px; stroke-linejoin: round; opacity: 0; transition: opacity 0.12s; pointer-events: none; }
-.pp-hotspot:hover .pp-label, .pp-hotspot:focus .pp-label { opacity: 1; }
+.pp-hotspot .pp-label-tag { opacity: 0; transition: opacity 0.12s; pointer-events: none; }
+.pp-hotspot .pp-label-bg { fill: #4a4c33; stroke: #23251a; stroke-width: 1.5px; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6)); }
+.pp-hotspot .pp-label { font-family: 'Roboto Condensed', 'Arial Narrow', sans-serif; font-size: 19px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; fill: #ebe3cb; stroke: none; pointer-events: none; }
+.pp-hotspot:hover .pp-label-tag, .pp-hotspot:focus .pp-label-tag { opacity: 1; }
 .pp-hotspot .pp-pip-svg { pointer-events: all; cursor: pointer; }
 .pp-pip-svg { stroke: rgba(0, 0, 0, 0.6); stroke-width: 2; }
 .pp-pip-svg.ok { fill: #22c55e; }

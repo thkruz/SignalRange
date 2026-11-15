@@ -53,6 +53,11 @@ export class TentControl {
   private afterCancel_: (() => void) | null = null;
   /** What had focus when the step-out ask opened (the header button or the tent flap); it gets focus back. */
   private opener_: HTMLElement | SVGElement | null = null;
+  /** The flap the open ask is pinned to; the ask follows it when the window resizes. */
+  private pinAnchor_: Element | null = null;
+  private readonly boundResize_ = (): void => {
+    if (this.pinAnchor_ && this.confirming) this.pinConfirmTo_(this.pinAnchor_);
+  };
 
   /** The control on screen, so the tent flap in the Site scene asks through the same confirm. */
   static active(): TentControl | null {
@@ -96,6 +101,7 @@ export class TentControl {
       this.cancelConfirm_();
     });
     parent.appendChild(this.root_);
+    window.addEventListener('resize', this.boundResize_);
     TentControl.active_ = this;
     this.sync();
   }
@@ -162,6 +168,7 @@ export class TentControl {
     this.afterToggle_ = null;
     this.afterCancel_ = null;
     this.opener_ = null;
+    this.pinAnchor_ = null;
     const box = this.root_.querySelector<HTMLElement>('#tent-confirm-box')!;
     box.style.display = 'none';
     box.classList.remove('tent-confirm-pinned');
@@ -174,6 +181,7 @@ export class TentControl {
   private pinConfirmTo_(anchor: Element | null): void {
     const box = this.root_.querySelector<HTMLElement>('#tent-confirm-box')!;
     box.classList.remove('tent-confirm-pinned');
+    this.pinAnchor_ = anchor;
     if (!anchor?.isConnected) return;
     const mark = anchor.querySelector('.pp-pip-svg') ?? anchor;
     const rect = mark.getBoundingClientRect();
@@ -223,6 +231,7 @@ export class TentControl {
   }
 
   dispose(): void {
+    window.removeEventListener('resize', this.boundResize_);
     if (TentControl.active_ === this) TentControl.active_ = null;
     this.root_.remove();
   }

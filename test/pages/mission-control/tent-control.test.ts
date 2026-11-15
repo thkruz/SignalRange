@@ -182,4 +182,27 @@ describe('TentControl confirm placement (issue 299)', () => {
     control.dispose();
     host.remove();
   });
+
+  it('moves the pinned ask with the flap when the window resizes', () => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const { plant } = fakePlant();
+    const control = new TentControl(host, () => plant);
+    const flap = document.createElement('div');
+    const dot = document.createElement('div');
+    dot.className = 'pp-pip-svg';
+    flap.appendChild(dot);
+    document.body.appendChild(flap);
+    let top = 100;
+    dot.getBoundingClientRect = () => ({ left: 400, right: 418, top, bottom: top + 18, width: 18, height: 18, x: 400, y: top, toJSON: () => ({}) }) as DOMRect;
+    control.requestToggle(undefined, undefined, flap);
+    const box = host.querySelector<HTMLElement>('#tent-confirm-box')!;
+    expect(Number.parseInt(box.style.top, 10)).toBe(128);
+    top = 200;
+    window.dispatchEvent(new Event('resize'));
+    expect(Number.parseInt(box.style.top, 10)).toBe(228);
+    flap.remove();
+    control.dispose();
+    host.remove();
+  });
 });

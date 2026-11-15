@@ -61,6 +61,18 @@ describe('Analytics consent', () => {
     history.replaceState({}, '', '/');
   });
 
+  it('still shows the banner on home after the EventBus is destroyed and recreated', async () => {
+    history.replaceState({}, '', '/campaigns/nats/scenarios/one');
+    const { Analytics, EventBus, Events } = await loadModules();
+    Analytics.init();
+    expect(banner()).toBeNull();
+
+    EventBus.destroy();
+    EventBus.getInstance().emit(Events.ROUTE_CHANGED, { path: '/' });
+    expect(banner()).not.toBeNull();
+    history.replaceState({}, '', '/');
+  });
+
   it('stays dark under browser automation so e2e runs see no banner', async () => {
     Object.defineProperty(navigator, 'webdriver', { configurable: true, get: () => true });
     const { Analytics } = await loadModules();

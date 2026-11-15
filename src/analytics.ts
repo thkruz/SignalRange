@@ -65,11 +65,16 @@ export class Analytics {
     }
     Analytics.isInitialized_ = true;
 
-    EventBus.getInstance().on(Events.ROUTE_CHANGED, ({ path }) => {
-      Analytics.currentPath_ = path;
-      Analytics.syncBannerWithRoute_(path);
-      Analytics.sendPageView_();
-    });
+    // Leaving a mission destroys the EventBus, so resubscribe on every new instance.
+    const subscribe = (bus: EventBus): void => {
+      bus.on(Events.ROUTE_CHANGED, ({ path }) => {
+        Analytics.currentPath_ = path;
+        Analytics.syncBannerWithRoute_(path);
+        Analytics.sendPageView_();
+      });
+    };
+    subscribe(EventBus.getInstance());
+    EventBus.onRecreate(subscribe);
 
     const choice = Analytics.readChoice_();
     if (choice === 'granted') {

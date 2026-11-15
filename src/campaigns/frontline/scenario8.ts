@@ -334,7 +334,7 @@ export const frontlineScenario8Data: FrontlineScenarioData = {
       character: Character.MAREK_DOMANSKI,
       audioUrl: '',
       emotion: Emotion.NEUTRAL,
-      text: "This is your assessment shift. The brief is the first objective on your list: it gives you the task and the resource limits, and the sequence of checks is yours. I'll review the evidence and the outcome when you've finished.",
+      text: "This is your assessment shift. The brief is the first objective on your list: it gives you the task and the resource limits, and the sequence of checks is yours. I'll review the evidence and the outcome when you've finished. The clipboard in the tray holds your task sheet, and the next step for each line is written on it.",
     },
     objectivesOnStart: {
       's08-establish-state': {

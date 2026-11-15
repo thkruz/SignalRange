@@ -72,6 +72,7 @@ describe('Feedback field report', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    history.replaceState({}, '', '/');
     document.body.innerHTML = '';
     SimClock.reset();
     mocks.isDev = false;
@@ -99,6 +100,17 @@ describe('Feedback field report', () => {
     feedback.open();
     expect(dialog().open).toBe(false);
     expect(mocks.captureScreen).not.toHaveBeenCalled();
+  });
+
+  it('keeps the contact link off mission routes', async () => {
+    history.pushState({}, '', '/campaigns/frontline/scenarios/frontline-scenario1');
+    document.body.append(document.createElement('span'));
+    await flush();
+    expect(contact().hidden).toBe(true);
+    history.pushState({}, '', '/campaigns/frontline');
+    document.body.append(document.createElement('span'));
+    await flush();
+    expect(contact().hidden).toBe(false);
   });
 
   it('treats an anonymous session as signed out', () => {

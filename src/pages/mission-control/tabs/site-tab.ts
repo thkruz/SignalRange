@@ -65,7 +65,7 @@ export function siteLabelTagSvg(id: string, label: string, ax: number, ay: numbe
   const anchor = flip ? 'end' : 'start';
   const textX = flip ? x + width - LABEL_PAD_X : x + LABEL_PAD_X;
 
-  return `<g class="pp-label-tag" data-for="${id}"><rect class="pp-label-bg" x="${x.toFixed(1)}" y="${(ay - 15).toFixed(1)}" width="${width}" height="30" rx="2"/><text class="pp-label" text-anchor="${anchor}" x="${textX.toFixed(1)}" y="${(ay + 6).toFixed(1)}">${escapeHtml(label)}</text></g>`;
+  return `<g class="pp-label-tag" data-for="${escapeHtml(id)}"><rect class="pp-label-bg" x="${x.toFixed(1)}" y="${(ay - 15).toFixed(1)}" width="${width}" height="30" rx="2"/><text class="pp-label" text-anchor="${anchor}" x="${textX.toFixed(1)}" y="${(ay + 6).toFixed(1)}">${escapeHtml(label)}</text></g>`;
 }
 
 export class SiteTab extends BaseElement {
@@ -312,7 +312,17 @@ export class SiteTab extends BaseElement {
   }
 
   /** Show the tag of the hovered or focused hotspot (null hides all) */
+  private hoverTagId_: string | null = null;
+  private focusTagId_: string | null = null;
+  private shownTagId_: string | null = null;
+
+  /** Id whose tag is showing (for tests) */
+  shownTag(): string | null {
+    return this.shownTagId_;
+  }
+
   private showTag_(id: string | null): void {
+    this.shownTagId_ = id;
     for (const tag of this.dom_?.querySelectorAll<SVGElement>('.pp-label-tag') ?? []) {
       tag.classList.toggle('on', id !== null && tag.dataset.for === id);
     }
@@ -408,6 +418,7 @@ export class SiteTab extends BaseElement {
     for (const node of parse(this.labelLayerHtml_())) {
       svg.appendChild(node);
     }
+    this.showTag_(this.hoverTagId_ ?? this.focusTagId_);
 
     return true;
   }
@@ -615,12 +626,25 @@ export class SiteTab extends BaseElement {
       }
     });
     const tagFor = (ev: Event): string | null => (ev.target as Element).closest?.('.pp-hotspot')?.getAttribute('data-hotspot') ?? null;
-    root.addEventListener('pointerover', (ev) => this.showTag_(tagFor(ev)));
-    root.addEventListener('pointerout', (ev) => {
-      if (tagFor(ev)) this.showTag_(null);
+    // Hover and keyboard focus are tracked apart: leaving one hotspot with the mouse must not hide another hotspot's focused tag.
+    root.addEventListener('pointerover', (ev) => {
+      this.hoverTagId_ = tagFor(ev);
+      this.showTag_(this.hoverTagId_ ?? this.focusTagId_);
     });
-    root.addEventListener('focusin', (ev) => this.showTag_(tagFor(ev)));
-    root.addEventListener('focusout', () => this.showTag_(null));
+    root.addEventListener('pointerout', (ev) => {
+      if (tagFor(ev)) {
+        this.hoverTagId_ = null;
+        this.showTag_(this.focusTagId_);
+      }
+    });
+    root.addEventListener('focusin', (ev) => {
+      this.focusTagId_ = tagFor(ev);
+      this.showTag_(this.hoverTagId_ ?? this.focusTagId_);
+    });
+    root.addEventListener('focusout', () => {
+      this.focusTagId_ = null;
+      this.showTag_(this.hoverTagId_);
+    });
     root.addEventListener('keydown', (ev) => {
       if (ev.key !== 'Enter' && ev.key !== ' ') {
         return;

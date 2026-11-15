@@ -653,6 +653,11 @@ export interface Condition {
   /** Hint or tip to help achieve the condition (optional) */
   hint?: string;
   /**
+   * Free "what to do next" line shown under the row while it is open and its objective is active
+   * (no points penalty, unlike `hint`). One short sentence naming where to act.
+   */
+  next?: string;
+  /**
    * If true, this condition is still enforced for objective completion but is
    * NOT rendered as a row in the checklist. Used to require the operator be on
    * the correct tab without spelling out which tab (qualified-operator scenarios

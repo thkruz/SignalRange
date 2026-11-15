@@ -1,4 +1,5 @@
 import { Character, Emotion } from '@app/modal/character-enum';
+import type { Condition } from '@app/objectives/objective-types';
 import type { HandoverFormConfig } from '@app/physical/field-records';
 import { applyCampField, CAMP_VSAT_SERVICE, OLA_CHECK_CARD, SKYLINK_SERVICE } from './camp-field-config';
 import { handoverValid, layerObserved, siteChecked, workloadVerified } from './frontline-conditions';
@@ -79,6 +80,9 @@ const handoverForm: HandoverFormConfig = {
   ],
 };
 
+/** Add the free "what to do next" line to a checklist row */
+const withNext = (condition: Condition, next: string): Condition => ({ ...condition, next });
+
 const S1_WELCOME_NOTICE = 's1-welcome-notice';
 
 const settings = createFrontlineSettings(1);
@@ -138,10 +142,34 @@ export const frontlineScenario1Data: FrontlineScenarioData = {
       points: 10,
       nice: ['S0421', 'T0431'],
       conditions: [
-        { type: 'part-inspected', description: 'Power station inspected (power source)', params: { partId: 'power-station' }, mustMaintain: false },
-        { type: 'part-inspected', description: 'SkyLink router inspected (local network)', params: { partId: 'skylink-router' }, mustMaintain: false },
-        { type: 'part-inspected', description: 'SkyLink dish inspected (satellite terminal, outside)', params: { partId: 'skylink-dish' }, mustMaintain: false },
-        { type: 'part-inspected', description: 'Laptop inspected (workstation)', params: { partId: 'laptop' }, mustMaintain: false },
+        {
+          type: 'part-inspected',
+          description: 'Power station inspected (power source)',
+          params: { partId: 'power-station' },
+          mustMaintain: false,
+          next: 'click the power station in the Site view and press Inspect.',
+        },
+        {
+          type: 'part-inspected',
+          description: 'SkyLink router inspected (local network)',
+          params: { partId: 'skylink-router' },
+          mustMaintain: false,
+          next: 'click the router in the Site view and press Inspect.',
+        },
+        {
+          type: 'part-inspected',
+          description: 'SkyLink dish inspected (satellite terminal, outside)',
+          params: { partId: 'skylink-dish' },
+          mustMaintain: false,
+          next: 'step outside (the door, or Step outside in the tent control), click the dish and press Inspect.',
+        },
+        {
+          type: 'part-inspected',
+          description: 'Laptop inspected (workstation)',
+          params: { partId: 'laptop' },
+          mustMaintain: false,
+          next: 'click the laptop in the Site view and press Inspect.',
+        },
         {
           type: 'status-check',
           description: 'Equipment roles distinguished',
@@ -157,6 +185,7 @@ export const frontlineScenario1Data: FrontlineScenarioData = {
             explanation: "Each device serves a different part of the path. Identifying those roles helps you choose a useful check when the application doesn't work.",
           },
           mustMaintain: false,
+          next: 'press the ? button on this row and pick the answer that matches what you saw.',
         },
       ],
     },
@@ -169,11 +198,14 @@ export const frontlineScenario1Data: FrontlineScenarioData = {
       points: 15,
       nice: ['T0431', 'K0741'],
       conditions: [
-        siteChecked(['generator'], 'Generator fuel and housing checked'),
-        siteChecked(['power-station'], 'Power station checked'),
-        siteChecked(['power-strip'], 'Power strip checked'),
-        siteChecked(['skylink-cable'], 'SkyLink cable checked'),
-        siteChecked(['skylink-cable:dish', 'skylink-cable:router'], 'SkyLink cable plugs checked'),
+        withNext(siteChecked(['generator'], 'Generator fuel and housing checked'), 'go outside, open the generator and press Inspect.'),
+        withNext(siteChecked(['power-station'], 'Power station checked'), 'open the power station and press Inspect or Feel.'),
+        withNext(siteChecked(['power-strip'], 'Power strip checked'), 'open the power strip inside the tent and press Inspect.'),
+        withNext(siteChecked(['skylink-cable'], 'SkyLink cable checked'), 'go outside, click the SkyLink cable run and press Inspect.'),
+        withNext(
+          siteChecked(['skylink-cable:dish', 'skylink-cable:router'], 'SkyLink cable plugs checked'),
+          'in the cable run close-up, select the plug at each end and press Inspect or Wiggle.'
+        ),
       ],
     },
     {
@@ -186,8 +218,14 @@ export const frontlineScenario1Data: FrontlineScenarioData = {
       points: 15,
       nice: ['T1567', 'K0773'],
       conditions: [
-        layerObserved(SKYLINK_SERVICE, 'local', { status: 'up' }, 'Local network reachability observed'),
-        layerObserved(SKYLINK_SERVICE, 'registration', { status: 'up' }, 'Terminal link observed'),
+        withNext(
+          layerObserved(SKYLINK_SERVICE, 'local', { status: 'up' }, 'Local network reachability observed'),
+          'press Use laptop in the laptop close-up, then check the local network reading there.'
+        ),
+        withNext(
+          layerObserved(SKYLINK_SERVICE, 'registration', { status: 'up' }, 'Terminal link observed'),
+          'read the terminal registration, from the router light or the laptop, and press Check.'
+        ),
       ],
     },
     {
@@ -200,8 +238,14 @@ export const frontlineScenario1Data: FrontlineScenarioData = {
       points: 15,
       nice: ['T0153', 'K0740'],
       conditions: [
-        workloadVerified({ card: OLA_CHECK_CARD.id, service: SKYLINK_SERVICE }, 'Application check completed on the SkyLink connection'),
-        layerObserved(SKYLINK_SERVICE, 'application', { status: 'up' }, 'Result confirmed at the remote end (endpoint-report reading taken after the run finishes)'),
+        withNext(
+          workloadVerified({ card: OLA_CHECK_CARD.id, service: SKYLINK_SERVICE }, 'Application check completed on the SkyLink connection'),
+          'open the laptop (Use laptop), choose the application card and press Start run.'
+        ),
+        withNext(
+          layerObserved(SKYLINK_SERVICE, 'application', { status: 'up' }, 'Result confirmed at the remote end (endpoint-report reading taken after the run finishes)'),
+          'when the run has finished, pick up the Radio from the tray, call the remote operator and ask for the report.'
+        ),
       ],
     },
     {
@@ -232,28 +276,28 @@ export const frontlineScenario1Data: FrontlineScenarioData = {
       character: Character.MAREK_DOMANSKI,
       emotion: Emotion.NEUTRAL,
       audioUrl: '',
-      text: "<p>Welcome to Kivilahti. I'm Marek Domański, your communications instructor. We'll start with healthy equipment so you have something useful to compare against later.</p><p>Ola runs the simulated application at the other end. Your job is to establish what the service can do and leave a record someone else can trust.</p><p>One rule is mine, not the service's. At this camp you may go outside to the equipment three times. A fourth trip gets you spotted. It's a training rule for this post, and it won't follow you to a forward site.</p>",
+      text: "<p>Welcome to Kivilahti. I'm Marek Domański, your communications instructor. We'll start with healthy equipment so you have something useful to compare against later.</p><p>Ola runs the simulated application at the other end. Your job is to establish what the service can do and leave a record someone else can trust.</p><p>One rule is mine, not the service's. At this camp you may go outside to the equipment three times. A fourth trip gets you spotted. It's a training rule for this post, and it won't follow you to a forward site.</p><p>Your task sheet is on the clipboard in the tray along the bottom of the Site view. Each line has a Next note under it that says where to act.</p>",
     },
     objectivesOnStart: {
       's1-identify-equipment': {
         character: Character.MAREK_DOMANSKI,
         audioUrl: '',
-        text: '<p>The Site view lets you inspect the kit. Start by identifying which item supplies power, which connects our local devices, and which reaches the satellite service.</p>',
+        text: '<p>The Site view lets you inspect the kit. Start by identifying which item supplies power, which connects our local devices, and which reaches the satellite service.</p><p>Click any item to open it up close, then press Inspect. The dish is outside, so use the tent control or the door to step out, and step back in when you are done. Every trip counts toward the three.</p>',
       },
       's1-check-condition': {
         character: Character.MAREK_DOMANSKI,
         audioUrl: '',
-        text: "<p>Work through the camp checks before we start the exercise. If you can't establish a condition, record that uncertainty instead of marking it satisfactory.</p>",
+        text: "<p>Work through the camp checks before we start the exercise. If you can't establish a condition, record that uncertainty instead of marking it satisfactory.</p><p>The cable run is a thin line from the dish to the tent. Open it up close to check the cable and each plug separately.</p>",
       },
       's1-establish-connection': {
         character: Character.MAREK_DOMANSKI,
         audioUrl: '',
-        text: "<p>Check the local connection and the terminal's registration separately. Both matter, but neither tells us yet whether Ola's application works.</p>",
+        text: "<p>Check the local connection and the terminal's registration separately. Both matter, but neither tells us yet whether Ola's application works.</p><p>The laptop is where you take those readings: open it up close and press Use laptop.</p>",
       },
       's1-test-application': {
         character: Character.ALEKSANDRA_WYSOCKA,
         audioUrl: '',
-        text: "<p>I'm Aleksandra Wysocka, but you can call me Ola. I'll report what happens at my end when you start the check, including anything that doesn't update.</p>",
+        text: "<p>I'm Aleksandra Wysocka, but you can call me Ola. I'll report what happens at my end when you start the check, including anything that doesn't update.</p><p>Start the check from the laptop. When it finishes, the Radio in the tray gets you the remote operator's report. Take that report after the run, because an earlier one doesn't count.</p>",
       },
       's1-record-baseline': {
         character: Character.MAREK_DOMANSKI,

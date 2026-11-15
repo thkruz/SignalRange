@@ -232,7 +232,9 @@ export class Feedback {
     const closeup = document.getElementById('part-closeup-modal-container');
     const covered = document.querySelector('dialog[open]:not(.fr-dialog)') !== null || (closeup !== null && closeup.style.display !== 'none');
     this.tab_.hidden = !this.formAvailable_ || covered;
-    this.contact_.hidden = this.formAvailable_ || covered;
+    // The contact link leaves the game and sits over the scene edge, so it stays off mission routes (the campaign page keeps it).
+    const onMission = /^\/campaigns\/[^/]+\/scenarios\//u.test(location.pathname);
+    this.contact_.hidden = this.formAvailable_ || covered || onMission;
   }
 
   // ------------------------------------------------------------------ open and close

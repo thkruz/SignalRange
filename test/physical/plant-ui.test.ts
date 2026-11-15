@@ -88,6 +88,24 @@ describe('SiteTab', () => {
     tab.dispose();
   });
 
+  it('keyboard focus and hover tags are tracked apart, and a rebuilt label layer keeps the shown tag', () => {
+    plantService();
+    const tab = new SiteTab('canvas-content');
+    const [a, b] = hotspotsForView('inside');
+    const elA = document.querySelector(`[data-hotspot="${a.id}"]`)!;
+    const elB = document.querySelector(`[data-hotspot="${b.id}"]`)!;
+    const shown = () => [...document.querySelectorAll('.pp-label-tag.on')].map((t) => t.getAttribute('data-for'));
+    elA.dispatchEvent(new Event('focusin', { bubbles: true }));
+    expect(shown()).toEqual([a.id]);
+    elB.dispatchEvent(new Event('pointerover', { bubbles: true }));
+    expect(shown()).toEqual([b.id]);
+    elB.dispatchEvent(new Event('pointerout', { bubbles: true }));
+    expect(shown()).toEqual([a.id]);
+    elA.dispatchEvent(new Event('focusout', { bubbles: true }));
+    expect(shown()).toEqual([]);
+    tab.dispose();
+  });
+
   it('a label tag hangs right of the dot and flips left when it would pass the right edge', () => {
     const x = (svg: string): number => Number(/<rect[^>]* x="(-?[\d.]+)"/u.exec(svg)![1]);
     const near = siteLabelTagSvg('a', 'LAPTOP', 200, 100);
@@ -199,6 +217,12 @@ describe('SiteTab view derives from the plant', () => {
 });
 
 describe('PartCloseupModal', () => {
+  it('the laptop close-up opens with Use laptop on the plate, no click on the screen needed', () => {
+    plantService();
+    PartCloseupModal.getInstance().showCloseup('laptop');
+    expect(document.querySelector('[data-open-laptop]')).not.toBeNull();
+  });
+
   it('a verb button calls the plant and logs the observation with its cost', () => {
     const plant = plantService().plant;
     const modal = PartCloseupModal.getInstance();

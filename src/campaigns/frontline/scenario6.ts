@@ -336,7 +336,7 @@ export const frontlineScenario6Data: FrontlineScenarioData = {
       character: Character.MAREK_DOMANSKI,
       emotion: Emotion.NEUTRAL,
       audioUrl: '',
-      text: "Today we're comparing requirements, not repairing a fault. Ola's two simulated tasks need different things from the connection. Keep the task and its path separate in your notes so you can explain each result.",
+      text: "Today we're comparing requirements, not repairing a fault. Ola's two simulated tasks need different things from the connection. Keep the task and its path separate in your notes so you can explain each result. The clipboard in the tray holds your task sheet, and the next step for each line is written on it.",
     },
     objectivesOnStart: {
       's06-compare-profiles': {

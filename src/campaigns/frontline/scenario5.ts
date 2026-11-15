@@ -325,7 +325,7 @@ export const frontlineScenario5Data: FrontlineScenarioData = {
       character: Character.ALEKSANDRA_WYSOCKA,
       emotion: Emotion.CONCERNED,
       audioUrl: '',
-      text: "<p>The terminal shows online, but my application updates are arriving too slowly for this exercise. I can describe what I'm seeing; I can't tell you yet which part of the service explains it.</p>",
+      text: "<p>The terminal shows online, but my application updates are arriving too slowly for this exercise. I can describe what I'm seeing; I can't tell you yet which part of the service explains it.</p><p>The clipboard in the tray holds your task sheet, and the next step for each line is written on it.</p>",
     },
     objectivesOnStart: {
       's5-compare-endpoints': {

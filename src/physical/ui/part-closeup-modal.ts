@@ -139,6 +139,13 @@ export class PartCloseupModal extends DraggableModal {
       this.selectedKey_ = null;
       this.selectedLabel_ = '';
       this.lastOverlay_ = '';
+      // A close-up whose only region opens the app (the laptop) starts with it selected, so "Use laptop" is on the plate from the first look
+      const only = def.regions.length === 1 && def.probes.length === 0 && def.cables.length === 0 ? def.regions[0] : null;
+      if (only?.opensApp) {
+        this.selected_ = only.target;
+        this.selectedKey_ = only.id;
+        this.selectedLabel_ = only.label;
+      }
     }
     if (!this.isOpen()) {
       const active = document.activeElement;
@@ -570,13 +577,24 @@ export class PartCloseupModal extends DraggableModal {
     modal.style.setProperty('--pcu-img-h', `${imgH}px`);
   }
 
+  /** True when a hover tooltip would only say the device name the plate already engraves (the "internet up" suffix does not make it new) */
+  private repeatsPlate_(hit: HTMLElement): boolean {
+    const title = (this.def_?.title ?? '').toLowerCase();
+    const base = (hit.dataset.label ?? '').split(': internet')[0].toLowerCase();
+    if (base === title) {
+      return true;
+    }
+
+    return hit.dataset.sel === this.selectedKey_ && base !== '' && (title.includes(base) || base.includes(title));
+  }
+
   private showCallout_(el: Element): void {
     const root = this.root_();
     const hit = el.closest?.('#pcu-overlay [data-label]') as HTMLElement | null;
     const box = root?.querySelector<HTMLElement>('#pcu-stagebox');
     const callout = root?.querySelector<HTMLElement>('#pcu-callout');
     // The plate engraves the device name once; the tooltip only names parts of it
-    if (!hit || !box || !callout || (hit.dataset.label ?? '').toLowerCase() === (this.def_?.title ?? '').toLowerCase()) {
+    if (!hit || !box || !callout || this.repeatsPlate_(hit)) {
       return;
     }
     callout.textContent = hit.dataset.label ?? '';

@@ -86,7 +86,8 @@
 .pp-label-tag.on { opacity: 1; }
 .pp-hotspot .pp-pip-svg { pointer-events: all; cursor: pointer; }
 .pp-pip-svg { stroke: rgba(0, 0, 0, 0.6); stroke-width: 2; }
-.pp-pip-svg.ok { fill: #22c55e; }
+.pp-pip-svg.ok { fill: rgba(235, 227, 203, 0.32); stroke: rgba(0, 0, 0, 0.35); r: 6px; transition: fill 0.15s, r 0.15s; }
+.pp-hotspot:hover .pp-pip-svg.ok, .pp-hotspot:focus .pp-pip-svg.ok { fill: rgba(255, 216, 102, 0.9); r: 9px; }
 .pp-pip-svg.warn { fill: #eab308; }
 .pp-pip-svg.bad { fill: #ef3b2d; }
 

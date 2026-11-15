@@ -94,7 +94,7 @@ export const frontlineScenario2Data: FrontlineScenarioData = {
   duration: '25-35 min',
   missionType: 'Field Communications Training',
   description:
-    'The connection is healthy, but the exercise starts with a limited battery reserve. Read the equipment load, choose a configuration, and work through a guided external-supply interruption with Marek. Demonstrate the required service while retaining the stated reserve, then leave a useful resource record.',
+    'The connection is healthy, but the exercise starts with a limited battery reserve. Read the equipment load, choose a configuration, and work through a planned external-supply interruption while Marek watches the readings. Demonstrate the required service while retaining the stated reserve, then leave a useful resource record.',
   equipment: ['1000 Wh battery power station', 'Generator', 'Power strip', 'SkyLink terminal and router', 'Camp reference VSAT', 'Pilot workstation'],
   settings,
   mechanicTodos: [],

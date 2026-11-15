@@ -312,7 +312,7 @@ export const frontlineScenario3Data: FrontlineScenarioData = {
       character: Character.ALEKSANDRA_WYSOCKA,
       emotion: Emotion.CONCERNED,
       audioUrl: '',
-      text: "<p>The application has stopped updating more than once during this exercise. It resumes between interruptions, but I can't tell you which part of the connection caused them.</p>",
+      text: "<p>The application has stopped updating more than once during this exercise. It resumes between interruptions, but I can't tell you which part of the connection caused them.</p><p>The clipboard in the tray holds your task sheet, and the next step for each line is written on it.</p>",
     },
     objectivesOnStart: {
       's3-establish-pattern': {

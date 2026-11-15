@@ -64,6 +64,15 @@ const COMMAND_LINK_CONDITIONS: ReadonlySet<string> = new Set(['command-acknowled
 /**
  * Manages objective tracking for scenario-based learning
  */
+/** The free "what to do next" line of an open checklist row (empty once the row is done or while its objective is locked) */
+export function conditionNextHtml(next: string | undefined, completed: boolean, active: boolean): string {
+  if (!next || completed || !active) {
+    return '';
+  }
+
+  return `<span class="condition-next">Next: ${next}</span>`;
+}
+
 export class ObjectivesManager {
   private static instance_: ObjectivesManager | null = null;
   private static openedBoxIds_: Set<string> = new Set();
@@ -1400,7 +1409,7 @@ export class ObjectivesManager {
 
         html += `<li class="condition-item ${conditionCompleted ? 'completed' : 'incomplete'}">`;
         const rowLabel = isGate && condition.hidden && condition.params?.tab ? tabGateLabel(condition.params.tab) : fillDialogTokens(conditionLabel(condition));
-        html += `<span class="condition-text">${rowLabel}</span>`;
+        html += `<span class="condition-text">${rowLabel}${conditionNextHtml(condition.next, conditionCompleted, isActive)}</span>`;
 
         // An observation-gated check only progresses while its tab is open;
         // say which, or it looks stuck (nats-s18-F5)

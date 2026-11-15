@@ -313,3 +313,11 @@
   top: 14px;
   bottom: auto;
 }
+
+.cbk-checklist .condition-next {
+  color: var(--cbk-pencil);
+}
+
+.cbk-checklist .condition-next {
+  color: var(--cbk-pencil);
+}

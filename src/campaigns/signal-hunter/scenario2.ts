@@ -110,8 +110,10 @@ export const signalHunterScenario2Data: ScenarioData = {
         frequency: 3752e6, // Received directly at 3752 MHz -> 1398 MHz IF; would read as a 5977 MHz uplink if it were relayed, which is below TP-1
         bandwidth: 5e6,
         // EIRP in PA-22's direction, dBm: an off-axis slice of a fixed-wireless
-        // sector 27 km away. Through the dish's own far sidelobes it lands a
-        // few dB above the relayed service carrier at the feed.
+        // sector 27 km away. Through the dish's own far sidelobes it lands
+        // roughly 25-30 dB below the relayed service carrier at the feed
+        // (SENTRY-7-SERVICE is 50 dBm); it sits at 1398 MHz IF, clear of the
+        // 1365 MHz service, so do not re-tune either against the other.
         power: 28,
         polarization: 'H',
         startTime: 0,

@@ -22,13 +22,15 @@ export interface SpectrumTraceSummary {
   floorDbm: number;
   /** Pixels in the trace */
   pixels: number;
+  /** Level of the pixel nearest the requested frequency, when one was asked for and lies inside the span */
+  levelAtDbm?: number;
 }
 
 export interface SrTestApi {
   /** The current game as an AppState, built by the same collector the progress save uses */
   captureCheckpoint(): TestCheckpoint;
   /** Summary of the live trace of one ground station analyzer, or null when the station or analyzer is missing */
-  spectrumTrace(groundStationId: string, analyzerIndex?: number): SpectrumTraceSummary | null;
+  spectrumTrace(groundStationId: string, analyzerIndex?: number, atFrequencyHz?: number): SpectrumTraceSummary | null;
 }
 
 declare global {
@@ -39,14 +41,30 @@ declare global {
   }
 }
 
-export function spectrumTrace(groundStationId: string, analyzerIndex = 0): SpectrumTraceSummary | null {
+export function spectrumTrace(groundStationId: string, analyzerIndex = 0, atFrequencyHz?: number): SpectrumTraceSummary | null {
   const station = SimulationManager.getInstance().groundStations.find((gs) => gs.state.id === groundStationId);
-  const data = station?.spectrumAnalyzers[analyzerIndex]?.spectrumDataProcessor.combinedData;
-  if (!data || data.length === 0) return null;
+  const analyzer = station?.spectrumAnalyzers[analyzerIndex];
+  const data = analyzer?.spectrumDataProcessor.combinedData;
+  if (!analyzer || !data || data.length === 0) return null;
 
   const sorted = Array.from(data).sort((a, b) => a - b);
+  const summary: SpectrumTraceSummary = { peakDbm: sorted[sorted.length - 1], floorDbm: sorted[Math.floor(sorted.length / 2)], pixels: sorted.length };
 
-  return { peakDbm: sorted[sorted.length - 1], floorDbm: sorted[Math.floor(sorted.length / 2)], pixels: sorted.length };
+  if (atFrequencyHz !== undefined) {
+    const { centerFrequency, span } = analyzer.state;
+    const fraction = (atFrequencyHz - (centerFrequency - span / 2)) / span;
+    if (fraction >= 0 && fraction <= 1) {
+      // A carrier is several pixels wide; read the strongest pixel within 1 MHz so a one-pixel offset cannot miss it
+      const pixelHz = span / data.length;
+      const centre = Math.round(fraction * (data.length - 1));
+      const reach = Math.max(1, Math.round(1e6 / pixelHz));
+      let best = Number.NEGATIVE_INFINITY;
+      for (let i = Math.max(0, centre - reach); i <= Math.min(data.length - 1, centre + reach); i++) best = Math.max(best, data[i]);
+      summary.levelAtDbm = best;
+    }
+  }
+
+  return summary;
 }
 
 /** Development builds only (the e2e builds); production bundles drop the hook, and it is inert even if reached. */

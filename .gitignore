@@ -93,3 +93,4 @@ tle-sets-out/
 # Agent review scratch (result notes, screenshots) and docs-shots run output
 art-review/
 scripts/docs-shots/last-failures.json
+shots/

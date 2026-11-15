@@ -5,8 +5,12 @@ import { SignalOrigin } from '@app/signal-origin';
 import type { dBi, dBm, FECType, Hertz, ModulationType, RfFrequency } from '@app/types';
 import type { Degrees, Kilometers, TleLine1, TleLine2 } from 'ootk';
 
-/** X-band (7/8 GHz) transponder physics (phase 19.3): a representative military-band bent pipe */
-const CCS_X_BAND_TRANSPONDER: Partial<TransponderPhysics> = { sfdDbwM2: -84, gOverTDbK: 2, satEirpDbw: 32, amplifier: 'twta', gainMode: 'fgm' };
+/**
+ * X-band (7/8 GHz) transponder physics (phase 19.3): a representative military-band bent pipe. satEirpDbw 42 (was 32, phase 47 N3)
+ * puts the COBALT-4 service downlink at about 10 dB C/N on SANDSTORM's 5 m dish, where 32 left it at 0 dB. The relayed jam scales with
+ * it, so the J/S objectives (authored from victimCarrierPowerDbm) are unchanged.
+ */
+const CCS_X_BAND_TRANSPONDER: Partial<TransponderPhysics> = { sfdDbwM2: -84, gOverTDbK: 2, satEirpDbw: 42, amplifier: 'twta', gainMode: 'fgm' };
 
 /**
  * Campaign 4 (9th EWS / Counter Communications) satellite roster.

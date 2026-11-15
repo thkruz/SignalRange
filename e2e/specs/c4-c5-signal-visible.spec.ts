@@ -15,10 +15,22 @@ interface TraceSummary {
   peakDbm: number;
   floorDbm: number;
   pixels: number;
+  levelAtDbm?: number;
 }
 
-async function readTrace(page: Page, stationId: string): Promise<TraceSummary | null> {
-  return page.evaluate((id) => (window as unknown as { __srTest?: { spectrumTrace(id: string): TraceSummary | null } }).__srTest?.spectrumTrace(id) ?? null, stationId);
+/** Level at a frequency (Hz, analyzer IF) over the trace's median floor, dB; NaN until the trace exists */
+async function readMarginAt(page: Page, stationId: string, atHz: number): Promise<number> {
+  const trace = await page.evaluate(
+    ([id, hz]) =>
+      (window as unknown as { __srTest?: { spectrumTrace(id: string, index: number, atHz: number): TraceSummary | null } }).__srTest?.spectrumTrace(
+        id as string,
+        0,
+        hz as number
+      ) ?? null,
+    [stationId, atHz] as const
+  );
+
+  return trace?.levelAtDbm === undefined ? Number.NaN : trace.levelAtDbm - trace.floorDbm;
 }
 
 async function openAnalysis(page: Page, campaignId: string, scenarioId: string, stationId: string, briefObjective?: string): Promise<void> {
@@ -54,25 +66,21 @@ async function openAnalysis(page: Page, campaignId: string, scenarioId: string, 
 test.describe('Analyzer trace shows the authored carrier', () => {
   test.setTimeout(120000);
 
-  test('C5 scenario 1: the SENTRY-7 service carrier stands above the noise floor', async ({ page }) => {
+  test('C5 scenario 1: the SENTRY-7 service carrier stands above the noise floor at 1365 MHz IF', async ({ page }) => {
     await openAnalysis(page, 'signal-hunter', 'signal-hunter-scenario1', 'PA-22', 'Review the Incident Package');
 
-    // The service carrier is always on (the jammer is duty-cycled), 12+ dB C/N authored
-    await expect
-      .poll(
-        async () => {
-          const trace = await readTrace(page, 'PA-22');
-          return trace ? trace.peakDbm - trace.floorDbm : Number.NaN;
-        },
-        { timeout: 30000 }
-      )
-      .toBeGreaterThan(8);
+    // Read the bin AT the service carrier (the duty-cycled jammer sits at 1354 MHz, so a peak anywhere would pass on it)
+    await expect.poll(() => readMarginAt(page, 'PA-22', 1365e6), { timeout: 30000 }).toBeGreaterThan(8);
   });
 
-  test('C4 scenario 1: trace summary', async ({ page }) => {
+  test('C4 scenario 1: the COBALT-4 service downlink stands above the noise floor at 1450 MHz IF', async ({ page }) => {
     await openAnalysis(page, 'ccs', 'ccs-scenario1', 'SS-01');
-    await page.waitForTimeout(3000);
-    console.log(`[c4-s1] ${JSON.stringify(await readTrace(page, 'SS-01'))}`);
+
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.waitForTimeout(4000);
     await page.screenshot({ path: 'shots/c4-s1-analysis.png' });
+
+    // TP-X1 downlink gain is authored for about 10 dB C/N on the 5 m JAM chain the analyzer reads
+    await expect.poll(() => readMarginAt(page, 'SS-01', 1450e6), { timeout: 30000 }).toBeGreaterThan(8);
   });
 });

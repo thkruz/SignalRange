@@ -58,9 +58,7 @@ const MIN_VISIBLE_CN_DB = 8;
 
 /** Antenna-input C/N of a carrier, dB, against the antenna's own system noise */
 function carrierToNoiseDb(antenna: AntennaCore, signal: RfSignal): number {
-  const a = antenna as unknown as { systemNoise(f: number): { systemK: number }; noiseReferenceHz: number };
-
-  return (signal.power as number) - thermalNoiseDbm(a.systemNoise(a.noiseReferenceHz).systemK, signal.bandwidth as number);
+  return (signal.power as number) - thermalNoiseDbm(antenna.systemNoise(antenna.noiseReferenceHz).systemK, signal.bandwidth as number);
 }
 
 interface Chain {
@@ -110,6 +108,7 @@ describe('C5 signal-hunter S1: PA-22 receive chain', () => {
   });
 
   afterEach(() => {
+    (sentry7Satellite as unknown as { externalSignal: RfSignal[] }).externalSignal = [];
     EventBus.destroy();
     vi.restoreAllMocks();
     document.body.innerHTML = '';
@@ -148,7 +147,6 @@ describe('C5 signal-hunter S1: PA-22 receive chain', () => {
       gainInPath: 0,
     } as never);
     settle(chain);
-    external.externalSignal = [];
 
     const jam = chain.frontEnd.agcModule.outputSignals.find((s) => s.signalId === 'INTERFERER-test');
 
@@ -157,7 +155,7 @@ describe('C5 signal-hunter S1: PA-22 receive chain', () => {
   });
 });
 
-describe('C4 ccs S1: SANDSTORM monitor aperture receive chain', () => {
+describe('C4 ccs S1: SANDSTORM JAM aperture receive chain (the chain the analyzer reads)', () => {
   let chain: Chain;
 
   beforeEach(() => {
@@ -167,8 +165,7 @@ describe('C4 ccs S1: SANDSTORM monitor aperture receive chain', () => {
     document.body.innerHTML = '<div id="n3-fe"></div>';
 
     // The operator slews the monitor onto COBALT-4 (true look angles)
-    const monitor = { ...(sandstormGroundStation.antennasState[1] as Record<string, unknown>), azimuth: 174.9, elevation: 50.4, targetAzimuth: 174.9, targetElevation: 50.4 };
-    chain = buildChain(sandstormGroundStation as unknown as StationLike, 1, monitor);
+    chain = buildChain(sandstormGroundStation as unknown as StationLike, 0, sandstormGroundStation.antennasState[0] as Record<string, unknown>);
     settle(chain);
   });
 
@@ -178,17 +175,34 @@ describe('C4 ccs S1: SANDSTORM monitor aperture receive chain', () => {
     document.body.innerHTML = '';
   });
 
-  // C4 is the jamming campaign: the service downlink is the J/S victim and is authored close to the noise
-  // on purpose, so this only proves it is received (above the antenna C/N floor) and routed to the IF.
-  it('receives the relayed service carrier and puts it at 1450 MHz IF', () => {
+  // The SANDSTORM analyzer is bound to the JAM chain (rfFrontEnds[0]) and centred on 1450 MHz. TP-X1's downlink gain
+  // is authored so the service carrier clears about 10 dB C/N on the 5 m dish; at 32 dBW it was 0 dB and invisible.
+  it('receives the relayed service carrier with a C/N the analyzer can show and puts it at 1450 MHz IF', () => {
     const service = chain.antenna.state.rxSignalsIn.find((s) => s.signalId === 'COBALT-4-SVC-Uplink');
 
     expect(service, 'service downlink dropped under the antenna C/N floor').toBeDefined();
-    expect(carrierToNoiseDb(chain.antenna, service!)).toBeGreaterThan(-10);
+    expect(carrierToNoiseDb(chain.antenna, service!)).toBeGreaterThan(MIN_VISIBLE_CN_DB);
 
     const atIf = chain.frontEnd.agcModule.outputSignals.find((s) => s.signalId === 'COBALT-4-SVC-Uplink');
 
     expect(atIf).toBeDefined();
     expect(Math.abs((atIf!.frequency as number) - 1450e6)).toBeLessThan(1e3);
+  });
+
+  it('taps the RX IF on the JAM chain so the analyzer draws the line at all', () => {
+    const coupler = (sandstormGroundStation.rfFrontEnds[0] as { coupler: { tapPointB: string; isEnabledB: boolean; isEnabledA: boolean } }).coupler;
+
+    expect(coupler.isEnabledB).toBe(true);
+    expect(coupler.isEnabledA).toBe(false);
+    expect(coupler.tapPointB).toBe('RX IF');
+  });
+
+  it('keeps the analyzer window on the service carrier', () => {
+    const analyzer = sandstormGroundStation.spectrumAnalyzers[0];
+    const lo = (analyzer.centerFrequency as number) - (analyzer.span as number) / 2;
+    const hi = (analyzer.centerFrequency as number) + (analyzer.span as number) / 2;
+
+    expect(1450e6).toBeGreaterThan(lo);
+    expect(1450e6).toBeLessThan(hi);
   });
 });

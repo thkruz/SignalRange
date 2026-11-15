@@ -169,10 +169,11 @@ export const sandstormGroundStation = {
         availableTapPointsB: [TapPoint.TX_IF, TapPoint.RX_IF],
         couplingFactorA: -20, // dB (monitor coupler; the analyzer reads line power through it, Phase 19.2)
         couplingFactorB: -20, // dB
-        isEnabledA: true,
-        isEnabledB: false,
-        isActiveA: true,
-        isActiveB: false,
+        // The analyzer reads the RX IF through tap B (the RX Analysis tab's single selector); with B off and TX tap A on, it drew nothing at all
+        isEnabledA: false,
+        isEnabledB: true,
+        isActiveA: false,
+        isActiveB: true,
       } as CouplerState,
       gpsdo: {
         isPowered: true,
@@ -328,7 +329,7 @@ export const sandstormGroundStation = {
   spectrumAnalyzers: [
     {
       referenceLevel: -50 as dBm,
-      centerFrequency: 1125e6 as Hertz, // JAM chain uplink IF (8125 MHz RF)
+      centerFrequency: 1450e6 as Hertz, // TP-X1 downlink RX IF on the JAM chain (7475 MHz RF through the 8925 MHz LNB LO); 1125 MHz is the uplink IF, empty on the RX tap
       span: 60e6 as Hertz,
       rbw: 1e6 as Hertz,
       minAmplitude: -110 as dBm,

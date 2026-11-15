@@ -89,6 +89,32 @@ export function tagTargets(host: TagHost, openOnly = false): TagTarget[] {
   return out;
 }
 
+/**
+ * What a bench-only match worksheet needs to be checked from the Close-up: every field a match whose parts all
+ * stand for bench devices. Null when the worksheet also has dropdown parts or other fields (it is checked in the Notebook).
+ */
+export function benchSheet(host: TagHost, ws: Worksheet): { values: Record<string, Record<string, string>>; missing: string[]; wrong: string[] } | null {
+  const devices = host.devices();
+  const values: Record<string, Record<string, string>> = {};
+  const missing: string[] = [];
+  const wrong: string[] = [];
+  for (const f of ws.fields) {
+    if (f.kind !== 'match' || typeof f.answer !== 'object') return null;
+    const parts = Object.keys(f.answer);
+    if (mapFieldParts(f, devices).size !== parts.length) return null;
+    const v: Record<string, string> = {};
+    for (const part of parts) {
+      const job = jobTags.get(host, ws.id, f.id, part);
+      v[part] = job ?? '';
+      if (!job) missing.push(part);
+      else if (job !== f.answer[part]) wrong.push(part);
+    }
+    values[f.id] = v;
+  }
+
+  return ws.fields.length > 0 ? { values, missing, wrong } : null;
+}
+
 type Listener = () => void;
 
 export class JobTagStore {

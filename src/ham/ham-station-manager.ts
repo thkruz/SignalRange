@@ -89,6 +89,9 @@ export interface MeasurementFilter {
 
 const measurementSeq = (m: HamMeasurement): number => Number(m.id.slice(2)) || 0;
 
+const NO_HINT_BRIEF = 'Open the Logbook at the bottom of the bench. Its front page is the Mission Brief; reading it ticks this off.';
+const NO_HINT_GENERIC = 'Open the Logbook and read this task on the checklist: each line under it says what still has to happen.';
+
 export class HamStationManager {
   private static instance_: HamStationManager | null = null;
   readonly config: HamStationConfig;
@@ -271,7 +274,12 @@ export class HamStationManager {
     const n = stages.length > 0 ? Math.min(asked + 1, stages.length) : asked + 1;
     c.event(`hint:${objectiveId}`);
     c.event(`hint:${objectiveId}:${n}`);
-    if (stages.length === 0) return done('Hint shown.', { stage: n, of: 0, texts: [] });
+    if (stages.length === 0) {
+      // Never an empty answer: the brief objective is the same in every Technician scenario, others get a pointer to the checklist
+      const text = objectiveId === 'review-mission-brief' ? NO_HINT_BRIEF : NO_HINT_GENERIC;
+
+      return done(text, { stage: 1, of: 1, texts: [text] });
+    }
     const texts = stages.slice(0, n);
 
     return done(texts[n - 1], { stage: n, of: stages.length, texts });

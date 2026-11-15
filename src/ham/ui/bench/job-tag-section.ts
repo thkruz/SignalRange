@@ -7,10 +7,10 @@
 
 import type { HamStationManager } from '../../ham-station-manager';
 import { button, h } from '../ui-kit';
-import { jobTags, tagTargets, tagTestId } from './job-tags';
+import { benchSheet, jobTags, tagTargets, tagTestId } from './job-tags';
 
 /** Null when nothing on this device is waiting for a job tag */
-export function buildJobTagSection(m: HamStationManager, deviceId: string, onChange: () => void): HTMLElement | null {
+export function buildJobTagSection(m: HamStationManager, deviceId: string, onChange: () => void, onCheck?: (worksheetId: string) => void): HTMLElement | null {
   const mine = tagTargets(m, true).filter((t) => t.deviceId === deviceId);
   if (mine.length === 0) return null;
   const sec = h('div', { class: 'ham-closeup-jobtags mb-2', 'data-testid': 'ham-closeup-jobtags' }, h('div', { class: 'small fw-bold', text: 'Job on the bench' }));
@@ -34,6 +34,14 @@ export function buildJobTagSection(m: HamStationManager, deviceId: string, onCha
       row.append(b);
     });
     sec.append(row);
+  }
+  // Tagging alone grades nothing: bench-only worksheets get a Check button here (others are checked in the Notebook)
+  if (onCheck) {
+    for (const wsId of new Set(mine.map((t) => t.worksheetId))) {
+      const ws = m.config.worksheets.find((w) => w.id === wsId);
+      if (!ws || !benchSheet(m, ws)) continue;
+      sec.append(button(`ham-tag-${wsId}-check`, 'Check my answers', () => onCheck(wsId), 'btn btn-sm btn-success mt-1', `Check my answers: ${ws.title}`));
+    }
   }
 
   return sec;

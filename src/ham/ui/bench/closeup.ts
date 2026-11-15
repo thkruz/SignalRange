@@ -21,7 +21,7 @@ import type { BenchScene, BenchSelection } from './bench-scene';
 import { Faceplate } from './faceplate';
 import { INSTRUMENTS, InstrumentFace, PROGRAMS } from './instrument-face';
 import { buildJobTagSection } from './job-tag-section';
-import { jobTags } from './job-tags';
+import { benchSheet, jobTags } from './job-tags';
 import { signalPath } from './signal-path';
 
 const KIND_NAME: Record<string, string> = {
@@ -156,6 +156,23 @@ export class Closeup {
     const r = this.ctx_.act(a);
     if (clueFor && r.ok) this.clues_.set(clueFor, r.message);
     this.update(this.ctx_.manager, true);
+  }
+
+  /** Check a bench-only match worksheet from the tags on the bench; the answer shows under the device */
+  private checkJobs_(worksheetId: string, deviceId: string): void {
+    const m = this.ctx_.manager;
+    const ws = m.config.worksheets.find((w) => w.id === worksheetId);
+    const sheet = ws ? benchSheet(m, ws) : null;
+    if (!ws || !sheet) return;
+    if (sheet.missing.length > 0) {
+      this.clues_.set(deviceId, `Not checked yet: pick a job for the ${sheet.missing.join(', ')} first.`);
+    } else {
+      const r = this.ctx_.act({ type: 'worksheet.answer', id: worksheetId, values: sheet.values });
+      const ok = r.ok && r.data?.correct === true;
+      this.clues_.set(deviceId, ok ? `Correct. ${r.message}` : `${r.message} Look again at: ${sheet.wrong.join(', ')}.`);
+    }
+    this.update(m, true);
+    this.scene_.render(m, true);
   }
 
   /** Put a held instrument down and park every instrument panel again */
@@ -355,10 +372,15 @@ export class Closeup {
     host.append(actions);
     const clue = this.clues_.get(d.id);
     if (clue) host.append(h('div', { class: 'ham-closeup-clue', role: 'note', 'data-testid': tid('ham-conn', d.id, 'clue'), text: clue }));
-    const jobSection = buildJobTagSection(m, d.id, () => {
-      this.update(this.ctx_.manager, true);
-      this.scene_.render(this.ctx_.manager, true);
-    });
+    const jobSection = buildJobTagSection(
+      m,
+      d.id,
+      () => {
+        this.update(this.ctx_.manager, true);
+        this.scene_.render(this.ctx_.manager, true);
+      },
+      (wsId) => this.checkJobs_(wsId, d.id)
+    );
     if (jobSection) host.append(jobSection);
     this.appendFaults_(m, [d.id]);
     // Connectors on this device

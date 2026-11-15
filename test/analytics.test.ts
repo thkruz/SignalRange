@@ -46,14 +46,19 @@ describe('Analytics consent', () => {
     expect(banner()).not.toBeNull();
   });
 
-  it('sits clear of the bottom dock: not centred, raised above the dock strip, compact (issue 306)', async () => {
-    await loadModules();
-    const { BANNER_POSITION_CSS: css } = await import('../src/analytics');
-    const px = (prop: string) => Number.parseInt(new RegExp(String.raw`(?:^|;\s*)${prop}:\s*(\d+)px`, 'u').exec(css)?.[1] ?? 'NaN', 10);
+  it('is not shown on a mission route and appears on home (issue 306)', async () => {
+    history.replaceState({}, '', '/campaigns/nats/scenarios/one');
+    const { Analytics, EventBus, Events } = await loadModules();
+    Analytics.init();
+    expect(banner()).toBeNull();
 
-    expect(px('bottom')).toBeGreaterThanOrEqual(80);
-    expect(css).not.toContain('margin:0 auto');
-    expect(px('max-width')).toBeLessThanOrEqual(400);
+    EventBus.getInstance().emit(Events.ROUTE_CHANGED, { path: '/' });
+    expect(banner()).not.toBeNull();
+    expect(banner()?.getAttribute('aria-label')).toBe('Analytics choice');
+
+    EventBus.getInstance().emit(Events.ROUTE_CHANGED, { path: '/campaigns/nats/scenarios/two' });
+    expect(banner()).toBeNull();
+    history.replaceState({}, '', '/');
   });
 
   it('stays dark under browser automation so e2e runs see no banner', async () => {

@@ -125,6 +125,8 @@ export class GameMenu {
     this.cleanup_ = null;
     if (!this.dialog_?.open) return;
     this.dialog_.close();
+    // Every close path (Resume, Escape, confirms) refocuses the brief; in an unfocused window that emits blur again.
+    this.blurPauseSuppressed_ = !document.hasFocus();
     setMenuPause('game-menu', false);
     if (this.returnFocus_?.isConnected) this.returnFocus_.focus({ preventScroll: true });
   }
@@ -159,8 +161,6 @@ export class GameMenu {
       button.onclick = () => {
         switch (button.dataset.action) {
           case 'resume':
-            // An unfocused window (automation, a second window holding focus) keeps emitting blur; Resume must stick.
-            this.blurPauseSuppressed_ = !document.hasFocus();
             this.close_();
             break;
           case 'back':

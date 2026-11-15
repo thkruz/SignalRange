@@ -49,6 +49,7 @@ export class Analytics {
   private static gtag_: ((...args: unknown[]) => void) | null = null;
   private static currentPath_: string | null = null;
   private static banner_: HTMLDivElement | null = null;
+  private static bannerWanted_ = false;
 
   static init(): void {
     if (Analytics.isInitialized_) {
@@ -66,6 +67,7 @@ export class Analytics {
 
     EventBus.getInstance().on(Events.ROUTE_CHANGED, ({ path }) => {
       Analytics.currentPath_ = path;
+      Analytics.syncBannerWithRoute_(path);
       Analytics.sendPageView_();
     });
 
@@ -73,6 +75,19 @@ export class Analytics {
     if (choice === 'granted') {
       Analytics.loadGtag_();
     } else if (choice === null) {
+      Analytics.bannerWanted_ = true;
+      Analytics.syncBannerWithRoute_(location.pathname);
+    }
+  }
+
+  /** The banner would cover the docked brief and sidebars, so it shows on home and campaign pages only. */
+  private static syncBannerWithRoute_(path: string): void {
+    if (!Analytics.bannerWanted_) return;
+    const onMission = /^\/campaigns\/[^/]+\/scenarios\//u.test(path);
+    if (onMission) {
+      Analytics.banner_?.remove();
+      Analytics.banner_ = null;
+    } else if (!Analytics.banner_) {
       Analytics.showBanner_();
     }
   }
@@ -169,6 +184,7 @@ export class Analytics {
         if (choice === 'granted') {
           Analytics.loadGtag_();
         }
+        Analytics.bannerWanted_ = false;
         Analytics.banner_?.remove();
         Analytics.banner_ = null;
       });

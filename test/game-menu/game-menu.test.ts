@@ -114,6 +114,18 @@ describe('game menus', () => {
     expect(document.querySelector<HTMLDialogElement>('#game-menu')?.open).toBe(true);
     vi.restoreAllMocks();
   });
+  it('Escape close while the window is unfocused does not reopen the pause on the next blur', () => {
+    const focused = vi.spyOn(document, 'hasFocus').mockReturnValue(false);
+    vi.spyOn(document, 'hidden', 'get').mockReturnValue(false);
+    GameMenu.getInstance().initialize();
+    window.dispatchEvent(new Event('blur'));
+    expect(document.querySelector<HTMLDialogElement>('#game-menu')?.open).toBe(true);
+    document.querySelector<HTMLDialogElement>('#game-menu')!.dispatchEvent(new Event('cancel', { cancelable: true }));
+    window.dispatchEvent(new Event('blur'));
+    expect(document.querySelector<HTMLDialogElement>('#game-menu')?.open).toBe(false);
+    focused.mockRestore();
+    vi.restoreAllMocks();
+  });
   it('keeps the mission paused through settings and preserves other overlay/brief holds on resume', () => {
     SimClock.pause('scenario');
     const menu = GameMenu.getInstance();

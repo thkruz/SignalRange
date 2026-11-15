@@ -510,7 +510,7 @@ export const natsEuScenario8Data: ScenarioData = {
         {
           type: 'satellite-pass-phase',
           description: 'SAR-1 Pass Over (LOS)',
-          params: { noradId: 61701, phase: 'set' },
+          params: { noradId: 61701, phase: 'setting-below', elevation: 5 }, // LOS at the 5 deg mask, not the horizon crossing
           mustMaintain: false,
         },
         {

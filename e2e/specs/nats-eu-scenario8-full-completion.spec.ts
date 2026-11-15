@@ -201,8 +201,8 @@ test.describe('nats-eu Scenario 8 Full Completion', () => {
   });
 
   test('[secure-the-chain] brings the chain down in order', async () => {
-    // The two minutes start at LOS (on-pass-phase), so fly the pass out first; the countdown is not running yet
-    await advanceMissionClockToUtc(page, '2027-03-16T00:41:00Z');
+    // The two minutes start at LOS, the 5 deg mask crossing 00:38:49 (horizon 00:39:58). Land between the two so the setting-below row latches on the landing sample
+    await advanceMissionClockToUtc(page, '2027-03-16T00:39:15Z');
     await page.waitForTimeout(2500);
     await disableHpa(page, missionControl);
     await setSwitch(page, '#buc-mute', true);

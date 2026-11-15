@@ -60,7 +60,7 @@
 
 /* ---- readout windows: live text on a painted blank window ---- */
 .pface .pf-window { display: flex; flex-direction: column; justify-content: center; padding: 0 5%; overflow: hidden; color: var(--pf-win-ink, #8fe8ff); font-family: var(--bs-font-monospace, monospace); }
-.pface .pf-window > .pf-cap { font-size: max(9px, 2.1cqw); letter-spacing: 0.1em; opacity: 0.8; line-height: 1.1; }
+.pface .pf-window > .pf-cap { font-size: max(11px, 2.1cqw); letter-spacing: 0.1em; opacity: 0.8; line-height: 1.1; }
 .pface .pf-window .pf-val, .pface .pf-window input { font-size: max(12px, 3.6cqw); line-height: 1.15; font-weight: 700; }
 .pface .pf-window input {
   width: 100%;
@@ -145,4 +145,5 @@
 .pface.pface-failed .trx-knob { background: radial-gradient(circle at 50% 50%, #5b5f66 0 62%, #1a1c20 63% 100%); border-radius: 50%; box-shadow: 0 0 0 2px #8a8374; }
 .pface.pface-failed .trx-knob-cap { background: radial-gradient(circle at 35% 30%, #8a8f98, #3a3d44); box-shadow: 0 2px 4px #000a; border-radius: 50%; }
 .pface.pface-failed .trx-legend { display: block; color: #e6dcc0; }
+.pface.pface-failed[data-face='meter'] .trx-legend { color: #181408; text-shadow: none; }
 .pface.pface-failed[data-face='swr'] .pf-meter { background: #efe3c2; border-radius: 4px; }

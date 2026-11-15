@@ -121,6 +121,24 @@ describe('C5 signal-hunter S1: PA-22 receive chain', () => {
     expect(carrierToNoiseDb(chain.antenna, service!)).toBeGreaterThan(MIN_VISIBLE_CN_DB);
   });
 
+  it('receives the SENTRY-9 beacon above the visible C/N when the dish is pointed at SENTRY-9', () => {
+    EventBus.destroy();
+    document.body.innerHTML = '<div id="n3-fe"></div>';
+    const aimed = {
+      ...(petersonGroundStation.antennasState[0] as Record<string, unknown>),
+      targetSatelliteId: 71002,
+      targetAzimuth: sentry9Satellite.az,
+      targetElevation: sentry9Satellite.el,
+    };
+    const adjacent = buildChain(petersonGroundStation as unknown as StationLike, 0, aimed);
+    settle(adjacent);
+
+    const beacon = adjacent.antenna.state.rxSignalsIn.find((s) => s.signalId === 'SENTRY-9-BEACON');
+
+    expect(beacon, 'SENTRY-9 beacon dropped under the antenna C/N floor').toBeDefined();
+    expect(carrierToNoiseDb(adjacent.antenna, beacon!)).toBeGreaterThan(MIN_VISIBLE_CN_DB);
+  });
+
   it('delivers the service carrier to the RX IF tap at 1365 MHz (LNB LO 5150)', () => {
     const atIf = chain.frontEnd.agcModule.outputSignals.find((s) => s.signalId === 'SENTRY-7-SERVICE');
 

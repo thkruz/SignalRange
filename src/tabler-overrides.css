@@ -1322,6 +1322,17 @@ body.campaign-signal-hunter {
   --mc-classification-fg: var(--mc-classification-secret-fg);
 }
 
+/* Locked checklist rows: the shared 0.5 opacity on a gray chip left the titles unreadable on the dark checklist window (phase 47 N4).
+   Scoped here so other campaigns keep their look. */
+body.campaign-signal-hunter .objectives-checklist .objective-item.locked {
+  opacity: 0.85;
+}
+
+body.campaign-signal-hunter .objectives-checklist .objective-item.locked strong {
+  background: #4b5563;
+  color: #f3f4f6;
+}
+
 body.campaign-signal-hunter .app-shell-page::before,
 body.campaign-signal-hunter .app-shell-page::after {
   content: 'SPECIAL PROGRAM // TRAINING USE ONLY';

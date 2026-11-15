@@ -27,9 +27,10 @@ const SENTRY_C_BAND_TRANSPONDER: Partial<TransponderPhysics> = { sfdDbwM2: -87, 
  *
  * Frequency plan (C-band):
  * - Allied service carrier: downlink 3785 MHz, H-pol
- * - Hostile uplink jammer (interferenceEvents): 6013 MHz H-pol, inside the
- *   SENTRY-7 transponder passband -> relayed to 3788 MHz downlink
- * - Station LNB LO 5150 MHz: 3785 MHz -> 1365 MHz IF, jammer -> 1362 MHz IF
+ * - Hostile uplinks (interferenceEvents, authored per scenario): H-pol, inside the
+ *   SENTRY-7 TP-1 passband (5990-6030 MHz), translated down by 2225 MHz. Scenario 1:
+ *   6021 MHz -> 3796 MHz downlink -> 1354 MHz IF
+ * - Station LNB LO 5150 MHz: 3785 MHz -> 1365 MHz IF; hostile IFs fall at 1354-1374 MHz
  */
 
 /** Peterson Annex ground station observer (Colorado) used for relative telemetry */
@@ -62,7 +63,7 @@ export const sentry7Satellite = new OrbitalSatellite(
         uplinkCenterFrequency: 6010e6 as RfFrequency, // passband 5990-6030 MHz
         physics: SENTRY_C_BAND_TRANSPONDER,
         bandwidth: 40e6 as Hertz,
-        frequencyOffset: 2.225e9 as Hertz, // uplink 6013 -> downlink 3788 (jammer)
+        frequencyOffset: 2.225e9 as Hertz, // uplink 6021 -> downlink 3796 (scenario 1 interferer)
         polarization: 'H',
         // Allied service carrier (direct downlink, modeled as a transponder beacon)
         beacon: {
@@ -117,7 +118,8 @@ export const sentry9Satellite = new OrbitalSatellite(
           signalId: 'SENTRY-9-BEACON',
           serverId: 1,
           noradId: 71002,
-          power: 0 as dBm,
+          // 0 dBm gave 3 dB C/N on the 9 m dish, too weak to read as a beacon; 10 dBm gives about 13 dB
+          power: 10 as dBm,
           bandwidth: 1e3 as Hertz,
           modulation: 'CW' as ModulationType,
           fec: 'null' as FECType,

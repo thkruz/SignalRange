@@ -168,7 +168,7 @@ export const petersonGroundStation = {
   spectrumAnalyzers: [
     {
       referenceLevel: -60 as dBm,
-      centerFrequency: 1364e6 as Hertz, // Between the service carrier (1365) and jammer (1362) IFs
+      centerFrequency: 1364e6 as Hertz, // 1349-1379 MHz: the service carrier (1365) and the interferer IFs (1354-1374) all sit inside the span
       span: 30e6 as Hertz,
       rbw: 100e3 as Hertz,
       minAmplitude: -110 as dBm,

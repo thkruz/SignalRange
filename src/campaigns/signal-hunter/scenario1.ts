@@ -113,7 +113,8 @@ export const signalHunterScenario1Data: ScenarioData = {
       id: 'review-mission-brief',
       nice: ['K0645'],
       title: 'Review the Incident Package',
-      description: 'Open the shift package for EW-27-0244: the SENTRY-7/9 transponder plan, the LNB and translation figures, and what the incident cell needs in the report.',
+      description:
+        'Open the Mission Brief from the left sidebar. It holds the SENTRY-7/9 transponder plan, the LNB and translation figures, and what the incident cell needs in the report.',
       groundStation: 'PA-22',
       freezesScenarioTimer: true,
       prerequisiteObjectiveIds: [],
@@ -157,7 +158,7 @@ export const signalHunterScenario1Data: ScenarioData = {
       nice: ['K0926', 'S0648'],
       title: 'Time the Cadence',
       description:
-        'Watch the clear-write trace against the mission clock through at least two full cycles. The correlator window is 12 s; you need to know how much on-time you have to work with.',
+        'Stay on the RX Analysis view and watch the carrier come and go against the mission clock, through at least two full cycles. Then answer the cadence question; the correlator window is 12 s, so you need to know how much on-time you have to work with.',
       groundStation: 'PA-22',
       prerequisiteObjectiveIds: ['detect-interference'],
       conditions: [
@@ -190,7 +191,8 @@ export const signalHunterScenario1Data: ScenarioData = {
       id: 'open-geolocation-console',
       nice: ['S0421'],
       title: 'Bring Up the Correlator',
-      description: 'Open the Geolocation console. SENTRY-9 is the adjacent collector for this pair; the correlator has its own tuning and does not touch the receive chain.',
+      description:
+        'Open the Geolocation tab. It holds the correlator: TARGET FREQUENCY, CORRELATION BANDWIDTH, and the CAPTURE, AUTO and COMPUTE FIX buttons. SENTRY-9 is the adjacent collector for this pair, and the correlator has its own tuning that does not touch the receive chain.',
       groundStation: 'PA-22',
       prerequisiteObjectiveIds: ['characterize-duty-cycle'],
       conditions: [
@@ -209,7 +211,7 @@ export const signalHunterScenario1Data: ScenarioData = {
       nice: ['K0926', 'K1032', 'S0421'],
       title: 'Capture Inside the Window',
       description:
-        'Work the interferer uplink back from the IF you measured (RF = LO - IF; uplink = RF + TP-1 translation) and set the correlation bandwidth to match the carrier. Start captures only while the carrier is up - the correlator needs it present for 70% of the 12 s window or it reports NO CORRELATION. Six good captures across at least two cycles.',
+        'Next: type the interferer uplink into TARGET FREQUENCY (RF = LO - IF, then uplink = RF + TP-1 translation) and set CORRELATION BANDWIDTH to the carrier width you measured. Then press CAPTURE in the first 30 seconds of an on-window, because the correlator needs the carrier present for 70% of its 12 s window or it reports NO CORRELATION. AUTO keeps retrying through the off windows. Collect six good captures.',
       groundStation: 'PA-22',
       prerequisiteObjectiveIds: ['open-geolocation-console'],
       conditions: [
@@ -217,6 +219,7 @@ export const signalHunterScenario1Data: ScenarioData = {
           type: 'geolocation-measurements-collected',
           description: 'At least 6 TDOA/FDOA captures on the interferer',
           params: { minCount: 6, interferenceEventId: 'quay-hostile' },
+          hint: 'Read the message under the CAPTURE button: NO CORRELATION means the frequency or bandwidth is off, or the carrier was in an off window.',
           mustMaintain: false,
         },
       ],
@@ -228,7 +231,7 @@ export const signalHunterScenario1Data: ScenarioData = {
       nice: ['K1032', 'K0926'],
       title: 'First Fix',
       description:
-        'COMPUTE FIX. The cell needs the emitter inside 25 km. If the ellipse is still wide, keep capturing through further cycles - the inclined SENTRY pair moves between windows and every new epoch rotates the FDOA line - then compute again.',
+        'Press COMPUTE FIX and read the result under Emitter Fix. The cell needs the emitter inside 25 km. If the ellipse is still wide, keep capturing through further cycles, because the inclined SENTRY pair moves between windows and every new epoch rotates the FDOA line, then compute again.',
       groundStation: 'PA-22',
       prerequisiteObjectiveIds: ['collect-measurements'],
       conditions: [
@@ -236,6 +239,7 @@ export const signalHunterScenario1Data: ScenarioData = {
           type: 'geolocation-fix-accuracy',
           description: 'Fix within 25 km of the emitter',
           params: { maxErrorKm: 25 },
+          hint: 'A wide ellipse means the captures are bunched in time; spread them across more cycles and compute again.',
           mustMaintain: false,
         },
       ],
@@ -246,7 +250,8 @@ export const signalHunterScenario1Data: ScenarioData = {
       id: 'file-incident-report',
       nice: ['S0842', 'S0593', 'K0926'],
       title: 'File the Characterization',
-      description: 'Complete the characterization block of EW-27-0244: duty cycle, occupied bandwidth, and polarization. The cell hands this to the site that goes out to look.',
+      description:
+        'Answer the three report questions that open next: duty cycle, occupied bandwidth and polarization. The cell hands the finished characterization to the site that goes out to look.',
       groundStation: 'PA-22',
       prerequisiteObjectiveIds: ['compute-fix'],
       conditions: [
@@ -321,7 +326,7 @@ export const signalHunterScenario1Data: ScenarioData = {
       nice: ['K1032'],
       title: 'Close the Ellipse',
       description:
-        'Stretch: keep capturing through further cycles - twelve or more captures - and recompute until the fix closes to within 15 km. A tighter ellipse is fewer square kilometres for the field team to search.',
+        'Stretch goal: keep capturing through further cycles until you have twelve captures, then press COMPUTE FIX again until the fix closes to within 15 km. A tighter ellipse is fewer square kilometres for the field team to search.',
       groundStation: 'PA-22',
       prerequisiteObjectiveIds: ['compute-fix'],
       isOptional: true,
@@ -343,4 +348,28 @@ export const signalHunterScenario1Data: ScenarioData = {
       points: 10,
     },
   ],
+  dialogClips: {
+    objectivesOnStart: {
+      'detect-interference': {
+        character: Character.CHARLIE_BROOKS,
+        audioUrl: '',
+        text: '<p>Select PA-22 and open the RX Analysis tab, which is the spectrum analyzer on the receive line. The service carrier sits at 1365 megahertz, and the max-hold trace keeps the highest level it has seen, so a carrier that blinks still leaves a mark. Wait for it to blink.</p>',
+      },
+      'open-geolocation-console': {
+        character: Character.CHARLIE_BROOKS,
+        audioUrl: '',
+        text: "<p>This is the correlator, the console that measures the carrier through two satellites at once. It's new to you, so read the buttons before you touch it. CAPTURE starts one twelve-second measurement, AUTO repeats that for you, and COMPUTE FIX turns your captures into a position.</p>",
+      },
+      'collect-measurements': {
+        character: Character.CHARLIE_BROOKS,
+        audioUrl: '',
+        text: "<p>Tune the correlator first, using the intermediate frequency you read off the analyzer. A capture only counts if the carrier is up for most of its twelve seconds, so start it early in an on-window. If you'd rather not watch the clock, press AUTO and let it retry through the quiet stretches.</p>",
+      },
+      'compute-fix': {
+        character: Character.CHARLIE_BROOKS,
+        audioUrl: '',
+        text: '<p>Now press COMPUTE FIX. The fix is a point on the map plus an error ellipse, the area the emitter could be in. If the ellipse is wide, take more captures from later cycles and compute again.</p>',
+      },
+    },
+  },
 };

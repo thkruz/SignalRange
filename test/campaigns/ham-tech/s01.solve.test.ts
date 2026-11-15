@@ -92,6 +92,19 @@ describe('S1 The First Signal solve', () => {
     expect(ok('recover-message')).toBe(true);
   });
 
+  it('opens the audio path even when the squelch was lowered before the signal was tuned', () => {
+    const h = harness(config());
+    const m = h.m;
+    h.actOk(USB);
+    h.actOk({ type: 'disconnect', connectionId: 'sdr.usb~laptop.usb1' });
+    h.actOk({ type: 'seat', connectionId: 'sdr-sma' });
+    h.actOk(USB);
+    h.actOk({ type: 'radio.set', deviceId: 'sdr', patch: { squelch: 0, volume: 9 } });
+    h.actOk({ type: 'radio.set', deviceId: 'sdr', patch: { vfoMHz: 146.55, filterHz: 15000 } });
+    h.advance(5);
+    expect(practical(hamTechS01Data, 'open-audio-path').every((c) => evaluateWith(c, m))).toBe(true);
+  });
+
   it('negative: a loose plug keeps the signal below the visible threshold', () => {
     const h = harness(config());
     h.actOk(USB);

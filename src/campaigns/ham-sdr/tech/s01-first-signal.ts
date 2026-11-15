@@ -17,11 +17,10 @@ import { s01Station } from './s01-station';
  *   Squelch 10 (about -70 dBm) stays closed on it either way, which is the "audio path" lesson.
  * - Filter lesson: the 15 kHz preset is correct; below 12 kHz the FM voice clips (filter-too-narrow).
  *
- * Evidence: rx:sdr:squelch-closed and rx:sdr:filter-too-narrow are transition events logged by the
- * receive loop the first time those impairments appear on the training signal. The player is told
- * to leave the squelch alone until the audio-path objective.
+ * Evidence: rx:sdr:filter-too-narrow is a transition event logged by the receive loop the
+ * first time that impairment appears on the training signal. The audio-path row is order-free: hearing
+ * the signal needs the squelch open, however early the player lowered it (issue 131).
  */
-const SQUELCH_CLOSED = 'rx:sdr:squelch-closed';
 const NARROW = 'rx:sdr:filter-too-narrow';
 
 export const hamTechS01Data: ScenarioData = {
@@ -69,7 +68,7 @@ export const hamTechS01Data: ScenarioData = {
       {
         id: 'find-training-signal',
         title: 'Find the Training Signal',
-        description: 'Tune to 146.550 MHz in FM and pick the 15 kHz filter. Leave the squelch alone for now. The signal should show up in the waterfall.',
+        description: 'Tune to 146.550 MHz in FM and pick the 15 kHz filter. The signal should show up in the waterfall.',
         points: 10,
         conditions: [
           signalVisible('training', 'sdr', 10, 'Training signal in the waterfall'),
@@ -81,13 +80,7 @@ export const hamTechS01Data: ScenarioData = {
         title: 'Open the Audio Path',
         description: 'You can see the signal but hear nothing. Turn the volume up first and watch what happens, then work out which control is holding the audio back and open it.',
         points: 15,
-        conditions: [
-          eventHappened(SQUELCH_CLOSED, {}, 'Squelch held the audio closed'),
-          heard('training', 0.5, { deviceId: 'sdr', afterEvent: SQUELCH_CLOSED }, 'Audio reaches the speaker'),
-          quiz('S01-Q3'),
-          quiz('S01-Q4'),
-          quiz('S01-A1'),
-        ],
+        conditions: [heard('training', 0.5, { deviceId: 'sdr' }, 'Audio reaches the speaker'), quiz('S01-Q3'), quiz('S01-Q4'), quiz('S01-A1')],
       },
       {
         id: 'compare-filter-settings',

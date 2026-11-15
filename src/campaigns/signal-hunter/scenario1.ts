@@ -366,7 +366,7 @@ export const signalHunterScenario1Data: ScenarioData = {
       'collect-measurements': {
         character: Character.CHARLIE_BROOKS,
         audioUrl: '',
-        text: "<p>Tune the correlator first, using the intermediate frequency you read off the analyzer. A capture only counts if the carrier is up for most of its twelve seconds, so start it early in an on-window. If you'd rather not watch the clock, press AUTO and let it retry through the quiet stretches.</p>",
+        text: "<p>Tune the correlator first: work the uplink back from the IF you read off the analyzer and enter that. A capture only counts if the carrier is up for most of its twelve seconds, so start it early in an on-window. If you'd rather not watch the clock, press AUTO and let it retry through the quiet stretches.</p>",
       },
       'compute-fix': {
         character: Character.CHARLIE_BROOKS,

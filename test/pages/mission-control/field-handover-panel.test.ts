@@ -201,6 +201,17 @@ describe('M14 handover panel', () => {
     expect(r.panel.fillFromReading('soc')).toBe(true);
   });
 
+  it('a reading under an empty line is labelled as a reading to copy, not a bare figure that looks entered', () => {
+    const r = rig();
+    r.plant.inspect('battery');
+    r.panel.sync();
+    const input = r.host.querySelector<HTMLInputElement>('input[data-hf-field="soc"]');
+    expect(input?.value).toBe('');
+    const hint = r.host.querySelector('[data-fhf="reading-soc"]')?.textContent ?? '';
+    expect(hint).toMatch(/^Latest reading: \d+(\.\d)?\./u);
+    expect(hint).toMatch(/write it on the line/u);
+  });
+
   it('the fuel hint names the body or fuel cap, and the generator inspect text carries the gauge figure that the hint promises', () => {
     const r = rig();
     r.panel.sync();

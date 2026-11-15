@@ -508,7 +508,8 @@ export class FieldHandoverPanel {
       return `No reading yet. Inspect the ${part} in its site close-up${where}. The result gives the figure it shows; then copy it here, or type the figure from the Power panel.`;
     }
 
-    return reading ?? '';
+    // A bare figure under an empty line reads like an entry already written in (blind run c6s2-r7), so say it is a reading to copy
+    return reading === undefined ? '' : `Latest reading: ${reading}. Press Copy latest reading to write it on the line, or type it.`;
   }
 
   /** A written-in answer as a column of printed tick boxes, one of which is ticked */

@@ -1,4 +1,5 @@
 import { Character, Emotion } from '@app/modal/character-enum';
+import type { Condition } from '@app/objectives/objective-types';
 import type { HandoverFormConfig } from '@app/physical/field-records';
 import { applyCampField, applyS2Power, CAMP_SERVICES, OLA_VOICE_CARD, SKYLINK_SERVICE } from './camp-field-config';
 import {
@@ -14,6 +15,8 @@ import {
 } from './frontline-conditions';
 import { checked, pick, repaired } from './report-choices';
 import { createFrontlineSettings, type FrontlineScenarioData, recordRunPower } from './scenario-support';
+
+const withNext = (condition: Condition, next: string): Condition => ({ ...condition, next });
 
 /**
  * S2: healthy camp service with 450 Wh initially available in the 1000 Wh battery.
@@ -196,18 +199,24 @@ export const frontlineScenario2Data: FrontlineScenarioData = {
       id: 's2-verify-service-reserve',
       title: 'Verify Service and Reserve',
       description:
-        'Run the 120-second assessment after the response. Confirm usable application service with an endpoint-report reading taken after the run finishes, record recovery time, and retain at least 200 Wh at the end.',
+        'Run the 120-second assessment after the response. Confirm usable application service with the report from the remote operator, taken on the Radio after the run finishes, and retain at least 200 Wh at the end.',
       groundStation: 'FL-01',
       prerequisiteObjectiveIds: ['s2-respond-to-outage'],
       points: 20,
       nice: ['T0153', 'K0741'],
       conditions: [
         forecastMeetsReserve({}, 'Configuration still keeps the reserve over the planning horizon'),
-        serviceReserveVerified(
-          { card: OLA_VOICE_CARD.id, service: SKYLINK_SERVICE, afterEvent: SUPPLY_EVENT, windowS: 120 },
-          'Low-delay run completed after the interruption with the reserve held through the same 120 seconds'
+        withNext(
+          serviceReserveVerified(
+            { card: OLA_VOICE_CARD.id, service: SKYLINK_SERVICE, afterEvent: SUPPLY_EVENT, windowS: 120 },
+            'Low-delay run completed after the interruption with the reserve held through the same 120 seconds'
+          ),
+          'open the laptop (Use laptop), open MissionRunner, choose the low-delay session card and press Start run.'
         ),
-        layerObserved(SKYLINK_SERVICE, 'application', { status: 'up' }, 'Result confirmed at the remote end (endpoint-report reading taken after the run finishes)'),
+        withNext(
+          layerObserved(SKYLINK_SERVICE, 'application', { status: 'up' }, 'Result confirmed at the remote end (endpoint-report reading taken after the run finishes)'),
+          'when the run has finished, pick up the Radio from the tray, call the remote operator and ask for the report. The laptop browser does not carry it.'
+        ),
       ],
     },
     {

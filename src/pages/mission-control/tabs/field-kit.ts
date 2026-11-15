@@ -18,10 +18,13 @@ export const missionItemBridge: {
   open: (item: MissionItem) => boolean;
   /** The scenario is still locked behind its mission brief */
   locked: () => boolean;
+  /** Close the Mission Brief window if it is showing (a held object takes the player's attention; the brief window is a web panel over the bench) */
+  closeBrief: () => void;
 } = {
   available: () => false,
   open: () => false,
   locked: () => false,
+  closeBrief: () => undefined,
 };
 
 /**

@@ -147,6 +147,10 @@ export class AssetTreeSidebar extends BaseElement {
     missionItemBridge.available = AssetTreeSidebar.missionItemAvailable;
     missionItemBridge.open = AssetTreeSidebar.openMissionItem;
     missionItemBridge.locked = () => this.isLocked_();
+    missionItemBridge.closeBrief = () => {
+      const box = SimulationManager.getInstance().missionBriefBox;
+      if (box?.isShowing()) box.close();
+    };
     this.groundStations_ = SimulationManager.getInstance().groundStations;
     this.satellites_ = this.authoredSatellites_();
     this.missionBriefUrl_ = ScenarioManager.getInstance().settings.missionBriefUrl ?? null;

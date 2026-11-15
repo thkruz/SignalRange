@@ -231,7 +231,10 @@ export abstract class DraggableBox {
    */
   protected dockBesideSite_(boxContent: HTMLElement, cascade = true): void {
     const vp = displayViewport();
-    const width = Math.min(360, Math.max(260, vp.width * 0.25));
+    // A box that shows a page (the brief) needs a readable column; its iframe then follows the box instead of its own 600 px
+    const frame = boxContent.querySelector<HTMLIFrameElement>('iframe');
+    const width = frame ? Math.min(480, Math.max(320, vp.width * 0.34)) : Math.min(360, Math.max(260, vp.width * 0.25));
+    if (frame) frame.style.width = '100%';
     // A box that asks for its own column sits left of the strip, level with the first box, so neither covers the other
     const column = this.siteDockColumn_() ? width + 16 : 0;
     const step = column > 0 ? 0 : (cascade ? (DraggableBox.siteDockCount_++ % 5) * 28 : 0);
@@ -285,6 +288,8 @@ export abstract class DraggableBox {
       boxContent.classList.remove('is-docked-left');
       boxContent.style.width = '';
       boxContent.style.maxHeight = '';
+      const frame = boxContent.querySelector<HTMLIFrameElement>('iframe');
+      if (frame) frame.style.width = '600px';
       if (this.width) boxContent.style.minWidth = this.width;
       this.placeOnFirstOpen(boxContent);
     }

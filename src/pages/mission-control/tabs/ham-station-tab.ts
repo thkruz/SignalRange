@@ -392,6 +392,8 @@ export class HamStationTab {
       brief.classList.add('is-due');
       brief.append(h('span', { class: 'visually-hidden', text: ' (read this first)' }));
     }
+    // The brief window is a web panel on the bench: picking an object up takes it away, so putting the object down leaves the bench clear
+    missionItemBridge.closeBrief();
     this.putDown_();
     this.heldKit_ = item?.id ?? null;
     this.heldNav_ = nav;

@@ -7,6 +7,7 @@
  */
 
 import type { Condition } from '@app/objectives/objective-types';
+import { boardTestPointNode } from './dc/circuit-board';
 import { HamStationManager } from './ham-station-manager';
 import type { HamContactRecord, HamMeasurement, RadioSettings } from './ham-types';
 import type { DmrAccessCode } from './ops/dmr';
@@ -87,34 +88,46 @@ export interface MeasuredSpec {
   afterEvent?: string;
   /** Only readings taken under the current station configuration count (default true) */
   current?: boolean;
+  /** Accept the probes in either order (magnitude checks; continuity always does) */
+  eitherLead?: boolean;
 }
 
 /**
- * Test points that are the same electrical node on the board. The meter offers both SUP- and GND,
- * so a reading taken on either one proves the same thing.
+ * On the board target, test points that sit on the same solver node are interchangeable
+ * (SUP- = GND = R1 B, SUP+ = F1 IN, F1 OUT = SW1 IN). Scoped to the board: elsewhere (psu-/radio-)
+ * the terminals teach where to measure, so ids must match exactly.
  */
-const canonicalTestPoint = (id: unknown): unknown => (id === 'tp-gnd' ? 'tp-supply-' : id);
+const sameProbe = (target: unknown, a: unknown, b: unknown): boolean => {
+  if (a === b) return true;
+  if (target !== 'board' || typeof a !== 'string' || typeof b !== 'string') return false;
+  const na = boardTestPointNode(a);
+  return na !== undefined && na === boardTestPointNode(b);
+};
 
 export function measured(spec: MeasuredSpec, description = `Measure ${spec.quantity}`): Condition {
-  const { red, black, ...fixedPlacement } = (spec.placement ?? {}) as Record<string, unknown>;
-  const probes = { red, black } as Record<string, unknown>;
+  const { red, black, ...fixedPlacement } = spec.placement ?? {};
+  const target = fixedPlacement.target;
+  // Continuity is non-polar; any other row may opt in with eitherLead (magnitude-only checks such as 0 V).
+  const eitherLead = spec.eitherLead === true || spec.quantity === 'continuity';
 
   return make(`measured:${JSON.stringify(spec)}`, description, (m) =>
     m
       .measurements({
         instrument: spec.instrument,
         quantity: spec.quantity,
-        placement: fixedPlacement as Record<string, string>,
+        placement: fixedPlacement,
         underLoad: spec.underLoad,
         afterEvent: spec.afterEvent,
       })
-      .some(
-        (x) =>
-          (['red', 'black'] as const).every((k) => probes[k] === undefined || canonicalTestPoint(x.placement[k]) === canonicalTestPoint(probes[k])) &&
-          (spec.current === false || m.isCurrent(x)) &&
-          (spec.min === undefined || x.value >= spec.min) &&
-          (spec.max === undefined || x.value <= spec.max)
-      )
+      .some((x) => {
+        const xr = x.placement.red;
+        const xb = x.placement.black;
+        const straight = (red === undefined || sameProbe(target, xr, red)) && (black === undefined || sameProbe(target, xb, black));
+        const swapped = eitherLead && (red === undefined || sameProbe(target, xb, red)) && (black === undefined || sameProbe(target, xr, black));
+        return (
+          (straight || swapped) && (spec.current === false || m.isCurrent(x)) && (spec.min === undefined || x.value >= spec.min) && (spec.max === undefined || x.value <= spec.max)
+        );
+      })
   );
 }
 

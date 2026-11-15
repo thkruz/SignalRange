@@ -38,6 +38,74 @@ describe('S2 Power on the Bench solve', () => {
     expect(evaluateWith(find, m)).toBe(true);
   });
 
+  describe('same-node test points on the board', () => {
+    const row = (id: string, label: string) => practical(hamTechS02Data, id).filter((c) => c.description === label);
+    const setup = () => {
+      const h = harness(config());
+      h.advance(2);
+      act(h, { type: 'meter.mode', mode: 'DCV' });
+      act(h, { type: 'meter.socket', socket: 'VOHM' });
+      return h;
+    };
+    const read = (h: H, red: string, black: string) => {
+      place(h, { red, black });
+      act(h, { type: 'meter.read' });
+    };
+    const offAndSetup = () => {
+      const h = setup();
+      act(h, { type: 'board.switch', deviceId: 'board', on: true });
+      act(h, { type: 'power', deviceId: 'board', on: false });
+      return h;
+    };
+
+    it('Supply reads 12.0 V accepts red F1 IN with black SUP-', () => {
+      const h = setup();
+      expect(row('measure-test-supply', 'Supply reads 12.0 V').every((c) => evaluateWith(c, h.m))).toBe(false);
+      read(h, 'tp-f1-in', 'tp-supply-');
+      expect(row('measure-test-supply', 'Supply reads 12.0 V').every((c) => evaluateWith(c, h.m))).toBe(true);
+    });
+
+    it('Supply reads 12.0 V still rejects swapped probes (a negative reading)', () => {
+      const h = setup();
+      read(h, 'tp-supply-', 'tp-f1-in');
+      expect(h.m.lastMeasurement({ instrument: 'multimeter', quantity: 'voltage' })?.value).toBeLessThan(-11);
+      expect(row('measure-test-supply', 'Supply reads 12.0 V').every((c) => evaluateWith(c, h.m))).toBe(false);
+      expect(row('measure-test-supply', 'Reversed probes read negative').every((c) => evaluateWith(c, h.m))).toBe(true);
+    });
+
+    it('board-off 0 V accepts black R1 B', () => {
+      const h = offAndSetup();
+      read(h, 'tp-supply+', 'tp-r1-b');
+      expect(row('find-open-branch', 'Board verified off (0 V)').every((c) => evaluateWith(c, h.m))).toBe(true);
+    });
+
+    it('board-off 0 V accepts the probes left swapped', () => {
+      const h = offAndSetup();
+      read(h, 'tp-supply-', 'tp-supply+');
+      expect(row('find-open-branch', 'Board verified off (0 V)').every((c) => evaluateWith(c, h.m))).toBe(true);
+    });
+
+    it('board-off 0 V still rejects a reading that is not zero (board on)', () => {
+      const h = setup();
+      act(h, { type: 'board.switch', deviceId: 'board', on: true });
+      read(h, 'tp-supply-', 'tp-supply+');
+      expect(row('find-open-branch', 'Board verified off (0 V)').every((c) => evaluateWith(c, h.m))).toBe(false);
+    });
+
+    it('continuity accepts the same-node ids F1 OUT for SW1 IN', () => {
+      const h = offAndSetup();
+      const cont = () => row('find-open-branch', 'No continuity across the SW1 contact').every((c) => evaluateWith(c, h.m));
+      act(h, { type: 'meter.mode', mode: 'CONT' });
+      read(h, 'tp-sw1-in', 'tp-sw1-out');
+      expect(cont()).toBe(true);
+      HamStationManager.destroy();
+      const h2 = offAndSetup();
+      act(h2, { type: 'meter.mode', mode: 'CONT' });
+      read(h2, 'tp-f1-out', 'tp-sw1-out');
+      expect(row('find-open-branch', 'No continuity across the SW1 contact').every((c) => evaluateWith(c, h2.m))).toBe(true);
+    });
+  });
+
   it('solves every objective in order', () => {
     const h = harness(config());
     const m = h.m;

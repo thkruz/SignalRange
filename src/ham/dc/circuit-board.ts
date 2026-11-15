@@ -59,6 +59,11 @@ const TEST_POINTS: Readonly<Record<string, string>> = {
   'tp-gnd': 'gnd',
 };
 
+/** Solver node of a named board test point (static; ids that share a node are electrically identical). */
+export function boardTestPointNode(name: string): string | undefined {
+  return TEST_POINTS[name];
+}
+
 /** Series break points -> link element and orientation. */
 const BREAK_POINTS: Readonly<Record<string, { elementId: string; forward: boolean }>> = {
   'r1-branch': { elementId: 'link-r1', forward: true },
@@ -173,7 +178,7 @@ export class CircuitBoard implements MeterCircuit {
     return this.state.powered;
   }
   testPointNode(name: string): string | undefined {
-    return TEST_POINTS[name];
+    return boardTestPointNode(name);
   }
   breakPoint(name: string): { elementId: string; forward: boolean } | undefined {
     return BREAK_POINTS[name];

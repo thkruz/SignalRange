@@ -87,7 +87,15 @@ export const hamTechS02Data: ScenarioData = {
         points: 20,
         conditions: [
           measured(
-            { instrument: 'multimeter', quantity: DCV, placement: { target: BOARD, red: 'tp-supply+', black: 'tp-supply-' }, min: -0.05, max: 0.05, afterEvent: 'power:board' },
+            {
+              instrument: 'multimeter',
+              quantity: DCV,
+              placement: { target: BOARD, red: 'tp-supply+', black: 'tp-supply-' },
+              min: -0.05,
+              max: 0.05,
+              afterEvent: 'power:board',
+              eitherLead: true,
+            },
             'Board verified off (0 V)'
           ),
           measured(

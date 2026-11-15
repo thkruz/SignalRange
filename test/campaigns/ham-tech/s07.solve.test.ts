@@ -28,6 +28,16 @@ describe('S7 solve (KF0SRT)', () => {
     expect([...quizLocalIds(data)].sort()).toEqual([...expectedQuizIds('07')].sort());
   });
 
+  it('compare-probe-points is not satisfied by mixed-side probes (psu and radio terminals are not interchangeable)', () => {
+    h = harness(data.settings.hamStation!);
+    h.advance(12);
+    h.advance(3);
+    const before = failing(data, 'compare-probe-points', h.m).length;
+    read('psu+', 'radio-');
+    read('radio+', 'psu-');
+    expect(failing(data, 'compare-probe-points', h.m).length).toBe(before);
+  });
+
   it('can be solved step by step with the manager', () => {
     h = harness(data.settings.hamStation!);
     h.advance(12);

@@ -70,7 +70,7 @@ export const sentry7Satellite = new OrbitalSatellite(
           signalId: 'SENTRY-7-SERVICE',
           serverId: 1,
           noradId: 71001,
-          power: 20 as dBm,
+          power: 50 as dBm, // service-carrier EIRP: 20 dBm put it 15.6 dB under the 9 m dish's noise, below the antenna's -10 dB C/N floor, so it never reached the analyzer (phase 47 N3); 50 dBm is about 14 dB C/N
           bandwidth: 8e6 as Hertz,
           modulation: 'QPSK' as ModulationType,
           fec: '3/4' as FECType,

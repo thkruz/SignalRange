@@ -1,5 +1,6 @@
 import { CampaignManager } from '@app/campaigns/campaign-manager';
 import { ScenarioManager } from '@app/scenario-manager';
+import { SimulationManager } from '@app/simulation/simulation-manager';
 import type { AppState } from '@app/sync/storage';
 import { syncManager } from '@app/sync/storage';
 import { ReplaySession } from '@app/user-account/replay-session';
@@ -13,9 +14,21 @@ export interface TestCheckpoint {
   state: AppState;
 }
 
+/** What a spectrum analyzer is drawing right now, in dBm per display pixel */
+export interface SpectrumTraceSummary {
+  /** Strongest pixel */
+  peakDbm: number;
+  /** Median pixel: the noise floor when the trace is mostly empty */
+  floorDbm: number;
+  /** Pixels in the trace */
+  pixels: number;
+}
+
 export interface SrTestApi {
   /** The current game as an AppState, built by the same collector the progress save uses */
   captureCheckpoint(): TestCheckpoint;
+  /** Summary of the live trace of one ground station analyzer, or null when the station or analyzer is missing */
+  spectrumTrace(groundStationId: string, analyzerIndex?: number): SpectrumTraceSummary | null;
 }
 
 declare global {
@@ -24,6 +37,16 @@ declare global {
     __SR_START_CHECKPOINT__?: { scenarioId: string; state: AppState; label?: string };
     __srTest?: SrTestApi;
   }
+}
+
+export function spectrumTrace(groundStationId: string, analyzerIndex = 0): SpectrumTraceSummary | null {
+  const station = SimulationManager.getInstance().groundStations.find((gs) => gs.state.id === groundStationId);
+  const data = station?.spectrumAnalyzers[analyzerIndex]?.spectrumDataProcessor.combinedData;
+  if (!data || data.length === 0) return null;
+
+  const sorted = Array.from(data).sort((a, b) => a - b);
+
+  return { peakDbm: sorted[sorted.length - 1], floorDbm: sorted[Math.floor(sorted.length / 2)], pixels: sorted.length };
 }
 
 /** Development builds only (the e2e builds); production bundles drop the hook, and it is inert even if reached. */
@@ -53,7 +76,7 @@ export function captureCheckpoint(): TestCheckpoint {
 export function installTestHook(): void {
   if (!isTestHookEnabled() || typeof window === 'undefined') return;
 
-  window.__srTest = { captureCheckpoint };
+  window.__srTest = { captureCheckpoint, spectrumTrace };
 
   const start = window.__SR_START_CHECKPOINT__;
   if (start?.scenarioId && start.state) {

@@ -73,7 +73,12 @@ export function meterRead(core: StationCore): ActionResult {
     unit,
     placement,
     underLoad,
-    context: { display: r.display, beep: Boolean(r.beep), overload: Boolean(r.overload) },
+    context: {
+      display: r.display,
+      beep: Boolean(r.beep),
+      overload: Boolean(r.overload),
+      ...(c.kind === 'board' ? { sw1On: Boolean(core.boards.get(core.state.meter.targetId ?? '')?.state.sw1On) } : {}),
+    },
     note: r.warning,
   });
 

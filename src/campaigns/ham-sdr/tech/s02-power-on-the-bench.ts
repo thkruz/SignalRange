@@ -99,7 +99,14 @@ export const hamTechS02Data: ScenarioData = {
             'Board verified off (0 V)'
           ),
           measured(
-            { instrument: 'multimeter', quantity: 'continuity', placement: { target: BOARD, red: 'tp-sw1-in', black: 'tp-sw1-out' }, min: 1000, afterEvent: 'power:board' },
+            {
+              instrument: 'multimeter',
+              quantity: 'continuity',
+              placement: { target: BOARD, red: 'tp-sw1-in', black: 'tp-sw1-out' },
+              min: 1000,
+              afterEvent: 'power:board',
+              sw1On: true,
+            },
             'No continuity across the SW1 contact'
           ),
         ],

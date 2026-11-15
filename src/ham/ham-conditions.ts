@@ -90,6 +90,8 @@ export interface MeasuredSpec {
   current?: boolean;
   /** Accept the probes in either order (magnitude checks; continuity always does) */
   eitherLead?: boolean;
+  /** Board readings only: require the reading to have been taken with SW1 switched on (or off) */
+  sw1On?: boolean;
 }
 
 /**
@@ -125,7 +127,11 @@ export function measured(spec: MeasuredSpec, description = `Measure ${spec.quant
         const straight = (red === undefined || sameProbe(target, xr, red)) && (black === undefined || sameProbe(target, xb, black));
         const swapped = eitherLead && (red === undefined || sameProbe(target, xb, red)) && (black === undefined || sameProbe(target, xr, black));
         return (
-          (straight || swapped) && (spec.current === false || m.isCurrent(x)) && (spec.min === undefined || x.value >= spec.min) && (spec.max === undefined || x.value <= spec.max)
+          (straight || swapped) &&
+          (spec.current === false || m.isCurrent(x)) &&
+          (spec.sw1On === undefined || x.context?.sw1On === spec.sw1On) &&
+          (spec.min === undefined || x.value >= spec.min) &&
+          (spec.max === undefined || x.value <= spec.max)
         );
       })
   );

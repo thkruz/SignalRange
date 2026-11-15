@@ -234,4 +234,33 @@ describe('S2 OL readings are logged (open contact)', () => {
     const lowOnly = measured({ instrument: 'multimeter', quantity: 'continuity', placement: { target: 'board', red: 'tp-sw1-in', black: 'tp-sw1-out' }, max: 100 }, 'low');
     expect(evaluateWith(lowOnly, h.m)).toBe(false);
   });
+
+  const offBench = () => {
+    const h = harness(config());
+    h.advance(2);
+    act(h, { type: 'power', deviceId: 'board', on: false });
+    act(h, { type: 'meter.mode', mode: 'CONT' });
+    return h;
+  };
+  const NC = 'No continuity across the SW1 contact';
+
+  it('an OL reading across SW1 taken with SW1 off does not tick the row, in either lead order', () => {
+    const h = offBench();
+    read(h, 'tp-sw1-in', 'tp-sw1-out');
+    expect(row('find-open-branch', NC).every((c) => evaluateWith(c, h.m))).toBe(false);
+    read(h, 'tp-sw1-out', 'tp-sw1-in');
+    expect(row('find-open-branch', NC).every((c) => evaluateWith(c, h.m))).toBe(false);
+  });
+
+  it('closing SW1 afterwards and reading again ticks the row, in either lead order', () => {
+    const h = offBench();
+    read(h, 'tp-sw1-in', 'tp-sw1-out');
+    act(h, { type: 'board.switch', deviceId: 'board', on: true });
+    read(h, 'tp-sw1-in', 'tp-sw1-out');
+    expect(row('find-open-branch', NC).every((c) => evaluateWith(c, h.m))).toBe(true);
+    const h2 = offBench();
+    act(h2, { type: 'board.switch', deviceId: 'board', on: true });
+    read(h2, 'tp-sw1-out', 'tp-sw1-in');
+    expect(row('find-open-branch', NC).every((c) => evaluateWith(c, h2.m))).toBe(true);
+  });
 });

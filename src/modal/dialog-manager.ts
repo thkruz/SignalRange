@@ -127,7 +127,7 @@ export class DialogManager {
         <div class="dialog-content">
           <div class="dialog-avatar-container col-4">
             <div class="dialog-avatar">
-              ${renderCharacterPortrait(character, emotion, { alt: character })}
+              ${renderCharacterPortrait(character, emotion)}
             </div>
             <div class="dialog-character-info">
               <div class="dialog-character-name">${characterName}</div>

@@ -73,7 +73,7 @@ describe('modals with an uncast speaker (no avatar <img>)', () => {
     expect(() => (modal as unknown as { handleOptionClick_(i: number): void }).handleOptionClick_(1)).not.toThrow();
     expect(document.getElementById('quiz-feedback')?.textContent).toContain('Because B.');
     expect(document.getElementById('quiz-continue-btn')).not.toBeNull();
-    // wrong-answer reset timer path
+    // pending timers drain under fake time
     vi.runAllTimers();
     vi.useRealTimers();
   });
@@ -97,6 +97,7 @@ describe('modals with an uncast speaker (no avatar <img>)', () => {
   });
 
   it('decision: correct and incorrect grading render feedback and Continue without throwing', () => {
+    vi.useFakeTimers();
     DecisionModal.getInstance();
     const bus = EventBus.getInstance();
     bus.emit(Events.DECISION_SHOW, {
@@ -115,5 +116,7 @@ describe('modals with an uncast speaker (no avatar <img>)', () => {
     expect(() => bus.emit(Events.DECISION_GRADED, { ...base })).not.toThrow();
     expect(() => bus.emit(Events.DECISION_GRADED, { ...base, optionIndex: 1, correct: true })).not.toThrow();
     expect(document.getElementById('decision-continue-btn')).not.toBeNull();
+    expect(() => vi.runAllTimers()).not.toThrow();
+    vi.useRealTimers();
   });
 });

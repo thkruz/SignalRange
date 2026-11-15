@@ -33,3 +33,5 @@
   border-radius: 3px;
   font-size: 1.1rem;
 }
+.character-portrait-plate--glyph { color: var(--mc-text-secondary, #b8b8b8); }
+.character-portrait-plate--glyph svg { display: block; }

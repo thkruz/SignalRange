@@ -31,7 +31,36 @@ describe('character portraits', () => {
     expect(markup).toContain('charlie-brooks-happy.png');
     expect(markup).not.toContain('placeholder-avatar');
     expect(markup).toMatch(/onerror="[^"]*hidden=true/u);
+    expect(markup).not.toContain('this.onerror=null');
+    expect(markup).toMatch(/onload="this\.hidden=false;this\.nextElementSibling\.hidden=true/u);
+    expect(markup).toContain('alt="Charlie Brooks"');
     expect(markup).toContain('hidden>CB<');
+  });
+});
+
+describe('non-person and decorative plates', () => {
+  it('NOTICE and SYSTEM show a glyph, not initials', () => {
+    for (const c of [Character.NOTICE, Character.SYSTEM]) {
+      const markup = renderCharacterPortrait(c, undefined);
+      expect(markup).toContain('<svg');
+      expect(markup).toContain('character-portrait-plate--glyph');
+      expect(markup).not.toContain('<img');
+    }
+  });
+
+  it('an empty alt hides the plate from assistive tech, otherwise it is named', () => {
+    expect(renderCharacterPortrait(Character.MAREK_DOMANSKI, undefined, { alt: '' })).toContain('aria-hidden="true"');
+    expect(renderCharacterPortrait(Character.MAREK_DOMANSKI, undefined)).toContain('role="img" aria-label="Marek');
+  });
+
+  it('the dev hint warns once per missing asset', () => {
+    const hook = (window as unknown as Record<string, (s: string) => void>).__srPortraitMissing;
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    hook('/a.png');
+    hook('/a.png');
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][0]).toContain('r2:pull');
+    warn.mockRestore();
   });
 });
 

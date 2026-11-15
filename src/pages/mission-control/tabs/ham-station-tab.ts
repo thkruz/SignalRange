@@ -168,7 +168,11 @@ export class HamStationTab {
     EventBus.getInstance().on(Events.HAM_STATION_UPDATED, this.boundUpdate_);
     // A toast shown before an object is picked up would sit under its modal: it goes, and the announcer follows the top dialog
     this.unsubImmersive_ = ImmersiveView.onChange((dialog, change) => {
-      if (change === 'open') this.hideToast_();
+      if (change === 'open') {
+        this.hideToast_();
+        // Any bench object picked up (a device, an instrument face, a radio front panel) takes the brief window away; the logbook path closes it in openPage_
+        if (this.root_.isConnected && !dialog.contains(this.notebook_)) missionItemBridge.closeBrief();
+      }
       const top = change === 'open' ? dialog : ImmersiveView.topDialog();
       (top ?? this.root_.querySelector('.ham-station-top') ?? this.root_).append(this.announcer_);
     });

@@ -7,14 +7,14 @@ import { waitForSimulationReady } from '../utils/simulation-helpers';
 /**
  * N1: the Mission Brief body must fit inside its window in every console (C1 centred, C3 left dock, C6 site dock).
  * The brief is an iframe in a draggable box; its right edge (and the box's own right edge) must be on screen and
- * the iframe must not be wider than the box content.
+ * the iframe must not be wider than the box content. The brief page is cross-origin, so its own text overflow cannot be checked here.
  */
 const VIEWPORTS = [
   { width: 1280, height: 720 },
   { width: 1600, height: 1000 },
 ];
 
-async function expectBriefFits(page: Page, shot: string): Promise<void> {
+async function expectBriefFits(page: Page, shot: string, outDir: string): Promise<void> {
   const box = page.locator('#draggable-html-box-mission-brief');
   await expect(box).toBeVisible();
   const frame = box.locator('iframe');
@@ -31,42 +31,38 @@ async function expectBriefFits(page: Page, shot: string): Promise<void> {
     const boxEl = document.querySelector<HTMLElement>('#draggable-html-box-mission-brief')!;
     const content = boxEl.querySelector<HTMLElement>('.draggable-box__content') ?? boxEl;
     const f = boxEl.querySelector<HTMLIFrameElement>('iframe')!;
-    const doc = f.contentDocument?.documentElement;
     return {
       box: content.getBoundingClientRect().toJSON() as { left: number; right: number; width: number },
       frame: f.getBoundingClientRect().toJSON() as { left: number; right: number; width: number },
-      docScrollW: doc?.scrollWidth ?? 0,
-      docClientW: doc?.clientWidth ?? 0,
     };
   });
   expect(m.box.right, 'window right edge on screen').toBeLessThanOrEqual(vp.width);
   expect(m.frame.right, 'brief body right edge inside its window').toBeLessThanOrEqual(m.box.right + 1);
-  expect(m.docScrollW, 'brief page has no horizontal overflow').toBeLessThanOrEqual(m.docClientW + 1);
-  await page.screenshot({ path: `shots/${shot}.png` });
+  await page.screenshot({ path: `${outDir}/${shot}.png` });
 }
 
 for (const vp of VIEWPORTS) {
   const tag = `${vp.width}x${vp.height}`;
-  fixtureTest(`C1 NATS S1 brief fits at ${tag}`, async ({ page, missionControlPage: mc }) => {
+  fixtureTest(`C1 NATS S1 brief fits at ${tag}`, async ({ page, missionControlPage: mc }, testInfo) => {
     await page.setViewportSize(vp);
     await mc.gotoScenario('nats', 'nats-scenario1');
     await waitForSimulationReady(page);
     await mc.dismissDialogIfPresent();
     await mc.openMissionBrief();
-    await expectBriefFits(page, `brief-c1-${tag}`);
+    await expectBriefFits(page, `brief-c1-${tag}`, testInfo.outputDir);
   });
 
-  fixtureTest(`C3 ham-tech S1 brief fits at ${tag}`, async ({ page, missionControlPage: mc }) => {
+  fixtureTest(`C3 ham-tech S1 brief fits at ${tag}`, async ({ page, missionControlPage: mc }, testInfo) => {
     await page.setViewportSize(vp);
     await mc.gotoScenario(HAM_CAMPAIGN, 'ham-tech-s01');
     await waitForSimulationReady(page);
     await mc.dismissDialogIfPresent();
     await page.locator('[data-field-kit="logbook"]').click();
     await page.locator('.field-kit-sheets [data-field-mission="brief"]').click();
-    await expectBriefFits(page, `brief-c3-${tag}`);
+    await expectBriefFits(page, `brief-c3-${tag}`, testInfo.outputDir);
   });
 
-  test(`C6 frontline S1 brief fits at ${tag}`, async ({ page }) => {
+  test(`C6 frontline S1 brief fits at ${tag}`, async ({ page }, testInfo) => {
     test.setTimeout(120000);
     await page.setViewportSize(vp);
     await openFrontlineScenario(page, 1);
@@ -84,11 +80,11 @@ for (const vp of VIEWPORTS) {
     });
     expect(m.paperRight, 'clipboard sheet on screen').toBeLessThanOrEqual(vp.width);
     expect(m.textRight, 'brief text right edge inside the sheet').toBeLessThanOrEqual(m.paperRight + 1);
-    await page.screenshot({ path: `shots/brief-c6-${tag}.png` });
+    await page.screenshot({ path: testInfo.outputPath(`brief-c6-${tag}.png`) });
   });
 }
 
-fixtureTest('C3 ham-tech S1: the brief window does not cover the bench after an object is put down', async ({ page, missionControlPage: mc }) => {
+fixtureTest('C3 ham-tech S1: the brief window does not cover the bench after an object is put down', async ({ page, missionControlPage: mc }, testInfo) => {
   await page.setViewportSize(VIEWPORTS[0]);
   await mc.gotoScenario(HAM_CAMPAIGN, 'ham-tech-s01');
   await waitForSimulationReady(page);
@@ -104,5 +100,20 @@ fixtureTest('C3 ham-tech S1: the brief window does not cover the bench after an 
   await expect(page.locator('.immersive-view[open]')).toHaveCount(0);
   await expect(page.locator('#draggable-html-box-mission-brief')).toBeHidden();
   await expect(page.locator('[data-field-kit="logbook"]')).toBeVisible();
-  await page.screenshot({ path: 'shots/bench-after-put-down-c3-1280x720.png' });
+  await page.screenshot({ path: testInfo.outputPath('bench-after-put-down-c3-1280x720.png') });
+});
+
+/** A held view opened from the bench itself (a device close-up) also takes the brief window away */
+fixtureTest('C3 ham-tech S1: picking up a bench device closes the brief window', async ({ page, missionControlPage: mc }) => {
+  await page.setViewportSize(VIEWPORTS[0]);
+  await mc.gotoScenario(HAM_CAMPAIGN, 'ham-tech-s01');
+  await waitForSimulationReady(page);
+  await mc.dismissDialogIfPresent();
+  await page.locator('[data-field-kit="logbook"]').click();
+  await page.locator('.field-kit-sheets [data-field-mission="brief"]').click();
+  await expect(page.locator('#draggable-html-box-mission-brief')).toBeVisible();
+  // Click a device on the bench (the SVG hit layer): the station equipment view opens and the brief goes
+  await page.locator('.ham-station-scene g.bench-dev[data-dev]').first().click();
+  await expect(page.locator('.immersive-view[open]')).toHaveCount(1);
+  await expect(page.locator('#draggable-html-box-mission-brief')).toBeHidden();
 });

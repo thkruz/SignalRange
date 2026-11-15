@@ -323,7 +323,7 @@ export class Closeup {
         { class: 'ham-closeup-title' },
         h('strong', { text: d.label }),
         (KIND_NAME[d.kind] ?? d.kind) === d.label ? null : h('span', { class: 'text-secondary small ms-2', text: KIND_NAME[d.kind] ?? d.kind }),
-        // A device with a power switch shows its state on the switch; the pill would say it twice (only the SDR, which has no switch, keeps it)
+        // The pill showed 'energized' (switch on and supply, fuse, battery, polarity good), which the bench art, faceplates and front panel already show on the device; only the SDR, which has no switch, keeps it
         d.kind !== 'sdr' ? null : badge(m.energized(d.id) ? 'on' : 'off', m.energized(d.id) ? 'success' : 'secondary')
       )
     );

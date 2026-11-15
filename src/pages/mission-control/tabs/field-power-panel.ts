@@ -396,10 +396,7 @@ export class FieldPowerPanel {
     }
     this.text_('forecast-note', preview ? '(preview of your picks, nothing changed yet)' : '(current modes)');
     const basis = f.basis === 'battery-only' ? 'on batteries alone' : 'with the generator';
-    this.text_(
-      'forecast-line',
-      `After ${formatDuration(f.horizonS)} ${basis}: ${Math.round(f.projectedSocWh)} Wh left. ${f.meetsReserve ? 'Meets the reserve.' : 'Falls below the reserve.'}`
-    );
+    this.text_('forecast-line', `After ${formatDuration(f.horizonS)} ${basis}: ${Math.round(f.projectedSocWh)} Wh left.`);
     const extra: string[] = [];
     if (f.secondsToReserve !== null && r.reserveWh !== null) {
       extra.push(`Reserve reached in ${formatDuration(f.secondsToReserve)}.`);
@@ -412,7 +409,7 @@ export class FieldPowerPanel {
     }
     this.text_('forecast-extra', extra.join(' '));
     const box = this.el_('forecast-box');
-    if (box) box.className = `fpp-forecast ${f.meetsReserve ? 'fpp-ok' : 'fpp-bad'}`;
+    if (box) box.className = `fpp-forecast ${r.reserveWh === null ? 'fpp-none' : f.meetsReserve ? 'fpp-ok' : 'fpp-bad'}`;
     const apply = this.host_.querySelector<HTMLButtonElement>('button[data-power-action="apply"]');
     if (apply) apply.disabled = !preview;
     this.text_('result', this.lastResult_.join(' '));

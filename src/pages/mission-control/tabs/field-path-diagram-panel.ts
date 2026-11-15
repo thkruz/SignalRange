@@ -231,15 +231,22 @@ export class FieldPathDiagramPanel {
         const bySeg = DIAGRAM_SEGMENTS.map((seg) => lane.nodes.filter((n) => n.segment === seg).map((n) => pl.find((p) => p.id === n.id))).filter((c) => c.length > 0);
         const segs: string[] = [];
         for (let c = 0; c + 1 < bySeg.length; c++) {
-          const from = bySeg[c][0];
-          const to = bySeg[c + 1][0];
-          if (!from || !to) continue;
-          segs.push(`<line class="fpd-wire" x1="${from.x + NODE_W}" y1="${from.y + NODE_H / 2}" x2="${to.x}" y2="${to.y + NODE_H / 2}"/>`);
+          // Every box in both columns gets a wire: pair by row, the shorter column's last box fans out
+          const a = bySeg[c];
+          const b = bySeg[c + 1];
+          for (let k = 0; k < Math.max(a.length, b.length); k++) {
+            const from = a[Math.min(k, a.length - 1)];
+            const to = b[Math.min(k, b.length - 1)];
+            if (!from || !to) continue;
+            segs.push(`<line class="fpd-wire" x1="${from.x + NODE_W}" y1="${from.y + NODE_H / 2}" x2="${to.x}" y2="${to.y + NODE_H / 2}"/>`);
+          }
         }
 
         return segs.join('');
       })
       .join('');
+    // A box shared by two lanes is ringed once, so the footer count matches what is drawn
+    const ringed = new Set<string>();
     const nodes = layout.placements
       .map((p) => {
         const node = diagram.lanes[p.laneIndex].nodes.find((n) => n.id === p.id);
@@ -254,9 +261,11 @@ export class FieldPathDiagramPanel {
         const tspans = lines.map((ln, k) => `<tspan x="${p.x + NODE_W / 2}" dy="${k === 0 ? 0 : 11}">${escapeHtml(ln)}</tspan>`).join('');
         const tip = shared && sharedIds.has(p.id) ? `${node.label} (shared by ${node.serviceIds.length} services)` : node.label;
 
+        const firstDrawn = !ringed.has(p.id);
+        ringed.add(p.id);
         const domId = `fpd-${p.laneIndex}-${p.id.replace(/[^A-Za-z0-9_-]+/gu, '-')}`;
 
-        return `<g class="${cls}" id="${escapeHtml(domId)}" data-pd-lane="${p.laneIndex}" data-pd-node="${escapeHtml(p.id)}" role="button" tabindex="0" aria-pressed="${this.selected_.has(p.id)}" aria-label="${escapeHtml(aria)}"><title>${escapeHtml(tip)}</title><rect x="${p.x}" y="${p.y}" width="${NODE_W}" height="${NODE_H}" rx="2"/><text x="${p.x + NODE_W / 2}" y="${textY}" text-anchor="middle">${tspans}</text>${this.pencil_(p.x, p.y, p.laneIndex, this.marked_.has(p.id), this.selected_.has(p.id))}</g>`;
+        return `<g class="${cls}" id="${escapeHtml(domId)}" data-pd-lane="${p.laneIndex}" data-pd-node="${escapeHtml(p.id)}" role="button" tabindex="0" aria-pressed="${this.selected_.has(p.id)}" aria-label="${escapeHtml(aria)}"><title>${escapeHtml(tip)}</title><rect x="${p.x}" y="${p.y}" width="${NODE_W}" height="${NODE_H}" rx="2"/><text x="${p.x + NODE_W / 2}" y="${textY}" text-anchor="middle">${tspans}</text>${firstDrawn ? this.pencil_(p.x, p.y, p.laneIndex, this.marked_.has(p.id), this.selected_.has(p.id)) : ''}</g>`;
       })
       .join('');
 
@@ -274,8 +283,8 @@ export class FieldPathDiagramPanel {
     const b = y + NODE_H + 3 - j(4) * 1;
     const d = `M${l + 6} ${t} L${r - 6} ${t} Q${r} ${t} ${r} ${t + 6} L${r} ${b - 6} Q${r} ${b} ${r - 6} ${b} L${l + 6} ${b} Q${l} ${b} ${l} ${b - 6} L${l} ${t + 6} Q${l} ${t} ${l + 6} ${t} Z`;
     // The recorded-mark tick sits in the gap beside the box, clear of every label
-    const ty = y + NODE_H / 2;
-    const tick = marked ? `<path class="fpd-pencil-tick" d="M${r + 3} ${ty} l3 4 l7 -9"/>` : '';
+    const ty = t - 1;
+    const tick = marked ? `<path class="fpd-pencil-tick" d="M${r - 14} ${ty} l3 4 l7 -9"/>` : '';
 
     // A box can be both marked (recorded) and ringed again: show the grease mark and the dashed ring together
     const ring = ringed ? `<path class="fpd-ring" d="${d}" transform="translate(1.5 1.5)"/>` : '';

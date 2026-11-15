@@ -34,6 +34,7 @@
   color: #e6eef3; font: 600 12.5px 'Segoe UI', system-ui, sans-serif; cursor: pointer;
 }
 .mr-btn:hover { border-color: var(--mr-accent); }
+.mr-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .mr-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .mr-btn-go { border-color: #4c8a55; }
 .mr-btn-stop { border-color: #8a4c4c; }

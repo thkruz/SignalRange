@@ -162,9 +162,22 @@ test.describe('ccs Scenario 3 at 1280x720: decision Continue and next objective 
     const boxOpen = await modal.evaluate((el) => el.getBoundingClientRect().bottom <= window.innerHeight);
     expect(boxOpen).toBe(true);
     await page.screenshot({ path: 'shots/decision-open-1280.png' });
+    // Drag the box by its title bar (down and sideways): the drag cap must not spill content past the border
+    const bar = modal.locator('.draggable-box__title-bar').first();
+    const bb = (await bar.boundingBox())!;
+    await page.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(bb.x + bb.width / 2 + 60, bb.y + bb.height / 2 + 40, { steps: 8 });
+    await page.mouse.up();
     // A wrong answer grows the box with feedback; it must stay inside the viewport too
     await modal.locator('.quiz-option-btn', { hasNotText: 'Nominal - every channel' }).first().click();
     await expect(modal.locator('.feedback-incorrect')).toBeVisible();
+    const explained = await modal.evaluate((el) => {
+      const e = el.querySelector('.feedback-explanation')!.getBoundingClientRect();
+      const c = el.querySelector('.draggable-box__content')!.getBoundingClientRect();
+      return e.top >= c.top - 1 && e.bottom <= c.bottom + 1;
+    });
+    expect(explained).toBe(true);
     const wrongBox = await modal.evaluate((el) => el.getBoundingClientRect().bottom <= window.innerHeight);
     expect(wrongBox).toBe(true);
     await page.screenshot({ path: 'shots/decision-fail-1280.png' });
@@ -179,6 +192,7 @@ test.describe('ccs Scenario 3 at 1280x720: decision Continue and next objective 
     expect(rect.top).toBeGreaterThanOrEqual(0);
     expect(rect.bottom).toBeLessThanOrEqual(rect.vh - 4);
     expect(await page.evaluate(() => window.scrollY)).toBe(0);
+    await page.screenshot({ path: 'shots/decision-dragged-continue-720.png' });
     await cont.click();
     await missionControl.dismissDialogIfPresent();
     await waitForObjectiveComplete(missionControl, 'Call the State of Health');

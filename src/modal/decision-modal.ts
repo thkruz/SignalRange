@@ -128,6 +128,8 @@ export class DecisionModal extends DraggableBox {
     this.onOpen();
   }
 
+  private dragEndBound_ = false;
+
   private handleShow_(data: DecisionShowData): void {
     this.current_ = data;
     this.currentCharacter_ = data.character ?? Character.CHARLIE_BROOKS;
@@ -135,6 +137,10 @@ export class DecisionModal extends DraggableBox {
     this.lastGraded_ = null;
     if (!this.domCreated_) this.createDom_();
     this.open(() => {
+      if (this.draggie && !this.dragEndBound_) {
+        this.dragEndBound_ = true;
+        this.draggie.on('dragEnd', () => this.keepInViewport_());
+      }
       this.render_();
       this.keepInViewport_();
       this.startEvidencePoll_();
@@ -273,10 +279,9 @@ export class DecisionModal extends DraggableBox {
       feedbackEl.style.display = 'block';
       const continueBtn = getEl('decision-continue-btn');
       continueBtn?.addEventListener('click', () => this.handleContinueClick_());
-      // Clamp first so scrollIntoView never has to scroll the page itself
+      // Clamp first, then scroll only the box's own scroller so the page never moves (nats-s22-F9)
       this.keepInViewport_();
-      // The box scrolls; keep Continue in view (nats-s22-F9)
-      continueBtn?.scrollIntoView?.({ block: 'nearest' });
+      this.scrollContentTo_(continueBtn);
       continueBtn?.focus();
     }
     this.renderPenalty_(data.pointsDeducted);
@@ -286,8 +291,22 @@ export class DecisionModal extends DraggableBox {
   /** Feedback grows the box downward from its centred top; pull it back inside the viewport */
   private keepInViewport_(): void {
     if (!this.boxEl) return;
+    // A drag leaves inline height/max-height (80%) that is shorter than the CSS-capped content; drop it so the
+    // border wraps everything the content scroller shows
+    this.boxEl.style.maxHeight = '';
+    this.boxEl.style.height = '';
     const top = parseFloat(this.boxEl.style.top) || 0;
     this.boxEl.style.top = `${clampBoxTop(top, this.boxEl.offsetHeight, displayViewport().height, window.scrollY)}px`;
+  }
+
+  /** Scroll the box's own content scroller (never the page) so `target` ends inside it */
+  private scrollContentTo_(target: HTMLElement | null | undefined): void {
+    const scroller = this.boxEl?.querySelector<HTMLElement>('.draggable-box__content');
+    if (!scroller || !target) return;
+    const s = scroller.getBoundingClientRect();
+    const t = target.getBoundingClientRect();
+    if (t.bottom > s.bottom) scroller.scrollTop += t.bottom - s.bottom + 4;
+    else if (t.top < s.top) scroller.scrollTop -= s.top - t.top + 4;
   }
 
   private showIncorrectFeedback_(data: DecisionGradedData): void {
@@ -305,6 +324,9 @@ export class DecisionModal extends DraggableBox {
     }
     this.renderPenalty_(data.pointsDeducted);
     this.keepInViewport_();
+    const penaltyEl = getEl('decision-penalty-notice');
+    const penaltyShown = !!penaltyEl && penaltyEl.style.display !== 'none' && penaltyEl.textContent;
+    this.scrollContentTo_(penaltyShown ? penaltyEl : feedbackEl);
     window.setTimeout(() => {
       if (!this.isShowingFeedback_) this.setAvatar_(Emotion.CONFIDENT);
     }, 1500);

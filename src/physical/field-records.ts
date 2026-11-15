@@ -217,6 +217,14 @@ function isBlank(v: string | number | undefined): boolean {
   return v === undefined || (typeof v === 'string' && v.trim() === '');
 }
 
+/** Elapsed time since the reading, noting that time spent holding a view does not age it. */
+function readingAgeText(countedS: number, heldS: number): string {
+  const counted = Math.round(countedS);
+  const held = Math.round(heldS);
+
+  return held > 0 ? `taken ${counted + held} s ago, and ${counted} s of that counts because time you spent holding a view does not age it` : `taken ${counted} s ago`;
+}
+
 export class FieldRecords implements RecordReader {
   private readonly forms_ = new Map<string, HandoverFormConfig>();
   private readonly deps_: FieldRecordsDeps;
@@ -351,8 +359,8 @@ export class FieldRecords implements RecordReader {
     const truth = freshness === 'current' ? 'current' : freshness === 'unavailable' ? 'unavailable' : 'last-known';
     if (value === truth) return pass(field.key);
     const where = svc.getPath(target.serviceId)?.label ?? target.serviceId;
-    const age = Math.round(svc.ageS(sample));
-    const state = truth === 'current' ? `still current (taken ${age} s ago)` : truth === 'unavailable' ? 'unavailable' : `out of date (taken ${age} s ago)`;
+    const age = readingAgeText(svc.ageS(sample), sample.heldS ?? 0);
+    const state = truth === 'current' ? `still current (${age})` : truth === 'unavailable' ? 'unavailable' : `out of date (${age})`;
 
     return fail(
       field.key,
@@ -367,11 +375,11 @@ export class FieldRecords implements RecordReader {
       return fail(field.key, `${field.label}: no reading of the ${target.layer} layer has been taken yet.`);
     }
     if (svc.freshness(sample) !== 'current') {
-      const age = Math.round(svc.ageS(sample));
+      const age = readingAgeText(svc.ageS(sample), sample.heldS ?? 0);
 
       return fail(
         field.key,
-        `${field.label}: your latest ${target.layer} reading on ${svc.getPath(target.serviceId)?.label ?? target.serviceId} is out of date (taken ${age} s ago, readings of this kind expire after ${sample.maxAgeS} s). Take a new one.`
+        `${field.label}: your latest ${target.layer} reading on ${svc.getPath(target.serviceId)?.label ?? target.serviceId} is out of date (${age}; readings of this kind expire after ${sample.maxAgeS} s counted). Take a new one.`
       );
     }
 

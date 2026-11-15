@@ -138,7 +138,7 @@ describe('M13 handover validation', () => {
     r.service.resumeAging();
     r.plant.spendTime(101);
     const reason = field(r.records.validate('h1', { reg: { value: String(sample.value) } }), 'reg').reason ?? '';
-    expect(reason).toContain('taken 301 s ago');
+    expect(reason).toContain('taken 501 s ago, and 301 s of that counts');
     expect(reason).toContain('expire after 300 s');
   });
 

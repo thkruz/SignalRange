@@ -59,8 +59,7 @@ export class PhysicalPlantService {
   private readonly boundUpdateHandler_: () => void;
   private readonly sounds_: PlantSoundController;
   /** Stops following held objects (readings do not age while one is open) */
-  private unfollowHeld_: (() => void) | null = null;
-  private heldObjects_ = 0;
+  private readonly unfollowHeld_: (() => void) | null = null;
   /** Present only when the plant config authors events */
   readonly events: PlantEventController | null;
   /** Present only when the plant config authors services (Campaign 6) */
@@ -106,11 +105,10 @@ export class PhysicalPlantService {
       : null;
     if (this.services) {
       const services = this.services;
-      this.unfollowHeld_ = ImmersiveView.onChange((_dialog, change) => {
-        this.heldObjects_ = Math.max(0, this.heldObjects_ + (change === 'open' ? 1 : -1));
-        if (this.heldObjects_ > 0) services.pauseAging();
-        else services.resumeAging();
-      });
+      // A view already open when the service starts counts too, so follow topDialog() instead of a counter
+      const syncHeld = (): void => (ImmersiveView.topDialog() ? services.pauseAging() : services.resumeAging());
+      this.unfollowHeld_ = ImmersiveView.onChange(syncHeld);
+      syncHeld();
     }
     this.evidence = config.service || config.events?.length ? new EvidenceLog(this.plant, this.services) : null;
     this.workloads =

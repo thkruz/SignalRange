@@ -60,6 +60,8 @@ export interface ServicePanelRow {
   freshness: Freshness | null;
   /** Why an Invalidated reading no longer counts ("link interruption at 10:13:36") */
   invalidatedWhy?: string;
+  /** A held object has stopped the reading clock: the badge names no expiry time */
+  agingPaused?: boolean;
   value: string;
   provenance: string;
   age: string;
@@ -135,6 +137,7 @@ export function buildServicePanelModel(model: ServiceModel, nowS: number, source
         value: sample ? (untestedApplication(model, id, sample) ? UNTESTED_APPLICATION_TEXT : formatSampleValue(sample)) : 'Not checked',
         provenance: sample ? PROVENANCE_LABEL[sample.provenance] : '',
         age: sample ? formatAge(nowS - sample.tS) : '',
+        ...(model.isAgingPaused() ? { agingPaused: true } : {}),
       };
       const why = sample && row.freshness === 'invalidated' ? model.invalidation(sample) : null;
       if (why) row.invalidatedWhy = why.kind === 'event' ? `${why.label} at ${formatClock(why.atS)}` : `equipment or settings changed at ${formatClock(why.atS)}`;

@@ -103,6 +103,39 @@ describe('faceplate status lights', () => {
   });
 });
 
+describe('lens freshness', () => {
+  it('a lens shows stale once the close-up is put down and the reading ages out', () => {
+    const plant = PhysicalPlantService.getInstance().plant;
+    const modal = PartCloseupModal.getInstance();
+    modal.showCloseup('router');
+    click(lensOf('power'));
+    modal.close();
+    plant.spendTime(400);
+    EventBus.getInstance().emit(Events.UPDATE);
+    modal.showCloseup('router');
+    expect(lensOf('power').dataset.ledFresh).toBe('stale');
+  });
+
+  it('a lens shows invalidated after a plant event bumps the epoch', () => {
+    const service = PhysicalPlantService.getInstance();
+    const modal = PartCloseupModal.getInstance();
+    modal.showCloseup('router');
+    click(lensOf('power'));
+    service.services?.bumpEvent('test-event');
+    EventBus.getInstance().emit(Events.UPDATE);
+    vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 5000);
+    EventBus.getInstance().emit(Events.UPDATE);
+    expect(lensOf('power').dataset.ledFresh).toBe('invalidated');
+  });
+
+  it('a service created while a close-up is already open still pauses aging', () => {
+    PartCloseupModal.getInstance().showCloseup('router');
+    PhysicalPlantService.destroy();
+    const service = PhysicalPlantService.getInstance();
+    expect(service.services?.isAgingPaused()).toBe(true);
+  });
+});
+
 describe('faceplate controls survive the refresh', () => {
   const press = (modal: PartCloseupModal) => {
     modal.showCloseup('router');

@@ -173,6 +173,7 @@ export function callLog(model: ServiceModel, limit = 14): CallLogEntry[] {
         badge: badgeText({
           sample: s,
           freshness,
+          agingPaused: model.isAgingPaused(),
           invalidatedWhy: why ? (why.kind === 'event' ? `${why.label} at ${formatClock(why.atS)}` : `equipment or settings changed at ${formatClock(why.atS)}`) : undefined,
         }),
       });

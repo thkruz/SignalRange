@@ -222,7 +222,10 @@ export interface ServiceSample {
   configEpoch: number;
   eventEpoch: number;
   sessionEpoch: number;
+  /** Authored window: the reading goes stale when its age passes this */
   maxAgeS: number;
+  /** Seconds a held object froze this reading's aging; absent when none. Age = elapsed - heldS. */
+  heldS?: number;
 }
 
 export type Freshness = 'current' | 'stale' | 'invalidated' | 'unavailable';

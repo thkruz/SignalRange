@@ -129,6 +129,19 @@ describe('M13 handover validation', () => {
     expect(f(String(sample.value)).reason).toContain('out of date');
   });
 
+  it('the out-of-date refusal states the real 300 s window and an unjumped age after a hold', () => {
+    const r = rig();
+    const sample = r.service.takeSample('skylink', 'registration', 'device-indicator');
+    r.plant.spendTime(200);
+    r.service.pauseAging();
+    r.plant.spendTime(200);
+    r.service.resumeAging();
+    r.plant.spendTime(101);
+    const reason = field(r.records.validate('h1', { reg: { value: String(sample.value) } }), 'reg').reason ?? '';
+    expect(reason).toContain('taken 301 s ago');
+    expect(reason).toContain('expire after 300 s');
+  });
+
   it('powerWithin honours the tolerance and rejects non-numbers', () => {
     const r = rig();
     const f = (v: string | number) => field(r.records.validate('h1', { soc: { value: v } }), 'soc');

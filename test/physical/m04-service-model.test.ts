@@ -290,6 +290,23 @@ describe('M04 freshness', () => {
     expect(model.freshness(s)).toBe('stale');
   });
 
+  it('keeps the authored window and an age that does not jump when the hold ends', () => {
+    const { model, advance } = live();
+    const s = model.takeSample('skylink', 'registration', 'local-probe');
+    advance(200);
+    model.pauseAging();
+    advance(100);
+    expect(model.ageS(s)).toBe(200);
+    expect(model.isAgingPaused()).toBe(true);
+    model.resumeAging();
+    expect(model.isAgingPaused()).toBe(false);
+    expect(model.ageS(s)).toBe(200);
+    expect(model.samplesFor('skylink')[0].maxAgeS).toBe(300);
+    advance(101);
+    expect(model.ageS(s)).toBe(301);
+    expect(model.freshness(s)).toBe('stale');
+  });
+
   it('an event still invalidates a reading while aging is paused', () => {
     const { model } = live();
     const s = model.takeSample('skylink', 'registration', 'local-probe');

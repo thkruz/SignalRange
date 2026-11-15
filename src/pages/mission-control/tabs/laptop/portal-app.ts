@@ -155,7 +155,7 @@ export class PortalApp {
       const why = sample && freshness === 'invalidated' ? model.invalidation(sample) : null;
       const out = sample && freshness && freshness !== 'current';
       const msg = out
-        ? `${badgeText({ sample, freshness, invalidatedWhy: why ? (why.kind === 'event' ? `${why.label} at ${formatClock(why.atS)}` : `equipment or settings changed at ${formatClock(why.atS)}`) : undefined })}. This page may be out of date. Reload to check again.`
+        ? `${badgeText({ sample, freshness, agingPaused: model.isAgingPaused(), invalidatedWhy: why ? (why.kind === 'event' ? `${why.label} at ${formatClock(why.atS)}` : `equipment or settings changed at ${formatClock(why.atS)}`) : undefined })}. This page may be out of date. Reload to check again.`
         : '';
       if (stale.textContent !== msg) stale.textContent = msg;
       stale.hidden = !out;

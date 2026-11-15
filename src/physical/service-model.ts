@@ -168,8 +168,8 @@ export class ServiceModel {
   }
 
   /**
-   * Stop readings from aging (a fullscreen object is held). Idempotent. The time spent held is given back to every
-   * reading on resume by widening its window, so `tS + maxAgeS` stays the true expiry for the badges.
+   * Stop readings from aging (a fullscreen object is held). Idempotent. The time spent held is credited to every
+   * reading on resume in its `heldS`, so `maxAgeS` stays the authored window and the age never jumps.
    */
   pauseAging(): void {
     if (this.agingPausedAtS_ === null) this.agingPausedAtS_ = this.deps_.now();
@@ -182,9 +182,14 @@ export class ServiceModel {
     const now = this.deps_.now();
     for (const s of this.samples_) {
       const held = now - Math.max(since, s.tS);
-      if (held > 0) s.maxAgeS += held;
+      if (held > 0) s.heldS = (s.heldS ?? 0) + held;
     }
     this.cacheTimeS_ = Number.NaN;
+  }
+
+  /** True while a held object freezes reading ages (a badge cannot name an expiry time then) */
+  isAgingPaused(): boolean {
+    return this.agingPausedAtS_ !== null;
   }
 
   /** The scenario second readings are aged against: frozen while a held object is open */
@@ -513,7 +518,7 @@ export class ServiceModel {
 
   /** Seconds since a sample was taken */
   ageS(sample: ServiceSample): number {
-    return Math.max(0, this.agingNowS_() - sample.tS);
+    return Math.max(0, this.agingNowS_() - sample.tS - (sample.heldS ?? 0));
   }
 
   freshness(sample: ServiceSample): Freshness {
@@ -527,7 +532,7 @@ export class ServiceModel {
       return 'invalidated';
     }
 
-    return this.agingNowS_() - sample.tS > sample.maxAgeS ? 'stale' : 'current';
+    return this.ageS(sample) > sample.maxAgeS ? 'stale' : 'current';
   }
 
   /** Every kept sample of a service in the order they were taken (copies) */

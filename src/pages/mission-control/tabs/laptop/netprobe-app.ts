@@ -161,6 +161,7 @@ export class NetProbeApp {
                   ? badgeText({
                       sample: first,
                       freshness,
+                      agingPaused: model.isAgingPaused(),
                       invalidatedWhy: why
                         ? why.kind === 'event'
                           ? `${why.label} at ${formatClock(why.atS)}`

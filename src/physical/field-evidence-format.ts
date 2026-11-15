@@ -17,9 +17,14 @@ export const FRESHNESS_LABEL: Record<Freshness, string> = {
 export const STATUS_LABEL: Record<LayerStatus, string> = { up: 'Up', degraded: 'Degraded', down: 'Down', unknown: 'Unknown' };
 
 /** Badge text: a Current reading also says when it gets old (a change on site can still end it sooner) */
-export function badgeText(r: { freshness?: Freshness; sample?: ServiceSample | null; invalidatedWhy?: string }): string {
+export function badgeText(r: { freshness?: Freshness; sample?: ServiceSample | null; invalidatedWhy?: string; agingPaused?: boolean }): string {
   if (!r.freshness) return '';
-  if (r.freshness === 'current' && r.sample) return `${FRESHNESS_LABEL.current}, fresh until ${formatClock(r.sample.tS + r.sample.maxAgeS)}`;
+  if (r.freshness === 'current' && r.sample) {
+    // While an object is held the clock is stopped, so any expiry time would already be moving
+    if (r.agingPaused) return `${FRESHNESS_LABEL.current}, aging paused while you hold this`;
+
+    return `${FRESHNESS_LABEL.current}, fresh until ${formatClock(r.sample.tS + r.sample.maxAgeS + (r.sample.heldS ?? 0))}`;
+  }
 
   if (r.freshness === 'invalidated' && r.invalidatedWhy) return `${FRESHNESS_LABEL.invalidated}: ${r.invalidatedWhy}`;
 

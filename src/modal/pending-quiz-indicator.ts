@@ -36,6 +36,7 @@ export class PendingQuizIndicator {
   private messageElement_: HTMLDivElement | null = null;
   private openButton_: HTMLButtonElement | null = null;
   private pendingShowTimeout_: number | null = null;
+  private pendingTimeoutKey_: string | null = null;
   private suppressed_: boolean = false;
   /** Stops following held objects (ImmersiveView.onChange) */
   private readonly unfollowHeld_: () => void;
@@ -132,10 +133,14 @@ export class PendingQuizIndicator {
   }
 
   /**
-   * When quiz is completed, hide the indicator and cancel any pending timeout
+   * When quiz is completed, hide the indicator (a timer already running is the next quiz's and stays)
    */
-  private handleQuizCompleted_(_data: QuizCompletedData): void {
-    this.cancelPendingTimeout_();
+  private handleQuizCompleted_(data: QuizCompletedData): void {
+    // A timer for a DIFFERENT quiz is the next one's: QuizManager (when it handled this event first) already announced
+    // it with QUIZ_PENDING. Cancelling it left that quiz with no toast (issue 306).
+    if (this.pendingTimeoutKey_ === `${data.objectiveId}:${data.conditionIndex}`) {
+      this.cancelPendingTimeout_();
+    }
     this.hide_();
   }
 
@@ -153,20 +158,23 @@ export class PendingQuizIndicator {
       clearTimeout(this.pendingShowTimeout_);
       this.pendingShowTimeout_ = null;
     }
+    this.pendingTimeoutKey_ = null;
   }
 
   /**
    * When a quiz is registered (pending), show the indicator after a delay
    * This happens instead of showing the quiz immediately
    */
-  private handleQuizPending_(_data: QuizPendingData): void {
+  private handleQuizPending_(data: QuizPendingData): void {
     this.cancelPendingTimeout_();
+    this.pendingTimeoutKey_ = `${data.objectiveId}:${data.conditionIndex}`;
 
     // Show indicator after delay to give user time to work
     this.pendingShowTimeout_ = window.setTimeout(() => {
       this.updateMessage_('Complete the quiz to continue');
       this.show_();
       this.pendingShowTimeout_ = null;
+      this.pendingTimeoutKey_ = null;
     }, PendingQuizIndicator.INITIAL_DELAY_MS);
   }
 
@@ -206,6 +214,7 @@ export class PendingQuizIndicator {
       this.updateMessage_('Make the call to continue');
       this.show_();
       this.pendingShowTimeout_ = null;
+      this.pendingTimeoutKey_ = null;
     }, PendingQuizIndicator.INITIAL_DELAY_MS);
   }
 

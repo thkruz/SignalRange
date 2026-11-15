@@ -63,6 +63,14 @@
   font-weight: 500;
 }
 
+/* A box with the Dock button has two controls on the right: the title steps left of them so it is never covered (issue 306) */
+.draggable-box__title-bar:has(.draggable-box__site-dock-btn) .draggable-box__title {
+  justify-content: flex-start;
+  padding-left: 0.75em;
+  padding-right: 11em;
+  box-sizing: border-box;
+}
+
 .draggable-box__title h3 {
   margin: 0;
   user-select: none;

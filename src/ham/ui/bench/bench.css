@@ -641,6 +641,16 @@
   margin-left: calc(var(--ham-dock-gutter, 316px) - 0.5rem);
 }
 
+/*
+ * Riley's note grows after a window is docked (a hint, the quiz nudge), and the dock measured its top while the note
+ * was one line, so the taller note slid over the checklist's title bar. The note steps into the drawing's column
+ * beside the docked window instead, so it can never cover the window (issue 306).
+ */
+.mc-minimal-hud .ham-station-tab.has-docked-window > .ham-hint-strip {
+  margin-left: calc(var(--ham-dock-gutter, 316px) - 0.5rem);
+  max-width: min(34rem, calc(100% - var(--ham-dock-gutter, 316px)));
+}
+
 /* The tray's objects move over with the drawing, so the paper's lower edge never covers them */
 .mc-minimal-hud .ham-station-tab.has-docked-window > .ham-kit-tray {
   padding-left: var(--ham-dock-gutter, 316px);

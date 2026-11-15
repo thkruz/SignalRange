@@ -334,11 +334,10 @@ export class Closeup {
     if (d.kind === 'sdr') {
       actions.append(h('span', { class: 'small text-secondary', 'data-testid': tid('ham-conn', d.id, 'usb-power'), text: 'No power switch: it runs from the laptop USB port.' }));
     } else if (!passive) {
-      const board = d.kind === 'circuit-board';
       const sw = button(
         tid('ham-conn', d.id, 'power'),
         d.powered ? 'Switch off' : 'Switch on',
-        () => this.act_(board ? { type: 'board.switch', deviceId: d.id, on: !d.powered } : { type: 'power', deviceId: d.id, on: !d.powered }),
+        () => this.act_({ type: 'power', deviceId: d.id, on: !d.powered }),
         `ham-power-switch${d.powered ? ' is-on' : ''}`,
         `${d.powered ? 'Switch off' : 'Switch on'} ${d.label}`
       );

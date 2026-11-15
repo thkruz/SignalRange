@@ -27,7 +27,7 @@ const SENTRY_C_BAND_TRANSPONDER: Partial<TransponderPhysics> = { sfdDbwM2: -87, 
  *
  * Frequency plan (C-band):
  * - Allied service carrier: downlink 3785 MHz, H-pol
- * - Hostile uplinks (interferenceEvents, authored per scenario): H-pol, inside the
+ * - Hostile uplinks (interferenceEvents, authored per scenario): V-pol up (TP-1 reverses it, so H down), inside the
  *   SENTRY-7 TP-1 passband (5990-6030 MHz), translated down by 2225 MHz. Scenario 1:
  *   6021 MHz -> 3796 MHz downlink -> 1354 MHz IF
  * - Station LNB LO 5150 MHz: 3785 MHz -> 1365 MHz IF; hostile IFs fall at 1354-1374 MHz
@@ -84,6 +84,17 @@ export const sentry7Satellite = new OrbitalSatellite(
           noiseFloor: null,
           gainInPath: 0 as dBi,
         },
+      } as TransponderConfig,
+      {
+        // Same passband as TP-1, opposite polarization: takes V uplinks and reverses them to H, the polarization PA-22's
+        // OMT receives. A hostile uplink authored H is accepted by TP-1 and comes down V, 29 dB under the analyzer
+        // (phase 47 P33 B1), so the S1 and S2 interferers are authored V and ride this transponder.
+        id: 'TP-1V',
+        uplinkCenterFrequency: 6010e6 as RfFrequency,
+        physics: SENTRY_C_BAND_TRANSPONDER,
+        bandwidth: 40e6 as Hertz,
+        frequencyOffset: 2.225e9 as Hertz,
+        polarization: 'V',
       } as TransponderConfig,
     ],
   }

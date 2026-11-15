@@ -216,7 +216,7 @@ describe('signal-hunter scenario 1: RF and geolocation configuration', () => {
     const victim = settings.satellites.find((s) => s.noradId === event!.satelliteNoradId);
 
     expect(victim).toBeDefined();
-    const transponder = victim!.transponders.find((tp) => event!.frequency >= tp.uplinkLowEdge && event!.frequency <= tp.uplinkHighEdge);
+    const transponder = victim!.transponders.find((tp) => event!.frequency >= tp.uplinkLowEdge && event!.frequency <= tp.uplinkHighEdge && tp.polarization === event!.polarization);
 
     expect(transponder, `no SENTRY-7 transponder covers ${event!.frequency / 1e6} MHz`).toBeDefined();
     expect(transponder!.polarization).toBe(event!.polarization);

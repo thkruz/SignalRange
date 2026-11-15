@@ -29,7 +29,7 @@ import { sentry7Satellite, sentry9Satellite } from './satellites';
  * TLEs were authored against (both birds ~47 deg elevation from PA-22).
  *
  * Frequency plan for this incident:
- * - Hostile uplink 6021 MHz H-pol, 3 MHz wide, inside TP-1 (5990-6030)
+ * - Hostile uplink 6021 MHz V-pol uplink (comes down H), 3 MHz wide, inside TP-1 (5990-6030)
  * - Relayed downlink 3796 MHz -> 1354 MHz IF (service carrier sits at 1365)
  *
  * NICE Framework Alignment:
@@ -85,7 +85,7 @@ export const signalHunterScenario1Data: ScenarioData = {
         frequency: 6021e6, // Uplink, inside SENTRY-7 TP-1 (5990-6030) -> 3796 MHz downlink, 1354 MHz IF
         bandwidth: 3e6,
         power: 76.2, // uplink EIRP, dBm (phase 19.3 migration: was 4 dBm at the transponder input, same downlink)
-        polarization: 'H',
+        polarization: 'V', // Uplink V: the transponder reverses linear polarization, so it comes down H like the service carrier
         startTime: 20,
         duration: 7200, // Persists across the session
         periodSeconds: 130, // 40 s on / 90 s off - a ~30% duty cycle
@@ -311,11 +311,11 @@ export const signalHunterScenario1Data: ScenarioData = {
               'Right-hand circular - C-band military transponders are circular; a linear uplink would lose 3 dB and never reach this level',
               'Cannot be determined - polarization is lost through a transponder; only the field team at the emitter can measure the uplink',
             ],
-            correctIndex: 0,
+            correctIndex: 1,
             explanation:
-              "Logged. The transponder is the polarization filter: a cross-polarized uplink is rejected by ~28 dB, so only an H-pol uplink gets through TP-1 at the level you are seeing. That is a fact about the emitter's antenna the field team can use.",
+              "Logged. TP-1 reverses linear polarization: it takes V in and sends H down. The carrier reaches PA-22 on its H-pol port at full level, so the uplink had to go up V-pol. That is a fact about the emitter's antenna the field team can use.",
             pointPenalty: 5,
-            documentLine: 'Polarization: H (co-polar with TP-1; inferred from transponder routing).',
+            documentLine: 'Polarization: V uplink (TP-1 reverses it to H on the downlink; inferred from transponder routing).',
             documentSection: 'Characterization',
           },
           mustMaintain: false,

@@ -73,6 +73,15 @@ test.describe('Analyzer trace shows the authored carrier', () => {
     await expect.poll(() => readMarginAt(page, 'PA-22', 1365e6), { timeout: 30000 }).toBeGreaterThan(8);
   });
 
+  test('C5 scenario 1: the 1354 MHz interferer stands above the noise floor in its on window', async ({ page }) => {
+    // Phase 47 P33 B1: the H-authored hostile uplink came down cross-polar, about 20 dB under the floor
+    test.setTimeout(240000);
+    await openAnalysis(page, 'signal-hunter', 'signal-hunter-scenario1', 'PA-22', 'Review the Incident Package');
+
+    // 40 s on / 90 s off (130 s period): poll across a full period until an on window shows
+    await expect.poll(() => readMarginAt(page, 'PA-22', 1354e6), { timeout: 140000, intervals: [1000] }).toBeGreaterThan(8);
+  });
+
   test('C4 scenario 1: the COBALT-4 service downlink stands above the noise floor at 1450 MHz IF', async ({ page }) => {
     await openAnalysis(page, 'ccs', 'ccs-scenario1', 'SS-01');
 

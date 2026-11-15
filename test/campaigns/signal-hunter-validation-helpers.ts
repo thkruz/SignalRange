@@ -98,7 +98,7 @@ export function expectRoutedThroughTp1(scenario: ScenarioData, event: Interferen
   const victim = scenario.settings.satellites.find((s) => s.noradId === event.satelliteNoradId);
 
   expect(victim, `${event.id}: victim satellite loaded`).toBeDefined();
-  const transponder = victim!.transponders.find((tp) => event.frequency >= tp.uplinkLowEdge && event.frequency <= tp.uplinkHighEdge);
+  const transponder = victim!.transponders.find((tp) => event.frequency >= tp.uplinkLowEdge && event.frequency <= tp.uplinkHighEdge && tp.polarization === event.polarization);
 
   expect(transponder, `${event.id}: no transponder covers ${event.frequency / 1e6} MHz`).toBeDefined();
   expect(transponder!.polarization).toBe(event.polarization);

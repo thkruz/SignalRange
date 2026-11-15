@@ -45,6 +45,8 @@ import { sandstormGroundStation } from '@app/campaigns/ccs/ground-stations';
 import { cobalt4Satellite } from '@app/campaigns/ccs/satellites';
 import { petersonGroundStation } from '@app/campaigns/signal-hunter/ground-stations';
 import { sentry7Satellite, sentry9Satellite } from '@app/campaigns/signal-hunter/satellites';
+import { signalHunterScenario1Data } from '@app/campaigns/signal-hunter/scenario1';
+import { signalHunterScenario2Data } from '@app/campaigns/signal-hunter/scenario2';
 import type { AntennaCore } from '@app/equipment/antenna/antenna-core';
 import { AntennaUIHeadless } from '@app/equipment/antenna/antenna-ui-headless';
 import type { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
@@ -146,16 +148,19 @@ describe('C5 signal-hunter S1: PA-22 receive chain', () => {
     expect(Math.abs((atIf!.frequency as number) - 1365e6)).toBeLessThan(1e3);
   });
 
-  it('still relays the hostile uplink inside TP-1 to 1354 MHz IF', () => {
+  /** Push an authored hostile uplink (as the interference manager does while it is on) and read it at the antenna and the RX IF tap */
+  function receiveHostile(eventId: string, scenario: { settings: { interferenceEvents?: unknown } }): { atAntenna: RfSignal | undefined; atIf: RfSignal | undefined } {
+    const events = scenario.settings.interferenceEvents as Array<{ id: string; frequency: number; bandwidth: number; power: number; polarization: string }>;
+    const ev = events.find((e) => e.id === eventId)!;
     const external = sentry7Satellite as unknown as { externalSignal: RfSignal[] };
     external.externalSignal.push({
       signalId: 'INTERFERER-test',
       serverId: 1,
       noradId: 71001,
-      frequency: 6021e6,
-      polarization: 'H',
-      power: 76.2,
-      bandwidth: 3e6,
+      frequency: ev.frequency,
+      polarization: ev.polarization,
+      power: ev.power,
+      bandwidth: ev.bandwidth,
       modulation: 'null',
       fec: 'null',
       feed: '',
@@ -166,10 +171,44 @@ describe('C5 signal-hunter S1: PA-22 receive chain', () => {
     } as never);
     settle(chain);
 
-    const jam = chain.frontEnd.agcModule.outputSignals.find((s) => s.signalId === 'INTERFERER-test');
+    return {
+      atAntenna: chain.antenna.state.rxSignalsIn.find((s) => s.signalId === 'INTERFERER-test'),
+      atIf: chain.frontEnd.agcModule.outputSignals.find((s) => s.signalId === 'INTERFERER-test'),
+    };
+  }
 
-    expect(jam).toBeDefined();
-    expect(Math.abs((jam!.frequency as number) - 1354e6)).toBeLessThan(1e3);
+  it('relays the S1 hostile uplink inside TP-1 to 1354 MHz IF with a C/N the analyzer can show (phase 47 P33 B1)', () => {
+    const { atAntenna, atIf } = receiveHostile('quay-hostile', signalHunterScenario1Data as never);
+
+    expect(atIf).toBeDefined();
+    expect(Math.abs((atIf!.frequency as number) - 1354e6)).toBeLessThan(1e3);
+    expect(atAntenna, 'S1 interferer dropped under the antenna C/N floor').toBeDefined();
+    // An H uplink came down V, cross-polar to PA-22's H port (about -20 dB C/N at the IF); a V uplink comes down H
+    expect(carrierToNoiseDb(chain.antenna, atAntenna!)).toBeGreaterThan(MIN_VISIBLE_CN_DB);
+  });
+
+  it('puts the S1 interferer within 20 dB of the service carrier at the IF tap, neither invisible nor drowning it', () => {
+    const { atIf } = receiveHostile('quay-hostile', signalHunterScenario1Data as never);
+    const service = chain.frontEnd.agcModule.outputSignals.find((s) => s.signalId === 'SENTRY-7-SERVICE');
+
+    expect(service).toBeDefined();
+    const diffDb = (atIf!.power as number) - (service!.power as number);
+
+    // Measured 2027-11-15: -9.5 dB with the V uplink, -41 dB when authored H (cross-polar through the OMT)
+    expect(diffDb).toBeGreaterThan(-20);
+    expect(diffDb).toBeLessThan(10);
+  });
+
+  it('relays the S2 hostile uplink to 1374 MHz IF with a visible C/N', () => {
+    const { atAntenna, atIf } = receiveHostile('dalhart-uplink', signalHunterScenario2Data as never);
+
+    expect(atIf).toBeDefined();
+    expect(Math.abs((atIf!.frequency as number) - 1374e6)).toBeLessThan(1e3);
+    expect(atAntenna).toBeDefined();
+    expect(carrierToNoiseDb(chain.antenna, atAntenna!)).toBeGreaterThan(MIN_VISIBLE_CN_DB);
+    const service = chain.frontEnd.agcModule.outputSignals.find((s) => s.signalId === 'SENTRY-7-SERVICE');
+
+    expect((atIf!.power as number) - (service!.power as number)).toBeGreaterThan(-20);
   });
 });
 

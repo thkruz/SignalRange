@@ -93,7 +93,7 @@ export const signalHunterScenario2Data: ScenarioData = {
         frequency: 6001e6, // Uplink, inside SENTRY-7 TP-1 (5990-6030) -> 3776 MHz downlink, 1374 MHz IF
         bandwidth: 2.5e6,
         power: 76.2, // uplink EIRP, dBm (phase 19.3 migration: was 4 dBm at the transponder input, same downlink)
-        polarization: 'H',
+        polarization: 'V', // Uplink V: TP-1 reverses it, so it comes down H and PA-22 sees it co-polar
         startTime: 20,
         duration: 7200,
         periodSeconds: 120, // 36 s on / 84 s off - three 12 s captures per window
@@ -374,10 +374,9 @@ export const signalHunterScenario2Data: ScenarioData = {
               '3776 MHz (the correlator is tuned to the downlink)',
             ],
             correctIndex: 0,
-            explanation:
-              'Logged. IF 1374 -> downlink 3776 -> uplink 6001, inside TP-1 and on the transponder polarization. The correlator was tuned to the uplink because that is what both satellites received.',
+            explanation: 'Logged. IF 1374 -> downlink 3776 -> uplink 6001, inside TP-1. The correlator was tuned to the uplink because that is what both satellites received.',
             pointPenalty: 5,
-            documentLine: 'Frequency: 6001 MHz uplink (3776 MHz downlink / 1374 MHz IF), 2.5 MHz occupied, H-pol via TP-1.',
+            documentLine: 'Frequency: 6001 MHz uplink (3776 MHz downlink / 1374 MHz IF), 2.5 MHz occupied, V-pol uplink via TP-1.',
             documentSection: 'Characterization',
           },
           mustMaintain: false,

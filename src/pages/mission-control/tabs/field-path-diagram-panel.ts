@@ -1,6 +1,17 @@
 import type { EvidenceLog } from '@app/physical/evidence-log';
 import type { PhysicalPlantManager } from '@app/physical/physical-plant-manager';
-import { buildServicePathDiagram, DIAGRAM_SEGMENTS, laneHeight, layoutDiagram, NODE_H, NODE_W, SEGMENT_LABEL, type ServicePathDiagram } from '@app/physical/service-path-diagram';
+import {
+  buildServicePathDiagram,
+  COL_STEP,
+  DIAGRAM_SEGMENTS,
+  laneHeight,
+  layoutDiagram,
+  NODE_H,
+  NODE_W,
+  ROW_GAP,
+  SEGMENT_LABEL,
+  type ServicePathDiagram,
+} from '@app/physical/service-path-diagram';
 import { escapeHtml } from '@app/physical/ui/plant-ui-helpers';
 import './field-path-diagram-panel.css';
 
@@ -227,22 +238,32 @@ export class FieldPathDiagramPanel {
       .join('');
     const wires = diagram.lanes
       .map((lane, laneIndex) => {
-        const pl = layout.placements.filter((p) => p.laneIndex === laneIndex);
-        const bySeg = DIAGRAM_SEGMENTS.map((seg) => lane.nodes.filter((n) => n.segment === seg).map((n) => pl.find((p) => p.id === n.id))).filter((c) => c.length > 0);
-        const segs: string[] = [];
-        for (let c = 0; c + 1 < bySeg.length; c++) {
-          // Every box in both columns gets a wire: pair by row, the shorter column's last box fans out
-          const a = bySeg[c];
-          const b = bySeg[c + 1];
-          for (let k = 0; k < Math.max(a.length, b.length); k++) {
-            const from = a[Math.min(k, a.length - 1)];
-            const to = b[Math.min(k, b.length - 1)];
-            if (!from || !to) continue;
-            segs.push(`<line class="fpd-wire" x1="${from.x + NODE_W}" y1="${from.y + NODE_H / 2}" x2="${to.x}" y2="${to.y + NODE_H / 2}"/>`);
-          }
-        }
+        const at = new Map(layout.placements.filter((p) => p.laneIndex === laneIndex).map((p) => [p.id, p] as const));
 
-        return segs.join('');
+        // One wire per real connection the plant (or the authored path) holds; nothing is paired by position
+        return lane.edges
+          .map(([idA, idB]) => {
+            const pa = at.get(idA);
+            const pb = at.get(idB);
+            if (!pa || !pb) return '';
+            if (pa.x === pb.x) {
+              const [top, bottom] = pa.y <= pb.y ? [pa, pb] : [pb, pa];
+              const cx = top.x + NODE_W / 2;
+              if (bottom.y - top.y <= NODE_H + ROW_GAP) return `<line class="fpd-wire" x1="${cx}" y1="${top.y + NODE_H}" x2="${cx}" y2="${bottom.y}"/>`;
+              const bx = top.x + NODE_W;
+
+              return `<path class="fpd-wire" fill="none" d="M${bx} ${top.y + NODE_H / 2} h6 V${bottom.y + NODE_H / 2} h-6"/>`;
+            }
+            const [l, r] = pa.x < pb.x ? [pa, pb] : [pb, pa];
+            const y1 = l.y + NODE_H / 2;
+            const y2 = r.y + NODE_H / 2;
+            if (r.x - l.x <= COL_STEP) return `<line class="fpd-wire" x1="${l.x + NODE_W}" y1="${y1}" x2="${r.x}" y2="${y2}"/>`;
+            // A wire that skips a column runs through the channel under the lane heading, so it never passes behind a box it does not join
+            const chan = layout.laneTops[laneIndex] + 17;
+
+            return `<path class="fpd-wire" fill="none" d="M${l.x + NODE_W} ${y1} H${l.x + NODE_W + 11} V${chan} H${r.x - 11} V${y2} H${r.x}"/>`;
+          })
+          .join('');
       })
       .join('');
     // A box shared by two lanes is ringed once, so the footer count matches what is drawn

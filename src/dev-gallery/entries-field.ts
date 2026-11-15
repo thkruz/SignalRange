@@ -2,6 +2,9 @@
  * Campaign 6 field objects: laptop and its apps, handheld radio, clipboard sheets, documents.
  * Everything reads from a private FieldRig (fixtures/field-rig.ts), never from the game singletons.
  */
+
+import { applyCampField, applyS2Power, OLA_CHECK_CARD } from '@app/campaigns/frontline/camp-field-config';
+import { frontlinePlantConfig } from '@app/campaigns/frontline/plant-config';
 import { type ClipboardPage, ClipboardShell } from '@app/pages/mission-control/tabs/clipboard/clipboard-shell';
 import { type DocumentsPage, DocumentsShell } from '@app/pages/mission-control/tabs/documents/documents-shell';
 import { FieldHandoverPanel } from '@app/pages/mission-control/tabs/field-handover-panel';
@@ -12,6 +15,7 @@ import { FieldWorkloadPanel } from '@app/pages/mission-control/tabs/field-worklo
 import { NetProbeApp } from '@app/pages/mission-control/tabs/laptop/netprobe-app';
 import { PortalApp } from '@app/pages/mission-control/tabs/laptop/portal-app';
 import { FieldRadio } from '@app/pages/mission-control/tabs/radio/radio-app';
+import type { PlantConfig } from '@app/physical/physical-plant-types';
 import { type LaptopApp, LaptopShell } from '@app/presentation/laptop-shell';
 import { createFieldRig, type FieldRig } from './fixtures/field-rig';
 import { holdObject, type ImmersiveFrame } from './gallery-hold';
@@ -181,6 +185,10 @@ function records(rig: FieldRig, notices: boolean): () => void {
   };
 }
 
+function campPlantConfig(): PlantConfig {
+  return applyS2Power(applyCampField(structuredClone(frontlinePlantConfig), [OLA_CHECK_CARD], []));
+}
+
 function diagram(rig: FieldRig): () => void {
   const host = div();
   const panel = new FieldPathDiagramPanel(host, { plant: () => rig.plant, evidence: () => rig.evidence });
@@ -218,6 +226,7 @@ export const FIELD_ENTRIES: GalleryEntry[] = [
   { entry: 'clipboard', state: 'handover-filled', title: 'Clipboard, handover form with a reading filled', mount: () => handover(createFieldRig(), true) },
   { entry: 'clipboard', state: 'records', title: 'Clipboard, equipment records', mount: () => records(createFieldRig(), false) },
   { entry: 'clipboard', state: 'records-notices', title: 'Clipboard, records with provider notices', mount: () => records(createFieldRig(), true) },
+  { entry: 'documents', state: 'diagram-camp', title: 'Documents, wiring diagram laminate, real camp plant', mount: () => diagram(createFieldRig(campPlantConfig())) },
   { entry: 'documents', state: 'diagram', title: 'Documents, wiring diagram laminate', mount: () => diagram(createFieldRig()) },
   { entry: 'documents', state: 'power', title: 'Documents, power plan graph paper', mount: () => power(createFieldRig()) },
   { entry: 'clipboard', state: 'cover', title: 'Clipboard, cover sheet', needsCheckpoint: COVER_NOTE, mount: () => noop },

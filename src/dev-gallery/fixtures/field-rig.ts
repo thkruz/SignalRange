@@ -111,10 +111,9 @@ export interface FieldRig {
   check(serviceId: string, layer: ServiceLayer, via: ServiceSample['provenance'], endpointId?: string, metric?: ServiceSample['metric']): ServiceSample;
 }
 
-export function createFieldRig(): FieldRig {
+export function createFieldRig(cfg: PlantConfig = plantConfig()): FieldRig {
   let t = 120;
   const streams = new Map<string, RngStream>();
-  const cfg = plantConfig();
   const plant = new PhysicalPlantManager(cfg, {
     now: () => t,
     skip: (s) => {

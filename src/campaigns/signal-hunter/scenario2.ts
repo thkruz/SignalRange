@@ -301,7 +301,7 @@ export const signalHunterScenario2Data: ScenarioData = {
                   'The 1374 carrier correlates against SENTRY-9 and keys on a schedule. The customer is losing packets to something that is coming down through their own transponder; the annex is not the problem and closing the ticket leaves the team with nothing.',
               },
               {
-                label: 'The 1398 carrier is the interferer - it is the stronger of the two and it sits inside the TP-1 downlink. Work it back to 5977 MHz and correlate on that',
+                label: 'The 1398 carrier is the interferer - it is continuous and it sits inside the TP-1 downlink. Work it back to 5977 MHz and correlate on that',
                 feedback:
                   '5977 MHz is below the TP-1 passband; nothing at that frequency is relayed, so there is nothing at 1398 for the correlator to find. Strong is not the same as through the bird. Strong and continuous at a single dish is what a nearby ground emitter looks like.',
               },

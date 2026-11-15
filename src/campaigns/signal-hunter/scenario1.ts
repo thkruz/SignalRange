@@ -307,7 +307,7 @@ export const signalHunterScenario1Data: ScenarioData = {
             question: "EW-27-0244, field 6 - POLARIZATION. The carrier is being relayed by SENTRY-7 TP-1. What is the interferer's uplink polarization, and how do you know?",
             options: [
               'Horizontal - TP-1 is an H-pol transponder; a cross-polarized uplink would be rejected and never show at this level',
-              'Vertical - uplinks are the opposite polarization to the downlink; TP-1 comes down H-pol, so the uplink had to go up V-pol',
+              'Vertical - for a linear transponder the uplink is the opposite polarization to the downlink; TP-1 comes down H-pol, so the uplink had to go up V-pol',
               'Right-hand circular - C-band military transponders are circular; a linear uplink would lose 3 dB and never reach this level',
               'Cannot be determined - polarization is lost through a transponder; only the field team at the emitter can measure the uplink',
             ],

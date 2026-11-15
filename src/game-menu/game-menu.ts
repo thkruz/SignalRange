@@ -39,6 +39,8 @@ export class GameMenu {
   private initialized_ = false;
   private returnFocus_: HTMLElement | null = null;
   private cleanup_: (() => void) | null = null;
+  /** Set when the player resumes while the window still lacks focus; stops blur from re-pausing until focus returns. */
+  private blurPauseSuppressed_ = false;
 
   static getInstance(): GameMenu {
     return (this.instance_ ??= new GameMenu());
@@ -57,7 +59,10 @@ export class GameMenu {
     });
     window.addEventListener('blur', () => {
       // Focusing an embedded brief can blur the window while the page still has focus.
-      if (!document.hasFocus() && !this.dialog_?.open) this.openPause();
+      if (!document.hasFocus() && !this.dialog_?.open && !this.blurPauseSuppressed_) this.openPause();
+    });
+    window.addEventListener('focus', () => {
+      this.blurPauseSuppressed_ = false;
     });
     document.addEventListener('visibilitychange', () => {
       if (document.hidden && !this.dialog_?.open) this.openPause();
@@ -154,6 +159,8 @@ export class GameMenu {
       button.onclick = () => {
         switch (button.dataset.action) {
           case 'resume':
+            // An unfocused window (automation, a second window holding focus) keeps emitting blur; Resume must stick.
+            this.blurPauseSuppressed_ = !document.hasFocus();
             this.close_();
             break;
           case 'back':

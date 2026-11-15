@@ -96,6 +96,24 @@ describe('game menus', () => {
     focused.mockRestore();
     hidden.mockRestore();
   });
+  it('Resume sticks while the window stays unfocused and blur only re-pauses after focus returns', () => {
+    const focused = vi.spyOn(document, 'hasFocus').mockReturnValue(false);
+    vi.spyOn(document, 'hidden', 'get').mockReturnValue(false);
+    GameMenu.getInstance().initialize();
+    window.dispatchEvent(new Event('blur'));
+    expect(document.querySelector<HTMLDialogElement>('#game-menu')?.open).toBe(true);
+    click('resume');
+    window.dispatchEvent(new Event('blur'));
+    window.dispatchEvent(new Event('blur'));
+    expect(document.querySelector<HTMLDialogElement>('#game-menu')?.open).toBe(false);
+    expect(SimClock.isPaused('menu')).toBe(false);
+    focused.mockReturnValue(true);
+    window.dispatchEvent(new Event('focus'));
+    focused.mockReturnValue(false);
+    window.dispatchEvent(new Event('blur'));
+    expect(document.querySelector<HTMLDialogElement>('#game-menu')?.open).toBe(true);
+    vi.restoreAllMocks();
+  });
   it('keeps the mission paused through settings and preserves other overlay/brief holds on resume', () => {
     SimClock.pause('scenario');
     const menu = GameMenu.getInstance();

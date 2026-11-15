@@ -46,6 +46,16 @@ describe('Analytics consent', () => {
     expect(banner()).not.toBeNull();
   });
 
+  it('sits clear of the bottom dock: not centred, raised above the dock strip, compact (issue 306)', async () => {
+    await loadModules();
+    const { BANNER_POSITION_CSS: css } = await import('../src/analytics');
+    const px = (prop: string) => Number.parseInt(new RegExp(String.raw`(?:^|;\s*)${prop}:\s*(\d+)px`, 'u').exec(css)?.[1] ?? 'NaN', 10);
+
+    expect(px('bottom')).toBeGreaterThanOrEqual(80);
+    expect(css).not.toContain('margin:0 auto');
+    expect(px('max-width')).toBeLessThanOrEqual(400);
+  });
+
   it('stays dark under browser automation so e2e runs see no banner', async () => {
     Object.defineProperty(navigator, 'webdriver', { configurable: true, get: () => true });
     const { Analytics } = await loadModules();

@@ -293,7 +293,7 @@
   filter: brightness(1.2);
 }
 /* A bar with Dock and Close keeps its title to the left of them, so the buttons never print over the text */
-.draggable-box__title-bar:has(.draggable-box__actions .draggable-box__site-dock-btn) .draggable-box__title {
+.draggable-box__title-bar.has-site-dock .draggable-box__title {
   justify-content: flex-start;
   box-sizing: border-box;
   padding: 0 0.6em;

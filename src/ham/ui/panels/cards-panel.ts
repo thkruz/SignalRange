@@ -44,7 +44,13 @@ export class CardsPanel implements StationPanel {
         'hl-card-title',
         ref.title
       );
-      toggle.setAttribute('aria-expanded', String(!body.hidden));
+      if (single) {
+        // The only card is the page itself: its title is a heading, not a fold
+        toggle.disabled = true;
+        toggle.removeAttribute('aria-expanded');
+      } else {
+        toggle.setAttribute('aria-expanded', String(!body.hidden));
+      }
       const cardEl = h('div', { class: `hl-card${index === 0 ? ' is-open' : ''}`, 'data-testid': tid('ham-card', ref.id) }, toggle, body);
       deck.append(cardEl);
     }

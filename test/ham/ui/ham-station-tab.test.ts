@@ -199,7 +199,11 @@ describe('HamStationTab', () => {
     expect(document.querySelector('dialog.immersive-paper')?.contains(q('ham-card-c1'))).toBe(true);
     // The first card lies open, not a bar of closed titles
     expect(q('ham-card-c1-body').hidden).toBe(false);
-    expect(q('ham-card-c1-toggle').getAttribute('aria-expanded')).toBe('true');
+    // The only card cannot be folded shut by its title
+    const toggle = q('ham-card-c1-toggle') as HTMLButtonElement;
+    expect(toggle.disabled).toBe(true);
+    toggle.click();
+    expect(q('ham-card-c1-body').hidden).toBe(false);
     tab.dispose();
   });
 

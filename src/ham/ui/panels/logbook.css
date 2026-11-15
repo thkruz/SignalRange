@@ -24,6 +24,10 @@
 }
 
 /* A fade at the foot of the screen says the page runs on below (the front page is longer than the screen) */
+.immersive-paper:not([data-more]) .ham-notebook::after {
+  display: none;
+}
+
 .immersive-paper .ham-notebook::after {
   content: '';
   position: sticky;
@@ -491,8 +495,12 @@
   width: min(760px, 100%);
 }
 
-.hl-deck.is-single .hl-card-title {
+.hl-deck.is-single .hl-card-title,
+.hl-deck.is-single .hl-card-title:disabled {
+  color: #211d18;
   cursor: default;
+  pointer-events: none;
+  opacity: 1;
 }
 
 .hl-deck.is-single .hl-card-title::after {

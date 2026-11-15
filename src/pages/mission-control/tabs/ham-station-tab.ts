@@ -75,6 +75,7 @@ export class HamStationTab {
   private readonly feedback_: HTMLElement;
   private readonly hintHost_: HTMLElement;
   private readonly notebook_: HTMLElement;
+  private moreObserver_: ResizeObserver | null = null;
   private readonly kitTray_: HTMLElement;
   private readonly panels_: StationPanel[];
   private readonly hint_: StationPanel | undefined;
@@ -169,7 +170,7 @@ export class HamStationTab {
     // A toast shown before an object is picked up would sit under its modal: it goes, and the announcer follows the top dialog
     this.unsubImmersive_ = ImmersiveView.onChange((dialog, change) => {
       if (change === 'open') {
-        this.hideToast_();
+        this.onImmersiveOpen_(dialog);
         // Any bench object picked up (a device, an instrument face, a radio front panel) takes the brief window away; the logbook path closes it in openPage_
         if (this.root_.isConnected && !dialog.contains(this.notebook_)) missionItemBridge.closeBrief();
       }
@@ -281,8 +282,49 @@ export class HamStationTab {
     }
   }
 
+  /**
+   * A toast shown before an object is picked up would sit under its modal, so it goes. Leaning over the bench is not
+   * picking something up: plugging a cable opens the close-up in the same tick as its result, and that result stays,
+   * raised again so it sits above the new dialog.
+   */
+  private onImmersiveOpen_(dialog: HTMLElement): void {
+    const showing = !this.feedback_.hidden && this.feedback_.textContent !== '';
+    if (showing && this.heldKit_ === null && dialog.classList.contains('immersive-equipment')) {
+      try {
+        this.feedback_.hidePopover?.();
+        this.feedback_.showPopover?.();
+      } catch {
+        // No popover support: the slip stays where it is
+      }
+
+      return;
+    }
+    this.hideToast_();
+  }
+
+  /** Marks the held paper `data-more` while its page runs on below the screen edge (drives the foot fade in logbook.css) */
+  private watchMore_(): void {
+    this.moreObserver_?.disconnect();
+    const paper = this.notebook_.closest<HTMLElement>('.immersive-paper');
+    if (!paper) return;
+    const update = (): void => {
+      const more = paper.scrollHeight - paper.clientHeight > 4 && paper.scrollTop + paper.clientHeight < paper.scrollHeight - 4;
+      if (more) paper.dataset.more = '';
+      else delete paper.dataset.more;
+    };
+    paper.addEventListener('scroll', update, { passive: true });
+    update();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(update);
+    observer.observe(paper);
+    observer.observe(this.notebook_);
+    this.moreObserver_ = observer;
+  }
+
   /** Put the held logbook or cards down (and let the page panel take itself apart) */
   private putDown_(): void {
+    this.moreObserver_?.disconnect();
+    this.moreObserver_ = null;
     this.heldKit_ = null;
     this.closePage_();
     this.immersive_.close();
@@ -403,6 +445,7 @@ export class HamStationTab {
     this.heldNav_ = nav;
     this.showPage_(panelId);
     this.immersive_.open(this.notebook_, item?.label ?? 'Logbook', 'paper', () => this.putDown_(), nav);
+    this.watchMore_();
   }
 
   /** Lean over the bench: the drawing and the close-up of what was picked fill the screen */

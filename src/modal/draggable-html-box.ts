@@ -113,7 +113,11 @@ export class DraggableHtmlBox extends DraggableBox {
   open(cb?: () => void): void {
     super.open(cb);
     const dockBtn = this.boxEl?.querySelector<HTMLElement>('.draggable-box__site-dock-btn');
-    if (dockBtn) dockBtn.style.display = this.canDockBesideSite() ? '' : 'none';
+    if (dockBtn) {
+      const dockable = this.canDockBesideSite();
+      dockBtn.style.display = dockable ? '' : 'none';
+      dockBtn.closest('.draggable-box__title-bar')?.classList.toggle('has-site-dock', dockable);
+    }
     this.isOpen = true;
   }
 

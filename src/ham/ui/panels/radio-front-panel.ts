@@ -15,6 +15,7 @@
  * message|hold|transmit|release|status|refusal|area>.
  */
 
+import { getAssetUrl } from '@app/utils/asset-url';
 import type { HamStationManager } from '../../ham-station-manager';
 import type { HamCapabilityProfile, HamMode, OffsetDirection, RadioSettings, TxIntent } from '../../ham-types';
 import { CTCSS_TONES_HZ } from '../../radio/radio-settings';
@@ -24,7 +25,10 @@ import { fmt, h, isFocused, tid, transcriptList } from '../ui-kit';
 import { TrxKnob } from './trx-knob';
 import './radio-front-panel.css';
 
-const FACE_ART = '/assets/campaigns/home-sdr/bench/trx-face.webp';
+/** Face art path; resolved through getAssetUrl (R2 in production) when the panel is built */
+const FACE_ART_PATH = '/assets/campaigns/home-sdr/bench/trx-face.webp';
+/** The face picture's URL on the assets host (R2 in production, the local path in development) */
+export const faceArtUrl = (): string => getAssetUrl(FACE_ART_PATH);
 /** Tuning steps the STEP key cycles through, MHz */
 const STEPS_MHZ = [0.001, 0.005, 0.0125, 0.025, 0.1, 1];
 const DEFAULT_STEP = 1;
@@ -100,7 +104,7 @@ export class TransceiverFront {
       this.buildDial_(),
       this.buildSub_(canTx)
     );
-    body.style.backgroundImage = `url("${FACE_ART}")`;
+    body.style.backgroundImage = `url("${faceArtUrl()}")`;
     const desk = h('div', { class: 'trx-desk' }, canTx ? this.buildMic_(m) : null, this.buildPad_());
     this.el = h('div', { class: 'trx-room', 'data-testid': tid('ham-radio', id, 'front') }, h('div', { class: 'trx-stage' }, body), desk);
     this.sync(m, true);

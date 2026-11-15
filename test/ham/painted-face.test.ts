@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { FACE_ART } from '../../src/ham/ui/bench/bench-art';
 import { INSTRUMENTS } from '../../src/ham/ui/bench/instrument-face';
-import { boxStyle, markFailed, paintedFace } from '../../src/ham/ui/panels/painted-face';
+import { boxStyle, markFailed, paintedFace, syncPaintedChassis } from '../../src/ham/ui/panels/painted-face';
 
 const used = (file: string): string[] => {
   const src = readFileSync(`src/ham/ui/panels/${file}`, 'utf8');
@@ -57,5 +57,20 @@ describe('painted instrument faces (issue 307)', () => {
     expect(btn.style.width).not.toBe('');
     btn.click();
     expect(clicks).toBe(1);
+  });
+
+  it('image fails first, chassis built afterwards: plain chassis is restored', () => {
+    const face = paintedFace(FACE_ART.swr, 'swr', []);
+    markFailed(face);
+    const chassis = document.createElement('section');
+    chassis.className = 'inst-chassis inst-painted';
+    chassis.append(face);
+    syncPaintedChassis(chassis);
+    expect(chassis.classList.contains('inst-painted')).toBe(false);
+    const ok = document.createElement('section');
+    ok.className = 'inst-chassis inst-painted';
+    ok.append(paintedFace(FACE_ART.swr, 'swr', []));
+    syncPaintedChassis(ok);
+    expect(ok.classList.contains('inst-painted')).toBe(true);
   });
 });

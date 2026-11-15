@@ -10,6 +10,7 @@
 import { ImmersiveView } from '@app/presentation/immersive-view';
 import { type LaptopApp, type LaptopIcon, LaptopShell } from '@app/presentation/laptop-shell';
 import type { HamStationManager } from '../../ham-station-manager';
+import { syncPaintedChassis } from '../panels/painted-face';
 import { h } from '../ui-kit';
 import './instrument-face.css';
 
@@ -87,6 +88,7 @@ export class InstrumentFace {
         plate,
         face
       );
+      syncPaintedChassis(chassis);
       const room = h('div', { class: 'inst-room' }, chassis, back);
 
       return { element: room, dispose: () => (this.lamp_ = null) };

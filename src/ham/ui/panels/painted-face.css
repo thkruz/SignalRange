@@ -133,3 +133,16 @@
 
 /* Art failed to load: plain chassis in place of the picture */
 .pface.pface-failed { background-color: var(--inst-body, #2f3338); border: 2px solid #0007; border-radius: 12px; }
+
+/* Art failed: every control stays readable and visible on the plain chassis (AA captions) */
+.pface.pface-failed .pf-key { background: #1c1b19; color: #f6efdc; text-shadow: none; box-shadow: inset 0 0 0 1px #8a8374; }
+.pface.pface-failed .pf-key:hover { background: #2c2a26; }
+.pface.pface-failed .pf-key.active { background: #f2c230; color: #181408; }
+.pface.pface-failed[data-face='meter'] .pf-read, .pface.pface-failed[data-face='swr'] .pf-read { --pf-key-ink: #f6efdc; }
+.pface.pface-failed .pf-window { background: #0d1117; border-radius: 4px; box-shadow: inset 0 0 0 1px #5b5444; }
+.pface.pface-failed .pf-window > .pf-cap { opacity: 1; color: #cfc5ad; }
+.pface.pface-failed[data-face='meter'] .pf-lcd { background: #b9c79a; }
+.pface.pface-failed .trx-knob { background: radial-gradient(circle at 50% 50%, #5b5f66 0 62%, #1a1c20 63% 100%); border-radius: 50%; box-shadow: 0 0 0 2px #8a8374; }
+.pface.pface-failed .trx-knob-cap { background: radial-gradient(circle at 35% 30%, #8a8f98, #3a3d44); box-shadow: 0 2px 4px #000a; border-radius: 50%; }
+.pface.pface-failed .trx-legend { display: block; color: #e6dcc0; }
+.pface.pface-failed[data-face='swr'] .pf-meter { background: #efe3c2; border-radius: 4px; }

@@ -42,7 +42,10 @@ export function paintedFace(art: EquipmentArt, name: string, slots: [string, HTM
 export function watchArt(face: HTMLElement, src: string): void {
   if (typeof Image === 'undefined') return;
   const probe = new Image();
-  probe.onerror = () => markFailed(face);
+  probe.onerror = () => {
+    probe.onerror = null;
+    markFailed(face);
+  };
   probe.src = src;
 }
 
@@ -50,4 +53,9 @@ export function markFailed(face: HTMLElement): void {
   face.classList.add('pface-failed');
   face.style.backgroundImage = 'none';
   face.closest('.inst-chassis')?.classList.remove('inst-painted');
+}
+
+/** A face whose art already failed (the chassis is built after the probe fired) gets the plain chassis too */
+export function syncPaintedChassis(chassis: HTMLElement): void {
+  if (chassis.querySelector('.pface-failed')) chassis.classList.remove('inst-painted');
 }

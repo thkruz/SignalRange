@@ -23,6 +23,21 @@ describe('S2 Power on the Bench solve', () => {
     expect([...ids].sort()).toEqual(['S02-A1', 'S02-A2', 'S02-Q1', 'S02-Q2', 'S02-Q3', 'S02-Q4', 'S02-Q5', 'S02-Q6', 'S02-Q7', 'S02-Q8']);
   });
 
+  it('accepts a board-off 0 V reading taken with the black probe on GND (same node as SUP-)', () => {
+    const h = harness(config());
+    const m = h.m;
+    const find = practical(hamTechS02Data, 'find-open-branch')[0];
+    h.advance(2);
+    act(h, { type: 'board.switch', deviceId: 'board', on: true });
+    act(h, { type: 'power', deviceId: 'board', on: false });
+    act(h, { type: 'meter.mode', mode: 'DCV' });
+    act(h, { type: 'meter.socket', socket: 'VOHM' });
+    place(h, { red: 'tp-supply+', black: 'tp-gnd' });
+    act(h, { type: 'meter.read' });
+    expect(m.lastMeasurement({ instrument: 'multimeter', quantity: 'voltage' })?.value).toBeCloseTo(0, 1);
+    expect(evaluateWith(find, m)).toBe(true);
+  });
+
   it('solves every objective in order', () => {
     const h = harness(config());
     const m = h.m;

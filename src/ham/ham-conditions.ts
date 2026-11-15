@@ -89,11 +89,32 @@ export interface MeasuredSpec {
   current?: boolean;
 }
 
+/**
+ * Test points that are the same electrical node on the board. The meter offers both SUP- and GND,
+ * so a reading taken on either one proves the same thing.
+ */
+const canonicalTestPoint = (id: unknown): unknown => (id === 'tp-gnd' ? 'tp-supply-' : id);
+
 export function measured(spec: MeasuredSpec, description = `Measure ${spec.quantity}`): Condition {
+  const { red, black, ...fixedPlacement } = (spec.placement ?? {}) as Record<string, unknown>;
+  const probes = { red, black } as Record<string, unknown>;
+
   return make(`measured:${JSON.stringify(spec)}`, description, (m) =>
     m
-      .measurements({ instrument: spec.instrument, quantity: spec.quantity, placement: spec.placement, underLoad: spec.underLoad, afterEvent: spec.afterEvent })
-      .some((x) => (spec.current === false || m.isCurrent(x)) && (spec.min === undefined || x.value >= spec.min) && (spec.max === undefined || x.value <= spec.max))
+      .measurements({
+        instrument: spec.instrument,
+        quantity: spec.quantity,
+        placement: fixedPlacement as Record<string, string>,
+        underLoad: spec.underLoad,
+        afterEvent: spec.afterEvent,
+      })
+      .some(
+        (x) =>
+          (['red', 'black'] as const).every((k) => probes[k] === undefined || canonicalTestPoint(x.placement[k]) === canonicalTestPoint(probes[k])) &&
+          (spec.current === false || m.isCurrent(x)) &&
+          (spec.min === undefined || x.value >= spec.min) &&
+          (spec.max === undefined || x.value <= spec.max)
+      )
   );
 }
 

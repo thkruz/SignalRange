@@ -255,6 +255,49 @@ describe('M04 freshness', () => {
     expect(model.freshness(s)).toBe('stale');
   });
 
+  it('every provenance but the pilot report defaults to a 300 s window', () => {
+    const { model } = live();
+    for (const via of ['device-indicator', 'local-probe', 'terminal-app'] as const) {
+      expect(model.takeSample('skylink', 'registration', via).maxAgeS).toBe(300);
+    }
+  });
+
+  it('does not age while a held object is open and resumes after', () => {
+    const { model, advance } = live();
+    const s = model.takeSample('skylink', 'registration', 'local-probe');
+    advance(200);
+    model.pauseAging();
+    advance(1000);
+    expect(model.freshness(s)).toBe('current');
+    model.resumeAging();
+    expect(model.freshness(s)).toBe('current');
+    advance(99);
+    expect(model.freshness(s)).toBe('current');
+    advance(2);
+    expect(model.freshness(s)).toBe('stale');
+  });
+
+  it('a reading taken while an object is held starts aging only when it is put down', () => {
+    const { model, advance } = live();
+    model.pauseAging();
+    advance(50);
+    const s = model.takeSample('skylink', 'registration', 'local-probe');
+    advance(500);
+    model.resumeAging();
+    advance(299);
+    expect(model.freshness(s)).toBe('current');
+    advance(2);
+    expect(model.freshness(s)).toBe('stale');
+  });
+
+  it('an event still invalidates a reading while aging is paused', () => {
+    const { model } = live();
+    const s = model.takeSample('skylink', 'registration', 'local-probe');
+    model.pauseAging();
+    model.bumpEvent('test-event');
+    expect(model.freshness(s)).toBe('invalidated');
+  });
+
   it('a config epoch bump invalidates', () => {
     const { model } = live();
     const s = model.takeSample('skylink', 'registration', 'local-probe');

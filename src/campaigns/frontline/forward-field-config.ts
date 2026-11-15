@@ -42,8 +42,6 @@ export function forwardServiceConfig(): ServiceModelConfig {
     accounts: [{ id: FORWARD_SKYLINK_ACCOUNT, unitId: FORWARD_SKYLINK_UNIT, authorized: true, capacityFactor: 1 }],
     providers: [{ id: FORWARD_PROVIDER, status: 'normal', capacityFactor: 1, noticeIds: [] }],
     endpoints: [{ id: FORWARD_ENDPOINT, reachable: true }],
-    // Readings stay readable long enough to fill a form after taking them
-    maxAgeS: { 'device-indicator': 120, 'endpoint-report': 180, 'terminal-app': 180 },
   };
 }
 

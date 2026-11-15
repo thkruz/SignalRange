@@ -84,7 +84,7 @@ test.describe('Frontline S1 full completion', () => {
       await servicesTakeSample(page, 'skylink', 'local', 'local-probe');
       await servicesTakeSample(page, 'skylink', 'registration', 'terminal-app');
       // Counterexample and recovery: readings that have aged are refused, and taking them again fixes the filing
-      await advanceClock(page, 200_000);
+      await advanceClock(page, 400_000);
       await recordsExpectRefused(page, 'baseline', baseline, /out of date|stale|old|current|fresh|newer/iu);
       expect((await readObjective(page, 's1-record-baseline')).isCompleted).toBe(false);
       await servicesTakeSample(page, 'skylink', 'power', 'device-indicator');

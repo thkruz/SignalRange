@@ -91,7 +91,7 @@ describe('faceplate status lights', () => {
     expect(note.textContent).toContain('Light checked: Power');
   });
 
-  it('a reading that ages past its window renders stale or invalidated, not current', () => {
+  it('a reading does not age while the close-up is held in hand', () => {
     const plant = PhysicalPlantService.getInstance().plant;
     PartCloseupModal.getInstance().showCloseup('router');
     click(lensOf('power'));
@@ -99,7 +99,7 @@ describe('faceplate status lights', () => {
     EventBus.getInstance().emit(Events.UPDATE);
     vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 5000);
     EventBus.getInstance().emit(Events.UPDATE);
-    expect(['stale', 'invalidated']).toContain(lensOf('power').dataset.ledFresh);
+    expect(lensOf('power').dataset.ledFresh).toBe('current');
   });
 });
 

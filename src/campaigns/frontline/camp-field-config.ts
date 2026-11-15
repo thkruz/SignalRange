@@ -13,9 +13,6 @@ export const SKYLINK_SERVICE = 'skylink';
 export const CAMP_VSAT_SERVICE = 'camp-vsat';
 export const CAMP_SERVICES = [SKYLINK_SERVICE, CAMP_VSAT_SERVICE];
 
-/** Terminal indicators stay readable long enough to fill a form after taking the reading */
-const CAMP_MAX_AGE_S = { 'device-indicator': 120 } as const;
-
 export function campServiceConfig(): ServiceModelConfig {
   return {
     paths: [
@@ -48,7 +45,6 @@ export function campServiceConfig(): ServiceModelConfig {
       { id: 'skylink-net', status: 'normal', capacityFactor: 1, noticeIds: [] },
       { id: 'eurosat-net', status: 'normal', capacityFactor: 1, noticeIds: [] },
     ],
-    maxAgeS: { ...CAMP_MAX_AGE_S },
   };
 }
 

@@ -147,7 +147,7 @@ describe('M20 S1 completion', () => {
     expect(wrong?.ok).toBe(false);
     // Readings go stale with time; the player has to take them again
     const input = baselineInput(svc, 900);
-    tick(200);
+    tick(400);
     const stale = svc.records?.submit('baseline', input);
     expect(stale?.ok).toBe(false);
     submitBaseline(svc);

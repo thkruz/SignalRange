@@ -113,10 +113,10 @@ describe('M09 field service panel', () => {
     panel.setSource('device-indicator');
     expect(s?.tS).toBe(now());
     expect(host.querySelector('[data-fsp="badge-skylink|power|"]')?.textContent).toMatch(/^Current, fresh until elapsed [0-9]{2}:[0-9]{2}$/u);
-    advance(30);
+    advance(400);
     panel.sync();
     expect(host.querySelector('[data-fsp="badge-skylink|power|"]')?.textContent).toBe('Stale');
-    expect(host.querySelector('[data-fsp="age-skylink|power|"]')?.textContent).toBe('30 s ago');
+    expect(host.querySelector('[data-fsp="age-skylink|power|"]')?.textContent).toBe('7 min ago');
     expect(host.querySelector('[data-fsp="source-skylink|power|"]')?.textContent).toBe('Device light');
   });
 

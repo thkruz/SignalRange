@@ -12,6 +12,7 @@
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { OpsLogManager } from '@app/ops-log/ops-log-manager';
+import { ImmersiveView } from '@app/presentation/immersive-view';
 import { ScenarioManager } from '@app/scenario-manager';
 import { CampaignDocumentStore } from '@app/scenarios/campaign-document-store';
 import { resolveIncoming } from '@app/scenarios/incoming-records';
@@ -57,6 +58,9 @@ export class PhysicalPlantService {
   private fineNowS_: number | null = null;
   private readonly boundUpdateHandler_: () => void;
   private readonly sounds_: PlantSoundController;
+  /** Stops following held objects (readings do not age while one is open) */
+  private unfollowHeld_: (() => void) | null = null;
+  private heldObjects_ = 0;
   /** Present only when the plant config authors events */
   readonly events: PlantEventController | null;
   /** Present only when the plant config authors services (Campaign 6) */
@@ -100,6 +104,14 @@ export class PhysicalPlantService {
     this.services = config.service
       ? new ServiceModel(config.service, this.plant, undefined, { now: () => this.fineNowS_ ?? SimClock.scenarioElapsedMs() / 1000 }, config.liveLink)
       : null;
+    if (this.services) {
+      const services = this.services;
+      this.unfollowHeld_ = ImmersiveView.onChange((_dialog, change) => {
+        this.heldObjects_ = Math.max(0, this.heldObjects_ + (change === 'open' ? 1 : -1));
+        if (this.heldObjects_ > 0) services.pauseAging();
+        else services.resumeAging();
+      });
+    }
     this.evidence = config.service || config.events?.length ? new EvidenceLog(this.plant, this.services) : null;
     this.workloads =
       config.workloads && this.services
@@ -208,6 +220,7 @@ export class PhysicalPlantService {
     if (this.instance_) {
       EventBus.getInstance().off(Events.UPDATE, this.instance_.boundUpdateHandler_);
       this.instance_.sounds_.dispose();
+      this.instance_.unfollowHeld_?.();
       this.instance_.services?.dispose();
       this.instance_.evidence?.dispose();
       setActiveField(null);

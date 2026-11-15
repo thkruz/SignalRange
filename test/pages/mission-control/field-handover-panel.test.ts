@@ -176,6 +176,7 @@ describe('M14 handover panel', () => {
     r.service.takeSample('skylink', 'registration', 'device-indicator');
     r.panel.sync();
     r.panel.fillFromReading('reg');
+    r.plant.spendTime(400);
     r.plant.inspect('router');
     r.panel.check();
     expect(r.host.querySelector('[data-hf-note="reg"]')?.textContent).toContain('out of date');

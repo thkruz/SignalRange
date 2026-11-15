@@ -36,14 +36,17 @@ import {
   type ServiceSample,
 } from './service-types';
 
+/** A reading stays current this long (sim seconds) unless a config narrows it; a human at a field kit needs minutes, not seconds */
+export const READING_WINDOW_S = 300;
+
 const DEFAULT_MAX_AGE_S: Record<SampleProvenance, number> = {
-  'device-indicator': 15,
-  'local-probe': 60,
-  'terminal-app': 60,
-  'provider-portal': 300,
+  'device-indicator': READING_WINDOW_S,
+  'local-probe': READING_WINDOW_S,
+  'terminal-app': READING_WINDOW_S,
+  'provider-portal': READING_WINDOW_S,
   'pilot-report': 600,
-  'endpoint-report': 300,
-  'workload-run': 120,
+  'endpoint-report': READING_WINDOW_S,
+  'workload-run': READING_WINDOW_S,
 };
 
 /** Which layers a provenance can observe. The application layer takes only end-to-end observations. */
@@ -102,6 +105,8 @@ export class ServiceModel {
   private eventEpoch_ = 0;
   private sessionEpoch_ = 0;
   private sampleSeq_ = 0;
+  /** Scenario second a held object (clipboard, laptop, document) was picked up; null while nothing is held. Readings do not age meanwhile. */
+  private agingPausedAtS_: number | null = null;
   private samples_: ServiceSample[] = [];
   private history_: ServiceHistoryEntry[] = [];
   private readonly intervalCfg_: RecoveryIntervalConfig[];
@@ -160,6 +165,31 @@ export class ServiceModel {
 
   dispose(): void {
     this.unsubscribe_?.();
+  }
+
+  /**
+   * Stop readings from aging (a fullscreen object is held). Idempotent. The time spent held is given back to every
+   * reading on resume by widening its window, so `tS + maxAgeS` stays the true expiry for the badges.
+   */
+  pauseAging(): void {
+    if (this.agingPausedAtS_ === null) this.agingPausedAtS_ = this.deps_.now();
+  }
+
+  resumeAging(): void {
+    const since = this.agingPausedAtS_;
+    if (since === null) return;
+    this.agingPausedAtS_ = null;
+    const now = this.deps_.now();
+    for (const s of this.samples_) {
+      const held = now - Math.max(since, s.tS);
+      if (held > 0) s.maxAgeS += held;
+    }
+    this.cacheTimeS_ = Number.NaN;
+  }
+
+  /** The scenario second readings are aged against: frozen while a held object is open */
+  private agingNowS_(): number {
+    return this.agingPausedAtS_ ?? this.deps_.now();
   }
 
   // ------------------------------------------------------------------ truth
@@ -483,7 +513,7 @@ export class ServiceModel {
 
   /** Seconds since a sample was taken */
   ageS(sample: ServiceSample): number {
-    return Math.max(0, this.deps_.now() - sample.tS);
+    return Math.max(0, this.agingNowS_() - sample.tS);
   }
 
   freshness(sample: ServiceSample): Freshness {
@@ -497,7 +527,7 @@ export class ServiceModel {
       return 'invalidated';
     }
 
-    return this.deps_.now() - sample.tS > sample.maxAgeS ? 'stale' : 'current';
+    return this.agingNowS_() - sample.tS > sample.maxAgeS ? 'stale' : 'current';
   }
 
   /** Every kept sample of a service in the order they were taken (copies) */

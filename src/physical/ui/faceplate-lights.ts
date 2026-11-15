@@ -42,7 +42,9 @@ export class FaceplateLights {
     private readonly getModel_: () => ServiceModel | null,
     private readonly getNow_: () => number,
     /** Spends scenario seconds on a look (a measurement costs time) */
-    private readonly spend_: (seconds: number) => void
+    private readonly spend_: (seconds: number) => void,
+    /** Called once per look with the service whose lens was read (its own event, apart from the time cost) */
+    private readonly onLook_?: (serviceId: string) => void
   ) {
     this.boundClick_ = this.onClick_.bind(this);
     this.host_.addEventListener('click', this.boundClick_);
@@ -71,6 +73,7 @@ export class FaceplateLights {
     const sample = model.takeSample(serviceId, layer, SOURCE, undefined, 'status');
     this.lastLook_.set(serviceId, `Light checked: ${LAYER_LABEL[layer]}, by ${PROVENANCE_LABEL[SOURCE].toLowerCase()} at ${formatClock(sample.tS)}.`);
     this.spend_(CHECK_COST_S[SOURCE]);
+    this.onLook_?.(serviceId);
     this.sync();
   }
 

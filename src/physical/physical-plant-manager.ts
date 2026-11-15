@@ -208,7 +208,10 @@ export class PhysicalPlantManager {
   private readonly parts_ = new Map<string, PlantPartConfig>();
   private readonly cables_ = new Map<string, PlantCableConfig>();
   private readonly connectors_ = new Map<string, PlantConnectorConfig>();
-  private readonly lookedAt_ = new Set<string>();
+  /** Parts whose status lights the player read (looking without a logged verb); saved in checkpoints, cleared on reset */
+  private lookedAt_ = new Set<string>();
+  /** Parts the open close-up shows (null: no close-up); stamps connector looks so a probe on another part's wall does not count for that part */
+  private viewParts_: ReadonlySet<string> | null = null;
   private readonly tripLimit_: number;
   /** Plant part behind each engine device's powered state (config `engineMap` over the defaults) */
   readonly engineMap: Readonly<Record<EnginePowerRole, string>>;
@@ -304,6 +307,7 @@ export class PhysicalPlantManager {
     this.sealed_ = new Set();
     this.clearedFaultIds_ = new Set();
     this.revealedFacts_ = new Set();
+    this.lookedAt_ = new Set();
     this.trainerSpares_ = null;
     this.rebootUntilS_ = new Map();
     this.searchUntilS_ = new Map();
@@ -781,8 +785,19 @@ export class PhysicalPlantManager {
         return false;
       }
 
-      return entry.target === target || (entry.target !== undefined && this.connectors_.get(entry.target)?.partId === target);
+      if (entry.target === target) {
+        return true;
+      }
+
+      // A connector counts for its owning part, but not when it was probed in another part's close-up
+      // (the dish-end plug in the router-wall picture is not looking at the dish)
+      return !entry.offPart && entry.target !== undefined && this.connectors_.get(entry.target)?.partId === target;
     });
+  }
+
+  /** The close-up now open shows these parts (null when none is open) */
+  setViewParts(partIds: Iterable<string> | null): void {
+    this.viewParts_ = partIds ? new Set(partIds) : null;
   }
 
   /** The player read a part's status lights: that is looking at the part */
@@ -1608,6 +1623,7 @@ export class PhysicalPlantManager {
         startS: this.startS_,
         firstCorrectS: this.firstCorrectS_,
         accS: this.accS_,
+        lookedAt: [...this.lookedAt_],
         log: this.log_,
       } satisfies PlantState)
     ) as PlantState;
@@ -1619,6 +1635,7 @@ export class PhysicalPlantManager {
     this.sealed_ = new Set(copy.sealed);
     this.clearedFaultIds_ = new Set(copy.clearedFaultIds ?? []);
     this.revealedFacts_ = new Set(copy.revealedFacts ?? []);
+    this.lookedAt_ = new Set(copy.lookedAt ?? []);
     this.spares_ = copy.spares;
     this.trainerSpares_ = copy.trainerSpares;
     this.rebootUntilS_ = new Map(Object.entries(copy.rebootUntilS));
@@ -1904,6 +1921,10 @@ export class PhysicalPlantManager {
     };
     if (isFix) {
       entry.effective = outcome.effective ?? cleared.length > 0;
+    }
+    const owner = target ? this.connectors_.get(target)?.partId : undefined;
+    if (owner && this.viewParts_ && !this.viewParts_.has(owner)) {
+      entry.offPart = true;
     }
     this.log_.push(entry);
     this.notifyAction_(entry, wasOutside);

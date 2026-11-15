@@ -404,6 +404,8 @@ export interface PlantLogEntry {
   revealed: string[];
   cleared: string[];
   observation: string;
+  /** A connector probed in a close-up that does not show its owning part (does not count as looking at that part) */
+  offPart?: boolean;
 }
 
 export interface PlantReport {
@@ -439,6 +441,8 @@ export interface AppWrongCauseRule {
 export interface PlantState {
   /** App settings of the terminal and router (optional in older checkpoints) */
   terminalSettings?: TerminalSettings;
+  /** Parts whose status lights were read (optional in older checkpoints) */
+  lookedAt?: string[];
   /** Transmit-time intervals [startS, endS] and the last accrual time (E6; optional in older checkpoints) */
   transmit?: { intervals: Array<[number, number]>; baseS: number; lastS: number | null };
   faults: PlantFaultSnapshot[];

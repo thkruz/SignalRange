@@ -153,6 +153,7 @@ export class PartCloseupModal extends DraggableModal {
       this.bindOnce_();
       if (this.boxEl) this.immersive_.open(this.boxEl, def.title, 'equipment', () => this.close());
       this.buildLights_();
+      PhysicalPlantService.plantOrNull()?.setViewParts(this.def_?.regions.map((region) => region.target) ?? null);
     });
     document.removeEventListener('keydown', this.boundKeydown_, true);
     document.addEventListener('keydown', this.boundKeydown_, true);
@@ -164,6 +165,7 @@ export class PartCloseupModal extends DraggableModal {
     this.immersive_.close();
     const id = this.def_?.id;
     this.unsubscribe_();
+    PhysicalPlantService.plantOrNull()?.setViewParts(null);
     document.removeEventListener('keydown', this.boundKeydown_, true);
     super.close(cb);
     this.returnFocus_(id);
@@ -243,23 +245,25 @@ export class PartCloseupModal extends DraggableModal {
     const targets = new Set(this.def_?.regions.map((region) => region.target));
     const ids: string[] = [];
     const anchors: Record<string, LedAnchor | undefined> = {};
+    const owners: Record<string, string | undefined> = {};
     for (const id of model?.getServiceIds() ?? []) {
       const path = model!.getPath(id);
       if (!path || ![path.terminalPartId, ...path.localPartIds.filter((part) => !part.includes('laptop'))].some((part) => targets.has(part))) continue;
       ids.push(id);
       const led = this.def_?.leds?.find((anchor) => [path.terminalPartId, ...path.localPartIds].includes(anchor.target));
       if (led) anchors[id] = { x: led.x, y: led.y };
+      owners[id] = led?.target ?? (targets.has(path.terminalPartId) ? path.terminalPartId : path.localPartIds.find((part) => targets.has(part)));
     }
     this.lights_ = new FaceplateLights(
       host,
       artHost,
       () => PhysicalPlantService.servicesOrNull(),
       () => PhysicalPlantService.plantOrNull()?.getTimeSeconds() ?? 0,
-      (seconds) => {
-        const plant = PhysicalPlantService.plantOrNull();
-        plant?.spendTime(seconds);
-        // Reading the lights of the gear in this picture is looking at it
-        for (const target of targets) plant?.noteLookedAt(target);
+      (seconds) => PhysicalPlantService.plantOrNull()?.spendTime(seconds),
+      // Reading a lens is looking at the part that owns it, not every part in the picture
+      (serviceId) => {
+        const owner = owners[serviceId];
+        if (owner) PhysicalPlantService.plantOrNull()?.noteLookedAt(owner);
       }
     );
     this.lights_.setServices(ids, anchors);

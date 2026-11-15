@@ -136,6 +136,7 @@ export class DecisionModal extends DraggableBox {
     if (!this.domCreated_) this.createDom_();
     this.open(() => {
       this.render_();
+      this.keepInViewport_();
       this.startEvidencePoll_();
     });
   }
@@ -272,9 +273,10 @@ export class DecisionModal extends DraggableBox {
       feedbackEl.style.display = 'block';
       const continueBtn = getEl('decision-continue-btn');
       continueBtn?.addEventListener('click', () => this.handleContinueClick_());
+      // Clamp first so scrollIntoView never has to scroll the page itself
+      this.keepInViewport_();
       // The box scrolls; keep Continue in view (nats-s22-F9)
       continueBtn?.scrollIntoView?.({ block: 'nearest' });
-      this.keepInViewport_();
       continueBtn?.focus();
     }
     this.renderPenalty_(data.pointsDeducted);
@@ -302,6 +304,7 @@ export class DecisionModal extends DraggableBox {
       feedbackEl.style.display = 'block';
     }
     this.renderPenalty_(data.pointsDeducted);
+    this.keepInViewport_();
     window.setTimeout(() => {
       if (!this.isShowingFeedback_) this.setAvatar_(Emotion.CONFIDENT);
     }, 1500);

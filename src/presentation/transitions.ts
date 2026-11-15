@@ -35,8 +35,21 @@ export function updateChecklistWithMotion(container: HTMLElement, content: strin
  */
 function revealNewActiveObjective(container: HTMLElement, previousActiveId: string | undefined): void {
   const active = container.querySelector<HTMLElement>('.objective-item.active[data-objective-id]');
-  if (!active || active.dataset.objectiveId === previousActiveId) return;
+  if (!active) return;
+  if (active.dataset.objectiveId === previousActiveId && !container.dataset.revealPending) return;
+  // A hidden checklist cannot scroll; remember the reveal for when it is shown (revealActiveObjective)
+  if (container.getClientRects().length === 0) {
+    container.dataset.revealPending = '1';
+    return;
+  }
+  delete container.dataset.revealPending;
   active.scrollIntoView?.({ block: 'nearest' });
+}
+
+/** Called when the checklist is opened: brings a reveal that was skipped while hidden into view. */
+export function revealActiveObjective(container: HTMLElement): void {
+  if (!container.dataset.revealPending) return;
+  revealNewActiveObjective(container, undefined);
 }
 
 export function fade(element: Pick<Element, 'animate'>, from: number, to: number, scene = false): Animation | null {

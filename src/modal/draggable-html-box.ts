@@ -3,7 +3,7 @@ import { html } from '@app/engine/utils/development/formatter';
 import { getEl } from '@app/engine/utils/get-el';
 import { ObjectivesManager } from '@app/objectives/objectives-manager';
 import { minimalHudShown } from '@app/presentation/minimal-hud/minimal-hud-policy';
-import { updateChecklistWithMotion } from '@app/presentation/transitions';
+import { revealActiveObjective, updateChecklistWithMotion } from '@app/presentation/transitions';
 import { Sfx } from '@app/sound/sfx-enum';
 import SoundManager from '@app/sound/sound-manager';
 import './draggable-html-box.css';
@@ -119,6 +119,7 @@ export class DraggableHtmlBox extends DraggableBox {
       dockBtn.closest('.draggable-box__title-bar')?.classList.toggle('has-site-dock', dockable);
     }
     this.isOpen = true;
+    revealActiveObjective(this.popupDom);
   }
 
   /**

@@ -147,6 +147,27 @@ test.describe('ccs Scenario 3 at 1280x720: decision Continue and next objective 
       if (await openQuiz.isVisible()) await openQuiz.click();
       await page.waitForTimeout(500);
     }
+    const onScreen = async (sel: string): Promise<{ top: number; bottom: number; vh: number }> =>
+      modal
+        .locator(sel)
+        .last()
+        .evaluate((el) => {
+          const r = el.getBoundingClientRect();
+          return { top: r.top, bottom: r.bottom, vh: window.innerHeight };
+        });
+    // Opens inside the viewport before any answer: every option, including the last, is on screen
+    const lastOption = await onScreen('.quiz-option-btn');
+    expect(lastOption.top).toBeGreaterThanOrEqual(0);
+    expect(lastOption.bottom).toBeLessThanOrEqual(lastOption.vh);
+    const boxOpen = await modal.evaluate((el) => el.getBoundingClientRect().bottom <= window.innerHeight);
+    expect(boxOpen).toBe(true);
+    await page.screenshot({ path: 'shots/decision-open-1280.png' });
+    // A wrong answer grows the box with feedback; it must stay inside the viewport too
+    await modal.locator('.quiz-option-btn', { hasNotText: 'Nominal - every channel' }).first().click();
+    await expect(modal.locator('.feedback-incorrect')).toBeVisible();
+    const wrongBox = await modal.evaluate((el) => el.getBoundingClientRect().bottom <= window.innerHeight);
+    expect(wrongBox).toBe(true);
+    await page.screenshot({ path: 'shots/decision-fail-1280.png' });
     await modal.locator('.quiz-option-btn', { hasText: 'Nominal - every channel' }).first().click();
     const cont = modal.locator('#decision-continue-btn');
     await expect(cont).toBeVisible();
@@ -157,6 +178,7 @@ test.describe('ccs Scenario 3 at 1280x720: decision Continue and next objective 
     });
     expect(rect.top).toBeGreaterThanOrEqual(0);
     expect(rect.bottom).toBeLessThanOrEqual(rect.vh - 4);
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
     await cont.click();
     await missionControl.dismissDialogIfPresent();
     await waitForObjectiveComplete(missionControl, 'Call the State of Health');

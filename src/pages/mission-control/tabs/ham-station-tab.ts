@@ -419,6 +419,7 @@ export class HamStationTab {
     this.refresh_();
     this.notebook_.dataset.page = panelId;
     const item = kitObjectFor(sheet.tabId, BENCH_KIT);
+    if (item) LocatePulse.opened(`kit:${item.id}`);
     // Turning a page of the object already in hand: the page and the pressed tab change in place, focus stays put
     if (item && this.immersive_.isOpen() && this.heldKit_ === item.id) {
       for (const tab of this.heldNav_?.querySelectorAll<HTMLElement>('[data-field-object]') ?? []) {

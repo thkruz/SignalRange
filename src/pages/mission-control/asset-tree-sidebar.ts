@@ -378,6 +378,8 @@ export class AssetTreeSidebar extends BaseElement {
     this.addWorkingDocListener_();
   }
 
+  private consoleMapAttached_ = false;
+
   /**
    * The laminated "Console map" card (where-locator.ts). The entry shows only when the scenario's checklist rows
    * carry `where` locators; a scenario without them has no entry. The page is rebuilt on each open so it shows
@@ -385,14 +387,16 @@ export class AssetTreeSidebar extends BaseElement {
    */
   private addConsoleMapListener_(): void {
     const btn = qs<HTMLElement>('.console-map-icon', this.dom_);
-    if (!btn || !ObjectivesManager.hasInstance()) return;
-    if (collectWhereEntries(ObjectivesManager.getInstance().getObjectiveStates()).length === 0) return;
-    btn.hidden = false;
+    if (!btn) return;
+    // The sidebar is built before ObjectivesManager.initialize, so visibility is decided in refreshConsoleMap()
+    this.consoleMapAttached_ = true;
+    this.refreshConsoleMap();
     btn.addEventListener('click', () => {
       if (this.consoleMapBox_?.isShowing()) {
         this.consoleMapBox_.close();
         return;
       }
+      if (!ObjectivesManager.hasInstance()) return;
       const page = renderWherePage(collectWhereEntries(ObjectivesManager.getInstance().getObjectiveStates()), {
         kind: 'console-map',
         title: 'Console map',
@@ -403,6 +407,14 @@ export class AssetTreeSidebar extends BaseElement {
       this.consoleMapBox_.updateContent(page.outerHTML);
       this.consoleMapBox_.open();
     });
+  }
+
+  /** Show the Console map entry when the initialised objectives carry `where` locators. Call after ObjectivesManager.initialize. */
+  refreshConsoleMap(): void {
+    if (!this.consoleMapAttached_) return;
+    const btn = qs<HTMLElement>('.console-map-icon', this.dom_);
+    if (!btn) return;
+    btn.hidden = !(ObjectivesManager.hasInstance() && collectWhereEntries(ObjectivesManager.getInstance().getObjectiveStates()).length > 0);
   }
 
   private addWorkingDocListener_(): void {

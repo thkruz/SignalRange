@@ -485,6 +485,7 @@ export class ObjectivesManager {
     this.collapsedObjectiveIds_.add(activeObjective.objective.id);
 
     // Emit completion event
+    LocatePulse.getInstance().objectiveCompleted(activeObjective.objective);
     this.eventBus_.emit(Events.OBJECTIVE_COMPLETED, {
       objectiveId: activeObjective.objective.id,
       objective: activeObjective.objective,
@@ -1544,6 +1545,7 @@ export class ObjectivesManager {
 
         this.collapsedObjectiveIds_.add(objectiveState.objective.id);
 
+        LocatePulse.getInstance().objectiveCompleted(objectiveState.objective);
         this.eventBus_.emit(Events.OBJECTIVE_COMPLETED, {
           objectiveId: objectiveState.objective.id,
           objective: objectiveState.objective,

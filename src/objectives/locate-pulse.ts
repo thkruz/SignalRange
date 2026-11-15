@@ -82,6 +82,12 @@ export class LocatePulse {
     if (started) this.sync();
   }
 
+  /** An objective completed: its targets stop pulsing */
+  objectiveCompleted(objective: Pick<Objective, 'conditions'>): void {
+    for (const target of LocatePulse.targetsOf(objective)) this.pending_.delete(target);
+    this.sync();
+  }
+
   /** The targets pulsing now */
   pendingTargets(): readonly string[] {
     return [...this.pending_];

@@ -158,3 +158,18 @@ describe('locate pulse', () => {
     ObjectivesManager.destroy();
   });
 });
+
+describe('locate pulse completion', () => {
+  afterEach(() => {
+    LocatePulse.destroy();
+  });
+
+  it('stops pulsing an objective target when that objective completes', () => {
+    const o = objective('a', [cond({ locate: 'kit:logbook' })]);
+    const pulse = LocatePulse.getInstance();
+    pulse.objectiveActivated(o);
+    expect(pulse.pendingTargets()).toEqual(['kit:logbook']);
+    pulse.objectiveCompleted(o);
+    expect(pulse.pendingTargets()).toEqual([]);
+  });
+});

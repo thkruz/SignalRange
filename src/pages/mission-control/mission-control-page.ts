@@ -250,6 +250,7 @@ export class MissionControlPage extends BasePage {
     if (this.disposed_) return;
     await this.initializeObjectivesAndDialogs_();
     if (this.disposed_) return;
+    this.assetTreeSidebar_?.refreshConsoleMap();
     this.selectHamStation_();
     this.dom_.inert = false;
     SimClock.resume('loading');

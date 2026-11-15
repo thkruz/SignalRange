@@ -134,6 +134,47 @@ describe('AssetTreeSidebar', () => {
     document.body.innerHTML = '';
   });
 
+  describe('console map entry', () => {
+    afterEach(() => {
+      (ScenarioManager.getInstance as Mock).mockImplementation(() => ({ settings: { missionBriefUrl: null } }));
+      (ObjectivesManager.hasInstance as Mock).mockImplementation(() => false);
+      (ObjectivesManager.getInstance as Mock).mockImplementation(() => ({
+        syncCollapsedStatesFromDOM: vi.fn(),
+        generateHtmlChecklist: vi.fn(() => '<div>Checklist</div>'),
+      }));
+    });
+
+    it('stays hidden until objectives initialise, then shows when rows carry where locators', () => {
+      sidebar.destroy();
+      document.body.innerHTML = '';
+      (ScenarioManager.getInstance as Mock).mockReturnValue({ settings: { missionBriefUrl: null }, data: { objectives: [{ id: 'a' }] } });
+      const el = document.createElement('div');
+      el.id = 'asset-tree-sidebar-container';
+      document.body.appendChild(el);
+      sidebar = new AssetTreeSidebar('asset-tree-sidebar-container');
+      const btn = el.querySelector<HTMLElement>('.console-map-icon');
+      expect(btn).not.toBeNull();
+      expect(btn?.hidden).toBe(true);
+
+      // Objectives initialise after the sidebar was built
+      (ObjectivesManager.hasInstance as Mock).mockReturnValue(true);
+      (ObjectivesManager.getInstance as Mock).mockReturnValue({
+        getObjectiveStates: vi.fn(() => [
+          { objective: { id: 'a', title: 'T', conditions: [{ type: 'x', description: 'd', where: 'Logbook > Worksheets' }] }, isCompleted: false, conditionStates: [] },
+        ]),
+      });
+      sidebar.refreshConsoleMap();
+      expect(btn?.hidden).toBe(false);
+
+      // No locators: hidden again
+      (ObjectivesManager.getInstance as Mock).mockReturnValue({
+        getObjectiveStates: vi.fn(() => [{ objective: { id: 'a', title: 'T', conditions: [{ type: 'x', description: 'd' }] }, isCompleted: false, conditionStates: [] }]),
+      });
+      sidebar.refreshConsoleMap();
+      expect(btn?.hidden).toBe(true);
+    });
+  });
+
   describe('constructor', () => {
     it('should create instance', () => {
       expect(sidebar).toBeInstanceOf(AssetTreeSidebar);

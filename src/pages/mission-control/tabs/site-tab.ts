@@ -124,6 +124,8 @@ export class SiteTab extends BaseElement {
   private renderedImage_ = '';
   private renderedAspect_ = 0;
   private workspace_ = 'scene';
+  /** Url of the painted scene image, for the letterbox backdrop */
+  private backdropUrl_ = '';
   private active_ = false;
 
   constructor(containerId: string, onNotebookPutDown: () => void = () => EventBus.getInstance().emit(Events.SWITCH_TAB, { tabId: 'site' })) {
@@ -209,6 +211,7 @@ export class SiteTab extends BaseElement {
 
     const image = siteImageFor(view, this.baseImage_(), PhysicalPlantService.plantOrNull()?.getWeather() ?? 'clear');
     this.renderedImage_ = this.imageKey_(image);
+    this.backdropUrl_ = getAssetUrl(image);
 
     return `<img src="${getAssetUrl(image)}" alt="${alt}" draggable="false" />${overlay.join('')}`;
   }
@@ -308,6 +311,13 @@ export class SiteTab extends BaseElement {
     stage.style.setProperty('--pp-ar', String(this.aspect_()));
     this.renderedAspect_ = this.aspect_();
     stage.innerHTML = this.stageHtml_();
+    this.syncBackdrop_();
+  }
+
+  /** The letterbox around the scene is the scene itself, blurred and dimmed, so the picture fills the screen at any window shape */
+  private syncBackdrop_(): void {
+    const el = this.dom_?.querySelector<HTMLElement>('#site-backdrop');
+    if (el) el.style.backgroundImage = `url("${this.backdropUrl_}")`;
   }
 
   /**
@@ -327,6 +337,8 @@ export class SiteTab extends BaseElement {
       img.setAttribute('src', nextSrc);
     }
     this.renderedImage_ = this.imageKey_(image);
+    this.backdropUrl_ = nextSrc;
+    this.syncBackdrop_();
     const parse = (markup: string): Element[] => {
       const tmp = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       tmp.innerHTML = markup;
@@ -377,9 +389,9 @@ export class SiteTab extends BaseElement {
 
   private activateSpot_(spot: SVGElement): void {
     if (spot.dataset.action === 'go-outside') {
-      this.useFlap_('outside');
+      this.useFlap_('outside', spot);
     } else if (spot.dataset.action === 'go-inside') {
-      this.useFlap_('inside');
+      this.useFlap_('inside', spot);
     } else {
       PartCloseupModal.getInstance().showCloseup(spot.dataset.closeup as never);
     }
@@ -436,6 +448,8 @@ export class SiteTab extends BaseElement {
   }
 
   protected get html_(): string {
+    const stageMarkup = this.stageHtml_();
+
     return html`
       <div class="site-tab">
         <div class="site-tab-col">
@@ -448,7 +462,7 @@ export class SiteTab extends BaseElement {
           <span class="site-strip-spacer"></span>
           <button type="button" class="btn btn-sm btn-outline-warning" id="site-open-trainer" style="display:none">Trainer</button>
         </div>
-        <div class="site-stage-box" id="site-scene-panel"><div class="pp-stage" id="site-stage" style="--pp-ar:${this.aspect_()}">${this.stageHtml_()}</div></div>
+        <div class="site-stage-box" id="site-scene-panel"><div class="site-backdrop" id="site-backdrop" aria-hidden="true" style="background-image:url('${this.backdropUrl_}')"></div><div class="pp-stage" id="site-stage" style="--pp-ar:${this.aspect_()}">${stageMarkup}</div></div>
         <nav class="site-field-kit fk-tray" aria-label="Field kit">${SiteTab.trayHtml_()}</nav>
         <div id="site-power-panel" style="display:none"></div>
         <div id="site-service-panel" style="display:none"></div>
@@ -505,18 +519,22 @@ export class SiteTab extends BaseElement {
   }
 
   /** The tent flap: step out or back in through the tent control, so stepping out asks before it spends a trip */
-  private useFlap_(view: SiteView): void {
+  private useFlap_(view: SiteView, flap?: Element): void {
     const tent = TentControl.active();
     if (!tent || this.isForward_()) {
       this.setView(view);
 
       return;
     }
-    tent.requestToggle(() => {
-      this.setView(PhysicalPlantService.plantOrNull()?.isOutside() ? 'outside' : 'inside');
-      // The scene repainted: the player stands at the flap on the other side, so focus goes there
-      this.dom_?.querySelector<SVGElement>('#site-stage [data-action="go-inside"], #site-stage [data-action="go-outside"]')?.focus({ preventScroll: true });
-    });
+    tent.requestToggle(
+      () => {
+        this.setView(PhysicalPlantService.plantOrNull()?.isOutside() ? 'outside' : 'inside');
+        // The scene repainted: the player stands at the flap on the other side, so focus goes there
+        this.dom_?.querySelector<SVGElement>('#site-stage [data-action="go-inside"], #site-stage [data-action="go-outside"]')?.focus({ preventScroll: true });
+      },
+      undefined,
+      flap
+    );
   }
 
   protected addEventListeners_(): void {

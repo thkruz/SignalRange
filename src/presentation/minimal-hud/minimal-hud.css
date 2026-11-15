@@ -142,6 +142,28 @@ body:has(dialog.fnb-immersive[open]) .mc-hud {
   outline-offset: 2px;
 }
 
+/* The ask pinned to the tent flap the player clicked: the same canvas tag, hung beside the flap instead of on the pole */
+.mc-hud-tent .tent-control .tent-confirm.tent-confirm-pinned {
+  position: fixed;
+  z-index: 60;
+  flex-direction: column;
+  align-items: stretch;
+  max-width: 260px;
+  padding: 8px 12px 10px;
+  color: #ebe3cb;
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.03) 0 2px, transparent 2px 4px),
+    #4a4c33;
+  border-top: 0;
+  box-shadow:
+    inset 0 0 0 1px rgba(20, 20, 10, 0.5),
+    0 3px 10px rgba(0, 0, 0, 0.6);
+}
+
+.mc-hud-tent .tent-control .tent-confirm.tent-confirm-pinned > span {
+  text-align: left;
+}
+
 /* The wristwatch: transparent art with a DOM readout laid over its blank LCD */
 .mc-watch {
   position: relative;
@@ -572,9 +594,13 @@ body:has(dialog.fnb-immersive[open]) .mc-hud {
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  padding: 2px;
-  color: #ece4cf;
-  font-size: 0.72rem;
+  padding: 18px 24px;
+  color: #251e16;
+  background: #d3bd90;
+  border: 1px solid #9c8055;
+  box-shadow: 2px 4px 7px #0006;
+  transform: rotate(1deg);
+  font: italic 16px Georgia, serif;
 }
 
 .fk-crate-box {
@@ -716,4 +742,13 @@ body:has(dialog.fnb-immersive[open]) .mc-hud {
 /* The header and footer are hidden under the HUD, so the page takes the whole viewport (no 80 px band below) */
 .mc-minimal-hud .app-shell-page {
   height: var(--mc-viewport-height, 100vh);
+}
+
+/* Under the field HUD the scene runs edge to edge: no page padding round the stage or the tray */
+.mc-minimal-hud .canvas-content:has(.site-tab) {
+  padding: 0;
+}
+
+.mc-minimal-hud .site-tab {
+  padding: 0;
 }

@@ -38,6 +38,9 @@
 .site-tab .site-stage-box { flex: 1 0 auto; padding-right: var(--site-dock-gutter, 0px); min-height: min(62vh, 560px); container-type: size; display: flex; align-items: center; justify-content: center; }
 /* The panels below the scene sit under the docked boxes too: keep their selects and buttons clear of them (c6-s15 docked-box note) */
 .site-tab .site-tab-col > [id^="site-"][id$="-panel"] { padding-right: var(--site-dock-gutter, 0px); }
+.site-tab .site-stage-box { position: relative; overflow: hidden; }
+.site-tab .site-stage-box > .site-backdrop { position: absolute; inset: -40px; background-size: cover; background-position: center; filter: blur(26px) brightness(0.45) saturate(0.9); pointer-events: none; }
+.site-tab .site-stage-box > .pp-stage { position: relative; z-index: 1; }
 .site-tab .site-stage-box > .pp-stage { width: min(100cqw, calc(100cqh * var(--pp-ar, 1.5))); aspect-ratio: var(--pp-ar, 1.5); flex: none; }
 .site-tab .site-stage-box > .pp-stage > img { height: 100%; }
 .site-tab .site-strip {
@@ -77,7 +80,7 @@
 .pp-hotspot .pp-glow-fb { fill: rgba(255, 216, 102, 0.4); stroke: none; filter: url(#pp-soft); }
 .pp-hotspot .pp-glow-fb-path { fill: none; stroke: #ffd866; stroke-linecap: round; stroke-linejoin: round; filter: url(#pp-soft); }
 .pp-hotspot:hover .pp-glow, .pp-hotspot:focus .pp-glow, .pp-hotspot:focus-visible .pp-glow, .pp-hotspot:hover .pp-glow-fb, .pp-hotspot:focus .pp-glow-fb, .pp-hotspot:hover .pp-glow-fb-path, .pp-hotspot:focus .pp-glow-fb-path { opacity: 1; }
-.pp-hotspot .pp-label { font-size: 20px; fill: #fff; paint-order: stroke; stroke: rgba(0, 0, 0, 0.85); stroke-width: 4px; opacity: 0; transition: opacity 0.12s; pointer-events: none; }
+.pp-hotspot .pp-label { font-family: 'Roboto Condensed', 'Arial Narrow', sans-serif; font-size: 19px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; fill: #ebe3cb; paint-order: stroke; stroke: #2b2d1c; stroke-width: 7px; stroke-linejoin: round; opacity: 0; transition: opacity 0.12s; pointer-events: none; }
 .pp-hotspot:hover .pp-label, .pp-hotspot:focus .pp-label { opacity: 1; }
 .pp-hotspot .pp-pip-svg { pointer-events: all; cursor: pointer; }
 .pp-pip-svg { stroke: rgba(0, 0, 0, 0.6); stroke-width: 2; }

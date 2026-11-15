@@ -110,7 +110,7 @@ export class TentControl {
    * so it first asks (c6-s02-F11). The ask closes itself when the state changes. `after` runs once the
    * move happens (at once going in, on confirm going out); the tent flap uses it to repaint the scene.
    */
-  requestToggle(after?: () => void, onCancel?: () => void): void {
+  requestToggle(after?: () => void, onCancel?: () => void, anchor?: Element | null): void {
     const plant = this.plantOf_();
     if (!plant) {
       return;
@@ -134,6 +134,7 @@ export class TentControl {
     this.root_.querySelector<HTMLElement>('#tent-confirm-text')!.textContent = text;
     this.root_.querySelector<HTMLElement>('#tent-confirm-box')!.style.display = 'inline-flex';
     this.root_.querySelector<HTMLElement>('#tent-toggle')!.style.display = 'none';
+    this.pinConfirmTo_(anchor ?? null);
     // The ask takes focus wherever it was asked from, so a keyboard player at the flap answers it there
     this.root_.querySelector<HTMLElement>('#tent-confirm')!.focus({ preventScroll: true });
   }
@@ -161,8 +162,31 @@ export class TentControl {
     this.afterToggle_ = null;
     this.afterCancel_ = null;
     this.opener_ = null;
-    this.root_.querySelector<HTMLElement>('#tent-confirm-box')!.style.display = 'none';
+    const box = this.root_.querySelector<HTMLElement>('#tent-confirm-box')!;
+    box.style.display = 'none';
+    box.classList.remove('tent-confirm-pinned');
+    box.style.left = '';
+    box.style.top = '';
     this.root_.querySelector<HTMLElement>('#tent-toggle')!.style.display = '';
+  }
+
+  /** Put the ask under the flap's dot (above it when there is no room below), clamped to the window; no anchor leaves it on the tent tag. */
+  private pinConfirmTo_(anchor: Element | null): void {
+    const box = this.root_.querySelector<HTMLElement>('#tent-confirm-box')!;
+    box.classList.remove('tent-confirm-pinned');
+    if (!anchor?.isConnected) return;
+    const mark = anchor.querySelector('.pp-pip-svg') ?? anchor;
+    const rect = mark.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) return;
+    box.classList.add('tent-confirm-pinned');
+    const margin = 10;
+    const width = box.offsetWidth;
+    const height = box.offsetHeight;
+    const left = Math.min(Math.max(margin, rect.left + rect.width / 2 - width / 2), Math.max(margin, window.innerWidth - width - margin));
+    const below = rect.bottom + margin;
+    const top = below + height <= window.innerHeight - margin ? below : Math.max(margin, rect.top - height - margin);
+    box.style.left = `${Math.round(left)}px`;
+    box.style.top = `${Math.round(top)}px`;
   }
 
   /** Step out or back in through the plant manager (the same calls the Site tab used). */

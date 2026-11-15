@@ -156,3 +156,30 @@ describe('Go to a part across the flap (the sheet is down while the ask is open)
     host.remove();
   });
 });
+
+describe('TentControl confirm placement (issue 299)', () => {
+  it('pins the ask under the clicked flap dot, and unpins it when closed', () => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const { plant } = fakePlant();
+    const control = new TentControl(host, () => plant);
+    const flap = document.createElement('div');
+    const dot = document.createElement('div');
+    dot.className = 'pp-pip-svg';
+    flap.appendChild(dot);
+    document.body.appendChild(flap);
+    dot.getBoundingClientRect = () => ({ left: 400, right: 418, top: 100, bottom: 118, width: 18, height: 18, x: 400, y: 100, toJSON: () => ({}) }) as DOMRect;
+    control.requestToggle(undefined, undefined, flap);
+    const box = host.querySelector<HTMLElement>('#tent-confirm-box')!;
+    expect(box.classList.contains('tent-confirm-pinned')).toBe(true);
+    expect(Number.parseInt(box.style.top, 10)).toBe(128);
+    host.querySelector<HTMLButtonElement>('#tent-cancel')!.click();
+    expect(box.classList.contains('tent-confirm-pinned')).toBe(false);
+    // No anchor: the ask stays on the tent tag
+    control.requestToggle();
+    expect(box.classList.contains('tent-confirm-pinned')).toBe(false);
+    flap.remove();
+    control.dispose();
+    host.remove();
+  });
+});

@@ -183,10 +183,29 @@ export function noResetDuringTx(afterEvent: string, durationS: number, opts: { r
   });
 }
 
-export function radioSetting(deviceId: string, predicate: (s: Readonly<RadioSettings>) => boolean, label: string, description = label): Condition {
+/** Seconds a dial detent must hold before it credits a latching condition (a sweep past the value earns nothing) */
+export const DIAL_DWELL_S = 1;
+
+/**
+ * The radio is in a state the predicate accepts. With `dwellS` > 0 the state must hold that many
+ * simulated seconds before it counts, so sweeping the dial past the right value does not credit it.
+ * The radio itself still acts at once; only the crediting waits. Leaving the state restarts the wait.
+ */
+export function radioSetting(deviceId: string, predicate: (s: Readonly<RadioSettings>) => boolean, label: string, description = label, dwellS = 0): Condition {
+  const since = new WeakMap<HamStationManager, number>();
+
   return make(`radioSetting:${deviceId}:${label}`, description, (m) => {
     const r = m.radio(deviceId);
-    return r ? predicate(r) : false;
+    if (!r || !predicate(r)) {
+      since.delete(m);
+
+      return false;
+    }
+    if (dwellS <= 0) return true;
+    const t0 = since.get(m) ?? m.nowS;
+    since.set(m, t0);
+
+    return m.nowS - t0 >= dwellS;
   });
 }
 

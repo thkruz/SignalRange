@@ -38,12 +38,15 @@ describe('S4 I Can Hear Them solve', () => {
     cq(h); // simplex: wrong frequency
     expect(ok('check-transmit-frequency')).toBe(false); // offset not fixed yet
     act(h, FREQ);
+    expect(ok('check-transmit-frequency')).toBe(false); // the detent has not been held yet
+    h.advance(1.2);
     expect(ok('check-transmit-frequency')).toBe(true);
 
     expect(ok('correct-access-tone')).toBe(false);
     cq(h); // right input, wrong tone
     expect(ok('correct-access-tone')).toBe(false);
     act(h, TONE);
+    ok('correct-access-tone'); // the tone detent is noticed and starts its dwell
     cq(h);
     expect(ok('correct-access-tone')).toBe(true);
 
@@ -67,6 +70,7 @@ describe('S4 I Can Hear Them solve', () => {
     act(h, { type: 'worksheet.answer', id: 's04-dmr', values: { cc: 1, slot: 2, tg: 31337 } });
     for (const index of [0, 1, 2]) {
       act(h, { type: 'radio.dmrChannel', deviceId: 'dmr-ht', index });
+      ok('explore-digital-memory');
       act(h, { type: 'ptt', deviceId: 'dmr-ht', intent: { kind: 'call', target: 'KD0RLY' }, holdS: 2 });
       h.advance(index === 2 ? 14 : 4);
     }

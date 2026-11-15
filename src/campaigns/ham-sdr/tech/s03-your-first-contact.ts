@@ -1,6 +1,7 @@
 import {
   contactComplete,
   contactItems,
+  DIAL_DWELL_S,
   eventHappened,
   faultCleared,
   heard,
@@ -82,7 +83,7 @@ export const hamTechS03Data: ScenarioData = {
           'Tune to 146.550 MHz FM simplex and choose a low transmit power. Listen. If two operators are talking, wait until they are done, then keep listening for 10 more seconds with the channel clear before you call.',
         points: 15,
         conditions: [
-          radioSetting('ht', (s) => onChannel(s) && s.txPowerW <= 2.5, '146.550 MHz FM simplex, low power'),
+          radioSetting('ht', (s) => onChannel(s) && s.txPowerW <= 2.5, '146.550 MHz FM simplex, low power', undefined, DIAL_DWELL_S),
           heard(S03_CHAT_A, 0.3, { deviceId: 'ht' }, 'You heard the ongoing conversation'),
           heard(S03_CHAT_B, 0.3, { deviceId: 'ht' }, 'You heard both operators'),
           monitoredChannelClear(CH, 10, 'Channel clear for 10 seconds'),

@@ -1,5 +1,6 @@
 import {
   contactComplete,
+  DIAL_DWELL_S,
   dmrFailureSeen,
   dmrResponse,
   eventHappened,
@@ -62,7 +63,10 @@ export const hamTechS04Data: ScenarioData = {
         description:
           'Key the radio briefly and read the repeater response. Then set the offset so your radio transmits on the repeater input, 600 kHz below its output, without changing the receive frequency.',
         points: 15,
-        conditions: [repeaterLogged('wrong-frequency', 'Repeater did not hear the wrong frequency'), radioSetting('ht', onRepeater, '146.940 MHz FM, minus 600 kHz offset')],
+        conditions: [
+          repeaterLogged('wrong-frequency', 'Repeater did not hear the wrong frequency'),
+          radioSetting('ht', onRepeater, '146.940 MHz FM, minus 600 kHz offset', undefined, DIAL_DWELL_S),
+        ],
       },
       {
         id: 'correct-access-tone',
@@ -72,7 +76,13 @@ export const hamTechS04Data: ScenarioData = {
         points: 20,
         conditions: [
           eventHappened('repeater:wrong-tone', {}, 'Repeater rejected the wrong tone'),
-          radioSetting('ht', (s) => onRepeater(s) && s.txToneHz !== null && near(s.txToneHz, S04_ACCESS_TONE_HZ, 0.5), '100.0 Hz transmit tone, frequency and offset kept'),
+          radioSetting(
+            'ht',
+            (s) => onRepeater(s) && s.txToneHz !== null && near(s.txToneHz, S04_ACCESS_TONE_HZ, 0.5),
+            '100.0 Hz transmit tone, frequency and offset kept',
+            undefined,
+            DIAL_DWELL_S
+          ),
           repeaterAccess('relayed', { afterEvent: 'repeater:wrong-tone' }, 'Repeater relays your transmission'),
           relayHeard(0.5, 'You hear your own relay'),
           keyReleased('Key released'),
@@ -128,7 +138,7 @@ export const hamTechS04Data: ScenarioData = {
           worksheetCorrect('s04-dmr', 'Digital card copied'),
           dmrFailureSeen('no-talk-permit', 'Wrong color code seen'),
           dmrFailureSeen('tg-not-on-slot', 'Wrong time slot seen'),
-          radioSetting('dmr-ht', (s) => s.activeDmrChannel === S04_DMR_GOOD_INDEX, 'Matching channel loaded'),
+          radioSetting('dmr-ht', (s) => s.activeDmrChannel === S04_DMR_GOOD_INDEX, 'Matching channel loaded', undefined, DIAL_DWELL_S),
           dmrResponse('Talkgroup answers your call'),
           keyReleased('Key released'),
           quiz('S04-Q7'),

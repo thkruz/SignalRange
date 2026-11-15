@@ -323,27 +323,62 @@
 .trx-pad-lines { font-size: 0.95rem; }
 .trx-pad-lines .badge { font-family: system-ui, sans-serif; }
 
-/* ---- forms: a handheld is held upright; a mobile rig is a compact desk box ---- */
+/* ---- forms: a handheld is held upright with the mic and cards on the desk beside it; a mobile rig is a compact desk box ---- */
+.trx-room[data-form='handheld'] { flex-direction: row; flex-wrap: nowrap; justify-content: center; align-items: center; gap: clamp(14px, 2vw, 32px); }
+.trx-room[data-form='handheld'] .trx-stage { width: auto; flex: 0 1 auto; min-width: 0; }
+.trx-room[data-form='handheld'] .trx-desk { width: auto; flex: 0 1 auto; flex-direction: column; align-items: stretch; flex-wrap: nowrap; gap: 14px; max-width: 460px; }
+.trx-room[data-form='handheld'] .trx-micset { justify-content: center; }
+.trx-room[data-form='handheld'] .trx-pad { flex: 0 0 auto; max-width: none; min-height: 110px; }
 .trx-body[data-form='handheld'] {
-  width: min(620px, 100%);
-  grid-template-columns: minmax(0, 1fr) auto;
+  width: min(760px, 100%);
+  grid-template-columns: 300px minmax(0, 1fr) 170px;
   grid-template-areas:
-    'brand brand'
-    'display display'
-    'keys dial'
-    'knobs knobs'
-    'sub sub';
+    'brand brand brand'
+    'display display display'
+    'keys keys dial'
+    'knobs sub sub';
+  gap: 10px 18px;
+  padding: 14px 28px 16px;
   border-radius: 34px;
 }
-.trx-body[data-form='handheld'] .trx-keys { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'modes' 'fn' 'pad'; }
-.trx-body[data-form='handheld'] .trx-knobs { grid-template-columns: repeat(4, auto); justify-content: center; }
-.trx-body[data-form='handheld'] .trx-knob-main { --trx-k: 130px; }
+.trx-body[data-form='handheld'] .trx-vfd { min-height: 100px; padding: 6px 16px 8px; }
+.trx-body[data-form='handheld'] .trx-keys { align-content: start; }
+.trx-body[data-form='handheld'] .trx-knobs { grid-template-columns: repeat(4, auto); justify-content: center; gap: 8px 12px; }
+.trx-body[data-form='handheld'] .trx-keys { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'modes pad' 'fn pad'; }
+.trx-body[data-form='handheld'] .trx-sub { padding: 6px 12px 4px; gap: 6px 14px; }
+.trx-body[data-form='handheld'] .trx-knob-main { --trx-k: 150px; }
 .trx-body[data-form='handheld'] .trx-digits { font-size: clamp(2.2rem, 4vw, 3.2rem); }
 .trx-body[data-form='mobile'] { width: min(1280px, 100%); }
 
 @media (max-width: 1100px) {
-  .trx-body { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'brand brand' 'display display' 'keys dial' 'knobs knobs' 'sub sub'; }
-  .trx-knobs { grid-template-columns: repeat(4, auto); justify-content: center; }
+  .trx-body:not([data-form='handheld']) { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'brand brand' 'display display' 'keys dial' 'knobs knobs' 'sub sub'; }
+  .trx-body:not([data-form='handheld']) .trx-knobs { grid-template-columns: repeat(4, auto); justify-content: center; }
+}
+
+/* A short screen keeps the whole device and desk in view: smaller dial, display and mic, tighter gaps */
+@media (max-height: 820px) {
+  .trx-room { gap: 10px; padding: 8px 12px 10px; }
+  .trx-body { padding: 10px 24px 12px; gap: 8px 16px; }
+  .trx-vfd { min-height: 84px; padding: 4px 14px 6px; }
+  .trx-digits { font-size: clamp(2rem, 3.4vw, 3rem); }
+  .trx-key { height: 2.1rem; }
+  .trx-keypad .trx-key { height: 1.9rem; }
+  .trx-keypad { gap: 4px; }
+  .trx-keys { gap: 6px 14px; }
+  .trx-keyrow { gap: 6px; }
+  .trx-knob-main { --trx-k: clamp(110px, 12vw, 150px); }
+  .trx-body[data-form='handheld'] .trx-knob-main { --trx-k: 112px; }
+  .trx-mic { width: 108px; padding: 12px 10px 10px; gap: 6px; }
+  .trx-ptt { height: 60px; }
+  .trx-card { width: 300px; padding: 8px 12px 8px; }
+  .trx-card-row { min-height: 24px; }
+  .trx-pad { min-height: 90px; padding: 8px 14px; }
+  .trx-desk { gap: 14px; }
+  .trx-room[data-form='handheld'] .trx-desk { gap: 8px; }
+  /* A wide rig leaves no height for a tall card: the intent lines run in two columns */
+  .trx-room:not([data-form='handheld']) .trx-card { width: 400px; }
+  .trx-room:not([data-form='handheld']) .trx-card-lines { display: grid; grid-template-columns: 1fr 1fr; column-gap: 10px; }
+  .trx-room:not([data-form='handheld']) .trx-sub { padding: 4px 14px 2px; gap: 6px 24px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -61,11 +61,13 @@ describe('S11 solve: a contact through space', () => {
 
     expect(allTrue(prep, m)).toBe(false);
     prepare();
-    expect(allTrue(prep, m)).toBe(true);
+    expect(allTrue(prep, m)).toBe(false); // the settings have not been held yet
+    for (const c of practical(prep)) evaluateWith(c, m); // noticed now, credited once held
 
     // receive-only: nothing has been transmitted, the Yagi still points north at the horizon
     expect(allTrue(acq, m)).toBe(false);
     h.advance(60, 1);
+    expect(allTrue(prep, m)).toBe(true); // held through the wait
     expect(m.satelliteState()?.beaconHeard).toBe(false);
     aim();
     for (let i = 0; i < 6; i += 1) {

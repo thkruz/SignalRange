@@ -106,7 +106,7 @@ export class TransceiverFront {
     );
     body.style.backgroundImage = `url("${faceArtUrl()}")`;
     const desk = h('div', { class: 'trx-desk' }, canTx ? this.buildMic_(m) : null, this.buildPad_());
-    this.el = h('div', { class: 'trx-room', 'data-testid': tid('ham-radio', id, 'front') }, h('div', { class: 'trx-stage' }, body), desk);
+    this.el = h('div', { class: 'trx-room', 'data-form': form, 'data-testid': tid('ham-radio', id, 'front') }, h('div', { class: 'trx-stage' }, body), desk);
     this.sync(m, true);
   }
 

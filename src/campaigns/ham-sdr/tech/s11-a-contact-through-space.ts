@@ -1,4 +1,14 @@
-import { desenseFree, eventHappened, radioSetting, satBeaconHeard, satContact, satDownlinkHeard, satRelayedCorrected, worksheetCorrect } from '@app/ham/ham-conditions';
+import {
+  DIAL_DWELL_S,
+  desenseFree,
+  eventHappened,
+  radioSetting,
+  satBeaconHeard,
+  satContact,
+  satDownlinkHeard,
+  satRelayedCorrected,
+  worksheetCorrect,
+} from '@app/ham/ham-conditions';
 import { Emotion } from '@app/modal/character-enum';
 import type { ScenarioData } from '@app/ScenarioData';
 import { makeCubehopUvSatellite } from './cubehop-uv';
@@ -58,9 +68,10 @@ export const hamTechS11Data: ScenarioData = {
             'ht',
             (s) => Math.abs(s.vfoMHz - S11_UPLINK_MHZ) < 0.0005 && s.txToneHz === S11_TONE_HZ && s.txPowerW <= 2.5,
             'uplink-set',
-            'Handheld on the uplink with the tone at low power'
+            'Handheld on the uplink with the tone at low power',
+            DIAL_DWELL_S
           ),
-          radioSetting('sdr', (s) => s.mode === 'FM' && Math.abs(s.vfoMHz - S11_DOWNLINK_MHZ) < 0.02, 'downlink-set', 'SDR on the downlink in FM'),
+          radioSetting('sdr', (s) => s.mode === 'FM' && Math.abs(s.vfoMHz - S11_DOWNLINK_MHZ) < 0.02, 'downlink-set', 'SDR on the downlink in FM', DIAL_DWELL_S),
         ],
       },
       {

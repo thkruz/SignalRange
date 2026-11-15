@@ -110,6 +110,37 @@ describe('M11 workload panel', () => {
     expect(priorityForWeight(1)).toBe('background');
   });
 
+  it('empty state shows no run before the first Start', () => {
+    boot(config());
+    const { host, p } = panel();
+    p.sync();
+    expect(host.querySelectorAll('[data-wl-run]')).toHaveLength(0);
+    expect(host.textContent).toContain('Nothing running');
+    expect(host.textContent).toContain('No runs yet');
+    expect(host.querySelector<HTMLButtonElement>('button[data-wl-act="start"]')?.disabled).toBe(false);
+  });
+
+  it('Start run is disabled while the selected application is already running on the route', () => {
+    boot(config());
+    const { host, p } = panel();
+    p.sync();
+    host.querySelector<HTMLButtonElement>('button[data-wl-card="chat"]')?.click();
+    const start = host.querySelector<HTMLButtonElement>('button[data-wl-act="start"]');
+    start?.click();
+    expect(host.querySelectorAll('[data-wl-run]')).toHaveLength(1);
+    expect(start?.disabled).toBe(true);
+    start?.click();
+    expect(host.querySelectorAll('[data-wl-run]')).toHaveLength(1);
+    // Another application is still startable
+    host.querySelector<HTMLButtonElement>('button[data-wl-card="video"]')?.click();
+    expect(host.querySelector<HTMLButtonElement>('button[data-wl-act="start"]')?.disabled).toBe(false);
+    // The run ends and the first application can start again
+    tick(25);
+    p.sync();
+    host.querySelector<HTMLButtonElement>('button[data-wl-card="chat"]')?.click();
+    expect(host.querySelector<HTMLButtonElement>('button[data-wl-act="start"]')?.disabled).toBe(false);
+  });
+
   it('Start button runs a card, progress advances, result has timestamps', () => {
     boot(config());
     const { host, p } = panel();

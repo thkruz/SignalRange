@@ -42,7 +42,7 @@
 .fpp .fpp-go:focus-visible, .fpp .fpp-btn:focus-visible { outline: 3px solid #0b5fa8; outline-offset: 2px; }
 .fpp .fpp-btn:disabled { opacity: 0.5; cursor: default; }
 .fpp .fpp-forecast { position: relative; margin: 0 0 12px; padding: 8px 4px; }
-.fpp .fpp-forecast.fpp-ok::after { content: '\2713'; position: absolute; right: 12px; top: 0; font: 700 46px/1 'Caveat', 'Segoe Print', cursive; color: #1d4a28; transform: rotate(-6deg); pointer-events: none; }
+.fpp .fpp-forecast.fpp-ok::after { content: 'MEETS RESERVE'; position: absolute; right: 8px; top: 2px; padding: 2px 8px; font: 700 13px 'Courier New', monospace; letter-spacing: 0.1em; color: #1d4a28; border: 2.5px solid #1d4a28; opacity: 0.85; transform: rotate(-5deg); pointer-events: none; }
 .fpp .fpp-forecast.fpp-bad::after { content: 'BELOW RESERVE'; position: absolute; right: 8px; top: 2px; padding: 2px 8px; font: 700 13px 'Courier New', monospace; letter-spacing: 0.1em; color: var(--fpp-stamp); border: 2.5px solid var(--fpp-stamp); opacity: 0.85; transform: rotate(-5deg); pointer-events: none; }
 .fpp [data-fpp='supply-alarm'].fpp-forecast::after { content: none; }
 .fpp .fpp-forecast-title { font: 700 12px 'Courier New', monospace; letter-spacing: 0.12em; text-transform: uppercase; }

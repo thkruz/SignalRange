@@ -11,7 +11,8 @@
 .fpd .fpd-kicker { margin: 0; font: 700 11px/1 'Courier New', monospace; letter-spacing: 0.2em; text-transform: uppercase; color: #4b565e; }
 .fpd .fpd-title { margin: 6px 0 2px; font: 700 26px/1.15 Georgia, serif; text-transform: uppercase; color: var(--fpd-ink); }
 .fpd .fpd-legend { margin: 0; font-style: italic; color: #3a444c; }
-.fpd .fpd-svg { width: 100%; height: auto; display: block; }
+.fpd .fpd-svg { width: 100%; height: auto; display: block; overflow: visible; }
+.fpd .fpd-wire { stroke: #5a656d; stroke-width: 1.4; fill: none; pointer-events: none; }
 .fpd .fpd-seg { fill: #3d4850; font: 700 10px 'Courier New', monospace; letter-spacing: 0.08em; text-transform: uppercase; }
 .fpd .fpd-lane { fill: var(--fpd-ink); font: 700 12px Georgia, serif; }
 .fpd .fpd-sep { stroke: #8c968f; stroke-width: 1; }

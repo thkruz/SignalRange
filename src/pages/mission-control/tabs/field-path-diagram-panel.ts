@@ -207,7 +207,7 @@ export class FieldPathDiagramPanel {
       if (holder) holder.innerHTML = this.svg_(diagram, shared);
     }
     const count = this.host_.querySelector<HTMLElement>('[data-fpd="count"]');
-    const text = `${this.selected_.size} ringed`;
+    const text = `${this.marked_.size} marked, ${this.selected_.size} ringed`;
     if (count && count.textContent !== text) count.textContent = text;
     const last = this.host_.querySelector<HTMLElement>('[data-fpd="last"]');
     if (last && last.textContent !== this.lastMsg_) last.textContent = this.lastMsg_;
@@ -217,12 +217,28 @@ export class FieldPathDiagramPanel {
     const layout = layoutDiagram(diagram);
     const sharedIds = new Set(diagram.sharedIds);
     const colX = (i: number): number => 8 + i * (NODE_W + 22);
-    const heads = DIAGRAM_SEGMENTS.map((seg, i) => `<text class="fpd-seg" x="${colX(i)}" y="14">${escapeHtml(SEGMENT_LABEL[seg])}</text>`).join('');
+    const usedSegs = new Set(diagram.lanes.flatMap((lane) => lane.nodes.map((n) => n.segment)));
+    const heads = DIAGRAM_SEGMENTS.map((seg, i) => (usedSegs.has(seg) ? `<text class="fpd-seg" x="${colX(i)}" y="14">${escapeHtml(SEGMENT_LABEL[seg])}</text>` : '')).join('');
     const lanes = diagram.lanes
       .map(
         (lane, i) =>
           `<text class="fpd-lane" x="8" y="${layout.laneTops[i] + 12}">${escapeHtml(lane.label)}</text><line class="fpd-sep" x1="0" x2="${layout.width}" y1="${layout.laneTops[i] + laneHeight(lane)}" y2="${layout.laneTops[i] + laneHeight(lane)}"/>`
       )
+      .join('');
+    const wires = diagram.lanes
+      .map((lane, laneIndex) => {
+        const pl = layout.placements.filter((p) => p.laneIndex === laneIndex);
+        const bySeg = DIAGRAM_SEGMENTS.map((seg) => lane.nodes.filter((n) => n.segment === seg).map((n) => pl.find((p) => p.id === n.id))).filter((c) => c.length > 0);
+        const segs: string[] = [];
+        for (let c = 0; c + 1 < bySeg.length; c++) {
+          const from = bySeg[c][0];
+          const to = bySeg[c + 1][0];
+          if (!from || !to) continue;
+          segs.push(`<line class="fpd-wire" x1="${from.x + NODE_W}" y1="${from.y + NODE_H / 2}" x2="${to.x}" y2="${to.y + NODE_H / 2}"/>`);
+        }
+
+        return segs.join('');
+      })
       .join('');
     const nodes = layout.placements
       .map((p) => {
@@ -244,20 +260,22 @@ export class FieldPathDiagramPanel {
       })
       .join('');
 
-    return `<svg class="fpd-svg" viewBox="0 0 ${layout.width} ${layout.height}" role="group" aria-label="Service path diagram">${heads}${lanes}${nodes}</svg>`;
+    return `<svg class="fpd-svg" viewBox="0 0 ${layout.width} ${layout.height}" role="group" aria-label="Service path diagram">${heads}${lanes}${wires}${nodes}</svg>`;
   }
 
   /** A hand-drawn ring round a box: solid grease pencil for a recorded mark, dashed pencil while it is only ringed. Deterministic per box. */
   private pencil_(x: number, y: number, seed: number, marked: boolean, ringed: boolean): string {
     if (!marked && !ringed) return '';
+    // The ring hugs the box (3 px clear on every side) so it never reaches the label text or leaves the box's lane
     const j = (n: number): number => (((Math.sin((x + 3) * 12.9898 + (y + seed) * 78.233 + n * 4.1) * 43758.5453) % 1) + 1) % 1;
-    const l = x - 5 + j(1) * 3;
-    const r = x + NODE_W + 5 - j(2) * 3;
-    const t = y - 4 + j(3) * 2;
-    const b = y + NODE_H + 4 - j(4) * 2;
-    const cx = (l + r) / 2;
-    const d = `M${cx + 6} ${t - 1} C${r + 6} ${t} ${r + 4} ${b + 2} ${cx} ${b} C${l - 5} ${b - 1} ${l - 6} ${t + 2} ${cx - 4} ${t + 1} C${cx + 10} ${t - 3} ${r - 4} ${t + 1} ${r - 2} ${t + 6}`;
-    const tick = marked ? `<path class="fpd-pencil-tick" d="M${r - 8} ${t - 5} l4 5 l9 -11"/>` : '';
+    const l = x - 3 + j(1) * 1;
+    const r = x + NODE_W + 3 - j(2) * 1;
+    const t = y - 3 + j(3) * 1;
+    const b = y + NODE_H + 3 - j(4) * 1;
+    const d = `M${l + 6} ${t} L${r - 6} ${t} Q${r} ${t} ${r} ${t + 6} L${r} ${b - 6} Q${r} ${b} ${r - 6} ${b} L${l + 6} ${b} Q${l} ${b} ${l} ${b - 6} L${l} ${t + 6} Q${l} ${t} ${l + 6} ${t} Z`;
+    // The recorded-mark tick sits in the gap beside the box, clear of every label
+    const ty = y + NODE_H / 2;
+    const tick = marked ? `<path class="fpd-pencil-tick" d="M${r + 3} ${ty} l3 4 l7 -9"/>` : '';
 
     // A box can be both marked (recorded) and ringed again: show the grease mark and the dashed ring together
     const ring = ringed ? `<path class="fpd-ring" d="${d}" transform="translate(1.5 1.5)"/>` : '';

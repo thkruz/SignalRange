@@ -168,7 +168,6 @@ export function forecastGraph(model: PowerPanelModel): string {
     <line class="fpp-line ${cls}" x1="${x(0)}" y1="${y0}" x2="${x(1)}" y2="${y1}"/>${hit}
     <circle class="fpp-dot" cx="${x(0)}" cy="${y0}" r="3.5"/><circle class="fpp-dot" cx="${x(1)}" cy="${y1}" r="3.5"/>
     <text class="fpp-pencil-note" x="${x(0) + 8}" y="${y0 - 8}">now ${Math.round(model.socTotalWh)} Wh</text>
-    <text class="fpp-pencil-note" x="${x(1) - 4}" y="${y1 + (y1 < H - B - 26 ? 20 : -10)}" text-anchor="end">${Math.round(f.projectedSocWh)} Wh</text>
     <text class="fpp-axis" x="${x(0)}" y="${H - 16}" text-anchor="middle">0</text><text class="fpp-axis" x="${x(1) + 6}" y="${H - 16}" text-anchor="end">${escapeHtml(formatDuration(f.horizonS))}</text>
     <text class="fpp-axis" x="${(L + W - R) / 2}" y="${H - 3}" text-anchor="middle">time ahead</text>
     <text class="fpp-axis" x="10" y="${mid}" text-anchor="middle" transform="rotate(-90 10 ${mid})">Wh</text>
@@ -353,7 +352,7 @@ export class FieldPowerPanel {
     const reserveWrap = this.el_('reserve-wrap');
     if (reserveWrap) reserveWrap.style.display = r.reserveWh === null ? 'none' : '';
     this.text_('reserve', r.reserveWh === null ? '' : `${Math.round(r.reserveWh)} Wh`);
-    this.text_('summary', hasBattery ? `${Math.round(model.socTotalWh)} Wh stored, drawing ${Math.round(r.totalDrawW)} W` : `drawing ${Math.round(r.totalDrawW)} W`);
+    this.text_('summary', 'Pick a mode for each load, read the forecast, then keep the plan.');
 
     const alarm = this.el_('supply-alarm');
     if (alarm) {
@@ -372,7 +371,7 @@ export class FieldPowerPanel {
       const modeEl = this.el_(`mode-${d.id}`);
       if (modeEl) modeEl.className = `fpp-mode ${d.starting || d.phase ? 'fpp-mode-warn' : d.current === 'off' || d.current === 'standby' ? 'fpp-mode-idle' : 'fpp-mode-on'}`;
       this.text_(`load-${d.id}`, `${Math.round(d.loadW)} W`);
-      this.text_(`fuel-${d.id}`, d.fuelL === null ? '' : `${d.fuelL.toFixed(1)} L`);
+      this.text_(`fuel-${d.id}`, d.fuelL === null ? '' : `${d.fuelL.toFixed(1)} L fuel`);
       for (const input of this.host_.querySelectorAll<HTMLInputElement>(`input[data-power-part="${d.id}"]`)) {
         input.checked = input.value === d.pending;
       }

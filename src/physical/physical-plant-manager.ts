@@ -1515,7 +1515,7 @@ export class PhysicalPlantManager {
       return this.notApplicable_();
     }
 
-    return this.act_('reboot', terminal.id, VERB_COST_S.reboot, true, () => ({ observation: 'The terminal is restarting.' }));
+    return this.act_('reboot', terminal.id, VERB_COST_S.reboot, true, () => ({ observation: 'The terminal is restarting.' }), false, true);
   }
 
   /** App verb: set the snow melt mode. Costs a few seconds. */
@@ -1525,13 +1525,21 @@ export class PhysicalPlantManager {
       return this.notApplicable_();
     }
 
-    return this.act_('setSnowMelt', terminal.id, VERB_COST_S.setSnowMelt, false, () => {
-      this.terminalSettings_.snowMelt = mode;
-      this.holdWindow(MELT_WINDOW_KEY, false);
-      this.trackMeltWindow_();
+    return this.act_(
+      'setSnowMelt',
+      terminal.id,
+      VERB_COST_S.setSnowMelt,
+      false,
+      () => {
+        this.terminalSettings_.snowMelt = mode;
+        this.holdWindow(MELT_WINDOW_KEY, false);
+        this.trackMeltWindow_();
 
-      return { observation: `Snow melt is set to ${mode}.` };
-    });
+        return { observation: `Snow melt is set to ${mode}.` };
+      },
+      false,
+      true
+    );
   }
 
   /** App verb: set (or clear, with null) the power-save sleep window, as sim time of day in seconds */
@@ -1542,12 +1550,20 @@ export class PhysicalPlantManager {
       return this.notApplicable_();
     }
 
-    return this.act_('setSleep', terminal.id, VERB_COST_S.setSleep, false, () => {
-      this.terminalSettings_.sleep = schedule ? { startS: schedule.startS, endS: schedule.endS } : null;
-      this.trackMeltWindow_();
+    return this.act_(
+      'setSleep',
+      terminal.id,
+      VERB_COST_S.setSleep,
+      false,
+      () => {
+        this.terminalSettings_.sleep = schedule ? { startS: schedule.startS, endS: schedule.endS } : null;
+        this.trackMeltWindow_();
 
-      return { observation: schedule ? 'The sleep schedule is saved.' : 'The sleep schedule is off.' };
-    });
+        return { observation: schedule ? 'The sleep schedule is saved.' : 'The sleep schedule is off.' };
+      },
+      false,
+      true
+    );
   }
 
   /** App verb: set the router Wi-Fi name and password. Cosmetic (no wired versus wireless laptop in the plant). */
@@ -1845,9 +1861,10 @@ export class PhysicalPlantManager {
    * Run one verb: trip bookkeeping, effect, reboot of dependants, clock skip,
    * re-solve and log. `isFix` verbs are checked for ineffective actions.
    */
-  private act_(verb: PlantVerb, target: string | undefined, costSeconds: number, disruptive: boolean, apply: () => ActOutcome, isFix = false): VerbResult {
-    // A verb's location is its target's location; the doors have their own
-    const location = this.verbLocation_(verb, target);
+  private act_(verb: PlantVerb, target: string | undefined, costSeconds: number, disruptive: boolean, apply: () => ActOutcome, isFix = false, remote = false): VerbResult {
+    // A verb's location is its target's location; the doors have their own. A remote verb (an app on the laptop
+    // talking to the terminal) is sent from where the player already is: it never moves them or spends a trip.
+    const location: TargetLocation = remote ? 'either' : this.verbLocation_(verb, target);
     const wasOutside = this.outside_;
     this.updateTrip_(location, target);
     const outdoor = location === 'outdoor' || (location === 'either' && this.outside_);

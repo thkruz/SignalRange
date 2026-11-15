@@ -725,6 +725,10 @@ export class TabbedCanvas extends BaseElement {
   private confirmLeaveSite_(proceed: () => void): void {
     const plant = PhysicalPlantService.plantOrNull();
 
+    // A held object (laptop, paper, close-up) is an ImmersiveView modal dialog in the top layer: it makes the page behind
+    // it inert and paints over the confirm, so neither button could be clicked. Put those down first so the ask is
+    // reachable. The field notebook, scene modals and feedback dialog run their own showModal() and are not covered.
+    ImmersiveView.closeAll();
     ModalConfirm.getInstance().open(
       () => {
         plant?.returnInside();

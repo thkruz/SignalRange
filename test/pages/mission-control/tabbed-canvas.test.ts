@@ -132,6 +132,7 @@ import { SatelliteDashboardTab } from '../../../src/pages/mission-control/tabs/s
 import { TxChainTab } from '../../../src/pages/mission-control/tabs/tx-chain-tab';
 import { FieldTabPolicy } from '../../../src/physical/field-tab-policy';
 import { PhysicalPlantService } from '../../../src/physical/physical-plant-service';
+import { ImmersiveView } from '../../../src/presentation/immersive-view';
 import { ScenarioManager, type SimulationSettings } from '../../../src/scenario-manager';
 import { SimulationManager } from '../../../src/simulation/simulation-manager';
 
@@ -940,6 +941,30 @@ describe('TabbedCanvas outside-the-tent guard', () => {
     onConfirm();
     expect(plant.returnInside).toHaveBeenCalledTimes(1);
     expect(activeTabId()).toBe('rx-analysis');
+  });
+
+  it('puts a held laptop down before the confirm opens, so its buttons are not under an inert modal dialog', () => {
+    vi.spyOn(PhysicalPlantService, 'plantOrNull').mockReturnValue(plant as never);
+    vi.spyOn(HTMLDialogElement.prototype, 'showModal').mockImplementation(function (this: HTMLDialogElement) {
+      this.open = true;
+    });
+    vi.spyOn(HTMLDialogElement.prototype, 'close').mockImplementation(function (this: HTMLDialogElement) {
+      this.open = false;
+    });
+    const held = new ImmersiveView();
+    const body = document.createElement('div');
+    document.body.append(body);
+    held.open(body, 'Laptop', 'laptop', () => held.close());
+    expect(ImmersiveView.topDialog()).not.toBeNull();
+    let heldWhenAsked: HTMLDialogElement | null | undefined;
+    confirmOpen.mockImplementation(() => {
+      heldWhenAsked = ImmersiveView.topDialog();
+    });
+    outside = true;
+    switchHandler()?.({ tabId: 'rx-analysis' });
+    expect(confirmOpen).toHaveBeenCalledTimes(1);
+    expect(heldWhenAsked).toBeNull();
+    expect(held.isOpen()).toBe(false);
   });
 
   it('gates a sidebar asset switch while outside, then switches after Go inside', () => {

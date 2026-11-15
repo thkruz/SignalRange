@@ -386,6 +386,21 @@ describe('spares, trips and the action log', () => {
     expect(plant.isOutside()).toBe(false);
   });
 
+  it('app verbs sent to the terminal from the laptop do not move the player outside or spend a trip', () => {
+    const { plant } = makePlant();
+    expect(plant.isOutside()).toBe(false);
+    plant.reboot();
+    plant.setSnowMelt('off');
+    plant.setSleep(null);
+    expect(plant.isOutside()).toBe(false);
+    expect(plant.getReport().trips).toBe(0);
+
+    // hands-on work at the dish still counts a trip
+    plant.clearSnow('skylink-dish');
+    expect(plant.isOutside()).toBe(true);
+    expect(plant.getReport().trips).toBe(1);
+  });
+
   it('logs ineffective actions and the time to the first correct one', () => {
     const { plant, advance } = makePlant();
     plant.injectFault(fault({ id: 'seat', target: 'skylink-cable:dish', kind: 'partial-seat' }));

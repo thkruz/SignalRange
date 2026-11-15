@@ -355,6 +355,7 @@ export class FieldHandoverPanel {
         <footer class="fhf-foot">
           <p class="fhf-msg" data-fhf="msg" role="status" aria-live="polite"></p>
           <div data-slot="filed"></div>
+          <p class="fhf-howto" data-fhf="howto">Check shows what is missing. Sign here to file the sheet.</p>
           <div class="fhf-actions" data-slot="actions"><button type="button" class="fhf-pencil-btn" data-hf-act="check">Check</button><div class="fhf-sign"><span class="fhf-sign-caption">Operator signature</span><button type="button" class="fhf-sign-btn" data-hf-act="submit">Sign</button></div></div>
         </footer>
       </section>`;
@@ -502,7 +503,9 @@ export class FieldHandoverPanel {
     if (reading === undefined && 'powerWithin' in rule) {
       const part = rule.powerWithin.partId === undefined ? 'power equipment' : (this.deps_.plant()?.getLabel(rule.powerWithin.partId) ?? 'power equipment');
 
-      return `No reading yet. Inspect the ${part} in the site close-up to read its display, then use it here. You can also type the figure shown in the Power panel.`;
+      const where = rule.powerWithin.metric === 'fuelL' ? ' (the body or the fuel cap)' : '';
+
+      return `No reading yet. Inspect the ${part} in its site close-up${where}. The result gives the figure it shows; then copy it here, or type the figure from the Power panel.`;
     }
 
     return reading ?? '';
@@ -556,7 +559,7 @@ export class FieldHandoverPanel {
       widget = `<div class="fhf-cites" data-hf-cites="${k}"><div class="fhf-hint">Tick at least ${min} ${escapeHtml(KIND_LABEL[rule.cites]?.toLowerCase() ?? rule.cites)} entr${min === 1 ? 'y' : 'ies'} from the notebook.</div>${citeBoxes(rule.cites)}</div>`;
     } else if ('evidence' in rule) {
       const needs = rule.evidence.map((g) => `<li>${escapeHtml(g.label)}${(g.min ?? 1) > 1 ? ` (${g.min})` : ''}</li>`).join('');
-      widget = `<div class="fhf-cites" data-hf-cites="${k}"><div class="fhf-hint">Required: tick notebook entries for &ldquo;${escapeHtml(f.label)}&rdquo; that show each of these. Only entries that can back this slot are listed, newest first. One entry counts once.</div><ul class="fhf-needs" data-fhf="needs-${k}">${needs}</ul>${citeBoxes(null)}</div>`;
+      widget = `<div class="fhf-cites" data-hf-cites="${k}"><div class="fhf-hint">Tick the notebook entries that show each of these. Only entries that can back this line are listed, newest first, and each counts once.</div><ul class="fhf-needs" data-fhf="needs-${k}">${needs}</ul>${citeBoxes(null)}</div>`;
     } else if ('workload' in rule) {
       const pathLabel = (serviceId: string): string => this.deps_.service()?.getPath(serviceId)?.label ?? serviceId;
       const runLabel = (r: WorkloadRun): string =>

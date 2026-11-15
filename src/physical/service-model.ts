@@ -762,11 +762,12 @@ export class ServiceModel {
     if (this.plant_.isStarting(id)) {
       return down('terminal-starting');
     }
-    if (this.plant_.isSearching?.(id)) {
-      return down('terminal-searching');
-    }
+    // Standby is named before the search: a dish left in standby will not serve when the search ends, and that is the cause the player can act on
     if (!this.plant_.modeServesTraffic(id)) {
       return down('mode-standby');
+    }
+    if (this.plant_.isSearching?.(id)) {
+      return down('terminal-searching');
     }
     if (this.plant_.isFaultActive(id, 'snow') || this.plant_.isFaultActive(id, 'net')) {
       return down('obstructed');

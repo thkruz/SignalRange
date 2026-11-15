@@ -96,6 +96,12 @@ describe('M04 layer order and reasons', () => {
     expect(model.firstFailure('skylink')?.layer).toBe('registration');
   });
 
+  it('a standby terminal that is also searching reports standby, the cause the player can fix', () => {
+    const { model, plant } = rig();
+    vi.spyOn(plant, 'isSearching').mockReturnValue(true);
+    expect(reading(model, 'registration')).toMatchObject({ status: 'down', reason: 'mode-standby' });
+  });
+
   it('an active terminal brings the whole path up', () => {
     const { model, plant, tick } = rig();
     plant.setPartMode('skylink', 'active');

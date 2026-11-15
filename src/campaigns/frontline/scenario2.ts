@@ -246,7 +246,7 @@ export const frontlineScenario2Data: FrontlineScenarioData = {
       's2-respond-to-outage': {
         character: Character.MAREK_DOMANSKI,
         audioUrl: '',
-        text: "<p>This exercise demonstrates a plug that isn't fully seated. Inspect the generator's output connector and record what you find. If the seating is wrong, use the permitted reseat action, then check the input supply again.</p>",
+        text: "<p>Look at the generator's output plug and write down what you find. If it isn't seated all the way in, reseat it, then check the supply again.</p>",
       },
       's2-verify-service-reserve': {
         character: Character.ALEKSANDRA_WYSOCKA,

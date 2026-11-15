@@ -200,6 +200,24 @@ describe('M14 handover panel', () => {
     r.panel.sync();
     expect(r.panel.fillFromReading('soc')).toBe(true);
   });
+
+  it('the fuel hint names the body or fuel cap, and the generator inspect text carries the gauge figure that the hint promises', () => {
+    const r = rig();
+    r.panel.sync();
+    const hint = r.host.querySelector('[data-hf-row="fuel"]')?.textContent ?? '';
+    expect(hint).toMatch(/body or the fuel cap/u);
+    expect(r.host.querySelector('[data-hf-row="soc"]')?.textContent ?? '').not.toMatch(/fuel cap/u);
+    expect(r.plant.inspect('gen').observation).toMatch(/\d+(\.\d)? L/u);
+  });
+
+  it('keeps Check and Sign in a foot with a how-to line that says how to finish the form', () => {
+    const r = rig();
+    r.panel.sync();
+    const foot = r.host.querySelector('.fhf-foot');
+    expect(foot?.querySelector('[data-hf-act="check"]')).not.toBeNull();
+    expect(foot?.querySelector('[data-hf-act="submit"]')).not.toBeNull();
+    expect(foot?.querySelector('[data-fhf="howto"]')?.textContent).toMatch(/Sign here to file/u);
+  });
 });
 
 describe('splitLatestPerSource', () => {

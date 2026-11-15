@@ -125,16 +125,16 @@
 .fhf .fhf-hint,
 .fhf .fhf-none {
   margin: 0;
-  font: 10.5px/1.35 'Courier New', monospace;
-  letter-spacing: 0.02em;
-  color: #6a5a3e;
+  font: 12px/1.4 'Courier New', monospace;
+  letter-spacing: 0.01em;
+  color: #5a4a30;
 }
 
 .fhf .fhf-needs {
   margin: 2px 0 4px 18px;
   padding: 0;
-  font: 10.5px/1.35 'Courier New', monospace;
-  color: #6a5a3e;
+  font: 12px/1.4 'Courier New', monospace;
+  color: #5a4a30;
 }
 
 /* Write-in lines */
@@ -322,9 +322,15 @@
 /* The foot of the sheet sits in normal flow below the last field, so it can never cover one at any sheet length.
    On a short form it is the bottom of the sheet; on a long one the sheet scrolls to it. */
 .fhf .fhf-foot {
+  /* Pinned to the foot of the sheet: Check and Sign are always in view, however far down the player has scrolled */
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
   margin: 12px -6% -26px;
-  padding: 6px 6% 14px;
-  border-top: 1px solid #8f7e5c88;
+  padding: 6px 6% 10px;
+  background: var(--cbk-paper, #ece0c2) center / 260px 260px, #ece0c2;
+  border-top: 2px solid var(--fhf-ink);
+  box-shadow: 0 -6px 10px -6px #2a211755;
 }
 .fhf .fhf-foot .fhf-msg {
   margin: 0 0 4px;
@@ -334,15 +340,15 @@
   flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 14px 24px;
-  margin-top: 18px;
+  gap: 8px 18px;
+  margin-top: 6px;
 }
 
 .fhf .fhf-sign {
   position: relative;
-  flex: 0 1 18rem;
-  min-width: 11rem;
-  padding-top: 30px;
+  flex: 1 1 9rem;
+  min-width: 8rem;
+  padding-top: 24px;
   border-bottom: 1.5px solid var(--fhf-ink);
 }
 
@@ -382,6 +388,12 @@
 
 .fhf .fhf-sign {
   margin-bottom: 14px;
+}
+/* The reason the sheet is not ready yet stays readable above the pinned buttons */
+.fhf .fhf-foot .fhf-msg {
+  max-height: 5.4em;
+  overflow-y: auto;
+  font-size: 18px;
 }
 
 /* A filed form carries a stamp */
@@ -433,4 +445,10 @@
   display: flex;
   gap: 8px;
   font-size: 14px;
+}
+
+.fhf .fhf-howto {
+  margin: 0;
+  font: 12px/1.35 'Courier New', monospace;
+  color: #5a4a30;
 }

@@ -179,6 +179,8 @@ export class DecisionModal extends DraggableBox {
     promptEl.textContent = this.current_.prompt;
     feedbackEl.style.display = 'none';
     penaltyEl.style.display = 'none';
+    const scroller = this.boxEl?.querySelector<HTMLElement>('.draggable-box__content');
+    if (scroller) scroller.scrollTop = 0;
     this.renderEvidence_(this.current_.evidence);
 
     this.shuffledIndices_ = this.shuffleIndices_();
@@ -279,12 +281,17 @@ export class DecisionModal extends DraggableBox {
       feedbackEl.style.display = 'block';
       const continueBtn = getEl('decision-continue-btn');
       continueBtn?.addEventListener('click', () => this.handleContinueClick_());
+      // Penalty notice renders below Continue: render it first so the scroll brings both into view
+      this.renderPenalty_(data.pointsDeducted);
       // Clamp first, then scroll only the box's own scroller so the page never moves (nats-s22-F9)
       this.keepInViewport_();
-      this.scrollContentTo_(continueBtn);
-      continueBtn?.focus();
+      const penaltyEl = getEl('decision-penalty-notice');
+      const penaltyShown = !!penaltyEl && penaltyEl.style.display !== 'none' && !!penaltyEl.textContent;
+      this.scrollContentTo_(penaltyShown ? penaltyEl : continueBtn);
+      continueBtn?.focus({ preventScroll: true });
+    } else {
+      this.renderPenalty_(data.pointsDeducted);
     }
-    this.renderPenalty_(data.pointsDeducted);
     this.disableOptions_();
   }
 

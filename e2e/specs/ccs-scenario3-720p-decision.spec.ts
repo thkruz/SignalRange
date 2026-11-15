@@ -191,6 +191,15 @@ test.describe('ccs Scenario 3 at 1280x720: decision Continue and next objective 
     });
     expect(rect.top).toBeGreaterThanOrEqual(0);
     expect(rect.bottom).toBeLessThanOrEqual(rect.vh - 4);
+    // The penalty notice renders below Continue after a wrong-then-right answer; it must be inside the content too
+    const penaltyInside = await modal.evaluate((el) => {
+      const n = el.querySelector('#decision-penalty-notice') as HTMLElement;
+      if (getComputedStyle(n).display === 'none') return null;
+      const r = n.getBoundingClientRect();
+      const c = el.querySelector('.draggable-box__content')!.getBoundingClientRect();
+      return r.top >= c.top - 1 && r.bottom <= c.bottom + 1;
+    });
+    expect(penaltyInside).toBe(true);
     expect(await page.evaluate(() => window.scrollY)).toBe(0);
     await page.screenshot({ path: 'shots/decision-dragged-continue-720.png' });
     await cont.click();

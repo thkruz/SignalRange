@@ -1,7 +1,7 @@
 import { connectionSeated, eventHappened, faultCleared, heard, radioSetting, signalVisible, worksheetCorrect } from '@app/ham/ham-conditions';
 import { Emotion } from '@app/modal/character-enum';
 import type { ScenarioData } from '@app/ScenarioData';
-import { briefObjective, chain, quiz, riley, techSettings } from './s01-04-helpers';
+import { briefObjective, chain, locatedAt, quiz, riley, techSettings } from './s01-04-helpers';
 import { s01Station } from './s01-station';
 
 /**
@@ -46,7 +46,7 @@ export const hamTechS01Data: ScenarioData = {
         description: 'Match each part of the bench to its job, then plug the receiver into the laptop so the whole chain from antenna to laptop is connected.',
         points: 10,
         conditions: [
-          worksheetCorrect('s01-trace', 'Receive path matched'),
+          locatedAt(worksheetCorrect('s01-trace', 'Receive path matched'), 'Logbook > Worksheets, or click each part on the bench', 'kit:logbook'),
           connectionSeated('sdr.usb~laptop.usb1', 'Receiver connected to the laptop'),
           quiz('S01-Q1'),
           quiz('S01-Q2'),
@@ -71,7 +71,7 @@ export const hamTechS01Data: ScenarioData = {
         description: 'Tune to 146.550 MHz in FM and pick the 15 kHz filter. The signal should show up in the waterfall.',
         points: 10,
         conditions: [
-          signalVisible('training', 'sdr', 10, 'Training signal in the waterfall'),
+          locatedAt(signalVisible('training', 'sdr', 10, 'Training signal in the waterfall'), 'laptop > Open SkyWatcher SDR'),
           radioSetting('sdr', (s) => Math.abs(s.vfoMHz - 146.55) < 0.002 && s.mode === 'FM' && s.filterHz === 15000, '146.550 MHz, FM, 15 kHz filter'),
         ],
       },
@@ -80,7 +80,12 @@ export const hamTechS01Data: ScenarioData = {
         title: 'Open the Audio Path',
         description: 'You can see the signal but hear nothing. Turn the volume up first and watch what happens, then work out which control is holding the audio back and open it.',
         points: 15,
-        conditions: [heard('training', 0.5, { deviceId: 'sdr' }, 'Audio reaches the speaker'), quiz('S01-Q3'), quiz('S01-Q4'), quiz('S01-A1')],
+        conditions: [
+          locatedAt(heard('training', 0.5, { deviceId: 'sdr' }, 'Audio reaches the speaker'), 'SDR program: volume, squelch, filter'),
+          quiz('S01-Q3'),
+          quiz('S01-Q4'),
+          quiz('S01-A1'),
+        ],
       },
       {
         id: 'compare-filter-settings',
@@ -103,8 +108,8 @@ export const hamTechS01Data: ScenarioData = {
         description: 'Hold a stable, clear reception and select the message the training transmission actually sent.',
         points: 20,
         conditions: [
-          heard('training', 0.8, { deviceId: 'sdr' }, 'Stable, intelligible reception'),
-          worksheetCorrect('s01-message', 'Message recorded'),
+          locatedAt(heard('training', 0.8, { deviceId: 'sdr' }, 'Stable, intelligible reception'), 'SDR program > heard list'),
+          locatedAt(worksheetCorrect('s01-message', 'Message recorded'), 'Logbook > Worksheets', 'kit:logbook'),
           quiz('S01-Q7'),
           quiz('S01-Q8'),
         ],

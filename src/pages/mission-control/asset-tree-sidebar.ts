@@ -20,6 +20,8 @@ import { DraggableHtmlBox } from '@app/modal/draggable-html-box';
 import { PendingQuizIndicator } from '@app/modal/pending-quiz-indicator';
 import { SaveProgressToast } from '@app/modal/save-progress-toast';
 import { ObjectivesManager } from '@app/objectives';
+import { collectWhereEntries, renderWherePage } from '@app/objectives/where-locator';
+import '@app/objectives/where-page.css';
 import { CountdownHold } from '@app/objectives/countdown-hold';
 import { OpsLogModal } from '@app/ops-log/ops-log-modal';
 import { FieldTabPolicy } from '@app/physical/field-tab-policy';
@@ -122,6 +124,7 @@ export class AssetTreeSidebar extends BaseElement {
   private constellationView_: ConstellationTreeView | null = null;
   private checklistRefreshIntervalId_: number | null = null;
   private lastChecklistHtml_: string | null = null;
+  private consoleMapBox_: DraggableHtmlBox | null = null;
   private missionBriefUrl_: string | null = null;
   private quizDelegationSetup_: boolean = false;
 
@@ -349,6 +352,7 @@ export class AssetTreeSidebar extends BaseElement {
           section.style.display = 'block';
           qs('.mission-brief-icon', this.dom_)?.setAttribute('hidden', '');
         }
+        this.addConsoleMapListener_();
         this.addChecklistListener_();
         this.addDialogHistoryListener_();
         this.addOpsLogListener_();
@@ -367,10 +371,38 @@ export class AssetTreeSidebar extends BaseElement {
 
     // Add listeners
     this.addMissionBriefListener_();
+    this.addConsoleMapListener_();
     this.addChecklistListener_();
     this.addDialogHistoryListener_();
     this.addOpsLogListener_();
     this.addWorkingDocListener_();
+  }
+
+  /**
+   * The laminated "Console map" card (where-locator.ts). The entry shows only when the scenario's checklist rows
+   * carry `where` locators; a scenario without them has no entry. The page is rebuilt on each open so it shows
+   * which items are done.
+   */
+  private addConsoleMapListener_(): void {
+    const btn = qs<HTMLElement>('.console-map-icon', this.dom_);
+    if (!btn || !ObjectivesManager.hasInstance()) return;
+    if (collectWhereEntries(ObjectivesManager.getInstance().getObjectiveStates()).length === 0) return;
+    btn.hidden = false;
+    btn.addEventListener('click', () => {
+      if (this.consoleMapBox_?.isShowing()) {
+        this.consoleMapBox_.close();
+        return;
+      }
+      const page = renderWherePage(collectWhereEntries(ObjectivesManager.getInstance().getObjectiveStates()), {
+        kind: 'console-map',
+        title: 'Console map',
+        intro: 'Where each job in this shift is done, in the labels the console uses.',
+      });
+      if (!page) return;
+      this.consoleMapBox_ ??= new DraggableHtmlBox('Console map', 'console-map', '', 'app-shell-page');
+      this.consoleMapBox_.updateContent(page.outerHTML);
+      this.consoleMapBox_.open();
+    });
   }
 
   private addWorkingDocListener_(): void {
@@ -556,6 +588,12 @@ export class AssetTreeSidebar extends BaseElement {
             <img src="${targetArrowPng}" alt="Mission Brief"/>
           </span>
           <span class="flex-fill">Mission Brief</span>
+        </a>
+        <a class="list-group-item list-group-item-action d-flex align-items-center console-map-icon" data-tooltip="Console map" data-testid="console-map-icon" hidden>
+          <span class="item-icon">
+            <img src="${checklistPng}" alt="Console map"/>
+          </span>
+          <span class="flex-fill">Console map</span>
         </a>
         <a class="list-group-item list-group-item-action d-flex align-items-center checklist-icon" data-tooltip="Checklist">
           <span class="item-icon">

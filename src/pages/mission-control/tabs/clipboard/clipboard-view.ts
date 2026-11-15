@@ -1,7 +1,10 @@
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { ObjectivesManager } from '@app/objectives/objectives-manager';
+import { mountWherePage } from '@app/objectives/where-locator';
 import { ImmersiveView } from '@app/presentation/immersive-view';
 import { clipboardSheets, type MissionItem } from '../field-kit';
+import '@app/objectives/where-page.css';
 import { ClipboardCover } from './clipboard-cover';
 import { type ClipboardPage, ClipboardShell } from './clipboard-shell';
 
@@ -52,6 +55,14 @@ export class ClipboardView {
   open(pages: ClipboardPage[]): void {
     if (this.immersive_.isOpen()) return;
     this.cover_ = new ClipboardCover();
+    // The "Site map" sketch under the cover sheet: built from the checklist rows' `where` data, so a scenario without any shows nothing
+    if (ObjectivesManager.hasInstance()) {
+      mountWherePage(this.cover_.element, ObjectivesManager.getInstance().getObjectiveStates(), {
+        kind: 'site-map',
+        title: 'Site map',
+        intro: 'Where each job is done. Marked items are outside and cost a trip.',
+      });
+    }
     this.immersive_.open(
       this.cover_.element,
       'Field documents',

@@ -50,6 +50,7 @@ import { Closeup } from '@app/ham/ui/bench/closeup';
 import { createStationPanels } from '@app/ham/ui/panels';
 import type { FeedbackKind, FeedbackOptions, JournalEntry, PanelContext, StationPanel } from '@app/ham/ui/station-panel';
 import { button, h, tid } from '@app/ham/ui/ui-kit';
+import { LocatePulse } from '@app/objectives/locate-pulse';
 import { BENCH_KIT, type FieldKitObject, type KitSheet, kitObjectFor, kitSheetsNav, missionItemBridge, offeredSheets } from '@app/pages/mission-control/tabs/field-kit';
 import { ImmersiveView } from '@app/presentation/immersive-view';
 import { minimalHudShown } from '@app/presentation/minimal-hud/minimal-hud-policy';
@@ -141,7 +142,7 @@ export class HamStationTab {
     for (const item of BENCH_KIT) {
       const pick = h(
         'button',
-        { type: 'button', class: 'fk-item', 'data-field-kit': item.id, 'aria-label': item.label, title: item.label },
+        { type: 'button', class: 'fk-item', 'data-field-kit': item.id, 'data-locate': `kit:${item.id}`, 'data-locate-manual': '', 'aria-label': item.label, title: item.label },
         h('img', { src: item.image, alt: '', draggable: 'false' }),
         h('span', { text: item.label })
       );
@@ -395,6 +396,8 @@ export class HamStationTab {
 
   /** Pick up a kit object at its first page of its own; a kit made only of mission papers opens the first paper */
   private pickUp_(item: FieldKitObject): void {
+    // Reaching for an object that is not already in hand is what answers the pulse; clicking the held one puts it away
+    if (this.heldKit_ !== item.id) LocatePulse.opened(`kit:${item.id}`);
     const sheets = this.offered_(item);
     const first = sheets.find((sheet) => 'tabId' in sheet) ?? sheets[0];
     if (first) this.openPage_(first);
@@ -500,6 +503,7 @@ export class HamStationTab {
       const pick = this.kitTray_.querySelector<HTMLElement>(`[data-field-kit="${item.id}"]`);
       if (pick) pick.hidden = this.offered_(item).length === 0;
     }
+    LocatePulse.syncIfActive();
   }
 
   /**

@@ -49,6 +49,7 @@ vi.mock('../../../src/scenario-manager', () => ({
 vi.mock('../../../src/objectives', () => ({
   ObjectivesManager: {
     hasLoadedObjectives: vi.fn(() => false),
+    hasInstance: vi.fn(() => false),
     isScenarioLocked: vi.fn(() => false),
     getInstance: vi.fn(() => ({
       syncCollapsedStatesFromDOM: vi.fn(),

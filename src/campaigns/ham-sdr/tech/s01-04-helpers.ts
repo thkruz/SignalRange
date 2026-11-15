@@ -22,6 +22,14 @@ export function quiz(localId: string): Condition {
   return { ...c, params: { ...c.params, quizAfterConditions: true } };
 }
 
+/**
+ * A row that says where in the bench world its work happens (`where`, the checklist suffix and the index card) and,
+ * optionally, which tray object pulses once when its objective opens (`locate`, for example `kit:logbook`)
+ */
+export function locatedAt(condition: Condition, where: string, locate?: string): Condition {
+  return { ...condition, where, ...(locate ? { locate } : {}) };
+}
+
 /** Riley clip with no recorded audio (no voice-over in this package) */
 export function riley(text: string, emotion: Emotion = Emotion.NEUTRAL): DialogClip {
   return { text: `<p>${text}</p>`, character: Character.RILEY_BROOKS, emotion, audioUrl: '' };

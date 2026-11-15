@@ -8,9 +8,12 @@
  * Test ids: ham-front-card (sheet).
  */
 
+import { ObjectivesManager } from '@app/objectives/objectives-manager';
+import { mountWherePage } from '@app/objectives/where-locator';
 import { ClipboardCover } from '@app/pages/mission-control/tabs/clipboard/clipboard-cover';
 import { missionItemBridge } from '@app/pages/mission-control/tabs/field-kit';
 import '@app/pages/mission-control/tabs/clipboard/clipboard-shell.css';
+import '@app/objectives/where-page.css';
 import type { HamStationManager } from '../../ham-station-manager';
 import type { StationPanel } from '../station-panel';
 import { sheet } from './paper';
@@ -40,11 +43,20 @@ export class FrontPanel implements StationPanel {
     if (this.cover_ || !this.body_) return;
     this.cover_ = new ClipboardCover({ registerOpened: false, registerBrief: missionItemBridge.available('brief'), written: true });
     this.body_.append(this.cover_.element);
+    // Riley's index card, clipped inside the front cover: built from the checklist rows' `where` data, so a scenario without any adds no card
+    if (ObjectivesManager.hasInstance()) {
+      mountWherePage(this.body_, ObjectivesManager.getInstance().getObjectiveStates(), {
+        kind: 'index-card',
+        title: 'Where things are',
+        intro: "Riley's index card. It lists where each job in this session is done. It does not say how.",
+      });
+    }
   }
 
   close(): void {
     this.cover_?.dispose();
     this.cover_ = null;
+    this.body_?.querySelector('.where-page')?.remove();
   }
 
   dispose(): void {

@@ -121,7 +121,7 @@ export const s01Station: HamStationConfig = {
   // Staged: each Ask Riley press reveals the next line
   hints: {
     'trace-receive-path': [
-      'Follow the signal from the antenna on the left to the laptop on the right. The worksheet is under Notebook.',
+      'Follow the signal from the antenna on the left to the laptop on the right. The worksheet is in the Logbook, under Worksheets.',
       "The receiver's USB plug is the small circle on its right end. Click it, then click a USB port on the laptop.",
     ],
     'inspect-antenna-plug': [

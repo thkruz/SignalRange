@@ -44,6 +44,7 @@ import { conditionLabel, tabGateLabel, tabHintLabel } from './condition-label';
 import { holdsAtCompletion, isQuizCondition, isTabGate, observationDwellSeconds, resolveRequiresChange, TIME_GATED_CONDITION_TYPES, valueSnapshot } from './condition-semantics';
 import { CountdownHold } from './countdown-hold';
 import { EvidenceFactRegistry } from './evidence-facts';
+import { LocatePulse } from './locate-pulse';
 import {
   Condition,
   ConditionParams,
@@ -56,6 +57,7 @@ import {
   TAB_HINT_DELAY_SECONDS,
   TimeSkipOffer,
 } from './objective-types';
+import { escapeWhereText, whereSuffix } from './where-locator';
 import './objectives-manager.css';
 
 /** Conditions only a live command link can satisfy (failOnClosedCommandWindow_) */
@@ -247,6 +249,10 @@ export class ObjectivesManager {
     }
 
     ObjectivesManager.instance_ = new ObjectivesManager(objectives, scenarioTimeLimit);
+    // Objectives active from the start never emit OBJECTIVE_ACTIVATED: their `locate` targets pulse now
+    for (const state of ObjectivesManager.instance_.objectiveStates_) {
+      if (state.isActive && LocatePulse.targetsOf(state.objective).length > 0) LocatePulse.getInstance().objectiveActivated(state.objective);
+    }
 
     // Register objectives and hints with HintManager
     const hintManager = HintManager.getInstance();
@@ -293,6 +299,7 @@ export class ObjectivesManager {
    * Destroy the objectives manager and clean up
    */
   static destroy(): void {
+    LocatePulse.destroy();
     if (ObjectivesManager.instance_) {
       ObjectivesManager.instance_.eventBus_.off(Events.UPDATE, ObjectivesManager.instance_.boundUpdateHandler_);
       ObjectivesManager.instance_.eventBus_.off(Events.QUIZ_PASSED, ObjectivesManager.instance_.boundQuizPassedHandler_);
@@ -1411,9 +1418,16 @@ export class ObjectivesManager {
         const rowLabel = isGate && condition.hidden && condition.params?.tab ? tabGateLabel(condition.params.tab) : fillDialogTokens(conditionLabel(condition));
         html += `<span class="condition-text">${rowLabel}${conditionNextHtml(condition.next, conditionCompleted, isActive)}</span>`;
 
+        // A row with a `where` locator says where in the world its work happens; it stands in for the automatic
+        // observation suffix below (where-locator.ts)
+        const whereText = conditionCompleted ? null : whereSuffix(condition);
+        if (whereText) {
+          html += `<span class="condition-where condition-observe-hint">${escapeWhereText(whereText)}</span>`;
+        }
+
         // An observation-gated check only progresses while its tab is open;
         // say which, or it looks stuck (nats-s18-F5)
-        if (!conditionCompleted && condition.params?.requiresObservation && condition.params?.observationTab && !conditionState.observed) {
+        if (!whereText && !conditionCompleted && condition.params?.requiresObservation && condition.params?.observationTab && !conditionState.observed) {
           const tabName = ObjectivesManager.tabLabel_(condition.params.observationTab);
           if (conditionState.offTabNudged) {
             // Phase 35 D3: it reads true right now and nobody is looking
@@ -1643,6 +1657,9 @@ export class ObjectivesManager {
 
     // Immediately evaluate conditions for the newly activated objective
     this.evaluateObjectiveConditions_(objectiveState, 0);
+
+    // Rows that name a world target (`locate`) pulse it once for this objective
+    if (LocatePulse.targetsOf(objective).length > 0) LocatePulse.getInstance().objectiveActivated(objective);
 
     this.eventBus_.emit(Events.OBJECTIVE_ACTIVATED, {
       objectiveId: objectiveState.objective.id,

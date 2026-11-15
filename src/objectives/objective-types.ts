@@ -658,6 +658,17 @@ export interface Condition {
    */
   next?: string;
   /**
+   * Where in the world this row's work happens, shown as a muted suffix on its checklist row and listed on the
+   * campaign's "where is it" page (src/objectives/where-locator.ts). Name an object or a place, for example
+   * `Logbook > Worksheets`; C4 and C5 use tab and card names. Replaces the automatic "(check it on the X tab)" suffix.
+   */
+  where?: string;
+  /**
+   * A world target to pulse once, the first time this row's objective becomes active and until the player opens
+   * the target (src/objectives/locate-pulse.ts). Matches a `data-locate` attribute, for example `kit:logbook`.
+   */
+  locate?: string;
+  /**
    * If true, this condition is still enforced for objective completion but is
    * NOT rendered as a row in the checklist. Used to require the operator be on
    * the correct tab without spelling out which tab (qualified-operator scenarios

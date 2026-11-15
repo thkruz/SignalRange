@@ -167,7 +167,7 @@ describe('M14 handover panel', () => {
     expect(r.records.allRecords()).toHaveLength(1);
     expect(r.lines.length).toBeGreaterThan(0);
     expect(r.host.textContent).toContain('Submitted at');
-    expect(r.host.querySelector('[data-fhf="filed"]')?.textContent).toContain('Filed 1 time');
+    expect(r.host.querySelector('[data-fhf="filed"]')?.textContent).toBe('');
   });
 
   it('a plant action after reading fails the check with the re-read wording', () => {

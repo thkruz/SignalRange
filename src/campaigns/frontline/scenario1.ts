@@ -96,7 +96,7 @@ if (settings.physicalPlant) {
         kind: 'maintenance',
         issuedAtS: 0,
         issuedOnDelivery: true,
-        text: 'Camp account in good standing. No planned maintenance on the SkyLink service this week.',
+        text: 'Routine maintenance on the SkyLink ground network is complete. Service to your camp account was not interrupted, and no action is needed.',
       },
     ],
   };

@@ -418,8 +418,9 @@ export class FieldHandoverPanel {
       .join('');
     const fields = form.fields.map((f) => this.fieldHtml_(f, entries, numbering, runs, checks.get(f.key))).join('');
     const filed = records.recordsFor(form.id);
+    // One filing is told once, by the FILED stamp; the line of words appears only for repeat filings.
     const last = filed.length
-      ? `<div class="fhf-filed" data-fhf="filed">Filed ${filed.length} time${filed.length === 1 ? '.' : `s; last at ${clock(filed[filed.length - 1].submittedAtS)}.`}</div>`
+      ? `<div class="fhf-filed" data-fhf="filed">${filed.length > 1 ? `Filed ${filed.length} times; last at ${clock(filed[filed.length - 1].submittedAtS)}.` : ''}</div>`
       : '';
     // The picker, title and Check/Submit buttons are built once per form and patched in place: a redraw that
     // replaces the node under the pointer swallows the click. Only the field list is rebuilt when evidence changes.

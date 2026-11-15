@@ -305,3 +305,11 @@
 .cbk-checklist .objective-item.failed .objective-header strong {
   text-decoration-color: #a3322a;
 }
+
+/* The leave chip sits in the dark margin left of the board, never on the board's bottom edge */
+.immersive-paper:has(.cbk) .immersive-leave {
+  right: auto;
+  left: 20px;
+  top: 14px;
+  bottom: auto;
+}

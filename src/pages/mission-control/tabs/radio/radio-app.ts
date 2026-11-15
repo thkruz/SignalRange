@@ -70,6 +70,7 @@ export class FieldRadio {
     if (i >= 0 && i !== this.channelIndex_) {
       this.channelIndex_ = i;
       this.questionIndex_ = 0;
+      this.reply_ = null;
     }
     this.pendingTune_ = this.channels_.length === 0 ? via : null;
   }

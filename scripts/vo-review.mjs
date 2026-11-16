@@ -433,12 +433,14 @@ function rejectOffScript() {
 
 function applyReview(clip, hash, { status, notes, tags, approvedBy }) {
   // takes are keyed by the sha1 of the mp3; anything else would be an arbitrary property name
-  if (typeof hash !== 'string' || !/^[0-9a-f]{40}$/u.test(hash)) throw new Error('take must be a 40-character sha1');
+  if (typeof hash !== 'string' || !SHA_RE.test(hash)) throw new Error('take must be a 40-character sha1');
   if (status === 'approved' && offScript(clip, readTakes().takes[hash])) {
     throw new Error('This take was recorded from an older script and cannot be approved; re-record it.');
   }
   const review = readReview();
   const entry = review.clips[clip.path] ?? { takes: {} };
+  // dynamic keys: a null-prototype container has no inherited names to collide with
+  entry.takes = Object.assign(Object.create(null), entry.takes);
   Object.assign(entry, {
     campaign: clip.campaign,
     scenario: clip.scenario,

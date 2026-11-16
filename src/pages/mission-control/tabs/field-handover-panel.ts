@@ -84,6 +84,7 @@ const FRESHNESS_ANSWERS: ReadonlyArray<readonly [string, string]> = [
 ];
 
 /** Plain names for the numeric metrics a measured field can take */
+const LAYER_LABEL: Record<string, string> = { power: 'power', local: 'local network', registration: 'terminal link' };
 const METRIC_NAME: Record<string, string> = { jitterMs: 'jitter', rttMs: 'delay', downMbps: 'download rate', upMbps: 'upload rate', lossPct: 'loss' };
 /** The NetProbe command on the laptop that measures each metric */
 const METRIC_COMMAND: Record<string, string> = { jitterMs: 'Jitter', rttMs: 'Ping', downMbps: 'Throughput', upMbps: 'Throughput', lossPct: 'Ping' };
@@ -178,12 +179,7 @@ export class FieldHandoverPanel {
     const field = this.field_(key);
     const value = field ? this.readingFor_(field) : undefined;
     if (value === undefined) {
-      this.msg_ =
-        field && 'runRate' in field.rule
-          ? 'There is no run rate to copy yet. The draw is recorded over a finished task run, so start the run in MissionRunner on the laptop and let it finish, then press Copy latest reading again.'
-          : field && 'matchesCurrent' in field.rule
-            ? `There is no ${field.rule.matchesCurrent.layer} reading to copy yet. ${this.howToRead_(field.rule.matchesCurrent.serviceId, field.rule.matchesCurrent.layer)}`
-            : 'There is no reading to use yet. Take one first (for a power figure, Inspect that part in the site close-up, or type the Power panel figure).';
+      this.msg_ = this.noReadingMessage_(field);
       this.sync();
 
       return false;
@@ -194,6 +190,19 @@ export class FieldHandoverPanel {
     this.sync();
 
     return true;
+  }
+
+  private noReadingMessage_(field: HandoverFieldConfig | undefined): string {
+    if (field && 'runRate' in field.rule) {
+      return 'There is no run rate to copy yet. The draw is recorded over a finished task run, so start the run in MissionRunner on the laptop and let it finish, then press Copy latest reading again.';
+    }
+    if (field && 'matchesCurrent' in field.rule) {
+      const { layer, serviceId } = field.rule.matchesCurrent;
+
+      return `There is no ${LAYER_LABEL[layer] ?? layer} reading to copy yet. ${this.howToRead_(serviceId, layer)}`.trim();
+    }
+
+    return 'There is no reading to use yet. Take one first (for a power figure, Inspect that part in the site close-up, or type the Power panel figure).';
   }
 
   check(): HandoverValidation | null {
@@ -337,6 +346,8 @@ export class FieldHandoverPanel {
     if (field instanceof HTMLInputElement && field.type === 'radio' && this.result_) {
       const key = field.dataset.hfField ?? '';
       this.result_ = { ...this.result_, fields: this.result_.fields.filter((c) => c.key !== key) };
+      // The footer quoted the old verdict: refresh it from what is still red, or clear it when nothing is
+      this.msg_ = this.result_.fields.some((c) => !c.ok) ? `Not ready yet. ${failureSummary(this.result_)}`.trim() : '';
       this.dynKey_ = null;
       this.sync();
     }
@@ -515,7 +526,7 @@ export class FieldHandoverPanel {
     if ('matchesCurrent' in rule) {
       const described = describeReading(this.deps_.service(), rule.matchesCurrent.serviceId, rule.matchesCurrent.layer);
 
-      return described.value === undefined ? `${described.text} ${this.howToRead_(rule.matchesCurrent.serviceId, rule.matchesCurrent.layer)}` : described.text;
+      return described.value === undefined ? `${described.text} ${this.howToRead_(rule.matchesCurrent.serviceId, rule.matchesCurrent.layer)}`.trim() : described.text;
     }
 
     const reading = this.readingFor_(f);
@@ -544,13 +555,18 @@ export class FieldHandoverPanel {
     const plant = this.deps_.plant();
     const partId = path?.localPartIds.find((p) => !p.includes('laptop')) ?? path?.terminalPartId;
     const part = partId === undefined ? 'router' : (plant?.getLabel(partId) ?? 'router');
-    if (layer === 'power') return `Open the ${part} close-up at the site and look at its Power light (the lens reads LOOK until you do), then press Copy latest reading.`;
-    if (layer === 'local')
-      return `Run Ping on the Local network line in NetProbe on the laptop, or look at the Local network light on the ${part} close-up, then press Copy latest reading.`;
-    if (layer === 'registration')
-      return `Run Link status on the Through the terminal line in NetProbe on the laptop, or look at the Terminal link light on the ${part} close-up, then press Copy latest reading.`;
+    if (layer === 'power') {
+      return `Open the ${part} close-up at the site and look at its Power light (the lens reads LOOK until you do), then press Copy latest reading.`;
+    }
+    if (layer === 'local') {
+      return `Run Ping on the Local network line under ${path?.label ?? 'its service'} in NetProbe on the laptop, or look at the Local network light on the ${part} close-up, then press Copy latest reading.`;
+    }
+    if (layer === 'registration') {
+      return `Run Link status on the Through the terminal line under ${path?.label ?? 'its service'} in NetProbe on the laptop, or look at the Terminal link light on the ${part} close-up, then press Copy latest reading.`;
+    }
 
-    return 'Take it from the Service checks panel first.';
+    // Application, account and provider layers name no player control here; their text stays as dev shows it
+    return '';
   }
 
   /** A written-in answer as a column of printed tick boxes, one of which is ticked */

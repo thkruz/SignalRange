@@ -335,6 +335,7 @@ describe('M14 handover panel unread readings and ticks (P46)', () => {
       { key: 'service', label: 'Service checked', required: true, rule: { choice: ['skylink', 'both'], labels: { skylink: 'SkyLink', both: 'Both' } } },
       { key: 'power', label: 'Terminal power', required: true, rule: { matchesCurrent: { serviceId: 'skylink', layer: 'power' } } },
       { key: 'reg', label: 'Registration', required: true, rule: { matchesCurrent: { serviceId: 'skylink', layer: 'registration' } } },
+      { key: 'app', label: 'Application', required: true, rule: { matchesCurrent: { serviceId: 'skylink', layer: 'application' } } },
     ],
   };
 
@@ -355,12 +356,23 @@ describe('M14 handover panel unread readings and ticks (P46)', () => {
     expect(hint).toMatch(/NetProbe/u);
   });
 
+  it('an application or account field never prints Service checks, in the hint or the Copy refusal', () => {
+    const r = rig(true, form);
+    r.panel.selectForm('p46');
+    const hint = r.host.querySelector('[data-fhf="reading-app"]')?.textContent ?? '';
+    expect(hint).toMatch(/No application reading taken yet./u);
+    expect(hint).not.toMatch(/Service checks/u);
+    expect(r.panel.fillFromReading('app')).toBe(false);
+    expect(r.host.querySelector('[data-fhf="msg"]')?.textContent ?? '').not.toMatch(/Service checks/u);
+  });
+
   it('Copy latest reading with no reading to copy says how to take it, beside the field message', () => {
     const r = rig(true, form);
     r.panel.selectForm('p46');
     expect(r.panel.fillFromReading('reg')).toBe(false);
     const msg = r.host.querySelector('[data-fhf="msg"]')?.textContent ?? '';
-    expect(msg).toMatch(/registration reading to copy/u);
+    expect(msg).toMatch(/terminal link reading to copy/u);
+    expect(msg).not.toMatch(/registration/u);
     expect(msg).toMatch(/Link status/u);
     expect(msg).not.toMatch(/Inspect that part/u);
   });
@@ -370,8 +382,11 @@ describe('M14 handover panel unread readings and ticks (P46)', () => {
     r.panel.selectForm('p46');
     r.panel.check();
     expect(r.host.querySelector('[data-hf-note="service"]')?.textContent).toMatch(/is empty/u);
-    pick(r.host, 'input[type="radio"][data-hf-field="service"]', 'skylink');
+    expect(r.host.querySelector('[data-fhf="msg"]')?.textContent).toMatch(/Service checked is empty/u);
+    document.body.appendChild(r.host);
+    r.host.querySelector<HTMLInputElement>('input[type="radio"][data-hf-field="service"][value="skylink"]')?.click();
     expect(r.host.querySelector('[data-hf-note="service"]')).toBeNull();
+    expect(r.host.querySelector('[data-fhf="msg"]')?.textContent).not.toMatch(/Service checked is empty/u);
     expect(r.host.querySelector<HTMLInputElement>('input[data-hf-field="service"][value="skylink"]')?.checked).toBe(true);
     expect(r.panel.check()?.fields.find((c) => c.key === 'service')?.ok).toBe(true);
   });

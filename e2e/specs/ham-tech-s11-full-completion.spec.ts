@@ -22,7 +22,8 @@ import {
 import { dismissDialogIfPresent } from '../utils/simulation-helpers';
 import { advanceUntil, simAdvance } from '../utils/test-clock';
 
-test.use({ testClock: true });
+// Off the test clock: the burst (window.__srTest.advance) is faster than page.clock for the long Doppler pass
+test.use({ testClock: false });
 
 const num = (text: string | null): number => Number.parseFloat((text ?? '').replace(/[^0-9.+-]/gu, ''));
 

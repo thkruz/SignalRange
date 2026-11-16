@@ -2,7 +2,7 @@
 /* Layout now handled by Tabler utilities: .d-flex .flex-column */
 
 .app-shell-page {
-  height: calc(100vh - 80px);
+  height: calc(var(--mc-viewport-height, 100vh) - 80px);
   background-color: var(--mc-chrome-canvas-bg, var(--mc-surface-0));
   color: #cbd5e1;
   font-family: 'Inter', sans-serif;
@@ -146,6 +146,51 @@
 
 .alarm-item {
   font-weight: 500;
+}
+
+/* Alarm tone mute toggle (SoundEvents.setAlarmsMuted): mutes the tone, not the alarm */
+.alarm-mute-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+  height: 18px;
+  padding: 0 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.3);
+  color: #d1d5db;
+  font: 600 10px/16px 'Inter', sans-serif;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.alarm-mute-btn:hover {
+  border-color: rgba(255, 255, 255, 0.55);
+}
+
+.alarm-mute-btn--muted {
+  border-color: #fde047;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fde047;
+}
+
+/* Ticker row severity colours (global-command-bar.ts getColorClass_). The
+   class names are Tailwind-style but no Tailwind sheet is loaded, so without
+   these rules every row inherited the body grey. Same palette as the count
+   badges above. */
+.alarm-messages .text-red-400 {
+  color: #fca5a5;
+}
+
+.alarm-messages .text-yellow-400 {
+  color: #fde047;
+}
+
+.alarm-messages .text-blue-400 {
+  color: #93c5fd;
+}
+
+.alarm-messages .text-green-400 {
+  color: #86efac;
 }
 
 .alarm-separator {
@@ -295,4 +340,23 @@
 .timer-display.timer-passed .timer-value {
   color: #22c55e;
   font-weight: 800;
+}
+/* Held state - an objective's wait holds the mission clock (Phase 28 D1) */
+.timer-display .timer-hold-tag {
+  margin-left: 0.35em;
+  padding: 0 0.3em;
+  border-radius: 2px;
+  background: rgba(59, 130, 246, 0.35);
+  color: #bfdbfe;
+  letter-spacing: 0.05em;
+}
+
+.timer-display.timer-held .timer-value {
+  color: #93c5fd;
+}
+
+/* The station clock never wraps: a wrapped clock spilled below the header
+   when anything else in the brand block took width (nats-r3-s10-F3) */
+.command-bar-left #utc-clock {
+  white-space: nowrap;
 }

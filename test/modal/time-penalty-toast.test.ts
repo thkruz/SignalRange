@@ -281,4 +281,24 @@ describe('TimePenaltyToast', () => {
       expect(toastElement?.classList.contains('show')).toBe(false);
     });
   });
+
+  describe('page lifecycle', () => {
+    it('shows the overtime toast in a second scenario after the page replaced the EventBus', () => {
+      // Page teardown: dispose the toast, then the page replaces the bus
+      TimePenaltyToast.dispose();
+      EventBus.destroy();
+      const nextBus = EventBus.getInstance();
+      toast = TimePenaltyToast.getInstance();
+
+      nextBus.emit(Events.TIME_PENALTY_APPLIED, { objectiveId: 'o', objectiveTitle: 'O', pointsDeducted: 7, elapsedTime: 0, threshold: 0 });
+
+      expect(document.querySelectorAll('.time-penalty-toast')).toHaveLength(1);
+      expect(document.querySelector('.time-penalty-toast')?.classList.contains('show')).toBe(true);
+    });
+
+    it('dispose is safe with no instance', () => {
+      TimePenaltyToast.dispose();
+      expect(() => TimePenaltyToast.dispose()).not.toThrow();
+    });
+  });
 });

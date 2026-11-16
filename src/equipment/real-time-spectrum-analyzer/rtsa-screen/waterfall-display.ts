@@ -88,10 +88,31 @@ export class WaterfallDisplay extends RTSAScreen {
     }
   }
 
+  /**
+   * A retune (new centre or span) starts a fresh waterfall, as an analyzer
+   * does: the old rows were taken on another frequency axis, and at a narrow
+   * span's slow sweep (one row per 0.8 s at 3 Hz RBW) they took minutes to
+   * scroll out, so a 2 kHz view of a CW line showed the previous wide span's
+   * noise, 50 dB hotter in its wider RBW, as solid yellow (nats-r3-s19-F1)
+   */
   public setFrequencyRange(minFreq: Hertz, maxFreq: Hertz): void {
+    const isRetune = this.maxFreq > 0 && (minFreq !== this.minFreq || maxFreq !== this.maxFreq);
     this.minFreq = minFreq;
     this.maxFreq = maxFreq;
+    if (isRetune) {
+      this.clear();
+    }
   }
+
+  /** Blank every row: no data paints the bottom of the colour scale */
+  public clear(): void {
+    for (const row of this.buffer) {
+      row.fill(WaterfallDisplay.NO_DATA_DB);
+    }
+  }
+
+  /** Below any amplitude window, so an empty row renders as the darkest colour */
+  static readonly NO_DATA_DB = -1000;
 
   public update(): void {
     if (!this.specA.state.isPaused && this.running) {
@@ -104,12 +125,12 @@ export class WaterfallDisplay extends RTSAScreen {
         // TODO: This causes old data to have the wrong colors - low priority but it causes a graphical glitch
         this.cacheMaxDb = this.specA.state.maxAmplitude;
         this.cacheMinDb = this.specA.state.minAmplitude;
+        this.cacheGain = this.specA.rfFrontEnd_.lnbModule.getTotalGain();
       }
 
       const now = Date.now();
-      const sweepTimeMs = 3000 * (this.specA.state.span / (this.specA.state.rbw ?? this.specA.state.span) ** 2);
-      const minIntervalMs = 1000 / this.specA.state.refreshRate;
-      if (now - this.lastDrawTime > Math.max(sweepTimeMs, minIntervalMs)) {
+      // One row per trace: the acquisition time for the RBW, capped (see traceIntervalMs)
+      if (now - this.lastDrawTime > this.specA.traceIntervalMs) {
         // Get the combined data (noise + signals) from the data processor
         const row = new Float32Array(this.width);
         row.set(this.dataProcessor.combinedData);
@@ -124,9 +145,13 @@ export class WaterfallDisplay extends RTSAScreen {
   public draw(): void {
     if (!this.specA.state.isPaused && this.running) {
       const now = Date.now();
-      const sweepTimeMs = 3000 * (this.specA.state.span / (this.specA.state.rbw ?? this.specA.state.span) ** 2);
-      const minIntervalMs = 1000 / this.specA.state.refreshRate;
-      if (now - this.lastDrawTime > Math.max(sweepTimeMs, minIntervalMs)) {
+      if (now - this.lastDrawTime > this.specA.traceIntervalMs) {
+        // The single-mode canvas is shared with the spectral plot, which
+        // sizes the bitmap to its element; the waterfall paints its own grid
+        if (this.canvas.width !== this.width || this.canvas.height !== this.height) {
+          this.canvas.width = this.width;
+          this.canvas.height = this.height;
+        }
         // Draw the entire waterfall using ImageData
         this.renderWaterfallToImageData(Math.floor((this.height * 3) / 4), this.height);
         this.ctx.putImageData(this.imageData, 0, 0);

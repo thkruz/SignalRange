@@ -1,4 +1,5 @@
 import { beforeEach, vi } from 'vitest';
+import { cssEscape } from './test/helpers/css-escape';
 import { Rng } from './src/simulation/rng';
 import { SimClock } from './src/simulation/sim-clock';
 import 'vitest-canvas-mock';
@@ -101,3 +102,29 @@ beforeEach(() => {
   SimClock.reset();
   Rng.reset();
 });
+
+// jsdom does not implement media playback: play() must return a promise like a browser
+if (typeof HTMLMediaElement !== "undefined") {
+  HTMLMediaElement.prototype.play = () => Promise.resolve();
+  HTMLMediaElement.prototype.pause = () => undefined;
+}
+
+// jsdom has no modal dialogs or CSS.escape; the immersive views (close-ups, laptop, notebook) use both
+if (typeof HTMLDialogElement !== 'undefined') {
+  if (typeof HTMLDialogElement.prototype.showModal !== 'function') {
+    HTMLDialogElement.prototype.showModal = function showModal(this: HTMLDialogElement) {
+      this.open = true;
+    };
+  }
+  if (typeof HTMLDialogElement.prototype.close !== 'function') {
+    HTMLDialogElement.prototype.close = function close(this: HTMLDialogElement) {
+      if (!this.open) return;
+      this.open = false;
+      this.dispatchEvent(new Event('close'));
+    };
+  }
+}
+if (typeof globalThis.CSS === 'undefined') (globalThis as { CSS?: unknown }).CSS = {};
+if (typeof (globalThis.CSS as { escape?: unknown }).escape !== 'function') {
+  (globalThis.CSS as { escape: (s: string) => string }).escape = cssEscape;
+}

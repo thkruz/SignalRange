@@ -1,3 +1,5 @@
+import { displayViewport } from '@app/game-menu/display-viewport';
+import { clampBoxTop } from '@app/modal/clamp-box-top';
 import { Rng } from '@app/simulation/rng';
 /**
  * @file Decision Modal - presents a decision condition to the operator
@@ -13,9 +15,11 @@ import { html } from '@app/engine/utils/development/formatter';
 import { getEl, showEl } from '@app/engine/utils/get-el';
 import { EventBus } from '@app/events/event-bus';
 import { DecisionAnsweredData, DecisionDismissedData, DecisionEvidenceStatus, DecisionGradedData, DecisionResolvedData, DecisionShowData, Events } from '@app/events/events';
-import { Character, CharacterNames, Emotion, getCharacterAvatarUrl } from './character-enum';
+import { Character, CharacterNames, Emotion } from './character-enum';
+import { renderCharacterPortrait, setPortraitEmotion } from './character-portrait';
 import { DecisionManager } from './decision-manager';
 import './decision-modal.css';
+import { optionLetter } from './quiz-modal';
 import './quiz-modal.css';
 
 /** Seeded draws for this module (see simulation/rng.ts). */
@@ -77,8 +81,8 @@ export class DecisionModal extends DraggableBox {
     if (!this.boxEl) return;
     showEl(this.boxEl);
     if (this.width) this.boxEl.style.minWidth = this.width;
-    this.boxEl.style.top = `${window.scrollY + (window.innerHeight - this.boxEl.offsetHeight) / 2}px`;
-    this.boxEl.style.left = `${(window.innerWidth - this.boxEl.offsetWidth) / 2}px`;
+    this.boxEl.style.top = `${window.scrollY + (displayViewport().height - this.boxEl.offsetHeight) / 2}px`;
+    this.boxEl.style.left = `${(displayViewport().width - this.boxEl.offsetWidth) / 2}px`;
     this.boxEl.style.zIndex = DraggableBox.increaseMaxZIndex().toString();
     cb?.();
   }
@@ -91,8 +95,10 @@ export class DecisionModal extends DraggableBox {
     }
     this.hideOverlay_();
     // Drop the rendered options so no hidden .quiz-option-btn lingers for the
-    // shared e2e locators once the box is closed.
-    const optionsEl = getEl('decision-options');
+    // shared e2e locators once the box is closed. The DOM only exists once a
+    // decision has been shown; getEl would throw on teardown of every scenario
+    // that never showed one (nats-s02-F9, s24-F6).
+    const optionsEl = document.getElementById('decision-options');
     if (optionsEl) optionsEl.innerHTML = '';
     super.close();
   }
@@ -112,7 +118,7 @@ export class DecisionModal extends DraggableBox {
         <div id="${this.boxId}" class="draggable-box decision-box" style="pointer-events:auto; display:none;">
           <div class="draggable-box__title-bar">
             <div class="draggable-box__title"><span>${this.title}</span></div>
-            <span id="${this.boxId}-close" class="draggable-box__btn draggable-box__close-btn"></span>
+            <button type="button" id="${this.boxId}-close" class="draggable-box__close-btn" title="Close this window" aria-label="Close">&#x2715; Close</button>
           </div>
           <div class="draggable-box__content">${this.getBoxContentHtml()}</div>
         </div>
@@ -122,6 +128,8 @@ export class DecisionModal extends DraggableBox {
     this.onOpen();
   }
 
+  private dragEndBound_ = false;
+
   private handleShow_(data: DecisionShowData): void {
     this.current_ = data;
     this.currentCharacter_ = data.character ?? Character.CHARLIE_BROOKS;
@@ -129,7 +137,12 @@ export class DecisionModal extends DraggableBox {
     this.lastGraded_ = null;
     if (!this.domCreated_) this.createDom_();
     this.open(() => {
+      if (this.draggie && !this.dragEndBound_) {
+        this.dragEndBound_ = true;
+        this.draggie.on('dragEnd', () => this.keepInViewport_());
+      }
       this.render_();
+      this.keepInViewport_();
       this.startEvidencePoll_();
     });
   }
@@ -156,7 +169,7 @@ export class DecisionModal extends DraggableBox {
             </div>
           `
         : html`
-            <img id="decision-avatar" class="quiz-avatar" src="${getCharacterAvatarUrl(this.currentCharacter_, Emotion.CONFIDENT)}" alt="${CharacterNames[this.currentCharacter_]}">
+            ${renderCharacterPortrait(this.currentCharacter_, Emotion.CONFIDENT, { id: 'decision-avatar', className: 'quiz-avatar' })}
             <div class="quiz-header-text">
               <span class="quiz-character-name">${CharacterNames[this.currentCharacter_]}</span>
               <span class="quiz-prompt-label">needs a call:</span>
@@ -166,16 +179,17 @@ export class DecisionModal extends DraggableBox {
     promptEl.textContent = this.current_.prompt;
     feedbackEl.style.display = 'none';
     penaltyEl.style.display = 'none';
+    const scroller = this.boxEl?.querySelector<HTMLElement>('.draggable-box__content');
+    if (scroller) scroller.scrollTop = 0;
     this.renderEvidence_(this.current_.evidence);
 
-    const labels = ['A', 'B', 'C', 'D', 'E', 'F'];
     this.shuffledIndices_ = this.shuffleIndices_();
     const options = this.current_.options;
     optionsEl.innerHTML = this.shuffledIndices_
       .map(
         (originalIndex, displayIndex) => html`
           <button id="decision-option-${displayIndex}" class="quiz-option-btn" data-index="${originalIndex}">
-            <span class="quiz-option-label">${labels[displayIndex]}</span>
+            <span class="quiz-option-label">${optionLetter(displayIndex)}</span>
             <span class="quiz-option-text">${options[originalIndex]}</span>
           </button>
         `
@@ -265,10 +279,41 @@ export class DecisionModal extends DraggableBox {
         <button id="decision-continue-btn" class="quiz-continue-btn">Continue</button>
       `;
       feedbackEl.style.display = 'block';
-      getEl('decision-continue-btn')?.addEventListener('click', () => this.handleContinueClick_());
+      const continueBtn = getEl('decision-continue-btn');
+      continueBtn?.addEventListener('click', () => this.handleContinueClick_());
+      // Penalty notice renders below Continue: render it first so the scroll brings both into view
+      this.renderPenalty_(data.pointsDeducted);
+      // Clamp first, then scroll only the box's own scroller so the page never moves (nats-s22-F9)
+      this.keepInViewport_();
+      const penaltyEl = getEl('decision-penalty-notice');
+      const penaltyShown = !!penaltyEl && penaltyEl.style.display !== 'none' && !!penaltyEl.textContent;
+      this.scrollContentTo_(penaltyShown ? penaltyEl : continueBtn);
+      continueBtn?.focus({ preventScroll: true });
+    } else {
+      this.renderPenalty_(data.pointsDeducted);
     }
-    this.renderPenalty_(data.pointsDeducted);
     this.disableOptions_();
+  }
+
+  /** Feedback grows the box downward from its centred top; pull it back inside the viewport */
+  private keepInViewport_(): void {
+    if (!this.boxEl) return;
+    // A drag leaves inline height/max-height (80%) that is shorter than the CSS-capped content; drop it so the
+    // border wraps everything the content scroller shows
+    this.boxEl.style.maxHeight = '';
+    this.boxEl.style.height = '';
+    const top = parseFloat(this.boxEl.style.top) || 0;
+    this.boxEl.style.top = `${clampBoxTop(top, this.boxEl.offsetHeight, displayViewport().height, window.scrollY)}px`;
+  }
+
+  /** Scroll the box's own content scroller (never the page) so `target` ends inside it */
+  private scrollContentTo_(target: HTMLElement | null | undefined): void {
+    const scroller = this.boxEl?.querySelector<HTMLElement>('.draggable-box__content');
+    if (!scroller || !target) return;
+    const s = scroller.getBoundingClientRect();
+    const t = target.getBoundingClientRect();
+    if (t.bottom > s.bottom) scroller.scrollTop += t.bottom - s.bottom + 4;
+    else if (t.top < s.top) scroller.scrollTop -= s.top - t.top + 4;
   }
 
   private showIncorrectFeedback_(data: DecisionGradedData): void {
@@ -285,6 +330,10 @@ export class DecisionModal extends DraggableBox {
       feedbackEl.style.display = 'block';
     }
     this.renderPenalty_(data.pointsDeducted);
+    this.keepInViewport_();
+    const penaltyEl = getEl('decision-penalty-notice');
+    const penaltyShown = !!penaltyEl && penaltyEl.style.display !== 'none' && penaltyEl.textContent;
+    this.scrollContentTo_(penaltyShown ? penaltyEl : feedbackEl);
     window.setTimeout(() => {
       if (!this.isShowingFeedback_) this.setAvatar_(Emotion.CONFIDENT);
     }, 1500);
@@ -319,8 +368,7 @@ export class DecisionModal extends DraggableBox {
 
   private setAvatar_(emotion: Emotion): void {
     if (this.currentCharacter_ === Character.SYSTEM) return;
-    const avatar = getEl('decision-avatar') as HTMLImageElement | null;
-    if (avatar) avatar.src = getCharacterAvatarUrl(this.currentCharacter_, emotion);
+    setPortraitEmotion(document.getElementById('decision-avatar'), this.currentCharacter_, emotion);
   }
 
   private disableOptions_(): void {

@@ -1,8 +1,17 @@
 import { OrbitalObserver, OrbitalSatellite } from '@app/equipment/satellite/orbital-satellite';
 import { TransponderConfig } from '@app/equipment/satellite/satellite';
+import type { TransponderPhysics } from '@app/equipment/satellite/transponder-model';
 import { SignalOrigin } from '@app/signal-origin';
 import type { dBi, dBm, FECType, Hertz, ModulationType, RfFrequency } from '@app/types';
 import type { Degrees, Kilometers, TleLine1, TleLine2 } from 'ootk';
+
+/**
+ * CUBEHOP-1's U/V-style linear transponder (phase 19.3): a 1 W SSPA into a
+ * near-omni antenna (0 dBW saturated), a whip's G/T, and an SFD set so a
+ * backyard uplink (about -105 dBm arriving mid-pass) leaves at roughly
+ * beacon strength, a few dB under saturation.
+ */
+const CUBEHOP_LINEAR_TRANSPONDER: Partial<TransponderPhysics> = { sfdDbwM2: -118, gOverTDbK: -30, satEirpDbw: 0, amplifier: 'sspa', gainMode: 'fgm' };
 
 /**
  * Campaign 3 (Backyard Operator) satellite roster.
@@ -17,6 +26,7 @@ import type { Degrees, Kilometers, TleLine1, TleLine2 } from 'ootk';
  * Downlink powers are calibrated from real EIRPs against the fixed-gain
  * antenna model (QFH 3 dBi / crossed yagi 12 dBi / patch 5 dBi) for mid-pass
  * C/N around 20-25 dB; validate live in-app before shipping scored scenarios.
+ * NAVSTAR-77 is the exception: real L1 EIRP, ~8 dB under the noise in 2 MHz.
  */
 
 /** Riley's backyard, Burlington VT — observer for all relative telemetry */
@@ -92,7 +102,7 @@ const makeCubehop1Options = () => ({
       bandwidth: 30e3 as Hertz,
       frequencyOffset: 0.61e6 as Hertz,
       polarization: 'RHCP',
-      gain: 132 as dBi,
+      physics: CUBEHOP_LINEAR_TRANSPONDER,
     } as TransponderConfig,
     {
       id: 'FM-DL',
@@ -132,7 +142,7 @@ export const makeCubehop1Satellite = (): OrbitalSatellite =>
 /** Amateur FM cubesat with a 70cm downlink carrying SSTV frames (RHCP) */
 export const cubehop1Satellite = makeCubehop1Satellite();
 
-/** GPS Block III bird in MEO — L1 spread spectrum, a broad hump near the noise floor */
+/** GPS Block III bird in MEO — L1 spread spectrum at its real EIRP, below the noise floor until despread */
 export const navstar77Satellite = new OrbitalSatellite(
   'NAVSTAR-77',
   63003,
@@ -159,9 +169,11 @@ export const navstar77Satellite = new OrbitalSatellite(
           signalId: 'NAVSTAR-77-L1',
           serverId: 1,
           noradId: 63003,
-          // Boosted above the real ~27 dBW EIRP so the spread-spectrum hump
-          // peeks a few dB above the waterfall noise (teaching visibility)
-          power: 70 as dBm,
+          // Real GPS L1 C/A EIRP, about 27 dBW. It arrives near -128..-130 dBm
+          // at an isotropic antenna, below the thermal floor in 2 MHz; a GPS
+          // receiver sees it only after despreading (~43 dB of C/A processing
+          // gain). On the analyzer there is nothing to see - that is the lesson.
+          power: 57 as dBm,
           bandwidth: 2.046e6 as Hertz,
           modulation: 'null' as ModulationType, // spread spectrum: never "locks", only detected
           fec: 'null' as FECType,

@@ -1,4 +1,4 @@
-import { Mock, Mocked, vi } from 'vitest';
+import { Mocked, vi } from 'vitest';
 import { RealTimeSpectrumAnalyzer, RealTimeSpectrumAnalyzerState } from '../../../src/equipment/real-time-spectrum-analyzer/real-time-spectrum-analyzer';
 import { SpectrumDataProcessor } from '../../../src/equipment/real-time-spectrum-analyzer/spectrum-data-processor';
 import { Hertz, IfSignal } from '../../../src/types';
@@ -52,7 +52,12 @@ describe('SpectrumDataProcessor', () => {
       state: createMockState() as RealTimeSpectrumAnalyzerState,
       inputSignals: [],
       rfFrontEnd_: createMockRfFrontEnd() as any,
-    };
+      // Phase 19.2: the analyzer hands the processor its RBW/VBW and the line
+      // share of the displayed noise (the rest is instrument noise)
+      effectiveRbwHz: 1e6,
+      effectiveVbwHz: 1e5,
+      lineNoiseDbm: -100,
+    } as any;
 
     processor = new SpectrumDataProcessor(mockSpecA as any, testWidth);
   });
@@ -118,7 +123,7 @@ describe('SpectrumDataProcessor', () => {
       const sum = processor.noiseData.reduce((a, b) => a + b, 0);
       const average = sum / processor.noiseData.length;
 
-      // Average should be close to noise floor (within reasonable variance)
+      // Average should be close to noise floor (log detection reads ~2.5 dB under it)
       expect(average).toBeGreaterThan(noiseFloor! - 5);
       expect(average).toBeLessThan(noiseFloor! + 5);
     });
@@ -253,32 +258,28 @@ describe('SpectrumDataProcessor', () => {
     });
   });
 
-  describe('Gain application', () => {
-    it('should not add gain when isSkipLnaGainDuringDraw is true', () => {
-      mockSpecA.state!.isSkipLnaGainDuringDraw = true;
+  describe('Displayed noise level (phase 19.2)', () => {
+    it('the analyzer hands over the displayed floor with gain applied; log detection reads ~2.5 dB under it', () => {
       processor.setFrequencyRange(500e6 as Hertz, 600e6 as Hertz);
 
       processor.generateData();
 
-      // The method might be called during generation, but the noise should still be around -100
-      // Using precision of 0 to account for random noise variation (within 0.5 dB)
       const average = processor.noiseData.reduce((a, b) => a + b, 0) / processor.noiseData.length;
-      expect(average).toBeCloseTo(mockSpecA.state!.noiseFloorNoGain!, 0);
+      expect(average).toBeGreaterThan(mockSpecA.state!.noiseFloorNoGain! - 4);
+      expect(average).toBeLessThan(mockSpecA.state!.noiseFloorNoGain! - 1);
     });
 
-    it('should add gain when isSkipLnaGainDuringDraw is false', () => {
-      mockSpecA.state!.isSkipLnaGainDuringDraw = false;
-      const expectedGain = 30;
-      (mockSpecA.rfFrontEnd_!.couplerModule.signalPathManager.getTotalRxGain as Mock).mockReturnValue(expectedGain);
-
+    it('follows the floor: 30 dB more gain ahead of the tap moves the trace 30 dB', () => {
       processor.setFrequencyRange(500e6 as Hertz, 600e6 as Hertz);
       processor.generateData();
+      const before = processor.noiseData.reduce((a, b) => a + b, 0) / processor.noiseData.length;
 
-      // Noise floor should be higher due to added gain
-      const average = processor.noiseData.reduce((a, b) => a + b, 0) / processor.noiseData.length;
-      expect(average).toBeGreaterThan(mockSpecA.state!.noiseFloorNoGain!);
-      // Using precision of 0 to account for random noise variation (within 0.5 dB)
-      expect(average).toBeCloseTo(mockSpecA.state!.noiseFloorNoGain! + expectedGain, 0);
+      mockSpecA.state!.noiseFloorNoGain = -70;
+      (mockSpecA as any).lineNoiseDbm = -70;
+      processor.generateData();
+      const after = processor.noiseData.reduce((a, b) => a + b, 0) / processor.noiseData.length;
+
+      expect(after - before).toBeCloseTo(30, 0);
     });
   });
 

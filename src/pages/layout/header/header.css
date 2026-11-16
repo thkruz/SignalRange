@@ -21,6 +21,7 @@
 
   .header-logo-section img {
     height: 30px;
+    width: 30px;
   }
 
   .header-title-section {
@@ -65,6 +66,9 @@
 }
 
 .header-logo-section img {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
 }
@@ -121,6 +125,11 @@
   background-color: rgba(var(--mc-accent-red-rgb, 186, 22, 12), 0.06);
 }
 
+#header-game-menu-btn { font-size: 12px; font-weight: 600; }
+@media (max-width: 640px) {
+  .selection-menu .header-icon-button { width: 36px; flex-shrink: 0; }
+}
+
 .header-icon-button .icon {
   font-size: 24px;
   font-weight: bold;
@@ -146,4 +155,77 @@
 
 .header-icon-button--active:hover {
   background-color: rgba(96, 165, 250, 0.35);
+}
+/* Sound settings menu */
+.header-audio {
+  position: relative;
+}
+
+.header-audio .audio-mute {
+  display: none;
+}
+
+.header-audio--muted .audio-wave {
+  display: none;
+}
+
+.header-audio--muted .audio-mute {
+  display: inline;
+}
+
+.header-audio-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 1100;
+  min-width: 190px;
+  padding: 12px 14px;
+  background: #2e2e2e;
+  border: 1px solid var(--mc-border, rgba(255, 255, 255, 0.15));
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.header-audio-menu[hidden] {
+  display: none;
+}
+
+.header-audio-menu .form-check-label {
+  color: #f4f4f4;
+}
+
+.header-audio-menu .form-check-input {
+  background-color: #555;
+  border-color: #888;
+  cursor: pointer;
+}
+
+.header-audio-menu .form-check-input:checked {
+  background-color: var(--mc-accent-red, #ba160c);
+  border-color: var(--mc-accent-red, #ba160c);
+}
+
+.header-audio-menu .form-check-input:focus {
+  border-color: #ddd;
+  box-shadow: 0 0 0 3px rgb(255 255 255 / 16%);
+}
+
+.header-icon-button:focus-visible {
+  outline: 2px solid #eee;
+  outline-offset: -4px;
+}
+
+.header-icon-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+#fullscreen-btn .fullscreen-exit,
+#fullscreen-btn[aria-pressed='true'] .fullscreen-enter {
+  display: none;
+}
+
+#fullscreen-btn[aria-pressed='true'] .fullscreen-exit {
+  display: inline;
 }

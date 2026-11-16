@@ -48,12 +48,17 @@ describe('HPAAdapter', () => {
     mockHpaModule = {
       state: { ...mockState },
       inputSignals: [],
+      outputSignals: [{ power: 44 }],
+      isAlcEnabled: true,
+      psatDbm: 63,
+      handleAlcToggle: vi.fn(),
       p1db: 59, // P1dB compression point in dBm
       handleBackOffChange: vi.fn(),
       handlePowerToggle: vi.fn((checked, callback) => {
         if (callback) callback(mockHpaModule.state);
       }),
       handleHpaToggle: vi.fn(),
+      getEnableBlockReason: vi.fn().mockReturnValue(null),
       getAlarms: vi.fn().mockReturnValue([]),
     } as unknown as Mocked<HPAModuleCore>;
 
@@ -85,6 +90,12 @@ describe('HPAAdapter', () => {
 
     adapter = new HPAAdapter(mockHpaModule, containerEl);
   });
+
+  /** Fire the RF_FE_HPA_CHANGED handler the adapter registered, with the current module state. */
+  function emitHpaChanged(): void {
+    const call = mockEventBus.on.mock.calls.find((c) => c[0] === Events.RF_FE_HPA_CHANGED);
+    call?.[1]({ ...mockHpaModule.state });
+  }
 
   afterEach(() => {
     adapter.dispose();
@@ -161,14 +172,14 @@ describe('HPAAdapter', () => {
 
   describe('syncDomWithState', () => {
     it('should update output power display', () => {
-      adapter.update();
+      emitHpaChanged();
 
       const display = containerEl.querySelector('#hpa-output-power-display') as HTMLElement;
       expect(display.textContent).toBe('44.0 dBm');
     });
 
     it('should update power in watts', () => {
-      adapter.update();
+      emitHpaChanged();
 
       const display = containerEl.querySelector('#hpa-power-watts') as HTMLElement;
       // 44 dBm = 10^((44-30)/10) = 25.12 W
@@ -176,28 +187,28 @@ describe('HPAAdapter', () => {
     });
 
     it('should update gain display', () => {
-      adapter.update();
+      emitHpaChanged();
 
       const display = containerEl.querySelector('#hpa-gain-display') as HTMLElement;
       expect(display.textContent).toBe('20.0 dB');
     });
 
     it('should update temperature display', () => {
-      adapter.update();
+      emitHpaChanged();
 
       const display = containerEl.querySelector('#hpa-temperature-display') as HTMLElement;
       expect(display.textContent).toBe('55.0 °C');
     });
 
     it('should update IMD display', () => {
-      adapter.update();
+      emitHpaChanged();
 
       const display = containerEl.querySelector('#hpa-imd-display') as HTMLElement;
       expect(display.textContent).toBe('-30.0 dBc');
     });
 
     it('should update overdrive status when normal', () => {
-      adapter.update();
+      emitHpaChanged();
 
       const display = containerEl.querySelector('#hpa-overdrive-status') as HTMLElement;
       expect(display.textContent).toBe('Normal');
@@ -206,16 +217,39 @@ describe('HPAAdapter', () => {
 
     it('should update overdrive status when overdriven', () => {
       mockHpaModule.state.isOverdriven = true;
-      adapter.update();
+      emitHpaChanged();
 
       const display = containerEl.querySelector('#hpa-overdrive-status') as HTMLElement;
       expect(display.textContent).toBe('OVERDRIVE');
       expect(display.className).toContain('status-badge-warning');
     });
 
+    it('reads POWER and OVERDRIVE as "--" with a grey badge while output is disabled (nats-r5-s09-F1)', () => {
+      mockHpaModule.state.isHpaEnabled = false;
+      mockHpaModule.outputSignals = [];
+      emitHpaChanged();
+
+      expect((containerEl.querySelector('#hpa-power-watts') as HTMLElement).textContent).toBe('-- W');
+      const overdrive = containerEl.querySelector('#hpa-overdrive-status') as HTMLElement;
+      expect(overdrive.textContent).toBe('--');
+      expect(overdrive.className).toContain('status-badge-off');
+    });
+
+    it('passes "Output disabled" as the header LED idle status while output is disabled (phase 31 D6, r6-s09-F1)', async () => {
+      const { CardAlarmBadge } = await import('../../../../src/components/card-alarm-badge/card-alarm-badge');
+      const badge = (CardAlarmBadge.create as Mock).mock.results.at(-1)?.value as { update: Mock };
+      mockHpaModule.state.isHpaEnabled = false;
+      emitHpaChanged();
+      expect(badge.update).toHaveBeenLastCalledWith(expect.any(Array), true, 'Output disabled');
+
+      mockHpaModule.state.isHpaEnabled = true;
+      emitHpaChanged();
+      expect(badge.update).toHaveBeenLastCalledWith(expect.any(Array), true, undefined);
+    });
+
     it('should show placeholder values when powered off', () => {
       mockHpaModule.state.isPowered = false;
-      adapter.update();
+      emitHpaChanged();
 
       const powerDisplay = containerEl.querySelector('#hpa-output-power-display') as HTMLElement;
       expect(powerDisplay.textContent).toBe('-- dBm');
@@ -226,7 +260,7 @@ describe('HPAAdapter', () => {
 
     it('should disable controls when powered off', () => {
       mockHpaModule.state.isPowered = false;
-      adapter.update();
+      emitHpaChanged();
 
       const backoffInput = containerEl.querySelector('#hpa-backoff') as HTMLInputElement;
       const applyBtn = containerEl.querySelector('#hpa-apply-btn') as HTMLButtonElement;
@@ -238,7 +272,7 @@ describe('HPAAdapter', () => {
 
   describe('power meter visualization', () => {
     it('should update power meter segments', () => {
-      adapter.update();
+      emitHpaChanged();
 
       const meter = containerEl.querySelector('#hpa-power-meter') as HTMLElement;
       const segments = meter.querySelectorAll('.power-segment');
@@ -246,6 +280,88 @@ describe('HPAAdapter', () => {
       // 44 dBm normalized: (44-30)/(63-30) ≈ 0.424 = 4 segments (rounded)
       const activeSegments = Array.from(segments).filter((s) => !s.className.includes('led-off'));
       expect(activeSegments.length).toBe(4);
+    });
+  });
+
+  describe('staged edit survives toggles and external events', () => {
+    const backoff = () => containerEl.querySelector('#hpa-backoff') as HTMLInputElement;
+    const applyBtn = () => containerEl.querySelector('#hpa-apply-btn') as HTMLButtonElement;
+    const stateHandler = () => mockEventBus.on.mock.calls.find((c) => c[0] === Events.RF_FE_HPA_CHANGED)?.[1];
+
+    it('keeps a pending back-off through an HPA Enable toggle', () => {
+      (containerEl.querySelector('#hpa-backoff-inc-coarse') as HTMLButtonElement).click(); // 6 -> 11 staged
+      mockHpaModule.handleHpaToggle.mockImplementation(() => {
+        mockHpaModule.state.isHpaEnabled = !mockHpaModule.state.isHpaEnabled;
+      });
+
+      const enableSwitch = containerEl.querySelector('#hpa-enable') as HTMLInputElement;
+      enableSwitch.checked = false;
+      enableSwitch.dispatchEvent(new Event('change'));
+
+      expect(backoff().value).toBe('11');
+    });
+
+    it('keeps a pending back-off through an RF_FE_HPA_CHANGED event', () => {
+      (containerEl.querySelector('#hpa-backoff-inc-fine') as HTMLButtonElement).click(); // 6 -> 7 staged
+
+      stateHandler()({ ...mockHpaModule.state, temperature: 60 });
+
+      expect(backoff().value).toBe('7');
+    });
+
+    it('shows staged vs applied with a pending style, cleared by Apply', () => {
+      expect(backoff().classList.contains('is-pending')).toBe(false);
+      expect(applyBtn().classList.contains('is-pending')).toBe(false);
+
+      (containerEl.querySelector('#hpa-backoff-inc-fine') as HTMLButtonElement).click();
+
+      expect(backoff().classList.contains('is-pending')).toBe(true);
+      expect(applyBtn().classList.contains('is-pending')).toBe(true);
+      expect(backoff().title).toContain('Applied: 6 dB');
+
+      mockHpaModule.handleBackOffChange.mockImplementation((v: number) => {
+        mockHpaModule.state.backOff = v;
+      });
+      applyBtn().click();
+
+      expect(backoff().value).toBe('7');
+      expect(backoff().classList.contains('is-pending')).toBe(false);
+      expect(applyBtn().classList.contains('is-pending')).toBe(false);
+    });
+
+    it('follows external back-off changes when there is no pending edit', () => {
+      stateHandler()({ ...mockHpaModule.state, backOff: 12 });
+
+      expect(backoff().value).toBe('12');
+    });
+
+    it('does not overwrite the back-off input while it has focus', () => {
+      backoff().focus();
+      backoff().value = '9';
+
+      stateHandler()({ ...mockHpaModule.state, backOff: 12 });
+
+      expect(backoff().value).toBe('9');
+    });
+
+    it('keeps the staged back-off, disabled and still pending, while the HPA is unpowered (nats-r2-s16-F1)', () => {
+      (containerEl.querySelector('#hpa-backoff-inc-coarse') as HTMLButtonElement).click(); // 6 -> 11 staged
+      mockHpaModule.state.isPowered = false;
+
+      stateHandler()({ ...mockHpaModule.state, isPowered: false });
+
+      expect(backoff().value).toBe('11');
+      expect(backoff().disabled).toBe(true);
+      expect(backoff().classList.contains('is-pending')).toBe(true);
+      expect(backoff().title).toContain('Applied: 6 dB');
+      expect(backoff().title).toContain('power on to apply');
+    });
+
+    it('shows "--" gain while the HPA is disabled', () => {
+      stateHandler()({ ...mockHpaModule.state, isHpaEnabled: false, gain: 44 });
+
+      const gain = containerEl.querySelector('#hpa-gain-display') as HTMLElement;
+      expect(gain.textContent).toBe('-- dB');
     });
   });
 
@@ -401,15 +517,17 @@ describe('HPAAdapter', () => {
       expect(mockHpaModule.getAlarms).toHaveBeenCalled();
     });
 
-    it('should classify fault alarms as error', () => {
-      mockHpaModule.getAlarms.mockReturnValue(['Hardware Fault']);
+    it('classifies with the ticker: overdrive is a warning, over-temperature an error (Phase 32 D14)', () => {
+      mockHpaModule.getAlarms.mockReturnValue(['HPA overdrive - IMD degradation', 'HPA over-temperature (95°C)']);
 
       const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
-      expect(mockHpaModule.getAlarms).toHaveBeenCalled();
+      const badgeUpdate = (adapter as any).alarmBadge_.update as Mock;
+      const alarms = badgeUpdate.mock.calls.at(-1)?.[0] as { severity: string; message: string }[];
+      expect(alarms.map((a) => a.severity)).toEqual(['warning', 'error']);
     });
   });
 
@@ -470,7 +588,7 @@ describe('HPAAdapter', () => {
 
   describe('P1dB display', () => {
     it('should update P1dB margin display', () => {
-      adapter.update();
+      emitHpaChanged();
 
       const p1dbDisplay = containerEl.querySelector('#hpa-p1db-display') as HTMLElement;
       expect(p1dbDisplay).not.toBeNull();

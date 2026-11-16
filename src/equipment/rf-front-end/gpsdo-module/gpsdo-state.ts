@@ -29,6 +29,12 @@ export interface GPSDOState {
   isGnssAcquiringLock: boolean;
   /** Number of satellites being tracked */
   satelliteCount: number;
+  /**
+   * Satellites this station normally tracks; the live count drifts at most
+   * one either side of it, once a minute. Defaults to the starting
+   * satelliteCount when that is 4 or more, else 9.
+   */
+  nominalSatelliteCount?: number;
   /** UTC time accuracy in nanoseconds */
   utcAccuracy: number;
   /** Selected constellation: GPS, GLONASS, BEIDOU, GALILEO */

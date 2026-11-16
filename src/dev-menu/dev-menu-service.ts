@@ -44,8 +44,11 @@ export class DevMenuService {
   /**
    * Register a callback to be notified when dev status changes.
    */
-  onChange(callback: (isDev: boolean) => void): void {
+  onChange(callback: (isDev: boolean) => void): () => void {
     this.onChangeCallbacks_.push(callback);
+    return () => {
+      this.onChangeCallbacks_ = this.onChangeCallbacks_.filter((listener) => listener !== callback);
+    };
   }
 
   private checkWhitelist_(userId: string | null): void {

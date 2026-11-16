@@ -27,9 +27,12 @@
  * like at a 4 m Ku beamwidth.
  */
 
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
+import { slantRangeKmAt } from '@app/simulation/geo-geometry';
 import { getSimulatedNowMs } from '@app/simulation/sim-time';
 import { Hertz, RfFrequency, RfSignal } from '@app/types';
-import { Degrees, EciVec3, GroundObject, Kilometers, KilometersPerSecond, LlaVec3, Satellite as OotkSatellite, TleLine1, TleLine2, Vec3 } from 'ootk';
+import { Degrees, GroundObject, GroundStation, Kilometers, KilometersPerSecond, LlaVec3, Satellite as OotkSatellite, TemeVec3, TleLine1, TleLine2, Vec3 } from 'ootk';
 import { Satellite, SatelliteState } from './satellite';
 
 /** Geodetic location of the ground station observing this satellite. */
@@ -93,7 +96,7 @@ export function groundObjectFor(observer: OrbitalObserver): GroundObject {
   const key = observerKey_(observer);
   let ground = groundObjects_.get(key);
   if (!ground) {
-    ground = new GroundObject({
+    ground = new GroundStation({
       name: observer.name ?? 'Ground Station',
       lat: observer.lat,
       lon: observer.lon,
@@ -138,7 +141,7 @@ export class OrbitalSatellite extends Satellite {
   private readonly predictionCache_ = new Map<string, { atMs: number; az: Degrees; el: Degrees }>();
 
   /** Current ECI position (km), null until first successful propagation */
-  eciPosition: EciVec3<Kilometers> | null = null;
+  eciPosition: TemeVec3<Kilometers> | null = null;
   /** Current ECI velocity (km/s), null until first successful propagation */
   eciVelocity: Vec3<KilometersPerSecond> | null = null;
   /** Current geodetic position, null until first successful propagation */
@@ -162,7 +165,7 @@ export class OrbitalSatellite extends Satellite {
     });
     this.predictionSat_ = this.ootkSat_;
     this.observerConfig_ = orbitalConfig.observer;
-    this.observer_ = new GroundObject({
+    this.observer_ = new GroundStation({
       name: orbitalConfig.observer.name ?? 'Ground Station',
       lat: orbitalConfig.observer.lat,
       lon: orbitalConfig.observer.lon,
@@ -191,6 +194,11 @@ export class OrbitalSatellite extends Satellite {
     return this.predictionSat_;
   }
 
+  /** The true (spacecraft) element set. Changes on `maneuverTo` and `reloadTle`. */
+  get trueElements(): { tle1: string; tle2: string } {
+    return { tle1: this.ootkSat_.tle1, tle2: this.ootkSat_.tle2 };
+  }
+
   /** True while the station's element set no longer describes the orbit. */
   get isPredictionStale(): boolean {
     return this.predictionSat_ !== this.ootkSat_;
@@ -209,6 +217,7 @@ export class OrbitalSatellite extends Satellite {
     this.observerCache_.clear();
     this.predictionCache_.clear();
     this.propagateTo_(getSimulatedNowMs());
+    EventBus.getInstance().emit(Events.SATELLITE_ELEMENTS_CHANGED, { noradId: this.noradId });
   }
 
   /**
@@ -220,6 +229,7 @@ export class OrbitalSatellite extends Satellite {
     this.ootkSat_ = new OotkSatellite({ name: this.ootkSat_.name, tle1, tle2 });
     this.observerCache_.clear();
     this.propagateTo_(getSimulatedNowMs());
+    EventBus.getInstance().emit(Events.SATELLITE_ELEMENTS_CHANGED, { noradId: this.noradId });
   }
 
   /** The ground station observer used for relative telemetry. */
@@ -353,6 +363,26 @@ export class OrbitalSatellite extends Satellite {
     this.lastPositionUpdateTime_ = nowMs;
     this.propagateTo_(nowMs);
   }
+
+  /**
+   * Range over which authored third-party uplinks and injected interference
+   * reach an orbital satellite (phase 19.3): the slant range at 30 deg
+   * elevation for its current orbit radius. A stand-in uplinker sees the
+   * satellite at a typical working elevation whatever the canonical observer's
+   * geometry is (a LEO below that observer's horizon is still being uplinked
+   * by someone); for a GEO this is ~37,600 km.
+   */
+  override uplinkReferenceRangeKm(): number {
+    const p = this.eciPosition;
+    if (!p) {
+      return super.uplinkReferenceRangeKm();
+    }
+
+    return slantRangeKmAt(OrbitalSatellite.UPLINK_REFERENCE_ELEVATION_DEG, Math.hypot(p.x, p.y, p.z));
+  }
+
+  /** Elevation of the stand-in uplinker's view of an orbital satellite, degrees */
+  static readonly UPLINK_REFERENCE_ELEVATION_DEG = 30;
 
   /**
    * Update signals like the base class, then apply orbital effects:

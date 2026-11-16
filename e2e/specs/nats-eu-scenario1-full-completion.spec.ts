@@ -77,12 +77,12 @@ test.describe('nats-eu Scenario 1 Full Completion', () => {
     await waitForObjectiveComplete(missionControl, 'Review the Shift Brief');
   });
 
-  test('[dashboard-sweep] reads the board: AGC rail, no faults', async () => {
+  test('[dashboard-sweep] reads the board: AGC no-carrier warning, no faults', async () => {
     // Station tabs render only after GW-01 is selected in the asset tree
     await missionControl.selectGroundStation('GW-01');
     await missionControl.selectTab('dashboard');
-    await expectDashboardAlarm(page, 'AGC at max gain');
-    await answerSystemQuiz(page, 'RX AGC at max gain');
+    await expectDashboardAlarm(page, 'AGC on noise only');
+    await answerSystemQuiz(page, 'RX AGC on noise only');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'GW-01 Dashboard Sweep');
   });
@@ -136,7 +136,7 @@ test.describe('nats-eu Scenario 1 Full Completion', () => {
     await jogAxis(page, 'el-fine', 1, 2);
     await domClick(page, '[id$="apply-changes-btn"]');
     await dismissDialogIfPresent(page);
-    // 180 deg at 20 deg/s is nine seconds of slew
+    // 180 deg at 10 deg/s is eighteen seconds of slew
     await waitForObjectiveComplete(missionControl, 'Pre-position for AOS', 60000);
   });
 
@@ -164,7 +164,8 @@ test.describe('nats-eu Scenario 1 Full Completion', () => {
   });
 
   test('[retune-for-sar2] retunes the receiver and analyzer after LOS', async () => {
-    await advanceMissionClockToUtc(page, '2027-03-15T14:11:00Z');
+    // LOS is SAR-1 dropping below the 5 deg mask at 14:10:18, a minute before its 14:11:28 horizon crossing; the quiz only registers once LOS has happened
+    await advanceMissionClockToUtc(page, '2027-03-15T14:10:30Z');
     await setRxModemFrequency(page, missionControl, 1370);
     await fillAndChange(page, '#sa-center-freq', '1397');
     await answerSystemQuiz(page, 'Imagery 1370 MHz, beacon 1397 MHz; AOS 14:18');
@@ -188,6 +189,8 @@ test.describe('nats-eu Scenario 1 Full Completion', () => {
   });
 
   test('[log-first-light] writes the shift log and completes', async () => {
+    // log-first-light waits for SAR-2 LOS: 14:25:40 at the 5 deg mask
+    await advanceMissionClockToUtc(page, '2027-03-15T14:26:00Z');
     await closeWorkingDocumentIfOpen(page);
     await answerSystemQuiz(page, 'peak ~11 dB at 28 degrees');
     // Last objective: its completion pops the Mission Complete modal, which

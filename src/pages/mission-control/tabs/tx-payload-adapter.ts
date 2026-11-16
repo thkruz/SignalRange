@@ -2,6 +2,9 @@ import { CardAlarmBadge } from '@app/components/card-alarm-badge/card-alarm-badg
 import { qs } from '@app/engine/utils/query-selector';
 import { AlarmStatus } from '@app/equipment/base-equipment';
 import { CryptoModule } from '@app/equipment/crypto';
+import { formatDataRate } from '@app/equipment/receiver/fec-simulator';
+import { DVB_S2_ROLL_OFF, framesPerSecond, informationRateBps, modcodFor, symbolRateHz } from '@app/equipment/receiver/modcod';
+import type { Transmitter } from '@app/equipment/transmitter/transmitter';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { FaultInjector } from '@app/faults';
@@ -12,12 +15,13 @@ import { FaultInjector } from '@app/faults';
 export interface TxPayloadState {
   // Source Status
   dataRate: string;
-  payloadType: 'Command' | 'Telemetry' | 'Bulk Data';
+  /** Scenarios set this through FaultInjector tx-payload overrides; 'Data' is the neutral default (s01-F20) */
+  payloadType: 'Data' | 'Command' | 'Telemetry' | 'Bulk Data';
   channel: 'Primary' | 'Backup';
   sourceFeedStatus: 'Active' | 'Idle' | 'Error' | 'No Signal';
 
-  // Throughput
-  framesPerSec: number;
+  // Throughput (null: no carrier on the air, shown as "--")
+  framesPerSec: number | null;
   efficiency: number;
   bufferUtilization: number;
   bufferOverflows: number;
@@ -47,6 +51,7 @@ export class TxPayloadAdapter {
 
   private readonly containerEl_: HTMLElement;
   private readonly groundStationId_: string;
+  private readonly transmitter_: Transmitter | null;
   private lastSyncTime_: number = 0;
   private readonly domCache_: Map<string, HTMLElement> = new Map();
   private readonly boundUpdateHandler_: () => void;
@@ -55,7 +60,7 @@ export class TxPayloadAdapter {
   private state_: TxPayloadState = {
     // Source Status
     dataRate: '2.048 Mbps',
-    payloadType: 'Command',
+    payloadType: 'Data',
     channel: 'Primary',
     sourceFeedStatus: 'Active',
 
@@ -78,10 +83,12 @@ export class TxPayloadAdapter {
   /**
    * @param containerEl DOM container element
    * @param groundStationId Ground station ID for fault injection scoping
+   * @param transmitter The TX chassis whose active modem's carrier sets the data rate
    */
-  constructor(containerEl: HTMLElement, groundStationId: string = 'default') {
+  constructor(containerEl: HTMLElement, groundStationId: string = 'default', transmitter: Transmitter | null = null) {
     this.containerEl_ = containerEl;
     this.groundStationId_ = groundStationId;
+    this.transmitter_ = transmitter;
 
     // Create alarm badge
     this.alarmBadge_ = CardAlarmBadge.create('tx-payload-alarm-badge-led');
@@ -99,6 +106,7 @@ export class TxPayloadAdapter {
   private initialize_(): void {
     this.setupDomCache_();
     EventBus.getInstance().on(Events.UPDATE, this.boundUpdateHandler_);
+    this.updateRateFromModem_();
     this.syncDomWithState_();
   }
 
@@ -107,6 +115,8 @@ export class TxPayloadAdapter {
     if (now - this.lastSyncTime_ < TxPayloadAdapter.UPDATE_INTERVAL_MS) return;
     this.lastSyncTime_ = now;
 
+    this.updateRateFromModem_();
+
     // Update crypto state from CryptoModule
     this.updateCryptoState_();
 
@@ -114,6 +124,27 @@ export class TxPayloadAdapter {
     this.applyFaultOverrides_();
 
     this.syncDomWithState_();
+  }
+
+  /**
+   * Data rate and frames/s from the active modem's carrier, derived as the RX
+   * payload card derives them: symbol rate = occupied bandwidth / (1 + roll-off),
+   * information rate = symbol rate x bits/symbol x code rate (phase 29 D4,
+   * nats-r4-s10-F2: a 24 MHz QPSK 3/4 carrier is 30.000 Mbps on both cards).
+   * No carrier on the air (not transmitting, faulted, unknown MODCOD): "--".
+   */
+  private updateRateFromModem_(): void {
+    if (!this.transmitter_) return;
+    const modem = this.transmitter_.activeModem;
+    const modcod = modem ? modcodFor(modem.ifSignal.modulation, modem.ifSignal.fec) : null;
+    if (!modem?.isPowered || !modem.isTransmitting || modem.isFaulted || !modcod) {
+      this.state_.dataRate = '--';
+      this.state_.framesPerSec = null;
+      return;
+    }
+    const symbolRate = symbolRateHz(modem.ifSignal.bandwidth, DVB_S2_ROLL_OFF);
+    this.state_.dataRate = formatDataRate(informationRateBps(symbolRate, modcod));
+    this.state_.framesPerSec = Math.round(framesPerSecond(symbolRate, modcod));
   }
 
   /**
@@ -214,7 +245,7 @@ export class TxPayloadAdapter {
     }
 
     // Throughput
-    this.updateTextContent_('framesPerSec', state.framesPerSec.toLocaleString());
+    this.updateTextContent_('framesPerSec', state.framesPerSec === null ? '--' : state.framesPerSec.toLocaleString());
     this.updateTextContent_('efficiency', `${state.efficiency.toFixed(1)}%`);
 
     // Calculate total errors (overflows + underruns for display)

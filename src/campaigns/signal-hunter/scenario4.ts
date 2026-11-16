@@ -50,7 +50,7 @@ import { sentry7Satellite, sentry9Satellite } from './satellites';
 export const signalHunterScenario4Data: ScenarioData = {
   id: 'signal-hunter-scenario4',
   url: 'signal-hunter/scenarios/signal-hunter-scenario4',
-  imageUrl: 'nats/24/card.png',
+  imageUrl: 'signal-hunter/4/card.png',
   number: 4,
   isDisabled: false,
   difficulty: 'advanced',
@@ -89,7 +89,7 @@ export const signalHunterScenario4Data: ScenarioData = {
         satelliteNoradId: 71001,
         frequency: 6003e6, // Uplink, inside TP-1 -> 3778 MHz downlink, 1372 MHz IF
         bandwidth: 2e6,
-        power: 2, // dBm at transponder input
+        power: 74.2, // uplink EIRP, dBm (phase 19.3 migration: was 2 dBm at the transponder input, same downlink)
         polarization: 'H',
         startTime: 0,
         duration: 7200,
@@ -107,7 +107,7 @@ export const signalHunterScenario4Data: ScenarioData = {
         satelliteNoradId: 71001,
         frequency: 6021e6, // Uplink, inside TP-1 -> 3796 MHz downlink, 1354 MHz IF
         bandwidth: 3e6,
-        power: 4,
+        power: 76.2, // uplink EIRP, dBm (phase 19.3 migration: was 4 dBm at the transponder input, same downlink)
         polarization: 'H',
         startTime: 20,
         duration: 7200,

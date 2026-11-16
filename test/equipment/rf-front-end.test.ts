@@ -20,6 +20,33 @@ Object.defineProperty(HTMLMediaElement.prototype, 'play', {
   value: vi.fn().mockResolvedValue(undefined),
 });
 
+/**
+ * Put a carrier through the TX chain (19.6: the HPA's overdrive and IMD come
+ * from its actual output, so it needs drive): a -7 dBm modem, 23 dB of BUC
+ * gain, HPA enabled.
+ */
+function driveTxChain(fe: RFFrontEndCore): void {
+  fe.connectTransmitter({
+    state: {
+      modems: [
+        {
+          isTransmitting: true,
+          isFaulted: false,
+          isLoopback: false,
+          ifSignal: { signalId: 'tx', frequency: 1057e6, power: -7, bandwidth: 36e6, modulation: 'QPSK', fec: '3/4', polarization: 'H', origin: 0, gainInPath: 0 },
+        },
+      ],
+    },
+    isModemInIntermittentDropout: () => false,
+  } as never);
+  fe.bucModule.state.isPowered = true;
+  fe.bucModule.state.gain = 23 as never;
+  fe.bucModule.state.saturationPower = 28 as never;
+  fe.bucModule.state.loFrequency = 7000 as never;
+  fe.hpaModule.state.isPowered = true;
+  fe.hpaModule.state.isHpaEnabled = true;
+}
+
 describe('RFFrontEndCore class', () => {
   let rfFrontEnd: RFFrontEndCore;
   let parentElement: HTMLElement;
@@ -131,29 +158,29 @@ describe('RFFrontEndCore class', () => {
       expect(rfFrontEnd.state.hpa.temperature).toBe(25);
     });
 
-    it('should calculate BUC output power when powered and not muted', () => {
+    it('should report the BUC output floor when powered with no carriers to upconvert', () => {
       rfFrontEnd.state.buc.isPowered = true;
       rfFrontEnd.state.buc.isMuted = false;
       rfFrontEnd.state.buc.gain = 60;
 
       rfFrontEnd.update();
 
-      // Output = min(inputPower + gain, saturationPower + 2)
-      // = min(-10 + 60, 15 + 2) = min(50, 17) = 17 dBm (saturated)
-      expect(rfFrontEnd.state.buc.outputPower).toBe(17);
+      // outputPower comes from the actual RF output signals; none -> floor
+      expect(rfFrontEnd.bucModule.outputSignals).toEqual([]);
+      expect(rfFrontEnd.state.buc.outputPower).toBe(-120);
     });
 
-    it('should set BUC output power to minimum when muted', () => {
+    it('should set BUC output power to the floor when muted', () => {
       rfFrontEnd.state.buc.isPowered = true;
       rfFrontEnd.state.buc.isMuted = true;
 
       rfFrontEnd.update();
 
-      // When muted, BUC outputs -170 dBm (effectively off)
-      expect(rfFrontEnd.state.buc.outputPower).toBe(-170);
+      expect(rfFrontEnd.state.buc.outputPower).toBe(-120);
     });
 
     it('should detect HPA overdrive when backoff < 3 dB', () => {
+      driveTxChain(rfFrontEnd);
       rfFrontEnd.state.hpa.backOff = 2;
 
       rfFrontEnd.update();
@@ -169,16 +196,18 @@ describe('RFFrontEndCore class', () => {
       expect(rfFrontEnd.state.hpa.isOverdriven).toBe(false);
     });
 
-    it('should calculate HPA IMD level based on backoff', () => {
-      // BUC must be powered for HPA to remain powered
-      rfFrontEnd.state.buc.isPowered = true;
-      rfFrontEnd.state.hpa.isPowered = true;
-      rfFrontEnd.state.hpa.backOff = 4;
+    it('should calculate HPA IMD from the amplifier model: worse as back-off drops', () => {
+      driveTxChain(rfFrontEnd);
+      rfFrontEnd.state.hpa.backOff = 10;
+      rfFrontEnd.update();
+      const at10 = rfFrontEnd.state.hpa.imdLevel;
 
+      rfFrontEnd.state.hpa.backOff = 4;
       rfFrontEnd.update();
 
-      // IMD = -30 - (backOff * 2)
-      expect(rfFrontEnd.state.hpa.imdLevel).toBe(-38);
+      // Two-tone C/IM3 from the Saleh curve: about 2 dB worse per dB of back-off
+      expect(rfFrontEnd.state.hpa.imdLevel).toBeGreaterThan(at10 + 10);
+      expect(rfFrontEnd.state.hpa.imdLevel).toBeLessThan(-25);
     });
   });
 
@@ -254,6 +283,7 @@ describe('RFFrontEndCore class', () => {
     });
 
     it('should detect HPA overdrive alarm', () => {
+      driveTxChain(rfFrontEnd);
       rfFrontEnd.state.hpa.backOff = 2;
 
       rfFrontEnd.update();

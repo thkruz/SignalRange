@@ -14,6 +14,7 @@
 import { html } from '@app/engine/utils/development/formatter';
 import { EventBus } from '@app/events/event-bus';
 import { Events, TimeSkipEndedData, TimeSkipProgressData, TimeSkipStartedData } from '@app/events/events';
+import { glyph } from './glyphs';
 import { formatDuration, formatUtcClock, formatUtcDate } from './time-skip-format';
 import './time-skip.css';
 
@@ -23,6 +24,7 @@ export class TimeSkipOverlay {
   private el_: HTMLElement | null = null;
   private targetMs_ = 0;
   private satelliteName_ = '';
+  private label_: string | null = null;
 
   private readonly boundStartedHandler_: (data: TimeSkipStartedData) => void;
   private readonly boundProgressHandler_: (data: TimeSkipProgressData) => void;
@@ -43,6 +45,7 @@ export class TimeSkipOverlay {
   private handleStarted_(data: TimeSkipStartedData): void {
     this.targetMs_ = data.targetMs;
     this.satelliteName_ = data.satelliteName;
+    this.label_ = data.label ?? null;
 
     document.body.insertAdjacentHTML(
       'beforeend',
@@ -50,7 +53,7 @@ export class TimeSkipOverlay {
       <div id="${TimeSkipOverlay.ELEMENT_ID}" class="time-skip-overlay">
         <div class="time-skip-overlay-card">
           <div class="time-skip-overlay-label">
-            <i class="fa-solid fa-forward"></i> Advancing scenario clock
+            ${glyph('forward')} Advancing scenario clock
           </div>
           <div class="time-skip-overlay-clock" id="time-skip-overlay-clock">--:--:--Z</div>
           <div class="time-skip-overlay-date" id="time-skip-overlay-date"></div>
@@ -91,7 +94,7 @@ export class TimeSkipOverlay {
       targetEl.innerHTML = html`
         Holding at <strong>${formatUtcClock(this.targetMs_)}</strong>
         &middot; ${formatDuration(remainingMs)} of scenario time to go
-        &middot; then ${this.satelliteName_} AOS
+        &middot; ${this.label_ ? `waiting out the ${this.label_}` : `then ${this.satelliteName_} AOS`}
       `;
     }
   }

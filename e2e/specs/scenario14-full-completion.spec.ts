@@ -8,7 +8,7 @@ import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForS
  * Qualified-operator weather scenario. A moderate rain front passes over
  * VT-01. The customer (James Okafor, SeaLink) has asked the operator to
  * hold the link rather than execute a handover. The right call for a
- * 3 dB fade with AGC headroom is to hold; the test exercises that path.
+ * sub-dB C-band fade with AGC headroom is to hold; the test exercises that path.
  *
  * Objective types:
  * - 'quiz': Status-check quiz (SYSTEM or named character)
@@ -18,7 +18,7 @@ import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForS
  * - 'auto': Auto-satisfied by simulation state (signal locks, HPA nominal,
  *   sustained-monitor objectives whose conditions are already met)
  */
-type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'toggle-switch' | 'auto';
+type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'toggle-switch' | 'auto' | 'objective-skip';
 
 interface Scenario14Objective {
   id: string;
@@ -29,6 +29,27 @@ interface Scenario14Objective {
   stationId?: string;
   switchId?: string;
   switchState?: boolean;
+  /** Wait (ms) for the objective to report complete after its action */
+  waitDoneMs?: number;
+  /**
+   * Jump the scenario clock this far (ms, window.advanceClock) after the
+   * action, as a player waiting it out would; it burns the step's countdown
+   */
+  advanceMs?: number;
+  /**
+   * Reads the panel the quiz is about and asserts the keyed option is what
+   * the screen shows, before the answer is clicked (the answer comes from
+   * the sim state, not from matching the option text)
+   */
+  checkScreen?: (page: import('@playwright/test').Page) => Promise<void>;
+}
+
+/** First number in a visible readout (e.g. "13.1 dB") */
+async function readNumber(page: import('@playwright/test').Page, selector: string): Promise<number> {
+  const text = (await page.locator(`${selector}:visible`).first().textContent()) ?? '';
+  const match = /[-+]?\d+(?:\.\d+)?/u.exec(text);
+  expect(match, `${selector} reads a number (got "${text}")`).not.toBeNull();
+  return Number.parseFloat(match![0]);
 }
 
 const SCENARIO_14_OBJECTIVES: Scenario14Objective[] = [
@@ -71,7 +92,7 @@ const SCENARIO_14_OBJECTIVES: Scenario14Objective[] = [
     id: 'pre-storm-dashboard',
     title: 'Pre-Storm Dashboard Sweep',
     type: 'quiz',
-    correctAnswer: 'No active alarms, link healthy - clean baseline to fade from',
+    correctAnswer: 'No warnings or criticals, just the Signal(s) Detected info row',
   },
   {
     id: 'enable-feed-heater-tab',
@@ -107,13 +128,21 @@ const SCENARIO_14_OBJECTIVES: Scenario14Objective[] = [
   {
     id: 'baseline-beacon-and-lock',
     title: 'Baseline Beacon and Lock',
-    type: 'auto',
+    // Phase 27 Q3: the observation rows latch on RX Analysis, then the C/N read
+    type: 'quiz',
+    correctAnswer: 'About 13 dB',
+    // RX modem 1 Raw C/N, the readout the 7 dB action threshold is read on
+    checkScreen: async (page) => {
+      const rawCn = await readNumber(page, '#cn-raw-display');
+      expect(rawCn).toBeGreaterThan(12);
+      expect(rawCn).toBeLessThan(14.5);
+    },
   },
   {
     id: 'baseline-margin-quiz',
     title: 'Link Margin Baseline',
     type: 'quiz',
-    correctAnswer: 'It defines how much fade the link can absorb before reaching the demodulation threshold',
+    correctAnswer: 'It shows how much fade the link can absorb before demodulation fails',
   },
 
   // ============================================================
@@ -122,19 +151,35 @@ const SCENARIO_14_OBJECTIVES: Scenario14Objective[] = [
   {
     id: 'monitor-during-fade',
     title: 'Monitor Through the Fade',
+    // Phase 32 D20: the RAIN FADE alarm (about 2 min into the cell) held 20 s
+    // and C/N >= 7 dB held 20 s, accrued only while RX Analysis is open. The
+    // jump fits the 6 min countdown
     type: 'auto',
+    advanceMs: 150000,
+    waitDoneMs: 90000,
   },
   {
     id: 'agc-behavior-quiz',
     title: 'AGC Behavior in the Fade',
     type: 'quiz',
-    correctAnswer: 'AGC is compensating - the demodulator still sees a usable signal, and the gain stage still has headroom',
+    // The quiz says the cell is over the dish: the RAIN FADE alarm is up
+    // (nats-r7-s14-F1, it used to open before any fade)
+    checkScreen: async (page) => {
+      const rainFadeUp = await page.evaluate(() => {
+        const gs = (window as any).signalRange?.simulationManager?.groundStations?.find((g: any) => g.state?.id === 'VT-01');
+        const alarms: Array<{ message: string }> = gs?.antennas?.[0]?.getStatusAlarms?.() ?? [];
+
+        return alarms.some((a) => a.message.startsWith('RAIN FADE'));
+      });
+      expect(rainFadeUp).toBe(true);
+    },
+    correctAnswer: 'The AGC is compensating, and the gain stage still has headroom',
   },
   {
     id: 'agc-headroom-quiz',
     title: 'AGC Headroom Reading',
     type: 'quiz',
-    correctAnswer: 'Plenty of headroom remaining - link is comfortable, hold is justified',
+    correctAnswer: 'Plenty of headroom is left, so holding is justified',
   },
 
   // ============================================================
@@ -150,12 +195,18 @@ const SCENARIO_14_OBJECTIVES: Scenario14Objective[] = [
     id: 'hpa-backoff-decision-quiz',
     title: 'HPA Backoff Decision',
     type: 'quiz',
-    correctAnswer: 'No - the link is healthy; trading IMD risk for unused margin is a bad bargain',
+    correctAnswer: "No. The link is healthy, and extra IMD risk buys margin we don't need",
   },
   {
     id: 'verify-hpa-still-nominal',
     title: 'Verify HPA Still Nominal',
-    type: 'auto',
+    // Phase 27 Q3: the HPA rows latch on TX Chain, then the panel read
+    type: 'quiz',
+    correctAnswer: 'Output 50 dBm (100 W), back-off 10 dB, IM3 about -43 dBc, Overdrive Normal',
+    checkScreen: async (page) => {
+      expect(Math.abs((await readNumber(page, '#hpa-output-power-display')) - 50)).toBeLessThan(0.6);
+      expect(Math.abs((await readNumber(page, '#hpa-imd-display')) + 43)).toBeLessThan(1.5);
+    },
   },
 
   // ============================================================
@@ -165,7 +216,7 @@ const SCENARIO_14_OBJECTIVES: Scenario14Objective[] = [
     id: 'handover-threshold-quiz',
     title: 'Handover Threshold',
     type: 'quiz',
-    correctAnswer: 'AGC at max with continued fade, or modem dropping lock',
+    correctAnswer: 'Raw C/N under 7 dB and falling, AGC at max in a continued fade, or lost lock',
   },
   {
     id: 'decision-hold',
@@ -179,8 +230,12 @@ const SCENARIO_14_OBJECTIVES: Scenario14Objective[] = [
   // ============================================================
   {
     id: 'sustained-monitor',
-    title: 'Hold Through the Peak',
-    type: 'auto',
+    title: 'Hold Through the Cell',
+    // Phase 27 Q4 / Phase 28 D1: the 20-min rain cell is a command-bar skip,
+    // offered once the lock / C/N hold rows are met; it lands at the end of
+    // the cell and the mission clock reads HOLD while the step waits
+    type: 'objective-skip',
+    waitDoneMs: 120000,
   },
 
   // ============================================================
@@ -196,7 +251,7 @@ const SCENARIO_14_OBJECTIVES: Scenario14Objective[] = [
     id: 'document-handover-avoided',
     title: 'Log the Hold',
     type: 'quiz',
-    correctAnswer: 'Moderate rain over VT-01, ~3 dB fade. Held TM-1 per customer SLA preference; AGC max 3 dB, modem lock maintained, no handover.',
+    correctAnswer: 'Heavy rain cell over VT-01, about 1 dB of C/N lost. Held TM-1 per SeaLink SLA; watched 7 dB Raw C/N, AGC at max, modem unlock, none fired. SeaLink told.',
   },
 ];
 
@@ -240,6 +295,18 @@ async function toggleSwitch(page: import('@playwright/test').Page, switchId: str
   await page.waitForTimeout(200);
 }
 
+/** Wait until the objective reports complete, via the debugObjective dev hook. */
+async function waitForObjectiveDone(page: import('@playwright/test').Page, objectiveId: string, timeout: number): Promise<void> {
+  await page.waitForFunction(
+    (id) => {
+      const hook = (window as unknown as { debugObjective?: (id: string) => { isCompleted?: boolean } }).debugObjective;
+      return typeof hook === 'function' && hook(id)?.isCompleted === true;
+    },
+    objectiveId,
+    { timeout, polling: 500 }
+  );
+}
+
 /**
  * Execute an objective based on its type.
  */
@@ -247,6 +314,7 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
   switch (objective.type) {
     case 'quiz':
       await waitForQuizToAppear(page);
+      await objective.checkScreen?.(page);
       await answerQuizByText(page, objective.correctAnswer!);
       break;
 
@@ -271,6 +339,25 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
       // engine a beat to confirm the objective transitioned to complete.
       await page.waitForTimeout(2000);
       break;
+
+    case 'objective-skip': {
+      // The skip is offered on the command bar once its rows are met
+      const skip = page.locator('#objective-skip-control');
+      await expect(skip).toBeVisible({ timeout: 90000 });
+      // D1: waiting the cell out costs no mission time - the HUD shows HOLD
+      await expect(page.locator('#scenario-timer-hold')).toBeVisible({ timeout: 10000 });
+      await skip.click({ timeout: 90000 });
+      break;
+    }
+  }
+
+  if (objective.advanceMs) {
+    await page.waitForFunction(() => typeof (window as any).advanceClock === 'function');
+    await page.evaluate((ms) => (window as any).advanceClock(ms), objective.advanceMs);
+  }
+
+  if (objective.waitDoneMs) {
+    await waitForObjectiveDone(page, objective.id, objective.waitDoneMs);
   }
 
   await dismissDialogIfPresent(page);
@@ -322,7 +409,7 @@ test.describe('Scenario 14 Full Completion', () => {
       // Monitor-during-fade and sustained-monitor wait for the simulation
       // to advance through the rain event. Give them more runway.
       if (objective.id === 'monitor-during-fade' || objective.id === 'sustained-monitor') {
-        test.setTimeout(180000);
+        test.setTimeout(240000);
       }
       await executeObjective(page, missionControlPage, objective);
     });

@@ -139,16 +139,12 @@ describe('sandbox scenario', () => {
         expect(satellite().el).toBe(32);
       });
 
-      it('should have one external signal (uplink)', () => {
-        expect(satellite().externalSignal.length).toBe(1);
+      it('has no authored uplink: its hub carrier is what a station radiates (phase 27, no stand-in)', () => {
+        expect(satellite().externalSignal.length).toBe(0);
       });
 
-      it('should have uplink signal at 6053 MHz', () => {
-        expect(satellite().externalSignal[0].frequency).toBe(6053e6);
-      });
-
-      it('should use QPSK modulation', () => {
-        expect(satellite().externalSignal[0].modulation).toBe('QPSK');
+      it('has a transponder whose uplink passband holds 6053 MHz', () => {
+        expect(satellite().transponders.some((tp) => tp.uplinkLowEdge <= 6053e6 && tp.uplinkHighEdge >= 6053e6)).toBe(true);
       });
     });
 
@@ -160,20 +156,16 @@ describe('sandbox scenario', () => {
       });
 
       it('should have correct position', () => {
-        expect(satellite().az).toBe(161.8);
-        expect(satellite().el).toBe(34.2);
+        expect(satellite().az).toBe(153.1);
+        expect(satellite().el).toBe(35.1);
       });
 
-      it('should have one external signal (uplink)', () => {
-        expect(satellite().externalSignal.length).toBe(1);
+      it('has no authored uplink: its hub carrier is what a station radiates (phase 27, no stand-in)', () => {
+        expect(satellite().externalSignal.length).toBe(0);
       });
 
-      it('should have uplink signal at 5943 MHz', () => {
-        expect(satellite().externalSignal[0].frequency).toBe(5943e6);
-      });
-
-      it('should use QPSK modulation', () => {
-        expect(satellite().externalSignal[0].modulation).toBe('QPSK');
+      it('has a transponder whose uplink passband holds 5943 MHz', () => {
+        expect(satellite().transponders.some((tp) => tp.uplinkLowEdge <= 5943e6 && tp.uplinkHighEdge >= 5943e6)).toBe(true);
       });
     });
   });

@@ -1,8 +1,12 @@
 import { OrbitalObserver, OrbitalSatellite } from '@app/equipment/satellite/orbital-satellite';
 import { TransponderConfig } from '@app/equipment/satellite/satellite';
+import type { TransponderPhysics } from '@app/equipment/satellite/transponder-model';
 import { SignalOrigin } from '@app/signal-origin';
 import type { dBi, dBm, FECType, Hertz, ModulationType, RfFrequency } from '@app/types';
 import type { Degrees, Kilometers, TleLine1, TleLine2 } from 'ootk';
+
+/** C-band transponder physics for the SENTRY birds (phase 19.3) */
+const SENTRY_C_BAND_TRANSPONDER: Partial<TransponderPhysics> = { sfdDbwM2: -87, gOverTDbK: 0, satEirpDbw: 34, amplifier: 'twta', gainMode: 'fgm' };
 
 /**
  * Campaign 5 (Signal Hunter) satellite roster.
@@ -23,9 +27,10 @@ import type { Degrees, Kilometers, TleLine1, TleLine2 } from 'ootk';
  *
  * Frequency plan (C-band):
  * - Allied service carrier: downlink 3785 MHz, H-pol
- * - Hostile uplink jammer (interferenceEvents): 6013 MHz H-pol, inside the
- *   SENTRY-7 transponder passband -> relayed to 3788 MHz downlink
- * - Station LNB LO 5150 MHz: 3785 MHz -> 1365 MHz IF, jammer -> 1362 MHz IF
+ * - Hostile uplinks (interferenceEvents, authored per scenario): V-pol up (TP-1 reverses it, so H down), inside the
+ *   SENTRY-7 TP-1 passband (5990-6030 MHz), translated down by 2225 MHz. Scenario 1:
+ *   6021 MHz -> 3796 MHz downlink -> 1354 MHz IF
+ * - Station LNB LO 5150 MHz: 3785 MHz -> 1365 MHz IF; hostile IFs fall at 1354-1374 MHz
  */
 
 /** Peterson Annex ground station observer (Colorado) used for relative telemetry */
@@ -56,8 +61,9 @@ export const sentry7Satellite = new OrbitalSatellite(
       {
         id: 'TP-1',
         uplinkCenterFrequency: 6010e6 as RfFrequency, // passband 5990-6030 MHz
+        physics: SENTRY_C_BAND_TRANSPONDER,
         bandwidth: 40e6 as Hertz,
-        frequencyOffset: 2.225e9 as Hertz, // uplink 6013 -> downlink 3788 (jammer)
+        frequencyOffset: 2.225e9 as Hertz, // uplink 6021 -> downlink 3796 (scenario 1 interferer)
         polarization: 'H',
         // Allied service carrier (direct downlink, modeled as a transponder beacon)
         beacon: {
@@ -65,7 +71,9 @@ export const sentry7Satellite = new OrbitalSatellite(
           signalId: 'SENTRY-7-SERVICE',
           serverId: 1,
           noradId: 71001,
-          power: 20 as dBm,
+          // Service-carrier EIRP. 20 dBm put it 15.6 dB under the 9 m dish's noise, below the antenna's -10 dB C/N floor, so it
+          // never reached the analyzer (phase 47 N3); 50 dBm is about 14 dB C/N at PA-22's 9 m dish.
+          power: 50 as dBm,
           bandwidth: 8e6 as Hertz,
           modulation: 'QPSK' as ModulationType,
           fec: '3/4' as FECType,
@@ -76,6 +84,17 @@ export const sentry7Satellite = new OrbitalSatellite(
           noiseFloor: null,
           gainInPath: 0 as dBi,
         },
+      } as TransponderConfig,
+      {
+        // Same passband as TP-1, opposite polarization: takes V uplinks and reverses them to H, the polarization PA-22's
+        // OMT receives. A hostile uplink authored H is accepted by TP-1 and comes down V, 29 dB under the analyzer
+        // (phase 47 P33 B1), so the S1 and S2 interferers are authored V and ride this transponder.
+        id: 'TP-1V',
+        uplinkCenterFrequency: 6010e6 as RfFrequency,
+        physics: SENTRY_C_BAND_TRANSPONDER,
+        bandwidth: 40e6 as Hertz,
+        frequencyOffset: 2.225e9 as Hertz,
+        polarization: 'V',
       } as TransponderConfig,
     ],
   }
@@ -101,6 +120,7 @@ export const sentry9Satellite = new OrbitalSatellite(
       {
         id: 'TP-1',
         uplinkCenterFrequency: 6250e6 as RfFrequency,
+        physics: SENTRY_C_BAND_TRANSPONDER,
         bandwidth: 36e6 as Hertz,
         frequencyOffset: 2.225e9 as Hertz,
         polarization: 'H',
@@ -109,7 +129,8 @@ export const sentry9Satellite = new OrbitalSatellite(
           signalId: 'SENTRY-9-BEACON',
           serverId: 1,
           noradId: 71002,
-          power: 0 as dBm,
+          // 0 dBm gave 3 dB C/N on the 9 m dish, too weak to read as a beacon; 10 dBm gives about 13 dB
+          power: 10 as dBm,
           bandwidth: 1e3 as Hertz,
           modulation: 'CW' as ModulationType,
           fec: 'null' as FECType,

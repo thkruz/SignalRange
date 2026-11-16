@@ -1,9 +1,12 @@
 import { CardAlarmBadge } from '@app/components/card-alarm-badge/card-alarm-badge';
 import { qs } from '@app/engine/utils/query-selector';
 import { AlarmStatus } from '@app/equipment/base-equipment';
-import { LNBModuleCore, LNBState } from '@app/equipment/rf-front-end/lnb-module/lnb-module-core';
+import { clampLnbLoFrequency, LNBModuleCore, LNBState } from '@app/equipment/rf-front-end/lnb-module/lnb-module-core';
+import { classifyRfAlarmSeverity } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { EventAutoLogger } from '@app/ops-log/event-auto-logger';
+import { stationTagForRfModule } from '@app/ops-log/station-tag';
 import { parseLocalizedNumber } from '@app/utils/parse-number';
 
 /**
@@ -31,6 +34,13 @@ export class LNBAdapter {
   // Staged values for Apply pattern
   private stagedLoFrequency_: number = 6080;
   private stagedGain_: number = 0;
+  /**
+   * Pending (staged but not applied) edits. Power toggles and external state
+   * events must not overwrite a pending staged value; it clears on Apply or
+   * when the staged value is brought back to the applied one.
+   */
+  private hasPendingLoEdit_ = false;
+  private hasPendingGainEdit_ = false;
 
   constructor(lnbModule: LNBModuleCore, containerEl: HTMLElement) {
     this.lnbModule = lnbModule;
@@ -87,11 +97,23 @@ export class LNBAdapter {
     const state = this.lnbModule.state;
     const isPowered = state.isPowered;
 
+    // Sync power switch from external changes (scenario events, faults)
+    const powerSwitch = this.domCache_.get('powerSwitch') as HTMLInputElement | undefined;
+    if (powerSwitch && document.activeElement !== powerSwitch && powerSwitch.checked !== isPowered) {
+      powerSwitch.checked = isPowered;
+    }
+
+    // Applied values can change without an event; keep staged inputs and the
+    // pending indicator honest (pending edits are preserved)
+    this.syncStagedFromState_(state.loFrequency, state.gain);
+
     // Update noise temperature display
     const noiseTempDisplay = this.domCache_.get('noiseTempDisplay');
     if (noiseTempDisplay) {
       noiseTempDisplay.textContent = isPowered ? `${state.noiseTemperature.toFixed(0)} K` : '-- K';
     }
+
+    this.syncThermalAndLoError_();
 
     // Update lock status
     const lockStatus = this.domCache_.get('lockStatus');
@@ -110,7 +132,7 @@ export class LNBAdapter {
 
     // Update alarm badge
     const alarms = this.getAlarmsFromModule_();
-    this.alarmBadge_.update(alarms);
+    this.alarmBadge_.update(alarms, this.lnbModule.state.isPowered);
   }
 
   private setupDomCache_(): void {
@@ -133,6 +155,11 @@ export class LNBAdapter {
     this.domCache_.set('powerSwitch', qs('#lnb-power', this.containerEl));
     this.domCache_.set('noiseTempDisplay', qs('#lnb-noise-temp-display', this.containerEl));
     this.domCache_.set('lockStatus', qs('#lnb-lock-status', this.containerEl));
+    // Phase 19.6 readouts (optional: older layouts may not have them)
+    const thermalStatus = this.containerEl.querySelector<HTMLElement>('#lnb-thermal-status');
+    if (thermalStatus) this.domCache_.set('thermalStatus', thermalStatus);
+    const loError = this.containerEl.querySelector<HTMLElement>('#lnb-lo-error-display');
+    if (loError) this.domCache_.set('loErrorDisplay', loError);
   }
 
   private setupInputListeners_(): void {
@@ -195,43 +222,111 @@ export class LNBAdapter {
 
   private loFreqInputHandler_(e: Event): void {
     const value = parseLocalizedNumber((e.target as HTMLInputElement).value);
-    this.stagedLoFrequency_ = Math.max(5000, Math.min(7000, value));
-    this.updateStagedDisplays_();
+    if (!Number.isNaN(value)) {
+      this.setStagedLoFrequency_(value);
+    }
   }
 
   private adjustStagedLoFreq_(delta: number): void {
-    this.stagedLoFrequency_ = Math.max(5000, Math.min(7000, this.stagedLoFrequency_ + delta));
-    this.updateStagedDisplays_();
+    this.setStagedLoFrequency_(this.stagedLoFrequency_ + delta);
+  }
+
+  /** Player edit: stage a new LO and mark it pending until applied. */
+  private setStagedLoFrequency_(value: number): void {
+    this.stagedLoFrequency_ = clampLnbLoFrequency(value);
+    this.hasPendingLoEdit_ = this.stagedLoFrequency_ !== this.lnbModule.state.loFrequency;
+    this.updateStagedDisplays_(true);
   }
 
   private gainInputHandler_(e: Event): void {
     const value = parseLocalizedNumber((e.target as HTMLInputElement).value);
-    this.stagedGain_ = Math.max(0, Math.min(65, value));
-    this.updateStagedDisplays_();
+    if (!Number.isNaN(value)) {
+      this.setStagedGain_(Math.max(0, Math.min(65, value)));
+    }
   }
 
   private adjustStagedGain_(delta: number): void {
     const newGain = this.stagedGain_ + delta;
-    this.stagedGain_ = Math.round(Math.max(0, Math.min(65, newGain)) * 10) / 10;
+    this.setStagedGain_(Math.round(Math.max(0, Math.min(65, newGain)) * 10) / 10);
+  }
+
+  /** Player edit: stage a new gain and mark it pending until applied. */
+  private setStagedGain_(value: number): void {
+    this.stagedGain_ = value;
+    this.hasPendingGainEdit_ = this.stagedGain_ !== this.lnbModule.state.gain;
+    this.updateStagedDisplays_(true);
+  }
+
+  /**
+   * Follow the applied values only where the player has no pending edit, so a
+   * power toggle or external state event never silently discards a staged value.
+   */
+  private syncStagedFromState_(appliedLo: number | undefined, appliedGain: number | undefined): void {
+    if (appliedLo !== undefined) {
+      if (!this.hasPendingLoEdit_) {
+        this.stagedLoFrequency_ = appliedLo;
+      } else if (this.stagedLoFrequency_ === appliedLo) {
+        this.hasPendingLoEdit_ = false;
+      }
+    }
+    if (appliedGain !== undefined) {
+      if (!this.hasPendingGainEdit_) {
+        this.stagedGain_ = appliedGain;
+      } else if (this.stagedGain_ === appliedGain) {
+        this.hasPendingGainEdit_ = false;
+      }
+    }
     this.updateStagedDisplays_();
   }
 
-  private updateStagedDisplays_(): void {
+  /**
+   * @param isUserEdit true when called from the player's own edit; otherwise a
+   *   focused input is left alone (CLAUDE.md "Protecting Input Fields").
+   */
+  private updateStagedDisplays_(isUserEdit = false): void {
     const isPowered = this.lnbModule.state.isPowered;
     const loInput = this.domCache_.get('loFreqInput') as HTMLInputElement;
     const gainInput = this.domCache_.get('gainInput') as HTMLInputElement;
 
     if (loInput) {
-      loInput.value = isPowered ? this.stagedLoFrequency_.toString() : '--';
+      if (isUserEdit || document.activeElement !== loInput) {
+        // A number input cannot hold "--"; it is the placeholder (nats-r3-s02-F3)
+        loInput.value = isPowered ? this.stagedLoFrequency_.toString() : '';
+      }
+      loInput.placeholder = '--';
       loInput.disabled = !isPowered;
     }
     if (gainInput) {
-      gainInput.value = isPowered ? this.stagedGain_.toFixed(1) : '--';
+      if (isUserEdit || document.activeElement !== gainInput) {
+        gainInput.value = isPowered ? this.stagedGain_.toFixed(1) : '';
+      }
+      gainInput.placeholder = '--';
       gainInput.disabled = !isPowered;
     }
 
     // Disable adjust buttons when powered off
     this.setControlButtonsEnabled_(isPowered);
+    this.updatePendingIndicator_();
+  }
+
+  /** Staged vs applied: pending style on the inputs and Apply, applied value in the tooltip. */
+  private updatePendingIndicator_(): void {
+    const state = this.lnbModule.state;
+    const isLoPending = state.isPowered && this.stagedLoFrequency_ !== state.loFrequency;
+    const isGainPending = state.isPowered && this.stagedGain_ !== state.gain;
+    const loInput = this.domCache_.get('loFreqInput') as HTMLInputElement;
+    const gainInput = this.domCache_.get('gainInput') as HTMLInputElement;
+    const applyBtn = this.domCache_.get('applyBtn') as HTMLButtonElement;
+
+    if (loInput) {
+      loInput.classList.toggle('is-pending', isLoPending);
+      loInput.title = `Applied: ${state.loFrequency} MHz${isLoPending ? ' (staged change not applied)' : ''}`;
+    }
+    if (gainInput) {
+      gainInput.classList.toggle('is-pending', isGainPending);
+      gainInput.title = `Applied: ${Number(state.gain).toFixed(1)} dB${isGainPending ? ' (staged change not applied)' : ''}`;
+    }
+    applyBtn?.classList.toggle('is-pending', isLoPending || isGainPending);
   }
 
   private setControlButtonsEnabled_(enabled: boolean): void {
@@ -243,9 +338,32 @@ export class LNBAdapter {
   }
 
   private applyHandler_(): void {
+    const previousLo = Number(this.lnbModule.state.loFrequency);
+    const previousGain = Number(this.lnbModule.state.gain);
     this.lnbModule.handleLoFrequencyChange(this.stagedLoFrequency_);
     this.lnbModule.handleGainChange(this.stagedGain_);
+    // An applied change is an operator action, logged like BUC gain and HPA
+    // back-off (Phase 32 D8, nats-r7-s02-F2)
+    if (this.stagedLoFrequency_ !== previousLo) {
+      this.logAction_(`LNB LO set to ${LNBAdapter.formatLo_(this.stagedLoFrequency_)} (was ${LNBAdapter.formatLo_(previousLo)})`);
+    }
+    if (this.stagedGain_ !== previousGain) {
+      this.logAction_(`LNB gain set to ${this.stagedGain_.toFixed(1)} dB (was ${previousGain.toFixed(1)} dB)`);
+    }
+    this.hasPendingLoEdit_ = false;
+    this.hasPendingGainEdit_ = false;
     this.syncDomWithState_(this.lnbModule.state);
+    this.updateStagedDisplays_();
+  }
+
+  /** "5150 MHz", or "5150.5 MHz" for a fractional LO */
+  private static formatLo_(mhz: number): string {
+    return `${Number.isInteger(mhz) ? mhz : mhz.toFixed(1)} MHz`;
+  }
+
+  /** Ops Log line for a panel action, tagged with this LNB's station */
+  private logAction_(message: string): void {
+    EventAutoLogger.getInstance().logAction(message, 'RF FE', stationTagForRfModule(this.lnbModule));
   }
 
   private powerHandler_(e: Event): void {
@@ -266,14 +384,8 @@ export class LNBAdapter {
 
     const isPowered = state.isPowered ?? this.lnbModule.state.isPowered;
 
-    // Update staged values from state and refresh displays
-    if (state.loFrequency !== undefined) {
-      this.stagedLoFrequency_ = state.loFrequency;
-    }
-    if (state.gain !== undefined) {
-      this.stagedGain_ = state.gain;
-    }
-    this.updateStagedDisplays_();
+    // Follow applied values unless the player has a pending staged edit
+    this.syncStagedFromState_(state.loFrequency, state.gain);
 
     // Update Power switch
     if (state.isPowered !== undefined) {
@@ -309,29 +421,50 @@ export class LNBAdapter {
 
     // Update alarm badge - immediate feedback
     const alarms = this.getAlarmsFromModule_();
-    this.alarmBadge_.update(alarms);
+    this.alarmBadge_.update(alarms, this.lnbModule.state.isPowered);
   }
 
   /**
    * Get current alarms from LNB module as AlarmStatus array
    */
+  /**
+   * Thermal stabilization and LO error readouts (Phase 19.6): "Warming 1:20"
+   * until the LNB has been on for its stabilization time, then "Stable"; the
+   * LO's frequency error (the reference's when locked, the free-running
+   * oscillator's when not).
+   */
+  private syncThermalAndLoError_(): void {
+    const lnb = this.lnbModule;
+    const state = lnb.state;
+    const thermal = this.domCache_.get('thermalStatus');
+    if (thermal) {
+      if (!state.isPowered) {
+        thermal.textContent = '--';
+      } else if (lnb.isThermallyStable()) {
+        thermal.textContent = `Stable (${state.temperature.toFixed(0)} °C)`;
+      } else {
+        const settleS = Math.max(state.thermalStabilizationTime, state.noiseTemperatureStabilizationTime);
+        const leftS = Math.max(0, Math.ceil(settleS - lnb.secondsSincePowerOn));
+        thermal.textContent = `Warming ${Math.floor(leftS / 60)}:${String(leftS % 60).padStart(2, '0')} (${state.temperature.toFixed(0)} °C)`;
+      }
+    }
+    const loError = this.domCache_.get('loErrorDisplay');
+    if (loError) {
+      if (!state.isPowered || state.isDirectSampling) {
+        loError.textContent = '--';
+      } else {
+        const hz = state.frequencyError;
+        loError.textContent = Math.abs(hz) >= 1000 ? `${(hz / 1000).toFixed(1)} kHz` : `${hz.toFixed(Math.abs(hz) < 10 ? 2 : 0)} Hz`;
+      }
+    }
+  }
+
   private getAlarmsFromModule_(): AlarmStatus[] {
     const alarmStrings = this.lnbModule.getAlarms();
     return alarmStrings.map((message) => ({
-      severity: this.classifySeverity_(message),
+      severity: classifyRfAlarmSeverity(message),
       message,
     }));
-  }
-
-  /**
-   * Classify alarm message severity based on content
-   */
-  private classifySeverity_(message: string): AlarmStatus['severity'] {
-    const lowerMsg = message.toLowerCase();
-    if (lowerMsg.includes('not locked') || lowerMsg.includes('error')) {
-      return 'warning';
-    }
-    return 'warning'; // Default to warning for any alarm
   }
 
   dispose(): void {

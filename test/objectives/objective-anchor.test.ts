@@ -297,3 +297,100 @@ describe('end anchors', () => {
     expect(manager.state.spoofActive).toBe(false);
   });
 });
+
+describe('checkpoint round trip (Phase 35 follow-up)', () => {
+  const jam = {
+    id: 'jam',
+    frequency: 1e9,
+    bandwidth: 1e6,
+    power: -60,
+    polarization: 'H',
+    path: 'terrestrial',
+    emitter: { latitude: 0, longitude: 0 },
+    startAfterObjectiveId: 'command',
+    startTime: 30,
+    duration: 120,
+    periodSeconds: 60,
+    onSeconds: 60,
+  };
+
+  it('ObjectiveAnchors: state round trips and ignores unknown ids and bad times', () => {
+    const first = new ObjectiveAnchors(['observe', 'other']);
+    setObjective('observe', true);
+    first.poll(1800);
+    const saved = JSON.parse(JSON.stringify(first.getState())) as Array<[string, number]>;
+    expect(saved).toEqual([['observe', 1800]]);
+
+    const second = new ObjectiveAnchors(['observe']);
+    second.restoreState([...saved, ['stranger', 5], ['observe', Number.NaN]] as never);
+    expect(second.atS(20, 'observe')).toBe(1820);
+    expect(second.atS(0, 'stranger')).toBe(Number.POSITIVE_INFINITY);
+    second.restoreState(undefined);
+    expect(second.atS(20, 'observe')).toBe(1820);
+  });
+
+  it('InterferenceManager: forced overrides and the anchor time survive a restore; control re-anchors', () => {
+    scenarioSettings.settings = { interferenceEvents: [jam] };
+    setObjective('command', true);
+    let manager = InterferenceManager.getInstance();
+    at(1000); // anchors at 1000, window 1030..1150
+    manager.forceEvent('jam', false);
+    const saved = JSON.parse(JSON.stringify(manager.getState())) as ReturnType<typeof manager.getState>;
+    expect(saved.forced).toEqual([['jam', false]]);
+
+    // Restore into a fresh manager, then the clock jumps
+    InterferenceManager.destroy();
+    clock.nowMs = 0; // a restarted page builds its managers at mission start
+    manager = InterferenceManager.getInstance();
+    manager.restoreState(saved);
+    at(1100);
+    expect(manager.isEventForced('jam')).toBe(true);
+    expect(manager.startS(jam as never)).toBe(1030);
+
+    // Control: no restore, the anchor is re-stamped at the restore moment and the force is gone
+    InterferenceManager.destroy();
+    clock.nowMs = 0; // a restarted page builds its managers at mission start
+    manager = InterferenceManager.getInstance();
+    at(1100);
+    expect(manager.isEventForced('jam')).toBe(false);
+    expect(manager.startS(jam as never)).toBe(1130);
+  });
+
+  it('HardwareFaultManager: tripped and cleared faults do not run again after the clock jump; control re-trips', () => {
+    scenarioSettings.settings = {
+      hardwareFaultEvents: [
+        { id: 'key', groundStationId: 'GW-01', target: 'crypto-key-mismatch', startTime: 100, endAfterObjectiveId: 'recovered', endOffsetS: 45 },
+        { id: 'late', groundStationId: 'GW-01', target: 'crypto-key-mismatch', startTime: 5000 },
+      ],
+    };
+    setObjective('recovered', false);
+    let manager = HardwareFaultManager.getInstance();
+    at(100);
+    setObjective('recovered', true);
+    at(700); // anchors at 700
+    expect(manager.isTripped('key')).toBe(true);
+    const saved = JSON.parse(JSON.stringify(manager.getState())) as ReturnType<typeof manager.getState>;
+    expect(saved.tripped).toEqual(['key']);
+    expect(saved.anchors).toEqual([['recovered', 700]]);
+
+    // Restore, then the clock jumps far past both starts
+    HardwareFaultManager.destroy();
+    clock.nowMs = 0; // a restarted page builds its managers at mission start
+    crypto.injectKeyMismatch.mockClear();
+    manager = HardwareFaultManager.getInstance();
+    manager.restoreState({ ...saved, cleared: ['key'] });
+    at(6000);
+    expect(manager.isCleared('key')).toBe(true);
+    expect(crypto.injectKeyMismatch).toHaveBeenCalledTimes(1); // only 'late', which had not tripped
+    expect(manager.getEventScheduleS('key')).toEqual({ startS: 100, endS: 745 });
+
+    // Control: a fresh manager with no restore trips 'key' again and re-anchors at the jump
+    HardwareFaultManager.destroy();
+    clock.nowMs = 0; // a restarted page builds its managers at mission start
+    crypto.injectKeyMismatch.mockClear();
+    manager = HardwareFaultManager.getInstance();
+    at(6000);
+    expect(crypto.injectKeyMismatch).toHaveBeenCalledTimes(2);
+    expect(manager.getEventScheduleS('key')?.endS).toBe(6045);
+  });
+});

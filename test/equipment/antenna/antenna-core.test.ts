@@ -2,6 +2,7 @@ import { Degrees } from 'ootk';
 import { vi } from 'vitest';
 import { ANTENNA_CONFIG_KEYS } from '../../../src/equipment/antenna/antenna-config-keys';
 import { AntennaCore, AntennaState } from '../../../src/equipment/antenna/antenna-core';
+import { lossNoiseAtOutputK } from '../../../src/simulation/noise-model';
 import { Hertz } from '../../../src/types';
 import { advanceSimTime } from '../../helpers/sim-time';
 
@@ -103,28 +104,32 @@ class TestableAntennaCore extends AntennaCore {
     return (this as any).beamwidth3dB_deg_(f_Hz);
   }
 
+  /** Main-lobe pointing loss: the pattern's drop from boresight (phase 19.4: one pattern term) */
   public testPointingLoss(offAxis_deg: number, f_Hz: number): number {
-    return (this as any).pointingLoss_dB_(offAxis_deg, f_Hz);
+    return (this as any).antennaGain_dBi(f_Hz as Hertz) - (this as any).patternGain_dBi_(offAxis_deg, f_Hz);
   }
 
   public testPatternGain(theta_deg: number, f_Hz: number): number {
     return (this as any).patternGain_dBi_(theta_deg, f_Hz);
   }
 
+  /** Clear-sky brightness at C-band from the phase 19.2 noise model */
   public testSkyTempK(elev_deg: number): number {
-    return (this as any).skyTempK_(elev_deg);
+    return this.systemNoise(4e9, elev_deg, false).skyK;
   }
 
+  /** Noise a lossy element adds at its output (noise model) */
   public testNoiseFromLossK(L_dB: number, physK?: number): number {
-    return (this as any).noiseFromLossK_(L_dB, physK);
+    return lossNoiseAtOutputK(L_dB, physK);
   }
 
   public testSystemTempK(frequency: Hertz, elevation: Degrees): number {
     return (this as any).systemTempK_(frequency, elevation);
   }
 
-  public testCurrentDePointing(wind_mps?: number): number {
-    return (this as any).currentDePointing_deg_(wind_mps);
+  public testCurrentDePointing(wind_mps = 0): number {
+    this.state.windSpeed_mps = wind_mps;
+    return this.windDePointingDeg;
   }
 
   public testFeedLossAt(f_Hz: number): number {
@@ -419,11 +424,11 @@ describe('AntennaCore', () => {
       expect(antenna.state.trackingMode).toBe('manual');
     });
 
-    it('should set stow mode and stage Az=0, El=90', () => {
+    it('should set stow mode and stage El=90 at the current azimuth', () => {
       antenna.handleTrackingModeChange('stow');
 
       expect(antenna.state.trackingMode).toBe('stow');
-      expect(antenna.state.stagedTargetAzimuth).toBe(0);
+      expect(antenna.state.stagedTargetAzimuth).toBeNull();
       expect(antenna.state.stagedTargetElevation).toBe(90);
       expect(antenna.state.hasStagedChanges).toBe(true);
     });
@@ -937,9 +942,20 @@ describe('AntennaCore', () => {
     it('should return info for manual tracking', () => {
       antenna.state.isPowered = true;
       antenna.state.isOperational = true;
+      antenna.state.trackingMode = 'manual';
       const alarms = antenna.getStatusAlarms();
 
       expect(alarms.some((a) => a.severity === 'info' && a.message.includes('Manual'))).toBe(true);
+    });
+
+    it.each(['program-track', 'stow', 'maintenance'] as const)('does not report Manual Tracking in %s mode (s01-F3)', (mode) => {
+      antenna.state.isPowered = true;
+      antenna.state.isOperational = true;
+      antenna.state.trackingMode = mode;
+      antenna.state.isAutoTrackEnabled = false;
+      const alarms = antenna.getStatusAlarms();
+
+      expect(alarms.some((a) => a.message.includes('Manual Tracking'))).toBe(false);
     });
   });
 
@@ -1168,6 +1184,41 @@ describe('AntennaCore', () => {
       expect(antenna.getStepTrackController().isActive).toBe(false);
     });
 
+    it('re-arms from the program-track pointing on a new target (phase 27, r2-s06-F2)', () => {
+      antenna.startStepTrack();
+      antenna.state.stepTrackAzOffset = 0.2 as Degrees;
+      antenna.state.stepTrackElOffset = -0.1 as Degrees;
+      antenna.getStepTrackController().stop();
+
+      antenna.handleTargetSatelliteChange(99999);
+
+      expect(antenna.getStepTrackController().isActive).toBe(true);
+      expect(antenna.state.stepTrackAzOffset).toBe(0);
+      expect(antenna.state.stepTrackElOffset).toBe(0);
+      expect(antenna.state.isAutoTrackEnabled).toBe(true);
+    });
+
+    it('leaves step-track off on a target change when it was not armed', () => {
+      antenna.handleTargetSatelliteChange(99999);
+      expect(antenna.getStepTrackController().isActive).toBe(false);
+    });
+
+    it('re-arms on Move to Target', () => {
+      antenna.state.targetSatelliteId = 99999;
+      antenna.startStepTrack();
+      antenna.getStepTrackController().stop();
+      antenna.moveToTargetSatellite();
+      expect(antenna.getStepTrackController().isActive).toBe(true);
+    });
+
+    it('stops on power-off', () => {
+      antenna.startStepTrack();
+      antenna.handlePowerToggle(false);
+      expect(antenna.getStepTrackController().isActive).toBe(false);
+      expect(antenna.state.isStepTrackEnabled).toBe(false);
+      expect(antenna.state.isAutoTrackEnabled).toBe(false);
+    });
+
     it('should apply staged beacon settings', () => {
       antenna.state.stagedBeaconFrequencyHz = 4000000000;
       antenna.state.stagedBeaconSearchBwHz = 1000000;
@@ -1312,7 +1363,7 @@ describe('AntennaCore', () => {
   });
 
   describe('status alarms extended', () => {
-    it('should show ACQUIRING LOCK when auto-track enabled but not locked', () => {
+    it('should show ACQUIRING LOCK as info when auto-track enabled but not locked (nats-r6-s24-F1)', () => {
       antenna.state.isPowered = true;
       antenna.state.isOperational = true;
       antenna.state.isAutoTrackEnabled = true;
@@ -1320,7 +1371,7 @@ describe('AntennaCore', () => {
       antenna.state.isBeaconLocked = false;
 
       const alarms = antenna.getStatusAlarms();
-      expect(alarms.some((a) => a.message.includes('ACQUIRING LOCK'))).toBe(true);
+      expect(alarms.find((a) => a.message.includes('ACQUIRING LOCK'))?.severity).toBe('info');
     });
 
     it('should show AUTO TRACK FAILED when switch up but not enabled', () => {
@@ -1393,9 +1444,9 @@ describe('AntennaCore', () => {
     it('should calculate reasonable gain for C-band', () => {
       const gain = antenna.antennaGain_dBi(4e9 as Hertz);
 
-      // 9m C-band antenna should have ~40+ dBi gain
-      expect(gain).toBeGreaterThan(35);
-      expect(gain).toBeLessThan(50);
+      // 9 m C-band: ~50 dBi (CPI 9.0 m datasheet, phase 19.4 calibration)
+      expect(gain).toBeGreaterThan(49);
+      expect(gain).toBeLessThan(51);
     });
 
     it('should calculate lower gain for lower frequency', () => {
@@ -1415,7 +1466,7 @@ describe('AntennaCore', () => {
       antenna.handleTrackingModeChange('stow');
 
       expect(antenna.state.trackingMode).toBe('stow');
-      expect(antenna.state.stagedTargetAzimuth).toBe(0);
+      expect(antenna.state.stagedTargetAzimuth).toBeNull();
       expect(antenna.state.stagedTargetElevation).toBe(90);
     });
   });
@@ -1586,7 +1637,7 @@ describe('AntennaCore', () => {
     });
   });
 
-  describe('skyTempK_', () => {
+  describe('sky temperature (noise model)', () => {
     it('should return low temperature at zenith', () => {
       const temp = antenna.testSkyTempK(90);
       expect(temp).toBeLessThan(15);
@@ -1601,7 +1652,7 @@ describe('AntennaCore', () => {
     });
   });
 
-  describe('noiseFromLossK_', () => {
+  describe('feed loss noise (noise model)', () => {
     it('should return zero for zero loss', () => {
       const temp = antenna.testNoiseFromLossK(0, 290);
       expect(temp).toBeCloseTo(0, 1);
@@ -1640,18 +1691,24 @@ describe('AntennaCore', () => {
   });
 
   describe('currentDePointing_deg_', () => {
-    it('should return small value with no wind', () => {
-      const depoint = antenna.testCurrentDePointing(0);
-      expect(Math.abs(depoint)).toBeLessThan(1); // Jitter only
+    it('should be zero with no wind', () => {
+      expect(antenna.testCurrentDePointing(0)).toBe(0);
     });
 
-    it('should increase with wind speed', () => {
-      // Set wind coefficient on config for testing
+    it('should be the coefficient times the wind speed', () => {
       antenna.config.windDePointingCoef_deg_per_mps = 0.1;
+      expect(antenna.testCurrentDePointing(10)).toBeCloseTo(1, 9);
+    });
 
-      const depoint10mps = antenna.testCurrentDePointing(10);
-      // With 0.1 deg/mps coefficient, 10 m/s wind gives ~1 degree base + jitter
-      expect(Math.abs(depoint10mps)).toBeLessThan(2);
+    it('should cost received power through the pattern', () => {
+      antenna.config.windDePointingCoef_deg_per_mps = 0.01;
+      const bw = antenna.testBeamwidth3dB(4e9);
+      antenna.state.windSpeed_mps = 0;
+      const calm = antenna.pointingLossDb(antenna.normalizedAzimuth, antenna.state.elevation, 4e9);
+      // Wind de-points the beam by half a beamwidth: 3 dB more loss
+      antenna.state.windSpeed_mps = bw / 2 / 0.01;
+      const windy = antenna.pointingLossDb(antenna.normalizedAzimuth, antenna.state.elevation, 4e9);
+      expect(windy - calm).toBeCloseTo(3, 1);
     });
   });
 
@@ -1774,6 +1831,42 @@ describe('AntennaCore', () => {
       antenna.testUpdateBeaconMetrics();
 
       expect(antenna.state.beaconPower).toBeNull();
+    });
+
+    it('reports beacon C/N as null, not -267 dB, when the LNB is unpowered (s02-F7)', () => {
+      antenna.state.isPowered = true;
+      antenna.state.isOperational = true;
+      antenna.state.beaconFrequencyHz = 3_948_000_000;
+      antenna.state.beaconSearchBwHz = 500_000;
+      (antenna as any).rfFrontEnd_ = {
+        lnbModule: { state: { loFrequency: 5150, isPowered: false } },
+        agcModule: { outputSignals: [{ frequency: 5150e6 - 3_948_000_000, power: -387, bandwidth: 25_000 }] },
+        couplerModule: { signalPathManager: { getNoiseFloorAt: () => ({ noiseFloorNoGain: -120, shouldApplyGain: false }), getTotalRxGain: () => 0 } },
+      };
+      (antenna as any).hasReceivedRealBeaconMeasurement_ = true;
+      antenna.state.beaconCN = 10;
+
+      antenna.testUpdateBeaconMetrics();
+
+      expect(antenna.state.beaconCN).toBeNull();
+      expect(antenna.state.beaconPower).toBeNull();
+      expect(antenna.state.isBeaconLocked).toBe(false);
+    });
+
+    it('reports a real beacon C/N when the LNB is powered', () => {
+      antenna.state.isPowered = true;
+      antenna.state.isOperational = true;
+      antenna.state.beaconFrequencyHz = 3_948_000_000;
+      antenna.state.beaconSearchBwHz = 500_000;
+      (antenna as any).rfFrontEnd_ = {
+        lnbModule: { isLivePowered: true, state: { loFrequency: 5150, isPowered: true } },
+        agcModule: { outputSignals: [{ frequency: 5150e6 - 3_948_000_000, power: -108, bandwidth: 25_000 }] },
+        couplerModule: { signalPathManager: { getNoiseFloorAt: () => ({ noiseFloorNoGain: -120, shouldApplyGain: false }), getTotalRxGain: () => 0 } },
+      };
+
+      antenna.testUpdateBeaconMetrics();
+
+      expect(antenna.state.beaconCN).toBeCloseTo(12, 5);
     });
 
     it('should not change metrics when no RF front-end attached', () => {
@@ -2445,6 +2538,18 @@ describe('rain attenuation (phase 16 E5)', () => {
     expect(antenna.getStatusAlarms().some((a) => a.message.includes('RAIN FADE'))).toBe(false);
   });
 
+  it('keys RAIN FADE on the C/N loss, so a heavy C-band cell shows on the ticker (Phase 29, nats S24)', () => {
+    const antenna = new TestableAntennaCore(ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, { elevation: 29 as Degrees });
+    antenna.updateRainRate(80);
+
+    // Attenuation alone is about 0.3 dB; with the sky-noise rise the C/N loss is about 1 dB
+    expect(antenna.rainAttenuationDb).toBeLessThan(0.5);
+    expect(antenna.rainCnLossDb()).toBeGreaterThan(0.8);
+    const alarm = antenna.getStatusAlarms().find((a) => a.message.includes('RAIN FADE'));
+    expect(alarm?.severity).toBe('info');
+    expect(alarm?.message).toMatch(/^RAIN FADE \(\d\.\d dB\)$/u);
+  });
+
   it('raises the system noise temperature and a graded rain-fade alarm at Ku', () => {
     const antenna = new TestableAntennaCore(ANTENNA_CONFIG_KEYS.KU_BAND_4M_LEO_TRACKER, { elevation: 30 as Degrees });
     const dryTsys = antenna.testSystemTempK(12e9 as Hertz, 30 as Degrees);
@@ -2453,13 +2558,49 @@ describe('rain attenuation (phase 16 E5)', () => {
     const wetTsys = antenna.testSystemTempK(12e9 as Hertz, 30 as Degrees);
     expect(wetTsys).toBeGreaterThan(dryTsys * 1.5);
 
+    // The alarm reads the C/N the rain costs (attenuation + noise rise):
+    // 10 mm/h is about 2.7 dB at Ku (warning), 25 mm/h about 6.6 dB (error)
+    antenna.updateRainRate(10);
     const warning = antenna.getStatusAlarms().find((a) => a.message.includes('RAIN FADE'));
     expect(warning?.severity).toBe('warning');
+
+    antenna.updateRainRate(25);
+    expect(antenna.getStatusAlarms().find((a) => a.message.includes('RAIN FADE'))?.severity).toBe('error');
 
     antenna.updateRainRate(60);
     expect(antenna.getStatusAlarms().find((a) => a.message.includes('RAIN FADE'))?.severity).toBe('error');
 
     antenna.updateRainRate(0);
     expect(antenna.getStatusAlarms().some((a) => a.message.includes('RAIN FADE'))).toBe(false);
+  });
+});
+
+describe('weather alarms keep one label for their life (nats-r4-s17-F3)', () => {
+  const labelOf = (message: string) => message.replace(/ \([^)]*\)$/u, '');
+
+  it('the sun-transit alarm escalates in severity under one label', () => {
+    const antenna = new TestableAntennaCore(ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, { elevation: 30 as Degrees });
+    const seen: { severity: string; label: string }[] = [];
+    for (const sky of [1.0, 3.0, 7.0, 3.0, 1.9]) {
+      antenna.updateSkyNoiseDegradation(sky);
+      const alarm = antenna.getStatusAlarms().find((a) => a.message.includes('SKY NOISE'));
+      seen.push({ severity: alarm?.severity ?? 'none', label: labelOf(alarm?.message ?? '') });
+    }
+
+    expect(new Set(seen.map((s) => s.label))).toEqual(new Set(['SUN TRANSIT: ELEVATED SKY NOISE']));
+    expect(seen.map((s) => s.severity)).toEqual(['info', 'warning', 'error', 'warning', 'info']);
+
+    antenna.updateSkyNoiseDegradation(0);
+    expect(antenna.getStatusAlarms().some((a) => a.message.includes('SKY NOISE'))).toBe(false);
+  });
+
+  it('ice keeps one label as it builds', () => {
+    const antenna = new TestableAntennaCore(ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, { elevation: 30 as Degrees });
+    const labels = [1, 3, 6].map((ice) => {
+      antenna.updateIceAccumulation(ice);
+      return labelOf(antenna.getStatusAlarms().find((a) => a.message.startsWith('ICE'))?.message ?? '');
+    });
+
+    expect(labels).toEqual(['ICE ON FEED', 'ICE ON FEED', 'ICE ON FEED']);
   });
 });

@@ -2,7 +2,10 @@ import { BufferAttribute } from '@engine/rendering/buffer-attribute';
 import { WebGlProgramHelper } from '@engine/rendering/webgl-program';
 import { glsl } from '@engine/utils/development/formatter';
 import { mat3, mat4, vec3, vec4 } from 'gl-matrix';
-import { BaseObject, EciVec3, Kilometers } from 'ootk';
+import { Kilometers, TemeVec3 } from 'ootk';
+
+/** Anything with an inertial position and velocity (ootk 7 dropped BaseObject.position). */
+type PositionVelocityLike = { position: TemeVec3<Kilometers>; velocity: TemeVec3 };
 import { GlUtils } from '../gl-utils';
 
 /* eslint-disable no-useless-escape */
@@ -79,7 +82,7 @@ export class Box {
   private vao: WebGLVertexArrayObject;
 
   drawPosition = [0, 0, 0] as vec3;
-  eci: EciVec3;
+  eci: TemeVec3;
 
   setColor(color: vec4) {
     this.color_[0] = color[0];
@@ -139,7 +142,7 @@ export class Box {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  update(obj: BaseObject | null, _selectedDate?: Date) {
+  update(obj: PositionVelocityLike | null, _selectedDate?: Date) {
     if (!this.isLoaded_) {
       return;
     }

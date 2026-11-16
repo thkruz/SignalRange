@@ -1,0 +1,864 @@
+/**
+ * @file service-model - Layered service state, samples and freshness (Campaign 6, M04)
+ * @description Truth about each service path is computed layer by layer from the plant
+ * (power, local gear, terminal registration) and from authored account, provider and endpoint
+ * state. The player never sees the truth directly: they take samples through a provenance,
+ * and a sample goes stale or invalidated when time, config, events or a reload move on.
+ * Core stays DOM-free. Layers are cached per plant second; `update` also records status
+ * changes in `history()` (the moisture flaps on a registration layer are real history).
+ */
+
+import { AuthoredLinkSource } from './authored-link-source';
+import { AuthoredLinkImpairment } from './link-impairment';
+import { LiveLinkImpairment, LiveLinkSource, type LivePhysicsReader } from './live-link';
+import {
+  type AccountState,
+  type EndpointState,
+  type Freshness,
+  type LayerReading,
+  type LayerStatus,
+  type LinkImpairmentSource,
+  type LinkQualitySource,
+  type LinkSample,
+  type LiveLinkConfig,
+  type PlantReader,
+  type ProviderState,
+  type RecoveryInterval,
+  type RecoveryIntervalConfig,
+  type SampleMetric,
+  type SampleProvenance,
+  SERVICE_LAYERS,
+  type ServiceHistoryEntry,
+  type ServiceLayer,
+  type ServiceModelConfig,
+  type ServiceModelState,
+  type ServicePathConfig,
+  type ServiceSample,
+} from './service-types';
+
+/** A reading stays current this long (sim seconds) unless a config narrows it; a human at a field kit needs minutes, not seconds */
+export const READING_WINDOW_S = 300;
+
+const DEFAULT_MAX_AGE_S: Record<SampleProvenance, number> = {
+  'device-indicator': READING_WINDOW_S,
+  'local-probe': READING_WINDOW_S,
+  'terminal-app': READING_WINDOW_S,
+  'provider-portal': READING_WINDOW_S,
+  'pilot-report': 600,
+  'endpoint-report': READING_WINDOW_S,
+  'workload-run': READING_WINDOW_S,
+};
+
+/** Which layers a provenance can observe. The application layer takes only end-to-end observations. */
+export const READABLE: Record<SampleProvenance, readonly ServiceLayer[]> = {
+  'device-indicator': ['power', 'local', 'registration'],
+  'local-probe': ['local', 'registration'],
+  'terminal-app': ['registration', 'account'],
+  'provider-portal': ['account', 'provider'],
+  'pilot-report': ['registration', 'provider'],
+  'endpoint-report': ['application'],
+  'workload-run': ['application'],
+};
+
+/** Provenances that can measure numbers from the link, and on which layer */
+export const NUMERIC_READABLE: Partial<Record<SampleProvenance, ServiceLayer>> = {
+  'local-probe': 'registration',
+  'terminal-app': 'registration',
+  'workload-run': 'application',
+};
+
+const METRIC_UNIT: Record<SampleMetric, ServiceSample['unit']> = {
+  status: 'state',
+  rttMs: 'ms',
+  downMbps: 'Mbps',
+  upMbps: 'Mbps',
+  lossPct: '%',
+  jitterMs: 'ms',
+};
+
+/** Moisture on the terminal link drops registration for FLAP_DOWN_S of every FLAP_PERIOD_S (plant moisture is a steady loss, not an intermittent drop) */
+export const FLAP_PERIOD_S = 90;
+export const FLAP_DOWN_S = 30;
+
+const HISTORY_CAP = 500;
+const SAMPLE_CAP = 300;
+
+export interface ServiceModelDeps {
+  now(): number;
+}
+
+export class ServiceModel {
+  private readonly paths_: ServicePathConfig[];
+  private readonly accounts_ = new Map<string, AccountState>();
+  private readonly providers_ = new Map<string, ProviderState>();
+  private readonly endpoints_ = new Map<string, EndpointState>();
+  private readonly plant_: PlantReader;
+  private readonly link_: LinkQualitySource;
+  private readonly impairment_: LinkImpairmentSource | null;
+  private readonly deps_: ServiceModelDeps;
+  private readonly maxAge_: Record<SampleProvenance, number>;
+  private readonly unsubscribe_: (() => void) | null;
+  private configEpoch_ = 0;
+  /** What bumped each epoch (index = epoch - 1), so an Invalidated reading can say why. Not persisted. */
+  private readonly eventBumps_: Array<{ atS: number; label: string }> = [];
+  private readonly configBumps_: Array<{ atS: number; reason: string }> = [];
+  private eventEpoch_ = 0;
+  private sessionEpoch_ = 0;
+  private sampleSeq_ = 0;
+  /** Scenario second a held object (clipboard, laptop, document) was picked up; null while nothing is held. Readings do not age meanwhile. */
+  private agingPausedAtS_: number | null = null;
+  private samples_: ServiceSample[] = [];
+  private history_: ServiceHistoryEntry[] = [];
+  private readonly intervalCfg_: RecoveryIntervalConfig[];
+  private intervals_: RecoveryInterval[] = [];
+  private lastStatus_ = new Map<string, LayerStatus>();
+  private lastUpdateS_: number | null = null;
+  private cache_ = new Map<string, LayerReading[]>();
+  private cacheTimeS_ = Number.NaN;
+  private readonly sampleListeners_: Array<(sample: ServiceSample) => void> = [];
+  private readonly eventListeners_: Array<(eventId: string, logLine?: string) => void> = [];
+
+  /**
+   * `live` is the physics reader of package H. It is used only when `cfg.linkMode === 'live'`; every other
+   * configuration is authored, and passing a reader with an authored mode is an error (no silent mixing).
+   */
+  constructor(cfg: ServiceModelConfig, plant: PlantReader, link: LinkQualitySource | undefined, deps: ServiceModelDeps, live?: LivePhysicsReader) {
+    const isLive = cfg.linkMode === 'live';
+    if (isLive && (!live || !cfg.live)) {
+      throw new Error('ServiceModel linkMode "live" needs a physics reader and cfg.live mapping');
+    }
+    if (isLive && (link || cfg.impairments?.length)) {
+      throw new Error('ServiceModel linkMode "live" cannot be combined with an authored link source or impairments');
+    }
+    if (!isLive && live) {
+      throw new Error('ServiceModel got a live physics reader but linkMode is not "live"');
+    }
+    this.paths_ = cfg.paths;
+    for (const a of cfg.accounts) this.accounts_.set(a.id, { ...a });
+    for (const p of cfg.providers) this.providers_.set(p.id, { ...p, noticeIds: [...p.noticeIds] });
+    for (const e of cfg.endpoints ?? []) this.endpoints_.set(e.id, { ...e });
+    this.plant_ = plant;
+    this.deps_ = deps;
+    this.intervalCfg_ = cfg.intervals ?? [];
+    if (isLive) {
+      this.impairment_ = new LiveLinkImpairment(live as LivePhysicsReader, cfg.live as LiveLinkConfig);
+    } else {
+      this.impairment_ = cfg.impairments?.length ? new AuthoredLinkImpairment(cfg.impairments) : null;
+    }
+    this.maxAge_ = { ...DEFAULT_MAX_AGE_S, ...cfg.maxAgeS };
+    const linkCtx = {
+      path: (id: string) => this.paths_.find((p) => p.id === id),
+      layers: (id: string) => this.layers(id),
+      account: (id: string) => this.accounts_.get(id),
+      provider: (id: string) => this.providers_.get(id),
+    };
+    this.link_ = isLive ? new LiveLinkSource(linkCtx, live as LivePhysicsReader, cfg.live as LiveLinkConfig) : (link ?? new AuthoredLinkSource(linkCtx));
+    // A fix that worked, a mode change or any downtime changes what an earlier reading meant
+    this.unsubscribe_ =
+      plant.onAction?.((entry) => {
+        this.cacheTimeS_ = Number.NaN;
+        if (entry.verb === 'setMode' || entry.verb === 'setSnowMelt' || entry.verb === 'setSleep' || entry.effective === true || entry.downtimeSeconds > 0) {
+          this.bumpConfig(`action:${entry.verb}`);
+        }
+      }) ?? null;
+  }
+
+  dispose(): void {
+    this.unsubscribe_?.();
+  }
+
+  /**
+   * Stop readings from aging (a fullscreen object is held). Idempotent. The time spent held is credited to every
+   * reading on resume in its `heldS`, so `maxAgeS` stays the authored window and the age never jumps.
+   */
+  pauseAging(): void {
+    if (this.agingPausedAtS_ === null) this.agingPausedAtS_ = this.deps_.now();
+  }
+
+  resumeAging(): void {
+    const since = this.agingPausedAtS_;
+    if (since === null) return;
+    this.agingPausedAtS_ = null;
+    const now = this.deps_.now();
+    for (const s of this.samples_) {
+      const held = now - Math.max(since, s.tS);
+      if (held > 0) s.heldS = (s.heldS ?? 0) + held;
+    }
+    this.cacheTimeS_ = Number.NaN;
+  }
+
+  /** True while a held object freezes reading ages (a badge cannot name an expiry time then) */
+  isAgingPaused(): boolean {
+    return this.agingPausedAtS_ !== null;
+  }
+
+  /** The scenario second readings are aged against: frozen while a held object is open */
+  private agingNowS_(): number {
+    return this.agingPausedAtS_ ?? this.deps_.now();
+  }
+
+  // ------------------------------------------------------------------ truth
+
+  getServiceIds(): string[] {
+    return this.paths_.map((p) => p.id);
+  }
+
+  getPath(serviceId: string): ServicePathConfig | undefined {
+    return this.paths_.find((p) => p.id === serviceId);
+  }
+
+  getAccount(id: string): AccountState | undefined {
+    return this.accounts_.get(id);
+  }
+
+  getProvider(id: string): ProviderState | undefined {
+    return this.providers_.get(id);
+  }
+
+  getEndpoint(id: string): EndpointState | undefined {
+    return this.endpoints_.get(id);
+  }
+
+  /** Service ids whose terminal part is in the list (maps a power forecast's `servicesAvailable` part ids) */
+  servicesForParts(partIds: string[]): string[] {
+    return this.paths_.filter((p) => partIds.includes(p.terminalPartId)).map((p) => p.id);
+  }
+
+  /** The truth for every layer in order. Never shown raw: the UI goes through `takeSample`. */
+  layers(serviceId: string): LayerReading[] {
+    const now = this.plant_.getTimeSeconds();
+    if (now !== this.cacheTimeS_) {
+      this.cache_.clear();
+      this.cacheTimeS_ = now;
+    }
+    let readings = this.cache_.get(serviceId);
+    if (!readings) {
+      readings = this.compute_(serviceId);
+      this.cache_.set(serviceId, readings);
+    }
+
+    return readings;
+  }
+
+  /** The first layer that is not up, or null when everything is up */
+  firstFailure(serviceId: string): LayerReading | null {
+    return this.layers(serviceId).find((l) => l.status !== 'up') ?? null;
+  }
+
+  /** Arms or ends an authored external impairment (the S15 event action); a no-op without impairments */
+  setImpairment(id: string, active: boolean, durationS: number, atS: number): void {
+    if (!this.impairment_) {
+      return;
+    }
+    if (active) {
+      this.impairment_.start(id, atS, durationS);
+    } else {
+      this.impairment_.stop(id, atS);
+    }
+    this.cacheTimeS_ = Number.NaN;
+  }
+
+  /** Call once per plant step: records every layer status change in the history */
+  update(): void {
+    const tS = this.plant_.getTimeSeconds();
+    const prevS = this.lastUpdateS_;
+    this.lastUpdateS_ = tS;
+    for (const path of this.paths_) {
+      if (prevS !== null && tS - prevS > 0) {
+        this.recordFlapEdges_(path, prevS, tS);
+        this.recordImpairmentEdges_(path, prevS, tS);
+      }
+      for (const reading of this.layers(path.id)) {
+        const key = `${path.id}:${reading.layer}`;
+        const previous = this.lastStatus_.get(key);
+        this.lastStatus_.set(key, reading.status);
+        if (previous !== undefined && previous !== reading.status) {
+          this.history_.push({ tS, serviceId: path.id, layer: reading.layer, from: previous, to: reading.status, reason: reading.reason });
+        }
+      }
+    }
+    if (this.history_.length > HISTORY_CAP) {
+      this.history_ = this.history_.slice(-HISTORY_CAP);
+    }
+    this.trackIntervals_(tS);
+  }
+
+  // ------------------------------------------------------- recovery intervals
+
+  /** True when a scenario measures recovery intervals (the plant service then steps a long skip in one-second slices) */
+  hasIntervals(): boolean {
+    return this.intervalCfg_.length > 0;
+  }
+
+  /** Recovery intervals opened so far (copies), optionally of one service */
+  intervals(serviceId?: string): RecoveryInterval[] {
+    return this.intervals_.filter((i) => serviceId === undefined || i.serviceId === serviceId).map((i) => ({ ...i }));
+  }
+
+  /**
+   * Length (seconds) of a span of a recovery interval, or null while it is still open or its boundary is unknown.
+   * restoration = incident start to usable service; response = start to the operator's activation;
+   * startup = activation to the terminal registering.
+   */
+  intervalSpanS(id: string, span: 'restoration' | 'response' | 'startup'): number | null {
+    const rec = this.intervals_.find((i) => i.id === id);
+    if (!rec) {
+      return null;
+    }
+    if (span === 'restoration') {
+      return rec.usableS === null ? null : rec.usableS - rec.startS;
+    }
+    if (span === 'response') {
+      return rec.activationS === null ? null : Math.max(0, rec.activationS - rec.startS);
+    }
+
+    return rec.activationS === null || rec.registeredS === null ? null : Math.max(0, rec.registeredS - rec.activationS);
+  }
+
+  interval(id: string): RecoveryInterval | null {
+    const found = this.intervals_.find((i) => i.id === id);
+
+    return found ? { ...found } : null;
+  }
+
+  /**
+   * Fill in the boundaries of every open interval from the timeline at plant second `tS`. The registration and
+   * application boundaries are stamped by the step that first sees them, so the plant service steps in one-second
+   * slices while an interval is open: a coarse skip then stamps the same second a stepped run would.
+   */
+  private trackIntervals_(tS: number): void {
+    for (const cfg of this.intervalCfg_) {
+      const rec = this.intervals_.find((i) => i.id === cfg.id);
+      if (!rec || rec.usableS !== null) {
+        continue;
+      }
+      if (rec.activationS === null && cfg.activationPartId) {
+        const entry = this.plant_.getLog?.().find((e) => e.verb === 'setMode' && e.target === cfg.activationPartId && e.tSeconds >= rec.startS);
+        if (entry) {
+          rec.activationS = entry.tSeconds;
+        }
+      }
+      const layers = this.layers(cfg.serviceId);
+      if (rec.registeredS === null && layers.find((l) => l.layer === 'registration')?.status === 'up') {
+        rec.registeredS = tS;
+      }
+      const app = layers.find((l) => l.layer === 'application')?.status;
+      if (rec.registeredS !== null && (app === 'up' || app === 'degraded')) {
+        rec.usableS = tS;
+      }
+    }
+  }
+
+  /**
+   * A sync can cross whole moisture-flap periods (a verb skip, an operator jump). Record every
+   * registration edge strictly inside (prevS, nowS) so the history does not depend on the skip length.
+   */
+  private recordFlapEdges_(path: ServicePathConfig, prevS: number, nowS: number): void {
+    const flapping = (path.linkTargetIds ?? []).some((t) => this.plant_.isFaultActive(t, 'moisture'));
+    const key = `${path.id}:registration`;
+    if (!flapping || this.lastStatus_.get(key) === undefined) {
+      return;
+    }
+    const edges: Array<{ tS: number; status: LayerStatus }> = [];
+    for (let k = Math.floor(prevS / FLAP_PERIOD_S); k * FLAP_PERIOD_S < nowS; k++) {
+      edges.push({ tS: k * FLAP_PERIOD_S, status: 'down' }, { tS: k * FLAP_PERIOD_S + FLAP_DOWN_S, status: 'up' });
+    }
+    for (const edge of edges) {
+      if (edge.tS <= prevS || edge.tS >= nowS) {
+        continue;
+      }
+      const previous = this.lastStatus_.get(key) as LayerStatus;
+      if (previous !== edge.status) {
+        this.history_.push({ tS: edge.tS, serviceId: path.id, layer: 'registration', from: previous, to: edge.status, reason: edge.status === 'down' ? 'moisture-flap' : 'ok' });
+        this.lastStatus_.set(key, edge.status);
+      }
+    }
+  }
+
+  /**
+   * Impairment windows that opened and closed inside a clock jump, recorded at their own times. Skipped while the
+   * terminal is down for another reason (standby, booting), where a window changes nothing the player could see.
+   */
+  private recordImpairmentEdges_(path: ServicePathConfig, prevS: number, nowS: number): void {
+    const key = `${path.id}:registration`;
+    if (!this.impairment_ || this.lastStatus_.get(key) === undefined) {
+      return;
+    }
+    if (this.registration_(path, this.power_(path), true).status !== 'up') {
+      return;
+    }
+    for (const edge of this.impairment_.edges(path.id, prevS, nowS)) {
+      const next: LayerStatus = edge.impaired ? 'down' : 'up';
+      const previous = this.lastStatus_.get(key) as LayerStatus;
+      if (previous !== next) {
+        this.history_.push({ tS: edge.tS, serviceId: path.id, layer: 'registration', from: previous, to: next, reason: next === 'down' ? 'link-lost' : 'ok' });
+        this.lastStatus_.set(key, next);
+      }
+    }
+  }
+
+  history(serviceId: string): ServiceHistoryEntry[] {
+    return this.history_.filter((h) => h.serviceId === serviceId).map((h) => ({ ...h }));
+  }
+
+  // ---------------------------------------------------------------- samples
+
+  /**
+   * The value `takeSample` would observe, without recording a sample or notifying listeners.
+   * For continuous displays (the terminal app's background feed) that must not count as the
+   * player checking something: evidence comes only from `takeSample`.
+   */
+  peekSample(
+    serviceId: string,
+    layer: ServiceLayer,
+    via: SampleProvenance,
+    endpointId?: string,
+    metric: SampleMetric = 'status'
+  ): { tS: number; value: number | LayerStatus; metric: SampleMetric; windowS?: number } {
+    const tS = this.deps_.now();
+    let value: number | LayerStatus = 'unknown';
+    let usedMetric: SampleMetric = 'status';
+    let windowS: number | undefined;
+
+    if (this.getPath(serviceId) && READABLE[via].includes(layer)) {
+      value = this.statusFor_(serviceId, layer, endpointId);
+      if (metric !== 'status' && NUMERIC_READABLE[via] === layer) {
+        const link = this.link_.sample(serviceId, tS);
+        if (link) {
+          value = link[metric] ?? 'unknown';
+          // A remote leg adds its delay and caps the rate, so the reading matches what the run was judged on
+          const leg = this.getPath(serviceId)?.remoteLeg;
+          if (leg && typeof value === 'number') {
+            if (metric === 'rttMs') value += leg.rttMs;
+            else if (metric === 'downMbps') value = Math.min(value, leg.downMbps);
+          }
+          usedMetric = metric;
+          windowS = metric === 'jitterMs' ? link.jitterWindowS : undefined;
+        } else {
+          value = 'down';
+        }
+      }
+    }
+
+    return { tS, value, metric: usedMetric, ...(windowS === undefined ? {} : { windowS }) };
+  }
+
+  /**
+   * Observe a layer through a provenance. A provenance that cannot see the layer (a green light
+   * cannot establish end-to-end service) yields an `unknown` sample, which is never current.
+   */
+  takeSample(
+    serviceId: string,
+    layer: ServiceLayer,
+    via: SampleProvenance,
+    endpointId?: string,
+    metric: SampleMetric = 'status',
+    /** What a finished workload run saw at its worst, so a failed run is not logged with the healthy end-of-run reading */
+    worstSeen?: 'down' | 'degraded'
+  ): ServiceSample {
+    const peeked = this.peekSample(serviceId, layer, via, endpointId, metric);
+    const { tS, metric: usedMetric, windowS } = peeked;
+    let value = peeked.value;
+    if (worstSeen !== undefined && value !== 'unknown') {
+      if (usedMetric !== 'status' && worstSeen === 'down') value = 'down';
+      else if (usedMetric === 'status' && (value === 'up' || (value === 'degraded' && worstSeen === 'down'))) value = worstSeen;
+    }
+
+    const cause = this.causeFor_(serviceId, layer, usedMetric, value, via, endpointId);
+    this.sampleSeq_ += 1;
+    const sample: ServiceSample = {
+      id: `sample-${this.sampleSeq_}`,
+      serviceId,
+      endpointId,
+      layer,
+      metric: usedMetric,
+      value,
+      unit: METRIC_UNIT[usedMetric],
+      ...(windowS === undefined ? {} : { windowS }),
+      ...(cause === undefined ? {} : { cause }),
+      tS,
+      provenance: via,
+      configEpoch: this.configEpoch_,
+      eventEpoch: this.eventEpoch_,
+      sessionEpoch: this.sessionEpoch_,
+      maxAgeS: this.maxAge_[via],
+    };
+    this.samples_.push(sample);
+    if (this.samples_.length > SAMPLE_CAP) {
+      this.samples_ = this.samples_.slice(-SAMPLE_CAP);
+    }
+    for (const listener of [...this.sampleListeners_]) listener(sample);
+
+    return sample;
+  }
+
+  /** The authored reason behind a status sample of an unendpointed layer, so evidence can tell a link loss from a reboot */
+  private causeFor_(serviceId: string, layer: ServiceLayer, metric: SampleMetric, value: number | LayerStatus, via: SampleProvenance, endpointId?: string): string | undefined {
+    if (metric !== 'status' || endpointId !== undefined || value === 'unknown' || !READABLE[via].includes(layer)) {
+      return undefined;
+    }
+    const reading = this.layers(serviceId).find((l) => l.layer === layer);
+
+    return reading && reading.status === value ? reading.reason : undefined;
+  }
+
+  /** Why an Invalidated sample no longer counts: the first event or equipment change after it was taken */
+  invalidation(sample: ServiceSample): { kind: 'event'; atS: number; label: string } | { kind: 'config'; atS: number; reason: string } | null {
+    if (sample.eventEpoch !== this.eventEpoch_) {
+      const bump = this.eventBumps_[sample.eventEpoch];
+      if (bump) return { kind: 'event', ...bump };
+    }
+    if (sample.configEpoch !== this.configEpoch_) {
+      const bump = this.configBumps_[sample.configEpoch];
+      if (bump) return { kind: 'config', ...bump };
+    }
+
+    return null;
+  }
+
+  /** Seconds since a sample was taken */
+  ageS(sample: ServiceSample): number {
+    return Math.max(0, this.agingNowS_() - sample.tS - (sample.heldS ?? 0));
+  }
+
+  /** Real seconds since a sample was taken on the live clock, including a hold that is still open */
+  elapsedS(sample: ServiceSample): number {
+    return Math.max(0, this.deps_.now() - sample.tS);
+  }
+
+  freshness(sample: ServiceSample): Freshness {
+    if (sample.value === 'unknown') {
+      return 'unavailable';
+    }
+    if (sample.sessionEpoch !== this.sessionEpoch_) {
+      return 'stale';
+    }
+    if (sample.configEpoch !== this.configEpoch_ || sample.eventEpoch !== this.eventEpoch_) {
+      return 'invalidated';
+    }
+
+    return this.ageS(sample) > sample.maxAgeS ? 'stale' : 'current';
+  }
+
+  /** Every kept sample of a service in the order they were taken (copies) */
+  samplesFor(serviceId: string): ServiceSample[] {
+    return this.samples_.filter((s) => s.serviceId === serviceId).map((s) => ({ ...s }));
+  }
+
+  latest(serviceId: string, layer: ServiceLayer, endpointId?: string): ServiceSample | null {
+    for (let i = this.samples_.length - 1; i >= 0; i--) {
+      const s = this.samples_[i];
+      if (s.serviceId === serviceId && s.layer === layer && s.endpointId === endpointId) {
+        return s;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * The newest sample of that layer on the service from any of its rows (the path row or a remote-endpoint row).
+   * Handover forms judge "my latest reading" with this so a Check on either Application row counts (c6-s13-F3, F4).
+   */
+  latestAny(serviceId: string, layer: ServiceLayer): ServiceSample | null {
+    for (let i = this.samples_.length - 1; i >= 0; i--) {
+      const s = this.samples_[i];
+      if (s.serviceId === serviceId && s.layer === layer) {
+        return s;
+      }
+    }
+
+    return null;
+  }
+
+  // ----------------------------------------------------------------- change
+
+  bumpConfig(reason: string): void {
+    this.configBumps_[this.configEpoch_] = { atS: this.plant_.getTimeSeconds(), reason };
+    this.configEpoch_ += 1;
+    this.cacheTimeS_ = Number.NaN;
+  }
+
+  /** The event that closed an event epoch: its short label and time, when known */
+  eventBumpAt(epoch: number): { atS: number; label: string } | undefined {
+    return this.eventBumps_[epoch];
+  }
+
+  bumpEvent(eventId: string, atS?: number, logLine?: string, label?: string): void {
+    this.eventBumps_[this.eventEpoch_] = { atS: atS ?? this.plant_.getTimeSeconds(), label: label ?? 'site event' };
+    this.eventEpoch_ += 1;
+    this.cacheTimeS_ = Number.NaN;
+    for (const cfg of this.intervalCfg_) {
+      if (cfg.startEventId === eventId && !this.intervals_.some((i) => i.id === cfg.id)) {
+        const startS = atS ?? this.plant_.getTimeSeconds();
+        this.intervals_.push({ id: cfg.id, serviceId: cfg.serviceId, startS, activationS: null, registeredS: null, usableS: null });
+        this.trackIntervals_(this.plant_.getTimeSeconds());
+      }
+    }
+    for (const listener of [...this.eventListeners_]) listener(eventId, logLine);
+  }
+
+  /** M05: the evidence log stamps every sample the player takes */
+  onSample(listener: (sample: ServiceSample) => void): () => void {
+    this.sampleListeners_.push(listener);
+
+    return () => {
+      const i = this.sampleListeners_.indexOf(listener);
+      if (i >= 0) this.sampleListeners_.splice(i, 1);
+    };
+  }
+
+  /** M05: the evidence log stamps every anchored event that fires */
+  onEvent(listener: (eventId: string, logLine?: string) => void): () => void {
+    this.eventListeners_.push(listener);
+
+    return () => {
+      const i = this.eventListeners_.indexOf(listener);
+      if (i >= 0) this.eventListeners_.splice(i, 1);
+    };
+  }
+
+  /** The link profile the source reports now (authored or SDK), or null when the terminal carries nothing */
+  linkProfile(serviceId: string): LinkSample | null {
+    return this.getPath(serviceId) ? this.link_.sample(serviceId, this.deps_.now()) : null;
+  }
+
+  getEpochs(): { config: number; event: number; session: number } {
+    return { config: this.configEpoch_, event: this.eventEpoch_, session: this.sessionEpoch_ };
+  }
+
+  setAccount(patch: Partial<AccountState> & { id: string }): void {
+    const current = this.accounts_.get(patch.id);
+    if (current) {
+      this.accounts_.set(patch.id, { ...current, ...patch });
+      this.cacheTimeS_ = Number.NaN;
+    }
+  }
+
+  setProvider(patch: Partial<ProviderState> & { id: string }): void {
+    const current = this.providers_.get(patch.id);
+    if (current) {
+      this.providers_.set(patch.id, { ...current, ...patch });
+      this.cacheTimeS_ = Number.NaN;
+    }
+  }
+
+  setEndpoint(patch: Partial<EndpointState> & { id: string }): void {
+    const current = this.endpoints_.get(patch.id);
+    if (current) {
+      this.endpoints_.set(patch.id, { ...current, ...patch });
+      this.cacheTimeS_ = Number.NaN;
+    }
+  }
+
+  getState(): ServiceModelState {
+    return {
+      accounts: [...this.accounts_.values()].map((a) => ({ ...a })),
+      providers: [...this.providers_.values()].map((p) => ({ ...p, noticeIds: [...p.noticeIds] })),
+      endpoints: [...this.endpoints_.values()].map((e) => ({ ...e })),
+      configEpoch: this.configEpoch_,
+      eventEpoch: this.eventEpoch_,
+      sessionEpoch: this.sessionEpoch_,
+      samples: this.samples_.map((s) => ({ ...s })),
+      history: this.history_.map((h) => ({ ...h })),
+      lastStatus: [...this.lastStatus_.entries()],
+      lastUpdateS: this.lastUpdateS_,
+      sampleSeq: this.sampleSeq_,
+      ...(this.impairment_ ? { impairments: this.impairment_.getState() } : {}),
+      ...(this.intervalCfg_.length ? { intervals: this.intervals_.map((i) => ({ ...i })) } : {}),
+    };
+  }
+
+  /** A restore starts a new session: every earlier sample reads stale until it is retaken */
+  restoreState(state: ServiceModelState | undefined): void {
+    if (!state) {
+      return;
+    }
+    this.accounts_.clear();
+    for (const a of state.accounts) this.accounts_.set(a.id, { ...a });
+    this.providers_.clear();
+    for (const p of state.providers) this.providers_.set(p.id, { ...p, noticeIds: [...p.noticeIds] });
+    this.endpoints_.clear();
+    for (const e of state.endpoints) this.endpoints_.set(e.id, { ...e });
+    this.configEpoch_ = state.configEpoch;
+    this.eventEpoch_ = state.eventEpoch;
+    this.sessionEpoch_ = state.sessionEpoch + 1;
+    this.samples_ = state.samples.map((s) => ({ ...s }));
+    this.history_ = state.history.map((h) => ({ ...h }));
+    this.lastStatus_ = new Map(state.lastStatus);
+    this.lastUpdateS_ = state.lastUpdateS ?? null;
+    this.sampleSeq_ = state.sampleSeq;
+    this.impairment_?.restoreState(state.impairments);
+    this.intervals_ = (state.intervals ?? []).map((i) => ({ ...i }));
+    this.cacheTimeS_ = Number.NaN;
+  }
+
+  // ---------------------------------------------------------------- private
+
+  private statusFor_(serviceId: string, layer: ServiceLayer, endpointId?: string): LayerStatus {
+    if (layer === 'application' && endpointId) {
+      const upstream = this.layers(serviceId).find((l) => l.layer !== 'application' && l.status === 'down');
+      if (upstream) {
+        return 'down';
+      }
+
+      return this.endpointStatus_(endpointId).status;
+    }
+
+    return this.layers(serviceId).find((l) => l.layer === layer)?.status ?? 'unknown';
+  }
+
+  private compute_(serviceId: string): LayerReading[] {
+    const path = this.getPath(serviceId);
+    if (!path) {
+      return SERVICE_LAYERS.map((layer) => ({ layer, status: 'unknown' as const, reason: 'no-such-service' }));
+    }
+    const power = this.power_(path);
+    const local = this.local_(path);
+    const registration = this.registration_(path, power);
+    const account = this.account_(path);
+    const provider = this.provider_(path);
+    const application = this.application_(path, [power, local, registration, account, provider]);
+
+    return [power, local, registration, account, provider, application];
+  }
+
+  private power_(path: ServicePathConfig): LayerReading {
+    const state = this.plant_.getPartState(path.terminalPartId);
+    // A rebooting terminal is supplied (the boot shows up on the registration layer)
+    if (state && !state.powered && !state.rebooting) {
+      return { layer: 'power', status: 'down', reason: 'no-power', subjectId: path.terminalPartId };
+    }
+
+    return { layer: 'power', status: 'up', reason: 'ok' };
+  }
+
+  private local_(path: ServicePathConfig): LayerReading {
+    for (const id of path.localPartIds) {
+      const state = this.plant_.getPartState(id);
+      if (state?.rebooting) {
+        return { layer: 'local', status: 'down', reason: 'local-rebooting', subjectId: id };
+      }
+      if (state && !state.powered) {
+        return { layer: 'local', status: 'down', reason: 'local-unpowered', subjectId: id };
+      }
+      if (this.plant_.isLinkDropped(id)) {
+        return { layer: 'local', status: 'down', reason: 'local-link-dropped', subjectId: id };
+      }
+    }
+
+    return { layer: 'local', status: 'up', reason: 'ok' };
+  }
+
+  private registration_(path: ServicePathConfig, power: LayerReading, ignoreImpairment = false): LayerReading {
+    const id = path.terminalPartId;
+    const down = (reason: string): LayerReading => ({ layer: 'registration', status: 'down', reason, subjectId: id });
+    if (power.status !== 'up') {
+      return down('upstream-power');
+    }
+    if (this.plant_.getPartState(id)?.rebooting) {
+      return down('terminal-booting');
+    }
+    if (this.plant_.isStarting(id)) {
+      return down('terminal-starting');
+    }
+    // Standby is named before the search: a dish left in standby will not serve when the search ends, and that is the cause the player can act on
+    if (!this.plant_.modeServesTraffic(id)) {
+      return down('mode-standby');
+    }
+    if (this.plant_.isSearching?.(id)) {
+      return down('terminal-searching');
+    }
+    if (this.plant_.isFaultActive(id, 'snow') || this.plant_.isFaultActive(id, 'net')) {
+      return down('obstructed');
+    }
+    if (this.plant_.isFaultActive(id, 'gnss-denied')) {
+      return down('no-location');
+    }
+    if (this.plant_.isLinkDropped(id)) {
+      return down('link-dropped');
+    }
+    // An external loss of the path: no terminal state is involved, so a restart cannot clear it
+    if (!ignoreImpairment && this.impairment_?.at(path.id, this.plant_.getTimeSeconds())?.unavailable) {
+      return down('link-lost');
+    }
+    if ((path.linkTargetIds ?? []).some((t) => this.plant_.isFaultActive(t, 'moisture')) && this.plant_.getTimeSeconds() % FLAP_PERIOD_S < FLAP_DOWN_S) {
+      return down('moisture-flap');
+    }
+
+    return { layer: 'registration', status: 'up', reason: 'ok' };
+  }
+
+  private account_(path: ServicePathConfig): LayerReading {
+    const account = this.accounts_.get(path.accountId);
+    const make = (status: LayerStatus, reason: string): LayerReading => ({ layer: 'account', status, reason, subjectId: path.accountId });
+    if (!account) {
+      return make('unknown', 'no-such-account');
+    }
+    if (!account.authorized) {
+      return make('down', 'account-unauthorized');
+    }
+    if (account.restriction) {
+      return make('degraded', `account-${account.restriction}`);
+    }
+    if (account.capacityFactor < 1) {
+      return make('degraded', 'account-capacity');
+    }
+
+    return make('up', 'ok');
+  }
+
+  private provider_(path: ServicePathConfig): LayerReading {
+    const provider = this.providers_.get(path.providerId);
+    const make = (status: LayerStatus, reason: string): LayerReading => ({ layer: 'provider', status, reason, subjectId: path.providerId });
+    if (!provider) {
+      return make('unknown', 'no-such-provider');
+    }
+    if (provider.status === 'outage') {
+      return make('down', 'provider-outage');
+    }
+    if (provider.status === 'restricted') {
+      return make('degraded', 'provider-restricted');
+    }
+    if (provider.capacityFactor < 1) {
+      return make('degraded', 'provider-capacity');
+    }
+
+    return make('up', 'ok');
+  }
+
+  /** End to end: down when any layer below is down, degraded when any is degraded, else the endpoints decide */
+  private application_(path: ServicePathConfig, below: LayerReading[]): LayerReading {
+    const down = below.find((l) => l.status === 'down');
+    if (down) {
+      return { layer: 'application', status: 'down', reason: `upstream-${down.layer}`, subjectId: down.subjectId };
+    }
+    for (const endpointId of path.endpointIds ?? []) {
+      const endpoint = this.endpointStatus_(endpointId);
+      if (endpoint.status !== 'up') {
+        return { layer: 'application', status: endpoint.status, reason: endpoint.reason, subjectId: endpointId };
+      }
+    }
+    const degraded = below.find((l) => l.status === 'degraded');
+    if (degraded) {
+      return { layer: 'application', status: 'degraded', reason: `upstream-${degraded.layer}`, subjectId: degraded.subjectId };
+    }
+
+    return { layer: 'application', status: 'up', reason: 'ok' };
+  }
+
+  private endpointStatus_(id: string): { status: LayerStatus; reason: string } {
+    const endpoint = this.endpoints_.get(id);
+    if (!endpoint) {
+      return { status: 'unknown', reason: 'no-such-endpoint' };
+    }
+    if (!endpoint.reachable) {
+      return { status: 'down', reason: 'endpoint-unreachable' };
+    }
+    if (endpoint.policy) {
+      return { status: 'degraded', reason: `endpoint-${endpoint.policy}` };
+    }
+
+    return { status: 'up', reason: 'ok' };
+  }
+}

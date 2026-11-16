@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
+import { setSwitch } from '../utils/nats-eu-helpers';
 import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForSimulationReady } from '../utils/simulation-helpers';
 
 /**
@@ -11,7 +12,17 @@ import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForS
  * verifies the report content in the Working Document before the final quizzes
  * (the Mission Complete modal overlays the sidebar afterward).
  */
-type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'repoint-program-track' | 'set-step-track' | 'configure-speca' | 'verify-working-doc' | 'auto';
+type ObjectiveType =
+  | 'quiz'
+  | 'select-station'
+  | 'click-tab'
+  | 'repoint-program-track'
+  | 'set-step-track'
+  | 'configure-speca'
+  | 'bring-uplink-up'
+  | 'verify-working-doc'
+  | 'ops-log'
+  | 'auto';
 
 interface Scenario22Objective {
   id: string;
@@ -23,6 +34,7 @@ interface Scenario22Objective {
   satelliteNoradId?: string;
   centerFrequencyMhz?: number;
   autoWaitSeconds?: number;
+  logText?: string;
 }
 
 const SCENARIO_22_OBJECTIVES: Scenario22Objective[] = [
@@ -30,7 +42,7 @@ const SCENARIO_22_OBJECTIVES: Scenario22Objective[] = [
     id: 'review-mission-brief',
     title: 'Review the Tasking',
     type: 'quiz',
-    correctAnswer: 'A defensible recommendation grounded in measured data and an honest trend, with assumptions labeled - not a single date',
+    correctAnswer: 'A recommendation built from measured data and an honest trend, with labeled assumptions, not a single date',
   },
   {
     id: 'select-vermont-station',
@@ -53,9 +65,11 @@ const SCENARIO_22_OBJECTIVES: Scenario22Objective[] = [
     satelliteNoradId: '28899',
   },
   {
+    // Step-track on, then the beacon peaked and held 15 s on ACU Control
     id: 'engage-step-track',
     title: 'Step-Track for the Weak Beacon',
     type: 'set-step-track',
+    autoWaitSeconds: 90,
   },
   {
     id: 'measure-beacon-tab',
@@ -70,10 +84,35 @@ const SCENARIO_22_OBJECTIVES: Scenario22Objective[] = [
     centerFrequencyMhz: 1085,
   },
   {
+    // Phase 27: the read quiz on the Peak readout (asserted in configureSpeca)
+    id: 'measure-beacon-quiz',
+    title: "Measure Today's Beacon (read)",
+    type: 'quiz',
+    correctAnswer: 'About -69 dBm: about 6 dB under the reference, matching the -6.3 dB monthly median in the log',
+  },
+  {
+    // Phase 27: VT-01 starts off the air; key the staged AURORA-7 test carrier
+    id: 'key-aurora-uplink',
+    title: 'Bring the Test Carrier Up',
+    type: 'bring-uplink-up',
+  },
+  {
+    id: 'verify-carrier-tab',
+    title: 'Open RX Analysis',
+    type: 'click-tab',
+    tabId: 'rx-analysis',
+  },
+  {
+    id: 'verify-carrier',
+    title: 'Prove the Carrier',
+    type: 'quiz',
+    correctAnswer: 'About 14 dB',
+  },
+  {
     id: 'record-data-point-quiz',
     title: "Report: Today's Measurement",
     type: 'quiz',
-    correctAnswer: 'Beacon at -4.0 dB relative to the 24-month reference; step-track held lock at this level; carrier C/N above demod threshold',
+    correctAnswer: 'Beacon at -6.3 dB relative to the 36-month reference; step-track held lock at this level; carrier C/N above demod threshold',
   },
 
   // PHASE 2: TREND ANALYSIS
@@ -81,19 +120,19 @@ const SCENARIO_22_OBJECTIVES: Scenario22Objective[] = [
     id: 'trend-slope-quiz',
     title: 'Report: the Trend',
     type: 'quiz',
-    correctAnswer: 'Accelerating - the last 6 months lost ~1.6 dB against ~1.3 dB in the 6 before; a steepening curve, not a straight line',
+    correctAnswer: "Accelerating: the last 6 months lost about 1.6 dB against about 1.4 dB in the 6 before, so it's a steepening curve, not a line",
   },
   {
     id: 'binding-constraint-quiz',
     title: 'Report: What Fails First',
     type: 'quiz',
-    correctAnswer: 'The beacon getting too weak to step-track - AURORA-7 is inclined, so without it every pass becomes manual figure-8 chasing',
+    correctAnswer: 'The beacon getting too weak to step-track: AURORA-7 is inclined, so without the beacon every pass becomes manual figure-8 chasing',
   },
   {
     id: 'marcus-corroboration-quiz',
     title: 'Report: Vehicle Corroboration',
     type: 'quiz',
-    correctAnswer: 'It raises confidence: ground-measured beacon decline and spacecraft-reported power loss agree from independent vantage points',
+    correctAnswer: "It raises confidence: the ground-measured beacon decline and the spacecraft's power loss agree from independent vantage points",
   },
 
   // PHASE 3: RECOMMENDATION
@@ -101,19 +140,19 @@ const SCENARIO_22_OBJECTIVES: Scenario22Objective[] = [
     id: 'sunset-window-quiz',
     title: 'Report: the Recommendation',
     type: 'quiz',
-    correctAnswer: 'Begin migration now; sunset in one to two quarters, reviewed monthly, with a firm trigger at the step-track floor',
+    correctAnswer: 'Begin migration now and finish inside two quarters, review monthly, and trigger at the step-track floor in two to three quarters',
   },
   {
     id: 'assumptions-quiz',
     title: 'Report: Label the Assumptions',
     type: 'quiz',
-    correctAnswer: 'The decline continues or steepens (no recovery), no single-event failure intervenes, and tracking is the binding constraint',
+    correctAnswer: 'The decline continues or steepens with no recovery, no single-event failure intervenes, and tracking is the binding constraint',
   },
   {
     id: 'false-precision-quiz',
     title: 'Confidence Discipline',
     type: 'quiz',
-    correctAnswer: "Explicitly: today's -4.0 dB and the historical points are measured; the sunset window is a projection under stated assumptions",
+    correctAnswer: "Explicitly: today's -6.3 dB and the historical points are measured, and the sunset window is a projection under stated assumptions",
   },
 
   // Verify the report BEFORE the final quizzes (modal overlays the sidebar after)
@@ -134,7 +173,13 @@ const SCENARIO_22_OBJECTIVES: Scenario22Objective[] = [
     id: 'log-delivery',
     title: 'Deliver and Log',
     type: 'quiz',
-    correctAnswer: 'AURORA-7 EOL assessment to board: beacon -4.0 dB, trend accelerating; migrate now, sunset ~1-2 quarters, trigger at tracking floor',
+    correctAnswer: 'AURORA-7 EOL assessment to board: beacon -6.3 dB, trend accelerating; migrate now (2 quarters), floor in 2-3, trigger at tracking floor',
+  },
+  {
+    id: 'log-delivery-typed',
+    title: 'Deliver and Log: typed Ops Log entry',
+    type: 'ops-log',
+    logText: 'AURORA-7 EOL assessment to board: migrate now (inside 2 quarters), floor in 2-3, trigger at step-track floor',
   },
 ];
 
@@ -194,7 +239,83 @@ async function configureSpeca(page: import('@playwright/test').Page, centerFrequ
   await expect(centerFreqInput).toBeVisible({ timeout: 5000 });
   await centerFreqInput.fill(centerFrequencyMhz.toString());
   await centerFreqInput.press('Tab');
+  await page.waitForTimeout(200);
+
+  // Narrow span for the weak CW beacon (input in MHz): it must be on screen
+  // for 'AURORA-7 Beacon Captured' (Phase 27 B2)
+  const spanInput = page.locator('#sa-span');
+  await expect(spanInput).toBeVisible({ timeout: 5000 });
+  await spanInput.fill('0.002');
+  await spanInput.press('Tab');
+  await page.waitForTimeout(4000);
+
+  // The quiz asks for the level off the Peak readout: read it from the
+  // screen first (about -69 dBm, ~6 dB under the -63 dBm reference;
+  // nats-r3-s22-F1 read -69.2 to -69.4 step-tracked)
+  // Peak Search is one shot since Phase 33 D10 (the readout keeps the click
+  // result), so re-click inside the poll until the trace has settled
+  const readout = page.locator('#sa-peak-readout');
+  await expect
+    .poll(
+      async () => {
+        await page.locator('#sa-peak-search').click();
+        await page.waitForTimeout(300);
+        const match = /@\s*(-?\d+(?:\.\d+)?)\s*dBm/u.exec((await readout.textContent()) ?? '');
+        return match ? Number.parseFloat(match[1]) : Number.NaN;
+      },
+      { timeout: 15000 }
+    )
+    .toBeGreaterThan(-71);
+  const peakDbm = Number.parseFloat(/@\s*(-?\d+(?:\.\d+)?)\s*dBm/u.exec((await readout.textContent()) ?? '')?.[1] ?? 'NaN');
+  // The keyed option is "about -69 dBm, about 6 dB under": hold the screen to it
+  expect(peakDbm).toBeLessThan(-67.5);
+}
+
+/**
+ * Key the staged AURORA-7 test carrier on TX Chain: modem on air, BUC
+ * unmuted, then the HPA (never an enabled HPA on a muted BUC).
+ */
+async function bringUplinkUp(page: import('@playwright/test').Page, missionControlPage: MissionControlPage): Promise<void> {
+  await missionControlPage.selectTab('tx-chain');
+  await page.waitForTimeout(1200);
+  await setSwitch(page, '#tx-power-switch', true);
+  await page.waitForTimeout(200);
+  await setSwitch(page, '#tx-transmit-switch', true);
+  await page.waitForTimeout(200);
+  await setSwitch(page, '#buc-mute', false);
   await page.waitForTimeout(500);
+  await setSwitch(page, '#hpa-enable', true);
+  await page.waitForTimeout(2000);
+}
+
+/** Wait until the objective reports complete, via the debugObjective dev hook. */
+async function waitForObjectiveDone(page: import('@playwright/test').Page, objectiveId: string, timeout: number): Promise<void> {
+  await page.waitForFunction(
+    (id) => {
+      const hook = (window as unknown as { debugObjective?: (id: string) => { isCompleted?: boolean } }).debugObjective;
+      return typeof hook === 'function' && hook(id)?.isCompleted === true;
+    },
+    objectiveId,
+    { timeout, polling: 500 }
+  );
+}
+
+/**
+ * Type an entry into the Operations Log (sidebar log icon) and close it.
+ */
+async function typeOpsLogEntry(page: import('@playwright/test').Page, text: string): Promise<void> {
+  await page.locator('.ops-log-icon').first().click();
+  const input = page.locator('#ops-log-manual-input');
+  await expect(input).toBeVisible({ timeout: 5000 });
+  await input.fill(text);
+  await input.press('Enter');
+  await expect(page.locator('#ops-log-entries')).toContainText(text.slice(0, 20), { timeout: 5000 });
+  // Mission Complete closes the log itself when this entry finishes the scenario
+  await page
+    .locator('#ops-log-modal-close')
+    .click({ timeout: 3000 })
+    .catch(() => {});
+  await page.waitForTimeout(300);
 }
 
 async function verifyWorkingDocument(page: import('@playwright/test').Page): Promise<void> {
@@ -205,8 +326,8 @@ async function verifyWorkingDocument(page: import('@playwright/test').Page): Pro
   const docBox = page.locator('#draggable-html-box-working-document');
   await expect(docBox).toBeVisible({ timeout: 5000 });
 
-  // 7 documentLine quizzes passed by this point
-  await expect(docBox).toContainText('6 entries');
+  // 7 documentLine quizzes passed by this point (false-precision adds the Confidence line)
+  await expect(docBox).toContainText('7 entries');
   await expect(docBox).toContainText('Recommendation');
   await expect(docBox).toContainText('Binding constraint = beacon trackability');
   await expect(docBox).toContainText('Assumptions');
@@ -243,6 +364,12 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
 
     case 'set-step-track':
       await setStepTrack(page);
+      await waitForObjectiveDone(page, objective.id, (objective.autoWaitSeconds ?? 30) * 1000);
+      break;
+
+    case 'bring-uplink-up':
+      await bringUplinkUp(page, missionControlPage);
+      await waitForObjectiveDone(page, objective.id, 20000);
       break;
 
     case 'configure-speca':
@@ -253,8 +380,12 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
       await verifyWorkingDocument(page);
       break;
 
+    case 'ops-log':
+      await typeOpsLogEntry(page, objective.logText!);
+      break;
+
     case 'auto':
-      await page.waitForTimeout((objective.autoWaitSeconds ?? 5) * 1000);
+      await waitForObjectiveDone(page, objective.id, (objective.autoWaitSeconds ?? 30) * 1000);
       break;
   }
 

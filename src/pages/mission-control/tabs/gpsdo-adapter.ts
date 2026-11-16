@@ -81,6 +81,8 @@ export class GPSDOAdapter {
     this.domCache_.set('gnssBadge', qs('#gpsdo-gnss-badge', this.containerEl));
     this.domCache_.set('warmupBadge', qs('#gpsdo-warmup-badge', this.containerEl));
     this.domCache_.set('holdoverBadge', qs('#gpsdo-holdover-badge', this.containerEl));
+    // Optional: older fixtures and the SDR console host a GPSDO without the Holdover Performance card
+    this.domCache_.set('holdoverCardBadge', this.containerEl.querySelector<HTMLElement>('#gpsdo-holdover-card-badge'));
     this.domCache_.set('holdoverDuration', qs('#gpsdo-holdover-duration', this.containerEl));
     this.domCache_.set('holdoverProgress', qs('#gpsdo-holdover-progress', this.containerEl));
     this.domCache_.set('holdoverTtl', qs('#gpsdo-holdover-ttl', this.containerEl));
@@ -89,6 +91,9 @@ export class GPSDOAdapter {
     // Optional: older fixtures and the SDR console host a GPSDO without this readout.
     const timeOffset = this.containerEl.querySelector<HTMLElement>('#gpsdo-time-offset');
     if (timeOffset) this.domCache_.set('timeOffset', timeOffset);
+    // Optional: only the GPS & Timing tab lists the distribution outputs.
+    const outputList = this.containerEl.querySelector<HTMLElement>('#gpsdo-10mhz-output-list');
+    if (outputList) this.domCache_.set('10mhzOutputList', outputList);
     this.domCache_.set('freqAccuracy', qs('#gpsdo-freq-accuracy', this.containerEl));
     this.domCache_.set('allanDeviation', qs('#gpsdo-allan-deviation', this.containerEl));
     this.domCache_.set('phaseNoise', qs('#gpsdo-phase-noise', this.containerEl));
@@ -237,6 +242,12 @@ export class GPSDOAdapter {
       }
       holdoverBadge.textContent = text;
       holdoverBadge.className = `status-badge ${badgeClass}`;
+      // s16-F1: the Holdover Performance card has its own badge (it used to share an id and never updated)
+      const cardBadge = this.domCache_.get('holdoverCardBadge');
+      if (cardBadge) {
+        cardBadge.textContent = text;
+        cardBadge.className = `status-badge ${badgeClass}`;
+      }
     }
 
     // Update satellite count
@@ -334,6 +345,23 @@ export class GPSDOAdapter {
     // Update 10 MHz outputs
     const outputs = this.domCache_.get('10mhzOutputs');
     if (outputs) outputs.textContent = isPowered ? `${state.active10MHzOutputs}/${state.max10MHzOutputs}` : '--/--';
+
+    // List one destination per active output, so "3/5" lists three (s01-F13)
+    const outputList = this.domCache_.get('10mhzOutputList');
+    if (outputList) {
+      const names = isPowered ? GPSDOAdapter.outputDestinations(state.active10MHzOutputs) : [];
+      const listHtml = names.map((name) => `<p>${name}</p>`).join('');
+      if (outputList.innerHTML !== listHtml) outputList.innerHTML = listHtml;
+    }
+  }
+
+  /** Where each 10 MHz distribution output goes, in port order. */
+  private static readonly OUTPUT_DESTINATIONS_ = ['BUC Module', 'LNB Module', 'RX Modems', 'TX Modems', 'Spectrum Analyzer'];
+
+  /** Destination names for the first `count` active outputs (ports beyond the known five read "Output N"). */
+  static outputDestinations(count: number): string[] {
+    const n = Math.max(0, Math.floor(count));
+    return Array.from({ length: n }, (_, i) => GPSDOAdapter.OUTPUT_DESTINATIONS_[i] ?? `Output ${i + 1}`);
   }
 
   dispose(): void {

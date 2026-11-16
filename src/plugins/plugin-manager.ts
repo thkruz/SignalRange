@@ -4,6 +4,7 @@ import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { addLocaleBundle, t7e } from '@app/locales/i18n';
 import { Logger } from '@app/logging/logger';
+import { createMissionControlApi } from '@app/pages/mission-control/antenna-page-registry';
 import { Router } from '@app/router';
 import { SettingsManager } from '@app/settings/settings-manager';
 import type { PluginDescriptor } from './plugin-descriptor';
@@ -316,6 +317,7 @@ export class PluginManager {
       router: Router.getInstance(),
       campaigns: CampaignManager.getInstance(),
       antennas: AntennaRegistry.getInstance(),
+      missionControl: createMissionControlApi(),
       settings: SettingsManager.getInstance(),
       events: EventBus.getInstance(),
       t7e,

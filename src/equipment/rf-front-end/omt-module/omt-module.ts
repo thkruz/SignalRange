@@ -3,6 +3,7 @@ import { html } from '@app/engine/utils/development/formatter';
 import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { RFFrontEndModule } from '@app/equipment/rf-front-end/rf-front-end-module';
 import { Logger } from '@app/logging/logger';
+import { plantPreLnaLossDb } from '@app/physical/plant-bridge';
 import { SignalOrigin } from '@app/signal-origin';
 import { Rng } from '@app/simulation/rng';
 import type { dBi, dBm, RfSignal } from '@app/types';
@@ -34,6 +35,17 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
   // Signals
   rxSignalsOut: RfSignal[] = [];
   txSignalsOut: RfSignal[] = [];
+  /** The HPA's IM3 products / regrowth after the OMT (TX analyzer only) */
+  txDistortionOut: RfSignal[] = [];
+
+  /**
+   * The unit's own insertion loss as built (the configured value), dB. On
+   * receive it is part of the antenna's feed loss: the anchor datasheets quote
+   * gain at the feed flange, after the OMT, so only a fault that raises
+   * `insertionLoss` above this costs the carriers (and adds its noise). On
+   * transmit the whole loss is charged (Phase 19.6, DEV-RF-05).
+   */
+  readonly nominalInsertionLossDb: number;
 
   /**
    * Get default state for OMT module
@@ -51,8 +63,19 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
     };
   }
 
+  /**
+   * This unit's port-to-port cross-pol isolation, dB: the authored spec plus a
+   * per-unit build scatter of 0-5 dB drawn once at construction (phase 19.4;
+   * it used to be re-drawn every frame, DEV-RF-05). Fault injection lowers
+   * `state.crossPolIsolation` below it.
+   */
+  private readonly unitIsolationDb_: number;
+
   constructor(state: OMTState, rfFrontEnd: RFFrontEndCore, unit: number = 1) {
     super(state, rfFrontEnd, 'rf-fe-omt-pol', unit);
+    this.unitIsolationDb_ = (state.crossPolIsolation ?? 28.5) + random() * 5;
+    this.state.crossPolIsolation = this.unitIsolationDb_;
+    this.nominalInsertionLossDb = state.insertionLoss ?? 0.5;
 
     // Create UI components
     this.helpBtn_ = HelpButton.create(
@@ -135,10 +158,11 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
     // feed (circularHandedness), so applying isolation here would double-count.
     const isCircularMode = this.state.rxPolarization === 'LHCP' || this.state.rxPolarization === 'RHCP';
 
+    const excessRxLoss = this.excessRxInsertionLossDb;
     this.rxSignalsOut = this.rxSignalsIn.map((sig) => {
       if (!isCircularMode && sig.polarization !== this.state.effectiveRxPol) {
         // Apply cross-pol isolation loss
-        const isolatedPower = sig.power - this.state.crossPolIsolation;
+        const isolatedPower = sig.power - this.state.crossPolIsolation - excessRxLoss;
         return {
           ...sig,
           power: isolatedPower as dBm,
@@ -147,17 +171,32 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
         };
       }
 
-      return sig;
+      return excessRxLoss > 0 ? { ...sig, power: (sig.power - excessRxLoss) as dBm } : sig;
     });
 
-    // Set TX signal polarization based on OMT setting
-    // Any changes to the TX signals' polarization by the antenna module
-    // will happen inside the antenna module itself
-    this.txSignalsOut = this.txSignalsIn.map((sig: RfSignal) => ({
+    // Set TX signal polarization based on OMT setting, and charge the
+    // insertion loss (and the HPA-to-feed waveguide) on the way out. Any
+    // changes to the TX signals' polarization by the antenna module will
+    // happen inside the antenna module itself
+    const txLoss = this.state.insertionLoss + this.rfFrontEnd_.cableLossDb('hpaToFeed');
+    const toFeed = (sig: RfSignal): RfSignal => ({
       ...sig,
+      power: (sig.power - txLoss) as dBm,
       polarization: this.state.txPolarization,
       origin: SignalOrigin.OMT_TX,
-    }));
+    });
+    this.txSignalsOut = this.txSignalsIn.map(toFeed);
+    this.txDistortionOut = this.rfFrontEnd_.hpaModule.distortionSignals.map(toFeed);
+  }
+
+  /**
+   * Receive loss above the unit's nominal (a fault), dB; 0 when healthy. Plus the
+   * physical plant's loss ahead of the LNA (feed connector faults, Phase 38.1):
+   * one passive ahead of the LNA, so both the carriers and (via
+   * SignalPathManager.antennaNoiseAtLnaK, which reads this) the antenna noise see it.
+   */
+  get excessRxInsertionLossDb(): number {
+    return Math.max(0, this.state.insertionLoss - this.nominalInsertionLossDb) + plantPreLnaLossDb(this.rfFrontEnd_.groundStationId);
   }
 
   get txSignalsIn(): RfSignal[] {
@@ -189,23 +228,12 @@ export class OMTModule extends RFFrontEndModule<OMTState> {
       return;
     }
 
-    // Check polarization of visible signal
-    const signal = this.rfFrontEnd_.antenna.state.rxSignalsIn[0];
-    if (signal) {
-      if (signal.polarization === this.state.effectiveRxPol) {
-        // Aligned polarization, normal isolation
-        this.state.crossPolIsolation = 30 + random() * 5; // 30-35 dB
-      } else {
-        // Misaligned polarization, degraded isolation
-        this.state.crossPolIsolation = 15 + random() * 10; // 15-25 dB
-      }
-    } else {
-      // No signal, normal isolation
-      this.state.crossPolIsolation = 30 + random() * 5; // 30-35 dB
-    }
+    // The unit's isolation is a hardware constant (set at construction); a
+    // fault written into the state is what lowers it
+    this.state.crossPolIsolation = Math.min(this.state.crossPolIsolation, this.unitIsolationDb_);
 
     // Update fault status
-    this.state.isFaulted = this.state.crossPolIsolation < 25;
+    this.state.isFaulted = this.state.crossPolIsolation < 20;
   }
 
   /**

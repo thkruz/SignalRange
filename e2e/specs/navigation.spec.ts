@@ -4,8 +4,8 @@ test.describe('Navigation', () => {
   test('should load campaign selection page at root URL', async ({ campaignSelectionPage }) => {
     await campaignSelectionPage.goto();
 
-    await expect(campaignSelectionPage.pageTitle).toHaveText('Signal Range Training');
-    await expect(campaignSelectionPage.subtitle).toContainText('Select a campaign');
+    await expect(campaignSelectionPage.pageTitle).toHaveText('Campaigns');
+    await expect(campaignSelectionPage.subtitle).toContainText('Choose your next assignment');
     await expect(campaignSelectionPage.campaignGrid).toBeVisible();
   });
 
@@ -32,7 +32,7 @@ test.describe('Navigation', () => {
 
     // App may redirect to / or /campaigns/ (host-agnostic: baseURL may be
     // localhost or 127.0.0.1)
-    await page.waitForURL(/^http:\/\/(localhost|127\.0\.0\.1):3000\/(campaigns\/?)?$/);
+    await page.waitForURL(/^http:\/\/(localhost|127\.0\.0\.1):\d+\/(campaigns\/?)?$/u);
   });
 
   test('should handle unknown routes gracefully', async ({ page }) => {

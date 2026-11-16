@@ -1,3 +1,4 @@
+import { displayScale, displayViewport } from '@app/game-menu/display-viewport';
 import { Rng } from '@app/simulation/rng';
 /**
  * @file Quiz Modal - Interactive quiz for status-check objective conditions
@@ -9,11 +10,27 @@ import { html } from '@app/engine/utils/development/formatter';
 import { getEl, showEl } from '@app/engine/utils/get-el';
 import { EventBus } from '@app/events/event-bus';
 import { Events, QuizAnsweredData, QuizCompletedData, QuizDismissedData, QuizPassedData, QuizShowData } from '@app/events/events';
-import { Character, CharacterAvatars, CharacterNames, Emotion, getCharacterAvatarUrl } from './character-enum';
+import { Character, CharacterAvatars, CharacterNames, Emotion } from './character-enum';
+import { renderCharacterPortrait, setPortraitEmotion } from './character-portrait';
 import './quiz-modal.css';
 
 /** Seeded draws for this module (see simulation/rng.ts). */
 const random = (): number => Rng.stream('ui:quiz').next();
+
+/**
+ * Letter label for an option at a display position: A..Z, then AA, AB, ...
+ * Covers any option count; a fixed ['A'..'D'] array rendered the fifth option
+ * as "undefined" (nats-r4-s08-F1).
+ */
+export function optionLetter(displayIndex: number): string {
+  let n = Math.max(0, Math.floor(displayIndex));
+  let label = '';
+  do {
+    label = String.fromCharCode(65 + (n % 26)) + label;
+    n = Math.floor(n / 26) - 1;
+  } while (n >= 0);
+  return label;
+}
 
 /**
  * Singleton non-modal box for presenting status-check quizzes
@@ -43,6 +60,11 @@ export class QuizModal extends DraggableBox {
   static getInstance(): QuizModal {
     QuizModal.instance_ ??= new QuizModal();
     return QuizModal.instance_;
+  }
+
+  /** True while a quiz (question or its feedback) is on screen */
+  static isShowingQuiz(): boolean {
+    return QuizModal.instance_ !== null && QuizModal.instance_.currentQuiz_ !== null;
   }
 
   protected getBoxContentHtml(): string {
@@ -84,7 +106,7 @@ export class QuizModal extends DraggableBox {
           <div class="draggable-box__title">
             <span>${this.title}</span>
           </div>
-          <span id="${this.boxId}-close" class="draggable-box__btn draggable-box__close-btn"></span>
+          <button type="button" id="${this.boxId}-close" class="draggable-box__close-btn" title="Close this window" aria-label="Close">&#x2715; Close</button>
         </div>
         <div class="draggable-box__content">
           ${this.getBoxContentHtml()}
@@ -126,16 +148,16 @@ export class QuizModal extends DraggableBox {
       this.boxEl.style.minWidth = this.width;
     }
 
-    // Center the box
-    this.boxEl.style.top = `${window.scrollY + (window.innerHeight - this.boxEl.offsetHeight) / 2}px`;
-    this.boxEl.style.left = `${(window.innerWidth - this.boxEl.offsetWidth) / 2}px`;
-
-    // Bring to front
-    this.boxEl.style.zIndex = DraggableBox.increaseMaxZIndex().toString();
-
     if (cb) {
       cb();
     }
+
+    // Center after rendering the question and reserving its feedback space.
+    this.boxEl.style.top = `${window.scrollY + (displayViewport().height - this.boxEl.offsetHeight) / 2}px`;
+    this.boxEl.style.left = `${(displayViewport().width - this.boxEl.offsetWidth) / 2}px`;
+
+    // Bring to front
+    this.boxEl.style.zIndex = DraggableBox.increaseMaxZIndex().toString();
   }
 
   private renderQuiz_(): void {
@@ -165,7 +187,7 @@ export class QuizModal extends DraggableBox {
       } else {
         // NPC mode: show avatar and name
         headerEl.innerHTML = html`
-          <img id="quiz-avatar" class="quiz-avatar" src="${getCharacterAvatarUrl(this.currentCharacter_, Emotion.CONFIDENT)}" alt="${CharacterNames[this.currentCharacter_]}">
+          ${renderCharacterPortrait(this.currentCharacter_, Emotion.CONFIDENT, { id: 'quiz-avatar', className: 'quiz-avatar' })}
           <div class="quiz-header-text">
             <span class="quiz-character-name">${CharacterNames[this.currentCharacter_]}</span>
             <span class="quiz-prompt-label">asks:</span>
@@ -176,13 +198,24 @@ export class QuizModal extends DraggableBox {
 
     // Set question text
     questionEl.textContent = this.currentQuiz_.question;
+    this.renderStudyMeta_(questionEl, optionsEl);
 
-    // Hide feedback and penalty notices
-    feedbackEl.style.display = 'none';
-    penaltyEl.style.display = 'none';
+    // Hide and clear feedback and penalty notices: a hidden notice left over
+    // from the previous quiz still reads through innerText/textContent
+    // (nats-r2-s01-F2)
+    feedbackEl.style.display = 'block';
+    feedbackEl.style.visibility = 'hidden';
+    feedbackEl.style.minHeight = '';
+    // Measure this quiz's real response at its rendered width, then remove it
+    // so hidden answers are not present in the accessible tree or text queries.
+    feedbackEl.innerHTML = this.correctFeedbackHtml_();
+    feedbackEl.style.minHeight = `${feedbackEl.getBoundingClientRect().height / displayScale()}px`;
+    feedbackEl.innerHTML = '';
+    penaltyEl.style.display = 'flex';
+    penaltyEl.style.visibility = 'hidden';
+    penaltyEl.innerHTML = '';
 
     // Create option buttons with randomized order
-    const optionLabels = ['A', 'B', 'C', 'D'];
     this.shuffledIndices_ = this.shuffleIndices_();
 
     const quiz = this.currentQuiz_;
@@ -209,7 +242,7 @@ export class QuizModal extends DraggableBox {
             class="quiz-option-btn"
             data-index="${originalIndex}"
           >
-            <span class="quiz-option-label">${optionLabels[displayIndex]}</span>
+            <span class="quiz-option-label">${optionLetter(displayIndex)}</span>
             <span class="quiz-option-text">${option}</span>
           </button>
         `;
@@ -224,6 +257,48 @@ export class QuizModal extends DraggableBox {
         btn.addEventListener('click', () => this.handleOptionClick_(originalIndex));
       }
     });
+    const content = this.boxEl?.querySelector('.draggable-box__content');
+    if (content) content.scrollTop = 0;
+  }
+
+  /** Source label above the question and optional figure below it (only for quizzes carrying the study fields) */
+  private renderStudyMeta_(questionEl: HTMLElement, optionsEl: HTMLElement): void {
+    this.boxEl?.querySelectorAll('.quiz-source-label, .quiz-figure').forEach((el) => el.remove());
+    const quiz = this.currentQuiz_;
+    if (!quiz) return;
+
+    const src = quiz.quizSource;
+    if (src) {
+      const label = document.createElement('div');
+      label.className = 'quiz-source-label';
+      label.id = 'quiz-source-label';
+      if (src.kind === 'official') {
+        const id = src.questionId ? ` ${src.questionId}` : '';
+        const rev = src.poolRevision ? ` (rev. ${src.poolRevision})` : '';
+        label.textContent = `Official NCVEC question${id} · 2026–2030 pool${rev}`;
+      } else {
+        label.textContent = 'Applied check';
+      }
+      questionEl.parentElement?.insertBefore(label, questionEl);
+    }
+
+    if (quiz.figureUrl) {
+      const fig = document.createElement('figure');
+      fig.className = 'quiz-figure';
+      fig.id = 'quiz-figure';
+      const img = document.createElement('img');
+      img.src = quiz.figureUrl;
+      img.alt = quiz.figureAlt ?? 'Figure for this question';
+      img.className = 'quiz-figure-img';
+      fig.appendChild(img);
+      if (quiz.figureAlt) {
+        const cap = document.createElement('figcaption');
+        cap.className = 'quiz-figure-caption';
+        cap.textContent = quiz.figureAlt;
+        fig.appendChild(cap);
+      }
+      optionsEl.parentElement?.insertBefore(fig, optionsEl);
+    }
   }
 
   private handleOptionClick_(index: number): void {
@@ -303,14 +378,31 @@ export class QuizModal extends DraggableBox {
 
     // Update avatar emotion (skip for SYSTEM mode - no avatar)
     if (this.currentCharacter_ !== Character.SYSTEM) {
-      const avatarEl = getEl('quiz-avatar') as HTMLImageElement;
-      if (avatarEl) {
-        avatarEl.src = getCharacterAvatarUrl(this.currentCharacter_, Emotion.HAPPY);
-      }
+      setPortraitEmotion(document.getElementById('quiz-avatar'), this.currentCharacter_, Emotion.HAPPY);
     }
 
     if (feedbackEl) {
-      feedbackEl.innerHTML = html`
+      feedbackEl.innerHTML = this.correctFeedbackHtml_();
+      feedbackEl.style.visibility = 'visible';
+      feedbackEl.style.display = 'block';
+      const penalty = getEl('quiz-penalty-notice');
+      if (penalty) penalty.style.visibility = 'hidden';
+
+      const continueBtn = getEl('quiz-continue-btn');
+      if (continueBtn) {
+        continueBtn.addEventListener('click', () => this.handleContinueClick_());
+        // Scroll within the stable box when long feedback needs more room.
+        continueBtn.scrollIntoView?.({ block: 'nearest' });
+        continueBtn.focus({ preventScroll: true });
+      }
+    }
+
+    this.disableOptions_();
+  }
+
+  private correctFeedbackHtml_(): string {
+    if (!this.currentQuiz_) return '';
+    return html`
         <div class="feedback-correct">
           <span class="feedback-icon">&#10003;</span>
           <span class="feedback-text">Correct!</span>
@@ -324,19 +416,6 @@ export class QuizModal extends DraggableBox {
         }
         <button id="quiz-continue-btn" class="quiz-continue-btn">Continue</button>
       `;
-      feedbackEl.style.display = 'block';
-
-      const continueBtn = getEl('quiz-continue-btn');
-      if (continueBtn) {
-        continueBtn.addEventListener('click', () => this.handleContinueClick_());
-      }
-
-      // Adjust position if modal extends past viewport
-      this.ensureModalInViewport_();
-    }
-
-    // Disable all option buttons
-    this.disableOptions_();
   }
 
   /**
@@ -374,12 +453,13 @@ export class QuizModal extends DraggableBox {
 
     const rect = this.boxEl.getBoundingClientRect();
     const viewportHeight = window.innerHeight;
-    const margin = 16; // Minimum margin from viewport edge
+    const scale = displayScale();
+    const margin = 16 * scale; // Minimum margin from viewport edge
 
     if (rect.bottom > viewportHeight - margin) {
       const overflow = rect.bottom - (viewportHeight - margin);
-      const currentTop = parseFloat(this.boxEl.style.top) || rect.top;
-      const newTop = Math.max(margin, currentTop - overflow);
+      const currentTop = parseFloat(this.boxEl.style.top) || rect.top / scale;
+      const newTop = Math.max(16, currentTop - overflow / scale);
       this.boxEl.style.top = `${newTop}px`;
     }
   }
@@ -419,20 +499,29 @@ export class QuizModal extends DraggableBox {
 
     // Update avatar emotion (skip for SYSTEM mode - no avatar)
     if (this.currentCharacter_ !== Character.SYSTEM) {
-      const avatarEl = getEl('quiz-avatar') as HTMLImageElement;
-      if (avatarEl) {
-        avatarEl.src = getCharacterAvatarUrl(this.currentCharacter_, Emotion.CONCERNED);
-      }
+      setPortraitEmotion(document.getElementById('quiz-avatar'), this.currentCharacter_, Emotion.CONCERNED);
     }
 
     if (feedbackEl) {
       feedbackEl.innerHTML = html`
         <div class="feedback-incorrect">
           <span class="feedback-icon">&#10007;</span>
-          <span class="feedback-text">Not quite. Try again.</span>
+          <span class="feedback-text" id="quiz-wrong-text"></span>
         </div>
       `;
+      const wrongText = getEl('quiz-wrong-text');
+      if (wrongText) {
+        const optionFeedback = this.currentQuiz_.wrongAnswerFeedback?.[selectedIndex];
+        wrongText.textContent = optionFeedback ? optionFeedback : 'Not quite. Try again.';
+      }
+      if (this.currentQuiz_.reviewHint) {
+        const hint = document.createElement('div');
+        hint.className = 'quiz-review-hint';
+        hint.textContent = this.currentQuiz_.reviewHint;
+        feedbackEl.appendChild(hint);
+      }
       feedbackEl.style.display = 'block';
+      feedbackEl.style.visibility = 'visible';
     }
 
     if (penaltyEl) {
@@ -441,6 +530,7 @@ export class QuizModal extends DraggableBox {
         <span class="penalty-total">(Total: -${this.totalPointsDeducted_} points)</span>
       `;
       penaltyEl.style.display = 'block';
+      penaltyEl.style.visibility = 'visible';
     }
 
     // Adjust position if modal extends past viewport
@@ -458,9 +548,8 @@ export class QuizModal extends DraggableBox {
     // Reset avatar after a short delay (skip for SYSTEM mode - no avatar)
     if (this.currentCharacter_ !== Character.SYSTEM) {
       setTimeout(() => {
-        const avatarEl = getEl('quiz-avatar') as HTMLImageElement;
-        if (avatarEl && !this.isShowingFeedback_) {
-          avatarEl.src = getCharacterAvatarUrl(this.currentCharacter_, Emotion.CONFIDENT);
+        if (!this.isShowingFeedback_) {
+          setPortraitEmotion(document.getElementById('quiz-avatar'), this.currentCharacter_, Emotion.CONFIDENT);
         }
       }, 1500);
     }

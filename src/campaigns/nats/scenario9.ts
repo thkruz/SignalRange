@@ -1,14 +1,13 @@
 import { createRfFrontEnd } from '@app/campaigns/rf-front-end-factory';
 import type { AntennaState } from '@app/equipment/antenna';
 import { ANTENNA_CONFIG_KEYS } from '@app/equipment/antenna/antenna-config-keys';
-import { Receiver } from '@app/equipment/receiver/receiver';
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { Objective } from '@app/objectives/objective-types';
 import type { ScenarioData } from '@app/ScenarioData';
-import type { dB, dBm, Hertz } from '@app/types';
+import type { dB, dBm, Hertz, MHz } from '@app/types';
 import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees } from 'ootk';
-import { vermontGroundStation } from './ground-stations';
+import { ME02_TM2_TRANSMITTER, vermontGroundStation } from './ground-stations';
 import { ses10Satellite, tidemark1Satellite, tidemark2Satellite, tidemark3Satellite } from './satellites';
 
 /**
@@ -61,11 +60,13 @@ export const scenario9Data: ScenarioData = {
   duration: '20-25 min',
   difficulty: 'intermediate',
   missionType: 'Routine Operations',
-  description: `First qualified shift. Three birds to check this morning: TIDEMARK-1 from Vermont, TIDEMARK-2 from Maine, and a spot-check on the newly commissioned TIDEMARK-3.<br><br>Standard morning rounds - verify each link is healthy, log any anomalies, move on. The overnight commissioning crew brought TIDEMARK-3 online a few hours ago; the only thing on your list is a quick beacon verification before our customers start lighting it up.<br><br>No drama today. Just routine.`,
+  description: `This is your first qualified shift, and there are three birds to check this morning: TIDEMARK-1 from Vermont, TIDEMARK-2 from Maine, and a spot-check on the newly commissioned TIDEMARK-3.<br><br>It's a standard round. You verify that each link is healthy, log anything unusual and move on. The overnight commissioning crew brought TIDEMARK-3 online a few hours ago. The only thing on your list for it is a quick beacon verification before our customers start lighting it up.<br><br>No drama is expected. It's routine.`,
   equipment: ['9-meter C-band Antenna', 'RF Front End', 'Spectrum Analyzer', 'RX/TX Modems', 'ME-02: Operational'],
   timeLimitSeconds: 25 * 60, // 25 minutes
   settings: {
     isSync: true,
+    scenarioStartDate: '2026-02-16',
+    scenarioStartWallTime: '06:42:00',
     groundStations: [
       // VT-01: healthy, tracking TIDEMARK-1, default morning-shift state
       {
@@ -85,37 +86,41 @@ export const scenario9Data: ScenarioData = {
         antennasState: [
           {
             isPowered: true,
-            azimuth: 219.7 as Degrees,
-            elevation: 26.3 as Degrees,
-            polarization: -25 as Degrees,
+            azimuth: 146.96 as Degrees, // Maine sees TM-2 (45 W) here, not at Vermont's 143.3 / 31.8 (Phase 28 D4)
+            elevation: 32.42 as Degrees,
+            // polarization: derived from geometry (Phase 29 D8)
             trackingMode: 'program-track',
             isBeaconLocked: true,
             targetSatelliteId: 61526, // TIDEMARK-2
-            targetAzimuth: 219.7 as Degrees,
-            targetElevation: 26.3 as Degrees,
-            targetPolarization: -25 as Degrees,
+            targetAzimuth: 146.96 as Degrees,
+            targetElevation: 32.42 as Degrees,
             slewing: false,
             beaconCN: 10.2 as dB,
-            beaconFrequencyHz: 1070e6 as Hertz, // 5250 LNB LO - 4180 beacon RF
+            beaconFrequencyHz: 4180e6 as Hertz, // TIDEMARK-2 beacon (RF)
             isLocked: true,
           } as Partial<AntennaState>,
         ],
         rfFrontEnds: [
           createRfFrontEnd(vermontGroundStation.rfFrontEnds[0], {
-            // Inherits VT-01 LNB LO 5250 MHz so the TM-2 beacon comes out at 1070 MHz IF
-            // Maine TX is muted - we're not transmitting from ME-02 in this scenario
-            buc: { isMuted: true },
-            hpa: { isHpaEnabled: false, isHpaSwitchEnabled: false },
+            // ME-02 mirrors VT-01's LNB LO so the TM-2 beacon comes out at 1070 MHz IF.
+            // Maine carries TIDEMARK-2 (its own hub carrier, phase 27): chain hot,
+            // BUC unmuted, HPA on at its operating back-off
           }),
         ],
         spectrumAnalyzers: [
           {
             referenceLevel: -91 as dBm,
-            centerFrequency: 1070e6 as Hertz, // Tuned to TM-2 beacon IF
+            // Left on the TM-1 beacon IF from a cross-check, so the player has
+            // to retune to TM-2's 1070 MHz (nats-s09-F4: a pre-set analyzer
+            // made the beacon check complete on opening the tab)
+            centerFrequency: 1074.5e6 as Hertz,
             span: 2e3 as Hertz,
-            rbw: 1e3 as Hertz,
-            minAmplitude: -95 as dBm,
-            maxAmplitude: -75 as dBm,
+            rbw: null, // Auto (3 Hz at 2 kHz)
+            // Phase 27: TIDEMARK beacons read -44 to -59 dBm at the RX IF tap
+            // (ledger; higher when the AGC sees no carrier), the floor ~-114
+            // dBm in 3 Hz
+            minAmplitude: -120 as dBm,
+            maxAmplitude: -30 as dBm,
             scaleDbPerDiv: 10 as dB,
             screenMode: 'both',
             inputUnit: 'MHz',
@@ -128,8 +133,26 @@ export const scenario9Data: ScenarioData = {
             selectedTrace: 1,
           },
         ],
-        transmitters: [],
-        receivers: [Receiver.getDefaultState()],
+        // ME-02's TM-2 hub carrier keyed (phase 27)
+        transmitters: [ME02_TM2_TRANSMITTER],
+        // RX modem on the TM-2 carrier so the payload spot-check reads a healthy
+        // link (nats-s09-F6: the factory default sat at 1400 MHz, NO LOCK)
+        receivers: [
+          {
+            activeModem: 1,
+            modems: [
+              {
+                modemNumber: 1,
+                isPowered: true,
+                frequency: 1458 as MHz, // TM-2 downlink IF (5250 - 3792)
+                bandwidth: 36 as MHz,
+                modulation: 'QPSK',
+                fec: '3/4',
+                antenna_id: 1,
+              },
+            ],
+          },
+        ],
       },
     ],
     satellites: [tidemark1Satellite, tidemark2Satellite, tidemark3Satellite, ses10Satellite],
@@ -144,7 +167,7 @@ export const scenario9Data: ScenarioData = {
       id: 'review-mission-brief',
       nice: ['K0645'],
       title: 'Review Shift Brief',
-      description: 'Open the shift brief and acknowledge you are ready to start rounds.',
+      description: "Open the shift brief, then confirm you're ready to start rounds.",
       groundStation: 'VT-01',
       freezesScenarioTimer: true,
       prerequisiteObjectiveIds: [],
@@ -163,7 +186,7 @@ export const scenario9Data: ScenarioData = {
             question: 'Have you reviewed the shift brief and are you ready to begin morning rounds?',
             options: ['Yes, brief reviewed. Starting rounds.'],
             correctIndex: 0,
-            explanation: 'Shift clock started. Three birds on the list.',
+            explanation: 'Thanks. The shift clock has started, and you have three birds on your list today: TIDEMARK-1, TIDEMARK-2 and TIDEMARK-3.',
             pointPenalty: 0,
           },
           mustMaintain: false,
@@ -200,7 +223,7 @@ export const scenario9Data: ScenarioData = {
       id: 'vt-dashboard-check',
       nice: ['T0153', 'K0741'],
       title: 'VT-01 Dashboard Sweep',
-      description: 'Check the Dashboard for active alarms.',
+      description: 'Open the Dashboard and check VT-01 for active alarms.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['select-vermont-station'],
       timeLimitSeconds: 1 * 60,
@@ -218,15 +241,16 @@ export const scenario9Data: ScenarioData = {
           description: 'Confirm Alarm Status',
           params: {
             character: Character.SYSTEM,
-            question: 'What is the active alarm state on VT-01?',
+            question: 'What alarm state does the VT-01 Dashboard show?',
             options: [
-              'No active alarms - all systems nominal',
-              'BUC high current draw - TX chain alarm',
-              'LNB reference unlocked - RX chain alarm',
-              'HPA output fault - transmit path alarm',
+              'No warning or critical alarms',
+              'A BUC high-current alarm on the TX chain',
+              'An LNB reference-unlock alarm on the RX chain',
+              'An HPA output-fault alarm on the transmit path',
             ],
             correctIndex: 0,
-            explanation: 'Clean board on the primary station. Moving on to timing.',
+            explanation:
+              'The Dashboard shows nothing above informational on the primary station, so there are no warning or critical alarms to chase. Next you check the timing reference.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -271,7 +295,8 @@ export const scenario9Data: ScenarioData = {
               '1 PPS output present but the 10 MHz output is still warming up',
             ],
             correctIndex: 0,
-            explanation: 'Reference is stable. RX/TX chains can trust their frequencies.',
+            explanation:
+              'A locked GPSDO means the 10 MHz reference is stable, so the receive and transmit chains can trust their frequencies. The other options all describe states short of lock: still acquiring satellites, holding over without GPS, or still warming up.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -283,9 +308,10 @@ export const scenario9Data: ScenarioData = {
     {
       id: 'vt-rx-beacon-check',
       nice: ['T0153', 'K1032', 'K0773'],
-      title: 'VT-01 RX Chain Spot Check',
-      description: 'Confirm the TIDEMARK-1 beacon is present and the receiver is locked with good C/N.',
+      title: 'Verify VT-01 RX Chain',
+      description: 'Confirm the TIDEMARK-1 beacon is present and the receiver is locked, and read the C/N the receiver modem shows.',
       groundStation: 'VT-01',
+      intent: 'confirm',
       prerequisiteObjectiveIds: ['vt-gpsdo-spot-check'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
@@ -305,14 +331,35 @@ export const scenario9Data: ScenarioData = {
             minPower: -100 as dBm,
             requiresObservation: true,
             observationTab: 'rx-analysis',
+            observationDwellSeconds: 5,
           },
           mustMaintain: true,
         },
         {
           type: 'receiver-signal-locked',
           description: 'Receiver Locked',
-          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis', observationDwellSeconds: 5 },
           mustMaintain: true,
+        },
+        {
+          type: 'status-check',
+          description: 'Read the TIDEMARK-1 C/N',
+          params: {
+            character: Character.SYSTEM,
+            question: 'What C/N does the VT-01 receiver modem show on the TIDEMARK-1 carrier?',
+            options: [
+              '12 to 14 dB - locked with good margin',
+              '4 to 6 dB - locked, degraded margin',
+              '8 to 9 dB - just above the service minimum',
+              'No C/N reading - the modem is not locked',
+            ],
+            correctIndex: 0,
+            // Ledger: VT-01's own TP-1 carrier, 13.1 dB at shift start
+            explanation:
+              "It reads about 13 dB. That's the TP-1 carrier VT-01 uplinks, coming back down through TIDEMARK-1, and it sits some 8 dB above where QPSK 3/4 acquires lock. The modem shows Required Es/N0 5.0 dB, and Es/N0 runs about 0.8 dB above Raw C/N. So it acquires lock from about 4.7 dB C/N (Required 5.0 plus a 0.5 dB acquisition margin, less the 0.8 dB Es/N0 offset) and holds it down to about 3.7 dB. That's the clear-sky baseline to compare against on the next shift.",
+            pointPenalty: 5,
+          },
+          mustMaintain: false,
         },
       ],
       conditionLogic: 'AND',
@@ -321,9 +368,10 @@ export const scenario9Data: ScenarioData = {
     {
       id: 'vt-tx-hpa-check',
       nice: ['T0431', 'K0740'],
-      title: 'VT-01 TX Chain Spot Check',
-      description: 'Verify the HPA is enabled and operating with proper backoff.',
+      title: 'Verify VT-01 TX Chain',
+      description: 'Open TX Chain, confirm the HPA is enabled and not overdriven, and read its output power.',
       groundStation: 'VT-01',
+      intent: 'confirm',
       prerequisiteObjectiveIds: ['vt-rx-beacon-check'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
@@ -340,11 +388,50 @@ export const scenario9Data: ScenarioData = {
           description: 'HPA Output Enabled',
           params: { requiresObservation: true, observationTab: 'tx-chain' },
           mustMaintain: true,
+          // Q2: a read of the running uplink, never a toggle
+          requiresChange: false,
         },
         {
           type: 'hpa-not-overdriven',
           description: 'HPA Within Operating Limits',
           params: { requiresObservation: true, observationTab: 'tx-chain' },
+          mustMaintain: true,
+        },
+        {
+          type: 'status-check',
+          description: 'Read the HPA Output',
+          params: {
+            character: Character.SYSTEM,
+            question: 'What output power does the VT-01 HPA panel show?',
+            options: ['About 50 dBm (100 W)', 'About 60 dBm (1 kW)', 'About 40 dBm (10 W)', 'About 57 dBm (500 W)'],
+            correctIndex: 0,
+            explanation:
+              "The BUC supplies 16 dBm of drive and the HPA adds 34 dB of gain, which gives 50 dBm, or 100 W. That's 10 dB under the amplifier's 1 kW P1dB, its 1 dB compression point.",
+            pointPenalty: 5,
+          },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 5,
+    },
+    // The backoff quiz used to sit in the spot check above, where it could be
+    // answered before the TX tab was ever opened (nats-s09-F4)
+    {
+      id: 'vt-tx-backoff-check',
+      nice: ['K0740'],
+      title: 'VT-01 HPA Backoff Reading',
+      description: 'Read the HPA backoff on the TX Chain tab, then pick what it means.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['vt-tx-hpa-check'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          hidden: true,
+          description: 'TX Chain Open',
+          params: { tab: 'tx-chain' },
           mustMaintain: true,
         },
         {
@@ -360,14 +447,15 @@ export const scenario9Data: ScenarioData = {
               'Output stage saturation - the amplifier is clipping at its peak',
             ],
             correctIndex: 0,
-            explanation: 'Headroom is the goal. No drama on TIDEMARK-1.',
+            explanation:
+              "Backoff is deliberate headroom. Running 10 dB under P1dB means 50 dBm (100 W) from a 1 kW amplifier, with the IM3 (2-tone) readout around -43 dBc. It isn't a fault, a customer setting or saturation, which is what the other three options claim.",
             pointPenalty: 5,
           },
           mustMaintain: false,
         },
       ],
       conditionLogic: 'AND',
-      points: 10,
+      points: 5,
     },
 
     // ============================================================
@@ -379,7 +467,7 @@ export const scenario9Data: ScenarioData = {
       title: 'Open ME-02',
       description: 'Switch to the Maine Ground Station.',
       groundStation: 'ME-02',
-      prerequisiteObjectiveIds: ['vt-tx-hpa-check'],
+      prerequisiteObjectiveIds: ['vt-tx-backoff-check'],
       timeLimitSeconds: 1 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -415,15 +503,15 @@ export const scenario9Data: ScenarioData = {
           description: 'ME-02 Alarm Status',
           params: {
             character: Character.SYSTEM,
-            question: 'What is the alarm state on ME-02?',
+            question: 'What alarm state does the ME-02 Dashboard show?',
             options: [
-              'No active alarms - station nominal',
-              'Antenna tracking lost - ACU alarm active',
-              'GPSDO in holdover - timing alarm',
-              'LNB over-temperature - RX chain alarm',
+              'No warning or critical alarms',
+              'An antenna tracking-lost alarm from the ACU',
+              'A GPSDO holdover alarm on the timing chain',
+              'An LNB over-temperature alarm on the RX chain',
             ],
             correctIndex: 0,
-            explanation: 'Maine is clean. Catherine has the station in good shape.',
+            explanation: 'The Maine Dashboard shows nothing above informational, so there are no warning or critical alarms. Catherine has the station in good shape.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -436,7 +524,8 @@ export const scenario9Data: ScenarioData = {
       id: 'me-rx-beacon-check',
       nice: ['T0153', 'K1032', 'K0773'],
       title: 'ME-02 TIDEMARK-2 Beacon Check',
-      description: 'Verify the TIDEMARK-2 beacon is present on the spectrum analyzer and the LNB is thermally stable.',
+      description:
+        'The ME-02 analyzer is still parked on the TM-1 beacon IF. Retune it to the TIDEMARK-2 beacon IF (1070 MHz) and confirm the beacon is present and the LNB noise temperature is normal.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['me-dashboard-check'],
       timeLimitSeconds: 3 * 60,
@@ -454,11 +543,21 @@ export const scenario9Data: ScenarioData = {
           description: 'LNB Powered',
           params: { equipment: 'lnb', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
+          requiresChange: false,
         },
         {
           type: 'lnb-thermally-stable',
-          description: 'LNB Thermally Stable',
+          description: 'LNB Noise Temperature Normal',
           params: { requiresObservation: true, observationTab: 'rx-analysis' },
+          mustMaintain: true,
+        },
+        {
+          type: 'speca-center-frequency',
+          description: 'Spectrum Analyzer at 1070 MHz IF',
+          params: {
+            centerFrequency: 1070e6 as Hertz,
+            centerFrequencyTolerance: 0.5e6,
+          },
           mustMaintain: true,
         },
         {
@@ -512,7 +611,8 @@ export const scenario9Data: ScenarioData = {
               'TIDEMARK-2 is in an inclined orbit - figure-8 drift is predictable; program-track follows it',
             ],
             correctIndex: 0,
-            explanation: 'For a healthy GEO bird with good TLE, program-track is the right default. Save step-track for inclined birds like AURORA-7.',
+            explanation:
+              "For a healthy GEO bird with a good TLE (the orbital element set), program-track is the right default, because the satellite holds station and the dish doesn't need to hunt for the beacon. Save step-track for inclined birds like AURORA-7.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -525,18 +625,26 @@ export const scenario9Data: ScenarioData = {
       id: 'me-tx-payload-spot',
       nice: ['T0153', 'K0740'],
       title: 'ME-02 Customer Traffic Indicator',
-      description: 'Verify your understanding of how to spot-check downlink data integrity from the dashboard.',
+      // nats-r4-s09-F1: frame sync / CRC / FEC live on RX Analysis > Payload
+      // Data Integrity; the Dashboard has no such indicators
+      description: 'Spot-check downlink data integrity on RX Analysis. The Payload Data Integrity card shows frame sync, CRC and FEC for the receiver.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['me-verify-tracking'],
       timeLimitSeconds: 1 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
         {
+          type: 'tab-active',
+          description: 'RX Analysis Tab Open',
+          params: { tab: 'rx-analysis' },
+          mustMaintain: true,
+        },
+        {
           type: 'status-check',
           description: 'Payload Health Indicators',
           params: {
             character: Character.SYSTEM,
-            question: 'On a routine spot check, which combination of indicators confirms the downlink data path is healthy?',
+            question: 'On the Payload Data Integrity card, which combination of indicators confirms the downlink data path is healthy?',
             options: [
               'Frame sync locked + CRC valid + FEC engaged (Reed-Solomon active, no uncorrectables)',
               'RX power high + AGC mid-range + C/N above threshold (strong carrier, data must follow)',
@@ -544,7 +652,8 @@ export const scenario9Data: ScenarioData = {
               'Modem temperature in range + fans nominal + no hardware alarms (healthy unit, clean data)',
             ],
             correctIndex: 0,
-            explanation: 'Beacon lock proves the RF path. Frame sync + CRC + FEC prove the data path. Different layers, different evidence.',
+            explanation:
+              "Beacon lock only proves the RF path. Frame sync, CRC and FEC are checks on the data itself, so they're what prove the data path. The other options are RF or hardware evidence, which can't tell you whether the data is arriving intact.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -578,12 +687,43 @@ export const scenario9Data: ScenarioData = {
       points: 5,
     },
     {
+      // Phase 27: never slew a keyed dish. The carrier would sweep ~100 W
+      // across the GEO arc, and the sister teleport takes over the TM-1
+      // carrier: two uplinks on one carrier interfere
+      id: 'inhibit-vt-tx',
+      nice: ['S0421', 'K0741'],
+      title: 'Inhibit TX Before Repointing',
+      description:
+        "The sister teleport is taking TIDEMARK-1's carrier for the check. On TX Chain, disable VT-01's HPA output before the dish moves. A keyed dish sweeping off TIDEMARK-1 would paint the neighboring satellites, and two stations on one carrier would interfere. Until you take TM-1 back, expect two alarms on VT-01's Dashboard: 'AGC on noise only' (with our carrier off, the receive modem's passband holds noise and no traffic carrier) and 'Carrier lock lost' (Modem 1 has no carrier to lock to). Both are expected, and both clear once VT-01 takes TM-1 back.",
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['switch-to-vermont'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          hidden: true,
+          description: 'TX Chain Open',
+          params: { tab: 'tx-chain' },
+          mustMaintain: true,
+        },
+        {
+          type: 'hpa-disabled',
+          description: 'HPA Output Disabled (TX Inhibited)',
+          mustMaintain: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 5,
+    },
+    {
       id: 'repoint-to-tidemark3',
       nice: ['S0421', 'K1032', 'T1567'],
       title: 'Repoint VT-01 to TIDEMARK-3',
-      description: 'Command program-track to TIDEMARK-3 (NORAD 61527) at Az 140.5°, El 37.8°. TM-1 traffic is briefly handed to the sister teleport for this check.',
+      description:
+        'With TX inhibited, command program-track to TIDEMARK-3 (NORAD 61527), which sits at Az 145.7°, El 32.7°. Pick it in Target Satellite (the pick only stages it), then press Move to Target.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['switch-to-vermont'],
+      prerequisiteObjectiveIds: ['inhibit-vt-tx'],
       timeLimitSeconds: 3 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -595,9 +735,8 @@ export const scenario9Data: ScenarioData = {
           mustMaintain: true,
         },
         {
-          type: 'antenna-tracking-mode-set',
-          description: 'Program-Track Mode',
-          params: { trackingMode: 'program-track' },
+          type: 'hpa-disabled',
+          description: 'TX Still Inhibited',
           mustMaintain: true,
         },
         {
@@ -674,7 +813,8 @@ export const scenario9Data: ScenarioData = {
               'Nothing about the chain (any noise spike near 1078 would look the same on a 5250 LO)',
             ],
             correctIndex: 0,
-            explanation: 'Both have to be right. Wrong pointing = no signal. Wrong LO = signal at a different IF.',
+            explanation:
+              'Both have to be right. If the dish is off TIDEMARK-3 you see no beacon at all, and if the LO is wrong the beacon shows up at a different IF. Seeing it at exactly 1078 MHz means the pointing and the LO are both correct.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -687,7 +827,8 @@ export const scenario9Data: ScenarioData = {
       id: 'return-to-tidemark1',
       nice: ['S0421', 'K1032'],
       title: 'Return VT-01 to TIDEMARK-1',
-      description: 'Repoint program-track back to TIDEMARK-1 and retune the spectrum analyzer to the TM-1 beacon IF (1074.5 MHz).',
+      description:
+        'Repoint program-track back to TIDEMARK-1 (pick it in Target Satellite, then Move to Target) and retune the spectrum analyzer to the TM-1 beacon IF (1074.5 MHz).',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['tidemark3-beacon-quality'],
       timeLimitSeconds: 2 * 60,
@@ -713,6 +854,33 @@ export const scenario9Data: ScenarioData = {
       points: 10,
     },
 
+    {
+      id: 'restore-vt-tx',
+      nice: ['S0421', 'K0741'],
+      title: 'Take TIDEMARK-1 Back',
+      description: "You're back on TIDEMARK-1 and locked, so the sister teleport drops the carrier and VT-01 takes it back. On TX Chain, enable the HPA output again.",
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['return-to-tidemark1'],
+      timeLimitSeconds: 2 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'tab-active',
+          hidden: true,
+          description: 'TX Chain Open',
+          params: { tab: 'tx-chain' },
+          mustMaintain: true,
+        },
+        {
+          type: 'hpa-enabled',
+          description: 'HPA Output Enabled',
+          mustMaintain: true,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 5,
+    },
+
     // ============================================================
     // SHIFT WRAP
     // ============================================================
@@ -722,7 +890,7 @@ export const scenario9Data: ScenarioData = {
       title: 'Final Alarm Sweep',
       description: 'Do a final dashboard sweep before logging the shift summary.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['return-to-tidemark1'],
+      prerequisiteObjectiveIds: ['restore-vt-tx'],
       timeLimitSeconds: 1 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -738,7 +906,7 @@ export const scenario9Data: ScenarioData = {
           description: 'Three-Bird Health Summary',
           params: {
             character: Character.SYSTEM,
-            question: 'Summarize the morning round result.',
+            question: 'Which line summarizes the result of the morning round?',
             options: [
               'TIDEMARK-1 healthy, TIDEMARK-2 healthy, TIDEMARK-3 beacon verified - all three nominal',
               'TIDEMARK-1 degraded, TIDEMARK-2 healthy, TIDEMARK-3 beacon absent - one bird offline',
@@ -746,7 +914,8 @@ export const scenario9Data: ScenarioData = {
               'TIDEMARK-1 healthy, TIDEMARK-2 healthy, TIDEMARK-3 not yet verified - spot-check deferred',
             ],
             correctIndex: 0,
-            explanation: 'Clean round. Log it and move on.',
+            explanation:
+              'All three birds checked out: TIDEMARK-1 and TIDEMARK-2 were healthy and the TIDEMARK-3 beacon was verified. Each of the other lines describes a bird that was degraded, unchecked or deferred, and none of that happened.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -759,26 +928,36 @@ export const scenario9Data: ScenarioData = {
       id: 'log-shift-summary',
       nice: ['K0645', 'T0153'],
       title: 'Log Shift Summary',
-      description: 'Select the correct entry for the shift log.',
+      description:
+        'Type a one-line summary of the round in the Operations Log (log icon in the station sidebar): mention the morning rounds and the TM-3 beacon check. Then pick the line that matches it.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['final-alarm-sweep'],
       timeLimitSeconds: 1 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
         {
+          type: 'ops-log-entry',
+          description: 'Round Summary Typed in Ops Log',
+          params: { logKeywords: ['round', 'tm-3|tm3|tidemark-3|tidemark 3'], logMinLength: 20 },
+          mustMaintain: false,
+        },
+        {
           type: 'status-check',
           description: 'Shift Log Entry',
           params: {
             character: Character.SYSTEM,
+            // nats-r3-s09-F1: no clock stamp in the options; the Ops Log stamps
+            // the station clock on the entry itself
             question: 'Which line correctly records this shift in the operations log?',
             options: [
-              '0700 - Morning rounds complete. VT-01/TM-1, ME-02/TM-2, TM-3 beacon verified via VT-01 spot-check. No anomalies.',
-              '0700 - Morning rounds incomplete. VT-01/TM-1, ME-02/TM-2 checked, TM-3 spot-check deferred to next shift. No anomalies.',
-              '0700 - Morning rounds complete. VT-01/TM-1, ME-02/TM-2 checked, multiple alarms cleared on VT-01. See trouble ticket.',
-              '0700 - Morning rounds complete. VT-01 repointed to TM-3 for spot-check, TM-1 traffic swapped to ME-02. No anomalies.',
+              'Morning rounds complete. VT-01/TM-1 and ME-02/TM-2 checked, TM-3 beacon verified with TM-1 on the sister teleport. Expected alarms cleared. No anomalies.',
+              'Morning rounds incomplete. VT-01/TM-1 and ME-02/TM-2 checked, TM-3 spot-check deferred to the next shift because the sister teleport was busy. No anomalies.',
+              'Morning rounds complete. VT-01/TM-1 and ME-02/TM-2 checked, TM-3 beacon verified. Trouble ticket opened for the two alarms VT-01 raised during the check.',
+              'Morning rounds complete. VT-01 repointed to TM-3 for the spot-check while TM-1 customer traffic dropped for the duration. TM-3 beacon verified. No anomalies.',
             ],
             correctIndex: 0,
-            explanation: 'Routine work logged routinely. Next operator picks up with full context.',
+            explanation:
+              'Routine work gets logged routinely: what you checked, what the TM-3 check needed (TM-1 on the sister teleport meanwhile) and that nothing was found. The two VT-01 alarms, AGC on noise only and Carrier lock lost, were the expected result of the TX inhibit and cleared once VT-01 took TM-1 back. They belong in the log line rather than a trouble ticket. The Operations Log stamps the station clock on the entry for you, so the next operator picks up with full context.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -795,7 +974,7 @@ export const scenario9Data: ScenarioData = {
         <em>[Text message from Dana at 06:42]</em>
       </p>
       <p>
-        "Welcome to your first qualified shift. Three birds today - TM-1, TM-2, TM-3. Overnight commissioning crew brought TM-3 up a few hours ago; just need a beacon spot-check before customers light it up. Standard morning rounds. Coffee's in the kitchen."
+        "Welcome to your first qualified shift. You've got three birds today: TM-1, TM-2 and TM-3. The overnight commissioning crew brought TM-3 up a few hours ago, and it just needs a beacon spot-check before customers light it up. Otherwise it's standard morning rounds."
       </p>
       `,
       character: Character.DANA_TORRES,
@@ -806,7 +985,7 @@ export const scenario9Data: ScenarioData = {
       'select-maine-station': {
         text: `
         <p>
-          VT-01 looks clean. Catherine's run Maine since the handover stuck - shouldn't be anything to surprise you over there.
+          VT-01 looks clean. Catherine's run Maine since the weather handover, so there shouldn't be anything over there to surprise you.
         </p>
         `,
         character: Character.DANA_TORRES,
@@ -816,13 +995,30 @@ export const scenario9Data: ScenarioData = {
       'switch-to-vermont': {
         text: `
         <p>
-          Maine confirmed nominal. Sister teleport is taking TM-1 customer traffic for the next few minutes while you spot-check TM-3. No transmit needed - just a beacon look. Antenna's yours.
+          Maine's confirmed nominal. The sister teleport is taking the TM-1 customer traffic for the next few minutes while you spot-check TM-3, so you'll switch our transmit output off before the dish moves. You don't need to transmit for a beacon look, and the antenna's yours.
         </p>
         `,
         character: Character.DANA_TORRES,
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/9/obj-switch-to-vermont.mp3'),
       },
+      'log-shift-summary': {
+        text: `
+        <p>
+          That's the morning done, and routine work got logged routinely. I'll admit I had you down for a few more weeks of supervised shifts, and I was wrong. This is what most days in qualified ops look like.
+        </p>
+        <p>
+          I'll see you tomorrow.
+        </p>
+        `,
+        character: Character.DANA_TORRES,
+        emotion: Emotion.HAPPY,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/9/obj-log-shift-summary.mp3'),
+      },
+    },
+    // nats-r3-s02-F1 (D18): Dana's "Bring VT-01 back" plays as the return step
+    // opens, not after the retune is already done
+    objectivesOnStart: {
       'return-to-tidemark1': {
         text: `
         <p>
@@ -832,19 +1028,6 @@ export const scenario9Data: ScenarioData = {
         character: Character.DANA_TORRES,
         emotion: Emotion.CONFIDENT,
         audioUrl: getAssetUrl('/assets/campaigns/nats/9/obj-return-to-tidemark1.mp3'),
-      },
-      'log-shift-summary': {
-        text: `
-        <p>
-          That's the morning. Routine work logged routinely. Welcome to qualified ops - this is what most days look like.
-        </p>
-        <p>
-          See you tomorrow.
-        </p>
-        `,
-        character: Character.DANA_TORRES,
-        emotion: Emotion.HAPPY,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/9/obj-log-shift-summary.mp3'),
       },
     },
   },

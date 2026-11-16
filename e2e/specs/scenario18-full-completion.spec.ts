@@ -28,6 +28,16 @@ interface Scenario18Objective {
   stationId?: string;
   trackingMode?: string;
   autoWaitSeconds?: number;
+  /** Reads the panel the quiz is about and asserts the keyed option is what the screen shows */
+  checkScreen?: (page: import('@playwright/test').Page) => Promise<void>;
+}
+
+/** ME-02's ACU beacon C/N as the panel shows it (e.g. "28.0 dB") */
+async function readAcuBeaconCn(page: import('@playwright/test').Page): Promise<number> {
+  const text = (await page.locator('[id$="beacon-cn-value"]:visible').first().textContent()) ?? '';
+  const match = /[-+]?\d+(?:\.\d+)?/u.exec(text);
+  expect(match, `ACU beacon C/N reads a number (got "${text}")`).not.toBeNull();
+  return Number.parseFloat(match![0]);
 }
 
 const SCENARIO_18_OBJECTIVES: Scenario18Objective[] = [
@@ -55,13 +65,13 @@ const SCENARIO_18_OBJECTIVES: Scenario18Objective[] = [
     id: 'dashboard-baseline',
     title: 'Station Health vs Link Health',
     type: 'quiz',
-    correctAnswer: "The ground segment is healthy - the degradation is on the space side or in the geometry, matching Halifax's report",
+    correctAnswer: "The ground segment is healthy - the problem is on the space side or in the geometry, matching Halifax's report",
   },
   {
     id: 'station-keeping-quiz',
     title: 'What Died on the Spacecraft',
     type: 'quiz',
-    correctAnswer: 'Residual inclination builds - the bird traces a daily figure-8 in az/el that grows over weeks, and the ephemeris gets steadily more wrong',
+    correctAnswer: 'A daily figure-8 - the bird swings about 1.3° north and south of its slot, and the pre-burn ephemeris does not show it',
   },
   {
     id: 'read-program-track-decay-tab',
@@ -73,13 +83,25 @@ const SCENARIO_18_OBJECTIVES: Scenario18Objective[] = [
     id: 'read-program-track-decay',
     title: 'Read the Program-Track Decay',
     type: 'quiz',
-    correctAnswer: 'Program-track IS on the ephemeris target - the satellite is somewhere else, and the gap between prediction and reality is paid in pattern loss',
+    correctAnswer: 'Program-track IS on the ephemeris target - the satellite is elsewhere, and the gap between prediction and reality costs pattern loss',
+    // The sag the quiz names: ~28 dB on the stale ephemeris against ~34 under step-track
+    checkScreen: async (page) => {
+      const beaconCn = await readAcuBeaconCn(page);
+      expect(beaconCn).toBeGreaterThan(24);
+      expect(beaconCn).toBeLessThan(31);
+    },
   },
   {
     id: 'beamwidth-risk-quiz',
     title: 'How Long Until It Falls Off',
     type: 'quiz',
-    correctAnswer: 'Already lost - the excursion is several beamwidths and growing; any fix that follows the ephemeris fails until Halifax publishes a corrected one',
+    correctAnswer: 'Borrowed time - in about twenty minutes the gap reaches about one beamwidth (~0.55-0.6°) and the carrier would drop out of lock',
+    // "about 0.4 deg now (beacon ~6 dB down)": the ACU still shows the sag
+    checkScreen: async (page) => {
+      const beaconCn = await readAcuBeaconCn(page);
+      expect(beaconCn).toBeGreaterThan(24);
+      expect(beaconCn).toBeLessThan(31);
+    },
   },
 
   // PHASE 2: TRANSITION TO STEP-TRACK
@@ -93,7 +115,7 @@ const SCENARIO_18_OBJECTIVES: Scenario18Objective[] = [
     id: 'acquire-stable-beacon',
     title: 'Beacon Recovery',
     type: 'auto',
-    autoWaitSeconds: 25,
+    autoWaitSeconds: 120,
   },
   {
     id: 'verify-carrier-recovery-tab',
@@ -105,34 +127,40 @@ const SCENARIO_18_OBJECTIVES: Scenario18Objective[] = [
     id: 'verify-carrier-recovery',
     title: 'Carrier Recovery',
     type: 'auto',
-    autoWaitSeconds: 25,
+    autoWaitSeconds: 90,
   },
   {
     id: 'no-manual-chase-quiz',
     title: 'Why Not Fly It By Hand',
     type: 'quiz',
-    correctAnswer: 'A human chases where the bird WAS; the loop tracks where it IS - nudges add error between corrections, and a bad nudge can drop the beacon',
+    correctAnswer: 'A human chases where the bird WAS while the loop tracks where it IS - nudges add error, and a bad one can drop the beacon',
   },
 
   // PHASE 3: HOLD AND REPORT
   {
+    // Phase 27: the 30 s watch accrues only while ACU Control is open
+    id: 'sustained-hold-tab',
+    title: 'Open ACU Control',
+    type: 'click-tab',
+    tabId: 'acu-control',
+  },
+  {
     id: 'sustained-hold',
-    title: 'Hold Through the Drift',
+    title: 'Watch the Link Through the Drift',
     type: 'auto',
-    autoWaitSeconds: 40,
+    autoWaitSeconds: 90,
   },
   {
     id: 'ground-observations-quiz',
     title: 'Feed the Vehicle Team',
     type: 'quiz',
-    correctAnswer: 'Timestamped step-track pointing history - the dish is physically following the satellite, so its az/el trace is a measurement of the actual orbit',
+    correctAnswer: 'Timestamped step-track pointing history - the dish is following the satellite, so its az/el trace measures the actual orbit',
   },
   {
     id: 'impact-assessment-quiz',
     title: 'Customer Impact Posture',
     type: 'quiz',
-    correctAnswer:
-      'No current impact; service nominal under step-track. Elevated risk while the anomaly is open; decision points are step-track margin loss or a Halifax status change',
+    correctAnswer: 'No current impact; service nominal under step-track. Elevated risk while the anomaly is open; decision points: step-track margin loss, Halifax status change',
   },
   {
     id: 'escalation-boundary-quiz',
@@ -145,7 +173,7 @@ const SCENARIO_18_OBJECTIVES: Scenario18Objective[] = [
     title: 'Log the Anomaly Response',
     type: 'quiz',
     correctAnswer:
-      'TM-2 vehicle anomaly (Halifax ref): N-S burns suspended, ephemeris stale. ME-02 step-track from 0935, carrier recovered, no impact. Pointing history to Halifax. Anomaly OPEN.',
+      'TM-2 vehicle anomaly (Halifax ref): N-S burn overran, ~1.3° inclination, ephemeris stale. ME-02 on step-track (time in the Ops Log), carrier recovered, no impact. Pointing history to Halifax. Anomaly OPEN.',
   },
 ];
 
@@ -177,6 +205,7 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
   switch (objective.type) {
     case 'quiz':
       await waitForQuizToAppear(page);
+      await objective.checkScreen?.(page);
       await answerQuizByText(page, objective.correctAnswer!);
       break;
 
@@ -197,7 +226,16 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
       break;
 
     case 'auto':
-      await page.waitForTimeout((objective.autoWaitSeconds ?? 5) * 1000);
+      // Holds (maintainDuration) complete the objective on their own; wait
+      // for it rather than a fixed sleep
+      await page.waitForFunction(
+        (id) => {
+          const hook = (window as unknown as { debugObjective?: (id: string) => { isCompleted?: boolean } }).debugObjective;
+          return typeof hook === 'function' && hook(id)?.isCompleted === true;
+        },
+        objective.id,
+        { timeout: (objective.autoWaitSeconds ?? 30) * 1000, polling: 500 }
+      );
       break;
   }
 
@@ -247,7 +285,7 @@ test.describe('Scenario 18 Full Completion', () => {
   for (const objective of SCENARIO_18_OBJECTIVES) {
     test(`[${objective.id}] ${objective.title}`, async () => {
       if (objective.type === 'auto' && (objective.autoWaitSeconds ?? 0) >= 30) {
-        test.setTimeout(120000);
+        test.setTimeout((objective.autoWaitSeconds! + 30) * 1000);
       }
       await executeObjective(page, missionControlPage, objective);
     });

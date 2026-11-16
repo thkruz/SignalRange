@@ -1,4 +1,5 @@
 import { errorManagerInstance } from '@app/engine/utils/errorManager';
+import { rememberMissionResult } from '@app/scoring/mission-records';
 import { ReplaySession } from './replay-session';
 import {
   Achievement,
@@ -353,6 +354,8 @@ export class UserDataService {
     if (!existing) {
       return null; // No progress to reset
     }
+    const { selectionProgressCache } = await import('./selection-progress-cache');
+    rememberMissionResult(selectionProgressCache.accountId, existing);
 
     // Reset all gameplay fields but preserve completedAt
     return this.updateScenarioProgress(scenarioId, {
@@ -396,7 +399,11 @@ export class UserDataService {
    * Delete checkpoint for a specific scenario
    */
   async deleteCheckpoint(scenarioId: string): Promise<void> {
+    const { selectionProgressCache } = await import('./selection-progress-cache');
+    const { checkpointRecovery } = await import('./checkpoint-recovery');
+    const account = selectionProgressCache.accountId;
     await this.request<void>(`/api/user/apps/${this.config.appId}/scenarios/${scenarioId}/checkpoint`, 'DELETE');
+    checkpointRecovery.clear(account, scenarioId);
   }
 
   /**
@@ -404,7 +411,11 @@ export class UserDataService {
    * This is a bulk operation that clears all scenario_progress and checkpoints
    */
   async deleteAllProgress(): Promise<void> {
+    const { selectionProgressCache } = await import('./selection-progress-cache');
+    const { checkpointRecovery } = await import('./checkpoint-recovery');
+    const account = selectionProgressCache.accountId;
     await this.request<void>(`/api/user/apps/${this.config.appId}/progress`, 'DELETE');
+    checkpointRecovery.clearAccount(account);
   }
 
   /**
@@ -698,6 +709,12 @@ export class UserDataService {
         }
 
         throw new UserDataServiceError(`HTTP ${response.status}: ${response.statusText}`, response.status);
+      }
+
+      // Menu snapshots must not survive a successful progress/checkpoint mutation.
+      if (method !== 'GET' && method !== 'HEAD' && (endpoint.includes('/scenarios/') || endpoint.endsWith('/progress'))) {
+        const { selectionProgressCache } = await import('./selection-progress-cache');
+        selectionProgressCache.invalidate();
       }
 
       // HEAD and DELETE requests don't have a body

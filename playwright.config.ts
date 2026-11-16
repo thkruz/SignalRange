@@ -1,11 +1,25 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// SR_DEV_PORT lets a second worktree run its own dev server and specs beside the main tree's :3000.
+const BASE_URL = `http://127.0.0.1:${process.env.SR_DEV_PORT || '3000'}`;
+
+// E2E_STATIC=1 serves a prebuilt dev-mode bundle (dist-e2e/) from a zero-dependency static server instead of
+// `rspack serve`. It builds only when dist-e2e is missing or E2E_REBUILD=1. See CLAUDE.md "E2E".
+const STATIC = process.env.E2E_STATIC === '1';
+const PORT = process.env.SR_DEV_PORT || '3000';
+const DIST = process.env.E2E_DIST || 'dist-e2e';
+// DIST is the output dir the e2e build empties (output.clean) and is spliced into a shell command: only the e2e dirs are allowed.
+if (!/^dist-e2e(?:-[\w.-]+)?$/u.test(DIST)) throw new Error(`E2E_DIST must be dist-e2e or dist-e2e-<name>, got "${DIST}"`);
+const STATIC_COMMAND = `node -e "const fs=require('fs');if(process.env.E2E_REBUILD==='1'||!fs.existsSync('${DIST}/index.html'))process.exit(require('child_process').spawnSync('pnpm run build:e2e',{stdio:'inherit',shell:true}).status||0)" && node scripts/e2e/serve-dist.mjs --port ${PORT} --dir ${DIST}`;
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  // Local: 16 workers. Measured 2026-11-15 on the static server: the whole suite passes the same at 16 as at 1
+  // (17 min against 3.8 h); 32 showed one asset-load flake. SR_E2E_WORKERS overrides (lanes sharing the machine).
+  workers: process.env.CI ? 1 : Number(process.env.SR_E2E_WORKERS || 16),
   reporter: [
     ['html', { open: 'never' }],
     ['list'],
@@ -18,7 +32,7 @@ export default defineConfig({
   use: {
     // 127.0.0.1 (not localhost) so another dev server bound to IPv6 ::1:3000
     // cannot shadow the rspack server, which binds the IPv4/dual stack.
-    baseURL: 'http://127.0.0.1:3000',
+    baseURL: BASE_URL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -27,12 +41,20 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+      testIgnore: /gallery\//u,
+    },
+    // Dev gallery contact-sheet shots: no simulation timing, safe at high worker counts
+    // (npx playwright test --project=gallery --workers=4)
+    {
+      name: 'gallery',
+      testMatch: /gallery\/.*\.spec\.ts/u,
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1600, height: 1000 } },
     },
   ],
   webServer: {
-    command: 'pnpm run dev',
-    url: 'http://127.0.0.1:3000',
+    command: STATIC ? STATIC_COMMAND : 'pnpm run dev',
+    url: BASE_URL,
     reuseExistingServer: !process.env.CI,
-    timeout: 120000,
+    timeout: STATIC ? 300000 : 120000,
   },
 });

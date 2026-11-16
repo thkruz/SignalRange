@@ -56,6 +56,8 @@ export type ConditionType =
   | 'hpa-not-overdriven' // HPA not in overdrive (IMD check)
   | 'hpa-output-power-set' // HPA output power above threshold
   | 'receiver-signal-locked' // Receiver modem has demodulation lock
+  | 'satellite-pass-phase' // The satellite has passed culmination / set at the objective's station (latched, Phase 35 D9)
+  | 'receiver-relocked' // Receiver modem lost lock during the watch and has locked again (Phase 29 D10)
   | 'receiver-snr-threshold' // Receiver modem C/N ratio meets threshold
   | 'rx-modem-frequency-set' // Receiver modem center frequency set
   | 'rx-modem-bandwidth-set' // Receiver modem bandwidth set
@@ -77,11 +79,12 @@ export type ConditionType =
   | 'handover-complete' // Traffic handover to target station completed
   | 'traffic-owner' // Ground station owns traffic to satellite
   | 'traffic-transferred' // Traffic transferred from source to target station
-  | 'service-continuity' // No packet loss during handover (placeholder - always passes)
+  | 'service-continuity' // PLACEHOLDER (always passes) - do not author until Phase 23.2 models packet loss
   | 'ground-station-selected' // Ground station selected in UI
   | 'satellite-selected' // Satellite selected in UI asset tree
   // UI interaction conditions
   | 'mission-brief-opened' // Mission brief document has been opened
+  | 'ops-log-entry' // Operator typed an Ops Log entry (optionally containing keywords)
   | 'tab-active' // Specific tab is currently active in TabbedCanvas
   // FEC/Payload conditions
   | 'rx-frame-sync-locked' // RX frame synchronization locked/unlocked
@@ -96,12 +99,21 @@ export type ConditionType =
   // Fault injection conditions
   | 'fault-active' // Check if specific fault is currently injected
   | 'fault-cleared' // Check if specific fault has been cleared
+  // Physical plant conditions (Phase 38.1, read the plant action log)
+  | 'part-inspected' // The player inspected, wiggled or felt params.partId
+  | 'part-measured' // The player measured params.partId (optionally with params.tool)
+  | 'part-swapped' // The player fitted a spare to params.partId
+  | 'plant-fault-cleared' // The plant fault params.faultId existed and is gone
+  | 'ineffective-action' // At least params.minCount (default 1) fix actions changed nothing
   | 'hardware-fault-tripped' // A scheduled hardwareFaultEvents entry has tripped (gate an objective on the event, not the clock)
   // Geolocation conditions (Campaign 5)
   | 'geolocation-measurements-collected' // >= N TDOA/FDOA captures collected
   | 'geolocation-fix-accuracy' // Computed fix within N km of the emitter truth
   | 'geolocation-ellipse-within' // Computed fix converged with a 95% error ellipse no wider than N km (semi-major)
   | 'interference-event-ended' // A scripted interference event's envelope has closed (it ran and stopped)
+  | 'weather-event-ended' // A scheduled weather event (rain cell, storm, sun transit) has run its course
+  | 'weather-event-peaked' // A scheduled weather event's degradation has passed its maximum (Phase 29 D10)
+  | 'scenario-time-reached' // The station clock (scenario UTC) has reached params.scenarioTime, e.g. a pass window opening at 10:00
   // Electronic-attack / SATCOM denial conditions (Campaign 4)
   | 'jamming-uplink-active' // Jam waveform radiating in the target uplink band
   | 'jamming-effective' // J/S at the target transponder meets the denial threshold
@@ -168,6 +180,9 @@ export const EVIDENCE_FACT_IDS = [
   'telemetry-stale', // the telemetry stream has no fresh frame (link down)
   'transponder-interference-active', // an interference event relayed through a satellite transponder is in progress
   'terrestrial-interference-active', // an interference event arriving at the dish directly from a ground emitter is in progress
+  'field-supply-absent', // Campaign 6: a field service has no power at its source (false without a plant)
+  'field-provider-restricted', // Campaign 6: a service provider is restricted or in outage (false without a plant)
+  'field-local-path-down', // Campaign 6: a service's local path is down while its power is up (false without a plant)
 ] as const;
 
 export type EvidenceFactId = (typeof EVIDENCE_FACT_IDS)[number];
@@ -237,7 +252,10 @@ export type EquipmentRef = 'antenna' | 'gpsdo' | 'buc' | 'lnb' | 'hpa' | 'filter
  * Parameters for different condition types
  */
 export interface ConditionParams {
-  /** For antenna-locked: which satellite (NORAD ID) */
+  /**
+   * For antenna-locked: which satellite (NORAD ID). For antenna-beacon-locked:
+   * the beacon must be this satellite's (the antenna's selected target)
+   */
   noradId?: number;
   /** For antenna-locked: legacy alias for noradId (kept for backwards compatibility) */
   satelliteId?: number;
@@ -247,6 +265,19 @@ export interface ConditionParams {
   frequency?: number;
   /** For frequency-set: tolerance in Hz */
   frequencyTolerance?: number;
+  /**
+   * For ops-log-entry: words the operator's entry must contain (case-insensitive,
+   * all required; each item may list alternatives separated by "|", e.g. "manual|bypass").
+   * One entry may carry them all, or the entries typed since the objective activated
+   * may share them between them.
+   */
+  logKeywords?: string[];
+  /** For ops-log-entry: minimum entry length in characters (default 10) */
+  logMinLength?: number;
+  /** For speca-span-set: span tolerance in Hz (default: frequencyTolerance, then 1 MHz) */
+  spanTolerance?: number;
+  /** For speca-min-amplitude / speca-max-amplitude: shared tolerance in dB when the per-field ones are omitted (default 5) */
+  amplitudeTolerance?: number;
   /** For lnb-lo-set: target local oscillator frequency in Hz */
   loFrequency?: MHz;
   /** For lnb-lo-set: local oscillator frequency tolerance in Hz */
@@ -287,6 +318,8 @@ export interface ConditionParams {
   maxAmplitudeTolerance?: number;
   /** For custom conditions: custom evaluator function */
   evaluator?: () => boolean;
+  /** For custom conditions: id of a report form (report-form-registry) the checklist row offers to open */
+  reportForm?: string;
 
   // ── decision ─────────────────────────────────────────────────────────────
   /** For decision: the question put to the operator ("What is this?" / "What do you do?") */
@@ -323,11 +356,17 @@ export interface ConditionParams {
   notchIndex?: number;
   /** For antenna-beacon-frequency-set: beacon frequency in Hz */
   beaconFrequency?: number;
+  /**
+   * For antenna-beacon-locked: the beacon C/N (dB, in the 1 kHz tracking
+   * bandwidth, as the ACU shows it) must also be at least this. Turns "lock
+   * holds" into "the beacon has recovered" (phase 19.4, nats-s18-F3).
+   */
+  minBeaconCn?: number;
   /** For antenna-tracking-mode-set: tracking mode */
   trackingMode?: 'stow' | 'maintenance' | 'manual' | 'step-track' | 'program-track';
   /** For antenna-position: target azimuth in degrees */
   azimuth?: number;
-  /** For antenna-position: target elevation in degrees */
+  /** For antenna-position: target elevation in degrees. For satellite-pass-phase 'setting-below': the elevation the satellite must have dropped below */
   elevation?: number;
   /** For antenna-position: position tolerance in degrees (default: 1.0) */
   tolerance?: number;
@@ -337,8 +376,12 @@ export interface ConditionParams {
   backOffTolerance?: number;
   /** For hpa-not-overdriven: maximum IMD level in dBc (optional, defaults to checking isOverdriven) */
   maxImdLevel?: number;
+  /** For hpa-not-overdriven: true accepts a disabled (but powered, not overdriven) HPA. Default false: a disabled HPA is off, not linear (Phase 35 s04-F5) */
+  allowHpaDisabled?: boolean;
   /** For hpa-output-power-set: minimum output power in watts */
   minOutputPower?: number;
+  /** For satellite-pass-phase: which phase of the pass to wait for */
+  phase?: 'past-culmination' | 'setting-below' | 'set';
   /** For receiver-signal-locked/receiver-snr-threshold: which modem (1-4), defaults to active modem */
   modemNumber?: number;
   /** For receiver-afc-enabled: required AFC state (default true; false asserts manual tuning) */
@@ -392,12 +435,41 @@ export interface ConditionParams {
   character?: Character;
   /** For status-check: if true, options will not be randomized (use for "All of the above" questions) */
   preserveOptionOrder?: boolean;
+  /** For status-check: where the question comes from (official pool item or authored applied check) */
+  quizSource?: { kind: 'official' | 'applied'; questionId?: string; group?: string; poolRevision?: string; localId?: string };
+  /** For status-check: figure image shown above the options */
+  figureUrl?: string;
+  /** For status-check: alt text for figureUrl */
+  figureAlt?: string;
+  /** For status-check: per-option feedback shown after a wrong choice (indexed by original option index) */
+  wrongAnswerFeedback?: string[];
+  /** For status-check: where to review the topic, shown after a wrong answer */
+  reviewHint?: string;
   /** For status-check: line appended to the Working Document panel when this quiz is passed */
   documentLine?: string;
   /** For status-check: Working Document section the documentLine belongs to (default: "Notes") */
   documentSection?: string;
-  /** For signal-detected/signal-level-correct: signal identifier to match */
+  /**
+   * For signal-detected/signal-level-correct: signal identifier to match. For
+   * receiver-signal-locked/receiver-snr-threshold (Phase 35 D10): the signal the
+   * modem must be measuring (its targetSignalId); without it any lock counts.
+   */
   signalId?: string;
+  /**
+   * For signal-detected: count a signal wherever it is, not only inside the
+   * analyzer's displayed window (centre +/- span/2, in the domain the analyzer
+   * is tapping). Default false: "detected" means it is on the screen
+   * (Phase 27 B2).
+   */
+  anyTuning?: boolean;
+  /**
+   * For status-check: when the quiz becomes answerable (Phase 27 B7).
+   * Default (omitted): after every non-quiz condition listed BEFORE it in the
+   * objective has latched (the knowledge check follows the doing; a quiz
+   * authored first is still asked first). true: after every non-quiz
+   * condition of the objective. false: as soon as the objective activates.
+   */
+  quizAfterConditions?: boolean;
   /** For signal-detected/signal-level-correct: minimum power level in dBm */
   minPower?: number;
   /** For handover-complete/traffic-owner: target ground station ID */
@@ -434,8 +506,14 @@ export interface ConditionParams {
   keyStatus?: 'Valid' | 'Expired' | 'Pending Rotation' | 'Mismatch' | 'Zeroized';
 
   // Fault injection condition parameters
-  /** For fault-active/fault-cleared: fault ID to check */
+  /** For fault-active/fault-cleared/plant-fault-cleared: fault ID to check */
   faultId?: string;
+
+  // Physical plant condition parameters (Phase 38.1; plant-fault-cleared reuses faultId, ineffective-action reuses minCount)
+  /** For part-inspected/part-measured/part-swapped: plant part, connector or cable id */
+  partId?: string;
+  /** For part-measured: require this tool (any tool if omitted) */
+  tool?: 'multimeter' | 'cable-tester';
 
   // Geolocation condition parameters (Campaign 5)
   /** For geolocation-measurements-collected: minimum capture count */
@@ -446,6 +524,31 @@ export interface ConditionParams {
   maxSemiMajorKm?: number;
   /** For geolocation conditions and interference-event-ended: the interference event in question */
   interferenceEventId?: string;
+  /**
+   * For weather-event-ended: the settings.weatherEvents id that must have run
+   * its course. For weather-event-peaked: the event whose degradation must
+   * have passed its maximum.
+   */
+  weatherEventId?: string;
+  /**
+   * For weather-event-peaked: seconds past the event's peak before the row
+   * ticks (default 0). The peak is the sun-transit midpoint (sin^2 profile),
+   * the start of a rain/storm/wind ramp-down, and the end of any other event.
+   */
+  pastPeakSeconds?: number;
+  /**
+   * For receiver-relocked: the objective whose activation starts the watch
+   * for a lock loss (default: the row's own objective). Name an earlier
+   * objective when the lock may drop before this one comes up, or a player
+   * who reaches it after the drop would wait for a second one.
+   */
+  lockLostAfterObjectiveId?: string;
+  /**
+   * For scenario-time-reached: station clock time of day, UTC as the HUD
+   * shows it, 'HH:MM' or 'HH:MM:SS'. The first such moment at or after the
+   * scenario start, so a shift that crosses midnight still works.
+   */
+  scenarioTime?: string;
 
   // ── nats-eu (Campaign 2) condition parameters ──────────────────────────────
   /** For link-budget-computed / link-margin-met: minimum required margin in dB (default 0) */
@@ -550,6 +653,22 @@ export interface Condition {
   /** Hint or tip to help achieve the condition (optional) */
   hint?: string;
   /**
+   * Free "what to do next" line shown under the row while it is open and its objective is active
+   * (no points penalty, unlike `hint`). One short sentence naming where to act.
+   */
+  next?: string;
+  /**
+   * Where in the world this row's work happens, shown as a muted suffix on its checklist row and listed on the
+   * campaign's "where is it" page (src/objectives/where-locator.ts). Name an object or a place, for example
+   * `Logbook > Worksheets`; C4 and C5 use tab and card names. Replaces the automatic "(check it on the X tab)" suffix.
+   */
+  where?: string;
+  /**
+   * A world target to pulse once, the first time this row's objective becomes active and until the player opens
+   * the target (src/objectives/locate-pulse.ts). Matches a `data-locate` attribute, for example `kit:logbook`.
+   */
+  locate?: string;
+  /**
    * If true, this condition is still enforced for objective completion but is
    * NOT rendered as a row in the checklist. Used to require the operator be on
    * the correct tab without spelling out which tab (qualified-operator scenarios
@@ -558,9 +677,30 @@ export interface Condition {
   hidden?: boolean;
   /** Parameters specific to this condition type */
   params?: ConditionParams;
-  /** Whether this condition must be maintained (true) or just achieved once (false) */
+  /**
+   * Whether this condition must be maintained (true) or just achieved once
+   * (false). With no maintainDuration, true means "must still hold when the
+   * objective completes" (Phase 27 B8); before, it latched after one tick.
+   */
   mustMaintain: boolean;
-  /** Minimum time (in seconds) the condition must be maintained before considered complete */
+  /**
+   * Phase 27 B1: when the condition already reads true on the frame its
+   * objective activates, it counts only after the watched value changes (or
+   * the condition goes false once) after activation, so a start state that
+   * matches the target does not tick the row for the player.
+   * Default: ON for set-type conditions (SET_TYPE_CONDITIONS in
+   * condition-semantics.ts) unless an earlier objective in the chain already
+   * asked for the same setting; OFF for verify/observation/status conditions.
+   * Set false to opt out (the row confirms a state the player is not asked to
+   * make), true to force it on a verify-type row.
+   */
+  requiresChange?: boolean;
+  /**
+   * Minimum time (in seconds) the condition must be maintained before
+   * considered complete. Since Phase 27 B3 the hold accrues only while the
+   * objective's tab-active siblings are on and its observation siblings have
+   * been observed: a "watch it for 20 s" row counts only while watching.
+   */
   maintainDuration?: number;
   /**
    * If true, condition must remain satisfied until ALL conditions in the objective are complete.
@@ -596,12 +736,85 @@ export interface Objective {
   prerequisiteObjectiveIds?: string[];
   /** Optional time limit in seconds for this objective */
   timeLimitSeconds?: number;
-  /** When the timer starts: 'on-activate' (default) or 'on-scenario-load' */
-  timerStartTrigger?: 'on-activate' | 'on-scenario-load';
+  /**
+   * When the timer starts: 'on-activate' (default), 'on-scenario-load', or
+   * 'on-pass-phase' (Phase 35 D9: when the objective's satellite-pass-phase
+   * row latches, e.g. a 2:00 secure-after-LOS countdown)
+   */
+  timerStartTrigger?: 'on-activate' | 'on-scenario-load' | 'on-pass-phase';
+  /**
+   * Whether running out of time fails the scenario. Default false: expiry
+   * stops the timer and deducts `timeoutPenaltyPoints`, and the objective can
+   * still be completed. Set true only where time pressure is the lesson.
+   */
+  timeoutFails?: boolean;
+  /**
+   * Unrecoverable-state check. While the objective is active and incomplete, a true result fails it at once with
+   * `failMessage` (a function so the text can quote live numbers). Must only be true when no player action can still
+   * satisfy the objective; a false positive ends a run that could have been won.
+   */
+  failWhen?: Condition;
+  failMessage?: string | (() => string);
+  /** Points deducted when the timer runs out (non-fatal). Default: half the objective's points, rounded up */
+  timeoutPenaltyPoints?: number;
   /** Optional time penalty: deducts points if completed after elapsed time threshold */
   timePenalty?: TimePenalty;
   /** If true, scenario timer will not start until this objective is completed */
   freezesScenarioTimer?: boolean;
+  /**
+   * Authoring intent for the objective-intent lint
+   * (test/campaigns/nats-objective-intent.test.ts). 'confirm' marks an
+   * objective whose rows are meant to be true already (confirm a pre-staged
+   * state), so the lint does not flag them as completing before the player
+   * acts. Default: the objective asks the player to do something.
+   */
+  intent?: 'confirm';
+  /**
+   * Phase 27 Q4: a real-world wait the scenario compresses (a crew maintenance
+   * window, a pass window, a rain cell). Offers a one-shot skip control in the
+   * command bar while this objective is active; the skip advances scenario
+   * AND run time (weather, thermal settling, sim timers and holds all
+   * progress) and is logged in the Ops Log.
+   *
+   * Phase 28 D1: the skip runs to the end of the hold and stops there. The
+   * end is read from the objective's own rows: a `scenario-time-reached`
+   * clock time, a `weather-event-ended` event end, or the time left on its
+   * `maintainDuration` holds (the latest of these). The button says where it
+   * lands ("Skip to 10:00", "Skip 7 min"). While the wait is on (setup done,
+   * hold running) the mission countdown and the objective's own countdown are
+   * held, so waiting it out and skipping score the same.
+   */
+  timeSkip?: ObjectiveTimeSkip;
+}
+
+/** Objective.timeSkip */
+export interface ObjectiveTimeSkip {
+  /**
+   * Fallback only: simulated minutes to advance when the objective has no
+   * row that says when the wait ends (no scenario-time-reached,
+   * weather-event-ended or maintainDuration row). Ignored otherwise.
+   */
+  minutes?: number;
+  /** What the wait is, for the button tooltip and the Ops Log ("crew maintenance window") */
+  label?: string;
+  /**
+   * Offer the skip only once every other condition of the objective is met
+   * (everything except quizzes and clock-gated rows such as
+   * weather-event-ended): set up first, then skip the wait. Default false:
+   * offered as soon as the objective is active.
+   */
+  availableAfterConditions?: boolean;
+}
+
+/** An objective wait the command bar can skip right now (ObjectivesManager.getAvailableTimeSkip) */
+export interface TimeSkipOffer {
+  objectiveId: string;
+  /** Scenario time the skip covers: the rest of the hold, ms */
+  deltaMs: number;
+  /** Station-clock ms the skip stops at when the hold ends on the clock, else null */
+  landsAtMs: number | null;
+  /** What the wait is ("rain cell"), for the tooltip and the Ops Log */
+  label: string;
 }
 
 /**
@@ -628,12 +841,16 @@ export interface ObjectiveState {
   timeRemainingSeconds?: number;
   /** Whether timer is currently running */
   isTimerRunning: boolean;
+  /** The timer ran out on a non-fatal objective; it is still open, now in overtime */
+  timedOut?: boolean;
   /** Whether a time penalty was applied on completion */
   timePenaltyApplied?: boolean;
   /** Points deducted due to time penalty */
   timePenaltyPoints?: number;
   /** Points deducted from requesting hints (50% of objective points if any hint requested) */
   hintPenaltyPoints?: number;
+  /** The objective's one-shot timeSkip has been used (Phase 27 Q4) */
+  timeSkipUsed?: boolean;
 }
 
 /**
@@ -677,4 +894,50 @@ export interface ConditionState {
    * been continuously inside the band. Reset to 0 by a frame outside it.
    */
   heldSeconds?: number;
+  /**
+   * Phase 27 B1 (requiresChange). undefined: not evaluated since activation.
+   * false: it read true on the activation frame and has not changed since, so
+   * it does not count yet. true: free to count.
+   */
+  changeArmed?: boolean;
+  /** Phase 27 B1: the watched value on the activation frame (valueSnapshot) */
+  changeBaseline?: string;
+  /**
+   * Phase 27 B5: seconds a hidden tab-active row has been the only thing
+   * (besides quizzes) holding its objective up; the checklist names the tab
+   * once this passes TAB_HINT_DELAY_SECONDS.
+   */
+  tabHintSeconds?: number;
+  /**
+   * Phase 29 D10, receiver-relocked: the modem has been seen without lock
+   * since the watch started. Latches; the row then ticks on the next lock.
+   */
+  lockLostSeen?: boolean;
+  /**
+   * Phase 35 D3: seconds an observation-gated row has read true live while its
+   * tab (or station) is not the active one. At OFF_TAB_NUDGE_SECONDS the row
+   * says so and OBJECTIVE_OBSERVATION_PENDING fires once.
+   */
+  liveOffTabSeconds?: number;
+  /** Phase 35 D3: the off-tab nudge has fired for this row (reset when the row is observed) */
+  offTabNudged?: boolean;
+  /** Phase 35 D9, satellite-pass-phase: elevation at the previous evaluation */
+  passPrevElevation?: number;
+  /** Phase 35 D9: the satellite has been seen above the receivable elevation */
+  passSeenAbove?: boolean;
+  /** Phase 35 D9: the satellite has been seen past culmination above the mask */
+  passPastCulmination?: boolean;
+  /** Phase 35 D9: the requested phase has been reached (latched) */
+  passPhaseLatched?: boolean;
 }
+
+/** Phase 35 D3: live-true seconds off the row's tab before the checklist says where to read it */
+export const OFF_TAB_NUDGE_SECONDS = 5;
+
+/**
+ * Phase 27 B5: how long a hidden tab-active row may be the only blocker before
+ * the checklist says which tab to open. Long enough that a qualified operator
+ * who knows where to look never sees it; short enough that a stuck one is not
+ * left guessing.
+ */
+export const TAB_HINT_DELAY_SECONDS = 15;

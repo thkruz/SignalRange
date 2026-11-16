@@ -15,7 +15,7 @@ import { ses10Satellite, tidemark1Satellite } from './satellites';
 /**
  * NATS Level 3: "Weather Emergency Handover"
  *
- * Phase: Introduction (Phase 1, Scenario 3 of 8)
+ * Phase: Introduction (Phase 1, Scenario 3 of 24)
  * Time Pressure: Moderate (snow already falling, 15 minutes before link unusable)
  * Calculation Required: NO - all values provided by Charlie
  * New UI Elements: Ground station switcher, multi-site monitoring, AGC observation
@@ -69,7 +69,7 @@ export const scenario3Data: ScenarioData = {
   duration: '30-40 min',
   difficulty: 'beginner',
   missionType: 'Emergency Operations',
-  description: `Heavy snow is already falling on Vermont - the link margin to TIDEMARK-1 is degrading fast. You've got maybe 15 minutes before the signal drops below operational threshold.<br><br>Your job: bring the Maine backup station online, configure it to match Vermont's parameters exactly, verify signal acquisition, and execute a clean traffic handover before Vermont goes dark. Catherine from Maine is on her way in and will take over once the handover is complete.<br><br>This is your first time managing multiple ground stations simultaneously. Weather handovers happen several times each winter in the Northeast - routine procedure, but time-critical. Don't rush, but don't dawdle either.`,
+  description: `Heavy snow is already falling on Vermont, and the link margin to TIDEMARK-1 is shrinking fast. You've got about 15 minutes before the signal drops below the level the modem can hold.<br><br>Your job is to bring the Maine backup station online, set it up to match Vermont's parameters exactly, confirm it's receiving the satellite, and hand the traffic over before Vermont goes dark. Catherine is on her way to the Maine station and will take over once the handover is complete.<br><br>This is your first time managing two ground stations at once. Weather handovers happen several times each winter in the Northeast, so the procedure is routine, but the clock matters. Work steadily, and don't dawdle.`,
   equipment: ['9-meter C-band Antenna', 'RF Front End', 'Spectrum Analyzer', 'RX/TX Modems', 'ME-02: Available'],
   timeLimitSeconds: 30 * 60, // 30 minutes
   settings: {
@@ -89,13 +89,20 @@ export const scenario3Data: ScenarioData = {
         antennas: [ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK],
         antennasState: [
           {
-            // Stowed, needs to be configured
+            // Stowed at zenith where it last pointed (TIDEMARK-1's azimuth
+            // from Maine), needs to be configured
             isPowered: true,
-            azimuth: 0 as Degrees,
+            azimuth: 157.0 as Degrees,
             elevation: 90 as Degrees,
-            polarization: 0 as Degrees,
+            // polarization: derived from geometry (Phase 29 D8, geoPolarizationSkewDeg)
             isTracking: false,
-            trackingMode: 'manual',
+            // Authored stowed like S12 (phase 33 D14), so the board reads
+            // STOWED rather than Manual Tracking Enabled
+            trackingMode: 'stow',
+            isBeaconLocked: false,
+            targetSatelliteId: null,
+            slewing: false,
+            isLocked: false,
           } as Partial<AntennaState>,
         ],
         rfFrontEnds: [
@@ -115,7 +122,7 @@ export const scenario3Data: ScenarioData = {
             referenceLevel: 0,
             centerFrequency: 1e9 as Hertz,
             span: 100e6 as Hertz,
-            rbw: 1e6 as Hertz,
+            rbw: null,
             minAmplitude: -170,
             maxAmplitude: 0,
             scaleDbPerDiv: 17 as dB,
@@ -130,12 +137,14 @@ export const scenario3Data: ScenarioData = {
             selectedTrace: 1,
           },
         ],
+        // ME-02's modems sit parked from their last use (r2-s03-F3): the
+        // player sets them to match Vermont, so nothing ticks pre-staged
         transmitters: [
           {
             activeModem: 1,
             modems: [
               {
-                isPowered: true,
+                isPowered: false,
                 antenna_id: 1,
                 modem_number: 1,
                 isFaulted: false,
@@ -154,17 +163,23 @@ export const scenario3Data: ScenarioData = {
                   origin: SignalOrigin.TRANSMITTER,
                   noiseFloor: null,
                   gainInPath: 0 as dBi,
-                  frequency: 1094e6 as IfFrequency,
-                  power: -7 as dBm,
-                  bandwidth: 36e6 as Hertz,
-                  modulation: 'QPSK' as ModulationType,
+                  // Parked: the player sets 1,057 MHz (TM-1 TP-1: 7000 - 1057 = 5943 MHz), -7 dBm, 36 MHz, QPSK 3/4
+                  frequency: 983e6 as IfFrequency,
+                  power: -20 as dBm,
+                  bandwidth: 9e6 as Hertz,
+                  modulation: 'BPSK' as ModulationType,
                   fec: '1/2' as FECType,
                 },
               },
             ],
           },
         ],
-        receivers: [Receiver.getDefaultState()],
+        receivers: [
+          {
+            ...Receiver.getDefaultState(),
+            modems: Receiver.getDefaultState().modems.map((modem) => (modem.modemNumber === 1 ? { ...modem, modulation: 'BPSK' as ModulationType } : modem)),
+          },
+        ],
       },
     ],
     satellites: [tidemark1Satellite, ses10Satellite],
@@ -177,6 +192,15 @@ export const scenario3Data: ScenarioData = {
         startTime: 5, // 5 seconds into scenario - urgency!
         duration: 7200, // 2 hours
         linkMarginDegradation: 8, // dB - exceeds acceptable threshold
+        // Q5: wet snow at 2+ in/h in 25-40 mph wind outpaces the feed heater
+        // (sized for about 1 in/h; the wind strips its heat). With the heater
+        // on, ice still builds toward 10 - 0.5 x 12 = 4.0 dB (12.7 dB
+        // clear-sky C/N; Phase 29 D9: acquires about 4.7, holds to about
+        // 3.7). C/N under the 4.7 dB reacquire point about 15 min in, lock
+        // lost near 3.5 dB of ice about 22 min in (phase 33 D13: after a
+        // steady handover, nats-s3-heater-lock.test.ts). The heater buys
+        // time; the handover is still needed.
+        heaterMeltDbPerMin: 0.5,
       },
     ],
     trafficOwnership: [
@@ -187,6 +211,9 @@ export const scenario3Data: ScenarioData = {
     ],
     missionBriefUrl: 'https://docs.signalrange.space/campaign-1/scenario-3?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
+    // Brief: Tuesday, 1045 Local (same day as the scheduled maintenance)
+    scenarioStartDate: '2026-02-03',
+    scenarioStartWallTime: '10:45:00',
   },
   objectives: [
     // ============================================================
@@ -198,7 +225,7 @@ export const scenario3Data: ScenarioData = {
       // establishes the procedural framework for weather emergency handover
       nice: ['K0645'],
       title: 'Review Mission Brief',
-      description: 'Open and read the mission brief document including weather handover procedures, then acknowledge you are ready to proceed.',
+      description: "Open the mission brief, read the weather handover procedure, then confirm you're ready to start.",
       groundStation: 'VT-01',
       freezesScenarioTimer: true,
       prerequisiteObjectiveIds: [],
@@ -214,9 +241,9 @@ export const scenario3Data: ScenarioData = {
           description: 'Ready to Proceed',
           params: {
             question: 'Have you reviewed the mission brief and weather handover procedures?',
-            options: ['Yes, I have read the mission brief and I am ready to proceed.'],
+            options: ["Yes, I've read the brief. Starting the handover."],
             correctIndex: 0,
-            explanation: 'The mission timer has started. Snow is already falling - move quickly but carefully.',
+            explanation: 'The mission timer is running now. Snow is already falling, so work quickly but carefully.',
             pointPenalty: 0,
           },
           mustMaintain: false,
@@ -286,7 +313,8 @@ export const scenario3Data: ScenarioData = {
       // protection as critical to maintaining system availability
       nice: ['S0421', 'K0741'],
       title: 'Enable Feed Heater',
-      description: 'Enable the feed heater on VT-01 to prevent ice accumulation on the waveguide and feed assembly.',
+      description:
+        "Turn on the feed heater at VT-01. At this storm's peak the snow loads the feed faster than the heater can melt it, so the heater slows the ice and protects the feed, but it doesn't save the link.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['navigate-acu-vt01-heater'],
       timeLimitSeconds: 2 * 60,
@@ -314,7 +342,7 @@ export const scenario3Data: ScenarioData = {
       // S0593: Skill in prioritizing operational tasks
       nice: ['K0721', 'S0593'],
       title: 'Understand Operational Priorities',
-      description: 'Learn the priority framework for handling multiple operational concerns.',
+      description: 'Pick the right priority order for handling several concerns at once.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['enable-vt01-heater'],
       timeLimitSeconds: 2 * 60,
@@ -324,7 +352,7 @@ export const scenario3Data: ScenarioData = {
           type: 'status-check',
           description: 'Priority Framework',
           params: {
-            question: 'When multiple issues need attention simultaneously, what is the correct priority order?',
+            question: "When several issues need attention at once, what's the correct priority order?",
             options: [
               'Safety → Customer Impact → Equipment Protection → Efficiency',
               'Customer Impact → Safety → Efficiency → Equipment Protection',
@@ -333,7 +361,7 @@ export const scenario3Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              "Safety always comes first - protecting personnel from RF hazards or other dangers. Next is customer impact - maintaining service. Then equipment protection - preventing damage. Finally, efficiency - doing things the optimal way. This framework guides what to address first when multiple concerns compete for attention - it's about prioritization, not about sacrificing lower priorities.",
+              "Safety comes first, because protecting people from RF hazards and other dangers outranks everything else. Customer impact is next, because keeping service up is the job. Then comes equipment protection, to prevent damage, and last is efficiency, which means doing things the optimal way. The order tells you what to handle first when concerns compete. It doesn't mean the lower priorities get ignored.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -350,7 +378,7 @@ export const scenario3Data: ScenarioData = {
       // understanding how ice affects RF performance
       nice: ['K0741', 'K0773'],
       title: 'Understand Feed Heater Consequences',
-      description: 'Understand what would happen if the feed heater was turned off during this storm.',
+      description: 'Work out what would happen if you turned the feed heater off during this storm.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['understand-prioritization'],
       timeLimitSeconds: 2 * 60,
@@ -360,16 +388,16 @@ export const scenario3Data: ScenarioData = {
           type: 'status-check',
           description: 'Understand Feed Heater Consequences',
           params: {
-            question: 'What would happen if the feed heater was turned off during this snow event?',
+            question: 'What would happen if you turned the feed heater off during this snow?',
             options: [
-              'Ice would build up on the feed horn and waveguide and attenuate the signal',
-              'The LNB would cool below spec and its noise temperature would rise',
-              'The antenna drive motors would freeze and the antenna would stop tracking',
-              'Snow would build up on the dish reflector and block the signal path',
+              'Ice would build up on the feed horn and waveguide, weakening the signal',
+              'The LNB would cool below its spec and its noise temperature would climb',
+              'The drive motors would freeze solid and the antenna would stop tracking',
+              'Snow would pile up on the dish reflector and block the whole signal path',
             ],
             correctIndex: 0,
             explanation:
-              'Without the heater, ice would accumulate on the feed horn and waveguide. This causes signal attenuation (making the weather degradation even worse) and can physically damage the feed assembly. The heater prevents ice from forming on these critical RF components.',
+              "Without the heater, ice would build up on the feed horn and waveguide several times faster. Ice weakens the carrier and, because it's wet and lossy, adds noise of its own, so C/N falls fast. It can also physically damage the feed assembly. Even with the heater on, this storm loads the feed faster than the heater melts it, so the heater slows the buildup and buys time but doesn't stop it.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -418,7 +446,7 @@ export const scenario3Data: ScenarioData = {
       // as an indicator of signal level changes
       nice: ['T0153', 'K0740'],
       title: 'Understand AGC Function',
-      description: 'Understand what the AGC (Automatic Gain Control) does and why it matters during weather degradation.',
+      description: "Work out what the AGC (Automatic Gain Control) does, and what it can't do, while the weather degrades the link.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['navigate-rx-vt01-agc'],
       timeLimitSeconds: 3 * 60,
@@ -434,16 +462,16 @@ export const scenario3Data: ScenarioData = {
           type: 'status-check',
           description: 'Understand AGC Consequences',
           params: {
-            question: 'What would happen if the AGC was disabled during this weather event?',
+            question: 'What would happen if the AGC were switched off during this weather?',
             options: [
-              'The output level would fall with the attenuated input until the receiver lost lock',
+              'The input level would sag with the fade, but C/N would fall just the same',
               'The receiver would overheat while trying to process the weakened input signal',
-              'The LNB would raise its own gain automatically to make up for the attenuation',
-              'Nothing would change because AGC only matters in clear weather conditions',
+              'The LNB would raise its own gain automatically to make up for the fade',
+              'The receiver would hold lock longer, because the AGC adds noise of its own',
             ],
             correctIndex: 0,
             explanation:
-              'Without AGC, the output level would drop proportionally as the snow attenuates the input signal. Once the signal falls below the demodulation threshold, the receiver loses lock and data is lost. AGC compensates by automatically increasing gain to maintain a stable output level - but it has limits.',
+              "The AGC holds the level into the modem steady: it measures carrier plus noise and sets its gain to keep the output at -30 dBm. Without it, that level would sag a dB or two with the fade. What it can't do is change C/N, because it turns the noise up and down with the carrier, so the link fails at the same point either way. At VT-01 the gain moves from about -2.5 dB in clear sky to under +1 dB when the carrier loses lock, nowhere near its +10 dB maximum. Watch C/N, not the AGC.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -459,7 +487,7 @@ export const scenario3Data: ScenarioData = {
       // T0153: Monitor network capacity and performance - understanding urgency
       nice: ['K0740', 'T0153'],
       title: 'Understand Time Pressure',
-      description: 'Understand why weather handovers are time-critical operations.',
+      description: 'Work out why a weather handover has to start before the link fails.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-agc-status'],
       timeLimitSeconds: 2 * 60,
@@ -469,16 +497,16 @@ export const scenario3Data: ScenarioData = {
           type: 'status-check',
           description: 'Understand Urgency',
           params: {
-            question: 'I mentioned you have about six minutes before the link fails. What makes weather handovers so time-critical?',
+            question: 'I mentioned you have maybe fifteen minutes before the link fails. What makes weather handovers so time-critical?',
             options: [
-              'Degradation is progressive - once the AGC runs out of range the link fails fast',
+              'Degradation keeps progressing - C/N falls until it crosses the lock threshold',
               'Antenna motors slow in the cold - Maine takes longer to slew onto the satellite',
               'Customer data must be backed up - the transfer has to finish before the switch',
-              'Maine operators are remote - they need time to physically reach the station',
+              'Maine operators are far away - they need time to physically reach the station',
             ],
             correctIndex: 0,
             explanation:
-              "Weather degradation is continuous and progressive. The AGC compensates up to a point, but once it maxes out, any further signal loss causes rapid link failure. There's no graceful degradation - you either have enough margin or you don't. This is why we start the handover process well before the predicted failure point.",
+              "Weather degradation is continuous and progressive. As snow and ice load the feed, C/N keeps falling and nothing at the station gives it back, because the AGC holds the output level but turns the noise up with the carrier. Once C/N falls below about 3.7 dB, the lowest C/N the modem can hold lock at, the carrier drops. There's no graceful fade-out: you either have enough margin or you don't. That's why we start the handover well before the predicted failure point.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -495,7 +523,7 @@ export const scenario3Data: ScenarioData = {
       // understanding multi-site redundancy for weather resilience
       nice: ['K0740', 'K0689'],
       title: 'Understand AGC Limitations',
-      description: 'Understand why AGC alone cannot solve the weather problem.',
+      description: "Work out why the AGC alone can't solve the weather problem.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['estimate-time-remaining'],
       timeLimitSeconds: 2 * 60,
@@ -505,16 +533,16 @@ export const scenario3Data: ScenarioData = {
           type: 'status-check',
           description: 'Understand AGC Limits',
           params: {
-            question: 'The AGC is compensating for the weather degradation. Why do we still need to hand over to Maine?',
+            question: 'The AGC is holding its output steady through the weather. Why do we still need to hand over to Maine?',
             options: [
-              'AGC has a maximum gain limit - once reached, further signal loss cannot be compensated',
-              'AGC uses too much power - during heavy compensation, the receiver may overheat',
-              'AGC introduces phase errors - as gain rises, the demodulator output gets corrupted',
+              'The AGC restores level, not C/N - it amplifies the noise along with the carrier',
+              'The AGC uses too much power - under heavy compensation, the receiver may overheat',
+              'The AGC introduces phase errors - as gain rises, the demodulator output gets corrupted',
               'Maine has a bigger antenna - with more gain, its link has margin Vermont lacks',
             ],
             correctIndex: 0,
             explanation:
-              'AGC can only compensate within its gain range. The forecast predicts 8+ dB of degradation - once the AGC hits its maximum gain, any further signal loss will cause C/N to drop below the demodulation threshold and we lose lock. Maine is 150 miles away with clear weather, so their link is unaffected.',
+              "The AGC levels the total power, carrier plus noise, so it can't improve C/N. As the feed loads with snow and ice, the carrier weakens and the wet feed adds noise of its own. C/N falls while the AGC output stays at -30 dBm and its gain barely moves (about -2.5 dB in clear sky, under +1 dB at loss of lock, against a +10 dB maximum). The modem acquires lock from about 4.7 dB C/N (Required 5.0 plus a 0.5 dB acquisition margin, less the 0.8 dB Es/N0 offset) and holds it down to about 3.7 dB, and below that we lose lock. Maine is 150 miles away with clear weather, so its link is unaffected.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -556,7 +584,7 @@ export const scenario3Data: ScenarioData = {
       // understanding how multi-site operations work
       nice: ['K0689'],
       title: 'Understand Multi-Site Operations',
-      description: 'Confirm you understand how the multi-site control works.',
+      description: "Confirm what switching to Maine does to Vermont's operation.",
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['switch-to-maine'],
       timeLimitSeconds: 2 * 60,
@@ -568,14 +596,14 @@ export const scenario3Data: ScenarioData = {
           params: {
             question: 'You switched to Maine in the asset tree. What is happening to Vermont right now?',
             options: [
-              'Vermont continues operating normally - customers are still being served from VT-01',
+              'Vermont keeps operating normally - customers are still served from VT-01',
               'Vermont has dropped to standby - customers are held until we switch back to VT-01',
               'Vermont is now under Maine control - customers are being served from ME-02',
               'Vermont traffic is automatically paused - customers wait until the handover',
             ],
             correctIndex: 0,
             explanation:
-              "Switching your view to Maine does not affect Vermont operations. VT-01 continues serving customer traffic normally. You are simply changing which station's equipment panels you see and can control. Both stations operate independently.",
+              "Switching your view to Maine doesn't affect Vermont. VT-01 keeps serving customer traffic normally, because you're only changing which station's equipment panels you see and control. The two stations operate independently.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -624,7 +652,7 @@ export const scenario3Data: ScenarioData = {
       // as prerequisite for all RF equipment operation
       nice: ['T0431', 'K0741'],
       title: 'Verify GPSDO Lock Status',
-      description: 'Confirm the GPSDO is locked and providing stable timing reference.',
+      description: 'Confirm the GPSDO is locked and providing a stable timing reference.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['navigate-gps-timing-maine'],
       timeLimitSeconds: 3 * 60,
@@ -667,11 +695,11 @@ export const scenario3Data: ScenarioData = {
     {
       id: 'verify-gpsdo-weather-quiz',
       // K0773: Knowledge of telecommunications principles and practices -
-      // understanding that GPS signals are not affected by weather like
-      // C-band satellite signals
+      // understanding that the C-band loss is ice on the feed, not the snow in
+      // the air, and the GPS patch antenna has no feed to ice
       nice: ['K0773'],
       title: 'Understand Weather Impact on GPSDO',
-      description: 'Understand why the GPSDO is unaffected by the snow at Vermont.',
+      description: "Work out why Vermont's GPSDO is still locked in this snow.",
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['verify-maine-gpsdo'],
       timeLimitSeconds: 2 * 60,
@@ -681,16 +709,16 @@ export const scenario3Data: ScenarioData = {
           type: 'status-check',
           description: 'Understand GPSDO Weather Independence',
           params: {
-            question: "The snow is degrading Vermont's TIDEMARK-1 link. Why isn't the snow affecting Vermont's GPSDO?",
+            question: "The snow is degrading Vermont's TIDEMARK-1 link. Why is Vermont's GPSDO still locked?",
             options: [
-              'GPS uses L-band frequencies (~1.5 GHz) which are less affected by precipitation than C-band',
-              'The GPSDO antenna is indoors (in the equipment rack) and sheltered from precipitation',
-              'GPS satellites sit in a different part of the sky (nearly overhead) than TIDEMARK-1',
-              'The GPSDO has a backup battery (holdover) that keeps it locked through the weather',
+              'The loss is ice on the dish feed, and the GPS antenna has no feed to ice up',
+              'GPS is L-band, and L-band punches through the snow that blocks C-band signals',
+              'The GPS antenna is indoors in the equipment rack, so the snow never reaches it',
+              'The GPSDO is in holdover, so it reads locked whatever the weather is doing',
             ],
             correctIndex: 0,
             explanation:
-              'GPS operates at L-band (~1.5 GHz), which experiences much less rain/snow attenuation than C-band (~4-6 GHz). The TIDEMARK-1 link uses C-band, which is more susceptible to precipitation fade. This is why the GPSDO remains locked even as the satellite link degrades.',
+              "Snow in the air costs well under 1 dB at both L-band (GPS, 1.575 GHz) and C-band (3.7-4.2 GHz), so neither band is blocked by the falling snow. Vermont's damage is snow and ice loading the dish feed: a wet, lossy layer right in front of the LNB that weakens the carrier and adds noise. The GPS antenna is a small sealed patch under a radome with no horn or waveguide to load, so the GPSDO stays GNSS-locked (not in holdover) while the satellite link fades.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -739,7 +767,7 @@ export const scenario3Data: ScenarioData = {
       // understanding program-track mode for GEO satellites
       nice: ['S0421', 'K1032'],
       title: 'Point Antenna at TIDEMARK-1',
-      description: "Set tracking mode to PROGRAM TRACK to acquire TIDEMARK-1. The system will calculate the correct look angles for Maine's location.",
+      description: "Click PROGRAM, select TIDEMARK-1 as the target satellite and press Move to Target. The system calculates the look angles for Maine's location.",
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['navigate-acu-maine'],
       timeLimitSeconds: 3 * 60,
@@ -764,10 +792,12 @@ export const scenario3Data: ScenarioData = {
         },
         {
           type: 'antenna-position',
+          // Maine's program-track angles to 53 W (Vermont's are 153.2 / 35.2):
+          // phase 19.4 per-station GEO geometry, nats-s03-F2; Phase 28 D4
           description: 'Antenna Pointed at TIDEMARK-1',
           params: {
-            azimuth: 161.8 as Degrees,
-            elevation: 34.2 as Degrees,
+            azimuth: 157.1 as Degrees,
+            elevation: 35.4 as Degrees,
             tolerance: 0.5,
           },
           mustMaintain: true,
@@ -796,14 +826,14 @@ export const scenario3Data: ScenarioData = {
           params: {
             question: 'I see you used program-track mode. Good choice. Do you know why I was checking the antenna pointing?',
             options: [
-              "Because look angles to a satellite depend on the ground station's geographic location",
+              'Because look angles to a satellite depend on where the ground station is',
               'Because the antenna might have been damaged while it was sitting in storage',
               'Because program-track mode sometimes locks onto the wrong satellite by mistake',
               'Because Maine uses a different antenna model than Vermont with its own offsets',
             ],
             correctIndex: 0,
             explanation:
-              "Each ground station has unique look angles to any given satellite based on its latitude and longitude. Maine is about 150 miles from Vermont, so the azimuth and elevation are slightly different. Program-track mode calculates this automatically, but a common mistake for new operators is manually entering Vermont's angles at Maine.",
+              "Each ground station has its own look angles to any given satellite, based on its latitude and longitude. Maine is about 150 miles from Vermont, so TIDEMARK-1 sits about 4 degrees further around in azimuth from there, which is many beamwidths. Program-track mode calculates this for each station automatically, but a common mistake for new operators is typing Vermont's angles in at Maine.",
             pointPenalty: 10,
             character: Character.CATHERINE_VEGA,
           },
@@ -854,7 +884,8 @@ export const scenario3Data: ScenarioData = {
       // primary site for consistent downconversion
       nice: ['S0421', 'K0792'],
       title: 'Power Up LNB',
-      description: 'Power on the LNB and configure it to match Vermont: LO frequency 5,250 MHz, Gain 60 dB. Wait for thermal stabilization.',
+      description:
+        'Power on the LNB and set it to match Vermont: LO frequency 5,250 MHz and gain 65 dB (the gain Vermont runs at, which is where the LNB powers up). Then wait about 90 s for it to warm up; the LNB panel reads "Thermal: Warming m:ss" until it shows Stable.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['navigate-rx-maine-lnb'],
       timeLimitSeconds: 3 * 60,
@@ -883,9 +914,9 @@ export const scenario3Data: ScenarioData = {
         },
         {
           type: 'lnb-gain-set',
-          description: 'LNB Gain Set to 60 dB',
+          description: 'LNB Gain Set to 65 dB',
           params: {
-            gain: 60,
+            gain: 65,
             gainTolerance: 0,
           },
           maintainUntilObjectiveComplete: true,
@@ -907,7 +938,7 @@ export const scenario3Data: ScenarioData = {
       // understanding LO frequency and IF calculation
       nice: ['K0792', 'K0773'],
       title: 'Verify LNB Configuration',
-      description: 'Confirm you understand why the LNB settings must match Vermont.',
+      description: "Confirm why Maine's LNB settings must match Vermont's.",
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['configure-maine-lnb'],
       timeLimitSeconds: 2 * 60,
@@ -947,7 +978,8 @@ export const scenario3Data: ScenarioData = {
       // setting correct IF frequency for beacon observation
       nice: ['S0421', 'K0773'],
       title: 'Configure Spectrum Analyzer',
-      description: 'Set the spectrum analyzer to observe the TIDEMARK-1 beacon: Center frequency 1,074.5 MHz, Span 2 kHz, Minimum Amplitude -65 dBm, Maximum Amplitude -50 dBm.',
+      description:
+        "Set the spectrum analyzer to watch the TIDEMARK-1 beacon: center frequency 1,074.5 MHz, span 0.002 MHz (2 kHz; the field is in MHz), Min Amp -100 dBm, Max Amp -30 dBm, and RBW on Auto (3 Hz at this span; a wide RBW buries the beacon's narrow tone in noise). The beacon reads around -60 to -55 dBm.",
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['verify-lnb-config-quiz'],
       timeLimitSeconds: 3 * 60,
@@ -979,19 +1011,19 @@ export const scenario3Data: ScenarioData = {
         },
         {
           type: 'speca-min-amplitude',
-          description: 'Minimum Amplitude Set to -65 dBm',
+          description: 'Minimum Amplitude Set to -100 dBm',
           params: {
-            minAmplitude: -65 as dBm,
-            minAmplitudeTolerance: 2,
+            minAmplitude: -100 as dBm,
+            minAmplitudeTolerance: 5,
           },
           maintainUntilObjectiveComplete: true,
         },
         {
           type: 'speca-max-amplitude',
-          description: 'Maximum Amplitude Set to -50 dBm',
+          description: 'Maximum Amplitude Set to -30 dBm',
           params: {
-            maxAmplitude: -50 as dBm,
-            maxAmplitudeTolerance: 2,
+            maxAmplitude: -30 as dBm,
+            maxAmplitudeTolerance: 5,
           },
           maintainUntilObjectiveComplete: true,
         },
@@ -1042,7 +1074,7 @@ export const scenario3Data: ScenarioData = {
       // confirmation to validate equipment chain
       nice: ['K1032', 'T0153'],
       title: 'Understand Beacon Verification',
-      description: 'Understand why we verify the beacon even when using program-track mode.',
+      description: 'Work out why we check the beacon even though program-track already points the antenna.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['verify-beacon-maine'],
       timeLimitSeconds: 2 * 60,
@@ -1052,11 +1084,12 @@ export const scenario3Data: ScenarioData = {
           type: 'status-check',
           description: 'Understand Beacon Verification Purpose',
           params: {
-            question: 'The antenna is in program-track mode, which calculates pointing from ephemeris data. Why did we still verify the beacon on the spectrum analyzer?',
+            question:
+              "The antenna is in program-track mode, which calculates its pointing from the satellite's predicted position. Why did we still check for the beacon on the spectrum analyzer?",
             options: [
               'Beacon proves the whole receive chain works - antenna, feed, LNB, cables, analyzer',
               'Program-track needs the beacon to engage - the ACU, once locked, holds the pointing',
-              'The beacon calibrates the analyzer - reference level, span, and center frequency',
+              'The beacon calibrates the analyzer - amplitude scale, span, and center frequency',
               'Company policy requires a visual check - checklist item, sign-off, nothing technical',
             ],
             correctIndex: 0,
@@ -1081,7 +1114,7 @@ export const scenario3Data: ScenarioData = {
       // S0421: Skill in operating network equipment - executing modem configuration
       nice: ['K0792', 'S0421'],
       title: 'Configure Receiver Modem',
-      description: 'Configure the receiver modem to match Vermont: Frequency 1,532 MHz, Bandwidth 36 MHz, QPSK modulation, FEC 3/4.',
+      description: 'Set the receiver modem to match Vermont: frequency 1,532 MHz, bandwidth 36 MHz, QPSK modulation and FEC 3/4.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['verify-beacon-reason-quiz'],
       timeLimitSeconds: 4 * 60,
@@ -1137,7 +1170,7 @@ export const scenario3Data: ScenarioData = {
       // parameter matching is critical for handover
       nice: ['K0792'],
       title: 'Understand Parameter Matching',
-      description: 'Understand why modem parameters must match exactly.',
+      description: "Work out why the modem parameters must match Vermont's exactly.",
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['configure-maine-rx-modem'],
       timeLimitSeconds: 2 * 60,
@@ -1149,7 +1182,7 @@ export const scenario3Data: ScenarioData = {
           params: {
             question: 'Why must the receiver modem parameters (frequency, bandwidth, modulation, FEC) match Vermont exactly?',
             options: [
-              'Both sites receive the same carrier - mismatched parameters would fail to demodulate',
+              'Both sites receive the same carrier - a mismatch would fail to demodulate',
               'The satellite checks every ground station - mismatched parameters would be rejected',
               'The two sites share one transponder - mismatched parameters would interfere',
               'Copying settings is faster - calculating new parameters would delay the handover',
@@ -1177,7 +1210,7 @@ export const scenario3Data: ScenarioData = {
       // C/N threshold for reliable demodulation
       nice: ['T0153', 'K0740'],
       title: 'Confirm Signal Acquisition',
-      description: 'Wait for the receiver modem to achieve carrier lock and verify C/N ratio is above 10 dB.',
+      description: 'Wait for the receiver modem to lock onto the carrier, then confirm the C/N is above 10 dB.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['verify-modem-match-quiz'],
       timeLimitSeconds: 3 * 60,
@@ -1215,7 +1248,7 @@ export const scenario3Data: ScenarioData = {
       // the difference between lock status and link quality
       nice: ['K0740'],
       title: 'Understand Lock vs. Quality',
-      description: 'Understand why we check both lock status AND C/N ratio.',
+      description: 'Work out why we check the C/N as well as the lock status.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['verify-maine-lock'],
       timeLimitSeconds: 2 * 60,
@@ -1227,14 +1260,14 @@ export const scenario3Data: ScenarioData = {
           params: {
             question: 'The modem shows "Locked" status. Why do we also verify the C/N ratio is above 10 dB?',
             options: [
-              'Lock can occur at low C/N but with high error rates - we need margin for reliable data',
+              'Lock holds right down to threshold with no fade margin - we need that margin',
               'The lock indicator stops working below 10 dB C/N - we need it to read the status',
               '10 dB is the minimum for the modem to power on - we need it to keep the modem running',
               'C/N below 10 dB can damage the modem front end - we need margin to protect hardware',
             ],
             correctIndex: 0,
             explanation:
-              'A modem can achieve lock at C/N ratios as low as 3-4 dB for QPSK, but error rates would be high and the link fragile. We want at least 10 dB of margin - that means even if weather degrades the Maine link somewhat, we still have headroom before errors become a problem. Lock without margin is asking for trouble.',
+              "For this QPSK 3/4 carrier the modem shows a Required Es/N0 of 5.0 dB. With Es/N0 about 0.8 dB above Raw C/N, it acquires lock from about 4.7 dB C/N (Required 5.0 plus a 0.5 dB acquisition margin, less the 0.8 dB Es/N0 offset) and holds it down to about 3.7 dB. Required Es/N0 is the DVB-S2 threshold plus 1 dB of modem implementation loss. Right at threshold the modem still decodes cleanly, but the next 1 dB fade drops it. At 10 dB of C/N there's nearly 6 dB of margin, so weather can take some of it before errors start.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -1282,7 +1315,8 @@ export const scenario3Data: ScenarioData = {
       // S0421: Skill in operating network equipment - executing TX modem configuration
       nice: ['K0792', 'S0421'],
       title: 'Configure Transmitter Modem',
-      description: 'Configure the transmitter modem to match Vermont: Frequency 1,094 MHz, Power -7 dBm, Bandwidth 36 MHz, QPSK modulation, FEC 3/4. Enable transmission.',
+      description:
+        "Power on the transmitter modem (it's parked from its last job) and set it to match Vermont: frequency 1,057 MHz, power -7 dBm, bandwidth 36 MHz, QPSK modulation and FEC 3/4. Then enable transmission. The BUC stays muted and the HPA stays off until the handover brings them up.",
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['navigate-tx-maine'],
       timeLimitSeconds: 4 * 60,
@@ -1307,9 +1341,9 @@ export const scenario3Data: ScenarioData = {
         },
         {
           type: 'tx-modem-frequency-set',
-          description: 'TX Frequency Set to 1,094 MHz',
+          description: 'TX Frequency Set to 1,057 MHz',
           params: {
-            frequency: 1094e6 as IfFrequency,
+            frequency: 1057e6 as IfFrequency,
             frequencyTolerance: 1e6 as Hertz,
           },
           maintainUntilObjectiveComplete: true,
@@ -1367,7 +1401,7 @@ export const scenario3Data: ScenarioData = {
       // dashboard for traffic handover execution
       nice: ['S0421'],
       title: 'Open Satellite Dashboard',
-      description: 'Click on TIDEMARK-1 in the map to access the traffic handover controls.',
+      description: 'Select TIDEMARK-1 in the asset tree to open its satellite page and the traffic handover controls.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['configure-maine-tx-modem'],
       timeLimitSeconds: 2 * 60,
@@ -1392,7 +1426,7 @@ export const scenario3Data: ScenarioData = {
       // K0770: Knowledge of system administration concepts (handover procedures)
       nice: ['K0689', 'K0741', 'K0770'],
       title: 'Understand Handover Process',
-      description: 'Understand what happens during traffic handover.',
+      description: 'Work out what the traffic handover will do before you run it.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['navigate-dashboard-handover'],
       timeLimitSeconds: 2 * 60,
@@ -1404,14 +1438,14 @@ export const scenario3Data: ScenarioData = {
           params: {
             question: 'What happens when you execute the traffic handover from Vermont to Maine?',
             options: [
-              "Maine's transmitter comes up while Vermont's is disabled - avoiding a dual uplink",
+              "Vermont's uplink drops and Maine's comes up in the same step - never a dual uplink",
               'Both stations transmit at once - the satellite selects the stronger of the two uplinks',
               'Customer connections are dropped - each one is re-established through Maine',
               "Vermont's antenna is slewed away from the satellite - pointing prevents a dual uplink",
             ],
             correctIndex: 0,
             explanation:
-              "The handover process coordinates the transition: Maine's uplink chain (BUC, HPA) is fully enabled while Vermont's is disabled in a controlled sequence. This prevents dual uplinks (two ground stations transmitting on the same frequency to the same satellite), which would cause interference. The satellite transponder doesn't care which ground station is transmitting - it just relays what it receives.",
+              "The handover is break-before-make: Vermont's uplink (HPA off, BUC muted) drops and Maine's (BUC unmuted, HPA on) comes up in the same step. Two stations radiating the same carrier into one transponder would arrive on the downlink at about equal level and wreck each other's C/N. The transponder doesn't care which ground station is transmitting - it just relays what it receives, so the customers' modems see the same carrier at the same frequency and level.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -1444,14 +1478,6 @@ export const scenario3Data: ScenarioData = {
           },
           mustMaintain: false,
         },
-        {
-          type: 'service-continuity',
-          description: 'Service Continuity Maintained',
-          params: {
-            maxPacketLoss: 0.1,
-          },
-          mustMaintain: false,
-        },
       ],
       conditionLogic: 'AND',
       points: 20,
@@ -1462,7 +1488,7 @@ export const scenario3Data: ScenarioData = {
       // handover by observing traffic flow
       nice: ['T0153'],
       title: 'Confirm Handover Success',
-      description: 'Verify the handover completed successfully.',
+      description: "Check the indicators that show Maine is carrying the traffic and Vermont's uplink is off.",
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['execute-handover'],
       timeLimitSeconds: 2 * 60,
@@ -1474,14 +1500,14 @@ export const scenario3Data: ScenarioData = {
           params: {
             question: 'How do you confirm the handover was successful?',
             options: [
-              'Traffic indicator shows ME-02 as active, VT-01 TX disabled, no alarms, continuous data flow',
-              'Traffic indicator shows ME-02 as active, VT-01 antenna stowed, no alarms, data paused',
-              'Traffic indicator shows both active, satellite acknowledged, no alarms, data flowing',
-              'Traffic indicator shows VT-01 as active, ME-02 C/N increased, no alarms, data flowing',
+              'Traffic indicator shows ME-02 active, VT-01 TX disabled, no ME-02 alarms, data flowing',
+              'Traffic indicator shows ME-02 active, VT-01 antenna stowed, no ME-02 alarms, data paused',
+              'Traffic indicator shows both stations active, satellite acknowledged, no alarms, data flowing',
+              'Traffic indicator shows VT-01 active, ME-02 C/N increased, no ME-02 alarms, data flowing',
             ],
             correctIndex: 0,
             explanation:
-              "A successful handover shows Maine as the active traffic owner, Vermont's transmitter disabled (no dual uplink), no error alarms, and continuous data flow with no packet loss. The customers should experience no interruption - from their perspective, nothing changed.",
+              "A successful handover shows Maine as the active traffic owner, Vermont's transmitter disabled (so there's no dual uplink), no error alarms at Maine, and data flowing without packet loss. Vermont's ICE ON FEED alarm doesn't count against it, because that's the weather you're moving away from. The customers shouldn't notice any interruption, since from their side nothing changed.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -1551,7 +1577,8 @@ export const scenario3Data: ScenarioData = {
       // to ensure future availability
       nice: ['S0421', 'K0741'],
       title: 'Stow Vermont Antenna',
-      description: 'Set tracking mode to STOW to protect the antenna during the blizzard. Stow position is straight up (El: 90°) to minimize wind loading and ice accumulation.',
+      description:
+        'Click STOW, then press APPLY on the Antenna Positioning card to start the move. The stow position is straight up (El: 90°), which minimizes wind loading. A face-up dish still collects snow, so leave the feed heater on.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['navigate-acu-vt01-stow'],
       timeLimitSeconds: 3 * 60,
@@ -1571,9 +1598,9 @@ export const scenario3Data: ScenarioData = {
         },
         {
           type: 'antenna-position',
+          // Stow is zenith at the current azimuth (phase 19.4)
           description: 'Antenna at Stow Position',
           params: {
-            azimuth: 0 as Degrees,
             elevation: 90 as Degrees,
             tolerance: 1,
           },
@@ -1589,7 +1616,7 @@ export const scenario3Data: ScenarioData = {
       // stow position protects antenna during severe weather
       nice: ['K0741'],
       title: 'Understand Stow Position',
-      description: 'Understand why the stow position protects the antenna.',
+      description: 'Work out why pointing straight up protects the antenna in a blizzard.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['stow-vermont-antenna'],
       timeLimitSeconds: 2 * 60,
@@ -1601,14 +1628,14 @@ export const scenario3Data: ScenarioData = {
           params: {
             question: 'Why does pointing the antenna straight up (90° elevation) protect it during a blizzard?',
             options: [
-              'Minimizes wind loading on the dish and prevents snow from accumulating in the reflector',
-              'Raises the dish above the snow level and keeps the reflector edge clear of drifts',
+              'Turns the dish face out of the wind, so the load on the pedestal and drives is minimal',
+              'Tips the reflector vertical, so falling snow slides off and nothing builds up in the dish',
               'Keeps the feed horn dry and prevents meltwater from running into the waveguide',
-              'Reduces electrical interference from the storm and shields the LNB from lightning',
+              'Reduces electrical interference from the storm and shields the LNB from lightning strikes',
             ],
             correctIndex: 0,
             explanation:
-              "At 90° elevation (straight up), the dish presents minimal surface area to horizontal winds, dramatically reducing wind loading on the structure. Additionally, snow cannot accumulate in the reflector when it's vertical - it simply falls off. A dish pointed at typical satellite elevation (30-40°) would catch snow like a bowl and the wind would push against the full dish area.",
+              "At 90° elevation the dish looks straight up, so the horizontal wind meets the reflector's rim, not its face. The load spreads evenly around the pedestal, which puts the overturning torque on the structure and the drives at its minimum. It does nothing for snow, though. A face-up reflector is the most bowl-like position there is (the ACU reads El 90°), so snow still collects, and that's why the feed heater stays on while the antenna is stowed. Left at its 30-40° operating elevation, the dish would take the gusts on its full face.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -1623,12 +1650,19 @@ export const scenario3Data: ScenarioData = {
       // logging requirements for operational events
       nice: ['T1606'],
       title: 'Document Handover Event',
-      description: 'Understand the documentation requirements for weather-related handover events.',
+      description:
+        'Type an entry in the Ops Log (in the station sidebar) covering when the snow began to hurt the link, when the handover finished, TIDEMARK-1, and VT-01 to ME-02. Then answer the documentation questions.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['verify-stow-quiz'],
-      timeLimitSeconds: 2 * 60,
+      timeLimitSeconds: 4 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
+        {
+          type: 'ops-log-entry',
+          description: 'Handover Typed in Ops Log',
+          params: { logKeywords: ['handover|handoff|hand over|hand off', 'me-02|maine', 'snow|blizzard|weather'], logMinLength: 30 },
+          mustMaintain: false,
+        },
         {
           type: 'status-check',
           description: 'Documentation Requirements',
@@ -1637,7 +1671,7 @@ export const scenario3Data: ScenarioData = {
             options: ['Time of degradation onset and handover completion', 'Affected satellite and services', 'Primary and backup station identifiers', 'All of the above'],
             correctIndex: 3,
             explanation:
-              'Complete event documentation includes: timestamps for degradation and handover, affected assets, stations involved, weather conditions, and any anomalies observed. This information is critical for post-incident review and pattern analysis.',
+              'A complete log entry covers the timestamps for the degradation and the handover, the affected assets, the stations involved, the weather conditions and any anomalies you saw. Each of the other options is only part of that, so all of them belong in the entry. Later reviews and pattern analysis depend on it.',
             pointPenalty: 5,
             preserveOptionOrder: true,
           },
@@ -1656,7 +1690,7 @@ export const scenario3Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Even routine events should be documented. Over time, this data reveals patterns - which sites are most affected by weather, average handover times, seasonal trends. This drives infrastructure improvements and procedure refinements.',
+              'Even routine events get documented, because over time the records reveal patterns: which sites the weather hits most, how long handovers take, and seasonal trends. Those patterns drive infrastructure improvements and better procedures.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -1687,10 +1721,10 @@ export const scenario3Data: ScenarioData = {
       'review-mission-brief': {
         text: `
         <p>
-          Look outside - it's already coming down hard. Weather service upgraded the forecast to a full blizzard warning. We've got maybe fifteen minutes before the link margin drops below threshold and we lose TIDEMARK-1.
+          Look outside. It's already coming down hard, and the weather service has upgraded the forecast to a full blizzard warning. We've got maybe fifteen minutes before the link margin drops below threshold and we lose TIDEMARK-1.
         </p>
         <p>
-          First priority: enable the feed heater on Vermont. Ice on the waveguide is bad news - degrades the signal and can physically damage the feed assembly. Won't save the link, but it'll protect the equipment.
+          First priority is to enable the feed heater on Vermont. Ice on the feed horn weakens the signal and can physically damage the feed assembly. The feed horn is the part at the focus of the dish that gathers the signal. The heater won't save the link, but it'll protect the equipment.
         </p>
         <p>
           Select Vermont Ground Station in the asset tree on the left.
@@ -1717,7 +1751,7 @@ export const scenario3Data: ScenarioData = {
       'navigate-acu-vt01-heater': {
         text: `
         <p>
-          Find the feed heater toggle and enable it. Should be in the antenna status section.
+          Find the feed heater toggle and enable it. It's on the Environmental card on this tab.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1753,10 +1787,10 @@ export const scenario3Data: ScenarioData = {
       'verify-heater-quiz': {
         text: `
         <p>
-          Right. Ice on RF components is a real problem - not just signal loss, but potential hardware damage. Heater won't save the link, but it protects the equipment for when the storm passes.
+          Right. Ice does more than weaken the signal. It can damage the hardware as well, and that's what the heater protects.
         </p>
         <p>
-          Now let's look at what the snow is doing to our signal. Go to the RX Analysis tab.
+          Now let's see what the snow is doing to our signal. Open the RX Analysis tab.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1770,7 +1804,7 @@ export const scenario3Data: ScenarioData = {
       'navigate-rx-vt01-agc': {
         text: `
         <p>
-          Look at the AGC indicator - top of the panel, next to the LNB card. AGC stands for Automatic Gain Control. See how it's compensating as the snow attenuates our signal?
+          Look at the AGC card, next to the LNB card. AGC stands for Automatic Gain Control. It shows its Gain in dB, the Input level it sees in dBm, and the Output it holds at -30 dBm. As the snow weakens our signal, the input sags and the gain comes up to match.
         </p>
         <p>
           Think about what would happen if we didn't have AGC right now.
@@ -1783,7 +1817,7 @@ export const scenario3Data: ScenarioData = {
       'verify-agc-status': {
         text: `
         <p>
-          Right. Without AGC, we'd have lost lock minutes ago. It's buying us time - but based on the forecast, we've got maybe six minutes before the AGC runs out of room to compensate.
+          Right. The AGC keeps the level right for the modem, but it can't give us back C/N - it turns the noise up with the carrier. Based on the forecast, we've got well under fifteen minutes before C/N drops below the lock threshold.
         </p>
         <p>
           Do you understand why weather handovers are so time-critical?
@@ -1796,7 +1830,7 @@ export const scenario3Data: ScenarioData = {
       'estimate-time-remaining': {
         text: `
         <p>
-          Exactly. Weather degradation doesn't plateau - it keeps getting worse until you lose the link entirely. Six minutes isn't much time to bring up a backup site.
+          Exactly. Weather degradation doesn't plateau - it keeps getting worse until you lose the link entirely. Fifteen minutes isn't much time to bring up a backup site.
         </p>
         <p>
           This is why we practice handovers when there's no pressure. When the clock is ticking, you need to execute from muscle memory.
@@ -1809,10 +1843,10 @@ export const scenario3Data: ScenarioData = {
       'verify-agc-limits-quiz': {
         text: `
         <p>
-          Right. AGC has limits. Once we hit maximum gain, any further signal loss means we lose lock. That's why we're handing over to Maine.
+          Right, so the AGC can't save us. When C/N falls under the lock threshold, the modem drops the carrier whatever the AGC reads, and Vermont's C/N is still falling.
         </p>
         <p>
-          Let's get Maine online. Click Maine Backup Station in the asset tree on the left.
+          Time to bring Maine online. Click Maine Backup Station in the asset tree on the left.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1826,7 +1860,7 @@ export const scenario3Data: ScenarioData = {
       'switch-to-maine': {
         text: `
         <p>
-          You're now looking at Maine's equipment. Notice Vermont's still running in the background - customers are still being served from there.
+          You're looking at Maine's equipment now. Quick check before we go further: what did that click do to Vermont?
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1836,10 +1870,10 @@ export const scenario3Data: ScenarioData = {
       'verify-multisite-quiz': {
         text: `
         <p>
-          Right. Switching your view doesn't affect operations. Vermont keeps running, customers stay connected. You're just changing which control panel you're looking at.
+          Right. Vermont keeps serving the customers while you work on Maine.
         </p>
         <p>
-          First thing on any cold start - verify the frequency reference. Everything keys off the GPSDO. Go to the GPS Timing tab. Let's verify Maine's GPSDO is locked.
+          On any cold start, the first thing to check is the frequency reference, because everything else keys off the GPSDO. Open the GPS Timing tab and let's make sure Maine's is locked.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1863,7 +1897,7 @@ export const scenario3Data: ScenarioData = {
       'verify-maine-gpsdo': {
         text: `
         <p>
-          Locked. Good - we have a frequency reference. Now a quick question about something you might be wondering.
+          Locked, so Maine has a stable frequency reference. You might be wondering why Vermont's GPSDO is still locked with all this snow coming down.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1873,10 +1907,10 @@ export const scenario3Data: ScenarioData = {
       'verify-gpsdo-weather-quiz': {
         text: `
         <p>
-          Different frequencies, different physics. GPS punches through weather that kills C-band. That's why the GPSDO stays locked even when the satellite link is degrading.
+          Right. The falling snow barely touches either band. It's the ice loading our feed that's killing the link. The GPS antenna is a sealed patch under a cover called a radome, so it has no feed to load, and the GPSDO stays locked.
         </p>
         <p>
-          Now let's point the antenna. ACU Control tab.
+          Now let's point the Maine antenna. Open the ACU Control tab.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1890,7 +1924,7 @@ export const scenario3Data: ScenarioData = {
       'navigate-acu-maine': {
         text: `
         <p>
-          Set tracking mode to Program Track. The system will calculate the correct pointing angles for Maine's location and slew the antenna to TIDEMARK-1.
+          Click PROGRAM, select TIDEMARK-1 as the target and press Move to Target. The system calculates the pointing angles for Maine's location and slews the antenna.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1900,25 +1934,12 @@ export const scenario3Data: ScenarioData = {
       'configure-maine-antenna': {
         text: `
         <p>
-          Antenna's slewing. Good. Catherine from Maine just called - she's almost at the station.
+          Antenna's on TIDEMARK-1 from Maine. Good. Catherine just called - she's almost at the station.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/3/obj-configure-maine-antenna.mp3'),
-      },
-      'catherine-look-angles': {
-        text: `
-        <p>
-          Hey, it's Catherine. Just got to the station - roads are fine up here, clear skies. I saw the antenna moving when I pulled in.
-        </p>
-        <p>
-          I did a quick sanity check that you weren't inputting the same az/el for ME-02 that you were using at VT-01. We had a new guy mess that up a few months ago - spent twenty minutes troubleshooting before someone noticed he'd copied Vermont's angles. Program-track was the right call.
-        </p>
-        `,
-        character: Character.CATHERINE_VEGA,
-        emotion: Emotion.NEUTRAL,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/3/obj-catherine-look-angles.mp3'),
       },
 
       // ============================================================
@@ -1927,7 +1948,7 @@ export const scenario3Data: ScenarioData = {
       'navigate-rx-maine-lnb': {
         text: `
         <p>
-          While the antenna settles, let's get the receive chain configured. Power on the LNB and set it to match Vermont - LO 5,250 MHz, gain 60 dB.
+          Antenna's settled on the bird, so let's get the receive chain configured. Power on the LNB and set it to match Vermont - LO 5,250 MHz, gain 65 dB. Check Vermont's LNB panel if you don't believe me.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1937,7 +1958,7 @@ export const scenario3Data: ScenarioData = {
       'configure-maine-lnb': {
         text: `
         <p>
-          LNB's powered and warming up. Watch the thermal indicator - we need it stable before we can trust the receive path.
+          LNB's powered and settled. Noise temperature's down under 100 K and LOCK is green - now we can trust the receive path.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1947,10 +1968,10 @@ export const scenario3Data: ScenarioData = {
       'verify-lnb-config-quiz': {
         text: `
         <p>
-          Exactly. Same LO means same IF. Makes everything downstream identical between sites. Less to think about, fewer mistakes.
+          Exactly. The same LO gives the same IF, so everything downstream is identical between the two sites, and that means fewer mistakes.
         </p>
         <p>
-          Now let's verify we're actually seeing the satellite. Configure the spectrum analyzer - center frequency 1,074.5 MHz, reference level around -91 dBm.
+          Now let's confirm we're actually seeing the satellite. Set the spectrum analyzer to center frequency 1,074.5 MHz, span 0.002 MHz, Min Amp -100 dBm and Max Amp -30 dBm. Leave RBW on Auto, because at 1 MHz of RBW the beacon hides in the noise. RBW is the analyzer's filter width.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1964,7 +1985,7 @@ export const scenario3Data: ScenarioData = {
       'configure-speca-maine': {
         text: `
         <p>
-          Good. Now look for the beacon - should be a clean spike at center. That's your proof the antenna is pointed correctly and the receive chain is working.
+          Good. Now look for the beacon - with RBW on Auto it should be a clean spike at center, somewhere around -60 to -55 dBm. That's your proof the antenna is pointed correctly and the receive chain is working.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1974,7 +1995,7 @@ export const scenario3Data: ScenarioData = {
       'verify-beacon-maine': {
         text: `
         <p>
-          There it is. Clean beacon, good level. Receive path is working.
+          There's the beacon, a clean spike at a good level. That tells us the receive path is working.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -1984,10 +2005,10 @@ export const scenario3Data: ScenarioData = {
       'verify-beacon-reason-quiz': {
         text: `
         <p>
-          Exactly. The beacon doesn't just prove pointing - it proves the whole chain. I've seen operators trust program-track blindly and waste an hour because a cable was loose. Trust but verify.
+          Right. The beacon doesn't just prove the pointing. It proves the whole chain. I've seen operators trust program-track blindly and waste an hour because a cable was loose. Trust but verify.
         </p>
         <p>
-          Now configure the receiver modem. Same parameters as Vermont: 1,532 MHz, 36 MHz bandwidth, QPSK, FEC 3/4.
+          Now configure the receiver modem to match Vermont: 1,532 MHz, 36 MHz bandwidth, QPSK, and FEC 3/4, which is the error-correction rate.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -2001,7 +2022,7 @@ export const scenario3Data: ScenarioData = {
       'configure-maine-rx-modem': {
         text: `
         <p>
-          Modem's configured. Now watch for lock - the modem needs to acquire the carrier and sync to the data stream.
+          That's the receiver set up, and the LOCK badge should come up in a second. First, a quick question about why those settings have to match Vermont's.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -2028,7 +2049,7 @@ export const scenario3Data: ScenarioData = {
       'verify-maine-lock': {
         text: `
         <p>
-          Lock achieved, C/N looks solid. Maine's actually seeing a cleaner signal than Vermont right now - clear skies make a difference.
+          We have lock, and the C/N looks solid. Maine's seeing a cleaner signal than Vermont right now, because it has clear skies.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -2038,10 +2059,10 @@ export const scenario3Data: ScenarioData = {
       'verify-lock-quality-quiz': {
         text: `
         <p>
-          Right. Lock without margin is asking for trouble. 10 dB gives us headroom - even if Maine's weather changes later, we've got buffer.
+          Right. Lock without margin is asking for trouble, because the next fade would drop it. 10 dB gives us headroom, so even if Maine's weather changes later, we've got a buffer.
         </p>
         <p>
-          Receive side is ready. Now the transmitter. TX Chain tab.
+          The receive side is ready, so now for the transmitter. Open the TX Chain tab.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -2055,7 +2076,7 @@ export const scenario3Data: ScenarioData = {
       'navigate-tx-maine': {
         text: `
         <p>
-          Configure the transmitter modem to match Vermont: 1,094 MHz, -7 dBm, 36 MHz bandwidth, QPSK, FEC 3/4. Then enable transmission.
+          Configure the transmitter modem to match Vermont - 1,057 MHz, -7 dBm, 36 MHz bandwidth, QPSK, FEC 3/4. Then enable transmission.
         </p>
         <p>
           The handover process will handle the BUC and HPA automatically - you just need to get the modem configured and enabled.
@@ -2068,10 +2089,10 @@ export const scenario3Data: ScenarioData = {
       'configure-maine-tx-modem': {
         text: `
         <p>
-          Maine's transmitter is ready. Time to execute the handover.
+          Maine's transmitter is ready, so now for the handover itself.
         </p>
         <p>
-          Go to Tidemark-1's satellite page in the asset tree. That's where the traffic control is.
+          Select TIDEMARK-1 in the asset tree to open its satellite page, because that's where the traffic control is.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -2095,10 +2116,10 @@ export const scenario3Data: ScenarioData = {
       'understand-handover-quiz': {
         text: `
         <p>
-          Right. The system coordinates everything - enables Maine's uplink while disabling Vermont's. No dual uplinks, no interference, no service interruption.
+          Right. The system coordinates everything, so Maine's uplink comes up as Vermont's goes down. That means no dual uplink, no interference, and no interruption for the customers.
         </p>
         <p>
-          Execute the handover. Watch both sites during the transition.
+          Now execute the handover, and watch both sites while it happens.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -2118,10 +2139,10 @@ export const scenario3Data: ScenarioData = {
       'verify-handover-success-quiz': {
         text: `
         <p>
-          Perfect. Maine's active, Vermont's TX is disabled, customers never noticed. Textbook weather handover.
+          Perfect. Maine's active, Vermont's transmitter is disabled, and the customers never noticed. That's a textbook weather handover.
         </p>
         <p>
-          One more thing: stow Vermont's antenna to protect it during the storm. Switch back to Vermont Ground Station in the asset tree.
+          There's one more job. Stow Vermont's antenna to protect it from the storm, which parks it out of harm's way. Switch back to Vermont Ground Station in the asset tree.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -2135,7 +2156,7 @@ export const scenario3Data: ScenarioData = {
       'switch-to-vermont-stow': {
         text: `
         <p>
-          Good. ACU Control tab to stow the antenna.
+          Good. Open the ACU Control tab so we can stow the antenna.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -2145,7 +2166,7 @@ export const scenario3Data: ScenarioData = {
       'navigate-acu-vt01-stow': {
         text: `
         <p>
-          Set tracking mode to Stow. Points the antenna straight up - 90 degrees elevation. Minimizes wind loading and keeps snow from accumulating in the dish.
+          Click STOW, then APPLY. That points the antenna straight up, at 90 degrees elevation, which turns the face of the dish out of the wind so the load on the pedestal and drives drops to a minimum. A dish facing up will still collect snow, so leave the feed heater on.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -2155,7 +2176,7 @@ export const scenario3Data: ScenarioData = {
       'stow-vermont-antenna': {
         text: `
         <p>
-          Antenna's stowing. Good. One last question to make sure you understand why.
+          The antenna's stowed, straight up at 90 degrees. Good. Now tell me why that position protects it.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -2165,10 +2186,10 @@ export const scenario3Data: ScenarioData = {
       'verify-stow-quiz': {
         text: `
         <p>
-          Maine is fully operational. TIDEMARK-1 traffic is now being served from ME-02. Vermont is in standby until the weather clears.
+          Maine is carrying the TIDEMARK-1 traffic now, and Vermont stays in standby until the weather clears.
         </p>
         <p>
-          One more thing before we're done - documentation. Every handover event gets logged, even routine weather ones.
+          That leaves documentation before we're done. Every handover event gets logged, even routine weather ones. Open the Ops Log in the station sidebar and type up when the snow started hurting the link, when the handover finished, which satellite it was, and that the traffic went from Vermont to Maine.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -2178,10 +2199,10 @@ export const scenario3Data: ScenarioData = {
       'document-handover-event': {
         text: `
         <p>
-          Hey, it's Catherine again. I've got things under control here - good C/N, clean traffic flow, no alarms. You did good work getting us set up.
+          Hey, it's Catherine again. I've got things under control here - good C/N, clean traffic flow, no warnings on the board. You did good work getting us set up.
         </p>
         <p>
-          I'll keep an eye on the link and coordinate with you when the storm clears so we can bring Vermont back online. Weather service says the worst should pass in about six hours.
+          I'll keep an eye on the link and coordinate with you when the storm clears so we can bring Vermont back online. Weather service says the worst should pass in a couple of hours.
         </p>
         <p>
           Stay safe over there. And nice job on the handover - zero packet loss is exactly what we want to see.
@@ -2190,6 +2211,23 @@ export const scenario3Data: ScenarioData = {
         character: Character.CATHERINE_VEGA,
         emotion: Emotion.HAPPY,
         audioUrl: getAssetUrl('/assets/campaigns/nats/3/obj-document-handover-event.mp3'),
+      },
+    },
+    objectivesOnStart: {
+      // Phase 29 D18 (nats-r4-s03-F1): Catherine introduces herself and says
+      // she checked the pointing BEFORE her quiz asks why she checked it
+      'catherine-look-angles': {
+        text: `
+        <p>
+          Hey, it's Catherine. Just got to the station - roads are fine up here, clear skies. I saw the antenna moving when I pulled in.
+        </p>
+        <p>
+          I did a quick sanity check that you weren't inputting the same az/el for ME-02 that you were using at VT-01. We had a new guy mess that up a few months ago - spent twenty minutes troubleshooting before someone noticed he'd copied Vermont's angles. Program-track was the right call.
+        </p>
+        `,
+        character: Character.CATHERINE_VEGA,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/3/obj-catherine-look-angles.mp3'),
       },
     },
   },

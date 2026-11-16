@@ -15,8 +15,8 @@ import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForS
  * - 'select-station': Asset tree station selection (VT-01)
  * - 'click-tab': Tab navigation
  * - 'configure-buc-gain': Lower BUC gain via the TX Chain adjust input
- * - 'auto': Auto-satisfied by simulation state (HPA backs off naturally
- *           once BUC drive drops; no user action required)
+ * - 'auto': Satisfied by simulation state once read on the tab for the
+ *           5 s observation dwell
  */
 type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'configure-buc-gain' | 'auto';
 
@@ -28,6 +28,24 @@ interface Scenario13Objective {
   tabId?: string;
   stationId?: string;
   bucGain?: number;
+  /** Wait (ms) for the objective to complete after its action - for steps gated on a live reading */
+  waitDoneMs?: number;
+  /** Wait (ms) for a quiz gated on a live reading to open (default 30 s) */
+  quizTimeoutMs?: number;
+  /**
+   * Reads the panel the quiz is about and asserts the keyed option is what
+   * the screen shows, before the answer is clicked: the answer comes from
+   * the sim state, not from matching the option text
+   */
+  checkScreen?: (page: import('@playwright/test').Page) => Promise<void>;
+}
+
+/** First number in a visible readout (e.g. "62.3 °C", "+0.27 °C/min") */
+async function readNumber(page: import('@playwright/test').Page, selector: string): Promise<number> {
+  const text = (await page.locator(`${selector}:visible`).first().textContent()) ?? '';
+  const match = /[-+]?\d+(?:\.\d+)?/u.exec(text);
+  expect(match, `${selector} reads a number (got "${text}")`).not.toBeNull();
+  return Number.parseFloat(match![0]);
 }
 
 const SCENARIO_13_OBJECTIVES: Scenario13Objective[] = [
@@ -72,7 +90,16 @@ const SCENARIO_13_OBJECTIVES: Scenario13Objective[] = [
     id: 'read-buc-temp-trend',
     title: 'Read the Temperature Trend',
     type: 'quiz',
-    correctAnswer: 'Roughly 25-30 minutes from now if nothing changes',
+    correctAnswer: 'In about half an hour (25-35 minutes) if nothing changes',
+    // (70 - Temp) / Trend (1 min), as the player works it off the panel
+    checkScreen: async (page) => {
+      const temperature = await readNumber(page, '#buc-temperature-display');
+      const trend = await readNumber(page, '#buc-temp-trend-display');
+      expect(trend).toBeGreaterThan(0);
+      const minutesToTrip = (70 - temperature) / trend;
+      expect(minutesToTrip).toBeGreaterThanOrEqual(25);
+      expect(minutesToTrip).toBeLessThanOrEqual(35);
+    },
   },
   {
     id: 'check-current-draw',
@@ -89,7 +116,14 @@ const SCENARIO_13_OBJECTIVES: Scenario13Objective[] = [
   {
     id: 'cross-check-spectrum',
     title: 'Rule Out an RX-Side Fault',
-    type: 'auto',
+    // Phase 27 Q3: the receive-side read is a quiz on what RX Analysis shows
+    type: 'quiz',
+    correctAnswer: 'Beacon steady on the analyzer, RX modem locked at about 14 dB C/N - the receive chain is clean',
+    checkScreen: async (page) => {
+      const rawCn = await readNumber(page, '#cn-raw-display');
+      expect(rawCn).toBeGreaterThan(12.5);
+      expect(rawCn).toBeLessThan(15.5);
+    },
   },
   {
     id: 'record-baseline-readings',
@@ -105,19 +139,19 @@ const SCENARIO_13_OBJECTIVES: Scenario13Objective[] = [
     id: 'identify-root-cause',
     title: 'Name the Root Cause',
     type: 'quiz',
-    correctAnswer: 'BUC gain is 10 dB above the operating value - the module is dissipating the excess as heat, not RF',
+    correctAnswer: 'Excess gain on a weak fan - 10 dB over the operating value adds heat the degraded fan cannot shed',
   },
   {
     id: 'evaluate-options',
     title: 'Choose a Course of Action',
     type: 'quiz',
-    correctAnswer: 'De-rate now - reduce BUC gain ~10 dB, watch the trend reverse, schedule a swap for the next planned window',
+    correctAnswer: 'De-rate now - cut BUC gain ~10 dB, watch the trend reverse, book a swap for the next window',
   },
   {
     id: 'confirm-action-plan',
     title: 'Confirm the Sequence',
     type: 'quiz',
-    correctAnswer: 'Lower BUC gain ~10 dB, verify HPA still linear, verify carrier still nominal, then watch the temperature curve',
+    correctAnswer: 'Lower BUC gain ~10 dB, check the HPA is still linear, check the carrier, then watch the temperature curve',
   },
 
   // ============================================================
@@ -138,13 +172,46 @@ const SCENARIO_13_OBJECTIVES: Scenario13Objective[] = [
   {
     id: 'verify-hpa-headroom',
     title: 'Verify HPA Still Linear',
-    type: 'auto',
+    // Phase 27 Q3: the linearity rows latch on TX Chain, then the panel read
+    type: 'quiz',
+    correctAnswer: 'BUC output about 16 dBm, P1dB margin about 12 dB; HPA output still 52 dBm at 8 dB back-off, Overdrive Normal',
+    checkScreen: async (page) => {
+      expect(Math.abs((await readNumber(page, '#buc-output-power-display')) - 16)).toBeLessThan(1);
+      expect(Math.abs((await readNumber(page, '#buc-p1db-margin-display')) - 12)).toBeLessThan(1);
+      expect(Math.abs((await readNumber(page, '#hpa-output-power-display')) - 52)).toBeLessThan(0.6);
+    },
   },
   {
     id: 'verify-trend-stabilizing',
     title: 'Confirm the Trend Is Bending',
     type: 'quiz',
-    correctAnswer: 'Watch 5-10 minutes: temperature slope flattens then trends down, current drops toward 3.0A, carrier still locked',
+    correctAnswer: 'Watch a few minutes: current falls at once, Trend (1 min) turns negative, temperature passes 61°C',
+    // The quiz opens once the BUC reads below 61 degC on TX Chain: real
+    // cooling after the de-rate (about 3 min of sim time)
+    quizTimeoutMs: 300000,
+    waitDoneMs: 60000,
+    checkScreen: async (page) => {
+      // The quiz opens on the sim value; the DOM readouts sync on wall time and round to 0.1, so poll them
+      // (the objective condition is raw < 61, the display can still read "61.0" for a moment)
+      // All three readouts are read in one evaluation, so they describe one moment
+      await expect
+        .poll(
+          () =>
+            page.evaluate(() => {
+              const read = (selector: string): number | null => {
+                const el = Array.from(document.querySelectorAll<HTMLElement>(selector)).find((e) => e.offsetParent !== null);
+                const match = /[-+]?\d+(?:\.\d+)?/u.exec(el?.textContent ?? '');
+                return match ? Number.parseFloat(match[0]) : null;
+              };
+              const current = read('#buc-current-display');
+              const temperature = read('#buc-temperature-display');
+              const trend = read('#buc-temp-trend-display');
+              return current !== null && temperature !== null && trend !== null && current < 3.2 && temperature < 61 && trend < 0;
+            }),
+          { timeout: 15000, message: 'BUC current < 3.2, temperature < 61 and trend < 0 at the same moment' }
+        )
+        .toBe(true);
+    },
   },
 
   // ============================================================
@@ -154,7 +221,7 @@ const SCENARIO_13_OBJECTIVES: Scenario13Objective[] = [
     id: 'schedule-maintenance-ticket',
     title: 'Open the Maintenance Ticket',
     type: 'quiz',
-    correctAnswer: 'Trend record (15-min curve), de-rate action taken, current gain/backoff settings, swap recommended for next planned window',
+    correctAnswer: 'Trend record, cooling-fault warning, de-rate action taken, gain and backoff settings, swap for the next planned window',
   },
   {
     id: 'final-dashboard-sweep-tab',
@@ -166,19 +233,31 @@ const SCENARIO_13_OBJECTIVES: Scenario13Objective[] = [
     id: 'final-dashboard-sweep',
     title: 'Final Dashboard Sweep',
     type: 'quiz',
-    correctAnswer: 'No active alarms, BUC running de-rated, carrier nominal, swap ticket open against next planned window',
+    correctAnswer: 'Only the BUC cooling-fault warning, BUC de-rated, carrier nominal, swap ticket open for the next planned window',
   },
   {
     id: 'log-shift-summary',
     title: 'Log the Shift Entry',
     type: 'quiz',
-    correctAnswer: '1003 - VT-01 BUC thermal trend (57->62°C over 15 min) addressed by 10 dB gain de-rate. Trend reversing, swap ticket open, carrier nominal.',
+    correctAnswer: '1003 - VT-01 BUC thermal trend (57->62°C, fan degraded) addressed by 10 dB gain de-rate. Trend reversing, swap ticket open, carrier nominal.',
   },
 ];
 
 // ============================================================
 // Helper Functions
 // ============================================================
+
+/** Wait until the objective reports complete, via the debugObjective dev hook. */
+async function waitForObjectiveDone(page: import('@playwright/test').Page, objectiveId: string, timeout: number): Promise<void> {
+  await page.waitForFunction(
+    (id) => {
+      const hook = (window as unknown as { debugObjective?: (id: string) => { isCompleted?: boolean } }).debugObjective;
+      return typeof hook === 'function' && hook(id)?.isCompleted === true;
+    },
+    objectiveId,
+    { timeout, polling: 500 }
+  );
+}
 
 /**
  * Configure BUC gain via the TX Chain adjust control.
@@ -206,7 +285,8 @@ async function configureBucGain(page: import('@playwright/test').Page, gain: num
 async function executeObjective(page: import('@playwright/test').Page, missionControlPage: MissionControlPage, objective: Scenario13Objective): Promise<void> {
   switch (objective.type) {
     case 'quiz':
-      await waitForQuizToAppear(page);
+      await waitForQuizToAppear(page, objective.quizTimeoutMs);
+      await objective.checkScreen?.(page);
       await answerQuizByText(page, objective.correctAnswer!);
       break;
 
@@ -227,10 +307,13 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
       break;
 
     case 'auto':
-      // Auto-satisfied by simulation state - allow a beat for the
-      // condition evaluator to register the change.
-      await page.waitForTimeout(2000);
+      // Satisfied by simulation state once read on the tab (5 s dwell)
+      await waitForObjectiveDone(page, objective.id, 20000);
       break;
+  }
+
+  if (objective.waitDoneMs) {
+    await waitForObjectiveDone(page, objective.id, objective.waitDoneMs);
   }
 
   await dismissDialogIfPresent(page);
@@ -277,8 +360,14 @@ test.describe('Scenario 13 Full Completion', () => {
     test.setTimeout(60000);
   });
 
+  // verify-trend-stabilizing waits out real BUC cooling
+  const longestWaitMs = Math.max(...SCENARIO_13_OBJECTIVES.map((o) => (o.waitDoneMs ?? 0) + (o.quizTimeoutMs ?? 0)));
+
   for (const objective of SCENARIO_13_OBJECTIVES) {
     test(`[${objective.id}] ${objective.title}`, async () => {
+      if (objective.waitDoneMs || objective.quizTimeoutMs) {
+        test.setTimeout(60000 + longestWaitMs);
+      }
       await executeObjective(page, missionControlPage, objective);
     });
   }

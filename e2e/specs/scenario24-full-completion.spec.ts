@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
 import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForSimulationReady } from '../utils/simulation-helpers';
+import { advanceUntil, simAdvance } from '../utils/test-clock';
 
 /**
  * Scenario 24 - "Constellation Crisis": Campaign Capstone.
@@ -8,9 +9,21 @@ import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForS
  * Five concurrent tracks: VT-01 storm (proactive heater), ME-02 BUC thermal
  * trend (de-rate), AURORA-7 customer pass (acquire + step-track), customer +
  * board comms. The Working Document is the incident-command log. No new
- * mechanics - this validates the orchestration of everything prior.
+ * mechanics - this validates the orchestration of everything prior. The BUC
+ * heat is a staged buc-overtemp fault; the closing step needs a typed Ops Log
+ * entry.
  */
-type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'toggle-switch' | 'configure-buc-gain' | 'repoint-program-track' | 'set-step-track' | 'verify-working-doc' | 'auto';
+type ObjectiveType =
+  | 'quiz'
+  | 'select-station'
+  | 'click-tab'
+  | 'toggle-switch'
+  | 'configure-buc-gain'
+  | 'repoint-program-track'
+  | 'set-step-track'
+  | 'verify-working-doc'
+  | 'ops-log'
+  | 'auto';
 
 interface Scenario24Objective {
   id: string;
@@ -24,6 +37,15 @@ interface Scenario24Objective {
   bucGain?: number;
   satelliteNoradId?: string;
   autoWaitSeconds?: number;
+  logText?: string;
+  /** For quiz: how long to wait for it (rows listed before it must hold first) */
+  quizWaitMs?: number;
+  /** For quiz: read the BUC panel (current down, Trend negative) before answering */
+  assertBucTrendTurned?: boolean;
+  /** For quiz: a timed hold row comes first; advance the clock this far (s) so it completes */
+  holdSeconds?: number;
+  /** For quiz: VT-01 is under the rain band, feed clear, beacon still locked (Phase 29 D13) */
+  assertRainBand?: boolean;
 }
 
 const SCENARIO_24_OBJECTIVES: Scenario24Objective[] = [
@@ -31,13 +53,13 @@ const SCENARIO_24_OBJECTIVES: Scenario24Objective[] = [
     id: 'review-mission-brief',
     title: 'Assume Incident Command',
     type: 'quiz',
-    correctAnswer: 'Order the board first: fixed clocks (storm ETA, pass window, board note) versus bendable trends (BUC heat, customer confidence)',
+    correctAnswer: 'Order the board: fixed clocks (storm, pass, board note) against trends you can bend (BUC heat, customer)',
   },
   {
     id: 'sequencing-quiz',
     title: 'Set the Sequence',
     type: 'quiz',
-    correctAnswer: 'VT-01 heater NOW (one switch, beats the front), then de-rate the ME-02 BUC, then set up the AURORA pass before its 0800 window',
+    correctAnswer: 'Switch the VT-01 heater on now, then de-rate the ME-02 BUC, then set up the AURORA-7 pass before 0800',
   },
 
   // TRACK 1: VT-01 STORM
@@ -78,7 +100,7 @@ const SCENARIO_24_OBJECTIVES: Scenario24Objective[] = [
     id: 'recognize-buc-signature',
     title: 'Recognize the Signature',
     type: 'quiz',
-    correctAnswer: 'The same over-gain thermal trend as before (swap still pending) - fix is the de-rate, gain back to the 23 dB operating value',
+    correctAnswer: 'The same over-gain trend as before, swap still pending. De-rate the gain back to the 23 dB operating value',
   },
   {
     id: 'derate-buc',
@@ -89,8 +111,13 @@ const SCENARIO_24_OBJECTIVES: Scenario24Objective[] = [
   {
     id: 'verify-buc-trending-down',
     title: 'Confirm the Trend Bends',
-    type: 'auto',
-    autoWaitSeconds: 5,
+    // Phase 27 Q3: the current / linearity rows latch on TX Chain, then the panel read.
+    // nats-r3-s24-F1: the current row holds 45 s so the Trend (1 min) has turned
+    // when the quiz opens; the spec reads the panel before answering.
+    type: 'quiz',
+    correctAnswer: 'Current about 3.1 A, temperature still in the low 60s, Trend (1 min) negative, P1dB Margin about 12 dB',
+    quizWaitMs: 90000,
+    assertBucTrendTurned: true,
   },
 
   // TRACK 3: AURORA-7 PASS
@@ -99,6 +126,29 @@ const SCENARIO_24_OBJECTIVES: Scenario24Objective[] = [
     title: 'Back to VT-01 for the Pass',
     type: 'select-station',
     stationId: 'VT-01',
+  },
+  // Phase 27: never slew a keyed dish off TIDEMARK-1 - HPA down first, then
+  // mute the BUC (an enabled HPA on a muted BUC is an RF-safety failure)
+  {
+    id: 'inhibit-tm1-tx-tab',
+    title: 'Open TX Chain',
+    type: 'click-tab',
+    tabId: 'tx-chain',
+  },
+  {
+    id: 'inhibit-tm1-tx-hpa',
+    title: 'Take TM-1 Off the Air: HPA',
+    type: 'toggle-switch',
+    switchId: 'hpa-enable',
+    switchState: false,
+  },
+  {
+    id: 'inhibit-tm1-tx',
+    title: 'Take TM-1 Off the Air',
+    type: 'toggle-switch',
+    switchId: 'buc-mute',
+    switchState: true,
+    autoWaitSeconds: 20,
   },
   {
     id: 'acquire-aurora-tab',
@@ -113,15 +163,17 @@ const SCENARIO_24_OBJECTIVES: Scenario24Objective[] = [
     satelliteNoradId: '28899',
   },
   {
+    // Step-track on, then the beacon held 15 s on ACU Control
     id: 'step-track-weak-beacon',
     title: 'Step-Track the Weak Beacon',
     type: 'set-step-track',
+    autoWaitSeconds: 90,
   },
   {
     id: 'pass-go-nogo-quiz',
     title: 'Pass Go/No-Go',
     type: 'quiz',
-    correctAnswer: 'GO with a caveat: step-track holding, margin thin on an end-of-life beacon; flag the sunset trajectory to Marcus BEFORE 0800',
+    correctAnswer: 'GO with a caveat: the margin is thin, so flag the sunset trajectory to Marcus BEFORE 0800',
   },
 
   // CUSTOMER + BOARD
@@ -129,19 +181,28 @@ const SCENARIO_24_OBJECTIVES: Scenario24Objective[] = [
     id: 'customer-escalation-quiz',
     title: 'Manage the Customer Channel',
     type: 'quiz',
-    correctAnswer: 'Per-trunk cause/action/next-update, thirty seconds each: TM-1 protected (heater on), TM-2 stabilized (BUC de-rated, no impact)',
+    correctAnswer: 'Cause, action and next-update time for each trunk, thirty seconds each: TM-1 on its backup, TM-2 stabilized',
+  },
+  {
+    // Phase 29 D13: the quiz waits behind "Watch the beacon on ACU Control (held 60 s)"
+    id: 'storm-hold-check-tab',
+    title: 'Open ACU Control for the storm read',
+    type: 'click-tab',
+    tabId: 'acu-control',
   },
   {
     id: 'storm-hold-check',
     title: 'Storm Holding',
     type: 'quiz',
-    correctAnswer: 'The feed stays clear as fast as ice tries to form - no accumulation, link holding; the outage never happens, monitor only',
+    holdSeconds: 62,
+    assertRainBand: true,
+    correctAnswer: 'The heater is holding the feed clear (Ice 0.0 dB) and rain costs the beacon about 1 dB, still above the 6.5 dB lock',
   },
   {
     id: 'board-note-quiz',
     title: 'The Board Note',
     type: 'quiz',
-    correctAnswer: 'Posture and exposure: both stations stable, no outage; AURORA pass flown on a sunsetting beacon; residual risk = ME-02 BUC swap',
+    correctAnswer: 'Posture and exposure: both stations stable, no outage, AURORA pass GO for 0800 on a sunsetting beacon, BUC swap as residual risk',
   },
 
   // Verify command log BEFORE the final quizzes (modal overlays sidebar after)
@@ -156,13 +217,19 @@ const SCENARIO_24_OBJECTIVES: Scenario24Objective[] = [
     id: 'review-command-log',
     title: 'Review the Command Log',
     type: 'quiz',
-    correctAnswer: "It shows the ordered board, the sequence and why, each track's action and outcome, the comms, and the residual risk",
+    correctAnswer: "It shows the ordered board, the sequence and why, each track's action and outcome, the comms and the residual risk",
   },
   {
     id: 'log-crisis-closed',
     title: 'Close the Incident',
     type: 'quiz',
-    correctAnswer: 'IC closed: VT-01 storm protected, ME-02 BUC de-rated, AURORA pass delivered; zero outage, five tracks; residual = ME-02 BUC swap',
+    correctAnswer: 'IC closed: VT-01 storm protected, ME-02 BUC de-rated, AURORA pass GO for 0800 (caveat briefed); zero outage; residual = ME-02 BUC swap',
+  },
+  {
+    id: 'log-crisis-closed-typed',
+    title: 'Close the Incident: typed Ops Log entry',
+    type: 'ops-log',
+    logText: 'IC closed: VT-01 storm protected, ME-02 BUC de-rated, AURORA GO for 0800; residual = ME-02 BUC swap',
   },
 ];
 
@@ -217,26 +284,27 @@ async function repointProgramTrack(page: import('@playwright/test').Page, satell
   await expect(moveBtn).toBeEnabled({ timeout: 5000 });
   await moveBtn.click();
 
-  await page.waitForFunction(
-    () => {
-      const w = window as unknown as {
-        signalRange?: {
-          simulationManager?: {
-            groundStations?: Array<{
-              state?: { id?: string };
-              antennas?: Array<{ state?: { slewing?: boolean; isLocked?: boolean } }>;
-            }>;
+  await advanceUntil(
+    page,
+    () =>
+      page.evaluate(() => {
+        const w = window as unknown as {
+          signalRange?: {
+            simulationManager?: {
+              groundStations?: Array<{
+                state?: { id?: string };
+                antennas?: Array<{ state?: { slewing?: boolean; isLocked?: boolean } }>;
+              }>;
+            };
           };
         };
-      };
-      const gs = w.signalRange?.simulationManager?.groundStations?.find((g) => g.state?.id === 'VT-01');
-      const antennaState = gs?.antennas?.[0]?.state;
-      return antennaState ? antennaState.slewing === false && antennaState.isLocked === true : false;
-    },
-    undefined,
-    { timeout: 180000 }
+        const gs = w.signalRange?.simulationManager?.groundStations?.find((g) => g.state?.id === 'VT-01');
+        const antennaState = gs?.antennas?.[0]?.state;
+        return antennaState ? antennaState.slewing === false && antennaState.isLocked === true : false;
+      }),
+    { maxMs: 180000, stepMs: 1000, message: 'antenna slew complete and locked' }
   );
-  await page.waitForTimeout(1500);
+  await simAdvance(page, 1500);
 }
 
 async function setStepTrack(page: import('@playwright/test').Page): Promise<void> {
@@ -257,7 +325,7 @@ async function verifyWorkingDocument(page: import('@playwright/test').Page): Pro
   const docBox = page.locator('#draggable-html-box-working-document');
   await expect(docBox).toBeVisible({ timeout: 5000 });
 
-  // 8 documentLine quizzes passed by this point
+  // 7 documentLine quizzes passed by this point
   await expect(docBox).toContainText('7 entries');
   await expect(docBox).toContainText('Command');
   await expect(docBox).toContainText('Board Note');
@@ -270,10 +338,96 @@ async function verifyWorkingDocument(page: import('@playwright/test').Page): Pro
   }
 }
 
+/**
+ * Type an entry into the Operations Log (sidebar log icon) and close it.
+ */
+async function typeOpsLogEntry(page: import('@playwright/test').Page, text: string): Promise<void> {
+  await page.locator('.ops-log-icon').first().click();
+  const input = page.locator('#ops-log-manual-input');
+  await expect(input).toBeVisible({ timeout: 5000 });
+  await input.fill(text);
+  await input.press('Enter');
+  await expect(page.locator('#ops-log-entries')).toContainText(text.slice(0, 20), { timeout: 5000 });
+  // Mission Complete closes the log itself when this entry finishes the scenario
+  await page
+    .locator('#ops-log-modal-close')
+    .click({ timeout: 3000 })
+    .catch(() => {});
+  await page.waitForTimeout(300);
+}
+
+/**
+ * The de-rate as the ME-02 BUC panel shows it when the quiz opens: current
+ * near 3.1 A, temperature still in the low 60s, Trend (1 min) below zero.
+ * Read off the DOM so the keyed answer is the screen, not the option text.
+ */
+async function assertBucTrendTurned(page: import('@playwright/test').Page): Promise<void> {
+  const readNumber = async (selector: string): Promise<number> => {
+    const text = (await page.locator(`${selector}:visible`).first().textContent()) ?? '';
+    const match = /[-+]?\d+(?:\.\d+)?/u.exec(text);
+    expect(match, `${selector} reads a number (got "${text}")`).not.toBeNull();
+    return Number.parseFloat(match![0]);
+  };
+  expect(await readNumber('#buc-current-display')).toBeLessThan(3.5);
+  const temperature = await readNumber('#buc-temperature-display');
+  expect(temperature).toBeGreaterThanOrEqual(60);
+  expect(temperature).toBeLessThan(65);
+  expect(await readNumber('#buc-temp-trend-display')).toBeLessThan(0);
+}
+
+/** VT-01 under the rain band: rain falling, feed clear (heater), AURORA-7 beacon still locked. */
+async function assertRainBand(page: import('@playwright/test').Page): Promise<void> {
+  const vt = await page.evaluate(() => {
+    const w = window as unknown as {
+      signalRange?: {
+        simulationManager?: {
+          groundStations?: Array<{
+            state?: { id?: string };
+            antennas?: Array<{ state?: { rainRate_mmh?: number; iceAccumulation_dB?: number; isBeaconLocked?: boolean; beaconCN?: number | null } }>;
+          }>;
+        };
+      };
+    };
+    const gs = w.signalRange?.simulationManager?.groundStations?.find((g) => g.state?.id === 'VT-01');
+    return gs?.antennas?.[0]?.state ?? null;
+  });
+  expect(vt, 'VT-01 antenna state').not.toBeNull();
+  expect(vt!.rainRate_mmh ?? 0).toBeGreaterThan(20);
+  expect(vt!.iceAccumulation_dB ?? 99).toBeLessThan(0.1);
+  expect(vt!.isBeaconLocked).toBe(true);
+  expect(vt!.beaconCN ?? 0).toBeGreaterThan(6.5);
+}
+
+/** Wait until the objective reports complete, via the debugObjective dev hook. */
+async function waitForObjectiveDone(page: import('@playwright/test').Page, objectiveId: string, timeout: number): Promise<void> {
+  await advanceUntil(
+    page,
+    () =>
+      page.evaluate((id) => {
+        const hook = (window as unknown as { debugObjective?: (id: string) => { isCompleted?: boolean } }).debugObjective;
+        return typeof hook === 'function' && hook(id)?.isCompleted === true;
+      }, objectiveId),
+    { maxMs: timeout, stepMs: 1000, message: `objective ${objectiveId} complete` }
+  );
+}
+
 async function executeObjective(page: import('@playwright/test').Page, missionControlPage: MissionControlPage, objective: Scenario24Objective): Promise<void> {
   switch (objective.type) {
     case 'quiz':
-      await waitForQuizToAppear(page);
+      if (objective.holdSeconds) {
+        // advanceClock moves the weather (the rain band ramps in) but credits no
+        // maintainDuration hold: the 60 s hold accrues in real time while ACU
+        // Control is open, and waitForQuizToAppear waits for it
+        await page.evaluate((ms) => (window as unknown as { advanceClock: (deltaMs: number) => void }).advanceClock(ms), objective.holdSeconds * 1000);
+        await simAdvance(page, 1500);
+      }
+      await waitForQuizToAppear(page, objective.quizWaitMs);
+      if (objective.assertRainBand) {
+        await assertRainBand(page);
+      }
+      if (objective.assertBucTrendTurned) {
+        await assertBucTrendTurned(page);
+      }
       await answerQuizByText(page, objective.correctAnswer!);
       break;
 
@@ -286,11 +440,14 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
       // Observation-gated conditions latch only after the default dwell on
       // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
       // reset the read and strand the objective.
-      await page.waitForTimeout(3000);
+      await simAdvance(page, 3000);
       break;
 
     case 'toggle-switch':
       await toggleSwitch(page, objective.switchId!, objective.switchState!);
+      if (objective.autoWaitSeconds) {
+        await waitForObjectiveDone(page, objective.id, objective.autoWaitSeconds * 1000);
+      }
       break;
 
     case 'configure-buc-gain':
@@ -303,14 +460,19 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
 
     case 'set-step-track':
       await setStepTrack(page);
+      await waitForObjectiveDone(page, objective.id, (objective.autoWaitSeconds ?? 30) * 1000);
       break;
 
     case 'verify-working-doc':
       await verifyWorkingDocument(page);
       break;
 
+    case 'ops-log':
+      await typeOpsLogEntry(page, objective.logText!);
+      break;
+
     case 'auto':
-      await page.waitForTimeout((objective.autoWaitSeconds ?? 5) * 1000);
+      await waitForObjectiveDone(page, objective.id, (objective.autoWaitSeconds ?? 30) * 1000);
       break;
   }
 
@@ -361,6 +523,9 @@ test.describe('Scenario 24 Full Completion', () => {
     test(`[${objective.id}] ${objective.title}`, async () => {
       if (objective.type === 'repoint-program-track') {
         test.setTimeout(240000);
+      }
+      if ((objective.quizWaitMs ?? 0) > 30000 || (objective.autoWaitSeconds ?? 0) > 60) {
+        test.setTimeout(180000);
       }
       await executeObjective(page, missionControlPage, objective);
     });

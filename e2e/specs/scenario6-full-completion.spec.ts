@@ -119,8 +119,8 @@ const SCENARIO_6_OBJECTIVES: Scenario6Objective[] = [
     specaConfig: {
       centerFrequency: 1422,
       span: 50,
-      maxAmplitude: -20,
-      minAmplitude: -50,
+      maxAmplitude: -30,
+      minAmplitude: -90,
       rbwAuto: true,
     },
   },
@@ -134,11 +134,6 @@ const SCENARIO_6_OBJECTIVES: Scenario6Objective[] = [
       modulation: 'QPSK',
       fec: '3/4',
     },
-  },
-  {
-    id: 'verify-rx-lock',
-    title: 'Verify RX Signal Lock',
-    type: 'wait-rx-lock',
   },
 
   // ============================================================
@@ -173,6 +168,12 @@ const SCENARIO_6_OBJECTIVES: Scenario6Objective[] = [
     title: 'Enable Transmit Path',
     type: 'enable-tx-path',
   },
+  {
+    // AURORA-7 carries no carrier until VT-01 uplinks: RX locks on its own carrier
+    id: 'verify-rx-lock',
+    title: 'Verify RX Signal Lock',
+    type: 'wait-rx-lock',
+  },
 
   // ============================================================
   // PHASE 6: FINAL VERIFICATION
@@ -181,7 +182,7 @@ const SCENARIO_6_OBJECTIVES: Scenario6Objective[] = [
     id: 'final-verification',
     title: 'Full Duplex Established',
     type: 'quiz',
-    correctAnswer: 'Step-track maintaining lock on beacon, RX at 1422 MHz IF, TX at 1447 MHz IF, AES-256 encrypted',
+    correctAnswer: 'Step-track on beacon, RX at 1422 MHz IF, TX at 1447 MHz IF, AES-256',
   },
 ];
 
@@ -538,7 +539,9 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
       // Use the sidebar item specifically and force click to bypass any overlay
       const gsItem = page.locator('#asset-tree-sidebar-container a[data-asset-id="VT-01"]');
       if ((await gsItem.count()) > 0) {
-        await gsItem.click({ force: true });
+        // The character dialog is a full-screen aria-modal overlay: wait for it to go, then a real pointer click
+        await expect(page.locator('.dialog-overlay')).toHaveCount(0, { timeout: 15000 });
+        await gsItem.first().click();
         await page.waitForTimeout(500);
         await dismissDialogIfPresent(page);
       }
@@ -704,13 +707,9 @@ test.describe('Scenario 6 Full Completion', () => {
   test('Objective: Configure RX Modem', async () => {
     const objective = SCENARIO_6_OBJECTIVES.find((o) => o.id === 'configure-rx-modem')!;
     await executeObjective(page, missionControlPage, objective);
-  });
-
-  test('Objective: Verify RX Signal Lock', async () => {
-    // RX lock with SNR threshold can take time
-    test.setTimeout(120000);
-    const objective = SCENARIO_6_OBJECTIVES.find((o) => o.id === 'verify-rx-lock')!;
-    await executeObjective(page, missionControlPage, objective);
+    // Phase 27: the "why no lock yet" quiz follows the configuration rows
+    await waitForQuizToAppear(page);
+    await answerQuizByText(page, 'Nobody is uplinking on that slot; the carrier it waits for is our own');
   });
 
   // ============================================================
@@ -738,6 +737,14 @@ test.describe('Scenario 6 Full Completion', () => {
 
   test('Objective: Enable Transmit Path', async () => {
     const objective = SCENARIO_6_OBJECTIVES.find((o) => o.id === 'enable-transmit-path')!;
+    await executeObjective(page, missionControlPage, objective);
+  });
+
+  test('Objective: Verify RX Signal Lock', async () => {
+    // RX lock on VT-01's own carrier, then a 15 s C/N hold; observed on RX Analysis
+    test.setTimeout(120000);
+    await missionControlPage.selectTab('rx-analysis');
+    const objective = SCENARIO_6_OBJECTIVES.find((o) => o.id === 'verify-rx-lock')!;
     await executeObjective(page, missionControlPage, objective);
   });
 

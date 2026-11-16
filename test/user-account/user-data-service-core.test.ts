@@ -90,6 +90,23 @@ describe('UserDataService', () => {
     );
   });
 
+  it('invalidates menu snapshots only after successful progress/checkpoint writes', async () => {
+    const { UserDataService } = await loadReal();
+    const { selectionProgressCache } = await import('../../src/user-account/selection-progress-cache');
+    const invalidate = vi.spyOn(selectionProgressCache, 'invalidate');
+    const svc = new UserDataService({ apiBaseUrl, getAccessToken: () => 'token', enableRetry: false });
+    (globalThis.fetch as Mock).mockResolvedValue(makeJsonResponse({ ok: true, status: 204 }));
+    await svc.checkpointExists('one');
+    expect(invalidate).not.toHaveBeenCalled();
+    await svc.deleteCheckpoint('one');
+    await svc.deleteAllProgress();
+    expect(invalidate).toHaveBeenCalledTimes(2);
+    (globalThis.fetch as Mock).mockResolvedValue(makeJsonResponse({ ok: false, status: 503 }));
+    await expect(svc.deleteCheckpoint('one')).rejects.toThrow();
+    expect(invalidate).toHaveBeenCalledTimes(2);
+    invalidate.mockRestore();
+  });
+
   it('refuses every write while a replay session is active, and still reads', async () => {
     const { UserDataService } = await loadReal();
     // Same module instance the freshly imported service sees

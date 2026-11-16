@@ -20,6 +20,22 @@
  * power, link-budget ground truth) are copied beside the observables, so
  * diff.mjs can report the best-case margin of each against the station.
  *
+ * Since phase 19.6 each station also records its transmit chain as authored
+ * (`txChain`): the scenario's transmitting modems into the BUC and HPA, with
+ * the BUC's compression, current and equilibrium temperature and the HPA's
+ * input, gain, output, back-off from P1dB and two-tone IM3, so every HPA/BUC
+ * number a brief quotes can be checked against the engine. Staged hardware
+ * faults are not applied (the equilibrium is the healthy unit's).
+ *
+ * Since phase 19.3 the transmit chain is connected before the links are
+ * flown, so a station's own uplink goes through the uplink path and the
+ * transponder like any carrier and shows up in what it receives. `txChain`
+ * records each radiated carrier's EIRP; every link records its satellite's
+ * transponder operating points (input and output back-off, two-tone C/IM3,
+ * per carrier the isotropic input, uplink C/N in its own bandwidth and the
+ * downlink EIRP). Stations are flown one at a time: another station's
+ * uplink is not on the satellite while this one is measured.
+ *
  * Output: test/calibration/<scenario-id>.json (committed). Numbers are
  * rounded to 0.01 so a model change, not float noise, is what diffs.
  */
@@ -41,7 +57,6 @@ vi.mock('@app/simulation/simulation-manager', () => ({
   SimulationManager: {
     getInstance: () => ({
       satellites: simSatellites,
-      getSatsByAzEl: (az: number, el: number) => simSatellites.filter((sat) => Math.abs(sat.az - az) <= 1 && Math.abs(sat.el - el) <= 1),
       getSatByNoradId: (noradId: number) => simSatellites.find((s) => s.noradId === noradId) ?? null,
       isDeveloperMode: false,
       groundStations: [],
@@ -59,6 +74,7 @@ import { createAntenna } from '@app/equipment/antenna/antenna-factory';
 import { Receiver, type ReceiverModemState } from '@app/equipment/receiver/receiver';
 import { TapPoint } from '@app/equipment/rf-front-end/coupler-module/tap-points';
 import { createRFFrontEnd } from '@app/equipment/rf-front-end/rf-front-end-factory';
+import { AGCModuleCore } from '@app/equipment/rf-front-end/agc-module/agc-module-core';
 import { OrbitalSatellite, observerFromLocation } from '@app/equipment/satellite/orbital-satellite';
 import type { Satellite } from '@app/equipment/satellite/satellite';
 import { EventBus } from '@app/events/event-bus';
@@ -71,8 +87,17 @@ import type { Degrees } from 'ootk';
 
 const OUT_DIR = resolve(__dirname, '../../test/calibration');
 const TICK_HZ = 60;
+
+// The ledger records steady states. The AGC's hang (Phase 29, 2 s hold after a
+// sudden drop) runs on SimClock run time, which the flights here do not step
+// (stepping it would also move the authored carrier fading off its HEAD phase),
+// so a hang begun when the dish left one satellite would never release and the
+// next link's IF levels would read the previous link's gain. Fly without it.
+(AGCModuleCore as unknown as { HANG_MS: number }).HANG_MS = 0;
 const LEO_HORIZON_H = 12;
 const LEO_MIN_EL = 5 as Degrees;
+/** Longest a GEO link may take to settle, s (a 9 m pedestal from stow) */
+const GEO_MAX_SETTLE_S = 600;
 /** Condition params that are physical thresholds (dB, dBm, K) */
 const PHYSICAL_PARAMS = ['minCNRatio', 'maxCNRatio', 'cnHoldSeconds', 'minPower', 'maxSignalStrength', 'minMarginDb', 'maxNoiseTemperature', 'minOutputPower', 'maxImdLevel'];
 
@@ -86,10 +111,19 @@ interface CarrierTrack {
   modulation: string;
   fec: string;
   cn: number[];
+  /** Effective Es/N0 (after the ADC), dB (phase 19.5) */
+  esN0: number[];
+  /** The carrier's own MODCOD threshold, dB (null: no MODCOD) */
+  requiredEsN0: number | null;
   rxIfDbm: number[];
   noiseIfDbm: number[];
   locked: number;
   samples: number;
+}
+
+/** Carriers from other satellites the station hears in its sidelobes on this link (phase 19.4) */
+interface AdjacentTrack {
+  signalIds: Set<string>;
 }
 
 interface Settings {
@@ -144,9 +178,106 @@ function buildChain(station: GroundStationConfig, index: number) {
   return { key, antenna, frontEnd, receiver, lnb };
 }
 
+/**
+ * Where the AGC settles on receive noise alone (no carrier in the beam):
+ * target minus the noise in the IF passband, clamped to its range. At the
+ * max-gain rail this is the pre-AOS "AGC at max gain" board alarm (19.2).
+ */
+function agcOnNoise(chain: Chain) {
+  const { frontEnd } = chain;
+  frontEnd.update();
+  const spm = frontEnd.couplerModule.signalPathManager;
+  const agc = frontEnd.agcModule.state;
+  const noiseInDbm = spm.getExternalNoise() - spm.agcGain;
+  const gain = Math.max(agc.minGain, Math.min(agc.maxGain, agc.targetLevel - noiseInDbm));
+
+  return {
+    noiseInDbm: r2(noiseInDbm),
+    filterMHz: r2(frontEnd.filterModule.state.bandwidth),
+    settledGainDb: r2(gain),
+    maxGainDb: r2(agc.maxGain),
+    railedAtMax: gain >= agc.maxGain - 0.5,
+  };
+}
+
 type Chain = ReturnType<typeof buildChain>;
 
-function sample(chain: Chain, tracks: Map<string, CarrierTrack>): void {
+interface ModemConfig {
+  isTransmitting?: boolean;
+  isFaulted?: boolean;
+  isLoopback?: boolean;
+  ifSignal?: RfSignal;
+}
+
+/**
+ * The station's transmit chain as authored (phase 19.6): its transmitting
+ * modems drive the BUC and HPA; the ALC/attenuator and thermal equilibrium
+ * are read after a settle.
+ */
+function txChainOf(chain: Chain, station: GroundStationConfig, index: number) {
+  const { frontEnd } = chain;
+  const txConfigs = (station as unknown as { transmitters?: Array<{ modems?: ModemConfig[] }> }).transmitters ?? [];
+  const modems = (txConfigs[index] ?? txConfigs[0])?.modems ?? [];
+  frontEnd.transmitters = [];
+  frontEnd.connectTransmitter({
+    state: { modems: modems.map((m) => ({ ...m, isFaulted: m.isFaulted ?? false, isLoopback: m.isLoopback ?? false })) },
+    isModemInIntermittentDropout: () => false,
+  } as never);
+  for (let i = 0; i < 3; i++) frontEnd.update();
+
+  const buc = frontEnd.bucModule;
+  const hpa = frontEnd.hpaModule;
+  const radiating = hpa.outputSignals.length > 0;
+
+  return {
+    transmittingModems: modems.filter((m) => m.isTransmitting && !m.isFaulted && !m.isLoopback).length,
+    bucGainDb: r2(buc.state.gain),
+    bucP1dbDbm: r2(buc.state.saturationPower),
+    bucInDbm: r2(buc.state.inputPower ?? Number.NEGATIVE_INFINITY),
+    bucOutDbm: buc.hasRfOutput() ? r2(buc.state.outputPower) : null,
+    bucCompressionDb: r2(buc.state.compression ?? 0),
+    bucCurrentEqA: r2(buc.equilibriumCurrentA()),
+    bucTempEqC: r2(buc.equilibriumTemperatureC()),
+    hpaEnabled: hpa.state.isPowered && hpa.state.isHpaEnabled,
+    hpaAlc: hpa.isAlcEnabled,
+    hpaBackOffDb: r2(hpa.state.backOff),
+    hpaP1dbDbm: r2(hpa.p1db),
+    hpaPsatDbm: r2(hpa.psatDbm),
+    hpaInDbm: r2(hpa.state.inputPower ?? Number.NEGATIVE_INFINITY),
+    hpaGainDb: radiating ? r2(hpa.state.gain) : null,
+    hpaOutDbm: radiating ? r2(hpa.state.outputPower) : null,
+    hpaOutW: radiating ? r2(10 ** ((hpa.state.outputPower - 30) / 10)) : null,
+    hpaOutputBackoffDb: radiating ? r2(hpa.state.outputBackoffDb ?? Number.NaN) : null,
+    hpaIm3Dbc: radiating ? r2(hpa.state.imdLevel) : null,
+    hpaAlcAtLimit: radiating ? Boolean(hpa.state.isAlcAtLimit) : null,
+    hpaTempEqC: r2(hpa.equilibriumTemperatureC()),
+    radiated: chain.antenna.txSignalsOut.map((sig) => ({ signalId: sig.signalId, rfMHz: r2((sig.frequency as number) / 1e6), eirpDbm: r2(sig.power as number) })),
+  };
+}
+
+/** The satellite's transponders as last operated (phase 19.3) */
+function transpondersOf(sat: Satellite) {
+  return sat.transponders
+    .map((tp) => ({ tp, point: sat.operatingPoint(tp.id) }))
+    .filter(({ point }) => point !== null)
+    .map(({ tp, point }) => {
+      const p = point as NonNullable<typeof point>;
+      return {
+        id: tp.id,
+        iboDb: r2(p.iboDb),
+        oboDb: r2(p.oboDb),
+        carrierToImDb: r2(p.carrierToImDb),
+        carriers: p.carriers.map((c) => ({
+          signalId: c.signalId,
+          eirpDbw: r2(c.eirpDbm - 30),
+          cnUpDbHz: r2(c.cn0UpDbHz),
+          upstreamCn0DbHz: r2(c.upstreamCn0DbHz),
+        })),
+      };
+    });
+}
+
+function sample(chain: Chain, tracks: Map<string, CarrierTrack>, noradId: number, adjacent: AdjacentTrack): void {
   const { antenna, frontEnd, receiver } = chain;
   frontEnd.update();
   const spm = frontEnd.couplerModule.signalPathManager;
@@ -154,6 +285,12 @@ function sample(chain: Chain, tracks: Map<string, CarrierTrack>): void {
   const baseModem = receiver.state.modems[0];
 
   for (const sig of antenna.state.rxSignalsIn as RfSignal[]) {
+    // Since 19.4 the antenna hears satellites in its sidelobes too: the link's
+    // carriers are the target's; the others are counted as adjacent
+    if (sig.noradId !== noradId) {
+      adjacent.signalIds.add(sig.signalId);
+      continue;
+    }
     const ifHz = frontEnd.lnbModule.calculateIfFrequency(sig.frequency as RfFrequency) as number;
     let track = tracks.get(sig.signalId);
     if (!track) {
@@ -165,6 +302,8 @@ function sample(chain: Chain, tracks: Map<string, CarrierTrack>): void {
         modulation: String(sig.modulation),
         fec: String(sig.fec),
         cn: [],
+        esN0: [],
+        requiredEsN0: null,
         rxIfDbm: [],
         noiseIfDbm: [],
         locked: 0,
@@ -183,9 +322,16 @@ function sample(chain: Chain, tracks: Map<string, CarrierTrack>): void {
     const info = receiver.getSignalsInBandwidth(modem);
     track.samples++;
     track.cn.push(info.cnRatio_dB);
+    track.esN0.push(info.effectiveEsN0_dB ?? Number.NEGATIVE_INFINITY);
+    track.requiredEsN0 = Number.isFinite(info.requiredEsN0_dB ?? Number.NaN) ? (info.requiredEsN0_dB as number) : null;
     track.rxIfDbm.push((sig.power as number) + pathGain);
     track.noiseIfDbm.push(spm.getNoiseFloorAt(TapPoint.RX_IF, sig.bandwidth as Hertz).noiseFloorNoGain + spm.getTotalRxGain());
-    if (info.hasLock) track.locked++;
+    // Since 19.5 lock needs the MODCOD threshold held for an acquisition time
+    // the ledger does not wait out (it samples one carrier after another on
+    // one modem), so "locked" counts samples whose steady state is lock:
+    // labels match (they do, the modem is set from the carrier) and the
+    // effective Es/N0 clears the threshold
+    if (info.hasCarrier && !info.formatMismatch && !info.isBandwidthClipped && (info.lockMargin_dB ?? Number.NEGATIVE_INFINITY) >= 0) track.locked++;
   }
 }
 
@@ -201,6 +347,9 @@ function summarise(track: CarrierTrack) {
     samples: track.samples,
     peakCnDb: r2(finite.at(-1) ?? -Infinity),
     medianCnDb: r2(finite[Math.floor(finite.length / 2)] ?? -Infinity),
+    peakEsN0Db: r2(Math.max(...track.esN0.filter(Number.isFinite), -Infinity)),
+    requiredEsN0Db: track.requiredEsN0 === null ? null : r2(track.requiredEsN0),
+    peakLockMarginDb: track.requiredEsN0 === null ? null : r2(Math.max(...track.esN0.filter(Number.isFinite), -Infinity) - track.requiredEsN0),
     peakRxIfDbm: r2(Math.max(...track.rxIfDbm)),
     noiseIfDbm: r2(track.noiseIfDbm[0] ?? -Infinity),
     lockedSamples: track.locked,
@@ -210,6 +359,7 @@ function summarise(track: CarrierTrack) {
 function flyLink(chain: Chain, station: GroundStationConfig, sat: Satellite, startMs: number) {
   const { antenna } = chain;
   const tracks = new Map<string, CarrierTrack>();
+  const adjacent: AdjacentTrack = { signalIds: new Set() };
   antenna.handleTrackingModeChange('program-track');
   antenna.handleTargetSatelliteChange(sat.noradId);
 
@@ -228,18 +378,23 @@ function flyLink(chain: Chain, station: GroundStationConfig, sat: Satellite, sta
     for (simNowMs = found.aosMs - 30_000; simNowMs <= found.losMs; simNowMs += tickMs, tick++) {
       for (const s of simSatellites) s.update();
       antenna.update();
-      if (tick % TICK_HZ === 0 && simNowMs >= found.aosMs) sample(chain, tracks);
+      if (tick % TICK_HZ === 0 && simNowMs >= found.aosMs) sample(chain, tracks, sat.noradId, adjacent);
     }
   } else {
     simNowMs = startMs;
-    for (let tick = 0; tick < 30 * TICK_HZ; tick++) {
+    // Settle: at least 30 s, then until the pedestal has been still for 5 s
+    // (a 9 m dish at its real 0.5 deg/s can take minutes to arrive; 19.4)
+    let still = 0;
+    for (let tick = 0; tick < GEO_MAX_SETTLE_S * TICK_HZ; tick++) {
       for (const s of simSatellites) s.update();
       antenna.update();
+      still = antenna.state.isSlewing ? 0 : still + 1;
+      if (tick >= 30 * TICK_HZ && still >= 5 * TICK_HZ) break;
     }
     for (let i = 0; i < 5; i++) {
       for (const s of simSatellites) s.update();
       antenna.update();
-      sample(chain, tracks);
+      sample(chain, tracks, sat.noradId, adjacent);
     }
   }
 
@@ -262,6 +417,8 @@ function flyLink(chain: Chain, station: GroundStationConfig, sat: Satellite, sta
             tsysK: r2(internals.systemTempK_(refHz, peakEl)),
           },
     carriers: [...tracks.values()].map(summarise),
+    adjacentCarriers: adjacent.signalIds.size,
+    transponders: transpondersOf(sat),
   };
 }
 
@@ -278,6 +435,10 @@ function snapshot(scenario: ScenarioData) {
   const stations = (settings.groundStations ?? []).flatMap((station) =>
     station.antennas.map((_, index) => {
       const chain = buildChain(station, index);
+      const agcOnNoiseAlone = agcOnNoise(chain);
+      // Only this station's uplink is on the satellites while it is flown
+      for (const sat of simSatellites) sat.rxSignal = [];
+      const txChain = txChainOf(chain, station, index);
       const links = simSatellites.map((sat) => flyLink(chain, station, sat, startMs));
       EventBus.destroy();
       return {
@@ -286,7 +447,9 @@ function snapshot(scenario: ScenarioData) {
         antennaConfig: chain.key,
         lnbLoMHz: chain.lnb.state.loFrequency,
         lnbNoiseTempK: r2(chain.lnb.state.noiseTemperature),
+        agcOnNoiseAlone,
         links,
+        txChain,
       };
     })
   );

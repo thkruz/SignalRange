@@ -130,8 +130,8 @@ export const petersonGroundStation = {
         tapPointB: TapPoint.RX_IF,
         availableTapPointsA: [TapPoint.TX_IF, TapPoint.RX_IF],
         availableTapPointsB: [TapPoint.TX_IF, TapPoint.RX_IF],
-        couplingFactorA: -40,
-        couplingFactorB: -39,
+        couplingFactorA: -20, // dB (monitor coupler; the analyzer reads line power through it, Phase 19.2)
+        couplingFactorB: -20, // dB
         isEnabledA: false,
         isEnabledB: true,
         isActiveA: false,
@@ -168,7 +168,7 @@ export const petersonGroundStation = {
   spectrumAnalyzers: [
     {
       referenceLevel: -60 as dBm,
-      centerFrequency: 1364e6 as Hertz, // Between the service carrier (1365) and jammer (1362) IFs
+      centerFrequency: 1364e6 as Hertz, // 1349-1379 MHz: the service carrier (1365) and the interferer IFs (1354-1374) all sit inside the span
       span: 30e6 as Hertz,
       rbw: 100e3 as Hertz,
       minAmplitude: -110 as dBm,

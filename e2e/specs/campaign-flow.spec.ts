@@ -10,17 +10,15 @@ test.describe('Campaign Flow', () => {
       await expect(natsCard).not.toHaveClass(/disabled/);
 
       // Should have campaign info
-      await expect(natsCard.locator('.campaign-title')).toContainText('North Atlantic');
+      await expect(natsCard.locator('.selection-item-title')).toContainText('North Atlantic');
     });
 
     test('should show campaign metadata badges', async ({ campaignSelectionPage }) => {
       await campaignSelectionPage.goto();
 
-      const natsCard = campaignSelectionPage.getCampaignCard('nats');
-
       // Should have duration and difficulty badges
-      await expect(natsCard.locator('.badge.duration')).toBeVisible();
-      await expect(natsCard.locator('.badge[class*="difficulty"]')).toBeVisible();
+      await expect(campaignSelectionPage.pageContainer.locator('#campaign-detail .badge.duration')).toBeVisible();
+      await expect(campaignSelectionPage.pageContainer.locator('#campaign-detail .badge[class*="difficulty"]')).toBeVisible();
     });
   });
 
@@ -59,7 +57,7 @@ test.describe('Campaign Flow', () => {
       const startButton = scenario1.locator('.btn-start');
 
       await expect(startButton).toBeVisible();
-      await expect(startButton).toHaveText('Start');
+      await expect(startButton).toHaveText('Begin mission');
     });
 
     test('should show campaign progress info', async ({ scenarioSelectionPage }) => {
@@ -67,7 +65,7 @@ test.describe('Campaign Flow', () => {
 
       // Progress should show 0 completed initially
       await expect(scenarioSelectionPage.campaignProgress).toContainText('0');
-      await expect(scenarioSelectionPage.campaignProgress).toContainText('scenarios completed');
+      await expect(scenarioSelectionPage.campaignProgress).toContainText('complete');
     });
 
     test('should get correct scenario count', async ({ scenarioSelectionPage }) => {

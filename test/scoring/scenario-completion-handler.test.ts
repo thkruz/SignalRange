@@ -1,4 +1,6 @@
 import { Mock, vi } from 'vitest';
+import { CampaignManager } from '../../src/campaigns/campaign-manager';
+import type { CampaignData } from '../../src/campaigns/campaign-types';
 import { EventBus } from '../../src/events/event-bus';
 import { Events } from '../../src/events/events';
 
@@ -56,8 +58,10 @@ vi.mock('../../src/user-account/auth', () => ({
 
 // Import after mocks
 import { Logger } from '../../src/logging/logger';
+import { DialogManager } from '../../src/modal/dialog-manager';
 import { LevelCompleteModal } from '../../src/modal/level-complete-modal';
 import { QuizManager } from '../../src/modal/quiz-manager';
+import { QuizModal } from '../../src/modal/quiz-modal';
 import { ObjectivesManager } from '../../src/objectives/objectives-manager';
 import { Router } from '../../src/router';
 import { ScenarioManager } from '../../src/scenario-manager';
@@ -251,6 +255,41 @@ describe('ScenarioCompletionHandler', () => {
   });
 
   describe('handleAllObjectivesCompleted_', () => {
+    it('includes task codes only from completed objectives, including completed optional objectives', async () => {
+      mockObjectivesManager.getObjectiveStates.mockReturnValue([
+        { objective: { id: 'one', conditions: [], nice: ['T0081', 'K0740'] }, isCompleted: true },
+        { objective: { id: 'two', conditions: [], isOptional: true, nice: ['T0153', 'T0081'] }, isCompleted: true },
+        { objective: { id: 'three', conditions: [], nice: ['T0431'] }, isCompleted: false },
+      ]);
+      ScenarioCompletionHandler.getInstance().initialize();
+      await mockEventBus.on.mock.calls[0][1]({ completedObjectives: [], totalTime: 120 });
+      expect(mockLevelCompleteModal.showCompletion.mock.calls[0][0].niceTaskCodes).toEqual(['T0081', 'T0153']);
+    });
+    it.each([null, { access_token: 'test-token' }])('offers the finale epilogue without loaded history (session=%s)', async (session) => {
+      vi.mocked(Auth.getSession).mockResolvedValue(session as Awaited<ReturnType<typeof Auth.getSession>>);
+      const campaign = {
+        id: 'nats',
+        title: 'NATS',
+        scenarios: [
+          { id: 'nats-scenario1', number: 1, objectives: [] },
+          { id: 'nats-scenario24', number: 24, objectives: [] },
+        ],
+      } as CampaignData;
+      const lookup = vi.spyOn(CampaignManager.getInstance(), 'getCampaign').mockReturnValue(campaign);
+      try {
+        mockScenarioManager.data = { id: 'nats-scenario24', number: 24 };
+        ScenarioCompletionHandler.getInstance().initialize();
+        await mockEventBus.on.mock.calls[0][1]({ completedObjectives: [], totalTime: 120 });
+        const debrief = mockLevelCompleteModal.showCompletion.mock.calls[0][0].debrief;
+        expect(debrief.epilogue.label).toBe('Final watch · Epilogue');
+        expect(debrief.epilogue.facts[0].value).toBe('1 / 2');
+        expect(debrief.epilogue.record.note).toContain("Only this mission's result");
+        expect(debrief.achievements).toEqual([]);
+      } finally {
+        lookup.mockRestore();
+      }
+    });
+
     it('should calculate and show score when objectives complete', async () => {
       const mockObjectiveStates = [
         {
@@ -525,8 +564,8 @@ describe('ScenarioCompletionHandler', () => {
 
       const onContinueCallback = mockLevelCompleteModal.showCompletion.mock.calls[0][1];
 
-      // Should not throw
-      await expect(onContinueCallback()).resolves.toBeUndefined();
+      // The results screen must retain the result and offer retry instead of navigating.
+      await expect(onContinueCallback()).rejects.toThrow('Network error');
 
       expect(Logger.error).toHaveBeenCalledWith('Failed to save score:', expect.any(Error));
     });
@@ -642,6 +681,7 @@ describe('ScenarioCompletionHandler', () => {
           campaignId: 'advanced',
           scenarioId: 'final-scenario',
           isAuthenticated: true,
+          niceTaskCodes: [],
         },
         expect.any(Function)
       );
@@ -755,6 +795,61 @@ describe('ScenarioCompletionHandler', () => {
       await flushTimers();
 
       expect(mockUserDataService.updateScenarioProgress).toHaveBeenCalledWith('test-scenario', expect.objectContaining({ completedAt: expect.any(String) }));
+    });
+  });
+
+  describe('Mission Complete waits for the closing dialog (nats-r3-s03-F3)', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+    });
+
+    it('opens only after the dialog queue drains and the quiz closes, with the score fixed at completion', async () => {
+      vi.useFakeTimers();
+      let isDialogBusy = true;
+      let isQuizOpen = true;
+      vi.spyOn(DialogManager.getInstance(), 'isBusy').mockImplementation(() => isDialogBusy);
+      vi.spyOn(QuizModal, 'isShowingQuiz').mockImplementation(() => isQuizOpen);
+      mockObjectivesManager.getScenarioTimeRemaining.mockReturnValue(60);
+
+      const handler = ScenarioCompletionHandler.getInstance();
+      handler.initialize();
+      const callback = mockEventBus.on.mock.calls[0][1];
+      const done = callback({ completedObjectives: [], totalTime: 406 });
+
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(mockLevelCompleteModal.showCompletion).not.toHaveBeenCalled();
+
+      isDialogBusy = false;
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(mockLevelCompleteModal.showCompletion).not.toHaveBeenCalled();
+
+      // Waiting did not re-read the clock: time remaining sampled once, elapsed as emitted
+      mockObjectivesManager.getScenarioTimeRemaining.mockReturnValue(0);
+      isQuizOpen = false;
+      await vi.advanceTimersByTimeAsync(ScenarioCompletionHandler.QUIET_POLL_MS);
+      await done;
+      expect(mockLevelCompleteModal.showCompletion).toHaveBeenCalledTimes(1);
+      expect(mockLevelCompleteModal.showCompletion).toHaveBeenCalledWith(
+        expect.objectContaining({ elapsedTimeSeconds: 406, score: expect.objectContaining({ timeBonus: 12 }) }),
+        expect.any(Function)
+      );
+      expect(mockObjectivesManager.getScenarioTimeRemaining).toHaveBeenCalledTimes(1);
+    });
+
+    it('never opens if the page is left while a dialog is still up', async () => {
+      vi.useFakeTimers();
+      vi.spyOn(DialogManager.getInstance(), 'isBusy').mockReturnValue(true);
+
+      const handler = ScenarioCompletionHandler.getInstance();
+      handler.initialize();
+      const callback = mockEventBus.on.mock.calls[0][1];
+      const done = callback({ completedObjectives: [], totalTime: 10 });
+      await vi.advanceTimersByTimeAsync(1_000);
+      ScenarioCompletionHandler.destroy();
+      await vi.advanceTimersByTimeAsync(1_000);
+      await done;
+      expect(mockLevelCompleteModal.showCompletion).not.toHaveBeenCalled();
     });
   });
 });

@@ -9,6 +9,7 @@ import { GroundStation } from '@app/assets/ground-station/ground-station';
 import { OrbitalSatellite, observerFromLocation } from '@app/equipment/satellite/orbital-satellite';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { EventAutoLogger } from '@app/ops-log/event-auto-logger';
 import { ScenarioManager } from '@app/scenario-manager';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import type { Milliseconds } from 'ootk';
@@ -190,6 +191,13 @@ export class TrafficControlManager {
    * Automatically controls HPA and BUC on both ground stations:
    * - Source station: HPA off, BUC muted
    * - Target station: BUC unmuted, HPA on
+   *
+   * Break-before-make in one step (phase 27, DEV-XPDR-07 closed): the
+   * transponder no longer merges two sites radiating the same carrier, so a
+   * moment with both up is real co-channel interference (two copies at about
+   * equal level put C/(N+I) near 0 dB). The source drops first and the target
+   * comes up in the same tick, so the carrier is never doubled; the remote
+   * modems see the new site's carrier at the same frequency and level.
    * @param satelliteId - Satellite NORAD ID
    * @returns true if handover was executed
    */
@@ -202,8 +210,12 @@ export class TrafficControlManager {
     const previousOwner = ownership.owningGroundStationId;
     const newOwner = ownership.handoverTargetStationId;
 
-    // Disable transmission on source station FIRST (HPA off, BUC mute)
-    this.disableTransmission_(previousOwner);
+    const satName = SimulationManager.getInstance().registry.get(satelliteId)?.name ?? `NORAD ${satelliteId}`;
+    this.logHandover_(`Handover ${previousOwner} -> ${newOwner} executed (${satName})`);
+
+    // Disable transmission on source station FIRST (HPA off, BUC mute, its
+    // modems for this satellite stopped)
+    this.disableTransmission_(previousOwner, satelliteId);
 
     // Update ownership state
     ownership.owningGroundStationId = newOwner;
@@ -334,7 +346,7 @@ export class TrafficControlManager {
 
     // Check each tracked satellite
     for (const satId of this.trafficOwnership_.keys()) {
-      const satellite = sim.satellites.find((s) => s.noradId === satId);
+      const satellite = sim.registry.get(satId);
       if (!satellite) continue;
 
       // Find all ground stations transmitting to this satellite
@@ -365,10 +377,12 @@ export class TrafficControlManager {
   }
 
   /**
-   * Disable transmission on a ground station (turn off HPA, mute BUC)
-   * Order: HPA off first, then BUC mute
+   * Disable transmission on a ground station (turn off HPA, mute BUC, stop
+   * the modems carrying the satellite's traffic). Order: HPA off first, then
+   * BUC mute, then the modems: a safed station no longer reads
+   * "Transmitting" on its TX modem (nats-s11-F6)
    */
-  private disableTransmission_(groundStationId: string): void {
+  private disableTransmission_(groundStationId: string, satelliteId?: number): void {
     const sim = SimulationManager.getInstance();
     const gs = sim.groundStations.find((g) => g.state.id === groundStationId);
     if (!gs) return;
@@ -379,11 +393,22 @@ export class TrafficControlManager {
     // Turn off HPA first
     if (rfFrontEnd.hpaModule.state.isHpaEnabled) {
       rfFrontEnd.hpaModule.handleHpaToggle();
+      this.logHandover_('HPA disabled (handover)', groundStationId, 'RF FE');
     }
 
     // Then mute BUC
     if (!rfFrontEnd.bucModule.state.isMuted) {
       rfFrontEnd.bucModule.handleMuteToggle(true);
+      this.logHandover_('BUC output MUTED (handover)', groundStationId, 'RF FE');
+    }
+
+    // Each stopped modem logs its own "Transmission STOPPED (handover)" line
+    // (TX event), marked like the HPA and BUC lines above (nats-r4-s11-F3)
+
+    if (satelliteId !== undefined) {
+      for (const transmitter of gs.transmitters ?? []) {
+        transmitter.stopTransmittingFor?.(satelliteId, 'handover');
+      }
     }
   }
 
@@ -402,13 +427,25 @@ export class TrafficControlManager {
     // Unmute BUC first
     if (rfFrontEnd.bucModule.state.isMuted) {
       rfFrontEnd.bucModule.handleMuteToggle(false);
+      this.logHandover_('BUC output UNMUTED (handover)', groundStationId, 'RF FE');
     }
 
     // Then turn on HPA
     if (!rfFrontEnd.hpaModule.state.isHpaEnabled) {
       rfFrontEnd.hpaModule.state.isHpaSwitchEnabled = false; // Ensure switch is off before toggling
       rfFrontEnd.hpaModule.handleHpaToggle();
+      if (rfFrontEnd.hpaModule.state.isHpaEnabled) {
+        this.logHandover_('HPA enabled (handover)', groundStationId, 'RF FE');
+      }
     }
+  }
+
+  /**
+   * Ops Log line for the handover and each automatic action it takes, logged
+   * like the manual action and tagged with its station (nats-r3-s11-F1)
+   */
+  private logHandover_(message: string, stationId?: string, system = 'HANDOVER'): void {
+    EventAutoLogger.getInstance().logAction(message, system, stationId);
   }
 
   /** Main update loop - monitors link quality during handover */

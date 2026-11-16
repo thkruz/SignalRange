@@ -221,6 +221,23 @@ describe('Transmitter class', () => {
     });
   });
 
+  describe('intermittent fault alarm (phase 27, s08-F2)', () => {
+    it('alarms only while the modem is powered, and keeps the fault latched', () => {
+      transmitter = new Transmitter('test-root');
+      const modem = transmitter.state.modems[0];
+      modem.intermittentFault = true;
+      modem.isPowered = true;
+      expect(transmitter.getStatusAlarms().map((a) => a.message)).toContain('Modem 1 Intermittent Fault');
+
+      modem.isPowered = false;
+      expect(transmitter.getStatusAlarms().map((a) => a.message)).not.toContain('Modem 1 Intermittent Fault');
+      expect(modem.intermittentFault).toBe(true);
+
+      modem.isPowered = true;
+      expect(transmitter.getStatusAlarms().map((a) => a.message)).toContain('Modem 1 Intermittent Fault');
+    });
+  });
+
   describe('activeModem getter', () => {
     beforeEach(() => {
       transmitter = new Transmitter('test-root');
@@ -379,6 +396,7 @@ describe('Transmitter class', () => {
             frequency: 1600e6,
           }),
         }),
+        action: 'config',
       });
 
       emitSpy.mockRestore();
@@ -451,18 +469,15 @@ describe('Transmitter class', () => {
       expect(percentage).toBe(0);
     });
 
-    it('should calculate power percentage based on power budget', () => {
+    it('should calculate power percentage as a ratio of powers (19.6)', () => {
       // Default: power=-20dBm, bandwidth=10MHz
-      // Power budget load = power + 10*log10(bandwidth_MHz)
-      // = -20 + 10*log10(10) = -20 + 10 = -10 dBm
-      // Percentage = 100 * (-10) / 10 = -100%
+      // Power budget load = power + 10*log10(bandwidth_MHz) = -10 dBm
+      // Percentage = 100 x 10^((-10 - 10) / 10) = 1 % (it was a ratio of dB numbers: -100 %)
       transmitter.activeModem.isPowered = true;
 
       const percentage = transmitter.getPowerPercentage();
 
-      // With default settings: -20 dBm + 10*log10(10) = -10 dBm
-      // Percentage = round(100 * -10 / 10) = -100
-      expect(percentage).toBe(-100);
+      expect(percentage).toBe(1);
     });
 
     it('should increase with higher power', () => {
@@ -484,9 +499,8 @@ describe('Transmitter class', () => {
 
       const percentage = transmitter.getPowerPercentage();
 
-      // 0 dBm + 10*log10(100) = 20 dBm
-      // Percentage = round(100 * 20 / 10) = 200
-      expect(percentage).toBe(200);
+      // 0 dBm + 10*log10(100) = 20 dBm: 10 dB over the 10 dBm budget = 1000 %
+      expect(percentage).toBe(1000);
     });
   });
 
@@ -709,6 +723,188 @@ describe('Transmitter class', () => {
       expect(emitSpy).toHaveBeenCalledWith(Events.TX_CONFIG_CHANGED, expect.any(Object));
 
       emitSpy.mockRestore();
+    });
+
+    describe('boot lockout', () => {
+      beforeEach(() => {
+        transmitter.activeModem.isPowered = false;
+        transmitter.activeModem.isTransmitting = false;
+        transmitter.activeModem.isTransmittingSwitchUp = false;
+      });
+
+      it('reports isBooting from power-on until the boot completes', () => {
+        transmitter.handlePowerToggle(true);
+
+        expect(transmitter.activeModem.isBooting).toBe(true);
+        expect(transmitter.isModemBooting()).toBe(true);
+
+        advanceSimTime(Transmitter.BOOT_TIME_MS + 100);
+
+        expect(transmitter.activeModem.isBooting).toBe(false);
+        expect(transmitter.activeModem.isPowered).toBe(true);
+        expect(transmitter.isModemBooting()).toBe(false);
+      });
+
+      it('emits TX_CONFIG_CHANGED at boot start so the UI shows BOOTING at once', () => {
+        const emitSpy = vi.spyOn(transmitter, 'emit');
+
+        transmitter.handlePowerToggle(true);
+
+        expect(emitSpy).toHaveBeenCalledWith(Events.TX_CONFIG_CHANGED, expect.objectContaining({ config: expect.objectContaining({ isBooting: true }) }));
+
+        emitSpy.mockRestore();
+      });
+
+      it('refuses to key the carrier while booting and keeps the switch off', () => {
+        transmitter.handlePowerToggle(true);
+
+        const accepted = transmitter.handleTransmitToggle(true);
+
+        expect(accepted).toBe(false);
+        expect(transmitter.activeModem.isTransmitting).toBe(false);
+        expect(transmitter.activeModem.isTransmittingSwitchUp).toBe(false);
+      });
+
+      it('does not queue a refused key-up: the carrier stays off after the boot', () => {
+        transmitter.handlePowerToggle(true);
+        transmitter.handleTransmitToggle(true);
+
+        advanceSimTime(Transmitter.BOOT_TIME_MS + 100);
+
+        expect(transmitter.activeModem.isPowered).toBe(true);
+        expect(transmitter.activeModem.isTransmitting).toBe(false);
+      });
+
+      it('keys the carrier once the boot has completed', () => {
+        transmitter.handlePowerToggle(true);
+        advanceSimTime(Transmitter.BOOT_TIME_MS + 100);
+
+        const accepted = transmitter.handleTransmitToggle(true);
+
+        expect(accepted).toBe(true);
+        expect(transmitter.activeModem.isTransmitting).toBe(true);
+        expect(transmitter.activeModem.isTransmittingSwitchUp).toBe(true);
+      });
+
+      it('snaps the legacy panel transmit switch back when a key-up is refused', () => {
+        transmitter.handlePowerToggle(true);
+        const syncSpy = vi.spyOn(transmitter.txToggleSwitch, 'sync');
+
+        transmitter.handleTransmitToggle(true);
+
+        expect(syncSpy).toHaveBeenCalledWith(false);
+
+        syncSpy.mockRestore();
+      });
+
+      it('cancels the boot when powered off mid-boot', () => {
+        transmitter.handlePowerToggle(true);
+        advanceSimTime(1000);
+        transmitter.handlePowerToggle(false);
+
+        expect(transmitter.activeModem.isBooting).toBe(false);
+
+        advanceSimTime(Transmitter.BOOT_TIME_MS + 100);
+
+        expect(transmitter.activeModem.isPowered).toBe(false);
+        expect(transmitter.activeModem.isBooting).toBe(false);
+      });
+
+      it('boots the modem that was powered even if another modem is selected mid-boot', () => {
+        transmitter.handlePowerToggle(true);
+        transmitter.setActiveModem(2);
+
+        advanceSimTime(Transmitter.BOOT_TIME_MS + 100);
+
+        const modem1 = transmitter.state.modems.find((m) => m.modem_number === 1)!;
+        expect(modem1.isPowered).toBe(true);
+        expect(modem1.isBooting).toBe(false);
+      });
+
+      it('ignores a second power-on while already booting (no boot restart)', () => {
+        transmitter.handlePowerToggle(true);
+        advanceSimTime(3000);
+        transmitter.handlePowerToggle(true);
+
+        advanceSimTime(1100);
+
+        expect(transmitter.activeModem.isPowered).toBe(true);
+        expect(transmitter.activeModem.isBooting).toBe(false);
+      });
+
+      it('finishes the boot when the config is applied during it (nats-r3-s03-F1)', () => {
+        transmitter.handlePowerToggle(true);
+        advanceSimTime(1000);
+
+        transmitter.handleFrequencyChange(1057);
+        transmitter.handleModulationChange('QPSK');
+        transmitter.handleFecChange('3/4');
+        transmitter.applyChanges();
+
+        expect(transmitter.activeModem.ifSignal.frequency).toBe(1057e6);
+        expect(transmitter.activeModem.isBooting).toBe(true);
+
+        advanceSimTime(Transmitter.BOOT_TIME_MS);
+
+        expect(transmitter.activeModem.isBooting).toBe(false);
+        expect(transmitter.activeModem.isPowered).toBe(true);
+        expect(transmitter.activeModem.ifSignal.frequency).toBe(1057e6);
+        expect(transmitter.activeModem.ifSignal.fec).toBe('3/4');
+        expect(transmitter.handleTransmitToggle(true)).toBe(true);
+      });
+
+      it('finishes the boot even when state holds a new modem object (sync during boot)', () => {
+        transmitter.handlePowerToggle(true);
+        transmitter.sync({ modems: structuredClone(transmitter.state.modems) });
+
+        advanceSimTime(Transmitter.BOOT_TIME_MS + 100);
+
+        expect(transmitter.activeModem.isBooting).toBe(false);
+        expect(transmitter.activeModem.isPowered).toBe(true);
+      });
+
+      it('counts the boot down for the front panel', () => {
+        transmitter.handlePowerToggle(true);
+
+        expect(transmitter.getBootRemainingMs()).toBe(Transmitter.BOOT_TIME_MS);
+
+        advanceSimTime(1500);
+
+        expect(transmitter.getBootRemainingMs()).toBeCloseTo(Transmitter.BOOT_TIME_MS - 1500, -2);
+
+        advanceSimTime(Transmitter.BOOT_TIME_MS);
+
+        expect(transmitter.getBootRemainingMs()).toBe(0);
+      });
+
+      it('reports the switched modem itself, not modems[modem.id] (authored id 1 on modem 1, nats-r3-s11-F1)', () => {
+        const tx = new Transmitter('test-root', { modems: [{ modem_number: 1, id: 1 } as TransmitterModem] });
+        tx.activeModem.isPowered = true;
+        tx.activeModem.ifSignal.frequency = 1057e6 as IfFrequency;
+        const emitSpy = vi.spyOn(tx, 'emit');
+
+        tx.handleTransmitToggle(true);
+
+        expect(emitSpy).toHaveBeenCalledWith(
+          Events.TX_CONFIG_CHANGED,
+          expect.objectContaining({
+            modem: 1,
+            action: 'transmit-on',
+            config: expect.objectContaining({ modem_number: 1, ifSignal: expect.objectContaining({ frequency: 1057e6 }) }),
+          })
+        );
+
+        emitSpy.mockRestore();
+      });
+
+      it('drops the transmit switch on power-off so the next boot comes up unkeyed', () => {
+        transmitter.activeModem.isPowered = true;
+        transmitter.handleTransmitToggle(true);
+
+        transmitter.handlePowerToggle(false);
+
+        expect(transmitter.activeModem.isTransmittingSwitchUp).toBe(false);
+      });
     });
   });
 

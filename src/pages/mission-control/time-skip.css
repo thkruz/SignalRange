@@ -245,3 +245,22 @@
     opacity: 1;
   }
 }
+
+/* ===== Command bar placement (nats-r3-s10-F3) =====
+   The skip controls sit at the right of the scenario title row, not in the
+   256 px brand block: a "Skip to 10:00" label there squeezed the station
+   clock onto a third line. */
+.command-bar-skip-controls {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.command-bar-skip-controls .time-skip-btn,
+.command-bar-skip-controls .loadout-btn {
+  margin-left: 0;
+}

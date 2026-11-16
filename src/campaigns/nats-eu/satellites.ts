@@ -1,8 +1,16 @@
 import { OrbitalObserver, OrbitalSatellite } from '@app/equipment/satellite/orbital-satellite';
 import { TransponderConfig } from '@app/equipment/satellite/satellite';
+import type { TransponderPhysics } from '@app/equipment/satellite/transponder-model';
 import { SignalOrigin } from '@app/signal-origin';
 import type { dBi, dBm, FECType, Hertz, ModulationType, RfFrequency } from '@app/types';
 import type { Degrees, Kilometers, TleLine1, TleLine2 } from 'ootk';
+
+/**
+ * The SAR birds' Ku telecommand transponder (phase 19.3): a low-gain command
+ * receiver whose relayed carrier comes back at roughly beacon level (a
+ * 1 W-class SSPA, 0 dBW), not the payload downlink's.
+ */
+const SAR_COMMAND_TRANSPONDER: Partial<TransponderPhysics> = { sfdDbwM2: -85, gOverTDbK: -5, satEirpDbw: 0, amplifier: 'sspa', gainMode: 'fgm' };
 
 /**
  * NATS Europe satellite roster.
@@ -19,7 +27,7 @@ import type { Degrees, Kilometers, TleLine1, TleLine2 } from 'ootk';
  *
  * The geometry pairs a low, strong orbit (mean motion 15.6, ~360 km -> ~760 km
  * slant range at max el, ample C/N margin) with a modest max elevation
- * (~25-28 deg). At the LEO tracker's realistic 20 deg/s slew (see
+ * (~25-28 deg). At the LEO tracker's realistic 10 deg/s slew (see
  * KU_BAND_4M_LEO_TRACKER) the pedestal holds the narrow (~0.45 deg) Ku beam on
  * the bird within the ephemeris-error floor (~0.1 deg) through the whole pass,
  * so C/N peaks at max elevation as expected. A higher or near-zenith pass grows
@@ -77,6 +85,7 @@ function sar1Options() {
       {
         id: 'TP-CMD',
         uplinkCenterFrequency: 14005e6 as RfFrequency, // Ku telecommand uplink
+        physics: SAR_COMMAND_TRANSPONDER,
         bandwidth: 36e6 as Hertz,
         frequencyOffset: 2.255e9 as Hertz, // Transponded downlink: 11750 MHz
         polarization: 'H',
@@ -108,15 +117,17 @@ function sar1Options() {
         frequencyOffset: 2.4e9 as Hertz,
         polarization: 'H',
         // Direct-transmit SAR imagery downlink (modeled as a transponder beacon).
-        // 28 dBm EIRP closes the link at C/N >= 8 dB from ~20 deg elevation
+        // 31.3 dBm EIRP closes the link at C/N >= 8 dB from ~20 deg elevation
         // (peak ~14 dB at max el) on the GW-01 4m Ku tracker; the original
         // 22 dBm peaked at 8.1 dB with zero margin (Phase A RF validation).
+        // Phase 19.2 raised it from 28 dBm when the receive noise became the
+        // real system temperature instead of the LNB's alone.
         beacon: {
           frequency: 11686e6 as RfFrequency,
           signalId: 'MERIDIAN-SAR-1-VIDEO',
           serverId: 1,
           noradId: 61701,
-          power: 28 as dBm,
+          power: 31.3 as dBm, // 28 until Phase 19.2: +3.3 dB restores the link at the real Tsys (sky + feed + LNB, ~125 K at 28 deg)
           bandwidth: 36e6 as Hertz,
           modulation: 'QPSK' as ModulationType,
           fec: '3/4' as FECType,
@@ -141,6 +152,7 @@ function sar2Options() {
       {
         id: 'TP-CMD',
         uplinkCenterFrequency: 14035e6 as RfFrequency,
+        physics: SAR_COMMAND_TRANSPONDER,
         bandwidth: 36e6 as Hertz,
         frequencyOffset: 2.255e9 as Hertz, // Transponded downlink: 11780 MHz
         polarization: 'H',
@@ -174,7 +186,7 @@ function sar2Options() {
           signalId: 'MERIDIAN-SAR-2-VIDEO',
           serverId: 1,
           noradId: 61702,
-          power: 28 as dBm,
+          power: 31.3 as dBm, // 28 until Phase 19.2: +3.3 dB restores the link at the real Tsys (sky + feed + LNB, ~125 K at 28 deg)
           bandwidth: 36e6 as Hertz,
           modulation: 'QPSK' as ModulationType,
           fec: '3/4' as FECType,
@@ -199,6 +211,7 @@ function sar3Options() {
       {
         id: 'TP-CMD',
         uplinkCenterFrequency: MERIDIAN_SAR3_TTC_UPLINK_RF_HZ,
+        physics: SAR_COMMAND_TRANSPONDER,
         bandwidth: 36e6 as Hertz,
         frequencyOffset: 2.255e9 as Hertz, // Transponded downlink: 11810 MHz
         polarization: 'H',
@@ -230,7 +243,7 @@ function sar3Options() {
           signalId: 'MERIDIAN-SAR-3-VIDEO',
           serverId: 1,
           noradId: 61703,
-          power: 28 as dBm,
+          power: 31.3 as dBm, // 28 until Phase 19.2: +3.3 dB restores the link at the real Tsys (sky + feed + LNB, ~125 K at 28 deg)
           bandwidth: 36e6 as Hertz,
           modulation: 'QPSK' as ModulationType,
           fec: '3/4' as FECType,

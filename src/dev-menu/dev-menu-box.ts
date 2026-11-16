@@ -1,8 +1,10 @@
+import { displayViewport } from '@app/game-menu/display-viewport';
 /**
  * @file DevMenuBox - Developer menu for testing and debugging
  * @description Draggable box providing dev tools: auto-skip dialogs, complete objective, set timer
  */
 
+import { CampaignManager } from '@app/campaigns/campaign-manager';
 import { DraggableBox } from '@app/engine/ui/draggable-box';
 import { html } from '@app/engine/utils/development/formatter';
 import { getEl, showEl } from '@app/engine/utils/get-el';
@@ -12,6 +14,8 @@ import { Header } from '@app/pages/layout/header/header';
 import { ScenarioSelectionPage } from '@app/pages/scenario-selection';
 import { PluginManager } from '@app/plugins/plugin-manager';
 import { SettingsManager } from '@app/settings/settings-manager';
+import { achievementCatalog } from '@app/user-account/achievement-catalog';
+import { achievementToast } from '@app/user-account/achievement-toast';
 import './dev-menu.css';
 
 declare global {
@@ -58,10 +62,22 @@ export class DevMenuBox extends DraggableBox {
       this.createDom_();
     }
     this.open();
+    // A previously dragged position can be outside a resized viewport.
+    if (this.boxEl) {
+      const bounds = this.boxEl.getBoundingClientRect();
+      if (bounds.left < 0 || bounds.right > window.innerWidth || bounds.top < 0 || bounds.bottom > window.innerHeight) {
+        this.placeOnFirstOpen(this.boxEl);
+      }
+    }
   }
 
   private getUnlockScenariosChecked_(): string {
     return window.UNLOCK_ALL_SCENARIOS ? 'checked' : '';
+  }
+
+  protected override placeOnFirstOpen(box: HTMLElement): void {
+    super.placeOnFirstOpen(box);
+    box.style.left = `${window.scrollX + (displayViewport().width - box.offsetWidth) / 2}px`;
   }
 
   private getForceEngButtonChecked_(): string {
@@ -74,6 +90,7 @@ export class DevMenuBox extends DraggableBox {
     return html`
       <div class="dev-menu">
         <div class="dev-menu__section">
+          <h3 class="dev-menu__heading">Session controls</h3>
           <div class="form-check form-switch">
             <input type="checkbox" id="dev-auto-skip" class="form-check-input" role="switch" ${autoSkipChecked} />
             <label for="dev-auto-skip" class="form-check-label">Auto-Skip Dialogs</label>
@@ -88,27 +105,44 @@ export class DevMenuBox extends DraggableBox {
           </div>
         </div>
         <div class="dev-menu__section">
+          <h3 class="dev-menu__heading">Objectives</h3>
+          <div class="dev-menu__actions">
           <button id="dev-complete-objective" class="btn btn-primary w-100">
             Complete Current Objective
           </button>
-        </div>
-        <div class="dev-menu__section">
           <button id="dev-uncomplete-objective" class="btn btn-warning w-100">
             Uncomplete Last Objective
           </button>
+          </div>
         </div>
         <div class="dev-menu__section">
-          <label class="form-label">Mission Timer (seconds)</label>
+          <h3 class="dev-menu__heading">Achievement preview</h3>
+          <label class="form-label" for="dev-achievement-style">Achievement style</label>
+          <select id="dev-achievement-style" class="form-select mb-2">
+            <option value="compact" ${achievementToast.style === 'compact' ? 'selected' : ''}>Compact (Steam-style)</option>
+            <option value="card" ${achievementToast.style === 'card' ? 'selected' : ''}>Detailed card (original)</option>
+          </select>
+          <label class="form-label" for="dev-achievement-id">Achievement to preview</label>
+          <select id="dev-achievement-id" class="form-select mb-2"></select>
+          <button id="dev-test-achievement" type="button" class="btn btn-secondary w-100">Test achievement</button>
+        </div>
+        <div class="dev-menu__section">
+          <h3 class="dev-menu__heading">Timers</h3>
+          <div class="dev-menu__timers">
+          <div>
+          <label class="form-label" for="dev-mission-timer-value">Mission (seconds)</label>
           <div class="d-flex gap-2">
             <input type="number" id="dev-mission-timer-value" class="form-control" placeholder="300" min="0" />
             <button id="dev-set-mission-timer" class="btn btn-secondary">Set</button>
           </div>
         </div>
-        <div class="dev-menu__section">
-          <label class="form-label">Objective Timer (seconds)</label>
+        <div>
+          <label class="form-label" for="dev-objective-timer-value">Objective (seconds)</label>
           <div class="d-flex gap-2">
             <input type="number" id="dev-objective-timer-value" class="form-control" placeholder="60" min="0" />
             <button id="dev-set-objective-timer" class="btn btn-secondary">Set</button>
+          </div>
+        </div>
           </div>
         </div>
         <div class="dev-menu__section">
@@ -171,7 +205,7 @@ export class DevMenuBox extends DraggableBox {
           <div class="draggable-box__title">
             <span>${this.title}</span>
           </div>
-          <span id="${this.boxId}-close" class="draggable-box__btn draggable-box__close-btn"></span>
+          <button type="button" id="${this.boxId}-close" class="draggable-box__close-btn" title="Close this window" aria-label="Close">&#x2715; Close</button>
         </div>
         <div class="draggable-box__content">
           ${this.getBoxContentHtml()}
@@ -186,6 +220,16 @@ export class DevMenuBox extends DraggableBox {
   }
 
   private setupEventListeners_(): void {
+    document.getElementById('dev-achievement-style')?.addEventListener('change', (event) => {
+      achievementToast.setStyle((event.target as HTMLSelectElement).value === 'card' ? 'card' : 'compact');
+    });
+    const achievementPicker = document.getElementById('dev-achievement-id') as HTMLSelectElement;
+    const catalog = achievementCatalog(CampaignManager.getInstance().getAllCampaigns());
+    for (const achievement of catalog) achievementPicker.add(new Option(`${achievement.category} / ${achievement.title}`, achievement.id));
+    document.getElementById('dev-test-achievement')?.addEventListener('click', () => {
+      const achievement = catalog.find((entry) => entry.id === achievementPicker.value);
+      if (achievement) achievementToast.showTest(achievement);
+    });
     // Cache DOM elements
     const autoSkipToggle = getEl('dev-auto-skip') as HTMLInputElement;
     const unlockScenariosToggle = getEl('dev-unlock-scenarios') as HTMLInputElement;
@@ -374,14 +418,16 @@ export class DevMenuBox extends DraggableBox {
     }
 
     showEl(this.boxEl);
+    const achievementStyle = this.boxEl.querySelector<HTMLSelectElement>('#dev-achievement-style');
+    if (achievementStyle) achievementStyle.value = achievementToast.style;
 
     if (this.width) {
       this.boxEl.style.minWidth = this.width;
     }
 
     // Center the box
-    this.boxEl.style.top = `${window.scrollY + (window.innerHeight - this.boxEl.offsetHeight) / 2}px`;
-    this.boxEl.style.left = `${(window.innerWidth - this.boxEl.offsetWidth) / 2}px`;
+    this.boxEl.style.top = `${window.scrollY + (displayViewport().height - this.boxEl.offsetHeight) / 2}px`;
+    this.boxEl.style.left = `${(displayViewport().width - this.boxEl.offsetWidth) / 2}px`;
 
     // Update checkboxes to reflect current state
     const autoSkipToggle = this.domCache_.get('autoSkipToggle') as HTMLInputElement;

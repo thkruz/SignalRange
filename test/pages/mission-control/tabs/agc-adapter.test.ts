@@ -46,6 +46,8 @@ describe('AGCAdapter', () => {
       handleBypassToggle: vi.fn(),
       getStatus: vi.fn().mockReturnValue('active'),
       getAlarms: vi.fn().mockReturnValue([]),
+      isInputPowered: true,
+      isNoiseOnly: false,
     } as unknown as Mocked<AGCModuleCore>;
 
     // Setup container with required DOM elements
@@ -158,6 +160,63 @@ describe('AGCAdapter', () => {
       const status = containerEl.querySelector('#agc-status') as HTMLElement;
       expect(status.textContent).toBe('At Min');
       expect(status.className).toContain('status-badge-warning');
+    });
+  });
+
+  describe('card LED and Mode badge with no input or noise only (Phase 34 D7, nats-r9-s03-F2)', () => {
+    /** Swap the mocked badge for the real one, mounted in the container */
+    const useRealBadge = async (): Promise<HTMLElement> => {
+      const actual = await vi.importActual<typeof import('../../../../src/components/card-alarm-badge/card-alarm-badge')>(
+        '../../../../src/components/card-alarm-badge/card-alarm-badge'
+      );
+      const real = actual.CardAlarmBadge.create('agc-real-badge');
+      const host = containerEl.querySelector('#agc-alarm-badge') as HTMLElement;
+      host.innerHTML = real.html;
+      (adapter as any).alarmBadge_ = real;
+      return host.querySelector('.card-alarm-led') as HTMLElement;
+    };
+    const setModule = (fields: { isInputPowered?: boolean; isNoiseOnly?: boolean }) => {
+      Object.assign(mockAgcModule as any, fields);
+    };
+
+    it('reads grey "LNB off" on the LED and "No Input" on the Mode badge with the LNB off', async () => {
+      const led = await useRealBadge();
+      setModule({ isInputPowered: false, isNoiseOnly: false });
+      mockAgcModule.getStatus.mockReturnValue('no-input');
+      (adapter as any).syncReadOnlyDisplays_();
+
+      expect(led.className).toBe('card-alarm-led off');
+      expect(led.title).toBe('LNB off');
+      const status = containerEl.querySelector('#agc-status') as HTMLElement;
+      expect(status.textContent).toBe('No Input');
+      expect(status.className).toContain('status-badge-off');
+    });
+
+    it('reads grey with the noise title on noise before the alarm raises', async () => {
+      const led = await useRealBadge();
+      setModule({ isInputPowered: true, isNoiseOnly: true });
+      (adapter as any).syncReadOnlyDisplays_();
+
+      expect(led.className).toBe('card-alarm-led off');
+      expect(led.title).toBe('At max gain on noise - no carrier');
+    });
+
+    it('lets the "AGC on noise only" alarm win: amber with the alarm text', async () => {
+      const led = await useRealBadge();
+      setModule({ isInputPowered: true, isNoiseOnly: true });
+      mockAgcModule.getAlarms.mockReturnValue(['AGC on noise only - passband power is noise, no traffic carrier']);
+      (adapter as any).syncReadOnlyDisplays_();
+
+      expect(led.className).toBe('card-alarm-led warning');
+      expect(led.title).toBe('AGC on noise only - passband power is noise, no traffic carrier');
+    });
+
+    it('is green "No alarms" with an input, a carrier and no alarm', async () => {
+      const led = await useRealBadge();
+      (adapter as any).syncReadOnlyDisplays_();
+
+      expect(led.className).toBe('card-alarm-led success');
+      expect(led.title).toBe('No alarms');
     });
   });
 

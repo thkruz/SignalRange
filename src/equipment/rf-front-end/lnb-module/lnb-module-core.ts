@@ -1,12 +1,67 @@
+import { amplifierFromDatasheet, compressionDb } from '@app/equipment/rf-front-end/amplifier-models';
+import { carrierTransmission, transmissionLossDb } from '@app/equipment/rf-front-end/filter-response';
+import { combinePhaseNoiseDbcHz, FreeRunDrift, LO_PHASE_NOISE_DBC_HZ } from '@app/equipment/rf-front-end/lo-reference';
 import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { RFFrontEndModule, RFFrontEndModuleState } from '@app/equipment/rf-front-end/rf-front-end-module';
+import { plantPowers } from '@app/physical/plant-bridge';
 import { SignalOrigin } from '@app/signal-origin';
 import { Rng } from '@app/simulation/rng';
 import { SimClock } from '@app/simulation/sim-clock';
-import { dB, Hertz, IfFrequency, IfSignal, MHz, RfFrequency, RfSignal } from '@app/types';
+import { dB, dBm, Hertz, IfFrequency, IfSignal, MHz, RfFrequency, RfSignal } from '@app/types';
 
-/** Seeded draws for this module (see simulation/rng.ts). */
-const random = (): number => Rng.stream('lnb').next();
+/**
+ * Physical LO range an LNB model accepts, MHz. Covers C-band (about 5150 to
+ * 6080) and every Ku LO (9750, 10600, 10750, 11300, 13100). The LNB has no
+ * per-model LO data, so this is the shared bound for the UI and the model.
+ */
+export const LNB_LO_MIN_MHZ = 4000;
+export const LNB_LO_MAX_MHZ = 14500;
+
+/** Clamp a requested LO to the range an LNB can physically tune, MHz */
+export function clampLnbLoFrequency(mhz: number): number {
+  return Math.max(LNB_LO_MIN_MHZ, Math.min(LNB_LO_MAX_MHZ, mhz));
+}
+
+/** L-band IF passband of a block downconverter, Hz */
+export const LNB_IF_PASSBAND_LOW_HZ = 950e6;
+export const LNB_IF_PASSBAND_HIGH_HZ = 2150e6;
+/** Skirt beyond each passband edge: -3 dB this far out, falling as a 3rd-order Butterworth */
+const PASSBAND_SKIRT_HZ = 25e6;
+const PASSBAND_SKIRT_ORDER = 3;
+/** A carrier the passband takes more than this off does not reach the IF at all, dB */
+const PASSBAND_DROP_DB = 60;
+
+/**
+ * BUC loopback test loop (phase 27, r2-s07-F1). A real loop is a directional
+ * coupler on the BUC output into a fixed pad feeding the LNB input; it never
+ * puts the BUC's full output into an LNA built for -90 dBm downlinks. 66 dB
+ * puts the station's standard drive (modem -7 dBm, BUC 23 dB: +16 dBm) at the
+ * LNB's input P1dB at the 60 dB gain S7 runs (-50 dBm), so the procedure's
+ * backed-off 20 dB drive sits 3 dB under it (~0.2 dB of compression) and the
+ * AGC levels it mid-range.
+ */
+export const LOOPBACK_COUPLING_DB = 66;
+
+/**
+ * Test loop translator (Phase 28 D3, nats-r3-s08-F1). A C-band receive LNB
+ * covers about 3.4-4.2 GHz: its input filter and LNA never see a 6 GHz
+ * uplink, and nobody retunes the LO to look for one. The station's loop
+ * translator mixes the coupled BUC sample down by the satellite's own
+ * translation frequency, so the loop carrier lands at the downlink-equivalent
+ * RF (uplink - 2225 MHz for standard 6/4 GHz C-band) and the normal LNB LO
+ * puts it at the normal receive IF: 6053 MHz -> 3828 MHz RF -> 1422 MHz IF
+ * with LO 5250. An LNB state's loopTranslationMHz overrides this default.
+ */
+export const LOOP_TRANSLATION_HZ = 2225e6;
+
+/**
+ * Output P1dB of a C-band PLL LNB, dBm: +10 dBm is the typical datasheet
+ * figure (e.g. Norsat 3000-series, NJR2836). Input P1dB = this - gain, so
+ * -50 dBm at 60 dB gain. Rapp (s = 2) AM/AM on the LNB's total input.
+ */
+export const LNB_OUTPUT_P1DB_DBM = 10;
+/** Compression the LNB alarms on, dB */
+const LNB_COMPRESSION_ALARM_DB = 0.5;
 
 /**
  * Low Noise Block converter module state
@@ -37,6 +92,24 @@ export interface LNBState extends RFFrontEndModuleState {
    * block-downconversion path is unchanged.
    */
   isDirectSampling?: boolean;
+  /**
+   * LO injection (Phase 19.6): 'high' = LO above RF, IF = LO − RF (spectrum
+   * inverted; the default, every shipped station), 'low' = IF = RF − LO.
+   */
+  loInjection?: 'high' | 'low';
+  /**
+   * Gain the LNB comes back at after a power cycle, dB (Phase 27 Q6). An LNB
+   * whose gain trim is not held in non-volatile memory powers up at its
+   * factory default, so an operator who runs it lower has to set it again.
+   * Undefined: the set gain survives a power cycle.
+   */
+  powerOnGain?: dB;
+  /**
+   * Translation frequency of the station's test loop translator, MHz: the
+   * loop carrier reaches the LNB at uplink RF minus this (Phase 28 D3).
+   * Undefined: LOOP_TRANSLATION_HZ (2225 MHz, standard C-band 6/4 GHz).
+   */
+  loopTranslationMHz?: MHz;
 }
 
 /** Direct-sampling (SDR) passband limits, modeled on common RTL-SDR tuners */
@@ -55,6 +128,15 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
 
   // Thermal stabilization tracking
   private powerOnTimestamp_: number | null = null;
+  /** Gain compression at the last update, dB */
+  private compressionDb_ = 0;
+  private lastRunMs_: number | null = null;
+  /**
+   * The LO's own oscillator when it is not locked to the station reference:
+   * a PLL LNB whose reference is lost free-runs its VCO (±20 ppm start,
+   * 5 ppm/√h random walk, ±200 ppm bound: a DRO-class ±1 MHz at C-band).
+   */
+  private readonly drift_ = new FreeRunDrift(() => Rng.stream('lnb'), 5, 20, 200);
 
   /**
    * Get default state for LNB module
@@ -79,79 +161,181 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
   constructor(state: LNBState, rfFrontEnd: RFFrontEndCore, unit: number) {
     super({ ...LNBModuleCore.getDefaultState(), ...state }, rfFrontEnd, 'rf-fe-lnb', unit);
 
-    // Initialize power-on timestamp if already powered
-    if (this.state.isPowered) {
-      this.powerOnTimestamp_ = SimClock.runMs();
-    }
+    // An LNB powered when the station is built has been running: it starts
+    // warm and stable (19.6). Warm-up runs from an operator power-on.
+    this.powerOnTimestamp_ = null;
   }
 
   /**
    * Update component state and check for faults
    */
   update(): void {
+    const now = SimClock.runMs();
+    const dtS = this.lastRunMs_ !== null && now >= this.lastRunMs_ ? (now - this.lastRunMs_) / 1000 : 0;
+    this.lastRunMs_ = now;
+
     // Update physical temperature based on power and elapsed time
     this.updateThermalState_();
 
     // Update noise temperature based on noise figure
     this.updateNoiseTemperature_();
 
-    // Update frequency drift based on temperature and lock status
-    this.updateFrequencyDrift_();
-
     // Update lock status based on power and reference availability
     this.updateLockStatus_();
+
+    // Update frequency drift based on temperature and lock status
+    this.updateFrequencyDrift_(dtS);
 
     // Check for alarms
     this.checkAlarms_();
 
-    // Calculate post-LNA signals (apply gain if powered)
-    this.postLNASignals = this.rxSignalsIn.map((sig) => {
-      const gain = this.state.isPowered ? this.state.gain : -300;
-      return {
-        ...sig,
-        power: sig.power + gain,
-        origin: SignalOrigin.LOW_NOISE_AMPLIFIER,
-      } as RfSignal;
-    });
+    // An unpowered LNB passes nothing: no LNA gain, no mixer, no IF output.
+    if (!this.isLivePowered) {
+      this.postLNASignals = [];
+      this.ifSignals = [];
+      return;
+    }
+
+    // Calculate post-LNA signals (apply LNA gain, less the compression the
+    // total input drives the LNB into; phase 27)
+    const inputs = this.rxSignalsIn;
+    this.compressionDb_ = this.compressionFor_(inputs);
+    this.postLNASignals = inputs.map(
+      (sig) =>
+        ({
+          ...sig,
+          power: sig.power + this.state.gain - this.compressionDb_,
+          origin: SignalOrigin.LOW_NOISE_AMPLIFIER,
+        }) as RfSignal
+    );
 
     // Calculate IF signals after LNB based on LO frequency.
     // Direct sampling (SDR): RF passes through unmixed with a wide tuner
     // passband; legacy path applies the 950-2150 MHz L-band IF filter.
-    const passbandLow = this.state.isDirectSampling ? DIRECT_SAMPLING_PASSBAND_LOW_HZ : 950e6;
-    const passbandHigh = this.state.isDirectSampling ? DIRECT_SAMPLING_PASSBAND_HIGH_HZ : 2150e6;
+    const passbandLow = this.state.isDirectSampling ? DIRECT_SAMPLING_PASSBAND_LOW_HZ : LNB_IF_PASSBAND_LOW_HZ;
+    const passbandHigh = this.state.isDirectSampling ? DIRECT_SAMPLING_PASSBAND_HIGH_HZ : LNB_IF_PASSBAND_HIGH_HZ;
+    const loPhaseNoise = this.state.isDirectSampling ? undefined : this.loPhaseNoiseDbcHz;
+    const rxIfCableLoss = this.rfFrontEnd_.cableLossDb('rxIf');
 
-    this.ifSignals = this.postLNASignals.map((sig) => {
+    const ifSignals: IfSignal[] = [];
+
+    for (const sig of this.postLNASignals) {
       const ifFreq = this.calculateIfFrequency(sig.frequency);
 
-      // If frequency is outside the passband, drop signal 40 dB to simulate the bandpass filters
-      let filteredPower = ifFreq < passbandLow || ifFreq > passbandHigh ? sig.power - 40 : sig.power;
-
-      // If it is on the edge and the bandwidth causes it to partially roll off, apply partial attenuation
-      const halfBw = sig.bandwidth / 2;
-      if (ifFreq - halfBw < passbandLow) {
-        const overlapHz = passbandLow - (ifFreq - halfBw);
-        const overlapFraction = overlapHz / sig.bandwidth;
-        filteredPower -= 40 * overlapFraction;
-      } else if (ifFreq + halfBw > passbandHigh) {
-        const overlapHz = ifFreq + halfBw - passbandHigh;
-        const overlapFraction = overlapHz / sig.bandwidth;
-        filteredPower -= 40 * overlapFraction;
+      // Passband with skirts (Phase 19.6): flat across 950-2150 MHz, rolling
+      // off beyond each edge; a carrier pays the overlap integral of the
+      // response with its spectrum. One the skirts bury is not there at all.
+      const transmission = carrierTransmission(ifFreq, sig.bandwidth, (f) => LNBModuleCore.passbandPower(f, passbandLow, passbandHigh));
+      const lossDb = transmissionLossDb(transmission);
+      if (lossDb > PASSBAND_DROP_DB) {
+        continue;
       }
 
-      return {
+      ifSignals.push({
         ...sig,
         frequency: ifFreq,
-        power: filteredPower,
+        power: (sig.power - lossDb - rxIfCableLoss) as dBm,
+        phaseNoiseDbcHz: combinePhaseNoiseDbcHz(sig.phaseNoiseDbcHz, loPhaseNoise),
         origin: SignalOrigin.LOW_NOISE_BLOCK,
-      } as IfSignal;
-    });
+      } as IfSignal);
+    }
+
+    this.ifSignals = ifSignals;
+  }
+
+  /** IF passband power response: 1 inside, a Butterworth skirt beyond each edge */
+  static passbandPower(f: number, lowHz: number, highHz: number): number {
+    const beyond = f < lowHz ? lowHz - f : f > highHz ? f - highHz : 0;
+    if (beyond === 0) {
+      return 1;
+    }
+
+    return 1 / (1 + (beyond / PASSBAND_SKIRT_HZ) ** (2 * PASSBAND_SKIRT_ORDER));
+  }
+
+  /** The LO's phase-noise plateau, dBc/Hz: synthesiser on the station reference, or its VCO free-running */
+  get loPhaseNoiseDbcHz(): number {
+    return this.isLoDisciplined_() ? LO_PHASE_NOISE_DBC_HZ.locked : LO_PHASE_NOISE_DBC_HZ.lnbUnlocked;
+  }
+
+  /** True when the LO synthesiser is locked to a warmed-up station reference */
+  private isLoDisciplined_(): boolean {
+    return this.state.isExtRefLocked && this.isExtRefPresent() && this.rfFrontEnd_.gpsdoModule.get10MhzOutput().isWarmedUp;
+  }
+
+  /**
+   * Seconds since the LNB was last powered on (Infinity when it has been on
+   * since the scenario was built with a zero stabilization time).
+   */
+  get secondsSincePowerOn(): number {
+    if (!this.isLivePowered) return 0;
+    if (this.powerOnTimestamp_ === null) return Number.POSITIVE_INFINITY;
+
+    return Math.max(0, (SimClock.runMs() - this.powerOnTimestamp_) / 1000);
+  }
+
+  /**
+   * Thermally stable: powered for at least its thermal stabilization time,
+   * with the noise temperature settled (Phase 19.6: `lnb-thermally-stable`
+   * used to pass at power-on, because 25 °C was inside its window).
+   */
+  isThermallyStable(): boolean {
+    if (!this.isLivePowered) return false;
+    const settleS = Math.max(this.state.thermalStabilizationTime, this.state.noiseTemperatureStabilizationTime);
+
+    return this.secondsSincePowerOn >= settleS;
   }
 
   get rxSignalsIn(): RfSignal[] {
     const omtSignals = this.rfFrontEnd_.omtModule.rxSignalsOut;
-    const bucLoopback = this.rfFrontEnd_.bucModule.state.isLoopback ? this.rfFrontEnd_.bucModule.outputSignals : [];
+    // Loopback reaches the LNB through the test-loop coupler (not at full BUC
+    // output) and the loop translator (at the downlink-equivalent RF, not the
+    // 6 GHz uplink a C-band LNB cannot receive)
+    const translationHz = this.loopTranslationHz;
+    const bucLoopback = this.rfFrontEnd_.bucModule.state.isLoopback
+      ? this.rfFrontEnd_.bucModule.outputSignals.map((sig) => ({
+          ...sig,
+          frequency: (sig.frequency - translationHz) as RfFrequency,
+          power: (sig.power - LOOPBACK_COUPLING_DB) as dBm,
+        }))
+      : [];
 
     return [...omtSignals, ...bucLoopback];
+  }
+
+  /** The loop translator's translation frequency, Hz (state override or LOOP_TRANSLATION_HZ) */
+  get loopTranslationHz(): number {
+    const overrideMHz = this.state.loopTranslationMHz;
+
+    return overrideMHz !== undefined && overrideMHz > 0 ? overrideMHz * 1e6 : LOOP_TRANSLATION_HZ;
+  }
+
+  /** Gain compression from the last update, dB (0 when linear) */
+  get compressionDb(): number {
+    return this.compressionDb_;
+  }
+
+  /**
+   * Gain compression the total input drives the LNB into, dB (Rapp, output
+   * P1dB LNB_OUTPUT_P1DB_DBM). Every carrier pays it: a compressed LNB turns
+   * down the whole band, the downlink with the loop carrier. Direct sampling
+   * (an SDR front end) has no LNB amplifier to model.
+   */
+  private compressionFor_(inputs: RfSignal[]): number {
+    if (this.state.isDirectSampling || inputs.length === 0) {
+      return 0;
+    }
+    const totalMw = inputs.reduce((sum, sig) => sum + 10 ** ((sig.power as number) / 10), 0);
+    if (!(totalMw > 0)) {
+      return 0;
+    }
+    const totalDbm = 10 * Math.log10(totalMw);
+    // Far under P1dB: linear (skip the model on every normal frame)
+    if (totalDbm + this.state.gain < LNB_OUTPUT_P1DB_DBM - 20) {
+      return 0;
+    }
+
+    return Math.max(0, compressionDb(amplifierFromDatasheet('rapp', this.state.gain, LNB_OUTPUT_P1DB_DBM), totalDbm));
   }
 
   /**
@@ -166,7 +350,7 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
    * cause gradual noise temperature transitions rather than instant jumps.
    */
   private updateNoiseTemperature_(): void {
-    if (!this.state.isPowered) {
+    if (!this.isLivePowered) {
       this.state.noiseTemperature = 290; // Ambient temperature when off
       return;
     }
@@ -220,7 +404,7 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
     const ambientTemp = 25; // °C (room temperature)
     const operatingTemp = 50; // °C (typical LNB operating temperature)
 
-    if (!this.state.isPowered) {
+    if (!this.isLivePowered) {
       // When powered off, temperature decays to ambient
       this.state.temperature = ambientTemp;
       return;
@@ -254,38 +438,25 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
    * Update frequency drift based on temperature and lock status
    * LNB oscillators drift when not locked to external reference or still warming up
    */
-  updateFrequencyDrift_(): void {
-    // Check if GPSDO reference is present and warmed up
-    const extRefPresent = this.isExtRefPresent();
-    const extRefWarmedUp = extRefPresent && this.rfFrontEnd_.gpsdoModule.get10MhzOutput().isWarmedUp;
+  updateFrequencyDrift_(dtS = 0): void {
+    const loFrequencyHz = this.state.loFrequency * 1e6;
 
-    // When locked to external reference and reference is warmed up, no drift
-    if (this.state.isExtRefLocked && extRefWarmedUp) {
-      this.state.frequencyError = 0;
+    // Locked to a warmed-up station reference: the LO carries the GPSDO's
+    // fractional error (Phase 19.6 reference chain)
+    if (this.isLoDisciplined_()) {
+      this.drift_.stop();
+      this.state.frequencyError = this.rfFrontEnd_.gpsdoModule.fractionalFrequencyError() * loFrequencyHz;
       return;
     }
 
-    // When not locked or reference not warmed up, calculate temperature-dependent drift
-    const nominalTemp = 50; // °C (operating temperature where drift is minimal)
-    const tempDeviation = Math.abs(this.state.temperature - nominalTemp);
+    // Free-running: the oscillator's seeded random walk on run time, plus its
+    // temperature coefficient while it is away from its 50 °C operating point
+    // (0.5 ppm/°C, cold reads low)
+    this.drift_.start();
+    this.drift_.step(dtS);
+    const tempDriftPpm = (this.state.temperature - 50) * 0.5;
 
-    // Temperature coefficient: 0.5 ppm/°C (typical for LNB DRO)
-    const tempCoefficientPpm = 0.5;
-    const tempDriftPpm = tempDeviation * tempCoefficientPpm;
-
-    // Add aging drift component: 1-3 ppm
-    const agingDriftPpm = 1 + random() * 2;
-
-    // Total drift in ppm
-    const totalDriftPpm = tempDriftPpm + agingDriftPpm;
-
-    // Convert to Hz
-    const loFrequencyHz = this.state.loFrequency * 1e6;
-
-    // Drift is negative when cold (frequency drops), positive when hot
-    const driftDirection = this.state.temperature < nominalTemp ? -1 : 1;
-
-    this.state.frequencyError = driftDirection * ((loFrequencyHz * totalDriftPpm) / 1e6);
+    this.state.frequencyError = ((this.drift_.ppm + tempDriftPpm) * loFrequencyHz) / 1e6;
   }
 
   /**
@@ -335,25 +506,33 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
   getAlarms(): string[] {
     const alarms: string[] = [];
 
-    if (!this.state.isPowered) {
-      return alarms; // No alarms when powered off
+    if (!this.isLivePowered) {
+      return alarms; // No module alarms when powered off (the station raises "LNB powered off")
     }
 
     const extRefPresent = this.isExtRefPresent();
 
     // Lock alarm
-    if (this.state.isPowered && !this.state.isExtRefLocked && extRefPresent) {
+    if (this.isLivePowered && !this.state.isExtRefLocked && extRefPresent) {
       alarms.push('LNB not locked to reference');
     }
 
-    // High noise temperature alarm
+    // High noise temperature alarm. AlarmService moves the number into the
+    // detail under the fixed label "LNB noise temperature high", refreshed
+    // every poll, so it no longer reads stale against the LNB panel
+    // (nats-r4-s16-F3) and the Ops Log line carries it (Phase 32 D7, nats-r7-s12-F2)
     if (this.state.noiseTemperature > 100) {
-      alarms.push(`LNB noise temperature high (${this.state.noiseTemperature.toFixed(0)}K)`);
+      alarms.push(`LNB noise temperature high (${this.state.noiseTemperature.toFixed(0)} K)`);
     }
 
     // High noise figure alarm
     if (this.state.lnaNoiseFigure > 1.0) {
       alarms.push(`LNB noise figure degraded (${this.state.lnaNoiseFigure.toFixed(2)} dB)`);
+    }
+
+    // Input overload: the LNB is past linear (a loop driven too hard, a strong interferer)
+    if (this.compressionDb_ >= LNB_COMPRESSION_ALARM_DB) {
+      alarms.push(`LNB input overload (${this.compressionDb_.toFixed(1)} dB) - gain compression`);
     }
 
     return alarms;
@@ -370,11 +549,11 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
       return rfFrequency as number as IfFrequency;
     }
 
-    // Apply frequency error to LO (error is 0 when locked and warmed up)
+    // Apply the LO's frequency error (the reference's when locked)
     const effectiveLO = this.state.loFrequency * 1e6 + this.state.frequencyError;
 
-    // LNB should be high side injection: IF = LO - RF, TODO: rare models use low side
-    return (effectiveLO - rfFrequency) as IfFrequency;
+    // High-side injection (default): IF = LO − RF; low-side: IF = RF − LO
+    return (this.state.loInjection === 'low' ? rfFrequency - effectiveLO : effectiveLO - rfFrequency) as IfFrequency;
   }
 
   /**
@@ -382,7 +561,7 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
    * @returns Gain in dB
    */
   getTotalGain(): number {
-    if (!this.state.isPowered) {
+    if (!this.isLivePowered) {
       return -100; // Effectively off
     }
     return this.state.gain;
@@ -394,10 +573,15 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
    * @returns Output IF power in dBm
    */
   getOutputPower(inputPowerDbm: number): number {
-    if (!this.state.isPowered) {
+    if (!this.isLivePowered) {
       return -120; // Effectively off
     }
     return inputPowerDbm + this.state.gain;
+  }
+
+  /** The operator's power switch AND the physical plant's supply (read time only; the switch state is never rewritten) */
+  get isLivePowered(): boolean {
+    return this.state.isPowered && plantPowers('lnb');
   }
 
   // Public handlers for UI layer
@@ -418,8 +602,18 @@ export abstract class LNBModuleCore extends RFFrontEndModule<LNBState> {
       if (!wasPowered && this.state.hasRefLockFault) {
         this.state.hasRefLockFault = false;
       }
+
+      // A gain trim without non-volatile memory powers up at factory default
+      if (!wasPowered && this.state.powerOnGain !== undefined) {
+        this.state.gain = this.state.powerOnGain;
+      }
     } else {
       this.powerOnTimestamp_ = null;
+    }
+
+    // RX restored before TX reads back from the log (nats-r4-s12-F2)
+    if (this.state.isPowered !== wasPowered) {
+      this.logOperatorAction_(this.state.isPowered ? 'LNB Power ON' : 'LNB Power OFF');
     }
   }
 

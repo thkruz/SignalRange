@@ -385,8 +385,10 @@ describe('S20 False Time', () => {
 
   it("Rotterdam's timestamp-skew audit entry is dated inside the spoof and is the flagged evidence", () => {
     const skew = s20.security!.events.find((e) => e.id === 'evt-ts-skew')!;
-    expect(skew.timeS).toBeGreaterThan(s20.gnssThreat.spoofStartS);
-    expect(skew.timeS).toBeLessThan(s20.gnssThreat.spoofEndS!);
+    // Anchored to spot-the-walk (pre-audit 9): the entry exists only once the offset has passed 20 us, 10 s into the 2 us/s walk.
+    const skewS = onPaceS(skew.timeS, skew.startAfterObjectiveId, 'spot-the-walk', s20.gnssThreat.spoofStartS + 10);
+    expect(skewS).toBeGreaterThan(s20.gnssThreat.spoofStartS);
+    expect(skewS).toBeLessThan(s20.gnssThreat.spoofEndS!);
     const report = scenario.objectives.find((o) => o.id === 'report-the-attack')!;
     expect(report.conditions.find((c) => c.type === 'security-event-acknowledged')!.params!.eventId).toBe('evt-ts-skew');
   });
@@ -479,16 +481,14 @@ describe('S21 Knocking on the Door', () => {
 
   it('call-the-knock: only the replay call holds with the key intact (the log entries are flagged evidence by then); the zeroize branch destroys the unit log', () => {
     expect(correctLabels('call-the-knock', { 'crypto-intact': true, 'audit-anomaly-present': false })).toEqual([
-      'A replay against an intact key - the bird rejected it. Keep the log, rotate to Q2b out of cycle because they hold ciphertext of Q2, and send PLD-STATUS under the new key',
+      'A replay on an intact key. Keep the log, rotate to Q2b out of cycle because they hold Q2 ciphertext, send PLD-STATUS',
     ]);
-    const zeroize = decisionOf('call-the-knock').params!.decisionOptions!.find((o) => o.label.startsWith('Key compromised'))!;
+    const zeroize = decisionOf('call-the-knock').params!.decisionOptions!.find((o) => o.label.startsWith('A compromised key'))!;
     expect(zeroize.consequence?.destroyEvidence?.auditEventId).toBe('evt-kg-replay-log');
   });
 
   it('retain-the-evidence: retaining is right with the key intact; zeroizing destroys the same evidence and costs points', () => {
-    expect(correctLabels('retain-the-evidence', { 'crypto-intact': true })).toEqual([
-      'Retain both under seal for CSIRT: the retired key is out of service, and the KG-01 log is the evidence that ties these frames to the actor',
-    ]);
+    expect(correctLabels('retain-the-evidence', { 'crypto-intact': true })).toEqual(['Retain both under seal: the retired key is out of service and the KG-01 log is evidence']);
     const zeroize = decisionOf('retain-the-evidence').params!.decisionOptions!.find((o) => o.label.startsWith('Zeroize Q2'))!;
     expect(zeroize.consequence?.destroyEvidence?.auditEventId).toBe('evt-kg-replay-log');
     expect(zeroize.consequence?.pointDelta).toBeGreaterThan(0);

@@ -1,5 +1,5 @@
 #draggable-html-box-checklist {
-  max-height: 80vh;
+  max-height: calc(var(--mc-viewport-height, 100vh) * 0.8);
   width: 600px;
   min-width: 300px;
   min-height: 300px;
@@ -15,7 +15,7 @@
   #draggable-html-box-content-checklist {
     padding: 1rem;
     overflow-y: auto;
-    max-height: calc(70vh - 8rem);
+    max-height: calc(calc(var(--mc-viewport-height, 100vh) * 0.7) - 8rem);
 
     div {
       padding: 0.5rem;
@@ -39,4 +39,15 @@
       background: var(--scrollbar-thumb-hover, #666);
     }
   }
+}
+/* Long lines in the Working Document wrap instead of clipping behind a horizontal scrollbar (c6-s11-F8) */
+#draggable-html-box-content-working-document {
+  overflow-x: hidden;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+#draggable-html-box-content-working-document * {
+  overflow-wrap: anywhere;
+  max-width: 100%;
 }

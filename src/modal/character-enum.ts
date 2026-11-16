@@ -22,8 +22,18 @@ export enum Character {
   ERIK_HALVORSEN = 'erik_halvorsen',
   /** NATS Group Security / CSIRT lead. Drives the Campaign 2 Phase 3 adversary arc. Calm, methodical, evidence-first. */
   PRIYA_SHARMA = 'priya_sharma',
+  /** C6 pilot teammate; Eastern European accent in voiceover. */
+  ALEKSANDRA_WYSOCKA = 'aleksandra_wysocka',
+  /** C6 camp instructor; Eastern European accent in voiceover. */
+  MAREK_DOMANSKI = 'marek_domanski',
+  /** C6 forward communications lead; Eastern European accent in voiceover. */
+  IRENA_MAZUR = 'irena_mazur',
+  /** C6 equipment and supply liaison; Eastern European accent in voiceover. */
+  TOMASZ_WRONA = 'tomasz_wrona',
   /** System/Self-check - no avatar, used for solo scenarios where no NPC is present */
   SYSTEM = 'system',
+  /** A written notice (ticket, coordination desk, regulator message): no avatar, no voice, titled "Notice" */
+  NOTICE = 'notice',
 }
 
 export enum Emotion {
@@ -39,6 +49,8 @@ export enum Emotion {
   FRUSTRATED = 'frustrated',
 }
 
+export const UNCAST_CHARACTER_AVATAR = '/images/placeholder-avatar.png';
+
 export const CharacterAvatars: Record<Character, string> = {
   [Character.CHARLIE_BROOKS]: getAssetUrl('/assets/characters/charlie-brooks.png'),
   [Character.CATHERINE_VEGA]: getAssetUrl('/assets/characters/catherine-vega.png'),
@@ -51,7 +63,13 @@ export const CharacterAvatars: Record<Character, string> = {
   [Character.ANNEKE_VISSER]: getAssetUrl('/assets/characters/anneke-visser.png'),
   [Character.ERIK_HALVORSEN]: getAssetUrl('/assets/characters/erik-halvorsen.png'),
   [Character.PRIYA_SHARMA]: getAssetUrl('/assets/characters/priya-sharma.png'),
+  // TODO(C6-CAST-ASSETS): painted portraits and emotion variants for the C6 cast.
+  [Character.ALEKSANDRA_WYSOCKA]: UNCAST_CHARACTER_AVATAR,
+  [Character.MAREK_DOMANSKI]: UNCAST_CHARACTER_AVATAR,
+  [Character.IRENA_MAZUR]: UNCAST_CHARACTER_AVATAR,
+  [Character.TOMASZ_WRONA]: UNCAST_CHARACTER_AVATAR,
   [Character.SYSTEM]: '',
+  [Character.NOTICE]: '',
 };
 
 export const CharacterNames: Record<Character, string> = {
@@ -66,7 +84,12 @@ export const CharacterNames: Record<Character, string> = {
   [Character.ANNEKE_VISSER]: 'Anneke Visser',
   [Character.ERIK_HALVORSEN]: 'Erik Halvorsen',
   [Character.PRIYA_SHARMA]: 'Priya Sharma',
+  [Character.ALEKSANDRA_WYSOCKA]: 'Aleksandra “Ola” Wysocka',
+  [Character.MAREK_DOMANSKI]: 'Marek Domański',
+  [Character.IRENA_MAZUR]: 'Irena Mazur',
+  [Character.TOMASZ_WRONA]: 'Tomasz “Tomek” Wrona',
   [Character.SYSTEM]: 'Knowledge Check',
+  [Character.NOTICE]: 'Notice',
 };
 
 export const CharacterTitles: Record<Character, string> = {
@@ -81,11 +104,17 @@ export const CharacterTitles: Record<Character, string> = {
   [Character.ANNEKE_VISSER]: 'Constellation Operations Engineer',
   [Character.ERIK_HALVORSEN]: 'Senior Maritime Analyst',
   [Character.PRIYA_SHARMA]: 'CSIRT Lead',
+  [Character.ALEKSANDRA_WYSOCKA]: 'Pilot and Teammate',
+  [Character.MAREK_DOMANSKI]: 'Communications Instructor',
+  [Character.IRENA_MAZUR]: 'Communications Lead',
+  [Character.TOMASZ_WRONA]: 'Equipment and Supply Liaison',
   [Character.SYSTEM]: '',
+  [Character.NOTICE]: '',
 };
 
 export const CharacterCompany: Record<Character, string> = {
-  [Character.CHARLIE_BROOKS]: 'North Atlantic Teleport Services (Vermont)',
+  // Charlie works shifts at both sites, so no site in his byline (s03-F10)
+  [Character.CHARLIE_BROOKS]: 'North Atlantic Teleport Services',
   [Character.DANA_TORRES]: 'North Atlantic Teleport Services (Vermont)',
   [Character.CATHERINE_VEGA]: 'North Atlantic Teleport Services (Maine)',
   [Character.JAMES_OKAFOR]: 'Atlantic Shipping Alliance',
@@ -96,12 +125,17 @@ export const CharacterCompany: Record<Character, string> = {
   [Character.ANNEKE_VISSER]: 'MERIDIAN Constellation Operations (Rotterdam)',
   [Character.ERIK_HALVORSEN]: 'Nordic Maritime Watch',
   [Character.PRIYA_SHARMA]: 'NATS Group Security',
+  [Character.ALEKSANDRA_WYSOCKA]: 'Field Communications Team',
+  [Character.MAREK_DOMANSKI]: 'Kivilahti Training Camp',
+  [Character.IRENA_MAZUR]: 'Field Communications Team',
+  [Character.TOMASZ_WRONA]: 'Saarikoski Depot',
   [Character.SYSTEM]: '',
+  [Character.NOTICE]: '',
 };
 
 export function getCharacterAvatarUrl(character: Character, emotion?: Emotion): string {
   const basePath = CharacterAvatars[character];
-  if (!emotion || emotion === Emotion.NEUTRAL) {
+  if (!emotion || emotion === Emotion.NEUTRAL || basePath === UNCAST_CHARACTER_AVATAR) {
     return basePath;
   }
   // Insert emotion before .png: /assets/characters/charlie-brooks.png -> /assets/characters/charlie-brooks-happy.png

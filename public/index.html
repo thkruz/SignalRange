@@ -5,10 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="SignalRange | Space Electronic Warfare Lab">
   <title>SignalRange | Space Electronic Warfare Lab</title>
+  <style>
+    html, body { margin: 0; background: #272727; }
+    #startup-screen { position: fixed; inset: 0; z-index: 2147483647; display: grid; place-content: center; gap: 16px; background: #272727; color: #eee; font: 14px system-ui, sans-serif; text-align: center; }
+    #startup-screen strong { font-size: 24px; letter-spacing: 2px; }
+    #startup-screen::after { content: ''; width: 120px; height: 2px; margin: auto; background: #ba160c; }
+  </style>
   <!-- Fonts are self-hosted from /fonts/ - see src/fonts.css. No third-party
        font request at runtime. -->
 </head>
 <body>
+  <div id="startup-screen" role="status"><strong>SignalRange</strong><span>Preparing your station…</span></div>
   <div id="root"></div>
 </body>
 </html>

@@ -1,17 +1,25 @@
 import { CampaignManager } from '@app/campaigns/campaign-manager';
+import { rangeWatchCampaignData } from '@app/campaigns/constellation-sandbox/campaign-data';
+import { watchFrontlineGate } from '@app/campaigns/frontline/frontline-gate';
 import { ccsCampaignData, geolocationCampaignData, hamSdrCampaignData, natsCampaignData } from '@app/campaigns/nats/campaign-data';
 import { natsEuCampaignData } from '@app/campaigns/nats-eu/campaign-data';
+import { registerPerfHarness } from '@app/campaigns/perf/perf-constellation';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { CampaignSelectionPage } from '@app/pages/campaign-selection';
 import { Footer } from '@app/pages/layout/footer/footer';
 import { Header } from '@app/pages/layout/header/header';
 import { MissionControlPage } from '@app/pages/mission-control/mission-control-page';
+import { MissionLoadingScreen } from '@app/pages/mission-loading-screen';
 import { SandboxPage } from '@app/pages/sandbox-page';
 import { ScenarioSelectionPage } from '@app/pages/scenario-selection';
+import { cancelSelectionExit, leaveSelection } from '@app/pages/selection-browser';
 import { PluginManager } from '@app/plugins/plugin-manager';
+import { ensureTleSets } from '@app/simulation/satellite-registry';
 import { SimulationManager } from '@app/simulation/simulation-manager';
-import { ScenarioManager } from './scenario-manager';
+import { MenuMusic } from '@app/sound/menu-music';
+import { loadTleSet } from '@app/tle-sets/tle-set-loader';
+import { ScenarioManager, type SimulationSettings } from './scenario-manager';
 
 /**
  * Navigation options for router
@@ -37,6 +45,8 @@ export interface ExtraRoute {
  * Simple Router for 3 pages: login, student, instructor
  */
 export class Router {
+  /** Give up waiting for plugins after this long and route without them, ms */
+  static readonly PLUGIN_READY_TIMEOUT_MS = 10_000;
   private static instance: Router;
   private currentPath: string = '/';
   private navigationOptions_: NavigationOptions = {};
@@ -52,6 +62,9 @@ export class Router {
   private pluginsReady_ = PluginManager.getInstance().isReady;
   /** Path deferred while plugins were loading; replayed once they are ready. */
   private heldPath_: string | null = null;
+  /** Bumped on every route change so a stale async scenario launch can tell it was abandoned. */
+  private routeGeneration_ = 0;
+  private tleScreen_: MissionLoadingScreen | null = null;
 
   private constructor() {}
 
@@ -70,6 +83,19 @@ export class Router {
     campaignManager.registerCampaign(hamSdrCampaignData);
     campaignManager.registerCampaign(ccsCampaignData);
     campaignManager.registerCampaign(geolocationCampaignData);
+    // Campaign 6 (Frontline Signals) is a public alpha; frontline-gate.ts can make it
+    // developer-only again (the dev flag can flip after auth resolves, so re-run the route)
+    watchFrontlineGate(() => {
+      if (window.location.pathname.startsWith('/campaigns/frontline')) {
+        this.handleRoute();
+      }
+    });
+    campaignManager.registerCampaign(rangeWatchCampaignData);
+    // Dev-only perf harness (Phase 3 P3-WP0): dev server builds only, never listed in menus
+    if (process.env.NODE_ENV === 'development') {
+      registerPerfHarness(campaignManager);
+      this.addGalleryRoute_();
+    }
 
     // Listen for popstate (back/forward buttons)
     globalThis.addEventListener('popstate', () => this.handleRoute());
@@ -90,7 +116,12 @@ export class Router {
     const plugins = PluginManager.getInstance();
 
     if (!plugins.isReady) {
-      plugins.ready
+      // A plugin chunk that never settles (a stalled import during a dev
+      // recompile) must not leave the page blank forever (nats-s01-F15)
+      const timeout = new Promise<void>((_, reject) => {
+        window.setTimeout(() => reject(new Error(`plugins not ready after ${Router.PLUGIN_READY_TIMEOUT_MS} ms`)), Router.PLUGIN_READY_TIMEOUT_MS);
+      });
+      Promise.race([plugins.ready, timeout])
         .catch((err: unknown) => console.warn('[router] plugins unavailable', err))
         .finally(() => {
           this.pluginsReady_ = true;
@@ -110,6 +141,25 @@ export class Router {
     return path === '/sandbox' || /^\/campaigns\/[^/]+\/scenarios\/[^/]+$/u.test(path) || path === '/mission-control';
   }
 
+  /**
+   * Dev-only `/gallery` and `/gallery/<entry>/<state>` (src/dev-gallery). Called only under the
+   * NODE_ENV development guard in init(), so a production bundle drops the dynamic import and the chunk.
+   */
+  private addGalleryRoute_(): void {
+    let page: typeof import('@app/dev-gallery/gallery-page') | null = null;
+    this.addRoute({
+      pattern: /^\/gallery(?:\/(?<entry>[^/]+)\/(?<state>[^/]+))?\/?$/u,
+      show: (params) => {
+        void import('@app/dev-gallery/gallery-page').then((mod) => {
+          page = mod;
+
+          return mod.showGallery(params);
+        });
+      },
+      hide: () => page?.hideGallery(),
+    });
+  }
+
   /** Register a route outside the core page set. See ExtraRoute. */
   addRoute(route: ExtraRoute): void {
     this.extraRoutes_.push(route);
@@ -126,14 +176,27 @@ export class Router {
   }
 
   navigate(path: string, options?: NavigationOptions): void {
-    this.navigationOptions_ = options || {};
-    globalThis.history.pushState({}, '', path);
-    this.handleRoute();
+    // A download that finishes during the selection fade belongs to the route being left
+    this.routeGeneration_++;
+    leaveSelection(() => {
+      this.navigationOptions_ = options || {};
+      globalThis.history.pushState({}, '', path);
+      this.handleRoute();
+    });
   }
 
   private handleRoute(): void {
+    cancelSelectionExit();
+    this.routeGeneration_++;
+    this.tleScreen_?.dispose();
+    this.tleScreen_ = null;
     const path = globalThis.location.pathname;
     this.currentPath = path;
+    const selection = path === '/' || /^\/campaigns\/[^/]+$/u.test(path);
+    // Keep the menu loop through mission preparation; Start fades it into the station.
+    if (selection) MenuMusic.getInstance().setActive(true);
+    else if (!/^\/campaigns\/[^/]+\/scenarios\/[^/]+$/u.test(path) && path !== '/mission-control') MenuMusic.getInstance().setActive(false);
+    document.body.classList.toggle('selection-menu', path === '/' || /^\/campaigns\/[^/]+$/u.test(path));
 
     // Tag <body> with the active campaign and its chrome variant so per-campaign
     // themes (e.g. .campaign-nats-eu) can scope CSS variable overrides and
@@ -155,6 +218,7 @@ export class Router {
     if (extra) {
       SimulationManager.destroy();
       extra.route.show(extra.params, path);
+      this.finishStartup_();
       EventBus.getInstance().emit(Events.ROUTE_CHANGED, { path });
       return;
     }
@@ -233,12 +297,22 @@ export class Router {
   }
 
   private hideAll(): void {
-    CampaignSelectionPage.getInstance().hide();
-    ScenarioSelectionPage.getInstance().hide();
-    SandboxPage.getInstance()?.hide();
-    MissionControlPage.getInstance()?.hide();
-    for (const route of this.extraRoutes_) {
-      route.hide?.();
+    // One page failing to tear down must not abort navigation: the URL has
+    // already changed, and a throw here left players on a dead scenario
+    // after Mission Complete (nats-s24-F6)
+    const hides: Array<() => void> = [
+      () => CampaignSelectionPage.getInstance().hide(),
+      () => ScenarioSelectionPage.getInstance().hide(),
+      () => SandboxPage.getInstance()?.hide(),
+      () => MissionControlPage.getInstance()?.hide(),
+      ...this.extraRoutes_.map((route) => () => route.hide?.()),
+    ];
+    for (const hide of hides) {
+      try {
+        hide();
+      } catch (error) {
+        console.error('Page teardown failed:', error);
+      }
     }
   }
 
@@ -273,8 +347,18 @@ export class Router {
         Footer.getInstance().makeSmall(true);
         if (params?.scenarioId) {
           ScenarioManager.getInstance().scenario = params.scenarioId;
-          MissionControlPage.create(this.navigationOptions_);
-          MissionControlPage.getInstance().show();
+          const constellations = ScenarioManager.getInstance().settings?.constellations;
+          if (constellations?.length) {
+            // TLE sets load asynchronously; the registry reads them synchronously, so
+            // they must be in place before the simulation starts
+            const returnPath = /^\/campaigns\/[^/]+/u.exec(globalThis.location.pathname)?.[0] ?? '/';
+            this.tleScreen_ = new MissionLoadingScreen(ScenarioManager.getInstance().data, () => this.navigate(returnPath));
+            this.tleScreen_.setStatus('Downloading satellite data…');
+            this.loadTleSets_(constellations, this.navigationOptions_, returnPath);
+          } else {
+            MissionControlPage.create(this.navigationOptions_);
+            MissionControlPage.getInstance().show();
+          }
         }
         break;
       case 'mission-control':
@@ -287,7 +371,41 @@ export class Router {
     }
 
     // Reset navigation options after use
+    this.finishStartup_();
     this.navigationOptions_ = {};
+  }
+
+  /** Download the constellation TLE sets, then build the mission page; Retry repeats this with the same options. */
+  private loadTleSets_(constellations: NonNullable<SimulationSettings['constellations']>, options: NavigationOptions, returnPath: string): void {
+    const generation = this.routeGeneration_;
+    const screen = this.tleScreen_;
+    ensureTleSets(constellations, loadTleSet).then(
+      () => {
+        // The player left this route while the sets downloaded: do not build a page for it
+        if (generation !== this.routeGeneration_) return;
+        // The mission page raises its own loading screen; drop this one first so only one shows
+        screen?.dispose();
+        this.tleScreen_ = null;
+        MissionControlPage.create(options);
+        MissionControlPage.getInstance().show();
+      },
+      (error: unknown) => {
+        if (generation !== this.routeGeneration_) return;
+        console.error('TLE set load failed:', error);
+        screen?.fail('Could not download the satellite data for this mission. Check your connection and retry.', () => {
+          this.routeGeneration_++;
+          screen.setStatus('Downloading satellite data…');
+          this.loadTleSets_(constellations, options, returnPath);
+        });
+      }
+    );
+  }
+
+  private finishStartup_(): void {
+    const screen = document.getElementById('startup-screen');
+    if (!screen) return;
+    // The first route has now sized the shell and mounted its loading/page UI.
+    requestAnimationFrame(() => screen.remove());
   }
 
   getCurrentPath(): string {

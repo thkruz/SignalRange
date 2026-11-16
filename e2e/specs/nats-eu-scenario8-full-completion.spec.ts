@@ -22,16 +22,16 @@ import { dismissDialogIfPresent, waitForSimulationReady } from '../utils/simulat
 /**
  * nats-eu Scenario 8 "Night Passes" - full completion (phase 16).
  *
- * The solo qualification night: plan, rotation and budget before the 00:31
+ * The solo qualification night: plan, rotation and budget before the 00:30
  * SAR-1 pass (link proven cold, chain up inside the window, REC-PLAYBACK
  * acknowledged, chain down),
  * then the Shetland console remotely for a 13 deg SAR-2 telemetry contact on
  * a reference in holdover (GNSS outage 02:44-02:59, E3), then Galway again
  * for the 73 deg SAR-2 pass after the fleet traffic key rolls at 04:15 (E3).
  * Sim clock starts 2027-03-16 00:15:00Z:
- *   GW-01 MERIDIAN-SAR-1  AOS 00:31:19Z  max el 40.4 at 00:35:03Z  LOS 00:38:49Z
- *   SH-02 MERIDIAN-SAR-2  AOS 02:54:39Z  max el 13.4 at 02:57:34Z  LOS 03:00:27Z
- *   GW-01 MERIDIAN-SAR-2  AOS 04:27:31Z  max el 73.1 at 04:31:23Z  LOS 04:35:12Z
+ *   GW-01 MERIDIAN-SAR-1  AOS 00:30:10Z  max el 40.4 at 00:35:03Z  LOS 00:39:58Z
+ *   SH-02 MERIDIAN-SAR-2  AOS 02:53:14Z  max el 13.4 at 02:57:34Z  LOS 03:01:51Z
+ *   GW-01 MERIDIAN-SAR-2  AOS 04:26:23Z  max el 73.1 at 04:31:23Z  LOS 04:36:19Z
  *
  * The clock jumps (advanceMissionClockToUtc) stand in for the operator's time
  * skips; both faults fire on the mission clock, so the jump to each contact
@@ -63,10 +63,17 @@ async function answerObjectiveQuiz(
     if (!(await missionControl.objectivesChecklist.isVisible().catch(() => false))) {
       await missionControl.openChecklist();
     }
-    const button = page.locator(`.condition-quiz-btn[data-objective-id="${objectiveId}"]`);
-    if ((await button.count()) === 0) {
-      return; // already answered
+    const quizAnswered = await page.evaluate((id) => {
+      const hook = (window as unknown as { debugObjective: (id: string) => { conditions?: Array<{ type: string; isSatisfied: boolean }> } }).debugObjective;
+      return (hook(id).conditions ?? []).filter((c) => c.type === 'status-check').every((c) => c.isSatisfied);
+    }, objectiveId);
+    if (quizAnswered) {
+      return;
     }
+    // Phase 27 B7: the quiz button appears once the objective's other rows
+    // are met, so it can lag the action that met them
+    const button = page.locator(`.condition-quiz-btn[data-objective-id="${objectiveId}"]`);
+    await expect(button.first()).toBeAttached({ timeout: 15000 });
     await domClick(page, `.condition-quiz-btn[data-objective-id="${objectiveId}"]`);
   }
   await answerPendingQuizFrom(page, answers);
@@ -107,7 +114,7 @@ test.describe('nats-eu Scenario 8 Full Completion', () => {
   test('[review-mission-brief] takes the shift', async () => {
     await missionControl.openMissionBrief();
     await missionControl.closeMissionBrief();
-    await answerSystemQuiz(page, 'None of them - the plan');
+    await answerSystemQuiz(page, 'None of them: the plan');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Take the Shift');
   });
@@ -137,12 +144,12 @@ test.describe('nats-eu Scenario 8 Full Completion', () => {
   });
 
   test('[night-budget] predicts the night link and answers both pre-pass quizzes', async () => {
-    await computeLinkBudget(page, missionControl, { eirpDbm: 28, fsplDb: 169.1, rxGainDbi: 51.8, noiseTempK: 88, bandwidthMHz: 36, miscLossDb: 1 });
+    await computeLinkBudget(page, missionControl, { eirpDbm: 31.3, fsplDb: 169.1, rxGainDbi: 50.4, noiseTempK: 121, bandwidthMHz: 36, miscLossDb: 1 });
     // Plan, rotation and budget activate together after the brief, and the
     // quiz manager surfaces the last-registered quiz first, so answer the two
     // pending quizzes by their question text rather than in objective order.
     const answers = [
-      { questionHint: 'Shetland overhead', answerText: 'It is priority 3 and may be dropped' },
+      { questionHint: 'Shetland overhead', answerText: 'It is dropped: it is priority 3' },
       { questionHint: '2.3 dB', answerText: '20 log(761 / 581)' },
     ];
     await answerObjectiveQuiz(page, missionControl, 'build-the-night-plan', answers);
@@ -194,7 +201,9 @@ test.describe('nats-eu Scenario 8 Full Completion', () => {
   });
 
   test('[secure-the-chain] brings the chain down in order', async () => {
-    // No jump: the countdown is running, and a jump now costs what waiting would (phase 19.0a)
+    // The two minutes start at LOS, the 5 deg mask crossing 00:38:49 (horizon 00:39:58). Land between the two so the setting-below row latches on the landing sample
+    await advanceMissionClockToUtc(page, '2027-03-16T00:39:15Z');
+    await page.waitForTimeout(2500);
     await disableHpa(page, missionControl);
     await setSwitch(page, '#buc-mute', true);
     await setSwitch(page, '#tx-transmit-switch', false);
@@ -204,7 +213,7 @@ test.describe('nats-eu Scenario 8 Full Completion', () => {
 
   test('[log-contact-1] logs the first contact', async () => {
     await closeWorkingDocumentIfOpen(page);
-    await answerSystemQuiz(page, 'Rotation completed before the window');
+    await answerSystemQuiz(page, 'link committed with its measured margin');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Log the First Contact');
   });
@@ -227,7 +236,7 @@ test.describe('nats-eu Scenario 8 Full Completion', () => {
     await missionControl.selectTab('gps-timing');
     // Both stations' GPS Timing panels stay mounted; only SH-02 is in holdover.
     await expect(page.locator('#gpsdo-holdover-badge').filter({ hasText: /^ACTIVE$/u })).toHaveCount(1, { timeout: 15000 });
-    await answerSystemQuiz(page, 'A GNSS outage - the switch');
+    await answerSystemQuiz(page, 'A GNSS outage: the switch');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Read the Shetland Reference');
   });

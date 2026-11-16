@@ -1,4 +1,5 @@
 import { expect, Locator, Page } from '@playwright/test';
+import { hasTestClock } from '../utils/test-clock';
 import { BasePage } from './base.page';
 
 /**
@@ -55,7 +56,8 @@ export class MissionControlPage extends BasePage {
 
   protected async waitForPageLoad(): Promise<void> {
     await expect(this.pageContainer).toBeVisible();
-    await expect(this.assetTreeSidebar).toBeVisible();
+    // A backyard or field bench replaces the sidebar with the minimal HUD, so either one means the page is up
+    await expect(this.page.locator('html.mc-minimal-hud, #asset-tree-sidebar-container:visible').first()).toBeAttached();
     await expect(this.tabbedCanvas).toBeVisible();
     // Wait for simulation to initialize (ground stations to load)
     await this.page.waitForTimeout(2000);
@@ -65,6 +67,13 @@ export class MissionControlPage extends BasePage {
    * Navigate directly to a scenario.
    */
   async gotoScenario(campaignId: string, scenarioId: string): Promise<void> {
+    // Covers specs that build their own context: the pending quiz/decision indicator shows without its 5 s delay.
+    // Not on the test clock (its quiz helpers fast-forward past the delay).
+    if (!hasTestClock(this.page)) {
+      await this.page.addInitScript(() => {
+        (window as unknown as { SR_E2E_FAST_UI: boolean }).SR_E2E_FAST_UI = true;
+      });
+    }
     await this.page.goto(`/campaigns/${campaignId}/scenarios/${scenarioId}`);
     await this.waitForPageLoad();
   }
@@ -113,7 +122,10 @@ export class MissionControlPage extends BasePage {
    */
   async openChecklist(): Promise<void> {
     await this.dismissDialogIfPresent();
-    await this.checklistButton.click();
+    // Wide viewports open the checklist docked on load, and the sidebar button toggles: clicking then would close it.
+    if (!(await this.objectivesChecklist.isVisible())) {
+      await this.checklistButton.click();
+    }
     await expect(this.objectivesChecklist).toBeVisible();
   }
 
@@ -176,7 +188,13 @@ export class MissionControlPage extends BasePage {
   async selectGroundStation(gsId: string): Promise<void> {
     await this.dismissDialogIfPresent();
     const gsItem = this.assetTreeSidebar.locator(`[data-asset-id="${gsId}"], [data-gs-id="${gsId}"]`);
-    await gsItem.click();
+    // The brief objective keeps the stations locked until the sim processes its completion; a click before
+    // that only shows the lock toast and selects nothing
+    await expect(gsItem.first()).not.toHaveAttribute('aria-disabled', 'true', { timeout: 15000 });
+    // A character dialog is a full-screen aria-modal overlay and blocks the sidebar by design. Wait for it to
+    // go (auto-close fades it out), then make a real pointer click: a stuck overlay must fail this step.
+    await expect(this.page.locator('.dialog-overlay')).toHaveCount(0, { timeout: 15000 });
+    await gsItem.first().click();
   }
 
   /**

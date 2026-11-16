@@ -1,0 +1,36 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`GEO polarization skew from geometry (Phase 29 D8) > pins the campaign skew table: every station sees its own site 1`] = `
+{
+  "AURORA-7": {
+    "ME-02 (45.22 N 68.79 W)": -10.6,
+    "ME-02 (45.25 N 69.77 W)": -9.6,
+    "VT-01": -7.1,
+    "slotDegE": -79.63,
+  },
+  "SES-10": {
+    "ME-02 (45.22 N 68.79 W)": 1.8,
+    "ME-02 (45.25 N 69.77 W)": 2.7,
+    "VT-01": 5.6,
+    "slotDegE": -67.02,
+  },
+  "TM-1": {
+    "ME-02 (45.22 N 68.79 W)": 15.1,
+    "ME-02 (45.25 N 69.77 W)": 16,
+    "VT-01": 18.8,
+    "slotDegE": -53,
+  },
+  "TM-2": {
+    "ME-02 (45.22 N 68.79 W)": 21.8,
+    "ME-02 (45.25 N 69.77 W)": 22.6,
+    "VT-01": 25.2,
+    "slotDegE": -44.99,
+  },
+  "TM-3": {
+    "ME-02 (45.22 N 68.79 W)": 20.2,
+    "ME-02 (45.25 N 69.77 W)": 21,
+    "VT-01": 23.7,
+    "slotDegE": -47.02,
+  },
+}
+`;

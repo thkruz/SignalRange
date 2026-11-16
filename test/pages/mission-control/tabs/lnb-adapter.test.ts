@@ -2,6 +2,7 @@ import { Mock, Mocked, vi } from 'vitest';
 import { LNBModuleCore, LNBState } from '../../../../src/equipment/rf-front-end/lnb-module/lnb-module-core';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
+import { EventAutoLogger } from '../../../../src/ops-log/event-auto-logger';
 import { LNBAdapter } from '../../../../src/pages/mission-control/tabs/lnb-adapter';
 
 // Mock dependencies
@@ -122,13 +123,25 @@ describe('LNBAdapter', () => {
       expect(gainInput.value).toBe('56.0');
     });
 
-    it('should clamp LO frequency to valid range (5000-7000)', () => {
+    it.each([13100, 10600, 5150])('accepts %s MHz LO (C and Ku band)', (mhz) => {
       const loInput = containerEl.querySelector('#lnb-lo-frequency') as HTMLInputElement;
 
-      loInput.value = '8000';
+      loInput.value = String(mhz);
       loInput.dispatchEvent(new Event('change'));
 
-      expect(loInput.value).toBe('7000');
+      expect(loInput.value).toBe(String(mhz));
+    });
+
+    it('should clamp LO frequency to valid range (4000-14500)', () => {
+      const loInput = containerEl.querySelector('#lnb-lo-frequency') as HTMLInputElement;
+
+      loInput.value = '20000';
+      loInput.dispatchEvent(new Event('change'));
+      expect(loInput.value).toBe('14500');
+
+      loInput.value = '1000';
+      loInput.dispatchEvent(new Event('change'));
+      expect(loInput.value).toBe('4000');
     });
 
     it('should clamp gain to valid range (0-65)', () => {
@@ -149,6 +162,24 @@ describe('LNBAdapter', () => {
 
       expect(mockLnbModule.handleLoFrequencyChange).toHaveBeenCalledWith(6080);
       expect(mockLnbModule.handleGainChange).toHaveBeenCalledWith(55);
+    });
+
+    it('logs an applied LO or gain change with the old value, and nothing for an unchanged Apply (Phase 32 D8, nats-r7-s02-F2)', () => {
+      const logAction = vi.spyOn(EventAutoLogger.getInstance(), 'logAction').mockImplementation(() => undefined);
+      const click = (id: string) => (containerEl.querySelector(id) as HTMLButtonElement).click();
+
+      click('#lnb-apply-btn');
+      expect(logAction).not.toHaveBeenCalled();
+
+      for (let i = 0; i < 5; i++) click('#lnb-gain-dec-coarse');
+      click('#lnb-lo-dec-coarse');
+      click('#lnb-apply-btn');
+
+      expect(logAction.mock.calls.map(([message, system]) => `${message} [${system}]`)).toEqual([
+        'LNB LO set to 5980 MHz (was 6080 MHz) [RF FE]',
+        'LNB gain set to 50.0 dB (was 55.0 dB) [RF FE]',
+      ]);
+      logAction.mockRestore();
     });
   });
 
@@ -209,6 +240,31 @@ describe('LNBAdapter', () => {
       expect(loInput.disabled).toBe(true);
       expect(gainInput.disabled).toBe(true);
       expect(applyBtn.disabled).toBe(true);
+    });
+  });
+
+  describe('staged edits survive power toggles and state events', () => {
+    const loInput = () => containerEl.querySelector('#lnb-lo-frequency') as HTMLInputElement;
+    const applyBtn = () => containerEl.querySelector('#lnb-apply-btn') as HTMLButtonElement;
+    const stateHandler = () => mockEventBus.on.mock.calls.find((c: unknown[]) => c[0] === Events.RF_FE_LNB_CHANGED)?.[1];
+
+    it('keeps a pending LO through a power toggle and an LNB state event', () => {
+      (containerEl.querySelector('#lnb-lo-inc-coarse') as HTMLButtonElement).click(); // 6080 -> 6180 staged
+
+      const powerSwitch = containerEl.querySelector('#lnb-power') as HTMLInputElement;
+      powerSwitch.checked = true;
+      powerSwitch.dispatchEvent(new Event('change'));
+      stateHandler()({ ...mockLnbModule.state, noiseTemperature: 70 });
+
+      expect(loInput().value).toBe('6180');
+      expect(loInput().classList.contains('is-pending')).toBe(true);
+      expect(applyBtn().classList.contains('is-pending')).toBe(true);
+    });
+
+    it('follows external LO changes when there is no pending edit', () => {
+      stateHandler()({ ...mockLnbModule.state, loFrequency: 5150 });
+
+      expect(loInput().value).toBe('5150');
     });
   });
 

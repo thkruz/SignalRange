@@ -1,0 +1,215 @@
+/* Physical-plant UI (Phase 38.1): site tab, part close-up, SkyLink panel, trainer panel */
+
+.pp-pip {
+  display: inline-block;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--mc-text-muted, #6b6b6b);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.45);
+}
+.pp-pip-ok { background: var(--mc-status-normal, #22c55e); }
+.pp-pip-warn { background: var(--mc-status-caution, #eab308); }
+.pp-pip-bad { background: var(--mc-danger, #ba160c); }
+
+.pp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.25px;
+  border: 1px solid var(--mc-border);
+  color: var(--mc-text-secondary);
+  background: rgba(75, 75, 75, 0.15);
+}
+.pp-badge-ok { color: var(--mc-status-normal, #22c55e); border-color: rgba(34, 197, 94, 0.35); background: rgba(34, 197, 94, 0.12); }
+.pp-badge-warn { color: var(--mc-status-caution, #eab308); border-color: rgba(234, 179, 8, 0.35); background: rgba(234, 179, 8, 0.12); }
+.pp-badge-bad { color: #ff6b5e; border-color: rgba(186, 22, 12, 0.5); background: rgba(186, 22, 12, 0.18); }
+
+/* ---- site tab ---- */
+.site-tab { padding: 0.75rem; height: 100%; box-sizing: border-box; }
+.site-tab .site-tab-col { height: 100%; display: flex; flex-direction: column; overflow-y: auto; }
+/* The stage box never collapses (the field panels below it scroll with the tab; with no panels it takes the rest of the tab); the stage inside is as large as fits at the image's aspect (fits height and width, no page scroll) */
+.site-tab .site-stage-box { flex: 1 0 auto; padding-right: var(--site-dock-gutter, 0px); min-height: min(62vh, 560px); container-type: size; display: flex; align-items: center; justify-content: center; }
+/* The panels below the scene sit under the docked boxes too: keep their selects and buttons clear of them (c6-s15 docked-box note) */
+.site-tab .site-tab-col > [id^="site-"][id$="-panel"] { padding-right: var(--site-dock-gutter, 0px); }
+.site-tab .site-stage-box { position: relative; overflow: hidden; }
+.site-tab .site-stage-box > .site-backdrop { position: absolute; inset: -40px; background-size: cover; background-position: center; filter: blur(26px) brightness(0.45) saturate(0.9); pointer-events: none; }
+.site-tab .site-stage-box > .pp-stage { position: relative; z-index: 1; }
+.site-tab .site-stage-box > .pp-stage { width: min(100cqw, calc(100cqh * var(--pp-ar, 1.5))); aspect-ratio: var(--pp-ar, 1.5); flex: none; }
+.site-tab .site-stage-box > .pp-stage > img { height: 100%; }
+.site-tab .site-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1rem;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.6rem;
+  background: var(--mc-surface-1);
+  border: 1px solid var(--mc-border);
+  border-radius: 0.375rem;
+}
+.site-tab .site-strip-title { font-size: 1.05rem; margin: 0; color: var(--mc-text-primary); }
+.site-tab .site-strip-spacer { flex: 1 1 auto; }
+.site-tab .site-stat { color: var(--mc-text-secondary); font-size: 0.8rem; }
+.site-tab .site-stat b { color: var(--mc-text-primary); font-family: 'JetBrains Mono', monospace; }
+
+.pp-stage {
+  position: relative;
+  width: 100%;
+  border: 1px solid var(--mc-border);
+  border-radius: 0.375rem;
+  overflow: hidden;
+  background: #000;
+  line-height: 0;
+}
+.pp-stage > img { display: block; width: 100%; height: auto; user-select: none; -webkit-user-drag: none; }
+.pp-stage > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+.pp-hotspot { cursor: pointer; }
+/* Hit shapes are invisible click/hover areas; the glow (mask image, or blurred shape copy) fades in on hover and keyboard focus */
+.pp-hotspot .pp-hit, .pp-hotspot .pp-hit-path { fill: transparent; stroke: transparent; }
+.pp-hotspot .pp-hit-path { stroke-linecap: round; stroke-linejoin: round; fill: none; }
+.pp-hotspot:focus { outline: none; }
+.pp-hotspot .pp-glow, .pp-hotspot .pp-glow-fb, .pp-hotspot .pp-glow-fb-path { opacity: 0; transition: opacity 0.15s; pointer-events: none; }
+.pp-hotspot .pp-glow-fb { fill: rgba(255, 216, 102, 0.4); stroke: none; filter: url(#pp-soft); }
+.pp-hotspot .pp-glow-fb-path { fill: none; stroke: #ffd866; stroke-linecap: round; stroke-linejoin: round; filter: url(#pp-soft); }
+.pp-hotspot:hover .pp-glow, .pp-hotspot:focus .pp-glow, .pp-hotspot:focus-visible .pp-glow, .pp-hotspot:hover .pp-glow-fb, .pp-hotspot:focus .pp-glow-fb, .pp-hotspot:hover .pp-glow-fb-path, .pp-hotspot:focus .pp-glow-fb-path { opacity: 1; }
+.pp-label-tag { opacity: 0; transition: opacity 0.12s; pointer-events: none; }
+.pp-label-tag .pp-label-bg { fill: #4a4c33; stroke: #23251a; stroke-width: 1.5px; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6)); }
+.pp-label-tag .pp-label { font-family: 'Roboto Condensed', 'Arial Narrow', sans-serif; font-size: 19px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; fill: #ebe3cb; stroke: none; pointer-events: none; }
+.pp-label-tag.on { opacity: 1; }
+.pp-hotspot .pp-pip-svg { pointer-events: all; cursor: pointer; }
+.pp-pip-svg { stroke: rgba(0, 0, 0, 0.6); stroke-width: 2; }
+.pp-pip-svg.ok { fill: rgba(235, 227, 203, 0.32); stroke: rgba(0, 0, 0, 0.35); r: 6px; transition: fill 0.15s, r 0.15s; }
+.pp-hotspot:hover .pp-pip-svg.ok, .pp-hotspot:focus .pp-pip-svg.ok { fill: rgba(255, 216, 102, 0.9); r: 9px; }
+.pp-pip-svg.warn { fill: #eab308; }
+.pp-pip-svg.bad { fill: #ef3b2d; }
+
+/* ---- close-up ---- */
+/* The device and its plate are the whole view (the immersive dialog is the frame): no title bar, no band, no side panel.
+   Left: the painting with the service tag under it. Right: one steel plate that carries the controls. */
+#part-closeup-modal {
+  position: fixed;
+  inset: 0 !important;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  min-height: 0 !important;
+  display: flex;
+  flex-direction: column;
+  background: #0e120f;
+  border: 0;
+  color: #f5f5f5;
+}
+#part-closeup-modal .draggable-box__title-bar { display: none; }
+#part-closeup-modal .draggable-box__content { border: 0; min-height: 0; max-height: none; flex: 1; overflow: hidden; }
+#part-closeup-modal :focus-visible { outline: 2px solid #eee; outline-offset: -3px; }
+
+.pp-closeup { height: 100%; display: flex; flex-direction: column; min-height: 0; background: #0e120f; color: var(--mc-text-secondary); }
+.pp-closeup .pp-closeup-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 12px; padding: 12px; overflow: hidden; }
+.pp-closeup .pp-stage-col { min-width: 0; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+/* The image pane: exactly the fitted painting; the overlay shares the drawn image's box */
+.pp-closeup .pp-stage-box { position: relative; width: var(--pcu-img-w); height: var(--pcu-img-h); flex: none; }
+.pp-closeup .pp-stage-box > .pp-stage { width: 100%; height: 100%; border: 0; }
+.pp-closeup .pp-stage > img { height: 100%; object-fit: fill; }
+.pp-closeup .pp-overlay { position: absolute; inset: 0; }
+.pp-closeup .pp-overlay > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+/* The plate is the column: it scrolls as one piece if a short screen cannot hold it, never inside itself */
+.pp-closeup .pp-side { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.pp-closeup .pp-item-title { font-size: 1rem; font-weight: 700; margin: 0 0 0.5rem; padding-right: 8.5rem; letter-spacing: 0.1em; text-transform: uppercase; color: #e4e1c6; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6); }
+.pp-closeup .pp-section-title { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--mc-text-muted); margin: 0 0 0.25rem; }
+/* Selection and state read in a recessed window on the plate */
+.pp-closeup .fp-window { margin-bottom: 0.6rem; padding: 0.4rem 0.55rem; border-radius: 4px; background: #0f1512; box-shadow: inset 0 2px 5px #000, 0 1px 0 rgba(255, 255, 255, 0.16); border: 1px solid #1a1f1d; }
+.pp-closeup .pp-target { font: 0.82rem/1.3 'JetBrains Mono', monospace; color: #cfe9c4; min-height: 1.1rem; }
+.pp-closeup .pp-target[hidden] { display: none; }
+.pp-closeup .pp-tags { min-height: 1.3rem; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.4rem; }
+.pp-closeup .pp-hint { color: var(--mc-text-muted); font-size: 0.78rem; }
+.pp-closeup .pp-tag { display: inline-block; padding: 0.02rem 0.35rem; border-radius: 2px; font: 700 0.68rem/1.4 'JetBrains Mono', monospace; letter-spacing: 0.06em; text-transform: uppercase; background: rgba(160, 230, 150, 0.1); color: #a9e69b; border: 1px solid rgba(160, 230, 150, 0.35); }
+.pp-closeup .pp-tag-warn, .pp-closeup .pp-tag-bad { background: rgba(240, 180, 41, 0.14); color: #f0b429; border-color: rgba(240, 180, 41, 0.5); }
+.pp-closeup .fp-gauge { display: inline-flex; align-items: center; gap: 0.4rem; font: 0.7rem/1.4 'JetBrains Mono', monospace; color: #a9e69b; }
+.pp-closeup .fp-gauge-legend { font-weight: 700; letter-spacing: 0.08em; }
+.pp-closeup .fp-gauge-bar { position: relative; width: 5.5rem; height: 0.7rem; border: 1px solid rgba(160, 230, 150, 0.5); background: repeating-linear-gradient(90deg, transparent 0 calc(25% - 1px), rgba(160, 230, 150, 0.35) calc(25% - 1px) 25%); }
+.pp-closeup .fp-gauge-fill { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, #2f8f4a, #7bdc7a); opacity: 0.85; }
+/* Viewing aids are two stencilled toggle switches along the bottom edge of the plate, not form controls */
+.pp-closeup .pp-foot { margin-top: auto; padding-top: 0.5rem; display: flex; flex-wrap: wrap; gap: 0.3rem 1rem; }
+.pp-closeup .fp-toggle { display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.1rem 0; border: 0; background: none; cursor: pointer; font: 700 0.64rem/1.1 'JetBrains Mono', monospace; letter-spacing: 0.08em; text-transform: uppercase; color: #e4e1c6; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.8); }
+.pp-closeup .fp-toggle-sw { position: relative; flex: none; width: 1.7rem; height: 0.85rem; border-radius: 0.2rem; background: #11150f; box-shadow: inset 0 1px 3px #000, 0 1px 0 rgba(255, 255, 255, 0.2); }
+.pp-closeup .fp-toggle-sw::after { content: ''; position: absolute; top: 0.1rem; left: 0.12rem; width: 0.75rem; height: 0.65rem; border-radius: 0.15rem; background: linear-gradient(180deg, #d5dad6, #7f8885); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.7); transition: transform 0.12s; }
+.pp-closeup .fp-toggle[aria-checked='true'] .fp-toggle-sw { background: #3a2f0c; }
+.pp-closeup .fp-toggle[aria-checked='true'] .fp-toggle-sw::after { transform: translateX(0.8rem); background: linear-gradient(180deg, #ffe9a6, #e0a21c); }
+
+/* The service tag: a paper tag on the bench under the device. Latest result is the entry just written, History the earlier ones. */
+.pp-closeup .pp-stage-col > .pp-svc-tag {
+  --mc-surface-1: #e9d8b6; --mc-text-primary: #211d18; --mc-text-secondary: #30271c; --mc-text-muted: #5a4a31; --mc-border: #9b825f;
+  position: relative; flex: none; box-sizing: border-box; width: max(var(--pcu-img-w, 0px), min(620px, 100%)); max-width: 100%; height: 132px;
+  display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 0.9rem; padding: 0.55rem 0.9rem 0.5rem 1.6rem;
+  margin: 0; text-transform: none; letter-spacing: normal; font-size: inherit; border: 0; border-radius: 3px 10px 10px 3px;
+  background: repeating-linear-gradient(0deg, #decca6, #decca6 23px, rgba(158, 138, 99, 0.22) 24px); color: #211d18;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(90, 70, 40, 0.35);
+}
+.pp-closeup .pp-stage-col > .pp-svc-tag::before { content: ''; position: absolute; left: 0.55rem; top: 50%; width: 0.6rem; height: 0.6rem; margin-top: -0.3rem; border-radius: 50%; background: #0e120f; box-shadow: inset 0 1px 2px #000, 0 1px 0 rgba(255, 255, 255, 0.4); }
+.pp-closeup .pp-svc-tag .pp-section-title { font-family: Georgia, serif; color: #5a4a31; }
+.pp-closeup .pp-svc-tag-latest { min-width: 0; display: flex; flex-direction: column; }
+.pp-closeup .pp-latest { flex: 1; min-height: 0; overflow-y: auto; padding: 0; border: 0; background: transparent; }
+.pp-closeup .pp-latest-meta { font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; color: #5a4a31; margin-bottom: 0.2rem; }
+.pp-closeup .pp-latest-text { font: 0.92rem/1.3 Georgia, serif; color: #211d18; }
+.pp-closeup .pp-stage-col > .pp-svc-tag .pp-hint { color: #5a4a31; font-family: Georgia, serif; font-style: italic; }
+.pp-closeup .pp-history-wrap { min-width: 0; min-height: 0; display: flex; flex-direction: column; border-left: 1px dashed #9b825f; padding-left: 0.8rem; }
+.pp-closeup .pp-log { font-size: 0.74rem; flex: 1 1 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; color: #30271c; font-family: Georgia, serif; }
+.pp-closeup .pp-log-row { padding: 0.15rem 0; border-bottom: 1px solid rgba(90, 70, 40, 0.25); }
+.pp-closeup .pp-log-row:last-child { border-bottom: 0; }
+.pp-closeup .pp-log-meta { font-family: 'JetBrains Mono', monospace; color: #5a4a31; font-size: 0.64rem; }
+
+/* Overlay: neutral markers at rest; outline and callout on hover, focus or selection */
+.pp-point { cursor: pointer; outline: none; }
+.pp-point .pp-marker { fill: rgba(0, 0, 0, 0.35); stroke: rgba(255, 255, 255, 0.75); stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: none; }
+.pp-point .pp-region-box { fill: transparent; stroke: transparent; stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: all; }
+.pp-point .pp-ring { fill: transparent; stroke: transparent; stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: all; }
+.pp-point .pp-cable-line { fill: none; stroke: transparent; stroke-linecap: round; stroke-linejoin: round; pointer-events: stroke; }
+.pp-point:hover .pp-region-box, .pp-point:focus-visible .pp-region-box, .pp-show-points .pp-region-box { fill: rgba(255, 220, 120, 0.1); stroke: rgba(255, 216, 102, 0.9); }
+/* A selected part is marked by its lit marker and a soft glow around it, never by a box that spreads past the device */
+.pp-point.pp-selected .pp-region-box { fill: transparent; stroke: transparent; }
+.pp-point.pp-selected .pp-marker { stroke-width: 3; filter: drop-shadow(0 0 5px rgba(255, 216, 102, 0.95)); }
+.pp-point:hover .pp-ring, .pp-point:focus .pp-ring, .pp-point.pp-selected .pp-ring, .pp-show-points .pp-ring { stroke: rgba(255, 216, 102, 0.9); fill: rgba(255, 216, 102, 0.1); }
+.pp-point:hover .pp-cable-line, .pp-point:focus .pp-cable-line, .pp-point.pp-selected .pp-cable-line, .pp-show-points .pp-cable-line { stroke: rgba(255, 216, 102, 0.35); }
+.pp-point.pp-selected .pp-marker, .pp-point:hover .pp-marker, .pp-point:focus .pp-marker { stroke: #ffd866; }
+.pp-closeup .pp-callout { position: absolute; z-index: 3; max-width: 70%; padding: 0.25rem 0.5rem; border-radius: 0.25rem; background: #1b1b1b; color: #fff; border: 1px solid #6a6a6a; font-size: 0.8rem; line-height: 1.2; pointer-events: none; white-space: nowrap; }
+.pp-closeup .pp-callout[hidden] { display: none; }
+.pp-svg-text { font-size: 18px; fill: #fff; paint-order: stroke; stroke: rgba(0, 0, 0, 0.85); stroke-width: 3px; pointer-events: none; }
+.pp-damage { fill: rgba(239, 59, 45, 0.9); stroke: #fff; stroke-width: 2; vector-effect: non-scaling-stroke; }
+.pp-water-drop { fill: rgba(120, 190, 255, 0.85); }
+
+/* ---- floating boxes (SkyLink app, trainer) ---- */
+.pp-box { padding: 0.6rem; font-size: 0.8rem; color: var(--mc-text-secondary); overflow-y: auto; max-height: calc(var(--mc-viewport-height, 100vh) * 0.7); }
+.pp-box .pp-row { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; padding: 0.2rem 0; }
+.pp-box .pp-row b { color: var(--mc-text-primary); font-family: 'JetBrains Mono', monospace; }
+.pp-box h4 { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--mc-text-muted); margin: 0.7rem 0 0.3rem; }
+.pp-box h4:first-child { margin-top: 0; }
+.pp-box .pp-event-log { max-height: 9rem; overflow-y: auto; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; border: 1px solid var(--mc-border); padding: 0.3rem; background: var(--mc-surface-1); }
+.pp-box .pp-fault-row { display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; padding: 0.15rem 0; border-bottom: 1px solid rgba(255, 255, 255, 0.06); font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; }
+
+.pp-trainer { min-width: 380px; }
+.pp-trainer .pp-grid { display: grid; grid-template-columns: 6.5rem 1fr; gap: 0.3rem 0.5rem; align-items: center; }
+.pp-trainer .pp-spares { display: grid; grid-template-columns: 1fr 4rem; gap: 0.2rem 0.5rem; align-items: center; }
+
+/* WP14: painted fault layers and revealed-evidence callouts */
+.pp-closeup .pp-layers { position: absolute; inset: 0; pointer-events: none; }
+.pp-closeup .pp-layers > .pp-layer { position: absolute; display: block; user-select: none; }
+.pp-closeup .pp-evidence { position: absolute; inset: 0; pointer-events: none; }
+.pp-closeup .pp-evidence-item { position: absolute; width: 0; height: 0; }
+.pp-closeup .pp-evidence-ring {
+  position: absolute; left: -17px; top: -17px; width: 34px; height: 34px; box-sizing: border-box;
+  border: 2px solid #ffd24a; border-radius: 50%; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.7), inset 0 0 0 1px rgba(0, 0, 0, 0.5);
+}
+.pp-closeup .pp-evidence-label {
+  position: absolute; left: 24px; top: -11px; white-space: nowrap; padding: 2px 8px; border-radius: 4px;
+  background: #14181f; color: #fff; border: 1px solid #ffd24a; font-size: 0.78rem; line-height: 1.3;
+}
+.pp-closeup .pp-evidence-left .pp-evidence-label { left: auto; right: 24px; }

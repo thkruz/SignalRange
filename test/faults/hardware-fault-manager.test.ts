@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const clock = vi.hoisted(() => ({ nowMs: 0 }));
 const sim = vi.hoisted(() => ({ groundStations: [] as unknown[] }));
 const scenarioSettings = vi.hoisted(() => ({ settings: {} as Record<string, unknown> }));
-const crypto = vi.hoisted(() => ({ injectKeyMismatch: vi.fn() }));
+const crypto = vi.hoisted(() => ({ state: { keyStatus: 'Valid' }, injectKeyMismatch: vi.fn() }));
 const opsLog = vi.hoisted(() => ({ initialized: false, log: vi.fn() }));
 
 vi.mock('@app/simulation/mission-clock', () => ({
@@ -58,7 +58,15 @@ function station(id: string) {
     { modem_number: 1, isPowered: true, isFaulted: false, isTransmitting: true, isTransmittingSwitchUp: true },
     { modem_number: 2, isPowered: true, isFaulted: false, isTransmitting: false, isTransmittingSwitchUp: false },
   ];
-  const buc = { state: { temperature: 41 }, setThermalOffset: vi.fn() };
+  const buc = {
+    state: { temperature: 41 },
+    setThermalOffset: vi.fn(),
+    setCoolingFactor: vi.fn(),
+    setExcessCurrent: vi.fn(),
+    setTemperature: vi.fn(function (this: { state: { temperature: number } }, c: number) {
+      this.state.temperature = c;
+    }),
+  };
   const gpsdo = { setGnssSignalPresent: vi.fn() };
   return {
     state: { id },
@@ -83,6 +91,10 @@ function boot(events: HardwareFaultEventConfig[]) {
 describe('HardwareFaultManager', () => {
   beforeEach(() => {
     crypto.injectKeyMismatch.mockClear();
+    crypto.state.keyStatus = 'Valid';
+    crypto.injectKeyMismatch.mockImplementation(() => {
+      crypto.state.keyStatus = 'Mismatch';
+    });
     opsLog.log.mockClear();
     opsLog.initialized = false;
   });
@@ -108,6 +120,18 @@ describe('HardwareFaultManager', () => {
     gw.modems[0].isFaulted = false;
     at(500);
     expect(gw.modems[0].isFaulted).toBe(false);
+  });
+
+  it('exposes the start and end schedule for the event-time ledger', () => {
+    const { manager } = boot([
+      { id: 'timed', groundStationId: 'GW-01', startTime: 100, duration: 50 },
+      { id: 'held', groundStationId: 'GW-01', startTime: 10 },
+      { id: 'anchored', groundStationId: 'GW-01', startTime: 5, startAfterObjectiveId: 'not-live' },
+    ]);
+    expect(manager.getEventScheduleS('timed')).toEqual({ startS: 100, endS: 150 });
+    expect(manager.getEventScheduleS('held')).toEqual({ startS: 10, endS: null });
+    expect(manager.getEventScheduleS('anchored')).toBeNull();
+    expect(manager.getEventScheduleS('missing')).toBeNull();
   });
 
   it('stages a BUC cooling fault on the named station only, jumps the reading, and clears it after the duration', () => {
@@ -161,6 +185,19 @@ describe('HardwareFaultManager', () => {
     expect(manager.isCleared('gnss')).toBe(true);
   });
 
+  it('applies the Campaign 2 sandbox GNSS outage when the clock passes its authored start', async () => {
+    const { natsEuSandboxData } = await import('@app/campaigns/nats-eu/sandbox');
+    const authored = (natsEuSandboxData.settings.hardwareFaultEvents as HardwareFaultEventConfig[]).find((e) => e.target === 'gpsdo-gnss-loss');
+    expect(authored).toBeDefined();
+    const { gw } = boot([authored as HardwareFaultEventConfig]);
+
+    at((authored?.startTime ?? 0) - 1);
+    expect(gw.gpsdo.setGnssSignalPresent).not.toHaveBeenCalled();
+
+    at((authored?.startTime ?? 0) + 1);
+    expect(gw.gpsdo.setGnssSignalPresent).toHaveBeenCalledWith(false);
+  });
+
   it('puts the crypto key into Mismatch once', () => {
     boot([{ id: 'key', groundStationId: 'GW-01', target: 'crypto-key-mismatch', startTime: 45 }]);
 
@@ -188,5 +225,86 @@ describe('HardwareFaultManager', () => {
 
     at(1);
     expect(manager.isTripped('late')).toBe(false);
+  });
+
+  it.each([false, true])('restores effective crypto fault state (repaired=%s) without a second injection', (repaired) => {
+    const events: HardwareFaultEventConfig[] = [{ id: 'key', groundStationId: 'GW-01', target: 'crypto-key-mismatch', startTime: 5 }];
+    const first = boot(events);
+    at(5);
+    if (repaired) crypto.state.keyStatus = 'Valid';
+    const saved = JSON.parse(JSON.stringify(first.manager.getState()));
+    HardwareFaultManager.destroy();
+    crypto.state.keyStatus = 'Valid';
+    crypto.injectKeyMismatch.mockClear();
+    const resumed = boot(events);
+    resumed.manager.restoreState(saved);
+    resumed.manager.restoreState(saved);
+    at(6);
+    expect(crypto.state.keyStatus).toBe(repaired ? 'Valid' : 'Mismatch');
+    expect(crypto.injectKeyMismatch).toHaveBeenCalledTimes(repaired ? 0 : 1);
+  });
+
+  it.each([false, true])('restores effective modem fault state (repaired=%s) without replaying the trip', (repaired) => {
+    const events = [{ id: 'primary', groundStationId: 'GW-01', modemNumber: 1, startTime: 5, label: 'Primary fault' }];
+    const first = boot(events);
+    at(5);
+    if (repaired) first.gw.modems[0].isFaulted = false;
+    const saved = JSON.parse(JSON.stringify(first.manager.getState()));
+    HardwareFaultManager.destroy();
+    const resumed = boot(events);
+    resumed.manager.restoreState(saved);
+    resumed.manager.restoreState(saved);
+    at(6);
+    expect(resumed.gw.modems[0].isFaulted).toBe(!repaired);
+    expect(resumed.manager.isTripped('primary')).toBe(true);
+    expect(opsLog.log).not.toHaveBeenCalled();
+  });
+
+  it('restores an ACTIVE buc-overtemp fault through JSON: delta reapplied, temperature not re-jumped, original clear time kept', () => {
+    const events: HardwareFaultEventConfig[] = [
+      { id: 'sh-buc', groundStationId: 'SH-02', target: 'buc-overtemp', startTime: 60, duration: 300, params: { deltaC: 35, startTemperatureC: 68 } },
+    ];
+    const first = boot(events);
+    at(100);
+    expect(first.manager.isTripped('sh-buc')).toBe(true);
+    const saved = JSON.parse(JSON.stringify(first.manager.getState()));
+    HardwareFaultManager.destroy();
+    opsLog.log.mockClear();
+    const resumed = boot(events);
+    resumed.manager.restoreState(saved);
+    expect(resumed.manager.isTripped('sh-buc')).toBe(true);
+    expect(resumed.manager.isCleared('sh-buc')).toBe(false);
+    expect(resumed.sh.buc.setThermalOffset).toHaveBeenCalledWith(35);
+    expect(resumed.sh.buc.setThermalOffset).toHaveBeenCalledTimes(1);
+    expect(resumed.sh.buc.setTemperature).not.toHaveBeenCalled();
+    at(101);
+    expect(resumed.sh.buc.setThermalOffset).toHaveBeenCalledTimes(1);
+    expect(resumed.sh.buc.setTemperature).not.toHaveBeenCalled();
+    at(359);
+    expect(resumed.manager.isCleared('sh-buc')).toBe(false);
+    at(360);
+    expect(resumed.manager.isCleared('sh-buc')).toBe(true);
+    expect(resumed.sh.buc.setThermalOffset).toHaveBeenLastCalledWith(0);
+  });
+
+  it('restores an ACTIVE gpsdo-gnss-loss fault through JSON: signal stays lost, not re-tripped, clears at original end', () => {
+    const events: HardwareFaultEventConfig[] = [{ id: 'gnss', groundStationId: 'GW-01', target: 'gpsdo-gnss-loss', startTime: 30, duration: 600 }];
+    const first = boot(events);
+    at(100);
+    const saved = JSON.parse(JSON.stringify(first.manager.getState()));
+    HardwareFaultManager.destroy();
+    const resumed = boot(events);
+    resumed.manager.restoreState(saved);
+    expect(resumed.manager.isTripped('gnss')).toBe(true);
+    expect(resumed.manager.isCleared('gnss')).toBe(false);
+    expect(resumed.gw.gpsdo.setGnssSignalPresent).toHaveBeenCalledTimes(1);
+    expect(resumed.gw.gpsdo.setGnssSignalPresent).toHaveBeenCalledWith(false);
+    at(101);
+    expect(resumed.gw.gpsdo.setGnssSignalPresent).toHaveBeenCalledTimes(1);
+    at(629);
+    expect(resumed.manager.isCleared('gnss')).toBe(false);
+    at(630);
+    expect(resumed.manager.isCleared('gnss')).toBe(true);
+    expect(resumed.gw.gpsdo.setGnssSignalPresent).toHaveBeenLastCalledWith(true);
   });
 });

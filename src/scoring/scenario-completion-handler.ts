@@ -1,15 +1,27 @@
+import { CampaignManager } from '@app/campaigns/campaign-manager';
 import { EventBus } from '@app/events/event-bus';
 import { Events, ObjectivesAllCompletedData } from '@app/events/events';
 import { Logger } from '@app/logging/logger';
 import { DecisionManager } from '@app/modal/decision-manager';
+import { DialogManager } from '@app/modal/dialog-manager';
 import { HintManager } from '@app/modal/hint-manager';
 import { LevelCompleteModal } from '@app/modal/level-complete-modal';
 import { QuizManager } from '@app/modal/quiz-manager';
+import { QuizModal } from '@app/modal/quiz-modal';
 import { ObjectivesManager } from '@app/objectives';
+import { PhysicalPlantService } from '@app/physical/physical-plant-service';
+import { campaignEpilogue } from '@app/presentation/campaign-epilogue';
 import { Router } from '@app/router';
 import { ScenarioManager } from '@app/scenario-manager';
+import { ScenarioDialogManager } from '@app/scenarios/scenario-dialog-manager';
+import { notifySavedAchievements } from '@app/user-account/achievement-notifications';
 import { Auth } from '@app/user-account/auth';
+import { selectionProgressCache } from '@app/user-account/selection-progress-cache';
+import type { ScenarioProgress } from '@app/user-account/types';
 import { getUserDataService } from '@app/user-account/user-data-service';
+import { buildFieldDiagnosis, type FieldDiagnosis } from './field-diagnosis';
+import { buildMissionDebrief, type MissionDebrief } from './mission-debrief';
+import { readMissionRecord, rememberMissionResult } from './mission-records';
 import { ScoreBreakdown, ScoreCalculator } from './score-calculator';
 
 interface PendingCompletion {
@@ -38,10 +50,13 @@ export class ScenarioCompletionHandler {
   private static pendingCompletion_: PendingCompletion | null = null;
   /** The auth flush listener lives for the whole session - register it once */
   private static isAuthFlushRegistered_ = false;
+  /** How often the completion flow re-checks for open dialogs and quizzes, ms */
+  static readonly QUIET_POLL_MS = 200;
 
   private readonly eventBus_: EventBus;
   private boundHandler_: ((data: ObjectivesAllCompletedData) => void) | null = null;
   private isInitialized_ = false;
+  private baseline_: { account: string; results: ScenarioProgress[] } | null = null;
 
   private constructor() {
     this.eventBus_ = EventBus.getInstance();
@@ -67,6 +82,12 @@ export class ScenarioCompletionHandler {
     ScenarioCompletionHandler.registerAuthFlush_();
 
     this.isInitialized_ = true;
+    void (async () => {
+      const session = await Auth.getSession();
+      if (!session?.user?.id) return;
+      const progress = await selectionProgressCache.getProgress();
+      if (progress) this.baseline_ = { account: session.user.id, results: progress.scenarios.map((result) => ({ ...result })) };
+    })().catch(() => {});
     Logger.info('ScenarioCompletionHandler initialized');
   }
 
@@ -92,7 +113,9 @@ export class ScenarioCompletionHandler {
       // caches the access token UserDataService reads, but don't depend on
       // subscriber ordering.
       setTimeout(() => {
-        ScenarioCompletionHandler.saveScore_(pending.scenarioId, pending.score, pending.scenarioNumber);
+        void ScenarioCompletionHandler.saveScore_(pending.scenarioId, pending.score, pending.scenarioNumber).catch(() => {
+          ScenarioCompletionHandler.pendingCompletion_ = pending;
+        });
       }, 0);
     });
   }
@@ -137,7 +160,17 @@ export class ScenarioCompletionHandler {
 
     // Calculate score
     const decisionPenalties = this.aggregateDecisionPenalties_(objectives);
-    const score = ScoreCalculator.calculate(objectives, timeRemaining, quizPenalties, timePenalties, hintPenalties, decisionPenalties);
+    let score = ScoreCalculator.calculate(objectives, timeRemaining, quizPenalties, timePenalties, hintPenalties, decisionPenalties);
+
+    // Frontline only: a scenario with a plant evidence log gets a capped diagnosis effect on the score.
+    // Every other campaign has no log, so the diagnosis is null and the score above stands unchanged.
+    const fieldDiagnosis: FieldDiagnosis | null = buildFieldDiagnosis(
+      { field: PhysicalPlantService.fieldOrNull(), config: () => scenarioManager.settings?.physicalPlant ?? null },
+      score.basePoints
+    );
+    if (fieldDiagnosis) {
+      score = ScoreCalculator.calculate(objectives, timeRemaining, quizPenalties, timePenalties, hintPenalties, decisionPenalties, fieldDiagnosis.effect);
+    }
 
     Logger.info('Score calculated:', score);
 
@@ -153,7 +186,37 @@ export class ScenarioCompletionHandler {
       ScenarioCompletionHandler.pendingCompletion_ = { scenarioId, score, scenarioNumber };
     }
 
-    // Show the completion modal
+    // The score and "Completed in" were fixed above, at the moment of
+    // completion; holding the modal until the closing lines are read only
+    // changes when it opens (nats-r3-s03-F3)
+    const isStillOnPage = await this.waitForQuietScreen_();
+    if (!isStillOnPage) {
+      return;
+    }
+
+    let debrief: MissionDebrief | undefined;
+    // The score screen must still open if the optional history request is offline or slow.
+    const baseline = this.baseline_;
+    const session = await Auth.getSession();
+    const current = {
+      scenarioId,
+      score: score.totalScore,
+      completedAt: new Date().toISOString(),
+      quizPenalties: score.quizPenalties + score.decisionPenalties + (score.diagnosticPenalty ?? 0),
+      timePenalties: score.timePenalties,
+    } as ScenarioProgress;
+    if (baseline && baseline.account === session?.user?.id) {
+      debrief = buildMissionDebrief(CampaignManager.getInstance().getAllCampaigns(), campaignId, baseline.results, current, readMissionRecord(baseline.account, scenarioId));
+    } else {
+      // Guest/dev play and unavailable account history must not suppress the ending.
+      const campaign = CampaignManager.getInstance().getCampaign(campaignId);
+      const epilogue = campaign && campaignEpilogue(campaign, [current]);
+      if (epilogue) {
+        if (epilogue.record) epilogue.record.note = `Only this mission's result is available here. ${epilogue.record.note}`;
+        debrief = { bestScore: score.totalScore, personalBest: false, achievements: [], newlyUnlocked: false, epilogue };
+      }
+    }
+    // Show the completion modal on top of an empty screen
     LevelCompleteModal.getInstance().showCompletion(
       {
         score,
@@ -161,10 +224,47 @@ export class ScenarioCompletionHandler {
         campaignId,
         scenarioId,
         isAuthenticated,
+        debrief,
+        fieldDiagnosis: fieldDiagnosis ?? undefined,
+        niceTaskCodes: [
+          ...new Set(
+            objectives
+              .filter((state) => state.isCompleted)
+              .flatMap((state) => state.objective.nice ?? [])
+              .filter((code) => /^T\d{4}$/u.test(code))
+          ),
+        ].sort(),
         decisions: DecisionManager.hasInstance() ? DecisionManager.getInstance().getRecords() : undefined,
       },
       () => this.saveOnContinue_(scenarioId, score, scenarioNumber)
     );
+  }
+
+  /**
+   * Resolve once no character dialog is on screen, queued or about to be
+   * scheduled, and no quiz is open, so Mission Complete opens on top instead
+   * of underneath the closing dialog. Resolves false if the page was left
+   * while waiting.
+   */
+  private waitForQuietScreen_(): Promise<boolean> {
+    return new Promise((resolve) => {
+      const check = (): void => {
+        if (!this.isInitialized_) {
+          resolve(false);
+          return;
+        }
+        if (ScenarioCompletionHandler.isScreenQuiet_()) {
+          resolve(true);
+          return;
+        }
+        setTimeout(check, ScenarioCompletionHandler.QUIET_POLL_MS);
+      };
+      check();
+    });
+  }
+
+  private static isScreenQuiet_(): boolean {
+    return !ScenarioDialogManager.hasPendingClips() && !DialogManager.getInstance().isBusy() && !QuizModal.isShowingQuiz();
   }
 
   /**
@@ -180,8 +280,8 @@ export class ScenarioCompletionHandler {
       return;
     }
 
-    ScenarioCompletionHandler.pendingCompletion_ = null;
     await ScenarioCompletionHandler.saveScore_(scenarioId, score, scenarioNumber);
+    ScenarioCompletionHandler.pendingCompletion_ = null;
   }
 
   /**
@@ -243,7 +343,7 @@ export class ScenarioCompletionHandler {
    */
   private extractCampaignId_(): string {
     const path = Router.getInstance().getCurrentPath();
-    const match = path.match(/^\/campaigns\/([^/]+)/);
+    const match = path.match(/^\/campaigns\/([^/]+)/u);
     return match?.[1] ?? 'nats'; // Default to 'nats' if not found
   }
 
@@ -254,24 +354,29 @@ export class ScenarioCompletionHandler {
    */
   private static async saveScore_(scenarioId: string, score: ScoreBreakdown, scenarioNumber: number): Promise<void> {
     try {
+      const completedAt = new Date().toISOString();
+      const account = selectionProgressCache.accountId;
       // Direct update to specific scenario - backend handles totalScore aggregation
       await getUserDataService().updateScenarioProgress(scenarioId, {
         score: score.totalScore,
         basePoints: score.basePoints,
-        timeBonus: score.timeBonus,
+        timeBonus: score.timeBonus + (score.diagnosticBonus ?? 0),
         // The progress record has no decision column; fold decisions into the
         // quiz figure so the persisted parts still sum to the total.
-        quizPenalties: score.quizPenalties + score.decisionPenalties,
+        quizPenalties: score.quizPenalties + score.decisionPenalties + (score.diagnosticPenalty ?? 0),
         timePenalties: score.timePenalties,
         hintPenalties: score.hintPenalties,
-        completedAt: new Date().toISOString(),
+        completedAt,
         lastPlayed: new Date().toISOString(),
         scenarioNumber,
       });
+      rememberMissionResult(account, { scenarioId, score: score.totalScore, completedAt });
 
       Logger.info(`Score saved for scenario ${scenarioId}: ${score.totalScore}`);
+      void notifySavedAchievements();
     } catch (error) {
       Logger.error('Failed to save score:', error);
+      throw error;
     }
   }
 

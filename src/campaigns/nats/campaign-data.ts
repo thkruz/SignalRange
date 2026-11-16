@@ -5,14 +5,7 @@ import { ccsScenario3Data } from '@app/campaigns/ccs/scenario3';
 import { ccsScenario4Data } from '@app/campaigns/ccs/scenario4';
 import { ccsScenario5Data } from '@app/campaigns/ccs/scenario5';
 import { hamSdrSandboxData } from '@app/campaigns/ham-sdr/sandbox';
-import { hamSdrScenario1Data } from '@app/campaigns/ham-sdr/scenario1';
-import { hamSdrScenario2Data } from '@app/campaigns/ham-sdr/scenario2';
-import { hamSdrScenario3Data } from '@app/campaigns/ham-sdr/scenario3';
-import { hamSdrScenario4Data } from '@app/campaigns/ham-sdr/scenario4';
-import { hamSdrScenario5Data } from '@app/campaigns/ham-sdr/scenario5';
-import { hamSdrScenario6Data } from '@app/campaigns/ham-sdr/scenario6';
-import { hamSdrScenario7Data } from '@app/campaigns/ham-sdr/scenario7';
-import { hamSdrScenario8Data } from '@app/campaigns/ham-sdr/scenario8';
+import { hamTechScenarios } from '@app/campaigns/ham-sdr/tech';
 import { signalHunterSandboxData } from '@app/campaigns/signal-hunter/sandbox';
 import { signalHunterScenario1Data } from '@app/campaigns/signal-hunter/scenario1';
 import { signalHunterScenario2Data } from '@app/campaigns/signal-hunter/scenario2';
@@ -59,12 +52,12 @@ export const natsCampaignData: CampaignData = {
   description: `Welcome to North Atlantic Teleport Services, a commercial satellite ground station facility in rural Vermont. In this campaign, you'll learn the fundamentals of satellite communications by conducting first light tests, tracking satellites, and establishing reliable RF links for GEO communication satellites serving the North Atlantic region.<br><br>Through a series of progressively challenging scenarios, you'll master ground station equipment operation, signal acquisition techniques, and RF link analysis while following the story of bringing multiple communication satellites into operational service.`,
   imageUrl: 'nats/north-atlantic-teleport-services.png',
   difficulty: 'beginner',
-  totalDuration: '650-820 min',
+  totalDuration: '600-765 min',
   campaignType: 'GEO Commercial Communications',
   headerIdentity: {
     name: 'ORBITAL',
     nameAccent: 'OPS',
-    icon: 'fa-solid fa-earth-americas',
+    icon: 'globe',
   },
   chromeVariant: 'standard',
   releaseStage: 'stable',
@@ -102,34 +95,24 @@ export const natsCampaignData: CampaignData = {
 export const hamSdrCampaignData: CampaignData = {
   id: 'ham-sdr',
   title: 'Backyard Operator',
-  subtitle: 'DIY Satellite Tracking with Software-Defined Radio',
-  description: `Charlie's niece Riley teaches you how to track satellites from your backyard. No mission control, no nine-meter dish - just software-defined radio, DIY antennas, and physics.<br><br>Start by catching weather images on a hand-wound quadrifilar helix. Add a crossed yagi on a TV rotator and chase cubesat Doppler by hand. Learn why handedness costs you eighteen decibels, find the GPS constellation hiding under the noise floor, and audit a link budget until a hopeless low pass decodes anyway.<br><br>Then the band turns hostile. Someone spoofs your clock. Someone hands you poisoned orbital elements. A neighbor's failing gear buries the birds in hash. And when you finally key a transmitter of your own, you meet an unlicensed operator the satellite relays as faithfully as it relays you - and a beacon claiming to be a satellite that never left the ground.<br><br>Eight scenarios, one lesson: RF is unauthenticated, and physics is your only authentication.`,
+  subtitle: 'Amateur Radio Technician Practicals',
+  description: `Riley Brooks holds an amateur radio license and has offered to show you how a working station fits together, from the first receiver on a desk to a portable station you run on your own.<br><br>Receive a training transmission on a small SDR, then measure a powered circuit with a real meter. Make your first simplex contact, get into a repeater with the right offset and tone, and find out why a digital radio needs its codeplug. Cut a dipole to length and check it with an analyzer. Chase lost watts down a crushed feed line, a radio reset down a tired power lead, and noise down to a plug-in supply.<br><br>Then reach further: packet messages that wait for an acknowledgement, a ten-metre contact when the band opens, a grid exchange through a passing satellite, and a club net that loses its repeater halfway through.<br><br>Twelve scenarios inside US Technician privileges, with practice questions from the public 2026-2030 Technician question pool. The simulator decides every result: a setting only counts when the station works.`,
   // Art lives under assets/campaigns/home-sdr/, which does not match the
   // 'ham-sdr' campaign id.
   imageUrl: 'home-sdr/home-sdr.png',
   difficulty: 'beginner',
-  totalDuration: '170-210 min',
+  totalDuration: '370-460 min',
   campaignType: 'Amateur Radio Operations',
   headerIdentity: {
     name: 'BACKYARD',
     nameAccent: 'SDR',
-    icon: 'fa-solid fa-satellite-dish',
+    icon: 'dish',
   },
   chromeVariant: 'sdr',
-  // S1-S8 are shipped but the engine seams behind them (terrestrial emitters,
-  // backyard TX path, REF/holdover) are still moving, so saves can break.
+  // The Technician curriculum (phase 42) replaced the eight earlier alpha
+  // scenarios outright; old C3 completions are not migrated. Alpha until a human playtest.
   releaseStage: 'alpha',
-  scenarios: [
-    hamSdrSandboxData,
-    hamSdrScenario1Data,
-    hamSdrScenario2Data,
-    hamSdrScenario3Data,
-    hamSdrScenario4Data,
-    hamSdrScenario5Data,
-    hamSdrScenario6Data,
-    hamSdrScenario7Data,
-    hamSdrScenario8Data,
-  ],
+  scenarios: [hamSdrSandboxData, ...hamTechScenarios],
   isLocked: false,
   isDisabled: false,
 };
@@ -146,7 +129,7 @@ export const ccsCampaignData: CampaignData = {
   headerIdentity: {
     name: 'COUNTER',
     nameAccent: 'COMMS',
-    icon: 'fa-solid fa-tower-broadcast',
+    icon: 'tower',
   },
   chromeVariant: 'astro',
   // Sandbox, Failover, and the spacecraft half (First Shift, State of Health, Ranging Pass).
@@ -164,14 +147,14 @@ export const geolocationCampaignData: CampaignData = {
   title: '22nd Electronic Warfare Squadron',
   subtitle: 'Signal Hunter — Geolocation of Interference Sources',
   description: `Someone is jamming allied satellites. As a member of the 22nd Electronic Warfare Squadron, you'll locate the sources of hostile interference using advanced RF geolocation.<br><br>Learn the two-satellite TDOA/FDOA cross-fix technique: an uplink jammer leaks into a neighboring satellite's sidelobes, and correlating the two downlinks lets you draw crossing lines of position over the emitter. Detect, characterize, and geolocate intermittent interference, then hand a fix and error ellipse to the incident response cell.`,
-  imageUrl: 'nats/north-atlantic-teleport-services.png',
+  imageUrl: 'signal-hunter/signal-hunter.png',
   difficulty: 'advanced',
   totalDuration: '130-170 min',
   campaignType: 'Electronic Warfare',
   headerIdentity: {
     name: 'SIGNAL',
     nameAccent: 'HUNTER',
-    icon: 'fa-solid fa-crosshairs',
+    icon: 'crosshairs',
   },
   chromeVariant: 'astro',
   // Sandbox plus the four-scenario arc: First Fix, Two Carriers, Cold Trail, Prove It.

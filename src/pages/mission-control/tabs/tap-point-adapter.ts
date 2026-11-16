@@ -173,15 +173,19 @@ export class TapPointAdapter {
       this.handleEngineeringModeChange_(enabled);
     });
 
-    // Set initial visibility based on current engineering mode
-    this.handleEngineeringModeChange_(engService.isEnabled());
+    // Set initial visibility based on current engineering mode. Opening the
+    // tab is not a coupler change: no event, so nothing reaches the Ops Log
+    // (nats-r4-s11-F2)
+    this.handleEngineeringModeChange_(engService.isEnabled(), false);
   }
 
-  private handleEngineeringModeChange_(isEngineering: boolean): void {
+  private handleEngineeringModeChange_(isEngineering: boolean, isUserChange = true): void {
     this.couplerModule.setEngineeringMode(isEngineering);
     this.updateModeVisibility_(isEngineering);
     this.syncSpectrumAnalyzerTaps_();
-    EventBus.getInstance().emit(Events.RF_FE_COUPLER_CHANGED, this.couplerModule.state);
+    if (isUserChange) {
+      EventBus.getInstance().emit(Events.RF_FE_COUPLER_CHANGED, this.couplerModule.state);
+    }
   }
 
   private defaultEnableHandler_(e: Event): void {

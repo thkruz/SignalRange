@@ -6,6 +6,7 @@
 
 import type { AntennaState } from '@app/equipment/antenna';
 import type { TrackingMode } from '@app/equipment/antenna/antenna-core';
+import { antennaLockLabel } from '@app/equipment/antenna/tracking-mode-label';
 import type { ReceiverModemState } from '@app/equipment/receiver/receiver';
 import type { AGCState } from '@app/equipment/rf-front-end/agc-module';
 import type { BUCState } from '@app/equipment/rf-front-end/buc-module';
@@ -18,7 +19,7 @@ import type { NotchFilterState } from '@app/equipment/rf-front-end/notch-filter-
 import type { OMTState, PolarizationType } from '@app/equipment/rf-front-end/omt-module/omt-module';
 import type { RFFrontEndState } from '@app/equipment/rf-front-end/rf-front-end-core';
 import type { TransmitterModem } from '@app/equipment/transmitter/transmitter';
-import type { RxActiveModemChangedData, RxConfigChangedData, TxActiveModemChangedData, TxConfigChangedData, TxTransmitChangedData } from '@app/events/events';
+import type { AntennaSlewCompleteData, RxConfigChangedData, TxConfigChangedData, TxTransmitChangedData } from '@app/events/events';
 
 // ════════════════════════════════════════════════════════════════════════════
 // Antenna Formatters
@@ -38,19 +39,41 @@ export function formatAntennaEvent(data: Partial<AntennaState>): string | null {
   const parts: string[] = [];
 
   if (data.trackingMode !== undefined) {
-    parts.push(`Tracking mode: ${TRACKING_MODE_LABELS[data.trackingMode] ?? data.trackingMode.toUpperCase()}`);
+    const label = TRACKING_MODE_LABELS[data.trackingMode] ?? data.trackingMode.toUpperCase();
+    // STOW/MAINT only stage the park elevation; the dish moves on APPLY. Log
+    // the staged mode as staged, without the lock flags the mode switch
+    // momentarily cleared: the dish is still where it was (nats-r3-s11-F2).
+    // The APPLY logs the mode again with the state at that moment.
+    // Since phase 29 the ACU stages STOW/MAINT as `stagedTrackingMode` while
+    // the applied mode keeps running.
+    const pendingEl = data.stagedTargetElevation;
+    const parkMode = data.stagedTrackingMode ?? data.trackingMode;
+    const isParkMode = parkMode === 'stow' || parkMode === 'maintenance';
+    if (isParkMode && data.hasStagedChanges && pendingEl !== undefined && pendingEl !== null) {
+      return `Tracking mode: ${TRACKING_MODE_LABELS[parkMode] ?? parkMode.toUpperCase()} staged (El ${pendingEl.toFixed(1)} pending APPLY)`;
+    }
+    // Step-track is an overlay on program-track, so engaging it changes the
+    // line and logs (nats-r4-s10-F1)
+    const stepTrack = data.trackingMode === 'program-track' && data.isStepTrackEnabled ? ' + STEP-TRACK' : '';
+    parts.push(`Tracking mode: ${label}${stepTrack}`);
   }
 
   if (data.isPowered !== undefined) {
     parts.push(data.isPowered ? 'Power ON' : 'Power OFF');
   }
 
-  if (data.isLocked !== undefined) {
-    parts.push(data.isLocked ? 'Satellite LOCKED' : 'Satellite UNLOCKED');
-  }
-
-  if (data.isBeaconLocked !== undefined) {
-    parts.push(data.isBeaconLocked ? 'Beacon LOCKED' : 'Beacon UNLOCKED');
+  // One lock, as the ACU and Dashboard print it: the satellite and beacon
+  // flags trade places while acquisition settles, and printing both wrote two
+  // contradictory start-of-shift lines (nats-r4-s10-F1)
+  if (data.isLocked !== undefined || data.isBeaconLocked !== undefined) {
+    const lock = antennaLockLabel({
+      isLocked: data.isLocked ?? false,
+      isBeaconLocked: data.isBeaconLocked ?? false,
+      isAcuAutomationFaulted: data.isAcuAutomationFaulted,
+      trackingMode: data.trackingMode,
+      isSlewing: data.isSlewing,
+    });
+    parts.push(lock === 'UNKNOWN' ? 'Antenna lock UNKNOWN' : `Antenna ${lock}`);
   }
 
   // Only log position if we have both values and not other changes
@@ -62,12 +85,43 @@ export function formatAntennaEvent(data: Partial<AntennaState>): string | null {
     parts.push(`Polarization skew: ${data.polarization.toFixed(1)}°`);
   }
 
-  if (data.beaconFrequencyHz !== undefined) {
+  // A beacon frequency belongs to a target (or the operator's MANUAL entry):
+  // PROGRAM with no target yet carries the last satellite's, so it is left out
+  // until Move to Target sets the new one (phase 29 D4, nats-r4-s12-F1)
+  const hasBeaconTarget = data.targetSatelliteId !== null || data.trackingMode === 'manual';
+  if (data.beaconFrequencyHz !== undefined && hasBeaconTarget) {
     const freqMHz = data.beaconFrequencyHz / 1e6;
     parts.push(`Beacon freq: ${freqMHz.toFixed(2)} MHz`);
   }
 
   return parts.length > 0 ? parts.join(', ') : null;
+}
+
+/** Azimuth as the ACU prints it, 0-360 */
+function formatAz_(azimuth: number, digits = 1): string {
+  return (((azimuth % 360) + 360) % 360).toFixed(digits);
+}
+
+/**
+ * The arrival line of a commanded antenna move (nats-r6-s11-F1):
+ * "PROGRAM: on target TIDEMARK-1 (Az 188.4, El 29.3)", "STOW: parked (El 90.0)",
+ * "MAINTENANCE: parked (El 5.0)", "MANUAL: at Az 153.11, El 35.10". The
+ * MANUAL line carries two decimals so a 0.01 deg nudge reads as moved
+ * (Phase 33 D8, nats-r8-s23-F2); the others keep one.
+ */
+export function formatAntennaArrival(data: AntennaSlewCompleteData): string {
+  const az = formatAz_(data.azimuth);
+  const el = data.elevation.toFixed(1);
+  switch (data.mode) {
+    case 'program-track':
+      return data.targetSatelliteName ? `PROGRAM: on target ${data.targetSatelliteName} (Az ${az}, El ${el})` : `PROGRAM: at Az ${az}, El ${el}`;
+    case 'stow':
+      return `STOW: parked (El ${el})`;
+    case 'maintenance':
+      return `MAINTENANCE: parked (El ${el})`;
+    default:
+      return `MANUAL: at Az ${formatAz_(data.azimuth, 2)}, El ${data.elevation.toFixed(2)}`;
+  }
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -85,14 +139,38 @@ export function formatTxConfigEvent(data: TxConfigChangedData): string | null {
   const fec = config.ifSignal.fec !== 'null' ? config.ifSignal.fec : '';
 
   const modFec = [mod, fec].filter(Boolean).join(' ');
-  return `M${modemNum}: Config ${freqMHz} MHz${modFec ? `, ${modFec}` : ''}`;
+  const carrier = `${freqMHz} MHz${modFec ? `, ${modFec}` : ''}`;
+
+  // The event names the modem that changed and what changed (nats-r3-s11-F1);
+  // an event with no action is a state refresh and logs nothing. An automatic
+  // action says why, like the sibling handover lines (nats-r4-s11-F3)
+  const line = formatTxAction_(data.action, modemNum, carrier);
+  return line && data.reason ? `${line} (${data.reason})` : line;
 }
 
-/**
- * Format transmitter modem selection change
- */
-export function formatTxActiveModemEvent(data: TxActiveModemChangedData): string | null {
-  return `Switched to Modem ${data.activeModem + 1}`;
+function formatTxAction_(action: TxConfigChangedData['action'], modemNum: number, carrier: string): string | null {
+  switch (action) {
+    case 'config':
+      return `M${modemNum}: Config ${carrier}`;
+    case 'transmit-on':
+      return `M${modemNum}: Transmission STARTED, ${carrier}`;
+    case 'transmit-off':
+      return `M${modemNum}: Transmission STOPPED`;
+    case 'power-on':
+      return `M${modemNum}: Power ON, booting`;
+    case 'boot-complete':
+      return `M${modemNum}: Boot complete`;
+    case 'power-off':
+      return `M${modemNum}: Power OFF`;
+    case 'loopback-on':
+      return `M${modemNum}: Loopback ON`;
+    case 'loopback-off':
+      return `M${modemNum}: Loopback OFF`;
+    case 'fault-reset':
+      return `M${modemNum}: Fault reset`;
+    default:
+      return null;
+  }
 }
 
 /**
@@ -115,15 +193,12 @@ export function formatRxConfigEvent(data: RxConfigChangedData): string | null {
   const modemNum = config.modemNumber;
   const freqMHz = config.frequency.toFixed(2);
   const bwMHz = config.bandwidth.toFixed(1);
+  // The modulation and FEC, as the TX config line carries them (nats-r5-s06-F3)
+  const mod = config.modulation && config.modulation !== 'null' ? config.modulation : '';
+  const fec = config.fec && config.fec !== 'null' ? config.fec : '';
+  const modFec = [mod, fec].filter(Boolean).join(' ');
 
-  return `M${modemNum}: Tuned to ${freqMHz} MHz, BW ${bwMHz} MHz`;
-}
-
-/**
- * Format receiver modem selection change
- */
-export function formatRxActiveModemEvent(data: RxActiveModemChangedData): string | null {
-  return `Switched to Modem ${data.activeModem + 1}`;
+  return `M${modemNum}: Tuned to ${freqMHz} MHz, BW ${bwMHz} MHz${modFec ? `, ${modFec}` : ''}`;
 }
 
 // ════════════════════════════════════════════════════════════════════════════

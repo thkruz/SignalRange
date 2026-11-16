@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
 import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForSimulationReady } from '../utils/simulation-helpers';
+import { advanceUntil, simAdvance } from '../utils/test-clock';
 
 /**
  * Scenario 2 objectives - Scheduled Maintenance: Power Down and Recovery Procedures.
@@ -14,7 +15,7 @@ import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForS
  * - 'set-tracking-mode': Requires clicking a tracking mode button
  * - 'configure-lnb': Requires configuring LNB settings
  */
-type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'auto' | 'toggle-switch' | 'set-tracking-mode' | 'configure-lnb';
+type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'auto' | 'toggle-switch' | 'set-tracking-mode' | 'configure-lnb' | 'configure-speca';
 
 interface Scenario2Objective {
   id: string;
@@ -31,6 +32,11 @@ interface Scenario2Objective {
     gain: number;
   };
   waitForAntennaPosition?: boolean; // Wait for antenna to reach position
+  specaConfig?: {
+    // For configure-speca type (MHz)
+    centerFrequency: number;
+    span: number;
+  };
 }
 
 const SCENARIO_2_OBJECTIVES: Scenario2Objective[] = [
@@ -41,7 +47,7 @@ const SCENARIO_2_OBJECTIVES: Scenario2Objective[] = [
     id: 'review-mission-brief',
     title: 'Review Mission Brief',
     type: 'quiz',
-    correctAnswer: 'Yes, I have read the mission brief and I am ready to proceed.',
+    correctAnswer: "Yes, I've read the mission brief and I'm ready to proceed.",
   },
   {
     id: 'safety-briefing',
@@ -170,7 +176,7 @@ const SCENARIO_2_OBJECTIVES: Scenario2Objective[] = [
   // ============================================================
   {
     id: 'maintenance-complete',
-    title: 'Maintenance Window Complete',
+    title: 'Hold for the Maintenance Window',
     type: 'quiz',
     correctAnswer: 'Confirm all personnel are clear of the antenna and feed assembly',
   },
@@ -208,7 +214,7 @@ const SCENARIO_2_OBJECTIVES: Scenario2Objective[] = [
     id: 'verify-lnb-restored-quiz',
     title: 'Verify LNB Restoration',
     type: 'quiz',
-    correctAnswer: 'All of the above should be confirmed',
+    correctAnswer: 'LOCK shows LOCKED and noise temperature is back near 43 K',
   },
 
   // ============================================================
@@ -217,7 +223,9 @@ const SCENARIO_2_OBJECTIVES: Scenario2Objective[] = [
   {
     id: 'verify-beacon',
     title: 'Verify Beacon Reception',
-    type: 'auto', // signal-detected condition is auto-satisfied
+    // The analyzer starts parked on the carrier, so the player retunes it
+    type: 'configure-speca',
+    specaConfig: { centerFrequency: 1074.5, span: 0.002 },
   },
   {
     id: 'verify-beacon-quiz',
@@ -359,54 +367,31 @@ async function selectSatelliteAndMove(page: import('@playwright/test').Page): Pr
 }
 
 /**
- * Wait for antenna movement to complete by monitoring position changes.
- * The antenna moves at ~2-5 deg/sec, so large movements take several seconds.
+ * Advance the sim until the antenna has stopped slewing. Reads the simulation state, not the throttled
+ * elevation display, so a burst of sim time cannot mistake a stale readout for a stopped dish.
+ * The 9 m pedestal moves at 0.5 deg/s (phase 19.4), so a large move takes minutes of sim time.
  */
 async function waitForAntennaMovement(page: import('@playwright/test').Page, timeout = 60000): Promise<void> {
-  const startTime = Date.now();
-  let lastPosition = '';
-  let stableCount = 0;
-
-  // Wait a moment for tracking mode change to take effect
-  await page.waitForTimeout(500);
-
-  while (Date.now() - startTime < timeout) {
-    await page.waitForTimeout(1000);
-
-    // Get current elevation from the fine-adjust control display
-    // The Elevation control has a label and value span - use text matching
-    // Try multiple selector strategies
-    let elDisplay = page.locator('.fine-adjust-control', { hasText: 'Elevation' }).locator('.fine-adjust-value-active');
-
-    // Fallback: try finding by ID pattern (contains "el-fine")
-    if ((await elDisplay.count()) === 0) {
-      elDisplay = page.locator('[id*="el-fine"][id$="-value"]');
-    }
-
-    try {
-      const currentPosition = await elDisplay.first().textContent({ timeout: 2000 });
-
-      if (currentPosition === lastPosition && currentPosition !== '') {
-        stableCount++;
-        // Position stable for 3 consecutive checks = movement complete
-        if (stableCount >= 3) {
-          // console.log(`Antenna stabilized at elevation: ${currentPosition}`);
-          return;
-        }
-      } else {
-        stableCount = 0;
-        lastPosition = currentPosition || '';
-        // console.log(`Antenna moving... elevation: ${currentPosition}`);
-      }
-    } catch {
-      // Display not found, log and retry
-      // console.log(`Waiting for elevation display... (${Date.now() - startTime}ms elapsed)`);
-      await page.waitForTimeout(500);
-    }
+  // Let the move command reach the antenna before looking at its slew flag
+  await simAdvance(page, 1000);
+  try {
+    await advanceUntil(
+      page,
+      () =>
+        page.evaluate(() => {
+          const sim = (
+            window as unknown as {
+              signalRange?: { simulationManager?: { groundStations?: Array<{ antennas?: Array<{ state?: { slewing?: boolean } }> }> } };
+            }
+          ).signalRange?.simulationManager;
+          return sim?.groundStations?.[0]?.antennas?.[0]?.state?.slewing === false;
+        }),
+      { maxMs: timeout, stepMs: 1000, message: 'antenna stopped slewing' }
+    );
+  } catch {
+    // If we get here, antenna movement timed out but continue anyway
+    console.warn('Antenna movement may not have completed within timeout');
   }
-
-  // If we get here, antenna movement timed out but continue anyway
-  console.warn('Antenna movement may not have completed within timeout');
 }
 
 /**
@@ -444,7 +429,7 @@ async function configureLnb(page: import('@playwright/test').Page, config: { loF
   await applyBtn.click();
 
   // Wait for thermal stabilization (LNB takes ~3 seconds to stabilize)
-  await page.waitForTimeout(4000);
+  await simAdvance(page, 4000);
 
   // Verify thermal stability indicator shows green (if visible)
   // The objective condition checks for lnb-thermally-stable, so we wait
@@ -472,7 +457,7 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
       // Observation-gated conditions latch only after the default dwell on
       // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
       // reset the read and strand the objective.
-      await page.waitForTimeout(3000);
+      await simAdvance(page, 3000);
       break;
 
     case 'toggle-switch':
@@ -497,6 +482,19 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
       // Power on LNB and configure settings
       await configureLnb(page, objective.lnbConfig!);
       break;
+
+    case 'configure-speca': {
+      const center = page.locator('#sa-center-freq');
+      await expect(center).toBeVisible({ timeout: 5000 });
+      await center.fill(objective.specaConfig!.centerFrequency.toString());
+      await center.press('Tab');
+      const span = page.locator('#sa-span');
+      await span.fill(objective.specaConfig!.span.toString());
+      await span.press('Tab');
+      // signal-detected is observation-gated: stay on the tab past the dwell
+      await simAdvance(page, 3000);
+      break;
+    }
 
     case 'auto':
       // Auto-satisfied objectives complete when conditions are met
@@ -675,8 +673,15 @@ test.describe('Scenario 2 Full Completion', () => {
   // MAINTENANCE WINDOW (SIMULATED)
   // ============================================================
 
-  test('Objective: Maintenance Window Complete', async () => {
+  test('Objective: Hold for the Maintenance Window', async () => {
     const objective = SCENARIO_2_OBJECTIVES.find((o) => o.id === 'maintenance-complete')!;
+    // Phase 29 D15: the crew window ends at 09:50 on the station clock; skip the wait
+    const skip = page.locator('#objective-skip-control');
+    await skip.waitFor({ state: 'visible', timeout: 15000 });
+    await expect(skip).toContainText('09:50');
+    await skip.click();
+    // The skip lands on the crew window's end, 09:50 on the station clock
+    await expect(page.locator('#utc-clock')).toContainText('09:50', { timeout: 5000 });
     await executeObjective(page, missionControlPage, objective);
   });
 
@@ -686,9 +691,20 @@ test.describe('Scenario 2 Full Completion', () => {
 
   test('Objective: Repoint Antenna at TIDEMARK-1', async () => {
     // Antenna movement can take up to 90 seconds
-    test.setTimeout(120000);
+    test.setTimeout(180000);
     const objective = SCENARIO_2_OBJECTIVES.find((o) => o.id === 'repoint-antenna')!;
     await executeObjective(page, missionControlPage, objective);
+    // The El 5 -> 35.2 slew is about 60 s at 0.5 deg/s, right at the movement
+    // helper's timeout: stay on the ACU tab until the objective has completed
+    await advanceUntil(
+      page,
+      () =>
+        page.evaluate((id) => {
+          const hook = (window as unknown as { debugObjective?: (id: string) => { isCompleted?: boolean } }).debugObjective;
+          return typeof hook === 'function' && hook(id)?.isCompleted === true;
+        }, 'repoint-antenna'),
+      { maxMs: 60000, stepMs: 1000, message: 'repoint-antenna complete' }
+    );
   });
 
   // ============================================================
@@ -701,8 +717,20 @@ test.describe('Scenario 2 Full Completion', () => {
   });
 
   test('Objective: Restore LNB', async () => {
+    // VT-01's LNB needs its 90 s thermal warm-up (Phase 27 §2.S) before
+    // lnb-thermally-stable ticks, so the objective completes in real minutes
+    test.setTimeout(180000);
     const objective = SCENARIO_2_OBJECTIVES.find((o) => o.id === 'power-up-lnb')!;
     await executeObjective(page, missionControlPage, objective);
+    await advanceUntil(
+      page,
+      () =>
+        page.evaluate((id) => {
+          const hook = (window as unknown as { debugObjective?: (id: string) => { isCompleted?: boolean } }).debugObjective;
+          return typeof hook === 'function' && hook(id)?.isCompleted === true;
+        }, 'power-up-lnb'),
+      { maxMs: 150000, stepMs: 1000, message: 'power-up-lnb complete' }
+    );
   });
 
   test('Objective: Verify LNB Restoration', async () => {

@@ -63,7 +63,7 @@ export const scenario8Data: ScenarioData = {
   subtitle: 'Solo Operations Evaluation',
   duration: '30-40 min',
   missionType: 'Final Evaluation',
-  description: `It's 2 AM on a Saturday night - your first solo night shift at the Vermont station. Charlie is visiting family out of state. Dana is on-call but sleeping; she's made it clear she only wants to be woken for genuine emergencies.<br><br>A customer reports intermittent connectivity issues on AURORA-7, an aging C-band satellite with an inclined orbit. You'll need to investigate independently, diagnose any equipment issues, verify the link, and handle whatever complications arise.<br><br>This is your graduation exam. Everything you've learned in Scenarios 1-7 comes together here. No one is going to walk you through each step. Make good decisions, work methodically, and prove you're ready for solo operations.`,
+  description: `It's 2 AM on a Saturday night - your first solo night shift at the Vermont station. Charlie is visiting family out of state. Dana is on-call but sleeping; she's made it clear she only wants to be woken for genuine emergencies.<br><br>A customer reports intermittent connectivity issues on AURORA-7, an aging C-band satellite with an inclined orbit. You'll need to investigate independently, diagnose any equipment issues, verify the link, and handle whatever complications arise.<br><br>This is your graduation exam. Everything you've learned in training comes together here. No one is going to walk you through each step. Make good decisions, work methodically, and prove you're ready for solo operations.`,
   equipment: ['9-meter C-band Antenna', 'RF Front End', 'Spectrum Analyzer', 'RX/TX Modems'],
   timeLimitSeconds: 40 * 60, // 40 minutes
   settings: {
@@ -77,16 +77,15 @@ export const scenario8Data: ScenarioData = {
             isPowered: true,
             azimuth: 190 as Degrees,
             elevation: 32 as Degrees,
-            polarization: 0 as Degrees,
+            // polarization: derived from geometry (Phase 29 D8)
             trackingMode: 'program-track',
             isBeaconLocked: false,
             targetSatelliteId: 28899,
             targetAzimuth: 190 as Degrees,
             targetElevation: 32 as Degrees,
-            targetPolarization: 0 as Degrees,
             slewing: false,
             beaconCN: 5.2 as dB, // Marginal due to tracking error
-            beaconFrequencyHz: 1085e6 as Hertz, // AURORA-7 beacon IF
+            beaconFrequencyHz: 4165e6 as Hertz, // AURORA-7 beacon (RF)
             isLocked: true,
           } as Partial<AntennaState>,
         ],
@@ -106,7 +105,7 @@ export const scenario8Data: ScenarioData = {
               isPowered: true,
               isMuted: false, // Link was operational - BUC was transmitting
               isLoopback: false,
-              loFrequency: 7100 as MHz, // AURORA-7 BUC LO (RF 6000 - IF 1047 = 4925)
+              loFrequency: 7100 as MHz, // AURORA-7 BUC LO (LO 7100 - IF 1047 = RF 6053, LSB)
               isExtRefLocked: true,
               gain: 23 as dB,
             },
@@ -129,9 +128,10 @@ export const scenario8Data: ScenarioData = {
             ...vermontGroundStation.spectrumAnalyzers[0],
             centerFrequency: 1000e6 as Hertz, // Not configured - player must set
             span: 100e6 as Hertz,
-            rbw: 1e6 as Hertz,
+            rbw: null, // Auto, like every other analyzer at shift start (Phase 31 D9)
             referenceLevel: -50 as dBm,
-            minAmplitude: -120 as dBm,
+            // A wideband view: the beacon step asks for its own -120/-60 window
+            minAmplitude: -110 as dBm,
             maxAmplitude: -30 as dBm,
             scaleDbPerDiv: 10 as dB,
           },
@@ -178,6 +178,8 @@ export const scenario8Data: ScenarioData = {
       },
     ],
     satellites: [aurora7Satellite, tidemark1Satellite],
+    scenarioStartDate: '2026-02-14',
+    scenarioStartWallTime: '02:15:00',
     missionBriefUrl: 'https://docs.signalrange.space/campaign-1/scenario-8?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
   },
@@ -189,7 +191,7 @@ export const scenario8Data: ScenarioData = {
       id: 'review-mission-brief',
       nice: ['K0645'],
       title: 'Review Customer Trouble Ticket',
-      description: 'Review the trouble ticket details and acknowledge you are ready to investigate.',
+      description: "Read the trouble ticket and confirm you're ready to investigate.",
       groundStation: 'VT-01',
       freezesScenarioTimer: true,
       prerequisiteObjectiveIds: [],
@@ -205,15 +207,16 @@ export const scenario8Data: ScenarioData = {
           description: 'Ready to Investigate',
           params: {
             character: Character.SYSTEM,
-            question: 'Customer reports intermittent connectivity on AURORA-7. You are alone at the station. How will you proceed?',
+            question: "A customer reports intermittent connectivity on AURORA-7, and you're alone at the station. How do you proceed?",
             options: [
-              'Begin systematic troubleshooting - check timing, RX chain, antenna, then TX if needed',
-              'Call Dana now - report the ticket, then hold until she directs the troubleshooting',
-              'Wait for morning shift - log the ticket, keep monitoring, let the day crew investigate',
-              'Power cycle everything - reboot LNB, BUC, HPA and modems, then see if the dropouts stop',
+              'Troubleshoot step by step: timing, RX chain, antenna, then TX if needed',
+              'Call Dana now, report the ticket and wait for her to direct the troubleshooting',
+              'Wait for the morning shift: log the ticket, keep monitoring and let the day crew investigate',
+              'Power cycle everything: reboot the LNB, BUC, HPA and modems, then see if the dropouts stop',
             ],
             correctIndex: 0,
-            explanation: 'Systematic troubleshooting is the professional approach. You have the skills to investigate this independently.',
+            explanation:
+              'Working through the system in order is the professional approach, because it finds the fault without making anything worse. Calling Dana or waiting for the day crew just delays the fix on a fault you have the skills to investigate yourself. Power cycling everything would also hide which part was failing.',
             pointPenalty: 15,
           },
           mustMaintain: false,
@@ -267,11 +270,11 @@ export const scenario8Data: ScenarioData = {
           description: 'Identify Alarm Condition',
           params: {
             character: Character.SYSTEM,
-            question: 'What alarm is displayed on the Dashboard?',
-            options: ['LNB Reference Unlocked', 'BUC Over-Temperature', 'HPA Output Fault', 'No active alarms'],
+            question: 'What alarm does the Dashboard show?',
+            options: ['LNB Reference Unlocked', 'BUC Over-Temperature', 'HPA Output Power Fault', 'No active alarms'],
             correctIndex: 0,
             explanation:
-              'The LNB shows a reference unlock condition. This means the LNB is not locked to the GPSDO 10 MHz reference, which can cause frequency drift and degraded receive performance.',
+              "The LNB is reporting a reference unlock, which means it isn't locked to the GPSDO's 10 MHz reference. Without that lock its frequency can drift and receive performance suffers. The BUC and HPA aren't alarming, and the Dashboard isn't clear.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -294,7 +297,7 @@ export const scenario8Data: ScenarioData = {
           type: 'tab-active',
           description: 'GPS Timing Tab Open',
           params: { tab: 'gps-timing' },
-          maintainUntilObjectiveComplete: true,
+          mustMaintain: true,
         },
         {
           type: 'gpsdo-locked',
@@ -307,7 +310,7 @@ export const scenario8Data: ScenarioData = {
           description: 'GPSDO Status Verified',
           params: {
             character: Character.SYSTEM,
-            question: 'The GPSDO shows locked status. What does this tell you about the LNB reference unlock alarm?',
+            question: 'The GPSDO shows locked. What does that tell you about the LNB reference unlock alarm?',
             options: [
               'The 10 MHz reference is available - the problem is likely the cable or LNB input',
               'The 10 MHz reference is faulty - the GPSDO lock indicator is masking a bad output',
@@ -316,7 +319,7 @@ export const scenario8Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'The GPSDO is generating a valid 10 MHz reference. Since the LNB shows unlocked, the issue is downstream - either the reference cable to the LNB or the LNB reference input itself.',
+              "The GPSDO is generating a valid 10 MHz reference, but the LNB still shows unlocked, so the problem is downstream. It's either the reference cable to the LNB or the LNB's reference input. Restarting the GPSDO wouldn't help, because it's already locked.",
             pointPenalty: 10,
           },
           maintainUntilObjectiveComplete: true,
@@ -348,8 +351,10 @@ export const scenario8Data: ScenarioData = {
         {
           type: 'equipment-powered',
           description: 'LNB Powered',
-          params: { equipment: 'lnb' },
+          // A read of the panel: confirm it is on, never cycle it here
+          params: { equipment: 'lnb', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
+          requiresChange: false,
         },
         {
           type: 'status-check',
@@ -365,7 +370,7 @@ export const scenario8Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Power cycling the LNB will force it to re-acquire the external 10 MHz reference. This is a common fix for reference lock issues, especially after thermal cycling or power glitches.',
+              "Power cycling the LNB forces it to re-acquire the external 10 MHz reference. It's a common fix for reference lock problems, especially after thermal cycling or a power glitch. Replacing the LNB is premature before a power cycle has been tried, and more gain does nothing for a missing reference.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -378,10 +383,12 @@ export const scenario8Data: ScenarioData = {
       id: 'resolve-lnb-fault',
       nice: ['S0582', 'T1567'],
       title: 'Resolve LNB Reference Fault',
-      description: 'Power cycle the LNB to restore reference lock. Power OFF, wait for status to update, then power ON.',
+      description:
+        'Power cycle the LNB to restore reference lock: power OFF, wait for status to update, then power ON. The LNB re-locks to the 10 MHz reference and needs about 90 seconds to warm up before it reads stable.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['diagnose-lnb-fault'],
-      timeLimitSeconds: 3 * 60,
+      // 90 s warm-up after the cycle
+      timeLimitSeconds: 4 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
         {
@@ -391,8 +398,9 @@ export const scenario8Data: ScenarioData = {
           mustMaintain: true,
         },
         {
+          // requiresChange (default): counts only once the LNB goes off and back on
           type: 'equipment-powered',
-          description: 'LNB Powered',
+          description: 'LNB Power-Cycled (Off, Then On)',
           params: { equipment: 'lnb' },
           maintainUntilObjectiveComplete: true,
         },
@@ -455,10 +463,11 @@ export const scenario8Data: ScenarioData = {
           description: 'Beacon IF Calculation',
           params: {
             character: Character.SYSTEM,
-            question: 'AURORA-7 beacon is at 4165 MHz RF. The LNB LO is 5250 MHz. What IF frequency should you tune the spectrum analyzer to?',
+            question: 'The AURORA-7 beacon is at 4165 MHz RF and the LNB LO is 5250 MHz. What IF frequency should you tune the spectrum analyzer to?',
             options: ['1085 MHz', '9415 MHz', '915 MHz', '4165 MHz'],
             correctIndex: 0,
-            explanation: 'IF = LO - RF = 5250 - 4165 = 1085 MHz. The LNB downconverts by subtracting the RF frequency from the LO frequency.',
+            explanation:
+              'IF = LO - RF = 5250 - 4165 = 1085 MHz, because the LNB downconverts by subtracting the RF frequency from the LO frequency. Adding them gives 9415 MHz, and tuning to the RF itself (4165 MHz) ignores the downconversion.',
             pointPenalty: 15,
           },
           mustMaintain: false,
@@ -471,7 +480,8 @@ export const scenario8Data: ScenarioData = {
       id: 'configure-speca-beacon',
       nice: ['S0421', 'K0773'],
       title: 'Configure Spectrum Analyzer for Beacon',
-      description: 'Set up the spectrum analyzer to observe the AURORA-7 beacon at 1085 MHz IF.',
+      description:
+        'Set up the spectrum analyzer to watch the AURORA-7 beacon. Set Center to 1085 MHz, Span to 10 kHz (0.01 MHz), Min Amplitude to -120 dBm and Max Amplitude to -60 dBm, and leave RBW on Auto.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['calculate-aurora7-beacon-if'],
       timeLimitSeconds: 3 * 60,
@@ -496,41 +506,38 @@ export const scenario8Data: ScenarioData = {
         {
           type: 'speca-span-set',
           description: 'Span Configured',
-          hint: 'Set a narrow span to clearly see the beacon signal.',
+          hint: 'Set the span to 10 kHz (0.01 MHz) to clearly see the beacon signal.',
           params: {
             span: 0.01e6 as Hertz,
-            spanTolerance: 0.01e6,
+            spanTolerance: 0.01e6, // 0-20 kHz
           },
           maintainUntilObjectiveComplete: true,
         },
         {
           type: 'speca-max-amplitude',
           description: 'Max Amplitude Set',
-          hint: 'Set the maximum amplitude to -108 dBm to properly view the beacon signal.',
+          // The AURORA-7 beacon reads about -76 to -81 dBm at the RX IF tap
+          // (phase 27 ledger): -60 puts it 15+ dB under the top
+          hint: 'Set the maximum amplitude to -60 dBm so the beacon sits below the top of the screen.',
           params: {
-            maxAmplitude: -95 as dBm,
-            maxAmplitudeTolerance: 15 as dBm,
+            maxAmplitude: -60 as dBm,
+            maxAmplitudeTolerance: 3 as dBm,
           },
           maintainUntilObjectiveComplete: true,
         },
         {
           type: 'speca-min-amplitude',
           description: 'Min Amplitude Set',
-          hint: 'Set the minimum amplitude to -120 dBm to properly view the beacon signal.',
+          // The floor at 10 kHz span (RBW auto 30 Hz) is ~-103 dBm: on screen at -120
+          hint: 'Set the minimum amplitude to -120 dBm so the noise floor shows under the beacon.',
           params: {
-            minAmplitude: -130 as dBm,
-            minAmplitudeTolerance: 15 as dBm,
+            minAmplitude: -120 as dBm,
+            minAmplitudeTolerance: 3 as dBm,
           },
           maintainUntilObjectiveComplete: true,
         },
-        {
-          type: 'speca-rbw-set',
-          description: 'RBW Configured to Auto',
-          params: {
-            rbw: null,
-          },
-          maintainUntilObjectiveComplete: true,
-        },
+        // No RBW row: the analyzer starts on Auto since Phase 31 D9, so the
+        // row would tick before the player acts (nats-objective-intent lint)
       ],
       conditionLogic: 'AND',
       points: 10,
@@ -543,7 +550,8 @@ export const scenario8Data: ScenarioData = {
       id: 'identify-tracking-problem',
       nice: ['T0081', 'K1032'],
       title: 'Identify Tracking Problem',
-      description: 'The beacon keeps dropping out. Analyze the antenna tracking mode to identify potential issues.',
+      description:
+        'The beacon holds steady on the analyzer, but the RX 1 carrier keeps dropping lock. The antenna is still in program-track on an inclined bird: check the tracking mode on ACU Control before chasing the carrier.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['configure-speca-beacon'],
       timeLimitSeconds: 3 * 60,
@@ -560,7 +568,7 @@ export const scenario8Data: ScenarioData = {
           description: 'Tracking Mode Analysis',
           params: {
             character: Character.SYSTEM,
-            question: 'AURORA-7 is a legacy satellite with an inclined orbit. The antenna is in program-track mode. Why might this cause tracking problems?',
+            question: 'AURORA-7 is a legacy satellite with an inclined orbit, and the antenna is in program-track mode. Why might that cause tracking problems?',
             options: [
               'Inclined orbits require step-track to follow satellite drift - program-track cannot compensate',
               'Program-track is only valid for LEO satellites - a GEO bird needs step-track regardless of orbit',
@@ -569,7 +577,7 @@ export const scenario8Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'AURORA-7 has stopped north-south station-keeping, causing its orbit to become inclined. This makes the satellite trace a figure-8 pattern in the sky. Program-track follows predicted positions, but step-track actively hunts for peak signal, which is required for drifting satellites.',
+              'AURORA-7 has stopped north-south station-keeping, so its orbit has become inclined and the satellite traces a figure-8 pattern in the sky. Program-track follows predicted positions, while step-track actively hunts for the signal peak, which a drifting satellite needs.',
             pointPenalty: 15,
           },
           mustMaintain: false,
@@ -608,7 +616,7 @@ export const scenario8Data: ScenarioData = {
       id: 'verify-beacon-lock',
       nice: ['T0153', 'K0740'],
       title: 'Verify Beacon Acquisition',
-      description: 'Confirm the antenna has acquired beacon lock and the signal is now visible on the spectrum analyzer.',
+      description: 'Watch the beacon on the RX Analysis spectrum analyzer and confirm that step-track holds beacon lock for 10 seconds with the beacon visible.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['enable-step-track'],
       timeLimitSeconds: 3 * 60,
@@ -621,8 +629,11 @@ export const scenario8Data: ScenarioData = {
           mustMaintain: true,
         },
         {
+          // Watched, not timed from arrival: the lock must hold for 10 s while
+          // the player is on RX Analysis (s08 obj 12, phase 27)
           type: 'antenna-beacon-locked',
-          description: 'Beacon Lock Acquired',
+          description: 'Beacon Lock Held for 10 s',
+          params: { requiresObservation: true, observationTab: 'rx-analysis', observationDwellSeconds: 10 },
           mustMaintain: true,
         },
         {
@@ -631,6 +642,9 @@ export const scenario8Data: ScenarioData = {
           params: {
             signalId: 'AURORA-7-Beacon',
             minPower: -95 as dBm,
+            requiresObservation: true,
+            observationTab: 'rx-analysis',
+            observationDwellSeconds: 5,
           },
           mustMaintain: true,
         },
@@ -646,7 +660,7 @@ export const scenario8Data: ScenarioData = {
       id: 'weather-alert-decision',
       nice: ['K0741', 'K0740'],
       title: 'Weather Alert Assessment',
-      description: 'A weather alert notification appears. Assess the situation and decide on appropriate action.',
+      description: 'A weather alert has come in from the forecast service. Assess the situation and decide on appropriate action.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-beacon-lock'],
       timeLimitSeconds: 2 * 60,
@@ -657,16 +671,17 @@ export const scenario8Data: ScenarioData = {
           description: 'Weather Decision',
           params: {
             character: Character.SYSTEM,
-            question: 'Weather service reports freezing rain expected in 2 hours. AURORA-7 link is now stable. What is the appropriate action?',
+            question:
+              "The weather service reports freezing rain expected in 2 hours. Step-track now holds beacon lock, though RX 1 still drops the carrier every few seconds. What's the appropriate action?",
             options: [
-              'Enable feed heater now as a precaution, continue monitoring the link',
-              'Stow the antenna now as a precaution, accept the link outage until it passes',
-              'Call Dana now with the forecast, let her decide whether to stow or heat',
-              'Ignore the alert for now since it is 2 hours out, revisit when the rain starts',
+              'Enable the feed heater now as a precaution and keep monitoring the link',
+              'Stow the antenna now as a precaution and accept the link outage until it passes',
+              'Call Dana now with the forecast and let her decide whether to stow or heat',
+              'Ignore the alert because the rain is 2 hours out, and revisit when it starts',
             ],
             correctIndex: 0,
             explanation:
-              'Enabling the feed heater proactively prevents ice accumulation. The link is stable so there is no need to stow yet, but preparing for weather is good practice. This is not urgent enough to wake Dana at 2 AM.',
+              "Turning on the feed heater now prevents ice from building up on the feed once the rain arrives. The antenna is holding the beacon and the rain is two hours out, so there's no need to stow yet, and the carrier dropouts are a separate fault to chase next. This isn't urgent enough to wake Dana at this hour, and waiting for the rain to start means ice could already be forming.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -708,8 +723,9 @@ export const scenario8Data: ScenarioData = {
       id: 'verify-acu-tracking-stable',
       nice: ['T0081', 'K0740'],
       title: 'Verify Antenna Tracking Stable',
-      description: 'Customer still reports intermittent errors. First, confirm the antenna tracking is stable after enabling step-track.',
+      description: 'The customer still reports intermittent errors, so first confirm the antenna tracking is stable now that step-track is on.',
       groundStation: 'VT-01',
+      intent: 'confirm',
       prerequisiteObjectiveIds: ['enable-feed-heater'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
@@ -723,6 +739,7 @@ export const scenario8Data: ScenarioData = {
         {
           type: 'antenna-beacon-locked',
           description: 'Beacon Lock Confirmed',
+          params: { requiresObservation: true, observationTab: 'acu-control' },
           mustMaintain: true,
         },
         {
@@ -730,7 +747,7 @@ export const scenario8Data: ScenarioData = {
           description: 'Tracking Analysis',
           params: {
             character: Character.SYSTEM,
-            question: 'The customer still reports intermittent errors. The ACU shows stable step-track with beacon lock. What does this tell you?',
+            question: 'The customer still reports intermittent errors, and the ACU shows stable step-track with beacon lock. What does that tell you?',
             options: [
               'The antenna is tracking properly - the intermittent issue is not caused by tracking problems',
               'The beacon frequency is drifting - the intermittent issue is caused by lock instability',
@@ -739,7 +756,7 @@ export const scenario8Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'With stable beacon lock in step-track mode, we can rule out antenna tracking as the cause of intermittent errors. The antenna is correctly following the satellite. We need to look elsewhere.',
+              'A stable beacon lock in step-track means the antenna is following the satellite correctly, so you can rule out tracking as the cause of the intermittent errors. The fault is somewhere else, and the receive and transmit paths are next to check.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -751,8 +768,9 @@ export const scenario8Data: ScenarioData = {
     {
       id: 'verify-rx-path-healthy',
       nice: ['T0153', 'K0740'],
-      title: 'Verify RX Path Health',
-      description: 'Check the receiver modem to confirm the RX path is healthy after the LNB fix.',
+      title: 'Compare Beacon and Carrier',
+      description:
+        "Watch RX Analysis: the receiver modem listens to VT-01's own AURORA-7 carrier, relayed back down by the satellite. Compare it with the beacon under step-track.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-acu-tracking-stable'],
       timeLimitSeconds: 2 * 60,
@@ -765,15 +783,9 @@ export const scenario8Data: ScenarioData = {
           mustMaintain: true,
         },
         {
-          type: 'receiver-signal-locked',
-          description: 'Receiver Modem Locked',
-          params: { requiresObservation: true, observationTab: 'rx-analysis' },
-          mustMaintain: true,
-        },
-        {
-          type: 'receiver-snr-threshold',
-          description: 'C/N Ratio Adequate',
-          params: { minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
+          type: 'signal-detected',
+          description: 'Watched the RX Analysis Tab',
+          params: { signalId: 'AURORA-7-Beacon', anyTuning: true, requiresObservation: true, observationTab: 'rx-analysis', observationDwellSeconds: 10 },
           mustMaintain: true,
         },
         {
@@ -781,16 +793,17 @@ export const scenario8Data: ScenarioData = {
           description: 'RX Path Analysis',
           params: {
             character: Character.SYSTEM,
-            question: "The receiver shows stable lock with good C/N. What does this indicate about the customer's intermittent errors?",
+            question:
+              'The AURORA-7 beacon holds steady under step-track, but the receiver modem keeps losing our own carrier (NO LOCK / ACQUIRING every few seconds). What does that tell you?',
             options: [
-              'The RX path is healthy - the problem must be in the transmit direction',
-              'The AGC is masking a fault - the problem is still in the receive direction',
-              'The LNB temperature is unknown - the problem cannot be isolated yet',
-              'The C/N margin is still too low - the problem is receive-side noise',
+              'The receive chain is healthy, so the carrier is dropping on the transmit side',
+              'The LNB reference fault is back, so the receive chain is losing our carrier again',
+              'Step-track is hunting, so the antenna keeps losing the satellite and our carrier',
+              'Rain fade on the downlink is pushing the carrier below the lock threshold',
             ],
             correctIndex: 0,
             explanation:
-              'With stable receiver lock and good C/N, the downlink (RX) path is working correctly. Since the customer reports bidirectional issues, and RX is healthy, the problem must be in the uplink (TX) direction.',
+              "The beacon and our carrier come down through the same antenna, feed and LNB, so a pointing, LNB or weather problem would hit the beacon too. A steady beacon with a carrier that drops every few seconds means our carrier isn't reaching the satellite consistently, so the fault is in our own transmit chain. VT-01's receiver hears its own uplink relayed by AURORA-7, which makes it a loopback through the satellite.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -803,7 +816,7 @@ export const scenario8Data: ScenarioData = {
       id: 'check-tx-chain-status',
       nice: ['T0081', 'S0582'],
       title: 'Investigate TX Chain',
-      description: 'Navigate to the TX Chain tab to investigate the transmit path for intermittent faults.',
+      description: 'Open the TX Chain tab and look for an intermittent fault in the transmit path.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-rx-path-healthy'],
       timeLimitSeconds: 2 * 60,
@@ -820,7 +833,7 @@ export const scenario8Data: ScenarioData = {
           description: 'TX Chain Inspection',
           params: {
             character: Character.SYSTEM,
-            question: 'When investigating an intermittent TX fault, which indicator would show evidence of the problem?',
+            question: 'When you investigate an intermittent TX fault, which indicator shows evidence of the problem?',
             options: [
               'The modem Output Power display - it shows DROPOUT during fault periods',
               'The HPA reflected power readout - it climbs during the modem fault periods',
@@ -829,7 +842,7 @@ export const scenario8Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'The TX modem Output Power display directly indicates when an intermittent hardware fault causes a signal dropout. During fault periods, the display shows "DROPOUT" in red, making it easy to identify the source of the problem.',
+              'The TX modem Output Power display shows "DROPOUT" in red whenever an intermittent hardware fault interrupts the signal, which points straight at the source of the problem. The fault is in the modem, so the HPA, BUC and GPSDO readouts don\'t react to it.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -842,11 +855,16 @@ export const scenario8Data: ScenarioData = {
       id: 'switch-to-modem-2',
       nice: ['S0421', 'T1567'],
       title: 'Switch to Backup Modem',
-      description: 'Select Modem 2 as the active transmitter to replace the faulted Modem 1.',
+      description:
+        "Take the faulted Modem 1 out of service: on its TX Chain tab, power it off, which clears its fault alarm. Then open the Modem 2 tab, where the spare is already powered and standing by. Don't start Modem 2 transmitting yet. It's still unconfigured, and it goes up through the loopback test first.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['check-tx-chain-status'],
-      timeLimitSeconds: 1 * 60,
+      timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
+      // Phase 31 D14: selecting a modem tab is only a view, so the step grades
+      // the real switch (Modem 1 off, Modem 2 on). Transmitting on Modem 2 is
+      // graded by test-modem2-loopback, after the configure and loopback steps,
+      // so no unconfigured carrier goes out through the HPA.
       conditions: [
         {
           type: 'tab-active',
@@ -855,8 +873,17 @@ export const scenario8Data: ScenarioData = {
           mustMaintain: true,
         },
         {
+          type: 'equipment-not-powered',
+          description: 'Modem 1 Powered Off (Out of Service)',
+          params: { equipment: 'transmitter', modemNumber: 1 },
+          mustMaintain: true,
+        },
+        {
+          // Modem 2 starts powered (the spare stands by), so its power is not
+          // a row: the change the player makes is Modem 1 off. The tab row
+          // puts the Modem 2 controls in front for the configure step.
           type: 'tx-active-modem',
-          description: 'Modem 2 Selected',
+          description: 'Modem 2 Tab Selected',
           params: { modemNumber: 2 },
           mustMaintain: true,
         },
@@ -872,7 +899,7 @@ export const scenario8Data: ScenarioData = {
       id: 'calculate-aurora7-uplink-if',
       nice: ['K0773', 'K1032'],
       title: 'Calculate AURORA-7 Uplink IF',
-      description: 'Calculate the correct TX modem IF frequency to configure Modem 2 for AURORA-7 uplink.',
+      description: 'Calculate the correct TX modem IF frequency for the AURORA-7 uplink on Modem 2.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['switch-to-modem-2'],
       timeLimitSeconds: 3 * 60,
@@ -883,10 +910,11 @@ export const scenario8Data: ScenarioData = {
           description: 'Uplink IF Calculation',
           params: {
             character: Character.SYSTEM,
-            question: 'AURORA-7 uplink RF is 7100 MHz. The BUC LO is 6053 MHz. What TX IF frequency is required?',
+            question: 'The AURORA-7 uplink RF is 6053 MHz and the BUC LO is 7100 MHz. What TX IF frequency is required?',
             options: ['1047 MHz', '13153 MHz', '1043 MHz', '6000 MHz'],
             correctIndex: 0,
-            explanation: 'TX IF = RF - BUC LO = 7100 - 6053 = 1047 MHz. The BUC upconverts by adding the LO frequency to the IF.',
+            explanation:
+              'TX IF = BUC LO - RF = 7100 - 6053 = 1047 MHz. The LO sits above the uplink, so the BUC outputs the lower sideband and RF = LO - IF. Adding the two instead gives 13153 MHz, which uses the wrong sign for this BUC.',
             pointPenalty: 15,
           },
           mustMaintain: false,
@@ -899,7 +927,7 @@ export const scenario8Data: ScenarioData = {
       id: 'configure-tx-modem',
       nice: ['S0421', 'T1567'],
       title: 'Configure Modem 2 for AURORA-7',
-      description: 'Configure Modem 2 with the correct settings for AURORA-7 uplink.',
+      description: "Configure Modem 2 to match Modem 1's AURORA-7 settings: 1047 MHz, 24 MHz bandwidth, FEC 3/4 and -7 dBm power. The spare already runs QPSK.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['calculate-aurora7-uplink-if'],
       timeLimitSeconds: 3 * 60,
@@ -932,12 +960,6 @@ export const scenario8Data: ScenarioData = {
           maintainUntilObjectiveComplete: true,
         },
         {
-          type: 'tx-modem-modulation-set',
-          description: 'TX Modulation: QPSK',
-          params: { modemNumber: 2, modulation: 'QPSK' },
-          maintainUntilObjectiveComplete: true,
-        },
-        {
           type: 'tx-modem-power-set',
           description: 'TX Power: -7 dBm',
           params: { modemNumber: 2, power: -7 as dBm, powerTolerance: 1 as dBm },
@@ -961,7 +983,8 @@ export const scenario8Data: ScenarioData = {
       id: 'prepare-buc-loopback',
       nice: ['T1313', 'S0582'],
       title: 'Prepare BUC for Loopback Test',
-      description: 'Before transmitting on a new modem, disable the faulted Modem 1 and enable BUC loopback mode for safe testing.',
+      description:
+        "Before Modem 2 transmits, keep the faulted Modem 1 powered off, disable the HPA output, set the BUC gain to 15 dB and enable BUC loopback for safe testing. The BUC stays unmuted so the loop carries the signal. The loop couples the BUC output into the LNB about 66 dB down, and at tonight's 65 dB LNB gain the LNB compresses at about -55 dBm in. The standard 23 dB (-7 dBm drive, +16 dBm out, -50 dBm in) would overload it, while 15 dB puts -58 dBm in, 3 dB under.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['configure-tx-modem'],
       timeLimitSeconds: 2 * 60,
@@ -974,19 +997,27 @@ export const scenario8Data: ScenarioData = {
           mustMaintain: true,
         },
         {
-          type: 'tx-modem-not-transmitting',
-          description: 'Modem 1 Disabled',
-          params: { modemNumber: 1 },
+          type: 'equipment-not-powered',
+          description: 'Modem 1 Powered Off (Out of Service)',
+          params: { equipment: 'transmitter', modemNumber: 1 },
+          mustMaintain: true,
+        },
+        {
+          // Phase 28 D3: the loop keeps the 66 dB coupler and the LNB's input
+          // compression. LNB gain 65 dB: input P1dB -55 dBm; at BUC 23 dB the
+          // loop puts -50 dBm in (~3.4 dB compressed, "LNB input overload").
+          // 15 dB: -58 dBm, ~0.2 dB (16 dB ~0.45; 17 dB trips the 0.5 dB alarm)
+          type: 'buc-gain-set',
+          description: 'BUC Gain Backed Off to 15 dB',
+          params: {
+            gain: 15 as dB,
+            gainTolerance: 1 as dB,
+          },
           mustMaintain: true,
         },
         {
           type: 'buc-loopback-enabled',
           description: 'BUC Loopback Enabled',
-          mustMaintain: true,
-        },
-        {
-          type: 'buc-unmuted',
-          description: 'BUC Unmuted',
           mustMaintain: true,
         },
         {
@@ -999,7 +1030,7 @@ export const scenario8Data: ScenarioData = {
           description: 'Loopback Safety',
           params: {
             character: Character.SYSTEM,
-            question: 'Why must BUC loopback be enabled BEFORE starting transmission on a new modem?',
+            question: 'Why must BUC loopback be enabled BEFORE a new modem starts transmitting?',
             options: [
               'To prevent accidental RF transmission through the HPA until the new modem is verified',
               'To reduce power consumption in the BUC and HPA until the new modem is verified',
@@ -1008,7 +1039,7 @@ export const scenario8Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Enabling loopback before transmission ensures the signal is routed back to the receiver for testing, rather than going to the HPA and antenna. This prevents accidental RF transmission until the new modem configuration is verified.',
+              "With loopback on, the signal is routed back to the receiver for testing instead of going to the HPA and antenna, so nothing radiates until the new modem configuration is verified. Loopback isn't about power consumption, a cleaner measurement or clock synchronization.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -1049,7 +1080,7 @@ export const scenario8Data: ScenarioData = {
           description: 'BUC Loopback Purpose',
           params: {
             character: Character.SYSTEM,
-            question: 'What does BUC loopback test that modem loopback does not?',
+            question: "What does BUC loopback test that modem loopback doesn't?",
             options: [
               'The full signal path from modem through BUC, without engaging the HPA',
               'The HPA output stage and its power level, without radiating from the antenna',
@@ -1057,7 +1088,8 @@ export const scenario8Data: ScenarioData = {
               'The satellite transponder response, without the customer traffic loaded',
             ],
             correctIndex: 0,
-            explanation: 'BUC loopback tests the complete modem-to-BUC signal path while keeping the HPA disengaged. This verifies the full low-power TX chain.',
+            explanation:
+              'BUC loopback tests the complete signal path from the modem through the BUC while keeping the HPA disengaged. That verifies the full low-power TX chain without radiating anything. The HPA stage, the antenna pointing and the satellite transponder are all outside the loop.',
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -1067,11 +1099,11 @@ export const scenario8Data: ScenarioData = {
       points: 10,
     },
     {
-      id: 'configure-lnb-for-loopback',
+      id: 'verify-loopback-signal',
       nice: ['T0153', 'K0740'],
-      title: 'Configure LNB for Loopback Test',
+      title: 'Verify Loopback Signal',
       description:
-        'Set the LNB LO to 7000 MHz to view the BUC loopback signal. The BUC LO is 7100 MHz, so the 1047 MHz TX IF becomes 6053 MHz RF, which downconverts to 947 MHz with a 7000 MHz LNB.',
+        "Find the loop carrier on RX Analysis with the LNB left at its normal 5250 MHz LO. The loop translator shifts the 6053 MHz uplink down by the satellite's 2225 MHz translation to 3828 MHz, which the LNB puts at 1422 MHz IF. Set the spectrum analyzer to center 1422 MHz with a 40 MHz span, Min Amplitude -100 dBm and Max Amplitude -30 dBm. On RX Analysis a carrier this clean reads Effective C/N well under Raw C/N. The grey ceiling line (about 40 dB) is the converter's own limit, not a fault.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['test-modem2-loopback'],
       timeLimitSeconds: 2 * 60,
@@ -1081,43 +1113,50 @@ export const scenario8Data: ScenarioData = {
           type: 'tab-active',
           description: 'RX Analysis Tab Open',
           params: { tab: 'rx-analysis' },
-          maintainUntilObjectiveComplete: true,
-        },
-        {
-          type: 'lnb-lo-set',
-          description: 'LNB LO Set to 7000 MHz',
-          params: {
-            loFrequency: 7000 as MHz,
-            loFrequencyTolerance: 10 as MHz,
-          },
-          maintainUntilObjectiveComplete: true,
-        },
-      ],
-      conditionLogic: 'AND',
-      points: 5,
-    },
-    {
-      id: 'verify-loopback-signal',
-      nice: ['T0153', 'K0740'],
-      title: 'Verify Loopback Signal',
-      description: 'Check the spectrum analyzer at 947 MHz to confirm the BUC loopback signal is present.',
-      groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['configure-lnb-for-loopback'],
-      timeLimitSeconds: 2 * 60,
-      timerStartTrigger: 'on-activate',
-      conditions: [
-        {
-          type: 'tab-active',
-          description: 'RX Analysis Tab Open',
-          params: { tab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
+          // Phase 28 D3 (nats-r3-s08-F1): loop translator, normal LNB LO:
+          // 6053 - 2225 = 3828 MHz RF, 5250 - 3828 = 1422 MHz IF
           type: 'speca-center-frequency',
-          description: 'Spectrum Analyzer at 947 MHz',
+          description: 'Spectrum Analyzer at 1422 MHz',
           params: {
-            centerFrequency: 947e6 as Hertz,
+            centerFrequency: 1422e6 as Hertz,
             centerFrequencyTolerance: 5e6,
+          },
+          mustMaintain: true,
+        },
+        {
+          // The 24 MHz carrier is invisible at the beacon span (nats-s08-F10)
+          type: 'speca-span-set',
+          description: 'Span 40 MHz',
+          params: {
+            span: 40e6 as Hertz,
+            spanTolerance: 15e6,
+          },
+          mustMaintain: true,
+        },
+        {
+          // The beacon step leaves -120/-60. The AGC holds its output at
+          // -30 dBm total, so the 24 MHz loopback carrier reads ~-53 dBm in
+          // the 100 kHz auto RBW (~-44 dBm while the AGC rails at min gain on
+          // an uncoupled loop): it needs a window up to -30 (phase 27)
+          type: 'speca-max-amplitude',
+          description: 'Max Amplitude -30 dBm',
+          hint: 'Raise Max Amp to -30 dBm: the loopback carrier is far stronger than the beacon you were just looking at.',
+          params: {
+            maxAmplitude: -30 as dBm,
+            maxAmplitudeTolerance: 5 as dBm,
+          },
+          mustMaintain: true,
+        },
+        {
+          type: 'speca-min-amplitude',
+          description: 'Min Amplitude -100 dBm',
+          hint: 'Set Min Amp to -100 dBm.',
+          params: {
+            minAmplitude: -100 as dBm,
+            minAmplitudeTolerance: 5 as dBm,
           },
           mustMaintain: true,
         },
@@ -1126,16 +1165,16 @@ export const scenario8Data: ScenarioData = {
           description: 'Loopback Signal Verified',
           params: {
             character: Character.SYSTEM,
-            question: 'What should you observe on the spectrum analyzer at 947 MHz?',
+            question: 'What do you see on the spectrum analyzer in this window?',
             options: [
-              'A 24 MHz wide modulated signal - confirming TX chain is working',
-              'A narrow CW spike like the beacon - confirming the BUC LO is present',
-              'No signal at all on the display - loopback does not produce visible output',
-              'The AURORA-7 beacon at 947 MHz - confirming the LNB LO change took effect',
+              'A 24 MHz wide modulated carrier at 1422 MHz - Modem 2 through the BUC and the test loop',
+              'A narrow CW spike at 1422 MHz - the BUC LO leaking through the loop',
+              'Nothing but the noise floor - the loop carrier only shows with the LNB LO retuned to the BUC LO',
+              'The AURORA-7 beacon at 1422 MHz - the loop only proves the receive side',
             ],
             correctIndex: 0,
             explanation:
-              'The loopback signal appears as a 24 MHz wide modulated carrier at 947 MHz (TX IF 1047 MHz upconverted by BUC LO 7100 MHz to 6053 MHz RF, then downconverted by LNB LO 7000 MHz). This confirms Modem 2 and the BUC are working correctly.',
+              "The loop carrier is a 24 MHz modulated carrier at 1422 MHz. TX IF 1047 MHz goes up to 6053 MHz RF through the 7100 MHz BUC LO, down 2225 MHz in the loop translator to 3828 MHz, and then to 1422 MHz IF through the normal 5250 MHz LNB LO. That's AURORA-7's TP-1 slot, where our own downlink sits once we're live, and the beacon stays at 1085 MHz. Modem 2 and the BUC are working.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -1143,35 +1182,6 @@ export const scenario8Data: ScenarioData = {
       ],
       conditionLogic: 'AND',
       points: 10,
-    },
-    {
-      id: 'restore-lnb-frequency',
-      nice: ['T0153', 'K0740'],
-      title: 'Restore LNB Frequency',
-      description: 'Return the LNB LO to 5250 MHz for normal satellite reception.',
-      groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['verify-loopback-signal'],
-      timeLimitSeconds: 1 * 60,
-      timerStartTrigger: 'on-activate',
-      conditions: [
-        {
-          type: 'tab-active',
-          description: 'RX Analysis Tab Open',
-          params: { tab: 'rx-analysis' },
-          mustMaintain: true,
-        },
-        {
-          type: 'lnb-lo-set',
-          description: 'LNB LO Restored to 5250 MHz',
-          params: {
-            loFrequency: 5250 as MHz,
-            loFrequencyTolerance: 10 as MHz,
-          },
-          mustMaintain: true,
-        },
-      ],
-      conditionLogic: 'AND',
-      points: 5,
     },
 
     // ============================================================
@@ -1181,9 +1191,10 @@ export const scenario8Data: ScenarioData = {
       id: 'disable-loopback-prepare-uplink',
       nice: ['S0421', 'T1567'],
       title: 'Prepare for Live Uplink',
-      description: 'Disable loopback mode and mute BUC in preparation for HPA enable.',
+      description:
+        'Disable loopback mode and set the BUC gain back to the standard 23 dB (at 15 dB the HPA would be 8 dB short of drive). The BUC stays unmuted for the HPA enable.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['restore-lnb-frequency'],
+      prerequisiteObjectiveIds: ['verify-loopback-signal'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -1198,6 +1209,15 @@ export const scenario8Data: ScenarioData = {
           description: 'Loopback Disabled',
           mustMaintain: true,
         },
+        {
+          type: 'buc-gain-set',
+          description: 'BUC Gain Back to 23 dB',
+          params: {
+            gain: 23 as dB,
+            gainTolerance: 0.5 as dB,
+          },
+          mustMaintain: true,
+        },
       ],
       conditionLogic: 'AND',
       points: 5,
@@ -1206,7 +1226,7 @@ export const scenario8Data: ScenarioData = {
       id: 'enable-hpa-sequence',
       nice: ['S0421', 'K0770'],
       title: 'Enable HPA',
-      description: 'Power on and enable the HPA output stage following proper sequencing.',
+      description: 'Enable the HPA output stage. It stayed powered during the loopback test, and only its output was off.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['disable-loopback-prepare-uplink'],
       timeLimitSeconds: 2 * 60,
@@ -1217,12 +1237,6 @@ export const scenario8Data: ScenarioData = {
           description: 'TX Chain Tab Open',
           params: { tab: 'tx-chain' },
           mustMaintain: true,
-        },
-        {
-          type: 'equipment-powered',
-          description: 'HPA Powered',
-          params: { equipment: 'hpa' },
-          maintainUntilObjectiveComplete: true,
         },
         {
           type: 'hpa-enabled',
@@ -1241,7 +1255,8 @@ export const scenario8Data: ScenarioData = {
       id: 'verify-link-operational',
       nice: ['T0153', 'K0741'],
       title: 'Verify Link Operational',
-      description: 'Confirm the AURORA-7 link is fully operational with both RX and TX paths verified.',
+      description:
+        "Confirm the AURORA-7 link is fully operational. Modem 2's carrier should be up, the receiver should hold steady lock on it with no more dropouts, and the Dashboard should show no warning or critical alarms.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['enable-hpa-sequence'],
       timeLimitSeconds: 2 * 60,
@@ -1259,10 +1274,17 @@ export const scenario8Data: ScenarioData = {
           params: {
             character: Character.SYSTEM,
             question: 'What indicators confirm the AURORA-7 link is now operational?',
-            options: ['No active alarms on Dashboard', 'Antenna in step-track with beacon lock', 'HPA enabled and BUC unmuted', 'All of the above'],
-            correctIndex: 3,
+            // nats-r3-s08-F3: the receiver on our own carrier is the end-to-end proof
+            options: [
+              'No warning or critical alarms on Dashboard',
+              'Antenna in step-track with beacon lock',
+              'HPA enabled and BUC unmuted',
+              'Receiver holding steady lock on our own carrier',
+              'All of the above',
+            ],
+            correctIndex: 4,
             explanation:
-              'A fully operational link shows: no Dashboard alarms, antenna tracking with beacon lock (step-track for inclined orbit), and active TX chain (HPA enabled, BUC unmuted). All conditions must be met.',
+              "A fully operational link shows no Dashboard warning or critical alarms, and Modem 1's fault alarm cleared when you took it out of service. It shows the antenna tracking with beacon lock (step-track for the inclined orbit) and an active TX chain (HPA enabled, BUC unmuted). It also shows the receiver holding steady lock on Modem 2's carrier, relayed back down by AURORA-7, where Modem 1's dropouts used to knock the lock off. That last one is the end-to-end proof, because our carrier went up, through the satellite and back. Every one of those conditions must be met, so the answer is all of the above.",
             pointPenalty: 10,
             preserveOptionOrder: true,
           },
@@ -1296,7 +1318,7 @@ export const scenario8Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              "The customer intermittent connectivity had three causes: (1) LNB reference unlock degraded receive quality, (2) program-track mode could not follow AURORA-7's inclined orbit drift, (3) TX Modem 1 had an intermittent hardware fault. All were resolved without waking Dana or escalating.",
+              "The customer's intermittent connectivity had three causes. The LNB reference unlock degraded receive quality, program-track couldn't follow AURORA-7's inclined-orbit drift, and TX Modem 1 had an intermittent hardware fault. You fixed all three without waking Dana or escalating, and the feed heater was a precaution against the rain, not part of the root cause.",
             pointPenalty: 15,
           },
           mustMaintain: false,
@@ -1310,10 +1332,10 @@ export const scenario8Data: ScenarioData = {
     intro: {
       text: `
       <p>
-        <em>[Text message from Dana at 2:17 AM]</em>
+        <em>[Text message from Dana at 2:03 AM]</em>
       </p>
       <p>
-        "Hey - just got a trouble ticket. Customer reports intermittent connectivity on AURORA-7, signal dropouts every few minutes. I'm on-call but heading back to sleep. You've got this."
+        "Hey - just got a trouble ticket. Customer reports intermittent connectivity on AURORA-7, signal dropouts every few seconds. I'm on-call but heading back to sleep. You've got this."
       </p>
       <p>
         "Charlie's out of state visiting family. Call me only if it's a genuine emergency. Good luck."
@@ -1323,14 +1345,30 @@ export const scenario8Data: ScenarioData = {
       emotion: Emotion.NEUTRAL,
       audioUrl: getAssetUrl('/assets/campaigns/nats/8/intro.mp3'),
     },
+    objectivesOnStart: {
+      // nats-s08-F13: the objective promised an alert that never appeared
+      'weather-alert-decision': {
+        text: `
+        <p>
+          <em>[Text message from Dana, forwarding the NWS winter weather alert]</em>
+        </p>
+        <p>
+          "Weather alert just pinged my phone. There's freezing rain headed for the site in about 2 hours, with 0.1 to 0.3 inches of accumulation and temps falling to 22. It's your call. I'm going back to sleep."
+        </p>
+        `,
+        character: Character.DANA_TORRES,
+        emotion: Emotion.NEUTRAL,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/8/obj-weather-alert-decision.mp3'),
+      },
+    },
     objectives: {
       'final-summary': {
         text: `
         <p>
-          <em>[Text message from Dana at 4:45 AM]</em>
+          <em>[Text message from Dana]</em>
         </p>
         <p>
-          "Saw the ticket resolution come through. LNB reference issue, tracking mode, and good call switching to Modem 2. You handled it right. No need to wake me for that."
+          "I saw the ticket resolution come through. You caught the LNB reference issue and the tracking mode problem, and switching to Modem 2 was a good call. You handled it right, and there was no need to wake me for that."
         </p>
         <p>
           "Charlie will be proud. See you at shift change."

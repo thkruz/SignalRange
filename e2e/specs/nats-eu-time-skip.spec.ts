@@ -64,7 +64,8 @@ test.describe('nats-eu time skip', () => {
   let missionControl: MissionControlPage;
 
   test.beforeAll(async ({ browser }) => {
-    context = await browser.newContext();
+    context = await browser.newContext({ userAgent: 'game-check/1.0' });
+    await context.route('**/*', (route) => (['localhost', '127.0.0.1'].includes(new URL(route.request().url()).hostname) ? route.continue() : route.abort()));
     page = await context.newPage();
 
     await page.addInitScript(() => {
@@ -95,7 +96,7 @@ test.describe('nats-eu time skip', () => {
     // The first objective freezes the clock. Skipping a paused scenario would
     // run the sky forward while the mission stands still.
     await expect(page.locator(SKIP_BUTTON)).toBeDisabled();
-    await expect(page.locator(SKIP_BUTTON)).toHaveAttribute('title', /paused/i);
+    await expect(page.locator(SKIP_BUTTON)).toHaveAttribute('title', /paused/iu);
   });
 
   test('unfreezing the clock does not on its own offer a skip', async () => {
@@ -105,7 +106,7 @@ test.describe('nats-eu time skip', () => {
     // Answer by text, not by position - the options are presented in a
     // scenario-defined order that a wrong pick would leave the objective on.
     await waitForQuizToAppear(page);
-    await page.locator('.quiz-option-btn', { hasText: 'Pass predictions and program-track pointing' }).click();
+    await page.locator('.quiz-option-btn', { hasText: 'Pass predictions and pointing' }).click();
     await page.locator('#quiz-continue-btn').click();
     await dismissDialogIfPresent(page);
 
@@ -113,15 +114,15 @@ test.describe('nats-eu time skip', () => {
     // timed objective blocks the skip: the operator is being timed on real
     // work, not waiting for the sky.
     await expect(page.locator(SKIP_BUTTON)).toBeDisabled({ timeout: 15000 });
-    await expect(page.locator(SKIP_BUTTON)).toHaveAttribute('title', /timed objective/i);
+    await expect(page.locator(SKIP_BUTTON)).toHaveAttribute('title', /timed objective/iu);
   });
 
   test('works the pre-pass beats to the untimed acquisition objective', async () => {
     test.setTimeout(180000);
     await missionControl.selectGroundStation('GW-01');
     await missionControl.selectTab('dashboard');
-    await expectDashboardAlarm(page, 'AGC at max gain');
-    await answerSystemQuiz(page, 'RX AGC at max gain');
+    await expectDashboardAlarm(page, 'AGC on noise only');
+    await answerSystemQuiz(page, 'RX AGC on noise only');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'GW-01 Dashboard Sweep');
 
@@ -157,15 +158,17 @@ test.describe('nats-eu time skip', () => {
     await advanceClock(page, 45);
 
     await expect(page.locator(SKIP_BUTTON)).toBeEnabled({ timeout: 15000 });
-    await expect(page.locator(SKIP_BUTTON)).toContainText(/Skip \d/);
+    await expect(page.locator(SKIP_BUTTON)).toContainText('Skip to AOS');
   });
 
-  test('fast-forwards both clocks to just before the next AOS', async () => {
+  test('fast-forwards both clocks directly to the next AOS', async () => {
     const beforeSimMs = await simClockMs(page);
     const beforeSkippedMs = await missionSkippedMs(page);
 
     await page.locator(SKIP_BUTTON).click();
     await expect(page.locator(SKIP_CONFIRM)).toBeVisible({ timeout: 10000 });
+    await expect(page.locator(SKIP_CONFIRM)).toHaveText('Skip to AOS');
+    await expect(page.locator('#time-skip-target')).toContainText('(AOS)');
     await page.locator(SKIP_CONFIRM).click();
 
     // The overlay is the operator's evidence that time is being consumed, not
@@ -186,9 +189,8 @@ test.describe('nats-eu time skip', () => {
     expect(Math.abs(scenarioClockDeltaMs - missionClockDeltaMs)).toBeLessThan(15_000);
   });
 
-  test('goes back to disabled once the skip has been taken', async () => {
-    // The clock now sits inside the lead-in to the pass it skipped to, so
-    // there is nothing left to skip.
+  test('protects the contact now in view instead of skipping over it', async () => {
     await expect(page.locator(SKIP_BUTTON)).toBeDisabled({ timeout: 15000 });
+    await expect(page.locator(SKIP_BUTTON)).toHaveAttribute('title', /is in view/u, { timeout: 15000 });
   });
 });

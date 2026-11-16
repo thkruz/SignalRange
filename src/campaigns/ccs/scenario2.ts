@@ -52,7 +52,7 @@ import { cobalt4Satellite } from './satellites';
 export const ccsScenario2Data: ScenarioData = {
   id: 'ccs-scenario2',
   url: 'ccs/scenarios/ccs-scenario2',
-  imageUrl: 'nats/21/card.png',
+  imageUrl: 'ccs/2/card.png',
   number: 1,
   isDisabled: false,
   difficulty: 'advanced',
@@ -82,11 +82,11 @@ export const ccsScenario2Data: ScenarioData = {
       groundStationId: 'SS-01',
       targetNoradId: 90042,
       jamAntennaIndex: 0,
-      victimCarrierPowerDbm: 6,
+      victimCarrierPowerDbm: 83.2, // the service uplink EIRP (satellites.ts; phase 19.3: was 6 dBm at the transponder input)
       targetUplinkLowHz: 8100e6,
       targetUplinkHighHz: 8150e6,
       targetPolarization: 'H',
-      jamPathGainDb: -20,
+      jamPathGainDb: 57.2, // HPA output -> jammer uplink EIRP equivalent (phase 19.3: -20 + 77.2, J/S unchanged)
       pointingToleranceDeg: 5,
       effectiveJtoSDb: 6,
     },

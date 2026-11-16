@@ -15,7 +15,7 @@ import { answerDecision, dismissDialogIfPresent, waitForSimulationReady } from '
  * configuration export, disable the legacy account, fly SAR-2, close the
  * record. Clock starts 2027-04-12 02:00:00Z:
  *   MERIDIAN-SAR-1  AOS 02:20:00Z  max el 30.0 deg at 02:24:46Z  LOS 02:29:34Z
- *   carrier         on 02:25:30Z .. 02:34:00Z (terrestrial, Galway only)
+ *   carrier         on about 02:25Z (120 s after characterise opens) .. 02:33:30Z (terrestrial, Galway only)
  *   export          02:33:00Z in the audit log
  *   MERIDIAN-SAR-2  AOS 02:40:01Z  max el 26.3 deg at 02:44:46Z  LOS 02:49:30Z
  *
@@ -74,11 +74,11 @@ test.describe('nats-eu Scenario 17 Full Completion', () => {
     await waitForObjectiveComplete(missionControl, 'Read the Night Brief');
   });
 
-  test('[dashboard-sweep] reads the board: AGC rail, no faults', async () => {
+  test('[dashboard-sweep] reads the board: AGC no-carrier warning, no faults', async () => {
     await missionControl.selectGroundStation('GW-01');
     await missionControl.selectTab('dashboard');
-    await expectDashboardAlarm(page, 'AGC at max gain');
-    await answerSystemQuiz(page, 'RX AGC at max gain');
+    await expectDashboardAlarm(page, 'AGC on noise only');
+    await answerSystemQuiz(page, 'RX AGC on noise only');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'GW-01 Dashboard Sweep');
   });
@@ -89,10 +89,10 @@ test.describe('nats-eu Scenario 17 Full Completion', () => {
     await waitForObjectiveComplete(missionControl, 'Reference Check');
   });
 
-  test('[rx-chain-ready] retunes the modem to 1414 MHz and frames a 40 MHz span', async () => {
+  test('[rx-chain-ready] retunes the modem to 1414 MHz and frames a 60 MHz span', async () => {
     await setRxModemFrequency(page, missionControl, 1414);
     await fillAndChange(page, '#sa-center-freq', '1414');
-    await fillAndChange(page, '#sa-span', '40');
+    await fillAndChange(page, '#sa-span', '60');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Set Up the Receiver for SAR-1');
   });
@@ -169,7 +169,7 @@ test.describe('nats-eu Scenario 17 Full Completion', () => {
     await waitForObjectiveComplete(missionControl, 'Open the Incident');
   });
 
-  test('[flag-the-config-export] flags the live export after it lands at 02:33', async () => {
+  test('[flag-the-config-export] flags the live export after it lands', async () => {
     // The export is logged 25 s after this objective opens (anchored, phase 19.0a)
     await advanceMissionClockBy(page, 30);
     await missionControl.selectTab('security-console');
@@ -205,7 +205,7 @@ test.describe('nats-eu Scenario 17 Full Completion', () => {
 
   test('[close-the-shift] writes the debrief line and completes', async () => {
     await closeWorkingDocumentIfOpen(page);
-    await answerSystemQuiz(page, 'A decommissioned account was still active');
+    await answerSystemQuiz(page, 'A decommissioned account stayed active for three months');
     await expect(page.locator('#level-complete-modal')).toBeVisible({ timeout: 45000 });
   });
 

@@ -33,6 +33,32 @@ export class ObjectiveAnchors {
     this.pending_ = new Set([...anchorIds].filter((id): id is string => id !== undefined));
   }
 
+  /** Snapshot of the anchors already seen live, as [objectiveId, mission-elapsed second] (checkpoint) */
+  getState(): Array<[string, number]> {
+    return [...this.liveAtS_];
+  }
+
+  /**
+   * Restore anchors captured by getState so anchored events keep their original
+   * time instead of re-anchoring at the restore moment. Ids this manager does not
+   * anchor on, and non-finite times, are ignored.
+   */
+  restoreState(entries: Array<[string, number]> | undefined): void {
+    if (!Array.isArray(entries)) {
+      return;
+    }
+    for (const entry of entries) {
+      if (!Array.isArray(entry)) {
+        continue;
+      }
+      const [id, atS] = entry;
+      if (typeof id === 'string' && Number.isFinite(atS) && (this.pending_.has(id) || this.liveAtS_.has(id))) {
+        this.liveAtS_.set(id, atS);
+        this.pending_.delete(id);
+      }
+    }
+  }
+
   /** Whether any event names an anchor (managers skip polling when not) */
   get hasAnchors(): boolean {
     return this.pending_.size > 0 || this.liveAtS_.size > 0;

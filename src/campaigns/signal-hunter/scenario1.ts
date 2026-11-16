@@ -1,6 +1,7 @@
 import { Character } from '@app/modal/character-enum';
 import type { ScenarioData } from '@app/ScenarioData';
 import type { dBm } from '@app/types';
+import { loadC5Referral } from '../frontline/continuity-fallbacks';
 import { petersonGroundStation } from './ground-stations';
 import { sentry7Satellite, sentry9Satellite } from './satellites';
 
@@ -28,7 +29,7 @@ import { sentry7Satellite, sentry9Satellite } from './satellites';
  * TLEs were authored against (both birds ~47 deg elevation from PA-22).
  *
  * Frequency plan for this incident:
- * - Hostile uplink 6021 MHz H-pol, 3 MHz wide, inside TP-1 (5990-6030)
+ * - Hostile uplink 6021 MHz V-pol uplink (comes down H), 3 MHz wide, inside TP-1 (5990-6030)
  * - Relayed downlink 3796 MHz -> 1354 MHz IF (service carrier sits at 1365)
  *
  * NICE Framework Alignment:
@@ -45,7 +46,7 @@ import { sentry7Satellite, sentry9Satellite } from './satellites';
 export const signalHunterScenario1Data: ScenarioData = {
   id: 'signal-hunter-scenario1',
   url: 'signal-hunter/scenarios/signal-hunter-scenario1',
-  imageUrl: 'nats/21/card.png',
+  imageUrl: 'signal-hunter/1/card.png',
   number: 1,
   isDisabled: false,
   difficulty: 'advanced',
@@ -74,6 +75,7 @@ export const signalHunterScenario1Data: ScenarioData = {
     workingDocument: {
       title: 'Incident Report EW-27-0244',
       description: 'SENTRY-7 TP-1 interference, PA-22, 2027-09-01. Sections: Characterization, Fix.',
+      incomingReferral: loadC5Referral,
     },
 
     interferenceEvents: [
@@ -82,8 +84,8 @@ export const signalHunterScenario1Data: ScenarioData = {
         satelliteNoradId: 71001,
         frequency: 6021e6, // Uplink, inside SENTRY-7 TP-1 (5990-6030) -> 3796 MHz downlink, 1354 MHz IF
         bandwidth: 3e6,
-        power: 4, // dBm at transponder input; ~C/I 16 dB against the 20 dBm service carrier
-        polarization: 'H',
+        power: 76.2, // uplink EIRP, dBm (phase 19.3 migration: was 4 dBm at the transponder input, same downlink)
+        polarization: 'V', // Uplink V: the transponder reverses linear polarization, so it comes down H like the service carrier
         startTime: 20,
         duration: 7200, // Persists across the session
         periodSeconds: 130, // 40 s on / 90 s off - a ~30% duty cycle
@@ -111,7 +113,8 @@ export const signalHunterScenario1Data: ScenarioData = {
       id: 'review-mission-brief',
       nice: ['K0645'],
       title: 'Review the Incident Package',
-      description: 'Open the shift package for EW-27-0244: the SENTRY-7/9 transponder plan, the LNB and translation figures, and what the incident cell needs in the report.',
+      description:
+        'Open the Mission Brief from the left sidebar. It holds the SENTRY-7/9 transponder plan, the LNB and translation figures, and what the incident cell needs in the report.',
       groundStation: 'PA-22',
       freezesScenarioTimer: true,
       prerequisiteObjectiveIds: [],
@@ -155,7 +158,7 @@ export const signalHunterScenario1Data: ScenarioData = {
       nice: ['K0926', 'S0648'],
       title: 'Time the Cadence',
       description:
-        'Watch the clear-write trace against the mission clock through at least two full cycles. The correlator window is 12 s; you need to know how much on-time you have to work with.',
+        'Stay on the RX Analysis view and watch the carrier come and go against the mission clock, through at least two full cycles. Then answer the cadence question; the correlator window is 12 s, so you need to know how much on-time you have to work with.',
       groundStation: 'PA-22',
       prerequisiteObjectiveIds: ['detect-interference'],
       conditions: [
@@ -188,7 +191,8 @@ export const signalHunterScenario1Data: ScenarioData = {
       id: 'open-geolocation-console',
       nice: ['S0421'],
       title: 'Bring Up the Correlator',
-      description: 'Open the Geolocation console. SENTRY-9 is the adjacent collector for this pair; the correlator has its own tuning and does not touch the receive chain.',
+      description:
+        'Open the Geolocation tab. It holds the correlator: TARGET FREQUENCY, CORRELATION BANDWIDTH, and the CAPTURE, AUTO and COMPUTE FIX buttons. SENTRY-9 is the adjacent collector for this pair, and the correlator has its own tuning that does not touch the receive chain.',
       groundStation: 'PA-22',
       prerequisiteObjectiveIds: ['characterize-duty-cycle'],
       conditions: [
@@ -196,6 +200,7 @@ export const signalHunterScenario1Data: ScenarioData = {
           type: 'tab-active',
           description: 'Geolocation Console Open',
           params: { tab: 'geolocation' },
+          next: 'open the Geolocation tab.',
           mustMaintain: false,
         },
       ],
@@ -207,7 +212,7 @@ export const signalHunterScenario1Data: ScenarioData = {
       nice: ['K0926', 'K1032', 'S0421'],
       title: 'Capture Inside the Window',
       description:
-        'Work the interferer uplink back from the IF you measured (RF = LO - IF; uplink = RF + TP-1 translation) and set the correlation bandwidth to match the carrier. Start captures only while the carrier is up - the correlator needs it present for 70% of the 12 s window or it reports NO CORRELATION. Six good captures across at least two cycles.',
+        'Enter the interferer uplink in TARGET FREQUENCY (RF = LO - IF, then uplink = RF + TP-1 translation) and set CORRELATION BANDWIDTH to the carrier width you read off the analyzer. The correlator needs the carrier present for most of its 12 s window, or it reports NO CORRELATION, so start each capture early in an on-window. AUTO retries for you. Collect six good captures.',
       groundStation: 'PA-22',
       prerequisiteObjectiveIds: ['open-geolocation-console'],
       conditions: [
@@ -215,6 +220,8 @@ export const signalHunterScenario1Data: ScenarioData = {
           type: 'geolocation-measurements-collected',
           description: 'At least 6 TDOA/FDOA captures on the interferer',
           params: { minCount: 6, interferenceEventId: 'quay-hostile' },
+          next: 'enter the uplink and bandwidth, then press CAPTURE early in an on-window, or AUTO.',
+          hint: 'Read the message under the CAPTURE button: NO CORRELATION means the frequency or bandwidth is off, or the carrier was in an off window.',
           mustMaintain: false,
         },
       ],
@@ -226,7 +233,7 @@ export const signalHunterScenario1Data: ScenarioData = {
       nice: ['K1032', 'K0926'],
       title: 'First Fix',
       description:
-        'COMPUTE FIX. The cell needs the emitter inside 25 km. If the ellipse is still wide, keep capturing through further cycles - the inclined SENTRY pair moves between windows and every new epoch rotates the FDOA line - then compute again.',
+        'Press COMPUTE FIX and read the result under Emitter Fix. The cell needs the emitter inside 25 km. If the ellipse is still wide, keep capturing through further cycles, because the inclined SENTRY pair moves between windows and every new epoch rotates the FDOA line, then compute again.',
       groundStation: 'PA-22',
       prerequisiteObjectiveIds: ['collect-measurements'],
       conditions: [
@@ -234,6 +241,8 @@ export const signalHunterScenario1Data: ScenarioData = {
           type: 'geolocation-fix-accuracy',
           description: 'Fix within 25 km of the emitter',
           params: { maxErrorKm: 25 },
+          next: 'press COMPUTE FIX and read the Emitter Fix card.',
+          hint: 'A wide ellipse means the captures are bunched in time; spread them across more cycles and compute again.',
           mustMaintain: false,
         },
       ],
@@ -244,7 +253,8 @@ export const signalHunterScenario1Data: ScenarioData = {
       id: 'file-incident-report',
       nice: ['S0842', 'S0593', 'K0926'],
       title: 'File the Characterization',
-      description: 'Complete the characterization block of EW-27-0244: duty cycle, occupied bandwidth, and polarization. The cell hands this to the site that goes out to look.',
+      description:
+        'Answer the three report questions that open next: duty cycle, occupied bandwidth and polarization. The cell hands the finished characterization to the site that goes out to look.',
       groundStation: 'PA-22',
       prerequisiteObjectiveIds: ['compute-fix'],
       conditions: [
@@ -297,15 +307,15 @@ export const signalHunterScenario1Data: ScenarioData = {
             question: "EW-27-0244, field 6 - POLARIZATION. The carrier is being relayed by SENTRY-7 TP-1. What is the interferer's uplink polarization, and how do you know?",
             options: [
               'Horizontal - TP-1 is an H-pol transponder; a cross-polarized uplink would be rejected and never show at this level',
-              'Vertical - uplinks are the opposite polarization to the downlink; TP-1 comes down H-pol, so the uplink had to go up V-pol',
+              'Vertical - for a linear transponder the uplink is the opposite polarization to the downlink; TP-1 comes down H-pol, so the uplink had to go up V-pol',
               'Right-hand circular - C-band military transponders are circular; a linear uplink would lose 3 dB and never reach this level',
               'Cannot be determined - polarization is lost through a transponder; only the field team at the emitter can measure the uplink',
             ],
-            correctIndex: 0,
+            correctIndex: 1,
             explanation:
-              "Logged. The transponder is the polarization filter: a cross-polarized uplink is rejected by ~28 dB, so only an H-pol uplink gets through TP-1 at the level you are seeing. That is a fact about the emitter's antenna the field team can use.",
+              "Logged. TP-1 reverses linear polarization: it takes V in and sends H down. The carrier reaches PA-22 on its H-pol port at full level, so the uplink had to go up V-pol. That is a fact about the emitter's antenna the field team can use.",
             pointPenalty: 5,
-            documentLine: 'Polarization: H (co-polar with TP-1; inferred from transponder routing).',
+            documentLine: 'Polarization: V uplink (TP-1 reverses it to H on the downlink; inferred from transponder routing).',
             documentSection: 'Characterization',
           },
           mustMaintain: false,
@@ -319,7 +329,7 @@ export const signalHunterScenario1Data: ScenarioData = {
       nice: ['K1032'],
       title: 'Close the Ellipse',
       description:
-        'Stretch: keep capturing through further cycles - twelve or more captures - and recompute until the fix closes to within 15 km. A tighter ellipse is fewer square kilometres for the field team to search.',
+        'Stretch goal: keep capturing through further cycles until you have twelve captures, then press COMPUTE FIX again until the fix closes to within 15 km. A tighter ellipse is fewer square kilometres for the field team to search.',
       groundStation: 'PA-22',
       prerequisiteObjectiveIds: ['compute-fix'],
       isOptional: true,
@@ -341,4 +351,28 @@ export const signalHunterScenario1Data: ScenarioData = {
       points: 10,
     },
   ],
+  dialogClips: {
+    objectivesOnStart: {
+      'detect-interference': {
+        character: Character.CHARLIE_BROOKS,
+        audioUrl: '',
+        text: '<p>Select PA-22 and open the RX Analysis tab, which is the spectrum analyzer on the receive line. The service carrier sits at 1365 megahertz, and the max-hold trace keeps the highest level it has seen, so a carrier that blinks still leaves a mark. Wait for it to blink.</p>',
+      },
+      'open-geolocation-console': {
+        character: Character.CHARLIE_BROOKS,
+        audioUrl: '',
+        text: "<p>The Geolocation tab holds the correlator, the console that measures the carrier through two satellites at once. It's new to you, so read the buttons before you touch it. CAPTURE starts one twelve-second measurement, AUTO repeats that for you, and COMPUTE FIX turns your captures into a position.</p>",
+      },
+      'collect-measurements': {
+        character: Character.CHARLIE_BROOKS,
+        audioUrl: '',
+        text: "<p>Tune the correlator first: work the uplink back from the IF you read off the analyzer and enter that. A capture only counts if the carrier is up for most of its twelve seconds, so start it early in an on-window. If you'd rather not watch the clock, press AUTO and let it retry through the quiet stretches.</p>",
+      },
+      'compute-fix': {
+        character: Character.CHARLIE_BROOKS,
+        audioUrl: '',
+        text: '<p>Now press COMPUTE FIX. The fix is a point on the map plus an error ellipse, the area the emitter could be in. If the ellipse is wide, take more captures from later cycles and compute again.</p>',
+      },
+    },
+  },
 };

@@ -23,7 +23,17 @@ import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForS
  * - 'execute-handover': Traffic handover dropdown + execute button
  * - 'auto': Pre-staged state already satisfies the condition
  */
-type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'toggle-switch' | 'enable-tx-commit' | 'set-tracking-mode' | 'select-satellite' | 'execute-handover' | 'auto';
+type ObjectiveType =
+  | 'quiz'
+  | 'select-station'
+  | 'click-tab'
+  | 'toggle-switch'
+  | 'enable-tx-commit'
+  | 'set-tracking-mode'
+  | 'select-satellite'
+  | 'execute-handover'
+  | 'auto'
+  | 'ops-log';
 
 interface Scenario11Objective {
   id: string;
@@ -40,6 +50,7 @@ interface Scenario11Objective {
   handoverConfig?: {
     targetStation: string;
   };
+  logText?: string;
 }
 
 const SCENARIO_11_OBJECTIVES: Scenario11Objective[] = [
@@ -50,7 +61,7 @@ const SCENARIO_11_OBJECTIVES: Scenario11Objective[] = [
     id: 'review-mission-brief',
     title: 'Review Shift Brief',
     type: 'quiz',
-    correctAnswer: 'TIDEMARK-1 traffic moves to ME-02 for a 2-hour VT-01 maintenance window, then comes back next shift',
+    correctAnswer: 'TIDEMARK-1 traffic moves to ME-02 for the VT-01 maintenance, then comes back once the crew signs the work off',
   },
 
   // ============================================================
@@ -75,10 +86,16 @@ const SCENARIO_11_OBJECTIVES: Scenario11Objective[] = [
     correctAnswer: 'It records what the link looked like healthy, so any anomaly after the transfer can be attributed',
   },
   {
-    id: 'vt-confirm-tm1-locked',
-    title: 'Confirm VT-01 Owns TIDEMARK-1',
+    id: 'vt-confirm-tm1-locked-tab',
+    title: 'Open ACU Control',
     type: 'click-tab',
     tabId: 'acu-control',
+  },
+  {
+    id: 'vt-confirm-tm1-locked',
+    title: 'Confirm VT-01 Owns TIDEMARK-1',
+    type: 'quiz',
+    correctAnswer: 'Current target TIDEMARK-1, beacon LOCKED, program-track',
   },
 
   // ============================================================
@@ -97,10 +114,16 @@ const SCENARIO_11_OBJECTIVES: Scenario11Objective[] = [
     tabId: 'acu-control',
   },
   {
-    id: 'me-verify-beacon-and-rx',
-    title: 'ME-02 Receive Chain Hot',
+    id: 'me-verify-beacon-and-rx-tab',
+    title: 'Open RX Analysis (ME-02)',
     type: 'click-tab',
     tabId: 'rx-analysis',
+  },
+  {
+    id: 'me-verify-beacon-and-rx',
+    title: 'Verify ME-02 Receive Chain Hot',
+    type: 'quiz',
+    correctAnswer: '12 to 14 dB - locked with good margin',
   },
 
   // ============================================================
@@ -142,9 +165,17 @@ const SCENARIO_11_OBJECTIVES: Scenario11Objective[] = [
     },
   },
   {
+    // nats-r2-s03-F3: continuity is read off ME-02's receiver after the transfer
+    id: 'verify-me-traffic-owner-station',
+    title: 'Back to ME-02 After the Transfer',
+    type: 'select-station',
+    stationId: 'ME-02',
+  },
+  {
     id: 'verify-me-traffic-owner',
-    title: 'Verify ME-02 Owns Traffic',
-    type: 'auto',
+    title: 'Verify Service Continuity on ME-02',
+    type: 'click-tab',
+    tabId: 'rx-analysis',
   },
   {
     id: 'catherine-confirm-hot',
@@ -206,10 +237,16 @@ const SCENARIO_11_OBJECTIVES: Scenario11Objective[] = [
   // SHIFT WRAP
   // ============================================================
   {
-    id: 'log-handover-entry',
-    title: 'Log the Handover',
+    id: 'log-handover-entry-typed',
+    title: 'Type the Handover into the Ops Log',
+    type: 'ops-log',
+    logText: 'Planned TM-1 handover to ME-02 complete. VT-01 safed, antenna at maintenance position for the crew.',
+  },
+  {
+    id: 'log-handover-quiz',
+    title: 'Check the Log Line',
     type: 'quiz',
-    correctAnswer: '1000 - Planned TM-1 handover to ME-02 complete. VT-01 safed, antenna at maintenance position, crew on-site. Return to service next shift.',
+    correctAnswer: 'Planned TM-1 handover to ME-02 complete. VT-01 safed, antenna at maintenance position, crew on-site. Return to service after crew sign-off.',
   },
 ];
 
@@ -285,9 +322,16 @@ async function setTrackingMode(page: import('@playwright/test').Page, trackingMo
   await page.waitForTimeout(300);
 
   if (trackingMode === 'maintenance' || trackingMode === 'stow') {
-    const applyBtn = page.locator('button[id$="apply-changes-btn"]');
+    // Phase 29 D4 (nats-r3-s11-F2): MAINT/STOW only stage; the ACU card shows
+    // the pending badge and the mode (and the objective) commit at APPLY
+    // Scoped to the active station's ACU tab (the visible one), not the first in the DOM
+    const acuTab = page.locator('.acu-control-tab:visible');
+    const stagedBadge = acuTab.locator('[id$="staged-mode-badge"]');
+    await expect(stagedBadge).toHaveText(`${trackingMode === 'stow' ? 'STOW' : 'MAINTENANCE'} pending APPLY`, { timeout: 3000 });
+    const applyBtn = acuTab.locator('button[id$="apply-changes-btn"]');
     await expect(applyBtn).toBeEnabled({ timeout: 3000 });
     await applyBtn.click();
+    await expect(stagedBadge).toBeHidden({ timeout: 3000 });
     await page.waitForTimeout(200);
   }
 }
@@ -346,6 +390,24 @@ async function executeTrafficHandover(page: import('@playwright/test').Page, tar
 }
 
 /**
+ * Type an entry into the Operations Log (sidebar log icon) and close it.
+ */
+async function typeOpsLogEntry(page: import('@playwright/test').Page, text: string): Promise<void> {
+  await page.locator('.ops-log-icon').first().click();
+  const input = page.locator('#ops-log-manual-input');
+  await expect(input).toBeVisible({ timeout: 5000 });
+  await input.fill(text);
+  await input.press('Enter');
+  await expect(page.locator('#ops-log-entries')).toContainText(text.slice(0, 20), { timeout: 5000 });
+  // Mission Complete closes the log itself when this entry finishes the scenario
+  await page
+    .locator('#ops-log-modal-close')
+    .click({ timeout: 3000 })
+    .catch(() => {});
+  await page.waitForTimeout(300);
+}
+
+/**
  * Execute an objective based on its type.
  */
 async function executeObjective(page: import('@playwright/test').Page, missionControlPage: MissionControlPage, objective: Scenario11Objective): Promise<void> {
@@ -392,6 +454,10 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
 
     case 'auto':
       await page.waitForTimeout(2000);
+      break;
+
+    case 'ops-log':
+      await typeOpsLogEntry(page, objective.logText!);
       break;
   }
 

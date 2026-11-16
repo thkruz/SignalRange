@@ -2,6 +2,7 @@ import type { GroundStationConfig } from '@app/assets/ground-station/ground-stat
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { ScenarioData } from '@app/ScenarioData';
 import type { dBm, MHz } from '@app/types';
+import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees, TleLine1, TleLine2 } from 'ootk';
 import { galwayGroundStation, shetlandGroundStation } from './ground-stations';
 import { createMeridianSar1, createMeridianSar2, type MeridianTle } from './satellites';
@@ -30,9 +31,11 @@ import { createMeridianSar1, createMeridianSar2, type MeridianTle } from './sate
  *   MERIDIAN-SAR-2: AOS T+18.02 (10:18:00Z, az 023), max el 31.8 deg at T+22.82
  *                   (10:22:49Z, 681 km), LOS T+27.56 (10:27:34Z, az 176), 9.5 min,
  *                   southbound. C/N >= 8 dB roughly 10:20:30 .. 10:25:00.
+ *                   5 deg mask (the LOS the objective row judges): AOS 10:19:11, LOS 10:26:24.
  *   MERIDIAN-SAR-1: AOS T+40.02 (10:40:00Z, az 136), max el 24.0 deg at T+44.75
  *                   (10:44:45Z, 876 km), LOS T+49.48 (10:49:29Z, az 357), 9.5 min,
  *                   northbound. C/N >= 8 dB roughly 10:42:30 .. 10:47:00.
+ *                   5 deg mask: AOS 10:41:13, LOS 10:48:16.
  *
  * The carrier (terrestrial, the S17 emitter, Galway only):
  *   'gw-carrier-sar2' 11726 MHz -> IF 1374 (4 MHz above the SAR-2 video at
@@ -89,7 +92,7 @@ galwayDay.receivers![0].modems![0] = {
 export const natsEuScenario18Data: ScenarioData = {
   id: 'nats-eu-scenario18',
   url: 'nats-eu/scenarios/nats-eu-scenario18',
-  imageUrl: 'nats/18/card.png',
+  imageUrl: 'nats-eu/18/card.png',
   number: 18,
   isDisabled: false,
   difficulty: 'advanced',
@@ -98,7 +101,7 @@ export const natsEuScenario18Data: ScenarioData = {
   subtitle: 'Persistent Interference (Gray Zone 2/8)',
   duration: '40 min',
   missionType: 'Security Operations',
-  description: `10:00, Galway, two days on. The incident record from Monday night is open, the interference report is with the regulator, and nothing has been attributed. SAR-2 at 10:18 and SAR-1 at 10:40, both receive-only. Fiona flies both from Shetland in parallel.<br><br>If the carrier comes back, it will not be a coincidence twice. Characterise it, keep the pass, and build the package the regulator can act on. And notice what it does when the plan changes.`,
+  description: `10:00, Galway, two days on. The incident record from Monday night is open, the interference report is with the regulator, and nothing has been attributed. SAR-2 at 10:18 and SAR-1 at 10:40, both receive-only. Fiona flies both from Shetland in parallel.<br><br>If the carrier comes back, it won’t be a coincidence twice. Characterise it, keep the pass, and build the package the regulator can act on. And notice what it does when the plan changes.`,
   equipment: [
     'GW-01 Galway: 4m Ku-Band LEO Tracker',
     'Ku-Band RF Front End (13100 MHz LNB LO) with IF Notch Filter',
@@ -217,14 +220,14 @@ export const natsEuScenario18Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Monday night the carrier was reported as interference with no cause claimed. If it appears again today, what changes about how you treat it?',
             options: [
-              'The record: a second appearance is evidence of persistence, so every capture is timestamped for the regulator - the call itself is still made on what the station shows',
-              'The call: a second appearance proves intent, so it is treated as an attack from the first second and commanding is held',
+              'The record: a repeat is evidence of persistence, so every capture is timestamped; the call still rests on what the station shows',
+              'The call: a second appearance proves intent, so it is treated as an attack from the first second and commanding is held until Rotterdam answers',
               'Nothing: each event is its own incident, characterised from scratch, and Monday night is not admissible in today’s report',
               'The mitigation: a repeat interferer is retuned around rather than notched, so the modem moves off the frequency it knows',
             ],
             correctIndex: 0,
             explanation:
-              'Persistence is a fact for the report, not a verdict for the console. The call is still made on the evidence in front of you; what a second night changes is how carefully that evidence is kept. Eighteen minutes to AOS.',
+              'Persistence is a fact for the report, not a verdict for the console. The call is still made on the evidence in front of you; what a second appearance changes is how carefully that evidence is kept. SAR-2 rises in eighteen minutes.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -237,7 +240,7 @@ export const natsEuScenario18Data: ScenarioData = {
       id: 'dashboard-sweep',
       nice: ['T0153', 'K0741'],
       title: 'GW-01 Dashboard Sweep',
-      description: 'Board read. Confirm the active alarm state on GW-01 before the first pass.',
+      description: 'Read the board and confirm the active alarm state on GW-01 before the first pass.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['review-mission-brief'],
       timeLimitSeconds: 90,
@@ -257,14 +260,14 @@ export const natsEuScenario18Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What is the active alarm state on GW-01 at 10:00?',
             options: [
-              'RX AGC at max gain - weak signal on an empty sky, no hardware alarm',
+              'RX AGC on noise only - no carrier on an empty sky, no hardware alarm',
               'No active alarms - all systems nominal, board clear for the day',
               'Notch filter alarm - the IF notch is unpowered and the RX chain is flagged',
               'Interference alarm - the analyzer has flagged Monday night’s carrier as present',
             ],
             correctIndex: 0,
             explanation:
-              'Empty sky, not a fault. The analyzer does not raise alarms and the notch filter is powered and idle; the only thing on the board is the AGC rail, and it clears at AOS.',
+              'It’s an empty sky, not a fault. The analyzer doesn’t raise alarms and the notch filter is powered and idle; the only thing on the board is the AGC no-carrier warning, and it clears at AOS.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -277,7 +280,8 @@ export const natsEuScenario18Data: ScenarioData = {
       id: 'reference-check',
       nice: ['T0431', 'K0740'],
       title: 'Reference Check',
-      description: 'GPSDO locked and out of holdover. Every capture in today’s report carries a frequency, and the frequency is only worth what the reference is worth.',
+      description:
+        'Check that the GPSDO, the station’s GPS-disciplined clock, is locked and out of holdover. Every capture in today’s report carries a frequency, and that frequency is only worth as much as the reference behind it.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['dashboard-sweep'],
       timeLimitSeconds: 2 * 60,
@@ -304,7 +308,7 @@ export const natsEuScenario18Data: ScenarioData = {
       nice: ['S0421', 'K0773'],
       title: 'Set Up the Receiver for SAR-2',
       description:
-        'Modem 1 is on the 1414 MHz SAR-1 carrier from the morning. Retune it to SAR-2’s 1370 MHz and frame the analyzer on 1370 with a 40 MHz span: video, the 1397 beacon, the Doppler, and room to see anything that is not yours.',
+        'Modem 1 is still on the 1414 MHz SAR-1 carrier from the morning. Retune it to SAR-2’s 1370 MHz, then set the analyzer to 1370 MHz with a 60 MHz span. That shows the video, the 1397 MHz beacon and the Doppler, with room to see anything that isn’t yours.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['reference-check'],
       timeLimitSeconds: 3 * 60,
@@ -324,8 +328,10 @@ export const natsEuScenario18Data: ScenarioData = {
         },
         {
           type: 'speca-span-set',
-          description: 'Analyzer Span 40 MHz',
-          params: { span: 40e6, frequencyTolerance: 5e6 },
+          description: 'Analyzer Span 60 MHz',
+          params: { span: 60e6, frequencyTolerance: 5e6 },
+          // 60 MHz is the station's default span: the centre row is the action (phase 27 B1)
+          requiresChange: false,
           mustMaintain: true,
         },
       ],
@@ -336,7 +342,8 @@ export const natsEuScenario18Data: ScenarioData = {
       id: 'preposition-for-aos',
       nice: ['S0421', 'K1032'],
       title: 'Pre-position for AOS',
-      description: 'AOS 10:18:00 from azimuth 023, southbound. Park the tracker on the rise azimuth at 5 degrees.',
+      description:
+        'AOS is 10:18:00 from azimuth 023, southbound. Point the tracker at the rise azimuth, where SAR-2 comes up over the horizon, at 5 degrees elevation, so it’s waiting when the satellite appears.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['rx-chain-ready-sar2'],
       timeLimitSeconds: 3 * 60,
@@ -356,7 +363,7 @@ export const natsEuScenario18Data: ScenarioData = {
       id: 'acquire-sar2',
       nice: ['S0421', 'K1032'],
       title: 'Acquire MERIDIAN-SAR-2',
-      description: 'Program-track SAR-2 before 10:18 and confirm the 1397 MHz beacon on RX analysis.',
+      description: 'Program-track SAR-2 before 10:18, then confirm the 1397 MHz beacon on RX Analysis.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['preposition-for-aos'],
       conditions: [
@@ -392,20 +399,20 @@ export const natsEuScenario18Data: ScenarioData = {
       nice: ['T0153', 'K0740'],
       title: 'Decode SAR-2 Clean',
       description:
-        'Lock the 1370 MHz carrier and hold C/N above 8 dB into the high-elevation segment, roughly 10:20:30 to 10:23. Log the clean number before anything else arrives; it is the "before" in the report.',
+        'Lock the 1370 MHz carrier and hold C/N above 8 dB into the high-elevation segment, roughly 10:20:30 to 10:23. Log the clean number before anything else arrives, because it’s the "before" in the report.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['acquire-sar2'],
       conditions: [
         {
           type: 'receiver-signal-locked',
           description: 'RX Modem Locked on SAR-2',
-          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-2-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
           type: 'receiver-snr-threshold',
           description: 'C/N Above 8 dB',
-          params: { modemNumber: 1, minCNRatio: 8, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, minCNRatio: 8, signalId: 'MERIDIAN-SAR-2-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
       ],
@@ -417,7 +424,7 @@ export const natsEuScenario18Data: ScenarioData = {
       nice: ['S0648', 'K0926'],
       title: 'Read the Cycle',
       description:
-        'From about 10:23:30 the carrier is back: 1374 MHz IF, 4 MHz above the video and inside its band. Frame it on a 2 MHz span and watch it for two minutes. It is not steady this time.',
+        'Watch for the carrier during SAR-2’s pass: 1374 MHz IF, 4 MHz above the video and inside its band. Frame it on a 2 MHz span and watch for at least one full cycle, ninety seconds. It isn’t steady this time.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['decode-sar2'],
       conditions: [
@@ -432,6 +439,13 @@ export const natsEuScenario18Data: ScenarioData = {
           description: 'Analyzer Span 2 MHz',
           params: { span: 2e6, frequencyTolerance: 1e6 },
           mustMaintain: true,
+        },
+        {
+          type: 'speca-center-frequency',
+          description: 'Watched One Full Cycle (90 s)',
+          params: { centerFrequency: 1374e6, centerFrequencyTolerance: 100e3 },
+          mustMaintain: true,
+          maintainDuration: 90,
         },
         {
           type: 'signal-detected',
@@ -451,14 +465,14 @@ export const natsEuScenario18Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Sixty seconds on, thirty off, repeating to the second, and still no Doppler. What does the cadence add to Monday night’s reading?',
             options: [
-              'Intent: accidents are continuous or erratic, and a clean minute-scale on/off is a timer or a hand on a switch - an indicator, not proof',
+              'Intent: accidents are continuous or erratic; a clean on/off cycle is a timer or a switch - an indicator, not proof',
               'Nothing new: duty cycle depends on the receiver AGC recovering, not on the source; the timing is yours, not theirs',
-              'A radar: rotating antennas sweep past on a fixed period, and a minute-scale cadence is a slow scan rate',
-              'A failing supply: a dying regulator on a neighbouring uplink cycles as it heats, which reads as a regular on/off',
+              'A radar: rotating antennas sweep past on a fixed period, so a minute-scale cadence is just a slow scan rate near the station',
+              'A failing supply: a dying regulator on a neighbouring uplink cycles as it heats, which reads as a regular on/off pattern',
             ],
             correctIndex: 0,
             explanation:
-              'Radar periods are seconds; a thermal cycle drifts; an accident is continuous or random. A minute-scale cadence that repeats to the second is a switch. It argues intent and it goes in the report as a measured number - first seen, period, on-time - not as a conclusion.',
+              'A radar sweeps in seconds, a thermal cycle drifts, and an accident is continuous or random. A minute-scale cadence that repeats to the second is a switch, so it argues intent. It goes in the report as a measured number (first seen, period, on-time), not as a conclusion.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -472,7 +486,7 @@ export const natsEuScenario18Data: ScenarioData = {
       nice: ['S0648', 'K0926', 'K0682'],
       title: 'Call It',
       description:
-        'Fiona has SAR-2 clean from Shetland. Your C/N drops 6 dB every time the carrier is on. Read the key status and the carrier, then decide what the station does about it - the pass is not over.',
+        'Fiona has SAR-2 clean from Shetland. Your C/N falls by more than ten dB and the lock goes with it every time the carrier is on. Read the key status and the carrier, then decide what the station does about it. The pass isn’t over.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['read-the-cycle'],
       timeLimitSeconds: 3 * 60,
@@ -514,7 +528,7 @@ export const natsEuScenario18Data: ScenarioData = {
                     { fact: 'crypto-intact', is: true },
                   ],
                 },
-                consequence: { log: 'Interference event 2: 1374 MHz IF, 60 s on / 30 s off, notch applied, regulator package in progress' },
+                consequence: { log: 'Interference event 1: 1374 MHz IF, deliberate interference called, notch and report to follow' },
               },
               {
                 label: 'Intrusion on the link - hold the receiver and escalate to CSIRT now',
@@ -535,12 +549,12 @@ export const natsEuScenario18Data: ScenarioData = {
                 label: 'Receive-chain fault - an LNB spur that cycles with temperature; raise a ticket',
                 correctWhen: { fact: 'equipment-fault-active', is: true },
                 consequence: { log: 'Maintenance ticket raised against GW-01 LNB (no fault found)' },
-                feedback: 'A spur does not choose a new frequency to sit inside a different bird’s band, and it does not keep a thirty-second beat.',
+                feedback: 'A spur doesn’t choose a new frequency to sit inside a different bird’s band, and it doesn’t keep a thirty-second beat.',
               },
               {
                 label: 'Propagation - a ducting layer bringing in a distant terrestrial link; wait it out',
                 correctWhen: { fact: 'weather-attenuation-dominant', is: true },
-                feedback: 'Ducting does not switch on and off to the second, and it does not follow your frequency plan from one pass to the next.',
+                feedback: 'Ducting doesn’t switch on and off to the second, and it doesn’t follow your frequency plan from one pass to the next.',
               },
             ],
             explanation:
@@ -557,7 +571,8 @@ export const natsEuScenario18Data: ScenarioData = {
       id: 'notch-the-carrier',
       nice: ['S0593', 'K0737'],
       title: 'Notch the Carrier',
-      description: 'Receive-side mitigation: a notch on the carrier at 1374 MHz IF, 2 MHz wide, 30 dB deep, notch 0. The video loses a sliver of its band and keeps its lock.',
+      description:
+        'Set Notch 1 on the RX Analysis tab as a receive-side filter on the carrier: 1374 MHz IF, 2 MHz wide, 30 dB deep. The video loses a sliver of its band and keeps its lock.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['call-the-cycle'],
       timeLimitSeconds: 4 * 60,
@@ -591,14 +606,14 @@ export const natsEuScenario18Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Why notch the carrier rather than move the modem off it?',
             options: [
-              'The video is where it is: 1370 is the bird’s frequency, not yours to move; the notch removes their energy and keeps your carrier',
+              'The video is where it is: 1370 is the bird’s frequency, so the notch removes their energy and keeps your carrier',
               'A notch is faster to set than a retune: the modem takes a minute to relock and the pass has less than that left',
               'Moving the modem would be an admission the link is denied; a notch keeps the incident at the RF layer on paper',
               'The notch is the only control the console offers during a pass; the modem frequency locks while program-track is engaged',
             ],
             correctIndex: 0,
             explanation:
-              'You receive on the frequency the satellite transmits on. There is nowhere to retune to. The notch is the surgical tool: it takes a megahertz of their signal out of your 36, costs you a fraction of a dB, and is reversible the moment they stop.',
+              'You receive on the frequency the satellite transmits on, so there’s nowhere to retune to. The notch is the surgical tool: it takes a megahertz of their signal out of your 36, costs you a fraction of a dB, and is reversible the moment they stop.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -612,31 +627,37 @@ export const natsEuScenario18Data: ScenarioData = {
       nice: ['K0946', 'T1580'],
       title: 'Log Event 1',
       description:
-        'LOS 10:27:34; the carrier is still cycling on an empty sky. Put the first event in the report as evidence: frequency, cadence, first seen, effect, mitigation, and Shetland’s confirmation.',
+        'The SAR-2 pass ends at LOS, loss of signal, when it drops below the 5 degree mask at 10:26:24. Once it is below the mask, check whether the carrier is still cycling, then put the first event in the report as evidence: frequency, cadence, first seen, effect, mitigation, and Shetland’s confirmation.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['notch-the-carrier'],
       timeLimitSeconds: 2 * 60,
-      timerStartTrigger: 'on-activate',
+      timerStartTrigger: 'on-pass-phase',
       conditions: [
+        {
+          type: 'satellite-pass-phase',
+          description: 'SAR-2 Pass Over (LOS)',
+          params: { noradId: 61702, phase: 'setting-below', elevation: 5 }, // LOS at the 5 deg mask (10:26:24), not the 10:27:34 horizon crossing
+          mustMaintain: false,
+        },
         {
           type: 'status-check',
           description: 'Event 1 Recorded',
           params: {
             character: Character.SYSTEM,
-            question: 'The event outlived the pass again. Which line goes in the report?',
+            question: 'The SAR-2 pass is over and the carrier outlived it. Which line goes in the report?',
             options: [
-              '10:23:30 carrier 11726 MHz RF / 1374 IF, ~1 MHz, 60 s on 30 s off, no Doppler, present after LOS; C/N -6 dB when on; notched 10:26; SH-02 clean',
-              'Interference confirmed on SAR-2, same as Monday; the emitter is the one reported on 12 April and is still operating',
-              'Carrier at 1374 MHz seen during the SAR-2 pass; the notch handled it and the decode completed; no further action at this station',
-              'Deliberate jamming of SAR-2 from a ground site south-west of Galway, 10:23 to 10:31; recommend the regulator locate the source',
+              '{{at:event:gw-carrier-sar2:start:s|10:23:30}} carrier 11726 MHz RF / 1374 IF, ~1 MHz, 60 s on 30 s off, no Doppler, after LOS; C/N 1 dB when on, lock lost; SH-02 clean',
+              'Interference confirmed on SAR-2, same as Monday; the emitter is the one reported on 12 April and is still operating after the pass',
+              'Carrier at 1374 MHz seen during the SAR-2 pass; the notch handled it and the decode completed; no further action needed at this station',
+              'Deliberate jamming of SAR-2 from a ground site south-west of Galway, {{at:event:gw-carrier-sar2:start|10:23}} to {{at:event:gw-carrier-sar2:end|10:31}}; recommend the regulator locate the source as a priority',
             ],
             correctIndex: 0,
             explanation:
-              'The line the regulator can act on has numbers, times and a second station in it. "Same as Monday" and "deliberate" are conclusions; the report carries the measurements those conclusions will be drawn from.',
+              'The line the regulator can act on has numbers, times and a second station in it. “Same as Monday” and “deliberate” are conclusions, and the report carries the measurements those conclusions will be drawn from.',
             pointPenalty: 5,
             documentSection: 'Events',
             documentLine:
-              'Event 1: 10:23:30Z carrier 11726 MHz RF (1374 MHz IF), ~1 MHz, cycle 60 s on / 30 s off, no Doppler, persists after SAR-2 LOS 10:27:34Z to ~10:31:30Z. Victim MERIDIAN-SAR-2 video 11730 MHz, C/N 11 dB -> 5 dB while on. Notch 1374/2 MHz/30 dB applied 10:26Z, lock held. SH-02 (F. MacLeod) clean on the same pass.',
+              'Event 1: {{at:event:gw-carrier-sar2:start:s|10:23:30}}Z carrier 11726 MHz RF (1374 MHz IF), ~1 MHz, cycle 60 s on / 30 s off, no Doppler, still present after SAR-2 LOS 10:26:24Z until {{at:event:gw-carrier-sar2:end:s|10:31:30}}Z. Victim MERIDIAN-SAR-2 video 11730 MHz, C/N {{val:decode-sar2.1:0|12}} dB clean, down to about 1 dB with the lock lost while on. Notch 1 (1374 MHz, 2 MHz, 30 dB) applied {{at:cond:notch-the-carrier.1|10:26}}Z. SH-02 (F. MacLeod) clean on the same pass.',
           },
           mustMaintain: false,
         },
@@ -648,7 +669,7 @@ export const natsEuScenario18Data: ScenarioData = {
       id: 'rx-chain-ready-sar1',
       nice: ['S0421', 'K0773'],
       title: 'Set Up the Receiver for SAR-1',
-      description: 'SAR-1 rises at 10:40:00 from azimuth 136. Retune modem 1 to 1414 MHz and the analyzer to 1414 with the 40 MHz span. Leave notch 0 where it is.',
+      description: 'SAR-1 rises at 10:40:00 from azimuth 136. Retune modem 1 to 1414 MHz and set the analyzer to 1414 MHz with the 60 MHz span. Leave Notch 1 where it is.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['log-the-first-event'],
       timeLimitSeconds: 3 * 60,
@@ -704,7 +725,7 @@ export const natsEuScenario18Data: ScenarioData = {
       nice: ['S0593', 'K0737', 'T0153'],
       title: 'Decode SAR-1 Under It',
       description:
-        'From 10:41:30 the carrier is back at 1410 MHz - inside SAR-1’s band this time, the S17 frequency, same cadence. Notch 1 on 1410, 2 MHz, 30 dB, and hold C/N above 7 dB through the high-elevation segment.',
+        'From 10:41:30 the carrier is back at 1410 MHz, inside SAR-1’s band this time. It’s Monday night’s frequency, with the same cadence. Set Notch 2 on 1410 MHz, 2 MHz wide and 30 dB deep, and hold C/N above 7 dB through the high-elevation segment.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['acquire-sar1'],
       conditions: [
@@ -725,13 +746,13 @@ export const natsEuScenario18Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'RX Modem Locked on SAR-1',
-          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, signalId: 'MERIDIAN-SAR-1-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
         {
           type: 'receiver-snr-threshold',
           description: 'C/N Above 7 dB',
-          params: { modemNumber: 1, minCNRatio: 7, requiresObservation: true, observationTab: 'rx-analysis' },
+          params: { modemNumber: 1, minCNRatio: 7, signalId: 'MERIDIAN-SAR-1-VIDEO', requiresObservation: true, observationTab: 'rx-analysis' },
           mustMaintain: true,
         },
       ],
@@ -742,7 +763,7 @@ export const natsEuScenario18Data: ScenarioData = {
       id: 'it-followed-the-plan',
       nice: ['K0682', 'K0683', 'S0648'],
       title: 'It Followed the Plan',
-      description: 'Two passes, two birds, two frequencies - each one inside the band of the satellite you were receiving at the time. Record what that implies.',
+      description: 'Two passes, two satellites, two frequencies, and each one sat inside the band of the satellite you were receiving at the time. Record what that implies.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['decode-sar1-under-it'],
       timeLimitSeconds: 3 * 60,
@@ -755,18 +776,18 @@ export const natsEuScenario18Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'The carrier sat in SAR-2’s band during SAR-2 and in SAR-1’s band during SAR-1. What does that tell you, and what does it not?',
             options: [
-              'Whoever runs it knows the frequency plan and the schedule - the 12 April export in use; it does not tell you who, or from where',
+              'Whoever runs it knows the frequency plan and the schedule (the 12 April export); it doesn’t say who or where',
               'Whoever runs it is tracking the satellites with their own receiver and following the video; the export is unrelated',
               'The station is being probed from inside: only someone on the console could time the change to the retune',
               'Coincidence: two Ku carriers near two downlinks is within the noise of a busy band, and the report should say so',
             ],
             correctIndex: 0,
             explanation:
-              'You changed frequency between passes because the plan said to; the carrier changed with you, to a frequency inside the new band, at the right time. That is the configuration export from Monday night, in use. It is an indicator of capability and of intent. It is not attribution, and the report does not say who.',
+              'You changed frequency between passes because the plan said to, and the carrier changed with you, to a frequency inside the new band, at the right time. That’s the configuration export from Monday night, in use. It’s an indicator of capability and of intent. It isn’t attribution, and the report doesn’t say who.',
             pointPenalty: 5,
             documentSection: 'Events',
             documentLine:
-              'Event 2: 10:41:30Z carrier 11690 MHz RF (1410 MHz IF), ~1 MHz, same cadence, inside the MERIDIAN-SAR-1 video band during the SAR-1 pass; notch 1 applied, C/N held > 7 dB. Assessment: the interferer is following the station frequency plan across passes (cf. INC-2027-0412-GW01, configuration export 12 Apr 02:33). No attribution.',
+              'Event 2: 10:41:30Z carrier 11690 MHz RF (1410 MHz IF), ~1 MHz, same cadence, inside the MERIDIAN-SAR-1 video band during the SAR-1 pass; Notch 2 applied, C/N held > 7 dB. Assessment: the interferer is following the station frequency plan across passes (cf. INC-2027-0412-GW01, configuration export 12 Apr 02:33). No attribution.',
           },
           mustMaintain: false,
         },
@@ -778,7 +799,8 @@ export const natsEuScenario18Data: ScenarioData = {
       id: 'file-the-regulator-report',
       nice: ['K0684', 'K0946', 'T1580'],
       title: 'File the Regulator Package',
-      description: 'LOS 10:49:29. Assemble the package for ComReg, copied to Rotterdam: the fields the regulator needs to act, and nothing the regulator has to take on trust.',
+      description:
+        'SAR-1 sets at 10:49:29. Assemble the package for ComReg, copied to Rotterdam, with the fields the regulator needs to act and nothing the regulator has to take on trust.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['it-followed-the-plan'],
       timeLimitSeconds: 3 * 60,
@@ -791,18 +813,18 @@ export const natsEuScenario18Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which set of fields makes the regulator package actionable?',
             options: [
-              'Victim and interferer parameters (frequency, bandwidth, cadence, first and last seen), captures at stated settings, the second-station confirmation, impact and mitigation - all timestamped',
+              'Victim and interferer parameters, captures at stated settings, the second-station confirmation, impact and mitigation, all timestamped',
               'The interferer’s identity and site, worked out here from the bearing and the frequency, with a request that the regulator confirm it',
               'A summary: SAR-1 and SAR-2 interfered with on 14 April, notched, decodes completed; details available from the station on request',
               'The incident record from 12 April in full, with today’s events appended, so the regulator sees the whole picture from the spray onward',
             ],
             correctIndex: 0,
             explanation:
-              'The package is evidence, not conclusion: what was received, at what settings, when, at which sites, with what effect. Attribution belongs to the regulator and to whoever has direction-finding equipment. The security incident is a separate record with a separate reader.',
+              'The package is evidence, not conclusion: what was received, at what settings, when, at which sites, and with what effect. Attribution belongs to the regulator and to whoever has direction-finding equipment. The security incident is a separate record with a separate reader.',
             pointPenalty: 5,
             documentSection: 'Regulator',
             documentLine:
-              'IR-2027-0414-GW01 to ComReg, cc Rotterdam: victim MERIDIAN-SAR-2 (11730 MHz V) and MERIDIAN-SAR-1 (11686 MHz V), GW-01 Galway 53.27N 9.05W. Interferer: 11726 MHz then 11690 MHz, ~1 MHz, 60 s on / 30 s off, no Doppler, terrestrial. First seen 12 Apr 02:25:30Z; today 10:23:30-10:31:30Z and 10:41:30-10:48:30Z. Captures at 2 MHz span attached. SH-02 Shetland clean on both passes. Impact: C/N -6 dB when on; mitigated by IF notch, decodes completed. Geolocation referred.',
+              'IR-2027-0414-GW01 to ComReg, cc Rotterdam: victim MERIDIAN-SAR-2 (11730 MHz V) and MERIDIAN-SAR-1 (11686 MHz V), GW-01 Galway 53.27N 9.05W. Interferer: 11726 MHz then 11690 MHz, ~1 MHz, 60 s on / 30 s off, no Doppler, terrestrial. First seen 12 Apr (INC-2027-0412-GW01); today {{at:event:gw-carrier-sar2:start:s|10:23:30}}-{{at:event:gw-carrier-sar2:end:s|10:31:30}}Z and 10:41:30-10:48:30Z. Captures at 2 MHz span attached. SH-02 Shetland clean on both passes. Impact: C/N down to about 1 dB with the lock lost when on; mitigated by IF notch, decodes completed. Geolocation referred.',
           },
           mustMaintain: false,
         },
@@ -814,7 +836,7 @@ export const natsEuScenario18Data: ScenarioData = {
       id: 'close-and-debrief',
       nice: ['T1580', 'K0645', 'S0593'],
       title: 'Close the Report and Debrief',
-      description: 'Two events, two notches, two decodes. Close the report and write the line that changes tomorrow’s sweep.',
+      description: 'Two events, two notches, two decodes. Close the report and write the line that changes tomorrow’s pre-pass sweep.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['file-the-regulator-report'],
       timeLimitSeconds: 3 * 60,
@@ -827,18 +849,18 @@ export const natsEuScenario18Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What is the debrief line?',
             options: [
-              'The export is live: they know every IF on the station. Pre-stage a notch for every planned downlink before AOS, and treat the plan as known to them until Rotterdam changes it',
+              'The export is live: they know every IF. Pre-stage a notch for every planned downlink before AOS, and treat the plan as known',
               'Both decodes completed and the notches worked; the procedure held and no change is needed beyond keeping the report current',
-              'The analyzer should be left on a 2 MHz span at all times; the 40 MHz framing delayed the read of the carrier by a minute',
+              'The analyzer should be left on a 2 MHz span at all times; the 60 MHz framing delayed the read of the carrier by a minute',
               'The second pass should have been flown from Shetland; the interferer cannot reach SH-02, so Galway should stand down on SAR passes',
             ],
             correctIndex: 0,
             explanation:
-              'Notch 0 was set for 1374 and the carrier arrived at 1410. You knew the plan; so did they. Tomorrow the notches are staged before the pass, and the plan is assumed compromised until it is reissued. That is the line that changes something; Shetland is not a fix for Galway.',
+              'Notch 1 was set for 1374 and the carrier arrived at 1410. You knew the plan, and so did they. Tomorrow the notches are staged before the pass, and the plan is assumed compromised until it’s reissued. That’s the line that changes something; Shetland isn’t a fix for Galway.',
             pointPenalty: 5,
             documentSection: 'Debrief',
             documentLine:
-              'Closed 10:56Z. Debrief: interferer follows the station frequency plan; pre-stage IF notches for every planned downlink in the pre-pass sweep; request Rotterdam reissue the IF plan (INC-2027-0412-GW01 export assumed live). Open: regulator package filed, attribution referred.',
+              'Closed {{at:cond:close-and-debrief.0|10:56}}Z. Debrief: interferer follows the station frequency plan; pre-stage IF notches for every planned downlink in the pre-pass sweep; request Rotterdam reissue the IF plan (INC-2027-0412-GW01 export assumed live). Open: regulator package filed, attribution referred.',
           },
           mustMaintain: false,
         },
@@ -854,63 +876,68 @@ export const natsEuScenario18Data: ScenarioData = {
         <em>[Text message from Anneke Visser at 09:41]</em>
       </p>
       <p>
-        "Your Monday report is with ComReg and with me. They can act on measurements, not on a story: if that carrier comes back today I want frequency, bandwidth, cadence, first seen, and a second station saying it did not hear it. Fiona is flying both passes from Shetland in parallel. Keep your decodes; the report is what you do between them."
+        "Your Monday report is with ComReg and with me. They can act on measurements. If that carrier comes back today, I want four things in the report: frequency, bandwidth, cadence and the time it was first seen. After that, I want a second station saying it didn't hear it. Fiona is flying both passes from Shetland in parallel. Keep your decodes, but the report is the work you do between them."
       </p>
       `,
       character: Character.ANNEKE_VISSER,
       emotion: Emotion.NEUTRAL,
-      audioUrl: '',
+      audioUrl: getAssetUrl('/assets/campaigns/nats-eu/18/intro.mp3'),
     },
     objectives: {
+      // Plays when read-the-cycle completes: the 90 s watch and the cadence quiz are done, the carrier is cycling, call-the-cycle is next.
       'read-the-cycle': {
         text: `
         <p>
-          Clean up here, eleven dB, nothing in the band. Sixty on, thirty off, is it? That is a timer. Write the seconds down; someone will ask.
+          Nothing in the band at Shetland on SAR-2, not a trace. You've watched a full cycle, so write the seconds down: sixty on, thirty off. That's a timer, and Rotterdam will ask for it. Next, read the key status and the carrier on the receiver analysis tab, then make the call.
         </p>
         `,
         character: Character.FIONA_MACLEOD,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/18/obj-read-the-cycle.mp3'),
       },
+      // Plays when call-the-cycle completes (the decision is made); notch-the-carrier is next.
       'call-the-cycle': {
         text: `
         <p>
-          Good call, and the right order. Keep the pass; a receiver you switch off is a pass they took from you for free. Measure everything. I will read the record after your second bird.
+          That's the right call, and you made it in the right order: you read the key first, then you decided. Keep the pass, because a receiver you switch off is a pass they took from you for free. Put the notch on the carrier now and measure everything. I'll read the record after your second satellite.
         </p>
         `,
         character: Character.PRIYA_SHARMA,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/18/obj-call-the-cycle.mp3'),
       },
+      // Plays when it-followed-the-plan completes (the implication is recorded); file-the-regulator-report is next.
       'it-followed-the-plan': {
         text: `
         <p>
-          They read your plan. Assume they have all of it - every IF, every window - until Rotterdam gives you a new one. That is not a conclusion for the regulator; it is a fact for us.
+          Whoever is behind this has your plan. Assume they have all of it, every IF and every window, until Rotterdam gives you a new one. That isn't a conclusion for the regulator, it's a working assumption for us. Package what you measured next.
         </p>
         `,
         character: Character.PRIYA_SHARMA,
         emotion: Emotion.CONCERNED,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/18/obj-it-followed-the-plan.mp3'),
       },
+      // Plays when file-the-regulator-report completes; close-and-debrief is next. Anneke's side of the SAR-3 exchange.
       'file-the-regulator-report': {
         text: `
         <p>
-          Package received. Two sites, two frequencies, a cadence to the second - that is a report they can take to a van with an antenna on it. I will reissue the IF plan tonight.
+          Package received. Two sites, two frequencies and a cadence to the second: that's a report they can take to a van with a direction-finding antenna on it. I'll reissue the IF plan tonight. We pulled SAR-3 from tasking after Monday's export, because its schedule was in that file too, and I'd like it back once the new plan is out. Priya wants to read the record first, and we've both said so on the record.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/18/obj-file-the-regulator-report.mp3'),
       },
+      // Plays when close-and-debrief completes (last objective). Priya's side of the exchange; her order wins.
       'close-and-debrief': {
         text: `
         <p>
-          Two passes kept, two events measured, nothing attributed that should not be. Stage your notches tomorrow. They will try something else.
+          Anneke's request to put SAR-3 back in service is a fair one, and it's in the record. I'm holding SAR-3 out until I've read the whole record, and that's my order. Two passes kept and two events measured, with nothing attributed that shouldn't be. Stage your notches tomorrow, because they'll try something else.
         </p>
         `,
         character: Character.PRIYA_SHARMA,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/18/obj-close-and-debrief.mp3'),
       },
     },
   },

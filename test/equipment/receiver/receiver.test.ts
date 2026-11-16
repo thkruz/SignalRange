@@ -68,6 +68,16 @@ function createMockRfFrontEnd(
   };
 }
 
+/**
+ * Phase 19.5: lock needs the MODCOD threshold held for a seeded acquisition
+ * time (0.5-10 s of run time). Run every modem's tracker, then let 11 s of
+ * sim time pass so a carrier above threshold has locked.
+ */
+function settle(rx: Receiver): void {
+  for (const modem of rx.state.modems) rx.getSignalsInBandwidth(modem);
+  advanceSimTime(11_000);
+}
+
 describe('Receiver class', () => {
   let receiver: Receiver;
   let parentElement: HTMLElement;
@@ -359,13 +369,30 @@ describe('Receiver class', () => {
     });
 
     it('should return info alarm when signals are detected', () => {
-      receiver.state.availableSignals = [{ id: 'sig1', feed: 'test.mp4', isDegraded: false }];
+      receiver.connectRfFrontEnd(createMockRfFrontEnd([createMockIfSignal()], { noiseFloorNoGain: -40, totalRxGain: 0 }) as any);
+      settle(receiver);
 
       const alarms = receiver.getStatusAlarms();
 
       expect(alarms).toHaveLength(1);
       expect(alarms[0].severity).toBe('info');
       expect(alarms[0].message).toBe('Signal(s) Detected');
+    });
+
+    it('keeps "Signal(s) Detected" across a modem tab switch: any powered modem decoding counts (Phase 32 D15, nats-r7-s14-F2)', () => {
+      // Modem 1 decodes the carrier; modems 2-4 are tuned off it
+      for (const modem of receiver.state.modems.slice(1)) modem.frequency = 1500 as MHz;
+      receiver.connectRfFrontEnd(createMockRfFrontEnd([createMockIfSignal()], { noiseFloorNoGain: -40, totalRxGain: 0 }) as any);
+      settle(receiver);
+      expect(receiver.getStatusAlarms().map((a) => a.message)).toEqual(['Signal(s) Detected']);
+
+      receiver.setActiveModem(2);
+      expect(receiver.state.availableSignals).toEqual([]);
+      expect(receiver.getStatusAlarms().map((a) => a.message)).toEqual(['Signal(s) Detected']);
+
+      // Only a powered modem counts
+      receiver.state.modems[0].isPowered = false;
+      expect(receiver.getStatusAlarms()).toEqual([]);
     });
   });
 
@@ -537,6 +564,7 @@ describe('Receiver class', () => {
       const signal = createMockIfSignal();
       const mockRfFrontEnd = createMockRfFrontEnd([signal]);
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
 
       const result = receiver.getSignalsInBandwidth();
 
@@ -551,6 +579,7 @@ describe('Receiver class', () => {
       });
       const mockRfFrontEnd = createMockRfFrontEnd([signal]);
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
 
       const result = receiver.getSignalsInBandwidth();
 
@@ -565,6 +594,7 @@ describe('Receiver class', () => {
       });
       const mockRfFrontEnd = createMockRfFrontEnd([signal]);
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
 
       const result = receiver.getSignalsInBandwidth();
 
@@ -580,6 +610,7 @@ describe('Receiver class', () => {
       });
       const mockRfFrontEnd = createMockRfFrontEnd([signal]);
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
 
       const result = receiver.getSignalsInBandwidth();
 
@@ -594,6 +625,7 @@ describe('Receiver class', () => {
       });
       const mockRfFrontEnd = createMockRfFrontEnd([signal]);
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
 
       const result = receiver.getSignalsInBandwidth();
 
@@ -609,6 +641,7 @@ describe('Receiver class', () => {
         totalRxGain: 10, // Low gain so signal + gain < externalNoise
       });
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
 
       const result = receiver.getSignalsInBandwidth();
 
@@ -622,6 +655,7 @@ describe('Receiver class', () => {
       });
       const mockRfFrontEnd = createMockRfFrontEnd([signal]);
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
 
       const result = receiver.getSignalsInBandwidth();
 
@@ -634,6 +668,7 @@ describe('Receiver class', () => {
       });
       const mockRfFrontEnd = createMockRfFrontEnd([signal]);
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
 
       const result = receiver.getSignalsInBandwidth();
 
@@ -649,6 +684,7 @@ describe('Receiver class', () => {
         totalRxGain: 60,
       });
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
 
       const result = receiver.getSignalsInBandwidth();
 
@@ -660,6 +696,7 @@ describe('Receiver class', () => {
       const signal = createMockIfSignal();
       const mockRfFrontEnd = createMockRfFrontEnd([signal]);
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
 
       const result = receiver.getSignalsInBandwidth();
 
@@ -675,6 +712,7 @@ describe('Receiver class', () => {
       receiver.state.modems[0].fec = '7/8' as FECType;
       const mockRfFrontEnd = createMockRfFrontEnd([signal]);
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
 
       const result = receiver.getSignalsInBandwidth();
 
@@ -694,9 +732,11 @@ describe('Receiver class', () => {
         modulation: '8QAM' as ModulationType,
         fec: '3/4' as FECType,
         bandwidth: 20e6 as Hertz, // Larger bandwidth but wrong mod/FEC
+        power: -60 as dBm, // weak enough not to jam the wanted carrier (C/I 30 dB)
       });
       const mockRfFrontEnd = createMockRfFrontEnd([matchingSignal, mismatchedSignal]);
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
 
       const result = receiver.getSignalsInBandwidth();
 
@@ -717,6 +757,7 @@ describe('Receiver class', () => {
       });
       const mockRfFrontEnd = createMockRfFrontEnd([targetSignal, interferingSignal]);
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
 
       const result = receiver.getSignalsInBandwidth();
 
@@ -739,6 +780,7 @@ describe('Receiver class', () => {
       const signal = createMockIfSignal();
       const mockRfFrontEnd = createMockRfFrontEnd([signal]);
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
 
       const signals = receiver.getVisibleSignals();
 
@@ -752,6 +794,7 @@ describe('Receiver class', () => {
       });
       const mockRfFrontEnd = createMockRfFrontEnd([signal]);
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
 
       const signals = receiver.getVisibleSignals();
 
@@ -764,6 +807,7 @@ describe('Receiver class', () => {
       });
       const mockRfFrontEnd = createMockRfFrontEnd([signal]);
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
 
       const signals = receiver.getVisibleSignals();
 
@@ -776,6 +820,7 @@ describe('Receiver class', () => {
       });
       const mockRfFrontEnd = createMockRfFrontEnd([signal]);
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
 
       const signals = receiver.getVisibleSignals();
 
@@ -783,19 +828,20 @@ describe('Receiver class', () => {
       expect(signals[0].isDegraded).toBe(true);
     });
 
-    it('should mark signal as degraded when C/N is too low', () => {
-      // For QPSK, required C/N is 10 dB
-      // Signal level = -80 dBm
-      // Noise floor = noiseFloorNoGain + totalRxGain = -85 + 0 = -85 dBm
-      // C/N = -80 - (-85) = 5 dB (below 10 dB requirement)
+    it('should mark signal as degraded when the lock margin is under 1 dB', () => {
+      // QPSK 1/2 locks at Es/N0 1.0 + 1.0 dB implementation loss = 2.0 dB.
+      // The mock noise floor is the same in every bandwidth, so Es/N0 = C/N:
+      // -30 - (-32.7) = 2.7 dB, a 0.7 dB margin (locks at +0.5, degraded under +1).
+      // Levels at the AGC target, so the ADC costs nothing
       const signal = createMockIfSignal({
-        power: -80 as dBm,
+        power: -30 as dBm,
       });
       const mockRfFrontEnd = createMockRfFrontEnd([signal], {
-        noiseFloorNoGain: -85, // Gives 5 dB C/N (below QPSK 10 dB requirement)
+        noiseFloorNoGain: -32.7,
         totalRxGain: 0,
       });
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
 
       const signals = receiver.getVisibleSignals();
 
@@ -814,6 +860,7 @@ describe('Receiver class', () => {
       });
       const mockRfFrontEnd = createMockRfFrontEnd([weakSignal, strongSignal]);
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
 
       const signals = receiver.getVisibleSignals();
 
@@ -832,6 +879,7 @@ describe('Receiver class', () => {
       });
       const mockRfFrontEnd = createMockRfFrontEnd([strongSignal, suppressedSignal]);
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
 
       const signals = receiver.getVisibleSignals();
 
@@ -839,57 +887,20 @@ describe('Receiver class', () => {
       expect(signals[0].signalId).toBe('strong');
     });
 
-    it('should filter out notched signals', () => {
+    it('decodes whatever the AGC passes: notch attenuation happens upstream, not in the receiver', () => {
       const signal = createMockIfSignal({
         frequency: 1400e6 as any,
       });
       const mockRfFrontEnd = createMockRfFrontEnd([signal], {
         notchState: {
           isPowered: true,
-          notches: [
-            { enabled: true, centerFrequency: 1400, bandwidth: 5 }, // Notch at signal frequency
-          ],
+          notches: [{ enabled: true, centerFrequency: 1400, bandwidth: 5 }],
         },
       });
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
 
-      const signals = receiver.getVisibleSignals();
-
-      expect(signals).toHaveLength(0);
-    });
-
-    it('should not filter signals outside notch bandwidth', () => {
-      const signal = createMockIfSignal({
-        frequency: 1400e6 as any,
-      });
-      const mockRfFrontEnd = createMockRfFrontEnd([signal], {
-        notchState: {
-          isPowered: true,
-          notches: [
-            { enabled: true, centerFrequency: 1450, bandwidth: 5 }, // Notch at different frequency
-          ],
-        },
-      });
-      receiver.connectRfFrontEnd(mockRfFrontEnd as any);
-
-      const signals = receiver.getVisibleSignals();
-
-      expect(signals).toHaveLength(1);
-    });
-
-    it('should respect disabled notches', () => {
-      const signal = createMockIfSignal();
-      const mockRfFrontEnd = createMockRfFrontEnd([signal], {
-        notchState: {
-          isPowered: true,
-          notches: [{ enabled: false, centerFrequency: 1400, bandwidth: 5 }],
-        },
-      });
-      receiver.connectRfFrontEnd(mockRfFrontEnd as any);
-
-      const signals = receiver.getVisibleSignals();
-
-      expect(signals).toHaveLength(1);
+      expect(receiver.getVisibleSignals()).toHaveLength(1);
     });
   });
 
@@ -902,6 +913,7 @@ describe('Receiver class', () => {
       const signal = createMockIfSignal({ feed: 'video.mp4' });
       const mockRfFrontEnd = createMockRfFrontEnd([signal]);
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
 
       expect(receiver.hasSignalForModem(receiver.activeModem)).toBe(true);
     });
@@ -910,6 +922,7 @@ describe('Receiver class', () => {
       const signal = createMockIfSignal({ feed: '' });
       const mockRfFrontEnd = createMockRfFrontEnd([signal]);
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
 
       expect(receiver.hasSignalForModem(receiver.activeModem)).toBe(false);
     });
@@ -926,6 +939,7 @@ describe('Receiver class', () => {
       });
       const mockRfFrontEnd = createMockRfFrontEnd([signal]);
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
 
       expect(receiver.isSignalDegraded(receiver.activeModem)).toBe(true);
     });
@@ -939,6 +953,7 @@ describe('Receiver class', () => {
         totalRxGain: 60,
       });
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
 
       expect(receiver.isSignalDegraded(receiver.activeModem)).toBe(false);
     });
@@ -953,6 +968,7 @@ describe('Receiver class', () => {
       const signal = createMockIfSignal();
       const mockRfFrontEnd = createMockRfFrontEnd([signal]);
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
 
       const snr = receiver.getSnrForModem(receiver.activeModem);
 
@@ -970,6 +986,7 @@ describe('Receiver class', () => {
       const signal = createMockIfSignal({ power: -35 as dBm });
       const mockRfFrontEnd = createMockRfFrontEnd([signal]);
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
 
       const power = receiver.getPowerForModem(receiver.activeModem);
 
@@ -1139,6 +1156,7 @@ describe('Receiver class', () => {
         totalRxGain: 60,
       });
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
       receiver.update();
 
       const led = document.querySelector('.led') as HTMLElement;
@@ -1151,6 +1169,7 @@ describe('Receiver class', () => {
       });
       const mockRfFrontEnd = createMockRfFrontEnd([signal]);
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
       receiver.update();
 
       const led = document.querySelector('.led') as HTMLElement;
@@ -1217,6 +1236,7 @@ describe('Receiver class', () => {
         totalRxGain: 60,
       });
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
       receiver.update();
 
       const monitor = document.querySelector('.monitor-screen') as HTMLElement;
@@ -1250,6 +1270,7 @@ describe('Receiver class', () => {
         totalRxGain: 60,
       });
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
 
       // Verify signal is degraded
       const signals = receiver.getVisibleSignals();
@@ -1274,6 +1295,7 @@ describe('Receiver class', () => {
         totalRxGain: 60,
       });
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
 
       // First update caches the video
       receiver.update();
@@ -1302,6 +1324,7 @@ describe('Receiver class', () => {
         totalRxGain: 60,
       });
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
       receiver.update();
 
       const modemBtn = document.querySelector('#modem-1') as HTMLButtonElement;
@@ -1333,6 +1356,7 @@ describe('Receiver class', () => {
         totalRxGain: 60,
       });
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
 
       // First render
       receiver.update();
@@ -1359,6 +1383,7 @@ describe('Receiver class', () => {
         totalRxGain: 60,
       });
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
       receiver.update();
 
       const img = document.querySelector('.image-feed') as HTMLImageElement;
@@ -1377,6 +1402,7 @@ describe('Receiver class', () => {
         totalRxGain: 60,
       });
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
       receiver.update();
 
       const img = document.querySelector('.external-image-feed') as HTMLImageElement;
@@ -1394,6 +1420,7 @@ describe('Receiver class', () => {
         totalRxGain: 60,
       });
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
       receiver.update();
 
       const iframe = document.querySelector('.external-feed') as HTMLIFrameElement;
@@ -1406,40 +1433,298 @@ describe('Receiver class', () => {
       receiver = new Receiver('test-root', []);
     });
 
-    it('should mark BPSK signal as degraded when C/N < 7 dB', () => {
+    it('locks BPSK 1/2 well below where QPSK would need it (Es/N0 threshold -1.0 dB)', () => {
       receiver.state.modems[0].modulation = 'BPSK' as ModulationType;
       const signal = createMockIfSignal({
         modulation: 'BPSK' as ModulationType,
-        power: -90 as dBm, // Very weak
+        power: -30 as dBm,
       });
       const mockRfFrontEnd = createMockRfFrontEnd([signal], {
-        noiseFloorNoGain: -95, // Gives ~5 dB C/N
+        noiseFloorNoGain: -31, // Es/N0 1 dB: 2 dB over BPSK 1/2, 1 dB under QPSK 1/2
         totalRxGain: 0,
       });
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
 
       const signals = receiver.getVisibleSignals();
 
       expect(signals).toHaveLength(1);
-      expect(signals[0].isDegraded).toBe(true);
+      expect(signals[0].isDegraded).toBe(false);
+      expect(receiver.getSignalsInBandwidth().requiredEsN0_dB).toBeCloseTo(1.0 - 10 * Math.log10(2) + 1.0, 6);
     });
 
-    it('should mark 16QAM signal as degraded when C/N < 16 dB', () => {
+    it('locks 16QAM 1/2 at 10 dB Es/N0 (extrapolated from 16APSK: needs about 7.5 dB)', () => {
       receiver.state.modems[0].modulation = '16QAM' as ModulationType;
       const signal = createMockIfSignal({
         modulation: '16QAM' as ModulationType,
-        power: -70 as dBm,
+        power: -30 as dBm,
       });
       const mockRfFrontEnd = createMockRfFrontEnd([signal], {
-        noiseFloorNoGain: -80, // Gives ~10 dB C/N
+        noiseFloorNoGain: -40, // Es/N0 10 dB
         totalRxGain: 0,
       });
       receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
 
-      const signals = receiver.getVisibleSignals();
+      const info = receiver.getSignalsInBandwidth();
+      expect(info.modcod?.source).toBe('extrapolated');
+      expect(info.hasLock).toBe(true);
+      expect(info.lockMargin_dB).toBeGreaterThan(1);
+    });
 
-      expect(signals).toHaveLength(1);
-      expect(signals[0].isDegraded).toBe(true);
+    it('does not lock 16QAM 3/4 at 10 dB Es/N0 (needs 11.2 dB)', () => {
+      receiver.state.modems[0].modulation = '16QAM' as ModulationType;
+      receiver.state.modems[0].fec = '3/4' as FECType;
+      const signal = createMockIfSignal({
+        modulation: '16QAM' as ModulationType,
+        fec: '3/4' as FECType,
+        power: -30 as dBm,
+      });
+      const mockRfFrontEnd = createMockRfFrontEnd([signal], {
+        noiseFloorNoGain: -40,
+        totalRxGain: 0,
+      });
+      receiver.connectRfFrontEnd(mockRfFrontEnd as any);
+      settle(receiver);
+
+      const info = receiver.getSignalsInBandwidth();
+      expect(info.hasCarrier).toBe(true);
+      expect(info.hasLock).toBe(false);
+      expect(info.lockState).toBe('unlocked');
+      expect(receiver.getVisibleSignals()).toHaveLength(0);
+    });
+  });
+  describe('demodulator lock tracker (phase 19.5)', () => {
+    // QPSK 1/2 at the AGC target: Es/N0 = signal - noise (mock noise is the same in every bandwidth)
+    const THRESHOLD = 2.0; // QPSK 1/2: 1.0 dB Table 13 + 1.0 dB implementation loss
+    let signal: IfSignal;
+
+    beforeEach(() => {
+      receiver = new Receiver('test-root', []);
+      signal = createMockIfSignal({ power: -30 as dBm });
+      receiver.connectRfFrontEnd(createMockRfFrontEnd([signal], { noiseFloorNoGain: -30 - (THRESHOLD + 5), totalRxGain: 0 }) as any);
+    });
+
+    const setMargin = (margin: number) => {
+      signal.power = (-30 - 5 + margin) as dBm; // noise fixed at -37 dBm
+    };
+
+    it('acquires only after the acquisition time, reporting "acquiring" meanwhile', () => {
+      receiver.getSignalsInBandwidth();
+      advanceSimTime(100);
+      const early = receiver.getSignalsInBandwidth();
+      expect(early.hasLock).toBe(false);
+      expect(early.lockState).toBe('acquiring');
+
+      advanceSimTime(11_000);
+      expect(receiver.getSignalsInBandwidth().hasLock).toBe(true);
+    });
+
+    it('takes 0.4-0.7 s at 16.7 Msps (a 20 MHz carrier), seeded: the same every run', () => {
+      const lockTimeMs = (): number => {
+        const rx = new Receiver('test-root', []);
+        rx.connectRfFrontEnd(createMockRfFrontEnd([createMockIfSignal({ power: -30 as dBm })], { noiseFloorNoGain: -37, totalRxGain: 0 }) as any);
+        rx.getSignalsInBandwidth();
+        let t = 0;
+        while (!rx.getSignalsInBandwidth().hasLock && t < 20_000) {
+          advanceSimTime(50);
+          t += 50;
+        }
+        return t;
+      };
+      const first = lockTimeMs();
+      expect(first).toBeGreaterThanOrEqual(400);
+      expect(first).toBeLessThanOrEqual(750);
+      expect(lockTimeMs()).toBe(first);
+    });
+
+    it('needs threshold + 0.5 dB to acquire, holds down to threshold - 0.5 dB, drops below it', () => {
+      setMargin(0.4);
+      settle(receiver);
+      expect(receiver.getSignalsInBandwidth().hasLock).toBe(false);
+
+      setMargin(0.6);
+      settle(receiver);
+      expect(receiver.getSignalsInBandwidth().hasLock).toBe(true);
+
+      setMargin(-0.4);
+      advanceSimTime(5_000);
+      const holding = receiver.getSignalsInBandwidth();
+      expect(holding.hasLock).toBe(true);
+      expect(holding.lockMargin_dB).toBeCloseTo(-0.4, 2); // the ADC costs a hair
+
+      setMargin(-0.6);
+      advanceSimTime(100);
+      expect(receiver.getSignalsInBandwidth().hasLock).toBe(false);
+
+      // Back above threshold but under +0.5: no re-lock
+      setMargin(0.3);
+      settle(receiver);
+      expect(receiver.getSignalsInBandwidth().hasLock).toBe(false);
+    });
+
+    it('QPSK 3/4 (Required 5.0 dB) acquires from Es/N0 5.5 and holds down to 4.5 (Phase 30 D10, nats-r4-s14-F2, nats-r5-s17-F2)', () => {
+      const rx = new Receiver('test-root', []);
+      rx.state.modems[0].fec = '3/4' as FECType;
+      const carrier = createMockIfSignal({ fec: '3/4' as FECType });
+      // Noise fixed at -40 dBm in every bandwidth: Es/N0 = carrier + 40
+      rx.connectRfFrontEnd(createMockRfFrontEnd([carrier], { noiseFloorNoGain: -40, totalRxGain: 0 }) as any);
+      const atEsN0 = (esN0: number) => {
+        carrier.power = (-40 + esN0) as dBm;
+      };
+
+      atEsN0(5.4);
+      settle(rx);
+      let info = rx.getSignalsInBandwidth();
+      expect(info.requiredEsN0_dB).toBeCloseTo(5.0, 1);
+      expect(info.hasLock).toBe(false);
+      // Unlocked under the acquire line: below threshold, never "acquiring"
+      expect(info.lockState).toBe('unlocked');
+
+      atEsN0(5.6);
+      settle(rx);
+      expect(rx.getSignalsInBandwidth().hasLock).toBe(true);
+
+      atEsN0(4.6);
+      advanceSimTime(5_000);
+      expect(rx.getSignalsInBandwidth().hasLock).toBe(true);
+
+      atEsN0(4.4);
+      advanceSimTime(100);
+      info = rx.getSignalsInBandwidth();
+      expect(info.hasLock).toBe(false);
+      expect(info.lockState).toBe('unlocked');
+    });
+
+    it('reads degraded under 1 dB of margin and good again only from 1.5 dB', () => {
+      setMargin(0.8);
+      settle(receiver);
+      expect(receiver.getSignalsInBandwidth().isLowMargin).toBe(true);
+      setMargin(1.3);
+      advanceSimTime(100);
+      expect(receiver.getSignalsInBandwidth().isLowMargin).toBe(true);
+      setMargin(1.6);
+      advanceSimTime(100);
+      expect(receiver.getSignalsInBandwidth().isLowMargin).toBe(false);
+      setMargin(1.2);
+      advanceSimTime(100);
+      expect(receiver.getSignalsInBandwidth().isLowMargin).toBe(false);
+      setMargin(0.9);
+      advanceSimTime(100);
+      expect(receiver.getSignalsInBandwidth().isLowMargin).toBe(true);
+    });
+
+    it('reads "acquiring" on the first evaluation after an Apply with a carrier present (Phase 32 D10, nats-r7-s19-F1)', () => {
+      setMargin(8);
+      // First look at this tuning: the tracker has held for 0 ms
+      const first = receiver.getSignalsInBandwidth();
+      expect(first.hasLock).toBe(false);
+      expect(first.lockState).toBe('acquiring');
+
+      // Retune off and back (a new Apply): acquiring again at once, not below threshold
+      settle(receiver);
+      receiver.state.modems[0].frequency = 1401 as MHz;
+      const retuned = receiver.getSignalsInBandwidth();
+      expect(retuned.lockState === 'acquiring' || retuned.lockState === 'locked').toBe(true);
+    });
+
+    it('a sidelobe copy does not rename or unlock the main carrier: an id differing only by #n is the same carrier (Phase 32 D3, nats-r7-s04-F2)', () => {
+      settle(receiver);
+      expect(receiver.getSignalsInBandwidth().hasLock).toBe(true);
+
+      // The satellite renumbers the copies: the carrier the modem holds arrives as "#2"
+      signal.signalId = 'test-signal-1#2';
+      advanceSimTime(100);
+      const info = receiver.getSignalsInBandwidth();
+      expect(info.hasLock).toBe(true);
+      expect(info.targetSignalId).toBe('test-signal-1#2');
+      expect(receiver.getLockTransition(receiver.state.modems[0])?.lockLostAtMs).toBeNull();
+
+      // A different carrier is still a new acquisition
+      signal.signalId = 'other-carrier';
+      advanceSimTime(100);
+      expect(receiver.getSignalsInBandwidth().hasLock).toBe(false);
+    });
+
+    it('never locks a carrier whose labels differ, however strong (format mismatch)', () => {
+      receiver.state.modems[0].fec = '3/4' as FECType;
+      setMargin(20);
+      settle(receiver);
+      const info = receiver.getSignalsInBandwidth();
+      expect(info.hasCarrier).toBe(true);
+      expect(info.formatMismatch).toBe(true);
+      expect(info.hasLock).toBe(false);
+    });
+
+    it('loses lock when the modem is powered off', () => {
+      settle(receiver);
+      expect(receiver.getSignalsInBandwidth().hasLock).toBe(true);
+      receiver.state.modems[0].isPowered = false;
+      expect(receiver.getSignalsInBandwidth().hasLock).toBe(false);
+    });
+
+    it('reports Es/N0 in the symbol rate and C/N0 in 1 Hz', () => {
+      settle(receiver);
+      const info = receiver.getSignalsInBandwidth();
+      expect(info.symbolRate_Hz).toBeCloseTo(20e6 / 1.2, 0);
+      expect(info.esN0_dB).toBeCloseTo(THRESHOLD + 5, 6);
+      expect(info.requiredEsN0_dB).toBeCloseTo(THRESHOLD, 6);
+      expect(info.cn0_dBHz).toBeCloseTo(THRESHOLD + 5, 6); // mock: same floor in 1 Hz
+    });
+  });
+
+  describe('interference and the Hz/MHz fix (phase 19.5)', () => {
+    beforeEach(() => {
+      receiver = new Receiver('test-root', []);
+    });
+
+    it('counts a co-channel carrier under the receive-noise gate in N + I', () => {
+      const wanted = createMockIfSignal({ signalId: 'wanted', power: -30 as dBm });
+      // -95 dBm is 15 dB under the noise (-80 dBm): not a carrier to the modem, but still interference
+      const weak = createMockIfSignal({ signalId: 'weak', power: -95 as dBm, modulation: '8QAM' as ModulationType });
+      receiver.connectRfFrontEnd(createMockRfFrontEnd([wanted, weak], { noiseFloorNoGain: -80, totalRxGain: 0 }) as any);
+      const info = receiver.getSignalsInBandwidth();
+      expect(info.interferenceCount).toBe(0);
+      expect(info.interferencePower_dBm).toBeCloseTo(-95, 6);
+    });
+
+    it('C/N0 counts interference like C/N does: C/N0 - C/N = 10 log10(modem bandwidth) with and without an interferer (nats-r3-s05-F3)', () => {
+      // A kTB floor that scales with bandwidth, as the real signal path does
+      const ktbFrontEnd = (signals: IfSignal[]) => {
+        const fe = createMockRfFrontEnd(signals, { totalRxGain: 0 }) as any;
+        fe.couplerModule.signalPathManager.getNoiseFloorAt = (_tap: TapPoint, bandwidth: Hertz) => {
+          const floor = -110 + 10 * Math.log10(bandwidth);
+          return { noiseFloorNoGain: floor, noiseFloor: floor, isInternalNoiseGreater: false };
+        };
+        return fe;
+      };
+      const modemBwDb = 10 * Math.log10(receiver.state.modems[0].bandwidth * 1e6);
+      const wanted = createMockIfSignal({ signalId: 'wanted', power: -30 as dBm });
+
+      receiver.connectRfFrontEnd(ktbFrontEnd([wanted]));
+      const clean = receiver.getSignalsInBandwidth();
+      expect((clean.cn0_dBHz as number) - clean.cnRatio_dB).toBeCloseTo(modemBwDb, 6);
+
+      const interferer = createMockIfSignal({ signalId: 'cw', power: -36 as dBm, bandwidth: 0.1e6 as Hertz, modulation: '8QAM' as ModulationType });
+      const rx2 = new Receiver('test-root', []);
+      rx2.connectRfFrontEnd(ktbFrontEnd([wanted, interferer]));
+      const jammed = rx2.getSignalsInBandwidth();
+      expect(jammed.cnRatio_dB).toBeLessThan(clean.cnRatio_dB - 2);
+      expect((jammed.cn0_dBHz as number) - jammed.cnRatio_dB).toBeCloseTo(modemBwDb, 6);
+    });
+
+    it('decodes a carrier offset inside the passband and ignores one outside it (Hz compared with Hz)', () => {
+      // 20 MHz modem at 1400 MHz; a 10 MHz carrier 6 MHz off centre is inside
+      const inside = createMockIfSignal({ bandwidth: 10e6 as Hertz, frequency: 1406e6 as any });
+      receiver.connectRfFrontEnd(createMockRfFrontEnd([inside]) as any);
+      settle(receiver);
+      expect(receiver.getVisibleSignals()).toHaveLength(1);
+
+      const rx2 = new Receiver('test-root', []);
+      const outside = createMockIfSignal({ bandwidth: 10e6 as Hertz, frequency: 1416e6 as any });
+      rx2.connectRfFrontEnd(createMockRfFrontEnd([outside]) as any);
+      settle(rx2);
+      expect(rx2.getVisibleSignals()).toHaveLength(0);
     });
   });
 });

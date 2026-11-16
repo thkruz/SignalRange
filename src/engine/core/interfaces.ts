@@ -1,4 +1,4 @@
-import { Degrees, DetailedSatellite, Kilometers, Meters, Milliseconds, Radians, SpaceObjectType, Vec3Flat, ZoomValue } from "ootk";
+import { Degrees, Kilometers, Satellite, Meters, Milliseconds, Radians, SpaceObjectType, Vec3Flat, ZoomValue } from "ootk";
 
 /** Array of ECI Coordinates [x, y, z] */
 export type EciArr3 = Vec3Flat<number>;
@@ -128,7 +128,7 @@ export type lookanglesRow = {
 };
 
 export type SatPassTimes = {
-  sat: DetailedSatellite;
+  sat: Satellite;
   time: Date;
 };
 

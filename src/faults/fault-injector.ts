@@ -11,6 +11,7 @@ import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { RxPayloadState } from '@app/pages/mission-control/tabs/rx-payload-adapter';
 import { TxPayloadState } from '@app/pages/mission-control/tabs/tx-payload-adapter';
+import type { FaultInjectorSnapshot } from '@app/sync/manager-state-types';
 import { FAULT_TEMPLATES, FaultDefinition, FaultInput, FaultTarget, FaultTemplateKey } from './fault-types';
 
 /**
@@ -54,6 +55,39 @@ export class FaultInjector {
     if (FaultInjector.instance_) {
       FaultInjector.instance_.clearAll();
       FaultInjector.instance_ = null;
+    }
+  }
+
+  static isInitialized(): boolean {
+    return FaultInjector.instance_ !== null;
+  }
+
+  /**
+   * Checkpoint snapshot of the injected faults (decision consequences inject them).
+   * Faults with an expiresAt are skipped: it is a run-clock instant that means nothing after a restore.
+   */
+  getCheckpointState(): FaultInjectorSnapshot {
+    const faults: FaultInjectorSnapshot['faults'] = [];
+    for (const fault of this.activeFaults_.values()) {
+      if (fault.expiresAt === undefined) {
+        faults.push({ id: fault.id, target: fault.target, groundStationId: fault.groundStationId, state: { ...fault.state } as Record<string, unknown>, priority: fault.priority });
+      }
+    }
+
+    return { faults, counter: this.faultCounter_ };
+  }
+
+  /** Restore a snapshot: the active set is replaced and the id counter resumes, so new ids never collide. */
+  restoreCheckpointState(snapshot: FaultInjectorSnapshot | undefined): void {
+    if (!snapshot) {
+      return;
+    }
+    this.activeFaults_.clear();
+    for (const fault of snapshot.faults ?? []) {
+      this.inject(fault.id, { target: fault.target as FaultTarget, groundStationId: fault.groundStationId, state: fault.state as FaultInput['state'], priority: fault.priority });
+    }
+    if (Number.isFinite(snapshot.counter)) {
+      this.faultCounter_ = snapshot.counter;
     }
   }
 

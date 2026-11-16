@@ -4,10 +4,10 @@
   "authored": {
     "linkBudget": {
       "label": "Night pass: MERIDIAN-SAR-1 downlink at max elevation",
-      "expectedCNRDb": 13.3,
+      "expectedCNRDb": 13.8,
       "toleranceDb": 1,
-      "thresholdCNRDb": 6,
-      "requiredMarginDb": 3
+      "thresholdCNRDb": 4.2,
+      "requiredMarginDb": 5
     },
     "thresholds": [
       {
@@ -23,7 +23,7 @@
         "condition": "link-margin-met",
         "groundStation": "GW-01",
         "params": {
-          "minMarginDb": 3
+          "minMarginDb": 5
         }
       },
       {
@@ -67,6 +67,13 @@
       "antennaConfig": "KU_BAND_4M_LEO_TRACKER",
       "lnbLoMHz": 13100,
       "lnbNoiseTempK": 58.66,
+      "agcOnNoiseAlone": {
+        "noiseInDbm": -38.26,
+        "filterMHz": 40,
+        "settledGainDb": 8.26,
+        "maxGainDb": 10,
+        "railedAtMax": false
+      },
       "links": [
         {
           "satellite": "MERIDIAN-SAR-1",
@@ -81,8 +88,8 @@
             "elevationDeg": 40.36,
             "frequencyMHz": 11711.27,
             "gainDbi": 51.1,
-            "gOverTDbPerK": 27.79,
-            "tsysK": 214.57
+            "gOverTDbPerK": 29.61,
+            "tsysK": 119.72
           },
           "carriers": [
             {
@@ -93,11 +100,14 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 450,
-              "peakCnDb": 30.94,
-              "medianCnDb": 25.84,
-              "peakRxIfDbm": -58.26,
-              "noiseIfDbm": -78.82,
-              "lockedSamples": 450
+              "peakCnDb": 28.38,
+              "medianCnDb": 22.82,
+              "peakEsN0Db": 29.16,
+              "requiredEsN0Db": null,
+              "peakLockMarginDb": null,
+              "peakRxIfDbm": -61.47,
+              "noiseIfDbm": -80.04,
+              "lockedSamples": 0
             },
             {
               "signalId": "MERIDIAN-SAR-1-VIDEO",
@@ -107,13 +117,18 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 450,
-              "peakCnDb": 13.38,
-              "medianCnDb": 8.28,
-              "peakRxIfDbm": -30.25,
-              "noiseIfDbm": -33.26,
-              "lockedSamples": 450
+              "peakCnDb": 14.1,
+              "medianCnDb": 8.54,
+              "peakEsN0Db": 14.88,
+              "requiredEsN0Db": 5.03,
+              "peakLockMarginDb": 9.85,
+              "peakRxIfDbm": -30.17,
+              "noiseIfDbm": -34.47,
+              "lockedSamples": 419
             }
-          ]
+          ],
+          "adjacentCarriers": 0,
+          "transponders": []
         },
         {
           "satellite": "MERIDIAN-SAR-2",
@@ -128,8 +143,8 @@
             "elevationDeg": 5.63,
             "frequencyMHz": 11703.07,
             "gainDbi": 51.1,
-            "gOverTDbPerK": 26.48,
-            "tsysK": 289.67
+            "gOverTDbPerK": 29.27,
+            "tsysK": 129.38
           },
           "carriers": [
             {
@@ -140,11 +155,14 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 118,
-              "peakCnDb": 21.34,
-              "medianCnDb": 21.26,
-              "peakRxIfDbm": -58.5,
-              "noiseIfDbm": -79.2,
-              "lockedSamples": 118
+              "peakCnDb": 18.25,
+              "medianCnDb": 18.18,
+              "peakEsN0Db": 19.04,
+              "requiredEsN0Db": null,
+              "peakLockMarginDb": null,
+              "peakRxIfDbm": -62.88,
+              "noiseIfDbm": -81.05,
+              "lockedSamples": 0
             },
             {
               "signalId": "MERIDIAN-SAR-2-VIDEO",
@@ -154,15 +172,44 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 118,
-              "peakCnDb": 3.77,
-              "medianCnDb": 3.69,
-              "peakRxIfDbm": -30.5,
-              "noiseIfDbm": -33.63,
-              "lockedSamples": 118
+              "peakCnDb": 3.96,
+              "medianCnDb": 3.89,
+              "peakEsN0Db": 4.75,
+              "requiredEsN0Db": 5.03,
+              "peakLockMarginDb": -0.28,
+              "peakRxIfDbm": -31.59,
+              "noiseIfDbm": -35.49,
+              "lockedSamples": 0
             }
-          ]
+          ],
+          "adjacentCarriers": 0,
+          "transponders": []
         }
-      ]
+      ],
+      "txChain": {
+        "transmittingModems": 0,
+        "bucGainDb": 23,
+        "bucP1dbDbm": 28,
+        "bucInDbm": -120,
+        "bucOutDbm": null,
+        "bucCompressionDb": 0,
+        "bucCurrentEqA": 2.6,
+        "bucTempEqC": 43.72,
+        "hpaEnabled": false,
+        "hpaAlc": false,
+        "hpaBackOffDb": 10,
+        "hpaP1dbDbm": 34,
+        "hpaPsatDbm": 36,
+        "hpaInDbm": -90,
+        "hpaGainDb": null,
+        "hpaOutDbm": null,
+        "hpaOutW": null,
+        "hpaOutputBackoffDb": null,
+        "hpaIm3Dbc": null,
+        "hpaAlcAtLimit": null,
+        "hpaTempEqC": 28,
+        "radiated": []
+      }
     },
     {
       "stationId": "SH-02",
@@ -170,6 +217,13 @@
       "antennaConfig": "KU_BAND_4M_LEO_TRACKER",
       "lnbLoMHz": 13100,
       "lnbNoiseTempK": 58.66,
+      "agcOnNoiseAlone": {
+        "noiseInDbm": -38.26,
+        "filterMHz": 40,
+        "settledGainDb": 8.26,
+        "maxGainDb": 10,
+        "railedAtMax": false
+      },
       "links": [
         {
           "satellite": "MERIDIAN-SAR-1",
@@ -184,8 +238,8 @@
             "elevationDeg": 17.04,
             "frequencyMHz": 11711.23,
             "gainDbi": 51.1,
-            "gOverTDbPerK": 27.11,
-            "tsysK": 250.69
+            "gOverTDbPerK": 29.27,
+            "tsysK": 129.41
           },
           "carriers": [
             {
@@ -196,11 +250,14 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 385,
-              "peakCnDb": 25.43,
-              "medianCnDb": 23.83,
-              "peakRxIfDbm": -58.26,
-              "noiseIfDbm": -78.8,
-              "lockedSamples": 385
+              "peakCnDb": 22.4,
+              "medianCnDb": 20.79,
+              "peakEsN0Db": 23.19,
+              "requiredEsN0Db": null,
+              "peakLockMarginDb": null,
+              "peakRxIfDbm": -61.98,
+              "noiseIfDbm": -80.03,
+              "lockedSamples": 0
             },
             {
               "signalId": "MERIDIAN-SAR-1-VIDEO",
@@ -210,13 +267,18 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 385,
-              "peakCnDb": 7.87,
-              "medianCnDb": 6.28,
-              "peakRxIfDbm": -30.25,
-              "noiseIfDbm": -33.24,
-              "lockedSamples": 385
+              "peakCnDb": 8.13,
+              "medianCnDb": 6.52,
+              "peakEsN0Db": 8.91,
+              "requiredEsN0Db": 5.03,
+              "peakLockMarginDb": 3.88,
+              "peakRxIfDbm": -30.67,
+              "noiseIfDbm": -34.46,
+              "lockedSamples": 346
             }
-          ]
+          ],
+          "adjacentCarriers": 0,
+          "transponders": []
         },
         {
           "satellite": "MERIDIAN-SAR-2",
@@ -231,8 +293,8 @@
             "elevationDeg": 13.35,
             "frequencyMHz": 11703.21,
             "gainDbi": 51.1,
-            "gOverTDbPerK": 27.01,
-            "tsysK": 256.04
+            "gOverTDbPerK": 29.27,
+            "tsysK": 129.38
           },
           "carriers": [
             {
@@ -243,11 +305,14 @@
               "modulation": "CW",
               "fec": "null",
               "samples": 349,
-              "peakCnDb": 24.26,
-              "medianCnDb": 23.2,
-              "peakRxIfDbm": -58.49,
-              "noiseIfDbm": -79.14,
-              "lockedSamples": 349
+              "peakCnDb": 21.18,
+              "medianCnDb": 20.13,
+              "peakEsN0Db": 21.97,
+              "requiredEsN0Db": null,
+              "peakLockMarginDb": null,
+              "peakRxIfDbm": -62.17,
+              "noiseIfDbm": -81.02,
+              "lockedSamples": 0
             },
             {
               "signalId": "MERIDIAN-SAR-2-VIDEO",
@@ -257,15 +322,44 @@
               "modulation": "QPSK",
               "fec": "3/4",
               "samples": 349,
-              "peakCnDb": 6.69,
-              "medianCnDb": 5.63,
-              "peakRxIfDbm": -30.5,
-              "noiseIfDbm": -33.58,
-              "lockedSamples": 349
+              "peakCnDb": 6.89,
+              "medianCnDb": 5.84,
+              "peakEsN0Db": 7.68,
+              "requiredEsN0Db": 5.03,
+              "peakLockMarginDb": 2.65,
+              "peakRxIfDbm": -30.87,
+              "noiseIfDbm": -35.45,
+              "lockedSamples": 305
             }
-          ]
+          ],
+          "adjacentCarriers": 0,
+          "transponders": []
         }
-      ]
+      ],
+      "txChain": {
+        "transmittingModems": 0,
+        "bucGainDb": 23,
+        "bucP1dbDbm": 28,
+        "bucInDbm": -120,
+        "bucOutDbm": null,
+        "bucCompressionDb": 0,
+        "bucCurrentEqA": 2.6,
+        "bucTempEqC": 43.72,
+        "hpaEnabled": false,
+        "hpaAlc": false,
+        "hpaBackOffDb": 10,
+        "hpaP1dbDbm": 34,
+        "hpaPsatDbm": 36,
+        "hpaInDbm": -90,
+        "hpaGainDb": null,
+        "hpaOutDbm": null,
+        "hpaOutW": null,
+        "hpaOutputBackoffDb": null,
+        "hpaIm3Dbc": null,
+        "hpaAlcAtLimit": null,
+        "hpaTempEqC": 28,
+        "radiated": []
+      }
     }
   ]
 }

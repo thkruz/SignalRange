@@ -34,8 +34,35 @@
 }
 
 /* Spectrum Analyzer Canvas - Custom Component */
+/*
+ * The plot's CSS box sets its size; the analyzer sizes the bitmap to this box
+ * x devicePixelRatio (never stretched). Heights keep the whole plot above the
+ * fold at 1920x1080 with the card at the top of the tab.
+ */
+.spec-analyzer-canvas canvas.spec-a-canvas-single,
+.spec-analyzer-canvas canvas.spec-a-canvas-spectral,
+.spec-analyzer-canvas canvas.spec-a-canvas-waterfall {
+  width: 100%;
+  padding: 0;
+  margin: 0;
+}
+
+.spec-analyzer-canvas canvas.spec-a-canvas-single {
+  height: clamp(260px, calc(var(--mc-viewport-height, 100vh) * 0.4), 420px);
+}
+
+.spec-analyzer-canvas canvas.spec-a-canvas-spectral,
+.spec-analyzer-canvas canvas.spec-a-canvas-waterfall {
+  height: clamp(130px, calc(var(--mc-viewport-height, 100vh) * 0.2), 210px);
+}
+
+/* Peak Search readout (player-facing) */
+.sa-peak-readout {
+  color: var(--mc-equip-text, #e6e6e6);
+  white-space: nowrap;
+}
+
 .spec-analyzer-canvas {
-  min-height: 400px;
   background-color: #000;
   border: 1px solid var(--mc-border);
   border-radius: 0.25rem;
@@ -179,15 +206,12 @@
   justify-content: center;
 }
 
-/* Video Feed Element */
+/* Video Feed: a canvas the adapter draws (colour bars or a dark slate, Phase 30 D14) */
 .video-feed {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  display: none;
-}
-
-.video-monitor.signal-found .video-feed {
   display: block;
 }
 
@@ -223,6 +247,15 @@
   font-size: 0.875rem;
   margin-top: 0.5rem;
   opacity: 0.7;
+}
+
+/* Carrier visible but the modem has no demodulation lock */
+.video-monitor.signal-no-video.signal-no-lock .video-overlay::after {
+  content: 'CARRIER PRESENT';
+}
+
+.video-monitor.signal-no-video.signal-no-lock .video-overlay::before {
+  content: 'NO LOCK';
 }
 
 .video-monitor.signal-found .video-overlay {
@@ -292,6 +325,16 @@
 }
 
 /* Compact nested cards for modems */
+.rx-analysis-tab .notch-slot > .card-header {
+  /* Match the nested card body's inset despite the shared header override. */
+  padding: 0.5rem 0.75rem !important;
+}
+
+/* Match the numeric input's border across the entire segmented control. */
+.rx-analysis-tab .notch-slot .input-group > .btn-outline-secondary {
+  border-color: #666;
+}
+
 .rx-analysis-tab .card .card .card-header {
   padding: 0.5rem 0.75rem;
 }
@@ -478,6 +521,27 @@
   color: #4a4a4a;
   text-shadow: none;
   cursor: not-allowed;
+}
+
+/*
+ * Staged-but-not-applied value (Adapter Staged Values Pattern). Shared by the
+ * RX and TX chain adapters: the input shows the staged value in amber and the
+ * Apply button pulses an amber ring until the change is applied.
+ */
+.equip-adjust-input.is-pending,
+input.form-control.is-pending {
+  color: var(--mc-warning, #ffb300);
+  text-shadow: 0 0 8px rgba(255, 179, 0, 0.4);
+  font-style: italic;
+}
+
+.btn.is-pending {
+  box-shadow: 0 0 0 2px var(--mc-warning, #ffb300);
+}
+
+.btn.is-pending::after {
+  content: ' \2022';
+  color: var(--mc-warning, #ffb300);
 }
 
 .equip-adjust-unit {

@@ -16,8 +16,9 @@ import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForS
  * - 'auto': Auto-satisfied by simulation state (no user action)
  * - 'set-tracking-mode': Antenna tracking mode + satellite selection
  * - 'configure-speca': Spectrum analyzer center frequency tuning
+ * - 'ops-log': Type an entry into the Operations Log
  */
-type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'auto' | 'set-tracking-mode' | 'configure-speca';
+type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'auto' | 'set-tracking-mode' | 'configure-speca' | 'ops-log' | 'hpa-output';
 
 interface Scenario9Objective {
   id: string;
@@ -25,6 +26,11 @@ interface Scenario9Objective {
   type: ObjectiveType;
   correctAnswer?: string;
   tabId?: string;
+  /** Extra wait after a tab click for observation dwells longer than the default */
+  dwellMs?: number;
+  logText?: string;
+  /** For hpa-output: the HPA Enable switch state to set */
+  hpaEnabled?: boolean;
   stationId?: string;
   trackingMode?: string;
   satelliteNoradId?: string; // For set-tracking-mode in program-track
@@ -65,7 +71,7 @@ const SCENARIO_9_OBJECTIVES: Scenario9Objective[] = [
     id: 'vt-dashboard-check',
     title: 'VT-01 Dashboard Sweep',
     type: 'quiz',
-    correctAnswer: 'No active alarms - all systems nominal',
+    correctAnswer: 'No warning or critical alarms',
   },
   {
     id: 'vt-gpsdo-tab',
@@ -80,10 +86,17 @@ const SCENARIO_9_OBJECTIVES: Scenario9Objective[] = [
     correctAnswer: 'Stable 10 MHz reference available to all downstream RF equipment',
   },
   {
-    id: 'vt-rx-beacon-check',
-    title: 'VT-01 RX Chain Spot Check',
+    id: 'vt-rx-beacon-check-tab',
+    title: 'Open RX Analysis',
     type: 'click-tab',
     tabId: 'rx-analysis',
+    dwellMs: 6500, // observationDwellSeconds: 5
+  },
+  {
+    id: 'vt-rx-beacon-check',
+    title: 'Verify VT-01 RX Chain',
+    type: 'quiz',
+    correctAnswer: '12 to 14 dB - locked with good margin',
   },
   {
     id: 'vt-tx-hpa-check-tab',
@@ -93,7 +106,13 @@ const SCENARIO_9_OBJECTIVES: Scenario9Objective[] = [
   },
   {
     id: 'vt-tx-hpa-check',
-    title: 'VT-01 TX Chain Spot Check',
+    title: 'Verify VT-01 TX Chain',
+    type: 'quiz',
+    correctAnswer: 'About 50 dBm (100 W)',
+  },
+  {
+    id: 'vt-tx-backoff-check',
+    title: 'VT-01 HPA Backoff Reading',
     type: 'quiz',
     correctAnswer: 'Standard operating margin - reduces stress on the amplifier',
   },
@@ -117,13 +136,23 @@ const SCENARIO_9_OBJECTIVES: Scenario9Objective[] = [
     id: 'me-dashboard-check',
     title: 'ME-02 Dashboard Sweep',
     type: 'quiz',
-    correctAnswer: 'No active alarms - station nominal',
+    correctAnswer: 'No warning or critical alarms',
   },
   {
-    id: 'me-rx-beacon-check',
-    title: 'ME-02 TIDEMARK-2 Beacon Check',
+    id: 'me-rx-beacon-tab',
+    title: 'Open RX Analysis',
     type: 'click-tab',
     tabId: 'rx-analysis',
+  },
+  {
+    // The ME-02 analyzer starts on the TM-1 beacon IF; retune to TM-2's
+    id: 'me-rx-beacon-check',
+    title: 'ME-02 TIDEMARK-2 Beacon Check',
+    type: 'configure-speca',
+    specaConfig: {
+      centerFrequency: 1070, // MHz
+    },
+    dwellMs: 3500, // beacon must read on the tab for the observation dwell
   },
   {
     id: 'me-verify-tracking-tab',
@@ -136,6 +165,13 @@ const SCENARIO_9_OBJECTIVES: Scenario9Objective[] = [
     title: 'ME-02 Antenna Tracking Check',
     type: 'quiz',
     correctAnswer: 'GEO satellite holding station - ephemeris is accurate enough; no need to hunt the beacon',
+  },
+  {
+    // nats-r4-s09-F1: the payload spot-check reads RX Analysis > Payload Data Integrity
+    id: 'me-tx-payload-spot-tab',
+    title: 'Open RX Analysis',
+    type: 'click-tab',
+    tabId: 'rx-analysis',
   },
   {
     id: 'me-tx-payload-spot',
@@ -152,6 +188,19 @@ const SCENARIO_9_OBJECTIVES: Scenario9Objective[] = [
     title: 'Return to VT-01',
     type: 'select-station',
     stationId: 'VT-01',
+  },
+  {
+    id: 'inhibit-vt-tx-tab',
+    title: 'Open TX Chain',
+    type: 'click-tab',
+    tabId: 'tx-chain',
+  },
+  {
+    // Phase 27: never slew a keyed dish off TIDEMARK-1
+    id: 'inhibit-vt-tx',
+    title: 'Inhibit TX Before Repointing',
+    type: 'hpa-output',
+    hpaEnabled: false,
   },
   {
     id: 'repoint-acu-tab',
@@ -215,6 +264,18 @@ const SCENARIO_9_OBJECTIVES: Scenario9Objective[] = [
       centerFrequency: 1074.5, // MHz
     },
   },
+  {
+    id: 'restore-vt-tx-tab',
+    title: 'Open TX Chain',
+    type: 'click-tab',
+    tabId: 'tx-chain',
+  },
+  {
+    id: 'restore-vt-tx',
+    title: 'Take TIDEMARK-1 Back',
+    type: 'hpa-output',
+    hpaEnabled: true,
+  },
 
   // ============================================================
   // SHIFT WRAP
@@ -232,10 +293,16 @@ const SCENARIO_9_OBJECTIVES: Scenario9Objective[] = [
     correctAnswer: 'TIDEMARK-1 healthy, TIDEMARK-2 healthy, TIDEMARK-3 beacon verified - all three nominal',
   },
   {
+    id: 'log-shift-summary-typed',
+    title: 'Type the Round Summary in the Ops Log',
+    type: 'ops-log',
+    logText: 'Morning rounds complete. TM-1 and TM-2 nominal, TM-3 beacon verified from VT-01.',
+  },
+  {
     id: 'log-shift-summary',
     title: 'Log Shift Summary',
     type: 'quiz',
-    correctAnswer: '0700 - Morning rounds complete. VT-01/TM-1, ME-02/TM-2, TM-3 beacon verified via VT-01 spot-check. No anomalies.',
+    correctAnswer: 'Morning rounds complete. VT-01/TM-1 and ME-02/TM-2 checked, TM-3 beacon verified with TM-1 on the sister teleport. Expected alarms cleared. No anomalies.',
   },
 ];
 
@@ -339,6 +406,24 @@ async function configureSpectrumAnalyzer(page: import('@playwright/test').Page, 
 }
 
 /**
+ * Type an entry into the Operations Log (sidebar log icon) and close it.
+ */
+async function typeOpsLogEntry(page: import('@playwright/test').Page, text: string): Promise<void> {
+  await page.locator('.ops-log-icon').first().click();
+  const input = page.locator('#ops-log-manual-input');
+  await expect(input).toBeVisible({ timeout: 5000 });
+  await input.fill(text);
+  await input.press('Enter');
+  await expect(page.locator('#ops-log-entries')).toContainText(text.slice(0, 20), { timeout: 5000 });
+  // Mission Complete closes the log itself when this entry finishes the scenario
+  await page
+    .locator('#ops-log-modal-close')
+    .click({ timeout: 3000 })
+    .catch(() => {});
+  await page.waitForTimeout(300);
+}
+
+/**
  * Execute an objective based on its type.
  */
 async function executeObjective(page: import('@playwright/test').Page, missionControlPage: MissionControlPage, objective: Scenario9Objective): Promise<void> {
@@ -357,7 +442,11 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
       // Observation-gated conditions latch only after the default dwell on
       // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
       // reset the read and strand the objective.
-      await page.waitForTimeout(3000);
+      await page.waitForTimeout(objective.dwellMs ?? 3000);
+      break;
+
+    case 'ops-log':
+      await typeOpsLogEntry(page, objective.logText!);
       break;
 
     case 'set-tracking-mode':
@@ -372,7 +461,20 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
 
     case 'configure-speca':
       await configureSpectrumAnalyzer(page, objective.specaConfig!);
+      if (objective.dwellMs) {
+        await page.waitForTimeout(objective.dwellMs);
+      }
       break;
+
+    case 'hpa-output': {
+      const hpaEnableSwitch = page.locator('#hpa-enable');
+      await expect(hpaEnableSwitch).toBeVisible({ timeout: 5000 });
+      if ((await hpaEnableSwitch.isChecked()) !== objective.hpaEnabled) {
+        await hpaEnableSwitch.click();
+      }
+      await page.waitForTimeout(2000);
+      break;
+    }
 
     case 'auto':
       await page.waitForTimeout(2000);
@@ -420,7 +522,7 @@ test.describe('Scenario 9 Full Completion', () => {
   });
 
   test.beforeEach(async () => {
-    test.setTimeout(60000);
+    test.setTimeout(120000);
   });
 
   // Generate a test per objective in order
@@ -431,6 +533,21 @@ test.describe('Scenario 9 Full Completion', () => {
         test.setTimeout(120000);
       }
       await executeObjective(page, missionControlPage, objective);
+      // Stay on the step's tab until its objective ticks: the slew can stop
+      // before program-track reports LOCKED, and leaving a tab early drops the
+      // objective's tab-active hold (or the next one activates off its tab).
+      // Spec steps with no matching objective id return at once.
+      if (objective.type === 'set-tracking-mode' || objective.type === 'configure-speca' || objective.type === 'hpa-output') {
+        await page.waitForFunction(
+          (id) => {
+            const hook = (window as unknown as { debugObjective?: (id: string) => { isCompleted?: boolean; error?: string } }).debugObjective;
+            const d = typeof hook === 'function' ? hook(id) : undefined;
+            return d?.error !== undefined || d?.isCompleted === true;
+          },
+          objective.id,
+          { timeout: 60000, polling: 500 }
+        );
+      }
     });
   }
 

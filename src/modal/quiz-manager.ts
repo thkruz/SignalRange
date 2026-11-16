@@ -4,8 +4,9 @@
  */
 
 import { EventBus } from '@app/events/event-bus';
-import { Events, QuizAnsweredData, QuizCompletedData, QuizDismissedData, QuizPassedData, QuizPendingData, QuizShowData } from '@app/events/events';
+import { Events, QuizAnsweredData, QuizCompletedData, QuizDismissedData, QuizExtras, QuizPassedData, QuizPendingData, QuizShowData } from '@app/events/events';
 import type { Character } from './character-enum';
+import { fillDialogTokens } from './dialog-tokens';
 
 interface QuizState {
   objectiveId: string;
@@ -17,6 +18,7 @@ interface QuizState {
   pointPenalty: number;
   character?: Character;
   preserveOptionOrder?: boolean;
+  extras?: QuizExtras;
   attempts: number;
   totalPointsDeducted: number;
   isComplete: boolean;
@@ -68,7 +70,8 @@ export class QuizManager {
     explanation?: string,
     pointPenalty: number = 5,
     character?: Character,
-    preserveOptionOrder?: boolean
+    preserveOptionOrder?: boolean,
+    extras?: QuizExtras
   ): void {
     const key = this.getKey_(objectiveId, conditionIndex);
 
@@ -83,6 +86,7 @@ export class QuizManager {
         pointPenalty,
         character,
         preserveOptionOrder,
+        extras,
         attempts: 0,
         totalPointsDeducted: 0,
         isComplete: false,
@@ -164,13 +168,14 @@ export class QuizManager {
     const showData: QuizShowData = {
       objectiveId: state.objectiveId,
       conditionIndex: state.conditionIndex,
-      question: state.question,
-      options: state.options,
+      question: fillDialogTokens(state.question),
+      options: state.options.map((o) => fillDialogTokens(o)),
       correctIndex: state.correctIndex,
-      explanation: state.explanation,
+      explanation: state.explanation === undefined ? undefined : fillDialogTokens(state.explanation),
       pointPenalty: state.pointPenalty,
       character: state.character,
       preserveOptionOrder: state.preserveOptionOrder,
+      ...state.extras,
     };
 
     EventBus.getInstance().emit(Events.QUIZ_SHOW, showData);

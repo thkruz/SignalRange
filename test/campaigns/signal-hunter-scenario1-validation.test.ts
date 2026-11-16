@@ -87,7 +87,7 @@ describe('signal-hunter scenario 1: registration and identity', () => {
     expect(scenario.difficulty).toBe('advanced');
     expect(scenario.isDisabled).toBe(false);
     expect(scenario.missionType).not.toBe('Sandbox');
-    expect(scenario.imageUrl).toBe(signalHunterSandboxData.imageUrl);
+    expect(scenario.imageUrl).toBe('signal-hunter/1/card.png');
   });
 
   it('requires the sandbox, which resolves inside the campaign', () => {
@@ -216,7 +216,7 @@ describe('signal-hunter scenario 1: RF and geolocation configuration', () => {
     const victim = settings.satellites.find((s) => s.noradId === event!.satelliteNoradId);
 
     expect(victim).toBeDefined();
-    const transponder = victim!.transponders.find((tp) => event!.frequency >= tp.uplinkLowEdge && event!.frequency <= tp.uplinkHighEdge);
+    const transponder = victim!.transponders.find((tp) => event!.frequency >= tp.uplinkLowEdge && event!.frequency <= tp.uplinkHighEdge && tp.polarization === event!.polarization);
 
     expect(transponder, `no SENTRY-7 transponder covers ${event!.frequency / 1e6} MHz`).toBeDefined();
     expect(transponder!.polarization).toBe(event!.polarization);

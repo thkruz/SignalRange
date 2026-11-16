@@ -3,6 +3,9 @@ import { BaseElement } from '@app/components/base-element';
 import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
 import { CryptoModule } from '@app/equipment/crypto';
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
+import { OpsLogManager } from '@app/ops-log/ops-log-manager';
 import { BUCAdapter } from './buc-adapter';
 import { HPAAdapter } from './hpa-adapter';
 import { TransmitterAdapter } from './transmitter-adapter';
@@ -28,6 +31,8 @@ export class TxChainTab extends BaseElement {
   private hpaAdapter: HPAAdapter | null = null;
   private transmitterAdapter: TransmitterAdapter | null = null;
   private payloadAdapter_: TxPayloadAdapter | null = null;
+  private readonly boundFaultResetSync_: () => void;
+  private faultResetEnabled_: boolean | null = null;
 
   constructor(groundStation: GroundStation, containerId: string) {
     super();
@@ -40,6 +45,7 @@ export class TxChainTab extends BaseElement {
 
     // Must set html_ here (after groundStation is set) for dynamic antenna options
     this.html_ = this.buildHtml_();
+    this.boundFaultResetSync_ = this.syncFaultResetBtn_.bind(this);
 
     this.init_(containerId, 'replace');
     this.dom_ = qs('.tx-chain-tab');
@@ -166,6 +172,19 @@ export class TxChainTab extends BaseElement {
                       <span class="metric-label">Current:</span>
                       <span id="buc-current-display" class="metric-value">0.00 A</span>
                     </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Trend (1 min):</span>
+                      <span id="buc-temp-trend-display" class="metric-value" title="Least-squares slope of the case temperature over the last minute">-- °C/min</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">10 min ago:</span>
+                      <span id="buc-temp-10min-display" class="metric-value">-- °C</span>
+                    </div>
+                    <svg id="buc-temp-sparkline" class="buc-temp-sparkline w-100 mt-1" viewBox="0 0 120 30" preserveAspectRatio="none" role="img" aria-label="BUC case temperature, last 30 minutes" style="height: 30px;">
+                      <title>BUC case temperature, last 30 minutes</title>
+                      <line id="buc-temp-trip-line" x1="0" x2="120" y1="-10" y2="-10" stroke="currentColor" stroke-opacity="0.45" stroke-dasharray="3 2" stroke-width="0.6" />
+                      <polyline id="buc-temp-sparkline-path" fill="none" stroke="currentColor" stroke-width="1.2" points="" />
+                    </svg>
                   </div>
                 </div>
                 <!-- Signal Quality Column -->
@@ -197,7 +216,7 @@ export class TxChainTab extends BaseElement {
             <div class="card-body">
               <!-- Back-off Control -->
               <div class="equip-adjust-control">
-                <label class="equip-adjust-label">Back-off from Max Output Power</label>
+                <label id="hpa-backoff-label" class="equip-adjust-label" for="hpa-backoff">Output Back-off from P1dB (ALC setpoint)</label>
                 <div class="equip-adjust-row">
                   <div class="equip-adjust-buttons equip-adjust-decrease">
                     <button id="hpa-backoff-dec-coarse" class="btn-equip" title="-5 dB">-5</button>
@@ -230,9 +249,14 @@ export class TxChainTab extends BaseElement {
                       <input type="checkbox" id="hpa-power" class="form-check-input" role="switch" checked />
                       <label for="hpa-power" class="form-check-label small">Power</label>
                     </div>
-                    <div class="form-check form-switch">
+                    <div class="form-check form-switch mb-2">
                       <input type="checkbox" id="hpa-enable" class="form-check-input" role="switch" />
                       <label for="hpa-enable" class="form-check-label small">HPA Enable</label>
+                      <div id="hpa-enable-status" class="small text-warning d-none" role="status"></div>
+                    </div>
+                    <div class="form-check form-switch">
+                      <input type="checkbox" id="hpa-alc" class="form-check-input" role="switch" checked />
+                      <label for="hpa-alc" class="form-check-label small">ALC</label>
                     </div>
                   </div>
                 </div>
@@ -246,7 +270,7 @@ export class TxChainTab extends BaseElement {
                     </div>
                     <div class="metric-row">
                       <span class="metric-label">Output:</span>
-                      <span id="hpa-output-power-display" class="metric-value">50.0 dBm</span>
+                      <span id="hpa-output-power-display" class="metric-value">-- dBm</span>
                     </div>
                     <div class="metric-row">
                       <span class="metric-label">Power:</span>
@@ -268,7 +292,11 @@ export class TxChainTab extends BaseElement {
                     </div>
                     <div class="metric-row">
                       <span class="metric-label">P1dB:</span>
-                      <span id="hpa-p1db-display" class="metric-value">50.0 dBm</span>
+                      <span id="hpa-p1db-display" class="metric-value">-- dBm</span>
+                    </div>
+                    <div class="metric-row">
+                      <span class="metric-label">Back-off:</span>
+                      <span id="hpa-obo-display" class="metric-value">-- dB</span>
                     </div>
                   </div>
                 </div>
@@ -282,7 +310,7 @@ export class TxChainTab extends BaseElement {
                     <div class="metric-group-title">Amplifier Status</div>
                     <div class="metric-row">
                       <span class="metric-label">Gain:</span>
-                      <span id="hpa-gain-display" class="metric-value">44.0 dB</span>
+                      <span id="hpa-gain-display" class="metric-value">-- dB</span>
                     </div>
                     <div class="metric-row">
                       <span class="metric-label">Temp:</span>
@@ -295,8 +323,8 @@ export class TxChainTab extends BaseElement {
                   <div class="metric-group h-100">
                     <div class="metric-group-title">Signal Quality</div>
                     <div class="metric-row">
-                      <span class="metric-label">IMD Level:</span>
-                      <span id="hpa-imd-display" class="metric-value">-30.0 dBc</span>
+                      <span class="metric-label">IM3 (2-tone):</span>
+                      <span id="hpa-imd-display" class="metric-value">-- dBc</span>
                     </div>
                     <div class="metric-row">
                       <span class="metric-label">Overdrive:</span>
@@ -422,15 +450,16 @@ export class TxChainTab extends BaseElement {
                       <div class="mb-2">
                         <div class="form-check form-switch mb-1">
                           <input id="tx-transmit-switch" type="checkbox" class="form-check-input" role="switch" />
-                          <label class="form-check-label small">Transmit</label>
+                          <label for="tx-transmit-switch" class="form-check-label small">Transmit</label>
+                          <span id="tx-boot-status" class="small fw-bold font-monospace text-warning ms-1 d-none"></span>
                         </div>
                         <div class="form-check form-switch mb-1">
                           <input id="tx-loopback-switch" type="checkbox" class="form-check-input" role="switch" />
-                          <label class="form-check-label small">Loopback</label>
+                          <label for="tx-loopback-switch" class="form-check-label small">Loopback</label>
                         </div>
                         <div class="form-check form-switch mb-1">
                           <input id="tx-power-switch" type="checkbox" class="form-check-input" role="switch" />
-                          <label class="form-check-label small">Power</label>
+                          <label for="tx-power-switch" class="form-check-label small">Power</label>
                         </div>
                       </div>
 
@@ -456,8 +485,8 @@ export class TxChainTab extends BaseElement {
                         </div>
                       </div>
 
-                      <!-- Fault Reset Button -->
-                      <button id="tx-fault-reset-btn" class="btn btn-warning btn-sm w-100">Reset Fault</button>
+                      <!-- Fault Reset Button: neutral and disabled until the active modem faults (synced by syncFaultResetBtn_) -->
+                      <button id="tx-fault-reset-btn" class="btn btn-outline-secondary btn-sm w-100" disabled>Reset Fault</button>
                     </div>
                   </div>
                 </div>
@@ -487,11 +516,11 @@ export class TxChainTab extends BaseElement {
                     <div class="metric-group-title">Source Status</div>
                     <div class="metric-row">
                       <span class="metric-label">Data Rate:</span>
-                      <span id="tx-payload-data-rate" class="metric-value">2.048 Mbps</span>
+                      <span id="tx-payload-data-rate" class="metric-value">--</span>
                     </div>
                     <div class="metric-row">
                       <span class="metric-label">Payload Type:</span>
-                      <span id="tx-payload-type" class="metric-value">Command</span>
+                      <span id="tx-payload-type" class="metric-value">Data</span>
                     </div>
                     <div class="metric-row">
                       <span class="metric-label">Channel:</span>
@@ -547,7 +576,7 @@ export class TxChainTab extends BaseElement {
                     <div class="metric-group-title">Throughput</div>
                     <div class="metric-row">
                       <span class="metric-label">Frames/sec:</span>
-                      <span id="tx-payload-frames-sec" class="metric-value font-monospace">1,024</span>
+                      <span id="tx-payload-frames-sec" class="metric-value font-monospace">--</span>
                     </div>
                     <div class="metric-row">
                       <span class="metric-label">Efficiency:</span>
@@ -627,7 +656,7 @@ export class TxChainTab extends BaseElement {
 
     // Setup payload adapter (static display for training)
     if (this.dom_) {
-      this.payloadAdapter_ = new TxPayloadAdapter(this.dom_, this.groundStation.uuid);
+      this.payloadAdapter_ = new TxPayloadAdapter(this.dom_, this.groundStation.uuid, transmitter ?? null);
 
       // Traffic-key re-key (phase 16, nats-eu S4). The payload crypto is one
       // symmetric key for both directions, so one load clears a Mismatch or
@@ -638,8 +667,35 @@ export class TxChainTab extends BaseElement {
         const match = /^(.*?)(\d+)$/.exec(current);
         const next = match ? `${match[1]}${String(Number(match[2]) + 1).padStart(match[2].length, '0')}` : `${current}-1`;
         crypto.handleKeyRotation(next);
+        if (OpsLogManager.isInitialized()) {
+          OpsLogManager.getInstance().log(`Traffic key re-keyed: ${current} replaced by ${next}`, 'action', 'TX Chain');
+        }
       });
     }
+
+    // Reset Fault reads as an action only when there is a fault to reset (s01-F20)
+    EventBus.getInstance().on(Events.UPDATE, this.boundFaultResetSync_);
+    this.syncFaultResetBtn_();
+  }
+
+  /**
+   * Enable Reset Fault (amber) only while the active modem is faulted or
+   * flagged intermittent; otherwise neutral and disabled. Writes the DOM only
+   * when the state flips, so running every tick is cheap.
+   */
+  private syncFaultResetBtn_(): void {
+    const btn = this.dom_?.querySelector<HTMLButtonElement>('#tx-fault-reset-btn');
+    const transmitter = this.groundStation.transmitters[0];
+    if (!btn || !transmitter) return;
+
+    const modem = transmitter.state.modems.find((m) => m.modem_number === transmitter.state.activeModem);
+    const enabled = Boolean(modem && (modem.isFaulted || modem.intermittentFault));
+    if (enabled === this.faultResetEnabled_) return;
+    this.faultResetEnabled_ = enabled;
+
+    btn.disabled = !enabled;
+    btn.classList.toggle('btn-warning', enabled);
+    btn.classList.toggle('btn-outline-secondary', !enabled);
   }
 
   /**
@@ -664,6 +720,7 @@ export class TxChainTab extends BaseElement {
    * Cleanup
    */
   public dispose(): void {
+    EventBus.getInstance().off(Events.UPDATE, this.boundFaultResetSync_);
     this.bucAdapter?.dispose();
     this.hpaAdapter?.dispose();
     this.transmitterAdapter?.dispose();

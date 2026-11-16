@@ -2,6 +2,7 @@ import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { displayScale } from '@app/game-menu/display-viewport';
 import './continuous-rotary-knob.css';
 
 export class ContinuousRotaryKnob {
@@ -61,8 +62,10 @@ export class ContinuousRotaryKnob {
   private onDragMove(e: MouseEvent): void {
     if (!this.isDragging) return;
 
-    const deltaY = this.startY - e.clientY;
-    const deltaX = e.clientX - (this.dom.getBoundingClientRect().left + this.dom.offsetWidth / 2);
+    const scale = displayScale();
+    const deltaY = (this.startY - e.clientY) / scale;
+    const rect = this.dom.getBoundingClientRect();
+    const deltaX = (e.clientX - (rect.left + rect.width / 2)) / scale;
 
     // Combine vertical and horizontal movement: up/right increases, down/left decreases
     const movement = deltaY + deltaX;

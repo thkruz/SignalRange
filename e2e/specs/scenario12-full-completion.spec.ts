@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
 import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForSimulationReady } from '../utils/simulation-helpers';
+import { advanceUntil, simAdvance } from '../utils/test-clock';
 
 /**
  * Scenario 12 - "Planned Maintenance: Return to Service".
@@ -24,6 +25,7 @@ import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForS
  * - 'toggle-switch': Equipment power / enable switches
  * - 'select-satellite': Satellite selection in asset tree (S3 pattern)
  * - 'execute-handover': Handover target select + execute (S3 pattern, ME-02 → VT-01)
+ * - 'ops-log': Type an entry into the Operations Log
  */
 type ObjectiveType =
   | 'quiz'
@@ -36,13 +38,16 @@ type ObjectiveType =
   | 'configure-buc-gain'
   | 'toggle-switch'
   | 'select-satellite'
-  | 'execute-handover';
+  | 'execute-handover'
+  | 'ops-log';
 
 interface Scenario12Objective {
   id: string;
   title: string;
   type: ObjectiveType;
   correctAnswer?: string;
+  /** Read the sim state the keyed answer depends on off the DOM before answering */
+  assertBeforeAnswer?: (page: import('@playwright/test').Page) => Promise<void>;
   tabId?: string;
   stationId?: string;
   trackingMode?: string;
@@ -61,6 +66,9 @@ interface Scenario12Objective {
   switchState?: boolean;
   satelliteAssetId?: string;
   handoverTargetStation?: string;
+  /** Extra wait after the action (maintain durations, observation dwells) */
+  waitAfterMs?: number;
+  logText?: string;
 }
 
 const SCENARIO_12_OBJECTIVES: Scenario12Objective[] = [
@@ -131,6 +139,9 @@ const SCENARIO_12_OBJECTIVES: Scenario12Objective[] = [
       loFrequency: 5250,
       gain: 65,
     },
+    // ME-02-class warm-up: lnb-thermally-stable passes 90 s after power-on
+    // (panel shows "Thermal: Warming m:ss"), then holds for 30 s (maintainDuration)
+    waitAfterMs: 130000,
   },
   {
     id: 'acquire-tm1-beacon',
@@ -143,7 +154,9 @@ const SCENARIO_12_OBJECTIVES: Scenario12Objective[] = [
   {
     id: 'verify-rx-modem-lock',
     title: 'Verify RX Modem Lock',
-    type: 'auto',
+    // observationDwellSeconds: 5 on the lock and C/N reads, then the C/N read quiz
+    type: 'quiz',
+    correctAnswer: '12 to 14 dB - locked with good margin',
   },
 
   // ============================================================
@@ -154,12 +167,6 @@ const SCENARIO_12_OBJECTIVES: Scenario12Objective[] = [
     title: 'Open TX Chain',
     type: 'click-tab',
     tabId: 'tx-chain',
-  },
-  {
-    id: 'tx-chain-inspection',
-    title: 'TX Chain Pre-Power Inspection',
-    type: 'quiz',
-    correctAnswer: 'BUC gain is at 50 dB - testing value left over from maintenance, operating value is 23 dB',
   },
   // ============================================================
   // PHASE 5: TX CHAIN RESTORATION
@@ -172,6 +179,18 @@ const SCENARIO_12_OBJECTIVES: Scenario12Objective[] = [
     type: 'toggle-switch',
     switchId: 'buc-power',
     switchState: true,
+  },
+  {
+    // Inspection comes after BUC power-up: the BUC card shows '--' for gain
+    // and LO while it is off
+    id: 'tx-chain-inspection',
+    title: 'TX Chain Leftover Inspection',
+    type: 'quiz',
+    correctAnswer: 'BUC gain is at 50 dB, left over from maintenance; operating value is 23 dB',
+    // The brief no longer names the leftover (nats-r3-s12-F2): read it off the panel
+    assertBeforeAnswer: async (page) => {
+      await expect(page.locator('#buc-gain:visible').first()).toHaveValue(/^50(\.0+)?$/u, { timeout: 10000 });
+    },
   },
   {
     id: 'correct-buc-gain',
@@ -200,7 +219,7 @@ const SCENARIO_12_OBJECTIVES: Scenario12Objective[] = [
     id: 'verify-tx-staged',
     title: 'Confirm TX Staged Cold',
     type: 'quiz',
-    correctAnswer: 'Two uplinks on one transponder is dual illumination - the handover swaps RF authority so only one is ever on the air',
+    correctAnswer: 'Two uplinks on one transponder is dual illumination, so the handover keeps only one on the air',
   },
 
   // ============================================================
@@ -262,13 +281,19 @@ const SCENARIO_12_OBJECTIVES: Scenario12Objective[] = [
     id: 'final-dashboard-sweep',
     title: 'Final Dashboard Sweep',
     type: 'quiz',
-    correctAnswer: 'No active alarms - all systems nominal, TM-1 traffic on primary',
+    correctAnswer: 'No warning or critical alarms; TM-1 traffic on primary',
+  },
+  {
+    id: 'log-maintenance-complete-typed',
+    title: 'Type the Close-Out into the Ops Log',
+    type: 'ops-log',
+    logText: 'VT-01 back in service after gasket replacement. BUC gain leftover (50 dB) corrected to 23 dB. TM-1 returned from ME-02.',
   },
   {
     id: 'log-maintenance-complete',
     title: 'Log Maintenance Cycle Complete',
     type: 'quiz',
-    correctAnswer: 'VT-01 back in service after gasket inspection. TM-1 returned from ME-02. BUC gain leftover (50 dB) corrected before energizing. No customer impact.',
+    correctAnswer: 'VT-01 back in service after gasket replacement. TM-1 returned from ME-02. BUC gain leftover (50 dB) corrected before energizing. No customer impact.',
   },
 ];
 
@@ -287,9 +312,16 @@ async function setTrackingMode(page: import('@playwright/test').Page, trackingMo
   await page.waitForTimeout(300);
 
   if (trackingMode === 'maintenance' || trackingMode === 'stow') {
-    const applyBtn = page.locator('button[id$="apply-changes-btn"]');
+    // Phase 29 D4 (nats-r3-s11-F2): MAINT/STOW only stage; the ACU card shows
+    // the pending badge and the mode (and the objective) commit at APPLY
+    // Scoped to the active station's ACU tab (the visible one), not the first in the DOM
+    const acuTab = page.locator('.acu-control-tab:visible');
+    const stagedBadge = acuTab.locator('[id$="staged-mode-badge"]');
+    await expect(stagedBadge).toHaveText(`${trackingMode === 'stow' ? 'STOW' : 'MAINTENANCE'} pending APPLY`, { timeout: 3000 });
+    const applyBtn = acuTab.locator('button[id$="apply-changes-btn"]');
     await expect(applyBtn).toBeEnabled({ timeout: 3000 });
     await applyBtn.click();
+    await expect(stagedBadge).toBeHidden({ timeout: 3000 });
     await page.waitForTimeout(200);
   }
 }
@@ -317,21 +349,22 @@ async function selectSatelliteAndMove(page: import('@playwright/test').Page, sat
  * whole objective chain).
  */
 async function waitForAntennaMovement(page: import('@playwright/test').Page, timeout = 240000): Promise<void> {
-  await page.waitForFunction(
-    () => {
-      const sim = (
-        window as unknown as {
-          signalRange?: { simulationManager?: { groundStations?: Array<{ antennas?: Array<{ state?: { slewing?: boolean; isLocked?: boolean } }> }> } };
-        }
-      ).signalRange?.simulationManager;
-      const antennaState = sim?.groundStations?.[0]?.antennas?.[0]?.state;
-      return antennaState ? antennaState.slewing === false && antennaState.isLocked === true : false;
-    },
-    undefined,
-    { timeout }
+  await advanceUntil(
+    page,
+    () =>
+      page.evaluate(() => {
+        const sim = (
+          window as unknown as {
+            signalRange?: { simulationManager?: { groundStations?: Array<{ antennas?: Array<{ state?: { slewing?: boolean; isLocked?: boolean } }> }> } };
+          }
+        ).signalRange?.simulationManager;
+        const antennaState = sim?.groundStations?.[0]?.antennas?.[0]?.state;
+        return antennaState ? antennaState.slewing === false && antennaState.isLocked === true : false;
+      }),
+    { maxMs: timeout, stepMs: 1000, message: 'antenna slew complete and locked' }
   );
   // Give the objectives manager a beat to register the lock
-  await page.waitForTimeout(1500);
+  await simAdvance(page, 1500);
 }
 
 /**
@@ -389,7 +422,7 @@ async function configureLnb(page: import('@playwright/test').Page, config: { loF
   await applyBtn.click();
 
   // LNB thermal stabilization ~3 s
-  await page.waitForTimeout(4000);
+  await simAdvance(page, 4000);
 }
 
 /**
@@ -455,7 +488,25 @@ async function executeTrafficHandover(page: import('@playwright/test').Page, tar
   await expect(executeBtn).toBeEnabled({ timeout: 10000 });
   await executeBtn.click();
 
-  await page.waitForTimeout(2000);
+  await simAdvance(page, 2000);
+}
+
+/**
+ * Type an entry into the Operations Log (sidebar log icon) and close it.
+ */
+async function typeOpsLogEntry(page: import('@playwright/test').Page, text: string): Promise<void> {
+  await page.locator('.ops-log-icon').first().click();
+  const input = page.locator('#ops-log-manual-input');
+  await expect(input).toBeVisible({ timeout: 5000 });
+  await input.fill(text);
+  await input.press('Enter');
+  await expect(page.locator('#ops-log-entries')).toContainText(text.slice(0, 20), { timeout: 5000 });
+  // Mission Complete closes the log itself when this entry finishes the scenario
+  await page
+    .locator('#ops-log-modal-close')
+    .click({ timeout: 3000 })
+    .catch(() => {});
+  await page.waitForTimeout(300);
 }
 
 /**
@@ -465,6 +516,9 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
   switch (objective.type) {
     case 'quiz':
       await waitForQuizToAppear(page);
+      if (objective.assertBeforeAnswer) {
+        await objective.assertBeforeAnswer(page);
+      }
       await answerQuizByText(page, objective.correctAnswer!);
       break;
 
@@ -477,7 +531,7 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
       // Observation-gated conditions latch only after the default dwell on
       // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
       // reset the read and strand the objective.
-      await page.waitForTimeout(3000);
+      await simAdvance(page, 3000);
       break;
 
     case 'set-tracking-mode':
@@ -516,8 +570,16 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
 
     case 'auto':
       // Signal/lock acquisition takes a few seconds in sim time.
-      await page.waitForTimeout(3000);
+      await simAdvance(page, 3000);
       break;
+
+    case 'ops-log':
+      await typeOpsLogEntry(page, objective.logText!);
+      break;
+  }
+
+  if (objective.waitAfterMs) {
+    await simAdvance(page, objective.waitAfterMs);
   }
 
   await dismissDialogIfPresent(page);
@@ -568,13 +630,17 @@ test.describe('Scenario 12 Full Completion', () => {
   for (const objective of SCENARIO_12_OBJECTIVES) {
     test(`[${objective.id}] ${objective.title}`, async () => {
       // Antenna repoint needs a longer timeout: the slew from stow (el 90)
-      // to TIDEMARK-1 (az 161.8, el 34.2) takes minutes of wall-clock.
+      // to TIDEMARK-1 (az 153.1, el 35.1) takes minutes of wall-clock.
       if (objective.type === 'set-tracking-mode' && objective.waitForAntennaPosition) {
         test.setTimeout(300000);
       }
       // Handover transfer + service-continuity evaluation can be slow
       if (objective.type === 'execute-handover') {
         test.setTimeout(90000);
+      }
+      // Long settle waits (LNB warm-up) outlast the default 60 s
+      if (objective.waitAfterMs && objective.waitAfterMs > 45000) {
+        test.setTimeout(objective.waitAfterMs + 60000);
       }
       await executeObjective(page, missionControlPage, objective);
     });

@@ -2,6 +2,7 @@ import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { Objective, ObjectiveState } from '@app/objectives/objective-types';
 import { DialogClip } from '@app/scenario-manager';
+import { getSimulatedNowMs } from '@app/simulation/sim-time';
 import { Character, Emotion } from './character-enum';
 import { DialogManager } from './dialog-manager';
 
@@ -41,7 +42,8 @@ export class DialogHistoryManager {
       text,
       character,
       audioUrl,
-      timestamp: Date.now(),
+      // Station clock, like every other time on the console (nats-r3-s08-F2)
+      timestamp: getSimulatedNowMs(),
       title,
       emotion,
     });

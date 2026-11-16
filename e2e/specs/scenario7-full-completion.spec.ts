@@ -7,17 +7,7 @@ import { answerQuizByText, dismissDialogIfPresent, waitForSimulationReady } from
  *
  * Following scenario3 pattern: each quiz is a separate objective with type: 'quiz'.
  */
-type ObjectiveType =
-  | 'quiz'
-  | 'select-station'
-  | 'click-tab'
-  | 'toggle-switch'
-  | 'configure-speca'
-  | 'configure-lnb-lo'
-  | 'configure-tx-modem'
-  | 'configure-buc-gain'
-  | 'configure-hpa-backoff'
-  | 'auto';
+type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'toggle-switch' | 'configure-speca' | 'configure-tx-modem' | 'configure-buc-gain' | 'configure-hpa-backoff' | 'auto';
 
 interface Scenario7Objective {
   id: string;
@@ -34,7 +24,6 @@ interface Scenario7Objective {
     maxAmplitude?: number; // dBm
     rbwAuto?: boolean;
   };
-  lnbLoFrequency?: number; // MHz
   txModemConfig?: {
     frequency?: number; // MHz
     bandwidth?: number; // MHz
@@ -45,6 +34,38 @@ interface Scenario7Objective {
   };
   bucGain?: number; // dB
   hpaBackoff?: number; // dB
+  /** Read the sim state the keyed answer depends on off the DOM before answering */
+  assertBeforeAnswer?: (page: import('@playwright/test').Page) => Promise<void>;
+}
+
+/**
+ * Phase 28 (nats-r3-s07-F2): after Secure BUC State only the loopback alarm
+ * clears; the AGC noise-only alarm stays (no traffic carrier yet).
+ */
+async function expectOnlyAgcAlarmLeft(page: import('@playwright/test').Page): Promise<void> {
+  const messages = page.locator('#alarm-list .alarm-message');
+  await expect.poll(async () => (await messages.allTextContents()).join(' | '), { timeout: 15000 }).toContain('AGC on noise only');
+  const text = (await messages.allTextContents()).join(' | ');
+  expect(text).not.toContain('BUC in loopback');
+}
+
+/**
+ * Phase 28 D3: the loop translator puts the loop carrier at 1532 MHz IF with
+ * the normal LNB LO. Peak-search it off the analyzer before keying the quiz.
+ */
+async function expectLoopCarrierAt1532(page: import('@playwright/test').Page): Promise<void> {
+  const readout = page.locator('#sa-peak-readout');
+  const parse = async (): Promise<{ mhz: number; dbm: number }> => {
+    // The quiz modal may cover the button: dispatch the click on the element itself
+    await page.locator('#sa-peak-search').evaluate((btn) => (btn as HTMLButtonElement).click());
+    const match = /Peak:\s*(-?\d+(?:\.\d+)?)\s*MHz\s*@\s*(-?\d+(?:\.\d+)?)\s*dBm/u.exec((await readout.textContent()) ?? '');
+
+    return match ? { mhz: Number.parseFloat(match[1]), dbm: Number.parseFloat(match[2]) } : { mhz: Number.NaN, dbm: Number.NaN };
+  };
+  await expect.poll(async () => (await parse()).dbm, { timeout: 15000 }).toBeGreaterThan(-75);
+  const peak = await parse();
+  expect(peak.mhz).toBeGreaterThan(1532 - 18);
+  expect(peak.mhz).toBeLessThan(1532 + 18);
 }
 
 const SCENARIO_7_OBJECTIVES: Scenario7Objective[] = [
@@ -76,30 +97,30 @@ const SCENARIO_7_OBJECTIVES: Scenario7Objective[] = [
     id: 'check-dashboard-status-quiz',
     title: 'Identify Active Alarms',
     type: 'quiz',
-    correctAnswer: 'BUC High Current Draw',
+    correctAnswer: 'BUC in loopback mode',
   },
   {
     id: 'diagnose-buc-high-current',
-    title: 'Diagnose BUC High Current - Navigate to TX Chain',
+    title: 'Diagnose BUC Test Configuration - Navigate to TX Chain',
     type: 'click-tab',
     tabId: 'tx-chain',
   },
   {
     id: 'diagnose-buc-high-current-quiz',
-    title: 'Diagnose BUC High Current - Identify Cause',
+    title: 'Diagnose BUC Test Configuration - Identify Cause',
     type: 'quiz',
     correctAnswer: 'BUC gain is set too high',
   },
   {
     id: 'resolve-buc-high-current-mute',
-    title: 'Resolve BUC High Current - Mute BUC',
+    title: 'Resolve BUC Saturation - Mute BUC',
     type: 'toggle-switch',
     switchId: 'buc-mute',
     switchState: true,
   },
   {
     id: 'resolve-buc-high-current-loopback',
-    title: 'Resolve BUC High Current - Disable Loopback',
+    title: 'Resolve BUC Saturation - Disable Loopback',
     type: 'toggle-switch',
     switchId: 'buc-loopback',
     switchState: false,
@@ -114,7 +135,8 @@ const SCENARIO_7_OBJECTIVES: Scenario7Objective[] = [
     id: 'verify-fault-cleared-quiz',
     title: 'Verify Fault Cleared - Confirm Alarm Cleared',
     type: 'quiz',
-    correctAnswer: 'Normal - current draw within limits, no active alarms',
+    correctAnswer: 'The loopback alarm has cleared; only the AGC noise-only alarm remains',
+    assertBeforeAnswer: expectOnlyAgcAlarmLeft,
   },
   {
     id: 'verify-antenna-status',
@@ -152,7 +174,7 @@ const SCENARIO_7_OBJECTIVES: Scenario7Objective[] = [
       centerFrequency: 1074.5,
       span: 0.002,
       minAmplitude: -100,
-      maxAmplitude: -50,
+      maxAmplitude: -30,
     },
   },
   // acquire-beacon objective has TWO status-check quizzes - Beacon Purpose appears FIRST, then Beacon Identification
@@ -231,7 +253,7 @@ const SCENARIO_7_OBJECTIVES: Scenario7Objective[] = [
     id: 'enable-loopback-quiz',
     title: 'Loopback Mode Understanding',
     type: 'quiz',
-    correctAnswer: 'Routes the TX RF signal to the LNB instead of the HPA',
+    correctAnswer: 'A coupler samples the BUC output and a translator shifts it into the LNB; the HPA path stays connected',
   },
   {
     id: 'verify-loopback-signal-tab',
@@ -240,17 +262,11 @@ const SCENARIO_7_OBJECTIVES: Scenario7Objective[] = [
     tabId: 'rx-analysis',
   },
   {
-    id: 'verify-loopback-signal-lnb',
-    title: 'Verify Loopback Signal - Set LNB LO',
-    type: 'configure-lnb-lo',
-    lnbLoFrequency: 7000, // Match BUC LO for loopback verification
-  },
-  {
     id: 'verify-loopback-signal-speca',
     title: 'Verify Loopback Signal - Configure Spectrum Analyzer',
     type: 'configure-speca',
     specaConfig: {
-      centerFrequency: 1057,
+      centerFrequency: 1532, // Loop translator: 5943 - 2225 = 3718 MHz RF -> 1532 MHz IF on the normal LO
       span: 50,
       minAmplitude: -100,
       maxAmplitude: -20,
@@ -261,7 +277,8 @@ const SCENARIO_7_OBJECTIVES: Scenario7Objective[] = [
     id: 'verify-loopback-signal-quiz',
     title: 'Verify Loopback Signal - Confirm Signal',
     type: 'quiz',
-    correctAnswer: 'A 36 MHz wide signal centered at 1,057 MHz - the TX modem output via loopback',
+    correctAnswer: 'A 36 MHz wide modulated carrier centered at 1,532 MHz - the TX modem output via the test loop',
+    assertBeforeAnswer: expectLoopCarrierAt1532,
   },
   {
     id: 'quiz-loopback-purpose',
@@ -287,10 +304,23 @@ const SCENARIO_7_OBJECTIVES: Scenario7Objective[] = [
   },
   {
     id: 'disable-loopback',
-    title: 'Disable Loopback Mode',
+    title: 'Disable Loopback, Restore BUC Gain',
     type: 'toggle-switch',
     switchId: 'buc-loopback',
     switchState: false,
+  },
+  {
+    // r2-s07-F3: the same objective puts the BUC back on the 23 dB standard
+    id: 'disable-loopback-gain',
+    title: 'Disable Loopback, Restore BUC Gain',
+    type: 'configure-buc-gain',
+    bucGain: 23,
+  },
+  {
+    id: 'enable-hpa-output-tab',
+    title: 'Enable HPA Output - Navigate to TX Chain',
+    type: 'click-tab',
+    tabId: 'tx-chain',
   },
   {
     id: 'enable-hpa-output',
@@ -395,25 +425,6 @@ async function configureSpectrumAnalyzer(page: import('@playwright/test').Page, 
   }
 
   await page.waitForTimeout(300);
-}
-
-/**
- * Configure LNB LO frequency.
- */
-async function configureLnbLo(page: import('@playwright/test').Page, loFrequency: number): Promise<void> {
-  const loInput = page.locator('#lnb-lo-frequency');
-  await expect(loInput).toBeVisible({ timeout: 5000 });
-  await loInput.fill(loFrequency.toString());
-  await loInput.press('Tab');
-  await page.waitForTimeout(100);
-
-  // Click Apply button
-  const applyBtn = page.locator('#lnb-apply-btn');
-  await expect(applyBtn).toBeVisible({ timeout: 5000 });
-  await applyBtn.click();
-
-  // Wait for LNB to stabilize
-  await page.waitForTimeout(2000);
 }
 
 /**
@@ -601,6 +612,9 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
 
       // Final check - quiz modal should be visible now
       await expect(quizModalDirect).toBeVisible({ timeout: 10000 });
+      if (objective.assertBeforeAnswer) {
+        await objective.assertBeforeAnswer(page);
+      }
       await answerQuizByText(page, objective.correctAnswer!);
 
       // Wait for scenario engine to process the quiz completion
@@ -626,10 +640,6 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
 
     case 'configure-speca':
       await configureSpectrumAnalyzer(page, objective.specaConfig!);
-      break;
-
-    case 'configure-lnb-lo':
-      await configureLnbLo(page, objective.lnbLoFrequency!);
       break;
 
     case 'configure-tx-modem':
@@ -732,22 +742,22 @@ test.describe('Scenario 7 Full Completion', () => {
     await executeObjective(page, missionControlPage, objective);
   });
 
-  test('Objective: Diagnose BUC High Current - Navigate to TX Chain', async () => {
+  test('Objective: Diagnose BUC Saturation - Navigate to TX Chain', async () => {
     const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'diagnose-buc-high-current')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
-  test('Objective: Diagnose BUC High Current - Identify Cause', async () => {
+  test('Objective: Diagnose BUC Saturation - Identify Cause', async () => {
     const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'diagnose-buc-high-current-quiz')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
-  test('Objective: Resolve BUC High Current - Mute BUC', async () => {
+  test('Objective: Resolve BUC Saturation - Mute BUC', async () => {
     const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'resolve-buc-high-current-mute')!;
     await executeObjective(page, missionControlPage, objective);
   });
 
-  test('Objective: Resolve BUC High Current - Disable Loopback', async () => {
+  test('Objective: Resolve BUC Saturation - Disable Loopback', async () => {
     const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'resolve-buc-high-current-loopback')!;
     await executeObjective(page, missionControlPage, objective);
   });
@@ -854,11 +864,6 @@ test.describe('Scenario 7 Full Completion', () => {
     await executeObjective(page, missionControlPage, objective);
   });
 
-  test('Objective: Verify Loopback Signal - Set LNB LO', async () => {
-    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'verify-loopback-signal-lnb')!;
-    await executeObjective(page, missionControlPage, objective);
-  });
-
   test('Objective: Verify Loopback Signal - Configure Spectrum Analyzer', async () => {
     const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'verify-loopback-signal-speca')!;
     await executeObjective(page, missionControlPage, objective);
@@ -890,6 +895,16 @@ test.describe('Scenario 7 Full Completion', () => {
 
   test('Objective: Disable Loopback Mode', async () => {
     const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'disable-loopback')!;
+    await executeObjective(page, missionControlPage, objective);
+  });
+
+  test('Objective: Restore BUC Gain to 23 dB', async () => {
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'disable-loopback-gain')!;
+    await executeObjective(page, missionControlPage, objective);
+  });
+
+  test('Objective: Enable HPA Output - Navigate to TX Chain', async () => {
+    const objective = SCENARIO_7_OBJECTIVES.find((o) => o.id === 'enable-hpa-output-tab')!;
     await executeObjective(page, missionControlPage, objective);
   });
 

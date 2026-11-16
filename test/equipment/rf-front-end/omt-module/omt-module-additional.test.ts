@@ -49,55 +49,27 @@ describe('OMTModule Additional Coverage', () => {
     });
   });
 
-  describe('cross-pol isolation calculation', () => {
-    it('should have normal isolation when polarization aligned', () => {
-      if (rfFrontEnd.antenna) {
-        const alignedSignal: RfSignal = {
-          frequency: 3700e6,
-          bandwidth: 1e6,
-          power: -80 as dBm,
-          polarization: 'V',
-          origin: SignalOrigin.SATELLITE_TX,
-          gainInPath: 30 as dBi,
-        };
+  describe('cross-pol isolation (phase 19.4: a per-unit constant)', () => {
+    it('is the authored spec plus a 0-5 dB build scatter drawn once', () => {
+      const isolation = omtModule.state.crossPolIsolation;
+      expect(isolation).toBeGreaterThanOrEqual(28.5);
+      expect(isolation).toBeLessThanOrEqual(33.5);
+    });
 
-        rfFrontEnd.antenna.state.rxSignalsIn = [alignedSignal];
-        omtModule.state.effectiveRxPol = 'V';
+    it('does not change from frame to frame or with the signal polarization', () => {
+      const isolation = omtModule.state.crossPolIsolation;
+      for (let i = 0; i < 20; i++) {
+        omtModule.state.effectiveRxPol = i % 2 === 0 ? 'V' : 'H';
         omtModule.update();
-
-        expect(omtModule.state.crossPolIsolation).toBeGreaterThanOrEqual(30);
-        expect(omtModule.state.crossPolIsolation).toBeLessThanOrEqual(35);
+        expect(omtModule.state.crossPolIsolation).toBe(isolation);
       }
     });
 
-    it('should have degraded isolation when polarization misaligned', () => {
-      if (rfFrontEnd.antenna) {
-        const misalignedSignal: RfSignal = {
-          frequency: 3700e6,
-          bandwidth: 1e6,
-          power: -80 as dBm,
-          polarization: 'H',
-          origin: SignalOrigin.SATELLITE_TX,
-          gainInPath: 30 as dBi,
-        };
-
-        rfFrontEnd.antenna.state.rxSignalsIn = [misalignedSignal];
-        omtModule.state.effectiveRxPol = 'V';
-        omtModule.update();
-
-        expect(omtModule.state.crossPolIsolation).toBeGreaterThanOrEqual(15);
-        expect(omtModule.state.crossPolIsolation).toBeLessThanOrEqual(25);
-      }
-    });
-
-    it('should have normal isolation when no signal present', () => {
-      if (rfFrontEnd.antenna) {
-        rfFrontEnd.antenna.state.rxSignalsIn = [];
-        omtModule.update();
-
-        expect(omtModule.state.crossPolIsolation).toBeGreaterThanOrEqual(30);
-        expect(omtModule.state.crossPolIsolation).toBeLessThanOrEqual(35);
-      }
+    it('a fault written into the state lowers it and raises the fault flag below 20 dB', () => {
+      omtModule.state.crossPolIsolation = 15;
+      omtModule.update();
+      expect(omtModule.state.crossPolIsolation).toBe(15);
+      expect(omtModule.state.isFaulted).toBe(rfFrontEnd.antenna ? true : omtModule.state.isFaulted);
     });
   });
 

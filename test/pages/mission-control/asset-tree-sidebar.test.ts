@@ -49,6 +49,7 @@ vi.mock('../../../src/scenario-manager', () => ({
 vi.mock('../../../src/objectives', () => ({
   ObjectivesManager: {
     hasLoadedObjectives: vi.fn(() => false),
+    hasInstance: vi.fn(() => false),
     isScenarioLocked: vi.fn(() => false),
     getInstance: vi.fn(() => ({
       syncCollapsedStatesFromDOM: vi.fn(),
@@ -85,6 +86,10 @@ vi.mock('../../../src/ops-log/ops-log-modal', () => ({
     })),
   },
 }));
+vi.mock('../../../src/modal/save-progress-toast', () => {
+  const toast = { showError: vi.fn(), showSuccess: vi.fn(), showSaving: vi.fn(), hide: vi.fn() };
+  return { SaveProgressToast: { getInstance: vi.fn(() => toast) } };
+});
 vi.mock('../../../src/engine/utils/query-selector', () => ({
   qs: vi.fn((selector: string, parent?: Element) => {
     const root = parent || global.document;
@@ -94,6 +99,7 @@ vi.mock('../../../src/engine/utils/query-selector', () => ({
 
 import { DialogHistoryBox } from '../../../src/modal/dialog-history-box';
 import { DraggableHtmlBox } from '../../../src/modal/draggable-html-box';
+import { SaveProgressToast } from '../../../src/modal/save-progress-toast';
 import { ObjectivesManager } from '../../../src/objectives';
 import { OpsLogModal } from '../../../src/ops-log/ops-log-modal';
 import { ScenarioManager } from '../../../src/scenario-manager';
@@ -126,6 +132,47 @@ describe('AssetTreeSidebar', () => {
   afterEach(() => {
     sidebar.destroy();
     document.body.innerHTML = '';
+  });
+
+  describe('console map entry', () => {
+    afterEach(() => {
+      (ScenarioManager.getInstance as Mock).mockImplementation(() => ({ settings: { missionBriefUrl: null } }));
+      (ObjectivesManager.hasInstance as Mock).mockImplementation(() => false);
+      (ObjectivesManager.getInstance as Mock).mockImplementation(() => ({
+        syncCollapsedStatesFromDOM: vi.fn(),
+        generateHtmlChecklist: vi.fn(() => '<div>Checklist</div>'),
+      }));
+    });
+
+    it('stays hidden until objectives initialise, then shows when rows carry where locators', () => {
+      sidebar.destroy();
+      document.body.innerHTML = '';
+      (ScenarioManager.getInstance as Mock).mockReturnValue({ settings: { missionBriefUrl: null }, data: { objectives: [{ id: 'a' }] } });
+      const el = document.createElement('div');
+      el.id = 'asset-tree-sidebar-container';
+      document.body.appendChild(el);
+      sidebar = new AssetTreeSidebar('asset-tree-sidebar-container');
+      const btn = el.querySelector<HTMLElement>('.console-map-icon');
+      expect(btn).not.toBeNull();
+      expect(btn?.hidden).toBe(true);
+
+      // Objectives initialise after the sidebar was built
+      (ObjectivesManager.hasInstance as Mock).mockReturnValue(true);
+      (ObjectivesManager.getInstance as Mock).mockReturnValue({
+        getObjectiveStates: vi.fn(() => [
+          { objective: { id: 'a', title: 'T', conditions: [{ type: 'x', description: 'd', where: 'Logbook > Worksheets' }] }, isCompleted: false, conditionStates: [] },
+        ]),
+      });
+      sidebar.refreshConsoleMap();
+      expect(btn?.hidden).toBe(false);
+
+      // No locators: hidden again
+      (ObjectivesManager.getInstance as Mock).mockReturnValue({
+        getObjectiveStates: vi.fn(() => [{ objective: { id: 'a', title: 'T', conditions: [{ type: 'x', description: 'd' }] }, isCompleted: false, conditionStates: [] }]),
+      });
+      sidebar.refreshConsoleMap();
+      expect(btn?.hidden).toBe(true);
+    });
   });
 
   describe('constructor', () => {
@@ -429,6 +476,50 @@ describe('AssetTreeSidebar with mission brief', () => {
     expect(sidebarEl?.classList.contains('sidebar-locked')).toBe(true);
   });
 
+  describe('lock hint (phase 31 D7, r6-s01-F2)', () => {
+    const lockText = 'Locked until you acknowledge the Mission Brief';
+
+    it('marks stations, satellites and Mission Overview lockable, never the record panels', () => {
+      const lockable = Array.from(document.querySelectorAll('.sidebar-lockable'));
+      expect(lockable.map((el) => el.getAttribute('data-asset-type'))).toEqual(['mission-overview', 'ground-station', 'ground-station', 'satellite']);
+      for (const cls of ['working-doc-icon', 'campaign-record-icon', 'dialog-icon', 'ops-log-icon', 'mission-brief-icon', 'checklist-icon']) {
+        expect(document.querySelector(`.${cls}`)?.classList.contains('sidebar-lockable')).toBe(false);
+      }
+    });
+
+    it('swaps the tooltip to the lock text while locked and restores the name on unlock', () => {
+      const gs = document.querySelector('[data-asset-id="GS-001"]') as HTMLElement;
+      const overview = document.querySelector('.mission-overview-item') as HTMLElement;
+      expect(gs.dataset.tooltip).toBe(lockText);
+      expect(gs.title).toBe(lockText);
+      expect(overview.dataset.tooltip).toBe(lockText);
+      expect((document.querySelector('.ops-log-icon') as HTMLElement).dataset.tooltip).toBe('Operations Log');
+
+      const unlockHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.SCENARIO_UNLOCKED)?.[1];
+      unlockHandler?.();
+
+      expect(document.querySelector('.asset-tree-sidebar')?.classList.contains('sidebar-locked')).toBe(false);
+      expect(gs.dataset.tooltip).toBe('Miami Station');
+      expect(gs.hasAttribute('title')).toBe(false);
+      expect(overview.dataset.tooltip).toBe('Mission Overview');
+    });
+
+    it('a click on a locked station shows the lock toast instead of selecting it', () => {
+      const gs = document.querySelector('[data-asset-id="GS-001"]') as HTMLElement;
+      gs.click();
+
+      expect(SaveProgressToast.getInstance().showError).toHaveBeenCalledWith(lockText, 3000);
+      expect(mockEventBus.emit).not.toHaveBeenCalledWith(Events.ASSET_SELECTED, expect.anything());
+      expect(gs.classList.contains('active')).toBe(false);
+    });
+
+    it('keeps the lock tooltips after a refresh re-renders the tree', () => {
+      sidebar.refresh();
+      const gs = document.querySelector('[data-asset-id="GS-001"]') as HTMLElement;
+      expect(gs.dataset.tooltip).toBe(lockText);
+    });
+  });
+
   it('should open mission brief box when Mission Brief clicked', () => {
     const mockOpen = vi.fn();
     const mockBox = { open: mockOpen };
@@ -563,12 +654,28 @@ describe('AssetTreeSidebar with mission brief', () => {
     const mockOpen = vi.fn();
     OpsLogModal.getInstance.mockReturnValue({
       open: mockOpen,
+      isShowing: () => false,
     });
 
     const opsLogItem = document.querySelector('.ops-log-icon') as HTMLElement;
     opsLogItem?.click();
 
     expect(mockOpen).toHaveBeenCalled();
+  });
+
+  it('should close the ops log when its sidebar item is clicked while it is open', () => {
+    const mockOpen = vi.fn();
+    const mockClose = vi.fn();
+    OpsLogModal.getInstance.mockReturnValue({
+      open: mockOpen,
+      close: mockClose,
+      isShowing: () => true,
+    });
+
+    (document.querySelector('.ops-log-icon') as HTMLElement)?.click();
+
+    expect(mockClose).toHaveBeenCalled();
+    expect(mockOpen).not.toHaveBeenCalled();
   });
 });
 

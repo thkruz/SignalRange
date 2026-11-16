@@ -1,0 +1,2257 @@
+{
+  "revision": "2026-02-19",
+  "items": [
+    {
+      "localId": "S01-Q1",
+      "scenario": 1,
+      "checkpoint": 1,
+      "kind": "official",
+      "officialId": "T3B05",
+      "group": "T3B",
+      "stem": "What is the relationship between wavelength and frequency?",
+      "options": [
+        "Wavelength gets longer as frequency increases",
+        "Wavelength gets shorter as frequency increases",
+        "Wavelength is constant at all frequencies",
+        "Wavelength and frequency increase as path length increases"
+      ],
+      "correctIndex": 1,
+      "explanation": "Higher frequency means shorter wavelength because radio waves travel at the same speed in free space. A higher frequency doesn't make the wave travel faster.",
+      "figure": null
+    },
+    {
+      "localId": "S01-Q2",
+      "scenario": 1,
+      "checkpoint": 1,
+      "kind": "official",
+      "officialId": "T3B08",
+      "group": "T3B",
+      "stem": "What frequency range is referred to as VHF?",
+      "options": [
+        "30 kHz to 300 kHz",
+        "30 MHz to 300 MHz",
+        "300 kHz to 3000 kHz",
+        "300 MHz to 3000 MHz"
+      ],
+      "correctIndex": 1,
+      "explanation": "VHF spans 30 to 300 MHz, so the 146.550 MHz training signal is in VHF. The name of a band describes its frequency range, not the receiver's tuning step.",
+      "figure": null
+    },
+    {
+      "localId": "S01-Q3",
+      "scenario": 1,
+      "checkpoint": 2,
+      "kind": "official",
+      "officialId": "T4B02",
+      "group": "T4B",
+      "stem": "Which of the following can be used to enter a transceiver’s operating frequency?",
+      "options": [
+        "The keypad or VFO knob",
+        "The CTCSS or DTMF encoder",
+        "The Automatic Frequency Control",
+        "All these choices are correct"
+      ],
+      "correctIndex": 0,
+      "explanation": "The keypad or VFO knob sets the operating frequency. Volume and squelch control what you hear, but they don't move the receiver to another frequency.",
+      "figure": null
+    },
+    {
+      "localId": "S01-Q4",
+      "scenario": 1,
+      "checkpoint": 2,
+      "kind": "official",
+      "officialId": "T2B13",
+      "group": "T2B",
+      "stem": "What is the purpose of a squelch function?",
+      "options": [
+        "Reduce a CW transmitter's key clicks",
+        "Mute the receiver audio when a signal is not present",
+        "Eliminate parasitic oscillations in an RF amplifier",
+        "Reduce interference from impulse noise"
+      ],
+      "correctIndex": 1,
+      "explanation": "Squelch mutes audio when a qualifying signal isn't present. It doesn't amplify a weak signal, and a threshold set too high can hide one.",
+      "figure": null
+    },
+    {
+      "localId": "S01-Q5",
+      "scenario": 1,
+      "checkpoint": 3,
+      "kind": "official",
+      "officialId": "T4B08",
+      "group": "T4B",
+      "stem": "What is the advantage of having a choice of receiver filter bandwidths in a multimode transceiver?",
+      "options": [
+        "Permits monitoring several modes simultaneously by selecting a separate filter for each mode",
+        "Permits noise or interference reduction by selecting a bandwidth matching the mode",
+        "Increases the number of frequencies that can be stored in memory",
+        "Increases the amount of offset between receive and transmit frequencies"
+      ],
+      "correctIndex": 1,
+      "explanation": "A filter matched to the mode can reject unwanted noise and nearby signals while retaining the wanted signal. A narrower filter isn't always better because it can remove part of the wanted modulation.",
+      "figure": null
+    },
+    {
+      "localId": "S01-Q6",
+      "scenario": 1,
+      "checkpoint": 3,
+      "kind": "official",
+      "officialId": "T7A04",
+      "group": "T7A",
+      "stem": "Which term describes the ability of a receiver to discriminate between multiple signals?",
+      "options": [
+        "Discrimination ratio",
+        "Sensitivity",
+        "Selectivity",
+        "Harmonic distortion"
+      ],
+      "correctIndex": 2,
+      "explanation": "Selectivity describes separating the wanted signal from other signals. Sensitivity describes detecting weak signals, which is a different receiver property.",
+      "figure": null
+    },
+    {
+      "localId": "S01-Q7",
+      "scenario": 1,
+      "checkpoint": 4,
+      "kind": "official",
+      "officialId": "T7A01",
+      "group": "T7A",
+      "stem": "Which term describes the ability of a receiver to detect the presence of a signal?",
+      "options": [
+        "RF gain",
+        "Sensitivity",
+        "Selectivity",
+        "Total Harmonic Distortion"
+      ],
+      "correctIndex": 1,
+      "explanation": "Sensitivity describes the receiver's ability to detect a signal. Raising the speaker volume doesn't improve that detection ability.",
+      "figure": null
+    },
+    {
+      "localId": "S01-Q8",
+      "scenario": 1,
+      "checkpoint": 4,
+      "kind": "official",
+      "officialId": "T8A09",
+      "group": "T8A",
+      "stem": "What is the approximate bandwidth of an FM voice signal on VHF repeaters?",
+      "options": [
+        "Less than 500 Hz",
+        "About 150 kHz",
+        "Between 10 and 15 kHz",
+        "Between 50 and 125 kHz"
+      ],
+      "correctIndex": 2,
+      "explanation": "A typical VHF repeater FM voice signal occupies about 10 to 15 kHz. A narrow CW filter would cut away much of that signal rather than make the voice clearer.",
+      "figure": null
+    },
+    {
+      "localId": "S01-A1",
+      "scenario": 1,
+      "checkpoint": 2,
+      "kind": "applied",
+      "officialId": "T2B13",
+      "relatedOfficialIds": [
+        "T2B13",
+        "T4B03"
+      ],
+      "group": "T2B",
+      "stem": "The waterfall shows the reference signal, but the squelch threshold is above its strength. What should you try first?",
+      "options": [
+        "Raise the speaker volume.",
+        "Lower the squelch threshold.",
+        "Replace the antenna cable.",
+        "Increase the transmitter power."
+      ],
+      "correctIndex": 1,
+      "explanation": "Lowering the threshold lets the existing signal open the audio path. Raising volume won't help while squelch is muting the receiver.",
+      "figure": null
+    },
+    {
+      "localId": "S01-A2",
+      "scenario": 1,
+      "checkpoint": 3,
+      "kind": "applied",
+      "officialId": "T4B08",
+      "relatedOfficialIds": [
+        "T4B08",
+        "T8A09"
+      ],
+      "group": "T4B",
+      "stem": "A 15 kHz-wide FM voice signal sounds distorted through a 3 kHz filter. Which change addresses the mismatch?",
+      "options": [
+        "Select the 15 kHz filter.",
+        "Select the 500 Hz filter.",
+        "Raise the squelch setting.",
+        "Lower the speaker volume."
+      ],
+      "correctIndex": 0,
+      "explanation": "The 15 kHz filter can pass the supplied FM signal's occupied bandwidth. The narrower settings remove needed information rather than just unwanted noise.",
+      "figure": null
+    },
+    {
+      "localId": "S02-Q1",
+      "scenario": 2,
+      "checkpoint": 1,
+      "kind": "official",
+      "officialId": "T6C01",
+      "group": "T6C",
+      "stem": "What is an electrical diagram using standard component symbols called?",
+      "options": [
+        "Connection chart",
+        "Instrumentation system",
+        "Schematic",
+        "Flow chart"
+      ],
+      "correctIndex": 2,
+      "explanation": "A schematic uses standard symbols to show an electrical circuit. A picture of where parts sit on the bench isn't necessarily a schematic.",
+      "figure": null
+    },
+    {
+      "localId": "S02-Q2",
+      "scenario": 2,
+      "checkpoint": 1,
+      "kind": "official",
+      "officialId": "T6C02",
+      "group": "T6C",
+      "stem": "What is component 1 in figure T-1?",
+      "options": [
+        "Resistor",
+        "Transistor",
+        "Battery",
+        "Connector"
+      ],
+      "correctIndex": 0,
+      "explanation": "Component 1 in the supplied official T-1 figure is the resistor. Identify its symbol and connections rather than assuming the number represents a value.",
+      "figure": "figure-T1.jpg"
+    },
+    {
+      "localId": "S02-Q3",
+      "scenario": 2,
+      "checkpoint": 2,
+      "kind": "official",
+      "officialId": "T6A01",
+      "group": "T6A",
+      "stem": "What electrical component opposes the flow of current in a DC circuit?",
+      "options": [
+        "Inductor",
+        "Resistor",
+        "Inverter",
+        "Transformer"
+      ],
+      "correctIndex": 1,
+      "explanation": "A resistor opposes current flow in a DC circuit. A capacitor stores energy in an electric field, which is a different function.",
+      "figure": null
+    },
+    {
+      "localId": "S02-Q4",
+      "scenario": 2,
+      "checkpoint": 2,
+      "kind": "official",
+      "officialId": "T6A04",
+      "group": "T6A",
+      "stem": "What electrical component stores energy in an electric field?",
+      "options": [
+        "Resistor",
+        "Capacitor",
+        "Inductor",
+        "Diode"
+      ],
+      "correctIndex": 1,
+      "explanation": "A capacitor stores energy in an electric field. An inductor stores energy in a magnetic field, so the two components aren't interchangeable.",
+      "figure": null
+    },
+    {
+      "localId": "S02-Q5",
+      "scenario": 2,
+      "checkpoint": 3,
+      "kind": "official",
+      "officialId": "T6B02",
+      "group": "T6B",
+      "stem": "What electronic component allows current to flow in only one direction?",
+      "options": [
+        "Resistor",
+        "Fuse",
+        "Diode",
+        "Driven element"
+      ],
+      "correctIndex": 2,
+      "explanation": "A diode normally conducts readily in one direction and restricts current in the other. A resistor doesn't provide that directional behavior.",
+      "figure": null
+    },
+    {
+      "localId": "S02-Q6",
+      "scenario": 2,
+      "checkpoint": 3,
+      "kind": "official",
+      "officialId": "T6B03",
+      "group": "T6B",
+      "stem": "Which of these components can be used as an electronic switch?",
+      "options": [
+        "Varistor",
+        "Potentiometer",
+        "Transistor",
+        "Thermistor"
+      ],
+      "correctIndex": 2,
+      "explanation": "A transistor can act as an electronically controlled switch. A fixed resistor alone cannot switch a circuit in response to a control signal.",
+      "figure": null
+    },
+    {
+      "localId": "S02-Q7",
+      "scenario": 2,
+      "checkpoint": 4,
+      "kind": "official",
+      "officialId": "T6D02",
+      "group": "T6D",
+      "stem": "What is a relay?",
+      "options": [
+        "An electrically-controlled switch",
+        "A current-controlled amplifier",
+        "An inverting amplifier",
+        "A pass transistor"
+      ],
+      "correctIndex": 0,
+      "explanation": "A relay is an electrically controlled switch. Its switching contacts serve a different function from a transformer's voltage conversion.",
+      "figure": null
+    },
+    {
+      "localId": "S02-Q8",
+      "scenario": 2,
+      "checkpoint": 4,
+      "kind": "official",
+      "officialId": "T6D05",
+      "group": "T6D",
+      "stem": "What type of circuit controls the amount of voltage from a power supply?",
+      "options": [
+        "Regulator",
+        "Oscillator",
+        "Filter",
+        "Phase inverter"
+      ],
+      "correctIndex": 0,
+      "explanation": "A regulator controls a supply's output voltage. A rectifier converts AC to a varying DC signal but doesn't by itself guarantee a stable output voltage.",
+      "figure": null
+    },
+    {
+      "localId": "S02-A1",
+      "scenario": 2,
+      "checkpoint": 2,
+      "kind": "applied",
+      "officialId": "T5D01",
+      "relatedOfficialIds": [
+        "T5D01",
+        "T5C08"
+      ],
+      "group": "T5D",
+      "stem": "The training board places a 120-ohm resistor across 12 V. What current should you expect?",
+      "options": [
+        "10 A",
+        "1 A",
+        "0.01 A",
+        "0.10 A"
+      ],
+      "correctIndex": 3,
+      "explanation": "Current is voltage divided by resistance, so 12 divided by 120 gives 0.10 A. The resistor dissipates 1.2 W, which is why the exercise specifies a suitably rated part.",
+      "figure": null
+    },
+    {
+      "localId": "S02-A2",
+      "scenario": 2,
+      "checkpoint": 3,
+      "kind": "applied",
+      "officialId": "T7D03",
+      "relatedOfficialIds": [
+        "T7D03",
+        "T7D06",
+        "T7D11"
+      ],
+      "group": "T7D",
+      "stem": "You have isolated the training board and verified that power is off. Which setup checks continuity through its switch?",
+      "options": [
+        "DC volts across the supply.",
+        "Amperes across the switch.",
+        "Ohms across the switch.",
+        "AC volts across the supply."
+      ],
+      "correctIndex": 2,
+      "explanation": "Resistance mode can check the isolated switch's continuity with the circuit unpowered. Current mode across a powered source would create a dangerous short rather than this measurement.",
+      "figure": null
+    },
+    {
+      "localId": "S03-Q1",
+      "scenario": 3,
+      "checkpoint": 1,
+      "kind": "official",
+      "officialId": "T1A05",
+      "group": "T1A",
+      "stem": "What proves that the FCC has issued an operator/primary license grant?",
+      "options": [
+        "A printed copy of the certificate of successful completion of examination",
+        "An email notification from the NCVEC granting the license",
+        "The license appears in the FCC ULS database",
+        "All these choices are correct"
+      ],
+      "correctIndex": 2,
+      "explanation": "The license entry in the FCC ULS database is evidence that the grant has been issued. Passing paperwork from an exam session isn't the same as the issued grant.",
+      "figure": null
+    },
+    {
+      "localId": "S03-Q2",
+      "scenario": 3,
+      "checkpoint": 1,
+      "kind": "official",
+      "officialId": "T1C10",
+      "group": "T1C",
+      "stem": "How soon after passing the examination for your first amateur radio license may you transmit on the amateur radio bands?",
+      "options": [
+        "Immediately on receiving your Certificate of Successful Completion of Examination (CSCE)",
+        "As soon as your operator/station license grant appears on the ARRL website",
+        "As soon as your operator/station license grant appears in the FCC’s license database",
+        "As soon as you receive your license in the mail from the FCC"
+      ],
+      "correctIndex": 2,
+      "explanation": "For a first license, independent transmitting can begin when the operator/station grant appears in the FCC license database. Finishing this simulated contact or passing an in-game quiz doesn't grant that authority.",
+      "figure": null
+    },
+    {
+      "localId": "S03-Q3",
+      "scenario": 3,
+      "checkpoint": 2,
+      "kind": "official",
+      "officialId": "T1E04",
+      "group": "T1E",
+      "stem": "What determines the transmitting frequency privileges of an amateur station?",
+      "options": [
+        "The frequency authorized by the frequency coordinator",
+        "The frequencies printed on the license grant",
+        "The highest class of operator license held by anyone on the premises",
+        "The class of operator license held by the control operator"
+      ],
+      "correctIndex": 3,
+      "explanation": "The control operator's license class determines the station's transmitting privileges. Owning a radio capable of other bands doesn't expand those privileges.",
+      "figure": null
+    },
+    {
+      "localId": "S03-Q4",
+      "scenario": 3,
+      "checkpoint": 2,
+      "kind": "official",
+      "officialId": "T1B04",
+      "group": "T1B",
+      "stem": "Which amateur band includes 146.52 MHz?",
+      "options": [
+        "6 meters",
+        "20 meters",
+        "70 centimeters",
+        "2 meters"
+      ],
+      "correctIndex": 3,
+      "explanation": "146.52 MHz is within the 2-meter amateur band. The wavelength name is approximate, so it isn't a claim that every frequency in the band has exactly a two-meter wavelength.",
+      "figure": null
+    },
+    {
+      "localId": "S03-Q5",
+      "scenario": 3,
+      "checkpoint": 3,
+      "kind": "official",
+      "officialId": "T2A11",
+      "group": "T2A",
+      "stem": "What term describes an amateur station that is transmitting and receiving on the same frequency?",
+      "options": [
+        "Full duplex",
+        "Diplex",
+        "Simplex",
+        "Multiplex"
+      ],
+      "correctIndex": 2,
+      "explanation": "Simplex operation uses the same frequency for transmitting and receiving. An ordinary repeater contact uses separate input and output frequencies instead.",
+      "figure": null
+    },
+    {
+      "localId": "S03-Q6",
+      "scenario": 3,
+      "checkpoint": 3,
+      "kind": "official",
+      "officialId": "T1F03",
+      "group": "T1F",
+      "stem": "When are you required to transmit your assigned call sign?",
+      "options": [
+        "At the beginning of each contact, and every 10 minutes thereafter",
+        "At least once during each transmission",
+        "At least every 15 minutes during and at the end of a communication",
+        "At least every 10 minutes during and at the end of a communication"
+      ],
+      "correctIndex": 3,
+      "explanation": "Identification is required at least every ten minutes during a communication and at its end. A name or location report doesn't replace the assigned call sign.",
+      "figure": null
+    },
+    {
+      "localId": "S03-Q7",
+      "scenario": 3,
+      "checkpoint": 4,
+      "kind": "official",
+      "officialId": "T1D12",
+      "group": "T1D",
+      "stem": "Which of the following is required when making on-the-air test transmissions?",
+      "options": [
+        "Identify the transmitting station",
+        "Conduct tests only between 10 p.m. and 6 a.m. local time",
+        "Notify the FCC of the transmissions",
+        "All these choices are correct"
+      ],
+      "correctIndex": 0,
+      "explanation": "On-air tests still require station identification. A short test doesn't become exempt merely because no conversation follows.",
+      "figure": null
+    },
+    {
+      "localId": "S03-Q8",
+      "scenario": 3,
+      "checkpoint": 4,
+      "kind": "official",
+      "officialId": "T0C13",
+      "group": "T0C",
+      "stem": "Who is responsible for ensuring that no person is exposed to RF energy above the FCC exposure limits?",
+      "options": [
+        "The FCC",
+        "The station licensee",
+        "Anyone who is near an antenna",
+        "The local zoning board"
+      ],
+      "correctIndex": 1,
+      "explanation": "The station licensee is responsible for ensuring people aren't exposed above the FCC limits. Buying an approved radio doesn't establish compliance for every antenna installation.",
+      "figure": null
+    },
+    {
+      "localId": "S03-A1",
+      "scenario": 3,
+      "checkpoint": 2,
+      "kind": "applied",
+      "officialId": "T1C10",
+      "relatedOfficialIds": [
+        "T1C10",
+        "T1A05"
+      ],
+      "group": "T1C",
+      "stem": "The fictional operator passed the first license exam, but the grant has not appeared in the FCC database. What should they do before independent transmitting?",
+      "options": [
+        "Wait for the grant to appear.",
+        "Use the examiner's call sign.",
+        "Transmit only at low power.",
+        "Use a temporary invented call."
+      ],
+      "correctIndex": 0,
+      "explanation": "For a first license, the issued grant must appear before independent transmitting begins. Low power and an invented call sign don't replace the required grant.",
+      "figure": null
+    },
+    {
+      "localId": "S03-A2",
+      "scenario": 3,
+      "checkpoint": 3,
+      "kind": "applied",
+      "officialId": "T1F03",
+      "relatedOfficialIds": [
+        "T1F03"
+      ],
+      "group": "T1F",
+      "stem": "A communication began with identification at 14:00 and continues past 14:10. When is identification next required?",
+      "options": [
+        "Only when the other station asks.",
+        "Only after the radio changes bands.",
+        "Only when the conversation finishes.",
+        "By 14:10, and again at the end."
+      ],
+      "correctIndex": 3,
+      "explanation": "The rule requires identification at least every ten minutes during a communication and at its end. A long uninterrupted conversation doesn't postpone the ten-minute requirement.",
+      "figure": null
+    },
+    {
+      "localId": "S04-Q1",
+      "scenario": 4,
+      "checkpoint": 1,
+      "kind": "official",
+      "officialId": "T2A07",
+      "group": "T2A",
+      "stem": "What does the term \"repeater offset\" mean?",
+      "options": [
+        "The difference between a repeater’s transmit and receive frequencies",
+        "The repeater has a time delay to prevent interference",
+        "The approximately half-second delay to allow for the “squelch tail” to be removed",
+        "The fee charged by the repeater owner or club to provide for maintenance"
+      ],
+      "correctIndex": 0,
+      "explanation": "Repeater offset is the difference between its transmit and receive frequencies. It isn't the access-tone frequency or a correction for an inaccurate display.",
+      "figure": null
+    },
+    {
+      "localId": "S04-Q2",
+      "scenario": 4,
+      "checkpoint": 1,
+      "kind": "official",
+      "officialId": "T2A01",
+      "group": "T2A",
+      "stem": "What is a common repeater frequency offset in the 2-meter band?",
+      "options": [
+        "Plus or minus 5 MHz",
+        "Plus or minus 600 kHz",
+        "Plus or minus 500 kHz",
+        "Plus or minus 1 MHz"
+      ],
+      "correctIndex": 1,
+      "explanation": "Plus or minus 600 kHz is a common 2-meter repeater offset. Use the actual repeater entry because the common value doesn't establish every local channel plan.",
+      "figure": null
+    },
+    {
+      "localId": "S04-Q3",
+      "scenario": 4,
+      "checkpoint": 2,
+      "kind": "official",
+      "officialId": "T2B02",
+      "group": "T2B",
+      "stem": "What term describes the use of a sub-audible tone transmitted along with normal voice audio to open the squelch of a receiver?",
+      "options": [
+        "Carrier squelch",
+        "Tone burst",
+        "DTMF",
+        "CTCSS"
+      ],
+      "correctIndex": 3,
+      "explanation": "CTCSS adds a sub-audible tone that can open an appropriately configured receiver's squelch. It doesn't encrypt the conversation or provide privacy.",
+      "figure": null
+    },
+    {
+      "localId": "S04-Q4",
+      "scenario": 4,
+      "checkpoint": 2,
+      "kind": "official",
+      "officialId": "T2B04",
+      "group": "T2B",
+      "stem": "Which of the following could be the reason you are unable to access a repeater whose output you can hear?",
+      "options": [
+        "Improper transceiver offset",
+        "You are using the wrong CTCSS tone",
+        "You are using the wrong DCS code",
+        "All these choices are correct"
+      ],
+      "correctIndex": 3,
+      "explanation": "An offset, tone or access-setting problem can prevent access even while the output is audible. A working receive path alone doesn't prove that the repeater can receive your transmission.",
+      "figure": null
+    },
+    {
+      "localId": "S04-Q5",
+      "scenario": 4,
+      "checkpoint": 3,
+      "kind": "official",
+      "officialId": "T2B01",
+      "group": "T2B",
+      "stem": "What is the purpose of the reverse function on a VHF/UHF transceiver?",
+      "options": [
+        "To reduce power output",
+        "To increase power output",
+        "To listen on a repeater’s input frequency",
+        "To listen on a repeater’s output frequency"
+      ],
+      "correctIndex": 2,
+      "explanation": "Reverse lets you listen on the repeater's input frequency. It can help check whether the other station is directly audible, but it doesn't repair a faulty uplink.",
+      "figure": null
+    },
+    {
+      "localId": "S04-Q6",
+      "scenario": 4,
+      "checkpoint": 3,
+      "kind": "official",
+      "officialId": "T2A09",
+      "group": "T2A",
+      "stem": "Which of the following is a customary way to indicate a station is listening on a repeater and looking for a contact?",
+      "options": [
+        "“CQ CQ” followed by the repeater’s call sign",
+        "The station’s call sign followed by the word “listening”",
+        "The repeater’s call sign followed by the station’s call sign",
+        "“QSY” followed by your call sign"
+      ],
+      "correctIndex": 1,
+      "explanation": "Giving your call sign followed by 'listening' is a customary way to seek a repeater contact. Repeated long CQ calls are unnecessary on a channel people are already monitoring.",
+      "figure": null
+    },
+    {
+      "localId": "S04-Q7",
+      "scenario": 4,
+      "checkpoint": 4,
+      "kind": "official",
+      "officialId": "T4B07",
+      "group": "T4B",
+      "stem": "What is a DMR “code plug”?",
+      "options": [
+        "An adapter cable used to connect a DMR radio to a computer for internet access",
+        "Configuration data loaded onto your radio to access repeaters and talkgroups",
+        "An upgrade to DMR programming software provided by the radio manufacturer to accommodate new radio models",
+        "A Coder-Decoder (CODEC) that converts analog voice data to DMR digital data and vice versa"
+      ],
+      "correctIndex": 1,
+      "explanation": "A DMR code plug is the radio's configuration data for channels, repeaters and talkgroups. It isn't an encryption key or a physical connector.",
+      "figure": null
+    },
+    {
+      "localId": "S04-Q8",
+      "scenario": 4,
+      "checkpoint": 4,
+      "kind": "official",
+      "officialId": "T2B12",
+      "group": "T2B",
+      "stem": "What is the digital color code used on DMR repeater systems?",
+      "options": [
+        "An access code which must be programmed into a DMR transmitter to access a specific repeater",
+        "A code which automatically programs the repeater offset to a frequency chosen by the user",
+        "A code which identifies the specific CODEC being used so that the repeater can properly decode the audio",
+        "A code transmitted by the repeater to indicate health and status of the equipment"
+      ],
+      "correctIndex": 0,
+      "explanation": "A DMR color code is an access setting that must match the repeater. It is separate from a talkgroup identifier, so matching one doesn't guarantee the other is correct.",
+      "figure": null
+    },
+    {
+      "localId": "S04-A1",
+      "scenario": 4,
+      "checkpoint": 2,
+      "kind": "applied",
+      "officialId": "T2A01",
+      "relatedOfficialIds": [
+        "T2A01",
+        "T2A07"
+      ],
+      "group": "T2A",
+      "stem": "The repeater output is 146.940 MHz with a negative 600 kHz offset. What is the radio's transmit frequency?",
+      "options": [
+        "147.540 MHz",
+        "146.340 MHz",
+        "146.940 MHz",
+        "146.880 MHz"
+      ],
+      "correctIndex": 1,
+      "explanation": "Subtracting 0.600 MHz from 146.940 MHz gives 146.340 MHz. The output frequency is what you receive, not the uplink frequency for this repeater.",
+      "figure": null
+    },
+    {
+      "localId": "S04-A2",
+      "scenario": 4,
+      "checkpoint": 3,
+      "kind": "applied",
+      "officialId": "T2B02",
+      "relatedOfficialIds": [
+        "T2B02",
+        "T2B04"
+      ],
+      "group": "T2B",
+      "stem": "The transmit frequency is correct, but the radio sends 123.0 Hz while the repeater requires 100.0 Hz. What should you change?",
+      "options": [
+        "The receive audio volume.",
+        "The antenna mounting height.",
+        "The transmit access tone.",
+        "The stored repeater offset."
+      ],
+      "correctIndex": 2,
+      "explanation": "The transmitted tone must match the repeater's stated access requirement. Changing a correct offset would introduce a second fault without correcting the tone.",
+      "figure": null
+    },
+    {
+      "localId": "S05-Q1",
+      "scenario": 5,
+      "checkpoint": 1,
+      "kind": "official",
+      "officialId": "T3B06",
+      "group": "T3B",
+      "stem": "What is the formula for converting frequency to approximate wavelength in meters?",
+      "options": [
+        "Wavelength in meters equals frequency in hertz multiplied by 300",
+        "Wavelength in meters equals frequency in hertz divided by 300",
+        "Wavelength in meters equals frequency in megahertz divided by 300",
+        "Wavelength in meters equals 300 divided by frequency in megahertz"
+      ],
+      "correctIndex": 3,
+      "explanation": "Approximate wavelength in meters is 300 divided by frequency in MHz. Using frequency in hertz with that same constant would give the wrong scale.",
+      "figure": null
+    },
+    {
+      "localId": "S05-Q2",
+      "scenario": 5,
+      "checkpoint": 1,
+      "kind": "official",
+      "officialId": "T9A05",
+      "group": "T9A",
+      "stem": "Which of the following increases the resonant frequency of a dipole antenna?",
+      "options": [
+        "Lengthening it",
+        "Inserting coils in series with radiating wires",
+        "Shortening it",
+        "Adding capacitive loading to the ends of the radiating wires"
+      ],
+      "correctIndex": 2,
+      "explanation": "Shortening a dipole raises its resonant frequency. Lengthening it would move resonance in the opposite direction.",
+      "figure": null
+    },
+    {
+      "localId": "S05-Q3",
+      "scenario": 5,
+      "checkpoint": 2,
+      "kind": "official",
+      "officialId": "T9A10",
+      "group": "T9A",
+      "stem": "In which direction does a half-wave dipole antenna radiate the strongest signal?",
+      "options": [
+        "Equally in all directions",
+        "Off the ends of the antenna",
+        "In the direction of the feed line",
+        "Broadside to the antenna"
+      ],
+      "correctIndex": 3,
+      "explanation": "A half-wave dipole's strongest radiation is broadside to its length. Pointing an end toward the other station doesn't aim its strongest lobe there.",
+      "figure": null
+    },
+    {
+      "localId": "S05-Q4",
+      "scenario": 5,
+      "checkpoint": 2,
+      "kind": "official",
+      "officialId": "T3A04",
+      "group": "T3A",
+      "stem": "What is the effect of antenna cross-polarization over a line-of-sight VHF or UHF path?",
+      "options": [
+        "Modulation sidebands might become inverted",
+        "Received signal strength is reduced",
+        "Signals have an echo effect",
+        "Nothing significant will happen"
+      ],
+      "correctIndex": 1,
+      "explanation": "Cross-polarization reduces received strength on a line-of-sight VHF or UHF path. Changing audio volume cannot recover the RF power lost through that mismatch.",
+      "figure": null
+    },
+    {
+      "localId": "S05-Q5",
+      "scenario": 5,
+      "checkpoint": 3,
+      "kind": "official",
+      "officialId": "T9A11",
+      "group": "T9A",
+      "stem": "What is antenna gain?",
+      "options": [
+        "The additional power that is added to the transmitter power",
+        "The additional power that is required in the antenna when transmitting on a higher frequency",
+        "The increase in signal strength in a specified direction compared to a reference antenna",
+        "The increase in impedance on receive or transmit compared to a reference antenna"
+      ],
+      "correctIndex": 2,
+      "explanation": "Antenna gain compares strength in a particular direction with a reference antenna. It redistributes radiation rather than creating additional transmitter power.",
+      "figure": null
+    },
+    {
+      "localId": "S05-Q6",
+      "scenario": 5,
+      "checkpoint": 3,
+      "kind": "official",
+      "officialId": "T0B06",
+      "group": "T0B",
+      "stem": "What is the minimum safe distance from a power line to allow when installing an antenna?",
+      "options": [
+        "Add the height of the antenna to the height of the power line and multiply by a factor of 1.5",
+        "The height of the power line above ground",
+        "1/2 wavelength at the operating frequency",
+        "Enough so that if the antenna falls, no part of it can come within 10 feet of the power wires"
+      ],
+      "correctIndex": 3,
+      "explanation": "The installation must allow a falling antenna to remain at least ten feet from power wires. Measuring only the distance from the upright antenna misses the fall hazard.",
+      "figure": null
+    },
+    {
+      "localId": "S05-Q7",
+      "scenario": 5,
+      "checkpoint": 4,
+      "kind": "official",
+      "officialId": "T0C04",
+      "group": "T0C",
+      "stem": "What factors affect the RF exposure of people near an amateur station antenna?",
+      "options": [
+        "Frequency and power level of the RF field",
+        "Distance from the antenna to a person",
+        "Radiation pattern of the antenna",
+        "All these choices are correct"
+      ],
+      "correctIndex": 3,
+      "explanation": "RF exposure depends on multiple station and operating factors, including power, frequency, antenna behavior and the exposure geometry. A wattage reading alone doesn't establish a safe installation.",
+      "figure": null
+    },
+    {
+      "localId": "S05-Q8",
+      "scenario": 5,
+      "checkpoint": 4,
+      "kind": "official",
+      "officialId": "T0C09",
+      "group": "T0C",
+      "stem": "How can you make sure your station stays in compliance with RF safety regulations?",
+      "options": [
+        "By informing the FCC of any changes made in your station",
+        "By re-evaluating the station whenever an item in the transmitter or antenna system is changed",
+        "By making sure your antennas have low SWR",
+        "By using only Underwriter Laboratories approved transmitting equipment"
+      ],
+      "correctIndex": 1,
+      "explanation": "Changing transmitter or antenna-system items calls for re-evaluating RF safety compliance. A previous assessment isn't automatically valid after the station changes.",
+      "figure": null
+    },
+    {
+      "localId": "S05-A1",
+      "scenario": 5,
+      "checkpoint": 2,
+      "kind": "applied",
+      "officialId": "T9A05",
+      "relatedOfficialIds": [
+        "T9A05"
+      ],
+      "group": "T9A",
+      "stem": "An assembled dipole resonates below the target frequency. Which adjustment moves resonance toward the target?",
+      "options": [
+        "Shorten both elements equally.",
+        "Lengthen both elements equally.",
+        "Increase the microphone gain.",
+        "Increase the transmitter power."
+      ],
+      "correctIndex": 0,
+      "explanation": "Shortening the dipole raises its resonant frequency. Power and microphone settings don't change the antenna's resonant length.",
+      "figure": null
+    },
+    {
+      "localId": "S05-A2",
+      "scenario": 5,
+      "checkpoint": 3,
+      "kind": "applied",
+      "officialId": "T3A04",
+      "relatedOfficialIds": [
+        "T3A04",
+        "T9A03"
+      ],
+      "group": "T3A",
+      "stem": "A local reference antenna is vertical. Rotating your dipole from horizontal to vertical improves reception with other settings unchanged. What best explains the result?",
+      "options": [
+        "The wavelength became longer.",
+        "The receiver gained more power.",
+        "The feed line became shorter.",
+        "The polarization matched better."
+      ],
+      "correctIndex": 3,
+      "explanation": "Matching polarization reduces cross-polarization loss on this line-of-sight path. The unchanged frequency means the radio wavelength didn't change during the comparison.",
+      "figure": null
+    },
+    {
+      "localId": "S06-Q1",
+      "scenario": 6,
+      "checkpoint": 1,
+      "kind": "official",
+      "officialId": "T7C01",
+      "group": "T7C",
+      "stem": "What is the primary purpose of a dummy load?",
+      "options": [
+        "To prevent transmitting signals over the air when making tests",
+        "To prevent over-modulation of a transmitter",
+        "To improve the efficiency of an antenna",
+        "To improve the signal-to-noise ratio of a receiver"
+      ],
+      "correctIndex": 0,
+      "explanation": "A dummy load lets you test a transmitter without intentionally radiating through an antenna. It must still suit the frequency, power and duration of the test.",
+      "figure": null
+    },
+    {
+      "localId": "S06-Q2",
+      "scenario": 6,
+      "checkpoint": 1,
+      "kind": "official",
+      "officialId": "T7C04",
+      "group": "T7C",
+      "stem": "What reading on an SWR meter indicates a perfect impedance match between the antenna and the feed line?",
+      "options": [
+        "50:50",
+        "Zero",
+        "1:1",
+        "Full Scale"
+      ],
+      "correctIndex": 2,
+      "explanation": "An SWR of 1:1 indicates a matched load at the measurement point. It doesn't prove that an antenna is radiating efficiently, since a dummy load can also present a good match.",
+      "figure": null
+    },
+    {
+      "localId": "S06-Q3",
+      "scenario": 6,
+      "checkpoint": 2,
+      "kind": "official",
+      "officialId": "T7C05",
+      "group": "T7C",
+      "stem": "Why do most solid-state transmitters reduce output power as SWR increases beyond a certain level?",
+      "options": [
+        "To protect the RF output amplifier transistors",
+        "To comply with FCC rules on spectral purity",
+        "Because power supplies cannot supply enough current at high SWR",
+        "To lower the SWR on the transmission line"
+      ],
+      "correctIndex": 0,
+      "explanation": "Many solid-state transmitters reduce output to protect their output transistors when mismatch becomes excessive. The lower reading can therefore be a consequence of a feed-line or antenna fault.",
+      "figure": null
+    },
+    {
+      "localId": "S06-Q4",
+      "scenario": 6,
+      "checkpoint": 2,
+      "kind": "official",
+      "officialId": "T7C06",
+      "group": "T7C",
+      "stem": "What does an SWR reading of 4:1 indicate?",
+      "options": [
+        "Loss of -4 dB",
+        "Good impedance match",
+        "Gain of +4 dB",
+        "Impedance mismatch"
+      ],
+      "correctIndex": 3,
+      "explanation": "An SWR of 4:1 indicates an impedance mismatch. It doesn't by itself identify whether the cause is the antenna, cable or connection.",
+      "figure": null
+    },
+    {
+      "localId": "S06-Q5",
+      "scenario": 6,
+      "checkpoint": 3,
+      "kind": "official",
+      "officialId": "T9B09",
+      "group": "T9B",
+      "stem": "What can cause erratic changes in SWR?",
+      "options": [
+        "Local thunderstorm",
+        "Loose connection in the antenna or feed line",
+        "Over-modulation",
+        "Overload from a strong local station"
+      ],
+      "correctIndex": 1,
+      "explanation": "A loose antenna or feed-line connection can make SWR change erratically. A steady mismatched antenna can produce high SWR without that same intermittent behavior.",
+      "figure": null
+    },
+    {
+      "localId": "S06-Q6",
+      "scenario": 6,
+      "checkpoint": 3,
+      "kind": "official",
+      "officialId": "T7D11",
+      "group": "T7D",
+      "stem": "Which of the following precautions should be taken when measuring in-circuit resistance with an ohmmeter?",
+      "options": [
+        "Ensure that the applied voltages are correct",
+        "Ensure that the circuit is not powered",
+        "Ensure that the circuit is grounded",
+        "Ensure that the circuit is operating at the correct frequency"
+      ],
+      "correctIndex": 1,
+      "explanation": "Resistance measurements require the circuit to be unpowered. The ohmmeter supplies its own test current, so an external voltage can corrupt the result or damage the meter.",
+      "figure": null
+    },
+    {
+      "localId": "S06-Q7",
+      "scenario": 6,
+      "checkpoint": 4,
+      "kind": "official",
+      "officialId": "T7C09",
+      "group": "T7C",
+      "stem": "Which of the following causes failure of coaxial cables?",
+      "options": [
+        "Moisture contamination",
+        "Solder flux contamination",
+        "Rapid fluctuation in transmitter output power",
+        "Operation at 100% duty cycle for an extended period"
+      ],
+      "correctIndex": 0,
+      "explanation": "Moisture contamination can cause coaxial cable failure. An intact outdoor weather seal helps prevent that failure rather than merely improving appearance.",
+      "figure": null
+    },
+    {
+      "localId": "S06-Q8",
+      "scenario": 6,
+      "checkpoint": 4,
+      "kind": "official",
+      "officialId": "T9B05",
+      "group": "T9B",
+      "stem": "What happens as the frequency of a signal in coaxial cable is increased?",
+      "options": [
+        "The characteristic impedance decreases",
+        "The loss decreases",
+        "The characteristic impedance increases",
+        "The loss increases"
+      ],
+      "correctIndex": 3,
+      "explanation": "Coaxial feed-line loss generally increases with frequency. A cable that performs adequately at HF can therefore waste more power at UHF.",
+      "figure": null
+    },
+    {
+      "localId": "S06-A1",
+      "scenario": 6,
+      "checkpoint": 2,
+      "kind": "applied",
+      "officialId": "T7C01",
+      "relatedOfficialIds": [
+        "T7C01",
+        "T7C06"
+      ],
+      "group": "T7C",
+      "stem": "SWR is good with a dummy load at the radio but poor with the same load at the end of the long coax. Which section should you investigate?",
+      "options": [
+        "The disconnected outdoor antenna.",
+        "The long coax and its connectors.",
+        "The stored repeater access tone.",
+        "The receiver audio and squelch."
+      ],
+      "correctIndex": 1,
+      "explanation": "The long coax and its connectors are the added elements in the failing test. The antenna isn't connected in either dummy-load test, so those results don't implicate it.",
+      "figure": null
+    },
+    {
+      "localId": "S06-A2",
+      "scenario": 6,
+      "checkpoint": 3,
+      "kind": "applied",
+      "officialId": "T7C04",
+      "relatedOfficialIds": [
+        "T7C04",
+        "T7C07"
+      ],
+      "group": "T7C",
+      "stem": "A dummy load and an antenna both give 1:1 SWR. What does that reading establish?",
+      "options": [
+        "Both radiate equally well.",
+        "Both have zero cable loss.",
+        "Both present a good match.",
+        "Both produce equal range."
+      ],
+      "correctIndex": 2,
+      "explanation": "The reading establishes a good impedance match at the measurement point. A dummy load turns power into heat, demonstrating why match alone doesn't prove radiation performance.",
+      "figure": null
+    },
+    {
+      "localId": "S07-Q1",
+      "scenario": 7,
+      "checkpoint": 1,
+      "kind": "official",
+      "officialId": "T4A03",
+      "group": "T4A",
+      "stem": "Why are short, heavy-gauge wires used for a transceiver’s DC power connection?",
+      "options": [
+        "To minimize voltage drop when transmitting",
+        "To provide a close match to the power supply output impedance",
+        "To avoid RF interference",
+        "To minimize radiative losses in the power cable"
+      ],
+      "correctIndex": 0,
+      "explanation": "Short, heavy DC leads reduce resistance and the voltage drop during transmission. Longer or thinner leads can leave the supply reading normal while the radio receives too little voltage.",
+      "figure": null
+    },
+    {
+      "localId": "S07-Q2",
+      "scenario": 7,
+      "checkpoint": 1,
+      "kind": "official",
+      "officialId": "T5A01",
+      "group": "T5A",
+      "stem": "Electrical current is measured in which of the following units?",
+      "options": [
+        "Volts",
+        "Watts",
+        "Ohms",
+        "Amperes"
+      ],
+      "correctIndex": 3,
+      "explanation": "Current is measured in amperes. Voltage is measured in volts, so a current reading and a voltage reading describe different quantities.",
+      "figure": null
+    },
+    {
+      "localId": "S07-Q3",
+      "scenario": 7,
+      "checkpoint": 2,
+      "kind": "official",
+      "officialId": "T5D02",
+      "group": "T5D",
+      "stem": "What formula is used to calculate voltage in a circuit?",
+      "options": [
+        "E = I x R",
+        "E = I / R",
+        "E = I2 x R",
+        "E = I2 / R"
+      ],
+      "correctIndex": 0,
+      "explanation": "Voltage across a resistance equals current multiplied by resistance. That relationship explains why a resistive connection produces a larger drop when transmit current increases.",
+      "figure": null
+    },
+    {
+      "localId": "S07-Q4",
+      "scenario": 7,
+      "checkpoint": 2,
+      "kind": "official",
+      "officialId": "T5C09",
+      "group": "T5C",
+      "stem": "How much power is delivered by a voltage of 13.8 volts DC and a current of 10 amperes?",
+      "options": [
+        "138 watts",
+        "0.7 watts",
+        "23.8 watts",
+        "3.8 watts"
+      ],
+      "correctIndex": 0,
+      "explanation": "Multiplying 13.8 V by 10 A gives 138 W of DC electrical power. That isn't automatically the RF output because some input power becomes heat and supports other circuits.",
+      "figure": null
+    },
+    {
+      "localId": "S07-Q5",
+      "scenario": 7,
+      "checkpoint": 3,
+      "kind": "official",
+      "officialId": "T7D02",
+      "group": "T7D",
+      "stem": "How is a voltmeter connected to a component to measure applied voltage?",
+      "options": [
+        "In series",
+        "In parallel",
+        "In quadrature",
+        "In phase"
+      ],
+      "correctIndex": 1,
+      "explanation": "A voltmeter measures the potential difference across a component, so it connects in parallel. Putting it in series changes the measurement arrangement and doesn't measure that applied voltage correctly.",
+      "figure": null
+    },
+    {
+      "localId": "S07-Q6",
+      "scenario": 7,
+      "checkpoint": 3,
+      "kind": "official",
+      "officialId": "T0A05",
+      "group": "T0A",
+      "stem": "Why should a 5-ampere fuse never be replaced with a 20-ampere fuse?",
+      "options": [
+        "The larger fuse would be likely to blow because it is rated for higher current",
+        "The power supply ripple would greatly increase",
+        "Excessive current could cause a fire",
+        "Voltage drop in the higher current fuse could result in excessively low voltage to the device"
+      ],
+      "correctIndex": 2,
+      "explanation": "An oversized fuse may allow wiring to overheat before it opens. Replace a fuse with the specified rating after addressing the fault instead of increasing its rating.",
+      "figure": null
+    },
+    {
+      "localId": "S07-Q7",
+      "scenario": 7,
+      "checkpoint": 4,
+      "kind": "official",
+      "officialId": "T4A09",
+      "group": "T4A",
+      "stem": "How can you determine the length of time that equipment can be powered from a battery?",
+      "options": [
+        "Divide the watt-hour rating of the battery by the peak power consumption of the equipment",
+        "Divide the battery ampere-hour rating by the average current draw of the equipment",
+        "Multiply the watts per hour consumed by the equipment by the battery power rating",
+        "Multiply the square of the current rating of the battery by the input resistance of the equipment"
+      ],
+      "correctIndex": 1,
+      "explanation": "Battery ampere-hours divided by average current gives an idealized runtime estimate. Peak transmit current alone doesn't describe a station that spends much of its time receiving.",
+      "figure": null
+    },
+    {
+      "localId": "S07-Q8",
+      "scenario": 7,
+      "checkpoint": 4,
+      "kind": "official",
+      "officialId": "T5B09",
+      "group": "T5B",
+      "stem": "Which decibel value most closely represents a power increase from 5 watts to 10 watts?",
+      "options": [
+        "2 dB",
+        "3 dB",
+        "5 dB",
+        "10 dB"
+      ],
+      "correctIndex": 1,
+      "explanation": "Doubling power from 5 W to 10 W is approximately a 3 dB increase. It isn't a tenfold increase, which would be 10 dB.",
+      "figure": null
+    },
+    {
+      "localId": "S07-A1",
+      "scenario": 7,
+      "checkpoint": 2,
+      "kind": "applied",
+      "officialId": "T5D02",
+      "relatedOfficialIds": [
+        "T5D02",
+        "T4A03"
+      ],
+      "group": "T5D",
+      "stem": "During the fixture's 8 A transmit test, the lead has 0.30 ohm loop resistance. What voltage drop should it produce?",
+      "options": [
+        "0.24 V",
+        "26.7 V",
+        "0.0375 V",
+        "2.4 V"
+      ],
+      "correctIndex": 3,
+      "explanation": "The lead drop is current times resistance: 8 multiplied by 0.30 equals 2.4 V. A healthy reading at the source doesn't include that downstream drop.",
+      "figure": null
+    },
+    {
+      "localId": "S07-A2",
+      "scenario": 7,
+      "checkpoint": 3,
+      "kind": "applied",
+      "officialId": "T4A09",
+      "relatedOfficialIds": [
+        "T4A09"
+      ],
+      "group": "T4A",
+      "stem": "A radio draws 8 A transmitting and 1 A receiving. At 20% transmit time, what average current should you use for an ideal runtime estimate?",
+      "options": [
+        "2.4 A",
+        "4.5 A",
+        "8.0 A",
+        "1.8 A"
+      ],
+      "correctIndex": 0,
+      "explanation": "The weighted average is 0.20 times 8 A plus 0.80 times 1 A, which equals 2.4 A. An unweighted average would assume equal time in both states.",
+      "figure": null
+    },
+    {
+      "localId": "S08-Q1",
+      "scenario": 8,
+      "checkpoint": 1,
+      "kind": "official",
+      "officialId": "T7B03",
+      "group": "T7B",
+      "stem": "Which of the following can cause radio frequency interference?",
+      "options": [
+        "Fundamental overload",
+        "Harmonics",
+        "Spurious emissions",
+        "All these choices are correct"
+      ],
+      "correctIndex": 3,
+      "explanation": "Several mechanisms can cause radio interference, including unwanted emissions and receiver problems. Naming the symptom doesn't locate the source, so controlled tests are needed.",
+      "figure": null
+    },
+    {
+      "localId": "S08-Q2",
+      "scenario": 8,
+      "checkpoint": 1,
+      "kind": "official",
+      "officialId": "T7B08",
+      "group": "T7B",
+      "stem": "What should you do if something in a neighbor’s home is causing harmful interference to your amateur station?",
+      "options": [
+        "Work with your neighbor to identify the offending device",
+        "Politely inform your neighbor that FCC rules prohibit the use of devices that cause interference",
+        "Make sure your station meets the standards of good amateur practice",
+        "All these choices are correct"
+      ],
+      "correctIndex": 3,
+      "explanation": "Resolving a neighbor's interfering device calls for cooperation and appropriate technical help. Accusations or unauthorized changes to someone else's equipment aren't a troubleshooting method.",
+      "figure": null
+    },
+    {
+      "localId": "S08-Q3",
+      "scenario": 8,
+      "checkpoint": 2,
+      "kind": "official",
+      "officialId": "T8C01",
+      "group": "T8C",
+      "stem": "Which of the following methods is used to locate sources of noise interference or jamming?",
+      "options": [
+        "Echolocation",
+        "Doppler radar",
+        "Radio direction finding",
+        "Phase locking"
+      ],
+      "correctIndex": 2,
+      "explanation": "Radio direction finding uses received signals to help locate a source. One signal-strength reading at one location doesn't establish its exact position.",
+      "figure": null
+    },
+    {
+      "localId": "S08-Q4",
+      "scenario": 8,
+      "checkpoint": 2,
+      "kind": "official",
+      "officialId": "T8C02",
+      "group": "T8C",
+      "stem": "Which of these items would be useful for a hidden transmitter hunt?",
+      "options": [
+        "Calibrated SWR meter",
+        "A directional antenna",
+        "A directional wattmeter",
+        "All these choices are correct"
+      ],
+      "correctIndex": 1,
+      "explanation": "A directional antenna produces a useful change with bearing during a transmitter hunt. Reflections can complicate the bearing, so confirm it with further observations.",
+      "figure": null
+    },
+    {
+      "localId": "S08-Q5",
+      "scenario": 8,
+      "checkpoint": 3,
+      "kind": "official",
+      "officialId": "T7B07",
+      "group": "T7B",
+      "stem": "Which of the following can reduce interference to a 2-meter band transceiver from a nearby commercial FM station?",
+      "options": [
+        "Installing an RF preamplifier",
+        "Using double-shielded coaxial cable",
+        "Installing bypass capacitors on the microphone cable",
+        "Installing a band-reject filter"
+      ],
+      "correctIndex": 3,
+      "explanation": "A band-reject filter can reduce a strong unwanted commercial FM signal reaching a 2-meter receiver. More receiver gain can make overload worse instead of fixing it.",
+      "figure": null
+    },
+    {
+      "localId": "S08-Q6",
+      "scenario": 8,
+      "checkpoint": 3,
+      "kind": "official",
+      "officialId": "T7B06",
+      "group": "T7B",
+      "stem": "Which of the following actions should you take if a neighbor tells you that your station’s transmissions are interfering with their radio or TV reception?",
+      "options": [
+        "Make sure that your station is functioning properly and that it does not cause interference to your own radio or television when it is tuned to the same channel",
+        "Immediately turn off your transmitter and contact the nearest FCC office for assistance",
+        "Install a harmonic doubler on the output of your transmitter and tune it until the interference is eliminated",
+        "All these choices are correct"
+      ],
+      "correctIndex": 0,
+      "explanation": "First verify your own station and compare reception of the affected channel locally. A complaint identifies a problem to investigate, not proof that either party has already found its cause.",
+      "figure": null
+    },
+    {
+      "localId": "S08-Q7",
+      "scenario": 8,
+      "checkpoint": 4,
+      "kind": "official",
+      "officialId": "T7B01",
+      "group": "T7B",
+      "stem": "What can you do if you are told your FM handheld or mobile transceiver is over-deviating?",
+      "options": [
+        "Talk louder into the microphone",
+        "Let the transceiver cool off",
+        "Change to a higher power level",
+        "Talk farther away from the microphone"
+      ],
+      "correctIndex": 3,
+      "explanation": "Speaking farther from the microphone can reduce excessive FM deviation. Raising RF output power doesn't correct overly strong microphone audio.",
+      "figure": null
+    },
+    {
+      "localId": "S08-Q8",
+      "scenario": 8,
+      "checkpoint": 4,
+      "kind": "official",
+      "officialId": "T7B11",
+      "group": "T7B",
+      "stem": "Which of the following can eliminate distorted voice transmissions?",
+      "options": [
+        "Adding extra feedline to the antenna to lower SWR",
+        "Turning the radio on and off to reset the computer-controlled circuitry",
+        "Adding a clip-on ferrite “choke” to the microphone cable to prevent the transmitted signal from feeding back into the transmitter",
+        "Turning the squelch control fully clockwise to prevent the transmitted signal from triggering the squelch circuit"
+      ],
+      "correctIndex": 2,
+      "explanation": "A suitable ferrite choke can suppress RF feeding back on a microphone cable. It won't necessarily fix distortion caused by excessive microphone gain, so identify the mechanism first.",
+      "figure": null
+    },
+    {
+      "localId": "S08-A1",
+      "scenario": 8,
+      "checkpoint": 2,
+      "kind": "applied",
+      "officialId": "T7B03",
+      "relatedOfficialIds": [
+        "T7B03",
+        "T7B08"
+      ],
+      "group": "T7B",
+      "stem": "Noise disappears with a plug-in supply disconnected and returns when that supply is reconnected. What does this controlled test support?",
+      "options": [
+        "The antenna requires more gain.",
+        "The satellite orbit is incorrect.",
+        "The supply is a noise suspect.",
+        "The nearby operator is at fault."
+      ],
+      "correctIndex": 2,
+      "explanation": "The noise tracks the supply's connected state, making it a supported suspect. Confirm with a suitable substitute before blaming an unrelated station or replacing the antenna.",
+      "figure": null
+    },
+    {
+      "localId": "S08-A2",
+      "scenario": 8,
+      "checkpoint": 3,
+      "kind": "applied",
+      "officialId": "T7B01",
+      "relatedOfficialIds": [
+        "T7B01",
+        "T7B11"
+      ],
+      "group": "T7B",
+      "stem": "A controlled test shows that distorted FM speech clears when the operator moves farther from the microphone. Which cause best fits?",
+      "options": [
+        "An incorrect repeater offset.",
+        "Excessive microphone audio.",
+        "A broken antenna conductor.",
+        "A depleted station battery."
+      ],
+      "correctIndex": 1,
+      "explanation": "The improvement follows reduced microphone audio, which supports excessive deviation or drive. An RF-feedback cure isn't justified solely because a different kind of distortion can also occur.",
+      "figure": null
+    },
+    {
+      "localId": "S09-Q1",
+      "scenario": 9,
+      "checkpoint": 1,
+      "kind": "official",
+      "officialId": "T4A06",
+      "group": "T4A",
+      "stem": "What signals are used in a computer-radio interface for digital mode operation?",
+      "options": [
+        "Receive and transmit mode, status, and location",
+        "Antenna and RF power",
+        "Receive audio, transmit audio, and transmitter keying",
+        "NMEA GPS location and DC power"
+      ],
+      "correctIndex": 2,
+      "explanation": "The interface needs receive audio, transmit audio and a means of keying the transmitter. Receiving packets successfully doesn't prove that the transmit-audio or PTT path works.",
+      "figure": null
+    },
+    {
+      "localId": "S09-Q2",
+      "scenario": 9,
+      "checkpoint": 1,
+      "kind": "official",
+      "officialId": "T8A02",
+      "group": "T8A",
+      "stem": "What type of modulation is commonly used for VHF packet radio transmissions?",
+      "options": [
+        "FM or PM",
+        "SSB",
+        "AM",
+        "PSK"
+      ],
+      "correctIndex": 0,
+      "explanation": "FM or PM is commonly used for VHF packet transmission. The digital information doesn't mean that every packet system uses SSB.",
+      "figure": null
+    },
+    {
+      "localId": "S09-Q3",
+      "scenario": 9,
+      "checkpoint": 2,
+      "kind": "official",
+      "officialId": "T8D08",
+      "group": "T8D",
+      "stem": "Which of the following is included in packet radio transmissions?",
+      "options": [
+        "A checksum that permits error detection",
+        "A header that contains the call sign of the station to which the information is being sent",
+        "Automatic repeat request in case of error",
+        "All these choices are correct"
+      ],
+      "correctIndex": 3,
+      "explanation": "Packet transmissions can contain addressing, error-detection information and control/header information. The displayed message text is only part of the transmitted frame.",
+      "figure": null
+    },
+    {
+      "localId": "S09-Q4",
+      "scenario": 9,
+      "checkpoint": 2,
+      "kind": "official",
+      "officialId": "T8D11",
+      "group": "T8D",
+      "stem": "What is the role of ARQ in a transmission system?",
+      "options": [
+        "A special transmission format limited to video signals",
+        "A system used to encrypt command signals to an amateur radio satellite",
+        "An error correction method in which the receiving station detects errors and sends a request for retransmission",
+        "A method of compressing data using autonomous reiterative Q codes prior to final encoding"
+      ],
+      "correctIndex": 2,
+      "explanation": "ARQ detects an error and requests retransmission. That differs from assuming the original frame arrived correctly or that all packet protocols acknowledge every frame.",
+      "figure": null
+    },
+    {
+      "localId": "S09-Q5",
+      "scenario": 9,
+      "checkpoint": 3,
+      "kind": "official",
+      "officialId": "T8D03",
+      "group": "T8D",
+      "stem": "What kind of data can be transmitted by APRS?",
+      "options": [
+        "GPS position data",
+        "Text messages",
+        "Weather data",
+        "All these choices are correct"
+      ],
+      "correctIndex": 3,
+      "explanation": "APRS can carry multiple types of information, including position, weather and messages. It isn't limited to voice or to a single location coordinate.",
+      "figure": null
+    },
+    {
+      "localId": "S09-Q6",
+      "scenario": 9,
+      "checkpoint": 3,
+      "kind": "official",
+      "officialId": "T1D03",
+      "group": "T1D",
+      "stem": "When is it permissible to transmit messages encoded to obscure their meaning?",
+      "options": [
+        "Only when using a remote station during a contest",
+        "Only when transmitting certain approved digital codes",
+        "Only when transmitting control commands to space stations or model craft",
+        "Never"
+      ],
+      "correctIndex": 2,
+      "explanation": "The rule permits obscuring meaning for the specified space-station or model-craft control exceptions. Ordinary amateur conversation doesn't acquire permission for secrecy merely because it uses a digital format.",
+      "figure": null
+    },
+    {
+      "localId": "S09-Q7",
+      "scenario": 9,
+      "checkpoint": 4,
+      "kind": "official",
+      "officialId": "T8D07",
+      "group": "T8D",
+      "stem": "Which of the following describes DMR?",
+      "options": [
+        "A technique for time-multiplexing two digital voice signals on a single 12.5 kHz repeater channel",
+        "An automatic position tracking mode for FM mobiles communicating through repeaters",
+        "An automatic computer logging technique for hands-off logging when communicating while operating a vehicle",
+        "A digital technique for transmitting on two repeater inputs simultaneously for automatic error correction"
+      ],
+      "correctIndex": 0,
+      "explanation": "DMR can time-multiplex two digital voice signals on one 12.5 kHz repeater channel. The time slots are not two separately tuned RF channels.",
+      "figure": null
+    },
+    {
+      "localId": "S09-Q8",
+      "scenario": 9,
+      "checkpoint": 4,
+      "kind": "official",
+      "officialId": "T8D12",
+      "group": "T8D",
+      "stem": "Which of the following best describes an amateur radio mesh network?",
+      "options": [
+        "An amateur-radio data network using commercial Wi-Fi equipment with modified firmware",
+        "A wide-bandwidth digital voice mode employing DMR protocols",
+        "An amateur-radio satellite communications network using modified commercial satellite TV hardware",
+        "An internet linking protocol allowing communication through repeaters around the world"
+      ],
+      "correctIndex": 0,
+      "explanation": "An amateur mesh network can use commercial Wi-Fi equipment with modified firmware. It is a data network, not a special exemption from amateur operating rules.",
+      "figure": null
+    },
+    {
+      "localId": "S09-A1",
+      "scenario": 9,
+      "checkpoint": 2,
+      "kind": "applied",
+      "officialId": "T4A06",
+      "relatedOfficialIds": [
+        "T4A06",
+        "T4A07"
+      ],
+      "group": "T4A",
+      "stem": "Packets are audible at the radio, but the decoder is listening to the laptop microphone. What should you select?",
+      "options": [
+        "The radio interface audio input.",
+        "The laptop notification output.",
+        "The transmitter high-power mode.",
+        "The repeater reverse function."
+      ],
+      "correctIndex": 0,
+      "explanation": "The decoder needs the audio stream from the radio interface. Changing RF power or repeater controls won't route that existing receive audio into the software.",
+      "figure": null
+    },
+    {
+      "localId": "S09-A2",
+      "scenario": 9,
+      "checkpoint": 3,
+      "kind": "applied",
+      "officialId": "T8D08",
+      "relatedOfficialIds": [
+        "T8D08",
+        "T8D11"
+      ],
+      "group": "T8D",
+      "stem": "In this addressed packet exercise, which observation confirms that the other station accepted the message?",
+      "options": [
+        "The local transmit window fills.",
+        "The transmitter indicator lights.",
+        "The interface audio meter moves.",
+        "The destination acknowledges it."
+      ],
+      "correctIndex": 3,
+      "explanation": "The destination's acknowledgment supplies evidence of remote receipt in this exercise's protocol. Local indicators only show that some part of the sending path operated.",
+      "figure": null
+    },
+    {
+      "localId": "S10-Q1",
+      "scenario": 10,
+      "checkpoint": 1,
+      "kind": "official",
+      "officialId": "T1B01",
+      "group": "T1B",
+      "stem": "Which of the following frequency ranges are available for phone operation by Technician licensees?",
+      "options": [
+        "28.050 MHz to 28.150 MHz",
+        "28.100 MHz to 28.300 MHz",
+        "28.300 MHz to 28.500 MHz",
+        "28.500 MHz to 28.600 MHz"
+      ],
+      "correctIndex": 2,
+      "explanation": "Technician ten-meter phone privileges cover 28.300 to 28.500 MHz. Other ten-meter segments have different allowed activities, so a band name alone isn't enough.",
+      "figure": null
+    },
+    {
+      "localId": "S10-Q2",
+      "scenario": 10,
+      "checkpoint": 1,
+      "kind": "official",
+      "officialId": "T1B11",
+      "group": "T1B",
+      "stem": "What is the maximum peak envelope power output for Technician class operators in their HF band segments?",
+      "options": [
+        "200 watts",
+        "100 watts",
+        "50 watts",
+        "10 watts"
+      ],
+      "correctIndex": 0,
+      "explanation": "Technician HF segments have a maximum of 200 W peak envelope power. That ceiling isn't a recommendation to use full power for every contact.",
+      "figure": null
+    },
+    {
+      "localId": "S10-Q3",
+      "scenario": 10,
+      "checkpoint": 2,
+      "kind": "official",
+      "officialId": "T8A06",
+      "group": "T8A",
+      "stem": "Which sideband is normally used for 10-meter HF, VHF, and UHF single-sideband communications?",
+      "options": [
+        "Upper sideband",
+        "Lower sideband",
+        "Suppressed sideband",
+        "Inverted sideband"
+      ],
+      "correctIndex": 0,
+      "explanation": "Upper sideband is the normal convention for ten-meter, VHF and UHF SSB communication. Selecting the wrong sideband makes the received voice difficult or impossible to understand correctly.",
+      "figure": null
+    },
+    {
+      "localId": "S10-Q4",
+      "scenario": 10,
+      "checkpoint": 2,
+      "kind": "official",
+      "officialId": "T4B06",
+      "group": "T4B",
+      "stem": "Which of the following controls could be used if the voice pitch of a single-sideband signal returning to your CQ call seems too high or low?",
+      "options": [
+        "The AGC or limiter",
+        "The bandwidth selection",
+        "The tone squelch",
+        "The RIT or Clarifier"
+      ],
+      "correctIndex": 3,
+      "explanation": "RIT or a clarifier can correct the received pitch without moving the transmitter's operating frequency. Changing the main VFO can move both paths, which is a different action.",
+      "figure": null
+    },
+    {
+      "localId": "S10-Q5",
+      "scenario": 10,
+      "checkpoint": 3,
+      "kind": "official",
+      "officialId": "T3C02",
+      "group": "T3C",
+      "stem": "What is a characteristic of HF communication compared with communications on VHF and higher frequencies?",
+      "options": [
+        "HF antennas are generally smaller",
+        "HF accommodates wider bandwidth signals",
+        "Long-distance ionospheric propagation is far more common on HF",
+        "There is less atmospheric interference (static) on HF"
+      ],
+      "correctIndex": 2,
+      "explanation": "Long-distance ionospheric propagation is much more common on HF than on VHF and higher bands. It still depends on conditions, so an HF radio doesn't guarantee a distant contact.",
+      "figure": null
+    },
+    {
+      "localId": "S10-Q6",
+      "scenario": 10,
+      "checkpoint": 3,
+      "kind": "official",
+      "officialId": "T3C04",
+      "group": "T3C",
+      "stem": "Which of the following types of propagation is most commonly associated with occasional strong signals on the 10-, 6-, and 2-meter bands from beyond the radio horizon?",
+      "options": [
+        "Backscatter",
+        "Sporadic E",
+        "D region absorption",
+        "Gray-line propagation"
+      ],
+      "correctIndex": 1,
+      "explanation": "Sporadic E can produce occasional strong beyond-horizon signals on the listed bands. It is different from assuming normal local line-of-sight coverage has permanently expanded.",
+      "figure": null
+    },
+    {
+      "localId": "S10-Q7",
+      "scenario": 10,
+      "checkpoint": 4,
+      "kind": "official",
+      "officialId": "T8A05",
+      "group": "T8A",
+      "stem": "Which of the following signal types has the narrowest bandwidth?",
+      "options": [
+        "FM voice",
+        "SSB voice",
+        "CW",
+        "Slow-scan TV"
+      ],
+      "correctIndex": 2,
+      "explanation": "CW has the narrowest bandwidth among the listed signal types. A narrow filter can suit CW but would remove information from a wider voice signal.",
+      "figure": null
+    },
+    {
+      "localId": "S10-Q8",
+      "scenario": 10,
+      "checkpoint": 4,
+      "kind": "official",
+      "officialId": "T1B09",
+      "group": "T1B",
+      "stem": "Why should you not set your transmit frequency to be exactly at the edge of an amateur band or sub-band?",
+      "options": [
+        "To allow for calibration error in the transmitter frequency display",
+        "So that modulation sidebands do not extend beyond the band edge",
+        "To allow for transmitter frequency drift",
+        "All these choices are correct"
+      ],
+      "correctIndex": 3,
+      "explanation": "Frequency accuracy, drift and occupied bandwidth all matter near a band edge. A displayed carrier frequency inside a segment doesn't prove that the complete emission stays inside it.",
+      "figure": null
+    },
+    {
+      "localId": "S10-A1",
+      "scenario": 10,
+      "checkpoint": 2,
+      "kind": "applied",
+      "officialId": "T1B01",
+      "relatedOfficialIds": [
+        "T1B01",
+        "T8A06"
+      ],
+      "group": "T1B",
+      "stem": "Which proposed voice setup fits the supplied U.S. Technician ten-meter segment and the normal SSB convention?",
+      "options": [
+        "28.200 MHz, FM voice.",
+        "28.400 MHz, USB voice.",
+        "28.600 MHz, USB voice.",
+        "28.100 MHz, AM voice."
+      ],
+      "correctIndex": 1,
+      "explanation": "28.400 MHz lies within 28.300 to 28.500 MHz, and USB is the normal ten-meter SSB convention. The other frequencies aren't in that Technician phone segment.",
+      "figure": null
+    },
+    {
+      "localId": "S10-A2",
+      "scenario": 10,
+      "checkpoint": 3,
+      "kind": "applied",
+      "officialId": "T3C02",
+      "relatedOfficialIds": [
+        "T3C02",
+        "T3C09"
+      ],
+      "group": "T3C",
+      "stem": "The station passes its local equipment tests, but the supplied propagation report shows no usable distant HF path. What is the best next step?",
+      "options": [
+        "Replace the healthy DC lead.",
+        "Retune beyond the allowed band.",
+        "Try a suitable later opening.",
+        "Bypass the radio's protection."
+      ],
+      "correctIndex": 2,
+      "explanation": "Waiting for a suitable propagation opening addresses the missing path described in the report. Healthy local tests don't guarantee ionospheric conditions, and arbitrary repairs won't create them.",
+      "figure": null
+    },
+    {
+      "localId": "S11-Q1",
+      "scenario": 11,
+      "checkpoint": 1,
+      "kind": "official",
+      "officialId": "T8B08",
+      "group": "T8B",
+      "stem": "What does it mean if a satellite is operating in U/V mode?",
+      "options": [
+        "The satellite uplink is in the 15-meter band and the downlink is in the 10-meter band",
+        "The satellite uplink is in the 70-centimeter band and the downlink is in the 2-meter band",
+        "The satellite operates using ultraviolet frequencies",
+        "The satellite frequencies are usually variable"
+      ],
+      "correctIndex": 1,
+      "explanation": "U/V means a 70-centimeter uplink and a 2-meter downlink. Read the order from the satellite's perspective rather than connecting both radios to the same band.",
+      "figure": null
+    },
+    {
+      "localId": "S11-Q2",
+      "scenario": 11,
+      "checkpoint": 1,
+      "kind": "official",
+      "officialId": "T8B06",
+      "group": "T8B",
+      "stem": "Which of the following are inputs to a satellite tracking program?",
+      "options": [
+        "The satellite transmitted power",
+        "The Keplerian elements",
+        "The last observed time of zero Doppler shift",
+        "All these choices are correct"
+      ],
+      "correctIndex": 1,
+      "explanation": "Satellite tracking programs use Keplerian orbital elements to predict the orbit. A frequency list alone cannot tell the program where the satellite will be.",
+      "figure": null
+    },
+    {
+      "localId": "S11-Q3",
+      "scenario": 11,
+      "checkpoint": 2,
+      "kind": "official",
+      "officialId": "T8B07",
+      "group": "T8B",
+      "stem": "What is Doppler shift in reference to satellite communications?",
+      "options": [
+        "A change in the satellite orbit",
+        "A mode where the satellite receives signals on one band and transmits on another",
+        "An observed change in signal frequency caused by relative motion between the satellite and Earth station",
+        "A special digital communications mode for some satellites"
+      ],
+      "correctIndex": 2,
+      "explanation": "Doppler shift is the frequency change observed because of relative motion. A moving satellite can cause it even when both radios are otherwise accurately tuned.",
+      "figure": null
+    },
+    {
+      "localId": "S11-Q4",
+      "scenario": 11,
+      "checkpoint": 2,
+      "kind": "official",
+      "officialId": "T1E02",
+      "group": "T1E",
+      "stem": "Who may be the control operator of a station communicating through an amateur satellite or space station?",
+      "options": [
+        "Only an Amateur Extra Class operator",
+        "A General class or higher licensee with a satellite operator certification",
+        "Only an Amateur Extra Class operator who is also an AMSAT member",
+        "Any amateur allowed to transmit on the satellite uplink frequency"
+      ],
+      "correctIndex": 3,
+      "explanation": "The control operator must be authorized to transmit on the satellite's uplink frequency. Merely being able to receive the downlink doesn't confer transmit privileges.",
+      "figure": null
+    },
+    {
+      "localId": "S11-Q5",
+      "scenario": 11,
+      "checkpoint": 3,
+      "kind": "official",
+      "officialId": "T8B02",
+      "group": "T8B",
+      "stem": "What is the impact of using excessive effective radiated power on a satellite uplink?",
+      "options": [
+        "Possibility of commanding the satellite to an improper mode",
+        "Blocking access by other users",
+        "Overloading the satellite batteries",
+        "Possibility of rebooting the satellite control computer"
+      ],
+      "correctIndex": 1,
+      "explanation": "Excessive uplink power can block other users' access to the satellite. A stronger personal signal is not a sufficient reason to increase power on a shared resource.",
+      "figure": null
+    },
+    {
+      "localId": "S11-Q6",
+      "scenario": 11,
+      "checkpoint": 3,
+      "kind": "official",
+      "officialId": "T8C05",
+      "group": "T8C",
+      "stem": "What is a grid locator?",
+      "options": [
+        "A letter-number designator assigned to a geographic location",
+        "A letter-number designator assigned to an azimuth and elevation",
+        "An instrument for locating faults in power amplifiers",
+        "An instrument for radio direction finding"
+      ],
+      "correctIndex": 0,
+      "explanation": "A grid locator identifies a geographic area using letters and numbers. It isn't a call sign or a measurement of received signal strength.",
+      "figure": null
+    },
+    {
+      "localId": "S11-Q7",
+      "scenario": 11,
+      "checkpoint": 4,
+      "kind": "official",
+      "officialId": "T8B09",
+      "group": "T8B",
+      "stem": "What causes spin fading of satellite signals?",
+      "options": [
+        "Circular polarized noise interference radiated from the sun",
+        "Rotation of the satellite and its antennas",
+        "Doppler shift of the received signal",
+        "Interfering signals within the satellite uplink band"
+      ],
+      "correctIndex": 1,
+      "explanation": "Rotation of the satellite and its antennas can cause spin fading. Retuning the receiver isn't the same remedy as managing a polarization-related change.",
+      "figure": null
+    },
+    {
+      "localId": "S11-Q8",
+      "scenario": 11,
+      "checkpoint": 4,
+      "kind": "official",
+      "officialId": "T8B11",
+      "group": "T8B",
+      "stem": "Who is permitted to receive telemetry from an amateur radio satellite?",
+      "options": [
+        "Anyone",
+        "Only the satellite control operator",
+        "Only the control operator or a licensed radio amateur who has received the encryption key from the control operator",
+        "Only a licensed radio amateur who has received the encryption key from AMSAT"
+      ],
+      "correctIndex": 0,
+      "explanation": "Anyone may receive amateur satellite telemetry. Permission to receive doesn't imply permission to transmit an uplink.",
+      "figure": null
+    },
+    {
+      "localId": "S11-A1",
+      "scenario": 11,
+      "checkpoint": 2,
+      "kind": "applied",
+      "officialId": "T8B08",
+      "relatedOfficialIds": [
+        "T8B08"
+      ],
+      "group": "T8B",
+      "stem": "The pass card specifies U/V operation. Which radio-path assignment matches that designation?",
+      "options": [
+        "2 m uplink; 70 cm downlink.",
+        "70 cm uplink; 70 cm downlink.",
+        "2 m uplink; 2 m downlink.",
+        "70 cm uplink; 2 m downlink."
+      ],
+      "correctIndex": 3,
+      "explanation": "U/V identifies a UHF uplink followed by a VHF downlink, here 70 centimeters and 2 meters. Reversing the two would tune the transmit and receive paths to the wrong bands.",
+      "figure": null
+    },
+    {
+      "localId": "S11-A2",
+      "scenario": 11,
+      "checkpoint": 3,
+      "kind": "applied",
+      "officialId": "T8B07",
+      "relatedOfficialIds": [
+        "T8B07"
+      ],
+      "group": "T8B",
+      "stem": "A satellite signal moves across the waterfall during the pass while the radio remains on the nominal frequency. What should you adjust to follow it?",
+      "options": [
+        "The receiver tuning frequency.",
+        "The station identification timer.",
+        "The antenna cable fuse rating.",
+        "The packet destination address."
+      ],
+      "correctIndex": 0,
+      "explanation": "Receiver retuning follows the observed Doppler shift caused by relative motion. A fuse rating or station identity setting has no role in correcting that frequency drift.",
+      "figure": null
+    },
+    {
+      "localId": "S12-Q1",
+      "scenario": 12,
+      "checkpoint": 1,
+      "kind": "official",
+      "officialId": "T2C02",
+      "group": "T2C",
+      "stem": "Which of the following are typical duties of a Net Control Station?",
+      "options": [
+        "Choose the regular net meeting time and frequency",
+        "Ensure that all stations checking into the net are properly licensed for operation on the net frequency",
+        "Call the net to order and direct communications between stations checking in",
+        "All these choices are correct"
+      ],
+      "correctIndex": 2,
+      "explanation": "Net control organizes check-ins and directs communication between participating stations. It doesn't remove the other operators' responsibility for correct operation.",
+      "figure": null
+    },
+    {
+      "localId": "S12-Q2",
+      "scenario": 12,
+      "checkpoint": 1,
+      "kind": "official",
+      "officialId": "T2C07",
+      "group": "T2C",
+      "stem": "Which of the following is standard practice when you participate in a net?",
+      "options": [
+        "When first responding to the net control station, transmit your call sign, name, and address as in the FCC database",
+        "Record the time of each of your transmissions",
+        "Unless you are reporting an emergency, transmit only when directed by the net control station",
+        "All these choices are correct"
+      ],
+      "correctIndex": 2,
+      "explanation": "Ordinary net participation means transmitting when directed, with emergency reporting as the stated exception. Hearing a pause doesn't automatically make it your turn during a directed net.",
+      "figure": null
+    },
+    {
+      "localId": "S12-Q3",
+      "scenario": 12,
+      "checkpoint": 2,
+      "kind": "official",
+      "officialId": "T2C03",
+      "group": "T2C",
+      "stem": "What technique is used to ensure that voice messages containing unusual words are received correctly?",
+      "options": [
+        "Send the words by voice and Morse code",
+        "Use the Q-code “QSR” to ask the receiving station to repeat the words back",
+        "Spell the words using a standard phonetic alphabet",
+        "All these choices are correct"
+      ],
+      "correctIndex": 2,
+      "explanation": "Standard phonetics help convey unusual words accurately. Replacing a word with your own summary can change the message instead of clarifying it.",
+      "figure": null
+    },
+    {
+      "localId": "S12-Q4",
+      "scenario": 12,
+      "checkpoint": 2,
+      "kind": "official",
+      "officialId": "T2C11",
+      "group": "T2C",
+      "stem": "What is meant by “check” in a radiogram header?",
+      "options": [
+        "The number of words or word equivalents in the text portion of the message",
+        "The call sign of the originating station",
+        "A list of stations that have relayed the message",
+        "A box on the message form that indicates that the message was received and/or relayed"
+      ],
+      "correctIndex": 0,
+      "explanation": "The radiogram check counts words or word equivalents in the message text. It isn't a signal-strength report or a total including every part of the header.",
+      "figure": null
+    },
+    {
+      "localId": "S12-Q5",
+      "scenario": 12,
+      "checkpoint": 3,
+      "kind": "official",
+      "officialId": "T2C01",
+      "group": "T2C",
+      "stem": "When do the FCC Part 97 Amateur Radio Service rules NOT apply to the operation of an amateur station?",
+      "options": [
+        "When operating under RACES rules",
+        "When operating under FEMA rules",
+        "When operating under ARES rules",
+        "FCC rules always apply"
+      ],
+      "correctIndex": 3,
+      "explanation": "FCC rules still apply during amateur operation, including emergencies. Specific provisions may address exceptional circumstances, but they don't switch the rules off.",
+      "figure": null
+    },
+    {
+      "localId": "S12-Q6",
+      "scenario": 12,
+      "checkpoint": 3,
+      "kind": "official",
+      "officialId": "T0A01",
+      "group": "T0A",
+      "stem": "Which of the following is a safety hazard of a 12-volt storage battery that lacks internal protection circuitry?",
+      "options": [
+        "Touching both terminals with your hands can cause electrical shock",
+        "Shorting the terminals can cause burns, fire, or an explosion",
+        "RF emissions from a nearby transmitter can cause the electrolyte to emit poison gas",
+        "All these choices are correct"
+      ],
+      "correctIndex": 1,
+      "explanation": "An unprotected 12 V battery can deliver enough short-circuit current to cause burns, fire or explosion. Low nominal voltage doesn't remove that stored-energy hazard.",
+      "figure": null
+    },
+    {
+      "localId": "S12-Q7",
+      "scenario": 12,
+      "checkpoint": 4,
+      "kind": "official",
+      "officialId": "T0B04",
+      "group": "T0B",
+      "stem": "Which of the following is an important safety precaution to observe when putting up an antenna tower?",
+      "options": [
+        "Wear a ground strap connected to your wrist at all times",
+        "Insulate the base of the tower to avoid lightning strikes",
+        "Look for and stay clear of any overhead electrical wires",
+        "All these choices are correct"
+      ],
+      "correctIndex": 2,
+      "explanation": "Overhead electrical wires must be identified and avoided before putting up an antenna structure. A location that is convenient for coverage can still be unsafe for installation.",
+      "figure": null
+    },
+    {
+      "localId": "S12-Q8",
+      "scenario": 12,
+      "checkpoint": 4,
+      "kind": "official",
+      "officialId": "T0C10",
+      "group": "T0C",
+      "stem": "Why is duty cycle one of the factors used to determine safe RF radiation exposure levels?",
+      "options": [
+        "It affects the average exposure to radiation",
+        "It affects the peak exposure to radiation",
+        "It takes into account the antenna feed line loss",
+        "It takes into account the thermal effects of the final amplifier"
+      ],
+      "correctIndex": 0,
+      "explanation": "Duty cycle affects average RF exposure during the relevant averaging period. A brief transmit interval and continuous transmission at the same power don't have the same average exposure.",
+      "figure": null
+    },
+    {
+      "localId": "S12-A1",
+      "scenario": 12,
+      "checkpoint": 2,
+      "kind": "applied",
+      "officialId": "T4A09",
+      "relatedOfficialIds": [
+        "T4A09",
+        "T5C08"
+      ],
+      "group": "T4A",
+      "stem": "The capstone starts with 120 Wh usable energy and needs a 30 Wh reserve. A 90-minute task averages 21.6 W. What energy remains before additional unlisted loads?",
+      "options": [
+        "32.4 Wh",
+        "57.6 Wh",
+        "87.6 Wh",
+        "98.4 Wh"
+      ],
+      "correctIndex": 2,
+      "explanation": "Ninety minutes is 1.5 hours, so consumption is 21.6 times 1.5, or 32.4 Wh. Subtracting that from 120 Wh leaves 87.6 Wh, which exceeds the stated reserve.",
+      "figure": null
+    },
+    {
+      "localId": "S12-A2",
+      "scenario": 12,
+      "checkpoint": 3,
+      "kind": "applied",
+      "officialId": "T2C03",
+      "relatedOfficialIds": [
+        "T2C03",
+        "T2C07"
+      ],
+      "group": "T2C",
+      "stem": "A place name in a net message is unclear. What should you do before relaying it?",
+      "options": [
+        "Replace it with a likely name.",
+        "Request a phonetic clarification.",
+        "Leave it out of the message.",
+        "Transmit over the next station."
+      ],
+      "correctIndex": 1,
+      "explanation": "Requesting a fill with standard phonetics preserves the intended place name. Guessing or omitting it changes the message rather than resolving the uncertainty.",
+      "figure": null
+    }
+  ]
+}

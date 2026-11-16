@@ -110,6 +110,7 @@ vi.mock('../../src/scoring/scenario-completion-handler', () => ({
 vi.mock('../../src/modal/time-penalty-toast', () => ({
   TimePenaltyToast: {
     getInstance: vi.fn(),
+    dispose: vi.fn(),
   },
 }));
 

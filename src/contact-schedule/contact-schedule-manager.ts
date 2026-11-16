@@ -13,6 +13,7 @@
  */
 
 import { ScenarioManager } from '@app/scenario-manager';
+import type { ContactScheduleSnapshot } from '@app/sync/manager-state-types';
 
 /** A single pass/contact to be allocated */
 export interface ContactConfig {
@@ -88,6 +89,22 @@ export class ContactScheduleManager {
       return;
     }
     this.assignments_.set(contactId, stationId);
+  }
+
+  /** Snapshot for a checkpoint (Phase 35 rt-s24-F4). */
+  getState(): ContactScheduleSnapshot {
+    return { assignments: [...this.assignments_] };
+  }
+
+  /** Restore a snapshot through assign() so unknown contacts or stations are dropped. */
+  restoreState(snapshot: ContactScheduleSnapshot | undefined): void {
+    if (!snapshot || !Array.isArray(snapshot.assignments)) {
+      return;
+    }
+    this.assignments_.clear();
+    for (const [contactId, stationId] of snapshot.assignments) {
+      this.assign(contactId, stationId);
+    }
   }
 
   /** Remove a contact's allocation. */

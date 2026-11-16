@@ -45,6 +45,7 @@ const createMockEquipment = () => ({
 
 import { SimulationManager } from '../../src/simulation/simulation-manager';
 // Import after mocks
+import { setManagerStateCollector } from '../../src/sync/manager-state-types';
 import { SyncManager } from '../../src/sync/sync-manager';
 
 describe('SyncManager', () => {
@@ -159,6 +160,38 @@ describe('SyncManager', () => {
     expect(equipment.receivers[0].sync).toHaveBeenCalledWith(state.equipment!.receiversState![0]);
     // Note: SimulationManager.getInstance is called via dynamic require() in syncFromStorage
     // which may not be captured by ESM mocks. The important behavior is that equipment sync happens.
+  });
+
+  it('includes managerStates when a collector is registered and omits them otherwise', () => {
+    manager.setEquipment(equipment as any);
+    expect(manager.getCurrentState().managerStates).toBeUndefined();
+
+    setManagerStateCollector(() => ({ v: 1, transec: { mode: 'hopping', keyed: true } }));
+    try {
+      expect(manager.getCurrentState().managerStates).toEqual({ v: 1, transec: { mode: 'hopping', keyed: true } });
+      setManagerStateCollector(() => {
+        throw new Error('collector failed');
+      });
+      expect(manager.getCurrentState().managerStates).toBeUndefined();
+    } finally {
+      setManagerStateCollector(null);
+    }
+  });
+
+  it('syncFromStorage never restores manager states (checkpoint path only)', () => {
+    manager.setEquipment(equipment as any);
+    const restoreSpy = vi.fn();
+    setManagerStateCollector(restoreSpy);
+    try {
+      const state: AppState = { managerStates: { v: 1, spaceEvents: { phases: [['X', 'stale']] } }, equipment: { antennasState: [{ id: 'ant-stored' } as any] } };
+      (manager as any).syncFromStorage(state);
+      expect(equipment.antennas[0].sync).toHaveBeenCalled();
+      expect(restoreSpy).not.toHaveBeenCalled();
+      const src = (SyncManager as unknown as { toString(): string }).toString();
+      expect(src).not.toContain('restoreManagerStates');
+    } finally {
+      setManagerStateCollector(null);
+    }
   });
 
   it('reports connectivity from the underlying provider', () => {

@@ -2,11 +2,13 @@ import { CardAlarmBadge } from '@app/components/card-alarm-badge/card-alarm-badg
 import { qs } from '@app/engine/utils/query-selector';
 import { AlarmStatus } from '@app/equipment/base-equipment';
 import { CryptoModule } from '@app/equipment/crypto';
-import { FECSimulator, FECSimulatorInput } from '@app/equipment/receiver/fec-simulator';
+import { FECSimulator, FECSimulatorInput, fecInputFromSignal } from '@app/equipment/receiver/fec-simulator';
 import { Receiver } from '@app/equipment/receiver/receiver';
+import { RxPayloadStatus } from '@app/equipment/receiver/rx-signal-quality';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { FaultInjector } from '@app/faults';
+import { SimClock } from '@app/simulation/sim-clock';
 
 /**
  * RX Payload state interface with data integrity metrics
@@ -61,13 +63,29 @@ export interface RxPayloadState {
  * - FaultInjector: Applies scenario fault overrides
  */
 export class RxPayloadAdapter {
-  private static readonly UPDATE_INTERVAL_MS = 1000;
+  /**
+   * The modem status bar's cadence (ReceiverAdapter, 250 ms): the two read the
+   * same lock, so a 1 s dropout cannot show "Searching for signal" beside a
+   * Locked payload (phase 29 D4, nats-r4-s08-F2)
+   */
+  private static readonly UPDATE_INTERVAL_MS = 250;
+
+  /** Shown for a figure that has no measurement (no frame sync) */
+  private static readonly NO_READING = '--';
+  private static readonly NO_CARRIER_IDLE_ = 'No carrier';
 
   private readonly containerEl_: HTMLElement;
   private readonly receiver_: Receiver | null;
   private readonly groundStationId_: string;
   private readonly fecSimulator_: FECSimulator;
   private lastSyncTime_: number = 0;
+  private hasFecSample_: boolean = false;
+  /** The active modem is powered with no carrier in its band: the decoder has nothing to decode (nats-eu-r1 s01-F7) */
+  private hasNoCarrier_: boolean = false;
+  /** A fault injection is overriding the decoder figures */
+  private hasFaultOverrides_: boolean = false;
+  /** Run time of the last FEC sample, so the modem card can read it live */
+  private lastFecRunMs_: number = Number.NaN;
   private readonly domCache_: Map<string, HTMLElement> = new Map();
   private readonly boundUpdateHandler_: () => void;
   private readonly alarmBadge_: CardAlarmBadge;
@@ -134,17 +152,46 @@ export class RxPayloadAdapter {
     this.initialize_();
   }
 
+  /**
+   * Payload decoder summary for the Receiver Modems status bar, so the modem
+   * never reports "Good margin" while this panel shows sync loss or overload.
+   * Null until the first FEC sample from a receiver.
+   */
+  public getPayloadStatus(): RxPayloadStatus | null {
+    // Live, not the panel's 250 ms wall-clock paint: the modem card's sync
+    // phase differs from this one, and a sample from before a burst ended
+    // read as a payload problem beside a recovered margin (Phase 33 D4,
+    // nats-r8-s21-F1). A same-tick read reuses the sample.
+    if (this.lastFecRunMs_ !== SimClock.runMs()) {
+      this.updateFecFromReceiver_();
+      this.applyFaultOverrides_();
+    }
+    if (!this.hasFecSample_) {
+      return null;
+    }
+
+    return {
+      frameSyncLocked: this.state_.frameSyncLocked,
+      rsUncorrectableBlocks: this.state_.rsUncorrectableBlocks,
+      channelStatus: this.state_.channelStatus,
+    };
+  }
+
   private initialize_(): void {
     this.setupDomCache_();
     EventBus.getInstance().on(Events.UPDATE, this.boundUpdateHandler_);
-    this.syncDomWithState_();
+    // First paint from the receiver, never the template's healthy defaults
+    this.refresh_();
   }
 
   private throttledSync_(): void {
     const now = Date.now();
     if (now - this.lastSyncTime_ < RxPayloadAdapter.UPDATE_INTERVAL_MS) return;
     this.lastSyncTime_ = now;
+    this.refresh_();
+  }
 
+  private refresh_(): void {
     // Update FEC metrics from receiver signal quality
     this.updateFecFromReceiver_();
 
@@ -169,19 +216,15 @@ export class RxPayloadAdapter {
     // Get signal info from receiver
     const signalInfo = this.receiver_.getSignalsInBandwidth();
     if (!signalInfo) return;
+    this.hasNoCarrier_ = !signalInfo.hasCarrier;
 
     // Build FEC simulator input
-    const input: FECSimulatorInput = {
-      cnRatio_dB: signalInfo.cnRatio_dB ?? 0,
-      effectiveCnRatio_dB: signalInfo.effectiveCnRatio_dB ?? signalInfo.cnRatio_dB ?? 0,
-      hasCarrier: signalInfo.hasCarrier ?? false,
-      hasLock: signalInfo.hasLock ?? false,
-      modulation: modem.modulation ?? 'QPSK',
-      fec: modem.fec ?? '1/2',
-    };
+    const input: FECSimulatorInput = fecInputFromSignal(signalInfo, { modulation: modem.modulation ?? 'QPSK', fec: modem.fec ?? '1/2' });
 
     // Calculate FEC metrics
     const fecMetrics = this.fecSimulator_.calculate(input);
+    this.hasFecSample_ = true;
+    this.lastFecRunMs_ = SimClock.runMs();
 
     // Update state with calculated metrics
     this.state_.frameSyncLocked = fecMetrics.frameSyncLocked;
@@ -195,7 +238,7 @@ export class RxPayloadAdapter {
 
     // Derive CRC status from RS uncorrectable (RS failures pass through to CRC)
     this.state_.crcValid = fecMetrics.rsUncorrectableBlocks === 0;
-    this.state_.crcErrorCount = fecMetrics.rsUncorrectableBlocks;
+    this.state_.crcErrorCount = Math.round(fecMetrics.rsUncorrectableBlocks);
 
     // Update Viterbi code rate from modem FEC setting
     this.state_.viterbiCodeRate = modem.fec ?? '1/2';
@@ -220,7 +263,8 @@ export class RxPayloadAdapter {
    */
   private applyFaultOverrides_(): void {
     const overrides = FaultInjector.getInstance().getRxPayloadOverrides(this.groundStationId_);
-    if (Object.keys(overrides).length > 0) {
+    this.hasFaultOverrides_ = Object.keys(overrides).length > 0;
+    if (this.hasFaultOverrides_) {
       this.state_ = { ...this.state_, ...overrides };
     }
   }
@@ -280,17 +324,27 @@ export class RxPayloadAdapter {
       frameSyncEl.className = state.frameSyncLocked ? 'status-badge status-badge-green' : 'status-badge status-badge-red';
     }
 
+    // No frame sync: nothing is being decoded, so the decoder figures have no
+    // measurement and read "--", never a healthy last value (phase 29 D4)
+    const isSynced = state.frameSyncLocked;
+    const none = RxPayloadAdapter.NO_READING;
+
     this.updateTextContent_('syncPattern', state.frameSyncPattern);
-    this.updateTextContent_('ber', this.formatBer_(state.ber));
+    this.updateTextContent_('ber', isSynced ? this.formatBer_(state.ber) : none);
     this.updateTextContent_('crcType', state.crcType);
 
     const crcStatusEl = this.domCache_.get('crcStatus');
     if (crcStatusEl) {
-      crcStatusEl.textContent = state.crcValid ? 'Valid' : 'Errors';
-      crcStatusEl.className = state.crcValid ? 'status-badge status-badge-green' : 'status-badge status-badge-red';
+      if (isSynced) {
+        crcStatusEl.textContent = state.crcValid ? 'Valid' : 'Errors';
+        crcStatusEl.className = state.crcValid ? 'status-badge status-badge-green' : 'status-badge status-badge-red';
+      } else {
+        crcStatusEl.textContent = none;
+        crcStatusEl.className = 'status-badge status-badge-off';
+      }
     }
 
-    this.updateTextContent_('crcErrors', state.crcErrorCount.toLocaleString());
+    this.updateTextContent_('crcErrors', this.formatCount_(state.crcErrorCount));
 
     // Reed-Solomon section
     const rsStatusEl = this.domCache_.get('rsStatus');
@@ -301,20 +355,21 @@ export class RxPayloadAdapter {
     }
 
     this.updateTextContent_('rsCodeRate', state.rsCodeRate);
-    this.updateTextContent_('rsCorrected', state.rsCorrectedErrors.toLocaleString());
-    this.updateTextContent_('rsTotal', state.rsCorrectedTotal.toLocaleString());
+    this.updateTextContent_('rsCorrected', this.formatCount_(state.rsCorrectedErrors));
+    this.updateTextContent_('rsTotal', this.formatCount_(state.rsCorrectedTotal));
 
     const rsUncorrectableEl = this.domCache_.get('rsUncorrectable');
     if (rsUncorrectableEl) {
-      rsUncorrectableEl.textContent = state.rsUncorrectableBlocks.toLocaleString();
+      rsUncorrectableEl.textContent = this.formatCount_(state.rsUncorrectableBlocks);
       rsUncorrectableEl.className = state.rsUncorrectableBlocks > 0 ? 'metric-value text-danger fw-bold' : 'metric-value';
     }
 
     // Viterbi section
     const viterbiStatusEl = this.domCache_.get('viterbiStatus');
     if (viterbiStatusEl) {
-      viterbiStatusEl.textContent = state.viterbiEnabled ? 'Enabled' : 'Disabled';
-      viterbiStatusEl.className = state.viterbiEnabled ? 'status-badge status-badge-green' : 'status-badge status-badge-yellow';
+      const viterbiStatus = this.getViterbiStatus_(state);
+      viterbiStatusEl.textContent = viterbiStatus.text;
+      viterbiStatusEl.className = `status-badge ${viterbiStatus.class}`;
     }
 
     this.updateTextContent_('viterbiCodeRate', state.viterbiCodeRate);
@@ -323,7 +378,7 @@ export class RxPayloadAdapter {
     this.updateTextContent_('viterbiK', `K=${state.viterbiConstraintLength}`);
 
     // Channel section
-    this.updateTextContent_('dataRate', state.dataRate);
+    this.updateTextContent_('dataRate', isSynced ? state.dataRate : none);
 
     const channelStatusEl = this.domCache_.get('channelStatus');
     if (channelStatusEl) {
@@ -349,21 +404,38 @@ export class RxPayloadAdapter {
 
     this.updateTextContent_('decExpires', `${state.decryptionExpiresInDays} days`);
 
+    // No frames, nothing to authenticate or decrypt: "--", not a stale Success
     const decAuthTagEl = this.domCache_.get('decAuthTag');
     if (decAuthTagEl) {
-      decAuthTagEl.textContent = state.decryptionAuthTagVerified ? 'Verified' : 'Failed';
-      decAuthTagEl.className = state.decryptionAuthTagVerified ? 'status-badge status-badge-green' : 'status-badge status-badge-red';
+      if (isSynced) {
+        decAuthTagEl.textContent = state.decryptionAuthTagVerified ? 'Verified' : 'Failed';
+        decAuthTagEl.className = state.decryptionAuthTagVerified ? 'status-badge status-badge-green' : 'status-badge status-badge-red';
+      } else {
+        decAuthTagEl.textContent = none;
+        decAuthTagEl.className = 'status-badge status-badge-off';
+      }
     }
 
     const decSuccessEl = this.domCache_.get('decSuccess');
     if (decSuccessEl) {
-      decSuccessEl.textContent = state.decryptionSuccess ? 'Success' : 'Failed';
-      decSuccessEl.className = state.decryptionSuccess ? 'status-badge status-badge-green' : 'status-badge status-badge-red';
+      if (isSynced) {
+        decSuccessEl.textContent = state.decryptionSuccess ? 'Success' : 'Failed';
+        decSuccessEl.className = state.decryptionSuccess ? 'status-badge status-badge-green' : 'status-badge status-badge-red';
+      } else {
+        decSuccessEl.textContent = none;
+        decSuccessEl.className = 'status-badge status-badge-off';
+      }
     }
 
     // Update alarm badge
     const alarms = this.getAlarms_();
-    this.alarmBadge_.update(alarms);
+    // Idle grey "No carrier" like the Dashboard Receivers dot, not red decoder reasons for a station that is receiving nothing
+    this.alarmBadge_.update(alarms, true, this.isDecoderIdle_() ? RxPayloadAdapter.NO_CARRIER_IDLE_ : undefined);
+  }
+
+  /** No carrier and no injected fault: the decoder figures are not a fault */
+  private isDecoderIdle_(): boolean {
+    return this.hasNoCarrier_ && !this.hasFaultOverrides_;
   }
 
   private updateTextContent_(key: string, value: string): void {
@@ -371,6 +443,22 @@ export class RxPayloadAdapter {
     if (el) {
       el.textContent = value;
     }
+  }
+
+  /** Block/error counts are whole numbers; fault overrides may hand in floats. */
+  private formatCount_(count: number): string {
+    return Math.round(count).toLocaleString();
+  }
+
+  /** Viterbi decoder is only decoding while frame sync is held. */
+  private getViterbiStatus_(state: RxPayloadState): { text: string; class: string } {
+    if (!state.viterbiEnabled) {
+      return { text: 'Disabled', class: 'status-badge-yellow' };
+    }
+    if (!state.frameSyncLocked) {
+      return { text: 'No Sync', class: 'status-badge-off' };
+    }
+    return { text: 'Enabled', class: 'status-badge-green' };
   }
 
   private formatBer_(ber: number): string {
@@ -382,6 +470,9 @@ export class RxPayloadAdapter {
   private getRsStatus_(state: RxPayloadState): { text: string; class: string } {
     if (!state.rsEnabled) {
       return { text: 'Disabled', class: 'status-badge-yellow' };
+    }
+    if (!state.frameSyncLocked) {
+      return { text: 'No Sync', class: 'status-badge-off' };
     }
     if (state.rsUncorrectableBlocks > 0) {
       return { text: 'Overload', class: 'status-badge-red' };
@@ -437,6 +528,11 @@ export class RxPayloadAdapter {
     const alarms: AlarmStatus[] = [];
     const state = this.state_;
 
+    // Idle decoder: only the decryption chain can still raise alarms
+    if (this.isDecoderIdle_()) {
+      return this.getDecryptionAlarms_(alarms, state);
+    }
+
     // Frame sync lost
     if (!state.frameSyncLocked) {
       alarms.push({ severity: 'error', message: 'Frame sync lost' });
@@ -480,6 +576,10 @@ export class RxPayloadAdapter {
       alarms.push({ severity: 'error', message: 'No channel lock' });
     }
 
+    return this.getDecryptionAlarms_(alarms, state);
+  }
+
+  private getDecryptionAlarms_(alarms: AlarmStatus[], state: RxPayloadState): AlarmStatus[] {
     // RX Decryption alarms
     if (state.decryptionMode === 'DISABLED') {
       alarms.push({ severity: 'error', message: 'RX decryption disabled' });

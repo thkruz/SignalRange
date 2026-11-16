@@ -68,7 +68,7 @@ describe('character-enum', () => {
 
   describe('CharacterCompany', () => {
     it('should have company affiliations for all characters', () => {
-      expect(CharacterCompany[Character.CHARLIE_BROOKS]).toBe('North Atlantic Teleport Services (Vermont)');
+      expect(CharacterCompany[Character.CHARLIE_BROOKS]).toBe('North Atlantic Teleport Services');
       expect(CharacterCompany[Character.CATHERINE_VEGA]).toBe('North Atlantic Teleport Services (Maine)');
       expect(CharacterCompany[Character.JAMES_OKAFOR]).toBe('Atlantic Shipping Alliance');
       expect(CharacterCompany[Character.FRANCIS_MARTIN]).toBe('SeaLink');

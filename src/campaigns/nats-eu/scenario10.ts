@@ -2,6 +2,7 @@ import type { GroundStationConfig } from '@app/assets/ground-station/ground-stat
 import { Character, Emotion } from '@app/modal/character-enum';
 import type { ScenarioData } from '@app/ScenarioData';
 import type { dB, dBm, IfFrequency } from '@app/types';
+import { getAssetUrl } from '@app/utils/asset-url';
 import type { Degrees, TleLine1, TleLine2 } from 'ootk';
 import { galwayGroundStation } from './ground-stations';
 import { createMeridianSar1, createMeridianSar2 } from './satellites';
@@ -11,7 +12,7 @@ import { createMeridianSar1, createMeridianSar2 } from './satellites';
  *
  * No new mechanics. The lesson is geometry: everything the operator has done
  * on 28 to 40 deg passes now has to be done on a pass that peaks at 18 deg,
- * where the link budget closes with about two decibels to spare and the uplink
+ * where the link budget closes with about four decibels to spare and the uplink
  * needs 6 dB more EIRP to reach the bird at long range. Erik's vessel of
  * interest is off the Faroes and this is the only MERIDIAN-SAR-1 window that
  * covers it today: the collect is tasked by command on the pass and the
@@ -34,20 +35,24 @@ import { createMeridianSar1, createMeridianSar2 } from './satellites';
  *
  * Link-budget worksheet (published in the budget objective):
  * - slant range at max elevation 1040 km -> FSPL 174.1 dB at 11686 MHz
- *   (S2 worked 761 km / 171.4 dB: 3.7 dB more path loss here)
- * - EIRP 28 dBm, GW-01 4m Ku gain 51.8 dBi, Tsys 88 K, BW 36 MHz, misc 1.2 dB
+ *   (S2 worked 761 km / 171.4 dB: 2.7 dB more path loss here)
+ * - EIRP 31.3 dBm, GW-01 4m Ku gain 50.4 dBi (at the LNA flange), Tsys 131 K, BW 36 MHz, misc 1.2 dB
  *   (the extra 0.2 dB over S2/S8 is the longer atmospheric path at 18 deg)
- * - correct worksheet -> C/N 8.09 dB (expectedCNRDb 8.1, tolerance 1.0)
- * - threshold 6 dB (QPSK 3/4 demod) + 1 dB required margin
+ * - correct worksheet -> C/N 8.26 dB (expectedCNRDb 8.3, tolerance 1.0)
+ * - threshold 4.2 dB C/N (QPSK 3/4 demod: Es/N0 5.0 dB) + 3 dB required margin
+ *   -> commit at 7.2 dB, only near max elevation
  *
  * Uplink: HPA back-off 10 -> 4 dB is +6 dB EIRP. Below 3 dB the amplifier is
- * overdriven (`isOverdriven`, IMD alarm). The HPA output is drive + gain -
- * back-off, so the BUC has to be delivering its rated drive first: the
- * evening shift left the BUC gain wound down to 18 dB after a maintenance
+ * overdriven (`isOverdriven`, output back-off under 3 dB, IMD alarm). GW-01's
+ * 2.5 W SSPA runs fixed gain (ALC off): output = input + gain, and the back-off
+ * is an attenuator that sets the gain from the rated 16 dBm drive (Phase 19.6),
+ * so the BUC has to be delivering its rated drive first: the
+ * morning maintenance run left the BUC gain wound down to 18 dB after a maintenance
  * run (staged state), and the EIRP plan starts by restoring 23 dB. At 4 dB
- * back-off the HPA delivers about 30 dBm (1 W) into the feed on this chain
+ * back-off the HPA delivers 29.9 dBm (0.97 W) into the feed on this chain
  * (`hpa-output-power-set` 0.5 W is the proof once the amplifier is up); at
- * 10 dB it is a quarter of that.
+ * 10 dB it is 24 dBm, a quarter of that. Left at 18 dB the BUC gives 11 dBm and
+ * back-off 4 gives 25 dBm (0.32 W): 5 dB short, no alarm anywhere.
  *
  * Commanding window is the SAR-1 pass with 20 s guard bands:
  * AOS 1019 s + 20 -> windowStartS 1039; LOS 1563 s - 20 -> windowEndS 1543.
@@ -105,7 +110,7 @@ galwayTasking.transmitters![0].modems![0].ifSignal.frequency = 1435e6 as IfFrequ
 export const natsEuScenario10Data: ScenarioData = {
   id: 'nats-eu-scenario10',
   url: 'nats-eu/scenarios/nats-eu-scenario10',
-  imageUrl: 'nats/10/card.png',
+  imageUrl: 'nats-eu/10/card.png',
   number: 10,
   isDisabled: false,
   difficulty: 'intermediate',
@@ -114,7 +119,7 @@ export const natsEuScenario10Data: ScenarioData = {
   subtitle: 'Urgent Collect, Low Pass',
   duration: '30 min',
   missionType: 'Tasking',
-  description: `15:18 local. Erik Halvorsen at Nordic Maritime Watch has a vessel of interest off the Faroes and needs SAR imagery of it today. The only MERIDIAN-SAR-1 window that covers the box peaks at 18 degrees over Galway, in seventeen minutes.<br><br>The collect has to be tasked by command early in that pass, and the imagery has to come down on the same pass. Anneke at constellation ops has confirmed the bird is available.<br><br>The link budget says the margin at 18 degrees is about two decibels. The uplink needs more EIRP than you have ever run from GW-01, the amplifier has a limit, and the evening shift left the chain in a state you will have to read before you trust it. One pass. Everything else is arithmetic, done before the horizon.`,
+  description: `15:18 local. Erik Halvorsen at Nordic Maritime Watch has a vessel of interest off the Faroes and needs SAR imagery of it today. The only MERIDIAN-SAR-1 window that covers his search box peaks at just 18 degrees over Galway, and it's seventeen minutes away.<br><br>You have to task the collect by command early in that pass and pull the imagery down on the same pass. Anneke at constellation ops has confirmed the satellite is available.<br><br>At 18 degrees the link margin over the demodulator threshold is about four decibels, and the commit needs three. The uplink needs more EIRP than you've ever run from GW-01, the amplifier has a limit, and the last maintenance run left the chain in a state you'll have to read before you trust it. One pass. The rest is arithmetic, done before the horizon.`,
   equipment: ['4m Ku-Band LEO Tracking Antenna', 'Ku-Band BUC (12600 MHz LO) + HPA', 'Link Analysis / TT&C Commanding consoles', 'QPSK 3/4 Transmit and Receive Modems'],
   settings: {
     isSync: true,
@@ -151,10 +156,10 @@ export const natsEuScenario10Data: ScenarioData = {
     // 8.11 dB at max elevation, ~150 s at or above 7 dB, ~40 s at or above 8 dB.
     linkBudget: {
       label: 'Low-elevation collect: SAR-1 downlink at 18 deg',
-      expectedCNRDb: 8.1,
+      expectedCNRDb: 8.3,
       toleranceDb: 1.0,
-      thresholdCNRDb: 6,
-      requiredMarginDb: 1,
+      thresholdCNRDb: 4.2,
+      requiredMarginDb: 3,
     },
 
     // M2 - the tasking command. Window is the SAR-1 pass with 20 s guard
@@ -181,7 +186,7 @@ export const natsEuScenario10Data: ScenarioData = {
       id: 'review-mission-brief',
       nice: ['K0645', 'K0740'],
       title: 'Read the Tasking',
-      description: 'Open the tasking brief and confirm the target box, the pass, and what an 18 degree pass does to the numbers you are used to.',
+      description: "Open the tasking brief and confirm the target box and the pass time. Then work out what an 18 degree pass does to the link budget you're used to.",
       groundStation: 'GW-01',
       freezesScenarioTimer: true,
       prerequisiteObjectiveIds: [],
@@ -197,16 +202,16 @@ export const natsEuScenario10Data: ScenarioData = {
           description: 'Low-Pass Geometry Understood',
           params: {
             character: Character.SYSTEM,
-            question: 'This pass peaks at 18 degrees. Against the 28 degree passes you have worked, what changes in the link budget?',
+            question: "This pass peaks at 18 degrees. Compared with the 28 degree passes you've worked, what changes in the link budget?",
             options: [
-              'Slant range at max elevation is about 1040 km instead of 761 km: nearly 3 dB more path loss, so the margin shrinks to about 2 dB.',
-              'Nothing in the budget changes at 18 degrees: a lower pass is shorter, so the window closes sooner but the numbers hold.',
-              'The satellite EIRP drops at low elevation: the bird has to be commanded to full power first, or the margin is gone.',
-              'The receive antenna gain falls off at low elevation: the dish has to be re-peaked at AOS, or the margin is gone.',
+              'Slant range at max elevation is about 1040 km instead of 761 km, so path loss rises nearly 3 dB and the margin falls to about 4 dB.',
+              'Nothing in the budget changes at 18 degrees, because a lower pass is only shorter: the window closes sooner but the numbers hold.',
+              "The satellite's EIRP drops at low elevation, so the bird has to be commanded to full power first or the margin is gone.",
+              "The receive antenna's gain falls off at low elevation, so the dish has to be re-peaked at AOS or the margin is gone.",
             ],
             correctIndex: 0,
             explanation:
-              'Nearly 3 dB of extra path loss plus more atmosphere, and the margin over threshold shrinks to about two decibels. Path loss goes as the square of the range, and at 18 degrees the signal crosses several times more atmosphere than it does near the zenith. The receiver will still lock, but only just, and only near max elevation. Seventeen minutes to AOS.',
+              'Path loss goes as the square of the range, so 1040 km instead of 761 km adds nearly 3 dB. At 18 degrees the signal also crosses several times more atmosphere than it does near the zenith, which is why the margin over threshold shrinks from nearly seven decibels to about four. The receiver will still lock, but the margin the commit needs exists only near max elevation. AOS is about seventeen minutes away.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -223,7 +228,7 @@ export const natsEuScenario10Data: ScenarioData = {
       id: 'dashboard-sweep',
       nice: ['T0153', 'K0741'],
       title: 'GW-01 Dashboard Sweep',
-      description: 'Clear the board before the tasking: confirm the active alarm state on GW-01.',
+      description: 'Open the dashboard and read the active alarm state on GW-01 before you change anything.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['review-mission-brief'],
       timeLimitSeconds: 90,
@@ -243,14 +248,14 @@ export const natsEuScenario10Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What is the active alarm state on GW-01 when the tasking comes in?',
             options: [
-              'RX AGC at max gain - weak signal on an empty sky, no hardware alarm',
-              'No active alarms - all systems nominal, board clear for the tasking',
-              'HPA over-temperature - hardware alarm, transmit chain at risk',
-              'GPSDO in holdover - reference alarm, timing at risk for the pass',
+              'RX AGC on noise only: no carrier from an empty sky, and no hardware alarm',
+              'No active alarms: every system nominal, and the board is clear for the tasking',
+              'HPA over-temperature: a hardware alarm, so the transmit chain is at risk',
+              'GPSDO in holdover: a reference alarm, so timing is at risk for the pass',
             ],
             correctIndex: 0,
             explanation:
-              'The AGC rail is empty sky, not a fault, and nothing else is tripped; that does not mean the chain is set the way the tasking needs it. The maintenance run this morning left its fingerprints on the BUC and the modem.',
+              "The receiver's automatic gain control (AGC) is reporting no carrier because it's looking at empty sky, so that's not a fault. Nothing else is tripped, but that doesn't mean the chain is set the way the tasking needs it. The morning maintenance run changed the BUC and the modem, and you'll find both in the next few steps.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -263,7 +268,8 @@ export const natsEuScenario10Data: ScenarioData = {
       id: 'reference-check',
       nice: ['T0431', 'K0740'],
       title: 'Reference Check',
-      description: 'GPSDO locked and out of holdover, BUC on the external reference. The uplink frequency the bird hears is only as good as this.',
+      description:
+        'Check that the GPSDO is locked and out of holdover, and that the BUC is on the external reference. The uplink frequency the satellite hears is only as accurate as this reference.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['dashboard-sweep'],
       timeLimitSeconds: 2 * 60,
@@ -296,7 +302,7 @@ export const natsEuScenario10Data: ScenarioData = {
       nice: ['T0080', 'S0015', 'K0740'],
       title: 'Budget the Low Pass',
       description:
-        'Fill the Link Analysis worksheet for MERIDIAN-SAR-1 at maximum elevation and press Compute. Worksheet numbers: satellite EIRP 28 dBm; slant range at max elevation 1040 km (free-space path loss 174.1 dB at 11686 MHz); GW-01 receive gain 51.8 dBi; system noise temperature 88 K; occupied bandwidth 36 MHz; miscellaneous losses 1.2 dB.',
+        'Open Link Analysis, fill the worksheet for MERIDIAN-SAR-1 at maximum elevation, and press Compute. Worksheet numbers: satellite EIRP 31.3 dBm; slant range at max elevation 1040 km (free-space path loss 174.1 dB at 11686 MHz); GW-01 receive gain 50.4 dBi; system noise temperature 131 K; occupied bandwidth 36 MHz; miscellaneous losses 1.2 dB.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['reference-check'],
       timeLimitSeconds: 4 * 60,
@@ -320,16 +326,16 @@ export const natsEuScenario10Data: ScenarioData = {
           description: 'Atmospheric Loss Read',
           params: {
             character: Character.SYSTEM,
-            question: 'The card carries 1.2 dB of miscellaneous losses where the acceptance worksheet used 1.0. Where does the extra 0.2 dB come from?',
+            question: 'This worksheet carries 1.2 dB of miscellaneous losses where the acceptance worksheet used 1.0. Where does the extra 0.2 dB come from?',
             options: [
-              'The atmospheric path at 18 degrees is about three times longer than at the zenith, so gaseous absorption at Ku adds a couple of tenths',
+              'The atmospheric path at 18 degrees is about three times longer than at the zenith, so Ku absorption adds a couple of tenths',
               'Cable loss increases when the antenna points near the horizon, so the feed run to the LNB adds a couple of tenths at 18 degrees',
               'The LNB noise figure is worse at low elevation, so the colder sky no longer compensates and a couple of tenths come off the G/T',
               'It is a rounding allowance with no physical meaning, so the card carries a couple of tenths to absorb error in the worksheet',
             ],
             correctIndex: 0,
             explanation:
-              'Clear-sky gaseous loss at 12 GHz is a few hundredths of a dB straight up and scales roughly with one over the sine of the elevation. At 18 degrees that is a few tenths, and on a pass with two decibels of margin a few tenths belong on the card.',
+              'Clear-sky gaseous loss at 12 GHz is about a tenth of a dB straight up. It grows roughly with one over the sine of the elevation, so at 18 degrees the path is about three times longer than at the zenith, and the loss is a couple of tenths more than on the higher acceptance passes. On a pass with about four decibels of margin, a few tenths of a dB belong on the card.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -343,7 +349,7 @@ export const natsEuScenario10Data: ScenarioData = {
       nice: ['S0675', 'K0064', 'T0431'],
       title: 'Restore the BUC Gain',
       description:
-        'The morning maintenance run left the BUC gain at 18 dB. The station standard is 23 dB, and the HPA back-off numbers on the card assume it. Set 23 dB and confirm the BUC stays out of compression.',
+        'Set the BUC gain to 23 dB, the station standard. The morning maintenance run left it at 18 dB, and the back-off numbers on the card assume 23. Then check that the BUC stays out of compression.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['budget-the-low-pass'],
       timeLimitSeconds: 2 * 60,
@@ -366,16 +372,17 @@ export const natsEuScenario10Data: ScenarioData = {
           description: 'Chain Arithmetic Read',
           params: {
             character: Character.SYSTEM,
-            question: 'The HPA output is its input plus gain minus back-off. What would 4 dB of back-off have delivered with the BUC still at 18 dB?',
+            question:
+              "GW-01's HPA runs at fixed gain with the automatic level control (ALC) off, so its output is its input plus its gain, and the back-off sets that gain from the BUC's rated drive. What would 4 dB of back-off deliver with the BUC still at 18 dB?",
             options: [
-              'The EIRP of a 9 dB back-off on a correct chain: 5 dB short of the plan, with every indicator green',
+              'The EIRP of a 9 dB back-off on a correct chain: 5 dB short, with every indicator green',
               'The same EIRP as the plan: the HPA compensates for the drive level, with every indicator green',
               'An overdriven HPA at the planned EIRP: less drive means more gain, with the IMD alarm tripped',
               'Nothing on the air: the BUC would refuse to unmute below 20 dB, with a drive alarm on the chain',
             ],
             correctIndex: 0,
             explanation:
-              'EIRP is a sum, and the back-off is only one term. The card\'s "4 dB" assumes the BUC delivers its rated drive. Read the chain from the modem outward before you set the number at the end of it.',
+              'EIRP is a sum, and the back-off is only one term. The card\'s "4 dB" assumes the BUC delivers its rated 16 dBm. At 18 dB of gain it delivers 11 dBm, and a fixed-gain HPA passes the shortfall straight through: a third of a watt instead of one. That 5 dB shortfall equals running 9 dB of back-off on a correct chain, with nothing alarming. So read the chain from the modem outward before you set the number at the end of it.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -389,7 +396,7 @@ export const natsEuScenario10Data: ScenarioData = {
       nice: ['S0675', 'K0064', 'K0740'],
       title: 'Raise Uplink EIRP Without Overdriving',
       description:
-        'The command has to reach the bird at long range: take the HPA back-off from 10 dB to 4 dB for 6 dB more EIRP. Below 3 dB the amplifier is overdriven and the IMD alarm trips.',
+        "Lower the HPA back-off from 10 dB to 4 dB, which gives 6 dB more EIRP so the command reaches the bird at long range. Don't go below 3 dB: the amplifier is overdriven there and the intermodulation (IMD) alarm trips.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['restore-the-buc-gain'],
       timeLimitSeconds: 2 * 60,
@@ -404,7 +411,7 @@ export const natsEuScenario10Data: ScenarioData = {
         {
           type: 'hpa-not-overdriven',
           description: 'HPA Linear (No IMD Alarm)',
-          params: { requiresObservation: true, observationTab: 'tx-chain' },
+          params: { allowHpaDisabled: true, requiresObservation: true, observationTab: 'tx-chain' },
           mustMaintain: true,
         },
         {
@@ -414,14 +421,14 @@ export const natsEuScenario10Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'The IMD readout worsens by about 2 dB for every dB of back-off you give up, and the alarm trips below 3 dB. What is the cost of ignoring it for one pass?',
             options: [
-              'Intermodulation products spill into the neighbouring channels: a splattered band, which Rotterdam says costs more than a missed collect',
-              'Nothing on a single pass: the alarm is a maintenance reminder, and one collect at 3 dB of back-off is inside the HPA rating',
-              'The HPA shuts itself down on the alarm: the command is lost mid-pass, and the chain has to be brought back up from cold',
-              'The bird rejects the command: a distorted carrier fails the uplink CRC, and the ACK never comes back before LOS',
+              'Intermodulation products spill into neighbouring channels, which Rotterdam says costs more than a missed collect',
+              'Nothing on a single pass, because the alarm is a maintenance reminder and one collect at 3 dB of back-off is inside the HPA rating',
+              'The HPA shuts itself down on the alarm, so the command is lost mid-pass and the chain has to be brought back up from cold',
+              'The bird rejects the command, because a distorted carrier fails the uplink error check and the ACK never comes back before LOS',
             ],
             correctIndex: 0,
             explanation:
-              'An amplifier driven past its linear region makes new frequencies out of the ones it was given. Those go up the same dish at the same EIRP, into channels that belong to somebody else. 4 dB is the number: 6 dB more EIRP, 1 dB of linearity to spare.',
+              "An amplifier driven past its linear region makes new frequencies out of the ones it was given. Those go out through the same dish, into channels that belong to somebody else. That's why 4 dB is the number: it gives 6 dB more EIRP and still leaves 1 dB before the 3 dB limit.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -435,7 +442,7 @@ export const natsEuScenario10Data: ScenarioData = {
       nice: ['S0421', 'K0773', 'T1567'],
       title: 'Tune the Uplink',
       description:
-        "TX modem 1 is on SAR-2's 1435 MHz command IF from Tuesday. Retune it to 1405 MHz (14005 MHz through the 12600 MHz BUC LO) for SAR-1, and engage uplink Doppler compensation on the TT&C console now, not at AOS.",
+        "Retune TX modem 1 from 1435 MHz, SAR-2's command frequency left over from Tuesday, to 1405 MHz for SAR-1. Through the 12600 MHz BUC local oscillator that puts 14005 MHz on the air. Then turn on uplink Doppler compensation on the TT&C (telemetry, tracking and command) console now, so it's already running when she rises.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['raise-the-eirp'],
       timeLimitSeconds: 2 * 60,
@@ -461,7 +468,8 @@ export const natsEuScenario10Data: ScenarioData = {
       id: 'preposition-for-aos',
       nice: ['S0421', 'K1032'],
       title: 'Pre-position for AOS',
-      description: 'AOS 15:34:59 from azimuth 027, north-northeast. Park the tracker on the rise azimuth at 5 degrees so the slew is done before she is over the horizon.',
+      description:
+        'Point the antenna at azimuth 027, elevation 5 degrees, within 2 degrees on both axes. That is where the satellite rises (AOS at 15:34:59, north-northeast), so the slew is finished before she clears the horizon.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['tune-the-uplink'],
       timeLimitSeconds: 3 * 60,
@@ -469,8 +477,8 @@ export const natsEuScenario10Data: ScenarioData = {
       conditions: [
         {
           type: 'antenna-position',
-          description: 'Parked on Az 027 / El 5',
-          params: { azimuth: 27, elevation: 5, tolerance: 3 },
+          description: 'Parked on Az 027 / El 5 (within 2 degrees)',
+          params: { azimuth: 27, elevation: 5, tolerance: 2 },
           mustMaintain: false,
         },
       ],
@@ -485,7 +493,8 @@ export const natsEuScenario10Data: ScenarioData = {
       id: 'acquire-low',
       nice: ['S0421', 'K1032'],
       title: 'Acquire at the Horizon',
-      description: 'AOS 15:35. Program-track MERIDIAN-SAR-1 and confirm the beacon on RX analysis as it clears the horizon. Chain cold until the beacon is in.',
+      description:
+        'Switch the antenna to program-track on MERIDIAN-SAR-1, which rises at 15:35, and confirm the beacon on the RX Analysis tab once she clears the horizon. Keep the transmit chain off until the beacon is in.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['preposition-for-aos'],
       conditions: [
@@ -521,7 +530,7 @@ export const natsEuScenario10Data: ScenarioData = {
       nice: ['T1567', 'K0773', 'S0675'],
       title: 'Task the Collect',
       description:
-        'Modem on air FIRST, then the HPA; with the amplifier up, the TX chain should show at least half a watt into the feed at 4 dB back-off. Then send SAR-TASK-URGENT early in the pass. The imaging block needs lead time to arm before the bird is over the box, and the window closes at 15:43:43.',
+        'Put the transmit modem on air first, because an HPA with no drive amplifies only noise. Then enable the HPA and check that the TX chain shows at least 0.5 W into the feed at 4 dB back-off. Then send SAR-TASK-URGENT, the tasking command, early in the pass: the imaging block needs lead time to arm before the satellite is over the box, and the command window closes at 15:43:43.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['acquire-low'],
       conditions: [
@@ -558,7 +567,7 @@ export const natsEuScenario10Data: ScenarioData = {
       nice: ['T0153', 'K0740', 'T0080'],
       title: 'Pull the Imagery With the Margin You Have',
       description:
-        'Lock the 1414 MHz imagery downlink and hold C/N above the 6 dB threshold for 30 seconds, then commit the link in Link Analysis at max elevation (15:39:31) with at least 1 dB over threshold. Commit early and the margin is not there.',
+        'Lock the receive modem on the 1414 MHz imagery downlink and hold C/N above 6 dB for 30 seconds. Then commit the link in Link Analysis at max elevation (15:39:31), with at least 3 dB of margin over the 4.2 dB threshold. Commit earlier and the margin will not be there.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['task-the-collect'],
       conditions: [
@@ -577,8 +586,8 @@ export const natsEuScenario10Data: ScenarioData = {
         },
         {
           type: 'link-margin-met',
-          description: 'Measured Margin >= 1 dB',
-          params: { minMarginDb: 1 },
+          description: 'Measured Margin >= 3 dB',
+          params: { minMarginDb: 3 },
           mustMaintain: false,
         },
         {
@@ -586,16 +595,16 @@ export const natsEuScenario10Data: ScenarioData = {
           description: 'Short Window Read',
           params: {
             character: Character.SYSTEM,
-            question: 'On the 28 degree passes 8 dB held for four minutes. Today it holds for about forty seconds either side of 15:39:31. Why is the window so short?',
+            question: 'On the 28 degree passes, 8 dB held for four minutes. Today it lasts only about forty seconds, centred on 15:39:31. Why is the window so short?',
             options: [
-              'On a low pass the bird never gets close: range falls from 2000 km to 1040 km and climbs straight back, so the C/N curve is a spike',
+              'On a low pass the bird never gets close: range falls from 2000 km to 1040 km and climbs straight back, so C/N is a spike',
               'The Doppler rate is highest on a low pass: the modem loses lock as the shift crosses zero, so the window is only the crossing',
               'The imaging block is short: the bird transmits the collect for only forty seconds, so the carrier is only there for that long',
               'The HPA at 4 dB back-off desensitises the receiver: the uplink leaks into the LNB everywhere except at closest approach',
             ],
             correctIndex: 0,
             explanation:
-              'Elevation is range. Near the zenith a pass spends minutes within a few percent of its closest range; at 18 degrees it is close for seconds. The number the card asks for exists at culmination and nowhere else on the curve.',
+              "Elevation is range. Near the zenith a pass spends minutes within a few percent of its closest range, but at 18 degrees it's close for only seconds. So the margin the commit needs exists at culmination, the moment of max elevation, and nowhere else on the curve.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -612,7 +621,8 @@ export const natsEuScenario10Data: ScenarioData = {
       id: 'safe-the-uplink',
       nice: ['S0421', 'K0645', 'S0675'],
       title: 'Safe the Uplink',
-      description: 'Chain down now, in the mirror order: HPA output off, BUC muted, carrier off. No need to wait for LOS (15:44:03).',
+      description:
+        "Take the transmit chain down: disable the HPA output first, then mute the BUC, then take the transmit modem off air. You don't need to wait for LOS at 15:44:03.",
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['pull-the-imagery'],
       timeLimitSeconds: 2 * 60,
@@ -644,7 +654,7 @@ export const natsEuScenario10Data: ScenarioData = {
       id: 'restore-the-back-off',
       nice: ['S0675', 'K0645', 'K0064'],
       title: 'Restore the Back-Off',
-      description: 'Put the HPA back-off back to the station standard, 10 dB, before anyone else uses this chain.',
+      description: 'Set the HPA back-off back to the station standard of 10 dB before anyone else uses this chain.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['safe-the-uplink'],
       timeLimitSeconds: 2 * 60,
@@ -663,14 +673,14 @@ export const natsEuScenario10Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Why put the back-off back to 10 dB now, when the next tasking might need 4 again?',
             options: [
-              '4 dB was the EIRP for one 18 degree geometry; on a normal pass it is 6 dB over the coordinated level, a risk to the neighbours',
+              '4 dB was the EIRP for one 18 degree geometry; on a normal pass it is 6 dB over the coordinated level, a risk to neighbours',
               'The HPA cannot run at 4 dB for more than one pass; on a normal pass it overheats, a hardware risk for the transmit chain',
               'The back-off resets itself when the HPA is disabled; on a normal pass the chain comes up at 10 dB whatever the card says',
               'The IMD alarm only clears at 10 dB; on a normal pass the readout at 4 dB trips it, an alarm the next operator has to explain',
             ],
             correctIndex: 0,
             explanation:
-              'Exceptions are set for a pass and cleared after it. A chain left at 4 dB is a station that is not the one on the card for the next operator. The station standard is what everything else - the card, the coordination filing, the next shift - assumes. Leave the chain the way the paperwork says it is.',
+              "Exceptions are set for one pass and cleared after it. A chain left at 4 dB doesn't match the card the next operator is working from, and on a normal pass it radiates 6 dB over the coordinated level. The station standard is what the card, the coordination filing and the next shift all assume, so leave the chain the way the paperwork says it is.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -683,7 +693,7 @@ export const natsEuScenario10Data: ScenarioData = {
       id: 'log-the-tasking',
       nice: ['T1580', 'K0645', 'S0842'],
       title: 'Log the Tasking',
-      description: 'Write the tasking into the log: what was commanded, what the chain was set to and for how long, what came down.',
+      description: 'Write the tasking into the log: what was commanded, what the chain was set to and for how long, and what came down.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['restore-the-back-off'],
       timeLimitSeconds: 2 * 60,
@@ -696,18 +706,18 @@ export const natsEuScenario10Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What does the tasking log need beyond "collect tasked, imagery received"?',
             options: [
-              'The command and its ACK time, the EIRP exception (4 dB back-off, restored after), the measured C/N against the 8.1 dB prediction',
+              'The command and its ACK time, the EIRP exception (4 dB back-off, restored after), the measured C/N against the 8.3 dB prediction',
               "The customer's name and the target box, the tasking reference (as received, as accepted), the frame count against the request",
               'Just the ACK and its time, the frames received (count and quality), the note that the frames prove the rest of the chain',
-              'The worksheet inputs from the card, the predicted C/N (8.1 dB, from the card), the note that the measured figure matched it',
+              'The worksheet inputs from the card, the predicted C/N (about 9.5 dB, from the card), the note that the measured figure matched it',
             ],
             correctIndex: 0,
             explanation:
-              "A log line is the next person's evidence, and the C/N goes in with the geometry it was measured at. The EIRP exception in particular: without it, a 4 dB back-off found on the chain next week is a mystery, and with it, it is a finding.",
+              "A log line is the next person's evidence, so it needs the command, the exception and the measurement. The C/N goes in with the geometry it was measured at. The EIRP exception matters most: without it, a 4 dB back-off found on the chain next week is a mystery, and with it, it's a finding.",
             pointPenalty: 5,
             documentSection: 'Tasking',
             documentLine:
-              '15:35Z MERIDIAN-SAR-1 GW-01, urgent collect NMW-URG-2027-0318: SAR-TASK-URGENT ACK inside the window under Doppler comp and a valid key. EIRP exception: BUC gain restored 18 -> 23 dB, HPA back-off 4 dB for the pass, restored to 10 dB after LOS. Imagery decoded at 18 deg, link committed >= 1 dB over the 6 dB threshold; peak C/N ~8.1 dB against 8.1 predicted.',
+              '15:35Z MERIDIAN-SAR-1 GW-01, urgent collect NMW-URG-2027-0318: SAR-TASK-URGENT ACK inside the window under Doppler comp and a valid key. EIRP exception: BUC gain restored 18 -> 23 dB, HPA back-off 4 dB for the pass, restored to 10 dB after LOS. Imagery decoded at 18 deg, link committed >= 3 dB over the 4.2 dB threshold; peak C/N ~8.1 dB against 8.3 predicted.',
           },
           mustMaintain: false,
         },
@@ -719,7 +729,7 @@ export const natsEuScenario10Data: ScenarioData = {
       id: 'report-to-customer',
       nice: ['S0478', 'T1580'],
       title: 'Report to Erik',
-      description: 'The frames are in. Tell the customer what he got and what this geometry means for the next request.',
+      description: 'Tell Erik what he got and what this geometry means for his next request.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['log-the-tasking'],
       timeLimitSeconds: 3 * 60,
@@ -730,16 +740,16 @@ export const natsEuScenario10Data: ScenarioData = {
           description: 'Customer Report Sent',
           params: {
             character: Character.SYSTEM,
-            question: 'The collect decoded at about 8 dB C/N, two decibels over threshold. What do you tell the customer?',
+            question: 'The collect decoded at about 8 dB C/N, nearly four decibels over the threshold. What do you tell Erik?',
             options: [
-              'Captured and usable, and that this geometry is the floor: anything lower needs the Shetland site or the next orbit.',
+              'Captured and usable, and that this geometry is the floor: anything lower needs Shetland or the next orbit.',
               'Captured and repeatable, and that this geometry is routine: GW-01 can take the same box on any pass he likes.',
               'Captured but degraded, and that this geometry is the cause: the link was marginal, so the imagery lost detail.',
               'Captured and filed, and that this geometry is a station matter: the technical details are in the tasking log.',
             ],
             correctIndex: 0,
             explanation:
-              'Two decibels over threshold is a clean decode, not a degraded one; the frames are as good as any. What the customer needs to know is that 18 degrees is about the lowest pass this station will close, so the next box further north is a Shetland job or a wait for a better orbit.',
+              'Four decibels over threshold is a clean decode, not a degraded one, so the frames are as good as any. What Erik needs to know is that 18 degrees is about the lowest pass this station will close, so a box further north is a Shetland job or a wait for a better orbit.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -753,66 +763,66 @@ export const natsEuScenario10Data: ScenarioData = {
     intro: {
       text: `
       <p>
-        <em>[Text message from Erik Halvorsen, Nordic Maritime Watch, 15:17]</em>
+        <em>[Text message from Erik Halvorsen, Nordic Maritime Watch, {{stationTime}}]</em>
       </p>
       <p>
-        "Vessel of interest went dark off the Faroes overnight. I have a box, 62.5 N 7.5 W, forty kilometres square. Your SAR-1 pass at 15:35 is the only one that covers it before it moves. One pass, tasking and download. Can you do it?"
+        "A vessel of interest went dark off the Faroes overnight, so we've lost its position reports. I have a search box at 62.5 N 7.5 W, forty kilometres square. Your SAR-1 pass at 15:35 is the only one that covers it before the vessel moves. I need the tasking and the download on that one pass. Can you do it?"
       </p>
       `,
       character: Character.ERIK_HALVORSEN,
       emotion: Emotion.CONCERNED,
-      audioUrl: '',
+      audioUrl: getAssetUrl('/assets/campaigns/nats-eu/10/intro.mp3'),
     },
     objectives: {
       'budget-the-low-pass': {
         text: `
         <p>
-          Anneke here. SAR-1 is yours for the pass, imaging block is free and the command link is keyed. It is a low one though, you will need more uplink power than usual to reach her at that range. Your EIRP, your call. Just keep the HPA linear; I would rather lose the collect than have you splatter the band.
+          Anneke here. SAR-1 is yours for the pass. The imaging block, her radar payload, is free and the command link is keyed. It's a low pass, so you'll need more uplink power than usual to reach her at that range. How much to radiate is your call, but keep the HPA linear. I'd rather lose the collect than have you distort the signal and spill into somebody else's channel.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/10/obj-budget-the-low-pass.mp3'),
       },
       'task-the-collect': {
         text: `
         <p>
-          Task received on board, imaging block armed. She will shoot the box at closest approach and start the dump straight after. The downlink is all yours now, hold it through max elevation.
+          Task received on board, and the imaging block is armed. She'll shoot the box at closest approach and start the downlink straight after. The downlink is all yours now, so hold the lock through max elevation.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/10/obj-task-the-collect.mp3'),
       },
       'pull-the-imagery': {
         text: `
         <p>
-          Frames in. The box is covered and the target is in it. Thank you.
+          Good. That's the one I needed.
         </p>
         `,
         character: Character.ERIK_HALVORSEN,
         emotion: Emotion.HAPPY,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/10/obj-pull-the-imagery.mp3'),
       },
       'safe-the-uplink': {
         text: `
         <p>
-          Chain down on my side too, thank you. For the record: the IMD readout never moved off the green. That is the number I will quote when somebody asks whether Galway can be trusted with a low pass.
+          The chain's down on my side too, thank you, Galway. For the record, the distortion readout never left green the whole time you were transmitting. That's the number I'll quote when somebody asks whether Galway can be trusted with a low pass.
         </p>
         `,
         character: Character.ANNEKE_VISSER,
         emotion: Emotion.CONFIDENT,
-        audioUrl: '',
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/10/obj-safe-the-uplink.mp3'),
       },
       'report-to-customer': {
         text: `
         <p>
-          Understood on the geometry. If the next box is further north I will ask for Shetland or wait for the better orbit. Good work today, Galway.
+          Understood on the geometry. If the next box is further north, I'll ask for Shetland or wait for a better orbit.
         </p>
         `,
         character: Character.ERIK_HALVORSEN,
-        emotion: Emotion.NEUTRAL,
-        audioUrl: '',
+        emotion: Emotion.HAPPY,
+        audioUrl: getAssetUrl('/assets/campaigns/nats-eu/10/obj-report-to-customer.mp3'),
       },
     },
   },

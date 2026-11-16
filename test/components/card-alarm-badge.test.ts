@@ -18,23 +18,23 @@ describe('CardAlarmBadge', () => {
     return el as HTMLElement;
   }
 
-  it('renders default success LED with System Normal tooltip', () => {
+  it('renders default success LED with No alarms tooltip', () => {
     const badge = CardAlarmBadge.create('alarm-badge-1');
     mount(badge);
 
     expect(document.querySelector('#alarm-badge-1')).not.toBeNull();
     expect(ledEl().className).toBe('card-alarm-led success');
-    expect(ledEl().title).toBe('System Normal');
+    expect(ledEl().title).toBe('No alarms');
   });
 
-  it('update() keeps success + System Normal when no active alarms', () => {
+  it('update() keeps success + No alarms when no active alarms', () => {
     const badge = new CardAlarmBadge('alarm-badge-2');
     mount(badge);
 
     badge.update([]);
 
     expect(ledEl().className).toBe('card-alarm-led success');
-    expect(ledEl().title).toBe('System Normal');
+    expect(ledEl().title).toBe('No alarms');
   });
 
   it('update() shows warning and uses message as tooltip', () => {
@@ -66,7 +66,7 @@ describe('CardAlarmBadge', () => {
     expect(ledEl().title).toBe('FAIL\nWARN\nFYI');
   });
 
-  it('update() ignores empty messages and falls back to System Normal tooltip', () => {
+  it('update() ignores empty messages and falls back to No alarms tooltip', () => {
     const badge = new CardAlarmBadge('alarm-badge-5');
     mount(badge);
 
@@ -81,7 +81,7 @@ describe('CardAlarmBadge', () => {
     // Highest severity among active alarms is info (even though the message is empty)
     expect(ledEl().className).toBe('card-alarm-led info');
     // But tooltip should still display the default when no messages exist
-    expect(ledEl().title).toBe('System Normal');
+    expect(ledEl().title).toBe('No alarms');
   });
 
   it('dispose() clears cached DOM references and update() still works after dispose', () => {
@@ -134,5 +134,43 @@ describe('CardAlarmBadge', () => {
     expect(ledEl().className).toBe('card-alarm-led success');
     const lines = ledEl().title.split('\n').sort();
     expect(lines).toEqual(['B', 'C']);
+  });
+
+  it('update() with the equipment off and no alarm is grey "Powered off", never green (phase 29 D4, nats-r4-s02-F3)', () => {
+    const badge = new CardAlarmBadge('alarm-badge-off');
+    mount(badge);
+
+    badge.update([], false);
+    expect(ledEl().className).toBe('card-alarm-led off');
+    expect(ledEl().title).toBe('Powered off');
+
+    // A real alarm still shows while off
+    badge.update([{ severity: 'error', message: 'Fault' }], false);
+    expect(ledEl().className).toBe('card-alarm-led error');
+
+    badge.update([], true);
+    expect(ledEl().className).toBe('card-alarm-led success');
+  });
+
+  it('update() powered with an idle status and no alarm is grey with that tooltip (phase 31 D6, r6-s09-F1)', () => {
+    const badge = new CardAlarmBadge('alarm-badge-idle');
+    mount(badge);
+
+    badge.update([], true, 'Output disabled');
+    expect(ledEl().className).toBe('card-alarm-led off');
+    expect(ledEl().title).toBe('Output disabled');
+
+    // A real alarm still wins over the idle status
+    badge.update([{ severity: 'warning', message: 'Hot' }], true, 'Output muted');
+    expect(ledEl().className).toBe('card-alarm-led warning');
+    expect(ledEl().title).toBe('Hot');
+
+    // Unpowered reads "Powered off" whatever the idle status
+    badge.update([], false, 'Output muted');
+    expect(ledEl().title).toBe('Powered off');
+
+    badge.update([], true, undefined);
+    expect(ledEl().className).toBe('card-alarm-led success');
+    expect(ledEl().title).toBe('No alarms');
   });
 });

@@ -67,7 +67,7 @@ test.describe('nats-eu Scenario 24 Full Completion', () => {
     const powerSwitch = page.locator('#notch-power');
     await expect(powerSwitch).toBeVisible({ timeout: 5000 });
     if (!(await powerSwitch.isChecked())) {
-      await powerSwitch.click();
+      await powerSwitch.evaluate((el) => (el as HTMLElement).click());
       await expect(powerSwitch).toBeChecked();
       await page.waitForTimeout(300);
     }
@@ -75,7 +75,7 @@ test.describe('nats-eu Scenario 24 Full Completion', () => {
     const enableSwitch = page.locator(`#${prefix}-enabled`);
     await expect(enableSwitch).toBeVisible();
     if (!(await enableSwitch.isChecked())) {
-      await enableSwitch.click();
+      await enableSwitch.evaluate((el) => (el as HTMLElement).click());
       await expect(enableSwitch).toBeChecked();
       await page.waitForTimeout(200);
     }
@@ -94,7 +94,7 @@ test.describe('nats-eu Scenario 24 Full Completion', () => {
 
     const applyBtn = page.locator('#notch-apply-btn');
     if (await applyBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await applyBtn.click();
+      await applyBtn.evaluate((el) => (el as HTMLElement).click());
       await page.waitForTimeout(300);
     }
     await page.waitForTimeout(500);
@@ -137,7 +137,7 @@ test.describe('nats-eu Scenario 24 Full Completion', () => {
   test('[take-command] reads the brief and puts the plan first', async () => {
     await missionControl.openMissionBrief();
     await missionControl.closeMissionBrief();
-    await answerSystemQuiz(page, 'The plan: which bird from which site');
+    await answerSystemQuiz(page, 'The plan: which satellite flies from which site');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Take Command');
   });
@@ -149,15 +149,15 @@ test.describe('nats-eu Scenario 24 Full Completion', () => {
     await assignContact(page, 'C-SAR2-SH', 'SH-02');
     await assignContact(page, 'C-SAR3-GW', 'GW-01');
     await expect(page.locator('#cs-plan-badge')).toHaveText('DECONFLICTED');
-    await answerSystemQuiz(page, 'Because Galway has SAR-1 setting at 03:29');
+    await answerSystemQuiz(page, 'Because Shetland has SAR-2 at 35.1 degrees');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Plan the Network');
   });
 
-  test('[galway-dashboard-sweep] reads the board in the rain: AGC rail, no faults', async () => {
+  test('[galway-dashboard-sweep] reads the board in the rain: AGC no-carrier warning, no faults', async () => {
     await missionControl.selectTab('dashboard');
-    await expectDashboardAlarm(page, 'AGC at max gain');
-    await answerSystemQuiz(page, 'RX AGC at max gain');
+    await expectDashboardAlarm(page, 'AGC on noise only');
+    await answerSystemQuiz(page, 'RX AGC on noise only');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'GW-01 Storm Sweep');
   });
@@ -165,7 +165,7 @@ test.describe('nats-eu Scenario 24 Full Completion', () => {
   test('[galway-rx-ready] frames Galway on 1414 for SAR-1', async () => {
     await setRxModemFrequency(page, missionControl, 1414);
     await fillAndChange(page, '#sa-center-freq', '1414');
-    await fillAndChange(page, '#sa-span', '40');
+    await fillAndChange(page, '#sa-span', '60');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Galway Ready for SAR-1');
   });
@@ -193,10 +193,10 @@ test.describe('nats-eu Scenario 24 Full Completion', () => {
   test('[notch-the-carrier] notches 1410 MHz and holds C/N above 7 dB', async () => {
     await advanceMissionClockToUtc(page, '2027-04-27T03:21:45Z');
     await missionControl.selectTab('rx-analysis');
-    await configureNotchFilter({ centerFrequency: 1410, bandwidth: 2, depth: 30, notchIndex: 1 });
+    await configureNotchFilter({ centerFrequency: 1410, bandwidth: 2, depth: 30, notchIndex: 0 });
     await advanceMissionClockToUtc(page, '2027-04-27T03:23:30Z');
     await page.waitForTimeout(4000);
-    await answerSystemQuiz(page, 'Nothing in the handling - notch it, keep the collect');
+    await answerSystemQuiz(page, 'Nothing in the handling: notch it, keep the collect');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Notch the Carrier', 60000);
   });
@@ -251,7 +251,7 @@ test.describe('nats-eu Scenario 24 Full Completion', () => {
     await advanceMissionClockToUtc(page, '2027-04-27T03:36:30Z');
     await missionControl.selectGroundStation('GW-01');
     await enableFeedHeater();
-    await answerSystemQuiz(page, 'Rain does not stick and a heated feed in rain');
+    await answerSystemQuiz(page, "Rain doesn't stick, and sleet does");
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Protect the Feed');
   });
@@ -268,6 +268,9 @@ test.describe('nats-eu Scenario 24 Full Completion', () => {
     await advanceMissionClockToUtc(page, '2027-04-27T03:52:40Z');
     await programTrack(page, missionControl, '61703');
     await missionControl.selectTab('rx-analysis');
+    // Phase 27 B2: the beacon counts only when it is on the screen
+    await fillAndChange(page, '#sa-center-freq', '1315');
+    await fillAndChange(page, '#sa-span', '2');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Acquire SAR-3 Through the Sleet', 60000);
   });
@@ -283,7 +286,7 @@ test.describe('nats-eu Scenario 24 Full Completion', () => {
   });
 
   test('[call-the-denial] PLD-SAFE NAKs into the jammer; reads console and key; calls the denial', async () => {
-    // The jammer keys 10 s after this objective opens (anchored, phase 19.0a)
+    // The jammer keys the moment this objective opens (anchored, phase 19.0a; pre-audit 4)
     await advanceMissionClockBy(page, 15);
     await sendCommandAndExpectNak(page, missionControl, 'PLD-SAFE', 'Uplink denied - carrier jammed');
     await page.waitForTimeout(3000);
@@ -317,7 +320,7 @@ test.describe('nats-eu Scenario 24 Full Completion', () => {
 
   test('[incident-log-and-handover] logs the second half hour, hands over, and completes', async () => {
     const answers = [
-      { questionHint: 'second half hour', answerText: '03:36 GW-01 feed heater on' },
+      { questionHint: 'second half hour', answerText: '03:36 GW-01 heater on' },
       { questionHint: 'handover line', answerText: 'Open: SH-02 reference in holdover' },
     ];
     await answerPendingQuizFrom(page, answers);

@@ -2,9 +2,29 @@ import { CardAlarmBadge } from '@app/components/card-alarm-badge/card-alarm-badg
 import { qs } from '@app/engine/utils/query-selector';
 import { AlarmStatus } from '@app/equipment/base-equipment';
 import { BUCModuleCore, BUCState } from '@app/equipment/rf-front-end/buc-module/buc-module-core';
+import { classifyRfAlarmSeverity } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { EventAutoLogger } from '@app/ops-log/event-auto-logger';
+import { stationTagForRfModule } from '@app/ops-log/station-tag';
 import { parseLocalizedNumber } from '@app/utils/parse-number';
+
+/**
+ * The BUC output readout, shared by the TX Chain card and the Dashboard RF
+ * Chain TX card so both read the same quantity (phase 29 D4). No measurement
+ * shows no level: "MUTED" while the BUC is muted (the muted path carries a
+ * numerical floor, never a level) and "-- dBm" when off or with nothing in band
+ * (no modem transmitting, or a modem in an intermittent dropout).
+ */
+export function formatBucOutputPower(buc: BUCModuleCore): string {
+  if (buc.state.isPowered && buc.state.isMuted) {
+    return 'MUTED';
+  }
+  if (!buc.hasRfOutput()) {
+    return '-- dBm';
+  }
+  return `${buc.outputSignals[0].power.toFixed(1)} dBm`;
+}
 
 /**
  * BUCAdapter - Bridges BUCModuleCore state to web controls
@@ -31,6 +51,13 @@ export class BUCAdapter {
   // Staged values - not applied until Apply button is clicked
   private stagedLoFrequency_: number = 6425;
   private stagedGain_: number = 58;
+  /**
+   * Pending (staged but not applied) edits. Toggles and external state events
+   * must not overwrite a pending staged value; it clears on Apply or when the
+   * staged value is brought back to the applied one.
+   */
+  private hasPendingLoEdit_ = false;
+  private hasPendingGainEdit_ = false;
 
   constructor(bucModule: BUCModuleCore, containerEl: HTMLElement) {
     this.bucModule = bucModule;
@@ -83,18 +110,76 @@ export class BUCAdapter {
    * Sync only read-only status displays (not user inputs)
    * Used by throttled UPDATE handler to avoid overwriting staged values
    */
+  /** The case temperature trend: slope, the reading ten minutes back, and a 30-minute sparkline with the trip line (nats-s13-F1) */
+  private syncTemperatureTrend_(): void {
+    const isPowered = this.bucModule.state.isPowered;
+    const log = this.bucModule.temperatureLog;
+    const trend = isPowered ? this.bucModule.temperatureTrendCPerMin() : null;
+
+    const trendDisplay = this.domCache_.get('trendDisplay');
+    if (trendDisplay) {
+      if (trend === null) {
+        trendDisplay.textContent = '-- °C/min';
+      } else {
+        const arrow = trend > 0.05 ? '▲' : trend < -0.05 ? '▼' : '→';
+        trendDisplay.textContent = `${trend >= 0 ? '+' : ''}${trend.toFixed(2)} °C/min ${arrow}`;
+      }
+    }
+
+    const tenMinDisplay = this.domCache_.get('tenMinDisplay');
+    if (tenMinDisplay) {
+      const past = isPowered ? log.readingMinutesAgo(10) : null;
+      tenMinDisplay.textContent = past === null ? '-- °C' : `${past.toFixed(1)} °C`;
+    }
+
+    const path = this.domCache_.get('sparklinePath');
+    const tripLine = this.domCache_.get('sparklineTrip');
+    const samples = log.samples;
+    if (!path || samples.length < 2 || !isPowered) {
+      path?.setAttribute('points', '');
+      tripLine?.setAttribute('y1', '-10');
+      tripLine?.setAttribute('y2', '-10');
+      return;
+    }
+    const tEnd = samples[samples.length - 1].tMs;
+    const tStart = tEnd - log.windowS * 1000;
+    let lo = Math.min(...samples.map((x) => x.celsius));
+    let hi = Math.max(...samples.map((x) => x.celsius));
+    // Show the trip point when it is within reach of the curve
+    if (BUCAdapter.TRIP_C - hi < 15) hi = Math.max(hi, BUCAdapter.TRIP_C);
+    if (hi - lo < 4) {
+      const mid = (hi + lo) / 2;
+      lo = mid - 2;
+      hi = mid + 2;
+    }
+    const x = (tMs: number) => ((tMs - tStart) / (tEnd - tStart)) * 120;
+    const y = (c: number) => 28 - ((c - lo) / (hi - lo)) * 26;
+    path.setAttribute('points', samples.map((s) => `${x(s.tMs).toFixed(1)},${y(s.celsius).toFixed(1)}`).join(' '));
+    const tripY = BUCAdapter.TRIP_C <= hi ? y(BUCAdapter.TRIP_C).toFixed(1) : '-10';
+    tripLine?.setAttribute('y1', tripY);
+    tripLine?.setAttribute('y2', tripY);
+  }
+
+  /** The over-temperature alarm point, °C (BUCModuleCore alarms above 70) */
+  private static readonly TRIP_C = 70;
+
   private syncReadOnlyDisplays_(): void {
     const state = this.bucModule.state;
     const isPowered = state.isPowered;
 
+    // Sync switches from external changes (scenario events, faults, other consoles)
+    this.syncSwitch_('powerSwitch', state.isPowered);
+    this.syncSwitch_('muteSwitch', state.isMuted);
+    this.syncSwitch_('loopbackSwitch', state.isLoopback);
+
+    // Applied values can change without an event; keep staged inputs and the
+    // pending indicator honest (pending edits are preserved)
+    this.syncStagedFromState_(state.loFrequency, state.gain);
+
     // Update RF Status displays - show actual output signal power for consistency with HPA input
     const outputPowerDisplay = this.domCache_.get('outputPowerDisplay');
     if (outputPowerDisplay) {
-      if (isPowered && this.bucModule.outputSignals.length > 0) {
-        outputPowerDisplay.textContent = `${this.bucModule.outputSignals[0].power.toFixed(1)} dBm`;
-      } else {
-        outputPowerDisplay.textContent = '-- dBm';
-      }
+      outputPowerDisplay.textContent = formatBucOutputPower(this.bucModule);
     }
 
     // Display RF output frequency (after LO mixing and bandpass filter)
@@ -112,12 +197,7 @@ export class BUCAdapter {
     // Calculate and display P1dB margin
     const p1dbMarginDisplay = this.domCache_.get('p1dbMarginDisplay');
     if (p1dbMarginDisplay) {
-      if (isPowered) {
-        const p1dbMargin = state.saturationPower - state.outputPower;
-        p1dbMarginDisplay.textContent = `${p1dbMargin.toFixed(1)} dB`;
-      } else {
-        p1dbMarginDisplay.textContent = '-- dB';
-      }
+      p1dbMarginDisplay.textContent = this.formatP1dbMargin_(state);
     }
 
     // Update lock status
@@ -143,6 +223,10 @@ export class BUCAdapter {
         } else if (mode === 'high') {
           sidebandStatus.textContent = 'LSB';
           sidebandStatus.className = 'status-badge status-badge-good';
+        } else if (mode === 'no-input') {
+          // No modem transmitting into the BUC: nothing to place in band yet
+          sidebandStatus.textContent = 'No IF Input';
+          sidebandStatus.className = 'status-badge status-badge-off';
         } else {
           sidebandStatus.textContent = 'Out of Band';
           sidebandStatus.className = 'status-badge status-badge-warning';
@@ -163,6 +247,8 @@ export class BUCAdapter {
     if (currentDisplay) {
       currentDisplay.textContent = isPowered ? `${state.currentDraw.toFixed(2)} A` : '-- A';
     }
+
+    this.syncTemperatureTrend_();
 
     // Update Signal Quality displays
     const phaseNoiseDisplay = this.domCache_.get('phaseNoiseDisplay');
@@ -186,7 +272,7 @@ export class BUCAdapter {
 
     // Update alarm badge
     const alarms = this.getAlarmsFromModule_();
-    this.alarmBadge_.update(alarms);
+    this.alarmBadge_.update(alarms, this.bucModule.state.isPowered, this.bucModule.state.isMuted ? 'Output muted' : undefined);
   }
 
   private setupDomCache_(): void {
@@ -224,6 +310,16 @@ export class BUCAdapter {
     // Thermal displays
     this.domCache_.set('temperatureDisplay', qs('#buc-temperature-display', this.containerEl));
     this.domCache_.set('currentDisplay', qs('#buc-current-display', this.containerEl));
+    // Trend readout (nats-s13-F1): optional, a host layout may not carry it
+    for (const [key, selector] of [
+      ['trendDisplay', '#buc-temp-trend-display'],
+      ['tenMinDisplay', '#buc-temp-10min-display'],
+      ['sparklinePath', '#buc-temp-sparkline-path'],
+      ['sparklineTrip', '#buc-temp-trip-line'],
+    ] as const) {
+      const el = this.containerEl.querySelector<HTMLElement>(selector);
+      if (el) this.domCache_.set(key, el);
+    }
 
     // Signal Quality displays
     this.domCache_.set('phaseNoiseDisplay', qs('#buc-phase-noise-display', this.containerEl));
@@ -289,45 +385,126 @@ export class BUCAdapter {
   private loFreqInputHandler_(e: Event): void {
     const value = parseLocalizedNumber((e.target as HTMLInputElement).value);
     if (!isNaN(value)) {
-      this.stagedLoFrequency_ = Math.max(6000, Math.min(7500, value));
-      this.updateStagedDisplay_();
+      this.setStagedLoFrequency_(value);
     }
   }
 
   private adjustStagedLoFrequency_(delta: number): void {
-    this.stagedLoFrequency_ = Math.max(6000, Math.min(7500, this.stagedLoFrequency_ + delta));
-    this.updateStagedDisplay_();
+    this.setStagedLoFrequency_(this.stagedLoFrequency_ + delta);
+  }
+
+  /** Player edit: stage a new LO and mark it pending until applied. */
+  private setStagedLoFrequency_(value: number): void {
+    this.stagedLoFrequency_ = Math.max(6000, Math.min(7500, value));
+    this.hasPendingLoEdit_ = this.stagedLoFrequency_ !== this.bucModule.state.loFrequency;
+    this.updateStagedDisplay_(true);
   }
 
   private gainInputHandler_(e: Event): void {
     const value = parseLocalizedNumber((e.target as HTMLInputElement).value);
     if (!isNaN(value)) {
-      this.stagedGain_ = Math.max(0, Math.min(70, value));
-      this.updateStagedDisplay_();
+      this.setStagedGain_(value);
     }
   }
 
   private adjustStagedGain_(delta: number): void {
-    this.stagedGain_ = Math.max(0, Math.min(70, this.stagedGain_ + delta));
+    this.setStagedGain_(this.stagedGain_ + delta);
+  }
+
+  /** Player edit: stage a new gain and mark it pending until applied. */
+  private setStagedGain_(value: number): void {
+    this.stagedGain_ = Math.max(0, Math.min(70, value));
+    this.hasPendingGainEdit_ = this.stagedGain_ !== this.bucModule.state.gain;
+    this.updateStagedDisplay_(true);
+  }
+
+  /**
+   * Follow the applied values only where the player has no pending edit, so a
+   * toggle or external state event never silently discards a staged value.
+   */
+  private syncStagedFromState_(appliedLo: number | undefined, appliedGain: number | undefined): void {
+    if (appliedLo !== undefined) {
+      if (!this.hasPendingLoEdit_) {
+        this.stagedLoFrequency_ = appliedLo;
+      } else if (this.stagedLoFrequency_ === appliedLo) {
+        this.hasPendingLoEdit_ = false;
+      }
+    }
+    if (appliedGain !== undefined) {
+      if (!this.hasPendingGainEdit_) {
+        this.stagedGain_ = appliedGain;
+      } else if (this.stagedGain_ === appliedGain) {
+        this.hasPendingGainEdit_ = false;
+      }
+    }
     this.updateStagedDisplay_();
   }
 
-  private updateStagedDisplay_(): void {
+  /**
+   * @param isUserEdit true when called from the player's own edit; otherwise a
+   *   focused input is left alone (CLAUDE.md "Protecting Input Fields").
+   */
+  private updateStagedDisplay_(isUserEdit = false): void {
     const isPowered = this.bucModule.state.isPowered;
     const loFreqInput = this.domCache_.get('loFreqInput') as HTMLInputElement;
     const gainInput = this.domCache_.get('gainInput') as HTMLInputElement;
 
     if (loFreqInput) {
-      loFreqInput.value = isPowered ? this.stagedLoFrequency_.toString() : '--';
+      if (isUserEdit || document.activeElement !== loFreqInput) {
+        // A number input cannot hold "--" (console warning, blank box); show
+        // it as the placeholder instead (nats-r3-s02-F3)
+        loFreqInput.value = isPowered ? this.stagedLoFrequency_.toString() : '';
+      }
+      loFreqInput.placeholder = '--';
       loFreqInput.disabled = !isPowered;
     }
     if (gainInput) {
-      gainInput.value = isPowered ? this.stagedGain_.toString() : '--';
+      if (isUserEdit || document.activeElement !== gainInput) {
+        gainInput.value = isPowered ? this.stagedGain_.toString() : '';
+      }
+      gainInput.placeholder = '--';
       gainInput.disabled = !isPowered;
     }
 
     // Disable adjust buttons when powered off
     this.setControlButtonsEnabled_(isPowered);
+    this.updatePendingIndicator_();
+  }
+
+  /** Staged vs applied: pending style on the inputs and Apply, applied value in the tooltip. */
+  private updatePendingIndicator_(): void {
+    const state = this.bucModule.state;
+    const isLoPending = state.isPowered && this.stagedLoFrequency_ !== state.loFrequency;
+    const isGainPending = state.isPowered && this.stagedGain_ !== state.gain;
+    const loFreqInput = this.domCache_.get('loFreqInput') as HTMLInputElement;
+    const gainInput = this.domCache_.get('gainInput') as HTMLInputElement;
+    const applyBtn = this.domCache_.get('applyBtn') as HTMLButtonElement;
+
+    if (loFreqInput) {
+      loFreqInput.classList.toggle('is-pending', isLoPending);
+      loFreqInput.title = `Applied: ${state.loFrequency} MHz${isLoPending ? ' (staged change not applied)' : ''}`;
+    }
+    if (gainInput) {
+      gainInput.classList.toggle('is-pending', isGainPending);
+      gainInput.title = `Applied: ${state.gain} dB${isGainPending ? ' (staged change not applied)' : ''}`;
+    }
+    applyBtn?.classList.toggle('is-pending', isLoPending || isGainPending);
+  }
+
+  /** Sync a switch from state; never fight a switch the player is interacting with. */
+  private syncSwitch_(cacheKey: string, isChecked: boolean): void {
+    const el = this.domCache_.get(cacheKey) as HTMLInputElement | undefined;
+    if (el && document.activeElement !== el && el.checked !== isChecked) {
+      el.checked = isChecked;
+    }
+  }
+
+  /** P1dB margin, or "--" when the BUC has no real RF output (off, muted, nothing in band). */
+  private formatP1dbMargin_(state: BUCState): string {
+    if (!this.bucModule.hasRfOutput()) {
+      return '-- dB';
+    }
+    return `${(state.saturationPower - state.outputPower).toFixed(1)} dB`;
   }
 
   private setControlButtonsEnabled_(enabled: boolean): void {
@@ -342,25 +519,39 @@ export class BUCAdapter {
     // Apply staged values to the core module
     this.bucModule.handleLoFrequencyChange(this.stagedLoFrequency_);
     this.bucModule.handleGainChange(this.stagedGain_);
+    this.hasPendingLoEdit_ = false;
+    this.hasPendingGainEdit_ = false;
     this.syncDomWithState_(this.bucModule.state);
+    this.updateStagedDisplay_();
   }
 
   private powerHandler_(e: Event): void {
     const isChecked = (e.target as HTMLInputElement).checked;
+    const changed = this.bucModule.state.isPowered !== isChecked;
     this.bucModule.handlePowerToggle(isChecked);
+    if (changed) this.logAction_(isChecked ? 'BUC Power ON' : 'BUC Power OFF');
     this.syncDomWithState_(this.bucModule.state);
   }
 
   private muteHandler_(e: Event): void {
     const isChecked = (e.target as HTMLInputElement).checked;
+    const changed = this.bucModule.state.isMuted !== isChecked;
     this.bucModule.handleMuteToggle(isChecked);
+    if (changed) this.logAction_(isChecked ? 'BUC output MUTED' : 'BUC output UNMUTED');
     this.syncDomWithState_(this.bucModule.state);
   }
 
   private loopbackHandler_(e: Event): void {
     const isChecked = (e.target as HTMLInputElement).checked;
+    const changed = this.bucModule.state.isLoopback !== isChecked;
     this.bucModule.handleLoopbackToggle(isChecked);
+    if (changed) this.logAction_(isChecked ? 'BUC test loop ON' : 'BUC test loop OFF');
     this.syncDomWithState_(this.bucModule.state);
+  }
+
+  /** Ops Log line for a panel action, tagged with this BUC's station */
+  private logAction_(message: string): void {
+    EventAutoLogger.getInstance().logAction(message, 'RF FE', stationTagForRfModule(this.bucModule));
   }
 
   update(): void {
@@ -375,14 +566,8 @@ export class BUCAdapter {
 
     const isPowered = state.isPowered ?? this.bucModule.state.isPowered;
 
-    // Update staged values from state and refresh displays
-    if (state.loFrequency !== undefined) {
-      this.stagedLoFrequency_ = state.loFrequency;
-    }
-    if (state.gain !== undefined) {
-      this.stagedGain_ = state.gain;
-    }
-    this.updateStagedDisplay_();
+    // Follow applied values unless the player has a pending staged edit
+    this.syncStagedFromState_(state.loFrequency, state.gain);
 
     // Update Power switch
     if (state.isPowered !== undefined) {
@@ -405,11 +590,7 @@ export class BUCAdapter {
     // Update RF Status displays - show actual output signal power for consistency with HPA input
     const outputPowerDisplay = this.domCache_.get('outputPowerDisplay');
     if (outputPowerDisplay) {
-      if (isPowered && this.bucModule.outputSignals.length > 0) {
-        outputPowerDisplay.textContent = `${this.bucModule.outputSignals[0].power.toFixed(1)} dBm`;
-      } else {
-        outputPowerDisplay.textContent = '-- dBm';
-      }
+      outputPowerDisplay.textContent = formatBucOutputPower(this.bucModule);
     }
 
     // Display RF output frequency (after LO mixing and bandpass filter)
@@ -427,12 +608,7 @@ export class BUCAdapter {
     // Calculate and display P1dB margin
     const p1dbMarginDisplay = this.domCache_.get('p1dbMarginDisplay');
     if (p1dbMarginDisplay) {
-      if (isPowered && state.outputPower !== undefined && state.saturationPower !== undefined) {
-        const p1dbMargin = state.saturationPower - state.outputPower;
-        p1dbMarginDisplay.textContent = `${p1dbMargin.toFixed(1)} dB`;
-      } else if (!isPowered) {
-        p1dbMarginDisplay.textContent = '-- dB';
-      }
+      p1dbMarginDisplay.textContent = this.formatP1dbMargin_({ ...this.bucModule.state, ...state });
     }
 
     // Update lock status
@@ -492,7 +668,7 @@ export class BUCAdapter {
 
     // Update alarm badge - immediate feedback
     const alarms = this.getAlarmsFromModule_();
-    this.alarmBadge_.update(alarms);
+    this.alarmBadge_.update(alarms, this.bucModule.state.isPowered, this.bucModule.state.isMuted ? 'Output muted' : undefined);
   }
 
   /**
@@ -501,23 +677,9 @@ export class BUCAdapter {
   private getAlarmsFromModule_(): AlarmStatus[] {
     const alarmStrings = this.bucModule.getAlarms();
     return alarmStrings.map((message) => ({
-      severity: this.classifySeverity_(message),
+      severity: classifyRfAlarmSeverity(message),
       message,
     }));
-  }
-
-  /**
-   * Classify alarm message severity based on content
-   */
-  private classifySeverity_(message: string): AlarmStatus['severity'] {
-    const lowerMsg = message.toLowerCase();
-    if (lowerMsg.includes('error') || lowerMsg.includes('fault') || lowerMsg.includes('fail')) {
-      return 'error';
-    }
-    if (lowerMsg.includes('not locked') || lowerMsg.includes('saturation') || lowerMsg.includes('approaching')) {
-      return 'warning';
-    }
-    return 'warning'; // Default to warning for any alarm
   }
 
   dispose(): void {

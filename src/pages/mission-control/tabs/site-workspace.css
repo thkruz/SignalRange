@@ -1,0 +1,7 @@
+.site-tab [role="tabpanel"][hidden] { display: none !important; }
+.site-tab [role="tabpanel"] > details > summary { display: block; list-style: none; cursor: default; }
+.site-tab [role="tabpanel"] > details > summary::marker { content: ""; }
+.site-tab [role="tabpanel"] > details { margin-top: 12px; }
+.site-tab [role="tabpanel"] > details > div { max-height: none; }
+.site-tab [role="tabpanel"] .fpd-svg { min-width: 760px; max-height: none; }
+.site-tab [data-fpd="svg"] { overflow-x: auto; }

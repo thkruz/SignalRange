@@ -156,14 +156,8 @@ export class GPSTimingTab extends BaseElement {
                 <span class="text-muted small">Active Outputs:</span>
                 <span id="gpsdo-10mhz-outputs" class="fw-bold font-monospace">2/5</span>
               </div>
-              <div class="text-muted text-center">
-                <p>
-                  BUC Module
-                </p>
-                <p>
-                  LNB Module
-                </p>
-              </div>
+              <!-- Filled by GPSDOAdapter from active10MHzOutputs, so the list matches the count -->
+              <div id="gpsdo-10mhz-output-list" class="text-muted text-center"></div>
             </div>
           </div>
         </div>
@@ -213,7 +207,7 @@ export class GPSTimingTab extends BaseElement {
               <!-- Status Row -->
               <div class="d-flex justify-content-between align-items-center mb-2">
                 <span class="text-muted small">Status:</span>
-                <span id="gpsdo-holdover-badge" class="status-badge status-badge-off">INACTIVE</span>
+                <span id="gpsdo-holdover-card-badge" class="status-badge status-badge-off">INACTIVE</span>
               </div>
 
               <!-- Duration Row -->

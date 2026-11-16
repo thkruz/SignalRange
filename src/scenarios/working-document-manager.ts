@@ -7,13 +7,28 @@
  * the line is appended to the document when QUIZ_PASSED fires for it.
  *
  * Scenarios enable the panel via `settings.workingDocument: { title, description? }`.
+ *
+ * A new line does not pop the panel open: it used to open centred on the
+ * first entry, over whatever the player was working (S24's ACU Feed Heater
+ * switch, nats-r2 s14-F2/s24-F5). The sidebar icon pulses instead until the
+ * player opens the document.
  */
 
+import { CommandingManager } from '@app/commanding/commanding-manager';
 import { EventBus } from '@app/events/event-bus';
 import { Events, QuizPassedData } from '@app/events/events';
+import { HardwareFaultManager } from '@app/faults/hardware-fault-manager';
+import { InterferenceManager } from '@app/interference/interference-manager';
+import { fillDialogTokens } from '@app/modal/dialog-tokens';
 import { DraggableHtmlBox } from '@app/modal/draggable-html-box';
 import { ScenarioManager } from '@app/scenario-manager';
+import { SecurityConsoleCore } from '@app/security-console/security-console-core';
+import { SimulationManager } from '@app/simulation/simulation-manager';
+import type { WorkingDocumentSnapshot } from '@app/sync/manager-state-types';
+import { WeatherManager } from '@app/weather/weather-manager';
 import { CampaignDocumentStore, campaignIdOf } from './campaign-document-store';
+import { EventTimeLedger } from './event-time-ledger';
+import './working-document.css';
 
 interface DocumentEntry {
   section: string;
@@ -21,11 +36,15 @@ interface DocumentEntry {
 }
 
 const DEFAULT_SECTION = 'Notes';
+/** Sidebar icon class that pulses while the document has lines the player has not opened */
+const NEW_ENTRY_CLASS = 'has-new-entry';
 
 export class WorkingDocumentManager {
   private static instance_: WorkingDocumentManager | null = null;
 
   private entries_: DocumentEntry[] = [];
+  /** section||authored line of every line written, so a re-fired quiz never duplicates its filled line */
+  private readonly authoredKeys_ = new Set<string>();
   private box_: DraggableHtmlBox | null = null;
   private readonly boundQuizPassedHandler_: (data: QuizPassedData) => void;
   private readonly boundCompletedHandler_: () => void;
@@ -48,7 +67,17 @@ export class WorkingDocumentManager {
   /** Call once per scenario load (after ScenarioManager is ready). */
   initialize(): void {
     this.entries_ = [];
+    this.authoredKeys_.clear();
     this.box_ = null;
+    WorkingDocumentManager.setNewEntryFlag_(false);
+    EventTimeLedger.setSources({
+      commanding: () => (CommandingManager.isInitialized() ? CommandingManager.getInstance() : undefined),
+      interference: () => (InterferenceManager.isInitialized() ? InterferenceManager.getInstance() : undefined),
+      weather: () => (WeatherManager.hasInstance() ? WeatherManager.getInstance() : undefined),
+      hardwareFault: () => (HardwareFaultManager.isInitialized() ? HardwareFaultManager.getInstance() : undefined),
+      security: () => (SecurityConsoleCore.isInitialized() ? SecurityConsoleCore.getInstance() : undefined),
+      objectiveState: (id) => SimulationManager.getInstance().objectivesManager?.getObjectiveState(id),
+    });
     CampaignDocumentStore.beginRun();
     const bus = EventBus.getInstance();
     bus.off(Events.QUIZ_PASSED, this.boundQuizPassedHandler_);
@@ -74,7 +103,33 @@ export class WorkingDocumentManager {
       completedAt: new Date().toISOString(),
       entries: this.entries_.map((e) => ({ ...e })),
       destroyedEvidence: [...CampaignDocumentStore.destroyedThisRun],
+      // Only frontline files handovers; leave the key off so C1-C5 records keep their saved shape.
+      ...(CampaignDocumentStore.handoversThisRun.length > 0 ? { handovers: [...CampaignDocumentStore.handoversThisRun] } : {}),
     });
+  }
+
+  /** Snapshot for a checkpoint (Phase 35 rt-s24-F4). */
+  getState(): WorkingDocumentSnapshot {
+    return { entries: this.entries_.map((e) => ({ ...e })), authoredKeys: [...this.authoredKeys_] };
+  }
+
+  /**
+   * Restore a checkpoint snapshot. Call after initialize(). The sidebar
+   * new-entry flag stays off (these lines were seen before the reload) and an
+   * open panel is re-rendered. authoredKeys stop a re-fired quiz from writing
+   * its line twice.
+   */
+  restoreState(snapshot: WorkingDocumentSnapshot | undefined): void {
+    if (!snapshot || !Array.isArray(snapshot.entries)) {
+      return;
+    }
+    this.entries_ = snapshot.entries.filter((e) => typeof e?.section === 'string' && typeof e?.line === 'string').map((e) => ({ section: e.section, line: e.line }));
+    this.authoredKeys_.clear();
+    for (const key of snapshot.authoredKeys ?? []) {
+      this.authoredKeys_.add(key);
+    }
+    WorkingDocumentManager.setNewEntryFlag_(false);
+    this.render_();
   }
 
   /** Open (or create) the document panel. */
@@ -83,11 +138,46 @@ export class WorkingDocumentManager {
     this.ensureBox_();
     this.render_();
     this.box_?.open();
+    WorkingDocumentManager.setNewEntryFlag_(false);
+  }
+
+  /** Pulse (or stop pulsing) the sidebar icon */
+  private static setNewEntryFlag_(isOn: boolean): void {
+    for (const icon of document.querySelectorAll<HTMLElement>('.working-doc-icon')) {
+      icon.classList.toggle(NEW_ENTRY_CLASS, isOn);
+      if (isOn) {
+        icon.setAttribute('data-tooltip', 'Working Document - new entry');
+      } else {
+        icon.setAttribute('data-tooltip', 'Working Document');
+      }
+    }
+  }
+
+  /** Close the document panel if it is open (end-of-scenario modals) */
+  close(): void {
+    this.box_?.close();
   }
 
   /** Number of lines accumulated so far (used by completeness checks). */
   getEntryCount(): number {
     return this.entries_.length;
+  }
+
+  /**
+   * Write a line from a source other than a quiz (a handover submission). Deduplicated like quiz
+   * lines; a closed panel gets the sidebar flag, an open one re-renders.
+   */
+  addLine(section: string, line: string): void {
+    if (!WorkingDocumentManager.isEnabled()) return;
+    const key = `${section}||${line}`;
+    if (this.authoredKeys_.has(key)) return;
+    this.authoredKeys_.add(key);
+    this.entries_.push({ section, line: fillDialogTokens(line) });
+    if (this.box_?.isOpen) {
+      this.render_();
+    } else {
+      WorkingDocumentManager.setNewEntryFlag_(true);
+    }
   }
 
   private handleQuizPassed_(data: QuizPassedData): void {
@@ -100,18 +190,26 @@ export class WorkingDocumentManager {
     const section = condition?.params?.documentSection ?? DEFAULT_SECTION;
 
     // Idempotence: a re-fired event for the same line must not duplicate it
-    if (this.entries_.some((e) => e.line === line && e.section === section)) return;
+    const dedupeKey = `${section}||${line}`;
+    if (this.authoredKeys_.has(dedupeKey)) return;
+    this.authoredKeys_.add(dedupeKey);
 
-    const isFirstEntry = this.entries_.length === 0;
-    this.entries_.push({ section, line });
+    // QUIZ_PASSED fires before the evaluator marks the condition satisfied, so
+    // `{{at:cond:<this objective>.<this condition>}}` has no ledger entry yet
+    // (rt-s20-F1). The pass is the moment the line records; first-write-wins
+    // keeps the evaluator's later stamp from moving it.
+    EventTimeLedger.record(`cond:${data.objectiveId}.${data.conditionIndex}`);
 
-    this.ensureBox_();
-    this.render_();
+    // The filled line is stored: it carries the times this run actually had
+    this.entries_.push({ section, line: fillDialogTokens(line) });
 
-    // Auto-show on the first entry so the player sees the document begin to
-    // build; afterwards only update content and let them manage the window.
-    if (isFirstEntry) {
-      this.box_?.open();
+    // Update an open document in place; otherwise flag the sidebar icon
+    // rather than opening the panel over the console. The box is not built
+    // here: constructing it shows it.
+    if (this.box_?.isOpen) {
+      this.render_();
+    } else {
+      WorkingDocumentManager.setNewEntryFlag_(true);
     }
   }
 
@@ -152,9 +250,22 @@ export class WorkingDocumentManager {
       </p>
     `;
 
+    let referralHtml = '';
+    try {
+      const referral = config?.incomingReferral?.();
+      if (referral) {
+        const esc = (t: string) => t.replace(/&/gu, '&amp;').replace(/</gu, '&lt;').replace(/>/gu, '&gt;');
+        const from = referral.source === 'player' ? 'Filed by your earlier shift' : 'Authored reference record (no earlier filing found)';
+        referralHtml = `<div class="working-doc-referral mb-2" data-referral-source="${referral.source}"><div class="fw-bold text-uppercase small" style="opacity:0.7;">Referral received: ${esc(referral.title)}</div><div class="small" style="opacity:0.7;">${from}</div><ul class="list-unstyled mb-0 small">${[...referral.statements, ...referral.unresolved.map((u) => `Open: ${u}`)].map((l) => `<li>${esc(l)}</li>`).join('')}</ul></div>`;
+      }
+    } catch {
+      referralHtml = '';
+    }
+
     this.box_.updateContent(`
-      <div style="width:480px;max-width:70vw;max-height:60vh;overflow-y:auto;padding:0.75rem 1rem;">
+      <div style="width:480px;box-sizing:border-box;max-width:100%;max-height:60vh;overflow-y:auto;padding:0.75rem 1rem;">
         ${config?.description ? `<p class="small mb-2" style="opacity:0.8;">${config.description}</p>` : ''}
+        ${referralHtml}
         ${this.entries_.length > 0 ? sectionsHtml : emptyHtml}
         <div class="small mt-2" style="opacity:0.5;">${this.entries_.length} entr${this.entries_.length === 1 ? 'y' : 'ies'}</div>
       </div>

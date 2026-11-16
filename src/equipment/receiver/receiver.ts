@@ -4,13 +4,61 @@ import { qs } from '@app/engine/utils/query-selector';
 import { AntennaCore } from '@app/equipment/antenna';
 import { AlarmStatus, BaseEquipment } from '@app/equipment/base-equipment';
 import { TapPoint } from '@app/equipment/rf-front-end/coupler-module/tap-points';
+import { phaseNoiseSnrLimitDb } from '@app/equipment/rf-front-end/lo-reference';
 import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { plantPowers } from '@app/physical/plant-bridge';
+import { Rng } from '@app/simulation/rng';
 import { SimClock } from '@app/simulation/sim-clock';
 import { dBm, FECType, Hertz, IfSignal, MHz, ModulationType } from '@app/types';
 import { ADCDegradationResult, calculateADCDegradation } from './adc-degradation';
+import {
+  acquisitionTimeS,
+  DEGRADED_MARGIN_DB,
+  DEGRADED_RECOVERY_MARGIN_DB,
+  DVB_S2_ROLL_OFF,
+  LOCK_HYSTERESIS_DB,
+  Modcod,
+  modcodFor,
+  requiredCnDb as requiredCnForModcod,
+  symbolRateHz,
+} from './modcod';
 import './receiver.css';
+
+/** Per-modem demodulator lock tracker (phase 19.5) */
+interface LockTrack {
+  signalId: string;
+  locked: boolean;
+  /** Run time (ms) spent above the acquisition threshold while unlocked */
+  heldMs: number;
+  /** Acquisition time drawn for this attempt, ms */
+  acquireMs: number;
+  /** Run time of the last evaluation, ms */
+  lastMs: number;
+  lowMargin: boolean;
+  attempt: number;
+}
+
+/**
+ * A modem's lock history on its current tuning (Phase 31 D1): whether it has
+ * had lock and, once it drops it, when. Kept until the modem relocks, is
+ * retuned (frequency, bandwidth, modulation or FEC) or is powered off, so a
+ * lock loss stays visible while the modem is out.
+ */
+export interface ModemLockTransition {
+  /** The modem was locked on this tuning */
+  hadLock: boolean;
+  /** Run time (ms) the lock was lost; null while it holds */
+  lockLostAtMs: number | null;
+  /** Carrier the modem was last locked to */
+  lastSignalId: string;
+}
+
+interface LockHistory extends ModemLockTransition {
+  /** Tuning the lock was held on (frequency|bandwidth|modulation|FEC) */
+  tuningKey: string;
+}
 
 export interface ReceiverModemState {
   antenna_id: number;
@@ -58,6 +106,30 @@ export interface IQSignalInfo {
   adcDegradation?: ADCDegradationResult;
   /** Effective C/N ratio after ADC penalty applied */
   effectiveCnRatio_dB?: number;
+  /** Carrier label pair (modulation/FEC) differs from the modem's: no lock whatever the C/N */
+  formatMismatch?: boolean;
+  /** Signal ID of the carrier the modem is measuring */
+  targetSignalId?: string;
+  /** Symbol rate of the target carrier (occupied bandwidth / (1 + roll-off)), Hz */
+  symbolRate_Hz?: number;
+  /** Es/N0 before the ADC: C / (k T Rs + interference in the carrier's band), dB */
+  esN0_dB?: number;
+  /** Es/N0 after the ADC's quantization and clipping noise, dB; this is what locks */
+  effectiveEsN0_dB?: number;
+  /** Es/N0 lost to untracked LO phase noise, dB (Phase 19.6) */
+  phaseNoisePenalty_dB?: number;
+  /** Carrier to noise-plus-interference density, C/(N0 + I0), dB-Hz: C/N + 10 log10(modem bandwidth) */
+  cn0_dBHz?: number;
+  /** The modem's MODCOD (its configured labels); null for labels no demodulator locks to */
+  modcod?: Modcod | null;
+  /** Es/N0 the modem's MODCOD needs (DVB-S2 QEF + implementation loss), dB */
+  requiredEsN0_dB?: number;
+  /** Effective Es/N0 minus the required Es/N0, dB */
+  lockMargin_dB?: number;
+  /** Lock tracker state: acquiring = above threshold, waiting out the acquisition time */
+  lockState?: 'locked' | 'acquiring' | 'unlocked';
+  /** Locked with less than 1 dB of margin (with 0.5 dB recovery hysteresis) */
+  isLowMargin?: boolean;
   /** Noise floor in dBm (for debugging/teaching) */
   noiseFloor_dBm?: number;
   /** Signal level in dBm (for debugging/teaching) */
@@ -90,6 +162,8 @@ export class Receiver extends BaseEquipment {
   private videoPlayTime: { [url: string]: number } = {};
   powerSwitch: PowerSwitch;
   rfFrontEnd_: RFFrontEndCore | null = null;
+  /** The placeholder uuid getDefaultState() carries, never a real receiver's */
+  private static readonly DEFAULT_UUID_ = 'default';
 
   constructor(parentId: string, antennas: AntennaCore[], state?: Partial<ReceiverState>, teamId: number = 1, serverId: number = 1) {
     super(teamId);
@@ -98,7 +172,11 @@ export class Receiver extends BaseEquipment {
 
     const defaults = Receiver.getDefaultState();
 
-    const uuid = state?.uuid ?? this.uuid;
+    // getDefaultState() carries the placeholder uuid 'default': a receiver
+    // built from it (a second station's {...getDefaultState(), ...}) takes its
+    // own, so its events tag the right station and its DOM ids stay unique
+    // (Phase 33 D9, nats-r7-s03-F1)
+    const uuid = state?.uuid !== undefined && state.uuid !== Receiver.DEFAULT_UUID_ ? state.uuid : this.uuid;
     const team_id = state?.team_id ?? this.teamId;
     const server_id = state?.server_id ?? serverId;
 
@@ -134,23 +212,22 @@ export class Receiver extends BaseEquipment {
   }
 
   /**
-   * C/N (dB) below which a carrier reads degraded. One value per modulation,
-   * whatever the code rate (DEV-MODEM-02 in docs/known-deviations.md; the
-   * DVB-S2 table replaces it in phase 19.5).
+   * Lock threshold expressed as C/N (dB) in the carrier's occupied bandwidth
+   * (= a modem tuned to the carrier's bandwidth): the MODCOD's Es/N0 threshold
+   * (DVB-S2 QEF + 1 dB implementation loss) less 10 log(1 + roll-off).
+   * QPSK 3/4: 5.03 dB Es/N0 = 4.24 dB C/N. Infinity for labels that never lock.
    */
-  static requiredCnDb(modulation: string): number {
-    switch (modulation) {
-      case 'BPSK':
-        return 7;
-      case '8QAM':
-        return 13;
-      case '16QAM':
-        return 16;
-      default:
-        // QPSK and anything unrecognised
-        return 10;
-    }
+  static requiredCnDb(modulation: string, fec = '3/4'): number {
+    const modcod = modcodFor(modulation, fec);
+    if (!modcod) return Number.POSITIVE_INFINITY;
+    const rs = symbolRateHz(1);
+    return requiredCnForModcod(modcod, 1, rs);
   }
+
+  /** Lock trackers by modem number */
+  private readonly lockTracks_ = new Map<number, LockTrack>();
+  /** Lock history (had lock / lost at) by modem number */
+  private readonly lockHistory_ = new Map<number, LockHistory>();
 
   static getDefaultState(): ReceiverState {
     const modems: ReceiverModemState[] = Array.from({ length: 4 }, (_, idx) => {
@@ -177,8 +254,26 @@ export class Receiver extends BaseEquipment {
     };
   }
 
+  private readonly reportedLocks_ = new Map<number, boolean>();
+
+  /** The modem's power switch AND the physical plant's supply (read time only; the switch state is never rewritten) */
+  private modemLive_(modem: { isPowered: boolean }): boolean {
+    return modem.isPowered && plantPowers('modem');
+  }
+
   update(): void {
     this.updateAfc_();
+    // Run every powered modem's lock tracker each step, so acquisition time
+    // accrues whether or not anything is looking at that modem
+    for (const modem of this.state.modems) {
+      const locked = this.modemLive_(modem) && this.getSignalsInBandwidth(modem).hasLock;
+      const previous = this.reportedLocks_.get(modem.modemNumber);
+      this.reportedLocks_.set(modem.modemNumber, locked);
+      if (previous !== undefined && previous !== locked) {
+        this.emit(locked ? Events.RX_SIGNAL_FOUND : Events.RX_SIGNAL_LOST, { uuid: this.uuid, modem: modem.modemNumber });
+      }
+      if (!this.modemLive_(modem)) this.lockHistory_.delete(modem.modemNumber);
+    }
     this.checkForAlarms_();
     this.syncDomWithState();
   }
@@ -195,7 +290,7 @@ export class Receiver extends BaseEquipment {
    */
   private updateAfc_(): void {
     for (const modem of this.state.modems) {
-      if (!modem.isAfcEnabled || !modem.isPowered) continue;
+      if (!modem.isAfcEnabled || !this.modemLive_(modem)) continue;
 
       const info = this.getSignalsInBandwidth(modem);
       if (!info.hasCarrier) continue;
@@ -205,6 +300,9 @@ export class Receiver extends BaseEquipment {
 
       const stepHz = Math.max(-Receiver.AFC_MAX_STEP_HZ, Math.min(Receiver.AFC_MAX_STEP_HZ, offsetHz));
       modem.frequency = (modem.frequency + stepHz / 1e6) as MHz;
+      // AFC tracking is not a retune: carry the lock history along
+      const history = this.lockHistory_.get(modem.modemNumber);
+      if (history) history.tuningKey = Receiver.tuningKey_(modem);
     }
   }
 
@@ -432,7 +530,10 @@ export class Receiver extends BaseEquipment {
   public getStatusAlarms(): AlarmStatus[] {
     const alarms: AlarmStatus[] = [];
 
-    if (this.state.availableSignals.length > 0) {
+    // Any powered modem decoding a carrier, not the active modem's
+    // availableSignals: a modem tab click rebuilt that list, so the alarm
+    // vanished and was re-stamped (Phase 32 D15, nats-r7-s14-F2)
+    if (this.state.modems.some((modem) => this.modemLive_(modem) && this.getVisibleSignals(modem).length > 0)) {
       alarms.push({
         message: `Signal(s) Detected`,
         severity: 'info',
@@ -561,7 +662,7 @@ export class Receiver extends BaseEquipment {
    * Returns null if no signal present
    */
   public getSnrForModem(modem: ReceiverModemState): number | null {
-    if (!modem.isPowered) return null;
+    if (!this.modemLive_(modem)) return null;
 
     const signalInfo = this.getSignalsInBandwidth(modem);
     if (!signalInfo.hasCarrier) return null;
@@ -574,22 +675,23 @@ export class Receiver extends BaseEquipment {
    * Returns null if no signal present
    */
   public getPowerForModem(modem: ReceiverModemState): number | null {
-    if (!modem.isPowered) return null;
+    if (!this.modemLive_(modem)) return null;
 
-    const visibleSignals = this.getVisibleSignals(modem);
-    if (visibleSignals.length === 0) return null;
-
-    // Target signal is the one with the largest bandwidth that fits the modem
-    // This distinguishes the actual signal from narrowband interference
-    const targetSignal = visibleSignals.reduce((a, b) => (a.bandwidth > b.bandwidth ? a : b), visibleSignals[0]);
-    return targetSignal.power;
+    const info = this.getSignalsInBandwidth(modem);
+    return info.hasCarrier ? (info.signalLevel_dBm ?? null) : null;
   }
 
   /**
-   * Get signal info for IQ constellation display.
-   * Uses relaxed filtering - only checks frequency overlap, not modulation/FEC.
-   * This allows the IQ display to show signals for troubleshooting even when
-   * the modem configuration doesn't match the incoming signal.
+   * Measure the carrier a modem is tuned to and run its lock tracker.
+   *
+   * Carrier detection is relaxed (any carrier that clears the receive noise in
+   * the IF filter and overlaps the modem passband), so the IQ display can show
+   * a carrier the modem cannot demodulate. Lock (phase 19.5) needs the labels
+   * to match, the carrier to fit the passband, and the effective Es/N0 (noise
+   * in the symbol-rate bandwidth, co-channel interference in the carrier's
+   * band, the ADC's quantization and clipping noise) to clear the MODCOD's
+   * threshold + 0.5 dB for the seeded acquisition time; it drops below
+   * threshold - 0.5 dB.
    */
   public getSignalsInBandwidth(modem: ReceiverModemState = this.activeModem): IQSignalInfo {
     const noSignalResult: IQSignalInfo = {
@@ -601,121 +703,347 @@ export class Receiver extends BaseEquipment {
       frequencyOffset_Hz: 0,
       modulationMismatch: false,
       fecMismatch: false,
+      formatMismatch: false,
+      lockState: 'unlocked',
     };
 
     if (!this.rfFrontEnd_) return noSignalResult;
 
-    const externalNoise = this.rfFrontEnd_.externalNoise ?? 0;
-    const totalGain = this.rfFrontEnd_.couplerModule.signalPathManager.getTotalRxGain();
-
-    // Get ALL signals in the receiver bandwidth (relaxed filtering - no mod/FEC check)
-    const signalsInBand = (this.rfFrontEnd_.agcModule.outputSignals ?? []).filter((s) => {
-      // Power must exceed noise floor
-      if (s.power + totalGain < externalNoise) {
-        return false;
-      }
-
-      // Bandwidth must fit
-      if (s.bandwidth > ((modem.bandwidth * 1e6) as Hertz)) {
-        return false;
-      }
-
-      // Frequency must overlap with modem bandwidth
-      const signalLower = s.frequency - s.bandwidth / 2;
-      const signalUpper = s.frequency + s.bandwidth / 2;
-      const modemLower = (modem.frequency - modem.bandwidth / 2) * 1e6;
-      const modemUpper = (modem.frequency + modem.bandwidth / 2) * 1e6;
-
-      if (signalUpper < modemLower || signalLower > modemUpper) {
-        return false;
-      }
-
-      return true;
-    });
-
-    if (signalsInBand.length === 0) return noSignalResult;
-
-    // Find the target signal - the one with the largest bandwidth that fits
-    // This distinguishes the actual signal from narrowband interference
-    // Among signals with matching modulation/FEC, pick the one with largest bandwidth
-    const modFecMatches = signalsInBand.filter((s) => s.modulation === modem.modulation && s.fec === modem.fec);
-
-    // Use mod/FEC matches if available, otherwise all signals in band
-    const candidates = modFecMatches.length > 0 ? modFecMatches : signalsInBand;
-
-    // Target is the signal with the largest bandwidth
-    const targetSignal = candidates.reduce((a, b) => (a.bandwidth > b.bandwidth ? a : b), candidates[0]);
-
-    // Calculate modem bandwidth for noise floor calculation
+    const spm = this.rfFrontEnd_.couplerModule.signalPathManager;
+    const totalGain = spm.getTotalRxGain();
+    const modemLowHz = (modem.frequency - modem.bandwidth / 2) * 1e6;
+    const modemHighHz = (modem.frequency + modem.bandwidth / 2) * 1e6;
     const modemBandwidthHz = (modem.bandwidth * 1e6) as Hertz;
 
-    // Calculate thermal noise floor based on modem bandwidth
-    // Narrower bandwidth = lower noise floor, wider bandwidth = higher noise floor
-    // Noise floor needs totalGain added to match the reference point
-    const thermalNoiseFloor = this.rfFrontEnd_.couplerModule.signalPathManager.getNoiseFloorAt(TapPoint.RX_IF, modemBandwidthHz).noiseFloorNoGain + totalGain;
+    // Every carrier the modem could see: clears the noise in the IF filter,
+    // fits the modem bandwidth and overlaps the passband (all in Hz)
+    const signalsInBand = (this.rfFrontEnd_.agcModule.outputSignals ?? []).filter((s) => {
+      if (!this.clearsReceiveNoise_(s)) return false;
+      if (s.bandwidth > modemBandwidthHz) return false;
+      const signalLower = s.frequency - s.bandwidth / 2;
+      const signalUpper = s.frequency + s.bandwidth / 2;
+      return !(signalUpper < modemLowHz || signalLower > modemHighHz);
+    });
 
-    // Calculate interference power within modem bandwidth
+    if (signalsInBand.length === 0) {
+      this.resetLock_(modem.modemNumber);
+      this.noteLockState_(modem, false, '');
+      return noSignalResult;
+    }
+
+    // Target: the widest carrier, preferring ones whose labels match the
+    // modem (a narrowband interferer is never mistaken for the payload)
+    const modFecMatches = signalsInBand.filter((s) => s.modulation === modem.modulation && s.fec === modem.fec);
+    const candidates = modFecMatches.length > 0 ? modFecMatches : signalsInBand;
+    const targetSignal = candidates.reduce((a, b) => (b.bandwidth > a.bandwidth || (b.bandwidth === a.bandwidth && b.power > a.power) ? b : a), candidates[0]);
+    const signalLevel = targetSignal.power; // AGC output: already includes all chain gains
+
+    // C/(N+I) in the modem's bandwidth: the operator's C/N readout
+    const thermalNoiseFloor = spm.getNoiseFloorAt(TapPoint.RX_IF, modemBandwidthHz).noiseFloorNoGain + totalGain;
     const modemCenterHz = modem.frequency * 1e6;
-    const interferencePower = this.calculateInterferencePower_(targetSignal, signalsInBand, modemBandwidthHz, modemCenterHz);
-
-    // Combine thermal noise and interference (linear power addition)
-    const thermalNoiseMw = 10 ** (thermalNoiseFloor / 10);
+    // Interference: every other carrier at the AGC output that overlaps, at
+    // any level (a co-channel carrier under the noise still adds to N + I)
+    const allSignals = this.rfFrontEnd_.agcModule.outputSignals ?? [];
+    const interferencePower = this.calculateInterferencePower_(targetSignal, allSignals, modemBandwidthHz, modemCenterHz);
+    // What the carrier brought down from the satellite (uplink thermal noise
+    // and transponder IM, phase 19.3): a noise density that rides with it,
+    // C/N0_up below the carrier at every point of the chain
+    const upstreamN0Mw = Receiver.upstreamNoiseDensityMw_(targetSignal);
+    const thermalNoiseMw = 10 ** (thermalNoiseFloor / 10) + upstreamN0Mw * modemBandwidthHz;
     const interferenceMw = interferencePower > -Infinity ? 10 ** (interferencePower / 10) : 0;
     const effectiveNoiseFloor = 10 * Math.log10(thermalNoiseMw + interferenceMw);
-
-    // C/N ratio now includes interference
-    // Signal from AGC output already includes all chain gains, so don't add totalGain again
-    const signalLevel = targetSignal.power; // Already includes all chain gains
     const cnRatio = signalLevel - effectiveNoiseFloor;
 
-    // Calculate ADC degradation based on AGC output level
-    // AGC output is the signal level entering the ADC
-    const agcOutputLevel = this.rfFrontEnd_?.agcModule?.state.outputPower ?? signalLevel;
-    const adcDegradation = calculateADCDegradation(agcOutputLevel as dBm);
+    // Es/N0: matched filter, noise bandwidth = symbol rate; co-channel
+    // interference counted over the carrier's own occupied band
+    const symbolRate = symbolRateHz(targetSignal.bandwidth, DVB_S2_ROLL_OFF);
+    const noiseInRsDbm = spm.getNoiseFloorAt(TapPoint.RX_IF, symbolRate as Hertz).noiseFloorNoGain + totalGain;
+    const n0DbmHz = spm.getNoiseFloorAt(TapPoint.RX_IF, 1 as Hertz).noiseFloorNoGain + totalGain;
+    const inCarrierInterference = this.calculateInterferencePower_(targetSignal, allSignals, targetSignal.bandwidth, targetSignal.frequency);
+    const inCarrierInterferenceMw = inCarrierInterference > -Infinity ? 10 ** (inCarrierInterference / 10) : 0;
+    const esN0 = signalLevel - 10 * Math.log10(10 ** (noiseInRsDbm / 10) + upstreamN0Mw * symbolRate + inCarrierInterferenceMw);
+    // C/N0 on the same footing as the C/N readout (nats-r3-s05-F3): thermal
+    // plus upstream noise density plus the interference in the modem
+    // bandwidth spread over it, C/(N0 + I0). So C/N0 - C/N = 10 log10(B_modem)
+    // always, and an interferer moves both readouts together.
+    const interferenceDensityMw = interferenceMw / modemBandwidthHz;
+    const cn0 = signalLevel - 10 * Math.log10(10 ** (n0DbmHz / 10) + upstreamN0Mw + interferenceDensityMw);
 
-    // Effective C/N includes ADC penalty only (bandwidth clipping is handled separately)
-    const effectiveCnRatio = cnRatio - adcDegradation.totalPenalty_dB;
+    // ADC: the demodulator's tuner filters the modem's channel out of the AGC
+    // output and its IF AGC lifts it toward the target level (up to 30 dB of
+    // gain, never attenuating), then the ADC samples it. The in-channel
+    // composite (every overlapping carrier + the noise in the modem bandwidth)
+    // sets the drive; its quantization and clipping noise add to the
+    // carrier's own. A channel driven hot by the station AGC still clips; one
+    // more than 30 dB low still sinks into quantization noise.
+    const inChannelMw = thermalNoiseMw + this.inChannelCarrierMw_(allSignals, modemLowHz, modemHighHz);
+    const inChannelDbm = 10 * Math.log10(inChannelMw);
+    const agcTarget = this.rfFrontEnd_.agcModule?.state.targetLevel ?? -30;
+    const channelGainDb = Math.min(Receiver.TUNER_IF_AGC_RANGE_DB, Math.max(0, agcTarget - inChannelDbm));
+    const adcDegradation = calculateADCDegradation((inChannelDbm + channelGainDb) as dBm, {
+      power_dBm: signalLevel + channelGainDb,
+      esN0_dB: esN0,
+      symbolRate_Hz: symbolRate,
+    });
+    // LO phase noise the carrier recovery cannot track (Phase 19.6): an SNR
+    // ceiling 1/σ² that adds to the noise like any other impairment. Tiny for
+    // locked converters; real when an LO has lost its reference.
+    const phaseNoisePenaltyDb = Receiver.phaseNoisePenaltyDb_(esN0 - adcDegradation.totalPenalty_dB, targetSignal.phaseNoiseDbcHz, symbolRate);
+    const effectiveEsN0 = esN0 - adcDegradation.totalPenalty_dB - phaseNoisePenaltyDb;
+    const effectiveCnRatio = cnRatio - adcDegradation.totalPenalty_dB - phaseNoisePenaltyDb;
 
-    // Calculate bandwidth clipping info
-    // The modem expects a certain bandwidth, but the IF filter may have clipped it
+    // The IF filter may have clipped the carrier below what the FEC tolerates
     const expectedBandwidth_Hz = modem.bandwidth * 1e6;
     const usableBandwidth_Hz = targetSignal.bandwidth;
-    const bandwidthRatio = usableBandwidth_Hz / expectedBandwidth_Hz;
-    // Use FEC-based threshold for consistency with getVisibleSignals()
-    const minBandwidthRatio = this.getMinBandwidthRatioForFec_(targetSignal.fec);
-    const isBandwidthClipped = bandwidthRatio < minBandwidthRatio;
+    const isBandwidthClipped = usableBandwidth_Hz / expectedBandwidth_Hz < this.getMinBandwidthRatioForFec_(targetSignal.fec);
 
-    // Calculate frequency offset in Hz
-    const signalFreqHz = targetSignal.frequency;
-    const modemFreqHz = modem.frequency * 1e6;
-    const frequencyOffset = signalFreqHz - modemFreqHz;
-
-    // Check for modulation/FEC match and bandwidth (determines lock state)
+    const frequencyOffset = targetSignal.frequency - modemCenterHz;
     const modulationMismatch = targetSignal.modulation !== modem.modulation;
     const fecMismatch = targetSignal.fec !== modem.fec;
-    const hasLock = !modulationMismatch && !fecMismatch && !isBandwidthClipped;
+    const formatMismatch = modulationMismatch || fecMismatch;
+
+    // The demodulator acquires only a carrier centred inside its passband
+    const isCentred = Math.abs(frequencyOffset) <= expectedBandwidth_Hz / 2;
+    const modcod = modcodFor(modem.modulation, modem.fec);
+    const requiredEsN0 = modcod?.thresholdEsN0Db ?? Number.POSITIVE_INFINITY;
+    const lockMargin = effectiveEsN0 - requiredEsN0;
+    const canAcquire = this.modemLive_(modem) && !formatMismatch && !isBandwidthClipped && isCentred && modcod !== null;
+    const lock = this.trackLock_(modem.modemNumber, targetSignal.signalId, canAcquire, lockMargin, symbolRate);
+    this.noteLockState_(modem, lock.locked, targetSignal.signalId);
 
     return {
       hasCarrier: true,
-      hasLock,
+      hasLock: lock.locked,
       actualModulation: targetSignal.modulation,
       configuredModulation: modem.modulation,
       cnRatio_dB: cnRatio,
       frequencyOffset_Hz: frequencyOffset,
       modulationMismatch,
       fecMismatch,
+      formatMismatch,
       adcDegradation,
       effectiveCnRatio_dB: effectiveCnRatio,
-      noiseFloor_dBm: effectiveNoiseFloor, // Now includes interference
+      noiseFloor_dBm: effectiveNoiseFloor, // includes interference
       signalLevel_dBm: signalLevel,
       expectedBandwidth_Hz,
       usableBandwidth_Hz,
       isBandwidthClipped,
-      // Interference diagnostics
       thermalNoiseFloor_dBm: thermalNoiseFloor,
       interferencePower_dBm: interferencePower > -Infinity ? interferencePower : undefined,
       interferenceCount: signalsInBand.length - 1,
+      targetSignalId: targetSignal.signalId,
+      symbolRate_Hz: symbolRate,
+      esN0_dB: esN0,
+      effectiveEsN0_dB: effectiveEsN0,
+      phaseNoisePenalty_dB: phaseNoisePenaltyDb,
+      cn0_dBHz: cn0,
+      modcod,
+      requiredEsN0_dB: requiredEsN0,
+      lockMargin_dB: lockMargin,
+      // Above the acquire line and acquirable reads 'acquiring' from the first
+      // evaluation: right after an Apply the tracker has held for 0 ms, and
+      // the badge read "Below threshold" over its own Es/N0 (Phase 32 D10, nats-r7-s19-F1)
+      lockState: lock.locked ? 'locked' : lock.heldMs > 0 || (canAcquire && lockMargin >= LOCK_HYSTERESIS_DB) ? 'acquiring' : 'unlocked',
+      isLowMargin: lock.locked && lock.lowMargin,
     };
+  }
+
+  /** Noise density (mW/Hz, at the carrier's level here) a relayed carrier brought down from its transponder */
+  private static upstreamNoiseDensityMw_(signal: IfSignal): number {
+    const cn0 = signal.upstreamCn0DbHz;
+    if (cn0 === undefined || cn0 === Number.POSITIVE_INFINITY) {
+      return 0;
+    }
+
+    return 10 ** (((signal.power as number) - cn0) / 10);
+  }
+
+  /**
+   * How much an SNR ceiling from LO phase noise lowers an Es/N0, dB:
+   * 1/(1/snr + σ²) against snr.
+   */
+  private static phaseNoisePenaltyDb_(esN0Db: number, phaseNoiseDbcHz: number | undefined, symbolRateHz: number): number {
+    if (phaseNoiseDbcHz === undefined || !Number.isFinite(esN0Db)) {
+      return 0;
+    }
+    const limitDb = phaseNoiseSnrLimitDb(phaseNoiseDbcHz, symbolRateHz);
+    if (!Number.isFinite(limitDb)) {
+      return 0;
+    }
+    const snr = 10 ** (esN0Db / 10);
+    const combined = 1 / (1 / snr + 10 ** (-limitDb / 10));
+
+    return esN0Db - 10 * Math.log10(combined);
+  }
+
+  /** A carrier below this C/N in its own bandwidth is not a carrier to the modem (dB; the antenna's carriage floor too, 19.4) */
+  static readonly CARRIER_DETECT_CN_DB = -10;
+
+  /**
+   * One carrier-presence gate for every receive path (before 19.5 one path
+   * compared against the noise in the whole IF filter and another added the
+   * chain gain a second time): the carrier's C/N in its own occupied
+   * bandwidth must reach -10 dB, the floor below which the antenna stops
+   * carrying it at all. Weaker co-channel carriers still count as
+   * interference.
+   */
+  private clearsReceiveNoise_(signal: IfSignal): boolean {
+    const spm = this.rfFrontEnd_?.couplerModule.signalPathManager;
+    if (!spm) return false;
+    if (!(signal.bandwidth > 0)) return true;
+    const noiseInCarrierBw = spm.getNoiseFloorAt(TapPoint.RX_IF, signal.bandwidth).noiseFloorNoGain + spm.getTotalRxGain();
+    return signal.power - noiseInCarrierBw >= Receiver.CARRIER_DETECT_CN_DB;
+  }
+
+  /** Gain range of the demodulator tuner's IF AGC ahead of its ADC, dB */
+  static readonly TUNER_IF_AGC_RANGE_DB = 30;
+
+  /** Power (mW) of every carrier inside [lowHz, highHz], by bandwidth overlap */
+  private inChannelCarrierMw_(signals: IfSignal[], lowHz: number, highHz: number): number {
+    let total = 0;
+    for (const s of signals) {
+      const sigLow = s.frequency - s.bandwidth / 2;
+      const sigHigh = s.frequency + s.bandwidth / 2;
+      if (s.bandwidth <= 0) {
+        if (s.frequency >= lowHz && s.frequency <= highHz) total += 10 ** (s.power / 10);
+        continue;
+      }
+      const overlap = Math.max(0, Math.min(highHz, sigHigh) - Math.max(lowHz, sigLow));
+      total += 10 ** (s.power / 10) * (overlap / s.bandwidth);
+    }
+    return total;
+  }
+
+  /** What counts as a retune for the lock history: frequency, bandwidth, modulation, FEC */
+  private static tuningKey_(modem: ReceiverModemState): string {
+    return `${modem.frequency}|${modem.bandwidth}|${modem.modulation}|${modem.fec}`;
+  }
+
+  /**
+   * Record a lock evaluation in the modem's lock history: locked starts (or
+   * refreshes) it, the first unlocked evaluation after that stamps the loss,
+   * and a retune or power-off forgets it.
+   */
+  private noteLockState_(modem: ReceiverModemState, locked: boolean, signalId: string): void {
+    const key = Receiver.tuningKey_(modem);
+    if (!this.modemLive_(modem)) {
+      this.lockHistory_.delete(modem.modemNumber);
+      return;
+    }
+    if (locked) {
+      this.lockHistory_.set(modem.modemNumber, { hadLock: true, lockLostAtMs: null, lastSignalId: signalId, tuningKey: key });
+      return;
+    }
+    const history = this.lockHistory_.get(modem.modemNumber);
+    if (!history) return;
+    if (history.tuningKey !== key) {
+      this.lockHistory_.delete(modem.modemNumber);
+      return;
+    }
+    history.lockLostAtMs ??= SimClock.runMs();
+  }
+
+  /**
+   * The modem's lock transition on its current tuning (Phase 31 D1), or null
+   * when it has not had lock since it was last tuned or powered on. Reads the
+   * history the lock tracker last wrote; call getSignalsInBandwidth(modem)
+   * first to advance the tracker to now.
+   */
+  public getLockTransition(modem: ReceiverModemState): ModemLockTransition | null {
+    const history = this.lockHistory_.get(modem.modemNumber);
+    if (!history) return null;
+    if (!this.modemLive_(modem) || history.tuningKey !== Receiver.tuningKey_(modem)) {
+      this.lockHistory_.delete(modem.modemNumber);
+      return null;
+    }
+    return { hadLock: history.hadLock, lockLostAtMs: history.lockLostAtMs, lastSignalId: history.lastSignalId };
+  }
+
+  private resetLock_(modemNumber: number): void {
+    const track = this.lockTracks_.get(modemNumber);
+    if (track) {
+      track.locked = false;
+      track.heldMs = 0;
+      track.lowMargin = false;
+      track.signalId = '';
+      track.lastMs = SimClock.runMs();
+    }
+  }
+
+  /**
+   * Advance a modem's lock tracker to the current run time. Idempotent within
+   * a step (several readers per frame see the same state).
+   */
+  private trackLock_(modemNumber: number, signalId: string, canAcquire: boolean, marginDb: number, symbolRate: number): LockTrack {
+    const now = SimClock.runMs();
+    let track = this.lockTracks_.get(modemNumber);
+    if (!track) {
+      track = { signalId: '', locked: false, heldMs: 0, acquireMs: 0, lastMs: now, lowMargin: false, attempt: 0 };
+      this.lockTracks_.set(modemNumber, track);
+    }
+    // Run time restarts at 0 each scenario
+    const dt = Math.max(0, now - track.lastMs);
+    track.lastMs = now;
+
+    // The same carrier under a copy suffix ("X" <-> "X#2") is not a new
+    // carrier: another station's sidelobe copy reorders the suffixes, the
+    // demodulator keeps its lock (Phase 32 D3, nats-r7-s04-F2)
+    if (track.signalId !== signalId && Receiver.isSameCarrier_(track.signalId, signalId)) {
+      track.signalId = signalId;
+    }
+    if (track.signalId !== signalId || !canAcquire) {
+      track.locked = false;
+      track.heldMs = 0;
+      track.lowMargin = false;
+      if (track.signalId !== signalId) {
+        track.signalId = signalId;
+        track.acquireMs = this.drawAcquisitionMs_(modemNumber, signalId, track.attempt++, symbolRate);
+      }
+      if (!canAcquire) return track;
+    }
+
+    if (track.locked) {
+      if (marginDb < -LOCK_HYSTERESIS_DB) {
+        track.locked = false;
+        track.heldMs = 0;
+        track.lowMargin = false;
+        track.acquireMs = this.drawAcquisitionMs_(modemNumber, signalId, track.attempt++, symbolRate);
+      }
+    } else if (marginDb >= LOCK_HYSTERESIS_DB) {
+      track.heldMs += dt;
+      if (track.heldMs >= track.acquireMs) {
+        track.locked = true;
+        track.lowMargin = marginDb < DEGRADED_MARGIN_DB;
+      }
+    } else {
+      track.heldMs = 0;
+    }
+
+    if (track.locked) {
+      if (marginDb < DEGRADED_MARGIN_DB) {
+        track.lowMargin = true;
+      } else if (marginDb >= DEGRADED_RECOVERY_MARGIN_DB) {
+        track.lowMargin = false;
+      }
+    }
+
+    return track;
+  }
+
+  /** A carrier id without the satellite's copy suffix ("TIDEMARK-1-Teleport#2" -> "TIDEMARK-1-Teleport") */
+  private static carrierBaseId_(signalId: string): string {
+    return signalId.replace(/#\d+$/u, '');
+  }
+
+  /** Two ids that differ only by a `#n` copy suffix name the same carrier */
+  private static isSameCarrier_(a: string, b: string): boolean {
+    return a !== '' && b !== '' && Receiver.carrierBaseId_(a) === Receiver.carrierBaseId_(b);
+  }
+
+  /** Seeded acquisition time for one attempt on one carrier, ms */
+  private drawAcquisitionMs_(modemNumber: number, signalId: string, attempt: number, symbolRate: number): number {
+    const u = Rng.hashUniform(`${Rng.getSeed()}:rx-acquire:${this.state.server_id}:${modemNumber}:${signalId}:${attempt}`);
+    return acquisitionTimeS(symbolRate, u) * 1000;
   }
 
   /**
@@ -813,152 +1141,39 @@ export class Receiver extends BaseEquipment {
   }
 
   private getLedColor(): string {
-    const visibleSignals = this.getVisibleSignals();
-
     if (this.activeModem.isPowered === false) {
       return 'led-gray';
     }
 
-    // If 1 then good signal
-    if (visibleSignals.length === 1 && visibleSignals[0].isDegraded === false) {
+    const visibleSignals = this.getVisibleSignals();
+    if (visibleSignals.length === 0) {
       return 'led-green';
     }
 
-    // If 2 then degraded
-    if (visibleSignals.length === 2 || (visibleSignals.length === 1 && visibleSignals[0].isDegraded === true)) {
-      return 'led-amber';
-    }
-
-    // If more than 2 then denied
-    if (visibleSignals.length > 2) {
-      return 'led-red';
-    }
-
-    return 'led-green';
+    return visibleSignals[0].isDegraded ? 'led-amber' : 'led-green';
   }
 
-  public getVisibleSignals(activeModemData = this.activeModem) {
-    if (!activeModemData) return [];
+  /**
+   * The carrier the modem is decoding: the locked target of
+   * `getSignalsInBandwidth` (one carrier, copied, so the shared signal object
+   * is never mutated), or nothing. It reads degraded with less than 1 dB of
+   * lock margin, or when the carrier sits more than 10 % of the modem
+   * bandwidth off centre.
+   */
+  public getVisibleSignals(activeModemData = this.activeModem): IfSignal[] {
+    if (!activeModemData || !this.rfFrontEnd_) return [];
 
-    const externalNoise = this.rfFrontEnd_?.externalNoise ?? 0;
+    const info = this.getSignalsInBandwidth(activeModemData);
+    if (!info.hasLock) return [];
 
-    // Figure out which signals match the receiver settings
-    // Note: Signals from agcModule.outputSignals already include all chain gains
-    const expectedBandwidth_Hz = activeModemData.bandwidth * 1e6;
+    const target = (this.rfFrontEnd_.agcModule.outputSignals ?? []).find(
+      (s) => s.signalId === info.targetSignalId && s.modulation === activeModemData.modulation && s.fec === activeModemData.fec
+    );
+    if (!target) return [];
 
-    const visibleSignals = (this.rfFrontEnd_?.agcModule.outputSignals ?? []).filter((s) => {
-      if (s.power < externalNoise) {
-        return false;
-      }
+    const isOffCentre = Math.abs(info.frequencyOffset_Hz) > activeModemData.bandwidth * 1e6 * 0.1;
 
-      if (s.bandwidth > (expectedBandwidth_Hz as Hertz)) {
-        return false;
-      }
-
-      // Filter out signals where bandwidth was severely clipped by IF filter
-      // Minimum usable bandwidth depends on FEC rate - higher redundancy tolerates more loss
-      // FEC tolerance: 1/2 (excellent) → 7/8 (fragile)
-      const bandwidthRatio = s.bandwidth / expectedBandwidth_Hz;
-      const minBandwidthRatio = this.getMinBandwidthRatioForFec_(s.fec);
-      if (bandwidthRatio < minBandwidthRatio) {
-        return false;
-      }
-
-      if (s.frequency + ((s.bandwidth * 1e6) as Hertz) / 2 < activeModemData.frequency - activeModemData.bandwidth / 2) {
-        return false;
-      }
-      if (s.frequency - ((s.bandwidth * 1e6) as Hertz) / 2 > activeModemData.frequency + activeModemData.bandwidth / 2) {
-        return false;
-      }
-
-      if (s.modulation !== activeModemData.modulation) {
-        return false;
-      }
-      if (s.fec !== activeModemData.fec) {
-        return false;
-      }
-      return true;
-    });
-
-    // Only include signals within 50% bandwidth of center frequency
-    const signalsInBand = visibleSignals.filter((s) => {
-      const frequencyMhz = (s.frequency / 1e6) as MHz;
-      const freqTolerance50 = activeModemData.bandwidth * 0.5;
-      const lowerBound50 = activeModemData.frequency - freqTolerance50;
-      const upperBound50 = activeModemData.frequency + freqTolerance50;
-      return frequencyMhz >= lowerBound50 && frequencyMhz <= upperBound50;
-    });
-
-    // Find the strongest signal - signals significantly weaker (>20dB) are considered
-    // suppressed (e.g., by notch filter) and shouldn't count as interference
-    const maxPower = Math.max(...signalsInBand.map((s) => s.power));
-    const suppressionThreshold = 20; // dB - notch filters typically provide 20-60dB attenuation
-
-    const survivingSignals = signalsInBand.filter((s) => {
-      // Filter out signals that are too weak (suppressed)
-      if (s.power < maxPower - suppressionThreshold) return false;
-
-      // Also filter out signals that were intentionally notched
-      const notchState = this.rfFrontEnd_?.notchFilterModule?.state;
-      if (notchState?.isPowered) {
-        for (const notch of notchState.notches) {
-          if (!notch.enabled) continue;
-
-          // Check if signal frequency falls within notch bandwidth
-          const signalFreqMHz = s.frequency / 1e6;
-          const notchLow = notch.centerFrequency - notch.bandwidth / 2;
-          const notchHigh = notch.centerFrequency + notch.bandwidth / 2;
-
-          if (signalFreqMHz >= notchLow && signalFreqMHz <= notchHigh) {
-            return false; // Signal was intentionally notched, don't count as interference
-          }
-        }
-      }
-
-      return true;
-    });
-
-    // Select only the strongest signal to avoid displaying duplicates
-    // (e.g., when antenna TX matches satellite external signal at same frequency)
-    if (survivingSignals.length === 0) {
-      return [];
-    }
-
-    const strongestSignal = survivingSignals.reduce((best, s) => (s.power > best.power ? s : best), survivingSignals[0]);
-
-    return [strongestSignal].map((s) => {
-      // Reset isDegraded flag before checking conditions
-      // (signal objects are shared, so we must reset each time)
-      s.isDegraded = false;
-
-      const frequencyMhz = (s.frequency / 1e6) as MHz;
-      const freqTolerance10 = activeModemData.bandwidth * 0.1;
-      const lowerBound10 = activeModemData.frequency - freqTolerance10;
-      const upperBound10 = activeModemData.frequency + freqTolerance10;
-      // Outside 10% frequency tolerance: mark as degraded
-      if (!(frequencyMhz >= lowerBound10 && frequencyMhz <= upperBound10)) {
-        s.isDegraded = true;
-      }
-
-      // Calculate C/N for each signal and mark as degraded if below threshold
-      // Noise floor based on modem bandwidth: narrower BW = lower noise floor
-      // Noise floor needs totalGain added to match the reference point
-      // Signal from AGC output already includes all chain gains
-      const noiseFloor =
-        this.rfFrontEnd_.couplerModule.signalPathManager.getNoiseFloorAt(TapPoint.RX_IF, expectedBandwidth_Hz as Hertz).noiseFloorNoGain +
-        this.rfFrontEnd_.couplerModule.signalPathManager.getTotalRxGain();
-      const signalLevel = s.power; // Already includes all chain gains
-
-      const cn = signalLevel - noiseFloor;
-
-      const requiredCN = Receiver.requiredCnDb(s.modulation);
-
-      if (cn < requiredCN) {
-        s.isDegraded = true;
-      }
-
-      return s;
-    });
+    return [{ ...target, isDegraded: (info.isLowMargin ?? false) || isOffCentre }];
   }
 
   /**
@@ -1093,7 +1308,8 @@ export class Receiver extends BaseEquipment {
             const savedTime = this.videoPlayTime[feedUrl] || 0;
             media.currentTime = savedTime;
 
-            media.play().catch(() => {
+            // play() returns undefined where media is not implemented (jsdom)
+            media.play()?.catch(() => {
               // flickering signal will cause failures to play, ignore
             });
           }

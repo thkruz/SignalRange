@@ -91,7 +91,7 @@ test.describe('nats-eu Scenario 3 Full Completion', () => {
     await freq.fill('1405');
     await freq.press('Tab');
     await domClick(page, '#tx-apply-btn');
-    await answerSystemQuiz(page, '1405 MHz - RF minus LO');
+    await answerSystemQuiz(page, '1405 MHz, because RF minus LO');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Tune the Transmit Modem to the Command IF');
   });
@@ -139,7 +139,7 @@ test.describe('nats-eu Scenario 3 Full Completion', () => {
 
   test('[confirm-window-open] waits for the window on the TT&C console', async () => {
     await missionControl.selectTab('commanding');
-    await answerSystemQuiz(page, 'Out of window - wait for 14:03:40');
+    await answerSystemQuiz(page, 'Out of window, so wait for 14:03:40');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Wait for the Window');
   });
@@ -153,7 +153,7 @@ test.describe('nats-eu Scenario 3 Full Completion', () => {
 
   test('[confirm-execution] reads the ACK while still on the bird', async () => {
     await missionControl.selectTab('rx-analysis');
-    await answerSystemQuiz(page, 'The spacecraft received and executed it');
+    await answerSystemQuiz(page, 'The spacecraft received and accepted it');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Confirm Execution', 60000);
   });

@@ -260,7 +260,7 @@ describe('MissionControlPage', () => {
     });
 
     it('should render global command bar container', () => {
-      const header = document.querySelector('#global-command-bar-container');
+      const header = document.querySelector('#mission-command-bar-mount');
       expect(header).not.toBeNull();
     });
 
@@ -290,7 +290,7 @@ describe('MissionControlPage', () => {
     });
 
     it('should create GlobalCommandBar', () => {
-      expect(GlobalCommandBar).toHaveBeenCalledWith('global-command-bar-container');
+      expect(GlobalCommandBar).toHaveBeenCalledWith('mission-command-bar-mount');
     });
 
     it('should NOT create TimelineDeck when the scenario does not opt in', () => {

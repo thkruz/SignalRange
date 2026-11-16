@@ -23,6 +23,8 @@ export default defineConfig({
   define: {
     __IS_PRIVATE__: 'false',
     __AUTHORING__: 'false',
+    __FEEDBACK_EDGE_LIVE__: 'false',
+    __KT_EMBED_LICENSE__: JSON.stringify(process.env.KT_EMBED_LICENSE || ''),
   },
   test: {
     /*
@@ -38,7 +40,8 @@ export default defineConfig({
     include: ['**/test/**/*.(spec|test).ts?(x)', '**/test/**/*.(spec|test).js?(x)'],
     // External plugin tests belong to their own repos; `pnpm run plugin -- test <name>`
     // runs them through vitest.external.config.mts.
-    exclude: ['node_modules/', 'dist/', 'src/engine/', 'e2e/', 'src/plugins-external/**'],
+    // .claude/worktrees holds agent worktrees (full repo copies); never collect their tests.
+    exclude: ['node_modules/', 'dist/', 'src/engine/', 'e2e/', 'src/plugins-external/**', '**/.claude/**', 'supabase/**'],
     coverage: {
       provider: 'v8',
       reportsDirectory: 'coverage',
@@ -77,6 +80,16 @@ export default defineConfig({
       },
     },
     setupFiles: ['./vitest.setup.ts'],
+    // The suite's chatter (EventBus emit logs, per-tick OMT and objective-station
+    // warnings) wrote a 215 MB log. Logger [LOG]/[INFO] lines are diagnostics only and
+    // these two warnings repeat per tick; tests that assert on console.warn/Logger use
+    // spies and are unaffected, because this filters only what is printed.
+    onConsoleLog(log: string) {
+      if (log.includes('[LOG] ') || log.includes('[INFO] ')) return false;
+      if (log.includes('[WARN] OMTModule Cannot update cross-pol')) return false;
+      if (/Ground station '.*' not found for objective/.test(log)) return false;
+      return undefined;
+    },
     // `deps.inline` for uuid and ootk was a pre-vitest-1 workaround. Verified
     // unnecessary on vitest 4 (full suite green without it), so it is gone
     // rather than moved to its modern `server.deps.inline` spelling.

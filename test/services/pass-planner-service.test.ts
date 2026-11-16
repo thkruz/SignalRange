@@ -27,6 +27,19 @@ const MINUTE_MS = 60 * 1000;
 describe('PassPlannerService', () => {
   const planner = new PassPlannerService();
 
+  it('computes AOS/LOS at the receivable horizon while the mask only drops low passes', () => {
+    const masked = planner.getPasses(SAT_A, SCENARIO_START_MS, { horizonHours: 1, minElevation: 5 as Degrees })[0];
+    const receivable = planner.getPasses(SAT_A, SCENARIO_START_MS, { horizonHours: 1, aosElevation: 'receivable', minPeakElevation: 5 as Degrees })[0];
+    const geometric = planner.getPasses(SAT_A, SCENARIO_START_MS, { horizonHours: 1 })[0];
+
+    expect(receivable.aosMs).toBeLessThan(masked.aosMs);
+    expect(receivable.losMs).toBeGreaterThan(masked.losMs);
+    // The receivable satellite has minElevation 0, so it is the plain horizon pass
+    expect(Math.abs(receivable.aosMs - geometric.aosMs)).toBeLessThanOrEqual(1000);
+    expect(Math.abs(receivable.losMs - geometric.losMs)).toBeLessThanOrEqual(1000);
+    expect(planner.getPasses(SAT_A, SCENARIO_START_MS, { horizonHours: 1, aosElevation: 'receivable', minPeakElevation: 89.5 as Degrees })).toHaveLength(0);
+  });
+
   it('finds the authored pass with accurate AOS/LOS/max elevation', () => {
     const passes = planner.getPasses(SAT_A, SCENARIO_START_MS, { horizonHours: 1 });
 

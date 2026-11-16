@@ -5,13 +5,14 @@ import { makeCubehop1Satellite } from '../../src/campaigns/ham-sdr/satellites';
 import { ANTENNA_CONFIG_KEYS } from '../../src/equipment/antenna/antenna-config-keys';
 import { AntennaCore, AntennaState } from '../../src/equipment/antenna/antenna-core';
 import { HPAModuleCore, HPAState } from '../../src/equipment/rf-front-end/hpa-module/hpa-module-core';
+import { geoSlantRangeKm } from '../../src/simulation/geo-geometry';
 
 /**
  * E2 (Campaign 3 backyard transmit path) unit tests:
  * - fixed-gain uplink link budget (FSPL + atmosphere + off-axis + handedness)
  * - HPBW beam gate replacing the +/-2 deg planar box (fixed-gain only)
  * - stale-uplink clearing when a satellite leaves the beam
- * - legacy parabolic TX path bit-identical (no FSPL)
+ * - dish uplink through FSPL and the whole pattern (phase 19.3)
  * - config-driven HPA max output power (37 dBm brick vs legacy 63 dBm)
  * - transponder preserves circular polarization on the downlink
  */
@@ -204,22 +205,63 @@ describe('E2: fixed-gain uplink link budget', () => {
     expect(sat.rxSignal.filter((s) => s.signalId === 'tx-1')).toHaveLength(1);
   });
 
-  it('leaves the legacy parabolic TX path bit-identical (no FSPL, 2 deg box)', () => {
+  it('dish uplink (phase 19.3): FSPL over the slant range, the whole pattern, so a sidelobe neighbour hears it at its real level', () => {
     const dish = new TestableTxAntenna(ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, {
       isPowered: true,
       azimuth: 180 as any,
       elevation: 45 as any,
     });
-    dish.txFeed = [makeTxSignal({ frequency: 6e9 as RfFrequency, power: 75 as dBm })];
-    const sat = makeSat(180, 45);
-    mockGetSatsByAzEl.mockReturnValue([sat]);
+    dish.txFeed = [makeTxSignal({ frequency: 6e9 as RfFrequency, power: 102 as dBm })];
+    // Legacy GEO satellites (no propagated range): on boresight, a tenth of a
+    // degree off, and 2 deg of azimuth off (1.4 deg on the sky)
+    const onAxis = makeSat(180, 45, null as unknown as number);
+    const nearAxis = makeSat(180, 45.1, null as unknown as number);
+    const sidelobe = makeSat(182, 45, null as unknown as number);
+    mockSats.push(onAxis, nearAxis, sidelobe);
 
     dish.runTxUpdate();
 
-    expect(sat.rxSignal).toHaveLength(1);
-    // Exactly the radiated EIRP: no FSPL, no atmosphere, no pol stamp
-    expect(sat.rxSignal[0].power).toBe(75);
-    expect(sat.rxSignal[0].polarization).toBe('H');
+    // GEO slant range at 45 deg elevation, then FSPL at 6 GHz (~199.5 dB)
+    const rangeKm = geoSlantRangeKm(45);
+    expect(rangeKm).toBeGreaterThan(37_300);
+    expect(rangeKm).toBeLessThan(37_500);
+    const fspl = 32.45 + 20 * Math.log10(rangeKm) + 20 * Math.log10(6000);
+    expect(onAxis.rxSignal).toHaveLength(1);
+    // EIRP - FSPL - a few hundredths of gas and servo jitter
+    expect(onAxis.rxSignal[0].power).toBeLessThan(102 - fspl);
+    expect(onAxis.rxSignal[0].power).toBeGreaterThan(102 - fspl - 0.15);
+    expect(onAxis.rxSignal[0].polarization).toBe('H');
+    // 0.1 deg off at 6 GHz (theta3 0.39 deg): 12 (0.1/0.39)^2 = 0.8 dB down
+    expect(onAxis.rxSignal[0].power - nearAxis.rxSignal[0].power).toBeCloseTo(0.8, 0);
+    // 1.4 deg on the sky is in the S.580 sidelobes (29 - 25 log 1.41 = 25 dBi
+    // against ~54 dBi on axis): radiated, ~29 dB down (was dropped while the
+    // uplink had no path loss, DEV-XPDR-01)
+    expect(sidelobe.rxSignal).toHaveLength(1);
+    const drop = onAxis.rxSignal[0].power - sidelobe.rxSignal[0].power;
+    expect(drop).toBeGreaterThan(26);
+    expect(drop).toBeLessThan(32);
+    mockSats.length = 0;
+  });
+
+  it('a muted chain withdraws only its own uplink from the satellite', () => {
+    const dish = new TestableTxAntenna(ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK, {
+      isPowered: true,
+      azimuth: 180 as any,
+      elevation: 45 as any,
+    });
+    dish.txFeed = [makeTxSignal({ frequency: 6e9 as RfFrequency, power: 102 as dBm })];
+    const sat = makeSat(180, 45, null as unknown as number);
+    const other = makeTxSignal({ signalId: 'other-station', frequency: 6.01e9 as RfFrequency, power: -100 as dBm });
+    sat.rxSignal.push(other);
+    mockSats.push(sat);
+
+    dish.runTxUpdate();
+    expect(sat.rxSignal.map((s) => s.signalId).sort()).toEqual(['other-station', 'tx-1']);
+
+    dish.txFeed = [];
+    dish.runTxUpdate();
+    expect(sat.rxSignal.map((s) => s.signalId)).toEqual(['other-station']);
+    mockSats.length = 0;
   });
 });
 
@@ -246,6 +288,7 @@ describe('E2: config-driven HPA max output power', () => {
   const makeFrontEnd = () =>
     ({
       bucModule: { state: { isLoopback: false, isPowered: true, isMuted: false }, outputSignals: [drive] },
+      cableLossDb: () => 0,
       state: { buc: { isPowered: true } },
     }) as any;
 
@@ -258,28 +301,32 @@ describe('E2: config-driven HPA max output power', () => {
     ...over,
   });
 
-  it('a 37 dBm brick ALCs the drive to ~31 dBm out', () => {
-    const brick = new TestableHPA(baseState({ maxOutputPower: 37 as dBm, p1db: 34 as dBm }), makeFrontEnd(), 1);
+  it('a 37 dBm brick (SSPA) ALCs the drive to P1dB - 3 = 31 dBm out', () => {
+    const brick = new TestableHPA(baseState({ amplifierType: 'sspa', maxOutputPower: 37 as dBm, p1db: 34 as dBm }), makeFrontEnd(), 1);
     brick.update();
 
-    // gain = (37 - 3) - (-20) = 54 -> out = -20 + 54 - 3 = 31 dBm (~1.3 W)
+    // ALC (19.6): output = P1dB - back-off = 34 - 3 = 31 dBm (~1.3 W); gain = 31 - (-20) = 51 dB
     expect(brick.outputSignals).toHaveLength(1);
-    expect(brick.outputSignals[0].power).toBeCloseTo(31, 5);
+    expect(brick.outputSignals[0].power).toBeCloseTo(31, 2);
+    expect(brick.state.gain).toBeCloseTo(51, 2);
     expect(brick.p1db).toBe(34);
+    expect(brick.psatDbm).toBeCloseTo(37, 2);
   });
 
-  it('without the override the legacy 63 dBm / 59 dBm values apply unchanged', () => {
+  it('without the override the default 59 dBm P1dB, 60 dB gain TWTA cannot reach its setpoint from -20 dBm', () => {
     const legacy = new TestableHPA(baseState({}), makeFrontEnd(), 1);
     legacy.update();
 
-    // gain = (63 - 3) - (-20) = 80, capped at 63 -> out = -20 + 63 - 3 = 40 dBm
-    expect(legacy.outputSignals[0].power).toBeCloseTo(40, 5);
+    // 19.6: output follows the drive. The ALC wants 59 - 3 = 56 dBm but the
+    // amplifier's 60 dB of gain makes 40 dBm of -20 dBm: the ALC is at its end stop
+    expect(legacy.outputSignals[0].power).toBeCloseTo(40, 1);
+    expect(legacy.state.isAlcAtLimit).toBe(true);
     expect(legacy.p1db).toBe(59);
   });
 });
 
 describe('E2: CUBEHOP V/U transponder', () => {
-  it('relays a 435.905 RHCP uplink to 435.295 with +132 dB gain, preserving handedness', () => {
+  it('relays a 435.905 RHCP uplink to 435.295 at about beacon strength, preserving handedness', () => {
     const sat = makeCubehop1Satellite();
     sat.rxSignal.push(
       makeTxSignal({
@@ -296,8 +343,10 @@ describe('E2: CUBEHOP V/U transponder', () => {
 
     expect(relayed).toBeDefined();
     expect(relayed!.frequency).toBeCloseTo(435.295e6, 0);
-    // Book value -105 + 132 = 27 dBm; the stock degradation model then applies
-    // ~+/-1 dB power variation + atmospherics, so assert a window around it
+    // -105 dBm is ~13 dB under the transponder's saturating input (SFD
+    // -118 dBW/m2): about 3 dB of output back-off from its 0 dBW, ~27 dBm
+    // (phase 19.3; the old book value was -105 + 132 dB); the stock
+    // degradation model then applies ~+/-1 dB of fading
     expect(relayed!.power).toBeGreaterThan(23);
     expect(relayed!.power).toBeLessThan(31);
     // Circular polarization passes through (an RHCP uplink must not come back 'H')

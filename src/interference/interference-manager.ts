@@ -20,6 +20,7 @@ import { ScenarioManager } from '@app/scenario-manager';
 import { SignalOrigin } from '@app/signal-origin';
 import { missionNowMs } from '@app/simulation/mission-clock';
 import { SimulationManager } from '@app/simulation/simulation-manager';
+import type { InterferenceSnapshot } from '@app/sync/manager-state-types';
 import type { dBi, dBm, FECType, Hertz, ModulationType, RfFrequency, RfSignal } from '@app/types';
 import type { Milliseconds } from 'ootk';
 
@@ -49,8 +50,10 @@ export interface InterferenceEventConfig {
   /** Interferer bandwidth (Hz) */
   bandwidth: number;
   /**
-   * Interferer power (dBm). Transponder path: power at the transponder
-   * input. Terrestrial path: the emitter's EIRP.
+   * The interferer's EIRP, dBm, on both paths. Transponder path (since Phase
+   * 19.3): uplinked over the satellite's reference slant range into the
+   * transponder (was the power at the transponder input). Terrestrial path:
+   * radiated toward the stations.
    */
   power: number;
   /** Polarization. Transponder path must match the victim transponder to route */
@@ -208,6 +211,25 @@ export class InterferenceManager {
     }
   }
 
+  /** Snapshot for a checkpoint: decision-forced overrides and when each anchor went live. */
+  getState(): InterferenceSnapshot {
+    return { forced: [...this.forced_], anchors: this.anchors_.getState() };
+  }
+
+  /** Restore a snapshot (checkpoint path only); event ids this scenario does not define are ignored. */
+  restoreState(snapshot: InterferenceSnapshot | undefined): void {
+    if (!snapshot) {
+      return;
+    }
+    this.forced_.clear();
+    for (const entry of snapshot.forced ?? []) {
+      if (Array.isArray(entry) && typeof entry[1] === 'boolean' && this.events_.some((e) => e.id === entry[0])) {
+        this.forced_.set(entry[0], entry[1]);
+      }
+    }
+    this.anchors_.restoreState(snapshot.anchors);
+  }
+
   isEventForced(eventId: string): boolean {
     return this.forced_.has(eventId);
   }
@@ -287,7 +309,7 @@ export class InterferenceManager {
         continue;
       }
 
-      const satellite = sim.satellites.find((s) => s.noradId === event.satelliteNoradId);
+      const satellite = sim.registry.get(event.satelliteNoradId);
       if (!satellite) continue;
 
       if (shouldTransmit) {

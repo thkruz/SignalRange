@@ -5,13 +5,23 @@ import { ModalConfirm } from '@app/engine/ui/modal-confirm';
 import { html } from '@app/engine/utils/development/formatter';
 import { qs, qsa } from '@app/engine/utils/query-selector';
 import { Logger } from '@app/logging/logger';
+import { campaignEpilogue, campaignFinale } from '@app/presentation/campaign-epilogue';
+import { type SceneData, SceneModal } from '@app/presentation/scene-modal';
 import { Router } from '@app/router';
 import { ScenarioData } from '@app/ScenarioData';
-import { getNextPrerequisiteScenario, getPrerequisiteScenarioNames, isScenarioLocked, SCENARIOS } from '@app/scenario-manager';
+import { getNextPrerequisiteScenario, isScenarioLocked, SCENARIOS } from '@app/scenario-manager';
 import { clearPersistedStore } from '@app/sync/storage';
+import { selectionProgressCache } from '@app/user-account/selection-progress-cache';
 import { getUserDataService } from '@app/user-account/user-data-service';
 import { getAssetUrl } from '@app/utils/asset-url';
 import { BasePage } from './base-page';
+import { selectionArtworkPosition } from './selection-artwork';
+import { animateSelection, selectionKeyboard, selectionText, updateSelectionDetail, updateSelectionList } from './selection-browser';
+import { renderSelectionCrew } from './selection-crew';
+import { SelectionLoadingScreen } from './selection-loading-screen';
+import { selectionPhases } from './selection-phases';
+import { selectionStatusIcon } from './selection-status-icon';
+import './selection-browser.css';
 import './scenario-selection.css';
 
 declare global {
@@ -31,21 +41,45 @@ export class ScenarioSelectionPage extends BasePage {
   private completedScenarioIds_: string[] = [];
   /** Scenarios with score > 0 - used for UI display (currently showing as completed) */
   private currentlyCompletedScenarioIds_: string[] = [];
-  private checkpointsLoaded_ = false;
+  /**
+   * True while the progress and checkpoint probe is in flight: the cards'
+   * action area shows a disabled loading button instead of a Start that
+   * flips to Continue a few seconds later (nats-r3-s15-F3)
+   */
+  private isProgressLoading_ = false;
+  /** Set once a probe has answered; until then the lock state is unknown too */
+  private hasProgressLoaded_ = false;
+  /** Bumped per probe so only the latest one writes the cards */
+  private progressLoadToken_ = 0;
+  private progressLoad_: Promise<void> = Promise.resolve();
+  /** Set once auth is ready; shows the not-saved warning in the header */
+  private isSignedOut_ = false;
+  private selectedScenarioId_: string | null = null;
+  private readonly expandedPhases_ = new Map<string, number | null>();
+  private readonly loadingScreen_: SelectionLoadingScreen;
   private currentCampaignId_: string | null = null;
   private currentCampaign_: CampaignData | null = null;
+  private epilogue_: SceneData | undefined;
+  private epilogueModal_: SceneModal | null = null;
 
   private constructor() {
     super();
     // Initialize the page immediately so it can be shown
     this.init_('body-content-container', 'add');
+    this.loadingScreen_ = new SelectionLoadingScreen(this.dom_, () => void this.loadCheckpointsAndUpdate_());
+    selectionProgressCache.onAccountChanged(() => {
+      this.epilogueModal_?.dispose();
+      this.epilogue_ = undefined;
+      if (this.dom_.style.display === 'flex') void this.loadCheckpointsAndUpdate_();
+    });
   }
 
   static getInstance(): ScenarioSelectionPage {
     if (!this.instance_) {
+      // Progress loads when the page is shown, not on creation: the router
+      // creates this page on every navigation (hideAll), and probing every
+      // scenario's checkpoint from the home page logged one 404 per scenario
       this.instance_ = new ScenarioSelectionPage();
-      // Start loading checkpoints after instance is created
-      this.instance_.startLoadingCheckpoints_();
     }
 
     return this.instance_;
@@ -55,6 +89,11 @@ export class ScenarioSelectionPage extends BasePage {
    * Set the campaign to display scenarios for
    */
   setCampaign(campaignId: string | null): void {
+    if (campaignId !== this.currentCampaignId_) {
+      this.epilogue_ = undefined;
+      ++this.progressLoadToken_;
+      this.selectedScenarioId_ = null;
+    }
     this.currentCampaignId_ = campaignId;
     if (campaignId) {
       const campaignManager = CampaignManager.getInstance();
@@ -77,72 +116,75 @@ export class ScenarioSelectionPage extends BasePage {
     return SCENARIOS;
   }
 
-  /**
-   * Start loading checkpoints in the background
-   */
-  private startLoadingCheckpoints_(): void {
-    if (this.checkpointsLoaded_) return;
-    this.checkpointsLoaded_ = true;
-
-    // Load checkpoints asynchronously and update the UI when ready
-    this.loadCheckpointsAndUpdate_().catch((error) => {
-      Logger.error('Failed to initialize checkpoint loading:', error);
-    });
+  /** Resolves when the latest progress and checkpoint probe has answered and the cards are final */
+  whenProgressLoaded(): Promise<void> {
+    return this.progressLoad_;
   }
 
   /**
-   * Load checkpoint status and update the UI
-   * Uses new batch API to get all progress + checkpoint info in one call
+   * Load progress and checkpoint status, then render the final card buttons.
+   * The cards show a loading state until this answers.
    */
-  private async loadCheckpointsAndUpdate_(): Promise<void> {
-    try {
-      // Wait for auth to be initialized before trying to load user data
-      const { App } = await import('@app/app');
-      await App.authReady;
+  private loadCheckpointsAndUpdate_(): Promise<void> {
+    const token = ++this.progressLoadToken_;
+    this.loadingScreen_.begin();
+    this.epilogue_ = undefined;
+    this.isProgressLoading_ = true;
+    this.updateScenarioCards_();
+    this.progressLoad_ = this.probeProgress_(token)
+      .then(() => {
+        if (token !== this.progressLoadToken_) return;
+        this.isProgressLoading_ = false;
+        this.hasProgressLoaded_ = true;
+        this.selectedScenarioId_ = null;
+        this.expandedPhases_.delete(this.currentCampaignId_ ?? '');
+        this.updateScenarioCards_();
+        const list = qs<HTMLElement>('.scenario-grid', this.dom_);
+        list.scrollTop = 0;
+        this.loadingScreen_.finish();
+        list.querySelector<HTMLElement>('.selection-item[aria-pressed="true"]')?.scrollIntoView?.({ block: 'nearest' });
+      })
+      .catch((error) => {
+        if (token !== this.progressLoadToken_) return;
+        Logger.error('Failed to load mission progress:', error);
+        this.isProgressLoading_ = false;
+        this.loadingScreen_.fail();
+      });
+    return this.progressLoad_;
+  }
 
-      const userDataService = getUserDataService();
-
-      // Get all scenarios progress in one call
-      const progressResponse = await userDataService.getAllScenariosProgress().catch(() => null);
-
-      if (progressResponse) {
-        // Clear previous data
-        this.scenarioCheckpoints_.clear();
-        this.completedScenarioIds_ = [];
-        this.currentlyCompletedScenarioIds_ = [];
-
-        // Track completed scenarios from progress records
-        for (const scenarioProgress of progressResponse.scenarios) {
-          // completedAt = ever completed (for prerequisites)
-          if (scenarioProgress.completedAt) {
-            this.completedScenarioIds_.push(scenarioProgress.scenarioId);
-          }
-          // score > 0 = currently completed (for UI display)
-          // After resetScenarioForReplay(), score is 0 so this will be false
-          if (scenarioProgress.score > 0) {
-            this.currentlyCompletedScenarioIds_.push(scenarioProgress.scenarioId);
-          }
-        }
-
-        // Check checkpoints for ALL scenarios in parallel (not just ones with progress records)
-        // This ensures we detect checkpoints even when no objectives have been completed yet
-        const checkpointChecks = SCENARIOS.map(async (scenario) => {
-          const hasCheckpoint = await userDataService.checkpointExists(scenario.id).catch(() => false);
-          return { scenarioId: scenario.id, hasCheckpoint };
-        });
-        const checkpointResults = await Promise.all(checkpointChecks);
-        for (const { scenarioId, hasCheckpoint } of checkpointResults) {
-          if (hasCheckpoint) {
-            this.scenarioCheckpoints_.set(scenarioId, true);
-          }
-        }
-      }
-
-      // Re-render the scenario grid with checkpoint data
-      this.updateScenarioCards_();
-    } catch (error) {
-      Logger.error('Failed to load checkpoint status:', error);
-      // Continue without checkpoint info - user may not be authenticated
+  /**
+   * Fetch all progress in one call, then probe checkpoints for the scenarios
+   * on screen only (the progress payload carries no checkpoint flag, and the
+   * backend has no list call, so a probe per displayed scenario is the floor)
+   */
+  private async probeProgress_(token: number): Promise<void> {
+    const { App } = await import('@app/app');
+    await App.authReady;
+    if (token !== this.progressLoadToken_) return;
+    this.isSignedOut_ = selectionProgressCache.isSignedOut;
+    this.loadingScreen_.update(this.isSignedOut_ ? 'Preparing available missions...' : 'Downloading your progress...');
+    const progressResponse = await selectionProgressCache.getProgress();
+    if (token !== this.progressLoadToken_) return;
+    this.scenarioCheckpoints_.clear();
+    this.completedScenarioIds_ = [];
+    this.currentlyCompletedScenarioIds_ = [];
+    if (!progressResponse) return;
+    this.epilogue_ = this.currentCampaign_ ? campaignEpilogue(this.currentCampaign_, progressResponse.scenarios) : undefined;
+    for (const progress of progressResponse.scenarios) {
+      if (progress.completedAt) this.completedScenarioIds_.push(progress.scenarioId);
+      if (progress.score > 0) this.currentlyCompletedScenarioIds_.push(progress.scenarioId);
+    }
+    this.loadingScreen_.update('Checking saved missions...');
+    const checkpoints = await Promise.all(
+      this.getScenariosToDisplay_().map(async (scenario) => ({
+        scenarioId: scenario.id,
+        hasCheckpoint: await selectionProgressCache.getCheckpoint(scenario.id),
+      }))
+    );
+    if (token !== this.progressLoadToken_) return;
+    for (const checkpoint of checkpoints) {
+      if (checkpoint.hasCheckpoint) this.scenarioCheckpoints_.set(checkpoint.scenarioId, true);
     }
   }
 
@@ -150,52 +192,137 @@ export class ScenarioSelectionPage extends BasePage {
    * Update the scenario cards in the DOM with current checkpoint data
    */
   private updateScenarioCards_(): void {
-    const scenarioGrid = qs('.scenario-grid', this.dom_);
-    if (!scenarioGrid) return;
-
+    const scenarioGrid = qs<HTMLElement>('.scenario-grid', this.dom_);
     const scenarios = this.getScenariosToDisplay_();
-
-    // Re-render all scenario cards with updated checkpoint data
-    scenarioGrid.innerHTML = scenarios.map((scenario) => this.renderScenarioCard_(scenario)).join('');
-
-    // Update header with campaign info
+    if (!scenarios.some((scenario) => scenario.id === this.selectedScenarioId_)) {
+      const suggested =
+        scenarios.find(
+          (scenario) =>
+            scenario.missionType !== 'Sandbox' &&
+            !scenario.isDisabled &&
+            !this.completedScenarioIds_.includes(scenario.id) &&
+            !isScenarioLocked(scenario, this.completedScenarioIds_)
+        ) ??
+        scenarios.find((scenario) => scenario.missionType !== 'Sandbox') ??
+        scenarios[0];
+      this.selectedScenarioId_ = suggested?.id ?? null;
+    }
+    const phases = selectionPhases(this.currentCampaignId_, scenarios);
+    const campaignKey = this.currentCampaignId_ ?? '';
+    const expanded = this.expandedPhases_.has(campaignKey)
+      ? this.expandedPhases_.get(campaignKey)
+      : phases.findIndex((phase) => phase.scenarios.some((scenario) => scenario.id === this.selectedScenarioId_));
+    updateSelectionList(
+      scenarioGrid,
+      phases
+        .map((phase, index) => {
+          const completed = phase.scenarios.filter((scenario) => this.completedScenarioIds_.includes(scenario.id)).length;
+          const panelId = `selection-phase-panel-${index}`;
+          return html`<section class="selection-phase" aria-label="${phase.title}">
+          <h2><button type="button" class="selection-phase-toggle" id="selection-phase-heading-${index}" data-phase-index="${index}" data-selection-id="phase-${index}" aria-expanded="${String(expanded === index)}" aria-controls="${panelId}">
+            <span>${phase.title}</span><span class="selection-phase-count" aria-label="${completed} of ${phase.scenarios.length} completed">${completed}/${phase.scenarios.length}</span>
+            <svg class="selection-phase-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg>
+          </button></h2>
+          <div class="selection-phase-missions" id="${panelId}" role="region" aria-labelledby="selection-phase-heading-${index}" ${expanded === index ? '' : 'hidden'}>
+            ${phase.scenarios.map((scenario) => this.renderScenarioRow_(scenario)).join('')}
+          </div>
+        </section>`;
+        })
+        .join('')
+    );
     this.updateHeader_();
+    this.renderSelectedScenario_();
+  }
 
-    // Re-attach event listeners for the new cards
+  private renderScenarioRow_(scenario: ScenarioData): string {
+    const locked = !window.UNLOCK_ALL_SCENARIOS && isScenarioLocked(scenario, this.completedScenarioIds_);
+    const complete = this.completedScenarioIds_.includes(scenario.id);
+    const checkpoint = this.scenarioCheckpoints_.get(scenario.id);
+    const pending = this.isProgressLoading_ && !this.hasProgressLoaded_;
+    const status = scenario.isDisabled
+      ? 'Coming soon'
+      : pending
+        ? 'Checking progress'
+        : locked
+          ? 'Locked'
+          : complete
+            ? 'Completed'
+            : checkpoint
+              ? 'Checkpoint available'
+              : 'Available';
+    const icon =
+      !scenario.isDisabled && !pending
+        ? locked
+          ? selectionStatusIcon('locked')
+          : complete
+            ? selectionStatusIcon('completed')
+            : checkpoint
+              ? selectionStatusIcon('checkpoint')
+              : ''
+        : '';
+    return html`<button type="button" class="selection-item scenario-list-item" data-selection-id="${scenario.id}" data-scenario-id="${scenario.id}"
+      aria-pressed="${String(scenario.id === this.selectedScenarioId_)}" aria-controls="scenario-detail">
+      <span class="selection-item-number">${scenario.number === 0 ? '—' : String(scenario.number).padStart(2, '0')}</span>
+      <span><span class="selection-item-title">${selectionText(scenario.title)}</span>
+      <span class="selection-item-subtitle">${selectionText(scenario.duration)} &middot; ${selectionText(scenario.difficulty)}</span>
+      ${icon ? '' : `<span class="selection-item-status ${scenario.isDisabled ? 'coming-soon-banner' : ''}">${status}</span>`}</span>${icon}
+    </button>`;
+  }
+
+  private renderSelectedScenario_(): void {
+    const detail = qs<HTMLElement>('#scenario-detail', this.dom_);
+    const scenario = this.getScenariosToDisplay_().find((item) => item.id === this.selectedScenarioId_);
+    const scroll = detail.querySelector('.selection-briefing')?.scrollTop ?? 0;
+    updateSelectionDetail(detail, scenario ? this.renderScenarioCard_(scenario) : '<p class="selection-empty">No missions available.</p>');
+    const briefing = detail.querySelector('.selection-briefing');
+    if (briefing) briefing.scrollTop = scroll;
     this.attachScenarioCardListeners_();
   }
 
-  /**
-   * Update the page header with campaign context
-   */
-  private updateHeader_(): void {
-    const headerEl = qs('.scenario-selection-header', this.dom_);
-    if (!headerEl) return;
-
-    if (this.currentCampaign_) {
-      const campaignManager = CampaignManager.getInstance();
-      const progress = campaignManager.getCampaignProgress(this.currentCampaign_.id, this.completedScenarioIds_);
-
-      headerEl.innerHTML = html`
-        <h1>${this.currentCampaign_.title}</h1>
-        <div class="subtitle">${this.currentCampaign_.subtitle}</div>
-        ${renderReleaseCallout(getReleaseStage(this.currentCampaign_))}
-        <div class="progress-and-navigation">
-          <div class="campaign-progress">
-            ${progress.completedScenarios.length} of ${progress.totalScenarios} scenarios completed
-            (${progress.completionPercentage}%)
-          </div>
-          <a href="/campaigns/" class="back-button">
-            ← Back to Campaigns
-          </a>
-        </div>
-      `;
-    } else {
-      headerEl.innerHTML = html`
-        <h1>Training Scenarios</h1>
-        <div class="subtitle">Select a scenario to begin</div>
-      `;
+  private handleSelection_(event: Event): void {
+    if ((event.target as Element).closest('.btn-view-epilogue')) {
+      void this.showEpilogue_();
+      return;
     }
+    const phaseToggle = (event.target as Element).closest<HTMLButtonElement>('.selection-phase-toggle');
+    if (phaseToggle) {
+      const expanded = phaseToggle.getAttribute('aria-expanded') !== 'true';
+      this.expandedPhases_.set(this.currentCampaignId_ ?? '', expanded ? Number(phaseToggle.dataset.phaseIndex) : null);
+      this.dom_.querySelectorAll<HTMLButtonElement>('.selection-phase-toggle').forEach((toggle) => {
+        const open = toggle === phaseToggle && expanded;
+        toggle.setAttribute('aria-expanded', String(open));
+        const panel = this.dom_.querySelector<HTMLElement>(`#${toggle.getAttribute('aria-controls')}`);
+        if (panel) panel.hidden = !open;
+      });
+      phaseToggle.scrollIntoView({ block: 'nearest' });
+      return;
+    }
+    const row = (event.target as HTMLElement).closest<HTMLElement>('.scenario-list-item');
+    if (!row) return;
+    if (row.dataset.scenarioId === this.selectedScenarioId_) return;
+    this.selectedScenarioId_ = row.dataset.scenarioId ?? null;
+    this.dom_.querySelectorAll<HTMLElement>('.scenario-list-item').forEach((item) => item.setAttribute('aria-pressed', String(item === row)));
+    this.renderSelectedScenario_();
+    const detail = qs<HTMLElement>('#scenario-detail', this.dom_);
+    const briefing = detail.querySelector('.selection-briefing');
+    if (briefing) briefing.scrollTop = 0;
+    animateSelection(detail);
+  }
+
+  private updateHeader_(): void {
+    const title = qs<HTMLElement>('.scenario-selection-header h1', this.dom_);
+    title.textContent = this.currentCampaign_?.title ?? 'Training Scenarios';
+    const subtitle = qs<HTMLElement>('.scenario-selection-header .subtitle', this.dom_);
+    subtitle.textContent = this.currentCampaign_?.subtitle ?? 'Select a scenario to begin';
+    const progressEl = qs<HTMLElement>('.campaign-progress', this.dom_);
+    if (this.currentCampaign_) {
+      const progress = CampaignManager.getInstance().getCampaignProgress(this.currentCampaign_.id, this.completedScenarioIds_);
+      const complete = progress.totalScenarios > 0 && progress.completedScenarios.length >= progress.totalScenarios;
+      progressEl.textContent = `${progress.completedScenarios.length} of ${progress.totalScenarios} complete`;
+      progressEl.classList.toggle('campaign-complete-banner', complete);
+      if (complete) progressEl.textContent = 'Campaign complete · Replay any mission';
+    } else progressEl.textContent = '';
+    qs<HTMLElement>('.login-warning', this.dom_).hidden = !this.isSignedOut_;
   }
 
   /**
@@ -228,16 +355,19 @@ export class ScenarioSelectionPage extends BasePage {
   }
 
   protected html_ = html`
-    <div id="${this.id}" class="scenario-selection-page">
-      <div class="scenario-selection-header">
-        <h1>Training Scenarios</h1>
-        <div class="subtitle">Select a scenario to begin</div>
-      </div>
-
-      <div class="scenario-grid">
-        ${this.getScenariosToDisplay_()
-          .map((scenario) => this.renderScenarioCard_(scenario))
-          .join('')}
+    <div id="${this.id}" class="selection-page scenario-selection-page">
+      <header class="selection-heading scenario-selection-header"><div>
+        <div class="selection-eyebrow">Mission Selection</div>
+        <h1>Training Scenarios</h1><div class="subtitle">Select a scenario to begin</div>
+        <div class="selection-status-bar"><span class="login-warning" hidden>Guest session &middot; Your progress won't be saved. Sign in to save progress and unlock further missions.</span></div>
+      </div><button type="button" class="back-button"><span aria-hidden="true">&larr;</span> Back to Campaigns</button></header>
+      <div class="selection-workspace">
+        <aside class="selection-sidebar" aria-label="Mission browser">
+          <div class="selection-sidebar-heading">Mission roster <span class="campaign-progress"></span></div>
+          <div class="selection-list scenario-grid"></div>
+          <div class="selection-sidebar-footer">&uarr; &darr; Browse &nbsp; &middot; &nbsp; Select to view briefing</div>
+        </aside>
+        <section class="selection-detail" id="scenario-detail" aria-label="Mission briefing"></section>
       </div>
     </div>
   `;
@@ -246,49 +376,53 @@ export class ScenarioSelectionPage extends BasePage {
     const hasCheckpoint = this.scenarioCheckpoints_.get(scenario.id);
     // Use completedScenarioIds_ (based on completedAt) for prerequisite checks and badge
     // UNLOCK_ALL_SCENARIOS bypasses lock check for dev/testing
-    const isLocked = window.UNLOCK_ALL_SCENARIOS ? false : isScenarioLocked(scenario, this.completedScenarioIds_);
-    const prerequisiteNames = isLocked ? getPrerequisiteScenarioNames(scenario) : [];
+    // Before the first probe answers, the completed list is empty and every card would read Locked
+    const isLockStateKnown = this.hasProgressLoaded_ || !this.isProgressLoading_;
+    const isLocked = window.UNLOCK_ALL_SCENARIOS || !isLockStateKnown ? false : isScenarioLocked(scenario, this.completedScenarioIds_);
     const isDisabledOrLocked = scenario.isDisabled || isLocked;
     // hasEverCompleted = has completedAt (for badge display)
     const hasEverCompleted = this.completedScenarioIds_.includes(scenario.id);
     // isCurrentlyCompleted = has score > 0 (for button: "Play Again" vs "Start")
     // After Play Again reset, score is 0 so this shows "Start" instead of "Play Again"
     const isCurrentlyCompleted = this.currentlyCompletedScenarioIds_.includes(scenario.id);
+    const canViewEpilogue = this.epilogue_ && this.currentCampaign_ && campaignFinale(this.currentCampaign_)?.id === scenario.id;
 
-    let statusBanner = '';
+    let availabilityStatus = '';
     if (scenario.isDisabled) {
-      statusBanner = `
-        <div class="coming-soon-banner">Coming Soon</div>
-      `;
+      availabilityStatus = '<span class="coming-soon-banner">Coming soon</span>';
     } else if (isLocked) {
       const nextPrereqScenario = getNextPrerequisiteScenario(scenario, this.completedScenarioIds_);
-      statusBanner = `
-        <div class="locked-banner" title="Complete ${prerequisiteNames.join(', ')} to unlock">
-          <div>
-            <span class="locked-icon">🔒</span> Locked
-          </div>
-          <div class="locked-requirement">
-            ${nextPrereqScenario ? `<strong>${nextPrereqScenario.title}</strong> must be completed first to unlock this scenario.` : ''}
-          </div>
-        </div>
-      `;
+      availabilityStatus = `<div class="selection-unlock-status">${selectionStatusIcon('locked')}<span class="locked-requirement">Complete ${nextPrereqScenario ? `<strong>${selectionText(nextPrereqScenario.title)}</strong>` : 'the previous mission'} to unlock.</span></div>`;
     }
 
     let actionButtons = '';
-    if (!isDisabledOrLocked) {
-      if (isCurrentlyCompleted) {
+    if (!isDisabledOrLocked && this.isProgressLoading_) {
+      actionButtons = `
+          <div class="scenario-checkpoint-actions">
+          <button type="button" class="btn-card-loading" data-scenario-id="${scenario.id}" disabled aria-busy="true">
+            <span class="btn-card-loading-spinner" aria-hidden="true"></span> Loading
+          </button>
+          </div>
+        `;
+    } else if (!isDisabledOrLocked) {
+      // A completed scenario (the card says Completed) offers PLAY AGAIN
+      // only: never CONTINUE (Phase 29 D16, nats-r4-s24-F2) and never RESTART
+      // LEVEL, which implies an unfinished run (nats-r5-s24-F1). Both start
+      // fresh. RESTART LEVEL is for a checkpoint on an uncompleted scenario.
+      if (hasEverCompleted || isCurrentlyCompleted) {
         actionButtons = `
           <div class="scenario-checkpoint-actions">
           <button type="button" class="btn-play-again" data-scenario-id="${scenario.id}" data-scenario-url="${scenario.url}">
             Play Again
           </button>
+          ${canViewEpilogue ? '<button type="button" class="selection-secondary btn-view-epilogue">View Epilogue</button>' : ''}
           </div>
         `;
       } else if (hasCheckpoint) {
         actionButtons = `
           <div class="scenario-checkpoint-actions">
           <button type="button" class="btn-continue" data-scenario-id="${scenario.id}">
-            Continue
+            Continue mission
           </button>
           <button type="button" class="btn-start-fresh" data-scenario-id="${scenario.id}">
             Restart Level
@@ -299,7 +433,7 @@ export class ScenarioSelectionPage extends BasePage {
         actionButtons = `
           <div class="scenario-checkpoint-actions">
           <button type="button" class="btn-start" data-scenario-id="${scenario.id}" data-scenario-url="${scenario.url}">
-            Start
+            Begin mission
           </button>
           </div>
         `;
@@ -307,65 +441,47 @@ export class ScenarioSelectionPage extends BasePage {
     }
 
     let progressBanner = '';
-    if (hasEverCompleted && !isDisabledOrLocked) {
+    if (this.isProgressLoading_ && !this.hasProgressLoaded_) {
+      progressBanner = '';
+    } else if (hasEverCompleted && !isDisabledOrLocked) {
       progressBanner = `
         <div class="completed-banner">
-          <span class="completed-icon">🏆</span>
+          ${selectionStatusIcon('completed')}
           Completed
         </div>
       `;
-    } else if (hasCheckpoint && !isDisabledOrLocked) {
+    } else if (hasCheckpoint && !isDisabledOrLocked && !this.isProgressLoading_) {
       progressBanner = `
         <div class="checkpoint-banner">
-          <span class="checkpoint-icon">💾</span>
+          ${selectionStatusIcon('checkpoint')}
           Checkpoint Available
         </div>
       `;
     }
 
     return html`
-      <div class="scenario-card ${isDisabledOrLocked ? 'disabled' : ''}" data-scenario-url="${scenario.url}" data-scenario-id="${scenario.id}" data-scenario="${scenario.title}">
-      ${statusBanner}
-      ${progressBanner}
-      <div class="scenario-card-inner">
-        <div class="scenario-card-header">
-        <div class="scenario-number">Scenario ${scenario.number}</div>
-        <div class="scenario-badges">
-        <span class="badge duration">${scenario.duration}</span>
-        <span class="badge difficulty-${scenario.difficulty}">${scenario.difficulty}</span>
+      <article class="scenario-card ${isDisabledOrLocked ? 'disabled' : ''}" data-scenario-url="${scenario.url}" data-scenario-id="${scenario.id}" data-scenario="${selectionText(scenario.title)}" aria-labelledby="scenario-detail-title">
+        <div class="selection-art scenario-image">
+          <img style="object-position: ${selectionArtworkPosition(scenario.imageUrl)}" src="${getAssetUrl('/assets/campaigns/' + scenario.imageUrl)}" alt="${selectionText(scenario.title)}" onerror="this.onerror=null; this.src='/images/placeholder.png'" />
+          <span class="selection-art-caption">${scenario.number === 0 ? 'Free play' : `Mission ${String(scenario.number).padStart(2, '0')}`}</span>
         </div>
-        </div>
-
-        <div class="scenario-image">
-        <img src="${getAssetUrl('/assets/campaigns/' + scenario.imageUrl)}" alt="${scenario.title} Image" onerror="this.onerror=null; this.src='/images/placeholder.png'"/>
-        <div class="scenario-image-overlay">
-          <h2 class="scenario-title">${scenario.title}</h2>
-          <div class="scenario-subtitle">${scenario.subtitle}</div>
-        </div>
-        </div>
-
-        <div class="scenario-card-body">
-        <p class="scenario-description">${scenario.description}</p>
-
-        <div class="scenario-equipment">
-        <div class="scenario-equipment-title">Equipment Configuration</div>
-        <div class="equipment-list">
-          ${scenario.equipment
-            .map(
-              (item) => `
-          <div class="equipment-item">
-          <span>${item}</span>
+        <div class="selection-briefing">
+          <div class="selection-detail-label scenario-number">${scenario.number === 0 ? 'Sandbox' : `Scenario ${scenario.number}`}</div>
+          <h2 id="scenario-detail-title" class="scenario-title">${selectionText(scenario.title)}</h2>
+          <div class="scenario-subtitle">${selectionText(scenario.subtitle)}</div>
+          <div class="selection-meta scenario-badges"><span class="badge duration">${scenario.duration}</span><span class="badge difficulty-${scenario.difficulty}">${scenario.difficulty}</span></div>
+          <div class="selection-description scenario-description">${scenario.description}</div>
+          ${renderSelectionCrew(scenario)}
+          <div class="scenario-equipment"><div class="scenario-equipment-title">Equipment Configuration</div>
+            <div class="equipment-list">${scenario.equipment.map((item) => `<span class="equipment-item">${selectionText(item)}</span>`).join('')}</div>
           </div>
-          `
-            )
-            .join('')}
+          ${this.currentCampaign_ ? renderReleaseCallout(getReleaseStage(this.currentCampaign_)) : ''}
         </div>
+        <div class="selection-actions">
+          <div class="selection-action-status" role="status">${progressBanner || (this.isProgressLoading_ ? 'Checking saved progress...' : availabilityStatus || 'Ready when you are')}</div>
+          ${actionButtons || `<button type="button" class="selection-primary" disabled>${scenario.isDisabled ? 'Coming soon' : 'Mission locked'}</button>`}
         </div>
-        </div>
-
-        ${actionButtons}
-      </div>
-      </div>
+      </article>
     `;
   }
 
@@ -374,6 +490,14 @@ export class ScenarioSelectionPage extends BasePage {
     this.dom_ = qs(`#${this.id}`, parentDom);
 
     return parentDom;
+  }
+
+  hide(): void {
+    this.epilogueModal_?.dispose();
+    this.epilogueModal_ = null;
+    ++this.progressLoadToken_;
+    this.loadingScreen_.cancel();
+    super.hide();
   }
 
   show(): void {
@@ -392,24 +516,23 @@ export class ScenarioSelectionPage extends BasePage {
     this.updateScenarioCards_();
   }
 
+  private handleBackToCampaigns_(): void {
+    Router.getInstance().navigate('/');
+  }
+
   protected addEventListeners_(): void {
-    // Add click handlers for Continue buttons
-    const continueButtons = qsa('.btn-continue', this.dom_);
-    continueButtons.forEach((btn) => {
-      btn.addEventListener('click', this.handleContinueScenario_.bind(this));
-    });
+    qs<HTMLButtonElement>('.back-button', this.dom_).addEventListener('click', this.handleBackToCampaigns_.bind(this));
+    this.dom_.addEventListener('click', this.handleSelection_.bind(this));
+    this.dom_.addEventListener('keydown', selectionKeyboard);
+  }
 
-    // Add click handlers for Start Fresh buttons
-    const startFreshButtons = qsa('.btn-start-fresh', this.dom_);
-    startFreshButtons.forEach((btn) => {
-      btn.addEventListener('click', this.handleStartFresh_.bind(this));
-    });
-
-    // Add click handlers for Play Again buttons
-    const playAgainButtons = qsa('.btn-play-again', this.dom_);
-    playAgainButtons.forEach((btn) => {
-      btn.addEventListener('click', this.handlePlayAgain_.bind(this));
-    });
+  private async showEpilogue_(): Promise<void> {
+    if (!this.epilogue_ || this.epilogueModal_) return;
+    const modal = new SceneModal(this.epilogue_, () => {});
+    this.epilogueModal_ = modal;
+    const accepted = await modal.result;
+    this.epilogueModal_ = null;
+    if (accepted) Router.getInstance().navigate('/');
   }
 
   /**

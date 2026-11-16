@@ -1,7 +1,10 @@
 import { BaseElement } from '@app/components/base-element';
+import './modal/confirm-modal.css';
 import { getEl } from '@app/engine/utils/get-el';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { Feedback } from '@app/feedback/feedback';
+import { GameMenu } from '@app/game-menu/game-menu';
 import { Body } from '@app/pages/layout/body/body';
 import { Footer } from '@app/pages/layout/footer/footer';
 import { Header } from '@app/pages/layout/header/header';
@@ -9,7 +12,11 @@ import { SandboxPage } from '@app/pages/sandbox-page';
 import { ScenarioSelectionPage } from '@app/pages/scenario-selection';
 import { PluginManager } from '@app/plugins/plugin-manager';
 import { SimulationManager } from '@app/simulation/simulation-manager';
+import { initializeUiSounds } from '@app/sound/ui-sounds';
+import { installTestHook } from '@app/testing/sr-test-hook';
+import { initializeAchievementNotifications } from '@app/user-account/achievement-notifications';
 import { Auth } from '@app/user-account/auth';
+import { selectionProgressCache } from '@app/user-account/selection-progress-cache';
 import { initUserDataService } from '@app/user-account/user-data-service';
 import { Router } from './router';
 
@@ -25,6 +32,7 @@ export class App extends BaseElement {
   protected html_: string = ''; // No direct HTML for App
   private readonly router = Router.getInstance();
   private static authReadyPromise_: Promise<void>;
+  private feedback_: Feedback | null = null;
 
   private constructor() {
     super();
@@ -44,6 +52,7 @@ export class App extends BaseElement {
 
     this.instance_ = new App();
     window.signalRange = this.instance_;
+    installTestHook();
 
     // Initialize UserDataService with configuration from .env
     // The getAccessToken function returns the cached token synchronously
@@ -52,11 +61,13 @@ export class App extends BaseElement {
     // Initialize auth and cache the token - track when it's ready
     this.authReadyPromise_ = Auth.getSession().then((session) => {
       cachedAccessToken = session?.access_token || null;
+      selectionProgressCache.setAccount(session?.user.id ?? null);
     });
 
     // Listen for auth state changes to keep token updated
-    Auth.onAuthStateChange((_event, _user, _profile, accessToken) => {
+    Auth.onAuthStateChange((_event, user, _profile, accessToken) => {
       cachedAccessToken = accessToken;
+      selectionProgressCache.setAccount(user?.id ?? null);
     });
 
     initUserDataService({
@@ -67,6 +78,7 @@ export class App extends BaseElement {
       retryDelay: 1000,
     });
 
+    initializeAchievementNotifications();
     this.instance_.init_();
 
     return App.instance_;
@@ -93,6 +105,9 @@ export class App extends BaseElement {
 
     // Initialize router
     this.router.init();
+    GameMenu.getInstance().initialize();
+    initializeUiSounds();
+    this.feedback_ = new Feedback();
 
     return rootDom;
   }
@@ -114,6 +129,7 @@ export class App extends BaseElement {
   }
 
   static __resetAll__(): void {
+    App.instance_?.feedback_?.dispose();
     Header['instance_'] = null;
     Body['instance_'] = null;
     Footer['instance_'] = null;

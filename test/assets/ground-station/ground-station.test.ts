@@ -241,6 +241,26 @@ describe('GroundStation', () => {
       expect(groundStation.transmitters).toHaveLength(2);
     });
 
+    it('tags each station ACU by its station number unless configured (phase 27, r2-s11-F2)', () => {
+      expect(GroundStation.acuSerialFor({ id: 'ME-02' })).toBe('ACU-02');
+      expect(GroundStation.acuSerialFor({ id: 'VT-01' })).toBe('ACU-01');
+      expect(GroundStation.acuSerialFor({ id: 'VT-01' }, 1)).toBe('ACU-01-2');
+      expect(GroundStation.acuSerialFor({ id: 'BKYD-GPS' })).toBeUndefined();
+      expect(GroundStation.acuSerialFor({ id: 'ME-02', acuSerialNumber: 'ACU-7' })).toBe('ACU-7');
+    });
+
+    it('an empty transmitters/receivers list means none; only an omitted list gets four (phase 27)', () => {
+      const none = new GroundStation({ ...mockConfig, id: 'TEST-02', transmitters: [], receivers: [] });
+      none.initializeEquipment();
+      expect(none.transmitters).toHaveLength(0);
+      expect(none.receivers).toHaveLength(0);
+
+      const omitted = new GroundStation({ ...mockConfig, id: 'TEST-03', transmitters: undefined, receivers: undefined });
+      omitted.initializeEquipment();
+      expect(omitted.transmitters).toHaveLength(4);
+      expect(omitted.receivers).toHaveLength(4);
+    });
+
     it('should create receivers from config', () => {
       groundStation.initializeEquipment();
 

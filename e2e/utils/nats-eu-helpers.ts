@@ -2,6 +2,7 @@ import { expect, Page } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
 import { domClick } from './ham-sdr-helpers';
 import { waitForQuizToAppear } from './simulation-helpers';
+import { simAdvance } from './test-clock';
 
 /**
  * Shared console drivers for the nats-eu qualified-tier full-completion specs
@@ -75,7 +76,8 @@ export async function closeWorkingDocumentIfOpen(page: Page): Promise<void> {
   if (await box.isVisible({ timeout: 1000 }).catch(() => false)) {
     const closeBtn = box.locator('.draggable-box__close-btn, [id$="-close"]').first();
     if (await closeBtn.isVisible({ timeout: 500 }).catch(() => false)) {
-      await closeBtn.click();
+      // The end-of-mission modal may close the box first (it closes every popup)
+      await closeBtn.click({ timeout: 2000 }).catch(() => {});
     }
   }
 }
@@ -157,7 +159,7 @@ export async function commitLinkWithMargin(page: Page, missionControl: MissionCo
   while (Date.now() < deadline) {
     live = await readLiveCnr(page);
     if (Number.isFinite(live) && live >= minLiveCnrDb) break;
-    await page.waitForTimeout(1000);
+    await simAdvance(page, 1000);
   }
   expect(live, `live C/N ${live} dB never reached ${minLiveCnrDb} dB`).toBeGreaterThanOrEqual(minLiveCnrDb);
 
@@ -191,6 +193,9 @@ export async function setSwitch(page: Page, selector: string, wanted: boolean): 
   const el = page.locator(selector);
   await expect(el).toBeVisible({ timeout: 10000 });
   if ((await el.isChecked()) !== wanted) {
+    // A switch can be locked out for a while (the TX modem disables Transmit
+    // while it boots after power-on); a DOM click on a disabled input is a no-op
+    await expect(el).toBeEnabled({ timeout: 15000 });
     await domClick(page, selector);
   }
   if (wanted) {

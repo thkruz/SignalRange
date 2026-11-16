@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
 import { EventBus } from '../../src/events/event-bus';
 import { Events, QuizShowData } from '../../src/events/events';
-import { QuizModal } from '../../src/modal/quiz-modal';
+import { optionLetter, QuizModal } from '../../src/modal/quiz-modal';
 
 // Mock DraggableBox
 vi.mock('../../src/engine/ui/draggable-box', () => ({
@@ -67,6 +67,7 @@ vi.mock('../../src/modal/character-enum', () => ({
   Character: {
     CHARLIE_BROOKS: 'charlie_brooks',
   },
+  UNCAST_CHARACTER_AVATAR: '/images/placeholder-avatar.png',
   CharacterAvatars: {
     charlie_brooks: '/avatars/charlie_brooks.png',
   },
@@ -273,7 +274,8 @@ describe('QuizModal', () => {
       (modal as any).renderQuiz_();
 
       const feedbackEl = mockElements.get('quiz-feedback');
-      expect(feedbackEl?.style.display).toBe('none');
+      expect(feedbackEl?.style.visibility).toBe('hidden');
+      expect(feedbackEl?.textContent).toBe('');
     });
 
     it('should hide penalty element initially', () => {
@@ -283,7 +285,20 @@ describe('QuizModal', () => {
       (modal as any).renderQuiz_();
 
       const penaltyEl = mockElements.get('quiz-penalty-notice');
-      expect(penaltyEl?.style.display).toBe('none');
+      expect(penaltyEl?.style.visibility).toBe('hidden');
+    });
+
+    it('clears the previous quiz penalty notice and feedback, not just hides them (nats-r2-s01-F2)', () => {
+      const penaltyEl = mockElements.get('quiz-penalty-notice')!;
+      const feedbackEl = mockElements.get('quiz-feedback')!;
+      penaltyEl.innerHTML = '-10 points';
+      feedbackEl.innerHTML = 'Not quite. Try again.';
+      (modal as any).currentQuiz_ = createMockQuizData();
+
+      (modal as any).renderQuiz_();
+
+      expect(penaltyEl.innerHTML).toBe('');
+      expect(feedbackEl.innerHTML).toBe('');
     });
 
     it('should render single option quiz without letter labels', () => {
@@ -298,6 +313,24 @@ describe('QuizModal', () => {
       const optionsEl = mockElements.get('quiz-options');
       expect(optionsEl?.innerHTML).toContain('quiz-option-single');
       expect(optionsEl?.innerHTML).not.toContain('quiz-option-label');
+    });
+
+    it.each([5, 6])('letters every option of a %i-option quiz with no undefined label (nats-r4-s08-F1)', (count) => {
+      const options = Array.from({ length: count - 1 }, (_, i) => `Option ${i + 1}`).concat('All of the above');
+      (modal as any).currentQuiz_ = createMockQuizData({ options, correctIndex: count - 1, preserveOptionOrder: true });
+
+      (modal as any).renderQuiz_();
+
+      const optionsEl = mockElements.get('quiz-options')!;
+      const labels = Array.from(optionsEl.querySelectorAll('.quiz-option-label')).map((el) => el.textContent);
+      expect(labels).toEqual(['A', 'B', 'C', 'D', 'E', 'F'].slice(0, count));
+      expect(optionsEl.innerHTML).not.toContain('undefined');
+      const last = optionsEl.querySelector(`#quiz-option-${count - 1}`)!;
+      expect(last.textContent?.replace(/\s+/gu, ' ').trim()).toBe(`${labels[count - 1]} All of the above`);
+    });
+
+    it('optionLetter continues past Z', () => {
+      expect([0, 4, 25, 26, 27].map(optionLetter)).toEqual(['A', 'E', 'Z', 'AA', 'AB']);
     });
 
     it.skip('should update avatar to confident emotion', () => {

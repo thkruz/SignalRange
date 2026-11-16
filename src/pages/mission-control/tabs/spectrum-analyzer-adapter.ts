@@ -49,6 +49,8 @@ export class SpectrumAnalyzerAdapter {
       this.canvasContainer.appendChild(canvas);
       this.canvasContainer.appendChild(canvasSpectral);
       this.canvasContainer.appendChild(canvasWaterfall);
+      // The plot sizes its bitmap to its new home
+      this.spectrumAnalyzer.observeCanvasResize?.();
     }
   }
 
@@ -58,5 +60,6 @@ export class SpectrumAnalyzerAdapter {
     if (this.canvasContainer) {
       this.canvasContainer.innerHTML = '';
     }
+    this.spectrumAnalyzer.dispose?.();
   }
 }

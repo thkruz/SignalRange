@@ -73,11 +73,11 @@ test.describe('nats-eu Scenario 5 Full Completion', () => {
     await waitForObjectiveComplete(missionControl, 'Review the Network Brief');
   });
 
-  test('[galway-dashboard-sweep] reads the board: AGC rail, no faults', async () => {
+  test('[galway-dashboard-sweep] reads the board: AGC no-carrier warning, no faults', async () => {
     await missionControl.selectGroundStation('GW-01');
     await missionControl.selectTab('dashboard');
-    await expectDashboardAlarm(page, 'AGC at max gain');
-    await answerSystemQuiz(page, 'RX AGC at max gain');
+    await expectDashboardAlarm(page, 'AGC on noise only');
+    await answerSystemQuiz(page, 'RX AGC on noise only');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'GW-01 Dashboard Sweep');
   });
@@ -100,7 +100,7 @@ test.describe('nats-eu Scenario 5 Full Completion', () => {
   test('[hand-shetland-the-overlaps] gives Shetland the overlapping pair', async () => {
     await assignContact(page, 'SAR1-SH', 'SH-02');
     await assignContact(page, 'SAR2-SH', 'SH-02');
-    await answerSystemQuiz(page, 'It must be allocated - priority 2');
+    await answerSystemQuiz(page, 'It must be allocated: priority 2');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Hand Shetland the Overlaps');
   });
@@ -125,7 +125,7 @@ test.describe('nats-eu Scenario 5 Full Completion', () => {
 
   test('[shetland-geometry] reads the pass as Shetland sees it', async () => {
     await missionControl.selectTab('pass-schedule');
-    await answerSystemQuiz(page, 'Southbound track west of Ireland');
+    await answerSystemQuiz(page, 'Southbound track');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, "Read Shetland's Sky");
   });

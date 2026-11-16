@@ -158,6 +158,43 @@ describe('WaterfallDisplay', () => {
     });
   });
 
+  describe('retune clears the old rows (nats-r3-s19-F1)', () => {
+    beforeEach(() => {
+      waterfall = new WaterfallDisplay(canvas, mockSpecA, mockDataProcessor, DEFAULT_WIDTH, DEFAULT_HEIGHT);
+      vi.advanceTimersByTime(1100);
+    });
+
+    const rows = (): Float32Array[] => (waterfall as unknown as { buffer: Float32Array[] }).buffer;
+
+    it('a new centre or span blanks every row below the amplitude window; the same range keeps them', () => {
+      (mockSpecA as unknown as { traceIntervalMs: number }).traceIntervalMs = 100;
+      waterfall.setFrequencyRange(1064.5e6 as Hertz, 1084.5e6 as Hertz);
+      // A wide-span row: noise at -55 dBm in a wide RBW
+      mockDataProcessor.combinedData.fill(-55);
+      waterfall.update();
+      expect(rows()[0][10]).toBe(-55);
+
+      waterfall.setFrequencyRange(1064.5e6 as Hertz, 1084.5e6 as Hertz);
+      expect(rows()[0][10]).toBe(-55);
+
+      waterfall.setFrequencyRange(1084.999e6 as Hertz, 1085.001e6 as Hertz);
+      for (const row of rows()) {
+        expect(row[10]).toBe(WaterfallDisplay.NO_DATA_DB);
+      }
+    });
+
+    it('a CW line 30 dB over the floor paints a bright column on a dark floor at Min -120 / Max -30', () => {
+      const state = { ...mockSpecA.state, minAmplitude: -120, maxAmplitude: -30 } as RealTimeSpectrumAnalyzerState;
+      const floor = WaterfallDisplay.amplitudeToColorRGB(-102, state);
+      const line = WaterfallDisplay.amplitudeToColorRGB(-71, state);
+      const empty = WaterfallDisplay.amplitudeToColorRGB(WaterfallDisplay.NO_DATA_DB, state);
+      const brightness = (c: number[]) => c[0] + c[1] + c[2];
+      expect(brightness(floor)).toBeLessThan(80);
+      expect(brightness(line)).toBeGreaterThan(brightness(floor) + 200);
+      expect(brightness(empty)).toBeLessThanOrEqual(brightness(floor));
+    });
+  });
+
   describe('update', () => {
     beforeEach(() => {
       waterfall = new WaterfallDisplay(canvas, mockSpecA, mockDataProcessor, DEFAULT_WIDTH, DEFAULT_HEIGHT);

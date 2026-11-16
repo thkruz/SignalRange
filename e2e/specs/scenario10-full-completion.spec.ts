@@ -19,8 +19,9 @@ import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForS
  *   maintain-duration objectives and pre-configured-state checks
  * - 'set-tracking-mode': Antenna tracking mode change (step-track, no satellite reselect)
  * - 'configure-hpa-backoff': HPA backoff field + Apply button
+ * - 'ops-log': Type an entry into the Operations Log
  */
-type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'auto' | 'set-tracking-mode' | 'configure-hpa-backoff';
+type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'auto' | 'set-tracking-mode' | 'configure-hpa-backoff' | 'ops-log' | 'objective-skip';
 
 interface Scenario10Objective {
   id: string;
@@ -31,8 +32,21 @@ interface Scenario10Objective {
   stationId?: string;
   trackingMode?: string;
   hpaBackoff?: number;
+  logText?: string;
   /** Seconds to wait for an 'auto' objective with maintainDuration */
   autoWaitSeconds?: number;
+  /** For 'objective-skip': the station-clock time the skip lands at, 'HH:MM' (Phase 28 D1) */
+  skipLandsAt?: string;
+  /** For 'objective-skip': the hold's label as the tooltip names it (Phase 29 D15) */
+  skipLabel?: string;
+}
+
+/** Station clock (HUD #utc-clock) as minutes past midnight */
+async function readStationClockMinutes(page: import('@playwright/test').Page): Promise<number> {
+  const text = (await page.locator('#utc-clock').textContent()) ?? '';
+  const match = /(\d{2}):(\d{2})(?::(\d{2}))?/u.exec(text);
+
+  return match ? Number(match[1]) * 60 + Number(match[2]) + Number(match[3] ?? 0) / 60 : Number.NaN;
 }
 
 const SCENARIO_10_OBJECTIVES: Scenario10Objective[] = [
@@ -65,7 +79,7 @@ const SCENARIO_10_OBJECTIVES: Scenario10Objective[] = [
     id: 'dashboard-sweep',
     title: 'Pre-Pass Alarm Sweep',
     type: 'quiz',
-    correctAnswer: 'No active alarms - clean board, link up on AURORA-7',
+    correctAnswer: 'No warning or critical alarms - link up on AURORA-7',
   },
   {
     id: 'why-step-track',
@@ -155,19 +169,27 @@ const SCENARIO_10_OBJECTIVES: Scenario10Objective[] = [
   },
 
   // ============================================================
-  // PHASE 4: SUSTAINED MARGIN MONITORING
+  // PHASE 4: THE PASS WINDOW (Phase 27 Q4: standby and window are skips)
   // ============================================================
   {
+    id: 'stand-by-for-window',
+    title: 'Stand By for the 10:00 Window',
+    type: 'objective-skip',
+    skipLandsAt: '10:00',
+    skipLabel: 'the standby',
+  },
+  {
     id: 'sustain-rx-margin',
-    title: 'Sustain Customer Downlink Margin',
+    title: 'Window Open: Customer Downlink Margin',
     type: 'auto',
     autoWaitSeconds: 35,
   },
   {
     id: 'sustain-beacon-track',
-    title: 'Sustain Step-Track Through the Pass',
-    type: 'auto',
-    autoWaitSeconds: 25,
+    title: 'Hold Through the Window',
+    type: 'objective-skip',
+    skipLandsAt: '10:30',
+    skipLabel: 'the SeaLink pass window',
   },
 
   // ============================================================
@@ -184,6 +206,12 @@ const SCENARIO_10_OBJECTIVES: Scenario10Objective[] = [
     title: 'Final Pass Disposition',
     type: 'quiz',
     correctAnswer: 'AURORA-7 pass complete - step-track held throughout, C/N margin sustained, no overdrive events, HPA returned to 10 dB',
+  },
+  {
+    id: 'log-customer-pass-typed',
+    title: 'Type the Pass into the Ops Log',
+    type: 'ops-log',
+    logText: 'SeaLink pass on AURORA-7 complete. Step-track held, HPA backoff 6 dB for the window, restored to 10 dB.',
   },
   {
     id: 'log-customer-pass',
@@ -252,6 +280,24 @@ async function configureHpaBackoff(page: import('@playwright/test').Page, backof
 }
 
 /**
+ * Type an entry into the Operations Log (sidebar log icon) and close it.
+ */
+async function typeOpsLogEntry(page: import('@playwright/test').Page, text: string): Promise<void> {
+  await page.locator('.ops-log-icon').first().click();
+  const input = page.locator('#ops-log-manual-input');
+  await expect(input).toBeVisible({ timeout: 5000 });
+  await input.fill(text);
+  await input.press('Enter');
+  await expect(page.locator('#ops-log-entries')).toContainText(text.slice(0, 20), { timeout: 5000 });
+  // Mission Complete closes the log itself when this entry finishes the scenario
+  await page
+    .locator('#ops-log-modal-close')
+    .click({ timeout: 3000 })
+    .catch(() => {});
+  await page.waitForTimeout(300);
+}
+
+/**
  * Execute an objective based on its type.
  */
 async function executeObjective(page: import('@playwright/test').Page, missionControlPage: MissionControlPage, objective: Scenario10Objective): Promise<void> {
@@ -283,6 +329,38 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
 
     case 'auto':
       await page.waitForTimeout((objective.autoWaitSeconds ?? 2) * 1000);
+      break;
+
+    case 'objective-skip': {
+      // The objective's wait is offered as a command-bar skip once it is ready
+      const skip = page.locator('#objective-skip-control');
+      await expect(skip).toBeVisible({ timeout: 20000 });
+      if (objective.skipLandsAt) {
+        // Phase 28 D1 (nats-r3-s10-F1/F2): the skip runs to the end of the
+        // hold on the station clock, and the mission countdown holds meanwhile
+        await expect(page.locator('#objective-skip-control-label')).toHaveText(`Skip to ${objective.skipLandsAt}`, { timeout: 10000 });
+        if (objective.skipLabel) {
+          // Phase 29 D15 (nats-r4-s10-F3): the tooltip names the hold once, without restating the time
+          const title = await skip.getAttribute('title');
+          expect(title?.startsWith(`Skip to ${objective.skipLandsAt}, the end of ${objective.skipLabel}.`)).toBe(true);
+        }
+        await expect(page.locator('#scenario-timer-hold')).toBeVisible();
+      }
+      await skip.click();
+      await page.waitForTimeout(6000);
+      if (objective.skipLandsAt) {
+        const [hh, mm] = objective.skipLandsAt.split(':').map(Number);
+        const target = hh * 60 + mm;
+        const now = await readStationClockMinutes(page);
+        expect(now).toBeGreaterThanOrEqual(target);
+        // Lands at the end of the hold, not minutes past it
+        expect(now).toBeLessThan(target + 1);
+      }
+      break;
+    }
+
+    case 'ops-log':
+      await typeOpsLogEntry(page, objective.logText!);
       break;
   }
 

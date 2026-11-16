@@ -9,11 +9,13 @@ import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForS
  * step-track, and move-to-target are disabled in the UI. The dish is parked on
  * TIDEMARK-1. The operator commits to MANUAL, proves pointing on the beacon
  * (the only trustworthy source), holds the link, and coordinates the repair.
+ * The analyzer starts on the carrier view (1532 MHz / 50 MHz), so the beacon
+ * step is a real retune. The log step needs a typed Ops Log entry.
  *
  * Spec also asserts the ACU-fault UI gating: program-track button disabled,
  * MANUAL button still usable.
  */
-type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'set-manual-mode' | 'configure-speca' | 'verify-acu-gating' | 'auto';
+type ObjectiveType = 'quiz' | 'select-station' | 'click-tab' | 'set-manual-mode' | 'configure-speca' | 'verify-acu-gating' | 'ops-log' | 'auto';
 
 interface Scenario23Objective {
   id: string;
@@ -24,6 +26,9 @@ interface Scenario23Objective {
   stationId?: string;
   centerFrequencyMhz?: number;
   autoWaitSeconds?: number;
+  logText?: string;
+  /** For quiz: how long to wait for it (rows listed before it must hold first) */
+  quizWaitMs?: number;
 }
 
 const SCENARIO_23_OBJECTIVES: Scenario23Objective[] = [
@@ -51,7 +56,7 @@ const SCENARIO_23_OBJECTIVES: Scenario23Objective[] = [
     id: 'confirm-fault-dashboard',
     title: 'Confirm the Automation Fault',
     type: 'quiz',
-    correctAnswer: 'Current position (Az 161.8 / El 34.2 on TM-1) and that beacon + carrier are still locked - the dish is ON the bird',
+    correctAnswer: 'Current position (Az 153.1 / El 35.1 on TM-1) and that the carrier is still locked - the dish is ON the bird',
   },
   {
     id: 'what-automation-did-quiz',
@@ -63,7 +68,7 @@ const SCENARIO_23_OBJECTIVES: Scenario23Objective[] = [
     id: 'no-reboot-quiz',
     title: 'Why Not Reboot It',
     type: 'quiz',
-    correctAnswer: 'A reboot risks defaulted axis calibration and wipes the crash state IT needs - bypass keeps the link up and keeps the evidence',
+    correctAnswer: 'A reboot risks a bad axis calibration and wipes the crash state IT needs - manual keeps the link up and the evidence intact',
   },
 
   // PHASE 2: COMMIT TO MANUAL (+ UI gating assertion)
@@ -106,8 +111,9 @@ const SCENARIO_23_OBJECTIVES: Scenario23Objective[] = [
   {
     id: 'prove-carrier',
     title: 'Prove the Carrier',
-    type: 'auto',
-    autoWaitSeconds: 5,
+    // Phase 27 Q3: the lock / C/N rows latch, then the read quiz
+    type: 'quiz',
+    correctAnswer: 'Locked, C/N about 14 dB - the same healthy link the automation left behind',
   },
   {
     id: 'instruments-not-feel-quiz',
@@ -120,8 +126,10 @@ const SCENARIO_23_OBJECTIVES: Scenario23Objective[] = [
   {
     id: 'sustained-manual-hold',
     title: 'Hold Under Manual Control',
-    type: 'auto',
-    autoWaitSeconds: 40,
+    // The quiz follows the 30 s carrier hold on RX Analysis
+    type: 'quiz',
+    correctAnswer: 'Nothing worth a correction: beacon steady on the analyzer, modem locked at about 14 dB throughout',
+    quizWaitMs: 75000,
   },
   {
     id: 'geo-feasibility-quiz',
@@ -133,13 +141,19 @@ const SCENARIO_23_OBJECTIVES: Scenario23Objective[] = [
     id: 'it-coordination-quiz',
     title: 'Coordinate the Repair',
     type: 'quiz',
-    correctAnswer: 'Confirm the link is stable on manual, agree a window, then re-verify pointing on RF after recovery - ready to fall back to manual',
+    correctAnswer: 'Confirm the link is stable on manual, agree a window, then re-verify pointing on RF afterward - ready to fall back to manual',
   },
   {
     id: 'log-bypass',
     title: 'Log the Bypass',
     type: 'quiz',
-    correctAnswer: 'ACU fault 1358 (NOC-2026-2231); manual 1404, TM-1 held on sheet pointing, beacon + carrier verified on RF; not rebooted',
+    correctAnswer: 'ACU fault 1358 (NOC-2026-2231); to manual (time-stamped), TM-1 on sheet pointing, beacon + carrier checked on RF; not rebooted',
+  },
+  {
+    id: 'log-bypass-typed',
+    title: 'Log the Bypass: typed Ops Log entry',
+    type: 'ops-log',
+    logText: 'ACU fault 1358: to manual, TM-1 on sheet pointing, beacon + carrier verified on RF; ACU not rebooted',
   },
 ];
 
@@ -172,13 +186,38 @@ async function configureSpeca(page: import('@playwright/test').Page, centerFrequ
   await expect(centerFreqInput).toBeVisible({ timeout: 5000 });
   await centerFreqInput.fill(centerFrequencyMhz.toString());
   await centerFreqInput.press('Tab');
+  await page.waitForTimeout(200);
+
+  // Narrow onto the CW beacon (input in MHz) so it stands clear of the floor
+  const spanInput = page.locator('#sa-span');
+  await expect(spanInput).toBeVisible({ timeout: 5000 });
+  await spanInput.fill('0.01');
+  await spanInput.press('Tab');
   await page.waitForTimeout(500);
+}
+
+/**
+ * Type an entry into the Operations Log (sidebar log icon) and close it.
+ */
+async function typeOpsLogEntry(page: import('@playwright/test').Page, text: string): Promise<void> {
+  await page.locator('.ops-log-icon').first().click();
+  const input = page.locator('#ops-log-manual-input');
+  await expect(input).toBeVisible({ timeout: 5000 });
+  await input.fill(text);
+  await input.press('Enter');
+  await expect(page.locator('#ops-log-entries')).toContainText(text.slice(0, 20), { timeout: 5000 });
+  // Mission Complete closes the log itself when this entry finishes the scenario
+  await page
+    .locator('#ops-log-modal-close')
+    .click({ timeout: 3000 })
+    .catch(() => {});
+  await page.waitForTimeout(300);
 }
 
 async function executeObjective(page: import('@playwright/test').Page, missionControlPage: MissionControlPage, objective: Scenario23Objective): Promise<void> {
   switch (objective.type) {
     case 'quiz':
-      await waitForQuizToAppear(page);
+      await waitForQuizToAppear(page, objective.quizWaitMs);
       await answerQuizByText(page, objective.correctAnswer!);
       break;
 
@@ -204,6 +243,10 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
 
     case 'configure-speca':
       await configureSpeca(page, objective.centerFrequencyMhz!);
+      break;
+
+    case 'ops-log':
+      await typeOpsLogEntry(page, objective.logText!);
       break;
 
     case 'auto':
@@ -256,8 +299,8 @@ test.describe('Scenario 23 Full Completion', () => {
 
   for (const objective of SCENARIO_23_OBJECTIVES) {
     test(`[${objective.id}] ${objective.title}`, async () => {
-      if (objective.type === 'auto' && (objective.autoWaitSeconds ?? 0) >= 30) {
-        test.setTimeout(120000);
+      if ((objective.quizWaitMs ?? 0) > 30000) {
+        test.setTimeout(objective.quizWaitMs! + 60000);
       }
       await executeObjective(page, missionControlPage, objective);
     });

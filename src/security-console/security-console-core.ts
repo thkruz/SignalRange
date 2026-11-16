@@ -18,10 +18,13 @@
 
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { fillDialogTokens, formatStationTime } from '@app/modal/dialog-tokens';
 import { ObjectiveAnchors } from '@app/objectives/objective-anchor';
 import { ScenarioManager } from '@app/scenario-manager';
 import { CampaignDocumentStore, campaignIdOf } from '@app/scenarios/campaign-document-store';
 import { missionNowMs } from '@app/simulation/mission-clock';
+import { getSimulatedNowMs } from '@app/simulation/sim-time';
+import type { SecuritySnapshot } from '@app/sync/manager-state-types';
 
 export type AccountStatus = 'active' | 'disabled' | 'expired';
 export type AuditCategory = 'auth' | 'config' | 'command' | 'access';
@@ -58,6 +61,38 @@ export interface AuditEventConfig {
   requiresCampaignEvidence?: { scenarioId: string; eventId: string };
 }
 
+/**
+ * Order entries by the clock time they display, not by insertion (Phase 35
+ * s17-F5: a 01:58 row listed before 01:55). Applies only when every entry
+ * carries an "HH:MM" label; a label that rolls past midnight sorts after the
+ * evening ones. Equal times keep their authored order.
+ */
+/**
+ * An injected entry with no authored label is stamped with the station clock
+ * at the moment of injection, so its time cell is never blank.
+ */
+export function stampInjectedEvent(event: AuditEventConfig, elapsedS: number, nowMs: number): AuditEventConfig {
+  return { ...event, timeS: event.timeS ?? elapsedS, timestampLabel: event.timestampLabel ?? `${formatStationTime(nowMs)} UTC` };
+}
+
+export function sortAuditByTimestamp(events: AuditEventConfig[]): AuditEventConfig[] {
+  const minutes = events.map((e) => {
+    const m = /(\d{1,2}):(\d{2})/u.exec(fillDialogTokens(e.timestampLabel ?? ''));
+
+    return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+  });
+  if (events.length < 2 || minutes.some((m) => m === null)) return events;
+  const first = minutes[0] as number;
+  const keyed = events.map((event, i) => {
+    const raw = minutes[i] as number;
+
+    return { event, key: raw < first - 720 ? raw + 1440 : raw, i };
+  });
+  keyed.sort((a, b) => a.key - b.key || a.i - b.i);
+
+  return keyed.map((k) => k.event);
+}
+
 /** settings.security */
 export interface SecurityConfig {
   accounts: SecurityAccountConfig[];
@@ -68,7 +103,7 @@ export class SecurityConsoleCore {
   private static instance_: SecurityConsoleCore | null = null;
 
   private readonly config_: SecurityConfig;
-  private readonly missionStartTime_ = missionNowMs();
+  private missionStartTime_ = missionNowMs();
   private readonly acknowledged_ = new Set<string>();
   private readonly accountStatus_ = new Map<string, AccountStatus>();
   private reviewed_ = false;
@@ -112,6 +147,40 @@ export class SecurityConsoleCore {
     return this.instance_ !== null;
   }
 
+  /** Snapshot for a checkpoint (Phase 35 rt-s24-F4); droppedEvidence_ is derived at load. */
+  getState(): SecuritySnapshot {
+    return {
+      events: structuredClone(this.config_.events),
+      missionStartTimeMs: this.missionStartTime_,
+      acknowledged: [...this.acknowledged_],
+      accountStatus: [...this.accountStatus_],
+      reviewed: this.reviewed_,
+      anchors: this.anchors_.getState(),
+    };
+  }
+
+  /** Restore a snapshot; account ids this scenario does not define are ignored. */
+  restoreState(snapshot: SecuritySnapshot | undefined): void {
+    if (!snapshot) {
+      return;
+    }
+    if (Array.isArray(snapshot.events)) this.config_.events = structuredClone(snapshot.events);
+    if (Number.isFinite(snapshot.missionStartTimeMs)) this.missionStartTime_ = snapshot.missionStartTimeMs!;
+    this.acknowledged_.clear();
+    for (const id of snapshot.acknowledged ?? []) {
+      if (typeof id === 'string') {
+        this.acknowledged_.add(id);
+      }
+    }
+    for (const [id, status] of snapshot.accountStatus ?? []) {
+      if (this.accountStatus_.has(id)) {
+        this.accountStatus_.set(id, status as AccountStatus);
+      }
+    }
+    this.reviewed_ = snapshot.reviewed === true;
+    this.anchors_.restoreState(snapshot.anchors);
+  }
+
   static destroy(): void {
     if (this.instance_?.anchors_.hasAnchors) {
       EventBus.getInstance().off(Events.UPDATE, this.instance_.boundUpdateHandler_);
@@ -132,7 +201,9 @@ export class SecurityConsoleCore {
   getVisibleLog(atElapsedS?: number): AuditEventConfig[] {
     const elapsed = atElapsedS ?? this.elapsedS_();
 
-    return this.config_.events.filter((e) => this.anchors_.atS(e.timeS ?? 0, e.startAfterObjectiveId) <= elapsed);
+    const visible = this.config_.events.filter((e) => this.anchors_.atS(e.timeS ?? 0, e.startAfterObjectiveId) <= elapsed);
+
+    return sortAuditByTimestamp(visible);
   }
 
   private elapsedS_(): number {
@@ -151,8 +222,9 @@ export class SecurityConsoleCore {
 
   /** Acknowledge / flag a specific audit-log entry (must be visible). */
   acknowledge(eventId: string, atElapsedS?: number): void {
-    if (this.getVisibleLog(atElapsedS).some((e) => e.id === eventId)) {
+    if (!this.acknowledged_.has(eventId) && this.getVisibleLog(atElapsedS).some((e) => e.id === eventId)) {
       this.acknowledged_.add(eventId);
+      EventBus.getInstance().emit(Events.AUDIT_EVENT_ACKNOWLEDGED, { id: eventId });
     }
   }
 
@@ -171,7 +243,7 @@ export class SecurityConsoleCore {
    */
   injectEvent(event: AuditEventConfig): void {
     if (this.config_.events.some((e) => e.id === event.id)) return;
-    this.config_.events.push({ ...event, timeS: event.timeS ?? this.elapsedS_() });
+    this.config_.events.push(stampInjectedEvent(event, this.elapsedS_(), getSimulatedNowMs()));
   }
 
   /**

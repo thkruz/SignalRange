@@ -14,6 +14,23 @@
  * the authored minimum. A negative margin means no clear-sky pass in the
  * ledger can satisfy that condition; it is the list a track's PR must answer.
  *
+ * Link budgets (phase 19.2): every authored `linkBudget.expectedCNRDb` is
+ * checked against the engine's clear-sky C/N for the scenario's payload
+ * carrier and listed when the best flown pass falls more than 1 dB short
+ * ("LINK BUDGET OFF").
+ *
+ * Lock (phase 19.5): every modulated carrier's best Es/N0 against its MODCOD
+ * threshold (DVB-S2 QEF + 1 dB). "LOCK SHORT" = it cannot lock even at the
+ * peak of the flown pass; "LOCK DEGRADED" = it locks with under 1 dB of
+ * margin (listed with --margins).
+ *
+ * Transmit chain (phase 19.6): each station's `txChain` (BUC drive,
+ * compression, current and equilibrium temperature; HPA input, gain, output,
+ * back-off from P1dB, IM3) is diffed like the carriers. With --margins it is
+ * printed per station with flags (HPA OVERDRIVEN, ALC AT LIMIT, BUC HIGH
+ * CURRENT, BUC OVER-TEMP), and every authored `hpa-output-power-set`
+ * minimum (watts) is checked against the authored chain's output.
+ *
  * Not covered (reported as n/a, never as a failure): a station that receives
  * no carrier in its authored start state (a fault the player is meant to find,
  * a carrier the player must uplink) and scripted interference events, which
@@ -27,8 +44,26 @@ import { join, resolve } from 'node:path';
 const ROOT = resolve(import.meta.dirname, '../..');
 const DIR = join(ROOT, 'test/calibration');
 const THRESHOLD = 0.1;
-const FIELDS = ['peakCnDb', 'medianCnDb', 'peakRxIfDbm', 'noiseIfDbm'];
+const FIELDS = ['peakCnDb', 'medianCnDb', 'peakRxIfDbm', 'noiseIfDbm', 'peakEsN0Db', 'peakLockMarginDb', 'lockedSamples'];
 const PEAK_FIELDS = ['gainDbi', 'gOverTDbPerK', 'tsysK'];
+const TX_FIELDS = ['bucInDbm', 'bucOutDbm', 'bucCompressionDb', 'bucCurrentEqA', 'bucTempEqC', 'hpaInDbm', 'hpaGainDb', 'hpaOutDbm', 'hpaOutputBackoffDb', 'hpaIm3Dbc', 'hpaTempEqC'];
+
+/** One line describing a station's authored transmit chain, with flags */
+function txLine(station) {
+  const t = station.txChain;
+  if (!t) return null;
+  const flags = [];
+  if (t.hpaOutputBackoffDb !== null && t.hpaOutputBackoffDb < 3) flags.push('HPA OVERDRIVEN');
+  if (t.hpaAlcAtLimit) flags.push('ALC AT LIMIT');
+  if (t.bucCurrentEqA > 4.5) flags.push('BUC HIGH CURRENT');
+  if (t.bucTempEqC > 70) flags.push('BUC OVER-TEMP');
+  const hpa =
+    t.hpaOutDbm === null
+      ? `HPA ${t.hpaEnabled ? 'enabled, no drive' : 'off/disabled'} (back-off ${fmt(t.hpaBackOffDb)} dB)`
+      : `HPA in ${fmt(t.hpaInDbm)} + ${fmt(t.hpaGainDb)} = ${fmt(t.hpaOutDbm)} dBm (${fmt(t.hpaOutW)} W), back-off ${fmt(t.hpaOutputBackoffDb)} dB from P1dB ${fmt(t.hpaP1dbDbm)} (${t.hpaAlc ? 'ALC' : 'fixed gain'} ${fmt(t.hpaBackOffDb)}), IM3 ${fmt(t.hpaIm3Dbc)} dBc, ${fmt(t.hpaTempEqC)} degC`;
+  const buc = `BUC ${t.bucOutDbm === null ? 'no RF' : `${fmt(t.bucInDbm)} + ${fmt(t.bucGainDb)} -> ${fmt(t.bucOutDbm)} dBm (compression ${fmt(t.bucCompressionDb)} dB)`}, ${fmt(t.bucCurrentEqA)} A, ${fmt(t.bucTempEqC)} degC`;
+  return `  TX ${station.stationId}#${station.antennaIndex}: ${buc}; ${hpa}${flags.length ? ` ${flags.join(', ')}` : ''}`;
+}
 
 const args = process.argv.slice(2);
 const marginsOnly = args.includes('--margins');
@@ -71,11 +106,71 @@ function margins(entry) {
       const best = Math.max(...heard.map((c) => c.peakRxIfDbm), -Infinity);
       rows.push({ objectiveId: t.objectiveId, what: `IF power >= ${t.params.minPower} dBm`, margin: best - t.params.minPower, covered: heard.length > 0 });
     }
+    if (t.condition === 'hpa-output-power-set' && t.params.minOutputPower !== undefined) {
+      // Authored chain output (the objective is usually met after the player
+      // changes the back-off, so this is informational: covered = radiating)
+      const outs = stations.map((s) => s.txChain?.hpaOutW).filter((w) => typeof w === 'number');
+      const best = Math.max(...outs, 0);
+      rows.push({
+        objectiveId: t.objectiveId,
+        what: `HPA output >= ${t.params.minOutputPower} W (authored chain ${fmt(best)} W)`,
+        margin: best > 0 ? 10 * Math.log10(best / t.params.minOutputPower) : -Infinity,
+        covered: outs.length > 0,
+        informational: true,
+      });
+    }
+  }
+  return rows;
+}
+
+/** Carriers with a MODCOD whose best lock margin is under 1 dB */
+function lockMargins(entry) {
+  const rows = [];
+  for (const station of entry?.stations ?? []) {
+    for (const link of station.links) {
+      for (const c of link.carriers) {
+        if (c.peakLockMarginDb === null || c.peakLockMarginDb === undefined || c.peakLockMarginDb >= 1) continue;
+        rows.push({ key: `${station.stationId}#${station.antennaIndex}/${link.satellite}/${c.signalId}`, margin: c.peakLockMarginDb, need: c.requiredEsN0Db, esN0: c.peakEsN0Db });
+      }
+    }
   }
   return rows;
 }
 
 const fmt = (x) => (Number.isFinite(x) ? x.toFixed(2) : String(x));
+
+/** Authored link-budget truth must sit within this of the engine's clear-sky C/N (phase 19.2) */
+const LINK_BUDGET_TOLERANCE_DB = 1;
+
+/**
+ * An authored `linkBudget.expectedCNRDb` against the engine: the best peak C/N
+ * of the widest carrier on any flown link (the payload, not its beacon). The
+ * ledger flies the first pass of the day, so a scenario whose planned pass is
+ * a different one can differ for geometry; the line says which pass it used.
+ */
+function linkBudgetCheck(entry) {
+  const expected = entry?.authored?.linkBudget?.expectedCNRDb;
+  if (typeof expected !== 'number') return null;
+  let best = null;
+  for (const station of entry.stations ?? []) {
+    for (const link of station.links) {
+      const widest = [...link.carriers].filter((c) => c.peakCnDb !== null).sort((a, b) => b.bandwidthMHz - a.bandwidthMHz)[0];
+      if (widest && (best === null || widest.peakCnDb > best.cn)) {
+        best = { cn: widest.peakCnDb, where: `${station.stationId}/${link.satellite}/${widest.signalId}`, maxEl: link.pass?.maxEl ?? null };
+      }
+    }
+  }
+  if (best === null) return { expected, off: false, line: `expectedCNRDb ${expected} dB: no carrier in the ledger to check against` };
+  const delta = best.cn - expected;
+  // Only a shortfall is a finding: the flown pass may be higher than the
+  // planned one, never lower than the best of the day. The exact-geometry
+  // check (planned pass, within 1 dB) is in the nats-eu phase B/C validation
+  // tests.
+  const off = delta < -LINK_BUDGET_TOLERANCE_DB;
+  const pass = best.maxEl !== null ? `, pass max el ${fmt(best.maxEl)}` : '';
+
+  return { expected, off, line: `expectedCNRDb ${expected} dB vs engine ${fmt(best.cn)} dB (${best.where}${pass}): ${delta > 0 ? '+' : ''}${fmt(delta)} dB${off ? ' LINK BUDGET OFF' : ''}` };
+}
 
 if (!existsSync(DIR)) {
   console.error('No ledger at test/calibration/. Run: npx vitest run --config vitest.calibration.config.mts');
@@ -85,6 +180,8 @@ if (!existsSync(DIR)) {
 let changed = 0;
 let failing = 0;
 let uncovered = 0;
+let budgetsOff = 0;
+let lockShort = 0;
 for (const file of readdirSync(DIR).filter((f) => f.endsWith('.json')).sort()) {
   const now = JSON.parse(readFileSync(join(DIR, file), 'utf8'));
   const lines = [];
@@ -110,6 +207,27 @@ for (const file of readdirSync(DIR).filter((f) => f.endsWith('.json')).sort()) {
         }
       }
       for (const key of a.keys()) if (!b.has(key)) lines.push(`  - ${key}`);
+      for (const station of now.stations ?? []) {
+        const prev = (before.stations ?? []).find((s) => s.stationId === station.stationId && s.antennaIndex === station.antennaIndex);
+        if (!station.txChain) continue;
+        if (!prev?.txChain) {
+          lines.push(`  + ${station.stationId}#${station.antennaIndex} txChain`);
+          continue;
+        }
+        for (const field of TX_FIELDS) {
+          const p = prev.txChain[field];
+          const n = station.txChain[field];
+          if (p === null && n === null) continue;
+          const d = (n ?? Number.NaN) - (p ?? Number.NaN);
+          if (!(Math.abs(d) < THRESHOLD)) lines.push(`  ${station.stationId}#${station.antennaIndex} tx ${field}: ${fmt(p)} -> ${fmt(n)}`);
+        }
+      }
+      for (const station of now.stations ?? []) {
+        const prev = (before.stations ?? []).find((s) => s.stationId === station.stationId && s.antennaIndex === station.antennaIndex);
+        const was = prev?.agcOnNoiseAlone?.railedAtMax;
+        const is = station.agcOnNoiseAlone?.railedAtMax;
+        if (was !== undefined && is !== undefined && was !== is) lines.push(`  ${station.stationId}#${station.antennaIndex} AGC on noise alone: ${was ? 'railed' : 'levels'} -> ${is ? 'railed' : 'levels'}`);
+      }
       const wasFailing = new Set(margins(before).filter((m) => m.covered && m.margin < 0).map((m) => `${m.objectiveId} ${m.what}`));
       for (const m of margins(now).filter((m) => m.covered && m.margin < 0 && !wasFailing.has(`${m.objectiveId} ${m.what}`))) {
         lines.push(`  NOW FAILS ${m.objectiveId}: ${m.what} (best ${fmt(m.margin)} dB short)`);
@@ -117,7 +235,24 @@ for (const file of readdirSync(DIR).filter((f) => f.endsWith('.json')).sort()) {
     }
   }
 
+  const budget = linkBudgetCheck(now);
+  if (budget) {
+    if (budget.off) budgetsOff++;
+    if (budget.off || marginsOnly) lines.push(`  ${budget.line}`);
+  }
+
+  if (marginsOnly) {
+    for (const station of now.stations ?? []) {
+      const line = txLine(station);
+      if (line && station.txChain.transmittingModems > 0) lines.push(line);
+    }
+  }
+
   for (const m of margins(now)) {
+    if (m.informational) {
+      if (marginsOnly) lines.push(`  ${m.objectiveId}: ${m.what}`);
+      continue;
+    }
     if (!m.covered) {
       uncovered++;
       if (marginsOnly) lines.push(`  ${m.objectiveId}: ${m.what}, n/a (no carrier at the station in its authored start state)`);
@@ -127,6 +262,11 @@ for (const file of readdirSync(DIR).filter((f) => f.endsWith('.json')).sort()) {
     }
   }
 
+  for (const l of lockMargins(now)) {
+    if (l.margin < 0) lockShort++;
+    if (marginsOnly) lines.push(`  ${l.margin < 0 ? 'LOCK SHORT' : 'LOCK DEGRADED'} ${l.key}: peak Es/N0 ${fmt(l.esN0)} dB vs ${fmt(l.need)} dB needed (${fmt(l.margin)} dB)`);
+  }
+
   if (lines.length > 0) {
     changed++;
     console.log(`${now.scenarioId}`);
@@ -134,4 +274,6 @@ for (const file of readdirSync(DIR).filter((f) => f.endsWith('.json')).sort()) {
   }
 }
 
-console.log(`\n${changed} scenario(s) listed; ${failing} authored threshold(s) with a negative best-case margin; ${uncovered} not covered by the ledger.`);
+console.log(
+  `\n${changed} scenario(s) listed; ${failing} authored threshold(s) with a negative best-case margin; ${uncovered} not covered by the ledger; ${budgetsOff} authored link budget(s) more than ${LINK_BUDGET_TOLERANCE_DB} dB above the engine; ${lockShort} modulated carrier(s) that cannot lock even at their peak.`
+);

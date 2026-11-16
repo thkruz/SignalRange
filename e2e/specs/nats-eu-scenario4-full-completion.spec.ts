@@ -28,7 +28,7 @@ import { dismissDialogIfPresent, waitForSimulationReady } from '../utils/simulat
  * completes without it, which is the optional-objective gate check.
  *
  * Objective flow (16, one optional):
- *  1. review-mission-brief    2. crypto-status-check    3. complete-key-rotation
+ *  1. review-mission-brief    2. complete-key-rotation    3. crypto-status-check
  *  4. reference-check         5. review-pass-schedule   6. enable-doppler-comp
  *  7. carrier-into-muted-buc  8. unmute-buc             9. enable-hpa
  * 10. track-and-acquire      11. send-authenticated-command
@@ -69,9 +69,23 @@ test.describe('nats-eu Scenario 4 Full Completion', () => {
   test('[review-mission-brief] reviews the COMSEC brief', async () => {
     await missionControl.openMissionBrief();
     await missionControl.closeMissionBrief();
-    await answerSystemQuiz(page, 'cannot authenticate it and rejects it');
+    await answerSystemQuiz(page, "can't authenticate it, so it rejects");
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Review the COMSEC Brief');
+  });
+
+  test('[complete-key-rotation] rotates the command key in two steps', async () => {
+    await missionControl.selectGroundStation('GW-01');
+    await missionControl.selectTab('commanding');
+    await expect(page.locator('#cmd-begin-rotation')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('#cmd-key-badge')).toHaveText(/Pending Rotation/i);
+    await domClick(page, '#cmd-begin-rotation');
+    await page.waitForTimeout(300);
+    await domClick(page, '#cmd-complete-rotation');
+    await expect(page.locator('#cmd-key-badge')).toHaveText(/Valid/i, { timeout: 5000 });
+    await answerSystemQuiz(page, 'The far end must acknowledge');
+    await dismissDialogIfPresent(page);
+    await waitForObjectiveComplete(missionControl, 'Complete the Scheduled Key Rotation');
   });
 
   test('[crypto-status-check] reads the traffic key on both payload panels', async () => {
@@ -83,18 +97,6 @@ test.describe('nats-eu Scenario 4 Full Completion', () => {
     await answerSystemQuiz(page, 'The command key on the TT&C console');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Read Both Keys');
-  });
-
-  test('[complete-key-rotation] rotates the command key in two steps', async () => {
-    await missionControl.selectTab('commanding');
-    await expect(page.locator('#cmd-begin-rotation')).toBeVisible({ timeout: 10000 });
-    await domClick(page, '#cmd-begin-rotation');
-    await page.waitForTimeout(300);
-    await domClick(page, '#cmd-complete-rotation');
-    await expect(page.locator('#cmd-key-badge')).toHaveText(/Valid/i, { timeout: 5000 });
-    await answerSystemQuiz(page, 'The far end must acknowledge');
-    await dismissDialogIfPresent(page);
-    await waitForObjectiveComplete(missionControl, 'Complete the Scheduled Key Rotation');
   });
 
   test('[reference-check] observes the GPSDO and the BUC reference lock', async () => {
@@ -158,7 +160,7 @@ test.describe('nats-eu Scenario 4 Full Completion', () => {
     await disableHpa(page, missionControl);
     await setSwitch(page, '#buc-mute', true);
     await setSwitch(page, '#tx-transmit-switch', false);
-    await answerSystemQuiz(page, 'HPA output off, while the BUC');
+    await answerSystemQuiz(page, 'Disable the HPA output, while the BUC');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Secure the Chain');
   });
@@ -187,7 +189,7 @@ test.describe('nats-eu Scenario 4 Full Completion', () => {
 
   test('[log-the-rotation] closes the COMSEC log without the optional proof pass', async () => {
     await closeWorkingDocumentIfOpen(page);
-    await answerSystemQuiz(page, 'A key in use accumulates exposure');
+    await answerSystemQuiz(page, 'Exposure builds up while a key');
     await expect(page.locator('#level-complete-modal')).toBeVisible({ timeout: 45000 });
   });
 

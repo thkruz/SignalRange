@@ -69,8 +69,8 @@ describe('defaultSpectrumAnalyzerState', () => {
       expect(defaultSpectrumAnalyzerState.lastSpan).toBe(100e6 as Hertz);
     });
 
-    it('should have RBW of 1 MHz', () => {
-      expect(defaultSpectrumAnalyzerState.rbw).toBe(1e6 as Hertz);
+    it('should start at RBW Auto (Phase 30 D7)', () => {
+      expect(defaultSpectrumAnalyzerState.rbw).toBeNull();
     });
 
     it('should have frequency as the locked control', () => {

@@ -31,7 +31,7 @@
   z-index: 1000;
   overflow: auto;
   background-color: rgba(0, 0, 0, 0.7);
-  max-height: 100vh;
+  max-height: var(--mc-viewport-height, 100vh);
 }
 
 .draggable-box {
@@ -39,7 +39,7 @@
   background-color: var(--color-dark-background);
   width: fit-content;
   min-width: 300px;
-  max-width: 90vw;
+  max-width: calc(var(--mc-viewport-width, 100vw) * 0.9);
   z-index: 10001;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
 }
@@ -74,7 +74,7 @@
   border-top: 0;
   min-height: 250px;
   height: 100%;
-  max-height: 70vh;
+  max-height: calc(var(--mc-viewport-height, 100vh) * 0.7);
 }
 
 .draggable-box__btn {
@@ -101,13 +101,66 @@
   background: var(--colorCautionDarken2);
 }
 
-.draggable-box__close-btn {
-  right: 1em;
-  background: var(--color-dark-text-accent);
+/* Dock and Close share one right-aligned flex group so neither can overprint the other or the title */
+.draggable-box__actions {
+  position: absolute;
+  right: 0.5em;
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  z-index: 1;
 }
 
-.draggable-box__close-btn:hover {
+.draggable-box__actions .draggable-box__close-btn {
+  position: static;
+}
+
+.draggable-box__site-dock-btn {
+  position: static;
+  flex: none;
+  padding: 0 0.5em;
+  font-size: 0.7rem;
+  line-height: 1.4;
+  cursor: pointer;
+  color: #ffffff;
+  background: transparent;
+  border: 1px solid var(--color-dark-border);
+  border-radius: 3px;
+}
+
+.draggable-box__site-dock-btn:hover {
+  background: var(--color-dark-border);
+}
+
+.draggable-box__close-btn {
+  position: absolute;
+  right: 0.5em;
+  padding: 0.15em 0.6em;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--color-dark-text, #e6e6e6);
+  background: var(--color-dark-border);
+  border: 1px solid var(--color-dark-text-accent);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.draggable-box__close-btn:hover,
+.draggable-box__close-btn:focus-visible {
+  color: #ffffff;
   background: var(--color-primary);
+}
+
+.draggable-box__dock-btn {
+  right: 6.5em;
+}
+
+/* Docked against the left edge (C3 bench): the content scrolls inside the window height */
+.draggable-box.is-docked-left .draggable-box__content {
+  max-height: none;
+  overflow-y: auto;
 }
 
 /* ==========================================================================
@@ -196,8 +249,8 @@
 
 @media (max-width: 768px) {
   .draggable-box {
-    width: 95vw;
-    max-width: 95vw;
+    width: calc(var(--mc-viewport-width, 100vw) * 0.95);
+    max-width: calc(var(--mc-viewport-width, 100vw) * 0.95);
   }
 }
 
@@ -238,4 +291,11 @@
 #top-menu-user-account-icon:hover,
 .user-account__btn--hover:hover {
   filter: brightness(1.2);
+}
+/* A bar with Dock and Close keeps its title to the left of them, so the buttons never print over the text */
+.draggable-box__title-bar.has-site-dock .draggable-box__title {
+  justify-content: flex-start;
+  box-sizing: border-box;
+  padding: 0 0.6em;
+  padding-right: 11.5rem;
 }

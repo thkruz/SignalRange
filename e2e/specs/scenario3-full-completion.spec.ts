@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
 import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForSimulationReady } from '../utils/simulation-helpers';
+import { simAdvance, useTestClock } from '../utils/test-clock';
 
 /**
  * Scenario 3 objectives - Weather Emergency Handover: Multi-Site Operations.
@@ -87,7 +88,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'review-mission-brief',
     title: 'Review Mission Brief',
     type: 'quiz',
-    correctAnswer: 'Yes, I have read the mission brief and I am ready to proceed.',
+    correctAnswer: "Yes, I've read the brief. Starting the handover.",
   },
 
   // ============================================================
@@ -122,7 +123,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'verify-heater-quiz',
     title: 'Understand Feed Heater Consequences',
     type: 'quiz',
-    correctAnswer: 'Ice would build up on the feed horn and waveguide and attenuate the signal',
+    correctAnswer: 'Ice would build up on the feed horn and waveguide, weakening the signal',
   },
 
   // ============================================================
@@ -138,19 +139,19 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'verify-agc-status',
     title: 'Understand AGC Function',
     type: 'quiz',
-    correctAnswer: 'The output level would fall with the attenuated input until the receiver lost lock',
+    correctAnswer: 'The input level would sag with the fade, but C/N would fall just the same',
   },
   {
     id: 'estimate-time-remaining',
     title: 'Understand Time Pressure',
     type: 'quiz',
-    correctAnswer: 'Degradation is progressive - once the AGC runs out of range the link fails fast',
+    correctAnswer: 'Degradation keeps progressing - C/N falls until it crosses the lock threshold',
   },
   {
     id: 'verify-agc-limits-quiz',
     title: 'Understand AGC Limitations',
     type: 'quiz',
-    correctAnswer: 'AGC has a maximum gain limit - once reached, further signal loss cannot be compensated',
+    correctAnswer: 'The AGC restores level, not C/N - it amplifies the noise along with the carrier',
   },
 
   // ============================================================
@@ -166,7 +167,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'verify-multisite-quiz',
     title: 'Understand Multi-Site Operations',
     type: 'quiz',
-    correctAnswer: 'Vermont continues operating normally - customers are still being served from VT-01',
+    correctAnswer: 'Vermont keeps operating normally - customers are still served from VT-01',
   },
 
   // ============================================================
@@ -188,7 +189,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'verify-gpsdo-weather-quiz',
     title: 'Understand Weather Impact on GPSDO',
     type: 'quiz',
-    correctAnswer: 'GPS uses L-band frequencies (~1.5 GHz) which are less affected by precipitation than C-band',
+    correctAnswer: 'The loss is ice on the dish feed, and the GPS antenna has no feed to ice up',
   },
 
   // ============================================================
@@ -211,7 +212,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'catherine-look-angles',
     title: "Catherine's Sanity Check",
     type: 'quiz',
-    correctAnswer: "Because look angles to a satellite depend on the ground station's geographic location",
+    correctAnswer: 'Because look angles to a satellite depend on where the ground station is',
   },
 
   // ============================================================
@@ -229,7 +230,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     type: 'configure-lnb',
     lnbConfig: {
       loFrequency: 5250,
-      gain: 60,
+      gain: 65,
     },
   },
   {
@@ -249,8 +250,8 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     specaConfig: {
       centerFrequency: 1074.5, // MHz
       span: 0.002, // MHz (2 kHz) - span input uses MHz
-      minAmplitude: -65, // dBm
-      maxAmplitude: -50, // dBm
+      minAmplitude: -100, // dBm
+      maxAmplitude: -30, // dBm
     },
   },
   {
@@ -283,7 +284,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'verify-modem-match-quiz',
     title: 'Understand Parameter Matching',
     type: 'quiz',
-    correctAnswer: 'Both sites receive the same carrier - mismatched parameters would fail to demodulate',
+    correctAnswer: 'Both sites receive the same carrier - a mismatch would fail to demodulate',
   },
 
   // ============================================================
@@ -298,7 +299,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'verify-lock-quality-quiz',
     title: 'Understand Lock vs. Quality',
     type: 'quiz',
-    correctAnswer: 'Lock can occur at low C/N but with high error rates - we need margin for reliable data',
+    correctAnswer: 'Lock holds right down to threshold with no fade margin - we need that margin',
   },
 
   // ============================================================
@@ -315,7 +316,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     title: 'Configure Transmitter Modem',
     type: 'configure-tx-modem',
     txModemConfig: {
-      frequency: 1094, // MHz
+      frequency: 1057, // MHz (TM-1 TP-1: 7000 - 1057 = 5943 MHz)
       bandwidth: 36, // MHz
       power: -7, // dBm
       modulation: 'QPSK',
@@ -337,7 +338,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'understand-handover-quiz',
     title: 'Understand Handover Process',
     type: 'quiz',
-    correctAnswer: "Maine's transmitter comes up while Vermont's is disabled - avoiding a dual uplink",
+    correctAnswer: "Vermont's uplink drops and Maine's comes up in the same step - never a dual uplink",
   },
   {
     id: 'execute-handover',
@@ -351,7 +352,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'verify-handover-success-quiz',
     title: 'Confirm Handover Success',
     type: 'quiz',
-    correctAnswer: 'Traffic indicator shows ME-02 as active, VT-01 TX disabled, no alarms, continuous data flow',
+    correctAnswer: 'Traffic indicator shows ME-02 active, VT-01 TX disabled, no ME-02 alarms, data flowing',
   },
 
   // ============================================================
@@ -380,7 +381,7 @@ const SCENARIO_3_OBJECTIVES: Scenario3Objective[] = [
     id: 'verify-stow-quiz',
     title: 'Understand Stow Position',
     type: 'quiz',
-    correctAnswer: 'Minimizes wind loading on the dish and prevents snow from accumulating in the reflector',
+    correctAnswer: 'Turns the dish face out of the wind, so the load on the pedestal and drives is minimal',
   },
   // This is a single objective in the scenario with TWO quiz conditions.
   // The second quiz (Documentation Purpose) appears first in the UI, followed by the first quiz (What to Log).
@@ -490,7 +491,7 @@ async function selectSatelliteAndMove(page: import('@playwright/test').Page): Pr
 
 /**
  * Wait for antenna movement to complete by monitoring position changes.
- * The antenna moves at ~2-5 deg/sec, so large movements take several seconds.
+ * The 9 m pedestal moves at 0.5 deg/s (phase 19.4), so a large move takes minutes.
  */
 async function waitForAntennaMovement(page: import('@playwright/test').Page, timeout = 90000): Promise<void> {
   const startTime = Date.now();
@@ -501,7 +502,7 @@ async function waitForAntennaMovement(page: import('@playwright/test').Page, tim
   await page.waitForTimeout(500);
 
   while (Date.now() - startTime < timeout) {
-    await page.waitForTimeout(1000);
+    await simAdvance(page, 1000);
 
     // Get current elevation from the fine-adjust control display
     let elDisplay = page.locator('.fine-adjust-control', { hasText: 'Elevation' }).locator('.fine-adjust-value-active');
@@ -569,7 +570,7 @@ async function configureLnb(page: import('@playwright/test').Page, config: { loF
   await applyBtn.click();
 
   // Wait for thermal stabilization (LNB takes ~3 seconds to stabilize)
-  await page.waitForTimeout(4000);
+  await simAdvance(page, 4000);
 }
 
 /**
@@ -617,6 +618,13 @@ async function configureSpectrumAnalyzer(
       await maxAmpInput.press('Tab');
       await page.waitForTimeout(100);
     }
+  }
+
+  // RBW Auto (Phase 30 D7): the station starts there and only Auto shows the CW beacon;
+  // no checklist row checks it (a set-type row already true at start would never tick)
+  const rbwSelect = page.locator('#sa-rbw');
+  if ((await rbwSelect.count()) > 0) {
+    await rbwSelect.selectOption('auto');
   }
 
   await page.waitForTimeout(300);
@@ -682,6 +690,20 @@ async function configureTxModem(
     transmitting?: boolean;
   }
 ): Promise<void> {
+  // ME-02's TX modem starts parked and powered off (r2-s03-F3): power it first
+  if (config.transmitting === true) {
+    const powerSwitch = page.locator('#tx-power-switch');
+    await expect(powerSwitch).toBeVisible({ timeout: 5000 });
+    if (!(await powerSwitch.isChecked())) {
+      await powerSwitch.click();
+      await expect(powerSwitch).toBeChecked();
+      // The modem boots for 4 s (Transmitter.handlePowerToggle) and locks the
+      // transmit switch out until it is up
+      await expect(page.locator('#tx-transmit-switch')).toBeEnabled({ timeout: 15000 });
+    }
+    await page.waitForTimeout(200);
+  }
+
   // Configure frequency (in MHz) if specified
   if (config.frequency !== undefined) {
     const freqInput = page.locator('#tx-frequency-input');
@@ -759,7 +781,7 @@ async function configureTxModem(
 
   // Wait for objective conditions to be evaluated
   // The objective manager needs time to check all conditions
-  await page.waitForTimeout(2000);
+  await simAdvance(page, 2000);
 }
 
 /**
@@ -772,7 +794,7 @@ async function selectSatellite(page: import('@playwright/test').Page, satelliteI
   await satTreeItem.click();
 
   // Wait for the selection to be processed and objective to complete
-  await page.waitForTimeout(1000);
+  await simAdvance(page, 1000);
 
   // Verify the satellite is now selected (has 'active' class)
   await expect(satTreeItem).toHaveClass(/active/, { timeout: 5000 });
@@ -795,7 +817,7 @@ async function executeTrafficHandover(page: import('@playwright/test').Page, tar
   await executeBtn.click();
 
   // Wait for handover to complete
-  await page.waitForTimeout(2000);
+  await simAdvance(page, 2000);
 }
 
 /**
@@ -820,7 +842,7 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
       // Observation-gated conditions latch only after the default dwell on
       // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
       // reset the read and strand the objective.
-      await page.waitForTimeout(3000);
+      await simAdvance(page, 3000);
       break;
 
     case 'toggle-switch':
@@ -874,7 +896,7 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
     case 'auto':
       // Auto-satisfied objectives complete when conditions are met
       // Signal detection and receiver lock can take several seconds
-      await page.waitForTimeout(3000);
+      await simAdvance(page, 3000);
       break;
   }
 
@@ -899,6 +921,7 @@ test.describe('Scenario 3 Full Completion', () => {
     // Create a new context and page that will be shared across all tests
     context = await browser.newContext();
     page = await context.newPage();
+    await useTestClock(page);
 
     // Set up test mode: auto-close dialogs and clear storage
     await page.addInitScript(() => {
@@ -1058,8 +1081,12 @@ test.describe('Scenario 3 Full Completion', () => {
   });
 
   test('Objective: Power Up LNB', async () => {
+    // ME-02's LNB needs 90 s after power-on before lnb-thermally-stable passes
+    // (panel reads "Thermal: Warming m:ss" until then)
+    test.setTimeout(180000);
     const objective = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'configure-maine-lnb')!;
     await executeObjective(page, missionControlPage, objective);
+    await simAdvance(page, 95000);
   });
 
   test('Objective: Verify LNB Configuration', async () => {
@@ -1179,6 +1206,21 @@ test.describe('Scenario 3 Full Completion', () => {
   });
 
   test('Objective: Document Handover Event', async () => {
+    // The objective also needs a typed Ops Log entry (ops-log-entry condition)
+    await page.locator('.ops-log-icon').first().click();
+    const logInput = page.locator('#ops-log-manual-input');
+    await expect(logInput).toBeVisible({ timeout: 5000 });
+    const logText = 'Snow degraded VT-01 link; handover of TIDEMARK-1 to ME-02 complete, Vermont stowed.';
+    await logInput.fill(logText);
+    await logInput.press('Enter');
+    await expect(page.locator('#ops-log-entries')).toContainText(logText.slice(0, 20), { timeout: 5000 });
+    // Mission Complete closes the log itself when this entry finishes the scenario
+    await page
+      .locator('#ops-log-modal-close')
+      .click({ timeout: 3000 })
+      .catch(() => {});
+    await page.waitForTimeout(300);
+
     // This objective has TWO quiz conditions but they may appear in different order.
     // The second quiz (Purpose) appears first in the UI with letter prefixes.
     const purposeQuiz = SCENARIO_3_OBJECTIVES.find((o) => o.id === 'document-handover-event-quiz1')!;

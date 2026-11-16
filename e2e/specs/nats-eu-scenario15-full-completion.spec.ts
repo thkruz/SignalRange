@@ -29,7 +29,7 @@ import { dismissDialogIfPresent, waitForSimulationReady } from '../utils/simulat
  * re-key, then SAR-2 decoded cold under the new traffic key, the chain up in
  * order, KEY-VERIFY acknowledged under the new command key, and the chain
  * secured. Sim clock starts 2027-04-06 07:00:00Z:
- *   GW-01 MERIDIAN-SAR-1  AOS 07:15:59Z  max el 27.0 at 07:20:47Z  LOS 07:25:31Z
+ *   GW-01 MERIDIAN-SAR-1  AOS 07:15:59Z  max el 27.0 at 07:20:47Z  LOS 07:24:20Z (5 deg; horizon 07:25:31Z)
  *   traffic key rolls 07:27:00Z (mission clock)
  *   GW-01 MERIDIAN-SAR-2  AOS 07:33:58Z  max el 24.9 at 07:38:40Z  LOS 07:43:25Z
  *   command window 07:34:18Z - 07:43:05Z
@@ -151,6 +151,8 @@ test.describe('nats-eu Scenario 15 Full Completion', () => {
   });
 
   test('[rotate-the-command-key] begins and completes the command key rotation', async () => {
+    // The three minutes start when SAR-1 sets at Galway (07:24:20)
+    await advanceMissionClockToUtc(page, '2027-04-06T07:24:50Z');
     await missionControl.selectTab('commanding');
     await expect(page.locator('#cmd-begin-rotation')).toBeVisible({ timeout: 10000 });
     await domClick(page, '#cmd-begin-rotation');
@@ -185,7 +187,7 @@ test.describe('nats-eu Scenario 15 Full Completion', () => {
 
   test('[tune-for-sar2-and-the-uplink] retunes the receiver, the analyzer and the transmit modem', async () => {
     await setRxModemFrequency(page, missionControl, 1370);
-    await fillAndChange(page, '#sa-center-freq', '1370');
+    await fillAndChange(page, '#sa-center-freq', '1397');
     await setTxModemFrequency(page, missionControl, 1435);
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Tune for SAR-2 and the Uplink');

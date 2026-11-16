@@ -60,6 +60,12 @@ function extractClaims(): Claim[] {
 describe('NICE coverage', () => {
   const claims = extractClaims();
 
+  it('provides readable descriptions for every task claimed by a campaign', () => {
+    const { tasks } = JSON.parse(readFileSync(join(repoRoot, 'src', 'presentation', 'nice-task-descriptions.json'), 'utf8')) as { tasks: Record<string, string> };
+    const missing = [...new Set(claims.filter((claim) => claim.code.startsWith('T')).map((claim) => claim.code))].filter((code) => !tasks[code]?.trim());
+    expect(missing).toEqual([]);
+  });
+
   it('finds NICE annotations across campaigns', () => {
     expect(claims.length).toBeGreaterThan(100);
   });

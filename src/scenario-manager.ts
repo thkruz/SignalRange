@@ -4,15 +4,9 @@ import { ccsScenario2Data } from '@app/campaigns/ccs/scenario2';
 import { ccsScenario3Data } from '@app/campaigns/ccs/scenario3';
 import { ccsScenario4Data } from '@app/campaigns/ccs/scenario4';
 import { ccsScenario5Data } from '@app/campaigns/ccs/scenario5';
+import { rangeWatchCampaignData } from '@app/campaigns/constellation-sandbox/campaign-data';
 import { hamSdrSandboxData } from '@app/campaigns/ham-sdr/sandbox';
-import { hamSdrScenario1Data } from '@app/campaigns/ham-sdr/scenario1';
-import { hamSdrScenario2Data } from '@app/campaigns/ham-sdr/scenario2';
-import { hamSdrScenario3Data } from '@app/campaigns/ham-sdr/scenario3';
-import { hamSdrScenario4Data } from '@app/campaigns/ham-sdr/scenario4';
-import { hamSdrScenario5Data } from '@app/campaigns/ham-sdr/scenario5';
-import { hamSdrScenario6Data } from '@app/campaigns/ham-sdr/scenario6';
-import { hamSdrScenario7Data } from '@app/campaigns/ham-sdr/scenario7';
-import { hamSdrScenario8Data } from '@app/campaigns/ham-sdr/scenario8';
+import { hamTechScenarios } from '@app/campaigns/ham-sdr/tech';
 import { sandboxData as natsSandboxData } from '@app/campaigns/nats/sandbox';
 import { scenario1Data } from '@app/campaigns/nats/scenario1';
 import { scenario2Data } from '@app/campaigns/nats/scenario2';
@@ -38,35 +32,7 @@ import { scenario21Data } from '@app/campaigns/nats/scenario21';
 import { scenario22Data } from '@app/campaigns/nats/scenario22';
 import { scenario23Data } from '@app/campaigns/nats/scenario23';
 import { scenario24Data } from '@app/campaigns/nats/scenario24';
-import { natsEuSandboxData } from '@app/campaigns/nats-eu/sandbox';
-import { natsEuScenario1Data } from '@app/campaigns/nats-eu/scenario1';
-import { natsEuScenario2Data } from '@app/campaigns/nats-eu/scenario2';
-import { natsEuScenario3Data } from '@app/campaigns/nats-eu/scenario3';
-import { natsEuScenario4Data } from '@app/campaigns/nats-eu/scenario4';
-import { natsEuScenario5Data } from '@app/campaigns/nats-eu/scenario5';
-import { natsEuScenario6Data } from '@app/campaigns/nats-eu/scenario6';
-import { natsEuScenario7Data } from '@app/campaigns/nats-eu/scenario7';
-import { natsEuScenario8Data } from '@app/campaigns/nats-eu/scenario8';
-import { natsEuScenario9Data } from '@app/campaigns/nats-eu/scenario9';
-import { natsEuScenario10Data } from '@app/campaigns/nats-eu/scenario10';
-import { natsEuScenario11Data } from '@app/campaigns/nats-eu/scenario11';
-import { natsEuScenario12Data } from '@app/campaigns/nats-eu/scenario12';
-import { natsEuScenario13Data } from '@app/campaigns/nats-eu/scenario13';
-import { natsEuScenario14Data } from '@app/campaigns/nats-eu/scenario14';
-import { natsEuScenario15Data } from '@app/campaigns/nats-eu/scenario15';
-import { natsEuScenario16Data } from '@app/campaigns/nats-eu/scenario16';
-import { natsEuScenario17Data } from '@app/campaigns/nats-eu/scenario17';
-import { natsEuScenario18Data } from '@app/campaigns/nats-eu/scenario18';
-import { natsEuScenario19Data } from '@app/campaigns/nats-eu/scenario19';
-import { natsEuScenario20Data } from '@app/campaigns/nats-eu/scenario20';
-import { natsEuScenario21Data } from '@app/campaigns/nats-eu/scenario21';
-import { natsEuScenario22Data } from '@app/campaigns/nats-eu/scenario22';
-import { natsEuScenario23Data } from '@app/campaigns/nats-eu/scenario23';
-import { natsEuScenario24Data } from '@app/campaigns/nats-eu/scenario24';
-import { natsEuScenario25Data } from '@app/campaigns/nats-eu/scenario25';
-import { natsEuScenario26Data } from '@app/campaigns/nats-eu/scenario26';
-import { natsEuScenario27Data } from '@app/campaigns/nats-eu/scenario27';
-import { natsEuScenario28Data } from '@app/campaigns/nats-eu/scenario28';
+import { natsEuCampaignData } from '@app/campaigns/nats-eu/campaign-data';
 import { signalHunterSandboxData } from '@app/campaigns/signal-hunter/sandbox';
 import { signalHunterScenario1Data } from '@app/campaigns/signal-hunter/scenario1';
 import { signalHunterScenario2Data } from '@app/campaigns/signal-hunter/scenario2';
@@ -88,11 +54,15 @@ import { OMTModule } from '@app/equipment/rf-front-end/omt-module/omt-module';
 import { RFFrontEndState } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { Satellite } from '@app/equipment/satellite/satellite';
 import { Transmitter, TransmitterState } from '@app/equipment/transmitter/transmitter';
+import type { HamStationConfig } from '@app/ham/ham-station-config';
 import { Character, Emotion } from '@app/modal/character-enum';
 import { PreviousShiftLogEntry } from '@app/ops-log/ops-log-types';
+import { FieldTabPolicy } from '@app/physical/field-tab-policy';
+import type { PlantConfig } from '@app/physical/physical-plant-types';
 import { SandboxLoadoutService } from '@app/sandbox/sandbox-loadout';
 import { sandboxData } from '@app/scenarios/sandbox';
 import { Rng, resolveScenarioSeed } from '@app/simulation/rng';
+import type { ConstellationRef } from '@app/simulation/satellite-registry';
 import type { Degrees } from 'ootk';
 import { ScenarioData } from './ScenarioData';
 
@@ -118,11 +88,22 @@ export interface SimulationSettings {
   spectrumAnalyzers?: Partial<RealTimeSpectrumAnalyzerState>[];
   transmitters?: Partial<TransmitterState>[];
   receivers?: Partial<ReceiverState>[];
+  /** Phase 38.1: opt-in physical-layer plant (C6 sandbox). Absent means nothing changes. */
+  physicalPlant?: PlantConfig;
+  /** Campaign 3 (ham-sdr) station manager config; absent = no ham station */
+  hamStation?: HamStationConfig;
+  /**
+   * Engineering tab ids (e.g. 'rx-analysis', 'dashboard') a 'field' station may
+   * show without the trainer unlock. Absent: the Site tab and plugin tabs only.
+   */
+  fieldTabs?: string[];
   /** Optional HTML override for complex layouts */
   layout?: string;
   missionBriefUrl?: string;
   isExtraSatellitesVisible?: boolean;
   satellites: Satellite[];
+  /** TLE-set constellations (Phase 3); members hydrate on demand, see SatelliteRegistry */
+  constellations?: ConstellationRef[];
   weatherEvents?: Array<{
     id: string;
     groundStationId: string;
@@ -143,6 +124,8 @@ export interface SimulationSettings {
     linkMarginDegradation: number;
     /** rain/storm: peak rain rate in mm/h. Default by severity: minor 4, moderate 12, severe 30 (storm one step heavier) */
     rainRateMmPerHour?: number;
+    /** snow/ice/hail: what the feed heater melts against this storm, dB/min (default: it outmelts any buildup). See WeatherEventData */
+    heaterMeltDbPerMin?: number;
   }>;
   /** Scheduled, duty-cycled RF interference. Default path injects at a
    *  satellite's transponder (relayed to all stations - uplink interference);
@@ -156,7 +139,7 @@ export interface SimulationSettings {
     /** Interferer RF center frequency (uplink, Hz) */
     frequency: number;
     bandwidth: number;
-    /** Transponder path: power at the transponder input (dBm). Terrestrial: emitter EIRP (dBm) */
+    /** The emitter's EIRP, dBm (transponder path: uplinked over the satellite's reference range, Phase 19.3) */
     power: number;
     polarization: 'H' | 'V' | 'RHCP' | 'LHCP';
     /** Seconds since mission start when the envelope opens */
@@ -214,7 +197,7 @@ export interface SimulationSettings {
     targetNoradId: number;
     /** Antenna index that must be trained on the target to radiate the jam (default 0) */
     jamAntennaIndex?: number;
-    /** Victim service carrier power at the transponder input, dBm (the "S" in J/S) */
+    /** Victim service carrier's uplink EIRP, dBm (the "S" in J/S; an authored transponder-path uplink since phase 19.3) */
     victimCarrierPowerDbm: number;
     /** Target transponder uplink passband the jam RF must fall within (Hz) */
     targetUplinkLowHz: number;
@@ -224,9 +207,10 @@ export interface SimulationSettings {
     targetPolarization: 'H' | 'V';
     /**
      * Calibration: dB added to the jam chain HPA output power to yield the
-     * jammer power at the transponder input. Folds uplink path loss + antenna
-     * gain into one term so the scenario stays winnable without a full uplink
-     * budget (mirrors how interferenceEvents specify power at the transponder).
+     * jammer's equivalent uplink EIRP, on the same footing as the victim's
+     * (the EA-JAM carrier is injected as an authored uplink, like
+     * interferenceEvents). Folds antenna gain and pointing into one term until
+     * phase 19.8 derives J/S from geometry.
      */
     jamPathGainDb: number;
     /** Pointing tolerance (deg) for the jam antenna vs the target (default 5) */
@@ -272,6 +256,10 @@ export interface SimulationSettings {
       deltaC?: number;
       /** buc-overtemp: temperature reading at trip time */
       startTemperatureC?: number;
+      /** buc-overtemp: thermal resistance multiplier (degraded fan/heatsink), >= 1 (19.6) */
+      coolingFactor?: number;
+      /** buc-overtemp: extra supply current from a failing output stage, A; muting removes it (19.6) */
+      excessCurrentA?: number;
     };
     /** Written to the ops log when the fault trips (omit to keep it silent) */
     label?: string;
@@ -296,6 +284,12 @@ export interface SimulationSettings {
   workingDocument?: {
     title: string;
     description?: string;
+    /**
+     * Opt-in: a read-only "Referral received" block from an earlier campaign (Campaign 5 reading the frontline
+     * incident). The loader returns the player's filed referral or the authored fallback; the block says which.
+     * It is reference, not a document entry, so it is never flushed to the campaign store.
+     */
+    incomingReferral?: () => import('./scenarios/campaign-document-store').CampaignReferral;
   };
   /** Traffic ownership configuration for handover scenarios */
   trafficOwnership?: Array<{
@@ -320,8 +314,12 @@ export interface SimulationSettings {
   /** M1: link-budget / EIRP planning console. Starts LinkBudgetManager. */
   linkBudget?: {
     label?: string;
-    /** Ground-truth C/N (dB) the correct worksheet must yield */
-    expectedCNRDb: number;
+    /**
+     * Ground-truth C/N (dB) the correct worksheet must yield; absent = the engine's clear-sky C/N (Phase 19.2).
+     * When the operator fills in the optional uplink half (Phase 19.3) the composite C/N is graded against it,
+     * so author the composite for a transponded link and the downlink C/N for a direct one.
+     */
+    expectedCNRDb?: number;
     /** Tolerance (dB) for accepting the operator's computed C/N (default 1.0) */
     toleranceDb?: number;
     /** Demod C/N threshold (dB) the margin is measured against */
@@ -339,6 +337,15 @@ export interface SimulationSettings {
     windowEndS?: number;
     /** Require a Valid key for a command to ACK (default true) */
     requireValidKey?: boolean;
+    /** COMSEC key ids shown on the TT&C card; confirming a rotation swaps keyId for rotatedKeyId (Phase 35 E5) */
+    keyId?: string;
+    rotatedKeyId?: string;
+    /** Days of key life after a confirmed rotation (default 90; panel floors, so N shows N-1) */
+    rotatedKeyValidDays?: number;
+    /** Initial command key status; 'Pending Rotation' starts with a key that needs rotating (default 'Valid') */
+    initialKeyStatus?: 'Valid' | 'Pending Rotation';
+    /** Days of key life left at t0 on the TX Chain / RX payload panels (default 62) */
+    keyExpiresInDays?: number;
     /** Require uplink Doppler compensation for a command to ACK (default true) */
     requireDopplerComp?: boolean;
     /** Canned TT&C commands the console offers as one-click sends */
@@ -573,6 +580,7 @@ export class ScenarioManager {
       // every other scenario gets its settings object back untouched.
       this.settings = SandboxLoadoutService.getInstance().applyToScenario(scenario);
       this.data = scenario;
+      FieldTabPolicy.reset();
       Rng.setSeed(resolveScenarioSeed(scenario.id, scenario.seed));
     } else {
       throw new Error(`Scenario ${scenarioId} not found`);
@@ -607,44 +615,9 @@ export const SCENARIOS: ScenarioData[] = [
   scenario22Data,
   scenario23Data,
   scenario24Data,
-  natsEuSandboxData,
-  natsEuScenario1Data,
-  natsEuScenario2Data,
-  natsEuScenario3Data,
-  natsEuScenario4Data,
-  natsEuScenario5Data,
-  natsEuScenario6Data,
-  natsEuScenario7Data,
-  natsEuScenario8Data,
-  natsEuScenario9Data,
-  natsEuScenario10Data,
-  natsEuScenario11Data,
-  natsEuScenario12Data,
-  natsEuScenario13Data,
-  natsEuScenario14Data,
-  natsEuScenario15Data,
-  natsEuScenario16Data,
-  natsEuScenario17Data,
-  natsEuScenario18Data,
-  natsEuScenario19Data,
-  natsEuScenario20Data,
-  natsEuScenario21Data,
-  natsEuScenario22Data,
-  natsEuScenario23Data,
-  natsEuScenario24Data,
-  natsEuScenario25Data,
-  natsEuScenario26Data,
-  natsEuScenario27Data,
-  natsEuScenario28Data,
+  ...natsEuCampaignData.scenarios,
   hamSdrSandboxData,
-  hamSdrScenario1Data,
-  hamSdrScenario2Data,
-  hamSdrScenario3Data,
-  hamSdrScenario4Data,
-  hamSdrScenario5Data,
-  hamSdrScenario6Data,
-  hamSdrScenario7Data,
-  hamSdrScenario8Data,
+  ...hamTechScenarios,
   signalHunterSandboxData,
   signalHunterScenario1Data,
   signalHunterScenario2Data,
@@ -655,6 +628,8 @@ export const SCENARIOS: ScenarioData[] = [
   ccsScenario3Data,
   ccsScenario4Data,
   ccsScenario5Data,
+  // Campaign 6 (Frontline Signals, public alpha): campaigns/frontline/frontline-gate.ts appends its scenarios when the viewer may see them
+  ...rangeWatchCampaignData.scenarios,
 ];
 
 export function isScenarioLocked(scenario: ScenarioData, completedScenarioIds: string[]): boolean {

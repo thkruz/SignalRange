@@ -2,6 +2,7 @@ import type { CampaignManager } from '@app/campaigns/campaign-manager';
 import type { AntennaRegistry } from '@app/equipment/antenna/antenna-registry';
 import type { EventBus } from '@app/events/event-bus';
 import type { t7e } from '@app/locales/i18n';
+import type { MissionControlApi } from '@app/pages/mission-control/antenna-page-registry';
 import type { Router } from '@app/router';
 import type { SettingsManager } from '@app/settings/settings-manager';
 
@@ -26,6 +27,8 @@ export interface PluginApi {
   readonly campaigns: CampaignManager;
   /** Register antenna hardware configs and optional core factories. */
   readonly antennas: AntennaRegistry;
+  /** Register Mission Control pages (antenna pages keyed by AntennaConfig.kind). */
+  readonly missionControl: MissionControlApi;
   /** Read user configuration (plugins may not write other plugins' settings). */
   readonly settings: SettingsManager;
   /** The application event bus. */

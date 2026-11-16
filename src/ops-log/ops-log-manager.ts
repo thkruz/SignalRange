@@ -19,6 +19,7 @@ interface SimClockDevHooks {
   simClockMs?: () => number;
   missionElapsedMs?: () => number;
   missionSkippedMs?: () => number;
+  simRunMs?: () => number;
 }
 
 /**
@@ -65,6 +66,8 @@ export class OpsLogManager {
     devHooks.simClockMs = () => SimClock.nowMs();
     devHooks.missionElapsedMs = () => SimClock.scenarioElapsedMs();
     devHooks.missionSkippedMs = () => SimClock.skippedMs();
+    // Run time keeps counting while a brief or quiz holds scenario time (e2e test clock checks)
+    devHooks.simRunMs = () => SimClock.runMs();
 
     // Emit initial time tick
     this.emitTimeTick_();
@@ -114,6 +117,7 @@ export class OpsLogManager {
       delete devHooks.simClockMs;
       delete devHooks.missionElapsedMs;
       delete devHooks.missionSkippedMs;
+      delete devHooks.simRunMs;
       OpsLogManager.instance_ = null;
     }
   }
@@ -147,16 +151,33 @@ export class OpsLogManager {
    * @param category Optional category for filtering/styling
    * @param source Optional source identifier
    */
-  log(message: string, category: OpsLogEntry['category'] = 'action', source?: string): void {
+  log(message: string, category: OpsLogEntry['category'] = 'action', source?: string): OpsLogEntry {
     const entry: OpsLogEntry = {
       timestamp: this.formatTimeOnly_(SimClock.nowMs()),
       message,
       category,
       source,
+      timeMs: SimClock.nowMs(),
     };
     this.entries_.push(entry);
 
     // Emit event for UI updates
+    this.eventBus_.emit(Events.OPS_LOG_ENTRY_ADDED, entry);
+    return entry;
+  }
+
+  /**
+   * Rewrite the text of an entry already in the log, keeping its timestamp.
+   * One antenna command arrives as two state events (the mode, then the
+   * target's beacon frequency); the second completes the first line instead
+   * of writing a near-copy (nats-r5-s02-F1). Re-emits OPS_LOG_ENTRY_ADDED so
+   * an open log re-renders.
+   * @param entry an entry from getEntries()
+   * @param message the new text
+   */
+  amend(entry: OpsLogEntry, message: string): void {
+    if (!this.entries_.includes(entry)) return;
+    entry.message = message;
     this.eventBus_.emit(Events.OPS_LOG_ENTRY_ADDED, entry);
   }
 

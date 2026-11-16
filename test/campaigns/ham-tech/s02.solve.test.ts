@@ -1,0 +1,266 @@
+import { afterEach, describe, expect, it } from 'vitest';
+import { hamTechS02Data } from '../../../src/campaigns/ham-sdr/tech/s02-power-on-the-bench';
+import { S02_SYMBOL_ANSWER } from '../../../src/campaigns/ham-sdr/tech/s02-station';
+import { evaluateWith, measured } from '../../../src/ham/ham-conditions';
+import { HamStationManager } from '../../../src/ham/ham-station-manager';
+import { harness } from '../../ham/manager/harness';
+import { practical, quizIds } from './solve-utils-a';
+
+afterEach(() => HamStationManager.destroy());
+
+const config = () => structuredClone(hamTechS02Data.settings.hamStation) as NonNullable<typeof hamTechS02Data.settings.hamStation>;
+
+type H = ReturnType<typeof harness>;
+// The action union is large; the meter actions are exercised through a loose helper.
+const act = (h: H, a: Record<string, unknown>) => h.actOk(a as never);
+const place = (h: H, p: Record<string, unknown>) => act(h, { type: 'meter.place', targetId: 'board', ...p });
+
+describe('S2 Power on the Bench solve', () => {
+  it('uses exactly its ten quiz items, each once', () => {
+    const ids = quizIds(hamTechS02Data);
+    expect(ids).toHaveLength(10);
+    expect(new Set(ids).size).toBe(10);
+    expect([...ids].sort()).toEqual(['S02-A1', 'S02-A2', 'S02-Q1', 'S02-Q2', 'S02-Q3', 'S02-Q4', 'S02-Q5', 'S02-Q6', 'S02-Q7', 'S02-Q8']);
+  });
+
+  it('accepts a board-off 0 V reading taken with the black probe on GND (same node as SUP-)', () => {
+    const h = harness(config());
+    const m = h.m;
+    const find = practical(hamTechS02Data, 'find-open-branch')[0];
+    h.advance(2);
+    act(h, { type: 'board.switch', deviceId: 'board', on: true });
+    act(h, { type: 'power', deviceId: 'board', on: false });
+    act(h, { type: 'meter.mode', mode: 'DCV' });
+    act(h, { type: 'meter.socket', socket: 'VOHM' });
+    place(h, { red: 'tp-supply+', black: 'tp-gnd' });
+    act(h, { type: 'meter.read' });
+    expect(m.lastMeasurement({ instrument: 'multimeter', quantity: 'voltage' })?.value).toBeCloseTo(0, 1);
+    expect(evaluateWith(find, m)).toBe(true);
+  });
+
+  describe('same-node test points on the board', () => {
+    const row = (id: string, label: string) => practical(hamTechS02Data, id).filter((c) => c.description === label);
+    const setup = () => {
+      const h = harness(config());
+      h.advance(2);
+      act(h, { type: 'meter.mode', mode: 'DCV' });
+      act(h, { type: 'meter.socket', socket: 'VOHM' });
+      return h;
+    };
+    const read = (h: H, red: string, black: string) => {
+      place(h, { red, black });
+      act(h, { type: 'meter.read' });
+    };
+    const offAndSetup = () => {
+      const h = setup();
+      act(h, { type: 'board.switch', deviceId: 'board', on: true });
+      act(h, { type: 'power', deviceId: 'board', on: false });
+      return h;
+    };
+
+    it('Supply reads 12.0 V accepts red F1 IN with black SUP-', () => {
+      const h = setup();
+      expect(row('measure-test-supply', 'Supply reads 12.0 V').every((c) => evaluateWith(c, h.m))).toBe(false);
+      read(h, 'tp-f1-in', 'tp-supply-');
+      expect(row('measure-test-supply', 'Supply reads 12.0 V').every((c) => evaluateWith(c, h.m))).toBe(true);
+    });
+
+    it('Supply reads 12.0 V still rejects swapped probes (a negative reading)', () => {
+      const h = setup();
+      read(h, 'tp-supply-', 'tp-f1-in');
+      expect(h.m.lastMeasurement({ instrument: 'multimeter', quantity: 'voltage' })?.value).toBeLessThan(-11);
+      expect(row('measure-test-supply', 'Supply reads 12.0 V').every((c) => evaluateWith(c, h.m))).toBe(false);
+      expect(row('measure-test-supply', 'Reversed probes read negative').every((c) => evaluateWith(c, h.m))).toBe(true);
+    });
+
+    it('board-off 0 V accepts black R1 B', () => {
+      const h = offAndSetup();
+      read(h, 'tp-supply+', 'tp-r1-b');
+      expect(row('find-open-branch', 'Board verified off (0 V)').every((c) => evaluateWith(c, h.m))).toBe(true);
+    });
+
+    it('board-off 0 V accepts the probes left swapped', () => {
+      const h = offAndSetup();
+      read(h, 'tp-supply-', 'tp-supply+');
+      expect(row('find-open-branch', 'Board verified off (0 V)').every((c) => evaluateWith(c, h.m))).toBe(true);
+    });
+
+    it('board-off 0 V still rejects a reading that is not zero (board on)', () => {
+      const h = setup();
+      act(h, { type: 'board.switch', deviceId: 'board', on: true });
+      read(h, 'tp-supply-', 'tp-supply+');
+      expect(row('find-open-branch', 'Board verified off (0 V)').every((c) => evaluateWith(c, h.m))).toBe(false);
+    });
+
+    it('continuity accepts the same-node ids F1 OUT for SW1 IN', () => {
+      const h = offAndSetup();
+      const cont = () => row('find-open-branch', 'No continuity across the SW1 contact').every((c) => evaluateWith(c, h.m));
+      act(h, { type: 'meter.mode', mode: 'CONT' });
+      read(h, 'tp-sw1-in', 'tp-sw1-out');
+      expect(cont()).toBe(true);
+      HamStationManager.destroy();
+      const h2 = offAndSetup();
+      act(h2, { type: 'meter.mode', mode: 'CONT' });
+      read(h2, 'tp-f1-out', 'tp-sw1-out');
+      expect(row('find-open-branch', 'No continuity across the SW1 contact').every((c) => evaluateWith(c, h2.m))).toBe(true);
+    });
+  });
+
+  it('solves every objective in order', () => {
+    const h = harness(config());
+    const m = h.m;
+    const ok = (id: string) => practical(hamTechS02Data, id).every((c) => evaluateWith(c, m));
+    h.advance(2);
+
+    expect(ok('match-circuit-symbols')).toBe(false);
+    act(h, { type: 'worksheet.answer', id: 's02-symbols', values: { parts: { ...S02_SYMBOL_ANSWER } } });
+    expect(ok('match-circuit-symbols')).toBe(true);
+
+    expect(ok('select-meter-function')).toBe(false);
+    act(h, { type: 'worksheet.answer', id: 's02-select', values: { setup: 'DC voltage, red lead in the VΩ socket' } });
+    expect(ok('select-meter-function')).toBe(false); // meter not yet set
+    act(h, { type: 'meter.mode', mode: 'DCV' });
+    expect(ok('select-meter-function')).toBe(true);
+
+    expect(ok('measure-test-supply')).toBe(false);
+    place(h, { red: 'tp-supply+', black: 'tp-supply-' });
+    act(h, { type: 'meter.read' });
+    expect(ok('measure-test-supply')).toBe(false); // reverse reading missing
+    place(h, { red: 'tp-supply-', black: 'tp-supply+' });
+    act(h, { type: 'meter.read' });
+    place(h, { red: 'tp-supply+', black: 'tp-supply-' });
+    act(h, { type: 'meter.read' });
+    expect(ok('measure-test-supply')).toBe(true);
+
+    // predict: close SW1, the series current reads about 0 A because of the open contact
+    expect(ok('predict-branch-current')).toBe(false);
+    act(h, { type: 'board.switch', deviceId: 'board', on: true });
+    act(h, { type: 'worksheet.answer', id: 's02-predict', values: { current: 0.1, power: 1.2 } });
+    act(h, { type: 'meter.mode', mode: 'DCA' });
+    act(h, { type: 'meter.socket', socket: 'A' });
+    place(h, { series: 'r1-branch' });
+    act(h, { type: 'meter.read' });
+    expect(m.lastMeasurement({ instrument: 'multimeter', quantity: 'current' })?.value).toBeLessThan(0.01);
+    expect(ok('predict-branch-current')).toBe(true);
+
+    // find the open branch: power off, verify 0 V, then continuity
+    expect(ok('find-open-branch')).toBe(false);
+    act(h, { type: 'power', deviceId: 'board', on: false });
+    act(h, { type: 'meter.mode', mode: 'DCV' });
+    act(h, { type: 'meter.socket', socket: 'VOHM' });
+    place(h, { red: 'tp-supply+', black: 'tp-supply-' });
+    act(h, { type: 'meter.read' });
+    expect(ok('find-open-branch')).toBe(false); // no continuity yet
+    act(h, { type: 'meter.mode', mode: 'CONT' });
+    place(h, { red: 'tp-sw1-in', black: 'tp-sw1-out' });
+    act(h, { type: 'meter.read' });
+    expect(ok('find-open-branch')).toBe(true);
+
+    // restore
+    expect(ok('restore-indicator-circuit')).toBe(false);
+    act(h, { type: 'inspect', targetId: 'board' });
+    act(h, { type: 'repair', faultId: 'sw1-contact' });
+    act(h, { type: 'power', deviceId: 'board', on: true });
+    h.advance(2);
+    expect(ok('restore-indicator-circuit')).toBe(false); // no post-repair readings yet
+    act(h, { type: 'meter.mode', mode: 'DCA' });
+    act(h, { type: 'meter.socket', socket: 'A' });
+    place(h, { series: 'r1-branch' });
+    act(h, { type: 'meter.read' });
+    expect(ok('restore-indicator-circuit')).toBe(false); // led branch missing
+    place(h, { series: 'led-branch' });
+    act(h, { type: 'meter.read' });
+    expect(ok('restore-indicator-circuit')).toBe(true);
+
+    expect(ok('compare-circuit-families')).toBe(false);
+    act(h, {
+      type: 'worksheet.answer',
+      id: 's02-families',
+      values: { series: 'series', branches: 'parallel', capacitor: 'an electric field', inductor: 'a magnetic field', diode: 'rectification', regulator: 'regulation' },
+    });
+    expect(ok('compare-circuit-families')).toBe(true);
+  });
+
+  it('negative: continuity on the energized board is refused and nothing is logged', () => {
+    const h = harness(config());
+    act(h, { type: 'meter.mode', mode: 'CONT' });
+    place(h, { red: 'tp-sw1-in', black: 'tp-sw1-out' });
+    expect(h.actRefused({ type: 'meter.read' } as never).ok).toBe(false);
+    expect(practical(hamTechS02Data, 'find-open-branch').every((c) => evaluateWith(c, h.m))).toBe(false);
+  });
+
+  it('negative: repair is refused while the board is powered, and a wrong prediction fails', () => {
+    const h = harness(config());
+    act(h, { type: 'inspect', targetId: 'board' });
+    expect(h.actRefused({ type: 'repair', faultId: 'sw1-contact' }).ok).toBe(false);
+    act(h, { type: 'worksheet.answer', id: 's02-predict', values: { current: 1.0, power: 12 } });
+    expect(h.m.events('worksheet:s02-predict:wrong').length).toBe(1);
+    expect(practical(hamTechS02Data, 'predict-branch-current').every((c) => evaluateWith(c, h.m))).toBe(false);
+  });
+});
+
+describe('S2 OL readings are logged (open contact)', () => {
+  const row = (id: string, label: string) => practical(hamTechS02Data, id).filter((c) => c.description === label);
+  const open = () => {
+    const h = harness(config());
+    h.advance(2);
+    act(h, { type: 'meter.mode', mode: 'DCV' });
+    act(h, { type: 'meter.socket', socket: 'VOHM' });
+    act(h, { type: 'board.switch', deviceId: 'board', on: true });
+    act(h, { type: 'power', deviceId: 'board', on: false });
+    act(h, { type: 'meter.mode', mode: 'CONT' });
+    return h;
+  };
+  const read = (h: H, red: string, black: string) => {
+    act(h, { type: 'meter.place', targetId: 'board', red, black });
+    act(h, { type: 'meter.read' });
+  };
+
+  it('the swapped-lead OL reading is logged and ticks the no-continuity row', () => {
+    const h = open();
+    read(h, 'tp-sw1-out', 'tp-sw1-in');
+    const x = h.m.lastMeasurement({ instrument: 'multimeter', quantity: 'continuity' });
+    expect(x?.context?.display).toBe('OL');
+    expect(x?.context?.overload).toBe(true);
+    expect(row('find-open-branch', 'No continuity across the SW1 contact').every((c) => evaluateWith(c, h.m))).toBe(true);
+  });
+
+  it('an OL reading is finite, survives JSON, and does not satisfy a max-bounded row', () => {
+    const h = open();
+    read(h, 'tp-sw1-out', 'tp-sw1-in');
+    const x = h.m.lastMeasurement({ instrument: 'multimeter', quantity: 'continuity' });
+    expect(Number.isFinite(x?.value)).toBe(true);
+    expect(JSON.parse(JSON.stringify(x)).value).toBe(x?.value);
+    const lowOnly = measured({ instrument: 'multimeter', quantity: 'continuity', placement: { target: 'board', red: 'tp-sw1-in', black: 'tp-sw1-out' }, max: 100 }, 'low');
+    expect(evaluateWith(lowOnly, h.m)).toBe(false);
+  });
+
+  const offBench = () => {
+    const h = harness(config());
+    h.advance(2);
+    act(h, { type: 'power', deviceId: 'board', on: false });
+    act(h, { type: 'meter.mode', mode: 'CONT' });
+    return h;
+  };
+  const NC = 'No continuity across the SW1 contact';
+
+  it('an OL reading across SW1 taken with SW1 off does not tick the row, in either lead order', () => {
+    const h = offBench();
+    read(h, 'tp-sw1-in', 'tp-sw1-out');
+    expect(row('find-open-branch', NC).every((c) => evaluateWith(c, h.m))).toBe(false);
+    read(h, 'tp-sw1-out', 'tp-sw1-in');
+    expect(row('find-open-branch', NC).every((c) => evaluateWith(c, h.m))).toBe(false);
+  });
+
+  it('closing SW1 afterwards and reading again ticks the row, in either lead order', () => {
+    const h = offBench();
+    read(h, 'tp-sw1-in', 'tp-sw1-out');
+    act(h, { type: 'board.switch', deviceId: 'board', on: true });
+    read(h, 'tp-sw1-in', 'tp-sw1-out');
+    expect(row('find-open-branch', NC).every((c) => evaluateWith(c, h.m))).toBe(true);
+    const h2 = offBench();
+    act(h2, { type: 'board.switch', deviceId: 'board', on: true });
+    read(h2, 'tp-sw1-out', 'tp-sw1-in');
+    expect(row('find-open-branch', NC).every((c) => evaluateWith(c, h2.m))).toBe(true);
+  });
+});

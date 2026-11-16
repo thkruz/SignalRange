@@ -200,7 +200,7 @@ test.describe('Signal Hunter Scenario 1 Full Completion', () => {
       [
         { question: /DUTY CYCLE/, answer: 'Approximately 30%' },
         { question: /OCCUPIED BANDWIDTH/, answer: 'About 3 MHz' },
-        { question: /POLARIZATION/, answer: 'Horizontal - TP-1 is an H-pol transponder' },
+        { question: /POLARIZATION/, answer: 'Vertical - for a linear transponder' },
       ],
       3
     );

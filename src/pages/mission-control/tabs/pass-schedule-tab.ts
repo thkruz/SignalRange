@@ -7,6 +7,8 @@ import { Events, SimulatedTimeTickData } from '@app/events/events';
 import { SelectedStation } from '@app/pages/mission-control/selected-station';
 import { ScenarioManager } from '@app/scenario-manager';
 import { PassPlannerService, SatellitePass, scenarioMinElevation } from '@app/services/pass-planner-service';
+import { predictSatellitePasses } from '@app/services/pass-prediction';
+import { laneOrbitalSatellites } from '@app/simulation/sim-queries';
 import { getSimulatedNowMs } from '@app/simulation/sim-time';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { SpaceEventManager } from '@app/space-events/space-event-manager';
@@ -27,7 +29,10 @@ export class PassScheduleTab extends BaseElement {
   /** Throttle for the ephemeris repaint on the raw update tick (ms) */
   private static readonly EPHEMERIS_SYNC_INTERVAL_MS = 1000;
 
-  private readonly satellites_: OrbitalSatellite[];
+  private satellites_: OrbitalSatellite[];
+  /** Bumped per refresh so a late worker answer for an old window is dropped */
+  private seq_ = 0;
+  private readonly boundSelectionHandler_: () => void;
   private readonly passPlanner_ = new PassPlannerService();
   /** Predict from the station the operator is looking at (multi-site LEO work) */
   private readonly station_ = new SelectedStation();
@@ -47,7 +52,7 @@ export class PassScheduleTab extends BaseElement {
 
   constructor(containerId: string) {
     super();
-    this.satellites_ = SimulationManager.getInstance().satellites.filter((sat): sat is OrbitalSatellite => sat instanceof OrbitalSatellite);
+    this.satellites_ = laneOrbitalSatellites(SimulationManager.getInstance());
     this.init_(containerId, 'replace');
     this.dom_ = qs('.pass-schedule-tab');
 
@@ -61,6 +66,9 @@ export class PassScheduleTab extends BaseElement {
     // operator is reading the brief that tells them a burn happened.
     this.boundUpdateHandler_ = this.throttledEphemerisSync_.bind(this);
     EventBus.getInstance().on(Events.UPDATE, this.boundUpdateHandler_);
+
+    this.boundSelectionHandler_ = this.handleSelectionChanged_.bind(this);
+    EventBus.getInstance().on(Events.SELECTION_CHANGED, this.boundSelectionHandler_);
 
     this.wireEphemerisPanel_();
     this.refreshSchedule_(getSimulatedNowMs());
@@ -89,6 +97,7 @@ export class PassScheduleTab extends BaseElement {
                       <th>LOS</th>
                       <th>DURATION</th>
                       <th>MAX EL</th>
+                      <th>MAX EL AT</th>
                       <th>AOS AZ</th>
                       <th>STATUS</th>
                     </tr>
@@ -175,12 +184,17 @@ export class PassScheduleTab extends BaseElement {
         const satellite = this.satellites_.find((sat) => sat.noradId === event.satelliteNoradId);
         const name = satellite?.name ?? `NORAD ${event.satelliteNoradId}`;
         const label = event.label ?? 'On-orbit maneuver';
+        // LEOP events boot on an injection estimate and load a refined set; nothing manoeuvres
+        const isLeop = Boolean(event.initialTle);
+        const epoch = PassScheduleTab.formatEpoch_(satellite);
 
         if (phase === 'stale') {
           const staleBadge = this.isBackyard_ ? 'TLE SUSPECT' : 'EPHEMERIS STALE';
           const staleDetail = this.isBackyard_
             ? `${label} — predictions and rotator tracking are running on your saved TLE, and the sky disagrees with it.`
-            : `${label} — pass predictions and program-track are computed from a pre-maneuver element set.`;
+            : isLeop
+              ? `${label} — pass predictions and program-track are computed from the injection estimate. ${epoch}`
+              : `${label} — pass predictions and program-track are computed from a pre-maneuver element set. ${epoch}`;
           const buttonText = this.isBackyard_ ? 'Fetch Fresh Elements' : 'Load Updated Ephemeris';
 
           return html`
@@ -199,8 +213,10 @@ export class PassScheduleTab extends BaseElement {
           phase === 'updated'
             ? html`<span class="ephemeris-badge ephemeris-badge-updated">UPDATED</span>`
             : html`<span class="ephemeris-badge ephemeris-badge-nominal">NOMINAL</span>`;
-        const updatedDetail = this.isBackyard_ ? 'Fresh elements loaded from the network. Predictions are current.' : 'Post-maneuver element set loaded. Predictions are current.';
-        const nominalDetail = this.isBackyard_ ? 'Elements current.' : 'Element set current.';
+        const updatedDetail = this.isBackyard_
+          ? 'Fresh elements loaded from the network. Predictions are current.'
+          : `${isLeop ? 'Refined element set loaded.' : 'Post-maneuver element set loaded.'} Predictions are current. ${epoch}`;
+        const nominalDetail = this.isBackyard_ ? 'Elements current.' : `Element set current. ${epoch}`;
 
         return html`
         <div class="ephemeris-row">
@@ -228,12 +244,34 @@ export class PassScheduleTab extends BaseElement {
     // Include a pass that is already in progress by searching from 20 min ago
     // Same elevation mask the contact timeline deck uses, so the two surfaces
     // never show different AOS/LOS for the same pass.
-    this.passes_ = this.passPlanner_
-      .getContactSchedule(this.satellites_, nowMs - 20 * 60 * 1000, {
-        minElevation: scenarioMinElevation(ScenarioManager.getInstance().settings),
-        observer: this.station_.observer,
-      })
-      .filter((pass) => pass.losMs > nowMs);
+    this.satellites_ = laneOrbitalSatellites(SimulationManager.getInstance());
+    const seq = ++this.seq_;
+    const { sync, pending } = predictSatellitePasses(this.passPlanner_, this.satellites_, nowMs - 20 * 60 * 1000, {
+      // AOS/LOS at each satellite's receivable horizon (where its signals
+      // start and stop); the scenario mask only drops passes that never
+      // reach it. Same call as the deck and the skip.
+      aosElevation: 'receivable',
+      minPeakElevation: scenarioMinElevation(ScenarioManager.getInstance().settings),
+      observer: this.station_.observer,
+    });
+
+    this.passes_ = sync.filter((pass) => pass.losMs > nowMs);
+
+    // Constellation members are searched in the worker; merge when it answers.
+    void pending?.then((found) => {
+      if (seq !== this.seq_ || !this.dom_) {
+        return;
+      }
+      this.passes_ = [...this.passes_, ...found.filter((pass) => pass.losMs > nowMs)].sort((x, y) => x.aosMs - y.aosMs);
+      this.renderRows_(getSimulatedNowMs());
+    });
+  }
+
+  private handleSelectionChanged_(): void {
+    if (SimulationManager.getInstance().registry.memberCount > 0) {
+      this.refreshSchedule_(getSimulatedNowMs());
+      this.renderRows_(getSimulatedNowMs());
+    }
   }
 
   private renderRows_(nowMs: number): void {
@@ -248,14 +286,14 @@ export class PassScheduleTab extends BaseElement {
     }
 
     if (this.satellites_.length === 0) {
-      tbody.innerHTML = html`<tr><td colspan="7" class="text-muted">No orbital satellites in this scenario.</td></tr>`;
+      tbody.innerHTML = html`<tr><td colspan="8" class="text-muted">No orbital satellites in this scenario.</td></tr>`;
       return;
     }
 
     const upcoming = this.passes_.filter((pass) => pass.losMs > nowMs);
 
     if (upcoming.length === 0) {
-      tbody.innerHTML = html`<tr><td colspan="7" class="text-muted">No contacts predicted in the planning horizon.</td></tr>`;
+      tbody.innerHTML = html`<tr><td colspan="8" class="text-muted">No contacts predicted in the planning horizon.</td></tr>`;
       return;
     }
 
@@ -282,10 +320,23 @@ export class PassScheduleTab extends BaseElement {
         <td class="font-monospace">${PassScheduleTab.formatTime_(pass.losMs)}</td>
         <td class="font-monospace">${PassScheduleTab.formatCountdown_(pass.durationS * 1000)}</td>
         <td class="font-monospace">${pass.maxEl.toFixed(1)}&deg;</td>
+        <td class="font-monospace">${PassScheduleTab.formatTime_(pass.maxElMs)}</td>
         <td class="font-monospace">${PassPlannerService.formatAzimuth(pass.aosAz)}&deg;</td>
         <td><span class="${statusClass} font-monospace">${status}</span></td>
       </tr>
     `;
+  }
+
+  /** Epoch of the element set the station predicts from, for the status line. */
+  private static formatEpoch_(satellite: OrbitalSatellite | undefined): string {
+    if (!satellite) {
+      return '';
+    }
+    const epochMs = satellite.predictionSatellite.toTle().epoch.toDateTime().getTime();
+    const d = new Date(epochMs);
+    const date = d.toISOString().slice(0, 10);
+
+    return `Element set epoch ${date} ${PassScheduleTab.formatTime_(epochMs)}Z.`;
   }
 
   private static formatTime_(timestampMs: number): string {
@@ -322,6 +373,8 @@ export class PassScheduleTab extends BaseElement {
   public dispose(): void {
     EventBus.getInstance().off(Events.SIMULATED_TIME_TICK, this.boundTimeTickHandler_);
     EventBus.getInstance().off(Events.UPDATE, this.boundUpdateHandler_);
+    EventBus.getInstance().off(Events.SELECTION_CHANGED, this.boundSelectionHandler_);
+    this.seq_++;
     this.station_.destroy();
     this.dom_?.remove();
   }

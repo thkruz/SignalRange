@@ -9,7 +9,8 @@ import { Events } from '@app/events/events';
  */
 export interface PayloadState {
   dataRate: string;
-  payloadType: 'Command' | 'Telemetry' | 'Bulk Data';
+  /** Scenarios set this through FaultInjector tx-payload overrides; 'Data' is the neutral default (s01-F20) */
+  payloadType: 'Data' | 'Command' | 'Telemetry' | 'Bulk Data';
   channel: 'Primary' | 'Backup';
   crc: string;
   frameSyncLocked: boolean;
@@ -38,7 +39,7 @@ export class PayloadAdapter {
   // Static state - can be updated dynamically in future
   private state_: PayloadState = {
     dataRate: '2.048 Mbps',
-    payloadType: 'Command',
+    payloadType: 'Data',
     channel: 'Primary',
     crc: 'CRC-32',
     frameSyncLocked: true,

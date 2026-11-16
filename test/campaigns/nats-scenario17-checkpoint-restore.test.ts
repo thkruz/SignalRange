@@ -161,7 +161,7 @@ describe('nats S17: a checkpoint saved while stuck before the transit fix', () =
     expect(ObjectivesManager.getInstance().getScenarioTimeRemaining()).toBeGreaterThan(1742 - 120);
   });
 
-  it('still reaches the >6 dB peak that ride-through-peak waits on', () => {
+  it('still runs the full transit: a deep peak (ride-through-peak waits for it to pass) that clears again', () => {
     ObjectivesManager.initialize(scenario17Data.objectives, scenario17Data.timeLimitSeconds);
     WeatherManager.getInstance();
     ObjectivesManager.getInstance().restoreState(stuckPreFixSave(), 1742);
@@ -173,6 +173,8 @@ describe('nats S17: a checkpoint saved while stuck before the transit fix', () =
     }
 
     expect(peak).toBeGreaterThan(6);
+    // The peak row is weather-event-peaked (Phase 29 D10): the event is past its midpoint
+    expect(WeatherManager.getInstance().hasEventPeaked('tm1-sun-transit')).toBe(true);
     // ...and has cleared again, so verify-recovery's <1 dB can tick
     expect(vt01Antenna.state.skyNoiseDegradation_dB).toBeLessThan(1);
   });

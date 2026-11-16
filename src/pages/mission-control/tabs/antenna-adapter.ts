@@ -3,6 +3,7 @@ import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { parseLocalizedNumber } from '@app/utils/parse-number';
 import { Degrees } from 'ootk';
+import { wrapAzimuthDeg } from '../az-display';
 
 /**
  * AntennaAdapter - Bridges AntennaCore state to web controls
@@ -150,7 +151,7 @@ export class AntennaAdapter {
         slider.value = state.azimuth.toString();
       }
       if (display) {
-        display.textContent = `${state.azimuth.toFixed(1)}°`;
+        display.textContent = `${wrapAzimuthDeg(state.azimuth).toFixed(1)}°`;
       }
     }
 

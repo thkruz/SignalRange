@@ -122,8 +122,8 @@ const makeSdrFrontEnd = (filterBandwidthIndex: number, filterBandwidthMhz: numbe
     tapPointB: TapPoint.RX_IF,
     availableTapPointsA: [TapPoint.TX_IF, TapPoint.RX_IF],
     availableTapPointsB: [TapPoint.TX_IF, TapPoint.RX_IF],
-    couplingFactorA: -40,
-    couplingFactorB: -39,
+    couplingFactorA: -20, // dB (monitor coupler; the analyzer reads line power through it, Phase 19.2)
+    couplingFactorB: -20, // dB
     isEnabledA: false,
     isEnabledB: true,
     isActiveA: false,
@@ -318,6 +318,7 @@ const makeTxFrontEnd = (): Partial<RFFrontEndState> => {
       isHpaEnabled: true,
       isHpaSwitchEnabled: true,
       backOff: 3,
+      amplifierType: 'sspa', // solid-state brick (Rapp, 19.6): ALC holds P1dB - 3 = 31 dBm
       maxOutputPower: 37 as dBm, // ~5 W brick
       p1db: 34 as dBm,
     },
@@ -381,12 +382,12 @@ export const backyardGpsStation = {
       isLocked: false,
     } as Partial<AntennaState>,
   ],
-  rfFrontEnds: [makeSdrFrontEnd(10, 5)], // 5 MHz filter for the 2 MHz spread-spectrum hump
+  rfFrontEnds: [makeSdrFrontEnd(10, 5)], // 5 MHz filter: passes all 2 MHz of L1 spread spectrum
   spectrumAnalyzers: [
     {
       referenceLevel: -60 as dBm,
       centerFrequency: 1575.42e6 as Hertz,
-      span: 8e6 as Hertz, // wide: the whole 2 MHz spread-spectrum hump in view
+      span: 8e6 as Hertz, // wide: all 2 MHz of L1 in view (real GPS sits under the floor; the S5 spoofer does not)
       rbw: 30e3 as Hertz,
       minAmplitude: -75 as dBm,
       maxAmplitude: -25 as dBm,

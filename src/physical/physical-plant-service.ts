@@ -1,0 +1,503 @@
+/**
+ * @file physical-plant-service - Scenario-lifetime owner of the physical plant
+ * @description Same lifecycle shape as HardwareFaultManager: base-page creates it
+ * when `settings.physicalPlant` is set, the page teardown destroys it, and UI
+ * reads the manager through `getInstance().plant`. It wires the Core manager to
+ * the app: scenario time (SimClock) for `now`/`skip`, seeded `Rng` streams,
+ * wind and rain from the WeatherManager events (plus a trainer weather
+ * override), and the engine bridge. Time is driven from the scenario clock, so
+ * a verb's skip and an operator time skip both advance the plant exactly once.
+ */
+
+import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
+import { OpsLogManager } from '@app/ops-log/ops-log-manager';
+import { ImmersiveView } from '@app/presentation/immersive-view';
+import { ScenarioManager } from '@app/scenario-manager';
+import { CampaignDocumentStore } from '@app/scenarios/campaign-document-store';
+import { resolveIncoming } from '@app/scenarios/incoming-records';
+import { WorkingDocumentManager } from '@app/scenarios/working-document-manager';
+import { Rng } from '@app/simulation/rng';
+import { SimClock } from '@app/simulation/sim-clock';
+import { WeatherManager } from '@app/weather/weather-manager';
+import { EquipmentLedger } from './equipment-records';
+import { EvidenceLog, type EvidenceLogState } from './evidence-log';
+import { type FieldHooks, setActiveField } from './field-hooks';
+import { FieldRecords, type FieldRecordsState } from './field-records';
+import { PhysicalPlantManager } from './physical-plant-manager';
+import type { PlantEnvironment, PlantState } from './physical-plant-types';
+import { setActivePlant } from './plant-bridge';
+import { PlantEventController, type PlantEventState } from './plant-event-controller';
+import { PlantSoundController } from './plant-sound-controller';
+import { ServiceModel } from './service-model';
+import type { ServiceModelState } from './service-types';
+import { WorkloadRunner } from './workload-runner';
+import type { WorkloadRunnerState } from './workload-types';
+
+/** Slice (scenario seconds) a long skip is stepped in while the service model measures a recovery interval */
+const FINE_STEP_S = 1;
+
+const DEFAULT_AMBIENT_C = 15;
+
+/** A terminal app model's checkpoint seam (the app owns the shape of its state) */
+export interface TerminalAppPersistence {
+  getState(): unknown;
+  restoreState(state: unknown): void;
+}
+
+/** Saved app state by terminal id */
+export type TerminalAppsState = Record<string, unknown>;
+
+export class PhysicalPlantService {
+  private static instance_: PhysicalPlantService | null = null;
+
+  readonly plant: PhysicalPlantManager;
+  private weatherOverride_: Partial<PlantEnvironment> = {};
+  private lastSyncS_: number;
+  /** While a long skip is stepped in slices: the slice's scenario second, as the plant and the service model see it */
+  private fineNowS_: number | null = null;
+  private readonly boundUpdateHandler_: () => void;
+  private readonly sounds_: PlantSoundController;
+  /** Stops following held objects (readings do not age while one is open) */
+  private readonly unfollowHeld_: (() => void) | null = null;
+  /** Present only when the plant config authors events */
+  readonly events: PlantEventController | null;
+  /** Present only when the plant config authors services (Campaign 6) */
+  readonly services: ServiceModel | null;
+  /** Present when the plant config authors services or events (Campaign 6) */
+  readonly evidence: EvidenceLog | null;
+  /** Present when the plant config authors workloads and services (Campaign 6, M10) */
+  readonly workloads: WorkloadRunner | null;
+  /** Present when the plant config authors handover forms (Campaign 6, M13) */
+  readonly records: FieldRecords | null;
+
+  private constructor() {
+    const config = ScenarioManager.getInstance().settings.physicalPlant;
+    if (!config) {
+      throw new Error('PhysicalPlantService needs settings.physicalPlant');
+    }
+    this.lastSyncS_ = SimClock.scenarioElapsedMs() / 1000;
+    this.plant = new PhysicalPlantManager(config, {
+      now: () => this.fineNowS_ ?? SimClock.scenarioElapsedMs() / 1000,
+      skip: (seconds) => {
+        SimClock.skip(seconds * 1000);
+        this.sync_();
+      },
+      env: () => this.environment_(config.stationId),
+      timeOfDayS: () => (SimClock.nowMs() / 1000) % 86400,
+      rng: (name) => Rng.stream(name),
+      setWeather: (weather) => {
+        this.weatherOverride_ = { ...this.weatherOverride_, ...weather };
+      },
+    });
+    // A supply drop restarts the terminal on its own: say so in the Ops Log and point at the supply, not the terminal
+    this.plant.setSupplyRestartListener((restart) => {
+      if (OpsLogManager.isInitialized()) {
+        OpsLogManager.getInstance().log(
+          `${restart.label} lost power and is restarting, so service stops until it is back. The supply dropped out at ${restart.sourceLabel}: check the supply, not the terminal.`,
+          'alert',
+          'Site'
+        );
+      }
+    });
+    this.services = config.service
+      ? new ServiceModel(config.service, this.plant, undefined, { now: () => this.fineNowS_ ?? SimClock.scenarioElapsedMs() / 1000 }, config.liveLink)
+      : null;
+    if (this.services) {
+      const services = this.services;
+      // A view already open when the service starts counts too, so follow topDialog() instead of a counter
+      const syncHeld = (): void => (ImmersiveView.topDialog() ? services.pauseAging() : services.resumeAging());
+      this.unfollowHeld_ = ImmersiveView.onChange(syncHeld);
+      syncHeld();
+    }
+    this.evidence = config.service || config.events?.length ? new EvidenceLog(this.plant, this.services) : null;
+    this.workloads =
+      config.workloads && this.services
+        ? new WorkloadRunner(config.workloads, this.services, {
+            now: () => SimClock.scenarioElapsedMs() / 1000,
+            skip: (seconds) => {
+              SimClock.skip(seconds * 1000);
+              this.sync_();
+            },
+            power: {
+              open: (key, untilS) => this.plant.openLedger(key, untilS),
+              close: (key) => this.plant.closeLedger(key),
+              get: (key) => this.plant.getLedger(key),
+              storedWh: () => Object.values(this.plant.getPowerReadings().socWh).reduce((a, b) => a + b, 0),
+              reserveWh: () => this.plant.getPowerReadings().reserveWh,
+              basis: () => this.plant.forecast({}, 1).basis,
+              projectedWh: (horizonS) => this.plant.forecast({}, horizonS).projectedSocWh,
+            },
+          })
+        : null;
+    const ledger = config.equipment ? new EquipmentLedger(config.equipment, () => SimClock.scenarioElapsedMs() / 1000) : null;
+    this.records =
+      config.handovers?.length || ledger
+        ? new FieldRecords(config.handovers ?? [], {
+            equipment: ledger,
+            plant: this.plant,
+            service: this.services,
+            evidence: this.evidence,
+            runs: () => this.workloads?.getRuns() ?? [],
+            getCardVersion: (cardId) => this.workloads?.getCard(cardId)?.version,
+            eventFiredAtS: (eventId) => this.events?.firedAtS(eventId) ?? null,
+            configEpoch: () => this.services?.getEpochs().config ?? null,
+            writeLine: (section, line) => WorkingDocumentManager.getInstance().addLine(section, line),
+            storeRecord: (record) => {
+              CampaignDocumentStore.recordHandover(record);
+              // An accepted filing of a form that carries a referral rule files it now (optional continuity, no completion needed)
+              for (const rule of config.referrals ?? []) {
+                if (rule.formId === record.formId) CampaignDocumentStore.fileReferralFor(rule.referralId, record);
+              }
+            },
+            catchUp: () => this.catchUp(),
+          })
+        : null;
+    this.records?.setIncoming((config.incoming ?? []).map(resolveIncoming));
+    this.events = config.events?.length
+      ? new PlantEventController(config.events, {
+          setAccount: (patch) => this.services?.setAccount(patch),
+          setProvider: (patch) => this.services?.setProvider(patch),
+          setEndpoint: (patch) => this.services?.setEndpoint(patch),
+          deliverNotice: (noticeId, version) => {
+            const notice = ledger?.deliverNotice(noticeId, version);
+            const provider = notice ? this.services?.getProvider(notice.providerId) : undefined;
+            if (notice && provider && !provider.noticeIds.includes(noticeId)) {
+              this.services?.setProvider({ id: provider.id, noticeIds: [...provider.noticeIds, noticeId] });
+            }
+          },
+          respondRequest: (requestId, status) => ledger?.respond(requestId, status),
+          injectFault: (fault) => this.plant.injectFault(fault),
+          rebootPart: (partId) => this.plant.startBoot(partId),
+          setLinkImpairment: (id, active, durationS, atS) => this.services?.setImpairment(id, active, durationS, atS),
+          clearFault: (faultId) => this.plant.clearFault(faultId),
+          setWeather: (weather) => this.plant.setWeather(weather),
+          log: (line) => {
+            if (OpsLogManager.isInitialized()) {
+              OpsLogManager.getInstance().log(line, 'alert', 'Site');
+            }
+          },
+          onFire: (eventId, atS, logLine, label) => {
+            if (this.services) {
+              this.services.bumpEvent(eventId, atS, logLine, label);
+            } else {
+              this.evidence?.recordEvent(eventId, logLine);
+            }
+          },
+        })
+      : null;
+    setActivePlant(this.plant);
+    setActiveField(this.fieldHooks_());
+    this.installFieldStatus_();
+    this.sounds_ = new PlantSoundController(this.plant);
+    this.boundUpdateHandler_ = this.sync_.bind(this);
+    EventBus.getInstance().on(Events.UPDATE, this.boundUpdateHandler_);
+  }
+
+  static getInstance(): PhysicalPlantService {
+    this.instance_ ??= new PhysicalPlantService();
+
+    return this.instance_;
+  }
+
+  /** The Site tab tells the sandbox whether it is on screen (the tent bed plays only then) */
+  static setSiteTabShown(shown: boolean): void {
+    this.instance_?.sounds_.setSiteTabShown(shown);
+  }
+
+  static isInitialized(): boolean {
+    return this.instance_ !== null;
+  }
+
+  /** The manager, or null when this scenario has no plant (never creates one) */
+  static plantOrNull(): PhysicalPlantManager | null {
+    return this.instance_?.plant ?? null;
+  }
+
+  static destroy(): void {
+    if (this.instance_) {
+      EventBus.getInstance().off(Events.UPDATE, this.instance_.boundUpdateHandler_);
+      this.instance_.sounds_.dispose();
+      this.instance_.unfollowHeld_?.();
+      this.instance_.services?.dispose();
+      this.instance_.evidence?.dispose();
+      setActiveField(null);
+      PhysicalPlantService.removeFieldStatus_();
+      setActivePlant(null);
+      this.instance_ = null;
+    }
+  }
+
+  /** The event controller, or null when no plant or no authored events (never creates one) */
+  static eventsOrNull(): PlantEventController | null {
+    return this.instance_?.events ?? null;
+  }
+
+  getState(): PlantState & {
+    weather: Partial<PlantEnvironment>;
+    events?: PlantEventState;
+    service?: ServiceModelState;
+    evidence?: EvidenceLogState;
+    workloads?: WorkloadRunnerState;
+    records?: FieldRecordsState;
+    terminalApps?: TerminalAppsState;
+  } {
+    const state: PlantState & {
+      weather: Partial<PlantEnvironment>;
+      events?: PlantEventState;
+      service?: ServiceModelState;
+      evidence?: EvidenceLogState;
+      workloads?: WorkloadRunnerState;
+      records?: FieldRecordsState;
+      terminalApps?: TerminalAppsState;
+    } = {
+      ...this.plant.getState(),
+      weather: { ...this.weatherOverride_ },
+    };
+    if (this.events) {
+      state.events = this.events.getState();
+    }
+
+    if (this.services) {
+      state.service = this.services.getState();
+    }
+
+    if (this.evidence) {
+      state.evidence = this.evidence.getState();
+    }
+
+    if (this.workloads) {
+      state.workloads = this.workloads.getState();
+    }
+
+    if (this.records) {
+      state.records = this.records.getState();
+    }
+
+    const apps = this.terminalAppStates_();
+    if (Object.keys(apps).length > 0) {
+      state.terminalApps = apps;
+    }
+
+    return state;
+  }
+
+  // ---- terminal apps (phase 40 / Campaign 6 G) ------------------------------------------------------------------
+
+  /** Terminal apps that persist through the plant checkpoint, by terminal id (`skylink`, `eurosat`) */
+  private readonly terminalApps_ = new Map<string, TerminalAppPersistence>();
+  /** Restored app state whose app has not been built yet (the tab is created lazily); kept so a later save still carries it */
+  private pendingTerminalApps_: TerminalAppsState = {};
+
+  /** Opt a terminal app model into the checkpoint. State restored before the app existed is applied now. */
+  static registerTerminalApp(id: string, app: TerminalAppPersistence): void {
+    this.instance_?.registerTerminalApp_(id, app);
+  }
+
+  static unregisterTerminalApp(id: string, app: TerminalAppPersistence): void {
+    if (this.instance_?.terminalApps_.get(id) === app) {
+      this.instance_.terminalApps_.delete(id);
+    }
+  }
+
+  private registerTerminalApp_(id: string, app: TerminalAppPersistence): void {
+    this.terminalApps_.set(id, app);
+    const pending = this.pendingTerminalApps_[id];
+    if (pending !== undefined) {
+      app.restoreState(pending);
+      delete this.pendingTerminalApps_[id];
+    }
+  }
+
+  private terminalAppStates_(): TerminalAppsState {
+    const out: TerminalAppsState = { ...this.pendingTerminalApps_ };
+    for (const [id, app] of this.terminalApps_) {
+      out[id] = app.getState();
+    }
+
+    return out;
+  }
+
+  private restoreTerminalApps_(states: TerminalAppsState | undefined): void {
+    this.pendingTerminalApps_ = {};
+    for (const [id, saved] of Object.entries(states ?? {})) {
+      const app = this.terminalApps_.get(id);
+      if (app) {
+        app.restoreState(saved);
+      } else {
+        this.pendingTerminalApps_[id] = saved;
+      }
+    }
+  }
+
+  /** Read-only bundle for Campaign 6 conditions, or null when this scenario has no plant */
+  static fieldOrNull(): FieldHooks | null {
+    return this.instance_ ? this.instance_.fieldHooks_() : null;
+  }
+
+  private fieldHooks_(): FieldHooks {
+    return { plant: this.plant, service: this.services, evidence: this.evidence, events: this.events, workloads: this.workloads, records: this.records };
+  }
+
+  /** window.__fieldStatus for e2e: layers, sample freshness, fired events, flags and the power forecast */
+  private installFieldStatus_(): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    (window as unknown as { __fieldStatus?: () => unknown }).__fieldStatus = () => {
+      const services: Record<string, unknown> = {};
+      for (const id of this.services?.getServiceIds() ?? []) {
+        const layers = this.services?.layers(id) ?? [];
+        services[id] = layers.map((l) => {
+          const sample = this.services?.latest(id, l.layer) ?? null;
+
+          return { layer: l.layer, status: l.status, reason: l.reason, freshness: sample && this.services ? this.services.freshness(sample) : null };
+        });
+      }
+      const events = this.events?.getState();
+
+      return {
+        services,
+        firedEvents: events?.fired.map(([id]) => id) ?? [],
+        flags: events?.flags ?? {},
+        epochs: this.services?.getEpochs() ?? null,
+        forecast: this.plant.getPowerReadings().reserveWh === null ? null : this.plant.forecast(),
+        workloads: this.workloads?.getRuns().map((r) => ({ id: r.id, card: r.cardId, service: r.serviceId, status: r.status, invalidatedBy: r.invalidatedBy ?? null })) ?? [],
+        evidenceCount: this.evidence?.entries().length ?? 0,
+        lastSampleIds: Object.fromEntries((this.services?.getServiceIds() ?? []).map((id) => [id, this.services?.samplesFor(id).at(-1)?.id ?? null])),
+      };
+    };
+  }
+
+  private static removeFieldStatus_(): void {
+    if (typeof window !== 'undefined') {
+      delete (window as unknown as { __fieldStatus?: unknown }).__fieldStatus;
+    }
+  }
+
+  /** The workload runner, or null when no plant, services or cards (never creates one) */
+  static evidenceOrNull(): EvidenceLog | null {
+    return this.instance_?.evidence ?? null;
+  }
+
+  /** The handover records, or null when no plant or no authored forms (never creates one) */
+  static recordsOrNull(): FieldRecords | null {
+    return this.instance_?.records ?? null;
+  }
+
+  static workloadsOrNull(): WorkloadRunner | null {
+    return this.instance_?.workloads ?? null;
+  }
+
+  /** The service model, or null when no plant or no authored services (never creates one) */
+  static servicesOrNull(): ServiceModel | null {
+    return this.instance_?.services ?? null;
+  }
+
+  restoreState(
+    state:
+      | (PlantState & {
+          weather?: Partial<PlantEnvironment>;
+          events?: PlantEventState;
+          service?: ServiceModelState;
+          evidence?: EvidenceLogState;
+          workloads?: WorkloadRunnerState;
+          records?: FieldRecordsState;
+          terminalApps?: TerminalAppsState;
+        })
+      | undefined
+  ): void {
+    if (!state) {
+      return;
+    }
+    this.weatherOverride_ = { ...state.weather };
+    this.plant.restoreState(state);
+    this.events?.restoreState(state.events);
+    this.services?.restoreState(state.service);
+    this.evidence?.restoreState(state.evidence);
+    this.workloads?.restoreState(state.workloads);
+    this.records?.restoreState(state.records);
+    this.restoreTerminalApps_(state.terminalApps);
+    this.lastSyncS_ = SimClock.scenarioElapsedMs() / 1000;
+  }
+
+  /**
+   * Step the plant, events, services and runs up to the scenario clock now. A player action that reads this state
+   * (a handover check, a panel redraw) calls it so it never sees the state of the last UPDATE tick: an event that
+   * has fired is stamped and a run that has finished is finished.
+   */
+  catchUp(): void {
+    this.sync_();
+  }
+
+  /** Catch the singleton up when one exists */
+  static catchUp(): void {
+    this.instance_?.catchUp();
+  }
+
+  private syncing_ = false;
+
+  private sync_(): void {
+    if (this.syncing_) {
+      return;
+    }
+    this.syncing_ = true;
+    try {
+      this.stepToNow_();
+    } finally {
+      this.syncing_ = false;
+    }
+  }
+
+  /** Feed the plant the scenario seconds that passed since the last sync (ticks, verb skips and operator skips alike) */
+  private stepToNow_(): void {
+    const nowS = SimClock.scenarioElapsedMs() / 1000;
+    const dt = nowS - this.lastSyncS_;
+    this.lastSyncS_ = nowS;
+    if (dt > FINE_STEP_S && (this.services?.hasIntervals() || this.plant.hasOpenLedger())) {
+      // A measured interval must not depend on how long the skip was: step the plant and the service timeline in
+      // one-second slices so the boundaries are stamped to the second (events and runs still settle at the endpoint)
+      const fromS = nowS - dt;
+      let left = dt;
+      let at = fromS;
+      try {
+        while (left > FINE_STEP_S) {
+          at += FINE_STEP_S;
+          this.fineNowS_ = at;
+          this.plant.update(FINE_STEP_S);
+          this.services?.update();
+          left -= FINE_STEP_S;
+        }
+      } finally {
+        this.fineNowS_ = null;
+      }
+      this.plant.update(left);
+    } else if (dt > 0) {
+      this.plant.update(dt);
+    }
+    this.events?.update(nowS);
+    this.services?.update();
+    this.workloads?.update();
+    this.sounds_.refresh();
+  }
+
+  private environment_(stationId: string | undefined): PlantEnvironment {
+    let windMps = 0;
+    let rainMmH = 0;
+    if (stationId && WeatherManager.hasInstance()) {
+      const weather = WeatherManager.getInstance();
+      const elapsedS = weather.getElapsedMissionTime();
+      for (const event of weather.getActiveWeatherEvents(stationId)) {
+        windMps = Math.max(windMps, WeatherManager.windSpeedAt(event, elapsedS));
+        rainMmH = Math.max(rainMmH, WeatherManager.rainRateAt(event, elapsedS));
+      }
+    }
+
+    return {
+      windMps: this.weatherOverride_.windMps ?? windMps,
+      rainMmH: this.weatherOverride_.rainMmH ?? rainMmH,
+      ambientC: this.weatherOverride_.ambientC ?? DEFAULT_AMBIENT_C,
+      snow: this.weatherOverride_.snow ?? false,
+    };
+  }
+}

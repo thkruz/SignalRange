@@ -3,7 +3,18 @@ import { qs } from '@app/engine/utils/query-selector';
 import { AlarmStatus } from '@app/equipment/base-equipment';
 import { ValidationError, validateModemBandwidth, validateModemFrequency } from '@app/equipment/modem/modem-constraints';
 import { ADCStatus } from '@app/equipment/receiver/adc-degradation';
+import { LOCK_HYSTERESIS_DB } from '@app/equipment/receiver/modcod';
 import { IQSignalInfo, Receiver, ReceiverModemState } from '@app/equipment/receiver/receiver';
+import {
+  classifyRxSignal,
+  describePayloadProblem,
+  LOCK_LOST_LABEL,
+  modemLockAlarm,
+  RxModemSeverity,
+  RxModemVerdict,
+  RxPayloadStatus,
+  rxModemVerdict,
+} from '@app/equipment/receiver/rx-signal-quality';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { parseLocalizedNumber } from '@app/utils/parse-number';
@@ -45,6 +56,12 @@ export class ReceiverAdapter {
   // Validation errors for user feedback
   private validationErrors_: ValidationError[] = [];
 
+  // Payload decoder status (frame sync / RS), so the modem status never claims
+  // "Good margin" while Payload Data Integrity reports sync loss or overload
+  private payloadStatusProvider_: (() => RxPayloadStatus | null) | null = null;
+  /** Gets every signal sample the modem readouts show (null: modem off), for readouts that must match them */
+  private signalSampleListener_: ((info: IQSignalInfo | null) => void) | null = null;
+
   constructor(receiver: Receiver, containerEl: HTMLElement) {
     this.receiver = receiver;
     this.containerEl = containerEl;
@@ -71,6 +88,35 @@ export class ReceiverAdapter {
 
     // Initial sync
     this.syncDomWithState_();
+  }
+
+  /**
+   * Supply the payload decoder status (from the RX payload adapter) so the
+   * modem status bar and alarm badge agree with Payload Data Integrity.
+   */
+  public setPayloadStatusProvider(provider: (() => RxPayloadStatus | null) | null): void {
+    this.payloadStatusProvider_ = provider;
+  }
+
+  /**
+   * Hand each sample the modem's C/N readouts are drawn from to `listener`
+   * (null when the modem is off): the constellation header shows the modem's
+   * Effective C/N from the same sample at the same moment (phase 29 D4,
+   * nats-r3-s06-F3).
+   */
+  public setSignalSampleListener(listener: ((info: IQSignalInfo | null) => void) | null): void {
+    this.signalSampleListener_ = listener;
+  }
+
+  private getPayloadProblem_(): string | null {
+    return describePayloadProblem(this.payloadStatusProvider_?.() ?? null);
+  }
+
+  /** The card's one verdict for a modem with a carrier: badge, status bar and LED */
+  private getVerdict_(modemNumber: number, signalInfo: IQSignalInfo): RxModemVerdict {
+    // The payload decoder only qualifies a good margin; skip the read otherwise
+    const payloadProblem = classifyRxSignal(signalInfo) === 'good' ? this.getPayloadProblem_() : null;
+    return rxModemVerdict(modemNumber, signalInfo, payloadProblem);
   }
 
   /**
@@ -131,6 +177,9 @@ export class ReceiverAdapter {
     // C/N and power level displays
     this.cacheElement_('cn-raw-display');
     this.cacheElement_('cn-effective-display');
+    this.cacheElement_('esn0-display');
+    this.cacheElement_('cn0-display');
+    this.cacheElement_('required-esn0-display');
     this.cacheElement_('power-level-display');
     this.cacheElement_('noise-floor-display');
 
@@ -141,6 +190,7 @@ export class ReceiverAdapter {
     this.cacheElement_('clip-penalty-display');
     this.cacheElement_('quant-penalty-display');
     this.cacheElement_('total-penalty-display');
+    this.cacheElement_('adc-ceiling-display');
 
     // Status bar
     this.cacheElement_('status-bar');
@@ -407,16 +457,16 @@ export class ReceiverAdapter {
     const signalInfo = this.receiver.getSignalsInBandwidth(modem);
     if (!signalInfo.hasCarrier) return '';
 
-    const effectiveCn = signalInfo.effectiveCnRatio_dB ?? signalInfo.cnRatio_dB;
-
-    // Match signal quality thresholds
-    if (signalInfo.hasLock && effectiveCn > 15) {
-      return 'btn-rx-signal-good';
+    // Same grading as the status bar and the alarm badge
+    switch (classifyRxSignal(signalInfo)) {
+      case 'good':
+        return 'btn-rx-signal-good';
+      case 'degraded':
+      case 'acquiring':
+        return 'btn-rx-signal-degraded';
+      default:
+        return 'btn-rx-signal-error';
     }
-    if (effectiveCn > 8) {
-      return 'btn-rx-signal-degraded';
-    }
-    return 'btn-rx-signal-error';
   }
 
   private updateConfigurationInputs_(modem: ReceiverModemState): void {
@@ -498,63 +548,103 @@ export class ReceiverAdapter {
 
   private updateVideoMonitor_(): void {
     const monitor = this.domCache_.get('video-monitor');
-    const videoFeed = this.domCache_.get('video-feed') as HTMLImageElement | HTMLVideoElement;
-
-    if (!monitor || !videoFeed) return;
+    if (!monitor) return;
 
     const activeModem = this.getActiveModem_();
     if (!activeModem) return;
 
-    // Check power state
+    const allStates = ['no-power', 'no-signal', 'signal-found', 'signal-degraded', 'signal-no-video', 'signal-no-lock'];
+    const setState = (...states: string[]) => {
+      monitor.classList.remove(...allStates.filter((c) => !states.includes(c)));
+      monitor.classList.add(...states);
+    };
+
     if (!activeModem.isPowered) {
-      monitor.classList.remove('no-signal', 'signal-found', 'signal-degraded', 'signal-no-video');
-      monitor.classList.add('no-power');
+      setState('no-power');
+      this.drawVideoMonitor_(false);
       return;
     }
 
-    // Get visible signals to determine state
     const visibleSignals = this.receiver.getVisibleSignals(activeModem);
-    const hasDecodedSignal = visibleSignals.length > 0;
-    const hasVideoFeed = visibleSignals.some((s) => s.feed !== '');
-    const isDegraded = this.receiver.isSignalDegraded(activeModem);
-
-    if (!hasDecodedSignal) {
-      // No signal at all
-      monitor.classList.remove('no-power', 'signal-found', 'signal-degraded', 'signal-no-video');
-      monitor.classList.add('no-signal');
-    } else if (!hasVideoFeed) {
-      // Signal decoded but no video feed available
-      monitor.classList.remove('no-power', 'no-signal', 'signal-found', 'signal-degraded');
-      monitor.classList.add('signal-no-video');
-    } else {
-      // Signal with video feed
-      monitor.classList.remove('no-power', 'no-signal', 'signal-no-video');
-      monitor.classList.add('signal-found');
-
-      if (isDegraded) {
-        monitor.classList.add('signal-degraded');
-      } else {
-        monitor.classList.remove('signal-degraded');
-      }
-
-      // Set video feed source
-      const signal = visibleSignals.find((s) => s.feed !== '');
-      if (signal) {
-        // Check if it's an image or video
-        if (signal.isImage) {
-          const imgElement = videoFeed as HTMLImageElement;
-          imgElement.src = signal.isExternal ? signal.feed : `/images/${signal.feed}`;
-        } else if (signal.isExternal) {
-          // For external videos, we might need an iframe
-          // For now, just set the src
-          const videoElement = videoFeed as HTMLVideoElement;
-          videoElement.src = signal.feed;
-        } else {
-          const videoElement = videoFeed as HTMLVideoElement;
-          videoElement.src = `/videos/${signal.feed}`;
-        }
-      }
+    if (visibleSignals.length === 0) {
+      setState('no-signal');
+      this.drawVideoMonitor_(false);
+      return;
     }
+
+    // Only claim a picture or "SIGNAL LOCKED" when the modem holds
+    // demodulation lock; otherwise the overlay reads "CARRIER PRESENT / NO LOCK"
+    const hasLock = this.receiver.getSignalsInBandwidth(activeModem)?.hasLock ?? false;
+    const hasVideoFeed = visibleSignals.some((s) => s.feed !== '');
+    // Payload decoding: the frame sync the payload card reads is held
+    const isDecoding = this.getPayloadProblem_() !== 'Frame sync lost';
+
+    if (hasVideoFeed && hasLock && isDecoding) {
+      setState('signal-found');
+      monitor.classList.toggle('signal-degraded', this.receiver.isSignalDegraded(activeModem));
+      this.drawVideoMonitor_(true);
+      return;
+    }
+
+    setState('signal-no-video');
+    monitor.classList.toggle('signal-no-lock', !hasLock);
+    this.drawVideoMonitor_(false);
+  }
+
+  /** SMPTE-style colour bars (top band, then the castellation and PLUGE rows) */
+  private static readonly BAR_COLOURS_ = ['#c0c0c0', '#c0c000', '#00c0c0', '#00c000', '#c000c0', '#c00000', '#0000c0'];
+  private static readonly CASTELLATION_COLOURS_ = ['#0000c0', '#131313', '#c000c0', '#131313', '#00c0c0', '#131313', '#c0c0c0'];
+
+  /**
+   * Video Monitor picture (Phase 30 D14, nats-r5-s07-F3): a synthetic monitor
+   * drawn on the canvas, never an external asset. Colour bars while the
+   * carrier is locked and the payload decodes; otherwise a dark slate under
+   * the overlay text ("NO SIGNAL", "NO POWER", "CARRIER PRESENT / NO LOCK").
+   */
+  private drawVideoMonitor_(isPicture: boolean): void {
+    const canvas = this.domCache_.get('video-feed');
+    if (!(canvas instanceof HTMLCanvasElement)) return;
+
+    const picture = isPicture ? 'bars' : 'slate';
+    if (canvas.dataset.picture === picture) return;
+    canvas.dataset.picture = picture;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const { width, height } = canvas;
+
+    if (!isPicture) {
+      ctx.fillStyle = '#0b0d10';
+      ctx.fillRect(0, 0, width, height);
+      return;
+    }
+
+    const barWidth = width / ReceiverAdapter.BAR_COLOURS_.length;
+    const topHeight = Math.round(height * 0.67);
+    const midHeight = Math.round(height * 0.08);
+    ReceiverAdapter.BAR_COLOURS_.forEach((colour, i) => {
+      ctx.fillStyle = colour;
+      ctx.fillRect(Math.floor(i * barWidth), 0, Math.ceil(barWidth), topHeight);
+    });
+    ReceiverAdapter.CASTELLATION_COLOURS_.forEach((colour, i) => {
+      ctx.fillStyle = colour;
+      ctx.fillRect(Math.floor(i * barWidth), topHeight, Math.ceil(barWidth), midHeight);
+    });
+    // Bottom row: -I, white, +Q, black, then the PLUGE steps
+    const bottomY = topHeight + midHeight;
+    const bottomHeight = height - bottomY;
+    const quarter = (width * 5) / 7 / 4;
+    const bottom = ['#00214c', '#ffffff', '#32006a', '#131313'];
+    bottom.forEach((colour, i) => {
+      ctx.fillStyle = colour;
+      ctx.fillRect(Math.floor(i * quarter), bottomY, Math.ceil(quarter), bottomHeight);
+    });
+    const plugeX = (width * 5) / 7;
+    const plugeWidth = (width - plugeX) / 3;
+    ['#090909', '#131313', '#1d1d1d'].forEach((colour, i) => {
+      ctx.fillStyle = colour;
+      ctx.fillRect(Math.floor(plugeX + i * plugeWidth), bottomY, Math.ceil(plugeWidth), bottomHeight);
+    });
   }
 
   private updatePowerAndSignal_(): void {
@@ -587,41 +677,25 @@ export class ReceiverAdapter {
         signalStatus.textContent = 'Off';
       }
       this.clearSignalDisplays_();
+      this.signalSampleListener_?.(null);
       // Update alarm badge for powered-off state
-      const alarms = this.getAlarmsFromReceiver_();
-      this.alarmBadge_.update(alarms);
+      this.syncAlarmBadge_();
       return;
     }
 
     // Get signal info for C/N and ADC data (only when powered on)
     const signalInfo = this.receiver.getSignalsInBandwidth(activeModem);
+    this.signalSampleListener_?.(signalInfo);
 
-    // Signal Quality Status Badge - use actual C/N thresholds matching IQ constellation
+    // Signal Quality Status Badge - the card's one verdict (margin grade + payload)
     if (signalStatus) {
       if (!signalInfo.hasCarrier) {
         signalStatus.className = 'status-badge status-badge-none';
         signalStatus.textContent = 'None';
       } else {
-        // Use effective C/N (includes ADC penalty) for quality assessment
-        const effectiveCn = signalInfo.effectiveCnRatio_dB ?? signalInfo.cnRatio_dB;
-
-        // Match IQ constellation thresholds:
-        // - Good: C/N >= 8 dB AND locked
-        // - Degraded: 5 <= C/N < 8 dB AND locked OR unlocked with decent C/N
-        // - Poor: C/N < 5 dB
-        if (signalInfo.hasLock && effectiveCn >= 8) {
-          signalStatus.className = 'status-badge status-badge-good';
-          signalStatus.textContent = 'Good';
-        } else if (effectiveCn >= 5) {
-          signalStatus.className = 'status-badge status-badge-degraded';
-          signalStatus.textContent = signalInfo.hasLock ? 'Degraded' : 'Unlocked';
-        } else if (effectiveCn > 0) {
-          signalStatus.className = 'status-badge status-badge-error';
-          signalStatus.textContent = 'Poor';
-        } else {
-          signalStatus.className = 'status-badge status-badge-error';
-          signalStatus.textContent = 'Critical';
-        }
+        const verdict = this.getVerdict_(activeModem.modemNumber, signalInfo);
+        signalStatus.className = `status-badge ${verdict.badgeClass}`;
+        signalStatus.textContent = verdict.badgeText;
       }
     }
 
@@ -632,7 +706,8 @@ export class ReceiverAdapter {
     const cnRawDisplay = this.domCache_.get('cn-raw-display');
     if (cnRawDisplay) {
       const cn = signalInfo.cnRatio_dB;
-      cnRawDisplay.textContent = hasCarrier && cn > -50 ? `${cn.toFixed(1)} dB` : '-- dB';
+      // A format mismatch leaves the raw figure measuring the wrong carrier next to a good Es/N0 (nats-eu-r1 s14-F4)
+      cnRawDisplay.textContent = hasCarrier && !signalInfo.formatMismatch && cn > -50 ? `${cn.toFixed(1)} dB` : '-- dB';
     }
 
     // Effective C/N display - only show when we have a carrier
@@ -640,6 +715,18 @@ export class ReceiverAdapter {
     if (cnEffectiveDisplay) {
       const effectiveCn = signalInfo.effectiveCnRatio_dB ?? signalInfo.cnRatio_dB;
       cnEffectiveDisplay.textContent = hasCarrier && effectiveCn > -50 ? `${effectiveCn.toFixed(1)} dB` : '-- dB';
+    }
+
+    // Es/N0 (after the ADC: what the demodulator locks on), C/N0 and the
+    // MODCOD's requirement - only with a carrier
+    this.setReadout_('esn0-display', hasCarrier ? signalInfo.effectiveEsN0_dB : undefined, 'dB');
+    this.setReadout_('cn0-display', hasCarrier ? signalInfo.cn0_dBHz : undefined, 'dB-Hz');
+    const requiredEl = this.domCache_.get('required-esn0-display');
+    if (requiredEl) {
+      const need = signalInfo.requiredEsN0_dB;
+      // Both numbers the status texts quote: the MODCOD line and the acquisition line (nats-eu-r1 s02-F6, s17-F6)
+      requiredEl.textContent =
+        need !== undefined && Number.isFinite(need) ? `${need.toFixed(1)} dB (${signalInfo.modcod?.name ?? '--'}), locks at ${(need + LOCK_HYSTERESIS_DB).toFixed(1)} dB` : '-- dB';
     }
 
     // Power level display - only show when we have a carrier
@@ -660,8 +747,7 @@ export class ReceiverAdapter {
     this.updateAdcStatus_(signalInfo, hasCarrier);
 
     // Update alarm badge
-    const alarms = this.getAlarmsFromReceiver_();
-    this.alarmBadge_.update(alarms);
+    this.syncAlarmBadge_();
   }
 
   /**
@@ -699,10 +785,30 @@ export class ReceiverAdapter {
       }
     }
 
-    // Show/hide degradation breakdown - only when we have a matching signal with penalties
+    // Show/hide degradation breakdown - only when the drive is off its sweet
+    // spot. At OPTIMAL a very clean carrier (a loopback at ~50 dB Es/N0) still
+    // loses a little to the converter; that is its ceiling, not a fault, so it
+    // reads as one neutral line instead of red penalties (phase 31 D10,
+    // r5-s07-F1). The line quotes the ceiling that closes Raw (+) ceiling =
+    // Effective on screen (Phase 32 D17, nats-r7-s07-F1). Effective C/N stays
+    // as computed.
+    const isOptimal = !!showAdcValues && adcDeg.status === 'optimal';
+    const ceilingLine = this.domCache_.get('adc-ceiling-display');
+    if (ceilingLine) {
+      const rawCn = signalInfo.cnRatio_dB;
+      const effectiveCn = signalInfo.effectiveCnRatio_dB ?? rawCn;
+      const ceiling_dB = isOptimal && rawCn - effectiveCn > ReceiverAdapter.CEILING_LINE_MIN_DROP_DB ? ReceiverAdapter.converterCeilingDb(rawCn, effectiveCn) : Number.NaN;
+      if (Number.isFinite(ceiling_dB)) {
+        ceilingLine.textContent = `Converter ceiling: ~${ReceiverAdapter.formatHalfDb_(ceiling_dB)} dB`;
+        ceilingLine.classList.remove('d-none');
+      } else {
+        ceilingLine.classList.add('d-none');
+      }
+    }
+
     const degradationSection = this.domCache_.get('degradation-section');
     if (degradationSection) {
-      if (showAdcValues && adcDeg.totalPenalty_dB > 0.1) {
+      if (showAdcValues && !isOptimal && adcDeg.totalPenalty_dB > 0.1) {
         degradationSection.classList.remove('d-none');
         this.updatePenaltyDisplay_('clip-penalty-display', adcDeg.clipPenalty_dB);
         this.updatePenaltyDisplay_('quant-penalty-display', adcDeg.quantizationPenalty_dB);
@@ -724,6 +830,11 @@ export class ReceiverAdapter {
     const cnEffectiveDisplay = this.domCache_.get('cn-effective-display');
     if (cnEffectiveDisplay) cnEffectiveDisplay.textContent = '-- dB';
 
+    this.setReadout_('esn0-display', undefined, 'dB');
+    this.setReadout_('cn0-display', undefined, 'dB-Hz');
+    const requiredEl = this.domCache_.get('required-esn0-display');
+    if (requiredEl) requiredEl.textContent = '-- dB';
+
     // Clear power and noise displays
     const powerLevelDisplay = this.domCache_.get('power-level-display');
     if (powerLevelDisplay) powerLevelDisplay.textContent = '-- dBm';
@@ -744,11 +855,49 @@ export class ReceiverAdapter {
       adcStatusEl.className = 'status-badge status-badge-none';
     }
 
-    // Hide degradation section
+    // Hide degradation section and the ADC ceiling line
     const degradationSection = this.domCache_.get('degradation-section');
     if (degradationSection) {
       degradationSection.classList.add('d-none');
     }
+    this.domCache_.get('adc-ceiling-display')?.classList.add('d-none');
+  }
+
+  /** Status bar alert class for each verdict severity */
+  private static readonly STATUS_ALERTS: Record<RxModemSeverity, string> = {
+    success: 'alert-success',
+    info: 'alert-info',
+    warning: 'alert-warning',
+    error: 'alert-danger',
+  };
+
+  /** Write a readout, or "--" when the value is missing or meaningless */
+  private setReadout_(elementId: string, value: number | undefined, unit: string): void {
+    const el = this.domCache_.get(elementId);
+    if (!el) return;
+    el.textContent = value !== undefined && Number.isFinite(value) && value > -100 ? `${value.toFixed(1)} ${unit}` : `-- ${unit}`;
+  }
+
+  /** The ceiling line shows only when Effective C/N sits this far under Raw, dB */
+  static readonly CEILING_LINE_MIN_DROP_DB = 0.3;
+
+  /**
+   * The converter's ceiling as the screen implies it (Phase 32 D17,
+   * nats-r7-s07-F1): the one SNR that, power-added to the Raw C/N, gives the
+   * Effective C/N, N = -10 log10(10^(-Eff/10) - 10^(-Raw/10)). It folds in
+   * every term between the two readouts (ADC quantisation on the C/N footing
+   * and LO phase noise), so the line, Raw and Effective always add up. NaN
+   * when Effective is not below Raw.
+   */
+  static converterCeilingDb(rawCn_dB: number, effectiveCn_dB: number): number {
+    const inverse = 10 ** (-effectiveCn_dB / 10) - 10 ** (-rawCn_dB / 10);
+    return inverse > 0 ? -10 * Math.log10(inverse) : Number.NaN;
+  }
+
+  /** `40` or `39.5`: rounded to the nearest 0.5 dB */
+  private static formatHalfDb_(value_dB: number): string {
+    const rounded = Math.round(value_dB * 2) / 2;
+    return Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(1);
   }
 
   private updatePenaltyDisplay_(elementId: string, penalty: number): void {
@@ -837,64 +986,65 @@ export class ReceiverAdapter {
       return;
     }
 
-    const effectiveCn = signalInfo.effectiveCnRatio_dB ?? signalInfo.cnRatio_dB;
+    // One verdict for the status bar, the alarm badge and the signal badge
+    const verdict = this.getVerdict_(activeModem.modemNumber, signalInfo);
+    statusBar.className = `alert ${ReceiverAdapter.STATUS_ALERTS[verdict.severity]} mt-3`;
+    statusBar.textContent = verdict.statusText;
+  }
 
-    // QPSK-ish modem-quality thresholds (MVP, no Eb/N0)
-    if (signalInfo.hasLock && effectiveCn >= 8) {
-      statusBar.className = 'alert alert-success mt-3';
-      statusBar.textContent = `Signal locked - Good margin (C/N: ${effectiveCn.toFixed(1)} dB)`;
-    } else if (signalInfo.hasLock && effectiveCn >= 5) {
-      statusBar.className = 'alert alert-warning mt-3';
-      statusBar.textContent = `Signal locked - Degraded margin (C/N: ${effectiveCn.toFixed(1)} dB)`;
-    } else if (effectiveCn >= 3) {
-      // may flicker lock depending on your sim; treat as near-threshold
-      const lockStatus = signalInfo.hasLock ? 'locked' : 'unlocking';
-      statusBar.className = 'alert alert-danger mt-3';
-      statusBar.textContent = `Signal ${lockStatus} - Near threshold (C/N: ${effectiveCn.toFixed(1)} dB)`;
-    } else {
-      statusBar.className = 'alert alert-danger mt-3';
-      statusBar.textContent = `Signal no lock - Below threshold (C/N: ${effectiveCn.toFixed(1)} dB)`;
-    }
+  /** Grey LED title for a powered modem with no carrier it ever locked to (the Dashboard dot's wording) */
+  private static readonly NO_CARRIER_IDLE_ = 'No carrier';
+
+  /** Paint the card LED from the active modem's alarms and idle state */
+  private syncAlarmBadge_(): void {
+    const { alarms, idleStatus } = this.getAlarmBadgeState_();
+    this.alarmBadge_.update(alarms, true, idleStatus);
   }
 
   /**
-   * Get current alarms from receiver as AlarmStatus array
+   * The card LED's alarms, plus the grey idle title when there is nothing to
+   * report. Lock history first (Phase 34 D5, nats-r8-s24-F1): a modem that
+   * had lock on this tuning and lost it reads the Dashboard's red "Carrier
+   * lock lost - Modem N: ..." whether or not the carrier is still there; a
+   * modem with no carrier and no loss is idle grey "No carrier", not a fault.
    */
-  private getAlarmsFromReceiver_(): AlarmStatus[] {
+  private getAlarmBadgeState_(): { alarms: AlarmStatus[]; idleStatus?: string } {
     const alarms: AlarmStatus[] = [];
     const activeModem = this.getActiveModem_();
 
-    if (!activeModem) return alarms;
+    if (!activeModem) {
+      return { alarms };
+    }
 
     if (!activeModem.isPowered) {
       alarms.push({ severity: 'info', message: 'Modem powered off' });
-      return alarms;
+      return { alarms };
     }
 
     const signalInfo = this.receiver.getSignalsInBandwidth(activeModem);
+    // Read after getSignalsInBandwidth advanced the lock tracker
+    const transition = typeof this.receiver.getLockTransition === 'function' ? this.receiver.getLockTransition(activeModem) : null;
+    const lockAlarm = modemLockAlarm(activeModem.modemNumber, signalInfo, transition);
+
+    if (lockAlarm?.label === LOCK_LOST_LABEL) {
+      alarms.push({ severity: 'error', message: `${LOCK_LOST_LABEL} - ${lockAlarm.detail}` });
+      return { alarms };
+    }
 
     if (!signalInfo.hasCarrier) {
-      alarms.push({ severity: 'warning', message: 'No signal detected' });
-      return alarms;
+      return { alarms, idleStatus: ReceiverAdapter.NO_CARRIER_IDLE_ };
     }
 
-    const effectiveCn = signalInfo.effectiveCnRatio_dB ?? signalInfo.cnRatio_dB;
-
-    // Match signal quality thresholds
-    if (effectiveCn <= 0) {
-      alarms.push({ severity: 'error', message: `Critical C/N: ${effectiveCn.toFixed(1)} dB` });
-    } else if (effectiveCn <= 8) {
-      alarms.push({ severity: 'error', message: `Poor C/N: ${effectiveCn.toFixed(1)} dB` });
-    } else if (effectiveCn <= 15 || !signalInfo.hasLock) {
-      alarms.push({ severity: 'warning', message: signalInfo.hasLock ? 'Signal degraded' : 'Signal unlocked' });
+    // Same verdict as the status bar and the signal badge. An interferer is
+    // named inside the degraded-margin line, never as its own warning: a
+    // notched spike at a good margin still clears the receiver's -10 dB
+    // presence gate (Phase 33 D4, nats-r8-s05-F2)
+    const verdict = this.getVerdict_(activeModem.modemNumber, signalInfo);
+    if (verdict.alarmMessage) {
+      alarms.push({ severity: verdict.severity, message: verdict.alarmMessage });
     }
 
-    // Add interference warning if present
-    if (signalInfo.interferenceCount && signalInfo.interferenceCount > 0) {
-      alarms.push({ severity: 'warning', message: `${signalInfo.interferenceCount} interferer(s) detected` });
-    }
-
-    return alarms;
+    return { alarms };
   }
 
   /**

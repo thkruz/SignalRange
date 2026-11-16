@@ -1,4 +1,5 @@
-import { expect, Page } from '@playwright/test';
+import { expect, Page, test } from '@playwright/test';
+import { advanceUntil, canBurst, hasTestClock, simAdvance } from './test-clock';
 
 /**
  * Wait for the simulation to initialize and stabilize.
@@ -8,12 +9,20 @@ export async function waitForSimulationReady(page: Page): Promise<void> {
   // Wait for the app shell to be visible
   await expect(page.locator('#app-shell-page')).toBeVisible({ timeout: 15000 });
 
-  // Wait for ground stations to appear in the asset tree
+  // A fresh mission waits for the player; resumed checkpoints skip this scene.
+  await page.waitForFunction(() => !!document.querySelector('.scene-modal[open]') || document.querySelector<HTMLElement>('#app-shell-page')?.inert === false);
+  const opening = page.locator('.scene-modal[open]');
+  if (await opening.isVisible()) {
+    await opening.getByRole('button', { name: 'Start', exact: true }).click();
+    await expect(opening).toHaveCount(0);
+  }
+
+  // Wait for ground stations to appear in the asset tree, or for the minimal HUD (C3 bench, C6 field), which hides it
   const gsItems = page.locator('[data-asset-type="ground-station"], .ground-station-item, .asset-tree-item');
-  await expect(gsItems.first()).toBeVisible({ timeout: 15000 });
+  await expect(gsItems.first().or(page.locator('html.mc-minimal-hud #app-shell-page')).first()).toBeVisible({ timeout: 15000 });
 
   // Give the simulation time to start the game loop
-  await page.waitForTimeout(2000);
+  await simAdvance(page, 2000);
 }
 
 /**
@@ -124,56 +133,124 @@ export async function isVisible(page: Page, selector: string): Promise<boolean> 
 }
 
 /**
+ * Press a quiz opener within a few seconds. A bare click() retries until the test timeout while the element is
+ * re-rendered under it (the checklist rebuilds its rows) or moved by the indicator's re-homing, so on a loaded machine
+ * one stuck click ran the whole test budget out before any wait could name its reason (nats-eu-25 stop 7). If the real
+ * click cannot land in time, deliver the same click event straight to the element.
+ */
+async function pressOpener(opener: import('@playwright/test').Locator): Promise<void> {
+  try {
+    await opener.click({ timeout: 4000 });
+  } catch {
+    await opener.dispatchEvent('click', undefined, { timeout: 4000 });
+  }
+}
+
+/**
  * Wait for the quiz modal to appear.
  * If the quiz isn't auto-shown, clicks the pending quiz indicator to open it.
  */
 export async function waitForQuizToAppear(page: Page, timeout = 30000): Promise<void> {
   const quizModal = page.locator('#quiz-modal, .quiz-box');
 
-  // First check if quiz is already visible
-  try {
-    await expect(quizModal).toBeVisible({ timeout: 3000 });
-    return;
-  } catch {
-    // Quiz not visible, try to open via pending indicator
+  // Test clock: fast-forward until the quiz or one of its openers is on screen, then open it at once
+  // (the pending indicator shows after a 5 s page-time delay)
+  if (hasTestClock(page)) {
+    // The checklist quiz button is not a reliable opener (it can show before the quiz is ready), so wait
+    // for the modal itself or the pending indicator/toast; anything else falls through to the chain below
+    const openers = [
+      page.locator('.pending-quiz-indicator__open-btn'),
+      page.locator('.pending-quiz-toast button:has-text("Open Quiz"), .toast button:has-text("Open Quiz")').first(),
+    ];
+    const shown = async (l: import('@playwright/test').Locator): Promise<boolean> => l.isVisible().catch(() => false);
+    const ready = await advanceUntil(page, async () => (await shown(quizModal)) || (await Promise.all(openers.map(shown))).some(Boolean), {
+      maxMs: timeout,
+      stepMs: 1000,
+    }).then(
+      () => true,
+      () => false
+    );
+    if (ready) {
+      if (await shown(quizModal)) {
+        return;
+      }
+      for (const opener of openers) {
+        if (await shown(opener)) {
+          await pressOpener(opener);
+          await expect(quizModal).toBeVisible({ timeout: 5000 });
+          return;
+        }
+      }
+    }
   }
 
-  // Click the pending quiz indicator if visible
-  // Be more specific to avoid matching wrong buttons
+  // One wait for "quiz already open OR an opener on screen" (no failed probe of the modal first), then open if needed
   const pendingIndicator = page.locator('.pending-quiz-indicator__open-btn');
-  try {
-    await expect(pendingIndicator).toBeVisible({ timeout: 5000 });
-    await pendingIndicator.click();
-    await expect(quizModal).toBeVisible({ timeout: 5000 });
-    return;
-  } catch {
-    // Pending indicator class not found, try generic Open Quiz button
-  }
-
-  // Try the generic "Open Quiz" button in the pending quiz toast (bottom left)
+  // The generic "Open Quiz" button in the pending quiz toast (bottom left)
   const openQuizBtn = page.locator('.pending-quiz-toast button:has-text("Open Quiz"), .toast button:has-text("Open Quiz")');
   try {
-    await expect(openQuizBtn.first()).toBeVisible({ timeout: 3000 });
-    await openQuizBtn.first().click();
+    await expect(quizModal.first().or(pendingIndicator).or(openQuizBtn.first()).first()).toBeVisible({ timeout: 8000 });
+    if (await quizModal.first().isVisible()) {
+      return;
+    }
+    const opener = (await pendingIndicator.isVisible()) ? pendingIndicator : openQuizBtn.first();
+    await pressOpener(opener);
     await expect(quizModal).toBeVisible({ timeout: 5000 });
     return;
   } catch {
-    // Toast button not found, try checklist
+    // No quiz or opener yet, try checklist
   }
 
   // Try clicking quiz button in checklist
   const checklistQuizBtn = page.locator('.condition-quiz-btn, .quiz-btn, [data-quiz-btn]');
   try {
     await expect(checklistQuizBtn.first()).toBeVisible({ timeout: 5000 });
-    await checklistQuizBtn.first().click();
+    await pressOpener(checklistQuizBtn.first());
     await expect(quizModal).toBeVisible({ timeout: 5000 });
     return;
   } catch {
     // Still no quiz, wait for it with full timeout
   }
 
-  // Final attempt - just wait for the quiz modal
-  await expect(quizModal).toBeVisible({ timeout });
+  // Final attempt: the quiz can register late (it waits on its prerequisite objective), and the hidden indicator is
+  // out of hit-testing until it shows, so wait for the Open Quiz button for the full timeout, then open the quiz
+  if (
+    !(await quizModal
+      .first()
+      .isVisible()
+      .catch(() => false))
+  ) {
+    // Give the wait room inside the test budget: the prerequisite objective can run for minutes of sim time
+    const lateMs = Math.max(timeout, 200000);
+    test.info().setTimeout(test.info().timeout + lateMs);
+    if (canBurst(page)) {
+      // The prerequisite runs on sim time: advance it instead of waiting in real time (the expect below still has to pass)
+      await advanceUntil(
+        page,
+        () =>
+          pendingIndicator
+            .or(quizModal.first())
+            .first()
+            .isVisible()
+            .catch(() => false),
+        {
+          maxMs: lateMs,
+          stepMs: 1000,
+          message: 'quiz or opener visible',
+        }
+      ).catch(() => undefined);
+    }
+    await expect(pendingIndicator.or(quizModal.first()).first()).toBeVisible({ timeout: lateMs });
+    if (
+      !(await quizModal
+        .first()
+        .isVisible()
+        .catch(() => false))
+    ) {
+      await pressOpener(pendingIndicator);
+    }
+  }
+  await expect(quizModal).toBeVisible({ timeout: 5000 });
 }
 
 /**
@@ -255,8 +332,13 @@ export async function answerQuizByText(page: Page, answerText: string): Promise<
   await expect(continueButton.first()).toBeVisible({ timeout: 5000 });
   await continueButton.first().click();
 
-  // Wait for quiz to process the answer
-  await page.waitForTimeout(500);
+  // The feedback's Continue button goes away once the answer is processed, and the modal must be fully gone
+  // (it fades out) before the next click, or that click lands on the closing backdrop
+  await expect(continueButton.first()).toBeHidden({ timeout: 5000 });
+  // A following quiz can reuse the modal at once, so a modal that stays up is not an error
+  await expect(quizModal.first())
+    .toBeHidden({ timeout: 2000 })
+    .catch(() => undefined);
 }
 
 /**
@@ -272,14 +354,36 @@ export async function answerQuizByText(page: Page, answerText: string): Promise<
  */
 export async function waitForDecisionToAppear(page: Page, timeout = 30000): Promise<void> {
   const modal = page.locator('#decision-modal');
+  const pendingIndicator = page.locator('.pending-quiz-indicator__open-btn');
+  if (hasTestClock(page)) {
+    const shown = async (l: import('@playwright/test').Locator): Promise<boolean> => l.isVisible().catch(() => false);
+    await advanceUntil(page, async () => (await shown(modal)) || (await shown(pendingIndicator)), {
+      maxMs: timeout + 10000,
+      stepMs: 1000,
+      message: 'decision or pending indicator visible',
+    });
+    if (await shown(modal)) {
+      return;
+    }
+    await pendingIndicator.click();
+    await expect(modal).toBeVisible({ timeout: 10000 });
+    return;
+  }
   try {
-    await expect(modal).toBeVisible({ timeout: 3000 });
+    await expect(modal.or(pendingIndicator).first()).toBeVisible({ timeout: 8000 });
+    if (await modal.isVisible()) {
+      return;
+    }
+    await pendingIndicator.click();
+    await expect(modal).toBeVisible({ timeout: 10000 });
     return;
   } catch {
-    // not open yet - use the indicator
+    // not surfaced yet - wait longer below
   }
-  const pendingIndicator = page.locator('.pending-quiz-indicator__open-btn');
-  await expect(pendingIndicator).toBeVisible({ timeout });
+  // The hidden indicator is out of hit-testing until it shows, so a late decision needs a long wait, not a click-retry
+  const lateMs = Math.max(timeout, 200000);
+  test.info().setTimeout(test.info().timeout + lateMs);
+  await expect(pendingIndicator).toBeVisible({ timeout: lateMs });
   await pendingIndicator.click();
   await expect(modal).toBeVisible({ timeout: 10000 });
 }
@@ -309,7 +413,7 @@ export async function answerDecision(page: Page, optionText: string, requiredEvi
   const continueButton = modal.locator('#decision-continue-btn');
   await expect(continueButton, `decision option "${optionText}" should grade correct`).toBeVisible({ timeout: 5000 });
   await continueButton.click();
-  await page.waitForTimeout(500);
+  await expect(modal).toBeHidden({ timeout: 5000 });
 }
 
 /**

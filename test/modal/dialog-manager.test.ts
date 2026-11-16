@@ -41,6 +41,11 @@ vi.mock('../../src/modal/character-enum', () => ({
     HAPPY: 'happy',
     ANGRY: 'angry',
   },
+  UNCAST_CHARACTER_AVATAR: '/images/placeholder-avatar.png',
+  CharacterAvatars: {
+    charlie_brooks: '/assets/characters/charlie-brooks.png',
+    catherine_vega: '/assets/characters/catherine-vega.png',
+  },
   CharacterNames: {
     charlie_brooks: 'Charlie Brooks',
     catherine_vega: 'Catherine Vega',
@@ -135,6 +140,14 @@ describe('DialogManager', () => {
       expect(textElement?.textContent).toContain('This is a test message');
     });
 
+    it('stamps {{stationTime}} with the clock at the moment the dialog opens (nats-r4-s21-F1)', () => {
+      vi.spyOn(Date, 'now').mockReturnValue(Date.UTC(2026, 1, 14, 10, 35, 50));
+      dialogManager.show('<em>[Regulator coordination desk - SYSTEM notification, {{stationTime}}]</em>', Character.CHARLIE_BROOKS, '/audio/test.mp3');
+
+      expect(document.querySelector('.dialog-text')?.textContent).toContain('SYSTEM notification, 10:35]');
+      vi.mocked(Date.now).mockRestore();
+    });
+
     it('should add visible class after animation frame', () => {
       dialogManager.show('Test', Character.CHARLIE_BROOKS, '/audio/test.mp3');
 
@@ -180,6 +193,22 @@ describe('DialogManager', () => {
 
       // Second dialog should now be visible
       expect(dialogManager.isShowing()).toBe(true);
+    });
+
+    it('stays busy through the gap between two queued dialogs (nats-r3-s03-F3)', () => {
+      expect(dialogManager.isBusy()).toBe(false);
+      dialogManager.show('First message', Character.CHARLIE_BROOKS, '/audio/first.mp3');
+      dialogManager.show('Second message', Character.CATHERINE_VEGA, '/audio/second.mp3');
+      dialogManager.hide();
+      // After the fade-out the second line has left the queue but is not on screen yet
+      vi.advanceTimersByTime(320);
+      expect(dialogManager.isShowing()).toBe(false);
+      expect(dialogManager.isBusy()).toBe(true);
+      vi.advanceTimersByTime(100);
+      expect(dialogManager.isShowing()).toBe(true);
+      dialogManager.hide();
+      vi.advanceTimersByTime(400);
+      expect(dialogManager.isBusy()).toBe(false);
     });
 
     it('should clear dialog queue', () => {
@@ -296,6 +325,153 @@ describe('DialogManager', () => {
       overlay.dispatchEvent(new MouseEvent('mouseleave', { bubbles: true }));
 
       expect(skipIndicator?.classList.contains('dialog-skip-visible')).toBe(false);
+    });
+  });
+
+  describe('Click to Continue', () => {
+    const show = () => {
+      dialogManager.show('Test', Character.CHARLIE_BROOKS, '/audio/test.mp3');
+      return document.querySelector('.dialog-overlay') as HTMLElement;
+    };
+    const click = (overlay: HTMLElement) => {
+      overlay.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      overlay.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    };
+
+    it('ignores a click before the reveal delay so an in-flight click cannot dismiss it unread', () => {
+      const overlay = show();
+      click(overlay);
+      expect(dialogManager.currentAudioUrl).toBe('/audio/test.mp3');
+      expect(overlay.classList.contains('dialog-revealed')).toBe(false);
+    });
+
+    it('closes on a click after the reveal delay and shows the hint first', () => {
+      const overlay = show();
+      vi.advanceTimersByTime(DialogManager.REVEAL_DELAY_MS);
+      expect(overlay.classList.contains('dialog-revealed')).toBe(true);
+      click(overlay);
+      expect(dialogManager.currentAudioUrl).toBeNull();
+    });
+
+    it('closes on Space and Enter after the reveal delay, and ignores other keys', () => {
+      show();
+      vi.advanceTimersByTime(DialogManager.REVEAL_DELAY_MS);
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+      expect(dialogManager.currentAudioUrl).toBe('/audio/test.mp3');
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+      expect(dialogManager.currentAudioUrl).toBeNull();
+
+      vi.advanceTimersByTime(400);
+      show();
+      vi.advanceTimersByTime(DialogManager.REVEAL_DELAY_MS);
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      expect(dialogManager.currentAudioUrl).toBeNull();
+    });
+
+    it('does not close on a release whose press began outside the dialog', () => {
+      const overlay = show();
+      vi.advanceTimersByTime(DialogManager.REVEAL_DELAY_MS);
+      overlay.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+      expect(dialogManager.currentAudioUrl).toBe('/audio/test.mp3');
+    });
+
+    it('stops listening for keys once hidden', () => {
+      show();
+      vi.advanceTimersByTime(DialogManager.REVEAL_DELAY_MS);
+      dialogManager.hide();
+      vi.advanceTimersByTime(400);
+      const spy = vi.fn();
+      eventBus.on(Events.DIALOG_DISMISSED, spy);
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+      expect(spy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Dismissal input does not reach the page (Phase 30 D6)', () => {
+    const show = () => {
+      dialogManager.show('Test', Character.CHARLIE_BROOKS, '/audio/test.mp3');
+      vi.advanceTimersByTime(DialogManager.REVEAL_DELAY_MS);
+      return document.querySelector('.dialog-overlay') as HTMLElement;
+    };
+    const toggleUnderneath = () => {
+      const toggle = document.createElement('input');
+      toggle.type = 'checkbox';
+      toggle.id = 'buc-mute';
+      document.body.appendChild(toggle);
+      return toggle;
+    };
+
+    it('swallows the keyup of the Space that closed it and leaves focus on the body', () => {
+      const toggle = toggleUnderneath();
+      const keyupSpy = vi.fn();
+      toggle.addEventListener('keyup', keyupSpy);
+      const overlay = show();
+      expect(document.activeElement).toBe(overlay);
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+      expect(document.activeElement).toBe(document.body);
+      const keyup = new KeyboardEvent('keyup', { key: ' ', bubbles: true, cancelable: true });
+      toggle.dispatchEvent(keyup);
+      expect(keyupSpy).not.toHaveBeenCalled();
+      expect(keyup.defaultPrevented).toBe(true);
+      // Only that one keyup: the next one goes through
+      toggle.dispatchEvent(new KeyboardEvent('keyup', { key: ' ', bubbles: true }));
+      expect(keyupSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('swallows the click that follows a click-to-continue, then lets clicks through', () => {
+      const toggle = toggleUnderneath();
+      const overlay = show();
+      overlay.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      overlay.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+      expect(dialogManager.currentAudioUrl).toBeNull();
+      toggle.click();
+      expect(toggle.checked).toBe(false);
+      toggle.click();
+      expect(toggle.checked).toBe(true);
+    });
+
+    it('a hold-to-skip press released after the dialog is gone does not operate the control under it', () => {
+      const toggle = toggleUnderneath();
+      const overlay = show();
+      overlay.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      // The hold completes (250 ms with no audio) and the overlay is removed
+      vi.advanceTimersByTime(1000);
+      expect(dialogManager.currentAudioUrl).toBeNull();
+      expect(document.querySelector('.dialog-overlay')).toBeNull();
+      // The operator lets go over the BUC mute toggle
+      const mouseupSpy = vi.fn();
+      toggle.addEventListener('mouseup', mouseupSpy);
+      toggle.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+      toggle.click();
+      expect(mouseupSpy).not.toHaveBeenCalled();
+      expect(toggle.checked).toBe(false);
+      // The next deliberate click works
+      toggle.click();
+      expect(toggle.checked).toBe(true);
+    });
+
+    it('a keyboard dismissal never blocks a click, and the click guard expires after its window', () => {
+      const toggle = toggleUnderneath();
+      show();
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      toggle.click();
+      expect(toggle.checked).toBe(true);
+
+      vi.advanceTimersByTime(400);
+      const overlay = show();
+      overlay.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      overlay.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+      vi.advanceTimersByTime(DialogManager.DISMISS_GUARD_MS + 1);
+      toggle.click();
+      expect(toggle.checked).toBe(false);
+    });
+
+    it('a programmatic hide swallows nothing', () => {
+      const toggle = toggleUnderneath();
+      show();
+      dialogManager.hide();
+      toggle.click();
+      expect(toggle.checked).toBe(true);
     });
   });
 

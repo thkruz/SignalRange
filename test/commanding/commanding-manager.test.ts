@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
  * CommandingManager - the uplink-jammed rejection (nats-eu M7 coupling).
@@ -28,11 +28,12 @@ vi.mock('../../src/interference/interference-manager', () => ({
   },
 }));
 
-const sim = { has: false, rangeKm: 38412.3 };
+const sim = { has: false, rangeKm: 38412.3, refusal: null as string | null };
 vi.mock('../../src/simulation/simulation-manager', () => ({
   SimulationManager: {
     hasInstance: () => sim.has,
     getInstance: () => ({
+      registry: { commandRefusal: () => sim.refusal },
       getSatByNoradId: (id: number) => (id === 61702 ? { rangeKm: sim.rangeKm } : undefined),
       groundStations: [{ state: { id: 'GW-01', location: { latitude: 53.27, longitude: -9.05, elevation: 20 } } }],
     }),
@@ -65,6 +66,38 @@ const jam = (overrides: Record<string, unknown> = {}) => ({
   periodSeconds: 600,
   onSeconds: 600,
   ...overrides,
+});
+
+describe('CommandingManager - operated gating (P3-D2)', () => {
+  beforeEach(() => {
+    CommandingManager.destroy();
+    for (const k of Object.keys(commandingConfig)) delete commandingConfig[k];
+    Object.assign(commandingConfig, { targetNoradId: 44714, requireDopplerComp: false, requireValidKey: false });
+    interference.initialized = false;
+    sim.refusal = null;
+    sim.has = true;
+  });
+
+  afterEach(() => {
+    sim.has = false;
+    sim.refusal = null;
+  });
+
+  it('acks commands to an operated target', () => {
+    expect(CommandingManager.getInstance().sendCommand('PLD-STATUS', 10).status).toBe('acked');
+  });
+
+  it('refuses commands and ranging tones to a member of a set that is not operated', () => {
+    sim.refusal = 'Command refused: STARLINK-1008 (44714) is an observed constellation member, not an operated satellite';
+    const manager = CommandingManager.getInstance();
+    const record = manager.sendCommand('PLD-STATUS', 10);
+
+    expect(record.status).toBe('rejected');
+    expect(record.reason).toBe('not-operated');
+    expect(manager.sendRangingTone(11).reason).toBe('not-operated');
+    expect(manager.isCommandAcknowledged('PLD-STATUS')).toBe(false);
+    sim.refusal = null;
+  });
 });
 
 describe('CommandingManager - uplink jamming', () => {

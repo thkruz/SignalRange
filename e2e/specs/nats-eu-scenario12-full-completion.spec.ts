@@ -30,11 +30,11 @@ import { answerDecision, dismissDialogIfPresent, waitForSimulationReady } from '
  * parked on az 140), acquire with the chain cold, chain up in order inside
  * the window (carrier into the muted BUC, unmute, HPA), PLD-ON then
  * PLD-TEST-PATTERN, HPA off before the decode, RX modem to 1340 MHz, lock and
- * commit with 2 dB of margin, chain down, verdict, delivery. Clock starts
+ * commit with 4 dB of margin, chain down, verdict, delivery. Clock starts
  * 2027-03-24 09:48:00Z:
- *   MERIDIAN-SAR-3  AOS 10:06:00Z  max el 27.9 deg at 10:10:45Z  LOS 10:15:29Z
- *   command window  mission T+1102 s .. T+1628 s
- *   worksheet truth 10.9 dB; threshold 6 dB + 2 dB required margin
+ *   MERIDIAN-SAR-3  AOS 10:06:00Z  max el 27.9 deg at 10:10:45Z  LOS 10:14:18Z (5 deg; horizon 10:15:29Z)
+ *   command window  mission T+1102 s .. T+1578 s (the 5 deg LOS 10:14:18)
+ *   worksheet truth 11.3 dB; threshold 4.2 dB + 4 dB required margin
  *
  * Objective flow (20):
  *  1. review-mission-brief    2. dashboard-sweep         3. reference-check
@@ -87,16 +87,16 @@ test.describe('nats-eu Scenario 12 Full Completion', () => {
   test('[review-mission-brief] reads the test plan and why the order matters', async () => {
     await missionControl.openMissionBrief();
     await missionControl.closeMissionBrief();
-    await answerSystemQuiz(page, 'Each step is the evidence for the next');
+    await answerSystemQuiz(page, 'Each step is evidence for the next');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Read the Test Plan');
   });
 
-  test('[dashboard-sweep] reads the board: AGC rail, no faults', async () => {
+  test('[dashboard-sweep] reads the board: AGC no-carrier warning, no faults', async () => {
     await missionControl.selectGroundStation('GW-01');
     await missionControl.selectTab('dashboard');
-    await expectDashboardAlarm(page, 'AGC at max gain');
-    await answerSystemQuiz(page, 'RX AGC at max gain');
+    await expectDashboardAlarm(page, 'AGC on noise only');
+    await answerSystemQuiz(page, 'RX AGC no-carrier warning only');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'GW-01 Dashboard Sweep');
   });
@@ -112,10 +112,10 @@ test.describe('nats-eu Scenario 12 Full Completion', () => {
 
   test('[predict-acceptance] computes the acceptance C/N from the survey numbers', async () => {
     await computeLinkBudget(page, missionControl, {
-      eirpDbm: 28,
+      eirpDbm: 31.3,
       fsplDb: 171.5,
-      rxGainDbi: 51.8,
-      noiseTempK: 88,
+      rxGainDbi: 50.4,
+      noiseTempK: 125,
       bandwidthMHz: 36,
       miscLossDb: 1,
     });
@@ -128,7 +128,7 @@ test.describe('nats-eu Scenario 12 Full Completion', () => {
       await missionControl.selectTab(tab);
       await page.waitForTimeout(2500);
     }
-    await answerSystemQuiz(page, 'Command key for PLD-ON and the pattern going up');
+    await answerSystemQuiz(page, 'The command key for PLD-ON and the pattern going up');
     await dismissDialogIfPresent(page);
     await closeWorkingDocumentIfOpen(page);
     await waitForObjectiveComplete(missionControl, 'Crypto Both Ways');
@@ -137,7 +137,7 @@ test.describe('nats-eu Scenario 12 Full Completion', () => {
   test('[tune-the-uplink] retunes the TX modem to 1465 MHz and engages Doppler comp', async () => {
     await setTxModemFrequency(page, missionControl, 1465);
     await enableDopplerComp(page, missionControl);
-    await answerSystemQuiz(page, '1465 MHz (RF minus LO');
+    await answerSystemQuiz(page, '1465 MHz: RF minus LO');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Tune the Uplink');
   });
@@ -145,7 +145,7 @@ test.describe('nats-eu Scenario 12 Full Completion', () => {
   test('[analyzer-on-sar3] frames the SAR-3 plan on the analyzer', async () => {
     await missionControl.selectTab('rx-analysis');
     await fillAndChange(page, '#sa-center-freq', '1330');
-    await answerSystemQuiz(page, '1290 transponded return of your own uplink');
+    await answerSystemQuiz(page, 'your own uplink relayed back at 1290');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Analyzer on the SAR-3 Plan');
   });
@@ -177,7 +177,7 @@ test.describe('nats-eu Scenario 12 Full Completion', () => {
 
   test('[unmute-the-buc] unmutes the BUC and reads the order', async () => {
     await setSwitch(page, '#buc-mute', false);
-    await answerSystemQuiz(page, 'Every stage sees a signal before it sees gain');
+    await answerSystemQuiz(page, 'Each stage gets signal before gain');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Unmute the BUC');
   });
@@ -213,7 +213,7 @@ test.describe('nats-eu Scenario 12 Full Completion', () => {
 
     // Decisions are graded on state, so the helper refuses to click until both
     // evidence items show latched in the modal.
-    await answerDecision(page, 'Own uplink transponded back', ['HPA state read on TX Chain', 'RX key status read on RX Analysis']);
+    await answerDecision(page, 'Own uplink relayed back', ['HPA state read on TX Chain', 'RX key status read on RX Analysis']);
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Call the Return');
   });
@@ -225,12 +225,12 @@ test.describe('nats-eu Scenario 12 Full Completion', () => {
     await disableHpa(page, missionControl);
     await expect(page.locator('#hpa-enable')).not.toBeChecked();
     await page.waitForTimeout(3000); // TX Chain stays on screen so the condition latches
-    await answerSystemQuiz(page, "SAR-3's command transponder returns");
+    await answerSystemQuiz(page, "SAR-3's transponder returns");
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Secure the Uplink for the Decode');
   });
 
-  test('[first-video] retunes to 1340 MHz, locks the pattern, commits with 2 dB margin and records it', async () => {
+  test('[first-video] retunes to 1340 MHz, locks the pattern, commits with 4 dB margin and records it', async () => {
     // The RX modem is still on SAR-1's 1414 MHz from the morning
     await setRxModemFrequency(page, missionControl, 1340);
 
@@ -241,16 +241,17 @@ test.describe('nats-eu Scenario 12 Full Completion', () => {
     await dismissDialogIfPresent(page);
     await page.waitForTimeout(4000);
 
-    // Commit with the live C/N at least 8 dB (6 dB threshold + 2 dB margin)
-    await commitLinkWithMargin(page, missionControl, 8);
-    await answerSystemQuiz(page, 'The measured C/N beside the 10.9 dB prediction');
+    // Commit with the live C/N at least 8.5 dB (4.2 dB threshold + 4 dB margin,
+    // plus a little headroom)
+    await commitLinkWithMargin(page, missionControl, 8.5);
+    await answerSystemQuiz(page, 'The measured C/N beside the 11.3 dB prediction');
     await dismissDialogIfPresent(page);
     await closeWorkingDocumentIfOpen(page);
     await waitForObjectiveComplete(missionControl, 'First Imagery Decode', 60000);
   });
 
   test('[chain-down-after-los] mutes the BUC and drops the carrier after LOS', async () => {
-    await advanceMissionClockToUtc(page, '2027-03-24T10:16:00Z');
+    await advanceMissionClockToUtc(page, '2027-03-24T10:14:50Z');
     await closeWorkingDocumentIfOpen(page);
     await missionControl.selectTab('tx-chain');
     await setSwitch(page, '#buc-mute', true);

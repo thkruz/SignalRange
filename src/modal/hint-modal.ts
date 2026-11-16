@@ -182,6 +182,9 @@ export class HintModal extends DraggableModal {
   static destroy(): void {
     if (HintModal.instance_) {
       EventBus.getInstance().off(Events.HINT_SHOWN, HintModal.instance_.boundHintShownHandler_);
+      // The modal DOM is created lazily under a fixed id; a new instance would
+      // insert a second container with the same ids
+      document.getElementById(`${HintModal.MODAL_ID}-container`)?.remove();
       HintModal.instance_ = null;
     }
   }

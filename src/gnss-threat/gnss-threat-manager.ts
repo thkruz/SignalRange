@@ -14,11 +14,13 @@
  * setSpoofActive()/advance() for determinism.
  */
 
+import { ReferenceDisturbances } from '@app/equipment/rf-front-end/gpsdo-module/reference-disturbance';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { ObjectiveAnchors } from '@app/objectives/objective-anchor';
 import { ScenarioManager } from '@app/scenario-manager';
 import { missionNowMs } from '@app/simulation/mission-clock';
+import type { GnssThreatSnapshot } from '@app/sync/manager-state-types';
 import type { Milliseconds } from 'ootk';
 
 export type GpsdoReferenceMode = 'gnss' | 'holdover' | 'manual';
@@ -72,6 +74,28 @@ export class GnssThreatManager {
     this.anchors_ = new ObjectiveAnchors([this.config_.startAfterObjectiveId, this.config_.endAfterObjectiveId]);
     this.boundUpdateHandler_ = this.update_.bind(this);
     EventBus.getInstance().on(Events.UPDATE, this.boundUpdateHandler_);
+    // Phase 19.6: the spoofed time walk drags each targeted GPSDO with it
+    ReferenceDisturbances.register((groundStationId) => this.disturbanceFor_(groundStationId));
+  }
+
+  /**
+   * What the spoof does to a station's disciplined reference while the
+   * operator still trusts GNSS: time error = the offset so far, frequency
+   * error = its rate (µs/s → parts in 10^6). After the operator forces holdover
+   * the offset stays where it was (the oscillator coasts) and the rate is the
+   * oscillator's own.
+   */
+  private disturbanceFor_(groundStationId: string | null): { timeOffsetUs: number; fractionalFrequencyError: number } | null {
+    if (groundStationId !== null && !this.affectsStation(groundStationId)) {
+      return null;
+    }
+    const timeOffsetUs = this.state_.timeOffsetUs;
+    const rate = this.isExposedToSpoof ? (this.config_.offsetDriftUsPerS ?? 5) * 1e-6 : 0;
+    if (timeOffsetUs === 0 && rate === 0) {
+      return null;
+    }
+
+    return { timeOffsetUs, fractionalFrequencyError: rate };
   }
 
   static getInstance(): GnssThreatManager {
@@ -87,8 +111,45 @@ export class GnssThreatManager {
   static destroy(): void {
     if (this.instance_) {
       EventBus.getInstance().off(Events.UPDATE, this.instance_.boundUpdateHandler_);
+      ReferenceDisturbances.clear();
       this.instance_ = null;
     }
+  }
+
+  /** Snapshot for a checkpoint (Phase 35 rt-s24-F4). */
+  getCheckpointState(): GnssThreatSnapshot {
+    return {
+      spoofActive: this.state_.spoofActive,
+      timeOffsetUs: this.state_.timeOffsetUs,
+      referenceMode: this.state_.referenceMode,
+      lastElapsedS: this.lastElapsedS_,
+      lastOffsetChangeElapsedS: this.lastOffsetChangeElapsedS_,
+      anchors: this.anchors_.getState(),
+    };
+  }
+
+  /**
+   * Restore a snapshot. lastElapsedS_ is restored with the offset so the first
+   * update after the clock jump advances by the real delta, not by the whole jump.
+   */
+  restoreCheckpointState(snapshot: GnssThreatSnapshot | undefined): void {
+    if (!snapshot) {
+      return;
+    }
+    if (Number.isFinite(snapshot.timeOffsetUs)) {
+      this.state_.timeOffsetUs = snapshot.timeOffsetUs;
+    }
+    this.state_.spoofActive = snapshot.spoofActive === true;
+    if (snapshot.referenceMode === 'gnss' || snapshot.referenceMode === 'holdover' || snapshot.referenceMode === 'manual') {
+      this.state_.referenceMode = snapshot.referenceMode;
+    }
+    if (Number.isFinite(snapshot.lastElapsedS)) {
+      this.lastElapsedS_ = snapshot.lastElapsedS;
+    }
+    if (Number.isFinite(snapshot.lastOffsetChangeElapsedS)) {
+      this.lastOffsetChangeElapsedS_ = snapshot.lastOffsetChangeElapsedS;
+    }
+    this.anchors_.restoreState(snapshot.anchors);
   }
 
   get state(): Readonly<GnssThreatState> {
@@ -131,6 +192,11 @@ export class GnssThreatManager {
 
   /** Select the GPSDO reference/discipline mode (the defensive action). */
   setReferenceMode(mode: GpsdoReferenceMode): void {
+    // A new mode restarts the stillness count: the offset has not been "stable"
+    // since the player's change, whatever it did before (nats-eu r1 s20-F2)
+    if (this.state_.referenceMode !== mode) {
+      this.lastOffsetChangeElapsedS_ = this.lastElapsedS_;
+    }
     this.state_.referenceMode = mode;
   }
 

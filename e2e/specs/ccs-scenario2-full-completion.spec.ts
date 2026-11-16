@@ -15,6 +15,7 @@ import {
 } from '../utils/ccs-helpers';
 import { objectiveItem, waitForObjectiveComplete } from '../utils/ham-sdr-helpers';
 import { waitForSimulationReady } from '../utils/simulation-helpers';
+import { advanceUntil } from '../utils/test-clock';
 
 /**
  * ccs Scenario 2 "Failover" - full completion.
@@ -221,6 +222,8 @@ test.describe('ccs Scenario 2 Full Completion', () => {
     // Last REQUIRED objective: its completion pops the Mission Complete modal,
     // which freezes the checklist, so wait on the modal rather than the row.
     const levelCompleteModal = page.locator('#level-complete-modal');
+    // The 180 s hold runs on sim time: advance it, then assert the modal as before
+    await advanceUntil(page, () => levelCompleteModal.isVisible().catch(() => false), { maxMs: 230000, stepMs: 1000, message: 'Mission Complete modal' }).catch(() => undefined);
     await expect(levelCompleteModal).toBeVisible({ timeout: 230000 });
     await expect(levelCompleteModal.locator('.complete-modal__title')).toContainText('Mission Complete');
 

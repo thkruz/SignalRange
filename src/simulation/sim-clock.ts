@@ -33,8 +33,13 @@ export const MAX_FRAME_MS = 250;
 export const SIM_SPEEDS = [1, 2, 5] as const;
 export type SimSpeed = (typeof SIM_SPEEDS)[number];
 
-/** Why the scenario reading is stopped. `hidden` also stops the run reading. */
-export type PauseReason = 'scenario' | 'hidden';
+/**
+ * Why the scenario reading is stopped. `hidden` also stops the run reading.
+ * `quiz` (opt-in, installed by the C3 quiz pause) stops scenario time exactly like
+ * `scenario` and leaves run time alone; it is a separate reason so a quiz closing
+ * never releases a brief or failure pause that is still held.
+ */
+export type PauseReason = 'scenario' | 'quiz' | 'hidden' | 'loading' | 'menu';
 
 /** Default scenario epoch before a scenario sets one (menus, unit tests). */
 const DEFAULT_EPOCH_MS = Date.UTC(2026, 0, 1, 12, 0, 0);
@@ -45,13 +50,25 @@ let runSteps_ = 0;
 let scenarioSteps_ = 0;
 /** Scenario time not made of steps: skips and checkpoint restores, ms */
 let scenarioOffsetMs_ = 0;
+/** Run time not made of steps: objective waits fast-forwarded with advanceRun(), ms */
+let runOffsetMs_ = 0;
 let skippedMs_ = 0;
 let accumulatorMs_ = 0;
 
 /** ms for a whole number of steps; exact for every whole second */
 const stepsToMs = (steps: number): number => (steps * 1000) / STEPS_PER_SECOND;
+const currentRunMs_ = (): number => stepsToMs(runSteps_) + runOffsetMs_;
 let speed_: SimSpeed = 1;
 const pauseReasons_ = new Set<PauseReason>();
+
+/** What changed: scenario time jumped (skip, checkpoint restore), a pause reason toggled, or the speed changed. */
+export type SimClockChange = 'jump' | 'pause' | 'speed';
+const changeListeners_ = new Set<(change: SimClockChange) => void>();
+const notifyChange_ = (change: SimClockChange): void => {
+  for (const listener of [...changeListeners_]) {
+    listener(change);
+  }
+};
 
 interface SimTimer {
   dueRunMs: number;
@@ -68,7 +85,7 @@ function fireDueTimers_(): void {
     let dueId = 0;
     let due: SimTimer | null = null;
     for (const [id, timer] of timers_) {
-      if (timer.dueRunMs <= stepsToMs(runSteps_) + 1e-6 && (!due || timer.dueRunMs < due.dueRunMs)) {
+      if (timer.dueRunMs <= currentRunMs_() + 1e-6 && (!due || timer.dueRunMs < due.dueRunMs)) {
         dueId = id;
         due = timer;
       }
@@ -93,6 +110,7 @@ export const SimClock = {
     runSteps_ = 0;
     scenarioSteps_ = 0;
     scenarioOffsetMs_ = 0;
+    runOffsetMs_ = 0;
     skippedMs_ = 0;
     accumulatorMs_ = 0;
     speed_ = 1;
@@ -118,7 +136,7 @@ export const SimClock = {
    * run now; the caller runs them and calls step() before each.
    */
   consumeFrame(realDtMs: number): number {
-    if (pauseReasons_.has('hidden') || !Number.isFinite(realDtMs) || realDtMs <= 0) {
+    if (pauseReasons_.has('hidden') || pauseReasons_.has('loading') || pauseReasons_.has('menu') || !Number.isFinite(realDtMs) || realDtMs <= 0) {
       return 0;
     }
 
@@ -130,10 +148,21 @@ export const SimClock = {
     return steps;
   },
 
+  /**
+   * Give back steps `consumeFrame` handed out but the caller did not run (a
+   * hold for late propagation data). They are owed again next frame, capped at
+   * one frame's worth so a long hold does not turn into a burst.
+   */
+  deferSteps(steps: number): void {
+    if (steps > 0) {
+      accumulatorMs_ = Math.min(accumulatorMs_ + steps * FIXED_STEP_MS, MAX_FRAME_MS * speed_);
+    }
+  },
+
   /** Advance both readings by one fixed step. */
   step(): void {
     runSteps_++;
-    if (!pauseReasons_.has('scenario')) {
+    if (!pauseReasons_.has('scenario') && !pauseReasons_.has('quiz')) {
       scenarioSteps_++;
     }
     fireDueTimers_();
@@ -178,20 +207,69 @@ export const SimClock = {
 
     scenarioOffsetMs_ += deltaMs;
     skippedMs_ += deltaMs;
+    notifyChange_('jump');
+  },
+
+  /**
+   * Move run time forward by `deltaMs` without stepping (Phase 27 Q4: an
+   * objective wait the operator skips - the crew window, the rain cell - is
+   * time the equipment really sat through). Sim timers due inside the
+   * interval fire in order, each seeing run time at its own due moment, so
+   * lock delays, warm-ups and stabilisation finish as they would have.
+   * Per-step integrators (AGC, smoothing) are not replayed; they settle on the
+   * next steps. Scenario time is moved separately with skip().
+   */
+  advanceRun(deltaMs: number): void {
+    if (!Number.isFinite(deltaMs) || deltaMs <= 0) {
+      return;
+    }
+
+    const targetMs = currentRunMs_() + deltaMs;
+    for (;;) {
+      let nextDueMs = Number.POSITIVE_INFINITY;
+      for (const timer of timers_.values()) {
+        nextDueMs = Math.min(nextDueMs, timer.dueRunMs);
+      }
+      if (nextDueMs > targetMs) {
+        break;
+      }
+      runOffsetMs_ = Math.max(runOffsetMs_, nextDueMs - stepsToMs(runSteps_));
+      fireDueTimers_();
+    }
+    runOffsetMs_ = targetMs - stepsToMs(runSteps_);
   },
 
   /** Set scenario time directly (checkpoint restore). */
   setScenarioNowMs(nowMs: number): void {
     scenarioOffsetMs_ = nowMs - epochMs_ - stepsToMs(scenarioSteps_);
+    notifyChange_('jump');
+  },
+
+  /**
+   * Observe discontinuities and pause/speed changes (the KeepTrack map follows
+   * the clock through these). Returns the unsubscribe function. Not cleared by
+   * reset(): the subscriber owns its lifetime.
+   */
+  onChange(listener: (change: SimClockChange) => void): () => void {
+    changeListeners_.add(listener);
+
+    return () => {
+      changeListeners_.delete(listener);
+    };
   },
 
   pause(reason: PauseReason): void {
-    pauseReasons_.add(reason);
+    if (!pauseReasons_.has(reason)) {
+      pauseReasons_.add(reason);
+      notifyChange_('pause');
+    }
   },
 
   resume(reason: PauseReason): void {
-    pauseReasons_.delete(reason);
-    if (reason === 'hidden') {
+    if (pauseReasons_.delete(reason)) {
+      notifyChange_('pause');
+    }
+    if (reason === 'hidden' || reason === 'loading' || reason === 'menu') {
       // Do not replay the time the tab was away
       accumulatorMs_ = 0;
     }
@@ -213,7 +291,7 @@ export const SimClock = {
 
   /** Run time since the scenario started, ms. What equipment dynamics read. */
   runMs(): number {
-    return stepsToMs(runSteps_);
+    return currentRunMs_();
   },
 
   /** Steps run since reset. Use for anything counted per step. */
@@ -232,7 +310,12 @@ export const SimClock = {
 
   setSpeed(speed: SimSpeed): void {
     if (SIM_SPEEDS.includes(speed)) {
+      const changed = speed_ !== speed;
+
       speed_ = speed;
+      if (changed) {
+        notifyChange_('speed');
+      }
     }
   },
 };

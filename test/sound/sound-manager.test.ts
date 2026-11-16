@@ -62,6 +62,24 @@ describe('SoundManager.getInstance', () => {
       expect(mockAudio.pause).not.toHaveBeenCalled();
     });
 
+    it('stops mission sounds, blocks late equipment cues, and preserves UI sounds and next-mission playback', () => {
+      manager.play(Sfx.SMALL_MOTOR);
+      expect(mockAudio.play).toHaveBeenCalledOnce();
+      manager.setMenuPaused(true);
+      manager.setMissionActive(false);
+      expect(mockAudio.pause).toHaveBeenCalled();
+      expect(mockAudio.currentTime).toBe(0);
+      manager.setMenuPaused(false);
+      manager.play(Sfx.RAIN_ARRIVAL);
+      manager.play(Sfx.SMALL_MOTOR);
+      expect(mockAudio.play).toHaveBeenCalledOnce();
+      manager.play(Sfx.UI_CONFIRM);
+      expect(mockAudio.play).toHaveBeenCalledTimes(2);
+      manager.setMissionActive(true);
+      manager.play(Sfx.SMALL_MOTOR);
+      expect(mockAudio.play).toHaveBeenCalledTimes(3);
+    });
+
     it('should fade out and stop a currently playing sound', () => {
       // Start playing a sound
       (manager as any).currentlyPlaying.set(Sfx.POWER_ON, mockAudio);
@@ -143,7 +161,7 @@ describe('SoundManager.getInstance', () => {
       it('should create and play a new audio element', () => {
         manager.play(Sfx.SWITCH);
 
-        expect(global.Audio).toHaveBeenCalledWith('/sfx/light-switch-flip.mp3');
+        expect(global.Audio).toHaveBeenCalledWith('/sfx/switch.mp3');
         expect(mockAudio.play).toHaveBeenCalled();
         expect(mockAudio.currentTime).toBe(0);
       });
@@ -193,7 +211,7 @@ describe('SoundManager.getInstance', () => {
         manager.play(Sfx.POWER_ON);
 
         expect((manager as any).currentlyPlaying.has(Sfx.POWER_ON)).toBe(true);
-        expect(mockAudio.addEventListener).toHaveBeenCalledWith('ended', expect.any(Function));
+        expect(mockAudio.addEventListener).toHaveBeenCalledWith('ended', expect.any(Function), { once: true });
       });
 
       it('should track currently playing for looping sounds', () => {
@@ -232,5 +250,19 @@ describe('SoundManager.getInstance', () => {
         expect(mockAudio.play).not.toHaveBeenCalled();
       });
     });
+  });
+});
+
+describe('SoundManager.playCustom with no audio URL', () => {
+  it('skips loading and logs nothing when the URL is empty', () => {
+    (SoundManager as any).instance = undefined;
+    const sm = SoundManager.getInstance();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const loadSpy = vi.spyOn(sm as any, 'loadAudio_');
+    sm.playCustom('', 'hello', () => undefined);
+    sm.playCustom(undefined, 'hello', () => undefined);
+    expect(loadSpy).not.toHaveBeenCalled();
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
   });
 });

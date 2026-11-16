@@ -15,11 +15,20 @@ import { SimClock } from './sim-clock';
  * follow the real sky).
  */
 export function getSimulatedNowMs(): number {
-  if (OpsLogManager.isInitialized()) {
+  if (isScenarioClockRunning()) {
     return SimClock.nowMs();
   }
 
   return Date.now();
+}
+
+/**
+ * Whether a scenario has seeded the scenario clock (OpsLogManager set its
+ * epoch), so getSimulatedNowMs() reads station time and not the wall clock.
+ * The clock may still be paused (brief review); it is set either way.
+ */
+export function isScenarioClockRunning(): boolean {
+  return OpsLogManager.isInitialized();
 }
 
 /**

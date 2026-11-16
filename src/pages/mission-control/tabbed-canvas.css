@@ -7,16 +7,58 @@
 
 /* Canvas Header */
 .canvas-header {
+  display: flex;
+  align-items: center;
   border-bottom: 1px solid var(--mc-border);
   background: var(--mc-surface-1);
 }
 
 /* Tab styling - most handled by Tabler, keep custom for icons/labels */
+.tabbed-canvas #tab-bar .nav-link { position: relative; }
+.tabbed-canvas #tab-bar .nav-link.active::after {
+  content: '';
+  display: block;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  width: auto;
+  transform: none;
+  opacity: 1;
+  transition: none;
+  background: var(--mc-accent-red);
+  pointer-events: none;
+}
+
 .nav-tabs {
   padding: 0.25rem 0.5rem;
   overflow-x: visible;
   gap: 0.125rem;
   flex-wrap: nowrap;
+}
+
+/* Phase 35 D3: a tab holds a reading the checklist is waiting on */
+.nav-tabs .nav-link.tab-pulse {
+  animation: tab-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes tab-pulse {
+  0%,
+  100% {
+    box-shadow: inset 0 -2px 0 0 transparent;
+  }
+  50% {
+    box-shadow: inset 0 -2px 0 0 var(--mc-accent, #f59e0b);
+    background: color-mix(in srgb, var(--mc-accent, #f59e0b) 18%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-tabs .nav-link.tab-pulse {
+    animation: none;
+    box-shadow: inset 0 -2px 0 0 var(--mc-accent, #f59e0b);
+  }
 }
 
 .tab-icon {
@@ -140,3 +182,16 @@
   background: var(--mc-surface-3);
   border-radius: 4px;
 }
+
+/* Persistent tent location control, right of the tab strip (physical-plant scenarios only) */
+.canvas-header #tab-bar { flex: 1 1 auto; min-width: 0; }
+.tent-control {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 0.5rem;
+  padding: 0 0.75rem;
+  white-space: nowrap;
+}
+.tent-control .tent-trips { font-size: 0.75rem; opacity: 0.8; }
+.tent-control .tent-confirm { align-items: center; gap: 0.4rem; font-size: 0.75rem; }

@@ -3,6 +3,8 @@ node_modules/
 
 # Build outputs
 dist/
+dist-e2e/
+dist-e2e-*/
 *.tsbuildinfo
 .wrangler/
 
@@ -39,7 +41,10 @@ coverage/
 # Temporary files
 tmp/
 temp/
-supabase/
+supabase/*
+!supabase/migrations/
+!supabase/functions/
+!supabase/pending/
 
 # Notes
 *.notes.*
@@ -55,7 +60,9 @@ public/assets/campaigns/**/*.wav
 public/assets/campaigns/**/*.ogg
 public/assets/campaigns/**/*.png
 public/assets/campaigns/**/*.jpg
+public/assets/campaigns/**/*.webp
 public/assets/characters/**/*.png
+public/assets/achievements/**/*.png
 public/**/wip/
 
 # Keep directory structure with .gitkeep files
@@ -71,3 +78,20 @@ public/**/wip/
 /src/plugins-external/*
 !/src/plugins-external/.gitkeep
 !/src/plugins-external/README.md
+
+# Draft music, not shipped
+public/music/wip/
+public/keeptrack/
+
+# Phase 3 perf harness output and scratch runs (summaries live in src/private/plans/phase-3-results/)
+perf-results/
+e2e-wp6/
+
+# Phase 3 TLE sets: fetched from R2 (fetch-tle-sets.mjs) and builder output
+public/assets/tle-sets/
+tle-sets-out/
+
+# Agent review scratch (result notes, screenshots) and docs-shots run output
+art-review/
+scripts/docs-shots/last-failures.json
+shots/

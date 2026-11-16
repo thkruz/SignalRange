@@ -1,5 +1,7 @@
+import { PHASE_NOISE_CORNER_HZ } from '@app/equipment/rf-front-end/lo-reference';
+import { NotchFilterModuleCore } from '@app/equipment/rf-front-end/notch-filter-module/notch-filter-module-core';
 import { Rng, RngStream } from '@app/simulation/rng';
-import { Hertz, IfSignal, RfSignal } from '@app/types';
+import { Hertz } from '@app/types';
 import { RealTimeSpectrumAnalyzer } from './real-time-spectrum-analyzer';
 
 /**
@@ -51,243 +53,232 @@ export class SpectrumDataProcessor {
     // Re-read each cycle: a scenario load re-seeds and replaces the stream
     this.rng_ = Rng.stream('display:spectrum');
 
-    // Generate noise data
-    this.generateNoise();
+    // Mean (expected) power per pixel, mW: signals through the RBW filter,
+    // line noise and instrument noise, with any notch dip on the line
+    this.computeMeanPower_();
 
-    // Generate signal data
-    this.generateSignals();
-
-    // Combine noise and signals
-    this.combineData();
-
-    // Apply notch filter visualization (visual dips at notch frequencies)
-    this.applyNotchVisualization_();
+    // Detector and video averaging over the log-detected noise
+    this.detect_();
   }
 
+  /** Per-pixel mean signal power (mW) */
+  private signalMw_ = new Float64Array(0);
+  /** Per-pixel mean line noise (mW) */
+  private lineNoiseMw_ = new Float64Array(0);
+  /** Instrument noise referred to the line (mW), flat */
+  private instrumentNoiseMw_ = 0;
+
+  /** Raised-cosine roll-off assumed for modulated carriers */
+  private static readonly ROLL_OFF = 0.2;
+
+  /** Cap on video averages per pixel (cost; beyond ~16 the trace is already smooth) */
+  private static readonly MAX_VIDEO_AVERAGES = 16;
+
+  /** Phase-noise skirts are drawn only for LOs at least this noisy, dBc/Hz (a locked LO's are far under any floor) */
+  private static readonly SKIRT_MIN_DBC_HZ = -85;
+
   /**
-   * Generate noise data across the frequency range
+   * Expected power in the RBW at each pixel (Phase 19.2):
+   *
+   * - every carrier is convolved with the Gaussian RBW filter (-3 dB width =
+   *   RBW, peak-normalised so a CW reads its power); a modulated carrier's
+   *   spectrum is a raised cosine (roll-off 0.2), modelled as its symbol-rate
+   *   rectangle smoothed by a Gaussian, so the convolution stays closed form;
+   * - the line noise is flat at k·T·ENBW (with the chain gain), the
+   *   instrument's own noise is added on top (both from the analyzer);
+   * - an enabled notch dips the line (carriers and line noise) in its band.
    */
-  private generateNoise(): void {
-    const base = this.specA.state.noiseFloorNoGain;
+  private computeMeanPower_(): void {
+    const width = this.width;
+    if (this.signalMw_.length !== width) {
+      this.signalMw_ = new Float64Array(width);
+      this.lineNoiseMw_ = new Float64Array(width);
+    }
+    this.signalMw_.fill(0);
 
-    const len = this.width;
-    const time = Date.now() / 1000;
+    const totalMw = 10 ** (this.specA.state.noiseFloorNoGain / 10);
+    const lineMw = Number.isFinite(this.specA.lineNoiseDbm) ? 10 ** (this.specA.lineNoiseDbm / 10) : 0;
+    this.instrumentNoiseMw_ = Math.max(0, totalMw - lineMw);
+    this.lineNoiseMw_.fill(lineMw);
 
-    // Generate multiple noise layers
-    for (let x = 0; x < len; x++) {
-      // Add randomized phase offsets to prevent coherent patterns
-      const randPhase1 = this.rng_.next() * Math.PI * 2;
-      const randPhase2 = this.rng_.next() * Math.PI * 2;
-      const randPhase3 = this.rng_.next() * Math.PI * 2;
-      const randAmp1 = 0.8 + this.rng_.next() * 0.4;
-      const randAmp2 = 1.2 + this.rng_.next() * 0.6;
-      const randAmp3 = 0.2 + this.rng_.next() * 0.4;
+    const span = this.maxFreq - this.minFreq;
+    if (!(span > 0)) {
+      return;
+    }
+    const hzPerPixel = span / width;
+    const sigmaRbw = this.specA.effectiveRbwHz / (2 * Math.sqrt(2 * Math.LN2));
+    // A notch's slice is drawn by applyNotch_, so a notched carrier is drawn
+    // at its power before the notch and dipped there (Phase 19.6)
+    const notchInView = this.specA.isNotchInView;
 
-      // Layer 1: Gaussian-distributed base noise (natural thermal noise distribution)
-      // stdDev of 0.6 dB gives realistic spread - most samples within ±1.2 dB
-      let noise = this.gaussianRandom_(base, 0.6);
+    for (const signal of this.specA.inputSignals) {
+      const powerMw = 10 ** ((signal.power + (notchInView ? (signal.notchLossDb ?? 0) : 0)) / 10);
+      if (!(powerMw > 0)) {
+        continue;
+      }
+      // A CW carrier (beacon) is a line: its width is its short-term
+      // stability, Hz, far under any RBW, so the filter's own shape is drawn
+      const occupied = (signal.modulation as string) === 'CW' ? 0 : Math.max(0, signal.bandwidth);
+      const symbolRate = occupied / (1 + SpectrumDataProcessor.ROLL_OFF);
+      const sigmaShape = (SpectrumDataProcessor.ROLL_OFF * symbolRate) / 2.56;
+      const sigma = Math.sqrt(sigmaRbw ** 2 + sigmaShape ** 2);
+      const reach = symbolRate / 2 + 5 * sigma;
+      const startX = Math.max(0, Math.floor((signal.frequency - reach - this.minFreq) / hzPerPixel));
+      const endX = Math.min(width - 1, Math.ceil((signal.frequency + reach - this.minFreq) / hzPerPixel));
 
-      // Layer 2: Smooth low-frequency drift (additive, not multiplicative)
-      noise += Math.sin(x / 300 + time / 8 + randPhase1) * randAmp1 * 0.15;
-
-      // Layer 3: Very subtle high-frequency jitter (additive)
-      noise += Math.sin(x * 0.5 + time * 2 + randPhase2) * randAmp2 * 0.005;
-
-      // Layer 4: Band-limited noise (simulate mild interference, additive)
-      if (x > len * 0.4 && x < len * 0.6) {
-        noise += Math.sin(x / 40 + time * 1.5 + randPhase3) * randAmp3 * 0.02;
+      for (let x = startX; x <= endX; x++) {
+        const f = this.minFreq + (x + 0.5) * hzPerPixel;
+        this.signalMw_[x] += SpectrumDataProcessor.rbwResponse(powerMw, signal.frequency, symbolRate, sigmaRbw, sigma, f);
       }
 
-      // Layer 5: Frequent small random peaks (creates natural "grass" above baseline)
-      // ~3% of samples get small bumps
-      if (this.rng_.next() < 0.03) {
-        noise += 0.5 + this.rng_.next() * 1.5;
-      }
+      this.addPhaseNoiseSkirts_(signal.phaseNoiseDbcHz, powerMw, signal.frequency, occupied / 2, hzPerPixel);
+    }
 
-      // Layer 6: Frequent small random dips (natural variation below baseline)
-      // ~3% of samples get small dips
-      if (this.rng_.next() < 0.03) {
-        noise -= 0.3 + this.rng_.next() * 1.0;
-      }
-
-      // Layer 7: Rare larger impulse spikes (fixed amplitude, not scaled by base)
-      if (this.rng_.next() < 0.0001) {
-        noise += 2 + this.rng_.next() * 3;
-      }
-
-      // Layer 8: Rare larger dropouts (fixed amplitude)
-      if (this.rng_.next() < 0.0002) {
-        noise -= 1 + this.rng_.next() * 2;
-      }
-
-      // If noise floor is external, add RF front-end gain
-      if (!this.specA.state.isSkipLnaGainDuringDraw) {
-        noise += this.specA.rfFrontEnd_.couplerModule.signalPathManager.getTotalRxGain();
-      }
-
-      this.noiseData[x] = noise;
+    if (notchInView) {
+      this.applyNotch_(hzPerPixel);
     }
   }
 
   /**
-   * Generate signal data for all input signals
+   * LO phase noise spreads a carrier into skirts (Phase 19.6): L(Δf) below
+   * the carrier, flat to the 10 kHz corner then falling 20 dB/decade, Δf from
+   * the occupied band's edge, read in the RBW's noise bandwidth. Drawn only
+   * for a noisy (unlocked) LO; a locked one's skirts sit far under the floor.
    */
-  private generateSignals(): void {
-    // Initialize signal data with minimum amplitude
-    this.signalData.fill(this.specA.state.minAmplitude);
-
-    const rbw = this.specA.state.rbw;
-
-    // Process each input signal
-    this.specA.inputSignals.forEach((signal) => {
-      const center = ((signal.frequency - this.minFreq) / (this.maxFreq - this.minFreq)) * this.width;
-      const freqSpan = this.maxFreq - this.minFreq;
-      const halfBandwidthPixels = (signal.bandwidth / 2 / freqSpan) * this.width;
-
-      // Out-of-band roll-off extends 8% beyond half-bandwidth on each side
-      const outOfBandExtensionHz = signal.bandwidth * 0.08;
-      const outOfBandExtensionPixels = (outOfBandExtensionHz / freqSpan) * this.width;
-
-      // In-band is the flat-top region (half-bandwidth minus roll-off extension)
-      const inBandWidth = halfBandwidthPixels - outOfBandExtensionPixels;
-      // Out-of-band width is the total distance from center to signal edge
-      const outOfBandWidth = halfBandwidthPixels;
-
-      // Spectral density: a signal wider than the RBW shows per-bin power
-      // (total power spread across bandwidth/RBW bins), matching how a real
-      // analyzer renders wideband signals. Narrow signals are unaffected, and
-      // the displayed noise floor is already per-RBW, so heights stay honest.
-      const psdCorrection_dB = rbw && signal.bandwidth > rbw ? 10 * Math.log10(signal.bandwidth / rbw) : 0;
-
-      this.addSignalToData(signal, center, inBandWidth, outOfBandWidth, psdCorrection_dB);
-    });
-  }
-
-  /**
-   * Add a single signal to the signal data array
-   * Uses a flat-top shape with steep roll-off at the band edges
-   */
-  private addSignalToData(signal: IfSignal | RfSignal, center: number, inBandWidth: number, outOfBandWidth: number, psdCorrection_dB: number = 0): void {
-    // inBandWidth = flat-top region (e.g., 17.5 MHz from center for 36 MHz signal)
-    // outOfBandWidth = total signal edge (e.g., 18 MHz from center = half-bandwidth)
-    // Roll-off region spans from inBandWidth to outOfBandWidth
-    const rollOffWidth = outOfBandWidth - inBandWidth;
-
-    // Displayed level: per-RBW-bin power for wideband signals (see generateSignals)
-    const displayPower = signal.power - psdCorrection_dB;
-
-    // Only process pixels within the signal's influence region
-    const startX = Math.max(0, Math.floor(center - outOfBandWidth));
-    const endX = Math.min(this.width, Math.ceil(center + outOfBandWidth));
-
-    for (let x = startX; x < endX; x++) {
-      const distance = x - center;
-      const absDist = Math.abs(distance);
-
-      let y: number;
-
-      // Flat-top region - near peak amplitude
-      if (absDist <= inBandWidth) {
-        y = displayPower;
-
-        // Add noise-like variation similar to noise floor
-        // Base random variation
-        y += this.gaussianRandom_(0, 0.4);
-
-        // Occasional small bumps (like noise "grass")
-        if (this.rng_.next() < 0.05) {
-          y += 0.3 + this.rng_.next() * 0.8;
-        }
-
-        // Occasional small dips
-        if (this.rng_.next() < 0.05) {
-          y -= 0.2 + this.rng_.next() * 0.6;
-        }
-
-        // Very subtle slow variation across the flat top
-        y += Math.sin(x / 50 + Date.now() / 2000) * 0.15;
-      }
-      // Roll-off region - steep transition at the band edges
-      else if (absDist <= outOfBandWidth) {
-        // rollOffProgress: 0 at in-band edge, 1 at signal edge
-        const rollOffProgress = (absDist - inBandWidth) / rollOffWidth;
-        // Use raised cosine for smooth but steep roll-off
-        const rolloff = 0.5 * (1 + Math.cos(Math.PI * rollOffProgress));
-        const rolloffDb = 20 * Math.log10(Math.max(rolloff, 1e-10));
-
-        y = displayPower + rolloffDb;
-
-        // Add variation that increases as we move away from center
-        y += this.gaussianRandom_(0, 0.5 + rollOffProgress * 0.3);
-
-        // Side lobe ripple effect
-        y += Math.sin(rollOffProgress * Math.PI * 2) * 0.3;
-      }
-      // Beyond signal edge - should not reach here due to loop bounds
-      else {
-        y = this.specA.state.minAmplitude;
-      }
-
-      // Simulate occasional deep nulls for realism
-      if (this.rng_.next() < 0.001) {
-        y -= 8 + this.rng_.next() * 4;
-      }
-
-      // NOTE: Signals from agcModule.outputSignals already include all chain gains
-      // (LNB gain, IF filter loss, AGC gain). Do NOT add gain here - that would
-      // double-count the gain. Gain is only added to noise floor, not signals.
-
-      // Take the maximum value at each frequency point
-      this.signalData[x] = Math.max(this.signalData[x], y);
+  private addPhaseNoiseSkirts_(plateauDbcHz: number | undefined, powerMw: number, centreHz: number, halfBandwidthHz: number, hzPerPixel: number): void {
+    if (plateauDbcHz === undefined || plateauDbcHz < SpectrumDataProcessor.SKIRT_MIN_DBC_HZ) {
+      return;
     }
-  }
-
-  /**
-   * Combine noise and signal data into final combined data
-   */
-  private combineData(): void {
+    const l0 = 10 ** (plateauDbcHz / 10);
+    const enbw = this.specA.noiseBandwidthHz;
     for (let x = 0; x < this.width; x++) {
-      this.combinedData[x] = Math.max(this.noiseData[x], this.signalData[x]);
+      const f = this.minFreq + (x + 0.5) * hzPerPixel;
+      const offset = Math.abs(f - centreHz) - halfBandwidthHz;
+      if (offset <= 0) {
+        continue;
+      }
+      const l = offset <= PHASE_NOISE_CORNER_HZ ? l0 : l0 * (PHASE_NOISE_CORNER_HZ / offset) ** 2;
+      this.signalMw_[x] += powerMw * l * enbw;
     }
   }
 
   /**
-   * Apply notch filter attenuation to the spectrum display.
-   * Creates a visible "dip" at each enabled notch's frequency range.
+   * Power read in a Gaussian RBW filter (peak 1, -3 dB width = RBW) centred at
+   * `f` from a carrier of total power `powerMw`: its symbol-rate rectangle
+   * convolved with the filter and the roll-off smoothing (combined sigma).
    */
-  private applyNotchVisualization_(): void {
-    const notchFilterModule = this.specA.rfFrontEnd_.notchFilterModule;
-    if (!notchFilterModule) return;
-
-    const notchFilterState = notchFilterModule.state;
-    if (!notchFilterState.isPowered) return;
-
-    for (const notch of notchFilterState.notches) {
-      if (!notch.enabled) continue;
-
-      // Convert notch center and bandwidth from MHz to Hz
-      const notchCenterHz = notch.centerFrequency * 1e6;
-      const notchHalfBwHz = (notch.bandwidth * 1e6) / 2;
-      const notchLowHz = notchCenterHz - notchHalfBwHz;
-      const notchHighHz = notchCenterHz + notchHalfBwHz;
-
-      for (let x = 0; x < this.width; x++) {
-        const freqAtX = this.minFreq + (x / this.width) * (this.maxFreq - this.minFreq);
-
-        if (freqAtX >= notchLowHz && freqAtX <= notchHighHz) {
-          // Apply notch depth attenuation at this frequency
-          this.combinedData[x] -= notch.depth;
-          this.noiseData[x] -= notch.depth;
-        }
-      }
+  static rbwResponse(powerMw: number, centre: number, symbolRate: number, sigmaRbw: number, sigma: number, f: number): number {
+    const d = f - centre;
+    if (symbolRate < sigma * 0.05) {
+      // A line well inside the filter: the filter's own shape (a rectangle
+      // under 5 % of sigma widens it by < 0.02 %)
+      return powerMw * (sigmaRbw / sigma) * Math.exp(-(d * d) / (2 * sigma * sigma));
     }
+    const half = symbolRate / 2;
+    const fraction = SpectrumDataProcessor.normalCdf_((d + half) / sigma) - SpectrumDataProcessor.normalCdf_((d - half) / sigma);
+
+    return (powerMw / symbolRate) * sigmaRbw * Math.sqrt(2 * Math.PI) * fraction;
+  }
+
+  /** Standard normal CDF via erf (Abramowitz & Stegun 7.1.26, |error| < 1.5e-7) */
+  private static normalCdf_(z: number): number {
+    const x = Math.abs(z) / Math.SQRT2;
+    const t = 1 / (1 + 0.3275911 * x);
+    const erf = 1 - ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
+
+    return z >= 0 ? 0.5 * (1 + erf) : 0.5 * (1 - erf);
+  }
+
+  /**
+   * Enabled notches dip the line (carriers and line noise) with the same
+   * stop-band response the notch module integrates over each carrier.
+   */
+  private applyNotch_(hzPerPixel: number): void {
+    const notchFilterState = this.specA.rfFrontEnd_.notchFilterModule?.state;
+    if (!notchFilterState?.isPowered) return;
+    const active = notchFilterState.notches.filter((notch) => notch.enabled);
+    if (active.length === 0) return;
+
+    for (let x = 0; x < this.width; x++) {
+      const f = this.minFreq + (x + 0.5) * hzPerPixel;
+      const factor = NotchFilterModuleCore.responseAt(f, active);
+      this.signalMw_[x] *= factor;
+      this.lineNoiseMw_[x] *= factor;
+    }
+  }
+
+  /**
+   * Detection (Phase 19.2). Noise through a log detector is Rayleigh: its
+   * power reading is exponential, which in dB has a 5.57 dB standard deviation
+   * and reads 2.51 dB under the true power. Video filtering (VBW below RBW)
+   * averages N = RBW / VBW such readings in the log domain; the average
+   * detector averages power instead (no bias). A pixel spans
+   * M = (span / width) / RBW independent bins: the sample detector shows one,
+   * the peak detector the largest. Carriers add their mean power under the
+   * noise before detection, so signal and noise combine as powers.
+   */
+  private detect_(): void {
+    const state = this.specA.state;
+    const detector = state.detector ?? 'sample';
+    const rbw = this.specA.effectiveRbwHz;
+    const span = this.maxFreq - this.minFreq;
+    const binsPerPixel = Math.max(1, span / this.width / rbw);
+    const videoAverages = Math.max(1, Math.min(SpectrumDataProcessor.MAX_VIDEO_AVERAGES, Math.round(rbw / this.specA.effectiveVbwHz)));
+    const minDb = state.minAmplitude - 40;
+
+    for (let x = 0; x < this.width; x++) {
+      const signalMw = this.signalMw_[x] ?? 0;
+      const noiseMw = (this.lineNoiseMw_[x] ?? 0) + this.instrumentNoiseMw_;
+
+      let combined = 0;
+      let noiseOnly = 0;
+      if (detector === 'average') {
+        // Power average over every bin and video sample: unbiased, narrow
+        let sum = 0;
+        for (let i = 0; i < videoAverages; i++) {
+          sum += this.gammaMean_(binsPerPixel);
+        }
+        const y = sum / videoAverages;
+        combined = 10 * Math.log10(signalMw + noiseMw * y);
+        noiseOnly = 10 * Math.log10(noiseMw * y);
+      } else {
+        for (let i = 0; i < videoAverages; i++) {
+          const y = detector === 'peak' ? this.exponentialMax_(binsPerPixel) : this.exponential_();
+          combined += 10 * Math.log10(signalMw + noiseMw * y);
+          noiseOnly += 10 * Math.log10(noiseMw * y);
+        }
+        combined /= videoAverages;
+        noiseOnly /= videoAverages;
+      }
+
+      this.combinedData[x] = Number.isFinite(combined) ? Math.max(minDb, combined) : minDb;
+      this.noiseData[x] = Number.isFinite(noiseOnly) ? Math.max(minDb, noiseOnly) : minDb;
+      this.signalData[x] = signalMw > 0 ? 10 * Math.log10(signalMw) : state.minAmplitude;
+    }
+  }
+
+  /** Exponential(1) draw: one bin's noise power relative to its mean */
+  private exponential_(): number {
+    return -Math.log(1 - this.rng_.next() * 0.999999);
+  }
+
+  /** Largest of `m` exponential(1) draws (inverse CDF; m may be fractional) */
+  private exponentialMax_(m: number): number {
+    const u = this.rng_.next() * 0.999999;
+
+    return -Math.log(1 - u ** (1 / m));
+  }
+
+  /** Mean of `m` exponential(1) draws, approximated as normal with sigma 1/sqrt(m) */
+  private gammaMean_(m: number): number {
+    return Math.max(0.01, 1 + this.gaussianRandom_(0, 1 / Math.sqrt(m)));
   }
 
   /**
    * Generate Gaussian-distributed random number using Box-Muller transform
    */
   private gaussianRandom_(mean: number, stdDev: number): number {
-    const u1 = this.rng_.next();
+    const u1 = Math.max(1e-12, this.rng_.next());
     const u2 = this.rng_.next();
     const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
     return mean + z * stdDev;

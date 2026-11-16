@@ -45,11 +45,52 @@ export interface AntennaErrorData {
   message: string;
 }
 
+/**
+ * A commanded antenna move has arrived (nats-r6-s11-F1): the pedestal stopped
+ * slewing, or a program track pulled in and holds lock on its moving bird
+ */
+export interface AntennaSlewCompleteData {
+  /** The antenna's state at arrival (identifies the station) */
+  state: AntennaState;
+  mode: AntennaState['trackingMode'];
+  /** Pedestal position at arrival, degrees */
+  azimuth: number;
+  elevation: number;
+  /** Program-track target, null in any other mode */
+  targetSatelliteId: number | null;
+  targetSatelliteName: string | null;
+}
+
 // TX Event specific interfaces
+/** What a TX_CONFIG_CHANGED event reports, for the Ops Log (absent: a state refresh) */
+export type TxModemAction = 'config' | 'transmit-on' | 'transmit-off' | 'power-on' | 'boot-complete' | 'power-off' | 'loopback-on' | 'loopback-off' | 'fault-reset';
+
 export interface TxConfigChangedData {
   uuid: string;
+  /** modem_number of the modem in `config` */
   modem: number;
   config: TransmitterModem;
+  /** The operator or automation action behind the change (Ops Log wording) */
+  action?: TxModemAction;
+  /**
+   * Why an automatic action happened, e.g. 'handover'; the Ops Log line ends
+   * "(handover)" like the sibling automatic lines (nats-r4-s11-F3). Absent
+   * for an operator action.
+   */
+  reason?: string;
+}
+
+/**
+ * An operator action on an equipment core that no state event reports on its
+ * own (BUC gain, HPA back-off, LNB / HPA power), for the Ops Log
+ * (nats-r4-s07-F1, s12-F2). `module` is the module object, so the logger can
+ * tag the line with its station.
+ */
+export interface EquipmentActionData {
+  message: string;
+  /** Equipment tag for the log source, e.g. "RF FE" */
+  system: string;
+  module: unknown;
 }
 
 export interface TxActiveModemChangedData {
@@ -119,6 +160,13 @@ export interface ObjectiveConditionEvaluatedData {
   observed: unknown;
 }
 
+export interface ObjectiveObservationPendingData {
+  objectiveId: string;
+  conditionIndex: number;
+  /** The observation tab id the row is read on */
+  tab: string;
+}
+
 export interface ObjectivesAllCompletedData {
   completedObjectives: ObjectiveState[];
   totalTime: number;
@@ -128,12 +176,24 @@ export interface ObjectiveFailedData {
   objectiveId: string;
   objective: Objective;
   failedAt: number;
-  /** timeout: its countdown ran out; window-closed: it needs the command link and the pass is over */
-  reason: 'timeout' | 'window-closed';
+  /** timeout: its countdown ran out; window-closed: it needs the command link and the pass is over; unrecoverable: its `failWhen` check says it can no longer be met */
+  reason: 'timeout' | 'window-closed' | 'unrecoverable';
+  /** unrecoverable: the objective's own explanation of why it can no longer be met */
+  message?: string;
 }
 
 // Quiz Event specific interfaces
-export interface QuizShowData {
+/** Optional study metadata a quiz can carry (Campaign 3 Technician quizzes) */
+export interface QuizExtras {
+  quizSource?: { kind: 'official' | 'applied'; questionId?: string; group?: string; poolRevision?: string; localId?: string };
+  figureUrl?: string;
+  figureAlt?: string;
+  /** Per-option feedback shown after that option is chosen wrongly (index = original option index) */
+  wrongAnswerFeedback?: string[];
+  reviewHint?: string;
+}
+
+export interface QuizShowData extends QuizExtras {
   objectiveId: string;
   conditionIndex: number;
   question: string;
@@ -290,9 +350,18 @@ export interface AggregatedAlarm {
   assetId: string;
   equipmentType: string;
   equipmentIndex: number;
+  /**
+   * Station-clock ms when AlarmService first saw this alarm (its raise time),
+   * kept for the alarm's whole life even as a live number in its text moves
+   * (nats-r4-s01-F2)
+   */
+  raisedAtMs?: number;
 }
 
 export interface AlarmStateChangedData {
+  /** A restored baseline updates displays without inventing an operator event. */
+  restored?: boolean;
+  /** Every active alarm, most severe first (nats-r4-s16-F1: not only the top tier) */
   alarms: AggregatedAlarm[];
   highestSeverity: 'error' | 'warning' | 'info' | 'success';
 }
@@ -308,6 +377,17 @@ export interface WeatherEventData {
   linkMarginDegradation: number;
   /** rain/storm: peak rain rate in mm/h (default from severity: 4 / 12 / 30) */
   rainRateMmPerHour?: number;
+  /** wind/storm: sustained wind in m/s (default from severity: wind 8 / 14 / 22, storm 10 / 18 / 26); de-points the beam */
+  windSpeedMps?: number;
+  /**
+   * snow/ice/hail: ice the feed heater can melt against this storm, dB per
+   * minute (Phase 27 Q5). Default: the heater outmelts any buildup
+   * (WeatherManager.MELT_RATE_DB_PER_SECOND, 1 dB/min) and no ice forms while
+   * it runs. Set lower for a storm whose wind and wet-snow rate exceed what the
+   * heater was sized for: the buildup continues with the heater on, slowed by
+   * this rate, toward max - rate x tau.
+   */
+  heaterMeltDbPerMin?: number;
   /** When set, startTime counts from this objective's activation instead of mission start */
   startAfterObjectiveId?: string;
 }
@@ -375,8 +455,10 @@ export interface SimulatedTimeTickData {
 }
 
 export interface TimeSkipStartedData {
-  /** Satellite whose AOS the skip is aiming at */
+  /** Satellite whose AOS the skip is aiming at ('' for an objective wait) */
   satelliteName: string;
+  /** Objective wait being skipped ("rain cell"), Phase 27 Q4; absent for a pass skip */
+  label?: string;
   /** Scenario-clock timestamp the skip stops at, Unix ms */
   targetMs: number;
   /** Total scenario time the skip will cover, ms */
@@ -404,10 +486,12 @@ export interface TimeSkipEndedData {
 export enum Events {
   // Antenna events
   ANTENNA_STATE_CHANGED = 'antenna:state:changed',
+  ANTENNA_SLEW_COMPLETE = 'antenna:slew:complete',
 
   // Ground Station events
   GROUND_STATION_STATE_CHANGED = 'ground-station:state:changed',
   ASSET_SELECTED = 'asset:selected',
+  SELECTION_CHANGED = 'selection:changed',
 
   // Transmitter events
   TX_CONFIG_CHANGED = 'tx:config:changed',
@@ -457,6 +541,8 @@ export enum Events {
   OBJECTIVE_CONDITION_CHANGED = 'objective:condition:changed',
   /** Dev/authoring telemetry: one event per condition evaluation while enabled (see ObjectivesManager.enableConditionTelemetry). */
   OBJECTIVE_CONDITION_EVALUATED = 'objective:condition:evaluated',
+  /** Phase 35 D3: an observation row reads true but its tab is not open; TabbedCanvas pulses that tab's button */
+  OBJECTIVE_OBSERVATION_PENDING = 'objective:observation:pending',
   OBJECTIVES_ALL_COMPLETED = 'objectives:all:completed',
   OBJECTIVE_FAILED = 'objective:failed',
   SCENARIO_TIME_EXPIRED = 'scenario:time:expired',
@@ -517,6 +603,7 @@ export enum Events {
 
   // Ops Log events
   OPS_LOG_ENTRY_ADDED = 'ops-log:entry:added',
+  EQUIPMENT_ACTION = 'ops-log:equipment-action',
 
   // Simulated Time events
   SIMULATED_TIME_TICK = 'simulated-time:tick',
@@ -528,6 +615,8 @@ export enum Events {
 
   // Scenario lifecycle events
   SCENARIO_CHANGED = 'scenario:changed',
+  /** An orbital satellite's true element set changed (manoeuvre, ephemeris reload). */
+  SATELLITE_ELEMENTS_CHANGED = 'satellite:elements:changed',
 
   // Crypto events
   CRYPTO_STATE_CHANGED = 'crypto:state:changed',
@@ -537,13 +626,19 @@ export enum Events {
 
   // Fault injection events
   FAULT_CHANGED = 'fault:changed',
+  AUDIT_EVENT_ACKNOWLEDGED = 'audit:event:acknowledged',
+
+  // Campaign 3 ham station (throttled to 4 Hz)
+  HAM_STATION_UPDATED = 'ham-station:updated',
 }
 
 export interface EventMap {
   [Events.ANTENNA_STATE_CHANGED]: [Partial<AntennaState>];
+  [Events.ANTENNA_SLEW_COMPLETE]: [AntennaSlewCompleteData];
 
   [Events.GROUND_STATION_STATE_CHANGED]: [Partial<GroundStationState>];
   [Events.ASSET_SELECTED]: [{ type: 'ground-station' | 'satellite'; id: string }];
+  [Events.SELECTION_CHANGED]: [{ selectedAssetId: string | null; selectedNorad: number | null; pinned: number[] }];
 
   [Events.RF_FE_POWER_CHANGED]: [Partial<RFFrontEndState>];
   [Events.RF_FE_BUC_CHANGED]: [Partial<BUCState>];
@@ -589,6 +684,7 @@ export interface EventMap {
   [Events.OBJECTIVE_COMPLETED]: [ObjectiveCompletedData];
   [Events.OBJECTIVE_CONDITION_CHANGED]: [ObjectiveConditionChangedData];
   [Events.OBJECTIVE_CONDITION_EVALUATED]: [ObjectiveConditionEvaluatedData];
+  [Events.OBJECTIVE_OBSERVATION_PENDING]: [ObjectiveObservationPendingData];
   [Events.OBJECTIVES_ALL_COMPLETED]: [ObjectivesAllCompletedData];
   [Events.OBJECTIVE_FAILED]: [ObjectiveFailedData];
   [Events.SCENARIO_TIME_EXPIRED]: [ScenarioTimeExpiredData];
@@ -618,7 +714,8 @@ export interface EventMap {
 
   [Events.ALARM_STATE_CHANGED]: [AlarmStateChangedData];
 
-  [Events.SWITCH_TAB]: [{ tabId: string }];
+  /** `desktop`: sit down at the field laptop and see its desktop rather than an app window */
+  [Events.SWITCH_TAB]: [{ tabId: string; desktop?: boolean }];
   [Events.MISSION_OVERVIEW_SELECTED]: [];
 
   // Weather events
@@ -643,6 +740,7 @@ export interface EventMap {
 
   // Ops Log events
   [Events.OPS_LOG_ENTRY_ADDED]: [OpsLogEntry];
+  [Events.EQUIPMENT_ACTION]: [EquipmentActionData];
 
   // Simulated Time events
   [Events.SIMULATED_TIME_TICK]: [SimulatedTimeTickData];
@@ -654,6 +752,7 @@ export interface EventMap {
 
   // Scenario lifecycle events
   [Events.SCENARIO_CHANGED]: [{ scenarioId: string }];
+  [Events.SATELLITE_ELEMENTS_CHANGED]: [{ noradId: number }];
 
   // Crypto events
   [Events.CRYPTO_STATE_CHANGED]: [CryptoStateChangedData];
@@ -663,4 +762,6 @@ export interface EventMap {
 
   // Fault injection events
   [Events.FAULT_CHANGED]: [{ id: string; action: 'injected' | 'cleared' }];
+  [Events.AUDIT_EVENT_ACKNOWLEDGED]: [{ id: string }];
+  [Events.HAM_STATION_UPDATED]: [{ stateVersion: number; nowS: number }];
 }

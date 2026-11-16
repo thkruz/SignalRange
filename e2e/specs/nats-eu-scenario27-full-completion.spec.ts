@@ -62,7 +62,7 @@ test.describe('nats-eu Scenario 27 Full Completion', () => {
     await expect(page.locator('#sec-audit-body')).toContainText('acu-4.2.1-vendor.bin');
     await domClick(page, '#sec-mark-reviewed');
     await expect(page.locator('#sec-reviewed-badge')).toHaveText('SIGNED OFF');
-    await quiz('07:41 USB mass storage mounted', 'Find What Is Off the Plan');
+    await quiz('The 07:41 USB mount', 'Find What Is Off the Plan');
   });
 
   test('[call-the-media] flags the media entry, then holds the image', async () => {
@@ -75,7 +75,7 @@ test.describe('nats-eu Scenario 27 Full Completion', () => {
   });
 
   test('[verify-the-image] states the verification path', async () => {
-    await quiz('A release the vendor publishes with a signature and a hash', 'How the Image Earns Trust');
+    await quiz('A signed vendor release', 'How the Image Earns Trust');
   });
 
   test('[flag-the-firmware] flags the firmware stage', async () => {
@@ -99,7 +99,7 @@ test.describe('nats-eu Scenario 27 Full Completion', () => {
   });
 
   test('[log-the-event] logs the event and completes', async () => {
-    await answerSystemQuiz(page, '07:41 USB mounted on GW-MC-01 by vend-tech');
+    await answerSystemQuiz(page, '07:41 USB mounted, 07:44 image staged');
     await dismissDialogIfPresent(page);
     await closeWorkingDocumentIfOpen(page);
     await expect(page.locator('#level-complete-modal')).toBeVisible({ timeout: 45000 });

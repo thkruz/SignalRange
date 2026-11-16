@@ -11,6 +11,10 @@ import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForS
  * (RF denial, not intrusion), applies a notch filter, confirms the carrier
  * survives, and builds the regulator package.
  *
+ * The analyzer starts parked on the TM-2 beacon (1070 MHz / 2 MHz), so the
+ * spectrum step retunes it to the carrier (1458 / 40 MHz). ME-02's own uplink
+ * is on TM-2 (Phase 27: the carrier the RX modem locks to is ME-02's own).
+ *
  * The intermittent jammer provides the authentic signature for the player;
  * objective completion hinges on the discrimination quizzes, the data-layer
  * crypto checks (ACTIVE/Valid by default), the notch filter, and a
@@ -28,6 +32,8 @@ interface Scenario21Objective {
   specaConfig?: { centerFrequencyMhz: number; spanMhz: number };
   notchConfig?: { centerFrequency: number; bandwidth: number; depth: number; notchIndex: number };
   autoWaitSeconds?: number;
+  /** Quiz behind a timed hold: advance the clock this far (s) before the quiz may open */
+  holdSeconds?: number;
 }
 
 const SCENARIO_21_OBJECTIVES: Scenario21Objective[] = [
@@ -35,7 +41,7 @@ const SCENARIO_21_OBJECTIVES: Scenario21Objective[] = [
     id: 'review-mission-brief',
     title: 'Review the Interference Flag',
     type: 'quiz',
-    correctAnswer: 'As an interference incident: characterize, discriminate, mitigate, document - and verify the data layer separately',
+    correctAnswer: 'As an interference incident: characterize, tell jamming from accident, mitigate, document, check the data layer',
   },
   {
     id: 'select-maine-station',
@@ -61,19 +67,21 @@ const SCENARIO_21_OBJECTIVES: Scenario21Objective[] = [
     id: 'duty-cycle-quiz',
     title: 'Characterize the Duty Cycle',
     type: 'quiz',
-    correctAnswer: 'Against accident, toward deliberation: accidents are continuous or random; a clean minute-scale on/off cadence implies a switch',
+    // Phase 29 D11: the quiz opens after a 150 s hold on RX Analysis (one full cycle)
+    holdSeconds: 155,
+    correctAnswer: 'About 90 s on, 60 s off, repeating - a regular minute-scale cadence: toward a switch, not an accident',
   },
   {
     id: 'transponder-vs-local-quiz',
     title: 'Transponder or Local?',
     type: 'quiz',
-    correctAnswer: 'It is in the UPLINK - the satellite relays it to every station, so the source is transmitting at the bird, not local to Maine',
+    correctAnswer: 'It is in the UPLINK - the satellite relays it to both sites, so the source is transmitting at the bird, not local to Maine',
   },
   {
     id: 'signature-shape-quiz',
     title: 'Signature vs the Database',
     type: 'quiz',
-    correctAnswer: "It matches nothing in the database: cross-pol would mirror a neighbor's carrier, an errant uplink would sit at a known slot",
+    correctAnswer: "It matches nothing benign: a featureless ~6 MHz noise band on our carrier's top edge is neither a neighbor's carrier nor a modulated uplink",
   },
 
   // PHASE 2: DENIAL VS INTRUSION
@@ -87,7 +95,8 @@ const SCENARIO_21_OBJECTIVES: Scenario21Objective[] = [
     id: 'verify-data-layer',
     title: 'Verify the Data Layer',
     type: 'auto',
-    autoWaitSeconds: 4,
+    // Crypto/key reads latch after a 5 s observation dwell on RX Analysis
+    autoWaitSeconds: 7,
   },
   {
     id: 'data-layer-meaning-quiz',
@@ -112,8 +121,9 @@ const SCENARIO_21_OBJECTIVES: Scenario21Objective[] = [
   {
     id: 'verify-carrier-survives',
     title: 'Confirm the Customer Survives',
-    type: 'auto',
-    autoWaitSeconds: 5,
+    // Phase 27 Q3: the lock row latches on RX Analysis, then the C/N read
+    type: 'quiz',
+    correctAnswer: 'Locked at about 9 dB C/N, up from about 6 dB unnotched; about 12 dB in the off periods',
   },
   {
     id: 'no-burn-through-quiz',
@@ -139,7 +149,7 @@ const SCENARIO_21_OBJECTIVES: Scenario21Objective[] = [
     id: 'log-incident',
     title: 'Log the Incident',
     type: 'quiz',
-    correctAnswer: 'TM-2 TP-1 interference: noise ~1470 MHz IF, 90s/60s duty, uplink-confirmed (VT-01 + Halifax); crypto intact - RF denial, notched',
+    correctAnswer: 'TM-2 TP-1 interference: noise ~1470 MHz IF, 90s/60s duty, uplink-confirmed (Maine + Halifax); crypto intact - RF denial, notched',
   },
 ];
 
@@ -215,6 +225,17 @@ async function configureNotchFilter(
 async function executeObjective(page: import('@playwright/test').Page, missionControlPage: MissionControlPage, objective: Scenario21Objective): Promise<void> {
   switch (objective.type) {
     case 'quiz':
+      if (objective.holdSeconds) {
+        // The hold row must tick on the tab first; the quiz is not offered yet
+        await page.waitForTimeout(2000);
+        await expect(page.locator('#quiz-modal, .quiz-box')).toBeHidden();
+        // The indicator hides by opacity (no .show class), which Playwright still counts as visible
+        await expect(page.locator('.pending-quiz-indicator.show')).toHaveCount(0);
+        // Watch one full on/off cycle in real time: advanceClock burns countdowns but
+        // credits no maintainDuration hold (only an objective skip does), so wait it out
+        test.setTimeout((objective.holdSeconds + 90) * 1000);
+        await page.waitForTimeout(objective.holdSeconds * 1000);
+      }
       await waitForQuizToAppear(page);
       await answerQuizByText(page, objective.correctAnswer!);
       break;
@@ -240,7 +261,15 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
       break;
 
     case 'auto':
-      await page.waitForTimeout((objective.autoWaitSeconds ?? 5) * 1000);
+      // Wait for the objective itself (observation dwells latch on the tab)
+      await page.waitForFunction(
+        (id) => {
+          const hook = (window as unknown as { debugObjective?: (id: string) => { isCompleted?: boolean } }).debugObjective;
+          return typeof hook === 'function' && hook(id)?.isCompleted === true;
+        },
+        objective.id,
+        { timeout: Math.max(20, objective.autoWaitSeconds ?? 5) * 1000, polling: 500 }
+      );
       break;
   }
 

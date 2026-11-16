@@ -17,6 +17,7 @@ import {
   QuizPendingData,
   QuizShowData,
 } from '@app/events/events';
+import { ImmersiveView } from '@app/presentation/immersive-view';
 import { DecisionManager } from './decision-manager';
 import './pending-quiz-indicator.css';
 import { QuizManager } from './quiz-manager';
@@ -30,12 +31,22 @@ export class PendingQuizIndicator {
 
   private static readonly INITIAL_DELAY_MS = 5000;
 
+  /** Delay before the indicator shows; e2e specs set `window.SR_E2E_FAST_UI` to skip the player-pacing wait */
+  private static getInitialDelayMs_(): number {
+    // Development builds only (the e2e builds), like the test hook: the branch is removed from production bundles
+    const fastUi = process.env.NODE_ENV === 'development' && (window as unknown as { SR_E2E_FAST_UI?: boolean }).SR_E2E_FAST_UI === true;
+    return fastUi ? 0 : PendingQuizIndicator.INITIAL_DELAY_MS;
+  }
+
   private indicatorElement_: HTMLDivElement | null = null;
   private iconElement_: HTMLDivElement | null = null;
   private messageElement_: HTMLDivElement | null = null;
   private openButton_: HTMLButtonElement | null = null;
   private pendingShowTimeout_: number | null = null;
+  private pendingTimeoutKey_: string | null = null;
   private suppressed_: boolean = false;
+  /** Stops following held objects (ImmersiveView.onChange) */
+  private readonly unfollowHeld_: () => void;
 
   private readonly boundQuizShowHandler_: (data: QuizShowData) => void;
   private readonly boundQuizDismissedHandler_: (data: QuizDismissedData) => void;
@@ -62,6 +73,7 @@ export class PendingQuizIndicator {
 
     this.createIndicatorElement_();
     this.setupEventListeners_();
+    this.unfollowHeld_ = ImmersiveView.onChange((dialog, change) => this.followHeld_(dialog, change));
   }
 
   static getInstance(): PendingQuizIndicator {
@@ -128,10 +140,14 @@ export class PendingQuizIndicator {
   }
 
   /**
-   * When quiz is completed, hide the indicator and cancel any pending timeout
+   * When quiz is completed, hide the indicator (a timer already running is the next quiz's and stays)
    */
-  private handleQuizCompleted_(_data: QuizCompletedData): void {
-    this.cancelPendingTimeout_();
+  private handleQuizCompleted_(data: QuizCompletedData): void {
+    // A timer for a DIFFERENT quiz is the next one's: QuizManager (when it handled this event first) already announced
+    // it with QUIZ_PENDING. Cancelling it left that quiz with no toast (issue 306).
+    if (this.pendingTimeoutKey_ === `${data.objectiveId}:${data.conditionIndex}`) {
+      this.cancelPendingTimeout_();
+    }
     this.hide_();
   }
 
@@ -149,29 +165,42 @@ export class PendingQuizIndicator {
       clearTimeout(this.pendingShowTimeout_);
       this.pendingShowTimeout_ = null;
     }
+    this.pendingTimeoutKey_ = null;
   }
 
   /**
    * When a quiz is registered (pending), show the indicator after a delay
    * This happens instead of showing the quiz immediately
    */
-  private handleQuizPending_(_data: QuizPendingData): void {
+  private handleQuizPending_(data: QuizPendingData): void {
     this.cancelPendingTimeout_();
+    this.pendingTimeoutKey_ = `${data.objectiveId}:${data.conditionIndex}`;
 
     // Show indicator after delay to give user time to work
     this.pendingShowTimeout_ = window.setTimeout(() => {
       this.updateMessage_('Complete the quiz to continue');
       this.show_();
       this.pendingShowTimeout_ = null;
-    }, PendingQuizIndicator.INITIAL_DELAY_MS);
+      this.pendingTimeoutKey_ = null;
+    }, PendingQuizIndicator.getInitialDelayMs_());
   }
 
+  /**
+   * The player asked for the quiz (or decision). A held object (logbook, laptop) is a modal dialog above the quiz
+   * window, so it is put down first, the way the player would; then focus moves to the first answer, since the
+   * object's opener would otherwise take it back.
+   */
   private handleOpenClick_(): void {
+    ImmersiveView.closeAll();
+    let answers = '#quiz-options';
     if (DecisionManager.hasInstance() && DecisionManager.getInstance().hasPending()) {
       DecisionManager.getInstance().reopenPending();
-      return;
+      answers = '#decision-options';
+    } else {
+      QuizManager.getInstance().reopenPendingQuiz();
     }
-    QuizManager.getInstance().reopenPendingQuiz();
+    // The window renders synchronously on the show event; its first answer takes focus
+    document.querySelector<HTMLButtonElement>(`${answers} .quiz-option-btn:not(:disabled)`)?.focus({ preventScroll: true });
   }
 
   // ── Decision conditions share the indicator ─────────────────────────────
@@ -192,7 +221,8 @@ export class PendingQuizIndicator {
       this.updateMessage_('Make the call to continue');
       this.show_();
       this.pendingShowTimeout_ = null;
-    }, PendingQuizIndicator.INITIAL_DELAY_MS);
+      this.pendingTimeoutKey_ = null;
+    }, PendingQuizIndicator.getInitialDelayMs_());
   }
 
   /** A correct answer hides the indicator before Continue is pressed */
@@ -218,14 +248,58 @@ export class PendingQuizIndicator {
 
     requestAnimationFrame(() => {
       if (this.indicatorElement_) {
+        this.rehome_();
+        this.placeBelowHeader_();
         this.indicatorElement_.classList.add('show');
+        // Second cue on the Checklist sidebar entry, so the gate is visible from every tab (c6-s03-F1)
+        document.body.dataset.quizPending = 'true';
       }
     });
+  }
+
+  /**
+   * Sit under whatever header stack is on screen (the mission control command bar and the alarm bar inside it),
+   * measured rather than assumed: a fixed offset kept landing under the alarm bar (c6-s08-F1).
+   */
+  private placeBelowHeader_(): void {
+    if (!this.indicatorElement_) return;
+    let bottom = 0;
+    for (const selector of ['#global-command-bar-container', '#alarm-bar']) {
+      const el = document.querySelector<HTMLElement>(selector);
+      if (el && el.offsetParent !== null) bottom = Math.max(bottom, el.getBoundingClientRect().bottom);
+    }
+    if (bottom > 0) this.indicatorElement_.style.top = `${Math.ceil(bottom) + 8}px`;
+  }
+
+  /**
+   * A held object (ImmersiveView) is a modal dialog in the top layer; the indicator on the body would sit behind it
+   * and could not be pressed. It rides inside the most recently held object and returns to the body when nothing is
+   * held. Other modal dialogs (pause menu, scene cards, feedback) never take it: a quiz opened from there would open
+   * behind them.
+   */
+  private rehome_(): void {
+    const el = this.indicatorElement_;
+    if (!el) return;
+    const host = ImmersiveView.topDialog() ?? document.body;
+    if (el.parentElement !== host) host.appendChild(el);
+  }
+
+  /** Move in when an object is picked up; move out before the held dialog is removed, so the indicator survives */
+  private followHeld_(dialog: HTMLDialogElement, change: 'open' | 'closing'): void {
+    const el = this.indicatorElement_;
+    if (!el) return;
+    if (change === 'open') {
+      dialog.appendChild(el);
+    } else if (el.parentElement === dialog) {
+      // ImmersiveView has already dropped the closing view, so this finds the object still held under it, if any
+      (ImmersiveView.topDialog() ?? document.body).appendChild(el);
+    }
   }
 
   private hide_(): void {
     if (!this.indicatorElement_) return;
     this.indicatorElement_.classList.remove('show');
+    delete document.body.dataset.quizPending;
   }
 
   /**
@@ -251,6 +325,12 @@ export class PendingQuizIndicator {
     eventBus.off(Events.QUIZ_COMPLETED, this.boundQuizCompletedHandler_);
     eventBus.off(Events.QUIZ_PENDING, this.boundQuizPendingHandler_);
     eventBus.off(Events.QUIZ_PASSED, this.boundQuizPassedHandler_);
+    eventBus.off(Events.DECISION_SHOW, this.boundDecisionShowHandler_);
+    eventBus.off(Events.DECISION_DISMISSED, this.boundDecisionDismissedHandler_);
+    eventBus.off(Events.DECISION_PENDING, this.boundDecisionPendingHandler_);
+    eventBus.off(Events.DECISION_GRADED, this.boundDecisionGradedHandler_);
+    eventBus.off(Events.DECISION_RESOLVED, this.boundDecisionResolvedHandler_);
+    this.unfollowHeld_();
 
     if (this.indicatorElement_) {
       this.indicatorElement_.remove();

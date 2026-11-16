@@ -38,7 +38,8 @@ export class DialogHistoryBox extends DraggableHtmlBox {
 
     const historyItems = history
       .map((entry, index) => {
-        const timeStr = new Date(entry.timestamp).toLocaleTimeString();
+        // Station clock time of day (UTC), as the HUD writes it
+        const timeStr = new Date(entry.timestamp).toISOString().slice(11, 19);
         return html`
         <div class="dialog-history-item">
           <div class="dialog-history-item-header">

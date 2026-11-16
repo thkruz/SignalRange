@@ -77,6 +77,42 @@ describe('GlobalCommandBar', () => {
   });
 
   describe('HTML rendering', () => {
+    it('opens every alarm in a keyboard-accessible panel and restores focus on Escape', () => {
+      const alarmHandler = mockEventBus.on.mock.calls.find((call) => call[0] === Events.ALARM_STATE_CHANGED)?.[1];
+      alarmHandler({
+        alarms: [
+          { assetId: 'VT-01', equipmentType: 'RF', equipmentIndex: 0, severity: 'warning', message: 'No carrier', detail: 'Noise only' },
+          { assetId: 'ME-02', equipmentType: 'RX', equipmentIndex: 1, severity: 'info', message: '<img src=x onerror=alert(1)>' },
+        ],
+        highestSeverity: 'warning',
+      });
+      const summary = document.querySelector<HTMLButtonElement>('#alarm-summary')!;
+      const panel = document.querySelector<HTMLElement>('#mission-alarm-panel')!;
+      expect(panel.hidden).toBe(true);
+      summary.click();
+      expect(panel.hidden).toBe(false);
+      expect(summary.getAttribute('aria-expanded')).toBe('true');
+      expect(panel.querySelectorAll('.mission-alarm-entry')).toHaveLength(2);
+      expect(panel.textContent).toContain('Noise only');
+      expect(panel.textContent).toContain('ME-02');
+      expect(panel.querySelector('img')).toBeNull();
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      expect(panel.hidden).toBe(true);
+      expect(document.activeElement).toBe(summary);
+      summary.click();
+      document.body.click();
+      expect(panel.hidden).toBe(true);
+    });
+
+    it('keeps the open alarm list current when alarms clear', () => {
+      document.querySelector<HTMLButtonElement>('#alarm-summary')!.click();
+      const handler = mockEventBus.on.mock.calls.find((call) => call[0] === Events.ALARM_STATE_CHANGED)?.[1];
+      handler({ alarms: [], highestSeverity: 'success' });
+      expect(document.querySelector('#mission-alarm-list')?.textContent).toBe('No active alarms');
+      expect(document.querySelector('#mission-alarm-total')?.textContent).toBe('0');
+      expect(document.querySelectorAll('#global-command-bar-container')).toHaveLength(1);
+    });
+
     it('should render header element', () => {
       const header = document.querySelector('#global-command-bar-container');
       expect(header).not.toBeNull();
@@ -91,7 +127,7 @@ describe('GlobalCommandBar', () => {
     it('should render UTC clock element', () => {
       const clock = document.querySelector('#utc-clock');
       expect(clock).not.toBeNull();
-      expect(clock?.textContent).toBe('-- --- ---- --:--:--');
+      expect(clock?.textContent).toBe('--:--:-- UTC');
     });
 
     it('should render AOS countdown section', () => {
@@ -106,7 +142,7 @@ describe('GlobalCommandBar', () => {
 
     it('should render scenario number and title', () => {
       const scenarioInfo = document.querySelector('#scenario-info');
-      expect(scenarioInfo?.textContent).toContain('SCENARIO 1: First Day');
+      expect(scenarioInfo?.textContent).toContain('01 · First Day');
     });
 
     it('should render alarm bar', () => {
@@ -124,10 +160,11 @@ describe('GlobalCommandBar', () => {
       expect(alarmMessages).not.toBeNull();
     });
 
-    it('should render SYSTEM STABLE by default', () => {
+    it('should render No active alarms by default', () => {
       const stableMessage = document.querySelector('.alarm-stable');
       expect(stableMessage).not.toBeNull();
-      expect(stableMessage?.textContent).toContain('SYSTEM STABLE');
+      expect(stableMessage?.textContent).toContain('No active alarms');
+      expect(stableMessage?.querySelector('[data-glyph="ok"] svg')).not.toBeNull();
     });
 
     it('should render objective timer display', () => {
@@ -296,7 +333,7 @@ describe('GlobalCommandBar', () => {
       expect(warningBadge?.textContent).toContain('1');
     });
 
-    it('should render max 3 inline alarms', () => {
+    it('should render one priority alarm inline', () => {
       const alarmHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ALARM_STATE_CHANGED)?.[1];
 
       const mockAlarms: AggregatedAlarm[] = Array(5)
@@ -317,10 +354,33 @@ describe('GlobalCommandBar', () => {
       });
 
       const alarmItems = document.querySelectorAll('.alarm-item');
-      expect(alarmItems.length).toBe(3);
+      expect(alarmItems.length).toBe(1);
     });
 
-    it('should show overflow indicator when more than 3 alarms', () => {
+    it('draws inline severity glyphs, not Font Awesome classes the app never loads (Phase 32 D21)', () => {
+      const alarmHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ALARM_STATE_CHANGED)?.[1];
+      const base = { assetId: 'GS-001', equipmentType: 'antenna', equipmentIndex: 0, timestamp: Date.now() };
+
+      alarmHandler?.({
+        alarms: [
+          { ...base, alarmId: 'e', severity: 'error' as const, message: 'Lock lost' },
+          { ...base, alarmId: 'w', severity: 'warning' as const, message: 'Low Eb/No' },
+        ],
+        highestSeverity: 'error',
+      });
+
+      const bar = document.querySelector('#global-command-bar-container');
+      expect(bar?.querySelector('[class*="fa-"]')).toBeNull();
+      expect(document.querySelector('.alarm-count.error [data-glyph="error"] svg')).not.toBeNull();
+      expect(document.querySelector('.alarm-count.warning [data-glyph="warning"] svg')).not.toBeNull();
+      const items = document.querySelectorAll('.mission-alarm-entry');
+      expect(items[0].getAttribute('data-severity')).toBe('error');
+      expect(items[0].querySelector('[data-glyph="error"]')?.getAttribute('aria-hidden')).toBe('true');
+      expect(items[1].getAttribute('data-severity')).toBe('warning');
+      expect(items[1].querySelector('[data-glyph="warning"]')).not.toBeNull();
+    });
+
+    it('should show overflow indicator when more than one alarm', () => {
       const alarmHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ALARM_STATE_CHANGED)?.[1];
 
       const mockAlarms: AggregatedAlarm[] = Array(5)
@@ -342,7 +402,69 @@ describe('GlobalCommandBar', () => {
 
       const overflow = document.querySelector('.alarm-overflow');
       expect(overflow).not.toBeNull();
-      expect(overflow?.textContent).toContain('+2 more');
+      expect(overflow?.textContent).toContain('+4 more');
+    });
+
+    it('lists every tier, counts them all and names the hidden ones in the tooltip (nats-r4-s16-F1)', () => {
+      const alarmHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ALARM_STATE_CHANGED)?.[1];
+      const alarm = (severity: AggregatedAlarm['severity'], message: string, equipmentIndex = 0): AggregatedAlarm => ({
+        severity,
+        message,
+        assetId: 'VT-01',
+        equipmentType: 'RF',
+        equipmentIndex,
+      });
+
+      alarmHandler?.({
+        alarms: [
+          alarm('error', 'BUC over-temperature (72.3 °C)'),
+          alarm('error', 'BUC high current draw (5.37 A)'),
+          alarm('warning', 'HPA overdrive - IMD degradation'),
+          alarm('warning', 'LNB not locked to reference'),
+          alarm('info', 'Signal(s) Detected'),
+        ],
+        highestSeverity: 'error',
+      });
+
+      expect(document.querySelector('.alarm-stable')).toBeNull();
+      expect(document.querySelector('.alarm-count.error')?.textContent?.trim()).toBe('2 errors');
+      expect(document.querySelector('.alarm-count.warning')?.textContent?.trim()).toBe('2 warnings');
+      expect(document.querySelector('.alarm-count.info')?.textContent?.trim()).toBe('1 info');
+      expect(document.querySelector('.alarm-overflow')?.textContent).toContain('+4 more');
+      const tooltip = (document.querySelector('#alarm-messages') as HTMLElement).title;
+      expect(tooltip.split('\n')).toHaveLength(5);
+      expect(tooltip).toContain('LNB not locked to reference');
+      expect(tooltip).toContain('Signal(s) Detected');
+    });
+
+    it('counts only unlisted alarms in "(N on other stations)" (nats-r5-s21-F1)', () => {
+      const handler = (name: string) => mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === name)?.[1];
+      const rx = (assetId: string): AggregatedAlarm => ({ severity: 'info', message: 'Signal(s) Detected', assetId, equipmentType: 'RX', equipmentIndex: 0 });
+
+      handler(Events.ASSET_SELECTED)?.({ type: 'ground-station', id: 'ME-02' });
+      handler(Events.ALARM_STATE_CHANGED)?.({ alarms: [rx('VT-01'), rx('ME-02')], highestSeverity: 'info' });
+      expect(document.querySelector('.alarm-other-stations')).toBeNull();
+
+      handler(Events.ALARM_STATE_CHANGED)?.({
+        alarms: [
+          { severity: 'error', message: 'E1', assetId: 'ME-02', equipmentType: 'RF', equipmentIndex: 0 },
+          { severity: 'error', message: 'E2', assetId: 'ME-02', equipmentType: 'RF', equipmentIndex: 0 },
+          { severity: 'error', message: 'E3', assetId: 'ME-02', equipmentType: 'RF', equipmentIndex: 0 },
+          rx('VT-01'),
+        ],
+        highestSeverity: 'error',
+      });
+      expect(document.querySelector('.alarm-other-stations')?.textContent).toBe('(1 on other stations)');
+    });
+
+    it('keeps a fixed alarm label inline and puts its live value in the tooltip (nats-r5-s14-F2)', () => {
+      const handler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ALARM_STATE_CHANGED)?.[1];
+      const rain = { severity: 'info', message: 'RAIN FADE', detail: 'fade 0.7 dB', assetId: 'VT-01', equipmentType: 'ANT', equipmentIndex: 0 };
+      handler?.({ alarms: [rain], highestSeverity: 'info' });
+
+      expect(document.querySelector('.alarm-item')?.textContent).toContain('VT-01(ANT1): RAIN FADE');
+      expect(document.querySelector('.alarm-item')?.textContent).not.toContain('0.7');
+      expect((document.querySelector('#alarm-messages') as HTMLElement).title).toBe('VT-01(ANT1): RAIN FADE - fade 0.7 dB');
     });
 
     it('should sort alarms by severity (errors first)', () => {
@@ -383,7 +505,7 @@ describe('GlobalCommandBar', () => {
         highestSeverity: 'error',
       });
 
-      const alarmItems = document.querySelectorAll('.alarm-item');
+      const alarmItems = document.querySelectorAll('.mission-alarm-entry');
       expect(alarmItems[0]?.textContent).toContain('Error message');
       expect(alarmItems[1]?.textContent).toContain('Warning message');
       expect(alarmItems[2]?.textContent).toContain('Info message');
@@ -411,12 +533,15 @@ describe('GlobalCommandBar', () => {
         hasScenarioTimer: vi.fn(() => false),
         getObjectiveStates: vi.fn(() => []),
         isQuizPassed: vi.fn(() => false),
+        isObjectiveCountdownHeld: vi.fn(() => false),
+        getMissionClockHold: vi.fn(() => null),
       });
 
       vi.advanceTimersByTime(1000);
 
       const scenarioValue = document.querySelector('#scenario-timer-value');
-      expect(scenarioValue?.textContent).toBe('∞');
+      expect(scenarioValue?.textContent).toBe('--:--');
+      expect(document.querySelector<HTMLElement>('#scenario-timer-display')?.title).toBe('No time limit');
     });
 
     it('should show scenario time remaining when timer is active', () => {
@@ -426,6 +551,8 @@ describe('GlobalCommandBar', () => {
         formatTimeRemaining: vi.fn(() => '02:00'),
         getObjectiveStates: vi.fn(() => []),
         isQuizPassed: vi.fn(() => false),
+        isObjectiveCountdownHeld: vi.fn(() => false),
+        getMissionClockHold: vi.fn(() => null),
       });
 
       vi.advanceTimersByTime(1000);
@@ -440,6 +567,8 @@ describe('GlobalCommandBar', () => {
         getScenarioTimeRemaining: vi.fn(() => 0),
         getObjectiveStates: vi.fn(() => []),
         isQuizPassed: vi.fn(() => false),
+        isObjectiveCountdownHeld: vi.fn(() => false),
+        getMissionClockHold: vi.fn(() => null),
       });
 
       vi.advanceTimersByTime(1000);
@@ -457,6 +586,8 @@ describe('GlobalCommandBar', () => {
         formatTimeRemaining: vi.fn(() => '00:30'),
         getObjectiveStates: vi.fn(() => []),
         isQuizPassed: vi.fn(() => false),
+        isObjectiveCountdownHeld: vi.fn(() => false),
+        getMissionClockHold: vi.fn(() => null),
       });
 
       vi.advanceTimersByTime(1000);
@@ -472,6 +603,8 @@ describe('GlobalCommandBar', () => {
         formatTimeRemaining: vi.fn(() => '03:00'),
         getObjectiveStates: vi.fn(() => []),
         isQuizPassed: vi.fn(() => false),
+        isObjectiveCountdownHeld: vi.fn(() => false),
+        getMissionClockHold: vi.fn(() => null),
       });
 
       vi.advanceTimersByTime(1000);
@@ -484,10 +617,13 @@ describe('GlobalCommandBar', () => {
       ObjectivesManager.getInstance.mockReturnValue({
         hasScenarioTimer: vi.fn(() => false),
         isQuizPassed: vi.fn(() => false),
+        isObjectiveCountdownHeld: vi.fn(() => false),
+        getMissionClockHold: vi.fn(() => null),
         formatTimeRemaining: vi.fn(() => '01:30'),
         getObjectiveStates: vi.fn(() => [
           {
             objective: { id: 'obj1', title: 'Test Objective', timeLimitSeconds: 120 },
+            isActive: true,
             isTimerRunning: true,
             isCompleted: false,
             isFailed: false,
@@ -506,6 +642,8 @@ describe('GlobalCommandBar', () => {
       ObjectivesManager.getInstance.mockReturnValue({
         hasScenarioTimer: vi.fn(() => false),
         isQuizPassed: vi.fn(() => true),
+        isObjectiveCountdownHeld: vi.fn(() => false),
+        getMissionClockHold: vi.fn(() => null),
         getPassedObjectiveId: vi.fn(() => 'obj1'),
         getObjectiveStates: vi.fn(() => [
           {
@@ -527,6 +665,8 @@ describe('GlobalCommandBar', () => {
       ObjectivesManager.getInstance.mockReturnValue({
         hasScenarioTimer: vi.fn(() => false),
         isQuizPassed: vi.fn(() => false),
+        isObjectiveCountdownHeld: vi.fn(() => false),
+        getMissionClockHold: vi.fn(() => null),
         getObjectiveStates: vi.fn(() => [
           {
             objective: { id: 'obj1', title: 'Failed Objective', timeLimitSeconds: 60 },
@@ -547,10 +687,13 @@ describe('GlobalCommandBar', () => {
       ObjectivesManager.getInstance.mockReturnValue({
         hasScenarioTimer: vi.fn(() => false),
         isQuizPassed: vi.fn(() => false),
+        isObjectiveCountdownHeld: vi.fn(() => false),
+        getMissionClockHold: vi.fn(() => null),
         formatTimeRemaining: vi.fn(() => '00:20'),
         getObjectiveStates: vi.fn(() => [
           {
             objective: { id: 'obj1', title: 'Test', timeLimitSeconds: 60 },
+            isActive: true,
             isTimerRunning: true,
             isCompleted: false,
             isFailed: false,
@@ -569,10 +712,13 @@ describe('GlobalCommandBar', () => {
       ObjectivesManager.getInstance.mockReturnValue({
         hasScenarioTimer: vi.fn(() => false),
         isQuizPassed: vi.fn(() => false),
+        isObjectiveCountdownHeld: vi.fn(() => false),
+        getMissionClockHold: vi.fn(() => null),
         formatTimeRemaining: vi.fn(() => '00:45'),
         getObjectiveStates: vi.fn(() => [
           {
             objective: { id: 'obj1', title: 'Test', timeLimitSeconds: 120 },
+            isActive: true,
             isTimerRunning: true,
             isCompleted: false,
             isFailed: false,
@@ -591,6 +737,8 @@ describe('GlobalCommandBar', () => {
       ObjectivesManager.getInstance.mockReturnValue({
         hasScenarioTimer: vi.fn(() => false),
         isQuizPassed: vi.fn(() => false),
+        isObjectiveCountdownHeld: vi.fn(() => false),
+        getMissionClockHold: vi.fn(() => null),
         getObjectiveStates: vi.fn(() => []),
       });
 
@@ -598,8 +746,34 @@ describe('GlobalCommandBar', () => {
 
       const objectiveValue = document.querySelector('#objective-timer-value');
       const objectiveTimer = document.querySelector('#objective-timer-display');
-      expect(objectiveValue?.textContent).toBe('∞');
+      expect(objectiveValue?.textContent).toBe('No limit');
+      expect((objectiveTimer as HTMLElement | null)?.title).toBe('No time limit');
       expect(objectiveTimer?.classList.contains('timer-unlimited')).toBe(true);
+    });
+
+    it('shows no countdown for an objective whose timed work is done (Phase 27 Q1)', () => {
+      ObjectivesManager.getInstance.mockReturnValue({
+        hasScenarioTimer: vi.fn(() => false),
+        isQuizPassed: vi.fn(() => false),
+        isObjectiveCountdownHeld: vi.fn(() => true),
+        getMissionClockHold: vi.fn(() => null),
+        getObjectiveStates: vi.fn(() => [
+          {
+            objective: { id: 'obj1', title: 'Read the C/N', timeLimitSeconds: 120 },
+            isActive: true,
+            isTimerRunning: true,
+            isCompleted: false,
+            isFailed: false,
+            timeRemainingSeconds: 90,
+          },
+        ]),
+      });
+
+      vi.advanceTimersByTime(1000);
+
+      const objectiveTimer = document.querySelector<HTMLElement>('#objective-timer-display');
+      expect(document.querySelector('#objective-timer-value')?.textContent).toBe('No limit');
+      expect(objectiveTimer?.title).toContain('No time limit on the questions');
     });
   });
 
@@ -611,10 +785,19 @@ describe('GlobalCommandBar', () => {
     it('should update clock on SIMULATED_TIME_TICK event', () => {
       const timeTickHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.SIMULATED_TIME_TICK)?.[1];
 
-      timeTickHandler?.({ timeFormatted: '01 Jan 2024 12:34:56' });
+      timeTickHandler?.({ timeFormatted: '01 Jan 2024 12:34:56', timestampMs: Date.UTC(2024, 0, 1, 12, 34, 56) });
 
       const clock = document.querySelector('#utc-clock');
-      expect(clock?.textContent).toBe('01 Jan 2024 12:34:56');
+      expect(clock?.textContent).toBe('12:34:56 UTC');
+    });
+
+    it('preserves the weekday in the clock tooltip (briefs open with "Wednesday, 1430")', () => {
+      const timeTickHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.SIMULATED_TIME_TICK)?.[1];
+
+      timeTickHandler?.({ timeFormatted: '04 FEB 2026 14:30:00', timestampMs: Date.UTC(2026, 1, 4, 14, 30, 0) });
+
+      expect(document.querySelector('#utc-clock')?.textContent).toBe('14:30:00 UTC');
+      expect(document.querySelector('#utc-clock')?.getAttribute('title')).toContain('WED 04 FEB 2026 14:30:00');
     });
 
     it('should unsubscribe from SIMULATED_TIME_TICK on dispose', () => {
@@ -698,6 +881,98 @@ describe('GlobalCommandBar', () => {
       // Timer should be cleared
       vi.advanceTimersByTime(2000);
       // No errors should occur from timer callback
+    });
+  });
+
+  describe('Phase 28 D1 / nats-r3 timers', () => {
+    it('shows HOLD beside the MISSION timer while an objective wait holds it', () => {
+      ObjectivesManager.getInstance.mockReturnValue({
+        hasScenarioTimer: vi.fn(() => true),
+        getScenarioTimeRemaining: vi.fn(() => 1800),
+        formatTimeRemaining: vi.fn(() => '30:00'),
+        getObjectiveStates: vi.fn(() => []),
+        isQuizPassed: vi.fn(() => false),
+        isObjectiveCountdownHeld: vi.fn(() => false),
+        getMissionClockHold: vi.fn(() => ({ objectiveId: 'sustained-monitor', title: 'Hold Through the Cell', label: 'rain cell' })),
+      });
+
+      vi.advanceTimersByTime(1000);
+
+      const tag = document.querySelector<HTMLElement>('#scenario-timer-hold');
+      expect(tag?.hidden).toBe(false);
+      expect(document.querySelector('#scenario-timer-display')?.classList.contains('timer-held')).toBe(true);
+      expect(document.querySelector<HTMLElement>('#scenario-timer-display')?.title).toContain('rain cell');
+    });
+
+    it('hides HOLD when nothing holds the mission clock', () => {
+      ObjectivesManager.getInstance.mockReturnValue({
+        hasScenarioTimer: vi.fn(() => true),
+        getScenarioTimeRemaining: vi.fn(() => 1800),
+        formatTimeRemaining: vi.fn(() => '30:00'),
+        getObjectiveStates: vi.fn(() => []),
+        isQuizPassed: vi.fn(() => false),
+        isObjectiveCountdownHeld: vi.fn(() => false),
+        getMissionClockHold: vi.fn(() => null),
+      });
+
+      vi.advanceTimersByTime(1000);
+
+      expect(document.querySelector<HTMLElement>('#scenario-timer-hold')?.hidden).toBe(true);
+    });
+
+    it('reads only active objectives, like the checklist row (nats-r3-s24-F2)', () => {
+      ObjectivesManager.getInstance.mockReturnValue({
+        hasScenarioTimer: vi.fn(() => false),
+        isQuizPassed: vi.fn(() => false),
+        isObjectiveCountdownHeld: vi.fn(() => false),
+        getMissionClockHold: vi.fn(() => null),
+        formatTimeRemaining: vi.fn((s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`),
+        getObjectiveStates: vi.fn(() => [
+          {
+            objective: { id: 'stale', title: 'Stale', timeLimitSeconds: 60 },
+            isActive: false,
+            isTimerRunning: true,
+            isCompleted: false,
+            isFailed: false,
+            timeRemainingSeconds: 58,
+          },
+          {
+            objective: { id: 'heater', title: 'Heater Before the Front', timeLimitSeconds: 180 },
+            isActive: true,
+            isTimerRunning: true,
+            isCompleted: false,
+            isFailed: false,
+            timeRemainingSeconds: 180,
+          },
+        ]),
+      });
+
+      vi.advanceTimersByTime(1000);
+
+      expect(document.querySelector('#objective-timer-value')?.textContent).toBe('3:00');
+    });
+
+    it('repaints the timers when an objective activates, not on the next tick', () => {
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.OBJECTIVE_ACTIVATED, expect.any(Function));
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.OBJECTIVES_ALL_COMPLETED, expect.any(Function));
+    });
+
+    it('labels an objective skip by where it lands', () => {
+      const landsAtMs = Date.UTC(2026, 1, 17, 10, 0, 0);
+      expect(GlobalCommandBar.objectiveSkipText({ objectiveId: 'a', deltaMs: 712_000, landsAtMs, label: 'standby' })).toBe('Skip to 10:00');
+      expect(GlobalCommandBar.objectiveSkipText({ objectiveId: 'a', deltaMs: 60_000, landsAtMs: landsAtMs + 17_000, label: 'cell' })).toBe('Skip to 10:00:17');
+      expect(GlobalCommandBar.objectiveSkipText({ objectiveId: 'a', deltaMs: 7.2 * 60_000, landsAtMs: null, label: 'hold' })).toBe('Skip 8 min');
+      expect(GlobalCommandBar.objectiveSkipText({ objectiveId: 'a', deltaMs: 40_000, landsAtMs: null, label: 'hold' })).toBe('Skip 40 s');
+    });
+
+    it('titles an objective skip as one sentence naming the end of the wait (nats-r4-s10-F3)', () => {
+      const landsAtMs = Date.UTC(2026, 1, 17, 10, 0, 0);
+      expect(GlobalCommandBar.objectiveSkipTitle({ objectiveId: 'a', deltaMs: 712_000, landsAtMs, label: 'standby' })).toBe(
+        'Skip to 10:00, the end of the standby. The mission clock is held while you wait, so waiting and skipping score the same.'
+      );
+      expect(GlobalCommandBar.objectiveSkipTitle({ objectiveId: 'a', deltaMs: 7 * 60_000, landsAtMs: null, label: 'the crew maintenance window' })).toBe(
+        'Skip 7 min, the end of the crew maintenance window. The mission clock is held while you wait, so waiting and skipping score the same.'
+      );
     });
   });
 });

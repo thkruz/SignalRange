@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EventBus } from '../../src/events/event-bus';
 import { DecisionGradedData, DecisionPendingData, Events } from '../../src/events/events';
 import type { DecisionOption, EvidenceFactId } from '../../src/objectives/objective-types';
+import { EventTimeLedger } from '../../src/scenarios/event-time-ledger';
 
 const dispatched: unknown[] = [];
 const dispatchResult = { applied: [] as string[], skipped: [] as { key: string; reason: string }[], pointDelta: 0 };
@@ -166,6 +167,23 @@ describe('DecisionManager', () => {
     DecisionManager.getInstance().show('obj-1', 2);
     expect(shown).toMatchObject({ options: ['Fault', 'Interference', 'Intrusion'], evidence, pointPenalty: DEFAULT_DECISION_PENALTY });
     expect(JSON.stringify(shown)).not.toContain('correctWhen');
+  });
+
+  it('fills ledger tokens in the prompt, options and explanation when shown', () => {
+    EventTimeLedger.begin();
+    EventTimeLedger.record('cmd:X:sent', Date.UTC(2027, 3, 12, 2, 41, 0));
+    EventTimeLedger.end();
+    register({
+      prompt: 'Sent at {{at:cmd:X:sent|--:--}}. What is this?',
+      options: [{ label: 'At {{at:cmd:X:sent|--:--}}', correctWhen: { fact: 'crypto-intact', is: true } }],
+      explanation: 'See {{at:cmd:X:sent|--:--}}',
+    });
+    let shown: { prompt: string; options: string[]; explanation?: string } | null = null;
+    EventBus.getInstance().on(Events.DECISION_SHOW, (d) => {
+      shown = d as never;
+    });
+    DecisionManager.getInstance().show('obj-1', 2);
+    expect(shown).toMatchObject({ prompt: 'Sent at 02:41. What is this?', options: ['At 02:41'], explanation: 'See 02:41' });
   });
 
   it('a dismissed decision becomes pending again and reopenPending shows it', () => {

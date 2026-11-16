@@ -7,7 +7,8 @@ const interference = { initialized: false, anyActive: false, transponder: false,
 const faults = { has: false };
 const crypto = { has: false, rx: { decryptionMode: 'ACTIVE', decryptionKeyStatus: 'Valid', decryptionAuthTagVerified: true } };
 const gnss = { initialized: false, exposed: false };
-const weather = { events: [] as { linkMarginDegradation: number }[] };
+/** C/N the station's antenna is losing to rain and ice (noise model, Phase 19.2) */
+const weather = { lossDb: 0 };
 const security = {
   initialized: false,
   anomaly: false,
@@ -51,9 +52,6 @@ vi.mock('../../src/gnss-threat/gnss-threat-manager', () => ({
     }),
   },
 }));
-vi.mock('../../src/weather/weather-manager', () => ({
-  WeatherManager: { hasInstance: () => true, getInstance: () => ({ getActiveWeatherEvents: () => weather.events }) },
-}));
 vi.mock('../../src/security-console/security-console-core', () => ({
   SecurityConsoleCore: {
     isInitialized: () => security.initialized,
@@ -77,7 +75,8 @@ vi.mock('../../src/commanding/commanding-manager', () => ({
 const { EVIDENCE_FACTS, EvidenceFactRegistry, evaluateFactRule, WEATHER_DOMINANT_DB } = await import('../../src/objectives/evidence-facts');
 
 const gpsdo = (overrides = {}) => ({ isPowered: true, gnssSignalPresent: true, satelliteCount: 6, isInHoldover: false, ...overrides });
-const station = (gpsdoState = gpsdo()) => ({ state: { id: 'gs-1' }, rfFrontEnds: [{ gpsdoModule: { state: gpsdoState } }] }) as never;
+const station = (gpsdoState = gpsdo()) =>
+  ({ state: { id: 'gs-1' }, rfFrontEnds: [{ gpsdoModule: { state: gpsdoState } }], antennas: [{ weatherCnLossDb: () => weather.lossDb }] }) as never;
 const ctx = (gs: unknown = station()) => ({ gs }) as never;
 
 beforeEach(() => {
@@ -90,7 +89,7 @@ beforeEach(() => {
   crypto.rx = { decryptionMode: 'ACTIVE', decryptionKeyStatus: 'Valid', decryptionAuthTagVerified: true };
   gnss.initialized = false;
   gnss.exposed = false;
-  weather.events = [];
+  weather.lossDb = 0;
   security.initialized = false;
   security.anomaly = false;
   security.log = [];
@@ -164,12 +163,12 @@ describe('evidence facts - resolvers', () => {
     expect(EVIDENCE_FACTS['timing-drifting'](ctx())).toBe(false);
   });
 
-  it('weather-attenuation-dominant yields to interference and faults', () => {
-    weather.events = [{ linkMarginDegradation: WEATHER_DOMINANT_DB }];
+  it('weather-attenuation-dominant reads the C/N the antennas lose to weather, and yields to interference and faults', () => {
+    weather.lossDb = WEATHER_DOMINANT_DB;
     expect(EVIDENCE_FACTS['weather-attenuation-dominant'](ctx())).toBe(true);
-    weather.events = [{ linkMarginDegradation: WEATHER_DOMINANT_DB - 1 }];
+    weather.lossDb = WEATHER_DOMINANT_DB - 1;
     expect(EVIDENCE_FACTS['weather-attenuation-dominant'](ctx())).toBe(false);
-    weather.events = [{ linkMarginDegradation: 10 }];
+    weather.lossDb = 10;
     faults.has = true;
     expect(EVIDENCE_FACTS['weather-attenuation-dominant'](ctx())).toBe(false);
   });

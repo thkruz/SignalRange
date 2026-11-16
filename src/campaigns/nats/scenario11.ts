@@ -61,16 +61,18 @@ export const scenario11Data: ScenarioData = {
   url: 'nats/scenarios/nats-scenario11',
   imageUrl: 'nats/11/card.png',
   number: 11,
-  title: 'Planned Maintenance: Hand Off',
+  title: 'Planned Maintenance | Hand Off',
   subtitle: 'Coordinated Traffic Transfer to Sister Teleport',
   duration: '25-30 min',
   difficulty: 'intermediate',
   missionType: 'Planned Operations',
-  description: `Scheduled maintenance window opens at 10:00 for HPA waveguide gasket inspection on VT-01. Two hours of downtime, pre-coordinated with Maine.<br><br>Catherine has ME-02 standing by - already tracking TIDEMARK-1 in parallel, RX hot, waiting on your commit. Your job: verify her receive side, stage ME-02's transmit chain (cold - the transfer swaps RF authority), execute the handover, then safe VT-01 for the maintenance crew.<br><br>No fire, no weather, no surprise. This is procedural work and the grade is cleanliness. Maintenance crew arrives in thirty minutes.`,
+  description: `Scheduled maintenance window opens at 10:00 for HPA waveguide gasket inspection on VT-01, with the gasket replacement booked for next Tuesday's window. Maine holds TIDEMARK-1 until VT-01 is back in service.<br><br>Catherine has ME-02 standing by. It's already tracking TIDEMARK-1 in parallel with its receive chain hot, and it's waiting on your commit. Your job is to verify her receive side, stage ME-02's transmit chain cold (the transfer is what swaps RF authority), execute the handover, and then safe VT-01 for the maintenance crew.<br><br>There's no fire, no weather and no surprise. This is procedural work, and the grade is cleanliness. The maintenance crew arrives in thirty minutes.`,
   equipment: ['9-meter C-band Antenna', 'RF Front End', 'Spectrum Analyzer', 'RX/TX Modems', 'ME-02: Operational - RX Standing By'],
   timeLimitSeconds: 30 * 60, // 30 minutes
   settings: {
     isSync: true,
+    scenarioStartDate: '2026-02-18',
+    scenarioStartWallTime: '09:30:00',
     groundStations: [
       // VT-01: healthy, owns TIDEMARK-1 traffic, about to hand off
       {
@@ -90,18 +92,17 @@ export const scenario11Data: ScenarioData = {
         antennasState: [
           {
             isPowered: true,
-            azimuth: 161.8 as Degrees,
-            elevation: 34.2 as Degrees,
-            polarization: 14 as Degrees,
+            azimuth: 157.0 as Degrees, // Maine sees TM-1 (53 W) here, not at Vermont's 153.1 / 35.1 (Phase 28 D4)
+            elevation: 35.33 as Degrees,
+            // polarization: derived from geometry (Phase 29 D8)
             trackingMode: 'program-track',
             isBeaconLocked: true,
             targetSatelliteId: 61525, // TIDEMARK-1
-            targetAzimuth: 161.8 as Degrees,
-            targetElevation: 34.2 as Degrees,
-            targetPolarization: 14 as Degrees,
+            targetAzimuth: 157.0 as Degrees,
+            targetElevation: 35.33 as Degrees,
             slewing: false,
             beaconCN: 10.4 as dB,
-            beaconFrequencyHz: 1074.5e6 as Hertz, // 5250 LNB LO - 4175.5 beacon RF
+            beaconFrequencyHz: 4175.5e6 as Hertz, // TIDEMARK-1 beacon (RF)
             isLocked: true,
           } as Partial<AntennaState>,
         ],
@@ -114,12 +115,15 @@ export const scenario11Data: ScenarioData = {
         ],
         spectrumAnalyzers: [
           {
-            referenceLevel: -91 as dBm,
+            referenceLevel: -91 as dBm, // Engineering-mode field; S4 checks it stays at the beacon preset
             centerFrequency: 1074.5e6 as Hertz, // TM-1 beacon IF
             span: 2e3 as Hertz,
-            rbw: 1e3 as Hertz,
-            minAmplitude: -95 as dBm,
-            maxAmplitude: -75 as dBm,
+            rbw: null, // Auto (3 Hz at 2 kHz): the CW line stands ~55 dB over the floor
+            // Phase 27: the TIDEMARK beacon reads -44 to -59 dBm at the RX IF
+            // tap (ledger; higher when the AGC sees no carrier), the floor ~-114
+            // dBm in 3 Hz: both on screen, 10 dB/div
+            minAmplitude: -120 as dBm,
+            maxAmplitude: -30 as dBm,
             scaleDbPerDiv: 10 as dB,
             screenMode: 'both',
             inputUnit: 'MHz',
@@ -144,7 +148,7 @@ export const scenario11Data: ScenarioData = {
                 isTransmitting: false,
                 isTransmittingSwitchUp: false,
                 isFaultSwitchUp: false,
-                id: 1,
+                id: 0, // Modem 1 is index 0, as the station default builds it (Phase 28)
                 isLoopback: false,
                 ifSignal: {
                   signalId: 'TIDEMARK-1-Teleport',
@@ -156,7 +160,8 @@ export const scenario11Data: ScenarioData = {
                   origin: SignalOrigin.TRANSMITTER,
                   noiseFloor: null,
                   gainInPath: 0 as dBi,
-                  frequency: 1094e6 as IfFrequency,
+                  // D5 frequency plan: BUC LO 7000 (LSB) - 1057 = 5943 MHz, TM-1 TP-1
+                  frequency: 1057e6 as IfFrequency,
                   power: -7 as dBm,
                   bandwidth: 36e6 as Hertz,
                   modulation: 'QPSK' as ModulationType,
@@ -202,7 +207,7 @@ export const scenario11Data: ScenarioData = {
       id: 'review-mission-brief',
       nice: ['K0645'],
       title: 'Review Shift Brief',
-      description: 'Open the shift brief and acknowledge you understand the maintenance window plan.',
+      description: 'Open the shift brief, then answer the question to show you understand the maintenance window plan.',
       groundStation: 'VT-01',
       freezesScenarioTimer: true,
       prerequisiteObjectiveIds: [],
@@ -220,13 +225,14 @@ export const scenario11Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'What is the planned outcome of this shift?',
             options: [
-              'TIDEMARK-1 traffic moves to ME-02 for a 2-hour VT-01 maintenance window, then comes back next shift',
-              'TIDEMARK-1 traffic moves to ME-02 permanently after the VT-01 maintenance window, then VT-01 is decommissioned',
-              'TIDEMARK-1 traffic is taken off the air for the 2-hour VT-01 maintenance window, then comes back next shift',
-              'All VT-01 satellites move to ME-02 for the 2-hour VT-01 maintenance window, then come back next shift',
+              'TIDEMARK-1 traffic moves to ME-02 for the VT-01 maintenance, then comes back once the crew signs the work off',
+              'TIDEMARK-1 traffic moves to ME-02 permanently after the VT-01 maintenance, then VT-01 is decommissioned',
+              'TIDEMARK-1 traffic is taken off the air for the VT-01 maintenance, then comes back once the crew signs the work off',
+              'All VT-01 satellites move to ME-02 for the VT-01 maintenance, then come back once the crew signs the work off',
             ],
             correctIndex: 0,
-            explanation: 'Planned handover for a maintenance window. ME-02 holds TM-1 while the crew works VT-01. Return to service is the next shift.',
+            explanation:
+              'This is a planned handover, not a permanent move and not an outage. ME-02 holds TM-1 while the crew works on VT-01, with the inspection today and the gasket replacement next Tuesday. Traffic comes back to VT-01 after the crew signs the work off.',
             pointPenalty: 0,
           },
           mustMaintain: false,
@@ -263,7 +269,7 @@ export const scenario11Data: ScenarioData = {
       id: 'vt-pre-handover-dashboard',
       nice: ['T0129', 'K0741'],
       title: 'VT-01 Pre-Handover Sweep',
-      description: 'Confirm the VT-01 link is clean before initiating the handover.',
+      description: 'Open the Dashboard and confirm the VT-01 link is clean before you start the handover.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['select-vermont-station'],
       timeLimitSeconds: 2 * 60,
@@ -289,7 +295,8 @@ export const scenario11Data: ScenarioData = {
               'It captures the billing counters at the switch, so the traffic hours can be recovered afterwards',
             ],
             correctIndex: 0,
-            explanation: 'Baseline first. If something looks off on ME-02 after the transfer, you need to know whether it started before or after the handover.',
+            explanation:
+              'A baseline gives you something to compare against. If something looks off on ME-02 after the transfer, you can tell whether it started before the handover or because of it.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -302,8 +309,9 @@ export const scenario11Data: ScenarioData = {
       id: 'vt-confirm-tm1-locked',
       nice: ['T0129', 'S0421'],
       title: 'Confirm VT-01 Owns TIDEMARK-1',
-      description: 'Verify VT-01 antenna is still tracking TIDEMARK-1 and is the current traffic owner.',
+      description: 'Confirm the VT-01 antenna is still tracking TIDEMARK-1 and VT-01 is the current traffic owner. Read the target and beacon status on the ACU Control tab.',
       groundStation: 'VT-01',
+      intent: 'confirm',
       prerequisiteObjectiveIds: ['vt-pre-handover-dashboard'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
@@ -329,6 +337,25 @@ export const scenario11Data: ScenarioData = {
           params: { satelliteId: 61525 },
           mustMaintain: false,
         },
+        {
+          type: 'status-check',
+          description: 'Read the VT-01 ACU',
+          params: {
+            character: Character.SYSTEM,
+            question: 'What target and beacon status does the VT-01 ACU show?',
+            options: [
+              'Current target TIDEMARK-1, beacon LOCKED, program-track',
+              'Current target TIDEMARK-2, beacon LOCKED, program-track',
+              'Current target TIDEMARK-1, beacon searching, step-track',
+              'No target, manual mode, beacon idle',
+            ],
+            correctIndex: 0,
+            explanation:
+              "VT-01 is on TIDEMARK-1 with the beacon locked, so it's the station carrying TM-1's traffic until the transfer. That's the starting state you'll compare ME-02 against.",
+            pointPenalty: 5,
+          },
+          mustMaintain: false,
+        },
       ],
       conditionLogic: 'AND',
       points: 5,
@@ -341,7 +368,7 @@ export const scenario11Data: ScenarioData = {
       id: 'switch-to-maine',
       nice: ['S0421', 'K0718'],
       title: 'Open ME-02',
-      description: 'Switch to the Maine Ground Station to verify the receive side before committing.',
+      description: 'Switch to the Maine Ground Station so you can verify its receive side before you commit.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['vt-confirm-tm1-locked'],
       timeLimitSeconds: 1 * 60,
@@ -361,7 +388,7 @@ export const scenario11Data: ScenarioData = {
       id: 'me-verify-antenna-on-tm1',
       nice: ['T0129', 'K0718'],
       title: 'ME-02 Antenna on TIDEMARK-1',
-      description: 'Confirm Catherine has ME-02 locked on TIDEMARK-1 in program-track.',
+      description: 'Confirm ME-02 is locked on TIDEMARK-1 in program-track, the way Catherine set it up.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['switch-to-maine'],
       timeLimitSeconds: 2 * 60,
@@ -387,9 +414,10 @@ export const scenario11Data: ScenarioData = {
     {
       id: 'me-verify-beacon-and-rx',
       nice: ['T0129', 'K0741'],
-      title: 'ME-02 Receive Chain Hot',
-      description: 'Verify the TIDEMARK-1 beacon is visible at ME-02 and the receiver is locked with healthy C/N margin.',
+      title: 'Verify ME-02 Receive Chain Hot',
+      description: "On RX Analysis, confirm ME-02 sees the TIDEMARK-1 beacon and its receiver is locked on VT-01's carrier. Then read the C/N, which should be at least 10 dB.",
       groundStation: 'ME-02',
+      intent: 'confirm',
       prerequisiteObjectiveIds: ['me-verify-antenna-on-tm1'],
       timeLimitSeconds: 3 * 60,
       timerStartTrigger: 'on-activate',
@@ -429,6 +457,27 @@ export const scenario11Data: ScenarioData = {
           },
           mustMaintain: true,
         },
+        {
+          type: 'status-check',
+          description: 'Read the ME-02 C/N',
+          params: {
+            character: Character.SYSTEM,
+            question: "What C/N does the ME-02 receiver modem show on TIDEMARK-1's carrier?",
+            options: [
+              '12 to 14 dB - locked with good margin',
+              '4 to 6 dB - locked, degraded margin',
+              '8 to 9 dB - just under the 10 dB commit margin',
+              'No C/N reading - the modem is not locked',
+            ],
+            correctIndex: 0,
+            // VT-01's own TP-1 carrier reads ~12-13 dB at either site: same
+            // dish class, GEO slant ranges within tens of km (r2-s11-F2)
+            explanation:
+              "It's about 12 to 14 dB, the same as VT-01 sees, because ME-02 is receiving VT-01's carrier through the same transponder with the same class of dish a few hundred km away. That's well over the 10 dB commit margin, so Maine's receive side is ready.",
+            pointPenalty: 5,
+          },
+          mustMaintain: false,
+        },
       ],
       conditionLogic: 'AND',
       points: 10,
@@ -442,7 +491,7 @@ export const scenario11Data: ScenarioData = {
       nice: ['T0129', 'S0421', 'K0770'],
       title: 'Stage ME-02 Transmit',
       description:
-        'Enable transmit on Modem 1 so the TX chain is staged - but leave the BUC muted and the HPA disabled. The handover transfer, not the operator, swaps RF authority between stations.',
+        'Enable transmit on Modem 1 so the TX chain is staged, but leave the BUC muted and the HPA disabled. The handover itself swaps RF authority between the stations, not you.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['me-verify-beacon-and-rx'],
       timeLimitSeconds: 4 * 60,
@@ -478,7 +527,7 @@ export const scenario11Data: ScenarioData = {
       id: 'understand-commit-point',
       nice: ['K0718', 'S0593'],
       title: 'Understand the Commit Point',
-      description: 'Confirm what "ready to commit" means in a planned handover.',
+      description: 'Answer what "ready to commit" means in a planned handover.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['me-stage-tx-for-handover'],
       timeLimitSeconds: 2 * 60,
@@ -498,7 +547,7 @@ export const scenario11Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Receive side proves the link works in; transmit side is staged but cold. If both stations radiated at the same transponder, the satellite would see two carriers - dual illumination. The handover stands the source down and brings the target up in one coordinated swap.',
+              "The receive side proves the link works coming in, and the transmit side is staged but cold. If both stations radiated into the same transponder, the satellite would see two carriers, which is called dual illumination. That's why the handover stands the source down and brings the target up in one coordinated swap.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -515,7 +564,7 @@ export const scenario11Data: ScenarioData = {
       id: 'open-tm1-dashboard',
       nice: ['S0421'],
       title: 'Open TIDEMARK-1 Dashboard',
-      description: 'Select TIDEMARK-1 in the asset tree to access the traffic transfer controls.',
+      description: 'Select TIDEMARK-1 in the asset tree to open the traffic transfer controls.',
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['understand-commit-point'],
       timeLimitSeconds: 2 * 60,
@@ -551,24 +600,23 @@ export const scenario11Data: ScenarioData = {
           },
           mustMaintain: false,
         },
-        {
-          type: 'service-continuity',
-          description: 'Service Continuity Maintained',
-          params: { maxPacketLoss: 0.1 },
-          mustMaintain: false,
-        },
       ],
       conditionLogic: 'AND',
       points: 15,
     },
     {
+      // nats-r2-s03-F3 (S11): this used to tick on the Execute click itself.
+      // Continuity is judged after the handover, on ME-02's own receiver: it
+      // now hears ME-02's carrier relayed by TIDEMARK-1, and the player has
+      // to go and look at it
       id: 'verify-me-traffic-owner',
       nice: ['T0129', 'K0741'],
-      title: 'Verify ME-02 Owns Traffic',
-      description: 'Confirm ME-02 is now the traffic owner for TIDEMARK-1.',
+      title: 'Verify Service Continuity on ME-02',
+      description:
+        "On ME-02's RX Analysis, confirm the receiver is still locked on the TIDEMARK-1 TP-1 carrier. That carrier is now ME-02's own, relayed back down by the satellite. Then confirm ME-02 owns the TIDEMARK-1 traffic.",
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['execute-handover'],
-      timeLimitSeconds: 1 * 60,
+      timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
         {
@@ -579,6 +627,19 @@ export const scenario11Data: ScenarioData = {
           params: { satelliteId: 61525 },
           mustMaintain: true,
         },
+        {
+          type: 'tab-active',
+          hidden: true,
+          description: 'RX Analysis Open',
+          params: { tab: 'rx-analysis' },
+          mustMaintain: true,
+        },
+        {
+          type: 'receiver-signal-locked',
+          description: 'ME-02 Receiver Locked After the Transfer',
+          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
+          mustMaintain: true,
+        },
       ],
       conditionLogic: 'AND',
       points: 5,
@@ -587,7 +648,7 @@ export const scenario11Data: ScenarioData = {
       id: 'catherine-confirm-hot',
       nice: ['K0718', 'K0741'],
       title: 'Confirm with Catherine',
-      description: "Acknowledge Catherine's confirmation that ME-02 has the link clean.",
+      description: "Answer the question about Catherine's report that ME-02 has the link clean.",
       groundStation: 'ME-02',
       prerequisiteObjectiveIds: ['verify-me-traffic-owner'],
       timeLimitSeconds: 2 * 60,
@@ -606,7 +667,8 @@ export const scenario11Data: ScenarioData = {
               'Re-enable the VT-01 transmitter as a hot standby',
             ],
             correctIndex: 0,
-            explanation: 'Handover is committed. The unfinished work is on the source station - safe the RF chain and park the antenna for the crew.',
+            explanation:
+              'The handover is committed and ME-02 is carrying the traffic. The unfinished work is at the source station, so you go back to VT-01 to safe the RF chain and park the antenna for the crew.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -644,7 +706,7 @@ export const scenario11Data: ScenarioData = {
       nice: ['S0421', 'K0770', 'S0593'],
       title: 'Verify VT-01 TX Chain Safed',
       description:
-        "The handover stood VT-01's transmit down automatically - HPA disabled, BUC muted. Verify it on the panel; never trust an automatic safing you have not looked at.",
+        "The handover stood VT-01's transmit down automatically, with the HPA disabled and the BUC muted. Check both on the TX Chain panel, because you shouldn't trust an automatic safing you haven't looked at.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['switch-to-vermont-safing'],
       timeLimitSeconds: 3 * 60,
@@ -677,7 +739,9 @@ export const scenario11Data: ScenarioData = {
       id: 'vt-antenna-maintenance-position',
       nice: ['S0421', 'K0770'],
       title: 'Park VT-01 Antenna at Maintenance Position',
-      description: 'Set the antenna tracking mode to MAINTENANCE so the dish parks at 5° elevation for the crew.',
+      // nats-r3-s11-F2: MAINT stages, APPLY commits the mode and the move
+      description:
+        'On ACU Control, press MAINT and then APPLY. MAINT only stages the 5° maintenance elevation (the card shows "MAINTENANCE pending APPLY" and the dish keeps tracking), and APPLY switches the mode and moves the dish. Wait for the dish to park at 5° for the crew.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['vt-safe-tx-chain'],
       timeLimitSeconds: 3 * 60,
@@ -713,7 +777,7 @@ export const scenario11Data: ScenarioData = {
       id: 'vt-final-rf-safety-check',
       nice: ['K0770', 'S0593'],
       title: 'Final RF Safety Check',
-      description: 'Confirm VT-01 is safe to hand to the maintenance crew.',
+      description: 'Answer which conditions make VT-01 safe to hand to the maintenance crew.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['vt-antenna-maintenance-position'],
       timeLimitSeconds: 2 * 60,
@@ -732,7 +796,8 @@ export const scenario11Data: ScenarioData = {
               'RF rack fully powered off, GPSDO off, antenna at maintenance position - nothing energized, dish accessible',
             ],
             correctIndex: 0,
-            explanation: 'RF de-energized AND dish in a position the crew can reach. Stow at 90° protects against weather; maintenance at 5° lets a person work the feed.',
+            explanation:
+              'The crew needs the RF de-energized and the dish where they can reach it. Stow at 90° protects the dish from weather, but the maintenance position at 5° is the one that lets a person work on the feed.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -749,43 +814,65 @@ export const scenario11Data: ScenarioData = {
       id: 'log-handover-entry',
       nice: ['K0645', 'T0129'],
       title: 'Log the Handover',
-      description: 'Select the correct entry for the operations log.',
+      description: 'In one or more Operations Log entries (log icon in the station sidebar), record that ME-02 now has TM-1 and what state VT-01 is left in.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['vt-final-rf-safety-check'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
         {
+          type: 'ops-log-entry',
+          description: 'Handover Typed in Ops Log',
+          params: { logKeywords: ['me-02|maine', 'safe|maintenance|parked|stow|offline|out of service'], logMinLength: 20 },
+          mustMaintain: false,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 5,
+    },
+    {
+      // The log-line quiz follows the typed entry (it used to open before it)
+      id: 'log-handover-quiz',
+      nice: ['K0645', 'T0129'],
+      title: 'Check the Log Line',
+      description: 'Pick the log line that records the handover the way you typed it in.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['log-handover-entry'],
+      conditions: [
+        {
           type: 'status-check',
           description: 'Handover Log Entry',
           params: {
             character: Character.SYSTEM,
+            // nats-r3-s09-F1 (S11): no clock stamp in the options; the Ops
+            // Log stamps the station clock on the entry itself
             question: 'Which line correctly records this handover in the operations log?',
             options: [
-              '1000 - Planned TM-1 handover to ME-02 complete. VT-01 safed, antenna at maintenance position, crew on-site. Return to service next shift.',
-              '1000 - Emergency TM-1 handover to ME-02 complete. VT-01 fault cause unknown, antenna still on TM-1, crew on-site. Investigation pending.',
-              '1000 - Crew on-site for VT-01 HPA waveguide gasket. TM-1 handover to ME-02 deferred, VT-01 still carrying traffic. Return to service next shift.',
-              '1000 - Planned TM-1 handover to ME-02 complete. VT-01 maintenance finished, antenna back on TM-1, crew released. Traffic resumed on VT-01.',
+              'Planned TM-1 handover to ME-02 complete. VT-01 safed, antenna at maintenance position, crew on-site. Return to service after crew sign-off.',
+              'Emergency TM-1 handover to ME-02 complete. VT-01 fault cause unknown, antenna still on TM-1, crew on-site. Investigation pending.',
+              'Crew on-site for VT-01 HPA waveguide gasket. TM-1 handover to ME-02 deferred, VT-01 still carrying traffic. Return to service after crew sign-off.',
+              'Planned TM-1 handover to ME-02 complete. VT-01 maintenance finished, antenna back on TM-1, crew released. Traffic resumed on VT-01.',
             ],
             correctIndex: 0,
-            explanation: 'Who, what, why, where it stands, who has the link. The next operator should be able to pick up the shift without asking a question.',
+            explanation:
+              "A good entry says who did what, why, where things stand and who has the link. The Operations Log stamps the station clock on the entry for you, so you don't need to type a time. The next operator should be able to pick up the shift without asking you a question.",
             pointPenalty: 5,
           },
           mustMaintain: false,
         },
       ],
       conditionLogic: 'AND',
-      points: 10,
+      points: 5,
     },
   ] as Objective[],
   dialogClips: {
     intro: {
       text: `
       <p>
-        <em>[Text message from Dana at 09:42]</em>
+        <em>[Text message from Dana at 09:30]</em>
       </p>
       <p>
-        "Maintenance window opens at 10:00 - HPA waveguide gasket on VT-01. Catherine's pre-staged ME-02 on TM-1, RX hot, waiting on your commit. Verify her side, stage ME-02 transmit, do the transfer, safe VT-01 for the crew. They're at the gate in thirty."
+        "The maintenance window opens at 10:00 so the crew can inspect the waveguide gasket on VT-01's HPA. Catherine's already got ME-02 tracking TM-1 with the receive chain hot, and she's waiting on your commit. Verify her side, stage ME-02's transmit chain, do the transfer, and then safe VT-01 for the crew. They'll be at the gate in thirty minutes."
       </p>
       `,
       character: Character.DANA_TORRES,
@@ -796,45 +883,52 @@ export const scenario11Data: ScenarioData = {
       'switch-to-maine': {
         text: `
         <p>
-          Catherine here. I've got TIDEMARK-1 in program-track from this side, beacon's clean, C/N's holding above ten. Receive side is yours to verify. Stage my TX cold - the transfer brings it up when you commit.
+          Catherine here. I've got TIDEMARK-1 in program-track from this side, the beacon's clean, and the C/N is holding above ten. It's clear skies up here, so nothing's getting in the way. The receive side is yours to verify. After that, stage my transmit chain cold, because the transfer is what brings it up when you commit.
         </p>
         `,
         character: Character.CATHERINE_VEGA,
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/11/obj-switch-to-maine.mp3'),
       },
-      'catherine-confirm-hot': {
-        text: `
-        <p>
-          Maine has TM-1. Carrier's clean over here, no packet loss across the transfer. I've got it for the window - go take care of your station.
-        </p>
-        `,
-        character: Character.CATHERINE_VEGA,
-        emotion: Emotion.HAPPY,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/11/obj-catherine-confirm-hot.mp3'),
-      },
       'switch-to-vermont-safing': {
         text: `
         <p>
-          Maine's carrying. The transfer stood your TX down - verify HPA and BUC on the panel, then antenna to maintenance. Crew lead is on his way up.
+          Maine's carrying the traffic now. The transfer stood your transmitter down on its own, so check the HPA and the BUC on the panel yourself. Then move the antenna to the maintenance position. The crew lead is on his way up.
         </p>
         `,
         character: Character.DANA_TORRES,
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/11/obj-switch-to-vermont-safing.mp3'),
       },
+    },
+    // Clips that describe a step play as it opens. Catherine's report plays as
+    // the confirmation step opens, so the quiz that cites it comes after it (it
+    // used to play on completion, after the quiz had already been answered)
+    objectivesOnStart: {
+      // nats-r3-s02-F1 (D18): "Log it" plays as the log step opens, not after
+      // the entry has been typed and checked
       'log-handover-entry': {
         text: `
         <p>
           Clean handover. Log it and meet me in the conference room - I want to walk through the gasket replacement procedure with you before they start.
         </p>
         <p>
-          Next shift you bring it back.
+          When the crew signs the gasket work off, you bring it back.
         </p>
         `,
         character: Character.DANA_TORRES,
         emotion: Emotion.CONFIDENT,
         audioUrl: getAssetUrl('/assets/campaigns/nats/11/obj-log-handover-entry.mp3'),
+      },
+      'catherine-confirm-hot': {
+        text: `
+        <p>
+          Maine has TM-1. Carrier's clean over here, no packet loss across the transfer. I've got it while your station's down - go take care of it.
+        </p>
+        `,
+        character: Character.CATHERINE_VEGA,
+        emotion: Emotion.HAPPY,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/11/obj-catherine-confirm-hot.mp3'),
       },
     },
   },

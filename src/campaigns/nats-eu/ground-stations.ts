@@ -17,7 +17,7 @@ import type { Degrees } from 'ootk';
  *   the beacon sits above the video's 11668-11704 MHz occupied band so the
  *   CW tone is not blocked by the stronger co-channel carrier)
  * - BUC LO 12600 MHz (low-side): 1405 MHz IF -> 14005 MHz Ku uplink
- * - Fast 4m pedestal (KU_BAND_4M_LEO_TRACKER, 20 deg/s) for LEO tracking
+ * - Fast 4m pedestal (KU_BAND_4M_LEO_TRACKER, 10 deg/s) for LEO tracking
  */
 export const galwayGroundStation = {
   id: 'GW-01',
@@ -75,7 +75,8 @@ export const galwayGroundStation = {
         phaseLockRange: 10000,
         gain: 23 as dB,
         outputPower: -10 as dBm,
-        saturationPower: 15 as dBm,
+        // P1dB of the BUC's output stage (Rapp, 19.6): 16 dBm runs 12 dB backed off
+        saturationPower: 28 as dBm,
         gainFlatness: 0.5 as dB,
         groupDelay: 3,
         phaseNoise: -100,
@@ -84,6 +85,16 @@ export const galwayGroundStation = {
       },
       hpa: {
         isPowered: true,
+        // 2.5 W Ku SSPA (P1dB 34 dBm, Psat 36 dBm, Rapp) in fixed-gain mode
+        // (19.6): the back-off is calibrated on the 16 dBm rated drive (BUC at
+        // 23 dB), so 4 dB -> 30 dBm (1 W), 10 dB -> 24 dBm, and a weak drive
+        // comes out weak (S10's BUC-at-18 lesson)
+        amplifierType: 'sspa',
+        p1db: 34 as dBm,
+        maxOutputPower: 36 as dBm,
+        smallSignalGain: 30 as dB,
+        isAlcEnabled: false,
+        ratedInputDbm: 16 as dBm,
         backOff: 10,
         outputPower: 50 as dBm,
         isOverdriven: false,
@@ -133,8 +144,8 @@ export const galwayGroundStation = {
         tapPointB: TapPoint.RX_IF,
         availableTapPointsA: [TapPoint.TX_IF, TapPoint.RX_IF],
         availableTapPointsB: [TapPoint.TX_IF, TapPoint.RX_IF],
-        couplingFactorA: -40,
-        couplingFactorB: -39,
+        couplingFactorA: -20, // dB (monitor coupler; the analyzer reads line power through it, Phase 19.2)
+        couplingFactorB: -20, // dB
         isEnabledA: false,
         isEnabledB: true,
         isActiveA: false,
@@ -149,6 +160,7 @@ export const galwayGroundStation = {
         isGnssSwitchUp: true,
         isGnssAcquiringLock: false,
         satelliteCount: 9,
+        nominalSatelliteCount: 9,
         utcAccuracy: 50,
         constellation: 'GPS',
         lockDuration: 7200,

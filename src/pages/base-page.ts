@@ -2,17 +2,21 @@ import { CommandingManager } from '@app/commanding/commanding-manager';
 import { BaseElement } from '@app/components/base-element';
 import { ContactScheduleManager } from '@app/contact-schedule/contact-schedule-manager';
 import { ElectronicAttackManager } from '@app/electronic-attack/electronic-attack-manager';
+import { CryptoModule } from '@app/equipment/crypto/crypto-module-core';
 import { GeolocationConsoleCore } from '@app/equipment/geolocation-console/geolocation-console-core';
 import { EventBus } from '@app/events/event-bus';
 import { DualTransmissionViolationData, Events, HpaNoiseAmplificationData, ObjectiveFailedData, ProtectedFreqViolationData, ScenarioTimeExpiredData } from '@app/events/events';
+import { FaultInjector } from '@app/faults/fault-injector';
 import { HardwareFaultManager } from '@app/faults/hardware-fault-manager';
 import { GnssThreatManager } from '@app/gnss-threat/gnss-threat-manager';
+import { HamStationService } from '@app/ham/ham-station-service';
 import { InterferenceManager } from '@app/interference/interference-manager';
 import { LinkBudgetManager } from '@app/link-budget/link-budget-manager';
 import { Logger } from '@app/logging/logger';
 import { DecisionModal } from '@app/modal/decision-modal';
 import { DialogHistoryManager } from '@app/modal/dialog-history-manager';
 import { DialogManager } from '@app/modal/dialog-manager';
+import { HintModal } from '@app/modal/hint-modal';
 import { LevelCompleteModal } from '@app/modal/level-complete-modal';
 import { ObjectiveFailedModal } from '@app/modal/objective-failed-modal';
 import { QuizModal } from '@app/modal/quiz-modal';
@@ -20,17 +24,22 @@ import { TimePenaltyToast } from '@app/modal/time-penalty-toast';
 import { ObjectivesManager } from '@app/objectives/objectives-manager';
 import { EventAutoLogger } from '@app/ops-log/event-auto-logger';
 import { OpsLogManager } from '@app/ops-log/ops-log-manager';
+import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import { NavigationOptions, Router } from '@app/router';
 import { ScenarioManager } from '@app/scenario-manager';
+import { collectManagerStates, restoreLedgerAndDocument, restoreManagerStates } from '@app/scenarios/checkpoint-manager-states';
 import { ScenarioDialogManager } from '@app/scenarios/scenario-dialog-manager';
 import { WorkingDocumentManager } from '@app/scenarios/working-document-manager';
 import { ScenarioCompletionHandler } from '@app/scoring/scenario-completion-handler';
 import { ScoreCalculator } from '@app/scoring/score-calculator';
 import { SecurityConsoleCore } from '@app/security-console/security-console-core';
+import { AlarmService } from '@app/services/alarm-service';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { SpaceEventManager } from '@app/space-events/space-event-manager';
+import { setManagerStateCollector } from '@app/sync/manager-state-types';
 import { AppState } from '@app/sync/storage';
 import { TelemetryManager } from '@app/telemetry/telemetry-manager';
+import { TrafficControlManager } from '@app/traffic/traffic-control-manager';
 import { TransecManager } from '@app/transec/transec-manager';
 import { ProgressSaveManager } from '@app/user-account/progress-save-manager';
 import { ScenarioProgressEntry } from '@app/user-account/types';
@@ -43,12 +52,16 @@ export abstract class BasePage extends BaseElement {
   protected navigationOptions_: NavigationOptions = {};
 
   show(): void {
-    if (!this.dom_) return;
+    if (!this.dom_) {
+      return;
+    }
     this.dom_.style.display = 'flex';
   }
 
   hide(): void {
-    if (!this.dom_) return;
+    if (!this.dom_) {
+      return;
+    }
     this.dom_.style.display = 'none';
   }
 
@@ -85,11 +98,23 @@ export abstract class BasePage extends BaseElement {
       }
     }
 
+    if (!(await this.prepareMissionOpening_())) return;
+
     // Initialize ops log manager (always, for all scenarios)
     OpsLogManager.initialize(scenario.settings.scenarioStartWallTime, scenario.settings.scenarioStartDate, scenario.settings.previousShiftLogs);
 
-    // Initialize event auto-logger (logs equipment events for beginner/intermediate)
+    // Initialize event auto-logger (logs equipment events at every difficulty)
     EventAutoLogger.getInstance().initialize();
+
+    // Start the C6 physical plant (Phase 38.1): only when the scenario declares one.
+    // Outside the objectives block: the sandbox has no objectives but needs its plant.
+    if (scenario.settings.physicalPlant) {
+      PhysicalPlantService.getInstance();
+    }
+    // Campaign 3 ham station: opt-in through settings.hamStation, also outside the objectives block
+    if (scenario.settings.hamStation) {
+      HamStationService.start();
+    }
 
     // Initialize objectives manager if scenario has objectives
     if (scenario.data?.objectives && scenario.data.objectives.length > 0) {
@@ -107,60 +132,10 @@ export abstract class BasePage extends BaseElement {
       // declares settings.workingDocument)
       WorkingDocumentManager.getInstance().initialize();
 
-      // Warm up the weather manager so scheduled events (rain, sun transit)
-      // tick from scenario start rather than first ACU-tab render
-      if ((scenario.settings.weatherEvents?.length ?? 0) > 0) {
-        WeatherManager.getInstance();
-      }
+      this.startScenarioEngines_(scenario);
 
-      // Start scheduled interference events (uplink jammers etc.)
-      if ((scenario.settings.interferenceEvents?.length ?? 0) > 0) {
-        InterferenceManager.getInstance();
-      }
-
-      // Start the geolocation console engine (Campaign 5). Must come after
-      // InterferenceManager so it can query active emitter events.
-      if (scenario.settings.geolocation) {
-        GeolocationConsoleCore.getInstance();
-      }
-
-      // Start the electronic-attack engine (Campaign 4): a player-driven jam
-      // injector + J/S assessment + own-force deconfliction interlock.
-      if (scenario.settings.electronicAttack) {
-        ElectronicAttackManager.getInstance();
-      }
-
-      // Start scheduled transmit-string hardware faults (Campaign 4 redundancy)
-      if ((scenario.settings.hardwareFaultEvents?.length ?? 0) > 0) {
-        HardwareFaultManager.getInstance();
-      }
-
-      // Start the nats-eu (Campaign 2) opt-in mechanics. Each is gated by its
-      // own settings block, so no other campaign instantiates them.
-      if (scenario.settings.linkBudget) {
-        LinkBudgetManager.getInstance();
-      }
-      if (scenario.settings.commanding) {
-        CommandingManager.getInstance();
-      }
-      if (scenario.settings.contactSchedule) {
-        ContactScheduleManager.getInstance();
-      }
-      if ((scenario.settings.spaceEvents?.length ?? 0) > 0) {
-        SpaceEventManager.getInstance();
-      }
-      if (scenario.settings.security) {
-        SecurityConsoleCore.getInstance();
-      }
-      if (scenario.settings.transec) {
-        TransecManager.getInstance();
-      }
-      if (scenario.settings.gnssThreat) {
-        GnssThreatManager.getInstance();
-      }
-      if (scenario.settings.telemetry) {
-        TelemetryManager.getInstance();
-      }
+      // Let SyncManager snapshot the managers into checkpoints (collector hook: no import cycle)
+      setManagerStateCollector(collectManagerStates);
 
       // Initialize quiz modal for status-check objective conditions
       QuizModal.getInstance();
@@ -187,10 +162,15 @@ export abstract class BasePage extends BaseElement {
           });
         }
       }
-    } else if (OpsLogManager.isInitialized()) {
-      // No objectives - resume simulated time immediately
-      // (OpsLogManager starts paused by default, waiting for scenario to unlock)
-      OpsLogManager.getInstance().resume();
+    } else {
+      // No objectives (the sandbox): scheduled events, faults and the opt-in
+      // mechanics still run, they never depended on an objective
+      this.startScenarioEngines_(scenario);
+      if (OpsLogManager.isInitialized()) {
+        // Resume simulated time immediately
+        // (OpsLogManager starts paused by default, waiting for scenario to unlock)
+        OpsLogManager.getInstance().resume();
+      }
     }
 
     EventBus.getInstance().emit(Events.DOM_READY);
@@ -200,6 +180,86 @@ export abstract class BasePage extends BaseElement {
     if (introClip && !this.navigationOptions_.continueFromCheckpoint) {
       DialogManager.getInstance().show(introClip.text, introClip.character, introClip.audioUrl, 'Introduction', introClip.emotion);
     }
+
+    // Initially active objectives never emit OBJECTIVE_ACTIVATED: play their on-start clips after the intro
+    if (!this.navigationOptions_.continueFromCheckpoint && scenario.data?.objectives?.length) {
+      const activeIds = ObjectivesManager.getInstance()
+        .getObjectiveStates()
+        .filter((state) => state.isActive && !state.isCompleted)
+        .map((state) => state.objective.id);
+      ScenarioDialogManager.getInstance().playInitialClips(activeIds);
+    }
+  }
+
+  /**
+   * Start the scheduled-event and opt-in mechanic managers a scenario declares.
+   * Runs with or without objectives: a sandbox has none but still authors timed
+   * faults, weather and interference.
+   */
+  private startScenarioEngines_(scenario: ScenarioManager): void {
+    // Warm up the weather manager so scheduled events (rain, sun transit)
+    // tick from scenario start rather than first ACU-tab render
+    if ((scenario.settings.weatherEvents?.length ?? 0) > 0) {
+      WeatherManager.getInstance();
+      // AlarmService subscribed first (MissionControlPage builds it before
+      // the checkpoint await): move its poll behind WeatherManager so it
+      // reads this tick's ice and rain, not the last tick's (Phase 33 D7)
+      AlarmService.subscribeAfterExistingListeners();
+    }
+
+    // Start scheduled interference events (uplink jammers etc.)
+    if ((scenario.settings.interferenceEvents?.length ?? 0) > 0) {
+      InterferenceManager.getInstance();
+    }
+
+    // Start the geolocation console engine (Campaign 5). Must come after
+    // InterferenceManager so it can query active emitter events.
+    if (scenario.settings.geolocation) {
+      GeolocationConsoleCore.getInstance();
+    }
+
+    // Start the electronic-attack engine (Campaign 4): a player-driven jam
+    // injector + J/S assessment + own-force deconfliction interlock.
+    if (scenario.settings.electronicAttack) {
+      ElectronicAttackManager.getInstance();
+    }
+
+    // Start scheduled transmit-string hardware faults (Campaign 4 redundancy)
+    if ((scenario.settings.hardwareFaultEvents?.length ?? 0) > 0) {
+      HardwareFaultManager.getInstance();
+    }
+
+    // Start the nats-eu (Campaign 2) opt-in mechanics. Each is gated by its
+    // own settings block, so no other campaign instantiates them.
+    if (scenario.settings.linkBudget) {
+      LinkBudgetManager.getInstance();
+    }
+    if (scenario.settings.commanding) {
+      CommandingManager.getInstance();
+    }
+    if (scenario.settings.contactSchedule) {
+      ContactScheduleManager.getInstance();
+    }
+    if ((scenario.settings.spaceEvents?.length ?? 0) > 0) {
+      SpaceEventManager.getInstance();
+    }
+    if (scenario.settings.security) {
+      SecurityConsoleCore.getInstance();
+    }
+    if (scenario.settings.transec) {
+      TransecManager.getInstance();
+    }
+    if (scenario.settings.gnssThreat) {
+      GnssThreatManager.getInstance();
+    }
+    if (scenario.settings.telemetry) {
+      TelemetryManager.getInstance();
+    }
+  }
+
+  /** A page may hold a fresh mission before objectives and briefing begin. */
+  protected async prepareMissionOpening_(): Promise<boolean> {
+    return true;
   }
 
   /**
@@ -212,9 +272,11 @@ export abstract class BasePage extends BaseElement {
       ObjectiveFailedModal.getInstance().showFailure({
         title: 'Objective Failed',
         message:
-          data.reason === 'window-closed'
-            ? `The command window closed before you finished: ${data.objective.title}. The pass is over and will not come back this shift.`
-            : `Time expired for: ${data.objective.title}`,
+          data.reason === 'unrecoverable'
+            ? (data.message ?? `${data.objective.title} can no longer be completed.`)
+            : data.reason === 'window-closed'
+              ? `The command window closed before you finished: ${data.objective.title}. The pass is over and will not come back this shift.`
+              : `Time expired for: ${data.objective.title}`,
         objectiveId: data.objectiveId,
         isScenarioTimeout: false,
       });
@@ -270,21 +332,50 @@ export abstract class BasePage extends BaseElement {
         state: AppState;
       };
 
-      // Restore OpsLogManager state if available
-      if (checkpoint?.state?.opsLogState) {
-        if (OpsLogManager.isInitialized()) {
+      // Everything below is synchronous: no await between the ops-log clock jump
+      // and the manager restores, so no tick sees the new clock with old managers.
+      const managerStates = checkpoint?.state?.managerStates;
+
+      // (1) Manager state (older checkpoints have none: unchanged behaviour)
+      try {
+        restoreManagerStates(managerStates);
+      } catch (error) {
+        Logger.error('Failed to restore manager states from checkpoint:', error);
+      }
+
+      // (2) OpsLogManager state (jumps the scenario clock)
+      try {
+        if (checkpoint?.state?.opsLogState && OpsLogManager.isInitialized()) {
           OpsLogManager.getInstance().restoreState(checkpoint.state.opsLogState);
           Logger.info('OpsLogManager state restored from checkpoint');
         }
+      } catch (error) {
+        Logger.error('Failed to restore ops log from checkpoint:', error);
       }
 
-      if (checkpoint?.state?.objectiveStates) {
-        const objectivesManager = ObjectivesManager.getInstance();
-        objectivesManager.restoreState(checkpoint.state.objectiveStates, checkpoint.state.scenarioTimeRemaining);
-        Logger.info('Objective states restored from checkpoint');
+      // (3) Objectives
+      try {
+        if (checkpoint?.state?.objectiveStates) {
+          const objectivesManager = ObjectivesManager.getInstance();
+          objectivesManager.restoreState(checkpoint.state.objectiveStates, checkpoint.state.scenarioTimeRemaining);
+          Logger.info('Objective states restored from checkpoint');
 
-        // Reconstruct dialog history from completed objectives
-        DialogHistoryManager.getInstance().reconstructFromCompletedObjectives(scenario.data.dialogClips, checkpoint.state.objectiveStates, scenario.data.objectives ?? []);
+          // Reconstruct dialog history from completed objectives
+          DialogHistoryManager.getInstance().reconstructFromCompletedObjectives(scenario.data.dialogClips, checkpoint.state.objectiveStates, scenario.data.objectives ?? []);
+        }
+      } catch (error) {
+        Logger.error('Failed to restore objective states from checkpoint:', error);
+        // Continue without restoring objectives - they'll start fresh
+      }
+
+      // (4) Event-time ledger (saved stamps win over the restore's re-stamps) and working document
+      try {
+        restoreLedgerAndDocument(managerStates);
+        if (WeatherManager.hasInstance()) WeatherManager.getInstance().refreshRestoredConditions();
+        AlarmService.restoreCheckpointState(managerStates?.alarms);
+        AlarmService.subscribeAfterExistingListeners();
+      } catch (error) {
+        Logger.error('Failed to restore ledger and working document from checkpoint:', error);
       }
     } catch (error) {
       Logger.error('Failed to restore objective states from checkpoint:', error);
@@ -304,6 +395,21 @@ export abstract class BasePage extends BaseElement {
 
     // Clean up scenario completion handler
     ScenarioCompletionHandler.destroy();
+
+    // Singletons that subscribe to the EventBus once, in their constructor.
+    // Page teardown replaces the bus (EventBus.destroy), so a survivor keeps
+    // a dead subscription and goes deaf in the next scenario of the same tab:
+    // the overtime toast never showed after the first scenario, a requested
+    // hint never rendered, traffic ownership kept the last scenario's owner
+    // and stopped updating, and faults stopped clearing on scenario change.
+    // Destroy them here; the next page recreates them on the new bus.
+    TimePenaltyToast.dispose();
+    HintModal.destroy();
+    TrafficControlManager.destroy();
+    FaultInjector.resetInstance();
+    setManagerStateCollector(null);
+    // Key material (and an injected key mismatch) must not carry into the next scenario
+    CryptoModule.resetInstance();
   }
 
   /**
@@ -314,7 +420,9 @@ export abstract class BasePage extends BaseElement {
   private async checkScenarioAlreadyComplete_(): Promise<ScenarioProgressEntry | null> {
     const scenario = ScenarioManager.getInstance();
     const scenarioId = scenario.data?.id;
-    if (!scenarioId) return null;
+    if (!scenarioId) {
+      return null;
+    }
 
     try {
       // Cap how long the remote progress check can block scenario start. The
@@ -336,7 +444,9 @@ export abstract class BasePage extends BaseElement {
       ]);
 
       // Return null if no progress or not completed
-      if (!progress?.completedAt) return null;
+      if (!progress?.completedAt) {
+        return null;
+      }
 
       // Convert to legacy ScenarioProgressEntry format for compatibility
       return {

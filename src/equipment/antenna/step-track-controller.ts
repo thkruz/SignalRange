@@ -1,18 +1,30 @@
-import { TapPoint } from '@app/equipment/rf-front-end/coupler-module/tap-points';
 import { SimClock } from '@app/simulation/sim-clock';
-import { SimulationManager } from '@app/simulation/simulation-manager';
-import { Hertz } from '@app/types';
 import { Degrees } from 'ootk';
 import { AntennaCore } from './antenna-core';
 
+/** One axis of the hill-climb */
+type Axis = 'az' | 'el';
+
+/** Where the controller is in its probe cycle */
+type Phase = 'center' | 'plus' | 'minus';
+
 /**
- * Step Track Controller - Timer-Based Convergence
+ * Step Track Controller - a dither hill-climb on the measured beacon (phase 19.4).
  *
- * Gradually moves step-track offsets from (0,0) to the negative of the
- * satellite's ephemeris error over a configurable time period (~20-30 seconds).
+ * Step-track adds az/el offsets on top of program-track and climbs the beacon:
+ * on one axis at a time it measures the beacon C/N where it is, steps the
+ * offset by +/-0.1 beamwidth (cross-elevation, so the azimuth step is divided
+ * by cos el), measures again, and keeps the step that reads higher. Each
+ * measurement waits for the pedestal to arrive and settle, then averages the
+ * beacon receiver's C/N over a dwell, all on SimClock run time, so finding the
+ * peak takes the real seconds the steps cost (servo travel, settle, dwell).
+ * When neither direction improves on either axis the controller is converged
+ * and keeps dithering, so it follows a drifting satellite.
  *
- * This simulates the step-track algorithm "finding" the beacon peak by
- * correcting for TLE prediction errors.
+ * It reads the antenna's own beacon receiver (`measureBeaconMetrics`), which
+ * knows nothing of the satellite's ephemeris error: the peak it finds is where
+ * the beacon is. (Before phase 19.4 it eased the offsets toward the known
+ * ephemeris error over 25 s, DEV-ANT-05.)
  */
 export class StepTrackController {
   private readonly antenna_: AntennaCore;
@@ -20,56 +32,86 @@ export class StepTrackController {
   /** Is step tracking currently active */
   private isActive_: boolean = false;
 
-  /** Update counter for rate limiting beacon measurements */
-  private updateCounter_: number = 0;
-
-  /** Updates between beacon measurements (~1 second at 60fps) */
-  private readonly updateInterval_: number = 60;
-
-  /** C/N threshold to acquire beacon lock */
+  /** C/N threshold to acquire beacon lock, dB (tracking bandwidth) */
   private readonly lockThreshold_: number = 6.5;
 
-  /** C/N threshold below which beacon is not detectable */
+  /** C/N below which the beacon is not trackable: the loop gives up, dB */
   private readonly beaconDetectableCN_: number = 3;
 
-  /** Time when step-track was started (ms) */
-  private startTime_: number = 0;
+  /** Step size as a fraction of the -3 dB beamwidth */
+  static readonly STEP_FRACTION = 0.1;
 
-  /** Duration to converge to target offset (ms) */
-  private readonly convergenceDuration_: number = 25000; // 25 seconds
+  /** Time the pedestal is given to settle after arriving at a step, ms */
+  static readonly SETTLE_MS = 500;
 
-  /** Target offset in azimuth (negative of ephemeris error) */
-  private targetAzOffset_: number = 0;
+  /** Beacon integration time per measurement, ms */
+  static readonly DWELL_MS = 1000;
 
-  /** Target offset in elevation (negative of ephemeris error) */
-  private targetElOffset_: number = 0;
+  /** A step must beat the centre by this much to be taken, dB (measurement hysteresis) */
+  static readonly HYSTERESIS_DB = 0.02;
+
+  /** Arrival tolerance as a fraction of the step */
+  private static readonly ARRIVAL_FRACTION = 0.1;
+
+  /** Current axis and probe phase */
+  private axis_: Axis = 'az';
+  private phase_: Phase = 'center';
+  /** Offset (deg) the climb currently holds on each axis, without the probe */
+  private held_ = { az: 0, el: 0 };
+  /** Direction that last improved each axis: probed first next time */
+  private lastDir_ = { az: 1, el: 1 };
+  /** Centre reading for the current axis cycle, dB */
+  private centerCn_: number | null = null;
+  /** The direction being probed (+1 / -1) */
+  private probeDir_ = 1;
+  /** Probes taken this cycle */
+  private probesThisCycle_ = 0;
+
+  /** Run time the current measurement's dwell started (null: still slewing/settling) */
+  private dwellStartMs_: number | null = null;
+  /** Run time the pedestal arrived at the current step (null: not yet) */
+  private arrivedAtMs_: number | null = null;
+  /** Linear C/N accumulator for the current dwell */
+  private sumLinear_ = 0;
+  private samples_ = 0;
+  /** A sample without a beacon in the window */
+  private sawNoBeacon_ = false;
+
+  /** Consecutive axis cycles that found no better step */
+  private quietCycles_ = 0;
 
   /** Whether convergence is complete */
   private isConverged_: boolean = false;
+
+  /** Run time step-track was started (ms) */
+  private startTime_: number = 0;
+
+  /** Run time convergence was first reached (ms), null until then */
+  private convergedAtMs_: number | null = null;
+
+  /** Last averaged beacon C/N the loop measured, dB */
+  private lastMeasuredCn_: number | null = null;
+  /** Armed but no beacon at the held position: re-measuring the centre until one appears */
+  private isSearching_ = false;
 
   constructor(antenna: AntennaCore) {
     this.antenna_ = antenna;
   }
 
   /**
-   * Start step tracking
+   * Start step tracking from the antenna's current offsets
    */
   start(): void {
     this.isActive_ = true;
     this.isConverged_ = false;
+    this.convergedAtMs_ = null;
     this.startTime_ = SimClock.runMs();
-    this.updateCounter_ = 0;
-
-    // Get target satellite's ephemeris error
-    const satId = this.antenna_.state.targetSatelliteId;
-    if (satId !== null) {
-      const sat = SimulationManager.getInstance().getSatByNoradId(satId);
-      if (sat) {
-        // Target offset is negative of ephemeris error (corrects the TLE inaccuracy)
-        this.targetAzOffset_ = -(sat.ephemerisErrorAz as number);
-        this.targetElOffset_ = -(sat.ephemerisErrorEl as number);
-      }
-    }
+    this.held_ = { az: this.antenna_.state.stepTrackAzOffset as number, el: this.antenna_.state.stepTrackElOffset as number };
+    this.axis_ = 'az';
+    this.quietCycles_ = 0;
+    this.lastMeasuredCn_ = null;
+    this.isSearching_ = false;
+    this.beginCycle_();
   }
 
   /**
@@ -77,6 +119,18 @@ export class StepTrackController {
    */
   stop(): void {
     this.isActive_ = false;
+    this.isSearching_ = false;
+  }
+
+  /**
+   * Armed with no beacon to climb (phase 27, r2-s06-F2): the dish is off the
+   * satellite or the beacon is under the detection threshold. A real
+   * step-track receiver holds its last pointing and keeps integrating the
+   * centre until the beacon comes up, then climbs; it does not switch itself
+   * off.
+   */
+  get isSearching(): boolean {
+    return this.isActive_ && this.isSearching_;
   }
 
   /**
@@ -87,10 +141,20 @@ export class StepTrackController {
   }
 
   /**
-   * Check if the algorithm has converged
+   * Check if the algorithm has converged (a full pass over both axes found no better step)
    */
   get isConverged(): boolean {
     return this.isConverged_;
+  }
+
+  /** Step size on an axis, degrees of that axis (azimuth steps are cross-elevation) */
+  stepDeg(axis: Axis): number {
+    const step = this.antenna_.beamwidthAtTrackingDeg() * StepTrackController.STEP_FRACTION;
+    if (axis === 'el') {
+      return step;
+    }
+    const cosEl = Math.cos((Math.min(85, Math.max(0, this.antenna_.state.elevation as number)) * Math.PI) / 180);
+    return step / cosEl;
   }
 
   /**
@@ -101,93 +165,136 @@ export class StepTrackController {
       return;
     }
 
-    // Update offsets based on elapsed time (smooth interpolation)
-    this.updateOffsets_();
+    const now = SimClock.runMs();
+    const step = this.stepDeg(this.axis_);
 
-    // Rate limit beacon measurements (~1 per second at 60fps)
-    this.updateCounter_++;
-    if (this.updateCounter_ < this.updateInterval_) {
+    // Wait for the pedestal to arrive at the commanded offset, then settle
+    if (this.arrivedAtMs_ === null) {
+      if (this.hasArrived_(step)) {
+        this.arrivedAtMs_ = now;
+      }
       return;
     }
-    this.updateCounter_ = 0;
-
-    // Measure and update beacon metrics
-    const { power, cn } = this.measureBeaconMetrics_();
-
-    this.antenna_.state.beaconPower = power;
-    this.antenna_.state.beaconCN = cn;
-
-    // Update lock state based on C/N threshold
-    this.antenna_.state.isBeaconLocked = cn !== null && cn >= this.lockThreshold_;
-    this.antenna_.state.isLocked = this.antenna_.state.isBeaconLocked;
-
-    // Auto-disable if beacon is not detectable
-    if (cn === null || cn < this.beaconDetectableCN_) {
-      this.antenna_.state.isBeaconLocked = false;
-      this.antenna_.state.isLocked = false;
-      this.stop();
-      this.antenna_.state.isAutoTrackEnabled = false;
-      this.antenna_.state.isAutoTrackSwitchUp = false;
+    if (this.dwellStartMs_ === null) {
+      if (now - this.arrivedAtMs_ < StepTrackController.SETTLE_MS) {
+        return;
+      }
+      this.dwellStartMs_ = now;
+      this.sumLinear_ = 0;
+      this.samples_ = 0;
+      this.sawNoBeacon_ = false;
     }
+
+    // Integrate the beacon receiver over the dwell
+    const { cn } = this.antenna_.measureBeaconMetrics();
+    if (cn === null) {
+      this.sawNoBeacon_ = true;
+    } else {
+      this.sumLinear_ += 10 ** (cn / 10);
+      this.samples_++;
+    }
+    if (now - this.dwellStartMs_ < StepTrackController.DWELL_MS) {
+      return;
+    }
+
+    const measured = this.samples_ > 0 && !this.sawNoBeacon_ ? 10 * Math.log10(this.sumLinear_ / this.samples_) : null;
+    this.lastMeasuredCn_ = measured;
+    this.onMeasurement_(measured);
   }
 
-  /**
-   * Update step-track offsets using smooth interpolation
-   */
-  private updateOffsets_(): void {
-    const elapsed = SimClock.runMs() - this.startTime_;
-    const progress = Math.min(1, elapsed / this.convergenceDuration_);
-
-    // Use easeOutQuad for natural deceleration as it approaches target
-    const eased = 1 - (1 - progress) * (1 - progress);
-
-    // Interpolate from 0 to target
-    const azOffset = this.targetAzOffset_ * eased;
-    const elOffset = this.targetElOffset_ * eased;
-
-    this.antenna_.state.stepTrackAzOffset = azOffset as Degrees;
-    this.antenna_.state.stepTrackElOffset = elOffset as Degrees;
-
-    // Mark as converged when we reach 100%
-    if (progress >= 1) {
-      this.isConverged_ = true;
-    }
-  }
-
-  /**
-   * Measure current beacon power and C/N ratio
-   */
-  private measureBeaconMetrics_(): { power: number | null; cn: number | null } {
+  /** The pedestal is within a tenth of a step of the commanded position on both axes */
+  private hasArrived_(step: number): boolean {
     const state = this.antenna_.state;
-    const beaconFreq = this.antenna_.rfFrontEnd.lnbModule.state.loFrequency * 1e6 - state.beaconFrequencyHz;
-    const searchBw = state.beaconSearchBwHz;
+    const tolerance = step * StepTrackController.ARRIVAL_FRACTION;
+    return !state.isSlewing || (Math.abs(state.targetAzimuth - state.azimuth) <= tolerance && Math.abs(state.targetElevation - state.elevation) <= tolerance);
+  }
 
-    const beaconSignals = this.antenna_.rfFrontEnd.agcModule.outputSignals.filter((sig) => {
-      const freqDiff = Math.abs((sig.frequency as number) - beaconFreq);
-      return freqDiff <= searchBw / 2;
-    });
+  /** A measurement finished: update the lock, then advance the probe cycle */
+  private onMeasurement_(cn: number | null): void {
+    const state = this.antenna_.state;
 
-    if (beaconSignals.length === 0) {
-      return { power: null, cn: null };
+    if (this.phase_ === 'center') {
+      // The centre reading is where the climb holds: it drives the lock and
+      // decides whether there is a beacon to track at all
+      state.isBeaconLocked = cn !== null && cn >= this.lockThreshold_;
+      state.isLocked = state.isBeaconLocked;
+
+      if (cn === null || cn < this.beaconDetectableCN_) {
+        // SEARCHING: hold the pointing, dwell on the centre again (phase 27:
+        // stop() here left the toggle on with a dead controller)
+        state.isBeaconLocked = false;
+        state.isLocked = false;
+        this.isSearching_ = true;
+        this.isConverged_ = false;
+        this.quietCycles_ = 0;
+        this.beginCycle_();
+        return;
+      }
+
+      this.isSearching_ = false;
+      this.centerCn_ = cn;
+      this.probeDir_ = this.lastDir_[this.axis_];
+      this.probesThisCycle_ = 0;
+      this.goProbe_();
+      return;
     }
 
-    const strongestPower = beaconSignals.reduce((max, sig) => Math.max(max, sig.power as number), -Infinity);
-
-    if (strongestPower === -Infinity) {
-      return { power: null, cn: null };
+    // A probe: take it if it beats the centre
+    const center = this.centerCn_ ?? -Infinity;
+    if (cn !== null && cn > center + StepTrackController.HYSTERESIS_DB) {
+      this.held_[this.axis_] += this.probeDir_ * this.stepDeg(this.axis_);
+      this.lastDir_[this.axis_] = this.probeDir_;
+      this.quietCycles_ = 0;
+      this.nextAxis_();
+      return;
     }
 
-    const rfFrontEnd = this.antenna_.rfFrontEnd;
-    if (!rfFrontEnd) {
-      return { power: strongestPower, cn: null };
+    if (this.probesThisCycle_ < 2) {
+      // Try the other side
+      this.probeDir_ = -this.probeDir_;
+      this.goProbe_();
+      return;
     }
 
-    const trackingBw = state.beaconTrackingBwHz;
-    const { noiseFloorNoGain } = rfFrontEnd.couplerModule.signalPathManager.getNoiseFloorAt(TapPoint.RX_IF, trackingBw as Hertz);
+    // Neither side was better: this axis is at the peak for now
+    this.quietCycles_++;
+    if (this.quietCycles_ >= 2 && !this.isConverged_) {
+      this.isConverged_ = true;
+      this.convergedAtMs_ = SimClock.runMs();
+    }
+    this.nextAxis_();
+  }
 
-    const cn = strongestPower - noiseFloorNoGain;
+  /** Command the probe offset on the current axis */
+  private goProbe_(): void {
+    this.probesThisCycle_++;
+    this.phase_ = this.probeDir_ > 0 ? 'plus' : 'minus';
+    const probe = { ...this.held_ };
+    probe[this.axis_] += this.probeDir_ * this.stepDeg(this.axis_);
+    this.command_(probe);
+  }
 
-    return { power: strongestPower, cn };
+  /** Move to the other axis and start its cycle at the held position */
+  private nextAxis_(): void {
+    this.axis_ = this.axis_ === 'az' ? 'el' : 'az';
+    this.beginCycle_();
+  }
+
+  private beginCycle_(): void {
+    this.phase_ = 'center';
+    this.centerCn_ = null;
+    this.command_(this.held_);
+  }
+
+  /** Command offsets and restart the arrive/settle/dwell sequence */
+  private command_(offset: { az: number; el: number }): void {
+    const state = this.antenna_.state;
+    const moved = Math.abs((state.stepTrackAzOffset as number) - offset.az) > 1e-9 || Math.abs((state.stepTrackElOffset as number) - offset.el) > 1e-9;
+    state.stepTrackAzOffset = offset.az as Degrees;
+    state.stepTrackElOffset = offset.el as Degrees;
+    // An unchanged command needs no travel: arrive now, settle as usual
+    this.arrivedAtMs_ = moved ? null : SimClock.runMs();
+    this.dwellStartMs_ = null;
   }
 
   /**
@@ -203,22 +310,29 @@ export class StepTrackController {
    */
   getState(): {
     isActive: boolean;
+    isSearching: boolean;
     isConverged: boolean;
-    targetAzOffset: number;
-    targetElOffset: number;
-    progress: number;
+    axis: Axis;
+    phase: Phase;
+    heldAzOffset: number;
+    heldElOffset: number;
+    lastMeasuredCn: number | null;
+    elapsedMs: number;
+    convergedAfterMs: number | null;
     isLocked: boolean;
     isLockStable: boolean;
   } {
-    const elapsed = SimClock.runMs() - this.startTime_;
-    const progress = this.isActive_ ? Math.min(1, elapsed / this.convergenceDuration_) : 0;
-
     return {
       isActive: this.isActive_,
+      isSearching: this.isSearching,
       isConverged: this.isConverged_,
-      targetAzOffset: this.targetAzOffset_,
-      targetElOffset: this.targetElOffset_,
-      progress,
+      axis: this.axis_,
+      phase: this.phase_,
+      heldAzOffset: this.held_.az,
+      heldElOffset: this.held_.el,
+      lastMeasuredCn: this.lastMeasuredCn_,
+      elapsedMs: this.isActive_ ? SimClock.runMs() - this.startTime_ : 0,
+      convergedAfterMs: this.convergedAtMs_ === null ? null : this.convergedAtMs_ - this.startTime_,
       isLocked: this.antenna_.state.isBeaconLocked,
       isLockStable: this.isLockStable(),
     };

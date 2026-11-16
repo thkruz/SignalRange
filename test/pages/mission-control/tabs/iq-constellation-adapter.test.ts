@@ -293,4 +293,30 @@ describe('IQConstellationAdapter', () => {
       }).toThrow();
     });
   });
+
+  describe('header C/N is the modem Effective C/N (phase 29 D4, nats-r3-s06-F3)', () => {
+    const header = () => containerEl.querySelector('.iq-status-cn')?.textContent;
+    const render = () => mockEventBus.on.mock.calls.find((call) => call[0] === Events.UPDATE)?.[1]();
+
+    it('labels its own reading Eff C/N', () => {
+      render();
+      expect(header()).toBe('Eff C/N: 14.0 dB');
+    });
+
+    it('shows the modem readouts sample, and its own frames no longer overwrite it', () => {
+      adapter.showHeaderSample({ ...mockReceiver.getSignalsInBandwidth(), effectiveCnRatio_dB: 39.4 } as never);
+      expect(header()).toBe('Eff C/N: 39.4 dB');
+
+      render();
+      expect(header()).toBe('Eff C/N: 39.4 dB');
+
+      adapter.showHeaderSample(null);
+      expect(header()).toBe('Eff C/N: ---');
+    });
+
+    it('reads no C/N without a carrier', () => {
+      adapter.showHeaderSample({ ...mockReceiver.getSignalsInBandwidth(), hasCarrier: false, hasLock: false } as never);
+      expect(header()).toBe('Eff C/N: ---');
+    });
+  });
 });

@@ -1,4 +1,5 @@
 import type { CampaignData } from '@app/campaigns/campaign-types';
+import { frontlineCampaignData } from '@app/campaigns/frontline/campaign-data';
 import { ccsCampaignData, geolocationCampaignData, hamSdrCampaignData, natsCampaignData } from '@app/campaigns/nats/campaign-data';
 import { natsEuCampaignData } from '@app/campaigns/nats-eu/campaign-data';
 import { describe, expect, it } from 'vitest';
@@ -8,9 +9,37 @@ import { describe, expect, it } from 'vitest';
  * (the pre-Campaign-5 collision). Campaign ids double as /campaigns/:id
  * routes and body theme classes, so they must be unique.
  */
-const ALL_CAMPAIGNS: CampaignData[] = [natsCampaignData, natsEuCampaignData, hamSdrCampaignData, ccsCampaignData, geolocationCampaignData];
+const ALL_CAMPAIGNS: CampaignData[] = [natsCampaignData, natsEuCampaignData, hamSdrCampaignData, ccsCampaignData, geolocationCampaignData, frontlineCampaignData];
+
+const NUMBER_WORDS: Record<string, number> = {
+  twenty: 20,
+  'twenty-one': 21,
+  'twenty-two': 22,
+  'twenty-three': 23,
+  'twenty-four': 24,
+  'twenty-five': 25,
+  'twenty-six': 26,
+  'twenty-seven': 27,
+  'twenty-eight': 28,
+  'twenty-nine': 29,
+  thirty: 30,
+};
 
 describe('campaign registry', () => {
+  it('nats-eu description states the number of authored scenarios (#253)', () => {
+    const authored = Object.keys(import.meta.glob('../../src/campaigns/nats-eu/scenario*.ts')).filter((p) => /scenario\d+\.ts$/u.test(p));
+    const playable = natsEuCampaignData.scenarios.filter((s) => s.missionType !== 'Sandbox');
+    const match = /through ([a-z-]+|\d+) scenarios/iu.exec(natsEuCampaignData.description);
+
+    expect(match, 'description names a scenario count').not.toBeNull();
+    const stated = /^\d+$/u.test(match![1]) ? Number(match![1]) : NUMBER_WORDS[match![1].toLowerCase()];
+
+    expect(authored).toHaveLength(28);
+    expect(stated).toBe(authored.length);
+    expect(playable).toHaveLength(authored.length);
+    expect(natsEuCampaignData.description).not.toMatch(/twenty-four/iu);
+  });
+
   it('has unique campaign ids', () => {
     const ids = ALL_CAMPAIGNS.map((c) => c.id);
     expect(new Set(ids).size).toBe(ids.length);
@@ -20,6 +49,17 @@ describe('campaign registry', () => {
     expect(geolocationCampaignData.id).toBe('signal-hunter');
     expect(geolocationCampaignData.isDisabled).toBe(false);
     expect(geolocationCampaignData.scenarios.length).toBeGreaterThan(0);
+  });
+
+  it('ships Frontline Signals (Campaign 6) as an alpha with three sandboxes and sixteen playable scenarios', () => {
+    expect(frontlineCampaignData.id).toBe('frontline');
+    expect(frontlineCampaignData.releaseStage).toBe('alpha');
+    expect(frontlineCampaignData.totalDuration).toBe('415-575 min');
+    expect(frontlineCampaignData.scenarios[0].missionType).toBe('Sandbox');
+    const playable = frontlineCampaignData.scenarios.filter((s) => !s.isDisabled);
+
+    expect(playable.filter((s) => s.missionType === 'Sandbox')).toHaveLength(3);
+    expect(playable.filter((s) => s.id.startsWith('frontline-scenario'))).toHaveLength(16);
   });
 
   it('keeps a unique id for the 9th EWS (Campaign 4) placeholder', () => {

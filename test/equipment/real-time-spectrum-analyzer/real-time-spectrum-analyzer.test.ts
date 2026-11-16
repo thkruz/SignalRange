@@ -635,8 +635,25 @@ describe('RealTimeSpectrumAnalyzer', () => {
 
       specA.freqAutoTune();
 
-      // Span should be 10% wider than signal bandwidth
-      expect(specA.state.span).toBe(22e6); // 20e6 * 1.1
+      // 10% over the occupied bandwidth (22 MHz), up to the next 1-2-5 step
+      expect(specA.state.span).toBe(50e6);
+      expect(specA.state.rbw).toBeNull();
+    });
+
+    it('gives a CW beacon a 2 kHz span with RBW auto (never 1.1 kHz)', () => {
+      specA.inputSignals = [{ frequency: 1074.5e6, power: -57, bandwidth: 10, modulation: 'CW' } as any];
+      specA.state.centerFrequency = 1074.5e6 as Hertz;
+      specA.state.span = 100e3 as Hertz;
+      specA.state.rbw = 1e3 as Hertz;
+
+      specA.freqAutoTune();
+
+      expect(specA.state.span).toBe(2e3);
+      expect(specA.state.rbw).toBeNull();
+      expect(specA.state.centerFrequency).toBe(1074.5e6);
+      // The beacon sits inside the amplitude window with room above it
+      expect(specA.state.maxAmplitude).toBeGreaterThanOrEqual(-57 + 5);
+      expect(specA.state.minAmplitude).toBeLessThan(-57 - 10);
     });
 
     it('should adjust amplitude range based on signal power', () => {
@@ -771,5 +788,79 @@ describe('RealTimeSpectrumAnalyzer', () => {
 
       expect(info?.innerHTML).toBe(initialContent);
     });
+  });
+});
+
+describe('RealTimeSpectrumAnalyzer.peakSearch plateau rule (phase 31 D15, phase 32 D11)', () => {
+  const search = (data: number[]) =>
+    RealTimeSpectrumAnalyzer.prototype.peakSearch.call({
+      dataProcessor: { combinedData: new Float32Array(data) },
+      state: { centerFrequency: 1000e6, span: 10e6 },
+    } as unknown as RealTimeSpectrumAnalyzer);
+
+  it('reads a flat top at the centre of its equal run, not its leftmost bin', () => {
+    // 10 points over 10 MHz from 995 MHz: bins 3..7 equal; centre is bin 5
+    const peak = search([-90, -90, -80, -60, -60, -60, -60, -60, -80, -90]);
+    expect(peak?.levelDbm).toBe(-60);
+    expect(peak?.frequencyHz).toBeCloseTo(995e6 + 5.5e6, 0);
+  });
+
+  it('an even run takes the left-of-centre bin, the rule the in-plot marker uses', () => {
+    const peak = search([-90, -60, -60, -60, -60, -90, -90, -90, -90, -90]);
+    expect(peak?.frequencyHz).toBeCloseTo(995e6 + 2.5e6, 0);
+  });
+
+  it('a single highest bin is unchanged', () => {
+    const peak = search([-90, -90, -90, -90, -90, -90, -90, -50, -90, -90]);
+    expect(peak?.frequencyHz).toBeCloseTo(995e6 + 7.5e6, 0);
+  });
+
+  it('reads a noisy flat top (every bin within 0.5 dB of the maximum) at its centre (phase 32 D11, r7-s15-F1)', () => {
+    // Bins 2..8 within 0.5 dB of -54.2 (bin 3 is the noisiest); centre is bin 5
+    const peak = search([-90, -80, -54.5, -54.2, -54.6, -54.4, -54.3, -54.6, -54.5, -80]);
+    expect(peak?.bin).toBe(5);
+    expect(peak?.maxDbm).toBeCloseTo(-54.2, 3);
+    expect(peak?.levelDbm).toBeCloseTo(-54.4, 3);
+    expect(peak?.frequencyHz).toBeCloseTo(995e6 + 5.5e6, 0);
+  });
+
+  it('a bin exactly 0.5 dB down is off the top', () => {
+    const peak = search([-90, -90, -60.5, -60, -90, -90, -90, -90, -90, -90]);
+    expect(peak?.bin).toBe(3);
+  });
+});
+
+describe('RealTimeSpectrumAnalyzer.peakSearch reads the trace on screen (phase 33 D10, r7-s15-F1)', () => {
+  const live = new Float32Array([-90, -90, -90, -90, -90, -90, -90, -40, -90, -90]);
+  const drawn = new Float32Array([-90, -90, -55, -90, -90, -90, -90, -90, -90, -90]);
+  const analyzerIn = (screenMode: string, redrawFrozen = vi.fn()) => {
+    const plot = { selectedTraceData: drawn, redrawFrozen };
+    return Object.assign(Object.create(RealTimeSpectrumAnalyzer.prototype) as RealTimeSpectrumAnalyzer, {
+      dataProcessor: { combinedData: live },
+      spectralDensity: plot,
+      spectralDensityBoth: plot,
+      state: { centerFrequency: 1000e6, span: 10e6, screenMode },
+    });
+  };
+
+  it('picks from the visible plot selected trace in spectral and both modes, not the live frame', () => {
+    for (const mode of ['spectralDensity', 'both']) {
+      const peak = analyzerIn(mode).peakSearch();
+      expect(peak?.bin, mode).toBe(2);
+      expect(peak?.levelDbm, mode).toBe(-55);
+    }
+  });
+
+  it('falls back to the live data in waterfall-only mode', () => {
+    expect(analyzerIn('waterfall').peakSearch()?.bin).toBe(7);
+  });
+
+  it('redrawFrozen repaints the visible plot only', () => {
+    const redraw = vi.fn();
+    analyzerIn('both', redraw).redrawFrozen();
+    expect(redraw).toHaveBeenCalledTimes(1);
+    const none = vi.fn();
+    analyzerIn('waterfall', none).redrawFrozen();
+    expect(none).not.toHaveBeenCalled();
   });
 });

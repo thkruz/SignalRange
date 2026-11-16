@@ -1,0 +1,181 @@
+import { PhysicalPlantManager } from '@app/physical/physical-plant-manager';
+import type { PlantConfig, PlantEnvironment } from '@app/physical/physical-plant-types';
+import { fnv1a, RngStream } from '@app/simulation/rng';
+import { describe, expect, it } from 'vitest';
+
+function config(): PlantConfig {
+  return {
+    stationId: 'gs1',
+    parts: [
+      { id: 'generator', kind: 'generator', ratedW: 1000, fuelL: 5, nominalV: 230 },
+      { id: 'power-station', kind: 'battery', poweredBy: 'generator', maxOutputW: 500, socWh: 0, nominalV: 12, loadW: 20 },
+      { id: 'skylink-router', kind: 'router', poweredBy: 'power-station', loadW: 15 },
+      { id: 'skylink-dish', kind: 'terminal', poweredBy: 'skylink-router', viaCable: 'skylink-cable', loadW: 60 },
+    ],
+    cables: [{ id: 'skylink-cable', lengthM: 25, cableType: 'power-data', carries: ['power', 'data'], from: 'skylink-router', to: 'skylink-dish' }],
+    connectors: [{ id: 'skylink-cable:dish', cableId: 'skylink-cable' }],
+  };
+}
+
+function make(overrides: Partial<PlantConfig> = {}) {
+  let t = 100;
+  const env: PlantEnvironment = { windMps: 0, rainMmH: 0, ambientC: 15 };
+  const streams = new Map<string, RngStream>();
+  const clock = { tod: 0 };
+  const plant: PhysicalPlantManager = new PhysicalPlantManager(
+    { ...config(), ...overrides },
+    {
+      now: () => t,
+      skip: (s) => {
+        for (let i = 0; i < s; i++) {
+          t += 1;
+          plant.update(1);
+        }
+      },
+      env: () => env,
+      timeOfDayS: () => clock.tod + t,
+      rng: (name) => {
+        let s = streams.get(name);
+        if (!s) {
+          s = new RngStream(fnv1a(name));
+          streams.set(name, s);
+        }
+
+        return s;
+      },
+    }
+  );
+  const advance = (s: number): void => {
+    for (let i = 0; i < s; i++) {
+      t += 1;
+      plant.update(1);
+    }
+  };
+
+  return { plant, env, clock, advance, now: () => t };
+}
+
+describe('terminal app verbs (E2)', () => {
+  it('reboot spends sim time, runs the boot through rebootUntilS and books downtime', () => {
+    const { plant, advance, now } = make();
+    advance(5);
+    const start = now();
+    const r = plant.reboot();
+
+    expect(r.costSeconds).toBe(10);
+    expect(now()).toBe(start + 10);
+    expect(plant.skylinkStatus()).toBe('booting');
+    expect(r.downtimeSeconds).toBeGreaterThanOrEqual(90);
+    advance(95);
+    expect(plant.skylinkStatus()).toBe('searching');
+    advance(210);
+    expect(plant.skylinkStatus()).toBe('online');
+    expect(plant.getLog().at(-1)?.verb).toBe('reboot');
+  });
+
+  it('snow melt shows heating on a snowed dish, draws more power, and the heater gives up after its window', () => {
+    const { plant, advance } = make();
+    // D17: the default is automatic
+    expect(plant.getTerminalSettings().snowMelt).toBe('automatic');
+    const base = plant.getLoadW('skylink-dish');
+    // Heavy snow (severity 4) outlasts the 600 s automatic window
+    plant.injectFault({ id: 'snow', target: 'skylink-dish', kind: 'snow', severity: 4 });
+    advance(2);
+    expect(plant.skylinkStatus()).toBe('heating');
+    expect(plant.getLoadW('skylink-dish')).toBeGreaterThan(base);
+    expect(plant.forecast().servicesAvailable).toBeDefined();
+    advance(700);
+    expect(plant.skylinkStatus()).toBe('obstructed');
+    expect(plant.getLoadW('skylink-dish')).toBe(base);
+  });
+
+  it('a source that sags under the heater draw reads heating, then obstructed after the grace window, and the snow stays', () => {
+    // A small generator carries the dish and router, but not the heater on top of them
+    const { plant, advance } = make({
+      parts: [
+        { id: 'generator', kind: 'generator', ratedW: 155, fuelL: 5, nominalV: 230 },
+        { id: 'skylink-router', kind: 'router', poweredBy: 'generator', loadW: 15 },
+        { id: 'skylink-dish', kind: 'terminal', poweredBy: 'skylink-router', viaCable: 'skylink-cable', loadW: 60 },
+      ],
+    });
+    advance(5);
+    expect(plant.skylinkStatus()).toBe('online');
+    plant.injectFault({ id: 'snow', target: 'skylink-dish', kind: 'snow' });
+    advance(2);
+    // The heater is on and still inside the grace window
+    expect(plant.skylinkStatus()).toBe('heating');
+    advance(30);
+    expect(plant.skylinkStatus()).toBe('heating');
+    advance(60);
+    // Starved: the grace is over, the dish reads obstructed and the heater drew its power in vain
+    expect(plant.skylinkStatus()).toBe('obstructed');
+    // Normal snowfall melts within 240 s on adequate power; well past that the snow is still there
+    advance(600);
+    expect(plant.getFaults()).toHaveLength(1);
+    expect(plant.skylinkStatus()).toBe('obstructed');
+  });
+
+  it('automatic snow melt heats a normal snowfall off the dish', () => {
+    const { plant, advance } = make();
+    plant.injectFault({ id: 'snow', target: 'skylink-dish', kind: 'snow' });
+    advance(2);
+    expect(plant.skylinkStatus()).toBe('heating');
+    advance(300);
+    expect(plant.getFaults()).toHaveLength(0);
+    expect(plant.skylinkStatus()).not.toBe('obstructed');
+    expect(plant.skylinkStatus()).not.toBe('heating');
+  });
+
+  it('a scenario can set the snow melt mode in the plant config', () => {
+    const { plant, advance } = make({ snowMelt: 'off' });
+    expect(plant.getTerminalSettings().snowMelt).toBe('off');
+    plant.injectFault({ id: 'snow', target: 'skylink-dish', kind: 'snow' });
+    advance(2);
+    expect(plant.skylinkStatus()).toBe('obstructed');
+  });
+
+  it('snow melt off never heats; pre-heat draws power in the cold without snow', () => {
+    const { plant, env, advance } = make();
+    plant.setSnowMelt('off');
+    plant.injectFault({ id: 'snow', target: 'skylink-dish', kind: 'snow' });
+    expect(plant.skylinkStatus()).toBe('obstructed');
+    plant.clearSnow('skylink-dish');
+    const base = plant.getLoadW('skylink-dish');
+    env.ambientC = -5;
+    plant.setSnowMelt('preheat');
+    advance(1);
+    expect(plant.getLoadW('skylink-dish')).toBeGreaterThan(base);
+    expect(plant.skylinkStatus()).toBe('online');
+  });
+
+  it('the sleep window gives status sleeping, no service and low draw; it crosses midnight', () => {
+    const { plant, clock, advance, now } = make();
+    clock.tod = 0;
+    const tod = (): number => (clock.tod + now()) % 86400;
+    plant.setSleep({ startS: (tod() + 30) % 86400, endS: (tod() + 300) % 86400 });
+    expect(plant.skylinkStatus()).toBe('online');
+    advance(60);
+    expect(plant.skylinkStatus()).toBe('sleeping');
+    expect(plant.getLoadW('skylink-dish')).toBeLessThan(20);
+    advance(400);
+    expect(plant.skylinkStatus()).toBe('online');
+
+    clock.tod = 86400 - 100 - now();
+    plant.setSleep({ startS: 86400 - 200, endS: 100 });
+    expect(plant.isSleeping()).toBe(true);
+    plant.setSleep(null);
+    expect(plant.isSleeping()).toBe(false);
+  });
+
+  it('settings survive a checkpoint and Wi-Fi is stored', () => {
+    const { plant } = make();
+    plant.setSnowMelt('preheat');
+    plant.setSleep({ startS: 100, endS: 200 });
+    plant.setRouterWifi({ ssid: 'Camp', password: 'longenough' });
+    const state = plant.getState();
+    const other = make().plant;
+    other.restoreState(state);
+
+    expect(other.getTerminalSettings()).toEqual({ snowMelt: 'preheat', sleep: { startS: 100, endS: 200 }, wifi: { ssid: 'Camp', password: 'longenough' } });
+  });
+});

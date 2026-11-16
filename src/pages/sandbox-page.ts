@@ -7,6 +7,7 @@ import { qs } from '@app/engine/utils/query-selector';
 import { EventBus } from '@app/events/event-bus';
 import { HardwareFaultManager } from '@app/faults/hardware-fault-manager';
 import { GnssThreatManager } from '@app/gnss-threat/gnss-threat-manager';
+import { HamStationService } from '@app/ham/ham-station-service';
 import { InterferenceManager } from '@app/interference/interference-manager';
 import { LinkBudgetManager } from '@app/link-budget/link-budget-manager';
 import { Logger } from '@app/logging/logger';
@@ -14,6 +15,7 @@ import { QuizModal } from '@app/modal/quiz-modal';
 import { ObjectivesManager } from '@app/objectives/objectives-manager';
 import { Body } from '@app/pages/layout/body/body';
 import { Equipment } from '@app/pages/sandbox/equipment';
+import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import { NavigationOptions } from '@app/router';
 import { ScenarioManager } from '@app/scenario-manager';
 import { CampaignRecordPanel } from '@app/scenarios/campaign-record-panel';
@@ -21,6 +23,7 @@ import { ScenarioDialogManager } from '@app/scenarios/scenario-dialog-manager';
 import { WorkingDocumentManager } from '@app/scenarios/working-document-manager';
 import { SecurityConsoleCore } from '@app/security-console/security-console-core';
 import { SimulationManager } from '@app/simulation/simulation-manager';
+import { SoundEvents } from '@app/sound/sound-events';
 import { SpaceEventManager } from '@app/space-events/space-event-manager';
 import { AppState, clearPersistedStore, syncEquipmentWithStore, syncManager } from '@app/sync/storage';
 import { TelemetryManager } from '@app/telemetry/telemetry-manager';
@@ -89,8 +92,10 @@ export class SandboxPage extends BasePage {
    * Handle async initialization of equipment and objectives
    */
   private async initializeAsync_(): Promise<void> {
+    SoundEvents.start();
     await this.initEquipment_();
     await this.initializeObjectivesAndDialogs_();
+    SoundEvents.arm(ScenarioManager.getInstance().settings.groundStations);
   }
 
   protected addEventListeners_(): void {
@@ -192,6 +197,8 @@ export class SandboxPage extends BasePage {
     InterferenceManager.destroy();
     ElectronicAttackManager.destroy();
     HardwareFaultManager.destroy();
+    PhysicalPlantService.destroy();
+    HamStationService.destroy();
     LinkBudgetManager.destroy();
     CommandingManager.destroy();
     ContactScheduleManager.destroy();
@@ -201,6 +208,7 @@ export class SandboxPage extends BasePage {
     GnssThreatManager.destroy();
     TelemetryManager.destroy();
     QuizModal.destroy();
+    SoundEvents.destroy();
     EventBus.destroy();
     const container = getEl(SandboxPage.containerId);
     if (container) {

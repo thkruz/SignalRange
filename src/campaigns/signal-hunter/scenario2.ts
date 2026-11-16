@@ -47,7 +47,7 @@ import { sentry7Satellite, sentry9Satellite } from './satellites';
 export const signalHunterScenario2Data: ScenarioData = {
   id: 'signal-hunter-scenario2',
   url: 'signal-hunter/scenarios/signal-hunter-scenario2',
-  imageUrl: 'nats/22/card.png',
+  imageUrl: 'signal-hunter/2/card.png',
   number: 2,
   isDisabled: false,
   difficulty: 'advanced',
@@ -92,8 +92,8 @@ export const signalHunterScenario2Data: ScenarioData = {
         satelliteNoradId: 71001,
         frequency: 6001e6, // Uplink, inside SENTRY-7 TP-1 (5990-6030) -> 3776 MHz downlink, 1374 MHz IF
         bandwidth: 2.5e6,
-        power: 4, // dBm at transponder input
-        polarization: 'H',
+        power: 76.2, // uplink EIRP, dBm (phase 19.3 migration: was 4 dBm at the transponder input, same downlink)
+        polarization: 'V', // Uplink V: TP-1 reverses it, so it comes down H and PA-22 sees it co-polar
         startTime: 20,
         duration: 7200,
         periodSeconds: 120, // 36 s on / 84 s off - three 12 s captures per window
@@ -110,8 +110,10 @@ export const signalHunterScenario2Data: ScenarioData = {
         frequency: 3752e6, // Received directly at 3752 MHz -> 1398 MHz IF; would read as a 5977 MHz uplink if it were relayed, which is below TP-1
         bandwidth: 5e6,
         // EIRP in PA-22's direction, dBm: an off-axis slice of a fixed-wireless
-        // sector 27 km away. Through the dish's own far sidelobes it lands a
-        // few dB above the relayed service carrier at the feed.
+        // sector 27 km away. Through the dish's own far sidelobes it lands
+        // roughly 25-30 dB below the relayed service carrier at the feed
+        // (SENTRY-7-SERVICE is 50 dBm); it sits at 1398 MHz IF, clear of the
+        // 1365 MHz service, so do not re-tune either against the other.
         power: 28,
         polarization: 'H',
         startTime: 0,
@@ -299,7 +301,7 @@ export const signalHunterScenario2Data: ScenarioData = {
                   'The 1374 carrier correlates against SENTRY-9 and keys on a schedule. The customer is losing packets to something that is coming down through their own transponder; the annex is not the problem and closing the ticket leaves the team with nothing.',
               },
               {
-                label: 'The 1398 carrier is the interferer - it is the stronger of the two and it sits inside the TP-1 downlink. Work it back to 5977 MHz and correlate on that',
+                label: 'The 1398 carrier is the interferer - it is continuous and it sits inside the TP-1 downlink. Work it back to 5977 MHz and correlate on that',
                 feedback:
                   '5977 MHz is below the TP-1 passband; nothing at that frequency is relayed, so there is nothing at 1398 for the correlator to find. Strong is not the same as through the bird. Strong and continuous at a single dish is what a nearby ground emitter looks like.',
               },
@@ -372,10 +374,9 @@ export const signalHunterScenario2Data: ScenarioData = {
               '3776 MHz (the correlator is tuned to the downlink)',
             ],
             correctIndex: 0,
-            explanation:
-              'Logged. IF 1374 -> downlink 3776 -> uplink 6001, inside TP-1 and on the transponder polarization. The correlator was tuned to the uplink because that is what both satellites received.',
+            explanation: 'Logged. IF 1374 -> downlink 3776 -> uplink 6001, inside TP-1. The correlator was tuned to the uplink because that is what both satellites received.',
             pointPenalty: 5,
-            documentLine: 'Frequency: 6001 MHz uplink (3776 MHz downlink / 1374 MHz IF), 2.5 MHz occupied, H-pol via TP-1.',
+            documentLine: 'Frequency: 6001 MHz uplink (3776 MHz downlink / 1374 MHz IF), 2.5 MHz occupied, V-pol uplink via TP-1.',
             documentSection: 'Characterization',
           },
           mustMaintain: false,

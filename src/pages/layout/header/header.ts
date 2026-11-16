@@ -5,12 +5,15 @@ import { qs } from '@app/engine/utils/query-selector';
 import { EngineeringModeService } from '@app/engineering-mode/engineering-mode-service';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { GameMenu } from '@app/game-menu/game-menu';
 import { Router } from '@app/router';
 import { ScenarioManager } from '@app/scenario-manager';
+import { AudioPreferences } from '@app/sound/audio-preferences';
 import { Auth } from '@app/user-account/auth';
 import { ModalLogin } from '@app/user-account/modal-login';
 import { ModalProfile } from '@app/user-account/modal-profile';
 import { isSupabaseApprovedDomain } from '@app/user-account/supabase-client';
+import { setupFullscreenButton } from './fullscreen-button';
 import '@app/user-account/user-account.css';
 import { html } from '@app/engine/utils/development/formatter';
 import type { User } from '@supabase/supabase-js';
@@ -26,6 +29,8 @@ export class Header extends BaseElement {
   private profileBtn: HTMLElement | null = null;
   private devMenuBtn: HTMLElement | null = null;
   private engModeBtn: HTMLElement | null = null;
+  private readonly boundScenarioChanged_ = (): void => this.updateEngModeButtonVisibility_();
+  private scenarioBus_: EventBus | null = null;
 
   private constructor(rootElementId?: string) {
     super();
@@ -51,10 +56,10 @@ export class Header extends BaseElement {
   }
 
   protected readonly html_ = html`
-    <header class="header">
+    <header class="header small">
       <div class="header-toolbar">
         <div class="header-logo-section">
-          <img src="/images/logo.png" alt="SignalRange Logo" height="80" />
+          <img src="/images/logo.png" alt="SignalRange Logo" width="30" height="30" />
         </div>
         <div class="header-title-section">
           <div class="header-main-title">SignalRange</div>
@@ -64,6 +69,7 @@ export class Header extends BaseElement {
           </div>
         </div>
         <div class="header-actions">
+          <button type="button" id="header-game-menu-btn" class="header-icon-button" title="Game menu (Esc)" aria-haspopup="dialog" aria-controls="game-menu">Menu</button>
           <a href="https://discord.gg/hr6jUHEgPB" target="_blank" rel="noopener noreferrer"
              class="header-icon-button" title="Get help on Discord">
             <svg class="icon" viewBox="0 -28.5 256 256" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
@@ -76,6 +82,38 @@ export class Header extends BaseElement {
               <path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
             </svg>
           </a>
+          <div class="header-audio">
+            <button type="button" id="audio-menu-btn" class="header-icon-button" title="Sound settings" aria-label="Sound settings"
+               aria-expanded="false" aria-controls="audio-menu">
+              <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none"
+                   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 5 6 9H2v6h4l5 4V5Z"/>
+                <path class="audio-wave" d="M15.5 8.5a5 5 0 0 1 0 7"/>
+                <path class="audio-wave" d="M19 5a10 10 0 0 1 0 14"/>
+                <path class="audio-mute" d="m16 9 6 6m0-6-6 6"/>
+              </svg>
+            </button>
+            <div id="audio-menu" class="header-audio-menu" role="group" aria-label="Sound settings" hidden>
+              <label class="form-check form-switch mb-2">
+                <input id="audio-sfx-toggle" class="form-check-input" type="checkbox" />
+                <span class="form-check-label">Sound effects</span>
+              </label>
+              <label class="form-check form-switch mb-0">
+                <input id="audio-ambience-toggle" class="form-check-input" type="checkbox" />
+                <span class="form-check-label">Room ambience</span>
+              </label>
+              <button type="button" id="audio-all-settings" class="audio-settings-button">All settings</button>
+            </div>
+          </div>
+          <button type="button" id="fullscreen-btn" class="header-icon-button" title="Enter fullscreen"
+                  aria-label="Enter fullscreen" aria-pressed="false">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path class="fullscreen-enter" d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5" />
+              <path class="fullscreen-exit" d="M3 8h5V3m13 5h-5V3M8 21v-5H3m13 5v-5h5" />
+            </svg>
+          </button>
+          <span id="fullscreen-status" class="visually-hidden" role="status"></span>
           <a id="eng-mode-btn" class="header-icon-button" title="Engineering Mode" style="display:none;">
             <span style="font-size:11px;font-weight:bold;">ENG</span>
           </a>
@@ -91,15 +129,15 @@ export class Header extends BaseElement {
   private getUserAccountButtonHtml(): string {
     return html`
       <div class="user-account__menu-item">
-        <a id="user-account__login-btn" class="user-account__login-btn user-account__btn--hover" title="Login / Signup">
+        <button type="button" id="user-account__login-btn" class="user-account__login-btn user-account__btn--hover" title="Login / Signup" aria-label="Login / Signup">
           <img src="/images/person-gray.png" class="user-account__avatar user-account__avatar--default" alt="Login" />
-        </a>
-        <div id="user-account__profile-btn"
+        </button>
+        <button type="button" id="user-account__profile-btn"
           class="user-account__profile-btn user-account__btn--hover user-account__profile-btn--hidden"
-          title="View Profile"
+          title="View Profile" aria-label="View profile"
         >
           ??
-        </div>
+        </button>
       </div>
     `;
   }
@@ -119,6 +157,60 @@ export class Header extends BaseElement {
 
     this.setupEngModeListeners_();
     this.setupDevMenuListeners_();
+    this.setupAudioMenu_();
+    document.getElementById('header-game-menu-btn')?.addEventListener('click', () => GameMenu.getInstance().openMenu());
+    const fullscreenButton = document.querySelector<HTMLButtonElement>('#fullscreen-btn');
+    const fullscreenStatus = document.querySelector<HTMLElement>('#fullscreen-status');
+    if (fullscreenButton && fullscreenStatus) setupFullscreenButton(fullscreenButton, fullscreenStatus);
+  }
+
+  /** Speaker button: a small menu with the sound effects and ambience switches. */
+  private setupAudioMenu_(): void {
+    const btn = document.getElementById('audio-menu-btn');
+    const menu = document.getElementById('audio-menu');
+    const sfx = document.getElementById('audio-sfx-toggle') as HTMLInputElement | null;
+    const ambience = document.getElementById('audio-ambience-toggle') as HTMLInputElement | null;
+    if (!btn || !menu || !sfx || !ambience) {
+      return;
+    }
+
+    const prefs = AudioPreferences.getInstance();
+    const sync = (): void => {
+      sfx.checked = prefs.sfxEnabled;
+      ambience.checked = prefs.ambienceEnabled;
+      btn.classList.toggle(
+        'header-audio--muted',
+        prefs.prefs.masterVolume === 0 || (!prefs.sfxEnabled && !prefs.ambienceEnabled && prefs.prefs.voiceVolume === 0 && prefs.prefs.musicVolume === 0)
+      );
+    };
+    sync();
+    prefs.onChange(sync);
+
+    const setOpen = (open: boolean): void => {
+      menu.hidden = !open;
+      btn.setAttribute('aria-expanded', String(open));
+    };
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setOpen(Boolean(menu.hidden));
+    });
+    menu.addEventListener('click', (e) => e.stopPropagation());
+    document.getElementById('audio-all-settings')?.addEventListener('click', () => {
+      setOpen(false);
+      GameMenu.getInstance().openSettings();
+    });
+    document.addEventListener('click', () => setOpen(false));
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (!menu.hidden) {
+          e.preventDefault();
+          btn.focus();
+        }
+        setOpen(false);
+      }
+    });
+    sfx.addEventListener('change', () => prefs.set({ sfx: sfx.checked }));
+    ambience.addEventListener('change', () => prefs.set({ ambience: ambience.checked }));
   }
 
   private setupUserAccountListeners(): void {
@@ -178,15 +270,31 @@ export class Header extends BaseElement {
         this.updateEngModeActiveState_(enabled);
       });
 
-      // Listen for scenario changes to update button visibility
-      EventBus.getInstance().on(Events.SCENARIO_CHANGED, () => {
-        this.updateEngModeButtonVisibility_();
-      });
+      // Listen for scenario changes to update button visibility. Page teardown
+      // replaces the EventBus, so subscribe again on every new bus.
+      this.bindScenarioEvents();
+      EventBus.onRecreate(() => this.bindScenarioEvents());
 
       // Set initial state
       this.updateEngModeActiveState_(engService.isEnabled());
       this.updateEngModeButtonVisibility_();
     }
+  }
+
+  /**
+   * Subscribe to SCENARIO_CHANGED on the current EventBus. The header outlives
+   * pages and page teardown replaces the bus (EventBus.destroy), so this runs
+   * again for every new bus; a repeat call on the same bus is a no-op.
+   */
+  bindScenarioEvents(): void {
+    const bus = EventBus.getInstance();
+    if (this.scenarioBus_ === bus) {
+      return;
+    }
+    this.scenarioBus_?.off(Events.SCENARIO_CHANGED, this.boundScenarioChanged_);
+    bus.on(Events.SCENARIO_CHANGED, this.boundScenarioChanged_);
+    this.scenarioBus_ = bus;
+    this.updateEngModeButtonVisibility_();
   }
 
   private updateEngModeActiveState_(enabled: boolean): void {
@@ -196,7 +304,9 @@ export class Header extends BaseElement {
   }
 
   private updateEngModeButtonVisibility_(): void {
-    if (!this.engModeBtn) return;
+    if (!this.engModeBtn) {
+      return;
+    }
 
     // Show if scenario is advanced OR if force flag is enabled
     const isForced = window.FORCE_ENGINEERING_BUTTON === true;

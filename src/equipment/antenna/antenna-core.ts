@@ -7,20 +7,24 @@ import { Transmitter } from '@app/equipment/transmitter/transmitter';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { InterferenceManager } from '@app/interference/interference-manager';
+import { plantPowers } from '@app/physical/plant-bridge';
 import { SignalOrigin } from '@app/signal-origin';
-import { Rng } from '@app/simulation/rng';
+import { geoSlantRangeKm } from '@app/simulation/geo-geometry';
+import { noiseFigureToK, noiseRiseDb, noiseRiseToK, type SystemNoise, systemNoiseTemperature, thermalNoiseDbm } from '@app/simulation/noise-model';
+import { freeSpacePathLossDb, groundPath } from '@app/simulation/rf-geometry';
+import { RfSelector } from '@app/simulation/rf-narrowing';
 import { SimClock } from '@app/simulation/sim-clock';
+import { candidateSatellites } from '@app/simulation/sim-queries';
 import { getSimulatedNowMs } from '@app/simulation/sim-time';
 import { SimulationManager } from '@app/simulation/simulation-manager';
-import { dB, dBm, Hertz, RfSignal } from '@app/types';
+import { dB, dBm, Hertz, RfFrequency, RfSignal } from '@app/types';
 import { Degrees } from 'ootk';
 import { ANTENNA_CONFIG_KEYS } from './antenna-config-keys';
 import { AntennaConfig } from './antenna-configs';
 import { type AntennaConfigId, AntennaRegistry } from './antenna-registry';
+import { usableBeaconCn } from './beacon-cn';
 import { StepTrackController } from './step-track-controller';
-
-/** Seeded draws for this module (see simulation/rng.ts). */
-const random = (): number => Rng.stream('antenna').next();
+import { isAntennaRepositioning } from './tracking-mode-label';
 
 /** A satellite's geometry and downlink as seen from one antenna's station. */
 export interface SatelliteView {
@@ -30,16 +34,24 @@ export interface SatelliteView {
   predictedAz: Degrees;
   predictedEl: Degrees;
   txSignal: RfSignal[];
+  /** Linear polarization angle of the satellite's downlink at this station, degrees (skew) */
+  rotation: Degrees;
+  /** Doppler factor for this station's range rate (observed = transmitted × factor); 1 for GEO */
+  dopplerFactor: number;
 }
 
 /**
- * RF Propagation constants for GEO satellite communications
+ * Slant range for path loss, km: the propagated range, or for a legacy GEO
+ * satellite (authored az/el, no range) the geostationary slant range at the
+ * elevation this station sees it (phase 19.3; was a fixed 38,000 km).
  */
-const GEO_SATELLITE_DISTANCE_KM = 38000; // Approximate slant range to GEO satellite (km)
+function slantRangeKm(view: SatelliteView): number {
+  return view.rangeKm ?? geoSlantRangeKm(view.el as number);
+}
 
 /**
  * ACU Tracking Modes
- * - stow: Safe storage position (Az=0°, El=90°)
+ * - stow: Safe storage position (El=90° at the current azimuth)
  * - maintenance: Feed access position (El=5°)
  * - manual: Operator controls Az/El/Pol directly
  * - program-track: Continuously follow TLE ephemeris with optional step-track optimization
@@ -88,6 +100,8 @@ export interface AntennaState {
     gain_dBi: number;
     beamwidth_deg: number;
     gOverT_dBK: number;
+    /** System noise temperature at the LNA input, K (sky, feed, LNB; weather and sun included) */
+    tsys_K?: number;
     polLoss_dB: number;
     atmosLoss_dB: number;
     skyTemp_K: number;
@@ -133,7 +147,7 @@ export interface AntennaState {
   precipitationDetected: boolean;
   /** Ice accumulation on feed horn in dB (0 = no ice) */
   iceAccumulation_dB: number;
-  /** Elevated sky-noise degradation in dB on the receive path (e.g., sun transit). 0 = nominal sky. */
+  /** Sky-noise rise in dB on the receive path (sun transit): raises the system noise, not a carrier loss. 0 = nominal sky. */
   skyNoiseDegradation_dB: number;
   /**
    * Rain rate over the site in mm/h (WeatherManager rain/storm events). The
@@ -141,6 +155,12 @@ export interface AntennaState {
    * Ku/Ka links fade in rain and C-band barely notices. 0 = dry.
    */
   rainRate_mmh: number;
+  /**
+   * Wind speed over the site in m/s (WeatherManager wind and storm events).
+   * De-points the beam by `windDePointingCoef_deg_per_mps` per m/s (phase
+   * 19.4). 0 = calm.
+   */
+  windSpeed_mps: number;
   /** ACU automation controller fault: program-track, step-track, and target
    *  slewing are unavailable; manual/stow/maintenance servo control still works. */
   isAcuAutomationFaulted: boolean;
@@ -172,6 +192,12 @@ export interface AntennaState {
   stagedBeaconFrequencyHz: number | null;
   /** Staged beacon search bandwidth - pending user approval */
   stagedBeaconSearchBwHz: number | null;
+  /**
+   * STOW or MAINT picked on the ACU and waiting for APPLY (phase 29 D4,
+   * nats-r3-s11-F2). The applied `trackingMode` keeps running until APPLY
+   * commits this mode and the park elevation together.
+   */
+  stagedTrackingMode?: TrackingMode | null;
   /** Are there pending changes to apply */
   hasStagedChanges: boolean;
 
@@ -210,14 +236,18 @@ export abstract class AntennaCore extends BaseEquipment {
   protected stationLocation_: { latitude: number; longitude: number; elevationM: number } | null = null;
   /** Same location as an orbital observer; null until the station attaches */
   protected stationObserver_: OrbitalObserver | null = null;
+  /** Phase 29 D8: the feed has been set to its target's skew once (seedPolarizationFromSlot_) */
+  private isPolarizationSeeded_ = false;
 
   /**
-   * Uplink signalIds this antenna pushed onto each satellite last frame
+   * Uplinks this antenna pushed onto each satellite last frame (the objects)
    * (fixed-gain TX path only). Lets updateTxSignals_ remove exactly its own
    * stale signals when a satellite leaves the beam, without touching other
    * stations' uplinks or injected interference.
    */
-  private readonly txFedSignalIds_ = new Map<number, Set<string>>();
+  private readonly txFedSignalIds_ = new Map<number, Set<RfSignal>>();
+  /** Beam-cone candidate selection for constellation scenarios (P3-WP5); null when not narrowing */
+  private rfSelector_: RfSelector | null = null;
 
   /** Get the attached RF front-end (for signal path calculations) */
   get rfFrontEnd(): RFFrontEndCore | null {
@@ -246,8 +276,52 @@ export abstract class AntennaCore extends BaseEquipment {
   private skipSlewBudgetMs_ = 0;
   private skipSlewFramesLeft_ = 0;
 
-  /** Tolerance for program-track lock detection (degrees) */
-  private static readonly LOCK_TOLERANCE_DEG = 1.5;
+  /** Pedestal axis rates, deg/s (phase 19.4 servo: rate and acceleration limits) */
+  private azRate_ = 0;
+  private elRate_ = 0;
+  /** Commanded targets last update, to feed the target's own rate forward */
+  private lastTargetAz_: number | null = null;
+  private lastTargetEl_: number | null = null;
+  /**
+   * Step-track offsets inside the commanded target last update (Phase 32 D1,
+   * nats-r7-s06-F1): a dither step moves the target by the offset alone, so
+   * the commanded-step test measures the target net of them
+   */
+  private lastOffsetAz_: number | null = null;
+  private lastOffsetEl_: number | null = null;
+  /**
+   * A commanded move (a new target position, not a tracker following its
+   * bird) is under way and its arrival not yet reported (nats-r6-s11-F1)
+   */
+  private slewArrivalPending_ = false;
+  /**
+   * The scenario authored this dish locked on its program-track target
+   * (Phase 32 D2): the first update puts it on the target's current
+   * position instead of slewing the last degrees to it (one-shot, like the
+   * BUC's thermalPrimed_). An authored off-target start without the lock
+   * flag still slews.
+   */
+  private snapToAuthoredTargetPending_ = false;
+
+  /** Pointing error under which a moving program track counts as on target, deg */
+  private static readonly ON_TARGET_DEG = 0.01;
+  /** Smallest target change outside program-track that counts as a command, deg (float noise below it) */
+  private static readonly COMMAND_STEP_EPSILON_DEG_ = 1e-6;
+
+  /**
+   * Program-track reads LOCKED while the beam costs the satellite less than
+   * this much gain (phase 19.4; was a 1.5 deg box, three beamwidths wide on a
+   * 9 m C-band dish)
+   */
+  static readonly PROGRAM_TRACK_LOCK_LOSS_DB = 1;
+
+  /**
+   * A satellite carrier is received when it clears the receive noise in its
+   * own bandwidth by this much (C/N, dB; phase 19.4). Below it a carrier is
+   * invisible on every instrument, so it is not carried at all. Above it a
+   * satellite in the sidelobes is heard: adjacent-satellite interference.
+   */
+  static readonly RX_DETECTION_FLOOR_DB = -10;
 
   /** Timeout ID for lock acquisition to prevent memory leaks */
   private lockAcquisitionTimeout_: number | null = null;
@@ -257,9 +331,6 @@ export abstract class AntennaCore extends BaseEquipment {
 
   /** Smoothed C/N for beacon display (EMA) */
   private smoothedBeaconCN_: number | null = null;
-
-  /** Whether we've received at least one real beacon measurement (vs initial state value) */
-  private hasReceivedRealBeaconMeasurement_: boolean = false;
 
   /** Smoothing factor for beacon C/N display */
   private readonly beaconCNSmoothingAlpha_: number = 0.3;
@@ -295,7 +366,7 @@ export abstract class AntennaCore extends BaseEquipment {
       // Beacon Tracking
       beaconFrequencyHz: 3_948_000_000, // Default 3.948 GHz C-band beacon
       beaconSearchBwHz: 500_000, // Default 500 kHz search bandwidth
-      beaconTrackingBwHz: 1_000, // Default 25 kHz tracking bandwidth (typical CW beacon)
+      beaconTrackingBwHz: 1_000, // 1 kHz tracking bandwidth (typical CW beacon receiver; the UI labels beacon C/N with it)
       beaconPower: null,
       beaconCN: null,
       isBeaconLocked: false,
@@ -310,6 +381,7 @@ export abstract class AntennaCore extends BaseEquipment {
       iceAccumulation_dB: 0,
       skyNoiseDegradation_dB: 0,
       rainRate_mmh: 0,
+      windSpeed_mps: 0,
       isAcuAutomationFaulted: false,
       // ACU Identification
       acuModel: this.config.acuModel ?? 'Kratos NGC-2200',
@@ -325,6 +397,7 @@ export abstract class AntennaCore extends BaseEquipment {
       stagedTargetPolarization: null,
       stagedBeaconFrequencyHz: null,
       stagedBeaconSearchBwHz: null,
+      stagedTrackingMode: null,
       hasStagedChanges: false,
       // Fault State
       hasFault: false,
@@ -339,15 +412,19 @@ export abstract class AntennaCore extends BaseEquipment {
       this.state.targetAzimuth = this.state.azimuth;
       this.state.targetElevation = this.state.elevation;
       this.state.targetPolarization = this.state.polarization;
+    } else {
+      // Any other mode: an unauthored target is where the dish already is. A
+      // dish authored stowed at El 90 used to slew straight to the default
+      // target El 0 and load reading El 0.00 (nats-s12-F2).
+      if (initialState.targetAzimuth === undefined) this.state.targetAzimuth = this.state.azimuth;
+      if (initialState.targetElevation === undefined) this.state.targetElevation = this.state.elevation;
+      if (initialState.targetPolarization === undefined) this.state.targetPolarization = this.state.polarization;
     }
+
+    this.snapToAuthoredTargetPending_ =
+      this.state.trackingMode === 'program-track' && initialState.isBeaconLocked === true && this.state.targetSatelliteId !== null && this.state.targetSatelliteId !== undefined;
 
     this.lastRenderState = structuredClone(this.state);
-
-    // Seed beacon smoother from initial state if provided
-    // This preserves scenario-defined beaconCN until real measurements take over
-    if (this.state.beaconCN !== null) {
-      this.smoothedBeaconCN_ = this.state.beaconCN;
-    }
 
     // Initialize step track controller
     this.stepTrackController_ = new StepTrackController(this);
@@ -409,19 +486,30 @@ export abstract class AntennaCore extends BaseEquipment {
     // work - updateSlew_ keeps running so manual/stow/maintenance moves do.
     const automationAvailable = !this.state.isAcuAutomationFaulted;
 
-    // Update program-track position continuously when tracking a satellite
-    // This is the base tracking - always follows ephemeris
-    if (automationAvailable && this.state.trackingMode === 'program-track' && this.state.targetSatelliteId !== null && this.state.isPowered && this.state.isOperational) {
-      this.updateProgramTrackPosition_();
+    if (!this.isPolarizationSeeded_) {
+      this.seedPolarizationFromSlot_();
     }
 
+    // Update program-track position continuously when tracking a satellite
+    // This is the base tracking - always follows ephemeris
+    if (automationAvailable && this.state.trackingMode === 'program-track' && this.state.targetSatelliteId !== null && this.isLivePowered && this.state.isOperational) {
+      this.updateProgramTrackPosition_();
+      if (this.snapToAuthoredTargetPending_) {
+        this.snapToTarget_();
+      }
+    }
+    this.snapToAuthoredTargetPending_ = false;
+    // The offsets this frame's target was built with: the controller below
+    // may step them, but the target only follows on the next frame
+    const targetOffsets = this.targetOffsets_();
+
     // Update step-track controller if step-track optimization is enabled (within program-track)
-    if (automationAvailable && this.state.isStepTrackEnabled && this.state.isPowered && this.state.isOperational) {
+    if (automationAvailable && this.state.isStepTrackEnabled && this.isLivePowered && this.state.isOperational) {
       this.stepTrackController_.update();
     }
 
     // Slew actual position toward target at maxRate_deg_s
-    this.updateSlew_(dtMs);
+    this.updateSlew_(dtMs, targetOffsets);
 
     // Check for program-track lock whenever a target is being tracked. The
     // tolerance test decides, not the slew flag: a LEO tracker is slewing for
@@ -429,6 +517,7 @@ export abstract class AntennaCore extends BaseEquipment {
     // meant a moving bird could never read LOCKED (phase 16).
     if (automationAvailable && this.state.trackingMode === 'program-track' && this.state.targetSatelliteId !== null) {
       this.checkProgramTrackLock_();
+      this.checkProgramTrackArrival_();
     }
 
     // Update beacon metrics for all modes
@@ -439,6 +528,30 @@ export abstract class AntennaCore extends BaseEquipment {
     this.updateSignals_();
     this.computeRfMetrics_();
     this.syncDomWithState();
+  }
+
+  /**
+   * Put the pedestal on the program-track target at once (Phase 32 D2, the
+   * S10 pull-in): the scenario says the dish is already locked there, so a
+   * 2-3 deg slew at load would take the own carrier out of the beam and
+   * write an UNLOCKED line nobody commanded. Nothing is reported: the target
+   * did not step and the pedestal never moved.
+   */
+  private snapToTarget_(): void {
+    this.state.azimuth = this.state.targetAzimuth;
+    this.state.elevation = this.state.targetElevation;
+    this.state.polarization = this.state.targetPolarization;
+    this.azRate_ = 0;
+    this.elRate_ = 0;
+  }
+
+  /** Step-track offsets the commanded target carries, deg (zero unless program-track with step-track on) */
+  private targetOffsets_(): { az: number; el: number } {
+    if (this.state.trackingMode !== 'program-track' || !this.state.isStepTrackEnabled) {
+      return { az: 0, el: 0 };
+    }
+
+    return { az: this.state.stepTrackAzOffset as number, el: this.state.stepTrackElOffset as number };
   }
 
   /** Bank any simulated time that jumped past this frame as slew budget. */
@@ -456,64 +569,211 @@ export abstract class AntennaCore extends BaseEquipment {
   }
 
   /**
-   * Update slew - move actual position toward target at configured slew rate
-   * Called each update cycle to simulate mechanical antenna movement
+   * Update slew - move the pedestal toward its target under the configured
+   * rate and acceleration limits (phase 19.4; was constant-rate). Each axis
+   * feeds the target's own rate forward, so a tracking pedestal follows a
+   * moving bird without a standing lag, and brakes so it does not overshoot.
    */
-  private updateSlew_(dtMs?: number): void {
-    if (!this.state.isPowered || !this.state.isOperational) {
+  private updateSlew_(dtMs?: number, offsets: { az: number; el: number } = this.targetOffsets_()): void {
+    if (!this.isLivePowered || !this.state.isOperational) {
+      this.azRate_ = 0;
+      this.elRate_ = 0;
+      this.lastTargetAz_ = null;
+      this.lastTargetEl_ = null;
+      this.lastOffsetAz_ = null;
+      this.lastOffsetEl_ = null;
       return;
     }
 
-    // Get slew rate from config (default 3°/s if not specified)
     const maxRate = this.config.maxRate_deg_s ?? 3.0;
+    const maxAccel = this.config.maxAccel_deg_s2 ?? maxRate;
     // Real frame time when the simulation loop supplies it: the clock and the
     // satellites advanced by the same dt, so the pedestal must too, or one
     // long frame leaves it a degree behind a LEO target and off-beam for the
     // frames it takes to catch up. Assume 60 Hz when called without one
     // (tests and direct callers); cap a stalled tab at a few seconds.
-    let dt = dtMs !== undefined && Number.isFinite(dtMs) && dtMs > 0 ? Math.min(dtMs, 5000) / 1000 : 1 / 60;
+    const frameDt = dtMs !== undefined && Number.isFinite(dtMs) && dtMs > 0 ? Math.min(dtMs, 5000) / 1000 : 1 / 60;
+    let budget = 0;
+    const isClockSkip = this.skipSlewFramesLeft_ > 0;
     if (this.skipSlewFramesLeft_ > 0) {
-      dt += this.skipSlewBudgetMs_ / 1000; // the skip's worth of tracking, spent now
+      budget = this.skipSlewBudgetMs_ / 1000; // the skip's worth of tracking, spent now
       this.skipSlewFramesLeft_ -= 1;
       if (this.skipSlewFramesLeft_ === 0) {
         this.skipSlewBudgetMs_ = 0;
       }
     }
-    const maxDelta = maxRate * dt;
+
+    // Target rates (deg/s) for feed-forward; a jump in the target (a new
+    // satellite, a mode change) is not a rate
+    const targetAzRate = this.targetRate_(this.lastTargetAz_, this.state.targetAzimuth, frameDt, maxRate);
+    const targetElRate = this.targetRate_(this.lastTargetEl_, this.state.targetElevation, frameDt, maxRate);
+    if (this.isCommandedStep_(frameDt, maxRate, isClockSkip, offsets)) {
+      this.slewArrivalPending_ = true;
+    }
+    this.lastTargetAz_ = this.state.targetAzimuth;
+    this.lastTargetEl_ = this.state.targetElevation;
+    this.lastOffsetAz_ = offsets.az;
+    this.lastOffsetEl_ = offsets.el;
 
     let isMoving = false;
 
-    // Slew azimuth
-    const azDiff = this.state.targetAzimuth - this.state.azimuth;
-    if (Math.abs(azDiff) > 0.001) {
-      const azStep = Math.sign(azDiff) * Math.min(Math.abs(azDiff), maxDelta);
-      this.state.azimuth = (this.state.azimuth + azStep) as Degrees;
-      isMoving = true;
+    if (budget > 0) {
+      // A clock jump: the pedestal had the whole skip to get there. Spend it
+      // at the rate limit (acceleration is noise on that scale) and arrive at
+      // rest on the target's own rate.
+      const reach = maxRate * (budget + frameDt);
+      const azDiff = this.state.targetAzimuth - this.state.azimuth;
+      const elDiff = this.state.targetElevation - this.state.elevation;
+      isMoving = Math.abs(azDiff) > 0.001 || Math.abs(elDiff) > 0.001;
+      this.state.azimuth = (this.state.azimuth + Math.sign(azDiff) * Math.min(Math.abs(azDiff), reach)) as Degrees;
+      this.state.elevation = (this.state.elevation + Math.sign(elDiff) * Math.min(Math.abs(elDiff), reach)) as Degrees;
+      this.azRate_ = Math.abs(azDiff) <= reach ? targetAzRate : Math.sign(azDiff) * maxRate;
+      this.elRate_ = Math.abs(elDiff) <= reach ? targetElRate : Math.sign(elDiff) * maxRate;
+    } else {
+      const az = AntennaCore.servoAxisStep_(this.state.azimuth, this.state.targetAzimuth, this.azRate_, targetAzRate, maxRate, maxAccel, frameDt);
+      const el = AntennaCore.servoAxisStep_(this.state.elevation, this.state.targetElevation, this.elRate_, targetElRate, maxRate, maxAccel, frameDt);
+      isMoving = az.moving || el.moving;
+      this.state.azimuth = az.position as Degrees;
+      this.state.elevation = el.position as Degrees;
+      this.azRate_ = az.rate;
+      this.elRate_ = el.rate;
     }
 
-    // Slew elevation
-    const elDiff = this.state.targetElevation - this.state.elevation;
-    if (Math.abs(elDiff) > 0.001) {
-      const elStep = Math.sign(elDiff) * Math.min(Math.abs(elDiff), maxDelta);
-      this.state.elevation = (this.state.elevation + elStep) as Degrees;
-      isMoving = true;
-    }
-
-    // Slew polarization (typically faster than main axes)
+    // Polarization: the feed rotator, typically faster than the main axes and
+    // too light for its acceleration to matter
     const polDiff = this.state.targetPolarization - this.state.polarization;
     if (Math.abs(polDiff) > 0.001) {
-      const polStep = Math.sign(polDiff) * Math.min(Math.abs(polDiff), maxDelta * 2);
+      const polStep = Math.sign(polDiff) * Math.min(Math.abs(polDiff), maxRate * 2 * (frameDt + budget));
       this.state.polarization = (this.state.polarization + polStep) as Degrees;
       isMoving = true;
     }
 
-    // Update slewing flag
+    const wasSlewing = this.state.isSlewing;
     this.state.isSlewing = isMoving;
+    if (!isMoving) {
+      if (wasSlewing) {
+        this.reportSlewArrival_();
+      }
+      // A command that needed no move (already there) has no arrival
+      this.slewArrivalPending_ = false;
+    }
   }
 
   /**
-   * Check if antenna is locked on target satellite in program-track mode.
-   * Sets isLocked = true when within tolerance, false otherwise.
+   * The commanded target stepped this frame: an operator or mode command (a
+   * new position, STOW, MAINT, Move to Target), not a tracker following its
+   * bird. Outside program-track the target only moves on command, so any
+   * change above float noise counts (Phase 33 D8); in
+   * program-track only a jump faster than the pedestal could follow counts,
+   * and never during a clock skip (the bird itself jumped). In program-track
+   * the step is measured net of the step-track offsets (Phase 32 D1,
+   * nats-r7-s06-F1): a dither probe or a held offset coming off moves the
+   * target by a tenth of a beamwidth in one frame, but it is the tracker
+   * climbing, not a command, so it never arms the arrival line.
+   */
+  private isCommandedStep_(frameDt: number, maxRate: number, isClockSkip: boolean, offsets: { az: number; el: number }): boolean {
+    if (this.lastTargetAz_ === null || this.lastTargetEl_ === null) {
+      return false;
+    }
+    const dAz = this.state.targetAzimuth - this.lastTargetAz_;
+    const dEl = this.state.targetElevation - this.lastTargetEl_;
+    if (this.state.trackingMode !== 'program-track') {
+      // Any operator input counts, a 0.01 deg nudge included (Phase 33 D8,
+      // nats-r8-s23-F2): the target only moves on command here, so the floor
+      // is float noise, not the on-target window
+      return Math.max(Math.abs(dAz), Math.abs(dEl)) > AntennaCore.COMMAND_STEP_EPSILON_DEG_;
+    }
+
+    const step = Math.max(Math.abs(dAz - (offsets.az - (this.lastOffsetAz_ ?? 0))), Math.abs(dEl - (offsets.el - (this.lastOffsetEl_ ?? 0))));
+    if (step <= AntennaCore.ON_TARGET_DEG) {
+      return false;
+    }
+
+    return !isClockSkip && step / frameDt > maxRate * 3;
+  }
+
+  /**
+   * A program track that pulled in and now follows a moving bird never stops
+   * slewing (a LEO pass): it has arrived once it holds lock on the target.
+   */
+  private checkProgramTrackArrival_(): void {
+    if (!this.slewArrivalPending_ || !this.state.isSlewing || this.state.trackingMode !== 'program-track' || !this.state.isLocked) {
+      return;
+    }
+    const error = Math.max(Math.abs(this.state.targetAzimuth - this.state.azimuth), Math.abs(this.state.targetElevation - this.state.elevation));
+    if (error <= AntennaCore.ON_TARGET_DEG) {
+      this.reportSlewArrival_();
+    }
+  }
+
+  /** Report a commanded move's arrival once (Ops Log arrival line, nats-r6-s11-F1) */
+  private reportSlewArrival_(): void {
+    if (!this.slewArrivalPending_) {
+      return;
+    }
+    this.slewArrivalPending_ = false;
+    const targetSatelliteId = this.state.trackingMode === 'program-track' ? this.state.targetSatelliteId : null;
+    const targetSatelliteName = targetSatelliteId === null ? null : (SimulationManager.getInstance().getSatByNoradId(targetSatelliteId)?.name ?? `NORAD ${targetSatelliteId}`);
+    this.emit(Events.ANTENNA_SLEW_COMPLETE, {
+      state: this.state,
+      mode: this.state.trackingMode,
+      azimuth: this.state.azimuth as number,
+      elevation: this.state.elevation as number,
+      targetSatelliteId,
+      targetSatelliteName,
+    });
+  }
+
+  /** Rate of a commanded target between updates, deg/s; 0 for a jump the pedestal could not follow anyway */
+  private targetRate_(last: number | null, now: number, dt: number, maxRate: number): number {
+    if (last === null) {
+      return 0;
+    }
+    const rate = (now - last) / dt;
+    return Math.abs(rate) > maxRate * 3 ? 0 : rate;
+  }
+
+  /**
+   * One servo step on one axis: chase the target with the target's rate fed
+   * forward, a braking curve sqrt(2 a |error|) toward it, and the rate and
+   * acceleration limits. Snaps onto the target when it would cross it.
+   */
+  private static servoAxisStep_(
+    position: number,
+    target: number,
+    rate: number,
+    targetRate: number,
+    maxRate: number,
+    maxAccel: number,
+    dt: number
+  ): { position: number; rate: number; moving: boolean } {
+    const error = target - position;
+    if (Math.abs(error) <= 0.001 && Math.abs(rate - targetRate) <= maxAccel * dt) {
+      return { position: target, rate: targetRate, moving: false };
+    }
+
+    const closing = Math.sign(error) * Math.min(maxRate, Math.sqrt(2 * maxAccel * Math.abs(error)));
+    const desired = Math.max(-maxRate, Math.min(maxRate, targetRate + closing));
+    const dv = Math.max(-maxAccel * dt, Math.min(maxAccel * dt, desired - rate));
+    const newRate = rate + dv;
+    const step = newRate * dt;
+
+    // Crossing the target this step: land on it, moving with it
+    if (Math.sign(error) !== 0 && Math.sign(error - step) !== Math.sign(error) && Math.abs(error) <= Math.abs(step)) {
+      return { position: target, rate: targetRate, moving: true };
+    }
+
+    return { position: position + step, rate: newRate, moving: true };
+  }
+
+  /**
+   * Program-track lock: LOCKED while the pedestal is on the commanded track,
+   * judged as the beam's pattern loss between where the pedestal points and
+   * where program-track (ephemeris prediction plus any step-track offset)
+   * commands it, under PROGRAM_TRACK_LOCK_LOSS_DB (phase 19.4; was a 1.5 deg
+   * az/el box around the true position). Like a real ACU's "on track" it knows
+   * nothing of where the satellite really is: a stale ephemeris reads LOCKED
+   * on the prediction while the beacon says otherwise (C2 S7, C1 S18).
    */
   private checkProgramTrackLock_(): void {
     // targetSatelliteId is guaranteed non-null by caller check
@@ -527,14 +787,14 @@ export abstract class AntennaCore extends BaseEquipment {
     }
 
     const view = this.satView_(sat);
-    // Shortest-path slews leave state.azimuth outside 0-360 (a pass through
-    // north reads -138 for 222), so compare on the circle, not the number line.
-    let azDiff = Math.abs(this.normalizedAzimuth - view.az);
-    if (azDiff > 180) {
-      azDiff = 360 - azDiff;
-    }
-    const elDiff = Math.abs(this.state.elevation - view.el);
-    const withinTolerance = azDiff <= AntennaCore.LOCK_TOLERANCE_DEG && elDiff <= AntennaCore.LOCK_TOLERANCE_DEG;
+    const offsets = this.state.isStepTrackEnabled ? { az: this.state.stepTrackAzOffset as number, el: this.state.stepTrackElOffset as number } : { az: 0, el: 0 };
+    const commandedAz = (view.predictedAz as number) + offsets.az;
+    const commandedEl = Math.max(0, Math.min(90, (view.predictedEl as number) + offsets.el));
+    // Servo error from the encoders: wind and jitter are invisible to the ACU
+    const f = this.trackingFrequencyHz_();
+    const servoErrorDeg = this.angularSeparationDeg_(commandedAz, commandedEl);
+    const servoLossDb = this.antennaGain_dBi(f as Hertz) - this.patternGain_dBi_(servoErrorDeg, f);
+    const withinTolerance = commandedEl > 0 && servoLossDb < AntennaCore.PROGRAM_TRACK_LOCK_LOSS_DB;
 
     if (withinTolerance && !this.state.isLocked) {
       this.state.isLocked = true;
@@ -543,6 +803,56 @@ export abstract class AntennaCore extends BaseEquipment {
       this.state.isLocked = false;
       this.notifyStateChange_();
     }
+  }
+
+  /**
+   * Gain the beam gives up toward (az, el) at the tracking frequency (the
+   * beacon, else the receive band centre), dB: the pattern's drop from
+   * boresight at the true great-circle off-axis angle, wind de-pointing
+   * included.
+   */
+  pointingLossDb(az: number, el: number, frequencyHz: number = this.trackingFrequencyHz_()): number {
+    const theta = this.effectiveOffAxisDeg_(az, el);
+    return this.antennaGain_dBi(frequencyHz as Hertz) - this.patternGain_dBi_(theta, frequencyHz);
+  }
+
+  /** -3 dB beamwidth at the tracking frequency (the beacon, else the band centre), degrees: sizes step-track's steps */
+  beamwidthAtTrackingDeg(): number {
+    return this.beamwidth3dB_deg_(this.trackingFrequencyHz_());
+  }
+
+  /** Frequency the pointing is judged at: the beacon when it is in the receive band, else the band centre */
+  private trackingFrequencyHz_(): number {
+    const beacon = this.state.beaconFrequencyHz;
+    return beacon >= this.config.minRxFrequency && beacon <= this.config.maxRxFrequency ? beacon : this.noiseReferenceHz;
+  }
+
+  /**
+   * Phase 29 D8 (nats-r4-s04-F1): on the first update, a linear feed authored
+   * on a GEO target that has a slot (Satellite.lookAnglesFrom) starts at that
+   * satellite's skew at THIS station, whatever polarization the scenario
+   * authored. The skew is geometry (geoPolarizationSkewDeg, east of the
+   * station positive), so content never hand-writes it; program-track keeps
+   * following it afterwards. Satellites without a slot keep the authored
+   * angle (a deliberately misaligned feed elsewhere stays misaligned).
+   */
+  private seedPolarizationFromSlot_(): void {
+    this.isPolarizationSeeded_ = true;
+    const targetId = this.state.targetSatelliteId;
+    if (targetId === null || targetId === undefined || (this.config.polType ?? 'linear') !== 'linear' || !this.stationLocation_) {
+      return;
+    }
+    const sat = SimulationManager.getInstance().getSatByNoradId(targetId);
+    if (!sat || sat instanceof OrbitalSatellite || sat.slotLongitudeDeg === null) {
+      return;
+    }
+    const rotation = this.satView_(sat).rotation as number;
+    if (!Number.isFinite(rotation)) {
+      return;
+    }
+    const skew = Math.max(-90, Math.min(90, rotation)) as Degrees;
+    this.state.polarization = skew;
+    this.state.targetPolarization = skew;
   }
 
   /**
@@ -575,9 +885,20 @@ export abstract class AntennaCore extends BaseEquipment {
     // Use shortest path calculation for azimuth to avoid long slews
     this.state.targetAzimuth = this.calculateShortestPathTarget_(this.state.azimuth, targetAz as Degrees);
     this.state.targetElevation = targetEl as Degrees;
+
+    // Polarization tracking: a linear feed follows the satellite's skew at
+    // this station, as a program-tracking ACU does (phase 19.4: skew is
+    // geometric now, so Maine and Vermont need different angles)
+    if ((this.config.polType ?? 'linear') === 'linear' && Number.isFinite(view.rotation as number)) {
+      this.state.targetPolarization = Math.max(-90, Math.min(90, view.rotation as number)) as Degrees;
+    }
   }
 
   sync(data: Partial<AntennaState>): void {
+    // A restored or synced pointing that moved the dish is where it really is: no load snap
+    if ((data.azimuth !== undefined && data.azimuth !== this.state.azimuth) || (data.elevation !== undefined && data.elevation !== this.state.elevation)) {
+      this.snapToAuthoredTargetPending_ = false;
+    }
     this.state = { ...this.state, ...data };
     this.updateSignals_();
     this.computeRfMetrics_();
@@ -590,7 +911,7 @@ export abstract class AntennaCore extends BaseEquipment {
   // ========================================================================
 
   handlePolarizationChange(value: number): void {
-    if (!this.state.isPowered) {
+    if (!this.isLivePowered) {
       return;
     }
     this.state.polarization = value as Degrees;
@@ -598,7 +919,7 @@ export abstract class AntennaCore extends BaseEquipment {
   }
 
   handleCircularHandednessChange(handedness: 'LHCP' | 'RHCP'): void {
-    if (!this.state.isPowered) {
+    if (!this.isLivePowered) {
       return;
     }
     this.state.circularHandedness = handedness;
@@ -606,7 +927,7 @@ export abstract class AntennaCore extends BaseEquipment {
   }
 
   handleAzimuthChange(value: number): void {
-    if (!this.state.isPowered) {
+    if (!this.isLivePowered) {
       return;
     }
     if (value !== this.state.azimuth) {
@@ -622,7 +943,7 @@ export abstract class AntennaCore extends BaseEquipment {
   }
 
   handleElevationChange(value: number): void {
-    if (!this.state.isPowered) {
+    if (!this.isLivePowered) {
       return;
     }
     if (value !== this.state.elevation) {
@@ -638,7 +959,7 @@ export abstract class AntennaCore extends BaseEquipment {
   }
 
   handleLoopbackToggle(isSwitchUp: boolean): void {
-    if (!this.state.isOperational || !this.state.isPowered) {
+    if (!this.state.isOperational || !this.isLivePowered) {
       return;
     }
 
@@ -651,7 +972,7 @@ export abstract class AntennaCore extends BaseEquipment {
   }
 
   handleAutoTrackToggle(isSwitchUp: boolean): void {
-    if (!this.state.isOperational || !this.state.isPowered) {
+    if (!this.state.isOperational || !this.isLivePowered) {
       return;
     }
 
@@ -664,22 +985,20 @@ export abstract class AntennaCore extends BaseEquipment {
     this.state.isAutoTrackSwitchUp = isSwitchUp;
     this.state.isAutoTrackEnabled = isSwitchUp;
     const sim = SimulationManager.getInstance();
-    // With a station attached, look at the sky from THIS site (two stations see
-    // one LEO at different az/el); otherwise keep the canonical coarse lookup.
-    const sats = this.stationObserver_
-      ? sim.satellites.filter((sat) => {
-          const view = this.satView_(sat);
-          return Math.abs(view.az - this.normalizedAzimuth) <= 2 && Math.abs(view.el - this.state.elevation) <= 2;
-        })
-      : sim.getSatsByAzEl(this.normalizedAzimuth, this.state.elevation);
-    const strongestSignal = sats.flatMap((sat) => this.satView_(sat).txSignal).reduce((prev, curr) => (prev.power > curr.power ? prev : curr), { power: -Infinity } as RfSignal);
-
-    // hardcoded threshold for lock acquisition - TODO: make configurable
-    const LOCK_THRESHOLD_DBM = -100;
-
-    if (isSwitchUp && strongestSignal.power > LOCK_THRESHOLD_DBM) {
-      const sat = SimulationManager.getInstance().getSatByNoradId(strongestSignal.noradId);
+    // Auto-track can only pull in a satellite whose carrier it is receiving
+    // inside the main lobe (phase 19.4: was a +/-2 deg az/el box): the
+    // strongest such carrier wins.
+    const acquirable = this.state.rxSignalsIn.filter((sig) => {
+      const sat = sig.noradId ? sim.getSatByNoradId(sig.noradId) : undefined;
+      if (!sat) return false;
       const view = this.satView_(sat);
+      return this.effectiveOffAxisDeg_(view.az, view.el) <= this.mainLobeEdgeDeg_(sig.frequency as number);
+    });
+    const strongestSignal = acquirable.reduce((prev, curr) => (prev.power > curr.power ? prev : curr), { power: -Infinity } as RfSignal);
+
+    if (isSwitchUp && strongestSignal.power > -Infinity) {
+      const sat = SimulationManager.getInstance().getSatByNoradId(strongestSignal.noradId);
+      const view = this.satView_(sat!);
 
       // Set target position - actual position will slew in update loop
       // Use shortest path calculation to avoid rotating the long way around
@@ -704,6 +1023,11 @@ export abstract class AntennaCore extends BaseEquipment {
     this.syncDomWithState();
   }
 
+  /** The operator's power switch AND the physical plant's supply (read time only; the switch state is never rewritten) */
+  get isLivePowered(): boolean {
+    return this.state.isPowered && plantPowers('antenna');
+  }
+
   handlePowerToggle(isPowered?: boolean): void {
     this.state.isPowered = isPowered ?? !this.state.isPowered;
 
@@ -725,6 +1049,14 @@ export abstract class AntennaCore extends BaseEquipment {
     } else {
       this.state.isLocked = false;
       this.state.isAutoTrackEnabled = false;
+      this.state.isAutoTrackSwitchUp = false;
+      // Power off drops the step-track receiver: the operator re-arms it after
+      // power-up (phase 27, r2-s06-F2)
+      this.stepTrackController_.stop();
+      this.state.isStepTrackEnabled = false;
+      this.state.stepTrackAzOffset = 0 as Degrees;
+      this.state.stepTrackElOffset = 0 as Degrees;
+      this.state.isBeaconLocked = false;
       this.state.trackingMode = 'manual';
       // Sync targets to prevent movement when power is restored
       this.state.targetAzimuth = this.state.azimuth;
@@ -733,6 +1065,7 @@ export abstract class AntennaCore extends BaseEquipment {
       this.state.stagedTargetAzimuth = null;
       this.state.stagedTargetElevation = null;
       this.state.stagedTargetPolarization = null;
+      this.state.stagedTrackingMode = null;
       this.state.hasStagedChanges = false;
       this.notifyStateChange_();
       this.updateSignals_();
@@ -746,15 +1079,49 @@ export abstract class AntennaCore extends BaseEquipment {
 
   /**
    * Handle tracking mode change
-   * Stow: Move to Az=0°, El=90° (safe storage)
+   * Stow: Move to El=90° at the current azimuth (safe storage)
    * Maintenance: Move to El=5° for feed access
    * Manual: Operator controls Az/El/Pol directly
    * Program Track: Continuously follow TLE ephemeris (with optional step-track optimization)
    */
-  handleTrackingModeChange(mode: TrackingMode): void {
-    if (!this.state.isPowered || !this.state.isOperational) {
+  /**
+   * The ACU mode buttons. STOW and MAINT stage the mode with its park
+   * elevation: the applied mode keeps running (and the card keeps showing it)
+   * until APPLY commits both (phase 29 D4, nats-r3-s11-F2). MANUAL and
+   * PROGRAM switch at once, dropping any staged park mode.
+   */
+  stageTrackingModeChange(mode: TrackingMode): void {
+    if (!this.isLivePowered || !this.state.isOperational) {
       return;
     }
+    const isParkMode = mode === 'stow' || mode === 'maintenance';
+    if (!isParkMode || mode === this.state.trackingMode) {
+      this.handleTrackingModeChange(mode);
+      return;
+    }
+
+    this.state.stagedTrackingMode = mode;
+    // Zenith for STOW (at the current azimuth), 5 deg for feed access
+    this.state.stagedTargetElevation = (mode === 'stow' ? 90 : 5) as Degrees;
+    this.state.hasStagedChanges = true;
+    this.notifyStateChange_();
+    this.syncDomWithState();
+  }
+
+  handleTrackingModeChange(mode: TrackingMode): void {
+    if (!this.isLivePowered || !this.state.isOperational) {
+      return;
+    }
+
+    this.switchTrackingMode_(mode);
+    this.updateSignals_();
+    this.notifyStateChange_();
+    this.syncDomWithState();
+  }
+
+  /** The mode switch itself, without notifying (APPLY notifies once for all it commits) */
+  private switchTrackingMode_(mode: TrackingMode): void {
+    this.state.stagedTrackingMode = null;
 
     // Clear any existing lock acquisition timeout
     if (this.lockAcquisitionTimeout_) {
@@ -786,9 +1153,9 @@ export abstract class AntennaCore extends BaseEquipment {
 
     switch (mode) {
       case 'stow':
-        // Stage target to safe storage position (Az=0°, El=90°)
-        // Requires Apply button before antenna moves
-        this.state.stagedTargetAzimuth = 0 as Degrees;
+        // Stage target to the safe storage position: zenith, at the current
+        // azimuth (phase 19.4: driving to Az 0 first cost a 9 m pedestal up to
+        // six minutes for nothing). Requires Apply before the antenna moves.
         this.state.stagedTargetElevation = 90 as Degrees;
         this.state.hasStagedChanges = true;
         break;
@@ -813,10 +1180,6 @@ export abstract class AntennaCore extends BaseEquipment {
         this.state.hasStagedChanges = false;
         break;
     }
-
-    this.updateSignals_();
-    this.notifyStateChange_();
-    this.syncDomWithState();
   }
 
   /**
@@ -824,6 +1187,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * Also sets beacon frequency from the satellite's transponder configuration
    */
   handleTargetSatelliteChange(noradId: number | null): void {
+    const isNewTarget = noradId !== this.state.targetSatelliteId;
     this.state.targetSatelliteId = noradId;
 
     // Set beacon frequency from satellite's transponder beacon (if available)
@@ -833,22 +1197,57 @@ export abstract class AntennaCore extends BaseEquipment {
       if (beacon?.frequency) {
         this.state.beaconFrequencyHz = beacon.frequency as number;
       }
+      // A program track on a new bird pulls in from the next frame: this
+      // emission is the command-time line and carries the new beacon, so it
+      // must read UNLOCKED too (Phase 32 D2; the logger writes the mode line
+      // on the first beacon change, not on Move to Target's emission)
+      if (sat && isNewTarget && this.state.trackingMode === 'program-track' && this.isLivePowered && this.state.isOperational) {
+        const view = this.satView_(sat);
+        this.markRepositioningIfAway_(this.calculateShortestPathTarget_(this.state.azimuth, view.az), view.el as number);
+      }
+    }
+
+    // Offsets climbed on the old satellite mean nothing on the new one
+    if (isNewTarget) {
+      this.rearmStepTrack_();
     }
 
     this.notifyStateChange_();
   }
 
   /**
+   * Restart an armed step-track from the program-track pointing (phase 27,
+   * r2-s06-F2): on a new target or a Move to Target the old offsets are
+   * stale. Nothing happens if step-track is off.
+   */
+  private rearmStepTrack_(): void {
+    if (!this.state.isStepTrackEnabled || !this.isLivePowered) {
+      return;
+    }
+    this.state.stepTrackAzOffset = 0 as Degrees;
+    this.state.stepTrackElOffset = 0 as Degrees;
+    this.state.isAutoTrackEnabled = true;
+    this.state.isAutoTrackSwitchUp = true;
+    this.stepTrackController_.start();
+  }
+
+  /** Step-track armed but no beacon to climb yet (the ACU shows SEARCHING) */
+  get isStepTrackSearching(): boolean {
+    return this.state.isStepTrackEnabled && this.stepTrackController_.isSearching;
+  }
+
+  /**
    * Move antenna to target satellite position (for program track)
    */
   moveToTargetSatellite(): void {
-    if (!this.state.isPowered || !this.state.isOperational) {
+    if (!this.isLivePowered || !this.state.isOperational) {
       return;
     }
     if (this.state.targetSatelliteId === null) {
       return;
     }
     this.moveToTargetSatellite_();
+    this.rearmStepTrack_();
   }
 
   private moveToTargetSatellite_(): void {
@@ -866,6 +1265,8 @@ export abstract class AntennaCore extends BaseEquipment {
     this.state.targetAzimuth = this.calculateShortestPathTarget_(this.state.azimuth, view.az);
     this.state.targetElevation = view.el;
 
+    this.markRepositioningIfAway_(this.state.targetAzimuth, this.state.targetElevation);
+
     // Set beacon frequency from satellite's transponder beacon (if available)
     const beacon = sat.transponders[0]?.beacon;
     if (beacon?.frequency) {
@@ -875,6 +1276,22 @@ export abstract class AntennaCore extends BaseEquipment {
     this.updateSignals_();
     this.notifyStateChange_();
     this.syncDomWithState();
+  }
+
+  /**
+   * A real move starts now (Phase 32 D2, nats-r7-s04-F1): when the commanded
+   * pointing is more than ON_TARGET_DEG from where the dish is, the
+   * command-time state change already reads slewing and UNLOCKED, not the
+   * lock the dish held on the old pointing until the next frame catches up.
+   */
+  private markRepositioningIfAway_(az: number, el: number): void {
+    const travelDeg = Math.max(Math.abs(az - (this.state.azimuth as number)), Math.abs(el - (this.state.elevation as number)));
+    if (travelDeg <= AntennaCore.ON_TARGET_DEG) {
+      return;
+    }
+    this.state.isSlewing = true;
+    this.state.isLocked = false;
+    this.state.isBeaconLocked = false;
   }
 
   // ========================================================================
@@ -897,25 +1314,34 @@ export abstract class AntennaCore extends BaseEquipment {
    * This is mode-independent - works in manual, program-track, and step-track
    */
   updateBeaconMetrics_(): void {
-    // Only measure if powered and operational
-    if (!this.state.isPowered || !this.state.isOperational) {
+    // Only measure if powered and operational. Under an ACU automation fault
+    // the tracking receiver's readout and lock logic are the dead processor's:
+    // the ACU and Dashboard show no beacon C/N and lock UNKNOWN (nats-s23-F5);
+    // the spectrum analyzer and modem are the RF truth.
+    if (!this.isLivePowered || !this.state.isOperational || this.state.isAcuAutomationFaulted) {
       this.state.beaconPower = null;
       this.state.beaconCN = null;
       this.smoothedBeaconCN_ = null;
+      if (this.state.isAcuAutomationFaulted) {
+        this.state.isBeaconLocked = false;
+        this.state.isLocked = false;
+      }
+      return;
+    }
+
+    // No beacon receiver without a front end (bench antennas): leave the state alone
+    if (!this.rfFrontEnd_) {
       return;
     }
 
     // Measure beacon metrics
-    const { power, cn } = this.measureBeaconMetrics_();
+    const { power, cn } = this.measureBeaconMetrics();
 
     // Update raw power state
     this.state.beaconPower = power;
 
     // Apply EMA smoothing to C/N for stable display
     if (cn !== null) {
-      // Mark that we've received a real measurement (vs scenario-seeded initial value)
-      this.hasReceivedRealBeaconMeasurement_ = true;
-
       if (this.smoothedBeaconCN_ === null) {
         this.smoothedBeaconCN_ = cn;
       } else {
@@ -927,22 +1353,28 @@ export abstract class AntennaCore extends BaseEquipment {
       // Step-track manages its own lock state with different thresholds
       if (!this.state.isStepTrackEnabled) {
         const wasLocked = this.state.isBeaconLocked;
-        if (!wasLocked && this.smoothedBeaconCN_ >= this.beaconLockAcquireCN_) {
+        if (this.isRepositioning) {
+          // Moving off the bird on purpose (STOW, MAINT, a manual move, a
+          // program track pulling in): the tracking receiver does not
+          // re-acquire mid-slew, so a STOW that starts on the satellite does
+          // not read LOCKED (nats-r6-s03-F1, r6-s11-F1)
+          this.state.isBeaconLocked = false;
+        } else if (!wasLocked && this.smoothedBeaconCN_ >= this.beaconLockAcquireCN_) {
           this.state.isBeaconLocked = true;
         } else if (wasLocked && this.smoothedBeaconCN_ < this.beaconLockAcquireCN_) {
           this.state.isBeaconLocked = false;
         }
       }
-    } else if (this.hasReceivedRealBeaconMeasurement_) {
-      // Only clear if we've previously received real measurements
-      // This preserves scenario-seeded initial values until real signals arrive
+    } else {
+      // No beacon in the search window: the readout says so. (Phase 19.2
+      // removed the scenario-seeded beaconCN that used to stand in until a
+      // measurement arrived: it showed a second C/N scale beside the live one.)
       this.smoothedBeaconCN_ = null;
       this.state.beaconCN = null;
       if (!this.state.isStepTrackEnabled) {
         this.state.isBeaconLocked = false;
       }
     }
-    // If no measurement and no prior real measurements, preserve initial state values
   }
 
   /**
@@ -950,13 +1382,19 @@ export abstract class AntennaCore extends BaseEquipment {
    * Filters received signals to find beacon within configured frequency range
    * @returns Object with power (dBm) and cn (dB), both null if no signal
    */
-  private measureBeaconMetrics_(): { power: number | null; cn: number | null } {
+  measureBeaconMetrics(): { power: number | null; cn: number | null } {
     // Need RF front-end attached to measure beacon
     if (!this.rfFrontEnd_) {
       return { power: null, cn: null };
     }
 
-    const beaconFreq = this.rfFrontEnd_.lnbModule.state.loFrequency * 1e6 - this.state.beaconFrequencyHz;
+    // The beacon receiver is tuned in RF; find it at the IF the LNB puts it
+    // (its own LO, drift and direct-sampling mode included)
+    const lnb = this.rfFrontEnd_.lnbModule;
+    const beaconFreq =
+      typeof lnb.calculateIfFrequency === 'function'
+        ? (lnb.calculateIfFrequency(this.state.beaconFrequencyHz as RfFrequency) as number)
+        : lnb.state.loFrequency * 1e6 - this.state.beaconFrequencyHz;
     const searchBw = this.state.beaconSearchBwHz;
 
     // Find signals within beacon search bandwidth (use AGC output for consistency with spectrum analyzer)
@@ -983,8 +1421,12 @@ export abstract class AntennaCore extends BaseEquipment {
     // Apply gain to noise floor to match signal reference frame
     const noiseFloor = shouldApplyGain ? noiseFloorNoGain + this.rfFrontEnd_.couplerModule.signalPathManager.getTotalRxGain() : noiseFloorNoGain;
 
-    // C/N = Signal Power - Noise Floor (both with full RX chain gain applied)
-    const cn = strongestPower - noiseFloor;
+    // C/N = Signal Power - Noise Floor (both with full RX chain gain applied).
+    // An unpowered LNB or a carrier far under the floor is no beacon at all.
+    const cn = usableBeaconCn(strongestPower - noiseFloor, this.rfFrontEnd_.lnbModule.isLivePowered);
+    if (cn === null) {
+      return { power: null, cn: null };
+    }
 
     return { power: strongestPower, cn };
   }
@@ -994,7 +1436,7 @@ export abstract class AntennaCore extends BaseEquipment {
   // ========================================================================
 
   handleHeaterToggle(enabled: boolean): void {
-    if (!this.state.isPowered) {
+    if (!this.isLivePowered) {
       return;
     }
     this.state.isHeaterEnabled = enabled;
@@ -1002,7 +1444,7 @@ export abstract class AntennaCore extends BaseEquipment {
   }
 
   handleRainBlowerToggle(enabled: boolean): void {
-    if (!this.state.isPowered) {
+    if (!this.isLivePowered) {
       return;
     }
     this.state.isRainBlowerEnabled = enabled;
@@ -1021,7 +1463,9 @@ export abstract class AntennaCore extends BaseEquipment {
   /**
    * Update elevated sky-noise degradation on the receive path (called by
    * WeatherManager for sun-transit events). RX-only: the uplink is unaffected.
-   * @param degradation_dB - Current sky-noise degradation in dB (0 = nominal)
+   * A noise rise, not a loss: `systemNoise` turns it into the solar antenna
+   * temperature that raises the system noise by this many dB (Phase 19.2).
+   * @param degradation_dB - Current sky-noise rise in dB (0 = nominal)
    */
   updateSkyNoiseDegradation(degradation_dB: number): void {
     this.state.skyNoiseDegradation_dB = degradation_dB;
@@ -1036,6 +1480,25 @@ export abstract class AntennaCore extends BaseEquipment {
   updateRainRate(rainRate_mmh: number): void {
     this.state.rainRate_mmh = Math.max(0, rainRate_mmh);
     this.notifyStateChange_();
+  }
+
+  /**
+   * Update the wind speed over the site (called by WeatherManager for wind and
+   * storm events). Wind load de-points the beam (`windDePointingDeg`).
+   * @param windSpeed_mps - Sustained wind in m/s (0 = calm)
+   */
+  updateWindSpeed(windSpeed_mps: number): void {
+    this.state.windSpeed_mps = Math.max(0, windSpeed_mps);
+    this.notifyStateChange_();
+  }
+
+  /**
+   * Beam de-pointing from wind load, degrees: the config's coefficient times
+   * the wind speed (phase 19.4). The direction relative to the target is
+   * random, so it is combined with the off-axis angle in quadrature.
+   */
+  get windDePointingDeg(): number {
+    return (this.config.windDePointingCoef_deg_per_mps ?? 0) * this.state.windSpeed_mps;
   }
 
   /**
@@ -1087,7 +1550,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * Used by fine adjustment buttons (+/- 0.01, 1, 10 degrees)
    */
   adjustAzimuth(delta: number): void {
-    if (!this.state.isPowered || !this.state.isOperational) {
+    if (!this.isLivePowered || !this.state.isOperational) {
       return;
     }
     if (this.state.trackingMode !== 'manual') {
@@ -1102,7 +1565,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * Used by fine adjustment buttons (+/- 0.01, 1, 10 degrees)
    */
   adjustElevation(delta: number): void {
-    if (!this.state.isPowered || !this.state.isOperational) {
+    if (!this.isLivePowered || !this.state.isOperational) {
       return;
     }
     if (this.state.trackingMode !== 'manual') {
@@ -1118,7 +1581,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * Used by fine adjustment buttons (+/- 0.01, 1, 10 degrees)
    */
   adjustPolarization(delta: number): void {
-    if (!this.state.isPowered || !this.state.isOperational) {
+    if (!this.isLivePowered || !this.state.isOperational) {
       return;
     }
     // Clamp polarization between -90 and 90 degrees
@@ -1134,7 +1597,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * Stage azimuth change - does not apply until applyChanges() is called
    */
   stageAzimuthChange(delta: number): void {
-    if (!this.state.isPowered || !this.state.isOperational) {
+    if (!this.isLivePowered || !this.state.isOperational) {
       return;
     }
     if (this.state.trackingMode !== 'manual') {
@@ -1158,7 +1621,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * Stage elevation change - does not apply until applyChanges() is called
    */
   stageElevationChange(delta: number): void {
-    if (!this.state.isPowered || !this.state.isOperational) {
+    if (!this.isLivePowered || !this.state.isOperational) {
       return;
     }
     if (this.state.trackingMode !== 'manual') {
@@ -1179,7 +1642,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * Stage polarization change - does not apply until applyChanges() is called
    */
   stagePolarizationChange(delta: number): void {
-    if (!this.state.isPowered || !this.state.isOperational) {
+    if (!this.isLivePowered || !this.state.isOperational) {
       return;
     }
 
@@ -1216,7 +1679,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * to maximize beacon signal strength.
    */
   handleStepTrackToggle(enabled: boolean): void {
-    if (!this.state.isPowered || !this.state.isOperational) {
+    if (!this.isLivePowered || !this.state.isOperational) {
       return;
     }
     if (this.state.trackingMode !== 'program-track') {
@@ -1236,7 +1699,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * Should be called after beacon frequency is configured and in program-track mode.
    */
   startStepTrack(): void {
-    if (!this.state.isPowered || !this.state.isOperational) {
+    if (!this.isLivePowered || !this.state.isOperational) {
       return;
     }
     if (this.state.trackingMode !== 'program-track') {
@@ -1291,8 +1754,16 @@ export abstract class AntennaCore extends BaseEquipment {
    * Validates limits before applying and triggers FAULT if exceeded
    */
   applyChanges(): void {
-    if (!this.state.isPowered || !this.state.isOperational) {
+    if (!this.isLivePowered || !this.state.isOperational) {
       return;
+    }
+
+    // A staged STOW/MAINT commits first: the mode switch (lock and tracking
+    // dropped) re-stages its park elevation, which is applied below
+    const stagedMode = this.state.stagedTrackingMode;
+    if (stagedMode) {
+      this.switchTrackingMode_(stagedMode);
+      this.updateSignals_();
     }
 
     // Clear any previous fault
@@ -1375,6 +1846,7 @@ export abstract class AntennaCore extends BaseEquipment {
     this.state.stagedTargetPolarization = null;
     this.state.stagedBeaconFrequencyHz = null;
     this.state.stagedBeaconSearchBwHz = null;
+    this.state.stagedTrackingMode = null;
     this.state.hasStagedChanges = false;
     this.state.hasFault = false;
     this.state.faultMessage = null;
@@ -1445,39 +1917,88 @@ export abstract class AntennaCore extends BaseEquipment {
     });
   }
 
+  /**
+   * Every satellite carrier that reaches this antenna: any satellite above
+   * the horizon, inside the receive band (phase 19.4). Whether a carrier is
+   * actually heard is the pattern's business: `updateRxSignals_` charges the
+   * off-axis gain and drops what stays under RX_DETECTION_FLOOR_DB. (Was a
+   * +/-1 deg az/el box for dishes, so no satellite outside the main lobe
+   * could ever interfere.)
+   */
   get rxSignals(): {
     sat: Satellite;
     signal: RfSignal;
     /** Satellite geometry as seen from this antenna's station */
     view: SatelliteView;
   }[] {
-    const views = SimulationManager.getInstance()
-      .satellites.map((sat) => ({ sat, view: this.satView_(sat) }))
-      .filter(({ view }) => {
-        if (Math.abs(view.az - this.normalizedAzimuth) <= 1 && Math.abs(view.el - this.state.elevation) <= 1) {
-          return true;
+    const out: { sat: Satellite; signal: RfSignal; view: SatelliteView }[] = [];
+    for (const sat of this.rfCandidates_()) {
+      const view = this.satView_(sat);
+      // Orbital satellites already return nothing below the station's horizon
+      if (!(sat instanceof OrbitalSatellite) && view.el <= 0) {
+        continue;
+      }
+      for (const signal of view.txSignal) {
+        const f = signal.frequency as number;
+        if (f >= this.config.minRxFrequency && f <= this.config.maxRxFrequency) {
+          out.push({ sat, signal, view });
         }
+      }
+    }
 
-        // Wide-beam antennas (fixed gain model, Campaign 3+): accept satellites
-        // out to one full HPBW off boresight, using true angular separation (the
-        // planar box above breaks down near zenith). Off-axis loss is still
-        // charged by the pattern model. Parabolic antennas (HPBW << 1 deg) keep
-        // the legacy 1-degree box, so existing campaigns are unaffected.
-        if (this.config.gainModel === 'fixed') {
-          const sep = this.angularSeparationDeg_(view.az, view.el);
-          return sep <= (this.config.fixedBeamwidth3dB_deg ?? 90);
-        }
+    return out;
+  }
 
-        return false;
-      });
+  /**
+   * Satellites this antenna considers: every hot satellite, or, in a scenario
+   * with constellation members, the authored ones plus the members inside the
+   * beam cone (P3-WP5, src/simulation/rf-narrowing.ts).
+   */
+  private rfCandidates_(): readonly Satellite[] {
+    const selector = this.rfSelectorFor_();
 
-    return views.flatMap(({ sat, view }) =>
-      view.txSignal.map((signal) => ({
-        sat,
-        signal,
-        view,
-      }))
-    );
+    return selector ? selector.candidates() : candidateSatellites(SimulationManager.getInstance());
+  }
+
+  /** Narrowing selector for the current scenario, or null (authored-only scenario, no station match, flag off). */
+  private rfSelectorFor_(): RfSelector | null {
+    const scheduler = SimulationManager.getInstance().scheduler;
+    if (!scheduler?.rfNarrowingActive || !this.stationLocation_) {
+      this.rfSelector_ = null;
+
+      return null;
+    }
+    if (this.rfSelector_?.scheduler === scheduler) {
+      return this.rfSelector_;
+    }
+    const { latitude, longitude, elevationM } = this.stationLocation_;
+    const stationIndex = scheduler.stationIndexOf(latitude, longitude);
+    if (stationIndex < 0 && scheduler.isTiered) {
+      return null;
+    }
+    this.rfSelector_ = new RfSelector(scheduler, stationIndex, {
+      latDeg: latitude,
+      lonDeg: longitude,
+      altKm: elevationM / 1000,
+      rxBand: [this.config.minRxFrequency, this.config.maxRxFrequency],
+      txBand: [this.config.minTxFrequency, this.config.maxTxFrequency],
+      boresight: () => ({ az: this.state.azimuth as number, el: this.state.elevation as number }),
+      patternGainDbi: (theta, f) => this.patternGain_dBi_(theta, f),
+      beamwidth3dBDeg: (f) => this.beamwidth3dB_deg_(f),
+      fsplDb: (f, km) => this.calculateFreeSpacePathLoss_(f, km),
+      atmosphericLossDb: (f, el) => this.calculateAtmosphericLoss_(f, el),
+      feedLossDb: (f) => this.feedLossAt_(f),
+      clearSkyNoiseK: (f) => this.clearSkySystemNoiseK(f),
+      offAxisDeg: (az, el) => this.effectiveOffAxisDeg_(az, el),
+      viewOf: (sat) => this.satView_(sat),
+    });
+
+    return this.rfSelector_;
+  }
+
+  /** Aggregate sidelobe noise rise from constellation members outside the beam cone, K (P3-D3). */
+  aggregateNoiseK(frequency: number): number {
+    return this.rfSelector_ && this.rfSelector_.scheduler.rfAggregate ? this.rfSelector_.aggregateK(frequency) : 0;
   }
 
   attachRfFrontEnd(rfFrontEnd: RFFrontEndCore): void {
@@ -1490,6 +2011,18 @@ export abstract class AntennaCore extends BaseEquipment {
    * sky from this site rather than from the satellite's canonical observer
    * (phase 16, multi-station LEO work).
    */
+  /**
+   * The dish is off its operating point on purpose (phase 27, r2-s03-F2):
+   * stowed, or moving to a new position (a stow, a manual move, a program
+   * track still pulling in). Carriers sliding through the beam then are not a
+   * receive fault, so RX limit alarms (AGC at max/min gain) are inhibited, as
+   * an ACU inhibits them while the pedestal is in motion. A program track that
+   * holds its lock is not repositioning even though it moves (a LEO pass).
+   */
+  get isRepositioning(): boolean {
+    return isAntennaRepositioning(this.state);
+  }
+
   attachStationLocation(latitude: number, longitude: number, elevationM = 0): void {
     this.stationLocation_ = { latitude, longitude, elevationM };
     this.stationObserver_ = observerFromLocation({ latitude, longitude, elevation: elevationM });
@@ -1499,8 +2032,12 @@ export abstract class AntennaCore extends BaseEquipment {
    * A satellite as seen from THIS antenna. Orbital satellites are propagated
    * per observer once a station location is attached: two sites see one LEO at
    * different az/el/range/Doppler, and its signals rise and set on each site's
-   * own horizon. Everything else (GEO, legacy telemetry, no station attached)
-   * is the satellite's canonical view, unchanged.
+   * own horizon. A legacy GEO satellite that names the station its authored
+   * az/el belong to (`lookAnglesFrom`) is seen here at those angles shifted by
+   * the geometric difference between the two sites, and its linear downlinks
+   * arrive at this site's polarization skew (phase 19.4, nats-s03-F2).
+   * Everything else (no station attached, no reference) is the satellite's
+   * canonical view, unchanged.
    */
   protected satView_(sat: Satellite): SatelliteView {
     if (this.stationObserver_ && sat instanceof OrbitalSatellite) {
@@ -1513,6 +2050,25 @@ export abstract class AntennaCore extends BaseEquipment {
         predictedAz: predicted.az,
         predictedEl: predicted.el,
         txSignal: sat.txSignalsFor(this.stationObserver_),
+        rotation: sat.rotation,
+        dopplerFactor: g.dopplerFactor,
+      };
+    }
+
+    const offsets = this.stationLocation_ ? sat.stationOffsets(this.stationLocation_) : null;
+    if (offsets) {
+      const az = ((((sat.az as number) + offsets.dAz) % 360) + 360) % 360;
+      const el = (sat.el as number) + offsets.dEl;
+      return {
+        az: az as Degrees,
+        el: el as Degrees,
+        rangeKm: sat.rangeKm,
+        predictedAz: (az + (sat.ephemerisErrorAz as number)) as Degrees,
+        predictedEl: (el + (sat.ephemerisErrorEl as number)) as Degrees,
+        txSignal:
+          offsets.dRotation === 0 ? sat.txSignal : sat.txSignal.map((sig) => ({ ...sig, rotation: (((sig.rotation ?? sat.rotation) as number) + offsets.dRotation) as Degrees })),
+        rotation: ((sat.rotation as number) + offsets.dRotation) as Degrees,
+        dopplerFactor: 1,
       };
     }
 
@@ -1523,7 +2079,14 @@ export abstract class AntennaCore extends BaseEquipment {
       predictedAz: sat.predictedAz,
       predictedEl: sat.predictedEl,
       txSignal: sat.txSignal,
+      rotation: sat.rotation,
+      dopplerFactor: sat instanceof OrbitalSatellite ? sat.dopplerFactor : 1,
     };
+  }
+
+  /** A satellite's geometry and downlink as this antenna's station sees it (objectives, displays) */
+  viewOf(sat: Satellite): SatelliteView {
+    return this.satView_(sat);
   }
 
   /**
@@ -1532,13 +2095,40 @@ export abstract class AntennaCore extends BaseEquipment {
    * hypot(dAz, dEl) approximation this stays correct near zenith and for
    * large angles (wide-beam Campaign 3 antennas).
    */
-  private angularSeparationDeg_(targetAz: number, targetEl: number): number {
+  protected angularSeparationDeg_(targetAz: number, targetEl: number): number {
     const d2r = Math.PI / 180;
     const el1 = this.state.elevation * d2r;
     const el2 = targetEl * d2r;
     const dAz = (targetAz - this.normalizedAzimuth) * d2r;
     const cosSep = Math.sin(el1) * Math.sin(el2) + Math.cos(el1) * Math.cos(el2) * Math.cos(dAz);
     return Math.acos(Math.max(-1, Math.min(1, cosSep))) / d2r;
+  }
+
+  /**
+   * Off-axis angle the pattern sees toward (az, el), degrees: the true
+   * great-circle separation from boresight (azimuth wrap and cos(el)
+   * included; phase 19.4 for dishes, which used a planar hypot(dAz, dEl)),
+   * combined in quadrature with the wind de-pointing and the servo's RMS
+   * pointing jitter (both random in direction, so they cost their mean loss).
+   */
+  protected effectiveOffAxisDeg_(targetAz: number, targetEl: number): number {
+    const theta = this.angularSeparationDeg_(targetAz, targetEl);
+    return Math.hypot(theta, this.windDePointingDeg, this.config.pointingSigma_deg ?? 0);
+  }
+
+  /**
+   * Where the main lobe ends, degrees off axis: the parabolic main lobe meets
+   * the first-sidelobe plateau (Gmax - 12 (theta/theta3)^2 = G1). Wire
+   * antennas: their 3 dB beamwidth.
+   */
+  protected mainLobeEdgeDeg_(f_Hz: number): number {
+    const bw = this.beamwidth3dB_deg_(f_Hz);
+    if (this.config.gainModel === 'fixed') {
+      return bw;
+    }
+    const { g1 } = this.sidelobeParams_(f_Hz);
+    const drop = Math.max(3, this.antennaGain_dBi(f_Hz as Hertz) - g1);
+    return bw * Math.sqrt(drop / 12);
   }
 
   // ========================================================================
@@ -1553,7 +2143,7 @@ export abstract class AntennaCore extends BaseEquipment {
     const alarms: AlarmStatus[] = [];
 
     // Error conditions
-    if (!this.state.isPowered) {
+    if (!this.isLivePowered) {
       alarms.push({ severity: 'off', message: '' });
       return alarms;
     }
@@ -1564,7 +2154,9 @@ export abstract class AntennaCore extends BaseEquipment {
 
     // Warning conditions
     if (this.state.isAutoTrackEnabled && !this.state.isLocked && !this.state.isBeaconLocked) {
-      alarms.push({ severity: 'warning', message: 'ACQUIRING LOCK...' });
+      // A step of every mode command, not a fault: info, so the ticker shows
+      // it and the Ops Log writes nothing (nats-r6-s24-F1)
+      alarms.push({ severity: 'info', message: 'ACQUIRING LOCK...' });
     }
 
     if (!this.state.rxSignalsIn && !this.state.isLocked && !this.state.isAutoTrackEnabled && !this.state.isLoopback) {
@@ -1582,40 +2174,30 @@ export abstract class AntennaCore extends BaseEquipment {
       alarms.push({ severity: 'error', message: 'ACU AUTOMATION FAULT - MANUAL CONTROL ONLY' });
     }
 
-    // Elevated sky-noise warning (sun transit)
+    // Weather alarms keep one label for their whole life; only the severity
+    // (and the live dB) moves with the level. Relabelling "ELEVATED SKY NOISE"
+    // to "SUN TRANSIT: ELEVATED SKY NOISE" and back read as three alarms
+    // (nats-r4-s17-F3).
+    // Elevated sky noise (only sun transit raises it)
     if (this.state.skyNoiseDegradation_dB > 0.5) {
       const sky = this.state.skyNoiseDegradation_dB;
-      if (sky >= 6) {
-        alarms.push({ severity: 'error', message: `SUN TRANSIT: SKY NOISE CRITICAL (${sky.toFixed(1)} dB)` });
-      } else if (sky >= 2) {
-        alarms.push({ severity: 'warning', message: `SUN TRANSIT: ELEVATED SKY NOISE (${sky.toFixed(1)} dB)` });
-      } else {
-        alarms.push({ severity: 'info', message: `ELEVATED SKY NOISE (${sky.toFixed(1)} dB)` });
-      }
+      alarms.push({ severity: AntennaCore.levelSeverity_(sky, 2, 6), message: `SUN TRANSIT: ELEVATED SKY NOISE (${sky.toFixed(1)} dB)` });
     }
 
-    // Rain fade (frequency dependent: C-band rarely clears the 0.5 dB floor)
+    // Rain fade: the C/N the rain costs (attenuation plus the sky-noise rise
+    // it adds). At C-band the noise rise is most of it: 80 mm/h is 0.3 dB of
+    // attenuation but about 1.1 dB of C/N (nats S24, Phase 29).
     if (this.state.rainRate_mmh > 0) {
-      const rain = this.rainAttenuationDb;
-      if (rain >= 6) {
-        alarms.push({ severity: 'error', message: `RAIN FADE SEVERE (${rain.toFixed(1)} dB)` });
-      } else if (rain >= 2) {
-        alarms.push({ severity: 'warning', message: `RAIN FADE (${rain.toFixed(1)} dB)` });
-      } else if (rain >= 0.5) {
-        alarms.push({ severity: 'info', message: `LIGHT RAIN FADE (${rain.toFixed(1)} dB)` });
+      const rain = this.rainCnLossDb();
+      if (rain >= 0.5) {
+        alarms.push({ severity: AntennaCore.levelSeverity_(rain, 2, 6), message: `RAIN FADE (${rain.toFixed(1)} dB)` });
       }
     }
 
-    // Ice accumulation warning
+    // Ice accumulation on the feed
     if (this.state.iceAccumulation_dB > 0) {
       const ice = this.state.iceAccumulation_dB;
-      if (ice >= 5) {
-        alarms.push({ severity: 'error', message: `CRITICAL ICE BUILDUP (${ice.toFixed(1)} dB)` });
-      } else if (ice >= 2) {
-        alarms.push({ severity: 'warning', message: `ICE ACCUMULATING (${ice.toFixed(1)} dB)` });
-      } else {
-        alarms.push({ severity: 'info', message: `ICE DETECTED (${ice.toFixed(1)} dB)` });
-      }
+      alarms.push({ severity: AntennaCore.levelSeverity_(ice, 2, 5), message: `ICE ON FEED (${ice.toFixed(1)} dB)` });
     }
 
     // No signal reception warning
@@ -1634,10 +2216,7 @@ export abstract class AntennaCore extends BaseEquipment {
 
     // Success conditions
     if (this.state.isLocked && !this.state.isLoopback) {
-      const strongestSignal = SimulationManager.getInstance()
-        .getSatsByAzEl(this.normalizedAzimuth, this.state.elevation)
-        .flatMap((sat) => sat.txSignal)
-        .reduce((prev, curr) => (prev.power > curr.power ? prev : curr), { power: -Infinity } as RfSignal).noradId;
+      const strongestSignal = this.state.rxSignalsIn.reduce((prev, curr) => (prev.power > curr.power ? prev : curr), { power: -Infinity } as RfSignal).noradId;
 
       alarms.push({ severity: 'success', message: `LOCKED ON SATELLITE ${SimulationManager.getInstance().isDeveloperMode ? strongestSignal : ''}`.trimEnd() });
     }
@@ -1646,7 +2225,9 @@ export abstract class AntennaCore extends BaseEquipment {
     //   alarms.push({ severity: 'info', message: `${this.rxSignals.flatMap(sat => sat.signal).length} SIGNAL(S) RECEIVED` });
     // }
 
-    if (this.state.isPowered && this.state.isOperational && !this.state.isLoopback && !this.state.isAutoTrackEnabled) {
+    // isAutoTrackEnabled is only true under step-track, so testing it here
+    // raised "Manual Tracking" during plain program-track (s01-F3).
+    if (this.isLivePowered && this.state.isOperational && !this.state.isLoopback && this.state.trackingMode === 'manual') {
       alarms.push({ severity: 'info', message: `Manual Tracking Enabled` });
     }
 
@@ -1657,13 +2238,19 @@ export abstract class AntennaCore extends BaseEquipment {
   // PRIVATE METHODS
   // ========================================================================
 
+  /** Severity of a weather level in dB: info below `warnDb`, warning below `errorDb`, error above */
+  private static levelSeverity_(levelDb: number, warnDb: number, errorDb: number): AlarmStatus['severity'] {
+    if (levelDb >= errorDb) return 'error';
+    return levelDb >= warnDb ? 'warning' : 'info';
+  }
+
   private notifyStateChange_(): void {
     this.emit(Events.ANTENNA_STATE_CHANGED, this.state);
   }
 
   private updateSignals_(): void {
     // Can't receive signals if Not powered or Not operational
-    if (!this.state.isPowered || !this.state.isOperational) {
+    if (!this.isLivePowered || !this.state.isOperational) {
       this.state.rxSignalsIn = [];
       return;
     }
@@ -1677,7 +2264,11 @@ export abstract class AntennaCore extends BaseEquipment {
     // then add any terrestrial emitters this antenna can hear (E1). Both go
     // through the same C/I blocking/degradation pass below, so a strong
     // ground emitter degrades wanted downlinks exactly like any interferer.
-    let receivedSignals = this.rxSignals.map(({ sat, signal, view }) => this.applyPropagationEffects_(sat, signal, view)).concat(this.terrestrialRxSignals_());
+    const noiseK = this.systemNoise(this.noiseReferenceHz).systemK;
+    let receivedSignals = this.rxSignals
+      .map(({ sat, signal, view }) => this.applyPropagationEffects_(sat, signal, view))
+      .filter((sig) => (sig.power as number) - thermalNoiseDbm(noiseK, Math.max(1, sig.bandwidth as number)) >= AntennaCore.RX_DETECTION_FLOOR_DB)
+      .concat(this.terrestrialRxSignals_());
 
     // Apply interference and adjacency logic
     receivedSignals = receivedSignals.filter((signal) => {
@@ -1704,15 +2295,24 @@ export abstract class AntennaCore extends BaseEquipment {
 
         if (overlapPercent === 0) continue;
 
-        // Calculate carrier-to-interference ratio
-        const signalPowerLinear = 10 ** (signal.power / 10);
-        const interferencePowerLinear = 10 ** (other.power / 10);
-        const ci_ratio = 10 * Math.log10(signalPowerLinear / interferencePowerLinear);
+        // Carrier-to-interference ratio in the band they share: spectral
+        // densities, not total powers (phase 19.5). A narrowband spike inside a
+        // wideband carrier stands above it when its density is higher, however
+        // much more total power the carrier has; for carriers of equal
+        // bandwidth this is the total-power ratio, as before.
+        const signalDensity = signal.power - 10 * Math.log10(Math.max(1, signal.bandwidth));
+        const otherDensity = other.power - 10 * Math.log10(Math.max(1, other.bandwidth));
+        const ci_ratio = signalDensity - otherDensity;
 
         // If C/I is less than 10 dB and overlap is significant, signal is degraded or blocked
         if (ci_ratio < 10 && overlapPercent >= 50) {
-          if (other.power > signal.power) {
-            // Stronger signal blocks this one
+          // Only a carrier occupying the same slot (sharing at least half of
+          // each one's band) can block another outright; a narrower carrier
+          // inside a wider one always reaches the receiver, which adds it to
+          // the wanted carrier's N + I (phase 19.5, DEV-ANT-09)
+          const otherOverlapPercent = (overlapBandwidth / Math.max(1, other.bandwidth)) * 100;
+          if (ci_ratio < 0 && otherOverlapPercent >= 50) {
+            // A denser co-channel carrier blocks this one
             isBlocked = true;
             break;
           } else {
@@ -1762,7 +2362,9 @@ export abstract class AntennaCore extends BaseEquipment {
       const { bearingDeg, distanceKm } = AntennaCore.groundPath_(latitude, longitude, emission.emitter.latitude, emission.emitter.longitude);
 
       const f_Hz = emission.frequencyHz;
-      const offAxis_deg = this.config.gainModel === 'fixed' ? this.angularSeparationDeg_(bearingDeg, 0) : Math.hypot(bearingDeg - this.normalizedAzimuth, this.state.elevation);
+      // Great-circle angle to the emitter on the horizon (phase 19.4: dishes
+      // used a planar hypot with no azimuth wrap)
+      const offAxis_deg = this.effectiveOffAxisDeg_(bearingDeg, 0);
 
       const fspl = this.calculateFreeSpacePathLoss_(f_Hz, Math.max(0.01, distanceKm));
       const polarizationLoss = this.polMismatchLoss_dB_(emission.polarization, this.config.polType ?? 'linear', Math.abs(this.state.polarization) as Degrees);
@@ -1792,102 +2394,85 @@ export abstract class AntennaCore extends BaseEquipment {
 
   /** Great-circle initial bearing (deg true) and distance (km) between two WGS-84 points */
   private static groundPath_(lat1Deg: number, lon1Deg: number, lat2Deg: number, lon2Deg: number): { bearingDeg: number; distanceKm: number } {
-    const d2r = Math.PI / 180;
-    const lat1 = lat1Deg * d2r;
-    const lat2 = lat2Deg * d2r;
-    const dLon = (lon2Deg - lon1Deg) * d2r;
-
-    const y = Math.sin(dLon) * Math.cos(lat2);
-    const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
-    const bearingDeg = (Math.atan2(y, x) / d2r + 360) % 360;
-
-    const dLat = (lat2Deg - lat1Deg) * d2r;
-    const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
-    const distanceKm = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-    return { bearingDeg, distanceKm };
+    return groundPath(lat1Deg, lon1Deg, lat2Deg, lon2Deg);
   }
 
+  /**
+   * Radiate this antenna's uplinks into every satellite that can hear them
+   * (phase 19.3: one physical path for every antenna). What a satellite
+   * receives is the power an isotropic antenna there would collect:
+   * EIRP − FSPL over the slant range − gaseous loss on the path − the
+   * pattern's off-axis drop toward it (rain on the uplink is already in
+   * `txSignalsOut`), at the frequency the satellite sees (uplink Doppler for
+   * a moving satellite). The transponder (`transponder-model.ts`) turns that
+   * into flux against its SFD. Dishes radiate through the whole pattern, so a
+   * neighbour in the sidelobes picks up the uplink at its real level (it was
+   * main-lobe only while the uplink had no path loss, DEV-XPDR-01); wire
+   * antennas keep their half-power beam gate.
+   *
+   * Each antenna withdraws only what it put on a satellite: a yard can hold a
+   * receive-only rig beside a transmitting one, and other stations' carriers
+   * and injected interference (`externalSignal`) are never touched.
+   */
   private updateTxSignals_() {
-    // Legacy (parabolic) path: bit-identical to the original behavior. C1/C2
-    // uplinks are calibrated around no-FSPL EIRP-at-satellite numbers, so the
-    // link-budget branch below is fixed-gain (Campaign 3+) only.
-    if (this.config.gainModel !== 'fixed') {
-      const sats = SimulationManager.getInstance().getSatsByAzEl(this.normalizedAzimuth, this.state.elevation);
-
-      // Clear any old signals
-      if (sats.length > 0) {
-        for (const sat of sats) {
-          sat.rxSignal = [];
-
-          // Check transmitters for signals being sent to this antenna
-          for (const sig of this.txSignalsOut) {
-            if (!this.state.isLoopback) {
-              // Check if this signal already exists on the satellite
-              sat.rxSignal.push({
-                ...sig,
-                origin: SignalOrigin.ANTENNA_TX,
-              });
-            }
-          }
-        }
-      }
-      return;
-    }
-
-    // Fixed-gain (wide-beam, Campaign 3) uplink path:
-    // - beam gate is the antenna's own HPBW via true angular separation
-    //   (mirrors rxSignals; the +/-2 deg planar box is meaningless at 40 deg)
-    // - real uplink link budget: FSPL over slant range + atmosphere + off-axis
-    //   pattern rolloff, so the power arriving at the satellite is physical
-    // - circular antennas stamp their handedness on the radiated signal so
-    //   the satellite's polarization-matched transponder can accept it
-    // - stale uplinks are cleared when a satellite leaves the beam (otherwise
-    //   the transponder keeps relaying a signal that is no longer arriving)
-    const beamwidth = this.config.fixedBeamwidth3dB_deg ?? 90;
-    const allSats = SimulationManager.getInstance().satellites;
     const txSignals = this.state.isLoopback ? [] : this.txSignalsOut;
     const fedIds = this.txFedSignalIds_;
+    const isWire = this.config.gainModel === 'fixed';
+    const beamwidth = this.config.fixedBeamwidth3dB_deg ?? 90;
 
-    for (const sat of allSats) {
+    const candidates = this.rfCandidates_();
+    const narrowed = this.rfSelector_ !== null && this.rfSelector_.scheduler === SimulationManager.getInstance().scheduler;
+    // Members this antenna fed that dropped out of the candidate set: withdraw what it put on them
+    if (narrowed && fedIds.size > 0) {
+      const inSet = new Set<number>();
+      for (const sat of candidates) inSet.add(sat.noradId);
+      for (const [norad, prevIds] of [...fedIds]) {
+        if (inSet.has(norad)) continue;
+        const gone = this.rfSelector_?.scheduler.registry.peek(norad);
+        if (gone) gone.rxSignal = gone.rxSignal.filter((s) => !prevIds.has(s));
+        fedIds.delete(norad);
+      }
+    }
+
+    for (const sat of candidates) {
       const view = this.satView_(sat);
-      const inBeam = this.angularSeparationDeg_(view.az, view.el) <= beamwidth;
+      const offAxis_deg = this.effectiveOffAxisDeg_(view.az, view.el);
+      const canHear = view.el > 0 && (!isWire || offAxis_deg <= beamwidth);
       const prevIds = fedIds.get(sat.noradId);
 
-      // Nothing radiating (or out of beam): withdraw only what THIS antenna
-      // put on the satellite. A receive-only rig must never clear the array -
-      // the same yard can hold a wide-beam RX antenna and a transmitting one,
-      // and a blanket clear would delete the other rig's uplink depending on
-      // station update order. Other stations' signals and injected
-      // interference (externalSignal) are never touched.
-      if (!inBeam || txSignals.length === 0) {
+      if (!canHear || txSignals.length === 0) {
         if (prevIds) {
-          sat.rxSignal = sat.rxSignal.filter((s) => !prevIds.has(s.signalId));
+          sat.rxSignal = sat.rxSignal.filter((s) => !prevIds.has(s));
           fedIds.delete(sat.noradId);
         }
         continue;
       }
 
       // Replace this antenna's previous contribution, keep everything else
-      sat.rxSignal = prevIds ? sat.rxSignal.filter((s) => !prevIds.has(s.signalId)) : sat.rxSignal;
-      const pushedIds = new Set<string>();
+      // By object, not signalId: another station radiating the same carrier
+      // id (a handover partner) is its own arrival (phase 27)
+      sat.rxSignal = prevIds ? sat.rxSignal.filter((s) => !prevIds.has(s)) : sat.rxSignal;
+      const pushedIds = new Set<RfSignal>();
+      const rangeKm = slantRangeKm(view);
+      const pathEl_deg = Math.max(1, view.el as number);
 
       for (const sig of txSignals) {
         const f_Hz = sig.frequency as number;
-        const offAxis_deg = this.angularSeparationDeg_(view.az, view.el);
-        const fspl = this.calculateFreeSpacePathLoss_(f_Hz, view.rangeKm ?? GEO_SATELLITE_DISTANCE_KM);
-        const atmosphericLoss = this.calculateAtmosphericLoss_(f_Hz, Math.max(1, view.el));
+        const fspl = this.calculateFreeSpacePathLoss_(f_Hz, rangeKm);
+        const atmosphericLoss = this.calculateAtmosphericLoss_(f_Hz, pathEl_deg);
         // txSignalsOut already includes boresight gain; charge only the
-        // off-axis rolloff (capped at front-to-back like the RX pattern)
+        // off-axis drop (capped at front-to-back for wire antennas)
         const offAxisDrop = this.antennaGain_dBi(sig.frequency) - this.patternGain_dBi_(offAxis_deg, f_Hz);
 
-        sat.rxSignal.push({
+        const arrival: RfSignal = {
           ...sig,
+          frequency: (f_Hz * view.dopplerFactor) as RfFrequency,
           power: (sig.power - fspl - atmosphericLoss - offAxisDrop) as dBm,
-          polarization: this.config.polType === 'circular' ? (this.state.circularHandedness ?? sig.polarization) : sig.polarization,
+          polarization: isWire && this.config.polType === 'circular' ? (this.state.circularHandedness ?? sig.polarization) : sig.polarization,
           origin: SignalOrigin.ANTENNA_TX,
-        });
-        pushedIds.add(sig.signalId);
+        };
+        sat.rxSignal.push(arrival);
+        pushedIds.add(arrival);
       }
 
       if (pushedIds.size > 0) {
@@ -1910,9 +2495,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * Simplified: FSPL (dB) = 32.45 + 20*log10(d_km) + 20*log10(f_MHz)
    */
   private calculateFreeSpacePathLoss_(frequencyHz: number, distanceKm: number): number {
-    const frequencyMhz = frequencyHz / 1e6;
-    const fspl = 32.45 + 20 * Math.log10(distanceKm) + 20 * Math.log10(frequencyMhz);
-    return fspl;
+    return freeSpacePathLossDb(frequencyHz, distanceKm);
   }
 
   /**
@@ -1989,15 +2572,30 @@ export abstract class AntennaCore extends BaseEquipment {
   }
 
   /**
-   * Compute current RF metrics for display
-   * Uses midband frequency or first signal frequency if available
+   * The frequency the RF metrics are quoted at (phase 27, r2-s11-F2): the
+   * tracked beacon of the target satellite, the frequency the ACU's tracking
+   * receiver is tuned to, when it is in the receive band. Otherwise midband.
+   * It used to be whichever carrier happened to be first in rxSignalsIn.
+   */
+  get rfMetricsFrequencyHz(): Hertz {
+    const beacon = this.state.beaconFrequencyHz;
+    if (beacon > 0 && beacon >= this.config.minRxFrequency && beacon <= this.config.maxRxFrequency) {
+      return beacon as Hertz;
+    }
+
+    return ((this.config.minRxFrequency + this.config.maxRxFrequency) / 2) as Hertz;
+  }
+
+  /**
+   * Compute current RF metrics for display, at the tracked beacon frequency
+   * (or midband without one)
    */
   private computeRfMetrics_(): void {
-    // Use first signal frequency if available, otherwise use midband Rx frequency
-    const frequency =
-      this.state.rxSignalsIn.length > 0 ? (this.state.rxSignalsIn[0].frequency as Hertz) : (((this.config.minRxFrequency + this.config.maxRxFrequency) / 2) as Hertz);
+    const frequency = this.rfMetricsFrequencyHz;
 
-    const elevation = 45 as Degrees; // Standard elevation for GEO
+    // Quoted at the elevation the dish is actually pointing at (datasheets use 20 deg)
+    const elevation = this.state.elevation;
+    const noise = this.systemNoise(frequency, elevation);
 
     // Calculate EIRP if transmitting
     let eirp_dBW: number | undefined;
@@ -2012,15 +2610,16 @@ export abstract class AntennaCore extends BaseEquipment {
       gain_dBi: this.antennaGain_dBi(frequency),
       beamwidth_deg: this.beamwidth3dB_deg_(frequency),
       gOverT_dBK: this.gOverT_dB_perK_(frequency, elevation),
+      tsys_K: noise.systemK,
       polLoss_dB: this.polMismatchLoss_dB_(
         'H', // Assume H-pol for display
         this.config.polType ?? 'linear',
         this.state.polarization
       ),
-      atmosLoss_dB: this.calculateAtmosphericLoss_(frequency, elevation),
-      // A sun transit shows here as the operator would read it: the noise the
-      // RX path already carries for it (systemTempK_ models it as feed loss)
-      skyTemp_K: this.skyTempK_(elevation) + this.noiseFromLossK_(this.state.skyNoiseDegradation_dB, this.config.rxPhysTemp_K ?? 290),
+      atmosLoss_dB: this.calculateAtmosphericLoss_(frequency, Math.max(1, elevation)),
+      // Antenna temperature at the aperture: sky (with any rain), spillover
+      // and the sun during a transit, as the operator would read it
+      skyTemp_K: noise.antennaK,
       frequency_GHz: frequency / 1e9,
       eirp_dBW,
     };
@@ -2087,7 +2686,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * 3 dB beamwidth (degrees)
    * HPBW ≈ k*λ/D where k is typically 70 for parabolic dishes
    */
-  private beamwidth3dB_deg_(f_Hz: number): number {
+  protected beamwidth3dB_deg_(f_Hz: number): number {
     if (this.config.gainModel === 'fixed') {
       return this.config.fixedBeamwidth3dB_deg ?? 90;
     }
@@ -2098,42 +2697,61 @@ export abstract class AntennaCore extends BaseEquipment {
   }
 
   /**
-   * Pointing loss (dB) using the 12*(Δθ/θ3dB)² rule
-   * This represents the gain reduction when pointing off-axis
+   * Sidelobe reference for a dish at f: the envelope model (config
+   * `patternModel`, else ITU-R S.580-6 for D/lambda > 50 and S.465-6 below,
+   * plan Q5) and the first-sidelobe level G1 = 2 + 15 log(D/lambda) of the
+   * ITU-R RR Appendix 8 near-in pattern.
    */
-  private pointingLoss_dB_(offAxis_deg: number, f_Hz: number): number {
-    const bw = this.beamwidth3dB_deg_(f_Hz);
-    return Math.max(0, 12 * (offAxis_deg / bw) ** 2);
+  private sidelobeParams_(f_Hz: number): { model: 'S580' | 'S465'; dOverLambda: number; g1: number } {
+    const dOverLambda = this.config.diameter / (3e8 / f_Hz);
+    const model = this.config.patternModel ?? (dOverLambda > 50 ? 'S580' : 'S465');
+    return { model, dOverLambda, g1: 2 + 15 * Math.log10(Math.max(1, dOverLambda)) };
   }
 
   /**
-   * ITU-R 465-type pattern envelope (dBi)
-   * Returns gain at off-axis angle including main lobe and sidelobe envelope
+   * Co-polar sidelobe envelope, dBi, at theta degrees off axis:
+   * S.580-6: 29 - 25 log theta to 20 deg, -3.5 dBi to 26.3 deg, 32 - 25 log theta to 48 deg;
+   * S.465-6: 32 - 25 log theta to 48 deg; both -10 dBi beyond.
    */
-  private patternGain_dBi_(theta_deg: number, f_Hz: number): number {
+  private static sidelobeEnvelope_dBi_(theta_deg: number, model: 'S580' | 'S465'): number {
+    const theta = Math.max(1e-3, theta_deg);
+    if (theta >= 48) {
+      return -10;
+    }
+    // (The standards' -10 dBi floor meets 32 - 25 log theta at 47.9 deg.)
+    if (model === 'S580') {
+      // -3.5 dBi from 20 deg until 32 - 25 log theta takes over at ~26.3 deg
+      return theta <= 20 ? 29 - 25 * Math.log10(theta) : Math.max(-10, Math.min(-3.5, 32 - 25 * Math.log10(theta)));
+    }
+    return Math.max(-10, 32 - 25 * Math.log10(theta));
+  }
+
+  /**
+   * Antenna gain (dBi) at theta degrees off boresight (phase 19.4, ITU-R).
+   *
+   * Dishes: main lobe Gmax - 12 (theta/theta3)^2 down to the first-sidelobe
+   * level G1 (ITU-R RR Appendix 8), the G1 plateau until the sidelobe envelope
+   * falls below it, then the envelope (S.580-6 or S.465-6, `patternModel`),
+   * -10 dBi beyond 48 deg. Absolute dBi, so a satellite 10 deg off a 9 m
+   * C-band dish is heard at 4 dBi, about 46 dB down. (Was a flat Gmax - 32 dB
+   * floor beyond 1.2 theta3, mislabelled "ITU-R 465-type".)
+   *
+   * Wire antennas (fixed gain model): the main-lobe rolloff capped at the
+   * config's front-to-back ratio; aperture sidelobe formulas do not apply.
+   */
+  protected patternGain_dBi_(theta_deg: number, f_Hz: number): number {
     const Gmax = this.antennaGain_dBi(f_Hz as Hertz);
     const bw = this.beamwidth3dB_deg_(f_Hz);
+    const mainLobe = Gmax - 12 * (theta_deg / bw) ** 2;
 
-    // Fixed gain model (wire antennas): main-lobe rolloff capped at the
-    // front-to-back ratio — the diameter-based sidelobe envelope below is
-    // meaningless for a yagi/QFH/patch.
     if (this.config.gainModel === 'fixed') {
-      const drop = 12 * (theta_deg / bw) ** 2;
-      return Gmax - Math.min(drop, this.config.fixedFrontToBack_dB ?? 20);
+      return Math.max(mainLobe, Gmax - (this.config.fixedFrontToBack_dB ?? 20));
     }
 
-    // Main lobe approximation (within ~1.2 beamwidths)
-    if (theta_deg <= 1.2 * bw) {
-      const drop = 12 * (theta_deg / bw) ** 2;
-      return Gmax - drop;
-    }
+    const { model, g1 } = this.sidelobeParams_(f_Hz);
+    const sidelobes = Math.min(g1, AntennaCore.sidelobeEnvelope_dBi_(theta_deg, model));
 
-    // Sidelobe envelope (ITU-R recommendation for parabolic dishes)
-    // G(θ) ≤ Gmax - min(32, 25*log10(θ*D/λ))
-    const lambda = 3e8 / f_Hz;
-    const theta_normalized = (theta_deg * this.config.diameter) / lambda;
-    const env = Math.min(32, 25 * Math.log10(Math.max(1e-3, theta_normalized)));
-    return Gmax - env;
+    return Math.min(Gmax, Math.max(mainLobe, sidelobes));
   }
 
   /**
@@ -2164,103 +2782,130 @@ export abstract class AntennaCore extends BaseEquipment {
     return Math.min(xpd, ideal) as dB;
   }
 
+  // ========================================================================
+  // RECEIVE NOISE (Phase 19.2: src/simulation/noise-model.ts)
+  // ========================================================================
+
+  /** Default ground pickup at the aperture, K (see AntennaConfig.spilloverK) */
+  private static readonly DEFAULT_SPILLOVER_K = { parabolic: 5, fixed: 60 };
+
   /**
-   * Sky temperature (K) vs elevation - simple C-band model
-   * ~8-12 K at zenith, increases at low elevation due to atmospheric path
+   * Frequency the receive noise is evaluated at: the middle of the RX band.
+   * Sky and galactic noise change little across one band, and a fixed point
+   * keeps the floor from jumping when a carrier enters the beam.
    */
-  private skyTempK_(elev_deg: number): number {
-    // sec(z) factor for atmospheric path length
-    const secz = 1 / Math.max(0.1, Math.sin((elev_deg * Math.PI) / 180));
-    return 8 + 4 * (secz - 1); // Tune as needed
+  get noiseReferenceHz(): number {
+    return (this.config.minRxFrequency + this.config.maxRxFrequency) / 2;
+  }
+
+  /** Receiver noise temperature: the attached LNB's (Friis over LNA and mixer) when powered, else the config LNA */
+  protected receiverNoiseK_(): number {
+    const lnb = this.rfFrontEnd_?.lnbModule;
+    if (lnb?.isLivePowered) {
+      return lnb.state.noiseTemperature;
+    }
+
+    return noiseFigureToK(this.config.lnaNF_dB ?? 1.0);
   }
 
   /**
-   * Convert loss (dB) at physical temp to equivalent noise temp (K) at LNA input
-   * T_equiv = T_phys * (L - 1) where L is linear loss factor
+   * System noise temperature at the LNA input (the plane carrier powers are
+   * referred to: gain minus feed loss). Sky (gas, background, galactic) at
+   * the pointing elevation, rain noise rise, spillover, sun-transit noise,
+   * then the feed (with any ice) at its physical temperature, then the LNB.
+   *
+   * @param weather include rain and ice (false: clear-sky reference)
+   * @param sun include sun-transit noise (defaults to `weather`)
+   * @param ice include ice on the feed (defaults to `weather`)
    */
-  private noiseFromLossK_(L_dB: number, physK: number = 290): number {
-    const L = 10 ** (L_dB / 10);
-    return physK * (L - 1);
+  systemNoise(frequency: number = this.noiseReferenceHz, elevation: number = this.state.elevation, weather = true, sun = weather, ice = weather): SystemNoise {
+    const el = Math.max(1, elevation);
+    const feedLossDb = this.feedLossAt_(frequency) + (ice ? this.state.iceAccumulation_dB : 0);
+    const spilloverK = this.config.spilloverK ?? AntennaCore.DEFAULT_SPILLOVER_K[this.config.gainModel === 'fixed' ? 'fixed' : 'parabolic'];
+    const inputs = {
+      frequencyHz: frequency,
+      gasAttenuationDb: this.calculateAtmosphericLoss_(frequency, el),
+      rainAttenuationDb: weather ? this.rainAttenuation_dB(frequency, el) : 0,
+      spilloverK,
+      feedLossDb,
+      feedPhysicalK: this.config.rxPhysTemp_K ?? 290,
+      receiverK: this.receiverNoiseK_(),
+    };
+    // Constellation members outside the beam cone raise the noise (P3-D3); the clear-sky reference leaves them out
+    const aggregateK = weather ? this.aggregateNoiseK(frequency) : 0;
+    const base = AntennaCore.withAggregate_(systemNoiseTemperature(inputs), aggregateK);
+    const sunRiseDb = sun ? this.state.skyNoiseDegradation_dB : 0;
+    if (!(sunRiseDb > 0)) {
+      return base;
+    }
+
+    // Sun transit (DEV-PROP-04): the authored rise in dB becomes the solar
+    // antenna temperature that causes it, injected at the aperture so it
+    // passes through the feed like any other sky noise.
+    const sunK = noiseRiseToK(base.systemK, sunRiseDb) * 10 ** (feedLossDb / 10);
+
+    return AntennaCore.withAggregate_(systemNoiseTemperature({ ...inputs, sunK }), aggregateK);
+  }
+
+  private static withAggregate_(noise: SystemNoise, aggregateK: number): SystemNoise {
+    return aggregateK > 0 ? { ...noise, antennaAtLnaK: noise.antennaAtLnaK + aggregateK, systemK: noise.systemK + aggregateK } : noise;
+  }
+
+  /** Clear-sky system noise temperature at the current elevation (no rain, ice or sun), K */
+  clearSkySystemNoiseK(frequency: number = this.noiseReferenceHz): number {
+    return this.systemNoise(frequency, this.state.elevation, false).systemK;
   }
 
   /**
-   * Thermal noise floor at the antenna output (referred to LNA input) for a
-   * given frequency and noise bandwidth.
-   *
-   * Uses system noise temperature (sky + atmosphere + feed + LNA) and kTB.
-   *
-   * NOTE:
-   * - Returns total noise power in dBm **over noiseBandwidth_Hz**.
-   * - If you want noise density, call it with noiseBandwidth_Hz = 1.
+   * C/N the weather is costing this antenna right now, dB: rain and ice
+   * attenuation of the carrier plus the noise they add, at the band reference
+   * frequency and the current elevation. Sun transit is not weather and is not
+   * included. Feeds the `weather-attenuation-dominant` evidence fact.
+   */
+  weatherCnLossDb(frequency: number = this.noiseReferenceHz): number {
+    const el = this.state.elevation;
+    const clear = this.systemNoise(frequency, el, false).systemK;
+    const wet = this.systemNoise(frequency, el, true, false).systemK;
+    const attenuation = this.rainAttenuation_dB(frequency, el) + this.state.iceAccumulation_dB;
+
+    return attenuation + noiseRiseDb(clear, wet);
+  }
+
+  /**
+   * C/N the rain alone is costing this antenna right now, dB: rain attenuation
+   * plus the sky-noise rise behind the rain layer (no ice, no sun), at the band
+   * reference frequency and the current elevation. Keys the RAIN FADE alarm.
+   */
+  rainCnLossDb(frequency: number = this.noiseReferenceHz): number {
+    const el = this.state.elevation;
+    const clear = this.systemNoise(frequency, el, false).systemK;
+    const wet = this.systemNoise(frequency, el, true, false, false).systemK;
+
+    return this.rainAttenuation_dB(frequency, el) + noiseRiseDb(clear, wet);
+  }
+
+  /**
+   * Antenna noise (no receiver) at the LNA input over `noiseBandwidth`, dBm:
+   * what an ideal noiseless instrument would see at the antenna port.
    */
   antennaNoiseFloor(frequency: Hertz, noiseBandwidth: Hertz): dBm {
-    // Use the actual current pointing elevation
-    const elevation = this.state.elevation;
-    const Tsys_K = this.systemTempK_(frequency, elevation);
+    return thermalNoiseDbm(this.systemNoise(frequency).antennaAtLnaK, noiseBandwidth) as dBm;
+  }
 
-    // Guard against degenerate values
-    const T = Math.max(Tsys_K, 1); // K (avoid log of 0)
-    const B = Math.max(noiseBandwidth, 1); // Hz (at least 1 Hz)
-
-    // Thermal noise density at 290 K ~ -174 dBm/Hz
-    const kTB_290_dBmPerHz = -174;
-
-    // Temperature correction: 10*log10(T/290)
-    const tempCorrection_dB = 10 * Math.log10(T / 290);
-
-    // Bandwidth gain: 10*log10(B)
-    const bandwidthGain_dB = 10 * Math.log10(B);
-
-    const noise_dBm = kTB_290_dBmPerHz + tempCorrection_dB + bandwidthGain_dB;
-    return noise_dBm as dBm;
+  /** System noise temperature at the LNA input (K), weather included */
+  private systemTempK_(frequency: Hertz | number, elevation: Degrees | number): number {
+    return this.systemNoise(frequency, elevation).systemK;
   }
 
   /**
-   * System noise temperature at LNA input (K)
-   * Accounts for sky, atmosphere, feed, ice accumulation, and LNA contributions
+   * G/T (dB/K) at a frequency and elevation, current conditions: gain at the
+   * LNA input (aperture gain less feed loss) over the system temperature at
+   * the same plane. Equal to G_aperture - 10 log(T_sys referred to the flange).
    */
-  private systemTempK_(frequency: Hertz, elevation: Degrees): number {
-    const Tsky = this.skyTempK_(elevation);
-    const Latm = this.calculateAtmosphericLoss_(frequency, elevation);
-    const Lfeed = this.feedLossAt_(frequency) + (this.config.rxChainLoss_dB ?? 0);
+  private gOverT_dB_perK_(frequency: Hertz | number, elevation: Degrees | number): number {
+    const gainAtLna = this.antennaGain_dBi(frequency as Hertz) - this.feedLossAt_(frequency) - this.state.iceAccumulation_dB;
 
-    // Ice accumulation adds to feed loss (ice on feed horn acts as lossy medium).
-    // Elevated sky noise (sun transit) and rain on the path are modeled as
-    // equivalent RX-path loss (a lossy medium both attenuates and radiates).
-    const Lice = this.state.iceAccumulation_dB + this.state.skyNoiseDegradation_dB + this.rainAttenuation_dB(frequency, elevation);
-    const LfeedTotal = Lfeed + Lice;
-
-    const Tant = Tsky + this.noiseFromLossK_(Latm, 260); // Atm ~260 K slab
-    const Tfeed = this.noiseFromLossK_(LfeedTotal, this.config.rxPhysTemp_K ?? 290);
-
-    // LNA noise
-    const NF = this.config.lnaNF_dB ?? 1.0;
-    const Tlna = 290 * (10 ** (NF / 10) - 1);
-
-    // Friis cascade for noise temps with preceding losses
-    const L_atm_linear = 10 ** (Latm / 10);
-    const L_feed_linear = 10 ** (LfeedTotal / 10);
-    const L_total = L_atm_linear * L_feed_linear;
-
-    return Tant * L_total + Tfeed * L_atm_linear + Tlna;
-  }
-
-  /**
-   * G/T (dB/K) at given frequency & elevation
-   * Key figure of merit for receive systems
-   */
-  private gOverT_dB_perK_(frequency: Hertz, elevation: Degrees): number {
-    return this.antennaGain_dBi(frequency) - 10 * Math.log10(this.systemTempK_(frequency, elevation));
-  }
-
-  /**
-   * Current de-pointing (degrees) from wind & servo jitter
-   * Returns total off-axis error from environmental factors
-   */
-  currentDePointing_deg_(wind_mps: number = 0): number {
-    const coef = this.config.windDePointingCoef_deg_per_mps ?? 0;
-    const randomJitter = (this.config.pointingSigma_deg ?? 0.01) * (random() * 2 - 1);
-    return coef * wind_mps + randomJitter;
+    return gainAtLna - 10 * Math.log10(this.systemTempK_(frequency, elevation));
   }
 
   /**
@@ -2269,23 +2914,22 @@ export abstract class AntennaCore extends BaseEquipment {
    */
   private applyPropagationEffects_(satellite: Satellite, signal: RfSignal, view: SatelliteView = this.satView_(satellite)): RfSignal {
     const f_Hz = signal.frequency as number;
-    const elev_deg = this.state.elevation;
+    // The path's own elevation sets the atmosphere it crosses (the dish's
+    // pointing is the same thing for the satellite it is on, not for one in
+    // its sidelobes)
+    const pathEl_deg = Math.max(1, view.el as number);
 
-    // Calculate off-axis angle between antenna pointing and satellite position.
-    // Fixed-gain (wide-beam) antennas use true angular separation - the planar
-    // approximation overestimates badly near zenith, where the QFH points.
-    // Parabolic antennas keep the legacy planar math bit-identically.
-    const deltaAz = view.az - this.normalizedAzimuth;
-    const deltaEl = view.el - this.state.elevation;
-    const offAxis_deg = this.config.gainModel === 'fixed' ? this.angularSeparationDeg_(view.az, view.el) : Math.hypot(deltaAz, deltaEl);
+    // True great-circle angle between boresight and the satellite, with any
+    // wind de-pointing (phase 19.4: dishes used a planar hypot(dAz, dEl))
+    const offAxis_deg = this.effectiveOffAxisDeg_(view.az, view.el);
 
     // Calculate free-space path loss (downlink from satellite to ground).
     // Orbital satellites report true slant range; legacy fixed-telemetry
     // satellites fall back to the nominal GEO slant range.
-    const fspl = this.calculateFreeSpacePathLoss_(signal.frequency, view.rangeKm ?? GEO_SATELLITE_DISTANCE_KM);
+    const fspl = this.calculateFreeSpacePathLoss_(signal.frequency, slantRangeKm(view));
 
     // Calculate atmospheric loss using realistic model
-    const atmosphericLoss = this.calculateAtmosphericLoss_(signal.frequency, elev_deg);
+    const atmosphericLoss = this.calculateAtmosphericLoss_(signal.frequency, pathEl_deg);
 
     // Calculate polarization mismatch loss using new realistic model
     const polarizationLoss = this.polMismatchLoss_dB_(
@@ -2294,18 +2938,18 @@ export abstract class AntennaCore extends BaseEquipment {
       Math.abs((signal.rotation ?? 0) - this.state.polarization) as Degrees
     );
 
-    // Use pattern gain (accounts for off-axis angle) instead of just peak gain
+    // The pattern is the whole pointing story: gain at the off-axis angle.
+    // (Phase 19.4 removed a second 12 (theta/theta3)^2 "pointing loss" that
+    // charged the main-lobe error twice, DEV-ANT-02.)
     const Grx_dBi = this.patternGain_dBi_(offAxis_deg, f_Hz);
 
-    // Feed loss (frequency-dependent) + ice accumulation on feed horn +
-    // elevated sky noise (sun transit) as equivalent RX loss + rain on the path
-    const feedLoss = this.feedLossAt_(f_Hz) + this.state.iceAccumulation_dB + this.state.skyNoiseDegradation_dB + this.rainAttenuation_dB(f_Hz, elev_deg);
-
-    // Pointing loss (if any off-axis error from wind/jitter)
-    const pointingLoss = this.pointingLoss_dB_(offAxis_deg, f_Hz);
+    // Feed loss (frequency-dependent) + ice accumulation on feed horn + rain
+    // on the path. Sun transit is not a loss: it raises the system noise
+    // temperature (systemNoise), which is what costs the C/N.
+    const feedLoss = this.feedLossAt_(f_Hz) + this.state.iceAccumulation_dB + this.rainAttenuation_dB(f_Hz, pathEl_deg);
 
     // Apply all losses to signal power
-    const receivedPower = signal.power - fspl - atmosphericLoss - polarizationLoss - feedLoss - pointingLoss + Grx_dBi;
+    const receivedPower = signal.power - fspl - atmosphericLoss - polarizationLoss - feedLoss + Grx_dBi;
 
     return {
       ...signal,
@@ -2326,7 +2970,7 @@ export abstract class AntennaCore extends BaseEquipment {
    * @param frequencyHz Operating frequency in Hz
    * @returns Antenna gain in dBi
    */
-  private antennaGain_dBi(frequencyHz: Hertz): number {
+  protected antennaGain_dBi(frequencyHz: Hertz): number {
     const f_Hz = frequencyHz as number;
 
     // Check if frequency is within antenna's operating range

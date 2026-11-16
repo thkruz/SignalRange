@@ -1,8 +1,9 @@
 import { Mock, Mocked, vi } from 'vitest';
+import { CardAlarmBadge } from '../../../../src/components/card-alarm-badge/card-alarm-badge';
 import { BUCModuleCore, BUCState } from '../../../../src/equipment/rf-front-end/buc-module/buc-module-core';
 import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
-import { BUCAdapter } from '../../../../src/pages/mission-control/tabs/buc-adapter';
+import { BUCAdapter, formatBucOutputPower } from '../../../../src/pages/mission-control/tabs/buc-adapter';
 
 // Mock dependencies
 vi.mock('../../../../src/events/event-bus');
@@ -57,7 +58,10 @@ describe('BUCAdapter', () => {
       handleMuteToggle: vi.fn(),
       handleLoopbackToggle: vi.fn(),
       getActiveInjectionMode: vi.fn().mockReturnValue('low'),
+      temperatureTrendCPerMin: vi.fn().mockReturnValue(null),
+      temperatureLog: { samples: [], windowS: 1800, readingMinutesAgo: vi.fn().mockReturnValue(null) },
       getAlarms: vi.fn().mockReturnValue([]),
+      hasRfOutput: vi.fn(() => mockBucModule.state.isPowered && !mockBucModule.state.isMuted && mockBucModule.outputSignals.length > 0),
     } as unknown as Mocked<BUCModuleCore>;
 
     // Setup container with required DOM elements
@@ -85,6 +89,9 @@ describe('BUCAdapter', () => {
       <span id="buc-lock-status"></span>
       <span id="buc-temperature-display"></span>
       <span id="buc-current-display"></span>
+      <span id="buc-temp-trend-display"></span>
+      <span id="buc-temp-10min-display"></span>
+      <svg><line id="buc-temp-trip-line"></line><polyline id="buc-temp-sparkline-path"></polyline></svg>
       <span id="buc-phase-noise-display"></span>
       <span id="buc-freq-error-display"></span>
     `;
@@ -281,6 +288,70 @@ describe('BUCAdapter', () => {
     });
   });
 
+  describe('staged edits, switch sync and P1dB margin', () => {
+    const gainInput = () => containerEl.querySelector('#buc-gain') as HTMLInputElement;
+    const applyBtn = () => containerEl.querySelector('#buc-apply-btn') as HTMLButtonElement;
+    const stateHandler = () => mockEventBus.on.mock.calls.find((c: unknown[]) => c[0] === Events.RF_FE_BUC_CHANGED)?.[1];
+    const updateHandler = () => mockEventBus.on.mock.calls.find((c: unknown[]) => c[0] === Events.UPDATE)?.[1];
+
+    it('keeps a pending gain through a mute toggle and a state event', () => {
+      (containerEl.querySelector('#buc-gain-inc-coarse') as HTMLButtonElement).click(); // 58 -> 59 staged
+
+      const muteSwitch = containerEl.querySelector('#buc-mute') as HTMLInputElement;
+      muteSwitch.checked = true;
+      muteSwitch.dispatchEvent(new Event('change'));
+      stateHandler()({ ...mockBucModule.state, temperature: 50 });
+
+      expect(gainInput().value).toBe('59');
+      expect(gainInput().classList.contains('is-pending')).toBe(true);
+      expect(applyBtn().classList.contains('is-pending')).toBe(true);
+    });
+
+    it('clears the pending style on Apply', () => {
+      (containerEl.querySelector('#buc-gain-inc-coarse') as HTMLButtonElement).click();
+      mockBucModule.handleGainChange.mockImplementation((v: number) => {
+        mockBucModule.state.gain = v;
+      });
+
+      applyBtn().click();
+
+      expect(gainInput().value).toBe('59');
+      expect(gainInput().classList.contains('is-pending')).toBe(false);
+      expect(applyBtn().classList.contains('is-pending')).toBe(false);
+    });
+
+    it('syncs mute, power and loopback switches from external state on the throttled update', () => {
+      mockBucModule.state.isMuted = true;
+      mockBucModule.state.isLoopback = true;
+
+      vi.spyOn(Date, 'now').mockReturnValue(5000);
+      updateHandler()();
+
+      expect((containerEl.querySelector('#buc-mute') as HTMLInputElement).checked).toBe(true);
+      expect((containerEl.querySelector('#buc-loopback') as HTMLInputElement).checked).toBe(true);
+      expect((containerEl.querySelector('#buc-power') as HTMLInputElement).checked).toBe(true);
+    });
+
+    it('shows "--" P1dB margin when muted', () => {
+      mockBucModule.state.isMuted = true;
+      mockBucModule.state.outputPower = -120;
+
+      vi.spyOn(Date, 'now').mockReturnValue(6000);
+      updateHandler()();
+
+      expect((containerEl.querySelector('#buc-p1db-margin-display') as HTMLElement).textContent).toBe('-- dB');
+    });
+
+    it('shows "--" P1dB margin when there is no RF output', () => {
+      mockBucModule.outputSignals = [];
+
+      vi.spyOn(Date, 'now').mockReturnValue(7000);
+      updateHandler()();
+
+      expect((containerEl.querySelector('#buc-p1db-margin-display') as HTMLElement).textContent).toBe('-- dB');
+    });
+  });
+
   describe('dispose', () => {
     it('should unregister from EventBus events', () => {
       adapter.dispose();
@@ -381,6 +452,29 @@ describe('BUCAdapter', () => {
       expect(currentDisplay.textContent).toBe('3.25 A');
     });
 
+    it('shows the temperature trend, the reading ten minutes back and the 30-minute curve (nats-s13-F1)', () => {
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
+      mockBucModule.temperatureTrendCPerMin.mockReturnValue(0.31);
+      mockBucModule.temperatureLog = {
+        samples: [
+          { tMs: 0, celsius: 56.8 },
+          { tMs: 900_000, celsius: 60.5 },
+          { tMs: 1_800_000, celsius: 62 },
+        ],
+        windowS: 1800,
+        readingMinutesAgo: vi.fn().mockReturnValue(56.8),
+      };
+
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
+      updateHandler();
+
+      expect((containerEl.querySelector('#buc-temp-trend-display') as HTMLElement).textContent).toBe('+0.31 °C/min ▲');
+      expect((containerEl.querySelector('#buc-temp-10min-display') as HTMLElement).textContent).toBe('56.8 °C');
+      expect(containerEl.querySelector('#buc-temp-sparkline-path')?.getAttribute('points')?.split(' ')).toHaveLength(3);
+      // 62 degC is within 15 of the 70 degC trip: the trip line is drawn at the top
+      expect(Number(containerEl.querySelector('#buc-temp-trip-line')?.getAttribute('y1'))).toBeCloseTo(2, 1);
+    });
+
     it('should update phase noise during throttled sync', () => {
       const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
@@ -449,6 +543,19 @@ describe('BUCAdapter', () => {
       expect(status.className).toContain('status-badge-warning');
     });
 
+    it('should show No IF Input when no modem drives the BUC (phase 27, r2-s11-F1)', () => {
+      mockBucModule.getActiveInjectionMode.mockReturnValue('no-input');
+
+      const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
+
+      vi.spyOn(Date, 'now').mockReturnValue(2000);
+      updateHandler();
+
+      const status = containerEl.querySelector('#buc-sideband-status') as HTMLElement;
+      expect(status.textContent).toBe('No IF Input');
+      expect(status.className).not.toContain('status-badge-warning');
+    });
+
     it('should show placeholder when powered off', () => {
       mockBucModule.state.isPowered = false;
 
@@ -487,15 +594,17 @@ describe('BUCAdapter', () => {
       expect(mockBucModule.getAlarms).toHaveBeenCalled();
     });
 
-    it('should classify fault alarms as error', () => {
-      mockBucModule.getAlarms.mockReturnValue(['Hardware Fault']);
+    it('classifies with the ticker: a cooling fault is a warning, over-temperature an error (Phase 32 D14, nats-r7-s13-F1)', () => {
+      mockBucModule.getAlarms.mockReturnValue(['BUC cooling fault - fan/heatsink degraded', 'BUC over-temperature (72.0 °C)', 'BUC acquiring 10 MHz reference']);
 
       const updateHandler = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
 
       vi.spyOn(Date, 'now').mockReturnValue(2000);
       updateHandler();
 
-      expect(mockBucModule.getAlarms).toHaveBeenCalled();
+      const badgeUpdate = (adapter as any).alarmBadge_.update as Mock;
+      const alarms = badgeUpdate.mock.calls.at(-1)?.[0] as { severity: string; message: string }[];
+      expect(alarms.map((a) => a.severity)).toEqual(['warning', 'error', 'info']);
     });
 
     it('should classify saturation alarms as warning', () => {
@@ -576,6 +685,38 @@ describe('BUCAdapter', () => {
       decBtn.click();
 
       expect(gainInput.value).toBe('0');
+    });
+  });
+
+  describe('phase 29 D4 readouts', () => {
+    it('a muted BUC reads MUTED, never the -177 dBm floor its muted path carries (nats-r4-s11-F1)', () => {
+      mockBucModule.state.isMuted = true;
+      mockBucModule.outputSignals[0].power = -177;
+      adapter.update();
+
+      expect((containerEl.querySelector('#buc-output-power-display') as HTMLElement).textContent).toBe('MUTED');
+      expect(formatBucOutputPower(mockBucModule)).toBe('MUTED');
+    });
+
+    it('nothing in band reads "-- dBm" (a modem dropout, no IF)', () => {
+      mockBucModule.outputSignals = [];
+      expect(formatBucOutputPower(mockBucModule)).toBe('-- dBm');
+    });
+
+    it('greys the header LED while powered off (nats-r4-s02-F3)', () => {
+      const badge = (CardAlarmBadge.create as Mock).mock.results.at(-1)?.value as { update: Mock };
+      mockBucModule.state.isPowered = false;
+      adapter.update();
+
+      expect(badge.update).toHaveBeenLastCalledWith([], false, undefined);
+    });
+
+    it('passes "Output muted" as the header LED idle status while muted (phase 31 D6, r6-s12-F1)', () => {
+      const badge = (CardAlarmBadge.create as Mock).mock.results.at(-1)?.value as { update: Mock };
+      mockBucModule.state.isMuted = true;
+      adapter.update();
+
+      expect(badge.update).toHaveBeenLastCalledWith(expect.any(Array), true, 'Output muted');
     });
   });
 });

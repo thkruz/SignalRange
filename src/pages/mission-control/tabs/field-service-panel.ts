@@ -1,0 +1,389 @@
+import { type FormStepState, SAMPLE_STEP_LATER_NOTE } from '@app/pages/mission-control/tabs/form-step-state';
+import { badgeText, formatClock, formatSampleValue, STATUS_LABEL, UNTESTED_APPLICATION_TEXT, untestedApplication } from '@app/physical/field-evidence-format';
+import { LAYER_LABEL, METRIC_LABEL, PROVENANCE_LABEL } from '@app/physical/reading-labels';
+import { NUMERIC_READABLE, READABLE, type ServiceModel } from '@app/physical/service-model';
+import { type Freshness, type SampleMetric, type SampleProvenance, SERVICE_LAYERS, type ServiceLayer, type ServiceSample } from '@app/physical/service-types';
+import { escapeHtml } from '@app/physical/ui/plant-ui-helpers';
+import { NetProbeApp } from './laptop/netprobe-app';
+import { PortalApp } from './laptop/portal-app';
+import { FieldRadio } from './radio/radio-app';
+import './field-service-panel.css';
+
+/**
+ * FieldServicePanel - What the player has checked about each service (Phase 38.2, M09)
+ *
+ * Per service, per layer: pick how to look (a device light, a local probe, the terminal app, the
+ * provider portal, a pilot report, an endpoint report, a workload run) and press Check. Each press
+ * takes a sample stamped with scenario time. The panel never shows the layer truth: it shows the
+ * latest sample with its value, units, provenance, age and a current / stale / invalidated badge,
+ * plus the symptom history (status changes the player could have seen). A provenance that cannot
+ * see a layer is not offered for it, so a green light cannot stand in for end-to-end service.
+ *
+ * Phase 44: the table is now only the device-light rows inside part close-ups. Each other source has its own
+ * device: NetProbe (local probe) and the browser (provider portal) on the laptop, the handheld radio (pilot and
+ * endpoint reports). All of them take readings through `check`.
+ */
+
+export { badgeText, formatClock, formatSampleValue, LAYER_LABEL, PROVENANCE_LABEL, UNTESTED_APPLICATION_TEXT, untestedApplication };
+
+/** Order a provenance menu the way a player escalates: lights first, workload last */
+/** Scenario seconds a check by each provenance takes (the reading is stamped before the time is spent) */
+export const CHECK_COST_S: Record<SampleProvenance, number> = {
+  'device-indicator': 5,
+  'local-probe': 10,
+  'terminal-app': 10,
+  'provider-portal': 15,
+  'pilot-report': 20,
+  'endpoint-report': 15,
+  'workload-run': 0,
+};
+
+const PROVENANCE_ORDER: SampleProvenance[] = ['device-indicator', 'local-probe', 'terminal-app', 'provider-portal', 'pilot-report', 'endpoint-report', 'workload-run'];
+const HISTORY_SHOWN = 12;
+
+/** Provenances that can observe a layer (the application layer takes end-to-end ones only) */
+export function provenancesFor(layer: ServiceLayer): SampleProvenance[] {
+  return PROVENANCE_ORDER.filter((p) => READABLE[p].includes(layer));
+}
+
+/** True when a provenance can return numbers on a layer */
+export function isNumericCheck(via: SampleProvenance, layer: ServiceLayer): boolean {
+  return NUMERIC_READABLE[via] === layer;
+}
+
+export interface ServicePanelRow {
+  layer: ServiceLayer;
+  endpointId?: string;
+  /** Row key for the DOM */
+  key: string;
+  sample: ServiceSample | null;
+  freshness: Freshness | null;
+  /** Why an Invalidated reading no longer counts ("link interruption at 10:13:36") */
+  invalidatedWhy?: string;
+  /** A held object has stopped the reading clock: the badge names no expiry time */
+  agingPaused?: boolean;
+  value: string;
+  provenance: string;
+  age: string;
+}
+
+export interface ServicePanelHistoryLine {
+  tS: number;
+  text: string;
+}
+
+export interface ServicePanelService {
+  id: string;
+  label: string;
+  rows: ServicePanelRow[];
+  history: ServicePanelHistoryLine[];
+  /** Measured recovery intervals (package E): boundaries as scenario clock times, and the spans once known */
+  intervals: string[];
+}
+
+/** One recovery interval as the panel prints it: the boundaries the model recorded, never a derived guess */
+export function describeInterval(model: ServiceModel, rec: { id: string; startS: number; activationS: number | null; registeredS: number | null; usableS: number | null }): string {
+  const at = (v: number | null) => (v === null ? 'not yet' : formatClock(v));
+  const span = (k: 'restoration' | 'response' | 'startup') => {
+    const v = model.intervalSpanS(rec.id, k);
+
+    return v === null ? 'open' : `${Math.round(v * 10) / 10} s`;
+  };
+
+  return `Outage started ${at(rec.startS)}. Operator activated ${at(rec.activationS)} (${span('response')} after the start). Terminal registered ${at(rec.registeredS)} (${span('startup')} after activation). Service usable ${at(rec.usableS)}. Time to restore service: ${span('restoration')}.`;
+}
+
+export function formatAge(seconds: number): string {
+  const s = Math.max(0, Math.floor(seconds));
+  if (s < 90) {
+    return `${s} s ago`;
+  }
+
+  return `${Math.round(s / 60)} min ago`;
+}
+
+/** Rows for one service: each layer once, the application layer once more per endpoint */
+function rowSpecs(model: ServiceModel, serviceId: string): Array<{ layer: ServiceLayer; endpointId?: string }> {
+  const out: Array<{ layer: ServiceLayer; endpointId?: string }> = [];
+  const endpoints = model.getPath(serviceId)?.endpointIds ?? [];
+  for (const layer of SERVICE_LAYERS) {
+    out.push({ layer });
+    if (layer === 'application') {
+      for (const endpointId of endpoints) out.push({ layer, endpointId });
+    }
+  }
+
+  return out;
+}
+
+/** Derive everything the panel prints from the service model (no DOM, no layer truth) */
+export function buildServicePanelModel(model: ServiceModel, nowS: number, source?: SampleProvenance): ServicePanelService[] {
+  return model.getServiceIds().map((id) => {
+    const path = model.getPath(id);
+    const rows = rowSpecs(model, id).map(({ layer, endpointId }): ServicePanelRow => {
+      const sample = source
+        ? (model
+            .samplesFor(id)
+            .slice()
+            .reverse()
+            .find((s) => s.layer === layer && s.endpointId === endpointId && s.provenance === source) ?? null)
+        : model.latest(id, layer, endpointId);
+      const row: ServicePanelRow = {
+        layer,
+        endpointId,
+        key: `${id}|${layer}|${endpointId ?? ''}`,
+        sample,
+        freshness: sample ? model.freshness(sample) : null,
+        value: sample ? (untestedApplication(model, id, sample) ? UNTESTED_APPLICATION_TEXT : formatSampleValue(sample)) : 'Not checked',
+        provenance: sample ? PROVENANCE_LABEL[sample.provenance] : '',
+        age: sample ? formatAge(nowS - sample.tS) : '',
+        ...(model.isAgingPaused() ? { agingPaused: true } : {}),
+      };
+      const why = sample && row.freshness === 'invalidated' ? model.invalidation(sample) : null;
+      if (why) row.invalidatedWhy = why.kind === 'event' ? `${why.label} at ${formatClock(why.atS)}` : `equipment or settings changed at ${formatClock(why.atS)}`;
+
+      return row;
+    });
+    // Symptom history: transitions on layers the player has looked at, or whose change shows outside the layer
+    const history = model
+      .history(id)
+      .slice(-HISTORY_SHOWN)
+      .reverse()
+      .map((h) => ({ tS: h.tS, text: `${formatClock(h.tS)} ${LAYER_LABEL[h.layer]}: ${STATUS_LABEL[h.from]} to ${STATUS_LABEL[h.to]}` }));
+
+    const intervals = model.intervals(id).map((rec) => describeInterval(model, rec));
+
+    return { id, label: path?.label ?? id, rows, history, intervals };
+  });
+}
+
+export class FieldServicePanel {
+  private source_: SampleProvenance = 'local-probe';
+  private serviceId_: string | null = null;
+
+  /** Each instrument/application owns a fixed observation source. */
+  setSource(source: SampleProvenance, serviceId: string | null = null): void {
+    if (source === this.source_ && serviceId === this.serviceId_) return;
+    this.source_ = source;
+    this.serviceId_ = serviceId;
+    if (source === 'pilot-report' || source === 'endpoint-report') this.radio.tuneTo(source);
+    this.built_ = false;
+    this.sync();
+  }
+  private built_ = false;
+  private serviceKey_ = '';
+  private readonly cache_ = new Map<string, HTMLElement>();
+  private lastCheck_ = '';
+  /** Laptop software that owns a source: NetProbe (local probe) and the browser (provider portals) */
+  private readonly legacyHost_: HTMLElement;
+  private readonly netprobeHost_: HTMLElement;
+  private readonly portalHost_: HTMLElement;
+  /** The handheld radio owns pilot and endpoint reports */
+  private readonly radioHost_: HTMLElement;
+  readonly netprobe: NetProbeApp;
+  readonly portal: PortalApp;
+  readonly radio: FieldRadio;
+
+  constructor(
+    private readonly host_: HTMLElement,
+    private readonly getModel_: () => ServiceModel | null,
+    private readonly getNow_: () => number,
+    /** Spends scenario seconds on a check (M21: a measurement costs time). Absent = a check is free. */
+    private readonly spend_: ((seconds: number) => void) | null = null,
+    /** Where the checklist steps that read this service's samples stand; absent = no note */
+    private readonly sampleStep_: ((serviceId: string) => FormStepState) | null = null
+  ) {
+    this.legacyHost_ = document.createElement('section');
+    this.netprobeHost_ = document.createElement('section');
+    this.portalHost_ = document.createElement('section');
+    this.radioHost_ = document.createElement('section');
+    this.netprobeHost_.className = 'fsp-app';
+    this.portalHost_.className = 'fsp-app';
+    this.radioHost_.className = 'fsp-app fsp-radio';
+    this.host_.replaceChildren(this.legacyHost_, this.netprobeHost_, this.portalHost_, this.radioHost_);
+    this.legacyHost_.addEventListener('click', this.onClick_);
+    this.netprobe = new NetProbeApp(this.netprobeHost_, (serviceId, layer, metric) => this.check(serviceId, layer, 'local-probe', undefined, metric));
+    this.netprobe.modelForClick = () => this.getModel_();
+    this.netprobe.afterRun = () => this.sync();
+    this.portal = new PortalApp(this.portalHost_, (serviceId, layer) => this.check(serviceId, layer, 'provider-portal'));
+    this.portal.afterRun = () => this.sync();
+    this.radio = new FieldRadio(this.radioHost_, (serviceId, layer, via, endpointId) => this.check(serviceId, layer, via, endpointId));
+    this.radio.modelForClick = () => this.getModel_();
+    this.radio.afterRun = () => this.sync();
+  }
+
+  destroy(): void {
+    this.legacyHost_.removeEventListener('click', this.onClick_);
+    this.netprobe.destroy();
+    this.portal.destroy();
+    this.radio.destroy();
+  }
+
+  /** Take a sample as if the player pressed Check on that row; returns the sample */
+  check(serviceId: string, layer: ServiceLayer, via: SampleProvenance, endpointId?: string, metric: SampleMetric = 'status'): ServiceSample | null {
+    const model = this.getModel_();
+    if (!model) {
+      return null;
+    }
+    const sample = model.takeSample(serviceId, layer, via, endpointId, isNumericCheck(via, layer) ? metric : 'status');
+    this.lastCheck_ = `${LAYER_LABEL[layer]} checked by ${PROVENANCE_LABEL[via].toLowerCase()} at ${formatClock(sample.tS)}.`;
+    if (this.sampleStep_?.(serviceId) === 'later') {
+      this.lastCheck_ += ` ${SAMPLE_STEP_LATER_NOTE}`;
+    }
+    this.spend_?.(CHECK_COST_S[via]);
+    this.sync();
+
+    return sample;
+  }
+
+  private readonly onClick_ = (e: Event): void => {
+    const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-svc-check]');
+    if (!btn) {
+      return;
+    }
+    const row = btn.closest<HTMLElement>('[data-svc-row]');
+    if (!row) {
+      return;
+    }
+    const via = this.source_;
+    const metric = (btn.dataset.svcMetric ?? 'status') as SampleMetric;
+    if (!via) {
+      return;
+    }
+    this.check(row.dataset.svcService ?? '', row.dataset.svcLayer as ServiceLayer, via, row.dataset.svcEndpoint || undefined, metric);
+  };
+
+  sync(): void {
+    const model = this.getModel_();
+    if (!model || model.getServiceIds().length === 0) {
+      this.host_.style.display = 'none';
+
+      return;
+    }
+    this.host_.style.display = '';
+    const app =
+      this.source_ === 'local-probe'
+        ? this.netprobe
+        : this.source_ === 'provider-portal'
+          ? this.portal
+          : this.source_ === 'pilot-report' || this.source_ === 'endpoint-report'
+            ? this.radio
+            : null;
+    this.legacyHost_.hidden = app !== null;
+    this.netprobeHost_.hidden = app !== this.netprobe;
+    this.portalHost_.hidden = app !== this.portal;
+    this.radioHost_.hidden = app !== this.radio;
+    if (app) {
+      this.netprobe.setNote(this.lastCheck_);
+      this.radio.setNote(this.lastCheck_);
+      app.sync(model, this.getNow_());
+
+      return;
+    }
+    const view = buildServicePanelModel(model, this.getNow_(), this.source_)
+      .filter((svc) => !this.serviceId_ || svc.id === this.serviceId_)
+      .map((svc) => ({ ...svc, rows: svc.rows.filter((row) => READABLE[this.source_].includes(row.layer) && (this.source_ === 'endpoint-report' || !row.endpointId)) }));
+    const key = view.map((s) => `${s.id}:${s.rows.length}`).join('|');
+    if (!this.built_ || key !== this.serviceKey_) {
+      this.build_(view);
+      this.serviceKey_ = key;
+      this.built_ = true;
+    }
+    this.patch_(view);
+  }
+
+  private build_(view: ServicePanelService[]): void {
+    this.cache_.clear();
+    const sections = view
+      .map((svc) => {
+        const rows = svc.rows
+          .map((r) => {
+            const name = r.endpointId ? `${LAYER_LABEL[r.layer]} (${escapeHtml(r.endpointId)})` : LAYER_LABEL[r.layer];
+            const metrics: SampleMetric[] = isNumericCheck(this.source_, r.layer) ? ['status', 'rttMs', 'jitterMs', 'downMbps', 'upMbps', 'lossPct'] : ['status'];
+            const controls = metrics
+              .map(
+                (metric) =>
+                  `<button type="button" data-svc-check data-svc-metric="${metric}">${metric === 'status' ? (this.source_ === 'device-indicator' ? 'Observe light' : this.source_.endsWith('report') ? 'Request report' : 'Read status') : METRIC_LABEL[metric]}</button>`
+              )
+              .join('');
+            return `<tr data-svc-row="${escapeHtml(r.key)}" data-svc-service="${escapeHtml(svc.id)}" data-svc-layer="${r.layer}" data-svc-endpoint="${escapeHtml(r.endpointId ?? '')}">
+              <td>${name}</td><td class="fsp-controls">${controls}</td>
+              <td data-fsp="value-${escapeHtml(r.key)}"></td>
+              <td data-fsp="source-${escapeHtml(r.key)}"></td>
+              <td data-fsp="age-${escapeHtml(r.key)}"></td>
+              <td><span class="fsp-badge" data-fsp="badge-${escapeHtml(r.key)}"></span></td>
+            </tr>`;
+          })
+          .join('');
+
+        return `<div class="fsp-service" data-svc-section="${escapeHtml(svc.id)}">
+          <div class="fsp-service-title">${escapeHtml(svc.label)}</div>
+          <table class="fsp-table">
+            <thead><tr><th>Reading point</th><th>Instrument controls</th><th>Reading</th><th>Source</th><th>Taken</th><th>Status</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <ul class="fsp-history" data-fsp="intervals-${escapeHtml(svc.id)}" style="display:none"></ul>
+          <div class="fsp-history-title">Symptom history</div>
+          <ul class="fsp-history" data-fsp="history-${escapeHtml(svc.id)}"></ul>
+        </div>`;
+      })
+      .join('');
+    this.legacyHost_.innerHTML = `
+      <details class="fsp" open>
+        <summary class="fsp-summary"><b>${escapeHtml(PROVENANCE_LABEL[this.source_])}</b> <span class="fsp-last" data-fsp="last" aria-live="polite"></span></summary>
+        <div class="fsp-body">${sections}</div>
+      </details>`;
+  }
+
+  private el_(key: string): HTMLElement | null {
+    const cached = this.cache_.get(key);
+    if (cached) {
+      return cached;
+    }
+    const el = this.legacyHost_.querySelector<HTMLElement>(`[data-fsp="${key}"]`);
+    if (el) {
+      this.cache_.set(key, el);
+    }
+
+    return el;
+  }
+
+  private text_(key: string, value: string): void {
+    const el = this.el_(key);
+    if (el && el.textContent !== value) {
+      el.textContent = value;
+    }
+  }
+
+  private patch_(view: ServicePanelService[]): void {
+    this.text_('last', this.lastCheck_);
+    for (const svc of view) {
+      for (const r of svc.rows) {
+        this.text_(`value-${r.key}`, r.value);
+        this.text_(`source-${r.key}`, r.provenance);
+        this.text_(`age-${r.key}`, r.age);
+        this.text_(`badge-${r.key}`, badgeText(r));
+        const badge = this.el_(`badge-${r.key}`);
+        const cls = `fsp-badge${r.freshness ? ` fsp-${r.freshness}` : ''}`;
+        if (badge && badge.className !== cls) badge.className = cls;
+      }
+      const ivs = this.el_(`intervals-${svc.id}`);
+      if (ivs) {
+        const text = svc.intervals.join('\n');
+        if (ivs.dataset.sig !== text) {
+          ivs.dataset.sig = text;
+          ivs.style.display = svc.intervals.length > 0 ? '' : 'none';
+          ivs.innerHTML = svc.intervals.map((t) => `<li>${escapeHtml(t)}</li>`).join('');
+        }
+      }
+      const list = this.el_(`history-${svc.id}`);
+      if (list) {
+        const text = svc.history.map((h) => h.text).join('\n');
+        if (list.dataset.sig !== text) {
+          list.dataset.sig = text;
+          list.innerHTML = svc.history.length > 0 ? svc.history.map((h) => `<li>${escapeHtml(h.text)}</li>`).join('') : '<li class="fsp-none">Nothing has changed yet.</li>';
+        }
+      }
+    }
+  }
+}

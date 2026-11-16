@@ -9,7 +9,7 @@ import { answerDecision, dismissDialogIfPresent, waitForSimulationReady } from '
  *
  * The attribution report. Open the Campaign Record (S17-S21's Working
  * Documents, as filed in a fresh browser), read the carried-forward audit
- * chain, flag the 13 April export as the origin, build the timeline, fly a
+ * chain, flag the 12 April export as the origin, build the timeline, fly a
  * routine SAR-1 pass in the middle of it, make the attribution call (graded on
  * evidence-chain-intact: with no S21 record in this browser nothing was
  * destroyed, so the KG-01 line is present and "one actor" is right), write
@@ -69,16 +69,16 @@ test.describe('nats-eu Scenario 22 Full Completion', () => {
   test('[review-mission-brief] reads the brief and the scope of an attribution report', async () => {
     await missionControl.openMissionBrief();
     await missionControl.closeMissionBrief();
-    await answerSystemQuiz(page, 'What was observed, when, on which input');
+    await answerSystemQuiz(page, 'What links the events');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Read the Brief');
   });
 
-  test('[dashboard-sweep] reads the board: AGC rail, no faults', async () => {
+  test('[dashboard-sweep] reads the board: AGC no-carrier warning, no faults', async () => {
     await missionControl.selectGroundStation('GW-01');
     await missionControl.selectTab('dashboard');
-    await expectDashboardAlarm(page, 'AGC at max gain');
-    await answerSystemQuiz(page, 'RX AGC at max gain');
+    await expectDashboardAlarm(page, 'AGC on noise only');
+    await answerSystemQuiz(page, 'RX AGC on noise only');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'GW-01 Dashboard Sweep');
   });
@@ -91,7 +91,7 @@ test.describe('nats-eu Scenario 22 Full Completion', () => {
     await expect(box).toBeVisible({ timeout: 10000 });
     await expect(box).toContainText('S21 Knocking on the Door');
     await expect(box).toContainText('S17 Unusual Activity');
-    await answerSystemQuiz(page, 'Five: a downlink carrier and a login spray');
+    await answerSystemQuiz(page, 'Five: downlink (12th)');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Open the Campaign Record');
     await closeCampaignRecordIfOpen();
@@ -108,9 +108,9 @@ test.describe('nats-eu Scenario 22 Full Completion', () => {
     await waitForObjectiveComplete(missionControl, 'Read the Chain');
   });
 
-  test('[flag-the-origin] flags the 13 April export', async () => {
+  test('[flag-the-origin] flags the 12 April export', async () => {
     await domClick(page, 'button[data-event-id="evt-s17-export"]');
-    await answerSystemQuiz(page, '13 Apr 01:58 password spray on svc-legacy');
+    await answerSystemQuiz(page, '12 Apr 01:58 password spray on svc-legacy');
     await dismissDialogIfPresent(page);
     await closeWorkingDocumentIfOpen(page);
     await waitForObjectiveComplete(missionControl, 'Flag the Origin');
@@ -125,10 +125,10 @@ test.describe('nats-eu Scenario 22 Full Completion', () => {
     await waitForObjectiveComplete(missionControl, 'Build the Timeline');
   });
 
-  test('[rx-chain-ready] retunes the receiver and frames a 40 MHz span on 1414', async () => {
+  test('[rx-chain-ready] retunes the receiver and frames a 60 MHz span on 1414', async () => {
     await setRxModemFrequency(page, missionControl, 1414);
     await fillAndChange(page, '#sa-center-freq', '1414');
-    await fillAndChange(page, '#sa-span', '40');
+    await fillAndChange(page, '#sa-span', '60');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Set Up the Receiver for SAR-1');
   });
@@ -161,7 +161,7 @@ test.describe('nats-eu Scenario 22 Full Completion', () => {
     await missionControl.selectTab('security-console');
     await expect(page.locator('#sec-audit-body')).toContainText('KG-01 unit log (sealed 21 Apr)');
     await page.waitForTimeout(3000);
-    await answerDecision(page, 'One actor, one method', ['Campaign record open', 'Audit chain read on the Security console']);
+    await answerDecision(page, 'One actor, one method', ['Campaign record open', 'Audit Log Signed Off']);
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Attribute the Pattern');
   });
@@ -195,7 +195,7 @@ test.describe('nats-eu Scenario 22 Full Completion', () => {
   });
 
   test('[close-the-record] writes the header', async () => {
-    await answerSystemQuiz(page, 'IAR-2027-0422-GW01: five events 13-21 Apr');
+    await answerSystemQuiz(page, 'IAR-2027-0422-GW01: five events 12-21 Apr');
     await dismissDialogIfPresent(page);
     await closeWorkingDocumentIfOpen(page);
     await waitForObjectiveComplete(missionControl, 'Close the Record');

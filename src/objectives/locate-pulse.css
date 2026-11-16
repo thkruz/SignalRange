@@ -1,0 +1,28 @@
+/*
+ * One-time pulse on the world object an objective first needs (locate-pulse.ts). A soft red glow on the object
+ * itself, in the keyframe style of the quiz indicator; no arrow, no overlay.
+ */
+.locate-pulse {
+  position: relative;
+  border-radius: 6px;
+  animation: locate-pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes locate-pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 2px rgba(255, 53, 53, 0.55), 0 0 10px rgba(255, 53, 53, 0.3);
+  }
+
+  50% {
+    box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.9), 0 0 20px rgba(255, 53, 53, 0.55);
+  }
+}
+
+/* Reduced motion keeps the cue and drops the movement: a steady ring */
+@media (prefers-reduced-motion: reduce) {
+  .locate-pulse {
+    animation: none;
+    box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.9), 0 0 14px rgba(255, 53, 53, 0.45);
+  }
+}

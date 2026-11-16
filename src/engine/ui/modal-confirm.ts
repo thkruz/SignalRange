@@ -16,6 +16,7 @@ export class ModalConfirm extends DraggableModal {
 
   private onConfirm: (() => void) | null = null;
   private options: ConfirmModalOptions = {};
+  private readonly boundKeyDown_ = this.handleKeyDown.bind(this);
 
   private constructor() {
     if (ModalConfirm.instance_) {
@@ -85,13 +86,12 @@ export class ModalConfirm extends DraggableModal {
     if (confirmButton) {
       confirmButton.addEventListener('click', () => this.handleConfirm());
     }
-
-    // Allow ESC key to cancel
-    document.addEventListener('keydown', this.handleKeyDown.bind(this));
   }
 
   private handleKeyDown(event: KeyboardEvent): void {
     if (event.key === 'Escape' && this.boxEl?.style.display !== 'none') {
+      // This Escape belongs to the confirm: the pause menu (a later window listener) must not also act on it
+      event.preventDefault();
       this.handleCancel();
     }
   }
@@ -134,6 +134,9 @@ export class ModalConfirm extends DraggableModal {
       this.title = options.title;
     }
 
+    // Escape cancels the confirm. onOpen runs once per box, so the listener is added on every open (the same bound
+    // reference, so repeats are no-ops) and removed on close.
+    document.addEventListener('keydown', this.boundKeyDown_);
     super.open();
   }
 
@@ -181,8 +184,8 @@ export class ModalConfirm extends DraggableModal {
   }
 
   close(): void {
-    // Clean up event listeners
-    document.removeEventListener('keydown', this.handleKeyDown.bind(this));
+    // Clean up event listeners (the same bound reference that open() added)
+    document.removeEventListener('keydown', this.boundKeyDown_);
 
     super.close();
 

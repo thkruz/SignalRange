@@ -58,6 +58,22 @@ export interface BaseSignal {
   feed: string;
   /** whether the signal is degraded */
   isDegraded: boolean;
+  /**
+   * Phase-noise plateau the carrier has picked up from the LOs it went
+   * through, dBc/Hz (power sum; Phase 19.6). Undefined: clean.
+   */
+  phaseNoiseDbcHz?: number;
+  /**
+   * C/N0 a relayed carrier picked up before it left the satellite (uplink
+   * thermal noise and transponder intermodulation), dB-Hz (Phase 19.3). The
+   * receiver adds it to its own noise. Undefined: nothing upstream (a beacon,
+   * a carrier the satellite generates itself).
+   */
+  upstreamCn0DbHz?: number;
+  /** An amplifier intermodulation product or regrowth shoulder, not a carrier (Phase 19.6) */
+  isDistortion?: boolean;
+  /** Power a notch took off this carrier, dB (the analyzer draws the slice, not a lower carrier) */
+  notchLossDb?: number;
   /** whether the signal is an image instead of a video */
   isImage?: boolean;
   /** whether the signal is from an external source */

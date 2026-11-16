@@ -1,0 +1,5 @@
+{
+  "nodeModulesDir": "none",
+  "compilerOptions": { "strict": true },
+  "lint": { "exclude": ["scenario-ids.json"] }
+}

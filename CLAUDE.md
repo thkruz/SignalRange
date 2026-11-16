@@ -1,5 +1,11 @@
 # Project instructions for Claude Code
 
+## Game UI direction
+
+Start every interface design decision by asking: "Is this how a AAA video game would present it, or is this how a website UI would present it?" SignalRange is a video game running in a browser. Favor in-world equipment, physical props, direct manipulation, and contextual game interactions. A notebook should feel like opening and writing in a notebook; paper-colored cards around a web form are insufficient. Preserve readable text, keyboard access, and real simulation behavior within that presentation.
+
+Immersion is an explicit design objective throughout the simulation. When the player picks up a notebook or focuses on an in-world object, present that object fullscreen and hide unrelated HUD, navigation, toolbars, notifications, and other windows until they put it down. Provide a clear contextual exit and Escape support, restore the previous interaction state, and keep keyboard focus inside the object while it is open. Design the experience of handling the object before choosing UI controls.
+
 ## Code Conventions
 
 - Private properties and methods end with `_` suffix (e.g., `domCache_`, `syncDomWithState_()`)
@@ -116,7 +122,7 @@ For numeric equipment controls (frequency, gain, power, etc.), use the `equip-ad
 
 ### Adapter Staged Values Pattern
 
-RF equipment changes must use staged values + Apply button to prevent accidental changes:
+Computer-based RF equipment UIs (the C1/C2 Mission Control web panels) must use staged values + Apply button to prevent accidental changes. Physical devices (C3 bench, C6 field equipment, any in-world faceplate or knob) behave like the real device: if the real control takes effect immediately (a tuning dial, a switch), it does so in the game too; stage only where the real device itself stages (e.g. keypad entry confirmed with ENT).
 
 ```typescript
 private stagedValue_: number = DEFAULT;
@@ -242,3 +248,24 @@ contributors without access build and test without it.
   `src/private/.gitignore`.
 - `.gitmodules` uses the SSH URL (CI deploy key). Local checkouts point origin at HTTPS:
   `git -C src/private remote set-url origin https://github.com/thkruz/signal-range-private.git`.
+
+## E2E
+
+- Default: `pnpm exec playwright test` starts (or reuses) `pnpm run dev` on `SR_DEV_PORT` (default 3000).
+- Static mode: `E2E_STATIC=1 SR_DEV_PORT=3101 pnpm exec playwright test ...` serves a prebuilt development-mode
+  bundle from `dist-e2e/` (gitignored) via `scripts/e2e/serve-dist.mjs` (SPA fallback like the dev server, private
+  `/__author` and `/__replay` mounted when `src/private` exists). It builds with `pnpm run build:e2e` only when
+  `dist-e2e/index.html` is missing or `E2E_REBUILD=1`; rebuild after source edits. Lanes can each use their own port.
+
+### Lanes
+
+- One lane per campaign: `pnpm run lane:new <name> <port>` (worktree `../sr-lanes/<name>`, branch `lane/<name>`, install,
+  `build:e2e`; also hard-links the gitignored `public/assets/campaigns` and installs `src/private/app` deps, `pnpm run lane:sync <name>` does that for an old lane), `pnpm run lane:ls`, `pnpm run lane:rm <name> [--force]`. Ports 3101+ (never 3000), one per lane. A lane
+  starts from committed HEAD only; rebuild (`E2E_REBUILD=1`) after source edits.
+- Run specs in the lane dir. The Playwright lock is machine-wide, so take it: `node D:/code/kruczek-labs/hq/tooling/run-bounded.mjs
+  --lock "$TEMP/sr-playwright.lock" --timeout 20 --idle 10 --done '\d+ passed' --log <file> -- npx playwright test <specs> --reporter=line`
+  with `E2E_STATIC=1 SR_DEV_PORT=<port>` set.
+- Workers: static mode runs the whole suite at 16 workers (the local default; `SR_E2E_WORKERS` overrides). Measured 2026-11-15, four full
+  runs: 16 workers gave the same results as 1 in about 17 min; 32 gave one asset-load failure. When lanes run at the same time, split
+  the 16 between them. The dev server (`pnpm run dev`) is unmeasured: pass `--workers=1` there. CI stays at 1.
+- Merge order: rebase the lane on dev, run the gates, fast-forward dev, `lane:rm`.

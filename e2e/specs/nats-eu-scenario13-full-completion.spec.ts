@@ -12,6 +12,7 @@ import {
   setRxModemFrequency,
 } from '../utils/nats-eu-helpers';
 import { dismissDialogIfPresent, waitForSimulationReady } from '../utils/simulation-helpers';
+import { simAdvance } from '../utils/test-clock';
 
 /**
  * nats-eu Scenario 13 "The Numbers Don't Lie" - full completion (phase 16).
@@ -82,9 +83,9 @@ test.describe('nats-eu Scenario 13 Full Completion', () => {
     await missionControl.selectGroundStation('GW-01');
     await missionControl.selectTab('dashboard');
     await missionControl.selectTab('gps-timing');
-    await page.waitForTimeout(2500);
+    await simAdvance(page, 2500);
     await missionControl.selectTab('rx-analysis');
-    await page.waitForTimeout(2500);
+    await simAdvance(page, 2500);
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'GW-01 Pre-Pass Sweep');
   });
@@ -142,7 +143,7 @@ test.describe('nats-eu Scenario 13 Full Completion', () => {
   });
 
   test('[compute-the-survey-budget] enters the survey worksheet', async () => {
-    await computeLinkBudget(page, missionControl, { eirpDbm: 28, fsplDb: 171.4, rxGainDbi: 51.8, noiseTempK: 88, bandwidthMHz: 36, miscLossDb: 1 });
+    await computeLinkBudget(page, missionControl, { eirpDbm: 31.3, fsplDb: 171.4, rxGainDbi: 50.4, noiseTempK: 125, bandwidthMHz: 36, miscLossDb: 1 });
     await answerSystemQuiz(page, 'The survey number');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Compute the Survey Budget');
@@ -152,8 +153,8 @@ test.describe('nats-eu Scenario 13 Full Completion', () => {
     await advanceMissionClockToUtc(page, '2027-03-29T13:30:30Z');
     await programTrack(page, missionControl, '61701');
     await missionControl.selectTab('rx-analysis');
-    await advanceMissionClockToUtc(page, '2027-03-29T13:34:00Z');
-    await answerSystemQuiz(page, '1 dB over the 6 dB threshold');
+    await advanceMissionClockToUtc(page, '2027-03-29T13:35:30Z');
+    await answerSystemQuiz(page, '2.8 dB over the 4.2 dB threshold');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Measure SAR-1 at Galway', 60000);
   });
@@ -177,9 +178,9 @@ test.describe('nats-eu Scenario 13 Full Completion', () => {
     await closeWorkingDocumentIfOpen(page);
     await missionControl.selectGroundStation('SH-02');
     await missionControl.selectTab('rx-analysis');
-    await page.waitForTimeout(2500);
+    await simAdvance(page, 2500);
     await missionControl.selectTab('gps-timing');
-    await page.waitForTimeout(2500);
+    await simAdvance(page, 2500);
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Prove Shetland Is Clean');
   });
@@ -206,7 +207,7 @@ test.describe('nats-eu Scenario 13 Full Completion', () => {
     await advanceMissionClockToUtc(page, '2027-03-29T13:52:30Z');
     await programTrack(page, missionControl, '61703');
     await missionControl.selectTab('rx-analysis');
-    await advanceMissionClockToUtc(page, '2027-03-29T13:55:30Z');
+    await advanceMissionClockToUtc(page, '2027-03-29T13:57:30Z');
     await answerSystemQuiz(page, 'No: 20 log(762 / 694)');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Fly the Collect from Shetland', 60000);

@@ -14,6 +14,8 @@ export interface OpsLogEntry {
   category?: 'action' | 'system' | 'previous-shift' | 'alert';
   /** Optional source identifier (e.g., equipment name, operator name) */
   source?: string;
+  /** Scenario clock (SimClock.nowMs) when the entry was logged; absent on previous-shift entries */
+  timeMs?: number;
 }
 
 /**

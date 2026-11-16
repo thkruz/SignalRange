@@ -1,4 +1,5 @@
 import type { GroundStationConfig } from '@app/assets/ground-station/ground-station-state';
+import { createRfFrontEnd } from '@app/campaigns/rf-front-end-factory';
 import { FrequencyBand } from '@app/constants';
 import { type AntennaState } from '@app/equipment/antenna';
 import { ANTENNA_CONFIG_KEYS } from '@app/equipment/antenna/antenna-config-keys';
@@ -14,25 +15,24 @@ export const vermontGroundStation = {
   location: {
     latitude: 44.5588,
     longitude: -72.5778,
-    elevation: 2,
+    elevation: 210, // Lamoille valley floor, Morrisville area (was 2 m; nats-r3-s01-F2)
   },
   antennas: [ANTENNA_CONFIG_KEYS.C_BAND_9M_VORTEK],
   antennasState: [
     {
       // Antenna already tracking TIDEMARK-1 in program-track mode
       isPowered: true,
-      azimuth: 161.8 as Degrees, // Locked on TIDEMARK-1
-      elevation: 34.2 as Degrees,
-      polarization: 14 as Degrees,
+      azimuth: 153.1 as Degrees, // Locked on TIDEMARK-1 (53 W, Phase 28 D4)
+      elevation: 35.1 as Degrees,
+      // polarization: derived from geometry (Phase 29 D8, geoPolarizationSkewDeg; +18.8 deg TM-1 at VT-01)
       trackingMode: 'program-track',
       isBeaconLocked: true,
       targetSatelliteId: 61525,
-      targetAzimuth: 161.8 as Degrees,
-      targetElevation: 34.2 as Degrees,
-      targetPolarization: 14 as Degrees,
+      targetAzimuth: 153.1 as Degrees,
+      targetElevation: 35.1 as Degrees,
       slewing: false,
       beaconCN: 10.5 as dB,
-      beaconFrequencyHz: 3902.5e6 as Hertz,
+      beaconFrequencyHz: 4175.5e6 as Hertz, // TIDEMARK-1 beacon (RF; the beacon receiver tunes RF)
       isLocked: true,
     } as Partial<AntennaState>,
   ],
@@ -63,7 +63,9 @@ export const vermontGroundStation = {
         phaseLockRange: 10000,
         gain: 23 as dB,
         outputPower: -10 as dBm,
-        saturationPower: 15 as dBm,
+        // P1dB of the BUC's output stage (Rapp, Psat 2.16 dB above, 19.6): the
+        // 16 dBm operating point runs 12 dB backed off (3.1 A, ~47 degC)
+        saturationPower: 28 as dBm,
         gainFlatness: 0.5 as dB,
         groupDelay: 3,
         phaseNoise: -100,
@@ -72,6 +74,11 @@ export const vermontGroundStation = {
       },
       hpa: {
         isPowered: true,
+        // 1 kW (P1dB 60 dBm) C-band TWTA in ALC (19.6): output = P1dB - backOff,
+        // 10 dB -> 50 dBm (100 W); Saleh curve, Psat 64.1 dBm (2.6 kW)
+        amplifierType: 'twta',
+        p1db: 60 as dBm,
+        isAlcEnabled: true,
         backOff: 10,
         outputPower: 50 as dBm,
         isOverdriven: false,
@@ -96,12 +103,15 @@ export const vermontGroundStation = {
         lnaNoiseFigure: 0.6, // dB
         mixerNoiseFigure: 16.0, // dB
         noiseTemperature: 43, // K - stable
-        noiseTemperatureStabilizationTime: 0, // Already stabilized
+        // Same LNB model as ME-02 (phase 27): a power cycle costs 90 s of warm-up.
+        // At start the LNB is already warm (noise 43 K, 28 degC), so this only
+        // bites after the operator cycles it
+        noiseTemperatureStabilizationTime: 90, // seconds
         isExtRefLocked: true, // Locked to GPSDO 10 MHz
         noiseFloor: -140, // dBm/Hz
         frequencyError: 0, // Hz
         temperature: 28, // °C - stable
-        thermalStabilizationTime: 0, // Already stabilized
+        thermalStabilizationTime: 90, // seconds
       },
       agc: {
         isPowered: true,
@@ -121,8 +131,8 @@ export const vermontGroundStation = {
         tapPointB: TapPoint.RX_IF,
         availableTapPointsA: [TapPoint.TX_IF, TapPoint.RX_IF],
         availableTapPointsB: [TapPoint.TX_IF, TapPoint.RX_IF],
-        couplingFactorA: -40, // dB
-        couplingFactorB: -39, // dB
+        couplingFactorA: -20, // dB (monitor coupler; the analyzer reads line power through it, Phase 19.2)
+        couplingFactorB: -20, // dB
         isEnabledA: false,
         isEnabledB: true,
         isActiveA: false,
@@ -158,12 +168,14 @@ export const vermontGroundStation = {
   ],
   spectrumAnalyzers: [
     {
-      referenceLevel: -91 as dBm, // Set for beacon observation
+      referenceLevel: -91 as dBm, // Engineering-mode field; S4 checks it stays at the beacon preset
       centerFrequency: 1074.5e6 as Hertz, // IF frequency for beacon
       span: 2e3 as Hertz, // 2 kHz span for CW beacon
-      rbw: 1e3 as Hertz, // 1 kHz RBW for CW beacon
-      minAmplitude: -95 as dBm,
-      maxAmplitude: -75 as dBm,
+      rbw: null, // Auto (3 Hz at 2 kHz): the CW line stands ~55 dB over the floor
+      // Phase 27: the TIDEMARK beacon reads -54 to -59 dBm at the RX IF tap
+      // (ledger), the floor ~-114 dBm in 3 Hz: both on screen, 10 dB/div
+      minAmplitude: -140 as dBm,
+      maxAmplitude: -40 as dBm,
       scaleDbPerDiv: 10 as dB,
       screenMode: 'both',
       inputUnit: 'MHz',
@@ -202,7 +214,7 @@ export const vermontGroundStation = {
             origin: SignalOrigin.TRANSMITTER,
             noiseFloor: null,
             gainInPath: 0 as dBi,
-            frequency: 1094e6 as IfFrequency,
+            frequency: 1057e6 as IfFrequency, // TM-1 TP-1: 7000 - 5943 (LO above RF, LSB)
             power: -7 as dBm,
             bandwidth: 36e6 as Hertz, // Match payload bandwidth
             modulation: 'QPSK' as ModulationType,
@@ -267,7 +279,7 @@ export const maineGroundStation = {
         phaseLockRange: 10000,
         gain: 0 as dB,
         outputPower: -10 as dBm,
-        saturationPower: 15 as dBm,
+        saturationPower: 28 as dBm, // same BUC model as VT-01 (19.6)
         gainFlatness: 0.5 as dB,
         groupDelay: 3,
         phaseNoise: -100,
@@ -276,6 +288,9 @@ export const maineGroundStation = {
       },
       hpa: {
         isPowered: true,
+        amplifierType: 'twta', // same 1 kW TWTA as VT-01 (19.6)
+        p1db: 60 as dBm,
+        isAlcEnabled: true,
         backOff: 6,
         outputPower: 50 as dBm,
         isOverdriven: false,
@@ -300,12 +315,12 @@ export const maineGroundStation = {
         lnaNoiseFigure: 0.6, // dB
         mixerNoiseFigure: 16.0, // dB
         noiseTemperature: 290, // K
-        noiseTemperatureStabilizationTime: 180, // seconds
+        noiseTemperatureStabilizationTime: 90, // seconds (19.6: lnb-thermally-stable waits it out)
         isExtRefLocked: false,
         noiseFloor: -140, // dBm/Hz
         frequencyError: 0, // Hz
         temperature: 25, // °C
-        thermalStabilizationTime: 180, // seconds
+        thermalStabilizationTime: 90, // seconds
       },
       agc: {
         isPowered: true,
@@ -325,8 +340,8 @@ export const maineGroundStation = {
         tapPointB: TapPoint.RX_IF,
         availableTapPointsA: [TapPoint.TX_IF, TapPoint.RX_IF],
         availableTapPointsB: [TapPoint.TX_IF, TapPoint.RX_IF],
-        couplingFactorA: -40, // dB
-        couplingFactorB: -39, // dB
+        couplingFactorA: -20, // dB (monitor coupler; the analyzer reads line power through it, Phase 19.2)
+        couplingFactorB: -20, // dB
         isEnabledA: false,
         isEnabledB: true,
         isActiveA: false,
@@ -362,13 +377,16 @@ export const maineGroundStation = {
   ],
   spectrumAnalyzers: [
     {
-      referenceLevel: 0, // dBm
+      referenceLevel: -40, // dBm, top of the screen
       centerFrequency: 600e6 as Hertz,
       span: 100e6 as Hertz,
-      rbw: 50e6 as Hertz,
-      minAmplitude: -170,
-      maxAmplitude: 0,
-      scaleDbPerDiv: ((-0 + 170) / 10) as dB, // 6 dB/div
+      // Auto (300 kHz at 100 MHz); 50 MHz at a 100 MHz span resolved nothing (phase 27)
+      rbw: null,
+      // The same 10 dB/div window as VT-01: a C-band beacon at -54 to -59 dBm
+      // and a carrier's density sit inside it once tuned
+      minAmplitude: -140,
+      maxAmplitude: -40,
+      scaleDbPerDiv: 10 as dB,
       screenMode: 'both',
       inputUnit: 'MHz',
       inputValue: '',
@@ -382,6 +400,70 @@ export const maineGroundStation = {
       selectedTrace: 1,
     },
   ],
-  transmitters: [],
-  receivers: [],
+  // One TX and one RX chassis, as at VT-01: the equipment is in the rack even
+  // while the station is out of service (phase 27: `[]` now means none)
+  transmitters: [{}],
+  receivers: [{}],
 } as GroundStationConfig;
+
+/**
+ * ME-02 in service (phase 27, r2-s13-F2): the station Catherine runs when a
+ * brief calls Maine operational. Spreading `maineGroundStation` and flipping
+ * `isOperational` left the out-of-service front end (GPSDO in holdover with
+ * no GNSS, LNB off and unlocked) on a station the story says is carrying
+ * traffic. Here the GPSDO is GNSS-locked, the LNB is on, warm and locked to
+ * its 10 MHz, the AGC has its working range; the TX chain stays cold (BUC
+ * muted, HPA off) until a scenario stages it.
+ */
+export const maineGroundStationOperational = {
+  ...maineGroundStation,
+  isOperational: true,
+  rfFrontEnds: [
+    // The station-standard chain every operational ME-02 in the campaign runs
+    // (VT-01's: LNB LO 5250, BUC LO 7000), TX cold until a scenario stages it
+    createRfFrontEnd(vermontGroundStation.rfFrontEnds[0], {
+      buc: { isMuted: true },
+      hpa: { isHpaEnabled: false, isHpaSwitchEnabled: false },
+    }),
+  ],
+} as GroundStationConfig;
+
+/** ME-02 tracking TIDEMARK-2 from Maine (phase 19.4 look angles; S9, S14, S16) */
+export const ME02_TM2_ANTENNA_STATE = {
+  isPowered: true,
+  azimuth: 148.13 as Degrees, // Maine sees TM-2 (45 W) here, not at Vermont's 143.3 / 31.8 (Phase 28 D4)
+  elevation: 32.86 as Degrees,
+  // polarization: derived from geometry (Phase 29 D8, geoPolarizationSkewDeg; about +22 deg TM-2 at ME-02)
+  trackingMode: 'program-track',
+  isBeaconLocked: true,
+  targetSatelliteId: 61526, // TIDEMARK-2
+  targetAzimuth: 148.13 as Degrees,
+  targetElevation: 32.86 as Degrees,
+  slewing: false,
+  beaconCN: 10.2 as dB,
+  beaconFrequencyHz: 4180e6 as Hertz, // TIDEMARK-2 beacon (RF)
+  isLocked: true,
+} as Partial<AntennaState>;
+
+/**
+ * ME-02's TIDEMARK-2 hub carrier on the air (phase 27): with the stand-in
+ * composites gone, a story that has Maine carrying TM-2 starts this modem
+ * keyed (TP-1 6017 MHz = BUC LO 7000 - IF 983, LSB) with the chain hot.
+ */
+export const ME02_TM2_TRANSMITTER = {
+  activeModem: 1,
+  modems: [
+    {
+      ...vermontGroundStation.transmitters[0].modems[0],
+      ifSignal: {
+        ...vermontGroundStation.transmitters[0].modems[0].ifSignal,
+        signalId: 'TIDEMARK-2-Teleport',
+        noradId: 61526,
+        frequency: 983e6 as IfFrequency, // TM-2 TP-1: 7000 - 6017
+      },
+    },
+  ],
+};
+
+/** ME-02's chain hot on its own traffic: BUC unmuted, HPA on at VT-01's 10 dB back-off */
+export const ME02_HOT_RF_FRONT_END = createRfFrontEnd(vermontGroundStation.rfFrontEnds[0], {});

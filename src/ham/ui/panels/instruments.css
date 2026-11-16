@@ -1,0 +1,36 @@
+/* Instrument panels (C3 Station tab): DMM face, board, DC, SWR, analyzer, antenna, packet, satellite */
+.ham-instr .ham-display {
+  font-family: var(--bs-font-monospace, monospace);
+  font-size: 1.9rem;
+  line-height: 1.2;
+  min-height: 2.6rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  background: var(--mc-lcd-bg, #1d2b1d);
+  color: var(--mc-lcd-fg, #9fe870);
+  text-align: right;
+  letter-spacing: 0.05em;
+}
+.ham-instr .ham-display.is-stale { opacity: 0.45; }
+.ham-instr .ham-display.is-refused { color: var(--mc-danger, #ff6b6b); font-size: 0.95rem; text-align: left; }
+.ham-instr .ham-modes { display: flex; gap: 0.25rem; flex-wrap: wrap; }
+.ham-instr .ham-modes .btn.active { background: var(--mc-accent, #206bc4); color: #fff; }
+.ham-instr .ham-beep { display: inline-block; width: 0.7rem; height: 0.7rem; border-radius: 50%; background: var(--mc-muted, #667382); margin-right: 0.35rem; }
+.ham-instr .ham-beep.on { background: var(--mc-warning, #f59f00); box-shadow: 0 0 6px var(--mc-warning, #f59f00); }
+.ham-instr .ham-led { display: inline-block; width: 1rem; height: 1rem; border-radius: 50%; background: #4a2a2a; border: 1px solid #222; vertical-align: middle; }
+.ham-instr .ham-led.lit { background: #ff3b30; box-shadow: 0 0 10px #ff3b30; }
+.ham-instr .ham-symbol { width: 40px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.5; vertical-align: middle; }
+.ham-instr .ham-heat { height: 0.6rem; border-radius: 3px; background: var(--mc-track, #2b3441); overflow: hidden; }
+.ham-instr .ham-heat > span { display: block; height: 100%; background: var(--mc-success, #2fb344); }
+.ham-instr .ham-heat.warm > span { background: var(--mc-warning, #f59f00); }
+.ham-instr .ham-heat.hot > span { background: var(--mc-danger, #d63939); }
+.ham-instr .ham-plot { width: 100%; height: 180px; background: var(--mc-lcd-bg, #14202b); border-radius: 4px; }
+.ham-instr .ham-plot .grid { stroke: rgba(255, 255, 255, 0.12); stroke-width: 1; }
+.ham-instr .ham-plot .trace { stroke: var(--mc-accent, #4dabf7); fill: none; stroke-width: 1.5; }
+.ham-instr .ham-plot .min { fill: var(--mc-warning, #f59f00); }
+.ham-instr .ham-plot text { fill: #9aa7b4; font-size: 9px; }
+.ham-instr .ham-framelog { max-height: 9rem; overflow: auto; font-family: var(--bs-font-monospace, monospace); font-size: 0.75rem; }
+.ham-instr .ham-framelog .bad { color: var(--mc-danger, #d63939); }
+.ham-instr .ham-row { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-bottom: 0.35rem; }
+.ham-instr .ham-kv { display: flex; justify-content: space-between; font-size: 0.85rem; }
+.ham-instr .ham-kv > span:last-child { font-family: var(--bs-font-monospace, monospace); }

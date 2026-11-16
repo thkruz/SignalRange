@@ -20,8 +20,9 @@ export class ACMkrBtn extends BaseControlButton {
 
     // Trigger marker update if marker is turned on
     this.analyzerControl.specA.state.isUpdateMarkers = this.analyzerControl.specA.state.isMarkerOn;
-
-    // Note: Marker drawing would need to be implemented in SpectrumAnalyzer
+    // Turning the marker off (or on by hand) releases the Peak Search bin (phase 33 D10)
+    this.analyzerControl.specA.state.peakMarkerBin = undefined;
+    this.redrawIfPaused_();
 
     this.notifyStateChange_();
     this.playSound();
@@ -43,8 +44,19 @@ export class ACMkrBtn extends BaseControlButton {
     }
 
     const numMarkers = this.analyzerControl.specA.state.topMarkers.length;
+    // A marker stepped by hand leaves the Peak Search bin
+    this.analyzerControl.specA.state.peakMarkerBin = undefined;
     this.analyzerControl.specA.state.markerIndex = (this.analyzerControl.specA.state.markerIndex + delta + numMarkers) % numMarkers;
+    this.redrawIfPaused_();
 
     Logger.info('ACMkrBtn', 'changeMarkerIndex', `Marker index changed to ${this.analyzerControl.specA.state.markerIndex}`);
+  }
+
+  /** A paused screen repaints its frozen trace with the new marker (phase 33 D10) */
+  private redrawIfPaused_(): void {
+    const specA = this.analyzerControl.specA;
+    if (specA.state.isPaused) {
+      specA.redrawFrozen?.();
+    }
   }
 }

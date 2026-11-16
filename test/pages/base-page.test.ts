@@ -62,6 +62,11 @@ vi.mock('../../src/objectives/objectives-manager', () => ({
   },
 }));
 
+const { hardwareFaultGetInstance } = vi.hoisted(() => ({ hardwareFaultGetInstance: vi.fn() }));
+vi.mock('../../src/faults/hardware-fault-manager', () => ({
+  HardwareFaultManager: { getInstance: hardwareFaultGetInstance, destroy: vi.fn() },
+}));
+
 vi.mock('../../src/modal/dialog-manager', () => ({
   DialogManager: {
     getInstance: vi.fn(() => ({
@@ -104,6 +109,7 @@ vi.mock('../../src/modal/quiz-modal', () => ({
 vi.mock('../../src/modal/time-penalty-toast', () => ({
   TimePenaltyToast: {
     getInstance: vi.fn(),
+    dispose: vi.fn(),
   },
 }));
 
@@ -111,6 +117,7 @@ vi.mock('../../src/scenarios/scenario-dialog-manager', () => ({
   ScenarioDialogManager: {
     getInstance: vi.fn(() => ({
       initialize: vi.fn(),
+      playInitialClips: vi.fn(),
     })),
   },
 }));
@@ -153,13 +160,25 @@ vi.mock('../../src/ops-log/ops-log-manager', () => ({
   OpsLogManager: {
     initialize: vi.fn(),
     isInitialized: vi.fn(() => false),
+    getInstance: vi.fn(),
   },
+}));
+
+const { restoreManagerStatesMock, restoreLedgerAndDocumentMock } = vi.hoisted(() => ({
+  restoreManagerStatesMock: vi.fn(),
+  restoreLedgerAndDocumentMock: vi.fn(),
+}));
+vi.mock('../../src/scenarios/checkpoint-manager-states', () => ({
+  collectManagerStates: vi.fn(() => ({ v: 1 })),
+  restoreManagerStates: restoreManagerStatesMock,
+  restoreLedgerAndDocument: restoreLedgerAndDocumentMock,
 }));
 
 import { DialogManager } from '../../src/modal/dialog-manager';
 import { LevelCompleteModal } from '../../src/modal/level-complete-modal';
 import { ObjectiveFailedModal } from '../../src/modal/objective-failed-modal';
 import { ObjectivesManager } from '../../src/objectives/objectives-manager';
+import { OpsLogManager } from '../../src/ops-log/ops-log-manager';
 // Import after mocks
 import { BasePage } from '../../src/pages/base-page';
 import { ScenarioManager } from '../../src/scenario-manager';
@@ -287,6 +306,22 @@ describe('BasePage', () => {
     it('should emit DOM_READY event', async () => {
       await page.testInitializeObjectivesAndDialogs();
       expect(mockEventBus.emit).toHaveBeenCalledWith(Events.DOM_READY);
+    });
+
+    it('starts scheduled hardware faults even when the scenario has no objectives (sandbox)', async () => {
+      ScenarioManager.getInstance.mockReturnValue({
+        data: { id: 'sandbox', objectives: [], dialogClips: null },
+        settings: {
+          scenarioStartWallTime: Date.now(),
+          scenarioStartDate: new Date().toISOString(),
+          previousShiftLogs: [],
+          hardwareFaultEvents: [{ id: 'gw-gnss-outage', groundStationId: 'GW-01', target: 'gpsdo-gnss-loss', startTime: 2400, duration: 300 }],
+        },
+      });
+
+      await page.testInitializeObjectivesAndDialogs();
+
+      expect(hardwareFaultGetInstance).toHaveBeenCalled();
     });
 
     it('should initialize ObjectivesManager when scenario has objectives', async () => {
@@ -595,6 +630,70 @@ describe('BasePage', () => {
     });
   });
 
+  describe('restoreObjectiveStatesFromCheckpoint_ manager states (rt-s24-F4)', () => {
+    const managerStates = { v: 1, spaceEvents: { phases: [['SAR2-CAM2', 'updated']] } };
+    const setup = (state: Record<string, unknown>, order: string[]) => {
+      const objectivesRestore = vi.fn(() => order.push('objectives'));
+      (ObjectivesManager.getInstance as Mock).mockReturnValue({
+        restoreState: objectivesRestore,
+        areAllObjectivesCompleted: vi.fn(() => false),
+        getObjectiveStates: vi.fn(() => []),
+        getElapsedTime: vi.fn(() => 0),
+        stopAllTimers: vi.fn(),
+      });
+      const opsRestore = vi.fn(() => order.push('opsLog'));
+      (OpsLogManager.isInitialized as Mock).mockReturnValue(true);
+      (OpsLogManager.getInstance as Mock).mockReturnValue({ restoreState: opsRestore });
+      restoreManagerStatesMock.mockImplementation(() => order.push('managers'));
+      restoreLedgerAndDocumentMock.mockImplementation(() => order.push('ledger'));
+      (ProgressSaveManager as Mock).mockImplementation(function (this: any) {
+        this.initialize = vi.fn();
+        this.dispose = vi.fn();
+        this.loadCheckpoint = vi.fn(() => Promise.resolve({ state }));
+        return this;
+      });
+      page.testInitProgressSaveManager();
+
+      return { objectivesRestore, opsRestore };
+    };
+
+    afterEach(() => {
+      (OpsLogManager.isInitialized as Mock).mockReturnValue(false);
+    });
+
+    it('restores managers, then the ops log clock jump, then objectives, then the ledger', async () => {
+      const order: string[] = [];
+      setup({ managerStates, opsLogState: { currentTimestampMs: 1 }, objectiveStates: [{ id: 'o' }] }, order);
+      await page.testRestoreObjectiveStatesFromCheckpoint();
+      expect(order).toEqual(['managers', 'opsLog', 'objectives', 'ledger']);
+      expect(restoreManagerStatesMock).toHaveBeenCalledWith(managerStates);
+      expect(restoreLedgerAndDocumentMock).toHaveBeenCalledWith(managerStates);
+    });
+
+    it('a throwing manager section still restores the ops log and objectives', async () => {
+      const order: string[] = [];
+      const { objectivesRestore, opsRestore } = setup({ managerStates, opsLogState: { currentTimestampMs: 1 }, objectiveStates: [{ id: 'o' }] }, order);
+      restoreManagerStatesMock.mockImplementation(() => {
+        throw new Error('boom');
+      });
+      restoreLedgerAndDocumentMock.mockImplementation(() => {
+        throw new Error('boom2');
+      });
+      await page.testRestoreObjectiveStatesFromCheckpoint();
+      expect(opsRestore).toHaveBeenCalled();
+      expect(objectivesRestore).toHaveBeenCalled();
+    });
+
+    it('an old checkpoint without managerStates restores as before', async () => {
+      const order: string[] = [];
+      const { objectivesRestore, opsRestore } = setup({ opsLogState: { currentTimestampMs: 1 }, objectiveStates: [{ id: 'o' }] }, order);
+      await page.testRestoreObjectiveStatesFromCheckpoint();
+      expect(restoreManagerStatesMock).toHaveBeenCalledWith(undefined);
+      expect(opsRestore).toHaveBeenCalled();
+      expect(objectivesRestore).toHaveBeenCalled();
+    });
+  });
+
   describe('initializeObjectivesAndDialogs_ with already complete scenario', () => {
     it('should show completion modal when scenario is already complete', async () => {
       const mockShowCompletion = vi.fn();
@@ -680,6 +779,26 @@ describe('BasePage', () => {
 
     it('should not throw if progressSaveManager_ is null', () => {
       expect(() => page.testDisposeProgressSaveManager()).not.toThrow();
+    });
+
+    it('destroys the bus-subscribing singletons so the next page recreates them', async () => {
+      const { TimePenaltyToast } = await import('../../src/modal/time-penalty-toast');
+      const hintModal = await import('../../src/modal/hint-modal');
+      const traffic = await import('../../src/traffic/traffic-control-manager');
+      const faults = await import('../../src/faults/fault-injector');
+      const crypto = await import('../../src/equipment/crypto/crypto-module-core');
+      const cryptoSpy = vi.spyOn(crypto.CryptoModule, 'resetInstance');
+      const hintSpy = vi.spyOn(hintModal.HintModal, 'destroy');
+      const trafficSpy = vi.spyOn(traffic.TrafficControlManager, 'destroy');
+      const faultSpy = vi.spyOn(faults.FaultInjector, 'resetInstance');
+
+      page.testDisposeProgressSaveManager();
+
+      expect(TimePenaltyToast.dispose).toHaveBeenCalled();
+      expect(hintSpy).toHaveBeenCalled();
+      expect(trafficSpy).toHaveBeenCalled();
+      expect(faultSpy).toHaveBeenCalled();
+      expect(cryptoSpy).toHaveBeenCalled();
     });
   });
 });

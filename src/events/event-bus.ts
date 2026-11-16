@@ -9,6 +9,7 @@ type EventHandlersMap = Partial<Record<Events, Array<(...args: EventMap[Events])
  */
 export class EventBus {
   private static instance: EventBus;
+  private static readonly recreateListeners_ = new Set<(bus: EventBus) => void>();
   private readonly events: EventHandlersMap = {};
 
   private constructor() {}
@@ -16,8 +17,22 @@ export class EventBus {
   static getInstance(): EventBus {
     if (!EventBus.instance) {
       EventBus.instance = new EventBus();
+      for (const listener of EventBus.recreateListeners_) {
+        listener(EventBus.instance);
+      }
     }
     return EventBus.instance;
+  }
+
+  /**
+   * Run `listener` each time a new bus is created after `destroy()`. Page
+   * teardown replaces the bus, so a component that outlives pages (the header)
+   * registers here to subscribe again instead of going deaf. Returns an
+   * unregister function.
+   */
+  static onRecreate(listener: (bus: EventBus) => void): () => void {
+    EventBus.recreateListeners_.add(listener);
+    return () => EventBus.recreateListeners_.delete(listener);
   }
   /**
    * Subscribe to an event, but only run the callback once

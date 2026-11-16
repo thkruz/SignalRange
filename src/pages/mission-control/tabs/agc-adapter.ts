@@ -1,7 +1,7 @@
 import { CardAlarmBadge } from '@app/components/card-alarm-badge/card-alarm-badge';
 import { qs } from '@app/engine/utils/query-selector';
 import { AlarmStatus } from '@app/equipment/base-equipment';
-import { AGCModuleCore, AGCState } from '@app/equipment/rf-front-end/agc-module/agc-module-core';
+import { AGCModuleCore, AGCState, AGCStatus } from '@app/equipment/rf-front-end/agc-module/agc-module-core';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 
@@ -101,12 +101,22 @@ export class AGCAdapter {
       this.updateStatusBadge_(statusIndicator, status);
     }
 
-    // Update alarm badge
+    // Update alarm badge: grey with a reason while there is nothing to level,
+    // a real alarm still wins (Phase 34 D7, nats-r9-s03-F2)
     const alarms = this.getAlarmsFromModule_();
-    this.alarmBadge_.update(alarms);
+    this.alarmBadge_.update(alarms, true, this.getIdleStatus_(alarms));
   }
 
-  private updateStatusBadge_(element: HTMLElement, status: 'active' | 'bypassed' | 'at-max' | 'at-min'): void {
+  /** The LED's grey title with no alarm to show: LNB off, or the pre-alarm noise-only rail */
+  private getIdleStatus_(alarms: AlarmStatus[]): string | undefined {
+    const agc = this.agcModule;
+    if (!agc.isInputPowered) {
+      return 'LNB off';
+    }
+    return agc.isNoiseOnly && alarms.length === 0 ? 'At max gain on noise - no carrier' : undefined;
+  }
+
+  private updateStatusBadge_(element: HTMLElement, status: AGCStatus): void {
     switch (status) {
       case 'active':
         element.className = 'status-badge status-badge-locked';
@@ -115,6 +125,10 @@ export class AGCAdapter {
       case 'bypassed':
         element.className = 'status-badge status-badge-off';
         element.textContent = 'Bypassed';
+        break;
+      case 'no-input':
+        element.className = 'status-badge status-badge-off';
+        element.textContent = 'No Input';
         break;
       case 'at-max':
         element.className = 'status-badge status-badge-warning';

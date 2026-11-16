@@ -9,7 +9,9 @@ import { Events, WeatherEventData } from '@app/events/events';
 import { ObjectiveAnchors } from '@app/objectives/objective-anchor';
 import { ScenarioManager } from '@app/scenario-manager';
 import { missionNowMs } from '@app/simulation/mission-clock';
+import { SimClock } from '@app/simulation/sim-clock';
 import { SimulationManager } from '@app/simulation/simulation-manager';
+import type { WeatherSnapshot } from '@app/sync/manager-state-types';
 import type { Milliseconds } from 'ootk';
 
 /** Configuration for ice accumulation based on weather severity */
@@ -71,6 +73,15 @@ export class WeatherManager {
     extreme: 50,
   };
 
+  /**
+   * Sustained wind by severity, m/s, when an event does not name one (phase
+   * 19.4). A storm carries a little more wind than a plain wind event.
+   */
+  static readonly WIND_SPEED_MPS: Record<string, Record<string, number>> = {
+    wind: { minor: 8, moderate: 14, severe: 22 },
+    storm: { minor: 10, moderate: 18, severe: 26 },
+  };
+
   /** Rain ramps in and out over this fraction of the event, capped at 5 min */
   static readonly RAIN_RAMP_FRACTION = 0.15;
   static readonly RAIN_RAMP_MAX_S = 300;
@@ -101,6 +112,42 @@ export class WeatherManager {
       EventBus.getInstance().off(Events.UPDATE, this.instance_.boundUpdateHandler_);
       this.instance_ = null;
     }
+  }
+
+  getCheckpointState(): WeatherSnapshot {
+    return {
+      missionStartTimeMs: this.missionStartTime_,
+      anchors: this.anchors_.getState(),
+      events: this.weatherEvents_.map(({ id, startTime, isActive, isAwaitingAnchor }) => ({ id, startTime, isActive, isAwaitingAnchor: Boolean(isAwaitingAnchor) })),
+      iceAccumulation: [...this.iceAccumulationTime_],
+    };
+  }
+
+  restoreCheckpointState(snapshot: Partial<WeatherSnapshot> | undefined): void {
+    // Legacy saves retain their hydrated antenna conditions; unresolved
+    // objective anchors use the existing first-live-tick fallback.
+    if (!snapshot) return;
+    if (Number.isFinite(snapshot.missionStartTimeMs)) this.missionStartTime_ = snapshot.missionStartTimeMs!;
+    this.anchors_.restoreState(snapshot.anchors);
+    for (const saved of Array.isArray(snapshot.events) ? snapshot.events : []) {
+      const event = this.weatherEvents_.find((item) => item.id === saved?.id);
+      if (!event || !Number.isFinite(saved.startTime)) continue;
+      event.startTime = saved.startTime;
+      event.isActive = saved.isActive === true;
+      event.isAwaitingAnchor = saved.isAwaitingAnchor === true;
+    }
+    this.iceAccumulationTime_.clear();
+    for (const entry of Array.isArray(snapshot.iceAccumulation) ? snapshot.iceAccumulation : []) {
+      if (Array.isArray(entry) && typeof entry[0] === 'string' && Number.isFinite(entry[1]) && entry[1] >= 0) this.iceAccumulationTime_.set(entry[0], entry[1]);
+    }
+  }
+
+  /** Recompute environmental effects after the saved clock has been restored, without advancing ice. */
+  refreshRestoredConditions(): void {
+    const elapsed = this.getElapsedMissionTime();
+    this.updateSunTransit_(elapsed);
+    this.updateRain_(elapsed);
+    this.updateWind_(elapsed);
   }
 
   /** Load weather events from current scenario */
@@ -142,7 +189,11 @@ export class WeatherManager {
   /** Main update loop - called on each simulation tick */
   private update_(dt: Milliseconds): void {
     const elapsedSeconds = this.getElapsedMissionTime();
-    const dtSeconds = dt / 1000;
+    // UPDATE fires on every fixed step, scenario clock held or not: ice
+    // builds and melts on scenario time only, so it holds while a dialog,
+    // brief or quiz holds the clock (Phase 34 D9, nats-r9-s20-F1). An
+    // operator time skip is not a step and stays excluded, as before
+    const dtSeconds = SimClock.isPaused('scenario') ? 0 : dt / 1000;
 
     // Start objective-anchored events whose objective has come up
     this.anchorEvents_(elapsedSeconds);
@@ -158,6 +209,49 @@ export class WeatherManager {
 
     // Update the rain rate over each site (phase 16, E5)
     this.updateRain_(elapsedSeconds);
+
+    // Update the wind over each site (phase 19.4: wind de-points the beam)
+    this.updateWind_(elapsedSeconds);
+  }
+
+  /**
+   * Wind speed (m/s) an event produces at `elapsedSeconds`: its authored or
+   * severity-derived speed, ramped in and out like rain.
+   */
+  static windSpeedAt(event: WeatherEventRuntime, elapsedSeconds: number): number {
+    const table = WeatherManager.WIND_SPEED_MPS[event.type];
+    if (!table) {
+      return 0;
+    }
+    const peak = event.windSpeedMps ?? table[event.severity] ?? 0;
+    const sinceStart = elapsedSeconds - event.startTime;
+    const untilEnd = event.startTime + event.duration - elapsedSeconds;
+    if (sinceStart < 0 || untilEnd <= 0) {
+      return 0;
+    }
+    const rampS = Math.min(WeatherManager.RAIN_RAMP_MAX_S, event.duration * WeatherManager.RAIN_RAMP_FRACTION);
+    const envelope = rampS > 0 ? Math.min(1, sinceStart / rampS, untilEnd / rampS) : 1;
+    return peak * envelope;
+  }
+
+  /** Push the site's wind speed to its antennas (0 when calm) */
+  private updateWind_(elapsedSeconds: number): void {
+    const sim = SimulationManager.getInstance();
+
+    for (const gs of sim.groundStations) {
+      let wind = 0;
+      for (const event of this.weatherEvents_) {
+        if (event.groundStationId === gs.state.id && event.isActive) {
+          wind = Math.max(wind, WeatherManager.windSpeedAt(event, elapsedSeconds));
+        }
+      }
+
+      for (const antenna of gs.antennas) {
+        if (antenna.state.windSpeed_mps !== wind && typeof antenna.updateWindSpeed === 'function') {
+          antenna.updateWindSpeed(wind);
+        }
+      }
+    }
   }
 
   /**
@@ -213,9 +307,14 @@ export class WeatherManager {
    *
    * The Sun crossing the antenna boresight raises the noise floor following a
    * smooth rise-peak-fall profile: sin^2(pi * progress) scaled by the event's
-   * linkMarginDegradation (peak dB). Degradation is RX-only and clears
-   * automatically when the event ends - there is no operator mitigation, by
-   * design: the training point is to anticipate, ride through, and document.
+   * linkMarginDegradation (peak dB). Since Phase 19.2 the antenna turns that
+   * rise into solar antenna temperature (AntennaCore.systemNoise): the carrier
+   * keeps its power and the noise climbs, so C/N, the analyzer floor and the
+   * AGC all see it. Timing and peak stay authored (DEV-PROP-04): legacy GEO
+   * satellites have authored look angles, so the solar ephemeris cannot place
+   * the transit. Degradation is RX-only and clears automatically when the
+   * event ends - there is no operator mitigation, by design: the training
+   * point is to anticipate, ride through, and document.
    */
   private updateSunTransit_(elapsedSeconds: number): void {
     const sim = SimulationManager.getInstance();
@@ -270,15 +369,34 @@ export class WeatherManager {
 
         if (activeIceEvent && !antenna.state.isHeaterEnabled) {
           // Ice is accumulating - heater OFF during ice/snow weather
-          const currentTime = this.iceAccumulationTime_.get(antennaId) ?? 0;
+          const config = WeatherManager.SEVERITY_CONFIG[activeIceEvent.severity];
+          // Ice already on the feed (a scenario's starting state, or what is
+          // left after the heater went off again) is where the buildup resumes
+          // from, not a clean feed (nats-s20-F7)
+          const currentTime = this.iceAccumulationTime_.get(antennaId) || WeatherManager.accumulationTimeForIce_(antenna.state.iceAccumulation_dB, config);
           const newTime = currentTime + dtSeconds;
           this.iceAccumulationTime_.set(antennaId, newTime);
 
           // Calculate exponential ice buildup
-          const config = WeatherManager.SEVERITY_CONFIG[activeIceEvent.severity];
           const iceDegradation = config.maxDegradation_dB * (1 - Math.exp(-newTime / config.timeConstant_s));
 
           antenna.updateIceAccumulation(iceDegradation);
+        } else if (activeIceEvent && antenna.state.isHeaterEnabled && activeIceEvent.heaterMeltDbPerMin !== undefined) {
+          // Phase 27 Q5: a storm that outpaces the heater. Snow loads the feed
+          // at the unheated rate (the exponential's slope, (max - ice) / tau)
+          // and the heater melts what it can; the ice settles where the two
+          // balance (max - melt x tau), so the heater buys time, not the link
+          const config = WeatherManager.SEVERITY_CONFIG[activeIceEvent.severity];
+          const currentIce = antenna.state.iceAccumulation_dB;
+          const loadDbPerS = (config.maxDegradation_dB - currentIce) / config.timeConstant_s;
+          const meltDbPerS = activeIceEvent.heaterMeltDbPerMin / 60;
+          const newIce = Math.min(config.maxDegradation_dB, Math.max(0, currentIce + (loadDbPerS - meltDbPerS) * dtSeconds));
+
+          if (newIce !== currentIce) {
+            antenna.updateIceAccumulation(newIce);
+          }
+          // Where an unheated buildup would resume if the heater goes off
+          this.iceAccumulationTime_.set(antennaId, WeatherManager.accumulationTimeForIce_(newIce, config));
         } else if (antenna.state.isHeaterEnabled && antenna.state.iceAccumulation_dB > 0) {
           // Ice is melting - heater ON
           const currentIce = antenna.state.iceAccumulation_dB;
@@ -308,9 +426,102 @@ export class WeatherManager {
     }
   }
 
+  /** Time into an exponential buildup that has reached `iceDb`: ice = max (1 - e^(-t/tau)) => t = -tau ln(1 - ice/max) */
+  private static accumulationTimeForIce_(iceDb: number, config: IceAccumulationConfig): number {
+    if (!(iceDb > 0)) {
+      return 0;
+    }
+    const ratio = Math.min(0.999, iceDb / config.maxDegradation_dB);
+
+    return -config.timeConstant_s * Math.log(1 - ratio);
+  }
+
   /** Get active ice-producing weather event for a ground station */
   private getActiveIceEvent_(groundStationId: string): WeatherEventRuntime | null {
     return this.weatherEvents_.find((e) => e.groundStationId === groundStationId && e.isActive && (e.type === 'snow' || e.type === 'ice' || e.type === 'hail')) ?? null;
+  }
+
+  /**
+   * Whether a weather event has run its course: started (anchored, if it
+   * waits on an objective) and past startTime + duration on the mission
+   * clock. Unknown ids never end. Backs the weather-event-ended condition.
+   */
+  hasEventEnded(eventId: string): boolean {
+    const event = this.weatherEvents_.find((e) => e.id === eventId);
+    if (!event || event.isAwaitingAnchor) {
+      return false;
+    }
+
+    return this.getElapsedMissionTime() >= event.startTime + event.duration;
+  }
+
+  /**
+   * Seconds of mission time until the event has run its course (0 once it
+   * has), or null when that is not known yet (unknown id, or still waiting on
+   * its anchor objective). An objective time skip reads it to stop at the end
+   * of the weather (Phase 28 D1).
+   */
+  getSecondsUntilEventEnds(eventId: string): number | null {
+    const event = this.weatherEvents_.find((e) => e.id === eventId);
+    if (!event || event.isAwaitingAnchor) {
+      return null;
+    }
+
+    return Math.max(0, event.startTime + event.duration - this.getElapsedMissionTime());
+  }
+
+  /**
+   * Mission-elapsed second at which an event's degradation is at its maximum
+   * and starts to fall (Phase 29 D10): the midpoint of a sun transit (its
+   * sin^2 profile), the start of the ramp-down for rain, storm and wind
+   * (their plateau ends there), and the end of anything else (ice and snow
+   * build for as long as the event runs).
+   */
+  static peakSeconds(event: WeatherEventRuntime): number {
+    if (event.type === 'sun-transit') {
+      return event.startTime + event.duration / 2;
+    }
+    if (event.type === 'rain' || event.type === 'storm' || event.type === 'wind') {
+      const rampS = Math.min(WeatherManager.RAIN_RAMP_MAX_S, event.duration * WeatherManager.RAIN_RAMP_FRACTION);
+      return event.startTime + event.duration - rampS;
+    }
+
+    return event.startTime + event.duration;
+  }
+
+  /**
+   * Seconds of mission time until the event is `pastPeakSeconds` beyond its
+   * peak (0 once it is), or null when that is not known yet (unknown id, or
+   * still waiting on its anchor objective). Backs weather-event-peaked.
+   */
+  getSecondsUntilEventPeaks(eventId: string, pastPeakSeconds = 0): number | null {
+    const event = this.weatherEvents_.find((e) => e.id === eventId);
+    if (!event || event.isAwaitingAnchor) {
+      return null;
+    }
+
+    return Math.max(0, WeatherManager.peakSeconds(event) + pastPeakSeconds - this.getElapsedMissionTime());
+  }
+
+  /** Whether the event's degradation has passed its maximum (plus pastPeakSeconds) */
+  hasEventPeaked(eventId: string, pastPeakSeconds = 0): boolean {
+    return this.getSecondsUntilEventPeaks(eventId, pastPeakSeconds) === 0;
+  }
+
+  /**
+   * An objective time skip (Phase 27 Q4) moved the clocks by `seconds` in one
+   * jump. Event windows follow the mission clock on their own; ice is
+   * integrated per update, so give it the skipped time here or a skipped wait
+   * would neither build nor melt any.
+   */
+  applyTimeSkip(seconds: number): void {
+    if (!(seconds > 0)) {
+      return;
+    }
+    const elapsedSeconds = this.getElapsedMissionTime();
+    this.anchorEvents_(elapsedSeconds);
+    this.updateWeatherEventStates_(elapsedSeconds);
+    this.updateIceAccumulation_(seconds);
   }
 
   /** Get all active weather events for a ground station */

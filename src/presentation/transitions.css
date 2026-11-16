@@ -1,0 +1,20 @@
+:root { --mc-interface-duration: 180ms; --mc-scene-duration: 240ms; }
+.game-menu[open], #level-complete-modal, #modal-profile { animation: mc-panel-enter var(--mc-interface-duration) ease-out; }
+@keyframes mc-panel-enter { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .game-menu[open], #level-complete-modal, #modal-profile { animation: none; }
+}
+.reduce-motion .game-menu[open], .reduce-motion #level-complete-modal, .reduce-motion #modal-profile { animation: none; }
+
+:where(.selection-page, .game-menu, .draggable-box, .qa-feedback-dialog, .canvas-content) button:not(:disabled) {
+  transition: border-color 120ms ease-out, background-color 120ms ease-out, translate 80ms ease-out;
+}
+:where(.selection-page, .game-menu, .draggable-box, .qa-feedback-dialog, .canvas-content) button:not(:disabled):hover {
+  border-color: color-mix(in srgb, var(--mc-surface-3) 65%, white);
+}
+:where(.selection-page, .game-menu, .draggable-box, .qa-feedback-dialog, .canvas-content) button:not(:disabled):active { translate: 0 1px; }
+@media (prefers-reduced-motion: reduce) {
+  :where(.selection-page, .game-menu, .draggable-box, .qa-feedback-dialog, .canvas-content) button:not(:disabled) { transition: none; }
+  :where(.selection-page, .game-menu, .draggable-box, .qa-feedback-dialog, .canvas-content) button:not(:disabled):active { translate: none; }
+}
+html.reduce-motion :where(.selection-page, .game-menu, .draggable-box, .qa-feedback-dialog, .canvas-content) button { transition: none; translate: none; }

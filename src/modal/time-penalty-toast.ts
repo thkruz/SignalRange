@@ -30,6 +30,14 @@ export class TimePenaltyToast {
   }
 
   /**
+   * Destroy the singleton if it exists (page teardown). The bus it subscribed
+   * to is replaced when a page is torn down, so it must be recreated per page.
+   */
+  static dispose(): void {
+    TimePenaltyToast.instance_?.destroy();
+  }
+
+  /**
    * Creates the toast DOM element and appends it to the body
    */
   private createToastElement_(): void {

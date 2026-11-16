@@ -65,6 +65,21 @@ export class GroundStation {
   }
 
   /**
+   * The ACU tag for a station's antenna (phase 27): the configured tag, else
+   * ACU-<station number> from the id ('ME-02' -> 'ACU-02'); a second antenna
+   * gets a -2 suffix. Undefined when the id has no number (the antenna
+   * config's own default applies).
+   */
+  static acuSerialFor(config: Pick<GroundStationConfig, 'id' | 'acuSerialNumber'>, antennaIndex = 0): string | undefined {
+    const suffix = antennaIndex > 0 ? `-${antennaIndex + 1}` : '';
+    if (config.acuSerialNumber) {
+      return `${config.acuSerialNumber}${suffix}`;
+    }
+    const stationNumber = /(\d+)$/u.exec(config.id)?.[1];
+    return stationNumber ? `ACU-${stationNumber.padStart(2, '0')}${suffix}` : undefined;
+  }
+
+  /**
    * Initialize equipment - creates instances and wires connections
    * Called by UI layer (tabs) once DOM containers are ready
    * @public for Phase 4+ tab integration
@@ -89,7 +104,8 @@ export class GroundStation {
 
     // Create antennas (headless mode for mission control)
     config.antennas.forEach((antennaConfigId, index) => {
-      const initialState = config.antennasState?.[index] ?? {};
+      const acuSerialNumber = GroundStation.acuSerialFor(config, index);
+      const initialState = { ...(acuSerialNumber ? { acuSerialNumber } : {}), ...(config.antennasState?.[index] ?? {}) };
       // Through the factory so a plugin antenna with its own core class is
       // honoured; built-ins still get AntennaUIHeadless.
       const antenna = createAntenna(`gs-${this.uuid}-antenna${index + 1}-headless`, 'headless', antennaConfigId, initialState, config.teamId || 1);
@@ -104,6 +120,7 @@ export class GroundStation {
     // Create RF front-ends
     config.rfFrontEnds.forEach((rfConfig, index) => {
       const rfFrontEnd = createRFFrontEnd(`gs-${this.uuid}-rf-front-end${index + 1}-container`, rfConfig, 'standard');
+      rfFrontEnd.groundStationId = config.id;
       this.rfFrontEnds.push(rfFrontEnd);
     });
 
@@ -120,14 +137,15 @@ export class GroundStation {
     });
 
     // Create transmitters
-    const transmitterCount = config.transmitters?.length || 4;
+    // `transmitters: []` means none; only an omitted list gets the four-chassis default
+    const transmitterCount = config.transmitters?.length ?? 4;
     for (let i = 1; i <= transmitterCount; i++) {
       const tx = new Transmitter(`gs-${this.uuid}-tx${i}-container`, config.transmitters?.[i - 1], config.teamId || 1);
       this.transmitters.push(tx);
     }
 
     // Create receivers
-    const receiverCount = config.receivers?.length || 4;
+    const receiverCount = config.receivers?.length ?? 4;
     for (let i = 1; i <= receiverCount; i++) {
       const rx = new Receiver(`gs-${this.uuid}-rx${i}-container`, this.antennas, config.receivers?.[i - 1], config.teamId || 1);
       this.receivers.push(rx);

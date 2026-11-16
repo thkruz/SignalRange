@@ -1,0 +1,381 @@
+import { Character, Emotion } from '@app/modal/character-enum';
+import type { EvidenceGroup, HypothesisSpec } from '@app/physical/evidence-predicates';
+import type { HandoverFormConfig } from '@app/physical/field-records';
+import type { RequirementCard } from '@app/physical/workload-types';
+import { applyCampField, SKYLINK_SERVICE } from './camp-field-config';
+import { handoverValid, hypothesisFiled, priorityDeferred, samplesCurrent, workloadRunFinished, workloadsInspected, workloadVerified } from './frontline-conditions';
+import { pick, reading } from './report-choices';
+import { createFrontlineSettings, type FrontlineScenarioData } from './scenario-support';
+
+/**
+ * S5: healthy physical plant and online terminal; one nonessential simulated
+ * transfer consumes the shared local service. No connector, weather, or provider fault.
+ * The intended resolution is the exercise's approved priority setting, followed
+ * by a new workload check. No real network configuration instructions are taught.
+ * The transfer is a standing workload that starts at high priority, so it is already
+ * running before the first symptom observation and cannot be stopped from the panel.
+ */
+const settings = createFrontlineSettings(5);
+
+const APP_CARD = 'ola-app';
+const TRANSFER_CARD = 'sync-transfer';
+
+/** Needs 70 Mbps down: met alone (120) or at a two-thirds share (80), missed at a one-third share (40) */
+const OLA_APP_CARD: RequirementCard = {
+  id: APP_CARD,
+  version: 1,
+  label: 'Ola application update',
+  minDownMbps: 70,
+  minUpMbps: 4,
+  maxRttMs: 150,
+  windowS: 30,
+  priority: 'routine',
+};
+
+/** Nonessential file sync, running since before the shift at the highest share weight (4) */
+const SYNC_TRANSFER_CARD: RequirementCard = {
+  id: TRANSFER_CARD,
+  version: 1,
+  label: 'Nonessential file sync',
+  minDownMbps: 20,
+  windowS: 86_400,
+  priority: 'background',
+  startWeight: 4,
+  standing: true,
+};
+
+/** A terminal-side capacity reading from a check run, or the SkyLink speed test (the end-to-end rate under the shared load) */
+const DOWN_SHORT: EvidenceGroup = {
+  ...reading('capacity', 'a capacity reading (download rate) from a check run, or the SkyLink speed test result', SKYLINK_SERVICE, 'application', undefined, {
+    metric: 'downMbps',
+  }),
+  orMatch: [{ kind: 'action', verbIn: ['app-speed-test'] }],
+};
+const DELAY_READ: EvidenceGroup = reading('delay', 'an application delay reading from a check run', SKYLINK_SERVICE, 'application', undefined, { metric: 'rttMs' });
+/** The terminal is shown healthy by its registration, or by its power or local network readings */
+const TERMINAL_OK: EvidenceGroup = {
+  ...reading('terminal-ok', 'a SkyLink registration reading, up', SKYLINK_SERVICE, 'registration', ['up']),
+  orMatch: [{ kind: 'observation', serviceId: SKYLINK_SERVICE, layer: 'power', valueIn: ['up'] }],
+};
+
+const CAUSE_OPTIONS = [
+  { id: 'shared-capacity', label: 'Local service capacity' },
+  { id: 'terminal-fault', label: 'Terminal or cable' },
+  { id: 'local-network', label: 'Router or laptop' },
+  { id: 'provider-limit', label: 'Provider service' },
+];
+
+const HYPOTHESIS_OPTS: Omit<HypothesisSpec, 'causes'> = { minCited: 2, targets: [SKYLINK_SERVICE, 'skylink-router', 'local-shared-service'], routes: [[DOWN_SHORT, TERMINAL_OK]] };
+
+const comparisonForm: HandoverFormConfig = {
+  id: 'service-comparison',
+  title: 'Service readings against the requirement',
+  documentSection: 'Service readings',
+  fields: [
+    {
+      key: 'run',
+      label: 'Application check that missed the requirement',
+      required: true,
+      rule: { workload: { cardId: APP_CARD, is: ['degraded', 'unsupported'], serviceId: SKYLINK_SERVICE } },
+    },
+    {
+      key: 'short',
+      label: 'Reading that fell short (the run shows the shortfall; the capacity entry is terminal-side)',
+      required: true,
+      rule: pick({ capacity: 'Available capacity', delay: 'Round-trip delay', registration: 'Terminal link', power: 'Terminal power' }, ['capacity']),
+    },
+    {
+      key: 'met',
+      label: 'Readings that met the requirement',
+      required: true,
+      rule: pick(
+        {
+          'delay-and-registration': 'Delay and terminal registration',
+          'capacity-and-delay': 'Capacity and delay',
+          'capacity-and-registration': 'Capacity and terminal registration',
+        },
+        ['delay-and-registration']
+      ),
+    },
+    { key: 'evidence', label: 'Observations behind the comparison', required: true, rule: { evidence: [DOWN_SHORT, DELAY_READ, TERMINAL_OK] } },
+  ],
+};
+
+const scopeForm: HandoverFormConfig = {
+  id: 'scope',
+  title: 'Affected part of the service',
+  documentSection: 'Service scope',
+  fields: [
+    {
+      key: 'scope',
+      label: 'Part of the service your evidence implicates',
+      required: true,
+      rule: pick(
+        {
+          'local-shared-service': 'Local service capacity',
+          'terminal-or-cable': 'Terminal or cable',
+          'power-chain': 'Power supply',
+          'provider-service': 'Provider service',
+        },
+        ['local-shared-service']
+      ),
+    },
+    {
+      key: 'ruled-out',
+      label: 'What the readings rule out',
+      required: true,
+      rule: pick({ 'terminal-and-power': 'Terminal link and power', 'application-only': 'The application behaviour only', 'nothing-ruled-out': 'Nothing is ruled out yet' }, [
+        'terminal-and-power',
+      ]),
+    },
+    { key: 'evidence', label: 'Observations that separate it from the alternatives', required: true, rule: { evidence: [DOWN_SHORT, TERMINAL_OK] } },
+  ],
+};
+
+const attributionForm: HandoverFormConfig = {
+  id: 'attribution',
+  title: 'Shared demand',
+  documentSection: 'Shared demand',
+  fields: [
+    {
+      key: 'workload',
+      label: 'Workload using the shared capacity',
+      required: true,
+      rule: pick({ [TRANSFER_CARD]: 'Nonessential file sync', [APP_CARD]: 'Ola application update' }, [TRANSFER_CARD]),
+    },
+    {
+      key: 'keep',
+      label: 'Work that must keep its capacity',
+      required: true,
+      rule: pick({ [TRANSFER_CARD]: 'Nonessential file sync', [APP_CARD]: 'Ola application update' }, [APP_CARD]),
+    },
+    { key: 'basis', label: 'Observation behind the attribution', required: true, rule: { evidence: [DOWN_SHORT] } },
+  ],
+};
+
+const recordForm: HandoverFormConfig = {
+  id: 'service-record',
+  title: 'Service record',
+  documentSection: 'Service record',
+  fields: [
+    {
+      key: 'before',
+      label: 'Application check before the change',
+      required: true,
+      rule: { workload: { cardId: APP_CARD, is: ['degraded', 'unsupported'], serviceId: SKYLINK_SERVICE } },
+    },
+    {
+      key: 'after',
+      label: 'Application check after the change',
+      required: true,
+      rule: { workload: { cardId: APP_CARD, is: ['supported'], serviceId: SKYLINK_SERVICE } },
+    },
+    {
+      key: 'cause',
+      label: 'Supported cause',
+      required: true,
+      rule: pick(
+        {
+          'shared-capacity': 'Local service capacity',
+          'terminal-fault': 'Terminal or cable',
+          'local-network': 'Router or laptop',
+          'provider-limit': 'Provider service',
+        },
+        ['shared-capacity']
+      ),
+    },
+    {
+      key: 'deferred',
+      label: 'Work that was deferred',
+      required: true,
+      rule: pick({ [TRANSFER_CARD]: 'Nonessential file sync', [APP_CARD]: 'Ola application update' }, [TRANSFER_CARD]),
+    },
+    {
+      key: 'terminal',
+      label: 'Terminal equipment',
+      required: true,
+      rule: pick({ unchanged: 'Left as it was; it was not the cause', replaced: 'Replaced with a spare', restarted: 'Restarted to clear the problem' }, ['unchanged']),
+    },
+  ],
+};
+
+if (settings.physicalPlant) {
+  applyCampField(settings.physicalPlant, [OLA_APP_CARD, SYNC_TRANSFER_CARD], [comparisonForm, scopeForm, attributionForm, recordForm]);
+  settings.physicalPlant.causeOptions = CAUSE_OPTIONS;
+  settings.physicalPlant.hypothesisSpecs = [{ causes: ['shared-capacity'], ...HYPOTHESIS_OPTS }];
+  if (settings.physicalPlant.workloads) {
+    settings.physicalPlant.workloads.autoStart = [{ cardId: TRANSFER_CARD, serviceId: SKYLINK_SERVICE }];
+  }
+}
+
+export const frontlineScenario5Data: FrontlineScenarioData = {
+  id: 'frontline-scenario5',
+  url: 'frontline/scenarios/frontline-scenario5',
+  imageUrl: 'frontline/physical/card-inside-rain.webp',
+  number: 5,
+  isDisabled: false,
+  prerequisiteScenarioIds: ['frontline-scenario4'],
+  difficulty: 'intermediate',
+  title: 'Check the Service Beyond the Dish',
+  subtitle: 'Terminal Status, Shared Capacity, and Application Results',
+  duration: '25-35 min',
+  missionType: 'Service Diagnosis',
+  description:
+    "The terminal reports online, but Ola's application isn't meeting its exercise requirement. Compare the terminal, local network, and application evidence. Identify what is using the shared service, apply the permitted priority setting, and verify whether the application becomes usable.",
+  equipment: ['SkyLink terminal and router', 'Local service panel', 'Simulated workload app', 'Pilot workstation'],
+  settings,
+  mechanicTodos: [],
+  objectives: [
+    {
+      id: 's5-compare-endpoints',
+      title: 'Compare Terminal and Application',
+      description: "Observe the terminal's state and the application's current behavior. Record both results instead of treating an online indicator as proof of usable service.",
+      groundStation: 'FL-01',
+      prerequisiteObjectiveIds: [],
+      points: 10,
+      nice: ['K0740', 'T0153'],
+      conditions: [
+        samplesCurrent(SKYLINK_SERVICE, ['registration'], 'Current terminal registration reading taken'),
+        workloadRunFinished({ card: APP_CARD, services: [SKYLINK_SERVICE], statuses: ['degraded', 'unsupported'] }, 'Application check run and finished'),
+        {
+          type: 'status-check',
+          description: 'Meaning of terminal status understood',
+          params: {
+            character: Character.SYSTEM,
+            question: 'A terminal is registered, but an application is missing its service requirement. What can registration alone establish?',
+            options: [
+              'It establishes that every local device and application meets its current service requirement.',
+              'It establishes the terminal state, while application usability still needs separate evidence.',
+              'It establishes that the application fault must be outside the local network equipment.',
+            ],
+            correctIndex: 1,
+            explanation: "Registration describes the terminal's connection state. It doesn't measure the whole path or prove that the application's requirement is being met.",
+          },
+          mustMaintain: false,
+        },
+      ],
+    },
+    {
+      id: 's5-read-service-quality',
+      title: 'Read the Service Indicators',
+      description:
+        'Read available capacity, delay, variation in delay, and interruptions in the service panel and the SkyLink speed test. Terminal-side capacity is what the terminal could carry; the speed test and the run show what the application got. Compare them with the stated requirement, then record the comparison in Handover > Service readings.',
+      groundStation: 'FL-01',
+      prerequisiteObjectiveIds: ['s5-compare-endpoints'],
+      points: 15,
+      nice: ['K0740', 'K0773'],
+      conditions: [handoverValid('service-comparison', 'Readings compared with the requirement: record it in Handover > Service readings')],
+    },
+    {
+      id: 's5-assess-service-scope',
+      title: 'Assess the Affected Service',
+      description:
+        'Use the observed evidence to distinguish satellite service, local networking, and application behavior. State what your evidence supports and what remains uncertain.',
+      groundStation: 'FL-01',
+      prerequisiteObjectiveIds: ['s5-read-service-quality'],
+      points: 15,
+      nice: ['T0081', 'K0737'],
+      conditions: [
+        hypothesisFiled(['shared-capacity'], HYPOTHESIS_OPTS, 'Suspected cause chosen and tied to observations'),
+        handoverValid('scope', 'Affected part of the service recorded with its evidence'),
+      ],
+    },
+    {
+      id: 's5-identify-shared-use',
+      title: 'Identify the Shared Workload',
+      description:
+        'In MissionRunner on the laptop, select each workload in the Applications list and press Inspect to see what it needs and what share it gets. Identify which activity explains the observed demand and distinguish essential work from the exercise transfer that can wait.',
+      groundStation: 'FL-01',
+      prerequisiteObjectiveIds: ['s5-assess-service-scope'],
+      points: 15,
+      nice: ['K0737', 'K0792'],
+      conditions: [
+        workloadsInspected([APP_CARD, TRANSFER_CARD], 'Both workloads inspected (Inspect in MissionRunner)'),
+        handoverValid('attribution', 'Shared demand attributed to an observed workload'),
+      ],
+    },
+    {
+      id: 's5-apply-priority',
+      title: 'Apply the Approved Priority',
+      description:
+        'Review the effect of the permitted service-priority setting on both workloads (each workload shows its priority now and the share each setting would give it). Apply the setting that meets the required application need while recording what work is deferred.',
+      groundStation: 'FL-01',
+      prerequisiteObjectiveIds: ['s5-identify-shared-use'],
+      points: 20,
+      nice: ['T1567', 'K0737'],
+      conditions: [priorityDeferred({ defer: TRANSFER_CARD, keep: APP_CARD }, 'Approved allocation change applied')],
+    },
+    {
+      id: 's5-verify-service-change',
+      title: 'Verify the Local Change',
+      description:
+        'Run a new application check and compare it with the earlier result. Record the local change, the deferred work, and why terminal replacement was not justified by the evidence.',
+      groundStation: 'FL-01',
+      prerequisiteObjectiveIds: ['s5-apply-priority'],
+      points: 25,
+      nice: ['T0153', 'K0740'],
+      conditions: [
+        workloadVerified({ card: APP_CARD, service: SKYLINK_SERVICE }, 'Fresh application check meets the requirement'),
+        handoverValid('service-record', 'Before and after results recorded with the deferred work'),
+      ],
+    },
+  ],
+  dialogClips: {
+    intro: {
+      character: Character.ALEKSANDRA_WYSOCKA,
+      emotion: Emotion.CONCERNED,
+      audioUrl: '',
+      text: "<p>The terminal shows online, but my application updates are arriving too slowly for this exercise. I can describe what I'm seeing; I can't tell you yet which part of the service explains it.</p><p>Your task sheet is on the clipboard in the tray.</p>",
+    },
+    objectivesOnStart: {
+      's5-compare-endpoints': {
+        character: Character.MAREK_DOMANSKI,
+        audioUrl: '',
+        text: "<p>Keep the terminal status and Ola's result separate. They describe different parts of the path, and both observations belong in your assessment.</p>",
+      },
+      's5-read-service-quality': {
+        character: Character.MAREK_DOMANSKI,
+        audioUrl: '',
+        text: '<p>Capacity is how much traffic the service can carry. Delay is how long a response takes, and delay variation describes how that timing changes. Compare those readings with the exercise requirement.</p>',
+      },
+      's5-assess-service-scope': {
+        character: Character.MAREK_DOMANSKI,
+        audioUrl: '',
+        text: '<p>Which part of the service do your observations implicate? Explain the evidence that distinguishes it from the alternatives, and leave any uncertainty visible.</p>',
+      },
+      's5-identify-shared-use': {
+        character: Character.MAREK_DOMANSKI,
+        audioUrl: '',
+        text: '<p>Look at the work sharing this connection. Find out what each activity needs before deciding which demand can be deferred.</p>',
+      },
+      's5-apply-priority': {
+        character: Character.MAREK_DOMANSKI,
+        audioUrl: '',
+        text: "<p>Use the exercise's approved priority setting. Check what happens to the other workload before committing; its unfinished work still needs a record.</p>",
+      },
+      's5-verify-service-change': {
+        character: Character.ALEKSANDRA_WYSOCKA,
+        audioUrl: '',
+        text: "<p>I'll run the same application check again. Compare the new result with the earlier one so we can judge what the local change achieved.</p>",
+      },
+    },
+    objectives: {
+      's5-read-service-quality': {
+        character: Character.MAREK_DOMANSKI,
+        audioUrl: '',
+        text: "<p>You've collected service readings as well as a terminal status. Use those observations to narrow the problem before changing equipment.</p>",
+      },
+      's5-apply-priority': {
+        character: Character.MAREK_DOMANSKI,
+        audioUrl: '',
+        text: '<p>The local priority setting has changed. Its application result still needs checking, and the deferred work remains part of your handover.</p>',
+      },
+      's5-verify-service-change': {
+        character: Character.ALEKSANDRA_WYSOCKA,
+        emotion: Emotion.HAPPY,
+        audioUrl: '',
+        text: "<p>The new result meets this exercise's requirement. Your record also shows what work is waiting, so the next operator can see the consequence of the change.</p>",
+      },
+    },
+  },
+};

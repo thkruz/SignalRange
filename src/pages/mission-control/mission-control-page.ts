@@ -8,8 +8,10 @@ import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
 import { GeolocationConsoleCore } from '@app/equipment/geolocation-console/geolocation-console-core';
 import { EventBus } from '@app/events/event-bus';
+import { Events } from '@app/events/events';
 import { HardwareFaultManager } from '@app/faults/hardware-fault-manager';
 import { GnssThreatManager } from '@app/gnss-threat/gnss-threat-manager';
+import { HamStationService } from '@app/ham/ham-station-service';
 import { InterferenceManager } from '@app/interference/interference-manager';
 import { LinkBudgetManager } from '@app/link-budget/link-budget-manager';
 import { Logger } from '@app/logging/logger';
@@ -20,14 +22,27 @@ import { QuizModal } from '@app/modal/quiz-modal';
 import { ObjectivesManager } from '@app/objectives/objectives-manager';
 import { BasePage } from '@app/pages/base-page';
 import { Body } from '@app/pages/layout/body/body';
-import { NavigationOptions } from '@app/router';
+import { MissionLoadingScreen } from '@app/pages/mission-loading-screen';
+import { PhysicalPlantService } from '@app/physical/physical-plant-service';
+import { PartCloseupModal } from '@app/physical/ui/part-closeup-modal';
+import { PlantTrainerBox } from '@app/physical/ui/plant-trainer-box';
+import { missionOpening } from '@app/presentation/mission-opening';
+import { SceneModal } from '@app/presentation/scene-modal';
+import { NavigationOptions, Router } from '@app/router';
+import { SandboxLoadoutService } from '@app/sandbox/sandbox-loadout';
 import { ScenarioManager } from '@app/scenario-manager';
 import { CampaignRecordPanel } from '@app/scenarios/campaign-record-panel';
 import { ScenarioDialogManager } from '@app/scenarios/scenario-dialog-manager';
 import { WorkingDocumentManager } from '@app/scenarios/working-document-manager';
 import { SecurityConsoleCore } from '@app/security-console/security-console-core';
 import { AlarmService } from '@app/services/alarm-service';
+import { KeepTrackEmbedHost } from '@app/services/keeptrack-embed-host';
+import { SelectionService } from '@app/services/selection-service';
+import { SimClock } from '@app/simulation/sim-clock';
+import { getSimulatedNowMs } from '@app/simulation/sim-time';
 import { SimulationManager } from '@app/simulation/simulation-manager';
+import { MenuMusic } from '@app/sound/menu-music';
+import { SoundEvents } from '@app/sound/sound-events';
 import { SpaceEventManager } from '@app/space-events/space-event-manager';
 import { syncEquipmentWithStore } from '@app/sync';
 import { AppState, syncManager } from '@app/sync/storage';
@@ -61,11 +76,22 @@ export class MissionControlPage extends BasePage {
   private tabbedCanvas_!: TabbedCanvas;
 
   private groundStations_: GroundStation[] = [];
+  private loadingScreen_: MissionLoadingScreen | null = null;
+  private opening_: SceneModal | null = null;
+  private disposed_ = false;
+
+  private boundHamUnlock_: (() => void) | null = null;
 
   private constructor(options?: NavigationOptions) {
     super();
     this.navigationOptions_ = options || {};
-    this.init_();
+    try {
+      this.init_();
+    } catch (error) {
+      this.loadingScreen_?.dispose();
+      SimClock.resume('loading');
+      throw error;
+    }
 
     Logger.info(
       `
@@ -93,7 +119,7 @@ export class MissionControlPage extends BasePage {
 
   protected html_ = html`
     <div id="${this.id}" class="app-shell-page flex-column" style="display: flex;">
-      <header id="global-command-bar-container"></header>
+      <div id="mission-command-bar-mount" class="flex-shrink-0"></div>
 
       <!-- Main Workspace -->
       <div class="app-shell-main d-flex flex-fill overflow-hidden">
@@ -110,6 +136,9 @@ export class MissionControlPage extends BasePage {
 
   init_(): void {
     const parentDom = document.getElementById(Body.containerId);
+    const returnPath = /^\/campaigns\/[^/]+/u.exec(globalThis.location.pathname)?.[0] ?? '/';
+    SimClock.pause('loading');
+    this.loadingScreen_ = new MissionLoadingScreen(ScenarioManager.getInstance().data, () => Router.getInstance().navigate(returnPath));
 
     try {
       // Remove any existing instance
@@ -123,8 +152,9 @@ export class MissionControlPage extends BasePage {
 
     super.init_(Body.containerId, 'add');
     this.dom_ = qs(`#${this.id}`, parentDom);
+    this.dom_.inert = true;
 
-    this.commandBarCenter_ = new GlobalCommandBar('global-command-bar-container');
+    this.commandBarCenter_ = new GlobalCommandBar('mission-command-bar-mount');
 
     // Opt-in per scenario: campaigns that don't declare settings.contactTimeline
     // (Campaign 1's GEO work) never mount the deck, so the shell keeps its
@@ -141,12 +171,56 @@ export class MissionControlPage extends BasePage {
     // Initialize components
     this.assetTreeSidebar_ = new AssetTreeSidebar('asset-tree-sidebar-container');
     this.tabbedCanvas_ = new TabbedCanvas('tabbed-canvas-container');
+    this.openHamStation_();
 
     // Initialize progress save manager
     this.initProgressSaveManager_();
 
     // Initialize equipment and objectives asynchronously
-    this.initializeAsync_();
+    void this.initializeAsync_().catch((error) => {
+      if (this.disposed_) return;
+      Logger.error('Failed to prepare mission:', error);
+      SimClock.pause('loading');
+      this.dom_.inert = true;
+      this.loadingScreen_?.fail();
+    });
+  }
+
+  /**
+   * Campaign 3: the Station bench is where every scenario starts, so select the
+   * home station instead of landing on the Mission Overview. The ham service
+   * starts during async init and the station stays locked until the brief is
+   * acknowledged, so this runs at the end of init and again on unlock.
+   */
+  private openHamStation_(): void {
+    this.boundHamUnlock_ = () => this.selectHamStation_();
+    EventBus.getInstance().on(Events.SCENARIO_UNLOCKED, this.boundHamUnlock_);
+  }
+
+  private selectHamStation_(): void {
+    const stations = SimulationManager.getInstance().groundStations;
+    if (!this.disposed_) this.selectFieldStation_(stations);
+    if (this.disposed_ || !HamStationService.getInstance() || stations.length !== 1) return;
+    const id = stations[0].state.id;
+    if (TabbedCanvas.getSelectedAssetId() !== id || TabbedCanvas.getActiveTab() !== 'ham-station') {
+      SelectionService.getInstance().selectGroundStation(id);
+    }
+  }
+
+  /**
+   * Campaign 6: a field station has no station computer to pick it from (the sidebar gives way to the field
+   * HUD), so the mission opens at the site. Only when nothing is selected yet, so a player's choice stands;
+   * sandboxes keep the Mission Overview start.
+   */
+  private selectFieldStation_(stations: { state: { id: string; stationClass?: string } }[]): void {
+    const field = stations.find((station) => station.state.stationClass === 'field');
+    if (!field || TabbedCanvas.getSelectedAssetId() !== null) return;
+    try {
+      if (SandboxLoadoutService.isSandboxScenario(ScenarioManager.getInstance().data)) return;
+    } catch {
+      return;
+    }
+    SelectionService.getInstance().selectGroundStation(field.state.id);
   }
 
   /**
@@ -158,14 +232,43 @@ export class MissionControlPage extends BasePage {
 
     // Initialize AlarmService for global alarm aggregation
     AlarmService.getInstance();
+    SoundEvents.start();
 
     // Load checkpoint from backend and write to local storage (before sync)
     await this.loadCheckpointIfExists_();
+    if (this.disposed_) return;
 
     // Sync equipment with storage - will read checkpoint state from local storage if loaded
     syncEquipmentWithStore(null, this.groundStations_);
 
+    // Constellation scenarios: hold the loading screen until the propagation worker
+    // has delivered the first grid points (no-op for scenarios without constellations)
+    await SimulationManager.getInstance().scheduler?.whenPrimed(getSimulatedNowMs, (text) => this.loadingScreen_?.setStatus(text));
+    if (this.disposed_) return;
+
+    await this.loadingScreen_?.reveal();
+    if (this.disposed_) return;
     await this.initializeObjectivesAndDialogs_();
+    if (this.disposed_) return;
+    this.assetTreeSidebar_?.refreshConsoleMap();
+    this.selectHamStation_();
+    this.dom_.inert = false;
+    SimClock.resume('loading');
+    MenuMusic.getInstance().setActive(false);
+    SoundEvents.arm(ScenarioManager.getInstance().settings.groundStations);
+  }
+
+  protected override async prepareMissionOpening_(): Promise<boolean> {
+    if (this.disposed_) return false;
+    if (this.navigationOptions_.continueFromCheckpoint || ScenarioManager.getInstance().data.number === 0) return true;
+    const opening = missionOpening(ScenarioManager.getInstance().data);
+    if (!opening) return true;
+    const returnPath = /^\/campaigns\/[^/]+/u.exec(globalThis.location.pathname)?.[0] ?? '/';
+    MenuMusic.getInstance().setActive(true);
+    this.opening_ = new SceneModal(opening, () => Router.getInstance().navigate(returnPath));
+    const started = await this.opening_.result;
+    this.opening_ = null;
+    return started && !this.disposed_;
   }
 
   /**
@@ -200,10 +303,12 @@ export class MissionControlPage extends BasePage {
 
     // Wait for auth to be ready before checking login status
     await App.authReady;
+    if (this.disposed_) return;
 
     // Check if user is logged in before trying to load from backend. A replay
     // supplies its checkpoint from memory, so it needs no sign-in.
     const isLoggedIn = ReplaySession.checkpointFor(ScenarioManager.getInstance().data.id) !== null || (await Auth.isLoggedIn());
+    if (this.disposed_) return;
     if (!isLoggedIn) {
       Logger.info('loadCheckpointIfExists_: User not logged in, skipping checkpoint load');
       return;
@@ -216,6 +321,7 @@ export class MissionControlPage extends BasePage {
       const checkpoint = (await this.progressSaveManager_.loadCheckpoint(scenario.data.id)) as {
         state: AppState;
       };
+      if (this.disposed_) return;
 
       Logger.info(`loadCheckpointIfExists_: Checkpoint result:`, checkpoint ? 'found' : 'not found');
 
@@ -274,8 +380,8 @@ export class MissionControlPage extends BasePage {
       }
     } catch (error) {
       Logger.error('Failed to load checkpoint:', error);
-      // Checkpoint load failed - skip completion modal and start fresh
-      this.navigationOptions_.forceReplay = true;
+      // The loading screen offers Retry. A connection failure is not a missing save.
+      throw error;
     }
   }
 
@@ -285,15 +391,23 @@ export class MissionControlPage extends BasePage {
   }
 
   hide(): void {
-    MissionControlPage.destroy();
+    // Hide first: if teardown throws, the player must still leave the page
     if (this.dom_) {
       this.dom_.style.display = 'none';
     }
+    MissionControlPage.destroy();
   }
 
   static destroy(): void {
     // Clean up resources
     if (MissionControlPage.instance_) {
+      MissionControlPage.instance_.disposed_ = true;
+      if (MissionControlPage.instance_.boundHamUnlock_) {
+        EventBus.getInstance().off(Events.SCENARIO_UNLOCKED, MissionControlPage.instance_.boundHamUnlock_);
+      }
+      MissionControlPage.instance_.opening_?.dispose();
+      MissionControlPage.instance_.loadingScreen_?.dispose();
+      SimClock.resume('loading');
       // Clean up progress save manager
       MissionControlPage.instance_.disposeProgressSaveManager_();
 
@@ -312,6 +426,10 @@ export class MissionControlPage extends BasePage {
       // handlers, detached DOM. Without this the tabs were simply abandoned.
       MissionControlPage.instance_.tabbedCanvas_?.destroy();
 
+      // The map embed is page-scoped: a booted iframe holds a WebGL context and
+      // the previous scenario's satellites.
+      KeepTrackEmbedHost.destroyInstance();
+
       // TODO: Clean up remaining components and ground stations
       MissionControlPage.instance_ = null;
     }
@@ -328,6 +446,10 @@ export class MissionControlPage extends BasePage {
     GeolocationConsoleCore.destroy();
     ElectronicAttackManager.destroy();
     HardwareFaultManager.destroy();
+    PhysicalPlantService.destroy();
+    HamStationService.destroy();
+    PartCloseupModal.destroy();
+    PlantTrainerBox.destroy();
     LinkBudgetManager.destroy();
     CommandingManager.destroy();
     ContactScheduleManager.destroy();
@@ -340,6 +462,7 @@ export class MissionControlPage extends BasePage {
     DecisionModal.destroy();
     DecisionManager.destroy();
     PendingQuizIndicator.destroy();
+    SoundEvents.destroy();
     EventBus.destroy();
   }
 }

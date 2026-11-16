@@ -14,9 +14,9 @@ import { answerDecision, dismissDialogIfPresent, waitForSimulationReady } from '
  * for SAR-1, notch the carrier again when it follows the plan into SAR-1's
  * band, record the implication, file the regulator package, debrief.
  * Clock starts 2027-04-14 10:00:00Z:
- *   MERIDIAN-SAR-2  AOS 10:18:00Z  max el 31.8 deg at 10:22:49Z  LOS 10:27:34Z
+ *   MERIDIAN-SAR-2  AOS 10:18:00Z  max el 31.8 deg at 10:22:49Z  LOS 10:26:24Z (5 deg; horizon 10:27:34Z)
  *   carrier 1       10:23:30Z .. 10:31:30Z on 1374 MHz IF, on 60 / off 30
- *   MERIDIAN-SAR-1  AOS 10:40:00Z  max el 24.0 deg at 10:44:45Z  LOS 10:49:29Z
+ *   MERIDIAN-SAR-1  AOS 10:40:00Z  max el 24.0 deg at 10:44:45Z  LOS 10:48:16Z (5 deg; horizon 10:49:29Z)
  *   carrier 2       10:41:30Z .. 10:48:30Z on 1410 MHz IF, same cadence
  *
  * Objective flow (17):
@@ -35,7 +35,7 @@ async function configureNotchFilter(page: Page, config: { centerFrequency: numbe
   const powerSwitch = page.locator('#notch-power');
   await expect(powerSwitch).toBeVisible({ timeout: 5000 });
   if (!(await powerSwitch.isChecked())) {
-    await powerSwitch.click();
+    await powerSwitch.evaluate((el) => (el as HTMLElement).click());
     await expect(powerSwitch).toBeChecked();
     await page.waitForTimeout(300);
   }
@@ -43,7 +43,7 @@ async function configureNotchFilter(page: Page, config: { centerFrequency: numbe
   const enableSwitch = page.locator(`#${prefix}-enabled`);
   await expect(enableSwitch).toBeVisible();
   if (!(await enableSwitch.isChecked())) {
-    await enableSwitch.click();
+    await enableSwitch.evaluate((el) => (el as HTMLElement).click());
     await expect(enableSwitch).toBeChecked();
     await page.waitForTimeout(200);
   }
@@ -62,7 +62,7 @@ async function configureNotchFilter(page: Page, config: { centerFrequency: numbe
 
   const applyBtn = page.locator('#notch-apply-btn');
   if (await applyBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-    await applyBtn.click();
+    await applyBtn.evaluate((el) => (el as HTMLElement).click());
     await page.waitForTimeout(300);
   }
   await page.waitForTimeout(500);
@@ -102,16 +102,16 @@ test.describe('nats-eu Scenario 18 Full Completion', () => {
   test('[review-mission-brief] reads the day brief and the posture', async () => {
     await missionControl.openMissionBrief();
     await missionControl.closeMissionBrief();
-    await answerSystemQuiz(page, 'The record: a second appearance is evidence of persistence');
+    await answerSystemQuiz(page, 'The record: a repeat is evidence of persistence');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Read the Day Brief');
   });
 
-  test('[dashboard-sweep] reads the board: AGC rail, no faults', async () => {
+  test('[dashboard-sweep] reads the board: AGC no-carrier warning, no faults', async () => {
     await missionControl.selectGroundStation('GW-01');
     await missionControl.selectTab('dashboard');
-    await expectDashboardAlarm(page, 'AGC at max gain');
-    await answerSystemQuiz(page, 'RX AGC at max gain');
+    await expectDashboardAlarm(page, 'AGC on noise only');
+    await answerSystemQuiz(page, 'RX AGC on noise only');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'GW-01 Dashboard Sweep');
   });
@@ -122,10 +122,10 @@ test.describe('nats-eu Scenario 18 Full Completion', () => {
     await waitForObjectiveComplete(missionControl, 'Reference Check');
   });
 
-  test('[rx-chain-ready-sar2] retunes the modem to 1370 MHz and frames a 40 MHz span', async () => {
+  test('[rx-chain-ready-sar2] retunes the modem to 1370 MHz and frames a 60 MHz span', async () => {
     await setRxModemFrequency(page, missionControl, 1370);
     await fillAndChange(page, '#sa-center-freq', '1370');
-    await fillAndChange(page, '#sa-span', '40');
+    await fillAndChange(page, '#sa-span', '60');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Set Up the Receiver for SAR-2');
   });
@@ -159,6 +159,10 @@ test.describe('nats-eu Scenario 18 Full Completion', () => {
     await fillAndChange(page, '#sa-center-freq', '1374');
     await fillAndChange(page, '#sa-span', '2');
     await page.waitForTimeout(3000); // RX Analysis stays on screen so the carrier read latches
+    // The 90 s hold on the framed analyzer runs from here; step through it so each tick counts toward the hold.
+    for (const t of ['10:24:00', '10:24:20', '10:24:40', '10:25:00', '10:25:10']) {
+      await advanceMissionClockToUtc(page, `2027-04-14T${t}Z`);
+    }
     await answerSystemQuiz(page, 'Intent: accidents are continuous or erratic');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Read the Cycle', 60000);
@@ -184,8 +188,9 @@ test.describe('nats-eu Scenario 18 Full Completion', () => {
   });
 
   test('[log-the-first-event] records event 1', async () => {
-    // No jump: the countdown is running, and a jump now costs what waiting would (phase 19.0a)
-    await answerSystemQuiz(page, '10:23:30 carrier 11726 MHz RF');
+    // The two minutes start at SAR-2 LOS (10:26:24)
+    await advanceMissionClockToUtc(page, '2027-04-14T10:26:50Z');
+    await answerSystemQuiz(page, 'carrier 11726 MHz RF / 1374 IF, ~1 MHz');
     await dismissDialogIfPresent(page);
     await closeWorkingDocumentIfOpen(page);
     await waitForObjectiveComplete(missionControl, 'Log Event 1');
@@ -194,7 +199,7 @@ test.describe('nats-eu Scenario 18 Full Completion', () => {
   test('[rx-chain-ready-sar1] retunes the modem and analyzer for SAR-1', async () => {
     await setRxModemFrequency(page, missionControl, 1414);
     await fillAndChange(page, '#sa-center-freq', '1414');
-    await fillAndChange(page, '#sa-span', '40');
+    await fillAndChange(page, '#sa-span', '60');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Set Up the Receiver for SAR-1');
   });

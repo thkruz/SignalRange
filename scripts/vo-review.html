@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VO Review</title>
+<style>
+  :root {
+    --bg: #14171c; --panel: #1c2027; --panel-2: #232831; --line: #2f3540;
+    --text: #e6e9ee; --muted: #8b94a3; --accent: #5aa2ff;
+    --ok: #3fb67a; --ok-bg: #173826; --bad: #e5534b; --bad-bg: #3d1b1a; --warn: #d9a33a;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, sans-serif; }
+  header { position: sticky; top: 0; z-index: 2; background: var(--panel); border-bottom: 1px solid var(--line); padding: 10px 16px; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+  h1 { font-size: 15px; margin: 0 8px 0 0; }
+  select, input[type=search], button, textarea {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 6px; font: inherit;
+  }
+  select, input[type=search] { padding: 4px 6px; }
+  button { padding: 4px 10px; cursor: pointer; }
+  button:hover { border-color: var(--muted); }
+  label.chk { display: flex; gap: 4px; align-items: center; color: var(--muted); }
+  .counts { margin-left: auto; color: var(--muted); }
+  .counts b { color: var(--text); font-weight: 600; }
+  .keys { color: var(--muted); font-size: 12px; margin-top: 6px; }
+  kbd { background: var(--panel-2); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; font-size: 11px; }
+  main { max-width: 980px; margin: 0 auto; padding: 12px 16px 80px; }
+  .clip { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; }
+  .clip.sel { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .clip.approved { border-left-color: var(--ok); }
+  .clip.rejected { border-left-color: var(--bad); }
+  .clip.unreviewed:not(.missing) { border-left-color: var(--warn); }
+  .clip.pipeline { border-left-style: dashed; border-left-color: var(--ok); }
+  .tag.status-pipeline { color: var(--ok); border-style: dashed; border-color: var(--ok); }
+  .tag.status-unreviewed { color: var(--warn); border-color: var(--warn); }
+  .takes button.approved.pipeline { border-style: dashed; }
+  .takes button.more { color: var(--muted); border-style: dotted; }
+  .clip.missing { opacity: .55; }
+  .clip { display: flex; gap: 14px; align-items: flex-start; }
+  .clip .body { flex: 1 1 auto; min-width: 0; }
+  .face { flex: 0 0 88px; text-align: center; font-size: 11px; color: var(--muted); }
+  .face img, .face .initials { width: 88px; height: 88px; border-radius: 10px; object-fit: cover; object-position: top; background: var(--panel-2); border: 1px solid var(--line); display: block; }
+  .face .initials { display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 600; color: var(--muted); }
+  .face .mood { margin-top: 4px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; color: var(--muted); font-size: 12px; }
+  .meta .who { color: var(--text); font-weight: 600; font-size: 13px; }
+  .meta code { color: var(--muted); }
+  .tag { border: 1px solid var(--line); border-radius: 10px; padding: 0 7px; font-size: 11px; }
+  .tag.status-approved { color: var(--ok); border-color: var(--ok); }
+  .tag.status-rejected { color: var(--bad); border-color: var(--bad); }
+  .tag.flag { color: var(--warn); border-color: var(--warn); }
+  .tag.level { font-variant-numeric: tabular-nums; }
+  .text { font-size: 16px; margin: 8px 0 10px; white-space: pre-wrap; }
+  .takes { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 8px; }
+  .takes .label { color: var(--muted); font-size: 12px; margin-right: 2px; }
+  .takes button { font-size: 12px; padding: 2px 10px; border-radius: 12px; }
+  .takes button.approved { border-color: var(--ok); color: var(--ok); }
+  .takes button.rejected { border-color: var(--bad); color: var(--bad); text-decoration: line-through; }
+  .takes button.cur { background: var(--accent); border-color: var(--accent); color: var(--bg); text-decoration: none; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  audio { height: 32px; flex: 1 1 280px; min-width: 0; }
+  .verdict button.on.approve { background: var(--ok-bg); border-color: var(--ok); color: var(--ok); }
+  .verdict button.on.reject { background: var(--bad-bg); border-color: var(--bad); color: var(--bad); }
+  .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+  .tags button { font-size: 11px; padding: 1px 8px; border-radius: 10px; color: var(--muted); }
+  .tags button.on { color: var(--bg); background: var(--warn); border-color: var(--warn); }
+  textarea { width: 100%; margin-top: 8px; padding: 6px 8px; min-height: 38px; resize: vertical; }
+  .saved { color: var(--muted); font-size: 11px; min-height: 14px; }
+  .take { color: var(--muted); font-size: 11px; margin-top: 4px; }
+  .empty { color: var(--muted); text-align: center; padding: 40px; }
+  @media (max-width: 640px) {
+    header { position: static; }
+    .counts { margin-left: 0; width: 100%; }
+    .keys { display: none; }
+    main { padding: 10px 10px 60px; }
+    .bar select, .bar input[type=search] { flex: 1 1 45%; min-width: 0; }
+    .takes button, .verdict button { padding: 6px 12px; }
+    .tags button { padding: 4px 10px; font-size: 12px; }
+    audio { flex-basis: 100%; }
+    .face { flex-basis: 60px; }
+    .face img, .face .initials { width: 60px; height: 60px; font-size: 20px; }
+    .clip { gap: 10px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <h1>VO Review</h1>
+    <select id="f-campaign"></select>
+    <select id="f-scenario"></select>
+    <select id="f-character"></select>
+    <select id="f-status">
+      <option value="">All statuses</option>
+      <option value="unreviewed">Live take unreviewed</option>
+      <option value="pipeline">Live take auto-approved (QC only)</option>
+      <option value="approved">Live take approved by you</option>
+      <option value="rejected">Live take rejected</option>
+      <option value="not-approved">Live take not approved by you</option>
+    </select>
+    <select id="f-tag"></select>
+    <select id="f-level">
+      <option value="">Any loudness</option>
+      <option value="off">Loudness off target</option>
+    </select>
+    <select id="f-multi">
+      <option value="">Any take count</option>
+      <option value="live-ted">Live take: needs-ted or mismatch</option>
+      <option value="multi">2+ takes</option>
+      <option value="stale">Recording/script mismatch</option>
+      <option value="outdated">Outdated audio (needs redo)</option>
+    </select>
+    <input id="f-search" type="search" placeholder="Search text or key">
+    <label class="chk"><input id="f-recorded" type="checkbox" checked> Recorded only</label>
+    <button id="refresh" title="Re-read scenario files, archive and re-hash audio">Refresh</button>
+    <span class="counts" id="counts"></span>
+  </div>
+  <div class="keys">
+    <kbd>j</kbd>/<kbd>k</kbd> next/prev clip &nbsp; <kbd>[</kbd>/<kbd>]</kbd> prev/next take &nbsp; <kbd>Space</kbd> play/pause &nbsp;
+    <kbd>a</kbd> approve take + next &nbsp; <kbd>r</kbd> reject take + notes &nbsp; <kbd>u</kbd> unreviewed &nbsp; <kbd>n</kbd> notes &nbsp;
+    <kbd>Esc</kbd> leave notes &nbsp; <span id="level-status"></span>
+  </div>
+</header>
+<main id="list"><div class="empty">Loading clips...</div></main>
+
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+const filters = ['campaign', 'scenario', 'character', 'status', 'tag', 'level', 'multi', 'search', 'recorded'];
+const LU_TOLERANCE = 2;
+const PEAK_LIMIT = -1;
+let clips = [];
+let shown = [];
+let sel = 0;
+let meta = { tags: [], targetLufs: -22.6, loudnessPending: 0, ffmpegMissing: false };
+let pollTimer;
+/** The take each clip card is showing, by clip path. */
+const picked = new Map();
+
+function store(k, v) { try { localStorage.setItem(`vo-review.${k}`, v); } catch {} }
+function recall(k) { try { return localStorage.getItem(`vo-review.${k}`); } catch { return null; } }
+
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/gu, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+}
+
+/** Default take to show: the live one, else the newest. */
+function defaultTake(c) {
+  return (c.takes.find((t) => t.live) ?? c.takes[c.takes.length - 1])?.sha1 ?? null;
+}
+
+/** Clips whose other takes are expanded ("View all"). */
+const expanded = new Set();
+
+function takeOf(c) {
+  const sha = picked.get(c.path);
+  return c.takes.find((t) => t.sha1 === sha) ?? c.takes.find((t) => t.sha1 === defaultTake(c)) ?? null;
+}
+
+/** Must match API_VERSION in vo-review.mjs. The page is read from disk per request but the API is whatever code the server started with. */
+const API_VERSION = 5;
+
+function fail(msg) {
+  $('#list').innerHTML = `<div class="empty">${esc(msg)}</div>`;
+}
+
+async function load(refresh = false) {
+  let data;
+  try {
+    const res = await fetch(`/api/clips${refresh ? '?refresh=1' : ''}`);
+    data = await res.json();
+    if (!res.ok) throw new Error(data.error ?? res.status);
+  } catch (err) {
+    fail(`Could not load clips: ${err.message}. Is pnpm vo-review running?`);
+    return;
+  }
+  if (data.apiVersion !== API_VERSION) {
+    fail('The review server is running older code than this page. Stop pnpm vo-review (Ctrl+C) and start it again, then reload.');
+    return;
+  }
+  clips = data.clips;
+  meta = data;
+  for (const c of clips) if (!c.takes.some((t) => t.sha1 === picked.get(c.path))) picked.set(c.path, defaultTake(c));
+  fillSelects();
+  render();
+  levelStatus();
+  pollLoudness();
+}
+
+function levelOff(t) {
+  if (!t || t.lufs === null) return false;
+  return Math.abs(t.lufs - meta.targetLufs) > LU_TOLERANCE || (t.peak !== null && t.peak > PEAK_LIMIT);
+}
+
+function levelBadge(t) {
+  if (!t) return '';
+  if (t.lufs === null) return `<span class="tag level" data-level title="Loudness not measured yet">… LUFS</span>`;
+  const diff = t.lufs - meta.targetLufs;
+  const off = levelOff(t);
+  const title = `Integrated ${t.lufs.toFixed(1)} LUFS (${diff >= 0 ? '+' : ''}${diff.toFixed(1)} LU vs ${meta.targetLufs}), true peak ${t.peak?.toFixed(1)} dBTP`;
+  return `<span class="tag level${off ? ' flag' : ''}" data-level title="${esc(title)}">${t.lufs.toFixed(1)} LUFS${off ? ` (${diff >= 0 ? '+' : ''}${diff.toFixed(1)})` : ''}</span>`;
+}
+
+function levelStatus() {
+  $('#level-status').textContent = meta.ffmpegMissing
+    ? 'Loudness: ffmpeg not found'
+    : meta.loudnessPending
+      ? `Measuring loudness, ${meta.loudnessPending} left`
+      : `Loudness target ${meta.targetLufs} LUFS ±${LU_TOLERANCE}`;
+}
+
+/** While the server is still measuring, refresh just the loudness badges. */
+function pollLoudness() {
+  clearTimeout(pollTimer);
+  if (!meta.loudnessPending || meta.ffmpegMissing) return;
+  pollTimer = setTimeout(async () => {
+    const data = await (await fetch('/api/loudness')).json();
+    meta = { ...meta, ...data };
+    for (const c of clips) for (const t of c.takes) {
+      const m = data.loudness[t.sha1];
+      if (m) { t.lufs = m.lufs; t.peak = m.peak; }
+    }
+    shown.forEach((c, i) => {
+      const badge = $('[data-level]', cardEl(i));
+      if (badge) badge.outerHTML = levelBadge(takeOf(c));
+    });
+    levelStatus();
+    pollLoudness();
+  }, 2000);
+}
+
+function options(el, label, values, keep) {
+  const cur = keep ?? el.value;
+  el.innerHTML = `<option value="">${label}</option>` + values.map(([v, t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join('');
+  el.value = values.some(([v]) => v === cur) ? cur : '';
+}
+
+function fillSelects() {
+  const camp = $('#f-campaign');
+  options(camp, 'All campaigns', [...new Set(clips.map((c) => c.campaign))].map((c) => [c, c]), camp.value || recall('campaign'));
+  const inCamp = clips.filter((c) => !camp.value || c.campaign === camp.value);
+  const scen = [...new Map(inCamp.map((c) => [`${c.campaign}|${c.number}`, c])).values()]
+    .sort((a, b) => a.campaign.localeCompare(b.campaign) || a.number - b.number)
+    .map((c) => [`${c.campaign}|${c.number}`, camp.value ? `S${c.number}` : `${c.campaign} S${c.number}`]);
+  options($('#f-scenario'), 'All scenarios', scen, $('#f-scenario').value || recall('scenario'));
+  const chars = [...new Map(inCamp.map((c) => [c.character, c.characterName])).entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  options($('#f-character'), 'All characters', chars, $('#f-character').value || recall('character'));
+  options($('#f-tag'), 'Any tag', meta.tags.map((t) => [t, t]), $('#f-tag').value || recall('tag'));
+}
+
+function matches(c, ignoreStatus = false) {
+  const f = {
+    campaign: $('#f-campaign').value, scenario: $('#f-scenario').value, character: $('#f-character').value,
+    status: ignoreStatus ? '' : $('#f-status').value, search: $('#f-search').value.trim().toLowerCase(),
+    recorded: $('#f-recorded').checked, tag: $('#f-tag').value, level: $('#f-level').value, multi: $('#f-multi').value,
+  };
+  if (f.recorded && !c.takes.length) return false;
+  if (f.campaign && c.campaign !== f.campaign) return false;
+  if (f.scenario && `${c.campaign}|${c.number}` !== f.scenario) return false;
+  if (f.character && c.character !== f.character) return false;
+  if (f.status === 'not-approved' ? c.status === 'approved' : f.status && c.status !== f.status) return false;
+  if (f.tag && !c.takes.some((t) => t.tags.includes(f.tag))) return false;
+  if (f.level === 'off' && !c.takes.some(levelOff)) return false;
+  if (f.multi === 'multi' && c.takes.length < 2) return false;
+  if (f.multi === 'stale' && !c.takes.some((t) => t.live && t.staleScript)) return false;
+  if (f.multi === 'outdated' && !c.needsRedo) return false;
+  // Live take still waiting on Ted: tagged needs-ted or mismatched, and not yet approved by him
+  if (f.multi === 'live-ted' && !c.takes.some((t) => t.live && t.approvedBy !== 'ted' && (t.staleScript || t.tags.includes('needs-ted')))) return false;
+  if (f.search && !`${c.text} ${c.key} ${c.path}`.toLowerCase().includes(f.search)) return false;
+  return true;
+}
+
+function render() {
+  shown = clips.filter((c) => matches(c));
+  sel = Math.min(sel, Math.max(0, shown.length - 1));
+  $('#list').innerHTML = shown.length ? shown.map(card).join('') : '<div class="empty">No clips match these filters.</div>';
+  counts();
+  highlight(false);
+}
+
+function counts() {
+  const pool = clips.filter((c) => c.takes.length && matches(c, true));
+  const n = (s) => pool.filter((c) => c.status === s).length;
+  const takes = pool.reduce((k, c) => k + c.takes.length, 0);
+  const redo = pool.filter((c) => c.needsRedo).length;
+  $('#counts').innerHTML = `<b>${n('unreviewed')}</b> unreviewed &middot; <b>${n('pipeline')}</b> auto-approved &middot; <b>${n('approved')}</b> approved by you &middot; <b>${n('rejected')}</b> rejected &middot; <b>${redo}</b> outdated &middot; ${pool.length} clips, ${takes} takes`;
+}
+
+function takeLine(t) {
+  const r = t?.record;
+  if (!r) return '<div class="take">No take record for this file</div>';
+  const parts = [r.voiceName ?? r.voiceId, r.model, r.credits !== undefined ? `${r.credits} credits` : null, r.recordedAt?.slice(0, 16).replace('T', ' '), r.note].filter(Boolean);
+  return `<div class="take" title="${esc(JSON.stringify(r, null, 1))}">Take record: ${esc(parts.join(' · '))}</div>`;
+}
+
+function takeButtons(c, cur) {
+  if (c.takes.length < 1) return '';
+  const live = c.takes.find((t) => t.live);
+  // Collapsed: only the live take, unless a non-live take is the one being played
+  const open = !live || expanded.has(c.path) || (cur && !cur.live);
+  const list = open ? c.takes : [live];
+  const others = c.takes.length - 1;
+  const toggle = live && others > 0
+    ? `<button class="more" data-expand="1">${open ? 'Hide other takes' : `View all ${c.takes.length} takes`}</button>`
+    : '';
+  return `<div class="takes"><span class="label">${open ? 'Takes' : 'Live take'}</span>${list
+    .map((t) => {
+      const mark = t.status === 'approved' ? (t.approvedBy === 'pipeline' ? ' ✓auto' : ' ✓') : t.status === 'rejected' ? ' ✗' : '';
+      const title = `Take ${t.n}: ${t.status}${t.live ? ', live in the game' : ''}, added ${t.addedAt.slice(0, 16).replace('T', ' ')}${t.outdated ? `. Outdated: ${t.outdated}` : ''}`;
+      return `<button data-take="${t.sha1}" class="${t.status}${t.approvedBy === 'pipeline' ? ' pipeline' : ''}${t.sha1 === cur?.sha1 ? ' cur' : ''}" title="${esc(title)}">Take ${t.n}${t.live ? ' · live' : ''}${t.outdated ? ' · old' : ''}${mark}</button>`;
+    })
+    .join('')}${toggle}</div>`;
+}
+
+function card(c, i) {
+  const t = takeOf(c);
+  const flags = [
+    t?.textChanged ? '<span class="tag flag" title="The scenario text changed after this take was judged">text changed</span>' : '',
+    t?.staleScript ? `<span class="tag flag" title="${esc(`Recorded from: ${t.record.scriptText}`)}">recording/script mismatch</span>` : '',
+    c.needsRedo
+      ? `<span class="tag flag" title="No current-tempo take yet: every take is outdated or rejected">outdated audio</span>`
+      : t?.outdated ? `<span class="tag flag" title="${esc(t.outdated)}">this take is outdated</span>` : '',
+    c.takes.length ? '' : '<span class="tag">not recorded</span>',
+  ].join('');
+  return `<section class="clip ${c.status}${c.takes.length ? '' : ' missing'}" data-i="${i}">
+    ${face(c)}
+    <div class="body">
+    <div class="meta">
+      <span class="who">${esc(c.characterName)}</span>
+      <span>${esc(c.campaign)} S${c.number}</span>
+      <span>${esc(c.key)}</span>
+      <span class="tag">${esc(c.emotion.toLowerCase())}</span>
+      <span class="tag status-${c.status}" title="Clip status">${c.status}</span>
+      ${levelBadge(t)}
+      ${flags}
+      <code>${esc(c.path)}</code>
+    </div>
+    <div class="text">${esc(c.text)}</div>
+    ${takeButtons(c, t)}
+    ${t ? `<div class="row">
+      <audio controls preload="none" src="/audio?path=${encodeURIComponent(c.path)}&take=${t.sha1}"></audio>
+      <span class="verdict">
+        <button class="approve ${t.status === 'approved' && t.approvedBy !== 'pipeline' ? 'on' : ''}" data-act="approved" title="${t.approvedBy === 'pipeline' ? 'Auto-approved by QC; approve to confirm you heard it' : 'Approve this take; it becomes the live file'}">Approve take ${t.n}</button>
+        <button class="reject ${t.status === 'rejected' ? 'on' : ''}" data-act="rejected">Reject</button>
+        <button data-act="unreviewed">Clear</button>
+      </span>
+    </div>
+    <div class="tags">${meta.tags.map((g) => `<button data-tag="${esc(g)}" class="${t.tags.includes(g) ? 'on' : ''}">${esc(g)}</button>`).join('')}</div>
+    <textarea placeholder="Notes on take ${t.n} (delivery, pacing, pronunciation...)">${esc(t.notes)}</textarea>
+    <div class="saved"></div>
+    ${takeLine(t)}` : ''}
+    </div>
+  </section>`;
+}
+
+/** The speaker's portrait for this line's emotion, as the game shows it; initials when there is no image. */
+function face(c) {
+  const initials = esc(String(c.characterName).split(/\s+/u).map((w) => w[0]).join('').slice(0, 2));
+  const src = `/portrait?name=${encodeURIComponent(c.characterName)}&emotion=${encodeURIComponent(c.emotion.toLowerCase())}`;
+  return `<div class="face" title="${esc(c.characterName)}, ${esc(c.emotion.toLowerCase())}">
+    <img src="${src}" alt="${esc(c.characterName)}" loading="lazy" onerror="this.outerHTML='<div class=&quot;initials&quot;>${initials}</div>'">
+    <div class="mood">${esc(c.emotion.toLowerCase())}</div>
+  </div>`;
+}
+
+function cardEl(i) { return $(`.clip[data-i="${i}"]`); }
+
+function highlight(scroll = true) {
+  document.querySelectorAll('.clip.sel').forEach((el) => el.classList.remove('sel'));
+  const el = cardEl(sel);
+  if (!el) return;
+  el.classList.add('sel');
+  if (scroll) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+}
+
+/** Re-render one card in place; keep the audio position and play state when only the take changes. */
+function redraw(i, keepAudio = null) {
+  const el = cardEl(i);
+  if (!el) return;
+  el.outerHTML = card(shown[i], i);
+  if (i === sel) highlight(false);
+  const audio = $('audio', cardEl(i));
+  if (audio && keepAudio) {
+    audio.preload = 'auto';
+    audio.addEventListener('loadedmetadata', () => {
+      audio.currentTime = Math.min(keepAudio.time, audio.duration || keepAudio.time);
+      if (keepAudio.playing) audio.play();
+    }, { once: true });
+    audio.load();
+  }
+}
+
+function switchTake(i, d) {
+  const c = shown[i];
+  if (!c || c.takes.length < 2) return;
+  const cur = c.takes.indexOf(takeOf(c));
+  const next = c.takes[(cur + d + c.takes.length) % c.takes.length];
+  pickTake(i, next.sha1);
+}
+
+function pickTake(i, sha) {
+  const audio = $('audio', cardEl(i));
+  const keep = audio && (audio.currentTime > 0 || !audio.paused) ? { time: audio.currentTime, playing: !audio.paused } : null;
+  if (audio) audio.pause();
+  picked.set(shown[i].path, sha);
+  redraw(i, keep);
+}
+
+async function save(i, patch) {
+  const c = shown[i];
+  const t = takeOf(c);
+  if (!t) return;
+  $('.saved', cardEl(i)).textContent = 'Saving...';
+  try {
+    const res = await fetch('/api/review', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ path: c.path, take: t.sha1, ...patch }) });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error);
+    clips[clips.indexOf(c)] = shown[i] = body;
+    picked.set(c.path, t.sha1);
+    if (patch.status !== undefined || patch.tags !== undefined) redraw(i);
+    $('.saved', cardEl(i)).textContent = `Saved ${new Date().toLocaleTimeString()}${patch.status === 'approved' ? ` · take ${t.n} is live` : ''}`;
+    counts();
+  } catch (err) {
+    $('.saved', cardEl(i)).textContent = `Not saved: ${err.message}`;
+  }
+}
+
+function move(d) {
+  if (!shown.length) return;
+  const audio = $('audio', cardEl(sel));
+  if (audio && !audio.paused) audio.pause();
+  sel = Math.max(0, Math.min(shown.length - 1, sel + d));
+  highlight();
+}
+
+function playPause() {
+  const audio = $('audio', cardEl(sel));
+  if (!audio) return;
+  if (audio.paused) { if (audio.ended) audio.currentTime = 0; audio.play(); } else audio.pause();
+}
+
+$('#list').addEventListener('click', (e) => {
+  const el = e.target.closest('.clip');
+  if (!el) return;
+  const i = Number(el.dataset.i);
+  if (i !== sel) { sel = i; highlight(false); }
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  if (btn.dataset.expand) {
+    const c = shown[i];
+    if (expanded.has(c.path)) {
+      expanded.delete(c.path);
+      if (!takeOf(c)?.live) picked.set(c.path, defaultTake(c)); // collapsing goes back to the live take
+    } else expanded.add(c.path);
+    redraw(i);
+  } else if (btn.dataset.take) pickTake(i, btn.dataset.take);
+  else if (btn.dataset.act) save(i, { status: btn.dataset.act });
+  else if (btn.dataset.tag) {
+    const cur = takeOf(shown[i]).tags;
+    const g = btn.dataset.tag;
+    save(i, { tags: cur.includes(g) ? cur.filter((x) => x !== g) : [...cur, g] });
+  }
+});
+
+let noteTimer;
+$('#list').addEventListener('input', (e) => {
+  if (e.target.tagName !== 'TEXTAREA') return;
+  const i = Number(e.target.closest('.clip').dataset.i);
+  clearTimeout(noteTimer);
+  noteTimer = setTimeout(() => save(i, { notes: e.target.value }), 700);
+});
+$('#list').addEventListener('focusout', (e) => {
+  if (e.target.tagName !== 'TEXTAREA') return;
+  const i = Number(e.target.closest('.clip').dataset.i);
+  const t = shown[i] && takeOf(shown[i]);
+  if (t && t.notes !== e.target.value) { clearTimeout(noteTimer); save(i, { notes: e.target.value }); }
+});
+$('#list').addEventListener('play', (e) => {
+  document.querySelectorAll('audio').forEach((a) => { if (a !== e.target) a.pause(); });
+  const i = Number(e.target.closest('.clip').dataset.i);
+  if (i !== sel) { sel = i; highlight(false); }
+}, true);
+
+document.addEventListener('keydown', (e) => {
+  const typing = ['TEXTAREA', 'INPUT', 'SELECT'].includes(document.activeElement?.tagName);
+  if (e.key === 'Escape' && typing) { document.activeElement.blur(); return; }
+  if (typing || e.ctrlKey || e.metaKey || e.altKey) return;
+  const t = shown[sel] && takeOf(shown[sel]);
+  switch (e.key) {
+    case 'j': case 'ArrowDown': move(1); break;
+    case 'k': case 'ArrowUp': move(-1); break;
+    case ']': switchTake(sel, 1); break;
+    case '[': switchTake(sel, -1); break;
+    case ' ': playPause(); break;
+    case 'a': if (t) save(sel, { status: 'approved' }).then(() => move(1)); break;
+    case 'r': if (t) save(sel, { status: 'rejected' }).then(() => $('textarea', cardEl(sel))?.focus()); break;
+    case 'u': if (t) save(sel, { status: 'unreviewed' }); break;
+    case 'n': $('textarea', cardEl(sel))?.focus(); break;
+    default: return;
+  }
+  e.preventDefault();
+});
+
+for (const f of filters) {
+  const el = $(`#f-${f}`);
+  if (f === 'recorded') { const v = recall(f); if (v !== null) el.checked = v === '1'; }
+  else if (['status', 'level', 'multi'].includes(f) && recall(f) !== null) el.value = recall(f);
+  el.addEventListener(f === 'search' ? 'input' : 'change', () => {
+    store(f, f === 'recorded' ? (el.checked ? '1' : '0') : el.value);
+    if (f === 'campaign') fillSelects();
+    sel = 0;
+    render();
+  });
+}
+$('#refresh').addEventListener('click', () => load(true));
+
+// Re-read source text and live hashes on page load, even with a long-running server.
+load(true);
+</script>
+</body>
+</html>

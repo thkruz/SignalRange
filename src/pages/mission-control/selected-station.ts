@@ -1,6 +1,7 @@
 import { type OrbitalObserver, observerFromLocation } from '@app/equipment/satellite/orbital-satellite';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { assetSelectionState } from '@app/pages/mission-control/asset-selection-state';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 
 /**
@@ -18,7 +19,12 @@ export class SelectedStation {
   private stationId_: string | null = null;
   private readonly boundHandler_ = this.handleSelected_.bind(this);
 
-  constructor() {
+  /**
+   * @param initialStationId Station already selected when this surface is built.
+   *   Defaults to the sidebar's last ground-station selection.
+   */
+  constructor(initialStationId: string | null = assetSelectionState.groundStationId) {
+    this.stationId_ = initialStationId;
     EventBus.getInstance().on(Events.ASSET_SELECTED, this.boundHandler_);
   }
 

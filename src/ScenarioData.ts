@@ -1,4 +1,5 @@
 import type { Objective } from './objectives';
+import type { SceneData } from './presentation/scene-modal';
 import type { DialogClip, SimulationSettings } from './scenario-manager';
 
 export interface ScenarioData {
@@ -15,11 +16,20 @@ export interface ScenarioData {
   missionType: string;
   description: string;
   equipment: string[];
+  /** Optional story scene before the briefing; campaign prologues have built-in defaults. */
+  openingScene?: Partial<SceneData>;
   settings: SimulationSettings;
   objectives?: Objective[];
   dialogClips?: {
     intro?: DialogClip;
+    /** Played when the keyed objective COMPLETES */
     objectives?: Record<string, DialogClip>;
+    /**
+     * Played when the keyed objective BECOMES ACTIVE. Use for a line that
+     * introduces a step; a completion clip keyed to the previous objective
+     * reads as late or early whenever that objective finishes on its own.
+     */
+    objectivesOnStart?: Record<string, DialogClip>;
   };
   /** Optional scenario-wide time limit in seconds */
   timeLimitSeconds?: number;

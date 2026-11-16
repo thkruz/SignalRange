@@ -85,9 +85,11 @@ describe('PluginManager', () => {
     expect(manager.list()).toEqual([expect.objectContaining({ id: 'PrivateOnly', enabled: true, loaded: false, unavailable: true, source: 'private' })]);
   });
 
-  it('the real manifest has nothing loadable in the OSS test build', () => {
-    expect(PluginManager.getInstance().isReady).toBe(true);
-    expect(PluginManager.getInstance().manifest.map((d) => d.id)).toContain('Authoring');
+  it('the real manifest lists the builtin plugins and the private-only Authoring plugin', () => {
+    const ids = PluginManager.getInstance().manifest.map((d) => d.id);
+
+    expect(ids).toContain('Authoring');
+    expect(ids).toContain('PhasedArray');
   });
 
   it('loads locales, instantiates the class, and passes a working api to register()', async () => {

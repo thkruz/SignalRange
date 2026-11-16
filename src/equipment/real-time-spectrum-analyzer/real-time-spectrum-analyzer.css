@@ -19,6 +19,10 @@
   justify-content: center;
 }
 
+/*
+ * Canvas sizes are set here (CSS); the spectral plot sizes its bitmap to the
+ * element x devicePixelRatio, so text and lines stay crisp at any width.
+ */
 /* Single canvas mode (default for spectralDensity and waterfall) */
 .spec-a-canvas-container canvas.spec-a-canvas-single {
   display: block;

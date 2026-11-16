@@ -23,7 +23,7 @@ import { sentry7Satellite, sentry9Satellite } from './satellites';
 export const signalHunterSandboxData: ScenarioData = {
   id: 'signal-hunter-sandbox',
   url: 'signal-hunter/scenarios/signal-hunter-sandbox',
-  imageUrl: 'nats/21/card.png',
+  imageUrl: 'signal-hunter/sandbox/card.png',
   number: 0,
   isDisabled: false,
   difficulty: 'advanced',
@@ -47,7 +47,7 @@ export const signalHunterSandboxData: ScenarioData = {
         satelliteNoradId: 71001,
         frequency: 6013e6, // Uplink, inside SENTRY-7 TP-1 passband (5990-6030), H-pol
         bandwidth: 5e6,
-        power: 6, // dBm at transponder input; ~C/I 14 dB against the 20 dBm service carrier
+        power: 78.2, // uplink EIRP, dBm (phase 19.3 migration: was 6 dBm at the transponder input, same downlink)
         polarization: 'H',
         startTime: 15,
         duration: 7200, // Persists across the session

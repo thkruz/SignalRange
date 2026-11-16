@@ -1,0 +1,68 @@
+/* Power plan: a printed planning sheet on graph paper. Printed ink for the table, pencil for the player's marks and the worked forecast. */
+.fpp {
+  --fpp-ink: #1c2420;
+  --fpp-pencil: #343a44;
+  --fpp-rule: #5d6a62;
+  --fpp-stamp: #8a2a22;
+  margin: 0;
+  color: var(--fpp-ink);
+  font: 14px/1.4 Georgia, 'Times New Roman', serif;
+}
+.fpp .fpp-head { padding-bottom: 8px; border-bottom: 2px solid var(--fpp-ink); margin-bottom: 12px; }
+.fpp .fpp-kicker { margin: 0; font: 700 11px/1 'Courier New', monospace; letter-spacing: 0.2em; text-transform: uppercase; color: #46544b; }
+.fpp .fpp-title { margin: 6px 0 2px; font: 700 26px/1.15 Georgia, serif; text-transform: uppercase; color: var(--fpp-ink); }
+.fpp .fpp-sum { margin: 0; font: 22px/1.2 'Caveat', 'Segoe Print', cursive; color: var(--fpp-pencil); }
+.fpp .fpp-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.fpp .fpp-stats { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.fpp .fpp-stat { padding: 4px 12px 6px; border: 1.5px solid var(--fpp-ink); background: #ffffff66; font: 700 11px 'Courier New', monospace; letter-spacing: 0.1em; text-transform: uppercase; }
+.fpp .fpp-stat b { display: block; font: 600 24px/1.1 'Caveat', 'Segoe Print', cursive; letter-spacing: 0; text-transform: none; color: var(--fpp-pencil); }
+.fpp .fpp-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; background: #ffffff59; }
+.fpp .fpp-caption { caption-side: top; text-align: left; padding: 0 0 4px; font-style: italic; color: #33403a; }
+.fpp .fpp-table th, .fpp .fpp-table td { padding: 6px 8px; border: 1px solid var(--fpp-rule); vertical-align: middle; text-align: left; color: var(--fpp-ink); }
+.fpp .fpp-table thead th { font: 700 11px 'Courier New', monospace; letter-spacing: 0.1em; text-transform: uppercase; background: #1c242014; }
+.fpp .fpp-table tbody th { font-weight: 700; }
+.fpp .fpp-num { font: 600 20px/1.1 'Caveat', 'Segoe Print', cursive; color: var(--fpp-pencil); }
+.fpp .fpp-fuel { display: block; font-size: 17px; }
+.fpp .fpp-mode { font: 600 19px/1.1 'Caveat', 'Segoe Print', cursive; }
+.fpp .fpp-mode-on { color: #1d4a28; }
+.fpp .fpp-mode-warn { color: #7a4408; }
+.fpp .fpp-mode-idle { color: #4a5650; }
+.fpp .fpp-device.has-pending { background: #b4690e1f; }
+.fpp .fpp-mode-switch { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0; padding: 0; border: 0; }
+.fpp .fpp-switch-position { position: relative; display: inline-flex; align-items: center; gap: 7px; margin: 0; cursor: pointer; }
+.fpp .fpp-switch-position input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.fpp .fpp-tick-box { flex: none; width: 18px; height: 18px; border: 1.8px solid var(--fpp-ink); background: #fff8; position: relative; }
+.fpp .fpp-switch-position input:checked + .fpp-tick-box::after { content: '\2713'; position: absolute; left: 1px; top: -9px; font: 700 30px/1 'Caveat', 'Segoe Print', cursive; color: var(--fpp-pencil); }
+.fpp .fpp-switch-position input:focus-visible + .fpp-tick-box { outline: 3px solid #0b5fa8; outline-offset: 2px; }
+.fpp .fpp-tick-label { font-size: 13px; }
+
+.fpp .fpp-switch-position small { display: block; font: 12.5px 'Courier New', monospace; color: #46544b; }
+.fpp .fpp-go, .fpp .fpp-btn { padding: 6px 12px; font: 600 13px Georgia, serif; color: var(--fpp-ink); background: #eef0e6; border: 1.5px solid var(--fpp-ink); border-radius: 0; cursor: pointer; box-shadow: none; }
+.fpp .fpp-go:hover, .fpp .fpp-btn:hover { background: #fff; }
+.fpp .fpp-go:focus-visible, .fpp .fpp-btn:focus-visible { outline: 3px solid #0b5fa8; outline-offset: 2px; }
+.fpp .fpp-btn:disabled { opacity: 0.5; cursor: default; }
+.fpp .fpp-forecast { position: relative; margin: 0 0 12px; padding: 8px 4px; }
+.fpp .fpp-forecast.fpp-ok::after { content: 'MEETS RESERVE'; position: absolute; right: 8px; top: 2px; padding: 2px 8px; font: 700 13px 'Courier New', monospace; letter-spacing: 0.1em; color: #1d4a28; border: 2.5px solid #1d4a28; opacity: 0.85; transform: rotate(-5deg); pointer-events: none; }
+.fpp .fpp-forecast.fpp-bad::after { content: 'BELOW RESERVE'; position: absolute; right: 8px; top: 2px; padding: 2px 8px; font: 700 13px 'Courier New', monospace; letter-spacing: 0.1em; color: var(--fpp-stamp); border: 2.5px solid var(--fpp-stamp); opacity: 0.85; transform: rotate(-5deg); pointer-events: none; }
+.fpp [data-fpp='supply-alarm'].fpp-forecast::after { content: none; }
+.fpp .fpp-forecast-title { font: 700 12px 'Courier New', monospace; letter-spacing: 0.12em; text-transform: uppercase; }
+.fpp .fpp-forecast-note { font: 400 13px Georgia, serif; letter-spacing: 0; text-transform: none; margin-left: 8px; color: #3a4640; }
+.fpp .fpp-forecast-line { font: 22px/1.3 'Caveat', 'Segoe Print', cursive; color: var(--fpp-pencil); }
+.fpp [data-fpp='supply-alarm'] { font: 700 14px Georgia, serif; color: var(--fpp-stamp); border-color: var(--fpp-stamp); }
+.fpp .fpp-energy { margin: 6px 0; }
+.fpp .fpp-graph { width: 100%; max-width: 620px; height: auto; display: block; }
+.fpp .fpp-axis { fill: #3a4640; font: 10px 'Courier New', monospace; }
+.fpp .fpp-axis-line { stroke: var(--fpp-ink); stroke-width: 1.4; }
+.fpp .fpp-reserve { stroke: var(--fpp-stamp); stroke-width: 1.6; stroke-dasharray: 6 4; }
+.fpp .fpp-line { stroke-width: 3; stroke-linecap: round; fill: none; }
+.fpp .fpp-line-ok { stroke: #2b3a56; }
+.fpp .fpp-line-bad { stroke: var(--fpp-stamp); }
+.fpp .fpp-dot { fill: var(--fpp-pencil); }
+.fpp .fpp-cross { fill: none; stroke: var(--fpp-stamp); stroke-width: 2.4; }
+.fpp .fpp-pencil-note { fill: var(--fpp-pencil); font: 600 17px 'Caveat', 'Segoe Print', cursive; }
+.fpp .fpp-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.fpp .fpp-btn-keep { border-color: #2b3a56; }
+.fpp .fpp-result { font: 21px/1.3 'Caveat', 'Segoe Print', cursive; color: var(--fpp-pencil); }
+
+/* Laminate sheen and edge on the printed table */
+.fpp .fpp-table { box-shadow: inset 0 0 0 1px #ffffff80, inset 0 1px 0 #ffffffb0; background-image: linear-gradient(115deg, #ffffff30 0%, #ffffff00 38%); }

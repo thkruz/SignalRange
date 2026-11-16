@@ -85,11 +85,11 @@ test.describe('nats-eu Scenario 10 Full Completion', () => {
     await waitForObjectiveComplete(missionControl, 'Read the Tasking');
   });
 
-  test('[dashboard-sweep] reads the board: AGC rail, no faults', async () => {
+  test('[dashboard-sweep] reads the board: AGC no-carrier warning, no faults', async () => {
     await missionControl.selectGroundStation('GW-01');
     await missionControl.selectTab('dashboard');
-    await expectDashboardAlarm(page, 'AGC at max gain');
-    await answerSystemQuiz(page, 'RX AGC at max gain');
+    await expectDashboardAlarm(page, 'AGC on noise only');
+    await answerSystemQuiz(page, 'RX AGC on noise only');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'GW-01 Dashboard Sweep');
   });
@@ -105,10 +105,10 @@ test.describe('nats-eu Scenario 10 Full Completion', () => {
 
   test('[budget-the-low-pass] computes the worksheet and reads the atmospheric loss', async () => {
     await computeLinkBudget(page, missionControl, {
-      eirpDbm: 28,
+      eirpDbm: 31.3,
       fsplDb: 174.1,
-      rxGainDbi: 51.8,
-      noiseTempK: 88,
+      rxGainDbi: 50.4,
+      noiseTempK: 131,
       bandwidthMHz: 36,
       miscLossDb: 1.2,
     });
@@ -127,7 +127,9 @@ test.describe('nats-eu Scenario 10 Full Completion', () => {
 
   test('[raise-the-eirp] takes the HPA back-off to 4 dB and stays linear', async () => {
     await setHpaBackOff(page, missionControl, 4);
-    await expect(page.locator('#hpa-overdrive-status')).toHaveText('Normal');
+    // The HPA output is still disabled at this step, so OVERDRIVE reads "--" (Phase 30 D5);
+    // the objective's HPA Linear row is what proves the 4 dB point is linear
+    await expect(page.locator('#hpa-overdrive-status')).toHaveText('--');
     await page.waitForTimeout(2500);
     await answerSystemQuiz(page, 'Intermodulation products spill');
     await dismissDialogIfPresent(page);
@@ -142,7 +144,7 @@ test.describe('nats-eu Scenario 10 Full Completion', () => {
   });
 
   test('[preposition-for-aos] parks the tracker on the rise azimuth', async () => {
-    // Parked az 5 / el 3; the rise is az 027 / el 5 (tolerance 3 deg).
+    // Parked az 5 / el 3; the rise is az 027 / el 5 (tolerance 2 deg).
     await parkAntenna(page, missionControl, { az: 5, el: 3 }, { az: 27, el: 5 });
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Pre-position for AOS', 60000);
@@ -185,9 +187,9 @@ test.describe('nats-eu Scenario 10 Full Completion', () => {
     // The 30 s maintain window ticks on real time
     await page.waitForTimeout(32000);
 
-    // Max elevation is 15:39:31Z. Commit with the live C/N at least 7 dB
-    // (6 dB threshold + 1 dB required margin).
-    await commitLinkWithMargin(page, missionControl, 7);
+    // Max elevation is 15:39:31Z. Commit with the live C/N at least 7.3 dB
+    // (4.2 dB threshold + 3 dB required margin, plus a little headroom).
+    await commitLinkWithMargin(page, missionControl, 7.3);
     await answerSystemQuiz(page, 'On a low pass the bird never gets close');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Pull the Imagery With the Margin You Have', 60000);

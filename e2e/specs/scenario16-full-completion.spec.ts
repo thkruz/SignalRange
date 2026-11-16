@@ -1,12 +1,13 @@
 import { expect, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
 import { answerQuizByText, dismissDialogIfPresent, waitForSimulationReady } from '../utils/simulation-helpers';
+import { advanceUntil, simAdvance } from '../utils/test-clock';
 
 /**
  * Scenario 16 - "Cascade Failure": Multi-System Recovery Under Customer Pressure.
  *
  * Phase 2 capstone. Three concurrent unrelated faults on VT-01:
- *  - BUC over-temperature (>70°C) with high current draw
+ *  - BUC over-temperature (>70°C, a staged buc-overtemp cooling fault)
  *  - LNB sticky reference-lock fault (clears on power cycle)
  *  - HPA back-off drifted to 2 dB (overdriven)
  *
@@ -52,7 +53,7 @@ const SCENARIO_16_OBJECTIVES: Scenario16Objective[] = [
     id: 'review-mission-brief',
     title: 'Review Incident Brief',
     type: 'quiz',
-    correctAnswer: 'Triage all alarms first, then act in priority order: RF safety, customer impact, equipment health',
+    correctAnswer: 'Triage all three alarms first, then act in priority order: RF safety, customer impact, equipment health',
   },
 
   // ============================================================
@@ -74,7 +75,7 @@ const SCENARIO_16_OBJECTIVES: Scenario16Objective[] = [
     id: 'triage-dashboard-alarms',
     title: 'Triage the Alarm Board',
     type: 'quiz',
-    correctAnswer: 'BUC over-temperature and high current, LNB reference unlocked, HPA overdriven',
+    correctAnswer: 'BUC over-temperature, LNB reference unlocked, HPA overdriven',
   },
   {
     id: 'prioritize-recovery-order',
@@ -103,7 +104,7 @@ const SCENARIO_16_OBJECTIVES: Scenario16Objective[] = [
     id: 'disable-hpa-for-safety',
     title: 'Disable the HPA - Confirm Rationale',
     type: 'quiz',
-    correctAnswer: 'It takes the dirty uplink off the air, and an enabled HPA left without BUC drive would amplify raw noise into the feed',
+    correctAnswer: 'It takes the dirty uplink off the air, and an enabled HPA with no BUC drive would amplify raw noise into the feed',
   },
   {
     id: 'mute-buc-for-cooldown',
@@ -116,7 +117,7 @@ const SCENARIO_16_OBJECTIVES: Scenario16Objective[] = [
     id: 'diagnose-hpa-overdrive',
     title: 'Diagnose HPA Overdrive',
     type: 'quiz',
-    correctAnswer: 'Output is too close to saturation - IMD products are rising and the amplifier is at risk',
+    correctAnswer: 'The output is too close to saturation, so IMD products are rising and the amplifier is at risk',
   },
   {
     id: 'correct-hpa-backoff',
@@ -132,8 +133,10 @@ const SCENARIO_16_OBJECTIVES: Scenario16Objective[] = [
     id: 'wait-for-buc-cooling',
     title: 'Allow BUC to Cool',
     type: 'auto',
-    // Muted BUC cools toward ambient at ~0.14°C/s; 72°C -> <70°C in ~20 s.
-    waitForSeconds: 45,
+    // The buc-overtemp fault holds a muted BUC's target at ~55°C (time
+    // constant ~5.5 min), so ~72-73°C -> <70°C takes about a minute of real
+    // time (advanceClock does not run physics).
+    waitForSeconds: 150,
   },
 
   // ============================================================
@@ -152,17 +155,12 @@ const SCENARIO_16_OBJECTIVES: Scenario16Objective[] = [
     correctAnswer: 'Power cycle the LNB to clear the sticky reference lock fault',
   },
   {
+    // "LNB Powered Off" latches first; then reference lock and the VT-01
+    // LNB's 90 s warm-up (Phase 27) before the objective completes
     id: 'power-cycle-lnb',
     title: 'Power Cycle the LNB',
     type: 'lnb-power-cycle',
-  },
-
-  // verify-rx-locked is auto-satisfied once LNB stabilizes after power cycle
-  {
-    id: 'verify-rx-locked',
-    title: 'Verify Receiver Locked',
-    type: 'auto',
-    waitForSeconds: 15,
+    waitForSeconds: 180,
   },
 
   // ============================================================
@@ -192,7 +190,22 @@ const SCENARIO_16_OBJECTIVES: Scenario16Objective[] = [
     id: 'verify-tx-output-clean',
     title: 'Restore HPA Output - Confirm Spectrum Posture',
     type: 'quiz',
-    correctAnswer: 'Clean - IMD products are back below coordination limits and we are no longer interfering',
+    correctAnswer: "Clean: IMD products are back below the coordination limits, so we're no longer interfering",
+  },
+
+  // Phase 27: the receiver locks on VT-01's own carrier, so it is verified
+  // only after the uplink is restored
+  {
+    id: 'verify-rx-locked-tab',
+    title: 'Open RX Analysis',
+    type: 'click-tab',
+    tabId: 'rx-analysis',
+  },
+  {
+    id: 'verify-rx-locked',
+    title: 'Verify Receiver Locked',
+    type: 'auto',
+    waitForSeconds: 60,
   },
 
   // ============================================================
@@ -214,14 +227,13 @@ const SCENARIO_16_OBJECTIVES: Scenario16Objective[] = [
     id: 'customer-notification',
     title: 'Notify the Customer',
     type: 'quiz',
-    correctAnswer: 'Three concurrent faults identified and cleared in priority order. Link is operational. Written impact report to follow within the hour.',
+    correctAnswer: 'Three faults found and cleared in priority order. The link is operational, and a written report follows within the hour.',
   },
   {
     id: 'log-cascade-event',
     title: 'Log the Cascade Event',
     type: 'quiz',
-    correctAnswer:
-      'VT-01 concurrent unrelated faults: BUC over-temp (72°C), LNB ref unlock (sticky), HPA back-off 2 dB. Cleared in priority order: HPA, BUC, LNB. SeaLink notified.',
+    correctAnswer: 'VT-01 concurrent unrelated faults: BUC over-temp (72°C), LNB ref unlock, HPA back-off 2 dB. Cleared in priority order: HPA, BUC, LNB. SeaLink notified.',
   },
 ];
 
@@ -277,7 +289,7 @@ async function powerCycleLnb(page: import('@playwright/test').Page): Promise<voi
   await expect(powerSwitch).toBeChecked();
 
   // Wait for thermal stabilization + reference re-acquire
-  await page.waitForTimeout(5000);
+  await simAdvance(page, 5000);
 }
 
 async function closeQuizModalIfPresent(page: import('@playwright/test').Page): Promise<void> {
@@ -350,7 +362,7 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
       // Observation-gated conditions latch only after the default dwell on
       // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
       // reset the read and strand the objective.
-      await page.waitForTimeout(3000);
+      await simAdvance(page, 3000);
       break;
 
     case 'toggle-switch':
@@ -363,11 +375,30 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
 
     case 'lnb-power-cycle':
       await powerCycleLnb(page);
+      // Stay on RX Analysis until the reference lock and warm-up complete it
+      await advanceUntil(
+        page,
+        () =>
+          page.evaluate((id) => {
+            const hook = (window as unknown as { debugObjective?: (id: string) => { isCompleted?: boolean } }).debugObjective;
+            return typeof hook === 'function' && hook(id)?.isCompleted === true;
+          }, objective.id),
+        { maxMs: (objective.waitForSeconds ?? 90) * 1000, stepMs: 1000, message: `objective ${objective.id} complete` }
+      );
       break;
 
     case 'auto':
-      // Wait for simulation-driven condition (e.g. BUC thermal recovery)
-      await page.waitForTimeout((objective.waitForSeconds ?? 90) * 1000);
+      // Wait for the simulation-driven condition (e.g. BUC thermal recovery)
+      // to complete the objective itself
+      await advanceUntil(
+        page,
+        () =>
+          page.evaluate((id) => {
+            const hook = (window as unknown as { debugObjective?: (id: string) => { isCompleted?: boolean } }).debugObjective;
+            return typeof hook === 'function' && hook(id)?.isCompleted === true;
+          }, objective.id),
+        { maxMs: (objective.waitForSeconds ?? 90) * 1000, stepMs: 1000, message: `objective ${objective.id} complete` }
+      );
       break;
   }
 
@@ -419,7 +450,7 @@ test.describe('Scenario 16 Full Completion', () => {
   for (const objective of SCENARIO_16_OBJECTIVES) {
     test(`[${objective.id}] ${objective.title}`, async () => {
       // Thermal cooldown can take several minutes of sim time
-      if (objective.type === 'auto' && (objective.waitForSeconds ?? 0) > 60) {
+      if ((objective.waitForSeconds ?? 0) > 30) {
         test.setTimeout((objective.waitForSeconds! + 60) * 1000);
       }
       await executeObjective(page, missionControlPage, objective);

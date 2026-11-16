@@ -11,7 +11,7 @@ import { ContactScheduleManager } from '@app/contact-schedule/contact-schedule-m
 import { ElectronicAttackManager } from '@app/electronic-attack/electronic-attack-manager';
 import { CryptoModule } from '@app/equipment/crypto';
 import { GeolocationConsoleCore } from '@app/equipment/geolocation-console/geolocation-console-core';
-import { FECSimulator } from '@app/equipment/receiver/fec-simulator';
+import { FECSimulator, fecInputFromSignal } from '@app/equipment/receiver/fec-simulator';
 import { TapPoint } from '@app/equipment/rf-front-end/coupler-module/tap-points';
 import { OrbitalSatellite, observerFromLocation } from '@app/equipment/satellite/orbital-satellite';
 import { EventBus } from '@app/events/event-bus';
@@ -22,11 +22,14 @@ import { GnssThreatManager } from '@app/gnss-threat/gnss-threat-manager';
 import { InterferenceManager } from '@app/interference/interference-manager';
 import { LinkBudgetManager } from '@app/link-budget/link-budget-manager';
 import { DecisionManager } from '@app/modal/decision-manager';
+import { fillDialogTokens } from '@app/modal/dialog-tokens';
 import { HintManager } from '@app/modal/hint-manager';
 import { QuizManager } from '@app/modal/quiz-manager';
 import { OpsLogManager } from '@app/ops-log/ops-log-manager';
 import { TabbedCanvas } from '@app/pages/mission-control/tabbed-canvas';
+import { PhysicalPlantService } from '@app/physical/physical-plant-service';
 import { CampaignDocumentStore } from '@app/scenarios/campaign-document-store';
+import { EventTimeLedger } from '@app/scenarios/event-time-ledger';
 import { SecurityConsoleCore } from '@app/security-console/security-console-core';
 import { missionNowMs } from '@app/simulation/mission-clock';
 import { SimClock, STEPS_PER_SECOND } from '@app/simulation/sim-clock';
@@ -35,13 +38,39 @@ import { SpaceEventManager } from '@app/space-events/space-event-manager';
 import { TelemetryManager } from '@app/telemetry/telemetry-manager';
 import { TrafficControlManager } from '@app/traffic/traffic-control-manager';
 import { TransecManager } from '@app/transec/transec-manager';
+import { WeatherManager } from '@app/weather/weather-manager';
 import { Milliseconds } from 'ootk';
+import { conditionLabel, tabGateLabel, tabHintLabel } from './condition-label';
+import { holdsAtCompletion, isQuizCondition, isTabGate, observationDwellSeconds, resolveRequiresChange, TIME_GATED_CONDITION_TYPES, valueSnapshot } from './condition-semantics';
+import { CountdownHold } from './countdown-hold';
 import { EvidenceFactRegistry } from './evidence-facts';
-import { Condition, ConditionParams, DEFAULT_OBSERVATION_DWELL_SECONDS, OBSERVATION_DWELL_GRACE_SECONDS, Objective, ObjectiveState } from './objective-types';
+import { LocatePulse } from './locate-pulse';
+import {
+  Condition,
+  ConditionParams,
+  ConditionState,
+  DEFAULT_OBSERVATION_DWELL_SECONDS,
+  OBSERVATION_DWELL_GRACE_SECONDS,
+  Objective,
+  ObjectiveState,
+  OFF_TAB_NUDGE_SECONDS,
+  TAB_HINT_DELAY_SECONDS,
+  TimeSkipOffer,
+} from './objective-types';
+import { escapeWhereText, whereSuffix } from './where-locator';
 import './objectives-manager.css';
 
 /** Conditions only a live command link can satisfy (failOnClosedCommandWindow_) */
 const COMMAND_LINK_CONDITIONS: ReadonlySet<string> = new Set(['command-acknowledged', 'ranging-measurements']);
+
+/** The free "what to do next" line of an open checklist row (empty once the row is done or while its objective is locked) */
+export function conditionNextHtml(next: string | undefined, completed: boolean, active: boolean): string {
+  if (!next || completed || !active) {
+    return '';
+  }
+
+  return `<span class="condition-next">Next: ${fillDialogTokens(next)}</span>`;
+}
 
 /**
  * Manages objective tracking for scenario-based learning
@@ -54,6 +83,8 @@ export class ObjectivesManager {
   private readonly objectiveStates_: ObjectiveState[] = [];
   private readonly eventBus_: EventBus;
   private readonly collapsedObjectiveIds_: Set<string> = new Set();
+  /** Effective requiresChange per condition (Phase 27 B1, condition-semantics.ts) */
+  private readonly requiresChange_: Map<Condition, boolean>;
 
   // Timer-related properties
   private scenarioTimeLimit_: number | null = null;
@@ -72,6 +103,11 @@ export class ObjectivesManager {
   private readonly boundQuizCompletedHandler_: (data: QuizCompletedData) => void;
   private readonly boundDecisionGradedHandler_: (data: DecisionGradedData) => void;
   private readonly boundDecisionResolvedHandler_: (data: DecisionResolvedData) => void;
+  /** Open quiz/decision modals hold the countdowns (countdown-hold.ts) */
+  private readonly boundQuizHoldOn_ = (): void => CountdownHold.set('quiz', true);
+  private readonly boundQuizHoldOff_ = (): void => CountdownHold.set('quiz', false);
+  private readonly boundDecisionHoldOn_ = (): void => CountdownHold.set('decision', true);
+  private readonly boundDecisionHoldOff_ = (): void => CountdownHold.set('decision', false);
   private readonly boundAssetSelectedHandler_: (data: { type: string; id: string }) => void;
 
   /**
@@ -83,6 +119,7 @@ export class ObjectivesManager {
 
   private constructor(objectives: Objective[], scenarioTimeLimit?: number) {
     this.eventBus_ = EventBus.getInstance();
+    this.requiresChange_ = resolveRequiresChange(objectives);
 
     // Initialize bound handlers
     this.boundQuizPassedHandler_ = this.handleQuizPassed_.bind(this);
@@ -111,7 +148,7 @@ export class ObjectivesManager {
 
       // Determine if timer should start now (on-scenario-load) or later (on-activate)
       const startsOnLoad = objective.timeLimitSeconds !== undefined && objective.timerStartTrigger === 'on-scenario-load';
-      const startsOnActivate = objective.timeLimitSeconds !== undefined && objective.timerStartTrigger !== 'on-scenario-load';
+      const startsOnActivate = objective.timeLimitSeconds !== undefined && objective.timerStartTrigger !== 'on-scenario-load' && objective.timerStartTrigger !== 'on-pass-phase';
 
       return {
         objective,
@@ -149,13 +186,16 @@ export class ObjectivesManager {
       return {
         isActive: state.isActive,
         isCompleted: state.isCompleted,
+        countdownHeld: this.isCountdownHeld_(state),
         conditions: state.conditionStates.map((cs) => ({
           type: cs.condition.type,
           isSatisfied: cs.isSatisfied,
           observed: cs.observed ?? null,
           maintenanceComplete: cs.isMaintenanceComplete,
           evaluatesNow: this.evaluateCondition_(cs.condition, state),
-          observationActive: this.isObservationContextActive_(cs.condition),
+          observationActive: this.isObservationContextActive_(cs.condition, state.objective),
+          requiresChange: this.requiresChange_.get(cs.condition) ?? false,
+          changeArmed: cs.changeArmed ?? null,
         })),
       };
     };
@@ -164,12 +204,16 @@ export class ObjectivesManager {
     // clock skip: a jump must cost what waiting costs a player, so running
     // countdowns burn with it (and may fail). Without this a spec could jump
     // past a timed objective's deadline to an event no player could reach.
+    // Run time moves too (nats-r3 S8): a player who waits that long also
+    // waits out warm-ups, lock delays and stabilisation, so sim timers due
+    // inside the jump fire (SimClock.advanceRun).
     (window as unknown as { advanceClock: (deltaMs: number) => void }).advanceClock = (deltaMs: number) => {
       if (OpsLogManager.isInitialized()) {
         OpsLogManager.getInstance().advanceClock(deltaMs);
       } else {
         SimClock.skip(deltaMs);
       }
+      SimClock.advanceRun(deltaMs);
       this.applyTimeSkip(deltaMs);
     };
 
@@ -179,6 +223,15 @@ export class ObjectivesManager {
     // Decisions pause and resume the timers the same way a quiz does
     this.eventBus_.on(Events.DECISION_GRADED, this.boundDecisionGradedHandler_);
     this.eventBus_.on(Events.DECISION_RESOLVED, this.boundDecisionResolvedHandler_);
+
+    // An open quiz or decision holds every countdown until it is answered or
+    // closed. No reset here: an intro dialog may already hold before this exists.
+    this.eventBus_.on(Events.QUIZ_SHOW, this.boundQuizHoldOn_);
+    this.eventBus_.on(Events.QUIZ_DISMISSED, this.boundQuizHoldOff_);
+    this.eventBus_.on(Events.QUIZ_COMPLETED, this.boundQuizHoldOff_);
+    this.eventBus_.on(Events.DECISION_SHOW, this.boundDecisionHoldOn_);
+    this.eventBus_.on(Events.DECISION_DISMISSED, this.boundDecisionHoldOff_);
+    this.eventBus_.on(Events.DECISION_RESOLVED, this.boundDecisionHoldOff_);
 
     // Subscribe to asset selection events for ground-station-selected condition
     this.eventBus_.on(Events.ASSET_SELECTED, this.boundAssetSelectedHandler_);
@@ -196,6 +249,10 @@ export class ObjectivesManager {
     }
 
     ObjectivesManager.instance_ = new ObjectivesManager(objectives, scenarioTimeLimit);
+    // Objectives active from the start never emit OBJECTIVE_ACTIVATED: their `locate` targets pulse now
+    for (const state of ObjectivesManager.instance_.objectiveStates_) {
+      if (state.isActive && LocatePulse.targetsOf(state.objective).length > 0) LocatePulse.getInstance().objectiveActivated(state.objective);
+    }
 
     // Register objectives and hints with HintManager
     const hintManager = HintManager.getInstance();
@@ -242,12 +299,21 @@ export class ObjectivesManager {
    * Destroy the objectives manager and clean up
    */
   static destroy(): void {
+    LocatePulse.destroy();
     if (ObjectivesManager.instance_) {
       ObjectivesManager.instance_.eventBus_.off(Events.UPDATE, ObjectivesManager.instance_.boundUpdateHandler_);
       ObjectivesManager.instance_.eventBus_.off(Events.QUIZ_PASSED, ObjectivesManager.instance_.boundQuizPassedHandler_);
       ObjectivesManager.instance_.eventBus_.off(Events.QUIZ_COMPLETED, ObjectivesManager.instance_.boundQuizCompletedHandler_);
       ObjectivesManager.instance_.eventBus_.off(Events.DECISION_GRADED, ObjectivesManager.instance_.boundDecisionGradedHandler_);
       ObjectivesManager.instance_.eventBus_.off(Events.DECISION_RESOLVED, ObjectivesManager.instance_.boundDecisionResolvedHandler_);
+      const inst = ObjectivesManager.instance_;
+      inst.eventBus_.off(Events.QUIZ_SHOW, inst.boundQuizHoldOn_);
+      inst.eventBus_.off(Events.QUIZ_DISMISSED, inst.boundQuizHoldOff_);
+      inst.eventBus_.off(Events.QUIZ_COMPLETED, inst.boundQuizHoldOff_);
+      inst.eventBus_.off(Events.DECISION_SHOW, inst.boundDecisionHoldOn_);
+      inst.eventBus_.off(Events.DECISION_DISMISSED, inst.boundDecisionHoldOff_);
+      inst.eventBus_.off(Events.DECISION_RESOLVED, inst.boundDecisionHoldOff_);
+      CountdownHold.reset();
       ObjectivesManager.instance_.eventBus_.off(Events.ASSET_SELECTED, ObjectivesManager.instance_.boundAssetSelectedHandler_);
 
       delete (window as unknown as { debugObjective?: unknown }).debugObjective;
@@ -339,6 +405,11 @@ export class ObjectivesManager {
     return gating.every((state) => state.isCompleted);
   }
 
+  /** Mission Complete has fired: there are objectives and the required ones are done */
+  private isMissionComplete_(): boolean {
+    return this.objectiveStates_.length > 0 && this.areAllObjectivesCompleted();
+  }
+
   /**
    * Get total elapsed time in seconds since scenario started
    * Uses countdown timer if available, otherwise calculates from start time
@@ -402,6 +473,7 @@ export class ObjectivesManager {
       condState.isMaintenanceComplete = true;
       condState.satisfiedAt = SimClock.nowMs();
       condState.observed = true; // a force-completed objective counts as observed
+      condState.changeArmed = true;
     }
 
     // Mark objective as complete
@@ -413,6 +485,7 @@ export class ObjectivesManager {
     this.collapsedObjectiveIds_.add(activeObjective.objective.id);
 
     // Emit completion event
+    LocatePulse.getInstance().objectiveCompleted(activeObjective.objective);
     this.eventBus_.emit(Events.OBJECTIVE_COMPLETED, {
       objectiveId: activeObjective.objective.id,
       objective: activeObjective.objective,
@@ -472,6 +545,9 @@ export class ObjectivesManager {
       condState.maintainedDuration = 0;
       condState.isMaintenanceComplete = false;
       condState.observed = false; // re-doing the objective requires re-observing
+      ObjectivesManager.resetLiveReadState_(condState);
+      condState.changeArmed = undefined; // and a fresh change
+      condState.changeBaseline = undefined;
     }
 
     // Remove from collapsed set
@@ -527,7 +603,9 @@ export class ObjectivesManager {
    * pass through here; see applyTimeSkip().
    */
   private advanceCountdowns_(): void {
-    if (SimClock.isPaused('scenario')) {
+    // A dialog, the brief or an open quiz/decision holds the countdowns
+    // (countdown-hold.ts); the scenario clock itself keeps running
+    if (SimClock.isPaused('scenario') || CountdownHold.isHeld()) {
       return;
     }
 
@@ -547,8 +625,14 @@ export class ObjectivesManager {
       return;
     }
 
-    // Update scenario timer
-    if (this.scenarioTimerRunning_ && this.scenarioTimeRemaining_ > 0) {
+    // A finished mission keeps the time it finished with: Mission Complete
+    // quotes it, so the HUD must not keep counting (nats-r3-s19-F2)
+    if (this.isMissionComplete_()) {
+      return;
+    }
+
+    // Update scenario timer (held through an objective's wait, Phase 28 D1)
+    if (this.scenarioTimerRunning_ && this.scenarioTimeRemaining_ > 0 && this.getMissionClockHold() === null) {
       this.scenarioTimeRemaining_--;
       if (this.scenarioTimeRemaining_ <= 0) {
         this.handleScenarioTimeout_();
@@ -557,11 +641,11 @@ export class ObjectivesManager {
 
     // Update per-objective timers
     for (const state of this.objectiveStates_) {
-      if (state.isTimerRunning && !state.isCompleted && !state.isFailed) {
+      if (state.isTimerRunning && !state.isCompleted && !state.isFailed && !this.isCountdownHeld_(state)) {
         if (state.timeRemainingSeconds !== undefined && state.timeRemainingSeconds > 0) {
           state.timeRemainingSeconds--;
           if (state.timeRemainingSeconds <= 0) {
-            this.failObjective_(state, 'timeout');
+            this.expireObjectiveTimer_(state);
           }
         }
       }
@@ -580,23 +664,49 @@ export class ObjectivesManager {
    * objective case anyway rather than depending on a guardrail elsewhere.
    *
    * @param deltaMs Skipped interval in milliseconds
+   * @param exemptObjectiveId The objective whose wait an objective skip covers
    */
-  applyTimeSkip(deltaMs: number): void {
-    if (!Number.isFinite(deltaMs) || deltaMs <= 0) {
+  applyTimeSkip(deltaMs: number, exemptObjectiveId?: string): void {
+    if (!Number.isFinite(deltaMs) || deltaMs <= 0 || this.isMissionComplete_()) {
       return;
     }
 
     const deltaS = deltaMs / 1000;
 
-    if (this.scenarioTimerRunning_ && this.scenarioTimeRemaining_ > 0) {
+    // The wait an objective skip covers is time its holds were held: a
+    // condition that reads true across the skip earns the skipped seconds,
+    // or "hold until the cell passes" would have to be re-held from zero
+    if (exemptObjectiveId !== undefined) {
+      const skipped = this.getObjectiveState(exemptObjectiveId);
+      if (skipped?.isActive && !skipped.isCompleted) {
+        for (const cs of skipped.conditionStates) {
+          if (cs.isSatisfied && cs.condition.mustMaintain && cs.condition.maintainDuration && !cs.isMaintenanceComplete && this.maintainSiblingsHold_(skipped, cs)) {
+            cs.maintainedDuration += deltaS;
+          }
+        }
+      }
+    }
+
+    // The scenario limit budgets the operator's working time. An objective
+    // wait is one the story compresses (a crew window, a pass window, a rain
+    // cell): the mission countdown is held through it whether the operator
+    // waits or skips (Phase 28 D1), so neither charges the limit
+    if (exemptObjectiveId === undefined && this.scenarioTimerRunning_ && this.scenarioTimeRemaining_ > 0 && this.getMissionClockHold() === null) {
       this.scenarioTimeRemaining_ = Math.max(0, this.scenarioTimeRemaining_ - deltaS);
       if (this.scenarioTimeRemaining_ <= 0) {
         this.handleScenarioTimeout_();
       }
     }
 
+    // An objective skip charges no countdown at all. Another timed objective
+    // blocks it from starting, so any timer running now was opened by the
+    // skip itself (the wait ended mid-skip) and has not been seen yet
+    if (exemptObjectiveId !== undefined) {
+      return;
+    }
+
     for (const state of this.objectiveStates_) {
-      if (!state.isTimerRunning || state.isCompleted || state.isFailed) {
+      if (!state.isTimerRunning || state.isCompleted || state.isFailed || this.isCountdownHeld_(state)) {
         continue;
       }
       if (state.timeRemainingSeconds === undefined || state.timeRemainingSeconds <= 0) {
@@ -605,7 +715,7 @@ export class ObjectivesManager {
 
       state.timeRemainingSeconds = Math.max(0, state.timeRemainingSeconds - deltaS);
       if (state.timeRemainingSeconds <= 0) {
-        this.failObjective_(state, 'timeout');
+        this.expireObjectiveTimer_(state);
       }
     }
   }
@@ -615,16 +725,270 @@ export class ObjectivesManager {
    * blocked while one is, because skipping would burn the operator's clock on
    * an objective they are actively being timed on.
    */
-  hasRunningObjectiveTimer(): boolean {
+  hasRunningObjectiveTimer(exceptObjectiveId?: string): boolean {
     return this.objectiveStates_.some(
-      (state) => state.isTimerRunning && !state.isCompleted && !state.isFailed && state.timeRemainingSeconds !== undefined && state.timeRemainingSeconds > 0
+      (state) =>
+        state.objective.id !== exceptObjectiveId &&
+        state.isTimerRunning &&
+        !state.isCompleted &&
+        !state.isFailed &&
+        state.timeRemainingSeconds !== undefined &&
+        state.timeRemainingSeconds > 0 &&
+        !this.isCountdownHeld_(state)
     );
+  }
+
+  /** Whether a condition counts as met for gating: live for hold-at-completion rows, latched otherwise */
+  private static isConditionMet_(cs: ConditionState, objective: Objective): boolean {
+    return holdsAtCompletion(cs.condition, objective) ? cs.isSatisfied : cs.isMaintenanceComplete;
+  }
+
+  /**
+   * Phase 27 Q1: an objective's countdown times the doing, not the reading.
+   * It stops once every non-quiz condition is met (a hold-at-completion row
+   * that drops again restarts it), so an objective that is only quizzes is
+   * untimed. A quiz only becomes answerable after the doing it follows (B7),
+   * so this is also the hold while a quiz sits pending behind its 5 s banner.
+   * Phase 28 D1: an objective that is waiting out its hold (timeSkip) is
+   * held as well; the wait is the clock's, not the operator's.
+   */
+  private isCountdownHeld_(state: ObjectiveState): boolean {
+    if (this.isWaitPhase_(state)) {
+      return true;
+    }
+    const doing = state.conditionStates.filter((cs) => !isQuizCondition(cs.condition.type));
+    if (doing.length === 0) {
+      return true;
+    }
+    if ((state.objective.conditionLogic ?? 'AND') === 'OR') {
+      return doing.some((cs) => ObjectivesManager.isConditionMet_(cs, state.objective));
+    }
+
+    return doing.every((cs) => ObjectivesManager.isConditionMet_(cs, state.objective));
+  }
+
+  /** Public view of the Q1 hold, for the command-bar timer */
+  isObjectiveCountdownHeld(objectiveId: string): boolean {
+    const state = this.getObjectiveState(objectiveId);
+
+    return state !== undefined && this.isCountdownHeld_(state);
+  }
+
+  /**
+   * Phase 27 Q4: the objective time skip on offer right now, or null: the
+   * first active, incomplete objective with an unused timeSkip whose
+   * availability rule is met.
+   *
+   * Phase 28 D1: the skip covers exactly the rest of the hold (holdEnd_()),
+   * so it stops when the step's wait is over rather than a fixed N minutes
+   * past or short of it. `landsAtMs` is the station-clock moment it stops at
+   * when the hold ends on the clock (a time reached, a weather event over),
+   * so the button can say "Skip to 10:00"; null for a plain duration.
+   */
+  getAvailableTimeSkip(): TimeSkipOffer | null {
+    for (const state of this.objectiveStates_) {
+      const skip = state.objective.timeSkip;
+      if (!skip || !state.isActive || state.isCompleted || state.isFailed || state.timeSkipUsed) {
+        continue;
+      }
+      if (!ObjectivesManager.isSkipReady_(state)) {
+        continue;
+      }
+
+      const holdEnd = this.holdEnd_(state);
+      const fallbackMs = (skip.minutes ?? 0) * 60_000;
+      const deltaMs = holdEnd ? holdEnd.remainingMs : fallbackMs;
+      // Nothing left to skip: the wait is over and the objective completes on the next frame
+      if (!(deltaMs >= ObjectivesManager.MIN_OBJECTIVE_SKIP_MS)) {
+        continue;
+      }
+      const minutes = Math.ceil(deltaMs / 60_000);
+
+      return {
+        objectiveId: state.objective.id,
+        deltaMs,
+        landsAtMs: holdEnd?.isClockAnchored ? SimClock.nowMs() + deltaMs : null,
+        label: skip.label ?? `${minutes} min wait`,
+      };
+    }
+
+    return null;
+  }
+
+  /** Shortest wait worth a skip control, ms */
+  private static readonly MIN_OBJECTIVE_SKIP_MS = 1000;
+
+  /**
+   * The timeSkip availability rule: with `availableAfterConditions`, every
+   * row the operator sets up is met; quizzes, clock-gated rows and the timed
+   * holds themselves are the wait and do not count.
+   */
+  private static isSkipReady_(state: ObjectiveState): boolean {
+    if (!state.objective.timeSkip?.availableAfterConditions) {
+      return true;
+    }
+
+    return state.conditionStates.every(
+      (cs) =>
+        isQuizCondition(cs.condition.type) ||
+        TIME_GATED_CONDITION_TYPES.has(cs.condition.type) ||
+        (cs.condition.maintainDuration ?? 0) > 0 ||
+        ObjectivesManager.isConditionMet_(cs, state.objective)
+    );
+  }
+
+  /**
+   * How much of an objective's hold is left, read from its own rows: the
+   * latest of a scenario-time-reached clock time, a weather-event-ended
+   * event end and the time left on its maintainDuration holds. Null when no
+   * row says (or a weather event has not been scheduled yet).
+   */
+  private holdEnd_(state: ObjectiveState): { remainingMs: number; isClockAnchored: boolean } | null {
+    let remainingMs = 0;
+    let isClockAnchored = false;
+    let isKnown = false;
+    const consider = (ms: number, isClock: boolean): void => {
+      isKnown = true;
+      if (ms > remainingMs || (ms === remainingMs && isClock)) {
+        remainingMs = ms;
+        isClockAnchored = isClock;
+      }
+    };
+
+    for (const cs of state.conditionStates) {
+      const condition = cs.condition;
+      if (condition.type === 'scenario-time-reached') {
+        const targetMs = ObjectivesManager.scenarioTimeTargetMs(condition.params?.scenarioTime);
+        if (targetMs === null) {
+          return null;
+        }
+        consider(Math.max(0, targetMs - SimClock.nowMs()), true);
+      } else if (condition.type === 'weather-event-ended') {
+        const eventId = condition.params?.weatherEventId;
+        const untilEndS = eventId !== undefined && WeatherManager.hasInstance() ? WeatherManager.getInstance().getSecondsUntilEventEnds(eventId) : null;
+        if (untilEndS === null) {
+          return null;
+        }
+        consider(untilEndS * 1000, true);
+      } else if (condition.type === 'weather-event-peaked') {
+        const eventId = condition.params?.weatherEventId;
+        const untilPeakS =
+          eventId !== undefined && WeatherManager.hasInstance() ? WeatherManager.getInstance().getSecondsUntilEventPeaks(eventId, condition.params?.pastPeakSeconds ?? 0) : null;
+        if (untilPeakS === null) {
+          return null;
+        }
+        consider(untilPeakS * 1000, true);
+      } else if ((condition.maintainDuration ?? 0) > 0 && !cs.isMaintenanceComplete) {
+        consider(Math.max(0, ((condition.maintainDuration ?? 0) - cs.maintainedDuration) * 1000), false);
+      }
+    }
+
+    return isKnown ? { remainingMs, isClockAnchored } : null;
+  }
+
+  /**
+   * Phase 28 D1: the objective is waiting out its hold. It offers a timeSkip,
+   * its setup is done (the skip availability rule) and a clock-gated or
+   * timed-hold row is still running. The mission countdown and its own
+   * countdown are held meanwhile, so waiting and skipping score the same.
+   */
+  private isWaitPhase_(state: ObjectiveState): boolean {
+    if (!state.objective.timeSkip || !state.isActive || state.isCompleted || state.isFailed) {
+      return false;
+    }
+    const isWaiting = state.conditionStates.some(
+      (cs) => (TIME_GATED_CONDITION_TYPES.has(cs.condition.type) || (cs.condition.maintainDuration ?? 0) > 0) && !ObjectivesManager.isConditionMet_(cs, state.objective)
+    );
+
+    return isWaiting && ObjectivesManager.isSkipReady_(state);
+  }
+
+  /**
+   * The objective whose wait is holding the mission countdown, or null. The
+   * HUD shows HOLD beside the MISSION timer while this is set.
+   */
+  getMissionClockHold(): { objectiveId: string; title: string; label: string } | null {
+    const state = this.objectiveStates_.find((s) => this.isWaitPhase_(s));
+    if (!state) {
+      return null;
+    }
+
+    return { objectiveId: state.objective.id, title: state.objective.title, label: state.objective.timeSkip?.label ?? 'wait' };
+  }
+
+  /**
+   * Absolute station-clock ms for a scenario-time-reached `HH:MM[:SS]` (UTC):
+   * the first such moment at or after the scenario start. Null when the
+   * string does not parse.
+   */
+  static scenarioTimeTargetMs(scenarioTime: string | undefined): number | null {
+    const match = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/u.exec(scenarioTime?.trim() ?? '');
+    if (!match) {
+      return null;
+    }
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    const seconds = Number(match[3] ?? 0);
+    if (hours > 23 || minutes > 59 || seconds > 59) {
+      return null;
+    }
+
+    const epochMs = SimClock.nowMs() - SimClock.scenarioElapsedMs();
+    const epoch = new Date(epochMs);
+    let targetMs = Date.UTC(epoch.getUTCFullYear(), epoch.getUTCMonth(), epoch.getUTCDate(), hours, minutes, seconds);
+    if (targetMs < epochMs) {
+      targetMs += 86_400_000;
+    }
+
+    return targetMs;
+  }
+
+  /** Phase 27 Q4: mark an objective's one-shot skip used (TimeSkipController) */
+  markTimeSkipUsed(objectiveId: string): void {
+    const state = this.getObjectiveState(objectiveId);
+    if (state) {
+      state.timeSkipUsed = true;
+    }
+  }
+
+  /**
+   * An objective's countdown reached zero. Fatal objectives (`timeoutFails`)
+   * fail the scenario as before; the rest stop the clock, deduct the timeout
+   * penalty once and stay open in overtime, so a slow operator still finishes
+   * the shift (Phase 26 D2).
+   */
+  private expireObjectiveTimer_(state: ObjectiveState): void {
+    const objective = state.objective;
+    if (objective.timeoutFails) {
+      this.failObjective_(state, 'timeout');
+      return;
+    }
+
+    state.isTimerRunning = false;
+    state.timeRemainingSeconds = 0;
+    if (state.timedOut) {
+      return;
+    }
+    state.timedOut = true;
+
+    const pointsDeducted = objective.timeoutPenaltyPoints ?? Math.ceil((objective.points ?? 0) / 2);
+    state.timePenaltyApplied = true;
+    state.timePenaltyPoints = (state.timePenaltyPoints ?? 0) + pointsDeducted;
+
+    this.eventBus_.emit(Events.TIME_PENALTY_APPLIED, {
+      objectiveId: objective.id,
+      objectiveTitle: objective.title,
+      pointsDeducted,
+      message: `Time ran out on "${objective.title}". Finish it to carry on.`,
+      elapsedTime: this.getElapsedTime(),
+      threshold: objective.timeLimitSeconds ?? 0,
+    });
   }
 
   /**
    * Mark an objective as failed
    */
-  private failObjective_(state: ObjectiveState, reason: ObjectiveFailedData['reason']): void {
+  private failObjective_(state: ObjectiveState, reason: ObjectiveFailedData['reason'], message?: string): void {
     state.isFailed = true;
     state.failedAt = SimClock.nowMs();
 
@@ -641,7 +1005,26 @@ export class ObjectivesManager {
       objective: state.objective,
       failedAt: state.failedAt,
       reason,
+      ...(message ? { message } : {}),
     });
+  }
+
+  /**
+   * Fail a live objective whose own `failWhen` check says it can no longer be met (e.g. the energy reserve is out of
+   * reach whatever the player does), with the explanation the author supplied.
+   */
+  private failOnUnrecoverable_(): void {
+    for (const state of this.objectiveStates_) {
+      const { failWhen, failMessage } = state.objective;
+      if (!failWhen || !state.isActive || state.isCompleted || state.isFailed) {
+        continue;
+      }
+      if (this.evaluateCondition_(failWhen, state)) {
+        const text = typeof failMessage === 'function' ? failMessage() : failMessage;
+        this.failObjective_(state, 'unrecoverable', text ?? `${state.objective.title} can no longer be completed.`);
+        return;
+      }
+    }
   }
 
   /**
@@ -722,11 +1105,10 @@ export class ObjectivesManager {
     // Pause scenario timer
     this.scenarioTimerRunning_ = false;
 
-    // Pause the objective timer for the passed objective
-    const state = this.objectiveStates_.find((s) => s.objective.id === data.objectiveId);
-    if (state) {
-      state.isTimerRunning = false;
-    }
+    // The objective timer is not stopped here: the open quiz holds every
+    // countdown (countdown-hold.ts) and the timer resumes on Continue if the
+    // objective is still open. Stopping it left a half-done objective untimed
+    // with the HUD showing infinity (nats-s07-F6, s09-F3).
 
     // Pause simulated time
     if (OpsLogManager.isInitialized()) {
@@ -750,7 +1132,6 @@ export class ObjectivesManager {
     if (this.scenarioTimeLimit_ !== null && this.scenarioTimeRemaining_ > 0 && !this.areAllObjectivesCompleted() && !ObjectivesManager.isScenarioLocked()) {
       this.scenarioTimerRunning_ = true;
     }
-    // Note: objective timer doesn't resume - it will be replaced by next objective's timer
 
     // Resume simulated time
     if (OpsLogManager.isInitialized()) {
@@ -853,12 +1234,14 @@ export class ObjectivesManager {
       // Restore timer state
       currentState.timeRemainingSeconds = savedState.timeRemainingSeconds;
       currentState.isTimerRunning = savedState.isTimerRunning;
+      currentState.timedOut = savedState.timedOut;
       currentState.isFailed = savedState.isFailed;
       currentState.failedAt = savedState.failedAt;
 
       // Restore time penalty state
       currentState.timePenaltyApplied = savedState.timePenaltyApplied;
       currentState.timePenaltyPoints = savedState.timePenaltyPoints;
+      currentState.timeSkipUsed = savedState.timeSkipUsed;
 
       // Restore collapse state if objective was completed
       if (savedState.isCompleted) {
@@ -877,6 +1260,12 @@ export class ObjectivesManager {
           currentCondState.isMaintenanceComplete = savedCondState.isMaintenanceComplete;
           currentCondState.observed = savedCondState.observed;
           currentCondState.lostTimestamps = savedCondState.lostTimestamps || [];
+          // A save from before requiresChange (or one taken mid-objective)
+          // carries no activation baseline; do not make a reloading player
+          // undo work to tick it
+          currentCondState.changeArmed = savedCondState.changeArmed ?? true;
+          currentCondState.changeBaseline = savedCondState.changeBaseline;
+          currentCondState.lockLostSeen = savedCondState.lockLostSeen;
         }
       });
     }
@@ -899,10 +1288,11 @@ export class ObjectivesManager {
 
   /**
    * Capture current collapse states from the DOM before regenerating HTML
-   * Should be called before generateHtmlChecklist() to preserve user preferences
+   * Should be called before generateHtmlChecklist() to preserve user preferences.
+   * `root` scopes the read to one rendered checklist when several are on the page (the clipboard cover and the sidebar).
    */
-  syncCollapsedStatesFromDOM(): void {
-    const checklistElement = document.querySelector('.objectives-checklist');
+  syncCollapsedStatesFromDOM(root: ParentNode = document): void {
+    const checklistElement = root.querySelector('.objectives-checklist');
     if (!checklistElement) {
       return;
     }
@@ -918,6 +1308,26 @@ export class ObjectivesManager {
         }
       }
     });
+  }
+
+  /** Player-facing name of a mission-control tab id, for checklist hints */
+  private static tabLabel_(tabId: string): string {
+    const labels: Record<string, string> = {
+      dashboard: 'Dashboard',
+      'mission-overview': 'Overview',
+      'rx-analysis': 'RX Analysis',
+      'tx-chain': 'TX Chain',
+      'gps-timing': 'GPS Timing',
+      'acu-control': 'ACU Control',
+      'pass-schedule': 'Pass Schedule',
+      'link-budget': 'Link Analysis',
+      commanding: 'TT&C',
+      telemetry: 'Telemetry',
+      'security-console': 'Security',
+      geolocation: 'Geolocation',
+    };
+    const key = Object.keys(labels).find((id) => tabId === id || tabId.startsWith(`${id}-`));
+    return key ? labels[key] : tabId;
   }
 
   generateHtmlChecklist(): string {
@@ -952,10 +1362,10 @@ export class ObjectivesManager {
         collapsedClass = isActive ? '' : 'collapsed';
       }
 
-      html += `<li class="objective-item ${stateClass} ${collapsedClass}">`;
+      html += `<li class="objective-item ${stateClass} ${collapsedClass}" data-objective-id="${objective.id}">`;
       html += `<div class="objective-header" onclick="this.parentElement.classList.toggle('collapsed');">`;
       html += `<span class="accordion-icon"></span>`;
-      html += `<strong>${objective.title}</strong> - ${stateLabel}`;
+      html += `<strong>${fillDialogTokens(objective.title)}</strong> - ${stateLabel}`;
 
       // Optional objectives do not gate Mission Complete (see
       // areAllObjectivesCompleted); say so on the row, or the player cannot
@@ -964,8 +1374,9 @@ export class ObjectivesManager {
         html += `<span class="objective-optional" title="Does not gate mission completion">Optional</span>`;
       }
 
-      // Add timer display if objective has a running timer
-      if (objectiveState.isTimerRunning && objectiveState.timeRemainingSeconds !== undefined) {
+      // Add timer display if objective has a running timer (a Q1-held one
+      // shows no countdown: the timed work is done)
+      if (objectiveState.isTimerRunning && objectiveState.timeRemainingSeconds !== undefined && !this.isCountdownHeld_(objectiveState)) {
         const timeStr = this.formatTimeRemaining(objectiveState.timeRemainingSeconds);
         const urgencyClass = objectiveState.timeRemainingSeconds < 30 ? 'timer-urgent' : '';
         html += `<span class="objective-timer ${urgencyClass}">${timeStr}</span>`;
@@ -973,7 +1384,7 @@ export class ObjectivesManager {
 
       html += `</div>`;
       html += `<div class="objective-content">`;
-      html += `<p>${objective.description}</p>`;
+      html += `<p>${fillDialogTokens(objective.description)}</p>`;
       html += '<ul class="conditions-list">';
 
       const quizManager = QuizManager.getInstance();
@@ -985,7 +1396,10 @@ export class ObjectivesManager {
         // Hidden conditions are still enforced for completion but not shown
         // (e.g. the tab-active requirement on qualified-operator scenarios,
         // where we don't spell out which tab to open).
-        if (condition.hidden) {
+        // Phase 29 D5: a tab gate on a quiz step is always shown, from the
+        // step's start, or the quiz looks answerable with nothing left to do
+        const isGate = isTabGate(condition, objective);
+        if (condition.hidden && !isGate) {
           continue;
         }
 
@@ -1002,7 +1416,32 @@ export class ObjectivesManager {
         const isHintRequested = hasHint && hintManager.isHintRequested(objective.id, i);
 
         html += `<li class="condition-item ${conditionCompleted ? 'completed' : 'incomplete'}">`;
-        html += `<span class="condition-text">${condition.description}</span>`;
+        const rowLabel = isGate && condition.hidden && condition.params?.tab ? tabGateLabel(condition.params.tab) : fillDialogTokens(conditionLabel(condition));
+        html += `<span class="condition-text">${rowLabel}${conditionNextHtml(condition.next, conditionCompleted, isActive)}</span>`;
+
+        // A row with a `where` locator says where in the world its work happens; it stands in for the automatic
+        // observation suffix below (where-locator.ts)
+        const whereText = conditionCompleted ? null : whereSuffix(condition);
+        if (whereText) {
+          html += `<span class="condition-where condition-observe-hint">${escapeWhereText(whereText)}</span>`;
+        }
+
+        // An observation-gated check only progresses while its tab is open;
+        // say which, or it looks stuck (nats-s18-F5)
+        if (!whereText && !conditionCompleted && condition.params?.requiresObservation && condition.params?.observationTab && !conditionState.observed) {
+          const tabName = ObjectivesManager.tabLabel_(condition.params.observationTab);
+          if (conditionState.offTabNudged) {
+            // Phase 35 D3: it reads true right now and nobody is looking
+            html += `<span class="condition-observe-alert" role="alert">Reads true now. Open ${tabName} to log it.</span>`;
+          } else {
+            html += `<span class="condition-observe-hint">(check it on the ${tabName} tab)</span>`;
+          }
+        }
+
+        // Report form row: a button opens the form (report-form-dialog)
+        if (condition.params?.reportForm && !conditionCompleted) {
+          html += `<button class="condition-form-btn" data-report-form="${condition.params.reportForm}" title="Open the form">File</button>`;
+        }
 
         // Add quiz button for pending quizzes
         if (isQuizPending) {
@@ -1023,6 +1462,22 @@ export class ObjectivesManager {
         html += '</li>';
       }
 
+      // B5: a hidden tab row that has been the only blocker for a while gets
+      // named, or the objective looks stuck (nats-s16-F5, r2-s24-F1)
+      if (isActive && !isCompleted) {
+        for (const cs of objectiveState.conditionStates) {
+          if (
+            cs.condition.hidden &&
+            cs.condition.type === 'tab-active' &&
+            !isTabGate(cs.condition, objective) &&
+            (cs.tabHintSeconds ?? 0) >= TAB_HINT_DELAY_SECONDS &&
+            cs.condition.params?.tab
+          ) {
+            html += `<li class="condition-item incomplete condition-tab-hint"><span class="condition-text condition-observe-hint">${tabHintLabel(cs.condition.params.tab)}</span></li>`;
+          }
+        }
+      }
+
       html += '</ul></div></li>';
     }
 
@@ -1039,6 +1494,8 @@ export class ObjectivesManager {
 
     this.advanceCountdowns_();
     this.failOnClosedCommandWindow_();
+    this.failOnUnrecoverable_();
+    this.watchLockLoss_();
 
     for (const objectiveState of this.objectiveStates_) {
       // Skip already completed objectives
@@ -1073,7 +1530,7 @@ export class ObjectivesManager {
 
           if (elapsedTime > penalty.elapsedTimeThreshold) {
             objectiveState.timePenaltyApplied = true;
-            objectiveState.timePenaltyPoints = penalty.pointsDeducted;
+            objectiveState.timePenaltyPoints = (objectiveState.timePenaltyPoints ?? 0) + penalty.pointsDeducted;
 
             this.eventBus_.emit(Events.TIME_PENALTY_APPLIED, {
               objectiveId: objectiveState.objective.id,
@@ -1088,6 +1545,7 @@ export class ObjectivesManager {
 
         this.collapsedObjectiveIds_.add(objectiveState.objective.id);
 
+        LocatePulse.getInstance().objectiveCompleted(objectiveState.objective);
         this.eventBus_.emit(Events.OBJECTIVE_COMPLETED, {
           objectiveId: objectiveState.objective.id,
           objective: objectiveState.objective,
@@ -1142,15 +1600,10 @@ export class ObjectivesManager {
 
     if (logic === 'AND') {
       // All conditions must be satisfied or maintenance-complete
-      return objectiveState.conditionStates.every((cs) => {
-        if (cs.condition.maintainUntilObjectiveComplete) {
-          // Indefinite conditions must be satisfied (not necessarily maintenance complete)
-          return cs.isSatisfied;
-        } else {
-          // Regular conditions must be maintenance complete
-          return cs.isMaintenanceComplete;
-        }
-      });
+      // Hold-at-completion rows (maintainUntilObjectiveComplete, or B8:
+      // mustMaintain with no duration) must be satisfied now; the rest must
+      // have completed their maintenance
+      return objectiveState.conditionStates.every((cs) => ObjectivesManager.isConditionMet_(cs, objectiveState.objective));
     } else {
       // At least one condition must be maintenance-complete
       // OR logic with indefinite conditions is handled the same way
@@ -1196,7 +1649,7 @@ export class ObjectivesManager {
 
     // Start timer for objectives with 'on-activate' trigger (default behavior)
     const objective = objectiveState.objective;
-    if (objective.timeLimitSeconds !== undefined && objective.timerStartTrigger !== 'on-scenario-load') {
+    if (objective.timeLimitSeconds !== undefined && objective.timerStartTrigger !== 'on-scenario-load' && objective.timerStartTrigger !== 'on-pass-phase') {
       objectiveState.timeRemainingSeconds = objective.timeLimitSeconds;
       objectiveState.isTimerRunning = true;
     }
@@ -1206,6 +1659,9 @@ export class ObjectivesManager {
 
     // Immediately evaluate conditions for the newly activated objective
     this.evaluateObjectiveConditions_(objectiveState, 0);
+
+    // Rows that name a world target (`locate`) pulse it once for this objective
+    if (LocatePulse.targetsOf(objective).length > 0) LocatePulse.getInstance().objectiveActivated(objective);
 
     this.eventBus_.emit(Events.OBJECTIVE_ACTIVATED, {
       objectiveId: objectiveState.objective.id,
@@ -1250,6 +1706,11 @@ export class ObjectivesManager {
       condState.maintainedDuration = 0;
       condState.isMaintenanceComplete = false;
       condState.observed = false; // re-observe after a prerequisite reset
+      ObjectivesManager.resetLiveReadState_(condState);
+      condState.changeArmed = undefined;
+      condState.changeBaseline = undefined;
+      condState.tabHintSeconds = 0;
+      condState.lockLostSeen = undefined;
     }
   }
 
@@ -1283,14 +1744,22 @@ export class ObjectivesManager {
     for (let condIndex = 0; condIndex < objectiveState.conditionStates.length; condIndex++) {
       const conditionState = objectiveState.conditionStates[condIndex];
 
-      // Skip already completed maintenance (unless it's indefinite maintenance)
-      if (conditionState.isMaintenanceComplete && !conditionState.condition.maintainUntilObjectiveComplete) {
+      const holds = holdsAtCompletion(conditionState.condition, objectiveState.objective);
+
+      // Skip already completed maintenance (unless it must hold at completion)
+      if (conditionState.isMaintenanceComplete && !holds) {
         continue;
       }
 
       const wasSatisfied = conditionState.isSatisfied;
       this.lastObserved_ = undefined;
       let isNowSatisfied = this.evaluateCondition_(conditionState.condition, objectiveState, dtSeconds);
+
+      // B1 requiresChange: already true on the activation frame counts only
+      // after the watched value changes or the row goes false once
+      if (this.requiresChange_.get(conditionState.condition)) {
+        isNowSatisfied = ObjectivesManager.applyRequiresChange_(conditionState, isNowSatisfied, valueSnapshot(this.lastObserved_));
+      }
 
       // Observation gate: a flagged passive condition does not count from
       // ambient simulation state alone. It must be seen on the correct tab
@@ -1301,13 +1770,19 @@ export class ObjectivesManager {
       const condParams = conditionState.condition.params;
       if (condParams?.requiresObservation && condParams?.observationTab) {
         if (conditionState.observed) {
-          isNowSatisfied = true; // already observed - latched
-        } else if (!this.isObservationContextActive_(conditionState.condition)) {
+          // Latched as read, but a row that must still hold when the objective
+          // completes ("hold C/N above 8 dB through culmination") keeps its live value
+          isNowSatisfied = holds ? isNowSatisfied : true;
+          conditionState.liveOffTabSeconds = 0;
+        } else if (!this.isObservationContextActive_(conditionState.condition, objectiveState.objective)) {
           conditionState.observedSeconds = 0; // off-tab: the read starts over
           conditionState.observedGapSeconds = 0;
+          this.trackOffTabRead_(objectiveState, condIndex, conditionState, isNowSatisfied, dtSeconds);
           isNowSatisfied = false; // value not yet observed on the right tab
         } else if (isNowSatisfied) {
-          const dwellSeconds = condParams.observationDwellSeconds ?? DEFAULT_OBSERVATION_DWELL_SECONDS;
+          conditionState.liveOffTabSeconds = 0;
+          conditionState.offTabNudged = false;
+          const dwellSeconds = observationDwellSeconds(conditionState.condition, DEFAULT_OBSERVATION_DWELL_SECONDS);
           conditionState.observedSeconds = (conditionState.observedSeconds ?? 0) + dtSeconds;
           conditionState.observedGapSeconds = 0;
           if (conditionState.observedSeconds >= dwellSeconds) {
@@ -1330,6 +1805,12 @@ export class ObjectivesManager {
       // Update satisfied state
       conditionState.isSatisfied = isNowSatisfied;
 
+      // Feed the text-token ledger (`{{val:OBJ.N}}`) directly: the telemetry event below is
+      // off in play, so the ledger's listener alone never saw a value outside the harness
+      if (isNowSatisfied && typeof this.lastObserved_ === 'number' && Number.isFinite(this.lastObserved_)) {
+        EventTimeLedger.recordValue(`${objectiveState.objective.id}.${condIndex}`, this.lastObserved_);
+      }
+
       if (this.isConditionTelemetryEnabled_) {
         this.eventBus_.emit(Events.OBJECTIVE_CONDITION_EVALUATED, {
           objectiveId: objectiveState.objective.id,
@@ -1346,8 +1827,9 @@ export class ObjectivesManager {
         conditionState.satisfiedAt = SimClock.nowMs();
         conditionState.maintainedDuration = 0;
 
-        // Mark as complete based on condition type
-        if (conditionState.condition.maintainUntilObjectiveComplete || !conditionState.condition.mustMaintain) {
+        // Mark as complete based on condition type (a mustMaintain row with
+        // no duration that does not hold is a D5 tab gate: it latches now)
+        if (holds || !conditionState.condition.mustMaintain || !conditionState.condition.maintainDuration) {
           conditionState.isMaintenanceComplete = true;
         }
 
@@ -1364,8 +1846,8 @@ export class ObjectivesManager {
         conditionState.lostTimestamps = conditionState.lostTimestamps || [];
         conditionState.lostTimestamps.push(SimClock.nowMs());
 
-        // Reset maintenance complete for indefinite-maintenance conditions
-        if (conditionState.condition.maintainUntilObjectiveComplete) {
+        // A hold-at-completion row that drops is no longer met
+        if (holds) {
           conditionState.isMaintenanceComplete = false;
         }
 
@@ -1376,12 +1858,16 @@ export class ObjectivesManager {
           conditionState,
         });
       } else if (isNowSatisfied) {
-        // Condition continues to be satisfied - update maintenance duration
-        conditionState.maintainedDuration += dtSeconds;
+        // Condition continues to be satisfied - update maintenance duration.
+        // B3: a timed hold accrues only while the objective's tab-active
+        // siblings are on and its observation siblings have been read
+        if (this.maintainSiblingsHold_(objectiveState, conditionState)) {
+          conditionState.maintainedDuration += dtSeconds;
+        }
 
         // Check if maintenance requirement is met
         if (!conditionState.isMaintenanceComplete) {
-          if (conditionState.condition.maintainUntilObjectiveComplete) {
+          if (holds) {
             conditionState.isMaintenanceComplete = true;
           } else if (conditionState.condition.mustMaintain) {
             const requiredDuration = conditionState.condition.maintainDuration || 0;
@@ -1391,6 +1877,189 @@ export class ObjectivesManager {
           } else {
             conditionState.isMaintenanceComplete = true;
           }
+        }
+      }
+    }
+
+    this.trackTabHints_(objectiveState, dtSeconds);
+  }
+
+  /** Clear the off-tab nudge and pass-phase latch so a re-done objective starts clean */
+  private static resetLiveReadState_(cs: ConditionState): void {
+    cs.liveOffTabSeconds = 0;
+    cs.offTabNudged = false;
+    cs.passPrevElevation = undefined;
+    cs.passSeenAbove = undefined;
+    cs.passPastCulmination = undefined;
+    cs.passPhaseLatched = undefined;
+  }
+
+  /**
+   * B1: gate a raw evaluation on a change since activation. The first
+   * evaluation after activation takes the baseline: a row false then is free
+   * to count; a row true then waits until it goes false once or its watched
+   * value (the observed reading) moves off the baseline.
+   */
+  private static applyRequiresChange_(cs: ConditionState, raw: boolean, snapshot: string | undefined): boolean {
+    if (cs.changeArmed === true) {
+      return raw;
+    }
+    if (cs.changeArmed === undefined) {
+      cs.changeArmed = !raw;
+      cs.changeBaseline = snapshot;
+
+      return false;
+    }
+    if (!raw || (snapshot !== undefined && cs.changeBaseline !== undefined && snapshot !== cs.changeBaseline)) {
+      cs.changeArmed = true;
+    }
+
+    return cs.changeArmed ? raw : false;
+  }
+
+  /**
+   * B3: whether a timed hold may accrue this frame. Every tab-active sibling
+   * must be on now (read live: a latched tab row stays ticked after the player
+   * leaves) and every requiresObservation sibling must have been observed.
+   */
+  private maintainSiblingsHold_(objectiveState: ObjectiveState, conditionState: ConditionState): boolean {
+    if (!conditionState.condition.maintainDuration) {
+      return true;
+    }
+    for (const sibling of objectiveState.conditionStates) {
+      if (sibling === conditionState) {
+        continue;
+      }
+      if (sibling.condition.type === 'tab-active' && !this.isTabActive_(sibling.condition.params?.tab)) {
+        return false;
+      }
+      if (sibling.condition.params?.requiresObservation && sibling.condition.params?.observationTab && !sibling.observed) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /** Whether the active TabbedCanvas tab is `tab` (exact id or prefix) */
+  private isTabActive_(tab: string | undefined): boolean {
+    if (!tab) {
+      return false;
+    }
+    const activeTab = TabbedCanvas.getActiveTab();
+
+    return !!activeTab && (activeTab === tab || activeTab.startsWith(`${tab}-`));
+  }
+
+  /**
+   * B5: count how long each hidden tab-active row has been the only thing
+   * (besides quizzes, which wait on it under B7) holding the objective up.
+   */
+  private trackTabHints_(objectiveState: ObjectiveState, dtSeconds: number): void {
+    for (const cs of objectiveState.conditionStates) {
+      if (!cs.condition.hidden || cs.condition.type !== 'tab-active' || isTabGate(cs.condition, objectiveState.objective)) {
+        continue;
+      }
+      const isBlocking =
+        !ObjectivesManager.isConditionMet_(cs, objectiveState.objective) &&
+        objectiveState.conditionStates.every(
+          (other) => other === cs || isQuizCondition(other.condition.type) || ObjectivesManager.isConditionMet_(other, objectiveState.objective)
+        );
+      cs.tabHintSeconds = isBlocking ? (cs.tabHintSeconds ?? 0) + dtSeconds : 0;
+    }
+  }
+
+  /** Whether the receiver modem a condition names (default: the active one) has lock */
+  private isReceiverLocked_(gs: GroundStation, params: ConditionParams | undefined): boolean {
+    return this.evaluateEquipment_(gs.receivers, params, (receiver) => {
+      const modemNum = params?.modemNumber ?? receiver.state.activeModem;
+      const modem = receiver.state.modems.find((m) => m.modemNumber === modemNum);
+      if (!modem?.isPowered) return false;
+
+      const signals = receiver.getSignalsInBandwidth(modem);
+      // Phase 35 D10: a lock on some other carrier in the band is not this lock
+      if (params?.signalId !== undefined && signals.targetSignalId !== params.signalId) return false;
+
+      return signals.hasLock;
+    });
+  }
+
+  /**
+   * Phase 35 D9: pass-phase rows judge true geometry at the objective's
+   * station and latch once reached while the objective is active.
+   * past-culmination: elevation is falling above the receivable elevation.
+   * setting-below: past culmination and elevation under params.elevation.
+   * set: below the receivable elevation after having been above it.
+   * 'update' is false for a read-only probe, which must not move the latch.
+   */
+  private evaluatePassPhase_(condition: Condition, objectiveState: ObjectiveState, gs: GroundStation, update: boolean): boolean {
+    const cs = objectiveState.conditionStates.find((c) => c.condition === condition);
+    if (!cs) return false;
+    if (cs.passPhaseLatched) return true;
+    const noradId = condition.params?.noradId;
+    const phase = condition.params?.phase;
+    if (noradId === undefined || !phase) return false;
+    const sat = SimulationManager.getInstance().getSatByNoradId(noradId);
+    if (!(sat instanceof OrbitalSatellite)) return false;
+
+    const el = sat.geometryFor(observerFromLocation(gs.state.location)).el as number;
+    const receivable = sat.minElevation as number;
+    const prev = cs.passPrevElevation;
+    let culminated = cs.passPastCulmination === true;
+    let seenAbove = cs.passSeenAbove === true;
+    if (el > receivable) seenAbove = true;
+    if (!culminated && prev !== undefined && el < prev - 1e-6 && el > receivable) culminated = true;
+
+    let reached = false;
+    if (phase === 'past-culmination') reached = culminated;
+    else if (phase === 'setting-below') reached = culminated && el < (condition.params?.elevation ?? receivable);
+    else reached = seenAbove && el <= receivable;
+
+    if (update) {
+      cs.passPrevElevation = el;
+      cs.passSeenAbove = seenAbove;
+      cs.passPastCulmination = culminated;
+      if (reached) {
+        cs.passPhaseLatched = true;
+        this.startPassPhaseTimer_(objectiveState);
+      }
+    }
+
+    return reached;
+  }
+
+  /** timerStartTrigger 'on-pass-phase': the countdown starts when the pass-phase row latches */
+  private startPassPhaseTimer_(objectiveState: ObjectiveState): void {
+    const objective = objectiveState.objective;
+    if (objective.timerStartTrigger !== 'on-pass-phase' || objective.timeLimitSeconds === undefined) return;
+    if (objectiveState.isTimerRunning || objectiveState.isCompleted || objectiveState.isFailed) return;
+    objectiveState.timeRemainingSeconds = objective.timeLimitSeconds;
+    objectiveState.isTimerRunning = true;
+  }
+
+  /**
+   * Phase 29 D10: receiver-relocked rows watch for a lock loss from the
+   * activation of `lockLostAfterObjectiveId` (default their own objective),
+   * even while their own objective still waits on prerequisites, so a drop
+   * during an earlier step still counts. The loss latches on the row.
+   */
+  private watchLockLoss_(): void {
+    for (const objectiveState of this.objectiveStates_) {
+      if (objectiveState.isCompleted || objectiveState.isFailed) {
+        continue;
+      }
+      for (const cs of objectiveState.conditionStates) {
+        if (cs.condition.type !== 'receiver-relocked' || cs.lockLostSeen) {
+          continue;
+        }
+        const anchorId = cs.condition.params?.lockLostAfterObjectiveId;
+        const anchor = anchorId ? this.objectiveStates_.find((o) => o.objective.id === anchorId) : objectiveState;
+        if (!anchor || !(anchor.isActive || anchor.isCompleted)) {
+          continue;
+        }
+        const gs = this.getGroundStation_(objectiveState);
+        if (gs && !this.isReceiverLocked_(gs, cs.condition.params)) {
+          cs.lockLostSeen = true;
         }
       }
     }
@@ -1432,11 +2101,13 @@ export class ObjectivesManager {
     this.isConditionTelemetryEnabled_ = enabled;
   }
 
-  /** Record the value a condition check compared against its target. No-op when telemetry is off. */
+  /**
+   * Record the value a condition check compared against its target. Always
+   * kept: requiresChange (B1) compares it with the activation baseline; the
+   * telemetry event only goes out when telemetry is on.
+   */
   private observe_(value: unknown): void {
-    if (this.isConditionTelemetryEnabled_) {
-      this.lastObserved_ = value;
-    }
+    this.lastObserved_ = value;
   }
 
   /**
@@ -1490,6 +2161,18 @@ export class ObjectivesManager {
     return [...toComplete];
   }
 
+  /** B7: whether a status-check quiz may be registered (see quizAfterConditions) */
+  private isQuizGateOpen_(objectiveState: ObjectiveState, conditionIndex: number): boolean {
+    const gate = objectiveState.conditionStates[conditionIndex]?.condition.params?.quizAfterConditions;
+    if (gate === false || (objectiveState.objective.conditionLogic ?? 'AND') === 'OR') {
+      return true;
+    }
+
+    return objectiveState.conditionStates.every(
+      (cs, index) => isQuizCondition(cs.condition.type) || (gate !== true && index > conditionIndex) || ObjectivesManager.isConditionMet_(cs, objectiveState.objective)
+    );
+  }
+
   private evaluateEquipment_<T>(equipmentArray: readonly T[], params: ConditionParams | undefined, checker: (item: T) => boolean): boolean {
     if (!equipmentArray || equipmentArray.length === 0) return false;
 
@@ -1511,12 +2194,34 @@ export class ObjectivesManager {
    * required to "observe" a requiresObservation condition. Mirrors the
    * tab-active matching (exact id or prefix).
    */
-  private isObservationContextActive_(condition: Condition): boolean {
+  private isObservationContextActive_(condition: Condition, objective?: Pick<Objective, 'groundStation'>): boolean {
     const targetTab = condition.params?.observationTab;
     if (!targetTab) return false;
     const activeTab = TabbedCanvas.getActiveTab();
     if (!activeTab) return false;
+    // Phase 35 D11: the tab must be the objective's station's, not another station's
+    const selected = TabbedCanvas.getSelectedAssetId();
+    if (objective?.groundStation && selected !== null && selected !== objective.groundStation) return false;
     return activeTab === targetTab || activeTab.startsWith(`${targetTab}-`);
+  }
+
+  /**
+   * Phase 35 D3: count the seconds an observation row reads true while its tab
+   * is closed. At OFF_TAB_NUDGE_SECONDS the checklist row turns into an alert
+   * and OBJECTIVE_OBSERVATION_PENDING fires once, so TabbedCanvas can pulse the tab.
+   */
+  private trackOffTabRead_(objectiveState: ObjectiveState, condIndex: number, cs: ConditionState, liveTrue: boolean, dtSeconds: number): void {
+    if (!liveTrue) {
+      cs.liveOffTabSeconds = 0;
+      cs.offTabNudged = false;
+      return;
+    }
+    cs.liveOffTabSeconds = (cs.liveOffTabSeconds ?? 0) + dtSeconds;
+    const tab = cs.condition.params?.observationTab;
+    if (cs.liveOffTabSeconds >= OFF_TAB_NUDGE_SECONDS && !cs.offTabNudged && tab) {
+      cs.offTabNudged = true;
+      this.eventBus_.emit(Events.OBJECTIVE_OBSERVATION_PENDING, { objectiveId: objectiveState.objective.id, conditionIndex: condIndex, tab });
+    }
   }
 
   /**
@@ -1553,9 +2258,14 @@ export class ObjectivesManager {
               return false;
             }
 
-            // A LEO sits at a different az/el from each site: judge the lock
-            // from the objective's own station.
-            const view = targetSat instanceof OrbitalSatellite ? targetSat.geometryFor(observerFromLocation(gs.state.location)) : targetSat;
+            // A LEO, or a GEO with per-station geometry, sits at a different
+            // az/el from each site: judge the lock from this antenna's station.
+            const view =
+              typeof antenna.viewOf === 'function'
+                ? antenna.viewOf(targetSat)
+                : targetSat instanceof OrbitalSatellite
+                  ? targetSat.geometryFor(observerFromLocation(gs.state.location))
+                  : targetSat;
 
             // Handle 360° wraparound for azimuth
             let azDiff = Math.abs(state.azimuth - view.az);
@@ -1610,7 +2320,9 @@ export class ObjectivesManager {
       case 'buc-reference-locked': {
         return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
           const bucState = rfFrontEnd.bucModule.state;
-          return bucState.isPowered && bucState.isExtRefLocked && bucState.frequencyError === 0;
+          // 19.6: a locked LO carries the reference's own few parts in 10^12,
+          // never exactly 0 Hz; locked to a warmed-up reference is the test
+          return bucState.isPowered && bucState.isExtRefLocked && rfFrontEnd.gpsdoModule.get10MhzOutput().isWarmedUp;
         });
       }
 
@@ -1664,7 +2376,8 @@ export class ObjectivesManager {
       case 'lnb-reference-locked': {
         return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
           const lnbState = rfFrontEnd.lnbModule.state;
-          return lnbState.isPowered && lnbState.isExtRefLocked && lnbState.frequencyError === 0;
+          // 19.6: the locked LO's error is the reference's (millihertz), not 0
+          return lnbState.isPowered && lnbState.isExtRefLocked && rfFrontEnd.gpsdoModule.get10MhzOutput().isWarmedUp;
         });
       }
 
@@ -1692,8 +2405,11 @@ export class ObjectivesManager {
 
       case 'lnb-thermally-stable': {
         return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
-          const lnbState = rfFrontEnd.lnbModule.state;
-          return lnbState.isPowered && lnbState.noiseTemperature < 100 && lnbState.temperature >= 25 && lnbState.temperature <= 50 && lnbState.frequencyError === 0;
+          // Phase 19.6: powered for its stabilization time and locked to the
+          // reference (the old window passed at power-on: 25 degC was inside it)
+          const lnb = rfFrontEnd.lnbModule;
+          this.observe_({ secondsSincePowerOn: lnb.secondsSincePowerOn, isExtRefLocked: lnb.state.isExtRefLocked });
+          return lnb.isThermallyStable() && lnb.state.isExtRefLocked && lnb.state.noiseTemperature < 100;
         });
       }
 
@@ -1763,8 +2479,15 @@ export class ObjectivesManager {
       }
 
       case 'signal-detected': {
+        const anyTuning = condition.params?.anyTuning === true;
         return this.evaluateEquipment_(gs.spectrumAnalyzers, condition.params, (specA) => {
-          const signals = specA.getInputSignals();
+          // B2: "detected" means on the screen: inside the displayed centre
+          // +/- span/2, in the domain the analyzer is tapping (an RX IF tap
+          // shows IF frequencies). A carrier wider than the window counts if
+          // any of it is in view.
+          const { centerFrequency, span } = specA.state;
+          const signals = specA.getInputSignals().filter((s) => anyTuning || Math.abs(s.frequency - centerFrequency) <= span / 2 + (s.bandwidth ?? 0) / 2);
+          this.observe_({ centerFrequency, span, inView: signals.map((s) => s.signalId) });
           if (signals.length === 0) return false;
 
           // If no specific signal required, any signal counts
@@ -1825,7 +2548,9 @@ export class ObjectivesManager {
       case 'speca-span-set': {
         if (!condition.params?.span) return false;
         const targetSpan = condition.params.span;
-        const tolerance = condition.params.frequencyTolerance ?? 1e6;
+        // spanTolerance is what authors write; it was ignored, so every span check
+        // silently accepted ±1 MHz (nats-s08-F5)
+        const tolerance = condition.params.spanTolerance ?? condition.params.frequencyTolerance ?? 1e6;
         return this.evaluateEquipment_(gs.spectrumAnalyzers, condition.params, (specA) => {
           this.observe_(specA.state.span);
           const diff = Math.abs(specA.state.span - targetSpan);
@@ -1884,7 +2609,7 @@ export class ObjectivesManager {
       case 'speca-min-amplitude': {
         if (condition.params?.minAmplitude === undefined) return false;
         const targetMinAmplitude = condition.params.minAmplitude;
-        const tolerance = condition.params.minAmplitudeTolerance ?? 5;
+        const tolerance = condition.params.minAmplitudeTolerance ?? condition.params.amplitudeTolerance ?? 5;
         return this.evaluateEquipment_(gs.spectrumAnalyzers, condition.params, (specA) => {
           this.observe_(specA.state.minAmplitude);
           const diff = Math.abs(specA.state.minAmplitude - targetMinAmplitude);
@@ -1895,7 +2620,7 @@ export class ObjectivesManager {
       case 'speca-max-amplitude': {
         if (condition.params?.maxAmplitude === undefined) return false;
         const targetMaxAmplitude = condition.params.maxAmplitude;
-        const tolerance = condition.params.maxAmplitudeTolerance ?? 5;
+        const tolerance = condition.params.maxAmplitudeTolerance ?? condition.params.amplitudeTolerance ?? 5;
         return this.evaluateEquipment_(gs.spectrumAnalyzers, condition.params, (specA) => {
           this.observe_(specA.state.maxAmplitude);
           const diff = Math.abs(specA.state.maxAmplitude - targetMaxAmplitude);
@@ -1935,6 +2660,8 @@ export class ObjectivesManager {
 
           // Check specific notch or any notch
           const notchesToCheck = specificNotchIndex !== undefined ? [notchState.notches[specificNotchIndex]].filter(Boolean) : notchState.notches;
+          // debugObjective showed `observed: null` here, which hid why S21 never completed (nats-s21-F3)
+          this.observe_(notchesToCheck.map((n) => ({ enabled: n.enabled, centerFrequency: n.centerFrequency, bandwidth: n.bandwidth, depth: n.depth })));
 
           return notchesToCheck.some((notch) => {
             if (!notch.enabled) return false;
@@ -1994,7 +2721,21 @@ export class ObjectivesManager {
       }
 
       case 'antenna-beacon-locked': {
-        return this.evaluateEquipment_(gs.antennas, condition.params, (antenna) => antenna.state.isBeaconLocked === true);
+        const minBeaconCn = condition.params?.minBeaconCn;
+        const beaconNoradId = condition.params?.noradId;
+        return this.evaluateEquipment_(gs.antennas, condition.params, (antenna) => {
+          // The beacon the tracker is locked to is the selected target's: a
+          // lock held on the previous satellite is not this satellite's beacon
+          if (beaconNoradId !== undefined && antenna.state.targetSatelliteId !== beaconNoradId) {
+            return false;
+          }
+          if (minBeaconCn === undefined) {
+            return antenna.state.isBeaconLocked === true;
+          }
+          const cn = antenna.state.beaconCN;
+          this.observe_(cn);
+          return antenna.state.isBeaconLocked === true && cn !== null && cn >= minBeaconCn;
+        });
       }
 
       case 'antenna-position': {
@@ -2072,7 +2813,8 @@ export class ObjectivesManager {
       case 'hpa-not-overdriven': {
         return this.evaluateEquipment_(gs.rfFrontEnds, condition.params, (rfFrontEnd) => {
           const hpaState = rfFrontEnd.hpaModule.state;
-          return hpaState.isPowered && !hpaState.isOverdriven;
+          // Phase 35 s04-F5: a disabled HPA is not within limits, it is off
+          return hpaState.isPowered && (hpaState.isHpaEnabled || condition.params?.allowHpaDisabled === true) && !hpaState.isOverdriven;
         });
       }
 
@@ -2103,15 +2845,20 @@ export class ObjectivesManager {
         return false;
       }
 
-      case 'receiver-signal-locked': {
-        return this.evaluateEquipment_(gs.receivers, condition.params, (receiver) => {
-          const modemNum = condition.params?.modemNumber ?? receiver.state.activeModem;
-          const modem = receiver.state.modems.find((m) => m.modemNumber === modemNum);
-          if (!modem?.isPowered) return false;
+      case 'satellite-pass-phase': {
+        return this.evaluatePassPhase_(condition, objectiveState, gs, dtSeconds !== undefined);
+      }
 
-          const signalInfo = receiver.getSignalsInBandwidth(modem);
-          return signalInfo.hasLock;
-        });
+      case 'receiver-signal-locked': {
+        return this.isReceiverLocked_(gs, condition.params);
+      }
+
+      case 'receiver-relocked': {
+        // Phase 29 D10: lock lost during the watch (watchLockLoss_), then
+        // regained. A lock that has not dropped yet does not count
+        // (nats-r4-s17-F1: "Receiver Re-Locked" was ticked before the drop)
+        const cs = objectiveState.conditionStates.find((c) => c.condition === condition);
+        return !!cs?.lockLostSeen && this.isReceiverLocked_(gs, condition.params);
       }
 
       case 'receiver-snr-threshold': {
@@ -2125,6 +2872,9 @@ export class ObjectivesManager {
           const modemNum = condition.params?.modemNumber ?? receiver.state.activeModem;
           const modem = receiver.state.modems.find((m) => m.modemNumber === modemNum);
           if (!modem?.isPowered) return false;
+
+          // Phase 35 D10: the C/N of some other carrier in the band is not this one's
+          if (condition.params?.signalId !== undefined && receiver.getSignalsInBandwidth(modem).targetSignalId !== condition.params.signalId) return false;
 
           const snr = receiver.getSnrForModem(modem);
           this.observe_(snr);
@@ -2281,14 +3031,11 @@ export class ObjectivesManager {
           const modemNum = condition.params?.modemNumber ?? transmitter.state.activeModem;
           const modem = transmitter.state.modems.find((m) => m.modem_number === modemNum);
           if (!modem?.isPowered) {
-            console.log(`[tx-modem-fec-set] Modem ${modemNum} not powered. isPowered=${modem?.isPowered}`);
             return false;
           }
           const actualFec = modem.ifSignal.fec;
           this.observe_(actualFec);
-          const result = actualFec === targetFec;
-          console.log(`[tx-modem-fec-set] gs=${gs.state.id}, modem=${modemNum}, targetFec=${targetFec}, actualFec=${actualFec}, result=${result}`);
-          return result;
+          return actualFec === targetFec;
         });
       }
 
@@ -2345,6 +3092,22 @@ export class ObjectivesManager {
         const quizManager = QuizManager.getInstance();
         const conditionIndex = objectiveState.conditionStates.findIndex((cs) => cs.condition === condition);
 
+        // "Ready to begin?" waits for the brief: registering it on load put
+        // "Complete the quiz to continue" on screen before the player had
+        // anything to answer (nats-s01-F16)
+        const briefUnread = objectiveState.conditionStates.some((cs) => cs.condition.type === 'mission-brief-opened' && !cs.isSatisfied);
+        if (briefUnread && !quizManager.hasQuiz(objectiveState.objective.id, conditionIndex)) {
+          return false;
+        }
+
+        // B7: the knowledge check follows the doing. By default the quiz waits
+        // for the non-quiz rows authored before it (a quiz written first is
+        // still asked first); quizAfterConditions true waits for all of them,
+        // false asks at activation. OR objectives ask at once.
+        if (!quizManager.hasQuiz(objectiveState.objective.id, conditionIndex) && !this.isQuizGateOpen_(objectiveState, conditionIndex)) {
+          return false;
+        }
+
         // Register the quiz if not already registered
         // Note: Quiz is NOT shown immediately - pending indicator appears instead
         // User must click the indicator or "?" button to open the quiz
@@ -2358,7 +3121,16 @@ export class ObjectivesManager {
             params.explanation,
             params.pointPenalty ?? 5,
             params.character,
-            params.preserveOptionOrder
+            params.preserveOptionOrder,
+            params.quizSource || params.figureUrl || params.wrongAnswerFeedback || params.reviewHint
+              ? {
+                  quizSource: params.quizSource,
+                  figureUrl: params.figureUrl,
+                  figureAlt: params.figureAlt,
+                  wrongAnswerFeedback: params.wrongAnswerFeedback,
+                  reviewHint: params.reviewHint,
+                }
+              : undefined
           );
         }
 
@@ -2387,6 +3159,13 @@ export class ObjectivesManager {
         const decisions = DecisionManager.getInstance();
         const conditionIndex = objectiveState.conditionStates.findIndex((cs) => cs.condition === condition);
         if (!decisions.has(objectiveState.objective.id, conditionIndex)) {
+          // A decision written after a pass-phase gate waits for it, like a quiz
+          // waits for the doing before it (rt-s20-F3a: the probe decision opened
+          // while SAR-1 was still overhead, five minutes before the step)
+          const passGatePending = objectiveState.conditionStates.some(
+            (cs, index) => index < conditionIndex && cs.condition.type === 'satellite-pass-phase' && !ObjectivesManager.isConditionMet_(cs, objectiveState.objective)
+          );
+          if (passGatePending) return false;
           const factReader = registry;
           const evidenceIds = params.evidence ?? [];
           decisions.register(objectiveState.objective.id, conditionIndex, {
@@ -2467,10 +3246,32 @@ export class ObjectivesManager {
       }
 
       case 'service-continuity': {
-        // Placeholder condition for service continuity during handover
-        // In a real implementation, this would track packet loss during handover
-        // For now, this always passes since we don't model packet-level traffic
+        // PLACEHOLDER - always passes; a row of this type ticks on activation
+        // and teaches nothing. Phase 27 B6 removed it from nats S3/S11/S12;
+        // do not author it until Phase 23.2 models packet loss during
+        // handover (maxPacketLoss is reserved for that).
         return true;
+      }
+
+      case 'ops-log-entry': {
+        // Something the operator typed into the Ops Log, not an auto entry:
+        // "log it" steps used to complete from the final quiz alone (nats-s22-F7, s23-F6)
+        if (!OpsLogManager.isInitialized()) return false;
+        const minLength = condition.params?.logMinLength ?? 10;
+        const keywords = (condition.params?.logKeywords ?? []).map((k) => k.toLowerCase().split('|'));
+        const typed = OpsLogManager.getInstance()
+          .getEntries()
+          .filter((e) => e.source === 'operator');
+        this.observe_(typed.map((e) => e.message));
+        const matches = (text: string) => text.length >= minLength && keywords.every((alternatives) => alternatives.some((word) => text.includes(word)));
+        if (typed.some((e) => matches(e.message.toLowerCase()))) return true;
+        // nats S11 player report: operators split one handover across several
+        // lines ("ME-02 has TM-1 now", "VT-01 parked for maintenance"). Lines
+        // typed since this objective activated count together.
+        const since = objectiveState.activatedAt;
+        if (since === undefined) return false;
+        const recent = typed.filter((e) => e.timeMs !== undefined && e.timeMs >= since);
+        return recent.length > 1 && matches(recent.map((e) => e.message.toLowerCase()).join(' '));
       }
 
       case 'mission-brief-opened': {
@@ -2521,13 +3322,7 @@ export class ObjectivesManager {
 
         // FECSimulator calculates frame sync from signal conditions
         const fecSim = new FECSimulator();
-        const metrics = fecSim.calculate({
-          cnRatio_dB: signalInfo.cnRatio_dB,
-          hasCarrier: signalInfo.hasCarrier,
-          hasLock: signalInfo.hasLock,
-          modulation: modem.modulation,
-          fec: modem.fec,
-        });
+        const metrics = fecSim.calculate(fecInputFromSignal(signalInfo, modem));
 
         this.observe_(metrics.frameSyncLocked);
         return metrics.frameSyncLocked === expectedLocked;
@@ -2547,13 +3342,7 @@ export class ObjectivesManager {
         const modem = receiver.activeModem;
 
         const fecSim = new FECSimulator();
-        const metrics = fecSim.calculate({
-          cnRatio_dB: signalInfo.cnRatio_dB,
-          hasCarrier: signalInfo.hasCarrier,
-          hasLock: signalInfo.hasLock,
-          modulation: modem.modulation,
-          fec: modem.fec,
-        });
+        const metrics = fecSim.calculate(fecInputFromSignal(signalInfo, modem));
 
         this.observe_(metrics.ber);
         if (comparison === 'below') {
@@ -2574,13 +3363,7 @@ export class ObjectivesManager {
         const modem = receiver.activeModem;
 
         const fecSim = new FECSimulator();
-        const metrics = fecSim.calculate({
-          cnRatio_dB: signalInfo.cnRatio_dB,
-          hasCarrier: signalInfo.hasCarrier,
-          hasLock: signalInfo.hasLock,
-          modulation: modem.modulation,
-          fec: modem.fec,
-        });
+        const metrics = fecSim.calculate(fecInputFromSignal(signalInfo, modem));
 
         this.observe_(metrics.rsUncorrectableBlocks);
         return metrics.rsUncorrectableBlocks > 0;
@@ -2599,13 +3382,7 @@ export class ObjectivesManager {
         const modem = receiver.activeModem;
 
         const fecSim = new FECSimulator();
-        const metrics = fecSim.calculate({
-          cnRatio_dB: signalInfo.cnRatio_dB,
-          hasCarrier: signalInfo.hasCarrier,
-          hasLock: signalInfo.hasLock,
-          modulation: modem.modulation,
-          fec: modem.fec,
-        });
+        const metrics = fecSim.calculate(fecInputFromSignal(signalInfo, modem));
 
         this.observe_(metrics.channelStatus);
         return metrics.channelStatus === expectedStatus;
@@ -2699,6 +3476,29 @@ export class ObjectivesManager {
         return state.fix !== null && state.fixErrorKm !== null && state.fixErrorKm <= maxErrorKm;
       }
 
+      case 'part-inspected':
+      case 'part-measured':
+      case 'part-swapped': {
+        // Physical plant action log (Phase 38.1)
+        const plant = PhysicalPlantService.plantOrNull();
+        const partId = condition.params?.partId;
+        if (!plant || partId === undefined) return false;
+        if (condition.type === 'part-inspected') return plant.hasInspected(partId);
+        if (condition.type === 'part-measured') return plant.hasMeasured(partId, condition.params?.tool);
+        return plant.hasSwapped(partId);
+      }
+
+      case 'plant-fault-cleared': {
+        const faultId = condition.params?.faultId;
+        const plant = PhysicalPlantService.plantOrNull();
+        return faultId !== undefined && plant !== null && plant.isFaultCleared(faultId);
+      }
+
+      case 'ineffective-action': {
+        const plant = PhysicalPlantService.plantOrNull();
+        return plant !== null && plant.ineffectiveActionCount() >= (condition.params?.minCount ?? 1);
+      }
+
       case 'hardware-fault-tripped': {
         // The named scheduled hardware fault has tripped
         const eventId = condition.params?.eventId;
@@ -2710,6 +3510,36 @@ export class ObjectivesManager {
         if (!InterferenceManager.isInitialized()) return false;
         const eventId = condition.params?.interferenceEventId;
         return eventId !== undefined && InterferenceManager.getInstance().hasEventEnded(eventId);
+      }
+
+      case 'weather-event-ended': {
+        // The named weather event (rain cell, storm, transit) has run its
+        // course: a hold can last until the weather passes (Phase 27 Q4)
+        if (!WeatherManager.hasInstance()) return false;
+        const eventId = condition.params?.weatherEventId;
+        return eventId !== undefined && WeatherManager.getInstance().hasEventEnded(eventId);
+      }
+
+      case 'weather-event-peaked': {
+        // Phase 29 D10: the named event's degradation has passed its maximum
+        // (a sun transit's midpoint), not merely crossed a threshold on the
+        // way up (nats-r4-s17-F1)
+        if (!WeatherManager.hasInstance()) return false;
+        const eventId = condition.params?.weatherEventId;
+        if (eventId === undefined) return false;
+        const weather = WeatherManager.getInstance();
+        // Feed `{{val:OBJ.N}}` the event's peak fade (dB) so text can quote the number it peaked at
+        const peakDb = weather.getAllWeatherEvents().find((e) => e.id === eventId)?.linkMarginDegradation;
+        if (typeof peakDb === 'number') this.observe_(peakDb);
+
+        return weather.hasEventPeaked(eventId, condition.params?.pastPeakSeconds ?? 0);
+      }
+
+      case 'scenario-time-reached': {
+        // The station clock has reached a time of day (a pass window opening
+        // at 10:00, a crew due at 06:30): a hold that waits on the clock
+        const targetMs = ObjectivesManager.scenarioTimeTargetMs(condition.params?.scenarioTime);
+        return targetMs !== null && SimClock.nowMs() >= targetMs;
       }
 
       case 'geolocation-ellipse-within': {

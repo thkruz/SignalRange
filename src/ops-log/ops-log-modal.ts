@@ -35,6 +35,11 @@ export class OpsLogModal extends DraggableModal {
     return OpsLogModal.instance_;
   }
 
+  /** Close the log if it was ever opened (end-of-scenario modals clear every popup) */
+  static closeIfOpen(): void {
+    OpsLogModal.instance_?.close();
+  }
+
   static destroy(): void {
     if (OpsLogModal.instance_) {
       EventBus.getInstance().off(Events.OPS_LOG_ENTRY_ADDED, OpsLogModal.instance_.boundEntryAddedHandler_);
@@ -106,7 +111,8 @@ export class OpsLogModal extends DraggableModal {
     if (!message) return;
 
     try {
-      OpsLogManager.getInstance().log(message, 'action');
+      // 'operator' marks it as typed, which the ops-log-entry condition reads
+      OpsLogManager.getInstance().log(message, 'action', 'operator');
       input.value = '';
       input.focus();
     } catch {

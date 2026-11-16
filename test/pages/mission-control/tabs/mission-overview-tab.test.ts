@@ -3,10 +3,14 @@ import { EventBus } from '../../../../src/events/event-bus';
 import { Events } from '../../../../src/events/events';
 import { MissionOverviewTab } from '../../../../src/pages/mission-control/tabs/mission-overview-tab';
 
+// GS-001's antenna mode, shared with the mocked SimulationManager below
+const { mockAntennaState } = vi.hoisted(() => ({ mockAntennaState: { trackingMode: 'program-track' } }));
+
 // Mock dependencies
 vi.mock('../../../../src/events/event-bus');
 vi.mock('../../../../src/simulation/simulation-manager', () => ({
   SimulationManager: {
+    hasInstance: () => false,
     getInstance: vi.fn(() => ({
       groundStations: [
         {
@@ -16,10 +20,16 @@ vi.mock('../../../../src/simulation/simulation-manager', () => ({
             location: { latitude: 38.897, longitude: -77.037, elevation: 100 },
             isOperational: true,
           },
-          antennas: [{}],
-          rfFrontEnds: [{}],
-          transmitters: [{}],
-          receivers: [{}],
+          antennas: [
+            {
+              state: mockAntennaState,
+              viewOf: (sat: { az: number; el: number }) => ({ az: sat.az + 2, el: sat.el - 1 }),
+              getStatusAlarms: () => [],
+            },
+          ],
+          rfFrontEnds: [{ getStatusAlarms: () => [] }],
+          transmitters: [{ state: { modems: [{}, {}, {}, {}] }, getStatusAlarms: () => [] }],
+          receivers: [{ state: { modems: [{}, {}, {}, {}] }, getStatusAlarms: () => [] }],
         },
         {
           state: {
@@ -28,10 +38,10 @@ vi.mock('../../../../src/simulation/simulation-manager', () => ({
             location: { latitude: 51.5074, longitude: -0.1278, elevation: 50 },
             isOperational: false,
           },
-          antennas: [{}],
+          antennas: [{ viewOf: (sat: { az: number; el: number }) => ({ az: sat.az + 5, el: sat.el - 3 }) }],
           rfFrontEnds: [{}],
           transmitters: [],
-          receivers: [{}],
+          receivers: [{ state: { modems: [{}, {}, {}, {}] } }],
         },
       ],
       satellites: [
@@ -136,12 +146,86 @@ describe('MissionOverviewTab', () => {
       expect(html).toContain('OFFLINE');
     });
 
+    it('reads MAINTENANCE / STOWED from the antenna mode, live (Phase 32 D16, nats-r7-s11-F1)', () => {
+      const badge = () => document.querySelector('[data-asset-id="GS-001"] .station-status-badge');
+      const resync = (now: number) => {
+        vi.spyOn(Date, 'now').mockReturnValue(now);
+        const update = mockEventBus.on.mock.calls.find((call: unknown[]) => call[0] === Events.UPDATE)?.[1];
+        update();
+      };
+      expect(badge()?.textContent).toBe('OPERATIONAL');
+      try {
+        mockAntennaState.trackingMode = 'maintenance';
+        resync(80_000_000);
+        expect(badge()?.textContent).toBe('MAINTENANCE');
+        expect(badge()?.className).toContain('status-badge-amber');
+
+        mockAntennaState.trackingMode = 'stow';
+        resync(81_000_000);
+        expect(badge()?.textContent).toBe('STOWED');
+        expect(badge()?.className).toContain('status-badge-gray');
+      } finally {
+        mockAntennaState.trackingMode = 'program-track';
+      }
+      // The offline station stays OFFLINE whatever its antenna does
+      expect(document.querySelector('[data-asset-id="GS-002"] .station-status-badge')?.textContent).toBe('OFFLINE');
+    });
+
     it('should display equipment counts', () => {
       const html = document.body.innerHTML;
       expect(html).toContain('ANT');
       expect(html).toContain('RF-FE');
-      expect(html).toContain('TX');
-      expect(html).toContain('RX');
+      expect(html).toContain('TX MODEMS');
+      expect(html).toContain('RX MODEMS');
+      // Modems, not chassis (phase 27): one chassis of four reads 4
+      const first = document.querySelector('[data-asset-type="ground-station"]');
+      expect(first?.textContent).toMatch(/4\s*TX MODEMS/u);
+    });
+  });
+
+  describe('live look angles (phase 27, s06-F5)', () => {
+    it("shows each satellite at the viewing station's own az/el, labelled with the station", () => {
+      const card = document.querySelector('[data-asset-id="sat-12345"]');
+      expect(card?.querySelector('.sat-look-az')?.textContent).toBe('182.0°');
+      expect(card?.querySelector('.sat-look-el')?.textContent).toBe('44.0°');
+      expect(card?.querySelector('.sat-look-from')?.textContent).toBe('Look angles from GS-001');
+    });
+
+    it('subscribes to updates and unsubscribes on dispose', () => {
+      expect(mockEventBus.on).toHaveBeenCalledWith(Events.UPDATE, expect.any(Function));
+      tab.dispose();
+      expect(mockEventBus.off).toHaveBeenCalledWith(Events.UPDATE, expect.any(Function));
+      tab = new MissionOverviewTab('mission-overview-container');
+    });
+
+    it('a rebuilt Overview keeps the last selected station, and teardown forgets it (phase 31 D16, r6-s18-F1)', () => {
+      const from = () => document.querySelector('[data-asset-id="sat-12345"] .sat-look-from')?.textContent;
+      const assetSelected = mockEventBus.on.mock.calls.filter((call: unknown[]) => call[0] === Events.ASSET_SELECTED).at(-1)?.[1];
+      assetSelected({ type: 'ground-station', id: 'GS-002' });
+      expect(from()).toBe('Look angles from GS-002');
+
+      // The Overview is rebuilt each time it is shown
+      tab.dispose();
+      tab = new MissionOverviewTab('mission-overview-container');
+      expect(from()).toBe('Look angles from GS-002');
+
+      // Selected from the sidebar while the Overview was not up
+      MissionOverviewTab.rememberStation('GS-001');
+      tab.dispose();
+      tab = new MissionOverviewTab('mission-overview-container');
+      expect(from()).toBe('Look angles from GS-001');
+
+      // A station not in this scenario, or a teardown, falls back to the first
+      MissionOverviewTab.rememberStation('ME-99');
+      tab.dispose();
+      tab = new MissionOverviewTab('mission-overview-container');
+      expect(from()).toBe('Look angles from GS-001');
+
+      MissionOverviewTab.rememberStation('GS-002');
+      MissionOverviewTab.resetRememberedStation();
+      tab.dispose();
+      tab = new MissionOverviewTab('mission-overview-container');
+      expect(from()).toBe('Look angles from GS-001');
     });
   });
 
@@ -218,6 +302,7 @@ describe('MissionOverviewTab', () => {
       // Reset SimulationManager mock
       vi.doMock('../../../../src/simulation/simulation-manager', () => ({
         SimulationManager: {
+          hasInstance: () => false,
           getInstance: vi.fn(() => ({
             groundStations: [],
             satellites: [],

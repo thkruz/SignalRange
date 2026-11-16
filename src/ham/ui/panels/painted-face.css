@@ -1,0 +1,149 @@
+/* Painted instrument faceplates (Phase 47, issue 307): live controls sit on the painted wells */
+
+.pface-layout { display: flex; align-items: flex-start; justify-content: center; gap: clamp(16px, 3vw, 36px); flex-wrap: wrap; }
+
+.pface {
+  --pf-ink: #f1e6c8;
+  --pf-lcd: #1b2610;
+  position: relative;
+  flex: none;
+  box-sizing: border-box;
+  width: min(100%, 640px, calc((100vh - 190px) * var(--pf-ratio)));
+  aspect-ratio: var(--pf-ratio);
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  container-type: inline-size;
+  filter: drop-shadow(0 18px 22px #000a);
+  color: var(--pf-ink);
+}
+.pf-slot { position: absolute; box-sizing: border-box; margin: 0; min-width: 0; }
+
+/* side column: the readings that do not fit on the painted face, and the selects behind the rotary switches */
+.pface-side { flex: 1 1 240px; max-width: 340px; min-width: 220px; display: flex; flex-direction: column; gap: 10px; color: var(--inst-ink, #ece3cf); font-size: 0.9375rem; }
+.pface-side .form-label { display: block; margin: 0 0 3px; font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--inst-dim, #cfc5ad); }
+.pface-side .form-select, .pface-side .form-control {
+  min-height: 34px;
+  border: 1px solid var(--inst-line, #5b5444);
+  border-radius: 6px;
+  background-color: #0a0907;
+  color: #f3ead2;
+  font-family: var(--bs-font-monospace, monospace);
+  font-size: 0.875rem;
+}
+.pface-side .form-select:focus-visible, .pface-side .form-control:focus-visible { outline: 3px solid #ffd27a; outline-offset: 2px; }
+.pface-side .ham-kv { display: flex; justify-content: space-between; gap: 8px; font-size: 0.9375rem; }
+.pface-side .ham-kv > span:last-child { font-family: var(--bs-font-monospace, monospace); }
+
+/* ---- keys: a transparent hit area over a painted key, with the engraved caption ---- */
+.pface .pf-key {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 14%;
+  background: transparent;
+  color: var(--pf-key-ink, #f1e6c8);
+  font: 700 max(11px, 3.4cqw) / 1 var(--bs-font-monospace, monospace);
+  letter-spacing: 0.08em;
+  text-shadow: 0 1px 0 #000a;
+  cursor: pointer;
+  min-height: 0;
+  box-shadow: none;
+  transition: background 0.1s, transform 0.08s;
+}
+.pface .pf-key:hover { background: #ffffff1f; }
+.pface .pf-key:active { background: #0006; transform: translateY(1.5%); }
+.pface .pf-key:focus-visible { outline: 3px solid #ffd27a; outline-offset: 1px; }
+.pface .pf-key.active { background: #ffd27a40; box-shadow: inset 0 0 0 2px #ffd27acc; }
+.pface .pf-round { border-radius: 50%; }
+
+/* ---- readout windows: live text on a painted blank window ---- */
+.pface .pf-window { display: flex; flex-direction: column; justify-content: center; padding: 0 5%; overflow: hidden; color: var(--pf-win-ink, #8fe8ff); font-family: var(--bs-font-monospace, monospace); }
+.pface .pf-window > .pf-cap { font-size: max(11px, 2.1cqw); letter-spacing: 0.1em; opacity: 0.8; line-height: 1.1; }
+.pface .pf-window .pf-val, .pface .pf-window input { font-size: max(12px, 3.6cqw); line-height: 1.15; font-weight: 700; }
+.pface .pf-window input {
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  box-shadow: none;
+  -moz-appearance: textfield;
+}
+.pface .pf-window input::-webkit-outer-spin-button, .pface .pf-window input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.pface .pf-window:focus-within { box-shadow: inset 0 0 0 2px #ffd27a; border-radius: 4px; }
+
+/* ---- knobs: the rotary control is invisible apart from its pointer line; the cap is painted ---- */
+.pface .trx-knob-wrap { width: 100%; height: 100%; display: block; }
+.pface .trx-knob { --trx-k: 100%; width: 100%; height: 100%; background: none; }
+.pface .trx-knob-cap { inset: 8%; background: none; box-shadow: none; }
+.pface .trx-knob-mark { top: 2%; height: 30%; width: 3px; margin-left: -1.5px; background: #f6e4b0; box-shadow: 0 0 3px #000; }
+.pface .trx-knob:focus-visible { outline: 3px solid #ffd27a; outline-offset: 2px; }
+.pface .trx-legend { display: none; }
+
+/* ---- multimeter ---- */
+.pface[data-face='meter'] .pf-lcd { display: flex; align-items: center; justify-content: flex-end; padding: 0 4%; overflow: hidden; background: transparent; }
+.pface[data-face='meter'] .pf-lcd .ham-display {
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--pf-lcd);
+  font-size: max(18px, 7.2cqw);
+  line-height: 1.1;
+  text-align: right;
+  text-shadow: none;
+}
+.pface[data-face='meter'] .pf-lcd .ham-display.is-refused { font-size: max(10px, 3.1cqw); text-align: left; color: #6b1b12; }
+.pface[data-face='meter'] .pf-lcd .ham-display.is-stale { opacity: 0.4; }
+.pface[data-face='meter'] .pf-mode { background: #1c1b19; border-radius: 6px; font-size: max(10px, 2.9cqw); box-shadow: inset 0 0 0 1px #6f6a60, 0 1px 0 #000; }
+.pface[data-face='meter'] .pf-mode.active { background: #f2c230; color: #181408; text-shadow: none; box-shadow: inset 0 0 0 1px #000, 0 0 8px #f2c230aa; }
+.pface[data-face='meter'] .pf-read { --pf-key-ink: #fff; font-size: max(11px, 3.2cqw); }
+.pface[data-face='meter'] .trx-knob-mark { background: #ffe9a0; }
+.pface-side .ham-beep { display: inline-block; width: 0.7rem; height: 0.7rem; border-radius: 50%; background: #667382; margin-right: 0.35rem; vertical-align: middle; }
+.pface-side .ham-beep.on { background: #f59f00; box-shadow: 0 0 6px #f59f00; }
+
+/* ---- SWR meter ---- */
+.pface[data-face='swr'] { --pf-win-ink: #ffcf70; }
+.pface[data-face='swr'] .pf-meter { display: block; }
+.pface[data-face='swr'] .pf-meter svg { width: 100%; height: 100%; display: block; }
+.pface[data-face='swr'] .pf-needle { transition: transform 0.35s cubic-bezier(0.3, 1.5, 0.5, 1); transform-origin: 200px 186px; }
+.pface[data-face='swr'] .pf-read { --pf-key-ink: #14110d; text-shadow: none; font-size: max(10px, 2.6cqw); }
+.pface[data-face='swr'] .pf-window .pf-val { font-size: max(13px, 3.2cqw); }
+
+/* ---- antenna analyzer ---- */
+.pface[data-face='analyzer'] { --pf-win-ink: #8fe8ff; }
+.pface[data-face='analyzer'] .pf-screen { overflow: hidden; border-radius: 3%; }
+.pface[data-face='analyzer'] .pf-screen .ham-plot { width: 100%; height: 100%; display: block; background: #060e18; border: 0; border-radius: 0; }
+.pface[data-face='analyzer'] .pf-screen .ham-plot text { fill: #9fc8e8; font-size: 13px; }
+.pface[data-face='analyzer'] .pf-screen .ham-plot .grid { stroke: #5fa8e033; }
+.pface[data-face='analyzer'] .pf-screen .ham-plot .trace { stroke: #7fe3ff; stroke-width: 2; }
+.pface[data-face='analyzer'] .pf-screen .ham-plot .min { fill: #ffcf70; }
+.pface[data-face='analyzer'] .pf-key { font-size: max(10px, 2.9cqw); }
+
+@media (prefers-reduced-motion: reduce) {
+  .pface[data-face='swr'] .pf-needle, .pface .trx-knob-cap { transition: none; }
+}
+
+/* Art failed to load: plain chassis in place of the picture */
+.pface.pface-failed { background-color: var(--inst-body, #2f3338); border: 2px solid #0007; border-radius: 12px; }
+
+/* Art failed: every control stays readable and visible on the plain chassis (AA captions) */
+.pface.pface-failed .pf-key { background: #1c1b19; color: #f6efdc; text-shadow: none; box-shadow: inset 0 0 0 1px #8a8374; }
+.pface.pface-failed .pf-key:hover { background: #2c2a26; }
+.pface.pface-failed .pf-key.active { background: #f2c230; color: #181408; }
+.pface.pface-failed[data-face='meter'] .pf-read, .pface.pface-failed[data-face='swr'] .pf-read { --pf-key-ink: #f6efdc; }
+.pface.pface-failed .pf-window { background: #0d1117; border-radius: 4px; box-shadow: inset 0 0 0 1px #5b5444; }
+.pface.pface-failed .pf-window > .pf-cap { opacity: 1; color: #cfc5ad; }
+.pface.pface-failed[data-face='meter'] .pf-lcd { background: #b9c79a; }
+.pface.pface-failed .trx-knob { background: radial-gradient(circle at 50% 50%, #5b5f66 0 62%, #1a1c20 63% 100%); border-radius: 50%; box-shadow: 0 0 0 2px #8a8374; }
+.pface.pface-failed .trx-knob-cap { background: radial-gradient(circle at 35% 30%, #8a8f98, #3a3d44); box-shadow: 0 2px 4px #000a; border-radius: 50%; }
+.pface.pface-failed .trx-legend { display: block; color: #e6dcc0; }
+.pface.pface-failed[data-face='meter'] .trx-legend { color: #181408; text-shadow: none; }
+.pface.pface-failed[data-face='swr'] .pf-meter { background: #efe3c2; border-radius: 4px; }

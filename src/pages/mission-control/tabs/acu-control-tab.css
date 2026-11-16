@@ -86,6 +86,13 @@
   border-radius: 0 4px 4px 0;
 }
 
+/* A STOW/MAINT picked but not yet APPLIED: amber outline, the applied mode stays lit */
+.tracking-mode-selector .btn-tracking.pending {
+  outline: 1px dashed #f59e0b;
+  outline-offset: -2px;
+  color: #f59e0b;
+}
+
 /* ========================================
    Beacon Strength Meter
    ======================================== */

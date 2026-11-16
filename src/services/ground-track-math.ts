@@ -14,7 +14,7 @@
  */
 
 import type { OrbitalSatellite } from '@app/equipment/satellite/orbital-satellite';
-import { Degrees, EpochUTC, Kilometers, Sun } from 'ootk';
+import { Degrees, Kilometers, Sun } from 'ootk';
 
 const DEG = Math.PI / 180;
 /** Mean Earth radius (km) - matches the value ootk uses for its own geodesy. */
@@ -277,7 +277,7 @@ export function visibilityCircle(center: LonLat, radiusDeg: number, stepDeg = 5)
  * a terminator crossing by a couple of seconds. Irrelevant at deck resolution.
  */
 export function isSunlit(eciKm: { x: number; y: number; z: number }, date: Date): boolean {
-  const sun = Sun.position(EpochUTC.fromDateTime(date));
+  const sun = Sun.eci(date);
   const sunMag = Math.hypot(sun.x, sun.y, sun.z);
 
   if (!Number.isFinite(sunMag) || sunMag === 0) {

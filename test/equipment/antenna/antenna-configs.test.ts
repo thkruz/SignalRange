@@ -226,7 +226,7 @@ describe('ANTENNA_CONFIGS', () => {
 
       it('should have pointing parameters', () => {
         expect(config.kBeamConst).toBe(70);
-        expect(config.patternModel).toBe('ITU465');
+        expect(config.patternModel).toBe('S580');
         expect(config.pointingSigma_deg).toBeDefined();
       });
 
@@ -234,14 +234,14 @@ describe('ANTENNA_CONFIGS', () => {
         expect(config.lnaNF_dB).toBeDefined();
         expect(config.rxChainLoss_dB).toBeDefined();
         expect(config.rxPhysTemp_K).toBeDefined();
-        expect(config.skyTempModel).toBe('CbandSimple');
-        expect(config.atmosModel).toBe('ITU_R_P676_Simple');
       });
 
       it('should have mechanical parameters', () => {
         expect(config.elRange_deg).toEqual([5, 90]);
         expect(config.azContinuous).toBe(false);
-        expect(config.maxRate_deg_s).toBeDefined();
+        // Phase 19.4: a full-motion 9 m teleport pedestal, 0.3-0.5 deg/s class
+        expect(config.maxRate_deg_s).toBe(0.5);
+        expect(config.maxAccel_deg_s2).toBeDefined();
         expect(config.windDePointingCoef_deg_per_mps).toBeDefined();
       });
     });

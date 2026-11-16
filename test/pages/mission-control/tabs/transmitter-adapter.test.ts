@@ -76,6 +76,7 @@ describe('TransmitterAdapter', () => {
       handlePowerToggle: vi.fn(),
       getPowerPercentage: vi.fn().mockReturnValue(50),
       getStatusAlarms: vi.fn().mockReturnValue([]),
+      getBootRemainingMs: vi.fn().mockReturnValue(2600),
     } as unknown as Mocked<Transmitter>;
 
     // Setup container with required DOM elements
@@ -107,6 +108,7 @@ describe('TransmitterAdapter', () => {
       <div id="tx-power-bar" style="width: 0%"></div>
       <span id="tx-power-percentage"></span>
       <input type="checkbox" id="tx-transmit-switch" />
+      <span id="tx-boot-status" class="d-none"></span>
       <button id="tx-fault-reset-btn">Reset</button>
       <input type="checkbox" id="tx-loopback-switch" />
       <input type="checkbox" id="tx-power-switch" />
@@ -235,11 +237,71 @@ describe('TransmitterAdapter', () => {
       expect(mockTransmitter.handlePowerToggle).toHaveBeenCalledWith(false);
     });
 
+    it('snaps the TX switch back off when the core refuses the key-up', () => {
+      mockTransmitter.handleTransmitToggle.mockReturnValue(false);
+      const txSwitch = containerEl.querySelector('#tx-transmit-switch') as HTMLInputElement;
+      txSwitch.checked = true;
+      txSwitch.dispatchEvent(new Event('change'));
+
+      expect(txSwitch.checked).toBe(false);
+    });
+
     it('should call handleFaultReset when fault reset button clicked', () => {
       const resetBtn = containerEl.querySelector('#tx-fault-reset-btn') as HTMLButtonElement;
       resetBtn.click();
 
       expect(mockTransmitter.handleFaultReset).toHaveBeenCalled();
+    });
+  });
+
+  describe('TX modem boot lockout', () => {
+    const getConfigChangedHandler = (): (() => void) => {
+      const call = mockEventBus.on.mock.calls.find(([event]) => event === Events.TX_CONFIG_CHANGED);
+
+      return call![1] as () => void;
+    };
+
+    beforeEach(() => {
+      mockTransmitter.state.modems[0].isPowered = false;
+      mockTransmitter.state.modems[0].isBooting = true;
+      getConfigChangedHandler()();
+    });
+
+    it('disables the TX switch and shows BOOTING while the modem boots', () => {
+      const txSwitch = containerEl.querySelector('#tx-transmit-switch') as HTMLInputElement;
+      const bootStatus = containerEl.querySelector('#tx-boot-status') as HTMLElement;
+
+      expect(txSwitch.disabled).toBe(true);
+      expect(txSwitch.checked).toBe(false);
+      expect(bootStatus.textContent).toBe('BOOTING 3 s');
+      expect(bootStatus.classList.contains('d-none')).toBe(false);
+    });
+
+    it('keeps the power switch on and reports initializing in the status bar', () => {
+      const powerSwitch = containerEl.querySelector('#tx-power-switch') as HTMLInputElement;
+      const statusBar = containerEl.querySelector('#tx-status-bar') as HTMLElement;
+
+      expect(powerSwitch.checked).toBe(true);
+      // The Online LED is amber and says why (Phase 34 D4)
+      const onlineLed = containerEl.querySelector('#tx-online-led') as HTMLElement;
+      expect(onlineLed.classList.contains('warning')).toBe(true);
+      expect(onlineLed.title).toBe('Online: BOOTING');
+      expect(statusBar.textContent).toContain('still initializing');
+      expect(statusBar.textContent).toContain('ready in 3 s');
+    });
+
+    it('re-enables the TX switch on the boot-complete state change, without waiting for a throttled sync', () => {
+      mockTransmitter.state.modems[0].isBooting = false;
+      mockTransmitter.state.modems[0].isPowered = true;
+      getConfigChangedHandler()();
+
+      const txSwitch = containerEl.querySelector('#tx-transmit-switch') as HTMLInputElement;
+      const bootStatus = containerEl.querySelector('#tx-boot-status') as HTMLElement;
+      const statusBar = containerEl.querySelector('#tx-status-bar') as HTMLElement;
+
+      expect(txSwitch.disabled).toBe(false);
+      expect(bootStatus.classList.contains('d-none')).toBe(true);
+      expect(statusBar.textContent).toBe('Ready');
     });
   });
 
@@ -283,6 +345,32 @@ describe('TransmitterAdapter', () => {
 
       const onlineLed = containerEl.querySelector('#tx-online-led') as HTMLElement;
       expect(onlineLed.classList.contains('success')).toBe(true);
+    });
+
+    it('titles every modem LED with its label and state, set with the class (Phase 34 D4, nats-r9-s01-F1)', () => {
+      const title = (id: string) => (containerEl.querySelector(`#${id}`) as HTMLElement).title;
+      const modem = mockTransmitter.state.modems[0];
+      modem.isTransmitting = false;
+      modem.isFaulted = false;
+      modem.isLoopback = false;
+      modem.isPowered = true;
+      (adapter as any).syncDomWithState_(mockTransmitter.state);
+      expect(title('tx-transmit-led')).toBe('TX: OFF');
+      expect(title('tx-fault-led')).toBe('Fault: NONE');
+      expect(title('tx-loopback-led')).toBe('Loop: OFF');
+      expect(title('tx-online-led')).toBe('Online: ON');
+
+      modem.isTransmitting = true;
+      modem.isFaulted = true;
+      modem.isLoopback = true;
+      modem.isPowered = false;
+      (adapter as any).syncDomWithState_(mockTransmitter.state);
+      expect(title('tx-transmit-led')).toBe('TX: ON');
+      expect(title('tx-fault-led')).toBe('Fault: FAULTED');
+      expect(title('tx-loopback-led')).toBe('Loop: ON');
+      expect((containerEl.querySelector('#tx-loopback-led') as HTMLElement).classList.contains('warning')).toBe(true);
+      expect(title('tx-online-led')).toBe('Online: OFF');
+      expect((containerEl.querySelector('#tx-online-led') as HTMLElement).classList.contains('off')).toBe(true);
     });
   });
 

@@ -56,7 +56,7 @@ test.describe('nats-eu Scenario 28 Full Completion', () => {
   });
 
   test('[read-the-baseline] states what normal looks like', async () => {
-    await quiz('Workstation and monitoring service to the ACU', 'What Normal Looks Like');
+    await quiz('Management flows to the ACU', 'What Normal Looks Like');
   });
 
   test('[review-the-log] reads the log against the baseline', async () => {
@@ -74,7 +74,7 @@ test.describe('nats-eu Scenario 28 Full Completion', () => {
     await missionControl.selectTab('security-console');
     await domClick(page, 'button[data-event-id="evt-vpn"]');
     await page.waitForTimeout(3500);
-    await answerDecision(page, 'Cutting it. Disable the vendor account now', ['Remote session flagged']);
+    await answerDecision(page, 'Cutting it. Disable the vendor account, which', ['Remote session flagged']);
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Call the Session');
   });
@@ -100,7 +100,7 @@ test.describe('nats-eu Scenario 28 Full Completion', () => {
   });
 
   test('[log-the-event] logs, notifies, and completes', async () => {
-    await answerSystemQuiz(page, '21:12 vendor remote session (svc-vendor');
+    await answerSystemQuiz(page, '21:12 session, 21:14 new flow');
     await dismissDialogIfPresent(page);
     await closeWorkingDocumentIfOpen(page);
     await expect(page.locator('#level-complete-modal')).toBeVisible({ timeout: 45000 });

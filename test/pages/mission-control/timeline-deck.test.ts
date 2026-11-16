@@ -23,6 +23,7 @@ let mockSatellites: unknown[] = [SAT_A, SAT_B];
 
 vi.mock('@app/simulation/simulation-manager', () => ({
   SimulationManager: {
+    hasInstance: vi.fn(() => true),
     getInstance: vi.fn(() => ({
       get satellites() {
         return mockSatellites;

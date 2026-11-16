@@ -4,7 +4,7 @@ import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
 import { RFFrontEndCore } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { IfFrequency } from '@app/types';
-import { LNBModuleCore, LNBState } from './lnb-module-core';
+import { LNB_LO_MAX_MHZ, LNB_LO_MIN_MHZ, LNBModuleCore, LNBState } from './lnb-module-core';
 import './lnb-module.css';
 
 /**
@@ -23,7 +23,7 @@ export class LNBModuleUIStandard extends LNBModuleCore {
     super(state, rfFrontEnd, unit);
 
     // Store components
-    this.loKnob_ = RotaryKnob.create(`${this.uniqueId}-lo-knob`, this.state.loFrequency, 5100, 6075, 10, (value: number) => {
+    this.loKnob_ = RotaryKnob.create(`${this.uniqueId}-lo-knob`, this.state.loFrequency, LNB_LO_MIN_MHZ, LNB_LO_MAX_MHZ, 10, (value: number) => {
       // Direct state update - will be synced through event callback
       this.state.loFrequency = value as IfFrequency;
     });

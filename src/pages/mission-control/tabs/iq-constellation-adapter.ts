@@ -81,6 +81,20 @@ export class IQConstellationAdapter {
     this.lockIndicator_ = lockSpan;
   }
 
+  /** The header is fed the modem readouts' samples (showHeaderSample), not this adapter's own per-frame reads */
+  private hasExternalHeader_ = false;
+
+  /**
+   * Show the header C/N and lock from the sample the modem readouts were drawn
+   * from (ReceiverAdapter.setSignalSampleListener), so the header and the
+   * modem's Effective C/N are the same number at the same moment (phase 29 D4,
+   * nats-r3-s06-F3). Null: modem off.
+   */
+  public showHeaderSample(state: IQSignalInfo | null): void {
+    this.hasExternalHeader_ = true;
+    this.updateStatusIndicators_(state);
+  }
+
   private startRendering_(): void {
     this.render_();
   }
@@ -104,13 +118,13 @@ export class IQConstellationAdapter {
     const activeModem = this.receiver_.state.modems[this.receiver_.state.activeModem - 1];
     if (!activeModem?.isPowered) {
       this.drawNoPower_(ctx, centerX, centerY);
-      this.updateStatusIndicators_(null);
+      if (!this.hasExternalHeader_) this.updateStatusIndicators_(null);
       return;
     }
 
     // Get signal info using relaxed filtering (for IQ display)
     const signalState = this.receiver_.getSignalsInBandwidth(activeModem);
-    this.updateStatusIndicators_(signalState);
+    if (!this.hasExternalHeader_) this.updateStatusIndicators_(signalState);
 
     if (!signalState.hasCarrier) {
       // No carrier - show pure noise
@@ -144,7 +158,7 @@ export class IQConstellationAdapter {
     if (!this.cnIndicator_ || !this.lockIndicator_) return;
 
     if (!state) {
-      this.cnIndicator_.textContent = 'C/N: ---';
+      this.cnIndicator_.textContent = 'Eff C/N: ---';
       this.cnIndicator_.className = 'iq-status-cn font-monospace text-muted';
       this.lockIndicator_.textContent = 'OFF';
       this.lockIndicator_.className = 'iq-status-lock font-monospace text-muted';
@@ -153,7 +167,8 @@ export class IQConstellationAdapter {
 
     // Use effective C/N (with ADC penalty) for display
     const displayCn = state.effectiveCnRatio_dB ?? state.cnRatio_dB;
-    const cnText = displayCn > -50 ? `C/N: ${displayCn.toFixed(1)} dB` : 'C/N: ---';
+    // Labelled as the modem's readout it equals ("Effective C/N")
+    const cnText = state.hasCarrier && displayCn > -50 ? `Eff C/N: ${displayCn.toFixed(1)} dB` : 'Eff C/N: ---';
 
     // Color based on effective C/N AND ADC status
     let cnClass: string;
@@ -172,15 +187,16 @@ export class IQConstellationAdapter {
     this.cnIndicator_.textContent = cnText;
     this.cnIndicator_.className = `iq-status-cn font-monospace ${cnClass}`;
 
-    // Lock indicator - must have hasLock AND sufficient C/N to actually maintain lock
-    // Below ~3 dB effective C/N, a real modem wouldn't maintain lock even with correct config
-    // Below 0 dB C/N, there's no usable carrier (noise exceeds signal)
+    // Lock indicator: the receiver's lock tracker (MODCOD threshold with
+    // hysteresis and acquisition time) is the only judge of lock
     const effectiveCn = state.effectiveCnRatio_dB ?? state.cnRatio_dB;
     const hasUsableCarrier = state.hasCarrier && effectiveCn >= 0;
-    const isActuallyLocked = state.hasLock && effectiveCn >= 3;
+    const isActuallyLocked = state.hasLock;
     let lockText: string;
     if (isActuallyLocked) {
       lockText = 'LOCKED';
+    } else if (state.lockState === 'acquiring') {
+      lockText = 'ACQUIRING';
     } else if (hasUsableCarrier) {
       lockText = 'CARRIER';
     } else {
@@ -281,36 +297,19 @@ export class IQConstellationAdapter {
   }
 
   /**
-   * Compute noise spread from C/N ratio
-   * >= 8 dB: great signal (tight clusters)
-   * 5-8 dB: marginal signal (moderate spread)
-   * 0-5 dB: degraded signal (significant spread)
-   * < 0 dB: just noise (constellation barely visible)
+   * Per-axis noise standard deviation of a symbol of unit average energy at
+   * a given Es/N0: complex AWGN with N0 split over I and Q, so
+   * sigma = 1 / sqrt(2 Es/N0). 10 dB: 0.22; 0 dB: 0.71.
    */
-  private computeNoiseSpread_(cnRatio_dB: number): number {
-    if (cnRatio_dB < 0) return 0.9; // Just noise - constellation barely visible
-    if (cnRatio_dB < 5) {
-      // Degraded: lerp from 0.9 at 0 dB to 0.35 at 5 dB
-      return 0.9 - (cnRatio_dB / 5) * 0.55;
-    }
-    if (cnRatio_dB < 8) {
-      // Marginal: lerp from 0.35 at 5 dB to 0.08 at 8 dB
-      return 0.35 - ((cnRatio_dB - 5) / 3) * 0.27;
-    }
-    // Great signal: lerp from 0.08 at 8 dB to 0.02 at 15+ dB
-    const t = Math.min(1, (cnRatio_dB - 8) / 7);
-    return 0.08 - t * 0.06;
+  static noiseSpreadForEsN0(esN0_dB: number): number {
+    if (!Number.isFinite(esN0_dB)) return esN0_dB > 0 ? 0 : 1;
+    return 1 / Math.sqrt(2 * 10 ** (esN0_dB / 10));
   }
 
-  /**
-   * Compute additional noise spread from ADC quantization noise.
-   * Low signal levels cause increased "graininess" in constellation.
-   */
-  private computeQuantizationNoiseSpread_(quantizationPenalty_dB: number): number {
-    if (quantizationPenalty_dB <= 0) return 0;
-    // Quantization noise adds structured spread
-    // 6 dB penalty = ~0.1 additional spread
-    return quantizationPenalty_dB * 0.015;
+  /** The Es/N0 to draw: the receiver's effective value, else C/N in the carrier's bandwidth + 0.8 dB (roll-off 0.2). */
+  private static esN0Of_(state: IQSignalInfo): number {
+    if (state.effectiveEsN0_dB !== undefined) return state.effectiveEsN0_dB;
+    return (state.effectiveCnRatio_dB ?? state.cnRatio_dB) + 10 * Math.log10(1.2);
   }
 
   /**
@@ -426,13 +425,10 @@ export class IQConstellationAdapter {
   }
 
   private drawConstellationRealistic_(ctx: CanvasRenderingContext2D, points: { i: number; q: number }[], cx: number, cy: number, scale: number, state: IQSignalInfo): void {
-    // Use effective C/N if available (includes ADC penalty)
+    // Symbol scatter from the effective Es/N0 (thermal + interference + the
+    // ADC's quantization and clipping noise, all already in it)
     const effectiveCn = state.effectiveCnRatio_dB ?? state.cnRatio_dB;
-    const noiseSpread = this.computeNoiseSpread_(effectiveCn);
-
-    // Add quantization noise spread if present
-    const quantNoiseSpread = state.adcDegradation ? this.computeQuantizationNoiseSpread_(state.adcDegradation.quantizationPenalty_dB) : 0;
-    const totalNoiseSpread = noiseSpread + quantNoiseSpread;
+    const totalNoiseSpread = IQConstellationAdapter.noiseSpreadForEsN0(IQConstellationAdapter.esN0Of_(state));
 
     const samplesPerPoint = this.getSamplesPerPoint_(effectiveCn);
 

@@ -37,6 +37,10 @@ export abstract class RFFrontEndModule<TState extends RFFrontEndModuleState> {
   // Common UI components
   protected powerSwitch_?: PowerSwitch;
   protected gainKnob_?: RotaryKnob;
+  /** Run time the pending reference acquisition completes; null when none is pending */
+  private lockAcquireDueRunMs_: number | null = null;
+  /** Callers waiting on the pending acquisition */
+  private readonly lockAcquireCallbacks_: (() => void)[] = [];
 
   constructor(state: TState, rfFrontEnd: RFFrontEndCore, modulePrefix: string, unit: number = 1) {
     this.state = state;
@@ -53,6 +57,20 @@ export abstract class RFFrontEndModule<TState extends RFFrontEndModuleState> {
       }
     });
     EventBus.getInstance().on(Events.SYNC, this.syncDomWithState_.bind(this));
+  }
+
+  /**
+   * Ops Log line for an operator action no state event reports on its own
+   * (BUC gain, HPA back-off, LNB / HPA power: nats-r4-s07-F1, s12-F2). The
+   * EventAutoLogger writes it, tagged with this module's station.
+   */
+  protected logOperatorAction_(message: string): void {
+    EventBus.getInstance().emit(Events.EQUIPMENT_ACTION, { message, system: 'RF FE', module: this });
+  }
+
+  /** A level for a log line: "23 dB", or one decimal when it has a fraction */
+  protected static formatLevel_(value: number, unit: string): string {
+    return `${Number.isInteger(value) ? value : value.toFixed(1)} ${unit}`;
   }
 
   /**
@@ -213,21 +231,45 @@ export abstract class RFFrontEndModule<TState extends RFFrontEndModuleState> {
    * @param maxDelay Maximum delay in milliseconds
    * @param cb Optional callback after lock is acquired
    */
-  protected simulateLockAcquisition(minDelay: number = 2000, maxDelay: number = 5000, cb?: () => void): void {
+  protected simulateLockAcquisition(minDelay: number = 2000, maxDelay: number = 5000, cb?: () => void, canLock?: () => boolean): void {
     if (this.state.isExtRefLocked === undefined) {
       return;
     }
 
+    if (cb) {
+      this.lockAcquireCallbacks_.push(cb);
+    }
+    // One acquisition at a time (phase 27, r2-s02-F4: a new timer was
+    // scheduled every frame while unlocked). A timer lost to a clock reset
+    // (due long past) does not block a fresh one.
+    if (this.lockAcquireDueRunMs_ !== null && SimClock.runMs() <= this.lockAcquireDueRunMs_ + 1000) {
+      return;
+    }
+
     const delay = minDelay + random() * (maxDelay - minDelay);
+    this.lockAcquireDueRunMs_ = SimClock.runMs() + delay;
     SimClock.setTimeout(() => {
-      if (this.state.isExtRefLocked !== undefined) {
+      this.lockAcquireDueRunMs_ = null;
+      // The reference went away (or the unit lost power) while the PLL was
+      // still pulling in: no lock
+      if (this.state.isExtRefLocked !== undefined && (!canLock || canLock())) {
         this.state.isExtRefLocked = true;
       }
       this.syncDomWithState_();
-      if (cb) {
-        cb();
+      const callbacks = this.lockAcquireCallbacks_.splice(0);
+      for (const callback of callbacks) {
+        callback();
       }
     }, delay);
+  }
+
+  /**
+   * The synthesiser is pulling in to its 10 MHz reference: powered, reference
+   * present, not yet locked, an acquisition under way (2-5 s; phase 27). A
+   * normal transient, not a fault.
+   */
+  get isAcquiringReference(): boolean {
+    return this.lockAcquireDueRunMs_ !== null && this.state.isExtRefLocked === false && this.state.isPowered && this.isExtRefPresent();
   }
 
   /**
@@ -249,7 +291,7 @@ export abstract class RFFrontEndModule<TState extends RFFrontEndModuleState> {
 
     // Simulate lock acquisition if not already locked
     if (!this.state.isExtRefLocked) {
-      this.simulateLockAcquisition();
+      this.simulateLockAcquisition(2000, 5000, undefined, () => this.state.isPowered && this.isExtRefPresent());
     }
   }
 

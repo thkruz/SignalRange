@@ -43,14 +43,14 @@ import { aurora7Satellite, ses10Satellite, tidemark1Satellite } from './satellit
  * 6. Configure TX modem and enable transmit path
  *
  * Technical Reference (AURORA-7):
- *   - Uplink RF: 5830 MHz
- *   - Downlink RF: 3605 MHz
+ *   - Uplink RF: 6053 MHz
+ *   - Downlink RF: 3828 MHz
  *   - Beacon RF: 4165 MHz
  *   - LNB LO: 5250 MHz
  *   - Beacon IF: 1085 MHz (5250 - 4165) - PRE-CONFIGURED by Charlie
  *   - Downlink IF: 1422 MHz (5250 - 3828)
  *   - BUC LO: 7500 MHz
- *   - TX IF: 1447 MHz (5830 - 7500) - STUDENT CALCULATES THIS
+ *   - TX IF: 1447 MHz (7500 - 6053, BUC LO above RF, LSB) - STUDENT CALCULATES THIS
  *   - Bandwidth: 24 MHz
  *
  * Key Differences from Scenario 4:
@@ -84,18 +84,19 @@ export const scenario6Data: ScenarioData = {
             // Antenna in program-track on TIDEMARK-1 (wrong satellite)
             // Student must switch to AURORA-7, then to step-track
             isPowered: true,
-            azimuth: 180 as Degrees,
-            elevation: 45 as Degrees,
-            polarization: 0 as Degrees,
+            // TIDEMARK-1 (53 W) from VT-01 by geoLookAngles, as ground-stations.ts
+            // (was a hand-authored 180 / 45; Phase 29 gate, nats-r4 D1 open item 3)
+            azimuth: 153.1 as Degrees,
+            elevation: 35.1 as Degrees,
+            // polarization: derived from geometry (Phase 29 D8, geoPolarizationSkewDeg)
             trackingMode: 'program-track',
             isBeaconLocked: false,
             targetSatelliteId: 61525, // TIDEMARK-1 (wrong satellite)
-            targetAzimuth: 180 as Degrees,
-            targetElevation: 45 as Degrees,
-            targetPolarization: 0 as Degrees,
+            targetAzimuth: 153.1 as Degrees,
+            targetElevation: 35.1 as Degrees,
             slewing: false,
             beaconCN: 0 as dB,
-            beaconFrequencyHz: 1085e6 as Hertz, // Pre-configured by Charlie
+            beaconFrequencyHz: 4165e6 as Hertz, // Pre-configured by Charlie (AURORA-7 beacon, RF)
             isLocked: true, // Program-track is locked on TIDEMARK-1
           } as Partial<AntennaState>,
         ],
@@ -123,10 +124,14 @@ export const scenario6Data: ScenarioData = {
             ...vermontGroundStation.spectrumAnalyzers[0],
             centerFrequency: 1085e6 as Hertz, // Pre-set near beacon IF
             span: 100e3 as Hertz, // Narrow span for beacon
-            rbw: 1e3 as Hertz,
-            referenceLevel: -90 as dBm,
-            minAmplitude: -100 as dBm,
-            maxAmplitude: -70 as dBm,
+            // Set by hand for the beacon (the auto value at 100 kHz); the wide
+            // downlink view needs it back on Auto (phase 27)
+            rbw: 300 as Hertz,
+            referenceLevel: -60 as dBm,
+            // Phase 27: the AURORA-7 beacon reads -76 to -81 dBm (ledger), the
+            // floor ~-90 dBm in 300 Hz
+            minAmplitude: -120 as dBm,
+            maxAmplitude: -60 as dBm,
           },
         ],
         receivers: [
@@ -135,10 +140,12 @@ export const scenario6Data: ScenarioData = {
             modems: [
               {
                 ...vermontGroundStation.receivers[0].modems[0],
-                frequency: 1200 as MHz, // Wrong - student must configure
-                bandwidth: 24 as MHz,
-                modulation: 'QPSK',
-                fec: '3/4',
+                // Parked from a test carrier: the student sets the AURORA-7
+                // plan (1422 / 24 MHz / QPSK 3/4), so no row ticks pre-staged
+                frequency: 1200 as MHz,
+                bandwidth: 36 as MHz,
+                modulation: 'BPSK',
+                fec: '1/2',
               },
             ],
           },
@@ -151,6 +158,10 @@ export const scenario6Data: ScenarioData = {
                 ...vermontGroundStation.transmitters[0].modems[0],
                 ifSignal: {
                   ...vermontGroundStation.transmitters[0].modems[0].ifSignal,
+                  // AURORA-7's carrier, keyed into a muted BUC: nothing radiates
+                  // until the player brings the chain up (phase 27)
+                  signalId: 'AURORA-7-Uplink',
+                  noradId: 28899,
                   frequency: 1050e6 as IfFrequency, // Wrong - student must calculate TX IF
                   bandwidth: 24e6 as Hertz,
                   power: -7 as dBm,
@@ -164,6 +175,8 @@ export const scenario6Data: ScenarioData = {
     missionBriefUrl: 'https://docs.signalrange.space/campaign-1/scenario-6?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
     satellites: [aurora7Satellite, tidemark1Satellite, ses10Satellite],
+    scenarioStartDate: '2026-02-05',
+    scenarioStartWallTime: '14:00:00',
   },
   objectives: [
     // ============================================================
@@ -225,7 +238,7 @@ export const scenario6Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'Legacy satellites with inclined orbits drift in a figure-8 pattern as seen from the ground. Step-track uses the beacon signal to continuously adjust antenna pointing, while program-track relies on TLE predictions that assume a fixed geostationary position.',
+              'Legacy satellites with inclined orbits drift in a figure-8 pattern as seen from the ground. Step-track uses the beacon signal to keep adjusting the antenna pointing, so it follows the drift. Program-track here points from predictions that treat AURORA-7 as fixed in its slot, so they miss the drift.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -257,7 +270,8 @@ export const scenario6Data: ScenarioData = {
               'Cannot determine from current display',
             ],
             correctIndex: 0,
-            explanation: 'The ACU shows TIDEMARK-1 selected. AURORA-7 is our target for this mission - we need to change the program-track target.',
+            explanation:
+              "The ACU shows TIDEMARK-1 as the program-track target, and the dish sits at TIDEMARK-1's look angles (about 153.1 degrees azimuth and 35.1 degrees elevation). AURORA-7 is the target for this mission, so the program-track target has to change.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -278,12 +292,6 @@ export const scenario6Data: ScenarioData = {
       timeLimitSeconds: 3 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
-        {
-          type: 'antenna-tracking-mode-set',
-          description: 'Program Track Mode',
-          params: { trackingMode: 'program-track' },
-          maintainUntilObjectiveComplete: true,
-        },
         {
           type: 'antenna-locked',
           description: 'Locked on AURORA-7',
@@ -318,7 +326,7 @@ export const scenario6Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              "Program-track follows TLE predictions that assume a fixed geostationary position. AURORA-7's inclined orbit means it drifts in a figure-8 pattern, so predictions are only accurate for rough pointing. We need step-track to actively follow the beacon.",
+              "Program-track follows predictions that assume a fixed geostationary position, but AURORA-7's inclined orbit makes it drift in a figure-8 pattern. That's why the predictions are only accurate enough for rough pointing, and why we need step-track to follow the beacon.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -336,7 +344,7 @@ export const scenario6Data: ScenarioData = {
       // K0773: Knowledge of telecommunications principles and practices
       nice: ['K0773'],
       title: 'Verify Beacon Configuration',
-      description: 'Charlie pre-configured the beacon frequency for step-track. Check the ACU to verify the beacon IF is set to 1085 MHz.',
+      description: 'Charlie pre-configured the step-track beacon at 1085 MHz IF (AURORA-7 beacon, 4165 MHz RF). Confirm how that IF was derived.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['quiz-program-track-limitation'],
       timeLimitSeconds: 2 * 60,
@@ -355,7 +363,7 @@ export const scenario6Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'The beacon IF is calculated using high-side LO injection: IF = LO - RF = 5250 - 4165 = 1085 MHz. The LNB converts the RF signal down to IF for processing.',
+              "The LNB's local oscillator sits above the beacon, so the IF is the LO minus the RF: 5250 - 4165 = 1085 MHz. The LNB converts the RF signal down to IF for the rest of the receive chain. The BUC LO belongs to the transmit side, so 7500 - 4165 = 3355 MHz isn't the beacon IF.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -421,7 +429,8 @@ export const scenario6Data: ScenarioData = {
       // T1567: Equipment configuration happens throughout
       nice: ['K0773', 'S0421', 'T1567'],
       title: 'Configure Spectrum Analyzer for Downlink',
-      description: 'Reconfigure the spectrum analyzer to view the main downlink signal at IF 1422 MHz.',
+      description:
+        "Reconfigure the spectrum analyzer for AURORA-7's carrier slot at IF 1422 MHz: Span 50 MHz, Min Amp -90 dBm, Max Amp -30 dBm, RBW Auto. Expect an empty band: VT-01 is off-air and nobody else uplinks on that slot, so the carrier appears only once you transmit.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['acquire-beacon-lock'],
       timeLimitSeconds: 3 * 60,
@@ -447,18 +456,21 @@ export const scenario6Data: ScenarioData = {
         },
         {
           type: 'speca-max-amplitude',
-          description: 'Max Amplitude: -20 dBm',
+          // The 24 MHz composite (~-29 dBm total) reads ~-52 dBm in the 100 kHz
+          // auto RBW, its floor ~-66 dBm: -90/-30 shows both (phase 27; the
+          // old -50/-20 window put the carrier under Min Amp)
+          description: 'Max Amplitude: -30 dBm',
           params: {
-            maxAmplitude: -20 as dBm,
+            maxAmplitude: -30 as dBm,
             amplitudeTolerance: 5 as dB,
           },
           mustMaintain: true,
         },
         {
           type: 'speca-min-amplitude',
-          description: 'Min Amplitude: -50 dBm',
+          description: 'Min Amplitude: -90 dBm',
           params: {
-            minAmplitude: -50 as dBm,
+            minAmplitude: -90 as dBm,
             amplitudeTolerance: 5 as dB,
           },
           mustMaintain: true,
@@ -482,7 +494,7 @@ export const scenario6Data: ScenarioData = {
       // T1567: Equipment configuration happens throughout
       nice: ['K0773', 'S0421', 'T1567'],
       title: 'Configure RX Modem',
-      description: 'Set the receiver modem to the AURORA-7 downlink IF frequency (1422 MHz) with correct bandwidth and modulation.',
+      description: "Set the receiver modem to the AURORA-7 downlink: 1422 MHz IF, 24 MHz bandwidth, QPSK, FEC 3/4 (it's parked from a test carrier).",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['configure-speca-downlink'],
       timeLimitSeconds: 3 * 60,
@@ -522,43 +534,23 @@ export const scenario6Data: ScenarioData = {
           },
           maintainUntilObjectiveComplete: true,
         },
-      ],
-      conditionLogic: 'AND',
-      points: 15,
-    },
-    {
-      id: 'verify-rx-lock',
-      // T0153: Monitor network capacity and performance
-      // K0740: Knowledge of system performance indicators
-      nice: ['T0153', 'K0740'],
-      title: 'Verify RX Signal Lock',
-      description: 'Confirm receiver has locked to AURORA-7 downlink with acceptable SNR.',
-      groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['configure-rx-modem'],
-      timeLimitSeconds: 3 * 60,
-      timerStartTrigger: 'on-activate',
-      conditions: [
         {
-          type: 'receiver-signal-locked',
-          description: 'Receiver Locked',
+          type: 'status-check',
+          description: 'Why No Lock Yet',
           params: {
-            modemNumber: 1,
-            requiresObservation: true,
-            observationTab: 'rx-analysis',
+            question: 'The modem is set to the AURORA-7 plan, but it shows no lock and the analyzer shows only noise at 1422 MHz. Why?',
+            options: [
+              'Nobody is uplinking on that slot; the carrier it waits for is our own',
+              'Step-track has not peaked the antenna yet, so the carrier is still below the noise',
+              'The modem needs the beacon at 1085 MHz to lock before it can find the carrier',
+              'AURORA-7 is in eclipse, so its transponder is switched off',
+            ],
+            correctIndex: 0,
+            explanation:
+              "A bent-pipe transponder relays only what's uplinked into it. AURORA-7's beacon is the satellite's own, which is why you see it at 1085 MHz. The 24 MHz slot at 1422 MHz IF carries traffic only while a ground station transmits into it, and that station is us. Once you bring the transmit path up, our carrier comes back down through the transponder and the modem locks on it.",
+            pointPenalty: 5,
           },
-          maintainUntilObjectiveComplete: true,
-        },
-        {
-          type: 'receiver-snr-threshold',
-          description: 'SNR Above 8 dB',
-          params: {
-            minCNRatio: 8,
-            modemNumber: 1,
-            requiresObservation: true,
-            observationTab: 'rx-analysis',
-          },
-          maintainUntilObjectiveComplete: true,
-          maintainDuration: 15,
+          mustMaintain: false,
         },
       ],
       conditionLogic: 'AND',
@@ -573,9 +565,10 @@ export const scenario6Data: ScenarioData = {
       // S0077: Skill in securing network communications
       nice: ['S0077'],
       title: 'Verify Encryption Understanding',
-      description: "Before we enable transmission, let's verify you understand the encryption configuration. Look at the Encryption card on the TX Chain tab.",
+      description:
+        "Before we enable transmission, let's verify you understand the encryption configuration. Look at the TX ENCRYPTION section of the TX Payload Data card on the TX Chain tab.",
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['verify-rx-lock'],
+      prerequisiteObjectiveIds: ['configure-rx-modem'],
       timeLimitSeconds: 3 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -583,7 +576,7 @@ export const scenario6Data: ScenarioData = {
           type: 'status-check',
           description: 'Encryption Understanding',
           params: {
-            question: 'Looking at the Encryption card, what security configuration is active?',
+            question: 'Looking at the TX ENCRYPTION section of the TX Payload Data card, what security configuration is active?',
             options: [
               'AES-256-GCM with valid key - ready for secure transmission',
               'AES-128-CBC with expired key - renewal needed before transmit',
@@ -592,7 +585,7 @@ export const scenario6Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              'The Encryption card shows AES-256-GCM active with a valid key. AES-256 provides strong symmetric encryption, and GCM mode adds authenticated encryption to detect tampering. Always verify encryption status before transmitting.',
+              'The TX ENCRYPTION section of the TX Payload Data card shows AES-256-GCM active with a valid key. AES-256 provides strong symmetric encryption, and GCM mode adds authenticated encryption to detect tampering. Always verify encryption status before transmitting.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -620,10 +613,10 @@ export const scenario6Data: ScenarioData = {
           description: 'TX IF Calculated',
           params: {
             question: 'What TX IF frequency should you configure to transmit at 6053 MHz RF?',
-            options: ['1447 MHz (7500 - 6053 = 1447)', '13553 MHz (6053 + 7500 = 13553)', '2303 MHz (6053 - 7500 / 2 = 2303)', '755 MHz (7500 - 4170 = 755)'],
+            options: ['1447 MHz (7500 - 6053 = 1447)', '13553 MHz (6053 + 7500 = 13553)', '2303 MHz (6053 - 7500 / 2 = 2303)', '803 MHz (6053 - 5250 = 803)'],
             correctIndex: 0,
             explanation:
-              'For uplink, the BUC upconverts the IF to RF: RF = IF + LO, so IF = LO - RF = 7500 - 6053 = 1447 MHz. This is similar to the downlink calculation because the BUC is also using low-side injection.',
+              "The BUC LO (7500 MHz) sits above the uplink (6053 MHz), so the BUC outputs the lower sideband: RF = LO - IF, so IF = LO - RF = 7500 - 6053 = 1447 MHz. It's the same subtraction as the downlink, because both LOs sit above their RF frequencies. The 803 MHz option uses the LNB LO (5250 MHz), which belongs to the receive side, not the BUC.",
             pointPenalty: 10,
           },
           mustMaintain: false,
@@ -689,6 +682,44 @@ export const scenario6Data: ScenarioData = {
       conditionLogic: 'AND',
       points: 15,
     },
+    {
+      id: 'verify-rx-lock',
+      // T0153: Monitor network capacity and performance
+      // K0740: Knowledge of system performance indicators
+      nice: ['T0153', 'K0740'],
+      title: 'Verify RX Signal Lock',
+      description: 'Back on RX Analysis: confirm the receiver modem has locked to your own carrier coming back down from AURORA-7, with C/N above 8 dB.',
+      groundStation: 'VT-01',
+      prerequisiteObjectiveIds: ['enable-transmit-path'],
+      timeLimitSeconds: 3 * 60,
+      timerStartTrigger: 'on-activate',
+      conditions: [
+        {
+          type: 'receiver-signal-locked',
+          description: 'Receiver Locked',
+          params: {
+            modemNumber: 1,
+            requiresObservation: true,
+            observationTab: 'rx-analysis',
+          },
+          maintainUntilObjectiveComplete: true,
+        },
+        {
+          type: 'receiver-snr-threshold',
+          description: 'SNR Above 8 dB',
+          params: {
+            minCNRatio: 8,
+            modemNumber: 1,
+            requiresObservation: true,
+            observationTab: 'rx-analysis',
+          },
+          maintainUntilObjectiveComplete: true,
+          maintainDuration: 15,
+        },
+      ],
+      conditionLogic: 'AND',
+      points: 15,
+    },
 
     // ============================================================
     // PHASE 6: FINAL VERIFICATION
@@ -700,7 +731,7 @@ export const scenario6Data: ScenarioData = {
       title: 'Full Duplex Established',
       description: 'Verify your understanding of the complete step-track link.',
       groundStation: 'VT-01',
-      prerequisiteObjectiveIds: ['enable-transmit-path'],
+      prerequisiteObjectiveIds: ['verify-rx-lock'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
       conditions: [
@@ -710,14 +741,14 @@ export const scenario6Data: ScenarioData = {
           params: {
             question: 'Which statement best describes your operational link to AURORA-7?',
             options: [
-              'Step-track maintaining lock on beacon, RX at 1422 MHz IF, TX at 1447 MHz IF, AES-256 encrypted',
-              'Program-track following TLE, RX at 1085 MHz IF, TX at 1043 MHz IF, unencrypted',
-              'Manual pointing, RX at 1532 MHz IF, TX at 1094 MHz IF, AES-128 encrypted',
-              'Step-track on beacon, RX at 3605 MHz RF, TX at 5830 MHz RF, no encryption',
+              'Step-track on beacon, RX at 1422 MHz IF, TX at 1447 MHz IF, AES-256',
+              'Program-track on TLE, RX at 1085 MHz IF, TX at 1043 MHz IF, no encryption',
+              'Manual pointing, RX at 1532 MHz IF, TX at 1057 MHz IF, AES-128',
+              'Step-track on beacon, RX at 3828 MHz RF, TX at 6053 MHz RF, no encryption',
             ],
             correctIndex: 0,
             explanation:
-              'Your link uses step-track mode to maintain pointing on the inclined-orbit AURORA-7 satellite. The receiver is configured for 1422 MHz IF (downlink), transmitter for 1447 MHz IF (uplink), and AES-256-GCM encryption is active.',
+              "Your link uses step-track to hold pointing on the inclined-orbit AURORA-7. The receiver's set to 1422 MHz IF (downlink), the transmitter to 1447 MHz IF (uplink), and AES-256-GCM encryption is active. The modems work at IF, so the RF values in the last option can't be right, and the other two get the mode, the frequencies or the encryption wrong.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -740,7 +771,7 @@ export const scenario6Data: ScenarioData = {
         Step-track uses the beacon signal to continuously adjust antenna pointing. The algorithm hunts for maximum signal, making small adjustments to keep the antenna optimized.
       </p>
       <p>
-        I've already configured the beacon frequency, encryption, and payload settings. Your job is to get the antenna tracking, establish receive lock, and configure the transmit path. You'll need to calculate the TX IF frequency yourself. Take your time - this is practice.
+        I've already configured the beacon frequency, encryption, and payload settings. Your job is to get the antenna tracking, establish receive lock, and configure the transmit path. You'll need to calculate the transmit IF frequency yourself. Take your time - this is practice.
       </p>
       `,
       character: Character.CHARLIE_BROOKS,
@@ -777,10 +808,10 @@ export const scenario6Data: ScenarioData = {
       'recognize-wrong-satellite': {
         text: `
         <p>
-          Good catch. The antenna was left tracking TIDEMARK-1 from the previous shift. We need AURORA-7.
+          Good catch. The antenna was left tracking TIDEMARK-1 from the previous shift. I did the same thing in my first year here: left a dish on the wrong bird at handover, and the first we heard of it was the customer ringing. So now I check the target before anything else.
         </p>
         <p>
-          Program-track gives us rough pointing using ephemeris data - it's quick and doesn't require beacon lock. Change the target to AURORA-7 and move the antenna.
+          We need AURORA-7. Program-track gives us rough pointing from ephemeris data, and it doesn't need beacon lock. Ephemeris is the predicted satellite positions. Change the target to AURORA-7 and move the antenna.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -836,7 +867,7 @@ export const scenario6Data: ScenarioData = {
           Beacon lock acquired. The antenna is now actively tracking AURORA-7. You'll see small corrections happening continuously as the satellite drifts.
         </p>
         <p>
-          Time to configure the receive chain. Widen the spectrum analyzer view to see the main downlink signal at 1,645 megahertz IF.
+          Time to configure the receive chain. Widen the spectrum analyzer view to AURORA-7's carrier slot at 1,422 megahertz IF - 50 megahertz span is plenty. Don't expect a carrier there yet; let's see what's in the slot.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -846,7 +877,7 @@ export const scenario6Data: ScenarioData = {
       'configure-speca-downlink': {
         text: `
         <p>
-          Good, you can see the downlink signal on the spectrum analyzer. Now configure the receiver modem to match - 1,645 megahertz center frequency, 24 megahertz bandwidth, QPSK modulation, 3/4 FEC.
+          That's AURORA-7's carrier slot - and it's empty. Nobody's uplinking there until we do. Set up the receiver modem anyway - 1,422 megahertz, 24 megahertz bandwidth, QPSK, 3/4 FEC - so it's ready when our own carrier comes back down.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -856,7 +887,7 @@ export const scenario6Data: ScenarioData = {
       'configure-rx-modem': {
         text: `
         <p>
-          Receiver is configured. Watch for lock and check the signal-to-noise ratio.
+          The receiver's set. There's no lock yet, and that's expected, because the carrier it's waiting for is ours. Before we transmit, check the encryption. Open the TX Chain tab and look at the TX ENCRYPTION section of the TX Payload Data card.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -866,10 +897,10 @@ export const scenario6Data: ScenarioData = {
       'verify-rx-lock': {
         text: `
         <p>
-          Receiver locked with good SNR. We're halfway there - receiving from AURORA-7.
+          The receiver's locked with a good C/N. That's our own carrier, up to AURORA-7 and back down, so we're sending and receiving at the same time. That's full duplex.
         </p>
         <p>
-          Before we enable transmission, I want to make sure you understand the encryption and payload systems. Look at the TX Chain tab - you'll see the Encryption and Payload cards I pre-configured.
+          One final check - let's make sure you understand the complete link configuration.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -882,7 +913,7 @@ export const scenario6Data: ScenarioData = {
           Correct. AES-256-GCM is the standard for our links. Never transmit without verifying encryption status.
         </p>
         <p>
-          Now here's your main calculation for this mission. The TX modem is set to the wrong frequency. AURORA-7's uplink is at 5,830 megahertz RF, and your BUC local oscillator is at 4,925 megahertz. Calculate the correct TX IF frequency.
+          Now here's your main calculation for this mission. The transmit modem is set to the wrong frequency. AURORA-7's uplink is at 6053 MHz RF, and your BUC local oscillator is at 7500 MHz. Calculate the correct transmit IF frequency.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -892,7 +923,7 @@ export const scenario6Data: ScenarioData = {
       'calculate-tx-if': {
         text: `
         <p>
-          1447 megahertz. Good work. The BUC upconverts from IF to RF, so it's a different calculation than the downlink. Set the TX modem to 1447 megahertz.
+          That's right, 1447 MHz. The BUC LO sits above the uplink, just like the LNB LO sits above the downlink, so it's the same subtraction, LO minus RF. Now set the transmit modem to 1447 MHz.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -902,7 +933,7 @@ export const scenario6Data: ScenarioData = {
       'configure-tx-modem': {
         text: `
         <p>
-          TX modem configured. Now unmute the BUC and enable the HPA to begin transmission.
+          The transmit modem's set. Now unmute the BUC and enable the HPA to start transmitting.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -912,10 +943,7 @@ export const scenario6Data: ScenarioData = {
       'enable-transmit-path': {
         text: `
         <p>
-          Transmit path is active. Full duplex established with AURORA-7.
-        </p>
-        <p>
-          One final check - let's make sure you understand the complete link configuration.
+          Transmit path is active. Now go back to RX Analysis and watch the receiver. Our carrier should come back down through AURORA-7 and the modem should lock onto it.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,

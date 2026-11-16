@@ -20,6 +20,9 @@ const PLACEHOLDER_ID = 'G-PLACEHOLDER';
  */
 export const CONSENT_COOKIE = 'sr_analytics_consent';
 const ONE_YEAR_S = 60 * 60 * 24 * 365;
+/** Raised clear of the C3 bench dock (Logbook, Reference cards) and kept compact; centred at the bottom it covered them (issue 306). */
+export const BANNER_POSITION_CSS = 'position:fixed;left:16px;right:16px;bottom:96px;z-index:2147483000;max-width:380px;margin:0;';
+
 const PRIVACY_URL = 'https://signalrange.space/privacy';
 
 type ConsentChoice = 'granted' | 'denied';
@@ -46,6 +49,7 @@ export class Analytics {
   private static gtag_: ((...args: unknown[]) => void) | null = null;
   private static currentPath_: string | null = null;
   private static banner_: HTMLDivElement | null = null;
+  private static bannerWanted_ = false;
 
   static init(): void {
     if (Analytics.isInitialized_) {
@@ -61,15 +65,34 @@ export class Analytics {
     }
     Analytics.isInitialized_ = true;
 
-    EventBus.getInstance().on(Events.ROUTE_CHANGED, ({ path }) => {
-      Analytics.currentPath_ = path;
-      Analytics.sendPageView_();
-    });
+    // Leaving a mission destroys the EventBus, so resubscribe on every new instance.
+    const subscribe = (bus: EventBus): void => {
+      bus.on(Events.ROUTE_CHANGED, ({ path }) => {
+        Analytics.currentPath_ = path;
+        Analytics.syncBannerWithRoute_(path);
+        Analytics.sendPageView_();
+      });
+    };
+    subscribe(EventBus.getInstance());
+    EventBus.onRecreate(subscribe);
 
     const choice = Analytics.readChoice_();
     if (choice === 'granted') {
       Analytics.loadGtag_();
     } else if (choice === null) {
+      Analytics.bannerWanted_ = true;
+      Analytics.syncBannerWithRoute_(location.pathname);
+    }
+  }
+
+  /** The banner would cover the docked brief and sidebars, so it shows on home and campaign pages only. */
+  private static syncBannerWithRoute_(path: string): void {
+    if (!Analytics.bannerWanted_) return;
+    const onMission = /^\/campaigns\/[^/]+\/scenarios\//u.test(path);
+    if (onMission) {
+      Analytics.banner_?.remove();
+      Analytics.banner_ = null;
+    } else if (!Analytics.banner_) {
       Analytics.showBanner_();
     }
   }
@@ -135,9 +158,9 @@ export class Analytics {
     banner.setAttribute('role', 'region');
     banner.setAttribute('aria-label', 'Analytics choice');
     banner.style.cssText =
-      'position:fixed;left:16px;right:16px;bottom:16px;z-index:2147483000;max-width:560px;margin:0 auto;' +
-      'padding:16px;border-radius:8px;background:#111827;color:#f3f4f6;border:1px solid #374151;' +
-      'font:14px/1.5 system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.4)';
+      BANNER_POSITION_CSS +
+      'padding:12px;border-radius:8px;background:#111827;color:#f3f4f6;border:1px solid #374151;' +
+      'font:13px/1.4 system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.4)';
 
     const text = document.createElement('p');
     text.style.cssText = 'margin:0 0 12px';
@@ -166,6 +189,7 @@ export class Analytics {
         if (choice === 'granted') {
           Analytics.loadGtag_();
         }
+        Analytics.bannerWanted_ = false;
         Analytics.banner_?.remove();
         Analytics.banner_ = null;
       });

@@ -18,36 +18,74 @@ to show how far the engine is from each reference.
 | Slant-path rain attenuation | `AntennaCore.rainAttenuation_dB` | γ · (2.5 km / sin el) · old reduction factor | ITU-R P.618-13 §2.2.1.1 | `propagation`: 16 validation sites at p = 0.01 % | DEV-PROP-01 |
 | Rain rate over time | `WeatherManager.rainRateAt` | trapezoid, severity defaults 4/12/30/50 mm/h | (authored weather) | | |
 | Gaseous attenuation | `AntennaCore.calculateAtmosphericLoss_` | piecewise-linear zenith loss × min(csc el, 3) | ITU-R P.676-13 | `propagation`: 11 validation slant paths | DEV-PROP-03 |
-| Cloud, scintillation | none (random terms in `Satellite.applyAtmosphericEffects_inPlace`) | U(0,1) rain and ±0.15 dB per frame | ITU-R P.840, P.618 §2.4 | | DEV-PROP-02, DEV-PROP-03 |
+| Cloud, scintillation | none (19.2 deleted the random per-frame terms) | | ITU-R P.840, P.618 §2.4 | | DEV-PROP-02, DEV-PROP-03 |
 
 ## Antenna
 
 | Quantity | Engine | Implements | Standard / anchor | Reference case | Deviation |
 |---|---|---|---|---|---|
-| Boresight gain | `AntennaCore.antennaGain_dBi` | 10 log(η (πD/λ)²), η with Ruze and blockage | CPI 9.0 m and Prodelin 1244 datasheets (`test/reference/anchors.ts`) | `antenna`: 9 m C passes (±1 dB); 2.4 m Ku 1.0 dB low | DEV-ANT-07 |
+| Boresight gain | `AntennaCore.antennaGain_dBi` | 10 log(η (πD/λ)²), η with Ruze and blockage; efficiencies fitted to the anchors (19.4) | CPI 9.0 m and Prodelin 1244 datasheets (`test/reference/anchors.ts`) | `antenna`: gain at the flange within 0.5 dB for both dishes | |
 | −3 dB beamwidth | `AntennaCore.beamwidth3dB_deg_` | 70 λ/D | datasheets | `antenna`: both dishes within 15 % | |
-| Off-axis pattern | `AntennaCore.patternGain_dBi_` | Gmax − 12(θ/θ3)², then Gmax − min(32, 25 log(θD/λ)) | ITU-R S.580-6 (29 − 25 log θ) | `antenna`: 2/10/30/60° envelope | DEV-ANT-01 |
-| Pointing loss | `AntennaCore.pointingLoss_dB_` + pattern in `applyPropagationEffects_` | 12(θ/θ3)², charged twice | one pattern term | `antenna`: θ3/2 costs 3 dB | DEV-ANT-02 |
-| Off-axis angle | `AntennaCore.applyPropagationEffects_` | planar hypot(Δaz, Δel) | great-circle separation | `antenna`: Δaz at 60° el | DEV-ANT-03 |
-| G/T | `AntennaCore.gOverT_dB_perK_` | G − 10 log Tsys(engine model) | datasheet G − 10 log(T_ant + T_LNA) | `antenna`: 9 m 3.0 dB low, 2.4 m 4.0 dB low | DEV-NOISE-02 |
-| Servo rate | `antenna-configs.ts` `maxRate` | constant rate | pedestal limits (`LEO_TRACKER_SERVO`) | | DEV-ANT-06 |
+| Off-axis pattern | `AntennaCore.patternGain_dBi_` | Gmax − 12(θ/θ3)² down to G1 = 2 + 15 log(D/λ), then the sidelobe envelope: S.580-6 (29 − 25 log θ) for D/λ > 50, else S.465-6 (32 − 25 log θ), −10 dBi beyond 48°; `patternModel` overrides; wire antennas: main lobe capped at the front-to-back ratio | ITU-R S.580-6, S.465-6, RR Appendix 8 | `antenna`: S.580 envelope at 2/10/30/60°, 4 dBi at 10°, never above G1 beyond the main lobe | |
+| Pointing loss | `AntennaCore.applyPropagationEffects_` (the pattern only) | one pattern term at the effective off-axis angle | one pattern term | `antenna`: θ3/2 costs 3 dB, charged once | |
+| Off-axis angle | `AntennaCore.effectiveOffAxisDeg_` | great-circle separation (azimuth wrap, cos el), with wind de-pointing and servo jitter in quadrature | spherical geometry | `antenna`: Δaz at 60° el is cos(el) of itself; azimuth wraps through north | DEV-ANT-08 |
+| Satellites heard | `AntennaCore.rxSignals`, `updateRxSignals_` | every satellite above the horizon in the RX band, through the pattern; dropped under −10 dB C/N in its own bandwidth | | (ledger: `adjacentCarriers` per link) | DEV-ANT-09 |
+| Program-track lock | `AntennaCore.checkProgramTrackLock_` | servo error from the commanded track (ephemeris + step-track offsets) costs < 1 dB of beam | ACU "on track" | `pointing`: LOCKED on a stale track, not when driven 1.5 dB off it | |
+| Step-track | `StepTrackController` | dither ±0.1 θ3 per axis (cross-elevation), arrive + 0.5 s settle + 1 s dwell per beacon reading, keep the higher; keeps dithering | hill-climb on beacon power | `pointing`: 5 dB stale ephemeris climbed to < 0.3 dB in 20-120 s; follows a drifting satellite; `nats-step-track-validation` (C1 S18, S22) | DEV-ANT-10 |
+| Servo | `AntennaCore.updateSlew_` | per-axis rate and acceleration limits (`maxRate_deg_s`, `maxAccel_deg_s2`) with target-rate feed-forward; a clock skip is spent at the rate limit | pedestal limits (`LEO_TRACKER_SERVO`) | `pointing`: 20° of elevation in 41 s on the 9 m | DEV-ANT-08 |
+| Wind de-pointing | `AntennaCore.windDePointingDeg` (+ `WeatherManager.windSpeedAt`) | coefficient × wind speed | | `antenna-core` unit tests | DEV-ANT-08 |
+| Polarization skew | `geo-geometry.ts` `geoPolarizationSkewDeg` via `Satellite.stationOffsets`; program-track drives the feed to it | atan(sin Δλ / tan φ) | GEO geometry | `pointing`: zero on the station meridian, sign by side | DEV-ANT-04 |
+| OMT isolation | `OMTModule` | authored spec + 0-5 dB per-unit scatter, drawn once | | `omt-module` unit tests | DEV-RF-05 |
+| G/T | `AntennaCore.gOverT_dB_perK_` | (G - feed loss - ice) - 10 log Tsys at the LNA plane, at the pointing elevation | datasheet G - 10 log(T_ant + T_LNA) | `antenna`: both dishes within 1 dB | |
+| Antenna temperature | `AntennaCore.systemNoise().antennaAtLnaK` | sky + spillover through the feed | datasheet T_ant at 20 deg | `antenna`: both dishes within 15 % | |
 
 ## Noise and link
 
 | Quantity | Engine | Implements | Standard | Reference case | Deviation |
 |---|---|---|---|---|---|
 | Worksheet C/N | `LinkBudgetManager.computeCNRDb` | EIRP − FSPL + G − L − 10 log(kTB) | C/N0 = EIRP − L + G/T − k | `link`: textbook Ku downlink within 0.3 dB | |
-| Modem noise floor | `LNBModuleCore.getNoiseFloor` | −198.6 + 10 log T_LNB + 10 log B | k(T_ant + T_LNB)B at one reference plane | `link`: 2.6 dB low at 20° clear sky | DEV-NOISE-01 |
-| Sky temperature | `AntennaCore.skyTempK_` | 8 + 4(sec z − 1) K | ITU-R P.372 | | DEV-NOISE-02 |
-| Transponder | `Satellite.processSignals` | per-carrier saturation, noise added to carrier, +36.5 dB | composite C/N, flux-density saturation | | DEV-XPDR-01..05 |
+| System noise temperature | `noise-model.ts` `systemNoiseTemperature` via `AntennaCore.systemNoise`, `SignalPathManager.systemNoiseK` | sky + rain + spillover + sun through the feed, + T_LNB (Friis), at the LNA input | ITU-R P.372, P.618 §3 | `link`: modem floor = k(T_ant,datasheet + T_LNB)B within 0.5 dB; rain rise = T_mr(1 − 10^(−A/10)) | DEV-NOISE-04, DEV-NOISE-06 |
+| Modem, beacon, AGC noise | `SignalPathManager.getNoiseFloorAt` / `getExternalNoise` | k·Tsys·B (modem BW, beacon tracking BW, IF filter BW) | | (as above) | |
+| Sky temperature | `noise-model.ts` `clearSkyNoiseK`, `skyWithRainK` | T_mr(1 − a) + (T_cmb + T_gal) a, rain layer at 275 K | ITU-R P.372, P.618 §3 | `antenna`: antenna temperature within 15 % | DEV-NOISE-06 |
+| Galactic noise | `noise-model.ts` `galacticNoiseK` | Fa = 52 − 23 log f(MHz) | ITU-R P.372-16 Fig. 2 (median) | | DEV-NOISE-04 |
+| Sun transit | `AntennaCore.systemNoise` (+ `WeatherManager`) | authored sin² rise in dB → solar K at the aperture | solar flux, ephemeris | | DEV-PROP-04 |
+| Weather C/N cost | `AntennaCore.weatherCnLossDb` | rain + ice attenuation + noise rise | | (evidence fact `weather-attenuation-dominant`) | |
+| Analyzer floor | `RealTimeSpectrumAnalyzer.getInputSignals` | line k·T·ENBW + instrument kT0·ENBW·F referred through the coupling factor, power sum; Auto RBW = span/300 (1-3 steps), ENBW = 1.065 RBW | Keysight AN 150 | `analyzer`: instrument floor, Auto RBW, coupling | |
+| Analyzer traces | `SpectrumDataProcessor` | Gaussian RBW convolution (raised-cosine carriers, α 0.2), log-detected Rayleigh noise (−2.51 dB, σ 5.57 dB), VBW averaging (auto VBW = RBW/10), sample/peak/average detectors, power-sum combine | Keysight AN 150 | `analyzer`: statistics, power sum, CW shape | DEV-NOISE-07 |
+| Uplink path | `AntennaCore.updateTxSignals_` | EIRP − FSPL(slant range) − gas − off-axis drop (whole pattern for dishes, HPBW gate for wire antennas) → isotropic power at the satellite; uplink Doppler for moving satellites | C/N0_up = EIRP − L + G/T − k | `transponder`: uplink C/N0 equation; `uplink-tx-path`: FSPL, sidelobe level; `orbital-satellite-observers`: uplink Doppler | DEV-ANT-09 |
+| GEO slant range | `geo-geometry.ts` `geoSlantRangeKm`, `slantRangeKmAt` | √(r² − (R cos el)²) − R sin el, spherical Earth | GEO geometry | `transponder`: 35,793 km at zenith, ~38,600 at 30°, ~41,679 on the horizon | DEV-XPDR-04 |
+| Transponder | `transponder-model.ts` `operateTransponder` via `Satellite.processSignals` | IBO = SFD (as isotropic power, + 10 log λ²/4π) − (Σ carriers + k·B/(G/T)); OBO from a normalised Saleh TWTA or Rapp SSPA curve, fixed gain or ALC; output shared by input power; two-tone C/IM3 spread over the passband for ≥ 2 carriers; per carrier C/N0_up and C/N0_IM carried down as `upstreamCn0DbHz` | Maral & Bousquet ch. 5; Saleh 1981 | `transponder`: PFD/IBO, saturation at the SFD, Saleh small-signal −6.02 dB and knee, fold-back, IM slope, power sharing; `transponder-relay`; `nats-transponder-validation` (C1 S1) | DEV-XPDR-06, DEV-XPDR-08 (DEV-XPDR-07 closed in phase 27) |
+| Composite C/N | `Receiver.getSignalsInBandwidth` | the carrier's upstream noise density (C − C/N0_up) added to kT_sys in the modem bandwidth, the symbol rate and C/N0; C/I from relayed co-channel carriers as before | (C/N)⁻¹ = Σ (C/N)ᵢ⁻¹ | `transponder`: 20 + 15 dB → 13.81 dB; `nats-transponder-validation`: measured C/N = combine(up, down) | |
+| Worksheet uplink half | `LinkBudgetManager.computeUplinkCNRDb`, `computeCompositeCNRDb` | EIRP_up − FSPL_up − L + G/T − k − 10 log B, combined with the downlink and an optional C/IM | | `link-budget-manager` unit tests | |
 
 ## Modem
 
 | Quantity | Engine | Implements | Standard | Reference case | Deviation |
 |---|---|---|---|---|---|
-| Degraded threshold | `Receiver.requiredCnDb` | 7/10/13/16 dB by modulation | ETSI EN 302 307 Table 13 + 1 dB implementation loss | `modem`: QPSK 3/4; code-rate span | DEV-MODEM-02 |
-| Lock | `Receiver` `hasLock` | modulation/FEC match + bandwidth ratio | threshold C/N | | DEV-MODEM-01 |
-| Uncoded BER | `FECSimulator.calculateRawBer_` | 0.5 erfc(√(Eb/N0)), A&S 7.1.26 | Pb = Q(√(2Eb/N0)) | `modem`: BPSK and QPSK at 1e-3 to 1e-7, pass | (coded BER: DEV-MODEM-03) |
+| Lock threshold | `modcod.ts` `modcodFor` (+ `Receiver.requiredCnDb` as C/N) | DVB-S2 QEF Es/N0 by MODCOD + 1.0 dB implementation loss; legacy labels mapped onto DVB-S2 | ETSI EN 302 307-1 Table 13 | `modem`: Table 13 for QPSK/8PSK/16APSK 2/3, 3/4, 5/6; QPSK 3/4 = 5.03 dB Es/N0 = 4.24 dB C/N in 36 MHz; code-rate span; BPSK −3.01 dB | DEV-MODEM-06 |
+| Es/N0, C/N0 | `Receiver.getSignalsInBandwidth` | C / (k T Rs + I in the carrier's band), Rs = occupied BW / 1.2; C / kT | matched-filter noise bandwidth | `receiver` unit tests | |
+| Lock | `Receiver.trackLock_` | labels match, carrier fits and is centred, effective Es/N0 ≥ threshold + 0.5 dB for the acquisition time; drops below threshold − 0.5 dB; "degraded" under 1 dB of margin (back to good at 1.5 dB) | | `receiver`: hysteresis, acquisition time, seeding | DEV-MODEM-06 |
+| Carrier detection | `Receiver.clearsReceiveNoise_` | C/N ≥ −10 dB in the carrier's own bandwidth | | `receiver` unit tests | DEV-ANT-09 |
+| Uncoded BER | `modcod.ts` `uncodedBer` | BPSK Q(√(2Es/N0)); QPSK Q(√(Es/N0)); 8PSK (2/3)Q(√(2Es/N0) sin π/8); 16QAM (3/4)Q(√(Es/5N0)); NR `erfcc` | Sklar Fig. 4.25; Proakis Fig. 4.3-8 | `modem`: BPSK and QPSK at 1e-3 to 1e-7; 16QAM at 1e-5 | |
+| Coded PER, decoded BER | `modcod.ts` `codedPer`, `decodedBer` | waterfall table interpolated in log PER, anchored at the practical threshold (PER 1e-7); BER = PER × pre-FEC BER | DVB-S2 QEF definition | `modem`: QEF at threshold, waterfall width, monotonic; `fec-simulator` tests | DEV-MODEM-06 |
+| Frame sync, frame errors | `FECSimulator.calculate` | sync = lock and PER < 0.1; uncorrectable frames = PER × frames/s (64 800-bit FECFRAMEs) | | `fec-simulator` tests | DEV-MODEM-06 |
+| IQ scatter | `IQConstellationAdapter.noiseSpreadForEsN0` | σ = 1/√(2 Es/N0) per axis, unit symbol energy | complex AWGN | `modem`: 10 dB and 0 dB | |
+| ADC | `adc-degradation.ts` (drive from `Receiver.getSignalsInBandwidth`: the modem's channel after a 0-30 dB tuner IF AGC) | SNR_q = 6.02 N + 1.76 dB below a full-scale sine over fs/2 (processing gain to Rs); Bussgang clipping of a Gaussian composite; penalties as added noise | ADI MT-001 | `modem`: SQNR, numerical Bussgang integral, sweet spot | DEV-MODEM-07 |
+
+## RF modules and the reference chain
+
+| Quantity | Engine | Implements | Standard | Reference case | Deviation |
+|---|---|---|---|---|---|
+| HPA AM/AM, AM/PM | `amplifier-models.ts` (`HPAModuleCore.model`) | Saleh A(r) = αr/(1 + βr²), Φ = αφ r²/(1 + βφ r²) (TWTA); Rapp G·Pin/(1 + (G·Pin/Psat)^s)^(1/s) (SSPA); fitted to P1dB (Psat) | Saleh 1981; Rapp 1991 | `rf-modules`: P1dB gaps (Saleh 4.12 dB, Rapp s = 2 2.16 dB), 1 dB compression at the datasheet P1dB, Saleh fold-back, Rapp monotonic | DEV-RF-07 |
+| HPA gain control | `HPAModuleCore.processSignals_` | ALC: attenuator servoed so output = P1dB − back-off; fixed gain: attenuator calibrated on the rated drive; composite gain on every carrier | | `hpa-module-core` unit tests (input + gain = output, 5 → 10 dB drops 5 dB) | DEV-RF-07 |
+| Intermodulation | `twoToneResponse`, `carrierToIm3Db`; `HPAModuleCore.buildDistortionSignals_` | two equal tones through the curve, Fourier components at ½ and 3/2 of the spacing (SSPA: no better than OIP3 = P1dB + 10 dB); multi-carrier 2fᵢ − fⱼ scaled third-order; one carrier: regrowth shoulders | cubic small-signal limit: C/IM3 = 2(OIP3 − Pout), OIP3 = Psat + 6.02 dB (Saleh, less 3.21 dB of AM/PM), Psat + 3.01 dB (Rapp s = 1) | `rf-modules`: both closed forms, 3:1 slope, monotonic to saturation, SSPA intercept line | DEV-RF-07 |
+| HPA, BUC thermal and current | `equilibriumTemperatureC`, `equilibriumCurrentA` | DC in (class AB: idle + saturated draw × √(Pout/Psat)) − RF out, through a thermal resistance, first-order lag on run time; faults scale R_th or add current | | `buc-module-core`, `hpa-module-core` unit tests | DEV-RF-07, DEV-RF-08 |
+| BUC compression | `BUCModuleCore.model` | Rapp s = 2, P1dB = `saturationPower` | Rapp 1991 | `buc-module-core` unit tests | DEV-RF-08 |
+| LO frequency error | `GPSDOModuleCore.fractionalFrequencyError`; BUC/LNB `updateFrequencyDrift_`; `FreeRunDrift` | locked: Δf = y·f_LO from the GPSDO (locked, holdover, spoofed); unlocked: seeded random walk in ppm/√h on run time | | `rf-modules`: locked/holdover/spoof coherence across LNB and BUC, holdover 1.67 µs/h, random-walk σ√T | DEV-RF-08, DEV-RF-10 |
+| LO phase noise → Es/N0 | `lo-reference.ts` `phaseNoiseSnrLimitDb`; `Receiver.phaseNoisePenaltyDb_` | σ² = 2∫L(f)df from the carrier-recovery loop (Rs × 10⁻⁴) to Rs/2; SNR ceiling 1/σ² added like noise | | `rf-modules`: −60 dBc/Hz at 30 Msym/s = 14.7 dB, locked > 45 dB; `nats-rf-modules-validation` (C1 S16) | DEV-RF-08 |
+| LNB passband, injection | `LNBModuleCore.update`, `passbandPower` | flat 950-2150 MHz, 3rd-order skirts, overlap integral; IF = LO − RF (high side) or RF − LO (low side, `loInjection`) | | `lnb-module-core` unit tests | DEV-RF-09 |
+| IF filter, notch | `filter-response.ts`; `IfFilterBankModuleCore.update`; `NotchFilterModuleCore.carrierLossDb` | Butterworth |H|² (order from config, default 6; notches order 4) integrated over a raised-cosine carrier | | `rf-modules`: 8 MHz notch in 36 MHz costs the slice, centred notch takes the depth, −3 dB edges, skirt rejection; `nats-rf-modules-validation` (C1 S21) | DEV-RF-09 |
+| OMT, cables, coupler | `omt-module.ts`; `RFFrontEndCore.cableLossDb`; `CouplerModule.getCouplerOutput_` | TX insertion loss + per-segment cable losses; RX excess loss over nominal with its noise; coupler = composite on the line + coupling, strongest carrier's frequency | | `coupler-module` unit tests | DEV-RF-05 |
 
 ## Orbit and geometry
 
@@ -55,8 +93,8 @@ to show how far the engine is from each reference.
 |---|---|---|---|---|---|
 | Propagation | `OrbitalSatellite` → ootk SGP4 | SGP4 | Vallado et al. 2006 (AIAA 2006-6753) test vectors | `orbit`: 00005 at 0/360/720/1440 min within 5 m | |
 | Look angles, range | `OrbitalSatellite.geometryFor` → ootk `rae` | topocentric az/el/range | | (covered by pass-geometry tests in `test/campaigns`) | |
-| GEO geometry | legacy `Satellite` | authored az/el, fixed 38,000 km | slot longitude → look angles, slant range | | DEV-XPDR-04 |
-| Doppler | ootk `Satellite.dopplerFactor` | 1 − ṙ/c from ECI state | f_rx/f_tx = 1 − ṙ/c | `orbit`: vs finite-difference range rate; sign convention passes | DEV-PROP-07 |
+| GEO geometry | legacy `Satellite`; `geo-geometry.ts` `geoLookAngles` | authored az/el at a reference station, shifted by the geometric difference at other stations (slot from the authored azimuth); fixed 38,000 km | slot longitude → look angles, slant range | `pointing`: zenith and 30° E cases (Pratt & Bostian ch. 2); reference station sees the authored angles; Maine vs Vermont difference | DEV-XPDR-04 |
+| Doppler | ootk `Satellite.dopplerFactor` | 1 − ṙ/c from ECI state | f_rx/f_tx = 1 − ṙ/c | `orbit`: vs finite-difference range rate (within 3 m/s since ootk 7.1.0); sign convention passes | — |
 
 ## Hardware anchors (plan Q6)
 
@@ -72,6 +110,8 @@ Sourced 2026-09-27 for Ted's review; see `test/reference/anchors.ts` for every n
 - **4 m Ku LEO tracker:** no public datasheet found. The one cited limit: a 4 °/s azimuth
   pedestal cannot hold a 780 km sun-synchronous pass above ~82° elevation (Microwave Journal,
   "Selecting a Pedestal for Tracking LEO Satellites at Ka Band"). Ted to confirm or substitute.
+  Since 19.4 the engine flies it at 10 °/s and 5 °/s², the 9 m C-band at 0.5 °/s and 0.5 °/s²
+  (plan Q6 classes; DEV-ANT-08).
 
 ## Reference data
 

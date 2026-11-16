@@ -1,3 +1,4 @@
+import type { HeaderGlyphKey } from '@app/pages/mission-control/glyphs';
 import { ScenarioData } from '@app/ScenarioData';
 
 /**
@@ -15,8 +16,12 @@ export interface CampaignHeaderIdentity {
   /** Second half, rendered in the campaign accent color (e.g. 'OPS') */
   nameAccent: string;
 
-  /** Font Awesome classes for the leading icon (e.g. 'fa-solid fa-satellite-dish') */
-  icon: string;
+  /**
+   * Leading icon, a key of the inline glyph set in
+   * src/pages/mission-control/glyphs.ts (e.g. 'dish'). Not a Font Awesome
+   * class: the app loads no icon font (Phase 32 D21).
+   */
+  icon: HeaderGlyphKey;
 }
 
 /**

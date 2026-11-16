@@ -7,7 +7,7 @@ import type { dBi, dBm, FECType, Hertz, ModulationType, RfFrequency } from '@app
 import { getAssetUrl } from '@app/utils/asset-url';
 import { Degrees } from 'ootk';
 import { maineGroundStation, vermontGroundStation } from './ground-stations';
-import { ses10Satellite, tidemark2Satellite } from './satellites';
+import { c1TransponderPhysics, ses10Satellite, tidemark2Satellite, VERMONT_LOOK_ANGLE_SITE } from './satellites';
 
 /**
  * NATS Level 5: "Interference Hunt"
@@ -18,12 +18,12 @@ import { ses10Satellite, tidemark2Satellite } from './satellites';
  * Focus: Spectrum analysis, interference identification, notch filter mitigation
  *
  * Premise: Customer reports degraded service on TIDEMARK-1. C/N ratio has dropped
- * because of a 3 MHz interference spike WITHIN our 36 MHz signal bandwidth. This is
+ * because of a 1 MHz interference spike WITHIN our 36 MHz signal bandwidth. This is
  * caused by a third-party operator's polarization mismatch - their cross-pol leakage
  * is falling in our transponder. The AGC is reducing gain based on the spike, which
  * degrades overall C/N.
  *
- * Solution: Apply a 3 MHz notch filter at the interference frequency to block the
+ * Solution: Apply a 1 MHz notch filter at the interference frequency to block the
  * spike while passing the rest of our 36 MHz signal.
  *
  * Flow:
@@ -52,19 +52,29 @@ export const scenario5Data: ScenarioData = {
   title: 'Interference Hunt',
   subtitle: 'Spectrum Analysis and Mitigation',
   duration: '20-25 min',
-  difficulty: 'beginner',
+  difficulty: 'intermediate',
   missionType: 'Troubleshooting',
-  description: `Customer reports degraded service on TIDEMARK-1. The C/N ratio has dropped significantly, causing packet errors.<br><br>The spectrum analyzer is currently configured for beacon tracking - you'll need to reconfigure it to investigate the main signal. Something's causing interference, and you'll need to find it, understand what's happening, and apply the right mitigation.<br><br>Charlie will guide you through the troubleshooting process and provide hints along the way.`,
-  equipment: ['9-meter C-band Antenna', 'RF Front End', 'Spectrum Analyzer', 'IF Filter Bank', 'ME-02: Available'],
+  description: `Customer reports degraded service on TIDEMARK-1. The C/N ratio has dropped significantly, which is causing packet errors.<br><br>The spectrum analyzer is still set up for beacon tracking, so you'll need to reconfigure it to investigate the main signal. Something is causing interference. You'll need to find it, understand what it's doing, and apply the right mitigation.<br><br>Charlie will guide you through the troubleshooting and give you hints along the way.`,
+  equipment: ['9-meter C-band Antenna', 'RF Front End', 'Spectrum Analyzer', 'Notch Filter'],
   settings: {
     isSync: true,
+    // Vermont-only troubleshooting: ME-02 stays non-operational so its idle
+    // GPSDO/AGC alarms don't reach the ticker (nats-s05-F2)
     groundStations: [
-      vermontGroundStation,
       {
-        ...maineGroundStation,
-        isOperational: true,
+        ...vermontGroundStation,
+        // Find the spike by hand: AUTO-TUNE would jump straight to it (nats-s05-F3).
+        // The morning's pointing check left a manual 10 Hz RBW on the beacon;
+        // putting it back on Auto for the wide view is a real step (phase 27)
+        spectrumAnalyzers: vermontGroundStation.spectrumAnalyzers.map((sa) => ({ ...sa, isAutoTuneAvailable: false, rbw: 10 as Hertz })),
+        // VT-01 carries the SeaLink TM-1 hub carrier as every shift (phase 27:
+        // the stand-in composite is gone, so the carrier the customer is on is
+        // VT-01's own TP-1 uplink, the default TX chain)
       },
+      maineGroundStation,
     ],
+    scenarioStartDate: '2026-02-04',
+    scenarioStartWallTime: '14:30:00',
     missionBriefUrl: 'https://docs.signalrange.space/campaign-1/scenario-5?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
     satellites: [
@@ -74,23 +84,7 @@ export const scenario5Data: ScenarioData = {
         [
           // Uplink signals - routed to transponders based on frequency and polarization
           {
-            signalId: 'TIDEMARK-1-TDMA-Composite',
-            serverId: 1,
-            noradId: 61525,
-            frequency: 5943e6 as RfFrequency,
-            polarization: 'H',
-            power: 20 as dBm,
-            bandwidth: 36e6 as Hertz,
-            modulation: 'QPSK' as ModulationType,
-            fec: '3/4' as FECType,
-            feed: '',
-            isDegraded: false,
-            origin: SignalOrigin.SATELLITE_RX,
-            noiseFloor: null,
-            gainInPath: 0 as dBi,
-          },
-          {
-            // Cross-pol interference: 3 MHz spike within TP-1's 36 MHz passband
+            // Cross-pol interference: 1 MHz spike within TP-1's 36 MHz passband
             // 5960 MHz uplink = 17 MHz above TP-1 center (5943 MHz)
             // Falls within TP-1's passband (5925-5961 MHz)
             // Simulates polarization mismatch from another operator
@@ -99,7 +93,21 @@ export const scenario5Data: ScenarioData = {
             noradId: 61525,
             frequency: 5960e6 as RfFrequency,
             polarization: 'H',
-            power: 26 as dBm,
+            // Phase 27 (plan Q8): set against VT-01's own TP-1 carrier (the
+            // stand-in composite is gone) for the customer's story - degraded,
+            // not down: 0.3-0.8 dB of Es/N0 lock margin (mean ~0.45 dB) over the
+            // QPSK 3/4 threshold. At that margin the hub's own Viterbi + RS decode is
+            // still error-free (PER ~1e-11: the payload panel reads BER < 1e-12,
+            // 0 CRC errors); the customer's small ship terminals, with far less
+            // G/T, are past the waterfall (the S5 quiz teaches the difference).
+            // The notch takes it back to ~4.7 dB (the spike's share of
+            // the transponder output stays). At 26 dBm (before 19.5) it buried
+            // the carrier and the modem lost lock outright (nats-s05-F1).
+            // Phase 29 gate: 95.0 -> 94.85 dBm. The derived TM-1 skew (+18.8,
+            // was an authored 14) cost the carrier ~0.11 dB against the spike
+            // (mean margin 0.44 -> 0.33, under the 0.5 dB re-acquire point, so the
+            // browser modem never locked); 94.85 restores 0.28-0.78 dB, mean 0.45.
+            power: 94.85 as dBm,
             bandwidth: 1e6 as Hertz, // Narrowband spike
             modulation: 'QPSK' as ModulationType,
             fec: '3/4' as FECType,
@@ -112,27 +120,37 @@ export const scenario5Data: ScenarioData = {
         ],
         [], // Beacons now defined in transponderConfigs
         {
-          az: 161.8 as Degrees,
-          el: 34.2 as Degrees,
-          rotation: 14 as Degrees,
+          az: 153.1 as Degrees, // 53 W (Phase 28 D4)
+          el: 35.1 as Degrees,
+          // rotation: derived from geometry (Phase 29 D8, geoPolarizationSkewDeg)
           frequencyOffset: 2.225e9 as Hertz, // Legacy fallback
+          lookAnglesFrom: VERMONT_LOOK_ANGLE_SITE,
+          // The spike and the carrier fade independently; at the default +/-1 dB
+          // their ratio would swing the half-dB lock margin across the lock
+          // threshold. A calm +/-0.25 dB keeps the story "degraded, still locked".
+          degradationConfig: { powerVariationRange: 0.25 as dBm },
           transponderConfigs: [
             {
               id: 'TP-1',
               uplinkCenterFrequency: 5943e6 as RfFrequency, // Passband: 5925-5961 MHz
+              physics: c1TransponderPhysics(28), // a dB more than the roster TM-1: the cross-pol carrier shares the output, the composite keeps its pre-19.3 level
               bandwidth: 36e6 as Hertz,
               frequencyOffset: 2.225e9 as Hertz, // Downlink center: 3718 MHz
               polarization: 'H',
               beacon: {
+                // Phase 28 (nats-r3-s05-F4): the roster TIDEMARK-1 beacon (V-pol,
+                // 30 dBm, CW). This copy was H-pol at 40 dBm: cross-polar to the
+                // V receive port, it read ~-80 dBm on the analyzer, not the
+                // brief's level.
                 frequency: 4175.5e6 as RfFrequency,
                 signalId: 'TIDEMARK-1-Beacon',
                 serverId: 1,
                 noradId: 61525,
-                power: 40 as dBm,
-                bandwidth: 1e3 as Hertz,
+                power: 30 as dBm,
+                bandwidth: 10 as Hertz, // CW: short-term linewidth, far under any RBW
                 modulation: 'CW' as ModulationType,
                 fec: 'null' as FECType,
-                polarization: 'H',
+                polarization: 'V',
                 feed: '',
                 isDegraded: false,
                 origin: SignalOrigin.TRANSMITTER,
@@ -143,6 +161,7 @@ export const scenario5Data: ScenarioData = {
             {
               id: 'TP-2',
               uplinkCenterFrequency: 5906e6 as RfFrequency, // Passband: 5963-5999 MHz
+              physics: c1TransponderPhysics(27),
               bandwidth: 36e6 as Hertz,
               frequencyOffset: 2.225e9 as Hertz, // Downlink center: 3756 MHz
               polarization: 'H',
@@ -220,7 +239,7 @@ export const scenario5Data: ScenarioData = {
       // chain panel within the ground station control interface
       nice: ['S0421'],
       title: 'Navigate to Receiver',
-      description: 'Navigate to the Receiver Modem tab to check the current signal status.',
+      description: 'Open the RX Analysis tab to check the current signal status.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['select-vermont-station'],
       conditions: [
@@ -250,13 +269,14 @@ export const scenario5Data: ScenarioData = {
           params: {
             question: 'Looking at the receiver modem, what is the current C/N ratio status?',
             options: [
-              'C/N is degraded - well below normal operating threshold',
-              'C/N is healthy - well above the normal operating threshold',
-              'C/N is marginal - sitting right at the operating threshold',
+              'C/N is degraded - well below normal, with little margin',
+              'C/N is healthy - well above normal, locked with wide margin',
+              'C/N is normal - nominal level, locked with the usual margin',
               'No signal lock - receiver is offline with no C/N reading',
             ],
             correctIndex: 0,
-            explanation: 'The C/N ratio is well below the normal operating level. This confirms the customer complaint - something is degrading our signal quality.',
+            explanation:
+              'C/N is around 5 dB against a nominal 14+ dB. The modem still holds lock, because QPSK 3/4 needs an Es/N0 of 5.0 dB and the status bar shows the margin over that. With under 1 dB of margin it reads "Degraded margin". At the hub that means degraded, not down, but one more dB of loss and our own receiver would lose lock too.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -269,7 +289,7 @@ export const scenario5Data: ScenarioData = {
       id: 'verify-receiver-state-quiz',
       nice: ['K0740', 'T0081'], // K0740: Knowledge of network performance parameters, T0081: Analyze anomalies in network traffic
       title: 'Assess Full Impact',
-      description: 'Consider what other indicators might show this degradation.',
+      description: "Read the Payload Data Integrity card on the RX Analysis tab (BER and CRC errors), then work out how it fits with the customer's packet errors.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['phase-1-observe-degradation'],
       conditions: [
@@ -277,18 +297,18 @@ export const scenario5Data: ScenarioData = {
           type: 'status-check',
           description: 'Understand Degradation Indicators',
           params: {
-            question: 'Besides low C/N ratio, what other symptoms would you expect to see with this type of degradation?',
+            question:
+              "VT-01's own receiver still decodes this carrier cleanly: the Payload Data Integrity card shows BER at about 1e-12 and 0 CRC errors. Yet SeaLink's ships report packet errors. Why?",
             options: [
-              'Elevated BER (Bit Error Rate) and increased packet retransmissions',
-              'Elevated TX power (uplink EIRP) and increased modem drive level',
-              'Elevated tracking error (az/el) and increased ACU step corrections',
-              'Elevated LNB temperature (thermal alarm) and increased noise figure',
+              'The ships have much smaller dishes, so the same C/N loss drops them below threshold',
+              "The errors are in the ships' own equipment, because a clean BER at VT-01 proves the satellite link is healthy",
+              'The payload card lags the modem by several minutes, so the errors have not reached the card yet',
+              'The ships listen on a different transponder from the one VT-01 is monitoring, so they see another signal',
             ],
             correctIndex: 0,
             explanation:
-              'When C/N degrades, the demodulator makes more bit errors. This increases BER and causes more packet retransmissions, which is exactly what the customer is reporting - packet errors and degraded throughput.',
+              'Whatever is pulling the carrier C/N down reaches every receiver in the beam, but each receiver adds its own noise. Our 9 m hub dish has a G/T near 30 dB/K (G/T is the dish gain divided by its noise temperature, a measure of how well it hears weak signals). A 1-2 m maritime terminal has 15-20 dB less, so its C/N was always far closer to threshold. This carrier uses concatenated coding, and the Payload Data Integrity card shows a Viterbi inner decoder (K=7, rate 3/4) and a Reed-Solomon 223/255 outer code. That pair has a sharp threshold too. While the Viterbi output errors stay sparse, Reed-Solomon corrects every block and the output is clean, but a fraction of a dB lower the error bursts outrun its correction and packets fail. Right now we sit just above that knee (Degraded margin, BER still clean) and the ships are below it (packet errors). Watch margin, not BER, because by the time the hub shows CRC errors the remotes are already down.',
             pointPenalty: 5,
-            preserveOptionOrder: true,
           },
           mustMaintain: false,
         },
@@ -304,7 +324,7 @@ export const scenario5Data: ScenarioData = {
       id: 'verify-speca-initial-state',
       nice: ['K0737', 'K1032', 'T0153', 'S0421'], // K0737: Knowledge of RF spectrum characteristics, K1032: Knowledge of RF propagation, T0153: Monitor network capacity and performance
       title: 'Assess Current Configuration',
-      description: 'Before adjusting the spectrum analyzer, understand why its current configuration is inadequate.',
+      description: "Before you change anything, work out why the spectrum analyzer's current setup can't show the customer's signal.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-receiver-state-quiz'],
       conditions: [
@@ -320,14 +340,14 @@ export const scenario5Data: ScenarioData = {
           params: {
             question: 'The spectrum analyzer is currently configured for beacon observation. Why is this configuration inadequate for troubleshooting the customer issue?',
             options: [
-              'The narrow span shows only the beacon, not the 36 MHz wideband carrier with the problem',
+              'The narrow span shows only the beacon, not the 36 MHz carrier with the problem',
               'The center frequency is wrong for this satellite, not the downlink we are receiving',
               'The resolution bandwidth is too high, so small signals are lost in the noise floor',
               'The reference level is clipping the signal, so the peak of the carrier is cut off',
             ],
             correctIndex: 0,
             explanation:
-              "When tracking beacons, we use a narrow span (typically 10-20 MHz) focused on the beacon frequency. But our customer traffic is on a 36 MHz wideband carrier at a different frequency. We need to widen the span and recenter to see what's happening to the actual customer signal.",
+              "For beacon tracking we use a narrow span, a few kHz (2 kHz on this station), centered on the beacon frequency. Our customer traffic is a 36 MHz wideband carrier at a different frequency, so you need to widen the span and recenter to see what's happening to the actual customer signal.",
             pointPenalty: 5,
             preserveOptionOrder: true,
           },
@@ -345,7 +365,7 @@ export const scenario5Data: ScenarioData = {
       nice: ['K0737', 'S0421', 'T0153', 'K1032'], // K0737: Knowledge of RF spectrum characteristics, S0421: Skill in using test equipment, T0153: Monitor network capacity and performance, K1032: Knowledge of RF propagation
       title: 'Configure Spectrum View',
       description:
-        'The spectrum analyzer is currently configured for beacon observation. Reconfigure it to see the full wideband signal - widen the span and center on the downlink IF frequency.',
+        'The spectrum analyzer is still set up for the beacon. Reconfigure it to show the full wideband signal: widen the span to 50-100 MHz, center it on the downlink IF frequency (1532 MHz), and set RBW back to Auto (it was left at 10 Hz for the beacon, which is far too narrow for a wide span). Then set the amplitude window to Min -100 dBm and Max -30 dBm so both the noise floor and the carrier show.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-speca-initial-state'],
       timeLimitSeconds: 3 * 60,
@@ -382,7 +402,8 @@ export const scenario5Data: ScenarioData = {
           description: 'Min amplitude set just below noise floor',
           params: {
             minAmplitude: -100 as dBm,
-            minAmplitudeTolerance: 20 as dBm,
+            // Tight: the -140 preset must not count (phase 27, r2-s05)
+            minAmplitudeTolerance: 3 as dBm,
           },
           mustMaintain: true,
         },
@@ -391,7 +412,7 @@ export const scenario5Data: ScenarioData = {
           description: 'Max amplitude set just above signal peak',
           params: {
             maxAmplitude: -30 as dBm,
-            maxAmplitudeTolerance: 20 as dBm,
+            maxAmplitudeTolerance: 3 as dBm,
           },
           mustMaintain: true,
         },
@@ -415,14 +436,14 @@ export const scenario5Data: ScenarioData = {
           params: {
             question: 'Looking at the spectrum analyzer, what do you see within our wideband signal?',
             options: [
-              'A narrowband spike sitting within our wideband signal',
+              'A narrowband spike inside our wideband signal',
               'Our signal looks normal with no interference',
               'The entire noise floor is elevated uniformly',
               'Multiple spikes scattered across the spectrum',
             ],
             correctIndex: 0,
             explanation:
-              "There's a narrowband spike sitting within our wideband signal. This is in-band interference - it's not adjacent to our signal, it's inside it. That's why it's so problematic.",
+              "There's a narrowband spike sitting within our wideband signal. That makes it in-band interference: it isn't next to our signal, it's inside it, which is why we can't exclude it just by narrowing our passband.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -447,14 +468,14 @@ export const scenario5Data: ScenarioData = {
           params: {
             question: 'How does the interference bandwidth compare to our main signal?',
             options: [
-              'Much narrower - a spike only a few MHz wide within our wideband signal',
+              'Much narrower - a spike about 1 MHz wide',
               'Same width - the interference matches our signal bandwidth',
               'Much wider - the interference spans beyond our signal',
               'Variable - the interference bandwidth keeps changing',
             ],
             correctIndex: 0,
             explanation:
-              'The interference is a narrowband spike - only a few MHz wide compared to our wideband signal. This is important because it means we can surgically remove it with a notch filter without affecting most of our signal.',
+              'The interference is a narrowband spike, about 1 MHz wide compared to our 36 MHz signal. That matters because a notch filter can remove a spike that narrow without affecting most of our signal.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -467,8 +488,7 @@ export const scenario5Data: ScenarioData = {
       id: 'measure-interference-frequency',
       nice: ['S0421', 'T0153'], // S0421: Skill in using test equipment, T0153: Monitor network capacity and performance
       title: 'Record Interference Frequency',
-      description:
-        'Observe the spectrum analyzer display and identify the approximate center frequency of the interference spike. This will be critical for notch filter configuration.',
+      description: "Read the approximate center frequency of the interference spike off the spectrum analyzer display. You'll need it to set the notch filter.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['phase-5-characterize-interference'],
       timeLimitSeconds: 2 * 60,
@@ -481,7 +501,8 @@ export const scenario5Data: ScenarioData = {
             question: 'What is the approximate IF frequency of the interference spike?',
             options: ['1515 MHz', '1532 MHz', '1520 MHz', '1500 MHz'],
             correctIndex: 0,
-            explanation: "The interference is centered at approximately 1515 MHz IF. You'll use this frequency to configure the notch filter in the next steps.",
+            explanation:
+              "The spike is centered at approximately 1515 MHz IF, near the lower edge of our carrier, which is centered at 1532 MHz. You'll use that frequency to set the notch filter in the next steps.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -496,7 +517,7 @@ export const scenario5Data: ScenarioData = {
       id: 'understand-notch-frequency-domain',
       nice: ['K0737'], // K0737: Knowledge of RF spectrum characteristics
       title: 'Understand Frequency Domain for Notch Filter',
-      description: 'Consider whether the notch filter should be configured using IF or RF frequency.',
+      description: 'Decide whether the notch filter takes an IF frequency or an RF frequency.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['measure-interference-frequency'],
       timeLimitSeconds: 2 * 60,
@@ -509,7 +530,8 @@ export const scenario5Data: ScenarioData = {
             question: 'Should the notch filter be configured using IF or RF frequency?',
             options: ['IF frequency', 'RF frequency'],
             correctIndex: 0,
-            explanation: 'The notch filter is configured using the IF frequency because it operates on the intermediate frequency signal after downconversion.',
+            explanation:
+              "You set the notch filter with an IF frequency, because it operates on the intermediate frequency signal after downconversion. That's why the number to enter is the 1515 MHz you just read off the analyzer, not an RF frequency.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -539,13 +561,13 @@ export const scenario5Data: ScenarioData = {
             question: 'What is the most likely cause of this narrowband spike within our signal bandwidth?',
             options: [
               "Cross-polarization leakage from another operator's uplink",
-              'A faulty component in our own transmit chain',
-              'Terrestrial interference from nearby radio towers',
-              'Solar radio emissions during a flare event',
+              'A spur from our own transmit chain riding up with our carrier',
+              'A terrestrial microwave link near Vermont getting into our downlink',
+              'Solar radio noise from a flare event',
             ],
             correctIndex: 0,
             explanation:
-              "This is cross-polarization interference. Satellites use orthogonal polarizations (H and V) to allow frequency reuse - different operators can use the same frequency on opposite polarizations. But polarization isolation isn't perfect. Another operator's signal on the V polarization is leaking into our H polarization due to imperfect antenna alignment or atmospheric effects.",
+              "Work it from what you can see. The analyzer shows one steady carrier about 1 MHz wide, not a raised noise floor across the band, so it isn't solar noise. SeaLink's ships out on the Atlantic see the damage too, so the spike is inside the transponder, not just in our downlink: a tower near Vermont would hurt only us. Our TX chain reads normal, and a spur from our BUC would be a CW line, not a modulated carrier a megahertz wide. What fits is another operator's uplink: TP-1 takes horizontal uplinks, its twin on the same frequencies takes vertical ones for frequency reuse. TP-1 takes our uplink on H and returns it on V, which is why the OMT card reads TX H / RX V, and the other operator's uplink shares the transponder on the opposite polarization. Their V-pol uplink is leaking into our H-pol transponder because its polarization isolation is imperfect.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -568,16 +590,16 @@ export const scenario5Data: ScenarioData = {
           type: 'status-check',
           description: 'Understand AGC Impact',
           params: {
-            question: 'Why is this narrowband spike causing the C/N to drop across our entire wideband signal?',
+            question: "The AGC card shows the current GAIN and INPUT, and the spike's power is part of that input. Why has our C/N dropped?",
             options: [
-              'The AGC sees the spike as part of the total signal and reduces gain accordingly',
+              "The spike's power sits inside our passband and takes a share of the transponder's output",
+              'The AGC trimmed its gain, and turning the gain down lowers the C/N of our wanted carrier',
               'The spike is overloading the LNB and pushing the front end into compression',
-              'The interference is jamming the tracking beacon and pulling the antenna off peak',
               'The spike sits exactly on the carrier center frequency and corrupts the symbols',
             ],
             correctIndex: 0,
             explanation:
-              "The receiver's AGC (Automatic Gain Control) measures total power in the passband. It sees the strong spike and reduces gain to prevent overload. But this gain reduction affects our entire signal, degrading the C/N ratio for the wanted carrier. This is why even a narrowband interferer can impact a wideband signal.",
+              "The AGC levels total power. With the spike in the passband its Input is a little higher, so its Gain sits a little lower to hold the Output at -30 dBm. The spike is worth well under a dB of gain: notch it and the Gain comes back by about 0.6 dB. That gain applies to our carrier and the noise alike, so on its own it can't change C/N. It's a symptom of more total power, not the cause of the loss. The C/N loss has two real causes. The spike's power lands inside our 36 MHz and the demodulator counts it as noise (C/(N+I)), and the spike shares the transponder's output power, so our carrier comes down weaker than before. The other options fail on the facts: the spike isn't on our center, since the analyzer puts it at 1515 MHz, near our lower edge, not 1532, and the LNB is nowhere near compression.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -604,14 +626,14 @@ export const scenario5Data: ScenarioData = {
           params: {
             question: 'What is the best approach to mitigate this in-band interference?',
             options: [
-              'Notch filter - surgically removes the spike while passing the rest of our signal',
+              'Notch filter - surgically removes the spike and passes the rest of our signal',
               'Narrower bandpass filter - reduce overall bandwidth to exclude the interference',
               'Increase transmit power - overpower the interference with more signal',
               'Contact the interfering operator and wait for them to fix it',
             ],
             correctIndex: 0,
             explanation:
-              "A notch filter is the surgical solution. It removes only the narrow interference spike while passing our full 36 MHz signal. A narrower bandpass would sacrifice our own bandwidth. Increasing power wouldn't help the C/N ratio and would violate coordination agreements. Contacting the operator is the long-term solution, but we need an immediate fix for the customer.",
+              "A notch filter is the surgical solution. It removes the narrow interference spike, plus a sliver of our own carrier's lower edge where the spike sits, while the rest of our 36 MHz signal passes untouched. A narrower bandpass would sacrifice our own bandwidth. Increasing power wouldn't help the C/N ratio and would violate coordination agreements. Contacting the operator is the long-term fix, and the only one that helps the ships, but waiting does nothing for our own receiver now.",
             pointPenalty: 5,
             preserveOptionOrder: true,
           },
@@ -629,7 +651,8 @@ export const scenario5Data: ScenarioData = {
       id: 'phase-8-apply-notch-filter',
       nice: ['K0737', 'S0582', 'S0421'], // K0737: Knowledge of RF spectrum characteristics, S0582: Skill in troubleshooting RF systems, S0421: Skill in using test equipment
       title: 'Configure Notch Filter',
-      description: 'Configure a notch filter to surgically remove the interference spike. Match the filter settings to what you observed on the spectrum.',
+      description:
+        'Open the Notch Filter card on RX Analysis and set a notch that covers the spike you measured: center frequency 1515 MHz, bandwidth 1 MHz and a depth of at least 40 dB.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['understand-mitigation-options'],
       timeLimitSeconds: 3 * 60,
@@ -647,10 +670,11 @@ export const scenario5Data: ScenarioData = {
           params: {
             notchCenterFrequency: 1515, // MHz - IF frequency of interference (5250 - 3735 = 1515)
             notchBandwidth: 1, // MHz - matches narrowband interference
-            notchDepth: 40, // dB - sufficient attenuation
+            // Accepts 40-60 dB: the clips promise "at least 40 dB" and "40 dB ... below the noise floor"
+            notchDepth: 50,
             notchCenterFrequencyTolerance: 0, // Exact match required
             notchBandwidthTolerance: 0.25,
-            notchDepthTolerance: 20,
+            notchDepthTolerance: 10,
           },
           maintainUntilObjectiveComplete: true,
         },
@@ -694,7 +718,7 @@ export const scenario5Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              "The notch filter is working. It's attenuating the interference spike by 40 dB, effectively removing it from the receiver's passband. Our wideband signal passes through unaffected because the notch is narrow enough to only target the interferer.",
+              "The notch filter is working. It attenuates the interference spike by the notch depth you set, which effectively removes it from the receiver's passband. The rest of our wideband signal passes through, because the 1 MHz notch takes only the spike and a sliver of our carrier's lower edge.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -707,7 +731,7 @@ export const scenario5Data: ScenarioData = {
       id: 'phase-9-verify-restoration',
       nice: ['K0740', 'T0153'], // K0740: Knowledge of network performance parameters, T0153: Monitor network capacity and performance
       title: 'Verify Service Restored',
-      description: 'Confirm the notch filter has restored normal C/N ratio.',
+      description: 'Read the receiver modem C/N with the notch on and judge it against the 8 dB service minimum and the 14 dB nominal.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-spectrum-cleared'],
       timeLimitSeconds: 2 * 60,
@@ -719,14 +743,14 @@ export const scenario5Data: ScenarioData = {
           params: {
             question: 'After applying the notch filter, what happened to the signal?',
             options: [
-              'C/N restored to normal levels - the spike is notched out and AGC normalized',
-              'C/N unchanged from before - the notch filter had no effect on the AGC',
+              'C/N back above the 8 dB service minimum (about 9-10 dB), short of the 14 dB nominal',
+              'C/N back at the full 14 dB nominal - the notch removed every trace of the interference',
+              'C/N unchanged from before - the notch filter had no effect on the carrier',
               'Signal lock lost entirely - the notch filter blocked our own carrier',
-              'C/N dropped even further - the filter settings notched the wrong frequency',
             ],
             correctIndex: 0,
             explanation:
-              'The notch filter blocks the interference spike while passing the rest of our wideband signal. With the spike removed, the AGC no longer sees the excess power and allows proper gain. C/N returns to normal.',
+              "The notch removes the spike from our receive chain, so C/N climbs back above the 8 dB service minimum, to about 9-10 dB, and the modem reads good margin again. It doesn't reach the 14 dB nominal, because the spike is still in the transponder, taking its share of the output power and adding intermod, and the notch also takes a sliver of our own carrier's edge. A ground notch is a workaround for our receiver only: the ships receive the same downlink, spike included, so they see it until the other operator fixes their polarization, and only then does the full 14 dB come back.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -753,14 +777,14 @@ export const scenario5Data: ScenarioData = {
           params: {
             question: 'Which of the following is most important to document and report about this interference event?',
             options: [
-              'Interference frequency, bandwidth, apparent source, time of occurrence, and mitigation applied',
+              'Interference frequency, bandwidth, source, time, and mitigation applied',
               'Notch filter center, depth, bandwidth, and time applied, in case we need it again',
               'Customer name, complaint time, services affected, and resolution, nothing technical',
               'Ticket number, time closed, and operator on shift, since the problem is already fixed',
             ],
             correctIndex: 0,
             explanation:
-              "Complete documentation is essential. The frequency and bandwidth help identify the source. The time helps correlate with other operators' activities. Recording the mitigation allows quick response if it recurs. This data also supports the interference coordination process to resolve the root cause with the other operator.",
+              "The best record describes the interference itself and what you did about it. The frequency and bandwidth help identify the source, the time lets you correlate it with other operators' activities, and the mitigation lets you respond quickly if it recurs. Together they support the interference coordination process that resolves the root cause with the other operator. The other lists describe our own filter, the customer's complaint or our ticket paperwork, which say nothing about the interferer and can't help trace it.",
             pointPenalty: 5,
             preserveOptionOrder: true,
           },
@@ -778,7 +802,7 @@ export const scenario5Data: ScenarioData = {
         Got a trouble ticket from SeaLink - their maritime customer is reporting packet errors and degraded throughput on TIDEMARK-1. This started about two hours ago with no changes on our end.
       </p>
       <p>
-        I checked the basics - antenna is tracking fine, LNB is powered, no alarms on the RF chain. But I haven't had time to dig into the signal quality yet. The spectrum analyzer was last configured for beacon tracking, so you'll need to reconfigure it to see the actual customer signal.
+        I checked the basics - antenna is tracking fine, LNB is powered, nothing faulted on the RF chain. The only warning on the board is a Degraded margin on RX 1, and that's just the customer's complaint showing up on our side. But I haven't had time to dig into the signal quality yet. The spectrum analyzer was last configured for beacon tracking, so you'll need to reconfigure it to see the actual customer signal.
       </p>
       <p>
         This is a priority customer - they're using this link for critical vessel communications in the North Atlantic. The SLA clock is ticking, so let's work efficiently but thoroughly. Read the mission brief to get the full picture, then let me know when you're ready to start troubleshooting.
@@ -786,16 +810,19 @@ export const scenario5Data: ScenarioData = {
       `,
       character: Character.CHARLIE_BROOKS,
       emotion: Emotion.CONCERNED,
-      audioUrl: getAssetUrl('/assets/campaigns/nats/6/intro.mp3'),
+      audioUrl: getAssetUrl('/assets/campaigns/nats/5/intro.mp3'),
     },
     objectives: {
       'review-mission-brief': {
         text: `
         <p>
-          Good. Now let's approach this systematically. The customer is reporting packet errors, which usually means a C/N problem somewhere in the chain. Start by checking the receiver modem to see what's actually happening with the signal quality.
+          Good. Now let's approach this systematically. The customer is reporting packet errors, which usually means a C/N problem somewhere in the chain. Start by selecting Vermont Ground Station in the asset tree.
         </p>
         <p>
-          Don't jump to conclusions yet - could be anything from antenna issues to interference to equipment problems. Let the data guide you.
+          Don't jump to conclusions yet. It could be anything from antenna issues to interference to equipment problems, so let the data guide you.
+        </p>
+        <p>
+          Sorry if I seem distracted today. Half my kitchen is in boxes.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -834,7 +861,7 @@ export const scenario5Data: ScenarioData = {
           That C/N is well below where it should be. The customer's complaint is definitely legitimate - we've got a real problem here, not a false alarm.
         </p>
         <p>
-          Now we need to understand the full impact. A degraded C/N doesn't happen in isolation - it affects the entire receive chain. Think about what other symptoms you'd expect to see when the demodulator is struggling with a poor signal.
+          Now look at the Payload Data Integrity card, just below. Our own decode is still clean - and the customer's ships are dropping packets anyway. Work out why.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -844,10 +871,10 @@ export const scenario5Data: ScenarioData = {
       'verify-receiver-state-quiz': {
         text: `
         <p>
-          Exactly right. Degraded C/N means the demodulator is making bit errors because it can't clearly distinguish the signal from the noise. Those bit errors propagate up the stack as packet errors, which is exactly what the customer is seeing.
+          Exactly right. Our big dish keeps our receiver just above threshold, but the ships have much smaller dishes, so they've dropped below it. Those are the packet errors the customer is seeing.
         </p>
         <p>
-          But to fix this, we need to understand what's causing the C/N to drop. Time to look at the spectrum. The spectrum analyzer is currently set up for beacon observation, so you'll need to reconfigure it to see our main carrier.
+          To fix this, we need to understand what's causing the C/N to drop, so next we'll look at the spectrum. First, check how the spectrum analyzer is set up right now, and ask yourself whether that view can show our main carrier.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -857,13 +884,13 @@ export const scenario5Data: ScenarioData = {
       'verify-speca-initial-state': {
         text: `
         <p>
-          Right. Beacon observation uses a narrow span because beacons are themselves narrowband - just a few kilohertz. We only need to see enough spectrum to capture the beacon and verify it's there.
+          Right. Beacon observation uses a narrow span because beacons are themselves narrowband - just a few kHz. We only need to see enough spectrum to capture the beacon and verify it's there.
         </p>
         <p>
-          But our customer signal is wideband - 36 megahertz of QPSK-modulated data. To see what's happening to that signal, we need to widen the span to at least 50 megahertz, and re-center on the signal's IF frequency.
+          But our customer signal is wideband, 36 MHz of data modulated with QPSK. QPSK is a way of encoding digital bits onto the carrier. To see what's happening to that signal, we need to widen the span to at least 50 MHz and re-center on the signal's IF frequency.
         </p>
         <p>
-          Remember, the receiver modem is tuned to 1,532 megahertz IF - that's where you'll find the main signal.
+          Remember, the receiver modem is tuned to 1532 MHz IF, and that's where you'll find the main signal.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -899,7 +926,7 @@ export const scenario5Data: ScenarioData = {
       'phase-5-characterize-interference': {
         text: `
         <p>
-          It's narrowband - just a spike compared to our 36 megahertz wideband carrier. That's actually good news for us. A narrowband interferer means we can potentially use a notch filter to surgically remove it.
+          It's narrowband - just a spike compared to our 36 MHz wideband carrier. That's actually good news for us. A narrowband interferer means we can potentially use a notch filter to surgically remove it. A notch filter blocks one narrow slice of the spectrum and passes everything around it.
         </p>
         <p>
           Before we apply any mitigation, we need to identify where this spike is sitting. Look at the spectrum display and estimate the center frequency of the interference. That's the target for our notch filter.
@@ -909,29 +936,16 @@ export const scenario5Data: ScenarioData = {
         emotion: Emotion.NEUTRAL,
         audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-phase-5.mp3'),
       },
-      'measure-interference-frequency': {
-        text: `
-        <p>
-          Right - 1,515 megahertz IF. That's our target frequency. Now let's figure out what's causing this.
-        </p>
-        <p>
-          Think about what could put a narrowband signal inside our transponder bandwidth. We're using horizontal polarization on this transponder. Satellite transponders often have matching transponders on the orthogonal polarization for frequency reuse - another operator might be using that vertical pol slot.
-        </p>
-        `,
-        character: Character.CHARLIE_BROOKS,
-        emotion: Emotion.CONFIDENT,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-measure.mp3'),
-      },
       'phase-6-understand-cause': {
         text: `
         <p>
-          Cross-polarization interference. Satellites use orthogonal polarizations to double capacity - you can have two signals on the same frequency, one horizontal and one vertical. In theory, they're completely isolated from each other.
+          That's cross-polarization interference. Satellites use orthogonal polarizations to double capacity - you can have two signals on the same frequency, one horizontal and one vertical. In theory, they're completely isolated from each other.
         </p>
         <p>
           In practice, nothing's perfect. Antenna feeds have finite cross-pol isolation, typically 25 to 35 dB. Rain, ice, and Faraday rotation in the ionosphere can degrade polarization purity further. The result is leakage between polarizations.
         </p>
         <p>
-          Another operator's signal on V-pol is leaking into our H-pol. But here's the puzzle - that spike is narrow, yet it's degrading our entire wideband signal. Think about how the receiver's AGC works.
+          Another operator's signal on V-pol is leaking into our H-pol. But here's the puzzle - that spike is narrow, yet it's degrading our entire wideband signal. Look at the AGC card while you think about why. AGC is automatic gain control, the circuit that holds the signal level steady.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -941,13 +955,13 @@ export const scenario5Data: ScenarioData = {
       'phase-7-understand-impact': {
         text: `
         <p>
-          Exactly. The AGC measures total power in the IF passband and adjusts gain to keep the signal level optimal for the demodulator. It doesn't know the difference between wanted signal and interference - it just sees power.
+          Exactly. The AGC measures total power in the IF passband and sets its gain to hold the output steady for the demodulator. It can't tell wanted signal from interference - it just sees power. That's why its gain sits a little lower with the spike in the passband - well under a dB, but it's there.
         </p>
         <p>
-          That spike adds power to the passband. The AGC responds by reducing gain. But reducing gain affects everything - including our wanted carrier. So even though the interference is narrowband, it degrades C/N across our entire wideband signal.
+          But gain turns our carrier and the noise up and down together, so the gain change isn't what hurt us. The spike's own power sits inside our 36 megahertz, and the demodulator counts it as noise. And it's taking a share of the transponder's output, so our carrier comes down a little weaker. The AGC is just telling you there's more power in the passband than there should be.
         </p>
         <p>
-          Now we know the problem. The question is: what's the best way to fix it? We have several options available.
+          Now we know the problem. The question is - what's the best way to fix it? We have several options available.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -957,13 +971,13 @@ export const scenario5Data: ScenarioData = {
       'understand-mitigation-options': {
         text: `
         <p>
-          Right - a notch filter is the surgical solution. We configure it at exactly 1,515 megahertz with just enough bandwidth to cover the spike - probably 1 megahertz or so. The filter attenuates that narrow slice while passing the rest of our 36 megahertz signal untouched.
+          Right - a notch filter is the surgical solution. We configure it at exactly 1,515 megahertz with just enough bandwidth to cover the spike - probably 1 megahertz or so. The spike sits right at the lower edge of our carrier, so the notch takes the spike and a sliver of our own edge, and the rest of our 36 megahertz passes untouched.
         </p>
         <p>
-          With the spike removed, the AGC will see only our wanted signal power and set the gain appropriately. C/N should recover.
+          With the spike notched out, its power no longer reaches the demodulator, so C/N comes back up - and the AGC gain rises again, because there's less total power to level.
         </p>
         <p>
-          Head to the IF Filter Bank to configure the notch. Set the center frequency to 1,515 megahertz, bandwidth to 1 megahertz, and depth to at least 40 dB. That should be enough to suppress the interference below the noise floor.
+          Head to the Notch Filter card on RX Analysis to configure it. Set the center frequency to 1,515 megahertz, bandwidth to 1 megahertz, and depth to at least 40 dB. That should be enough to suppress the interference below the noise floor.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
@@ -999,7 +1013,7 @@ export const scenario5Data: ScenarioData = {
       'phase-9-verify-restoration': {
         text: `
         <p>
-          C/N is back to normal operating levels. The AGC is no longer being fooled by the interference spike, so it's setting the gain correctly for our wanted signal. The customer should see their packet errors clear up immediately.
+          C/N is back above the 8 dB service minimum on our receiver, about 9 or 10 dB, which is good margin on the modem. It won't reach the full 14 dB, because the spike is still in the transponder, eating its share of the power. And the notch only cleans up our receive chain. The ships get the same downlink, spike included, so they keep seeing it until the source is found and that operator's cross-pol isolation improves.
         </p>
         <p>
           Nice work. You diagnosed a non-obvious interference problem, understood the mechanism behind it, and applied the right mitigation. That's the kind of systematic troubleshooting that separates good operators from great ones.
@@ -1010,7 +1024,7 @@ export const scenario5Data: ScenarioData = {
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.HAPPY,
-        audioUrl: getAssetUrl('/assets/campaigns/nats/6/complete.mp3'),
+        audioUrl: getAssetUrl('/assets/campaigns/nats/5/obj-phase-9-verify-restoration.mp3'),
       },
       'document-interference-quiz': {
         text: `
@@ -1018,15 +1032,32 @@ export const scenario5Data: ScenarioData = {
           Perfect. I'll file a coordination request with the satellite operator to track down the source of the cross-pol interference. With the frequency, bandwidth, and timing information you've gathered, they can identify which uplink is causing the problem and work with that operator to improve their polarization alignment.
         </p>
         <p>
-          Meanwhile, the notch filter gives us a solid workaround. The customer is back online, the SLA is intact, and we have a path to the root cause fix.
+          Meanwhile, the notch keeps our own receiver clean and the hub link inside its margin. The ships get their relief when the source is fixed, so that coordination request is what closes SeaLink's ticket.
         </p>
         <p>
-          This is exactly how professional interference mitigation works - quick restoration of service, followed by proper documentation and coordination to prevent recurrence. Well done.
+          This is exactly how professional interference mitigation works - protect your own link fast, then document and coordinate to remove the source. Well done.
         </p>
         `,
         character: Character.CHARLIE_BROOKS,
         emotion: Emotion.HAPPY,
         audioUrl: getAssetUrl('/assets/campaigns/nats/6/outro.mp3'),
+      },
+    },
+    objectivesOnStart: {
+      // Phase 28 (nats-r3-s05-F5): the cross-pol hint opens the step whose
+      // quiz rests on it (it used to play one objective early)
+      'phase-6-understand-cause': {
+        text: `
+        <p>
+          1515 MHz IF is our notch target. Now let's figure out what's putting it there. Work it from the evidence. Is it a carrier or a raised noise floor? Is it only in our downlink, or are the ships seeing it too?
+        </p>
+        <p>
+          And think about polarization. TP-1 takes our uplink on horizontal and sends it back down on vertical - that's why the OMT card reads TX H, RX V. The OMT is the orthomode transducer, the part of the feed that separates the two polarizations. Satellites often reuse the same frequencies on the orthogonal polarization, so another operator might be uplinking into that vertical slot.
+        </p>
+        `,
+        character: Character.CHARLIE_BROOKS,
+        emotion: Emotion.CONFIDENT,
+        audioUrl: getAssetUrl('/assets/campaigns/nats/6/obj-measure.mp3'),
       },
     },
   },

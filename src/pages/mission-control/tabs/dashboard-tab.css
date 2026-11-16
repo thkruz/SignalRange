@@ -77,12 +77,14 @@
   flex-shrink: 0;
 }
 
+/* The alarm ticker's glyph colours (mission-control-page.css .alarm-messages),
+   so a row reads the same on both surfaces (Phase 33 D1, nats-r8-s01-F2) */
 .alarm-icon.critical {
-  color: var(--color-error);
+  color: #fca5a5;
 }
 
 .alarm-icon.warning {
-  color: var(--color-warning);
+  color: #fde047;
 }
 
 .alarm-icon.info {
@@ -92,6 +94,12 @@
 .alarm-message {
   flex: 1;
   font-size: 0.8125rem;
+}
+
+.alarm-detail {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6875rem;
+  color: var(--mc-text-secondary);
 }
 
 .alarm-time {

@@ -78,7 +78,9 @@ export class CampaignRecordPanel {
           lines.push(e.line);
           sections.set(e.section, lines);
         }
-        const status = r.completedAt ? `filed ${r.completedAt.slice(0, 10)}` : 'as filed (record on file, not this operator)';
+        // Phase 35 D15: the record carries the scenario's mission date, not the wall-clock filing date.
+        const missionDate = r.scenario.settings?.scenarioStartDate;
+        const status = r.completedAt ? `filed ${missionDate ?? r.completedAt.slice(0, 10)}` : 'as filed (record on file, not this operator)';
         const destroyed = r.destroyedEvidence.length > 0 ? `<div class="small text-danger">Evidence destroyed during the shift: ${r.destroyedEvidence.join(', ')}</div>` : '';
         const sectionsHtml = [...sections.entries()]
           .map(

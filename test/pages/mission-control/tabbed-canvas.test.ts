@@ -35,6 +35,8 @@ const DEFAULT_SATELLITES = [
   },
 ];
 let mockSatellites: unknown[] = DEFAULT_SATELLITES;
+/** Antenna kind the mocked ground station reports (undefined = reflector). */
+let mockAntennaKind: string | undefined;
 
 // Mock dependencies
 vi.mock('../../../src/events/event-bus');
@@ -53,6 +55,9 @@ vi.mock('../../../src/simulation/simulation-manager', () => ({
               config: {
                 band: 'C',
                 diameter: 9,
+                get kind() {
+                  return mockAntennaKind;
+                },
               },
             },
           ],
@@ -86,9 +91,12 @@ vi.mock('../../../src/pages/mission-control/tabs/ground-track-tab', () => ({
   }),
 }));
 vi.mock('../../../src/pages/mission-control/tabs/mission-overview-tab', () => ({
-  MissionOverviewTab: vi.fn(function () {
-    return createMockTab();
-  }),
+  MissionOverviewTab: Object.assign(
+    vi.fn(function () {
+      return createMockTab();
+    }),
+    { rememberStation: vi.fn(), resetRememberedStation: vi.fn() }
+  ),
 }));
 vi.mock('../../../src/pages/mission-control/tabs/rx-analysis-tab', () => ({
   RxAnalysisTab: vi.fn(function () {
@@ -112,6 +120,8 @@ vi.mock('../../../src/engine/utils/query-selector', () => ({
   }),
 }));
 
+import { ModalConfirm } from '../../../src/engine/ui/modal-confirm';
+import { AntennaPageRegistry } from '../../../src/pages/mission-control/antenna-page-registry';
 import { ACUControlTab } from '../../../src/pages/mission-control/tabs/acu-control-tab';
 import { DashboardTab } from '../../../src/pages/mission-control/tabs/dashboard-tab';
 import { GPSTimingTab } from '../../../src/pages/mission-control/tabs/gps-timing-tab';
@@ -120,6 +130,9 @@ import { MissionOverviewTab } from '../../../src/pages/mission-control/tabs/miss
 import { RxAnalysisTab } from '../../../src/pages/mission-control/tabs/rx-analysis-tab';
 import { SatelliteDashboardTab } from '../../../src/pages/mission-control/tabs/satellite-dashboard-tab';
 import { TxChainTab } from '../../../src/pages/mission-control/tabs/tx-chain-tab';
+import { FieldTabPolicy } from '../../../src/physical/field-tab-policy';
+import { PhysicalPlantService } from '../../../src/physical/physical-plant-service';
+import { ImmersiveView } from '../../../src/presentation/immersive-view';
 import { ScenarioManager, type SimulationSettings } from '../../../src/scenario-manager';
 import { SimulationManager } from '../../../src/simulation/simulation-manager';
 
@@ -203,6 +216,16 @@ describe('TabbedCanvas', () => {
   });
 
   describe('ground station selection', () => {
+    it('remembers the selected station for the Overview and forgets it on teardown (phase 31 D16)', () => {
+      const assetSelectedHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ASSET_SELECTED)?.[1];
+
+      assetSelectedHandler?.({ type: 'ground-station', id: 'GS-001' });
+      expect(MissionOverviewTab.rememberStation).toHaveBeenCalledWith('GS-001');
+
+      tabbedCanvas.destroy();
+      expect(MissionOverviewTab.resetRememberedStation).toHaveBeenCalled();
+    });
+
     it('should render ground station tabs when GS selected', () => {
       const assetSelectedHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ASSET_SELECTED)?.[1];
 
@@ -401,6 +424,53 @@ describe('TabbedCanvas', () => {
     });
   });
 
+  describe('antenna pages', () => {
+    const selectStation = () => {
+      const assetSelectedHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ASSET_SELECTED)?.[1];
+
+      assetSelectedHandler?.({ type: 'ground-station', id: 'GS-001' });
+    };
+    const switchTo = (tabId: string) => {
+      const switchTabHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.SWITCH_TAB)?.[1];
+
+      switchTabHandler?.({ tabId });
+    };
+
+    afterEach(() => {
+      mockAntennaKind = undefined;
+      AntennaPageRegistry.destroy();
+    });
+
+    it('uses a registered page, its label and its lifecycle for a matching kind', () => {
+      const page = { ...createMockTab(), tabLabel: 'Array Control' };
+      const factory = vi.fn(() => page);
+
+      AntennaPageRegistry.getInstance().register('phased-array', factory, { tabLabel: 'Array Control' });
+      mockAntennaKind = 'phased-array';
+      selectStation();
+      expect(document.querySelector('#tab-bar')?.innerHTML).toContain('Array Control');
+
+      switchTo('acu-control-0');
+
+      expect(factory).toHaveBeenCalledWith(expect.objectContaining({ state: expect.objectContaining({ id: 'GS-001' }) }), 'canvas-content', 0);
+      expect(page.activate).toHaveBeenCalled();
+      expect(ACUControlTab).not.toHaveBeenCalled();
+    });
+
+    it('keeps ACU Control for reflector antennas even when other kinds are registered', () => {
+      const factory = vi.fn(() => ({ ...createMockTab(), tabLabel: 'Array Control' }));
+
+      AntennaPageRegistry.getInstance().register('phased-array', factory);
+      selectStation();
+      expect(document.querySelector('#tab-bar')?.innerHTML).toContain('ACU Control');
+
+      switchTo('acu-control-0');
+
+      expect(ACUControlTab).toHaveBeenCalled();
+      expect(factory).not.toHaveBeenCalled();
+    });
+  });
+
   describe('tab switching', () => {
     beforeEach(() => {
       // Select a ground station first
@@ -522,6 +592,19 @@ describe('TabbedCanvas', () => {
 
       selectAsset('ground-station', 'GS-001');
       expect(activeTabId()).toBe('gps-timing');
+    });
+
+    it('marks a tab active on the very first satellite selection', () => {
+      selectAsset('satellite', 'sat-12345');
+
+      expect(activeTabId()).toBe('sat-dashboard');
+    });
+
+    it('keeps a tab active when the same satellite is selected again', () => {
+      selectAsset('satellite', 'sat-12345');
+      selectAsset('satellite', 'sat-12345');
+
+      expect(document.querySelectorAll('.nav-link.active')).toHaveLength(1);
     });
 
     it('falls back to the default tab when the remembered tab is gone', () => {
@@ -792,5 +875,248 @@ describe('TabbedCanvas nats-eu console tab gating', () => {
 
     expect(document.querySelector('[data-tab-id="security-console"]')).not.toBeNull();
     expect(document.querySelector('[data-tab-id="link-budget"]')).toBeNull();
+  });
+});
+
+describe('TabbedCanvas outside-the-tent guard', () => {
+  let tabbedCanvas: TabbedCanvas;
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
+  let outside = false;
+  const plant = {
+    isOutside: () => outside,
+    returnInside: vi.fn(() => {
+      outside = false;
+    }),
+  };
+  let confirmOpen: ReturnType<typeof vi.spyOn>;
+
+  const switchHandler = () => mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.SWITCH_TAB)?.[1];
+  const activeTabId = () => document.querySelector('.nav-link.active')?.getAttribute('data-tab-id');
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    outside = false;
+    mockEventBus = { on: vi.fn(), off: vi.fn(), emit: vi.fn() };
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
+    const el = document.createElement('div');
+    el.id = 'tabbed-canvas-container';
+    document.body.appendChild(el);
+    tabbedCanvas = new TabbedCanvas('tabbed-canvas-container');
+    mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ASSET_SELECTED)?.[1]({ type: 'ground-station', id: 'GS-001' });
+    confirmOpen = vi.spyOn(ModalConfirm.getInstance(), 'open').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    tabbedCanvas.destroy();
+    vi.restoreAllMocks();
+    document.body.innerHTML = '';
+  });
+
+  it('is a no-op without a plant', () => {
+    vi.spyOn(PhysicalPlantService, 'plantOrNull').mockReturnValue(null);
+    switchHandler()?.({ tabId: 'rx-analysis' });
+    expect(confirmOpen).not.toHaveBeenCalled();
+    expect(activeTabId()).toBe('rx-analysis');
+  });
+
+  it('does not gate while the player is inside', () => {
+    vi.spyOn(PhysicalPlantService, 'plantOrNull').mockReturnValue(plant as never);
+    switchHandler()?.({ tabId: 'rx-analysis' });
+    expect(confirmOpen).not.toHaveBeenCalled();
+    expect(activeTabId()).toBe('rx-analysis');
+  });
+
+  it('blocks the switch while outside, and Go inside returns then switches', () => {
+    vi.spyOn(PhysicalPlantService, 'plantOrNull').mockReturnValue(plant as never);
+    const before = activeTabId();
+    outside = true;
+    switchHandler()?.({ tabId: 'rx-analysis' });
+    expect(confirmOpen).toHaveBeenCalledTimes(1);
+    const [onConfirm, options] = confirmOpen.mock.calls[0] as [() => void, { message: string; confirmText: string; cancelText: string }];
+    expect(options.message).toBe("You're outside with the dishes, generator and cables. The laptop and equipment panels are in the tent.");
+    expect(options.confirmText).toBe('Go back in');
+    expect(options.cancelText).toBe('Stay outside');
+    expect(activeTabId()).toBe(before);
+    expect(plant.returnInside).not.toHaveBeenCalled();
+    onConfirm();
+    expect(plant.returnInside).toHaveBeenCalledTimes(1);
+    expect(activeTabId()).toBe('rx-analysis');
+  });
+
+  it('puts a held laptop down before the confirm opens, so its buttons are not under an inert modal dialog', () => {
+    vi.spyOn(PhysicalPlantService, 'plantOrNull').mockReturnValue(plant as never);
+    vi.spyOn(HTMLDialogElement.prototype, 'showModal').mockImplementation(function (this: HTMLDialogElement) {
+      this.open = true;
+    });
+    vi.spyOn(HTMLDialogElement.prototype, 'close').mockImplementation(function (this: HTMLDialogElement) {
+      this.open = false;
+    });
+    const held = new ImmersiveView();
+    const body = document.createElement('div');
+    document.body.append(body);
+    held.open(body, 'Laptop', 'laptop', () => held.close());
+    expect(ImmersiveView.topDialog()).not.toBeNull();
+    let heldWhenAsked: HTMLDialogElement | null | undefined;
+    confirmOpen.mockImplementation(() => {
+      heldWhenAsked = ImmersiveView.topDialog();
+    });
+    outside = true;
+    switchHandler()?.({ tabId: 'rx-analysis' });
+    expect(confirmOpen).toHaveBeenCalledTimes(1);
+    expect(heldWhenAsked).toBeNull();
+    expect(held.isOpen()).toBe(false);
+  });
+
+  it('gates a sidebar asset switch while outside, then switches after Go inside', () => {
+    vi.spyOn(PhysicalPlantService, 'plantOrNull').mockReturnValue(plant as never);
+    const assetHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ASSET_SELECTED)?.[1];
+    outside = true;
+    mockEventBus.emit.mockClear();
+    assetHandler({ type: 'ground-station', id: 'GS-002' });
+    expect(confirmOpen).toHaveBeenCalledTimes(1);
+    // Sidebar highlight is pushed back to the asset still on screen
+    expect(mockEventBus.emit).toHaveBeenCalledWith(Events.ASSET_SELECTED, { type: 'ground-station', id: 'GS-001' });
+    mockEventBus.emit.mockClear();
+    const [onConfirm] = confirmOpen.mock.calls[0] as [() => void];
+
+    onConfirm();
+    expect(plant.returnInside).toHaveBeenCalledTimes(1);
+    expect(mockEventBus.emit).toHaveBeenCalledWith(Events.ASSET_SELECTED, { type: 'ground-station', id: 'GS-002' });
+  });
+
+  it('does not gate a sidebar asset switch while inside', () => {
+    vi.spyOn(PhysicalPlantService, 'plantOrNull').mockReturnValue(plant as never);
+    const assetHandler = mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ASSET_SELECTED)?.[1];
+
+    assetHandler({ type: 'ground-station', id: 'GS-002' });
+    expect(confirmOpen).not.toHaveBeenCalled();
+  });
+
+  it('blocks nav-link clicks while outside', () => {
+    vi.spyOn(PhysicalPlantService, 'plantOrNull').mockReturnValue(plant as never);
+    const before = activeTabId();
+    outside = true;
+    (document.querySelector('[data-tab-id="rx-analysis"]') as HTMLElement).click();
+    expect(confirmOpen).toHaveBeenCalledTimes(1);
+    expect(activeTabId()).toBe(before);
+  });
+});
+
+describe('TabbedCanvas field station tab policy', () => {
+  let tabbedCanvas: TabbedCanvas;
+  let mockEventBus: { on: Mock; off: Mock; emit: Mock };
+  let savedSettings: SimulationSettings;
+
+  const tabIds = (): string[] => Array.from(document.querySelectorAll('#tab-bar .nav-link')).map((el) => el.getAttribute('data-tab-id') ?? '');
+  const activeTabId = () => document.querySelector('.nav-link.active')?.getAttribute('data-tab-id');
+  const selectStation = (): void => {
+    mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.ASSET_SELECTED)?.[1]({ type: 'ground-station', id: 'GS-001' });
+  };
+  const switchHandler = () => mockEventBus.on.mock.calls.find((call: [string, Function]) => call[0] === Events.SWITCH_TAB)?.[1];
+  const setSettings = (extra: Partial<SimulationSettings>): void => {
+    ScenarioManager.getInstance().settings = { ...savedSettings, physicalPlant: {} as never, ...extra };
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    FieldTabPolicy.reset();
+    AntennaPageRegistry.destroy();
+    SimulationManager.getInstance.mockReturnValue({
+      groundStations: [
+        {
+          state: { id: 'GS-001', name: 'Field Post', isOperational: true, stationClass: 'field' },
+          antennas: [{ config: { band: 'Ku', diameter: 1.2 } }],
+        },
+      ],
+      satellites: [],
+      getSatByNoradId: vi.fn(() => null),
+    });
+    mockEventBus = { on: vi.fn(), off: vi.fn(), emit: vi.fn() };
+    (EventBus.getInstance as Mock).mockReturnValue(mockEventBus);
+    savedSettings = ScenarioManager.getInstance().settings;
+    const containerEl = document.createElement('div');
+    containerEl.id = 'tabbed-canvas-container';
+    document.body.appendChild(containerEl);
+    tabbedCanvas = new TabbedCanvas('tabbed-canvas-container');
+  });
+
+  afterEach(() => {
+    ScenarioManager.getInstance().settings = savedSettings;
+    tabbedCanvas.destroy();
+    FieldTabPolicy.reset();
+    AntennaPageRegistry.destroy();
+    document.body.innerHTML = '';
+  });
+
+  it('shows only the Site tab by default', () => {
+    setSettings({});
+    selectStation();
+    expect(tabIds()).toEqual(['site']);
+    expect(activeTabId()).toBe('site');
+  });
+
+  it('adds scenario-allowed engineering tabs', () => {
+    setSettings({ fieldTabs: ['rx-analysis', 'acu-control'] });
+    selectStation();
+    expect(tabIds()).toEqual(['site', 'acu-control-0', 'rx-analysis']);
+  });
+
+  it('ignores event-driven switches to hidden tabs', () => {
+    setSettings({});
+    selectStation();
+    switchHandler()?.({ tabId: 'rx-analysis' });
+    expect(activeTabId()).toBe('site');
+  });
+
+  it('restores the full engineering set when the trainer unlocks, and relocks', () => {
+    setSettings({});
+    selectStation();
+    FieldTabPolicy.setEngineeringUnlocked(true);
+    expect(tabIds()).toEqual(expect.arrayContaining(['dashboard', 'acu-control-0', 'rx-analysis', 'tx-chain', 'gps-timing', 'site']));
+    FieldTabPolicy.reset();
+    expect(tabIds()).toEqual(['site']);
+  });
+
+  it('shows a registered station tab for the class, opens the default one, and runs its lifecycle', () => {
+    setSettings({});
+    const page = { ...createMockTab(), tabLabel: 'SkyLink' };
+    const factory = vi.fn(() => page);
+    AntennaPageRegistry.getInstance().registerStationTab({ id: 'skylink', label: 'SkyLink', stationClasses: ['field'], factory, isDefault: true });
+    AntennaPageRegistry.getInstance().registerStationTab({ id: 'other', label: 'Other', stationClasses: ['backyard'], factory: vi.fn() });
+    selectStation();
+    expect(tabIds()).toEqual(['site', 'station-skylink']);
+    expect(activeTabId()).toBe('site');
+    switchHandler()?.({ tabId: 'station-skylink' });
+    expect(factory).toHaveBeenCalledWith(expect.objectContaining({ state: expect.objectContaining({ id: 'GS-001' }) }), 'canvas-content');
+    expect(page.activate).toHaveBeenCalled();
+  });
+
+  it('keeps the station tab beside the engineering tabs when the trainer unlocks', () => {
+    setSettings({});
+    AntennaPageRegistry.getInstance().registerStationTab({
+      id: 'skylink',
+      label: 'SkyLink',
+      stationClasses: ['field'],
+      factory: () => ({ ...createMockTab(), tabLabel: 'SkyLink' }),
+      isDefault: true,
+    });
+    selectStation();
+    FieldTabPolicy.setEngineeringUnlocked(true);
+    expect(tabIds()).toEqual(expect.arrayContaining(['dashboard', 'rx-analysis', 'station-skylink']));
+    FieldTabPolicy.reset();
+    expect(tabIds()).toEqual(['site', 'station-skylink']);
+  });
+
+  it('drops a station tab after unregister', () => {
+    setSettings({});
+    AntennaPageRegistry.getInstance().registerStationTab({
+      id: 'skylink',
+      label: 'SkyLink',
+      stationClasses: ['field'],
+      factory: () => ({ ...createMockTab(), tabLabel: 'SkyLink' }),
+    });
+    expect(AntennaPageRegistry.getInstance().unregisterStationTab('skylink')).toBe(true);
+    selectStation();
+    expect(tabIds()).toEqual(['site']);
   });
 });

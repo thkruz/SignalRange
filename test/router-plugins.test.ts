@@ -43,6 +43,8 @@ vi.mock('../src/campaigns/nats/campaign-data', () => ({
 
 vi.mock('../src/campaigns/nats-eu/campaign-data', () => ({ natsEuCampaignData: {} }));
 
+vi.mock('../src/campaigns/frontline/campaign-data', () => ({ frontlineCampaignData: {} }));
+
 vi.mock('../src/pages/campaign-selection', () => ({
   CampaignSelectionPage: { getInstance: vi.fn(() => ({ show: vi.fn(), hide: vi.fn() })) },
 }));

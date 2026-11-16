@@ -16,6 +16,34 @@ function runFrames(frameMs: number, totalMs: number): number {
 }
 
 describe('SimClock', () => {
+  it('freezes run time, mission time, and scheduled equipment timers for menus without releasing brief pauses', () => {
+    const callback = vi.fn();
+    SimClock.setTimeout(callback, 100);
+    SimClock.pause('scenario');
+    SimClock.pause('menu');
+    expect(runFrames(FIXED_STEP_MS, 10_000)).toBe(0);
+    expect(SimClock.runMs()).toBe(0);
+    expect(callback).not.toHaveBeenCalled();
+    SimClock.resume('menu');
+    runFrames(FIXED_STEP_MS, 200);
+    expect(callback).toHaveBeenCalledOnce();
+    expect(SimClock.scenarioElapsedMs()).toBe(0);
+    SimClock.resume('scenario');
+    expect(runFrames(FIXED_STEP_MS, 1000)).toBe(60);
+    expect(SimClock.scenarioElapsedMs()).toBe(1000);
+  });
+  it('stops both clocks during mission loading without releasing a visibility pause', () => {
+    SimClock.pause('loading');
+    SimClock.pause('hidden');
+    expect(runFrames(FIXED_STEP_MS, 1000)).toBe(0);
+    expect(SimClock.runMs()).toBe(0);
+    expect(SimClock.scenarioElapsedMs()).toBe(0);
+    SimClock.resume('loading');
+    expect(SimClock.consumeFrame(FIXED_STEP_MS)).toBe(0);
+    SimClock.resume('hidden');
+    expect(SimClock.consumeFrame(FIXED_STEP_MS)).toBe(1);
+  });
+
   it('releases the same number of steps at any frame rate', () => {
     const at30 = runFrames(1000 / 30, 10_000);
     SimClock.reset();
@@ -137,5 +165,31 @@ describe('SimClock', () => {
     SimClock.setScenarioNowMs(Date.UTC(2027, 0, 1, 0, 30));
 
     expect(SimClock.nowMs()).toBe(Date.UTC(2027, 0, 1, 0, 30));
+  });
+});
+
+describe('SimClock.onChange', () => {
+  afterEach(() => {
+    SimClock.reset();
+  });
+
+  it('reports jumps, pause toggles and speed changes, and stops after unsubscribe', () => {
+    SimClock.reset();
+    const seen: string[] = [];
+    const off = SimClock.onChange((change) => seen.push(change));
+
+    SimClock.skip(5000);
+    SimClock.setScenarioNowMs(Date.UTC(2027, 0, 1));
+    SimClock.pause('menu');
+    SimClock.pause('menu'); // already paused: no second notification
+    SimClock.resume('menu');
+    SimClock.resume('menu'); // not paused: nothing to report
+    SimClock.setSpeed(5);
+    SimClock.setSpeed(5); // unchanged
+    expect(seen).toEqual(['jump', 'jump', 'pause', 'pause', 'speed']);
+
+    off();
+    SimClock.skip(1000);
+    expect(seen).toHaveLength(5);
   });
 });

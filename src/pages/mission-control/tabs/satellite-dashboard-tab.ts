@@ -69,18 +69,7 @@ export class SatelliteDashboardTab extends BaseElement {
                   <span class="text-muted small">NORAD ID:</span>
                   <span class="fw-bold font-monospace">${this.satellite.noradId}</span>
                 </div>
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <span class="text-muted small">Azimuth:</span>
-                  <span id="sat-azimuth" class="fw-bold font-monospace">${this.satellite.az.toFixed(1)}&deg;</span>
-                </div>
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <span class="text-muted small">Elevation:</span>
-                  <span id="sat-elevation" class="fw-bold font-monospace">${this.satellite.el.toFixed(1)}&deg;</span>
-                </div>
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <span class="text-muted small">Rotation:</span>
-                  <span id="sat-rotation" class="fw-bold font-monospace">${this.satellite.rotation.toFixed(1)}&deg;</span>
-                </div>
+                ${this.renderLookAngles_()}
                 <hr class="my-2" />
                 <div class="d-flex justify-content-between align-items-center">
                   <span class="text-muted small">Health:</span>
@@ -137,7 +126,7 @@ export class SatelliteDashboardTab extends BaseElement {
                     <span class="text-muted">Target Status:</span>
                     <span id="sat-target-status" class="ms-2">
                       <span class="led led-off me-1"></span>
-                      <span class="status-text">Not Ready</span>
+                      <span class="status-text">No handover in progress</span>
                     </span>
                   </div>
                   <div class="col-auto">
@@ -202,11 +191,76 @@ export class SatelliteDashboardTab extends BaseElement {
     return lines.map((line) => html`<div class="transponder-freq">${line}</div>`).join('');
   }
 
+  /**
+   * Look angles name the station they are seen from (phase 29 D4,
+   * nats-r4-s03-F2): one "Az / El (station)" row per ground station in the
+   * scenario, each from that station's antenna. With no station (a bare
+   * satellite page) the satellite's own az/el rows remain.
+   */
+  private renderLookAngles_(): string {
+    const stations = this.lookAngleStations_();
+    if (stations.length === 0) {
+      return html`
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="text-muted small">Azimuth:</span>
+          <span id="sat-azimuth" class="fw-bold font-monospace">${this.satellite.az.toFixed(1)}&deg;</span>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="text-muted small">Elevation:</span>
+          <span id="sat-elevation" class="fw-bold font-monospace">${this.satellite.el.toFixed(1)}&deg;</span>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="text-muted small">Rotation:</span>
+          <span id="sat-rotation" class="fw-bold font-monospace">${this.satellite.rotation.toFixed(1)}&deg;</span>
+        </div>
+      `;
+    }
+
+    return stations
+      .map(
+        ({ id }) => html`
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="text-muted small">Az / El from ${id}:</span>
+            <span id="sat-look-angles-${id}" data-look-station="${id}" class="sat-look-angles fw-bold font-monospace">--</span>
+          </div>
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="text-muted small">Polarization from ${id}:</span>
+            <span id="sat-polarization-${id}" data-pol-station="${id}" class="sat-polarization fw-bold font-monospace">--</span>
+          </div>
+        `
+      )
+      .join('');
+  }
+
+  /** Every scenario ground station with an antenna to see the satellite from */
+  private lookAngleStations_(): { id: string; antenna: { viewOf(sat: Satellite): { az: number; el: number; rotation?: number } } }[] {
+    const stations = SimulationManager.getInstance().groundStations ?? [];
+
+    return stations.flatMap((gs) => {
+      const antenna = gs.antennas?.[0];
+      return antenna && typeof antenna.viewOf === 'function' ? [{ id: gs.state.id, antenna }] : [];
+    });
+  }
+
+  private syncLookAngles_(): void {
+    for (const { id, antenna } of this.lookAngleStations_()) {
+      const el = this.dom_?.querySelector<HTMLElement>(`[data-look-station="${id}"]`);
+      if (!el) continue;
+      const view = antenna.viewOf(this.satellite);
+      el.textContent = `${view.az.toFixed(1)}° / ${view.el.toFixed(1)}°`;
+      // The feed skew this station's ACU drives to (geoPolarizationSkewDeg
+      // for a slotted GEO, via the antenna's view): one per station, since
+      // VT-01 and ME-02 need different angles (nats-r5-s03-F2)
+      const polEl = this.dom_?.querySelector<HTMLElement>(`[data-pol-station="${id}"]`);
+      if (polEl) polEl.textContent = typeof view.rotation === 'number' ? `${view.rotation.toFixed(1)}°` : '--';
+    }
+  }
+
   private cacheDomElements_(): void {
     const ids = ['sat-azimuth', 'sat-elevation', 'sat-rotation', 'sat-health-badge', 'sat-active-transponders'];
 
     ids.forEach((id) => {
-      const el = qs(`#${id}`, this.dom_);
+      const el = this.dom_?.querySelector<HTMLElement>(`#${id}`);
       if (el) {
         this.domCache_.set(id, el);
       }
@@ -219,6 +273,8 @@ export class SatelliteDashboardTab extends BaseElement {
 
     const elEl = this.domCache_.get('sat-elevation');
     if (elEl) elEl.textContent = `${this.satellite.el.toFixed(1)}\u00B0`;
+
+    this.syncLookAngles_();
 
     const rotEl = this.domCache_.get('sat-rotation');
     if (rotEl) rotEl.textContent = `${this.satellite.rotation.toFixed(1)}\u00B0`;
@@ -366,8 +422,10 @@ export class SatelliteDashboardTab extends BaseElement {
       if (targetStatusEl) {
         const led = targetStatusEl.querySelector('.led');
         const statusText = targetStatusEl.querySelector('.status-text');
+        // No target to be ready: after a handover the new owner holds the
+        // traffic, so "Not Ready" read as a fault (nats-s11-F6)
         if (led) led.className = 'led led-off me-1';
-        if (statusText) statusText.textContent = 'Not Ready';
+        if (statusText) statusText.textContent = 'No handover in progress';
       }
       if (targetCnEl) {
         targetCnEl.textContent = '-- dB';

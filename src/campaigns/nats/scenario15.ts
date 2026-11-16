@@ -13,7 +13,7 @@ import { ses10Satellite, tidemark1Satellite, tidemark2Satellite, tidemark3Satell
  * NATS Level 15: "Frequency Coordination"
  *
  * Phase: Qualified Operations (Phase 2, Scenario 7 of 8)
- * Time Pressure: Moderate (RedSky's uplink window opens in 25 minutes)
+ * Time Pressure: Moderate (RedSky's uplink window opens in 10 minutes)
  * Calculation Required: YES - guard-band arithmetic
  * New Mechanic Introduced: External-operator coordination (not present in S1-S14)
  *
@@ -67,12 +67,15 @@ export const scenario15Data: ScenarioData = {
   number: 15,
   title: 'Frequency Coordination',
   subtitle: 'Inter-Operator Spectrum Etiquette',
-  duration: '25-30 min',
+  // Billed at what it takes (nats-r3-s15-F1, Phase 29 D14): 19 steps, one HPA
+  // change, one analyzer retune; r4 played it in under 6 min. The 0920 confirm /
+  // 0922 RedSky deadlines sit inside the 15 min limit (Phase 30 D22).
+  duration: '5-10 min',
   difficulty: 'intermediate',
   missionType: 'Spectrum Coordination',
-  description: `A coordination notice from RedSky Teleport hit your inbox at 09:08. Their next scheduled uplink sits just 2 MHz from the edge of the SeaLink carrier currently riding TIDEMARK-3 TP-1. They want acknowledgment that our spectrum won't bleed into their slot when they light up in 25 minutes.<br><br>Standard inter-operator etiquette: verify the guard band, check that our transmit chain isn't producing IMD products that would fall in the neighbor's passband, document, and confirm back. If our skirts are dirty, clean them up before they go on the air.<br><br>This is good neighbor work, not combat.`,
+  description: `A coordination notice from RedSky Teleport reached your inbox at 09:08. Their next scheduled uplink sits just 2 MHz from the edge of the SeaLink carrier currently riding TIDEMARK-3 TP-1. They want confirmation that our spectrum won't bleed into their slot when they light up at 09:22, and they need our answer by 09:20.<br><br>Standard inter-operator etiquette is to verify the guard band, check that our transmit chain isn't producing IMD (intermodulation distortion) products that would fall in the neighbor's passband, document the result, and confirm back. If our spectrum is dirty, clean it up before they go on the air.<br><br>This is good neighbor work, not combat.`,
   equipment: ['9-meter C-band Antenna', 'RF Front End (TX active)', 'Spectrum Analyzer', 'TX Modem (carrying SeaLink traffic on TIDEMARK-3)', 'HPA (online)'],
-  timeLimitSeconds: 30 * 60,
+  timeLimitSeconds: 15 * 60,
   settings: {
     isSync: true,
     groundStations: [
@@ -81,14 +84,13 @@ export const scenario15Data: ScenarioData = {
         antennasState: [
           {
             ...vermontGroundStation.antennasState[0],
-            azimuth: 140.5 as Degrees,
-            elevation: 37.8 as Degrees,
-            polarization: 8 as Degrees,
+            azimuth: 145.7 as Degrees,
+            elevation: 32.7 as Degrees,
+            // polarization: derived from geometry (Phase 29 D8)
             targetSatelliteId: 61527, // TIDEMARK-3
-            targetAzimuth: 140.5 as Degrees,
-            targetElevation: 37.8 as Degrees,
-            targetPolarization: 8 as Degrees,
-            beaconFrequencyHz: 1078e6 as Hertz, // TM-3 beacon IF (5250 - 4172)
+            targetAzimuth: 145.7 as Degrees,
+            targetElevation: 32.7 as Degrees,
+            beaconFrequencyHz: 4172e6 as Hertz, // TIDEMARK-3 beacon (RF)
           } as Partial<AntennaState>,
         ],
         rfFrontEnds: [
@@ -159,6 +161,9 @@ export const scenario15Data: ScenarioData = {
     satellites: [tidemark3Satellite, tidemark1Satellite, tidemark2Satellite, ses10Satellite],
     missionBriefUrl: 'https://docs.signalrange.space/campaign-1/scenario-15?content-only=true&dark=true',
     isExtraSatellitesVisible: true,
+    // Brief: Tuesday, 0912 Local (notice received 0908, confirm by 0920, RedSky live 0922)
+    scenarioStartDate: '2026-02-17',
+    scenarioStartWallTime: '09:12:00',
   },
   objectives: [
     // ============================================================
@@ -168,7 +173,7 @@ export const scenario15Data: ScenarioData = {
       id: 'review-mission-brief',
       nice: ['K0645'],
       title: 'Review Coordination Notice',
-      description: 'Open the shift brief and the inbound RedSky coordination request.',
+      description: 'Open the shift brief and read the inbound RedSky coordination request.',
       groundStation: 'VT-01',
       freezesScenarioTimer: true,
       prerequisiteObjectiveIds: [],
@@ -187,7 +192,7 @@ export const scenario15Data: ScenarioData = {
             question: 'Have you reviewed the brief and the RedSky notice?',
             options: ['Brief reviewed. Notice acknowledged. Starting coordination check.'],
             correctIndex: 0,
-            explanation: 'Coordination window opens in 25 minutes. Plenty of time for a clean check.',
+            explanation: "RedSky's uplink window opens at 09:22, and they want our confirmation by 09:20. That's enough time for a clean check if you keep moving.",
             pointPenalty: 0,
           },
           mustMaintain: false,
@@ -224,7 +229,7 @@ export const scenario15Data: ScenarioData = {
       id: 'identify-partner-band',
       nice: ['K0737', 'S0648'],
       title: 'Identify RedSky Occupied Band',
-      description: 'Confirm the RF range RedSky will occupy when their carrier lights up.',
+      description: "Confirm the RF range RedSky's carrier will occupy when it lights up.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['select-vermont-station'],
       timeLimitSeconds: 2 * 60,
@@ -235,10 +240,12 @@ export const scenario15Data: ScenarioData = {
           description: 'Partner Band',
           params: {
             character: Character.SYSTEM,
-            question: "RedSky's notice: center 5961 MHz, bandwidth 8 MHz, V-pol on the TIDEMARK-3 cross-pol slot. What RF range will they occupy?",
+            // Read off the coordination notice in the brief, not the stem (nats-r3-s15-F2)
+            question: "Read RedSky's coordination notice in the brief. What RF range will their carrier occupy?",
             options: ['5957 - 5965 MHz', '5961 - 5969 MHz', '5953 - 5969 MHz', '5957 - 5961 MHz'],
             correctIndex: 0,
-            explanation: 'Center plus or minus half-bandwidth: 5961 plus or minus 4 MHz equals 5957 to 5965 MHz. Their upper edge is 5965.',
+            explanation:
+              'Their carrier is centered on 5961 MHz and is 8 MHz wide, so it spans 5961 plus or minus 4 MHz, which is 5957 to 5965 MHz. The upper edge, 5965, is the one that faces our carrier.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -262,10 +269,11 @@ export const scenario15Data: ScenarioData = {
           description: 'Our Band',
           params: {
             character: Character.SYSTEM,
-            question: 'Our SeaLink carrier on TIDEMARK-3 TP-1 is center 5985 MHz, 36 MHz BW, H-pol. What RF range are we occupying?',
+            question: 'Read our SeaLink carrier on the TIDEMARK-3 frequency plan in the brief. What RF range does it occupy?',
             options: ['5967 - 6003 MHz', '5949 - 6021 MHz', '5985 - 6021 MHz', '5967 - 5985 MHz'],
             correctIndex: 0,
-            explanation: '5985 plus or minus 18 MHz equals 5967 to 6003 MHz. Our lower edge is 5967.',
+            explanation:
+              'Our SeaLink carrier is centered on 5985 MHz and is 36 MHz wide, so it spans 5985 plus or minus 18 MHz, which is 5967 to 6003 MHz. The lower edge, 5967, is the one that faces RedSky.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -289,10 +297,11 @@ export const scenario15Data: ScenarioData = {
           description: 'Guard Band',
           params: {
             character: Character.SYSTEM,
-            question: 'RedSky upper edge: 5965 MHz. Our lower edge: 5967 MHz. What is the edge-to-edge guard band?',
+            question: "From the two occupied ranges, what is the edge-to-edge guard band between RedSky's upper edge and our lower edge?",
             options: ['2 MHz', '4 MHz', '24 MHz', '0 MHz - we overlap'],
             correctIndex: 0,
-            explanation: '5967 minus 5965 equals 2 MHz. Cross-pol isolation buys us additional margin, but the frequency gap is tight.',
+            explanation:
+              "5967 minus 5965 leaves a 2 MHz gap between RedSky's upper edge and our lower edge. Cross-pol isolation (V-pol against H-pol) adds margin on top of that, but the frequency gap itself is tight.",
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -305,7 +314,7 @@ export const scenario15Data: ScenarioData = {
       id: 'assess-guard-adequacy',
       nice: ['K0737', 'K0721'],
       title: 'Assess Guard Band Adequacy',
-      description: 'Decide whether 2 MHz edge-to-edge with our current TX configuration is good enough.',
+      description: 'Decide whether a 2 MHz edge-to-edge guard is good enough with our current transmit configuration.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['compute-guard-band'],
       timeLimitSeconds: 2 * 60,
@@ -316,15 +325,16 @@ export const scenario15Data: ScenarioData = {
           description: 'Guard Adequacy',
           params: {
             character: Character.SYSTEM,
-            question: 'A 2 MHz edge-to-edge guard with about 28 dB cross-pol isolation. What is the right next step?',
+            question: "The guard band is 2 MHz edge to edge, with about 28 dB of cross-pol isolation. What's the right next step?",
             options: [
-              "Verify our TX chain is producing clean spectrum - no spurs or IMD falling into RedSky's band",
+              "Check that our TX chain has no spurs or IMD falling into RedSky's band",
               'Ask RedSky to retune their carrier - 2 MHz is below the minimum guard for a 36 MHz carrier',
               "Raise our TX power now - a stronger SeaLink carrier holds its margin against RedSky's V-pol",
               'Confirm clear as-is - 2 MHz guard plus 28 dB cross-pol isolation is sufficient at any drive',
             ],
             correctIndex: 0,
-            explanation: 'Guard-band math is necessary but not sufficient. Polarization isolation only buys margin if our own spectrum is clean. Inspect the TX chain.',
+            explanation:
+              "The guard-band math is necessary but not enough. Polarization isolation only buys margin if our own spectrum is clean, so the next step is to inspect the transmit chain for anything that spills into RedSky's slot.",
             pointPenalty: 5,
             preserveOptionOrder: true,
           },
@@ -342,7 +352,7 @@ export const scenario15Data: ScenarioData = {
       id: 'open-tx-chain',
       nice: ['S0421'],
       title: 'Open TX Chain',
-      description: 'Navigate to the TX Chain tab to inspect the current transmit configuration.',
+      description: 'Open the TX Chain tab to inspect the current transmit configuration.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['assess-guard-adequacy'],
       timeLimitSeconds: 1 * 60,
@@ -363,8 +373,10 @@ export const scenario15Data: ScenarioData = {
       id: 'check-tx-modem-frequency',
       nice: ['K0792', 'K0773'],
       title: 'Verify TX Modem Configuration',
-      description: 'Confirm the TX modem is on the expected TIDEMARK-3 uplink IF.',
+      description:
+        "Scroll down on the TX Chain tab to the Transmitter Modems card, below the BUC and HPA panels. Read TX modem 1's frequency and bandwidth, and confirm they put the carrier on the coordinated TP-1 slot.",
       groundStation: 'VT-01',
+      intent: 'confirm',
       prerequisiteObjectiveIds: ['open-tx-chain'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
@@ -379,10 +391,18 @@ export const scenario15Data: ScenarioData = {
         {
           type: 'tx-modem-frequency-set',
           description: 'TX Modem at 1015 MHz IF',
+          // The field sits below the fold (nats-r3-s15-F2): a 5 s read on TX
+          // Chain before the quiz opens, and the quiz options differ by the
+          // IF the modem shows, so it cannot be answered without reading it
           params: {
             frequency: 1015e6,
             frequencyTolerance: 1e6,
+            requiresObservation: true,
+            observationTab: 'tx-chain',
+            observationDwellSeconds: 5,
           },
+          // Read, not set: the customer carrier is already on this slot
+          requiresChange: false,
           mustMaintain: true,
         },
         {
@@ -392,6 +412,7 @@ export const scenario15Data: ScenarioData = {
             bandwidth: 36e6,
             bandwidthTolerance: 1e6,
           },
+          requiresChange: false,
           mustMaintain: true,
         },
         {
@@ -399,15 +420,16 @@ export const scenario15Data: ScenarioData = {
           description: 'TX IF Sanity Check',
           params: {
             character: Character.SYSTEM,
-            question: 'BUC LO 7000 MHz, RF target 5985 MHz. Does the displayed TX IF match the expected value?',
+            question: "Read TX modem 1's frequency on the Transmitter Modems card. The BUC subtracts it from its 7000 MHz LO (RF = LO - IF), so where does that put our uplink?",
             options: [
-              'Yes - 1015 MHz IF matches 7000 minus 5985, carrier on the right slot',
-              'No - TX IF should read 5985 MHz, the BUC LO is not subtracted on the TX side',
-              'No - 1057 MHz IF is what 7000 minus 5943 gives, carrier is on the wrong slot',
-              'Cannot tell - the RX IF at 1490 MHz has to be checked before the TX slot is known',
+              'Modem reads 1015 MHz: 7000 - 1015 = 5985 MHz, the coordinated TP-1 center - carrier on the right slot',
+              'Modem reads 1057 MHz: 7000 - 1057 = 5943 MHz, the TIDEMARK-1 slot - modem still on the TIDEMARK-1 config',
+              'Modem reads 1490 MHz: the TIDEMARK-3 downlink IF - the TX modem was set to the receive frequency',
+              'Modem reads 983 MHz: 7000 - 983 = 6017 MHz, the TIDEMARK-2 slot - 32 MHz above the coordinated carrier',
             ],
             correctIndex: 0,
-            explanation: 'TX IF equals BUC LO minus uplink RF: 7000 minus 5985 equals 1015 MHz. The TX modem is on the right slot.',
+            explanation:
+              'TX modem 1 reads 1015.0 MHz and is 36 MHz wide. On this chain RF = BUC LO - IF, so 7000 - 1015 = 5985 MHz, the TP-1 center on the coordination sheet. That puts the carrier at 5967 to 6003 MHz, exactly what the guard-band math assumed.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -420,7 +442,7 @@ export const scenario15Data: ScenarioData = {
       id: 'observe-current-hpa-backoff',
       nice: ['K0773', 'S0648'],
       title: 'Observe HPA Backoff',
-      description: 'Note the current HPA backoff and reason about its impact on spectral cleanliness.',
+      description: 'Read the current HPA backoff and think through what it does to the spectrum.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['check-tx-modem-frequency'],
       timeLimitSeconds: 2 * 60,
@@ -438,16 +460,16 @@ export const scenario15Data: ScenarioData = {
           description: 'Read Current Backoff',
           params: {
             character: Character.SYSTEM,
-            question: 'The HPA is currently at 5 dB backoff. What does that imply for the transmit spectrum?',
+            question: 'Read Back-off and IM3 (2-tone) on the HPA panel. What do they say about the transmit spectrum?',
             options: [
-              'Operating close to saturation - third-order IMD will be elevated and spill several MHz past the carrier edges',
+              'Operating near saturation - third-order IMD will be high and spill several MHz past the carrier edges',
               'Operating with comfortable margin - 5 dB keeps third-order IMD below the noise floor at the carrier edges',
               'Operating in the linear region - a modulated carrier at 5 dB backoff generates no third-order IMD',
               'Operating at the design point - backoff sets output power only and has no bearing on adjacent emissions',
             ],
             correctIndex: 0,
             explanation:
-              '5 dB is a marginal backoff for a modulated carrier. Third-order IMD scales aggressively as the HPA approaches compression - spectral skirts widen and adjacent-channel power rises.',
+              'The panel reads 5 dB back-off and an IM3 of about -33 dBc, which is 10 dB worse than the -43 dBc you get at the standard 10 dB. Five dB is marginal for a modulated carrier, because third-order IMD grows quickly as the HPA nears compression, so more energy spills past the carrier edges and adjacent-channel power rises.',
             pointPenalty: 5,
             preserveOptionOrder: true,
           },
@@ -461,7 +483,7 @@ export const scenario15Data: ScenarioData = {
       id: 'understand-imd-mechanism',
       nice: ['K0773', 'K0737'],
       title: 'Understand IMD Mechanism',
-      description: 'Confirm your understanding of how HPA compression generates adjacent-channel energy.',
+      description: 'Confirm you understand how HPA compression puts energy next to the carrier.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['observe-current-hpa-backoff'],
       timeLimitSeconds: 2 * 60,
@@ -474,14 +496,14 @@ export const scenario15Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Why does a wideband modulated carrier driven near HPA saturation produce energy outside the nominal channel?',
             options: [
-              'Amplifier nonlinearity mixes spectral components, generating intermodulation products just outside the carrier edges',
+              'Amplifier nonlinearity mixes spectral components into intermodulation products just outside the carrier edges',
               'Waveguide heating under heavy drive widens the carrier, spreading modulation energy just outside the carrier edges',
               'BUC LO drift under heavy HPA drive smears the carrier, pushing modulation energy just outside the carrier edges',
               'Feed horn re-radiation under high drive couples energy into adjacent passbands just outside the carrier edges',
             ],
             correctIndex: 0,
             explanation:
-              'Near saturation, the HPA stops behaving linearly. Spectral components mix and produce IMD - the dominant third-order products fall just outside the carrier edges and drop with frequency offset.',
+              'Near saturation the HPA stops behaving linearly, so the spectral components of the carrier mix with each other and produce IMD. The dominant third-order products fall just outside the carrier edges and weaken as you move farther from the carrier.',
             pointPenalty: 5,
           },
           mustMaintain: false,
@@ -498,7 +520,7 @@ export const scenario15Data: ScenarioData = {
       id: 'evaluate-mitigation-options',
       nice: ['S0593', 'K0721'],
       title: 'Choose Mitigation',
-      description: 'Pick the right mitigation. Customer traffic must stay up; RedSky goes live in 25 minutes.',
+      description: 'Pick the right mitigation. Customer traffic must stay up, and RedSky goes live at 09:22.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['understand-imd-mechanism'],
       timeLimitSeconds: 2 * 60,
@@ -511,14 +533,14 @@ export const scenario15Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'SeaLink traffic must continue. Which mitigation is the right tool?',
             options: [
-              'Increase HPA backoff to 10 dB - suppresses IMD without dropping the carrier or coordinating with the customer',
+              'Increase HPA backoff to 10 dB - suppresses IMD and keeps SeaLink up with no customer coordination',
               'Cut TX modem power to zero - clears the IMD instantly and the carrier returns when RedSky is up',
               'Retune our TIDEMARK-3 carrier away from RedSky - widens the guard band past any IMD skirt we produce',
               'Engage a notch filter on the RX side at 5961 MHz - keeps their carrier out of our demodulator',
             ],
             correctIndex: 0,
             explanation:
-              'Backoff is the correct lever: it linearizes the amplifier, suppresses IMD, and is reversible. Cutting power kills the customer. Retuning needs SLA renegotiation. An RX notch does nothing for the neighbor.',
+              "Backoff is the right lever because it linearizes the amplifier, suppresses IMD, and can be reversed later. Cutting power would kill the customer's service. Retuning would mean renegotiating the SLA, the customer's service agreement. A notch filter on the receive side does nothing for the neighbor.",
             pointPenalty: 5,
             preserveOptionOrder: true,
           },
@@ -536,7 +558,7 @@ export const scenario15Data: ScenarioData = {
       id: 'increase-hpa-backoff',
       nice: ['S0593', 'K0792'],
       title: 'Increase HPA Backoff to 10 dB',
-      description: 'Raise the HPA backoff to 10 dB to clean up the spectral skirts.',
+      description: 'Raise the HPA backoff to 10 dB to clean up the spectrum on either side of the carrier.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['evaluate-mitigation-options'],
       timeLimitSeconds: 3 * 60,
@@ -566,8 +588,9 @@ export const scenario15Data: ScenarioData = {
       id: 'verify-hpa-still-online',
       nice: ['T0431', 'K0740'],
       title: 'Verify HPA Still Online',
-      description: 'Confirm the HPA is enabled, transmitting, and not overdriven after the backoff change.',
+      description: 'After the change, read the HPA panel on the TX Chain tab: Output, Back-off, IM3 (2-tone) and Overdrive. The TX modem should still be transmitting.',
       groundStation: 'VT-01',
+      intent: 'confirm',
       prerequisiteObjectiveIds: ['increase-hpa-backoff'],
       timeLimitSeconds: 2 * 60,
       timerStartTrigger: 'on-activate',
@@ -579,10 +602,11 @@ export const scenario15Data: ScenarioData = {
           params: { tab: 'tx-chain' },
           mustMaintain: true,
         },
+        // Keep it so (Q2): the change was the back-off, not these
         {
           type: 'hpa-enabled',
           description: 'HPA Enabled',
-          params: { requiresObservation: true, observationTab: 'tx-chain' },
+          requiresChange: false,
           mustMaintain: true,
         },
         {
@@ -594,7 +618,31 @@ export const scenario15Data: ScenarioData = {
           type: 'tx-modem-transmitting',
           description: 'Customer Traffic Still Flowing',
           params: { isTransmitting: true },
+          requiresChange: false,
           mustMaintain: true,
+        },
+        {
+          // Read quiz in place of the 5 s dwell (Phase 27 Q3, s15-F5).
+          // Ledger (nats-scenario15.json) at 5 dB: 55.0 dBm out, IM3 -33.0
+          // dBc. At 10 dB the ALC holds 50.0 dBm and IM3 reads about -43 dBc
+          // (2 dB per dB of back-off), as in S14 at the same setting.
+          type: 'status-check',
+          description: 'HPA Panel Read',
+          params: {
+            character: Character.SYSTEM,
+            question: 'What does the HPA panel read now that the back-off is 10 dB?',
+            options: [
+              'Output 50 dBm (100 W), back-off 10 dB, IM3 about -43 dBc, Overdrive Normal',
+              'Output 55 dBm (316 W), back-off 5 dB, IM3 about -33 dBc - the change has not taken',
+              'Output 50 dBm (100 W), back-off 10 dB, IM3 still about -33 dBc - back-off moves power, not IMD',
+              'Output -- dBm, HPA disabled - raising the back-off took the amplifier offline',
+            ],
+            correctIndex: 0,
+            explanation:
+              "The ALC dropped the output 5 dB to 50 dBm, and the IM3 readout fell about 10 dB, from about -33 to -43 dBc, because third-order products fall about 2 dB for every dB of back-off. The HPA is still on and still carrying SeaLink. The other readings would mean the change didn't take, or that the amplifier went offline.",
+            pointPenalty: 5,
+          },
+          mustMaintain: false,
         },
       ],
       conditionLogic: 'AND',
@@ -608,7 +656,7 @@ export const scenario15Data: ScenarioData = {
       id: 'open-rx-analysis',
       nice: ['S0421'],
       title: 'Open RX Analysis',
-      description: 'Switch to the RX Analysis tab to use the spectrum analyzer.',
+      description: 'Open the RX Analysis tab to use the spectrum analyzer.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-hpa-still-online'],
       timeLimitSeconds: 1 * 60,
@@ -630,7 +678,7 @@ export const scenario15Data: ScenarioData = {
       nice: ['K0737', 'S0421'],
       title: 'Tune Spectrum to TIDEMARK-3 Downlink',
       description:
-        "Reconfigure the spectrum analyzer to view the TIDEMARK-3 downlink IF region (1490 MHz with VT-01 LNB LO at 5250 and downlink RF 3760). Use a wide span so RedSky's adjacent slot is visible too.",
+        "Set the spectrum analyzer to look at the TIDEMARK-3 downlink IF: center 1490 MHz (the 5250 MHz LNB LO minus the 3760 MHz downlink RF), span about 75 MHz so RedSky's adjacent slot is visible too, and an amplitude scale of -100 to -30 dBm. Leave the RBW (resolution bandwidth) on Auto, as the beacon preset has it.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['open-rx-analysis'],
       timeLimitSeconds: 3 * 60,
@@ -657,14 +705,8 @@ export const scenario15Data: ScenarioData = {
           description: 'Span Wide Enough for Adjacent Slot',
           params: {
             span: 75e6,
-            frequencyTolerance: 25e6,
+            spanTolerance: 25e6,
           },
-          maintainUntilObjectiveComplete: true,
-        },
-        {
-          type: 'speca-rbw-set',
-          description: 'RBW Auto',
-          params: { rbw: null as unknown as number },
           maintainUntilObjectiveComplete: true,
         },
         {
@@ -681,7 +723,8 @@ export const scenario15Data: ScenarioData = {
           description: 'Max Amplitude near -30 dBm',
           params: {
             maxAmplitude: -30 as dBm,
-            maxAmplitudeTolerance: 15,
+            // The beacon preset tops out at -40: the player moves it up
+            maxAmplitudeTolerance: 5,
           },
           maintainUntilObjectiveComplete: true,
         },
@@ -693,7 +736,7 @@ export const scenario15Data: ScenarioData = {
       id: 'confirm-carrier-still-nominal',
       nice: ['T0153', 'K0740'],
       title: 'Confirm Carrier Still Nominal',
-      description: 'Verify the SeaLink TIDEMARK-3 downlink is still healthy after the backoff change.',
+      description: 'Check that the SeaLink TIDEMARK-3 downlink is still healthy after the backoff change.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['tune-speca-to-downlink'],
       timeLimitSeconds: 2 * 60,
@@ -712,7 +755,8 @@ export const scenario15Data: ScenarioData = {
               'Beacon gone from the span - the HPA backoff change affects the beacon before it affects the carrier',
             ],
             correctIndex: 0,
-            explanation: 'Backing off the HPA reduces output power a few dB and dramatically suppresses IMD. Customer link remains operational with cleaner spectral skirts.',
+            explanation:
+              'Backing the HPA off from 5 to 10 dB drops its output 5 dB (55 to 50 dBm, 316 to 100 W) and pulls the IM3 (2-tone) readout down about 10 dB, from about -33 to -43 dBc. Nothing about that change removes the carrier or widens it, so the customer link stays up with cleaner edges.',
             pointPenalty: 5,
             preserveOptionOrder: true,
           },
@@ -726,7 +770,7 @@ export const scenario15Data: ScenarioData = {
       id: 'verify-receiver-locked',
       nice: ['T0153', 'K0741'],
       title: 'Verify Receiver Locked',
-      description: 'Confirm the customer-traffic receiver is still demodulating cleanly.',
+      description: 'Watch RX modem 1 on the RX Analysis tab for a few seconds. The customer-traffic receiver must still be locked.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['confirm-carrier-still-nominal'],
       timeLimitSeconds: 2 * 60,
@@ -735,7 +779,8 @@ export const scenario15Data: ScenarioData = {
         {
           type: 'receiver-signal-locked',
           description: 'Receiver Locked',
-          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis' },
+          // Locked from load, so a 5 s read is the action (nats-s15-F5)
+          params: { modemNumber: 1, requiresObservation: true, observationTab: 'rx-analysis', observationDwellSeconds: 5 },
           mustMaintain: true,
         },
       ],
@@ -750,7 +795,7 @@ export const scenario15Data: ScenarioData = {
       id: 'confirm-spectrum-clean-for-partner',
       nice: ['S0648', 'K0792'],
       title: 'Draft Confirmation to RedSky',
-      description: "Decide what to send back to RedSky's coordinator.",
+      description: "Choose the confirmation to send back to RedSky's coordinator.",
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['verify-receiver-locked'],
       timeLimitSeconds: 2 * 60,
@@ -761,7 +806,7 @@ export const scenario15Data: ScenarioData = {
           description: 'Ready to Confirm',
           params: {
             character: Character.SYSTEM,
-            question: 'After raising HPA backoff to 10 dB, what is the correct status to send back to RedSky?',
+            question: "Now that the HPA backoff is 10 dB, what's the correct status to send back to RedSky?",
             options: [
               'Confirmed clear. TP-1 carrier 5967-6003 MHz H-pol, adjacent-channel emissions below your slot. Proceed 5961 MHz V-pol as scheduled.',
               'Confirmed clear. TP-1 carrier 5967-6003 MHz H-pol muted for your window, spectrum released. Proceed 5961 MHz V-pol as scheduled.',
@@ -770,7 +815,7 @@ export const scenario15Data: ScenarioData = {
             ],
             correctIndex: 0,
             explanation:
-              "Factual coordination response: state your occupied band, confirm adjacent-channel emissions are below the neighbor's threshold, and clear them to proceed.",
+              "A good coordination reply states your occupied band, confirms that adjacent-channel emissions are below the neighbor's threshold, and clears them to proceed. The other replies mute our carrier, withhold clearance, or claim a retune we haven't made.",
             pointPenalty: 5,
             preserveOptionOrder: true,
           },
@@ -788,7 +833,7 @@ export const scenario15Data: ScenarioData = {
       id: 'log-coordination-event',
       nice: ['K0645', 'T1143'],
       title: 'Log Coordination Event',
-      description: 'Select the correct shift log entry for this coordination.',
+      description: 'Choose the shift log entry that correctly records this coordination.',
       groundStation: 'VT-01',
       prerequisiteObjectiveIds: ['confirm-spectrum-clean-for-partner'],
       timeLimitSeconds: 2 * 60,
@@ -801,13 +846,14 @@ export const scenario15Data: ScenarioData = {
             character: Character.SYSTEM,
             question: 'Which entry correctly records this event for the next shift?',
             options: [
-              '0937 - RedSky notice confirmed. TP-1 HPA backoff raised 5 to 10 dB to suppress adjacent IMD. RedSky cleared for 5961 MHz V-pol, SeaLink nominal.',
-              '0937 - RedSky notice denied. TP-1 HPA backoff held at 5 dB, guard band judged too tight. RedSky advised to relocate slot, SeaLink nominal.',
-              '0937 - RedSky notice confirmed. TP-1 HPA backoff held at 5 dB, cross-pol isolation judged sufficient. RedSky cleared for 5961 MHz V-pol, SeaLink nominal.',
-              '0937 - RedSky notice confirmed. TP-1 carrier muted for the RedSky window to clear adjacent IMD. RedSky cleared for 5961 MHz V-pol, SeaLink down.',
+              'RedSky 0922 slot - notice confirmed. TP-1 HPA backoff raised 5 to 10 dB to suppress adjacent IMD. RedSky cleared for 5961 MHz V-pol, SeaLink nominal.',
+              'RedSky 0922 slot - notice denied. TP-1 HPA backoff held at 5 dB, guard band judged too tight. RedSky advised to relocate slot, SeaLink nominal.',
+              'RedSky 0922 slot - notice confirmed. TP-1 HPA backoff held at 5 dB, cross-pol isolation judged sufficient. RedSky cleared for 5961 MHz V-pol, SeaLink nominal.',
+              'RedSky 0922 slot - notice confirmed. TP-1 carrier muted for the RedSky window to clear adjacent IMD. RedSky cleared for 5961 MHz V-pol, SeaLink down.',
             ],
             correctIndex: 0,
-            explanation: "The log captures what we did, why, and what we cleared. Next shift picks up with full context if RedSky's uplink behaves unexpectedly.",
+            explanation:
+              "A good log entry records what we did, why we did it and what we cleared, so the next shift has the full context if RedSky's uplink behaves unexpectedly. The other entries record a decision we didn't make or an outage we didn't cause.",
             pointPenalty: 5,
             preserveOptionOrder: true,
           },
@@ -825,7 +871,7 @@ export const scenario15Data: ScenarioData = {
         <em>[Text message from Dana at 09:12]</em>
       </p>
       <p>
-        "Coordination notice in your inbox - RedSky Teleport. They're lighting up a V-pol carrier on TM-3 in 25 minutes, 2 MHz off our edge. Verify our spectrum is clean and send the confirmation back. Routine. Don't drop the SeaLink carrier."
+        "RedSky Teleport sent a coordination notice, and it's in your inbox. They're lighting up a V-pol carrier on TIDEMARK-3 in 10 minutes, and it sits 2 MHz off the edge of our SeaLink carrier. Check that our spectrum is clean and send the confirmation back. It's routine, but don't drop the SeaLink carrier."
       </p>
       `,
       character: Character.DANA_TORRES,
@@ -833,10 +879,12 @@ export const scenario15Data: ScenarioData = {
       audioUrl: getAssetUrl('/assets/campaigns/nats/15/intro.mp3'),
     },
     objectives: {
-      'compute-guard-band': {
+      // Keyed to the adequacy question's completion: played before it, "check
+      // the TX chain" gave its answer away
+      'assess-guard-adequacy': {
         text: `
         <p>
-          2 MHz edge-to-edge plus cross-pol. Tight but workable - if our skirts are clean. Check the TX chain.
+          A 2 MHz gap plus cross-pol isolation makes this tight but workable, as long as our own spectrum is clean. Open the TX Chain tab and look at how the transmit chain is set up.
         </p>
         `,
         character: Character.DANA_TORRES,
@@ -856,7 +904,7 @@ export const scenario15Data: ScenarioData = {
       'log-coordination-event': {
         text: `
         <p>
-          Confirmation sent to RedSky. Good neighbor work. Next coordination notice goes through the same process - they'll know to expect a clean response from this station.
+          The confirmation has gone to RedSky, and the log gives the next shift the whole story. That's good neighbor work. The next coordination notice goes through the same process, so RedSky will know to expect a clean answer from this station.
         </p>
         `,
         character: Character.DANA_TORRES,

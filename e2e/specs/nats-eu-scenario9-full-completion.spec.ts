@@ -71,11 +71,11 @@ test.describe('nats-eu Scenario 9 Full Completion', () => {
     await waitForObjectiveComplete(missionControl, 'Take the Shift');
   });
 
-  test('[galway-dashboard-sweep] reads the board: AGC rail, no faults', async () => {
+  test('[galway-dashboard-sweep] reads the board: AGC no-carrier warning, no faults', async () => {
     await missionControl.selectGroundStation('GW-01');
     await missionControl.selectTab('dashboard');
-    await expectDashboardAlarm(page, 'AGC at max gain');
-    await answerSystemQuiz(page, 'RX AGC at max gain');
+    await expectDashboardAlarm(page, 'AGC on noise only');
+    await answerSystemQuiz(page, 'Receive AGC on noise only');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'GW-01 Dashboard Sweep');
   });
@@ -127,8 +127,8 @@ test.describe('nats-eu Scenario 9 Full Completion', () => {
   test('[shetland-dashboard-sweep] reads the remote board', async () => {
     await missionControl.selectGroundStation('SH-02');
     await missionControl.selectTab('dashboard');
-    await expectDashboardAlarm(page, 'AGC at max gain');
-    await answerSystemQuiz(page, 'Nothing in the alarm set is tripped');
+    await expectDashboardAlarm(page, 'AGC on noise only');
+    await answerSystemQuiz(page, 'No alarm is tripped');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'SH-02 Dashboard Sweep');
   });
@@ -142,7 +142,7 @@ test.describe('nats-eu Scenario 9 Full Completion', () => {
   test('[shetland-receive-chain] reads the Shetland LNB and predicts the 73 degree peak', async () => {
     await missionControl.selectTab('rx-analysis');
     await page.waitForTimeout(2500);
-    await answerSystemQuiz(page, 'About 16 dB');
+    await answerSystemQuiz(page, 'About 17 dB');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'SH-02 Receive Chain');
   });
@@ -165,7 +165,7 @@ test.describe('nats-eu Scenario 9 Full Completion', () => {
   test('[decode-the-standing-collect] decodes the 1414 MHz downlink for Erik', async () => {
     await missionControl.selectTab('rx-analysis');
     await advanceMissionClockToUtc(page, '2027-03-17T06:21:30Z');
-    await answerSystemQuiz(page, 'Decoded with about 5 dB');
+    await answerSystemQuiz(page, 'Decoded with about 8 dB');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Decode the Standing Collect', 60000);
   });
@@ -179,7 +179,7 @@ test.describe('nats-eu Scenario 9 Full Completion', () => {
   });
 
   test('[take-the-shetland-console] takes SH-02 after Fiona sets and retunes it for SAR-2', async () => {
-    await advanceMissionClockToUtc(page, '2027-03-17T06:29:20Z');
+    await advanceMissionClockToUtc(page, '2027-03-17T06:28:30Z');
     await missionControl.selectGroundStation('SH-02');
     await setRxModemFrequency(page, missionControl, 1370);
     await fillAndChange(page, '#sa-center-freq', '1397');

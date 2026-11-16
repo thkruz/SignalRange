@@ -1,6 +1,7 @@
 import { expect, Locator, Page } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
 import { waitForQuizToAppear } from './simulation-helpers';
+import { advanceUntil, canBurst, hasTestClock, simAdvance } from './test-clock';
 
 /**
  * Shared helpers for the ham-sdr (Campaign 3) full-completion specs.
@@ -37,7 +38,7 @@ export async function answerRileyQuiz(page: Page, answerText: string): Promise<v
 export async function advanceClock(page: Page, minutes: number): Promise<void> {
   await page.waitForFunction(() => typeof (window as any).advanceClock === 'function');
   await page.evaluate((ms) => (window as any).advanceClock(ms), minutes * 60_000);
-  await page.waitForTimeout(3000);
+  await simAdvance(page, 3000);
 }
 
 /**
@@ -51,7 +52,42 @@ export async function advanceMissionClockToUtc(page: Page, targetIsoUtc: string)
     const deltaMs = targetMs - (window as any).simClockMs();
     if (deltaMs > 0) (window as any).advanceClock(deltaMs);
   }, Date.parse(targetIsoUtc));
-  await page.waitForTimeout(2500);
+  await simAdvance(page, 2500);
+}
+
+/** True when the bench HUD replaces the station computer's chrome (no tab bar, no sidebar, no command bar) */
+export async function isMinimalHud(page: Page): Promise<boolean> {
+  return page.evaluate(() => document.documentElement.classList.contains('mc-minimal-hud'));
+}
+
+/** Put down whatever is held fullscreen (the logbook, the laptop, a close-up) */
+export async function putDownHeld(page: Page): Promise<void> {
+  const held = page.locator('.immersive-view[open] .immersive-leave');
+  for (let i = 0; i < 3 && (await held.last().isVisible()); i++) await held.last().click();
+}
+
+/**
+ * Campaign 3 bench HUD (phase 44): the mission papers are pages of the logbook beside the bench. Pick the
+ * logbook up from the kit tray and turn to the paper (it opens in its own window and the logbook is put down).
+ */
+export async function openLogbookMission(page: Page, mission: 'brief' | 'checklist' | 'dialog-history' | 'ops-log' | 'working-doc' | 'campaign-record'): Promise<void> {
+  await putDownHeld(page);
+  await page.locator('[data-field-kit="logbook"]').click();
+  const leaf = page.locator(`.field-kit-sheets [data-field-mission="${mission}"]`);
+  if (await leaf.isVisible().catch(() => false)) await leaf.click();
+}
+
+/** Open the objectives checklist: the sidebar button, or the logbook's checklist page under the bench HUD */
+async function ensureChecklist(missionControl: MissionControlPage): Promise<void> {
+  if (await missionControl.objectivesChecklist.isVisible().catch(() => false)) return;
+  const page = missionControl.objectivesChecklist.page();
+  if (await isMinimalHud(page)) {
+    await openLogbookMission(page, 'checklist');
+    await expect(missionControl.objectivesChecklist).toBeVisible();
+
+    return;
+  }
+  await missionControl.openChecklist();
 }
 
 /** The checklist `.objective-item` whose title matches, regardless of collapse. */
@@ -61,16 +97,35 @@ export function objectiveItem(missionControl: MissionControlPage, title: string)
 
 /** Poll the checklist until the named objective carries the `completed` class. */
 export async function waitForObjectiveComplete(missionControl: MissionControlPage, title: string, timeout = 45000): Promise<void> {
-  if (!(await missionControl.objectivesChecklist.isVisible().catch(() => false))) {
-    await missionControl.openChecklist();
+  await ensureChecklist(missionControl);
+  try {
+    const page = missionControl.objectivesChecklist.page();
+    if (hasTestClock(page) || canBurst(page)) {
+      // Fast-forward page time (clock or burst) until the row completes; the expect below then passes at once.
+      // evaluateAll, not getAttribute: a title can match more than one row (strict mode would throw)
+      const row = objectiveItem(missionControl, title);
+      await advanceUntil(page, () => row.evaluateAll((els) => els.some((el) => el.classList.contains('completed'))).catch(() => false), {
+        maxMs: timeout,
+        message: `'${title}' completed`,
+      }).catch(() => undefined);
+    }
+    await expect(objectiveItem(missionControl, title)).toHaveClass(/completed/, { timeout });
+  } catch (error) {
+    // Name the rows still open: "not completed" alone cannot tell a stuck
+    // action from a requiresChange row or an off-screen signal
+    const open = await objectiveItem(missionControl, title)
+      .locator('.condition-item.incomplete .condition-text')
+      .allInnerTexts()
+      .catch(() => [] as string[]);
+    throw new Error(`'${title}' not completed; open rows: ${open.join(' | ') || '(none shown)'}
+${String(error)}`);
   }
-  await expect(objectiveItem(missionControl, title)).toHaveClass(/completed/, { timeout });
 }
 
 /** Read the SDR console carrier-offset readout ("+4300 Hz"), NaN when idle. */
 export async function readOffsetHz(page: Page): Promise<number> {
   const text = (await page.locator('#sdr-offset-readout').textContent()) ?? '';
-  return parseInt(text.replace(/[^\d+-]/g, ''), 10);
+  return parseInt(text.replace(/[^\d+-]/gu, ''), 10);
 }
 
 /**
@@ -128,9 +183,7 @@ export async function rideUntilObjectiveComplete(
   opts: { maxMs?: number; correct?: boolean } = {}
 ): Promise<boolean> {
   const { maxMs = 220_000, correct = true } = opts;
-  if (!(await missionControl.objectivesChecklist.isVisible().catch(() => false))) {
-    await missionControl.openChecklist();
-  }
+  await ensureChecklist(missionControl);
 
   const lockIndicator = page.locator('#sdr-lock-indicator');
   const deadline = Date.now() + maxMs;
@@ -144,7 +197,7 @@ export async function rideUntilObjectiveComplete(
       .evaluate((el) => el.classList.contains('completed'))
       .catch(() => false);
     if (done) return everLocked;
-    await page.waitForTimeout(4000);
+    await simAdvance(page, 4000);
   }
   return everLocked;
 }

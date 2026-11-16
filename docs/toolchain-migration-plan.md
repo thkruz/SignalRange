@@ -6,7 +6,7 @@
 > "Outcome" section at the end for what was measured and what differed from
 > this plan.
 
-Written 2026-09-10. Reference repo: `D:\code\keeptrack\keeptrack-space` (v13.10.0).
+Written 2026-09-10. Reference repo: `D:\code\kruczek-labs\01-aerospace\keeptrack\keeptrack-space` (v13.10.0).
 keeptrack.space did this same migration in 2026 in this order: pnpm, Biome, CI, tsgo,
 rspack/SWC, hooks. Its commit history is the playbook (see "Prior art" at the end).
 

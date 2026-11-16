@@ -4,11 +4,11 @@
 
 1 MHz Guard Bands
 
-5925 - 5943 - 5961 - TIDEMARK-1-TDMA-Composite
+5925 - 5943 - 5961 - TIDEMARK-1-Teleport (hub carrier, VT-01 or ME-02 uplink)
 5888 - 5906 - 5924 - TIDEMARK-1-Teleport
 6400.5 (4175.5) - Beacon
 
-5999 - 6017 - 6035 - TIDEMARK-2-TDMA-Composite
+5999 - 6017 - 6035 - TIDEMARK-2-Teleport (hub carrier, VT-01 or ME-02 uplink)
 5962 - 5980 - 5998 - TIDEMARK-2-Teleport
 6405 (4180) - Beacon
 

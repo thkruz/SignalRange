@@ -16,6 +16,8 @@ import { Events } from '@app/events/events';
 import { GnssThreatManager } from '@app/gnss-threat/gnss-threat-manager';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import type { dB, FECType, MHz, ModulationType } from '@app/types';
+import { wrapAzimuthDeg } from '../az-display';
+import { pickerEntries, pickerOptionsHtml, SatellitePicker } from '../satellite-picker';
 import './sdr-console-tab.css';
 
 /** Known allocations painted on the band plan ribbon (RF Hz) */
@@ -49,6 +51,7 @@ export class SdrConsoleTab extends BaseElement {
   private static readonly SYNC_INTERVAL_MS = 250;
   private static readonly DISPLAY_INTERVAL_MS = 120;
 
+  private targetPicker_: SatellitePicker | null = null;
   private readonly groundStation_: GroundStation;
   private readonly receiver_: Receiver | undefined;
   private readonly antenna_: AntennaCore | undefined;
@@ -130,13 +133,13 @@ export class SdrConsoleTab extends BaseElement {
     const isCircular = this.antenna_?.config.polType === 'circular';
     const handedness = this.antenna_?.state.circularHandedness ?? 'RHCP';
 
-    const satelliteOptions = SimulationManager.getInstance()
-      .satellites.map((sat) => html`<option value="${sat.noradId}">${sat.name}</option>`)
-      .join('');
+    // Authored, pinned and selected satellites (every authored satellite in a small scenario); members are searched
+    const sim = SimulationManager.getInstance();
+    const satelliteOptions = pickerOptionsHtml(pickerEntries(sim, '', null));
 
-    // Bookmarks: every downlink beacon in the scenario
-    const bookmarkRows = SimulationManager.getInstance()
-      .satellites.flatMap((sat) => sat.transponders.filter((tp) => tp.beacon?.frequency).map((tp) => ({ name: tp.beacon!.signalId, freqHz: tp.beacon!.frequency as number })))
+    // Bookmarks: every downlink beacon of the authored and pinned satellites
+    const bookmarkRows = ((sim as { registry?: { tracked(): typeof sim.satellites } }).registry?.tracked() ?? sim.satellites)
+      .flatMap((sat) => sat.transponders.filter((tp) => tp.beacon?.frequency).map((tp) => ({ name: tp.beacon!.signalId, freqHz: tp.beacon!.frequency as number })))
       .map(
         ({ name, freqHz }) => html`
         <button class="sdr-bookmark" data-freq-hz="${freqHz}">
@@ -482,7 +485,10 @@ export class SdrConsoleTab extends BaseElement {
       this.syncDomWithState_();
     });
 
-    // One-knob hobbyist notch: fixed 300 kHz / 30 dB at the entered center
+    // One-knob hobbyist notch: fixed 100 kHz / 30 dB at the entered center.
+    // (300 kHz until phase 19.5: centred on C3 S7's 80 kHz hash at 435.36 it
+    // also took 30 dB off CUBEHOP-1 at 435.25, which only went unnoticed while
+    // lock ignored C/N)
     const notchEnable = qs<HTMLInputElement>('#sdr-notch-enable', dom);
     const notchFreq = qs<HTMLInputElement>('#sdr-notch-freq', dom);
     const applyNotch = () => {
@@ -492,7 +498,7 @@ export class SdrConsoleTab extends BaseElement {
       this.notch_.handleNotchChange(0, {
         enabled: notchEnable.checked && Number.isFinite(centerMhz) && centerMhz > 0,
         centerFrequency: (Number.isFinite(centerMhz) ? centerMhz : 0) as MHz,
-        bandwidth: 0.3 as MHz,
+        bandwidth: 0.1 as MHz,
         depth: 30 as dB,
       });
       this.syncDomWithState_();
@@ -555,6 +561,10 @@ export class SdrConsoleTab extends BaseElement {
     // Rotator panel (only rendered for steerable antennas)
     const trackToggle = dom.querySelector<HTMLInputElement>('#sdr-rot-track');
     const targetSelect = dom.querySelector<HTMLSelectElement>('#sdr-rot-target');
+    if (targetSelect && pickerEntries(SimulationManager.getInstance(), '', null).scale) {
+      this.targetPicker_ = new SatellitePicker(targetSelect, SimulationManager.getInstance(), { placeholder: '-- select satellite --' });
+      this.targetPicker_.refresh(this.antenna_?.state.targetSatelliteId ?? null);
+    }
     trackToggle?.addEventListener('change', () => {
       if (!trackToggle.checked) {
         this.antenna_?.handleTrackingModeChange('manual');
@@ -891,6 +901,11 @@ export class SdrConsoleTab extends BaseElement {
       lockText = 'MODE?';
     } else if (info.hasCarrier && info.isBandwidthClipped) {
       lockText = 'BW TOO WIDE';
+    } else if (info.hasCarrier && info.lockState === 'acquiring') {
+      lockText = 'ACQUIRING';
+    } else if (info.hasCarrier && (info.lockMargin_dB ?? 0) < 0) {
+      // Right mode, right channel: the carrier is just too weak to decode
+      lockText = 'LOW SNR';
     } else if (!info.hasCarrier && passbandExcess.mean > 3) {
       // The whole passband is lifted above the noise, but nothing the modem
       // accepts: the channel is narrower than the signal sitting in it
@@ -1029,7 +1044,7 @@ export class SdrConsoleTab extends BaseElement {
 
     const azReadout = dom.querySelector<HTMLElement>('#sdr-rot-az');
     if (azReadout) {
-      azReadout.textContent = `${antenna.state.azimuth.toFixed(1)}°`;
+      azReadout.textContent = `${wrapAzimuthDeg(antenna.state.azimuth).toFixed(1)}°`;
     }
     const elReadout = dom.querySelector<HTMLElement>('#sdr-rot-el');
     if (elReadout) {
@@ -1056,6 +1071,7 @@ export class SdrConsoleTab extends BaseElement {
 
     const targetSelect = dom.querySelector<HTMLSelectElement>('#sdr-rot-target');
     if (targetSelect && document.activeElement !== targetSelect && antenna.state.targetSatelliteId !== null) {
+      this.targetPicker_?.refresh(antenna.state.targetSatelliteId);
       targetSelect.value = String(antenna.state.targetSatelliteId);
     }
   }
@@ -1103,6 +1119,8 @@ export class SdrConsoleTab extends BaseElement {
 
   public dispose(): void {
     EventBus.getInstance().off(Events.UPDATE, this.boundUpdateHandler_);
+    this.targetPicker_?.dispose();
+    this.targetPicker_ = null;
     this.dom_?.remove();
   }
 }

@@ -164,4 +164,37 @@ describe('EventBus', () => {
       expect(instance1).not.toBe(instance2);
     });
   });
+
+  describe('onRecreate', () => {
+    it('runs for each new bus after destroy, and stops once unregistered', () => {
+      EventBus.getInstance();
+      const listener = vi.fn();
+      const unregister = EventBus.onRecreate(listener);
+
+      EventBus.destroy();
+      const fresh = EventBus.getInstance();
+      EventBus.getInstance();
+
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(listener).toHaveBeenCalledWith(fresh);
+
+      unregister();
+      EventBus.destroy();
+      EventBus.getInstance();
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it('lets a long-lived subscriber hear events on the replacement bus', () => {
+      const handler = vi.fn();
+      const subscribe = (bus: EventBus) => bus.on(Events.SCENARIO_CHANGED, handler);
+      subscribe(EventBus.getInstance());
+      const unregister = EventBus.onRecreate(subscribe);
+
+      EventBus.destroy();
+      EventBus.getInstance().emit(Events.SCENARIO_CHANGED, { scenarioId: 'nats-scenario2' });
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      unregister();
+    });
+  });
 });

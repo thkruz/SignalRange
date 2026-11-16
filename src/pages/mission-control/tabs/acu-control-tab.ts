@@ -5,12 +5,20 @@ import { PolarPlot } from '@app/components/polar-plot/polar-plot';
 import { html } from '@app/engine/utils/development/formatter';
 import { qs } from '@app/engine/utils/query-selector';
 import { TrackingMode } from '@app/equipment/antenna/antenna-core';
+import { antennaLockLabel, trackingModeLabel } from '@app/equipment/antenna/tracking-mode-label';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { EventAutoLogger } from '@app/ops-log/event-auto-logger';
+import { stationTagForAntennaState } from '@app/ops-log/station-tag';
+import { AlarmService } from '@app/services/alarm-service';
+import { SimClock } from '@app/simulation/sim-clock';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { parseLocalizedNumber } from '@app/utils/parse-number';
 import { WeatherManager } from '@app/weather/weather-manager';
+import { alarmLed, applyAlarmLed } from '../alarm-led';
+import { wrapAzimuthDeg } from '../az-display';
 import './acu-control-tab.css';
+import { SatellitePicker } from '../satellite-picker';
 import { AntennaAdapter } from './antenna-adapter';
 import { OMTAdapter } from './omt-adapter';
 
@@ -45,12 +53,55 @@ export class ACUControlTab extends BaseElement {
   private elFineControl_: FineAdjustControl | null = null;
   private polFineControl_: FineAdjustControl | null = null;
 
+  /** Pattern loss within which a satellite counts as inside the beam, dB (about 0.9 of the -3 dB beamwidth off axis) */
+  static readonly IN_BEAM_MAX_LOSS_DB = 10;
+
+  /**
+   * Carriers the dish hears from satellites inside its main beam, locked or
+   * not. Sidelobe pickup (a big dish parked at El 5 still hears GEO carriers
+   * above its detection floor) is not "in view": parked off the satellite
+   * this reads 0, as the Dashboard's Signals count does (nats-r5-s11-F1).
+   */
+  static signalsInBeam(antenna: GroundStation['antennas'][number]): number {
+    const heard = antenna.state.rxSignalsIn;
+    if (heard.length === 0) return 0;
+    const inBeam = new Set<string>();
+    for (const { signal, view } of antenna.rxSignals) {
+      if (antenna.pointingLossDb(view.az, view.el, signal.frequency) <= ACUControlTab.IN_BEAM_MAX_LOSS_DB) inBeam.add(signal.signalId);
+    }
+    return heard.filter((s) => inBeam.has(s.signalId)).length;
+  }
+
+  /** ICE ON FEED warning / error levels, dB (AntennaCore.getStatusAlarms) */
+  private static readonly ICE_ON_FEED_WARNING_DB = 2;
+  private static readonly ICE_ON_FEED_ERROR_DB = 5;
+
+  /** Falling precipitation by weather event type, as the Environmental LED titles it */
+  private static readonly PRECIP_LABELS_: Readonly<Record<string, string>> = { snow: 'Snow', hail: 'Hail', ice: 'Freezing rain', rain: 'Rain' };
+  /** Precipitation the feed heater mitigates (it melts what would freeze on the feed) */
+  private static readonly FROZEN_PRECIP_: ReadonlySet<string> = new Set(['snow', 'hail', 'ice']);
+
+  /**
+   * Scenario second (floor(SimClock.nowMs() / 1000)) the alarm-facing readouts
+   * (ACU header LED, precipitation, ice, Environmental LED) last refreshed on.
+   * AlarmService samples on the same boundary (Phase 33 D7, nats-r8-s20-F1),
+   * so the card, the alarm tooltip and the Ops Log raise/clear lines quote one
+   * value per second. NaN until the first refresh.
+   */
+  private lastAlarmSyncSecond_ = Number.NaN;
+
   // Beacon display throttling (1 second interval like other adapters)
   private static readonly BEACON_UPDATE_INTERVAL_MS = 1000;
   private lastBeaconSyncTime_: number = 0;
 
-  // Active target satellite (only updates when "Move to Target" is clicked)
-  private activeTargetSatelliteId_: number | null = null;
+  // Satellite list the target dropdown was last built from (rebuilt when it changes)
+  private satellitePicker_: SatellitePicker | null = null;
+  /**
+   * Target picked in the dropdown but not yet commanded. Like MAINT/STOW and
+   * the Az/El edits (staged until APPLY), a pick moves nothing until Move to
+   * Target commits it (nats-r3-s12-F3). undefined: nothing staged.
+   */
+  private stagedTargetId_: number | undefined = undefined;
 
   // Event handler cleanup tracking
   private readonly boundHandlers_: Map<string, { element: Element; event: string; handler: EventListener }> = new Map();
@@ -108,6 +159,7 @@ export class ACUControlTab extends BaseElement {
               <button type="button" class="btn btn-tracking ${p}btn-tracking active" data-mode="manual">MANUAL</button>
               <button type="button" class="btn btn-tracking ${p}btn-tracking" data-mode="program-track">PROGRAM</button>
             </div>
+            <span id="${p}staged-mode-badge" class="status-badge status-badge-amber" style="display: none;" title="Staged mode: the applied mode keeps running until APPLY"></span>
 
             <!-- Power & Loopback -->
             <div class="d-flex gap-3">
@@ -175,6 +227,7 @@ export class ACUControlTab extends BaseElement {
                     <option value="">-- Select Satellite --</option>
                   </select>
                 </div>
+                <div id="${p}target-staged-hint" class="form-text text-warning mb-2" style="display: none;"></div>
                 <button id="${p}move-to-target-btn" class="btn btn-primary w-100" disabled>
                   Move to Target
                 </button>
@@ -183,7 +236,7 @@ export class ACUControlTab extends BaseElement {
                 <div class="border-top pt-3 mt-3">
                   <div class="d-flex justify-content-between align-items-center mb-2">
                     <div>
-                      <span class="fw-bold">Step-Track Optimization</span>
+                      <label for="${p}step-track-toggle" class="fw-bold mb-0" style="cursor: pointer;">Step-Track Optimization</label>
                       <div class="text-muted small">Fine beacon correction</div>
                     </div>
                     <div class="form-check form-switch mb-0">
@@ -205,6 +258,7 @@ export class ACUControlTab extends BaseElement {
                                value="3948" step="0.1" min="1000" max="50000">
                         <span class="input-group-text">MHz</span>
                       </div>
+                      <div class="form-text small font-monospace" id="${p}beacon-if" title="Where the beacon lands at the LNB output: |LNB LO - RF| (what the spectrum analyzer tunes to)">IF: -- MHz</div>
                     </div>
                     <div class="mb-2">
                       <label class="form-label small mb-1">Search Bandwidth</label>
@@ -239,11 +293,11 @@ export class ACUControlTab extends BaseElement {
                     <span id="${p}tracking-mode-display" class="fw-bold font-monospace">MANUAL</span>
                   </div>
                   <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted">Lock Status:</span>
+                    <span class="text-muted">Pointing:</span>
                     <span id="${p}lock-status-display" class="fw-bold">UNLOCKED</span>
                   </div>
                   <div class="d-flex justify-content-between">
-                    <span class="text-muted">Signals:</span>
+                    <span class="text-muted" title="RF carriers from satellites inside the dish's main beam, locked or not; sidelobe pickup is not counted. The Dashboard's Signals count is locked carriers.">RF signals in view:</span>
                     <span id="${p}signals-count-display" class="fw-bold font-monospace">0</span>
                   </div>
                 </div>
@@ -252,13 +306,13 @@ export class ACUControlTab extends BaseElement {
               <!-- Beacon C/N Display - visible in manual and program-track modes -->
               <div id="${p}beacon-display-section" class="mt-3" style="display: none;">
                 <div class="beacon-strength-container">
-                  <label class="form-label">Beacon C/N</label>
+                  <label class="form-label" id="${p}beacon-cn-label" title="Beacon C/N in the beacon receiver's narrow tracking bandwidth: higher than the carrier C/N on the RX modem, which is measured in the carrier's full bandwidth">Beacon C/N (1 kHz)</label>
                   <div class="beacon-strength-bar">
                     <div class="beacon-strength-fill" id="${p}beacon-strength-fill"></div>
                     <span class="beacon-strength-value" id="${p}beacon-cn-value">-- dB</span>
                   </div>
                   <div class="d-flex justify-content-between mt-1">
-                    <span class="text-muted small">Lock Status:</span>
+                    <span class="text-muted small">Beacon Lock:</span>
                     <span id="${p}beacon-lock-status" class="fw-bold">--</span>
                   </div>
                 </div>
@@ -309,17 +363,18 @@ export class ACUControlTab extends BaseElement {
         <!-- Environmental Controls Card -->
         <div class="col-xl-3">
           <div class="card h-100">
-            <div class="card-header">
-              <h3 class="card-title">Environmental</h3>
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <h3 class="card-title mb-0">Environmental</h3>
+              <span id="${p}env-led" class="card-alarm-led off" title="Clear - no ice, no precipitation"></span>
             </div>
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
-                  <span class="fw-bold">Feed Heater</span>
-                  <div class="text-muted small">Prevents ice buildup</div>
+                  <label for="${p}heater-switch" class="fw-bold mb-0" style="cursor: pointer;">Feed Heater</label>
+                  <div class="text-muted small">Prevents ice, keeps the feed dry</div>
                 </div>
                 <div class="d-flex align-items-center gap-2">
-                  <span id="${p}heater-led" class="card-alarm-led off"></span>
+                  <span id="${p}heater-led" class="card-alarm-led off" title="Heater OFF"></span>
                   <div class="form-check form-switch mb-0">
                     <input class="form-check-input" type="checkbox" id="${p}heater-switch">
                   </div>
@@ -327,11 +382,11 @@ export class ACUControlTab extends BaseElement {
               </div>
               <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
-                  <span class="fw-bold">Rain Blower</span>
+                  <label for="${p}blower-switch" class="fw-bold mb-0" style="cursor: pointer;">Rain Blower</label>
                   <div class="text-muted small">Clears radome</div>
                 </div>
                 <div class="d-flex align-items-center gap-2">
-                  <span id="${p}blower-led" class="card-alarm-led off"></span>
+                  <span id="${p}blower-led" class="card-alarm-led off" title="Rain blower OFF"></span>
                   <div class="form-check form-switch mb-0">
                     <input class="form-check-input" type="checkbox" id="${p}blower-switch">
                   </div>
@@ -340,7 +395,7 @@ export class ACUControlTab extends BaseElement {
               <div class="d-flex justify-content-between align-items-center pt-2 border-top">
                 <span class="text-muted small">Precipitation:</span>
                 <span id="${p}precip-status" class="fw-bold">
-                  <span class="card-alarm-led off me-1"></span>CLEAR
+                  <span class="card-alarm-led off me-1" title="Precipitation CLEAR"></span>CLEAR
                 </span>
               </div>
               <div class="d-flex justify-content-between align-items-center pt-2 mt-2 border-top">
@@ -361,7 +416,7 @@ export class ACUControlTab extends BaseElement {
               <div class="row g-2">
                 <div class="col-4">
                   <div class="rf-metric-box">
-                    <div class="rf-metric-label">Frequency</div>
+                    <div class="rf-metric-label" title="The tracked beacon frequency (RF) the metrics are quoted at">Beacon Freq (RF)</div>
                     <div id="${p}rf-metric-freq" class="rf-metric-value">-- GHz</div>
                   </div>
                 </div>
@@ -407,6 +462,18 @@ export class ACUControlTab extends BaseElement {
   /**
    * Helper to query elements with the unique prefix
    */
+  /** A beacon's IF at the LNB output, MHz: |LO - RF| (C-band LNBs run the LO above or below the band) */
+  static beaconIfMHz(rfMHz: number, loMHz: number): number {
+    return Math.abs(loMHz - rfMHz);
+  }
+
+  /** A measurement bandwidth as an operator reads it: 1 kHz, 300 Hz, 2.5 MHz */
+  static formatBandwidth(hz: number): string {
+    if (hz >= 1e6) return `${Number((hz / 1e6).toFixed(2))} MHz`;
+    if (hz >= 1e3) return `${Number((hz / 1e3).toFixed(2))} kHz`;
+    return `${Math.round(hz)} Hz`;
+  }
+
   private qs_<T extends HTMLElement>(id: string): T | null {
     return this.dom_?.querySelector(`#${this.uniquePrefix_}${id}`) as T | null;
   }
@@ -490,7 +557,7 @@ export class ACUControlTab extends BaseElement {
         this.polarPlot_.draw(antenna.state.azimuth, antenna.state.elevation);
       }
       this.syncUiWithState_(antenna);
-      this.syncIceAccumulation_(antenna);
+      this.syncAlarmReadouts_(antenna, false);
     };
     EventBus.getInstance().on(Events.UPDATE, this.antennaStateHandler_);
 
@@ -515,6 +582,23 @@ export class ACUControlTab extends BaseElement {
     this.polarPlot_.onDomReady();
     this.polarPlot_.draw(antenna.state.azimuth, antenna.state.elevation);
     this.syncUiWithState_(antenna);
+    this.syncAlarmReadouts_(antenna, true);
+  }
+
+  /**
+   * The readouts AlarmService also reports on refresh once per scenario second
+   * (Phase 33 D7), or at once with `force` after an operator action (heater,
+   * blower, power) so the switch and its LED answer the click even while the
+   * clock is paused.
+   */
+  private syncAlarmReadouts_(antenna: (typeof this.groundStation.antennas)[0], force: boolean): void {
+    const second = Math.floor(SimClock.nowMs() / 1000);
+    if (!force && second === this.lastAlarmSyncSecond_) {
+      return;
+    }
+    this.lastAlarmSyncSecond_ = second;
+    this.syncStatusLed_(antenna);
+    this.syncIceAccumulation_(antenna);
   }
 
   /** True once the canvas has replaced this tab's DOM (stale instance awaiting disposal). */
@@ -528,7 +612,7 @@ export class ACUControlTab extends BaseElement {
 
     // Create fine adjustment controls with ACTUAL position values
     // Red display shows current position (matches polar plot)
-    this.azFineControl_ = FineAdjustControl.create(`az-fine-${this.groundStation.uuid}-ant${this.antennaIndex_}`, 'Azimuth', antenna.state.azimuth, '°');
+    this.azFineControl_ = FineAdjustControl.create(`az-fine-${this.groundStation.uuid}-ant${this.antennaIndex_}`, 'Azimuth', wrapAzimuthDeg(antenna.state.azimuth), '°');
 
     this.elFineControl_ = FineAdjustControl.create(`el-fine-${this.groundStation.uuid}-ant${this.antennaIndex_}`, 'Elevation', antenna.state.elevation, '°');
 
@@ -577,13 +661,10 @@ export class ACUControlTab extends BaseElement {
     buttons.forEach((btn, index) => {
       const handler = () => {
         const mode = (btn as HTMLElement).dataset.mode as TrackingMode;
-
-        // Clear active target when leaving program-track mode
-        if (antenna.state.trackingMode === 'program-track' && mode !== 'program-track') {
-          this.activeTargetSatelliteId_ = null;
-        }
-
-        antenna.handleTrackingModeChange(mode);
+        // STOW/MAINT stage until APPLY; MANUAL/PROGRAM switch at once.
+        // handleTrackingModeChange clears state.targetSatelliteId on any mode
+        // change. A staged pick is kept: it is committed by Move to Target
+        antenna.stageTrackingModeChange(mode);
       };
       this.addHandler_(`tracking-mode-${index}`, btn, 'click', handler);
     });
@@ -595,30 +676,39 @@ export class ACUControlTab extends BaseElement {
 
     if (!select || !moveBtn) return;
 
-    // Initialize active target from current state
-    this.activeTargetSatelliteId_ = antenna.state.targetSatelliteId;
-
-    // If a target satellite is pre-configured, set the beacon frequency from it
-    if (antenna.state.targetSatelliteId !== null) {
-      antenna.handleTargetSatelliteChange(antenna.state.targetSatelliteId);
+    // If a target satellite is pre-configured, set the beacon frequency from it.
+    // That re-emits the antenna state, but opening a tab is not an operator
+    // action and never logs (nats-r5-s07-F2)
+    const preconfiguredTarget = antenna.state.targetSatelliteId;
+    if (preconfiguredTarget !== null) {
+      EventAutoLogger.getInstance().runWithoutLogging(() => antenna.handleTargetSatelliteChange(preconfiguredTarget));
     }
 
-    // Populate satellite dropdown
-    const satellites = SimulationManager.getInstance().satellites;
-    select.innerHTML = '<option value="">-- Select Satellite --</option>' + satellites.map((sat) => `<option value="${sat.noradId}">${sat.name}</option>`).join('');
+    // Populate satellite dropdown (rebuilt by syncUiWithState_ if the list changes)
+    this.syncSatelliteOptions_(select, antenna.state.targetSatelliteId);
 
-    // Handle selection change
+    // Handle selection change: stage the pick; Move to Target commits it
     const selectHandler = () => {
-      const noradId = parseInt(select.value) || null;
-      antenna.handleTargetSatelliteChange(noradId);
-      moveBtn.disabled = noradId === null;
+      const noradId = Number.parseInt(select.value, 10) || null;
+      // Picking the placeholder or the current target unstages
+      this.stagedTargetId_ = noradId === null || noradId === antenna.state.targetSatelliteId ? undefined : noradId;
+      this.syncTargetStaging_(antenna);
     };
     this.addHandler_('satellite-select', select, 'change', selectHandler);
 
-    // Handle move button
+    // Handle move button: commit a staged pick, then slew to the target
     const moveHandler = () => {
-      this.activeTargetSatelliteId_ = antenna.state.targetSatelliteId;
+      const staged = this.stagedTargetId_;
+      this.stagedTargetId_ = undefined;
+      if (staged !== undefined && staged !== antenna.state.targetSatelliteId) {
+        antenna.handleTargetSatelliteChange(staged);
+      }
       antenna.moveToTargetSatellite();
+      this.syncTargetStaging_(antenna);
+      if (antenna.state.targetSatelliteId !== null) {
+        const name = this.targetSatelliteName_(antenna.state.targetSatelliteId);
+        EventAutoLogger.getInstance().logAction(`PROGRAM: slewing to ${name}`, 'ANT', stationTagForAntennaState(antenna.state));
+      }
     };
     this.addHandler_('move-to-target', moveBtn, 'click', moveHandler);
   }
@@ -676,13 +766,25 @@ export class ACUControlTab extends BaseElement {
 
     if (!heaterSwitch || !blowerSwitch) return;
 
+    // The heater and blower change no line the antenna state formatter writes,
+    // so each logs its own (nats-r5-s08-F2)
     const heaterHandler = () => {
+      const wasOn = antenna.state.isHeaterEnabled;
       antenna.handleHeaterToggle(heaterSwitch.checked);
+      if (antenna.state.isHeaterEnabled !== wasOn) {
+        EventAutoLogger.getInstance().logAction(`Feed heater ${antenna.state.isHeaterEnabled ? 'ON' : 'OFF'}`, 'ANT', stationTagForAntennaState(antenna.state));
+      }
+      this.syncAlarmReadouts_(antenna, true);
     };
     this.addHandler_('heater-switch', heaterSwitch, 'change', heaterHandler);
 
     const blowerHandler = () => {
+      const wasOn = antenna.state.isRainBlowerEnabled;
       antenna.handleRainBlowerToggle(blowerSwitch.checked);
+      if (antenna.state.isRainBlowerEnabled !== wasOn) {
+        EventAutoLogger.getInstance().logAction(`Rain blower ${antenna.state.isRainBlowerEnabled ? 'ON' : 'OFF'}`, 'ANT', stationTagForAntennaState(antenna.state));
+      }
+      this.syncAlarmReadouts_(antenna, true);
     };
     this.addHandler_('blower-switch', blowerSwitch, 'change', blowerHandler);
   }
@@ -694,6 +796,7 @@ export class ACUControlTab extends BaseElement {
     if (powerSwitch) {
       const powerHandler = () => {
         antenna.handlePowerToggle(powerSwitch.checked);
+        this.syncAlarmReadouts_(antenna, true);
       };
       this.addHandler_('power-switch', powerSwitch, 'change', powerHandler);
     }
@@ -723,6 +826,7 @@ export class ACUControlTab extends BaseElement {
     modeButtons.forEach((btn) => {
       const mode = (btn as HTMLElement).dataset.mode;
       btn.classList.toggle('active', mode === state.trackingMode);
+      btn.classList.toggle('pending', mode === state.stagedTrackingMode);
       if (mode === 'program-track') {
         (btn as HTMLButtonElement).disabled = acuFaulted;
         btn.classList.toggle('disabled', acuFaulted);
@@ -739,24 +843,33 @@ export class ACUControlTab extends BaseElement {
     // Beacon C/N display visible in active tracking modes (not stow/maintenance)
     if (beaconDisplaySection) beaconDisplaySection.style.display = ['manual', 'program-track'].includes(state.trackingMode) ? 'block' : 'none';
 
-    // Update tracking mode display
+    // Update tracking mode display: the APPLIED mode; a staged STOW/MAINT is
+    // a pending badge until APPLY (phase 29 D4, nats-r3-s11-F2)
     const modeDisplay = this.qs_('tracking-mode-display');
-    if (modeDisplay) modeDisplay.textContent = state.trackingMode.toUpperCase().replace('-', ' ');
+    if (modeDisplay) modeDisplay.textContent = trackingModeLabel(state);
+    const stagedModeBadge = this.qs_<HTMLElement>('staged-mode-badge');
+    if (stagedModeBadge) {
+      const staged = state.stagedTrackingMode;
+      stagedModeBadge.textContent = staged ? `${trackingModeLabel({ trackingMode: staged, isStepTrackEnabled: false })} pending APPLY` : '';
+      stagedModeBadge.style.display = staged ? '' : 'none';
+    }
 
     // Update lock status
     const lockDisplay = this.qs_('lock-status-display');
     if (lockDisplay) {
-      lockDisplay.textContent = state.isLocked || state.isBeaconLocked ? 'LOCKED' : 'UNLOCKED';
-      lockDisplay.classList.toggle('text-success', state.isLocked || state.isBeaconLocked);
+      const lock = antennaLockLabel(state);
+      lockDisplay.textContent = lock;
+      lockDisplay.classList.toggle('text-success', lock === 'LOCKED');
+      lockDisplay.classList.toggle('text-warning', lock === 'UNKNOWN');
     }
 
     // Update signals count
     const signalsDisplay = this.qs_('signals-count-display');
-    if (signalsDisplay) signalsDisplay.textContent = state.rxSignalsIn.length.toString();
+    if (signalsDisplay) signalsDisplay.textContent = ACUControlTab.signalsInBeam(antenna).toString();
 
     // Sync fine adjustment controls with actual position and staged values
     // Red (active) = current position (matches polar plot), Amber (pending) = staged changes
-    this.azFineControl_?.sync(state.azimuth, state.stagedTargetAzimuth);
+    this.azFineControl_?.sync(wrapAzimuthDeg(state.azimuth), state.stagedTargetAzimuth === null ? null : wrapAzimuthDeg(state.stagedTargetAzimuth));
     this.elFineControl_?.sync(state.elevation, state.stagedTargetElevation);
     this.polFineControl_?.sync(state.polarization, state.stagedTargetPolarization);
 
@@ -823,10 +936,15 @@ export class ACUControlTab extends BaseElement {
     const blowerSwitch = this.qs_<HTMLInputElement>('blower-switch');
 
     if (heaterLed) {
-      heaterLed.className = `card-alarm-led ${state.isHeaterEnabled ? 'warning' : 'off'}`;
+      // Green while it runs, like the blower: on is the healthy state in a
+      // storm, and amber belongs to the Environmental header (Phase 32 D14,
+      // nats-r7-s20-F1)
+      heaterLed.className = `card-alarm-led ${state.isHeaterEnabled ? 'success' : 'off'}`;
+      heaterLed.title = state.isHeaterEnabled ? 'Heater ON' : 'Heater OFF';
     }
     if (blowerLed) {
       blowerLed.className = `card-alarm-led ${state.isRainBlowerEnabled ? 'success' : 'off'}`;
+      blowerLed.title = state.isRainBlowerEnabled ? 'Rain blower ON' : 'Rain blower OFF';
     }
     if (heaterSwitch) heaterSwitch.checked = state.isHeaterEnabled;
     if (blowerSwitch) blowerSwitch.checked = state.isRainBlowerEnabled;
@@ -835,17 +953,7 @@ export class ACUControlTab extends BaseElement {
     const powerSwitch = this.qs_<HTMLInputElement>('power-switch');
     if (powerSwitch) powerSwitch.checked = state.isPowered;
 
-    // Sync ACU status LED
-    const statusLed = this.qs_('status-led');
-    if (statusLed) {
-      if (!state.isPowered) {
-        statusLed.className = 'card-alarm-led off ms-2';
-      } else if (!state.isOperational) {
-        statusLed.className = 'card-alarm-led warning ms-2';
-      } else {
-        statusLed.className = 'card-alarm-led success ms-2';
-      }
-    }
+    // The ACU status LED is synced by syncStatusLed_() once per scenario second
 
     // Sync loopback switch
     const loopbackSwitch = this.qs_<HTMLInputElement>('loopback-switch');
@@ -865,10 +973,7 @@ export class ACUControlTab extends BaseElement {
     }
 
     // Sync move-to-target button disabled state (also disabled under ACU fault)
-    const moveToTargetBtn = this.qs_<HTMLButtonElement>('move-to-target-btn');
-    if (moveToTargetBtn) {
-      moveToTargetBtn.disabled = acuFaulted || state.trackingMode !== 'program-track' || state.targetSatelliteId === null;
-    }
+    this.syncTargetStaging_(antenna);
     const satelliteSelectEl = this.qs_<HTMLSelectElement>('satellite-select');
     if (satelliteSelectEl) {
       satelliteSelectEl.disabled = acuFaulted;
@@ -881,14 +986,19 @@ export class ACUControlTab extends BaseElement {
     // Sync satellite dropdown selection (skip if user is interacting)
     const satelliteSelect = this.qs_<HTMLSelectElement>('satellite-select');
     if (satelliteSelect && document.activeElement !== satelliteSelect) {
-      satelliteSelect.value = state.targetSatelliteId?.toString() ?? '';
+      // A staged pick stays showing until Move to Target or a mode change
+      const shown = this.stagedTargetId_ !== undefined ? this.stagedTargetId_ : state.targetSatelliteId;
+      this.syncSatelliteOptions_(satelliteSelect, shown);
+      satelliteSelect.value = shown?.toString() ?? '';
     }
 
-    // Sync current target display (only shows active target, not dropdown selection)
+    // Sync current target display from the antenna's own target. Program-track
+    // follows state.targetSatelliteId every tick, so that is what the pedestal
+    // is tracking; an adapter-local copy went blank whenever the target was
+    // set anywhere but this tab's Move button (s06-F4, s10-F4, s11-F4).
     const currentTargetDisplay = this.qs_<HTMLInputElement>('current-target-display');
     if (currentTargetDisplay) {
-      const satellite = this.activeTargetSatelliteId_ === null ? null : SimulationManager.getInstance().satellites.find((sat) => sat.noradId === this.activeTargetSatelliteId_);
-      currentTargetDisplay.value = satellite?.name ?? 'No Target';
+      currentTargetDisplay.value = this.targetSatelliteName_(state.targetSatelliteId);
     }
 
     // Sync beacon frequency input (skip if user is typing)
@@ -896,6 +1006,21 @@ export class ACUControlTab extends BaseElement {
     if (beaconFreqInput && document.activeElement !== beaconFreqInput) {
       const freqMHz = (state.stagedBeaconFrequencyHz ?? state.beaconFrequencyHz) / 1e6;
       beaconFreqInput.value = freqMHz.toString();
+    }
+
+    // Its IF equivalent through this station's LNB (phase 27): the number the
+    // analyzer is tuned to, so the operator does not have to work it out
+    const beaconIfEl = this.qs_('beacon-if');
+    if (beaconIfEl) {
+      const rfMHz = (state.stagedBeaconFrequencyHz ?? state.beaconFrequencyHz) / 1e6;
+      const loMHz = this.groundStation.rfFrontEnds[this.antennaIndex_]?.lnbModule?.state.loFrequency as number | undefined;
+      beaconIfEl.textContent = loMHz && rfMHz > 0 ? `IF: ${ACUControlTab.beaconIfMHz(rfMHz, loMHz).toFixed(1)} MHz (LNB LO ${loMHz} MHz)` : 'IF: -- MHz';
+    }
+
+    // The beacon receiver's measurement bandwidth, from the antenna (phase 27)
+    const beaconCnLabel = this.qs_('beacon-cn-label');
+    if (beaconCnLabel) {
+      beaconCnLabel.textContent = `Beacon C/N (${ACUControlTab.formatBandwidth(state.beaconTrackingBwHz)})`;
     }
 
     // Sync beacon search bandwidth input (skip if user is typing)
@@ -909,6 +1034,52 @@ export class ACUControlTab extends BaseElement {
     this.syncRfMetrics_(antenna);
   }
 
+  /**
+   * Move to Target and the staged-pick hint. Move is live in PROGRAM with a
+   * target picked (staged or committed) and no ACU automation fault.
+   */
+  private syncTargetStaging_(antenna: (typeof this.groundStation.antennas)[0]): void {
+    const state = antenna.state;
+    if (this.stagedTargetId_ !== undefined && this.stagedTargetId_ === state.targetSatelliteId) {
+      this.stagedTargetId_ = undefined;
+    }
+    const pick = this.stagedTargetId_ !== undefined ? this.stagedTargetId_ : state.targetSatelliteId;
+
+    const moveToTargetBtn = this.qs_<HTMLButtonElement>('move-to-target-btn');
+    if (moveToTargetBtn) {
+      moveToTargetBtn.disabled = state.isAcuAutomationFaulted === true || state.trackingMode !== 'program-track' || pick === null;
+    }
+
+    const hint = this.qs_('target-staged-hint');
+    if (hint) {
+      let text = '';
+      if (this.stagedTargetId_ !== undefined) {
+        const name = this.targetSatelliteName_(this.stagedTargetId_);
+        text = state.trackingMode === 'program-track' ? `${name} staged: press Move to Target to slew` : `${name} staged: select PROGRAM, then Move to Target`;
+      }
+      hint.textContent = text;
+      hint.style.display = text ? 'block' : 'none';
+    }
+  }
+
+  /** Display name for the antenna's target, 'No Target' when there is none. */
+  private targetSatelliteName_(noradId: number | null): string {
+    if (noradId === null) return 'No Target';
+    const satellite = SimulationManager.getInstance().registry.get(noradId);
+    return satellite?.name ?? `NORAD ${noradId}`;
+  }
+
+  /**
+   * Rebuild the target dropdown when the satellite list changes. Scenarios with constellation members get a
+   * search box and list only authored, pinned and selected satellites plus `current` (P3-WP10).
+   */
+  private syncSatelliteOptions_(select: HTMLSelectElement, current: number | null): void {
+    if (!this.satellitePicker_) {
+      this.satellitePicker_ = new SatellitePicker(select, SimulationManager.getInstance(), { placeholder: '-- Select Satellite --' });
+    }
+    this.satellitePicker_.refresh(current, SimulationManager.getInstance());
+  }
+
   private syncRfMetrics_(antenna: (typeof this.groundStation.antennas)[0]): void {
     const metrics = antenna.state.rfMetrics;
     if (!metrics) return;
@@ -920,7 +1091,11 @@ export class ACUControlTab extends BaseElement {
     const polLossEl = this.qs_('rf-metric-pol-loss');
     const skyTempEl = this.qs_('rf-metric-sky-temp');
 
-    if (freqEl) freqEl.textContent = `${metrics.frequency_GHz.toFixed(3)} GHz`;
+    // No target (and not a MANUAL operator entry): no beacon is tracked, so no
+    // frequency, never the last target's (phase 29 D4, nats-r4-s12-F1)
+    const state = antenna.state;
+    const hasBeaconTarget = state.targetSatelliteId !== null || state.trackingMode === 'manual';
+    if (freqEl) freqEl.textContent = hasBeaconTarget ? `${metrics.frequency_GHz.toFixed(3)} GHz` : '-- GHz';
     if (gainEl) gainEl.textContent = `${metrics.gain_dBi.toFixed(1)} dBi`;
     if (bwEl) bwEl.textContent = `${metrics.beamwidth_deg.toFixed(2)}°`;
     if (gtEl) gtEl.textContent = `${metrics.gOverT_dBK.toFixed(1)} dB/K`;
@@ -958,7 +1133,11 @@ export class ACUControlTab extends BaseElement {
     }
     if (beaconLockEl) {
       // Lock status depends on whether step-track optimization is enabled
-      if (state.isStepTrackEnabled) {
+      if (state.isAcuAutomationFaulted) {
+        // The tracking receiver's lock logic died with the automation (nats-s23-F5)
+        beaconLockEl.textContent = 'UNKNOWN';
+        beaconLockEl.classList.remove('text-success');
+      } else if (state.isStepTrackEnabled) {
         // Step-track enabled: IDLE (tracking off), SEARCHING (tracking on), LOCKED
         if (!state.isAutoTrackEnabled) {
           beaconLockEl.textContent = 'IDLE';
@@ -979,6 +1158,26 @@ export class ACUControlTab extends BaseElement {
         beaconLockEl.classList.remove('text-success');
       }
     }
+  }
+
+  /**
+   * ACU header LED (Phase 33 D2, nats-r8-s23-F1): this antenna's AlarmService
+   * alarms, worst first, titled with the top one ("ACU AUTOMATION FAULT -
+   * MANUAL CONTROL ONLY" red), plus the module's `hasFault` as an error;
+   * grey "Antenna off" unpowered, green "No alarms" otherwise
+   */
+  private syncStatusLed_(antenna: (typeof this.groundStation.antennas)[0]): void {
+    const statusLed = this.qs_('status-led');
+    if (!statusLed) {
+      return;
+    }
+    const state = antenna.state;
+    const led = alarmLed(AlarmService.getAlarms(this.groundStation), (alarm) => alarm.equipmentType === 'ANT' && alarm.equipmentIndex === this.antennaIndex_, {
+      isPowered: state.isPowered,
+      offTitle: 'Antenna off',
+      extra: state.hasFault ? [{ severity: 'error', message: state.faultMessage ?? 'Antenna fault' }] : [],
+    });
+    applyAlarmLed(statusLed, led);
   }
 
   private syncIceAccumulation_(antenna: (typeof this.groundStation.antennas)[0]): void {
@@ -1004,10 +1203,85 @@ export class ACUControlTab extends BaseElement {
       const gsId = this.groundStation.state.id;
       const isPrecip = WeatherManager.getInstance().isPrecipitationActive(gsId);
       const led = precipStatus.querySelector('.card-alarm-led');
-      if (led) led.className = `card-alarm-led ${isPrecip ? 'warning' : 'off'} me-1`;
+      if (led) {
+        led.className = `card-alarm-led ${isPrecip ? 'warning' : 'off'} me-1`;
+        (led as HTMLElement).title = isPrecip ? 'Precipitation ACTIVE' : 'Precipitation CLEAR';
+      }
       const textNode = precipStatus.childNodes[precipStatus.childNodes.length - 1];
       if (textNode) textNode.textContent = isPrecip ? 'ACTIVE' : 'CLEAR';
     }
+
+    this.syncEnvironmentalLed_(antenna);
+  }
+
+  /**
+   * Environmental card header LED (Phase 32 D14, Phase 33 D3, nats-r7-s20-F1):
+   * the ICE ON FEED alarm's colour while ice is at its warning level or above
+   * (red at its error level); below that, amber only while precipitation falls
+   * unmitigated - snow, hail or freezing rain with the feed heater off, rain
+   * with both the heater and the rain blower off (the heater keeps the feed
+   * dry too, and the blower has no modelled effect beyond that; S14 rides out
+   * its rain cell on the heater alone). Mitigated precipitation is green
+   * ("Snow falling - feed heater ON, ice 0.0 dB"), no precipitation grey. The
+   * title carries the ice depth either way.
+   */
+  private syncEnvironmentalLed_(antenna: (typeof this.groundStation.antennas)[0]): void {
+    const led = this.qs_('env-led');
+    if (!led) return;
+
+    const state = antenna.state;
+    const ice = antenna.state.iceAccumulation_dB;
+    const iceText = `ice ${ice.toFixed(1)} dB`;
+    let ledState = 'off';
+    let title = `Clear - ${iceText}, no precipitation`;
+    if (ice >= ACUControlTab.ICE_ON_FEED_ERROR_DB) {
+      ledState = 'error';
+      title = `Ice on feed ${ice.toFixed(1)} dB`;
+    } else if (ice >= ACUControlTab.ICE_ON_FEED_WARNING_DB) {
+      ledState = 'warning';
+      title = `Ice on feed ${ice.toFixed(1)} dB`;
+    } else {
+      const precip = this.worstPrecipitation_(state.isHeaterEnabled, state.isRainBlowerEnabled);
+      if (precip) {
+        const label = ACUControlTab.PRECIP_LABELS_[precip.type] ?? 'Precipitation';
+        ledState = precip.isMitigated ? 'success' : 'warning';
+        title = `${label} falling - ${precip.protection}, ${iceText}`;
+      }
+    }
+    led.className = `card-alarm-led ${ledState}`;
+    led.title = title;
+  }
+
+  /**
+   * The active precipitation event at this station the Environmental LED
+   * reports: the first unmitigated one, else the first mitigated one, else
+   * null. `protection` names the feed's state against it.
+   */
+  private worstPrecipitation_(isHeaterOn: boolean, isBlowerOn: boolean): { type: string; isMitigated: boolean; protection: string } | null {
+    let mitigated: { type: string; isMitigated: boolean; protection: string } | null = null;
+    for (const event of WeatherManager.getInstance().getActiveWeatherEvents(this.groundStation.state.id)) {
+      if (!(event.type in ACUControlTab.PRECIP_LABELS_)) {
+        continue;
+      }
+      let isMitigated: boolean;
+      let protection: string;
+      if (ACUControlTab.FROZEN_PRECIP_.has(event.type)) {
+        isMitigated = isHeaterOn;
+        protection = `feed heater ${isHeaterOn ? 'ON' : 'OFF'}`;
+      } else {
+        isMitigated = isHeaterOn || isBlowerOn;
+        if (isHeaterOn) {
+          protection = 'feed heater ON';
+        } else if (isBlowerOn) {
+          protection = 'rain blower ON';
+        } else {
+          protection = 'feed heater and rain blower OFF';
+        }
+      }
+      if (!isMitigated) return { type: event.type, isMitigated, protection };
+      mitigated ??= { type: event.type, isMitigated, protection };
+    }
+    return mitigated;
   }
 
   public activate(): void {
@@ -1044,6 +1318,8 @@ export class ACUControlTab extends BaseElement {
     }
 
     // Dispose adapters
+    this.satellitePicker_?.dispose();
+    this.satellitePicker_ = null;
     this.antennaAdapter?.dispose();
     this.omtAdapter?.dispose();
 

@@ -4,7 +4,10 @@
  * Used when audio files fail to load. Provides a singleton interface
  * for speech synthesis with state tracking via events.
  */
+import { AudioPreferences } from './audio-preferences';
+
 class TtsService {
+  private paused_ = false;
   private static instance: TtsService;
   private isSpeaking_ = false;
   private onSpeechEndCallback_: (() => void) | null = null;
@@ -68,7 +71,7 @@ class TtsService {
     // Configure voice settings
     utterance.rate = 1.0;
     utterance.pitch = 1.0;
-    utterance.volume = 1.0;
+    utterance.volume = AudioPreferences.getInstance().volume('voice');
 
     // Event handlers for state tracking
     utterance.onstart = () => {
@@ -91,6 +94,14 @@ class TtsService {
     this.onSpeechEndCallback_ = onEnd ?? null;
 
     speechSynthesis.speak(utterance);
+    if (this.paused_) speechSynthesis.pause();
+  }
+
+  setPaused(paused: boolean): void {
+    this.paused_ = paused;
+    if (!this.isAvailable()) return;
+    if (paused) speechSynthesis.pause();
+    else speechSynthesis.resume();
   }
 
   /**

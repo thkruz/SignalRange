@@ -8,10 +8,13 @@
  *   stops radiating, so a jam drops and the operator fails over to a backup
  *   string. Faulting a modem is enough to remove it from the RF chain - the BUC
  *   only pulls modems that are transmitting AND not faulted.
- * - `buc-overtemp` (phase 16, E3): the BUC's cooling degrades by `params.deltaC`
- *   (default 40 degC) so it climbs past the 70 degC alarm while driven; muting
- *   brings it back under. `params.startTemperatureC` jumps the reading at once
- *   for a mid-window trip; `duration` ends the excursion.
+ * - `buc-overtemp` (phase 16, E3; physical since 19.6): the BUC's cooling
+ *   degrades. `params.coolingFactor` multiplies its thermal resistance (a slow
+ *   fan: every watt it dissipates lifts it further, so less drive is the fix);
+ *   `params.excessCurrentA` adds supply current from a failing stage (more
+ *   amps and more heat); `params.deltaC` is a flat extra offset. With none of
+ *   the three, the legacy 40 degC offset. `params.startTemperatureC` jumps the
+ *   reading at once for a mid-window trip; `duration` ends the excursion.
  * - `gpsdo-gnss-loss` (E3): the GNSS signal drops with the switch still up - the
  *   receiver enters holdover on its oscillator. `duration` is when the signal
  *   returns and the reference re-locks.
@@ -31,6 +34,7 @@ import { OpsLogManager } from '@app/ops-log/ops-log-manager';
 import { ScenarioManager } from '@app/scenario-manager';
 import { missionNowMs } from '@app/simulation/mission-clock';
 import { SimulationManager } from '@app/simulation/simulation-manager';
+import type { HardwareFaultSnapshot } from '@app/sync/manager-state-types';
 
 export type HardwareFaultTarget = 'tx-modem' | 'buc-overtemp' | 'gpsdo-gnss-loss' | 'crypto-key-mismatch';
 
@@ -59,8 +63,12 @@ export interface HardwareFaultEventConfig {
   /** Seconds the fault lasts before it clears itself; absent = until the operator acts */
   duration?: number;
   params?: {
-    /** buc-overtemp: extra degC the BUC settles above its normal target. Default 40 */
+    /** buc-overtemp: extra degC the BUC settles above its normal target (default 40 when no other param is set) */
     deltaC?: number;
+    /** buc-overtemp: thermal resistance multiplier (degraded fan/heatsink), >= 1 */
+    coolingFactor?: number;
+    /** buc-overtemp: extra supply current from a failing stage, A */
+    excessCurrentA?: number;
     /** buc-overtemp: set the temperature reading to this at trip time */
     startTemperatureC?: number;
   };
@@ -107,6 +115,57 @@ export class HardwareFaultManager {
     }
   }
 
+  /** Snapshot for a checkpoint: what has tripped and cleared, and when each anchor went live. */
+  getState(): HardwareFaultSnapshot {
+    const active = this.events_.filter((event) => this.trippedIds_.has(event.id) && this.isEffectActive_(event)).map((event) => event.id);
+    return { tripped: [...this.trippedIds_], cleared: [...this.clearedIds_], anchors: this.anchors_.getState(), active };
+  }
+
+  private isEffectActive_(event: HardwareFaultEventConfig): boolean {
+    if (event.target === 'crypto-key-mismatch') return CryptoModule.getInstance().state?.keyStatus === 'Mismatch';
+    if ((event.target ?? 'tx-modem') === 'tx-modem') {
+      const gs = SimulationManager.getInstance().groundStations.find((station) => station.state.id === event.groundStationId);
+      return gs?.transmitters[event.transmitterIndex ?? 0]?.state.modems.find((modem) => modem.modem_number === (event.modemNumber ?? 1))?.isFaulted === true;
+    }
+    return !this.clearedIds_.has(event.id);
+  }
+
+  /**
+   * Restore a snapshot (checkpoint path only). Faults that already tripped must not trip again
+   * after the clock jump, and cleared ones stay cleared. A timed fault that tripped and has not
+   * cleared is applied again, because its effect is not otherwise part of the saved equipment.
+   * Event ids this scenario does not define are ignored.
+   */
+  restoreState(snapshot: HardwareFaultSnapshot | undefined): void {
+    if (!snapshot) {
+      return;
+    }
+    const known = new Set(this.events_.map((e) => e.id));
+    this.trippedIds_.clear();
+    this.clearedIds_.clear();
+    for (const id of snapshot.tripped ?? []) {
+      if (known.has(id)) this.trippedIds_.add(id);
+    }
+    for (const id of snapshot.cleared ?? []) {
+      if (known.has(id) && this.trippedIds_.has(id)) this.clearedIds_.add(id);
+    }
+    this.anchors_.restoreState(snapshot.anchors);
+    for (const event of this.events_) {
+      const target = event.target ?? 'tx-modem';
+      // Old snapshots rely on hydrated modem/crypto state; history alone cannot
+      // distinguish a repaired unit from an active fault.
+      const active = snapshot.active?.includes(event.id) ?? (target === 'buc-overtemp' || target === 'gpsdo-gnss-loss');
+      if (
+        this.trippedIds_.has(event.id) &&
+        !this.clearedIds_.has(event.id) &&
+        active &&
+        ((target !== 'tx-modem' && target !== 'crypto-key-mismatch') || !this.isEffectActive_(event))
+      ) {
+        this.trip_(event, true);
+      }
+    }
+  }
+
   /** Whether the given event's fault has tripped */
   isTripped(eventId: string): boolean {
     return this.trippedIds_.has(eventId);
@@ -115,6 +174,21 @@ export class HardwareFaultManager {
   /** Whether the given event tripped and has since cleared (timed faults only) */
   isCleared(eventId: string): boolean {
     return this.clearedIds_.has(eventId);
+  }
+
+  /**
+   * Mission-elapsed start and end seconds of a fault, for the event-time ledger
+   * (`event:<id>:start` / `:end`). Null for an unknown id, or while its anchor
+   * objective has not gone live; `endS` is null while the fault holds until the operator acts.
+   */
+  getEventScheduleS(eventId: string): { startS: number; endS: number | null } | null {
+    const event = this.events_.find((e) => e.id === eventId);
+    if (!event) return null;
+    const startS = this.anchors_.atS(event.startTime, event.startAfterObjectiveId);
+    if (!Number.isFinite(startS)) return null;
+    const endS = this.endS_(event, startS);
+
+    return { startS, endS: Number.isFinite(endS) ? endS : null };
   }
 
   private update_(): void {
@@ -152,14 +226,14 @@ export class HardwareFaultManager {
   }
 
   /** Apply the fault. Returns false when the target equipment does not exist yet. */
-  private trip_(event: HardwareFaultEventConfig): boolean {
+  private trip_(event: HardwareFaultEventConfig, isReapply = false): boolean {
     const sim = SimulationManager.getInstance();
     const gs = sim.groundStations.find((g) => g.state.id === event.groundStationId);
 
     switch (event.target ?? 'tx-modem') {
       case 'tx-modem': {
         const tx = gs?.transmitters[event.transmitterIndex ?? 0];
-        const modem = tx?.state.modems.find((m) => m.modem_number === event.modemNumber);
+        const modem = tx?.state.modems.find((m) => m.modem_number === (event.modemNumber ?? 1));
         if (!modem) {
           return false;
         }
@@ -175,9 +249,13 @@ export class HardwareFaultManager {
         if (!buc) {
           return false;
         }
-        buc.setThermalOffset(event.params?.deltaC ?? DEFAULT_OVERTEMP_DELTA_C);
-        if (event.params?.startTemperatureC !== undefined) {
-          buc.state.temperature = event.params.startTemperatureC;
+        const { deltaC, coolingFactor, excessCurrentA } = event.params ?? {};
+        const physical = coolingFactor !== undefined || excessCurrentA !== undefined;
+        buc.setThermalOffset(deltaC ?? (physical ? 0 : DEFAULT_OVERTEMP_DELTA_C));
+        buc.setCoolingFactor(coolingFactor ?? 1);
+        buc.setExcessCurrent(excessCurrentA ?? 0);
+        if (!isReapply && event.params?.startTemperatureC !== undefined) {
+          buc.setTemperature(event.params.startTemperatureC);
         }
         return true;
       }
@@ -209,6 +287,8 @@ export class HardwareFaultManager {
     switch (event.target ?? 'tx-modem') {
       case 'buc-overtemp':
         rfFrontEnd?.bucModule.setThermalOffset(0);
+        rfFrontEnd?.bucModule.setCoolingFactor(1);
+        rfFrontEnd?.bucModule.setExcessCurrent(0);
         break;
       case 'gpsdo-gnss-loss':
         rfFrontEnd?.gpsdoModule.setGnssSignalPresent(true);

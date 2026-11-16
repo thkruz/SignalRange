@@ -1,5 +1,5 @@
 import type { ScenarioData } from '@app/ScenarioData';
-import { maineGroundStation, vermontGroundStation } from './ground-stations';
+import { maineGroundStationOperational, vermontGroundStation } from './ground-stations';
 import { aurora7Satellite, tidemark1Satellite, tidemark2Satellite } from './satellites';
 
 /**
@@ -27,7 +27,7 @@ export const sandboxData: ScenarioData = {
   equipment: ['9-meter C-band Antenna', 'Complete RF Front End', 'Spectrum Analyzer', 'RX/TX Modems', 'All Control Systems'],
   settings: {
     isSync: true,
-    groundStations: [vermontGroundStation, { ...maineGroundStation, isOperational: true }],
+    groundStations: [vermontGroundStation, maineGroundStationOperational],
     satellites: [tidemark1Satellite, tidemark2Satellite, aurora7Satellite],
     isExtraSatellitesVisible: true,
   },

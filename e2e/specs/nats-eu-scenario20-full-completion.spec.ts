@@ -24,7 +24,7 @@ import { answerDecision, dismissDialogIfPresent, waitForSimulationReady } from '
  * the skew entry and report, probe the sky after LOS (still walking - back
  * down), probe again after 05:36 (still - stays up), SAR-2 on true time,
  * debrief. Clock starts 2027-04-19 05:00:00Z:
- *   MERIDIAN-SAR-1  AOS 05:21:59Z  max el 29.2 deg at 05:26:45Z  LOS 05:31:28Z
+ *   MERIDIAN-SAR-1  AOS 05:21:59Z  max el 29.2 deg at 05:26:45Z  LOS 05:30:18Z (5 deg; horizon 05:31:28Z)
  *   MERIDIAN-SAR-2  AOS 05:44:00Z  max el 27.0 deg at 05:48:44Z  LOS 05:53:29Z
  *   spoofer         05:08:00Z .. 05:36:00Z (GW-01 only)
  *
@@ -81,11 +81,11 @@ test.describe('nats-eu Scenario 20 Full Completion', () => {
     await waitForObjectiveComplete(missionControl, 'Read the Brief');
   });
 
-  test('[dashboard-sweep] reads the board: AGC rail, no faults', async () => {
+  test('[dashboard-sweep] reads the board: AGC no-carrier warning, no faults', async () => {
     await missionControl.selectGroundStation('GW-01');
     await missionControl.selectTab('dashboard');
-    await expectDashboardAlarm(page, 'AGC at max gain');
-    await answerSystemQuiz(page, 'RX AGC at max gain');
+    await expectDashboardAlarm(page, 'AGC on noise only');
+    await answerSystemQuiz(page, 'RX AGC on noise only');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'GW-01 Dashboard Sweep');
   });
@@ -100,10 +100,10 @@ test.describe('nats-eu Scenario 20 Full Completion', () => {
     await waitForObjectiveComplete(missionControl, 'Timing Baseline');
   });
 
-  test('[rx-chain-ready] retunes the receiver and frames a 40 MHz span on 1414', async () => {
+  test('[rx-chain-ready] retunes the receiver and frames a 60 MHz span on 1414', async () => {
     await setRxModemFrequency(page, missionControl, 1414);
     await fillAndChange(page, '#sa-center-freq', '1414');
-    await fillAndChange(page, '#sa-span', '40');
+    await fillAndChange(page, '#sa-span', '60');
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Set Up the Receiver for SAR-1');
   });
@@ -192,7 +192,8 @@ test.describe('nats-eu Scenario 20 Full Completion', () => {
   });
 
   test('[probe-the-sky] GNSS back up: the offset resumes walking, switch back down', async () => {
-    // No jump: the countdown is running, and a jump now costs what waiting would (phase 19.0a)
+    // Probe the Sky opens once SAR-1 has set (LOS 05:30:18); jump just past it
+    await advanceMissionClockToUtc(page, '2027-04-19T05:30:40Z');
     await missionControl.selectTab('gps-timing');
     const frozen = await readOffsetUs();
     await setSwitch(page, '#gpsdo-gnss-switch', true);

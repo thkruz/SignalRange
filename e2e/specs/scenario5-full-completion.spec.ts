@@ -66,13 +66,13 @@ const SCENARIO_5_OBJECTIVES: Scenario5Objective[] = [
     id: 'phase-1-observe-degradation',
     title: 'Confirm Signal Degradation',
     type: 'quiz',
-    correctAnswer: 'C/N is degraded - well below normal operating threshold',
+    correctAnswer: 'C/N is degraded - well below normal, with little margin',
   },
   {
     id: 'verify-receiver-state-quiz',
     title: 'Assess Full Impact',
     type: 'quiz',
-    correctAnswer: 'Elevated BER (Bit Error Rate) and increased packet retransmissions',
+    correctAnswer: 'The ships have much smaller dishes, so the same C/N loss drops them below threshold',
   },
 
   // ============================================================
@@ -82,7 +82,7 @@ const SCENARIO_5_OBJECTIVES: Scenario5Objective[] = [
     id: 'verify-speca-initial-state',
     title: 'Assess Current Configuration',
     type: 'quiz',
-    correctAnswer: 'The narrow span shows only the beacon, not the 36 MHz wideband carrier with the problem',
+    correctAnswer: 'The narrow span shows only the beacon, not the 36 MHz carrier with the problem',
   },
   {
     id: 'phase-2-configure-and-locate',
@@ -104,13 +104,13 @@ const SCENARIO_5_OBJECTIVES: Scenario5Objective[] = [
     id: 'phase-4-identify-interference',
     title: 'Identify Interference',
     type: 'quiz',
-    correctAnswer: 'A narrowband spike sitting within our wideband signal',
+    correctAnswer: 'A narrowband spike inside our wideband signal',
   },
   {
     id: 'phase-5-characterize-interference',
     title: 'Characterize the Interference',
     type: 'quiz',
-    correctAnswer: 'Much narrower - a spike only a few MHz wide within our wideband signal',
+    correctAnswer: 'Much narrower - a spike about 1 MHz wide',
   },
   {
     id: 'measure-interference-frequency',
@@ -138,7 +138,7 @@ const SCENARIO_5_OBJECTIVES: Scenario5Objective[] = [
     id: 'phase-7-understand-impact',
     title: 'Understand the AGC Impact',
     type: 'quiz',
-    correctAnswer: 'The AGC sees the spike as part of the total signal and reduces gain accordingly',
+    correctAnswer: "The spike's power sits inside our passband and takes a share of the transponder's output",
   },
 
   // ============================================================
@@ -148,7 +148,7 @@ const SCENARIO_5_OBJECTIVES: Scenario5Objective[] = [
     id: 'understand-mitigation-options',
     title: 'Evaluate Mitigation Approaches',
     type: 'quiz',
-    correctAnswer: 'Notch filter - surgically removes the spike while passing the rest of our signal',
+    correctAnswer: 'Notch filter - surgically removes the spike and passes the rest of our signal',
   },
 
   // ============================================================
@@ -179,7 +179,7 @@ const SCENARIO_5_OBJECTIVES: Scenario5Objective[] = [
     id: 'phase-9-verify-restoration',
     title: 'Verify Service Restored',
     type: 'quiz',
-    correctAnswer: 'C/N restored to normal levels - the spike is notched out and AGC normalized',
+    correctAnswer: 'C/N back above the 8 dB service minimum (about 9-10 dB), short of the 14 dB nominal',
   },
 
   // ============================================================
@@ -189,7 +189,7 @@ const SCENARIO_5_OBJECTIVES: Scenario5Objective[] = [
     id: 'document-interference-quiz',
     title: 'Understand Documentation Requirements',
     type: 'quiz',
-    correctAnswer: 'Interference frequency, bandwidth, apparent source, time of occurrence, and mitigation applied',
+    correctAnswer: 'Interference frequency, bandwidth, source, time, and mitigation applied',
   },
 ];
 
@@ -432,6 +432,11 @@ test.describe('Scenario 5 Full Completion', () => {
   });
 
   test('Objective: Confirm Signal Degradation', async () => {
+    // Phase 19.5 (nats-s05-F1): the interferer leaves the modem degraded, not
+    // down - locked with under 1 dB of margin. Assert it before answering.
+    const statusBar = page.locator('#status-bar');
+    await expect(statusBar).toContainText('Degraded margin', { timeout: 20000 });
+    await expect(page.locator('#signal-status')).toHaveText('Degraded');
     const objective = SCENARIO_5_OBJECTIVES.find((o) => o.id === 'phase-1-observe-degradation')!;
     await executeObjective(page, missionControlPage, objective);
   });

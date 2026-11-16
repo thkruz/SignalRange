@@ -65,7 +65,7 @@ describe('downlink Doppler factor', () => {
     expect(visible.length).toBeGreaterThan(10);
   });
 
-  referenceCase('the factor is 1 - (range rate)/c: within 3 m/s of the finite-difference range rate on every visible sample', 'DEV-PROP-07', () => {
+  referenceCase('the factor is 1 - (range rate)/c: within 3 m/s of the finite-difference range rate on every visible sample', undefined, () => {
     for (const t of visible) {
       const before = sat.rae(ground, new Date(t - 500))!.rng;
       const after = sat.rae(ground, new Date(t + 500))!.rng;

@@ -2,9 +2,26 @@ import { CardAlarmBadge } from '@app/components/card-alarm-badge/card-alarm-badg
 import { qs } from '@app/engine/utils/query-selector';
 import { AlarmStatus } from '@app/equipment/base-equipment';
 import { HPAModuleCore, HPAState } from '@app/equipment/rf-front-end/hpa-module/hpa-module-core';
+import { classifyRfAlarmSeverity } from '@app/equipment/rf-front-end/rf-front-end-core';
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { EventAutoLogger } from '@app/ops-log/event-auto-logger';
+import { stationTagForRfModule } from '@app/ops-log/station-tag';
 import { parseLocalizedNumber } from '@app/utils/parse-number';
+
+/** True while the HPA is putting RF out: powered, enabled and driven */
+export function isHpaRadiating(hpa: HPAModuleCore, state: HPAState = hpa.state): boolean {
+  return state.isPowered && state.isHpaEnabled && hpa.outputSignals.length > 0;
+}
+
+/**
+ * The HPA output readout, shared by the TX Chain card and the Dashboard RF
+ * Chain TX card (phase 29 D4): "-- dBm" when the HPA is not radiating, never the
+ * no-output floor as a level.
+ */
+export function formatHpaOutputPower(hpa: HPAModuleCore): string {
+  return isHpaRadiating(hpa) ? `${hpa.state.outputPower.toFixed(1)} dBm` : '-- dBm';
+}
 
 /**
  * HPAAdapter - Bridges HPAModuleCore state to web controls
@@ -30,6 +47,12 @@ export class HPAAdapter {
 
   // Staged values - not applied until Apply button is clicked
   private stagedBackOff_: number = 6;
+  /**
+   * True while the player has a staged back-off that differs from the applied
+   * one. Toggles and external state events must not overwrite it; it clears on
+   * Apply or when the staged value is brought back to the applied value.
+   */
+  private hasPendingEdit_ = false;
 
   constructor(hpaModule: HPAModuleCore, containerEl: HTMLElement) {
     this.hpaModule = hpaModule;
@@ -94,50 +117,17 @@ export class HPAAdapter {
       this.updateStagedDisplay_();
     }
 
-    // Update Input Power display - shows BUC output, or "--" when BUC in loopback
-    const inputPowerDisplay = this.domCache_.get('inputPowerDisplay');
-    if (inputPowerDisplay) {
-      const inputSignals = this.hpaModule.inputSignals;
-      if (isPowered && inputSignals.length > 0) {
-        inputPowerDisplay.textContent = `${inputSignals[0].power.toFixed(1)} dBm`;
-      } else {
-        inputPowerDisplay.textContent = '-- dBm';
-      }
+    // Sync HPA enable switch in case it was changed externally (scenario/fault)
+    const hpaEnableSwitch = this.domCache_.get('hpaEnableSwitch') as HTMLInputElement;
+    if (hpaEnableSwitch && hpaEnableSwitch.checked !== state.isHpaEnabled) {
+      hpaEnableSwitch.checked = state.isHpaEnabled;
     }
 
-    // Update Power Output displays
-    const outputPowerDisplay = this.domCache_.get('outputPowerDisplay');
-    if (outputPowerDisplay) {
-      outputPowerDisplay.textContent = isPowered ? `${state.outputPower.toFixed(1)} dBm` : '-- dBm';
-    }
+    // Applied value can change without an event (scenario/fault); keep the
+    // staged input and pending indicator honest
+    this.syncStagedFromState_(state.backOff);
 
-    // Update power meter visualization
-    if (isPowered) {
-      this.updatePowerMeter_(state.outputPower);
-    } else {
-      this.clearPowerMeter_();
-    }
-
-    // Update power in watts
-    const powerWatts = this.domCache_.get('powerWatts');
-    if (powerWatts) {
-      if (isPowered) {
-        const watts = 10 ** ((state.outputPower - 30) / 10);
-        if (watts >= 1) {
-          powerWatts.textContent = `${watts.toFixed(0)} W`;
-        } else {
-          powerWatts.textContent = `${(watts * 1000).toFixed(0)} mW`;
-        }
-      } else {
-        powerWatts.textContent = '-- W';
-      }
-    }
-
-    // Update P1dB display
-    const p1dbDisplay = this.domCache_.get('p1dbDisplay');
-    if (p1dbDisplay) {
-      p1dbDisplay.textContent = isPowered ? `${this.hpaModule.p1db.toFixed(1)} dBm` : '-- dBm';
-    }
+    this.syncAmplifierReadouts_();
 
     // Update temperature display
     const temperatureDisplay = this.domCache_.get('temperatureDisplay');
@@ -145,10 +135,11 @@ export class HPAAdapter {
       temperatureDisplay.textContent = isPowered ? `${state.temperature.toFixed(1)} °C` : '-- °C';
     }
 
-    // Update overdrive status
+    // Update overdrive status: "--" and grey while off or output disabled,
+    // as the other amplifier readouts (nats-r5-s09-F1)
     const overdriveStatus = this.domCache_.get('overdriveStatus');
     if (overdriveStatus) {
-      if (isPowered) {
+      if (isPowered && state.isHpaEnabled) {
         overdriveStatus.textContent = state.isOverdriven ? 'OVERDRIVE' : 'Normal';
         overdriveStatus.className = state.isOverdriven ? 'status-badge status-badge-warning' : 'status-badge status-badge-good';
       } else {
@@ -157,21 +148,56 @@ export class HPAAdapter {
       }
     }
 
-    // Update IMD display
-    const imdDisplay = this.domCache_.get('imdDisplay');
-    if (imdDisplay) {
-      imdDisplay.textContent = isPowered ? `${state.imdLevel.toFixed(1)} dBc` : '-- dBc';
-    }
-
-    // Update gain display
-    const gainDisplay = this.domCache_.get('gainDisplay');
-    if (gainDisplay) {
-      gainDisplay.textContent = isPowered ? `${state.gain.toFixed(1)} dB` : '-- dB';
-    }
-
     // Update alarm badge
     const alarms = this.getAlarmsFromModule_();
-    this.alarmBadge_.update(alarms);
+    this.alarmBadge_.update(alarms, this.hpaModule.state.isPowered, this.hpaModule.state.isHpaEnabled ? undefined : 'Output disabled');
+  }
+
+  /** True while the HPA is putting RF out (powered, enabled, driven) */
+  private isRadiating_(state: HPAState): boolean {
+    return isHpaRadiating(this.hpaModule, state);
+  }
+
+  /**
+   * The amplifier's power readouts from one state (Phase 19.6): input +
+   * gain = output, back-off = P1dB - output, IM3 at this drive. "--" for any
+   * figure that has no meaning (off, disabled, no drive).
+   */
+  private syncAmplifierReadouts_(update: Partial<HPAState> = {}): void {
+    const state: HPAState = { ...this.hpaModule.state, ...update };
+    const isPowered = state.isPowered;
+    const radiating = this.isRadiating_(state);
+    const set = (key: string, text: string): void => {
+      const el = this.domCache_.get(key);
+      if (el) el.textContent = text;
+    };
+
+    const hasDrive = isPowered && state.inputPower !== undefined && state.inputPower > -89;
+    set('inputPowerDisplay', hasDrive ? `${(state.inputPower as number).toFixed(1)} dBm` : '-- dBm');
+    set('outputPowerDisplay', radiating ? `${state.outputPower.toFixed(1)} dBm` : '-- dBm');
+    set('p1dbDisplay', isPowered ? `${this.hpaModule.p1db.toFixed(1)} dBm` : '-- dBm');
+    set('oboDisplay', radiating && state.outputBackoffDb !== null && state.outputBackoffDb !== undefined ? `${state.outputBackoffDb.toFixed(1)} dB` : '-- dB');
+    set('gainDisplay', isPowered && state.isHpaEnabled ? `${state.gain.toFixed(1)} dB` : '-- dB');
+    set('imdDisplay', radiating ? `${state.imdLevel.toFixed(1)} dBc` : '-- dBc');
+
+    if (radiating) {
+      const watts = 10 ** ((state.outputPower - 30) / 10);
+      set('powerWatts', watts >= 1 ? `${watts.toFixed(0)} W` : `${(watts * 1000).toFixed(0)} mW`);
+      this.updatePowerMeter_(state.outputPower);
+    } else {
+      // Output disabled reads "--" like OUTPUT and BACK-OFF; enabled with no
+      // drive is a real 0 W (nats-r5-s09-F1)
+      set('powerWatts', isPowered && state.isHpaEnabled ? '0 W' : '-- W');
+      this.clearPowerMeter_();
+    }
+
+    // ALC switch and the meaning of the back-off control follow the mode
+    const alcSwitch = this.domCache_.get('alcSwitch') as HTMLInputElement | undefined;
+    if (alcSwitch && document.activeElement !== alcSwitch && alcSwitch.checked !== this.hpaModule.isAlcEnabled) {
+      alcSwitch.checked = this.hpaModule.isAlcEnabled;
+    }
+    if (alcSwitch) alcSwitch.disabled = !isPowered;
+    set('backOffLabel', this.hpaModule.isAlcEnabled ? 'Output Back-off from P1dB (ALC setpoint)' : 'Output Back-off from P1dB (fixed gain, at rated drive)');
   }
 
   private clearPowerMeter_(): void {
@@ -197,6 +223,8 @@ export class HPAAdapter {
     // Switches
     this.domCache_.set('powerSwitch', qs('#hpa-power', this.containerEl));
     this.domCache_.set('hpaEnableSwitch', qs('#hpa-enable', this.containerEl));
+    const enableStatus = this.containerEl.querySelector<HTMLElement>('#hpa-enable-status');
+    if (enableStatus) this.domCache_.set('hpaEnableStatus', enableStatus);
 
     // Power displays
     this.domCache_.set('inputPowerDisplay', qs('#hpa-input-power-display', this.containerEl));
@@ -204,6 +232,15 @@ export class HPAAdapter {
     this.domCache_.set('powerMeter', qs('#hpa-power-meter', this.containerEl));
     this.domCache_.set('powerWatts', qs('#hpa-power-watts', this.containerEl));
     this.domCache_.set('p1dbDisplay', qs('#hpa-p1db-display', this.containerEl));
+    // Phase 19.6 controls/readouts (optional in older layouts)
+    for (const [key, id] of [
+      ['oboDisplay', '#hpa-obo-display'],
+      ['alcSwitch', '#hpa-alc'],
+      ['backOffLabel', '#hpa-backoff-label'],
+    ] as const) {
+      const el = this.containerEl.querySelector<HTMLElement>(id);
+      if (el) this.domCache_.set(key, el);
+    }
 
     // Amplifier Status displays
     this.domCache_.set('gainDisplay', qs('#hpa-gain-display', this.containerEl));
@@ -245,34 +282,100 @@ export class HPAAdapter {
 
     // HPA Enable switch - immediate effect
     const hpaEnableSwitch = this.domCache_.get('hpaEnableSwitch') as HTMLInputElement;
-    hpaEnableSwitch?.addEventListener('change', this.hpaEnableHandler_.bind(this));
-    this.boundHandlers.set('hpaEnable', this.hpaEnableHandler_.bind(this));
+    const hpaEnableHandler = this.hpaEnableHandler_.bind(this);
+    hpaEnableSwitch?.addEventListener('change', hpaEnableHandler);
+    this.boundHandlers.set('hpaEnable', hpaEnableHandler);
+
+    // ALC switch - immediate effect (the back-off control's meaning follows it)
+    const alcSwitch = this.domCache_.get('alcSwitch') as HTMLInputElement | undefined;
+    const alcHandler = this.alcHandler_.bind(this);
+    alcSwitch?.addEventListener('change', alcHandler);
+    this.boundHandlers.set('alc', alcHandler);
+  }
+
+  private alcHandler_(e: Event): void {
+    const isChecked = (e.target as HTMLInputElement).checked;
+    if (this.hpaModule.isAlcEnabled !== isChecked) {
+      this.hpaModule.handleAlcToggle(isChecked);
+    }
+    this.syncAmplifierReadouts_();
   }
 
   private backOffInputHandler_(e: Event) {
     const value = parseLocalizedNumber((e.target as HTMLInputElement).value);
     if (!isNaN(value)) {
-      this.stagedBackOff_ = Math.max(0, Math.min(30, value));
-      this.updateStagedDisplay_();
+      this.setStagedBackOff_(value);
     }
   }
 
   private adjustStagedBackOff_(delta: number): void {
-    this.stagedBackOff_ = Math.max(0, Math.min(30, this.stagedBackOff_ + delta));
+    this.setStagedBackOff_(this.stagedBackOff_ + delta);
+  }
+
+  /** Player edit: stage a new back-off and mark it pending until applied. */
+  private setStagedBackOff_(value: number): void {
+    this.stagedBackOff_ = Math.max(0, Math.min(30, value));
+    this.hasPendingEdit_ = this.stagedBackOff_ !== this.hpaModule.state.backOff;
+    this.updateStagedDisplay_(true);
+  }
+
+  /**
+   * Follow the applied back-off only when the player has no pending edit, so a
+   * toggle or external state event never silently discards a staged value.
+   */
+  private syncStagedFromState_(appliedBackOff: number | undefined): void {
+    if (appliedBackOff === undefined) {
+      return;
+    }
+
+    if (!this.hasPendingEdit_) {
+      this.stagedBackOff_ = appliedBackOff;
+    } else if (this.stagedBackOff_ === appliedBackOff) {
+      this.hasPendingEdit_ = false;
+    }
+
     this.updateStagedDisplay_();
   }
 
-  private updateStagedDisplay_(): void {
+  /**
+   * @param isUserEdit true when called from the player's own edit; otherwise a
+   *   focused input is left alone (CLAUDE.md "Protecting Input Fields").
+   */
+  private updateStagedDisplay_(isUserEdit = false): void {
     const isPowered = this.hpaModule.state.isPowered;
     const backOffInput = this.domCache_.get('backOffInput') as HTMLInputElement;
 
+    if (backOffInput && (isUserEdit || document.activeElement !== backOffInput)) {
+      // Keep the staged value showing while unpowered: '--' in a number
+      // input renders blank, which read as "no back-off set" (nats-r2-s16-F1)
+      backOffInput.value = this.stagedBackOff_.toString();
+    }
     if (backOffInput) {
-      backOffInput.value = isPowered ? this.stagedBackOff_.toString() : '--';
       backOffInput.disabled = !isPowered;
     }
 
     // Disable adjust buttons when powered off
     this.setControlButtonsEnabled_(isPowered);
+    this.updatePendingIndicator_();
+  }
+
+  /** Staged vs applied: pending style on the input and Apply, applied value in the tooltip. */
+  private updatePendingIndicator_(): void {
+    const appliedBackOff = this.hpaModule.state.backOff;
+    // Pending is staged vs applied, powered or not: a staged change survives
+    // a power cycle, so the input keeps saying so while the HPA is off
+    const isPending = this.stagedBackOff_ !== appliedBackOff;
+    const isPowered = this.hpaModule.state.isPowered;
+    const backOffInput = this.domCache_.get('backOffInput') as HTMLInputElement;
+    const applyBtn = this.domCache_.get('applyBtn') as HTMLButtonElement;
+
+    if (backOffInput) {
+      backOffInput.classList.toggle('is-pending', isPending);
+      const pendingNote = isPending ? ' (staged change not applied)' : '';
+      const powerNote = isPowered ? '' : ' - HPA off, power on to apply';
+      backOffInput.title = `Applied: ${appliedBackOff} dB${pendingNote}${powerNote}`;
+    }
+    applyBtn?.classList.toggle('is-pending', isPending);
   }
 
   private setControlButtonsEnabled_(enabled: boolean): void {
@@ -286,11 +389,14 @@ export class HPAAdapter {
   private applyHandler_(): void {
     // Apply staged value to the core module
     this.hpaModule.handleBackOffChange(this.stagedBackOff_);
+    this.hasPendingEdit_ = false;
     this.syncDomWithState_(this.hpaModule.state);
+    this.updateStagedDisplay_();
   }
 
   private powerHandler_(e: Event) {
     const isChecked = (e.target as HTMLInputElement).checked;
+    if (isChecked) this.showEnableStatus_(null);
     this.hpaModule.handlePowerToggle(isChecked, (state: HPAState) => {
       this.syncDomWithState_(state);
     });
@@ -300,13 +406,30 @@ export class HPAAdapter {
     const isChecked = (e.target as HTMLInputElement).checked;
     // Only toggle if state doesn't match checkbox value
     if (this.hpaModule.state.isHpaEnabled !== isChecked) {
-      this.hpaModule.handleHpaToggle();
+      const station = stationTagForRfModule(this.hpaModule);
+      const reason = isChecked ? this.hpaModule.getEnableBlockReason() : null;
+      if (reason) {
+        // Refused: say why on the panel and in the log (nats-r3-s04-F2)
+        this.showEnableStatus_(`Enable refused: ${reason}`);
+        EventAutoLogger.getInstance().logAction(`HPA enable refused: ${reason}`, 'RF FE', station);
+      } else {
+        this.hpaModule.handleHpaToggle();
+        this.showEnableStatus_(null);
+        EventAutoLogger.getInstance().logAction(this.hpaModule.state.isHpaEnabled ? 'HPA enabled' : 'HPA disabled', 'RF FE', station);
+      }
     }
+    // A refused request leaves the state as it was; force the sync so the
+    // switch snaps back to it instead of showing a state the HPA is not in
+    this.lastStateString = '';
     this.syncDomWithState_(this.hpaModule.state);
   }
 
-  update(): void {
-    this.syncDomWithState_(this.hpaModule.state);
+  /** Inline note under the HPA Enable switch; null hides it */
+  private showEnableStatus_(text: string | null): void {
+    const status = this.domCache_.get('hpaEnableStatus');
+    if (!status) return;
+    status.textContent = text ?? '';
+    status.classList.toggle('d-none', text === null);
   }
 
   private syncDomWithState_(state: Partial<HPAState>): void {
@@ -316,11 +439,10 @@ export class HPAAdapter {
     this.lastStateString = stateStr;
 
     const isPowered = state.isPowered ?? this.hpaModule.state.isPowered;
+    const isEnabled = isPowered && (state.isHpaEnabled ?? this.hpaModule.state.isHpaEnabled);
 
-    // Update staged value from state and refresh display
-    if (state.backOff !== undefined) {
-      this.stagedBackOff_ = state.backOff;
-    }
+    // Follow the applied back-off unless the player has a pending staged edit
+    this.syncStagedFromState_(state.backOff);
     this.updateStagedDisplay_();
 
     // Update Power switch
@@ -335,54 +457,7 @@ export class HPAAdapter {
       if (hpaEnableSwitch) hpaEnableSwitch.checked = state.isHpaEnabled;
     }
 
-    // Update Input Power display - shows BUC output, or "--" when BUC in loopback
-    const inputPowerDisplay = this.domCache_.get('inputPowerDisplay');
-    if (inputPowerDisplay) {
-      const inputSignals = this.hpaModule.inputSignals;
-      if (isPowered && inputSignals.length > 0) {
-        inputPowerDisplay.textContent = `${inputSignals[0].power.toFixed(1)} dBm`;
-      } else {
-        inputPowerDisplay.textContent = '-- dBm';
-      }
-    }
-
-    // Update Power Output displays - show "--" when powered off
-    const outputPowerDisplay = this.domCache_.get('outputPowerDisplay');
-    if (outputPowerDisplay) {
-      if (isPowered && state.outputPower !== undefined) {
-        outputPowerDisplay.textContent = `${state.outputPower.toFixed(1)} dBm`;
-      } else if (!isPowered) {
-        outputPowerDisplay.textContent = '-- dBm';
-      }
-    }
-
-    // Update power meter visualization
-    if (isPowered && state.outputPower !== undefined) {
-      this.updatePowerMeter_(state.outputPower);
-    } else if (!isPowered) {
-      this.clearPowerMeter_();
-    }
-
-    // Update power in watts
-    const wattsDisplay = this.domCache_.get('powerWatts');
-    if (wattsDisplay) {
-      if (isPowered && state.outputPower !== undefined) {
-        const watts = 10 ** ((state.outputPower - 30) / 10);
-        if (watts >= 1) {
-          wattsDisplay.textContent = `${watts.toFixed(0)} W`;
-        } else {
-          wattsDisplay.textContent = `${(watts * 1000).toFixed(0)} mW`;
-        }
-      } else if (!isPowered) {
-        wattsDisplay.textContent = '-- W';
-      }
-    }
-
-    // Update P1dB display
-    const p1dbDisplay = this.domCache_.get('p1dbDisplay');
-    if (p1dbDisplay) {
-      p1dbDisplay.textContent = isPowered ? '50.0 dBm' : '-- dBm';
-    }
+    this.syncAmplifierReadouts_(state);
 
     // Update temperature display
     const temperatureDisplay = this.domCache_.get('temperatureDisplay');
@@ -397,38 +472,18 @@ export class HPAAdapter {
     // Update overdrive status
     const overdriveStatus = this.domCache_.get('overdriveStatus');
     if (overdriveStatus) {
-      if (isPowered && state.isOverdriven !== undefined) {
+      if (isEnabled && state.isOverdriven !== undefined) {
         overdriveStatus.textContent = state.isOverdriven ? 'OVERDRIVE' : 'Normal';
         overdriveStatus.className = state.isOverdriven ? 'status-badge status-badge-warning' : 'status-badge status-badge-good';
-      } else if (!isPowered) {
+      } else if (!isEnabled) {
         overdriveStatus.textContent = '--';
         overdriveStatus.className = 'status-badge status-badge-off';
       }
     }
 
-    // Update IMD display
-    const imdDisplay = this.domCache_.get('imdDisplay');
-    if (imdDisplay) {
-      if (isPowered && state.imdLevel !== undefined) {
-        imdDisplay.textContent = `${state.imdLevel.toFixed(1)} dBc`;
-      } else if (!isPowered) {
-        imdDisplay.textContent = '-- dBc';
-      }
-    }
-
-    // Update gain display
-    const gainDisplay = this.domCache_.get('gainDisplay');
-    if (gainDisplay) {
-      if (isPowered && state.gain !== undefined) {
-        gainDisplay.textContent = `${state.gain.toFixed(1)} dB`;
-      } else if (!isPowered) {
-        gainDisplay.textContent = '-- dB';
-      }
-    }
-
     // Update alarm badge - immediate feedback
     const alarms = this.getAlarmsFromModule_();
-    this.alarmBadge_.update(alarms);
+    this.alarmBadge_.update(alarms, this.hpaModule.state.isPowered, this.hpaModule.state.isHpaEnabled ? undefined : 'Output disabled');
   }
 
   /**
@@ -439,9 +494,9 @@ export class HPAAdapter {
     const powerMeter = this.domCache_.get('powerMeter');
     if (!powerMeter) return;
 
-    // P1dB is 50 dBm, so scale from ~30 dBm (low) to 50 dBm (max)
-    const minPower = 30;
-    const maxPower = 63;
+    // Scale from 30 dB under Psat to Psat
+    const maxPower = this.hpaModule.psatDbm;
+    const minPower = maxPower - 30;
     const normalized = Math.max(0, Math.min(1, (outputPowerDbm - minPower) / (maxPower - minPower)));
     const activeSegments = Math.round(normalized * 10);
 
@@ -469,23 +524,9 @@ export class HPAAdapter {
   private getAlarmsFromModule_(): AlarmStatus[] {
     const alarmStrings = this.hpaModule.getAlarms();
     return alarmStrings.map((message) => ({
-      severity: this.classifySeverity_(message),
+      severity: classifyRfAlarmSeverity(message),
       message,
     }));
-  }
-
-  /**
-   * Classify alarm message severity based on content
-   */
-  private classifySeverity_(message: string): AlarmStatus['severity'] {
-    const lowerMsg = message.toLowerCase();
-    if (lowerMsg.includes('overdrive') || lowerMsg.includes('over-temperature')) {
-      return 'error';
-    }
-    if (lowerMsg.includes('warning') || lowerMsg.includes('enabled without')) {
-      return 'warning';
-    }
-    return 'warning'; // Default to warning for any alarm
   }
 
   dispose(): void {
@@ -504,6 +545,9 @@ export class HPAAdapter {
     const backOffHandler = this.boundHandlers.get('backOffInput');
     const powerHandler = this.boundHandlers.get('power');
     const hpaEnableHandler = this.boundHandlers.get('hpaEnable');
+    const alcSwitch = this.domCache_.get('alcSwitch') as HTMLInputElement | undefined;
+    const alcHandler = this.boundHandlers.get('alc');
+    if (alcSwitch && alcHandler) alcSwitch.removeEventListener('change', alcHandler);
 
     if (backOffInput && backOffHandler) backOffInput.removeEventListener('change', backOffHandler);
     if (powerSwitch && powerHandler) powerSwitch.removeEventListener('change', powerHandler);

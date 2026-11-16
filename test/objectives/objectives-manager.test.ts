@@ -4,8 +4,10 @@ import { CommandingManager } from '../../src/commanding/commanding-manager';
 import { EventBus } from '../../src/events/event-bus';
 import { Events, QuizCompletedData, QuizPassedData } from '../../src/events/events';
 import { DecisionManager } from '../../src/modal/decision-manager';
+import { CountdownHold } from '../../src/objectives/countdown-hold';
 import { Objective, ObjectiveState } from '../../src/objectives/objective-types';
 import { ObjectivesManager } from '../../src/objectives/objectives-manager';
+import { OpsLogManager } from '../../src/ops-log/ops-log-manager';
 import { TabbedCanvas } from '../../src/pages/mission-control/tabbed-canvas';
 import { resetMissionClock } from '../../src/simulation/mission-clock';
 import { SimClock } from '../../src/simulation/sim-clock';
@@ -130,7 +132,7 @@ let mockNotchFilterState = createMockNotchFilterState();
 let mockSpectrumAnalyzerState = createMockSpectrumAnalyzerState();
 let mockReceiverModemState = createMockReceiverModemState();
 let mockTransmitterModemState = createMockTransmitterModemState();
-let mockInputSignals: Array<{ signalId: string; power: number }> = [];
+let mockInputSignals: Array<{ signalId: string; power: number; frequency?: number; bandwidth?: number }> = [];
 let mockReceiverHasLock = false;
 let mockReceiverSnr: number | null = null;
 
@@ -143,9 +145,13 @@ const createMockGroundStation = () => ({
   ],
   rfFrontEnds: [
     {
-      gpsdoModule: { state: mockGpsdoState },
+      gpsdoModule: { state: mockGpsdoState, get10MhzOutput: () => ({ isPresent: true, isWarmedUp: true }) },
       bucModule: { state: mockBucState },
-      lnbModule: { state: mockLnbState },
+      lnbModule: {
+        state: mockLnbState,
+        isThermallyStable: () => mockLnbState.isPowered && mockLnbState.temperature >= 30,
+        secondsSincePowerOn: 600,
+      },
       hpaModule: { state: mockHpaState },
       filterModule: { state: mockFilterState },
       notchFilterModule: { state: mockNotchFilterState },
@@ -264,20 +270,30 @@ describe('ObjectivesManager', () => {
     vi.clearAllMocks();
   });
 
-  const createTestObjective = (overrides: Partial<Objective> = {}): Objective => ({
-    id: 'test-objective-1',
-    title: 'Test Objective',
-    description: 'A test objective',
-    groundStation: 'gs-1',
-    conditions: [
-      {
-        type: 'mission-brief-opened',
-        description: 'Open mission brief',
-        mustMaintain: false,
-      },
-    ],
-    ...overrides,
-  });
+  /**
+   * Evaluator tests stage the target state before the objective activates.
+   * That is exactly what requiresChange (Phase 27 B1) refuses to count, so
+   * the helper opts their conditions out; the B1 suite below builds its
+   * objectives without the helper to test the default.
+   */
+  const createTestObjective = (overrides: Partial<Objective> = {}): Objective => {
+    const objective: Objective = {
+      id: 'test-objective-1',
+      title: 'Test Objective',
+      description: 'A test objective',
+      groundStation: 'gs-1',
+      conditions: [
+        {
+          type: 'mission-brief-opened',
+          description: 'Open mission brief',
+          mustMaintain: false,
+        },
+      ],
+      ...overrides,
+    };
+
+    return { ...objective, conditions: objective.conditions.map((c) => ({ requiresChange: false, ...c })) };
+  };
 
   describe('Singleton Pattern', () => {
     it('should create singleton instance with initialize()', () => {
@@ -392,6 +408,7 @@ describe('ObjectivesManager', () => {
           id: 'timed-obj',
           timeLimitSeconds: 5,
           timerStartTrigger: 'on-scenario-load',
+          timeoutFails: true,
         }),
       ];
 
@@ -488,6 +505,7 @@ describe('ObjectivesManager', () => {
           id: 'timed-obj',
           timeLimitSeconds: 30,
           timerStartTrigger: 'on-scenario-load',
+          timeoutFails: true,
         }),
       ];
       const failedCallback = vi.fn();
@@ -498,6 +516,19 @@ describe('ObjectivesManager', () => {
       manager.applyTimeSkip(45_000);
 
       expect(failedCallback).toHaveBeenCalledWith(expect.objectContaining({ objectiveId: 'timed-obj', reason: 'timeout' }));
+    });
+
+    it('should not charge an objective skip against the scenario limit', () => {
+      const objectives = [createTestObjective({ id: 'wait-obj' })];
+      const expiredCallback = vi.fn();
+      eventBus.on(Events.SCENARIO_TIME_EXPIRED, expiredCallback);
+
+      const manager = ObjectivesManager.initialize(objectives, 300);
+
+      manager.applyTimeSkip(40 * 60_000, 'wait-obj');
+
+      expect(manager.getScenarioTimeRemaining()).toBe(300);
+      expect(expiredCallback).not.toHaveBeenCalled();
     });
 
     it('should ignore non-positive deltas', () => {
@@ -516,6 +547,7 @@ describe('ObjectivesManager', () => {
           id: 'timed-obj',
           timeLimitSeconds: 120,
           timerStartTrigger: 'on-scenario-load',
+          timeoutFails: true,
         }),
       ];
       const failedCallback = vi.fn();
@@ -1506,6 +1538,7 @@ describe('ObjectivesManager', () => {
           title: 'Failed Objective',
           timeLimitSeconds: 2,
           timerStartTrigger: 'on-scenario-load',
+          timeoutFails: true,
         }),
       ];
 
@@ -1811,6 +1844,8 @@ describe('ObjectivesManager', () => {
               type: 'ground-station-selected',
               description: 'Track losses',
               mustMaintain: true,
+              // A timed hold: since B8 an untimed mustMaintain completes on its first true frame
+              maintainDuration: 10,
               params: { groundStationId: 'gs-1' },
             },
           ],
@@ -1837,6 +1872,144 @@ describe('ObjectivesManager', () => {
     });
   });
 
+  describe('Non-fatal timeouts (Phase 26 D2)', () => {
+    it('stops the timer, deducts half the points once and keeps the objective open', () => {
+      const objectives = [createTestObjective({ id: 'slow-obj', points: 15, timeLimitSeconds: 2, timerStartTrigger: 'on-scenario-load' })];
+      const failedCallback = vi.fn();
+      const penaltyCallback = vi.fn();
+      eventBus.on(Events.OBJECTIVE_FAILED, failedCallback);
+      eventBus.on(Events.TIME_PENALTY_APPLIED, penaltyCallback);
+      const manager = ObjectivesManager.initialize(objectives);
+
+      advanceSimTime(5000, { emitUpdate: true });
+
+      const state = manager.getObjectiveState('slow-obj');
+      expect(failedCallback).not.toHaveBeenCalled();
+      expect(state?.isFailed).toBe(false);
+      expect(state?.timedOut).toBe(true);
+      expect(state?.isTimerRunning).toBe(false);
+      expect(state?.timePenaltyPoints).toBe(8);
+      expect(penaltyCallback).toHaveBeenCalledTimes(1);
+      expect(penaltyCallback).toHaveBeenCalledWith(expect.objectContaining({ objectiveId: 'slow-obj', pointsDeducted: 8 }));
+
+      // Still completable in overtime
+      ObjectivesManager.registerOpenedBox('mission-brief-1');
+      eventBus.emit(Events.UPDATE, 16);
+      expect(manager.getObjectiveState('slow-obj')?.isCompleted).toBe(true);
+    });
+
+    it('uses timeoutPenaltyPoints when the author sets it', () => {
+      const objectives = [createTestObjective({ id: 'slow-obj', points: 15, timeLimitSeconds: 2, timeoutPenaltyPoints: 3, timerStartTrigger: 'on-scenario-load' })];
+      const manager = ObjectivesManager.initialize(objectives);
+
+      manager.applyTimeSkip(10_000);
+
+      expect(manager.getObjectiveState('slow-obj')?.timePenaltyPoints).toBe(3);
+    });
+  });
+
+  describe('ops-log-entry (Phase 26)', () => {
+    afterEach(() => OpsLogManager.destroy());
+
+    it('needs an operator-typed entry with every keyword group, ignoring system entries', () => {
+      const opsLog = OpsLogManager.initialize();
+      const objectives = [
+        createTestObjective({
+          id: 'log-obj',
+          conditions: [{ type: 'ops-log-entry', description: 'Log the bypass', mustMaintain: false, params: { logKeywords: ['manual|bypass', 'acu'] } }],
+        }),
+      ];
+      const manager = ObjectivesManager.initialize(objectives);
+
+      opsLog.log('ACU switched to manual bypass', 'system');
+      eventBus.emit(Events.UPDATE, 16);
+      expect(manager.getObjectiveState('log-obj')?.isCompleted).toBe(false);
+
+      opsLog.log('Took ACU to MANUAL after automation fault', 'action', 'operator');
+      eventBus.emit(Events.UPDATE, 16);
+      expect(manager.getObjectiveState('log-obj')?.isCompleted).toBe(true);
+    });
+
+    it('rejects entries shorter than logMinLength', () => {
+      const opsLog = OpsLogManager.initialize();
+      const objectives = [createTestObjective({ id: 'log-obj', conditions: [{ type: 'ops-log-entry', description: 'Log it', mustMaintain: false, params: {} }] })];
+      const manager = ObjectivesManager.initialize(objectives);
+
+      opsLog.log('ok', 'action', 'operator');
+      eventBus.emit(Events.UPDATE, 16);
+      expect(manager.getObjectiveState('log-obj')?.isCompleted).toBe(false);
+    });
+
+    it('lets entries typed since activation share the keywords between them', () => {
+      const opsLog = OpsLogManager.initialize();
+      const params = { logKeywords: ['me-02|maine', 'safe|maintenance|parked'], logMinLength: 20 };
+      const objectives = [createTestObjective({ id: 'log-obj', conditions: [{ type: 'ops-log-entry', description: 'Log the handover', mustMaintain: false, params }] })];
+      const manager = ObjectivesManager.initialize(objectives);
+
+      opsLog.log('ME-02 has TM-1 now', 'action', 'operator');
+      eventBus.emit(Events.UPDATE, 16);
+      expect(manager.getObjectiveState('log-obj')?.isCompleted).toBe(false);
+
+      opsLog.log('VT-01 parked', 'action', 'operator');
+      eventBus.emit(Events.UPDATE, 16);
+      expect(manager.getObjectiveState('log-obj')?.isCompleted).toBe(true);
+    });
+
+    it('does not pool entries typed before the objective activated', () => {
+      const opsLog = OpsLogManager.initialize();
+      opsLog.log('ME-02 has TM-1 now', 'action', 'operator');
+      SimClock.setScenarioNowMs(SimClock.nowMs() + 60_000);
+      const params = { logKeywords: ['me-02|maine', 'safe|maintenance|parked'], logMinLength: 20 };
+      const objectives = [createTestObjective({ id: 'log-obj', conditions: [{ type: 'ops-log-entry', description: 'Log the handover', mustMaintain: false, params }] })];
+      const manager = ObjectivesManager.initialize(objectives);
+
+      opsLog.log('VT-01 parked for maintenance', 'action', 'operator');
+      eventBus.emit(Events.UPDATE, 16);
+      expect(manager.getObjectiveState('log-obj')?.isCompleted).toBe(false);
+    });
+  });
+
+  describe('Countdown hold (Phase 26 D2)', () => {
+    afterEach(() => CountdownHold.reset());
+
+    it('freezes objective and scenario countdowns while held, and resumes after', () => {
+      const objectives = [createTestObjective({ id: 'timed-obj', timeLimitSeconds: 60, timerStartTrigger: 'on-scenario-load' })];
+      const manager = ObjectivesManager.initialize(objectives, 300);
+
+      CountdownHold.set('dialog', true);
+      advanceSimTime(5000, { emitUpdate: true });
+      expect(manager.getObjectiveState('timed-obj')?.timeRemainingSeconds).toBe(60);
+      expect(manager.getScenarioTimeRemaining()).toBe(300);
+
+      CountdownHold.set('dialog', false);
+      advanceSimTime(5000, { emitUpdate: true });
+      expect(manager.getObjectiveState('timed-obj')?.timeRemainingSeconds).toBe(55);
+    });
+
+    it('holds while a quiz is open and releases when it is completed', () => {
+      const objectives = [createTestObjective({ id: 'timed-obj', timeLimitSeconds: 60, timerStartTrigger: 'on-scenario-load' })];
+      const manager = ObjectivesManager.initialize(objectives);
+
+      eventBus.emit(Events.QUIZ_SHOW, { objectiveId: 'timed-obj', conditionIndex: 0 } as never);
+      expect(CountdownHold.isHeld()).toBe(true);
+      advanceSimTime(3000, { emitUpdate: true });
+      expect(manager.getObjectiveState('timed-obj')?.timeRemainingSeconds).toBe(60);
+
+      eventBus.emit(Events.QUIZ_COMPLETED, { objectiveId: 'timed-obj', conditionIndex: 0, totalAttempts: 1, totalPointsDeducted: 0 });
+      expect(CountdownHold.isHeld()).toBe(false);
+    });
+
+    it('keeps the objective timer running through a passed quiz so a half-done objective stays timed', () => {
+      const objectives = [createTestObjective({ id: 'timed-obj', timeLimitSeconds: 60, timerStartTrigger: 'on-scenario-load' })];
+      const manager = ObjectivesManager.initialize(objectives);
+
+      eventBus.emit(Events.QUIZ_PASSED, { objectiveId: 'timed-obj', conditionIndex: 0, attempts: 1, pointsDeducted: 0 });
+      eventBus.emit(Events.QUIZ_COMPLETED, { objectiveId: 'timed-obj', conditionIndex: 0, totalAttempts: 1, totalPointsDeducted: 0 });
+
+      expect(manager.getObjectiveState('timed-obj')?.isTimerRunning).toBe(true);
+    });
+  });
+
   describe('Failed Objectives', () => {
     it('should not complete failed objectives', () => {
       const objectives = [
@@ -1844,6 +2017,7 @@ describe('ObjectivesManager', () => {
           id: 'failed-obj',
           timeLimitSeconds: 2,
           timerStartTrigger: 'on-scenario-load',
+          timeoutFails: true,
         }),
       ];
 
@@ -1868,6 +2042,7 @@ describe('ObjectivesManager', () => {
           id: 'failed-obj',
           timeLimitSeconds: 2,
           timerStartTrigger: 'on-scenario-load',
+          timeoutFails: true,
         }),
       ];
 
@@ -2220,6 +2395,30 @@ describe('ObjectivesManager', () => {
       ObjectivesManager.initialize(objectives);
       eventBus.emit(Events.UPDATE, 16);
 
+      expect(completedCallback).toHaveBeenCalled();
+    });
+
+    it('antenna-beacon-locked with noradId needs that satellite as the target', () => {
+      mockAntennaState.isBeaconLocked = true;
+      (mockAntennaState as { targetSatelliteId?: number }).targetSatelliteId = 61525;
+
+      const objectives = [
+        createTestObjective({
+          id: 'beacon-lock-target-obj',
+          conditions: [{ type: 'antenna-beacon-locked', description: 'AURORA-7 beacon', params: { noradId: 28899 }, mustMaintain: false }],
+        }),
+      ];
+
+      const completedCallback = vi.fn();
+      eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
+
+      ObjectivesManager.initialize(objectives);
+      eventBus.emit(Events.UPDATE, 16);
+      // Locked, but on the previous satellite's beacon
+      expect(completedCallback).not.toHaveBeenCalled();
+
+      (mockAntennaState as { targetSatelliteId?: number }).targetSatelliteId = 28899;
+      eventBus.emit(Events.UPDATE, 16);
       expect(completedCallback).toHaveBeenCalled();
     });
 
@@ -2682,10 +2881,11 @@ describe('ObjectivesManager', () => {
     });
 
     it('should evaluate lnb-thermally-stable condition', () => {
+      // 19.6: powered past its stabilization time and locked to the reference
       mockLnbState.isPowered = true;
+      mockLnbState.isExtRefLocked = true;
       mockLnbState.noiseTemperature = 80;
       mockLnbState.temperature = 35;
-      mockLnbState.frequencyError = 0;
 
       const objectives = [
         createTestObjective({
@@ -2801,6 +3001,7 @@ describe('ObjectivesManager', () => {
 
     it('should evaluate hpa-not-overdriven condition', () => {
       mockHpaState.isPowered = true;
+      mockHpaState.isHpaEnabled = true; // Phase 35 s04-F5: a disabled HPA is not within limits
       mockHpaState.isOverdriven = false;
 
       const objectives = [
@@ -3210,7 +3411,7 @@ describe('ObjectivesManager', () => {
 
   describe('Spectrum Analyzer Conditions', () => {
     it('should evaluate signal-detected condition', () => {
-      mockInputSignals = [{ signalId: 'test-signal', power: -40 }];
+      mockInputSignals = [{ signalId: 'test-signal', power: -40, frequency: 70e6, bandwidth: 1e6 }];
 
       const objectives = [
         createTestObjective({
@@ -3229,7 +3430,7 @@ describe('ObjectivesManager', () => {
     });
 
     it('should evaluate signal-detected with specific signalId', () => {
-      mockInputSignals = [{ signalId: 'target-signal', power: -40 }];
+      mockInputSignals = [{ signalId: 'target-signal', power: -40, frequency: 70e6, bandwidth: 1e6 }];
 
       const objectives = [
         createTestObjective({
@@ -3255,7 +3456,7 @@ describe('ObjectivesManager', () => {
     });
 
     it('should evaluate signal-detected with minPower', () => {
-      mockInputSignals = [{ signalId: 'target-signal', power: -40 }];
+      mockInputSignals = [{ signalId: 'target-signal', power: -40, frequency: 70e6, bandwidth: 1e6 }];
 
       const objectives = [
         createTestObjective({
@@ -3280,8 +3481,64 @@ describe('ObjectivesManager', () => {
       expect(completedCallback).toHaveBeenCalled();
     });
 
+    it('does not count a signal outside the analyzer window (Phase 27 B2)', () => {
+      // Analyzer at 70 MHz / 40 MHz span shows 50-90 MHz; a 1 MHz carrier at 120 MHz is off-screen
+      mockInputSignals = [{ signalId: 'beacon', power: -40, frequency: 120e6, bandwidth: 1e6 }];
+      const objectives = [
+        createTestObjective({
+          id: 'signal-obj',
+          conditions: [{ type: 'signal-detected', description: 'Beacon on screen', mustMaintain: false, params: { signalId: 'beacon' } }],
+        }),
+      ];
+      const completedCallback = vi.fn();
+      eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
+
+      ObjectivesManager.initialize(objectives);
+      eventBus.emit(Events.UPDATE, 16);
+      expect(completedCallback).not.toHaveBeenCalled();
+
+      // Retune the analyzer onto it
+      mockSpectrumAnalyzerState.centerFrequency = 118e6;
+      eventBus.emit(Events.UPDATE, 16);
+      expect(completedCallback).toHaveBeenCalled();
+    });
+
+    it('counts a wide carrier that only partly overlaps the window', () => {
+      mockSpectrumAnalyzerState.centerFrequency = 70e6;
+      mockSpectrumAnalyzerState.span = 2e3;
+      mockInputSignals = [{ signalId: 'carrier', power: -40, frequency: 75e6, bandwidth: 36e6 }];
+      const objectives = [
+        createTestObjective({
+          id: 'signal-obj',
+          conditions: [{ type: 'signal-detected', description: 'Carrier', mustMaintain: false, params: { signalId: 'carrier' } }],
+        }),
+      ];
+      const completedCallback = vi.fn();
+      eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
+
+      ObjectivesManager.initialize(objectives);
+      eventBus.emit(Events.UPDATE, 16);
+      expect(completedCallback).toHaveBeenCalled();
+    });
+
+    it('counts an off-screen signal with anyTuning', () => {
+      mockInputSignals = [{ signalId: 'beacon', power: -40, frequency: 120e6, bandwidth: 1e6 }];
+      const objectives = [
+        createTestObjective({
+          id: 'signal-obj',
+          conditions: [{ type: 'signal-detected', description: 'Beacon anywhere', mustMaintain: false, params: { signalId: 'beacon', anyTuning: true } }],
+        }),
+      ];
+      const completedCallback = vi.fn();
+      eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
+
+      ObjectivesManager.initialize(objectives);
+      eventBus.emit(Events.UPDATE, 16);
+      expect(completedCallback).toHaveBeenCalled();
+    });
+
     it('should evaluate signal-level-correct condition', () => {
-      mockInputSignals = [{ signalId: 'target-signal', power: -40 }];
+      mockInputSignals = [{ signalId: 'target-signal', power: -40, frequency: 70e6, bandwidth: 1e6 }];
 
       const objectives = [
         createTestObjective({
@@ -3355,6 +3612,27 @@ describe('ObjectivesManager', () => {
       ObjectivesManager.initialize(objectives);
       eventBus.emit(Events.UPDATE, 16);
 
+      expect(completedCallback).toHaveBeenCalled();
+    });
+
+    it('honours spanTolerance on speca-span-set (it used to fall back to ±1 MHz)', () => {
+      mockSpectrumAnalyzerState.span = 0.5e6;
+
+      const objectives = [
+        createTestObjective({
+          id: 'span-tol-obj',
+          conditions: [{ type: 'speca-span-set', description: 'Span 2 kHz', mustMaintain: false, params: { span: 2e3, spanTolerance: 100 } }],
+        }),
+      ];
+      const completedCallback = vi.fn();
+      eventBus.on(Events.OBJECTIVE_COMPLETED, completedCallback);
+
+      ObjectivesManager.initialize(objectives);
+      eventBus.emit(Events.UPDATE, 16);
+      expect(completedCallback).not.toHaveBeenCalled();
+
+      mockSpectrumAnalyzerState.span = 2.05e3;
+      eventBus.emit(Events.UPDATE, 16);
       expect(completedCallback).toHaveBeenCalled();
     });
 
@@ -3463,7 +3741,7 @@ describe('ObjectivesManager', () => {
     });
 
     it('should evaluate speca-noise-floor-visible condition', () => {
-      mockInputSignals = [{ signalId: 'weak-signal', power: -70 }];
+      mockInputSignals = [{ signalId: 'weak-signal', power: -70, frequency: 70e6, bandwidth: 1e6 }];
 
       const objectives = [
         createTestObjective({

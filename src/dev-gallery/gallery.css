@@ -1,0 +1,32 @@
+body.dev-gallery {
+  background: #101418;
+}
+.gallery-index {
+  max-width: 60rem;
+  margin: 2rem auto;
+  padding: 0 1rem;
+  color: #d8dee6;
+  font-family: system-ui, sans-serif;
+}
+.gallery-index ul {
+  list-style: none;
+  padding: 0;
+}
+.gallery-index li {
+  display: flex;
+  gap: 1rem;
+  padding: 0.25rem 0;
+}
+.gallery-index a {
+  color: #7ec8ff;
+}
+.gallery-index code {
+  min-width: 20rem;
+}
+.gallery-needs {
+  opacity: 0.55;
+}
+.gallery-ham-host {
+  position: fixed;
+  inset: 0;
+}

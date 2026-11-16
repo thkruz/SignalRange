@@ -1,12 +1,19 @@
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
 import { SignalOrigin } from '@app/signal-origin';
+import { type GeoSite, geoLongitudeFromAzimuth, geoLookAngles, geoPolarizationSkewDeg, geoSlantRangeKm } from '@app/simulation/geo-geometry';
 import { PerlinNoise } from '@app/simulation/perlin-noise';
 import { Rng, type RngStream } from '@app/simulation/rng';
 import { SimClock } from '@app/simulation/sim-clock';
 import { getSimulatedNowMs } from '@app/simulation/sim-time';
 import { dBi, dBm, Hertz, RfFrequency, RfSignal } from '@app/types';
 import { Degrees } from 'ootk';
+import { DEFAULT_TRANSPONDER_PHYSICS, operateTransponder, type TransponderOperatingPoint, type TransponderPhysics } from './transponder-model';
+
+/** Free-space path loss, dB (ITU-R P.525) */
+function freeSpaceLossDb(frequencyHz: number, distanceKm: number): number {
+  return 32.45 + 20 * Math.log10(Math.max(1e-3, distanceKm)) + 20 * Math.log10(frequencyHz / 1e6);
+}
 
 /**
  * Configuration for explicitly defining a satellite transponder.
@@ -26,14 +33,11 @@ export interface TransponderConfig {
   polarization: 'H' | 'V' | 'LHCP' | 'RHCP';
   /** Optional beacon signal for this transponder */
   beacon?: RfSignal;
-  /** Maximum output power (dBm), default 50 */
-  maxPower?: dBm;
-  /** Transponder gain (dBi), default 36.5 */
-  gain?: dBi;
-  /** Noise figure (dBi), default 3.5 */
-  noiseFigure?: dBi;
-  /** Saturation power (dBm), default 47 */
-  saturationPower?: dBm;
+  /**
+   * Transponder physics (Phase 19.3): SFD, G/T, saturated EIRP, amplifier
+   * class and gain mode. Omitted fields take DEFAULT_TRANSPONDER_PHYSICS.
+   */
+  physics?: Partial<TransponderPhysics>;
   /** Whether transponder is initially active, default true */
   isActive?: boolean;
 }
@@ -52,14 +56,8 @@ export interface Transponder {
   beacon?: RfSignal;
   /** Transponder bandwidth (Hz) */
   bandwidth: Hertz;
-  /** Maximum output power */
-  maxPower: dBm;
-  /** Transponder gain */
-  gain: dBi;
-  /** Noise figure */
-  noiseFigure: dBi;
-  /** Non-linear saturation power */
-  saturationPower: dBm;
+  /** SFD, G/T, saturated EIRP, amplifier and gain mode (Phase 19.3) */
+  physics: TransponderPhysics;
   /** Whether the transponder is active */
   isActive: boolean;
   /** Lower edge of uplink passband (uplinkFrequency - bandwidth/2) */
@@ -76,7 +74,11 @@ export interface Transponder {
  * Configuration for signal degradation effects.
  */
 export interface SignalDegradationConfig {
-  /** Enable atmospheric effects (rain fade, scintillation) */
+  /**
+   * Atmospheric effects on relayed carriers. No effect since Phase 19.2: rain
+   * is modelled once, at the receiving antenna (attenuation and noise rise),
+   * and scintillation is a 19.7 item (a seeded P.618 §2.4 process).
+   */
   atmosphericEffects: boolean;
   /** Enable random signal dropout simulation */
   randomDropout: boolean;
@@ -115,10 +117,25 @@ export interface GeosyncOrbitConfig {
   maxEl: Degrees;
   /** Initial phase offset (radians, 0-2*PI) - where satellite starts in pattern */
   initialPhase?: number;
+  /**
+   * Opt-in period of the figure-8, hours of scenario time (Phase 32 D19,
+   * nats-r7-s18-F1). A real inclined GEO bird traces its figure-8 once a
+   * sidereal day: 24 h on a +/-1.3 deg swing peaks at about 0.34 deg/h in
+   * elevation. Set, the phase is `initialPhase` at scenario start and runs on
+   * scenario time (paused with briefs, restored with checkpoints). Omitted:
+   * the legacy training rate, a peak of 0.1 deg per 30 s whatever the size of
+   * the swing (AURORA-7's step-track lessons are built on it).
+   */
+  periodHours?: number;
 }
 
 export interface SatelliteState {
-  rotation?: Degrees; // Random rotation if not specified
+  /**
+   * Linear polarization skew, degrees. Ignored when the satellite has a slot
+   * (`lookAnglesFrom`): the skew is then derived from geometry (Phase 29 D8).
+   * Otherwise random per NORAD id if not specified.
+   */
+  rotation?: Degrees;
   az: Degrees;
   el: Degrees;
   /** Legacy: single frequency offset for all transponders (used when transponderConfigs not provided) */
@@ -135,6 +152,21 @@ export interface SatelliteState {
   ephemerisErrorAz?: Degrees;
   /** Elevation error in TLE prediction (degrees). Program-track points to el + this error. */
   ephemerisErrorEl?: Degrees;
+  /**
+   * The station the authored az/el (and rotation) are written for (phase
+   * 19.4). Gives the satellite a slot longitude, so every other station sees
+   * it at the authored angles shifted by the real geometric difference
+   * between the sites, and its linear polarization skew follows the site.
+   * Omitted: one az/el for every station (legacy).
+   */
+  lookAnglesFrom?: GeoSite;
+}
+
+/** Offsets of a legacy GEO satellite's look angles and skew at one station, relative to its reference station */
+export interface StationLookOffsets {
+  dAz: number;
+  dEl: number;
+  dRotation: number;
 }
 
 /**
@@ -169,8 +201,6 @@ export class Satellite {
   /** Uplink to downlink frequency offset (Hz) */
   private readonly frequencyOffset: number;
 
-  private readonly randomCache_: Map<string, number> = new Map();
-
   /** This satellite's random stream for the current run seed */
   private get rng_(): RngStream {
     return Rng.stream(`satellite:${this.noradId}`);
@@ -188,6 +218,15 @@ export class Satellite {
   /** Ephemeris error in elevation (degrees) - simulates TLE inaccuracy */
   ephemerisErrorEl: Degrees = 0 as Degrees;
 
+  /** Station the authored look angles belong to (see SatelliteState.lookAnglesFrom) */
+  readonly lookAnglesFrom: GeoSite | null;
+  /** Slot longitude (degrees east) derived from the authored azimuth at the reference station; null without one */
+  readonly slotLongitudeDeg: number | null;
+  /** Each transponder's operating point from the last update */
+  private readonly operatingPoints_ = new Map<string, TransponderOperatingPoint>();
+  /** Per-station look-angle offsets, keyed by site */
+  private readonly stationOffsets_ = new Map<string, StationLookOffsets>();
+
   /** Orbit type - geostationary (fixed) or geosynchronous (figure-8 pattern) */
   readonly orbitType: OrbitType;
 
@@ -197,6 +236,10 @@ export class Satellite {
     centerEl: number;
     azAmplitude: number;
     elAmplitude: number;
+    /** Phase at scenario start, radians */
+    initialPhase: number;
+    /** Figure-8 period in ms of scenario time; null = the legacy training rate */
+    periodMs: number | null;
   } | null = null;
 
   /** Current phase in the figure-8 pattern (radians, 0 to 2*PI) */
@@ -207,6 +250,12 @@ export class Satellite {
 
   /** Position update interval (ms) */
   protected static readonly POSITION_UPDATE_INTERVAL_MS = 1000;
+
+  /** Default downlink fade depth when a scenario does not author one: about +/-0.3 dB */
+  static readonly DEFAULT_POWER_VARIATION_RANGE_DB = 0.3 as dBm;
+
+  /** Run time per Perlin noise unit for the downlink fade: tens of seconds per swing */
+  static readonly FADE_TIME_SCALE_MS = 30_000;
 
   /**
    * Slant range from the ground station to the satellite (km).
@@ -228,8 +277,23 @@ export class Satellite {
     this.health = 1.0;
     this.az = satelliteState.az;
     this.el = satelliteState.el;
-    // Unauthored skew is a property of the satellite, not of the run: fixed per NORAD id
-    this.rotation = satelliteState.rotation ?? ((Rng.hashUniform(`satellite-rotation:${norad}`) * 90 - 45) as Degrees);
+    this.lookAnglesFrom = satelliteState.lookAnglesFrom ?? null;
+    const centerAz = satelliteState.geosyncConfig ? (satelliteState.geosyncConfig.minAz + satelliteState.geosyncConfig.maxAz) / 2 : satelliteState.az;
+    this.slotLongitudeDeg = this.lookAnglesFrom ? geoLongitudeFromAzimuth(this.lookAnglesFrom, centerAz) : null;
+    // Phase 29 D8 (nats-r4-s04-F1): a satellite with a slot gets its skew
+    // from geometry, never from an authored number. `rotation` is the skew at
+    // the reference station (geoPolarizationSkewDeg; from a northern site a
+    // slot EAST of the station is POSITIVE, one west negative) and
+    // stationOffsets() adds the difference to any other site, so the ACU
+    // polarization readout and the cross-pol physics both read the skew at
+    // the station that is looking. An authored `rotation` was written per
+    // satellite by hand and disagreed with the geometry (TIDEMARK-1 +14 and
+    // TIDEMARK-2 -25 from Vermont, both of them east of it). Without a slot:
+    // the authored skew, else fixed per NORAD id (DEV-ANT-04).
+    this.rotation =
+      this.lookAnglesFrom && this.slotLongitudeDeg !== null
+        ? (geoPolarizationSkewDeg(this.lookAnglesFrom, this.slotLongitudeDeg) as Degrees)
+        : (satelliteState.rotation ?? ((Rng.hashUniform(`satellite-rotation:${norad}`) * 90 - 45) as Degrees));
     this.ephemerisErrorAz = satelliteState.ephemerisErrorAz ?? (0 as Degrees);
     this.ephemerisErrorEl = satelliteState.ephemerisErrorEl ?? (0 as Degrees);
 
@@ -241,7 +305,10 @@ export class Satellite {
       randomDropout: true,
       dropoutProbability: 0.0001,
       powerVariation: true,
-      powerVariationRange: 1.0 as dBm,
+      // Slow GEO C-band scintillation, a few tenths of a dB (Phase 30 D10: the
+      // old +/-1 dB made a link near the lock line flap). A scenario that wants
+      // a larger fade authors powerVariationRange.
+      powerVariationRange: Satellite.DEFAULT_POWER_VARIATION_RANGE_DB,
       interference: false,
       interferencePower: -110 as dBm,
       ...satelliteState.degradationConfig,
@@ -261,6 +328,8 @@ export class Satellite {
         centerEl: (config.minEl + config.maxEl) / 2,
         azAmplitude: (config.maxAz - config.minAz) / 2,
         elAmplitude: (config.maxEl - config.minEl) / 2,
+        initialPhase: config.initialPhase ?? 0,
+        periodMs: config.periodHours !== undefined && config.periodHours > 0 ? config.periodHours * 3_600_000 : null,
       };
       this.phase_ = config.initialPhase ?? 0;
       // Set initial position based on phase
@@ -295,6 +364,14 @@ export class Satellite {
     this.isSubscribedToEventBus_ = true;
   }
 
+  /** Stop receiving update events (a released constellation member). */
+  unsubscribeFromEventBus(): void {
+    if (this.isSubscribedToEventBus_) {
+      EventBus.getInstance().off(Events.UPDATE, this.boundUpdateHandler_);
+      this.isSubscribedToEventBus_ = false;
+    }
+  }
+
   private static getDefaultState_(): SatelliteState {
     return {
       az: 0 as Degrees,
@@ -319,10 +396,7 @@ export class Satellite {
         downlinkFrequency: downlinkCenter,
         bandwidth: config.bandwidth,
         beacon: config.beacon,
-        maxPower: config.maxPower ?? (50 as dBm),
-        gain: config.gain ?? (36.5 as dBi),
-        noiseFigure: config.noiseFigure ?? (3.5 as dBi),
-        saturationPower: config.saturationPower ?? (47 as dBm),
+        physics: { ...DEFAULT_TRANSPONDER_PHYSICS, ...config.physics },
         isActive: config.isActive ?? true,
         uplinkLowEdge: (config.uplinkCenterFrequency - halfBandwidth) as RfFrequency,
         uplinkHighEdge: (config.uplinkCenterFrequency + halfBandwidth) as RfFrequency,
@@ -345,10 +419,7 @@ export class Satellite {
       beacon: beaconSignals[index],
       downlinkFrequency: this.getDownlinkFromUplink(signal.frequency),
       bandwidth: bandwidth,
-      maxPower: 50 as dBm,
-      gain: 36.5 as dBi,
-      noiseFigure: 3.5 as dBi,
-      saturationPower: 47 as dBm,
+      physics: { ...DEFAULT_TRANSPONDER_PHYSICS },
       isActive: true,
       uplinkLowEdge: (signal.frequency - halfBandwidth) as RfFrequency,
       uplinkHighEdge: (signal.frequency + halfBandwidth) as RfFrequency,
@@ -364,6 +435,17 @@ export class Satellite {
    */
   protected updatePosition_(): void {
     if (this.orbitType !== 'geosynchronous' || !this.geosyncConfig_) {
+      return;
+    }
+
+    // An authored period (Phase 32 D19): the phase is a function of scenario
+    // time, so every start (and every checkpoint restore) puts the bird at
+    // the same point of its figure-8, and it moves every frame (a slow bird
+    // has no 1 Hz step to hide)
+    if (this.geosyncConfig_.periodMs !== null) {
+      this.phase_ = this.geosyncConfig_.initialPhase + (2 * Math.PI * SimClock.scenarioElapsedMs()) / this.geosyncConfig_.periodMs;
+      this.applyFigure8Position_();
+
       return;
     }
 
@@ -389,10 +471,18 @@ export class Satellite {
     this.phase_ %= 2 * Math.PI;
     if (this.phase_ < 0) this.phase_ += 2 * Math.PI;
 
-    // Calculate new position using parametric equations:
-    // Elevation: single-frequency sine (one cycle per orbit)
-    // Azimuth: double-frequency sine (creates figure-8 crossover)
+    this.applyFigure8Position_();
+  }
+
+  /**
+   * Az/el from the figure-8 phase. Elevation: single-frequency sine (one
+   * cycle per orbit). Azimuth: double-frequency sine (the crossover).
+   */
+  private applyFigure8Position_(): void {
     const config = this.geosyncConfig_;
+    if (!config) {
+      return;
+    }
     this.el = (config.centerEl + config.elAmplitude * Math.sin(this.phase_)) as Degrees;
     this.az = (config.centerAz + config.azAmplitude * Math.sin(2 * this.phase_)) as Degrees;
 
@@ -405,9 +495,6 @@ export class Satellite {
    * Update satellite state and process signals.
    */
   update(): void {
-    this.randomCache_.clear();
-    this.createRandomValues_();
-
     // Update position for geosynchronous satellites
     this.updatePosition_();
 
@@ -419,66 +506,97 @@ export class Satellite {
     this.updateHealth();
   }
 
-  private createRandomValues_(): void {
-    // We need to create random values for each signal to use in degradation effects
-    const allRxSignals = [...this.rxSignal, ...this.externalSignal];
-
-    const rng = this.rng_;
-    for (const signal of allRxSignals) {
-      // Rain Variation
-      this.randomCache_.set(`${signal.signalId}-rain`, rng.next());
-      // Scintillation (pre-cached so degradation makes no draws of its own)
-      this.randomCache_.set(`${signal.signalId}-scintillation`, rng.next());
-    }
-  }
-
   /**
-   * Process received signals through transponders to generate transmitted signals.
-   * Applies realistic RF effects including gain, noise, saturation, and degradation.
+   * Relay what arrives in each transponder's passband (Phase 19.3). Ground
+   * uplinks (`rxSignal`) arrive as isotropic received power, already through
+   * the uplink path; authored third-party carriers and injected interference
+   * (`externalSignal`) are their uplinker's EIRP, put through the free-space
+   * loss from this satellite's reference range (`uplinkReferenceRangeKm`).
+   * Each transponder's carriers are operated together (`operateTransponder`):
+   * shared output power, with uplink noise and IM riding along as
+   * `upstreamCn0DbHz`.
    */
   private processSignals(): RfSignal[] {
     const processedSignals: RfSignal[] = [];
-    const allRxSignals = [...this.rxSignal, ...this.externalSignal];
+    const byTransponder = new Map<Transponder, { signal: RfSignal; isoPowerDbm: number }[]>();
+    const externalRangeKm = this.uplinkReferenceRangeKm();
 
-    for (const signal of allRxSignals) {
-      // Find transponder by passband and polarization matching
+    const accept = (signal: RfSignal, isoPowerDbm: number): void => {
       const transponder = this.findTransponderByUplinkFrequency(signal.frequency, signal.polarization);
-
       if (!transponder?.isActive) {
-        continue;
+        return;
       }
+      const list = byTransponder.get(transponder) ?? [];
+      list.push({ signal, isoPowerDbm });
+      byTransponder.set(transponder, list);
+    };
+    // Every arrival is its own carrier (phase 27, DEV-XPDR-07 closed): two
+    // stations radiating one carrier at once (a sloppy handover with both at
+    // full power) put two copies on one frequency, and each is the other's
+    // co-channel interference. A correct handover is break-before-make
+    // (TrafficControlManager.executeHandover), so the pair never overlaps.
+    // A repeated id gets a suffix so the receiver counts the copy as I. The
+    // strongest arrival keeps the bare id and only the weaker copies are
+    // suffixed, strongest first, counting only arrivals a transponder takes:
+    // another station's sidelobe copy never renames the main carrier, so the
+    // modem locked on it does not see a new carrier (Phase 32 D3, nats-r7-s04-F2)
+    const copies = new Map<string, number[]>();
+    this.rxSignal.forEach((signal, index) => {
+      if (!this.findTransponderByUplinkFrequency(signal.frequency, signal.polarization)?.isActive) return;
+      copies.set(signal.signalId, [...(copies.get(signal.signalId) ?? []), index]);
+    });
+    const copyIds = new Map<number, string>();
+    for (const [signalId, indices] of copies) {
+      // Stable sort: equal powers keep arrival order
+      const ranked = [...indices].sort((a, b) => (this.rxSignal[b].power as number) - (this.rxSignal[a].power as number));
+      ranked.forEach((index, rank) => {
+        if (rank > 0) copyIds.set(index, `${signalId}#${rank + 1}`);
+      });
+    }
+    this.rxSignal.forEach((signal, index) => {
+      const copyId = copyIds.get(index);
+      accept(copyId ? { ...signal, signalId: copyId } : signal, signal.power);
+    });
+    for (const signal of this.externalSignal) {
+      accept(signal, (signal.power as number) - freeSpaceLossDb(signal.frequency as number, externalRangeKm));
+    }
 
-      // Apply transponder gain to received signal
-      let txPower: dBm = signal.power;
+    this.operatingPoints_.clear();
+    for (const [transponder, inputs] of byTransponder) {
+      const point = operateTransponder(
+        transponder.physics,
+        inputs.map(({ signal, isoPowerDbm }) => ({ signalId: signal.signalId, isoPowerDbm, bandwidthHz: signal.bandwidth as number })),
+        transponder.uplinkFrequency as number,
+        transponder.bandwidth as number
+      );
+      this.operatingPoints_.set(transponder.id, point);
 
-      // Apply saturation effects (non-linear power limiting)
-      txPower = this.applySaturation(txPower, transponder.saturationPower, transponder.maxPower);
+      inputs.forEach(({ signal }, i) => {
+        const relayed = point.carriers[i];
+        // Under the uplink noise by more than 10 dB in its own bandwidth: not
+        // a carrier anyone downstream can see (it still loaded the transponder)
+        if (relayed.cn0UpDbHz - 10 * Math.log10(Math.max(1, signal.bandwidth as number)) < Satellite.RELAY_FLOOR_CN_DB) {
+          return;
+        }
 
-      // Add thermal noise based on noise figure
-      txPower = this.addThermalNoise(txPower, transponder.noiseFigure, signal.bandwidth);
+        const txSignal: RfSignal = {
+          ...signal,
+          frequency: (signal.frequency - transponder.frequencyOffset) as RfFrequency,
+          power: relayed.eirpDbm as dBm,
+          upstreamCn0DbHz: relayed.upstreamCn0DbHz,
+          origin: SignalOrigin.SATELLITE_TX,
+          // A downlink leaves the satellite's antenna at the satellite's own
+          // polarization angle, like its beacon (phase 19.4: relayed carriers
+          // used to arrive at 0 deg whatever the skew)
+          rotation: this.rotation,
+          // Reverse linear polarization for downlink; circular polarization is
+          // set by the transponder's own antenna and passes through unchanged
+          // (an RHCP uplink must not come back as 'H' - Campaign 3 S8)
+          polarization: signal.polarization === 'H' ? 'V' : signal.polarization === 'V' ? 'H' : signal.polarization,
+        };
 
-      // Add transponder gain
-      txPower = (txPower + transponder.gain) as dBm;
-
-      // Frequency translation using per-transponder offset
-      const txFrequency = (signal.frequency - transponder.frequencyOffset) as RfFrequency;
-
-      // Create transmitted signal
-      let txSignal: RfSignal = {
-        ...signal,
-        frequency: txFrequency,
-        power: txPower,
-        origin: SignalOrigin.SATELLITE_TX,
-        // Reverse linear polarization for downlink; circular polarization is
-        // set by the transponder's own antenna and passes through unchanged
-        // (an RHCP uplink must not come back as 'H' - Campaign 3 S8)
-        polarization: signal.polarization === 'H' ? 'V' : signal.polarization === 'V' ? 'H' : signal.polarization,
-      };
-
-      // Apply degradation effects
-      txSignal = this.applyDegradationEffects(txSignal);
-
-      processedSignals.push(txSignal);
+        processedSignals.push(this.applyDegradationEffects(txSignal));
+      });
     }
 
     // Add beacon signals if transponder has beacon frequency
@@ -503,6 +621,30 @@ export class Satellite {
     return processedSignals;
   }
 
+  /** A relayed carrier below this C/N in its own bandwidth at the transponder input is not relayed, dB */
+  static readonly RELAY_FLOOR_CN_DB = -10;
+
+  /**
+   * Range (km) over which authored third-party uplinks and injected
+   * interference reach this satellite: the slant range from its reference
+   * station (a legacy GEO satellite's authored elevation is that station's;
+   * an orbital satellite's propagated range from its configured observer).
+   * The uplinker's own site is not modelled (DEV-XPDR-06).
+   */
+  uplinkReferenceRangeKm(): number {
+    return this.rangeKm ?? geoSlantRangeKm(this.el as number);
+  }
+
+  /** The transponder's operating point from the last update (IBO, OBO, C/IM, per-carrier C/N0), or null when nothing is in its passband */
+  operatingPoint(transponderId: string): TransponderOperatingPoint | null {
+    return this.operatingPoints_.get(transponderId) ?? null;
+  }
+
+  /** The transponder whose uplink passband (and polarization) takes a carrier, if any */
+  transponderFor(frequency: RfFrequency, polarization: RfSignal['polarization']): Transponder | undefined {
+    return this.findTransponderByUplinkFrequency(frequency, polarization);
+  }
+
   /**
    * Find a transponder that can process the given signal.
    * Matches based on:
@@ -522,44 +664,6 @@ export class Satellite {
   }
 
   /**
-   * Apply saturation effects to limit output power based on transponder characteristics.
-   */
-  private applySaturation(inputPower: dBm, saturationPower: dBm, maxPower: dBm): dBm {
-    if (inputPower <= saturationPower) {
-      return inputPower;
-    }
-
-    // Soft saturation curve (AM/PM conversion effects)
-    const excessPower = (inputPower - saturationPower) as dBm;
-    const compressionFactor = 1 / (1 + excessPower / 10);
-
-    return Math.min(saturationPower + excessPower * compressionFactor, maxPower) as dBm;
-  }
-
-  /**
-   * Add thermal noise to the signal based on noise figure and bandwidth.
-   */
-  private addThermalNoise(signalPower: dBm, noiseFigure: dBi, bandwidth: Hertz): dBm {
-    // Thermal noise power: N = k * T * B * NF
-    // k = Boltzmann constant = 1.38e-23 J/K
-    // T = Temperature (assume 290K)
-    // B = Bandwidth (Hz)
-    // NF = Noise Figure (dB)
-
-    const k = 1.38e-23;
-    const T = 290; // Kelvin
-    const noisePowerWatts = k * T * bandwidth * 10 ** (noiseFigure / 10);
-    const noisePowerDbm = 10 * Math.log10(noisePowerWatts * 1000);
-
-    // Combine signal and noise power (in linear scale)
-    const signalLinear = 10 ** (signalPower / 10);
-    const noiseLinear = 10 ** (noisePowerDbm / 10);
-    const totalLinear = signalLinear + noiseLinear;
-
-    return (10 * Math.log10(totalLinear)) as dBm;
-  }
-
-  /**
    * Apply various degradation effects to the transmitted signal.
    * Optimized to minimize object allocations by mutating power in-place.
    */
@@ -576,10 +680,6 @@ export class Satellite {
     // Mutate power in place instead of creating new objects at each step
     if (this.degradationConfig.powerVariation) {
       power = this.applyPowerVariation_inPlace(degradedSignal.signalId, power);
-    }
-
-    if (this.degradationConfig.atmosphericEffects) {
-      power = this.applyAtmosphericEffects_inPlace(degradedSignal.signalId, degradedSignal.frequency, power);
     }
 
     if (this.degradationConfig.interference) {
@@ -614,41 +714,21 @@ export class Satellite {
     }
 
     // Slow fading on run time (a physical process, not a scheduled one), with a
-    // per-signal phase so carriers do not fade together
-    const phaseS = Rng.hashUniform(noiseSeed) * 1000;
-    const time = SimClock.runMs() / 1000 + phaseS;
+    // per-signal phase so carriers do not fade together. One noise unit per
+    // FADE_TIME_SCALE_MS: tens of seconds, the way GEO scintillation moves, not
+    // the per-second wobble that flapped a near-threshold lock (Phase 30 D10)
+    const phase = Rng.hashUniform(noiseSeed) * 1000;
+    const time = SimClock.runMs() / Satellite.FADE_TIME_SCALE_MS + phase;
 
-    // KNOWN DEVIATION (fixed in Phase 19.2): Perlin output is zero-mean, so
-    // `* 2 - 1` biases every relayed downlink by -powerVariationRange. Kept
-    // until the 19.1 calibration ledger can record the shift.
-    const noiseValue = noiseGen.get(time) * 2 - 1;
+    // Perlin output is zero-mean within about +/-0.5 on one axis: scale it to
+    // +/-1 (Phase 19.2 removed the old `* 2 - 1`, a -1 dB bias on every
+    // relayed downlink, DEV-NOISE-05)
+    const noiseValue = noiseGen.get(time) * 2;
 
     // Apply variation
     const variation = noiseValue * this.degradationConfig.powerVariationRange;
 
     return (currentPower + variation) as dBm;
-  }
-
-  /**
-   * Apply atmospheric effects like rain fade and scintillation (in-place optimization).
-   * @param signalId - The signal identifier
-   * @param frequency - Signal frequency in Hz
-   * @param currentPower - Current power level in dBm
-   * @returns Updated power level in dBm
-   */
-  private applyAtmosphericEffects_inPlace(signalId: string, frequency: RfFrequency, currentPower: dBm): dBm {
-    // Rain fade is frequency dependent (worse at higher frequencies)
-    const frequencyGHz = frequency / 1e9;
-    const randomRainFactor = this.randomCache_.get(`${signalId}-rain`) ?? 1;
-
-    // Simple rain fade model (in dB)
-    const rainFadeDb = (frequencyGHz / 10) * randomRainFactor * 0.3; // Simplified model
-
-    // Scintillation (rapid amplitude fluctuations) - use pre-cached random value
-    const randomScintillationFactor = this.randomCache_.get(`${signalId}-scintillation`) ?? 0.5;
-    const scintillationDb = (randomScintillationFactor - 0.5) * 0.3;
-
-    return (currentPower - rainFadeDb + scintillationDb) as dBm;
   }
 
   /**
@@ -727,6 +807,34 @@ export class Satellite {
   }
 
   /**
+   * Look-angle and skew offsets of this satellite at `site` relative to its
+   * reference station: zero at the reference, the geometric difference
+   * between the sites elsewhere. Null when the satellite has no reference
+   * (one az/el for every station, legacy).
+   */
+  stationOffsets(site: GeoSite): StationLookOffsets | null {
+    if (!this.lookAnglesFrom || this.slotLongitudeDeg === null) {
+      return null;
+    }
+    const key = `${site.latitude},${site.longitude},${site.elevationM ?? 0}`;
+    let offsets = this.stationOffsets_.get(key);
+    if (!offsets) {
+      const ref = geoLookAngles(this.lookAnglesFrom, this.slotLongitudeDeg);
+      const here = geoLookAngles(site, this.slotLongitudeDeg);
+      let dAz = here.az - ref.az;
+      if (dAz > 180) dAz -= 360;
+      if (dAz < -180) dAz += 360;
+      offsets = {
+        dAz,
+        dEl: here.el - ref.el,
+        dRotation: geoPolarizationSkewDeg(site, this.slotLongitudeDeg) - geoPolarizationSkewDeg(this.lookAnglesFrom, this.slotLongitudeDeg),
+      };
+      this.stationOffsets_.set(key, offsets);
+    }
+    return offsets;
+  }
+
+  /**
    * Update ephemeris error (simulates TLE aging or refresh).
    * @param azError - New azimuth error in degrees
    * @param elError - New elevation error in degrees
@@ -758,26 +866,5 @@ export class Satellite {
       ...this.degradationConfig,
       ...config,
     };
-  }
-
-  /**
-   * Get carrier-to-noise ratio for a specific signal.
-   */
-  getCarrierToNoiseRatio(signalId: string): number | null {
-    const signal = this.txSignal.find((s) => s.signalId === signalId);
-    if (!signal) return null;
-
-    const transponderIndex = this.rxSignal.findIndex((s) => s.signalId === signalId);
-    if (transponderIndex < 0) return null;
-
-    const transponder = this.transponders[transponderIndex];
-
-    // Calculate noise power
-    const k = 1.38e-23;
-    const T = 290;
-    const noisePowerWatts = k * T * signal.bandwidth * 10 ** (transponder.noiseFigure / 10);
-    const noisePowerDbm = 10 * Math.log10(noisePowerWatts * 1000);
-
-    return signal.power - noisePowerDbm;
   }
 }

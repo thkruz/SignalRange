@@ -1,0 +1,285 @@
+{
+  "$comment": "Scenario card style spec for scripts/art/cards.mjs. Prompt = subject + lighting + campaign $palette + $style. Subjects marked TODO block paid runs (dry runs still work). Draft: the orchestrator may refine after the C2 pilot.",
+  "$style": "Painterly realism illustration, cinematic matte-painting key art, fully finished rendering with resolved detail on the subject, no loose sketch or speed-paint brushwork, atmospheric depth, clear value structure with one light direction; not comic, not photographic. 3:2 landscape composition. A working multi-antenna satellite teleport seen from a three-quarter elevated view, horizon in the upper third of the frame. Several dishes of mixed sizes: one 9 to 13 m main antenna, two to four smaller 2.4 to 4.5 m terminals, optionally one radome, all pointed along the same arc of sky. The facility is visible around them: an operations building with lit windows, an equipment shelter, cable trays and waveguide runs between the pedestals and the shelter, a generator with a fuel tank, a perimeter fence with a gate, an access road and a small car park, and lightning masts. The dish or element the subject names is the focal point. Every dish is fully in frame with clear margin on every edge. No text, no logos, no readable screens, no faces. No people unless the subject names them; when named, at most two distant figures under 5% of frame height, mid-ground, never in the foreground. No fire, smoke, sparks or explosions; any warm accent is one small electric lamp or lit window. Soft film grain, oil-painted texture, soft edges, no cel shading or flat fills, consistent brushwork, cohesive set of scenario cards. Every satellite dish has a solid, opaque reflector; three or four equal struts rise from evenly spaced rim points and meet on the dish's central axis, where the feed or subreflector sits; the whole dish stays in frame. No ground fog, valley mist or rain mist; distant hills stay crisp. Night skies show point stars only, no streaks, trails or meteors. The ops building is a utilitarian single-storey block, not a house, farmhouse or cottage. The perimeter is a chain-link security fence with a vehicle gate. Visible canvas weave and brushstrokes in sky and ground. No signature, watermark, artist mark or lettering anywhere, including corners. No steam, vapour, smoke, haze or plumes anywhere; the air is still and clear.",
+  "$palette": {
+    "nats": "New England cool blues and granite greys with a single small warm tungsten lamp accent.",
+    "nats-eu": "North Atlantic slate, sea-green and amber."
+  },
+  "$lighting": [
+    "dawn",
+    "overcast noon",
+    "dusk",
+    "night ops"
+  ],
+  "models": [
+    "gemini-3-pro-image",
+    "gemini-2.5-flash-image"
+  ],
+  "aspect": "3:2",
+  "scenarios": {
+    "nats": {
+      "1": {
+        "title": "First Day",
+        "subject": "NATS, a Vermont hillside teleport at dawn, dew on the grass. The nine-metre C-band main dish and three smaller terminals sit in a row, all aimed at the same arc of sky; a gravel path leads from the ops building and its few lit windows past the equipment shelter to the main pedestal, the start of a first inspection round.",
+        "lighting": "dawn"
+      },
+      "2": {
+        "title": "Scheduled Maintenance",
+        "subject": "NATS, a Vermont hillside teleport at night. The nine-metre main dish rests in stow, motionless, with a bucket truck at its pedestal and one technician in the bucket, small and distant, and a work lamp on the feed; the equipment shelter door stands open, lit, with waveguide runs open at the pedestal. Smaller terminals stand dark beside it, ops building windows lit.",
+        "lighting": "night ops"
+      },
+      "3": {
+        "title": "Weather Emergency Handover",
+        "subject": "NATS, the Vermont hillside teleport in falling snow, the nine-metre main dish with its feed heater glowing warm and ice building on the support struts, snow curtains drifting across the gravel, ops building windows lit, the access road buried under snow.",
+        "lighting": "overcast noon"
+      },
+      "4": {
+        "title": "New Bird on the Block",
+        "subject": "NATS, the Vermont hillside teleport at dusk, the nine-metre main dish caught mid-slew toward a new azimuth, a smaller terminal already locked on the arc ahead of it, cable trays and waveguide runs leading to the lit shelter.",
+        "lighting": "dusk"
+      },
+      "5": {
+        "title": "Interference Hunt",
+        "subject": "NATS, the Vermont hillside teleport under a clear cold sky, a technician's pickup parked at a smaller terminal pedestal beside the main dish with one technician beside it, small and distant, a portable test antenna on a tripod nearby, the shelter door ajar and lit.",
+        "lighting": "overcast noon"
+      },
+      "6": {
+        "title": "Old Faithful",
+        "subject": "NATS, the Vermont hillside teleport in mid-afternoon sun, the nine-metre dish tilted slightly off its stow axis and caught partway through a small corrective nod, a long shadow of the reflector on the gravel, smaller terminals fixed beside it.",
+        "lighting": "overcast noon"
+      },
+      "7": {
+        "title": "Uplink Validation",
+        "subject": "NATS, the Vermont hillside teleport at first light, a new high-power amplifier crate on a pallet by the open equipment shelter door, a fresh waveguide section bolted at the main pedestal, a maintenance truck alongside, the dish pointed calmly at the arc.",
+        "lighting": "dawn"
+      },
+      "8": {
+        "title": "Night Shift",
+        "subject": "NATS, the Vermont hillside teleport at 2 a.m. under stars, the main dish silhouetted against the Milky Way, one lone work light and a single truck at the shelter, ops building mostly dark with one lit window.",
+        "lighting": "night ops"
+      },
+      "9": {
+        "title": "Morning Rounds",
+        "subject": "NATS, the Vermont hillside teleport in early morning light, three dishes of different sizes aimed at slightly different parts of the arc, the main dish slewing to a third position, ops building windows lit.",
+        "lighting": "dawn"
+      },
+      "10": {
+        "title": "Customer Pass",
+        "subject": "NATS, the Vermont hillside teleport at midday, the nine-metre dish locked firmly on a high arc, the shelter vents open, the generator running, one truck parked at the ops building, everything working at full power.",
+        "lighting": "overcast noon"
+      },
+      "11": {
+        "title": "Planned Maintenance: Hand Off",
+        "subject": "NATS, the Vermont hillside teleport at dawn, the nine-metre dish parked in its maintenance position pointing nearly straight up, a bucket truck at the pedestal with one technician in the bucket, small and distant, red lockout tags on the pedestal disconnect, a smaller terminal still on the arc, ops building lit.",
+        "lighting": "dawn"
+      },
+      "12": {
+        "title": "Planned Maintenance: Return to Service",
+        "subject": "NATS, the Vermont hillside teleport after a maintenance crew has left, the nine-metre dish rising from its stow position toward the working arc, a ladder leaning on the pedestal, a crate of old gaskets by the shelter door, a truck pulling out through the gate; the site itself is empty, no figures.",
+        "lighting": "dusk"
+      },
+      "13": {
+        "title": "Thermal Anomaly",
+        "subject": "NATS, the Vermont hillside teleport on a hot afternoon, the equipment shelter with its roof fans spinning and the door propped open, a technician's truck beside it with a thermal camera on a tripod and one technician beside it, small and distant, the main dish steady behind.",
+        "lighting": "overcast noon"
+      },
+      "14": {
+        "title": "Rain Fade",
+        "subject": "NATS, a Vermont hillside teleport under a heavy rain front sweeping in from the right, wet gravel and fence, the air itself clear and still. The nine-metre C-band main dish is the focal point with its feed heater housing, three smaller terminals beside it, lit ops building and shelter.",
+        "lighting": "overcast noon"
+      },
+      "15": {
+        "title": "Frequency Coordination",
+        "subject": "NATS, the Vermont hillside teleport at mid-morning, a second dish on the neighbouring pedestal aimed along nearly the same arc as the nine-metre main dish, their feeds close together, a lit ops building and a truck at the gate.",
+        "lighting": "overcast noon"
+      },
+      "16": {
+        "title": "Cascade Failure",
+        "subject": "NATS, the Vermont hillside teleport at dusk, the equipment shelter door open with three amber beacons flashing on its roof, a technician's truck stopped hard at the shelter, fans spinning, the main dish still on target behind.",
+        "lighting": "dusk"
+      },
+      "17": {
+        "title": "Solar Event",
+        "subject": "NATS, the Vermont hillside teleport at sunrise, the nine-metre main dish aimed straight at the low rising sun, its reflector glowing gold and the feed throwing a long shadow across the gravel, smaller terminals dark beside it.",
+        "lighting": "dawn"
+      },
+      "18": {
+        "title": "Satellite Anomaly",
+        "subject": "NATS Maine coastal teleport, spruce and granite behind the fence in morning light, its main dish tilted slightly off the arc, scuff marks on the gravel below, a technician's truck at the pedestal with one technician beside it, small and distant, ops building lit and calm.",
+        "lighting": "overcast noon"
+      },
+      "19": {
+        "title": "Train the New Hire",
+        "subject": "NATS, the Vermont hillside teleport in warm afternoon light, a second truck parked beside a smaller training terminal with an open equipment case at its pedestal, the nine-metre main dish tracking steadily behind it.",
+        "lighting": "dusk"
+      },
+      "20": {
+        "title": "Dual Outage",
+        "subject": "NATS, the Vermont hillside teleport in a winter storm, thick ice on the feed horn of the main dish, a technician's truck at the pedestal with a work lamp and one technician beside it, small and distant, the shelter door open and lit, snow blowing across the fence line.",
+        "lighting": "dusk"
+      },
+      "21": {
+        "title": "Hostile RF",
+        "subject": "NATS Maine coastal teleport, spruce and granite behind the fence at night, the ops building lit against the dark, a floodlight on the gate and fence, a patrol truck parked at the shelter, the main dish quiet on the arc, the car park empty.",
+        "lighting": "night ops"
+      },
+      "22": {
+        "title": "End-of-Life Planning",
+        "subject": "NATS, the Vermont hillside teleport at golden hour, the nineteen-year-old main dish weathered with rust streaks on its reflector and faded paint on the feed, smaller newer terminals beside it, a calm, quiet mood over the hillside.",
+        "lighting": "dawn"
+      },
+      "23": {
+        "title": "Emergency Bypass",
+        "subject": "NATS, the Vermont hillside teleport under a grey sky, the main dish stopped on its target, a maintenance truck at the pedestal with its cab door open and a hand-crank panel opened on the mount, the shelter lit.",
+        "lighting": "overcast noon"
+      },
+      "24": {
+        "title": "Constellation Crisis",
+        "subject": "NATS, the Vermont hillside teleport under a dark storm front rolling in from the west, ice-glazed feed on the main dish, the shelter door open with alarm beacons, two trucks at the pedestal, the ops building fully lit.",
+        "lighting": "overcast noon"
+      }
+    },
+    "nats-eu": {
+      "1": {
+        "title": "First Light Over Galway",
+        "subject": "Galway teleport on the Atlantic coast, low stone buildings, wind-bent grass, sea on the horizon. A 3.7 m Ku-band tracking dish is the focal point, tilted toward a low pale dawn sky, a radome beside it, ops building windows lit, a drystone wall in the foreground. No figures.",
+        "lighting": "dawn"
+      },
+      "2": {
+        "title": "Proving the Link",
+        "subject": "Galway teleport on the Atlantic coast, low stone buildings, wind-bent grass, sea on the horizon. A 3.7 m Ku-band tracking dish is the focal point, with a temporary calibration mast and a test antenna on a tripod in front of it, a technician's van parked nearby, ops building lit. No figures.",
+        "lighting": "overcast noon"
+      },
+      "3": {
+        "title": "Two-Way Street",
+        "subject": "Galway teleport on the Atlantic coast, low stone buildings, wind-bent grass, sea on the horizon. A 4.5 m Ku-band gateway dish is the focal point, its new transmit waveguide run visible up the pedestal to the feed and across a cable tray to the shelter; two more small terminals and a lit ops building around it. No figures.",
+        "lighting": "dusk"
+      },
+      "4": {
+        "title": "Keys to the Bird",
+        "subject": "Galway teleport on the Atlantic coast, low stone buildings, wind-bent grass, sea on the horizon. A 4.5 m gateway dish is the focal point, a steel equipment cabinet open at the pedestal with a heavy padlock hanging on its door, the shelter lit, a van at the gate. No figures.",
+        "lighting": "night ops"
+      },
+      "5": {
+        "title": "Shetland Comes Online",
+        "subject": "Shetland teleport, low stone buildings, wind-bent grass, grey sea on the horizon. A newly commissioned 3.7 m Ku-band dish is the focal point on its fresh concrete pad, bright new cable trays, a freshly painted shelter, a crane and ladder still on site, wind bending the grass. No figures.",
+        "lighting": "dawn"
+      },
+      "6": {
+        "title": "Watch the Watchers",
+        "subject": "Galway teleport on the Atlantic coast, low stone buildings, wind-bent grass, sea on the horizon. Ops building windows glowing at night with a floodlight on the gate, a security camera on a mast, a Ku-band dish parked and quiet in the dark beyond, a van in the car park. No figures.",
+        "lighting": "night ops"
+      },
+      "7": {
+        "title": "Moving Target",
+        "subject": "Galway teleport on the Atlantic coast, low stone buildings, wind-bent grass, sea on the horizon. A 3.7 m Ku-band dish is the focal point, its reflector slewing hard toward a new bearing against a scudding evening sky, the drive motor visible at the pedestal, ops building lit. No figures.",
+        "lighting": "dusk"
+      },
+      "8": {
+        "title": "Night Passes",
+        "subject": "Shetland teleport, low stone buildings, wind-bent grass, grey sea on the horizon. At night a 3.7 m Ku-band dish is the focal point under a clear starry sky, one lit window in the ops building, a single van in the car park. No figures.",
+        "lighting": "night ops"
+      },
+      "9": {
+        "title": "Morning Constellation",
+        "subject": "Galway teleport on the Atlantic coast, low stone buildings, wind-bent grass, sea on the horizon. Three Ku-band dishes stand along the headland in pale dawn light, the main 3.7 m dish slewing to a new bearing, ops building lit, a van at the gate, calm sea. No figures.",
+        "lighting": "dawn"
+      },
+      "10": {
+        "title": "Priority Tasking",
+        "subject": "Galway teleport on the Atlantic coast, low stone buildings, wind-bent grass, sea on the horizon. A 3.7 m Ku-band dish is the focal point, tilted almost flat toward a very low pass just above the sea horizon, a thin bright sky behind it, ops building lit, a van at the gate. No figures.",
+        "lighting": "overcast noon"
+      },
+      "11": {
+        "title": "LEOP: Launch Day",
+        "subject": "Galway teleport on the Atlantic coast, low stone buildings, wind-bent grass, sea on the horizon. A 4.5 m Ku-band dish is the focal point at dawn, aimed steeply at the pale sky, a few early stars still faint overhead, ops building lit and the shelter door open. No figures.",
+        "lighting": "dawn"
+      },
+      "12": {
+        "title": "LEOP: Commissioning",
+        "subject": "Galway teleport on the Atlantic coast, low stone buildings, wind-bent grass, sea on the horizon. A 3.7 m Ku-band dish is the focal point at mid-morning, a technician's van at the pedestal with its doors open, an equipment rack visible through the open shelter door, a rainbow over the sea. No figures.",
+        "lighting": "overcast noon"
+      },
+      "13": {
+        "title": "The Numbers Don't Lie",
+        "subject": "Shetland teleport, low stone buildings, wind-bent grass, grey sea on the horizon. A 3.7 m Ku-band dish is the focal point under a high pale cloud deck, its feed clean and dry, a technician's ladder at the pedestal, ops building lit, a calm sea beyond. No figures.",
+        "lighting": "overcast noon"
+      },
+      "14": {
+        "title": "Atlantic Low",
+        "subject": "Galway teleport on the Atlantic coast, low stone buildings, wind-bent grass, sea on the horizon. A 3.7 m Ku-band dish is the focal point as dense rain turns to sleet across the headland, meltwater dripping from the feed cover, a dark cloud shelf closing over the sea behind it, ops building lit, a van at the gate. No figures.",
+        "lighting": "dusk"
+      },
+      "15": {
+        "title": "Rotation Day",
+        "subject": "Galway teleport on the Atlantic coast, low stone buildings, wind-bent grass, sea on the horizon. At early morning a steel key cabinet stands open in the shelter doorway, a 3.7 m Ku-band dish quiet beside it, a van at the gate, ops building lit, pale sea light. No figures.",
+        "lighting": "dawn"
+      },
+      "16": {
+        "title": "Cascade",
+        "subject": "Shetland teleport, low stone buildings, wind-bent grass, grey sea on the horizon. A shelter roof hatch open with a cooling fan lifted onto the roof, a van and ladder at the base, a 3.7 m Ku-band dish behind, wind bending the grass. No figures.",
+        "lighting": "overcast noon"
+      },
+      "17": {
+        "title": "Unusual Activity",
+        "subject": "Galway teleport on the Atlantic coast, low stone buildings, wind-bent grass, sea on the horizon. At 2 a.m. a 3.7 m Ku-band dish stands quiet under cold moonlight, ops building mostly dark with one lit window, a security camera glowing on the fence, an unfamiliar van at the gate. No figures.",
+        "lighting": "night ops"
+      },
+      "18": {
+        "title": "Dirty Spectrum",
+        "subject": "Galway teleport on the Atlantic coast, low stone buildings, wind-bent grass, sea on the horizon. A 3.7 m Ku-band dish in grey morning light, a distant radio mast beyond the fence, a spectrum-monitoring van with a mast on its roof at the gate, ops building lit. No figures.",
+        "lighting": "dawn"
+      },
+      "19": {
+        "title": "Frequency Agility",
+        "subject": "Galway teleport on the Atlantic coast, low stone buildings, wind-bent grass, sea on the horizon. A 3.7 m Ku-band dish in flat midday light, a grey equipment cabinet with its doors shut beside the pedestal, ops building lit, a van at the gate, low cloud over the sea. No figures.",
+        "lighting": "overcast noon"
+      },
+      "20": {
+        "title": "False Time",
+        "subject": "Shetland teleport, low stone buildings, wind-bent grass, grey sea on the horizon. A 3.7 m Ku-band dish at 5 a.m. in thin blue light, a small satellite-navigation antenna on a short mast beside the shelter with a ladder against it, ops building lit. No figures.",
+        "lighting": "dawn"
+      },
+      "21": {
+        "title": "Knocking on the Door",
+        "subject": "Galway teleport on the Atlantic coast, low stone buildings, wind-bent grass, sea on the horizon. The equipment shelter door stands open with an unfamiliar van parked beside it, a 3.7 m Ku-band dish behind, wind bending the grass, ops building lit. No figures.",
+        "lighting": "dusk"
+      },
+      "22": {
+        "title": "Connecting the Dots",
+        "subject": "Galway teleport on the Atlantic coast, low stone buildings, wind-bent grass, sea on the horizon. A wide view of every dish, the shelter, the ops building and the fence together in afternoon light, sheep on the headland beyond, a van at the gate, calm and ordinary. No figures.",
+        "lighting": "overcast noon"
+      },
+      "23": {
+        "title": "Dark Passes",
+        "subject": "Galway teleport on the Atlantic coast, low stone buildings, wind-bent grass, sea on the horizon. At night a 3.7 m Ku-band dish is the focal point under heavy cloud, every ops building window lit, floodlights along the fence, three vans at the gate, wet rock on the headland. No figures.",
+        "lighting": "night ops"
+      },
+      "24": {
+        "title": "North Atlantic Storm",
+        "subject": "Galway teleport on the Atlantic coast, low stone buildings, wind-bent grass, sea on the horizon. A 3.7 m Ku-band dish is the focal point in a storm, sleet slanting across the headland, icy feed cover, the shelter door shut, ops building lit, a van at the gate, dark cloud over the sea. No figures.",
+        "lighting": "night ops"
+      },
+      "25": {
+        "title": "Site Orientation",
+        "subject": "Galway teleport on the Atlantic coast, low stone buildings, wind-bent grass, sea on the horizon. On a quiet morning the whole site is laid out from the gate to the dish to the shelter, a gravel path between them, a van in the car park, soft light on the grass. No figures.",
+        "lighting": "dawn"
+      },
+      "26": {
+        "title": "Baseline Check",
+        "subject": "Galway teleport on the Atlantic coast, low stone buildings, wind-bent grass, sea on the horizon. Before dawn a 3.7 m Ku-band dish stands parked and quiet, the shelter door open with a rack light spilling out, a van at the gate, ops building lit, cold pale sea. No figures.",
+        "lighting": "dawn"
+      },
+      "27": {
+        "title": "Removable Media",
+        "subject": "Galway teleport on the Atlantic coast, low stone buildings, wind-bent grass, sea on the horizon. A technician's van parked at the equipment room door with its rear doors open and a toolbox on the ground, a 3.7 m Ku-band dish behind, ops building lit, low evening sun. No figures.",
+        "lighting": "dusk"
+      },
+      "28": {
+        "title": "Vendor Session",
+        "subject": "Galway teleport on the Atlantic coast, low stone buildings, wind-bent grass, sea on the horizon. At dusk the ops building is lit and a single van sits at the gate, a 3.7 m Ku-band dish quiet, a lone antenna mast on the shelter roof, the sea fading to dark. No figures.",
+        "lighting": "dusk"
+      }
+    }
+  }
+}

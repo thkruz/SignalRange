@@ -18,6 +18,7 @@ import {
   waitForObjectiveComplete,
 } from '../utils/ham-tech-helpers';
 import { dismissDialogIfPresent, waitForSimulationReady } from '../utils/simulation-helpers';
+import { simAdvance } from '../utils/test-clock';
 
 const MESSAGE = 'Zebra team requests nine quarts of water at Quincy Pavilion by noon Thursday';
 const FALLBACK_MHZ = 147.525;
@@ -62,31 +63,31 @@ test('ham-tech-s12 finishes from replace-lead', async ({ page, missionControlPag
   await step('Replace the Lead', 'replace-lead', 3);
 
   // verify-repair
-  await page.waitForTimeout(5000);
+  await simAdvance(page, 5000);
   await setTxPower(page, 'mobile', 50);
   await keyAndMeter(4, 'radio+', 'radio-');
-  await page.waitForTimeout(8000);
+  await simAdvance(page, 8000);
   await step('Verify the Repair Under Load', 'verify-repair');
 
   // move-to-fallback
-  await page.waitForTimeout(40000);
+  await simAdvance(page, 40000);
   await tuneRadio(page, 'mobile', FALLBACK_MHZ);
   await setOffset(page, 'mobile', 'simplex');
   await setTxTone(page, 'mobile', null);
   await setTxPower(page, 'mobile', 5);
   await pttTransmit(page, 'mobile', { kind: 'call', target: 'N0BEL' }, 4);
-  await page.waitForTimeout(15000);
+  await simAdvance(page, 15000);
   await pttTransmit(page, 'mobile', { kind: 'reply', item: 'report' }, 3);
-  await page.waitForTimeout(12000);
+  await simAdvance(page, 12000);
   await pttTransmit(page, 'mobile', { kind: 'identify' }, 3);
-  await page.waitForTimeout(12000);
+  await simAdvance(page, 12000);
   await step('Move to the Fallback Channel', 'move-to-fallback');
 
   // relay-exact-message
   await pttTransmit(page, 'mobile', { kind: 'reply', item: 'fill' }, 3);
-  await page.waitForTimeout(15000);
+  await simAdvance(page, 15000);
   await pttTransmit(page, 'mobile', { kind: 'message', text: MESSAGE }, 20);
-  await page.waitForTimeout(40000);
+  await simAdvance(page, 40000);
   await step('Relay the Exact Message', 'relay-exact-message');
 
   // check-radiogram
@@ -95,7 +96,7 @@ test('ham-tech-s12 finishes from replace-lead', async ({ page, missionControlPag
 
   // close-station
   await pttTransmit(page, 'mobile', { kind: 'identify' }, 3);
-  await page.waitForTimeout(12000);
+  await simAdvance(page, 12000);
   await step('Close the Net', 'close-station');
 
   // pack-down
@@ -106,6 +107,6 @@ test('ham-tech-s12 finishes from replace-lead', async ({ page, missionControlPag
     report: 'The poor lead connection, the readings that showed it, and that the spare lead is now used',
   });
   await answerTechQuizzes(page, 2);
-  await page.waitForTimeout(2000);
+  await simAdvance(page, 2000);
   await expectMissionComplete(page);
 });

@@ -85,6 +85,9 @@ export function hasTestClock(page: Page): boolean {
 /** Shortest wait that is worth a burst, ms. */
 const BURST_MIN_MS = 1000;
 
+/** Longest real time advanceUntil waits for a paused sim (loading, menu, hidden tab) to resume, ms. */
+const PAUSED_SIM_LIMIT_MS = 30000;
+
 /** Real time after a burst for wall-clock-throttled adapters and page timers to catch up, ms. */
 const BURST_SETTLE_MS = 250;
 
@@ -95,20 +98,25 @@ export function burstWanted(): boolean {
 
 /**
  * Run `ms` of sim time through window.__srTest.advance. Returns the sim ms advanced, or null when the page has
- * no hook (production-style build, page not loaded yet), so the caller can fall back to a real wait.
+ * no hook (production-style build, page not loaded yet) or the page navigated away mid-call, so the caller can
+ * fall back to a real wait. An exception thrown inside the sim step is NOT swallowed: it fails the test, the same
+ * way it would freeze the game for a player.
  */
 async function burstSim(page: Page, ms: number): Promise<number | null> {
   try {
     return await page.evaluate(async (simMs: number) => {
       const hook = (window as unknown as { __srTest?: { advance?: (n: number) => Promise<number> } }).__srTest;
-      return hook?.advance ? await hook.advance(simMs) : null;
+      return typeof hook?.advance === 'function' ? await hook.advance(simMs) : null;
     }, ms);
-  } catch {
-    return null;
+  } catch (error) {
+    if (error instanceof Error && /Execution context was destroyed|Target (page, context or browser|closed)/u.test(error.message)) {
+      return null;
+    }
+    throw error;
   }
 }
 
-/** Whether a no-clock wait of `ms` should use the burst (true on the clock too: the caller checks the clock first). */
+/** Whether a no-clock wait of `ms` may use the burst: false on the test clock (which has its own fast-forward) or with SR_E2E_BURST=0. */
 export function canBurst(page: Page): boolean {
   return burstWanted() && !hasTestClock(page);
 }
@@ -124,9 +132,9 @@ export async function simAdvance(page: Page, ms: number, chunkMs = DEFAULT_CHUNK
       const advanced = await burstSim(page, ms);
       if (advanced !== null) {
         await page.waitForTimeout(BURST_SETTLE_MS);
-        // A sim that could not step (menu, hidden, wall cap) owes the rest in real time
+        // A sim that could not step (menu, hidden, wall cap) owes the rest in real time, however small
         const owed = ms - advanced;
-        if (owed > BURST_MIN_MS) await page.waitForTimeout(owed);
+        if (owed > 0) await page.waitForTimeout(owed);
         return;
       }
     }
@@ -159,6 +167,7 @@ export async function advanceUntil(page: Page, check: () => Promise<boolean>, op
   const maxMs = options.maxMs ?? 60000;
   const stepMs = options.stepMs ?? 500;
   let spentMs = 0;
+  let pausedRealMs = 0;
   for (;;) {
     if (await check()) {
       if (process.env.E2E_CLOCK_TRACE) {
@@ -170,12 +179,25 @@ export async function advanceUntil(page: Page, check: () => Promise<boolean>, op
       throw new Error(`advanceUntil: ${options.message ?? 'condition'} not met after ${maxMs} ms of page time`);
     }
     if (canBurst(page)) {
-      // Burst in slices of at least 1 s of sim, then let wall-throttled DOM sync catch up before the check
+      // Burst in slices of at least 1 s of sim, then let wall-throttled DOM sync catch up before the check.
+      // Budget counts the sim time the hook reports, so maxMs means the same as on the clock path.
       const slice = Math.max(stepMs, BURST_MIN_MS);
       const advanced = await burstSim(page, slice);
       if (advanced !== null) {
         await page.waitForTimeout(BURST_SETTLE_MS);
-        spentMs += slice;
+        if (advanced > 0) {
+          spentMs += advanced;
+          pausedRealMs = 0;
+        } else {
+          // The sim did not step (loading, menu, hidden tab): no sim time passed, so no budget is spent. Wait in real time.
+          await page.waitForTimeout(stepMs);
+          pausedRealMs += stepMs + BURST_SETTLE_MS;
+          if (pausedRealMs > PAUSED_SIM_LIMIT_MS) {
+            throw new Error(
+              `advanceUntil: ${options.message ?? 'condition'} not met: the sim is paused (loading, menu or hidden tab) and did not resume within ${PAUSED_SIM_LIMIT_MS} ms of real time`
+            );
+          }
+        }
         continue;
       }
     }

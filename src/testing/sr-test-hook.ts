@@ -76,7 +76,7 @@ export function spectrumTrace(groundStationId: string, analyzerIndex = 0, atFreq
 
 /** Frame length fed to SimulationManager.advance per call (its MAX_FRAME_MS clamp is 250). */
 const BURST_FRAME_MS = 250;
-/** Frames per chunk before yielding to the event loop. */
+/** advance() calls between yields to the event loop. */
 const BURST_FRAMES_PER_YIELD = 20;
 /** Wall-time cap for one advance call, ms. */
 const BURST_WALL_CAP_MS = 30000;
@@ -91,16 +91,23 @@ export async function burstAdvance(ms: number): Promise<number> {
   const sim = SimulationManager.getInstance();
   const startRun = SimClock.runMs();
   const startWall = performance.now();
-  while (SimClock.runMs() - startRun < ms) {
+  let frames = 0;
+  for (;;) {
+    const left = ms - (SimClock.runMs() - startRun);
+    if (left <= 0) break;
     if (SimClock.isPaused('hidden') || SimClock.isPaused('loading') || SimClock.isPaused('menu')) break;
     if (performance.now() - startWall > BURST_WALL_CAP_MS) break;
-    for (let i = 0; i < BURST_FRAMES_PER_YIELD; i++) {
-      sim.advance(BURST_FRAME_MS);
+    // Size the frame to what is left (consumeFrame scales real ms by speed) so the target is passed by at most one fixed step
+    sim.advance(Math.min(BURST_FRAME_MS, left / SimClock.speed));
+    frames++;
+    if (frames % BURST_FRAMES_PER_YIELD === 0) {
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, 0);
+      });
     }
-    await new Promise<void>((resolve) => {
-      setTimeout(resolve, 0);
-    });
   }
+  // Adapters throttle DOM updates on UPDATE by wall time; SYNC forces them, so the page shows the end state
+  if (SimClock.runMs() > startRun) sim.sync();
   return SimClock.runMs() - startRun;
 }
 

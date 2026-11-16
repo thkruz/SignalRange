@@ -9,7 +9,7 @@ vi.mock('@app/sync/storage', () => ({ syncManager: { getCurrentState } }));
 vi.mock('@app/scenario-manager', () => ({ ScenarioManager: { getInstance: () => ({ data: scenarioData }) } }));
 vi.mock('@app/campaigns/campaign-manager', () => ({ CampaignManager: { getInstance: () => ({ getCampaignForScenario: () => ({ id: 'camp-1' }) }) } }));
 
-import { SimClock } from '@app/simulation/sim-clock';
+import { FIXED_STEP_MS, SimClock } from '@app/simulation/sim-clock';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import { burstAdvance, captureCheckpoint, installTestHook } from '@app/testing/sr-test-hook';
 import { ReplaySession } from '@app/user-account/replay-session';
@@ -79,13 +79,14 @@ describe('sr-test-hook', () => {
       SimClock.reset();
     });
 
-    function stubSim(): { advance: ReturnType<typeof vi.fn> } {
+    function stubSim(): { advance: ReturnType<typeof vi.fn>; sync: ReturnType<typeof vi.fn> } {
       SimClock.reset();
       const sim = {
         advance: vi.fn((frameMs: number) => {
           const steps = SimClock.consumeFrame(frameMs);
           for (let i = 0; i < steps; i++) SimClock.step();
         }),
+        sync: vi.fn(),
       };
       vi.spyOn(SimulationManager, 'hasInstance').mockReturnValue(true);
       vi.spyOn(SimulationManager, 'getInstance').mockReturnValue(sim as never);
@@ -102,7 +103,26 @@ describe('sr-test-hook', () => {
       stubSim();
       const advanced = await burstAdvance(2000);
       expect(advanced).toBeGreaterThanOrEqual(2000);
-      expect(advanced).toBeLessThan(2000 + 20 * 250);
+      // Within one fixed step of the target, not a whole 20-frame chunk past it
+      expect(advanced).toBeLessThan(2000 + FIXED_STEP_MS * 2);
+    });
+
+    it('stops within one step of the target at 5x speed', async () => {
+      stubSim();
+      SimClock.setSpeed(5);
+      const advanced = await burstAdvance(1000);
+      expect(advanced).toBeGreaterThanOrEqual(1000);
+      expect(advanced).toBeLessThan(1000 + FIXED_STEP_MS * 2);
+    });
+
+    it('forces a DOM sync after advancing, and not when nothing advanced', async () => {
+      const sim = stubSim();
+      await burstAdvance(1000);
+      expect(sim.sync).toHaveBeenCalledTimes(1);
+      sim.sync.mockClear();
+      SimClock.pause('menu');
+      await burstAdvance(1000);
+      expect(sim.sync).not.toHaveBeenCalled();
     });
 
     it('returns early without spinning when the sim cannot step', async () => {

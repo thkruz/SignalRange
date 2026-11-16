@@ -1,4 +1,5 @@
 import { expect, Locator, Page } from '@playwright/test';
+import { hasTestClock } from '../utils/test-clock';
 import { BasePage } from './base.page';
 
 /**
@@ -65,7 +66,15 @@ export class MissionControlPage extends BasePage {
   /**
    * Navigate directly to a scenario.
    */
-  async gotoScenario(campaignId: string, scenarioId: string): Promise<void> {
+  async gotoScenario(campaignId: string, scenarioId: string, options: { fastUi?: boolean } = {}): Promise<void> {
+    // Covers specs that build their own context: the pending quiz/decision indicator shows without its 5 s delay.
+    // Not on the test clock (its quiz helpers fast-forward past the delay). Scenario 3 passes fastUi: false: with
+    // any extra init script registered here its Vermont station click is lost and the tabs never open (finding).
+    if ((options.fastUi ?? true) && !hasTestClock(this.page)) {
+      await this.page.addInitScript(() => {
+        (window as unknown as { SR_E2E_FAST_UI: boolean }).SR_E2E_FAST_UI = true;
+      });
+    }
     await this.page.goto(`/campaigns/${campaignId}/scenarios/${scenarioId}`);
     await this.waitForPageLoad();
   }

@@ -89,6 +89,31 @@ describe('PendingQuizIndicator', () => {
     });
   });
 
+  describe('Initial delay flag', () => {
+    afterEach(() => {
+      delete (window as unknown as { SR_E2E_FAST_UI?: boolean }).SR_E2E_FAST_UI;
+    });
+
+    it('waits 5 s before showing a pending quiz without the e2e flag', () => {
+      eventBus.emit(Events.QUIZ_PENDING, { objectiveId: 'obj-1', conditionIndex: 0 });
+
+      vi.advanceTimersByTime(4999);
+      expect(indicator.isVisible()).toBe(false);
+      vi.advanceTimersByTime(1);
+      vi.runAllTimers();
+      expect(indicator.isVisible()).toBe(true);
+    });
+
+    it('shows a pending quiz with no delay when SR_E2E_FAST_UI is set', () => {
+      (window as unknown as { SR_E2E_FAST_UI?: boolean }).SR_E2E_FAST_UI = true;
+      eventBus.emit(Events.QUIZ_PENDING, { objectiveId: 'obj-1', conditionIndex: 0 });
+
+      vi.advanceTimersByTime(0);
+      vi.runAllTimers();
+      expect(indicator.isVisible()).toBe(true);
+    });
+  });
+
   describe('Event: QUIZ_PENDING', () => {
     it('should show indicator after delay', () => {
       eventBus.emit(Events.QUIZ_PENDING, {

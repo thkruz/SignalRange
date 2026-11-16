@@ -27,17 +27,21 @@ export const test = base.extend<SignalRangeFixtures>({
 
   // Clear storage and set test mode flags before each test
   page: async ({ page, testClock }, use) => {
-    if (testClockWanted(testClock)) {
+    const clocked = testClockWanted(testClock);
+    if (clocked) {
       await installTestClock(page);
     }
     // Set up test mode: auto-close dialogs and clear storage
-    await page.addInitScript(() => {
+    await page.addInitScript((fastUi: boolean) => {
       // Auto-close dialogs for faster testing
       (window as any).AUTO_CLOSE_DIALOGS = true;
+      // Show the pending quiz/decision indicator at once instead of after the 5 s player-pacing delay
+      // (not on the test clock, whose quiz helpers fast-forward past it)
+      (window as any).SR_E2E_FAST_UI = fastUi;
       // Clear storage
       localStorage.clear();
       sessionStorage.clear();
-    });
+    }, !clocked);
     await use(page);
   },
 

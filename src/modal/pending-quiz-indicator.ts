@@ -31,6 +31,11 @@ export class PendingQuizIndicator {
 
   private static readonly INITIAL_DELAY_MS = 5000;
 
+  /** Delay before the indicator shows; e2e specs set `window.SR_E2E_FAST_UI` to skip the player-pacing wait */
+  private static getInitialDelayMs_(): number {
+    return (window as unknown as { SR_E2E_FAST_UI?: boolean }).SR_E2E_FAST_UI ? 0 : PendingQuizIndicator.INITIAL_DELAY_MS;
+  }
+
   private indicatorElement_: HTMLDivElement | null = null;
   private iconElement_: HTMLDivElement | null = null;
   private messageElement_: HTMLDivElement | null = null;
@@ -175,7 +180,7 @@ export class PendingQuizIndicator {
       this.show_();
       this.pendingShowTimeout_ = null;
       this.pendingTimeoutKey_ = null;
-    }, PendingQuizIndicator.INITIAL_DELAY_MS);
+    }, PendingQuizIndicator.getInitialDelayMs_());
   }
 
   /**
@@ -215,7 +220,7 @@ export class PendingQuizIndicator {
       this.show_();
       this.pendingShowTimeout_ = null;
       this.pendingTimeoutKey_ = null;
-    }, PendingQuizIndicator.INITIAL_DELAY_MS);
+    }, PendingQuizIndicator.getInitialDelayMs_());
   }
 
   /** A correct answer hides the indicator before Continue is pressed */

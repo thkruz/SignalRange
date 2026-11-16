@@ -933,7 +933,7 @@ test.describe('Scenario 3 Full Completion', () => {
     missionControlPage = new MissionControlPage(page);
 
     // Navigate directly to scenario 3 (bypasses prerequisite check)
-    await missionControlPage.gotoScenario('nats', 'nats-scenario3');
+    await missionControlPage.gotoScenario('nats', 'nats-scenario3', { fastUi: false });
     await waitForSimulationReady(page);
 
     // Dismiss intro dialog

@@ -170,35 +170,21 @@ export async function waitForQuizToAppear(page: Page, timeout = 30000): Promise<
     }
   }
 
-  // First check if quiz is already visible
-  try {
-    await expect(quizModal).toBeVisible({ timeout: 3000 });
-    return;
-  } catch {
-    // Quiz not visible, try to open via pending indicator
-  }
-
-  // Click the pending quiz indicator if visible
-  // Be more specific to avoid matching wrong buttons
+  // One wait for "quiz already open OR an opener on screen" (no failed probe of the modal first), then open if needed
   const pendingIndicator = page.locator('.pending-quiz-indicator__open-btn');
-  try {
-    await expect(pendingIndicator).toBeVisible({ timeout: 5000 });
-    await pendingIndicator.click();
-    await expect(quizModal).toBeVisible({ timeout: 5000 });
-    return;
-  } catch {
-    // Pending indicator class not found, try generic Open Quiz button
-  }
-
-  // Try the generic "Open Quiz" button in the pending quiz toast (bottom left)
+  // The generic "Open Quiz" button in the pending quiz toast (bottom left)
   const openQuizBtn = page.locator('.pending-quiz-toast button:has-text("Open Quiz"), .toast button:has-text("Open Quiz")');
   try {
-    await expect(openQuizBtn.first()).toBeVisible({ timeout: 3000 });
-    await openQuizBtn.first().click();
+    await expect(quizModal.first().or(pendingIndicator).or(openQuizBtn.first()).first()).toBeVisible({ timeout: 8000 });
+    if (await quizModal.first().isVisible()) {
+      return;
+    }
+    const opener = (await pendingIndicator.isVisible()) ? pendingIndicator : openQuizBtn.first();
+    await opener.click();
     await expect(quizModal).toBeVisible({ timeout: 5000 });
     return;
   } catch {
-    // Toast button not found, try checklist
+    // No quiz or opener yet, try checklist
   }
 
   // Try clicking quiz button in checklist
@@ -315,8 +301,13 @@ export async function answerQuizByText(page: Page, answerText: string): Promise<
   await expect(continueButton.first()).toBeVisible({ timeout: 5000 });
   await continueButton.first().click();
 
-  // Wait for quiz to process the answer
-  await page.waitForTimeout(500);
+  // The feedback's Continue button goes away once the answer is processed, and the modal must be fully gone
+  // (it fades out) before the next click, or that click lands on the closing backdrop
+  await expect(continueButton.first()).toBeHidden({ timeout: 5000 });
+  // A following quiz can reuse the modal at once, so a modal that stays up is not an error
+  await expect(quizModal.first())
+    .toBeHidden({ timeout: 2000 })
+    .catch(() => undefined);
 }
 
 /**
@@ -348,10 +339,15 @@ export async function waitForDecisionToAppear(page: Page, timeout = 30000): Prom
     return;
   }
   try {
-    await expect(modal).toBeVisible({ timeout: 3000 });
+    await expect(modal.or(pendingIndicator).first()).toBeVisible({ timeout: 8000 });
+    if (await modal.isVisible()) {
+      return;
+    }
+    await pendingIndicator.click();
+    await expect(modal).toBeVisible({ timeout: 10000 });
     return;
   } catch {
-    // not open yet - use the indicator
+    // not surfaced yet - wait longer below
   }
   // The hidden indicator is out of hit-testing until it shows, so a late decision needs a long wait, not a click-retry
   const lateMs = Math.max(timeout, 200000);
@@ -386,7 +382,7 @@ export async function answerDecision(page: Page, optionText: string, requiredEvi
   const continueButton = modal.locator('#decision-continue-btn');
   await expect(continueButton, `decision option "${optionText}" should grade correct`).toBeVisible({ timeout: 5000 });
   await continueButton.click();
-  await page.waitForTimeout(500);
+  await expect(modal).toBeHidden({ timeout: 5000 });
 }
 
 /**

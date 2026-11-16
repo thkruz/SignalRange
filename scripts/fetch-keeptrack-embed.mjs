@@ -88,7 +88,17 @@ function main() {
     info(`downloading ${lock.r2Bucket}/${lock.r2Key} ...`);
     const get = run(process.execPath, [path.join(root, 'node_modules', 'wrangler', 'bin', 'wrangler.js'), 'r2', 'object', 'get', `${lock.r2Bucket}/${lock.r2Key}`, '--file', tarball, '--remote']);
 
-    if (get.status !== 0 || !fs.existsSync(tarball)) {
+    let buf = null;
+
+    if (get.status === 0) {
+      try {
+        buf = fs.readFileSync(tarball);
+      } catch (err) {
+        if (err?.code !== 'ENOENT') throw err;
+      }
+    }
+
+    if (buf === null) {
       const detail = `${get.stderr || ''}${get.stdout || ''}`.split('\n').filter((l) => /error|permission|auth|login|token/iu.test(l)).slice(0, 3).join(' | ');
 
       fail(`wrangler could not download the bundle${detail ? ` (${detail})` : ''}. In CI the API token needs R2 read access to bucket ${lock.r2Bucket}.`);
@@ -96,7 +106,6 @@ function main() {
       return;
     }
 
-    const buf = fs.readFileSync(tarball);
     const sha = createHash('sha256').update(buf).digest('hex');
 
     if (buf.length !== lock.sizeBytes || sha !== lock.sha256) {

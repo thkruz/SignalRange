@@ -1,5 +1,6 @@
 import { CampaignManager } from '@app/campaigns/campaign-manager';
 import { ScenarioManager } from '@app/scenario-manager';
+import { SimClock } from '@app/simulation/sim-clock';
 import { SimulationManager } from '@app/simulation/simulation-manager';
 import type { AppState } from '@app/sync/storage';
 import { syncManager } from '@app/sync/storage';
@@ -31,6 +32,12 @@ export interface SrTestApi {
   captureCheckpoint(): TestCheckpoint;
   /** Summary of the live trace of one ground station analyzer, or null when the station or analyzer is missing */
   spectrumTrace(groundStationId: string, analyzerIndex?: number, atFrequencyHz?: number): SpectrumTraceSummary | null;
+  /**
+   * Run `ms` of simulation (run) time as fast as the machine allows: fixed steps in chunks, a macrotask yield
+   * between chunks (the propagation worker answers there), no draw. Resolves with the sim ms actually advanced,
+   * which is less than asked when the sim is paused for a reason that stops stepping or the wall cap hit.
+   */
+  advance(ms: number): Promise<number>;
 }
 
 declare global {
@@ -67,6 +74,36 @@ export function spectrumTrace(groundStationId: string, analyzerIndex = 0, atFreq
   return summary;
 }
 
+/** Frame length fed to SimulationManager.advance per call (its MAX_FRAME_MS clamp is 250). */
+const BURST_FRAME_MS = 250;
+/** Frames per chunk before yielding to the event loop. */
+const BURST_FRAMES_PER_YIELD = 20;
+/** Wall-time cap for one advance call, ms. */
+const BURST_WALL_CAP_MS = 30000;
+
+/**
+ * Advance the simulation by `ms` of run time (SimClock.runMs, which keeps counting while a brief or quiz holds
+ * scenario time). Measured on the sim clock, not on call count, because advance() holds steps while the
+ * propagation worker is behind. Returns early when the sim cannot step (tab hidden, loading, menu).
+ */
+export async function burstAdvance(ms: number): Promise<number> {
+  if (!(ms > 0) || !SimulationManager.hasInstance()) return 0;
+  const sim = SimulationManager.getInstance();
+  const startRun = SimClock.runMs();
+  const startWall = performance.now();
+  while (SimClock.runMs() - startRun < ms) {
+    if (SimClock.isPaused('hidden') || SimClock.isPaused('loading') || SimClock.isPaused('menu')) break;
+    if (performance.now() - startWall > BURST_WALL_CAP_MS) break;
+    for (let i = 0; i < BURST_FRAMES_PER_YIELD; i++) {
+      sim.advance(BURST_FRAME_MS);
+    }
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 0);
+    });
+  }
+  return SimClock.runMs() - startRun;
+}
+
 /** Development builds only (the e2e builds); production bundles drop the hook, and it is inert even if reached. */
 export function isTestHookEnabled(): boolean {
   return process.env.NODE_ENV === 'development';
@@ -94,7 +131,7 @@ export function captureCheckpoint(): TestCheckpoint {
 export function installTestHook(): void {
   if (!isTestHookEnabled() || typeof window === 'undefined') return;
 
-  window.__srTest = { captureCheckpoint, spectrumTrace };
+  window.__srTest = { captureCheckpoint, spectrumTrace, advance: burstAdvance };
 
   const start = window.__SR_START_CHECKPOINT__;
   if (start?.scenarioId && start.state) {

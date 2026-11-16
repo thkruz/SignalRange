@@ -1,7 +1,7 @@
 import { expect, Locator, Page } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
 import { waitForQuizToAppear } from './simulation-helpers';
-import { advanceUntil, hasTestClock, simAdvance } from './test-clock';
+import { advanceUntil, canBurst, hasTestClock, simAdvance } from './test-clock';
 
 /**
  * Shared helpers for the ham-sdr (Campaign 3) full-completion specs.
@@ -100,8 +100,8 @@ export async function waitForObjectiveComplete(missionControl: MissionControlPag
   await ensureChecklist(missionControl);
   try {
     const page = missionControl.objectivesChecklist.page();
-    if (hasTestClock(page)) {
-      // Fast-forward page time until the row completes; the expect below then passes at once.
+    if (hasTestClock(page) || canBurst(page)) {
+      // Fast-forward page time (clock or burst) until the row completes; the expect below then passes at once.
       // evaluateAll, not getAttribute: a title can match more than one row (strict mode would throw)
       const row = objectiveItem(missionControl, title);
       await advanceUntil(page, () => row.evaluateAll((els) => els.some((el) => el.classList.contains('completed'))).catch(() => false), {

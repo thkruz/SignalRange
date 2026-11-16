@@ -9,7 +9,9 @@ vi.mock('@app/sync/storage', () => ({ syncManager: { getCurrentState } }));
 vi.mock('@app/scenario-manager', () => ({ ScenarioManager: { getInstance: () => ({ data: scenarioData }) } }));
 vi.mock('@app/campaigns/campaign-manager', () => ({ CampaignManager: { getInstance: () => ({ getCampaignForScenario: () => ({ id: 'camp-1' }) }) } }));
 
-import { captureCheckpoint, installTestHook } from '@app/testing/sr-test-hook';
+import { SimClock } from '@app/simulation/sim-clock';
+import { SimulationManager } from '@app/simulation/simulation-manager';
+import { burstAdvance, captureCheckpoint, installTestHook } from '@app/testing/sr-test-hook';
 import { ReplaySession } from '@app/user-account/replay-session';
 
 const state = {
@@ -69,5 +71,51 @@ describe('sr-test-hook', () => {
 
     expect(window.__srTest).toBeUndefined();
     expect(ReplaySession.isActive()).toBe(false);
+  });
+
+  describe('advance', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+      SimClock.reset();
+    });
+
+    function stubSim(): { advance: ReturnType<typeof vi.fn> } {
+      SimClock.reset();
+      const sim = {
+        advance: vi.fn((frameMs: number) => {
+          const steps = SimClock.consumeFrame(frameMs);
+          for (let i = 0; i < steps; i++) SimClock.step();
+        }),
+      };
+      vi.spyOn(SimulationManager, 'hasInstance').mockReturnValue(true);
+      vi.spyOn(SimulationManager, 'getInstance').mockReturnValue(sim as never);
+      return sim;
+    }
+
+    it('is exposed on window.__srTest', () => {
+      process.env.NODE_ENV = 'development';
+      installTestHook();
+      expect(window.__srTest?.advance).toBe(burstAdvance);
+    });
+
+    it('advances the requested sim time and reports it', async () => {
+      stubSim();
+      const advanced = await burstAdvance(2000);
+      expect(advanced).toBeGreaterThanOrEqual(2000);
+      expect(advanced).toBeLessThan(2000 + 20 * 250);
+    });
+
+    it('returns early without spinning when the sim cannot step', async () => {
+      const sim = stubSim();
+      SimClock.pause('menu');
+      expect(await burstAdvance(5000)).toBe(0);
+      expect(sim.advance).not.toHaveBeenCalled();
+    });
+
+    it('returns 0 for no time or no simulation', async () => {
+      expect(await burstAdvance(0)).toBe(0);
+      vi.spyOn(SimulationManager, 'hasInstance').mockReturnValue(false);
+      expect(await burstAdvance(1000)).toBe(0);
+    });
   });
 });

@@ -15,6 +15,11 @@ import type { Page } from '@playwright/test';
  * With the clock off (default, or E2E_TEST_CLOCK=0) both helpers fall back to real waiting, so a spec
  * converted to them still runs unchanged without the clock.
  *
+ * Without the clock, waits of a second or more run on the burst hook (window.__srTest.advance: fixed sim steps
+ * in a tight loop, no draw, about 25 to 40x real time) followed by a short real settle, because adapters throttle
+ * DOM sync on wall time and page timers are not advanced by the burst. SR_E2E_BURST=0 forces real waiting again
+ * (baselines, bisecting a failure); a build without the hook falls back by itself.
+ *
  * Not reached by the fake clock: Web Workers (the propagation worker). The sim requests grid points by
  * sim time and holds a step until they arrive, so a fast-forward can only run slower, never wrong.
  */
@@ -77,6 +82,37 @@ export function hasTestClock(page: Page): boolean {
   return clockPages_.has(page);
 }
 
+/** Shortest wait that is worth a burst, ms. */
+const BURST_MIN_MS = 1000;
+
+/** Real time after a burst for wall-clock-throttled adapters and page timers to catch up, ms. */
+const BURST_SETTLE_MS = 250;
+
+/** Whether the burst path is allowed (SR_E2E_BURST=0 turns it off). */
+export function burstWanted(): boolean {
+  return process.env.SR_E2E_BURST !== '0';
+}
+
+/**
+ * Run `ms` of sim time through window.__srTest.advance. Returns the sim ms advanced, or null when the page has
+ * no hook (production-style build, page not loaded yet), so the caller can fall back to a real wait.
+ */
+async function burstSim(page: Page, ms: number): Promise<number | null> {
+  try {
+    return await page.evaluate(async (simMs: number) => {
+      const hook = (window as unknown as { __srTest?: { advance?: (n: number) => Promise<number> } }).__srTest;
+      return hook?.advance ? await hook.advance(simMs) : null;
+    }, ms);
+  } catch {
+    return null;
+  }
+}
+
+/** Whether a no-clock wait of `ms` should use the burst (true on the clock too: the caller checks the clock first). */
+export function canBurst(page: Page): boolean {
+  return burstWanted() && !hasTestClock(page);
+}
+
 /**
  * Let `ms` of page time pass: fast-forward on the test clock, a real wait without it. Use for waits that
  * exist only to let simulated time pass (a maintain window, a scripted outage, a radio hold). Leave short
@@ -84,6 +120,16 @@ export function hasTestClock(page: Page): boolean {
  */
 export async function simAdvance(page: Page, ms: number, chunkMs = DEFAULT_CHUNK_MS): Promise<void> {
   if (!hasTestClock(page)) {
+    if (ms >= BURST_MIN_MS && canBurst(page)) {
+      const advanced = await burstSim(page, ms);
+      if (advanced !== null) {
+        await page.waitForTimeout(BURST_SETTLE_MS);
+        // A sim that could not step (menu, hidden, wall cap) owes the rest in real time
+        const owed = ms - advanced;
+        if (owed > BURST_MIN_MS) await page.waitForTimeout(owed);
+        return;
+      }
+    }
     await page.waitForTimeout(ms);
     return;
   }
@@ -122,6 +168,16 @@ export async function advanceUntil(page: Page, check: () => Promise<boolean>, op
     }
     if (spentMs >= maxMs) {
       throw new Error(`advanceUntil: ${options.message ?? 'condition'} not met after ${maxMs} ms of page time`);
+    }
+    if (canBurst(page)) {
+      // Burst in slices of at least 1 s of sim, then let wall-throttled DOM sync catch up before the check
+      const slice = Math.max(stepMs, BURST_MIN_MS);
+      const advanced = await burstSim(page, slice);
+      if (advanced !== null) {
+        await page.waitForTimeout(BURST_SETTLE_MS);
+        spentMs += slice;
+        continue;
+      }
     }
     await simAdvance(page, stepMs, stepMs);
     spentMs += stepMs;

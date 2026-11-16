@@ -198,8 +198,9 @@ export class FieldHandoverPanel {
     }
     if (field && 'matchesCurrent' in field.rule) {
       const { layer, serviceId } = field.rule.matchesCurrent;
-
-      return `There is no ${LAYER_LABEL[layer] ?? layer} reading to copy yet. ${this.howToRead_(serviceId, layer)}`.trim();
+      const how = this.howToRead_(serviceId, layer);
+      // Application, account and provider layers have no player control to name: keep dev's default refusal
+      if (how !== '') return `There is no ${LAYER_LABEL[layer] ?? layer} reading to copy yet. ${how}`.trim();
     }
 
     return 'There is no reading to use yet. Take one first (for a power figure, Inspect that part in the site close-up, or type the Power panel figure).';

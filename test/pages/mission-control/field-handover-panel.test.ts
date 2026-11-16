@@ -377,6 +377,27 @@ describe('M14 handover panel unread readings and ticks (P46)', () => {
     expect(msg).not.toMatch(/Inspect that part/u);
   });
 
+  it('Copy latest reading on an application, account or provider field keeps the exact dev refusal', () => {
+    const layers: HandoverFormConfig = {
+      id: 'lay',
+      title: 'Layers',
+      documentSection: 'L',
+      fields: [
+        { key: 'app', label: 'Application', required: true, rule: { matchesCurrent: { serviceId: 'skylink', layer: 'application' } } },
+        { key: 'acct', label: 'Account', required: true, rule: { matchesCurrent: { serviceId: 'skylink', layer: 'account' } } },
+        { key: 'prov', label: 'Provider', required: true, rule: { matchesCurrent: { serviceId: 'skylink', layer: 'provider' } } },
+      ],
+    };
+    const r = rig(true, layers);
+    r.panel.selectForm('lay');
+    for (const key of ['app', 'acct', 'prov']) {
+      expect(r.panel.fillFromReading(key)).toBe(false);
+      expect(r.host.querySelector('[data-fhf="msg"]')?.textContent).toBe(
+        'There is no reading to use yet. Take one first (for a power figure, Inspect that part in the site close-up, or type the Power panel figure).'
+      );
+    }
+  });
+
   it('ticking an answer clears the "is empty" note on that field at once', () => {
     const r = rig(true, form);
     r.panel.selectForm('p46');

@@ -31,7 +31,7 @@ import { createMeridianSar1, createMeridianSar2, createMeridianSar3, MERIDIAN_SA
  *   MERIDIAN-SAR-3 #1: AOS T+18.02 (10:06:00Z, az 140), max el 27.9 deg at T+22.75
  *                      (10:10:45Z, 764 km slant range), LOS T+27.48 (10:15:29Z,
  *                      az 355), 9.5 min, northbound. The worked pass;
- *                      commanding window 10:06:22 .. 10:15:08.
+ *                      commanding window 10:06:22 .. 10:14:18.
  *                      At the 5 deg mask (the LOS the objective row judges): AOS 10:07:11, LOS 10:14:18.
  *   MERIDIAN-SAR-1 #1: AOS 10:50:01Z, max el 25.2 deg, LOS 10:59:30Z (present, not worked)
  *   MERIDIAN-SAR-2 #1: AOS 11:10:01Z, max el 24.7 deg, LOS 11:19:28Z (present, not worked)
@@ -181,7 +181,7 @@ export const natsEuScenario12Data: ScenarioData = {
     },
 
     // M2/M5 - payload command checkout. Window is the SAR-3 pass, AOS T+18.02
-    // (1081 s) + 20 s .. LOS T+27.48 (1649 s) - 20 s. Doppler comp and a valid
+    // (1081 s) + 20 s .. the 5 deg LOS 10:14:18 (T+1578 s). Doppler comp and a valid
     // key are both required for an ACK. PLD-ON and PLD-TEST-PATTERN are the
     // card; REC-PLAYBACK and PLD-SAFE are on the console because a real TT&C
     // console does not hide the commands the card does not call for.
@@ -189,7 +189,7 @@ export const natsEuScenario12Data: ScenarioData = {
       groundStationId: 'GW-01',
       targetNoradId: 61703,
       windowStartS: 1102,
-      windowEndS: 1628,
+      windowEndS: 1578,
       requireDopplerComp: true,
       requireValidKey: true,
       commands: [
@@ -649,7 +649,7 @@ export const natsEuScenario12Data: ScenarioData = {
       id: 'payload-power-on',
       nice: ['T1092', 'T1567'],
       title: 'Payload Power On',
-      description: 'Send PLD-ON, the payload power-on command, and confirm its acknowledgement inside the window (10:06:22 to 10:15:08).',
+      description: 'Send PLD-ON, the payload power-on command, and confirm its acknowledgement inside the window (10:06:22 to 10:14:18).',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['enable-the-hpa'],
       conditions: [
@@ -697,7 +697,7 @@ export const natsEuScenario12Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Command',
             documentLine:
-              'Command checkout: chain up modem-BUC-HPA in order; PLD-ON then PLD-TEST-PATTERN, both ACKed inside the 10:06:22 .. 10:15:08 window with uplink Doppler comp and a valid key. ACK = receipt, not effect; effect proven by the decode.',
+              'Command checkout: chain up modem-BUC-HPA in order; PLD-ON then PLD-TEST-PATTERN, both ACKed inside the 10:06:22 .. 10:14:18 window with uplink Doppler comp and a valid key. ACK = receipt, not effect; effect proven by the decode.',
           },
           mustMaintain: false,
         },

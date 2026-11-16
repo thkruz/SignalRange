@@ -104,6 +104,8 @@ export class Closeup {
   private readonly face_ = new InstrumentFace();
   private readonly operates_ = new Map<string, HTMLButtonElement>();
   private readonly clues_ = new Map<string, string>();
+  /** Fault-located state of the target when its clue was stored; a changed state makes the clue stale */
+  private readonly clueLocated_ = new Map<string, string>();
   private readonly rebuild_ = new Rebuilder();
   private selection_: BenchSelection = null;
   private shownPanels_: string[] = [];
@@ -152,9 +154,29 @@ export class Closeup {
     }
   }
 
+  private locatedSig_(m: HamStationManager, target: string): string {
+    return m
+      .faults()
+      .filter((f) => f.target === target && f.locate)
+      .map((f) => m.faultLocated(f))
+      .join(',');
+  }
+
+  /** The stored clue for a target, unless a fault on it has been located since the clue was read */
+  private freshClue_(m: HamStationManager, id: string): string | undefined {
+    const clue = this.clues_.get(id);
+    if (clue === undefined) return undefined;
+    const at = this.clueLocated_.get(id);
+
+    return at !== undefined && at !== this.locatedSig_(m, id) ? undefined : clue;
+  }
+
   private act_(a: Parameters<PanelContext['act']>[0], clueFor?: string): void {
     const r = this.ctx_.act(a);
-    if (clueFor && r.ok) this.clues_.set(clueFor, r.message);
+    if (clueFor && r.ok) {
+      this.clues_.set(clueFor, r.message);
+      this.clueLocated_.set(clueFor, this.locatedSig_(this.ctx_.manager, clueFor));
+    }
     this.update(this.ctx_.manager, true);
   }
 
@@ -370,7 +392,7 @@ export class Closeup {
       }
     }
     host.append(actions);
-    const clue = this.clues_.get(d.id);
+    const clue = this.freshClue_(m, d.id);
     if (clue) host.append(h('div', { class: 'ham-closeup-clue', role: 'note', 'data-testid': tid('ham-conn', d.id, 'clue'), text: clue }));
     const jobSection = buildJobTagSection(
       m,
@@ -455,7 +477,7 @@ export class Closeup {
         button(tid('ham-conn', c.id, 'disconnect'), 'Unplug', () => this.act_({ type: 'disconnect', connectionId: c.id }), 'btn btn-sm btn-outline-danger', `Disconnect ${name}`)
       )
     );
-    const clue = this.clues_.get(c.id);
+    const clue = this.freshClue_(m, c.id);
     if (clue) host.append(h('div', { class: 'ham-closeup-clue', role: 'note', 'data-testid': tid('ham-conn', c.id, 'clue'), text: clue }));
     this.appendFaults_(m, [c.id]);
   }

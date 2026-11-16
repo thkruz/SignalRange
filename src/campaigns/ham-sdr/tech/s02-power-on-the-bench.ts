@@ -15,8 +15,8 @@ import { s02Station } from './s02-station';
  * against the predicted 0.10 A. The mismatch sends the student to the continuity test. With the
  * board powered down and the lever on, tp-sw1-in to tp-sw1-out reads about 2.7 kOhm (through the
  * LED branch) and does not beep. After the repair the same series meter reads about 0.10 A and the
- * led-branch meter about 0.021 A. The meter only records a reading when it shows a value, so an
- * open "OL" result is not logged.
+ * led-branch meter about 0.021 A. An open "OL" result is logged as an
+ * overload at the open-circuit limit.
  */
 const DCV = 'voltage';
 const DCA = 'current';
@@ -110,6 +110,10 @@ export const hamTechS02Data: ScenarioData = {
               min: 1000,
               afterEvent: 'power:board',
               sw1On: true,
+              // Not tied to the current board revision: the repair is a board change, so a player who
+              // located the fault while Predict was open would otherwise lose the reading and could
+              // never re-take it. 1 kOhm or more with SW1 on is only possible while the fault exists.
+              current: false,
             },
             'No continuity across the SW1 contact'
           ),

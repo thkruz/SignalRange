@@ -114,4 +114,52 @@ describe('S2 order of play never strands a row', () => {
     act(h, { type: 'meter.read' });
     expect(h.m.lastMeasurement({ instrument: 'multimeter', quantity: 'current' })?.value).toBeGreaterThan(0.09);
   });
+
+  const contRow = (h: H) =>
+    practical(hamTechS02Data, 'find-open-branch')
+      .filter((c) => c.description === 'No continuity across the SW1 contact')
+      .every((c) => evaluateWith(c, h.m));
+
+  it('locate, repair while Predict is open, then Find: the continuity row is still met', () => {
+    const h = harness(config());
+    boardOffSw1On(h);
+    cont(h);
+    expect(contRow(h)).toBe(true);
+    act(h, { type: 'repair', faultId: 'sw1-contact' }); // a board change: the reading is now stale
+    act(h, { type: 'power', deviceId: 'board', on: true });
+    h.advance(2);
+    act(h, { type: 'meter.mode', mode: 'DCA' });
+    act(h, { type: 'meter.socket', socket: 'A' });
+    place(h, { series: 'r1-branch' });
+    act(h, { type: 'meter.read' });
+    expect(contRow(h)).toBe(true);
+  });
+
+  it('the continuity row ignores an SW1-off reading and a board with nothing read, repaired or not', () => {
+    const h = harness(config());
+    expect(contRow(h)).toBe(false);
+    h.advance(2);
+    act(h, { type: 'power', deviceId: 'board', on: false });
+    cont(h); // SW1 off: OL, but not across a closed contact
+    expect(contRow(h)).toBe(false);
+    act(h, { type: 'board.switch', deviceId: 'board', on: true });
+    cont(h);
+    act(h, { type: 'repair', faultId: 'sw1-contact' });
+    act(h, { type: 'board.switch', deviceId: 'board', on: false });
+    cont(h); // after the repair the contact conducts: no new qualifying reading
+    expect(contRow(h)).toBe(true); // the earlier SW1-on reading before the fault was fixed still stands
+  });
+
+  it('the located state is latched: evicting the measurement log does not lock Repair again', () => {
+    const h = harness(config());
+    boardOffSw1On(h);
+    cont(h);
+    const f = h.m.faults()[0];
+    expect(h.m.faultLocated(f)).toBe(true);
+    (h.m as unknown as { core_: { log: { state: { measurements: unknown[] } } } }).core_.log.state.measurements.length = 0;
+    expect(h.m.faultLocated(f)).toBe(true);
+    expect(h.m.faultClue(f)).toBe(f.inspectClue);
+    act(h, { type: 'repair', faultId: 'sw1-contact' });
+    expect(h.m.faultCleared('sw1-contact')).toBe(true);
+  });
 });

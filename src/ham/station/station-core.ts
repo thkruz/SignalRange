@@ -28,6 +28,8 @@ export interface FaultRuntime extends HamFaultConfig {
   cleared: boolean;
   clearedAtS?: number;
   repairRevision?: number;
+  /** Latched the first time the meter locates the fault (the measurement log is size-capped) */
+  located?: boolean;
 }
 
 export interface KeyedTx {

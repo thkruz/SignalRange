@@ -154,7 +154,12 @@ for (let i = 0; i < count; i++) {
     body: JSON.stringify({ text, model_id: model, voice_settings: settings, seed }),
   });
   const file = join(tmp, `take-${i + 1}.mp3`);
-  writeFileSync(file, Buffer.from(await res.arrayBuffer()));
+  const contentType = res.headers.get('content-type') ?? '';
+  const audio = Buffer.from(await res.arrayBuffer());
+  if (!contentType.startsWith('audio/') || audio.length === 0) {
+    throw new Error(`take ${i + 1}: expected audio, got ${contentType || 'no content-type'} (${audio.length} bytes)`);
+  }
+  writeFileSync(file, audio);
   const record = {
     voiceId,
     voiceName: info.name,

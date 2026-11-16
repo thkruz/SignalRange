@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
 import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForSimulationReady } from '../utils/simulation-helpers';
+import { advanceUntil, simAdvance } from '../utils/test-clock';
 
 /**
  * Scenario 2 objectives - Scheduled Maintenance: Power Down and Recovery Procedures.
@@ -366,54 +367,31 @@ async function selectSatelliteAndMove(page: import('@playwright/test').Page): Pr
 }
 
 /**
- * Wait for antenna movement to complete by monitoring position changes.
- * The 9 m pedestal moves at 0.5 deg/s (phase 19.4), so a large move takes minutes.
+ * Advance the sim until the antenna has stopped slewing. Reads the simulation state, not the throttled
+ * elevation display, so a burst of sim time cannot mistake a stale readout for a stopped dish.
+ * The 9 m pedestal moves at 0.5 deg/s (phase 19.4), so a large move takes minutes of sim time.
  */
 async function waitForAntennaMovement(page: import('@playwright/test').Page, timeout = 60000): Promise<void> {
-  const startTime = Date.now();
-  let lastPosition = '';
-  let stableCount = 0;
-
-  // Wait a moment for tracking mode change to take effect
-  await page.waitForTimeout(500);
-
-  while (Date.now() - startTime < timeout) {
-    await page.waitForTimeout(1000);
-
-    // Get current elevation from the fine-adjust control display
-    // The Elevation control has a label and value span - use text matching
-    // Try multiple selector strategies
-    let elDisplay = page.locator('.fine-adjust-control', { hasText: 'Elevation' }).locator('.fine-adjust-value-active');
-
-    // Fallback: try finding by ID pattern (contains "el-fine")
-    if ((await elDisplay.count()) === 0) {
-      elDisplay = page.locator('[id*="el-fine"][id$="-value"]');
-    }
-
-    try {
-      const currentPosition = await elDisplay.first().textContent({ timeout: 2000 });
-
-      if (currentPosition === lastPosition && currentPosition !== '') {
-        stableCount++;
-        // Position stable for 3 consecutive checks = movement complete
-        if (stableCount >= 3) {
-          // console.log(`Antenna stabilized at elevation: ${currentPosition}`);
-          return;
-        }
-      } else {
-        stableCount = 0;
-        lastPosition = currentPosition || '';
-        // console.log(`Antenna moving... elevation: ${currentPosition}`);
-      }
-    } catch {
-      // Display not found, log and retry
-      // console.log(`Waiting for elevation display... (${Date.now() - startTime}ms elapsed)`);
-      await page.waitForTimeout(500);
-    }
+  // Let the move command reach the antenna before looking at its slew flag
+  await simAdvance(page, 1000);
+  try {
+    await advanceUntil(
+      page,
+      () =>
+        page.evaluate(() => {
+          const sim = (
+            window as unknown as {
+              signalRange?: { simulationManager?: { groundStations?: Array<{ antennas?: Array<{ state?: { slewing?: boolean } }> }> } };
+            }
+          ).signalRange?.simulationManager;
+          return sim?.groundStations?.[0]?.antennas?.[0]?.state?.slewing === false;
+        }),
+      { maxMs: timeout, stepMs: 1000, message: 'antenna stopped slewing' }
+    );
+  } catch {
+    // If we get here, antenna movement timed out but continue anyway
+    console.warn('Antenna movement may not have completed within timeout');
   }
-
-  // If we get here, antenna movement timed out but continue anyway
-  console.warn('Antenna movement may not have completed within timeout');
 }
 
 /**
@@ -451,7 +429,7 @@ async function configureLnb(page: import('@playwright/test').Page, config: { loF
   await applyBtn.click();
 
   // Wait for thermal stabilization (LNB takes ~3 seconds to stabilize)
-  await page.waitForTimeout(4000);
+  await simAdvance(page, 4000);
 
   // Verify thermal stability indicator shows green (if visible)
   // The objective condition checks for lnb-thermally-stable, so we wait
@@ -479,7 +457,7 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
       // Observation-gated conditions latch only after the default dwell on
       // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
       // reset the read and strand the objective.
-      await page.waitForTimeout(3000);
+      await simAdvance(page, 3000);
       break;
 
     case 'toggle-switch':
@@ -514,7 +492,7 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
       await span.fill(objective.specaConfig!.span.toString());
       await span.press('Tab');
       // signal-detected is observation-gated: stay on the tab past the dwell
-      await page.waitForTimeout(3000);
+      await simAdvance(page, 3000);
       break;
     }
 
@@ -718,13 +696,14 @@ test.describe('Scenario 2 Full Completion', () => {
     await executeObjective(page, missionControlPage, objective);
     // The El 5 -> 35.2 slew is about 60 s at 0.5 deg/s, right at the movement
     // helper's timeout: stay on the ACU tab until the objective has completed
-    await page.waitForFunction(
-      (id) => {
-        const hook = (window as unknown as { debugObjective?: (id: string) => { isCompleted?: boolean } }).debugObjective;
-        return typeof hook === 'function' && hook(id)?.isCompleted === true;
-      },
-      'repoint-antenna',
-      { timeout: 60000, polling: 500 }
+    await advanceUntil(
+      page,
+      () =>
+        page.evaluate((id) => {
+          const hook = (window as unknown as { debugObjective?: (id: string) => { isCompleted?: boolean } }).debugObjective;
+          return typeof hook === 'function' && hook(id)?.isCompleted === true;
+        }, 'repoint-antenna'),
+      { maxMs: 60000, stepMs: 1000, message: 'repoint-antenna complete' }
     );
   });
 
@@ -743,13 +722,14 @@ test.describe('Scenario 2 Full Completion', () => {
     test.setTimeout(180000);
     const objective = SCENARIO_2_OBJECTIVES.find((o) => o.id === 'power-up-lnb')!;
     await executeObjective(page, missionControlPage, objective);
-    await page.waitForFunction(
-      (id) => {
-        const hook = (window as unknown as { debugObjective?: (id: string) => { isCompleted?: boolean } }).debugObjective;
-        return typeof hook === 'function' && hook(id)?.isCompleted === true;
-      },
-      'power-up-lnb',
-      { timeout: 150000, polling: 500 }
+    await advanceUntil(
+      page,
+      () =>
+        page.evaluate((id) => {
+          const hook = (window as unknown as { debugObjective?: (id: string) => { isCompleted?: boolean } }).debugObjective;
+          return typeof hook === 'function' && hook(id)?.isCompleted === true;
+        }, 'power-up-lnb'),
+      { maxMs: 150000, stepMs: 1000, message: 'power-up-lnb complete' }
     );
   });
 

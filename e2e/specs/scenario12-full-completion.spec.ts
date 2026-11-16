@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
 import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForSimulationReady } from '../utils/simulation-helpers';
+import { advanceUntil, simAdvance } from '../utils/test-clock';
 
 /**
  * Scenario 12 - "Planned Maintenance: Return to Service".
@@ -348,21 +349,22 @@ async function selectSatelliteAndMove(page: import('@playwright/test').Page, sat
  * whole objective chain).
  */
 async function waitForAntennaMovement(page: import('@playwright/test').Page, timeout = 240000): Promise<void> {
-  await page.waitForFunction(
-    () => {
-      const sim = (
-        window as unknown as {
-          signalRange?: { simulationManager?: { groundStations?: Array<{ antennas?: Array<{ state?: { slewing?: boolean; isLocked?: boolean } }> }> } };
-        }
-      ).signalRange?.simulationManager;
-      const antennaState = sim?.groundStations?.[0]?.antennas?.[0]?.state;
-      return antennaState ? antennaState.slewing === false && antennaState.isLocked === true : false;
-    },
-    undefined,
-    { timeout }
+  await advanceUntil(
+    page,
+    () =>
+      page.evaluate(() => {
+        const sim = (
+          window as unknown as {
+            signalRange?: { simulationManager?: { groundStations?: Array<{ antennas?: Array<{ state?: { slewing?: boolean; isLocked?: boolean } }> }> } };
+          }
+        ).signalRange?.simulationManager;
+        const antennaState = sim?.groundStations?.[0]?.antennas?.[0]?.state;
+        return antennaState ? antennaState.slewing === false && antennaState.isLocked === true : false;
+      }),
+    { maxMs: timeout, stepMs: 1000, message: 'antenna slew complete and locked' }
   );
   // Give the objectives manager a beat to register the lock
-  await page.waitForTimeout(1500);
+  await simAdvance(page, 1500);
 }
 
 /**
@@ -420,7 +422,7 @@ async function configureLnb(page: import('@playwright/test').Page, config: { loF
   await applyBtn.click();
 
   // LNB thermal stabilization ~3 s
-  await page.waitForTimeout(4000);
+  await simAdvance(page, 4000);
 }
 
 /**
@@ -486,7 +488,7 @@ async function executeTrafficHandover(page: import('@playwright/test').Page, tar
   await expect(executeBtn).toBeEnabled({ timeout: 10000 });
   await executeBtn.click();
 
-  await page.waitForTimeout(2000);
+  await simAdvance(page, 2000);
 }
 
 /**
@@ -529,7 +531,7 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
       // Observation-gated conditions latch only after the default dwell on
       // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
       // reset the read and strand the objective.
-      await page.waitForTimeout(3000);
+      await simAdvance(page, 3000);
       break;
 
     case 'set-tracking-mode':
@@ -568,7 +570,7 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
 
     case 'auto':
       // Signal/lock acquisition takes a few seconds in sim time.
-      await page.waitForTimeout(3000);
+      await simAdvance(page, 3000);
       break;
 
     case 'ops-log':
@@ -577,7 +579,7 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
   }
 
   if (objective.waitAfterMs) {
-    await page.waitForTimeout(objective.waitAfterMs);
+    await simAdvance(page, objective.waitAfterMs);
   }
 
   await dismissDialogIfPresent(page);

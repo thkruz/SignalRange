@@ -31,9 +31,11 @@ import { createMeridianSar1, createMeridianSar2, type MeridianTle } from './sate
  *   MERIDIAN-SAR-2: AOS T+18.02 (10:18:00Z, az 023), max el 31.8 deg at T+22.82
  *                   (10:22:49Z, 681 km), LOS T+27.56 (10:27:34Z, az 176), 9.5 min,
  *                   southbound. C/N >= 8 dB roughly 10:20:30 .. 10:25:00.
+ *                   5 deg mask (the LOS the objective row judges): AOS 10:19:11, LOS 10:26:24.
  *   MERIDIAN-SAR-1: AOS T+40.02 (10:40:00Z, az 136), max el 24.0 deg at T+44.75
  *                   (10:44:45Z, 876 km), LOS T+49.48 (10:49:29Z, az 357), 9.5 min,
  *                   northbound. C/N >= 8 dB roughly 10:42:30 .. 10:47:00.
+ *                   5 deg mask: AOS 10:41:13, LOS 10:48:16.
  *
  * The carrier (terrestrial, the S17 emitter, Galway only):
  *   'gw-carrier-sar2' 11726 MHz -> IF 1374 (4 MHz above the SAR-2 video at
@@ -625,7 +627,7 @@ export const natsEuScenario18Data: ScenarioData = {
       nice: ['K0946', 'T1580'],
       title: 'Log Event 1',
       description:
-        'The SAR-2 pass ends at LOS, loss of signal, at 10:27:34. Once it has set, check whether the carrier is still cycling on an empty sky, then put the first event in the report as evidence: frequency, cadence, first seen, effect, mitigation, and Shetland’s confirmation.',
+        'The SAR-2 pass ends at LOS, loss of signal, at 10:26:24. Once it has set, check whether the carrier is still cycling on an empty sky, then put the first event in the report as evidence: frequency, cadence, first seen, effect, mitigation, and Shetland’s confirmation.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['notch-the-carrier'],
       timeLimitSeconds: 2 * 60,
@@ -634,7 +636,7 @@ export const natsEuScenario18Data: ScenarioData = {
         {
           type: 'satellite-pass-phase',
           description: 'SAR-2 Pass Over (LOS)',
-          params: { noradId: 61702, phase: 'set' },
+          params: { noradId: 61702, phase: 'setting-below', elevation: 5 }, // LOS at the 5 deg mask (10:26:24), not the 10:27:34 horizon crossing
           mustMaintain: false,
         },
         {
@@ -655,7 +657,7 @@ export const natsEuScenario18Data: ScenarioData = {
             pointPenalty: 5,
             documentSection: 'Events',
             documentLine:
-              'Event 1: {{at:event:gw-carrier-sar2:start:s|10:23:30}}Z carrier 11726 MHz RF (1374 MHz IF), ~1 MHz, cycle 60 s on / 30 s off, no Doppler, still present after SAR-2 LOS 10:27:34Z until {{at:event:gw-carrier-sar2:end:s|10:31:30}}Z. Victim MERIDIAN-SAR-2 video 11730 MHz, C/N {{val:decode-sar2.1:0|12}} dB clean, down to about 1 dB with the lock lost while on. Notch 1 (1374 MHz, 2 MHz, 30 dB) applied {{at:cond:notch-the-carrier.1|10:26}}Z. SH-02 (F. MacLeod) clean on the same pass.',
+              'Event 1: {{at:event:gw-carrier-sar2:start:s|10:23:30}}Z carrier 11726 MHz RF (1374 MHz IF), ~1 MHz, cycle 60 s on / 30 s off, no Doppler, still present after SAR-2 LOS 10:26:24Z until {{at:event:gw-carrier-sar2:end:s|10:31:30}}Z. Victim MERIDIAN-SAR-2 video 11730 MHz, C/N {{val:decode-sar2.1:0|12}} dB clean, down to about 1 dB with the lock lost while on. Notch 1 (1374 MHz, 2 MHz, 30 dB) applied {{at:cond:notch-the-carrier.1|10:26}}Z. SH-02 (F. MacLeod) clean on the same pass.',
           },
           mustMaintain: false,
         },
@@ -798,7 +800,7 @@ export const natsEuScenario18Data: ScenarioData = {
       nice: ['K0684', 'K0946', 'T1580'],
       title: 'File the Regulator Package',
       description:
-        'SAR-1 sets at 10:49:29. Assemble the package for ComReg, copied to Rotterdam, with the fields the regulator needs to act and nothing the regulator has to take on trust.',
+        'SAR-1 sets at 10:48:16. Assemble the package for ComReg, copied to Rotterdam, with the fields the regulator needs to act and nothing the regulator has to take on trust.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['it-followed-the-plan'],
       timeLimitSeconds: 3 * 60,

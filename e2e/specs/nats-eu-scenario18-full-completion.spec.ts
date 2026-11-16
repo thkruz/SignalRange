@@ -14,9 +14,9 @@ import { answerDecision, dismissDialogIfPresent, waitForSimulationReady } from '
  * for SAR-1, notch the carrier again when it follows the plan into SAR-1's
  * band, record the implication, file the regulator package, debrief.
  * Clock starts 2027-04-14 10:00:00Z:
- *   MERIDIAN-SAR-2  AOS 10:18:00Z  max el 31.8 deg at 10:22:49Z  LOS 10:27:34Z
+ *   MERIDIAN-SAR-2  AOS 10:18:00Z  max el 31.8 deg at 10:22:49Z  LOS 10:26:24Z (5 deg; horizon 10:27:34Z)
  *   carrier 1       10:23:30Z .. 10:31:30Z on 1374 MHz IF, on 60 / off 30
- *   MERIDIAN-SAR-1  AOS 10:40:00Z  max el 24.0 deg at 10:44:45Z  LOS 10:49:29Z
+ *   MERIDIAN-SAR-1  AOS 10:40:00Z  max el 24.0 deg at 10:44:45Z  LOS 10:48:16Z (5 deg; horizon 10:49:29Z)
  *   carrier 2       10:41:30Z .. 10:48:30Z on 1410 MHz IF, same cadence
  *
  * Objective flow (17):
@@ -188,8 +188,8 @@ test.describe('nats-eu Scenario 18 Full Completion', () => {
   });
 
   test('[log-the-first-event] records event 1', async () => {
-    // The three minutes start at SAR-2 LOS (10:27:34)
-    await advanceMissionClockToUtc(page, '2027-04-14T10:27:45Z');
+    // The two minutes start at SAR-2 LOS (10:26:24)
+    await advanceMissionClockToUtc(page, '2027-04-14T10:26:50Z');
     await answerSystemQuiz(page, 'carrier 11726 MHz RF / 1374 IF, ~1 MHz');
     await dismissDialogIfPresent(page);
     await closeWorkingDocumentIfOpen(page);

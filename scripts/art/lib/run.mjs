@@ -13,7 +13,18 @@ export function die(tool, msg) {
   process.exit(1);
 }
 
-export const stamp = () => new Date().toISOString().replace(/[:.]/gu, '-');
+/** Create `file` only if it does not exist (atomic, no check-then-write race). Returns false when it already existed. */
+function writeNew(file, data) {
+  try {
+    writeFileSync(file, data, { flag: 'wx' });
+    return true;
+  } catch (err) {
+    if (err?.code === 'EEXIST') return false;
+    throw err;
+  }
+}
+
+export const stamp =() => new Date().toISOString().replace(/[:.]/gu, '-');
 
 /**
  * jobs: [{ kind, model, prompt, aspectRatio, references, refNames, outDir, meta }] (one per image).
@@ -65,10 +76,11 @@ export async function runJobs(tool, jobs, { dry, budget }) {
       mkdirSync(j.outDir, { recursive: true });
       const pngPath = join(j.outDir, `${sha1}.png`);
       const takePath = join(j.outDir, `${sha1}.take.json`);
-      if (!existsSync(pngPath)) writeFileSync(pngPath, png);
+      writeNew(pngPath, png);
       const take = { ...base, sha1, prompt: j.prompt, references: j.refNames, width: meta.width, height: meta.height, modelVersion: result.modelVersion, text: result.text };
       // identical bytes from a later call keep their own provenance instead of replacing the first take's
-      writeFileSync(existsSync(takePath) ? join(j.outDir, `${sha1}.${stamp()}.take.json`) : takePath, `${JSON.stringify(take, null, 2)}\n`);
+      const takeJson = `${JSON.stringify(take, null, 2)}\n`;
+      if (!writeNew(takePath, takeJson)) writeFileSync(join(j.outDir, `${sha1}.${stamp()}.take.json`), takeJson);
     } catch (err) {
       die(tool, `${j.meta.label}: paid call succeeded (ledger written) but saving failed: ${err?.message ?? err}`);
     }

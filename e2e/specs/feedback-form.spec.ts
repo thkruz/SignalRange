@@ -9,6 +9,7 @@
  * `npx supabase functions serve feedback-submit`) with a real sign-up. It needs the bundle built with that
  * stack's anon key and FEEDBACK_LOCAL_ANON_KEY set to the same key.
  *
+ * Static lane one-liner (separate bundle so other specs keep dist-e2e): E2E_DIST=dist-e2e-feedback E2E_REBUILD=1 E2E_STATIC=1 plus the three PUBLIC_* values below, set for the build AND this run.
  * Also build with PUBLIC_USER_API_URL=http://127.0.0.1:54322 (the intercepted progress API) and PUBLIC_FEEDBACK_EDGE_LIVE=true; without it signed-in non-developers see the
  * contact link only (the Edge Function is not live for everyone yet).
  *
@@ -25,6 +26,11 @@ const API = 'http://127.0.0.1:54321';
 // Player progress API; the bundle is built with PUBLIC_USER_API_URL pointing here so nothing leaves the machine.
 const USER_API = 'http://127.0.0.1:54322';
 const USER_ID = '7d1c3a52-0b0e-4c8f-9a52-3f6a9e1d2b44';
+// The bundle must be built with the feedback flags or the form never shows. The build reads the same
+// variables as this process, so their presence here is the detectable condition (see the header, and
+// docs for the one-liner: E2E_DIST=dist-e2e-feedback E2E_REBUILD=1 plus the three PUBLIC_* values).
+const BUILT_FOR_FEEDBACK = process.env.PUBLIC_FEEDBACK_EDGE_LIVE === 'true' && process.env.PUBLIC_SUPABASE_URL === API && process.env.PUBLIC_USER_API_URL === USER_API;
+const BUNDLE_SKIP_REASON = `needs a bundle built with PUBLIC_FEEDBACK_EDGE_LIVE=true PUBLIC_SUPABASE_URL=${API} PUBLIC_USER_API_URL=${USER_API} (and the same vars set for the test run)`;
 const LOCAL_STACK = process.env.FEEDBACK_LOCAL_STACK === '1';
 const SHOT_DIR = process.env.FEEDBACK_SHOT_DIR ?? '';
 const CORS = {
@@ -149,6 +155,7 @@ async function openScenario(page: Page): Promise<void> {
 test.describe('field report form', () => {
   test.use({ viewport: { width: 1600, height: 900 } });
   test.skip(LOCAL_STACK, 'the intercepted variant is skipped when FEEDBACK_LOCAL_STACK=1');
+  test.skip(!BUILT_FOR_FEEDBACK, BUNDLE_SKIP_REASON);
 
   test('a signed-in player files a report; a failed first send is retried with the same id', async ({ page }) => {
     const received = await installFakeApi(page, [{ status: 503 }, { status: 200 }]);
@@ -356,6 +363,7 @@ test.describe('field report form', () => {
 test.describe('field report form against the local stack', () => {
   test.use({ viewport: { width: 1600, height: 900 } });
   test.skip(!LOCAL_STACK, 'set FEEDBACK_LOCAL_STACK=1 with a running local Supabase stack');
+  test.skip(!BUILT_FOR_FEEDBACK, BUNDLE_SKIP_REASON);
 
   test('a signed-up player files a report through the real Edge Function', async ({ page, request }) => {
     const anon = process.env.FEEDBACK_LOCAL_ANON_KEY ?? '';

@@ -73,7 +73,7 @@ test.describe('Signal Hunter geolocation console', () => {
     // 1. Black-ops theme is applied via the per-campaign body class
     await expect(page.locator('body')).toHaveClass(/campaign-signal-hunter/);
     const accent = await page.evaluate(() => getComputedStyle(document.body).getPropertyValue('--mc-accent-red').trim());
-    expect(accent.toLowerCase()).toBe('#56708a'); // slate accent from the per-campaign chrome
+    expect(accent.toLowerCase()).toBe('#ba160c'); // shared red accent; 622f196b dropped the per-campaign slate for C5
 
     // 2. Select the ground station and open the Geolocation tab
     await missionControl.selectGroundStation('PA-22');

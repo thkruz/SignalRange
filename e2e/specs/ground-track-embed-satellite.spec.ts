@@ -1,5 +1,5 @@
-import { existsSync } from 'node:fs';
 import { expect, test } from '../fixtures/test-fixtures';
+import { EMBED_SKIP_REASON, embedAvailable } from '../utils/embed-licence';
 import { answerSystemQuiz } from '../utils/nats-eu-helpers';
 import { dismissDialogIfPresent, waitForSimulationReady } from '../utils/simulation-helpers';
 
@@ -8,7 +8,7 @@ const BASE = process.env.SR_E2E_BASE ?? `http://127.0.0.1:${process.env.SR_DEV_P
 
 test.describe('Per-satellite ground track (KeepTrack embed)', () => {
   // PR CI has no Cloudflare credentials, so the bundle is never fetched and the app uses GeoMap.
-  test.skip(!existsSync('public/keeptrack/index.html'), 'KeepTrack embed bundle not fetched (public/keeptrack/ missing)');
+  test.skip(!embedAvailable(), EMBED_SKIP_REASON);
   test.use({ baseURL: BASE });
 
   test('shows the embed with the access toggle for a selected satellite', async ({ page, missionControlPage }) => {

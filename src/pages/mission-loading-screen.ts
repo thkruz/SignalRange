@@ -58,15 +58,26 @@ export class MissionLoadingScreen {
     this.dispose();
   }
 
-  fail(message = 'Could not load your mission or saved progress. Check your connection and retry. Your save has not been replaced.'): void {
+  fail(message = 'Could not load your mission or saved progress. Check your connection and retry. Your save has not been replaced.', onRetry?: () => void): void {
     this.status_.textContent = message;
     if (!this.element_.querySelector('[data-retry]')) {
       const retry = document.createElement('button');
       retry.type = 'button';
       retry.dataset.retry = '';
       retry.textContent = 'Retry';
-      retry.onclick = () => window.location.reload();
       this.status_.after(retry);
+    }
+    // Reload is the default; a caller that can repeat its own step passes onRetry to keep its context
+    const retryButton = this.element_.querySelector<HTMLButtonElement>('[data-retry]');
+    if (retryButton) {
+      retryButton.onclick = () => {
+        if (!onRetry) {
+          window.location.reload();
+          return;
+        }
+        retryButton.remove();
+        onRetry();
+      };
     }
     if (!this.element_.isConnected) document.body.append(this.element_);
     this.element_.querySelector('button')?.focus({ preventScroll: true });

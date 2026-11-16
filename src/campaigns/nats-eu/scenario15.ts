@@ -29,13 +29,14 @@ import { createMeridianSar1, createMeridianSar2, type MeridianTle } from './sate
  *   GW-01 MERIDIAN-SAR-1: AOS T+15.98 (07:15:59Z, az 022), max el 27.0 deg at
  *                         T+20.78 (07:20:47Z, 782 km), LOS T+25.52 (07:25:31Z,
  *                         az 170), 9.5 min, southbound. Receive only.
+ *                         5 deg mask (the LOS the objective row judges): AOS 07:17:11, LOS 07:24:20.
  *   GW-01 MERIDIAN-SAR-2: AOS T+33.97 (07:33:58Z, az 190), max el 24.9 deg at
  *                         T+38.67 (07:38:40Z, 829 km), LOS T+43.42 (07:43:25Z,
  *                         az 335), 9.5 min, northbound. The proof pass.
  *   SH-02 MERIDIAN-SAR-2: AOS T+36.26, max el 11.4 deg, LOS T+44.57 (Fiona's
  *                         telemetry contact).
  *
- * Eight and a half minutes between SAR-1 LOS and SAR-2 AOS for the command
+ * Nine and a half minutes between SAR-1 LOS (5 deg mask 07:24:20) and SAR-2 AOS for the command
  * rotation, the traffic re-key and the retune. Command window is the SAR-2
  * pass with 20 s guards. All thresholds flown in
  * test/campaigns/nats-eu-phase-c-validation.test.ts.
@@ -124,7 +125,7 @@ export const natsEuScenario15Data: ScenarioData = {
     },
 
     // The skip stops 2 min before the next pass at either site. The rotation
-    // gap between SAR-1 LOS and SAR-2 AOS is 8.5 min of real work, so no skip
+    // gap between SAR-1 LOS and SAR-2 AOS is 9.5 min of real work, so no skip
     // is wanted there; leadTime and the Shetland windows keep it short.
     timeSkip: {
       leadTimeS: 120,
@@ -548,7 +549,7 @@ export const natsEuScenario15Data: ScenarioData = {
       id: 'log-the-receive-pass',
       nice: ['K0645', 'S0575'],
       title: 'Log the Receive Pass',
-      description: 'SAR-1 sets at 07:25:31. Add one line to the rotation record saying this was the last pass on Q1, that it decoded, and that you sent no commands.',
+      description: 'SAR-1 sets at 07:24:20. Add one line to the rotation record saying this was the last pass on Q1, that it decoded, and that you sent no commands.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['receive-on-the-retiring-key'],
       timeLimitSeconds: 2 * 60,
@@ -571,7 +572,7 @@ export const natsEuScenario15Data: ScenarioData = {
               'The record needs to show that no command went up, because the order says none may follow this window. The only evidence that you obeyed is a line saying so, written before the key moves. The C/N figure matters less here, because the record is about the key, not the signal.',
             pointPenalty: 5,
             documentSection: 'Retire',
-            documentLine: '07:16Z MERIDIAN-SAR-1 GW-01: last contact on KEY-2027-Q1. Decoded at 27 deg, payload decrypting, zero commands sent. Q1 retired at LOS 07:25:31Z.',
+            documentLine: '07:16Z MERIDIAN-SAR-1 GW-01: last contact on KEY-2027-Q1. Decoded at 27 deg, payload decrypting, zero commands sent. Q1 retired at LOS 07:24:20Z.',
           },
           mustMaintain: false,
         },
@@ -588,7 +589,7 @@ export const natsEuScenario15Data: ScenarioData = {
       nice: ['K0876', 'K0874', 'S0077'],
       title: 'Rotate the Command Key',
       description:
-        'On the TT&C console, begin the rotation and then complete it. KEY-2027-Q2 must read Valid before the SAR-2 window opens at 07:34:20. Rotate in the gap, because your three minutes start when SAR-1 sets at Galway (07:25:31).',
+        'On the TT&C console, begin the rotation and then complete it. KEY-2027-Q2 must read Valid before the SAR-2 window opens at 07:34:20. Rotate in the gap, because your three minutes start when SAR-1 sets at Galway (07:24:20).',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['log-the-receive-pass'],
       timeLimitSeconds: 3 * 60,
@@ -597,7 +598,7 @@ export const natsEuScenario15Data: ScenarioData = {
         {
           type: 'satellite-pass-phase',
           description: 'SAR-1 Pass Over (LOS)',
-          params: { noradId: 61701, phase: 'set' },
+          params: { noradId: 61701, phase: 'setting-below', elevation: 5 }, // LOS at the 5 deg mask (07:24:20), not the 07:25:31 horizon crossing
           mustMaintain: false,
         },
         {

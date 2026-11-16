@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
 import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForSimulationReady } from '../utils/simulation-helpers';
+import { advanceUntil, simAdvance } from '../utils/test-clock';
 
 /**
  * Scenario 17 - "Solar Event": Sun Transit Outage.
@@ -220,42 +221,44 @@ const SCENARIO_17_OBJECTIVES: Scenario17Objective[] = [
 // Helper Functions
 // ============================================================
 
-/** Poll VT-01's antenna sky-noise state until the threshold is met. */
+/** Advance the sim until VT-01's antenna sky-noise state meets the threshold. */
 async function waitForSkyNoise(page: import('@playwright/test').Page, condition: { above?: number; below?: number }, timeoutSeconds: number): Promise<void> {
-  await page.waitForFunction(
-    (cond) => {
-      const w = window as unknown as {
-        signalRange?: {
-          simulationManager?: {
-            groundStations?: Array<{
-              state?: { id?: string };
-              antennas?: Array<{ state?: { skyNoiseDegradation_dB?: number } }>;
-            }>;
+  await advanceUntil(
+    page,
+    () =>
+      page.evaluate((cond) => {
+        const w = window as unknown as {
+          signalRange?: {
+            simulationManager?: {
+              groundStations?: Array<{
+                state?: { id?: string };
+                antennas?: Array<{ state?: { skyNoiseDegradation_dB?: number } }>;
+              }>;
+            };
           };
         };
-      };
-      const gs = w.signalRange?.simulationManager?.groundStations?.find((g) => g.state?.id === 'VT-01');
-      const sky = gs?.antennas?.[0]?.state?.skyNoiseDegradation_dB ?? 0;
-      if (cond.above !== undefined && sky <= cond.above) return false;
-      if (cond.below !== undefined && sky >= cond.below) return false;
-      return true;
-    },
-    condition,
-    { timeout: timeoutSeconds * 1000 }
+        const gs = w.signalRange?.simulationManager?.groundStations?.find((g) => g.state?.id === 'VT-01');
+        const sky = gs?.antennas?.[0]?.state?.skyNoiseDegradation_dB ?? 0;
+        if (cond.above !== undefined && sky <= cond.above) return false;
+        if (cond.below !== undefined && sky >= cond.below) return false;
+        return true;
+      }, condition),
+    { maxMs: timeoutSeconds * 1000, stepMs: 1000, message: 'sky noise threshold' }
   );
   // Give the objectives manager a beat to evaluate the custom condition
-  await page.waitForTimeout(2500);
+  await simAdvance(page, 2500);
 }
 
-/** Wait until the objective reports completed (window.debugObjective). */
+/** Advance the sim until the objective reports completed (window.debugObjective). */
 async function waitForObjectiveComplete(page: import('@playwright/test').Page, id: string, timeoutSeconds: number): Promise<void> {
-  await page.waitForFunction(
-    (objectiveId) => {
-      const hook = (window as unknown as { debugObjective?: (id: string) => { isCompleted?: boolean } }).debugObjective;
-      return typeof hook === 'function' && hook(objectiveId)?.isCompleted === true;
-    },
-    id,
-    { timeout: timeoutSeconds * 1000, polling: 500 }
+  await advanceUntil(
+    page,
+    () =>
+      page.evaluate((objectiveId) => {
+        const hook = (window as unknown as { debugObjective?: (id: string) => { isCompleted?: boolean } }).debugObjective;
+        return typeof hook === 'function' && hook(objectiveId)?.isCompleted === true;
+      }, id),
+    { maxMs: timeoutSeconds * 1000, stepMs: 1000, message: `objective ${id} complete` }
   );
 }
 
@@ -286,7 +289,7 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
       // Observation-gated conditions latch only after their dwell on the tab
       // (Baseline RX Snapshot asks for 5 s); leaving at once would reset the
       // read and strand the objective.
-      await page.waitForTimeout(6000);
+      await simAdvance(page, 6000);
       break;
 
     case 'wait-sky-noise':
@@ -298,7 +301,7 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
       break;
 
     case 'auto':
-      await page.waitForTimeout(3000);
+      await simAdvance(page, 3000);
       break;
   }
 

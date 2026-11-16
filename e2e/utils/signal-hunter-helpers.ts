@@ -1,6 +1,7 @@
 import { expect, Locator, Page } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
 import { waitForQuizToAppear } from './simulation-helpers';
+import { advanceUntil } from './test-clock';
 
 /**
  * Shared helpers for the Campaign 5 (Signal Hunter) full-completion specs.
@@ -211,13 +212,21 @@ export async function captureOnce(page: Page, windowS: number): Promise<string> 
   await domClick(page, '#geo-capture-btn');
   await expect(msg).toHaveText(/INTEGRATING/i, { timeout: 3000 });
 
-  const deadline = Date.now() + windowS * 1000 + 8000;
-  while (Date.now() < deadline) {
-    await page.waitForTimeout(250);
-    const text = ((await msg.textContent().catch(() => '')) ?? '').trim();
-    if (/^(CAPTURE|NO CORRELATION|CORRELATOR)/.test(text)) {
-      return text;
-    }
+  // The integration runs on sim time: advance it instead of waiting out the window in real time
+  let text = '';
+  const resolved = await advanceUntil(
+    page,
+    async () => {
+      text = ((await msg.textContent().catch(() => '')) ?? '').trim();
+      return /^(CAPTURE|NO CORRELATION|CORRELATOR)/u.test(text);
+    },
+    { maxMs: windowS * 1000 + 8000, stepMs: 1000, message: 'capture resolved' }
+  ).then(
+    () => true,
+    () => false
+  );
+  if (resolved) {
+    return text;
   }
   throw new Error('Capture did not resolve inside the integration window');
 }

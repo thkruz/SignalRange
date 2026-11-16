@@ -1,5 +1,5 @@
 import { expect, Page, test } from '@playwright/test';
-import { advanceUntil, hasTestClock, simAdvance } from './test-clock';
+import { advanceUntil, canBurst, hasTestClock, simAdvance } from './test-clock';
 
 /**
  * Wait for the simulation to initialize and stabilize.
@@ -209,6 +209,23 @@ export async function waitForQuizToAppear(page: Page, timeout = 30000): Promise<
     // Give the wait room inside the test budget: the prerequisite objective can run for minutes of sim time
     const lateMs = Math.max(timeout, 200000);
     test.info().setTimeout(test.info().timeout + lateMs);
+    if (canBurst(page)) {
+      // The prerequisite runs on sim time: advance it instead of waiting in real time (the expect below still has to pass)
+      await advanceUntil(
+        page,
+        () =>
+          pendingIndicator
+            .or(quizModal.first())
+            .first()
+            .isVisible()
+            .catch(() => false),
+        {
+          maxMs: lateMs,
+          stepMs: 1000,
+          message: 'quiz or opener visible',
+        }
+      ).catch(() => undefined);
+    }
     await expect(pendingIndicator.or(quizModal.first()).first()).toBeVisible({ timeout: lateMs });
     if (
       !(await quizModal

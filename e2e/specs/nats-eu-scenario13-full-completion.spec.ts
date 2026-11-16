@@ -12,6 +12,7 @@ import {
   setRxModemFrequency,
 } from '../utils/nats-eu-helpers';
 import { dismissDialogIfPresent, waitForSimulationReady } from '../utils/simulation-helpers';
+import { simAdvance } from '../utils/test-clock';
 
 /**
  * nats-eu Scenario 13 "The Numbers Don't Lie" - full completion (phase 16).
@@ -82,9 +83,9 @@ test.describe('nats-eu Scenario 13 Full Completion', () => {
     await missionControl.selectGroundStation('GW-01');
     await missionControl.selectTab('dashboard');
     await missionControl.selectTab('gps-timing');
-    await page.waitForTimeout(2500);
+    await simAdvance(page, 2500);
     await missionControl.selectTab('rx-analysis');
-    await page.waitForTimeout(2500);
+    await simAdvance(page, 2500);
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'GW-01 Pre-Pass Sweep');
   });
@@ -177,9 +178,9 @@ test.describe('nats-eu Scenario 13 Full Completion', () => {
     await closeWorkingDocumentIfOpen(page);
     await missionControl.selectGroundStation('SH-02');
     await missionControl.selectTab('rx-analysis');
-    await page.waitForTimeout(2500);
+    await simAdvance(page, 2500);
     await missionControl.selectTab('gps-timing');
-    await page.waitForTimeout(2500);
+    await simAdvance(page, 2500);
     await dismissDialogIfPresent(page);
     await waitForObjectiveComplete(missionControl, 'Prove Shetland Is Clean');
   });

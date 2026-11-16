@@ -422,11 +422,24 @@ async function openFieldSheet(page: Page, title: RegExp): Promise<boolean> {
   }
   await openSiteTab(page);
   const item = page.locator(`[data-field-kit="${sheet.kit}"]`);
+  // The tray button only opens something once the site tab has synced the page it opens (data-field-*): a click
+  // before that is swallowed, so wait until the object offers a page, not just until it is attached
+  await expect
+    .poll(
+      async () =>
+        item.evaluate((n) => 'fieldObject' in (n as HTMLElement).dataset || 'fieldClipboard' in (n as HTMLElement).dataset || 'fieldMission' in (n as HTMLElement).dataset),
+      {
+        message: `${sheet.kit} on the kit tray offers a page`,
+      }
+    )
+    .toBe(true);
   await activate(page, item, `${sheet.kit} on the kit tray`);
   if (sheet.kit === 'notebook') return true;
   const leaf = page
     .locator(`.field-kit-sheets [data-field-object="${sheet.tabId}"], .cbk-tabs [data-field-object="${sheet.tabId}"], .docs-tabs [data-field-object="${sheet.tabId}"]`)
     .first();
+  // The object opens asynchronously: wait for it to be held (fullscreen) before counting its page tabs
+  await expect(page.locator('.immersive-view[open]').first(), `${sheet.kit} is held`).toBeAttached();
   if ((await leaf.count()) > 0 && (await leaf.getAttribute('aria-pressed')) !== 'true') {
     await leaf.click();
   }

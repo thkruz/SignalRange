@@ -539,7 +539,8 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
       // Use the sidebar item specifically and force click to bypass any overlay
       const gsItem = page.locator('#asset-tree-sidebar-container a[data-asset-id="VT-01"]');
       if ((await gsItem.count()) > 0) {
-        await gsItem.click({ force: true });
+        // DOM click: a character dialog popping up over the sidebar right after the quiz swallows a pointer click
+        await gsItem.first().evaluate((el) => (el as HTMLElement).click());
         await page.waitForTimeout(500);
         await dismissDialogIfPresent(page);
       }

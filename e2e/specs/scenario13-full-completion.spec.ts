@@ -191,9 +191,11 @@ const SCENARIO_13_OBJECTIVES: Scenario13Objective[] = [
     quizTimeoutMs: 300000,
     waitDoneMs: 60000,
     checkScreen: async (page) => {
-      expect(await readNumber(page, '#buc-current-display')).toBeLessThan(3.2);
-      expect(await readNumber(page, '#buc-temperature-display')).toBeLessThan(61);
-      expect(await readNumber(page, '#buc-temp-trend-display')).toBeLessThan(0);
+      // The quiz opens on the sim value; the DOM readouts sync on wall time and round to 0.1, so poll them
+      // (the objective condition is raw < 61, the display can still read "61.0" for a moment)
+      await expect.poll(() => readNumber(page, '#buc-current-display'), { timeout: 15000 }).toBeLessThan(3.2);
+      await expect.poll(() => readNumber(page, '#buc-temperature-display'), { timeout: 15000 }).toBeLessThan(61);
+      await expect.poll(() => readNumber(page, '#buc-temp-trend-display'), { timeout: 15000 }).toBeLessThan(0);
     },
   },
 

@@ -186,7 +186,12 @@ export class MissionControlPage extends BasePage {
   async selectGroundStation(gsId: string): Promise<void> {
     await this.dismissDialogIfPresent();
     const gsItem = this.assetTreeSidebar.locator(`[data-asset-id="${gsId}"], [data-gs-id="${gsId}"]`);
-    await gsItem.click();
+    // The brief objective keeps the stations locked until the sim processes its completion; a click before
+    // that only shows the lock toast and selects nothing
+    await expect(gsItem.first()).not.toHaveAttribute('aria-disabled', 'true', { timeout: 15000 });
+    // DOM click, like selectTab: a character dialog that pops up over the bottom-left sidebar right after an
+    // answered quiz swallows a pointer click (the click lands on the dialog, the station is never selected)
+    await gsItem.first().evaluate((el) => (el as HTMLElement).click());
   }
 
   /**

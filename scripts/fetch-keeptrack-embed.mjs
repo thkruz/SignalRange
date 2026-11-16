@@ -39,14 +39,26 @@ function main() {
 
     return;
   }
-  if (!fs.existsSync(lockPath)) {
+  let lockText;
+
+  try {
+    lockText = fs.readFileSync(lockPath, 'utf8');
+  } catch (err) {
+    if (err?.code !== 'ENOENT') throw err;
     warn('keeptrack-embed.lock.json not found; the KeepTrack embed will be absent.');
 
     return;
   }
-  const lock = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
+  const lock = JSON.parse(lockText);
 
-  if (fs.existsSync(stampPath) && fs.readFileSync(stampPath, 'utf8').trim() === lock.version) {
+  let stamped = null;
+
+  try {
+    stamped = fs.readFileSync(stampPath, 'utf8').trim();
+  } catch (err) {
+    if (err?.code !== 'ENOENT') throw err;
+  }
+  if (stamped === lock.version) {
     info(`public/keeptrack already at ${lock.version}.`);
 
     return;

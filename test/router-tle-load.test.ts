@@ -88,6 +88,14 @@ const mocks = vi.hoisted(() => ({
   show: vi.fn(),
   fail: vi.fn(),
   dispose: vi.fn(),
+  setStatus: vi.fn(),
+  leave: vi.fn(),
+  onBack: undefined as undefined | (() => void),
+}));
+
+vi.mock('../src/pages/selection-browser', () => ({
+  leaveSelection: (navigate: () => void) => mocks.leave(navigate),
+  cancelSelectionExit: vi.fn(),
 }));
 
 vi.mock('../src/simulation/satellite-registry', async (importOriginal) => ({
@@ -107,6 +115,10 @@ vi.mock('../src/pages/mission-loading-screen', () => ({
   MissionLoadingScreen: class {
     fail = mocks.fail;
     dispose = mocks.dispose;
+    setStatus = mocks.setStatus;
+    constructor(_scenario: unknown, onBack: () => void) {
+      mocks.onBack = onBack;
+    }
   },
 }));
 
@@ -129,7 +141,9 @@ describe('Router TLE set launch', () => {
     PluginManager.destroy();
     PluginManager.getInstance().setManifest([]);
     window.history.pushState({}, '', '/');
-    for (const mock of Object.values(mocks)) mock.mockReset();
+    for (const mock of Object.values(mocks)) if (vi.isMockFunction(mock)) mock.mockReset();
+    mocks.onBack = undefined;
+    mocks.leave.mockImplementation((navigate: () => void) => navigate());
   });
 
   afterEach(() => {
@@ -206,5 +220,80 @@ describe('Router TLE set launch', () => {
     router.navigate('/');
     expect(mocks.dispose).toHaveBeenCalledTimes(1);
     error.mockRestore();
+  });
+
+  it('shows the loading screen with a download status right away', () => {
+    mocks.ensureTleSets.mockReturnValue(deferred().promise);
+    Router.getInstance().navigate(SCENARIO_PATH);
+    expect(mocks.setStatus).toHaveBeenCalledWith('Downloading satellite data…');
+  });
+
+  it('disposes the download screen before the mission page builds', async () => {
+    const d = deferred();
+    mocks.ensureTleSets.mockReturnValue(d.promise);
+    Router.getInstance().navigate(SCENARIO_PATH);
+    d.resolve();
+    await d.promise;
+    expect(mocks.dispose).toHaveBeenCalledTimes(1);
+    expect(mocks.dispose.mock.invocationCallOrder[0]).toBeLessThan(mocks.create.mock.invocationCallOrder[0]);
+  });
+
+  it('Retry repeats the download with the original navigation options', async () => {
+    const first = deferred();
+    const second = deferred();
+    mocks.ensureTleSets.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    Router.getInstance().navigate(SCENARIO_PATH, { forceReplay: true });
+    first.reject(new Error('offline'));
+    await first.promise.catch(() => {});
+    const onRetry = mocks.fail.mock.calls[0][1] as () => void;
+    expect(onRetry).toBeTypeOf('function');
+    onRetry();
+    expect(mocks.ensureTleSets).toHaveBeenCalledTimes(2);
+    second.resolve();
+    await second.promise;
+    expect(mocks.create).toHaveBeenCalledTimes(1);
+    expect(mocks.create).toHaveBeenCalledWith({ forceReplay: true });
+    error.mockRestore();
+  });
+
+  it('ignores a download that finishes during the selection leave fade', async () => {
+    const d = deferred();
+    mocks.ensureTleSets.mockReturnValue(d.promise);
+    const router = Router.getInstance();
+    router.navigate(SCENARIO_PATH);
+    let finishFade!: () => void;
+    mocks.leave.mockImplementation((navigate: () => void) => {
+      finishFade = navigate;
+    });
+    router.navigate('/');
+    d.resolve();
+    await d.promise;
+    expect(mocks.create).not.toHaveBeenCalled();
+    finishFade();
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+
+  it('builds exactly one page when the same route is re-entered and the first download finishes late', async () => {
+    const first = deferred();
+    const second = deferred();
+    mocks.ensureTleSets.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+    const router = Router.getInstance();
+    router.navigate(SCENARIO_PATH);
+    router.navigate('/');
+    router.navigate(SCENARIO_PATH);
+    first.resolve();
+    await first.promise;
+    expect(mocks.create).not.toHaveBeenCalled();
+    second.resolve();
+    await second.promise;
+    expect(mocks.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('Back to missions returns to the campaign page', () => {
+    mocks.ensureTleSets.mockReturnValue(deferred().promise);
+    Router.getInstance().navigate(SCENARIO_PATH);
+    mocks.onBack?.();
+    expect(window.location.pathname).toBe('/campaigns/range-watch');
   });
 });

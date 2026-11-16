@@ -6,6 +6,9 @@
 
 import type { HamMeasurement, ReceptionImpairment } from '../ham-types';
 
+/** Order number of a logged measurement (its id is `m-<n>`) */
+export const measurementSeq = (m: HamMeasurement): number => Number(m.id.slice(2)) || 0;
+
 export const MAX_EVENTS = 400;
 export const MAX_MEASUREMENTS = 300;
 export const MAX_RECEPTIONS = 300;

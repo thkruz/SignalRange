@@ -4,10 +4,12 @@
  * refused action never changes the station. Config-changing actions bump the revision.
  */
 
+import { boardTestPointNode } from '../dc/circuit-board';
 import type { HamConnection, HamLocationId } from '../ham-types';
 import { validateConnection } from '../rf/rf-path';
 import { type ActionResult, done, type FaultRuntime, refuse, type StationCore } from './station-core';
 import { connectionAt, isPortable } from './station-devices';
+import { measurementSeq } from './station-log';
 import { endTx } from './station-tx';
 
 export interface PortRef {
@@ -89,7 +91,7 @@ export function inspect(core: StationCore, targetId: string): ActionResult {
   }
   const faults = core.state.faults.filter((f) => !f.cleared && f.target === targetId);
   core.event(`inspect:${targetId}`, { faults: faults.length });
-  if (faults.length > 0) return done(faults.map((f) => f.inspectClue).join(' '), { faultIds: faults.map((f) => f.id) });
+  if (faults.length > 0) return done(faults.map((f) => faultClue(core, f)).join(' '), { faultIds: faults.map((f) => f.id) });
   const note = core.cfg.devices.find((d) => d.id === targetId)?.inspectNote;
   if (conn && !conn.seated) return done('The connector is not fully home: you can see thread showing.');
 
@@ -136,6 +138,29 @@ function targetEnergized(core: StationCore, f: FaultRuntime): boolean {
   return Boolean(core.device(f.target)?.powered);
 }
 
+/** Has the meter located this fault yet? Faults with no `locate` rule always are. */
+export function faultLocated(core: StationCore, f: FaultRuntime): boolean {
+  const l = f.locate;
+  if (!l) return true;
+  const after = core.log.afterSeq(l.afterEvent);
+  if (after === null) return false;
+  const node = (p: string | undefined): string | undefined => (p === undefined ? undefined : (boardTestPointNode(p) ?? p));
+  const [a, b] = [node(l.probes[0]), node(l.probes[1])];
+
+  return core.log.state.measurements.some((m) => {
+    if (measurementSeq(m) <= after || m.instrument !== 'multimeter' || m.quantity !== l.quantity || m.placement.target !== f.target) return false;
+    const [r, k] = [node(m.placement.red), node(m.placement.black)];
+    const onProbes = (r === a && k === b) || (r === b && k === a);
+
+    return onProbes && (l.sw1On === undefined || m.context?.sw1On === l.sw1On) && (l.minValue === undefined || m.value >= l.minValue);
+  });
+}
+
+/** What inspect and the repair panels say about a fault right now */
+export function faultClue(core: StationCore, f: FaultRuntime): string {
+  return f.locate && !faultLocated(core, f) ? f.locate.hiddenClue : f.inspectClue;
+}
+
 export function repair(core: StationCore, faultId: string): ActionResult {
   const f = core.state.faults.find((x) => x.id === faultId);
   if (!f) return refuse('There is no such fault.', 'unknown-fault');
@@ -144,6 +169,7 @@ export function repair(core: StationCore, faultId: string): ActionResult {
     const away = core.reachable(f.target);
     if (away) return away;
   }
+  if (!faultLocated(core, f)) return refuse('You have not found where it is broken yet. Test the board with the meter before you take anything apart.', 'not-located');
   if (f.clearedBy.action !== 'repair') {
     const how = f.clearedBy.action === 'install' ? 'Swap in a spare part.' : f.clearedBy.action === 'seat' ? 'Reseat the connector.' : 'Correct the setting that causes it.';
 

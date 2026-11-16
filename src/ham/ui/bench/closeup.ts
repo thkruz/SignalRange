@@ -137,7 +137,7 @@ export class Closeup {
       m.location,
       m.devices().map((d) => [d.id, d.powered, d.location, d.spare, d.removed]),
       m.connections().map((c) => [c.id, c.seated]),
-      m.faults().map((f) => [f.id, f.cleared, m.events(`inspect:${f.target}`).length]),
+      m.faults().map((f) => [f.id, f.cleared, m.events(`inspect:${f.target}`).length, m.faultLocated(f)]),
       [...this.clues_.entries()],
       jobTags.version(m),
     ]);
@@ -467,8 +467,10 @@ export class Closeup {
         h(
           'div',
           { class: 'ham-closeup-fault', 'data-testid': tid('ham-conn', f.id, 'fault') },
-          h('span', { class: 'small', text: f.inspectClue }),
-          button(tid('ham-conn', f.id, 'repair'), 'Repair', () => this.act_({ type: 'repair', faultId: f.id }), 'btn btn-sm btn-outline-success', `Repair ${f.target}`)
+          h('span', { class: 'small', text: m.faultClue(f) }),
+          !m.faultLocated(f)
+            ? null
+            : button(tid('ham-conn', f.id, 'repair'), 'Repair', () => this.act_({ type: 'repair', faultId: f.id }), 'btn btn-sm btn-outline-success', `Repair ${f.target}`)
         )
       );
     }

@@ -143,7 +143,7 @@ export class BoardPanel implements StationPanel {
     const inspected = m.events(`inspect:${v.id}`).length > 0;
     const faults = inspected ? m.faults().filter((f) => f.target === v.id && !f.cleared) : [];
     const fuseSpares = spares(m).filter((d) => d.fuseRatingA !== undefined);
-    const sig = `${inspected}|${faults.map((f) => f.id).join(',')}|${fuseSpares.map((d) => d.id).join(',')}`;
+    const sig = `${inspected}|${faults.map((f) => `${f.id}:${m.faultLocated(f)}`).join(',')}|${fuseSpares.map((d) => d.id).join(',')}`;
     if (sig === v.sig) return;
     v.sig = sig;
     v.faults.replaceChildren(
@@ -152,8 +152,8 @@ export class BoardPanel implements StationPanel {
         h(
           'div',
           { class: 'alert alert-warning py-1 px-2 mb-1 d-flex justify-content-between align-items-center', 'data-testid': T('ham-board', v.id, 'fault', f.id) },
-          h('span', { class: 'small', text: f.inspectClue }),
-          f.clearedBy.action === 'repair'
+          h('span', { class: 'small', text: m.faultClue(f) }),
+          f.clearedBy.action === 'repair' && m.faultLocated(f)
             ? button(T('ham-board', v.id, 'repair', f.id), 'Repair', () => this.act_({ type: 'repair', faultId: f.id }), 'btn btn-sm btn-warning')
             : null
         )

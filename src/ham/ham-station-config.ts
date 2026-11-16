@@ -66,6 +66,26 @@ export interface HamFaultConfig extends Omit<HamFault, 'cleared' | 'clearedAtS'>
   clearedBy: FaultClearing;
   /** Repairs refused while the target is energized */
   deenergizeToRepair?: boolean;
+  /**
+   * The fault cannot be seen by looking: inspect shows `hiddenClue` and Repair stays unavailable until a
+   * matching multimeter reading exists (a bench tech does not take a part apart before the meter says where)
+   */
+  locate?: FaultLocate;
+}
+
+export interface FaultLocate {
+  /** Multimeter quantity of the locating reading (for example 'continuity') */
+  quantity: string;
+  /** Board test points the probes sit on, in either order */
+  probes: [string, string];
+  /** Smallest value that counts (an open reads high) */
+  minValue?: number;
+  /** The reading must come after this event (for example the board being powered down) */
+  afterEvent?: string;
+  /** Board readings only: SW1 must have been on */
+  sw1On?: boolean;
+  /** What inspect shows until the fault is located */
+  hiddenClue: string;
 }
 
 export interface EmitterSchedule {

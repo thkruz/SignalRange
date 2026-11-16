@@ -69,11 +69,15 @@ export const hamTechS02Data: ScenarioData = {
       {
         id: 'predict-branch-current',
         title: 'Predict the Branch Current',
-        description: 'Calculate the current and power in the R1 branch. Then close SW1 and measure that branch current with the meter in series at the R1 branch break point.',
+        description:
+          'Calculate the current and power in the R1 branch. Then leave the board powered, close SW1 and measure that branch current with the meter in series at the R1 branch break point.',
         points: 20,
         conditions: [
           worksheetCorrect('s02-predict', 'Current and power calculated'),
-          measured({ instrument: 'multimeter', quantity: DCA, placement: { target: BOARD, series: 'r1-branch' } }, 'Series current measured at the R1 branch'),
+          measured(
+            { instrument: 'multimeter', quantity: DCA, placement: { target: BOARD, series: 'r1-branch' }, underLoad: true, sw1On: true },
+            'Series current measured at the R1 branch'
+          ),
           quiz('S02-Q3'),
           quiz('S02-Q4'),
           quiz('S02-A1'),
@@ -83,7 +87,7 @@ export const hamTechS02Data: ScenarioData = {
         id: 'find-open-branch',
         title: 'Find the Open Branch',
         description:
-          'Switch the board off and prove with the meter that its supply reads zero. Leave SW1 on, then use continuity across the SW1 contact to find where the R1 branch is broken.',
+          'Switch the board off and prove with the meter that its supply reads zero. Leave SW1 on, then use continuity across the SW1 contact to find where the R1 branch is broken. Nothing can be repaired until the meter has shown where.',
         points: 20,
         conditions: [
           measured(
@@ -114,7 +118,8 @@ export const hamTechS02Data: ScenarioData = {
       {
         id: 'restore-indicator-circuit',
         title: 'Restore the Indicator Circuit',
-        description: 'With the board off, repair the open SW1 contact. Then power the board back on and confirm both branches carry their normal current.',
+        description:
+          'Now that the meter has shown the open contact, repair it with the board off. Then power the board back on and confirm both branches carry their normal current.',
         points: 25,
         conditions: [
           faultCleared('sw1-contact', 'Open contact repaired'),

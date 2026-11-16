@@ -12,11 +12,11 @@ import type { HamContactRecord, HamLocationId, HamMeasurement, RadioSettings, Tx
 import type { PacketAudioConfig, PacketRadioCtx, PacketState, PacketStationConfig } from './ops/packet';
 import { applySetting, recallMemory, returnToVfo, selectDmrChannel, storeMemory } from './radio/radio-settings';
 import type { AntennaState } from './rf/antenna-model';
-import { type ActionResult, done, type HamStationState, refuse, type SatelliteGeometryProvider, StationCore } from './station/station-core';
+import { type ActionResult, done, type FaultRuntime, type HamStationState, refuse, type SatelliteGeometryProvider, StationCore } from './station/station-core';
 import { type DeviceRuntime, profileOf } from './station/station-devices';
 import { analyzerCalibrate, analyzerRun, batteryRead, coaxTest, meterMode, meterPlace, meterRead, meterSocket, swrRead } from './station/station-instruments';
-import type { BestReception, ReceptionLogEntry, StationEvent } from './station/station-log';
-import { boardSwitch, connect, disconnect, fuseAction, go, inspect, install, move, type PortRef, power, repair, seat } from './station/station-physical';
+import { type BestReception, measurementSeq, type ReceptionLogEntry, type StationEvent } from './station/station-log';
+import { boardSwitch, connect, disconnect, faultClue, faultLocated, fuseAction, go, inspect, install, move, type PortRef, power, repair, seat } from './station/station-physical';
 import { recordReceiver } from './station/station-record';
 import { evaluateReceivers } from './station/station-rx';
 import { endTx, isPrepared, prepareTx, ptt, stepPower } from './station/station-tx';
@@ -86,8 +86,6 @@ export interface MeasurementFilter {
   sinceRevision?: number;
   afterEvent?: string;
 }
-
-const measurementSeq = (m: HamMeasurement): number => Number(m.id.slice(2)) || 0;
 
 const NO_HINT_BRIEF = 'Open the Logbook at the bottom of the bench. Its front page is the Mission Brief; reading it ticks this off.';
 const NO_HINT_GENERIC = 'Open the Logbook and read this task on the checklist: each line under it says what still has to happen.';
@@ -615,6 +613,16 @@ export class HamStationManager {
 
   faults() {
     return this.core_.state.faults;
+  }
+
+  /** Has the meter located this fault (so Repair is on offer)? */
+  faultLocated(f: FaultRuntime): boolean {
+    return faultLocated(this.core_, f);
+  }
+
+  /** The clue inspect shows for this fault right now */
+  faultClue(f: FaultRuntime): string {
+    return faultClue(this.core_, f);
   }
 
   faultCleared(id: string): boolean {

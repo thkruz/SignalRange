@@ -53,6 +53,18 @@ export function meterPlace(core: StationCore, targetId: string, placement: Meter
   return done('Probes placed.');
 }
 
+/** A zero series current on the practice board with the board or SW1 off is not a fault: say so, without saying where the real fault is */
+function idleBoardNote(core: StationCore, kind: string, value: number): string | undefined {
+  const p = core.meter.state.placement;
+  if (kind !== 'board' || core.meter.state.mode !== 'DCA' || p.series === undefined || value !== 0) return undefined;
+  const board = core.boards.get(core.state.meter.targetId ?? '');
+  if (!board) return undefined;
+  if (!board.state.powered) return 'The board is switched off, so no current flows anywhere. Power it on to read a branch.';
+  if (!board.state.sw1On) return 'SW1 is switched off, so this branch carries nothing yet.';
+
+  return undefined;
+}
+
 export function meterRead(core: StationCore): ActionResult {
   const c = circuit(core, core.state.meter.targetId);
   if (!c) return refuse('Place the probes on a circuit first.', 'no-placement');
@@ -66,6 +78,7 @@ export function meterRead(core: StationCore): ActionResult {
   const underLoad =
     c.kind === 'dc' ? (core.dcSystems.get(core.state.meter.targetId ?? '')?.state.ptt ?? false) : Boolean(core.boards.get(core.state.meter.targetId ?? '')?.state.powered);
   const unit = r.unit === '' ? 'Ω' : r.unit;
+  const warning = r.warning ?? idleBoardNote(core, c.kind, r.value);
   const m = measure(core, {
     instrument: 'multimeter',
     quantity: QUANTITY[core.meter.state.mode],
@@ -79,10 +92,10 @@ export function meterRead(core: StationCore): ActionResult {
       overload: Boolean(r.overload),
       ...(c.kind === 'board' ? { sw1On: Boolean(core.boards.get(core.state.meter.targetId ?? '')?.state.sw1On) } : {}),
     },
-    note: r.warning,
+    note: warning,
   });
 
-  return done(`Meter reads ${r.display}.`, { measurement: m, warning: r.warning ?? null });
+  return done(`Meter reads ${r.display}.`, { measurement: m, warning: warning ?? null });
 }
 
 /**

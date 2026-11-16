@@ -117,6 +117,14 @@ export const s02Station: HamStationConfig = {
       inspectClue: 'One contact inside SW1 is open: the lever moves, but the R1 branch never completes.',
       clearedBy: { action: 'repair' },
       deenergizeToRepair: true,
+      locate: {
+        quantity: 'continuity',
+        probes: ['tp-sw1-in', 'tp-sw1-out'],
+        minValue: 1000,
+        afterEvent: 'power:board',
+        sw1On: true,
+        hiddenClue: 'The covers are sealed and nothing looks burnt or loose. The meter will have to show where the R1 branch breaks.',
+      },
     },
   ],
   emitters: [],
@@ -143,7 +151,7 @@ export const s02Station: HamStationConfig = {
       'Leave SW1 on. Use the continuity function with one probe on each side of the SW1 contact. No beep means the path is open there.',
     ],
     'restore-indicator-circuit': [
-      'Click the board and press Look closely. The clue names the part that failed.',
+      'Repair stays locked until the meter has shown where the branch breaks. Once it has, click the board and press Look closely. The clue names the part that failed.',
       'Repair the contact with the board switched off. Then power it back on and read both branches in series, the same way as before.',
     ],
     'compare-circuit-families': ['Open the families worksheet in Notebook and keep the board diagram beside it. Each question points at one part of the drawing.'],

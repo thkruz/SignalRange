@@ -1,4 +1,5 @@
 import { Feedback } from '../../src/feedback/feedback';
+import { feedbackEntry } from '../../src/feedback/feedback-entry';
 import { FeedbackSubmitError } from '../../src/feedback/feedback-service';
 import { setMenuPause } from '../../src/game-menu/menu-pause';
 import { SimClock } from '../../src/simulation/sim-clock';
@@ -111,6 +112,27 @@ describe('Feedback field report', () => {
     document.body.append(document.createElement('span'));
     await flush();
     expect(contact().hidden).toBe(false);
+  });
+
+  it('registers as the entry other menus use and tells the opener when the form is put away', async () => {
+    expect(feedbackEntry()).toBe(feedback);
+    expect(feedback.available()).toBe(false);
+    signIn();
+    expect(feedback.available()).toBe(true);
+    const onClose = vi.fn();
+    feedback.open(onClose);
+    await flush();
+    expect(dialog().open).toBe(true);
+    expect(onClose).not.toHaveBeenCalled();
+    dialog().dispatchEvent(new Event('cancel', { cancelable: true }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(SimClock.isPaused('menu')).toBe(false);
+    // A later open from the tab must not call the old opener again.
+    feedback.open();
+    dialog().dispatchEvent(new Event('cancel', { cancelable: true }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    feedback.dispose();
+    expect(feedbackEntry()).toBeNull();
   });
 
   it('treats an anonymous session as signed out', () => {

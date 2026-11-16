@@ -70,8 +70,12 @@ const colors = {
 
 function log(message, color = 'reset') {
   // Leading and trailing line breaks are layout; any inside the text (for example from a file name) could forge log lines.
-  const [, lead, body, trail] = /^(\n*)([\s\S]*?)(\n*)$/u.exec(String(message));
-  const safe = `${lead}${body.replace(/[\r\n]/gu, ' ')}${trail}`;
+  const text = String(message);
+  let n1 = 0;
+  while (n1 < text.length && text[n1] === '\n') n1++;
+  let n2 = 0;
+  while (n2 < text.length - n1 && text[text.length - 1 - n2] === '\n') n2++;
+  const safe = `${'\n'.repeat(n1)}${text.slice(n1, text.length - n2).replace(/[\r\n]/gu, ' ')}${'\n'.repeat(n2)}`;
   console.log(`${colors[color]}${safe}${colors.reset}`);
 }
 

@@ -133,6 +133,20 @@ export async function isVisible(page: Page, selector: string): Promise<boolean> 
 }
 
 /**
+ * Press a quiz opener within a few seconds. A bare click() retries until the test timeout while the element is
+ * re-rendered under it (the checklist rebuilds its rows) or moved by the indicator's re-homing, so on a loaded machine
+ * one stuck click ran the whole test budget out before any wait could name its reason (nats-eu-25 stop 7). If the real
+ * click cannot land in time, deliver the same click event straight to the element.
+ */
+async function pressOpener(opener: import('@playwright/test').Locator): Promise<void> {
+  try {
+    await opener.click({ timeout: 4000 });
+  } catch {
+    await opener.dispatchEvent('click', undefined, { timeout: 4000 });
+  }
+}
+
+/**
  * Wait for the quiz modal to appear.
  * If the quiz isn't auto-shown, clicks the pending quiz indicator to open it.
  */
@@ -162,7 +176,7 @@ export async function waitForQuizToAppear(page: Page, timeout = 30000): Promise<
       }
       for (const opener of openers) {
         if (await shown(opener)) {
-          await opener.click();
+          await pressOpener(opener);
           await expect(quizModal).toBeVisible({ timeout: 5000 });
           return;
         }
@@ -180,7 +194,7 @@ export async function waitForQuizToAppear(page: Page, timeout = 30000): Promise<
       return;
     }
     const opener = (await pendingIndicator.isVisible()) ? pendingIndicator : openQuizBtn.first();
-    await opener.click();
+    await pressOpener(opener);
     await expect(quizModal).toBeVisible({ timeout: 5000 });
     return;
   } catch {
@@ -191,7 +205,7 @@ export async function waitForQuizToAppear(page: Page, timeout = 30000): Promise<
   const checklistQuizBtn = page.locator('.condition-quiz-btn, .quiz-btn, [data-quiz-btn]');
   try {
     await expect(checklistQuizBtn.first()).toBeVisible({ timeout: 5000 });
-    await checklistQuizBtn.first().click();
+    await pressOpener(checklistQuizBtn.first());
     await expect(quizModal).toBeVisible({ timeout: 5000 });
     return;
   } catch {
@@ -233,7 +247,7 @@ export async function waitForQuizToAppear(page: Page, timeout = 30000): Promise<
         .isVisible()
         .catch(() => false))
     ) {
-      await pendingIndicator.click();
+      await pressOpener(pendingIndicator);
     }
   }
   await expect(quizModal).toBeVisible({ timeout: 5000 });

@@ -10,6 +10,7 @@ import { CampaignSelectionPage } from '@app/pages/campaign-selection';
 import { Footer } from '@app/pages/layout/footer/footer';
 import { Header } from '@app/pages/layout/header/header';
 import { MissionControlPage } from '@app/pages/mission-control/mission-control-page';
+import { MissionLoadingScreen } from '@app/pages/mission-loading-screen';
 import { SandboxPage } from '@app/pages/sandbox-page';
 import { ScenarioSelectionPage } from '@app/pages/scenario-selection';
 import { cancelSelectionExit, leaveSelection } from '@app/pages/selection-browser';
@@ -61,6 +62,9 @@ export class Router {
   private pluginsReady_ = PluginManager.getInstance().isReady;
   /** Path deferred while plugins were loading; replayed once they are ready. */
   private heldPath_: string | null = null;
+  /** Bumped on every route change so a stale async scenario launch can tell it was abandoned. */
+  private routeGeneration_ = 0;
+  private tleFailureScreen_: MissionLoadingScreen | null = null;
 
   private constructor() {}
 
@@ -181,6 +185,9 @@ export class Router {
 
   private handleRoute(): void {
     cancelSelectionExit();
+    this.routeGeneration_++;
+    this.tleFailureScreen_?.dispose();
+    this.tleFailureScreen_ = null;
     const path = globalThis.location.pathname;
     this.currentPath = path;
     const selection = path === '/' || /^\/campaigns\/[^/]+$/u.test(path);
@@ -343,10 +350,24 @@ export class Router {
             // TLE sets load asynchronously; the registry reads them synchronously, so
             // they must be in place before the simulation starts
             const options = this.navigationOptions_;
-            void ensureTleSets(constellations, loadTleSet).then(() => {
-              MissionControlPage.create(options);
-              MissionControlPage.getInstance().show();
-            });
+            const scenario = ScenarioManager.getInstance().data;
+            const generation = this.routeGeneration_;
+            const returnPath = /^\/campaigns\/[^/]+/u.exec(globalThis.location.pathname)?.[0] ?? '/';
+            ensureTleSets(constellations, loadTleSet).then(
+              () => {
+                // The player left this route while the sets downloaded: do not build a page for it
+                if (generation !== this.routeGeneration_) return;
+                MissionControlPage.create(options);
+                MissionControlPage.getInstance().show();
+              },
+              (error: unknown) => {
+                if (generation !== this.routeGeneration_) return;
+                console.error('TLE set load failed:', error);
+                // Reuse the mission loading screen's failure state (message, Retry, Back to missions)
+                this.tleFailureScreen_ = new MissionLoadingScreen(scenario, () => this.navigate(returnPath));
+                this.tleFailureScreen_.fail('Could not download the satellite data for this mission. Check your connection and retry.');
+              }
+            );
           } else {
             MissionControlPage.create(this.navigationOptions_);
             MissionControlPage.getInstance().show();

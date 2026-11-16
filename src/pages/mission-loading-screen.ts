@@ -58,8 +58,8 @@ export class MissionLoadingScreen {
     this.dispose();
   }
 
-  fail(): void {
-    this.status_.textContent = 'Could not load your mission or saved progress. Check your connection and retry. Your save has not been replaced.';
+  fail(message = 'Could not load your mission or saved progress. Check your connection and retry. Your save has not been replaced.'): void {
+    this.status_.textContent = message;
     if (!this.element_.querySelector('[data-retry]')) {
       const retry = document.createElement('button');
       retry.type = 'button';

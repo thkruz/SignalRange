@@ -18,6 +18,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, type Page, type Route, test } from '@playwright/test';
 import { validateFeedback } from '../../src/feedback/feedback-rules';
+import { bundleFlags } from '../utils/build-flags';
 import { closeCloseup, openFrontlineScenario, openPart } from '../utils/frontline-helpers';
 
 const SCENARIO_IDS = new Set<string>(JSON.parse(readFileSync('supabase/functions/feedback-submit/scenario-ids.json', 'utf8')) as string[]);
@@ -26,11 +27,11 @@ const API = 'http://127.0.0.1:54321';
 // Player progress API; the bundle is built with PUBLIC_USER_API_URL pointing here so nothing leaves the machine.
 const USER_API = 'http://127.0.0.1:54322';
 const USER_ID = '7d1c3a52-0b0e-4c8f-9a52-3f6a9e1d2b44';
-// The bundle must be built with the feedback flags or the form never shows. The build reads the same
-// variables as this process, so their presence here is the detectable condition (see the header, and
-// docs for the one-liner: E2E_DIST=dist-e2e-feedback E2E_REBUILD=1 plus the three PUBLIC_* values).
-const BUILT_FOR_FEEDBACK = process.env.PUBLIC_FEEDBACK_EDGE_LIVE === 'true' && process.env.PUBLIC_SUPABASE_URL === API && process.env.PUBLIC_USER_API_URL === USER_API;
-const BUNDLE_SKIP_REASON = `needs a bundle built with PUBLIC_FEEDBACK_EDGE_LIVE=true PUBLIC_SUPABASE_URL=${API} PUBLIC_USER_API_URL=${USER_API} (and the same vars set for the test run)`;
+// The bundle must be built with the feedback flags or the form never shows. Static mode reads the build stamp
+// of the served bundle (<dist>/e2e-build-flags.json); dev-server mode reads this shell's env (see build-flags.ts).
+const flags = bundleFlags();
+const BUILT_FOR_FEEDBACK = flags.feedbackEdgeLive && flags.supabaseLocal && flags.userApiLocal;
+const BUNDLE_SKIP_REASON = `needs a bundle built with PUBLIC_FEEDBACK_EDGE_LIVE=true PUBLIC_SUPABASE_URL=${API} PUBLIC_USER_API_URL=${USER_API}: provide them (shell or .env), rebuild with E2E_REBUILD=1 (use E2E_DIST=dist-e2e-feedback to keep the shared bundle), and set the same vars for the test run in dev-server mode`;
 const LOCAL_STACK = process.env.FEEDBACK_LOCAL_STACK === '1';
 const SHOT_DIR = process.env.FEEDBACK_SHOT_DIR ?? '';
 const CORS = {

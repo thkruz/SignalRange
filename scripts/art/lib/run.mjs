@@ -24,7 +24,7 @@ function writeNew(file, data) {
   }
 }
 
-export const stamp =() => new Date().toISOString().replace(/[:.]/gu, '-');
+export const stamp = () => new Date().toISOString().replace(/[:.]/gu, '-');
 
 /**
  * jobs: [{ kind, model, prompt, aspectRatio, references, refNames, outDir, meta }] (one per image).

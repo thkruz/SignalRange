@@ -13,7 +13,7 @@ import { dismissDialogIfPresent, waitForSimulationReady } from '../utils/simulat
  * read back, then program-track, the beacon found on the analyzer, the RBW
  * narrowed and the Doppler sign read, ACU beacon lock, the beacon level, the
  * SOH call, the close-out and the handover. Clock starts 2027-03-22 08:50:00Z:
- *   MERIDIAN-SAR-3 (refined)  AOS 09:08:58Z  max el 31.6 deg at 09:13:44Z  LOS 09:18:33Z
+ *   MERIDIAN-SAR-3 (refined)  AOS 09:08:58Z  max el 31.6 deg at 09:13:44Z  LOS 09:17:22Z (5 deg; horizon 09:18:33Z)
  *   SAR-3 beacon 11785 MHz -> IF 1315 MHz (LNB LO 13100)
  *
  * The refined set fires at mission T+45 s (the ephemeris panel flags STALE).
@@ -177,7 +177,7 @@ test.describe('nats-eu Scenario 11 Full Completion', () => {
   });
 
   test('[secure-after-los] confirms the uplink stayed cold and closes the contact', async () => {
-    await advanceMissionClockToUtc(page, '2027-03-22T09:19:00Z');
+    await advanceMissionClockToUtc(page, '2027-03-22T09:17:55Z');
     await closeWorkingDocumentIfOpen(page);
     await missionControl.selectTab('tx-chain');
     await page.waitForTimeout(2500);

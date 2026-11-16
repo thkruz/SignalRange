@@ -36,6 +36,7 @@ import { createMeridianSar1, createMeridianSar2, createMeridianSar3, MERIDIAN_SA
  *     AOS T+18.97 (09:08:58Z, az 143), max el 31.6 deg at T+23.74 (09:13:44Z,
  *     696 km slant range), LOS T+28.55 (09:18:33Z, az 353), 9.6 min,
  *     northbound. Second pass 10:40:49Z (17.8 deg).
+ *     (5 deg mask, the LOS the objective row judges: AOS 09:10:07, LOS 09:17:22.)
  *   MERIDIAN-SAR-3 coarse injection set (initialTle):
  *     AOS T+18.50 (09:08:30Z, az 142), max el 30.3 deg at T+23.27 (719 km),
  *     LOS T+28.04 (az 354). The injection estimate predicts the bird 28 s
@@ -756,7 +757,7 @@ export const natsEuScenario11Data: ScenarioData = {
       nice: ['T0431', 'K0645', 'S0842'],
       title: 'Secure After LOS',
       description:
-        'She sets at 09:18:33. Confirm that the uplink stayed cold for the whole pass, and close the LEOP log for this contact. You have two minutes, and they start at LOS.',
+        'She sets at 09:17:22. Confirm that the uplink stayed cold for the whole pass, and close the LEOP log for this contact. You have two minutes, and they start at LOS.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['state-of-health'],
       timeLimitSeconds: 2 * 60,
@@ -765,7 +766,7 @@ export const natsEuScenario11Data: ScenarioData = {
         {
           type: 'satellite-pass-phase',
           description: 'SAR-3 Pass Over (LOS)',
-          params: { noradId: 61703, phase: 'set' },
+          params: { noradId: 61703, phase: 'setting-below', elevation: 5 }, // LOS at the 5 deg mask (09:17:22), not the 09:18:32 horizon crossing
           mustMaintain: false,
         },
         {

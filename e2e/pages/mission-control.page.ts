@@ -122,7 +122,10 @@ export class MissionControlPage extends BasePage {
    */
   async openChecklist(): Promise<void> {
     await this.dismissDialogIfPresent();
-    await this.checklistButton.click();
+    // Wide viewports open the checklist docked on load, and the sidebar button toggles: clicking then would close it.
+    if (!(await this.objectivesChecklist.isVisible())) {
+      await this.checklistButton.click();
+    }
     await expect(this.objectivesChecklist).toBeVisible();
   }
 

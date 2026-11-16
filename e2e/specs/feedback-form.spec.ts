@@ -9,6 +9,7 @@
  * `npx supabase functions serve feedback-submit`) with a real sign-up. It needs the bundle built with that
  * stack's anon key and FEEDBACK_LOCAL_ANON_KEY set to the same key.
  *
+ * Static lane one-liner (separate bundle so other specs keep dist-e2e): E2E_DIST=dist-e2e-feedback E2E_REBUILD=1 E2E_STATIC=1 plus the three PUBLIC_* values below, set for the build AND this run.
  * Also build with PUBLIC_USER_API_URL=http://127.0.0.1:54322 (the intercepted progress API) and PUBLIC_FEEDBACK_EDGE_LIVE=true; without it signed-in non-developers see the
  * contact link only (the Edge Function is not live for everyone yet).
  *
@@ -17,6 +18,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, type Page, type Route, test } from '@playwright/test';
 import { validateFeedback } from '../../src/feedback/feedback-rules';
+import { bundleFlags } from '../utils/build-flags';
 import { closeCloseup, openFrontlineScenario, openPart } from '../utils/frontline-helpers';
 
 const SCENARIO_IDS = new Set<string>(JSON.parse(readFileSync('supabase/functions/feedback-submit/scenario-ids.json', 'utf8')) as string[]);
@@ -25,6 +27,11 @@ const API = 'http://127.0.0.1:54321';
 // Player progress API; the bundle is built with PUBLIC_USER_API_URL pointing here so nothing leaves the machine.
 const USER_API = 'http://127.0.0.1:54322';
 const USER_ID = '7d1c3a52-0b0e-4c8f-9a52-3f6a9e1d2b44';
+// The bundle must be built with the feedback flags or the form never shows. Static mode reads the build stamp
+// of the served bundle (<dist>/e2e-build-flags.json); dev-server mode reads this shell's env (see build-flags.ts).
+const flags = bundleFlags();
+const BUILT_FOR_FEEDBACK = flags.feedbackEdgeLive && flags.supabaseLocal && flags.userApiLocal;
+const BUNDLE_SKIP_REASON = `needs a bundle built with PUBLIC_FEEDBACK_EDGE_LIVE=true PUBLIC_SUPABASE_URL=${API} PUBLIC_USER_API_URL=${USER_API}: provide them (shell or .env), rebuild with E2E_REBUILD=1 (use E2E_DIST=dist-e2e-feedback to keep the shared bundle), and set the same vars for the test run in dev-server mode`;
 const LOCAL_STACK = process.env.FEEDBACK_LOCAL_STACK === '1';
 const SHOT_DIR = process.env.FEEDBACK_SHOT_DIR ?? '';
 const CORS = {
@@ -149,6 +156,7 @@ async function openScenario(page: Page): Promise<void> {
 test.describe('field report form', () => {
   test.use({ viewport: { width: 1600, height: 900 } });
   test.skip(LOCAL_STACK, 'the intercepted variant is skipped when FEEDBACK_LOCAL_STACK=1');
+  test.skip(!BUILT_FOR_FEEDBACK, BUNDLE_SKIP_REASON);
 
   test('a signed-in player files a report; a failed first send is retried with the same id', async ({ page }) => {
     const received = await installFakeApi(page, [{ status: 503 }, { status: 200 }]);
@@ -356,6 +364,7 @@ test.describe('field report form', () => {
 test.describe('field report form against the local stack', () => {
   test.use({ viewport: { width: 1600, height: 900 } });
   test.skip(!LOCAL_STACK, 'set FEEDBACK_LOCAL_STACK=1 with a running local Supabase stack');
+  test.skip(!BUILT_FOR_FEEDBACK, BUNDLE_SKIP_REASON);
 
   test('a signed-up player files a report through the real Edge Function', async ({ page, request }) => {
     const anon = process.env.FEEDBACK_LOCAL_ANON_KEY ?? '';

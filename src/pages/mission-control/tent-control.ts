@@ -64,6 +64,19 @@ export class TentControl {
     return TentControl.active_;
   }
 
+  /**
+   * Whether the field console is actually in use: a control exists AND the scenario has a plant that shows it.
+   * The element is created on every mission-control page and stays `display:none` without a plant, so its
+   * presence alone says nothing. Re-syncs first, because the control only syncs on UPDATE ticks.
+   */
+  static inUse(): boolean {
+    const control = TentControl.active_;
+    if (!control) return false;
+    control.sync();
+
+    return control.root_.style.display !== 'none';
+  }
+
   constructor(parent: HTMLElement, plantOf: () => PlantLike | null = () => PhysicalPlantService.plantOrNull()) {
     this.plantOf_ = plantOf;
     this.root_ = document.createElement('div');

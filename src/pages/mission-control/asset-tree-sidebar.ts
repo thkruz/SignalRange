@@ -35,6 +35,7 @@ import { assetSelectionState } from './asset-selection-state';
 import { handleChecklistClick } from './checklist-actions';
 import { ConstellationTreeView } from './constellation-tree-view';
 import { type MissionItem, missionItemBridge } from './tabs/field-kit';
+import { TentControl } from './tent-control';
 import './asset-tree-sidebar.css';
 
 /**
@@ -166,14 +167,14 @@ export class AssetTreeSidebar extends BaseElement {
   /**
    * The field console has no other way to see the first objective: open the checklist docked beside the Site
    * stage once the page is ready (c6-s13). Narrow windows (under 1600 px) keep click-to-open: the docked strip
-   * would cover part of the service diagram there. Other pages keep the click-to-open behaviour.
+   * would cover part of the service diagram there. Other pages (no field console in use) keep the click-to-open behaviour.
    * Under the field HUD the checklist lives on the clipboard and never opens on its own.
    */
   private openChecklistOnReady_(): void {
     if (!qs('.checklist-icon', this.dom_)) return;
     EventBus.getInstance().on(Events.DOM_READY, () => {
       if (AssetTreeSidebar.fieldHudExpected_()) return;
-      if (document.getElementById('tent-control') && window.innerWidth >= 1600 && !SimulationManager.getInstance().checklistBox) {
+      if (TentControl.inUse() && window.innerWidth >= 1600 && !SimulationManager.getInstance().checklistBox) {
         this.openChecklist_();
       }
     });

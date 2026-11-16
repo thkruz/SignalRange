@@ -7,7 +7,10 @@ const BASE_URL = `http://127.0.0.1:${process.env.SR_DEV_PORT || '3000'}`;
 // `rspack serve`. It builds only when dist-e2e is missing or E2E_REBUILD=1. See CLAUDE.md "E2E".
 const STATIC = process.env.E2E_STATIC === '1';
 const PORT = process.env.SR_DEV_PORT || '3000';
-const STATIC_COMMAND = `node -e "const fs=require('fs');if(process.env.E2E_REBUILD==='1'||!fs.existsSync('dist-e2e/index.html'))process.exit(require('child_process').spawnSync('pnpm run build:e2e',{stdio:'inherit',shell:true}).status||0)" && node scripts/e2e/serve-dist.mjs --port ${PORT} --dir dist-e2e`;
+const DIST = process.env.E2E_DIST || 'dist-e2e';
+// DIST is the output dir the e2e build empties (output.clean) and is spliced into a shell command: only the e2e dirs are allowed.
+if (!/^dist-e2e(?:-[\w.-]+)?$/u.test(DIST)) throw new Error(`E2E_DIST must be dist-e2e or dist-e2e-<name>, got "${DIST}"`);
+const STATIC_COMMAND = `node -e "const fs=require('fs');if(process.env.E2E_REBUILD==='1'||!fs.existsSync('${DIST}/index.html'))process.exit(require('child_process').spawnSync('pnpm run build:e2e',{stdio:'inherit',shell:true}).status||0)" && node scripts/e2e/serve-dist.mjs --port ${PORT} --dir ${DIST}`;
 
 export default defineConfig({
   testDir: './e2e',

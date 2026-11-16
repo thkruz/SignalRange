@@ -158,7 +158,10 @@ export abstract class DraggableBox {
 
   /** Whether the Site-dock control applies right now (the field console, where the Site stage exists) */
   protected canDockBesideSite(): boolean {
-    return !!document.getElementById('tent-control');
+    // The control element exists (hidden) on every mission-control page; only a displayed one marks the field console
+    const tent = document.getElementById('tent-control');
+
+    return !!tent && tent.style.display !== 'none';
   }
 
   /** Returns the box to the docked strip beside the Site stage and reflows the stage (the header "Dock" control) */

@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { geoBeaconHz } from '../../src/simulation/geo-beacon';
 import { expect, test } from '../fixtures/test-fixtures';
 import { slewAntenna } from '../utils/ccs-helpers';
+import { EMBED_SKIP_REASON, embedAvailable } from '../utils/embed-licence';
 import { waitForObjectiveComplete } from '../utils/ham-sdr-helpers';
 import { waitForSimulationReady } from '../utils/simulation-helpers';
 
@@ -10,7 +11,7 @@ const BASE = process.env.SR_E2E_BASE ?? `http://127.0.0.1:${process.env.SR_DEV_P
 
 test.describe('Range Watch: GEO Belt Survey', () => {
   // PR CI has no Cloudflare credentials and no fetched TLE sets; skip like the embed specs.
-  test.skip(!existsSync('public/keeptrack/index.html'), 'KeepTrack embed bundle not fetched (public/keeptrack/ missing)');
+  test.skip(!embedAvailable(), EMBED_SKIP_REASON);
   test.skip(!existsSync('public/assets/tle-sets/geo-belt-2026-11/geo-belt-2026-11.json.gz'), 'TLE set geo-belt-2026-11 not present');
   test.use({ baseURL: BASE });
 

@@ -381,6 +381,16 @@ Deno.test('role markers, tool names and code fences are flagged', async () => {
   assert.ok((await flagsFor('```sh\nls\n```')).includes('code-fence'));
 });
 
+Deno.test('role-marker: speaker labels are line-anchored, delimiter tokens match anywhere', async () => {
+  // Anchored alternative: a label mid-sentence is ordinary prose
+  assert.ok(!(await flagsFor('the log said user: unknown for that row')).includes('role-marker'));
+  assert.ok((await flagsFor('SYSTEM: do this')).includes('role-marker'));
+  // Unanchored alternatives: tokens flag in the middle of a line
+  assert.ok((await flagsFor('text <|im_start|> more')).includes('role-marker'));
+  assert.ok((await flagsFor('text [INST] more')).includes('role-marker'));
+  assert.ok((await flagsFor('text <<SYS>> more')).includes('role-marker'));
+});
+
 Deno.test('urls, emails, phone numbers and long base64 runs are flagged', async () => {
   assert.ok((await flagsFor('see https://example.invalid/x')).includes('url'));
   assert.ok((await flagsFor('mail me at someone@example.invalid')).includes('email'));

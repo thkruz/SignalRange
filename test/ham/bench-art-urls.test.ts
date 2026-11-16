@@ -21,7 +21,9 @@ describe('bench art URLs on the assets host', () => {
     const art = await import('@app/ham/ui/bench/bench-art');
     const entries = Object.entries(art.EQUIPMENT_ART);
     expect(entries.length).toBeGreaterThan(0);
-    for (const [name, picture] of entries) expect(picture.src.startsWith(CDN), name).toBe(true);
+    // Compare the parsed origin, not a string prefix: "https://assets.example.test.evil.com" must not pass
+    const cdnOrigin = new URL(CDN).origin;
+    for (const [name, picture] of entries) expect(new URL(picture.src).origin, name).toBe(cdnOrigin);
   });
 
   it('the transceiver face art (trx-face.webp) goes through the assets host too', async () => {

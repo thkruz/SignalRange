@@ -4,7 +4,7 @@ import { waitForObjectiveComplete } from '../utils/ham-sdr-helpers';
 import { waitForSimulationReady } from '../utils/simulation-helpers';
 
 // The embed licence is domain-locked: 127.0.0.1 is not licensed, localhost is.
-const BASE = process.env.SR_E2E_BASE ?? 'http://localhost:3000';
+const BASE = process.env.SR_E2E_BASE ?? `http://127.0.0.1:${process.env.SR_DEV_PORT || '3000'}`;
 const URL_PATH = '/campaigns/range-watch/scenarios/starlink-interference';
 
 type SkyRow = { norad: number; az: number; el: number; inScan: boolean; inExclusion: boolean };

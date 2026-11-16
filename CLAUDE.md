@@ -265,5 +265,7 @@ contributors without access build and test without it.
 - Run specs in the lane dir. The Playwright lock is machine-wide, so take it: `node D:/code/kruczek-labs/hq/tooling/run-bounded.mjs
   --lock "$TEMP/sr-playwright.lock" --timeout 20 --idle 10 --done '\d+ passed' --log <file> -- npx playwright test <specs> --reporter=line`
   with `E2E_STATIC=1 SR_DEV_PORT=<port>` set.
-- The test clock is proven only for ham-tech and scenario3 (workers=4 there); everything else stays at workers=1.
+- Workers: static mode runs the whole suite at 16 workers (the local default; `SR_E2E_WORKERS` overrides). Measured 2026-11-15, four full
+  runs: 16 workers gave the same results as 1 in about 17 min; 32 gave one asset-load failure. When lanes run at the same time, split
+  the 16 between them. The dev server (`pnpm run dev`) is unmeasured: pass `--workers=1` there. CI stays at 1.
 - Merge order: rebase the lane on dev, run the gates, fast-forward dev, `lane:rm`.

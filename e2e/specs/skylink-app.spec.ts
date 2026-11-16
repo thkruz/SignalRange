@@ -3,7 +3,7 @@ import type { Page } from '@playwright/test';
 import { expect, test } from '../fixtures/test-fixtures';
 
 // Campaign 6 registers only on a local host name; localhost matches the other specs (the embed licence).
-const BASE = process.env.SR_E2E_BASE ?? 'http://localhost:3000';
+const BASE = process.env.SR_E2E_BASE ?? `http://127.0.0.1:${process.env.SR_DEV_PORT || '3000'}`;
 // Exercise 10 (forward post, SkyLink only) drives most tests; the base sandbox has the same healthy service and gets its own describe below.
 const URL_PATH = '/campaigns/frontline/scenarios/frontline-scenario10';
 const SHOTS = 'art-review/phase-40/screens';

@@ -14,7 +14,9 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  // Local: 16 workers. Measured 2026-11-15 on the static server: the whole suite passes the same at 16 as at 1
+  // (17 min against 3.8 h); 32 showed one asset-load flake. SR_E2E_WORKERS overrides (lanes sharing the machine).
+  workers: process.env.CI ? 1 : Number(process.env.SR_E2E_WORKERS || 16),
   reporter: [
     ['html', { open: 'never' }],
     ['list'],

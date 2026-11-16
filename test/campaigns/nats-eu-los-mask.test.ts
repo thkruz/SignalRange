@@ -2,9 +2,10 @@
  * nats-eu LOS rows at the 5 deg mask (issue 297).
  *
  * A 'Pass Over (LOS)' row with phase 'set' latches at the satellite's
- * receivable elevation (0 deg), about a minute after the 5 deg LOS time. Every nats-eu scenario with a pass objective judges its LOS row at the 5 deg
- * mask and gives the 5 deg time in its copy, so all eight rows must be
- * 'setting-below' at >= 5 deg and must exist.
+ * receivable elevation (0 deg), about a minute after the 5 deg LOS time.
+ * Every nats-eu scenario with a pass objective judges its LOS row at the
+ * 5 deg mask, so all eight rows must be 'setting-below' at >= 5 deg and
+ * must exist. No scenario may use phase 'set' at all.
  */
 
 import { natsEuCampaignData } from '@app/campaigns/nats-eu/campaign-data';
@@ -40,4 +41,18 @@ describe('nats-eu LOS rows at the 5 deg mask', () => {
       expect(offenders.map((r) => `${r.id}: ${r.description} (${String(r.phase)}, ${String(r.elevation)})`)).toEqual([]);
     });
   }
+
+  it('no satellite-pass-phase condition in any nats-eu scenario uses phase set', () => {
+    const offenders: string[] = [];
+    for (const scenario of natsEuCampaignData.scenarios) {
+      for (const objective of scenario.objectives ?? []) {
+        for (const condition of objective.conditions) {
+          if (condition.type === 'satellite-pass-phase' && condition.params?.phase === 'set') {
+            offenders.push(`s${scenario.number} ${objective.id}`);
+          }
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
 });

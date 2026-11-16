@@ -1,7 +1,7 @@
 // Renders results-*.json into Markdown: one table per area, failures first.
 import fs from 'node:fs';
 
-const cell = (s) => String(s ?? '').replace(/\|/gu, '\\|').replace(/\r?\n/gu, ' ');
+const cell = (s) => String(s ?? '').replace(/\\/gu, '\\\\').replace(/\|/gu, '\\|').replace(/\r?\n/gu, ' ');
 
 export function render(files) {
   const runs = files.map((f) => JSON.parse(fs.readFileSync(f, 'utf8')));

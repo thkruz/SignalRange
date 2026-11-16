@@ -4,6 +4,7 @@ import { setMenuPause } from '@app/game-menu/menu-pause';
 import { Auth } from '@app/user-account/auth';
 import { captureFeedbackScreen, captureFeedbackState } from './feedback-capture';
 import { describeCaptureFailure } from './feedback-capture-error';
+import { type FeedbackEntry, feedbackEntry, setFeedbackEntry } from './feedback-entry';
 import {
   attachmentSummary,
   buildRequest,
@@ -45,7 +46,7 @@ const q = <T extends Element>(root: ParentNode, selector: string): T => {
  * In-game field report. Signed-in players file it from a tab on the console; signed-out players get a
  * contact link instead. App-lifetime UI, independent of the per-scenario EventBus.
  */
-export class Feedback {
+export class Feedback implements FeedbackEntry {
   private readonly tab_ = document.createElement('button');
   private readonly contact_ = document.createElement('a');
   private readonly dialog_ = document.createElement('dialog');
@@ -73,6 +74,8 @@ export class Feedback {
   private retryUntil_ = 0;
   private countdownTimer_: ReturnType<typeof setInterval> | null = null;
   private held_ = false;
+  /** Set by a menu that opened the form; runs once when the form is put away. */
+  private onClose_: (() => void) | null = null;
   private readonly edgeLive_: boolean;
   private readonly boundClose_ = (): void => {
     // A stale close event from a form that was reopened in the same turn must not tear down the new session.
@@ -129,6 +132,7 @@ export class Feedback {
     this.observer_ = new MutationObserver(() => this.syncEntry_());
     this.observer_.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['open', 'style'] });
     this.syncEntry_();
+    setFeedbackEntry(this);
   }
 
   private template_(): string {
@@ -239,8 +243,14 @@ export class Feedback {
 
   // ------------------------------------------------------------------ open and close
 
-  open(): void {
+  /** Whether this player can file the in-game report right now. */
+  available(): boolean {
+    return this.formAvailable_;
+  }
+
+  open(onClose?: () => void): void {
     if (!this.formAvailable_ || this.dialog_.open) return;
+    this.onClose_ = onClose ?? null;
     this.held_ = true;
     this.previousFocus_ = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const generation = ++this.captureGeneration_;
@@ -318,6 +328,9 @@ export class Feedback {
     const target = this.previousFocus_ && this.previousFocus_.isConnected ? this.previousFocus_ : this.signedIn_ ? this.tab_ : null;
     this.previousFocus_ = null;
     target?.focus();
+    const onClose = this.onClose_;
+    this.onClose_ = null;
+    onClose?.();
   }
 
   private discard_(): void {
@@ -489,6 +502,7 @@ export class Feedback {
   }
 
   dispose(): void {
+    if (feedbackEntry() === this) setFeedbackEntry(null);
     this.discardDraft_();
     this.stopCountdown_();
     if (this.dialog_.open) this.close_();

@@ -18,6 +18,7 @@ vi.mock('@app/user-account/user-data-service', () => ({
 vi.mock('@app/user-account/achievement-toast', () => ({ achievementToast: { style: 'compact', setStyle: vi.fn() } }));
 vi.mock('@app/sound/sound-manager', () => ({ default: { getInstance: () => ({ setMenuPaused: mocks.soundPause }) } }));
 
+import { setFeedbackEntry } from '../../src/feedback/feedback-entry';
 import { GameMenu } from '../../src/game-menu/game-menu';
 import { setMenuPause } from '../../src/game-menu/menu-pause';
 import { SimClock } from '../../src/simulation/sim-clock';
@@ -27,6 +28,9 @@ function click(action: string) {
 }
 beforeEach(() => {
   vi.clearAllMocks();
+  (globalThis as any).__APP_VERSION__ = '1.2.3';
+  (globalThis as any).__GIT_COMMIT_SHA__ = 'abc1234';
+  setFeedbackEntry(null);
   document.body.innerHTML = '';
   SimClock.reset();
   setMenuPause('game-menu', false);
@@ -43,6 +47,47 @@ beforeEach(() => {
   mocks.save.mockResolvedValue(undefined);
 });
 describe('game menus', () => {
+  it('links the pause menu to the contact page with the mission filled in when the form is unavailable', () => {
+    GameMenu.getInstance().openPause();
+    const link = document.querySelector<HTMLAnchorElement>('#game-menu [data-report-link]')!;
+    const url = new URL(link.href);
+    expect(url.origin + url.pathname).toBe('https://signalrange.space/contact-us');
+    expect(url.searchParams.get('campaign')).toBe('nats');
+    expect(url.searchParams.get('scenario')).toBe('Scenario 1 - First Day');
+    expect(url.searchParams.get('build')).toBe('v1.2.3 | abc1234');
+    expect(link.target).toBe('_blank');
+    expect(link.rel).toContain('noopener');
+    expect(document.querySelector('#game-menu [data-action="report"]')).toBeNull();
+    expect(SimClock.isPaused('menu')).toBe(true);
+  });
+  it('opens the field report from the pause menu, keeps the mission paused and returns to the menu', () => {
+    let closed: (() => void) | undefined;
+    const open = vi.fn((onClose?: () => void) => {
+      closed = onClose;
+    });
+    setFeedbackEntry({ available: () => true, open });
+    const menu = GameMenu.getInstance();
+    menu.openPause();
+    expect(document.querySelector('#game-menu [data-report-link]')).toBeNull();
+    click('report');
+    // The menu is out of the screenshot, and the pause holds while the form is up.
+    expect(document.querySelector<HTMLDialogElement>('#game-menu')?.open).toBe(false);
+    expect(open).toHaveBeenCalledTimes(1);
+    expect(SimClock.isPaused('menu')).toBe(true);
+    menu.openPause();
+    expect(document.querySelector<HTMLDialogElement>('#game-menu')?.open).toBe(false);
+    closed!();
+    expect(document.querySelector<HTMLDialogElement>('#game-menu')?.open).toBe(true);
+    expect(document.querySelector('#game-menu-title')?.textContent).toBe('Mission paused');
+    expect(SimClock.isPaused('menu')).toBe(true);
+    click('resume');
+    expect(SimClock.isPaused('menu')).toBe(false);
+  });
+  it('keeps the report entry off the selection menu', () => {
+    history.replaceState({}, '', '/campaigns/nats');
+    GameMenu.getInstance().openMenu();
+    expect(document.querySelector('#game-menu [data-report-link], #game-menu [data-action="report"]')).toBeNull();
+  });
   it.each(['/', '/campaigns/nats'])('opens selection settings and returns to browsing on %s', (route) => {
     history.replaceState({}, '', route);
     const opener = document.createElement('button');

@@ -121,11 +121,14 @@ describe('describeSubmitError', () => {
 });
 
 describe('attachmentSummary', () => {
-  it('lists scenario and state, and the screenshot only when it is attached', () => {
+  it('lists campaign, scenario and state, and the screenshot only when it is attached', () => {
     const base = { snapshot, includeScreenshot: false, screenshot: null };
-    expect(attachmentSummary(base)).toHaveLength(2);
-    expect(attachmentSummary(base)[0]).toContain('nats-1');
-    expect(attachmentSummary({ ...base, includeScreenshot: true, screenshot: 'data:image/jpeg;base64,AA==' })).toHaveLength(3);
-    expect(attachmentSummary({ ...base, snapshot: { ...snapshot, scenarioId: null } })[0]).toContain('none');
+    expect(attachmentSummary(base)).toHaveLength(3);
+    expect(attachmentSummary(base)[0]).toBe('Campaign: nats');
+    expect(attachmentSummary(base)[1]).toContain('nats-1');
+    expect(attachmentSummary({ ...base, includeScreenshot: true, screenshot: 'data:image/jpeg;base64,AA==' })).toHaveLength(4);
+    const menu = attachmentSummary({ ...base, snapshot: { ...snapshot, route: '/', scenarioId: null } });
+    expect(menu).toHaveLength(2);
+    expect(menu[0]).toContain('none');
   });
 });

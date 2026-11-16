@@ -143,7 +143,12 @@ export function describeRejection(reason: TextRejection | 'snapshot'): string {
 
 /** The honest list of what goes out with a report. */
 export function attachmentSummary(draft: Pick<FeedbackDraft, 'includeScreenshot' | 'screenshot' | 'snapshot'>): string[] {
-  const items = [`Scenario: ${draft.snapshot.scenarioId ?? 'none (menu or sandbox)'}`, 'Game state summary: route, version, clock and equipment settings'];
+  const campaign = /^\/campaigns\/([^/]+)/u.exec(draft.snapshot.route ?? '')?.[1];
+  const items = [
+    ...(campaign ? [`Campaign: ${campaign}`] : []),
+    `Scenario: ${draft.snapshot.scenarioId ?? 'none (menu or sandbox)'}`,
+    'Game state summary: route, version, clock and equipment settings',
+  ];
   if (draft.includeScreenshot && draft.screenshot) items.push('Screenshot: the screen as it was when you opened this form');
   return items;
 }

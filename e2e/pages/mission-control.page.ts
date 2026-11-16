@@ -66,11 +66,10 @@ export class MissionControlPage extends BasePage {
   /**
    * Navigate directly to a scenario.
    */
-  async gotoScenario(campaignId: string, scenarioId: string, options: { fastUi?: boolean } = {}): Promise<void> {
+  async gotoScenario(campaignId: string, scenarioId: string): Promise<void> {
     // Covers specs that build their own context: the pending quiz/decision indicator shows without its 5 s delay.
-    // Not on the test clock (its quiz helpers fast-forward past the delay). Scenario 3 passes fastUi: false: with
-    // any extra init script registered here its Vermont station click is lost and the tabs never open (finding).
-    if ((options.fastUi ?? true) && !hasTestClock(this.page)) {
+    // Not on the test clock (its quiz helpers fast-forward past the delay).
+    if (!hasTestClock(this.page)) {
       await this.page.addInitScript(() => {
         (window as unknown as { SR_E2E_FAST_UI: boolean }).SR_E2E_FAST_UI = true;
       });
@@ -189,9 +188,10 @@ export class MissionControlPage extends BasePage {
     // The brief objective keeps the stations locked until the sim processes its completion; a click before
     // that only shows the lock toast and selects nothing
     await expect(gsItem.first()).not.toHaveAttribute('aria-disabled', 'true', { timeout: 15000 });
-    // DOM click, like selectTab: a character dialog that pops up over the bottom-left sidebar right after an
-    // answered quiz swallows a pointer click (the click lands on the dialog, the station is never selected)
-    await gsItem.first().evaluate((el) => (el as HTMLElement).click());
+    // A character dialog is a full-screen aria-modal overlay and blocks the sidebar by design. Wait for it to
+    // go (auto-close fades it out), then make a real pointer click: a stuck overlay must fail this step.
+    await expect(this.page.locator('.dialog-overlay')).toHaveCount(0, { timeout: 15000 });
+    await gsItem.first().click();
   }
 
   /**

@@ -323,7 +323,9 @@ export async function dismissDialogs(page: Page): Promise<string[]> {
     if (!(await isShown(dlg))) {
       break;
     }
-    seen.push((await dlg.innerText().catch(() => '')).replace(/\s+/gu, ' ').trim().slice(0, 200));
+    // innerText() waits (for the whole test timeout) for a node that an auto-closing dialog has just removed: read what is there now
+    const text = await dlg.evaluateAll((nodes) => (nodes[0] as HTMLElement | undefined)?.innerText ?? '');
+    seen.push(text.replace(/\s+/gu, ' ').trim().slice(0, 200));
     const box = await dlg
       .locator('.dialog-box')
       .boundingBox({ timeout: 1000 })

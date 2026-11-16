@@ -33,7 +33,9 @@ export class PendingQuizIndicator {
 
   /** Delay before the indicator shows; e2e specs set `window.SR_E2E_FAST_UI` to skip the player-pacing wait */
   private static getInitialDelayMs_(): number {
-    return (window as unknown as { SR_E2E_FAST_UI?: boolean }).SR_E2E_FAST_UI ? 0 : PendingQuizIndicator.INITIAL_DELAY_MS;
+    // Development builds only (the e2e builds), like the test hook: the branch is removed from production bundles
+    const fastUi = process.env.NODE_ENV === 'development' && (window as unknown as { SR_E2E_FAST_UI?: boolean }).SR_E2E_FAST_UI === true;
+    return fastUi ? 0 : PendingQuizIndicator.INITIAL_DELAY_MS;
   }
 
   private indicatorElement_: HTMLDivElement | null = null;

@@ -193,9 +193,24 @@ const SCENARIO_13_OBJECTIVES: Scenario13Objective[] = [
     checkScreen: async (page) => {
       // The quiz opens on the sim value; the DOM readouts sync on wall time and round to 0.1, so poll them
       // (the objective condition is raw < 61, the display can still read "61.0" for a moment)
-      await expect.poll(() => readNumber(page, '#buc-current-display'), { timeout: 15000 }).toBeLessThan(3.2);
-      await expect.poll(() => readNumber(page, '#buc-temperature-display'), { timeout: 15000 }).toBeLessThan(61);
-      await expect.poll(() => readNumber(page, '#buc-temp-trend-display'), { timeout: 15000 }).toBeLessThan(0);
+      // All three readouts are read in one evaluation, so they describe one moment
+      await expect
+        .poll(
+          () =>
+            page.evaluate(() => {
+              const read = (selector: string): number | null => {
+                const el = Array.from(document.querySelectorAll<HTMLElement>(selector)).find((e) => e.offsetParent !== null);
+                const match = /[-+]?\d+(?:\.\d+)?/u.exec(el?.textContent ?? '');
+                return match ? Number.parseFloat(match[0]) : null;
+              };
+              const current = read('#buc-current-display');
+              const temperature = read('#buc-temperature-display');
+              const trend = read('#buc-temp-trend-display');
+              return current !== null && temperature !== null && trend !== null && current < 3.2 && temperature < 61 && trend < 0;
+            }),
+          { timeout: 15000, message: 'BUC current < 3.2, temperature < 61 and trend < 0 at the same moment' }
+        )
+        .toBe(true);
     },
   },
 

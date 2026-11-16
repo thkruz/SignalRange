@@ -90,8 +90,11 @@ describe('PendingQuizIndicator', () => {
   });
 
   describe('Initial delay flag', () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+
     afterEach(() => {
       delete (window as unknown as { SR_E2E_FAST_UI?: boolean }).SR_E2E_FAST_UI;
+      process.env.NODE_ENV = originalNodeEnv;
     });
 
     it('waits 5 s before showing a pending quiz without the e2e flag', () => {
@@ -104,7 +107,17 @@ describe('PendingQuizIndicator', () => {
       expect(indicator.isVisible()).toBe(true);
     });
 
+    it('ignores SR_E2E_FAST_UI outside a development build', () => {
+      process.env.NODE_ENV = 'production';
+      (window as unknown as { SR_E2E_FAST_UI?: boolean }).SR_E2E_FAST_UI = true;
+      eventBus.emit(Events.QUIZ_PENDING, { objectiveId: 'obj-1', conditionIndex: 0 });
+
+      vi.advanceTimersByTime(4999);
+      expect(indicator.isVisible()).toBe(false);
+    });
+
     it('shows a pending quiz with no delay when SR_E2E_FAST_UI is set', () => {
+      process.env.NODE_ENV = 'development';
       (window as unknown as { SR_E2E_FAST_UI?: boolean }).SR_E2E_FAST_UI = true;
       eventBus.emit(Events.QUIZ_PENDING, { objectiveId: 'obj-1', conditionIndex: 0 });
 

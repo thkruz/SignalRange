@@ -30,6 +30,8 @@ describe('vo-manifest keys', () => {
           const id = `${scenario.number}/${clip.key}`;
           expect(seenKeys.has(id), `duplicate key ${id}`).toBe(false);
           expect(seenTargets.has(clip.target), `duplicate target ${clip.target}`).toBe(false);
+          // Only an activation clip takes the -start suffix; completion clips keep the name their audio was recorded under
+          expect(clip.key.endsWith('-start') && clip.group !== 'objectivesOnStart', `completion clip renamed: ${id}`).toBe(false);
           seenKeys.add(id);
           seenTargets.add(clip.target);
         }

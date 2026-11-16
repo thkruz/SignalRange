@@ -7,9 +7,13 @@ import base from '../../rspack.config.mts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
+const DIST = process.env.E2E_DIST || 'dist-e2e';
+// The e2e build empties its output dir (output.clean), so only the e2e dirs are allowed.
+if (!/^dist-e2e(?:-[\w.-]+)?$/u.test(DIST)) throw new Error(`E2E_DIST must be dist-e2e or dist-e2e-<name>, got "${DIST}"`);
+
 const config = {
   ...base,
-  output: { ...(base as any).output, path: path.resolve(root, process.env.E2E_DIST || 'dist-e2e') },
+  output: { ...(base as any).output, path: path.resolve(root, DIST) },
   // Cheapest map that still gives readable stacks.
   devtool: 'eval-cheap-module-source-map',
   devServer: undefined,

@@ -21,7 +21,7 @@ export const STATION_STRIDE = 3;
 const DEG = 180 / Math.PI;
 
 export class PropagatorCore {
-  private readonly sats_: (OotkSatellite | null)[];
+  private readonly sats_ = new Map<number, OotkSatellite>();
   private readonly grounds_: GroundStation[] = [];
   private readonly latRad_: Float64Array;
   private readonly lonRad_: Float64Array;
@@ -31,7 +31,6 @@ export class PropagatorCore {
     private readonly tle2_: readonly string[],
     stations_: Float64Array
   ) {
-    this.sats_ = new Array<OotkSatellite | null>(tle1_.length).fill(null);
     const s = stations_.length / STATION_STRIDE;
     this.latRad_ = new Float64Array(s);
     this.lonRad_ = new Float64Array(s);
@@ -60,13 +59,13 @@ export class PropagatorCore {
 
   private sat_(index: number): OotkSatellite {
     // The index arrives in a worker message: only a whole number inside the member list may address the cache
-    if (!Number.isInteger(index) || index < 0 || index >= this.sats_.length) {
+    if (!Number.isInteger(index) || index < 0 || index >= this.tle1_.length) {
       throw new RangeError(`Propagation member index out of range: ${index}`);
     }
-    let sat = this.sats_[index];
+    let sat = this.sats_.get(index);
     if (!sat) {
       sat = new OotkSatellite({ name: `m${index}`, tle1: this.tle1_[index] as TleLine1, tle2: this.tle2_[index] as TleLine2 });
-      this.sats_[index] = sat;
+      this.sats_.set(index, sat);
     }
     return sat;
   }

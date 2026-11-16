@@ -22,12 +22,11 @@ describe('PropagatorCore member index validation', () => {
   it.each([-1, 1, 1.5, Number.NaN, Number.POSITIVE_INFINITY])('rejects member index %s without touching the cache', (index) => {
     const c = core();
     const out = new Float64Array(1);
-    const cache = (c as unknown as { sats_: unknown[] }).sats_;
+    const cache = (c as unknown as { sats_: Map<number, unknown> }).sats_;
     expect(c.elevations(index, date, c.stationFrames(date), out)).toBe(false);
     expect(out[0]).toBe(-90);
-    // The bad index created no member and displaced none
-    expect(cache).toHaveLength(1);
-    expect(cache[0]).toBeNull();
+    // The bad index created no member
+    expect(cache.size).toBe(0);
   });
 
   it.each([-1, 1])('compute rejects out-of-range member index %s', (index) => {

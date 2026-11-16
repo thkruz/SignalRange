@@ -59,6 +59,10 @@ export class PropagatorCore {
   }
 
   private sat_(index: number): OotkSatellite {
+    // The index arrives in a worker message: only a whole number inside the member list may address the cache
+    if (!Number.isInteger(index) || index < 0 || index >= this.sats_.length) {
+      throw new RangeError(`Propagation member index out of range: ${index}`);
+    }
     let sat = this.sats_[index];
     if (!sat) {
       sat = new OotkSatellite({ name: `m${index}`, tle1: this.tle1_[index] as TleLine1, tle2: this.tle2_[index] as TleLine2 });

@@ -1,5 +1,6 @@
 import { EventBus } from '@app/events/event-bus';
 import { Events } from '@app/events/events';
+import { contactUrl, feedbackEntry } from '@app/feedback/feedback-entry';
 import { HamStationService } from '@app/ham/ham-station-service';
 import { setupFullscreenButton } from '@app/pages/layout/header/fullscreen-button';
 import { selectionText } from '@app/pages/selection-browser';
@@ -41,6 +42,8 @@ export class GameMenu {
   private cleanup_: (() => void) | null = null;
   /** Set when the player resumes while the window still lacks focus; stops blur from re-pausing until focus returns. */
   private blurPauseSuppressed_ = false;
+  /** True while the field report is open from the pause menu: the menu is put away but still holds the pause. */
+  private reporting_ = false;
 
   static getInstance(): GameMenu {
     return (this.instance_ ??= new GameMenu());
@@ -83,13 +86,14 @@ export class GameMenu {
   }
 
   openMenu(): void {
+    if (this.reporting_) return;
     if (!this.inMission_() && !this.inSelection_()) return;
     this.settingsFromPause_ = true;
     this.open_('pause');
   }
 
   openPause(): void {
-    if (!this.inMission_()) return;
+    if (this.reporting_ || !this.inMission_()) return;
     this.settingsFromPause_ = true;
     this.open_('pause');
   }
@@ -123,6 +127,12 @@ export class GameMenu {
   private close_(): void {
     this.cleanup_?.();
     this.cleanup_ = null;
+    if (this.reporting_) {
+      // The route changed under an open field report: drop the menu's hold; the form keeps its own.
+      this.reporting_ = false;
+      setMenuPause('game-menu', false);
+      return;
+    }
     if (!this.dialog_?.open) return;
     this.dialog_.close();
     // Every close path (Resume, Escape, confirms) refocuses the brief; in an unfocused window that emits blur again.
@@ -152,7 +162,7 @@ export class GameMenu {
           ? selectionMenu
             ? `<nav class="game-menu-actions" aria-label="Game menu"><button data-action="resume" class="game-menu-primary" autofocus>Continue browsing</button><button data-action="settings">Settings</button><a class="game-menu-quit" href="https://signalrange.space/" rel="noreferrer" referrerpolicy="no-referrer">Quit game</a></nav>`
             : `<p class="game-menu-mission">${selectionText(mission?.title ?? 'Mission')}</p><p class="game-menu-note">Simulation and dialogue paused.</p>
-        <nav class="game-menu-actions" aria-label="Pause menu"><button data-action="resume" class="game-menu-primary" autofocus>Resume mission</button><button data-action="settings">Settings</button><button data-action="restart">Restart mission</button><button data-action="return">Return to missions</button></nav>${this.quickHtml_(mission !== null)}`
+        <nav class="game-menu-actions" aria-label="Pause menu"><button data-action="resume" class="game-menu-primary" autofocus>Resume mission</button><button data-action="settings">Settings</button><button data-action="restart">Restart mission</button><button data-action="return">Return to missions</button>${this.reportHtml_(mission)}</nav>${this.quickHtml_(mission !== null)}`
           : `<p class="game-menu-mission">${selectionText(mission?.title ?? 'Mission')}</p><p>${screen === 'restart' ? 'Start this mission from the beginning. This replaces its checkpoint and current run progress; completed mission status is preserved.' : 'Return to mission selection. Your last saved checkpoint will be available to continue.'}</p><p id="game-menu-save-note" class="game-menu-note"></p>
         <div class="game-menu-actions"><button data-action="confirm" class="game-menu-primary">${screen === 'restart' ? 'Restart mission' : 'Save and return'}</button><button data-action="back">Keep playing</button></div>`;
     this.dialog_!.innerHTML =
@@ -176,6 +186,9 @@ export class GameMenu {
             this.render_('return');
             void this.describeReturn_();
             break;
+          case 'report':
+            this.report_();
+            break;
           case 'confirm':
             void this.confirm_();
             break;
@@ -185,6 +198,39 @@ export class GameMenu {
     if (screen === 'settings') this.bindSettings_();
     if (screen === 'pause') this.bindQuick_();
     this.dialog_!.querySelector<HTMLElement>('[autofocus], .game-menu-body button, input')?.focus();
+  }
+
+  /**
+   * Players report from inside the mission so they never have to leave it. With the in-game form available the
+   * entry opens it; otherwise it is a link to the contact page with this mission already filled in.
+   */
+  private reportHtml_(mission: { title?: string; number?: number } | null): string {
+    if (feedbackEntry()?.available()) return '<button data-action="report">Report a problem</button>';
+    const scenario = [mission?.number ? `Scenario ${mission.number}` : '', mission?.title ?? ''].filter(Boolean).join(' - ');
+    const href = contactUrl({ campaign: location.pathname.split('/')[2], scenario, build: `v${__APP_VERSION__} | ${__GIT_COMMIT_SHA__}` });
+
+    return `<a class="game-menu-link" data-report-link href="${selectionText(href)}" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" aria-label="Report a problem (opens the contact page in a new tab; your mission stays paused here)">Report a problem<small>Opens the contact page in a new tab. Your mission stays paused here.</small></a>`;
+  }
+
+  /** Puts the menu away so the capture shows the mission, keeps the pause, and comes back when the form closes. */
+  private report_(): void {
+    const entry = feedbackEntry();
+    if (!entry?.available() || !this.dialog_?.open) return;
+    this.cleanup_?.();
+    this.cleanup_ = null;
+    this.reporting_ = true;
+    this.dialog_.close();
+    entry.open(() => {
+      if (!this.reporting_) return;
+      this.reporting_ = false;
+      if (!this.inMission_()) {
+        setMenuPause('game-menu', false);
+        return;
+      }
+      const returnFocus = this.returnFocus_;
+      this.open_('pause');
+      this.returnFocus_ = returnFocus;
+    });
   }
 
   /**

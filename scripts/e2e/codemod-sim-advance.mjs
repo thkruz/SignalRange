@@ -34,7 +34,7 @@ function importPath(file) {
 
 function addImports(src, file, names) {
   const spec = importPath(file);
-  const re = new RegExp(`import \\{([^}]*)\\} from '${spec.replaceAll('.', '\\.')}';`, 'u');
+  const re = new RegExp(`import \\{([^}]*)\\} from '${spec.replaceAll(/[.*+?^${}()|[\]\\]/gu, '\\$&')}';`, 'u');
   const m = src.match(re);
   if (m) {
     const have = m[1].split(',').map((s) => s.trim()).filter(Boolean);

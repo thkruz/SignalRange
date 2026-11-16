@@ -105,8 +105,11 @@ async function makeUser(email, password) {
 
 // ------------------------------------------------------------------ functions serve
 let serve = null;
-const envFile = path.join(os.tmpdir(), `sr-feedback-hostile-${process.pid}.env`);
+let envDir = null;
+let envFile = null;
 async function startServe() {
+  envDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sr-feedback-hostile-'));
+  envFile = path.join(envDir, 'serve.env');
   fs.writeFileSync(envFile, `FEEDBACK_PRUNE_SECRET=${PRUNE_SECRET}\n`);
   serve = spawn('npx', [process.env.FEEDBACK_SUPABASE_CLI ?? 'supabase', 'functions', 'serve', '--env-file', envFile], { shell: true, stdio: ['ignore', 'pipe', 'pipe'], env: process.env });
   const log = fs.createWriteStream(path.join(os.tmpdir(), 'sr-functions-serve.log'));
@@ -130,7 +133,7 @@ async function warmup() {
 }
 function stopServe() {
   try {
-    fs.rmSync(envFile, { force: true });
+    if (envDir) fs.rmSync(envDir, { recursive: true, force: true });
   } catch {
     /* ignore */
   }

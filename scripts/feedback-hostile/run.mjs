@@ -112,7 +112,7 @@ async function startServe() {
   envFile = path.join(envDir, 'serve.env');
   fs.writeFileSync(envFile, `FEEDBACK_PRUNE_SECRET=${PRUNE_SECRET}\n`);
   serve = spawn('npx', [process.env.FEEDBACK_SUPABASE_CLI ?? 'supabase', 'functions', 'serve', '--env-file', envFile], { shell: true, stdio: ['ignore', 'pipe', 'pipe'], env: process.env });
-  const log = fs.createWriteStream(path.join(os.tmpdir(), 'sr-functions-serve.log'));
+  const log = fs.createWriteStream(path.join(envDir, 'serve.log'));
   serve.stdout.pipe(log);
   serve.stderr.pipe(log);
   for (let i = 0; i < 90; i++) {
@@ -120,7 +120,14 @@ async function startServe() {
     const r = await timedFetch(FN, { method: 'OPTIONS' });
     if (r.status === 204 || r.status === 200 || r.status === 401) return warmup();
   }
-  throw new Error('functions serve did not come up (see sr-functions-serve.log in the temp dir)');
+  let tail = '';
+  try {
+    tail = fs.readFileSync(path.join(envDir, 'serve.log'), 'utf8').slice(-2000);
+  } catch {
+    tail = '(no serve log)';
+  }
+  throw new Error(`functions serve did not come up; serve log tail:
+${tail}`);
 }
 // Boots the function and prune workers so the first measured case is not a cold start.
 async function warmup() {

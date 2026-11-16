@@ -75,7 +75,7 @@ function log(message, color = 'reset') {
   while (n1 < text.length && text[n1] === '\n') n1++;
   let n2 = 0;
   while (n2 < text.length - n1 && text[text.length - 1 - n2] === '\n') n2++;
-  const safe = `${'\n'.repeat(n1)}${text.slice(n1, text.length - n2).replace(/[\r\n]/gu, ' ')}${'\n'.repeat(n2)}`;
+  const safe = `${'\n'.repeat(n1)}${text.slice(n1, text.length - n2).replace(/\n/gu, '').replace(/\r/gu, '')}${'\n'.repeat(n2)}`;
   console.log(`${colors[color]}${safe}${colors.reset}`);
 }
 

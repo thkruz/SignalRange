@@ -432,6 +432,8 @@ function rejectOffScript() {
 }
 
 function applyReview(clip, hash, { status, notes, tags, approvedBy }) {
+  // takes are keyed by the sha1 of the mp3; anything else would be an arbitrary property name
+  if (typeof hash !== 'string' || !/^[0-9a-f]{40}$/u.test(hash)) throw new Error('take must be a 40-character sha1');
   if (status === 'approved' && offScript(clip, readTakes().takes[hash])) {
     throw new Error('This take was recorded from an older script and cannot be approved; re-record it.');
   }
@@ -819,7 +821,8 @@ const server = createServer(async (req, res) => {
     }
     sendJson(res, 404, { error: 'not found' });
   } catch (err) {
-    sendJson(res, 500, { error: String(err?.message ?? err) });
+    console.error(err);
+    sendJson(res, 500, { error: 'internal error (see the server console)' });
   }
 });
 

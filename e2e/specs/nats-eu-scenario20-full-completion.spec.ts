@@ -24,7 +24,7 @@ import { answerDecision, dismissDialogIfPresent, waitForSimulationReady } from '
  * the skew entry and report, probe the sky after LOS (still walking - back
  * down), probe again after 05:36 (still - stays up), SAR-2 on true time,
  * debrief. Clock starts 2027-04-19 05:00:00Z:
- *   MERIDIAN-SAR-1  AOS 05:21:59Z  max el 29.2 deg at 05:26:45Z  LOS 05:31:28Z
+ *   MERIDIAN-SAR-1  AOS 05:21:59Z  max el 29.2 deg at 05:26:45Z  LOS 05:30:18Z (5 deg; horizon 05:31:28Z)
  *   MERIDIAN-SAR-2  AOS 05:44:00Z  max el 27.0 deg at 05:48:44Z  LOS 05:53:29Z
  *   spoofer         05:08:00Z .. 05:36:00Z (GW-01 only)
  *

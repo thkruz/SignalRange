@@ -38,6 +38,7 @@ import { createMeridianSar1, createMeridianSar2, type MeridianTle } from './sate
  *   MERIDIAN-SAR-1: AOS T+21.98 (05:21:59Z, az 006), max el 29.2 deg at T+26.75
  *                   (05:26:45Z, 735 km), LOS T+31.47 (05:31:28Z, az 219), 9.5 min,
  *                   southbound. Flown on holdover. C/N >= 8 dB roughly 05:24:30 .. 05:29.
+ *                   5 deg mask (the LOS the objective row judges): AOS 05:23:09, LOS 05:30:18.
  *   MERIDIAN-SAR-2: AOS T+44.01 (05:44:00Z, az 006), max el 27.0 deg at T+48.74
  *                   (05:48:44Z, 788 km), LOS T+53.48 (05:53:29Z, az 222), 9.5 min,
  *                   southbound. Flown back on GNSS.
@@ -712,7 +713,7 @@ export const natsEuScenario20Data: ScenarioData = {
       nice: ['S0648', 'K0926'],
       title: 'Probe the Sky',
       description:
-        'Wait for SAR-1 to set (LOS 05:31:28). The only way to know whether the spoofer is still up is to listen, so put the GNSS switch back up, watch the delta-T on the GPS Timing tab for a few seconds, and call what it does.',
+        'Wait for SAR-1 to set (LOS 05:30:18). The only way to know whether the spoofer is still up is to listen, so put the GNSS switch back up, watch the delta-T on the GPS Timing tab for a few seconds, and call what it does.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['report-the-attack'],
       timeLimitSeconds: 3 * 60,
@@ -721,7 +722,7 @@ export const natsEuScenario20Data: ScenarioData = {
         {
           type: 'satellite-pass-phase',
           description: 'SAR-1 Pass Over (LOS)',
-          params: { noradId: 61701, phase: 'set' },
+          params: { noradId: 61701, phase: 'setting-below', elevation: 5 }, // LOS at the 5 deg mask (05:30:18), not the 05:31:28 horizon crossing
           mustMaintain: false,
         },
         {

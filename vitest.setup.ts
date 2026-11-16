@@ -1,4 +1,5 @@
 import { beforeEach, vi } from 'vitest';
+import { cssEscape } from './test/helpers/css-escape';
 import { Rng } from './src/simulation/rng';
 import { SimClock } from './src/simulation/sim-clock';
 import 'vitest-canvas-mock';
@@ -125,5 +126,5 @@ if (typeof HTMLDialogElement !== 'undefined') {
 }
 if (typeof globalThis.CSS === 'undefined') (globalThis as { CSS?: unknown }).CSS = {};
 if (typeof (globalThis.CSS as { escape?: unknown }).escape !== 'function') {
-  (globalThis.CSS as { escape: (s: string) => string }).escape = (s: string) => String(s).replace(/[^\w-]/gu, (c) => `\${c}`);
+  (globalThis.CSS as { escape: (s: string) => string }).escape = cssEscape;
 }

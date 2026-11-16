@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
 import { answerQuizByText, dismissDialogIfPresent, waitForQuizToAppear, waitForSimulationReady } from '../utils/simulation-helpers';
+import { advanceUntil, simAdvance } from '../utils/test-clock';
 
 /**
  * Scenario 24 - "Constellation Crisis": Campaign Capstone.
@@ -283,26 +284,27 @@ async function repointProgramTrack(page: import('@playwright/test').Page, satell
   await expect(moveBtn).toBeEnabled({ timeout: 5000 });
   await moveBtn.click();
 
-  await page.waitForFunction(
-    () => {
-      const w = window as unknown as {
-        signalRange?: {
-          simulationManager?: {
-            groundStations?: Array<{
-              state?: { id?: string };
-              antennas?: Array<{ state?: { slewing?: boolean; isLocked?: boolean } }>;
-            }>;
+  await advanceUntil(
+    page,
+    () =>
+      page.evaluate(() => {
+        const w = window as unknown as {
+          signalRange?: {
+            simulationManager?: {
+              groundStations?: Array<{
+                state?: { id?: string };
+                antennas?: Array<{ state?: { slewing?: boolean; isLocked?: boolean } }>;
+              }>;
+            };
           };
         };
-      };
-      const gs = w.signalRange?.simulationManager?.groundStations?.find((g) => g.state?.id === 'VT-01');
-      const antennaState = gs?.antennas?.[0]?.state;
-      return antennaState ? antennaState.slewing === false && antennaState.isLocked === true : false;
-    },
-    undefined,
-    { timeout: 180000 }
+        const gs = w.signalRange?.simulationManager?.groundStations?.find((g) => g.state?.id === 'VT-01');
+        const antennaState = gs?.antennas?.[0]?.state;
+        return antennaState ? antennaState.slewing === false && antennaState.isLocked === true : false;
+      }),
+    { maxMs: 180000, stepMs: 1000, message: 'antenna slew complete and locked' }
   );
-  await page.waitForTimeout(1500);
+  await simAdvance(page, 1500);
 }
 
 async function setStepTrack(page: import('@playwright/test').Page): Promise<void> {
@@ -398,13 +400,14 @@ async function assertRainBand(page: import('@playwright/test').Page): Promise<vo
 
 /** Wait until the objective reports complete, via the debugObjective dev hook. */
 async function waitForObjectiveDone(page: import('@playwright/test').Page, objectiveId: string, timeout: number): Promise<void> {
-  await page.waitForFunction(
-    (id) => {
-      const hook = (window as unknown as { debugObjective?: (id: string) => { isCompleted?: boolean } }).debugObjective;
-      return typeof hook === 'function' && hook(id)?.isCompleted === true;
-    },
-    objectiveId,
-    { timeout, polling: 500 }
+  await advanceUntil(
+    page,
+    () =>
+      page.evaluate((id) => {
+        const hook = (window as unknown as { debugObjective?: (id: string) => { isCompleted?: boolean } }).debugObjective;
+        return typeof hook === 'function' && hook(id)?.isCompleted === true;
+      }, objectiveId),
+    { maxMs: timeout, stepMs: 1000, message: `objective ${objectiveId} complete` }
   );
 }
 
@@ -416,7 +419,7 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
         // maintainDuration hold: the 60 s hold accrues in real time while ACU
         // Control is open, and waitForQuizToAppear waits for it
         await page.evaluate((ms) => (window as unknown as { advanceClock: (deltaMs: number) => void }).advanceClock(ms), objective.holdSeconds * 1000);
-        await page.waitForTimeout(1500);
+        await simAdvance(page, 1500);
       }
       await waitForQuizToAppear(page, objective.quizWaitMs);
       if (objective.assertRainBand) {
@@ -437,7 +440,7 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
       // Observation-gated conditions latch only after the default dwell on
       // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
       // reset the read and strand the objective.
-      await page.waitForTimeout(3000);
+      await simAdvance(page, 3000);
       break;
 
     case 'toggle-switch':

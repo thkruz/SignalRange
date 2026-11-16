@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { MissionControlPage } from '../pages/mission-control.page';
 import { answerQuizByText, dismissDialogIfPresent, waitForSimulationReady } from '../utils/simulation-helpers';
+import { advanceUntil, simAdvance } from '../utils/test-clock';
 
 /**
  * Scenario 16 - "Cascade Failure": Multi-System Recovery Under Customer Pressure.
@@ -288,7 +289,7 @@ async function powerCycleLnb(page: import('@playwright/test').Page): Promise<voi
   await expect(powerSwitch).toBeChecked();
 
   // Wait for thermal stabilization + reference re-acquire
-  await page.waitForTimeout(5000);
+  await simAdvance(page, 5000);
 }
 
 async function closeQuizModalIfPresent(page: import('@playwright/test').Page): Promise<void> {
@@ -361,7 +362,7 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
       // Observation-gated conditions latch only after the default dwell on
       // the tab (DEFAULT_OBSERVATION_DWELL_SECONDS); leaving at once would
       // reset the read and strand the objective.
-      await page.waitForTimeout(3000);
+      await simAdvance(page, 3000);
       break;
 
     case 'toggle-switch':
@@ -375,26 +376,28 @@ async function executeObjective(page: import('@playwright/test').Page, missionCo
     case 'lnb-power-cycle':
       await powerCycleLnb(page);
       // Stay on RX Analysis until the reference lock and warm-up complete it
-      await page.waitForFunction(
-        (id) => {
-          const hook = (window as unknown as { debugObjective?: (id: string) => { isCompleted?: boolean } }).debugObjective;
-          return typeof hook === 'function' && hook(id)?.isCompleted === true;
-        },
-        objective.id,
-        { timeout: (objective.waitForSeconds ?? 90) * 1000, polling: 500 }
+      await advanceUntil(
+        page,
+        () =>
+          page.evaluate((id) => {
+            const hook = (window as unknown as { debugObjective?: (id: string) => { isCompleted?: boolean } }).debugObjective;
+            return typeof hook === 'function' && hook(id)?.isCompleted === true;
+          }, objective.id),
+        { maxMs: (objective.waitForSeconds ?? 90) * 1000, stepMs: 1000, message: `objective ${objective.id} complete` }
       );
       break;
 
     case 'auto':
       // Wait for the simulation-driven condition (e.g. BUC thermal recovery)
       // to complete the objective itself
-      await page.waitForFunction(
-        (id) => {
-          const hook = (window as unknown as { debugObjective?: (id: string) => { isCompleted?: boolean } }).debugObjective;
-          return typeof hook === 'function' && hook(id)?.isCompleted === true;
-        },
-        objective.id,
-        { timeout: (objective.waitForSeconds ?? 90) * 1000, polling: 500 }
+      await advanceUntil(
+        page,
+        () =>
+          page.evaluate((id) => {
+            const hook = (window as unknown as { debugObjective?: (id: string) => { isCompleted?: boolean } }).debugObjective;
+            return typeof hook === 'function' && hook(id)?.isCompleted === true;
+          }, objective.id),
+        { maxMs: (objective.waitForSeconds ?? 90) * 1000, stepMs: 1000, message: `objective ${objective.id} complete` }
       );
       break;
   }

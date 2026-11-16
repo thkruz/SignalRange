@@ -179,7 +179,7 @@ test.describe('nats-eu Scenario 9 Full Completion', () => {
   });
 
   test('[take-the-shetland-console] takes SH-02 after Fiona sets and retunes it for SAR-2', async () => {
-    await advanceMissionClockToUtc(page, '2027-03-17T06:29:20Z');
+    await advanceMissionClockToUtc(page, '2027-03-17T06:28:30Z');
     await missionControl.selectGroundStation('SH-02');
     await setRxModemFrequency(page, missionControl, 1370);
     await fillAndChange(page, '#sa-center-freq', '1397');

@@ -32,7 +32,7 @@ import { answerDecision, dismissDialogIfPresent, waitForSimulationReady } from '
  * PLD-TEST-PATTERN, HPA off before the decode, RX modem to 1340 MHz, lock and
  * commit with 4 dB of margin, chain down, verdict, delivery. Clock starts
  * 2027-03-24 09:48:00Z:
- *   MERIDIAN-SAR-3  AOS 10:06:00Z  max el 27.9 deg at 10:10:45Z  LOS 10:15:29Z
+ *   MERIDIAN-SAR-3  AOS 10:06:00Z  max el 27.9 deg at 10:10:45Z  LOS 10:14:18Z (5 deg; horizon 10:15:29Z)
  *   command window  mission T+1102 s .. T+1628 s
  *   worksheet truth 11.3 dB; threshold 4.2 dB + 4 dB required margin
  *
@@ -251,7 +251,7 @@ test.describe('nats-eu Scenario 12 Full Completion', () => {
   });
 
   test('[chain-down-after-los] mutes the BUC and drops the carrier after LOS', async () => {
-    await advanceMissionClockToUtc(page, '2027-03-24T10:16:00Z');
+    await advanceMissionClockToUtc(page, '2027-03-24T10:14:50Z');
     await closeWorkingDocumentIfOpen(page);
     await missionControl.selectTab('tx-chain');
     await setSwitch(page, '#buc-mute', true);

@@ -32,6 +32,7 @@ import { createMeridianSar1, createMeridianSar2, createMeridianSar3, MERIDIAN_SA
  *                      (10:10:45Z, 764 km slant range), LOS T+27.48 (10:15:29Z,
  *                      az 355), 9.5 min, northbound. The worked pass;
  *                      commanding window 10:06:22 .. 10:15:08.
+ *                      At the 5 deg mask (the LOS the objective row judges): AOS 10:07:11, LOS 10:14:18.
  *   MERIDIAN-SAR-1 #1: AOS 10:50:01Z, max el 25.2 deg, LOS 10:59:30Z (present, not worked)
  *   MERIDIAN-SAR-2 #1: AOS 11:10:01Z, max el 24.7 deg, LOS 11:19:28Z (present, not worked)
  *
@@ -888,7 +889,7 @@ export const natsEuScenario12Data: ScenarioData = {
       nice: ['S0675', 'S0421', 'K0645'],
       title: 'Chain Down After LOS',
       description:
-        'LOS is 10:15:29. The HPA is already off. Once the satellite sets, finish the reverse order: mute the BUC, then take the carrier off the air. The two minutes start at LOS.',
+        'LOS is 10:14:18. The HPA is already off. Once the satellite sets, finish the reverse order: mute the BUC, then take the carrier off the air. The two minutes start at LOS.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['first-video'],
       timeLimitSeconds: 2 * 60,
@@ -897,7 +898,7 @@ export const natsEuScenario12Data: ScenarioData = {
         {
           type: 'satellite-pass-phase',
           description: 'SAR-3 Pass Over (LOS)',
-          params: { noradId: 61703, phase: 'set' },
+          params: { noradId: 61703, phase: 'setting-below', elevation: 5 }, // LOS at the 5 deg mask (10:14:18), not the 10:15:29 horizon crossing
           mustMaintain: false,
         },
         {

@@ -19,7 +19,8 @@
  * file name above each line, which is what a voice actor or a TTS batch reads.
  * Both outputs are gitignored (`*-vo-manifest.json`, `*-vo-script-*.md`);
  * regenerate them from the scenario files. Target paths follow the Campaign 1 convention:
- * `assets/campaigns/<campaign>/<N>/intro.mp3` and `.../obj-<objective-id>.mp3`.
+ * `assets/campaigns/<campaign>/<N>/intro.mp3` and `.../obj-<objective-id>.mp3`; the activation
+ * clip of an objective that also has a completion clip is `.../obj-<objective-id>-start.mp3`.
  *
  * `--apply` edits only the `audioUrl` initializer of a clip whose target file is
  * present under public/, replacing it with `getAssetUrl('/<target>')`, and adds
@@ -64,6 +65,9 @@ function loadCharacterNames() {
 }
 
 const characterNames = loadCharacterNames();
+
+/** Appended to an activation clip's key when its objective also has a completion clip. */
+const START_SUFFIX = '-start';
 
 function scenarioFiles() {
   return readdirSync(campaignDir)
@@ -155,7 +159,7 @@ function readScenario(file) {
   visit(sf);
 
   const clips = [];
-  const pushClip = (key, obj) => {
+  const pushClip = (key, obj, group) => {
     if (!obj || !ts.isObjectLiteralExpression(obj)) return;
     const textNode = findProp(obj, 'text')?.initializer;
     const audioProp = findProp(obj, 'audioUrl');
@@ -167,6 +171,7 @@ function readScenario(file) {
       scenario: scenarioId ?? rel,
       number,
       key,
+      group,
       character: characterKey,
       characterName: characterNames[characterKey] ?? characterKey,
       emotion: enumMember(findProp(obj, 'emotion')?.initializer) ?? 'NEUTRAL',
@@ -182,16 +187,21 @@ function readScenario(file) {
   };
 
   if (dialogClips) {
-    pushClip('intro', findProp(dialogClips, 'intro')?.initializer);
+    pushClip('intro', findProp(dialogClips, 'intro')?.initializer, 'intro');
     // Activation dialog is spoken too; omitting it hid missing recordings from
     // both the generator and the review page.
-    for (const group of ['objectives', 'objectivesOnStart']) {
-      const objectives = findProp(dialogClips, group)?.initializer;
-      if (objectives && ts.isObjectLiteralExpression(objectives)) {
-        for (const p of objectives.properties) {
-          if (ts.isPropertyAssignment(p)) pushClip(propName(p), p.initializer);
-        }
-      }
+    const groupNodes = (group) => {
+      const node = findProp(dialogClips, group)?.initializer;
+      return node && ts.isObjectLiteralExpression(node) ? node.properties.filter(ts.isPropertyAssignment) : [];
+    };
+    const completionIds = new Set(groupNodes('objectives').map(propName));
+    for (const p of groupNodes('objectives')) pushClip(propName(p), p.initializer, 'objectives');
+    for (const p of groupNodes('objectivesOnStart')) {
+      const id = propName(p);
+      // An objective can have both a completion and an activation line. The
+      // completion clip keeps the plain key (and so any recording that already
+      // exists); only the activation clip of a colliding pair is suffixed.
+      pushClip(completionIds.has(id) ? `${id}${START_SUFFIX}` : id, p.initializer, 'objectivesOnStart');
     }
   }
 

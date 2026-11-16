@@ -627,7 +627,7 @@ export const natsEuScenario18Data: ScenarioData = {
       nice: ['K0946', 'T1580'],
       title: 'Log Event 1',
       description:
-        'The SAR-2 pass ends at LOS, loss of signal, at 10:26:24. Once it has set, check whether the carrier is still cycling on an empty sky, then put the first event in the report as evidence: frequency, cadence, first seen, effect, mitigation, and Shetland’s confirmation.',
+        'The SAR-2 pass ends at LOS, loss of signal, when it drops below the 5 degree mask at 10:26:24. Once it is below the mask, check whether the carrier is still cycling, then put the first event in the report as evidence: frequency, cadence, first seen, effect, mitigation, and Shetland’s confirmation.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['notch-the-carrier'],
       timeLimitSeconds: 2 * 60,
@@ -800,7 +800,7 @@ export const natsEuScenario18Data: ScenarioData = {
       nice: ['K0684', 'K0946', 'T1580'],
       title: 'File the Regulator Package',
       description:
-        'SAR-1 sets at 10:48:16. Assemble the package for ComReg, copied to Rotterdam, with the fields the regulator needs to act and nothing the regulator has to take on trust.',
+        'SAR-1 sets at 10:49:29. Assemble the package for ComReg, copied to Rotterdam, with the fields the regulator needs to act and nothing the regulator has to take on trust.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['it-followed-the-plan'],
       timeLimitSeconds: 3 * 60,

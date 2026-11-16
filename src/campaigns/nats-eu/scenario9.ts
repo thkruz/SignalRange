@@ -782,7 +782,7 @@ export const natsEuScenario9Data: ScenarioData = {
       nice: ['S0421', 'K0773', 'T0129'],
       title: 'Take the Shetland Console',
       description:
-        'Fiona hands over when SAR-1 sets at Shetland, around 06:28, and then goes outside. Select SH-02, retune modem 1 from her 1414 MHz SAR-1 carrier to 1370 MHz for SAR-2, and put the analyzer on the SAR-2 beacon at 1397 MHz. SAR-2 rises at 06:30 from azimuth 011. Your three minutes start when SAR-1 sets at Shetland, not before.',
+        'Fiona hands over when SAR-1 drops below the 5 degree mask at Shetland, around 06:28, and then goes outside. Select SH-02, retune modem 1 from her 1414 MHz SAR-1 carrier to 1370 MHz for SAR-2, and put the analyzer on the SAR-2 beacon at 1397 MHz. SAR-2 rises at 06:30 from azimuth 011. Your three minutes start when SAR-1 drops below the mask, not before.',
       groundStation: 'SH-02',
       prerequisiteObjectiveIds: ['arm-galway-for-sar2'],
       timeLimitSeconds: 3 * 60,
@@ -910,7 +910,7 @@ export const natsEuScenario9Data: ScenarioData = {
       nice: ['T0153', 'T0431', 'K0740'],
       title: 'Check the Unattended Pass',
       description:
-        'SAR-2 sets at Shetland at 06:38. Select GW-01 while SAR-2 is still above Galway, until 06:40, and check that the pedestal is program-track locked on it and the modem is locked with C/N above 6 dB on the way down.',
+        'SAR-2 sets at Shetland at 06:39. Select GW-01 while SAR-2 is still above Galway, until 06:41, and check that the pedestal is program-track locked on it and the modem is locked with C/N above 6 dB on the way down.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['decode-sar2-from-shetland'],
       conditions: [

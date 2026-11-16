@@ -549,7 +549,8 @@ export const natsEuScenario15Data: ScenarioData = {
       id: 'log-the-receive-pass',
       nice: ['K0645', 'S0575'],
       title: 'Log the Receive Pass',
-      description: 'SAR-1 sets at 07:24:20. Add one line to the rotation record saying this was the last pass on Q1, that it decoded, and that you sent no commands.',
+      description:
+        'SAR-1 drops below the 5 degree mask at 07:24:20. Add one line to the rotation record saying this was the last pass on Q1, that it decoded, and that you sent no commands.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['receive-on-the-retiring-key'],
       timeLimitSeconds: 2 * 60,
@@ -589,7 +590,7 @@ export const natsEuScenario15Data: ScenarioData = {
       nice: ['K0876', 'K0874', 'S0077'],
       title: 'Rotate the Command Key',
       description:
-        'On the TT&C console, begin the rotation and then complete it. KEY-2027-Q2 must read Valid before the SAR-2 window opens at 07:34:20. Rotate in the gap, because your three minutes start when SAR-1 sets at Galway (07:24:20).',
+        'On the TT&C console, begin the rotation and then complete it. KEY-2027-Q2 must read Valid before the SAR-2 window opens at 07:34:20. Rotate in the gap, because your three minutes start when SAR-1 drops below the 5 degree mask at Galway (07:24:20).',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['log-the-receive-pass'],
       timeLimitSeconds: 3 * 60,

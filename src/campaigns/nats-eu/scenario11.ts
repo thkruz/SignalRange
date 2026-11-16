@@ -757,7 +757,7 @@ export const natsEuScenario11Data: ScenarioData = {
       nice: ['T0431', 'K0645', 'S0842'],
       title: 'Secure After LOS',
       description:
-        'She sets at 09:17:22. Confirm that the uplink stayed cold for the whole pass, and close the LEOP log for this contact. You have two minutes, and they start at LOS.',
+        'She drops below the 5 degree mask at 09:17:22, about a minute before she sets. Confirm that the uplink stayed cold for the whole pass, and close the LEOP log for this contact. You have two minutes, and they start when she drops below the mask.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['state-of-health'],
       timeLimitSeconds: 2 * 60,

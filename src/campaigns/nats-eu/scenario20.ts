@@ -713,7 +713,7 @@ export const natsEuScenario20Data: ScenarioData = {
       nice: ['S0648', 'K0926'],
       title: 'Probe the Sky',
       description:
-        'Wait for SAR-1 to set (LOS 05:30:18). The only way to know whether the spoofer is still up is to listen, so put the GNSS switch back up, watch the delta-T on the GPS Timing tab for a few seconds, and call what it does.',
+        'Wait for SAR-1 to drop below the 5 degree mask (LOS 05:30:18). The only way to know whether the spoofer is still up is to listen, so put the GNSS switch back up, watch the delta-T on the GPS Timing tab for a few seconds, and call what it does.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['report-the-attack'],
       timeLimitSeconds: 3 * 60,

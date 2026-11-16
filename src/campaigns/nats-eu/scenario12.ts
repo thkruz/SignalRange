@@ -889,7 +889,7 @@ export const natsEuScenario12Data: ScenarioData = {
       nice: ['S0675', 'S0421', 'K0645'],
       title: 'Chain Down After LOS',
       description:
-        'LOS is 10:14:18. The HPA is already off. Once the satellite sets, finish the reverse order: mute the BUC, then take the carrier off the air. The two minutes start at LOS.',
+        'LOS is 10:14:18, when the satellite drops below the 5 degree mask. The HPA is already off. Once it is below the mask, finish the reverse order: mute the BUC, then take the carrier off the air. The two minutes start at LOS.',
       groundStation: 'GW-01',
       prerequisiteObjectiveIds: ['first-video'],
       timeLimitSeconds: 2 * 60,

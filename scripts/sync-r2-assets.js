@@ -69,7 +69,10 @@ const colors = {
 };
 
 function log(message, color = 'reset') {
-  console.log(`${colors[color]}${message}${colors.reset}`);
+  // Leading and trailing line breaks are layout; any inside the text (for example from a file name) could forge log lines.
+  const [, lead, body, trail] = /^(\n*)([\s\S]*?)(\n*)$/u.exec(String(message));
+  const safe = `${lead}${body.replace(/[\r\n]/gu, ' ')}${trail}`;
+  console.log(`${colors[color]}${safe}${colors.reset}`);
 }
 
 function verbose(message) {

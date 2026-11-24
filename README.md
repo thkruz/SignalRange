@@ -12,33 +12,18 @@ A web-based training simulation for satellite ground station operations, built w
 
 SignalRange simulates a commercial satellite ground station environment where operators learn to configure and troubleshoot RF equipment chains. The training scenarios are set at North Atlantic Teleport Services (NATS), a fictional satellite ground station facility in Vermont serving the TIDEMARK constellation.
 
-## Campaign 1: North Atlantic Teleport Services (NATS)
+## Campaigns
 
-Twenty-four scenarios taking you from observation to independent operations at a commercial C-band ground station in Vermont. Progress from health checks and maintenance procedures through satellite handovers, acquisitions, and RF troubleshooting. See the [scenario guide](https://docs.signalrange.space) for details.
+| Campaign | Setting | Scenarios | Stage |
+| --- | --- | --- | --- |
+| 1. North Atlantic Teleport Services | Commercial C-band GEO teleport in Vermont and Maine | 24 | Stable |
+| 2. NATS Europe | LEO network run from Galway and Shetland | 28 | Stable |
+| 3. Backyard Operator | Home radio bench and backyard antennas | 12 | Alpha |
+| 4. Counter Communications | Electronic warfare squadron | 5 | Alpha |
+| 5. Signal Hunter | Signal geolocation | 4 | Alpha |
+| 6. Frontline Signals | Field communications at a forward post | 16 | Alpha |
 
-## 2026 Roadmap
-
-Campaign 1 is the beginning. Here's what's planned for 2026:
-
-### Jan - NATS Scenarios 6-8
-
-Complete the NATS campaign with advanced scenarios: rain fade compensation, full link budget analysis, and independent troubleshooting under time pressure.
-
-### Q1 - Campaign 2: European Operations
-
-Charlie transfers to NATS Europe. LEO satellite tracking, multi-contact mission planning, video feed decoding, and Ku-band operations.
-
-### Q2 - Campaign 3: Backyard Operator
-
-Charlie's niece teaches you how to track satellites from your backyard. Software-defined radios, SatNOGS, circular polarization, GPS signal tracking, and DIY antenna setups.
-
-### Q3 - Campaign 4: Electronic Warfare
-
-Military counter-communications operations. SATCOM denial, redundant hardware management, multi-antenna coordination, X-band.
-
-### Q4 - Campaign 5: Signal Hunter
-
-Someone is jamming allied satellites. Find them using geolocation and advanced RF techniques.
+Counts come from the campaign definitions under `src/campaigns/`. See the [scenario guide](https://docs.signalrange.space) for the briefs.
 
 ## Equipment Simulated
 

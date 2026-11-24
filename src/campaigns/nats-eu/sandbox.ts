@@ -33,8 +33,7 @@ export const natsEuSandboxData: ScenarioData = {
   number: 0,
   isDisabled: false,
   difficulty: 'intermediate',
-  // Unlocked while Campaign 2 is under development: this sandbox is the proving
-  // ground for the new mechanics/consoles. Re-gate on scenario1 when it ships.
+  // No prerequisite: the sandbox is open from the start of Campaign 2.
   prerequisiteScenarioIds: [],
   title: 'Sandbox',
   subtitle: 'Free Practice Mode (Campaign 2 Mechanics)',

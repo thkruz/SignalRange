@@ -53,8 +53,7 @@ export const natsEuCampaignData: CampaignData = {
   },
   // Same chrome as Campaign 1 on purpose: two facilities of one operator.
   chromeVariant: 'standard',
-  // S1-S16 are content complete and saves are expected to hold, but the campaign
-  // is still under public test.
+  // S1-S28 are content complete and saves are expected to hold.
   releaseStage: 'stable',
   scenarios: [
     natsEuSandboxData,

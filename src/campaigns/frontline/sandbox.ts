@@ -14,7 +14,7 @@ sandboxPlant.workloads = { cards: [] };
 /**
  * Frontline Signals Sandbox (Phase 38.1)
  *
- * Dev-only physical-layer sandbox: a fictional rural training post with a 1.2 m
+ * Physical-layer sandbox (public alpha): a fictional rural training post with a 1.2 m
  * Ku VSAT toward EuroSat 9E and the full physical-plant kit (generator, power
  * station, SkyLink dish, router and cable, VSAT dish, LNB, IFL, modem, laptop).
  * No faults are authored: the trainer injects them. No dialog, no VO, no
@@ -46,7 +46,7 @@ export const frontlineSandboxData: ScenarioData = {
   objectives: [],
 };
 
-/** Dev sandboxes for the forward post: same kit and site mode as S10 (SkyLink only) and S11 (EuroSat added). */
+/** Sandboxes for the forward post: same kit and site mode as S10 (SkyLink only) and S11 (EuroSat added). */
 const forwardSandbox = (scenarioNumber: 10 | 11, eurosat: boolean): ScenarioData => ({
   ...frontlineSandboxData,
   id: eurosat ? 'frontline-sandbox-forward-eurosat' : 'frontline-sandbox-forward',
